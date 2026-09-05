@@ -1,0 +1,54 @@
+{
+  "name": "@chardesk/cell-ui",
+  "version": "0.0.0",
+  "description": "Headless React cell UI runtime for CharDesk",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run test:node && npm run test:browser",
+    "test:node": "vitest run --config vitest.config.ts",
+    "test:browser": "vitest run --config vitest.browser.config.ts"
+  },
+  "dependencies": {
+    "@chardesk/protocol": "^0.3.0",
+    "@chardesk/rendering": "^0.1.0",
+    "@codemirror/state": "^6.7.4",
+    "@react-stately/collections": "^3.13.1",
+    "@react-stately/list": "^3.14.1",
+    "yoga-layout": "^3.2.1"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.7",
+    "jsdom": "^29.0.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.8",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

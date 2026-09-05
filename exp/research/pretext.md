@@ -25,17 +25,17 @@ Pretext 是 JavaScript/TypeScript 多行文本测量与断行库。它使用 `In
 - 它不提供 Widget Tree、focus、input、scroll、hit testing 或 renderer。
 - bidi 元数据和 custom rendering 不是完整 Unicode Bidirectional Algorithm。
 
-## 当前判断
+## 采用结论
 
 状态：`仅作蓝图`
 
 借鉴两阶段准备、Range API、缓存和验证体系，不使用 Pretext 决定 Cell width。`@chardesk/protocol` 继续作为 Unicode Cell geometry 的唯一权威。
 
-## 待验证
+## 未覆盖能力
 
-- Grid Text 是否需要 `prepareGridText()`，还是现有 protocol row/run API 已足够。
-- wrapping、truncation、ellipsis 是否能共享同一组 grapheme ranges。
-- 大列表场景中，缓存 grapheme 分析能带来多少实际收益。
+- 当前尚未确定 Grid Text 是否需要独立 `prepareGridText()` 阶段。
+- wrapping、truncation 与 ellipsis 尚无共享的 grapheme range 契约。
+- 大列表中的 grapheme 分析缓存尚无本地性能数据。
 
 ## 权威来源
 

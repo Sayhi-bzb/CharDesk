@@ -1,0 +1,79 @@
+:root {
+  color-scheme: light dark;
+  background: var(--cell-background);
+  --cell-background: #ffffff;
+  --cell-foreground: #161616;
+  --cell-surface: #f0f0f0;
+  --cell-highlight: #dedede;
+  --cell-hover: #e8e8e8;
+  --cell-highlight-foreground: #161616;
+  --cell-muted-foreground: #666666;
+  --cell-border: #b5b5b5;
+  --cell-accent: #174bd1;
+  --cell-selection: #dce7fa;
+  --cell-selection-foreground: #161616;
+  --cell-range-selection: rgba(82, 155, 255, 0.32);
+  --cell-caret: var(--cell-foreground);
+  --cell-scrollbar-thumb: var(--cell-muted-foreground);
+}
+:root[data-gallery-theme="light"] { color-scheme: light; }
+:root[data-gallery-theme="dark"] {
+  color-scheme: dark;
+  --cell-background: #101010;
+  --cell-foreground: #ededed;
+  --cell-surface: #232323;
+  --cell-highlight: #393939;
+  --cell-hover: #2d2d2d;
+  --cell-highlight-foreground: #ededed;
+  --cell-muted-foreground: #a0a0a0;
+  --cell-border: #555555;
+  --cell-accent: #8ab4ff;
+  --cell-selection: #263c5a;
+  --cell-selection-foreground: #ededed;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; }
+.gallery-page {
+  min-height: 100vh;
+  background: var(--cell-background);
+  color: var(--cell-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 48px 24px 80px;
+}
+main { max-width: 1024px; margin-inline: auto; }
+h1, h2, p { margin: 0; }
+h1 { font-size: 30px; line-height: 1.2; }
+h2 { font-size: 20px; line-height: 1.5; }
+.gallery-header { display: grid; gap: 12px; margin-bottom: 48px; }
+.gallery-title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.gallery-theme-toggle { position: relative; display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; padding: 0; color: var(--cell-muted-foreground); }
+.gallery-theme-toggle:hover { color: var(--cell-foreground); }
+.gallery-theme-tooltip { display: none; position: absolute; top: 100%; right: 0; z-index: 1; white-space: nowrap; padding: 4px 8px; background: var(--cell-surface); color: var(--cell-foreground); font-size: 12px; }
+.gallery-theme-toggle:hover .gallery-theme-tooltip, .gallery-theme-toggle:focus-visible .gallery-theme-tooltip { display: block; }
+.gallery-eyebrow, .gallery-intro, output, .gallery-card__header p { color: var(--cell-muted-foreground); }
+.gallery-intro { max-width: 72ch; }
+.gallery-layout { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 48px; }
+nav { position: sticky; top: 24px; align-self: start; display: grid; gap: 12px; }
+nav a, button { color: var(--cell-accent); text-decoration: none; }
+nav a:hover, button:hover { text-decoration: underline; }
+.gallery-grid { display: grid; gap: 48px; min-width: 0; }
+.gallery-card { min-width: 0; scroll-margin-top: 24px; }
+.gallery-card__header { display: grid; gap: 6px; margin-bottom: 24px; }
+.gallery-card__title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+button { background: transparent; border: 0; border-radius: 0; padding: 4px 0; font: inherit; cursor: pointer; }
+.gallery-copy { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.gallery-copy span { color: var(--cell-muted-foreground); font-size: 12px; }
+button:disabled { cursor: default; color: var(--cell-muted-foreground); }
+.gallery-card__demo { display: grid; gap: 12px; overflow-x: auto; padding: 4px; margin: -4px; }
+pre { width: 360px; max-width: 100%; height: 76px; margin: 0; overflow: auto; font: inherit; white-space: pre; }
+:focus-visible { outline: 2px solid var(--cell-accent) !important; outline-offset: 2px !important; }
+::selection { background: var(--cell-selection); color: var(--cell-selection-foreground); }
+@media (max-width: 959px) {
+  .gallery-page { padding: 24px 16px 56px; }
+  .gallery-header { margin-bottom: 24px; }
+  .gallery-layout { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  nav { position: static; display: flex; flex-wrap: wrap; gap: 12px 24px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

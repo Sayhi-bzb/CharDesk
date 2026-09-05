@@ -111,6 +111,14 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: /^@chardesk\/cell-ui\/browser$/,
+        replacement: path.resolve(import.meta.dirname, "./packages/cell-ui/src/browser.tsx"),
+      },
+      {
+        find: /^@chardesk\/cell-ui$/,
+        replacement: path.resolve(import.meta.dirname, "./packages/cell-ui/src/index.ts"),
+      },
+      {
         find: /^@chardesk\/collaboration-protocol$/,
         replacement: path.resolve(
           import.meta.dirname,

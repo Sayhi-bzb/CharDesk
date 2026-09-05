@@ -4,6 +4,8 @@ const root = path.resolve(import.meta.dirname, '../..')
 const source = (relativePath: string) => path.resolve(root, relativePath)
 
 export const workspaceAliases = [
+  { find: /^@chardesk\/cell-ui\/browser$/, replacement: source('packages/cell-ui/src/browser.tsx') },
+  { find: /^@chardesk\/cell-ui$/, replacement: source('packages/cell-ui/src/index.ts') },
   { find: /^@chardesk\/collaboration-protocol$/, replacement: source('packages/collaboration-protocol/src/index.ts') },
   { find: /^@chardesk\/chargraph\/examples$/, replacement: source('packages/chargraph/src/examples.ts') },
   { find: /^@chardesk\/chargraph\/markdown$/, replacement: source('packages/chargraph/src/markdown-default.ts') },

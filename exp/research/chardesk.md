@@ -30,17 +30,17 @@ CharDesk 已经拥有可编辑 Cell Canvas、文本协议、共享 Canvas render
 - Viewer 主要处理单文档、单 viewport，尚无嵌套 clip、scroll、overlay 和 Widget 事件传播。
 - 现有 ARIA 实践属于普通 Host DOM；没有由 Cell Widget Tree 生成 Semantic Tree 的通用机制。
 
-## 当前判断
+## 采用结论
 
 状态：`可直接复用`
 
 CharDesk 是 Unicode/Cell 与 Browser Canvas 的实现基础。Web TUI 实验应补充 Widget Runtime，并把验证过的通用交互能力提升到拥有它们的 package，而不是把 `src/` 内部实现搬进 `exp/`。
 
-## 待验证
+## 未拥有能力
 
-- `@chardesk/rendering` 的 Cell Scene 类型是否足以表达 Widget ownership、clip 和 z-index。
-- managed textarea 能否从单 Canvas 输入抽象为多 Widget Input Manager。
-- Viewer Grid Interaction 应归属现有 package 还是新的通用 interaction package。
+- `@chardesk/rendering` 的 Cell Scene 类型尚未表达 Widget ownership、clip 和 z-index。
+- managed textarea 尚未抽象为多 Widget Input Manager。
+- Viewer Grid Interaction 尚无明确的公共 package 所有权。
 
 ## 权威来源
 

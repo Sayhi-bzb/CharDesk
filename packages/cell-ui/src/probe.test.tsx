@@ -1,0 +1,100 @@
+import { describe, expect, it } from "vitest";
+import {
+  CellBuffer,
+  List,
+  ListItem,
+  Root,
+  Text,
+  createTestPilot,
+  formatCellBuffer,
+  formatCellProbe,
+} from "./index.js";
+
+describe("Cell probe", () => {
+  it("formats Unicode for people while retaining exact Cell records", () => {
+    const buffer = new CellBuffer({ width: 7, height: 2 });
+    buffer.writeGrapheme(0, 0, "A", "ascii", { bold: true });
+    buffer.writeGrapheme(1, 0, "中", "cjk");
+    buffer.writeGrapheme(3, 0, "👨‍👩‍👧‍👦", "emoji");
+    buffer.writeGrapheme(5, 0, "é", "combining");
+
+    expect(formatCellBuffer(buffer, { trimEnd: true }))
+      .toBe("A中👨‍👩‍👧‍👦é\n");
+    expect(formatCellBuffer(buffer, {
+      region: { x: 1, y: 0, width: 2, height: 1 },
+      trimEnd: false,
+    })).toBe("中");
+    expect(formatCellBuffer(buffer, {
+      region: { x: 2, y: 0, width: 1, height: 1 },
+      trimEnd: false,
+    })).toBe(" ");
+    expect(formatCellBuffer(buffer, {
+      region: { x: 1, y: 0, width: 1, height: 1 },
+      trimEnd: false,
+    })).toBe(" ");
+  });
+
+  it("trims only empty ASCII padding, not visible Unicode spaces", () => {
+    const buffer = new CellBuffer({ width: 7, height: 1 });
+    buffer.writeText(0, 0, "X\u00a0\u3000", "unicode-spaces");
+
+    expect(buffer.toText({ trimEnd: true })).toBe("X\u00a0\u3000");
+    expect(formatCellBuffer(buffer, { trimEnd: true })).toBe("X\u00a0\u3000");
+  });
+
+  it("captures deterministic JSON and diagnoses a rendered Cell", () => {
+    const pilot = createTestPilot({
+      viewport: { width: 12, height: 3 },
+      render: () => (
+        <Root id="root">
+          <List id="actions" label="Actions">
+            <ListItem id="open" focused selected><Text>Open 世界</Text></ListItem>
+          </List>
+        </Root>
+      ),
+    });
+
+    const snapshot = pilot.probe({ x: 0, y: 0, width: 12, height: 1 });
+    expect(snapshot).toMatchObject({
+      schemaVersion: 1,
+      probeId: null,
+      region: { x: 0, y: 0, width: 12, height: 1 },
+      viewport: { width: 12, height: 3 },
+      focusedId: "open",
+      text: "Open 世界",
+    });
+    expect(snapshot.cells).toHaveLength(12);
+    expect(snapshot.cells.filter((cell) => cell.continuation)).toHaveLength(2);
+    expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
+    expect(formatCellProbe(snapshot, { header: true })).toBe(
+      "cell-ui/probe@1  anonymous  12×1  focus=open\nOpen 世界"
+    );
+
+    expect(pilot.inspect({ x: 0, y: 0 })).toMatchObject({
+      cell: { text: "O", ownerId: "open/text[0]" },
+      hit: { ownerId: "open/text[0]", part: "content" },
+      hitStack: ["open/text[0]", "open", "actions", "root"],
+      focusedId: "open",
+      ownerFocused: false,
+    });
+    expect(pilot.inspect({ x: 20, y: 20 })).toMatchObject({
+      cell: null,
+      owner: null,
+      hit: null,
+      hitStack: [],
+    });
+    pilot.dispose();
+  });
+
+  it("clips requested regions to the viewport", () => {
+    const pilot = createTestPilot({
+      viewport: { width: 4, height: 2 },
+      render: () => <Root id="root"><Text id="text">AB</Text></Root>,
+    });
+    expect(pilot.probe({ x: 2, y: 1, width: 20, height: 20 })).toMatchObject({
+      region: { x: 2, y: 1, width: 2, height: 1 },
+      text: "",
+    });
+    pilot.dispose();
+  });
+});

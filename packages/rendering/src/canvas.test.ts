@@ -14,6 +14,8 @@ const createContext = (dpr = 1) => {
   const operations: string[] = [];
   const context = {
     beginPath: vi.fn(),
+    rect: vi.fn(),
+    clip: vi.fn(),
     clearRect: vi.fn(),
     fillRect: vi.fn(() => operations.push("background")),
     fillText: vi.fn(() => operations.push("text")),
@@ -35,6 +37,49 @@ const createContext = (dpr = 1) => {
 };
 
 describe("CharDesk Canvas 2D renderer", () => {
+  it("preserves inverse colors and decorations on geometric blocks", () => {
+    const { context } = createContext();
+    const colors: (string | CanvasGradient | CanvasPattern)[] = [];
+    vi.mocked(context.fillRect).mockImplementation(() => { colors.push(context.fillStyle); });
+    drawCharDeskCanvasCells(context, [{
+      cell: resolveCharDeskCellVisual({ text: "█", color: "#112233", attrs: { inverse: true, bold: true, underline: true } }),
+      x: 0, y: 0,
+      options: { blockGlyphs: "geometry", palette: { color: "#000000", background: "#ffffff" } },
+    }]);
+    expect(colors).toEqual(["#112233", "#ffffff"]);
+    expect(context.fillRect).toHaveBeenLastCalledWith(0, 0, 9, 19);
+    expect(context.fillText).not.toHaveBeenCalled();
+    expect(context.stroke).toHaveBeenCalledOnce();
+  });
+  it("draws solid blocks without resolving fonts while keeping ordinary text on the font path", () => {
+    const { context } = createContext();
+    const fontResolver = vi.fn(() => "monospace");
+    const entry = { cell: resolveCharDeskCellVisual({ text: "█" }), x: 0, y: 0 };
+    drawCharDeskCanvasCells(context, [{ ...entry, options: { blockGlyphs: "geometry", fontResolver, clipToCell: true } }]);
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 9, 19);
+    expect(context.fillText).not.toHaveBeenCalled();
+    expect(fontResolver).not.toHaveBeenCalled();
+    drawCharDeskCanvasCells(context, [entry]);
+    expect(context.fillText).toHaveBeenCalledWith("█", 5, 10);
+    drawCharDeskCanvasCells(context, [{ ...entry, cell: resolveCharDeskCellVisual({ text: "A" }), options: { blockGlyphs: "geometry", fontResolver } }]);
+    expect(fontResolver).toHaveBeenCalledOnce();
+    expect(context.fillText).toHaveBeenLastCalledWith("A", 5, 10);
+  });
+  it("clips glyphs to their Cell allocation only when requested", () => {
+    const { context } = createContext();
+    const entry = { cell: resolveCharDeskCellVisual({ text: "▬" }), x: 9, y: 19 };
+    drawCharDeskCanvasCells(context, [entry]);
+    expect(context.clip).not.toHaveBeenCalled();
+    drawCharDeskCanvasCells(context, [{ ...entry, options: { clipToCell: true } }]);
+    expect(context.rect).toHaveBeenCalledWith(9, 19, 9, 19);
+    expect(context.clip).toHaveBeenCalledOnce();
+    drawCharDeskCanvasCells(context, [{
+      ...entry, cell: resolveCharDeskCellVisual({ text: "中" }), options: { clipToCell: true },
+    }]);
+    expect(context.rect).toHaveBeenLastCalledWith(9, 19, 18, 19);
+    expect(context.save).toHaveBeenCalledTimes(5);
+    expect(context.restore).toHaveBeenCalledTimes(5);
+  });
   it("aligns glyph anchors to device pixels instead of CSS pixels", () => {
     const { context } = createContext(2);
     drawCharDeskCanvasCells(context, [{

@@ -1,78 +1,109 @@
-# Web TUI 线索白板
+# Web TUI 事实白板
 
-这里不是最终产品规格，而是 Web TUI Engine 的研究入口。我们先登记上游产品、基础设施和已有内部能力，再通过调研与实验判断哪些可以直接消费、哪些只适合作为蓝图，以及哪些缺口值得自行创新。
+这里记录 Web TUI Engine 当前有效的产品约束、上游采用结论、架构权威和可选能力边界。交付切片、验收门槛与状态由 [Web TUI Roadmap](roadmap.md) 统一维护；采用状态的定义与候选检查方法见[候选检查标准](research/checklist.md)。被替代的判断只保留在 Git 历史中。
 
-## 工作方法
+产品交互以 [Cell-native UI 哲学](ui-philosophy.md) 为权威；现有 primitive 的具体表现以 [Cell Widget 行为规范](blueprints/widgets.md) 为权威。
 
-```text
-发现线索 → 调研事实 → 验证关键假设 → 更新架构地图 → 收敛产品形态
-```
+## 已确定约束
 
-状态统一为：
-
-- `待调研`：只有线索，尚无可靠判断。
-- `调研中`：正在收集事实或等待实验。
-- `可直接复用`：已有稳定公共边界，可以作为依赖消费。
-- `仅作蓝图`：产品或架构值得参考，但不能直接成为依赖。
-- `不采用`：已确认与目标或约束冲突。
-
-## 当前产品假设
-
-这些是当前探索边界，不是不可修改的最终形态：
-
-- 可嵌入普通网页的 React/TypeScript TUI，而不是 shell 或终端模拟器。
+- 产品是可嵌入普通网页的 React/TypeScript TUI，不是 shell 或终端模拟器。
 - Everything is Cell：应用、布局、文本、滚动和事件只使用整数 column/row。
 - Cell 尺寸固定，不拉伸填满容器；剩余像素成为 gutter。
-- px 只存在于浏览器渲染边界，用于绘制 Cell 和把 pointer 坐标转换回 GridPoint。
+- px 只存在于浏览器边界，用于绘制 Cell 和把 pointer 坐标转换为 GridPoint。
 - 视觉 Cell Scene 与 Web Semantic Tree 分离，但来自同一 Widget Tree。
+- 一棵 Widget Tree 只使用一个 Layout Engine；不混用 Yoga/Taffy subtree。
+- Canvas 与 Semantic DOM 消费同一份 selection/focus state，不建立双状态或双事件权威。
+- Layout 只产生尺寸；SceneGeometry 统一拥有 scroll、clip、layer、visibility、paint order 和 hit geometry。
+- Border/Padding 是 Widget chrome；普通 content 与 descendants 只能 paint/hit 于权威 `contentClip`，不能覆盖 chrome Cell。
+- Scene、event 与 semantics 是同一 Widget Tree 的三种投影，各自拥有 parent、order 和 bounds。
+- Foreign Surface 默认禁止；自带 Canvas、scroll、focus 或 semantic subtree 的 Widget 必须通过产品决策门。
+- 逻辑模型可以寻址每个 Cell；renderer 按 row、styled run 或 interactive widget 聚合输出，不创建 DOM-per-cell。
+- macOS `⌥⌘` 拖动、其他平台 Alt 拖动创建 viewport Cell Range；`CellSurface` 默认持有状态，选择最终可见 Buffer，可包含边框和空白，不改变 Widget 或编辑器 selection。
 
-## 线索地图
+## 上游地图
 
-| 线索 | 类别 | 当前价值 | 状态 | 调研卡片 |
+| 线索 | 职责 | 现行结论 | 状态 | 权威卡片 |
 | --- | --- | --- | --- | --- |
-| CharDesk | 内部基础 | Unicode/Cell、Canvas rendering、Grid interaction 和 Web input 已有基础 | 可直接复用 | [CharDesk](research/chardesk.md) |
-| OpenTUI | 完整 TUI framework | Widget Runtime、布局、Buffer、Scroll 和事件系统蓝图 | 仅作蓝图 | [OpenTUI](research/opentui.md) |
-| Pretext | Text layout engine | `prepare → layout`、range API 和语料验证方法 | 仅作蓝图 | [Pretext](research/pretext.md) |
-| Yoga | Layout engine | 浏览器可用的 Flexbox 引擎；可能承担整数 Cell Layout | 调研中 | [Yoga](research/yoga.md) |
+| CharDesk | 内部基础 | 复用 Unicode/Cell、Canvas rendering、Grid interaction 和 Web input | 可直接复用 | [CharDesk](research/chardesk.md) |
+| OpenTUI | 完整 TUI framework | 参考 Widget Runtime、layout、Buffer、Scroll 和事件契约 | 仅作蓝图 | [OpenTUI](research/opentui.md) |
+| Pretext | Text layout engine | 参考 `prepare → layout`、range API 和语料验证方法 | 仅作蓝图 | [Pretext](research/pretext.md) |
+| Yoga | Layout engine | `YogaLayoutEngine` 以 stable WidgetId 增量复用 Node，整数 Cell、lifecycle、规模、production build 与目标 CSP 门槛已通过 | 分层采用 | [Yoga](research/yoga.md) |
+| xterm.js | Browser terminal | 参考 IME、selection、accessibility、dirty row 和 GPU renderer | 仅作蓝图 | [xterm.js](research/xterm.md) |
+| Ink | React TUI framework | 参考 React Host Tree、Yoga 同步和 commit-to-frame | 仅作蓝图 | [Ink](research/ink.md) |
+| Zag.js | Widget state machines | 完整 Listbox 不采用；collection 仅为 Stately 的条件后备 | 条件后备 | [Zag.js](research/zag.md) |
+| CodeMirror 6 | Editor framework | 采用 immutable editor state，不采用 DOM view | 分层采用 | [CodeMirror 6](research/codemirror.md) |
+| Ratatui | TUI framework | 参考 Rect、Buffer、cell diff 和 headless backend 契约 | 仅作蓝图 | [Ratatui](research/ratatui.md) |
+| Ratzilla | Browser/WASM TUI | 作为 DOM、Canvas2D、WebGL2 浏览器实现与性能对照 | 仅作蓝图 | [Ratzilla](research/ratzilla.md) |
+| Textual | TUI application framework | 参考 Compositor、分级失效、virtual line、Screen 和 Pilot | 仅作蓝图 | [Textual](research/textual.md) |
+| React Three Fiber | Browser React renderer | 参考 non-DOM Host、events、portal、demand frame 和 test renderer | 仅作蓝图 | [React Three Fiber](research/react-three-fiber.md) |
+| React Aria/Stately | Accessible state and behavior | Stately 是 collection/selection 主线；Aria 仅用于 Semantic DOM adapter | 分层采用 | [React Aria/Stately](research/react-aria-stately.md) |
+| Taffy | Layout engine | 等待官方 Browser/TypeScript 交付；不与 Yoga 混用 | 观察上游 | [Taffy](research/taffy.md) |
+| PixiJS | GPU rendering infrastructure | 仅在 Canvas2D 超出预算后验证单一 CellRenderable | 条件后备 | [PixiJS](research/pixijs.md) |
+| Flutter Rendering | Retained UI pipeline | 参考 relayout boundary、pipeline phases、Sliver lifecycle 和 Semantics | 仅作蓝图 | [Flutter Rendering](research/flutter-rendering.md) |
+| Glide Data Grid | React Canvas data grid | 参考大型 Grid 行为；完整 DataEditor 受 Foreign Surface 政策阻断 | 条件后备 | [Glide Data Grid](research/glide-data-grid.md) |
+| egui/eframe | Web/native immediate GUI | 参考 stable ID、Sense/Response、owner 和 semantic-query tests | 仅作蓝图 | [egui/eframe](research/egui.md) |
 
-## 架构蓝图
+## 架构权威
 
-| 架构层 | 可利用线索 | 当前判断 | 未解决问题 |
+| 层 | 权威 | 现行契约 | 明确不负责 |
 | --- | --- | --- | --- |
-| React Widget API | OpenTUI | 对齐其 Renderable/组件形态，不依赖其 React package | Browser renderer 的宿主边界 |
-| Cell Layout | Yoga、OpenTUI | 优先验证官方 `yoga-layout` | rounding、intrinsic text measure、生命周期 |
-| Unicode/Text | `@chardesk/protocol`、Pretext | CharDesk 作为 Cell width 权威；借鉴 Pretext 的缓存与 range | wrap、truncate、ellipsis |
-| Input/IME | CharDesk Canvas Editor | 提取已有 managed textarea 经验 | 多 Input、selection、移动端软键盘 |
-| Focus/Keymap | CharDesk、OpenTUI | 先比较现有 shortcut dispatcher 与 OpenTUI 行为 | Tab 顺序、事件冒泡、焦点恢复 |
-| Scroll/Clip/Hit | OpenTUI、CharDesk Viewer | 复用 GridPoint 基础，对齐 OpenTUI 行为 | 嵌套 viewport、clip stack、z-order |
-| Cell Scene/Buffer | `@chardesk/rendering`、OpenTUI | 复用 CharDesk 类型与 run 聚合 | dirty regions、widget ownership |
-| Browser Renderer | `@chardesk/rendering` | Canvas 是已有起点，DOM/run renderer 尚待判断 | 性能、selection、gutter |
-| Accessibility | CharDesk host UI | 建立独立 Semantic Tree | Widget 到 ARIA 的稳定映射 |
+| React Host | [`@chardesk/cell-ui`](../packages/cell-ui/README.md) | Cell descriptors 生成 stable Widget Tree；`/browser` 的 `CellSurface` 提交 Canvas、真实 textarea 与 Semantic DOM | 应用业务状态、自定义 reconciler |
+| Cell Layout | `@chardesk/cell-ui` `YogaLayoutEngine` | viewport 与 style 输入 Yoga，输出整数 border box、逐边 border/padding Insets 和 local content rect | scroll、clip、paint、文本 Cell width |
+| SceneGeometry / Compositor | `@chardesk/cell-ui` + [完整契约](blueprints/compositor.md) | root geometry、nested scroll、outer/content clips、Overlay 双 parent/layer、paint order 与 hit query 使用同一几何权威 | Widget state、文本测量、px raster |
+| Unicode / Text | `@chardesk/protocol` | grapheme、Cell width、continuation Cell 和 offset 映射的唯一权威 | Widget layout、编辑状态、IME |
+| Editor State | `@codemirror/state` adapter | UTF-16 document offset 是编辑权威；CharDesk 映射到 grapheme 与 Cell geometry | DOM view、Cell layout、浏览器输入 |
+| Widget Behavior | React Stately adapter + [Widget 规范](blueprints/widgets.md) | collection、focused、selection 和 expansion 由 command 驱动；不泄露上游类型 | layout、paint、应用业务状态 |
+| Input / IME | `@chardesk/cell-ui/browser` Input Manager | 透明真实 textarea 接收 beforeinput、composition、paste/cut/copy；Canvas pointer 与键盘统一产生 `WidgetCommand` | document state、Cell geometry |
+| Focus / Keymap | Engine FocusManager | v0 以 stable WidgetId 处理物理 focus、pointer focus、方向键、disabled skip、activate 与 reveal | DOM layout、paint、selection state |
+| Event / Gesture | `@chardesk/cell-ui` `EventManager` / `GestureManager` | pointer input 沿 `eventParentId` capture/bubble；逻辑 pointer capture 与 tap/drag/scroll arena 统一产生完成或 cancel | Widget state、DOM px、应用副作用 |
+| Virtualization | `@chardesk/cell-ui` `FixedVirtualGrid` + browser list adapter | 固定 Cell 的二维 visible/cache range、stable-key anchor、reveal、bounded keepAlive 与虚拟 content extent | 业务数据获取、可变行高、Grid Widget 行为 |
+| Cell Scene / Buffer | `@chardesk/cell-ui` `CellBuffer` | owner-aware Buffer 支持 full paint 与 dirty-region 增量 raster；wide grapheme 使用 continuation Cell | Widget state、semantics、browser events |
+| Cell Range | `@chardesk/cell-ui` + `/browser` adapter | hook 持有矩形坐标与实时文本；Surface 从当前 Buffer 规范化、绘制并复制 `text/plain` | 文档 selection、跨滚动内容、样式序列化 |
+| Browser Surface | `@chardesk/cell-ui/browser` + CharDesk Canvas2D | `CellSurface` 拥有 DPR/resize、dirty-region presentation 与 px→Cell hit 边界 | layout、应用状态 |
+| Accessibility | [SemanticSnapshot 契约](blueprints/semantics.md) | 同帧投影并自动审计 role/name/state/focus/order/relation/action；DOM 不按 Cell 创建；验收边界与证据见 [Accessibility 验收](verification/accessibility.md) | 视觉树、第二套 focus/selection state |
+| Headless Testing | `@chardesk/cell-ui` `TestPilot` | 查询 frame/cells/scene/hit/focus/semantics，执行 keyboard、pointer/gesture、semantic action、scroll、resize 与 idle barrier | browser pixel oracle |
+| Cell Inspection | `@chardesk/cell-ui` `CellProbeSnapshot` | Headless 与 opt-in Browser Surface 共用 versioned JSON、字符文本和单 Cell owner/hit/clip/focus 诊断 | font、color、DPR 等 pixel oracle |
 
-## 核心技术难题
+## 运行链路
 
-1. Input、cursor、selection 和 IME。
-2. 确定性的 Cell Widget Layout。
-3. Unicode grapheme、宽字符、换行和截断。
-4. Cell Scene 与 Web semantics/accessibility 的对应。
-5. 嵌套 scroll、clip、overlay 和 hit testing。
+```text
+React descriptors
+  → stable Widget Tree + mount/update/move/unmount mutations
+  → Yoga integer LayoutSnapshot
+  → outer/content clip + scroll + paint-order SceneSnapshot
+  → FrameSnapshot
+      ├─ owner-aware CellBuffer → CharDesk Canvas2D
+      └─ SemanticSnapshot → Semantic DOM
 
-DOM-per-cell 是需要避免的实现陷阱，不是基本要求。逻辑模型可以寻址每个 Cell，renderer 应按 row、styled run 或 interactive widget 聚合输出。
+Browser keyboard / pointer / wheel / AT action
+  → EngineInput → FocusManager → WidgetCommand
+  → React Stately collection / focused / selection
+  → next descriptor commit
 
-## 下一批线索
+Browser textarea / Canvas pointer
+  → text WidgetCommand
+  → CodeMirror EditorState adapter (UTF-16 document + history)
+  → grapheme / Cell offset projection
+  → CellBuffer + caret / selection + semantic textbox
 
-| 线索 | 希望回答的问题 | 状态 |
-| --- | --- | --- |
-| xterm.js | 浏览器 Cell renderer、IME 和 accessibility 有哪些可独立复用能力？ | 待调研 |
-| Ink | React reconciler 与组件生命周期有哪些可迁移设计？ | 待调研 |
-| Ratatui | Buffer、Widget、Rect 和测试模型如何保持简单？ | 待调研 |
-| Textual | Focus、事件、CSS-like layout 和组件语义如何组织？ | 待调研 |
-| CodeMirror | 浏览器输入、IME、selection 和虚拟化有哪些可复用边界？ | 待调研 |
+macOS Option+Command / other-platform Alt + pointer drag
+  → viewport Cell rectangle
+  → latest CellBuffer slice
+  → Canvas highlight + plain-text clipboard / LLM input
+```
 
-## 更新规则
+Headless 与 browser 入口分层。单一 [Cell UI Gallery](web-tui/) 展开呈现 [Core](web-tui/#core)、[Complex](web-tui/#complex)、[Editing](web-tui/#editor)、[Overlay](web-tui/#overlay) 与 [Virtualization](web-tui/#virtualization) 切片；每个切片拥有独立 CellSurface 和状态，所有输入共用 command 路径，每次输入最多产生一个 command。
 
-- README 只保存地图、状态、当前判断和调研入口。
-- 每张卡片只回答一个上游线索能否以及如何帮助 Web TUI Engine。
-- 事实链接权威来源；推断明确标为“当前判断”。
-- 新能力优先升级其所属 package，再由 `exp/` 消费；不要在实验区复制并长期维护第二套实现。
-- 只有实验验证后，候选才能从 `调研中` 变为 `可直接复用` 或 `不采用`。
+## 交付状态
+
+切片状态、验收门槛、依赖和交付证据统一见 [Web TUI Roadmap](roadmap.md)。本页不维护重复的阶段进度。
+
+## 可选能力边界
+
+这些条件只控制可选方案是否进入依赖图，不阻塞 Cell-native 核心路径：
+
+- Foreign Surface 默认禁止；这只排除完整 Glide DataEditor 集成，不影响自有 Grid Widget。
+- Taffy 只有在官方 Browser/Node package、TypeScript definitions 和所需 measure/lifecycle 契约发布，且 CSS Grid 成为硬需求时重新评估；Yoga 主线不等待它。
+- PixiJS 只有在 Canvas2D 超出其卡片定义的帧预算后才进入验证；Canvas2D 是可用默认 Surface。
+- 自定义 React reconciler 只有在普通 React descriptor 无法满足 Host 契约时才启用；普通 React Host 是默认路径。
+- React Stately、CodeMirror State 和 Yoga 的采用门槛用于验证 adapter，不阻止先实现上游无关的公开契约。

@@ -37,6 +37,11 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
     {
+      name: 'webkit-cell-gallery',
+      testMatch: /web-tui.*\.spec\.ts/,
+      use: { ...devices['Desktop Safari'] },
+    },
+    {
       name: 'viewer-webkit',
       testMatch: /viewer\.spec\.ts/,
       use: { ...devices['Desktop Safari'] },

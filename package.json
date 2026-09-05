@@ -39,6 +39,8 @@
     "test:root:dom": "vitest run --project dom",
     "test:fonts": "npm test -w @chardesk/fonts",
     "test:blackboard": "npm test -w @chardesk/blackboard",
+    "test:cell-ui": "npm test -w @chardesk/cell-ui",
+    "test:cell-ui:native-input": "node scripts/quality/run-cell-ui-native-input.mjs",
     "test:chargraph": "npm test -w @chardesk/chargraph",
     "test:cli": "npm test -w @chardesk/cli",
     "test:e2e:chargraph": "npm run test:e2e -w @chardesk/chargraph-site",

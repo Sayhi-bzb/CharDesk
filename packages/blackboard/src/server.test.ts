@@ -117,7 +117,12 @@ describe("Blackboard Reader", () => {
   it("serves the page and rejects writes and static traversal", async () => {
     const { running } = await fixture();
     const rootResponse = await fetch(running.url, { redirect: "manual" });
+    const contentSecurityPolicy = rootResponse.headers.get("content-security-policy");
     expect(rootResponse.status).toBe(200);
+    expect(contentSecurityPolicy).toContain("script-src 'self' 'wasm-unsafe-eval'");
+    expect(contentSecurityPolicy).not.toContain("script-src 'self' 'unsafe-eval'");
+    expect(contentSecurityPolicy).toContain("object-src 'none'");
+    expect(contentSecurityPolicy).toContain("frame-ancestors 'none'");
     expect(await rootResponse.text()).toContain("Blackboard");
     expect(await (await fetch(new URL("blackboard", running.url))).text()).toContain("Blackboard");
     expect((await fetch(new URL("board", running.url), { method: "POST" })).status).toBe(405);
