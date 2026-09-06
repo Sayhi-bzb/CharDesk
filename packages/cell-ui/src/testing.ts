@@ -4,7 +4,6 @@ import { GestureManager, type GestureSignal } from "./gestures.js";
 import {
   FocusManager,
   commandForInput,
-  getScrollRange,
   type EngineInput,
   type WidgetCommand,
 } from "./interaction.js";
@@ -13,9 +12,11 @@ import { captureCellProbe, inspectCell } from "./probe.js";
 import {
   commandForGestureSignal,
   gestureCandidatesForFrame,
+  validGestureCandidate,
 } from "./pointer.js";
 import { CellUiRuntime } from "./runtime.js";
 import { textViewportCommands } from "./text-viewport.js";
+import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
 import { getEventPath, hitTest } from "./scene.js";
 import type {
   CellPoint,
@@ -78,7 +79,7 @@ export class TestPilot {
     await this.pointerUp(point);
   }
 
-  async pointerDown(point: CellPoint, pointerId = 1): Promise<void> {
+  async pointerDown(point: CellPoint, pointerId = 1, precisePoint?: CellPoint): Promise<void> {
     this.#assertActive();
     this.#commit(commandForInput(
       { type: "pointer", phase: "down", point, button: 0 },
@@ -87,19 +88,19 @@ export class TestPilot {
     ));
     const targetId = hitTest(this.#frame.scene, point)[0];
     const path = targetId ? getEventPath(this.#frame.scene, targetId) : [];
-    this.#gestures.begin(pointerId, point, gestureCandidatesForFrame(this.#frame, path, point));
+    this.#gestures.begin(pointerId, point, gestureCandidatesForFrame(this.#frame, path, point, precisePoint), precisePoint);
     await this.pause();
   }
 
-  async pointerMove(point: CellPoint, pointerId = 1): Promise<void> {
+  async pointerMove(point: CellPoint, pointerId = 1, precisePoint?: CellPoint): Promise<void> {
     this.#assertActive();
-    this.#applyGestureSignals(this.#gestures.move(pointerId, point));
+    this.#applyGestureSignals(this.#gestures.move(pointerId, point, precisePoint));
     await this.pause();
   }
 
-  async pointerUp(point: CellPoint, pointerId = 1): Promise<void> {
+  async pointerUp(point: CellPoint, pointerId = 1, precisePoint?: CellPoint): Promise<void> {
     this.#assertActive();
-    this.#applyGestureSignals(this.#gestures.end(pointerId, point));
+    this.#applyGestureSignals(this.#gestures.end(pointerId, point, precisePoint));
     await this.pause();
   }
 
@@ -116,14 +117,9 @@ export class TestPilot {
   async scroll(targetId: WidgetId, delta: CellPoint): Promise<void> {
     this.#assertActive();
     const node = this.#frame.tree.nodes.get(targetId);
-    const range = getScrollRange(this.#frame, targetId);
-    if (node?.kind === "scroll-area") {
-      this.#commit({
-        type: "scroll",
-        targetId,
-        scrollX: clamp(node.scrollOffset.x + delta.x, range.x.min, range.x.max),
-        scrollY: clamp(node.scrollOffset.y + delta.y, range.y.min, range.y.max),
-      });
+    if (node) {
+      const offset = scrollOffsetFor(node);
+      this.#commit(scrollCommandForOffset(this.#frame, targetId, { x: offset.x + delta.x, y: offset.y + delta.y }));
     }
     await this.pause();
   }
@@ -226,6 +222,7 @@ export class TestPilot {
       },
     });
     this.#syncTextViewports();
+    this.#gestures.sync((candidate) => validGestureCandidate(this.#frame, candidate));
   }
 
   #syncTextViewports(): void {

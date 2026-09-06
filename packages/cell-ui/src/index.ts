@@ -47,6 +47,7 @@ export type { PaintSceneOptions } from "./paint.js";
 export { CELL_UI_PERFORMANCE_BUDGET, percentile } from "./performance.js";
 export { DEFAULT_CELL_UI_THEME, resolveCellUiTheme, resolveCellStateStyle, resolveCellTextStyle } from "./theme.js";
 export type { CellUiTheme, CellVisualState } from "./theme.js";
+export type { CellBorderShape } from "./border.js";
 export {
   createCellRangeSnapshot,
   equalCellRangeSnapshot,
@@ -144,6 +145,7 @@ export type {
   FrameInvalidation,
   FramePhase,
   FrameSnapshot,
+  HalfCellThumb,
   LayoutEntry,
   LayoutSnapshot,
   SceneEntry,

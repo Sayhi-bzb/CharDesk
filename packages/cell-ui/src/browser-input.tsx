@@ -140,6 +140,7 @@ const ManagedCellTextarea = ({
   const finalized = useRef<string | null>(null);
   const snapshot = node.textEditor!;
   const layout = frame.textLayouts.get(node.id)!;
+  const inputBounds = frame.scene.entries.get(node.id)!.contentClip;
   const multiline = node.kind === "text-area";
   const shown = getCellTextPresentation(snapshot);
 
@@ -223,10 +224,10 @@ const ManagedCellTextarea = ({
       spellCheck={false}
       style={{
         ...baseTextareaStyle,
-        left: layout.caret.x * metrics.cellWidth,
-        top: layout.caret.y * metrics.cellHeight,
-        width: metrics.cellWidth,
-        height: metrics.cellHeight,
+        left: Math.max(inputBounds.x, Math.min(layout.caret.x, inputBounds.x + inputBounds.width - 1)) * metrics.cellWidth,
+        top: Math.max(inputBounds.y, Math.min(layout.caret.y, inputBounds.y + inputBounds.height - 1)) * metrics.cellHeight,
+        width: Math.min(1, inputBounds.width) * metrics.cellWidth,
+        height: Math.min(1, inputBounds.height) * metrics.cellHeight,
         fontSize: metrics.fontSize,
       }}
       defaultValue={shown.value}

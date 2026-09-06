@@ -1,7 +1,7 @@
 import { createContext, useContext, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { CHARDESK_FONT_PROFILE } from "@chardesk/fonts";
 import { CellSurface, useCellCssTheme, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
-import { resolveCellUiTheme } from "@chardesk/cell-ui";
+import { resolveCellUiTheme, type CellBorderShape } from "@chardesk/cell-ui";
 
 const defaultTheme = resolveCellUiTheme(undefined);
 const AppearanceContext = createContext({
@@ -9,6 +9,7 @@ const AppearanceContext = createContext({
   theme: defaultTheme,
   palette: { color: defaultTheme.foreground, background: defaultTheme.background },
   toggleTheme: () => {},
+  toggleBorder: () => {},
 });
 const preferenceKey = "chardesk-web-tui-theme";
 const readPreference = (): "light" | "dark" | null => {
@@ -27,6 +28,8 @@ const subscribe = (callback: () => void) => {
 export function GalleryAppearance({ children }: { children: ReactNode }) {
   const dark = useSyncExternalStore(subscribe, () => query.matches, () => false);
   const [preference, setPreference] = useState(readPreference);
+  const [borderShape, setBorderShape] = useState<CellBorderShape>("square");
+  const toggleBorder = () => setBorderShape((shape) => shape === "square" ? "rounded" : "square");
   const mode = preference ?? (dark ? "dark" : "light");
   const rootRef = useRef<HTMLDivElement>(null);
   const toggleTheme = () => {
@@ -45,7 +48,7 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
   }, [mode]);
   const appearance = useCellCssTheme(rootRef, mode);
   const style = { fontFamily: CHARDESK_FONT_PROFILE.families.text, colorScheme: mode } as CSSProperties;
-  return <AppearanceContext.Provider value={{ ...appearance, mode, toggleTheme }}>
+  return <AppearanceContext.Provider value={{ ...appearance, theme: { ...appearance.theme, borderShape }, mode, toggleTheme, toggleBorder }}>
     <div ref={rootRef} className="gallery-page" data-gallery-theme={mode} style={style}>{children}</div>
   </AppearanceContext.Provider>;
 }
@@ -62,6 +65,12 @@ export function GalleryThemeToggle() {
         : <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></>}
     </svg>
     <span className="gallery-theme-tooltip" role="tooltip">{label}</span>
+  </button>;
+}
+export function GalleryBorderToggle() {
+  const { theme, toggleBorder } = useGalleryAppearance();
+  return <button className="gallery-border-toggle" type="button" onClick={toggleBorder}>
+    Border: {theme.borderShape === "square" ? "Square" : "Rounded"}
   </button>;
 }
 export function GallerySurface(props: CellSurfaceProps) {

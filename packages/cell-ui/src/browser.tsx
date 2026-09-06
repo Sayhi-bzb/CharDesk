@@ -34,7 +34,8 @@ import {
   type WidgetCommand,
 } from "./interaction.js";
 import { EventManager, type CellEventHandlerMap } from "./events.js";
-import { getEventPath } from "./scene.js";
+import { getEventPath, hitTestCell } from "./scene.js";
+import { useSurfaceFocus } from "./browser-focus.js";
 import {
   GestureManager,
   type GestureSignal,
@@ -58,6 +59,7 @@ import { sameWidgetValue } from "./tree.js";
 import {
   commandForGestureSignal,
   gestureCandidatesForFrame,
+  validGestureCandidate,
 } from "./pointer.js";
 import { resolveCellUiTheme, type CellUiTheme } from "./theme.js";
 export { readCellCssTheme, useCellCssTheme } from "./browser-theme.js";
@@ -263,6 +265,15 @@ export const pxToCellPoint = (
   y: Math.floor((point.clientY - bounds.top) / metrics.cellHeight),
 });
 
+export const pxToCellPosition = (
+  point: Readonly<{ clientX: number; clientY: number }>,
+  bounds: Pick<DOMRect, "left" | "top">,
+  metrics: Pick<CharDeskCanvasMetrics, "cellWidth" | "cellHeight">
+): CellPoint => ({
+  x: (point.clientX - bounds.left) / metrics.cellWidth,
+  y: (point.clientY - bounds.top) / metrics.cellHeight,
+});
+
 const containsCellPoint = (bounds: Readonly<{
   x: number;
   y: number;
@@ -355,7 +366,7 @@ const presentFrame = (
   const focusedText = frame.semantics.focusedId
     ? frame.textLayouts.get(frame.semantics.focusedId)
     : undefined;
-  if (focusedText) {
+  if (focusedText && frame.tree.nodes.get(focusedText.id)?.focusVisible) {
     const { caret, contentBounds } = focusedText;
     if (
       inDirtyRegion(caret.x, caret.y)
@@ -567,7 +578,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const eventsRef = useRef(new EventManager());
   const gesturesRef = useRef(new GestureManager());
   const inputModalityRef = useRef<"keyboard" | "pointer">("keyboard");
-  const ownsKeyboardFocusRef = useRef(false);
+  const surfaceFocus = useSurfaceFocus(surfaceRef);
+  const ownsFocus = surfaceFocus.ownsFocus;
   const focusedIdRef = useRef<WidgetId | null | undefined>(undefined);
   const lifetimeRef = useRef<object | null>(null);
   const projectionRef = useRef<Readonly<{
@@ -576,6 +588,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     hoveredId: WidgetId | null;
     theme: Partial<CellUiTheme> | undefined;
     interactionRevision: number;
+    focusActive: boolean;
     width: number;
     height: number;
   }> | null>(null);
@@ -613,6 +626,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       && previousProjection.hoveredId === hoveredId
       && previousProjection.theme === theme
       && previousProjection.interactionRevision === interactionRevision
+      && previousProjection.focusActive === surfaceFocus.active
       && previousProjection.width === viewport.width
       && previousProjection.height === viewport.height
     ) return;
@@ -628,6 +642,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const focusedChanged = focusedIdRef.current !== focusedId;
     const next = runtime.render(children, {
       hoveredId,
+      focusVisible: surfaceFocus.active,
       resolveFocusedId: (tree) => {
         focusRef.current.sync(tree, focusedChanged ? focusedId : undefined);
         if (!focusRef.current.focusedId && focusedId && tree.nodes.has(focusedId)) {
@@ -639,6 +654,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     for (const pointerId of eventsRef.current.sync(next)) {
       gesturesRef.current.cancel(pointerId);
     }
+    for (const pointerId of gesturesRef.current.sync((candidate) => validGestureCandidate(next, candidate))) {
+      eventsRef.current.cancel(pointerId);
+      const surface = surfaceRef.current;
+      if (surface?.hasPointerCapture(pointerId)) surface.releasePointerCapture(pointerId);
+    }
     focusedIdRef.current = focusedId;
     for (const command of textViewportCommands(next)) onCommand(command);
     frameRef.current = next;
@@ -648,12 +668,13 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       hoveredId,
       theme,
       interactionRevision,
+      focusActive: surfaceFocus.active,
       width: viewport.width,
       height: viewport.height,
     };
     // The headless runtime is an external store; publish its committed snapshot.
     setFrame(next);
-  }, [children, focusedId, hoveredId, interactionRevision, onCommand, theme, viewport]);
+  }, [children, focusedId, hoveredId, interactionRevision, onCommand, theme, viewport, surfaceFocus.active]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -760,7 +781,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const surface = surfaceRef.current;
     const targetId = frame?.semantics.focusedId;
     if (!surface || !targetId || inputModalityRef.current !== "keyboard") return;
-    if (!ownsKeyboardFocusRef.current) return;
+    if (!ownsFocus()) return;
     const active = document.activeElement;
     const semanticTarget = [...surface.querySelectorAll<HTMLElement>("[data-cell-semantic-id]")]
       .find((element) => element.dataset.cellSemanticId === targetId);
@@ -768,7 +789,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       .find((textarea) => textarea.dataset.cellTextEditor === targetId);
     const target = textTarget ?? semanticTarget;
     if (target && active !== target) target.focus({ preventScroll: true });
-  }, [frame]);
+  }, [frame, ownsFocus]);
 
   useLayoutEffect(syncDomFocus, [syncDomFocus]);
 
@@ -808,12 +829,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const snapshot = createCellRangeSnapshot(frame.buffer, anchor, head);
     dispatchCellRange(snapshot ? { type: "set", snapshot } : { type: "clear" });
   };
-
-  const gestureCandidates = (
-    current: FrameSnapshot,
-    path: readonly WidgetId[],
-    point: CellPoint
-  ) => gestureCandidatesForFrame(current, path, point);
 
   const applyGestureSignals = (
     current: FrameSnapshot,
@@ -877,7 +892,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         : undefined}
       data-cell-focused={frame?.semantics.focusedId ?? undefined}
       data-cell-hovered={hoveredId ?? undefined}
-      data-cell-focus-visible={frame?.semantics.focusedId ? true : undefined}
+      data-cell-focus-visible={surfaceFocus.active && frame?.semantics.focusedId ? true : undefined}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         pointerAppearance.suspend();
         if (event.button !== 0) return;
@@ -898,7 +913,9 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (event.target !== canvasRef.current) return;
         const editor = textEditorAtPoint(frame, point);
         const textLayout = editor ? frame.textLayouts.get(editor.id) : undefined;
-        if (editor && textLayout && !editor.disabled) {
+        const hitPart = hitTestCell(frame.scene, point)?.part;
+        const onScrollbar = hitPart === "scrollbar-x" || hitPart === "scrollbar-y" || hitPart === "scrollbar-corner";
+        if (editor && textLayout && !editor.disabled && !onScrollbar) {
           event.preventDefault();
           const contentClip = frame.scene.entries.get(editor.id)?.contentClip;
           if (contentClip && containsCellPoint(contentClip, point)) {
@@ -928,7 +945,9 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         }
         if (immediate?.type === "focus") dispatch(immediate);
         const targetId = eventsRef.current.resolveTarget(frame, point, event.pointerId);
-        const candidates = gestureCandidates(frame, targetId ? getEventPath(frame.scene, targetId) : [], point);
+        const bounds = canvasRef.current!.getBoundingClientRect();
+        const precisePoint = pxToCellPosition(event, bounds, metrics);
+        const candidates = gestureCandidatesForFrame(frame, targetId ? getEventPath(frame.scene, targetId) : [], point, precisePoint);
         const handlers: CellEventHandlerMap = targetId && candidates.length > 0
           ? new Map([[targetId, { bubble: (cellEvent) => cellEvent.capturePointer() }]])
           : new Map();
@@ -940,10 +959,15 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         }, handlers);
         if (candidates.length > 0) {
           event.preventDefault();
-          gesturesRef.current.begin(event.pointerId, point, candidates);
+          gesturesRef.current.begin(event.pointerId, point, candidates, precisePoint);
           event.currentTarget.setPointerCapture(event.pointerId);
         }
-        event.currentTarget.focus({ preventScroll: true });
+        if (editor && !editor.disabled && onScrollbar) {
+          dispatch({ type: "focus", targetId: editor.id });
+          focusTextarea(editor.id);
+        } else {
+          event.currentTarget.focus({ preventScroll: true });
+        }
       }}
       onPointerMove={(event: PointerEvent<HTMLDivElement>) => {
         pointerAppearance.move(event);
@@ -975,7 +999,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           pointerId: event.pointerId,
           point,
         });
-        applyGestureSignals(frame, gesturesRef.current.move(event.pointerId, point));
+        const bounds = canvasRef.current!.getBoundingClientRect();
+        applyGestureSignals(frame, gesturesRef.current.move(event.pointerId, point, pxToCellPosition(event, bounds, metrics)));
       }}
       onPointerUp={(event: PointerEvent<HTMLDivElement>) => {
         const gesture = gesturesRef.current.has(event.pointerId);
@@ -987,7 +1012,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
               pointerId: event.pointerId,
               point,
             });
-            applyGestureSignals(frame, gesturesRef.current.end(event.pointerId, point));
+            const bounds = canvasRef.current!.getBoundingClientRect();
+            applyGestureSignals(frame, gesturesRef.current.end(event.pointerId, point, pxToCellPosition(event, bounds, metrics)));
           }
         } finally {
           finishPointer(event);
@@ -997,7 +1023,14 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       onPointerEnter={pointerAppearance.move}
       onPointerLeave={pointerAppearance.clear}
       onPointerCancel={(event) => { finishPointer(event); pointerAppearance.clear(); }}
-      onLostPointerCapture={finishPointer}
+      onLostPointerCapture={(event) => {
+        const interrupted = eventsRef.current.capturedTarget(event.pointerId) !== null
+          || gesturesRef.current.has(event.pointerId)
+          || textDragRef.current?.pointerId === event.pointerId
+          || rangeDragRef.current?.pointerId === event.pointerId;
+        finishPointer(event);
+        if (interrupted) pointerAppearance.clear();
+      }}
       onCopy={(event: ClipboardEvent<HTMLDivElement>) => {
         if (event.defaultPrevented || !frame || !cellRange) return;
         const current = createCellRangeSnapshot(frame.buffer, cellRange.anchor, cellRange.head);
@@ -1009,17 +1042,13 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         }
       }}
       onFocus={(event) => {
-        ownsKeyboardFocusRef.current = true;
+        surfaceFocus.enter();
         if (event.target === event.currentTarget) syncDomFocus();
         if (!frame || focusRef.current.focusedId) return;
         const targetId = focusRef.current.first(frame.tree);
         if (targetId) dispatch({ type: "focus", targetId });
       }}
-      onBlur={(event) => {
-        if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) {
-          ownsKeyboardFocusRef.current = false;
-        }
-      }}
+      onBlur={surfaceFocus.leave}
       onKeyDown={onKeyDown}
       style={{ position: "relative", width: "fit-content", outline: "none" }}
     >

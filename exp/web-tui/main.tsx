@@ -9,7 +9,7 @@ import { TextEditingDemo } from "./sections/text-editing";
 import { VirtualizationDemo } from "./sections/virtualization";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
-import { GalleryAppearance, GalleryThemeToggle } from "./appearance";
+import { GalleryAppearance, GalleryBorderToggle, GalleryThemeToggle } from "./appearance";
 
 export const GallerySection = ({
   id,
@@ -83,7 +83,10 @@ export const WebTuiGallery = () => (
   <main>
     <header className="gallery-header">
       <p className="gallery-eyebrow">CharDesk Experiments</p>
-      <div className="gallery-title-row"><h1>Cell UI Gallery</h1><GalleryThemeToggle /></div>
+      <div className="gallery-title-row">
+        <h1>Cell UI Gallery</h1>
+        <div className="gallery-appearance-controls"><GalleryBorderToggle /><GalleryThemeToggle /></div>
+      </div>
       <p className="gallery-intro">
         Explore with your mouse or keyboard. Drag with ⌥⌘ on macOS or Alt
         elsewhere to select and copy a rectangle of text.

@@ -17,9 +17,10 @@
 
 - List/Menu/Tree/Tabs/Grid 的 focused 统一使用整行或整格背景＋bold；List/Menu 无命令光标或专用占位。
 - selected 使用底色；focused 与 selected 可以共存。
+- 逻辑焦点记住位置，实际焦点所有权控制焦点视觉；失焦不清除选择或编辑状态。Surface 生命周期规则由 [Widget 焦点规范](blueprints/widgets.md#pointer-与-scroll) 所有。
 - keyboard、pointer、AT 共用焦点视觉；切换输入方式不改变样式。selected 非 focused 只保留选中背景，二者重合时保留选中背景＋bold。编辑器使用背景、caret 与选区，不把全文加粗。
 - Tree disclosure、Tab underline、scrollbar 和 border 是 renderer-owned chrome，业务内容不得手写。
-- hover 可以提供临时反馈，但不改变 selection、expansion 或业务状态。
+- hover 为可交互集合项提供更轻的中性背景，不加粗、不覆盖 focused/selected，也不改变 focus、selection、expansion 或业务状态；普通文字、空白、disabled 不高亮。鼠标形状由相同的命中结果派生，触摸不产生 hover。
 - 内容只在 `contentClip` 内绘制和命中；chrome 最后绘制，内容不能覆盖边框或滚动条。
 
 ## Gallery 视觉

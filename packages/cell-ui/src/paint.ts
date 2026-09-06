@@ -14,6 +14,8 @@ import type {
 import type { CellTextLayoutSnapshot } from "./text.js";
 import { DEFAULT_CELL_UI_THEME, resolveCellStateStyle, resolveCellTextStyle, type CellUiTheme } from "./theme.js";
 import { intersectCellRects } from "./scene.js";
+import { thumbGlyph } from "./scrollbar.js";
+import { paintBorder } from "./border.js";
 
 const interactiveKinds = new Set<WidgetNode["kind"]>([
   "list-item", "menu-item", "tree-item", "tab", "grid-cell",
@@ -61,30 +63,6 @@ const fill = (
   }
 };
 
-const paintBorder = (
-  buffer: CellBuffer,
-  node: WidgetNode,
-  bounds: CellRect,
-  style: CellTextStyle,
-  clip: CellRect
-): void => {
-  if (!node.style.border || bounds.width < 2 || bounds.height < 2) return;
-  const right = bounds.x + bounds.width - 1;
-  const bottom = bounds.y + bounds.height - 1;
-  buffer.writeGrapheme(bounds.x, bounds.y, "┌", node.id, style, clip, "over");
-  buffer.writeGrapheme(right, bounds.y, "┐", node.id, style, clip, "over");
-  buffer.writeGrapheme(bounds.x, bottom, "└", node.id, style, clip, "over");
-  buffer.writeGrapheme(right, bottom, "┘", node.id, style, clip, "over");
-  for (let x = bounds.x + 1; x < right; x += 1) {
-    buffer.writeGrapheme(x, bounds.y, "─", node.id, style, clip, "over");
-    buffer.writeGrapheme(x, bottom, "─", node.id, style, clip, "over");
-  }
-  for (let y = bounds.y + 1; y < bottom; y += 1) {
-    buffer.writeGrapheme(bounds.x, y, "│", node.id, style, clip, "over");
-    buffer.writeGrapheme(right, y, "│", node.id, style, clip, "over");
-  }
-};
-
 const paintText = (
   buffer: CellBuffer,
   text: string,
@@ -128,12 +106,12 @@ const paintScrollbars = (
   for (const track of [metrics.horizontalTrack, metrics.verticalTrack]) {
     if (track) fill(buffer, track, node.id, theme.scrollTrackStyle, clip);
   }
-  if (metrics.horizontalThumb) {
+  if (metrics.horizontalThumb && metrics.horizontalThumbAxis && metrics.horizontalTrack) {
     for (let offset = 0; offset < metrics.horizontalThumb.width; offset += 1) {
       buffer.writeGrapheme(
         metrics.horizontalThumb.x + offset,
         metrics.horizontalThumb.y,
-        theme.scrollThumb,
+        thumbGlyph(metrics.horizontalThumbAxis, metrics.horizontalThumb.x + offset - metrics.horizontalTrack.x, true),
         node.id,
         theme.scrollThumbStyle,
         clip,
@@ -141,12 +119,12 @@ const paintScrollbars = (
       );
     }
   }
-  if (metrics.verticalThumb) {
+  if (metrics.verticalThumb && metrics.verticalThumbAxis && metrics.verticalTrack) {
     for (let offset = 0; offset < metrics.verticalThumb.height; offset += 1) {
       buffer.writeGrapheme(
         metrics.verticalThumb.x,
         metrics.verticalThumb.y + offset,
-        theme.scrollThumb,
+        thumbGlyph(metrics.verticalThumbAxis, metrics.verticalThumb.y + offset - metrics.verticalTrack.y, false),
         node.id,
         theme.scrollThumbStyle,
         clip,
@@ -198,7 +176,9 @@ export const paintScene = (
       }
 
       // Chrome: glyphs are painted after surfaces so state fills cannot erase them.
-      paintBorder(buffer, node, entry.layoutBounds, { ...style, ...theme.borderStyle }, outerClip);
+      if (node.style.border) {
+        paintBorder(buffer, id, entry.layoutBounds, theme.borderShape, { ...style, ...theme.borderStyle }, outerClip);
+      }
 
       // Content: local text and editor glyphs stay within contentClip.
       if (node.kind === "text") {
@@ -261,7 +241,7 @@ export const paintScene = (
           buffer.writeGrapheme(x, y, theme.tabUnderline, id, style, decorationClip, "over");
         }
       }
-      if (node.kind === "scroll-area") paintScrollbars(buffer, node, entry, theme, outerClip);
+      if (entry.scrollMetrics) paintScrollbars(buffer, node, entry, theme, outerClip);
     }
   }
   return buffer;

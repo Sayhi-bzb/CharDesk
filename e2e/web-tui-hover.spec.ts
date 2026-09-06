@@ -21,6 +21,19 @@ test("hover shares hit testing, is paint-only, and never activates a command", a
   await page.mouse.move(0, 0);
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
   await expect(canvas).toHaveCSS("cursor", "default");
+  await canvas.dispatchEvent("pointermove", { pointerType: "touch", buttons: 0, clientX: bounds.x + 15, clientY: bounds.y + 9 });
+  await expect(surface).not.toHaveAttribute("data-cell-hovered");
+  await page.mouse.move(bounds.x + 15, bounds.y + 9);
+  await expect(surface).toHaveAttribute("data-cell-hovered", "core-new");
+  await canvas.dispatchEvent("pointercancel", { pointerId: 1, pointerType: "mouse" });
+  await expect(surface).not.toHaveAttribute("data-cell-hovered");
+  await page.mouse.move(bounds.x + 24, bounds.y + 9);
+  await expect(surface).toHaveAttribute("data-cell-hovered", "core-new");
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await expect(surface).not.toHaveAttribute("data-cell-hovered");
+  await page.mouse.click(bounds.x + 15, bounds.y + 9);
+  await expect(surface).toHaveAttribute("data-cell-hovered", "core-new");
+  await expect(surface).toHaveAttribute("data-cell-focused", "core-new");
 });
 
 test("palette blocks underlying hover even when the mouse is stationary", async ({ page }) => {
@@ -39,4 +52,23 @@ test("palette blocks underlying hover even when the mouse is stationary", async 
   await expect(canvas).toHaveCSS("cursor", "default");
   await page.keyboard.press("Escape");
   await expect(surface).toHaveAttribute("data-cell-hovered", "show-palette");
+});
+
+test("stationary mouse follows scrolled rows and editor content uses a text cursor", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/exp/web-tui/");
+  const core = page.locator('[data-cell-probe="core"]');
+  const canvas = core.locator("canvas");
+  await canvas.scrollIntoViewIfNeeded();
+  const bounds = (await canvas.boundingBox())!;
+  await page.mouse.move(bounds.x + 40, bounds.y + 5.5 * 19);
+  await expect(core).toHaveAttribute("data-cell-hovered", "core-file-src/index.ts");
+  await page.mouse.wheel(0, 100);
+  await expect(core).toHaveAttribute("data-cell-hovered", "core-file-src/app.ts");
+  const editor = page.locator('[data-cell-probe="editor"] canvas');
+  await editor.scrollIntoViewIfNeeded();
+  const editorBounds = (await editor.boundingBox())!;
+  await page.mouse.move(editorBounds.x + 30, editorBounds.y + 2.5 * 19);
+  await expect(editor).toHaveCSS("cursor", "text");
+  await expect(page.locator('[data-cell-probe="editor"]')).not.toHaveAttribute("data-cell-hovered");
 });

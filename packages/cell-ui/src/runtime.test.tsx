@@ -85,7 +85,7 @@ describe("CellUiRuntime", () => {
     const viewport = { width: 30, height: 9 };
     const runtime = new CellUiRuntime({ viewport });
     const initial = runtime.render(fileList());
-    const theme = { selectedStyle: { color: "#123456" }, scrollThumb: "█" };
+    const theme = { selectedStyle: { color: "#123456" } };
     runtime.setTheme(theme);
     const changed = runtime.render(fileList());
     const oracle = new CellUiRuntime({ viewport, theme });
@@ -505,9 +505,9 @@ describe("CellUiRuntime", () => {
     );
     expect(frame.buffer.toText({ trimEnd: true })).toBe([
       "┌────────┐",
-      "│-charlie│",
-      "│-delta  │",
-      "│-echo   │",
+      "│-charli▄│",
+      "│-delta ▀│",
+      "│ ▐███▌  │",
       "└────────┘",
     ].join("\n"));
     for (let x = 0; x < 10; x += 1) {

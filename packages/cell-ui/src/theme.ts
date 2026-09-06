@@ -1,16 +1,17 @@
 import type { CellTextStyle } from "./types.js";
+import type { CellBorderShape } from "./border.js";
 
 export type CellUiTheme = Readonly<{
   background: string;
   foreground: string;
   surfaceStyle: CellTextStyle;
   borderStyle: CellTextStyle;
+  borderShape: CellBorderShape;
   caretColor: string;
   rangeSelectionColor: string;
   treeExpandedIndicator: string;
   treeCollapsedIndicator: string;
   tabUnderline: string;
-  scrollThumb: string;
   focusedSurfaceStyle: CellTextStyle;
   hoveredItemStyle: CellTextStyle;
   focusedItemStyle: CellTextStyle;
@@ -27,12 +28,12 @@ export const DEFAULT_CELL_UI_THEME: CellUiTheme = Object.freeze({
   foreground: "#e8edf2",
   surfaceStyle: { backgroundColor: "#191d22" },
   borderStyle: { color: "#555555" },
+  borderShape: "square",
   caretColor: "#e8edf2",
   rangeSelectionColor: "rgba(82, 155, 255, 0.32)",
   treeExpandedIndicator: "▾",
   treeCollapsedIndicator: "▸",
   tabUnderline: "▬",
-  scrollThumb: "█",
   focusedSurfaceStyle: { color: "#FFFFFF", backgroundColor: "#1a1a1a" },
   hoveredItemStyle: { backgroundColor: "#25292e" },
   focusedItemStyle: { bold: true },

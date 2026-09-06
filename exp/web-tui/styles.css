@@ -47,7 +47,9 @@ h1, h2, p { margin: 0; }
 h1 { font-size: 30px; line-height: 1.2; }
 h2 { font-size: 20px; line-height: 1.5; }
 .gallery-header { display: grid; gap: 12px; margin-bottom: 48px; }
-.gallery-title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.gallery-title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.gallery-appearance-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.gallery-border-toggle { color: var(--cell-muted-foreground); }
 .gallery-theme-toggle { position: relative; display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; padding: 0; color: var(--cell-muted-foreground); }
 .gallery-theme-toggle:hover { color: var(--cell-foreground); }
 .gallery-theme-tooltip { display: none; position: absolute; top: 100%; right: 0; z-index: 1; white-space: nowrap; padding: 4px 8px; background: var(--cell-surface); color: var(--cell-foreground); font-size: 12px; }
@@ -68,7 +70,7 @@ button { background: transparent; border: 0; border-radius: 0; padding: 4px 0; f
 button:disabled { cursor: default; color: var(--cell-muted-foreground); }
 .gallery-card__demo { display: grid; gap: 12px; overflow-x: auto; padding: 4px; margin: -4px; }
 pre { width: 360px; max-width: 100%; height: 76px; margin: 0; overflow: auto; font: inherit; white-space: pre; }
-:focus-visible { outline: 2px solid var(--cell-accent) !important; outline-offset: 2px !important; }
+.gallery-page :focus { outline: none; }
 ::selection { background: var(--cell-selection); color: var(--cell-selection-foreground); }
 @media (max-width: 959px) {
   .gallery-page { padding: 24px 16px 56px; }

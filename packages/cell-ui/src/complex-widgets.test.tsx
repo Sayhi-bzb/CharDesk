@@ -53,7 +53,7 @@ it("reserves Tab chrome from descendant text and backgrounds", () => {
   }
 });
 
-it("paints continuous full-Cell thumbs along both scroll axes", () => {
+it("paints owned block thumbs along both scroll axes", () => {
   for (const offset of [0, 4, 20]) {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 8 } });
     const frame = runtime.render(<Root>
@@ -66,7 +66,8 @@ it("paints continuous full-Cell thumbs along both scroll axes", () => {
       expect(thumb).not.toBeNull();
       for (let y = thumb!.y; y < thumb!.y + thumb!.height; y++) {
         for (let x = thumb!.x; x < thumb!.x + thumb!.width; x++) {
-          expect(frame.buffer.get(x, y), JSON.stringify({ offset, x, y, metrics })).toMatchObject({ text: "█", ownerId: "scroll" });
+          expect(frame.buffer.get(x, y)?.ownerId).toBe("scroll");
+          expect(["█", "▀", "▄", "▌", "▐"]).toContain(frame.buffer.get(x, y)?.text);
           expect(hitTest(frame.scene, { x, y })[0]).toBe("scroll");
         }
       }

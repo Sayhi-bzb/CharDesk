@@ -1,3 +1,5 @@
+import { computeScrollMetrics, scrollOffsetFor } from "./scroll.js";
+import { measureCellText } from "./text.js";
 import type {
   CellPoint,
   CellRect,
@@ -37,7 +39,12 @@ const scrollMetricsFor = (
 ): ScrollMetrics | null => {
   const node = tree.nodes.get(id);
   const entry = layout.entries.get(id);
-  if (!node || !entry || node.kind !== "scroll-area") return null;
+  if (!node || !entry) return null;
+  if (node.textEditor) {
+    const visible = node.kind === "text-area";
+    return computeScrollMetrics(contentBounds, measureCellText(node.textEditor), scrollOffsetFor(node), { x: visible, y: visible });
+  }
+  if (node.kind !== "scroll-area") return null;
   let explicitHorizontalExtent = false;
   const extent = { width: contentBounds.width, height: 0 };
   const measureDescendant = (childId: string, origin: CellPoint): void => {
@@ -63,59 +70,7 @@ const scrollMetricsFor = (
       y: -entry.contentRect.y,
     });
   });
-  let horizontal = extent.width > contentBounds.width;
-  let vertical = extent.height > contentBounds.height;
-  for (let pass = 0; pass < 2; pass += 1) {
-    horizontal = extent.width > Math.max(
-      0,
-      contentBounds.width - (vertical && explicitHorizontalExtent ? 1 : 0)
-    );
-    vertical = extent.height > Math.max(0, contentBounds.height - (horizontal ? 1 : 0));
-  }
-  const viewport: CellRect = {
-    ...contentBounds,
-    width: Math.max(0, contentBounds.width - (vertical ? 1 : 0)),
-    height: Math.max(0, contentBounds.height - (horizontal ? 1 : 0)),
-  };
-  const horizontalTrack = horizontal
-    ? { x: viewport.x, y: viewport.y + viewport.height, width: viewport.width, height: 1 }
-    : null;
-  const verticalTrack = vertical
-    ? { x: viewport.x + viewport.width, y: viewport.y, width: 1, height: viewport.height }
-    : null;
-  const thumbAxis = (track: number, visible: number, content: number, offset: number) => {
-    const length = Math.max(1, Math.min(track, Math.floor(track * visible / content)));
-    const maxOffset = Math.max(0, content - visible);
-    return {
-      start: maxOffset === 0 ? 0 : Math.round((track - length) * Math.max(0, Math.min(maxOffset, offset)) / maxOffset),
-      length,
-    };
-  };
-  const horizontalThumbAxis = horizontalTrack
-    ? thumbAxis(horizontalTrack.width, viewport.width, extent.width, node.scrollOffset.x)
-    : null;
-  const verticalThumbAxis = verticalTrack
-    ? thumbAxis(verticalTrack.height, viewport.height, extent.height, node.scrollOffset.y)
-    : null;
-  return {
-    viewport,
-    contentSize: extent,
-    maxOffset: {
-      x: horizontal ? Math.max(0, extent.width - viewport.width) : 0,
-      y: vertical ? Math.max(0, extent.height - viewport.height) : 0,
-    },
-    horizontalTrack,
-    verticalTrack,
-    horizontalThumb: horizontalTrack && horizontalThumbAxis
-      ? { ...horizontalTrack, x: horizontalTrack.x + horizontalThumbAxis.start, width: horizontalThumbAxis.length }
-      : null,
-    verticalThumb: verticalTrack && verticalThumbAxis
-      ? { ...verticalTrack, y: verticalTrack.y + verticalThumbAxis.start, height: verticalThumbAxis.length }
-      : null,
-    corner: horizontal && vertical
-      ? { x: viewport.x + viewport.width, y: viewport.y + viewport.height, width: 1, height: 1 }
-      : null,
-  };
+  return computeScrollMetrics(contentBounds, extent, node.scrollOffset, { x: explicitHorizontalExtent, y: true }, !explicitHorizontalExtent);
 };
 
 export const composeScene = (

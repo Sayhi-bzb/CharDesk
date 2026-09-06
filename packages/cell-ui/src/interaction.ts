@@ -1,4 +1,5 @@
 import { hitTest } from "./scene.js";
+import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
 import type {
   CellPoint,
   FrameSnapshot,
@@ -57,7 +58,7 @@ const modalOverlayIds = (tree: WidgetTree): readonly WidgetId[] =>
     .filter((node) => node.kind === "overlay" && node.modal)
     .map(({ id }) => id);
 
-const topModalOverlayId = (tree: WidgetTree): WidgetId | null =>
+export const topModalOverlayId = (tree: WidgetTree): WidgetId | null =>
   modalOverlayIds(tree).at(-1) ?? null;
 
 const focusableWidgets = (
@@ -279,7 +280,7 @@ export const getScrollRange = (
 }> => {
   const node = frame.tree.nodes.get(scrollId);
   const metrics = frame.scene.entries.get(scrollId)?.scrollMetrics;
-  if (!node || node.kind !== "scroll-area" || !metrics) {
+  if (!node || !metrics) {
     return { x: { min: 0, max: 0 }, y: { min: 0, max: 0 } };
   }
   return {
@@ -306,17 +307,18 @@ export const resolveWheelInput = (
   if (modalId && (!hit || !isDescendantOf(frame.tree, hit, modalId))) {
     return { consumed: false, command: null };
   }
-  let scroll = ancestorOfKind(frame.tree, hit, "scroll-area");
+  let scroll = hit ? frame.tree.nodes.get(hit) : undefined;
   while (scroll) {
     if (modalId && !isDescendantOf(frame.tree, scroll.id, modalId)) break;
     const range = getScrollRange(frame, scroll.id);
-    if (range.x.max > range.x.min || range.y.max > range.y.min) {
+    if (!scroll.disabled && (range.x.max > range.x.min || range.y.max > range.y.min)) {
+      const offset = scrollOffsetFor(scroll);
       return {
         consumed: true,
-        command: scrollCommand(frame, scroll.id, { x: Math.sign(input.deltaX), y: Math.sign(input.deltaY) }),
+        command: scrollCommandForOffset(frame, scroll.id, { x: offset.x + Math.sign(input.deltaX), y: offset.y + Math.sign(input.deltaY) }),
       };
     }
-    scroll = ancestorOfKind(frame.tree, scroll.parentId ?? undefined, "scroll-area");
+    scroll = scroll.parentId ? frame.tree.nodes.get(scroll.parentId) : undefined;
   }
   return { consumed: false, command: null };
 };

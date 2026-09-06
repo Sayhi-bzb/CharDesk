@@ -1,4 +1,15 @@
 import type { CellHitPart, CellPoint, WidgetId } from "./types.js";
+import { cellCenter } from "./scrollbar.js";
+
+export type ScrollDragAnchor = Readonly<{
+  point: CellPoint;
+  offset: number;
+  maximum: number;
+  trackStart: number;
+  trackCross: number;
+  trackLength: number;
+  thumbLength: number;
+}>;
 
 export type GestureKind = "tap" | "drag" | "scroll";
 export type GestureAxis = "x" | "y" | "both";
@@ -9,6 +20,7 @@ export type GestureCandidate = Readonly<{
   kind: GestureKind;
   axis?: GestureAxis;
   part?: CellHitPart;
+  scrollbar?: ScrollDragAnchor;
 }>;
 
 export type GestureSignal = Readonly<{
@@ -19,10 +31,14 @@ export type GestureSignal = Readonly<{
   point: CellPoint;
   delta: CellPoint;
   part?: CellHitPart;
+  scrollbar?: ScrollDragAnchor;
+  precisePoint?: CellPoint;
+  totalDelta?: CellPoint;
 }>;
 
 type GestureArena = {
   start: CellPoint;
+  preciseStart: CellPoint;
   previous: CellPoint;
   candidates: readonly GestureCandidate[];
   winner: GestureCandidate | null;
@@ -38,7 +54,8 @@ const signal = (
   candidate: GestureCandidate,
   phase: GesturePhase,
   point: CellPoint,
-  movement: CellPoint
+  movement: CellPoint,
+  precisePoint = cellCenter(point)
 ): GestureSignal => ({
   pointerId,
   targetId: candidate.targetId,
@@ -47,6 +64,11 @@ const signal = (
   point,
   delta: movement,
   part: candidate.part,
+  ...(candidate.scrollbar ? {
+    scrollbar: candidate.scrollbar,
+    precisePoint,
+    totalDelta: delta(candidate.scrollbar.point, precisePoint),
+  } : {}),
 });
 
 const acceptsAxis = (candidate: GestureCandidate, axis: "x" | "y") => {
@@ -69,11 +91,13 @@ export class GestureManager {
   begin(
     pointerId: number,
     point: CellPoint,
-    candidates: readonly GestureCandidate[]
+    candidates: readonly GestureCandidate[],
+    precisePoint = cellCenter(point)
   ): readonly GestureSignal[] {
     const cancelled = this.cancel(pointerId);
     this.#arenas.set(pointerId, {
       start: point,
+      preciseStart: precisePoint,
       previous: point,
       candidates: [...candidates],
       winner: null,
@@ -81,16 +105,27 @@ export class GestureManager {
     return cancelled;
   }
 
-  move(pointerId: number, point: CellPoint): readonly GestureSignal[] {
+  move(pointerId: number, point: CellPoint, precisePoint = cellCenter(point)): readonly GestureSignal[] {
     const arena = this.#arenas.get(pointerId);
     if (!arena) return [];
     const step = delta(arena.previous, point);
     arena.previous = point;
     if (arena.winner) {
-      return [signal(pointerId, arena.winner, "update", point, step)];
+      return [signal(pointerId, arena.winner, "update", point, step, precisePoint)];
     }
 
     const total = delta(arena.start, point);
+    const preciseTotal = delta(arena.preciseStart, precisePoint);
+    const thumb = arena.candidates.find((candidate) => candidate.kind === "drag" && candidate.scrollbar);
+    if (thumb && Math.abs(thumb.axis === "x" ? preciseTotal.x : preciseTotal.y) >= 0.5) {
+      arena.winner = thumb;
+      return [
+        ...arena.candidates.filter((candidate) => candidate !== thumb)
+          .map((candidate) => signal(pointerId, candidate, "cancel", point, total, precisePoint)),
+        signal(pointerId, thumb, "start", point, total, precisePoint),
+      ];
+    }
+    if (thumb && Math.abs(thumb.axis === "x" ? preciseTotal.y : preciseTotal.x) < this.#threshold) return [];
     if (Math.max(Math.abs(total.x), Math.abs(total.y)) < this.#threshold) return [];
     const axis = Math.abs(total.x) > Math.abs(total.y) ? "x" : "y";
     const winner = arena.candidates.find(
@@ -107,11 +142,11 @@ export class GestureManager {
       ...arena.candidates
         .filter((candidate) => candidate !== winner)
         .map((candidate) => signal(pointerId, candidate, "cancel", point, total)),
-      signal(pointerId, winner, "start", point, total),
+      signal(pointerId, winner, "start", point, total, precisePoint),
     ];
   }
 
-  end(pointerId: number, point: CellPoint): readonly GestureSignal[] {
+  end(pointerId: number, point: CellPoint, precisePoint = cellCenter(point)): readonly GestureSignal[] {
     const arena = this.#arenas.get(pointerId);
     if (!arena) return [];
     this.#arenas.delete(pointerId);
@@ -121,7 +156,8 @@ export class GestureManager {
         arena.winner,
         "end",
         point,
-        delta(arena.previous, point)
+        delta(arena.previous, point),
+        precisePoint
       )];
     }
     const tap = arena.candidates.find((candidate) => candidate.kind === "tap");
@@ -135,7 +171,7 @@ export class GestureManager {
       ...arena.candidates
         .filter((candidate) => candidate !== tap)
         .map((candidate) => signal(pointerId, candidate, "cancel", point, total)),
-      signal(pointerId, tap, "end", point, total),
+      signal(pointerId, tap, "end", point, total, precisePoint),
     ];
   }
 
@@ -147,5 +183,15 @@ export class GestureManager {
     return candidates.map((candidate) =>
       signal(pointerId, candidate, "cancel", arena.previous, { x: 0, y: 0 })
     );
+  }
+
+  sync(valid: (candidate: GestureCandidate) => boolean): readonly number[] {
+    const cancelled: number[] = [];
+    for (const [id, arena] of this.#arenas) {
+      if (arena.candidates.every(valid)) continue;
+      this.cancel(id);
+      cancelled.push(id);
+    }
+    return cancelled;
   }
 }

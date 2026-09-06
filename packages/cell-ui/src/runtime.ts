@@ -72,6 +72,10 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
 
 const hasGeometryChange = (before: WidgetNode, after: WidgetNode) =>
   !sameWidgetValue(before.scrollOffset, after.scrollOffset)
+  || before.textEditor?.value !== after.textEditor?.value
+  || before.textEditor?.scrollX !== after.textEditor?.scrollX
+  || before.textEditor?.scrollY !== after.textEditor?.scrollY
+  || !sameWidgetValue(before.textEditor?.composition, after.textEditor?.composition)
   || !sameWidgetValue(before.overlayPosition, after.overlayPosition);
 
 const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
@@ -218,7 +222,7 @@ export class CellUiRuntime {
             ? [[node.id, createCellTextLayout(
                 node.id,
                 sceneEntry.layoutBounds,
-                sceneEntry.contentBounds,
+                sceneEntry.scrollMetrics?.viewport ?? sceneEntry.contentBounds,
                 node.textEditor
               )] as const]
             : [];

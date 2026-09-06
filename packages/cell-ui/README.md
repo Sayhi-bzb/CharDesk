@@ -8,11 +8,17 @@ Collection focus uses one background-and-bold style across pointer, keyboard, an
 
 ## Theme consumption
 
+`CellSurface` separates retained logical `focusedId` from browser focus ownership. It passes actual Surface/window activity through the runtime's existing `focusVisible` option; focus backgrounds, focus bold, Canvas caret, and `data-cell-focus-visible` follow that same state. Blur preserves selection and editing state. Internal DOM focus transfers retain activity; external/null-target blur and window changes recheck ownership before restoring focus. Headless defaults are unchanged.
+
+`CellUiTheme.borderShape` accepts `"square"` (default) or `"rounded"` (`╭╮╰╯`). Both use the shared border painter and `borderStyle` / `--cell-border` color. Shape is paint-only; `style.border` still reserves one Cell per edge. Set shape through theme data, not CSS radius; rounded corners do not clip the rectangular background.
+
+`render(..., { hoveredId })` supplies optional transient hover; omission clears it. `WidgetNode.hovered` affects paint only, not layout or semantic nodes. `hoveredItemStyle` / `--cell-hover` supplies collection hover backgrounds, skipped for focused, selected, or disabled items. `CellSurface` derives hover and cursor from Scene hits and modal scope, updates only when the resolved target changes, and rechecks stationary pointers on frame/scroll/resize changes. Hover is mouse-only; down/drag suspends it, up restores it, and leave/cancel/capture loss/window blur clears it. It never emits widget commands. Canvas cursor is pointer for actionable items, text for enabled editor content (including read-only), otherwise default.
+
 `resolveCellStateStyle(local, state, theme)` owns state-style priority; `resolveCellTextStyle(base, state, theme)` adds text selection and composition. Painter supplies geometry and state, not color policy. `surfaceStyle` supplies Overlay backgrounds, `borderStyle` supplies border styling, and `caretColor` / `rangeSelectionColor` configure browser overlays. `background` / `foreground` supply the Canvas palette unless `CellSurface.palette` is explicitly provided. The private experimental API uses `focusedItemStyle` in place of `focusedSelectedStyle`, with no compatibility alias.
 
 The `/browser` entry exports `readCellCssTheme(element)` and `useCellCssTheme(ref, revision)`, returning `{ theme, palette }`. The hook reads after mount and whenever the explicit string/number revision changes. Apply CSS changes before its layout effect; external stylesheet edits require a revision bump. No DOM mutation observer, per-frame CSS read, or DOM-per-Cell is created. Missing/invalid fields use `DEFAULT_CELL_UI_THEME`; development builds report the token name.
 
-Supported color tokens (prefix each with `--cell-`): `background`, `foreground`, `surface`, `highlight`, `highlight-foreground`, `muted-foreground`, `border`, `selection`, `selection-foreground`, `range-selection`, `caret`, `scrollbar-thumb`. Browser CSS resolves inherited values and aliases; the adapter resolves colors before Canvas consumes them. `highlight` feeds both focus and selection; bold distinguishes focus. `--cell-accent` is consumed directly by host CSS for links and focus outlines, not by the headless engine.
+Supported color tokens (prefix each with `--cell-`): `background`, `foreground`, `surface`, `hover`, `highlight`, `highlight-foreground`, `muted-foreground`, `border`, `selection`, `selection-foreground`, `range-selection`, `caret`, `scrollbar-thumb`. Browser CSS resolves inherited values and aliases; the adapter resolves colors before Canvas consumes them. `highlight` feeds both focus and selection; bold distinguishes focus. `--cell-accent` is consumed directly by host CSS for links and focus outlines, not by the headless engine.
 
 ```tsx
 const container = useRef<HTMLDivElement>(null);
@@ -73,6 +79,12 @@ separately from the optional scroll command. [Widget contracts](../../exp/bluepr
 own boundary, background, and editor sizing behavior.
 
 ## Cell inspection
+
+TextArea automatically consumes the shared scroll geometry and half-Cell rails on overflow; TextInput keeps rails hidden. Text layout and viewport synchronization use `SceneEntry.scrollMetrics.viewport`. ScrollArea still emits `scroll` commands; editor rails emit `text` commands containing `set-scroll`. `TestPilot.scroll()` supports both. No extra ScrollArea wrapper or duplicate offset state is needed; [editor viewport contracts](../../exp/blueprints/widgets.md#编辑视口与-canvas-边界) own sizing, caret reveal, and input boundaries.
+
+`ScrollMetrics.horizontalThumbAxis` / `verticalThumbAxis` expose `HalfCellThumb`: integer `start` and `length` in half-Cell units relative to the track. Existing thumb rectangles remain integer covering bounds. Geometry owns the `█`, `▄/▀`, and `▐/▌` glyphs; themes supply `scrollThumbStyle`, not a `scrollThumb` glyph. Widget behavior is owned by [Pointer and Scroll](../../exp/blueprints/widgets.md#pointer-与-scroll).
+
+`TestPilot.pointerDown/Move/Up(point, pointerId?, precisePoint?)` accept an optional floating Cell position for scrollbar gestures; omission uses the integer Cell's center. The browser uses `pxToCellPosition` for this precision and retains `pxToCellPoint` for grid hits. Layout and content offsets remain integer Cells. Thumb dragging anchors cumulative displacement to pointer-down geometry; geometry/range changes cancel the gesture.
 
 `CellBuffer.writeGrapheme(..., clip, composition)` and `writeText(..., clip, maxWidth, composition)` accept `CellComposition`: default `"replace"` replaces the entire Cell; `"over"` preserves only an unspecified background from the destination. `clear()` always erases it. Scene painting uses `"over"`; [compositor contracts](../../exp/blueprints/compositor.md#行为契约) own layering and wide-Cell behavior.
 

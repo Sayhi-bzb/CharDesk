@@ -56,7 +56,10 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
   expect(after.text).toBe(before.text);
   expect(after.focusedId).toBe(before.focusedId);
   expect(after.revision).toBeGreaterThan(before.revision);
-  expect(after.cells.some((cell) => cell.style.bold && cell.style.backgroundColor === "rgb(60, 70, 80)")).toBe(true);
+  await expect(surface).not.toHaveAttribute("data-cell-focus-visible");
+  await surface.focus();
+  const refocused = await readCellProbe(surface);
+  expect(refocused.cells.some((cell) => cell.style.bold && cell.style.backgroundColor === "rgb(60, 70, 80)")).toBe(true);
   expect(after.cells.some((cell) => cell.text === "┌" && cell.style.color === "rgb(90, 100, 110)")).toBe(true);
   const pixel = await surface.locator("canvas").evaluate((canvas) => {
     const scale = devicePixelRatio;

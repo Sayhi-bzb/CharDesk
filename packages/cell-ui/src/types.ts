@@ -150,6 +150,8 @@ export type SceneEntry = Readonly<{
 }>;
 
 export type ScrollMetrics = Readonly<{
+  horizontalThumbAxis: HalfCellThumb | null;
+  verticalThumbAxis: HalfCellThumb | null;
   viewport: CellRect;
   contentSize: CellSize;
   maxOffset: CellPoint;
@@ -159,6 +161,8 @@ export type ScrollMetrics = Readonly<{
   verticalThumb: CellRect | null;
   corner: CellRect | null;
 }>;
+
+export type HalfCellThumb = Readonly<{ start: number; length: number }>;
 
 export type CellHitPart = "content" | "chrome" | "scrollbar-x" | "scrollbar-y" | "scrollbar-corner";
 

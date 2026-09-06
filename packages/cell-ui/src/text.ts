@@ -155,6 +155,15 @@ const presentation = (snapshot: CellTextSnapshot) => {
   };
 };
 
+export const measureCellText = (snapshot: CellTextSnapshot) => {
+  const { value } = presentation(snapshot);
+  const lines = logicalLines(value);
+  return {
+    width: lines.reduce((width, line) => Math.max(width, columnAt(value, line, line.to)), 0) + 1,
+    height: lines.length,
+  };
+};
+
 export class CellTextEditor {
   readonly #multiline: boolean;
   #viewport: Readonly<{ columns: number; rows: number }>;
@@ -199,8 +208,6 @@ export class CellTextEditor {
       }
       if (columns === this.#viewport.columns && rows === this.#viewport.rows) return this.snapshot();
       this.#viewport = { columns, rows };
-      this.#scrollX = 0;
-      this.#scrollY = 0;
       return this.#changed(true);
     }
     const value = this.#state.doc.toString();
@@ -371,6 +378,9 @@ export class CellTextEditor {
 
   #changed(reveal: boolean, increment = true): CellTextSnapshot {
     if (increment) this.#revision += 1;
+    const extent = measureCellText(this.snapshot());
+    this.#scrollX = Math.max(0, Math.min(this.#scrollX, extent.width - this.#viewport.columns));
+    this.#scrollY = Math.max(0, Math.min(this.#scrollY, extent.height - this.#viewport.rows));
     if (reveal) this.#revealCaret();
     return this.snapshot();
   }
