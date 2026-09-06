@@ -17,6 +17,7 @@ export const workspaceAliases = [
   { find: /^@chardesk\/chargraph$/, replacement: source('packages/chargraph/src/index.ts') },
   { find: /^@chardesk\/document$/, replacement: source('packages/document/src/index.ts') },
   { find: /^@chardesk\/fonts$/, replacement: source('packages/fonts/src/index.ts') },
+  { find: /^@chardesk\/font-maple$/, replacement: source('packages/font-maple/src/index.ts') },
   { find: /^@chardesk\/protocol$/, replacement: source('packages/protocol/src/index.ts') },
   { find: /^@chardesk\/rendering$/, replacement: source('packages/rendering/src/index.ts') },
   { find: /^@chardesk\/ui$/, replacement: source('packages/ui/src/index.ts') },

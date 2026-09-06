@@ -43,6 +43,7 @@ import {
 } from "./browser.js";
 import type { CellRangeCommand } from "./range.js";
 import type { SemanticAction } from "./types.js";
+import type { CharDeskFontProfile } from "@chardesk/rendering/canvas";
 
 const context = {
   setTransform: vi.fn(),
@@ -57,6 +58,8 @@ const context = {
   moveTo: vi.fn(),
   lineTo: vi.fn(),
   stroke: vi.fn(),
+  scale: vi.fn(),
+  translate: vi.fn(),
   getTransform: () => ({ a: 1, b: 0, c: 0, d: 1 }),
   fillStyle: "",
   strokeStyle: "",
@@ -498,6 +501,57 @@ describe("CellSurface", () => {
     expect(context.fillRect).not.toHaveBeenCalledWith(0, 0, 100, 60);
     expect(context.fillRect).toHaveBeenCalledWith(0, 0, 100, 20);
     expect(context.fillRect).toHaveBeenCalledWith(0, 20, 100, 20);
+  });
+
+  it("uses one font profile for loading and presentation, then reloads on profile change", async () => {
+    const load = vi.fn().mockResolvedValue([{}]);
+    const fonts = {
+      load,
+      ready: Promise.resolve(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: fonts,
+    });
+    const profile = (id: string, cjkFamily: string): CharDeskFontProfile => ({
+      id,
+      families: { text: "Display Face", emoji: "Emoji Face" },
+      sources: [],
+      resolveCapability: (grapheme) => grapheme === "中" ? "cjk" : "display",
+      capabilities: {
+        display: { families: { regular: "Display Face" } },
+        cjk: { families: { regular: cjkFamily } },
+        nerd: { families: { regular: "Nerd Face" } },
+        symbol: { families: { regular: "Symbol Face" } },
+        emoji: { families: { regular: "Emoji Face" } },
+      },
+    });
+    const view = (fontProfile: CharDeskFontProfile) => (
+      <CellSurface
+        viewport={{ width: 4, height: 1 }}
+        onCommand={() => undefined}
+        fontProfile={fontProfile}
+        metrics={{ cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" }}
+      >
+        <Root><Text>中</Text></Root>
+      </CellSurface>
+    );
+
+    try {
+      const mounted = render(view(profile("test/first", "First CJK")));
+      await waitFor(() => expect(load.mock.calls.some(([font]) =>
+        String(font).includes("First CJK"))).toBe(true));
+      load.mockClear();
+      context.clearRect.mockClear();
+      mounted.rerender(view(profile("test/second", "Second CJK")));
+      await waitFor(() => expect(load.mock.calls.some(([font]) =>
+        String(font).includes("Second CJK"))).toBe(true));
+      expect(context.clearRect).toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(document, "fonts");
+    }
   });
 
   it("paints the two backgrounds beneath a wide glyph independently", () => {
@@ -1138,7 +1192,7 @@ describe("CellSurface", () => {
     const snapshot = readCellSurfaceProbe(surface)!;
     expect(surface).toHaveAttribute("data-cell-probe", "browser-test");
     expect(snapshot).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       probeId: "browser-test",
       text: pilot.text(),
       focusedId: "probe-open",

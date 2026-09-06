@@ -10,10 +10,14 @@ import {
   type CharDeskCanvasSurface,
 } from "@chardesk/rendering/canvas";
 import type { RenderFontRoute } from "./fontRouting";
+import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
 
 export type GridRenderMetrics = CharDeskCanvasMetrics;
 
-export const DEFAULT_GRID_RENDER_METRICS = DEFAULT_CHARDESK_CANVAS_METRICS;
+export const DEFAULT_GRID_RENDER_METRICS = {
+  ...DEFAULT_CHARDESK_CANVAS_METRICS,
+  fontFamily: MAPLE_FONT_PROFILE.families.text,
+};
 
 export const getCanvasFont = (
   metrics: GridRenderMetrics = DEFAULT_GRID_RENDER_METRICS,
@@ -40,5 +44,5 @@ type RenderFontSample = CharDeskCanvasFontSample;
 export const loadRenderFonts = async (
   samplesToLoad: Iterable<RenderFontSample>
 ) => {
-  await loadCharDeskCanvasFonts(samplesToLoad);
+  await loadCharDeskCanvasFonts(samplesToLoad, { fontProfile: MAPLE_FONT_PROFILE });
 };

@@ -9,6 +9,7 @@
       "@chardesk/chargraph/mermaid": ["packages/chargraph/src/mermaid.ts"],
       "@chardesk/chargraph/theme": ["packages/chargraph/src/render-theme.ts"],
       "@chardesk/fonts": ["packages/fonts/src/index.ts"],
+      "@chardesk/font-maple": ["packages/font-maple/src/index.ts"],
       "@chardesk/protocol": ["packages/protocol/src/index.ts"],
       "@chardesk/rendering": ["packages/rendering/src/index.ts"],
       "@chardesk/rendering/canvas": ["packages/rendering/src/canvas.ts"],

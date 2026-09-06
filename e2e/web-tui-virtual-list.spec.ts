@@ -4,7 +4,7 @@ import { readCellProbe } from "./helpers/cell-probe";
 test("100k-row virtual List stays bounded across keyboard, pointer, and scroll", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
 

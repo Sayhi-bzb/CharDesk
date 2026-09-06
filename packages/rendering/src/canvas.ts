@@ -1,4 +1,8 @@
-import { CHARDESK_FONT_PROFILE } from "@chardesk/fonts";
+import {
+  CHARDESK_SYSTEM_FONT_PROFILE,
+  type CharDeskFontCapability,
+  type CharDeskFontProfile,
+} from "@chardesk/fonts";
 import type { CharDeskTextAttributes } from "@chardesk/protocol";
 import type {
   CharDeskCellVisual,
@@ -6,8 +10,15 @@ import type {
   CharDeskRenderModel,
 } from "./index.js";
 import { resolveCharDeskFontRoute } from "./index.js";
-import { alignCanvasRect, blockGlyphRects, type AxisTransform } from "./block-glyphs.js";
-export { alignCanvasRect as alignCharDeskCanvasRect } from "./block-glyphs.js";
+import {
+  CHARDESK_CELL_EDGE,
+  alignCanvasRect,
+  type AxisTransform,
+  type CharDeskCellPrimitive,
+} from "./cell-primitives.js";
+export { alignCanvasRect as alignCharDeskCanvasRect } from "./cell-primitives.js";
+export type { CharDeskCellPrimitive } from "./cell-primitives.js";
+export type { CharDeskFontProfile } from "@chardesk/fonts";
 
 export type CharDeskCanvasMetrics = {
   cellWidth: number;
@@ -43,8 +54,16 @@ export type CharDeskCanvasFontResolver = (input: {
   italic: boolean;
 }) => string | undefined;
 
+export type CharDeskCanvasResolvedFontFace = Readonly<{
+  capability: CharDeskFontCapability;
+  family: string;
+  fontSizeScale: number;
+  scaleX: number;
+  baselineShiftEm: number;
+  weightPolicy: "inherit" | "regular";
+}>;
+
 export type CharDeskCanvasCellDrawOptions = {
-  blockGlyphs?: "font" | "geometry";
   clipToCell?: boolean;
   color?: string;
   underline?: boolean;
@@ -52,12 +71,14 @@ export type CharDeskCanvasCellDrawOptions = {
   metrics?: CharDeskCanvasMetrics;
   palette?: CharDeskCanvasPalette;
   fontAvailability?: CharDeskCanvasFontAvailability;
+  fontProfile?: CharDeskFontProfile;
   fontFamilies?: CharDeskCanvasFontFamilies;
   fontResolver?: CharDeskCanvasFontResolver;
 };
 
 export type CharDeskCanvasCellDrawEntry = {
   cell: CharDeskCellVisual;
+  primitive?: CharDeskCellPrimitive;
   x: number;
   y: number;
   options?: CharDeskCanvasCellDrawOptions;
@@ -75,6 +96,7 @@ export type CharDeskCanvasDocumentOptions = {
   padding?: number;
   zoom?: number;
   fontAvailability?: CharDeskCanvasFontAvailability;
+  fontProfile?: CharDeskFontProfile;
   fontFamilies?: CharDeskCanvasFontFamilies;
   fontResolver?: CharDeskCanvasFontResolver;
 };
@@ -90,11 +112,18 @@ export type CharDeskCanvasFontSample =
   | string
   | { grapheme: string; bold?: boolean; italic?: boolean };
 
+export type CharDeskCanvasFontLoadOptions = Readonly<{
+  metrics?: CharDeskCanvasMetrics;
+  fontProfile?: CharDeskFontProfile;
+  fontFamilies?: CharDeskCanvasFontFamilies;
+  fontResolver?: CharDeskCanvasFontResolver;
+}>;
+
 export const DEFAULT_CHARDESK_CANVAS_METRICS: CharDeskCanvasMetrics = {
   cellWidth: 9,
   cellHeight: 19,
   fontSize: 15,
-  fontFamily: CHARDESK_FONT_PROFILE.families.text,
+  fontFamily: CHARDESK_SYSTEM_FONT_PROFILE.families.text,
 };
 
 export const DEFAULT_CHARDESK_CANVAS_FONT_AVAILABILITY: CharDeskCanvasFontAvailability = {
@@ -115,15 +144,56 @@ export const getCharDeskCanvasFont = (
     italic?: boolean;
     route?: CharDeskRenderFontRoute;
     fontFamily?: string;
+    fontSizeScale?: number;
+    weightPolicy?: "inherit" | "regular";
   }
 ) => {
   const route = options?.route ?? "text";
   const fontFamily = options?.fontFamily ?? (route === "emoji"
-    ? CHARDESK_FONT_PROFILE.families.emoji
+    ? CHARDESK_SYSTEM_FONT_PROFILE.families.emoji
     : metrics.fontFamily);
-  return `${options?.italic ? "italic " : ""}${options?.bold ? "700 " : ""}${
-    metrics.fontSize * zoom
+  const bold = options?.bold && options.weightPolicy !== "regular";
+  return `${options?.italic ? "italic " : ""}${bold ? "700 " : ""}${
+    metrics.fontSize * (options?.fontSizeScale ?? 1) * zoom
   }px ${fontFamily}`;
+};
+
+export const resolveCharDeskCanvasFontFace = (input: Readonly<{
+  grapheme: string;
+  capabilityGrapheme?: string;
+  route: CharDeskRenderFontRoute;
+  bold: boolean;
+  italic: boolean;
+  fontProfile?: CharDeskFontProfile;
+  fontFamilies?: CharDeskCanvasFontFamilies;
+  fontResolver?: CharDeskCanvasFontResolver;
+}>): CharDeskCanvasResolvedFontFace => {
+  const profile = input.fontProfile ?? CHARDESK_SYSTEM_FONT_PROFILE;
+  const capability = profile.resolveCapability(
+    input.capabilityGrapheme ?? input.grapheme
+  );
+  const spec = profile.capabilities[capability];
+  const routeFamilies = input.fontFamilies?.[input.route];
+  const effectiveBold = input.bold && spec.weightPolicy !== "regular";
+  const profileFamily = effectiveBold
+    ? spec.families.bold ?? spec.families.regular
+    : spec.families.regular;
+  const family = input.fontResolver?.({
+    grapheme: input.grapheme,
+    route: input.route,
+    bold: input.bold,
+    italic: input.italic,
+  }) ?? (effectiveBold
+    ? routeFamilies?.bold ?? routeFamilies?.regular
+    : routeFamilies?.regular) ?? profileFamily;
+  return {
+    capability,
+    family,
+    fontSizeScale: spec.fontSizeScale ?? 1,
+    scaleX: spec.scaleX ?? 1,
+    baselineShiftEm: spec.baselineShiftEm ?? 0,
+    weightPolicy: spec.weightPolicy ?? "inherit",
+  };
 };
 
 export const alignCharDeskCanvasCoordinate = (
@@ -213,7 +283,7 @@ const drawCellBackground = (
   if (!visual.bgColor) return previousColor;
   if (visual.bgColor !== previousColor) ctx.fillStyle = visual.bgColor;
   const bounds = { x: entry.x, y: entry.y, width: metrics.cellWidth * zoom * entry.cell.width, height: metrics.cellHeight * zoom };
-  const aligned = options?.blockGlyphs === "geometry" ? alignCanvasRect(bounds, transform) : bounds;
+  const aligned = alignCanvasRect(bounds, transform);
   ctx.fillRect(aligned.x, aligned.y, aligned.width, aligned.height);
   return visual.bgColor;
 };
@@ -239,16 +309,17 @@ const prepareFontGlyph = (
     DEFAULT_CHARDESK_CANVAS_FONT_AVAILABILITY;
   const attrs: CharDeskTextAttributes | undefined = visual.attrs;
   const route = visual.fontRoute;
-  const routeFamilies = options?.fontFamilies?.[route];
   const text = route === "emoji" && !availability.emoji ? "□" : visual.text;
-  const fontFamily = options?.fontResolver?.({
+  const face = resolveCharDeskCanvasFontFace({
     grapheme: text,
+    capabilityGrapheme: visual.text,
     route,
     bold: !!attrs?.bold,
     italic: !!attrs?.italic,
-  }) ?? (attrs?.bold
-    ? routeFamilies?.bold ?? routeFamilies?.regular
-    : routeFamilies?.regular);
+    ...(options?.fontProfile ? { fontProfile: options.fontProfile } : {}),
+    ...(options?.fontFamilies ? { fontFamilies: options.fontFamilies } : {}),
+    ...(options?.fontResolver ? { fontResolver: options.fontResolver } : {}),
+  });
   const anchor = getCharDeskCanvasCellAnchor(
     entry.x,
     entry.y,
@@ -261,13 +332,98 @@ const prepareFontGlyph = (
     bold: !!attrs?.bold,
     italic: !!attrs?.italic,
     route,
-    fontFamily,
+    fontFamily: face.family,
+    fontSizeScale: face.fontSizeScale,
+    weightPolicy: face.weightPolicy,
   });
   if (font !== state.font) {
     ctx.font = font;
     state.font = font;
   }
-  return { text, x: Math.round(anchor.x * state.scaleX) / state.scaleX, y: Math.round(anchor.y * state.scaleY) / state.scaleY };
+  return {
+    text,
+    x: Math.round(anchor.x * state.scaleX) / state.scaleX,
+    y: Math.round(
+      (anchor.y + face.baselineShiftEm * metrics.fontSize * face.fontSizeScale * zoom)
+        * state.scaleY
+    ) / state.scaleY,
+    scaleX: face.scaleX,
+  };
+};
+
+const drawCellPrimitive = (
+  ctx: CharDeskCanvasContext,
+  entry: CharDeskCanvasCellDrawEntry,
+  visual: CharDeskCanvasCellVisual,
+  primitive: CharDeskCellPrimitive,
+  state: CanvasTextState
+) => {
+  const metrics = entry.options?.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
+  const zoom = entry.options?.zoom ?? 1;
+  const width = metrics.cellWidth * zoom * visual.width;
+  const height = metrics.cellHeight * zoom;
+  const fill = (part: Readonly<{ x: number; y: number; width: number; height: number }>) => {
+    const bounds = alignCanvasRect({
+      x: entry.x + part.x * width,
+      y: entry.y + part.y * height,
+      width: part.width * width,
+      height: part.height * height,
+    }, state.transform);
+    if (bounds.width > 0 && bounds.height > 0) {
+      ctx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    }
+  };
+
+  if (primitive.kind === "fill") {
+    for (const region of primitive.regions) fill(region);
+    return;
+  }
+
+  const lineWidth = Math.min(width, height, Math.max(1, Math.round(zoom)));
+  const halfX = lineWidth / (2 * width);
+  const halfY = lineWidth / (2 * height);
+  const edges = primitive.edges;
+  const adjacentPair = edges === (CHARDESK_CELL_EDGE.top | CHARDESK_CELL_EDGE.right)
+    || edges === (CHARDESK_CELL_EDGE.right | CHARDESK_CELL_EDGE.bottom)
+    || edges === (CHARDESK_CELL_EDGE.bottom | CHARDESK_CELL_EDGE.left)
+    || edges === (CHARDESK_CELL_EDGE.left | CHARDESK_CELL_EDGE.top);
+
+  if (primitive.join === "rounded" && adjacentPair) {
+    const bounds = alignCanvasRect({ x: entry.x, y: entry.y, width, height }, state.transform);
+    const left = bounds.x;
+    const top = bounds.y;
+    const right = left + bounds.width;
+    const bottom = top + bounds.height;
+    const centerX = left + bounds.width / 2;
+    const centerY = top + bounds.height / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = entry.options?.color ?? visual.color;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = "butt";
+    ctx.lineJoin = "round";
+    if (edges === (CHARDESK_CELL_EDGE.right | CHARDESK_CELL_EDGE.bottom)) {
+      ctx.moveTo(right, centerY);
+      ctx.quadraticCurveTo(centerX, centerY, centerX, bottom);
+    } else if (edges === (CHARDESK_CELL_EDGE.left | CHARDESK_CELL_EDGE.bottom)) {
+      ctx.moveTo(left, centerY);
+      ctx.quadraticCurveTo(centerX, centerY, centerX, bottom);
+    } else if (edges === (CHARDESK_CELL_EDGE.right | CHARDESK_CELL_EDGE.top)) {
+      ctx.moveTo(right, centerY);
+      ctx.quadraticCurveTo(centerX, centerY, centerX, top);
+    } else {
+      ctx.moveTo(left, centerY);
+      ctx.quadraticCurveTo(centerX, centerY, centerX, top);
+    }
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  if (edges & CHARDESK_CELL_EDGE.top) fill({ x: 0.5 - halfX, y: 0, width: halfX * 2, height: 0.5 + halfY });
+  if (edges & CHARDESK_CELL_EDGE.right) fill({ x: 0.5 - halfX, y: 0.5 - halfY, width: 0.5 + halfX, height: halfY * 2 });
+  if (edges & CHARDESK_CELL_EDGE.bottom) fill({ x: 0.5 - halfX, y: 0.5 - halfY, width: halfX * 2, height: 0.5 + halfY });
+  if (edges & CHARDESK_CELL_EDGE.left) fill({ x: 0, y: 0.5 - halfY, width: 0.5 + halfX, height: halfY * 2 });
 };
 
 const drawCellText = (
@@ -279,8 +435,8 @@ const drawCellText = (
   const options = entry.options;
   const metrics = options?.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
   const zoom = options?.zoom ?? 1;
-  const geometry = options?.blockGlyphs === "geometry" ? blockGlyphRects(visual.text) : undefined;
-  const fontGlyph = geometry ? null : prepareFontGlyph(ctx, entry, visual, state);
+  const primitive = entry.primitive;
+  const fontGlyph = primitive ? null : prepareFontGlyph(ctx, entry, visual, state);
   const attrs = visual.attrs;
   const textColor = options?.color ?? visual.color;
   if (textColor !== state.color) {
@@ -291,22 +447,22 @@ const drawCellText = (
     ctx.save();
     ctx.beginPath();
     const bounds = { x: entry.x, y: entry.y, width: metrics.cellWidth * zoom * visual.width, height: metrics.cellHeight * zoom };
-    const aligned = options?.blockGlyphs === "geometry" ? alignCanvasRect(bounds, state.transform) : bounds;
+    const aligned = alignCanvasRect(bounds, state.transform);
     ctx.rect(aligned.x, aligned.y, aligned.width, aligned.height);
     ctx.clip();
   }
-  if (geometry) {
-    for (const part of geometry) {
-      const bounds = alignCanvasRect({
-        x: entry.x + part.x * metrics.cellWidth * zoom * visual.width,
-        y: entry.y + part.y * metrics.cellHeight * zoom,
-        width: part.width * metrics.cellWidth * zoom * visual.width,
-        height: part.height * metrics.cellHeight * zoom,
-      }, state.transform);
-      if (bounds.width > 0 && bounds.height > 0) ctx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-    }
+  if (primitive) {
+    drawCellPrimitive(ctx, entry, visual, primitive, state);
   } else if (fontGlyph) {
-    ctx.fillText(fontGlyph.text, fontGlyph.x, fontGlyph.y);
+    if (fontGlyph.scaleX === 1) {
+      ctx.fillText(fontGlyph.text, fontGlyph.x, fontGlyph.y);
+    } else {
+      ctx.save();
+      ctx.translate(fontGlyph.x, fontGlyph.y);
+      ctx.scale(fontGlyph.scaleX, 1);
+      ctx.fillText(fontGlyph.text, 0, 0);
+      ctx.restore();
+    }
   }
 
   const cellWidth = metrics.cellWidth * zoom * visual.width;
@@ -406,6 +562,7 @@ export const drawCharDeskCanvasDocument = (
       ...(options.fontAvailability
         ? { fontAvailability: options.fontAvailability }
         : {}),
+      ...(options.fontProfile ? { fontProfile: options.fontProfile } : {}),
       ...(options.fontFamilies ? { fontFamilies: options.fontFamilies } : {}),
       ...(options.fontResolver ? { fontResolver: options.fontResolver } : {}),
     },
@@ -415,7 +572,8 @@ export const drawCharDeskCanvasDocument = (
 };
 
 export const loadCharDeskCanvasFonts = async (
-  samplesToLoad: Iterable<CharDeskCanvasFontSample>
+  samplesToLoad: Iterable<CharDeskCanvasFontSample>,
+  options: CharDeskCanvasFontLoadOptions = {}
 ): Promise<CharDeskCanvasFontAvailability> => {
   if (typeof document === "undefined" || !document.fonts) {
     return { text: false, emoji: false };
@@ -425,6 +583,7 @@ export const loadCharDeskCanvasFonts = async (
     route: CharDeskRenderFontRoute;
     bold: boolean;
     italic: boolean;
+    face: CharDeskCanvasResolvedFontFace;
     graphemes: Set<string>;
   }>();
   for (const sample of samplesToLoad) {
@@ -433,11 +592,22 @@ export const loadCharDeskCanvasFonts = async (
     const route = resolveCharDeskFontRoute(grapheme);
     const bold = typeof sample === "string" ? false : !!sample.bold;
     const italic = typeof sample === "string" ? false : !!sample.italic;
-    const key = `${route}:${bold ? 1 : 0}:${italic ? 1 : 0}`;
+    const face = resolveCharDeskCanvasFontFace({
+      grapheme,
+      route,
+      bold,
+      italic,
+      ...(options.fontProfile ? { fontProfile: options.fontProfile } : {}),
+      ...(options.fontFamilies ? { fontFamilies: options.fontFamilies } : {}),
+      ...(options.fontResolver ? { fontResolver: options.fontResolver } : {}),
+    });
+    const effectiveBold = bold && face.weightPolicy !== "regular";
+    const key = `${route}:${face.capability}:${face.family}:${effectiveBold ? 1 : 0}:${italic ? 1 : 0}:${face.fontSizeScale}`;
     const group = groups.get(key) ?? {
       route,
       bold,
       italic,
+      face,
       graphemes: new Set<string>(),
     };
     group.graphemes.add(grapheme);
@@ -451,7 +621,16 @@ export const loadCharDeskCanvasFonts = async (
   await Promise.all(Array.from(groups.values(), async (group) => {
     try {
       const faces = await document.fonts.load(
-        getCharDeskCanvasFont(DEFAULT_CHARDESK_CANVAS_METRICS, 1, group),
+        getCharDeskCanvasFont(
+          options.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS,
+          1,
+          {
+            ...group,
+            fontFamily: group.face.family,
+            fontSizeScale: group.face.fontSizeScale,
+            weightPolicy: group.face.weightPolicy,
+          }
+        ),
         Array.from(group.graphemes).join("")
       );
       availability[group.route] ||= faces.length > 0;

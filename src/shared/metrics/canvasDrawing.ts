@@ -7,6 +7,7 @@ import {
   type CharDeskCanvasContext,
 } from "@chardesk/rendering/canvas";
 import type { RenderFontRoute } from "./fontRouting";
+import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
 import {
   alignCanvasCoordinate,
   DEFAULT_GRID_RENDER_METRICS,
@@ -24,6 +25,10 @@ type ResolvedCellVisual = {
 };
 
 type CanvasCellDrawOptions = CharDeskCanvasCellDrawOptions;
+const withProductFont = (options?: CanvasCellDrawOptions): CanvasCellDrawOptions => ({
+  ...options,
+  fontProfile: options?.fontProfile ?? MAPLE_FONT_PROFILE,
+});
 
 export type CanvasCellDrawEntry = {
   cell: GridCell;
@@ -137,7 +142,7 @@ export const drawTextCell = (
   y: number,
   options?: CanvasCellDrawOptions
 ) => {
-  drawCharDeskCanvasCells(ctx, [{ cell: toCanvasVisual(cell), x, y, options }]);
+  drawCharDeskCanvasCells(ctx, [{ cell: toCanvasVisual(cell), x, y, options: withProductFont(options) }]);
 };
 
 export const drawCellBackground = (
@@ -151,7 +156,7 @@ export const drawCellBackground = (
     cell: toCanvasVisual(cell),
     x,
     y,
-    options,
+    options: withProductFont(options),
     drawText: false,
   }]);
 };
@@ -167,7 +172,7 @@ export const drawCellText = (
     cell: toCanvasVisual(cell),
     x,
     y,
-    options,
+    options: withProductFont(options),
     drawBackground: false,
   }]);
 };
@@ -185,7 +190,7 @@ export const drawCellBatch = (
     cached.cell = toCanvasVisual(entry.cell);
     cached.x = entry.x;
     cached.y = entry.y;
-    cached.options = entry.options;
+    cached.options = withProductFont(entry.options);
     cached.drawBackground = entry.drawBackground;
     cached.drawText = entry.drawText;
     canvasDrawEntryCache.set(entry, cached);

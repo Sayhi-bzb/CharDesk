@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
 
 test("Gallery has no DOM focus outline and retains keyboard and editor focus", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const core = page.locator('[data-cell-probe="core"]');
   await core.focus();
   await page.keyboard.press("ArrowDown");

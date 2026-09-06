@@ -11,7 +11,13 @@ it.each([
   buffer.writeText(0, 0, "   ", "surface", { backgroundColor: "red" });
   paintBorder(buffer, "border", bounds, shape, { color: "gray" }, bounds);
   expect(buffer.toText()).toBe(expected);
-  expect(buffer.get(0, 0)).toMatchObject({ ownerId: "border", style: { color: "gray", backgroundColor: "red" } });
+  expect(buffer.get(0, 0)).toMatchObject({
+    ownerId: "border",
+    style: { color: "gray", backgroundColor: "red" },
+    primitive: { kind: "line", edges: 2 | 4, join: shape, weight: "single" },
+  });
+  expect(buffer.get(0, 1)?.primitive).toMatchObject({ kind: "line", edges: 1 | 4 });
+  expect(buffer.get(1, 0)?.primitive).toMatchObject({ kind: "line", edges: 2 | 8 });
   const clipped = new CellBuffer({ width: 3, height: 3 });
   paintBorder(clipped, "border", bounds, shape, {}, { x: 1, y: 0, width: 1, height: 3 });
   expect(clipped.toText()).toBe(" ─ \n   \n ─ ");
@@ -42,6 +48,10 @@ it("shape changes reuse geometry across primitives and repaint like a fresh fram
     for (const id of ["box", "nested", "scroll", "editor", "overlay"]) {
       const bounds = frame.scene.entries.get(id)!.layoutBounds;
       expect(frame.buffer.get(bounds.x, bounds.y)?.text).toBe(borderShape === "rounded" ? "╭" : "┌");
+      expect(frame.buffer.get(bounds.x, bounds.y)?.primitive).toMatchObject({
+        kind: "line",
+        join: borderShape,
+      });
       expect(hitTestCell(frame.scene, bounds)).toEqual(hitTestCell(before.scene, bounds));
     }
     const fresh = new CellUiRuntime({ viewport, theme: { borderShape } });

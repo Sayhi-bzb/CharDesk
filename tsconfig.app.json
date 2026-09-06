@@ -6,6 +6,7 @@
       "@chardesk/blackboard": ["./packages/blackboard/src/index.ts"],
       "@chardesk/collaboration-protocol": ["./packages/collaboration-protocol/src/index.ts"],
       "@chardesk/fonts": ["./packages/fonts/src/index.ts"],
+      "@chardesk/font-maple": ["./packages/font-maple/src/index.ts"],
       "@chardesk/chargraph": ["./packages/chargraph/src/index.ts"],
       "@chardesk/chargraph/markdown": ["./packages/chargraph/src/markdown-default.ts"],
       "@chardesk/chargraph/mermaid": ["./packages/chargraph/src/mermaid.ts"],

@@ -3,7 +3,7 @@ import { readCellProbe } from "./helpers/cell-probe";
 
 test("hover shares hit testing, is paint-only, and never activates a command", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="core"]');
   const canvas = surface.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
@@ -38,7 +38,7 @@ test("hover shares hit testing, is paint-only, and never activates a command", a
 
 test("palette blocks underlying hover even when the mouse is stationary", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="overlay"]');
   const canvas = surface.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
@@ -56,7 +56,7 @@ test("palette blocks underlying hover even when the mouse is stationary", async 
 
 test("stationary mouse follows scrolled rows and editor content uses a text cursor", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const core = page.locator('[data-cell-probe="core"]');
   const canvas = core.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();

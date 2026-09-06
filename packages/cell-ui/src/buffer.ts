@@ -1,4 +1,5 @@
 import { getGraphemeCellWidth, iterateGraphemes } from "@chardesk/protocol";
+import type { CharDeskCellPrimitive } from "@chardesk/rendering";
 import type {
   Cell,
   CellRect,
@@ -67,7 +68,8 @@ export class CellBuffer {
     ownerId: WidgetId,
     style: CellTextStyle = EMPTY_STYLE,
     clip?: CellRect,
-    composition: CellComposition = "replace"
+    composition: CellComposition = "replace",
+    primitive?: CharDeskCellPrimitive
   ): number {
     const width = getGraphemeCellWidth(text);
     if (!this.#contains(x, y, clip) || (width === 2 && !this.#contains(x + 1, y, clip))) return width;
@@ -79,7 +81,14 @@ export class CellBuffer {
     });
     this.#clearWideCellAt(x, y, composition === "over");
     if (width === 2) this.#clearWideCellAt(x + 1, y, composition === "over");
-    this.#cells[y * this.width + x] = { text, width, continuation: false, ownerId, style: styles[0]! };
+    this.#cells[y * this.width + x] = {
+      text,
+      width,
+      continuation: false,
+      ownerId,
+      style: styles[0]!,
+      ...(primitive ? { primitive } : {}),
+    };
     if (width === 2) {
       this.#cells[y * this.width + x + 1] = {
         text: "",

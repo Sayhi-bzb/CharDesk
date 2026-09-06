@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
 
 test("editor blur clears the full focus surface and caret but preserves logical state", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="editor"]');
   const editor = page.getByRole("textbox", { name: "Document", exact: true });
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");
@@ -30,13 +30,13 @@ test("editor blur clears the full focus surface and caret but preserves logical 
   expect(await caretPixel()).toEqual(focusedPixel);
   await editor.press("x");
   await expect(editor).toHaveValue("x");
-  await page.getByRole("heading", { name: "Cell UI Gallery", exact: true }).click();
+  await page.getByRole("heading", { name: "Cell UI Fixtures", exact: true }).click();
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");
   expect((await readCellProbe(surface)).focusedId).toBe(active.focusedId);
 });
 
 test("only the active Surface paints focus, while selected state survives", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const core = page.locator('[data-cell-probe="core"]');
   const editor = page.getByRole("textbox", { name: "File name", exact: true });
   await core.focus();
@@ -48,7 +48,7 @@ test("only the active Surface paints focus, while selected state survives", asyn
   expect(blurred.focusedId).toBe(active.focusedId);
   expect(blurred.cells.some((cell) => cell.ownerId === "core-open" && cell.style.bold)).toBe(false);
   expect(blurred.cells.some((cell) => cell.ownerId === "core-open" && cell.style.backgroundColor)).toBe(true);
-  await page.getByRole("button", { name: "Copy" }).first().focus();
+  await page.getByRole("button", { name: /^(Dark|Light)$/ }).focus();
   await expect(page.locator('[data-cell-probe][data-cell-focus-visible="true"]')).toHaveCount(0);
   await core.focus();
   expect((await readCellProbe(core)).focusedId).toBe(active.focusedId);
@@ -57,7 +57,7 @@ test("only the active Surface paints focus, while selected state survives", asyn
 });
 
 test("window focus recovery checks current ownership and never steals an external focus", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="editor"]');
   const editor = page.getByRole("textbox", { name: "Document", exact: true });
   await editor.focus();
@@ -66,7 +66,7 @@ test("window focus recovery checks current ownership and never steals an externa
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
-  const outside = page.getByRole("button", { name: "Copy" }).first();
+  const outside = page.getByRole("button", { name: /^(Dark|Light)$/ });
   await outside.focus();
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");

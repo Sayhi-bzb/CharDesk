@@ -1,5 +1,5 @@
 import {
-  CHARDESK_FONT_PROFILE,
+  CHARDESK_SYSTEM_FONT_PROFILE,
   type CharDeskFontRoute,
 } from "@chardesk/fonts";
 import {
@@ -11,6 +11,13 @@ import {
   type ParseCharDeskTextOptions,
   type ParsedCharDeskText,
 } from "@chardesk/protocol";
+
+export { CHARDESK_CELL_EDGE } from "./cell-primitives.js";
+export type {
+  CharDeskCellEdgeMask,
+  CharDeskCellPrimitive,
+  CharDeskNormalizedCellRect,
+} from "./cell-primitives.js";
 
 export type CharDeskRenderFontRoute = CharDeskFontRoute;
 
@@ -61,7 +68,7 @@ export const resolveCharDeskFontRoute = (
 ): CharDeskRenderFontRoute => isEmojiGrapheme(grapheme) ? "emoji" : "text";
 
 export const getCharDeskFontFamily = (route: CharDeskRenderFontRoute) =>
-  CHARDESK_FONT_PROFILE.families[route];
+  CHARDESK_SYSTEM_FONT_PROFILE.families[route];
 
 export const getCharDeskFontFamilyForGrapheme = (grapheme: string) =>
   getCharDeskFontFamily(resolveCharDeskFontRoute(grapheme));

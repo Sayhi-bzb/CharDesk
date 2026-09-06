@@ -4,7 +4,7 @@ import { copyCellRange } from "./helpers/cell-probe";
 test("Cell editor shares Unicode, composition, selection, and history across Canvas and textarea", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
 
@@ -51,7 +51,7 @@ test("Cell editor shares Unicode, composition, selection, and history across Can
 });
 
 test("Cell range selects and copies the final rendered border", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.waitForLoadState("networkidle");
   const section = page.locator("#editor");
   const surface = section.getByLabel("Cell text editor");
@@ -82,7 +82,7 @@ test("Cell range selects and copies the final rendered border", async ({ page })
 });
 
 test("horizontal and vertical editor scroll cannot paint over chrome Cells", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.waitForLoadState("networkidle");
   const section = page.locator("#editor");
   const surface = section.getByLabel("Cell text editor");

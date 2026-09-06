@@ -49,6 +49,7 @@
 | --- | --- | --- | --- |
 | React Host | [`@chardesk/cell-ui`](../packages/cell-ui/README.md) | Cell descriptors 生成 stable Widget Tree；`/browser` 的 `CellSurface` 提交 Canvas、真实 textarea 与 Semantic DOM | 应用业务状态、自定义 reconciler |
 | Cell Layout | `@chardesk/cell-ui` `YogaLayoutEngine` | viewport 与 style 输入 Yoga，输出整数 border box、逐边 border/padding Insets 和 local content rect | scroll、clip、paint、文本 Cell width |
+| Font Capability | [`@chardesk/fonts`](../packages/fonts/README.md) + [字体能力栈](research/font-stack.md) | Profile 将 grapheme 路由到 display/CJK/Nerd/symbol/emoji face，并拥有 font scale、baseline 和 weight policy | grapheme segmentation、Cell width、字体审美选择 |
 | SceneGeometry / Compositor | `@chardesk/cell-ui` + [完整契约](blueprints/compositor.md) | root geometry、nested scroll、outer/content clips、Overlay 双 parent/layer、paint order 与 hit query 使用同一几何权威 | Widget state、文本测量、px raster |
 | Unicode / Text | `@chardesk/protocol` | grapheme、Cell width、continuation Cell 和 offset 映射的唯一权威 | Widget layout、编辑状态、IME |
 | Editor State | `@codemirror/state` adapter | UTF-16 document offset 是编辑权威；CharDesk 映射到 grapheme 与 Cell geometry | DOM view、Cell layout、浏览器输入 |
@@ -92,7 +93,7 @@ macOS Option+Command / other-platform Alt + pointer drag
   → Canvas highlight + plain-text clipboard / LLM input
 ```
 
-Headless 与 browser 入口分层。单一 [Cell UI Gallery](web-tui/) 展开呈现 [Core](web-tui/#core)、[Complex](web-tui/#complex)、[Editing](web-tui/#editor)、[Overlay](web-tui/#overlay) 与 [Virtualization](web-tui/#virtualization) 切片；每个切片拥有独立 CellSurface 和状态，所有输入共用 command 路径，每次输入最多产生一个 command。
+Headless 与 browser 入口分层。[Cell UI 组件文档](web-tui/#/components/text) 为 Text、Box、List 与 ScrollArea 提供独立地址、真实 Canvas 预览、workspace 分发事实、用法和 API。编辑、Overlay、复杂 Widget 与虚拟化切片不进入公开导航，只作为浏览器回归 fixture 保留；所有输入仍共用 command 路径，每次输入最多产生一个 command。
 
 ## 交付状态
 

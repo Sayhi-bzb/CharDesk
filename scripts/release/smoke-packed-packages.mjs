@@ -3,17 +3,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const [protocolTarball, fontsTarball, cliTarball] = process.argv.slice(2).map((value) =>
+const [protocolTarball, fontsTarball, mapleTarball, cliTarball] = process.argv.slice(2).map((value) =>
   value ? path.resolve(value) : value
 );
 
-if (!protocolTarball || !fontsTarball || !cliTarball) {
+if (!protocolTarball || !fontsTarball || !mapleTarball || !cliTarball) {
   throw new Error(
-    "Usage: node scripts/release/smoke-packed-packages.mjs <protocol.tgz> <fonts.tgz> <cli.tgz>"
+    "Usage: node scripts/release/smoke-packed-packages.mjs <protocol.tgz> <fonts.tgz> <font-maple.tgz> <cli.tgz>"
   );
 }
 
-for (const tarball of [protocolTarball, fontsTarball, cliTarball]) {
+for (const tarball of [protocolTarball, fontsTarball, mapleTarball, cliTarball]) {
   if (!fs.existsSync(tarball)) {
     throw new Error(`Missing package tarball: ${tarball}`);
   }
@@ -38,6 +38,7 @@ try {
       "--no-fund",
       protocolTarball,
       fontsTarball,
+      mapleTarball,
       cliTarball,
     ],
     { cwd: temporaryDirectory, stdio: "inherit" }
@@ -45,19 +46,25 @@ try {
 
   const smokeTest = `
     import fs from "node:fs";
-    import { CHARDESK_FONT_PROFILE } from "@chardesk/fonts";
+    import { CHARDESK_SYSTEM_FONT_PROFILE } from "@chardesk/fonts";
+    import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
     import { parseCharDeskText } from "@chardesk/protocol";
 
     const parsed = parseCharDeskText("A界");
     if (parsed.width !== 3 || parsed.cells.length !== 2) {
       throw new Error("Protocol package returned an unexpected Unicode cell layout");
     }
-    if (!CHARDESK_FONT_PROFILE?.families?.text) {
+    if (!CHARDESK_SYSTEM_FONT_PROFILE?.families?.text) {
       throw new Error("Fonts package did not export its renderer profile");
+    }
+    if (MAPLE_FONT_PROFILE?.capabilities?.display?.families?.regular?.includes("Maple") !== true) {
+      throw new Error("Maple package did not compose a display profile");
     }
     for (const relativePath of [
       "node_modules/@chardesk/fonts/fonts.css",
       "node_modules/@chardesk/fonts/manifest.json",
+      "node_modules/@chardesk/font-maple/fonts.css",
+      "node_modules/@chardesk/font-maple/manifest.json",
     ]) {
       if (!fs.existsSync(new URL(relativePath, import.meta.url))) {
         throw new Error(\`Missing published font asset: \${relativePath}\`);

@@ -1,4 +1,5 @@
 import type { CellBuffer, CellTextOptions } from "./buffer.js";
+import type { CharDeskCellPrimitive } from "@chardesk/rendering";
 import { hitTest, hitTestCell } from "./scene.js";
 import type {
   Cell,
@@ -17,6 +18,7 @@ export type CellProbeCell = Readonly<{
   x: number;
   y: number;
   text: string;
+  primitive?: CharDeskCellPrimitive;
   width: 1 | 2;
   continuation: boolean;
   ownerId: WidgetId | null;
@@ -24,7 +26,7 @@ export type CellProbeCell = Readonly<{
 }>;
 
 export type CellProbeSnapshot = Readonly<{
-  schemaVersion: 1;
+  schemaVersion: 2;
   probeId: string | null;
   revision: number;
   region: CellRect;
@@ -68,6 +70,7 @@ const cloneCell = (cell: Cell, x: number, y: number): CellProbeCell => ({
   x,
   y,
   text: cell.text,
+  ...(cell.primitive ? { primitive: cell.primitive } : {}),
   width: cell.width,
   continuation: cell.continuation,
   ownerId: cell.ownerId,
@@ -92,7 +95,7 @@ export const captureCellProbe = (
     }
   }
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     probeId: options.probeId ?? null,
     revision: frame.revision,
     region,

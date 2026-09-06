@@ -1,6 +1,6 @@
 import { Moon, Square, SquareRoundCorner, Sun } from "lucide-react";
 import { createContext, useContext, useLayoutEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
-import { CHARDESK_FONT_PROFILE } from "@chardesk/fonts";
+import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
 import { CellSurface, useCellCssTheme, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
 import { resolveCellUiTheme, type CellBorderShape } from "@chardesk/cell-ui";
 
@@ -48,7 +48,7 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
     };
   }, [mode]);
   const appearance = useCellCssTheme(rootRef, mode);
-  const style = { fontFamily: CHARDESK_FONT_PROFILE.families.text, colorScheme: mode } as CSSProperties;
+  const style = { fontFamily: MAPLE_FONT_PROFILE.families.text, colorScheme: mode } as CSSProperties;
   return <AppearanceContext.Provider value={{ ...appearance, theme: { ...appearance.theme, borderShape }, mode, toggleTheme, toggleBorder }}>
     <div ref={rootRef} className="gallery-page" data-gallery-theme={mode} style={style}>{children}</div>
   </AppearanceContext.Provider>;
@@ -83,5 +83,5 @@ export function GalleryBorderToggle() {
 }
 export function GallerySurface(props: CellSurfaceProps) {
   const { theme, palette } = useGalleryAppearance();
-  return <CellSurface {...props} theme={theme} palette={palette} />;
+  return <CellSurface {...props} theme={theme} palette={palette} fontProfile={MAPLE_FONT_PROFILE} />;
 }

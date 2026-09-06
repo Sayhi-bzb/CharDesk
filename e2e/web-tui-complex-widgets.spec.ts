@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
 
@@ -73,7 +73,7 @@ test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", a
 });
 
 test("CellSurface owns rectangle selection without product wiring", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.waitForLoadState("networkidle");
   const surface = page.getByLabel("Complex widget surface");
   const canvas = surface.locator("canvas");

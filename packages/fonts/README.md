@@ -1,6 +1,6 @@
 # @chardesk/fonts
 
-Self-hosted assets and the default renderer font profile for CharDesk output. This package is optional: [`@chardesk/protocol`](https://www.npmjs.com/package/@chardesk/protocol) remains rendering-neutral.
+Core font capabilities for CharDesk Canvas: Symbols Nerd Font Mono, Noto Sans Symbols 2, monochrome Noto Emoji, capability routing, and the profile factory. Cell width remains owned by `@chardesk/protocol`.
 
 ## Install
 
@@ -8,16 +8,22 @@ Self-hosted assets and the default renderer font profile for CharDesk output. Th
 npm install @chardesk/fonts
 ```
 
-Load the faces once, then use the exported stacks when rendering protocol cells:
-
 ```ts
 import "@chardesk/fonts/fonts.css";
-import { CHARDESK_FONT_PROFILE } from "@chardesk/fonts";
+import {
+  CHARDESK_SYSTEM_FONT_PROFILE,
+  createCharDeskFontProfile,
+} from "@chardesk/fonts";
 
-await document.fonts.ready;
-context.font = `16px ${CHARDESK_FONT_PROFILE.families.text}`;
+const profile = createCharDeskFontProfile({
+  id: "product/display-v1",
+  display: { families: { regular: "'Product Latin', monospace" } },
+  cjk: { families: { regular: "'Product CJK', monospace" }, scaleX: 1.2 },
+});
 ```
 
-The `chardesk/default-v1` profile routes ordinary text through Maple Mono NF CN (regular and bold) and Noto Sans Symbols 2, and emoji presentation through monochrome Noto Emoji first. The source versions are exported in `CHARDESK_FONT_PROFILE` and recorded with checksums in `manifest.json`.
+`CHARDESK_SYSTEM_FONT_PROFILE` uses the platform monospace stack for display/CJK and the packaged core faces for `nerd`, `symbol`, and `emoji`. `createCharDeskFontProfile` appends the selected display/CJK families behind each core face, so characters missing from a subset font retain the active display fallback. A display package contributes only face and source metadata; it does not bundle the core fonts.
 
-Font files are distributed under the SIL Open Font License found beside each family in `assets/*/OFL.txt`. Package code is MIT licensed.
+The current optional compatibility display is [`@chardesk/font-maple`](../font-maple/README.md). Source versions and checksums are authoritative in `manifest.json`; candidate evaluation lives in the [font capability research card](../../exp/research/font-stack.md).
+
+Font assets retain their upstream licenses beside each family. Package code is MIT licensed.

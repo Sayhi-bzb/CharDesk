@@ -43,6 +43,7 @@
   },
   "dependencies": {
     "@chardesk/chargraph": "^0.1.0",
+    "@chardesk/font-maple": "^0.3.0",
     "@chardesk/protocol": "^0.3.0",
     "@chardesk/rendering": "^0.1.0"
   },

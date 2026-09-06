@@ -25,6 +25,7 @@ if (releaseManifest["."] !== version) {
 const packages = [
   { name: "@chardesk/cli", path: "packages/cli" },
   { name: "@chardesk/fonts", path: "packages/fonts" },
+  { name: "@chardesk/font-maple", path: "packages/font-maple" },
   { name: "@chardesk/protocol", path: "packages/protocol" },
 ];
 const lockfile = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));

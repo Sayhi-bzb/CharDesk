@@ -5,7 +5,7 @@ for (const dpr of [1, 2]) {
   test.describe(`strict Cell raster at DPR ${dpr}`, () => {
     test.use({ deviceScaleFactor: dpr });
     test("Tab decoration stays inside its background in both themes", async ({ page }) => {
-      await page.goto("/exp/web-tui/");
+      await page.goto("/exp/web-tui/#/__fixtures/all");
       await page.evaluate(() => document.fonts.ready);
       const canvas = page.locator('[data-cell-probe="complex"] canvas');
       const surface = page.locator('[data-cell-probe="complex"]');
@@ -43,7 +43,7 @@ for (const dpr of [1, 2]) {
 
 test("real wheel stays inside ScrollArea, including at both boundaries", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.evaluate(() => document.fonts.ready);
   const surface = page.locator('[data-cell-probe="core"]');
   const canvas = surface.locator("canvas");
@@ -65,7 +65,7 @@ test("real wheel stays inside ScrollArea, including at both boundaries", async (
 });
 
 test("editor consumes its full layout width and paints blank focused Cells", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const input = page.getByRole("textbox", { name: "File name", exact: true });
   const surface = page.locator('[data-cell-probe="editor"]');
   await input.fill("a".repeat(37));
@@ -75,9 +75,9 @@ test("editor consumes its full layout width and paints blank focused Cells", asy
   expect((await readCellProbe(surface)).text.split("\n")[2]).toBe(`│${"a".repeat(37)} │`);
   await input.fill("short");
   const cells = await surface.evaluate((node) => {
-    const probe = (node as HTMLElement & { __chardeskCellProbeV1: {
+    const probe = (node as HTMLElement & { __chardeskCellProbeV2: {
       cells: { x: number; y: number; style: { backgroundColor?: string }; ownerId: string | null }[];
-    } }).__chardeskCellProbeV1;
+    } }).__chardeskCellProbeV2;
     return probe.cells.filter(({ y }) => y >= 1 && y <= 3);
   });
   expect(cells).toHaveLength(120);

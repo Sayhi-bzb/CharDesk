@@ -1,4 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import {
+  CHARDESK_SYSTEM_FONT_PROFILE,
+  type CharDeskFontProfile,
+} from "@chardesk/fonts";
 import { createCharDeskRenderModel, resolveCharDeskCellVisual } from "./index.js";
 import {
   drawCharDeskCanvasCells,
@@ -7,6 +11,7 @@ import {
   loadCharDeskCanvasFonts,
   measureCharDeskCanvasDocument,
   prepareCharDeskCanvasSurface,
+  resolveCharDeskCanvasFontFace,
   resolveCharDeskCanvasCellVisual,
 } from "./canvas.js";
 
@@ -22,19 +27,33 @@ const createContext = (dpr = 1) => {
     getTransform: vi.fn(() => ({ a: dpr, b: 0, c: 0, d: dpr })),
     lineTo: vi.fn(),
     moveTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
     restore: vi.fn(),
     save: vi.fn(),
     setTransform: vi.fn(),
+    scale: vi.fn(),
     stroke: vi.fn(),
+    translate: vi.fn(),
     fillStyle: "",
     font: "",
     lineWidth: 1,
+    lineCap: "butt",
+    lineJoin: "miter",
     strokeStyle: "",
     textAlign: "start",
     textBaseline: "alphabetic",
   } as unknown as CanvasRenderingContext2D;
   return { context, operations };
 };
+
+const customFontProfile = (overrides: Partial<CharDeskFontProfile["capabilities"]> = {}): CharDeskFontProfile => ({
+  ...CHARDESK_SYSTEM_FONT_PROFILE,
+  id: "test/capabilities",
+  capabilities: {
+    ...CHARDESK_SYSTEM_FONT_PROFILE.capabilities,
+    ...overrides,
+  },
+});
 
 describe("CharDesk Canvas 2D renderer", () => {
   it("preserves inverse colors and decorations on geometric blocks", () => {
@@ -43,8 +62,9 @@ describe("CharDesk Canvas 2D renderer", () => {
     vi.mocked(context.fillRect).mockImplementation(() => { colors.push(context.fillStyle); });
     drawCharDeskCanvasCells(context, [{
       cell: resolveCharDeskCellVisual({ text: "█", color: "#112233", attrs: { inverse: true, bold: true, underline: true } }),
+      primitive: { kind: "fill", regions: [{ x: 0, y: 0, width: 1, height: 1 }] },
       x: 0, y: 0,
-      options: { blockGlyphs: "geometry", palette: { color: "#000000", background: "#ffffff" } },
+      options: { palette: { color: "#000000", background: "#ffffff" } },
     }]);
     expect(colors).toEqual(["#112233", "#ffffff"]);
     expect(context.fillRect).toHaveBeenLastCalledWith(0, 0, 9, 19);
@@ -55,15 +75,46 @@ describe("CharDesk Canvas 2D renderer", () => {
     const { context } = createContext();
     const fontResolver = vi.fn(() => "monospace");
     const entry = { cell: resolveCharDeskCellVisual({ text: "█" }), x: 0, y: 0 };
-    drawCharDeskCanvasCells(context, [{ ...entry, options: { blockGlyphs: "geometry", fontResolver, clipToCell: true } }]);
+    drawCharDeskCanvasCells(context, [{
+      ...entry,
+      primitive: { kind: "fill", regions: [{ x: 0, y: 0, width: 1, height: 1 }] },
+      options: { fontResolver, clipToCell: true },
+    }]);
     expect(context.fillRect).toHaveBeenCalledWith(0, 0, 9, 19);
     expect(context.fillText).not.toHaveBeenCalled();
     expect(fontResolver).not.toHaveBeenCalled();
     drawCharDeskCanvasCells(context, [entry]);
     expect(context.fillText).toHaveBeenCalledWith("█", 5, 10);
-    drawCharDeskCanvasCells(context, [{ ...entry, cell: resolveCharDeskCellVisual({ text: "A" }), options: { blockGlyphs: "geometry", fontResolver } }]);
+    drawCharDeskCanvasCells(context, [{ ...entry, cell: resolveCharDeskCellVisual({ text: "A" }), options: { fontResolver } }]);
     expect(fontResolver).toHaveBeenCalledOnce();
     expect(context.fillText).toHaveBeenLastCalledWith("A", 5, 10);
+  });
+  it("draws explicit Cell lines while leaving identical user text on the font path", () => {
+    const { context } = createContext();
+    const cell = resolveCharDeskCellVisual({ text: "│", color: "#112233" });
+    drawCharDeskCanvasCells(context, [{
+      cell,
+      primitive: { kind: "line", edges: 1 | 4, join: "square", weight: "single" },
+      x: 0,
+      y: 0,
+    }]);
+    expect(context.fillRect).toHaveBeenCalledTimes(2);
+    expect(context.fillText).not.toHaveBeenCalled();
+
+    drawCharDeskCanvasCells(context, [{ cell, x: 9, y: 0 }]);
+    expect(context.fillText).toHaveBeenCalledWith("│", 14, 10);
+  });
+  it("uses one connected path for rounded line corners", () => {
+    const { context } = createContext();
+    drawCharDeskCanvasCells(context, [{
+      cell: resolveCharDeskCellVisual({ text: "╭", color: "#112233" }),
+      primitive: { kind: "line", edges: 2 | 4, join: "rounded", weight: "single" },
+      x: 0,
+      y: 0,
+    }]);
+    expect(context.quadraticCurveTo).toHaveBeenCalledWith(4.5, 9.5, 4.5, 19);
+    expect(context.stroke).toHaveBeenCalledOnce();
+    expect(context.fillText).not.toHaveBeenCalled();
   });
   it("clips glyphs to their Cell allocation only when requested", () => {
     const { context } = createContext();
@@ -145,6 +196,50 @@ describe("CharDesk Canvas 2D renderer", () => {
     expect(context.font).toContain("Exact Shard");
   });
 
+  it("resolves capability faces without changing semantic render routes", () => {
+    const fontProfile = customFontProfile({
+      cjk: { families: { regular: "CJK Face" }, scaleX: 1.2 },
+    });
+
+    expect(resolveCharDeskCanvasFontFace({
+      grapheme: "中",
+      route: "text",
+      bold: false,
+      italic: false,
+      fontProfile,
+    })).toMatchObject({ capability: "cjk", family: "CJK Face", scaleX: 1.2 });
+  });
+
+  it("applies face metrics around the glyph without scaling Cell decorations", () => {
+    const { context } = createContext();
+    const fontProfile = customFontProfile({
+      nerd: {
+        families: { regular: "Nerd Symbols" },
+        fontSizeScale: 0.9,
+        scaleX: 0.6,
+        baselineShiftEm: 0.1,
+        weightPolicy: "regular",
+      },
+    });
+
+    drawCharDeskCanvasCells(context, [{
+      cell: resolveCharDeskCellVisual({
+        text: "\ue0b0",
+        attrs: { bold: true, underline: true },
+      }),
+      x: 0,
+      y: 0,
+      options: { fontProfile, clipToCell: true },
+    }]);
+
+    expect(context.font).toContain("13.5px Nerd Symbols");
+    expect(context.font).not.toContain("700");
+    expect(context.translate).toHaveBeenCalledWith(5, 11);
+    expect(context.scale).toHaveBeenCalledWith(0.6, 1);
+    expect(context.fillText).toHaveBeenCalledWith("\ue0b0", 0, 0);
+    expect(context.lineTo).toHaveBeenCalledWith(9, 16.5);
+  });
+
   it("draws all backgrounds before text and resolves inverse colors", () => {
     const { context, operations } = createContext();
     drawCharDeskCanvasCells(context, [{
@@ -181,6 +276,7 @@ describe("CharDesk Canvas 2D renderer", () => {
     }]);
 
     expect(context.fillText).toHaveBeenCalledWith("□", 9, 10);
+    expect(context.font).toContain("Noto Emoji");
   });
 
   it("measures and draws protocol cells on the shared 9 by 19 grid", () => {
@@ -242,6 +338,31 @@ describe("CharDesk Canvas 2D renderer", () => {
         emoji: false,
       });
       expect(load.mock.calls[1]?.[0]).toContain("Noto Emoji");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("loads the supplied capability face and honors its weight policy", async () => {
+    const load = vi.fn().mockResolvedValue([{}]);
+    vi.stubGlobal("document", {
+      fonts: { load, ready: Promise.resolve() },
+    });
+    const fontProfile = customFontProfile({
+      nerd: {
+        families: { regular: "Nerd Symbols" },
+        weightPolicy: "regular",
+      },
+    });
+
+    try {
+      await loadCharDeskCanvasFonts(
+        [{ grapheme: "\ue0b0", bold: true }],
+        { fontProfile }
+      );
+      expect(load).toHaveBeenCalledOnce();
+      expect(load.mock.calls[0]?.[0]).toContain("15px Nerd Symbols");
+      expect(load.mock.calls[0]?.[0]).not.toContain("700");
     } finally {
       vi.unstubAllGlobals();
     }

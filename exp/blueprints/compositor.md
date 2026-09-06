@@ -109,6 +109,7 @@ Portal 的 `sceneParentId` 指向 overlay root，`eventParentId` 保留声明处
 - Border 和 Padding 是父 Widget 保留空间；普通 content 与 descendants 只能 paint/hit 于 `contentClip`。需要越界的内容必须进入独立 Overlay/Portal layer。
 - Painter 对每个 Widget 固定按 `Surface → Chrome → Content → Decoration` 合成：状态/overlay 底色不能擦除 border，内容不能写出 `contentClip`，cursor/disclosure/tab underline 只能写入 `decorationBounds`，不能占用 border Cell。
 - Painter 的 Cell 写入使用 `over`：未指定背景时保留目标 Cell 背景，显式背景覆盖；文字、前景、属性和 owner 不继承目标值。每次重绘先清空 Buffer 中的重绘区域，再按 paint order 重建，不继承上一帧背景。
+- `Cell.text` 是复制、Range、Probe 与 LLM 的字符真值；组件生成的 border/thumb 可同时携带显式 `line`/`fill` primitive。Canvas 只用 primitive 替代前景字形绘制，不得按 Unicode 字符猜测结构；未标记的用户字符保持字体路径。
 - 宽字两格分别保存背景；覆盖任一半格清除完整旧字及 owner，但保留各格背景。Canvas 先绘制每个物理 Cell 的背景（包含 continuation），再绘制无背景字形。
 - Hit test 使用 `hitBounds ∩ outerClip` 与 `hitBehavior`；descendant 的 `outerClip` 已受祖先 `contentClip` 约束。semantic bounds 与 traversal 由独立 [SemanticSnapshot](semantics.md) 所有。
 - Nested scroll 依祖先顺序累计 translation、outerClip 和 contentClip。Scroll 只触发 geometry，不重新运行 LayoutEngine。

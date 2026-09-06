@@ -20,6 +20,7 @@ import {
   type CharDeskCanvasFontAvailability,
 } from "@chardesk/rendering/canvas";
 import { sanitizeCharDeskHref } from "./link.js";
+import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
 import { calculateCharDeskFitZoom } from "./fit.js";
 import {
   createCharDeskViewerIcon,
@@ -687,7 +688,7 @@ export class CharDeskViewerElement extends HTMLElementBase {
       grapheme: cell.text,
       bold: !!cell.attrs?.bold,
       italic: !!cell.attrs?.italic,
-    }))).then((availability) => {
+    })), { fontProfile: MAPLE_FONT_PROFILE }).then((availability) => {
       if (renderVersion !== this.#renderVersion) return;
       this.#fontAvailability = availability;
       this.#documentElement.toggleAttribute(
@@ -721,6 +722,7 @@ export class CharDeskViewerElement extends HTMLElementBase {
       palette: { color, background },
       fontAvailability: this.#fontAvailability,
       zoom: this.#zoom,
+      fontProfile: MAPLE_FONT_PROFILE,
     });
   }
 

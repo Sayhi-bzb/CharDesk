@@ -67,7 +67,6 @@ describe("metrics", () => {
       expect(resolveRenderFontRoute("1️⃣")).toBe("emoji");
       expect(resolveRenderFontRoute("👩🏽‍💻")).toBe("emoji");
       expect(getRenderFontFamily("text")).toContain("Maple Mono NF CN");
-      expect(getRenderFontFamily("text")).toContain("Noto Sans Symbols 2");
       expect(getRenderFontFamily("emoji")).toMatch(/^'Noto Emoji'/);
     });
 
@@ -81,11 +80,13 @@ describe("metrics", () => {
 
       try {
         await loadRenderFonts(["A", "A", "⟹", "👩🏽‍💻"]);
-        expect(load).toHaveBeenCalledTimes(2);
+        expect(load).toHaveBeenCalledTimes(3);
         expect(load.mock.calls[0][0]).toContain("Maple Mono NF CN");
-        expect(load.mock.calls[0][1]).toBe("A⟹");
-        expect(load.mock.calls[1][0]).toContain("Noto Emoji");
-        expect(load.mock.calls[1][1]).toBe("👩🏽‍💻");
+        expect(load.mock.calls[0][1]).toBe("A");
+        expect(load.mock.calls[1][0]).toContain("Noto Sans Symbols 2");
+        expect(load.mock.calls[1][1]).toBe("⟹");
+        expect(load.mock.calls[2][0]).toContain("Noto Emoji");
+        expect(load.mock.calls[2][1]).toBe("👩🏽‍💻");
       } finally {
         Object.defineProperty(document, "fonts", {
           configurable: true,
@@ -152,6 +153,7 @@ describe("metrics", () => {
       let font = "";
       return {
         save: vi.fn(),
+        scale: vi.fn(),
         restore: vi.fn(),
         fillRect: vi.fn(),
         fillText: vi.fn(),
@@ -159,6 +161,7 @@ describe("metrics", () => {
         moveTo: vi.fn(),
         lineTo: vi.fn(),
         stroke: vi.fn(),
+        translate: vi.fn(),
         set fillStyle(_value: string) {},
         get font() {
           return font;

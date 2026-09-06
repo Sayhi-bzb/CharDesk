@@ -4,14 +4,12 @@ import { readCellProbe, readCellText } from "./helpers/cell-probe";
 test("Web TUI shares keyboard, pointer, scroll, and semantic state", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
-  await expect(page.getByRole("heading", { name: "Cell UI Gallery" })).toBeVisible();
-  await expect(page.locator(".gallery-card")).toHaveCount(9);
-  await expect(page.locator("canvas")).toHaveCount(9);
-  await expect(page.locator("[data-cell-probe]")).toHaveCount(9);
-  await expect(page.getByRole("button", { name: "Copy" })).toHaveCount(9);
+  await expect(page.getByRole("heading", { name: "Cell UI Fixtures" })).toBeVisible();
+  await expect(page.locator("canvas")).toHaveCount(5);
+  await expect(page.locator("[data-cell-probe]")).toHaveCount(5);
   await expect(page.locator('output[role="status"]')).toHaveCount(0);
   await expect(page.getByText(/^Border:/)).toHaveCount(0);
   await expect(page.getByText("No Cell range selected")).toHaveCount(0);
@@ -31,7 +29,7 @@ test("Web TUI shares keyboard, pointer, scroll, and semantic state", async ({ pa
   await expect.poll(() => readCellText(surface)).toContain("Open file");
   const initialProbe = await readCellProbe(surface);
   expect(initialProbe).toMatchObject({
-    schemaVersion: 1,
+    schemaVersion: 2,
     probeId: "core",
     viewport: { width: 32, height: 10 },
     focusedId: "core-open",

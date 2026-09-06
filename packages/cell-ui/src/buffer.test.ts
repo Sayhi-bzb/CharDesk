@@ -36,3 +36,19 @@ it("wide glyphs preserve each physical background and never leave orphan glyphs"
     }
   }
 });
+
+it("replaces, clones, and clears presentation primitives atomically with text", () => {
+  const buffer = new CellBuffer({ width: 1, height: 1 });
+  const primitive = { kind: "line", edges: 1 | 4, join: "square", weight: "single" } as const;
+  buffer.writeGrapheme(0, 0, "│", "border", { backgroundColor: "red" }, undefined, "over", primitive);
+  expect(buffer.clone().get(0, 0)).toMatchObject({ text: "│", primitive });
+
+  buffer.writeGrapheme(0, 0, "A", "text", {}, undefined, "over");
+  expect(buffer.get(0, 0)).toMatchObject({ text: "A", style: { backgroundColor: "red" } });
+  expect(buffer.get(0, 0)?.primitive).toBeUndefined();
+
+  buffer.writeGrapheme(0, 0, "│", "border", {}, undefined, "replace", primitive);
+  buffer.clear({ x: 0, y: 0, width: 1, height: 1 });
+  expect(buffer.get(0, 0)).toMatchObject({ text: " ", ownerId: null });
+  expect(buffer.get(0, 0)?.primitive).toBeUndefined();
+});

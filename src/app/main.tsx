@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "@chardesk/fonts/fonts.css";
+import "@chardesk/font-maple/fonts.css";
 import "./index.css";
 import { captureOnboardingEntryState } from "@/widgets/onboarding/onboarding-model";
 import { ModuleLoadFailure, ModuleLoadingScreen } from "./StartupScreens";

@@ -95,6 +95,11 @@ jobs:
           else
             echo "fonts_published=false" >> "$GITHUB_OUTPUT"
           fi
+          if npm view "@chardesk/font-maple@$version" version >/dev/null 2>&1; then
+            echo "font_maple_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "font_maple_published=false" >> "$GITHUB_OUTPUT"
+          fi
           if npm view "@chardesk/cli@$version" version >/dev/null 2>&1; then
             echo "cli_published=true" >> "$GITHUB_OUTPUT"
           else
@@ -109,6 +114,7 @@ jobs:
           mkdir release-assets
           npm pack --workspace @chardesk/protocol --pack-destination release-assets
           npm pack --workspace @chardesk/fonts --pack-destination release-assets
+          npm pack --workspace @chardesk/font-maple --pack-destination release-assets
           npm pack --workspace @chardesk/cli --pack-destination release-assets
 
       - name: Smoke test packed packages
@@ -116,6 +122,7 @@ jobs:
           node scripts/release/smoke-packed-packages.mjs
           release-assets/chardesk-protocol-${RELEASE_TAG#v}.tgz
           release-assets/chardesk-fonts-${RELEASE_TAG#v}.tgz
+          release-assets/chardesk-font-maple-${RELEASE_TAG#v}.tgz
           release-assets/chardesk-cli-${RELEASE_TAG#v}.tgz
 
       - name: Publish protocol to npm
@@ -125,6 +132,10 @@ jobs:
       - name: Publish fonts to npm
         if: steps.package-status.outputs.fonts_published != 'true'
         run: npm publish --workspace @chardesk/fonts --access public --provenance
+
+      - name: Publish Maple font pack to npm
+        if: steps.package-status.outputs.font_maple_published != 'true'
+        run: npm publish --workspace @chardesk/font-maple --access public --provenance
 
       - name: Publish CLI to npm
         if: steps.package-status.outputs.cli_published != 'true'

@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@chardesk/fonts": "^0.3.0",
+    "@chardesk/font-maple": "^0.3.0",
     "@napi-rs/canvas": "^1.0.8",
     "d3-scale": "^4.0.2",
     "elkjs": "^0.11.1",

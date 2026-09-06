@@ -8,6 +8,7 @@ import {
   type CharDeskCanvasMetrics,
   type CharDeskCanvasCellDrawEntry,
   type CharDeskCanvasPalette,
+  type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
 import { resolveCharDeskFontRoute } from "@chardesk/rendering";
 import {
@@ -291,6 +292,7 @@ const presentFrame = (
   palette: CharDeskCanvasPalette,
   cellRange: CellRangeSnapshot | null,
   theme: CellUiTheme,
+  fontProfile?: CharDeskFontProfile,
   dirtyRegions?: readonly CellRect[]
 ): void => {
   const context = canvas.getContext("2d");
@@ -355,9 +357,15 @@ const presentFrame = (
               }
             : {}),
         },
+        ...(cell.primitive ? { primitive: cell.primitive } : {}),
         x: x * metrics.cellWidth,
         y: y * metrics.cellHeight,
-        options: { metrics, palette, clipToCell: true, blockGlyphs: "geometry" },
+        options: {
+          metrics,
+          palette,
+          clipToCell: true,
+          ...(fontProfile ? { fontProfile } : {}),
+        },
         drawBackground: false,
       });
     }
@@ -508,6 +516,7 @@ export type CellSurfaceProps = Readonly<{
   focusedId?: WidgetId | null;
   theme?: Partial<CellUiTheme>;
   metrics?: CharDeskCanvasMetrics;
+  fontProfile?: CharDeskFontProfile;
   palette?: CharDeskCanvasPalette;
   label?: string;
   className?: string;
@@ -517,7 +526,7 @@ export type CellSurfaceProps = Readonly<{
   onCellRangeCommand?: (command: CellRangeCommand) => void;
 }>;
 
-export const CELL_SURFACE_PROBE_PROPERTY = "__chardeskCellProbeV1" as const;
+export const CELL_SURFACE_PROBE_PROPERTY = "__chardeskCellProbeV2" as const;
 
 type CellProbeHost = HTMLElement & {
   [CELL_SURFACE_PROBE_PROPERTY]?: CellProbeSnapshot;
@@ -545,6 +554,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     focusedId = null,
     theme,
     metrics = DEFAULT_CHARDESK_CANVAS_METRICS,
+    fontProfile,
     palette: paletteOverride,
     label = "Cell interface",
     className,
@@ -573,7 +583,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const runtimeRef = useRef<CellUiRuntime | null>(null);
   const frameRef = useRef<FrameSnapshot | null>(null);
   const presentedRevisionRef = useRef<number | null>(null);
-  const presentationRef = useRef({ metrics, palette });
+  const presentationRef = useRef({ metrics, palette, fontProfile });
   const focusRef = useRef(new FocusManager());
   const eventsRef = useRef(new EventManager());
   const gesturesRef = useRef(new GestureManager());
@@ -682,7 +692,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const previousRevision = presentedRevisionRef.current;
     const incremental = previousRevision !== null && frame.revision > previousRevision
       && sameWidgetValue(presentationRef.current.metrics, metrics)
-      && sameWidgetValue(presentationRef.current.palette, palette);
+      && sameWidgetValue(presentationRef.current.palette, palette)
+      && presentationRef.current.fontProfile === fontProfile;
     presentFrame(
       canvas,
       frame,
@@ -690,11 +701,12 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       palette,
       cellRange,
       resolvedTheme,
+      fontProfile,
       incremental ? frame.invalidation.dirtyRegions : undefined
     );
     presentedRevisionRef.current = frame.revision;
-    presentationRef.current = { metrics, palette };
-  }, [cellRange, frame, metrics, palette, resolvedTheme]);
+    presentationRef.current = { metrics, palette, fontProfile };
+  }, [cellRange, fontProfile, frame, metrics, palette, resolvedTheme]);
 
   const fontPresentRef = useRef<() => void>(() => undefined);
   const scheduleFontPresentRef = useRef<() => void>(() => undefined);
@@ -703,9 +715,14 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     fontPresentRef.current = () => {
       const canvas = canvasRef.current;
       const current = frameRef.current;
-      if (canvas && current) presentFrame(canvas, current, metrics, palette, cellRange, resolvedTheme);
+      if (canvas && current) {
+        presentFrame(canvas, current, metrics, palette, cellRange, resolvedTheme, fontProfile);
+      }
     };
-  }, [metrics, palette, cellRange, resolvedTheme]);
+  }, [metrics, palette, cellRange, resolvedTheme, fontProfile]);
+  useEffect(() => {
+    requestedFontsRef.current.clear();
+  }, [fontProfile]);
   useEffect(() => {
     if (!frame || !document.fonts) return;
     const samples: { grapheme: string; bold: boolean }[] = [];
@@ -722,10 +739,13 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     }
     if (!samples.length) return;
     // Explicit loads also cover engines that omit FontFaceSet loading events.
-    void loadCharDeskCanvasFonts(samples).then(() => {
+    void loadCharDeskCanvasFonts(samples, {
+      metrics,
+      ...(fontProfile ? { fontProfile } : {}),
+    }).then(() => {
       scheduleFontPresentRef.current();
     });
-  }, [frame]);
+  }, [fontProfile, frame, metrics]);
 
   useEffect(() => {
     const fonts = document.fonts;
@@ -764,10 +784,12 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !frame || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => presentFrame(canvas, frame, metrics, palette, cellRange, resolvedTheme));
+    const observer = new ResizeObserver(() => {
+      presentFrame(canvas, frame, metrics, palette, cellRange, resolvedTheme, fontProfile);
+    });
     observer.observe(canvas);
     return () => observer.disconnect();
-  }, [cellRange, frame, metrics, palette, resolvedTheme]);
+  }, [cellRange, fontProfile, frame, metrics, palette, resolvedTheme]);
 
   useEffect(() => {
     if (!frame || !cellRange || !rangeEditable) return;

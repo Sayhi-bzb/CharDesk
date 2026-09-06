@@ -1,5 +1,7 @@
 export type WidgetId = string;
 
+import type { CharDeskCellPrimitive } from "@chardesk/rendering";
+
 export type CellPoint = Readonly<{ x: number; y: number }>;
 export type CellSize = Readonly<{ width: number; height: number }>;
 export type CellRect = Readonly<{
@@ -194,6 +196,7 @@ export type FrameInvalidation = Readonly<{
 
 export type Cell = Readonly<{
   text: string;
+  primitive?: CharDeskCellPrimitive;
   width: 1 | 2;
   continuation: boolean;
   ownerId: WidgetId | null;

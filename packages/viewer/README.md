@@ -5,13 +5,14 @@ Canvas 2D viewer for CharDesk Unicode and ANSI text. It keeps the original sourc
 ## Install
 
 ```sh
-npm install @chardesk/viewer @chardesk/fonts
+npm install @chardesk/viewer @chardesk/fonts @chardesk/font-maple
 ```
 
 Load the CharDesk font profile once in the host page, then register the custom element:
 
 ```ts
 import "@chardesk/fonts/fonts.css";
+import "@chardesk/font-maple/fonts.css";
 import "@chardesk/viewer/register";
 ```
 

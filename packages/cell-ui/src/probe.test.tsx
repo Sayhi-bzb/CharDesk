@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  Box,
   CellBuffer,
   List,
   ListItem,
@@ -56,7 +57,7 @@ describe("Cell probe", () => {
 
     const snapshot = pilot.probe({ x: 0, y: 0, width: 12, height: 1 });
     expect(snapshot).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       probeId: null,
       region: { x: 0, y: 0, width: 12, height: 1 },
       viewport: { width: 12, height: 3 },
@@ -67,7 +68,7 @@ describe("Cell probe", () => {
     expect(snapshot.cells.filter((cell) => cell.continuation)).toHaveLength(2);
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
     expect(formatCellProbe(snapshot, { header: true })).toBe(
-      "cell-ui/probe@1  anonymous  12×1  focus=open\nOpen 世界"
+      "cell-ui/probe@2  anonymous  12×1  focus=open\nOpen 世界"
     );
 
     expect(pilot.inspect({ x: 0, y: 0 })).toMatchObject({
@@ -95,6 +96,18 @@ describe("Cell probe", () => {
       region: { x: 2, y: 1, width: 2, height: 1 },
       text: "",
     });
+    pilot.dispose();
+  });
+
+  it("reports presentation primitives without changing copied text", () => {
+    const pilot = createTestPilot({
+      viewport: { width: 4, height: 3 },
+      render: () => <Root><Box id="box" style={{ border: true, width: 4, height: 3 }} /></Root>,
+    });
+    const snapshot = pilot.probe();
+    expect(snapshot.text).toBe("┌──┐\n│  │\n└──┘");
+    expect(snapshot.cells[0]?.primitive).toMatchObject({ kind: "line", edges: 2 | 4 });
+    expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
     pilot.dispose();
   });
 });

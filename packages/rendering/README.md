@@ -27,17 +27,16 @@ Cell draw options accept `clipToCell: true` to constrain glyphs and text decorat
 to their one- or two-cell pixel allocation. It is opt-in; other consumers keep
 the existing unrestricted glyph rendering.
 
-`blockGlyphs: "geometry"` paints solid Unicode blocks (`U+2580–U+2590`,
-`U+2594–U+259F`) as disjoint Cell-relative rectangles, bypassing fonts. The default
-is `"font"`; shades, box drawing, ordinary text and `▬` always retain the font path.
-Foreground overrides, inverse colors, alpha and text decorations use the same
-pipeline. Bold does not expand geometric blocks.
+`CharDeskCanvasCellDrawEntry.primitive` is an explicit, optional presentation
+projection. `line` stores Cell-edge connectivity and square/rounded joins;
+`fill` stores normalized Cell-relative rectangles. A primitive bypasses fonts,
+but the entry's `cell.text` remains the copy/snapshot value. Unmarked box and
+block characters always retain the font path.
 
-Geometry mode aligns background, clip and block edges to device pixels for
-axis-aligned transforms. `alignCharDeskCanvasRect(bounds, transform)` provides
-the same edge alignment for host dirty-region clears. Tiny regions may collapse
-to zero pixels. Rotated/sheared transforms retain unsnapped geometric rendering;
-seam-free rasterization is only guaranteed for axis-aligned transforms.
+Background, clip, line and fill edges align to device pixels for axis-aligned
+transforms. `alignCharDeskCanvasRect(bounds, transform)` provides the same edge
+alignment for host dirty-region clears. Rotated/sheared transforms remain
+unsnapped; seam-free rasterization is guaranteed only for axis-aligned transforms.
 
 `@chardesk/protocol` owns parsing and Unicode cell layout. Hosts retain
 interaction, viewport, and application state.
@@ -46,3 +45,10 @@ Headless hosts that register subset fonts under unique family names may pass
 `fontFamilies` in document or cell draw options. It selects regular and bold
 stacks independently for the text and emoji routes without changing browser
 font loading defaults.
+
+`fontProfile` is the capability-level path for modular stacks. The same Profile
+drives face selection and `loadCharDeskCanvasFonts`; its `fontSizeScale`,
+`scaleX`, `baselineShiftEm`, and `weightPolicy` calibrate glyphs without changing
+protocol Cell allocation. `fontResolver` and `fontFamilies` remain family-only
+host overrides; Profile metrics still apply. Explicit Cell primitives bypass
+font resolution.

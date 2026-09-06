@@ -15,7 +15,7 @@ describe("CharDesk rendering core", () => {
     expect(resolveCharDeskFontRoute("🇨🇳")).toBe("emoji");
     expect(resolveCharDeskFontRoute("1️⃣")).toBe("emoji");
     expect(resolveCharDeskFontRoute("👩🏽‍💻")).toBe("emoji");
-    expect(getCharDeskFontFamilyForGrapheme("A")).toContain("Maple Mono NF CN");
+    expect(getCharDeskFontFamilyForGrapheme("A")).toContain("ui-monospace");
     expect(getCharDeskFontFamilyForGrapheme("🙂")).toMatch(/^'Noto Emoji'/);
   });
 

@@ -1,7 +1,7 @@
 import type { Locator } from "@playwright/test";
 
 export type BrowserCellProbe = Readonly<{
-  schemaVersion: 1;
+  schemaVersion: 2;
   probeId: string | null;
   revision: number;
   region: Readonly<{ x: number; y: number; width: number; height: number }>;
@@ -11,6 +11,13 @@ export type BrowserCellProbe = Readonly<{
     x: number;
     y: number;
     text: string;
+    primitive?: Readonly<{
+      kind: "line" | "fill";
+      edges?: number;
+      join?: "square" | "rounded";
+      weight?: "single";
+      regions?: readonly Readonly<{ x: number; y: number; width: number; height: number }>[];
+    }>;
     width: 1 | 2;
     continuation: boolean;
     ownerId: string | null;
@@ -19,7 +26,7 @@ export type BrowserCellProbe = Readonly<{
   focusedId: string | null;
 }>;
 
-const PROBE_PROPERTY = "__chardeskCellProbeV1";
+const PROBE_PROPERTY = "__chardeskCellProbeV2";
 
 export const readCellProbe = async (surface: Locator): Promise<BrowserCellProbe> => {
   const snapshot = await surface.evaluate((element, property) =>

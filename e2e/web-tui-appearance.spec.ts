@@ -3,7 +3,7 @@ import { copyCellRange, readCellProbe } from "./helpers/cell-probe";
 
 test("theme icon toggles, persists, and preserves Cell state", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const editor = page.locator('[data-cell-probe="editor"]');
   const input = page.getByRole("textbox", { name: "File name" });
   await input.fill("hello世界");
@@ -36,7 +36,7 @@ for (const storage of ["invalid", "unavailable"] as const) {
       else Object.defineProperty(window, "localStorage", { get: () => { throw new DOMException("Unavailable", "SecurityError"); } });
     }, storage);
     await page.emulateMedia({ colorScheme: "dark" });
-    await page.goto("/exp/web-tui/");
+    await page.goto("/exp/web-tui/#/__fixtures/all");
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
     await page.getByRole("button", { name: "Light" }).click();
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "light");
@@ -45,7 +45,7 @@ for (const storage of ["invalid", "unavailable"] as const) {
 
 test("system appearance preserves editing and Cell projections", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const editor = page.locator('[data-cell-probe="editor"]');
   const input = page.getByRole("textbox", { name: "File name" });
   await input.fill("hello世界");
@@ -117,7 +117,7 @@ test("late fonts repaint Canvas without waiting for an interaction", async ({ pa
     await gate;
     await route.continue();
   });
-  await page.goto("/exp/web-tui/", { waitUntil: "domcontentloaded" });
+  await page.goto("/exp/web-tui/#/__fixtures/all", { waitUntil: "domcontentloaded" });
   const canvas = page.locator('[data-cell-probe="core"] canvas');
   await expect(canvas).toBeVisible();
   const fallback = await canvas.evaluate((node: HTMLCanvasElement) => node.toDataURL());
@@ -151,8 +151,8 @@ test("snapshot copy feedback expires and a failed copy can be retried", async ({
       },
     } });
   });
-  await page.goto("/exp/web-tui/");
-  const section = page.locator("#core");
+  await page.goto("/exp/web-tui/#/components/text");
+  const section = page.locator(".docs-section").filter({ has: page.getByRole("heading", { name: "Preview" }) });
   const button = section.locator("[data-copy-state]");
   await button.evaluate((element: HTMLButtonElement) => { element.click(); element.click(); });
   await expect(button).toHaveAttribute("data-copy-state", "error");

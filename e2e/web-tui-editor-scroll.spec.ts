@@ -3,7 +3,7 @@ import { readCellProbe } from "./helpers/cell-probe";
 
 test("TextArea shares draggable rails without stealing selection or scrolling the page", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="editor"]');
   const editor = page.getByRole("textbox", { name: "Document", exact: true });
   const value = Array.from({ length: 20 }, (_, index) => `${index}: ${"x".repeat(80)}`).join("\n");

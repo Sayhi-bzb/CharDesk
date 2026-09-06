@@ -1,7 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 
 test("Palette text retains its surface background in both themes", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="overlay"]');
   const canvas = surface.locator("canvas");
   for (const theme of ["light", "dark"] as const) {
@@ -17,8 +17,8 @@ test("Palette text retains its surface background in both themes", async ({ page
     });
     const result = await surface.evaluate((element, scheme) => {
       const probe = (element as HTMLElement & {
-        __chardeskCellProbeV1: { cells: { x: number; y: number; ownerId: string | null; style: { backgroundColor?: string } }[] };
-      }).__chardeskCellProbeV1;
+        __chardeskCellProbeV2: { cells: { x: number; y: number; ownerId: string | null; style: { backgroundColor?: string } }[] };
+      }).__chardeskCellProbeV2;
       const cells = probe.cells.filter((cell) => cell.ownerId === "palette-title" || cell.ownerId === "palette-hint");
       const target = element.querySelector("canvas")!;
       const ctx = target.getContext("2d")!;
@@ -65,7 +65,7 @@ const clickCell = async (canvas: Locator, x: number, y: number) => {
 };
 
 test("blank clicks and external blur cannot retain Palette pointer capture", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="overlay"]');
   const canvas = surface.locator("canvas");
   const dialog = surface.getByRole("dialog", { name: "Command palette" });
@@ -88,7 +88,7 @@ test("blank clicks and external blur cannot retain Palette pointer capture", asy
 test("Command Palette owns its layer, focus scope, dismissal, and semantic actions", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
 

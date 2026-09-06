@@ -6,7 +6,7 @@ for (const dpr of [1, 1.25, 2]) {
     test.use({ deviceScaleFactor: dpr });
     test("sub-cell drag produces half-block snapshots and continuous pixels", async ({ page }) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
-      await page.goto("/exp/web-tui/");
+      await page.goto("/exp/web-tui/#/__fixtures/all");
       const surface = page.locator('[data-cell-probe="core"]');
       const canvas = surface.locator("canvas");
       await canvas.scrollIntoViewIfNeeded();

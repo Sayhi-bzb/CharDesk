@@ -145,7 +145,16 @@ export class TestPilot {
       for (let x = left; x < right; x += 1) {
         const cell = this.#frame.buffer.get(x, y);
         if (!cell || cell.continuation || cell.ownerId === null) continue;
-        result.writeGrapheme(x - left, y - top, cell.text, cell.ownerId, cell.style);
+        result.writeGrapheme(
+          x - left,
+          y - top,
+          cell.text,
+          cell.ownerId,
+          cell.style,
+          undefined,
+          "replace",
+          cell.primitive
+        );
       }
     }
     return result;

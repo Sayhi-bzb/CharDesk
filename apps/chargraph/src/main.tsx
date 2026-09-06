@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import "./index.css";
 import "@chardesk/fonts/fonts.css";
+import "@chardesk/font-maple/fonts.css";
 
 import {
   StrictMode,

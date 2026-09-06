@@ -59,8 +59,13 @@ export const parseCharDeskFontFaces = (
 
 const loadFaces = () => {
   facesPromise ??= (async () => {
-    const cssPath = fileURLToPath(import.meta.resolve("@chardesk/fonts/fonts.css"));
-    return parseCharDeskFontFaces(await readFile(cssPath, "utf8"), cssPath);
+    const cssPaths = [
+      fileURLToPath(import.meta.resolve("@chardesk/fonts/fonts.css")),
+      fileURLToPath(import.meta.resolve("@chardesk/font-maple/fonts.css")),
+    ];
+    return (await Promise.all(cssPaths.map(async (cssPath) =>
+      parseCharDeskFontFaces(await readFile(cssPath, "utf8"), cssPath)
+    ))).flat();
   })();
   return facesPromise;
 };

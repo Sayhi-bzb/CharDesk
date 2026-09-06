@@ -26,6 +26,10 @@ describe("Vite workspace aliases", () => {
       aliases,
       "@chardesk/fonts/fonts.css"
     );
+    const mapleStylesheet = findAlias(
+      aliases,
+      "@chardesk/font-maple/fonts.css"
+    );
 
     expect(fontStylesheet).toMatchObject({
       replacement: path.resolve(import.meta.dirname, "../packages/fonts/fonts.css"),
@@ -40,6 +44,9 @@ describe("Vite workspace aliases", () => {
           alias.find.test("@chardesk/fonts")
       )
     );
+    expect(mapleStylesheet).toMatchObject({
+      replacement: path.resolve(import.meta.dirname, "../packages/font-maple/fonts.css"),
+    });
   });
 
   it.each([

@@ -12,6 +12,7 @@
   "dependencies": {
     "@chardesk/chargraph": "*",
     "@chardesk/fonts": "*",
+    "@chardesk/font-maple": "*",
     "@chardesk/ui": "*",
     "@chardesk/viewer": "*",
     "lucide-react": "^1.31.0",

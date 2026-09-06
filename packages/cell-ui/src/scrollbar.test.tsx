@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { thumbAxis, thumbCellSpan, thumbGlyph } from "./scrollbar.js";
+import { thumbAxis, thumbCellSpan, thumbGlyph, thumbPrimitive } from "./scrollbar.js";
 import { CellUiRuntime, Root, Box, ScrollArea, createTestPilot } from "./index.js";
 import { gestureCandidatesForFrame } from "./pointer.js";
 import { getEventPath } from "./scene.js";
@@ -23,6 +23,11 @@ it("half-Cell geometry is monotonic, aligned at endpoints, and retains exact cov
   const thumb = { start: 1, length: 4 };
   expect([0, 1, 2].map((cell) => thumbGlyph(thumb, cell, false))).toEqual(["▄", "█", "▀"]);
   expect([0, 1, 2].map((cell) => thumbGlyph(thumb, cell, true))).toEqual(["▐", "█", "▌"]);
+  expect([0, 1, 2].map((cell) => thumbPrimitive(thumb, cell, false))).toEqual([
+    { kind: "fill", regions: [{ x: 0, y: 0.5, width: 1, height: 0.5 }] },
+    { kind: "fill", regions: [{ x: 0, y: 0, width: 1, height: 1 }] },
+    { kind: "fill", regions: [{ x: 0, y: 0, width: 1, height: 0.5 }] },
+  ]);
 });
 
 it("half-Cell thumb movement repaints exactly like a fresh frame", () => {

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
 
 test("CSS token inheritance, aliases, local overrides and fallback resolve without leaking DOM", async ({ page }) => {
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const result = await page.evaluate(async () => {
     const path = "/packages/cell-ui/src/browser-theme.ts";
     const { readCellCssTheme } = await import(path);
@@ -35,7 +35,7 @@ test("CSS token inheritance, aliases, local overrides and fallback resolve witho
 
 test("root token updates reach DOM and Canvas on theme revision without losing state", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="overlay"]');
   await surface.focus();
   await page.keyboard.press("Enter");
@@ -70,7 +70,7 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
 
 test("caret and rectangle overlay consume theme tokens in actual pixels", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
-  await page.goto("/exp/web-tui/");
+  await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.evaluate(() => {
     document.documentElement.style.setProperty("--cell-caret", "rgb(255, 0, 0)");
     document.documentElement.style.setProperty("--cell-range-selection", "rgb(0, 255, 0)");

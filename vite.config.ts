@@ -138,6 +138,14 @@ export default defineConfig({
         replacement: path.resolve(import.meta.dirname, "./packages/ui/src/index.ts"),
       },
       {
+        find: /^@chardesk\/font-maple\/fonts\.css$/,
+        replacement: path.resolve(import.meta.dirname, "./packages/font-maple/fonts.css"),
+      },
+      {
+        find: /^@chardesk\/font-maple$/,
+        replacement: path.resolve(import.meta.dirname, "./packages/font-maple/src/index.ts"),
+      },
+      {
         find: /^@chardesk\/fonts\/fonts\.css$/,
         replacement: path.resolve(import.meta.dirname, "./packages/fonts/fonts.css"),
       },

@@ -14,7 +14,7 @@ import type {
 import type { CellTextLayoutSnapshot } from "./text.js";
 import { DEFAULT_CELL_UI_THEME, resolveCellStateStyle, resolveCellTextStyle, type CellUiTheme } from "./theme.js";
 import { intersectCellRects } from "./scene.js";
-import { thumbGlyph } from "./scrollbar.js";
+import { thumbGlyph, thumbPrimitive } from "./scrollbar.js";
 import { paintBorder } from "./border.js";
 
 const interactiveKinds = new Set<WidgetNode["kind"]>([
@@ -108,27 +108,31 @@ const paintScrollbars = (
   }
   if (metrics.horizontalThumb && metrics.horizontalThumbAxis && metrics.horizontalTrack) {
     for (let offset = 0; offset < metrics.horizontalThumb.width; offset += 1) {
+      const cell = metrics.horizontalThumb.x + offset - metrics.horizontalTrack.x;
       buffer.writeGrapheme(
         metrics.horizontalThumb.x + offset,
         metrics.horizontalThumb.y,
-        thumbGlyph(metrics.horizontalThumbAxis, metrics.horizontalThumb.x + offset - metrics.horizontalTrack.x, true),
+        thumbGlyph(metrics.horizontalThumbAxis, cell, true),
         node.id,
         theme.scrollThumbStyle,
         clip,
-        "over"
+        "over",
+        thumbPrimitive(metrics.horizontalThumbAxis, cell, true)
       );
     }
   }
   if (metrics.verticalThumb && metrics.verticalThumbAxis && metrics.verticalTrack) {
     for (let offset = 0; offset < metrics.verticalThumb.height; offset += 1) {
+      const cell = metrics.verticalThumb.y + offset - metrics.verticalTrack.y;
       buffer.writeGrapheme(
         metrics.verticalThumb.x,
         metrics.verticalThumb.y + offset,
-        thumbGlyph(metrics.verticalThumbAxis, metrics.verticalThumb.y + offset - metrics.verticalTrack.y, false),
+        thumbGlyph(metrics.verticalThumbAxis, cell, false),
         node.id,
         theme.scrollThumbStyle,
         clip,
-        "over"
+        "over",
+        thumbPrimitive(metrics.verticalThumbAxis, cell, false)
       );
     }
   }

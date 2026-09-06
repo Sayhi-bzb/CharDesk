@@ -1,3 +1,4 @@
+import type { CharDeskCellPrimitive } from "@chardesk/rendering";
 import type { HalfCellThumb } from "./types.js";
 
 export const thumbAxis = (track: number, visible: number, content: number, offset: number): HalfCellThumb => {
@@ -20,6 +21,21 @@ export const thumbGlyph = (thumb: HalfCellThumb, cell: number, horizontal: boole
   if (end <= start) return " ";
   if (end - start === 2) return "█";
   return start === cell * 2 ? (horizontal ? "▌" : "▀") : (horizontal ? "▐" : "▄");
+};
+
+export const thumbPrimitive = (
+  thumb: HalfCellThumb,
+  cell: number,
+  horizontal: boolean
+): CharDeskCellPrimitive => {
+  const start = Math.max(cell * 2, thumb.start) - cell * 2;
+  const end = Math.min(cell * 2 + 2, thumb.start + thumb.length) - cell * 2;
+  return {
+    kind: "fill",
+    regions: horizontal
+      ? [{ x: start / 2, y: 0, width: Math.max(0, end - start) / 2, height: 1 }]
+      : [{ x: 0, y: start / 2, width: 1, height: Math.max(0, end - start) / 2 }],
+  };
 };
 
 export const cellCenter = (point: { x: number; y: number }) => ({ x: point.x + 0.5, y: point.y + 0.5 });
