@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { copyCellRange, readCellProbe } from "./helpers/cell-probe";
 
 test("theme icon toggles, persists, and preserves Cell state", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
@@ -8,7 +8,7 @@ test("theme icon toggles, persists, and preserves Cell state", async ({ page }) 
   const input = page.getByRole("textbox", { name: "File name" });
   await input.fill("hello世界");
   const before = await readCellProbe(editor);
-  await page.getByRole("button", { name: "Switch to dark theme" }).click();
+  await page.getByRole("button", { name: "Dark" }).click();
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
   const after = await readCellProbe(editor);
@@ -20,7 +20,7 @@ test("theme icon toggles, persists, and preserves Cell state", async ({ page }) 
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
   await page.reload();
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
-  const toggle = page.getByRole("button", { name: "Switch to light theme" });
+  const toggle = page.getByRole("button", { name: "Light" });
   await toggle.focus();
   await page.keyboard.press("Enter");
   await expect(toggle).toHaveCount(0);
@@ -38,7 +38,7 @@ for (const storage of ["invalid", "unavailable"] as const) {
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/exp/web-tui/");
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
-    await page.getByRole("button", { name: "Switch to light theme" }).click();
+    await page.getByRole("button", { name: "Light" }).click();
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "light");
   });
 }
@@ -74,8 +74,7 @@ test("system appearance preserves editing and Cell projections", async ({ page }
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "light");
   expect((await readCellProbe(virtual)).text).toBe(virtualBefore.text);
-  await expect(page.getByRole("status", { name: "Virtual list status" }))
-    .toHaveAttribute("data-scroll-y", "9");
+  await expect(virtual).toHaveAttribute("data-cell-focused", "virtual-file-9");
 
   const overlay = page.locator('[data-cell-probe="overlay"]');
   await overlay.focus();
@@ -102,11 +101,11 @@ test("system appearance preserves editing and Cell projections", async ({ page }
   await page.keyboard.up("Alt");
   const range = await editor.getAttribute("data-cell-range");
   expect(range).not.toBeNull();
-  const copied = await page.getByLabel("Selected Cell text").textContent();
+  const copied = await copyCellRange(editor);
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "light");
   await expect(editor).toHaveAttribute("data-cell-range", range!);
-  expect(await page.getByLabel("Selected Cell text").textContent()).toBe(copied);
+  expect(await copyCellRange(editor)).toBe(copied);
 });
 
 test.describe("font raster invalidation", () => {
@@ -146,21 +145,31 @@ test("snapshot copy feedback expires and a failed copy can be retried", async ({
     let attempts = 0;
     Object.defineProperty(navigator, "clipboard", { value: {
       writeText: async () => {
-        if (++attempts === 1) throw new Error("Clipboard denied");
+        document.body.dataset.copyAttempts = String(++attempts);
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        if (attempts === 1) throw new Error("Clipboard denied");
       },
     } });
   });
   await page.goto("/exp/web-tui/");
   const section = page.locator("#core");
-  const button = section.getByRole("button", { name: "Copy snapshot", exact: true });
-  const feedback = section.getByLabel("Copy feedback");
+  const button = section.locator("[data-copy-state]");
+  await button.evaluate((element: HTMLButtonElement) => { element.click(); element.click(); });
+  await expect(button).toHaveAttribute("data-copy-state", "error");
+  await expect(button).toHaveAttribute("aria-label", "Copy failed");
+  await button.hover();
+  await expect(button.locator(".gallery-control-tooltip")).toHaveText("Copy");
+  await expect(button.locator(".gallery-control-tooltip")).toBeVisible();
+  await expect(button.locator(".lucide-circle-x")).toHaveCount(1);
+  await expect(page.locator("body")).toHaveAttribute("data-copy-attempts", "1");
   await button.click();
-  await expect(feedback).toHaveText("Copy failed. Try again.");
-  await button.click();
-  await expect(feedback).toHaveText("Copied snapshot");
+  await expect(button).toHaveAttribute("data-copy-state", "success");
+  await expect(button).toHaveAttribute("aria-label", "Copied");
+  await expect(button.locator(".lucide-check")).toHaveCount(1);
   await expect(button).toBeEnabled();
-  await expect(feedback).toBeEmpty({ timeout: 5000 });
-  await expect(button).toHaveText("Copy snapshot");
+  await expect(button).toHaveAttribute("data-copy-state", "idle", { timeout: 5000 });
+  await expect(button).toHaveAttribute("aria-label", "Copy");
+  await expect(section.getByLabel("Copy feedback")).toHaveCount(0);
 });
 
 test("gallery fits desktop and narrow screens in both appearances", async ({ page }, testInfo) => {

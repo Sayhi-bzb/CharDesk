@@ -31,3 +31,14 @@ export const readCellProbe = async (surface: Locator): Promise<BrowserCellProbe>
 
 export const readCellText = async (surface: Locator): Promise<string> =>
   (await readCellProbe(surface)).text;
+
+export const copyCellRange = async (surface: Locator): Promise<string> =>
+  surface.evaluate((element) => {
+    const clipboard = new DataTransfer();
+    element.dispatchEvent(new ClipboardEvent("copy", {
+      bubbles: true,
+      cancelable: true,
+      clipboardData: clipboard,
+    }));
+    return clipboard.getData("text/plain");
+  });

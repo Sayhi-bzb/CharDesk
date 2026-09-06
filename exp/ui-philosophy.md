@@ -25,7 +25,7 @@
 
 ## Gallery 视觉
 
-实验 Gallery 借鉴 OpenTUI 文档的等宽排版、强调色操作文字和空白分组；采用左侧目录与连续示例，窄屏目录置顶。页面和 Canvas 默认跟随系统明暗；标题右侧图标可手动切换并记住选择。CSS token 是 Gallery 配色唯一来源，经浏览器适配为纯数据 Theme；状态样式解析器决定视觉，Painter 和 Canvas 只负责合成与呈现。面板、高亮、文本选区分别使用独立语义 token；focus/selected 共用中性高亮，以 bold 区分焦点。不修改 CharDesk Host 主题。
+实验 Gallery 借鉴 OpenTUI 文档的等宽排版、强调色操作文字和空白分组；采用数据驱动的单页分组导航与连续示例，导航和卡片消费同一 manifest，窄屏目录按组置顶。页面和 Canvas 默认跟随系统明暗；标题右侧图标可手动切换并记住选择。Copy、border 与 theme 使用同一 icon control；tooltip 只用一个短词，theme 与 border 表示点击结果，Copy 固定为 `Copy`。Copy 反馈在图标和可访问名称上原位变化；Demo 不显示操作日志式状态栏或 Cell range 镜像预览。CSS token 是 Gallery 配色唯一来源，经浏览器适配为纯数据 Theme；状态样式解析器决定视觉，Painter 和 Canvas 只负责合成与呈现。面板、高亮、文本选区分别使用独立语义 token；focus/selected 共用中性高亮，以 bold 区分焦点。不修改 CharDesk Host 主题。
 
 ## 上游边界
 

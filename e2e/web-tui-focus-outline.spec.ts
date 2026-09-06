@@ -10,10 +10,10 @@ test("Gallery has no DOM focus outline and retains keyboard and editor focus", a
   const probe = await readCellProbe(core);
   expect(probe.cells.some((cell) => cell.ownerId === probe.focusedId && cell.style.bold && cell.style.backgroundColor)).toBe(true);
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("status", { name: "Core controls status" })).toHaveText("save activated");
+  await expect(core).toHaveAttribute("data-cell-focused", "core-save");
   await core.locator("canvas").click({ position: { x: 40, y: 26 } });
   await expect(core).toHaveCSS("outline-style", "none");
-  await page.getByRole("button", { name: "Switch to dark theme" }).focus();
+  await page.getByRole("button", { name: "Dark" }).focus();
   await page.keyboard.press("Tab");
   await expect(page.locator(":focus")).toHaveCSS("outline-style", "none");
   const editor = page.getByRole("textbox", { name: "File name", exact: true });

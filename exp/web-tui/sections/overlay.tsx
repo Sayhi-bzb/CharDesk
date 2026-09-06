@@ -23,32 +23,23 @@ const commandItems = [
 
 export const OverlayDemo = () => {
   const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState("Ready");
   const launcher = useCellListState(launcherItems, {
     defaultFocusedId: "show-palette",
-    onAction: () => {
-      setOpen(true);
-      setMessage("Command palette opened");
-    },
+    onAction: () => setOpen(true),
   });
   const commands = useCellListState(commandItems, {
     defaultFocusedId: "open-file",
-    onAction: (id) => {
-      setOpen(false);
-      setMessage(`${id} selected`);
-    },
+    onAction: () => setOpen(false),
   });
   const dispatch = (command: WidgetCommand) => {
     if (command.type === "dismiss" && command.targetId === "command-palette") {
       setOpen(false);
-      setMessage("Command palette dismissed");
       return;
     }
     (open ? commands : launcher).dispatch(command);
   };
 
   return (
-    <>
       <GallerySurface
         viewport={{ width: 36, height: 12 }}
         focusedId={open ? commands.focusedId : launcher.focusedId}
@@ -93,9 +84,5 @@ export const OverlayDemo = () => {
           <Text id="overlay-document-line-3">03  src/layout.ts</Text>
         </Root>
       </GallerySurface>
-      <output aria-label="Command palette status" role="status" aria-live="polite">
-        {message}
-      </output>
-    </>
   );
 };

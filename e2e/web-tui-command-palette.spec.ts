@@ -95,7 +95,6 @@ test("Command Palette owns its layer, focus scope, dismissal, and semantic actio
   const section = page.locator("#overlay");
   const surface = section.getByLabel("Command palette workspace");
   const canvas = surface.locator("canvas");
-  const status = section.getByRole("status", { name: "Command palette status" });
   await surface.focus();
   await page.keyboard.press("Enter");
 
@@ -111,7 +110,6 @@ test("Command Palette owns its layer, focus scope, dismissal, and semantic actio
   await expect(surface).toHaveAttribute("data-cell-focused", "new-file");
   await page.keyboard.press("Enter");
   await expect(dialog).toHaveCount(0);
-  await expect(status).toHaveText("new-file selected");
   await expect(surface).toHaveAttribute("data-cell-focused", "show-palette");
   await expect(section.getByRole("option", { name: "Open command palette" })).toBeFocused();
 
@@ -119,23 +117,20 @@ test("Command Palette owns its layer, focus scope, dismissal, and semantic actio
   await expect(dialog).toHaveCount(1);
   await clickCell(canvas, 7, 6);
   await expect(dialog).toHaveCount(0);
-  await expect(status).toHaveText("save-file selected");
 
   await section.getByRole("option", { name: "Open command palette" }).dispatchEvent("click");
   await expect(dialog).toHaveCount(1);
   await section.getByRole("option", { name: "Open file" }).dispatchEvent("click");
   await expect(dialog).toHaveCount(0);
-  await expect(status).toHaveText("open-file selected");
 
   await section.getByRole("option", { name: "Open command palette" }).dispatchEvent("click");
   await expect(dialog).toHaveCount(1);
   await clickCell(canvas, 34, 10);
   await expect(dialog).toHaveCount(0);
-  await expect(status).toHaveText("Command palette dismissed");
   await expect(surface).toHaveAttribute("data-cell-focused", "show-palette");
 
   await page.keyboard.press("Enter");
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await expect(status).toHaveText("Command palette dismissed");
+  await expect(surface).toHaveAttribute("data-cell-focused", "show-palette");
 });

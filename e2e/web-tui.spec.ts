@@ -8,21 +8,24 @@ test("Web TUI shares keyboard, pointer, scroll, and semantic state", async ({ pa
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
   await expect(page.getByRole("heading", { name: "Cell UI Gallery" })).toBeVisible();
-  await expect(page.locator(".gallery-card")).toHaveCount(5);
-  await expect(page.locator("canvas")).toHaveCount(5);
-  await expect(page.locator("[data-cell-probe]")).toHaveCount(5);
-  await expect(page.getByRole("button", { name: "Copy snapshot" })).toHaveCount(5);
+  await expect(page.locator(".gallery-card")).toHaveCount(9);
+  await expect(page.locator("canvas")).toHaveCount(9);
+  await expect(page.locator("[data-cell-probe]")).toHaveCount(9);
+  await expect(page.getByRole("button", { name: "Copy" })).toHaveCount(9);
+  await expect(page.locator('output[role="status"]')).toHaveCount(0);
+  await expect(page.getByText(/^Border:/)).toHaveCount(0);
+  await expect(page.getByText("No Cell range selected")).toHaveCount(0);
+  await expect(page.getByLabel("Selected Cell text")).toHaveCount(0);
   const semanticIds = await page.locator('[id^="cell-semantic-"]').evaluateAll(
     (elements) => elements.map((element) => element.id)
   );
   expect(new Set(semanticIds).size).toBe(semanticIds.length);
   const section = page.locator("#core");
   const surface = section.getByLabel("File commands and files");
-  const status = section.getByRole("status", { name: "Core controls status" });
   await expect(surface).toBeVisible();
   await surface.focus();
   await page.keyboard.press("Enter");
-  await expect(status).toHaveText("open activated");
+  await expect(surface).toHaveAttribute("data-cell-focused", "core-open");
 
   const canvas = surface.locator("canvas");
   await expect.poll(() => readCellText(surface)).toContain("Open file");
@@ -34,7 +37,7 @@ test("Web TUI shares keyboard, pointer, scroll, and semantic state", async ({ pa
     focusedId: "core-open",
   });
   await canvas.click({ position: { x: 40, y: 45 } });
-  await expect(status).toHaveText("save activated");
+  await expect(surface).toHaveAttribute("data-cell-focused", "core-save");
 
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
@@ -64,5 +67,5 @@ test("Web TUI shares keyboard, pointer, scroll, and semantic state", async ({ pa
     "cell-semantic-core-file-src/events.ts"
   );
   await section.getByRole("option", { name: "New file" }).dispatchEvent("click");
-  await expect(status).toHaveText("new activated");
+  await expect(surface).toHaveAttribute("data-cell-focused", "core-new");
 });

@@ -31,16 +31,12 @@ const fileItems = [
 }));
 
 export const CoreControlsDemo = () => {
-  const [message, setMessage] = useState("Ready");
   const [scrollY, setScrollY] = useState(0);
   const actions = useCellListState(actionItems, {
     defaultFocusedId: "core-open",
     defaultSelectedId: "core-open",
-    onAction: (id) => setMessage(`${id.replace("core-", "")} activated`),
   });
-  const files = useCellListState(fileItems, {
-    onAction: (id) => setMessage(`${id.replace("core-file-", "")} opened`),
-  });
+  const files = useCellListState(fileItems);
   const focusedId = actions.focusedId ?? files.focusedId;
   const dispatch = (command: WidgetCommand) => {
     actions.dispatch(command);
@@ -52,7 +48,6 @@ export const CoreControlsDemo = () => {
   };
 
   return (
-    <>
       <GallerySurface
         viewport={{ width: 32, height: 10 }}
         focusedId={focusedId}
@@ -92,9 +87,5 @@ export const CoreControlsDemo = () => {
           </Box>
         </Root>
       </GallerySurface>
-      <output aria-label="Core controls status" role="status" aria-live="polite">
-        {message}
-      </output>
-    </>
   );
 };

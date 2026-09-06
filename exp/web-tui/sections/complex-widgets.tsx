@@ -1,5 +1,4 @@
 import { GallerySurface } from "../appearance";
-import { useState } from "react";
 import {
   Grid,
   GridCell,
@@ -60,22 +59,17 @@ const propertyRows = [
 ];
 
 export const ComplexWidgetsDemo = () => {
-  const [message, setMessage] = useState("Ready");
   const menu = useCellMenuState(menuItems, {
     defaultFocusedId: "menu-open",
-    onAction: (id) => setMessage(`${id} action`),
   });
   const tree = useCellTreeState(treeItems, {
     defaultExpandedIds: ["tree-src"],
-    onAction: (id) => setMessage(`${id} selected`),
   });
   const tabs = useCellTabsState(tabItems, {
     defaultSelectedId: "tab-code",
-    onSelectionChange: (id) => setMessage(`${id} selected`),
   });
   const grid = useCellGridState(propertyRows, {
     defaultSelectedId: "property-name",
-    onAction: (id) => setMessage(`${id} activated`),
   });
   const focusedId = menu.focusedId ?? tree.focusedId ?? tabs.focusedId ?? grid.focusedId;
   const dispatch = (command: WidgetCommand) => {
@@ -87,7 +81,6 @@ export const ComplexWidgetsDemo = () => {
   const selectedTab = tabs.items.find(({ id }) => id === tabs.selectedId);
 
   return (
-    <>
       <GallerySurface
         viewport={{ width: 44, height: 16 }}
         focusedId={focusedId}
@@ -161,9 +154,5 @@ export const ComplexWidgetsDemo = () => {
           </Grid>
         </Root>
       </GallerySurface>
-      <output aria-label="Complex widgets status" role="status" aria-live="polite">
-        {message}
-      </output>
-    </>
   );
 };

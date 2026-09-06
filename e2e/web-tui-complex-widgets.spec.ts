@@ -9,7 +9,6 @@ test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", a
 
   const section = page.locator("#complex");
   const surface = section.getByLabel("Complex widget surface");
-  const status = section.getByRole("status", { name: "Complex widgets status" });
   const menu = section.getByRole("menu", { name: "File menu" });
   const tree = section.getByRole("tree", { name: "Files" });
   const tabs = section.getByRole("tablist", { name: "Views" });
@@ -25,7 +24,6 @@ test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", a
   await page.keyboard.press("Enter");
   await expect(surface).toHaveAttribute("data-cell-focused", "menu-save");
   await expect(section.getByRole("menuitem", { name: "Save" })).toBeFocused();
-  await expect(status).toHaveText("menu-save action");
 
   const source = section.getByRole("treeitem", { name: /src/ });
   await source.focus();
@@ -50,7 +48,6 @@ test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", a
     .toHaveAttribute("aria-selected", "true");
   await expect(section.getByRole("tab", { name: "Preview" })).toBeFocused();
   await expect(section.getByRole("tabpanel", { name: "Preview" })).toBeAttached();
-  await expect(status).toHaveText("tab-preview selected");
 
   await section.getByRole("gridcell", { name: "Name" }).focus();
   await page.keyboard.press("ArrowRight");
@@ -58,7 +55,6 @@ test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", a
   await page.keyboard.press("Enter");
   await expect(surface).toHaveAttribute("data-cell-focused", "property-dark");
   await expect(section.getByRole("gridcell", { name: "Dark" })).toBeFocused();
-  await expect(status).toHaveText("property-dark activated");
 
   const canvas = surface.locator("canvas");
   const bounds = await canvas.boundingBox();
@@ -70,12 +66,10 @@ test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", a
     },
   });
   await expect(surface).toHaveAttribute("data-cell-focused", "menu-new");
-  await expect(status).toHaveText("menu-new action");
 
   await section.getByRole("menuitem", { name: "Open file" })
     .evaluate((element: HTMLElement) => element.click());
   await expect(surface).toHaveAttribute("data-cell-focused", "menu-open");
-  await expect(status).toHaveText("menu-open action");
 });
 
 test("CellSurface owns rectangle selection without product wiring", async ({ page }) => {

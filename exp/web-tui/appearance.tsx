@@ -1,4 +1,5 @@
-import { createContext, useContext, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { Moon, Square, SquareRoundCorner, Sun } from "lucide-react";
+import { createContext, useContext, useLayoutEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { CHARDESK_FONT_PROFILE } from "@chardesk/fonts";
 import { CellSurface, useCellCssTheme, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
 import { resolveCellUiTheme, type CellBorderShape } from "@chardesk/cell-ui";
@@ -55,23 +56,30 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
 // Shares the resolved CSS theme and appearance controls across the Gallery.
 // eslint-disable-next-line react-refresh/only-export-components
 export const useGalleryAppearance = () => useContext(AppearanceContext);
+export function GalleryIconButton({ label, tooltip = label, children, className = "", ...props }: Readonly<{
+  label: string;
+  tooltip?: string;
+  children: ReactNode;
+}> & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label" | "children">) {
+  return <button {...props} className={`gallery-icon-button ${className}`.trim()} type="button" aria-label={label}>
+    {children}
+    <span className="gallery-control-tooltip" role="tooltip">{tooltip}</span>
+  </button>;
+}
 export function GalleryThemeToggle() {
   const { mode, toggleTheme } = useGalleryAppearance();
-  const label = mode === "light" ? "Switch to dark theme" : "Switch to light theme";
-  return <button className="gallery-theme-toggle" type="button" aria-label={label} onClick={toggleTheme}>
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      {mode === "light"
-        ? <path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z" />
-        : <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></>}
-    </svg>
-    <span className="gallery-theme-tooltip" role="tooltip">{label}</span>
-  </button>;
+  const label = mode === "light" ? "Dark" : "Light";
+  return <GalleryIconButton label={label} onClick={toggleTheme}>
+    {mode === "light" ? <Moon aria-hidden="true" /> : <Sun aria-hidden="true" />}
+  </GalleryIconButton>;
 }
 export function GalleryBorderToggle() {
   const { theme, toggleBorder } = useGalleryAppearance();
-  return <button className="gallery-border-toggle" type="button" onClick={toggleBorder}>
-    Border: {theme.borderShape === "square" ? "Square" : "Rounded"}
-  </button>;
+  const rounded = theme.borderShape === "rounded";
+  const label = rounded ? "Square" : "Rounded";
+  return <GalleryIconButton label={label} aria-pressed={rounded} onClick={toggleBorder}>
+    {rounded ? <Square aria-hidden="true" /> : <SquareRoundCorner aria-hidden="true" />}
+  </GalleryIconButton>;
 }
 export function GallerySurface(props: CellSurfaceProps) {
   const { theme, palette } = useGalleryAppearance();

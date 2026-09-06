@@ -48,12 +48,12 @@ test("only the active Surface paints focus, while selected state survives", asyn
   expect(blurred.focusedId).toBe(active.focusedId);
   expect(blurred.cells.some((cell) => cell.ownerId === "core-open" && cell.style.bold)).toBe(false);
   expect(blurred.cells.some((cell) => cell.ownerId === "core-open" && cell.style.backgroundColor)).toBe(true);
-  await page.getByRole("button", { name: "Copy snapshot" }).first().focus();
+  await page.getByRole("button", { name: "Copy" }).first().focus();
   await expect(page.locator('[data-cell-probe][data-cell-focus-visible="true"]')).toHaveCount(0);
   await core.focus();
   expect((await readCellProbe(core)).focusedId).toBe(active.focusedId);
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("status", { name: "Core controls status" })).toHaveText("open activated");
+  await expect(core).toHaveAttribute("data-cell-focused", "core-open");
 });
 
 test("window focus recovery checks current ownership and never steals an external focus", async ({ page }) => {
@@ -66,7 +66,7 @@ test("window focus recovery checks current ownership and never steals an externa
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
-  const outside = page.getByRole("button", { name: "Copy snapshot" }).first();
+  const outside = page.getByRole("button", { name: "Copy" }).first();
   await outside.focus();
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");

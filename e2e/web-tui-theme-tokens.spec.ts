@@ -48,7 +48,7 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
     root.style.setProperty("--cell-border", "rgb(90, 100, 110)");
   });
   expect((await readCellProbe(surface)).cells).toEqual(before.cells);
-  await page.getByRole("button", { name: "Switch to dark theme" }).click();
+  await page.getByRole("button", { name: "Dark" }).click();
   await expect(page.locator(".gallery-page")).toHaveCSS("background-color", "rgb(7, 8, 9)");
   await expect.poll(async () => (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "palette-title")?.style.backgroundColor)
     .toBe("rgb(30, 40, 50)");
@@ -75,7 +75,7 @@ test("caret and rectangle overlay consume theme tokens in actual pixels", async 
     document.documentElement.style.setProperty("--cell-caret", "rgb(255, 0, 0)");
     document.documentElement.style.setProperty("--cell-range-selection", "rgb(0, 255, 0)");
   });
-  await page.getByRole("button", { name: "Switch to dark theme" }).click();
+  await page.getByRole("button", { name: "Dark" }).click();
   await page.getByRole("textbox", { name: "File name", exact: true }).fill("");
   const editor = page.locator('[data-cell-probe="editor"] canvas');
   const caret = await editor.evaluate((canvas) => Array.from(canvas.getContext("2d")!

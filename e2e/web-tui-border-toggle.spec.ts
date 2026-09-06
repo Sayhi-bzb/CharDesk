@@ -16,15 +16,16 @@ test("border preview updates every Surface without resetting product state", asy
   await page.keyboard.press("Enter");
   const surfaces = page.locator("[data-cell-probe]");
   // Compare shape changes with identical focus ownership; the host control blurs the Surface.
-  await page.getByRole("button", { name: "Border: Square", exact: true }).focus();
+  await page.getByRole("button", { name: "Rounded", exact: true }).focus();
   const before = await Promise.all((await surfaces.all()).map(readCellProbe));
-  await page.getByRole("button", { name: "Border: Square", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Border: Rounded", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Rounded", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Square", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Square", exact: true }).locator(".lucide-square")).toHaveCount(1);
   const rounded = await Promise.all((await surfaces.all()).map(readCellProbe));
   const corners: Record<string, string> = { "┌": "╭", "┐": "╮", "└": "╰", "┘": "╯" };
   for (let i = 0; i < before.length; i++) {
     expect(rounded[i].text).toBe(before[i].text.replace(/[┌┐└┘]/g, (char) => corners[char]));
-    expect(rounded[i].text).toContain("╭");
+    if (before[i].text.includes("┌")) expect(rounded[i].text).toContain("╭");
     expect(rounded[i].focusedId).toBe(before[i].focusedId);
     expect(rounded[i].viewport).toEqual(before[i].viewport);
     expect(rounded[i].revision).toBeGreaterThan(before[i].revision);
@@ -32,9 +33,9 @@ test("border preview updates every Surface without resetting product state", asy
   }
   await expect(input).toHaveValue("hello世界");
   expect(await input.evaluate((el: HTMLTextAreaElement) => [el.selectionStart, el.selectionEnd])).toEqual(selection);
-  await expect(page.getByRole("status", { name: "Virtual list status" })).toHaveAttribute("data-scroll-y", "9");
+  await expect(virtual).toHaveAttribute("data-cell-focused", "virtual-file-9");
   await expect(page.getByRole("dialog", { name: "Command palette" })).toBeAttached();
-  await page.getByRole("button", { name: "Switch to dark theme" }).click();
+  await page.getByRole("button", { name: "Dark" }).click();
   const dark = await Promise.all((await surfaces.all()).map(readCellProbe));
   expect(dark.map((probe) => probe.text)).toEqual(rounded.map((probe) => probe.text));
   await page.evaluate(() => {
@@ -42,26 +43,28 @@ test("border preview updates every Surface without resetting product state", asy
       writeText: async (text: string) => { document.body.dataset.copied = text; },
     } });
   });
-  await page.locator("#core").getByRole("button", { name: "Copy snapshot" }).click();
+  await page.locator("#core").getByRole("button", { name: "Copy" }).click();
   expect(await page.locator("body").getAttribute("data-copied")).toContain(rounded[0].text);
-  const toggle = page.getByRole("button", { name: /^Border:/ });
+  const toggle = page.locator('.gallery-appearance-controls button[aria-pressed]');
   await toggle.focus();
   await page.keyboard.press("Enter");
-  await expect(toggle).toHaveText("Border: Square");
+  await expect(toggle).toHaveAttribute("aria-label", "Rounded");
+  await expect(toggle.locator(".lucide-square-round-corner")).toHaveCount(1);
   expect((await readCellProbe(overlay)).text).toBe(before[3].text);
   await toggle.focus();
   await page.keyboard.press("Space");
-  await expect(toggle).toHaveText("Border: Rounded");
+  await expect(toggle).toHaveAttribute("aria-label", "Square");
   await page.reload();
-  await expect(toggle).toHaveText("Border: Square");
+  await expect(toggle).toHaveAttribute("aria-label", "Rounded");
 });
 
 test("border preview controls fit narrow screens and apply to newly opened overlays", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
   await page.goto("/exp/web-tui/");
-  const toggle = page.getByRole("button", { name: /^Border:/ });
+  const toggle = page.locator('.gallery-appearance-controls button[aria-pressed]');
+  await expect(toggle).toHaveAttribute("aria-label", "Rounded");
   await toggle.click();
-  await expect(toggle).toHaveText("Border: Rounded");
+  await expect(toggle).toHaveAttribute("aria-label", "Square");
   const bounds = (await toggle.boundingBox())!;
   expect(bounds.x).toBeGreaterThanOrEqual(0);
   expect(bounds.x + bounds.width).toBeLessThanOrEqual(320);

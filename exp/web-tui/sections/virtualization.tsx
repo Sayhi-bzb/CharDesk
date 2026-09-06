@@ -1,5 +1,4 @@
 import { GallerySurface } from "../appearance";
-import { useState } from "react";
 import {
   List,
   ListItem,
@@ -17,17 +16,14 @@ const files = Array.from({ length: 100_000 }, (_, index) => ({
 }));
 
 export const VirtualizationDemo = () => {
-  const [message, setMessage] = useState("Ready");
   const virtual = useCellVirtualListState(files, {
     scrollId: "virtual-files",
     viewportRows: 9,
     overscanRows: 2,
     defaultFocusedId: "virtual-file-0",
-    onAction: (id) => setMessage(`${id.replace("virtual-", "")} opened`),
   });
 
   return (
-    <>
       <GallerySurface
         viewport={{ width: 38, height: 12 }}
         focusedId={virtual.focusedId}
@@ -61,14 +57,5 @@ export const VirtualizationDemo = () => {
           </ScrollArea>
         </Root>
       </GallerySurface>
-      <output
-        aria-label="Virtual list status"
-        role="status"
-        aria-live="polite"
-        data-mounted={virtual.mountedCount}
-        data-cache-range={`${virtual.cacheRange.start}:${virtual.cacheRange.end}`}
-        data-scroll-y={virtual.scrollY}
-      >{message}</output>
-    </>
   );
 };

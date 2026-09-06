@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { copyCellRange } from "./helpers/cell-probe";
 
 test("Cell editor shares Unicode, composition, selection, and history across Canvas and textarea", async ({ page }) => {
   const pageErrors: string[] = [];
@@ -74,17 +75,7 @@ test("Cell range selects and copies the final rendered border", async ({ page })
     "│notes.txt                             │",
     "└──────────────────────────────────────┘",
   ].join("\n");
-  await expect(section.getByLabel("Selected Cell text")).toHaveText(expected);
-  const copied = await surface.evaluate((element) => {
-    const clipboard = new DataTransfer();
-    element.dispatchEvent(new ClipboardEvent("copy", {
-      bubbles: true,
-      cancelable: true,
-      clipboardData: clipboard,
-    }));
-    return clipboard.getData("text/plain");
-  });
-  expect(copied).toBe(expected);
+  expect(await copyCellRange(surface)).toBe(expected);
 
   await surface.press("Escape");
   await expect(surface).not.toHaveAttribute("data-cell-range");
@@ -126,7 +117,7 @@ test("horizontal and vertical editor scroll cannot paint over chrome Cells", asy
   await page.mouse.up();
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");
-  const selected = (await section.getByLabel("Selected Cell text").textContent())!.split("\n");
+  const selected = (await copyCellRange(surface)).split("\n");
   expect(selected[0]).toBe(border);
   expect(selected.at(-1)).toBe(bottom);
 });
