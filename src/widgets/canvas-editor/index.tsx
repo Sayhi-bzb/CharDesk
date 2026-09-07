@@ -94,6 +94,8 @@ export const CanvasEditor = ({
     setSelectedStructuredSplitHandle,
     structuredScene,
     setStructuredContextPoint,
+    setTextCursor,
+    textCursor,
   } = editorStore;
   const structuredSceneQuery = useMemo(
     () => createStructuredSceneQuery(structuredScene),
@@ -301,8 +303,8 @@ export const CanvasEditor = ({
     const resetManagedInput = () => runtime.renderExperience.resetManagedInputStats();
     const readManagedInputIdentity = () => activeCanvasId;
     const setManagedInputCursor = (point: { x: number; y: number }) =>
-      editorStore.setTextCursor(point);
-    const readManagedInputCursor = () => editorStore.textCursor;
+      setTextCursor(point);
+    const readManagedInputCursor = () => textCursor;
     diagnostics.__chardeskCanvasExperienceStats = readStats;
     diagnostics.__chardeskCanvasExperienceResetManagedInput = resetManagedInput;
     diagnostics.__chardeskCanvasManagedInputFocus = focusManagedTextarea;
@@ -338,10 +340,10 @@ export const CanvasEditor = ({
   }, [
     active,
     activeCanvasId,
-    editorStore.setTextCursor,
-    editorStore.textCursor,
     focusManagedTextarea,
     runtime,
+    setTextCursor,
+    textCursor,
   ]);
 
   useCanvasRenderer(

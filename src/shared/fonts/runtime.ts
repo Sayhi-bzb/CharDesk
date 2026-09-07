@@ -6,7 +6,7 @@ import { loadDisplayFont } from "./loading";
 
 export const CANVAS_FONT_STORAGE_KEY = "chardesk-canvas-font-v1";
 export type CanvasFontStorage = Pick<Storage, "getItem" | "setItem">;
-export type CanvasFontSnapshot = Readonly<{
+type CanvasFontSnapshot = Readonly<{
   font: DisplayFont;
   requestedFont: DisplayFont;
   status: "idle" | "loading" | "error";

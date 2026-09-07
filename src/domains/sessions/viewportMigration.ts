@@ -1,7 +1,7 @@
 import { DEFAULT_GRID_GEOMETRY } from "@/shared/metrics/gridGeometry";
 import type { Point } from "@/shared/types";
 
-export const LEGACY_GRID_CELL_HEIGHT = 19;
+const LEGACY_GRID_CELL_HEIGHT = 19;
 
 const LEGACY_TO_CURRENT_HEIGHT_RATIO =
   DEFAULT_GRID_GEOMETRY.cellHeight / LEGACY_GRID_CELL_HEIGHT;

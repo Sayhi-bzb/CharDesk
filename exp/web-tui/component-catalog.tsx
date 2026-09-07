@@ -6,7 +6,7 @@ import {
   TextComponentDemo,
 } from "./sections/components";
 
-export type ComponentApiRow = Readonly<{
+type ComponentApiRow = Readonly<{
   name: string;
   type: string;
   description: string;

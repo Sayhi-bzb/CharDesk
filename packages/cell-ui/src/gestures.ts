@@ -1,7 +1,7 @@
 import type { CellHitPart, CellPoint, WidgetId } from "./types.js";
 import { cellCenter } from "./scrollbar.js";
 
-export type ScrollDragAnchor = Readonly<{
+type ScrollDragAnchor = Readonly<{
   point: CellPoint;
   offset: number;
   maximum: number;

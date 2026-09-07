@@ -28,7 +28,7 @@
  */
 
 const CustomGlyphDefinitionType = { PATH_FUNCTION: 0, SOLID_OCTANT_BLOCK_VECTOR: 1, BLOCK_PATTERN: 2, ROUND_CORNER: 3 } as const;
-export type CellGraphicPart =
+type CellGraphicPart =
   | { type: typeof CustomGlyphDefinitionType.PATH_FUNCTION; data: string | ((xp: number, yp: number) => string); strokeWidth: number }
   | { type: typeof CustomGlyphDefinitionType.SOLID_OCTANT_BLOCK_VECTOR; data: { x: number; y: number; w: number; h: number }[] }
   | { type: typeof CustomGlyphDefinitionType.BLOCK_PATTERN; data: number[][] }

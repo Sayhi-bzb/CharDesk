@@ -2,7 +2,6 @@ import type { DisplayFont } from "../../src/shared/fonts/catalog";
 export {
   displayFontOptions as galleryFontOptions,
   type DisplayFont as GalleryFont,
-  type DisplayFontOption as GalleryFontOption,
 } from "../../src/shared/fonts/catalog";
 
 const galleryFontOrder: readonly DisplayFont[] = ["maple", "ark-mono", "xiaolai-mono"];

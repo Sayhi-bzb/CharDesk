@@ -116,8 +116,7 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
   </AppearanceContext.Provider>;
 }
 // Shares the resolved CSS theme and appearance controls across the Gallery.
-// eslint-disable-next-line react-refresh/only-export-components
-export const useGalleryAppearance = () => useContext(AppearanceContext);
+const useGalleryAppearance = () => useContext(AppearanceContext);
 export function GalleryIconButton({ label, tooltip = label, children, className = "", ...props }: Readonly<{
   label: string;
   tooltip?: string;
