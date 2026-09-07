@@ -27,6 +27,7 @@ import {
   type KeyboardShortcutsPanelHandle,
 } from './keyboard-shortcuts-dialog';
 import { DisplaySettingsPanel } from './display-settings-panel';
+import { CanvasFontSelect, CanvasFontStatus } from './canvas-font-setting';
 import { SettingsContentSection } from './settings-content-section';
 import { SettingsNavigation } from './settings-navigation';
 import {
@@ -85,9 +86,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   ] as const;
 
   useEffect(() => {
-    if (section !== 'general' || revealTarget?.type !== 'language') return;
+    if (section !== 'general' || (revealTarget?.type !== 'language' && revealTarget?.type !== 'canvas-font')) return;
     const frame = requestAnimationFrame(() => {
-      const control = document.getElementById('settings-language');
+      const control = document.getElementById(`settings-${revealTarget.type}`);
       if (typeof control?.scrollIntoView === 'function') {
         control.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       }
@@ -253,13 +254,22 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="flex min-w-0 items-center justify-between gap-4 py-2">
+                  <Label htmlFor="settings-canvas-font" className="min-w-0 truncate">
+                    {t('settings.canvasFont')}
+                  </Label>
+                  <div className="w-2/5 min-w-24 max-w-40 shrink-0">
+                    <CanvasFontSelect />
+                  </div>
+                </div>
+                <CanvasFontStatus />
               </SettingsContentSection>
             ) : section === 'display' ? (
               <SettingsContentSection key="display" heading={t('settings.display')}>
                 <DisplaySettingsPanel
                   revealSettingId={
                     revealTarget?.type === 'text-renderer'
-                      ? 'text-renderer'
+                      ? revealTarget.type
                       : revealTarget?.type === 'render-feature'
                         ? revealTarget.featureId
                         : null

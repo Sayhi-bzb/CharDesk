@@ -8,7 +8,7 @@ vi.mock("@chardesk/font-ark/fonts.css?url", () => ({ default: "/packages/font-ar
 describe("Web TUI gallery font loading", () => {
   afterEach(() => {
     vi.restoreAllMocks();
-    document.querySelectorAll("link[data-gallery-font-source]").forEach((link) => link.remove());
+    document.querySelectorAll("link[data-display-font-source]").forEach((link) => link.remove());
     Reflect.deleteProperty(document, "fonts");
   });
 
@@ -28,7 +28,7 @@ describe("Web TUI gallery font loading", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Use Ark Pixel 12px Mono" }));
     const link = document.querySelector<HTMLLinkElement>(
-      'link[data-gallery-font-source="ark-mono"]'
+      'link[data-display-font-source="ark-mono"]'
     );
     expect(link).not.toBeNull();
     fireEvent.load(link!);

@@ -41,7 +41,7 @@
 | Widget behavior | [Widget 规范](blueprints/widgets.md) | 状态语言、keyboard/pointer 和 scroll/editor 行为 |
 | Semantics | [SemanticSnapshot 契约](blueprints/semantics.md) | 独立 reading tree、actions 与 DOM projection |
 | Canvas presentation | [`@chardesk/rendering`](../packages/rendering/README.md) | CellBuffer 到 Canvas px、字体解析与网格审计 |
-| Font capability | [`@chardesk/fonts`](../packages/fonts/README.md) | display/CJK/Nerd/symbol/emoji 路由；Cell width 不属于字体 |
+| Font capability | [`@chardesk/fonts`](../packages/fonts/README.md) | display/CJK/cell-glyph/Nerd/symbol/emoji 路由；Host 与 Cell UI 共用 Core Box/Block；[Host 字体偏好](research/font-stack.md#host-字体切换)不改变 Cell width |
 | Editor state | `@codemirror/state` adapter | UTF-16 document/history；Cell geometry 由 CharDesk 投影 |
 | Browser input | `@chardesk/cell-ui/browser` | textarea、IME、clipboard、pointer、Semantic DOM 与 DPR/resize |
 | Delivery status | [Roadmap](roadmap.md) | 已交付、待验证和可实施切片 |

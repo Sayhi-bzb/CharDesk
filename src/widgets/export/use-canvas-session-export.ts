@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useCanvasFontRuntime } from "@/shared/fonts/hooks";
 import { useCanvasRuntime } from "@/domains/canvas/public";
 import {
   deliverExportDownload,
@@ -14,16 +15,19 @@ type CanvasSessionExportResult =
 
 export function useCanvasSessionExport() {
   const canvas = useCanvasRuntime();
+  const fonts = useCanvasFontRuntime();
   const save = useCallback(
     async (
       sessionId: string,
       format: ExportFormat
     ): Promise<CanvasSessionExportResult> => {
+      const fontProfile = fonts.getSnapshot().profile;
       const session = await canvas.materializeSession(sessionId);
       if (!session) return { ok: false, errorCode: "save-failed" };
       const prepared = prepareExport(
         {
           canvasMode: session.mode,
+          fontProfile,
           surface: session.surface,
           structuredScene: session.structuredScene,
           structuredComponents: session.structuredComponents,
@@ -47,7 +51,7 @@ export function useCanvasSessionExport() {
                 : "save-failed",
           };
     },
-    [canvas]
+    [canvas, fonts]
   );
 
   return { save };

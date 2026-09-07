@@ -1,4 +1,5 @@
 import { serializeCharDeskDocumentEnvelope } from "@chardesk/document";
+import type { CharDeskFontProfile } from "@chardesk/fonts";
 import type { GridMap, SelectionArea } from "@/shared/types";
 import {
   createPngBlobFromGrid,
@@ -38,14 +39,15 @@ export const prepareSelectionPngExport = (
   grid: GridMap,
   selections: SelectionArea[],
   showGrid: boolean,
-  includeColor = true
+  includeColor = true,
+  fontProfile?: CharDeskFontProfile
 ): ExportResult<ExportArtifact> => {
   if (selections.length === 0) return exportFailed("empty-content");
   try {
     return exportSucceeded({
       kind: "blob",
       format: "png",
-      content: createSelectionPngBlob(grid, selections, showGrid, includeColor),
+      content: createSelectionPngBlob(grid, selections, showGrid, includeColor, fontProfile),
       filename: `chardesk-selection-${getTimestamp()}.png`,
       mimeType: "image/png",
     });
@@ -151,7 +153,8 @@ export const prepareExport = (
       content: createPngBlobFromGrid(
         grid,
         context.showGrid,
-        context.includeColor
+        context.includeColor,
+        context.fontProfile
       ),
       filename: `chardesk-${getTimestamp()}.png`,
       mimeType: "image/png",

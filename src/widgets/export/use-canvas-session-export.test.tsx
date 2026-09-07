@@ -1,4 +1,6 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
+import { CanvasFontProvider } from "@/shared/fonts/react";
+import { createCanvasFontRuntime } from "@/shared/fonts/runtime";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { testingCanvasRuntime } from "@/domains/canvas/testing";
 import { useCanvasSessionExport } from "./use-canvas-session-export";
@@ -43,6 +45,27 @@ describe("useCanvasSessionExport", () => {
       expect.objectContaining({ documentName: "Alpha", canvasMode: "freeform" }),
       "chardesk"
     );
+  });
+
+  it("captures the effective font before asynchronous session materialization", async () => {
+    const fonts = createCanvasFontRuntime({ load: async () => {} });
+    const { result } = renderHook(() => useCanvasSessionExport(), {
+      wrapper: ({ children }) => <CanvasFontProvider runtime={fonts}>{children}</CanvasFontProvider>,
+    });
+    await act(() => fonts.select("ark-mono"));
+    const profile = fonts.getSnapshot().profile;
+    let complete!: () => void;
+    vi.mocked(testingCanvasRuntime.materializeSession).mockReturnValueOnce(new Promise((resolve) => {
+      complete = () => resolve(materialized as never);
+    }));
+    prepareExport.mockReturnValue({ ok: true, value: { kind: "blob" } });
+    deliverExportDownload.mockResolvedValue({ ok: true, value: true });
+    const pending = result.current.save("canvas-a", "png");
+    await act(() => fonts.select("xiaolai-mono"));
+    complete();
+    await pending;
+    expect(prepareExport).toHaveBeenCalledWith(expect.objectContaining({ fontProfile: profile }), "png");
+    fonts.dispose();
   });
 
   it("preserves the oversized-image error category for the menu", async () => {

@@ -11,52 +11,11 @@ import {
   galleryFontOptions,
   nextGalleryFont,
   type GalleryFont,
-  type GalleryFontOption,
 } from "./font-options";
+import { loadDisplayFont, resetDisplayFontStylesheet } from "../../src/shared/fonts/loading";
 
 const defaultTheme = resolveCellUiTheme(undefined);
 type GalleryFontStatus = "idle" | "loading" | "error";
-const stylesheetLoads = new Map<GalleryFont, Promise<void>>();
-
-const loadFontStylesheet = (option: GalleryFontOption): Promise<void> => {
-  if (!option.stylesheet) return Promise.resolve();
-  const pending = stylesheetLoads.get(option.id);
-  if (pending) return pending;
-  const previous = document.querySelector<HTMLLinkElement>(
-    `link[data-gallery-font-source="${option.id}"]`
-  );
-  if (previous?.dataset.galleryFontLoad === "ready") return Promise.resolve();
-  previous?.remove();
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = option.stylesheet;
-  link.crossOrigin = "anonymous";
-  link.dataset.galleryFontSource = option.id;
-  link.dataset.galleryFontLoad = "loading";
-  const load = new Promise<void>((resolve, reject) => {
-    link.addEventListener("load", () => {
-      link.dataset.galleryFontLoad = "ready";
-      resolve();
-    }, { once: true });
-    link.addEventListener("error", () => {
-      link.remove();
-      reject(new Error(`Unable to load ${option.label}.`));
-    }, { once: true });
-    document.head.append(link);
-  }).catch((error: unknown) => {
-    stylesheetLoads.delete(option.id);
-    throw error;
-  });
-  stylesheetLoads.set(option.id, load);
-  return load;
-};
-
-const resetFontStylesheet = (option: GalleryFontOption) => {
-  stylesheetLoads.delete(option.id);
-  document.querySelector<HTMLLinkElement>(
-    `link[data-gallery-font-source="${option.id}"]`
-  )?.remove();
-};
 
 const AppearanceContext = createContext({
   mode: "light" as "light" | "dark",
@@ -114,15 +73,7 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
     setFontStatus("loading");
     setFontMessage(`Loading ${option.label}.`);
     try {
-      await loadFontStylesheet(option);
-      if (option.fontSpec) {
-        const samples = option.loadSamples ?? ["AgWi09"];
-        const loaded = await Promise.all(samples.map((sample) =>
-          document.fonts.load(option.fontSpec!, sample)));
-        if (loaded.some((faces) => faces.length === 0)) {
-          throw new Error(`Unable to load ${option.label}.`);
-        }
-      }
+      await loadDisplayFont(option);
       await loadCellFontMetrics(option.profile);
       if (request !== fontRequestRef.current) return;
       setFont(target);
@@ -131,7 +82,7 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
       setFontMessage(`Display font: ${option.label}.`);
     } catch {
       if (request !== fontRequestRef.current) return;
-      resetFontStylesheet(option);
+      resetDisplayFontStylesheet(option);
       setFontStatus("error");
       setFontMessage(`${option.label} is unavailable. Display remains ${galleryFontOptions[font].label}.`);
     }

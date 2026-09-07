@@ -197,4 +197,15 @@ export const CHARDESK_SYSTEM_FONT_PROFILE = createCharDeskFontProfile({
   display: systemFace,
 });
 
+/** Preserve display routing while rendering structural cells with the Core face. */
+export function withCharDeskCoreCellGlyphs(profile: CharDeskFontProfile): CharDeskFontProfile {
+  return {
+    ...profile,
+    id: `${profile.id}/core-cell-glyph-v1`,
+    capabilities: { ...profile.capabilities, "cell-glyph": CHARDESK_CORE_CELL_GLYPH_FACE },
+    resolveCapability: (text) => resolveCharDeskFontCapability(text) === "cell-glyph"
+      ? "cell-glyph" : profile.resolveCapability(text),
+  };
+}
+
 export type CharDeskFontRoute = keyof CharDeskFontProfile["families"];

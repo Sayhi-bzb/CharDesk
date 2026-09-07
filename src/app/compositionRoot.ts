@@ -36,6 +36,7 @@ import {
   IndexedDbBlackboardRepository,
   type BlackboardWorkspaceRepository,
 } from "@/domains/blackboard/public";
+import { createCanvasFontRuntime, type CanvasFontRuntime, type CanvasFontStorage } from "@/shared/fonts/runtime";
 
 type KeymapStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -43,6 +44,7 @@ type ApplicationEditorHostOptions = {
   canvasPersistence?: false | { storage: Storage; key: string; migrateLegacy?: boolean };
   keymapStorage?: KeymapStorage | false;
   textRenderingStorage?: TextRenderingStorage | false;
+  canvasFontStorage?: CanvasFontStorage | false;
   profile?: EditorHostProfile;
   initialSessions?: readonly CanvasSession[];
   blackboardRepository?: BlackboardWorkspaceRepository;
@@ -53,6 +55,7 @@ export class ApplicationEditorHost {
   readonly collaboration: CollaborationRuntime;
   readonly editor: CanvasEditorRuntime;
   readonly textRendering: TextRenderingRuntime;
+  readonly canvasFont: CanvasFontRuntime;
   readonly textRenderingWorker: TextRenderingWorkerClient;
   readonly blackboard: BlackboardRuntime;
   readonly profile: EditorHostProfile;
@@ -62,11 +65,13 @@ export class ApplicationEditorHost {
     canvasPersistence = false,
     keymapStorage = false,
     textRenderingStorage = false,
+    canvasFontStorage = false,
     profile = EDITOR_HOST_PROFILE,
     initialSessions,
     blackboardRepository = new IndexedDbBlackboardRepository(),
   }: ApplicationEditorHostOptions = {}) {
     this.profile = profile;
+    this.canvasFont = createCanvasFontRuntime({ storage: canvasFontStorage });
     this.collaboration = createCollaborationRuntime();
     this.textRendering = createTextRenderingRuntime({ storage: textRenderingStorage });
     this.textRenderingWorker = new TextRenderingWorkerClient(this.textRendering);
@@ -76,6 +81,7 @@ export class ApplicationEditorHost {
       selectionCommands: createSelectionCommandFactory({
         getActiveDocumentId: () => this.canvas.documents.getActiveDocumentId(),
         renderClipboardText: this.textRenderingWorker.render,
+        getFontProfile: () => this.canvasFont.getSnapshot().profile,
       }),
       parseSessionSource: parseDocumentSessionSource,
       reportIntegrityIssues: (issues) =>
@@ -105,6 +111,7 @@ export class ApplicationEditorHost {
     if (this.#disposed) return;
     this.#disposed = true;
     this.editor.dispose();
+    this.canvasFont.dispose();
     this.textRenderingWorker.dispose();
     await this.collaboration.disconnect();
     this.canvas.dispose();
@@ -134,6 +141,7 @@ export const getApplicationEditorHost = (
         : false,
       keymapStorage: storage,
       textRenderingStorage: storage,
+      canvasFontStorage: storage,
     });
   }
   return applicationHost;

@@ -3,8 +3,25 @@ import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 
 import { CellPlaneIndex } from "@/domains/canvas/public";
 import { drawGridLayer, drawHoveredLinkDecoration } from "./drawGridLayer";
+import { withCharDeskCoreCellGlyphs } from "@chardesk/fonts";
+import { displayFontOptions } from "@/shared/fonts/catalog";
 
 describe("drawGridLayer", () => {
+  it("updates cached entries when the effective profile changes without moving cells", () => {
+    const cells = [{ char: "A", color: "#fff" }, { char: "╭", color: "#fff" }];
+    const reader = { query: function* () { yield { x: 0, y: 0, cells }; } } as unknown as CanvasSurfaceReader;
+    const ctx = createContext();
+    const samples: Array<{ char: string; font: string; x: number; y: number }> = [];
+    vi.mocked(ctx.fillText).mockImplementation((char, x, y) => { samples.push({ char, font: ctx.font, x, y }); });
+    for (const id of ["maple", "ark-mono", "xiaolai-mono"] as const) {
+      drawGridLayer(ctx, reader, { startX: 0, endX: 5, startY: 0, endY: 1 }, 1, { x: 0, y: 0 }, {
+        fontProfile: withCharDeskCoreCellGlyphs(displayFontOptions[id].profile),
+      });
+      expect(samples.at(-2)?.font).toContain(displayFontOptions[id].profile.capabilities.display.families.regular);
+      expect(samples.at(-1)?.font).toBe("15px 'JuliaMono'");
+    }
+    expect(new Set(samples.filter(({ char }) => char === "A").map(({ x, y }) => `${x},${y}`)).size).toBe(1);
+  });
   const createContext = () => ({
     save: vi.fn(),
     restore: vi.fn(),

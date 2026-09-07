@@ -7,7 +7,7 @@ import {
   type CharDeskCanvasContext,
 } from "@chardesk/rendering/canvas";
 import type { RenderFontRoute } from "./fontRouting";
-import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
+import { DEFAULT_CANVAS_FONT_PROFILE } from "@/shared/fonts/canvas-profile";
 import {
   alignCanvasCoordinate,
   DEFAULT_GRID_RENDER_METRICS,
@@ -27,7 +27,7 @@ type ResolvedCellVisual = {
 type CanvasCellDrawOptions = CharDeskCanvasCellDrawOptions;
 const withProductFont = (options?: CanvasCellDrawOptions): CanvasCellDrawOptions => ({
   ...options,
-  fontProfile: options?.fontProfile ?? MAPLE_FONT_PROFILE,
+  fontProfile: options?.fontProfile ?? DEFAULT_CANVAS_FONT_PROFILE,
 });
 
 export type CanvasCellDrawEntry = {
@@ -179,7 +179,8 @@ export const drawCellText = (
 
 export const drawCellBatch = (
   ctx: CharDeskCanvasContext,
-  entries: readonly CanvasCellDrawEntry[]
+  entries: readonly CanvasCellDrawEntry[],
+  options?: CanvasCellDrawOptions
 ) => {
   drawCharDeskCanvasCells(ctx, entries.map((entry) => {
     const cached = canvasDrawEntryCache.get(entry) ?? {
@@ -190,7 +191,7 @@ export const drawCellBatch = (
     cached.cell = toCanvasVisual(entry.cell);
     cached.x = entry.x;
     cached.y = entry.y;
-    cached.options = withProductFont(entry.options);
+    cached.options = withProductFont({ ...options, ...entry.options });
     cached.drawBackground = entry.drawBackground;
     cached.drawText = entry.drawText;
     canvasDrawEntryCache.set(entry, cached);

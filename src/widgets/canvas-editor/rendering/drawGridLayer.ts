@@ -11,6 +11,7 @@ import {
   setTextRenderStyle,
 } from "@/shared/metrics";
 import type { CharDeskCanvasContext } from "@chardesk/rendering/canvas";
+import type { CharDeskFontProfile } from "@chardesk/fonts";
 
 type ViewBounds = ReturnType<typeof GridManager.getViewportGridBounds>;
 type GridDrawEntry = Parameters<typeof drawCellBatch>[1][number];
@@ -24,6 +25,7 @@ type VisitableCanvasSurfaceReader = CanvasSurfaceReader & {
 const gridDrawEntryCache = new WeakMap<object, GridDrawEntry>();
 
 type DrawGridLayerOptions = {
+  fontProfile?: CharDeskFontProfile;
   alpha?: number;
   hoveredLink?: CanvasLinkHit | null;
   content?: "all" | "background" | "text";
@@ -172,7 +174,7 @@ export const drawGridLayer = (
     }
   }
 
-  drawCellBatch(ctx, visibleCells);
+  drawCellBatch(ctx, visibleCells, { fontProfile: options.fontProfile });
   ctx.restore();
   return {
     cells: visibleCells.length,

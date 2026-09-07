@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useCanvasFont } from "@/shared/fonts/hooks";
 import type { StructuredTemplatePreview } from "@/domains/structured-content/public";
 import { cn } from "@chardesk/ui";
 import {
@@ -36,6 +37,7 @@ export function StructuredTemplatePreviewGrid({
   maxScale = 2,
   className,
 }: StructuredTemplatePreviewGridProps) {
+  const { profile: fontProfile } = useCanvasFont();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const width = preview.width * cellWidth;
   const height = preview.height * cellHeight;
@@ -103,7 +105,7 @@ export function StructuredTemplatePreviewGrid({
             cell,
             layout.x + x * cellWidth * layout.scale,
             layout.y + y * cellHeight * layout.scale,
-            { metrics, zoom: layout.scale }
+            { metrics, zoom: layout.scale, fontProfile }
           );
         });
       });
@@ -117,8 +119,8 @@ export function StructuredTemplatePreviewGrid({
     observer?.observe(canvas);
     document.fonts?.addEventListener("loadingdone", render);
     void loadRenderFonts(
-      preview.rows.flatMap((row) => row.map((cell) => cell.char))
-    ).then(render);
+      preview.rows.flatMap((row) => row.map((cell) => cell.char)), fontProfile
+    ).then(render).catch(() => { /* Keep the existing preview if a fallback font fails. */ });
 
     return () => {
       active = false;
@@ -130,6 +132,7 @@ export function StructuredTemplatePreviewGrid({
     cellWidth,
     fit,
     fontSize,
+    fontProfile,
     height,
     maxScale,
     mode,

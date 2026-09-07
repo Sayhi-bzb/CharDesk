@@ -18,6 +18,13 @@ const findAlias = (
     alias.find.test(specifier)
 );
 
+describe("Vite development server", () => {
+  it("ignores experiment documentation without ignoring gallery sources", () => {
+    expect(config).not.toBeTypeOf("function");
+    expect(config.server?.watch?.ignored).toEqual(["**/exp/**/*.md"]);
+  });
+});
+
 describe("Vite workspace aliases", () => {
   it("serves the font stylesheet and its assets from the active worktree", () => {
     expect(config).not.toBeTypeOf("function");

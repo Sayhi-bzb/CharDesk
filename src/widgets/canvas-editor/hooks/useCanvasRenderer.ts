@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCanvasFont } from '@/shared/fonts/hooks';
 import {
   BACKGROUND_COLOR,
   GRID_COLOR,
@@ -240,6 +241,7 @@ export const useCanvasRenderer = (
   requestRenderRef?: React.MutableRefObject<(() => void) | null>,
   runtime?: CanvasEngineRuntime
 ) => {
+  const { profile: fontProfile } = useCanvasFont();
   const {
     activeCanvasId,
     offset,
@@ -307,9 +309,10 @@ export const useCanvasRenderer = (
         {
           alpha,
           content,
+          fontProfile,
         }
       ),
-    []
+    [fontProfile]
   );
   useEffect(() => {
     if (!visualTheme) return;
@@ -428,7 +431,8 @@ export const useCanvasRenderer = (
               contentReader,
               viewBounds,
               zoom,
-              renderOffset
+              renderOffset,
+              { fontProfile }
             ).glyphs;
           }
           if (structuredMovePreview) {
@@ -705,6 +709,7 @@ export const useCanvasRenderer = (
             if (cell) {
               setTextRenderStyle(uiCtx, zoom, DEFAULT_GRID_RENDER_METRICS);
               drawTextCell(uiCtx, cell, pos.x, pos.y, {
+                fontProfile,
                 color: palette.textCursorForeground,
                 zoom,
               });
@@ -757,6 +762,7 @@ export const useCanvasRenderer = (
     };
     const structuredMovePreview = structuredMovePreviewRef.current;
     const sharedViewportInputs = [
+      fontProfile,
       size?.width,
       size?.height,
       activeCanvasId,
@@ -908,5 +914,6 @@ export const useCanvasRenderer = (
     renderManager,
     runtime,
     visualTheme,
+    fontProfile,
   ]);
 };

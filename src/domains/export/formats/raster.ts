@@ -14,6 +14,8 @@ import type { GridCell, GridMap, SelectionArea } from "@/shared/types";
 import { GridManager } from "@/shared/utils/grid";
 import { getSelectionsBoundingBox } from "@/shared/utils/selection";
 import { ExportPipelineError } from "../core/types";
+import type { CharDeskFontProfile } from "@chardesk/fonts";
+import { DEFAULT_CANVAS_FONT_PROFILE } from "@/shared/fonts/canvas-profile";
 
 const MAX_RASTER_EDGE = 8192;
 const MAX_RASTER_PIXELS = 16_777_216;
@@ -77,7 +79,8 @@ const encodePng = (
   entries: readonly CanvasCellDrawEntry[],
   cols: number,
   rows: number,
-  showGrid: boolean
+  showGrid: boolean,
+  fontProfile: CharDeskFontProfile
 ) => {
   const layout = resolveRasterLayout(cols, rows);
   const canvas = document.createElement("canvas");
@@ -103,7 +106,7 @@ const encodePng = (
     });
   }
 
-  drawCellBatch(ctx, entries);
+  drawCellBatch(ctx, entries, { fontProfile });
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
@@ -117,7 +120,8 @@ export const createSelectionPngBlob = async (
   grid: GridMap,
   selections: SelectionArea[],
   showGrid = true,
-  includeColor = true
+  includeColor = true,
+  fontProfile: CharDeskFontProfile = DEFAULT_CANVAS_FONT_PROFILE
 ): Promise<Blob> => {
   if (selections.length === 0) throw new ExportPipelineError("empty-content");
   const { minX, maxX, minY, maxY } = getSelectionsBoundingBox(selections);
@@ -141,14 +145,15 @@ export const createSelectionPngBlob = async (
     }
   }
 
-  await loadRenderFonts(getFontSamples(entries.map(({ cell }) => cell)));
-  return encodePng(entries, cols, rows, showGrid);
+  await loadRenderFonts(getFontSamples(entries.map(({ cell }) => cell)), fontProfile);
+  return encodePng(entries, cols, rows, showGrid, fontProfile);
 };
 
 export const createPngBlobFromGrid = async (
   grid: GridMap,
   showGrid = false,
-  includeColor = true
+  includeColor = true,
+  fontProfile: CharDeskFontProfile = DEFAULT_CANVAS_FONT_PROFILE
 ): Promise<Blob> => {
   if (grid.size === 0) throw new ExportPipelineError("empty-content");
   const { minX, maxX, minY, maxY } = GridManager.getGridBounds(grid);
@@ -166,6 +171,6 @@ export const createPngBlobFromGrid = async (
     });
   });
 
-  await loadRenderFonts(getFontSamples(entries.map(({ cell }) => cell)));
-  return encodePng(entries, cols, rows, showGrid);
+  await loadRenderFonts(getFontSamples(entries.map(({ cell }) => cell)), fontProfile);
+  return encodePng(entries, cols, rows, showGrid, fontProfile);
 };

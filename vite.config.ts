@@ -59,6 +59,9 @@ export default defineConfig({
   },
   server: {
     headers: { "Origin-Agent-Cluster": "?1" },
+    watch: {
+      ignored: ["**/exp/**/*.md"],
+    },
     proxy: {
       "/docs": {
         target: "http://127.0.0.1:5174",

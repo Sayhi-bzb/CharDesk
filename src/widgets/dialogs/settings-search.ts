@@ -16,6 +16,7 @@ export type SettingsTarget = {
   focus?:
     | { type: 'language' }
     | { type: 'text-renderer' }
+    | { type: 'canvas-font' }
     | { type: 'render-feature'; featureId: string }
     | { type: 'shortcut'; entryId: string };
 };
@@ -43,6 +44,14 @@ export const getSettingsSearchResults = (
   const displayTitle = t('settings.display');
   const languageTitle = t('appMenu.language');
   const results: SettingsSearchResult[] = [
+    {
+      id: 'setting:canvas-font',
+      group: 'general',
+      groupTitle: generalTitle,
+      title: t('settings.canvasFont'),
+      target: { section: 'general', focus: { type: 'canvas-font' } },
+      searchText: searchable([t('settings.canvasFont'), 'font', '字体', 'Maple Mono', 'Ark Pixel', 'Xiaolai Mono']),
+    },
     {
       id: 'section:general',
       group: 'general',

@@ -28,6 +28,11 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'webkit-canvas-font',
+      testMatch: /canvas-font-settings\.spec\.ts/,
+      use: { ...devices['Desktop Safari'] },
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },

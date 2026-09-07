@@ -550,7 +550,7 @@ describe('SettingsDialog', () => {
     renderSettings(onOpenChange);
     const search = screen.getByRole('searchbox', { name: 'Search settings' });
     fireEvent.change(search, { target: { value: 'missing setting' } });
-    expect(screen.getByRole('status')).toHaveTextContent('No settings found');
+    expect(screen.getByText('No settings found')).toHaveAttribute('role', 'status');
 
     fireEvent.keyDown(search, { key: 'Escape' });
     expect(search).toHaveValue('');

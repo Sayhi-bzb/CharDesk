@@ -1,17 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  createPngBlobFromGrid,
   createSelectionPngBlob,
   resolveRasterLayout,
 } from "./formats/raster";
+import { withCharDeskCoreCellGlyphs } from "@chardesk/fonts";
+import { displayFontOptions } from "@/shared/fonts/catalog";
 
 describe("PNG raster export", () => {
   const originalFonts = document.fonts;
   let fillStyle = "";
   let strokeStyle = "";
+  let font = "";
+  let drawnFonts: Array<{ char: string; font: string }>;
   let drawnText: Array<{ char: string; color: string }>;
 
   beforeEach(() => {
     drawnText = [];
+    drawnFonts = [];
     fillStyle = "";
     strokeStyle = "";
     Object.defineProperty(document, "fonts", {
@@ -24,7 +30,10 @@ describe("PNG raster export", () => {
       restore: vi.fn(),
       setTransform: vi.fn(),
       fillRect: vi.fn(),
-      fillText: vi.fn((char: string) => drawnText.push({ char, color: fillStyle })),
+      fillText: vi.fn((char: string) => {
+        drawnText.push({ char, color: fillStyle });
+        drawnFonts.push({ char, font });
+      }),
       beginPath: vi.fn(),
       moveTo: vi.fn(),
       lineTo: vi.fn(),
@@ -35,7 +44,7 @@ describe("PNG raster export", () => {
       set strokeStyle(value: string) {
         strokeStyle = value;
       },
-      set font(_value: string) {},
+      set font(value: string) { font = value; },
       set textBaseline(_value: CanvasTextBaseline) {},
       set textAlign(_value: CanvasTextAlign) {},
       set lineWidth(_value: number) {},
@@ -58,6 +67,25 @@ describe("PNG raster export", () => {
   it("uses DPR 2 when safe and falls back to DPR 1 before allocation", () => {
     expect(resolveRasterLayout(10, 10).dpr).toBe(2);
     expect(resolveRasterLayout(400, 200).dpr).toBe(1);
+  });
+
+  it.each(["maple", "ark-mono", "xiaolai-mono"] as const)("exports %s text with Core borders in whole and selection PNGs", async (id) => {
+    const profile = withCharDeskCoreCellGlyphs(displayFontOptions[id].profile);
+    const grid = new Map([
+      ["0,0", { char: "A", color: "#000000" }],
+      ["1,0", { char: "╭", color: "#000000", attrs: { bold: true as const } }],
+      ["2,0", { char: "█", color: "#000000" }],
+    ]);
+    for (const whole of [true, false]) {
+      drawnFonts = [];
+      if (whole) await createPngBlobFromGrid(grid, false, true, profile);
+      else await createSelectionPngBlob(grid, [{ start: { x: 0, y: 0 }, end: { x: 2, y: 0 } }], false, true, profile);
+      expect(drawnFonts.find(({ char }) => char === "A")?.font).toContain(profile.capabilities.display.families.regular);
+      expect(drawnFonts.filter(({ char }) => char !== "A")).toEqual([
+        { char: "╭", font: "15px 'JuliaMono'" }, { char: "█", font: "15px 'JuliaMono'" },
+      ]);
+      expect(document.fonts.load).toHaveBeenCalledWith("15px 'JuliaMono'", expect.any(String));
+    }
   });
 
   it("rejects an unsafe edge before creating a canvas", async () => {

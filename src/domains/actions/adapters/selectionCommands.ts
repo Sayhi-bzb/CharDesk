@@ -364,9 +364,11 @@ const createStructuredTextNodeFromPaste = (
 export const createSelectionCommandFactory = ({
   getActiveDocumentId,
   renderClipboardText,
+  getFontProfile,
 }: {
   getActiveDocumentId: () => string;
   renderClipboardText: RenderClipboardText;
+  getFontProfile?: () => import("@chardesk/fonts").CharDeskFontProfile;
 }): SelectionCommandFactory => (set, get) => ({
   canCopyOrCut: () => {
     const state = get();
@@ -685,7 +687,7 @@ export const createSelectionCommandFactory = ({
       });
     };
     try {
-      const prepared = prepareSelectionPngExport(grid, selections, withGrid);
+      const prepared = prepareSelectionPngExport(grid, selections, withGrid, true, getFontProfile?.());
       if (!prepared.ok) {
         showFailure(prepared.error.code);
         return;

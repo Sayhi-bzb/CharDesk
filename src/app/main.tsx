@@ -13,6 +13,7 @@ import {
 } from "@/domains/canvas/public";
 import { CollaborationRuntimeProvider } from "@/domains/collaboration/public";
 import { TextRenderingProvider } from "@/domains/document/public";
+import { CanvasFontProvider } from "@/shared/fonts/react";
 import { BlackboardRuntimeProvider } from "@/domains/blackboard/public";
 import { EDITOR_HOST_PROFILE } from "./editorHostProfile";
 import { EditorHostProfileProvider } from "./editorHostProfileContext";
@@ -155,6 +156,7 @@ void import("./App").then((module) => {
       <EditorHostProfileProvider profile={host.profile}>
         <BlackboardRuntimeProvider runtime={host.blackboard}>
           <TextRenderingProvider runtime={host.textRendering}>
+            <CanvasFontProvider runtime={host.canvasFont}>
             <CanvasRuntimeProvider runtime={host.canvas}>
               <CollaborationRuntimeProvider runtime={host.collaboration}>
                 <EditorProvider editor={host.editor}>
@@ -162,6 +164,7 @@ void import("./App").then((module) => {
                 </EditorProvider>
               </CollaborationRuntimeProvider>
             </CanvasRuntimeProvider>
+            </CanvasFontProvider>
           </TextRenderingProvider>
         </BlackboardRuntimeProvider>
       </EditorHostProfileProvider>
