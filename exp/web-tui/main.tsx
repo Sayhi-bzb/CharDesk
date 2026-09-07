@@ -1,21 +1,24 @@
-import { StrictMode, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { StrictMode, useEffect, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
 import { createRoot } from "react-dom/client";
-import { Check, CircleX, Copy, type LucideIcon } from "lucide-react";
+import { Check } from "pixelarticons/react/Check";
+import { Close } from "pixelarticons/react/Close";
+import { Copy } from "pixelarticons/react/Copy";
 import { formatCellProbe } from "@chardesk/cell-ui";
 import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
 import { componentDocumentBySlug, componentDocuments, type ComponentDocument } from "./component-catalog";
 import { FixturePage } from "./fixtures";
-import { GalleryAppearance, GalleryBorderToggle, GalleryIconButton, GalleryThemeToggle } from "./appearance";
+import { GalleryAppearance, GalleryBorderToggle, GalleryFontToggle, GalleryIconButton, GalleryThemeToggle } from "./appearance";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
 import "@chardesk/font-maple/fonts.css";
 
 type CopyState = "idle" | "pending" | "success" | "error";
-const copyPresentation: Record<CopyState, Readonly<{ label: string; icon: LucideIcon }>> = {
-  idle: { label: "Copy", icon: Copy },
-  pending: { label: "Copy", icon: Copy },
-  success: { label: "Copied", icon: Check },
-  error: { label: "Copy failed", icon: CircleX },
+type GalleryIcon = ComponentType<SVGProps<SVGSVGElement>>;
+const copyPresentation: Record<CopyState, Readonly<{ label: string; icon: GalleryIcon; iconName: string }>> = {
+  idle: { label: "Copy", icon: Copy, iconName: "copy" },
+  pending: { label: "Copy", icon: Copy, iconName: "copy" },
+  success: { label: "Copied", icon: Check, iconName: "check" },
+  error: { label: "Copy failed", icon: Close, iconName: "error" },
 };
 
 const subscribeToHash = (callback: () => void) => {
@@ -56,7 +59,7 @@ export function CopyButton({ readText }: Readonly<{ readText: () => string | Pro
       disabled={state === "pending"}
       onClick={copy}
     >
-      <Icon aria-hidden="true" />
+      <Icon aria-hidden="true" data-gallery-icon={presentation.iconName} />
     </GalleryIconButton>
   );
 }
@@ -170,7 +173,7 @@ export function DocumentationShell({ document }: Readonly<{ document: ComponentD
     <>
       <header className="gallery-header">
         <a className="gallery-brand" href="#/components/text">CharDesk / Cell UI</a>
-        <div className="gallery-appearance-controls"><GalleryBorderToggle /><GalleryThemeToggle /></div>
+        <div className="gallery-appearance-controls"><GalleryFontToggle /><GalleryBorderToggle /><GalleryThemeToggle /></div>
       </header>
       <div className="gallery-layout">
         <GalleryNavigation activeSlug={document.slug} />

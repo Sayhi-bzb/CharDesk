@@ -20,7 +20,7 @@ test("border preview updates every Surface without resetting product state", asy
   const before = await Promise.all((await surfaces.all()).map(readCellProbe));
   await page.getByRole("button", { name: "Rounded", exact: true }).click();
   await expect(page.getByRole("button", { name: "Square", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Square", exact: true }).locator(".lucide-square")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Square", exact: true }).locator('[data-gallery-icon="square"]')).toHaveCount(1);
   const rounded = await Promise.all((await surfaces.all()).map(readCellProbe));
   const corners: Record<string, string> = { "┌": "╭", "┐": "╮", "└": "╰", "┘": "╯" };
   for (let i = 0; i < before.length; i++) {
@@ -42,7 +42,7 @@ test("border preview updates every Surface without resetting product state", asy
   await toggle.focus();
   await page.keyboard.press("Enter");
   await expect(toggle).toHaveAttribute("aria-label", "Rounded");
-  await expect(toggle.locator(".lucide-square-round-corner")).toHaveCount(1);
+  await expect(toggle.locator('[data-gallery-icon="rounded"]')).toHaveCount(1);
   expect((await readCellProbe(overlay)).text).toBe(before[3].text);
   await toggle.focus();
   await page.keyboard.press("Space");

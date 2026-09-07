@@ -1,6 +1,98 @@
 import { expect, test } from "@playwright/test";
 import { copyCellRange, readCellProbe } from "./helpers/cell-probe";
 
+test.describe("display font", () => {
+  test("loads temporary candidates on demand and preserves Cell state", async ({ page }) => {
+    let releaseFirst!: () => void;
+    let requests = 0;
+    const firstRequest = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    await page.route("https://fontsapi.zeoseven.com/925/**/result.css", async (route) => {
+      requests += 1;
+      if (requests === 1) await firstRequest;
+      const family = route.request().url().includes("12px-mono")
+        ? "Ark Pixel 12px Mono latin"
+        : "Ark Pixel 12px Prop latin";
+      await route.fulfill({
+        status: 200,
+        contentType: "text/css",
+        body: `@font-face { font-family: "${family}"; src: local("Arial"), local("DejaVu Sans"); }`,
+      });
+    });
+    await page.goto("/exp/web-tui/#/__fixtures/all");
+    const gallery = page.locator(".gallery-page");
+    const editor = page.locator('[data-cell-probe="editor"]');
+    const input = page.getByRole("textbox", { name: "File name" });
+    await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
+    expect(requests).toBe(0);
+    await input.fill("Wnotes-hello.txt");
+    await input.press("Shift+ArrowLeft");
+    const selection = await input.evaluate((node: HTMLTextAreaElement) =>
+      [node.selectionStart, node.selectionEnd]);
+    const toggle = page.getByRole("button", { name: "Use Ark Pixel 12px Prop" });
+    await toggle.focus();
+    const before = await readCellProbe(editor);
+    await page.keyboard.press("Enter");
+    await expect(gallery).toHaveAttribute("data-gallery-font-status", "loading");
+    await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
+    await expect(page.getByRole("button", { name: "Loading Ark Pixel 12px Prop" }))
+      .toHaveAttribute("aria-disabled", "true");
+    expect(requests).toBe(1);
+    releaseFirst();
+    await expect(gallery).toHaveAttribute("data-gallery-font", "ark-prop");
+    await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
+    await expect(page.getByRole("button", { name: "Use Ark Pixel 12px Mono" })).toBeFocused();
+    await expect.poll(async () => (await readCellProbe(editor)).presentation?.fontProfileId)
+      .toBe("chardesk/gallery-ark-prop-maple-v2");
+    const after = await readCellProbe(editor);
+    expect(after.text).toBe(before.text);
+    expect(after.viewport).toEqual(before.viewport);
+    expect(after.focusedId).toBe(before.focusedId);
+    expect(after.cells.map(({ text, ownerId }) => ({ text, ownerId })))
+      .toEqual(before.cells.map(({ text, ownerId }) => ({ text, ownerId })));
+    expect(after.presentation).toMatchObject({
+      metrics: { cellWidth: 9, cellHeight: 19, fontSize: 15 },
+      requestedFontRoutes: {
+        display: { family: expect.stringContaining("Ark Pixel 12px Prop latin"), fontSize: 15, scaleX: 1 },
+        cjk: { family: expect.stringContaining("Ark Pixel 12px Prop latin"), fontSize: 15, scaleX: 1 },
+      },
+    });
+    expect(after.presentation?.glyphOverflow.some(({ text }) => text === "W")).toBe(true);
+    await expect(gallery).toHaveCSS("font-size", "15px");
+    await expect(input).toHaveValue("Wnotes-hello.txt");
+    expect(await input.evaluate((node: HTMLTextAreaElement) =>
+      [node.selectionStart, node.selectionEnd])).toEqual(selection);
+
+    await page.keyboard.press("Enter");
+    await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
+    await expect(page.getByRole("button", { name: "Use Maple Mono" })).toBeFocused();
+    expect(requests).toBe(2);
+    await page.keyboard.press("Enter");
+    await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
+    await page.reload();
+    await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
+    expect(requests).toBe(2);
+  });
+
+  test("a failed remote candidate keeps the current font and exposes retry", async ({ page }) => {
+    let requests = 0;
+    await page.route("https://fontsapi.zeoseven.com/925/**/result.css", async (route) => {
+      requests += 1;
+      await route.abort("failed");
+    });
+    await page.goto("/exp/web-tui/#/__fixtures/all");
+    const gallery = page.locator(".gallery-page");
+    await page.getByRole("button", { name: "Use Ark Pixel 12px Prop" }).click();
+    await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
+    await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
+    const retry = page.getByRole("button", { name: "Retry Ark Pixel 12px Prop" });
+    await expect(retry).toBeEnabled();
+    await expect(page.getByRole("status")).toContainText("Display remains Maple Mono");
+    await retry.click();
+    await expect.poll(() => requests).toBe(2);
+    await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
+  });
+});
+
 test("theme icon toggles, persists, and preserves Cell state", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/exp/web-tui/#/__fixtures/all");
@@ -8,9 +100,15 @@ test("theme icon toggles, persists, and preserves Cell state", async ({ page }) 
   const input = page.getByRole("textbox", { name: "File name" });
   await input.fill("hello世界");
   const before = await readCellProbe(editor);
-  await page.getByRole("button", { name: "Dark" }).click();
+  const darkToggle = page.getByRole("button", { name: "Dark" });
+  const moon = darkToggle.locator('[data-gallery-icon="moon"]');
+  await expect(moon).toHaveCount(1);
+  await expect(moon).toHaveCSS("width", "15px");
+  await expect(moon).toHaveCSS("height", "15px");
+  await darkToggle.click();
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+  await expect(page.getByRole("button", { name: "Light" }).locator('[data-gallery-icon="sun"]')).toHaveCount(1);
   const after = await readCellProbe(editor);
   expect(after.text).toBe(before.text);
   expect(after.revision).toBeGreaterThan(before.revision);
@@ -160,12 +258,12 @@ test("snapshot copy feedback expires and a failed copy can be retried", async ({
   await button.hover();
   await expect(button.locator(".gallery-control-tooltip")).toHaveText("Copy");
   await expect(button.locator(".gallery-control-tooltip")).toBeVisible();
-  await expect(button.locator(".lucide-circle-x")).toHaveCount(1);
+  await expect(button.locator('[data-gallery-icon="error"]')).toHaveCount(1);
   await expect(page.locator("body")).toHaveAttribute("data-copy-attempts", "1");
   await button.click();
   await expect(button).toHaveAttribute("data-copy-state", "success");
   await expect(button).toHaveAttribute("aria-label", "Copied");
-  await expect(button.locator(".lucide-check")).toHaveCount(1);
+  await expect(button.locator('[data-gallery-icon="check"]')).toHaveCount(1);
   await expect(button).toBeEnabled();
   await expect(button).toHaveAttribute("data-copy-state", "idle", { timeout: 5000 });
   await expect(button).toHaveAttribute("aria-label", "Copy");

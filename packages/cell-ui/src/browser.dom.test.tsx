@@ -50,6 +50,7 @@ const context = {
   clearRect: vi.fn(),
   fillRect: vi.fn(),
   fillText: vi.fn(),
+  measureText: vi.fn(() => ({ width: 0 })),
   save: vi.fn(),
   restore: vi.fn(),
   beginPath: vi.fn(),
@@ -70,6 +71,7 @@ const context = {
 };
 
 beforeEach(() => {
+  context.measureText.mockReset().mockReturnValue({ width: 0 });
   vi.spyOn(HTMLCanvasElement.prototype, "getContext")
     .mockReturnValue(context as unknown as CanvasRenderingContext2D);
   Object.defineProperties(HTMLElement.prototype, {
@@ -552,6 +554,49 @@ describe("CellSurface", () => {
     } finally {
       Reflect.deleteProperty(document, "fonts");
     }
+  });
+
+  it("publishes resolved font routes and reports glyphs wider than their Cells", () => {
+    context.measureText.mockImplementation((text: string) => ({
+      width: text === "W" ? 12 : 6,
+    }));
+    const profile: CharDeskFontProfile = {
+      id: "test/prop",
+      families: { text: "Prop Face", emoji: "Emoji Face" },
+      sources: [],
+      resolveCapability: (grapheme) => grapheme === "界" ? "cjk" : "display",
+      capabilities: {
+        display: { families: { regular: "Prop Face" } },
+        cjk: { families: { regular: "Prop CJK" } },
+        nerd: { families: { regular: "Nerd Face" } },
+        symbol: { families: { regular: "Symbol Face" } },
+        emoji: { families: { regular: "Emoji Face" } },
+      },
+    };
+    render(
+      <CellSurface
+        probeId="font-test"
+        viewport={{ width: 4, height: 1 }}
+        onCommand={() => undefined}
+        fontProfile={profile}
+        metrics={{ cellWidth: 9, cellHeight: 19, fontSize: 15, fontFamily: "monospace" }}
+      >
+        <Root><Text>W界</Text></Root>
+      </CellSurface>
+    );
+
+    const snapshot = readCellSurfaceProbe(screen.getByLabelText("Cell interface"))!;
+    expect(snapshot.presentation).toMatchObject({
+      metrics: { cellWidth: 9, cellHeight: 19, fontSize: 15 },
+      fontProfileId: "test/prop",
+      requestedFontRoutes: {
+        display: { family: "Prop Face", fontSize: 15, scaleX: 1 },
+        cjk: { family: "Prop CJK", fontSize: 15, scaleX: 1 },
+      },
+      glyphOverflow: [{
+        text: "W", row: 0, col: 0, spanCells: 1, measuredWidth: 12, availableWidth: 9,
+      }],
+    });
   });
 
   it("paints the two backgrounds beneath a wide glyph independently", () => {

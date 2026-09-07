@@ -1,30 +1,7 @@
 import type { Locator } from "@playwright/test";
+import type { CellProbeSnapshot } from "@chardesk/cell-ui";
 
-export type BrowserCellProbe = Readonly<{
-  schemaVersion: 2;
-  probeId: string | null;
-  revision: number;
-  region: Readonly<{ x: number; y: number; width: number; height: number }>;
-  viewport: Readonly<{ width: number; height: number }>;
-  text: string;
-  cells: readonly Readonly<{
-    x: number;
-    y: number;
-    text: string;
-    primitive?: Readonly<{
-      kind: "line" | "fill";
-      edges?: number;
-      join?: "square" | "rounded";
-      weight?: "single";
-      regions?: readonly Readonly<{ x: number; y: number; width: number; height: number }>[];
-    }>;
-    width: 1 | 2;
-    continuation: boolean;
-    ownerId: string | null;
-    style: Readonly<{ bold?: boolean; backgroundColor?: string; color?: string }>;
-  }>[];
-  focusedId: string | null;
-}>;
+export type BrowserCellProbe = CellProbeSnapshot;
 
 const PROBE_PROPERTY = "__chardeskCellProbeV2";
 

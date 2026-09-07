@@ -52,5 +52,10 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
   await expect(page.getByRole("heading", { name: "Text", level: 1 })).toBeVisible();
   await expect(page.locator("canvas")).toHaveCount(1);
   await expect(page.locator("canvas")).toHaveAttribute("data-cell-text", /Unicode: 世界 👋/);
+  const gallery = page.locator(".gallery-page");
+  await page.getByRole("button", { name: "Use Ark Pixel 12px Prop" }).click();
+  await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
+  await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
+  await expect(page.getByRole("button", { name: "Retry Ark Pixel 12px Prop" })).toBeEnabled();
   expect(pageErrors).toEqual([]);
 });

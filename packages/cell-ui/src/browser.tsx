@@ -3,8 +3,10 @@ import {
   DEFAULT_CHARDESK_CANVAS_METRICS,
   alignCharDeskCanvasRect,
   drawCharDeskCanvasCells,
+  getCharDeskCanvasFont,
   loadCharDeskCanvasFonts,
   prepareCharDeskCanvasSurface,
+  resolveCharDeskCanvasFontFace,
   type CharDeskCanvasMetrics,
   type CharDeskCanvasCellDrawEntry,
   type CharDeskCanvasPalette,
@@ -52,7 +54,7 @@ import {
 } from "./range.js";
 import type { RootProps } from "./react.js";
 import { captureCellProbe, formatCellBuffer } from "./probe.js";
-import type { CellProbeSnapshot } from "./probe.js";
+import type { CellProbePresentation, CellProbeSnapshot } from "./probe.js";
 import { CellUiRuntime } from "./runtime.js";
 import { textViewportCommands } from "./text-viewport.js";
 import { usePointerAppearance } from "./browser-hover.js";
@@ -541,6 +543,98 @@ export const readCellSurfaceProbe = (element: Element): CellProbeSnapshot | null
     : null;
 };
 
+const CELL_PROBE_FONT_SAMPLES = {
+  display: "A",
+  cjk: "界",
+  nerd: "\ue0b0",
+  symbol: "─",
+  emoji: "👋",
+} as const;
+
+const roundProbePixels = (value: number) => Math.round(value * 1000) / 1000;
+
+const captureCellProbePresentation = (
+  frame: FrameSnapshot,
+  canvas: HTMLCanvasElement,
+  metrics: CharDeskCanvasMetrics,
+  fontProfile?: CharDeskFontProfile
+): CellProbePresentation => {
+  const requestedFontRoutes = Object.fromEntries(
+    Object.entries(CELL_PROBE_FONT_SAMPLES).map(([capability, grapheme]) => {
+      const face = resolveCharDeskCanvasFontFace({
+        grapheme,
+        route: resolveCharDeskFontRoute(grapheme),
+        bold: false,
+        italic: false,
+        ...(fontProfile ? { fontProfile } : {}),
+      });
+      return [capability, {
+        family: face.family,
+        fontSize: metrics.fontSize * face.fontSizeScale,
+        scaleX: face.scaleX,
+        baselineShiftEm: face.baselineShiftEm,
+        weightPolicy: face.weightPolicy,
+      }];
+    })
+  ) as CellProbePresentation["requestedFontRoutes"];
+  const context = canvas.getContext("2d");
+  const glyphOverflow: Array<CellProbePresentation["glyphOverflow"][number]> = [];
+  if (context && typeof context.measureText === "function") {
+    const measured = new Set<string>();
+    context.save();
+    try {
+      for (let row = 0; row < frame.buffer.height; row += 1) {
+        for (let col = 0; col < frame.buffer.width; col += 1) {
+          const cell = frame.buffer.get(col, row);
+          if (!cell || cell.continuation || cell.primitive || !cell.text.trim()) continue;
+          const bold = !!cell.style.bold;
+          const key = `${bold}:${cell.text}`;
+          if (measured.has(key)) continue;
+          measured.add(key);
+          const route = resolveCharDeskFontRoute(cell.text);
+          const face = resolveCharDeskCanvasFontFace({
+            grapheme: cell.text,
+            route,
+            bold,
+            italic: false,
+            ...(fontProfile ? { fontProfile } : {}),
+          });
+          context.font = getCharDeskCanvasFont(metrics, 1, {
+            bold,
+            route,
+            fontFamily: face.family,
+            fontSizeScale: face.fontSizeScale,
+            weightPolicy: face.weightPolicy,
+          });
+          const measuredWidth = context.measureText(cell.text).width * face.scaleX;
+          const availableWidth = cell.width * metrics.cellWidth;
+          if (measuredWidth <= availableWidth + 0.5) continue;
+          glyphOverflow.push({
+            text: cell.text,
+            row,
+            col,
+            spanCells: cell.width,
+            measuredWidth: roundProbePixels(measuredWidth),
+            availableWidth: roundProbePixels(availableWidth),
+          });
+        }
+      }
+    } finally {
+      context.restore();
+    }
+  }
+  return {
+    metrics: {
+      cellWidth: metrics.cellWidth,
+      cellHeight: metrics.cellHeight,
+      fontSize: metrics.fontSize,
+    },
+    fontProfileId: fontProfile?.id ?? "default",
+    requestedFontRoutes,
+    glyphOverflow,
+  };
+};
+
 const isCellRangePointerChord = (event: Pick<PointerEvent, "altKey" | "metaKey">) => {
   const applePlatform = typeof navigator !== "undefined"
     && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
@@ -612,6 +706,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     pointerId: number;
   }> | null>(null);
   const [interactionRevision, setInteractionRevision] = useState(0);
+  const [fontPresentationRevision, setFontPresentationRevision] = useState(0);
   const [frame, setFrame] = useState<FrameSnapshot | null>(null);
   const pointerAppearance = usePointerAppearance(canvasRef, frame, metrics);
   const { hoveredId } = pointerAppearance;
@@ -717,6 +812,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       const current = frameRef.current;
       if (canvas && current) {
         presentFrame(canvas, current, metrics, palette, cellRange, resolvedTheme, fontProfile);
+        setFontPresentationRevision((revision) => revision + 1);
       }
     };
   }, [metrics, palette, cellRange, resolvedTheme, fontProfile]);
@@ -772,14 +868,19 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   useLayoutEffect(() => {
     const surface = surfaceRef.current as CellProbeHost | null;
     if (!surface || !probeId || !frame) return;
-    const snapshot = captureCellProbe(frame, { probeId });
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const snapshot: CellProbeSnapshot = {
+      ...captureCellProbe(frame, { probeId }),
+      presentation: captureCellProbePresentation(frame, canvas, metrics, fontProfile),
+    };
     surface[CELL_SURFACE_PROBE_PROPERTY] = snapshot;
     return () => {
       if (surface[CELL_SURFACE_PROBE_PROPERTY] === snapshot) {
         delete surface[CELL_SURFACE_PROBE_PROPERTY];
       }
     };
-  }, [frame, probeId]);
+  }, [fontPresentationRevision, fontProfile, frame, metrics, probeId]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

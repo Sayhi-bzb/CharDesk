@@ -99,6 +99,41 @@ describe("Cell probe", () => {
     pilot.dispose();
   });
 
+  it("formats requested font routes and bounded glyph overflow diagnostics", () => {
+    const pilot = createTestPilot({
+      viewport: { width: 2, height: 1 },
+      render: () => <Root><Text>W界</Text></Root>,
+    });
+    const snapshot = {
+      ...pilot.probe(),
+      probeId: "font-contract",
+      presentation: {
+        metrics: { cellWidth: 9, cellHeight: 19, fontSize: 15 },
+        fontProfileId: "gallery/ark-prop",
+        requestedFontRoutes: {
+          display: { family: "Ark Prop", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "inherit" as const },
+          cjk: { family: "Ark Prop", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "inherit" as const },
+          nerd: { family: "Nerd", fontSize: 15, scaleX: 0.6, baselineShiftEm: 0, weightPolicy: "regular" as const },
+          symbol: { family: "Symbol", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "regular" as const },
+          emoji: { family: "Emoji", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "regular" as const },
+        },
+        glyphOverflow: [{
+          text: "W", row: 0, col: 0, spanCells: 1, measuredWidth: 12.5, availableWidth: 9,
+        }],
+      },
+    };
+
+    expect(formatCellProbe(snapshot, { header: true })).toBe(
+      "cell-ui/probe@2  font-contract  2×1  focus=none\n" +
+      "font-profile=gallery/ark-prop cell=9×19 base=15px\n" +
+      "font display=Ark Prop size=15px scaleX=1\n" +
+      "font cjk=Ark Prop size=15px scaleX=1\n" +
+      "glyph-overflow \"W\"@(0,0) 12.5px>9px\n" +
+      "W"
+    );
+    pilot.dispose();
+  });
+
   it("reports presentation primitives without changing copied text", () => {
     const pilot = createTestPilot({
       viewport: { width: 4, height: 3 },

@@ -25,6 +25,44 @@ export type CellProbeCell = Readonly<{
   style: CellTextStyle;
 }>;
 
+export type CellProbeFontCapability =
+  | "display"
+  | "cjk"
+  | "nerd"
+  | "symbol"
+  | "emoji";
+
+export type CellProbeRequestedFontFace = Readonly<{
+  family: string;
+  fontSize: number;
+  scaleX: number;
+  baselineShiftEm: number;
+  weightPolicy: "inherit" | "regular";
+}>;
+
+export type CellProbeGlyphOverflow = Readonly<{
+  text: string;
+  row: number;
+  col: number;
+  spanCells: number;
+  measuredWidth: number;
+  availableWidth: number;
+}>;
+
+export type CellProbePresentation = Readonly<{
+  metrics: Readonly<{
+    cellWidth: number;
+    cellHeight: number;
+    fontSize: number;
+  }>;
+  fontProfileId: string;
+  requestedFontRoutes: Readonly<Record<
+    CellProbeFontCapability,
+    CellProbeRequestedFontFace
+  >>;
+  glyphOverflow: readonly CellProbeGlyphOverflow[];
+}>;
+
 export type CellProbeSnapshot = Readonly<{
   schemaVersion: 2;
   probeId: string | null;
@@ -35,6 +73,7 @@ export type CellProbeSnapshot = Readonly<{
   cells: readonly CellProbeCell[];
   focusedId: WidgetId | null;
   invalidation: FrameInvalidation;
+  presentation?: CellProbePresentation;
 }>;
 
 export type CellInspection = Readonly<{
@@ -119,7 +158,24 @@ export const formatCellProbe = (
   const id = snapshot.probeId ?? "anonymous";
   const focus = snapshot.focusedId ?? "none";
   const header = `cell-ui/probe@${snapshot.schemaVersion}  ${id}  ${snapshot.region.width}×${snapshot.region.height}  focus=${focus}`;
-  return snapshot.text.length > 0 ? `${header}\n${snapshot.text}` : header;
+  const presentation = snapshot.presentation;
+  if (!presentation) return snapshot.text.length > 0 ? `${header}\n${snapshot.text}` : header;
+  const formatFace = (capability: "display" | "cjk") => {
+    const face = presentation.requestedFontRoutes[capability];
+    return `font ${capability}=${face.family} size=${face.fontSize}px scaleX=${face.scaleX}`;
+  };
+  const diagnostics = [
+    `font-profile=${presentation.fontProfileId} cell=${presentation.metrics.cellWidth}×${presentation.metrics.cellHeight} base=${presentation.metrics.fontSize}px`,
+    formatFace("display"),
+    formatFace("cjk"),
+  ];
+  const visibleOverflow = presentation.glyphOverflow.slice(0, 8);
+  diagnostics.push(...visibleOverflow.map((overflow) =>
+    `glyph-overflow ${JSON.stringify(overflow.text)}@(${overflow.col},${overflow.row}) ${overflow.measuredWidth}px>${overflow.availableWidth}px`));
+  if (presentation.glyphOverflow.length > visibleOverflow.length) {
+    diagnostics.push(`glyph-overflow +${presentation.glyphOverflow.length - visibleOverflow.length} more`);
+  }
+  return [header, ...diagnostics, snapshot.text].filter((line) => line.length > 0).join("\n");
 };
 
 export const inspectCell = (frame: FrameSnapshot, point: CellPoint): CellInspection => {

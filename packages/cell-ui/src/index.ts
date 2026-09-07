@@ -9,7 +9,11 @@ export {
 export type {
   CellInspection,
   CellProbeCell,
+  CellProbeFontCapability,
+  CellProbeGlyphOverflow,
   CellProbeOptions,
+  CellProbePresentation,
+  CellProbeRequestedFontFace,
   CellProbeSnapshot,
   FormatCellBufferOptions,
   FormatCellProbeOptions,

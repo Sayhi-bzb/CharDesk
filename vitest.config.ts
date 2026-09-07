@@ -16,6 +16,7 @@ export default defineConfig({
           setupFiles: ['./src/test/setup-node.ts'],
           include: [
             'src/**/*.{test,spec}.ts',
+            'exp/web-tui/**/*.test.ts',
             'packages/ui/src/**/*.{test,spec}.ts',
             'scripts/**/*.{test,spec}.ts',
           ],
@@ -32,6 +33,7 @@ export default defineConfig({
           include: [
             'src/**/*.dom.{test,spec}.ts',
             'src/**/*.{test,spec}.tsx',
+            'exp/web-tui/**/*.dom.test.tsx',
             'packages/ui/src/**/*.dom.{test,spec}.ts',
             'packages/ui/src/**/*.{test,spec}.tsx',
             'scripts/**/*.dom.{test,spec}.ts',
