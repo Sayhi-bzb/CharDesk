@@ -1,6 +1,6 @@
 # Web TUI Accessibility 验收
 
-本页登记 Phase 5 的 Accessibility 验收边界。语义契约由 [SemanticSnapshot](../blueprints/semantics.md) 负责；验收以可重复执行的 snapshot audit、Semantic DOM 和目标浏览器行为测试为权威。
+本页登记 Phase 5 的 Accessibility 事实。语义契约由 [SemanticSnapshot](../blueprints/semantics.md) 负责。
 
 ## 门槛
 
@@ -14,4 +14,4 @@
 
 ## 边界
 
-真实读屏的语音、措辞和浏览器/OS 组合体验属于产品兼容性 QA，不再作为 Phase 5 的完成门槛。若后续产品化选定受支持的读屏矩阵，应在对应发布策略中建立独立验证卡片，不能回写本阶段事实。
+现有证据验证 accessibility tree、DOM focus 和 actions，不声明真实读屏的语音、措辞或任意浏览器/OS 组合体验。

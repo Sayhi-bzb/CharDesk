@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { copyCellRange, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
 import { arkMonoStylesheetRequest } from "./helpers/ark-mono";
-import { routeLiveXiaolai } from "./helpers/xiaolai";
 
 test("keeps the first visible Surface geometry stable across a cold reload", async ({ page }) => {
   await page.addInitScript(() => {
@@ -38,11 +37,6 @@ for (const candidate of ["substitute-mono", "ark-mono", "xiaolai-mono"]) {
     test.describe(`font grid ${candidate} DPR ${dpr}`, () => {
       test.use({ deviceScaleFactor: dpr });
       test("font switches preserve the grid, editing, hit testing and rectangle copy", async ({ page }, testInfo) => {
-        test.skip(xiaolai && process.env.WEB_TUI_LIVE_FONTS !== "1", "Opt-in remote font probe: WEB_TUI_LIVE_FONTS=1");
-        if (xiaolai) {
-          test.setTimeout(120_000);
-          await routeLiveXiaolai(page);
-        }
         await page.emulateMedia({ reducedMotion: "reduce" });
         if (candidate === "substitute-mono") await page.route(arkMonoStylesheetRequest, (route) => route.fulfill({
           contentType: "text/css",

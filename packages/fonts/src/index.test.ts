@@ -84,7 +84,7 @@ describe("core font profile", () => {
     expect(resolveCharDeskFontCapability("，")).toBe("cjk");
     expect(resolveCharDeskFontCapability("\ue0b0")).toBe("nerd");
     for (const glyph of ["┌", "─", "╭", "│", "█", "▀", "▄", "▌", "▐"]) {
-      expect(resolveCharDeskFontCapability(glyph)).toBe("display");
+      expect(resolveCharDeskFontCapability(glyph)).toBe("cell-glyph");
     }
     expect(resolveCharDeskFontCapability("∞")).toBe("symbol");
     expect(resolveCharDeskFontCapability("♥")).toBe("nerd");

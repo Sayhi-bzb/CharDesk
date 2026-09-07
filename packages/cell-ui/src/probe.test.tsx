@@ -111,6 +111,7 @@ describe("Cell probe", () => {
         metrics: { cellWidth: 9, cellHeight: 19, fontSize: 15 },
         fontProfileId: "gallery/test-font",
         requestedFontRoutes: {
+          "cell-glyph": { family: "'JuliaMono'", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "regular" as const },
           display: { family: "Test Font", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "inherit" as const },
           cjk: { family: "Test Font", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "inherit" as const },
           nerd: { family: "Nerd", fontSize: 15, scaleX: 0.6, baselineShiftEm: 0, weightPolicy: "regular" as const },
@@ -128,6 +129,7 @@ describe("Cell probe", () => {
       "font-profile=gallery/test-font cell=9×19 base=15px\n" +
       "font display=Test Font size=15px scaleX=1\n" +
       "font cjk=Test Font size=15px scaleX=1\n" +
+      "font cell-glyph='JuliaMono' size=15px scaleX=1\n" +
       "glyph-overflow \"W\"@(0,0) 12.5px>9px\n" +
       "W"
     );

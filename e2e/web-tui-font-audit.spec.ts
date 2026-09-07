@@ -25,9 +25,12 @@ for (const dpr of [1, 1.25, 2]) {
       for (const text of ["世", "界", "│", "█", "▀", "▄", "─", "┌", "└", "→"]) {
         const sample = report.samples.find((entry) => entry.text === text && !entry.requestedBold)!;
         expect(sample.status).toBe("measured");
-        // Upstream uses full-width CJK and these symbols, even in the Latin variant.
-        expect(sample.advance).toBe(15);
-        if (!["世", "界"].includes(text)) expect(sample.advanceOverflow).toBe(6);
+        const coreGlyph = /^[\u2500-\u259F]$/u.test(text);
+        expect(sample.advance).toBe(coreGlyph ? 9 : 15);
+        if (coreGlyph) {
+          expect(sample.requestedFamily).toBe("'JuliaMono'");
+          expect(sample.advanceOverflow).toBe(0);
+        } else if (text === "→") expect(sample.advanceOverflow).toBe(6);
       }
       const printed = await page.evaluate(async (snapshot) => {
         const path = "/packages/cell-ui/src/probe.ts";

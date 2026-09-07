@@ -28,8 +28,8 @@ to their one- or two-cell pixel allocation. It is opt-in; other consumers keep
 the existing unrestricted glyph rendering.
 
 Every foreground Cell is rendered from `cell.text` through the active font
-profile. Box Drawing and Block Elements use the display face and its fallback
-stack. Background and clip edges align to device pixels for axis-aligned
+profile. Box Drawing and Block Elements use its `cell-glyph` face, which defaults
+to display; Cell UI selects Core JuliaMono Regular. Background and clip edges align to device pixels for axis-aligned
 transforms. `alignCharDeskCanvasRect(bounds, transform)` provides the same edge
 alignment for host dirty-region clears. Rotated/sheared transforms remain
 unsnapped; seam-free rasterization is guaranteed only for axis-aligned transforms.

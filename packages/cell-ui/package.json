@@ -28,6 +28,7 @@
     "test:browser": "vitest run --config vitest.browser.config.ts"
   },
   "dependencies": {
+    "@chardesk/fonts": "^0.3.6",
     "@chardesk/protocol": "^0.3.0",
     "@chardesk/rendering": "^0.1.0",
     "@codemirror/state": "^6.7.4",

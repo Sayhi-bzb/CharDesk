@@ -18,7 +18,8 @@
 
 | ID | Phase / 切片 | 已交付事实 | 验收证据 |
 | --- | --- | --- | --- |
-| P0.1 | Phase 0 / 上游地图 | 候选职责、采用结论和进入依赖图的门槛已有单一登记处 | [事实白板](README.md#上游地图)、[候选检查标准](research/checklist.md) |
+| P5.15 | Phase 5 / Core 边框路由 | Cell UI 的 Box/Block 统一使用 JuliaMono Regular，正文保留选定字体；加载、绘制和 Probe 共用有效 Profile；主 Canvas 默认路由不变 | [Surface 契约](../packages/cell-ui/README.md)、[路由测试](../packages/cell-ui/src/browser-font-profile.test.ts)、[三字体绘制检查](../e2e/web-tui-block-glyphs.spec.ts) |
+| P0.1 | Phase 0 / 上游地图 | 当前依赖、参考与未采用边界已有单一登记处 | [事实白板](README.md#当前上游关系)、[卡片规则](research/checklist.md) |
 | P0.2 | Phase 0 / 架构收敛 | Compositor、SceneGeometry、事件、Portal、虚拟化与 SemanticSnapshot 的目标契约已定义 | [Compositor 蓝图](blueprints/compositor.md)、[Semantics 蓝图](blueprints/semantics.md) |
 | P1.1 | Phase 1 / Headless Cell Engine | React descriptors、stable Widget Tree、Yoga Cell layout、SceneSnapshot 和 owner-aware CellBuffer 已形成 headless frame | [包契约](../packages/cell-ui/README.md)、[runtime tests](../packages/cell-ui/src/runtime.test.tsx) |
 | P1.2 | Phase 1 / 几何与 chrome | border/decoration/content bounds、outer/content clip、nested scroll、paint/hit order 共用 SceneGeometry；Surface → Chrome → Content → Decoration 在全量和增量 paint 中保护 border | [Compositor 契约](blueprints/compositor.md)、[runtime tests](../packages/cell-ui/src/runtime.test.tsx) |
@@ -35,7 +36,7 @@
 | P4.5 | Phase 4 / Cell-native UI 规范化 | focused/selected、按输入方式显示的 focus decoration、组件自有状态语言、renderer-owned chrome 与双轴 ScrollArea 已形成统一契约 | [UI 哲学](ui-philosophy.md)、[Widget 规范](blueprints/widgets.md)、[headless tests](../packages/cell-ui/src/interaction.test.tsx)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx) |
 | P5.1 | Phase 5 / Accessibility 加固 | SemanticSnapshot audit 覆盖 role、name、state、focus、reading order、relations、actions 和虚拟集合位置；Semantic DOM 与 Headless 查询同源；keyboard/AT DOM focus、modal scope/restore 及 Chromium/WebKit 行为已验证 | [Accessibility 验收](verification/accessibility.md)、[semantic audit tests](../packages/cell-ui/src/semantics.test.tsx)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Chromium/WebKit E2E](../e2e/web-tui-complex-widgets.spec.ts) |
 | P5.2 | Phase 5 / 性能加固 | commit 按 tree/layout/geometry/paint/semantics/present 分级；paint-only 复用 Layout/Scene，scroll 复用 Layout；dirty Cell region 驱动增量 raster/present；Semantic focused ancestry 与 DOM children 使用一次性索引；10k/1000-scroll/120×40 预算可执行 | [runtime tests](../packages/cell-ui/src/runtime.test.tsx)、[performance tests](../packages/cell-ui/src/performance.test.tsx)、[semantic tests](../packages/cell-ui/src/semantics.test.tsx)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx) |
-| P5.3 | Phase 5 / TestPilot | Headless Pilot 可执行 keyboard、pointer/gesture、semantic action、scroll、resize 与 idle barrier，并查询 frame、cells/text、scene、hit、focus 和 semantics；role/name 查询与 browser Semantic DOM 同源验证 | [Pilot tests](../packages/cell-ui/src/testing.test.tsx)、[browser parity tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Compositor 契约](blueprints/compositor.md#headless-testsurface) |
+| P5.3 | Phase 5 / TestPilot | Headless Pilot 可执行 keyboard、pointer/gesture、semantic action、scroll、resize 与 idle barrier，并查询 frame、cells/text、scene、hit、focus 和 semantics；role/name 查询与 browser Semantic DOM 同源验证 | [Pilot tests](../packages/cell-ui/src/testing.test.tsx)、[browser parity tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Compositor 契约](blueprints/compositor.md#帧与检查) |
 | P5.4 | Phase 5 / Cell 可检查性 | `CellBuffer.toText` 统一 Range、Probe、TestPilot 与 Browser 字符提取并保留 Unicode space/grapheme；versioned `CellProbeSnapshot` 提供无损 Cell JSON 和 owner/style/hit/clip/focus 诊断 | [probe tests](../packages/cell-ui/src/probe.test.tsx)、[range tests](../packages/cell-ui/src/range.test.ts)、[browser parity tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Chromium/WebKit E2E](../e2e/web-tui.spec.ts)、[包契约](../packages/cell-ui/README.md#cell-inspection) |
 | P5.5 | Phase 5 / 字体能力路由 | Font Profile 将 display/CJK/Nerd/symbol/emoji face 与 Cell geometry 解耦；family、font scale、baseline 和 weight policy 贯通 Canvas、字体加载与 CellSurface | [字体能力栈](research/font-stack.md)、[font profile tests](../packages/fonts/src/index.test.ts)、[Canvas tests](../packages/rendering/src/canvas.test.ts)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx)、[font audit](../scripts/fonts/audit-font-capabilities.test.ts) |
 | P5.6 | Phase 5 / 字体分发拆层 | `@chardesk/fonts` 仅分发 Nerd/symbol/emoji Core；`@chardesk/font-maple` 独立承载兼容显示层且 Profile 只把 Maple 用于 display/CJK；渲染默认使用 system Profile，现有产品显式选择 Maple | [Core package](../packages/fonts/README.md)、[Maple package](../packages/font-maple/README.md)、[manifests](../packages/fonts/manifest.json)、[字体能力栈](research/font-stack.md) |
@@ -51,7 +52,7 @@
 | ID | Phase / 切片 | 已有基础 | 完成门槛 | 依赖 |
 | --- | --- | --- | --- | --- |
 | P5.9 | Phase 5 / 完整字形试验 | Gallery 使用 `glyphOverflow="visible"`；保留 Cell 数据隔离，允许墨水越格，全 Surface 重绘防残影；默认消费方保持裁剪 | 根据完整字形的实际重叠效果决定组件像素隔离与后续重绘策略 | [CellSurface](../packages/cell-ui/README.md)、[越界墨水测试](../e2e/web-tui-glyph-overflow.spec.ts) |
-| P5.13 | Phase 5 / Xiaolai Mono 试用 | Gallery 三字体切换，在线按需加载；双浏览器、三个 DPR 的真实字体交互测试通过，Probe 输出字体与字符事实 | 仍是在线试用；字体覆盖、符号双宽与实际墨水接缝未获得正式兼容结论 | [候选事实](research/font-stack.md#xiaolai-mono-页面试用)、[交互探针](../e2e/web-tui-font-metrics.spec.ts)、[加载恢复](../e2e/web-tui-xiaolai.spec.ts) |
+| P5.13 | Phase 5 / Xiaolai Mono 试用 | Gallery 三字体切换，Xiaolai 在线 CSS 标注 3.126；双浏览器、三个 DPR 的交互与 Probe 检查通过 | 完整覆盖与实际墨水接缝未获得正式兼容结论；Core `█` 墨迹仍小于 20px 行高 | [试验事实](research/font-stack.md#gallery-当前试验)、[交互探针](../e2e/web-tui-font-metrics.spec.ts)、[加载恢复](../e2e/web-tui-xiaolai.spec.ts) |
 
 ## READY
 
@@ -59,14 +60,6 @@
 | --- | --- | --- | --- | --- |
 | P6.1 | Phase 6 / 独立产品化 | 提供稳定公共 API、集成入口和发布契约 | public exports、版本策略、迁移文档、产品集成与发布自动化均有验证 | P1.3、P3.3、P5.1、P5.2、P5.3、P5.4 |
 
-## BACKLOG
+## BACKLOG / BLOCKED
 
-| ID | Phase / 切片 | 目标 | 完成门槛 | 依赖 |
-| --- | --- | --- | --- | --- |
-| — | 无 | 当前没有未满足前置依赖的切片 | — | — |
-
-## BLOCKED
-
-| ID | 切片 | 阻塞事实 |
-| --- | --- | --- |
-| — | 无 | 没有已知外部条件阻止 `READY` 切片实施 |
+当前没有 backlog 或已知外部阻塞。

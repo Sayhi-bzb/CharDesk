@@ -25,6 +25,7 @@ export type CellProbeCell = Readonly<{
 }>;
 
 export type CellProbeFontCapability =
+  | "cell-glyph"
   | "display"
   | "cjk"
   | "nerd"
@@ -169,7 +170,7 @@ export const formatCellProbe = (
   const header = `cell-ui/probe@${snapshot.schemaVersion}  ${id}  ${snapshot.region.width}×${snapshot.region.height}  focus=${focus}`;
   const presentation = snapshot.presentation;
   if (!presentation) return snapshot.text.length > 0 ? `${header}\n${snapshot.text}` : header;
-  const formatFace = (capability: "display" | "cjk") => {
+  const formatFace = (capability: "display" | "cjk" | "cell-glyph") => {
     const face = presentation.requestedFontRoutes[capability];
     return `font ${capability}=${face.family} size=${face.fontSize}px scaleX=${face.scaleX}`;
   };
@@ -177,6 +178,7 @@ export const formatCellProbe = (
     `font-profile=${presentation.fontProfileId} cell=${presentation.metrics.cellWidth}×${presentation.metrics.cellHeight} base=${presentation.metrics.fontSize}px`,
     formatFace("display"),
     formatFace("cjk"),
+    formatFace("cell-glyph"),
   ];
   const visibleOverflow = presentation.glyphOverflow.slice(0, 8);
   const audit = presentation.fontAudit;

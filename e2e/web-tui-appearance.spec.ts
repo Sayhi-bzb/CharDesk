@@ -5,9 +5,9 @@ import { arkMonoFontRequest, arkMonoStylesheetRequest } from "./helpers/ark-mono
 test.describe("display font", () => {
   test("loads the local font on demand and preserves Cell state", async ({ page }) => {
     let trialRequests = 0;
-    await page.route("https://fontsapi.zeoseven.com/282/main/result.css", (route) => {
+    await page.route("**/fonts/xiaolai-mono/fonts.css", (route) => {
       trialRequests += 1;
-      return route.fulfill({ contentType: "text/css", body: '@font-face { font-family: "Xiaolai Mono"; src: local("Arial"); }' });
+      return route.continue();
     });
     let releaseFirst!: () => void;
     let requests = 0;
@@ -41,7 +41,7 @@ test.describe("display font", () => {
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
     await expect(page.getByRole("button", { name: "Use Xiaolai Mono" })).toBeFocused();
     await expect.poll(async () => (await readCellProbe(editor)).presentation?.fontProfileId)
-      .toBe("chardesk/gallery-ark-mono-maple-core-v4-2026.09.01");
+      .toBe("chardesk/gallery-ark-mono-maple-core-v4-2026.09.01/cell-ui-core-glyph-v1");
     const after = await readCellProbe(editor);
     expect(after.text).toBe(before.text);
     expect(after.viewport).toEqual(before.viewport);

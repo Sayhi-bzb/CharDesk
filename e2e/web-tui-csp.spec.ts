@@ -65,10 +65,8 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
   await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
   expect(externalRequests).toEqual([]);
   await page.getByRole("button", { name: "Use Xiaolai Mono" }).click();
-  await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
-  await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
-  await page.getByRole("button", { name: "Retry Xiaolai Mono" }).click();
-  await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
-  await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
+  await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
+  await expect(gallery).toHaveAttribute("data-gallery-font", "xiaolai-mono");
+  expect(externalRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 });

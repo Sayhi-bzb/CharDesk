@@ -1,15 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
 
-test("remote trial failure and delayed retry preserve the active font and editing", async ({ page }) => {
+test("local font failure and delayed retry preserve the active font and editing", async ({ page }) => {
   let requests = 0;
   let release!: () => void;
   const gate = new Promise<void>((resolve) => { release = resolve; });
-  await page.route("https://fontsapi.zeoseven.com/282/main/result.css", async (route) => {
+  await page.route("**/fonts/xiaolai-mono/fonts.css", async (route) => {
     requests += 1;
     if (requests === 1) return route.abort();
     await gate;
-    await route.fulfill({ contentType: "text/css", body: '@font-face { font-family: "Xiaolai Mono"; src: local("Arial"); }' });
+    await route.continue();
   });
   await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.getByRole("button", { name: "Use Ark Pixel 12px Mono" }).click();

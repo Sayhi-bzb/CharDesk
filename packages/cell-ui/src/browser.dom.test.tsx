@@ -646,7 +646,7 @@ describe("CellSurface", () => {
     const snapshot = readCellSurfaceProbe(screen.getByLabelText("Cell interface"))!;
     expect(snapshot.presentation).toMatchObject({
       metrics: { cellWidth: 9, cellHeight: 19, fontSize: 15 },
-      fontProfileId: "test/prop",
+      fontProfileId: "test/prop/cell-ui-core-glyph-v1",
       requestedFontRoutes: {
         display: { family: "Prop Face", fontSize: 15, scaleX: 1 },
         cjk: { family: "Prop CJK", fontSize: 15, scaleX: 1 },

@@ -19,6 +19,7 @@ export const CHARDESK_EMOJI_FONT_FAMILY =
 
 export type CharDeskFontCapability =
   | "display"
+  | "cell-glyph"
   | "cjk"
   | "nerd"
   | "symbol"
@@ -62,6 +63,7 @@ export type CharDeskDisplayFontProfileInput = Readonly<{
   id: string;
   display: CharDeskFontFaceSpec;
   cjk?: CharDeskFontFaceSpec;
+  cellGlyph?: CharDeskFontFaceSpec;
   sources?: readonly CharDeskFontSource[];
 }>;
 
@@ -82,7 +84,7 @@ export const resolveCharDeskFontCapability = (
   const codePoint = grapheme.codePointAt(0);
   if (codePoint !== undefined && isNerdFontCodePoint(codePoint)) return "nerd";
   if (CJK_SCRIPT.test(grapheme) || CJK_COMMON.test(grapheme)) return "cjk";
-  if (CELL_NATIVE_GLYPH.test(grapheme)) return "display";
+  if (CELL_NATIVE_GLYPH.test(grapheme)) return "cell-glyph";
   if (SYMBOL.test(grapheme)) return "symbol";
   return "display";
 };
@@ -93,6 +95,11 @@ const systemFace: CharDeskFontFaceSpec = {
     bold: CHARDESK_SYSTEM_FONT_FAMILY,
   },
 };
+
+export const CHARDESK_CORE_CELL_GLYPH_FACE = {
+  families: { regular: "'JuliaMono'" },
+  weightPolicy: "regular",
+} as const satisfies CharDeskFontFaceSpec;
 
 const capabilityFallbacks = (
   display: CharDeskFontFaceSpec,
@@ -176,6 +183,7 @@ export const createCharDeskFontProfile = (
     },
     capabilities: {
       display: input.display,
+      "cell-glyph": input.cellGlyph ?? input.display,
       cjk,
       ...core,
     },

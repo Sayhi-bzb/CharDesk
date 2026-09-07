@@ -24,7 +24,7 @@ describe("Web TUI gallery font profiles", () => {
     expect(galleryFontOptions["ark-mono"].profile.capabilities.cjk.weightPolicy).toBe("regular");
     expect(resolve("ark-mono", "∞").weightPolicy).toBe("regular");
   });
-  it("cycles local fonts and the remote trial without grid overrides", () => {
+  it("cycles local fonts without grid overrides", () => {
     expect(Object.keys(galleryFontOptions)).toEqual(["maple", "ark-mono", "xiaolai-mono"]);
     expect(nextGalleryFont("maple")).toBe("ark-mono");
     expect(nextGalleryFont("ark-mono")).toBe("xiaolai-mono");
@@ -35,7 +35,7 @@ describe("Web TUI gallery font profiles", () => {
   });
   it("routes the Xiaolai trial through the existing display/CJK stack", () => {
     const option = galleryFontOptions["xiaolai-mono"];
-    expect(option.stylesheet).toBe("https://fontsapi.zeoseven.com/282/main/result.css");
+    expect(option.stylesheet).toBe("/fonts/xiaolai-mono/fonts.css");
     expect(option.fontSpec).toBe("15px 'Xiaolai Mono'");
     expect(option.loadSamples).toEqual(["AgWi09", "世界，。"]);
     for (const text of ["A", "界", "│", "█", "→"]) {

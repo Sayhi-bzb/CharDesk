@@ -43,7 +43,7 @@ const xiaolaiProfile = createCharDeskFontProfile({
   display: xiaolaiFace,
   cjk: xiaolaiFace,
   sources: [
-    { id: "xiaolai-mono-remote", family: xiaolaiFamily, version: "3.126" },
+    { id: "xiaolai-mono-local", family: xiaolaiFamily, version: "3.126" },
     ...MAPLE_FONT_SOURCES,
   ],
 });
@@ -62,7 +62,7 @@ export const galleryFontOptions: Record<GalleryFont, GalleryFontOption> = {
     id: "xiaolai-mono",
     label: xiaolaiFamily,
     profile: xiaolaiProfile,
-    stylesheet: "https://fontsapi.zeoseven.com/282/main/result.css",
+    stylesheet: `${import.meta.env.BASE_URL}fonts/xiaolai-mono/fonts.css`,
     fontSpec: `15px '${xiaolaiFamily}'`,
     loadSamples: ["AgWi09", "世界，。"],
   },

@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { readCellProbe } from "./helpers/cell-probe";
 
 type GlyphCall = Readonly<{ text: string; font: string }>;
 
-test("component chrome is rendered as Unicode in the active display font", async ({ page }) => {
+test("component chrome uses Core Unicode glyphs across all display fonts", async ({ page }) => {
   await page.addInitScript(() => {
     const calls: Array<{ text: string; font: string }> = [];
     Object.defineProperty(window, "__chardeskGlyphCalls", { value: calls });
@@ -25,16 +26,30 @@ test("component chrome is rendered as Unicode in the active display font", async
   await expect.poll(async () => {
     const calls = await glyphCalls();
     return {
-      border: calls.some(({ text, font }) => "┌─│".includes(text) && font.includes("Maple Mono NF CN")),
-      thumb: calls.some(({ text, font }) => "█▀▄▌▐".includes(text) && font.includes("Maple Mono NF CN")),
+      border: calls.some(({ text, font }) => "┌─│".includes(text) && font.includes("JuliaMono")),
+      thumb: calls.some(({ text, font }) => "█▀▄▌▐".includes(text) && font.includes("JuliaMono")),
     };
   }).toEqual({ border: true, thumb: true });
 
   await page.getByRole("button", { name: "Rounded", exact: true }).click();
   await expect.poll(async () => (await glyphCalls()).some(({ text }) => text === "╭")).toBe(true);
 
-  await page.getByRole("button", { name: "Use Ark Pixel 12px Mono" }).click();
-  await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font", "ark-mono");
-  await expect.poll(async () => (await glyphCalls()).some(({ text, font }) =>
-    "╭─│█▀▄▌▐".includes(text) && font.includes("Ark Pixel 12px Mono latin"))).toBe(true);
+  for (const [label, id, family] of [
+    ["Ark Pixel 12px Mono", "ark-mono", "Ark Pixel"],
+    ["Xiaolai Mono", "xiaolai-mono", "Xiaolai Mono"],
+    ["Maple Mono", "maple", "Maple Mono"],
+  ]) {
+    await page.evaluate(() => { (window as Window & { __chardeskGlyphCalls: GlyphCall[] }).__chardeskGlyphCalls.length = 0; });
+    await page.getByRole("button", { name: `Use ${label}` }).click();
+    await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font", id);
+    await expect.poll(async () => (await glyphCalls()).some(({ text, font }) =>
+      /^[A-Za-z]$/.test(text) && font.includes(family))).toBe(true);
+    await expect.poll(async () => (await glyphCalls()).some(({ text, font }) =>
+      text === "╭" && font.includes("JuliaMono"))).toBe(true);
+    const boxes = (await glyphCalls()).filter(({ text }) => /^[\u2500-\u259F]$/u.test(text));
+    expect(boxes.length).toBeGreaterThan(0);
+    expect(boxes.every(({ font }) => font.includes("JuliaMono") && !font.includes("700"))).toBe(true);
+    await expect.poll(async () => (await readCellProbe(page.locator('[data-cell-probe="editor"]')))
+      .presentation?.requestedFontRoutes["cell-glyph"].family).toBe("'JuliaMono'");
+  }
 });

@@ -22,7 +22,7 @@ const profile = createCharDeskFontProfile({
 });
 ```
 
-`CHARDESK_SYSTEM_FONT_PROFILE` uses the platform monospace stack for display/CJK and packages the core `nerd`, `symbol`, and `emoji` fallbacks. Box Drawing and Block Elements are Cell-native display glyphs. Other symbols keep their `symbol` capability but resolve through display, CJK, then JuliaMono, so arrows, mathematics, and geometry inherit the selected display face when it has the glyph. JuliaMono is the single symbol fallback; there is no additional Noto long-tail layer. Nerd and emoji retain their dedicated Core face first. A display package contributes only face and source metadata; it does not bundle the core fonts.
+`CHARDESK_SYSTEM_FONT_PROFILE` uses the platform monospace stack for display/CJK and packages the core `nerd`, `symbol`, and `emoji` fallbacks. Box Drawing and Block Elements (`U+2500–U+259F`) use the independent `cell-glyph` capability. `createCharDeskFontProfile({ cellGlyph })` defaults that face to `display`, preserving document Canvas rendering. `CHARDESK_CORE_CELL_GLYPH_FACE` supplies JuliaMono Regular; Cell UI selects it for every Surface. Other symbols keep their `symbol` capability but resolve through display, CJK, then JuliaMono. Nerd and emoji retain their dedicated Core face first. A display package contributes only face and source metadata; it does not bundle the core fonts.
 
 JuliaMono is shipped as eight non-overlapping `unicode-range` subsets. The full
 11,191-code-point coverage remains available, while a page downloads only the

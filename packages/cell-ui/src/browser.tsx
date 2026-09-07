@@ -40,6 +40,7 @@ import { EventManager, type CellEventHandlerMap } from "./events.js";
 import { getEventPath, hitTestCell } from "./scene.js";
 import { useSurfaceFocus } from "./browser-focus.js";
 import { useCellFontMetrics } from "./browser-font-metrics.js";
+import { createCellUiFontProfile } from "./browser-font-profile.js";
 import { useCellFontAudit } from "./browser-font-audit.js";
 export { DEFAULT_CELL_UI_METRICS, loadCellFontMetrics } from "./browser-font-metrics.js";
 import {
@@ -552,6 +553,7 @@ export const readCellSurfaceProbe = (element: Element): CellProbeSnapshot | null
 
 const CELL_PROBE_FONT_SAMPLES = {
   display: "A",
+  "cell-glyph": "─",
   cjk: "界",
   nerd: "\ue0b0",
   symbol: "∞",
@@ -657,7 +659,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     theme,
     metrics: explicitMetrics,
     fontSize,
-    fontProfile,
+    fontProfile: requestedFontProfile,
     glyphOverflow = "clip",
     palette: paletteOverride,
     label = "Cell interface",
@@ -667,6 +669,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     cellRange: controlledCellRange,
     onCellRangeCommand,
   } = props;
+  const fontProfile = useMemo(() => createCellUiFontProfile(requestedFontProfile), [requestedFontProfile]);
   const fontMetrics = useCellFontMetrics(fontProfile, fontSize, explicitMetrics);
   const fontAudit = useCellFontAudit(!!probeId && fontMetrics.ready, fontProfile, fontMetrics.metrics);
   const { metrics } = fontMetrics;
