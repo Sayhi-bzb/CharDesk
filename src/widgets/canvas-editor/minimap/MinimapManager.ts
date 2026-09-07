@@ -16,7 +16,7 @@ import type {
 } from "./types";
 import type { Point } from "@/shared/types";
 
-export type MinimapColors = {
+type MinimapColors = {
   background: string;
   foreground: string;
   viewportFill: string;

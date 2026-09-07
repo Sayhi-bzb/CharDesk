@@ -2,6 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyFreeformSnapshotToYMaps,
+  redoCanvas,
+  undoCanvas,
   useEditorStore,
 } from "@/domains/canvas/testing";
 import { ShortcutProvider } from "@/shared/shortcuts/dispatcher";
@@ -11,6 +13,7 @@ describe("useManagedCanvasInput", () => {
   const initialState = useEditorStore.getState();
 
   afterEach(() => {
+    vi.restoreAllMocks();
     useEditorStore.setState(initialState, true);
     applyFreeformSnapshotToYMaps([]);
   });
@@ -116,6 +119,7 @@ describe("useManagedCanvasInput", () => {
           currentTarget: { value: key },
         } as never);
       }
+      result.current.textareaProps.onBlur?.();
     });
 
     expect(useEditorStore.getState().grid).toEqual(
@@ -127,6 +131,14 @@ describe("useManagedCanvasInput", () => {
     );
     expect(useEditorStore.getState().textCursor).toEqual({ x: 7, y: 3 });
     expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 7, y: 3 });
+    expect(undoCanvas()).toBe(true);
+    expect(useEditorStore.getState().grid).toEqual(new Map());
+    expect(redoCanvas()).toBe(true);
+    expect([...useEditorStore.getState().grid.values()].map(({ char }) => char)).toEqual([
+      "A",
+      " ",
+      "B",
+    ]);
   });
 
   it("keeps printable keydown as direct fill for a freeform range", () => {
@@ -219,6 +231,7 @@ describe("useManagedCanvasInput", () => {
       result.current.textareaProps.onInput?.({
         currentTarget: { value: "A" },
       } as never);
+      result.current.textareaProps.onBlur?.();
     });
 
     expect(useEditorStore.getState().grid).toEqual(
@@ -325,6 +338,7 @@ describe("useManagedCanvasInput", () => {
           inputType: "insertText",
         },
       } as never);
+      result.current.textareaProps.onBlur?.();
     });
 
     expect(useEditorStore.getState().grid).toEqual(new Map([
@@ -332,5 +346,117 @@ describe("useManagedCanvasInput", () => {
       ["4,1", { char: "你", color: "#000000" }],
     ]));
     expect(useEditorStore.getState().textCursor).toEqual({ x: 6, y: 1 });
+  });
+
+  it("commits consecutive managed input once per animation frame", () => {
+    let scheduled: FrameRequestCallback | undefined;
+    const requestFrame = vi.spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => {
+        scheduled = callback;
+        return 1;
+      });
+    const cancelFrame = vi.spyOn(window, "cancelAnimationFrame")
+      .mockImplementation(() => undefined);
+    const writeTextString = vi.fn();
+    const { result } = renderHook(
+      () => useManagedCanvasInput({
+        canvasMode: "freeform",
+        inputIdentity: "canvas-a",
+        model: { ...useEditorStore.getState(), writeTextString },
+        size: { width: 800, height: 600 },
+      }),
+      { wrapper: ShortcutProvider }
+    );
+
+    act(() => {
+      for (const value of ["A", " ", "B"]) {
+        result.current.textareaProps.onInput?.({
+          currentTarget: { value },
+          nativeEvent: { data: value, isComposing: false },
+        } as never);
+      }
+    });
+    expect(writeTextString).not.toHaveBeenCalled();
+    expect(requestFrame).toHaveBeenCalledOnce();
+
+    act(() => scheduled?.(performance.now()));
+    expect(writeTextString).toHaveBeenCalledOnce();
+    expect(writeTextString).toHaveBeenCalledWith("A B");
+    expect(cancelFrame).not.toHaveBeenCalled();
+  });
+
+  it("flushes pending text before an ordering key command", () => {
+    vi.spyOn(window, "requestAnimationFrame").mockReturnValue(1);
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+    const writeTextString = vi.fn();
+    const backspaceText = vi.fn();
+    const { result } = renderHook(
+      () => useManagedCanvasInput({
+        canvasMode: "structured",
+        model: {
+          ...useEditorStore.getState(),
+          textCursor: { x: 1, y: 0 },
+          writeTextString,
+          backspaceText,
+        },
+        size: { width: 800, height: 600 },
+      }),
+      { wrapper: ShortcutProvider }
+    );
+
+    act(() => {
+      result.current.textareaProps.onInput?.({
+        currentTarget: { value: "A" },
+        nativeEvent: { data: "A", isComposing: false },
+      } as never);
+      result.current.textareaProps.onKeyDown?.({
+        defaultPrevented: false,
+        key: "Backspace",
+        ctrlKey: false,
+        metaKey: false,
+        altKey: false,
+        preventDefault: vi.fn(),
+      } as never);
+    });
+
+    expect(writeTextString).toHaveBeenCalledWith("A");
+    expect(backspaceText).toHaveBeenCalledOnce();
+    expect(writeTextString.mock.invocationCallOrder[0]).toBeLessThan(
+      backspaceText.mock.invocationCallOrder[0]!
+    );
+  });
+
+  it("discards pending text when the input identity changes", () => {
+    const callbacks = new Map<number, FrameRequestCallback>();
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      callbacks.set(1, callback);
+      return 1;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+      callbacks.delete(id);
+    });
+    const writeTextString = vi.fn();
+    let inputIdentity = "canvas-a";
+    const { result, rerender } = renderHook(
+      () => useManagedCanvasInput({
+        canvasMode: "freeform",
+        inputIdentity,
+        model: { ...useEditorStore.getState(), writeTextString },
+        size: { width: 800, height: 600 },
+      }),
+      { wrapper: ShortcutProvider }
+    );
+
+    act(() => {
+      result.current.textareaProps.onInput?.({
+        currentTarget: { value: "A" },
+        nativeEvent: { data: "A", isComposing: false },
+      } as never);
+    });
+    inputIdentity = "canvas-b";
+    rerender();
+    act(() => callbacks.forEach((callback) => callback(performance.now())));
+
+    expect(writeTextString).not.toHaveBeenCalled();
   });
 });

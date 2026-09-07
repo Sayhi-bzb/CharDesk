@@ -560,6 +560,12 @@ describe("browser canvas persistence", () => {
     await first.retryPersistence();
 
     expect(await first.commands.sessions.remove(deletedId)).toBe(true);
+    expect(first.documents.getMemoryStats()).toMatchObject({
+      historyDocuments: 0,
+      historyGroups: 0,
+      historyActions: 0,
+      historyBytes: 0,
+    });
     const catalog = await createIndexedDbCanvasCatalog();
     const snapshot = await catalog.load();
     catalog.close();

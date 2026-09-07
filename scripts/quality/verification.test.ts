@@ -16,6 +16,15 @@ describe('verification task graph', () => {
     expect(new Set(order).size).toBe(order.length)
   })
 
+  it('orders application package dependencies before the application', () => {
+    const order = topologicalProjects(projects, ['@chardesk/sync-server'])
+      .map(project => project.name)
+    expect(order).toEqual([
+      '@chardesk/collaboration-protocol',
+      '@chardesk/sync-server',
+    ])
+  })
+
   it('includes transitive workspace consumers for a package change', () => {
     const affected = affectedProjectNames(projects, ['packages/protocol/src/index.ts'])
     expect(affected.has('@chardesk/protocol')).toBe(true)

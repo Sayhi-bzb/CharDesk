@@ -262,4 +262,7 @@ export const createCanvasQueries = (
   getCollaborationDocument: documents.getCollaborationDocument,
   getActiveCellCount: documents.getActiveCellCount,
   getMemoryStats: documents.getMemoryStats,
+  setMutationPerformanceEnabled: documents.setMutationPerformanceEnabled,
+  resetMutationPerformance: documents.resetMutationPerformance,
+  getMutationPerformanceStats: documents.getMutationPerformanceStats,
 } as const);

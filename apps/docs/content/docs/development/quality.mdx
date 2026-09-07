@@ -9,7 +9,9 @@ description: Evidence and guardrail routes by changed contract.
 | Shared UI or widget behavior | Component accessibility, focus and state tests |
 | Browser-visible cross-component flow | Focused `e2e` scenario |
 | Built-application performance | [`scripts/performance/run-perf.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/performance/run-perf.mjs) |
+| CellPlane phase costs | `npm run test:engine-perf`, which writes machine-readable and Markdown reports under `test-results/cell-plane-benchmark/` |
 | Canvas capacity boundary | `npm run test:stress`, which production-builds the app and writes its local report under `test-results/canvas-stress/` |
+| Canvas memory lifecycle | `npm run test:memory`, which measures post-GC retention, interaction peaks, release residuals, DOM/listener residue, history, projection caches, mutation counts, and render work under `test-results/canvas-memory/`. Set `CHARDESK_MEMORY_RUNS`, `CHARDESK_MEMORY_SAMPLE_MS` (minimum 10, default 20), or comma-separated `CHARDESK_MEMORY_WORKLOADS` for focused runs. Experimental controls are `CHARDESK_MEMORY_RENDER_MODE=off`, `CHARDESK_MEMORY_INPUT_MODE=inert\|insert-text`, and `CHARDESK_MEMORY_ALLOCATIONS=1`; allocation sampling is diagnostic-only and must not supply comparison numbers. Compare same-schema reports with identical settings using `npm run compare:memory -- <baseline.json> <candidate.json>` |
 | Protocol or font package | Package tests, specifications, fixtures and manifests |
 | Agent Blackboard workflow | Text protocol plus Blackboard check, Reader, polling and Skill evidence |
 | Architecture boundary | Owning script in `scripts/quality` or `scripts/check-domain-boundaries.mjs` |

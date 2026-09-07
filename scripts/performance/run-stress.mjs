@@ -5,7 +5,9 @@ import path from "node:path";
 const HOST = "127.0.0.1";
 const PORT = 4174;
 const URL = `http://${HOST}:${PORT}`;
-const REPORT_DIR = path.join(process.cwd(), "test-results", "canvas-stress");
+const REPORT_DIR = path.resolve(
+  process.env.CANVAS_STRESS_REPORT_DIR ?? path.join("test-results", "canvas-stress")
+);
 
 const waitForServer = (url, timeoutMs = 30_000) =>
   new Promise((resolve, reject) => {
@@ -67,12 +69,16 @@ process.on("SIGTERM", () => {
 
 try {
   await waitForServer(URL);
-  await run(process.execPath, [
+  const playwrightArguments = [
     "./node_modules/@playwright/test/cli.js",
     "test",
     "-c",
     "e2e/playwright.stress.config.ts",
-  ], {
+    ...(process.env.CANVAS_STRESS_GREP
+      ? ["--grep", process.env.CANVAS_STRESS_GREP]
+      : []),
+  ];
+  await run(process.execPath, playwrightArguments, {
     env: { ...process.env, CANVAS_STRESS_REPORT_DIR: REPORT_DIR },
   });
   console.log(`Canvas stress report: ${path.join(REPORT_DIR, "report.md")}`);

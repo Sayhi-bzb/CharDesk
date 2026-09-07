@@ -27,17 +27,11 @@ export type CanvasStressMetrics = {
 };
 
 export type CanvasStressLevel = {
-  family:
-    | "freeform-sparse"
-    | "freeform-dense"
-    | "freeform-unicode"
-    | "zoom"
-    | "structured"
-    | "residency"
-    | "persistence";
+  family: "freeform-sparse" | "freeform-dense" | "freeform-unicode" | "freeform-history" | "zoom" | "structured" | "residency" | "persistence";
   label: string;
   cellCount?: number;
   nodeCount?: number;
+  operationCount?: number;
   projectedCellCount?: number | null;
   surfaceStats?: Readonly<Record<string, number>>;
   memoryStats?: Readonly<Record<string, number>>;
@@ -136,6 +130,7 @@ export const createCanvasStressMarkdown = (report: CanvasStressReport) => {
     "freeform-sparse",
     "freeform-dense",
     "freeform-unicode",
+    "freeform-history",
     "zoom",
     "structured",
     "residency",
@@ -175,7 +170,7 @@ export const createCanvasStressMarkdown = (report: CanvasStressReport) => {
   );
   report.levels.forEach((level) => {
     lines.push(
-      `| ${level.family} | ${level.label} | ${level.passed ? "pass" : `fail: ${level.failures.join(", ")}`} | ${formatNumber(level.metrics?.p95FrameMs)} / ${formatNumber(level.metrics?.p99FrameMs)} ms | ${level.metrics?.longAnimationFrameCount ?? "—"} | ${level.metrics?.over50ms ?? "—"} | ${formatNumber(level.metrics?.coldInputPaintMs)} / ${formatNumber(level.metrics?.inputPaintMs)} ms | ${formatBytes(level.metrics?.jsHeapBytes)} | ${formatBytes(level.resourceStats?.accountedBytes as number | undefined)} / ${formatBytes(level.resourceStats?.nominalBudgetBytes as number | undefined)} | ${level.resourceStats?.pressure ?? "—"} | ${formatNumber(level.resourceStats?.maxFrameDurationMs as number | undefined)} ms | ${level.resourceStats?.longFrames ?? "—"} | ${formatBytes(level.memoryStats?.encodedPayloadBytes)} | ${formatBytes(level.memoryStats?.projectionCacheBudgetBytes)} | ${formatBytes(level.metrics?.canvasBackingBytes)} | ${formatBytes(level.snapshotBytes)} | ${formatNumber(level.persistenceMs)} ms |`
+      `| ${level.family} | ${level.label} | ${level.passed ? "pass" : `fail: ${level.failures.join(", ")}`} | ${formatNumber(level.metrics?.p95FrameMs)} / ${formatNumber(level.metrics?.p99FrameMs)} ms | ${level.metrics?.longAnimationFrameCount ?? "—"} | ${level.metrics?.over50ms ?? "—"} | ${formatNumber(level.metrics?.coldInputPaintMs)} / ${formatNumber(level.metrics?.inputPaintMs)} ms | ${formatBytes(level.metrics?.jsHeapBytes)} | ${formatBytes(level.resourceStats?.accountedBytes as number | undefined)} / ${formatBytes(level.resourceStats?.nominalBudgetBytes as number | undefined)} | ${level.resourceStats?.pressure ?? "—"} | ${formatNumber(level.resourceStats?.p95FrameDurationMs as number | undefined)} ms | ${level.resourceStats?.longFrames ?? "—"} | ${formatBytes(level.memoryStats?.encodedPayloadBytes)} | ${formatBytes(level.memoryStats?.projectionCacheBudgetBytes)} | ${formatBytes(level.metrics?.canvasBackingBytes)} | ${formatBytes(level.snapshotBytes)} | ${formatNumber(level.persistenceMs)} ms |`
     );
   });
   lines.push("");

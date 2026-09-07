@@ -39,6 +39,93 @@ describe("unified Canvas documents", () => {
     documents.dispose();
   });
 
+  it("preserves history across residency release but clears it on deletion", () => {
+    const documents = new CanvasDocumentRegistry("baseline");
+    const seed = { mode: "freeform" as const, grid: [], scene: [], components: [] };
+    documents.activateDocument("target", seed);
+    documents.mutateGrid((grid) => grid.set("0,0", cell("A")));
+    expect(documents.getHistoryAvailability().canUndo).toBe(true);
+
+    documents.activateDocument("baseline", seed);
+    expect(documents.releaseDocument("target")).toBe(true);
+    documents.activateDocument("target", seed);
+    expect(documents.getHistoryAvailability().canUndo).toBe(true);
+
+    documents.activateDocument("baseline", seed);
+    expect(documents.destroyDocument("target")).toBe(true);
+    documents.activateDocument("target", seed);
+    expect(documents.getHistoryAvailability().canUndo).toBe(false);
+    expect(documents.getMemoryStats()).toMatchObject({
+      historyDocuments: 0,
+      historyGroups: 0,
+      historyActions: 0,
+      historyBytes: 0,
+    });
+    documents.dispose();
+  });
+
+  it("does not orphan projection cache entries during observed replacement", () => {
+    const documents = new CanvasDocumentRegistry("baseline");
+    const baseline = documents.getMemoryStats();
+    const stopObserving = documents.observeActiveTransactions(() => undefined);
+    const grid: [string, ReturnType<typeof cell>][] = Array.from(
+      { length: 160 },
+      (_, index) => [`${index * 2},0`, cell("你")]
+    );
+
+    documents.activateDocument("unicode", {
+      mode: "freeform",
+      grid: [],
+      scene: [],
+      components: [],
+    });
+    documents.activateDocument("unicode", {
+      mode: "freeform",
+      grid,
+      scene: [],
+      components: [],
+    }, { replace: true });
+    expect(documents.getContentReader().getCell({ x: 0, y: 0 }))
+      .toEqual(cell("你"));
+    expect(documents.getMemoryStats()).toMatchObject({
+      unattributedProjectionCacheEntries: 0,
+      unattributedProjectionCacheBytes: 0,
+    });
+
+    documents.activateDocument("baseline", {
+      mode: "freeform",
+      grid: [],
+      scene: [],
+      components: [],
+    });
+    expect(documents.destroyDocument("unicode")).toBe(true);
+    expect(documents.getMemoryStats()).toMatchObject({
+      projectionCacheEntries: baseline.projectionCacheEntries,
+      projectionCacheBudgetBytes: baseline.projectionCacheBudgetBytes,
+      unattributedProjectionCacheEntries: 0,
+      unattributedProjectionCacheBytes: 0,
+    });
+    stopObserving();
+    documents.dispose();
+  });
+
+  it("rebuilds page observers before mutating a replaced empty document", () => {
+    const documents = new CanvasDocumentRegistry("replace-empty");
+    documents.activateDocument("replace-empty", {
+      mode: "freeform",
+      grid: [],
+      scene: [],
+      components: [],
+    }, { replace: true });
+
+    documents.mutateGrid((grid) => grid.set("0,0", cell("A")));
+
+    expect(documents.getContentReader().getCell({ x: 0, y: 0 }))
+      .toEqual(cell("A"));
+    expect(documents.getActiveCellCount()).toBe(1);
+    documents.dispose();
+  });
+
   it("keeps slide pages in one document with page-local history", () => {
     const documents = new CanvasDocumentRegistry("slides");
     documents.activateDocument("slides", {
@@ -123,7 +210,19 @@ describe("unified Canvas documents", () => {
       components: [],
     }, { replace: true });
 
-    expect(documents.getMemoryStats().residentPageIndexes).toBe(1);
+    expect(documents.getMemoryStats()).toMatchObject({
+      documents: 1,
+      pages: 8,
+      residentPageIndexes: 1,
+      indexCachedChunks: expect.any(Number),
+      indexCachedCells: expect.any(Number),
+      indexPreparedTextEntries: expect.any(Number),
+      indexPreparedTextBytes: expect.any(Number),
+      structuredSurfaceCount: 0,
+      structuredResidentChunks: 0,
+      structuredResidentBytes: 0,
+      estimatedProjectionBytes: expect.any(Number),
+    });
     for (let index = 1; index < 8; index += 1) {
       expect(documents.getContentReader("many-pages", `page-${index}`))
         .not.toBeNull();

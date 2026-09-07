@@ -222,7 +222,10 @@ const runTypechecks = (projects, selected, buildRunner) => {
   if (selected.has('root')) run(npxCommand, ['tsc', '-b', '--pretty', 'false'], { label: 'typecheck app' })
   for (const project of projects.filter(project =>
     selected.has(project.name) && project.kind === 'app' && project.manifest.scripts?.typecheck,
-  )) runWorkspaceScript(project, 'typecheck')
+  )) {
+    buildRunner.build(project.dependencies)
+    runWorkspaceScript(project, 'typecheck')
+  }
 }
 
 const runQuality = (mode, projects, selected, changedFiles, buildRunner) => {

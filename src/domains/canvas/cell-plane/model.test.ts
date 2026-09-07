@@ -175,7 +175,7 @@ describe("CellPlaneIndex", () => {
       .map((cell) => cell.char)).toEqual(["A", "B"]);
   });
 
-  it("prepares Unicode spans once and reuses their column offsets across chunks", () => {
+  it("prepares Unicode spans once and reuses their offsets across chunks", () => {
     const text = "你👩🏽‍💻e\u0301".repeat(80);
     const plane = new CellPlaneIndex([{
       id: "unicode",
@@ -197,8 +197,8 @@ describe("CellPlaneIndex", () => {
     });
   });
 
-  it("rebuilds prepared Unicode text after the shared budget evicts it", () => {
-    const budget = new CanvasProjectionCacheBudget(500);
+  it("rebuilds prepared Unicode text after shared-budget eviction", () => {
+    const budget = new CanvasProjectionCacheBudget(5_000);
     const text = "你👩🏽‍💻e\u0301".repeat(80);
     const plane = new CellPlaneIndex([{
       id: "unicode",
@@ -230,6 +230,22 @@ describe("CellPlaneIndex", () => {
     expect(budget.getStats()).toMatchObject({ entries: 0, bytes: 0 });
   });
 
+  it("bounds prepared text retained without a shared cache budget", () => {
+    const operations = Array.from({ length: 300 }, (_, index) =>
+      operation(`unicode-${index}`, [{
+        y: index,
+        erase: [],
+        spans: [{ x: 0, text: `${"你".repeat(16)}${index}`, color: "#fff" }],
+      }], 40)
+    );
+    const plane = new CellPlaneIndex(operations);
+
+    expect(plane.getStats()).toMatchObject({
+      preparedTextEntries: 256,
+      preparedTextEvictions: 44,
+    });
+  });
+
   it("visits only resident cells inside the requested bounds", () => {
     const plane = new CellPlaneIndex([{
       id: "visit",
@@ -248,6 +264,49 @@ describe("CellPlaneIndex", () => {
     );
 
     expect(visited).toEqual([[128, 0, "你"]]);
+  });
+
+  it("rebuilds cached visit coordinates after invalidation", () => {
+    const plane = new CellPlaneIndex([operation("base", [{
+      y: 0,
+      erase: [],
+      spans: [{ x: 0, text: "ABC", color: "#fff" }],
+    }], 3)]);
+    const read = () => {
+      const visited: Array<[number, string]> = [];
+      plane.visitCells(
+        { x: 0, y: 0, width: 3, height: 1 },
+        (x, _y, cell) => visited.push([x, cell.char])
+      );
+      return visited.sort(([left], [right]) => left - right);
+    };
+
+    expect(read()).toEqual([[0, "A"], [1, "B"], [2, "C"]]);
+    plane.append(operation("overwrite", [{
+      y: 0,
+      erase: [],
+      spans: [{ x: 1, text: "X", color: "#fff" }],
+    }], 3));
+
+    expect(read()).toEqual([[0, "A"], [1, "X"], [2, "C"]]);
+  });
+
+  it("preserves coordinates outside the Int32 snapshot range", () => {
+    const x = 0x80000000;
+    const encoded = encodeCellPlaneOperation(
+      "large-coordinate",
+      { x, y: -1, width: 1, height: 1 },
+      [{ y: -1, erase: [], spans: [{ x, text: "A", color: "#fff" }] }]
+    );
+    const plane = new CellPlaneIndex([encoded]);
+    const visited: Array<[number, number, string]> = [];
+
+    plane.visitCells(
+      { x, y: -1, width: 1, height: 1 },
+      (cellX, cellY, cell) => visited.push([cellX, cellY, cell.char])
+    );
+
+    expect(visited).toEqual([[x, -1, "A"]]);
   });
 
   it("counts logical cells without warming projection caches", () => {

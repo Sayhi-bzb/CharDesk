@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/cli",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "private": false,
   "description": "Create, inspect, live-preview, and render CharDesk workspaces",
   "type": "module",

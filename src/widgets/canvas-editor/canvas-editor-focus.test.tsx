@@ -273,6 +273,24 @@ describe("CanvasEditor focus management", () => {
     expect(textarea?.selectionEnd).toBe(1);
   });
 
+  it("recreates managed input on session change without losing canvas focus", () => {
+    const { container, getByTestId } = render(
+      <CanvasEditor onUndo={vi.fn()} onRedo={vi.fn()} />
+    );
+    fireEvent.pointerDown(getByTestId("canvas-editor-surface"));
+    const previous = container.querySelector("textarea");
+    expect(document.activeElement).toBe(previous);
+
+    act(() => {
+      useEditorStore.setState({ activeCanvasId: "managed-input-next-canvas" });
+    });
+
+    const next = container.querySelector("textarea");
+    expect(next).not.toBe(previous);
+    expect(document.activeElement).toBe(next);
+    expect(next).toHaveValue("\u00a0");
+  });
+
   it("activates the pane interaction owner before switching its session", () => {
     const order: string[] = [];
     activateInteractionOwnerMock.mockImplementation(() => {
@@ -708,7 +726,7 @@ describe("CanvasEditor focus management", () => {
     expect(getData).not.toHaveBeenCalled();
   });
 
-  it("focuses the managed textarea for a freeform active cell and writes input there", () => {
+  it("focuses the managed textarea for a freeform active cell and writes input there", async () => {
     useEditorStore.setState({
       canvasMode: "freeform",
       textCursor: null,
@@ -734,8 +752,10 @@ describe("CanvasEditor focus management", () => {
 
     fireEvent.input(textarea!, { target: { value: "A" } });
 
-    expect(useEditorStore.getState().grid.get("4,3")).toMatchObject({
-      char: "A",
+    await waitFor(() => {
+      expect(useEditorStore.getState().grid.get("4,3")).toMatchObject({
+        char: "A",
+      });
     });
     expect(useEditorStore.getState().textCursor).toEqual({ x: 5, y: 3 });
   });
@@ -1234,7 +1254,7 @@ describe("CanvasEditor focus management", () => {
     ]);
   });
 
-  it("keeps Space selection shortcuts out of static-grid text edit", () => {
+  it("keeps Space selection shortcuts out of static-grid text edit", async () => {
     useEditorStore.setState({
       canvasMode: "freeform",
       grid: new Map(),
@@ -1266,7 +1286,9 @@ describe("CanvasEditor focus management", () => {
     expect(useEditorStore.getState().staticGridSelection.mode).toBe("cell");
 
     fireEvent.input(textarea, { target: { value: " " } });
-    expect(useEditorStore.getState().grid.get("2,1")?.char).toBe(" ");
+    await waitFor(() => {
+      expect(useEditorStore.getState().grid.get("2,1")?.char).toBe(" ");
+    });
     expect(useEditorStore.getState().staticGridSelection.mode).toBe("cell");
   });
 
@@ -1320,7 +1342,7 @@ describe("CanvasEditor focus management", () => {
     expect(useEditorStore.getState().hoveredGrid).toBeNull();
   });
 
-  it("creates structured text from managed textarea input at structured grid focus", () => {
+  it("creates structured text from managed textarea input at structured grid focus", async () => {
     useEditorStore.setState({
       canvasMode: "structured",
       textCursor: null,
@@ -1341,8 +1363,10 @@ describe("CanvasEditor focus management", () => {
     expect(document.activeElement).toBe(textarea);
     fireEvent.input(textarea!, { target: { value: "Go" } });
 
+    await waitFor(() => {
+      expect(useEditorStore.getState().structuredScene).toHaveLength(1);
+    });
     const state = useEditorStore.getState();
-    expect(state.structuredScene).toHaveLength(1);
     expect(state.structuredScene[0]).toMatchObject({
       type: "text",
       position: { x: 3, y: 4 },

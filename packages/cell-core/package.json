@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/cell-core",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Shared logical Cell geometry, sources, and frame contracts",
   "type": "module",
   "license": "MIT",

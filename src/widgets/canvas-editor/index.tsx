@@ -10,6 +10,7 @@ import { CanvasColorSourceChooser } from './CanvasColorSourceChooser';
 import { StructuredTemplatePreviewOverlay } from './StructuredTemplatePreviewOverlay';
 import { useStructuredTemplateDrop } from './hooks/useStructuredTemplateDrop';
 import { useManagedCanvasInput } from './hooks/useManagedCanvasInput';
+import type { ManagedInputBatchCommitSample } from './hooks/ManagedInputBatchScheduler';
 import { useCanvasSpacePan } from './hooks/useCanvasSpacePan';
 import { ContextMenu, ContextMenuTrigger } from '@chardesk/ui';
 import { CANVAS_CONTEXT_MENU, STRUCTURED_CONTEXT_MENU } from '@/domains/actions/public';
@@ -69,6 +70,7 @@ export const CanvasEditor = ({
   const [hoveredLink, setHoveredLink] = useState<CanvasLinkHit | null>(null);
   const structuredMovePreviewRef = useRef<StructuredMovePreview | null>(null);
   const requestCanvasRenderRef = useRef<(() => void) | null>(null);
+  const restoringManagedInputFocusRef = useRef(false);
   const size = useSize(containerRef);
   const surfaceGeometry = useMemo(
     () => (size ? resolveCanvasSurfaceGeometry(size) : undefined),
@@ -200,14 +202,23 @@ export const CanvasEditor = ({
     model: editorStore,
     enabled: effectiveCapabilities.mutateContent,
   });
+  const recordManagedInputBatch = useCallback(
+    (sample: ManagedInputBatchCommitSample) => {
+      runtime?.renderExperience.recordManagedInputBatch(sample);
+    },
+    [runtime]
+  );
   const {
     textareaRef,
+    focusManagedTextarea,
+    restoreManagedInputFocus,
     canvasOwnsInputFocus,
     onCanvasPointerDown,
     textareaStyle,
     textareaProps,
   } = useManagedCanvasInput({
     canvasMode,
+    inputIdentity: activeCanvasId,
     model: editorStore,
     size,
     onUndo,
@@ -215,6 +226,7 @@ export const CanvasEditor = ({
     copyEnabled: effectiveCapabilities.copy,
     mutateEnabled: active && effectiveCapabilities.mutateContent,
     active,
+    onManagedInputBatch: recordManagedInputBatch,
   });
   const isCanvasTextEditing = isStaticGridMode(canvasMode)
     ? editorStore.staticGridEditMode === 'text-edit'
@@ -234,6 +246,15 @@ export const CanvasEditor = ({
   const rendererModel = isTemporaryPanActive
     ? { ...rendererStore, tool: 'pan' as const }
     : rendererStore;
+
+  useLayoutEffect(() => {
+    restoringManagedInputFocusRef.current = true;
+    try {
+      restoreManagedInputFocus();
+    } finally {
+      restoringManagedInputFocusRef.current = false;
+    }
+  }, [activeCanvasId, restoreManagedInputFocus]);
 
   const {
     activateInteractionOwner = () => false,
@@ -255,6 +276,7 @@ export const CanvasEditor = ({
   );
 
   const activateCanvas = useCallback(() => {
+    if (restoringManagedInputFocusRef.current) return;
     activateInteractionOwner();
     onActivate?.();
   }, [activateInteractionOwner, onActivate]);
@@ -269,15 +291,58 @@ export const CanvasEditor = ({
       __chardeskCanvasExperienceStats?: () => ReturnType<
         typeof runtime.renderExperience.getStats
       >;
+      __chardeskCanvasExperienceResetManagedInput?: () => void;
+      __chardeskCanvasManagedInputFocus?: () => void;
+      __chardeskCanvasManagedInputIdentity?: () => string;
+      __chardeskCanvasManagedInputSetCursor?: (point: { x: number; y: number }) => void;
+      __chardeskCanvasManagedInputCursor?: () => { x: number; y: number } | null;
     };
     const readStats = () => runtime.renderExperience.getStats();
+    const resetManagedInput = () => runtime.renderExperience.resetManagedInputStats();
+    const readManagedInputIdentity = () => activeCanvasId;
+    const setManagedInputCursor = (point: { x: number; y: number }) =>
+      editorStore.setTextCursor(point);
+    const readManagedInputCursor = () => editorStore.textCursor;
     diagnostics.__chardeskCanvasExperienceStats = readStats;
+    diagnostics.__chardeskCanvasExperienceResetManagedInput = resetManagedInput;
+    diagnostics.__chardeskCanvasManagedInputFocus = focusManagedTextarea;
+    diagnostics.__chardeskCanvasManagedInputIdentity = readManagedInputIdentity;
+    diagnostics.__chardeskCanvasManagedInputSetCursor = setManagedInputCursor;
+    diagnostics.__chardeskCanvasManagedInputCursor = readManagedInputCursor;
     return () => {
       if (diagnostics.__chardeskCanvasExperienceStats === readStats) {
         delete diagnostics.__chardeskCanvasExperienceStats;
       }
+      if (
+        diagnostics.__chardeskCanvasExperienceResetManagedInput === resetManagedInput
+      ) {
+        delete diagnostics.__chardeskCanvasExperienceResetManagedInput;
+      }
+      if (diagnostics.__chardeskCanvasManagedInputFocus === focusManagedTextarea) {
+        delete diagnostics.__chardeskCanvasManagedInputFocus;
+      }
+      if (
+        diagnostics.__chardeskCanvasManagedInputIdentity === readManagedInputIdentity
+      ) {
+        delete diagnostics.__chardeskCanvasManagedInputIdentity;
+      }
+      if (
+        diagnostics.__chardeskCanvasManagedInputSetCursor === setManagedInputCursor
+      ) {
+        delete diagnostics.__chardeskCanvasManagedInputSetCursor;
+      }
+      if (diagnostics.__chardeskCanvasManagedInputCursor === readManagedInputCursor) {
+        delete diagnostics.__chardeskCanvasManagedInputCursor;
+      }
     };
-  }, [active, runtime]);
+  }, [
+    active,
+    activeCanvasId,
+    editorStore.setTextCursor,
+    editorStore.textCursor,
+    focusManagedTextarea,
+    runtime,
+  ]);
 
   useCanvasRenderer(
     canvasLayers,
@@ -360,6 +425,7 @@ export const CanvasEditor = ({
           onDoubleClick={handleDoubleClick}
           onPointerDown={onCanvasPointerDown}
           textareaRef={textareaRef}
+          textareaKey={activeCanvasId}
           textareaStyle={textareaStyle}
           textareaProps={textareaProps}
         >

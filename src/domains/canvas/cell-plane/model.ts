@@ -18,8 +18,12 @@ const CELL_PLANE_INVALIDATION_HISTORY_LIMIT = 256;
 const CELL_PLANE_INVALIDATION_BOUNDS_LIMIT = 64;
 const CELL_PLANE_CHUNK_CACHE_LIMIT = 64;
 const CELL_PLANE_CHUNK_CACHE_BYTES_LIMIT = 32 * 1024 * 1024;
+const CELL_PLANE_PREPARED_TEXT_CACHE_LIMIT = 256;
+const CELL_PLANE_PREPARED_TEXT_CACHE_BYTES_LIMIT = 4 * 1024 * 1024;
+const PREPARED_TEXT_CHECKPOINT_GRAPHEMES = 64;
+const PREPARED_TEXT_MIN_CODE_UNITS = 16;
 const ESTIMATED_GRID_CELL_BYTES = 160;
-const ESTIMATED_PREPARED_GRAPHEME_BYTES = 24;
+const ESTIMATED_CHUNK_VISIT_CELL_BYTES = 16;
 const ESTIMATED_PREPARED_TEXT_BASE_BYTES = 256;
 const CELL_PLANE_BINARY_FORMAT = 2 as const;
 const CELL_PLANE_BINARY_MAGIC = [0x43, 0x50, CELL_PLANE_BINARY_FORMAT] as const;
@@ -424,16 +428,41 @@ type CellPlaneChunkReference = {
 
 type CellPlaneChunkCacheEntry = {
   cells: Map<string, GridCell>;
+  visitSnapshot?: CellPlaneChunkVisitSnapshot;
   bytes: number;
   budgetToken?: object;
 };
 
+type CellPlaneChunkVisitSnapshot = {
+  cells: GridCell[];
+  coordinates: Int32Array;
+};
+
+const createChunkVisitSnapshot = (
+  cells: ReadonlyMap<string, GridCell>
+): CellPlaneChunkVisitSnapshot | undefined => {
+  const orderedCells = new Array<GridCell>(cells.size);
+  const coordinates = new Int32Array(cells.size * 2);
+  let index = 0;
+  for (const [key, cell] of cells) {
+    const { x, y } = GridManager.fromKey(key);
+    if (x < -0x80000000 || x > 0x7fffffff || y < -0x80000000 || y > 0x7fffffff) {
+      return undefined;
+    }
+    orderedCells[index] = cell;
+    coordinates[index * 2] = x;
+    coordinates[index * 2 + 1] = y;
+    index += 1;
+  }
+  return { cells: orderedCells, coordinates };
+};
+
 type PreparedCellTextCacheEntry = {
-  graphemes: readonly string[];
+  utf16Offsets: Float64Array;
   columnOffsets: Float64Array;
   width: number;
   bytes: number;
-  budgetToken: object;
+  budgetToken?: object;
 };
 
 type BudgetEntry = { bytes: number; evict: () => void };
@@ -750,33 +779,36 @@ const getSingleCellAsciiSlice = (
 };
 
 const prepareCellText = (text: string): PreparedCellTextCacheEntry => {
-  const graphemes: string[] = [];
-  const offsets = [0];
+  const utf16Offsets: number[] = [];
+  const columnOffsets: number[] = [];
   let width = 0;
-  for (const { segment } of iterateGraphemes(text)) {
-    graphemes.push(segment);
+  let graphemeIndex = 0;
+  for (const { segment, index } of iterateGraphemes(text)) {
+    if (graphemeIndex % PREPARED_TEXT_CHECKPOINT_GRAPHEMES === 0) {
+      utf16Offsets.push(index);
+      columnOffsets.push(width);
+    }
     width += getCellOccupancy(segment);
-    offsets.push(width);
+    graphemeIndex += 1;
   }
-  const columnOffsets = Float64Array.from(offsets);
+  const preparedUtf16Offsets = Float64Array.from(utf16Offsets);
+  const preparedColumnOffsets = Float64Array.from(columnOffsets);
   return {
-    graphemes,
-    columnOffsets,
+    utf16Offsets: preparedUtf16Offsets,
+    columnOffsets: preparedColumnOffsets,
     width,
     bytes:
       ESTIMATED_PREPARED_TEXT_BASE_BYTES +
-      text.length * 2 +
-      graphemes.length * ESTIMATED_PREPARED_GRAPHEME_BYTES +
-      columnOffsets.byteLength,
-    budgetToken: {},
+      preparedUtf16Offsets.byteLength +
+      preparedColumnOffsets.byteLength,
   };
 };
 
-const findFirstPreparedGrapheme = (
+const findPreparedTextCheckpoint = (
   columnOffsets: Float64Array,
   column: number
 ) => {
-  let low = 1;
+  let low = 0;
   let high = columnOffsets.length;
   while (low < high) {
     const middle = Math.floor((low + high) / 2);
@@ -980,15 +1012,13 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
   #resolvedContentBounds: NodeBounds | null | undefined = null;
   #revision = 0;
   readonly #invalidations: Array<{ revision: number; bounds: NodeBounds }> = [];
-  readonly #cacheBudget: CanvasProjectionCacheBudget;
+  readonly #sharedCacheBudget: CanvasProjectionCacheBudget | null;
 
   constructor(
     operations: readonly CellPlaneOperation[] = [],
     cacheBudget: CanvasProjectionCacheBudget | null = null
   ) {
-    this.#cacheBudget =
-      cacheBudget ??
-      new CanvasProjectionCacheBudget(CELL_PLANE_CHUNK_CACHE_BYTES_LIMIT);
+    this.#sharedCacheBudget = cacheBudget;
     operations.forEach((operation) => this.append(operation));
   }
 
@@ -1180,23 +1210,39 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
     const maxChunkX = floorDiv(bounds.x + bounds.width - 1, CELL_PLANE_CHUNK_WIDTH);
     const minChunkY = floorDiv(bounds.y, CELL_PLANE_CHUNK_HEIGHT);
     const maxChunkY = floorDiv(bounds.y + bounds.height - 1, CELL_PLANE_CHUNK_HEIGHT);
+    const boundsRight = bounds.x + bounds.width;
+    const boundsBottom = bounds.y + bounds.height;
     for (let chunkY = minChunkY; chunkY <= maxChunkY; chunkY += 1) {
       for (let chunkX = minChunkX; chunkX <= maxChunkX; chunkX += 1) {
         const chunkLeft = chunkX * CELL_PLANE_CHUNK_WIDTH;
         const chunkTop = chunkY * CELL_PLANE_CHUNK_HEIGHT;
-        this.#resolveChunk(chunkX, chunkY).forEach((cell, key) => {
-          const point = GridManager.fromKey(key);
+        const chunkRight = chunkLeft + CELL_PLANE_CHUNK_WIDTH;
+        const chunkBottom = chunkTop + CELL_PLANE_CHUNK_HEIGHT;
+        const entry = this.#resolveChunkEntry(chunkX, chunkY);
+        const snapshot = entry.visitSnapshot;
+        if (snapshot) {
+          for (let index = 0; index < snapshot.cells.length; index += 1) {
+            const x = snapshot.coordinates[index * 2]!;
+            const y = snapshot.coordinates[index * 2 + 1]!;
+            if (
+              x < chunkLeft || x >= chunkRight ||
+              y < chunkTop || y >= chunkBottom ||
+              x < bounds.x || x >= boundsRight ||
+              y < bounds.y || y >= boundsBottom
+            ) continue;
+            visitor(x, y, snapshot.cells[index]!);
+          }
+          continue;
+        }
+        entry.cells.forEach((cell, key) => {
+          const { x, y } = GridManager.fromKey(key);
           if (
-            point.x < chunkLeft ||
-            point.x >= chunkLeft + CELL_PLANE_CHUNK_WIDTH ||
-            point.y < chunkTop ||
-            point.y >= chunkTop + CELL_PLANE_CHUNK_HEIGHT ||
-            point.x < bounds.x ||
-            point.x >= bounds.x + bounds.width ||
-            point.y < bounds.y ||
-            point.y >= bounds.y + bounds.height
+            x < chunkLeft || x >= chunkRight ||
+            y < chunkTop || y >= chunkBottom ||
+            x < bounds.x || x >= boundsRight ||
+            y < bounds.y || y >= boundsBottom
           ) return;
-          visitor(point.x, point.y, cell);
+          visitor(x, y, cell);
         });
       }
     }
@@ -1344,7 +1390,9 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
       for (const span of row.spans) {
         const width = /^[\x20-\x7e]*$/.test(span.text)
           ? span.text.length
-          : this.#getPreparedCellText(span.text).width;
+          : span.text.length >= PREPARED_TEXT_MIN_CODE_UNITS
+            ? this.#getPreparedCellText(span.text).width
+            : getTextCellWidth(span.text);
         if (width <= 0) continue;
         const minChunkX = floorDiv(span.x - 1, CELL_PLANE_CHUNK_WIDTH);
         const maxChunkX = floorDiv(span.x + width, CELL_PLANE_CHUNK_WIDTH);
@@ -1368,65 +1416,103 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
     if (!entry) return;
     this.#chunkCache.delete(key);
     this.#chunkCacheBytes -= entry.bytes;
-    if (entry.budgetToken) this.#cacheBudget.release(entry.budgetToken);
+    if (entry.budgetToken) this.#sharedCacheBudget?.release(entry.budgetToken);
   }
 
-  #deletePreparedText(text: string) {
+  #deletePreparedText(text: string, eviction = false) {
     const entry = this.#preparedTextCache.get(text);
     if (!entry) return;
     this.#preparedTextCache.delete(text);
     this.#preparedTextCacheBytes -= entry.bytes;
-    this.#cacheBudget.release(entry.budgetToken);
+    if (entry.budgetToken) this.#sharedCacheBudget?.release(entry.budgetToken);
+    if (eviction) this.#preparedTextCacheEvictions += 1;
   }
 
   #getPreparedCellText(text: string) {
     const cached = this.#preparedTextCache.get(text);
     if (cached) {
-      this.#cacheBudget.touch(cached.budgetToken);
+      this.#preparedTextCache.delete(text);
+      this.#preparedTextCache.set(text, cached);
+      if (cached.budgetToken) this.#sharedCacheBudget?.touch(cached.budgetToken);
       this.#preparedTextCacheHits += 1;
       return cached;
     }
 
     this.#preparedTextCacheMisses += 1;
     const entry = prepareCellText(text);
+    const byteLimit = this.#sharedCacheBudget?.getStats().byteBudget ??
+      CELL_PLANE_PREPARED_TEXT_CACHE_BYTES_LIMIT;
+    if (entry.bytes > byteLimit) return entry;
+
     this.#preparedTextCache.set(text, entry);
     this.#preparedTextCacheBytes += entry.bytes;
-    this.#cacheBudget.register(entry.budgetToken, entry.bytes, () => {
-      if (this.#preparedTextCache.get(text) !== entry) return;
-      this.#preparedTextCache.delete(text);
-      this.#preparedTextCacheBytes -= entry.bytes;
-      this.#preparedTextCacheEvictions += 1;
-    });
+    if (this.#sharedCacheBudget) {
+      const budgetToken = {};
+      entry.budgetToken = budgetToken;
+      this.#sharedCacheBudget.register(budgetToken, entry.bytes, () => {
+        if (this.#preparedTextCache.get(text) !== entry) return;
+        this.#preparedTextCache.delete(text);
+        this.#preparedTextCacheBytes -= entry.bytes;
+        this.#preparedTextCacheEvictions += 1;
+      });
+    } else {
+      while (
+        this.#preparedTextCache.size > CELL_PLANE_PREPARED_TEXT_CACHE_LIMIT ||
+        this.#preparedTextCacheBytes > CELL_PLANE_PREPARED_TEXT_CACHE_BYTES_LIMIT
+      ) {
+        const oldest = this.#preparedTextCache.keys().next().value;
+        if (!oldest) break;
+        this.#deletePreparedText(oldest, true);
+      }
+    }
     return entry;
   }
 
   #resolveChunk(chunkX: number, chunkY: number) {
+    return this.#resolveChunkEntry(chunkX, chunkY).cells;
+  }
+
+  #resolveChunkEntry(chunkX: number, chunkY: number) {
     const key = chunkKey(chunkX, chunkY);
     const cached = this.#chunkCache.get(key);
     if (cached) {
       this.#chunkCache.delete(key);
       this.#chunkCache.set(key, cached);
-      if (cached.budgetToken) this.#cacheBudget.touch(cached.budgetToken);
-      return cached.cells;
+      if (cached.budgetToken) this.#sharedCacheBudget?.touch(cached.budgetToken);
+      return cached;
     }
     const projection = this.#projectChunk(chunkX, chunkY);
-    const bytes = 256 + projection.size * ESTIMATED_GRID_CELL_BYTES;
-    const entry: CellPlaneChunkCacheEntry = { cells: projection, bytes };
+    const visitSnapshot = createChunkVisitSnapshot(projection);
+    const bytes = 256 + projection.size * (
+      ESTIMATED_GRID_CELL_BYTES +
+      (visitSnapshot ? ESTIMATED_CHUNK_VISIT_CELL_BYTES : 0)
+    );
+    const entry: CellPlaneChunkCacheEntry = {
+      cells: projection,
+      visitSnapshot,
+      bytes,
+    };
     this.#chunkCache.set(key, entry);
     this.#chunkCacheBytes += bytes;
-    const budgetToken = {};
-    entry.budgetToken = budgetToken;
-    this.#cacheBudget.register(budgetToken, bytes, () => {
-      if (this.#chunkCache.get(key) !== entry) return;
-      this.#chunkCache.delete(key);
-      this.#chunkCacheBytes -= bytes;
-    });
-    while (this.#chunkCache.size > CELL_PLANE_CHUNK_CACHE_LIMIT) {
+    if (this.#sharedCacheBudget) {
+      const budgetToken = {};
+      entry.budgetToken = budgetToken;
+      this.#sharedCacheBudget.register(budgetToken, bytes, () => {
+        if (this.#chunkCache.get(key) !== entry) return;
+        this.#chunkCache.delete(key);
+        this.#chunkCacheBytes -= bytes;
+      });
+    }
+    while (
+      !this.#sharedCacheBudget &&
+      (this.#chunkCache.size > CELL_PLANE_CHUNK_CACHE_LIMIT ||
+        this.#chunkCacheBytes > CELL_PLANE_CHUNK_CACHE_BYTES_LIMIT)
+    ) {
       const oldest = this.#chunkCache.keys().next().value;
       if (!oldest) break;
       this.#deleteCachedChunk(oldest);
     }
-    return projection;
+    return entry;
   }
 
   #projectChunk(chunkX: number, chunkY: number) {
@@ -1469,16 +1555,24 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
             }
             continue;
           }
-          const prepared = this.#getPreparedCellText(span.text);
-          const fromColumn = chunkBounds.x - 1 - span.x;
-          const start = findFirstPreparedGrapheme(
-            prepared.columnOffsets,
-            fromColumn
-          );
-          for (let index = start; index < prepared.graphemes.length; index += 1) {
-            const x = span.x + prepared.columnOffsets[index]!;
+          let x = span.x;
+          let remainingText = span.text;
+          if (span.text.length >= PREPARED_TEXT_MIN_CODE_UNITS) {
+            const prepared = this.#getPreparedCellText(span.text);
+            const checkpoint = findPreparedTextCheckpoint(
+              prepared.columnOffsets,
+              chunkBounds.x - 1 - span.x
+            );
+            x += prepared.columnOffsets[checkpoint]!;
+            remainingText = span.text.slice(prepared.utf16Offsets[checkpoint]!);
+          }
+          for (const { segment: char } of iterateGraphemes(remainingText)) {
+            const width = getCellOccupancy(char);
             if (x > chunkBounds.x + chunkBounds.width) break;
-            const char = prepared.graphemes[index]!;
+            if (x + width <= chunkBounds.x - 1) {
+              x += width;
+              continue;
+            }
             const targetBackground = span.preserveTargetBackground
               ? resolveGridSlot(projection, { x, y: row.y })?.cell.bgColor
               : undefined;
@@ -1488,6 +1582,7 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
               row.y,
               toCell(span, char, targetBackground)
             );
+            x += width;
           }
         }
       }

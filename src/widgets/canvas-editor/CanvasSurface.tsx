@@ -19,6 +19,7 @@ type CanvasSurfaceProps = HTMLAttributes<HTMLDivElement> & {
   containerSize: { width: number; height: number } | undefined;
   viewportFrame?: EditorViewportFrame;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
+  textareaKey?: string;
   textareaStyle: CSSProperties;
   textareaProps: TextareaHTMLAttributes<HTMLTextAreaElement>;
   children?: ReactNode;
@@ -39,6 +40,7 @@ export const CanvasSurface = forwardRef<HTMLDivElement, CanvasSurfaceProps>(func
     containerSize,
     viewportFrame,
     textareaRef,
+    textareaKey,
     textareaStyle,
     textareaProps,
     children,
@@ -101,6 +103,7 @@ export const CanvasSurface = forwardRef<HTMLDivElement, CanvasSurfaceProps>(func
         </EditorWidget>
       )}
       <textarea
+        key={textareaKey}
         ref={textareaRef}
         data-canvas-managed-input="true"
         style={textareaStyle}

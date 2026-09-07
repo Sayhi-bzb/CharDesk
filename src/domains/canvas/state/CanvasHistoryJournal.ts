@@ -135,6 +135,27 @@ export class CanvasHistoryJournal {
     return this.#histories.get(documentId)?.undo.length ?? 0;
   }
 
+  getStats() {
+    let groups = 0;
+    let actions = 0;
+    let bytes = 0;
+    this.#histories.forEach((history) => {
+      const historyGroups = [...history.undo, ...history.redo];
+      groups += historyGroups.length;
+      actions += historyGroups.reduce(
+        (count, group) => count + group.actions.length,
+        0
+      );
+      bytes += history.bytes;
+    });
+    return {
+      documents: this.#histories.size,
+      groups,
+      actions,
+      bytes,
+    };
+  }
+
   rollbackTo(documentId: string, undoDepth: number) {
     let changed = false;
     while (this.getUndoDepth(documentId) > undoDepth) {
