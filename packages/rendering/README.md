@@ -99,6 +99,13 @@ Cell geometry is a synchronous host contract. CharDesk surfaces use a stable
 their own stable metrics. Font loading may trigger glyph repaint and audit, but
 must not resize a mounted grid.
 
+`DEFAULT_CHARDESK_CANVAS_METRICS` is the single product default.
+`presentCharDeskCellFrame()` consumes a storage-neutral `CellFrame` from
+`@chardesk/cell-core`; bounded Cell UI buffers and sparse document Canvas readers
+therefore share clipping, wide-glyph spans, font routing, dirty filtering, and
+Canvas draw order without sharing product state. `formatCharDeskCellFrame()` is
+the matching character-level inspection path.
+
 `measureCharDeskCanvasFont(context, profile, fontSize = 15)` measures a loaded
 display face and returns `{ metrics, source, fontMetrics, fontMetricsSource }`.
 `fontMetrics` preserves the uncalibrated grid; `metrics` applies the Profile's

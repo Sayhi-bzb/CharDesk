@@ -4,6 +4,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@chardesk/blackboard": ["./packages/blackboard/src/index.ts"],
+      "@chardesk/cell-core": ["./packages/cell-core/src/index.ts"],
       "@chardesk/collaboration-protocol": ["./packages/collaboration-protocol/src/index.ts"],
       "@chardesk/fonts": ["./packages/fonts/src/index.ts"],
       "@chardesk/font-maple": ["./packages/font-maple/src/index.ts"],

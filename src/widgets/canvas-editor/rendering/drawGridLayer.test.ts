@@ -14,12 +14,16 @@ describe("drawGridLayer", () => {
     const samples: Array<{ char: string; font: string; x: number; y: number }> = [];
     vi.mocked(ctx.fillText).mockImplementation((char, x, y) => { samples.push({ char, font: ctx.font, x, y }); });
     for (const id of ["maple", "ark-mono", "xiaolai-mono"] as const) {
+      const sampleCount = samples.length;
       drawGridLayer(ctx, reader, { startX: 0, endX: 5, startY: 0, endY: 1 }, 1, { x: 0, y: 0 }, {
         fontProfile: withCharDeskCoreCellGlyphs(displayFontOptions[id].profile),
       });
-      expect(samples.at(-2)?.font).toContain(displayFontOptions[id].profile.capabilities.display.families.regular);
-      expect(samples.at(-1)?.font).toBe("15px 'JuliaMono'");
+      expect(samples).toHaveLength(sampleCount + 1);
+      expect(samples.at(-1)).toMatchObject({ char: "A" });
+      expect(samples.at(-1)?.font).toContain(displayFontOptions[id].profile.capabilities.display.families.regular);
     }
+    expect(samples.some(({ char }) => char === "╭")).toBe(false);
+    expect(ctx.stroke).toHaveBeenCalledTimes(3);
     expect(new Set(samples.filter(({ char }) => char === "A").map(({ x, y }) => `${x},${y}`)).size).toBe(1);
   });
   const createContext = () => ({
@@ -28,8 +32,11 @@ describe("drawGridLayer", () => {
     fillText: vi.fn(),
     fillRect: vi.fn(),
     beginPath: vi.fn(),
+    rect: vi.fn(),
+    clip: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
+    arc: vi.fn(),
     stroke: vi.fn(),
     globalAlpha: 1,
   } as unknown as CanvasRenderingContext2D);

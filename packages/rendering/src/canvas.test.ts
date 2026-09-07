@@ -11,6 +11,7 @@ import {
   getCharDeskCanvasFont,
   loadCharDeskCanvasFonts,
   measureCharDeskCanvasDocument,
+  presentCharDeskCellFrame,
   prepareCharDeskCanvasSurface,
   resolveCharDeskCanvasFontFace,
   resolveCharDeskCanvasCellVisual,
@@ -56,6 +57,42 @@ const customFontProfile = (overrides: Partial<CharDeskFontProfile["capabilities"
 });
 
 describe("CharDesk Canvas 2D renderer", () => {
+  it("presents bounded Cell Frames with shared metrics and dirty filtering", () => {
+    const { context } = createContext();
+    const cells = new Map([
+      ["1,2", { visual: resolveCharDeskCellVisual({ text: "A", color: "#123456" }) }],
+      ["2,2", { visual: resolveCharDeskCellVisual({ text: "B", color: "#123456" }) }],
+    ]);
+    const source = {
+      get: ({ x, y }: { x: number; y: number }) => cells.get(`${x},${y}`),
+      visit: (
+        bounds: { x: number; y: number; width: number; height: number },
+        visitor: (x: number, y: number, cell: (typeof cells extends Map<string, infer T> ? T : never)) => void
+      ) => {
+        for (const [key, cell] of cells) {
+          const [x, y] = key.split(",").map(Number) as [number, number];
+          if (x >= bounds.x && x < bounds.x + bounds.width && y >= bounds.y && y < bounds.y + bounds.height) {
+            visitor(x, y, cell);
+          }
+        }
+      },
+      getContentBounds: () => ({ x: 1, y: 2, width: 2, height: 1 }),
+    };
+    const result = presentCharDeskCellFrame(context, {
+      revision: 3,
+      viewport: { x: 0, y: 0, width: 4, height: 4 },
+      source,
+      dirty: [{ x: 2, y: 2, width: 1, height: 1 }],
+    }, {
+      metrics: { cellWidth: 9, cellHeight: 20, baseline: 15, fontSize: 15, fontFamily: "Test" },
+      palette: { color: "#000000", background: "#ffffff" },
+      offset: { x: 3, y: 4 },
+      zoom: 2,
+    });
+    expect(result).toEqual({ cells: 1, glyphs: 1 });
+    expect(context.fillText).toHaveBeenCalledWith("B", 48, 114);
+  });
+
   for (const dpr of [1, 1.25, 2]) {
     for (const zoom of [1, 1.25]) {
       it(`preserves grid spacing and baseline at DPR ${dpr}, zoom ${zoom}`, () => {

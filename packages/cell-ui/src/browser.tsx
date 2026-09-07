@@ -1,15 +1,14 @@
 /* eslint-disable react-refresh/only-export-components */
 import {
   alignCharDeskCanvasRect,
-  drawCharDeskCanvasCells,
   CELL_GRAPHICS_VERSION,
   resolveCharDeskCanvasGlyphSource,
   getCharDeskCanvasFont,
   loadCharDeskCanvasFonts,
+  presentCharDeskCellFrame,
   prepareCharDeskCanvasSurface,
   resolveCharDeskCanvasFontFace,
   type CharDeskCanvasMetrics,
-  type CharDeskCanvasCellDrawEntry,
   type CharDeskCanvasPalette,
   type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
@@ -62,6 +61,7 @@ import type { RootProps } from "./react.js";
 import { captureCellProbe, formatCellBuffer } from "./probe.js";
 import type { CellProbePresentation, CellProbeSnapshot } from "./probe.js";
 import { CellUiRuntime } from "./runtime.js";
+import { createCellUiRenderFrame } from "./frame.js";
 import { textViewportCommands } from "./text-viewport.js";
 import { usePointerAppearance } from "./browser-hover.js";
 import { sameWidgetValue } from "./tree.js";
@@ -336,51 +336,16 @@ const presentFrame = (
       && x < region.x + region.width
       && y < region.y + region.height
   );
-  const entries: CharDeskCanvasCellDrawEntry[] = [];
-  for (let y = 0; y < frame.buffer.height; y += 1) {
-    for (let x = 0; x < frame.buffer.width; x += 1) {
-      const cell = frame.buffer.get(x, y);
-      if (!cell || !inDirtyRegion(x, y)) continue;
-      if (cell.style.backgroundColor !== undefined) {
-        const bounds = alignCharDeskCanvasRect({
-          x: x * metrics.cellWidth, y: y * metrics.cellHeight,
-          width: metrics.cellWidth, height: metrics.cellHeight,
-        }, context.getTransform());
-        context.fillStyle = cell.style.backgroundColor;
-        context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-      }
-      if (cell.continuation) continue;
-      entries.push({
-        cell: {
-          text: cell.text,
-          width: cell.width,
-          fontRoute: resolveCharDeskFontRoute(cell.text),
-          ...(cell.style.color ? { color: cell.style.color } : {}),
-          ...(cell.style.backgroundColor
-            ? { bgColor: cell.style.backgroundColor }
-            : {}),
-          ...((cell.style.bold || cell.style.underline)
-            ? {
-                attrs: {
-                  ...(cell.style.bold ? { bold: true as const } : {}),
-                  ...(cell.style.underline ? { underline: true as const } : {}),
-                },
-              }
-            : {}),
-        },
-        x: x * metrics.cellWidth,
-        y: y * metrics.cellHeight,
-        options: {
-          metrics,
-          palette,
-          clipToCell: glyphOverflow === "clip",
-          ...(fontProfile ? { fontProfile } : {}),
-        },
-        drawBackground: false,
-      });
+  presentCharDeskCellFrame(
+    context,
+    createCellUiRenderFrame(frame, regions),
+    {
+      metrics,
+      palette,
+      clipToCell: glyphOverflow === "clip",
+      ...(fontProfile ? { fontProfile } : {}),
     }
-  }
-  drawCharDeskCanvasCells(context, entries);
+  );
   const focusedText = frame.semantics.focusedId
     ? frame.textLayouts.get(frame.semantics.focusedId)
     : undefined;

@@ -1,4 +1,5 @@
 export { CellBuffer } from "./buffer.js";
+export { createCellBufferSource, createCellUiRenderFrame } from "./frame.js";
 export type { CellTextOptions, CellComposition } from "./buffer.js";
 export {
   captureCellProbe,

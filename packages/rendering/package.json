@@ -40,6 +40,7 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
+    "@chardesk/cell-core": "^0.3.6",
     "@chardesk/fonts": "^0.3.0",
     "@chardesk/protocol": "^0.3.0"
   },

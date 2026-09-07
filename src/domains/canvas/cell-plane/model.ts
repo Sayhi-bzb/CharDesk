@@ -1,4 +1,8 @@
 import type { GridCell, NodeBounds, Point, TextAttributes } from "@/shared/types";
+import type {
+  CellChanges,
+  CellSource,
+} from "@chardesk/cell-core";
 import {
   getCellOccupancy,
   getTextCellWidth,
@@ -522,17 +526,18 @@ export type CellPlaneRow = {
   spans: readonly CellSpan[];
 };
 
-export interface CanvasSurfaceReader {
+export interface CanvasSurfaceReader extends CellSource<GridCell> {
+  /** @deprecated Use the CellSource-compatible get(). */
   getCell(point: Point): GridCell | undefined;
+  /** @deprecated Use the CellSource-compatible visit(). */
+  visitCells(bounds: NodeBounds, visitor: (x: number, y: number, cell: GridCell) => void): void;
   query(bounds: NodeBounds): Iterable<CellSpan & { y: number }>;
   rows(bounds?: NodeBounds): Iterable<CellPlaneRow>;
   getContentBounds(): NodeBounds | null;
   materialize(bounds?: NodeBounds): Map<string, GridCell>;
 }
 
-export type CanvasSurfaceChanges =
-  | { revision: number; full: true }
-  | { revision: number; full: false; bounds: readonly NodeBounds[] };
+export type CanvasSurfaceChanges = CellChanges;
 
 /** Optional capability for surfaces that can describe changes since a revision. */
 export interface IncrementalCanvasSurfaceReader extends CanvasSurfaceReader {
@@ -555,7 +560,22 @@ export const isIncrementalCanvasSurfaceReader = (
 export const createGridSurfaceReader = (
   grid: ReadonlyMap<string, GridCell>
 ): CanvasSurfaceReader => getSurfaceGridReader(grid) ?? ({
+  get: ({ x, y }) => grid.get(GridManager.toKey(x, y)),
   getCell: ({ x, y }) => grid.get(GridManager.toKey(x, y)),
+  visit(bounds, visitor) {
+    for (const row of this.rows(bounds)) {
+      for (const span of row.spans) {
+        let x = span.x;
+        for (const cell of span.cells) {
+          visitor(x, row.y, cell);
+          x += getCellOccupancy(cell.char);
+        }
+      }
+    }
+  },
+  visitCells(bounds, visitor) {
+    this.visit(bounds, visitor);
+  },
   *query(bounds) {
     for (const row of this.rows(bounds)) {
       for (const span of row.spans) yield { ...span, y: row.y };
@@ -1126,6 +1146,10 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
     return this.#resolveChunk(chunkX, chunkY).get(GridManager.toKey(point.x, point.y));
   }
 
+  get(point: Point) {
+    return this.getCell(point);
+  }
+
   /** Counts logical cells without warming the resident chunk cache. */
   countCells() {
     let count = 0;
@@ -1176,6 +1200,10 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
         });
       }
     }
+  }
+
+  visit(bounds: NodeBounds, visitor: (x: number, y: number, cell: GridCell) => void) {
+    this.visitCells(bounds, visitor);
   }
 
   *query(bounds: NodeBounds) {

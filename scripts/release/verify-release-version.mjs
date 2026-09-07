@@ -24,6 +24,7 @@ if (releaseManifest["."] !== version) {
 }
 const packages = [
   { name: "@chardesk/cli", path: "packages/cli" },
+  { name: "@chardesk/cell-core", path: "packages/cell-core" },
   { name: "@chardesk/fonts", path: "packages/fonts" },
   { name: "@chardesk/font-maple", path: "packages/font-maple" },
   { name: "@chardesk/protocol", path: "packages/protocol" },

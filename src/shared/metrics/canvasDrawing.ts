@@ -62,7 +62,7 @@ export const resolveCellVisual = (cell: GridCell): ResolvedCellVisual => {
 
 const canvasVisualCache = new WeakMap<GridCell, ReturnType<typeof resolveCharDeskCellVisual>>();
 
-const toCanvasVisual = (cell: GridCell) => {
+export const toCanvasVisual = (cell: GridCell) => {
   const cached = canvasVisualCache.get(cell);
   if (cached) return cached;
   const visual = resolveCharDeskCellVisual({
