@@ -5,16 +5,16 @@ import {
   prepareCharDeskCanvasSurface,
   type CharDeskCanvasFontSample,
   type CharDeskCanvasContext,
-  type CharDeskCanvasMetrics,
   type CharDeskCanvasSurface,
 } from "@chardesk/rendering/canvas";
+import type { CharDeskCellMetrics } from "@chardesk/rendering";
 import type { RenderFontRoute } from "./fontRouting";
 import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
 import { DEFAULT_CANVAS_FONT_PROFILE } from "@/shared/fonts/canvas-profile";
 import { DEFAULT_GRID_GEOMETRY } from "./gridGeometry";
 
-export type GridRenderMetrics = CharDeskCanvasMetrics;
+export type GridRenderMetrics = CharDeskCellMetrics;
 
 export const DEFAULT_GRID_RENDER_METRICS = Object.freeze({
   ...DEFAULT_GRID_GEOMETRY,

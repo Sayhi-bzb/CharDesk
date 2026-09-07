@@ -10,7 +10,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import type { CharDeskCanvasMetrics } from "@chardesk/rendering/canvas";
+import type { CharDeskCellMetrics } from "@chardesk/rendering";
 import type { WidgetCommand } from "./interaction.js";
 import {
   CellTextEditor,
@@ -124,7 +124,7 @@ const baseTextareaStyle: CSSProperties = {
 type ManagedCellTextareaProps = Readonly<{
   node: WidgetNode;
   frame: FrameSnapshot;
-  metrics: CharDeskCanvasMetrics;
+  metrics: CharDeskCellMetrics;
   dispatch: (command: WidgetCommand) => void;
   focusTarget: (id: WidgetId) => void;
 }>;
@@ -264,7 +264,7 @@ export const CellTextInputLayer = ({
   focusTarget,
 }: Readonly<{
   frame: FrameSnapshot;
-  metrics: CharDeskCanvasMetrics;
+  metrics: CharDeskCellMetrics;
   dispatch: (command: WidgetCommand) => void;
   focusTarget: (id: WidgetId) => void;
 }>) => (

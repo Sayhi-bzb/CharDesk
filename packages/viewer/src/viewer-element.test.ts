@@ -22,10 +22,13 @@ beforeEach(() => {
   canvasContext = {
     beginPath: vi.fn(),
     clearRect: vi.fn(),
+    clip: vi.fn(),
+    fill: vi.fn(),
     fillRect: vi.fn(),
     fillText: vi.fn(),
     lineTo: vi.fn(),
     moveTo: vi.fn(),
+    rect: vi.fn(),
     restore: vi.fn(),
     save: vi.fn(),
     scale: vi.fn(),

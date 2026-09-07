@@ -10,7 +10,8 @@ npm install @chardesk/cell-core
 
 `CellSource.visit()` is the canonical bounded traversal API. Sources may be dense
 or sparse; callers must not infer storage shape. Rectangles use finite integer
-coordinates and half-open bounds.
+coordinates and half-open bounds. `normalizeCellRect`, `intersectCellRects`, and
+`cellRectContainsPoint` are the shared geometry rules for storage and UI adapters.
 
 ```ts
 import type { CellFrame } from "@chardesk/cell-core";

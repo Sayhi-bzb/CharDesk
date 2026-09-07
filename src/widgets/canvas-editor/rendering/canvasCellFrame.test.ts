@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGridSurfaceReader } from "@/domains/canvas/public";
-import { formatCharDeskCellFrame } from "@chardesk/rendering/canvas";
+import { formatCharDeskCellFrame } from "@chardesk/rendering";
 import { createCanvasCellFrame } from "./canvasCellFrame";
 
 describe("Canvas Cell Frame adapter", () => {
@@ -21,4 +21,5 @@ describe("Canvas Cell Frame adapter", () => {
     const reader = createGridSurfaceReader(new Map([["0,0", { char: "x", color: "#fff" }]]));
     expect(createCanvasCellFrame(reader, { x: 0, y: 0, width: 1, height: 1 }).revision).toBe(0);
   });
+
 });

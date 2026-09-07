@@ -1,3 +1,4 @@
+import { cellRectContainsPoint } from "@chardesk/cell-core";
 import { computeScrollMetrics, scrollOffsetFor } from "./scroll.js";
 import { measureCellText } from "./text.js";
 import type {
@@ -10,7 +11,7 @@ import type {
   WidgetTree,
 } from "./types.js";
 
-export const intersectCellRects = (left: CellRect, right: CellRect): CellRect => {
+export const intersectSceneRects = (left: CellRect, right: CellRect): CellRect => {
   const x = Math.max(left.x, right.x);
   const y = Math.max(left.y, right.y);
   const rightEdge = Math.min(left.x + left.width, right.x + right.width);
@@ -24,12 +25,6 @@ export const intersectCellRects = (left: CellRect, right: CellRect): CellRect =>
 };
 
 const isEmpty = (rect: CellRect) => rect.width === 0 || rect.height === 0;
-
-const contains = (rect: CellRect, point: CellPoint) =>
-  point.x >= rect.x
-  && point.y >= rect.y
-  && point.x < rect.x + rect.width
-  && point.y < rect.y + rect.height;
 
 const scrollMetricsFor = (
   tree: WidgetTree,
@@ -120,9 +115,9 @@ export const composeScene = (
         bounds.height - layoutEntry.borderInsets.top - layoutEntry.borderInsets.bottom
       ),
     };
-    const outerClip = intersectCellRects(clip, bounds);
+    const outerClip = intersectSceneRects(clip, bounds);
     const scrollMetrics = scrollMetricsFor(tree, layout, id, contentBounds);
-    const contentClip = intersectCellRects(outerClip, scrollMetrics?.viewport ?? contentBounds);
+    const contentClip = intersectSceneRects(outerClip, scrollMetrics?.viewport ?? contentBounds);
     const entry: SceneEntry = {
       id,
       sceneParentId: portal ? tree.rootId : widget.parentId,
@@ -191,7 +186,8 @@ export const hitTest = (
   .filter((id) => {
     const entry = scene.entries.get(id);
     return entry
-      ? contains(entry.hitBounds, point) && contains(entry.outerClip, point)
+      ? cellRectContainsPoint(entry.hitBounds, point)
+        && cellRectContainsPoint(entry.outerClip, point)
       : false;
   });
 
@@ -204,13 +200,13 @@ export const hitTestCell = (
   const entry = scene.entries.get(ownerId);
   if (!entry) return null;
   const metrics = entry.scrollMetrics;
-  const part = metrics?.horizontalTrack && contains(metrics.horizontalTrack, point)
+  const part = metrics?.horizontalTrack && cellRectContainsPoint(metrics.horizontalTrack, point)
     ? "scrollbar-x"
-    : metrics?.verticalTrack && contains(metrics.verticalTrack, point)
+    : metrics?.verticalTrack && cellRectContainsPoint(metrics.verticalTrack, point)
       ? "scrollbar-y"
-      : metrics?.corner && contains(metrics.corner, point)
+      : metrics?.corner && cellRectContainsPoint(metrics.corner, point)
         ? "scrollbar-corner"
-        : contains(entry.contentBounds, point)
+        : cellRectContainsPoint(entry.contentBounds, point)
           ? "content"
           : "chrome";
   return { ownerId, part, point };

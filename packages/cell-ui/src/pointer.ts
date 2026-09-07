@@ -1,3 +1,4 @@
+import { cellRectContainsPoint } from "@chardesk/cell-core";
 import type { FocusManager, WidgetCommand } from "./interaction.js";
 import { commandForInput, getScrollRange, topModalOverlayId } from "./interaction.js";
 import type { GestureCandidate, GestureSignal } from "./gestures.js";
@@ -45,16 +46,6 @@ export const resolvePointerAppearance = (frame: FrameSnapshot, point: CellPoint)
   }
   return { hoveredId: null, cursor: "default" };
 };
-
-const contains = (bounds: Readonly<{
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}>, point: CellPoint) => point.x >= bounds.x
-  && point.y >= bounds.y
-  && point.x < bounds.x + bounds.width
-  && point.y < bounds.y + bounds.height;
 
 export const gestureCandidatesForFrame = (
   frame: FrameSnapshot,
@@ -132,7 +123,7 @@ export const commandForGestureSignal = (
       const thumb = horizontal ? metrics.horizontalThumbAxis : metrics.verticalThumbAxis;
       const track = horizontal ? metrics.horizontalTrack : metrics.verticalTrack;
       const precise = signal.precisePoint ?? cellCenter(signal.point);
-      if (!track || !contains(track, precise)) return null;
+      if (!track || !cellRectContainsPoint(track, precise)) return null;
       const coordinate = horizontal ? precise.x : precise.y;
       const thumbStart = (horizontal ? track?.x : track?.y) ?? 0;
       const start = thumbStart + (thumb?.start ?? 0) / 2;

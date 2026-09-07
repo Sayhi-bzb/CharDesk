@@ -1,6 +1,6 @@
-export type CellGraphicOctant = Readonly<{ x: number; y: number; w: number; h: number }>;
+type CellGraphicOctant = Readonly<{ x: number; y: number; w: number; h: number }>;
 
-export type CellGraphicPathFactory = (xp: number, yp: number) => string;
+type CellGraphicPathFactory = (xp: number, yp: number) => string;
 
 export const CustomGlyphVectorType = {
   FILL: 0,
@@ -25,7 +25,7 @@ export const CustomGlyphDefinitionType = {
   ROUND_CORNER: 7,
 } as const;
 
-export type CellGraphicVectorShape = Readonly<{
+type CellGraphicVectorShape = Readonly<{
   d: string;
   type: CustomGlyphVectorType;
   leftPadding?: number;
@@ -52,9 +52,4 @@ export type CustomGlyphCharacterDefinition =
   | CustomGlyphDefinitionPart
   | readonly CustomGlyphDefinitionPart[];
 
-// Names retained so the pinned xterm.js definitions can remain source-shaped.
-export type CustomGlyphDefinitionPartRaw = CellGraphicPartData;
 export type CustomGlyphPathDrawFunctionDefinition = CellGraphicPathFactory;
-export type CustomGlyphPatternDefinition = number[][];
-export type ICustomGlyphSolidOctantBlockVector = CellGraphicOctant;
-export type ICustomGlyphVectorShape = CellGraphicVectorShape;

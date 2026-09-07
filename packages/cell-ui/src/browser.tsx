@@ -8,11 +8,14 @@ import {
   presentCharDeskCellFrame,
   prepareCharDeskCanvasSurface,
   resolveCharDeskCanvasFontFace,
-  type CharDeskCanvasMetrics,
   type CharDeskCanvasPalette,
   type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
-import { resolveCharDeskFontRoute } from "@chardesk/rendering";
+import { cellRectContainsPoint } from "@chardesk/cell-core";
+import {
+  resolveCharDeskFontRoute,
+  type CharDeskCellMetrics,
+} from "@chardesk/rendering";
 import {
   useCallback,
   useEffect,
@@ -269,7 +272,7 @@ export const useCellVirtualListState = <Item extends CellListItem>(
 export const pxToCellPoint = (
   point: Readonly<{ clientX: number; clientY: number }>,
   bounds: Pick<DOMRect, "left" | "top">,
-  metrics: Pick<CharDeskCanvasMetrics, "cellWidth" | "cellHeight">
+  metrics: Pick<CharDeskCellMetrics, "cellWidth" | "cellHeight">
 ): CellPoint => ({
   x: Math.floor((point.clientX - bounds.left) / metrics.cellWidth),
   y: Math.floor((point.clientY - bounds.top) / metrics.cellHeight),
@@ -278,26 +281,16 @@ export const pxToCellPoint = (
 export const pxToCellPosition = (
   point: Readonly<{ clientX: number; clientY: number }>,
   bounds: Pick<DOMRect, "left" | "top">,
-  metrics: Pick<CharDeskCanvasMetrics, "cellWidth" | "cellHeight">
+  metrics: Pick<CharDeskCellMetrics, "cellWidth" | "cellHeight">
 ): CellPoint => ({
   x: (point.clientX - bounds.left) / metrics.cellWidth,
   y: (point.clientY - bounds.top) / metrics.cellHeight,
 });
 
-const containsCellPoint = (bounds: Readonly<{
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}>, point: CellPoint) => point.x >= bounds.x
-  && point.y >= bounds.y
-  && point.x < bounds.x + bounds.width
-  && point.y < bounds.y + bounds.height;
-
 const presentFrame = (
   canvas: HTMLCanvasElement,
   frame: FrameSnapshot,
-  metrics: CharDeskCanvasMetrics,
+  metrics: CharDeskCellMetrics,
   palette: CharDeskCanvasPalette,
   cellRange: CellRangeSnapshot | null,
   theme: CellUiTheme,
@@ -366,7 +359,7 @@ const presentFrameWithCursor = (
   cursor: CellCursorPresenter,
   canvas: HTMLCanvasElement,
   frame: FrameSnapshot,
-  metrics: CharDeskCanvasMetrics,
+  metrics: CharDeskCellMetrics,
   palette: CharDeskCanvasPalette,
   cellRange: CellRangeSnapshot | null,
   theme: CellUiTheme,
@@ -496,7 +489,7 @@ export type CellSurfaceProps = Readonly<{
   children: ReactElement<RootProps>;
   focusedId?: WidgetId | null;
   theme?: Partial<CellUiTheme>;
-  metrics?: CharDeskCanvasMetrics;
+  metrics?: CharDeskCellMetrics;
   fontSize?: number;
   fontProfile?: CharDeskFontProfile;
   glyphOverflow?: "clip" | "visible";
@@ -538,7 +531,7 @@ const roundProbePixels = (value: number) => Math.round(value * 1000) / 1000;
 const captureCellProbePresentation = (
   frame: FrameSnapshot,
   canvas: HTMLCanvasElement,
-  metrics: CharDeskCanvasMetrics,
+  metrics: CharDeskCellMetrics,
   fontProfile?: CharDeskFontProfile
 ): CellProbePresentation => {
   const requestedFontRoutes = Object.fromEntries(
@@ -1088,7 +1081,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (editor && textLayout && !editor.disabled && !onScrollbar) {
           event.preventDefault();
           const contentClip = frame.scene.entries.get(editor.id)?.contentClip;
-          if (contentClip && containsCellPoint(contentClip, point)) {
+          if (contentClip && cellRectContainsPoint(contentClip, point)) {
             const offset = offsetAtCellPoint(textLayout, point);
             textDragRef.current = { targetId: editor.id, anchor: offset, pointerId: event.pointerId };
             event.currentTarget.setPointerCapture(event.pointerId);

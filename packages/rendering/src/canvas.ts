@@ -4,13 +4,15 @@ import {
   type CharDeskFontProfile,
 } from "@chardesk/fonts";
 import { getGraphemeCellWidth, type CharDeskTextAttributes } from "@chardesk/protocol";
-import { formatCellFrame, type CellFrame, type CellPoint, type CellRect } from "@chardesk/cell-core";
+import { type CellFrame, type CellPoint, type CellRect } from "@chardesk/cell-core";
 import type {
+  CharDeskCellFrameCell,
+  CharDeskCellMetrics,
   CharDeskCellVisual,
   CharDeskRenderFontRoute,
   CharDeskRenderModel,
 } from "./index.js";
-import { resolveCharDeskFontRoute } from "./index.js";
+import { DEFAULT_CHARDESK_CELL_METRICS, resolveCharDeskFontRoute } from "./index.js";
 import { drawCharDeskCellGraphic, resolveCharDeskCanvasGlyphSource } from "./cell-graphics.js";
 export { CELL_GRAPHICS_VERSION, resolveCharDeskCanvasGlyphSource } from "./cell-graphics.js";
 import {
@@ -19,15 +21,6 @@ import {
 } from "./canvas-geometry.js";
 export { alignCanvasRect as alignCharDeskCanvasRect } from "./canvas-geometry.js";
 export type { CharDeskFontProfile } from "@chardesk/fonts";
-
-export type CharDeskCanvasMetrics = {
-  cellWidth: number;
-  cellHeight: number;
-  fontSize: number;
-  fontFamily: string;
-  /** Alphabetic baseline from the Cell top; omitted preserves middle alignment. */
-  baseline?: number;
-};
 
 export type CharDeskCanvasSurface = HTMLCanvasElement | OffscreenCanvas;
 export type CharDeskCanvasContext =
@@ -71,7 +64,7 @@ export type CharDeskCanvasCellDrawOptions = {
   color?: string;
   underline?: boolean;
   zoom?: number;
-  metrics?: CharDeskCanvasMetrics;
+  metrics?: CharDeskCellMetrics;
   palette?: CharDeskCanvasPalette;
   fontAvailability?: CharDeskCanvasFontAvailability;
   fontProfile?: CharDeskFontProfile;
@@ -93,7 +86,7 @@ export type CharDeskCanvasCellVisual = CharDeskCellVisual & {
 };
 
 export type CharDeskCanvasDocumentOptions = {
-  metrics?: CharDeskCanvasMetrics;
+  metrics?: CharDeskCellMetrics;
   palette: CharDeskCanvasPalette;
   padding?: number;
   zoom?: number;
@@ -107,7 +100,7 @@ export type CharDeskCanvasDocumentLayout = {
   width: number;
   height: number;
   padding: number;
-  metrics: CharDeskCanvasMetrics;
+  metrics: CharDeskCellMetrics;
 };
 
 export type CharDeskCanvasFontSample =
@@ -115,19 +108,11 @@ export type CharDeskCanvasFontSample =
   | { grapheme: string; bold?: boolean; italic?: boolean };
 
 export type CharDeskCanvasFontLoadOptions = Readonly<{
-  metrics?: CharDeskCanvasMetrics;
+  metrics?: CharDeskCellMetrics;
   fontProfile?: CharDeskFontProfile;
   fontFamilies?: CharDeskCanvasFontFamilies;
   fontResolver?: CharDeskCanvasFontResolver;
 }>;
-
-export const DEFAULT_CHARDESK_CANVAS_METRICS = Object.freeze({
-  cellWidth: 9,
-  cellHeight: 20,
-  baseline: 15,
-  fontSize: 15,
-  fontFamily: CHARDESK_SYSTEM_FONT_PROFILE.families.text,
-} satisfies CharDeskCanvasMetrics);
 
 export const DEFAULT_CHARDESK_CANVAS_FONT_AVAILABILITY: CharDeskCanvasFontAvailability = {
   text: true,
@@ -140,7 +125,7 @@ const DEFAULT_PALETTE: CharDeskCanvasPalette = {
 };
 
 export const getCharDeskCanvasFont = (
-  metrics: CharDeskCanvasMetrics = DEFAULT_CHARDESK_CANVAS_METRICS,
+  metrics: CharDeskCellMetrics = DEFAULT_CHARDESK_CELL_METRICS,
   zoom = 1,
   options?: {
     bold?: boolean;
@@ -200,10 +185,10 @@ export const resolveCharDeskCanvasFontFace = (input: Readonly<{
 };
 
 export type CharDeskFontMeasurement = Readonly<{
-  metrics: CharDeskCanvasMetrics;
+  metrics: CharDeskCellMetrics;
   source: "font-bounds" | "glyph-bounds" | "calibrated";
   /** Uncalibrated regular-face geometry, before Profile grid overrides. */
-  fontMetrics: CharDeskCanvasMetrics;
+  fontMetrics: CharDeskCellMetrics;
   fontMetricsSource: "font-bounds" | "glyph-bounds";
 }>;
 
@@ -211,7 +196,7 @@ export type CharDeskFontMeasurement = Readonly<{
 export const measureCharDeskCanvasFont = (
   context: Pick<CharDeskCanvasContext, "save" | "restore" | "measureText" | "font" | "textBaseline">,
   fontProfile: CharDeskFontProfile = CHARDESK_SYSTEM_FONT_PROFILE,
-  fontSize = DEFAULT_CHARDESK_CANVAS_METRICS.fontSize
+  fontSize = DEFAULT_CHARDESK_CELL_METRICS.fontSize
 ): CharDeskFontMeasurement => {
   if (!Number.isFinite(fontSize) || fontSize <= 0) throw new RangeError("Font size must be positive.");
   const face = resolveCharDeskCanvasFontFace({ grapheme: "0", route: "text", bold: false, italic: false, fontProfile });
@@ -219,7 +204,7 @@ export const measureCharDeskCanvasFont = (
   const calibration = fontProfile.capabilities.display.cellMetrics;
   context.save();
   try {
-    context.font = getCharDeskCanvasFont({ ...DEFAULT_CHARDESK_CANVAS_METRICS, fontSize }, 1, {
+    context.font = getCharDeskCanvasFont({ ...DEFAULT_CHARDESK_CELL_METRICS, fontSize }, 1, {
       fontFamily: face.family, fontSizeScale: face.fontSizeScale,
     });
     context.textBaseline = "alphabetic";
@@ -268,7 +253,7 @@ export type CharDeskFontAuditSample = Readonly<{
 
 export type CharDeskFontAudit = Readonly<{
   measurement: CharDeskFontMeasurement;
-  metrics: CharDeskCanvasMetrics;
+  metrics: CharDeskCellMetrics;
   /** Canvas cannot identify which fallback face supplied an individual glyph. */
   faceIdentity: "requested-stack-only";
   samples: readonly CharDeskFontAuditSample[];
@@ -278,7 +263,7 @@ export type CharDeskFontAudit = Readonly<{
 export const auditCharDeskCanvasFont = (
   context: Pick<CharDeskCanvasContext, "save" | "restore" | "measureText" | "font" | "textBaseline">,
   profile: CharDeskFontProfile,
-  metrics: CharDeskCanvasMetrics,
+  metrics: CharDeskCellMetrics,
   samples: Iterable<CharDeskCanvasFontSample>
 ): CharDeskFontAudit => {
   if (![metrics.cellWidth, metrics.cellHeight, metrics.fontSize].every((n) => Number.isFinite(n) && n > 0)
@@ -333,7 +318,7 @@ export const getCharDeskCanvasCellAnchor = (
   y: number,
   width: 1 | 2,
   zoom = 1,
-  metrics: CharDeskCanvasMetrics = DEFAULT_CHARDESK_CANVAS_METRICS
+  metrics: CharDeskCellMetrics = DEFAULT_CHARDESK_CELL_METRICS
 ) => ({
   x: x + metrics.cellWidth * zoom * width / 2,
   y: y + (metrics.baseline ?? metrics.cellHeight / 2) * zoom,
@@ -402,7 +387,7 @@ const drawCellBackground = (
   transform?: AxisTransform
 ) => {
   const options = entry.options;
-  const metrics = options?.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
+  const metrics = options?.metrics ?? DEFAULT_CHARDESK_CELL_METRICS;
   const zoom = options?.zoom ?? 1;
   if (!visual.bgColor) return previousColor;
   if (visual.bgColor !== previousColor) ctx.fillStyle = visual.bgColor;
@@ -425,7 +410,7 @@ const prepareFontGlyph = (
   state: CanvasTextState
 ) => {
   const options = entry.options;
-  const metrics = options?.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
+  const metrics = options?.metrics ?? DEFAULT_CHARDESK_CELL_METRICS;
   const zoom = options?.zoom ?? 1;
   const availability = options?.fontAvailability ??
     DEFAULT_CHARDESK_CANVAS_FONT_AVAILABILITY;
@@ -478,7 +463,7 @@ const drawCellText = (
   state: CanvasTextState
 ) => {
   const options = entry.options;
-  const metrics = options?.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
+  const metrics = options?.metrics ?? DEFAULT_CHARDESK_CELL_METRICS;
   const zoom = options?.zoom ?? 1;
   ctx.textBaseline = metrics.baseline === undefined ? "middle" : "alphabetic";
   const attrs = visual.attrs;
@@ -577,16 +562,8 @@ export const drawCharDeskCanvasCells = (
   ctx.restore();
 };
 
-export type CharDeskCanvasFrameCell = Readonly<{
-  visual: CharDeskCellVisual;
-  /** Physical background span; glyph width remains visual.width. */
-  backgroundWidth?: 1 | 2;
-  drawBackground?: boolean;
-  drawText?: boolean;
-}>;
-
 export type CharDeskCanvasFrameOptions = Readonly<{
-  metrics?: CharDeskCanvasMetrics;
+  metrics?: CharDeskCellMetrics;
   palette: CharDeskCanvasPalette;
   offset?: CellPoint;
   zoom?: number;
@@ -602,22 +579,13 @@ export type CharDeskCanvasFrameOptions = Readonly<{
   fontProfile?: CharDeskFontProfile;
   fontFamilies?: CharDeskCanvasFontFamilies;
   fontResolver?: CharDeskCanvasFontResolver;
-  underline?: (x: number, y: number, cell: CharDeskCanvasFrameCell) => boolean;
+  underline?: (x: number, y: number, cell: CharDeskCellFrameCell) => boolean;
 }>;
 
 export type CharDeskCanvasFrameResult = Readonly<{
   cells: number;
   glyphs: number;
 }>;
-
-export const formatCharDeskCellFrame = (
-  frame: CellFrame<CharDeskCanvasFrameCell>,
-  options?: Readonly<{ trimEnd?: boolean }>
-) => formatCellFrame(
-  frame,
-  ({ visual }) => ({ text: visual.text, width: visual.width }),
-  options
-);
 
 const intersectsAnyCellRect = (
   x: number,
@@ -633,10 +601,10 @@ const intersectsAnyCellRect = (
 
 export const presentCharDeskCellFrame = (
   ctx: CharDeskCanvasContext,
-  frame: CellFrame<CharDeskCanvasFrameCell>,
+  frame: CellFrame<CharDeskCellFrameCell>,
   options: CharDeskCanvasFrameOptions
 ): CharDeskCanvasFrameResult => {
-  const metrics = options.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
+  const metrics = options.metrics ?? DEFAULT_CHARDESK_CELL_METRICS;
   const zoom = options.zoom ?? 1;
   const offset = options.offset ?? { x: 0, y: 0 };
   const content = options.content ?? "all";
@@ -710,7 +678,7 @@ export const measureCharDeskCanvasDocument = (
   model: CharDeskRenderModel,
   options: Pick<CharDeskCanvasDocumentOptions, "metrics" | "padding" | "zoom"> = {}
 ): CharDeskCanvasDocumentLayout => {
-  const metrics = options.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
+  const metrics = options.metrics ?? DEFAULT_CHARDESK_CELL_METRICS;
   const zoom = options.zoom ?? 1;
   const padding = (options.padding ?? 16) * zoom;
   return {
@@ -799,7 +767,7 @@ export const loadCharDeskCanvasFonts = async (
     try {
       const faces = await document.fonts.load(
         getCharDeskCanvasFont(
-          options.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS,
+          options.metrics ?? DEFAULT_CHARDESK_CELL_METRICS,
           1,
           {
             ...group,

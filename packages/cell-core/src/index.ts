@@ -69,6 +69,17 @@ export const intersectCellRects = (
   return { x, y, width: endX - x, height: endY - y };
 };
 
+export const cellRectContainsPoint = (
+  rectInput: CellRect,
+  point: CellPoint
+): boolean => {
+  const rect = normalizeCellRect(rectInput);
+  return point.x >= rect.x
+    && point.y >= rect.y
+    && point.x < rect.x + rect.width
+    && point.y < rect.y + rect.height;
+};
+
 export type CellTextProjection = Readonly<{
   text: string;
   width: 1 | 2;

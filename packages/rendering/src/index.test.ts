@@ -1,12 +1,39 @@
 import { describe, expect, it } from "vitest";
 import {
   createCharDeskRenderModel,
+  DEFAULT_CHARDESK_CELL_METRICS,
+  formatCharDeskCellFrame,
   getCharDeskFontFamilyForGrapheme,
   resolveCharDeskCellVisual,
   resolveCharDeskFontRoute,
+  type CharDeskCellFrameCell,
 } from "./index.js";
+import type { CellSource } from "@chardesk/cell-core";
 
 describe("CharDesk rendering core", () => {
+  it("owns backend-neutral Cell metrics and frame inspection", () => {
+    const cells = new Map([["0,0", {
+      visual: { text: "界", width: 2 as const, fontRoute: "text" as const },
+    }]]);
+    const source: CellSource<CharDeskCellFrameCell> = {
+      get: ({ x, y }) => cells.get(`${x},${y}`),
+      visit: (_bounds, visitor) => cells.forEach((cell) => visitor(0, 0, cell)),
+      getContentBounds: () => ({ x: 0, y: 0, width: 2, height: 1 }),
+    };
+    expect(DEFAULT_CHARDESK_CELL_METRICS).toMatchObject({
+      cellWidth: 9,
+      cellHeight: 20,
+      fontSize: 15,
+      baseline: 15,
+    });
+    expect(formatCharDeskCellFrame({
+      revision: 0,
+      viewport: { x: 0, y: 0, width: 3, height: 1 },
+      source,
+      dirty: "full",
+    })).toBe("界 ");
+  });
+
   it("routes complete graphemes through the shared font profile", () => {
     expect(resolveCharDeskFontRoute("A")).toBe("text");
     expect(resolveCharDeskFontRoute("╭")).toBe("text");

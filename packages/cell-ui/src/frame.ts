@@ -1,9 +1,9 @@
 import type { CellFrame, CellRect, CellSource } from "@chardesk/cell-core";
 import {
   resolveCharDeskFontRoute,
+  type CharDeskCellFrameCell,
   type CharDeskCellVisual,
 } from "@chardesk/rendering";
-import type { CharDeskCanvasFrameCell } from "@chardesk/rendering/canvas";
 import type { CellBuffer } from "./buffer.js";
 import type { Cell, FrameSnapshot } from "./types.js";
 
@@ -33,10 +33,10 @@ export const createCellBufferSource = (buffer: CellBuffer): CellSource<Cell> => 
   return source;
 };
 
-const renderCellCache = new WeakMap<Cell, CharDeskCanvasFrameCell>();
-const renderSourceCache = new WeakMap<CellBuffer, CellSource<CharDeskCanvasFrameCell>>();
+const renderCellCache = new WeakMap<Cell, CharDeskCellFrameCell>();
+const renderSourceCache = new WeakMap<CellBuffer, CellSource<CharDeskCellFrameCell>>();
 
-const toRenderCell = (cell: Cell): CharDeskCanvasFrameCell => {
+const toRenderCell = (cell: Cell): CharDeskCellFrameCell => {
   const cached = renderCellCache.get(cell);
   if (cached) return cached;
   const visual: CharDeskCellVisual = {
@@ -69,7 +69,7 @@ const toRenderCell = (cell: Cell): CharDeskCanvasFrameCell => {
 export const createCellUiRenderFrame = (
   frame: FrameSnapshot,
   dirty: "full" | readonly CellRect[] = frame.invalidation.dirtyRegions
-): CellFrame<CharDeskCanvasFrameCell> => {
+): CellFrame<CharDeskCellFrameCell> => {
   let renderSource = renderSourceCache.get(frame.buffer);
   if (!renderSource) {
     const source = createCellBufferSource(frame.buffer);

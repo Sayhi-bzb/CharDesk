@@ -8,10 +8,12 @@ import {
 } from "@chardesk/chargraph";
 import { createCharDeskMarkdownRenderOptions } from "@chardesk/chargraph/markdown";
 import { CHARDESK_LIGHT_RENDER_THEME } from "@chardesk/chargraph/theme";
-import { createCharDeskRenderModelFromDocument } from "@chardesk/rendering";
+import {
+  createCharDeskRenderModelFromDocument,
+  DEFAULT_CHARDESK_CELL_METRICS,
+} from "@chardesk/rendering";
 import {
   DEFAULT_CHARDESK_CANVAS_FONT_AVAILABILITY,
-  DEFAULT_CHARDESK_CANVAS_METRICS,
   drawCharDeskCanvasDocument,
   loadCharDeskCanvasFonts,
   measureCharDeskCanvasDocument,
@@ -301,7 +303,7 @@ export class CharDeskViewerElement extends HTMLElementBase {
     width: 32,
     height: 32,
     padding: 16,
-    metrics: DEFAULT_CHARDESK_CANVAS_METRICS,
+    metrics: DEFAULT_CHARDESK_CELL_METRICS,
   };
   #fontAvailability: CharDeskCanvasFontAvailability = {
     ...DEFAULT_CHARDESK_CANVAS_FONT_AVAILABILITY,
@@ -312,8 +314,8 @@ export class CharDeskViewerElement extends HTMLElementBase {
   #gridIndex: CharDeskGridIndex | null = null;
   #cursor: CharDeskGridPoint | null = null;
   #selection: CharDeskGridSelection | null = null;
-  #cellWidth = DEFAULT_CHARDESK_CANVAS_METRICS.cellWidth;
-  #cellHeight = DEFAULT_CHARDESK_CANVAS_METRICS.cellHeight;
+  #cellWidth = DEFAULT_CHARDESK_CELL_METRICS.cellWidth;
+  #cellHeight = DEFAULT_CHARDESK_CELL_METRICS.cellHeight;
   #selectionPointerId: number | null = null;
   #pointerAnchor: CharDeskGridPoint | null = null;
   #pointerStart: CharDeskGridPoint | null = null;

@@ -1,8 +1,9 @@
 # @chardesk/rendering
 
-Shared CharDesk render models and Canvas 2D presentation. The root entry resolves
-protocol cells without depending on a rendering backend; `./canvas` owns the
-pixel metrics, font loading, DPR surface preparation, and cell painter.
+Shared CharDesk Cell presentation contracts and Canvas 2D presentation. The root
+entry owns backend-neutral visuals, frame cells, metrics, and character snapshots;
+`./canvas` owns font loading, DPR surface preparation, raster drawing, and the
+Canvas frame presenter.
 
 ```ts
 import { createCharDeskRenderModel } from "@chardesk/rendering";
@@ -107,12 +108,20 @@ Cell geometry is a synchronous host contract. CharDesk surfaces use a stable
 their own stable metrics. Font loading may trigger glyph repaint and audit, but
 must not resize a mounted grid.
 
-`DEFAULT_CHARDESK_CANVAS_METRICS` is the single product default.
+`CharDeskCellMetrics` and `DEFAULT_CHARDESK_CELL_METRICS` are exported from the
+package root and form the single product geometry contract. `CharDeskCellFrameCell`
+and `formatCharDeskCellFrame()` are root exports for producers and inspectors that
+must not depend on Canvas.
 `presentCharDeskCellFrame()` consumes a storage-neutral `CellFrame` from
 `@chardesk/cell-core`; bounded Cell UI buffers and sparse document Canvas readers
 therefore share clipping, wide-glyph spans, font routing, dirty filtering, and
-Canvas draw order without sharing product state. `formatCharDeskCellFrame()` is
-the matching character-level inspection path.
+Canvas draw order without sharing product state.
+
+The former Canvas-owned names `CharDeskCanvasMetrics`,
+`DEFAULT_CHARDESK_CANVAS_METRICS`, and `CharDeskCanvasFrameCell` were removed.
+Import their Cell-named replacements from `@chardesk/rendering`; import only
+Canvas contexts, raster options, and presenter functions from
+`@chardesk/rendering/canvas`.
 
 `measureCharDeskCanvasFont(context, profile, fontSize = 15)` measures a loaded
 display face and returns `{ metrics, source, fontMetrics, fontMetricsSource }`.

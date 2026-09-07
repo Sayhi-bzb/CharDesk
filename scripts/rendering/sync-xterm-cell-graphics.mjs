@@ -25,6 +25,9 @@ const adapted = generatedNotice + source.replace(
   "type: CustomGlyphDefinitionType.PATH_FUNCTION, data: CustomGlyphPathDrawFunctionDefinition",
   "type: typeof CustomGlyphDefinitionType.PATH_FUNCTION, data: CustomGlyphPathDrawFunctionDefinition"
 ).replace(
+  /\nexport const blockPatternCodepoints = new Set<number>\(\[[\s\S]*?\n\]\);\n/,
+  "\n"
+).replace(
   "const rowH = [3 / 8, 2 / 8, 3 / 8];",
   "const rowH = [3 / 8, 2 / 8, 3 / 8] as const;"
 ).replace(

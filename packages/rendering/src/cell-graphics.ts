@@ -12,7 +12,7 @@ const STRUCTURAL_STROKE_SCALE = 1.5;
 const BRAILLE_DOTS = new Uint8Array([1, 0, 1, 2, 1, 4, 5, 0, 5, 2, 5, 4, 1, 6, 5, 6]);
 
 type Context = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-export type CharDeskCellGraphicPresentation = Readonly<{
+type CharDeskCellGraphicPresentation = Readonly<{
   fontSize?: number;
   backgroundColor?: string;
 }>;

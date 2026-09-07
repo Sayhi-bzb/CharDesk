@@ -1,24 +1,26 @@
 import {
   alignCharDeskCanvasRect,
   drawCharDeskCanvasCells,
-  type CharDeskCanvasMetrics,
   type CharDeskCanvasPalette,
   type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
-import { resolveCharDeskFontRoute } from "@chardesk/rendering";
+import {
+  resolveCharDeskFontRoute,
+  type CharDeskCellMetrics,
+} from "@chardesk/rendering";
 import { createCellUiRenderFrame } from "./frame.js";
 import type { CellCursorStyle } from "./theme.js";
 import type { CellRect, FrameSnapshot } from "./types.js";
 
 type CursorInput = Readonly<{
   frame: FrameSnapshot;
-  metrics: CharDeskCanvasMetrics;
+  metrics: CharDeskCellMetrics;
   palette: CharDeskCanvasPalette;
   style: CellCursorStyle;
   fontProfile?: CharDeskFontProfile;
 }>;
 
-export type CellCursorPresentation = Readonly<{
+type CellCursorPresentation = Readonly<{
   bounds: CellRect;
   input: CursorInput;
 }>;
@@ -29,7 +31,7 @@ type SavedPixels = Readonly<{
   y: number;
 }>;
 
-export const resolveCellCursorPresentation = (
+const resolveCellCursorPresentation = (
   input: CursorInput
 ): CellCursorPresentation | null => {
   const focusedId = input.frame.semantics.focusedId;
@@ -52,7 +54,7 @@ export const resolveCellCursorPresentation = (
 const physicalBounds = (
   canvas: HTMLCanvasElement,
   bounds: CellRect,
-  metrics: CharDeskCanvasMetrics
+  metrics: CharDeskCellMetrics
 ) => {
   const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
   const left = Math.max(0, Math.round(bounds.x * metrics.cellWidth * dpr));

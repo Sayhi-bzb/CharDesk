@@ -2,9 +2,9 @@ import { CHARDESK_SYSTEM_FONT_PROFILE } from "@chardesk/fonts";
 import {
   auditCharDeskCanvasFont, getCharDeskCanvasFont, resolveCharDeskCanvasFontFace,
   resolveCharDeskCanvasGlyphSource,
-  type CharDeskCanvasMetrics, type CharDeskFontProfile,
+  type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
-import { resolveCharDeskFontRoute } from "@chardesk/rendering";
+import { resolveCharDeskFontRoute, type CharDeskCellMetrics } from "@chardesk/rendering";
 import { useMemo, useSyncExternalStore } from "react";
 import type { CellProbePresentation } from "./probe.js";
 
@@ -19,7 +19,7 @@ const loading: CellFontAuditSnapshot = { status: "loading" };
 const inactive = { getSnapshot: () => loading, subscribe: () => () => {} };
 const stores = new WeakMap<CharDeskFontProfile, Map<string, ReturnType<typeof createStore>>>();
 
-function createStore(profile: CharDeskFontProfile, metrics: CharDeskCanvasMetrics) {
+function createStore(profile: CharDeskFontProfile, metrics: CharDeskCellMetrics) {
   let snapshot = loading;
   let pending: Promise<void> | undefined;
   const listeners = new Set<() => void>();
@@ -84,7 +84,7 @@ function createStore(profile: CharDeskFontProfile, metrics: CharDeskCanvasMetric
 }
 
 export const useCellFontAudit = (
-  enabled: boolean, profile = CHARDESK_SYSTEM_FONT_PROFILE, metrics: CharDeskCanvasMetrics
+  enabled: boolean, profile = CHARDESK_SYSTEM_FONT_PROFILE, metrics: CharDeskCellMetrics
 ): CellFontAuditSnapshot => {
   const key = JSON.stringify(metrics);
   const store = useMemo(() => {
@@ -92,7 +92,7 @@ export const useCellFontAudit = (
     let profiles = stores.get(profile);
     if (!profiles) { profiles = new Map(); stores.set(profile, profiles); }
     let entry = profiles.get(key);
-    if (!entry) { entry = createStore(profile, JSON.parse(key) as CharDeskCanvasMetrics); profiles.set(key, entry); }
+    if (!entry) { entry = createStore(profile, JSON.parse(key) as CharDeskCellMetrics); profiles.set(key, entry); }
     return entry;
   }, [enabled, profile, key]);
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
