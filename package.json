@@ -29,6 +29,7 @@
     "showcase:generate": "npm run build:cli && node scripts/docs/generate-readme-showcase.mjs",
     "showcase:verify": "npm run build:cli && node scripts/docs/generate-readme-showcase.mjs --verify",
     "characters:verify": "node scripts/data/generate-character-data.mjs --verify",
+    "cell-graphics:sync": "node scripts/rendering/sync-xterm-cell-graphics.mjs",
     "fonts:sync": "node scripts/fonts/vendor-fonts.mjs",
     "fonts:sync:nerd": "node scripts/fonts/vendor-fonts.mjs --target=canvas-core --source=symbols-nerd-font-mono",
     "fonts:verify": "node scripts/fonts/vendor-fonts.mjs --verify",

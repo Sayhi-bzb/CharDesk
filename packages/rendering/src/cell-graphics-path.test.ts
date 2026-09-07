@@ -83,3 +83,26 @@ describe("Box stroke alignment", () => {
     }
   });
 });
+
+describe("Cell graphic vector paths", () => {
+  it("traces the complete command subset used by xterm definitions", () => {
+    const ctx = {
+      moveTo: vi.fn(), lineTo: vi.fn(), bezierCurveTo: vi.fn(), quadraticCurveTo: vi.fn(),
+      ellipse: vi.fn(), closePath: vi.fn(),
+    };
+    traceCellGraphicPath(ctx as unknown as CanvasRenderingContext2D,
+      "M.1,.2 H.2 V.3 L.4,.5 C.4,.5,.5,.6,.6,.7 Q.7,.8,.8,.7 T.9,.5 A.1,.2,0,0,1,.1,.2 Z",
+      bounds, 1, undefined, false);
+    expect(ctx.moveTo).toHaveBeenCalledOnce();
+    expect(ctx.lineTo).toHaveBeenCalledTimes(3);
+    expect(ctx.bezierCurveTo).toHaveBeenCalledOnce();
+    expect(ctx.quadraticCurveTo).toHaveBeenCalledTimes(2);
+    expect(ctx.ellipse).toHaveBeenCalledOnce();
+    expect(ctx.closePath).toHaveBeenCalledOnce();
+  });
+
+  it("rejects path commands outside the pinned absolute subset", () => {
+    expect(() => traceCellGraphicPath({} as CanvasRenderingContext2D,
+      "M0,0 S1,1,1,0", bounds, 1)).toThrow("Unsupported Cell graphic path syntax: S");
+  });
+});

@@ -1,12 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-test("Box/Block raster coverage, seams and font independence", async ({ page }, testInfo) => {
+test("Cell graphics raster coverage, seams and font independence", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
   await page.goto("/exp/web-tui/");
   const results = await page.evaluate(async () => {
     const rendererPath = "/packages/rendering/src/canvas.ts";
     const modelPath = "/packages/rendering/src/index.ts";
+    const definitionsPath = "/packages/rendering/src/cell-graphics-definitions.ts";
     const { drawCharDeskCanvasCells, drawCharDeskCanvasDocument } = await import(rendererPath);
     const { resolveCharDeskCellVisual, createCharDeskRenderModel } = await import(modelPath);
+    const { cellGraphicDefinitions } = await import(definitionsPath);
+    const registered = Object.keys(cellGraphicDefinitions);
     const rows = [];
     for (const dpr of [1, 1.25, 2]) for (const zoom of [0.75, 1, 1.25, 2]) {
       const w = 9 * zoom, h = 20 * zoom;
@@ -45,10 +49,9 @@ test("Box/Block raster coverage, seams and font independence", async ({ page }, 
       }
       const emptyGlyphs: string[] = [];
       const fontDifferences: string[] = [];
-      for (let cp = 0x2500; cp <= 0x259f; cp++) {
-        const char = String.fromCodePoint(cp);
+      for (const char of registered) {
         const first = draw([char]);
-        if (!first.some((v, i) => i % 4 === 3 && v)) emptyGlyphs.push(char);
+        if (char !== "\u2800" && !first.some((v, i) => i % 4 === 3 && v)) emptyGlyphs.push(char);
         for (const font of ["Ark Pixel 12px Monospaced zh_cn", "Xiaolai Mono"]) {
           const next = draw([char], false, font);
           if (first.some((v, i) => next[i] !== v)) fontDifferences.push(char);
@@ -80,13 +83,13 @@ test("Box/Block raster coverage, seams and font independence", async ({ page }, 
       ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
       drawCharDeskCanvasDocument(ctx, createCharDeskRenderModel("╭─╮"), { zoom, padding: 0, palette: { color: "black", background: "white" } });
       const exported = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      rows.push({ dpr, zoom, holes, fractionHoles, lines, cornerGaps, emptyGlyphs, fontDifferences, density,
+      rows.push({ dpr, zoom, registered: registered.length, holes, fractionHoles, lines, cornerGaps, emptyGlyphs, fontDifferences, density,
         exportMatches: direct.every((v, i) => exported[i] === v) });
     }
     return rows;
   });
   for (const row of results) {
-    expect(row, JSON.stringify(row)).toMatchObject({ holes: 0, fractionHoles: 0, emptyGlyphs: [], fontDifferences: [], exportMatches: true });
+    expect(row, JSON.stringify(row)).toMatchObject({ registered: 778, holes: 0, fractionHoles: 0, emptyGlyphs: [], fontDifferences: [], exportMatches: true });
     expect(Object.values(row.lines)).toEqual([0, 0, 0, 0]);
     expect(row.cornerGaps).toEqual([0, 0, 0, 0, 0, 0]);
     expect(row.density[0]).toBeLessThan(row.density[1]!);

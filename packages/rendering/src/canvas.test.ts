@@ -305,7 +305,7 @@ describe("CharDesk Canvas 2D renderer", () => {
 
     drawCharDeskCanvasCells(context, [{
       cell: resolveCharDeskCellVisual({
-        text: "\ue0b0",
+        text: "\ue0d6",
         attrs: { bold: true, underline: true },
       }),
       x: 0,
@@ -317,7 +317,7 @@ describe("CharDesk Canvas 2D renderer", () => {
     expect(context.font).not.toContain("700");
     expect(context.translate).toHaveBeenCalledWith(4.5, 16.35);
     expect(context.scale).toHaveBeenCalledWith(0.6, 1);
-    expect(context.fillText).toHaveBeenCalledWith("\ue0b0", 0, 0);
+    expect(context.fillText).toHaveBeenCalledWith("\ue0d6", 0, 0);
     expect(context.lineTo).toHaveBeenCalledWith(9, 16.5);
   });
 
@@ -438,7 +438,7 @@ describe("CharDesk Canvas 2D renderer", () => {
 
     try {
       await loadCharDeskCanvasFonts(
-        [{ grapheme: "\ue0b0", bold: true }],
+        [{ grapheme: "\ue0d6", bold: true }],
         { fontProfile }
       );
       expect(load).toHaveBeenCalledOnce();

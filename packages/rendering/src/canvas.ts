@@ -498,7 +498,10 @@ const drawCellText = (
   if (resolveCharDeskCanvasGlyphSource(visual.text) === "cell-graphics") {
     drawCharDeskCellGraphic(ctx, visual.text, {
       x: entry.x, y: entry.y, width: metrics.cellWidth * zoom * visual.width, height: metrics.cellHeight * zoom,
-    }, zoom, state.transform);
+    }, zoom, state.transform, {
+      fontSize: metrics.fontSize,
+      backgroundColor: visual.bgColor ?? options?.palette?.background ?? DEFAULT_PALETTE.background,
+    });
   } else {
     const fontGlyph = prepareFontGlyph(ctx, entry, visual, state);
     if (fontGlyph.scaleX === 1) {

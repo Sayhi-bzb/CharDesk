@@ -6,28 +6,31 @@ import {
   Root,
   ScrollArea,
   Text,
+  TextInput,
   type WidgetCommand,
 } from "@chardesk/cell-ui";
-import { useCellListState } from "@chardesk/cell-ui/browser";
+import { useCellListState, useCellTextState } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "../appearance";
 
 const noCommand = () => undefined;
 
 export const TextComponentDemo = () => (
   <GallerySurface
-    viewport={{ width: 36, height: 12 }}
+    viewport={{ width: 36, height: 14 }}
     onCommand={noCommand}
     label="Text component"
     probeId="component-text"
   >
     <Root id="component-text-root">
-      <Box id="component-text-frame" style={{ border: true, height: 12, padding: 1 }}>
+      <Box id="component-text-frame" style={{ border: true, height: 14, padding: 1 }}>
         <Text id="component-text-plain" textStyle={{ bold: true }}>◆ Plain text · READY</Text>
         <Text id="component-text-unicode">→ Unicode: 世界 👋</Text>
         <Text id="component-text-move">↔ Move: ← ↑ ↓ →</Text>
         <Text id="component-text-status">✓ Status: PASS · IDLE</Text>
         <Text id="component-text-math">∞ Math: ≠ ≤ ≥ ± × ÷</Text>
         <Text id="component-text-signal">▓ Signal: ░▒▓█</Text>
+        <Text id="component-text-cell-graphics">⣿ Cell: {"\ue0b0 \uee03 \uf5ee"}</Text>
+        <Text id="component-text-legacy">Legacy: {"\u{1fb95} \u{1fbb0} \u{1fbc5}"}</Text>
         <Text id="component-text-wrap" textStyle={{ dim: true }}>↳ Wraps on integer Cell boundaries.</Text>
       </Box>
     </Root>
@@ -56,6 +59,30 @@ export const BoxComponentDemo = () => (
     </Root>
   </GallerySurface>
 );
+
+export const InputComponentDemo = () => {
+  const input = useCellTextState("component-input-field", {
+    value: "notes.txt",
+  });
+  return <GallerySurface
+    viewport={{ width: 36, height: 4 }}
+    onCommand={input.dispatch}
+    label="Input component"
+    probeId="component-input"
+  >
+    <Root id="component-input-root">
+      <Box id="component-input-frame">
+        <Text id="component-input-label">File name</Text>
+        <TextInput
+          id="component-input-field"
+          label="File name"
+          state={input.snapshot}
+          style={{ border: true, height: 3 }}
+        />
+      </Box>
+    </Root>
+  </GallerySurface>;
+};
 
 const listItems = [
   { id: "component-list-alpha", label: "Alpha" },

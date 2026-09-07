@@ -6,7 +6,7 @@
 
 - `focused` 是逻辑焦点，`selected` 是持久选择；二者可共存。
 - focus 与 selected 使用中性背景，focus 增加 bold；hover 更轻且不覆盖 focused/selected/disabled。
-- Surface 失去实际焦点时保留逻辑 focusedId，但撤去 focus 背景、bold 与 caret；selection 和编辑状态保留。
+- Surface 失去实际焦点时保留逻辑 focusedId，但撤去 focus 背景、bold 与 Canvas Cursor；selection 和编辑状态保留。
 - `CellUiTheme` 是 Widget 主题入口；局部 `textStyle` 不重定义状态语言。
 - 解析后的状态背景覆盖 Widget 完整布局矩形，包括空白 Cell；透明状态不填充。
 - border、disclosure、Tab underline 和 scrollbar 是公共 chrome；全部写入 owner-aware CellBuffer。
@@ -21,7 +21,7 @@
 | Tree | level indent、`▾/▸`、label | Left/Right 层级导航；branch expand/collapse，leaf activate |
 | Tabs | selected 背景与第二行 `▬` | Left/Right wrap；`tab` 与 `tabpanel` relations |
 | Grid | focused/selected Cell | 二维方向键与 row/column semantics |
-| TextInput / TextArea | caret、selection、composition、编辑背景 | 真实 textarea；textbox value/multiline/readOnly/disabled |
+| TextInput / TextArea | terminal Cell Cursor、selection、composition、编辑背景 | 真实 textarea；textbox value/multiline/readOnly/disabled |
 | ScrollArea | overflow 时使用内部 rail 和 corner | wheel、page、track、thumb drag；不建立 DOM scrollbar |
 
 ## Pointer 与 Scroll
@@ -34,7 +34,7 @@
 ## 编辑视口与 Canvas 边界
 
 - TextArea 可显示双轴 rail；TextInput 隐藏 rail但保留横向 offset。编辑器和 ScrollArea 共用 scroll geometry，不复制 offset state。
-- 文本 layout、clip、caret、selection、hit 与隐藏 textarea 定位消费同一个 Scene viewport；手动 scroll 不修改 document/history。
+- 文本 layout、clip、Cursor、selection、hit 与隐藏 textarea 定位消费同一个 Scene viewport；手动 scroll 不修改 document/history。
 - Cell Range 修饰键优先于文本 selection gesture；只读编辑器可滚动，disabled 不新增交互。
 - 所有 border、block、thumb 与内容都保留为 `Cell.text` 字符；Canvas 字体路径、Probe 和复制结果一致。
 

@@ -25,7 +25,7 @@ Cell UI 的 bounded CellBuffer 与文档 Canvas 的 sparse reader 分别适配�
 - `paintList` 是稳定 back-to-front 全序；hit test 反向使用同一顺序。
 - paint、hit、semantics 和 keepAlive visibility 分别派生，不压缩为单一 `visible`。
 - Widget 按 Surface → Chrome → Content → Decoration 合成；content 和状态背景不能覆盖 border。
-- `Cell.text` 是唯一前景；Box Drawing、Block Elements、复制、Range 与 Probe 读取相同 Unicode，不存在几何字形旁路。
+- `Cell.text` 是唯一前景；专用 painter 只改变已登记 Unicode 的 presentation，复制、Range 与 Probe 仍读取相同 Unicode，不存在第二份图形数据。
 - wide grapheme 的 lead/continuation 共同失效；覆盖任一半格会清除完整旧字，背景仍按物理 Cell 保存。
 - nested scroll 累计 translation 与 clip；scroll 不重新运行 Layout Engine。
 - pointer capture 归 EventManager；tap、drag 和 ancestor scroll 由 GestureManager 决胜，失败者收到 cancel。

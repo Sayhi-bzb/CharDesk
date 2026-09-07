@@ -55,7 +55,7 @@ test("palette blocks underlying hover even when the mouse is stationary", async 
   await expect(surface).toHaveAttribute("data-cell-hovered", "show-palette");
 });
 
-test("stationary mouse follows scrolled rows and editor content uses a text cursor", async ({ page }) => {
+test("stationary mouse follows scrolled rows and editor content keeps a neutral pointer", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/exp/web-tui/#/__fixtures/all");
   const core = page.locator('[data-cell-probe="core"]');
@@ -72,6 +72,6 @@ test("stationary mouse follows scrolled rows and editor content uses a text curs
   const editorBounds = (await editor.boundingBox())!;
   const editorMetrics = await readCellMetrics(page.locator('[data-cell-probe="editor"]'));
   await page.mouse.move(editorBounds.x + 3 * editorMetrics.cellWidth, editorBounds.y + 2.5 * editorMetrics.cellHeight);
-  await expect(editor).toHaveCSS("cursor", "text");
+  await expect(editor).toHaveCSS("cursor", "default");
   await expect(page.locator('[data-cell-probe="editor"]')).not.toHaveAttribute("data-cell-hovered");
 });

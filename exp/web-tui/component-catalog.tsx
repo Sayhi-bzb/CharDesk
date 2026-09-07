@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import {
   BoxComponentDemo,
+  InputComponentDemo,
   ListComponentDemo,
   ScrollAreaComponentDemo,
   TextComponentDemo,
@@ -34,15 +35,17 @@ import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function TextExample() {
   return (
-    <CellSurface viewport={{ width: 36, height: 12 }} onCommand={() => {}}>
+    <CellSurface viewport={{ width: 36, height: 14 }} onCommand={() => {}}>
       <Root id="root">
-        <Box style={{ border: true, height: 12, padding: 1 }}>
+        <Box style={{ border: true, height: 14, padding: 1 }}>
           <Text textStyle={{ bold: true }}>◆ Plain text · READY</Text>
           <Text>→ Unicode: 世界 👋</Text>
           <Text>↔ Move: ← ↑ ↓ →</Text>
           <Text>✓ Status: PASS · IDLE</Text>
           <Text>∞ Math: ≠ ≤ ≥ ± × ÷</Text>
           <Text>▓ Signal: ░▒▓█</Text>
+          <Text>⣿ Cell: {"\ue0b0 \uee03 \uf5ee"}</Text>
+          <Text>Legacy: {"\u{1fb95} \u{1fbb0} \u{1fbc5}"}</Text>
           <Text textStyle={{ dim: true }}>↳ Wraps on integer Cell boundaries.</Text>
         </Box>
       </Root>
@@ -86,6 +89,43 @@ export function BoxExample() {
       { name: "disabled?", type: "boolean", description: "Marks the widget disabled." },
       { name: "children?", type: "ReactNode", description: "Nested Cell descriptors." },
       { name: "style?", type: "CellLayoutStyle", description: "Cell size, direction, gap, padding, and border." },
+    ],
+  },
+  {
+    slug: "input",
+    title: "Input",
+    description: "Edit a single line of Unicode text on the Cell grid.",
+    probeId: "component-input",
+    Demo: InputComponentDemo,
+    usage: `import { Box, Root, Text, TextInput } from "@chardesk/cell-ui";
+import { CellSurface, useCellTextState } from "@chardesk/cell-ui/browser";
+
+export function InputExample() {
+  const input = useCellTextState("file-name", { value: "notes.txt" });
+  return (
+    <CellSurface viewport={{ width: 36, height: 4 }} onCommand={input.dispatch}>
+      <Root id="root">
+        <Box>
+          <Text>File name</Text>
+          <TextInput
+            id="file-name"
+            label="File name"
+            state={input.snapshot}
+            style={{ border: true, height: 3 }}
+          />
+        </Box>
+      </Root>
+    </CellSurface>
+  );
+}`,
+    api: [
+      { name: "id?", type: "string", description: "Stable text command target identity." },
+      { name: "state", type: "CellTextSnapshot", description: "Controlled value, selection, cursor, and scroll state." },
+      { name: "label?", type: "string", description: "Accessible textbox name." },
+      { name: "disabled?", type: "boolean", description: "Prevents focus and editing." },
+      { name: "readOnly?", type: "boolean", description: "Allows focus and selection without editing." },
+      { name: "style?", type: "CellLayoutStyle", description: "Cell size, padding, and border." },
+      { name: "textStyle?", type: "CellTextStyle", description: "Foreground, background, and emphasis." },
     ],
   },
   {

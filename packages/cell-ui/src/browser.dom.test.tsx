@@ -51,6 +51,12 @@ const context = {
   fillRect: vi.fn(),
   fill: vi.fn(),
   fillText: vi.fn(),
+  getImageData: vi.fn((_x: number, _y: number, width: number, height: number) => ({
+    width,
+    height,
+    data: new Uint8ClampedArray(width * height * 4),
+  })),
+  putImageData: vi.fn(),
   measureText: vi.fn(() => ({ width: 0 })),
   save: vi.fn(),
   restore: vi.fn(),
@@ -176,6 +182,45 @@ const EditorProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => 
       <Root id="editor-root">
         <TextInput id="name" label="Name" state={name.snapshot} style={{ border: true, height: 3 }} />
         <TextArea id="body" label="Document" state={body.snapshot} style={{ border: true, height: 5 }} />
+      </Root>
+    </CellSurface>
+  );
+};
+
+const CursorProduct = ({
+  shape,
+  blink = false,
+  blinkIntervalMs = 600,
+}: {
+  shape: "block" | "bar" | "underline";
+  blink?: boolean;
+  blinkIntervalMs?: number;
+}) => {
+  const editor = useCellTextState("cursor-editor", { value: "中A" });
+  return (
+    <CellSurface
+      viewport={{ width: 8, height: 3 }}
+      onCommand={editor.dispatch}
+      theme={{
+        cursorStyle: {
+          shape,
+          color: "rgb(255, 0, 255)",
+          textColor: "rgb(0, 255, 255)",
+          blink,
+          blinkIntervalMs,
+        },
+      }}
+      metrics={{ cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" }}
+      label="Cursor surface"
+      probeId="cursor"
+    >
+      <Root id="cursor-root">
+        <TextInput
+          id="cursor-editor"
+          label="Cursor editor"
+          state={editor.snapshot}
+          style={{ border: true, height: 3 }}
+        />
       </Root>
     </CellSurface>
   );
@@ -470,6 +515,87 @@ const ComplexWidgetProduct = () => {
 };
 
 describe("CellSurface", () => {
+  it("paints terminal cursor shapes over a wide glyph and keeps browser pointers neutral", () => {
+    const fills: { color: string; rect: number[] }[] = [];
+    const glyphs: { color: string; text: string }[] = [];
+    context.fillRect.mockImplementation((...rect: number[]) => {
+      fills.push({ color: context.fillStyle, rect });
+    });
+    context.fillText.mockImplementation((text: string) => {
+      glyphs.push({ color: context.fillStyle, text });
+    });
+    try {
+      const mounted = render(<CursorProduct shape="block" />);
+      const input = screen.getByRole("textbox", { name: "Cursor editor" });
+      const canvas = mounted.container.querySelector("canvas")!;
+      fireEvent.focus(input);
+      expect(input).toHaveStyle({ cursor: "default" });
+      expect(canvas).toHaveStyle({ cursor: "default" });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 20, 20, 20] });
+      expect(glyphs).toContainEqual({ color: "rgb(0, 255, 255)", text: "中" });
+
+      fills.length = 0;
+      mounted.rerender(<CursorProduct shape="bar" />);
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 20, 1, 20] });
+
+      fills.length = 0;
+      mounted.rerender(<CursorProduct shape="underline" />);
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 39, 20, 1] });
+    } finally {
+      context.fillRect.mockReset();
+      context.fillText.mockReset();
+    }
+  });
+
+  it("blinks by restoring cached cursor pixels without committing another frame", () => {
+    vi.useFakeTimers();
+    try {
+      const mounted = render(<CursorProduct shape="block" blink blinkIntervalMs={100} />);
+      const input = screen.getByRole("textbox", { name: "Cursor editor" });
+      fireEvent.focus(input);
+      const surface = screen.getByLabelText("Cursor surface");
+      const revision = readCellSurfaceProbe(surface)!.revision;
+      context.putImageData.mockClear();
+
+      vi.advanceTimersByTime(100);
+      expect(context.putImageData).toHaveBeenCalledTimes(1);
+      expect(readCellSurfaceProbe(surface)!.revision).toBe(revision);
+
+      context.fillRect.mockClear();
+      vi.advanceTimersByTime(100);
+      expect(context.fillRect).toHaveBeenCalledWith(10, 20, 20, 20);
+      expect(readCellSurfaceProbe(surface)!.revision).toBe(revision);
+      mounted.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a blinking cursor visible when reduced motion is requested", () => {
+    vi.useFakeTimers();
+    const original = Object.getOwnPropertyDescriptor(window, "matchMedia");
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+    try {
+      const mounted = render(<CursorProduct shape="block" blink blinkIntervalMs={100} />);
+      fireEvent.focus(screen.getByRole("textbox", { name: "Cursor editor" }));
+      context.putImageData.mockClear();
+      vi.advanceTimersByTime(1_000);
+      expect(context.putImageData).not.toHaveBeenCalled();
+      mounted.unmount();
+    } finally {
+      if (original) Object.defineProperty(window, "matchMedia", original);
+      else Reflect.deleteProperty(window, "matchMedia");
+      vi.useRealTimers();
+    }
+  });
+
   it("visible glyphs use full presentations; switching back restores clipping without changing Cells", () => {
     const metrics = { cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" };
     const children = <Root><Text>→</Text></Root>;

@@ -13,7 +13,8 @@
   --cell-selection: #dce7fa;
   --cell-selection-foreground: #161616;
   --cell-range-selection: rgba(82, 155, 255, 0.32);
-  --cell-caret: var(--cell-foreground);
+  --cell-cursor: var(--cell-foreground);
+  --cell-cursor-foreground: var(--cell-background);
   --cell-scrollbar-thumb: var(--cell-muted-foreground);
 }
 :root[data-gallery-theme="light"] { color-scheme: light; }

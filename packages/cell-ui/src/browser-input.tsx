@@ -116,6 +116,7 @@ const baseTextareaStyle: CSSProperties = {
   color: "transparent",
   background: "transparent",
   caretColor: "transparent",
+  cursor: "default",
   opacity: 0.02,
   whiteSpace: "pre",
 };

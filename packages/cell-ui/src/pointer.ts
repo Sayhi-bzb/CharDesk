@@ -25,7 +25,7 @@ export const validGestureCandidate = (frame: FrameSnapshot, candidate: GestureCa
 };
 
 export const resolvePointerAppearance = (frame: FrameSnapshot, point: CellPoint): {
-  hoveredId: WidgetId | null; cursor: "default" | "pointer" | "text";
+  hoveredId: WidgetId | null; cursor: "default" | "pointer";
 } => {
   const hit = hitTestCell(frame.scene, point);
   if (!hit) return { hoveredId: null, cursor: "default" };
@@ -36,8 +36,7 @@ export const resolvePointerAppearance = (frame: FrameSnapshot, point: CellPoint)
     const node = frame.tree.nodes.get(id)!;
     if (node.disabled) return { hoveredId: null, cursor: "default" };
     if (node.kind === "text-input" || node.kind === "text-area") {
-      const clip = frame.scene.entries.get(id)?.contentClip;
-      return { hoveredId: null, cursor: clip && contains(clip, point) ? "text" : "default" };
+      return { hoveredId: null, cursor: "default" };
     }
     if (["list-item", "menu-item", "tree-item", "tab", "grid-cell"].includes(node.kind)) {
       return { hoveredId: id, cursor: "pointer" };

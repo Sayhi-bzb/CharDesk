@@ -19,7 +19,8 @@ const defaults = {
   selection: fallback.textSelectionStyle.backgroundColor!,
   "selection-foreground": fallback.textSelectionStyle.color!,
   "range-selection": fallback.rangeSelectionColor,
-  caret: fallback.caretColor,
+  cursor: fallback.cursorStyle.color,
+  "cursor-foreground": fallback.cursorStyle.textColor,
   "scrollbar-thumb": fallback.scrollThumbStyle.color!,
 };
 
@@ -63,7 +64,11 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
       secondaryStyle: { color: colors["muted-foreground"] },
       disabledStyle: { color: colors["muted-foreground"] },
       textSelectionStyle: { color: colors["selection-foreground"], backgroundColor: colors.selection },
-      caretColor: colors.caret,
+      cursorStyle: {
+        ...fallback.cursorStyle,
+        color: colors.cursor,
+        textColor: colors["cursor-foreground"],
+      },
       rangeSelectionColor: colors["range-selection"],
       scrollThumbStyle: { color: colors["scrollbar-thumb"] },
       scrollTrackStyle: { color: colors.border },

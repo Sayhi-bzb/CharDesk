@@ -4,6 +4,7 @@ import { readCellProbe } from "./helpers/cell-probe";
 const componentLinks = [
   ["Text", "#/components/text"],
   ["Box", "#/components/box"],
+  ["Input", "#/components/input"],
   ["List", "#/components/list"],
   ["ScrollArea", "#/components/scroll-area"],
 ] as const;
@@ -13,7 +14,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   const nav = page.getByRole("navigation", { name: "Components" });
   await expect(page.getByRole("heading", { name: "Text", level: 1 })).toBeVisible();
   await expect(nav.locator(".gallery-nav__title")).toHaveText("Components");
-  await expect(nav.getByRole("link")).toHaveCount(4);
+  await expect(nav.getByRole("link")).toHaveCount(5);
   for (const [name, href] of componentLinks) {
     await expect(nav.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
   }
@@ -54,9 +55,11 @@ test("Text and Box expose Cell-native content and layout", async ({ page }) => {
     "✓ Status: PASS · IDLE",
     "∞ Math: ≠ ≤ ≥ ± × ÷",
     "▓ Signal: ░▒▓█",
+    "⣿ Cell: \ue0b0 \uee03 \uf5ee",
+    "Legacy: \u{1fb95} \u{1fbb0} \u{1fbc5}",
     "↳ Wraps on integer Cell",
   ]) expect(text.text).toContain(line);
-  expect(text.viewport).toEqual({ width: 36, height: 12 });
+  expect(text.viewport).toEqual({ width: 36, height: 14 });
   const wrappedRows = new Set(text.cells
     .filter((cell) => cell.ownerId === "component-text-wrap" && cell.text !== " ")
     .map((cell) => cell.y));
@@ -68,6 +71,23 @@ test("Text and Box expose Cell-native content and layout", async ({ page }) => {
   expect(box.text).toContain("Left");
   expect(box.text).toContain("Right");
   expect(box.cells.filter((cell) => cell.text === "┌").length).toBe(3);
+});
+
+test("Input edits Unicode through the real textbox and Cell frame", async ({ page }) => {
+  await page.goto("/exp/web-tui/#/components/input");
+  const surface = page.getByLabel("Input component");
+  const input = page.getByRole("textbox", { name: "File name" });
+
+  await expect(page.getByRole("heading", { name: "Input", level: 1 })).toBeVisible();
+  await expect(input).toHaveValue("notes.txt");
+  const initial = await readCellProbe(surface);
+  expect(initial.viewport).toEqual({ width: 36, height: 4 });
+  expect(initial.text).toContain("File name\n┌──────────────────────────────────┐");
+  expect(initial.text).toContain("│notes.txt");
+
+  await input.fill("世界 👋");
+  await expect(input).toHaveValue("世界 👋");
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("│世界 👋");
 });
 
 test("Cell Range clears when Preview focus moves outside its Surface", async ({ page }) => {

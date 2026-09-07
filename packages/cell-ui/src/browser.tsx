@@ -64,6 +64,7 @@ import { CellUiRuntime } from "./runtime.js";
 import { createCellUiRenderFrame } from "./frame.js";
 import { textViewportCommands } from "./text-viewport.js";
 import { usePointerAppearance } from "./browser-hover.js";
+import { CellCursorPresenter } from "./browser-cursor.js";
 import { sameWidgetValue } from "./tree.js";
 import {
   commandForGestureSignal,
@@ -330,12 +331,6 @@ const presentFrame = (
     }, context.getTransform());
     context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
   }
-  const inDirtyRegion = (x: number, y: number) => regions.some(
-    (region) => x >= region.x
-      && y >= region.y
-      && x < region.x + region.width
-      && y < region.y + region.height
-  );
   presentCharDeskCellFrame(
     context,
     createCellUiRenderFrame(frame, regions),
@@ -346,28 +341,6 @@ const presentFrame = (
       ...(fontProfile ? { fontProfile } : {}),
     }
   );
-  const focusedText = frame.semantics.focusedId
-    ? frame.textLayouts.get(frame.semantics.focusedId)
-    : undefined;
-  if (focusedText && frame.tree.nodes.get(focusedText.id)?.focusVisible) {
-    const { caret, contentBounds } = focusedText;
-    if (
-      inDirtyRegion(caret.x, caret.y)
-      &&
-      caret.x >= contentBounds.x
-      && caret.x < contentBounds.x + contentBounds.width
-      && caret.y >= contentBounds.y
-      && caret.y < contentBounds.y + contentBounds.height
-    ) {
-      context.fillStyle = theme.caretColor;
-      context.fillRect(
-        caret.x * metrics.cellWidth,
-        caret.y * metrics.cellHeight,
-        1,
-        metrics.cellHeight
-      );
-    }
-  }
   if (cellRange) {
     const { bounds } = cellRange;
     context.save();
@@ -387,6 +360,39 @@ const presentFrame = (
     }
     context.restore();
   }
+};
+
+const presentFrameWithCursor = (
+  cursor: CellCursorPresenter,
+  canvas: HTMLCanvasElement,
+  frame: FrameSnapshot,
+  metrics: CharDeskCanvasMetrics,
+  palette: CharDeskCanvasPalette,
+  cellRange: CellRangeSnapshot | null,
+  theme: CellUiTheme,
+  fontProfile?: CharDeskFontProfile,
+  glyphOverflow: "clip" | "visible" = "clip",
+  dirtyRegions?: readonly CellRect[]
+) => {
+  cursor.beforeBasePresent();
+  presentFrame(
+    canvas,
+    frame,
+    metrics,
+    palette,
+    cellRange,
+    theme,
+    fontProfile,
+    glyphOverflow,
+    dirtyRegions
+  );
+  cursor.afterBasePresent({
+    frame,
+    metrics,
+    palette,
+    style: theme.cursorStyle,
+    ...(fontProfile ? { fontProfile } : {}),
+  });
 };
 
 const hiddenSemanticStyle: CSSProperties = {
@@ -663,6 +669,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     onCellRangeCommand?.(command);
   }, [dispatchInternalCellRange, onCellRangeCommand, rangeControlled]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cursorPresenterRef = useRef<CellCursorPresenter | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<CellUiRuntime | null>(null);
   const frameRef = useRef<FrameSnapshot | null>(null);
@@ -711,6 +718,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         runtimeRef.current = null;
       });
     };
+  }, []);
+
+  useEffect(() => () => {
+    cursorPresenterRef.current?.dispose();
+    cursorPresenterRef.current = null;
   }, []);
 
   useLayoutEffect(() => {
@@ -791,7 +803,9 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       && sameWidgetValue(presentationRef.current.palette, palette)
       && presentationRef.current.fontProfile === fontProfile
       && presentationRef.current.glyphOverflow === glyphOverflow;
-    presentFrame(
+    const cursor = cursorPresenterRef.current ??= new CellCursorPresenter(canvas);
+    presentFrameWithCursor(
+      cursor,
       canvas,
       frame,
       metrics,
@@ -814,7 +828,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       const canvas = canvasRef.current;
       const current = frameRef.current;
       if (canvas && current) {
-        presentFrame(canvas, current, metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow);
+        const cursor = cursorPresenterRef.current ??= new CellCursorPresenter(canvas);
+        presentFrameWithCursor(cursor, canvas, current, metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow);
         setFontPresentationRevision((revision) => revision + 1);
       }
     };
@@ -894,7 +909,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const canvas = canvasRef.current;
     if (!canvas || !frame || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
-      presentFrame(canvas, frame, metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow);
+      const cursor = cursorPresenterRef.current ??= new CellCursorPresenter(canvas);
+      presentFrameWithCursor(cursor, canvas, frame, metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow);
     });
     observer.observe(canvas);
     return () => observer.disconnect();

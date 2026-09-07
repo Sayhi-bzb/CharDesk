@@ -27,9 +27,8 @@ Cell draw options accept `clipToCell: true` to constrain glyphs and text decorat
 to their one- or two-cell pixel allocation. It is opt-in; other consumers keep
 the existing unrestricted glyph rendering.
 
-Every foreground Cell retains Unicode `cell.text`. Single-codepoint Box Drawing
-and Block Elements (`U+2500–U+259F`) use the shared Cell graphics painter;
-other graphemes use the active font profile. Background and clip edges align to device pixels for axis-aligned
+Every foreground Cell retains Unicode `cell.text`. Exact registered Cell graphics use the
+shared deterministic painter; other graphemes use the active font profile. Background and clip edges align to device pixels for axis-aligned
 transforms. `alignCharDeskCanvasRect(bounds, transform)` provides the same edge
 alignment for host dirty-region clears. Rotated/sheared transforms remain
 unsnapped; seam-free rasterization is guaranteed only for axis-aligned transforms.
@@ -44,22 +43,31 @@ classifier (`font` or `cell-graphics`). Combining sequences remain font-shaped.
 `CELL_GRAPHICS_VERSION` identifies the renderer, not a font face. All Canvas
 consumers, including document/PNG rendering, use this path without a toggle.
 
-The 160 definitions are an MIT-licensed subset of xterm.js commit
+The 778 definitions are pinned from xterm.js commit
 `c58ea3637f3968e0e6e79cd92cf9aace7ef89ee2`; see
-[definitions](src/cell-graphics-definitions.ts) and [license](LICENSE.xterm).
-The local adapter handles normalized paths, octant rectangles and shade patterns;
-it does not import terminal state or WebGL. Update the pinned subset explicitly,
+[definitions](src/cell-graphics-definitions.ts), the reproducible
+[sync script](../../scripts/rendering/sync-xterm-cell-graphics.mjs), and [license](LICENSE.xterm).
+The registry contains Box Drawing (128), Block Elements (32), Braille (256),
+Powerline (38), Progress (12), Git Branch (62), and Symbols for Legacy Computing
+(250). Classification is an exact definition lookup, so combining and multi-codepoint
+sequences remain font-shaped.
+
+The local adapter handles normalized paths (`M/L/H/V/C/Q/T/A/Z`), octant rectangles,
+shade patterns, Braille dots, filled/stroked vectors, negative shapes, clip paths, and
+Cell/character scaling;
+it does not import terminal state or WebGL. Update the pinned set with
+`npm run cell-graphics:sync`,
 retaining attribution and running the coverage and raster tests.
 
 Geometry uses the allocated Cell rectangle, independently of font calibration.
 Unicode selects light/heavy/double line shapes; bold/italic do not distort them.
 Foreground, inverse colors and decorations retain their existing semantics.
 Graphics clip to their allocation even when ordinary font ink may overflow.
-Font loading skips these characters; JuliaMono remains available for other fallbacks.
+Font loading skips registered graphics; JuliaMono remains available for other fallbacks.
 
-Renderer `xterm-box-block-v4` applies a shared 1.5× Box stroke multiplier before
+Renderer `xterm-cell-graphics-v5` applies a shared 1.5× structural-stroke multiplier before
 zoom/DPR rounding: light/heavy base widths are 1.5/4.5px. No user setting or font
-calibration changes these widths. Blocks and shade patterns are unaffected. Straight-stroke
+calibration changes these widths. Filled graphics, blocks and shade patterns are unaffected. Straight-stroke
 centers align by device-pixel stroke parity, independently of Cell-edge alignment;
 longitudinal endpoints stay on shared Cell boundaries. The four rounded corners use
 tangent quarter circles after center alignment, with a shared radius equal to the
@@ -68,7 +76,7 @@ back to a connected right angle). See [geometry tests](src/cell-graphics-path.te
 Double lines retain at least one
 clear device pixel between strokes in the supported raster matrix. Uniform positive
 axis scales stroke in device space to avoid fractional-transform fringe pixels;
-rotated/sheared paths retain unsnapped geometry. Blocks and shade patterns are unchanged.
+rotated/sheared paths retain unsnapped geometry.
 
 Coverage and source preservation: [unit tests](src/cell-graphics.test.ts).
 Chromium/WebKit raster checks at DPR 1/1.25/2 and zoom 0.75/1/1.25/2:

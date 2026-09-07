@@ -1,13 +1,23 @@
 import type { CellTextStyle } from "./types.js";
 import type { CellBorderShape } from "./border.js";
 
+export type CellCursorShape = "block" | "bar" | "underline";
+
+export type CellCursorStyle = Readonly<{
+  shape: CellCursorShape;
+  color: string;
+  textColor: string;
+  blink: boolean;
+  blinkIntervalMs: number;
+}>;
+
 export type CellUiTheme = Readonly<{
   background: string;
   foreground: string;
   surfaceStyle: CellTextStyle;
   borderStyle: CellTextStyle;
   borderShape: CellBorderShape;
-  caretColor: string;
+  cursorStyle: CellCursorStyle;
   rangeSelectionColor: string;
   treeExpandedIndicator: string;
   treeCollapsedIndicator: string;
@@ -29,7 +39,13 @@ export const DEFAULT_CELL_UI_THEME: CellUiTheme = Object.freeze({
   surfaceStyle: { backgroundColor: "#191d22" },
   borderStyle: { color: "#555555" },
   borderShape: "square",
-  caretColor: "#e8edf2",
+  cursorStyle: Object.freeze({
+    shape: "block",
+    color: "#e8edf2",
+    textColor: "#101419",
+    blink: true,
+    blinkIntervalMs: 600,
+  }),
   rangeSelectionColor: "rgba(82, 155, 255, 0.32)",
   treeExpandedIndicator: "▾",
   treeCollapsedIndicator: "▸",

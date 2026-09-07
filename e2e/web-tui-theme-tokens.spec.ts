@@ -15,6 +15,8 @@ test("CSS token inheritance, aliases, local overrides and fallback resolve witho
     const inherited = readCellCssTheme(child);
     child.style.setProperty("--cell-highlight", "oklch(60% 0.1 120)");
     child.style.setProperty("--cell-range-selection", "rgba(1, 2, 3, 0.25)");
+    child.style.setProperty("--cell-cursor", "rgb(4, 5, 6)");
+    child.style.setProperty("--cell-cursor-foreground", "rgb(7, 8, 9)");
     const local = readCellCssTheme(child);
     child.style.setProperty("--cell-highlight", "not-a-color");
     const invalid = readCellCssTheme(child);
@@ -28,6 +30,12 @@ test("CSS token inheritance, aliases, local overrides and fallback resolve witho
   expect(result.inherited.theme.selectedStyle).toEqual(result.inherited.theme.focusedSurfaceStyle);
   expect(result.local.theme.selectedStyle.backgroundColor).toContain("oklch(");
   expect(result.local.theme.rangeSelectionColor).toBe("rgba(1, 2, 3, 0.25)");
+  expect(result.local.theme.cursorStyle).toMatchObject({
+    shape: "block",
+    color: "rgb(4, 5, 6)",
+    textColor: "rgb(7, 8, 9)",
+    blink: true,
+  });
   expect(result.invalid.theme.selectedStyle.backgroundColor).toBe("#1a1a1a");
   expect(result.missing.theme.selectedStyle.backgroundColor).toBe("#1a1a1a");
   expect(result.nodes).toBe(0);
@@ -65,18 +73,23 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
   expect(pixel).toEqual([30, 40, 50, 255]);
 });
 
-test("caret and rectangle overlay consume theme tokens in actual pixels", async ({ page }) => {
+test("terminal cursor and rectangle overlay consume theme tokens in actual pixels", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
   await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.evaluate(() => {
-    document.documentElement.style.setProperty("--cell-caret", "rgb(255, 0, 0)");
+    document.documentElement.style.setProperty("--cell-cursor", "rgb(255, 0, 0)");
+    document.documentElement.style.setProperty("--cell-cursor-foreground", "rgb(0, 0, 0)");
     document.documentElement.style.setProperty("--cell-range-selection", "rgb(0, 255, 0)");
   });
   await page.getByRole("button", { name: "Dark" }).click();
   await page.getByRole("textbox", { name: "File name", exact: true }).fill("");
   const editor = page.locator('[data-cell-probe="editor"]');
-  const caret = await readCellPixel(editor, 1, 2.5);
-  expect(caret).toEqual([255, 0, 0, 255]);
+  const cursor = await readCellPixel(editor, 1.5, 2.5);
+  expect(cursor).toEqual([255, 0, 0, 255]);
+  const input = page.getByRole("textbox", { name: "File name", exact: true });
+  await input.fill("中A");
+  await input.press("Home");
+  expect(await readCellPixel(editor, 2.8, 2.1)).toEqual([255, 0, 0, 255]);
   const canvas = page.locator('[data-cell-probe="complex"] canvas');
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;

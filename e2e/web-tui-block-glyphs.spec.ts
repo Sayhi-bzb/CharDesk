@@ -48,6 +48,9 @@ test("component chrome uses Cell graphics across all display fonts without Julia
       /^[A-Za-z]$/.test(text) && font.includes(family))).toBe(true);
     const boxes = (await glyphCalls()).filter(({ text }) => /^[\u2500-\u259F]$/u.test(text));
     expect(boxes).toHaveLength(0);
+    const expandedGraphics = (await glyphCalls()).filter(({ text }) =>
+      ["⣿", "\ue0b0", "\uee03", "\uf5ee", "\u{1fb95}", "\u{1fbb0}", "\u{1fbc5}"].includes(text));
+    expect(expandedGraphics).toHaveLength(0);
     await expect.poll(async () => (await readCellProbe(page.locator('[data-cell-probe="editor"]')))
       .presentation?.cellGraphics?.source).toBe("cell-graphics");
     expect((await readCellProbe(page.locator('[data-cell-probe="editor"]')))

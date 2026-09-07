@@ -11,6 +11,16 @@ it("resolves state priority without coupling collection focus to editor styling"
   expect(resolveCellStateStyle({}, { selected: true }, custom)).toEqual({ backgroundColor: "blue" });
 });
 
+it("defaults to a blinking terminal block cursor", () => {
+  expect(theme.cursorStyle).toEqual({
+    shape: "block",
+    color: "#e8edf2",
+    textColor: "#101419",
+    blink: true,
+    blinkIntervalMs: 600,
+  });
+});
+
 it("resolves selection and composition after base style without dropping unrelated attributes", () => {
   expect(resolveCellTextStyle({ bold: true, color: "red" }, { selected: true, composing: true }, theme))
     .toEqual({ ...theme.textSelectionStyle, bold: true, underline: true });
