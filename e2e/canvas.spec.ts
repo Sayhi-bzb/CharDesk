@@ -299,7 +299,7 @@ test.describe('Canvas', () => {
       const faces = await Promise.all([
         document.fonts.load('24px "Maple Mono NF CN"', 'A╭你'),
         document.fonts.load('700 24px "Maple Mono NF CN"', 'A╭你'),
-        document.fonts.load('24px "Noto Sans Symbols 2"', '⟹◈♪'),
+        document.fonts.load('24px "JuliaMono"', '←∞✓◆⌘⚠'),
         document.fonts.load('40px "Noto Emoji"', '👩🏽‍💻'),
       ]);
       await document.fonts.ready;
@@ -338,11 +338,48 @@ test.describe('Canvas', () => {
 
     expect(result.loadedFamilies[0]).toContain('Maple Mono NF CN');
     expect(result.loadedFamilies[1]).toContain('Maple Mono NF CN');
-    expect(result.loadedFamilies[2]).toContain('Noto Sans Symbols 2');
+    expect(result.loadedFamilies[2]).toContain('JuliaMono');
     expect(result.loadedFamilies[3]).toContain('Noto Emoji');
     expect(result.painted).toBeGreaterThan(0);
     expect(result.offColor).toBe(0);
     expect(result.externalFontRequests).toEqual([]);
+  });
+
+  test('downloads only the JuliaMono shards required by rendered symbols', async ({ browser, page }) => {
+    const baseURL = new URL(page.url()).origin;
+    const context = await browser.newContext();
+    const probe = await context.newPage();
+    await probe.route('**/__font-probe', (route) => route.fulfill({
+      contentType: 'text/html',
+      body: '<!doctype html><html><body></body></html>',
+    }));
+    await probe.goto(`${baseURL}/__font-probe`);
+    const requests: string[] = [];
+    probe.on('request', (request) => {
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.includes('/assets/julia-mono/')) requests.push(pathname);
+    });
+    await probe.addStyleTag({ url: '/packages/fonts/fonts.css' });
+
+    for (const [grapheme, shard] of [
+      ['→', 'arrows.woff2'],
+      ['∞', 'math-technical.woff2'],
+      ['◆', 'graphics.woff2'],
+    ] as const) {
+      const before = requests.length;
+      const loaded = await probe.evaluate(async (sample) =>
+        (await document.fonts.load('24px "JuliaMono"', sample)).map(({ family }) => family),
+      grapheme);
+      expect(loaded).toContain('JuliaMono');
+      expect(requests.slice(before)).toEqual([
+        `/packages/fonts/assets/julia-mono/${shard}`,
+      ]);
+    }
+
+    expect(requests).not.toContain(
+      '/packages/fonts/assets/julia-mono/JuliaMono-Regular.woff2'
+    );
+    await context.close();
   });
 
   test('loads curated character packs before lazy Unicode explorer shards', async ({ page }) => {

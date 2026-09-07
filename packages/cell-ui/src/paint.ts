@@ -14,7 +14,7 @@ import type {
 import type { CellTextLayoutSnapshot } from "./text.js";
 import { DEFAULT_CELL_UI_THEME, resolveCellStateStyle, resolveCellTextStyle, type CellUiTheme } from "./theme.js";
 import { intersectCellRects } from "./scene.js";
-import { thumbGlyph, thumbPrimitive } from "./scrollbar.js";
+import { thumbGlyph } from "./scrollbar.js";
 import { paintBorder } from "./border.js";
 
 const interactiveKinds = new Set<WidgetNode["kind"]>([
@@ -116,8 +116,7 @@ const paintScrollbars = (
         node.id,
         theme.scrollThumbStyle,
         clip,
-        "over",
-        thumbPrimitive(metrics.horizontalThumbAxis, cell, true)
+        "over"
       );
     }
   }
@@ -131,8 +130,7 @@ const paintScrollbars = (
         node.id,
         theme.scrollThumbStyle,
         clip,
-        "over",
-        thumbPrimitive(metrics.verticalThumbAxis, cell, false)
+        "over"
       );
     }
   }

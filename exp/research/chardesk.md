@@ -13,7 +13,7 @@ CharDesk 已经拥有可编辑 Cell Canvas、文本协议、共享 Canvas render
 ## 可直接复用
 
 - [`@chardesk/protocol`](../../packages/protocol/README.md)：grapheme segmentation、确定性 Unicode Cell width、文本宽度、Cell/Row/Run 类型和 ANSI 文本解析。
-- [`@chardesk/rendering`](../../packages/rendering/README.md)：固定 Canvas metrics、字体路由、Cell visual、相邻样式 run 聚合和 Canvas 2D primitives。
+- [`@chardesk/rendering`](../../packages/rendering/README.md)：固定 Canvas metrics、字体路由、Cell visual、相邻样式 run 聚合和 Canvas 2D presentation。
 - [`@chardesk/fonts`](../../packages/fonts/README.md)：Text/Emoji 字体配置与消费边界。
 
 这些能力已有 package 公共入口，实验应作为依赖消费，而不是复制源文件。

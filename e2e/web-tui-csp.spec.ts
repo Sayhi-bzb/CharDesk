@@ -4,7 +4,7 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "font-src 'self' data:",
+  "font-src 'self'",
   "connect-src 'self' ws:",
   "img-src 'self' data: blob:",
   "object-src 'none'",
@@ -16,7 +16,14 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
   const pageErrors: string[] = [];
   let refreshPreamble = "";
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  const externalRequests: string[] = [];
   await page.route("**/*", async (route) => {
+    const url = new URL(route.request().url());
+    if (!["127.0.0.1", "localhost"].includes(url.hostname)) {
+      externalRequests.push(url.href);
+      await route.abort();
+      return;
+    }
     if (new URL(route.request().url()).pathname === "/__csp_refresh_preamble.js") {
       await route.fulfill({
         status: 200,
@@ -53,9 +60,15 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
   await expect(page.locator("canvas")).toHaveCount(1);
   await expect(page.locator("canvas")).toHaveAttribute("data-cell-text", /Unicode: 世界 👋/);
   const gallery = page.locator(".gallery-page");
-  await page.getByRole("button", { name: "Use Ark Pixel 12px Prop" }).click();
-  await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
+  await page.getByRole("button", { name: "Use Ark Pixel 12px Mono" }).click();
+  await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
+  await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
+  expect(externalRequests).toEqual([]);
+  await page.getByRole("button", { name: "Use Xiaolai Mono" }).click();
   await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
-  await expect(page.getByRole("button", { name: "Retry Ark Pixel 12px Prop" })).toBeEnabled();
+  await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
+  await page.getByRole("button", { name: "Retry Xiaolai Mono" }).click();
+  await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
+  await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
   expect(pageErrors).toEqual([]);
 });

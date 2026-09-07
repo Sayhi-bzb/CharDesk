@@ -7,6 +7,7 @@
         "src/app/App.tsx",
         "src/domains/*/public.ts",
         "src/widgets/dialogs/clear-canvas-dialog.tsx",
+        "exp/web-tui/main.tsx",
         "scripts/**/*.{mjs,ts}",
         "e2e/**/*.ts",
         "vite.config.ts",
@@ -15,6 +16,7 @@
       ],
       "project": [
         "src/**/*.{ts,tsx}",
+        "exp/web-tui/**/*.{ts,tsx}",
         "scripts/**/*.{ts,mjs}",
         "e2e/**/*.ts",
         "*.config.{ts,js}"

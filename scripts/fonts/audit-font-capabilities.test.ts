@@ -29,17 +29,17 @@ describe("font capability audit", () => {
     const nerdTarget = report.targets[1]!;
 
     expect(report.schemaVersion).toBe(1);
-    expect(report.nerdCatalogCodePoints).toBe(10_385);
-    expect(target.nerd).toEqual({ covered: 10_385, total: 10_385 });
+    expect(report.nerdCatalogCodePoints).toBe(10_617);
+    expect(target.nerd).toEqual({ covered: 10_386, total: 10_617 });
     expect(target.coverage.cjkUnified).toEqual({ covered: 20_976, total: 20_992 });
     expect(target.sampleAdvances["U+41"]?.em).toBe(0.6);
     expect(target.sampleAdvances["U+4E2D"]?.em).toBe(1.2);
     expect(target.baseline.missingCodePoints).toBe(0);
     expect(target.baseline.nerdOutlines).toEqual({
-      comparable: 10_385,
-      equal: 10_382,
+      comparable: 10_386,
+      equal: 10_383,
     });
-    expect(nerdTarget.nerd).toEqual({ covered: 10_385, total: 10_385 });
-    expect(nerdTarget.bytes).toBeLessThan(1_300_000);
+    expect(nerdTarget.nerd).toEqual({ covered: 10_617, total: 10_617 });
+    expect(nerdTarget.bytes).toBeLessThan(1_400_000);
   }, 15_000);
 });

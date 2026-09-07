@@ -2,6 +2,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as fontkit from "fontkit";
+import { nerdFontCodePoints } from "./nerd-font-catalog.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const fontExtensions = new Set([".otf", ".ttf", ".woff", ".woff2"]);
@@ -75,9 +76,7 @@ if (positional.length === 0) {
   };
 
   const catalog = JSON.parse(await readFile(resolveInput(catalogArgument), "utf8"));
-  const nerdCodePoints = new Set(
-    Object.values(catalog).flat().map(({ char }) => char.codePointAt(0))
-  );
+  const nerdCodePoints = nerdFontCodePoints(catalog);
   const baseline = baselineArgument
     ? await loadTarget(resolveInput(baselineArgument))
     : undefined;

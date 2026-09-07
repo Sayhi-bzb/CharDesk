@@ -3,17 +3,17 @@
   "unicodeVersion": "17.0.0",
   "emojiVersion": "17.0",
   "packs": {
-    "essentials": "packs/essentials.eee2f65dbee0.json",
-    "nerd": "packs/nerd.6a4ec07927f6.json",
+    "essentials": "packs/essentials.4a60e6d4d995.json",
+    "nerd": "packs/nerd.26b80dbdb1bb.json",
     "emoji": "packs/emoji.017dc2fe7a6c.json"
   },
-  "unicodeManifest": "unicode/manifest.5617e4009d5d.json",
+  "unicodeManifest": "unicode/manifest.55cb2085c224.json",
   "counts": {
-    "essentials": 1013,
-    "nerd": 10449,
+    "essentials": 1676,
+    "nerd": 10995,
     "emoji": 3944,
     "unicode": 159866,
-    "main": 15406
+    "main": 16615
   },
   "assets": [
     {
@@ -22,19 +22,19 @@
       "sha256": "017dc2fe7a6c1e7b54faedadf79aafce3af8371fcddcd70e9f57bbeb1b698c7b"
     },
     {
-      "path": "packs/essentials.eee2f65dbee0.json",
-      "size": 148861,
-      "sha256": "eee2f65dbee0a530b4a01f27bb66055dbaef41a7595303be97a89ac8d3b6f4b6"
+      "path": "packs/essentials.4a60e6d4d995.json",
+      "size": 245089,
+      "sha256": "4a60e6d4d995f3e19302d3ed2ac11f96cc9a03f8390c03f55f7b67cda8f9b474"
     },
     {
-      "path": "packs/nerd.6a4ec07927f6.json",
-      "size": 636338,
-      "sha256": "6a4ec07927f68b096a4e82e057329b103042ce60a3a961afe19f316409619dc4"
+      "path": "packs/nerd.26b80dbdb1bb.json",
+      "size": 667172,
+      "sha256": "26b80dbdb1bbb12c8ac38420c0728e1e946732bfd8134e256353056e13eab66e"
     },
     {
-      "path": "unicode/manifest.5617e4009d5d.json",
+      "path": "unicode/manifest.55cb2085c224.json",
       "size": 114327,
-      "sha256": "5617e4009d5d56212d49f2d78f4c9f32fe98b723236cdb85886905eba70b5e21"
+      "sha256": "55cb2085c2247b30e3a59f101bcead2f01c9a2aa28567da81d411eb85a5d7a4e"
     },
     {
       "path": "unicode/name-index.fe0f327aeed7.json",
@@ -42,69 +42,69 @@
       "sha256": "fe0f327aeed7c13a773f625d681ebe3c35d23263bc39df9edd40158faf15dd74"
     },
     {
-      "path": "unicode/shards/000.055d100493da.json",
+      "path": "unicode/shards/000.ed62f55f780a.json",
       "size": 152489,
-      "sha256": "055d100493da559b38da7e4af50af2263723b6fc0052073d32ad1aea9bec73fc"
+      "sha256": "ed62f55f780a63c1d3f5ff2be6f8142a06b2f9fa96a79ace2d57b6bacfd370a6"
     },
     {
-      "path": "unicode/shards/001.8b757900e320.json",
+      "path": "unicode/shards/001.e61fc4106789.json",
       "size": 144834,
-      "sha256": "8b757900e3202c63551e69b4df8d547f271f04e94f4deb1ca6ac8467d3da34fd"
+      "sha256": "e61fc41067892e41092f263e3d2ca4e3f3a64aa52fd24b8fdabf2d45ca500a4b"
     },
     {
-      "path": "unicode/shards/002.9328bf6ec49d.json",
+      "path": "unicode/shards/002.5a52665dd70f.json",
       "size": 115592,
-      "sha256": "9328bf6ec49ded42c320c1df4e35aae0397f4be9b7df28da8f79b41e6ae97fa0"
+      "sha256": "5a52665dd70f1b32286ae0a39e6c3aecfd9ff107f539e5e781f29f0d37691fc1"
     },
     {
-      "path": "unicode/shards/003.45d5ffe14a5d.json",
+      "path": "unicode/shards/003.812eecd866fd.json",
       "size": 113132,
-      "sha256": "45d5ffe14a5dad13af7e6315daf2bd019f17fe1143e36825f59e8eb7c72ac9b5"
+      "sha256": "812eecd866fd276a5daade21a91255b70730a4e1038e5e8620c33ce735996ec1"
     },
     {
-      "path": "unicode/shards/004.5c63fb5d0131.json",
+      "path": "unicode/shards/004.f7ceadca543b.json",
       "size": 142478,
-      "sha256": "5c63fb5d0131f1942343f2e7bc4cd3f82c7c164752e03b3e6eeebd8a55e97070"
+      "sha256": "f7ceadca543b1d41204772d79b4bb3d0892bb5deb22be90c7f9af8e723c73e79"
     },
     {
-      "path": "unicode/shards/005.77c7bac99fdd.json",
+      "path": "unicode/shards/005.c151dac4e4ae.json",
       "size": 147512,
-      "sha256": "77c7bac99fddd5305ef9e461792a571f80d74d6881162d5bbf57ad9dc669f79a"
+      "sha256": "c151dac4e4ae523544b65bc664f59e3bc265cf23524352323cbd43cb20de4c96"
     },
     {
-      "path": "unicode/shards/006.b2a7477ee039.json",
+      "path": "unicode/shards/006.a25ed9a9d661.json",
       "size": 134117,
-      "sha256": "b2a7477ee039a400f86cf896111e451f671208b66fdb13245e15314a9555795b"
+      "sha256": "a25ed9a9d661a479ac76fcb1579b832829f881dcede1816ed9607892ffbbe16c"
     },
     {
-      "path": "unicode/shards/007.041a26c6b026.json",
+      "path": "unicode/shards/007.446ff08812db.json",
       "size": 152655,
-      "sha256": "041a26c6b026aeda036b8397260f875fb10526a3336cff5b31bd8c5e4e9da981"
+      "sha256": "446ff08812db10bf66acc41571b569beb619555cbbc5245dee0a044fec2c827a"
     },
     {
-      "path": "unicode/shards/008.f146cc48e5bf.json",
-      "size": 141339,
-      "sha256": "f146cc48e5bfb94c712c57ba6cb5b8983ec0dfe2931070014c6ee03c99f1f56c"
+      "path": "unicode/shards/008.c9375ac9d6cd.json",
+      "size": 141343,
+      "sha256": "c9375ac9d6cdc19830ad2c6d928db62f3ae9e6021714d9a50449a68afa362c9f"
     },
     {
-      "path": "unicode/shards/009.34911b91f879.json",
-      "size": 144336,
-      "sha256": "34911b91f879411bfad2f84dcc8d48e83f5c12bde58076525e610ea92908f24b"
+      "path": "unicode/shards/009.3d6ad69c9d30.json",
+      "size": 144338,
+      "sha256": "3d6ad69c9d30a0abe788f373b608591775565ba341cb92716cb85078dcc4fb1a"
     },
     {
-      "path": "unicode/shards/00a.7f1fd006eb22.json",
-      "size": 154452,
-      "sha256": "7f1fd006eb223e6caed37f46b91e94a676bc208e5dcc7899e4736196927a5d92"
+      "path": "unicode/shards/00a.3e42d7be833c.json",
+      "size": 154453,
+      "sha256": "3e42d7be833c3fbfc3890e64783bc080966525c24a5faf1eaed74a3aad17a77b"
     },
     {
-      "path": "unicode/shards/00b.21c02431ac47.json",
+      "path": "unicode/shards/00b.45e1c82ac475.json",
       "size": 131150,
-      "sha256": "21c02431ac4750fe1385900e96b80e5b5eddf0f3f9e71deb6c4cc94700c3aa3c"
+      "sha256": "45e1c82ac475225dbe2a23ee723a8f080405edc6c9ddb5a590685129285d983b"
     },
     {
-      "path": "unicode/shards/00c.921d4cb31e9f.json",
+      "path": "unicode/shards/00c.7773ffacbce6.json",
       "size": 143794,
-      "sha256": "921d4cb31e9fc5d4196222c5648e7d5ca4396aafc17818be4c7311ede7cd2926"
+      "sha256": "7773ffacbce6f8f5ea28f3b5047126c6662e8393ad35d4e8af2c24c3b8fb58fe"
     },
     {
       "path": "unicode/shards/00d.13930fc6d9fe.json",
@@ -247,14 +247,14 @@
       "sha256": "5f065588b16cf31f0ecd95eef88b16a1e9112d90683224cc71facb0290c25bff"
     },
     {
-      "path": "unicode/shards/029.d189d3b3c822.json",
+      "path": "unicode/shards/029.9288f964032b.json",
       "size": 135615,
-      "sha256": "d189d3b3c822c375128ed59a46e036c53aec077fc91d2598091817d747739c2a"
+      "sha256": "9288f964032b6e3cb618dfd2b1b8e37599c925720b8b942d68019281a603046d"
     },
     {
-      "path": "unicode/shards/02a.47eaa0b99ec7.json",
+      "path": "unicode/shards/02a.ec44bb2ab917.json",
       "size": 131614,
-      "sha256": "47eaa0b99ec7e94944c3ccb9800c2616fdf0057ff86cf53e3d39ae8cc9eefe7b"
+      "sha256": "ec44bb2ab9175b9a17267fe6b377040da086d017873bb3cba1622c6e7d63b098"
     },
     {
       "path": "unicode/shards/02b.c82f1099ff2c.json",
@@ -312,34 +312,34 @@
       "sha256": "44eaad786fd1705422a2aeca7d2600f788975cbc911a7ae7aa059aeffd0bb5a9"
     },
     {
-      "path": "unicode/shards/03e.6dea6f0eb50d.json",
+      "path": "unicode/shards/03e.4c9836d301e5.json",
       "size": 107197,
-      "sha256": "6dea6f0eb50db700d31fc40610e14f91a655f1a11971781243d6bf32385ef7ed"
+      "sha256": "4c9836d301e570d348c158666c01d7d42ab2e2c5b6b96c9a4532b5421c77ad4b"
     },
     {
-      "path": "unicode/shards/03f.bfc7d84357f1.json",
+      "path": "unicode/shards/03f.be2555d85c27.json",
       "size": 151449,
-      "sha256": "bfc7d84357f106ffc88667d688f3e5d0bcf8bc93a38ad518f4f9cf223114c25f"
+      "sha256": "be2555d85c2791520f51798bcaca30de236876a1c315dad89b146371e82a6215"
     },
     {
-      "path": "unicode/shards/040.9c18f0d96fb2.json",
+      "path": "unicode/shards/040.d86ac4501b28.json",
       "size": 104021,
-      "sha256": "9c18f0d96fb22642097540a9dcf4d580206f9254f7d8ff9384de11474d14a443"
+      "sha256": "d86ac4501b287e08f3f226d15241cc520ec29d208c87e72fd38c95cc65d9b809"
     },
     {
-      "path": "unicode/shards/041.c93e18446946.json",
+      "path": "unicode/shards/041.be377c122409.json",
       "size": 125137,
-      "sha256": "c93e184469462d5a66c84a140975d334c3438fe21d8b7041c0375b0bf634dbe5"
+      "sha256": "be377c122409b1ae655124335c96e4b6890a17da03c17df1f6e752ee1e860ccf"
     },
     {
-      "path": "unicode/shards/042.0559863f7543.json",
+      "path": "unicode/shards/042.a1d59227445f.json",
       "size": 111032,
-      "sha256": "0559863f7543f32f64880ccde94927260929565015b4b2c1d687eebf6ca0b64e"
+      "sha256": "a1d59227445fc3146803f9dbb7153cbec6ceda326887f706bfd2caadfe18a139"
     },
     {
-      "path": "unicode/shards/043.42a832934c04.json",
+      "path": "unicode/shards/043.358bb532eeaa.json",
       "size": 84797,
-      "sha256": "42a832934c04d1835330b178d27253f7a25a301bc5b9d0ceb2e65d5a2abffdcf"
+      "sha256": "358bb532eeaa695a71ba60392edffebb029085800733fef48993cce2d88b368e"
     },
     {
       "path": "unicode/shards/044.2e2aea01ff18.json",
@@ -347,9 +347,9 @@
       "sha256": "2e2aea01ff18352e243fcb29415dcbf19f53a256548a1026698b39a2dbb82ea0"
     },
     {
-      "path": "unicode/shards/045.7083e3d1e522.json",
+      "path": "unicode/shards/045.56bd938cc881.json",
       "size": 73041,
-      "sha256": "7083e3d1e52233d9af223d1aaf4c8482accbc1b8e62832bbe741405fc2548ddd"
+      "sha256": "56bd938cc881d42d8bd3ecc501ed4830a82f13522a33d392a1eecd199e25d7f8"
     },
     {
       "path": "unicode/shards/046.47689f07d5f8.json",
@@ -477,19 +477,19 @@
       "sha256": "2c5ab1656010bc29a55337298240ad18f6d284696e2a3d0b9b5de905c617f015"
     },
     {
-      "path": "unicode/shards/073.0fb71763332c.json",
+      "path": "unicode/shards/073.bebd8cf94299.json",
       "size": 137742,
-      "sha256": "0fb71763332c51855e5f8a1a92fbfed7adbd408c0c25b4f59ccb5196dafc79cb"
+      "sha256": "bebd8cf942998c0161ba6ac3b65eae99974813394fe2108d3f8f1f906940dc6b"
     },
     {
-      "path": "unicode/shards/074.c9b497188374.json",
+      "path": "unicode/shards/074.4785392904fd.json",
       "size": 109185,
-      "sha256": "c9b497188374b990c0f520510f9bf1ff9a7a472ca279284277b8d491dbc42b0a"
+      "sha256": "4785392904fd3380c5121fe02dd8647f5bd163305308779bec4eaf74ee11bbcd"
     },
     {
-      "path": "unicode/shards/075.56c2c0d42c65.json",
+      "path": "unicode/shards/075.def42de615bf.json",
       "size": 156689,
-      "sha256": "56c2c0d42c659ef63ff443670d4a5bdd305c2e36c7d27df53624f3d8378cdb00"
+      "sha256": "def42de615bf2479baa0c16692b6684ee81e97a141efb2a14766d8f22601a916"
     },
     {
       "path": "unicode/shards/076.d15707e1e7ea.json",
@@ -497,14 +497,14 @@
       "sha256": "d15707e1e7ea63590188685acfe96f6f6fe874f87c21b45c2eae46a077593ee8"
     },
     {
-      "path": "unicode/shards/077.184a9a0f2d2f.json",
+      "path": "unicode/shards/077.4b72a5ea506f.json",
       "size": 6123,
-      "sha256": "184a9a0f2d2f8a20d838b5c38db084d188580247a57b2d37cee574bb8b829aa7"
+      "sha256": "4b72a5ea506fd8a1ae4ee0ae39fc05483ad988cdd80d2b72906e7f7940154ec7"
     },
     {
-      "path": "unicode/shards/078.ae2860751ec0.json",
+      "path": "unicode/shards/078.9756b298f458.json",
       "size": 40930,
-      "sha256": "ae2860751ec032473b6b00d0196c101a004e5c29902cd8220ff2bf5b225507d8"
+      "sha256": "9756b298f458e864fe009372065993de1c346b468f2d67052aece1f0ffb2fe19"
     },
     {
       "path": "unicode/shards/079.d61037e647a5.json",
@@ -522,19 +522,19 @@
       "sha256": "26107f42442dbb4b66cc74d24118ad10ec34bf007cf625248c0334e15353aa1a"
     },
     {
-      "path": "unicode/shards/07c.82533f379df4.json",
+      "path": "unicode/shards/07c.b0592579cd2a.json",
       "size": 109296,
-      "sha256": "82533f379df400991e32acc8aff66641700a946b8e8dd6ca41fccd2b7cede7e9"
+      "sha256": "b0592579cd2afb0855e1f1844dc8109dbe43b23638fb99964fc52b5760d045f1"
     },
     {
-      "path": "unicode/shards/07d.609c3f19b2c4.json",
+      "path": "unicode/shards/07d.0db3d37d0ed6.json",
       "size": 141113,
-      "sha256": "609c3f19b2c4b38293313ded2afcacfc044fb71dc11cd8e73ad49d68f9cea4c4"
+      "sha256": "0db3d37d0ed68d1ad71c170b11adf3e76e2b766dff55f2111e2186f51894f091"
     },
     {
-      "path": "unicode/shards/07e.5e6665d37bb1.json",
+      "path": "unicode/shards/07e.cf8174cfe0c6.json",
       "size": 134423,
-      "sha256": "5e6665d37bb1e21341633379043bcef86fbbfdb6febbd59fd63c30a199348122"
+      "sha256": "cf8174cfe0c65048420cc310ab36f41046cb55808a6731e850502251e649df5e"
     },
     {
       "path": "unicode/shards/080.fb2b211b00e8.json",

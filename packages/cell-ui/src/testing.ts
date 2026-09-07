@@ -152,8 +152,7 @@ export class TestPilot {
           cell.ownerId,
           cell.style,
           undefined,
-          "replace",
-          cell.primitive
+          "replace"
         );
       }
     }

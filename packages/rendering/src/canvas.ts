@@ -3,7 +3,7 @@ import {
   type CharDeskFontCapability,
   type CharDeskFontProfile,
 } from "@chardesk/fonts";
-import type { CharDeskTextAttributes } from "@chardesk/protocol";
+import { getGraphemeCellWidth, type CharDeskTextAttributes } from "@chardesk/protocol";
 import type {
   CharDeskCellVisual,
   CharDeskRenderFontRoute,
@@ -11,13 +11,10 @@ import type {
 } from "./index.js";
 import { resolveCharDeskFontRoute } from "./index.js";
 import {
-  CHARDESK_CELL_EDGE,
   alignCanvasRect,
   type AxisTransform,
-  type CharDeskCellPrimitive,
-} from "./cell-primitives.js";
-export { alignCanvasRect as alignCharDeskCanvasRect } from "./cell-primitives.js";
-export type { CharDeskCellPrimitive } from "./cell-primitives.js";
+} from "./canvas-geometry.js";
+export { alignCanvasRect as alignCharDeskCanvasRect } from "./canvas-geometry.js";
 export type { CharDeskFontProfile } from "@chardesk/fonts";
 
 export type CharDeskCanvasMetrics = {
@@ -25,6 +22,8 @@ export type CharDeskCanvasMetrics = {
   cellHeight: number;
   fontSize: number;
   fontFamily: string;
+  /** Alphabetic baseline from the Cell top; omitted preserves middle alignment. */
+  baseline?: number;
 };
 
 export type CharDeskCanvasSurface = HTMLCanvasElement | OffscreenCanvas;
@@ -50,6 +49,7 @@ export type CharDeskCanvasFontFamilies = Record<
 export type CharDeskCanvasFontResolver = (input: {
   grapheme: string;
   route: CharDeskRenderFontRoute;
+  /** Effective weight after the capability's weightPolicy, not the Cell request. */
   bold: boolean;
   italic: boolean;
 }) => string | undefined;
@@ -78,7 +78,6 @@ export type CharDeskCanvasCellDrawOptions = {
 
 export type CharDeskCanvasCellDrawEntry = {
   cell: CharDeskCellVisual;
-  primitive?: CharDeskCellPrimitive;
   x: number;
   y: number;
   options?: CharDeskCanvasCellDrawOptions;
@@ -181,7 +180,7 @@ export const resolveCharDeskCanvasFontFace = (input: Readonly<{
   const family = input.fontResolver?.({
     grapheme: input.grapheme,
     route: input.route,
-    bold: input.bold,
+    bold: effectiveBold,
     italic: input.italic,
   }) ?? (effectiveBold
     ? routeFamilies?.bold ?? routeFamilies?.regular
@@ -194,6 +193,127 @@ export const resolveCharDeskCanvasFontFace = (input: Readonly<{
     baselineShiftEm: spec.baselineShiftEm ?? 0,
     weightPolicy: spec.weightPolicy ?? "inherit",
   };
+};
+
+export type CharDeskFontMeasurement = Readonly<{
+  metrics: CharDeskCanvasMetrics;
+  source: "font-bounds" | "glyph-bounds" | "calibrated";
+  /** Uncalibrated regular-face geometry, before Profile grid overrides. */
+  fontMetrics: CharDeskCanvasMetrics;
+  fontMetricsSource: "font-bounds" | "glyph-bounds";
+}>;
+
+/** Measure a loaded display face. Content and DPR never participate in grid sizing. */
+export const measureCharDeskCanvasFont = (
+  context: Pick<CharDeskCanvasContext, "save" | "restore" | "measureText" | "font" | "textBaseline">,
+  fontProfile: CharDeskFontProfile = CHARDESK_SYSTEM_FONT_PROFILE,
+  fontSize = DEFAULT_CHARDESK_CANVAS_METRICS.fontSize
+): CharDeskFontMeasurement => {
+  if (!Number.isFinite(fontSize) || fontSize <= 0) throw new RangeError("Font size must be positive.");
+  const face = resolveCharDeskCanvasFontFace({ grapheme: "0", route: "text", bold: false, italic: false, fontProfile });
+  const effectiveSize = fontSize * face.fontSizeScale;
+  const calibration = fontProfile.capabilities.display.cellMetrics;
+  context.save();
+  try {
+    context.font = getCharDeskCanvasFont({ ...DEFAULT_CHARDESK_CANVAS_METRICS, fontSize }, 1, {
+      fontFamily: face.family, fontSizeScale: face.fontSizeScale,
+    });
+    context.textBaseline = "alphabetic";
+    const width = context.measureText("0").width * face.scaleX;
+    const sample = context.measureText("Mg");
+    const fontBounds = Number.isFinite(sample.fontBoundingBoxAscent)
+      && Number.isFinite(sample.fontBoundingBoxDescent)
+      && sample.fontBoundingBoxAscent + sample.fontBoundingBoxDescent > 0;
+    const ascent = fontBounds ? sample.fontBoundingBoxAscent : sample.actualBoundingBoxAscent;
+    const descent = fontBounds ? sample.fontBoundingBoxDescent : sample.actualBoundingBoxDescent;
+    const cellWidth = calibration?.width === undefined ? width : calibration.width * effectiveSize;
+    const cellHeight = calibration?.height === undefined ? ascent + descent : calibration.height * effectiveSize;
+    // prepareFontGlyph already applies the face's baseline shift.
+    const baseline = calibration?.baseline === undefined
+      ? ascent - face.baselineShiftEm * effectiveSize : calibration.baseline * effectiveSize;
+    if (![cellWidth, cellHeight].every((value) => Number.isFinite(value) && value > 0)
+      || !Number.isFinite(baseline)) throw new RangeError("Font produced invalid Cell metrics.");
+    return {
+      metrics: { cellWidth, cellHeight, baseline, fontSize, fontFamily: face.family },
+      source: calibration ? "calibrated" : fontBounds ? "font-bounds" : "glyph-bounds",
+      fontMetrics: { cellWidth: width, cellHeight: ascent + descent,
+        baseline: ascent - face.baselineShiftEm * effectiveSize, fontSize, fontFamily: face.family },
+      fontMetricsSource: fontBounds ? "font-bounds" : "glyph-bounds",
+    };
+  } finally {
+    context.restore();
+  }
+};
+
+export type CharDeskFontAuditSample = Readonly<{
+  text: string;
+  requestedFamily: string;
+  requestedBold: boolean;
+  effectiveBold: boolean;
+  status: "measured" | "unavailable";
+  advance: number | null;
+  availableWidth: number;
+  advanceOverflow: number | null;
+  top: number | null;
+  bottom: number | null;
+  overflowTop: number | null;
+  overflowBottom: number | null;
+  /** Geometric estimate for repeated full-height │/█, not a raster guarantee. */
+  verticalGap: number | null;
+}>;
+
+export type CharDeskFontAudit = Readonly<{
+  measurement: CharDeskFontMeasurement;
+  metrics: CharDeskCanvasMetrics;
+  /** Canvas cannot identify which fallback face supplied an individual glyph. */
+  faceIdentity: "requested-stack-only";
+  samples: readonly CharDeskFontAuditSample[];
+}>;
+
+/** Audit explicitly loaded samples without modifying the supplied grid. */
+export const auditCharDeskCanvasFont = (
+  context: Pick<CharDeskCanvasContext, "save" | "restore" | "measureText" | "font" | "textBaseline">,
+  profile: CharDeskFontProfile,
+  metrics: CharDeskCanvasMetrics,
+  samples: Iterable<CharDeskCanvasFontSample>
+): CharDeskFontAudit => {
+  if (![metrics.cellWidth, metrics.cellHeight, metrics.fontSize].every((n) => Number.isFinite(n) && n > 0)
+    || (metrics.baseline !== undefined && !Number.isFinite(metrics.baseline))) {
+    throw new RangeError("Invalid audit grid metrics.");
+  }
+  const measurement = measureCharDeskCanvasFont(context, profile, metrics.fontSize);
+  const result: CharDeskFontAuditSample[] = [];
+  context.save();
+  try {
+    context.textBaseline = metrics.baseline === undefined ? "middle" : "alphabetic";
+    for (const sample of samples) {
+      const text = typeof sample === "string" ? sample : sample.grapheme;
+      const bold = typeof sample === "string" ? false : !!sample.bold;
+      const italic = typeof sample === "string" ? false : !!sample.italic;
+      const route = resolveCharDeskFontRoute(text);
+      const face = resolveCharDeskCanvasFontFace({ grapheme: text, route, bold, italic, fontProfile: profile });
+      context.font = getCharDeskCanvasFont(metrics, 1, { bold, italic, route,
+        fontFamily: face.family, fontSizeScale: face.fontSizeScale, weightPolicy: face.weightPolicy });
+      const bounds = context.measureText(text);
+      const availableWidth = getGraphemeCellWidth(text) * metrics.cellWidth;
+      const measured = [bounds.width, bounds.actualBoundingBoxAscent, bounds.actualBoundingBoxDescent].every(Number.isFinite);
+      const baseline = (metrics.baseline ?? metrics.cellHeight / 2)
+        + face.baselineShiftEm * metrics.fontSize * face.fontSizeScale;
+      const advance = measured ? bounds.width * face.scaleX : null;
+      const top = measured ? baseline - bounds.actualBoundingBoxAscent : null;
+      const bottom = measured ? baseline + bounds.actualBoundingBoxDescent : null;
+      result.push({ text, requestedFamily: face.family, requestedBold: bold,
+        effectiveBold: bold && face.weightPolicy !== "regular", status: measured ? "measured" : "unavailable",
+        advance, availableWidth, advanceOverflow: advance === null ? null : Math.max(0, advance - availableWidth),
+        top, bottom, overflowTop: top === null ? null : Math.max(0, -top),
+        overflowBottom: bottom === null ? null : Math.max(0, bottom - metrics.cellHeight),
+        verticalGap: measured && (text === "│" || text === "█")
+          ? metrics.cellHeight - bounds.actualBoundingBoxAscent - bounds.actualBoundingBoxDescent : null });
+    }
+  } finally {
+    context.restore();
+  }
+  return { measurement, metrics: { ...metrics }, faceIdentity: "requested-stack-only", samples: result };
 };
 
 export const alignCharDeskCanvasCoordinate = (
@@ -212,7 +332,7 @@ export const getCharDeskCanvasCellAnchor = (
   metrics: CharDeskCanvasMetrics = DEFAULT_CHARDESK_CANVAS_METRICS
 ) => ({
   x: x + metrics.cellWidth * zoom * width / 2,
-  y: y + metrics.cellHeight * zoom / 2,
+  y: y + (metrics.baseline ?? metrics.cellHeight / 2) * zoom,
 });
 
 export const prepareCharDeskCanvasSurface = (
@@ -291,8 +411,6 @@ const drawCellBackground = (
 type CanvasTextState = {
   font: string | null;
   color: string | null;
-  scaleX: number;
-  scaleY: number;
   transform?: AxisTransform;
 };
 
@@ -342,88 +460,11 @@ const prepareFontGlyph = (
   }
   return {
     text,
-    x: Math.round(anchor.x * state.scaleX) / state.scaleX,
-    y: Math.round(
-      (anchor.y + face.baselineShiftEm * metrics.fontSize * face.fontSizeScale * zoom)
-        * state.scaleY
-    ) / state.scaleY,
+    // Glyph positions preserve grid spacing; only allocation edges are pixel-aligned.
+    x: anchor.x,
+    y: anchor.y + face.baselineShiftEm * metrics.fontSize * face.fontSizeScale * zoom,
     scaleX: face.scaleX,
   };
-};
-
-const drawCellPrimitive = (
-  ctx: CharDeskCanvasContext,
-  entry: CharDeskCanvasCellDrawEntry,
-  visual: CharDeskCanvasCellVisual,
-  primitive: CharDeskCellPrimitive,
-  state: CanvasTextState
-) => {
-  const metrics = entry.options?.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
-  const zoom = entry.options?.zoom ?? 1;
-  const width = metrics.cellWidth * zoom * visual.width;
-  const height = metrics.cellHeight * zoom;
-  const fill = (part: Readonly<{ x: number; y: number; width: number; height: number }>) => {
-    const bounds = alignCanvasRect({
-      x: entry.x + part.x * width,
-      y: entry.y + part.y * height,
-      width: part.width * width,
-      height: part.height * height,
-    }, state.transform);
-    if (bounds.width > 0 && bounds.height > 0) {
-      ctx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-    }
-  };
-
-  if (primitive.kind === "fill") {
-    for (const region of primitive.regions) fill(region);
-    return;
-  }
-
-  const lineWidth = Math.min(width, height, Math.max(1, Math.round(zoom)));
-  const halfX = lineWidth / (2 * width);
-  const halfY = lineWidth / (2 * height);
-  const edges = primitive.edges;
-  const adjacentPair = edges === (CHARDESK_CELL_EDGE.top | CHARDESK_CELL_EDGE.right)
-    || edges === (CHARDESK_CELL_EDGE.right | CHARDESK_CELL_EDGE.bottom)
-    || edges === (CHARDESK_CELL_EDGE.bottom | CHARDESK_CELL_EDGE.left)
-    || edges === (CHARDESK_CELL_EDGE.left | CHARDESK_CELL_EDGE.top);
-
-  if (primitive.join === "rounded" && adjacentPair) {
-    const bounds = alignCanvasRect({ x: entry.x, y: entry.y, width, height }, state.transform);
-    const left = bounds.x;
-    const top = bounds.y;
-    const right = left + bounds.width;
-    const bottom = top + bounds.height;
-    const centerX = left + bounds.width / 2;
-    const centerY = top + bounds.height / 2;
-    ctx.save();
-    ctx.beginPath();
-    ctx.strokeStyle = entry.options?.color ?? visual.color;
-    ctx.lineWidth = lineWidth;
-    ctx.lineCap = "butt";
-    ctx.lineJoin = "round";
-    if (edges === (CHARDESK_CELL_EDGE.right | CHARDESK_CELL_EDGE.bottom)) {
-      ctx.moveTo(right, centerY);
-      ctx.quadraticCurveTo(centerX, centerY, centerX, bottom);
-    } else if (edges === (CHARDESK_CELL_EDGE.left | CHARDESK_CELL_EDGE.bottom)) {
-      ctx.moveTo(left, centerY);
-      ctx.quadraticCurveTo(centerX, centerY, centerX, bottom);
-    } else if (edges === (CHARDESK_CELL_EDGE.right | CHARDESK_CELL_EDGE.top)) {
-      ctx.moveTo(right, centerY);
-      ctx.quadraticCurveTo(centerX, centerY, centerX, top);
-    } else {
-      ctx.moveTo(left, centerY);
-      ctx.quadraticCurveTo(centerX, centerY, centerX, top);
-    }
-    ctx.stroke();
-    ctx.restore();
-    return;
-  }
-
-  if (edges & CHARDESK_CELL_EDGE.top) fill({ x: 0.5 - halfX, y: 0, width: halfX * 2, height: 0.5 + halfY });
-  if (edges & CHARDESK_CELL_EDGE.right) fill({ x: 0.5 - halfX, y: 0.5 - halfY, width: 0.5 + halfX, height: halfY * 2 });
-  if (edges & CHARDESK_CELL_EDGE.bottom) fill({ x: 0.5 - halfX, y: 0.5 - halfY, width: halfX * 2, height: 0.5 + halfY });
-  if (edges & CHARDESK_CELL_EDGE.left) fill({ x: 0, y: 0.5 - halfY, width: 0.5 + halfX, height: halfY * 2 });
 };
 
 const drawCellText = (
@@ -435,8 +476,8 @@ const drawCellText = (
   const options = entry.options;
   const metrics = options?.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
   const zoom = options?.zoom ?? 1;
-  const primitive = entry.primitive;
-  const fontGlyph = primitive ? null : prepareFontGlyph(ctx, entry, visual, state);
+  const fontGlyph = prepareFontGlyph(ctx, entry, visual, state);
+  ctx.textBaseline = metrics.baseline === undefined ? "middle" : "alphabetic";
   const attrs = visual.attrs;
   const textColor = options?.color ?? visual.color;
   if (textColor !== state.color) {
@@ -451,18 +492,14 @@ const drawCellText = (
     ctx.rect(aligned.x, aligned.y, aligned.width, aligned.height);
     ctx.clip();
   }
-  if (primitive) {
-    drawCellPrimitive(ctx, entry, visual, primitive, state);
-  } else if (fontGlyph) {
-    if (fontGlyph.scaleX === 1) {
-      ctx.fillText(fontGlyph.text, fontGlyph.x, fontGlyph.y);
-    } else {
-      ctx.save();
-      ctx.translate(fontGlyph.x, fontGlyph.y);
-      ctx.scale(fontGlyph.scaleX, 1);
-      ctx.fillText(fontGlyph.text, 0, 0);
-      ctx.restore();
-    }
+  if (fontGlyph.scaleX === 1) {
+    ctx.fillText(fontGlyph.text, fontGlyph.x, fontGlyph.y);
+  } else {
+    ctx.save();
+    ctx.translate(fontGlyph.x, fontGlyph.y);
+    ctx.scale(fontGlyph.scaleX, 1);
+    ctx.fillText(fontGlyph.text, 0, 0);
+    ctx.restore();
   }
 
   const cellWidth = metrics.cellWidth * zoom * visual.width;
@@ -517,8 +554,6 @@ export const drawCharDeskCanvasCells = (
     font: null,
     color: null,
     transform,
-    scaleX: Math.hypot(transform?.a ?? 1, transform?.b ?? 0) || 1,
-    scaleY: Math.hypot(transform?.c ?? 0, transform?.d ?? 1) || 1,
   };
   for (let index = 0; index < entries.length; index += 1) {
     const entry = entries[index]!;

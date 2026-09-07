@@ -12,12 +12,7 @@ import {
   type ParsedCharDeskText,
 } from "@chardesk/protocol";
 
-export { CHARDESK_CELL_EDGE } from "./cell-primitives.js";
-export type {
-  CharDeskCellEdgeMask,
-  CharDeskCellPrimitive,
-  CharDeskNormalizedCellRect,
-} from "./cell-primitives.js";
+export type { CharDeskNormalizedCellRect } from "./canvas-geometry.js";
 
 export type CharDeskRenderFontRoute = CharDeskFontRoute;
 

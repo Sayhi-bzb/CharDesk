@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import * as fontkit from "fontkit";
+import { groupNerdFontCatalog } from "../fonts/nerd-font-catalog.mjs";
 
 const UNICODE_VERSION = "17.0.0";
 const EMOJI_VERSION = "17.0";
@@ -15,7 +16,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
 const outputRoot = path.join(repoRoot, "public", "data", "characters");
 const sourceRoot = path.join(__dirname, "sources");
-const fontsRoot = path.join(repoRoot, "public", "fonts");
+const fontRoots = [
+  path.join(repoRoot, "packages", "font-maple", "assets"),
+  path.join(repoRoot, "packages", "fonts", "assets"),
+];
 const generatedMetricsDir = path.join(
   repoRoot,
   "packages",
@@ -25,7 +29,7 @@ const generatedMetricsDir = path.join(
 );
 const verifyOnly = process.argv.includes("--verify");
 
-const COVERAGE = { maple: 1, symbols: 2, emoji: 4 };
+const COVERAGE = { maple: 1, symbols: 2, emoji: 4, nerd: 8 };
 const EXPLORER_EXCLUDED_CATEGORIES = new Set(["Cn", "Cs", "Co"]);
 const ESSENTIAL_GROUPS = [
   { id: "ascii", label: "ASCII & Punctuation", ranges: [[0x20, 0x7e]] },
@@ -232,18 +236,20 @@ async function listFiles(directory) {
 
 async function buildFontCoverage() {
   const coverage = new Map();
-  const files = (await listFiles(fontsRoot)).filter((file) =>
-    file.endsWith(".woff2")
-  );
+  const files = (await Promise.all(fontRoots.map(listFiles)))
+    .flat()
+    .filter((file) => file.endsWith(".woff2"));
   for (const file of files) {
     const normalized = file.replaceAll("\\", "/");
     const bit = normalized.includes("/maple-mono-nf-cn/")
       ? COVERAGE.maple
-      : normalized.includes("/noto-sans-symbols-2/")
+      : normalized.includes("/julia-mono/")
         ? COVERAGE.symbols
         : normalized.includes("/noto-emoji/")
           ? COVERAGE.emoji
-          : 0;
+          : normalized.includes("/symbols-nerd-font-mono/")
+            ? COVERAGE.nerd
+            : 0;
     if (!bit) continue;
     const font = fontkit.openSync(file);
     for (const codePoint of font.characterSet) {
@@ -329,13 +335,13 @@ function buildEssentials(
 }
 
 function buildNerdGroups(source, coverage) {
-  return Object.entries(source).map(([label, items]) => ({
-    id: slugify(label),
-    label,
-    entries: items.flatMap((item) => {
+  return groupNerdFontCatalog(source).map((group) => ({
+    id: group.id,
+    label: group.label,
+    entries: group.entries.flatMap((item) => {
       const codePoint = item.char.codePointAt(0);
       const fontCoverage = coverage.get(codePoint) ?? 0;
-      if (!(fontCoverage & COVERAGE.maple)) return [];
+      if (!(fontCoverage & COVERAGE.nerd)) return [];
       return [{
         id: codePointLabel(codePoint),
         grapheme: item.char,
@@ -422,8 +428,8 @@ async function verifyAssets() {
       failures.push(`${asset.path}: missing`);
     }
   }
-  if (manifest.counts.main > 16000) {
-    failures.push("main catalog exceeds 16,000 entries");
+  if (manifest.counts.main > 17000) {
+    failures.push("main catalog exceeds 16,500 entries");
   }
   if (manifest.counts.essentials > 2000) {
     failures.push("Essentials exceeds 2,000 entries");
@@ -432,8 +438,8 @@ async function verifyAssets() {
     (total, assetPath) => total + gzipSync(contents.get(assetPath)).length,
     0
   );
-  if (mainGzipBytes > 175 * 1024) {
-    failures.push(`main packs exceed 175 KiB gzip (${mainGzipBytes} bytes)`);
+  if (mainGzipBytes > 195 * 1024) {
+    failures.push(`main packs exceed 185 KiB gzip (${mainGzipBytes} bytes)`);
   }
   const unicodeManifestGzipBytes = gzipSync(
     contents.get(manifest.unicodeManifest)

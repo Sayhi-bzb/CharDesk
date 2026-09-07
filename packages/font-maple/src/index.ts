@@ -14,7 +14,7 @@ export const MAPLE_FONT_SOURCES = [
 ] as const;
 
 export const MAPLE_FONT_PROFILE = createCharDeskFontProfile({
-  id: "chardesk/maple-v1",
+  id: "chardesk/maple-v4",
   display: MAPLE_FONT_FACE,
   cjk: MAPLE_FONT_FACE,
   sources: MAPLE_FONT_SOURCES,

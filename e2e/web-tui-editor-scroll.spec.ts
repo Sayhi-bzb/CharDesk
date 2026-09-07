@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { readCellProbe, readCellMetrics } from "./helpers/cell-probe";
 
 test("TextArea shares draggable rails without stealing selection or scrolling the page", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -10,6 +10,7 @@ test("TextArea shares draggable rails without stealing selection or scrolling th
   await editor.fill(value);
   const canvas = surface.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
+  const { cellWidth, cellHeight } = await readCellMetrics(surface);
   const bounds = (await canvas.boundingBox())!;
   const before = await readCellProbe(surface);
   const rail = before.cells.filter((cell) => cell.y === 10 && cell.ownerId === "editor-document");
@@ -17,9 +18,9 @@ test("TextArea shares draggable rails without stealing selection or scrolling th
   expect(before.cells.some((cell) => cell.x === 38 && cell.y >= 6 && cell.y < 10 && ["█", "▀", "▄"].includes(cell.text))).toBe(true);
   const selection = await editor.evaluate((input) => [input.selectionStart, input.selectionEnd]);
   const thumb = rail.find((cell) => cell.text === "█")!;
-  await page.mouse.move(bounds.x + (thumb.x + 0.5) * 9, bounds.y + 10.5 * 19);
+  await page.mouse.move(bounds.x + (thumb.x + 0.5) * cellWidth, bounds.y + 10.5 * cellHeight);
   await page.mouse.down();
-  await page.mouse.move(bounds.x + (thumb.x - 2) * 9, bounds.y + 10.5 * 19, { steps: 8 });
+  await page.mouse.move(bounds.x + (thumb.x - 2) * cellWidth, bounds.y + 10.5 * cellHeight, { steps: 8 });
   await page.mouse.up();
   const after = await readCellProbe(surface);
   expect(after.text.split("\n")[10]).not.toBe(before.text.split("\n")[10]);
@@ -28,7 +29,7 @@ test("TextArea shares draggable rails without stealing selection or scrolling th
   await expect(editor).toHaveValue(value);
   // Scroll away from the caret; neither the hidden input nor a browser wheel may move the page.
   const pageY = await page.evaluate(() => scrollY);
-  await page.mouse.move(bounds.x + 10 * 9, bounds.y + 7 * 19);
+  await page.mouse.move(bounds.x + 10 * cellWidth, bounds.y + 7 * cellHeight);
   const revision = after.revision;
   await page.mouse.wheel(0, -100);
   await expect.poll(async () => (await readCellProbe(surface)).revision).toBeGreaterThan(revision);

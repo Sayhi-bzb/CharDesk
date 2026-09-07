@@ -26,7 +26,7 @@
     'PingFang SC', 'Microsoft YaHei', sans-serif;
 
   --font-mono:
-    'Maple Mono NF CN', 'Noto Sans Symbols 2', ui-monospace, SFMono-Regular, Menlo, Monaco,
+    'Maple Mono NF CN', 'JuliaMono', ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, 'Liberation Mono', 'Courier New', monospace;
 
   --radius-sm: calc(var(--radius) - 4px);

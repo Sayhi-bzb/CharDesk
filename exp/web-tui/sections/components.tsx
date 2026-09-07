@@ -15,16 +15,20 @@ const noCommand = () => undefined;
 
 export const TextComponentDemo = () => (
   <GallerySurface
-    viewport={{ width: 36, height: 8 }}
+    viewport={{ width: 36, height: 12 }}
     onCommand={noCommand}
     label="Text component"
     probeId="component-text"
   >
     <Root id="component-text-root">
-      <Box id="component-text-frame" style={{ border: true, height: 8, padding: 1 }}>
-        <Text id="component-text-plain">Plain text</Text>
-        <Text id="component-text-unicode">Unicode: 世界 👋</Text>
-        <Text id="component-text-wrap">Wraps on integer Cell boundaries.</Text>
+      <Box id="component-text-frame" style={{ border: true, height: 12, padding: 1 }}>
+        <Text id="component-text-plain" textStyle={{ bold: true }}>◆ Plain text · READY</Text>
+        <Text id="component-text-unicode">→ Unicode: 世界 👋</Text>
+        <Text id="component-text-move">↔ Move: ← ↑ ↓ →</Text>
+        <Text id="component-text-status">✓ Status: PASS · IDLE</Text>
+        <Text id="component-text-math">∞ Math: ≠ ≤ ≥ ± × ÷</Text>
+        <Text id="component-text-signal">▓ Signal: ░▒▓█</Text>
+        <Text id="component-text-wrap" textStyle={{ dim: true }}>↳ Wraps on integer Cell boundaries.</Text>
       </Box>
     </Root>
   </GallerySurface>

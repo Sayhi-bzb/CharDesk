@@ -5,7 +5,7 @@ import { Box, CellBuffer, CellUiRuntime, Overlay, Root, ScrollArea, TextArea, hi
 it.each([
   ["square", "┌─┐\n│ │\n└─┘"],
   ["rounded", "╭─╮\n│ │\n╰─╯"],
-] as const)("%s borders preserve owned characters, background and clipping", (shape, expected) => {
+] as const)("%s borders preserve owned Unicode, background and clipping", (shape, expected) => {
   const buffer = new CellBuffer({ width: 3, height: 3 });
   const bounds = { x: 0, y: 0, width: 3, height: 3 };
   buffer.writeText(0, 0, "   ", "surface", { backgroundColor: "red" });
@@ -14,10 +14,7 @@ it.each([
   expect(buffer.get(0, 0)).toMatchObject({
     ownerId: "border",
     style: { color: "gray", backgroundColor: "red" },
-    primitive: { kind: "line", edges: 2 | 4, join: shape, weight: "single" },
   });
-  expect(buffer.get(0, 1)?.primitive).toMatchObject({ kind: "line", edges: 1 | 4 });
-  expect(buffer.get(1, 0)?.primitive).toMatchObject({ kind: "line", edges: 2 | 8 });
   const clipped = new CellBuffer({ width: 3, height: 3 });
   paintBorder(clipped, "border", bounds, shape, {}, { x: 1, y: 0, width: 1, height: 3 });
   expect(clipped.toText()).toBe(" ─ \n   \n ─ ");
@@ -28,7 +25,7 @@ it.each([
   }
 });
 
-it("shape changes reuse geometry across primitives and repaint like a fresh frame", () => {
+it("shape changes reuse geometry across glyphs and repaint like a fresh frame", () => {
   const viewport = { width: 18, height: 15 };
   const view = <Root>
     <Box id="box" style={{ border: true, width: 12, height: 5 }}>
@@ -48,10 +45,6 @@ it("shape changes reuse geometry across primitives and repaint like a fresh fram
     for (const id of ["box", "nested", "scroll", "editor", "overlay"]) {
       const bounds = frame.scene.entries.get(id)!.layoutBounds;
       expect(frame.buffer.get(bounds.x, bounds.y)?.text).toBe(borderShape === "rounded" ? "╭" : "┌");
-      expect(frame.buffer.get(bounds.x, bounds.y)?.primitive).toMatchObject({
-        kind: "line",
-        join: borderShape,
-      });
       expect(hitTestCell(frame.scene, bounds)).toEqual(hitTestCell(before.scene, bounds));
     }
     const fresh = new CellUiRuntime({ viewport, theme: { borderShape } });

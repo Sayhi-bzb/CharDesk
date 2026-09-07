@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { readCellProbe, readCellPixel } from "./helpers/cell-probe";
 
 test("editor blur clears the full focus surface and caret but preserves logical state", async ({ page }) => {
   await page.goto("/exp/web-tui/#/__fixtures/all");
@@ -10,8 +10,7 @@ test("editor blur clears the full focus surface and caret but preserves logical 
   const active = await readCellProbe(surface);
   expect(active.cells.find((cell) => cell.x === 10 && cell.y === 8)?.style.backgroundColor).toBeTruthy();
   const canvas = surface.locator("canvas");
-  const caretPixel = () => canvas.evaluate((canvas) => Array.from(canvas.getContext("2d")!
-    .getImageData(Math.round(9 * devicePixelRatio), Math.round(6.5 * 19 * devicePixelRatio), 1, 1).data));
+  const caretPixel = () => readCellPixel(surface, 1, 6.5);
   const focusedPixel = await caretPixel();
   await editor.evaluate((input) => input.blur());
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");

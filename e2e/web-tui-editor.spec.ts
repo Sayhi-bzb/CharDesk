@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { copyCellRange } from "./helpers/cell-probe";
+import { copyCellRange, readCellMetrics } from "./helpers/cell-probe";
 
 test("Cell editor shares Unicode, composition, selection, and history across Canvas and textarea", async ({ page }) => {
   const pageErrors: string[] = [];
@@ -34,11 +34,12 @@ test("Cell editor shares Unicode, composition, selection, and history across Can
 
   await name.fill("abcdef");
   await canvas.scrollIntoViewIfNeeded();
+  const { cellWidth, cellHeight } = await readCellMetrics(surface);
   const bounds = await canvas.boundingBox();
   expect(bounds).not.toBeNull();
-  await page.mouse.move(bounds!.x + 3.5 * 9, bounds!.y + 2.5 * 19);
+  await page.mouse.move(bounds!.x + 3.5 * cellWidth, bounds!.y + 2.5 * cellHeight);
   await page.mouse.down();
-  await page.mouse.move(bounds!.x + 6.5 * 9, bounds!.y + 2.5 * 19, { steps: 6 });
+  await page.mouse.move(bounds!.x + 6.5 * cellWidth, bounds!.y + 2.5 * cellHeight, { steps: 6 });
   await page.mouse.up();
   await expect(name).toHaveJSProperty("selectionStart", 2);
   await expect(name).toHaveJSProperty("selectionEnd", 5);
@@ -57,14 +58,15 @@ test("Cell range selects and copies the final rendered border", async ({ page })
   const surface = section.getByLabel("Cell text editor");
   const canvas = surface.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
+  const { cellWidth, cellHeight } = await readCellMetrics(surface);
   const bounds = await canvas.boundingBox();
   expect(bounds).not.toBeNull();
 
   await page.keyboard.down("Alt");
   await page.keyboard.down("Meta");
-  await page.mouse.move(bounds!.x + 0.5 * 9, bounds!.y + 1.5 * 19);
+  await page.mouse.move(bounds!.x + 0.5 * cellWidth, bounds!.y + 1.5 * cellHeight);
   await page.mouse.down();
-  await page.mouse.move(bounds!.x + 39.5 * 9, bounds!.y + 3.5 * 19, { steps: 8 });
+  await page.mouse.move(bounds!.x + 39.5 * cellWidth, bounds!.y + 3.5 * cellHeight, { steps: 8 });
   await page.mouse.up();
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");
@@ -107,13 +109,14 @@ test("horizontal and vertical editor scroll cannot paint over chrome Cells", asy
   expect(lines[11]).toBe(bottom);
 
   await canvas.scrollIntoViewIfNeeded();
+  const { cellWidth, cellHeight } = await readCellMetrics(surface);
   const bounds = await canvas.boundingBox();
   expect(bounds).not.toBeNull();
   await page.keyboard.down("Alt");
   await page.keyboard.down("Meta");
-  await page.mouse.move(bounds!.x + 0.5 * 9, bounds!.y + 5.5 * 19);
+  await page.mouse.move(bounds!.x + 0.5 * cellWidth, bounds!.y + 5.5 * cellHeight);
   await page.mouse.down();
-  await page.mouse.move(bounds!.x + 39.5 * 9, bounds!.y + 11.5 * 19, { steps: 8 });
+  await page.mouse.move(bounds!.x + 39.5 * cellWidth, bounds!.y + 11.5 * cellHeight, { steps: 8 });
   await page.mouse.up();
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");

@@ -11,7 +11,7 @@ import {
 
 describe("core font profile", () => {
   it("keeps its stable id, routes, and pinned source versions together", () => {
-    expect(CHARDESK_SYSTEM_FONT_PROFILE.id).toBe("chardesk/system-v1");
+    expect(CHARDESK_SYSTEM_FONT_PROFILE.id).toBe("chardesk/system-v4");
     expect(CHARDESK_SYSTEM_FONT_PROFILE_ID).toBe(CHARDESK_SYSTEM_FONT_PROFILE.id);
     expect(CHARDESK_SYSTEM_FONT_PROFILE.families.text).toBe(
       CHARDESK_SYSTEM_FONT_FAMILY
@@ -24,7 +24,7 @@ describe("core font profile", () => {
     expect(CHARDESK_SYSTEM_FONT_PROFILE.capabilities.emoji.families.regular)
       .toBe(CHARDESK_SYSTEM_FONT_PROFILE.families.emoji);
     expect(CHARDESK_SYSTEM_FONT_PROFILE.sources.map(({ id }) => id)).toEqual([
-      "noto-sans-symbols-2",
+      "julia-mono",
       "noto-emoji",
       "symbols-nerd-font-mono",
     ]);
@@ -41,6 +41,39 @@ describe("core font profile", () => {
     expect(profile.capabilities.nerd.families.regular).toContain("Symbols Nerd Font Mono");
     expect(profile.capabilities.symbol.families.regular).toContain("Test Latin");
     expect(profile.capabilities.symbol.families.regular).toContain("Test CJK");
+    expect(profile.capabilities.symbol.families.regular.indexOf("Test Latin"))
+      .toBeLessThan(profile.capabilities.symbol.families.regular.indexOf("JuliaMono"));
+    expect(profile.capabilities.symbol.families.regular.indexOf("Test CJK"))
+      .toBeLessThan(profile.capabilities.symbol.families.regular.indexOf("JuliaMono"));
+    expect(profile.capabilities.symbol.weightPolicy).toBeUndefined();
+  });
+
+  it("lets symbols inherit the selected display weight before the JuliaMono fallback", () => {
+    const profile = createCharDeskFontProfile({
+      id: "test/display-weight",
+      display: { families: { regular: "Display Regular", bold: "Display Bold" } },
+      cjk: { families: { regular: "CJK Regular", bold: "CJK Bold" } },
+    });
+
+    expect(profile.capabilities.symbol.families.regular)
+      .toBe("Display Regular, CJK Regular, 'JuliaMono'");
+    expect(profile.capabilities.symbol.families.bold)
+      .toBe("Display Bold, CJK Bold, 'JuliaMono'");
+    expect(profile.capabilities.nerd.families.regular)
+      .toMatch(/^'Symbols Nerd Font Mono'/);
+    expect(profile.capabilities.emoji.families.regular)
+      .toMatch(/^'Noto Emoji', 'JuliaMono'/);
+  });
+
+  it("propagates regular-only display policy to display-first symbols", () => {
+    const profile = createCharDeskFontProfile({
+      id: "test/regular-display",
+      display: { families: { regular: "Regular Only" }, weightPolicy: "regular" },
+    });
+    expect(profile.capabilities.symbol.weightPolicy).toBe("regular");
+    expect(profile.capabilities.symbol.families.regular).toContain("Regular Only");
+    expect(profile.capabilities.nerd.weightPolicy).toBe("regular");
+    expect(profile.capabilities.emoji.weightPolicy).toBe("regular");
   });
 
   it("classifies graphemes by font capability without changing render routes", () => {
@@ -50,7 +83,10 @@ describe("core font profile", () => {
     expect(resolveCharDeskFontCapability("。")).toBe("cjk");
     expect(resolveCharDeskFontCapability("，")).toBe("cjk");
     expect(resolveCharDeskFontCapability("\ue0b0")).toBe("nerd");
-    expect(resolveCharDeskFontCapability("─")).toBe("symbol");
+    for (const glyph of ["┌", "─", "╭", "│", "█", "▀", "▄", "▌", "▐"]) {
+      expect(resolveCharDeskFontCapability(glyph)).toBe("display");
+    }
+    expect(resolveCharDeskFontCapability("∞")).toBe("symbol");
     expect(resolveCharDeskFontCapability("♥")).toBe("nerd");
     expect(resolveCharDeskFontCapability("♥️")).toBe("emoji");
     expect(resolveCharDeskFontCapability("👩🏽‍💻")).toBe("emoji");
@@ -62,12 +98,12 @@ describe("core font profile", () => {
         new URL("../../../scripts/data/sources/nerdfonts.json", import.meta.url),
         "utf8"
       )
-    ) as Record<string, Array<{ char: string }>>;
-    const codePoints = new Set(
-      Object.values(catalog).flat().map(({ char }) => char.codePointAt(0)!)
-    );
+    ) as Record<string, { char?: string }>;
+    const entries = Object.entries(catalog).filter(([name]) => name !== "METADATA");
+    const codePoints = new Set(entries.map(([, { char }]) => char!.codePointAt(0)!));
 
-    expect(codePoints.size).toBe(10_385);
+    expect(entries).toHaveLength(10_995);
+    expect(codePoints.size).toBe(10_617);
     expect([...codePoints].every(isNerdFontCodePoint)).toBe(true);
   });
 
@@ -94,6 +130,6 @@ describe("core font profile", () => {
     );
     expect(JSON.stringify(manifest)).not.toMatch(/maple/i);
     expect(manifest.assets.reduce((total, asset) => total + asset.size, 0)).toBeLessThan(5 * 1024 * 1024);
-    expect(manifest.assets.filter(({ path }) => path.endsWith(".woff2")).length).toBe(29);
+    expect(manifest.assets.filter(({ path }) => path.endsWith(".woff2")).length).toBe(45);
   });
 });

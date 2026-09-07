@@ -468,6 +468,64 @@ const ComplexWidgetProduct = () => {
 };
 
 describe("CellSurface", () => {
+  it("visible glyphs use full presentations; switching back restores clipping without changing Cells", () => {
+    const metrics = { cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" };
+    const children = <Root><Text>→</Text></Root>;
+    const onCommand = () => undefined;
+    const viewport = { width: 8, height: 2 };
+    const view = (glyphOverflow?: "clip" | "visible", color = "red") => <CellSurface
+      viewport={viewport} metrics={metrics} onCommand={onCommand} probeId="overflow"
+      label="Overflow" glyphOverflow={glyphOverflow} palette={{ color, background: "white" }}>
+      {children}
+    </CellSurface>;
+    context.clip.mockClear();
+    const mounted = render(view());
+    expect(context.clip).toHaveBeenCalled();
+    const surface = screen.getByLabelText("Overflow");
+    const before = readCellSurfaceProbe(surface)!;
+    context.clip.mockClear(); context.fillRect.mockClear();
+    mounted.rerender(view("visible"));
+    expect(context.clip).not.toHaveBeenCalled();
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 80, 40);
+    expect(readCellSurfaceProbe(surface)!.presentation?.glyphOverflowMode).toBe("visible");
+    context.fillRect.mockClear();
+    mounted.rerender(view("visible", "blue"));
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 80, 40);
+    mounted.rerender(view("clip"));
+    expect(context.clip).toHaveBeenCalled();
+    const after = readCellSurfaceProbe(surface)!;
+    expect(after.cells).toEqual(before.cells);
+    expect(after.revision).toBe(before.revision);
+    expect(after.presentation?.glyphOverflowMode).toBe("clip");
+  });
+  it("cancels a captured rectangle drag when metrics change and preserves its selection", () => {
+    const children = <Root><Text>abcdefgh</Text></Root>;
+    const onCommand = () => undefined;
+    const viewport = { width: 8, height: 3 };
+    const view = (cellWidth: number) => <CellSurface viewport={viewport} onCommand={onCommand}
+      label="Measured range" probeId="measured-range"
+      metrics={{ cellWidth, cellHeight: 20, fontSize: 15, fontFamily: "monospace", baseline: 15 }}>
+      {children}
+    </CellSurface>;
+    const mounted = render(view(10));
+    const surface = screen.getByLabelText("Measured range");
+    const canvas = mounted.container.querySelector("canvas")!;
+    fireEvent.pointerDown(canvas, { button: 0, altKey: true, pointerId: 7, clientX: 5, clientY: 10 });
+    fireEvent.pointerMove(surface, { pointerId: 7, clientX: 25, clientY: 10 });
+    const selection = surface.getAttribute("data-cell-range");
+    const before = readCellSurfaceProbe(surface)!;
+    mounted.rerender(view(12.5));
+    expect(surface.releasePointerCapture).toHaveBeenCalledWith(7);
+    fireEvent.pointerMove(surface, { pointerId: 7, clientX: 75, clientY: 50 });
+    fireEvent.pointerUp(surface, { pointerId: 7 });
+    expect(surface.getAttribute("data-cell-range")).toBe(selection);
+    const after = readCellSurfaceProbe(surface)!;
+    expect(after.text).toBe(before.text);
+    expect(after.revision).toBe(before.revision);
+    expect(after.presentation?.metrics.cellWidth).toBe(12.5);
+    expect(canvas.width).toBe(100);
+  });
+
   it("releases Yoga resources across a React StrictMode mount cycle", async () => {
     const baseline = YogaLayoutEngine.getResourceCounts();
     const mounted = render(
@@ -1049,6 +1107,69 @@ describe("CellSurface", () => {
     expect(surface).not.toHaveAttribute("data-cell-range");
   });
 
+  it("clears controlled and default Cell Ranges only after confirmed external focus exit", async () => {
+    const selectRange = (surface: HTMLElement, canvas: HTMLCanvasElement, pointerId: number) => {
+      fireEvent.pointerDown(canvas, {
+        button: 0,
+        altKey: true,
+        pointerId,
+        clientX: 5,
+        clientY: 10,
+      });
+      fireEvent.pointerMove(surface, { pointerId, clientX: 75, clientY: 50 });
+      fireEvent.pointerUp(surface, { pointerId });
+    };
+    const controlled = render(<><RangeProduct /><button type="button">Outside</button></>);
+    const surface = screen.getByLabelText("Range surface");
+    const canvas = controlled.container.querySelector("canvas")!;
+    const outside = screen.getByRole("button", { name: "Outside" });
+
+    selectRange(surface, canvas, 30);
+    expect(surface).toHaveAttribute("data-cell-range");
+    fireEvent.blur(surface, { relatedTarget: outside });
+    expect(surface).not.toHaveAttribute("data-cell-range");
+    expect(screen.getByLabelText("Range text")).toHaveTextContent("");
+
+    selectRange(surface, canvas, 31);
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    fireEvent.blur(surface);
+    await Promise.resolve();
+    expect(surface).toHaveAttribute("data-cell-range");
+    hasFocus.mockRestore();
+    controlled.unmount();
+
+    const onRangeCommand = vi.fn();
+    const uncontrolled = render(<><DefaultRangeProduct onRangeCommand={onRangeCommand} /><button type="button">Next</button></>);
+    const defaultSurface = screen.getByLabelText("Default range surface");
+    const defaultCanvas = uncontrolled.container.querySelector("canvas")!;
+    selectRange(defaultSurface, defaultCanvas, 32);
+    fireEvent.blur(defaultSurface, { relatedTarget: screen.getByRole("button", { name: "Next" }) });
+    expect(defaultSurface).not.toHaveAttribute("data-cell-range");
+    expect(onRangeCommand).toHaveBeenLastCalledWith({ type: "clear" });
+  });
+
+  it("preserves a Cell Range while focus moves within its Surface", async () => {
+    const { container } = render(<EditorProduct />);
+    const surface = screen.getByLabelText("Cell interface");
+    const canvas = container.querySelector("canvas")!;
+    const input = screen.getByRole("textbox", { name: "Name" });
+    fireEvent.pointerDown(canvas, {
+      button: 0,
+      altKey: true,
+      pointerId: 33,
+      clientX: 5,
+      clientY: 10,
+    });
+    fireEvent.pointerUp(surface, { pointerId: 33 });
+    expect(surface).toHaveAttribute("data-cell-range");
+    fireEvent.blur(surface, { relatedTarget: input });
+    expect(surface).toHaveAttribute("data-cell-range");
+    input.focus();
+    fireEvent.blur(surface);
+    await Promise.resolve();
+    expect(surface).toHaveAttribute("data-cell-range");
+  });
+
   it("owns Cell Range state by default and requires Command on Apple platforms", () => {
     const platform = vi.spyOn(window.navigator, "platform", "get")
       .mockReturnValue("MacIntel");
@@ -1237,7 +1358,7 @@ describe("CellSurface", () => {
     const snapshot = readCellSurfaceProbe(surface)!;
     expect(surface).toHaveAttribute("data-cell-probe", "browser-test");
     expect(snapshot).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       probeId: "browser-test",
       text: pilot.text(),
       focusedId: "probe-open",

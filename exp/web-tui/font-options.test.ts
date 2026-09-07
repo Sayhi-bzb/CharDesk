@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { resolveCharDeskCanvasFontFace } from "@chardesk/rendering/canvas";
-import { galleryFontOptions } from "./font-options";
+import { galleryFontOptions, nextGalleryFont } from "./font-options";
 
-const resolve = (id: "ark-prop" | "ark-mono", grapheme: string) =>
+const resolve = (id: "ark-mono" | "xiaolai-mono", grapheme: string) =>
   resolveCharDeskCanvasFontFace({
     grapheme,
     route: "text",
@@ -12,7 +12,42 @@ const resolve = (id: "ark-prop" | "ark-mono", grapheme: string) =>
   });
 
 describe("Web TUI gallery font profiles", () => {
-  for (const id of ["ark-prop", "ark-mono"] as const) {
+  it("declares Ark faces regular-only without suppressing Maple bold", () => {
+    for (const id of ["maple", "ark-mono", "xiaolai-mono"] as const) {
+      const face = resolveCharDeskCanvasFontFace({
+        grapheme: "A", route: "text", bold: true, italic: false,
+        fontProfile: galleryFontOptions[id].profile,
+      });
+      expect(face.weightPolicy).toBe(id === "maple" ? "inherit" : "regular");
+    }
+    expect(galleryFontOptions["ark-mono"].profile.capabilities.display.families.bold).toBeUndefined();
+    expect(galleryFontOptions["ark-mono"].profile.capabilities.cjk.weightPolicy).toBe("regular");
+    expect(resolve("ark-mono", "∞").weightPolicy).toBe("regular");
+  });
+  it("cycles local fonts and the remote trial without grid overrides", () => {
+    expect(Object.keys(galleryFontOptions)).toEqual(["maple", "ark-mono", "xiaolai-mono"]);
+    expect(nextGalleryFont("maple")).toBe("ark-mono");
+    expect(nextGalleryFont("ark-mono")).toBe("xiaolai-mono");
+    expect(nextGalleryFont("xiaolai-mono")).toBe("maple");
+    expect(galleryFontOptions["xiaolai-mono"].profile.capabilities.display.cellMetrics).toBeUndefined();
+    expect(galleryFontOptions["ark-mono"].profile.capabilities.display.cellMetrics).toBeUndefined();
+    expect(galleryFontOptions.maple.profile.capabilities.display.cellMetrics).toBeUndefined();
+  });
+  it("routes the Xiaolai trial through the existing display/CJK stack", () => {
+    const option = galleryFontOptions["xiaolai-mono"];
+    expect(option.stylesheet).toBe("https://fontsapi.zeoseven.com/282/main/result.css");
+    expect(option.fontSpec).toBe("15px 'Xiaolai Mono'");
+    expect(option.loadSamples).toEqual(["AgWi09", "世界，。"]);
+    for (const text of ["A", "界", "│", "█", "→"]) {
+      expect(resolve("xiaolai-mono", text)).toMatchObject({
+        family: expect.stringMatching(/^'Xiaolai Mono'.*Maple Mono/),
+        fontSizeScale: 1, scaleX: 1, baselineShiftEm: 0, weightPolicy: "regular",
+      });
+    }
+    expect(resolve("xiaolai-mono", "👋").family).toMatch(/^'Noto Emoji'/);
+    expect(resolve("xiaolai-mono", "\ue0b0").family).toMatch(/^'Symbols Nerd Font Mono'/);
+  });
+  for (const id of ["ark-mono"] as const) {
     it(`routes Latin and CJK through ${id} without Canvas-only calibration`, () => {
       const option = galleryFontOptions[id];
       const display = resolve(id, "A");
@@ -24,8 +59,13 @@ describe("Web TUI gallery font profiles", () => {
       expect(cjk).toMatchObject({ capability: "cjk", fontSizeScale: 1, scaleX: 1, baselineShiftEm: 0 });
       expect(option.fontSpec).toMatch(/^15px /);
       expect(option.loadSamples).toEqual(["AgWi09", "世界，。"]);
+      expect(option.profile.id).toBe(`chardesk/gallery-${id}-maple-core-v4-2026.09.01`);
+      expect(option.stylesheet).not.toMatch(/^https?:/);
+      expect(option.profile.sources).toContainEqual(expect.objectContaining({ id: "ark-mono", version: "2026.09.01" }));
       expect(resolve(id, "\ue0b0").family).toMatch(/^'Symbols Nerd Font Mono'/);
-      expect(resolve(id, "─").family).toMatch(/^'Noto Sans Symbols 2'/);
+      expect(resolve(id, "∞").family).toMatch(/^'Ark Pixel 12px/);
+      expect(resolve(id, "∞").family.indexOf("Ark Pixel 12px"))
+        .toBeLessThan(resolve(id, "∞").family.indexOf("JuliaMono"));
       expect(resolve(id, "👋").family).toMatch(/^'Noto Emoji'/);
     });
   }

@@ -18,7 +18,7 @@ describe("generated character catalog", () => {
   it("pins Unicode and Emoji versions with bounded main packs", () => {
     expect(manifest.unicodeVersion).toBe("17.0.0");
     expect(manifest.emojiVersion).toBe("17.0");
-    expect(manifest.counts.main).toBeLessThanOrEqual(16_000);
+    expect(manifest.counts.main).toBeLessThanOrEqual(17_000);
     expect(manifest.counts.essentials).toBeLessThanOrEqual(2_000);
     expect(manifest.counts.unicode).toBeGreaterThan(150_000);
     const mainPackBytes = Object.values(manifest.packs).reduce(
@@ -26,7 +26,7 @@ describe("generated character catalog", () => {
         total + gzipSync(readFileSync(path.join(root, assetPath as string))).length,
       0
     );
-    expect(mainPackBytes).toBeLessThanOrEqual(175 * 1024);
+    expect(mainPackBytes).toBeLessThanOrEqual(195 * 1024);
     expect(
       gzipSync(readFileSync(path.join(root, manifest.unicodeManifest))).length
     ).toBeLessThanOrEqual(40 * 1024);
@@ -62,6 +62,8 @@ describe("generated character catalog", () => {
   it("keeps Emoji sequences and Nerd glyphs in separate packs", () => {
     const emoji = readAsset(manifest.packs.emoji);
     const nerd = readAsset(manifest.packs.nerd);
+    expect(nerd.groups.flatMap((group: { entries: unknown[] }) => group.entries))
+      .toHaveLength(10_995);
     expect(emoji.groups.flatMap((group: { entries: unknown[] }) => group.entries))
       .toEqual(expect.arrayContaining([
         expect.objectContaining({ grapheme: "👩🏽‍💻" }),

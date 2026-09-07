@@ -39,13 +39,19 @@
 | P5.4 | Phase 5 / Cell 可检查性 | `CellBuffer.toText` 统一 Range、Probe、TestPilot 与 Browser 字符提取并保留 Unicode space/grapheme；versioned `CellProbeSnapshot` 提供无损 Cell JSON 和 owner/style/hit/clip/focus 诊断 | [probe tests](../packages/cell-ui/src/probe.test.tsx)、[range tests](../packages/cell-ui/src/range.test.ts)、[browser parity tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Chromium/WebKit E2E](../e2e/web-tui.spec.ts)、[包契约](../packages/cell-ui/README.md#cell-inspection) |
 | P5.5 | Phase 5 / 字体能力路由 | Font Profile 将 display/CJK/Nerd/symbol/emoji face 与 Cell geometry 解耦；family、font scale、baseline 和 weight policy 贯通 Canvas、字体加载与 CellSurface | [字体能力栈](research/font-stack.md)、[font profile tests](../packages/fonts/src/index.test.ts)、[Canvas tests](../packages/rendering/src/canvas.test.ts)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx)、[font audit](../scripts/fonts/audit-font-capabilities.test.ts) |
 | P5.6 | Phase 5 / 字体分发拆层 | `@chardesk/fonts` 仅分发 Nerd/symbol/emoji Core；`@chardesk/font-maple` 独立承载兼容显示层且 Profile 只把 Maple 用于 display/CJK；渲染默认使用 system Profile，现有产品显式选择 Maple | [Core package](../packages/fonts/README.md)、[Maple package](../packages/font-maple/README.md)、[manifests](../packages/fonts/manifest.json)、[字体能力栈](research/font-stack.md) |
-| P5.7 | Phase 5 / Cell 几何投影 | `Cell.text` 保持可复制字符真值；组件 border/thumb 携带显式 line/fill primitive，Canvas 以设备像素对齐的连续几何绘制；未标记的用户字符仍走字体 | [Compositor 契约](blueprints/compositor.md)、[Canvas tests](../packages/rendering/src/canvas.test.ts)、[border tests](../packages/cell-ui/src/border.test.tsx)、[probe tests](../packages/cell-ui/src/probe.test.tsx) |
+| P5.7 | Phase 5 / Cell Unicode 投影 | `Cell.text` 是唯一前景；border/thumb 与内容均由当前 display font 渲染，Canvas、复制、Range、Probe 和 LLM 共用相同 Unicode | [顶层哲学](ui-philosophy.md)、[Compositor 契约](blueprints/compositor.md)、[Canvas tests](../packages/rendering/src/canvas.test.ts)、[probe tests](../packages/cell-ui/src/probe.test.tsx) |
+| P5.8 | Phase 5 / 确定性网格 | `CellSurface` 默认 `9×20 / 15px / baseline 15` 在首帧同步确定，与通用 Canvas 的兼容默认值分离；字体加载只更新 readiness、字形与审计，不改变 Surface；绘制、命中、caret、Range 与输入框共用稳定尺寸，显式 metrics 优先 | [网格契约](../packages/cell-ui/README.md)、[字体生命周期](../packages/cell-ui/src/browser-font-metrics.dom.test.tsx)、[跨字体交互](../e2e/web-tui-font-metrics.spec.ts) |
+| P5.10 | Phase 5 / 字体绘制契约 | 字形保留小数锚点，背景与裁剪独立对齐；resolver、加载、绘制共同遵守有效字重；Ark Mono 禁用合成粗体，Maple 保留粗体；真实 Ark ASCII 在 Chromium/WebKit 的 DPR 1、1.25、2 下通过字距、字重和编辑/Range 检查 | [绘制契约](../packages/rendering/README.md#fixed-cell-grids-and-font-measurement)、[Canvas tests](../packages/rendering/src/canvas.test.ts)、[真实字体测试](../e2e/web-tui-ark-mono.spec.ts)、[跨字体交互](../e2e/web-tui-font-metrics.spec.ts)、[正式字体与已知边界](../packages/font-ark/README.md) |
+| P5.11 | Phase 5 / 字体网格适配审计 | Probe 区分字体原始尺寸、Profile 校准与实际 Surface 网格，缓存固定样本的字重、越格和理论断缝报告；通用校准、加载失败恢复与缓存失效由单元测试覆盖，真实 Ark Mono 验证浏览器报告 | [审计契约](../packages/rendering/README.md#font-grid-audit)、[Probe 消费](../packages/cell-ui/README.md#cell-inspection)、[审计测试](../packages/rendering/src/font-audit.test.ts)、[真实字体验证](../e2e/web-tui-font-audit.spec.ts) |
+| P5.12 | Phase 5 / Ark 本地资源 | 私有 Ark 字体包固定官方 2026.09.01，含完整 WOFF2、OFL 与校验清单；Gallery 与测试消费同一 Ark 资源，按需加载、失败重试，加载 Ark 不产生第三方字体请求；15px 下 ASCII 宽 7.5px，部分边框/块/箭头为 15px，Probe 如实报告单 Cell 越格 | [资源事实](../packages/font-ark/README.md)、[离线校验](../scripts/fonts/ark-font.test.ts)、[加载回归](../e2e/web-tui-appearance.spec.ts)、[CSP 回归](../e2e/web-tui-csp.spec.ts) |
+| P5.14 | Phase 5 / Nerd 字体分发 | Core 固定官方 Symbols Nerd Font Mono 3.5.1 与同版 10,617 码点 catalog；语义组按 96 KiB 上限递归切为 27 个互斥 shard；CSS、运行时识别和字符数据同源生成 | [Core 字体契约](../packages/fonts/README.md)、[字体事实](research/font-stack.md)、[切片测试](../scripts/fonts/nerd-font.test.ts)、[浏览器请求测试](../e2e/web-tui-nerd-font.spec.ts) |
 
 ## VERIFY
 
 | ID | Phase / 切片 | 已有基础 | 完成门槛 | 依赖 |
 | --- | --- | --- | --- | --- |
-| — | 无 | 当前没有等待专项结论的切片 | — | — |
+| P5.9 | Phase 5 / 完整字形试验 | Gallery 使用 `glyphOverflow="visible"`；保留 Cell 数据隔离，允许墨水越格，全 Surface 重绘防残影；默认消费方保持裁剪 | 根据完整字形的实际重叠效果决定组件像素隔离与后续重绘策略 | [CellSurface](../packages/cell-ui/README.md)、[越界墨水测试](../e2e/web-tui-glyph-overflow.spec.ts) |
+| P5.13 | Phase 5 / Xiaolai Mono 试用 | Gallery 三字体切换，在线按需加载；双浏览器、三个 DPR 的真实字体交互测试通过，Probe 输出字体与字符事实 | 仍是在线试用；字体覆盖、符号双宽与实际墨水接缝未获得正式兼容结论 | [候选事实](research/font-stack.md#xiaolai-mono-页面试用)、[交互探针](../e2e/web-tui-font-metrics.spec.ts)、[加载恢复](../e2e/web-tui-xiaolai.spec.ts) |
 
 ## READY
 

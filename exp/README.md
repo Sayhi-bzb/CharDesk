@@ -2,7 +2,7 @@
 
 这里记录 Web TUI Engine 当前有效的产品约束、上游采用结论、架构权威和可选能力边界。交付切片、验收门槛与状态由 [Web TUI Roadmap](roadmap.md) 统一维护；采用状态的定义与候选检查方法见[候选检查标准](research/checklist.md)。被替代的判断只保留在 Git 历史中。
 
-产品交互以 [Cell-native UI 哲学](ui-philosophy.md) 为权威；现有 primitive 的具体表现以 [Cell Widget 行为规范](blueprints/widgets.md) 为权威。
+产品交互以 [Cell-native UI 哲学](ui-philosophy.md) 为权威；Widget 的具体表现以 [Cell Widget 行为规范](blueprints/widgets.md) 为权威。
 
 ## 已确定约束
 
@@ -50,6 +50,8 @@
 | React Host | [`@chardesk/cell-ui`](../packages/cell-ui/README.md) | Cell descriptors 生成 stable Widget Tree；`/browser` 的 `CellSurface` 提交 Canvas、真实 textarea 与 Semantic DOM | 应用业务状态、自定义 reconciler |
 | Cell Layout | `@chardesk/cell-ui` `YogaLayoutEngine` | viewport 与 style 输入 Yoga，输出整数 border box、逐边 border/padding Insets 和 local content rect | scroll、clip、paint、文本 Cell width |
 | Font Capability | [`@chardesk/fonts`](../packages/fonts/README.md) + [字体能力栈](research/font-stack.md) | Profile 将 grapheme 路由到 display/CJK/Nerd/symbol/emoji face，并拥有 font scale、baseline 和 weight policy | grapheme segmentation、Cell width、字体审美选择 |
+| Cell Metrics + Font | [CellSurface](../packages/cell-ui/README.md) + [字体测量](../packages/rendering/README.md#fixed-cell-grids-and-font-measurement) | Web TUI 默认 `9×20 / 15px / baseline 15` 同步决定布局；字体加载只重绘与审计，显式 metrics 可覆盖 | Unicode 占位、字形无缝拼接 |
+| 完整字形试验 | [CellSurface](../packages/cell-ui/README.md) `glyphOverflow` | Gallery 开启 `visible`，允许墨水越格；全 Surface 重绘避免残影，Probe 标明模式；默认消费者保留 `clip` | 组件像素隔离、增量 raster 性能保证 |
 | SceneGeometry / Compositor | `@chardesk/cell-ui` + [完整契约](blueprints/compositor.md) | root geometry、nested scroll、outer/content clips、Overlay 双 parent/layer、paint order 与 hit query 使用同一几何权威 | Widget state、文本测量、px raster |
 | Unicode / Text | `@chardesk/protocol` | grapheme、Cell width、continuation Cell 和 offset 映射的唯一权威 | Widget layout、编辑状态、IME |
 | Editor State | `@codemirror/state` adapter | UTF-16 document offset 是编辑权威；CharDesk 映射到 grapheme 与 Cell geometry | DOM view、Cell layout、浏览器输入 |

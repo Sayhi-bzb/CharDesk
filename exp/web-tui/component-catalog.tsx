@@ -34,11 +34,16 @@ import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function TextExample() {
   return (
-    <CellSurface viewport={{ width: 36, height: 8 }} onCommand={() => {}}>
+    <CellSurface viewport={{ width: 36, height: 12 }} onCommand={() => {}}>
       <Root id="root">
-        <Box style={{ border: true, padding: 1 }}>
-          <Text>Unicode: 世界 👋</Text>
-          <Text>Wraps on integer Cell boundaries.</Text>
+        <Box style={{ border: true, height: 12, padding: 1 }}>
+          <Text textStyle={{ bold: true }}>◆ Plain text · READY</Text>
+          <Text>→ Unicode: 世界 👋</Text>
+          <Text>↔ Move: ← ↑ ↓ →</Text>
+          <Text>✓ Status: PASS · IDLE</Text>
+          <Text>∞ Math: ≠ ≤ ≥ ± × ÷</Text>
+          <Text>▓ Signal: ░▒▓█</Text>
+          <Text textStyle={{ dim: true }}>↳ Wraps on integer Cell boundaries.</Text>
         </Box>
       </Root>
     </CellSurface>

@@ -73,6 +73,30 @@ Geometry distinguishes the root-relative border box, decoration box, and content
 
 `CellSurface.fontProfile` forwards one `CharDeskFontProfile` to both Canvas presentation and explicit browser font loading. Changing the Profile clears that Surface's request cache and forces a full repaint; it does not rebuild the headless Widget Tree or change protocol Cell widths.
 
+Without explicit `metrics`, `CellSurface` synchronously uses its own stable grid:
+`9×20px` at `15px`, with baseline `15px`, scaled with `fontSize`. Explicit
+`metrics` take precedence. Canvas, pointer coordinates, caret, range and hidden
+textarea placement share that stable geometry. Font completion only updates
+readiness, glyph presentation and audit; it never resizes a mounted Surface.
+`loadCellFontMetrics(profile, fontSize?)` preloads the display face before a host
+commits a font switch and returns the same stable grid. Probe v3
+`presentation.measurement.source` is `default` or `explicit`; `ready` reports font
+availability, not geometry readiness. Load failures retain the grid and remain
+retryable.
+
+`DEFAULT_CELL_UI_METRICS` exposes that browser contract. It is intentionally
+separate from the standalone Canvas document renderer's compatibility default;
+see [fixed grids and font measurement](../rendering/README.md#fixed-cell-grids-and-font-measurement).
+
+`CellSurface.glyphOverflow` defaults to `"clip"`. Experimental `"visible"` lets
+font ink cross Cell and widget boundaries, retaining only the Canvas boundary.
+Every visible-mode presentation redraws the full Surface to erase overhanging
+ink; headless invalidation remains incremental. Switching modes also forces a
+full repaint. Cell allocation, hit testing and copying do not change.
+Probe v3 exposes `presentation.glyphOverflowMode`. Gallery enables `"visible"`
+for inspecting native glyph shapes; pixel isolation and incremental raster
+performance are not guaranteed in this experiment.
+
 Text adapters must forward `text` commands, including `set-viewport`, to their
 `CellTextEditor`. `CellSurface` and `TestPilot` derive that viewport from layout;
 `useCellTextState` handles it automatically. Standalone editors can still specify
@@ -82,15 +106,29 @@ own boundary, background, and editor sizing behavior.
 
 ## Cell inspection
 
+With `probeId`, `presentation.fontAudit` reports `loading`, `ready`, or
+`unavailable` plus the shared [font audit](../rendering/README.md#font-grid-audit).
+`ready` means measurements are available, not that the font fits every Cell.
+Its native, Profile and actual Surface metrics remain separate, including when
+explicit Surface metrics override the Profile. `formatCellProbe(..., { header:
+true })` prints dimension sources and a bounded list of gaps/overhangs; JSON
+retains all samples and requested family stacks, not inferred fallback identity.
+
+The browser loads a fixed ASCII/CJK/border sample set in regular/requested-bold
+states only for enabled probes. Audits are cached by Profile identity and actual
+metrics, refreshed on `loadingdone` and re-subscription, and never resize a grid
+or repeat on ordinary frame updates. Failed loads or unavailable bounds are
+reported as unverified. Existing v3 fields remain unchanged.
+
 TextArea automatically consumes the shared scroll geometry and half-Cell rails on overflow; TextInput keeps rails hidden. Text layout and viewport synchronization use `SceneEntry.scrollMetrics.viewport`. ScrollArea still emits `scroll` commands; editor rails emit `text` commands containing `set-scroll`. `TestPilot.scroll()` supports both. No extra ScrollArea wrapper or duplicate offset state is needed; [editor viewport contracts](../../exp/blueprints/widgets.md#编辑视口与-canvas-边界) own sizing, caret reveal, and input boundaries.
 
-`ScrollMetrics.horizontalThumbAxis` / `verticalThumbAxis` expose `HalfCellThumb`: integer `start` and `length` in half-Cell units relative to the track. Existing thumb rectangles remain integer covering bounds. Each thumb Cell retains its `█`, `▄/▀`, or `▐/▌` text and carries an explicit normalized `fill` primitive for Canvas; themes supply `scrollThumbStyle`, not a `scrollThumb` glyph. Widget behavior is owned by [Pointer and Scroll](../../exp/blueprints/widgets.md#pointer-与-scroll).
+`ScrollMetrics.horizontalThumbAxis` / `verticalThumbAxis` expose `HalfCellThumb`: integer `start` and `length` in half-Cell units relative to the track. Existing thumb rectangles remain integer covering bounds. Each thumb Cell uses the Unicode glyph `█`, `▄/▀`, or `▐/▌`; themes supply `scrollThumbStyle`. Widget behavior is owned by [Pointer and Scroll](../../exp/blueprints/widgets.md#pointer-与-scroll).
 
 `TestPilot.pointerDown/Move/Up(point, pointerId?, precisePoint?)` accept an optional floating Cell position for scrollbar gestures; omission uses the integer Cell's center. The browser uses `pxToCellPosition` for this precision and retains `pxToCellPoint` for grid hits. Layout and content offsets remain integer Cells. Thumb dragging anchors cumulative displacement to pointer-down geometry; geometry/range changes cancel the gesture.
 
-`CellBuffer.writeGrapheme(..., clip, composition, primitive)` and `writeText(..., clip, maxWidth, composition)` accept `CellComposition`: default `"replace"` replaces the entire Cell; `"over"` preserves only an unspecified background from the destination. `primitive` is optional presentation metadata and is replaced atomically with the grapheme. `clear()` always erases it. Scene painting uses `"over"`; [compositor contracts](../../exp/blueprints/compositor.md#行为契约) own layering and wide-Cell behavior.
+`CellBuffer.writeGrapheme(..., clip, composition)` and `writeText(..., clip, maxWidth, composition)` accept `CellComposition`: default `"replace"` replaces the entire Cell; `"over"` preserves only an unspecified background from the destination. Scene painting uses `"over"`; [compositor contracts](../../exp/blueprints/compositor.md#行为契约) own layering and wide-Cell behavior.
 
-`CellBuffer.toText()` is the single text-extraction authority used by Cell Range, probes, TestPilot, and browser `data-cell-text`. It owns region clipping, half-selected wide graphemes, and optional removal of empty ASCII padding; NBSP, ideographic space, combining sequences, emoji, and ZWJ graphemes remain data. `CellProbeSnapshot` v2 is the character-level test oracle. Its dense `cells` retain exact dimensions, blank Cells, wide-grapheme continuation, owner, style, and optional primitive data. Text extraction ignores primitives, so Canvas geometry remains copyable Unicode.
+`CellBuffer.toText()` is the single text-extraction authority used by Cell Range, probes, TestPilot, and browser `data-cell-text`. It owns region clipping, half-selected wide graphemes, and optional removal of empty ASCII padding; NBSP, ideographic space, combining sequences, emoji, and ZWJ graphemes remain data. `CellProbeSnapshot` v3 is the character-level test oracle. Its dense `cells` retain exact dimensions, blank Cells, wide-grapheme continuation, owner, and style. Canvas renders the same Unicode foreground.
 
 Set `probeId` only on development or test surfaces. The browser adapter then stores the latest snapshot on that Surface; `readCellSurfaceProbe(element)` retrieves it from the Surface or any descendant. Without `probeId`, no structured snapshot is created. `data-cell-text` remains the lightweight readable projection.
 
@@ -161,7 +199,7 @@ const document = useCellTextState("document", {
 
 Text editing uses UTF-16 document offsets internally and grapheme-safe Cell geometry externally. The current contract supports one primary selection, logical lines without soft wrap, grapheme left/right, line up/down, Home/End, Shift extension, Canvas click/drag, select-all, composition, paste/cut/copy, and undo/redo. Word/page movement, multi-selection, mobile input, and soft wrap are outside this contract.
 
-Cell Range selects the final rendered projection, including borders and blank Cells. Drag with Option+Command on macOS or Alt on other platforms; copy writes the current rectangle as `text/plain`, preserving internal alignment and trimming only trailing spaces per row. Rectangle normalization computes a fixed point across all selected rows, so neither vertical edge can retain half of a wide grapheme after another row expands the bounds. `CellSurface` owns this state by default. Passing `cellRange` and `onCellRangeCommand` makes it controlled; `cellRange={null}` without a command handler disables selection. In uncontrolled mode, an optional command handler observes updates without taking ownership.
+Cell Range selects the final rendered projection, including borders and blank Cells. Drag with Option+Command on macOS or Alt on other platforms; copy writes the current rectangle as `text/plain`, preserving internal alignment and trimming only trailing spaces per row. Rectangle normalization computes a fixed point across all selected rows, so neither vertical edge can retain half of a wide grapheme after another row expands the bounds. A range clears when focus leaves its `CellSurface`, but survives focus transfers within the Surface and temporary browser-window deactivation. `CellSurface` owns this state by default. Passing `cellRange` and `onCellRangeCommand` makes it controlled; `cellRange={null}` without a command handler disables selection. In uncontrolled mode, an optional command handler observes updates without taking ownership.
 
 ```tsx
 const range = useCellRangeState();

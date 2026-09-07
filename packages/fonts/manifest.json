@@ -1,16 +1,59 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-06T04:28:33.492Z",
+  "generatedAt": "2026-09-07T06:21:24.514Z",
   "target": "canvas-core",
-  "profileId": "chardesk/system-v1",
+  "profileId": "chardesk/system-v4",
   "sources": [
     {
-      "id": "noto-sans-symbols-2",
-      "family": "Noto Sans Symbols 2",
-      "version": "google-fonts-v25",
-      "stylesheet": "https://fonts.googleapis.com/css2?family=Noto+Sans+Symbols+2&display=swap",
-      "stylesheetSha256": "de60d4d6db18079b52e0b0d304d4bb1434df52554d95562c580b07f28cbee677",
-      "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssymbols2/OFL.txt"
+      "id": "julia-mono",
+      "family": "JuliaMono",
+      "version": "0.63.2",
+      "binaryUrl": "https://raw.githubusercontent.com/cormullion/juliamono/v0.63.2/webfonts/JuliaMono-Regular.woff2",
+      "binarySha256": "cd371c92e94978a6888b71e89a4b57f443604ad63595150511ceb7d5c354b857",
+      "fontFile": "JuliaMono-Regular.woff2",
+      "subsets": [
+        {
+          "id": "base",
+          "file": "base.woff2",
+          "unicodeRange": "U+0000-1FFF"
+        },
+        {
+          "id": "punctuation",
+          "file": "punctuation.woff2",
+          "unicodeRange": "U+2000-218F"
+        },
+        {
+          "id": "arrows",
+          "file": "arrows.woff2",
+          "unicodeRange": "U+2190-21FF, U+27F0-27FF, U+2900-297F"
+        },
+        {
+          "id": "math-technical",
+          "file": "math-technical.woff2",
+          "unicodeRange": "U+2200-23FF, U+27C0-27EF, U+2980-2AFF"
+        },
+        {
+          "id": "graphics",
+          "file": "graphics.woff2",
+          "unicodeRange": "U+2400-27BF, U+2800-28FF, U+2B00-2BFF"
+        },
+        {
+          "id": "scripts",
+          "file": "scripts.woff2",
+          "unicodeRange": "U+2C00-1D3FF"
+        },
+        {
+          "id": "math-alphanumerics",
+          "file": "math-alphanumerics.woff2",
+          "unicodeRange": "U+1D400-1D7FF"
+        },
+        {
+          "id": "supplemental",
+          "file": "supplemental.woff2",
+          "unicodeRange": "U+1D800-10FFFF"
+        }
+      ],
+      "licenseUrl": "https://raw.githubusercontent.com/cormullion/juliamono/v0.63.2/LICENSE"
     },
     {
       "id": "noto-emoji",
@@ -23,12 +66,60 @@
     {
       "id": "symbols-nerd-font-mono",
       "family": "Symbols Nerd Font Mono",
-      "version": "3.5.0",
-      "binaryUrl": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.0/patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFontMono-Regular.ttf",
-      "binarySha256": "2dc316f2505a0cbfbcf6060a1b4ba85b0a2974189e30c0037cdedc436a25a4ff"
+      "version": "3.5.1",
+      "binary": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFontMono-Regular.ttf",
+      "binarySha256": "fe471e538392f51910faab985fa8e192a39dd3426125edd15b71b3680df0e749",
+      "catalog": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/glyphnames.json",
+      "catalogSha256": "d2fa6615a38eb527462cb71ff17aa44b1d6453d437ed263ab8d5b458393669e8",
+      "license": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/LICENSE"
     }
   ],
   "assets": [
+    {
+      "path": "assets/julia-mono/arrows.woff2",
+      "size": 24448,
+      "sha256": "649d3f5fc13623e77ebb15e034a9d6da836a58889f468cf5dbd5ee48e04355b8"
+    },
+    {
+      "path": "assets/julia-mono/base.woff2",
+      "size": 269968,
+      "sha256": "24a38f33707fa1b312c3474353a27a36921af3d8ec589660af8c9a72170ddf89"
+    },
+    {
+      "path": "assets/julia-mono/graphics.woff2",
+      "size": 130108,
+      "sha256": "640a2837224c3104d074febb76568b32f34102a86d1a2b08082a18f773939f0a"
+    },
+    {
+      "path": "assets/julia-mono/math-alphanumerics.woff2",
+      "size": 159456,
+      "sha256": "36fc73414912b1d82c6e44b0f8825445108f9e44358ad5280d0c4513c1212197"
+    },
+    {
+      "path": "assets/julia-mono/math-technical.woff2",
+      "size": 86916,
+      "sha256": "4eade02e6235ea9cfb0f832a3d5c1b1a48d4aae8fc2e8bb596904a89d4335799"
+    },
+    {
+      "path": "assets/julia-mono/OFL.txt",
+      "size": 4467,
+      "sha256": "bae3beff9e15f1a680c2764c4bbdb25b995b9bf539aeaf8467482a495c75ad0c"
+    },
+    {
+      "path": "assets/julia-mono/punctuation.woff2",
+      "size": 44612,
+      "sha256": "39455326c946eb908d364f12b0180472f0809f23f74afd4df39168cb5e28348c"
+    },
+    {
+      "path": "assets/julia-mono/scripts.woff2",
+      "size": 211236,
+      "sha256": "4ea5830aa187a6b609e90f22371aee3c5d6fc75acbb8924395ab29b51fb527dc"
+    },
+    {
+      "path": "assets/julia-mono/supplemental.woff2",
+      "size": 154792,
+      "sha256": "780aecfe21e936b52f7e7089a0dff9b928c7960eb090fcddbca3b652b13b0966"
+    },
     {
       "path": "assets/noto-emoji/bMrnmSyK7YY-MEu6aWjPDs-ar6uWaGWuob-r0jwqI-xEIF50anKtsFA.0.woff2",
       "size": 5172,
@@ -85,69 +176,64 @@
       "sha256": "79d348cb5161481f603dcda564fb129a9b2c11d7012dcad820af045fed75c020"
     },
     {
-      "path": "assets/noto-sans-symbols-2/I_uyMoGduATTei9eI8daxVHDyfisHr71-gTBWXPM4Q.woff2",
-      "size": 3576,
-      "sha256": "b0d885dae11e7fb260ce06cb94af4b7c865acbaf692b7f80eb23b0fb3d68153c"
-    },
-    {
-      "path": "assets/noto-sans-symbols-2/I_uyMoGduATTei9eI8daxVHDyfisHr71-jrBWXPM4Q.woff2",
-      "size": 5620,
-      "sha256": "5824d50a6e4eca33bc2aca4fc61ceca9dd518bfe7d4b8c75adad3a8064d0d3a1"
-    },
-    {
-      "path": "assets/noto-sans-symbols-2/I_uyMoGduATTei9eI8daxVHDyfisHr71-prgfE71.woff2",
-      "size": 10124,
-      "sha256": "97f469061805041dfda672e164eca7384f01e74ea1362a3aa91cf993be9a1579"
-    },
-    {
-      "path": "assets/noto-sans-symbols-2/I_uyMoGduATTei9eI8daxVHDyfisHr71-pTgfA.woff2",
-      "size": 15824,
-      "sha256": "076185b66a4070d41cc0e52cdad03c00b30084a7438d3e52f2a47cf5e2d1eb01"
-    },
-    {
-      "path": "assets/noto-sans-symbols-2/I_uyMoGduATTei9eI8daxVHDyfisHr71-ujgfE71.woff2",
-      "size": 12748,
-      "sha256": "2eb49cfc40ca8a57d17e621471a4a2d583f7602676f583459f1dfc733fb94e1d"
-    },
-    {
-      "path": "assets/noto-sans-symbols-2/I_uyMoGduATTei9eI8daxVHDyfisHr71-vrgfE71.woff2",
-      "size": 382424,
-      "sha256": "9c07d511848c274b5430c75bf98d1f2582680ef5f967947bfbdd06b75ca177c2"
-    },
-    {
-      "path": "assets/noto-sans-symbols-2/OFL.txt",
-      "size": 4382,
-      "sha256": "e87c2ed7ff174c637d55fa381939ebb96f43f0415ad94605a37589228f4cbf4f"
-    },
-    {
       "path": "assets/symbols-nerd-font-mono/codicons.woff2",
-      "size": 62600,
-      "sha256": "f947123cb18e56a75b15c3ddd77d54a5b738ebab6223d1c66cae12e41e7916a1"
+      "size": 78896,
+      "sha256": "8ecfc7b2750a9289bc8ceea27c587dd79c0fbf10faedf10fd86d157ba0a22529"
     },
     {
-      "path": "assets/symbols-nerd-font-mono/devicons.woff2",
-      "size": 182300,
-      "sha256": "84ff264b50c2bdb0a008c09f168ead79dc5214edaa3977f557ac53d9d4972f93"
+      "path": "assets/symbols-nerd-font-mono/devicons-01.woff2",
+      "size": 63384,
+      "sha256": "c2aaff22464f104e54a4a5e2a476c6a05aadf7a8fd7c8b0a44d883565ac6b044"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/devicons-02.woff2",
+      "size": 52672,
+      "sha256": "43c58cfd33cf668a450a197638a31a00fee778e47f611fd7961e73cb231ae446"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/devicons-03.woff2",
+      "size": 56524,
+      "sha256": "e371b6b45e839a59ea80c370b05b9ffedc8c85ddb62967b168f0b6b0b3dffcf3"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/devicons-04.woff2",
+      "size": 43692,
+      "sha256": "5defeda11e64663115d758836b26a43bd6b01a42c0822b7d47993977984193bb"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/font-awesome-01.woff2",
+      "size": 62640,
+      "sha256": "d96eea4caf4f3b271b009a038b58f4e75b9903425179d324aef0009ee68ed4d0"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/font-awesome-02.woff2",
+      "size": 65348,
+      "sha256": "f0b2ff97a2712f8bec34c27bd4fc83cb0dea3dbf245e2636ecfa85c14581dbfe"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/font-awesome-03.woff2",
+      "size": 42508,
+      "sha256": "5926b48f44b0baf7d4e9401d42f961d72e5b288c8ad28ecc994ebc7d0244ac3e"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/font-awesome-04.woff2",
+      "size": 63788,
+      "sha256": "333f3ed93fa0627a5392467f83beb3c43a1320c0a500cac7e917f461340301d8"
     },
     {
       "path": "assets/symbols-nerd-font-mono/font-awesome-ext.woff2",
-      "size": 36952,
-      "sha256": "55b6076742f4864d1e86e40e0388b64891f8add607c29b59729092834eee6ff3"
-    },
-    {
-      "path": "assets/symbols-nerd-font-mono/font-awesome.woff2",
-      "size": 221540,
-      "sha256": "63cc2fefab08927fbb13859acc7fea6e89362dfbe5abab543fb83c122b7c4c89"
+      "size": 36956,
+      "sha256": "95d0aa013136c6ec71460a7547a44d8df5607a9b9437b977e40fafd4c9d64fc4"
     },
     {
       "path": "assets/symbols-nerd-font-mono/font-logos.woff2",
-      "size": 36928,
-      "sha256": "d26989c2270acda7554a04fdc1ee53e7a28030a7a38499dea5d23c62c786b6d7"
+      "size": 37988,
+      "sha256": "87724481e15f546bac6501ff923582c6477d59e8965b1deab5f3a0dbde23df94"
     },
     {
       "path": "assets/symbols-nerd-font-mono/iec-power.woff2",
-      "size": 1224,
-      "sha256": "5b879b551760a2064759206325931b2fb9f4f8bbbd382a02dbce881fbd444a80"
+      "size": 1196,
+      "sha256": "e236f73c9633d555d203c772e713dc357ca7c1c19214e74bd676ffb44f6221fb"
     },
     {
       "path": "assets/symbols-nerd-font-mono/LICENSE.txt",
@@ -155,44 +241,87 @@
       "sha256": "1f6ad4edae6479aaace3112ede5279a23284ae54b2a34db66357aef5f64df160"
     },
     {
-      "path": "assets/symbols-nerd-font-mono/material-design.woff2",
-      "size": 548840,
-      "sha256": "02e7061a63358ba66faf22f2ef93a5c27caebd601e145eca9deeb83381ab4828"
+      "path": "assets/symbols-nerd-font-mono/material-design-01.woff2",
+      "size": 67268,
+      "sha256": "afe0e7725e3772355cdc844155eb7da457e9a6f43b0eb57c5d68083ad6724359"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/material-design-02.woff2",
+      "size": 73724,
+      "sha256": "a575bc86e16e0ce5aa319ad8b7a86f99dd6fd42c1effc722c9125940bf22918c"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/material-design-03.woff2",
+      "size": 73192,
+      "sha256": "865a310f48a9c07014ad71b0c3547557fc7ed302cc6ebc2c0fa4b76b23c23641"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/material-design-04.woff2",
+      "size": 71724,
+      "sha256": "3381bff2ecdf3ab2f19aba5e249e6ea8b7b98abd5aba9f277b8014f50cd83eba"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/material-design-05.woff2",
+      "size": 82244,
+      "sha256": "4a313a31a769d311c524c7287dc40b7cca5f707046a7cf129201bce96a170069"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/material-design-06.woff2",
+      "size": 80144,
+      "sha256": "c0a0861234d66bf2668d00d2f38728bfc0332028cce32891f9c8460f4aa66f5b"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/material-design-07.woff2",
+      "size": 81080,
+      "sha256": "a376d5364327815b559f24904b0dc18b76cac5ea1b614b4a11552af84f9b3e72"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/material-design-08.woff2",
+      "size": 83252,
+      "sha256": "098ceebca5cd1f00e40401f2ca3004b055056815b1e97ba9dd8806b85314d8af"
     },
     {
       "path": "assets/symbols-nerd-font-mono/octicons.woff2",
-      "size": 28864,
-      "sha256": "c95345db065cd7b164291fa6383f9a1787e12b0c7fb363eb974bccb6f7544f17"
+      "size": 33816,
+      "sha256": "153fc7402ab4bbe60aeed7054edc0fa1d0cc864de0c70b1028891b4bcb474b21"
     },
     {
       "path": "assets/symbols-nerd-font-mono/pomicons.woff2",
-      "size": 2304,
-      "sha256": "3d32b113a28a6af4c70053bf3414a2f960400b29d668a9a832cfa26234d1afcd"
+      "size": 2324,
+      "sha256": "2e637fdf0a537ae47789cdcdd5e47c386d2a85b59c33b04a4205d3b6a802917e"
     },
     {
       "path": "assets/symbols-nerd-font-mono/powerline-extra.woff2",
       "size": 7716,
-      "sha256": "6669797b85e1402de42166b31e9297832c7462ea760c046c81a013e1e8a5c9e3"
+      "sha256": "8665e4110086bfde402b4dbd7db6ee770de4b1a7d3deb234dcd314895fbed6ac"
     },
     {
       "path": "assets/symbols-nerd-font-mono/powerline-symbols.woff2",
-      "size": 1212,
-      "sha256": "0a5f0e2ec8dcb3966fbdbe1efa8da6a005723f80d4ccb4a1887131122d91bff8"
+      "size": 1220,
+      "sha256": "5f9ca92427996503098f9fadbfab8ae72b11e4c1be0a759f1a8577e6b2fe2a29"
+    },
+    {
+      "path": "assets/symbols-nerd-font-mono/progress-indicators.woff2",
+      "size": 1820,
+      "sha256": "650a79df38adb7ce3c51a435df62483a53a8e554720e1fd8b3279c4cb38ed05b"
     },
     {
       "path": "assets/symbols-nerd-font-mono/seti-ui-custom.woff2",
-      "size": 43108,
-      "sha256": "1ab8871d274ff751c62988c9719c61e90af6ac8b589ac88a31da31c3f94b49e4"
+      "size": 44132,
+      "sha256": "d0fffc6e5d7964d4d679f3ea04e07aead057b43e07af3c8bf4a7a2c3f29ea312"
     },
     {
       "path": "assets/symbols-nerd-font-mono/weather-icons.woff2",
-      "size": 35200,
-      "sha256": "138ab03cb47ba5ba64dce9d4c5cb83dd3a1dd35f74b75ad69af01bbde29c5124"
+      "size": 35048,
+      "sha256": "a6e756bbe6d4549b99917cf00587fc8726a69e1dd7edf965a87b9ef8bb657498"
     },
     {
       "path": "fonts.css",
-      "size": 15997,
-      "sha256": "436ff691601b281b4e942fc29a657000fb2e3471663d69b5c6cd056aa271b3b1"
+      "size": 16943,
+      "sha256": "c89db4bfe6ba2868bdefaa1b88460c328208eaeb40b64b4e729e46d759c90c7f"
     }
-  ]
+  ],
+  "nerdCatalogCodePoints": 10617,
+  "nerdCatalogEntries": 10995,
+  "nerdMaxShardBytes": 83252
 }

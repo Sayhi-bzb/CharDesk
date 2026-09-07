@@ -47,8 +47,16 @@ test("unknown component routes fail honestly", async ({ page }) => {
 test("Text and Box expose Cell-native content and layout", async ({ page }) => {
   await page.goto("/exp/web-tui/#/components/text");
   const text = await readCellProbe(page.locator('[data-cell-probe="component-text"]'));
-  expect(text.text).toContain("Plain text");
-  expect(text.text).toContain("Unicode: 世界 👋");
+  for (const line of [
+    "◆ Plain text · READY",
+    "→ Unicode: 世界 👋",
+    "↔ Move: ← ↑ ↓ →",
+    "✓ Status: PASS · IDLE",
+    "∞ Math: ≠ ≤ ≥ ± × ÷",
+    "▓ Signal: ░▒▓█",
+    "↳ Wraps on integer Cell",
+  ]) expect(text.text).toContain(line);
+  expect(text.viewport).toEqual({ width: 36, height: 12 });
   const wrappedRows = new Set(text.cells
     .filter((cell) => cell.ownerId === "component-text-wrap" && cell.text !== " ")
     .map((cell) => cell.y));
@@ -60,6 +68,34 @@ test("Text and Box expose Cell-native content and layout", async ({ page }) => {
   expect(box.text).toContain("Left");
   expect(box.text).toContain("Right");
   expect(box.cells.filter((cell) => cell.text === "┌").length).toBe(3);
+});
+
+test("Cell Range clears when Preview focus moves outside its Surface", async ({ page }) => {
+  await page.goto("/exp/web-tui/#/components/text");
+  const surface = page.getByLabel("Text component");
+  const canvas = surface.locator("canvas");
+  const probe = await readCellProbe(surface);
+  const bounds = await canvas.boundingBox();
+  expect(bounds).not.toBeNull();
+  const selectRange = async () => {
+    await page.keyboard.down("Alt");
+    await page.keyboard.down("Meta");
+    await page.mouse.move(bounds!.x + bounds!.width / probe.viewport.width / 2, bounds!.y + bounds!.height / probe.viewport.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2, { steps: 4 });
+    await page.mouse.up();
+    await page.keyboard.up("Meta");
+    await page.keyboard.up("Alt");
+    await expect(surface).toHaveAttribute("data-cell-range");
+  };
+
+  await selectRange();
+  await page.getByRole("heading", { name: "Text", level: 1 }).click();
+  await expect(surface).not.toHaveAttribute("data-cell-range");
+
+  await selectRange();
+  await page.getByRole("button", { name: /^(Dark|Light)$/ }).click();
+  await expect(surface).not.toHaveAttribute("data-cell-range");
 });
 
 test("List shares focus, selection, disabled state, and semantic actions", async ({ page }) => {

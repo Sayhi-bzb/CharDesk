@@ -17,8 +17,8 @@ test("Palette text retains its surface background in both themes", async ({ page
     });
     const result = await surface.evaluate((element, scheme) => {
       const probe = (element as HTMLElement & {
-        __chardeskCellProbeV2: { cells: { x: number; y: number; ownerId: string | null; style: { backgroundColor?: string } }[] };
-      }).__chardeskCellProbeV2;
+        __chardeskCellProbeV3: { cells: { x: number; y: number; ownerId: string | null; style: { backgroundColor?: string } }[] };
+      }).__chardeskCellProbeV3;
       const cells = probe.cells.filter((cell) => cell.ownerId === "palette-title" || cell.ownerId === "palette-hint");
       const target = element.querySelector("canvas")!;
       const ctx = target.getContext("2d")!;

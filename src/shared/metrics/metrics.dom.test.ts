@@ -83,7 +83,7 @@ describe("metrics", () => {
         expect(load).toHaveBeenCalledTimes(3);
         expect(load.mock.calls[0][0]).toContain("Maple Mono NF CN");
         expect(load.mock.calls[0][1]).toBe("A");
-        expect(load.mock.calls[1][0]).toContain("Noto Sans Symbols 2");
+        expect(load.mock.calls[1][0]).toContain("JuliaMono");
         expect(load.mock.calls[1][1]).toBe("⟹");
         expect(load.mock.calls[2][0]).toContain("Noto Emoji");
         expect(load.mock.calls[2][1]).toBe("👩🏽‍💻");

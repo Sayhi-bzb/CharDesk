@@ -1,10 +1,16 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { create as createFont } from "fontkit";
+import {
+  formatNerdFontRangesModule,
+  nerdFontCodePoints,
+} from "./nerd-font-catalog.mjs";
+import { buildNerdFontSubsets } from "./nerd-font-subsets.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
@@ -13,7 +19,13 @@ const verifyOnly = process.argv.includes("--verify");
 const targetArgument = process.argv.find((argument) =>
   argument.startsWith("--target=")
 );
-const requestedTarget = targetArgument?.slice("--target=".length);
+const sourceArgument = process.argv.find((argument) =>
+  argument.startsWith("--source=")
+);
+const requestedSource = sourceArgument?.slice("--source=".length);
+const nerdOnly = requestedSource === "symbols-nerd-font-mono";
+const requestedTarget = targetArgument?.slice("--target=".length) ??
+  (nerdOnly ? "canvas-core" : undefined);
 const browserUserAgent =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
   "Chrome/138.0.0.0 Safari/537.36";
@@ -26,17 +38,27 @@ const targets = {
   "canvas-core": {
     outputRoot: path.join(repoRoot, "packages", "fonts"),
     assetPrefix: "assets",
-    profileId: "chardesk/system-v1",
+    profileId: "chardesk/system-v4",
   },
   maple: {
     outputRoot: path.join(repoRoot, "packages", "font-maple"),
     assetPrefix: "assets",
-    profileId: "chardesk/maple-v1",
+    profileId: "chardesk/maple-v4",
+  },
+  ark: {
+    outputRoot: path.join(repoRoot, "packages", "font-ark"),
+    assetPrefix: "assets",
   },
 };
 
 if (requestedTarget && !Object.hasOwn(targets, requestedTarget)) {
   throw new Error(`Unknown font target: ${requestedTarget}`);
+}
+if (requestedSource && !nerdOnly) {
+  throw new Error(`Unknown independently refreshable font source: ${requestedSource}`);
+}
+if (nerdOnly && requestedTarget !== "canvas-core") {
+  throw new Error("symbols-nerd-font-mono belongs to canvas-core");
 }
 
 const targetEntries = Object.entries(targets).filter(
@@ -90,18 +112,6 @@ const sources = [
   },
   {
     target: "canvas-core",
-    id: "noto-sans-symbols-2",
-    family: "Noto Sans Symbols 2",
-    version: "google-fonts-v25",
-    cssUrl:
-      "https://fonts.googleapis.com/css2?family=Noto+Sans+Symbols+2&display=swap",
-    versionMarker: "/notosanssymbols2/v25/",
-    licenseUrl:
-      "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssymbols2/OFL.txt",
-    headers: { "User-Agent": browserUserAgent },
-  },
-  {
-    target: "canvas-core",
     id: "noto-emoji",
     family: "Noto Emoji",
     version: "google-fonts-v62",
@@ -114,22 +124,64 @@ const sources = [
   },
 ];
 
+const binarySources = [{
+  target: "canvas-core",
+  id: "julia-mono",
+  family: "JuliaMono",
+  version: "0.63.2",
+  binaryUrl:
+    "https://raw.githubusercontent.com/cormullion/juliamono/v0.63.2/" +
+    "webfonts/JuliaMono-Regular.woff2",
+  binarySha256:
+    "cd371c92e94978a6888b71e89a4b57f443604ad63595150511ceb7d5c354b857",
+  fontFile: "JuliaMono-Regular.woff2",
+  subsets: [
+    { id: "base", file: "base.woff2", unicodeRange: "U+0000-1FFF" },
+    { id: "punctuation", file: "punctuation.woff2", unicodeRange: "U+2000-218F" },
+    { id: "arrows", file: "arrows.woff2", unicodeRange: "U+2190-21FF, U+27F0-27FF, U+2900-297F" },
+    { id: "math-technical", file: "math-technical.woff2", unicodeRange: "U+2200-23FF, U+27C0-27EF, U+2980-2AFF" },
+    { id: "graphics", file: "graphics.woff2", unicodeRange: "U+2400-27BF, U+2800-28FF, U+2B00-2BFF" },
+    { id: "scripts", file: "scripts.woff2", unicodeRange: "U+2C00-1D3FF" },
+    { id: "math-alphanumerics", file: "math-alphanumerics.woff2", unicodeRange: "U+1D400-1D7FF" },
+    { id: "supplemental", file: "supplemental.woff2", unicodeRange: "U+1D800-10FFFF" },
+  ],
+  licenseUrl:
+    "https://raw.githubusercontent.com/cormullion/juliamono/v0.63.2/LICENSE",
+}];
+
 const nerdSource = {
   target: "canvas-core",
   id: "symbols-nerd-font-mono",
   family: "Symbols Nerd Font Mono",
-  version: "3.5.0",
+  version: "3.5.1",
   binaryUrl:
-    "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.0/" +
+    "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/" +
     "patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFontMono-Regular.ttf",
   binarySha256:
-    "2dc316f2505a0cbfbcf6060a1b4ba85b0a2974189e30c0037cdedc436a25a4ff",
+    "fe471e538392f51910faab985fa8e192a39dd3426125edd15b71b3680df0e749",
+  catalogUrl:
+    "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/glyphnames.json",
+  catalogSha256:
+    "d2fa6615a38eb527462cb71ff17aa44b1d6453d437ed263ab8d5b458393669e8",
   licenseUrl:
-    "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.0/LICENSE",
+    "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/LICENSE",
 };
 
+const archiveSources = [{
+  target: "ark",
+  id: "ark-mono",
+  family: "Ark Pixel 12px Mono latin",
+  version: "2026.09.01",
+  archiveUrl: "https://github.com/TakWolf/ark-pixel-font/releases/download/2026.09.01/ark-pixel-font-12px-monospaced-ttf.woff2-v2026.09.01.zip",
+  archiveSha256: "2f2c684aec287f0d5634dae8cf5d1a5ce76dcf102bfbc77436cd7f95fa24aa25",
+  fontFile: "ark-pixel-12px-monospaced-latin.ttf.woff2",
+  licenseFile: "OFL.txt",
+}];
+
 const sourceIdsForTarget = (targetId) => [
+  ...binarySources.filter((source) => source.target === targetId).map(({ id }) => id),
   ...sources.filter((source) => source.target === targetId).map(({ id }) => id),
+  ...archiveSources.filter((source) => source.target === targetId).map(({ id }) => id),
   ...(nerdSource.target === targetId ? [nerdSource.id] : []),
 ];
 
@@ -177,84 +229,65 @@ const unicodeRanges = (codePoints) => {
   ).join(", ");
 };
 
+const parseUnicodeRange = (value) => value.split(",").map((part) => {
+  const match = part.trim().match(/^U\+([0-9A-F]+)(?:-([0-9A-F]+))?$/iu);
+  if (!match) throw new Error(`Invalid unicode-range: ${part}`);
+  const start = Number.parseInt(match[1], 16);
+  return [start, Number.parseInt(match[2] ?? match[1], 16)];
+});
+
+const rangeContains = (ranges, codePoint) =>
+  ranges.some(([start, end]) => codePoint >= start && codePoint <= end);
+
 const vendorNerdFont = async (target, manifest, targetStylesheets) => {
-  const rawFont = await fetchBytes(nerdSource.binaryUrl);
+  const [rawFont, rawCatalog] = await Promise.all([
+    fetchBytes(nerdSource.binaryUrl),
+    fetchBytes(nerdSource.catalogUrl),
+  ]);
   if (sha256(rawFont) !== nerdSource.binarySha256) {
     throw new Error(`${nerdSource.id} no longer matches pinned binary checksum`);
   }
-  const catalog = JSON.parse(await readFile(
-    path.join(repoRoot, "scripts", "data", "sources", "nerdfonts.json"),
-    "utf8"
-  ));
-  const temporaryRoot = await mkdtemp(path.join(tmpdir(), "chardesk-nerd-font-"));
-  const inputPath = path.join(temporaryRoot, "SymbolsNerdFontMono-Regular.ttf");
-  await writeFile(inputPath, rawFont);
+  if (sha256(rawCatalog) !== nerdSource.catalogSha256) {
+    throw new Error(`${nerdSource.id} no longer matches pinned catalog checksum`);
+  }
+  const catalog = JSON.parse(rawCatalog.toString("utf8"));
+  const catalogCodePoints = nerdFontCodePoints(catalog);
+  const shards = await buildNerdFontSubsets({ catalog, fontBytes: rawFont });
   const sourceRelativeDir = path.posix.join(target.assetPrefix, nerdSource.id);
   const sourceDir = path.join(target.outputRoot, sourceRelativeDir);
   await mkdir(sourceDir, { recursive: true });
-  const seen = new Set();
   const stylesheet = [];
-  const subsetCommand = process.env.PYFTSUBSET || "pyftsubset";
-  try {
-    for (const [group, entries] of Object.entries(catalog)) {
-      const codePoints = [];
-      for (const { char } of entries) {
-        for (const character of char) {
-          const codePoint = character.codePointAt(0);
-          if (codePoint === undefined || seen.has(codePoint)) continue;
-          seen.add(codePoint);
-          codePoints.push(codePoint);
-        }
-      }
-      codePoints.sort((left, right) => left - right);
-      if (codePoints.length === 0) continue;
-      const fileName = `${slugify(group)}.woff2`;
+  const shardCounts = new Map();
+  for (const shard of shards) {
+    shardCounts.set(shard.group, (shardCounts.get(shard.group) ?? 0) + 1);
+  }
+  const shardIndices = new Map();
+  for (const shard of shards) {
+      const index = (shardIndices.get(shard.group) ?? 0) + 1;
+      shardIndices.set(shard.group, index);
+      const suffix = shardCounts.get(shard.group) === 1
+        ? ""
+        : `-${String(index).padStart(2, "0")}`;
+      const fileName = `${shard.group}${suffix}.woff2`;
       const outputPath = path.join(sourceDir, fileName);
-      try {
-        await execFileAsync(subsetCommand, [
-          inputPath,
-          `--output-file=${outputPath}`,
-          "--flavor=woff2",
-          `--unicodes=${codePoints.map((codePoint) =>
-            `U+${codePoint.toString(16)}`).join(",")}`,
-          "--layout-features=*",
-          "--glyph-names",
-          "--symbol-cmap",
-          "--legacy-cmap",
-          "--notdef-glyph",
-          "--notdef-outline",
-          "--recommended-glyphs",
-          "--name-IDs=*",
-          "--name-legacy",
-          "--name-languages=*",
-        ]);
-      } catch (error) {
-        throw new Error(
-          `Nerd Font subsetting requires FontTools pyftsubset with Brotli ` +
-          `(set PYFTSUBSET to its executable path): ${error.message}`
-        );
-      }
-      const content = await readFile(outputPath);
+      await writeFile(outputPath, shard.content);
       const relativePath = path.posix.join(sourceRelativeDir, fileName);
       manifest.assets.push({
         path: relativePath,
-        size: content.length,
-        sha256: sha256(content),
+        size: shard.content.length,
+        sha256: sha256(shard.content),
       });
       stylesheet.push(
-        `/* ${group} */\n` +
+        `/* ${shard.group}${suffix} */\n` +
         `@font-face {\n` +
         `  font-family: '${nerdSource.family}';\n` +
         `  font-style: normal;\n` +
         `  font-weight: 400;\n` +
         `  font-display: swap;\n` +
         `  src: url(./${relativePath}) format('woff2');\n` +
-        `  unicode-range: ${unicodeRanges(codePoints)};\n` +
+        `  unicode-range: ${unicodeRanges(shard.codePoints)};\n` +
         `}`
       );
-    }
-  } finally {
-    await rm(temporaryRoot, { recursive: true, force: true });
   }
   const license = await fetchBytes(nerdSource.licenseUrl);
   const licensePath = path.posix.join(sourceRelativeDir, "LICENSE.txt");
@@ -270,11 +303,17 @@ const vendorNerdFont = async (target, manifest, targetStylesheets) => {
     version: nerdSource.version,
     binary: nerdSource.binaryUrl,
     binarySha256: nerdSource.binarySha256,
+    catalog: nerdSource.catalogUrl,
+    catalogSha256: nerdSource.catalogSha256,
     license: nerdSource.licenseUrl,
   });
+  manifest.nerdCatalogCodePoints = catalogCodePoints.size;
+  manifest.nerdCatalogEntries = Object.keys(catalog).length - 1;
+  manifest.nerdMaxShardBytes = Math.max(...shards.map(({ content }) => content.length));
   targetStylesheets.push(
     `/* ${nerdSource.family} ${nerdSource.version} */\n${stylesheet.join("\n\n")}`
   );
+  return { catalog, rawCatalog };
 };
 
 const verifyTarget = async ([targetId, target]) => {
@@ -282,6 +321,39 @@ const verifyTarget = async ([targetId, target]) => {
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const failures = [];
   const expectedSourceIds = sourceIdsForTarget(targetId);
+
+  for (const { target: binaryTarget, ...pinned } of binarySources) {
+    if (binaryTarget !== targetId) continue;
+    const recorded = manifest.sources.find(({ id }) => id === pinned.id);
+    if (JSON.stringify(recorded) !== JSON.stringify(pinned)) {
+      failures.push(`${pinned.id}: source differs from pinned binary`);
+    }
+  }
+
+  for (const { target: archiveTarget, ...pinned } of archiveSources) {
+    if (archiveTarget !== targetId) continue;
+    const recorded = manifest.sources.find(({ id }) => id === pinned.id);
+    if (JSON.stringify(recorded) !== JSON.stringify(pinned)) {
+      failures.push(`${pinned.id}: source differs from pinned release`);
+    }
+  }
+
+  if (nerdSource.target === targetId) {
+    const expected = {
+      id: nerdSource.id,
+      family: nerdSource.family,
+      version: nerdSource.version,
+      binary: nerdSource.binaryUrl,
+      binarySha256: nerdSource.binarySha256,
+      catalog: nerdSource.catalogUrl,
+      catalogSha256: nerdSource.catalogSha256,
+      license: nerdSource.licenseUrl,
+    };
+    const recorded = manifest.sources.find(({ id }) => id === nerdSource.id);
+    if (JSON.stringify(recorded) !== JSON.stringify(expected)) {
+      failures.push(`${nerdSource.id}: source differs from pinned release`);
+    }
+  }
 
   if (manifest.target !== targetId) {
     failures.push(`manifest target: expected ${targetId}`);
@@ -317,6 +389,38 @@ const verifyTarget = async ([targetId, target]) => {
   if (/url\((?:["']?)https?:/u.test(stylesheet)) {
     failures.push("fonts.css: remote URL");
   }
+  const stylesheetAssets = new Set(Array.from(
+    stylesheet.matchAll(/url\((?:["']?)\.\/([^)'\"]+)(?:["']?)\)/g),
+    (match) => match[1]
+  ));
+  const manifestAssets = new Set(manifest.assets.map(({ path: assetPath }) => assetPath));
+  for (const assetPath of stylesheetAssets) {
+    if (!manifestAssets.has(assetPath)) {
+      failures.push(`fonts.css: untracked asset ${assetPath}`);
+    }
+  }
+  for (const { path: assetPath } of manifest.assets) {
+    if (assetPath.endsWith(".woff2") && !stylesheetAssets.has(assetPath)) {
+      failures.push(`fonts.css: missing asset ${assetPath}`);
+    }
+  }
+
+  if (nerdSource.target === targetId) {
+    const nerdAssets = manifest.assets.filter(({ path: assetPath }) =>
+      assetPath.startsWith(`${target.assetPrefix}/${nerdSource.id}/`) &&
+      assetPath.endsWith(".woff2")
+    );
+    const maxShardBytes = Math.max(...nerdAssets.map(({ size }) => size));
+    if (manifest.nerdCatalogCodePoints !== 10_617) {
+      failures.push("Nerd catalog: expected 10617 code points");
+    }
+    if (manifest.nerdCatalogEntries !== 10_995) {
+      failures.push("Nerd catalog: expected 10995 entries");
+    }
+    if (maxShardBytes > 96 * 1024 || manifest.nerdMaxShardBytes !== maxShardBytes) {
+      failures.push(`Nerd shards: invalid maximum ${maxShardBytes}`);
+    }
+  }
 
   if (failures.length > 0) {
     throw new Error(
@@ -332,10 +436,159 @@ const verifyAssets = async () => {
   await Promise.all(targetEntries.map(verifyTarget));
 };
 
+const vendorBinaryFont = async (source, target, manifest, stylesheets) => {
+  const font = await fetchBytes(source.binaryUrl);
+  if (sha256(font) !== source.binarySha256) {
+    throw new Error(`${source.id}: binary checksum mismatch`);
+  }
+  const relativeDir = path.posix.join(target.assetPrefix, source.id);
+  await mkdir(path.join(target.outputRoot, relativeDir), { recursive: true });
+  if (source.subsets) {
+    const parsedSubsets = source.subsets.map((subset) => ({
+      ...subset,
+      ranges: parseUnicodeRange(subset.unicodeRange),
+    }));
+    const sourceCodePoints = createFont(font).characterSet;
+    for (const codePoint of sourceCodePoints) {
+      const owners = parsedSubsets.filter(({ ranges }) =>
+        rangeContains(ranges, codePoint));
+      if (owners.length !== 1) {
+        throw new Error(
+          `${source.id}: U+${codePoint.toString(16).toUpperCase()} belongs to ` +
+          `${owners.length} subsets`
+        );
+      }
+    }
+
+    const temporaryRoot = await mkdtemp(path.join(tmpdir(), `chardesk-${source.id}-`));
+    const inputPath = path.join(temporaryRoot, source.fontFile);
+    await writeFile(inputPath, font);
+    const subsetCommand = process.env.PYFTSUBSET || "pyftsubset";
+    try {
+      for (const subset of parsedSubsets) {
+        const relativeFontPath = path.posix.join(relativeDir, subset.file);
+        const outputPath = path.join(target.outputRoot, relativeFontPath);
+        try {
+          await execFileAsync(subsetCommand, [
+            inputPath,
+            `--output-file=${outputPath}`,
+            "--flavor=woff2",
+            `--unicodes=${subset.unicodeRange.replaceAll(" ", "")}`,
+            "--layout-features=*",
+            "--glyph-names",
+            "--symbol-cmap",
+            "--legacy-cmap",
+            "--notdef-glyph",
+            "--notdef-outline",
+            "--recommended-glyphs",
+            "--name-IDs=*",
+            "--name-legacy",
+            "--name-languages=*",
+          ]);
+        } catch (error) {
+          throw new Error(
+            `${source.id} subsetting requires FontTools pyftsubset with Brotli ` +
+            `(set PYFTSUBSET to its executable path): ${error.message}`
+          );
+        }
+        const content = await readFile(outputPath);
+        const subsetCodePoints = new Set(createFont(content).characterSet);
+        for (const codePoint of sourceCodePoints) {
+          if (
+            rangeContains(subset.ranges, codePoint) &&
+            !subsetCodePoints.has(codePoint)
+          ) {
+            throw new Error(
+              `${source.id}/${subset.id}: missing U+${codePoint.toString(16).toUpperCase()}`
+            );
+          }
+        }
+        manifest.assets.push({
+          path: relativeFontPath,
+          size: content.length,
+          sha256: sha256(content),
+        });
+        stylesheets.push(
+          `/* ${source.family} ${source.version}: ${subset.id} */\n` +
+          `@font-face {\n` +
+          `  font-family: '${source.family}';\n` +
+          `  font-style: normal;\n` +
+          `  font-weight: 400;\n` +
+          `  font-display: swap;\n` +
+          `  src: url(./${relativeFontPath}) format('woff2');\n` +
+          `  unicode-range: ${subset.unicodeRange};\n` +
+          `}`
+        );
+      }
+    } finally {
+      await rm(temporaryRoot, { recursive: true, force: true });
+    }
+  } else {
+    const relativeFontPath = path.posix.join(relativeDir, source.fontFile);
+    await writeFile(path.join(target.outputRoot, relativeFontPath), font);
+    manifest.assets.push({
+      path: relativeFontPath,
+      size: font.length,
+      sha256: sha256(font),
+    });
+    stylesheets.push(
+      `/* ${source.family} ${source.version} */\n` +
+      `@font-face {\n` +
+      `  font-family: '${source.family}';\n` +
+      `  font-style: normal;\n` +
+      `  font-weight: 400;\n` +
+      `  font-display: swap;\n` +
+      `  src: url(./${relativeFontPath}) format('woff2');\n` +
+      `}`
+    );
+  }
+
+  const license = await fetchBytes(source.licenseUrl);
+  const relativeLicensePath = path.posix.join(relativeDir, "OFL.txt");
+  await writeFile(path.join(target.outputRoot, relativeLicensePath), license);
+  manifest.assets.push({
+    path: relativeLicensePath,
+    size: license.length,
+    sha256: sha256(license),
+  });
+
+  const { target: _target, ...metadata } = source;
+  manifest.sources.push(metadata);
+};
+
+const vendorArchiveFont = async (source, target, manifest, stylesheets) => {
+  const scratch = await mkdtemp(path.join(tmpdir(), "chardesk-font-archive-"));
+  try {
+    const archive = await fetchBytes(source.archiveUrl);
+    if (sha256(archive) !== source.archiveSha256) {
+      throw new Error(`${source.id}: archive checksum mismatch`);
+    }
+    const archivePath = path.join(scratch, "font.zip");
+    await writeFile(archivePath, archive);
+    const relativeDir = path.posix.join(target.assetPrefix, source.id);
+    await mkdir(path.join(target.outputRoot, relativeDir), { recursive: true });
+    for (const member of [source.fontFile, source.licenseFile]) {
+      // Extract only pinned members to stdout, never archive-controlled paths.
+      const { stdout } = await execFileAsync("unzip", ["-p", archivePath, member], {
+        encoding: "buffer", maxBuffer: 16 * 1024 * 1024,
+      });
+      const relativePath = path.posix.join(relativeDir, member);
+      await writeFile(path.join(target.outputRoot, relativePath), stdout);
+      manifest.assets.push({ path: relativePath, size: stdout.length, sha256: sha256(stdout) });
+    }
+    stylesheets.push(`/* ${source.family} ${source.version} */\n@font-face {\n  font-family: "${source.family}";\n  font-style: normal;\n  font-weight: 400;\n  font-display: swap;\n  src: url("./${relativeDir}/${source.fontFile}") format("woff2");\n}`);
+    const { target: _target, ...metadata } = source;
+    manifest.sources.push(metadata);
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+};
+
 const vendorAssets = async () => {
   const manifests = new Map();
   const stylesheets = new Map();
   const workingRoots = new Map();
+  let generatedNerdCatalog;
 
   for (const [targetId, target] of targetEntries) {
     await mkdir(path.dirname(target.outputRoot), { recursive: true });
@@ -343,10 +596,47 @@ const vendorAssets = async () => {
       path.join(path.dirname(target.outputRoot), `.font-sync-${targetId}-`)
     );
     workingRoots.set(targetId, workingRoot);
-    await mkdir(
-      path.join(workingRoot, target.assetPrefix),
-      { recursive: true }
-    );
+    if (nerdOnly) {
+      await cp(
+        path.join(target.outputRoot, target.assetPrefix),
+        path.join(workingRoot, target.assetPrefix),
+        { recursive: true }
+      );
+      await rm(
+        path.join(workingRoot, target.assetPrefix, nerdSource.id),
+        { recursive: true, force: true }
+      );
+      const manifest = JSON.parse(await readFile(
+        path.join(target.outputRoot, "manifest.json"),
+        "utf8"
+      ));
+      manifests.set(targetId, {
+        ...manifest,
+        profileId: target.profileId,
+        generatedAt: new Date().toISOString(),
+        sources: manifest.sources.filter(({ id }) => id !== nerdSource.id),
+        assets: manifest.assets.filter(({ path: assetPath }) =>
+          assetPath !== "fonts.css" &&
+          !assetPath.startsWith(`${target.assetPrefix}/${nerdSource.id}/`)
+        ),
+      });
+      const stylesheet = await readFile(
+        path.join(target.outputRoot, "fonts.css"),
+        "utf8"
+      );
+      const nerdMarkers = [
+        stylesheet.indexOf(`/* ${nerdSource.family} `),
+        stylesheet.indexOf("/* Nerd Fonts:"),
+      ].filter((index) => index >= 0);
+      const nerdStart = nerdMarkers.length > 0
+        ? Math.min(...nerdMarkers)
+        : stylesheet.length;
+      stylesheets.set(targetId, [
+        stylesheet.slice(0, nerdStart).trim(),
+      ]);
+      continue;
+    }
+    await mkdir(path.join(workingRoot, target.assetPrefix), { recursive: true });
     manifests.set(targetId, {
       target: targetId,
       ...(target.profileId ? { profileId: target.profileId } : {}),
@@ -357,7 +647,19 @@ const vendorAssets = async () => {
     stylesheets.set(targetId, []);
   }
 
+  for (const source of binarySources) {
+    if (nerdOnly) continue;
+    if (requestedTarget && source.target !== requestedTarget) continue;
+    await vendorBinaryFont(
+      source,
+      { ...targets[source.target], outputRoot: workingRoots.get(source.target) },
+      manifests.get(source.target),
+      stylesheets.get(source.target)
+    );
+  }
+
   for (const source of sources) {
+    if (nerdOnly) continue;
     if (requestedTarget && source.target !== requestedTarget) continue;
     const target = targets[source.target];
     const outputRoot = workingRoots.get(source.target);
@@ -424,9 +726,20 @@ const vendorAssets = async () => {
     });
   }
 
+  for (const source of archiveSources) {
+    if (nerdOnly) continue;
+    if (requestedTarget && source.target !== requestedTarget) continue;
+    await vendorArchiveFont(
+      source,
+      { ...targets[source.target], outputRoot: workingRoots.get(source.target) },
+      manifests.get(source.target),
+      stylesheets.get(source.target)
+    );
+  }
+
   if (!requestedTarget || requestedTarget === nerdSource.target) {
     const target = targets[nerdSource.target];
-    await vendorNerdFont(
+    generatedNerdCatalog = await vendorNerdFont(
       { ...target, outputRoot: workingRoots.get(nerdSource.target) },
       manifests.get(nerdSource.target),
       stylesheets.get(nerdSource.target)
@@ -489,6 +802,25 @@ const vendorAssets = async () => {
       path.join(target.outputRoot, "manifest.json")
     );
     await rm(workingRoot, { recursive: true, force: true });
+  }
+
+  if (generatedNerdCatalog) {
+    await writeFile(
+      path.join(repoRoot, "scripts", "data", "sources", "nerdfonts.json"),
+      generatedNerdCatalog.rawCatalog
+    );
+    await writeFile(
+      path.join(
+        repoRoot,
+        "packages",
+        "fonts",
+        "src",
+        "generated",
+        "nerd-font-ranges.ts"
+      ),
+      formatNerdFontRangesModule(generatedNerdCatalog.catalog),
+      "utf8"
+    );
   }
 };
 

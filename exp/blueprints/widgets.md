@@ -7,9 +7,9 @@
 ## 公共状态与主题
 
 - `focused` / `focusedId` 表示逻辑焦点；`selected` / `selectedId` 表示持久选择。禁止用 `active` 同时表达两者。
-- 默认 glyph：expanded `▾`、collapsed `▸`、Tab underline `▬`；List/Menu 无 cursor 和专用左侧占位。滑块由几何生成 `█` 与纵向 `▄/▀`、横向 `▐/▌`，不由主题指定单一字符。
+- 默认 glyph：expanded `▾`、collapsed `▸`、Tab underline `▬`；List/Menu 无 cursor 和专用左侧占位。Half-Cell 滑块按位置选择 `█` 与纵向 `▄/▀`、横向 `▐/▌`。
 - 默认 focus 与 selected 共用中性高亮，focus 额外 bold；主题值及 CSS 消费接口由 [Cell UI Theme API](../../packages/cell-ui/README.md#theme-consumption) 所有。
-- `CellUiTheme` 是唯一 Widget 主题入口；primitive 的 `textStyle` 只覆盖局部内容，不重定义状态语法。
+- `CellUiTheme` 是唯一 Widget 主题入口；组件的 `textStyle` 只覆盖局部内容，不重定义状态语法。
 - 所有边框由公共 Chrome painter 绘制；形状接口见 [Theme API](../../packages/cell-ui/README.md#theme-consumption)。字符圆角不改变一格边框占位、矩形背景、内容裁剪或命中；快照与复制保留真实角字符。
 - 样式顺序为 local text → hover → focused surface → selected → focused item accent → disabled；focused/selected/disabled 跳过 hover，selected 背景不被焦点覆盖。`resolveCellStateStyle` 统一解析，`focusedItemStyle` 为 focused collection item 提供 accent（默认 bold）；编辑器不使用此 accent。
 - 解析后的背景属于 Widget 的完整布局矩形，包括空白 Cell；Surface 先填充，Chrome、Content、Decoration 后绘制。透明状态不填充背景。

@@ -68,7 +68,6 @@ it("paints owned block thumbs along both scroll axes", () => {
         for (let x = thumb!.x; x < thumb!.x + thumb!.width; x++) {
           expect(frame.buffer.get(x, y)?.ownerId).toBe("scroll");
           expect(["█", "▀", "▄", "▌", "▐"]).toContain(frame.buffer.get(x, y)?.text);
-          expect(frame.buffer.get(x, y)?.primitive).toMatchObject({ kind: "fill" });
           expect(hitTest(frame.scene, { x, y })[0]).toBe("scroll");
         }
       }

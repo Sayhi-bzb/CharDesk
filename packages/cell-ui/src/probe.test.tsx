@@ -57,7 +57,7 @@ describe("Cell probe", () => {
 
     const snapshot = pilot.probe({ x: 0, y: 0, width: 12, height: 1 });
     expect(snapshot).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       probeId: null,
       region: { x: 0, y: 0, width: 12, height: 1 },
       viewport: { width: 12, height: 3 },
@@ -68,7 +68,7 @@ describe("Cell probe", () => {
     expect(snapshot.cells.filter((cell) => cell.continuation)).toHaveLength(2);
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
     expect(formatCellProbe(snapshot, { header: true })).toBe(
-      "cell-ui/probe@2  anonymous  12×1  focus=open\nOpen 世界"
+      "cell-ui/probe@3  anonymous  12×1  focus=open\nOpen 世界"
     );
 
     expect(pilot.inspect({ x: 0, y: 0 })).toMatchObject({
@@ -109,10 +109,10 @@ describe("Cell probe", () => {
       probeId: "font-contract",
       presentation: {
         metrics: { cellWidth: 9, cellHeight: 19, fontSize: 15 },
-        fontProfileId: "gallery/ark-prop",
+        fontProfileId: "gallery/test-font",
         requestedFontRoutes: {
-          display: { family: "Ark Prop", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "inherit" as const },
-          cjk: { family: "Ark Prop", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "inherit" as const },
+          display: { family: "Test Font", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "inherit" as const },
+          cjk: { family: "Test Font", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "inherit" as const },
           nerd: { family: "Nerd", fontSize: 15, scaleX: 0.6, baselineShiftEm: 0, weightPolicy: "regular" as const },
           symbol: { family: "Symbol", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "regular" as const },
           emoji: { family: "Emoji", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "regular" as const },
@@ -124,24 +124,24 @@ describe("Cell probe", () => {
     };
 
     expect(formatCellProbe(snapshot, { header: true })).toBe(
-      "cell-ui/probe@2  font-contract  2×1  focus=none\n" +
-      "font-profile=gallery/ark-prop cell=9×19 base=15px\n" +
-      "font display=Ark Prop size=15px scaleX=1\n" +
-      "font cjk=Ark Prop size=15px scaleX=1\n" +
+      "cell-ui/probe@3  font-contract  2×1  focus=none\n" +
+      "font-profile=gallery/test-font cell=9×19 base=15px\n" +
+      "font display=Test Font size=15px scaleX=1\n" +
+      "font cjk=Test Font size=15px scaleX=1\n" +
       "glyph-overflow \"W\"@(0,0) 12.5px>9px\n" +
       "W"
     );
     pilot.dispose();
   });
 
-  it("reports presentation primitives without changing copied text", () => {
+  it("serializes component chrome as Unicode Cell text", () => {
     const pilot = createTestPilot({
       viewport: { width: 4, height: 3 },
       render: () => <Root><Box id="box" style={{ border: true, width: 4, height: 3 }} /></Root>,
     });
     const snapshot = pilot.probe();
     expect(snapshot.text).toBe("┌──┐\n│  │\n└──┘");
-    expect(snapshot.cells[0]?.primitive).toMatchObject({ kind: "line", edges: 2 | 4 });
+    expect(snapshot.cells[0]).toMatchObject({ text: "┌", ownerId: "box" });
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
     pilot.dispose();
   });

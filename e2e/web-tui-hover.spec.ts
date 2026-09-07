@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { readCellProbe, readCellMetrics } from "./helpers/cell-probe";
 
 test("hover shares hit testing, is paint-only, and never activates a command", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
@@ -41,9 +41,10 @@ test("palette blocks underlying hover even when the mouse is stationary", async 
   await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="overlay"]');
   const canvas = surface.locator("canvas");
+  const metrics = await readCellMetrics(surface);
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
-  await page.mouse.move(bounds.x + 15, bounds.y + 9);
+  await page.mouse.move(bounds.x + 1.5 * metrics.cellWidth, bounds.y + 0.5 * metrics.cellHeight);
   await expect(surface).toHaveAttribute("data-cell-hovered", "show-palette");
   await surface.focus();
   await page.keyboard.press("Enter");
@@ -61,14 +62,16 @@ test("stationary mouse follows scrolled rows and editor content uses a text curs
   const canvas = core.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
-  await page.mouse.move(bounds.x + 40, bounds.y + 5.5 * 19);
+  const metrics = await readCellMetrics(core);
+  await page.mouse.move(bounds.x + 4 * metrics.cellWidth, bounds.y + 5.5 * metrics.cellHeight);
   await expect(core).toHaveAttribute("data-cell-hovered", "core-file-src/index.ts");
   await page.mouse.wheel(0, 100);
   await expect(core).toHaveAttribute("data-cell-hovered", "core-file-src/app.ts");
   const editor = page.locator('[data-cell-probe="editor"] canvas');
   await editor.scrollIntoViewIfNeeded();
   const editorBounds = (await editor.boundingBox())!;
-  await page.mouse.move(editorBounds.x + 30, editorBounds.y + 2.5 * 19);
+  const editorMetrics = await readCellMetrics(page.locator('[data-cell-probe="editor"]'));
+  await page.mouse.move(editorBounds.x + 3 * editorMetrics.cellWidth, editorBounds.y + 2.5 * editorMetrics.cellHeight);
   await expect(editor).toHaveCSS("cursor", "text");
   await expect(page.locator('[data-cell-probe="editor"]')).not.toHaveAttribute("data-cell-hovered");
 });

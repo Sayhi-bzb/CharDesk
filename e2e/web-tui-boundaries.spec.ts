@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { readCellProbe, readCellMetrics } from "./helpers/cell-probe";
 
 for (const dpr of [1, 2]) {
-  test.describe(`strict Cell raster at DPR ${dpr}`, () => {
+  test.describe(`Cell decoration at DPR ${dpr}`, () => {
     test.use({ deviceScaleFactor: dpr });
-    test("Tab decoration stays inside its background in both themes", async ({ page }) => {
+    test("Tab decoration preserves Cell ownership and repaints consistently in both themes", async ({ page }) => {
       await page.goto("/exp/web-tui/#/__fixtures/all");
       await page.evaluate(() => document.fonts.ready);
       const canvas = page.locator('[data-cell-probe="complex"] canvas');
@@ -21,14 +21,9 @@ for (const dpr of [1, 2]) {
       for (const colorScheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme });
         await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", colorScheme);
-        const outsideIsEmpty = await canvas.evaluate((node: HTMLCanvasElement) => {
-          const context = node.getContext("2d")!;
-          const scale = window.devicePixelRatio;
-          const pixels = context.getImageData(24 * 9 * scale, 7 * 19 * scale, 9 * scale, 19 * scale).data;
-          const background = context.getImageData(30 * 9 * scale, 7 * 19 * scale, 1, 1).data;
-          return pixels.every((value, index) => value === background[index % 4]);
-        });
-        expect(outsideIsEmpty).toBe(true);
+        const probe = await readCellProbe(surface);
+        expect(probe.presentation?.glyphOverflowMode).toBe("visible");
+        expect(probe.cells.find(({ x, y }) => x === 24 && y === 7)?.text).toBe(" ");
         const before = await canvas.evaluate((node: HTMLCanvasElement) => node.toDataURL());
         await canvas.evaluate(async (node: HTMLCanvasElement) => {
           node.style.width = `${node.getBoundingClientRect().width + 1}px`;
@@ -49,7 +44,8 @@ test("real wheel stays inside ScrollArea, including at both boundaries", async (
   const canvas = surface.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
-  await page.mouse.move(bounds.x + 40, bounds.y + 100);
+  const metrics = await readCellMetrics(surface);
+  await page.mouse.move(bounds.x + 4 * metrics.cellWidth, bounds.y + 5.5 * metrics.cellHeight);
   const pageY = await page.evaluate(() => window.scrollY);
   await page.mouse.wheel(0, 100);
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("offset: 1 / 3");
@@ -75,9 +71,9 @@ test("editor consumes its full layout width and paints blank focused Cells", asy
   expect((await readCellProbe(surface)).text.split("\n")[2]).toBe(`│${"a".repeat(37)} │`);
   await input.fill("short");
   const cells = await surface.evaluate((node) => {
-    const probe = (node as HTMLElement & { __chardeskCellProbeV2: {
+    const probe = (node as HTMLElement & { __chardeskCellProbeV3: {
       cells: { x: number; y: number; style: { backgroundColor?: string }; ownerId: string | null }[];
-    } }).__chardeskCellProbeV2;
+    } }).__chardeskCellProbeV3;
     return probe.cells.filter(({ y }) => y >= 1 && y <= 3);
   });
   expect(cells).toHaveLength(120);

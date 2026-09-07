@@ -1,5 +1,5 @@
 import type { CellBuffer, CellTextOptions } from "./buffer.js";
-import type { CharDeskCellPrimitive } from "@chardesk/rendering";
+import type { CharDeskFontAudit } from "@chardesk/rendering/canvas";
 import { hitTest, hitTestCell } from "./scene.js";
 import type {
   Cell,
@@ -18,7 +18,6 @@ export type CellProbeCell = Readonly<{
   x: number;
   y: number;
   text: string;
-  primitive?: CharDeskCellPrimitive;
   width: 1 | 2;
   continuation: boolean;
   ownerId: WidgetId | null;
@@ -50,10 +49,21 @@ export type CellProbeGlyphOverflow = Readonly<{
 }>;
 
 export type CellProbePresentation = Readonly<{
+  fontAudit?: Readonly<{
+    status: "loading" | "ready" | "unavailable";
+    reason?: "font-load-failed" | "measurement-unavailable";
+    report?: CharDeskFontAudit;
+  }>;
+  glyphOverflowMode?: "clip" | "visible";
   metrics: Readonly<{
     cellWidth: number;
     cellHeight: number;
     fontSize: number;
+    baseline?: number;
+  }>;
+  measurement?: Readonly<{
+    source: "font-bounds" | "glyph-bounds" | "calibrated" | "temporary" | "default" | "explicit";
+    ready: boolean;
   }>;
   fontProfileId: string;
   requestedFontRoutes: Readonly<Record<
@@ -64,7 +74,7 @@ export type CellProbePresentation = Readonly<{
 }>;
 
 export type CellProbeSnapshot = Readonly<{
-  schemaVersion: 2;
+  schemaVersion: 3;
   probeId: string | null;
   revision: number;
   region: CellRect;
@@ -109,7 +119,6 @@ const cloneCell = (cell: Cell, x: number, y: number): CellProbeCell => ({
   x,
   y,
   text: cell.text,
-  ...(cell.primitive ? { primitive: cell.primitive } : {}),
   width: cell.width,
   continuation: cell.continuation,
   ownerId: cell.ownerId,
@@ -134,7 +143,7 @@ export const captureCellProbe = (
     }
   }
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     probeId: options.probeId ?? null,
     revision: frame.revision,
     region,
@@ -170,6 +179,24 @@ export const formatCellProbe = (
     formatFace("cjk"),
   ];
   const visibleOverflow = presentation.glyphOverflow.slice(0, 8);
+  const audit = presentation.fontAudit;
+  if (audit) {
+    diagnostics.push(`font-audit=${audit.status}${audit.reason ? ` reason=${audit.reason}` : ""}`);
+    if (audit.report) {
+      const { measurement, metrics, samples } = audit.report;
+      const size = (m: typeof metrics) => `${m.cellWidth}×${m.cellHeight} baseline=${m.baseline ?? "middle"}`;
+      diagnostics.push(`font-native=${size(measurement.fontMetrics)} source=${measurement.fontMetricsSource}`,
+        `font-grid=${size(measurement.metrics)} source=${measurement.source}`,
+        `surface-grid=${size(metrics)} source=${presentation.measurement?.source ?? "unknown"}`,
+        "font-identity=requested-stack-only");
+      const issues = samples.filter((s) => s.status === "unavailable" || (s.advanceOverflow ?? 0) > 0.01
+        || (s.overflowTop ?? 0) > 0.01 || (s.overflowBottom ?? 0) > 0.01 || s.verticalGap !== null)
+        .sort((a, b) => Number(b.verticalGap !== null) - Number(a.verticalGap !== null));
+      diagnostics.push(...issues.slice(0, 12).map((s) =>
+        `font-sample ${JSON.stringify(s.text)} bold=${s.requestedBold}->${s.effectiveBold} status=${s.status} advance-overflow=${s.advanceOverflow} top=${s.top} bottom=${s.bottom} vertical-gap=${s.verticalGap}`));
+      if (issues.length > 12) diagnostics.push(`font-sample +${issues.length - 12} more (JSON contains all samples)`);
+    }
+  }
   diagnostics.push(...visibleOverflow.map((overflow) =>
     `glyph-overflow ${JSON.stringify(overflow.text)}@(${overflow.col},${overflow.row}) ${overflow.measuredWidth}px>${overflow.availableWidth}px`));
   if (presentation.glyphOverflow.length > visibleOverflow.length) {

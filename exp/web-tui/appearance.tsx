@@ -5,9 +5,8 @@ import { Sun } from "pixelarticons/react/Sun";
 import { TextStartT } from "pixelarticons/react/TextStartT";
 import { createContext, useContext, useLayoutEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
-import { CellSurface, useCellCssTheme, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
+import { CellSurface, DEFAULT_CELL_UI_METRICS, loadCellFontMetrics, useCellCssTheme, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
 import { resolveCellUiTheme, type CellBorderShape } from "@chardesk/cell-ui";
-import { DEFAULT_CHARDESK_CANVAS_METRICS } from "@chardesk/rendering/canvas";
 import {
   galleryFontOptions,
   nextGalleryFont,
@@ -97,6 +96,8 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
   const toggleBorder = () => setBorderShape((shape) => shape === "square" ? "rounded" : "square");
   const mode = preference ?? (dark ? "dark" : "light");
   const rootRef = useRef<HTMLDivElement>(null);
+  const fontRequestRef = useRef(0);
+  useLayoutEffect(() => () => { fontRequestRef.current += 1; }, []);
   const toggleTheme = () => {
     const next = mode === "light" ? "dark" : "light";
     setPreference(next);
@@ -104,17 +105,11 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
   };
   const toggleFont = async () => {
     if (fontStatus === "loading") return;
+    const request = ++fontRequestRef.current;
     const target = fontStatus === "error" && pendingFont
       ? pendingFont
       : nextGalleryFont(font);
     const option = galleryFontOptions[target];
-    if (!option.stylesheet) {
-      setFont(target);
-      setPendingFont(null);
-      setFontStatus("idle");
-      setFontMessage(`Display font: ${option.label}.`);
-      return;
-    }
     setPendingFont(target);
     setFontStatus("loading");
     setFontMessage(`Loading ${option.label}.`);
@@ -128,11 +123,14 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
           throw new Error(`Unable to load ${option.label}.`);
         }
       }
+      await loadCellFontMetrics(option.profile);
+      if (request !== fontRequestRef.current) return;
       setFont(target);
       setPendingFont(null);
       setFontStatus("idle");
       setFontMessage(`Display font: ${option.label}.`);
     } catch {
+      if (request !== fontRequestRef.current) return;
       resetFontStylesheet(option);
       setFontStatus("error");
       setFontMessage(`${option.label} is unavailable. Display remains ${galleryFontOptions[font].label}.`);
@@ -160,7 +158,7 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
   const style = {
     fontFamily: fontProfile.families.text,
     colorScheme: mode,
-    "--gallery-font-size": `${DEFAULT_CHARDESK_CANVAS_METRICS.fontSize}px`,
+    "--gallery-font-size": `${DEFAULT_CELL_UI_METRICS.fontSize}px`,
   } as CSSProperties;
   return <AppearanceContext.Provider value={{ ...appearance, theme: { ...appearance.theme, borderShape }, mode, font, pendingFont, fontStatus, fontMessage, fontProfile, toggleTheme, toggleBorder, toggleFont }}>
     <div ref={rootRef} className="gallery-page" data-gallery-theme={mode} data-gallery-font={font} data-gallery-font-status={fontStatus} style={style}>{children}</div>
@@ -226,5 +224,5 @@ export function GalleryFontToggle() {
 }
 export function GallerySurface(props: CellSurfaceProps) {
   const { theme, palette, fontProfile } = useGalleryAppearance();
-  return <CellSurface {...props} theme={theme} palette={palette} fontProfile={fontProfile} />;
+  return <CellSurface {...props} theme={theme} palette={palette} fontProfile={fontProfile} glyphOverflow="visible" />;
 }

@@ -1,7 +1,7 @@
 {
   "name": "@chardesk/rendering",
   "version": "0.1.0",
-  "description": "Shared CharDesk render models and Canvas 2D primitives",
+  "description": "Shared CharDesk render models and Canvas 2D presentation",
   "type": "module",
   "license": "MIT",
   "repository": {

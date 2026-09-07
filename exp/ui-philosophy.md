@@ -4,14 +4,15 @@
 
 本页只回答 Web TUI 的界面与交互以什么为权威。
 
-## 六条原则
+## 七条原则
 
 1. **Everything is Cell**：layout、paint、hit、scroll、selection 和 copy 使用整数 Cell；px 只存在于浏览器输入与 Canvas 输出边界。
-2. **Every Cell has an Owner**：最终可见 Cell 归 Widget 或其 chrome 所有，但 renderer 不创建 DOM-per-cell。
-3. **Every Input becomes a Command**：keyboard、pointer、wheel、textarea 与辅助技术 action 汇入同一种 Engine command；应用只消费 command。
-4. **State lives in the Grid**：focused、selected、expanded、disabled、editing 必须在 Cell Scene 中可见；外部状态文字只能补充，不能代替。
-5. **Keyboard is Complete; Pointer is Direct**：键盘无需 hover 或 drag 即可完成操作；pointer down 定位焦点，完整 tap 才执行动作。
-6. **One State, Many Projections**：Canvas、Semantic DOM、clipboard 与 headless test snapshot 消费同一次 Widget commit，不建立镜像状态机。
+2. **Every Cell is Unicode**：每个可见前景都是 `Cell.text` 的 Unicode glyph；Canvas 不用几何图元替换字符。背景、裁剪与命中仍是 Cell 元数据。
+3. **Every Cell has an Owner**：最终可见 Cell 归 Widget 或其 chrome 所有，但 renderer 不创建 DOM-per-cell。
+4. **Every Input becomes a Command**：keyboard、pointer、wheel、textarea 与辅助技术 action 汇入同一种 Engine command；应用只消费 command。
+5. **State lives in the Grid**：focused、selected、expanded、disabled、editing 必须在 Cell Scene 中可见；外部状态文字只能补充，不能代替。
+6. **Keyboard is Complete; Pointer is Direct**：键盘无需 hover 或 drag 即可完成操作；pointer down 定位焦点，完整 tap 才执行动作。
+7. **One State, Many Projections**：Canvas、Semantic DOM、clipboard 与 headless test snapshot 消费同一次 Widget commit，不建立镜像状态机。
 
 ## 状态语言
 

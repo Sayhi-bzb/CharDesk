@@ -1,6 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
 import {
-  DEFAULT_CHARDESK_CANVAS_METRICS,
   alignCharDeskCanvasRect,
   drawCharDeskCanvasCells,
   getCharDeskCanvasFont,
@@ -23,6 +22,7 @@ import {
   useSyncExternalStore,
   type ClipboardEvent,
   type CSSProperties,
+  type FocusEvent,
   type KeyboardEvent,
   type PointerEvent,
   type ReactElement,
@@ -39,6 +39,9 @@ import {
 import { EventManager, type CellEventHandlerMap } from "./events.js";
 import { getEventPath, hitTestCell } from "./scene.js";
 import { useSurfaceFocus } from "./browser-focus.js";
+import { useCellFontMetrics } from "./browser-font-metrics.js";
+import { useCellFontAudit } from "./browser-font-audit.js";
+export { DEFAULT_CELL_UI_METRICS, loadCellFontMetrics } from "./browser-font-metrics.js";
 import {
   GestureManager,
   type GestureSignal,
@@ -295,10 +298,13 @@ const presentFrame = (
   cellRange: CellRangeSnapshot | null,
   theme: CellUiTheme,
   fontProfile?: CharDeskFontProfile,
+  glyphOverflow: "clip" | "visible" = "clip",
   dirtyRegions?: readonly CellRect[]
 ): void => {
   const context = canvas.getContext("2d");
   if (!context) return;
+  // Unbounded ink can touch any Cell: partial erasure cannot safely restore it.
+  if (glyphOverflow === "visible") dirtyRegions = undefined;
   const width = frame.buffer.width * metrics.cellWidth;
   const height = frame.buffer.height * metrics.cellHeight;
   const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
@@ -359,13 +365,12 @@ const presentFrame = (
               }
             : {}),
         },
-        ...(cell.primitive ? { primitive: cell.primitive } : {}),
         x: x * metrics.cellWidth,
         y: y * metrics.cellHeight,
         options: {
           metrics,
           palette,
-          clipToCell: true,
+          clipToCell: glyphOverflow === "clip",
           ...(fontProfile ? { fontProfile } : {}),
         },
         drawBackground: false,
@@ -518,7 +523,9 @@ export type CellSurfaceProps = Readonly<{
   focusedId?: WidgetId | null;
   theme?: Partial<CellUiTheme>;
   metrics?: CharDeskCanvasMetrics;
+  fontSize?: number;
   fontProfile?: CharDeskFontProfile;
+  glyphOverflow?: "clip" | "visible";
   palette?: CharDeskCanvasPalette;
   label?: string;
   className?: string;
@@ -528,7 +535,7 @@ export type CellSurfaceProps = Readonly<{
   onCellRangeCommand?: (command: CellRangeCommand) => void;
 }>;
 
-export const CELL_SURFACE_PROBE_PROPERTY = "__chardeskCellProbeV2" as const;
+export const CELL_SURFACE_PROBE_PROPERTY = "__chardeskCellProbeV3" as const;
 
 type CellProbeHost = HTMLElement & {
   [CELL_SURFACE_PROBE_PROPERTY]?: CellProbeSnapshot;
@@ -547,7 +554,7 @@ const CELL_PROBE_FONT_SAMPLES = {
   display: "A",
   cjk: "界",
   nerd: "\ue0b0",
-  symbol: "─",
+  symbol: "∞",
   emoji: "👋",
 } as const;
 
@@ -586,7 +593,7 @@ const captureCellProbePresentation = (
       for (let row = 0; row < frame.buffer.height; row += 1) {
         for (let col = 0; col < frame.buffer.width; col += 1) {
           const cell = frame.buffer.get(col, row);
-          if (!cell || cell.continuation || cell.primitive || !cell.text.trim()) continue;
+          if (!cell || cell.continuation || !cell.text.trim()) continue;
           const bold = !!cell.style.bold;
           const key = `${bold}:${cell.text}`;
           if (measured.has(key)) continue;
@@ -628,6 +635,7 @@ const captureCellProbePresentation = (
       cellWidth: metrics.cellWidth,
       cellHeight: metrics.cellHeight,
       fontSize: metrics.fontSize,
+      ...(metrics.baseline === undefined ? {} : { baseline: metrics.baseline }),
     },
     fontProfileId: fontProfile?.id ?? "default",
     requestedFontRoutes,
@@ -647,8 +655,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     children,
     focusedId = null,
     theme,
-    metrics = DEFAULT_CHARDESK_CANVAS_METRICS,
+    metrics: explicitMetrics,
+    fontSize,
     fontProfile,
+    glyphOverflow = "clip",
     palette: paletteOverride,
     label = "Cell interface",
     className,
@@ -657,6 +667,9 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     cellRange: controlledCellRange,
     onCellRangeCommand,
   } = props;
+  const fontMetrics = useCellFontMetrics(fontProfile, fontSize, explicitMetrics);
+  const fontAudit = useCellFontAudit(!!probeId && fontMetrics.ready, fontProfile, fontMetrics.metrics);
+  const { metrics } = fontMetrics;
   const resolvedTheme = useMemo(() => resolveCellUiTheme(theme), [theme]);
   const palette = useMemo(() => paletteOverride ?? {
     color: resolvedTheme.foreground, background: resolvedTheme.background,
@@ -677,7 +690,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const runtimeRef = useRef<CellUiRuntime | null>(null);
   const frameRef = useRef<FrameSnapshot | null>(null);
   const presentedRevisionRef = useRef<number | null>(null);
-  const presentationRef = useRef({ metrics, palette, fontProfile });
+  const presentationRef = useRef({ metrics, palette, fontProfile, glyphOverflow });
   const focusRef = useRef(new FocusManager());
   const eventsRef = useRef(new EventManager());
   const gesturesRef = useRef(new GestureManager());
@@ -784,11 +797,23 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !frame || frameRef.current !== frame) return;
+    if (!sameWidgetValue(presentationRef.current.metrics, metrics)) {
+      const pointerIds = new Set(gesturesRef.current.sync(() => false));
+      if (rangeDragRef.current) pointerIds.add(rangeDragRef.current.pointerId);
+      if (textDragRef.current) pointerIds.add(textDragRef.current.pointerId);
+      rangeDragRef.current = null;
+      textDragRef.current = null;
+      for (const id of pointerIds) {
+        eventsRef.current.cancel(id);
+        if (surfaceRef.current?.hasPointerCapture(id)) surfaceRef.current.releasePointerCapture(id);
+      }
+    }
     const previousRevision = presentedRevisionRef.current;
     const incremental = previousRevision !== null && frame.revision > previousRevision
       && sameWidgetValue(presentationRef.current.metrics, metrics)
       && sameWidgetValue(presentationRef.current.palette, palette)
-      && presentationRef.current.fontProfile === fontProfile;
+      && presentationRef.current.fontProfile === fontProfile
+      && presentationRef.current.glyphOverflow === glyphOverflow;
     presentFrame(
       canvas,
       frame,
@@ -797,11 +822,12 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       cellRange,
       resolvedTheme,
       fontProfile,
+      glyphOverflow,
       incremental ? frame.invalidation.dirtyRegions : undefined
     );
     presentedRevisionRef.current = frame.revision;
-    presentationRef.current = { metrics, palette, fontProfile };
-  }, [cellRange, fontProfile, frame, metrics, palette, resolvedTheme]);
+    presentationRef.current = { metrics, palette, fontProfile, glyphOverflow };
+  }, [cellRange, fontProfile, frame, metrics, palette, resolvedTheme, glyphOverflow]);
 
   const fontPresentRef = useRef<() => void>(() => undefined);
   const scheduleFontPresentRef = useRef<() => void>(() => undefined);
@@ -811,11 +837,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       const canvas = canvasRef.current;
       const current = frameRef.current;
       if (canvas && current) {
-        presentFrame(canvas, current, metrics, palette, cellRange, resolvedTheme, fontProfile);
+        presentFrame(canvas, current, metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow);
         setFontPresentationRevision((revision) => revision + 1);
       }
     };
-  }, [metrics, palette, cellRange, resolvedTheme, fontProfile]);
+  }, [metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow]);
   useEffect(() => {
     requestedFontsRef.current.clear();
   }, [fontProfile]);
@@ -872,7 +898,12 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     if (!canvas) return;
     const snapshot: CellProbeSnapshot = {
       ...captureCellProbe(frame, { probeId }),
-      presentation: captureCellProbePresentation(frame, canvas, metrics, fontProfile),
+      presentation: {
+        ...captureCellProbePresentation(frame, canvas, metrics, fontProfile),
+        measurement: { source: fontMetrics.source, ready: fontMetrics.ready },
+        fontAudit,
+        glyphOverflowMode: glyphOverflow,
+      },
     };
     surface[CELL_SURFACE_PROBE_PROPERTY] = snapshot;
     return () => {
@@ -880,17 +911,17 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         delete surface[CELL_SURFACE_PROBE_PROPERTY];
       }
     };
-  }, [fontPresentationRevision, fontProfile, frame, metrics, probeId]);
+  }, [fontPresentationRevision, fontProfile, frame, metrics, probeId, fontMetrics, fontAudit, glyphOverflow]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !frame || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
-      presentFrame(canvas, frame, metrics, palette, cellRange, resolvedTheme, fontProfile);
+      presentFrame(canvas, frame, metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow);
     });
     observer.observe(canvas);
     return () => observer.disconnect();
-  }, [cellRange, fontProfile, frame, metrics, palette, resolvedTheme]);
+  }, [cellRange, fontProfile, frame, metrics, palette, resolvedTheme, glyphOverflow]);
 
   useEffect(() => {
     if (!frame || !cellRange || !rangeEditable) return;
@@ -1001,6 +1032,29 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       event.preventDefault();
       dispatch(command);
     }
+  };
+
+  const onSurfaceBlur = (event: FocusEvent<HTMLDivElement>) => {
+    surfaceFocus.leave(event);
+    if (!cellRange || !rangeEditable) return;
+    const surface = event.currentTarget;
+    const relatedTarget = event.relatedTarget;
+    if (relatedTarget instanceof Node && surface.contains(relatedTarget)) return;
+    if (!surface.ownerDocument.hasFocus()) return;
+    if (relatedTarget) {
+      dispatchCellRange({ type: "clear" });
+      return;
+    }
+    // A null relatedTarget can mean either page chrome or a transient browser/
+    // React focus gap. Wait for the document to expose its settled owner.
+    queueMicrotask(() => {
+      const document = surface.ownerDocument;
+      if (
+        surface.isConnected
+        && document.hasFocus()
+        && !surface.contains(document.activeElement)
+      ) dispatchCellRange({ type: "clear" });
+    });
   };
 
   return (
@@ -1171,7 +1225,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         const targetId = focusRef.current.first(frame.tree);
         if (targetId) dispatch({ type: "focus", targetId });
       }}
-      onBlur={surfaceFocus.leave}
+      onBlur={onSurfaceBlur}
       onKeyDown={onKeyDown}
       style={{ position: "relative", width: "fit-content", outline: "none" }}
     >
