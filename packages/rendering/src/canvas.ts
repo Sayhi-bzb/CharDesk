@@ -10,6 +10,8 @@ import type {
   CharDeskRenderModel,
 } from "./index.js";
 import { resolveCharDeskFontRoute } from "./index.js";
+import { drawCharDeskCellGraphic, resolveCharDeskCanvasGlyphSource } from "./cell-graphics.js";
+export { CELL_GRAPHICS_VERSION, resolveCharDeskCanvasGlyphSource } from "./cell-graphics.js";
 import {
   alignCanvasRect,
   type AxisTransform,
@@ -477,7 +479,6 @@ const drawCellText = (
   const options = entry.options;
   const metrics = options?.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
   const zoom = options?.zoom ?? 1;
-  const fontGlyph = prepareFontGlyph(ctx, entry, visual, state);
   ctx.textBaseline = metrics.baseline === undefined ? "middle" : "alphabetic";
   const attrs = visual.attrs;
   const textColor = options?.color ?? visual.color;
@@ -493,14 +494,21 @@ const drawCellText = (
     ctx.rect(aligned.x, aligned.y, aligned.width, aligned.height);
     ctx.clip();
   }
-  if (fontGlyph.scaleX === 1) {
-    ctx.fillText(fontGlyph.text, fontGlyph.x, fontGlyph.y);
+  if (resolveCharDeskCanvasGlyphSource(visual.text) === "cell-graphics") {
+    drawCharDeskCellGraphic(ctx, visual.text, {
+      x: entry.x, y: entry.y, width: metrics.cellWidth * zoom * visual.width, height: metrics.cellHeight * zoom,
+    }, zoom, state.transform);
   } else {
-    ctx.save();
-    ctx.translate(fontGlyph.x, fontGlyph.y);
-    ctx.scale(fontGlyph.scaleX, 1);
-    ctx.fillText(fontGlyph.text, 0, 0);
-    ctx.restore();
+    const fontGlyph = prepareFontGlyph(ctx, entry, visual, state);
+    if (fontGlyph.scaleX === 1) {
+      ctx.fillText(fontGlyph.text, fontGlyph.x, fontGlyph.y);
+    } else {
+      ctx.save();
+      ctx.translate(fontGlyph.x, fontGlyph.y);
+      ctx.scale(fontGlyph.scaleX, 1);
+      ctx.fillText(fontGlyph.text, 0, 0);
+      ctx.restore();
+    }
   }
 
   const cellWidth = metrics.cellWidth * zoom * visual.width;
@@ -624,7 +632,7 @@ export const loadCharDeskCanvasFonts = async (
   }>();
   for (const sample of samplesToLoad) {
     const grapheme = typeof sample === "string" ? sample : sample.grapheme;
-    if (!grapheme) continue;
+    if (!grapheme || resolveCharDeskCanvasGlyphSource(grapheme) === "cell-graphics") continue;
     const route = resolveCharDeskFontRoute(grapheme);
     const bold = typeof sample === "string" ? false : !!sample.bold;
     const italic = typeof sample === "string" ? false : !!sample.italic;

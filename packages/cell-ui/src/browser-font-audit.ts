@@ -1,6 +1,7 @@
 import { CHARDESK_SYSTEM_FONT_PROFILE } from "@chardesk/fonts";
 import {
   auditCharDeskCanvasFont, getCharDeskCanvasFont, resolveCharDeskCanvasFontFace,
+  resolveCharDeskCanvasGlyphSource,
   type CharDeskCanvasMetrics, type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
 import { resolveCharDeskFontRoute } from "@chardesk/rendering";
@@ -12,7 +13,8 @@ type CellFontAuditSnapshot = NonNullable<CellProbePresentation["fontAudit"]>;
 const samples = Array.from(new Set([
   ...Array.from({ length: 95 }, (_,i) => String.fromCharCode(32 + i)),
   ..."世界，。│█▀▄─┌└→",
-])).flatMap((grapheme) => [{ grapheme, bold: false }, { grapheme, bold: true }]);
+])).filter((text) => resolveCharDeskCanvasGlyphSource(text) === "font")
+  .flatMap((grapheme) => [{ grapheme, bold: false }, { grapheme, bold: true }]);
 const loading: CellFontAuditSnapshot = { status: "loading" };
 const inactive = { getSnapshot: () => loading, subscribe: () => () => {} };
 const stores = new WeakMap<CharDeskFontProfile, Map<string, ReturnType<typeof createStore>>>();

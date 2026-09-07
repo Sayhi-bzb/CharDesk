@@ -18,7 +18,7 @@
 
 | ID | Phase / 切片 | 已交付事实 | 验收证据 |
 | --- | --- | --- | --- |
-| P5.15 | Phase 5 / Core 边框路由 | Cell UI 与主 Canvas 的 Box/Block 共用 JuliaMono Regular 路由，正文保留选定字体；加载、绘制和 Probe 消费有效 Profile | [Surface 契约](../packages/cell-ui/README.md)、[共享路由](../packages/fonts/README.md)、[三字体绘制检查](../e2e/web-tui-block-glyphs.spec.ts) |
+| P5.15 | Phase 5 / Box/Block 专用绘制 | 主 Canvas、Cell UI 与 PNG 共用 U+2500–U+259F 专用绘制器；160 字符覆盖、字体独立、原 Unicode 不变；Box 默认 1.5× 线宽，笔画中心对齐设备像素，圆角使用等半径相切圆弧、双线保持分离；Probe 区分字体与 Cell graphics，不等待 JuliaMono | [绘制契约](../packages/rendering/README.md#cell-graphics)、[覆盖测试](../packages/rendering/src/cell-graphics.test.ts)、[双浏览器像素矩阵](../e2e/web-tui-cell-graphics.spec.ts)、[清晰度与连接](../e2e/web-tui-box-clarity.spec.ts)、[三字体检查](../e2e/web-tui-block-glyphs.spec.ts) |
 | P5.16 | Phase 5 / Host 字体消费 | Settings → General 切换本地 Maple/Ark/Xiaolai；偏好独立持久化；主 Canvas、模板预览、整图与选区 PNG 消费有效 Profile；失败重试与最新请求提交，不改 Cell 几何或文档 | [Host 字体契约](research/font-stack.md#host-字体切换)、[状态测试](../src/shared/fonts/runtime.test.ts)、[PNG 测试](../src/domains/export/raster.dom.test.ts)、[Chromium/WebKit 设置验证](../e2e/canvas-font-settings.spec.ts) |
 | P0.1 | Phase 0 / 上游地图 | 当前依赖、参考与未采用边界已有单一登记处 | [事实白板](README.md#当前上游关系)、[卡片规则](research/checklist.md) |
 | P0.2 | Phase 0 / 架构收敛 | Compositor、SceneGeometry、事件、Portal、虚拟化与 SemanticSnapshot 的目标契约已定义 | [Compositor 蓝图](blueprints/compositor.md)、[Semantics 蓝图](blueprints/semantics.md) |
@@ -53,7 +53,7 @@
 | ID | Phase / 切片 | 已有基础 | 完成门槛 | 依赖 |
 | --- | --- | --- | --- | --- |
 | P5.9 | Phase 5 / 完整字形试验 | Gallery 使用 `glyphOverflow="visible"`；保留 Cell 数据隔离，允许墨水越格，全 Surface 重绘防残影；默认消费方保持裁剪 | 根据完整字形的实际重叠效果决定组件像素隔离与后续重绘策略 | [CellSurface](../packages/cell-ui/README.md)、[越界墨水测试](../e2e/web-tui-glyph-overflow.spec.ts) |
-| P5.13 | Phase 5 / Xiaolai Mono 试用 | Gallery 三字体切换，Xiaolai 固定本地 3.126；双浏览器、三个 DPR 的交互与 Probe 检查通过 | 完整覆盖与实际墨水接缝未获得正式兼容结论；Core `█` 墨迹仍小于 20px 行高 | [试验事实](research/font-stack.md#gallery-当前试验)、[交互探针](../e2e/web-tui-font-metrics.spec.ts)、[加载恢复](../e2e/web-tui-xiaolai.spec.ts) |
+| P5.13 | Phase 5 / Xiaolai Mono 试用 | Gallery 三字体切换，Xiaolai 固定本地 3.126；双浏览器、三个 DPR 的交互与 Probe 检查通过；Box/Block 不依赖显示字体 | 字体本身的完整 Unicode 覆盖与所有非结构字符适配尚未验证 | [试验事实](research/font-stack.md#gallery-当前试验)、[交互探针](../e2e/web-tui-font-metrics.spec.ts)、[加载恢复](../e2e/web-tui-xiaolai.spec.ts) |
 
 ## READY
 

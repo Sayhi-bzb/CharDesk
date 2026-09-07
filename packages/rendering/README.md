@@ -27,15 +27,55 @@ Cell draw options accept `clipToCell: true` to constrain glyphs and text decorat
 to their one- or two-cell pixel allocation. It is opt-in; other consumers keep
 the existing unrestricted glyph rendering.
 
-Every foreground Cell is rendered from `cell.text` through the active font
-profile. Box Drawing and Block Elements use its `cell-glyph` face, which defaults
-to display; Cell UI and the main Canvas Host select Core JuliaMono Regular. Background and clip edges align to device pixels for axis-aligned
+Every foreground Cell retains Unicode `cell.text`. Single-codepoint Box Drawing
+and Block Elements (`U+2500–U+259F`) use the shared Cell graphics painter;
+other graphemes use the active font profile. Background and clip edges align to device pixels for axis-aligned
 transforms. `alignCharDeskCanvasRect(bounds, transform)` provides the same edge
 alignment for host dirty-region clears. Rotated/sheared transforms remain
 unsnapped; seam-free rasterization is guaranteed only for axis-aligned transforms.
 
 `@chardesk/protocol` owns parsing and Unicode cell layout. Hosts retain
 interaction, viewport, and application state.
+
+## Cell graphics
+
+`resolveCharDeskCanvasGlyphSource(text)` is the shared painting/loading/Probe
+classifier (`font` or `cell-graphics`). Combining sequences remain font-shaped.
+`CELL_GRAPHICS_VERSION` identifies the renderer, not a font face. All Canvas
+consumers, including document/PNG rendering, use this path without a toggle.
+
+The 160 definitions are an MIT-licensed subset of xterm.js commit
+`c58ea3637f3968e0e6e79cd92cf9aace7ef89ee2`; see
+[definitions](src/cell-graphics-definitions.ts) and [license](LICENSE.xterm).
+The local adapter handles normalized paths, octant rectangles and shade patterns;
+it does not import terminal state or WebGL. Update the pinned subset explicitly,
+retaining attribution and running the coverage and raster tests.
+
+Geometry uses the allocated Cell rectangle, independently of font calibration.
+Unicode selects light/heavy/double line shapes; bold/italic do not distort them.
+Foreground, inverse colors and decorations retain their existing semantics.
+Graphics clip to their allocation even when ordinary font ink may overflow.
+Font loading skips these characters; JuliaMono remains available for other fallbacks.
+
+Renderer `xterm-box-block-v4` applies a shared 1.5× Box stroke multiplier before
+zoom/DPR rounding: light/heavy base widths are 1.5/4.5px. No user setting or font
+calibration changes these widths. Blocks and shade patterns are unaffected. Straight-stroke
+centers align by device-pixel stroke parity, independently of Cell-edge alignment;
+longitudinal endpoints stay on shared Cell boundaries. The four rounded corners use
+tangent quarter circles after center alignment, with a shared radius equal to the
+minimum distance from the aligned intersection to the four Cell edges (zero falls
+back to a connected right angle). See [geometry tests](src/cell-graphics-path.test.ts).
+Double lines retain at least one
+clear device pixel between strokes in the supported raster matrix. Uniform positive
+axis scales stroke in device space to avoid fractional-transform fringe pixels;
+rotated/sheared paths retain unsnapped geometry. Blocks and shade patterns are unchanged.
+
+Coverage and source preservation: [unit tests](src/cell-graphics.test.ts).
+Chromium/WebKit raster checks at DPR 1/1.25/2 and zoom 0.75/1/1.25/2:
+[browser tests](../../e2e/web-tui-cell-graphics.spec.ts). This is an axis-aligned
+test matrix, not a guarantee at every transform or subpixel cell size.
+Opacity, double-line separation and outline connectivity with fractional translations
+are checked by [Box clarity tests](../../e2e/web-tui-box-clarity.spec.ts).
 
 Headless hosts that register subset fonts under unique family names may pass
 `fontFamilies` in document or cell draw options. It selects regular and bold

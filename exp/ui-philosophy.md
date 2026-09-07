@@ -3,7 +3,7 @@
 [返回事实白板](README.md) · [Widget 规范](blueprints/widgets.md)
 
 1. **Everything is Cell**：layout、paint、hit、scroll、selection 和 copy 使用整数 Cell；px 只存在于 browser/Canvas 边界。
-2. **Every Cell is Unicode**：可见前景是 `Cell.text`；背景、clip、owner 与 hit 是 Cell metadata。
+2. **Every Cell is Unicode**：前景数据是 `Cell.text`，不要求全部通过字体渲染；Box/Block 按 Cell 几何专用绘制，其余字符走字体。复制、保存与字符快照保留原 Unicode；背景、clip、owner 与 hit 是 Cell metadata。绘制规则由[共享渲染契约](../packages/rendering/README.md#cell-graphics)拥有。
 3. **Every Cell has an Owner**：最终可见 Cell 属于 Widget 或 chrome；renderer 不创建 DOM-per-cell。
 4. **Every Input becomes a Command**：keyboard、pointer、wheel、textarea 与 AT action 汇入 Engine command。
 5. **State lives in the Grid**：focused、selected、expanded、disabled 和 editing 在 Cell Scene 中可见。

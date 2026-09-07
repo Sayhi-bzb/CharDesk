@@ -2,6 +2,8 @@
 import {
   alignCharDeskCanvasRect,
   drawCharDeskCanvasCells,
+  CELL_GRAPHICS_VERSION,
+  resolveCharDeskCanvasGlyphSource,
   getCharDeskCanvasFont,
   loadCharDeskCanvasFonts,
   prepareCharDeskCanvasSurface,
@@ -569,7 +571,7 @@ const captureCellProbePresentation = (
   fontProfile?: CharDeskFontProfile
 ): CellProbePresentation => {
   const requestedFontRoutes = Object.fromEntries(
-    Object.entries(CELL_PROBE_FONT_SAMPLES).map(([capability, grapheme]) => {
+    Object.entries(CELL_PROBE_FONT_SAMPLES).filter(([, text]) => resolveCharDeskCanvasGlyphSource(text) === "font").map(([capability, grapheme]) => {
       const face = resolveCharDeskCanvasFontFace({
         grapheme,
         route: resolveCharDeskFontRoute(grapheme),
@@ -588,6 +590,7 @@ const captureCellProbePresentation = (
   ) as CellProbePresentation["requestedFontRoutes"];
   const context = canvas.getContext("2d");
   const glyphOverflow: Array<CellProbePresentation["glyphOverflow"][number]> = [];
+  const graphicCells: NonNullable<CellProbePresentation["cellGraphics"]>["cells"][number][] = [];
   if (context && typeof context.measureText === "function") {
     const measured = new Set<string>();
     context.save();
@@ -596,6 +599,11 @@ const captureCellProbePresentation = (
         for (let col = 0; col < frame.buffer.width; col += 1) {
           const cell = frame.buffer.get(col, row);
           if (!cell || cell.continuation || !cell.text.trim()) continue;
+          if (resolveCharDeskCanvasGlyphSource(cell.text) === "cell-graphics") {
+            graphicCells.push({ text: cell.text, codePoint: cell.text.codePointAt(0)!, row, col,
+              width: cell.width * metrics.cellWidth, height: metrics.cellHeight });
+            continue;
+          }
           const bold = !!cell.style.bold;
           const key = `${bold}:${cell.text}`;
           if (measured.has(key)) continue;
@@ -641,6 +649,7 @@ const captureCellProbePresentation = (
     },
     fontProfileId: fontProfile?.id ?? "default",
     requestedFontRoutes,
+    cellGraphics: { source: "cell-graphics", version: CELL_GRAPHICS_VERSION, cells: graphicCells },
     glyphOverflow,
   };
 };

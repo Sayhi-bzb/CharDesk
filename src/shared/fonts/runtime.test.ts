@@ -22,7 +22,7 @@ describe("Host Canvas font preference", () => {
     ark.resolve();
     await first;
     expect(runtime.getSnapshot()).toMatchObject({ font: "xiaolai-mono", status: "idle" });
-    expect(runtime.getSnapshot().profile.capabilities["cell-glyph"].families.regular).toBe("'JuliaMono'");
+    expect(runtime.getSnapshot().profile.capabilities.display.families.regular).toContain("Xiaolai");
     expect(storage.setItem).toHaveBeenCalledExactlyOnceWith(CANVAS_FONT_STORAGE_KEY, "xiaolai-mono");
     runtime.dispose();
   });

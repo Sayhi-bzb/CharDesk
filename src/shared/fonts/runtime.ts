@@ -1,4 +1,4 @@
-import { withCharDeskCoreCellGlyphs, type CharDeskFontProfile } from "@chardesk/fonts";
+import { type CharDeskFontProfile } from "@chardesk/fonts";
 import { loadCharDeskCanvasFonts } from "@chardesk/rendering/canvas";
 import { displayFontOptions, type DisplayFont } from "./catalog";
 import { DEFAULT_CANVAS_FONT_PROFILE } from "./canvas-profile";
@@ -19,9 +19,7 @@ export const isDisplayFont = (value: unknown): value is DisplayFont =>
 const loadCanvasFont = async (font: DisplayFont) => {
   const option = displayFontOptions[font];
   await loadDisplayFont(option);
-  const profile = withCharDeskCoreCellGlyphs(option.profile);
-  const core = await document.fonts.load("15px 'JuliaMono'", "─│╭█");
-  if (core.length === 0) throw new Error("Core cell font unavailable.");
+  const profile = option.profile;
   await loadCharDeskCanvasFonts(["AgWi09", "世界，。", "─", "│", "╭", "█"], { fontProfile: profile });
 };
 
@@ -57,7 +55,7 @@ export function createCanvasFontRuntime({
         }),
       ]);
       if (disposed || version !== request) return;
-      publish({ font, requestedFont: font, status: "idle", profile: withCharDeskCoreCellGlyphs(displayFontOptions[font].profile) });
+      publish({ font, requestedFont: font, status: "idle", profile: displayFontOptions[font].profile });
       try { if (storage) storage.setItem(CANVAS_FONT_STORAGE_KEY, font); } catch { /* Session-only preference. */ }
     } catch {
       if (!disposed && version === request) publish({ ...snapshot, status: "error" });

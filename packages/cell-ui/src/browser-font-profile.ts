@@ -1,6 +1,5 @@
 import {
   CHARDESK_SYSTEM_FONT_PROFILE,
-  withCharDeskCoreCellGlyphs,
   type CharDeskFontProfile,
 } from "@chardesk/fonts";
 
@@ -9,7 +8,7 @@ export function createCellUiFontProfile(
   profile: CharDeskFontProfile = CHARDESK_SYSTEM_FONT_PROFILE,
 ): CharDeskFontProfile {
   return {
-    ...withCharDeskCoreCellGlyphs(profile),
-    id: `${profile.id}/cell-ui-core-glyph-v1`,
+    ...profile,
+    id: `${profile.id}/cell-ui-graphics-v1`,
   };
 }

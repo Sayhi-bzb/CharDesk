@@ -49,6 +49,7 @@ const context = {
   setTransform: vi.fn(),
   clearRect: vi.fn(),
   fillRect: vi.fn(),
+  fill: vi.fn(),
   fillText: vi.fn(),
   measureText: vi.fn(() => ({ width: 0 })),
   save: vi.fn(),
@@ -58,6 +59,7 @@ const context = {
   clip: vi.fn(),
   moveTo: vi.fn(),
   lineTo: vi.fn(),
+  arc: vi.fn(),
   stroke: vi.fn(),
   scale: vi.fn(),
   translate: vi.fn(),
@@ -646,7 +648,7 @@ describe("CellSurface", () => {
     const snapshot = readCellSurfaceProbe(screen.getByLabelText("Cell interface"))!;
     expect(snapshot.presentation).toMatchObject({
       metrics: { cellWidth: 9, cellHeight: 19, fontSize: 15 },
-      fontProfileId: "test/prop/cell-ui-core-glyph-v1",
+      fontProfileId: "test/prop/cell-ui-graphics-v1",
       requestedFontRoutes: {
         display: { family: "Prop Face", fontSize: 15, scaleX: 1 },
         cjk: { family: "Prop CJK", fontSize: 15, scaleX: 1 },

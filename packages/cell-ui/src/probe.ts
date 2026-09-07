@@ -50,6 +50,11 @@ export type CellProbeGlyphOverflow = Readonly<{
 }>;
 
 export type CellProbePresentation = Readonly<{
+  cellGraphics?: Readonly<{
+    source: "cell-graphics";
+    version: string;
+    cells: readonly { text: string; codePoint: number; row: number; col: number; width: number; height: number }[];
+  }>;
   fontAudit?: Readonly<{
     status: "loading" | "ready" | "unavailable";
     reason?: "font-load-failed" | "measurement-unavailable";
@@ -67,10 +72,10 @@ export type CellProbePresentation = Readonly<{
     ready: boolean;
   }>;
   fontProfileId: string;
-  requestedFontRoutes: Readonly<Record<
+  requestedFontRoutes: Readonly<Partial<Record<
     CellProbeFontCapability,
     CellProbeRequestedFontFace
-  >>;
+  >>>;
   glyphOverflow: readonly CellProbeGlyphOverflow[];
 }>;
 
@@ -172,6 +177,7 @@ export const formatCellProbe = (
   if (!presentation) return snapshot.text.length > 0 ? `${header}\n${snapshot.text}` : header;
   const formatFace = (capability: "display" | "cjk" | "cell-glyph") => {
     const face = presentation.requestedFontRoutes[capability];
+    if (!face) return `glyph ${capability}=cell-graphics version=${presentation.cellGraphics?.version ?? "unknown"}`;
     return `font ${capability}=${face.family} size=${face.fontSize}px scaleX=${face.scaleX}`;
   };
   const diagnostics = [

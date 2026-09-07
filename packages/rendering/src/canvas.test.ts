@@ -20,10 +20,12 @@ const createContext = (dpr = 1) => {
   const operations: string[] = [];
   const context = {
     beginPath: vi.fn(),
+    arc: vi.fn(),
     rect: vi.fn(),
     clip: vi.fn(),
     clearRect: vi.fn(),
     fillRect: vi.fn(() => operations.push("background")),
+    fill: vi.fn(),
     fillText: vi.fn(() => operations.push("text")),
     getTransform: vi.fn(() => ({ a: dpr, b: 0, c: 0, d: dpr })),
     lineTo: vi.fn(),
@@ -105,16 +107,18 @@ describe("CharDesk Canvas 2D renderer", () => {
     const { context } = createContext();
     const colors: (string | CanvasGradient | CanvasPattern)[] = [];
     vi.mocked(context.fillRect).mockImplementation(() => { colors.push(context.fillStyle); });
+    vi.mocked(context.fill).mockImplementation(() => { colors.push(context.fillStyle); });
     drawCharDeskCanvasCells(context, [{
       cell: resolveCharDeskCellVisual({ text: "█", color: "#112233", attrs: { inverse: true, bold: true, underline: true } }),
       x: 0, y: 0,
       options: { palette: { color: "#000000", background: "#ffffff" } },
     }]);
-    expect(colors).toEqual(["#112233"]);
-    expect(context.fillText).toHaveBeenCalledWith("█", 4.5, 15);
+    expect(colors[0]).toBe("#112233");
+    expect(colors.slice(1).every(color => color === "#ffffff")).toBe(true);
+    expect(context.fillText).not.toHaveBeenCalled();
     expect(context.stroke).toHaveBeenCalledOnce();
   });
-  it("draws component border and block characters through the font path", () => {
+  it("draws component border and block characters without resolving fonts", () => {
     const { context } = createContext();
     const fontResolver = vi.fn(() => "monospace");
     drawCharDeskCanvasCells(context, ["█", "│", "╭"].map((text, column) => ({
@@ -123,10 +127,9 @@ describe("CharDesk Canvas 2D renderer", () => {
       y: 0,
       options: { fontResolver, clipToCell: true },
     })));
-    expect(context.fillText).toHaveBeenNthCalledWith(1, "█", 4.5, 15);
-    expect(context.fillText).toHaveBeenNthCalledWith(2, "│", 13.5, 15);
-    expect(context.fillText).toHaveBeenNthCalledWith(3, "╭", 22.5, 15);
-    expect(fontResolver).toHaveBeenCalledTimes(3);
+    expect(context.fillText).not.toHaveBeenCalled();
+    expect(fontResolver).not.toHaveBeenCalled();
+    expect(context.arc).toHaveBeenCalled();
   });
   it("clips glyphs to their Cell allocation only when requested", () => {
     const { context } = createContext();

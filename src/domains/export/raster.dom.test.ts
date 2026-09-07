@@ -4,7 +4,6 @@ import {
   createSelectionPngBlob,
   resolveRasterLayout,
 } from "./formats/raster";
-import { withCharDeskCoreCellGlyphs } from "@chardesk/fonts";
 import { displayFontOptions } from "@/shared/fonts/catalog";
 
 describe("PNG raster export", () => {
@@ -30,6 +29,10 @@ describe("PNG raster export", () => {
       restore: vi.fn(),
       setTransform: vi.fn(),
       fillRect: vi.fn(),
+      fill: vi.fn(),
+      rect: vi.fn(),
+      clip: vi.fn(),
+      arc: vi.fn(),
       fillText: vi.fn((char: string) => {
         drawnText.push({ char, color: fillStyle });
         drawnFonts.push({ char, font });
@@ -47,7 +50,7 @@ describe("PNG raster export", () => {
       set font(value: string) { font = value; },
       set textBaseline(_value: CanvasTextBaseline) {},
       set textAlign(_value: CanvasTextAlign) {},
-      set lineWidth(_value: number) {},
+      lineWidth: 1,
     } as unknown as CanvasRenderingContext2D;
 
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
@@ -69,8 +72,8 @@ describe("PNG raster export", () => {
     expect(resolveRasterLayout(400, 200).dpr).toBe(1);
   });
 
-  it.each(["maple", "ark-mono", "xiaolai-mono"] as const)("exports %s text with Core borders in whole and selection PNGs", async (id) => {
-    const profile = withCharDeskCoreCellGlyphs(displayFontOptions[id].profile);
+  it.each(["maple", "ark-mono", "xiaolai-mono"] as const)("exports %s text with Cell graphics in whole and selection PNGs", async (id) => {
+    const profile = displayFontOptions[id].profile;
     const grid = new Map([
       ["0,0", { char: "A", color: "#000000" }],
       ["1,0", { char: "╭", color: "#000000", attrs: { bold: true as const } }],
@@ -81,10 +84,11 @@ describe("PNG raster export", () => {
       if (whole) await createPngBlobFromGrid(grid, false, true, profile);
       else await createSelectionPngBlob(grid, [{ start: { x: 0, y: 0 }, end: { x: 2, y: 0 } }], false, true, profile);
       expect(drawnFonts.find(({ char }) => char === "A")?.font).toContain(profile.capabilities.display.families.regular);
-      expect(drawnFonts.filter(({ char }) => char !== "A")).toEqual([
-        { char: "╭", font: "15px 'JuliaMono'" }, { char: "█", font: "15px 'JuliaMono'" },
-      ]);
-      expect(document.fonts.load).toHaveBeenCalledWith("15px 'JuliaMono'", expect.any(String));
+      expect(drawnFonts.filter(({ char }) => char !== "A")).toEqual([]);
+      expect(document.fonts.load).not.toHaveBeenCalledWith("15px 'JuliaMono'", expect.any(String));
+      const ctx = document.createElement("canvas").getContext("2d")!;
+      expect(ctx.arc).toHaveBeenCalled();
+      expect(ctx.fill).toHaveBeenCalled();
     }
   });
 
