@@ -2,6 +2,7 @@ import {
   CHARDESK_SYSTEM_FONT_PROFILE,
   type CharDeskFontRoute,
 } from "@chardesk/fonts";
+import { formatCellFrame, type CellFrame } from "@chardesk/cell-core";
 import {
   getGraphemeCellWidth,
   isEmojiGrapheme,
@@ -16,6 +17,23 @@ export type { CharDeskNormalizedCellRect } from "./canvas-geometry.js";
 
 export type CharDeskRenderFontRoute = CharDeskFontRoute;
 
+export type CharDeskCellMetrics = {
+  cellWidth: number;
+  cellHeight: number;
+  fontSize: number;
+  fontFamily: string;
+  /** Alphabetic baseline from the Cell top; omitted preserves middle alignment. */
+  baseline?: number;
+};
+
+export const DEFAULT_CHARDESK_CELL_METRICS = Object.freeze({
+  cellWidth: 9,
+  cellHeight: 20,
+  baseline: 15,
+  fontSize: 15,
+  fontFamily: CHARDESK_SYSTEM_FONT_PROFILE.families.text,
+} satisfies CharDeskCellMetrics);
+
 export type CharDeskCellVisualInput = {
   text: string;
   color?: string;
@@ -28,6 +46,23 @@ export type CharDeskCellVisual = CharDeskCellVisualInput & {
   width: 1 | 2;
   fontRoute: CharDeskRenderFontRoute;
 };
+
+export type CharDeskCellFrameCell = Readonly<{
+  visual: CharDeskCellVisual;
+  /** Physical background span; glyph width remains visual.width. */
+  backgroundWidth?: 1 | 2;
+  drawBackground?: boolean;
+  drawText?: boolean;
+}>;
+
+export const formatCharDeskCellFrame = (
+  frame: CellFrame<CharDeskCellFrameCell>,
+  options?: Readonly<{ trimEnd?: boolean }>
+) => formatCellFrame(
+  frame,
+  ({ visual }) => ({ text: visual.text, width: visual.width }),
+  options
+);
 
 export type CharDeskRenderCell = CharDeskTextCell & {
   fontRoute: CharDeskRenderFontRoute;

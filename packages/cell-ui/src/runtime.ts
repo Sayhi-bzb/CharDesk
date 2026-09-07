@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { intersectCellRects } from "@chardesk/cell-core";
 import { YogaLayoutEngine, type LayoutEngine } from "./layout.js";
 import { paintScene } from "./paint.js";
 import {
@@ -21,16 +22,6 @@ import type {
   WidgetTree,
 } from "./types.js";
 
-const clippedTo = (rect: CellRect, viewport: CellRect): CellRect | null => {
-  const x = Math.max(rect.x, viewport.x);
-  const y = Math.max(rect.y, viewport.y);
-  const right = Math.min(rect.x + rect.width, viewport.x + viewport.width);
-  const bottom = Math.min(rect.y + rect.height, viewport.y + viewport.height);
-  return right > x && bottom > y
-    ? { x, y, width: right - x, height: bottom - y }
-    : null;
-};
-
 const regionsFor = (
   ids: Iterable<WidgetId>,
   previous: SceneSnapshot | undefined,
@@ -41,7 +32,7 @@ const regionsFor = (
   for (const id of ids) {
     for (const entry of [previous?.entries.get(id), next.entries.get(id)]) {
       if (!entry) continue;
-      const region = clippedTo(entry.paintBounds, next.viewport);
+      const region = intersectCellRects(entry.paintBounds, next.viewport);
       if (!region) continue;
       const key = `${region.x}:${region.y}:${region.width}:${region.height}`;
       if (!keys.has(key)) {

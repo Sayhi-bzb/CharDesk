@@ -6,7 +6,7 @@
 
 Layout 产生 Widget 的 parent-relative Cell Rect。SceneGeometry 将其投影为 root Cell geometry，并统一拥有 scroll、clip、layer、visibility、paint order 与 hit geometry。Canvas Surface 只把最终 CellBuffer 映射为 px。
 
-逻辑 geometry、source 与 frame 类型由 [`@chardesk/cell-core`](../../packages/cell-core/README.md) 持有；Widget、Layout、Scene 与 Semantic 类型由 [`@chardesk/cell-ui`](../../packages/cell-ui/src/types.ts) 持有。本页不复制类型声明。
+逻辑 geometry、source 与 frame 类型及通用 Rect 运算由 [`@chardesk/cell-core`](../../packages/cell-core/README.md) 持有；跨后端的 `CharDeskCellMetrics`、`CharDeskCellFrameCell` 与字符检查出口由 [`@chardesk/rendering`](../../packages/rendering/README.md) 根入口持有；Widget、Layout、Scene 与 Semantic 类型由 [`@chardesk/cell-ui`](../../packages/cell-ui/src/types.ts) 持有。本页不复制类型声明。
 
 ```text
 Widget Tree → LayoutSnapshot → SceneSnapshot → CellBuffer → Browser Surface
@@ -14,12 +14,15 @@ Widget Tree → LayoutSnapshot → SceneSnapshot → CellBuffer → Browser Surf
 ```
 
 Cell UI 的 bounded CellBuffer 与文档 Canvas 的 sparse reader 分别适配为
-`CellFrame`，字符层交给同一个 rendering Presenter；两者不互相依赖，也不
-共享 Focus、Gesture 或编辑状态机。
+`CellFrame<CharDeskCellFrameCell>`，字符层交给同一个 Canvas Presenter，
+字符检查交给 rendering 根入口；两者不互相依赖，也不共享 Focus、Gesture
+或编辑状态机。Canvas context、raster 与 Presenter 专属契约留在
+`@chardesk/rendering/canvas`。
 
 ## 行为契约
 
 - 所有 Rect 使用有限整数和半开区间；layout、decoration、content、paint、hit 与 semantic bounds 可以不同。
+- 生产适配器使用 Cell Core 的 Rect 包含与 nullable intersection；Scene 内部为保留零面积 clip 使用独立的 `intersectSceneRects`，不伪装成 Core 语义。
 - `layoutBounds` 是 border box；decoration/content bounds 依 Yoga computed border/padding 派生。
 - 普通 content 与 descendants 只能 paint/hit 于祖先 `contentClip`；Overlay 使用独立 scene parent，同时保留逻辑 event parent。
 - `paintList` 是稳定 back-to-front 全序；hit test 反向使用同一顺序。
@@ -38,6 +41,10 @@ Cell UI 的 bounded CellBuffer 与文档 Canvas 的 sparse reader 分别适配�
 同一 commit 的失效按 `TREE → LAYOUT → GEOMETRY → PAINT → SEMANTICS → PRESENT` 合并。Geometry 改变同时污染旧、新 paint bounds；paint-only 不运行 layout 或 scene arrangement。
 
 [`TestPilot`](../../packages/cell-ui/src/testing.ts) 从提交后的 frame 执行逻辑输入和查询；[`CellProbeSnapshot`](../../packages/cell-ui/src/probe.ts) 是 Headless 与 Browser 共用的字符、owner、style、hit、clip、focus 和 invalidation 快照。截图只负责字体、颜色、DPR 与像素 presentation。
+
+[`check:cell-architecture`](../../scripts/quality/check-cell-architecture.mjs)
+阻止 Core 获得运行时依赖、两个 Frame adapter 互相依赖、rendering 根入口反向
+依赖 Canvas presenter，以及已移除的 Canvas-owned Cell 契约回流。
 
 ## 证据
 

@@ -1,3 +1,4 @@
+import { cellRectContainsPoint } from "@chardesk/cell-core";
 import type { FocusManager, WidgetCommand } from "./interaction.js";
 import { commandForInput, getScrollRange, topModalOverlayId } from "./interaction.js";
 import type { GestureCandidate, GestureSignal } from "./gestures.js";
@@ -37,7 +38,10 @@ export const resolvePointerAppearance = (frame: FrameSnapshot, point: CellPoint)
     if (node.disabled) return { hoveredId: null, cursor: "default" };
     if (node.kind === "text-input" || node.kind === "text-area") {
       const clip = frame.scene.entries.get(id)?.contentClip;
-      return { hoveredId: null, cursor: clip && contains(clip, point) ? "text" : "default" };
+      return {
+        hoveredId: null,
+        cursor: clip && cellRectContainsPoint(clip, point) ? "text" : "default",
+      };
     }
     if (["list-item", "menu-item", "tree-item", "tab", "grid-cell"].includes(node.kind)) {
       return { hoveredId: id, cursor: "pointer" };
@@ -46,16 +50,6 @@ export const resolvePointerAppearance = (frame: FrameSnapshot, point: CellPoint)
   }
   return { hoveredId: null, cursor: "default" };
 };
-
-const contains = (bounds: Readonly<{
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}>, point: CellPoint) => point.x >= bounds.x
-  && point.y >= bounds.y
-  && point.x < bounds.x + bounds.width
-  && point.y < bounds.y + bounds.height;
 
 export const gestureCandidatesForFrame = (
   frame: FrameSnapshot,
@@ -133,7 +127,7 @@ export const commandForGestureSignal = (
       const thumb = horizontal ? metrics.horizontalThumbAxis : metrics.verticalThumbAxis;
       const track = horizontal ? metrics.horizontalTrack : metrics.verticalTrack;
       const precise = signal.precisePoint ?? cellCenter(signal.point);
-      if (!track || !contains(track, precise)) return null;
+      if (!track || !cellRectContainsPoint(track, precise)) return null;
       const coordinate = horizontal ? precise.x : precise.y;
       const thumbStart = (horizontal ? track?.x : track?.y) ?? 0;
       const start = thumbStart + (thumb?.start ?? 0) / 2;

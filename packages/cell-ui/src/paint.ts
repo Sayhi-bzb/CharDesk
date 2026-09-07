@@ -13,7 +13,7 @@ import type {
 } from "./types.js";
 import type { CellTextLayoutSnapshot } from "./text.js";
 import { DEFAULT_CELL_UI_THEME, resolveCellStateStyle, resolveCellTextStyle, type CellUiTheme } from "./theme.js";
-import { intersectCellRects } from "./scene.js";
+import { intersectSceneRects } from "./scene.js";
 import { thumbGlyph } from "./scrollbar.js";
 import { paintBorder } from "./border.js";
 
@@ -164,10 +164,10 @@ export const paintScene = (
     if (!node || !entry) continue;
     const style = stateStyle(tree, node, theme);
     for (const region of regions) {
-      const outerClip = intersectCellRects(entry.outerClip, region);
+      const outerClip = intersectSceneRects(entry.outerClip, region);
       if (!nonEmpty(outerClip)) continue;
-      const decorationClip = intersectCellRects(entry.decorationBounds, outerClip);
-      const contentClip = intersectCellRects(entry.contentClip, region);
+      const decorationClip = intersectSceneRects(entry.decorationBounds, outerClip);
+      const contentClip = intersectSceneRects(entry.contentClip, region);
 
       // Surface: state and overlay backgrounds establish the Cell style first.
       if (style.backgroundColor || (

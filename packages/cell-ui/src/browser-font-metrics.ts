@@ -1,21 +1,25 @@
 import { CHARDESK_SYSTEM_FONT_PROFILE } from "@chardesk/fonts";
 import {
-  DEFAULT_CHARDESK_CANVAS_METRICS, getCharDeskCanvasFont, resolveCharDeskCanvasFontFace,
-  type CharDeskCanvasMetrics, type CharDeskFontProfile,
+  getCharDeskCanvasFont, resolveCharDeskCanvasFontFace,
+  type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
+import {
+  DEFAULT_CHARDESK_CELL_METRICS,
+  type CharDeskCellMetrics,
+} from "@chardesk/rendering";
 import { useMemo, useSyncExternalStore } from "react";
 
 type FontMetricsSnapshot = Readonly<{
-  metrics: CharDeskCanvasMetrics;
+  metrics: CharDeskCellMetrics;
   source: "default" | "explicit";
   ready: boolean;
 }>;
 
-export const DEFAULT_CELL_UI_METRICS = DEFAULT_CHARDESK_CANVAS_METRICS;
+export const DEFAULT_CELL_UI_METRICS = DEFAULT_CHARDESK_CELL_METRICS;
 
 const stores = new WeakMap<CharDeskFontProfile, Map<number, ReturnType<typeof createStore>>>();
 
-const resolveDefaultMetrics = (fontSize: number): CharDeskCanvasMetrics => {
+const resolveDefaultMetrics = (fontSize: number): CharDeskCellMetrics => {
   const scale = fontSize / DEFAULT_CELL_UI_METRICS.fontSize;
   return {
     ...DEFAULT_CELL_UI_METRICS,
@@ -80,7 +84,7 @@ const getStore = (profile: CharDeskFontProfile, fontSize: number) => {
 export const loadCellFontMetrics = async (
   profile: CharDeskFontProfile,
   fontSize = DEFAULT_CELL_UI_METRICS.fontSize
-): Promise<CharDeskCanvasMetrics> => {
+): Promise<CharDeskCellMetrics> => {
   const store = getStore(profile, fontSize);
   await store.load();
   return store.getSnapshot().metrics;
@@ -90,7 +94,7 @@ const noSubscribe = () => () => {};
 export const useCellFontMetrics = (
   profile = CHARDESK_SYSTEM_FONT_PROFILE,
   fontSize = DEFAULT_CELL_UI_METRICS.fontSize,
-  explicit?: CharDeskCanvasMetrics
+  explicit?: CharDeskCellMetrics
 ): FontMetricsSnapshot => {
   const store = useMemo(() => {
     if (!explicit) return getStore(profile, fontSize);

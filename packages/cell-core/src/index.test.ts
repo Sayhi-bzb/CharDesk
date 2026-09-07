@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cellRectContainsPoint,
   intersectCellRects,
   formatCellFrame,
   isIncrementalCellSource,
@@ -37,6 +38,14 @@ describe("Cell Core contracts", () => {
       getRevision: () => 2,
       getChangesSince: () => ({ revision: 2, full: false, bounds: [] }),
     })).toBe(true);
+  });
+
+  it("tests points against normalized half-open rectangles", () => {
+    const rect = { x: 4, y: 5, width: -3, height: -2 };
+    expect(cellRectContainsPoint(rect, { x: 1, y: 3 })).toBe(true);
+    expect(cellRectContainsPoint(rect, { x: 3, y: 4 })).toBe(true);
+    expect(cellRectContainsPoint(rect, { x: 4, y: 4 })).toBe(false);
+    expect(cellRectContainsPoint(rect, { x: 3, y: 5 })).toBe(false);
   });
 
   it("rejects fractional geometry", () => {

@@ -2,15 +2,15 @@ import type { GridCell } from "@/shared/types";
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import { getCellOccupancy, toCanvasVisual } from "@/shared/metrics";
 import type { CellFrame, CellRect, CellSource } from "@chardesk/cell-core";
-import type { CharDeskCanvasFrameCell } from "@chardesk/rendering/canvas";
+import type { CharDeskCellFrameCell } from "@chardesk/rendering";
 
-const frameCellCache = new WeakMap<GridCell, CharDeskCanvasFrameCell>();
+const frameCellCache = new WeakMap<GridCell, CharDeskCellFrameCell>();
 const renderSourceCache = new WeakMap<
   CanvasSurfaceReader,
-  CellSource<CharDeskCanvasFrameCell>
+  CellSource<CharDeskCellFrameCell>
 >();
 
-const toFrameCell = (cell: GridCell): CharDeskCanvasFrameCell => {
+const toFrameCell = (cell: GridCell): CharDeskCellFrameCell => {
   const cached = frameCellCache.get(cell);
   if (cached) return cached;
   const result = Object.freeze({
@@ -24,10 +24,10 @@ const toFrameCell = (cell: GridCell): CharDeskCanvasFrameCell => {
 
 const createCanvasRenderSource = (
   reader: CanvasSurfaceReader
-): CellSource<CharDeskCanvasFrameCell> => {
+): CellSource<CharDeskCellFrameCell> => {
   const cached = renderSourceCache.get(reader);
   if (cached) return cached;
-  const source: CellSource<CharDeskCanvasFrameCell> = {
+  const source: CellSource<CharDeskCellFrameCell> = {
     get(point) {
       const cell = reader.get(point);
       return cell ? toFrameCell(cell) : undefined;
@@ -61,7 +61,7 @@ export const createCanvasCellFrame = (
   reader: CanvasSurfaceReader,
   viewport: CellRect,
   dirty: "full" | readonly CellRect[] = "full"
-): CellFrame<CharDeskCanvasFrameCell> => ({
+): CellFrame<CharDeskCellFrameCell> => ({
   revision: "getRevision" in reader && typeof reader.getRevision === "function"
     ? reader.getRevision()
     : 0,
