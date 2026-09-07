@@ -11,11 +11,7 @@ type FontMetricsSnapshot = Readonly<{
   ready: boolean;
 }>;
 
-export const DEFAULT_CELL_UI_METRICS = {
-  ...DEFAULT_CHARDESK_CANVAS_METRICS,
-  cellHeight: 20,
-  baseline: 15,
-} as const satisfies CharDeskCanvasMetrics;
+export const DEFAULT_CELL_UI_METRICS = DEFAULT_CHARDESK_CANVAS_METRICS;
 
 const stores = new WeakMap<CharDeskFontProfile, Map<number, ReturnType<typeof createStore>>>();
 

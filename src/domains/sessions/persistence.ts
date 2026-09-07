@@ -12,14 +12,19 @@ import type { GridCell, Point } from "@/shared/types";
 import { decodeGridEntries } from "@/shared/utils/grid-codec";
 import type { CanvasMode } from "./mode";
 import type { CanvasSession, CanvasSourceBinding } from "./model";
+import {
+  migrateLegacyGridOffset,
+  migrateLegacyGridViewport,
+} from "./viewportMigration";
 
-export const EDITOR_PERSISTENCE_VERSION = 5;
-export const PREVIOUS_EDITOR_PERSISTENCE_VERSION = 4;
+export const EDITOR_PERSISTENCE_VERSION = 6;
+export const PREVIOUS_EDITOR_PERSISTENCE_VERSION = 5;
+export const LEGACY_EDITOR_PERSISTENCE_VERSION = 4;
 export const EDITOR_PERSISTENCE_KEY = "chardesk-persistence";
 export const LEGACY_EDITOR_PERSISTENCE_KEY = "ascii-canvas-persistence";
 
-interface PersistedEditorStateV5 {
-  schemaVersion: 5;
+interface PersistedEditorStateV6 {
+  schemaVersion: 6;
   workspace: {
     offset: Point;
     zoom: number;
@@ -179,7 +184,7 @@ const createBlankSession = (): CanvasSession => ({
 
 export const decodePersistedEditorState = (
   value: unknown
-): PersistedEditorStateV5 => {
+): PersistedEditorStateV6 => {
   const state = isRecord(value) ? value : {};
   const workspace = isRecord(state.workspace) ? state.workspace : state;
   const sessions = isRecord(state.sessions) ? state.sessions : {};
@@ -275,23 +280,43 @@ export class UnsupportedEditorPersistenceVersionError extends Error {
 const assertSupportedPersistenceVersion = (version: number) => {
   if (
     version !== EDITOR_PERSISTENCE_VERSION &&
-    version !== PREVIOUS_EDITOR_PERSISTENCE_VERSION
+    version !== PREVIOUS_EDITOR_PERSISTENCE_VERSION &&
+    version !== LEGACY_EDITOR_PERSISTENCE_VERSION
   ) {
     throw new UnsupportedEditorPersistenceVersionError(version);
   }
 };
 
-export const migratePersistedStateToV5 = (
+export const migratePersistedStateToV6 = (
   value: unknown,
   version = PREVIOUS_EDITOR_PERSISTENCE_VERSION,
 ) => {
   assertSupportedPersistenceVersion(version);
-  return decodePersistedEditorState(value);
+  const decoded = decodePersistedEditorState(value);
+  if (version === EDITOR_PERSISTENCE_VERSION) return decoded;
+  return {
+    ...decoded,
+    workspace: {
+      ...decoded.workspace,
+      offset: migrateLegacyGridOffset(decoded.workspace.offset),
+    },
+    sessions: {
+      ...decoded.sessions,
+      items: decoded.sessions.items.map((session) =>
+        session.viewport
+          ? {
+              ...session,
+              viewport: migrateLegacyGridViewport(session.viewport),
+            }
+          : session
+      ),
+    },
+  } satisfies PersistedEditorStateV6;
 };
 
-export const isPersistedEditorStateV5 = (
+export const isPersistedEditorStateV6 = (
   value: unknown
-): value is PersistedEditorStateV5 => {
+): value is PersistedEditorStateV6 => {
   if (!isRecord(value) || value.schemaVersion !== EDITOR_PERSISTENCE_VERSION) {
     return false;
   }
@@ -340,10 +365,10 @@ const isCurrentPersistedEnvelope = (raw: string | null) => {
   const envelope = decodePersistedEnvelope(raw);
   return !!envelope &&
     envelope.version === EDITOR_PERSISTENCE_VERSION &&
-    isPersistedEditorStateV5(envelope.state);
+    isPersistedEditorStateV6(envelope.state);
 };
 
-/** Moves same-origin pre-CharDesk editor data only after a verified V5 write. */
+/** Moves same-origin pre-CharDesk editor data only after a verified V6 write. */
 export const migrateLegacyEditorPersistence = (storage: Storage): boolean => {
   try {
     const currentRaw = storage.getItem(EDITOR_PERSISTENCE_KEY);
@@ -357,10 +382,13 @@ export const migrateLegacyEditorPersistence = (storage: Storage): boolean => {
     );
     if (
       !legacyEnvelope ||
-      legacyEnvelope.version !== PREVIOUS_EDITOR_PERSISTENCE_VERSION
+      legacyEnvelope.version !== LEGACY_EDITOR_PERSISTENCE_VERSION
     ) return false;
 
-    const migratedState = decodePersistedEditorState(legacyEnvelope.state);
+    const migratedState = migratePersistedStateToV6(
+      legacyEnvelope.state,
+      LEGACY_EDITOR_PERSISTENCE_VERSION
+    );
     storage.setItem(
       EDITOR_PERSISTENCE_KEY,
       JSON.stringify({
@@ -379,7 +407,7 @@ export const migrateLegacyEditorPersistence = (storage: Storage): boolean => {
 };
 
 export const flattenPersistedEditorState = (
-  value: PersistedEditorStateV5
+  value: PersistedEditorStateV6
 ) => ({
   ...value.workspace,
   canvasSessions: value.sessions.items,

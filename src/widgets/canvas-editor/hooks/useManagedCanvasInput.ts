@@ -13,8 +13,10 @@ import {
   type PointerEvent,
 } from "react";
 import { isStaticGridMode, type CanvasMode } from "@/domains/sessions/public";
-import { gridCellRect } from "@/shared/metrics";
-import { CELL_HEIGHT } from "@/shared/lib/constants";
+import {
+  DEFAULT_GRID_RENDER_METRICS,
+  gridCellRect,
+} from "@/shared/metrics";
 import {
   getStaticGridViewState,
   getGridSelectionRanges,
@@ -581,7 +583,10 @@ export const useManagedCanvasInput = ({
       e.preventDefault();
       const pageRows = Math.max(
         1,
-        Math.floor((size?.height ?? CELL_HEIGHT) / (CELL_HEIGHT * zoom)) - 1
+        Math.floor(
+          (size?.height ?? DEFAULT_GRID_RENDER_METRICS.cellHeight) /
+            (DEFAULT_GRID_RENDER_METRICS.cellHeight * zoom)
+        ) - 1
       );
       moveStaticGridFocus(0, e.key === 'PageUp' ? -pageRows : pageRows, {
         extend: e.shiftKey,

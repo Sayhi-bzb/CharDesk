@@ -27,6 +27,7 @@ Widget Tree → LayoutSnapshot → SceneSnapshot → CellBuffer → Browser Surf
 - pointer capture 归 EventManager；tap、drag 和 ancestor scroll 由 GestureManager 决胜，失败者收到 cancel。
 - modal barrier 同时阻止下层 pointer、keyboard 和 semantic action。
 - 普通 culling 不卸载 Widget；固定 VirtualGrid 只为 visible/cache/keepAlive window 建立节点。
+- 浏览器 Surface 的格宽、格高和基线由同步 Cell metrics 决定；`CellSurface`、CharDesk Canvas、[rendering](../../packages/rendering/README.md#fixed-cell-grids-and-font-measurement) 与 Viewer 的产品默认值统一为 `9×20 / 15px / baseline 15`，显式 metrics 优先。所有绘制与输入坐标共享结果；字体加载和切换不改变 Cell 占位、viewport 或已挂载布局，只触发重绘与审计。旧 `9×19` 持久化 viewport 只在 schema 升级时按高度比迁移一次。
 
 ## 帧与检查
 

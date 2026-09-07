@@ -1,4 +1,4 @@
-import { FONT_SIZE } from "@/shared/lib/constants";
+import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
 import { StructuredTemplatePreviewGrid } from "@/widgets/toolbar/structured-template-preview-grid";
 import type { StructuredTemplateDropResult } from "./hooks/useStructuredTemplateDrop";
 
@@ -28,7 +28,7 @@ export const StructuredTemplatePreviewOverlay = ({
         preview={grid}
         cellWidth={cellRect.width}
         cellHeight={cellRect.height}
-        fontSize={FONT_SIZE * zoom}
+        fontSize={DEFAULT_GRID_RENDER_METRICS.fontSize * zoom}
         mode="characters"
       />
     </div>

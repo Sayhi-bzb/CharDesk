@@ -8,7 +8,7 @@ import {
   flattenPersistedEditorState,
   decodePersistedEditorState,
   migrateLegacyEditorPersistence,
-  migratePersistedStateToV5,
+  migratePersistedStateToV6,
 } from "@/domains/sessions/public";
 import {
   createDrawingSlice,
@@ -328,8 +328,8 @@ export const createEditorStore = ({
         shouldSchedule: shouldScheduleEditorPersistence,
       }),
       migrate: (persistedState, version) => {
-        // Zustand types migrations as runtime state, while storage owns the V5 DTO.
-        return migratePersistedStateToV5(
+        // Zustand types migrations as runtime state, while storage owns the V6 DTO.
+        return migratePersistedStateToV6(
           persistedState,
           version,
         ) as unknown as EditorState;

@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
+import { DEFAULT_GRID_GEOMETRY } from "../src/shared/metrics/gridGeometry";
 
 const STORAGE_KEY = "chardesk-persistence";
-const CELL_WIDTH = 9;
-const CELL_HEIGHT = 19;
 const VIEWPORT = { offset: { x: 180, y: 130 }, zoom: 1 };
 const UNDO_SHORTCUT = process.platform === "darwin" ? "Meta+z" : "Control+z";
 
@@ -98,8 +97,14 @@ const gridClientPoint = async (page: Page, point: { x: number; y: number }) => {
   const box = await page.getByTestId("canvas-editor-surface").boundingBox();
   expect(box).not.toBeNull();
   return {
-    x: box!.x + VIEWPORT.offset.x + point.x * CELL_WIDTH,
-    y: box!.y + VIEWPORT.offset.y + point.y * CELL_HEIGHT,
+    x:
+      box!.x +
+      VIEWPORT.offset.x +
+      point.x * DEFAULT_GRID_GEOMETRY.cellWidth,
+    y:
+      box!.y +
+      VIEWPORT.offset.y +
+      point.y * DEFAULT_GRID_GEOMETRY.cellHeight,
   };
 };
 
@@ -292,7 +297,10 @@ test.describe("editor interaction lifecycle", () => {
       name: "Pick char color from canvas",
     }).click();
     const cell = await gridClientPoint(page, { x: 0, y: 0 });
-    await page.mouse.click(cell.x + CELL_WIDTH / 2, cell.y + CELL_HEIGHT / 2);
+    await page.mouse.click(
+      cell.x + DEFAULT_GRID_GEOMETRY.cellWidth / 2,
+      cell.y + DEFAULT_GRID_GEOMETRY.cellHeight / 2
+    );
 
     await expect.poll(async () => (await readState(page))?.brushColor)
       .toBe("#ff0000");

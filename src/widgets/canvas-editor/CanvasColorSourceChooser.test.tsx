@@ -42,9 +42,9 @@ describe("CanvasColorSourceChooser", () => {
 
     expect(screen.getByTestId("canvas-color-source-anchor")).toHaveStyle({
       left: "18px",
-      top: "57px",
+      top: "60px",
       width: "9px",
-      height: "19px",
+      height: "20px",
     });
     const foreground = await screen.findByRole("button", {
       name: "Use cell character color #112233",

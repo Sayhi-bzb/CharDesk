@@ -14,7 +14,7 @@ import { useCanvasSpacePan } from './hooks/useCanvasSpacePan';
 import { ContextMenu, ContextMenuTrigger } from '@chardesk/ui';
 import { CANVAS_CONTEXT_MENU, STRUCTURED_CONTEXT_MENU } from '@/domains/actions/public';
 import { GridManager } from '@/shared/utils/grid';
-import { CELL_HEIGHT, CELL_WIDTH } from '@/shared/lib/constants';
+import { DEFAULT_GRID_RENDER_METRICS } from '@/shared/metrics';
 import {
   createStructuredSceneQuery,
   isStructuredSplitBoxLineHandle,
@@ -172,8 +172,10 @@ export const CanvasEditor = ({
       {
         x: 0,
         y: 0,
-        width: activeSlide.size.columns * CELL_WIDTH,
-        height: activeSlide.size.rows * CELL_HEIGHT,
+        width:
+          activeSlide.size.columns * DEFAULT_GRID_RENDER_METRICS.cellWidth,
+        height:
+          activeSlide.size.rows * DEFAULT_GRID_RENDER_METRICS.cellHeight,
       },
       size,
       { padding: 48, insets: viewportFrame?.insets }

@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { DEFAULT_GRID_GEOMETRY } from "../src/shared/metrics/gridGeometry";
 
 type GridCell = {
   char: string;
@@ -21,8 +22,6 @@ type SmoothMetrics = {
 };
 
 const STORAGE_KEY = "chardesk-persistence";
-const CELL_WIDTH = 9;
-const CELL_HEIGHT = 19;
 const SCENARIO_MS = 5_000;
 const INPUT_FRAME_MS = 16;
 const LIMITS = {
@@ -191,7 +190,7 @@ const makeSessionSwitchPersistedState = () => {
 
   return {
     state: {
-      schemaVersion: 5,
+      schemaVersion: 6,
       workspace: {
         offset: { x: 180, y: 130 },
         zoom: 1,
@@ -209,7 +208,7 @@ const makeSessionSwitchPersistedState = () => {
         exportShowGrid: false,
       },
     },
-    version: 5,
+    version: 6,
   };
 };
 
@@ -552,8 +551,8 @@ test.describe.serial("Performance smoke", () => {
     await openSeededCanvas(page, "structured");
 
     const dragPoint = {
-      x: 180 + 10 * CELL_WIDTH,
-      y: 130 + 7 * CELL_HEIGHT,
+      x: 180 + 10 * DEFAULT_GRID_GEOMETRY.cellWidth,
+      y: 130 + 7 * DEFAULT_GRID_GEOMETRY.cellHeight,
     };
     const selection = await runSmoothScenario(
       page,

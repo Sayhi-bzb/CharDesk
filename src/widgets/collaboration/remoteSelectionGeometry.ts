@@ -7,7 +7,7 @@ import {
   getStructuredNodeBounds,
   type StructuredNode,
 } from "@/domains/structured-content/public";
-import { CELL_HEIGHT, CELL_WIDTH } from "@/shared/lib/constants";
+import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
 import type { GridMap, Point } from "@/shared/types";
 
 type RemoteSelection =
@@ -54,8 +54,12 @@ const toScreenPoint = (
   point: Point,
   viewport: { offset: Point; zoom: number }
 ): Point => ({
-  x: viewport.offset.x + point.x * CELL_WIDTH * viewport.zoom,
-  y: viewport.offset.y + point.y * CELL_HEIGHT * viewport.zoom,
+  x:
+    viewport.offset.x +
+    point.x * DEFAULT_GRID_RENDER_METRICS.cellWidth * viewport.zoom,
+  y:
+    viewport.offset.y +
+    point.y * DEFAULT_GRID_RENDER_METRICS.cellHeight * viewport.zoom,
 });
 
 const ringsToPath = (

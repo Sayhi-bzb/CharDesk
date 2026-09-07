@@ -4,9 +4,10 @@ import type { SlideSize } from "@/domains/slides/public";
 import type { Point } from "@/shared/types";
 import type { CanvasMode } from "./mode";
 import type { CanvasSourceBinding } from "./model";
+import { migrateLegacyGridViewport } from "./viewportMigration";
 
 export const CANVAS_CATALOG_DATABASE = "chardesk-canvas-catalog";
-export const CANVAS_CATALOG_VERSION = 3;
+export const CANVAS_CATALOG_VERSION = 4;
 export const CANVAS_CATALOG_MARKER_KEY = "chardesk-canvas-catalog-ready-v1";
 
 export type CanvasCatalogPreferences = {
@@ -176,15 +177,40 @@ const openCatalog = async ({
     CANVAS_CATALOG_DATABASE,
     CANVAS_CATALOG_VERSION,
     {
-      upgrade(db, oldVersion) {
-        if (oldVersion >= 1) return;
-        db.createObjectStore("workspace", { keyPath: "id" });
-        db.createObjectStore("sessions", { keyPath: "id" });
-        const slides = db.createObjectStore("slides", {
-          keyPath: ["sessionId", "id"],
-        });
-        slides.createIndex("by-session", "sessionId");
-        db.createObjectStore("preferences", { keyPath: "id" });
+      async upgrade(db, oldVersion, _newVersion, transaction) {
+        if (oldVersion < 1) {
+          db.createObjectStore("workspace", { keyPath: "id" });
+          db.createObjectStore("sessions", { keyPath: "id" });
+          const slides = db.createObjectStore("slides", {
+            keyPath: ["sessionId", "id"],
+          });
+          slides.createIndex("by-session", "sessionId");
+          db.createObjectStore("preferences", { keyPath: "id" });
+          return;
+        }
+        if (oldVersion >= CANVAS_CATALOG_VERSION) return;
+
+        const sessionStore = transaction.objectStore("sessions");
+        let cursor = await sessionStore.openCursor();
+        while (cursor) {
+          const session = cursor.value;
+          if (session.viewport) {
+            await cursor.update({
+              ...session,
+              viewport: migrateLegacyGridViewport(session.viewport),
+            });
+          }
+          cursor = await cursor.continue();
+        }
+
+        const workspaceStore = transaction.objectStore("workspace");
+        const workspace = await workspaceStore.get("current");
+        if (workspace) {
+          await workspaceStore.put({
+            ...workspace,
+            schemaVersion: CANVAS_CATALOG_VERSION,
+          });
+        }
       },
       blocked() {
         rejectInterruption(new CanvasCatalogOpenError(

@@ -257,7 +257,7 @@ describe("CharDeskViewerElement", () => {
     expect(rendered.textContent).toBe("A문🙂B");
     expect(viewer.parsedDocument).toMatchObject({ width: 6, height: 1 });
     expect(rendered.style.width).toBe("86px");
-    expect(rendered.style.height).toBe("51px");
+    expect(rendered.style.height).toBe("52px");
   });
 
   it("routes Canvas emoji glyphs to the monochrome font profile", () => {
@@ -289,7 +289,7 @@ describe("CharDeskViewerElement", () => {
     expect(getRenderedDocument(viewer).width).toBe(196);
     expect(
       viewport.style.getPropertyValue("--chardesk-auto-viewport-height")
-    ).toBe("25.5px");
+    ).toBe("26px");
   });
 
   it("centers a scaled document that is narrower than the viewport", () => {
@@ -321,11 +321,11 @@ describe("CharDeskViewerElement", () => {
 
     viewer.zoom = 1;
 
-    expect(fittedHeight).toBe("25.5px");
+    expect(fittedHeight).toBe("26px");
     expect(
       viewport.style.getPropertyValue("--chardesk-auto-viewport-height")
     ).toBe(fittedHeight);
-    expect(stage.style.height).toBe("51px");
+    expect(stage.style.height).toBe("52px");
   });
 
   it("uses declarative initial zoom when establishing frame height", async () => {
@@ -342,7 +342,7 @@ describe("CharDeskViewerElement", () => {
       getViewport(viewer).style.getPropertyValue(
         "--chardesk-auto-viewport-height"
       )
-    ).toBe("102px");
+    ).toBe("104px");
   });
 
   it("exposes observable grid cursor and rectangular selection state", () => {
@@ -384,9 +384,9 @@ describe("CharDeskViewerElement", () => {
     expect(selection.style.cssText).toContain("left: 50px");
     expect(selection.style.cssText).toContain("top: 32px");
     expect(selection.style.cssText).toContain("width: 36px");
-    expect(selection.style.cssText).toContain("height: 76px");
+    expect(selection.style.cssText).toContain("height: 80px");
     expect(cursor.style.cssText).toContain("left: 68px");
-    expect(cursor.style.cssText).toContain("top: 70px");
+    expect(cursor.style.cssText).toContain("top: 72px");
   });
 
   it("navigates and extends grid selection with the keyboard", () => {

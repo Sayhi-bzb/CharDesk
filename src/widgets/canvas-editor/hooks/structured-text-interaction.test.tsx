@@ -723,7 +723,7 @@ describe("structured text interaction", () => {
 
     act(() => {
       gestureState.handlers?.onMove?.({
-        xy: [18, 57],
+        xy: [18, 60],
         event: new MouseEvent("mousemove", {
           bubbles: true,
           cancelable: true,
@@ -757,16 +757,16 @@ describe("structured text interaction", () => {
 
     act(() => {
       gestureState.handlers?.onDragStart?.({
-        xy: [9, 19],
+        xy: [9, 20],
         event: dragEvent(),
       });
       gestureState.handlers?.onDrag?.({
-        xy: [45, 57],
-        delta: [36, 38],
+        xy: [45, 60],
+        delta: [36, 40],
         event: dragEvent(),
       });
       gestureState.handlers?.onDragEnd?.({
-        xy: [45, 57],
+        xy: [45, 60],
         event: dragEvent(),
       });
     });
@@ -796,7 +796,7 @@ describe("structured text interaction", () => {
 
     act(() => {
       gestureState.handlers?.onMove?.({
-        xy: [18, 57],
+        xy: [18, 60],
         event: new MouseEvent("mousemove", {
           bubbles: true,
           cancelable: true,
@@ -825,7 +825,7 @@ describe("structured text interaction", () => {
 
     act(() => {
       gestureState.handlers?.onDragStart?.({
-        xy: [18, 57],
+        xy: [18, 60],
         event: dragEvent(),
       });
     });
@@ -851,7 +851,7 @@ describe("structured text interaction", () => {
 
     act(() => {
       gestureState.handlers?.onMove?.({
-        xy: [18, 57],
+        xy: [18, 60],
         event: new MouseEvent("mousemove", {
           bubbles: true,
           cancelable: true,
@@ -860,7 +860,7 @@ describe("structured text interaction", () => {
     });
     act(() => {
       gestureState.handlers?.onDragStart?.({
-        xy: [18, 57],
+        xy: [18, 60],
         event: dragEvent(),
       });
     });
@@ -889,7 +889,7 @@ describe("structured text interaction", () => {
 
     act(() => {
       gestureState.handlers?.onDragStart?.({
-        xy: [18, 57],
+        xy: [18, 60],
         event: dragEvent(),
       });
     });
@@ -917,7 +917,7 @@ describe("structured text interaction", () => {
 
     act(() => {
       gestureState.handlers?.onDragStart?.({
-        xy: [18, 57],
+        xy: [18, 60],
         event: dragEvent(),
       });
     });
@@ -941,7 +941,7 @@ describe("structured text interaction", () => {
 
     act(() => {
       gestureState.handlers?.onDragStart?.({
-        xy: [18, 39],
+        xy: [18, 40],
         event: dragEvent(),
       });
     });

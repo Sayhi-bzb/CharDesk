@@ -3,6 +3,7 @@ import { deleteDB } from "idb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CANVAS_CATALOG_DATABASE,
+  CANVAS_CATALOG_VERSION,
   CanvasCatalogOpenError,
   createIndexedDbCanvasCatalog,
   type CanvasCatalog,
@@ -171,6 +172,54 @@ describe("IndexedDB canvas catalog", () => {
       },
     });
   });
+
+  it("migrates legacy session viewport pixels in the upgrade transaction", async () => {
+    const legacy = await openNativeCatalog(3);
+    const transaction = legacy.transaction(
+      ["workspace", "sessions", "preferences"],
+      "readwrite",
+    );
+    transaction.objectStore("workspace").put({
+      id: "current",
+      schemaVersion: 3,
+      activeSessionId: "canvas",
+      migrationComplete: true,
+    });
+    transaction.objectStore("sessions").put({
+      id: "canvas",
+      order: 0,
+      name: "Canvas",
+      mode: "freeform",
+      viewport: { offset: { x: -8, y: -38 }, zoom: 1.25 },
+    });
+    transaction.objectStore("preferences").put({
+      id: "canvas",
+      ...snapshot.preferences,
+    });
+    await transactionDone(transaction);
+    legacy.close();
+
+    const catalog = await createIndexedDbCanvasCatalog();
+    catalogs.push(catalog);
+    expect((await catalog.load())?.sessions[0].viewport).toEqual({
+      offset: { x: -8, y: -40 },
+      zoom: 1.25,
+    });
+
+    const database = await openNativeCatalog(CANVAS_CATALOG_VERSION);
+    const workspace = await new Promise<Record<string, unknown> | undefined>(
+      (resolve, reject) => {
+        const request = database
+          .transaction("workspace", "readonly")
+          .objectStore("workspace")
+          .get("current");
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      },
+    );
+    expect(workspace?.schemaVersion).toBe(CANVAS_CATALOG_VERSION);
+    database.close();
+  });
 });
 
 describe("IndexedDB canvas catalog lifecycle", () => {
@@ -199,9 +248,9 @@ describe("IndexedDB canvas catalog lifecycle", () => {
     const onUnavailable = vi.fn();
     const catalog = await createIndexedDbCanvasCatalog({ onUnavailable });
 
-    const future = await openNativeCatalog(4);
+    const future = await openNativeCatalog(CANVAS_CATALOG_VERSION + 1);
 
-    expect(future.version).toBe(4);
+    expect(future.version).toBe(CANVAS_CATALOG_VERSION + 1);
     expect(onUnavailable).toHaveBeenCalledWith("storage-unavailable");
     future.close();
     catalog.close();

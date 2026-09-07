@@ -1,11 +1,10 @@
 import type { Slide, SlideSize } from "@/domains/slides/public";
 import {
   BACKGROUND_COLOR,
-  CELL_HEIGHT,
-  CELL_WIDTH,
   COLOR_PRIMARY_TEXT,
 } from "@/shared/lib/constants";
 import {
+  DEFAULT_GRID_RENDER_METRICS,
   drawCellBackground,
   drawCellText,
   prepareCanvasSurface,
@@ -89,8 +88,8 @@ export const drawSlideCanvas = ({
     drawCellBackground(
       ctx,
       cell,
-      layout.x + x * CELL_WIDTH * layout.zoom,
-      layout.y + y * CELL_HEIGHT * layout.zoom,
+      layout.x + x * DEFAULT_GRID_RENDER_METRICS.cellWidth * layout.zoom,
+      layout.y + y * DEFAULT_GRID_RENDER_METRICS.cellHeight * layout.zoom,
       { zoom: layout.zoom }
     );
   }
@@ -106,8 +105,8 @@ export const drawSlideCanvas = ({
     drawCellText(
       ctx,
       cell,
-      layout.x + x * CELL_WIDTH * layout.zoom,
-      layout.y + y * CELL_HEIGHT * layout.zoom,
+      layout.x + x * DEFAULT_GRID_RENDER_METRICS.cellWidth * layout.zoom,
+      layout.y + y * DEFAULT_GRID_RENDER_METRICS.cellHeight * layout.zoom,
       { color, zoom: layout.zoom }
     );
   }

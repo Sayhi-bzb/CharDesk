@@ -19,12 +19,13 @@ export {
   EDITOR_PERSISTENCE_KEY,
   EDITOR_PERSISTENCE_VERSION,
   PREVIOUS_EDITOR_PERSISTENCE_VERSION,
+  LEGACY_EDITOR_PERSISTENCE_VERSION,
   LEGACY_EDITOR_PERSISTENCE_KEY,
   decodePersistedEditorState,
   flattenPersistedEditorState,
-  isPersistedEditorStateV5,
+  isPersistedEditorStateV6,
   migrateLegacyEditorPersistence,
-  migratePersistedStateToV5,
+  migratePersistedStateToV6,
   UnsupportedEditorPersistenceVersionError,
 } from "./persistence";
 export type { SessionCommands } from "./commands";

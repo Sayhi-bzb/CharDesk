@@ -1,9 +1,10 @@
-import { CELL_HEIGHT, CELL_WIDTH, FONT_SIZE } from "@/shared/lib/constants";
+import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
 
 const PAGE_PADDING = 32;
 const MAX_PLAYBACK_FONT_SIZE = 30;
 
-export const SLIDE_PLAYBACK_MAX_ZOOM = MAX_PLAYBACK_FONT_SIZE / FONT_SIZE;
+export const SLIDE_PLAYBACK_MAX_ZOOM =
+  MAX_PLAYBACK_FONT_SIZE / DEFAULT_GRID_RENDER_METRICS.fontSize;
 
 export type SlidePlaybackLayout = {
   x: number;
@@ -33,13 +34,13 @@ export const resolveSlidePlaybackLayout = ({
   const zoom = Math.max(
     0.01,
     Math.min(
-      availableWidth / (columns * CELL_WIDTH),
-      availableHeight / (rows * CELL_HEIGHT),
+      availableWidth / (columns * DEFAULT_GRID_RENDER_METRICS.cellWidth),
+      availableHeight / (rows * DEFAULT_GRID_RENDER_METRICS.cellHeight),
       maxZoom
     )
   );
-  const width = columns * CELL_WIDTH * zoom;
-  const height = rows * CELL_HEIGHT * zoom;
+  const width = columns * DEFAULT_GRID_RENDER_METRICS.cellWidth * zoom;
+  const height = rows * DEFAULT_GRID_RENDER_METRICS.cellHeight * zoom;
   return {
     x: (viewportWidth - width) / 2,
     y: (viewportHeight - height) / 2,

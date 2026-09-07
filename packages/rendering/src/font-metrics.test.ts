@@ -38,11 +38,11 @@ describe("font-driven Cell metrics", () => {
       source: "calibrated", metrics: { cellWidth: 10, cellHeight: 20, baseline: 15 },
     });
   });
-  it("rejects invalid measurements and leaves legacy anchors unchanged", () => {
+  it("rejects invalid measurements and leaves default anchors unchanged", () => {
     const ctx = context();
     ctx.measureText.mockReturnValue({ width: 0 } as TextMetrics);
     expect(() => measureCharDeskCanvasFont(ctx)).toThrow(RangeError);
     expect(ctx.restore).toHaveBeenCalledOnce();
-    expect(getCharDeskCanvasCellAnchor(0, 0, 1).y).toBe(9.5);
+    expect(getCharDeskCanvasCellAnchor(0, 0, 1).y).toBe(15);
   });
 });

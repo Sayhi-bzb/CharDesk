@@ -57,8 +57,8 @@ describe("useCanvasRenderer structured rect handles", () => {
       fill: "selection-surface",
       stroke: "selection-border",
     });
-    expect(ctx.fillRect).toHaveBeenCalledWith(18, 57, 9, 19);
-    expect(ctx.strokeRect).toHaveBeenCalledWith(18, 57, 9, 19);
+    expect(ctx.fillRect).toHaveBeenCalledWith(18, 60, 9, 20);
+    expect(ctx.strokeRect).toHaveBeenCalledWith(18, 60, 9, 20);
   });
 
   it("draws the active-cell marker independently from the range contour", () => {
@@ -83,7 +83,7 @@ describe("useCanvasRenderer structured rect handles", () => {
       stroke: "selection-marker",
       lineWidth: 1,
     });
-    expect(ctx.strokeRect).toHaveBeenCalledWith(37, 58, 7, 17);
+    expect(ctx.strokeRect).toHaveBeenCalledWith(37, 61, 7, 18);
   });
 
   it("fills overlapping ranges once and strokes their union contour", () => {
@@ -192,7 +192,7 @@ describe("useCanvasRenderer structured rect handles", () => {
     }, palette);
 
     expect(ctx.strokeRect).toHaveBeenCalledTimes(2);
-    expect(ctx.strokeRect).toHaveBeenCalledWith(18, 57, 9, 19);
+    expect(ctx.strokeRect).toHaveBeenCalledWith(18, 60, 9, 20);
     expect(ctx.beginPath).toHaveBeenCalledTimes(1);
     expect(ctx.moveTo).toHaveBeenCalledTimes(4);
     expect(ctx.lineTo).toHaveBeenCalledTimes(8);

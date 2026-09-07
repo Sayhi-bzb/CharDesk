@@ -204,7 +204,7 @@ const makePersistedState = ({
   };
   return {
     state: {
-      schemaVersion: 5,
+      schemaVersion: 6,
       workspace: {
         offset: session.viewport.offset,
         zoom,
@@ -222,7 +222,7 @@ const makePersistedState = ({
         exportShowGrid: false,
       },
     },
-    version: 5,
+    version: 6,
   };
 };
 

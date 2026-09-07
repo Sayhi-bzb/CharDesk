@@ -21,6 +21,7 @@ import {
 } from "@/domains/slides/public";
 import { HOST_ICONOLOGY } from "@/shared/icons/iconology";
 import { useUiI18n } from "@/shared/i18n";
+import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
 import {
   cn,
   Button,
@@ -61,6 +62,11 @@ const AddIcon = HOST_ICONOLOGY.sessionAction.create;
 const DuplicateIcon = HOST_ICONOLOGY.editorAction["structured-duplicate"];
 const DeleteIcon = HOST_ICONOLOGY.sessionAction.close;
 const ConfigureIcon = HOST_ICONOLOGY.slideAction.configure;
+
+const getSlideAspectRatio = (size: SlideSize) =>
+  `${size.columns * DEFAULT_GRID_RENDER_METRICS.cellWidth} / ${
+    size.rows * DEFAULT_GRID_RENDER_METRICS.cellHeight
+  }`;
 
 type PendingResize = {
   slideId: string;
@@ -165,12 +171,7 @@ function ReadOnlySlideNavigator() {
                   orientation="vertical"
                   selected={active}
                   className="relative w-full overflow-hidden p-0 text-left"
-                  style={{
-                    aspectRatio:
-                      slide.size.columns * 9 +
-                      " / " +
-                      slide.size.rows * 19,
-                  }}
+                  style={{ aspectRatio: getSlideAspectRatio(slide.size) }}
                   aria-label={t(
                     active ? "slide.previewCurrent" : "slide.preview",
                     {
@@ -276,12 +277,7 @@ function EditableSlideNavigator() {
                 orientation="vertical"
                 selected={active}
                 className="relative w-full overflow-hidden p-0 text-left"
-                style={{
-                  aspectRatio:
-                    slide.size.columns * 9 +
-                    " / " +
-                    slide.size.rows * 19,
-                }}
+                style={{ aspectRatio: getSlideAspectRatio(slide.size) }}
                 aria-label={t(
                   active ? "slide.previewCurrent" : "slide.preview",
                   {

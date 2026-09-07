@@ -70,9 +70,9 @@ describe("Slide playback", () => {
     });
 
     expect(layout.x).toBeCloseTo(0);
-    expect(layout.y).toBeCloseTo(15);
+    expect(layout.y).toBeCloseTo(0);
     expect(layout.width).toBeCloseTo(1000);
-    expect(layout.height).toBeCloseTo(570);
+    expect(layout.height).toBeCloseTo(600);
   });
 
   it("centers a small slide after reaching the playback zoom limit", () => {
@@ -87,9 +87,9 @@ describe("Slide playback", () => {
 
     expect(layout).toEqual({
       x: 410,
-      y: 205,
+      y: 200,
       width: 180,
-      height: 190,
+      height: 200,
       zoom: 2,
     });
   });

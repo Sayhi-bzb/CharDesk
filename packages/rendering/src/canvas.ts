@@ -118,12 +118,13 @@ export type CharDeskCanvasFontLoadOptions = Readonly<{
   fontResolver?: CharDeskCanvasFontResolver;
 }>;
 
-export const DEFAULT_CHARDESK_CANVAS_METRICS: CharDeskCanvasMetrics = {
+export const DEFAULT_CHARDESK_CANVAS_METRICS = {
   cellWidth: 9,
-  cellHeight: 19,
+  cellHeight: 20,
+  baseline: 15,
   fontSize: 15,
   fontFamily: CHARDESK_SYSTEM_FONT_PROFILE.families.text,
-};
+} satisfies CharDeskCanvasMetrics;
 
 export const DEFAULT_CHARDESK_CANVAS_FONT_AVAILABILITY: CharDeskCanvasFontAvailability = {
   text: true,

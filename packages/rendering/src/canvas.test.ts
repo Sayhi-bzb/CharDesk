@@ -111,7 +111,7 @@ describe("CharDesk Canvas 2D renderer", () => {
       options: { palette: { color: "#000000", background: "#ffffff" } },
     }]);
     expect(colors).toEqual(["#112233"]);
-    expect(context.fillText).toHaveBeenCalledWith("█", 4.5, 9.5);
+    expect(context.fillText).toHaveBeenCalledWith("█", 4.5, 15);
     expect(context.stroke).toHaveBeenCalledOnce();
   });
   it("draws component border and block characters through the font path", () => {
@@ -123,9 +123,9 @@ describe("CharDesk Canvas 2D renderer", () => {
       y: 0,
       options: { fontResolver, clipToCell: true },
     })));
-    expect(context.fillText).toHaveBeenNthCalledWith(1, "█", 4.5, 9.5);
-    expect(context.fillText).toHaveBeenNthCalledWith(2, "│", 13.5, 9.5);
-    expect(context.fillText).toHaveBeenNthCalledWith(3, "╭", 22.5, 9.5);
+    expect(context.fillText).toHaveBeenNthCalledWith(1, "█", 4.5, 15);
+    expect(context.fillText).toHaveBeenNthCalledWith(2, "│", 13.5, 15);
+    expect(context.fillText).toHaveBeenNthCalledWith(3, "╭", 22.5, 15);
     expect(fontResolver).toHaveBeenCalledTimes(3);
   });
   it("clips glyphs to their Cell allocation only when requested", () => {
@@ -134,12 +134,12 @@ describe("CharDesk Canvas 2D renderer", () => {
     drawCharDeskCanvasCells(context, [entry]);
     expect(context.clip).not.toHaveBeenCalled();
     drawCharDeskCanvasCells(context, [{ ...entry, options: { clipToCell: true } }]);
-    expect(context.rect).toHaveBeenCalledWith(9, 19, 9, 19);
+    expect(context.rect).toHaveBeenCalledWith(9, 19, 9, 20);
     expect(context.clip).toHaveBeenCalledOnce();
     drawCharDeskCanvasCells(context, [{
       ...entry, cell: resolveCharDeskCellVisual({ text: "中" }), options: { clipToCell: true },
     }]);
-    expect(context.rect).toHaveBeenLastCalledWith(9, 19, 18, 19);
+    expect(context.rect).toHaveBeenLastCalledWith(9, 19, 18, 20);
     expect(context.save).toHaveBeenCalledTimes(5);
     expect(context.restore).toHaveBeenCalledTimes(5);
   });
@@ -151,7 +151,7 @@ describe("CharDesk Canvas 2D renderer", () => {
       y: 0,
     }]);
 
-    expect(context.fillText).toHaveBeenCalledWith("A", 4.5, 9.5);
+    expect(context.fillText).toHaveBeenCalledWith("A", 4.5, 15);
   });
 
   it("routes emoji through the monochrome Canvas font", () => {
@@ -166,7 +166,7 @@ describe("CharDesk Canvas 2D renderer", () => {
     }]);
 
     expect(context.font).toContain("'Noto Emoji'");
-    expect(context.fillText).toHaveBeenCalledWith("👋", 9, 9.5);
+    expect(context.fillText).toHaveBeenCalledWith("👋", 9, 15);
   });
 
   it("allows headless hosts to supply route- and weight-specific font stacks", () => {
@@ -275,7 +275,7 @@ describe("CharDesk Canvas 2D renderer", () => {
 
     expect(context.font).toContain("13.5px Nerd Symbols");
     expect(context.font).not.toContain("700");
-    expect(context.translate).toHaveBeenCalledWith(4.5, 10.85);
+    expect(context.translate).toHaveBeenCalledWith(4.5, 16.35);
     expect(context.scale).toHaveBeenCalledWith(0.6, 1);
     expect(context.fillText).toHaveBeenCalledWith("\ue0b0", 0, 0);
     expect(context.lineTo).toHaveBeenCalledWith(9, 16.5);
@@ -295,8 +295,8 @@ describe("CharDesk Canvas 2D renderer", () => {
     }]);
 
     expect(operations).toEqual(["background", "text"]);
-    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 9, 19);
-    expect(context.fillText).toHaveBeenCalledWith("A", 4.5, 9.5);
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 9, 20);
+    expect(context.fillText).toHaveBeenCalledWith("A", 4.5, 15);
     expect(resolveCharDeskCanvasCellVisual(
       resolveCharDeskCellVisual({
         text: "A",
@@ -316,15 +316,15 @@ describe("CharDesk Canvas 2D renderer", () => {
       options: { fontAvailability: { text: true, emoji: false } },
     }]);
 
-    expect(context.fillText).toHaveBeenCalledWith("□", 9, 9.5);
+    expect(context.fillText).toHaveBeenCalledWith("□", 9, 15);
     expect(context.font).toContain("Noto Emoji");
   });
 
-  it("measures and draws protocol cells on the shared 9 by 19 grid", () => {
+  it("measures and draws protocol cells on the shared 9 by 20 grid", () => {
     const model = createCharDeskRenderModel("A界\n🙂");
     expect(measureCharDeskCanvasDocument(model)).toMatchObject({
       width: 59,
-      height: 70,
+      height: 72,
       padding: 16,
     });
 
@@ -340,7 +340,7 @@ describe("CharDesk Canvas 2D renderer", () => {
     const model = createCharDeskRenderModel("AB");
     expect(measureCharDeskCanvasDocument(model, { zoom: 1.25 })).toMatchObject({
       width: 62.5,
-      height: 63.75,
+      height: 65,
       padding: 20,
     });
 
@@ -351,8 +351,8 @@ describe("CharDesk Canvas 2D renderer", () => {
     });
 
     expect(context.font).toContain("18.75px");
-    expect(context.fillText).toHaveBeenNthCalledWith(1, "A", 25.625, 31.875);
-    expect(context.fillText).toHaveBeenNthCalledWith(2, "B", 36.875, 31.875);
+    expect(context.fillText).toHaveBeenNthCalledWith(1, "A", 25.625, 38.75);
+    expect(context.fillText).toHaveBeenNthCalledWith(2, "B", 36.875, 38.75);
   });
 
   it("prepares a DPR-aware backing surface", () => {

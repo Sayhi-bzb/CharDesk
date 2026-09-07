@@ -13,7 +13,7 @@ import {
   CANVAS_CATALOG_DATABASE,
   CANVAS_CATALOG_MARKER_KEY,
   EDITOR_PERSISTENCE_KEY,
-  EDITOR_PERSISTENCE_VERSION,
+  PREVIOUS_EDITOR_PERSISTENCE_VERSION,
   createIndexedDbCanvasCatalog,
   type CanvasSession,
 } from "@/domains/sessions/public";
@@ -647,9 +647,9 @@ describe("browser canvas persistence", () => {
   it("migrates a V5 localStorage snapshot only after IndexedDB verification", async () => {
     const storage = new MemoryStorage();
     storage.setItem(EDITOR_PERSISTENCE_KEY, JSON.stringify({
-      version: EDITOR_PERSISTENCE_VERSION,
+      version: PREVIOUS_EDITOR_PERSISTENCE_VERSION,
       state: {
-        schemaVersion: EDITOR_PERSISTENCE_VERSION,
+        schemaVersion: PREVIOUS_EDITOR_PERSISTENCE_VERSION,
         workspace: {
           offset: { x: 20, y: 30 },
           zoom: 1.25,
@@ -685,7 +685,7 @@ describe("browser canvas persistence", () => {
 
     expect(runtime.getState()).toMatchObject({
       activeCanvasId: LEGACY_SESSION_ID,
-      offset: { x: 20, y: 30 },
+      offset: { x: 20, y: 600 / 19 },
       zoom: 1.25,
       brushChar: "@",
     });

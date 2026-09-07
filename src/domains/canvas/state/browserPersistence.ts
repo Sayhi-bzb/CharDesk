@@ -6,12 +6,16 @@ import {
 } from "y-indexeddb";
 import {
   EDITOR_PERSISTENCE_KEY,
+  EDITOR_PERSISTENCE_VERSION,
   LEGACY_EDITOR_PERSISTENCE_KEY,
+  LEGACY_EDITOR_PERSISTENCE_VERSION,
+  PREVIOUS_EDITOR_PERSISTENCE_VERSION,
   CANVAS_CATALOG_MARKER_KEY,
   CanvasCatalogOpenError,
   createSessionId,
   createIndexedDbCanvasCatalog,
   decodePersistedEditorState,
+  migratePersistedStateToV6,
   isSourceBackedCanvasSession,
   type CanvasCatalog,
   type CanvasCatalogFailureReason,
@@ -634,20 +638,23 @@ const readLegacySessionSnapshots = (
     if (!raw) continue;
     try {
       const envelope: unknown = JSON.parse(raw);
+      const version = (envelope as { version?: unknown }).version;
       if (
         !envelope ||
         typeof envelope !== "object" ||
         !("state" in envelope) ||
         !("version" in envelope) ||
-        ((envelope as { version?: unknown }).version !== 4 &&
-          (envelope as { version?: unknown }).version !== 5)
+        (version !== LEGACY_EDITOR_PERSISTENCE_VERSION &&
+          version !== PREVIOUS_EDITOR_PERSISTENCE_VERSION &&
+          version !== EDITOR_PERSISTENCE_VERSION)
       ) {
         continue;
       }
       snapshots.push({
         key: candidate,
-        state: decodePersistedEditorState(
-          (envelope as { state: unknown }).state
+        state: migratePersistedStateToV6(
+          (envelope as { state: unknown }).state,
+          version
         ),
       });
     } catch {

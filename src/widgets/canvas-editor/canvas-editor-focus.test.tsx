@@ -25,7 +25,7 @@ import {
   useShortcutLayer,
 } from "@/shared/shortcuts/dispatcher";
 import { CanvasCameraManager } from "@/widgets/canvas-editor/engine/CanvasCameraManager";
-import { CELL_HEIGHT, CELL_WIDTH } from "@/shared/lib/constants";
+import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
 import type { SlideDeck } from "@/domains/slides/public";
 
 const useSizeMock = vi.hoisted(() => vi.fn());
@@ -233,8 +233,8 @@ describe("CanvasEditor focus management", () => {
         {
           x: 0,
           y: 0,
-          width: 100 * CELL_WIDTH,
-          height: 30 * CELL_HEIGHT,
+          width: 100 * DEFAULT_GRID_RENDER_METRICS.cellWidth,
+          height: 30 * DEFAULT_GRID_RENDER_METRICS.cellHeight,
         },
         { width: 1000, height: 700 },
         { padding: 48, insets: undefined }
@@ -1379,13 +1379,13 @@ describe("CanvasEditor focus management", () => {
     Object.defineProperties(dragOverEvent, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 18 },
-      clientY: { value: 38 },
+      clientY: { value: 40 },
     });
     const dropEvent = createEvent.drop(root);
     Object.defineProperties(dropEvent, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 18 },
-      clientY: { value: 38 },
+      clientY: { value: 40 },
     });
 
     await fireDragOverAndFlush(root, dragOverEvent);
@@ -1393,9 +1393,9 @@ describe("CanvasEditor focus management", () => {
     const preview = screen.getByTestId("structured-template-preview");
     expect(preview).toHaveStyle({
       left: "18px",
-      top: "38px",
+      top: "40px",
       width: "72px",
-      height: "19px",
+      height: "20px",
     });
     expect(preview.style.backgroundColor).toBe("");
     const previewGrid = preview.querySelector(
@@ -1403,7 +1403,7 @@ describe("CanvasEditor focus management", () => {
     );
     expect(previewGrid?.tagName).toBe("CANVAS");
     expect(previewGrid).toHaveAttribute("data-preview-mode", "characters");
-    expect(previewGrid).toHaveStyle({ width: "72px", height: "19px" });
+    expect(previewGrid).toHaveStyle({ width: "72px", height: "20px" });
 
     act(() => {
       fireEvent(root, dropEvent);
@@ -1456,13 +1456,13 @@ describe("CanvasEditor focus management", () => {
     Object.defineProperties(dragOverEvent, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 27 },
-      clientY: { value: 57 },
+      clientY: { value: 60 },
     });
     const dropEvent = createEvent.drop(root);
     Object.defineProperties(dropEvent, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 27 },
-      clientY: { value: 57 },
+      clientY: { value: 60 },
     });
 
     await fireDragOverAndFlush(root, dragOverEvent);
@@ -1470,7 +1470,7 @@ describe("CanvasEditor focus management", () => {
     const preview = screen.getByTestId("structured-template-preview");
     expect(preview).toHaveStyle({
       left: "27px",
-      top: "57px",
+      top: "60px",
     });
     expect(preview.style.backgroundColor).toBe("");
     const previewGrid = preview.querySelector(
@@ -1523,13 +1523,13 @@ describe("CanvasEditor focus management", () => {
     Object.defineProperties(dragOverEvent, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 18 },
-      clientY: { value: 38 },
+      clientY: { value: 40 },
     });
     const dropEvent = createEvent.drop(root);
     Object.defineProperties(dropEvent, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 18 },
-      clientY: { value: 38 },
+      clientY: { value: 40 },
     });
 
     await fireDragOverAndFlush(root, dragOverEvent);
@@ -1537,15 +1537,15 @@ describe("CanvasEditor focus management", () => {
     const preview = screen.getByTestId("structured-template-preview");
     expect(preview).toHaveStyle({
       left: "18px",
-      top: "38px",
+      top: "40px",
       width: "234px",
-      height: "76px",
+      height: "80px",
     });
     const previewGrid = preview.querySelector(
       '[data-testid="structured-template-preview-grid"]'
     );
     expect(previewGrid?.tagName).toBe("CANVAS");
-    expect(previewGrid).toHaveStyle({ width: "234px", height: "76px" });
+    expect(previewGrid).toHaveStyle({ width: "234px", height: "80px" });
 
     act(() => {
       fireEvent(root, dropEvent);
@@ -1591,7 +1591,7 @@ describe("CanvasEditor focus management", () => {
     Object.defineProperties(dragOverEvent, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 36 },
-      clientY: { value: 76 },
+      clientY: { value: 80 },
     });
 
     await fireDragOverAndFlush(root, dragOverEvent);
@@ -1599,16 +1599,16 @@ describe("CanvasEditor focus management", () => {
     const preview = screen.getByTestId("structured-template-preview");
     expect(preview).toHaveStyle({
       left: "36px",
-      top: "76px",
+      top: "80px",
       width: "81px",
-      height: "19px",
+      height: "20px",
     });
     expect(preview.style.backgroundColor).toBe("");
     const previewGrid = preview.querySelector(
       '[data-testid="structured-template-preview-grid"]'
     );
     expect(previewGrid?.tagName).toBe("CANVAS");
-    expect(previewGrid).toHaveStyle({ width: "81px", height: "19px" });
+    expect(previewGrid).toHaveStyle({ width: "81px", height: "20px" });
   });
 
   it("coalesces structured template dragover previews to the latest frame position", async () => {
@@ -1635,13 +1635,13 @@ describe("CanvasEditor focus management", () => {
     Object.defineProperties(firstDragOver, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 18 },
-      clientY: { value: 38 },
+      clientY: { value: 40 },
     });
     const secondDragOver = createEvent.dragOver(root);
     Object.defineProperties(secondDragOver, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 54 },
-      clientY: { value: 76 },
+      clientY: { value: 80 },
     });
 
     act(() => {
@@ -1656,7 +1656,7 @@ describe("CanvasEditor focus management", () => {
 
     expect(screen.getByTestId("structured-template-preview")).toHaveStyle({
       left: "54px",
-      top: "76px",
+      top: "80px",
     });
   });
 
@@ -1685,13 +1685,13 @@ describe("CanvasEditor focus management", () => {
     Object.defineProperties(dragOverEvent, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 54 },
-      clientY: { value: 76 },
+      clientY: { value: 80 },
     });
     const dropEvent = createEvent.drop(root);
     Object.defineProperties(dropEvent, {
       dataTransfer: { value: dataTransfer },
       clientX: { value: 18 },
-      clientY: { value: 38 },
+      clientY: { value: 40 },
     });
 
     act(() => {

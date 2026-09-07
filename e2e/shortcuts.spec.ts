@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
+import { DEFAULT_GRID_GEOMETRY } from "../src/shared/metrics/gridGeometry";
 
 const STORAGE_KEY = "chardesk-persistence";
-const CELL_WIDTH = 9;
 // Keep seeded content in the unobstructed center of the Canvas. Coordinates near
 // the left edge can hit the character library instead of the Canvas surface.
 const VIEWPORT = { offset: { x: 720, y: 450 }, zoom: 1 };
@@ -61,7 +61,11 @@ const seedFreeformSelection = async (
   };
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.mouse.move(start.x + CELL_WIDTH + 4, start.y, { steps: 3 });
+  await page.mouse.move(
+    start.x + DEFAULT_GRID_GEOMETRY.cellWidth + 4,
+    start.y,
+    { steps: 3 }
+  );
   if (options.releasePointer !== false) await page.mouse.up();
   await expect(surface.locator("textarea")).toBeFocused();
 };
@@ -138,7 +142,10 @@ const seedFreeformNavigation = async (page: Page) => {
   const eventInit = {
     button: 0,
     buttons: 1,
-    clientX: box!.x + VIEWPORT.offset.x + CELL_WIDTH / 2,
+    clientX:
+      box!.x +
+      VIEWPORT.offset.x +
+      DEFAULT_GRID_GEOMETRY.cellWidth / 2,
     clientY: box!.y + VIEWPORT.offset.y + 9,
     pointerId: 1,
     pointerType: "mouse",

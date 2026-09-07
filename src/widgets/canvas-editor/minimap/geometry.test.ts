@@ -31,9 +31,9 @@ describe("minimap geometry", () => {
 
     expect(computeVisibleContentBounds(grid)).toEqual({
       x: -18,
-      y: 19,
+      y: 20,
       width: 63,
-      height: 57,
+      height: 60,
     });
   });
 

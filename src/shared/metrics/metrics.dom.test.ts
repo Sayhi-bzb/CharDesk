@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  DEFAULT_GRID_GEOMETRY,
   DEFAULT_GRID_RENDER_METRICS,
   drawCellBatch,
   drawCellBackground,
@@ -18,6 +19,20 @@ import {
 } from "@/shared/metrics";
 
 describe("metrics", () => {
+  it("owns the stable editor grid geometry", () => {
+    expect(DEFAULT_GRID_GEOMETRY).toEqual({
+      cellWidth: 9,
+      cellHeight: 20,
+      baseline: 15,
+    });
+    expect(DEFAULT_GRID_RENDER_METRICS).toMatchObject({
+      ...DEFAULT_GRID_GEOMETRY,
+      fontSize: 15,
+    });
+    expect(Object.isFrozen(DEFAULT_GRID_GEOMETRY)).toBe(true);
+    expect(Object.isFrozen(DEFAULT_GRID_RENDER_METRICS)).toBe(true);
+  });
+
   describe("splitGraphemes", () => {
     it("keeps combining marks and emoji modifiers together", () => {
       expect(splitGraphemes("e\u0301x")).toEqual(["e\u0301", "x"]);

@@ -54,10 +54,10 @@ this effective-weight contract.
 
 ## Fixed Cell grids and font measurement
 
-Cell geometry is a synchronous host contract. The standalone document renderer
-retains its `9×19px` compatibility default; browser UI hosts provide their own
-stable metrics. Font loading may trigger glyph repaint and audit, but must not
-resize a mounted grid.
+Cell geometry is a synchronous host contract. CharDesk surfaces use a stable
+`9×20px` default with a `15px` alphabetic baseline. Browser UI hosts may provide
+their own stable metrics. Font loading may trigger glyph repaint and audit, but
+must not resize a mounted grid.
 
 `measureCharDeskCanvasFont(context, profile, fontSize = 15)` measures a loaded
 display face and returns `{ metrics, source, fontMetrics, fontMetricsSource }`.

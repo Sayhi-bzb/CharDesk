@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Slide } from "@/domains/slides/public";
+import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
 import { drawSlideCanvas } from "./slide-canvas-renderer";
 
 const createCanvas = () => {
@@ -88,9 +89,9 @@ describe("drawSlideCanvas", () => {
 
     expect(layout).toEqual({
       x: 410,
-      y: 205,
+      y: 200,
       width: 180,
-      height: 190,
+      height: 200,
       zoom: 2,
     });
   });
@@ -155,26 +156,49 @@ describe("drawSlideCanvas", () => {
       dpr: 2,
     });
 
+    if (!layout) throw new Error("Expected a measurable slide layout");
     expect(layout).toEqual({
-      x: 0,
+      x: 22.5,
       y: 0,
-      width: 900,
+      width: 855,
       height: 513,
-      zoom: 1,
+      zoom: 0.95,
     });
     expect(canvas.width).toBe(1800);
     expect(canvas.height).toBe(1026);
     expect(ctx.fillRect).toHaveBeenCalledTimes(4);
     expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 900, 513);
-    expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 18, 19);
-    expect(ctx.fillRect).toHaveBeenCalledWith(891, 494, 9, 19);
-    expect(ctx.fillText).toHaveBeenCalledWith("A", 896, 504);
+    const lastCellX =
+      layout.x + 99 * DEFAULT_GRID_RENDER_METRICS.cellWidth * layout.zoom;
+    const lastCellY =
+      layout.y + 26 * DEFAULT_GRID_RENDER_METRICS.cellHeight * layout.zoom;
+    const lastCellWidth = DEFAULT_GRID_RENDER_METRICS.cellWidth * layout.zoom;
+    const cellHeight = DEFAULT_GRID_RENDER_METRICS.cellHeight * layout.zoom;
+    expect(ctx.fillRect).toHaveBeenCalledWith(
+      layout.x,
+      layout.y,
+      DEFAULT_GRID_RENDER_METRICS.cellWidth * 2 * layout.zoom,
+      cellHeight
+    );
+    expect(ctx.fillRect).toHaveBeenCalledWith(
+      lastCellX,
+      lastCellY,
+      lastCellWidth,
+      cellHeight
+    );
+    expect(ctx.fillText).toHaveBeenCalledWith(
+      "A",
+      lastCellX + lastCellWidth / 2,
+      lastCellY + DEFAULT_GRID_RENDER_METRICS.baseline * layout.zoom
+    );
     expect(ctx.fillText).not.toHaveBeenCalledWith(
       "X",
       expect.any(Number),
       expect.any(Number)
     );
-    expect(calls.indexOf("fillRect:#00ff00:891,494,9,19")).toBeLessThan(
+    expect(calls.indexOf(
+      `fillRect:#00ff00:${lastCellX},${lastCellY},${lastCellWidth},${cellHeight}`
+    )).toBeLessThan(
       calls.indexOf("fillText:界")
     );
     expect(ctx.font).toContain("700");
@@ -205,7 +229,7 @@ describe("drawSlideCanvas", () => {
       },
       size: { columns: 4, rows: 1 },
       viewportWidth: 36,
-      viewportHeight: 19,
+      viewportHeight: 20,
       padding: 0,
       backdropColor: null,
       pageColor: null,
@@ -214,8 +238,8 @@ describe("drawSlideCanvas", () => {
     });
 
     expect(ctx.fillRect).toHaveBeenCalledTimes(2);
-    expect(ctx.fillRect).toHaveBeenCalledWith(18, 0, 9, 19);
-    expect(ctx.fillRect).toHaveBeenCalledWith(27, 0, 9, 19);
+    expect(ctx.fillRect).toHaveBeenCalledWith(18, 0, 9, 20);
+    expect(ctx.fillRect).toHaveBeenCalledWith(27, 0, 9, 20);
     expect(textColors).toEqual([
       "#f8fafc",
       "#ff0000",

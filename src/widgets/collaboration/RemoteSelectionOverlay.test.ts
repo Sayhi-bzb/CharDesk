@@ -72,8 +72,8 @@ describe("resolveRemoteSelectionVisuals", () => {
 
     expect(visuals).toEqual([expect.objectContaining({
       clientId: 8,
-      center: { x: 127, y: 153 },
-      path: "M82 134 H172 V172 H82 Z",
+      center: { x: 127, y: 160 },
+      path: "M82 140 H172 V180 H82 Z",
     })]);
   });
 
