@@ -18,10 +18,12 @@
       "version-file": "version.txt",
       "extra-files": [
         { "type": "json", "path": "packages/cli/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/cell-core/package.json", "jsonpath": "$.version" },
         { "type": "json", "path": "packages/fonts/package.json", "jsonpath": "$.version" },
         { "type": "json", "path": "packages/font-maple/package.json", "jsonpath": "$.version" },
         { "type": "json", "path": "packages/protocol/package.json", "jsonpath": "$.version" },
         { "type": "json", "path": "package-lock.json", "jsonpath": "$.packages['packages/cli'].version" },
+        { "type": "json", "path": "package-lock.json", "jsonpath": "$.packages['packages/cell-core'].version" },
         { "type": "json", "path": "package-lock.json", "jsonpath": "$.packages['packages/fonts'].version" },
         { "type": "json", "path": "package-lock.json", "jsonpath": "$.packages['packages/font-maple'].version" },
         { "type": "json", "path": "package-lock.json", "jsonpath": "$.packages['packages/protocol'].version" }

@@ -4,6 +4,7 @@ import {
   type CharDeskFontProfile,
 } from "@chardesk/fonts";
 import { getGraphemeCellWidth, type CharDeskTextAttributes } from "@chardesk/protocol";
+import { formatCellFrame, type CellFrame, type CellPoint, type CellRect } from "@chardesk/cell-core";
 import type {
   CharDeskCellVisual,
   CharDeskRenderFontRoute,
@@ -118,13 +119,13 @@ export type CharDeskCanvasFontLoadOptions = Readonly<{
   fontResolver?: CharDeskCanvasFontResolver;
 }>;
 
-export const DEFAULT_CHARDESK_CANVAS_METRICS = {
+export const DEFAULT_CHARDESK_CANVAS_METRICS = Object.freeze({
   cellWidth: 9,
   cellHeight: 20,
   baseline: 15,
   fontSize: 15,
   fontFamily: CHARDESK_SYSTEM_FONT_PROFILE.families.text,
-} satisfies CharDeskCanvasMetrics;
+} satisfies CharDeskCanvasMetrics);
 
 export const DEFAULT_CHARDESK_CANVAS_FONT_AVAILABILITY: CharDeskCanvasFontAvailability = {
   text: true,
@@ -563,6 +564,135 @@ export const drawCharDeskCanvasCells = (
     }
   }
   ctx.restore();
+};
+
+export type CharDeskCanvasFrameCell = Readonly<{
+  visual: CharDeskCellVisual;
+  /** Physical background span; glyph width remains visual.width. */
+  backgroundWidth?: 1 | 2;
+  drawBackground?: boolean;
+  drawText?: boolean;
+}>;
+
+export type CharDeskCanvasFrameOptions = Readonly<{
+  metrics?: CharDeskCanvasMetrics;
+  palette: CharDeskCanvasPalette;
+  offset?: CellPoint;
+  zoom?: number;
+  content?: "all" | "background" | "text";
+  queryOverscan?: Readonly<{
+    left?: number;
+    right?: number;
+    top?: number;
+    bottom?: number;
+  }>;
+  clipToCell?: boolean;
+  fontAvailability?: CharDeskCanvasFontAvailability;
+  fontProfile?: CharDeskFontProfile;
+  fontFamilies?: CharDeskCanvasFontFamilies;
+  fontResolver?: CharDeskCanvasFontResolver;
+  underline?: (x: number, y: number, cell: CharDeskCanvasFrameCell) => boolean;
+}>;
+
+export type CharDeskCanvasFrameResult = Readonly<{
+  cells: number;
+  glyphs: number;
+}>;
+
+export const formatCharDeskCellFrame = (
+  frame: CellFrame<CharDeskCanvasFrameCell>,
+  options?: Readonly<{ trimEnd?: boolean }>
+) => formatCellFrame(
+  frame,
+  ({ visual }) => ({ text: visual.text, width: visual.width }),
+  options
+);
+
+const intersectsAnyCellRect = (
+  x: number,
+  y: number,
+  width: number,
+  regions: readonly CellRect[]
+) => regions.some((region) =>
+  x + width > region.x &&
+  x < region.x + region.width &&
+  y >= region.y &&
+  y < region.y + region.height
+);
+
+export const presentCharDeskCellFrame = (
+  ctx: CharDeskCanvasContext,
+  frame: CellFrame<CharDeskCanvasFrameCell>,
+  options: CharDeskCanvasFrameOptions
+): CharDeskCanvasFrameResult => {
+  const metrics = options.metrics ?? DEFAULT_CHARDESK_CANVAS_METRICS;
+  const zoom = options.zoom ?? 1;
+  const offset = options.offset ?? { x: 0, y: 0 };
+  const content = options.content ?? "all";
+  const dirty = frame.dirty === "full" ? [frame.viewport] : frame.dirty;
+  if (dirty.length === 0) return { cells: 0, glyphs: 0 };
+  const overscan = options.queryOverscan;
+  const queryBounds = overscan
+    ? {
+        x: frame.viewport.x - (overscan.left ?? 0),
+        y: frame.viewport.y - (overscan.top ?? 0),
+        width: frame.viewport.width + (overscan.left ?? 0) + (overscan.right ?? 0),
+        height: frame.viewport.height + (overscan.top ?? 0) + (overscan.bottom ?? 0),
+      }
+    : frame.viewport;
+
+  const entries: CharDeskCanvasCellDrawEntry[] = [];
+  let cells = 0;
+  let glyphs = 0;
+  frame.source.visit(queryBounds, (x, y, cell) => {
+    const occupiedWidth = Math.max(cell.visual.width, cell.backgroundWidth ?? 0);
+    if (!intersectsAnyCellRect(x, y, occupiedWidth, dirty)) return;
+    const drawBackground = cell.drawBackground !== false && content !== "text";
+    const drawText = cell.drawText !== false && content !== "background";
+    if (!drawBackground && !drawText) return;
+    cells += 1;
+    if (drawText) glyphs += 1;
+    const entryOptions: CharDeskCanvasCellDrawOptions = {
+      metrics,
+      zoom,
+      palette: options.palette,
+      clipToCell: options.clipToCell,
+      underline: options.underline?.(x, y, cell),
+      ...(options.fontAvailability
+        ? { fontAvailability: options.fontAvailability }
+        : {}),
+      ...(options.fontProfile ? { fontProfile: options.fontProfile } : {}),
+      ...(options.fontFamilies ? { fontFamilies: options.fontFamilies } : {}),
+      ...(options.fontResolver ? { fontResolver: options.fontResolver } : {}),
+    };
+    const entryX = x * metrics.cellWidth * zoom + offset.x;
+    const entryY = y * metrics.cellHeight * zoom + offset.y;
+    if (drawBackground) {
+      const backgroundWidth = cell.backgroundWidth ?? cell.visual.width;
+      entries.push({
+        cell: backgroundWidth === cell.visual.width
+          ? cell.visual
+          : { ...cell.visual, width: backgroundWidth },
+        x: entryX,
+        y: entryY,
+        options: entryOptions,
+        drawBackground: true,
+        drawText: false,
+      });
+    }
+    if (drawText) {
+      entries.push({
+        cell: cell.visual,
+        x: entryX,
+        y: entryY,
+        options: entryOptions,
+        drawBackground: false,
+        drawText: true,
+      });
+    }
+  });
+  drawCharDeskCanvasCells(ctx, entries);
+  return { cells, glyphs };
 };
 
 export const measureCharDeskCanvasDocument = (

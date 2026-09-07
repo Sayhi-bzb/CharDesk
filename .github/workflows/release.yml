@@ -90,6 +90,11 @@ jobs:
           else
             echo "protocol_published=false" >> "$GITHUB_OUTPUT"
           fi
+          if npm view "@chardesk/cell-core@$version" version >/dev/null 2>&1; then
+            echo "cell_core_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cell_core_published=false" >> "$GITHUB_OUTPUT"
+          fi
           if npm view "@chardesk/fonts@$version" version >/dev/null 2>&1; then
             echo "fonts_published=true" >> "$GITHUB_OUTPUT"
           else
@@ -113,6 +118,7 @@ jobs:
         run: |
           mkdir release-assets
           npm pack --workspace @chardesk/protocol --pack-destination release-assets
+          npm pack --workspace @chardesk/cell-core --pack-destination release-assets
           npm pack --workspace @chardesk/fonts --pack-destination release-assets
           npm pack --workspace @chardesk/font-maple --pack-destination release-assets
           npm pack --workspace @chardesk/cli --pack-destination release-assets
@@ -128,6 +134,10 @@ jobs:
       - name: Publish protocol to npm
         if: steps.package-status.outputs.protocol_published != 'true'
         run: npm publish --workspace @chardesk/protocol --access public --provenance
+
+      - name: Publish Cell Core to npm
+        if: steps.package-status.outputs.cell_core_published != 'true'
+        run: npm publish --workspace @chardesk/cell-core --access public --provenance
 
       - name: Publish fonts to npm
         if: steps.package-status.outputs.fonts_published != 'true'

@@ -1,13 +1,13 @@
+import type {
+  CellPoint,
+  CellRect,
+  CellSize,
+} from "@chardesk/cell-core";
+
+export type { CellPoint, CellRect, CellSize } from "@chardesk/cell-core";
+
 export type WidgetId = string;
 
-export type CellPoint = Readonly<{ x: number; y: number }>;
-export type CellSize = Readonly<{ width: number; height: number }>;
-export type CellRect = Readonly<{
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}>;
 
 export type CellInsets = Readonly<{
   top: number;

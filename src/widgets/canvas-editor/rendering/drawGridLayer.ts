@@ -5,25 +5,18 @@ import { GridManager } from "@/shared/utils/grid";
 import {
   alignCanvasCoordinate,
   DEFAULT_GRID_RENDER_METRICS,
-  drawCellBatch,
   getCellOccupancy,
   resolveCellVisual,
   setTextRenderStyle,
 } from "@/shared/metrics";
-import type { CharDeskCanvasContext } from "@chardesk/rendering/canvas";
+import {
+  presentCharDeskCellFrame,
+  type CharDeskCanvasContext,
+} from "@chardesk/rendering/canvas";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
+import { createCanvasCellFrame } from "./canvasCellFrame";
 
 type ViewBounds = ReturnType<typeof GridManager.getViewportGridBounds>;
-type GridDrawEntry = Parameters<typeof drawCellBatch>[1][number];
-type VisitableCanvasSurfaceReader = CanvasSurfaceReader & {
-  visitCells: (
-    bounds: { x: number; y: number; width: number; height: number },
-    visitor: (x: number, y: number, cell: GridDrawEntry["cell"]) => void
-  ) => void;
-};
-
-const gridDrawEntryCache = new WeakMap<object, GridDrawEntry>();
-
 type DrawGridLayerOptions = {
   fontProfile?: CharDeskFontProfile;
   alpha?: number;
@@ -112,72 +105,30 @@ export const drawGridLayer = (
   ctx.globalAlpha = alpha;
   setTextRenderStyle(ctx, zoom);
 
-  const visibleCells: GridDrawEntry[] = [];
-  let glyphs = 0;
-  const queryBounds = {
-    x: viewBounds.startX - 1,
+  const viewport = {
+    x: viewBounds.startX,
     y: viewBounds.startY,
-    width: viewBounds.endX - viewBounds.startX + 2,
+    width: viewBounds.endX - viewBounds.startX + 1,
     height: viewBounds.endY - viewBounds.startY + 1,
   };
-  const collectCell = (x: number, y: number, cell: GridDrawEntry["cell"]) => {
-    const width = getCellOccupancy(cell.char);
-    const hasBackground = cell.char !== " " || !!cell.bgColor || !!cell.attrs;
-    const hasText = cell.char !== " " || !!cell.attrs;
-    const drawBackground = hasBackground && content !== "text";
-    const drawText = hasText && content !== "background";
-    const intersectsView = x + width > viewBounds.startX && x <= viewBounds.endX;
-    if (intersectsView && (drawBackground || drawText)) {
-      if (drawText) glyphs += 1;
-      const pos = GridManager.gridToScreen(x, y, offset.x, offset.y, zoom);
-      const underline =
-        !!cell.href &&
-        !!hoveredLink &&
-        hoveredLink.href === cell.href &&
-        hoveredLink.y === y &&
-        x >= hoveredLink.startX &&
-        x <= hoveredLink.endX;
-      const entry = gridDrawEntryCache.get(cell) ?? {
-        cell,
-        x: pos.x,
-        y: pos.y,
-        drawBackground,
-        drawText,
-        options: { zoom, underline },
-      };
-      entry.x = pos.x;
-      entry.y = pos.y;
-      entry.drawBackground = drawBackground;
-      entry.drawText = drawText;
-      if (entry.options) {
-        entry.options.zoom = zoom;
-        entry.options.underline = underline;
-      } else {
-        entry.options = { zoom, underline };
-      }
-      gridDrawEntryCache.set(cell, entry);
-      visibleCells.push(entry);
-    }
-  };
-  if (
-    "visitCells" in reader &&
-    typeof (reader as VisitableCanvasSurfaceReader).visitCells === "function"
-  ) {
-    (reader as VisitableCanvasSurfaceReader).visitCells(queryBounds, collectCell);
-  } else {
-    for (const span of reader.query(queryBounds)) {
-      let x = span.x;
-      for (const cell of span.cells) {
-        collectCell(x, span.y, cell);
-        x += getCellOccupancy(cell.char);
-      }
-    }
-  }
-
-  drawCellBatch(ctx, visibleCells, { fontProfile: options.fontProfile });
+  const frame = createCanvasCellFrame(reader, viewport);
+  const result = presentCharDeskCellFrame(ctx, frame, {
+    metrics: DEFAULT_GRID_RENDER_METRICS,
+    palette: { color: "#000000", background: "#ffffff" },
+    offset,
+    zoom,
+    content,
+    queryOverscan: { left: 1 },
+    underline: hoveredLink
+      ? (x, y, cell) =>
+          !!cell.visual.href &&
+          cell.visual.href === hoveredLink.href &&
+          y === hoveredLink.y &&
+          x >= hoveredLink.startX &&
+          x <= hoveredLink.endX
+      : undefined,
+    ...(options.fontProfile ? { fontProfile: options.fontProfile } : {}),
+  });
   ctx.restore();
-  return {
-    cells: visibleCells.length,
-    glyphs,
-  };
+  return result;
 };

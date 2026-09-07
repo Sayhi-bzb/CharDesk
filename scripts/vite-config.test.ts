@@ -57,6 +57,7 @@ describe("Vite workspace aliases", () => {
   });
 
   it.each([
+    ["@chardesk/cell-core", "packages/cell-core/src/index.ts"],
     ["@chardesk/chargraph/markdown", "packages/chargraph/src/markdown-default.ts"],
     ["@chardesk/chargraph/theme", "packages/chargraph/src/render-theme.ts"],
     ["@chardesk/rendering", "packages/rendering/src/index.ts"],

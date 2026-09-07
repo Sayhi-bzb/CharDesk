@@ -36,11 +36,12 @@
 | --- | --- | --- |
 | Domain 与依赖方向 | [Domain reference](../apps/docs/content/docs/development/domains.mdx)、[Ownership](../apps/docs/content/docs/development/architecture/ownership.mdx) | 业务职责与跨包依赖方向 |
 | Unicode / Cell width | [`@chardesk/protocol`](../packages/protocol/README.md) | grapheme、1/2 Cell width、continuation 与 offset 映射 |
+| Cell Core | [`@chardesk/cell-core`](../packages/cell-core/README.md) | 逻辑 geometry、dense/sparse source、incremental changes、Frame 与字符快照 |
 | Widget runtime | [`@chardesk/cell-ui`](../packages/cell-ui/README.md) | React descriptors、layout、scene、events、widgets、semantics 与 testing |
 | Geometry / composition | [Compositor 契约](blueprints/compositor.md) | root geometry、clips、scroll、paint/hit order 与 invalidation |
 | Widget behavior | [Widget 规范](blueprints/widgets.md) | 状态语言、keyboard/pointer 和 scroll/editor 行为 |
 | Semantics | [SemanticSnapshot 契约](blueprints/semantics.md) | 独立 reading tree、actions 与 DOM projection |
-| Canvas presentation | [`@chardesk/rendering`](../packages/rendering/README.md) | CellBuffer 到 Canvas px、字体解析与网格审计 |
+| Canvas presentation | [`@chardesk/rendering`](../packages/rendering/README.md) | 标准 CellFrame 到 Canvas px、字体解析与网格审计 |
 | Font capability | [`@chardesk/fonts`](../packages/fonts/README.md) | display/CJK/cell-glyph/Nerd/symbol/emoji 路由；Host 与 Cell UI 共用 Core Box/Block；[Host 字体偏好](research/font-stack.md#host-字体切换)不改变 Cell width |
 | Editor state | `@codemirror/state` adapter | UTF-16 document/history；Cell geometry 由 CharDesk 投影 |
 | Browser input | `@chardesk/cell-ui/browser` | textarea、IME、clipboard、pointer、Semantic DOM 与 DPR/resize |

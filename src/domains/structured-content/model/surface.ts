@@ -40,7 +40,10 @@ type StructuredSceneChanges =
   | { revision: number; full: false; bounds: readonly NodeBounds[] };
 
 export interface StructuredSceneSurface {
+  get(point: Point): GridCell | undefined;
   getCell(point: Point): GridCell | undefined;
+  visit(bounds: NodeBounds, visitor: (x: number, y: number, cell: GridCell) => void): void;
+  visitCells(bounds: NodeBounds, visitor: (x: number, y: number, cell: GridCell) => void): void;
   query(bounds: NodeBounds): Iterable<SurfaceSpan & { y: number }>;
   rows(bounds?: NodeBounds): Iterable<SurfaceRow>;
   getContentBounds(): NodeBounds | null;
@@ -214,6 +217,26 @@ export class StructuredSceneSurfaceIndex implements StructuredSceneSurface {
       floorDiv(point.x, CHUNK_WIDTH),
       floorDiv(point.y, CHUNK_HEIGHT)
     ).get(GridManager.toKey(point.x, point.y));
+  }
+
+  get(point: Point) {
+    return this.getCell(point);
+  }
+
+  visit(bounds: NodeBounds, visitor: (x: number, y: number, cell: GridCell) => void) {
+    for (const row of this.rows(bounds)) {
+      for (const span of row.spans) {
+        let x = span.x;
+        for (const cell of span.cells) {
+          visitor(x, row.y, cell);
+          x += getCellOccupancy(cell.char);
+        }
+      }
+    }
+  }
+
+  visitCells(bounds: NodeBounds, visitor: (x: number, y: number, cell: GridCell) => void) {
+    this.visit(bounds, visitor);
   }
 
   *query(bounds: NodeBounds) {

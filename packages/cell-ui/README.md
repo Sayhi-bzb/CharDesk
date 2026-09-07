@@ -2,6 +2,11 @@
 
 React Cell UI runtime. Its root entry is headless; the `/browser` entry projects the same committed frame to Canvas2D and Semantic DOM.
 
+`createCellBufferSource()` exposes the committed dense buffer through the
+storage-neutral `@chardesk/cell-core` contract. `createCellUiRenderFrame()` maps
+that source to the same Canvas Presenter used by the document Canvas; Widget,
+Scene, focus, gesture, semantics, and text-input state remain Cell UI concerns.
+
 `runtime.setTheme(overrides)` replaces theme overrides for the next render; `undefined` restores defaults. Theme-only commits repaint the full buffer while reusing layout and scene. `CellSurface` retains its runtime across theme and viewport changes, preserving monotonic revisions, and repaints when fonts finish loading.
 
 Collection focus uses one background-and-bold style across pointer, keyboard, and semantic input. `focusedSurfaceStyle` supplies the unselected focus background; `selectedStyle` preserves selection colors; `focusedItemStyle` supplies the accent for all focused collection items. Editors keep their caret/selection styling without this accent. Headless `render(..., { focusVisible: false })` remains an explicit host override; `CellSurface` does not toggle it by input modality.
@@ -84,9 +89,9 @@ commits a font switch and returns the same stable grid. Probe v3
 availability, not geometry readiness. Load failures retain the grid and remain
 retryable.
 
-`DEFAULT_CELL_UI_METRICS` exposes that browser contract. It is intentionally
-separate from the standalone Canvas document renderer's compatibility default;
-see [fixed grids and font measurement](../rendering/README.md#fixed-cell-grids-and-font-measurement).
+`DEFAULT_CELL_UI_METRICS` exposes the shared CharDesk product contract; it is the
+same object used by the Canvas renderer. See [fixed grids and font
+measurement](../rendering/README.md#fixed-cell-grids-and-font-measurement).
 
 `CellSurface.glyphOverflow` defaults to `"clip"`. Experimental `"visible"` lets
 font ink cross Cell and widget boundaries, retaining only the Canvas boundary.

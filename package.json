@@ -41,6 +41,7 @@
     "test:root:dom": "vitest run --project dom",
     "test:fonts": "npm test -w @chardesk/fonts",
     "test:blackboard": "npm test -w @chardesk/blackboard",
+    "test:cell-core": "npm test -w @chardesk/cell-core",
     "test:cell-ui": "npm test -w @chardesk/cell-ui",
     "test:cell-ui:native-input": "node scripts/quality/run-cell-ui-native-input.mjs",
     "test:chargraph": "npm test -w @chardesk/chargraph",
@@ -67,6 +68,7 @@
   },
   "dependencies": {
     "@chardesk/blackboard": "*",
+    "@chardesk/cell-core": "*",
     "@chardesk/collaboration-protocol": "*",
     "@chardesk/chargraph": "*",
     "@chardesk/document": "*",
