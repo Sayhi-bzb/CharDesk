@@ -1,0 +1,14 @@
+{
+  "name": "@chardesk/font-ark",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Vendored Ark Pixel Mono resources for the Web TUI Gallery",
+  "license": "OFL-1.1",
+  "sideEffects": ["./fonts.css"],
+  "exports": {
+    ".": "./src/index.ts",
+    "./fonts.css": "./fonts.css",
+    "./manifest.json": "./manifest.json"
+  }
+}

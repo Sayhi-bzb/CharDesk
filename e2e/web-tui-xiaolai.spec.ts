@@ -1,0 +1,41 @@
+import { expect, test } from "@playwright/test";
+import { readCellProbe } from "./helpers/cell-probe";
+
+test("remote trial failure and delayed retry preserve the active font and editing", async ({ page }) => {
+  let requests = 0;
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("https://fontsapi.zeoseven.com/282/main/result.css", async (route) => {
+    requests += 1;
+    if (requests === 1) return route.abort();
+    await gate;
+    await route.fulfill({ contentType: "text/css", body: '@font-face { font-family: "Xiaolai Mono"; src: local("Arial"); }' });
+  });
+  await page.goto("/exp/web-tui/#/__fixtures/all");
+  await page.getByRole("button", { name: "Use Ark Pixel 12px Mono" }).click();
+  const gallery = page.locator(".gallery-page");
+  await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
+  expect(requests).toBe(0);
+  const input = page.getByRole("textbox", { name: "File name", exact: true });
+  await input.fill("hello世界.txt");
+  await input.press("Shift+ArrowLeft");
+  const selection = await input.evaluate((node: HTMLTextAreaElement) => [node.selectionStart, node.selectionEnd]);
+  const surface = page.locator('[data-cell-probe="editor"]');
+  const before = await readCellProbe(surface);
+  await page.getByRole("button", { name: "Use Xiaolai Mono" }).click();
+  await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
+  await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
+  await page.getByRole("button", { name: "Retry Xiaolai Mono" }).click();
+  await expect(gallery).toHaveAttribute("data-gallery-font-status", "loading");
+  await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
+  release();
+  await expect(gallery).toHaveAttribute("data-gallery-font", "xiaolai-mono");
+  await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
+  await expect(input).toHaveValue("hello世界.txt");
+  expect(await input.evaluate((node: HTMLTextAreaElement) => [node.selectionStart, node.selectionEnd])).toEqual(selection);
+  const after = await readCellProbe(surface);
+  expect(after.text).toBe(before.text);
+  expect(after.viewport).toEqual(before.viewport);
+  await page.getByRole("button", { name: "Use Maple Mono" }).click();
+  await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
+});
