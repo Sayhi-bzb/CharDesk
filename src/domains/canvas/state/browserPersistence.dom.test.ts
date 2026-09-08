@@ -154,8 +154,8 @@ describe("browser canvas persistence", () => {
     runtimes.push(second);
     await second.ready;
 
-    expect(second.getState().grid.get("0,0")?.char).toBe("A");
-    expect(second.getState().grid.get("1,0")?.char).toBe("B");
+    expect(second.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
+    expect(second.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("B");
     expect(storage.getItem(CANVAS_CATALOG_MARKER_KEY)).toBe("1");
     expect(storage.getItem(EDITOR_PERSISTENCE_KEY)).toBeNull();
   });
@@ -214,7 +214,7 @@ describe("browser canvas persistence", () => {
     expect(runtime.getState().canvasSessions.find(
       ({ id }) => id === runtime.getState().activeCanvasId
     )?.name).toBe("Recovered Canvas");
-    expect(runtime.getState().grid.get("2,0")).toEqual({
+    expect(runtime.getState().contentSurface.reader.materialize().get("2,0")).toEqual({
       char: "T",
       color: "#334455",
     });
@@ -237,7 +237,7 @@ describe("browser canvas persistence", () => {
         temporaryDirty: true,
       },
     });
-    expect(runtime.getState().grid.get("3,0")).toEqual({
+    expect(runtime.getState().contentSurface.reader.materialize().get("3,0")).toEqual({
       char: "U",
       color: "#556677",
     });
@@ -262,7 +262,7 @@ describe("browser canvas persistence", () => {
 
     for (const [index, id] of RESIDENCY_SESSION_IDS.entries()) {
       expect(await runtime.commands.sessions.switch(id)).toBe(true);
-      expect(runtime.getState().grid.get("0,0")?.char).toBe(String(index));
+      expect(runtime.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe(String(index));
       expect(runtime.documents.getDocumentIds().length).toBeLessThanOrEqual(4);
     }
 
@@ -340,7 +340,7 @@ describe("browser canvas persistence", () => {
     });
     expect(second.getState().canvasSessions.map(({ name }) => name))
       .toEqual(["Persisted"]);
-    expect(second.getState().grid.get("7,4"))
+    expect(second.getState().contentSurface.reader.materialize().get("7,4"))
       .toMatchObject({ char: "旧", color: "#223344" });
     const restored = second.documents.getCollaborationDocument(SESSION_ID);
     expect(restored?.getMap("document-pages").get(pageId))
@@ -369,9 +369,9 @@ describe("browser canvas persistence", () => {
       save: "saved",
       error: null,
     });
-    expect(runtime.getState().grid.get("8,6"))
+    expect(runtime.getState().contentSurface.reader.materialize().get("8,6"))
       .toMatchObject({ char: "存", color: "#334455" });
-    expect(runtime.getState().grid.get("0,0")).toBeUndefined();
+    expect(runtime.getState().contentSurface.reader.materialize().get("0,0")).toBeUndefined();
     expect(storage.getItem(CANVAS_CATALOG_MARKER_KEY)).toBe("1");
   });
 
@@ -437,7 +437,7 @@ describe("browser canvas persistence", () => {
         { id: LEGACY_SESSION_ID, name: "Second canvas" },
       ]);
     expect(second.getState().activeCanvasId).toBe(LEGACY_SESSION_ID);
-    expect(second.getState().grid.get("3,2")?.char).toBe("B");
+    expect(second.getState().contentSurface.reader.materialize().get("3,2")?.char).toBe("B");
   });
 
   it("reattaches an orphan document even when historical names are unavailable", async () => {
@@ -521,7 +521,7 @@ describe("browser canvas persistence", () => {
     expect(recovered.getState().canvasSessions).toEqual(expect.arrayContaining([
       expect.objectContaining({ name: "Recovered · Lost workspace" }),
     ]));
-    expect(recovered.getState().grid.get("9,4")?.char).toBe("回");
+    expect(recovered.getState().contentSurface.reader.materialize().get("9,4")?.char).toBe("回");
   });
 
   it("replays a synchronous catalog intent after an immediate refresh", async () => {
@@ -608,7 +608,7 @@ describe("browser canvas persistence", () => {
     const restored = createRuntime(storage);
     runtimes.push(restored);
     await restored.ready;
-    expect(restored.getState().grid.get("6,3")?.char).toBe("新");
+    expect(restored.getState().contentSurface.reader.materialize().get("6,3")?.char).toBe("新");
     const databaseNames = (await indexedDB.databases())
       .map(({ name }) => name);
     expect(databaseNames).toContain(DOCUMENT_DATABASE);
@@ -695,7 +695,7 @@ describe("browser canvas persistence", () => {
       zoom: 1.25,
       brushChar: "@",
     });
-    expect(runtime.getState().grid.get("4,5")?.char).toBe("迁");
+    expect(runtime.getState().contentSurface.reader.materialize().get("4,5")?.char).toBe("迁");
     expect(storage.getItem(EDITOR_PERSISTENCE_KEY)).toBeNull();
     expect(storage.getItem(CANVAS_CATALOG_MARKER_KEY)).toBe("1");
   });
@@ -730,13 +730,13 @@ describe("browser canvas persistence", () => {
     const first = createRuntime(storage, slides);
     runtimes.push(first);
     await first.ready;
-    expect(first.getState().grid.get("0,0")?.char).toBe("X");
+    expect(first.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("X");
     first.commands.slides.activate("slide-b");
     expect(first.getState().slideDeck?.activeSlideId).toBe("slide-b");
-    expect(first.getState().grid.get("0,0")?.char).toBe("Z");
+    expect(first.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("Z");
     first.commands.interaction.setTextCursor({ x: 1, y: 0 });
     first.commands.text.write("Y");
-    expect(first.getState().grid.get("0,0")?.char).toBe("Z");
+    expect(first.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("Z");
     const staleDocument = first.documents.getCollaborationDocument(SLIDE_SESSION_ID);
     expect(staleDocument).not.toBeNull();
     staleDocument!.transact(() => {
@@ -752,8 +752,8 @@ describe("browser canvas persistence", () => {
     await second.ready;
     expect(second.getState().slideDeck?.activeSlideId).toBe("slide-b");
     expect(second.documents.getActivePageId()).toBe("slide-b");
-    expect(second.getState().grid.get("0,0")?.char).toBe("Z");
-    expect(second.getState().grid.get("1,0")?.char).toBe("Y");
+    expect(second.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("Z");
+    expect(second.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("Y");
     expect(
       second.documents
         .getContentReader(SLIDE_SESSION_ID, "slide-a")
@@ -806,7 +806,7 @@ describe("browser canvas persistence", () => {
     const second = createRuntime(storage, slides);
     runtimes.push(second);
     await second.ready;
-    expect(second.getState().grid.get("2,3")?.char).toBe("旧");
+    expect(second.getState().contentSurface.reader.materialize().get("2,3")?.char).toBe("旧");
   });
 
   it("coordinates persistence without making peer tabs read-only", async () => {
@@ -821,15 +821,15 @@ describe("browser canvas persistence", () => {
 
     expect(writer.getPersistenceSnapshot().coordination).toBe("coordinator");
     expect(reader.getPersistenceSnapshot().coordination).toBe("peer");
-    expect(reader.getState().grid.get("0,0")?.char).toBe("A");
+    expect(reader.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
 
     reader.commands.grid.replace([
-      ...reader.getState().grid.entries(),
+      ...reader.getState().contentSurface.reader.materialize().entries(),
       ["1,0", { char: "P", color: "#222222" }],
     ]);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(writer.getState().grid.get("1,0")?.char).toBe("P");
+    expect(writer.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("P");
   });
 
   it("merges concurrent catalog changes from coordinator and peer tabs", async () => {
@@ -892,7 +892,7 @@ describe("browser canvas persistence", () => {
     runtimes.push(second);
     await second.ready;
 
-    expect(second.getState().grid.get("0,0")?.char).toBe("A");
+    expect(second.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
     const catalog = await createIndexedDbCanvasCatalog();
     const snapshot = await catalog.load();
     catalog.close();

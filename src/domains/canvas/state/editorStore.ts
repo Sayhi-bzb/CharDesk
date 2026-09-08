@@ -31,7 +31,10 @@ import {
 import { areJsonValuesEqual } from "@/shared/utils/equality";
 import { normalizeBrushChar } from "@/shared/utils/characters";
 import { subscribeCanvasDocumentProjection } from "./canvasDocumentProjection";
-import { createStructuredGridProjection } from "./helpers/gridHelpers";
+import {
+  createCanvasContentSurface,
+  createStructuredContentSurface,
+} from "./helpers/gridHelpers";
 import {
   createDefaultCanvasSessions,
   createPersistedEditorSnapshot,
@@ -53,7 +56,7 @@ import type { CollaborationIntegrityIssue } from "@/domains/collaboration/public
 import type { SelectionCommandFactory } from "./selectionCommandPort";
 import type { CanvasSessionSourceParser } from "./sessionImportPort";
 import type { CanvasSession } from "@/domains/sessions/public";
-import { createSurfaceGridProjection } from "../cell-plane/model";
+import { createGridSurfaceReader } from "../cell-plane/model";
 import type { CanvasDocumentResidency } from "./documentResidencyPort";
 
 export type CanvasStore = UseBoundStore<StoreApi<EditorState>>;
@@ -163,10 +166,10 @@ export const createEditorStore = ({
       return {
         offset: initialRuntime.nextOffset,
         zoom: initialRuntime.nextZoom,
-        grid:
+        contentSurface:
           initialRuntime.nextMode === "structured"
-            ? createStructuredGridProjection(initialRuntime.nextScene)
-            : createSurfaceGridProjection(() => documents.getContentReader()),
+            ? createStructuredContentSurface(initialRuntime.nextScene)
+            : createCanvasContentSurface(documents.getContentReader()),
         canvasMode: initialRuntime.nextMode,
         structuredScene: initialRuntime.nextScene,
         structuredComponents: initialRuntime.nextComponents,
@@ -341,7 +344,9 @@ export const createEditorStore = ({
         const mergedState = {
           ...currentState,
           ...flattened,
-          grid: createMapFromEntries(normalizeGridEntries(flattened.grid)),
+          contentSurface: createCanvasContentSurface(createGridSurfaceReader(
+            createMapFromEntries(normalizeGridEntries(flattened.grid))
+          )),
         } as EditorState;
         return recoverPersistedEditorState(mergedState);
       },

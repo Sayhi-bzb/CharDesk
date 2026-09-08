@@ -3,20 +3,21 @@ import type { CollaborationIntegrityIssue } from "@/domains/collaboration/public
 import {
   normalizeStructuredComponents,
 } from "@/domains/structured-content/public";
-import type { GridMap } from "@/shared/types";
 import { decodeCollaborativeStructuredComponent } from "./collaborationSchema";
 import {
-  rebuildGridFromContent,
+  rebuildContentSurface,
   rebuildSceneFromYMapChanges,
-  updateStructuredGridProjection,
+  updateStructuredContentSurface,
 } from "./helpers/gridHelpers";
 import type { EditorState } from "./interfaces";
 import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 import { reconcileStructuredInteraction } from "./transitions/editorTransitions";
 
-const projectObservedGrid = (grid: GridMap) => {
+const projectObservedSurface = (
+  contentSurface: EditorState["contentSurface"]
+) => {
   return {
-    grid,
+    contentSurface,
   };
 };
 
@@ -34,7 +35,7 @@ export const subscribeCanvasDocumentProjection = (
     const state = getState();
     if (state.canvasMode !== "structured") {
       if (!transaction.contentChanged) return;
-      setState(projectObservedGrid(rebuildGridFromContent(documents)));
+      setState(projectObservedSurface(rebuildContentSurface(documents)));
       reportCurrentIntegrityIssues();
       return;
     }
@@ -67,13 +68,13 @@ export const subscribeCanvasDocumentProjection = (
       return {
         structuredScene,
         structuredComponents,
-        grid: transaction.sceneChanged
-          ? updateStructuredGridProjection(
-              current.grid,
+        contentSurface: transaction.sceneChanged
+          ? updateStructuredContentSurface(
+              current.contentSurface,
               structuredScene,
               transaction.sceneChangedIds
             )
-          : current.grid,
+          : current.contentSurface,
         ...reconcileStructuredInteraction(current, structuredScene),
       };
     });

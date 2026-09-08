@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import {
   createPngBlobFromGrid,
   createSelectionPngBlob,
@@ -72,9 +73,9 @@ describe("PNG raster export", () => {
     expect(resolveRasterLayout(400, 200).dpr).toBe(1);
   });
 
-  it.each(["maple", "ark-mono", "xiaolai-mono"] as const)("exports %s text with Cell graphics in whole and selection PNGs", async (id) => {
+  it.each(["maple", "fusion-mono", "xiaolai-mono"] as const)("exports %s text with Cell graphics in whole and selection PNGs", async (id) => {
     const profile = displayFontOptions[id].profile;
-    const grid = new Map([
+    const grid = new GridSnapshotSource([
       ["0,0", { char: "A", color: "#000000" }],
       ["1,0", { char: "╭", color: "#000000", attrs: { bold: true as const } }],
       ["2,0", { char: "█", color: "#000000" }],
@@ -97,7 +98,7 @@ describe("PNG raster export", () => {
 
     await expect(
       createSelectionPngBlob(
-        new Map(),
+        new GridSnapshotSource(),
         [{ start: { x: 0, y: 0 }, end: { x: 910, y: 0 } }],
         false
       )
@@ -113,7 +114,7 @@ describe("PNG raster export", () => {
 
   it("reports canvas allocation and PNG encoding failures separately", async () => {
     const selection = [{ start: { x: 0, y: 0 }, end: { x: 0, y: 0 } }];
-    const grid = new Map([["0,0", { char: "A", color: "#000000" }]]);
+    const grid = new GridSnapshotSource([["0,0", { char: "A", color: "#000000" }]]);
 
     vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValueOnce(null);
     await expect(createSelectionPngBlob(grid, selection, false)).rejects.toMatchObject({
@@ -130,7 +131,7 @@ describe("PNG raster export", () => {
 
   it("renders inverse glyphs with their effective foreground color", async () => {
     await createSelectionPngBlob(
-      new Map([
+      new GridSnapshotSource([
         [
           "0,0",
           {
@@ -151,7 +152,7 @@ describe("PNG raster export", () => {
 
   it("keeps the complete bounding box between multiple ranges", async () => {
     await createSelectionPngBlob(
-      new Map([
+      new GridSnapshotSource([
         ["0,0", { char: "A", color: "#111111" }],
         ["1,0", { char: "B", color: "#222222" }],
         ["2,0", { char: "C", color: "#333333" }],

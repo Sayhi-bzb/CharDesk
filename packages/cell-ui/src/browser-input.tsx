@@ -12,6 +12,8 @@ import {
 } from "react";
 import type { CharDeskCellMetrics } from "@chardesk/rendering";
 import type { WidgetCommand } from "./interaction.js";
+import { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
+import { isCellKeyPress, textCommandForKeyInput } from "./keyboard.js";
 import {
   CellTextEditor,
   getCellTextPresentation,
@@ -43,26 +45,6 @@ export const useCellTextState = (
     if (next.value !== before.value) onChange?.(next.value, next);
   }, [editor, onChange, targetId]);
   return { snapshot, dispatch };
-};
-
-const commandForKey = (
-  event: KeyboardEvent<HTMLTextAreaElement>,
-  multiline: boolean
-): CellTextCommand | null => {
-  const modifier = event.metaKey || event.ctrlKey;
-  if (modifier && event.key.toLowerCase() === "a") return { type: "select-all" };
-  if (modifier && event.key.toLowerCase() === "z") {
-    return { type: event.shiftKey ? "redo" : "undo" };
-  }
-  if (modifier && event.key.toLowerCase() === "y") return { type: "redo" };
-  if (event.key === "ArrowLeft") return { type: "move", direction: "left", extend: event.shiftKey };
-  if (event.key === "ArrowRight") return { type: "move", direction: "right", extend: event.shiftKey };
-  if (event.key === "ArrowUp") return { type: "move", direction: "up", extend: event.shiftKey };
-  if (event.key === "ArrowDown") return { type: "move", direction: "down", extend: event.shiftKey };
-  if (event.key === "Home") return { type: "move", direction: "line-start", extend: event.shiftKey };
-  if (event.key === "End") return { type: "move", direction: "line-end", extend: event.shiftKey };
-  if (event.key === "Enter" && multiline) return { type: "insert", text: "\n" };
-  return null;
 };
 
 const commandForBeforeInput = (event: InputEvent): CellTextCommand | null => {
@@ -179,12 +161,14 @@ const ManagedCellTextarea = ({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (!multiline && event.key === "Enter") {
+    if (event.defaultPrevented || composing.current) return;
+    const input = keyInputFromKeyboardEvent(event.nativeEvent);
+    if (!multiline && isCellKeyPress(input, "Enter")) {
       event.preventDefault();
       dispatch({ type: "activate", targetId: node.id });
       return;
     }
-    const command = commandForKey(event, multiline);
+    const command = textCommandForKeyInput(input, multiline);
     if (!command) return;
     event.preventDefault();
     send(command);

@@ -249,27 +249,27 @@ describe("default demo canvas", () => {
     expect(firstSession?.name).toBe(DEFAULT_SESSION_NAME);
     expect(DEFAULT_SESSION_NAME).toBe("Welcome");
     expect(firstSession?.grid).toEqual([]);
-    expect(state.grid).toEqual(new Map(DEFAULT_DEMO_GRID));
-    expect(state.grid.get(GridManager.toKey(1, 0))).toEqual({
+    expect(state.contentSurface.reader.materialize()).toEqual(new Map(DEFAULT_DEMO_GRID));
+    expect(state.contentSurface.reader.materialize().get(GridManager.toKey(1, 0))).toEqual({
       char: "█",
       color: "#f54954",
     });
     const normalMode = findTextPosition(DEFAULT_DEMO_GRID, "Normal visual mode");
     expect(normalMode).toBeDefined();
     expect(
-      state.grid.get(GridManager.toKey(normalMode!.x, normalMode!.y))
+      state.contentSurface.reader.materialize().get(GridManager.toKey(normalMode!.x, normalMode!.y))
     ).toEqual({
       char: "N",
       color: "#2563eb",
       attrs: { bold: true },
     });
     expect(
-      Array.from(state.grid.values())
+      Array.from(state.contentSurface.reader.materialize().values())
         .map((cell) => cell.char)
         .join("")
     ).toContain("CharGraph · Input → Output");
     expect(
-      Array.from(state.grid.values()).some(
+      Array.from(state.contentSurface.reader.materialize().values()).some(
         (cell) =>
           cell.char === " " && !cell.bgColor && !cell.attrs && !cell.href
       )

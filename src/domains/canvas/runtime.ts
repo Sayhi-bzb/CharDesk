@@ -24,7 +24,7 @@ import {
   createGridSurfaceReader,
   type CanvasSurfaceReader,
 } from "./cell-plane/model";
-import { createStructuredGridProjection } from "./state/helpers/gridHelpers";
+import { createStructuredSceneSurface } from "@/domains/structured-content/public";
 import { materializeSlideDeckContent } from "./state/slideDocumentPages";
 import {
   createBrowserCanvasPersistence,
@@ -189,15 +189,13 @@ export class CanvasRuntime {
     if (!seed) return null;
     const structuredScene = [...seed.scene];
     const structuredComponents = [...(seed.components ?? [])];
-    const grid =
-      session.mode === "structured"
-        ? createStructuredGridProjection(structuredScene)
-        : new Map(seed.grid);
     return {
       id: session.id,
       name: session.name,
       mode: session.mode,
-      surface: createGridSurfaceReader(new Map(grid)),
+      surface: session.mode === "structured"
+        ? createStructuredSceneSurface(structuredScene)
+        : createGridSurfaceReader(new Map(seed.grid)),
       structuredScene,
       structuredComponents,
       slideDeck: null,

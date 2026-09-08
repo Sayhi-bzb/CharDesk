@@ -11,6 +11,8 @@ import {
   type MutableRefObject,
   type ReactNode,
 } from "react";
+import type { KeyInput } from "@chardesk/keyboard";
+import { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
 import {
   classifyShortcutTarget,
   type ShortcutTargetKind,
@@ -19,7 +21,6 @@ import {
 type ShortcutPhase = "keydown" | "keyup";
 
 type ShortcutDispatchContext = {
-  phase: ShortcutPhase;
   targetKind: ShortcutTargetKind;
 };
 
@@ -34,11 +35,11 @@ export type ShortcutLayer = {
   priority: number;
   enabled?: boolean;
   onKeyDown?: (
-    event: KeyboardEvent,
+    input: KeyInput,
     context: ShortcutDispatchContext
   ) => ShortcutDispatchResult | undefined;
   onKeyUp?: (
-    event: KeyboardEvent,
+    input: KeyInput,
     context: ShortcutDispatchContext
   ) => ShortcutDispatchResult | undefined;
 };
@@ -86,6 +87,7 @@ export function ShortcutProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const dispatch = (phase: ShortcutPhase, event: KeyboardEvent) => {
       if (event.defaultPrevented || event.isComposing) return;
+      const input = keyInputFromKeyboardEvent(event);
 
       const layers = [...layersRef.current.values()].sort(
         (left, right) =>
@@ -93,7 +95,6 @@ export function ShortcutProvider({ children }: { children: ReactNode }) {
           left.order - right.order
       );
       const context: ShortcutDispatchContext = {
-        phase,
         targetKind: classifyShortcutTarget(event.target),
       };
 
@@ -101,7 +102,7 @@ export function ShortcutProvider({ children }: { children: ReactNode }) {
         const layer = entry.ref.current;
         if (layer.enabled === false) continue;
         const handler = phase === "keydown" ? layer.onKeyDown : layer.onKeyUp;
-        const result = handler?.(event, context);
+        const result = handler?.(input, context);
         if (!result?.claimed) continue;
         if (result.preventDefault) event.preventDefault();
         if (result.stopImmediatePropagation) {

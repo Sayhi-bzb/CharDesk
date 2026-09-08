@@ -52,7 +52,7 @@ test("Cell graphics raster coverage, seams and font independence", async ({ page
       for (const char of registered) {
         const first = draw([char]);
         if (char !== "\u2800" && !first.some((v, i) => i % 4 === 3 && v)) emptyGlyphs.push(char);
-        for (const font of ["Ark Pixel 12px Monospaced zh_cn", "Xiaolai Mono"]) {
+        for (const font of ["Fusion Pixel 12px Mono latin", "Xiaolai Mono"]) {
           const next = draw([char], false, font);
           if (first.some((v, i) => next[i] !== v)) fontDifferences.push(char);
         }

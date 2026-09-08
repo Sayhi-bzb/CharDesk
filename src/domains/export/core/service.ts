@@ -1,6 +1,6 @@
 import { serializeCharDeskDocumentEnvelope } from "@chardesk/document";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
-import type { GridMap, SelectionArea } from "@/shared/types";
+import type { GridCellSource, SelectionArea } from "@/shared/types";
 import {
   createPngBlobFromGrid,
   createSelectionPngBlob,
@@ -36,7 +36,7 @@ const textArtifact = (
 const getTimestamp = () => Date.now();
 
 export const prepareSelectionPngExport = (
-  grid: GridMap,
+  grid: GridCellSource,
   selections: SelectionArea[],
   showGrid: boolean,
   includeColor = true,
@@ -69,7 +69,7 @@ export const prepareTextExport = (
   }
 
   try {
-    const grid = context.surface.materialize();
+    const grid = context.surface;
     switch (format) {
       case "txt":
         return exportSucceeded(
@@ -145,13 +145,12 @@ export const prepareExport = (
   if (textResult.ok || format !== "png") return textResult;
 
   try {
-    const grid = context.surface.materialize();
-    if (grid.size === 0) return exportFailed("empty-content");
+    if (!context.surface.getContentBounds()) return exportFailed("empty-content");
     return exportSucceeded({
       kind: "blob",
       format: "png",
       content: createPngBlobFromGrid(
-        grid,
+        context.surface,
         context.showGrid,
         context.includeColor,
         context.fontProfile

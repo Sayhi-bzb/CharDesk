@@ -4,6 +4,10 @@ import { readCellProbe } from "./helpers/cell-probe";
 const componentLinks = [
   ["Text", "#/components/text"],
   ["Box", "#/components/box"],
+  ["Button", "#/components/button"],
+  ["Select", "#/components/select"],
+  ["Checkbox", "#/components/checkbox"],
+  ["Slider", "#/components/slider"],
   ["Input", "#/components/input"],
   ["List", "#/components/list"],
   ["ScrollArea", "#/components/scroll-area"],
@@ -14,7 +18,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   const nav = page.getByRole("navigation", { name: "Components" });
   await expect(page.getByRole("heading", { name: "Text", level: 1 })).toBeVisible();
   await expect(nav.locator(".gallery-nav__title")).toHaveText("Components");
-  await expect(nav.getByRole("link")).toHaveCount(5);
+  await expect(nav.getByRole("link")).toHaveCount(9);
   for (const [name, href] of componentLinks) {
     await expect(nav.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
   }
@@ -88,6 +92,183 @@ test("Input edits Unicode through the real textbox and Cell frame", async ({ pag
   await input.fill("世界 👋");
   await expect(input).toHaveValue("世界 👋");
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("│世界 👋");
+});
+
+test("Button shares pointer, keyboard, disabled, and semantic behavior", async ({ page }) => {
+  await page.goto("/exp/web-tui/#/components/button");
+  const surface = page.getByLabel("Button component");
+  const save = page.getByRole("button", { name: "Save document" });
+  const disabled = page.getByRole("button", { name: "Disabled" });
+
+  await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
+  await expect(save).not.toHaveAttribute("aria-disabled");
+  await expect(disabled).toHaveAttribute("aria-disabled", "true");
+
+  const initial = await readCellProbe(surface);
+  const saveCell = initial.cells.find((cell) => cell.ownerId === "component-button-save");
+  const canvasBounds = await surface.locator("canvas").boundingBox();
+  expect(saveCell).toBeDefined();
+  expect(canvasBounds).not.toBeNull();
+  await page.mouse.click(
+    canvasBounds!.x + (saveCell!.x + 0.5) * canvasBounds!.width / initial.viewport.width,
+    canvasBounds!.y + (saveCell!.y + 0.5) * canvasBounds!.height / initial.viewport.height,
+  );
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("✓ Saved");
+
+  await page.reload();
+  const reloadedSurface = page.getByLabel("Button component");
+  await surface.focus();
+  await expect(page.getByRole("button", { name: "Save document" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect.poll(async () => (await readCellProbe(reloadedSurface)).text).toContain("✓ Saved");
+
+  await page.getByRole("button", { name: "Disabled" }).evaluate((element: HTMLElement) => element.click());
+  await expect(reloadedSurface).toHaveAttribute("data-cell-focused", "component-button-save");
+});
+
+test("Select opens a Cell listbox and commits only explicit activation", async ({ page }) => {
+  await page.goto("/exp/web-tui/#/components/select");
+  const surface = page.getByLabel("Select component");
+  const trigger = page.getByRole("button", { name: "Theme" });
+
+  await expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await surface.focus();
+  await expect(trigger).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("listbox", { name: "Theme options" })).toBeAttached();
+  await expect(page.getByRole("option")).toHaveCount(3);
+  await expect(page.getByRole("option", { name: "Dark" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("option", { name: "Dark" })).toBeFocused();
+
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("option", { name: "System" })).toBeFocused();
+  await expect(page.getByRole("option", { name: "Dark" })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  expect((await readCellProbe(surface)).text).toContain("Dark");
+
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("System");
+
+  await trigger.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "Light" })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Light");
+});
+
+test("Checkbox exposes copy-stable tri-state controls through every input channel", async ({ page }) => {
+  await page.goto("/exp/web-tui/#/components/checkbox");
+  const surface = page.getByLabel("Checkbox component");
+  const autosave = page.getByRole("checkbox", { name: "Autosave" });
+  const wordWrap = page.getByRole("checkbox", { name: "Word wrap" });
+  const selectAll = page.getByRole("checkbox", { name: "Select all" });
+  const disabled = page.getByRole("checkbox", { name: "Disabled" });
+
+  await expect(page.getByRole("checkbox")).toHaveCount(4);
+  await expect(autosave).toHaveAttribute("aria-checked", "true");
+  await expect(wordWrap).toHaveAttribute("aria-checked", "false");
+  await expect(selectAll).toHaveAttribute("aria-checked", "mixed");
+  await expect(disabled).toHaveAttribute("aria-disabled", "true");
+  expect((await readCellProbe(surface)).text).toContain([
+    "[x] Autosave",
+    "[ ] Word wrap",
+    "[-] Select all",
+    "[ ] Disabled",
+  ].join("\n"));
+
+  await surface.focus();
+  await expect(autosave).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(autosave).toHaveAttribute("aria-checked", "false");
+  await page.keyboard.press("ArrowDown");
+  await expect(wordWrap).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(wordWrap).toHaveAttribute("aria-checked", "true");
+
+  const probe = await readCellProbe(surface);
+  const selectAllCell = probe.cells.find((cell) => cell.ownerId === "component-checkbox-select-all");
+  const canvasBounds = await surface.locator("canvas").boundingBox();
+  expect(selectAllCell).toBeDefined();
+  expect(canvasBounds).not.toBeNull();
+  await page.mouse.click(
+    canvasBounds!.x + (selectAllCell!.x + 0.5) * canvasBounds!.width / probe.viewport.width,
+    canvasBounds!.y + (selectAllCell!.y + 0.5) * canvasBounds!.height / probe.viewport.height,
+  );
+  await expect(selectAll).toHaveAttribute("aria-checked", "true");
+  await expect(surface).toHaveAttribute("data-cell-focused", "component-checkbox-select-all");
+
+  await autosave.evaluate((element: HTMLElement) => element.click());
+  await expect(autosave).toHaveAttribute("aria-checked", "true");
+  await expect(surface).toHaveAttribute("data-cell-focused", "component-checkbox-autosave");
+  await disabled.evaluate((element: HTMLElement) => element.click());
+  await expect(disabled).toHaveAttribute("aria-checked", "false");
+  await expect(surface).toHaveAttribute("data-cell-focused", "component-checkbox-autosave");
+});
+
+test("Slider shares stepped keyboard, precise pointer, and numeric semantics", async ({ page }) => {
+  await page.goto("/exp/web-tui/#/components/slider");
+  const surface = page.getByLabel("Slider component");
+  const volume = page.getByRole("slider", { name: "Volume" });
+  const disabled = page.getByRole("slider", { name: "Disabled" });
+
+  await expect(page.getByRole("slider")).toHaveCount(5);
+  await expect(volume).toHaveAttribute("aria-valuemin", "0");
+  await expect(volume).toHaveAttribute("aria-valuemax", "100");
+  await expect(volume).toHaveAttribute("aria-valuenow", "50");
+  await expect(volume).toHaveAttribute("aria-valuetext", "50 percent");
+  await expect(volume).toHaveAttribute("aria-orientation", "horizontal");
+  await expect(disabled).toHaveAttribute("aria-disabled", "true");
+
+  const initial = await readCellProbe(surface);
+  expect(initial.text).toContain("Volume                  50\n━━━━━━━━━━━━━┃────────────");
+  expect(initial.text).toContain("Minimum                 0\n┃─────────────────────────");
+  expect(initial.text).toContain("Maximum                 100\n━━━━━━━━━━━━━━━━━━━━━━━━━┃");
+
+  await surface.focus();
+  await expect(volume).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(volume).toHaveAttribute("aria-valuenow", "51");
+  await page.keyboard.press("End");
+  await expect(volume).toHaveAttribute("aria-valuenow", "100");
+  await page.keyboard.press("Home");
+  await page.keyboard.press("PageUp");
+  await expect(volume).toHaveAttribute("aria-valuenow", "10");
+
+  const probe = await readCellProbe(surface);
+  const targetCell = probe.cells.find((cell) => (
+    cell.ownerId === "component-slider-volume" && cell.x === 20
+  ));
+  const disabledCell = probe.cells.find((cell) => cell.ownerId === "component-slider-disabled");
+  const canvasBounds = await surface.locator("canvas").boundingBox();
+  expect(targetCell).toBeDefined();
+  expect(disabledCell).toBeDefined();
+  expect(canvasBounds).not.toBeNull();
+  const cellWidth = canvasBounds!.width / probe.viewport.width;
+  const cellHeight = canvasBounds!.height / probe.viewport.height;
+  await page.mouse.click(
+    canvasBounds!.x + (targetCell!.x + 0.5) * cellWidth,
+    canvasBounds!.y + (targetCell!.y + 0.5) * cellHeight,
+  );
+  await expect(volume).toHaveAttribute("aria-valuenow", "80");
+
+  await page.mouse.move(canvasBounds!.x + 5.5 * cellWidth, canvasBounds!.y + 1.5 * cellHeight);
+  await page.mouse.down();
+  await page.mouse.move(canvasBounds!.x + 15.5 * cellWidth, canvasBounds!.y + 1.5 * cellHeight, { steps: 4 });
+  await page.mouse.up();
+  await expect(volume).toHaveAttribute("aria-valuenow", "60");
+
+  await page.mouse.click(
+    canvasBounds!.x + (disabledCell!.x + 0.5) * cellWidth,
+    canvasBounds!.y + (disabledCell!.y + 0.5) * cellHeight,
+  );
+  await expect(disabled).toHaveAttribute("aria-valuenow", "40");
 });
 
 test("Cell Range clears when Preview focus moves outside its Surface", async ({ page }) => {

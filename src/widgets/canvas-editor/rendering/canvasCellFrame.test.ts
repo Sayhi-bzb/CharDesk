@@ -22,4 +22,33 @@ describe("Canvas Cell Frame adapter", () => {
     expect(createCanvasCellFrame(reader, { x: 0, y: 0, width: 1, height: 1 }).revision).toBe(0);
   });
 
+  it("projects a range move as one final visual state", () => {
+    const reader = createGridSurfaceReader(new Map([
+      ["0,0", { char: "A", color: "#fff" }],
+      ["1,0", { char: "B", color: "#fff" }],
+      ["3,0", { char: "X", color: "#fff" }],
+      ["4,0", { char: "Y", color: "#fff" }],
+    ]));
+    const overlay = createGridSurfaceReader(new Map([
+      ["3,0", { char: "A", color: "#fff" }],
+    ]));
+    const frame = createCanvasCellFrame(
+      reader,
+      { x: 0, y: 0, width: 5, height: 1 },
+      "full",
+      {
+        hiddenSpans: [
+          { y: 0, minX: 0, maxX: 1 },
+          { y: 0, minX: 3, maxX: 4 },
+        ],
+        overlay,
+      }
+    );
+
+    expect(formatCharDeskCellFrame(frame, { trimEnd: true })).toBe("   A");
+    expect(frame.source.get({ x: 0, y: 0 })).toBeUndefined();
+    expect(frame.source.get({ x: 3, y: 0 })?.visual.text).toBe("A");
+    expect(frame.source.get({ x: 4, y: 0 })).toBeUndefined();
+  });
+
 });

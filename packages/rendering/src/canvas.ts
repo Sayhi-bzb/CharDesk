@@ -1,6 +1,7 @@
 import {
   CHARDESK_SYSTEM_FONT_PROFILE,
   type CharDeskFontCapability,
+  type CharDeskResolvedFontBoldStrategy,
   type CharDeskFontProfile,
 } from "@chardesk/fonts";
 import { getGraphemeCellWidth, type CharDeskTextAttributes } from "@chardesk/protocol";
@@ -9,6 +10,9 @@ import type {
   CharDeskCellCursorPaintStyle,
   CharDeskCellFrameCell,
   CharDeskCellMetrics,
+  CharDeskCellRangeGeometry,
+  CharDeskCellRangePaintStyle,
+  CharDeskCellRangePhase,
   CharDeskCellVisual,
   CharDeskRenderFontRoute,
   CharDeskRenderModel,
@@ -46,7 +50,7 @@ export type CharDeskCanvasFontFamilies = Record<
 export type CharDeskCanvasFontResolver = (input: {
   grapheme: string;
   route: CharDeskRenderFontRoute;
-  /** Effective weight after the capability's weightPolicy, not the Cell request. */
+  /** True only when the resolved strategy requests a native bold face. */
   bold: boolean;
   italic: boolean;
 }) => string | undefined;
@@ -57,7 +61,8 @@ export type CharDeskCanvasResolvedFontFace = Readonly<{
   fontSizeScale: number;
   scaleX: number;
   baselineShiftEm: number;
-  weightPolicy: "inherit" | "regular";
+  boldStrategy: CharDeskResolvedFontBoldStrategy;
+  boldOverdrawEm: number;
 }>;
 
 export type CharDeskCanvasCellDrawOptions = {
@@ -93,6 +98,18 @@ export type CharDeskCanvasCursorEntry = Readonly<{
   style: CharDeskCellCursorPaintStyle;
   options?: CharDeskCanvasCellDrawOptions;
   drawText?: boolean;
+}>;
+
+export type CharDeskCanvasRangeEntry = Readonly<{
+  geometry: CharDeskCellRangeGeometry;
+  phase: CharDeskCellRangePhase;
+  style: CharDeskCellRangePaintStyle;
+  options?: Readonly<{
+    metrics?: CharDeskCellMetrics;
+    offset?: CellPoint;
+    zoom?: number;
+    clipRegions?: readonly CellRect[];
+  }>;
 }>;
 
 export type CharDeskCanvasDocumentOptions = {
@@ -143,6 +160,8 @@ export const getCharDeskCanvasFont = (
     route?: CharDeskRenderFontRoute;
     fontFamily?: string;
     fontSizeScale?: number;
+    boldStrategy?: CharDeskResolvedFontBoldStrategy;
+    /** @deprecated Use boldStrategy. */
     weightPolicy?: "inherit" | "regular";
   }
 ) => {
@@ -150,7 +169,9 @@ export const getCharDeskCanvasFont = (
   const fontFamily = options?.fontFamily ?? (route === "emoji"
     ? CHARDESK_SYSTEM_FONT_PROFILE.families.emoji
     : metrics.fontFamily);
-  const bold = options?.bold && options.weightPolicy !== "regular";
+  const bold = options?.bold && (options.boldStrategy !== undefined
+    ? options.boldStrategy === "native"
+    : options.weightPolicy !== "regular");
   return `${options?.italic ? "italic " : ""}${bold ? "700 " : ""}${
     metrics.fontSize * (options?.fontSizeScale ?? 1) * zoom
   }px ${fontFamily}`;
@@ -172,7 +193,7 @@ export const resolveCharDeskCanvasFontFace = (input: Readonly<{
   );
   const spec = profile.capabilities[capability];
   const routeFamilies = input.fontFamilies?.[input.route];
-  const effectiveBold = input.bold && spec.weightPolicy !== "regular";
+  const effectiveBold = input.bold && spec.boldStrategy === "native";
   const profileFamily = effectiveBold
     ? spec.families.bold ?? spec.families.regular
     : spec.families.regular;
@@ -190,7 +211,8 @@ export const resolveCharDeskCanvasFontFace = (input: Readonly<{
     fontSizeScale: spec.fontSizeScale ?? 1,
     scaleX: spec.scaleX ?? 1,
     baselineShiftEm: spec.baselineShiftEm ?? 0,
-    weightPolicy: spec.weightPolicy ?? "inherit",
+    boldStrategy: spec.boldStrategy,
+    boldOverdrawEm: spec.boldOverdrawEm,
   };
 };
 
@@ -292,7 +314,7 @@ export const auditCharDeskCanvasFont = (
       const route = resolveCharDeskFontRoute(text);
       const face = resolveCharDeskCanvasFontFace({ grapheme: text, route, bold, italic, fontProfile: profile });
       context.font = getCharDeskCanvasFont(metrics, 1, { bold, italic, route,
-        fontFamily: face.family, fontSizeScale: face.fontSizeScale, weightPolicy: face.weightPolicy });
+        fontFamily: face.family, fontSizeScale: face.fontSizeScale, boldStrategy: face.boldStrategy });
       const bounds = context.measureText(text);
       const availableWidth = getGraphemeCellWidth(text) * metrics.cellWidth;
       const measured = [bounds.width, bounds.actualBoundingBoxAscent, bounds.actualBoundingBoxDescent].every(Number.isFinite);
@@ -302,7 +324,7 @@ export const auditCharDeskCanvasFont = (
       const top = measured ? baseline - bounds.actualBoundingBoxAscent : null;
       const bottom = measured ? baseline + bounds.actualBoundingBoxDescent : null;
       result.push({ text, requestedFamily: face.family, requestedBold: bold,
-        effectiveBold: bold && face.weightPolicy !== "regular", status: measured ? "measured" : "unavailable",
+        effectiveBold: bold && face.boldStrategy === "native", status: measured ? "measured" : "unavailable",
         advance, availableWidth, advanceOverflow: advance === null ? null : Math.max(0, advance - availableWidth),
         top, bottom, overflowTop: top === null ? null : Math.max(0, -top),
         overflowBottom: bottom === null ? null : Math.max(0, bottom - metrics.cellHeight),
@@ -451,7 +473,7 @@ const prepareFontGlyph = (
     route,
     fontFamily: face.family,
     fontSizeScale: face.fontSizeScale,
-    weightPolicy: face.weightPolicy,
+    boldStrategy: face.boldStrategy,
   });
   if (font !== state.font) {
     ctx.font = font;
@@ -463,7 +485,29 @@ const prepareFontGlyph = (
     x: anchor.x,
     y: anchor.y + face.baselineShiftEm * metrics.fontSize * face.fontSizeScale * zoom,
     scaleX: face.scaleX,
+    boldOverdrawX: attrs?.bold && face.boldStrategy === "overdraw"
+      ? face.boldOverdrawEm * metrics.fontSize * face.fontSizeScale * zoom
+      : 0,
   };
+};
+
+const drawPreparedFontGlyph = (
+  ctx: CharDeskCanvasContext,
+  glyph: ReturnType<typeof prepareFontGlyph>
+) => {
+  const drawAt = (offsetX: number) => {
+    if (glyph.scaleX === 1) {
+      ctx.fillText(glyph.text, glyph.x + offsetX, glyph.y);
+      return;
+    }
+    ctx.save();
+    ctx.translate(glyph.x + offsetX, glyph.y);
+    ctx.scale(glyph.scaleX, 1);
+    ctx.fillText(glyph.text, 0, 0);
+    ctx.restore();
+  };
+  drawAt(0);
+  if (glyph.boldOverdrawX > 0) drawAt(glyph.boldOverdrawX);
 };
 
 const drawCellText = (
@@ -499,15 +543,7 @@ const drawCellText = (
     });
   } else {
     const fontGlyph = prepareFontGlyph(ctx, entry, visual, state);
-    if (fontGlyph.scaleX === 1) {
-      ctx.fillText(fontGlyph.text, fontGlyph.x, fontGlyph.y);
-    } else {
-      ctx.save();
-      ctx.translate(fontGlyph.x, fontGlyph.y);
-      ctx.scale(fontGlyph.scaleX, 1);
-      ctx.fillText(fontGlyph.text, 0, 0);
-      ctx.restore();
-    }
+    drawPreparedFontGlyph(ctx, fontGlyph);
   }
 
   const cellWidth = metrics.cellWidth * zoom * visual.width;
@@ -615,6 +651,65 @@ export const drawCharDeskCanvasCursor = (
   ctx.save();
   ctx.fillStyle = style.color;
   ctx.fillRect(aligned.x, aligned.y, aligned.width, aligned.height);
+  ctx.restore();
+};
+
+/** Draws a Cell-coordinate Range without coupling rendering to selection state. */
+export const drawCharDeskCanvasRange = (
+  ctx: CharDeskCanvasContext,
+  entry: CharDeskCanvasRangeEntry
+) => {
+  if (entry.geometry.polygons.length === 0) return;
+  const metrics = entry.options?.metrics ?? DEFAULT_CHARDESK_CELL_METRICS;
+  const offset = entry.options?.offset ?? { x: 0, y: 0 };
+  const zoom = entry.options?.zoom ?? 1;
+  const clipRegions = entry.options?.clipRegions;
+  if (clipRegions?.length === 0) return;
+  const transform = ctx.getTransform?.();
+  const boundary = (point: CellPoint) => alignCanvasRect({
+    x: point.x * metrics.cellWidth * zoom + offset.x,
+    y: point.y * metrics.cellHeight * zoom + offset.y,
+    width: 0,
+    height: 0,
+  }, transform);
+
+  ctx.save();
+  if (clipRegions) {
+    ctx.beginPath();
+    for (const region of clipRegions) {
+      const topLeft = boundary({ x: region.x, y: region.y });
+      const bottomRight = boundary({
+        x: region.x + region.width,
+        y: region.y + region.height,
+      });
+      ctx.rect(
+        topLeft.x,
+        topLeft.y,
+        bottomRight.x - topLeft.x,
+        bottomRight.y - topLeft.y
+      );
+    }
+    ctx.clip();
+  }
+
+  ctx.beginPath();
+  for (const polygon of entry.geometry.polygons) {
+    for (const ring of polygon.rings) {
+      ring.forEach((point, index) => {
+        const position = boundary(point);
+        if (index === 0) ctx.moveTo(position.x, position.y);
+        else ctx.lineTo(position.x, position.y);
+      });
+      ctx.closePath();
+    }
+  }
+  ctx.fillStyle = entry.style.surface;
+  ctx.fill("evenodd");
+  if (entry.phase === "moving") {
+    ctx.strokeStyle = entry.style.border;
+    ctx.lineWidth = Math.max(1, Math.round(2 * zoom));
+    ctx.stroke();
+  }
   ctx.restore();
 };
 
@@ -802,7 +897,7 @@ export const loadCharDeskCanvasFonts = async (
       ...(options.fontFamilies ? { fontFamilies: options.fontFamilies } : {}),
       ...(options.fontResolver ? { fontResolver: options.fontResolver } : {}),
     });
-    const effectiveBold = bold && face.weightPolicy !== "regular";
+    const effectiveBold = bold && face.boldStrategy === "native";
     const key = `${route}:${face.capability}:${face.family}:${effectiveBold ? 1 : 0}:${italic ? 1 : 0}:${face.fontSizeScale}`;
     const group = groups.get(key) ?? {
       route,
@@ -829,7 +924,7 @@ export const loadCharDeskCanvasFonts = async (
             ...group,
             fontFamily: group.face.family,
             fontSizeScale: group.face.fontSizeScale,
-            weightPolicy: group.face.weightPolicy,
+            boldStrategy: group.face.boldStrategy,
           }
         ),
         Array.from(group.graphemes).join("")

@@ -1,5 +1,6 @@
 import type { GridCell } from "@/shared/types";
 import { GridManager } from "@/shared/utils/grid";
+import { createGridMapSource } from "@/shared/utils/grid-source";
 import type {
   StructuredComponentInstance,
   StructuredNode,
@@ -109,8 +110,9 @@ export const buildStructuredTemplatePreview = (
 
   const grid = renderStructuredScene(nodes);
   if (grid.size === 0) return { rows: [], width: 0, height: 0 };
+  const source = createGridMapSource(grid);
 
-  const { minX, maxX, minY, maxY } = GridManager.getGridBounds(grid);
+  const { minX, maxX, minY, maxY } = GridManager.getGridBounds(source);
   const width = maxX - minX + 1;
   const height = maxY - minY + 1;
   const rows: GridCell[][] = Array.from(
@@ -122,7 +124,7 @@ export const buildStructuredTemplatePreview = (
       }))
   );
 
-  GridManager.iterate(grid, (cell, x, y) => {
+  GridManager.iterate(source, (cell, x, y) => {
     rows[y - minY][x - minX] = cell;
   });
 

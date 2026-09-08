@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import { TestCanvasContentSurface } from '@/domains/canvas/testing';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useEditorStore } from '@/domains/canvas/testing';
@@ -54,7 +55,7 @@ describe('AppMenu document interchange', () => {
           grid: [],
         },
       ],
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
     });
     act(() => setUiLanguage('en'));
 
@@ -136,13 +137,13 @@ describe('AppMenu document interchange', () => {
       throw new Error('Expected an editable Freeform session.');
     }
     expect('workspaceId' in imported).toBe(false);
-    expect(useEditorStore.getState().grid.size).toBeGreaterThan(0);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().size).toBeGreaterThan(0);
   });
 
   it('keeps ANSI out of static canvas exports', async () => {
     useEditorStore.setState({
       canvasMode: 'freeform',
-      grid: new Map([['0,0', { char: 'A', color: '#ffffff' }]]),
+      contentSurface: new TestCanvasContentSurface([['0,0', { char: 'A', color: '#ffffff' }]]),
     });
     act(() => setUiLanguage('en'));
     render(<CanvasBreadcrumb />);

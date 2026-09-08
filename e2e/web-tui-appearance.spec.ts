@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { copyCellRange, readCellProbe } from "./helpers/cell-probe";
-import { arkMonoFontRequest, arkMonoStylesheetRequest } from "./helpers/ark-mono";
+import { fusionMonoFontRequest, fusionMonoStylesheetRequest } from "./helpers/fusion-mono";
+import { galleryFontSelect, selectGalleryFont } from "./helpers/gallery-font-select";
 
 test.describe("display font", () => {
   test("loads the local font on demand and preserves Cell state", async ({ page }) => {
@@ -12,7 +13,7 @@ test.describe("display font", () => {
     let releaseFirst!: () => void;
     let requests = 0;
     const firstRequest = new Promise<void>((resolve) => { releaseFirst = resolve; });
-    await page.route(arkMonoFontRequest, async (route) => {
+    await page.route(fusionMonoFontRequest, async (route) => {
       requests += 1;
       if (requests === 1) await firstRequest;
       await route.continue();
@@ -27,22 +28,29 @@ test.describe("display font", () => {
     await input.press("Shift+ArrowLeft");
     const selection = await input.evaluate((node: HTMLTextAreaElement) =>
       [node.selectionStart, node.selectionEnd]);
-    const toggle = page.getByRole("button", { name: "Use Ark Pixel 12px Mono" });
-    await toggle.focus();
+    const fontSelect = galleryFontSelect(page);
+    const trigger = fontSelect.getByRole("button", { name: "Font: Maple Mono" });
+    await trigger.focus();
     const before = await readCellProbe(editor);
+    expect(before.presentation?.requestedFontRoutes.display?.boldStrategy).toBe("native");
+    await page.keyboard.press("Enter");
+    await expect(fontSelect.getByRole("listbox", { name: "Fonts" })).toBeAttached();
+    await page.keyboard.press("ArrowDown");
+    await expect(fontSelect.getByRole("option", { name: "Fusion Pixel 12px Mono" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "loading");
     await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
-    await expect(page.getByRole("button", { name: "Loading Ark Pixel 12px Mono" }))
+    await expect(fontSelect.getByRole("button", { name: /^Loading Fusion Pixel 12px Mono/ }))
       .toHaveAttribute("aria-disabled", "true");
     expect(requests).toBe(1);
     releaseFirst();
-    await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
+    await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
-    await expect(page.getByRole("button", { name: "Use Xiaolai Mono" })).toBeFocused();
+    await expect(fontSelect.getByRole("button", { name: "Font: Fusion Pixel 12px Mono" })).toBeFocused();
     await expect.poll(async () => (await readCellProbe(editor)).presentation?.fontProfileId)
-      .toBe("chardesk/gallery-ark-mono-maple-core-v4-2026.09.01/cell-ui-core-glyph-v1");
+      .toBe("chardesk/gallery-fusion-mono-maple-core-v6-2026.09.01/cell-ui-graphics-v1");
     const after = await readCellProbe(editor);
+    expect(after.presentation?.requestedFontRoutes.display?.boldStrategy).toBe("overdraw");
     expect(after.text).toBe(before.text);
     expect(after.viewport).toEqual(before.viewport);
     expect(after.focusedId).toBe(before.focusedId);
@@ -52,9 +60,9 @@ test.describe("display font", () => {
       metrics: { cellWidth: expect.any(Number), cellHeight: expect.any(Number), baseline: expect.any(Number), fontSize: 15 },
       measurement: { ready: true },
       requestedFontRoutes: {
-        display: { family: expect.stringContaining("Ark Pixel 12px Mono latin"), fontSize: 15, scaleX: 1 },
-        cjk: { family: expect.stringContaining("Ark Pixel 12px Mono latin"), fontSize: 15, scaleX: 1 },
-        symbol: { family: expect.stringMatching(/^'Ark Pixel 12px Mono latin'.*JuliaMono/), fontSize: 15, scaleX: 1 },
+        display: { family: expect.stringContaining("Fusion Pixel 12px Mono latin"), fontSize: 15, scaleX: 1 },
+        cjk: { family: expect.stringContaining("Fusion Pixel 12px Mono latin"), fontSize: 15, scaleX: 1 },
+        symbol: { family: expect.stringMatching(/^'Fusion Pixel 12px Mono latin'.*JuliaMono/), fontSize: 15, scaleX: 1 },
       },
     });
     expect(after.presentation?.glyphOverflow.some(({ text }) => text === "W")).toBe(false);
@@ -65,13 +73,13 @@ test.describe("display font", () => {
       [node.selectionStart, node.selectionEnd])).toEqual(selection);
 
     expect(trialRequests).toBe(0);
-    await page.keyboard.press("Enter");
+    await selectGalleryFont(page, "Xiaolai Mono");
     await expect(gallery).toHaveAttribute("data-gallery-font", "xiaolai-mono");
     expect(trialRequests).toBe(1);
     await expect(input).toHaveValue("Wnotes-hello.txt");
     expect(await input.evaluate((node: HTMLTextAreaElement) =>
       [node.selectionStart, node.selectionEnd])).toEqual(selection);
-    await page.keyboard.press("Enter");
+    await selectGalleryFont(page, "Maple Mono");
     await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
     await page.reload();
     await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
@@ -81,22 +89,22 @@ test.describe("display font", () => {
   for (const resource of ["stylesheet", "font"] as const) {
   test(`a failed local ${resource} keeps the current font and can recover on retry`, async ({ page }) => {
     let requests = 0;
-    await page.route(resource === "stylesheet" ? arkMonoStylesheetRequest : arkMonoFontRequest, async (route) => {
+    await page.route(resource === "stylesheet" ? fusionMonoStylesheetRequest : fusionMonoFontRequest, async (route) => {
       requests += 1;
       if (requests === 1) await route.abort("failed");
       else await route.continue();
     });
     await page.goto("/exp/web-tui/#/__fixtures/all");
     const gallery = page.locator(".gallery-page");
-    await page.getByRole("button", { name: "Use Ark Pixel 12px Mono" }).click();
+    await selectGalleryFont(page, "Fusion Pixel 12px Mono");
     await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
-    const retry = page.getByRole("button", { name: "Retry Ark Pixel 12px Mono" });
+    const retry = galleryFontSelect(page).getByRole("button", { name: /^Fusion Pixel 12px Mono unavailable/ });
     await expect(retry).toBeEnabled();
     await expect(page.getByRole("status")).toContainText("Display remains Maple Mono");
-    await retry.click();
+    await selectGalleryFont(page, "Fusion Pixel 12px Mono");
     await expect.poll(() => requests).toBe(2);
-    await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
+    await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
   });
   }

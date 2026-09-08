@@ -17,6 +17,10 @@
 | --- | --- | --- |
 | Root / Box / Text | 结构、背景或文本 | 不产生独立 command；Text 可被 Cell Range 复制 |
 | Overlay | root layer、clip、border、背景 | Escape/outside down dismiss；modal `dialog` |
+| Button | 单行填充矩形，左右各 1 Cell padding | 全局 focus traversal；完整 tap、Enter、Space 或 AT 激活 |
+| Checkbox | renderer-owned `[ ]/[x]/[-]`，label 从第 5 Cell 开始 | checked 与 mixed 进入 Semantic DOM；完整行 tap、Enter、Space 或 AT 激活，disabled 跳过 |
+| Slider | renderer-owned `━/─/┃` 单行轨道；可见 label/value 由外部 Cell 组合 | 方向键一步、Page 十步、Home/End 端点；精确 tap/drag 输出 `set-value`，Semantic DOM 投影 numeric range |
+| Select | 填充 Trigger＋`▾/▴`，Content 锚定并按 viewport 上下翻转，selected item 使用 `✓` | focus 与 committed selection 分离；Enter/click 提交，Escape/outside dismiss 并恢复 Trigger |
 | List / Menu | focused item 整行背景＋bold | Up/Down/Home/End；完整 tap 或 Enter 激活 |
 | Tree | level indent、`▾/▸`、label | Left/Right 层级导航；branch expand/collapse，leaf activate |
 | Tabs | selected 背景与第二行 `▬` | Left/Right wrap；`tab` 与 `tabpanel` relations |

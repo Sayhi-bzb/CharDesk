@@ -50,12 +50,12 @@ describe("ApplicationEditorHost", () => {
     });
 
     expect(result).toMatchObject({ status: "applied" });
-    expect(host.canvas.getState().grid.get("0,0")).toMatchObject({
+    expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")).toMatchObject({
       char: "粗",
       attrs: { bold: true },
     });
-    expect(host.canvas.getState().grid.get("2,0")?.char).toBe("体");
-    expect(host.canvas.getState().grid.has("1,0")).toBe(false);
+    expect(host.canvas.getState().contentSurface.reader.materialize().get("2,0")?.char).toBe("体");
+    expect(host.canvas.getState().contentSurface.reader.materialize().has("1,0")).toBe(false);
   });
 
   it("persists external inline-code rendering into GridMap cells", async () => {
@@ -75,9 +75,9 @@ describe("ApplicationEditorHost", () => {
 
     expect(result).toMatchObject({ status: "applied" });
     expect(
-      Array.from(host.canvas.getState().grid.values()).map((cell) => cell.char).join("")
+      Array.from(host.canvas.getState().contentSurface.reader.materialize().values()).map((cell) => cell.char).join("")
     ).toBe("remark");
-    expect(host.canvas.getState().grid.get("0,0")?.color).toBe("#0969da");
+    expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.color).toBe("#0969da");
   });
 
   it("persists pasted Mermaid diagrams as editable Unicode grid cells", async () => {
@@ -98,7 +98,7 @@ describe("ApplicationEditorHost", () => {
     });
 
     expect(result).toMatchObject({ status: "applied" });
-    const chars = Array.from(host.canvas.getState().grid.values(), (cell) => cell.char);
+    const chars = Array.from(host.canvas.getState().contentSurface.reader.materialize().values(), (cell) => cell.char);
     expect(chars).toContain("╭");
     expect(chars).toContain(">");
     expect(chars).not.toContain("`");
@@ -119,7 +119,7 @@ describe("ApplicationEditorHost", () => {
 
     expect(host.canvas.getState().canvasSessions).toHaveLength(1);
     expect(host.canvas.getState().activeCanvasId).toBe("external-source");
-    expect(host.canvas.getState().grid).toEqual(new Map());
+    expect(host.canvas.getState().contentSurface.reader.materialize()).toEqual(new Map());
   });
 
   it("projects revisions into the same session and resets interaction history", () => {
@@ -156,7 +156,7 @@ describe("ApplicationEditorHost", () => {
     const state = host.canvas.getState();
     expect(state.canvasSessions).toHaveLength(1);
     expect(state.activeCanvasId).toBe("external-source");
-    expect(state.grid.get("0,0")?.char).toBe("外");
+    expect(state.contentSurface.reader.materialize().get("0,0")?.char).toBe("外");
     expect(state.offset).toEqual({ x: 120, y: 80 });
     expect(state.zoom).toBe(1.5);
     expect(state.textCursor).toBeNull();
@@ -174,16 +174,16 @@ describe("ApplicationEditorHost", () => {
     first.canvas.commands.text.write("A");
     first.editor.setCurrentTool("brush");
 
-    expect(first.canvas.getState().grid.get("0,0")?.char).toBe("A");
+    expect(first.canvas.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
     expect(first.canvas.getState().canUndo).toBe(true);
     expect(first.editor.getCurrentToolId()).toBe("brush");
-    expect(second.canvas.getState().grid).toEqual(new Map());
+    expect(second.canvas.getState().contentSurface.reader.materialize()).toEqual(new Map());
     expect(second.canvas.getState().canUndo).toBe(false);
     expect(second.editor.getCurrentToolId()).toBe("select");
 
     expect(first.canvas.commands.history.undo()).toBe(true);
-    expect(first.canvas.getState().grid).toEqual(new Map());
-    expect(second.canvas.getState().grid).toEqual(new Map());
+    expect(first.canvas.getState().contentSurface.reader.materialize()).toEqual(new Map());
+    expect(second.canvas.getState().contentSurface.reader.materialize()).toEqual(new Map());
   });
 
   it("preserves remote Yjs content when the same instance edits next", () => {
@@ -205,7 +205,7 @@ describe("ApplicationEditorHost", () => {
     host.canvas.commands.interaction.setTextCursor({ x: 1, y: 0 });
     host.canvas.commands.text.write("L");
 
-    expect(Object.fromEntries(host.canvas.getState().grid)).toMatchObject({
+    expect(Object.fromEntries(host.canvas.getState().contentSurface.reader.materialize())).toMatchObject({
       "0,0": { char: "R", color: "#ffffff" },
       "1,0": { char: "L" },
     });

@@ -10,7 +10,7 @@ import {
   loadRenderFonts,
   type CanvasCellDrawEntry,
 } from "@/shared/metrics";
-import type { GridCell, GridMap, SelectionArea } from "@/shared/types";
+import type { GridCell, GridCellSource, SelectionArea } from "@/shared/types";
 import { GridManager } from "@/shared/utils/grid";
 import { getSelectionsBoundingBox } from "@/shared/utils/selection";
 import { ExportPipelineError } from "../core/types";
@@ -117,7 +117,7 @@ const encodePng = (
 };
 
 export const createSelectionPngBlob = async (
-  grid: GridMap,
+  grid: GridCellSource,
   selections: SelectionArea[],
   showGrid = true,
   includeColor = true,
@@ -135,7 +135,7 @@ export const createSelectionPngBlob = async (
   const entries: CanvasCellDrawEntry[] = [];
   for (let y = startY; y <= maxY + padding; y++) {
     for (let x = startX; x <= maxX + padding; x++) {
-      const cell = grid.get(GridManager.toKey(x, y));
+      const cell = grid.get({ x, y });
       if (!cell) continue;
       entries.push({
         cell: resolveRasterCell(cell, includeColor),
@@ -150,12 +150,12 @@ export const createSelectionPngBlob = async (
 };
 
 export const createPngBlobFromGrid = async (
-  grid: GridMap,
+  grid: GridCellSource,
   showGrid = false,
   includeColor = true,
   fontProfile: CharDeskFontProfile = DEFAULT_CANVAS_FONT_PROFILE
 ): Promise<Blob> => {
-  if (grid.size === 0) throw new ExportPipelineError("empty-content");
+  if (!grid.getContentBounds()) throw new ExportPipelineError("empty-content");
   const { minX, maxX, minY, maxY } = GridManager.getGridBounds(grid);
   const padding = 2;
   const cols = maxX - minX + 1 + padding * 2;

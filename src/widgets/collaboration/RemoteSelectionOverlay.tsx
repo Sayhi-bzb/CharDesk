@@ -24,7 +24,7 @@ export function RemoteSelectionOverlay({
   const storeOffset = useCanvasState((state) => state.offset);
   const storeZoom = useCanvasState((state) => state.zoom);
   const canvasMode = useCanvasState((state) => state.canvasMode);
-  const grid = useCanvasState((state) => state.grid);
+  const contentSurface = useCanvasState((state) => state.contentSurface);
   const structuredScene = useCanvasState((state) => state.structuredScene);
   const viewport = {
     offset: liveViewport?.offset ?? storeOffset,
@@ -33,7 +33,7 @@ export function RemoteSelectionOverlay({
   const visuals = resolveRemoteSelectionVisuals({
     peers,
     canvasMode,
-    grid,
+    grid: contentSurface.reader,
     structuredScene,
     viewport,
   });

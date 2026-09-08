@@ -24,13 +24,21 @@ import {
 } from "@/domains/selection/public";
 import { getCellOccupancy } from "@/shared/metrics";
 import { cloneTextAttributes } from "@/shared/utils/ansi";
-import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
+import {
+  createPointGridReader,
+  resolveGridSlot,
+} from "@/shared/utils/grid-occupancy";
 import type { SelectionCommandFactory } from "../selectionCommandPort";
 import { getStructuredTextSelectionRange } from "@/domains/structured-content/public";
 import { resolveEditorDocumentAddress } from "../helpers/gridHelpers";
+import { createStaticGridRangeMovePlan } from "../../cell-plane/rangeMove";
+import { getActiveSlideGridBounds } from "../slideBounds";
 
 const resolveSelectionAreas = (state: EditorState) => {
-  return getStaticGridSelectionAreas(state.staticGridSelection, state.grid);
+  return getStaticGridSelectionAreas(
+    state.staticGridSelection,
+    state.contentSurface.reader
+  );
 };
 
 const forEachSelectionSpan = (
@@ -39,7 +47,7 @@ const forEachSelectionSpan = (
 ) => forEachGridSelectionSpan(
   getGridSelectionRanges(state.staticGridSelection),
   visit,
-  state.grid
+  state.contentSurface.reader
 );
 
 const isUnstyledBlankCell = (cell: GridCell) =>
@@ -183,6 +191,51 @@ export const createSelectionSlice = (
     });
   },
 
+  moveStaticGridSelection: (requestedDelta) => {
+    const state = get();
+    const selection = state.staticGridSelection;
+    if (
+      state.canvasMode === "structured" ||
+      selection.mode !== "range" ||
+      selection.additionalRanges.length > 0
+    ) {
+      return false;
+    }
+    const plan = createStaticGridRangeMovePlan({
+      source: state.contentSurface.reader,
+      range: selection.primaryRange,
+      requestedDelta,
+      bounds: getActiveSlideGridBounds(state),
+    });
+    if (!plan) return false;
+
+    const operation = documents.applyCellPlanePatchAt(
+      resolveEditorDocumentAddress(documents, state),
+      plan.patch,
+      "save"
+    );
+    if (!operation) return false;
+
+    set((current) => ({
+      staticGridSelection: {
+        ...current.staticGridSelection,
+        activeCell: {
+          x: current.staticGridSelection.activeCell.x + plan.delta.x,
+          y: current.staticGridSelection.activeCell.y + plan.delta.y,
+        },
+        anchorCell: {
+          x: current.staticGridSelection.anchorCell.x + plan.delta.x,
+          y: current.staticGridSelection.anchorCell.y + plan.delta.y,
+        },
+        primaryRange: plan.targetRange,
+      },
+      staticGridEditMode: "navigate" as const,
+      staticGridInputFlow: null,
+      textCursor: null,
+    }));
+    return true;
+  },
+
   copySelection: (options) =>
     selectionCommands(set, get).copySelection(options),
   cutSelection: (options) =>
@@ -223,9 +276,10 @@ export const createSelectionSlice = (
       attrs.inverse === true;
 
     documents.mutateGridAt(resolveEditorDocumentAddress(documents, state), (grid) => {
+      const reader = createPointGridReader(grid);
       forEachSelectionSpan(state, ({ y, minX, maxX }) => {
         for (let x = minX; x <= maxX; x++) {
-          if (resolveGridSlot(grid, { x, y })?.offset === 1) continue;
+          if (resolveGridSlot(reader, { x, y })?.offset === 1) continue;
           const key = GridManager.toKey(x, y);
           const existingCell = grid.get(key);
           if (!existingCell && !shouldMaterializeBlank) continue;
@@ -265,9 +319,10 @@ export const createSelectionSlice = (
     if (state.canvasMode === "structured" || selections.length === 0) return;
 
     documents.mutateGridAt(resolveEditorDocumentAddress(documents, state), (grid) => {
+      const reader = createPointGridReader(grid);
       forEachSelectionSpan(state, ({ y, minX, maxX }) => {
         for (let x = minX; x <= maxX; x++) {
-          if (resolveGridSlot(grid, { x, y })?.offset === 1) continue;
+          if (resolveGridSlot(reader, { x, y })?.offset === 1) continue;
           const key = GridManager.toKey(x, y);
           const existingCell = grid.get(key);
           if (!existingCell) continue;
@@ -285,9 +340,10 @@ export const createSelectionSlice = (
     if (selections.length === 0) return;
 
     documents.mutateGridAt(resolveEditorDocumentAddress(documents, state), (grid) => {
+      const reader = createPointGridReader(grid);
       forEachSelectionSpan(state, ({ y, minX, maxX }) => {
         for (let x = minX; x <= maxX; x++) {
-          if (resolveGridSlot(grid, { x, y })?.offset === 1) continue;
+          if (resolveGridSlot(reader, { x, y })?.offset === 1) continue;
           const key = GridManager.toKey(x, y);
           const existingCell = grid.get(key);
           if (!existingCell && !bgColor) continue;
@@ -317,10 +373,11 @@ export const createSelectionSlice = (
     const { minX, maxX, minY, maxY } = getSelectionBounds(area);
 
     documents.mutateGridAt(resolveEditorDocumentAddress(documents, state), (grid) => {
+      const reader = createPointGridReader(grid);
       const updated = new Set<string>();
       for (let y = minY; y <= maxY; y++) {
         for (let x = minX; x <= maxX; x++) {
-          const slot = resolveGridSlot(grid, { x, y });
+          const slot = resolveGridSlot(reader, { x, y });
           if (!slot) continue;
           const key = GridManager.toKey(slot.anchor.x, slot.anchor.y);
           if (updated.has(key)) continue;

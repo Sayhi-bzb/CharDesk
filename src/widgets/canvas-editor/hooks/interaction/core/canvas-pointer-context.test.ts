@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
 import { createCanvasPointerContextResolver } from "./pointerContext";
 
@@ -7,7 +8,7 @@ const createResolver = (currentRect: Pick<DOMRect, "left" | "top"> | null = rect
   createCanvasPointerContextResolver({
     getRect: () => currentRect,
     getViewport: () => ({ offset: { x: 0, y: 0 }, zoom: 1 }),
-    getGrid: () => new Map([["0,0", { char: "你", color: "#fff" }]]),
+    getContentSource: () => new GridSnapshotSource([["0,0", { char: "你", color: "#fff" }]]),
   });
 
 describe("canvas pointer context resolver", () => {
@@ -31,7 +32,7 @@ describe("canvas pointer context resolver", () => {
     const resolver = createCanvasPointerContextResolver({
       getRect: () => rect,
       getViewport: () => ({ offset: { x: 0, y: 0 }, zoom: 1 }),
-      getGrid: () => new Map(),
+      getContentSource: () => new GridSnapshotSource(),
       getGridBounds: () => ({ columns: 2, rows: 2 }),
     });
 

@@ -11,11 +11,11 @@ describe("Canvas font setting", () => {
     render(<CanvasFontProvider runtime={runtime}><CanvasFontSelect /><CanvasFontStatus /></CanvasFontProvider>);
     await waitFor(() => expect(runtime.getSnapshot().status).toBe("idle"));
     load.mockRejectedValueOnce(new Error("offline"));
-    await act(() => runtime.select("ark-mono"));
+    await act(() => runtime.select("fusion-mono"));
     expect(screen.getByRole("combobox", { name: "Canvas font" })).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByRole("status")).toHaveTextContent("Unavailable. Using Maple Mono.");
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(runtime.getSnapshot().font).toBe("ark-mono"));
+    await waitFor(() => expect(runtime.getSnapshot().font).toBe("fusion-mono"));
     expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
     runtime.dispose();
   });

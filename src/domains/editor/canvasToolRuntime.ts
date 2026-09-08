@@ -33,6 +33,18 @@ export type CanvasInteractionState =
   | { type: "panning"; lastScreen: Point }
   | { type: "selecting"; anchor: Point; current: Point; append?: boolean }
   | {
+      type: "rangeMovePending";
+      anchor: Point;
+      current: Point;
+      accumulated: Point;
+    }
+  | {
+      type: "movingRange";
+      anchor: Point;
+      current: Point;
+      accumulated: Point;
+    }
+  | {
       type: "drawing";
       tool: Extract<ToolType, "brush" | "eraser">;
       start: Point;
@@ -61,6 +73,8 @@ export type CanvasInteractionState =
 export const getInteractionStart = (state: CanvasInteractionState): Point | null => {
   switch (state.type) {
     case "selecting": return state.anchor;
+    case "rangeMovePending":
+    case "movingRange": return state.anchor;
     case "drawing":
     case "shapePreview": return state.start;
     case "structuredMoving":
@@ -203,6 +217,8 @@ export class CanvasToolStateNode extends EditorStateNode<
       "idle",
       "panning",
       "selecting",
+      "rangeMovePending",
+      "movingRange",
       "drawing",
       "shapePreview",
       "structuredMoving",

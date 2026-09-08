@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useRef } from "react";
 
@@ -75,10 +76,12 @@ function InteractionHarnessContent() {
       appendStaticGridSelectionRange: state.appendStaticGridSelectionRange,
       clearSelections: state.clearSelections,
       clearInteractionState: state.clearInteractionState,
+      moveStaticGridSelection: state.moveStaticGridSelection,
       erasePoints: state.erasePoints,
       offset: state.offset,
       zoom: state.zoom,
-      grid: state.grid,
+      contentReader: state.contentSurface.reader,
+      contentRevision: state.contentSurface.revision,
       staticGridSelection: state.staticGridSelection,
       updateScratchForShape: state.updateScratchForShape,
       setHoveredGrid: state.setHoveredGrid,
@@ -163,7 +166,7 @@ describe("structured text interaction", () => {
       tool: "select",
       offset: { x: 0, y: 0 },
       zoom: 1,
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       textCursor: options?.editing ? { x: 0, y: 0 } : null,
       editingStructuredTextNodeId: options?.editing ? "text-1" : null,
       selectedStructuredNodeIds: options?.editing ? ["text-1"] : [],
@@ -190,7 +193,7 @@ describe("structured text interaction", () => {
       tool: "select",
       offset: { x: 0, y: 0 },
       zoom: 1,
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
       editingStructuredTextNodeId: null,
       selectedStructuredNodeIds: ["box-1", "text-1"],
@@ -239,7 +242,7 @@ describe("structured text interaction", () => {
       tool: "select",
       offset: { x: 0, y: 0 },
       zoom: 1,
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
       editingStructuredTextNodeId: null,
       selectedStructuredNodeIds: ["box-1", "text-1"],
@@ -256,7 +259,7 @@ describe("structured text interaction", () => {
       tool: "select",
       offset: { x: 0, y: 0 },
       zoom: 1,
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
       editingStructuredTextNodeId: null,
       selectedStructuredNodeIds: selected ? ["bg-1"] : [],
@@ -279,7 +282,7 @@ describe("structured text interaction", () => {
       tool: "select",
       offset: { x: 0, y: 0 },
       zoom: 1,
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
       editingStructuredTextNodeId: null,
       selectedStructuredNodeIds: selected ? ["line-1"] : [],
@@ -303,7 +306,7 @@ describe("structured text interaction", () => {
       tool: "select",
       offset: { x: 0, y: 0 },
       zoom: 1,
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
       editingStructuredTextNodeId: null,
       selectedStructuredNodeIds: [],
@@ -472,7 +475,7 @@ describe("structured text interaction", () => {
       tool: "select",
       offset: { x: 0, y: 0 },
       zoom: 1,
-      grid: new Map([["1,0", { char: "你", color: "#ffffff" }]]),
+      contentSurface: new TestCanvasContentSurface([["1,0", { char: "你", color: "#ffffff" }]]),
       staticGridEditMode: "navigate",
       textCursor: null,
     });
@@ -655,7 +658,7 @@ describe("structured text interaction", () => {
       tool: "select",
       offset: { x: 0, y: 0 },
       zoom: 1,
-      grid: new Map(DEFAULT_DEMO_GRID),
+      contentSurface: new TestCanvasContentSurface(DEFAULT_DEMO_GRID),
       structuredScene: [],
     });
     const runtime = new CanvasEngineRuntime({
@@ -747,7 +750,7 @@ describe("structured text interaction", () => {
       offset: { x: 0, y: 0 },
       zoom: 1,
       brushColor: "#112233",
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       structuredScene: [],
       selectedStructuredNodeIds: [],
       selectedStructuredSplitHandle: null,
@@ -817,7 +820,7 @@ describe("structured text interaction", () => {
       brushColor: "#000000",
       canvasColorPickerTarget: "auto",
       hoveredGrid: { x: 2, y: 3 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["2,3", { char: "A", color: "#112233" }],
       ]),
     });
@@ -845,7 +848,7 @@ describe("structured text interaction", () => {
       brushColor: "#000000",
       canvasColorPickerTarget: "auto",
       hoveredGrid: { x: 2, y: 3 },
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
     });
     const { getByTestId } = render(<InteractionHarness />);
 
@@ -881,7 +884,7 @@ describe("structured text interaction", () => {
       brushColor: "#000000",
       canvasColorPickerTarget: "auto",
       hoveredGrid: { x: 2, y: 3 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["2,3", { char: " ", color: "#112233", bgColor: "#445566" }],
       ]),
     });
@@ -909,7 +912,7 @@ describe("structured text interaction", () => {
       brushColor: "#000000",
       canvasColorPickerTarget: "auto",
       hoveredGrid: { x: 2, y: 3 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["2,3", { char: "A", color: "#112233", bgColor: "#445566" }],
       ]),
     });

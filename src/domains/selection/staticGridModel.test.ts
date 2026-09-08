@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import {
   collapseGridSelectionTo,
   createGridSelectionState,
@@ -127,7 +128,7 @@ describe("staticGridModel", () => {
   });
 
   it("derives effective bounds from negative sparse content and selection", () => {
-    const grid = new Map([
+    const grid = new GridSnapshotSource([
       ["-4,3", { char: "A", color: "#fff" }],
       ["2,-2", { char: "B", color: "#fff" }],
     ]);
@@ -143,7 +144,7 @@ describe("staticGridModel", () => {
 
   it("finds a four-way connected content region", () => {
     const cell = { char: "X", color: "#fff" };
-    const grid = new Map([
+    const grid = new GridSnapshotSource([
       ["1,1", cell],
       ["2,1", cell],
       ["2,2", cell],
@@ -157,7 +158,7 @@ describe("staticGridModel", () => {
   });
 
   it("connects neighbors through a wide character's follower column", () => {
-    const grid = new Map([
+    const grid = new GridSnapshotSource([
       ["0,0", { char: "你", color: "#fff" }],
       ["2,0", { char: "A", color: "#fff" }],
     ]);
@@ -182,7 +183,7 @@ describe("staticGridModel", () => {
   });
 
   it("moves across visible content runs and skips whitespace-only cells", () => {
-    const grid = new Map([
+    const grid = new GridSnapshotSource([
       ["1,1", { char: "A", color: "#fff" }],
       ["2,1", { char: "B", color: "#fff" }],
       ["4,1", { char: " ", color: "#fff", bgColor: "#333" }],
@@ -213,7 +214,7 @@ describe("staticGridModel", () => {
   });
 
   it("uses fixed boundaries when no content exists in the direction", () => {
-    const grid = new Map([["2,2", { char: "A", color: "#fff" }]]);
+    const grid = new GridSnapshotSource([["2,2", { char: "A", color: "#fff" }]]);
 
     expect(
       moveGridAddressToContentBoundary({
@@ -226,7 +227,7 @@ describe("staticGridModel", () => {
   });
 
   it("moves through vertical content runs in both directions", () => {
-    const grid = new Map([
+    const grid = new GridSnapshotSource([
       ["3,-2", { char: "A", color: "#fff" }],
       ["3,-1", { char: "B", color: "#fff" }],
       ["3,4", { char: "C", color: "#fff" }],
@@ -256,7 +257,7 @@ describe("staticGridModel", () => {
   });
 
   it("treats both visual columns of a wide character as one content cell", () => {
-    const grid = new Map([
+    const grid = new GridSnapshotSource([
       ["0,0", { char: "A", color: "#fff" }],
       ["1,0", { char: "你", color: "#fff" }],
       ["3,0", { char: "B", color: "#fff" }],
@@ -286,7 +287,7 @@ describe("staticGridModel", () => {
   });
 
   it("expands a wide-cell selection per row without widening unrelated rows", () => {
-    const grid = new Map([
+    const grid = new GridSnapshotSource([
       ["1,0", { char: "你", color: "#fff" }],
       ["1,1", { char: "A", color: "#fff" }],
     ]);

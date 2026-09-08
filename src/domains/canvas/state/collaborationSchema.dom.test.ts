@@ -4,7 +4,7 @@ import {
   decodeCollaborativeStructuredComponent,
   decodeCollaborativeStructuredNode,
 } from "./collaborationSchema";
-import { rebuildGridFromContent, rebuildSceneFromYMap } from "./helpers/gridHelpers";
+import { rebuildContentSurface, rebuildSceneFromYMap } from "./helpers/gridHelpers";
 import { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 import { isCellPlaneOperation } from "../cell-plane/model";
 
@@ -65,7 +65,7 @@ describe("canvas collaboration schema", () => {
     documents.yStructuredScene.set("node-a", { id: "node-b" } as never);
     const pageId = documents.getActivePageId();
 
-    expect(rebuildGridFromContent(documents)).toEqual(new Map());
+    expect(rebuildContentSurface(documents).reader.materialize()).toEqual(new Map());
     expect(rebuildSceneFromYMap(documents)).toEqual([]);
     expect(documents.getIntegrityIssues()).toEqual([
       {

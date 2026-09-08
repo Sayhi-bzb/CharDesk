@@ -14,7 +14,10 @@ import {
   type CharDeskCanvasContext,
 } from "@chardesk/rendering/canvas";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
-import { createCanvasCellFrame } from "./canvasCellFrame";
+import {
+  createCanvasCellFrame,
+  type CanvasCellFrameProjection,
+} from "./canvasCellFrame";
 
 type ViewBounds = ReturnType<typeof GridManager.getViewportGridBounds>;
 type DrawGridLayerOptions = {
@@ -22,6 +25,7 @@ type DrawGridLayerOptions = {
   alpha?: number;
   hoveredLink?: CanvasLinkHit | null;
   content?: "all" | "background" | "text";
+  projection?: CanvasCellFrameProjection;
 };
 
 /** @internal */
@@ -111,7 +115,12 @@ export const drawGridLayer = (
     width: viewBounds.endX - viewBounds.startX + 1,
     height: viewBounds.endY - viewBounds.startY + 1,
   };
-  const frame = createCanvasCellFrame(reader, viewport);
+  const frame = createCanvasCellFrame(
+    reader,
+    viewport,
+    "full",
+    options.projection
+  );
   const result = presentCharDeskCellFrame(ctx, frame, {
     metrics: DEFAULT_GRID_RENDER_METRICS,
     palette: { color: "#000000", background: "#ffffff" },

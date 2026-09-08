@@ -1,12 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  drawActiveCellFocus,
   drawCanvasColorPickerAnchor,
-  drawGridSelectionGeometry,
   getStructuredSplitBoxActiveLeafBounds,
   type CanvasInteractionPalette,
 } from "@/widgets/canvas-editor/hooks/useCanvasRenderer";
-import { getGridSelectionGeometry } from "@/domains/selection/public";
+import { drawCanvasNavigationFocus } from "@/widgets/canvas-editor/rendering/canvasCellIndicator";
 import {
   getStructuredLineHandlePoints,
   getStructuredRectHandlePoints,
@@ -46,7 +44,7 @@ describe("useCanvasRenderer structured rect handles", () => {
       },
     } as unknown as CanvasRenderingContext2D;
 
-    drawActiveCellFocus(ctx, { x: 2, y: 3 }, {
+    drawCanvasNavigationFocus(ctx, { x: 2, y: 3 }, {
       offset: { x: 0, y: 0 },
       zoom: 1,
     }, palette);
@@ -57,36 +55,6 @@ describe("useCanvasRenderer structured rect handles", () => {
     });
     expect(ctx.fillRect).toHaveBeenCalledWith(18, 60, 9, 20);
     expect(ctx.strokeRect).toHaveBeenCalledWith(18, 60, 9, 20);
-  });
-
-  it("fills overlapping ranges once and strokes their union contour", () => {
-    const ctx = {
-      save: vi.fn(),
-      restore: vi.fn(),
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      closePath: vi.fn(),
-      fill: vi.fn(),
-      stroke: vi.fn(),
-      set fillStyle(_value: string | CanvasGradient | CanvasPattern) {},
-      set strokeStyle(_value: string | CanvasGradient | CanvasPattern) {},
-      set lineWidth(_value: number) {},
-    } as unknown as CanvasRenderingContext2D;
-    const geometry = getGridSelectionGeometry([
-      { start: { x: 0, y: 0 }, end: { x: 2, y: 1 } },
-      { start: { x: 1, y: 0 }, end: { x: 3, y: 1 } },
-    ]);
-
-    drawGridSelectionGeometry(ctx, geometry, {
-      offset: { x: 0, y: 0 },
-      zoom: 1,
-    }, palette);
-
-    expect(ctx.fill).toHaveBeenCalledOnce();
-    expect(ctx.fill).toHaveBeenCalledWith("evenodd");
-    expect(ctx.stroke).toHaveBeenCalledOnce();
-    expect(ctx.closePath).toHaveBeenCalledOnce();
   });
 
   it("returns eight handles for rectangular structured nodes", () => {

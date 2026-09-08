@@ -11,10 +11,7 @@ import {
 } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
-  createGridSurfaceReader,
   isIncrementalCanvasSurfaceReader,
-  isSurfaceGridProjection,
-  useCanvasRuntime,
   useCanvasState,
 } from "@/domains/canvas/public";
 import { useUiI18n } from "@/shared/i18n";
@@ -68,27 +65,17 @@ export const Minimap = ({
   }) : null, [visualTheme]);
   const { t } = useUiI18n();
   const runtime = useCanvasEngineRuntime();
-  const canvas = useCanvasRuntime();
   const liveViewport = useCanvasLiveViewportOptional();
-  const { grid, offset: storedOffset, zoom: storedZoom, canvasMode } = useCanvasState(
+  const { contentSurface, offset: storedOffset, zoom: storedZoom } = useCanvasState(
     useShallow((state) => ({
-      grid: state.grid,
+      contentSurface: state.contentSurface,
       offset: state.offset,
       zoom: state.zoom,
-      canvasMode: state.canvasMode,
     }))
   );
   const offset = liveViewport?.offset ?? storedOffset;
   const zoom = liveViewport?.zoom ?? storedZoom;
-  const contentReader = useMemo(
-    () => {
-      if (canvasMode === "structured" || !isSurfaceGridProjection(grid)) {
-        return createGridSurfaceReader(grid);
-      }
-      return canvas.documents.getContentReader();
-    },
-    [canvas.documents, canvasMode, grid]
-  );
+  const contentReader = contentSurface.reader;
 
   const removeDragEndListeners = useCallback(() => {
     const end = endPointerSessionRef.current;
@@ -151,12 +138,12 @@ export const Minimap = ({
       reader: contentReader,
       contentRevision: isIncrementalCanvasSurfaceReader(contentReader)
         ? contentReader.getRevision()
-        : grid,
+        : contentSurface.revision,
       offset,
       zoom,
       viewportSize: containerSize,
     });
-  }, [containerSize, contentReader, grid, offset, zoom]);
+  }, [containerSize, contentReader, contentSurface.revision, offset, zoom]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {

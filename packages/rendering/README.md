@@ -27,6 +27,15 @@ temporarily paints cursor colors and redraws the Cell glyph without changing its
 Unicode or stored attributes. Visibility, blink timing, focus, and selection
 precedence remain Host interaction state.
 
+The rendering root also owns backend-neutral Cell Range geometry, phase, and
+paint style. `createCharDeskRectRangeGeometry()` adapts bounded rectangular
+selections; hosts with compound selections supply equivalent polygon rings.
+`drawCharDeskCanvasRange()` applies shared Cell-to-pixel, zoom, DPR alignment,
+even-odd filling, optional dirty-region clipping, and phase styling. Selecting
+and resting Ranges use only the selection surface; moving Ranges add the shared
+border. Range ownership, normalization, copying, movement, and history remain
+Host state.
+
 `zoom` rasterizes at the requested character size; hosts should size the DPR
 backing surface to the returned scaled document layout instead of applying a
 CSS bitmap transform.
@@ -100,13 +109,18 @@ font loading defaults.
 
 `fontProfile` is the capability-level path for modular stacks. The same Profile
 drives face selection and `loadCharDeskCanvasFonts`; its `fontSizeScale`,
-`scaleX`, `baselineShiftEm`, and `weightPolicy` calibrate glyphs without changing
+`scaleX`, `baselineShiftEm`, `boldStrategy`, and `boldOverdrawEm` calibrate glyphs without changing
 protocol Cell allocation. `fontResolver` and `fontFamilies` remain family-only
 host overrides; Profile metrics still apply. The resolver receives effective
-`bold` after `weightPolicy`, consistently in loading and drawing. A `regular`
-capability never asks the resolver or Canvas for bold; the source Cell attribute
-is unchanged. Existing resolvers that inspected the raw bold request must use
-this effective-weight contract.
+`bold` after strategy resolution, consistently in loading and drawing. Only
+`native` asks the resolver or Canvas for bold; the source Cell attribute is
+unchanged.
+
+For font glyphs only, `overdraw` repeats bold Cell text at the configured
+horizontal offset while requesting the regular face. The offset follows face
+size and zoom, reuses the same Cell clip, and does not repeat decorations.
+`none` requests regular and draws once. Cell Graphics bypass every font-bold
+strategy.
 
 ## Fixed Cell grids and font measurement
 

@@ -43,7 +43,7 @@ export const useActiveCollaboration = ({ enabled = true }: { enabled?: boolean }
     (state) => state.selectedStructuredNodeIds
   );
   const staticGridSelection = useCanvasState((state) => state.staticGridSelection);
-  const grid = useCanvasState((state) => state.grid);
+  const contentSurface = useCanvasState((state) => state.contentSurface);
   const selection = useMemo(
     () => {
       if (canvasMode === "structured") {
@@ -52,12 +52,15 @@ export const useActiveCollaboration = ({ enabled = true }: { enabled?: boolean }
       if (canvasMode === "freeform") {
         return {
           mode: "freeform" as const,
-          areas: getStaticGridSelectionAreas(staticGridSelection, grid),
+          areas: getStaticGridSelectionAreas(
+            staticGridSelection,
+            contentSurface.reader
+          ),
         };
       }
       return undefined;
     },
-    [canvasMode, grid, selectedStructuredNodeIds, staticGridSelection]
+    [canvasMode, contentSurface, selectedStructuredNodeIds, staticGridSelection]
   );
   const tool = useCanvasState((state) => state.tool);
   const joinCollaboration = canvas.commands.sessions.joinCollaboration;

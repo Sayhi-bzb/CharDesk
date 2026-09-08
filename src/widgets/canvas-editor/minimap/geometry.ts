@@ -1,4 +1,4 @@
-import type { GridMap, Point } from "@/shared/types";
+import type { GridCellSource, Point } from "@/shared/types";
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
 import { GridManager } from "@/shared/utils/grid";
@@ -14,9 +14,9 @@ const hasVisibleContent = (cell: { char?: string; bgColor?: string }) => {
 };
 
 export const computeVisibleContentBounds = (
-  grid: GridMap
+  source: GridCellSource
 ): MinimapRect | null => {
-  if (!grid || grid.size === 0) return null;
+  if (!source.getContentBounds()) return null;
 
   let minX = Infinity;
   let minY = Infinity;
@@ -24,7 +24,7 @@ export const computeVisibleContentBounds = (
   let maxY = -Infinity;
   const { cellWidth, cellHeight } = DEFAULT_GRID_RENDER_METRICS;
 
-  GridManager.iterate(grid, (cell, x, y) => {
+  GridManager.iterate(source, (cell, x, y) => {
     if (!hasVisibleContent(cell)) return;
     const occupancy = Math.max(GridManager.getCharWidth(cell.char), 1);
     minX = Math.min(minX, x * cellWidth);
@@ -122,14 +122,14 @@ const fitWorldBoundsToFrame = (
 };
 
 export const computeMinimapTransform = ({
-  grid,
+  source,
   offset,
   zoom,
   viewportSize,
   dimensions,
   padding,
 }: {
-  grid: GridMap;
+  source: GridCellSource;
   offset: Point;
   zoom: number;
   viewportSize: MinimapDimensions;
@@ -137,7 +137,7 @@ export const computeMinimapTransform = ({
   padding: number;
 }): MinimapTransform | null => {
   return computeMinimapTransformFromBounds({
-    contentBounds: computeVisibleContentBounds(grid),
+    contentBounds: computeVisibleContentBounds(source),
     offset,
     zoom,
     viewportSize,

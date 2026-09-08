@@ -1,4 +1,4 @@
-import type { GridMap, Point } from "@/shared/types";
+import type { GridCellSource, Point } from "@/shared/types";
 import {
   GridManager } from "@/shared/utils/grid";
 
@@ -18,7 +18,7 @@ interface CanvasGridPointInput extends CanvasScreenPointInput {
 }
 
 interface CanvasSnappedGridPointInput extends CanvasGridPointInput {
-  grid: GridMap;
+  source: GridCellSource;
 }
 
 export const getLocalCanvasPoint = ({
@@ -50,12 +50,12 @@ export const resolveSnappedGridPointFromScreen = (
   input: CanvasSnappedGridPointInput
 ): Point => {
   const raw = resolveRawGridPointFromScreen(input);
-  const snapped = GridManager.snapToCharStart(raw, input.grid);
+  const snapped = GridManager.snapToCharStart(raw, input.source);
   return snapped;
 };
 
 export const resolveHoverGridPoint = (
-  input: Omit<CanvasSnappedGridPointInput, "grid">
+  input: Omit<CanvasSnappedGridPointInput, "source">
 ): Point | null => {
   const raw = resolveRawGridPointFromScreen(input);
   return raw;

@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useEditorStore } from "@/domains/canvas/testing";
 import { setUiLanguage } from "@/shared/i18n";
@@ -41,7 +42,7 @@ describe("Canvas selector export feedback", () => {
     }));
     useEditorStore.setState({
       canvasMode: "freeform",
-      grid: new Map([["0,0", { char: "A", color: "#fff" }]]),
+      contentSurface: new TestCanvasContentSurface([["0,0", { char: "A", color: "#fff" }]]),
     });
   });
 

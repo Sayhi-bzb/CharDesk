@@ -1,4 +1,3 @@
-import type { GridMap } from "@/shared/types";
 import type { CanvasSession } from "@/domains/sessions/public";
 import type { SlideDeck } from "@/domains/slides/public";
 import { createStaticGridState } from "@/domains/selection/public";
@@ -11,7 +10,14 @@ import {
   type StructuredNode,
 } from "@/domains/structured-content/public";
 import { splitGraphemes } from "@/shared/metrics";
-import { createStructuredGridProjection } from "../helpers/gridHelpers";
+import {
+  createCanvasContentSurface,
+  createStructuredContentSurface,
+} from "../helpers/gridHelpers";
+import {
+  createGridSurfaceReader,
+  type CanvasSurfaceReader,
+} from "../../cell-plane/model";
 
 type SessionRuntime = ReturnType<typeof resolveSessionRuntime>;
 
@@ -41,7 +47,7 @@ type SessionActivationPatch = Pick<
   | "slideDeck"
   | "structuredScene"
   | "structuredComponents"
-  | "grid"
+  | "contentSurface"
   | "tool"
   | "offset"
   | "zoom"
@@ -51,7 +57,7 @@ type SessionActivationPatch = Pick<
 
 type SlideActivationPatch = Pick<
   EditorState,
-  "slideDeck" | "canvasSessions" | "grid"
+  "slideDeck" | "canvasSessions" | "contentSurface"
 > &
   DocumentInteractionResetPatch;
 
@@ -154,7 +160,7 @@ export const createSessionActivationPatch = (
   canvasSessions: CanvasSession[],
   activeCanvasId: string,
   runtime: SessionRuntime,
-  contentGrid?: GridMap
+  contentReader?: CanvasSurfaceReader
 ): SessionActivationPatch => ({
   canvasSessions,
   activeCanvasId,
@@ -164,11 +170,13 @@ export const createSessionActivationPatch = (
   structuredComponents: runtime.nextComponents,
   // Runtime session entries have already crossed the persistence/import decoder.
   // Avoid decoding and cloning every cell again during an interactive switch.
-  grid: contentGrid ?? (
-    runtime.nextMode === "structured"
-      ? createStructuredGridProjection(runtime.nextScene)
-      : new Map(runtime.nextGridEntries)
-  ),
+  contentSurface: contentReader
+    ? createCanvasContentSurface(contentReader)
+    : runtime.nextMode === "structured"
+      ? createStructuredContentSurface(runtime.nextScene)
+      : createCanvasContentSurface(
+          createGridSurfaceReader(new Map(runtime.nextGridEntries))
+        ),
   tool: runtime.nextTool,
   offset: runtime.nextOffset,
   zoom: runtime.nextZoom,
@@ -179,7 +187,7 @@ export const createSessionActivationPatch = (
 export const createSlideActivationPatch = (
   state: Pick<EditorState, "canvasSessions" | "activeCanvasId">,
   slideDeck: SlideDeck,
-  activeGrid: GridMap
+  activeReader: CanvasSurfaceReader
 ): SlideActivationPatch => ({
   slideDeck,
   canvasSessions: state.canvasSessions.map((session) =>
@@ -187,6 +195,6 @@ export const createSlideActivationPatch = (
       ? { ...session, slideDeck }
       : session
   ),
-  grid: activeGrid,
+  contentSurface: createCanvasContentSurface(activeReader),
   ...createDocumentInteractionResetPatch(),
 });

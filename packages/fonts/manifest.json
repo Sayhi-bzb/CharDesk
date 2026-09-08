@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generatedAt": "2026-09-07T06:21:24.514Z",
   "target": "canvas-core",
-  "profileId": "chardesk/system-v4",
+  "profileId": "chardesk/system-v5",
   "sources": [
     {
       "id": "julia-mono",

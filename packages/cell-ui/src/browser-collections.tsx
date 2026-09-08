@@ -83,6 +83,110 @@ export const useCellListState = (
   };
 };
 
+export type CellSelectItem = CellListItem;
+
+export type CellSelectState = Readonly<{
+  id: WidgetId;
+  triggerId: WidgetId;
+  contentId: WidgetId;
+  items: readonly CellSelectItem[];
+  open: boolean;
+  focusedId: WidgetId;
+  selectedId: WidgetId | null;
+  selectedItem: CellSelectItem | null;
+  dispatch: (command: WidgetCommand) => void;
+}>;
+
+export const useCellSelectState = (
+  id: WidgetId,
+  items: readonly CellSelectItem[],
+  options: Readonly<{
+    selectedId?: WidgetId | null;
+    defaultSelectedId?: WidgetId;
+    open?: boolean;
+    defaultOpen?: boolean;
+    onSelectionChange?: (id: WidgetId) => void;
+    onOpenChange?: (open: boolean) => void;
+  }> = {}
+): CellSelectState => {
+  const triggerId = `${id}-trigger`;
+  const contentId = `${id}-content`;
+  const selectedControlled = Object.prototype.hasOwnProperty.call(options, "selectedId");
+  const openControlled = Object.prototype.hasOwnProperty.call(options, "open");
+  const { onOpenChange, onSelectionChange } = options;
+  const [internalSelectedId, setInternalSelectedId] = useState<WidgetId | null>(
+    options.defaultSelectedId ?? null
+  );
+  const [internalOpen, setInternalOpen] = useState(options.defaultOpen ?? false);
+  const selectedCandidate = selectedControlled
+    ? options.selectedId ?? null
+    : internalSelectedId;
+  const selectedId = items.some((item) => item.id === selectedCandidate)
+    ? selectedCandidate
+    : null;
+  const open = openControlled ? options.open === true : internalOpen;
+  const enabledItems = useMemo(
+    () => items.filter((item) => !item.disabled),
+    [items]
+  );
+  const preferredItemId = selectedId && enabledItems.some((item) => item.id === selectedId)
+    ? selectedId
+    : enabledItems[0]?.id ?? triggerId;
+  const [focusedId, setFocusedId] = useState<WidgetId>(
+    open ? preferredItemId : triggerId
+  );
+  const [previousOpen, setPreviousOpen] = useState(open);
+  if (previousOpen !== open) {
+    setPreviousOpen(open);
+    setFocusedId(open ? preferredItemId : triggerId);
+  }
+
+  const updateOpen = useCallback((next: boolean) => {
+    if (!openControlled) {
+      setInternalOpen(next);
+      setFocusedId(next ? preferredItemId : triggerId);
+    }
+    if (next !== open) onOpenChange?.(next);
+  }, [onOpenChange, open, openControlled, preferredItemId, triggerId]);
+
+  const dispatch = useCallback((command: WidgetCommand) => {
+    if (command.type === "set-expanded" && command.targetId === triggerId) {
+      updateOpen(command.expanded);
+      return;
+    }
+    if (command.type === "dismiss" && command.targetId === contentId) {
+      updateOpen(false);
+      return;
+    }
+    if (command.type === "focus") {
+      if (
+        command.targetId === triggerId
+        || enabledItems.some(({ id: itemId }) => itemId === command.targetId)
+      ) setFocusedId(command.targetId);
+      return;
+    }
+    if (
+      command.type !== "activate"
+      || !enabledItems.some(({ id: itemId }) => itemId === command.targetId)
+    ) return;
+    if (!selectedControlled) setInternalSelectedId(command.targetId);
+    if (command.targetId !== selectedId) onSelectionChange?.(command.targetId);
+    updateOpen(false);
+  }, [contentId, enabledItems, onSelectionChange, selectedControlled, selectedId, triggerId, updateOpen]);
+
+  return {
+    id,
+    triggerId,
+    contentId,
+    items,
+    open,
+    focusedId,
+    selectedId,
+    selectedItem: items.find((item) => item.id === selectedId) ?? null,
+    dispatch,
+  };
+};
+
 export type CellMenuState = Readonly<{
   items: readonly CellListItem[];
   focusedId: WidgetId | null;

@@ -122,7 +122,7 @@ describe("session transitions", () => {
     expect(restored.structuredScene).toEqual([
       expect.objectContaining({ id: "cached-text", text: "Cached" }),
     ]);
-    expect(restored.grid.get("2,3")?.char).toBe("C");
+    expect(restored.contentSurface.reader.get({ x: 2, y: 3 })?.char).toBe("C");
     expect(
       defaultCanvasDocuments
         .getCollaborationDocument(structuredSessionId)
@@ -167,7 +167,7 @@ describe("session transitions", () => {
       .getState()
       .canvasSessions.find((session) => session.id === structuredSessionId)!;
     expect(repaired.grid).toEqual([]);
-    expect(useEditorStore.getState().grid.get("4,5")?.char).toBe("R");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("4,5")?.char).toBe("R");
 
     useEditorStore.getState().switchCanvasSession(freeformSessionId);
     useEditorStore.getState().switchCanvasSession(structuredSessionId);
@@ -175,6 +175,6 @@ describe("session transitions", () => {
       .getState()
       .canvasSessions.find((session) => session.id === structuredSessionId)!;
     expect(restored.grid).toEqual([]);
-    expect(useEditorStore.getState().grid.get("4,5")?.char).toBe("R");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("4,5")?.char).toBe("R");
   });
 });

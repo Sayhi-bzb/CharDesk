@@ -52,6 +52,7 @@ export type { PaintSceneOptions } from "./paint.js";
 export { CELL_UI_PERFORMANCE_BUDGET, percentile } from "./performance.js";
 export { DEFAULT_CELL_UI_THEME, resolveCellUiTheme, resolveCellStateStyle, resolveCellTextStyle } from "./theme.js";
 export type { CellCursorShape, CellCursorStyle, CellUiTheme, CellVisualState } from "./theme.js";
+export { nextCellCheckboxState } from "./checkbox.js";
 export type { CellBorderShape } from "./border.js";
 export {
   createCellRangeSnapshot,
@@ -63,7 +64,7 @@ export type { CellRangeCommand, CellRangeSnapshot } from "./range.js";
 export { composeScene, getEventPath, hitTest, hitTestCell } from "./scene.js";
 export { CellUiRuntime } from "./runtime.js";
 export { TestPilot, createTestPilot } from "./testing.js";
-export type { SemanticQuery, TestPilotOptions } from "./testing.js";
+export type { SemanticQuery, TestKeyOptions, TestPilotOptions } from "./testing.js";
 export { auditSemanticSnapshot, createSemanticSnapshot } from "./semantics.js";
 export type { SemanticAuditIssue } from "./semantics.js";
 export {
@@ -74,10 +75,20 @@ export {
   textEditorAtPoint,
 } from "./interaction.js";
 export type { EngineInput, WidgetCommand } from "./interaction.js";
+export { createKeyInput } from "@chardesk/keyboard";
+export type {
+  KeyInput,
+  KeyInputInit,
+  KeyLocation,
+  KeyModifiers,
+  KeyPhase,
+} from "@chardesk/keyboard";
 export type { CellUiRuntimeOptions } from "./runtime.js";
 export {
   Box,
   Button,
+  Checkbox,
+  Slider,
   Grid,
   GridCell,
   GridRow,
@@ -88,6 +99,10 @@ export {
   Overlay,
   Root,
   ScrollArea,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
   Tab,
   TabPanel,
   Tabs,
@@ -101,6 +116,8 @@ export {
 export type {
   BoxProps,
   ButtonProps,
+  CheckboxProps,
+  SliderProps,
   GridCellProps,
   GridProps,
   GridRowProps,
@@ -111,6 +128,10 @@ export type {
   OverlayProps,
   RootProps,
   ScrollAreaProps,
+  SelectContentProps,
+  SelectItemProps,
+  SelectProps,
+  SelectTriggerProps,
   TabPanelProps,
   TabProps,
   TabsProps,
@@ -141,6 +162,7 @@ export type {
 export { reconcileWidgetTree } from "./tree.js";
 export type {
   Cell,
+  CellCheckboxState,
   CellHit,
   CellHitPart,
   CellInsets,

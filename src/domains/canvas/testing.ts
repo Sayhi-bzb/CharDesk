@@ -5,6 +5,10 @@ import { CanvasDocumentRegistry } from "./state/CanvasDocumentRegistry";
 import type { CanvasStore } from "./state/editorStore";
 import type { createCanvasCommands } from "./state/canvasCommands";
 import { CanvasRuntime } from "./runtime";
+import type { CanvasContentSurfaceState } from "./state/interfaces";
+import { createCanvasContentSurface } from "./state/helpers/gridHelpers";
+import { createGridSurfaceReader } from "./cell-plane/model";
+import type { GridCell } from "@/shared/types";
 
 export let defaultCanvasDocuments: CanvasDocumentRegistry;
 export let useEditorStore: CanvasStore;
@@ -32,6 +36,18 @@ export const initializeCanvasTesting = ({
 };
 
 export const getCanvasState = () => useEditorStore.getState();
+export class TestCanvasContentSurface implements CanvasContentSurfaceState {
+  readonly reader;
+  readonly revision;
+
+  constructor(entries?: readonly (readonly [string, GridCell])[] | null) {
+    const surface = createCanvasContentSurface(
+      createGridSurfaceReader(new Map(entries ?? []))
+    );
+    this.reader = surface.reader;
+    this.revision = surface.revision;
+  }
+}
 export const applyFreeformSnapshotToYMaps = (
   entries: Parameters<CanvasDocumentRegistry["replaceCellPage"]>[1]
 ) => canvasCommands.grid.replace(entries);

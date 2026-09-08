@@ -261,14 +261,14 @@ describe("CanvasRuntime collaboration", () => {
         .toEqual([sharedPageId]);
       expect(guest.documents.getPageDescriptors(guestSessionId).map(({ id }) => id))
         .toEqual([sharedPageId]);
-      expect(host.getState().grid.get("0,0")?.char).toBe("H");
+      expect(host.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("H");
 
       Y.applyUpdate(guestDocument, Y.encodeStateAsUpdate(hostDocument));
 
-      expect(guest.getState().grid.get("0,0")?.char).toBe("H");
+      expect(guest.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("H");
 
       guest.commands.grid.replace([
-        ...guest.getState().grid.entries(),
+        ...guest.getState().contentSurface.reader.materialize().entries(),
         ["1,0", { char: "G", color: "#222222" }],
       ]);
       Y.applyUpdate(hostDocument, Y.encodeStateAsUpdate(guestDocument));
@@ -278,8 +278,8 @@ describe("CanvasRuntime collaboration", () => {
           .getPageDescriptors(guestSessionId)
           .map(({ id }) => id)
       ).toEqual([sharedPageId]);
-      expect(host.getState().grid.get("0,0")?.char).toBe("H");
-      expect(host.getState().grid.get("1,0")?.char).toBe("G");
+      expect(host.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("H");
+      expect(host.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("G");
     } finally {
       host.dispose();
       guest.dispose();

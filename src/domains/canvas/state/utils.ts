@@ -1,7 +1,7 @@
 import type { GridCell } from "@/shared/types";
 import { writeCell, writeStyledCell } from "@/shared/utils/grid-ops";
 import { styleStateToCell, type AnsiStyleState } from "@/shared/utils/ansi";
-import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
+import { createPointGridReader, resolveGridSlot } from "@/shared/utils/grid-occupancy";
 
 type CellWriteOptions = {
   preserveTargetBackground?: boolean;
@@ -12,7 +12,7 @@ const resolveTargetBackground = (
   x: number,
   y: number
 ) => {
-  return resolveGridSlot(targetGrid, { x, y })?.cell.bgColor;
+  return resolveGridSlot(createPointGridReader(targetGrid), { x, y })?.cell.bgColor;
 };
 
 type GridWriter = {

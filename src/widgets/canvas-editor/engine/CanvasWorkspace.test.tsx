@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { TestCanvasContentSurface } from '@/domains/canvas/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useEditorStore } from '@/domains/canvas/testing';
 import {
@@ -79,7 +80,7 @@ describe('CanvasWorkspace', () => {
     useEditorStore.setState({
       activeCanvasId: 'canvas-a',
       canvasMode: 'freeform',
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       offset: { x: 0, y: 0 },
       zoom: 1,
       canvasSessions: [
@@ -154,7 +155,7 @@ describe('CanvasWorkspace', () => {
     useEditorStore.setState({
       activeCanvasId: 'canvas-a',
       canvasMode: 'freeform',
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       offset: { x: 10, y: 15 },
       zoom: 1,
       canvasSessions: [

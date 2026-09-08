@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import { applyFreeformSnapshotToYMaps, useEditorStore } from "@/domains/canvas/testing";
 import { DEFAULT_SESSION_ID } from "@/domains/canvas/state/helpers/storeUtils";
 import { createDocumentInteractionResetPatch } from "@/domains/canvas/state/transitions/editorTransitions";
@@ -10,7 +11,7 @@ describe("importCanvasSession", () => {
     useEditorStore.setState(
       {
         ...initialState,
-        grid: new Map(),
+        contentSurface: new TestCanvasContentSurface(),
         canvasSessions: initialState.canvasSessions.map((session) =>
           session.id === DEFAULT_SESSION_ID ? { ...session, grid: [] } : session
         ),
@@ -31,8 +32,8 @@ describe("importCanvasSession", () => {
     expect(state.canvasSessions).toHaveLength(sessionCount + 1);
     expect(state.activeCanvasId).toBe(session.id);
     expect(state.canvasMode).toBe("freeform");
-    expect(state.grid.get("0,0")).toEqual({ char: "A", color: "#ff0000" });
-    expect(state.grid.get("2,1")).toEqual({ char: "B", color: "#00ff00" });
+    expect(state.contentSurface.reader.materialize().get("0,0")).toEqual({ char: "A", color: "#ff0000" });
+    expect(state.contentSurface.reader.materialize().get("2,1")).toEqual({ char: "B", color: "#00ff00" });
     expect(state.pendingCameraPlacement).toEqual({
       sessionId: session.id,
       kind: "content-start",
@@ -93,7 +94,7 @@ describe("importCanvasSession", () => {
       { columns: 100, rows: 27 },
       { columns: 100, rows: 27 },
     ]);
-    expect(state.grid.get("1,0")).toMatchObject({ char: "A" });
+    expect(state.contentSurface.reader.materialize().get("1,0")).toMatchObject({ char: "A" });
     expect(state.pendingCameraPlacement).toBeNull();
   });
 

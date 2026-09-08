@@ -10,6 +10,7 @@ import type {
   ScrollMetrics,
   WidgetTree,
 } from "./types.js";
+import { isPortalKind } from "./widget-capabilities.js";
 
 export const intersectSceneRects = (left: CellRect, right: CellRect): CellRect => {
   const x = Math.max(left.x, right.x);
@@ -87,13 +88,44 @@ export const composeScene = (
     const widget = tree.nodes.get(id);
     const layoutEntry = layout.entries.get(id);
     if (!widget || !layoutEntry) throw new Error(`Scene input is missing ${id}.`);
-    const portal = widget.kind === "overlay";
+    const portal = isPortalKind(widget.kind);
     const origin = portal ? { x: 0, y: 0 } : parentOrigin;
     const clip = portal ? layout.viewport : inheritedClip;
     const layer = portal ? inheritedLayer + 1 : inheritedLayer;
+    const selectAnchor = widget.kind === "select-content"
+      ? widget.parentId
+        ? tree.nodes.get(widget.parentId)?.children
+          .map((childId) => tree.nodes.get(childId))
+          .find((child) => child?.kind === "select-trigger")
+        : undefined
+      : undefined;
+    const anchorBounds = selectAnchor ? entries.get(selectAnchor.id)?.layoutBounds : undefined;
+    if (widget.kind === "select-content" && !anchorBounds) {
+      throw new TypeError("SelectContent must follow SelectTrigger inside the same Select.");
+    }
+    const anchoredX = anchorBounds
+      ? Math.max(0, Math.min(layout.viewport.width - layoutEntry.rect.width, anchorBounds.x))
+      : 0;
+    const belowY = anchorBounds ? anchorBounds.y + anchorBounds.height : 0;
+    const aboveY = anchorBounds ? anchorBounds.y - layoutEntry.rect.height : 0;
+    const anchoredY = anchorBounds
+      ? belowY + layoutEntry.rect.height <= layout.viewport.height
+        ? belowY
+        : aboveY >= 0
+          ? aboveY
+          : Math.max(0, Math.min(layout.viewport.height - layoutEntry.rect.height, belowY))
+      : 0;
     const bounds: CellRect = {
-      x: portal ? widget.overlayPosition!.x : origin.x + layoutEntry.rect.x,
-      y: portal ? widget.overlayPosition!.y : origin.y + layoutEntry.rect.y,
+      x: widget.kind === "overlay"
+        ? widget.overlayPosition!.x
+        : widget.kind === "select-content"
+          ? anchoredX
+          : origin.x + layoutEntry.rect.x,
+      y: widget.kind === "overlay"
+        ? widget.overlayPosition!.y
+        : widget.kind === "select-content"
+          ? anchoredY
+          : origin.y + layoutEntry.rect.y,
       width: layoutEntry.rect.width,
       height: layoutEntry.rect.height,
     };

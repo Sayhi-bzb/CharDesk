@@ -48,6 +48,9 @@ export const executeCanvasMoveDecision = (
     case "structured-select-hover":
       if (decision.action.cursor) executor.setCursor(decision.action.cursor);
       break;
+    case "static-range-move-hover":
+      executor.setCursor("grab");
+      break;
     case "eraser-hover":
       executor.setHoveredGrid(decision.action.point);
       break;
@@ -64,6 +67,7 @@ type CanvasMoveHandler = ({
   linkHit,
   structuredSelectCursor,
   eraserHoverPoint,
+  staticRangeMoveHit,
 }: {
   hasColorPickerTarget: boolean;
   canvasMode: CanvasMode;
@@ -72,6 +76,7 @@ type CanvasMoveHandler = ({
   linkHit: CanvasLinkHit | null;
   structuredSelectCursor: string | null;
   eraserHoverPoint: Point | null;
+  staticRangeMoveHit: boolean;
 }) => void;
 
 export const createCanvasMoveHandler = ({
@@ -86,6 +91,7 @@ export const createCanvasMoveHandler = ({
   linkHit,
   structuredSelectCursor,
   eraserHoverPoint,
+  staticRangeMoveHit,
 }) =>
   executeCanvasMoveDecision(
     resolveCanvasMoveDecision({
@@ -96,6 +102,7 @@ export const createCanvasMoveHandler = ({
       linkHit,
       structuredSelectCursor,
       eraserHoverPoint,
+      staticRangeMoveHit,
     }),
     executor
   );
@@ -112,6 +119,7 @@ export type CanvasMoveRouteHandler = ({
   tool,
   clientPoint,
   resolveMoveContext,
+  staticRangeMoveHit,
 }: {
   hasColorPickerTarget: boolean;
   canvasMode: CanvasMode;
@@ -122,6 +130,7 @@ export type CanvasMoveRouteHandler = ({
     shouldResolveStructuredSelectCursor: boolean;
     shouldResolveEraserHoverPoint: boolean;
   }) => CanvasMoveRouteContext;
+  staticRangeMoveHit: boolean;
 }) => void;
 
 export const createCanvasMoveRouteHandler = ({
@@ -135,6 +144,7 @@ export const createCanvasMoveRouteHandler = ({
     tool,
     clientPoint,
     resolveMoveContext,
+    staticRangeMoveHit,
   }) => {
     const moveContext = resolveMoveContext({
       clientPoint,
@@ -151,5 +161,6 @@ export const createCanvasMoveRouteHandler = ({
       linkHit: moveContext.linkHit,
       structuredSelectCursor: moveContext.structuredSelectCursor,
       eraserHoverPoint: moveContext.eraserHoverPoint,
+      staticRangeMoveHit,
     });
   };

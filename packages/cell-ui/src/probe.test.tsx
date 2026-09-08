@@ -111,12 +111,12 @@ describe("Cell probe", () => {
         metrics: { cellWidth: 9, cellHeight: 19, fontSize: 15 },
         fontProfileId: "gallery/test-font",
         requestedFontRoutes: {
-          "cell-glyph": { family: "'JuliaMono'", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "regular" as const },
-          display: { family: "Test Font", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "inherit" as const },
-          cjk: { family: "Test Font", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "inherit" as const },
-          nerd: { family: "Nerd", fontSize: 15, scaleX: 0.6, baselineShiftEm: 0, weightPolicy: "regular" as const },
-          symbol: { family: "Symbol", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "regular" as const },
-          emoji: { family: "Emoji", fontSize: 15, scaleX: 1, baselineShiftEm: 0, weightPolicy: "regular" as const },
+          "cell-glyph": { family: "'JuliaMono'", fontSize: 15, scaleX: 1, baselineShiftEm: 0, boldStrategy: "none" as const },
+          display: { family: "Test Font", fontSize: 15, scaleX: 1, baselineShiftEm: 0, boldStrategy: "overdraw" as const, boldOverdrawEm: 1 / 15 },
+          cjk: { family: "Test Font", fontSize: 15, scaleX: 1, baselineShiftEm: 0, boldStrategy: "native" as const },
+          nerd: { family: "Nerd", fontSize: 15, scaleX: 0.6, baselineShiftEm: 0, boldStrategy: "none" as const },
+          symbol: { family: "Symbol", fontSize: 15, scaleX: 1, baselineShiftEm: 0, boldStrategy: "none" as const },
+          emoji: { family: "Emoji", fontSize: 15, scaleX: 1, baselineShiftEm: 0, boldStrategy: "none" as const },
         },
         glyphOverflow: [{
           text: "W", row: 0, col: 0, spanCells: 1, measuredWidth: 12.5, availableWidth: 9,
@@ -127,9 +127,9 @@ describe("Cell probe", () => {
     expect(formatCellProbe(snapshot, { header: true })).toBe(
       "cell-ui/probe@3  font-contract  2×1  focus=none\n" +
       "font-profile=gallery/test-font cell=9×19 base=15px\n" +
-      "font display=Test Font size=15px scaleX=1\n" +
-      "font cjk=Test Font size=15px scaleX=1\n" +
-      "font cell-glyph='JuliaMono' size=15px scaleX=1\n" +
+      "font display=Test Font size=15px scaleX=1 bold-strategy=overdraw bold-overdraw=1px\n" +
+      "font cjk=Test Font size=15px scaleX=1 bold-strategy=native\n" +
+      "font cell-glyph='JuliaMono' size=15px scaleX=1 bold-strategy=none\n" +
       "glyph-overflow \"W\"@(0,0) 12.5px>9px\n" +
       "W"
     );

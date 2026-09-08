@@ -7,7 +7,7 @@ import { formatCellProbe } from "@chardesk/cell-ui";
 import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
 import { componentDocumentBySlug, componentDocuments, type ComponentDocument } from "./component-catalog";
 import { FixturePage } from "./fixtures";
-import { GalleryAppearance, GalleryBorderToggle, GalleryFontToggle, GalleryIconButton, GalleryThemeToggle } from "./appearance";
+import { GalleryAppearance, GalleryBorderToggle, GalleryFontSelect, GalleryIconButton, GalleryThemeToggle } from "./appearance";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
 import "@chardesk/font-maple/fonts.css";
@@ -173,7 +173,7 @@ export function DocumentationShell({ document }: Readonly<{ document: ComponentD
     <>
       <header className="gallery-header">
         <a className="gallery-brand" href="#/components/text">CharDesk / Cell UI</a>
-        <div className="gallery-appearance-controls"><GalleryFontToggle /><GalleryBorderToggle /><GalleryThemeToggle /></div>
+        <div className="gallery-appearance-controls"><GalleryFontSelect /><GalleryBorderToggle /><GalleryThemeToggle /></div>
       </header>
       <div className="gallery-layout">
         <GalleryNavigation activeSlug={document.slug} />

@@ -140,6 +140,8 @@ return {
     clear: () => call("clearSelections"),
     clearInteraction: () => call("clearInteractionState"),
     delete: () => call("deleteSelection"),
+    moveStaticRange: (...args: Parameters<EditorState["moveStaticGridSelection"]>) =>
+      call("moveStaticGridSelection", ...args),
     copy: (...args: Parameters<EditorState["copySelection"]>) => call("copySelection", ...args),
     cut: (...args: Parameters<EditorState["cutSelection"]>) => call("cutSelection", ...args),
     paste: (...args: Parameters<EditorState["pasteFromClipboard"]>) =>

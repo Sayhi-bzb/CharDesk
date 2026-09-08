@@ -24,6 +24,8 @@ import {
 } from "@/domains/structured-content/public";
 import { cloneTextAttributes } from "@/shared/utils/ansi";
 import { splitGraphemes } from "@/shared/metrics";
+import { createGridMapSource } from "@/shared/utils/grid-source";
+import { createPointGridReader } from "@/shared/utils/grid-occupancy";
 import {
   getStructuredTextSelectionRange,
   updateStructuredTextStyleRanges,
@@ -190,9 +192,10 @@ export const createDrawingSlice = (
     }
     if (!scratchLayer || scratchLayer.size === 0) return;
     documents.mutateGridAt(resolveEditorDocumentAddress(documents, get()), (grid) => {
-      GridManager.iterate(scratchLayer, (cell, x, y) => {
+      const reader = createPointGridReader(grid);
+      GridManager.iterate(createGridMapSource(scratchLayer), (cell, x, y) => {
         if (cell.bgColor && cell.char === " ") {
-          const slot = resolveGridSlot(grid, { x, y });
+          const slot = resolveGridSlot(reader, { x, y });
           const anchor = slot?.anchor ?? { x, y };
           writeStyledCell(grid, anchor.x, anchor.y, {
             ...(slot?.cell ?? { char: " ", color: cell.color }),

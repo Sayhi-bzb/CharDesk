@@ -4,6 +4,7 @@ import { StrictMode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   Box,
+  Checkbox,
   Grid,
   GridCell,
   GridRow,
@@ -14,6 +15,7 @@ import {
   Overlay,
   Root,
   ScrollArea,
+  Slider,
   Tab,
   TabPanel,
   Tabs,
@@ -24,6 +26,8 @@ import {
   TreeItem,
   YogaLayoutEngine,
   createTestPilot,
+  nextCellCheckboxState,
+  type CellCheckboxState,
 } from "./index.js";
 import {
   CellSurface,
@@ -61,6 +65,7 @@ const context = {
   save: vi.fn(),
   restore: vi.fn(),
   beginPath: vi.fn(),
+  closePath: vi.fn(),
   rect: vi.fn(),
   clip: vi.fn(),
   moveTo: vi.fn(),
@@ -185,6 +190,58 @@ const EditorProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => 
       </Root>
     </CellSurface>
   );
+};
+
+const CheckboxProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => void }) => {
+  const [checked, setChecked] = useState<CellCheckboxState>("indeterminate");
+  const [focusedId, setFocusedId] = useState("autosave");
+  const dispatch = (command: WidgetCommand) => {
+    onCommand?.(command);
+    if (command.type === "focus") setFocusedId(command.targetId);
+    if (command.type === "activate" && command.targetId === "autosave") {
+      setChecked(nextCellCheckboxState);
+    }
+  };
+  return <CellSurface
+    viewport={{ width: 20, height: 1 }}
+    focusedId={focusedId}
+    onCommand={dispatch}
+    label="Checkbox product"
+  >
+    <Root id="root">
+      <Checkbox id="autosave" checked={checked} focused={focusedId === "autosave"}>
+        <Text>Autosave</Text>
+      </Checkbox>
+    </Root>
+  </CellSurface>;
+};
+
+const SliderProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => void }) => {
+  const [value, setValue] = useState(50);
+  const [focusedId, setFocusedId] = useState("volume");
+  const dispatch = (command: WidgetCommand) => {
+    onCommand?.(command);
+    if (command.type === "focus") setFocusedId(command.targetId);
+    if (command.type === "set-value" && command.targetId === "volume") {
+      setValue(command.value);
+    }
+  };
+  return <CellSurface
+    viewport={{ width: 20, height: 1 }}
+    focusedId={focusedId}
+    onCommand={dispatch}
+    label="Slider product"
+  >
+    <Root id="root" style={{ direction: "row" }}>
+      <Slider
+        id="volume"
+        label="Volume"
+        value={value}
+        valueText={`${value} percent`}
+        focused={focusedId === "volume"}
+      />
+    </Root>
+  </CellSurface>;
 };
 
 const CursorProduct = ({
@@ -865,6 +922,70 @@ describe("CellSurface", () => {
     expect(onCommand).toHaveBeenCalledTimes(3);
   });
 
+  it("keeps Checkbox mixed state, DOM focus, Space, and semantic click on one command path", async () => {
+    const onCommand = vi.fn();
+    render(<CheckboxProduct onCommand={onCommand} />);
+    const surface = screen.getByLabelText("Checkbox product");
+    fireEvent.focus(surface);
+    const checkbox = await screen.findByRole("checkbox", { name: "Autosave" });
+
+    await waitFor(() => expect(checkbox).toHaveFocus());
+    expect(checkbox).toHaveAttribute("aria-checked", "mixed");
+    fireEvent.keyDown(checkbox, { key: " ", code: "Space" });
+    expect(onCommand).toHaveBeenLastCalledWith({ type: "activate", targetId: "autosave" });
+    await waitFor(() => expect(checkbox).toHaveAttribute("aria-checked", "true"));
+    fireEvent.click(checkbox);
+    await waitFor(() => expect(checkbox).toHaveAttribute("aria-checked", "false"));
+  });
+
+  it("keeps Slider value, ARIA projection, and keyboard commands in one frame", async () => {
+    const onCommand = vi.fn();
+    render(<SliderProduct onCommand={onCommand} />);
+    const surface = screen.getByLabelText("Slider product");
+    fireEvent.focus(surface);
+    const slider = await screen.findByRole("slider", { name: "Volume" });
+
+    await waitFor(() => expect(slider).toHaveFocus());
+    expect(slider).toHaveAttribute("aria-valuenow", "50");
+    expect(slider).toHaveAttribute("aria-valuemin", "0");
+    expect(slider).toHaveAttribute("aria-valuemax", "100");
+    expect(slider).toHaveAttribute("aria-valuetext", "50 percent");
+    expect(slider).toHaveAttribute("aria-orientation", "horizontal");
+
+    fireEvent.keyDown(slider, { key: "ArrowRight", code: "ArrowRight" });
+    expect(onCommand).toHaveBeenLastCalledWith({
+      type: "set-value",
+      targetId: "volume",
+      value: 51,
+    });
+    await waitFor(() => expect(slider).toHaveAttribute("aria-valuenow", "51"));
+    expect(slider).toHaveAttribute("aria-valuetext", "51 percent");
+  });
+
+  it("keeps native keyboard phase, repeat, modifiers, and host claims distinct", () => {
+    const onAction = vi.fn();
+    const onCommand = vi.fn();
+    render(<Product onAction={onAction} onCommand={onCommand} />);
+    const surface = screen.getByLabelText("Cell interface");
+
+    fireEvent.keyUp(surface, { key: "Enter", code: "Enter" });
+    fireEvent.keyDown(surface, { key: "Enter", code: "Enter", repeat: true });
+    fireEvent.keyDown(surface, { key: "ArrowDown", code: "ArrowDown", ctrlKey: true });
+    expect(onCommand).not.toHaveBeenCalled();
+    expect(surface).toHaveAttribute("data-cell-focused", "open");
+
+    const claimed = new KeyboardEvent("keydown", {
+      key: "Enter",
+      code: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    claimed.preventDefault();
+    surface.dispatchEvent(claimed);
+    expect(onAction).not.toHaveBeenCalled();
+    expect(onCommand).not.toHaveBeenCalled();
+  });
+
   it.each(["cancel", "lost-capture", "move"])("releases a %s tap before the next click", (ending) => {
     const onAction = vi.fn();
     const { container } = render(<Product onAction={onAction} />);
@@ -1184,6 +1305,22 @@ describe("CellSurface", () => {
     expect(screen.getAllByRole("textbox")).toHaveLength(2);
   });
 
+  it("does not activate or navigate a text editor through composition or modified arrows", () => {
+    const onCommand = vi.fn();
+    render(<EditorProduct onCommand={onCommand} />);
+    const input = screen.getByRole("textbox", { name: "Name" }) as HTMLTextAreaElement;
+
+    fireEvent.focus(input);
+    fireEvent.compositionStart(input);
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter", isComposing: true });
+    expect(onCommand.mock.calls.some(([command]) => command.type === "activate")).toBe(false);
+    fireEvent.compositionEnd(input, { data: "你" });
+
+    onCommand.mockClear();
+    fireEvent.keyDown(input, { key: "ArrowLeft", code: "ArrowLeft", metaKey: true });
+    expect(onCommand).not.toHaveBeenCalled();
+  });
+
   it("selects, copies, and clears a rendered Cell rectangle", () => {
     const { container, rerender } = render(<RangeProduct />);
     const surface = screen.getByLabelText("Range surface");
@@ -1233,6 +1370,31 @@ describe("CellSurface", () => {
     expect(surface).toHaveAttribute("data-cell-range");
     fireEvent.keyDown(surface, { key: "Escape" });
     expect(surface).not.toHaveAttribute("data-cell-range");
+  });
+
+  it("uses Cell Range as the exclusive primary overlay", () => {
+    const { container } = render(<EditorProduct />);
+    const input = screen.getByRole("textbox", { name: "Name" });
+    const canvas = container.querySelector("canvas")!;
+    const surface = canvas.parentElement!;
+
+    fireEvent.focus(input);
+    expect(context.getImageData).toHaveBeenCalled();
+    context.getImageData.mockClear();
+
+    fireEvent.pointerDown(canvas, {
+      button: 0,
+      altKey: true,
+      pointerId: 71,
+      clientX: 5,
+      clientY: 10,
+    });
+    expect(surface).toHaveAttribute("data-cell-range");
+    expect(context.getImageData).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(surface, { key: "Escape" });
+    expect(surface).not.toHaveAttribute("data-cell-range");
+    expect(context.getImageData).toHaveBeenCalled();
   });
 
   it("clears controlled and default Cell Ranges only after confirmed external focus exit", async () => {

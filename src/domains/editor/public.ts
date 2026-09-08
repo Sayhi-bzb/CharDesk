@@ -22,10 +22,10 @@ export type { KeymapResolution, RegisteredKeymapEntry } from "./core/keymap";
 export {
   formatShortcutSequence,
   formatShortcutStroke,
-  matchesShortcutEvent,
+  matchesShortcutInput,
   normalizeShortcut,
   normalizeShortcutStroke,
-  shortcutFromKeyboardEvent,
+  shortcutFromKeyInput,
   shortcutSequenceKey,
   shortcutsEqual,
 } from "./core/shortcut";
@@ -81,9 +81,9 @@ export {
   useEditorValue,
 } from "./react";
 export {
-  executeEditorKeymapEvent,
+  executeEditorKeymapInput,
   EditorShortcutEngine,
-  resolveEditorKeymapEvent,
+  resolveEditorKeymapInput,
   useEditorShortcutLayer,
 } from "./keyboard";
 export {

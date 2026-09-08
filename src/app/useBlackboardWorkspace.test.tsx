@@ -78,19 +78,19 @@ describe("Blackboard workspace projection", () => {
 
     await waitFor(() => expect(result.current.status.state).toBe("current"));
     expect(host.canvas.getState().canvasMode).toBe("freeform");
-    expect(host.canvas.getState().grid.get("0,0")?.char).toBe("A");
+    expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
     expect(host.canvas.getState().canvasSessions[0]).toMatchObject({
       mode: "freeform",
       sourceBinding: { kind: "blackboard", provider: "browser-workspace", id: "board" },
       grid: [],
     });
-    const validGrid = host.canvas.getState().grid;
+    const validReader = host.canvas.getState().contentSurface.reader;
 
     await repository.apply("board", [
       { op: "write", path: "blackboard.yaml", content: "invalid" },
     ]);
     await waitFor(() => expect(result.current.status.state).toBe("warning"));
-    expect(host.canvas.getState().grid).toBe(validGrid);
+    expect(host.canvas.getState().contentSurface.reader).toBe(validReader);
   });
 
   it("releases the Blackboard route after switching to an editable Canvas", async () => {
@@ -220,7 +220,7 @@ describe("Blackboard workspace projection", () => {
         mode: "freeform",
         sourceBinding: { provider: "browser-workspace", id: "deck" },
       });
-      expect(host.canvas.getState().grid.get("0,0")?.char).toBe("B");
+      expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("B");
     });
   });
 });

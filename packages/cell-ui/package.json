@@ -30,6 +30,7 @@
   "dependencies": {
     "@chardesk/cell-core": "^0.3.6",
     "@chardesk/fonts": "^0.3.6",
+    "@chardesk/keyboard": "*",
     "@chardesk/protocol": "^0.3.0",
     "@chardesk/rendering": "^0.1.0",
     "@codemirror/state": "^6.7.4",

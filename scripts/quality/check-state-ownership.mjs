@@ -20,13 +20,18 @@ const FORBIDDEN_PUBLIC_CANVAS_EXPORTS = new Set([
   "undoManager",
   "useEditorStore",
   "EditorState",
+  "createSurfaceGridProjection",
+  "getSurfaceGridReader",
+  "isSurfaceGridProjection",
 ]);
 const CONTENT_STATE_FIELDS = new Set([
   "grid",
+  "contentSurface",
   "structuredScene",
   "structuredComponents",
 ]);
 const CONTENT_STATE_WRITE_OWNERS = new Set([
+  "domains/canvas/state/browserPersistence.ts",
   "domains/canvas/state/canvasDocumentProjection.ts",
   "domains/canvas/state/editorStore.ts",
 ]);
@@ -130,6 +135,14 @@ for (const absolute of collect(SRC_ROOT)) {
           report(element, `low-level canvas export ${element.name.text}`);
         }
       }
+    }
+    if (
+      sourcePath === "domains/canvas/state/interfaces.ts" &&
+      ts.isPropertySignature(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "grid"
+    ) {
+      report(node, "Canvas state must expose contentSurface, never a live GridMap");
     }
     if (
       ts.isPropertyAssignment(node) &&

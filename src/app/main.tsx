@@ -9,7 +9,6 @@ import { getApplicationEditorHost } from "./compositionRoot";
 import { EditorProvider } from "@/domains/editor/public";
 import {
   CanvasRuntimeProvider,
-  getSurfaceGridReader,
 } from "@/domains/canvas/public";
 import { CollaborationRuntimeProvider } from "@/domains/collaboration/public";
 import { TextRenderingProvider } from "@/domains/document/public";
@@ -143,10 +142,12 @@ if (canvasStressParams.has("canvas-stress")) {
       },
       undo: () => host.canvas.commands.history.undo(),
       redo: () => host.canvas.commands.history.redo(),
-      gridEntries: () => Array.from(host.canvas.getState().grid),
+      gridEntries: () => Array.from(
+        host.canvas.getState().contentSurface.reader.materialize()
+      ),
       cellCount: () => host.canvas.queries.getActiveCellCount(),
       surfaceStats: () => {
-        const reader = getSurfaceGridReader(host.canvas.getState().grid);
+        const reader = host.canvas.getState().contentSurface.reader;
         return reader && "getStats" in reader && typeof reader.getStats === "function"
           ? reader.getStats()
           : null;

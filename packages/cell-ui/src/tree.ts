@@ -32,6 +32,12 @@ const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.focusVisible === right.focusVisible
   && left.hovered === right.hovered
   && left.selected === right.selected
+  && left.checked === right.checked
+  && left.sliderValue === right.sliderValue
+  && left.sliderMin === right.sliderMin
+  && left.sliderMax === right.sliderMax
+  && left.sliderStep === right.sliderStep
+  && left.sliderValueText === right.sliderValueText
   && left.expanded === right.expanded
   && left.hasChildren === right.hasChildren
   && left.level === right.level
@@ -83,6 +89,12 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       focusVisible: false,
       hovered: false,
       selected: current.selected,
+      checked: current.checked,
+      sliderValue: current.sliderValue,
+      sliderMin: current.sliderMin,
+      sliderMax: current.sliderMax,
+      sliderStep: current.sliderStep,
+      sliderValueText: current.sliderValueText,
       expanded: current.expanded,
       hasChildren: current.hasChildren,
       level: current.level,

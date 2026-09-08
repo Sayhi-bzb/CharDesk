@@ -1,5 +1,4 @@
-import type { GridMap } from "@/shared/types";
-import { GridManager } from "@/shared/utils/grid";
+import type { GridCellSource } from "@/shared/types";
 import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
 import type { GridAddress, GridBounds } from "./static-grid";
 
@@ -16,14 +15,18 @@ interface StaticGridInputStep {
   writeAt: GridAddress | null;
 }
 
-const getGridLineOriginX = (grid: GridMap, address: GridAddress) => {
-  let seedX: number | null = null;
-  for (const key of grid.keys()) {
-    const point = GridManager.fromKey(key);
-    if (point.y !== address.y || point.x > address.x) continue;
-    seedX = seedX === null ? point.x : Math.max(seedX, point.x);
-  }
-  if (seedX === null) return address.x;
+const getGridLineOriginX = (grid: GridCellSource, address: GridAddress) => {
+  const routed = grid.getLineOriginX?.(address);
+  if (routed !== undefined) return routed;
+  let seedX = address.x;
+  let foundSeed = false;
+  const bounds = grid.getContentBounds();
+  if (bounds) grid.visit(bounds, (x, y) => {
+    if (y !== address.y || x > address.x) return;
+    seedX = foundSeed ? Math.max(seedX, x) : x;
+    foundSeed = true;
+  });
+  if (!foundSeed) return address.x;
 
   let runStartX = seedX;
   while (true) {
@@ -40,7 +43,7 @@ const clampXToBounds = (x: number, bounds?: GridBounds | null) => {
 };
 
 export const createStaticGridInputFlow = (input: {
-  grid: GridMap;
+  grid: GridCellSource;
   address: GridAddress;
   bounds?: GridBounds | null;
   lineOriginX?: number;

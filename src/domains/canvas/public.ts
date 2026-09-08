@@ -10,6 +10,7 @@ export {
 export type { CanvasState } from "./state/interfaces";
 export type {
   CanvasColorPickerTarget,
+  CanvasContentSurfaceState,
   PendingCanvasCameraPlacement,
   CanvasViewportState,
   ClipboardCommandResult,
@@ -30,10 +31,7 @@ export {
   CellPlaneIndex,
   cellPlanePatchToOperation,
   gridEntriesToCellPlaneOperation,
-  getSurfaceGridReader,
   isIncrementalCanvasSurfaceReader,
-  isSurfaceGridProjection,
-  createSurfaceGridProjection,
 } from "./cell-plane/model";
 export type {
   CanvasSurfaceChanges,
@@ -47,6 +45,14 @@ export type {
   StyledCellSpan,
 } from "./cell-plane/model";
 export { createGridSurfaceReader } from "./cell-plane/model";
+export {
+  createStaticGridRangeMovePlan,
+  isPointInStaticGridRange,
+} from "./cell-plane/rangeMove";
+export type {
+  StaticGridRangeMoveMaskSpan,
+  StaticGridRangeMovePlan,
+} from "./cell-plane/rangeMove";
 export {
   materializeSlideDeckContent,
 } from "./state/slideDocumentPages";

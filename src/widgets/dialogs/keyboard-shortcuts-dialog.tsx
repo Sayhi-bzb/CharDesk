@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { formatShortcutLabel } from '@/domains/actions/public';
 import {
-  shortcutFromKeyboardEvent,
+  shortcutFromKeyInput,
   findShortcutConflicts,
   shortcutSequenceKey,
   shortcutsEqual,
@@ -283,21 +283,26 @@ export const KeyboardShortcutsPanel = forwardRef<
     id: 'shortcut-recorder',
     priority: SHORTCUT_PRIORITY.observer + 1,
     enabled: recording !== null,
-    onKeyDown: (event) => {
+    onKeyDown: (input) => {
       if (!recording) return undefined;
-      if (event.key === 'Tab' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+      if (
+        input.key === 'Tab'
+        && !input.modifiers.alt
+        && !input.modifiers.ctrl
+        && !input.modifiers.meta
+      ) {
         finishPendingRecording();
         return undefined;
       }
-      if (event.key === 'Escape') {
+      if (input.key === 'Escape') {
         stopRecording();
         return { claimed: true, preventDefault: true, stopImmediatePropagation: true };
       }
-      if (event.key === 'Enter') {
+      if (input.key === 'Enter') {
         finishPendingRecording();
         return { claimed: true, preventDefault: true, stopImmediatePropagation: true };
       }
-      const stroke = shortcutFromKeyboardEvent(event);
+      const stroke = shortcutFromKeyInput(input);
       if (stroke && recording.sequence.length < 2) {
         const current = recordingRef.current;
         if (current) {

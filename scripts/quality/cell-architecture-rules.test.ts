@@ -15,6 +15,17 @@ describe("Cell architecture rules", () => {
       "packages/cell-core/src/index.ts")[0]).toContain("DOM, or Canvas");
   });
 
+  it("keeps normalized keyboard facts independent from browser adapters", () => {
+    expect(messages(JSON.stringify({ dependencies: { react: "latest" } }),
+      "packages/keyboard/package.json")[0]).toContain("Keyboard Core");
+    expect(messages('import type { Cell } from "@chardesk/cell-core";',
+      "packages/keyboard/src/index.ts")[0]).toContain("product dependency");
+    expect(messages("export const event: KeyboardEvent = value;",
+      "packages/keyboard/src/index.ts")[0]).toContain("browser event globals");
+    expect(messages("export const adapt = (event: KeyboardEvent) => event;",
+      "packages/keyboard/src/browser.ts")).toEqual([]);
+  });
+
   it("keeps headless and Canvas adapters independent", () => {
     expect(messages('import type { X } from "@chardesk/rendering/canvas";',
       "packages/cell-ui/src/frame.ts")[0]).toContain("rendering root");

@@ -19,6 +19,10 @@ it("defaults to a blinking terminal block cursor", () => {
     blink: true,
     blinkIntervalMs: 600,
   });
+  expect(theme.rangeStyle).toEqual({
+    surface: "rgba(82, 155, 255, 0.32)",
+    border: "#529bff",
+  });
 });
 
 it("resolves selection and composition after base style without dropping unrelated attributes", () => {

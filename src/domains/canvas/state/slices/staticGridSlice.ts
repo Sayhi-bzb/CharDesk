@@ -19,21 +19,23 @@ import {
 } from "@/domains/selection/public";
 import { clampPointToActiveSlide, getActiveSlideGridBounds } from "../slideBounds";
 import { resolveGridAnchor, resolveGridSlot } from "@/shared/utils/grid-occupancy";
-import { getSurfaceGridLineOriginX } from "../../cell-plane/model";
 
 const resolveStaticGridAddress = (
   state: EditorState,
   address: { x: number; y: number }
-) => resolveGridAnchor(state.grid, clampPointToActiveSlide(state, address));
+) => resolveGridAnchor(
+  state.contentSurface.reader,
+  clampPointToActiveSlide(state, address)
+);
 
 const createInputFlow = (
   state: EditorState,
   address: { x: number; y: number }
 ) => createStaticGridInputFlow({
-  grid: state.grid,
+  grid: state.contentSurface.reader,
   address,
   bounds: getActiveSlideGridBounds(state),
-  lineOriginX: getSurfaceGridLineOriginX(state.grid, address),
+  lineOriginX: state.contentSurface.reader.getLineOriginX?.(address),
 });
 
 export const createStaticGridSlice: StateCreator<
@@ -97,7 +99,7 @@ export const createStaticGridSlice: StateCreator<
     const focusCell = options?.extend
       ? getGridSelectionExtent(current)
       : current.activeCell;
-    const currentSlot = resolveGridSlot(state.grid, focusCell);
+    const currentSlot = resolveGridSlot(state.contentSurface.reader, focusCell);
     const visualDx = dx > 0 && currentSlot ? dx + currentSlot.width - 1 : dx;
     const nextCell = resolveStaticGridAddress(
       state,
@@ -125,7 +127,7 @@ export const createStaticGridSlice: StateCreator<
     const state = get();
     const current = state.staticGridSelection;
     const bounds = getEffectiveGridBounds({
-      grid: state.grid,
+      grid: state.contentSurface.reader,
       activeCell: current.activeCell,
       ranges: getGridSelectionRanges(current),
       fixedBounds: getActiveSlideGridBounds(state),
@@ -162,7 +164,7 @@ export const createStaticGridSlice: StateCreator<
     const nextCell = resolveStaticGridAddress(
       state,
       moveGridAddressToContentBoundary({
-        grid: state.grid,
+        grid: state.contentSurface.reader,
         address: focusCell,
         edge,
         fixedBounds: getActiveSlideGridBounds(state),
@@ -183,12 +185,15 @@ export const createStaticGridSlice: StateCreator<
     const state = get();
     const current = state.staticGridSelection;
     const bounds = getEffectiveGridBounds({
-      grid: state.grid,
+      grid: state.contentSurface.reader,
       activeCell: current.activeCell,
       ranges: getGridSelectionRanges(current),
       fixedBounds: getActiveSlideGridBounds(state),
     });
-    const connected = getConnectedGridRange(state.grid, current.activeCell);
+    const connected = getConnectedGridRange(
+      state.contentSurface.reader,
+      current.activeCell
+    );
     const range =
       current.additionalRanges.length === 0 &&
       gridRangesEqual(current.primaryRange, connected)
@@ -207,7 +212,7 @@ export const createStaticGridSlice: StateCreator<
     const state = get();
     const current = state.staticGridSelection;
     const bounds = getEffectiveGridBounds({
-      grid: state.grid,
+      grid: state.contentSurface.reader,
       activeCell: current.activeCell,
       ranges: getGridSelectionRanges(current),
       fixedBounds: getActiveSlideGridBounds(state),
@@ -225,7 +230,7 @@ export const createStaticGridSlice: StateCreator<
     const state = get();
     const current = state.staticGridSelection;
     const bounds = getEffectiveGridBounds({
-      grid: state.grid,
+      grid: state.contentSurface.reader,
       activeCell: current.activeCell,
       ranges: getGridSelectionRanges(current),
       fixedBounds: getActiveSlideGridBounds(state),

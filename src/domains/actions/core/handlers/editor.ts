@@ -30,7 +30,6 @@ import {
 } from "@/domains/selection/public";
 import { hasClipboardSource } from "@/domains/actions/adapters/clipboardActions";
 import type { TextAttributes } from "@/shared/types";
-import { GridManager } from "@/shared/utils/grid";
 
 // Options types for each action
 type UndoRedoOptions = {
@@ -152,7 +151,10 @@ const canCopyOrCut = (state: CanvasState): boolean => {
     return hasStructuredTextSelection(state) || state.structuredScene.length > 0;
   }
   return hasClipboardSource(
-    getStaticGridSelectionAreas(state.staticGridSelection, state.grid),
+    getStaticGridSelectionAreas(
+      state.staticGridSelection,
+      state.contentSurface.reader
+    ),
     state.textCursor
   );
 };
@@ -183,11 +185,11 @@ const getSelectedTextAttributeValues = (
     getGridSelectionRanges(state.staticGridSelection),
     ({ y, minX, maxX }) => {
       for (let x = minX; x <= maxX; x++) {
-        const cell = state.grid.get(GridManager.toKey(x, y));
+        const cell = state.contentSurface.reader.get({ x, y });
         if (cell) values.push(cell.attrs?.[attribute] === true);
       }
     },
-    state.grid
+    state.contentSurface.reader
   );
   return values;
 };

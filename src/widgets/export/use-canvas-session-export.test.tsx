@@ -52,7 +52,7 @@ describe("useCanvasSessionExport", () => {
     const { result } = renderHook(() => useCanvasSessionExport(), {
       wrapper: ({ children }) => <CanvasFontProvider runtime={fonts}>{children}</CanvasFontProvider>,
     });
-    await act(() => fonts.select("ark-mono"));
+    await act(() => fonts.select("fusion-mono"));
     const profile = fonts.getSnapshot().profile;
     let complete!: () => void;
     vi.mocked(testingCanvasRuntime.materializeSession).mockReturnValueOnce(new Promise((resolve) => {

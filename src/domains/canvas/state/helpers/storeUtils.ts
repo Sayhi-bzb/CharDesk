@@ -7,7 +7,6 @@ import type {
   StructuredNode,
 } from '@/domains/structured-content/public';
 import { MIN_ZOOM, MAX_ZOOM } from '@/shared/lib/constants';
-import { serializeGrid } from './snapshotHelpers';
 import { normalizeSessionMode } from '@/domains/sessions/public';
 import {
   createSlideDeck,
@@ -15,6 +14,9 @@ import {
   updateSlideGrid,
   type SlideDeck,
 } from '@/domains/slides/public';
+
+const serializeContentSurface = (state: EditorState) =>
+  Array.from(state.contentSurface.reader.materialize());
 
 export const DEFAULT_SESSION_ID = 'canvas-1';
 export const DEFAULT_SESSION_NAME = 'Welcome';
@@ -60,7 +62,7 @@ export const buildSessionSnapshot = (state: EditorState) => {
       });
     return {
       mode: 'slide' as const,
-      slideDeck: updateSlideGrid(deck, deck.activeSlideId, serializeGrid(state.grid)),
+      slideDeck: updateSlideGrid(deck, deck.activeSlideId, serializeContentSurface(state)),
       viewport: { offset: { ...state.offset }, zoom: state.zoom },
     };
   }
@@ -78,7 +80,7 @@ export const buildSessionSnapshot = (state: EditorState) => {
     mode: 'freeform' as const,
     scene: [] as StructuredNode[],
     components: [] as StructuredComponentInstance[],
-    grid: serializeGrid(state.grid),
+    grid: serializeContentSurface(state),
     viewport: { offset: { ...state.offset }, zoom: state.zoom },
   };
 };

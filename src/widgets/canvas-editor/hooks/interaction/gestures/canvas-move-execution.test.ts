@@ -66,6 +66,19 @@ describe("canvas move execution", () => {
     expect(executor.setCursor).toHaveBeenCalledWith("text");
   });
 
+  it("shows grab for a movable static range", () => {
+    const executor = createExecutor();
+    executeCanvasMoveDecision(
+      {
+        type: "canvas-hover",
+        linkHit: null,
+        action: { type: "static-range-move-hover" },
+      },
+      executor
+    );
+    expect(executor.setCursor).toHaveBeenCalledWith("grab");
+  });
+
   it("executes structured shape hover", () => {
     const executor = createExecutor();
 
@@ -165,6 +178,7 @@ describe("canvas move execution", () => {
       linkHit,
       structuredSelectCursor: null,
       eraserHoverPoint: null,
+      staticRangeMoveHit: false,
     });
 
     expect(executor.updateColorPickerHover).toHaveBeenCalledWith({ x: 1, y: 2 });
@@ -183,6 +197,7 @@ describe("canvas move execution", () => {
       linkHit,
       structuredSelectCursor: "move",
       eraserHoverPoint: null,
+      staticRangeMoveHit: false,
     });
 
     expect(executor.updateLinkHover).toHaveBeenCalledWith(linkHit);
@@ -205,6 +220,7 @@ describe("canvas move execution", () => {
       tool: "select",
       clientPoint: { x: 20, y: 30 },
       resolveMoveContext,
+      staticRangeMoveHit: false,
     });
 
     expect(resolveMoveContext).toHaveBeenCalledWith({
@@ -220,6 +236,7 @@ describe("canvas move execution", () => {
       linkHit,
       structuredSelectCursor: "move",
       eraserHoverPoint: null,
+      staticRangeMoveHit: false,
     });
   });
 
@@ -239,6 +256,7 @@ describe("canvas move execution", () => {
       tool: "eraser",
       clientPoint: { x: 20, y: 30 },
       resolveMoveContext,
+      staticRangeMoveHit: false,
     });
 
     expect(resolveMoveContext).toHaveBeenCalledWith({

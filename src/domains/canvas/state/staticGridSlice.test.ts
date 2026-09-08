@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { applyFreeformSnapshotToYMaps, useEditorStore } from "@/domains/canvas/testing";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
+import {
+  applyFreeformSnapshotToYMaps,
+  undoCanvas,
+  useEditorStore,
+} from "@/domains/canvas/testing";
 import { createGridSelectionState, getGridSelectionRanges } from "@/domains/selection/public";
 
 const initialState = useEditorStore.getState();
@@ -9,7 +14,7 @@ const resetStore = () => {
     {
       ...initialState,
       canvasMode: "freeform",
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
       staticGridSelection: createGridSelectionState(),
       staticGridEditMode: "navigate",
@@ -36,6 +41,37 @@ describe("staticGridSlice", () => {
       additionalRanges: [],
     });
     expect(useEditorStore.getState().textCursor).toBeNull();
+  });
+
+  it("moves a selected range as one undoable cell-plane operation", () => {
+    applyFreeformSnapshotToYMaps([
+      ["0,0", { char: "A", color: "#fff" }],
+      ["1,0", { char: "B", color: "#fff" }],
+      ["2,0", { char: "X", color: "#f00" }],
+    ]);
+    useEditorStore.getState().setStaticGridSelectionRange({
+      start: { x: 0, y: 0 },
+      end: { x: 1, y: 0 },
+    });
+
+    expect(
+      useEditorStore.getState().moveStaticGridSelection({ x: 2, y: 0 })
+    ).toBe(true);
+    const moved = useEditorStore.getState().contentSurface.reader;
+    expect(moved.get({ x: 0, y: 0 })).toBeUndefined();
+    expect(moved.get({ x: 2, y: 0 })?.char).toBe("A");
+    expect(moved.get({ x: 3, y: 0 })?.char).toBe("B");
+    expect(useEditorStore.getState().staticGridSelection.primaryRange).toEqual({
+      start: { x: 2, y: 0 },
+      end: { x: 3, y: 0 },
+    });
+
+    undoCanvas();
+    const restored = useEditorStore.getState().contentSurface.reader;
+    expect(restored.get({ x: 0, y: 0 })?.char).toBe("A");
+    expect(restored.get({ x: 1, y: 0 })?.char).toBe("B");
+    expect(restored.get({ x: 2, y: 0 })?.char).toBe("X");
+    expect(restored.get({ x: 3, y: 0 })).toBeUndefined();
   });
 
   it("anchors either half of a wide cell and moves across it atomically", () => {

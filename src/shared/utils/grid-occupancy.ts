@@ -1,9 +1,15 @@
 import { getCellOccupancy } from "@/shared/metrics";
-import type { GridCell, Point } from "@/shared/types";
+import type { GridCell, GridCellSource, Point } from "@/shared/types";
 
-type GridReader = {
+type GridReader = Pick<GridCellSource, "get">;
+
+type KeyedGridReader = {
   get(key: string): GridCell | undefined;
 };
+
+export const createPointGridReader = (grid: KeyedGridReader): GridReader => ({
+  get: ({ x, y }) => grid.get(`${x},${y}`),
+});
 
 interface OccupiedGridSlot {
   anchor: Point;
@@ -20,8 +26,6 @@ interface GridFootprint {
   end: Point;
 }
 
-const keyOf = (x: number, y: number) => `${x},${y}`;
-
 export const getGridCellWidth = (cell: GridCell): 1 | 2 =>
   getCellOccupancy(cell.char) === 2 ? 2 : 1;
 
@@ -30,7 +34,7 @@ export const resolveGridSlot = (
   grid: GridReader,
   point: Point
 ): OccupiedGridSlot | null => {
-  const direct = grid.get(keyOf(point.x, point.y));
+  const direct = grid.get(point);
   if (direct) {
     return {
       anchor: { ...point },
@@ -40,7 +44,7 @@ export const resolveGridSlot = (
     };
   }
 
-  const left = grid.get(keyOf(point.x - 1, point.y));
+  const left = grid.get({ x: point.x - 1, y: point.y });
   if (left && getGridCellWidth(left) === 2) {
     return {
       anchor: { x: point.x - 1, y: point.y },
@@ -78,11 +82,11 @@ export const getIntersectingGridAnchors = (
 ): Point[] => {
   const anchors = new Map<string, Point>();
   for (let x = start.x; x < start.x + width; x++) {
-    const direct = grid.get(keyOf(x, start.y));
-    if (direct) anchors.set(keyOf(x, start.y), { x, y: start.y });
-    const left = grid.get(keyOf(x - 1, start.y));
+    const direct = grid.get({ x, y: start.y });
+    if (direct) anchors.set(`${x},${start.y}`, { x, y: start.y });
+    const left = grid.get({ x: x - 1, y: start.y });
     if (left && getGridCellWidth(left) === 2) {
-      anchors.set(keyOf(x - 1, start.y), { x: x - 1, y: start.y });
+      anchors.set(`${x - 1},${start.y}`, { x: x - 1, y: start.y });
     }
   }
   return [...anchors.values()];

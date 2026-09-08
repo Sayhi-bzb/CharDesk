@@ -241,12 +241,12 @@ describe("editorHandlers text formatting", () => {
 
     expect(editorCheckers["format-bold"]?.(useEditorStore.getState())).toBe(true);
     expect(editorHandlers["format-bold"]({}, context()).status).toBe("succeeded");
-    expect(useEditorStore.getState().grid.get("0,0")?.attrs?.bold).toBe(true);
-    expect(useEditorStore.getState().grid.get("1,0")?.attrs?.bold).toBe(true);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.attrs?.bold).toBe(true);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.attrs?.bold).toBe(true);
 
     editorHandlers["format-bold"]({}, context());
-    expect(useEditorStore.getState().grid.get("0,0")?.attrs?.bold).toBeUndefined();
-    expect(useEditorStore.getState().grid.get("1,0")?.attrs?.bold).toBeUndefined();
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.attrs?.bold).toBeUndefined();
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.attrs?.bold).toBeUndefined();
   });
 
   it("routes structured text formatting through the selected text range", () => {

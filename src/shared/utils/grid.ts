@@ -1,4 +1,4 @@
-import type { Point, GridMap } from "@/shared/types";
+import type { GridCell, GridCellSource, Point } from "@/shared/types";
 import {
   getCellOccupancy,
   gridToScreen,
@@ -43,14 +43,12 @@ export const GridManager = {
     return { x, y };
   },
 
-  iterate<T>(
-    container: { forEach: (cb: (value: T, key: string) => void) => void },
-    callback: (value: T, x: number, y: number) => void
+  iterate(
+    source: GridCellSource,
+    callback: (value: GridCell, x: number, y: number) => void
   ): void {
-    container.forEach((value, key) => {
-      const { x, y } = this.fromKey(key);
-      callback(value, x, y);
-    });
+    const bounds = source.getContentBounds();
+    if (bounds) source.visit(bounds, (x, y, value) => callback(value, x, y));
   },
 
   getCharWidth(char: string): number {
@@ -61,27 +59,20 @@ export const GridManager = {
     return this.getCharWidth(char) === 2;
   },
 
-  snapToCharStart(pos: Point, grid: GridMap): Point {
+  snapToCharStart(pos: Point, grid: Pick<GridCellSource, "get">): Point {
     return resolveGridAnchor(grid, pos);
   },
 
-  getGridBounds(grid: GridMap) {
-    if (grid.size === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-
-    let minX = Infinity,
-      maxX = -Infinity,
-      minY = Infinity,
-      maxY = -Infinity;
-
-    this.iterate(grid, (cell, x, y) => {
-      const width = this.getCharWidth(cell.char);
-      minX = Math.min(minX, x);
-      maxX = Math.max(maxX, x + width - 1);
-      minY = Math.min(minY, y);
-      maxY = Math.max(maxY, y);
-    });
-
-    return { minX, maxX, minY, maxY };
+  getGridBounds(source: GridCellSource) {
+    const bounds = source.getContentBounds();
+    return bounds
+      ? {
+          minX: bounds.x,
+          maxX: bounds.x + bounds.width - 1,
+          minY: bounds.y,
+          maxY: bounds.y + bounds.height - 1,
+        }
+      : { minX: 0, maxX: 0, minY: 0, maxY: 0 };
   },
 
   getViewportGridBounds(

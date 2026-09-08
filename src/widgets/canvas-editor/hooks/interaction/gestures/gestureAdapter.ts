@@ -64,6 +64,7 @@ export const useCanvasGestureAdapter = ({
   canvasClickRouteHandler,
   canvasWheelRouteHandler,
   capabilities,
+  canStartStaticRangeMove,
 }: {
   cancelInteraction: () => void;
   stopEdgeScroll: () => void;
@@ -88,6 +89,7 @@ export const useCanvasGestureAdapter = ({
   canvasClickRouteHandler: CanvasClickRouteHandler;
   canvasWheelRouteHandler: CanvasWheelRouteHandler;
   capabilities: CanvasEditorCapabilities;
+  canStartStaticRangeMove: (point: { x: number; y: number }) => boolean;
 }) => {
   const pinchStartRef = useRef<CanvasPinchStart | null>(null);
 
@@ -133,6 +135,10 @@ export const useCanvasGestureAdapter = ({
           canvasMode,
           tool,
           clientPoint: { x, y },
+          staticRangeMoveHit: (() => {
+            const point = pointerContext.resolveGridPoint(x, y);
+            return !!point && canStartStaticRangeMove(point);
+          })(),
           resolveMoveContext: ({
             clientPoint,
             shouldResolveStructuredSelectCursor,

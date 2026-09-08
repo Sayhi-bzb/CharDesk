@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GridMap } from "@/shared/types";
+import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import { GridManager } from "@/shared/utils/grid";
 import {
   cameraCenterToOffset,
@@ -23,7 +23,7 @@ const VIEWPORT_SIZE = { width: 1000, height: 700 };
 
 describe("minimap geometry", () => {
   it("computes visible world bounds with wide characters and backgrounds", () => {
-    const grid: GridMap = new Map([
+    const grid = new GridSnapshotSource([
       [GridManager.toKey(-2, 1), cell("你")],
       [GridManager.toKey(4, 3), cell(" ", "#222222")],
       [GridManager.toKey(100, 100), cell(" ")],
@@ -38,12 +38,12 @@ describe("minimap geometry", () => {
   });
 
   it("fits the union of content and viewport into a stable frame", () => {
-    const grid: GridMap = new Map([
+    const grid = new GridSnapshotSource([
       [GridManager.toKey(0, 0), cell("A")],
       [GridManager.toKey(9, 9), cell("B")],
     ]);
     const transform = computeMinimapTransform({
-      grid,
+      source: grid,
       offset: { x: -1800, y: -1900 },
       zoom: 1,
       viewportSize: VIEWPORT_SIZE,
@@ -68,11 +68,11 @@ describe("minimap geometry", () => {
   });
 
   it("keeps the full viewport indicator inside the drawable frame", () => {
-    const grid: GridMap = new Map([
+    const grid = new GridSnapshotSource([
       [GridManager.toKey(0, 0), cell("A")],
     ]);
     const transform = computeMinimapTransform({
-      grid,
+      source: grid,
       offset: { x: -5000, y: 3500 },
       zoom: 1,
       viewportSize: VIEWPORT_SIZE,
@@ -93,7 +93,7 @@ describe("minimap geometry", () => {
 
   it("round-trips points between world and minimap coordinates", () => {
     const transform = computeMinimapTransform({
-      grid: new Map([[GridManager.toKey(3, 4), cell("A")]]),
+      source: new GridSnapshotSource([[GridManager.toKey(3, 4), cell("A")]]),
       offset: { x: -100, y: -200 },
       zoom: 2,
       viewportSize: VIEWPORT_SIZE,
@@ -139,7 +139,7 @@ describe("minimap geometry", () => {
 
   it("uses the viewport as the world bounds when content is empty", () => {
     const transform = computeMinimapTransform({
-      grid: new Map(),
+      source: new GridSnapshotSource(),
       offset: { x: -100, y: -200 },
       zoom: 1,
       viewportSize: VIEWPORT_SIZE,

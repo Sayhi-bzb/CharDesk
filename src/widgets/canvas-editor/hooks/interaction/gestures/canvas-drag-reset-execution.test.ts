@@ -19,6 +19,9 @@ const createExecutor = (calls: string[]): DragResetExecutor => ({
     calls.push("clearStructuredMovePreview")
   ),
   clearSelectionPreview: vi.fn(() => calls.push("clearSelectionPreview")),
+  clearStaticRangeMovePreview: vi.fn(() =>
+    calls.push("clearStaticRangeMovePreview")
+  ),
 });
 
 const createStructuredPreviewQueue = (
@@ -53,6 +56,7 @@ describe("drag reset execution", () => {
       "clearStructuredSplitBoxResizeQueueLast",
       "clearStructuredMovePreview",
       "clearSelectionPreview",
+      "clearStaticRangeMovePreview",
     ]);
   });
 
@@ -63,12 +67,16 @@ describe("drag reset execution", () => {
     const clearStructuredMovePreview = vi.fn(() =>
       calls.push("clearStructuredMovePreview")
     );
+    const clearStaticRangeMovePreview = vi.fn(() =>
+      calls.push("clearStaticRangeMovePreview")
+    );
 
     createDragResetController({
       clearScratch: () => calls.push("clearScratch"),
       structuredPreviewQueue,
       clearStructuredMovePreview,
       selectionPreview,
+      clearStaticRangeMovePreview,
     }).reset();
 
     expect(calls).toEqual([
@@ -77,6 +85,7 @@ describe("drag reset execution", () => {
       "clearLastSplitBoxResize",
       "clearStructuredMovePreview",
       "clearSelectionPreview",
+      "clearStaticRangeMovePreview",
     ]);
     expect(selectionPreview.set).toHaveBeenCalledWith(null, {
       immediate: true,

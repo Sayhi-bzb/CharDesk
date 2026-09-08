@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { selectGalleryFont } from "./helpers/gallery-font-select";
 
 const CSP = [
   "default-src 'self'",
@@ -60,11 +61,11 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
   await expect(page.locator("canvas")).toHaveCount(1);
   await expect(page.locator("canvas")).toHaveAttribute("data-cell-text", /Unicode: 世界 👋/);
   const gallery = page.locator(".gallery-page");
-  await page.getByRole("button", { name: "Use Ark Pixel 12px Mono" }).click();
-  await expect(gallery).toHaveAttribute("data-gallery-font", "ark-mono");
+  await selectGalleryFont(page, "Fusion Pixel 12px Mono");
+  await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
   expect(externalRequests).toEqual([]);
-  await page.getByRole("button", { name: "Use Xiaolai Mono" }).click();
+  await selectGalleryFont(page, "Xiaolai Mono");
   await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
   await expect(gallery).toHaveAttribute("data-gallery-font", "xiaolai-mono");
   expect(externalRequests).toEqual([]);

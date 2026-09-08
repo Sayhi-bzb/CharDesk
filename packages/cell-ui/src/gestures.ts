@@ -11,6 +11,11 @@ type ScrollDragAnchor = Readonly<{
   thumbLength: number;
 }>;
 
+type SliderDragAnchor = Readonly<{
+  trackStart: number;
+  trackLength: number;
+}>;
+
 export type GestureKind = "tap" | "drag" | "scroll";
 export type GestureAxis = "x" | "y" | "both";
 export type GesturePhase = "start" | "update" | "end" | "cancel";
@@ -21,6 +26,7 @@ export type GestureCandidate = Readonly<{
   axis?: GestureAxis;
   part?: CellHitPart;
   scrollbar?: ScrollDragAnchor;
+  slider?: SliderDragAnchor;
 }>;
 
 export type GestureSignal = Readonly<{
@@ -32,6 +38,7 @@ export type GestureSignal = Readonly<{
   delta: CellPoint;
   part?: CellHitPart;
   scrollbar?: ScrollDragAnchor;
+  slider?: SliderDragAnchor;
   precisePoint?: CellPoint;
   totalDelta?: CellPoint;
 }>;
@@ -64,11 +71,12 @@ const signal = (
   point,
   delta: movement,
   part: candidate.part,
+  precisePoint,
   ...(candidate.scrollbar ? {
     scrollbar: candidate.scrollbar,
-    precisePoint,
     totalDelta: delta(candidate.scrollbar.point, precisePoint),
   } : {}),
+  ...(candidate.slider ? { slider: candidate.slider } : {}),
 });
 
 const acceptsAxis = (candidate: GestureCandidate, axis: "x" | "y") => {
@@ -116,16 +124,21 @@ export class GestureManager {
 
     const total = delta(arena.start, point);
     const preciseTotal = delta(arena.preciseStart, precisePoint);
-    const thumb = arena.candidates.find((candidate) => candidate.kind === "drag" && candidate.scrollbar);
-    if (thumb && Math.abs(thumb.axis === "x" ? preciseTotal.x : preciseTotal.y) >= 0.5) {
-      arena.winner = thumb;
+    const preciseDrag = arena.candidates.find(
+      (candidate) => candidate.kind === "drag" && (candidate.scrollbar || candidate.slider)
+    );
+    if (preciseDrag && Math.abs(preciseDrag.axis === "x" ? preciseTotal.x : preciseTotal.y) >= 0.5) {
+      arena.winner = preciseDrag;
       return [
-        ...arena.candidates.filter((candidate) => candidate !== thumb)
+        ...arena.candidates.filter((candidate) => candidate !== preciseDrag)
           .map((candidate) => signal(pointerId, candidate, "cancel", point, total, precisePoint)),
-        signal(pointerId, thumb, "start", point, total, precisePoint),
+        signal(pointerId, preciseDrag, "start", point, total, precisePoint),
       ];
     }
-    if (thumb && Math.abs(thumb.axis === "x" ? preciseTotal.y : preciseTotal.x) < this.#threshold) return [];
+    if (
+      preciseDrag
+      && Math.abs(preciseDrag.axis === "x" ? preciseTotal.y : preciseTotal.x) < this.#threshold
+    ) return [];
     if (Math.max(Math.abs(total.x), Math.abs(total.y)) < this.#threshold) return [];
     const axis = Math.abs(total.x) > Math.abs(total.y) ? "x" : "y";
     const winner = arena.candidates.find(

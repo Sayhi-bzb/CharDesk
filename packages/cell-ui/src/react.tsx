@@ -6,12 +6,14 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  CellCheckboxState,
   CellLayoutStyle,
   CellPoint,
   CellTextStyle,
   WidgetKind,
 } from "./types.js";
 import type { CellTextSnapshot } from "./text.js";
+import { normalizeCellSliderValue, resolveCellSliderRange } from "./slider.js";
 
 type CommonProps = Readonly<{
   id?: string;
@@ -38,6 +40,41 @@ export type ButtonProps = CommonProps & Readonly<{
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
+}>;
+export type CheckboxProps = CommonProps & Readonly<{
+  checked?: CellCheckboxState;
+  focused?: boolean;
+  style?: CellLayoutStyle;
+  textStyle?: CellTextStyle;
+}>;
+export type SliderProps = Omit<CommonProps, "children"> & Readonly<{
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  valueText?: string;
+  focused?: boolean;
+  style?: CellLayoutStyle;
+  textStyle?: CellTextStyle;
+}>;
+export type SelectProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
+export type SelectTriggerProps = CommonProps & Readonly<{
+  focused?: boolean;
+  expanded?: boolean;
+  controlsId?: string;
+  style?: CellLayoutStyle;
+  textStyle?: CellTextStyle;
+}>;
+export type SelectContentProps = CommonProps & Readonly<{
+  style?: CellLayoutStyle;
+  textStyle?: CellTextStyle;
+}>;
+export type SelectItemProps = CommonProps & Readonly<{
+  focused?: boolean;
+  selected?: boolean;
+  positionInSet?: number;
+  setSize?: number;
+  style?: CellLayoutStyle;
 }>;
 export type ListProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
 export type ListItemProps = CommonProps & Readonly<{
@@ -104,6 +141,12 @@ type PrimitiveProps =
   | OverlayProps
   | TextProps
   | ButtonProps
+  | CheckboxProps
+  | SliderProps
+  | SelectProps
+  | SelectTriggerProps
+  | SelectContentProps
+  | SelectItemProps
   | ListProps
   | ListItemProps
   | MenuProps
@@ -141,6 +184,12 @@ export const Box = primitive<BoxProps>("box");
 export const Overlay = primitive<OverlayProps>("overlay");
 export const Text = primitive<TextProps>("text");
 export const Button = primitive<ButtonProps>("button");
+export const Checkbox = primitive<CheckboxProps>("checkbox");
+export const Slider = primitive<SliderProps>("slider");
+export const Select = primitive<SelectProps>("select");
+export const SelectTrigger = primitive<SelectTriggerProps>("select-trigger");
+export const SelectContent = primitive<SelectContentProps>("select-content");
+export const SelectItem = primitive<SelectItemProps>("select-item");
 export const List = primitive<ListProps>("list");
 export const ListItem = primitive<ListItemProps>("list-item");
 export const Menu = primitive<MenuProps>("menu");
@@ -168,6 +217,12 @@ export type WidgetDescriptor = Readonly<{
   disabled: boolean;
   focused: boolean;
   selected: boolean;
+  checked: CellCheckboxState;
+  sliderValue: number;
+  sliderMin: number;
+  sliderMax: number;
+  sliderStep: number;
+  sliderValueText: string | null;
   expanded: boolean;
   hasChildren: boolean;
   level: number | null;
@@ -237,6 +292,11 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
   }
 
   const position = props.position as CellPoint | undefined;
+  const sliderRange = resolveCellSliderRange(
+    typeof props.min === "number" ? props.min : undefined,
+    typeof props.max === "number" ? props.max : undefined,
+    typeof props.step === "number" ? props.step : undefined
+  );
   if (
     kind === "overlay"
     && (!position || !Number.isInteger(position.x) || !Number.isInteger(position.y))
@@ -255,6 +315,15 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
     disabled: props.disabled === true,
     focused: props.focused === true,
     selected: props.selected === true,
+    checked: props.checked === "indeterminate" ? "indeterminate" : props.checked === true,
+    sliderValue: normalizeCellSliderValue(
+      typeof props.value === "number" ? props.value : sliderRange.min,
+      sliderRange
+    ),
+    sliderMin: sliderRange.min,
+    sliderMax: sliderRange.max,
+    sliderStep: sliderRange.step,
+    sliderValueText: typeof props.valueText === "string" ? props.valueText : null,
     expanded: props.expanded === true,
     hasChildren: props.hasChildren === true,
     level: Number.isInteger(props.level) ? props.level as number : null,

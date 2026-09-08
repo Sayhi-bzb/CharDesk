@@ -37,7 +37,8 @@ export type CellProbeRequestedFontFace = Readonly<{
   fontSize: number;
   scaleX: number;
   baselineShiftEm: number;
-  weightPolicy: "inherit" | "regular";
+  boldStrategy: "native" | "overdraw" | "none";
+  boldOverdrawEm?: number;
 }>;
 
 export type CellProbeGlyphOverflow = Readonly<{
@@ -178,7 +179,10 @@ export const formatCellProbe = (
   const formatFace = (capability: "display" | "cjk" | "cell-glyph") => {
     const face = presentation.requestedFontRoutes[capability];
     if (!face) return `glyph ${capability}=cell-graphics version=${presentation.cellGraphics?.version ?? "unknown"}`;
-    return `font ${capability}=${face.family} size=${face.fontSize}px scaleX=${face.scaleX}`;
+    const overdraw = face.boldStrategy === "overdraw" && face.boldOverdrawEm && face.boldOverdrawEm > 0
+      ? ` bold-overdraw=${Number((face.boldOverdrawEm * face.fontSize).toFixed(4))}px`
+      : "";
+    return `font ${capability}=${face.family} size=${face.fontSize}px scaleX=${face.scaleX} bold-strategy=${face.boldStrategy}${overdraw}`;
   };
   const diagnostics = [
     `font-profile=${presentation.fontProfileId} cell=${presentation.metrics.cellWidth}×${presentation.metrics.cellHeight} base=${presentation.metrics.fontSize}px`,

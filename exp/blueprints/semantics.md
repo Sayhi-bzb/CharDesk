@@ -25,7 +25,7 @@ DOM / AT action → EngineInput.semantic → WidgetCommand → next snapshot
 - keyboard、pointer 与 AT action 归一为同一 command；一次动作只产生一次 state transition。
 - modal scope 隐藏并拒绝下层 actions；关闭后恢复原逻辑 focus。
 - Semantic DOM 按 Widget/Item 创建，不按 Cell 创建。虚拟集合只投影有界窗口和 focused item，并保留逻辑 position/total。
-- Tree、Tabs、Grid、List 与 textbox 的 state/relations 来自同一次 Widget commit。
+- Tree、Tabs、Grid、List、Slider 与 textbox 的 state/relations 来自同一次 Widget commit。
 - Snapshot 在 layout/geometry 确定后提交；DOM adapter 不读取中途 Host Tree。
 
 ## 证据

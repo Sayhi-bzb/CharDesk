@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import * as Y from "yjs";
 import type { StructuredNode } from "@/domains/structured-content/public";
 import { defaultCanvasDocuments, useEditorStore } from "@/domains/canvas/testing";
 import {
-  getSurfaceGridReader,
   gridEntriesToCellPlaneOperation,
   isIncrementalCanvasSurfaceReader,
   type CellPlaneOperation,
@@ -26,7 +26,7 @@ describe("remote canvas document projection", () => {
     defaultCanvasDocuments.activateDocument(
       initialState.activeCanvasId,
       {
-        grid: Array.from(initialState.grid.entries()),
+        grid: Array.from(initialState.contentSurface.reader.materialize()),
         scene: initialState.structuredScene,
         components: initialState.structuredComponents,
       },
@@ -39,7 +39,7 @@ describe("remote canvas document projection", () => {
     useEditorStore.setState({
       activeCanvasId: sessionId,
       canvasMode: "freeform",
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       canvasSessions: [
         {
           id: sessionId,
@@ -71,7 +71,7 @@ describe("remote canvas document projection", () => {
     Y.applyUpdate(local, Y.encodeStateAsUpdate(remote));
     defaultCanvasDocuments.mutateGrid((grid) => grid.set("2,0", cell("L")));
 
-    expect(Object.fromEntries(useEditorStore.getState().grid)).toEqual({
+    expect(Object.fromEntries(useEditorStore.getState().contentSurface.reader.materialize())).toEqual({
       "0,0": cell("R"),
       "1,0": cell("S"),
       "2,0": cell("L"),
@@ -85,7 +85,7 @@ describe("remote canvas document projection", () => {
       canvasMode: "structured",
       structuredScene: [],
       structuredComponents: [],
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       canvasSessions: [
         {
           id: sessionId,
@@ -109,7 +109,7 @@ describe("remote canvas document projection", () => {
     const state = useEditorStore.getState();
     expect(projectionCount).toBe(1);
     expect(state.structuredScene).toEqual([textNode("local-text", "Local")]);
-    expect(state.grid.get("2,3")?.char).toBe("L");
+    expect(state.contentSurface.reader.materialize().get("2,3")?.char).toBe("L");
     expect(state.canvasSessions[0].scene).toEqual([]);
   });
 
@@ -120,7 +120,7 @@ describe("remote canvas document projection", () => {
       canvasMode: "structured",
       structuredScene: [],
       structuredComponents: [],
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       canvasSessions: [
         {
           id: sessionId,
@@ -144,8 +144,7 @@ describe("remote canvas document projection", () => {
         order: index,
       }))
     );
-    const projectedGrid = useEditorStore.getState().grid;
-    const projectedReader = getSurfaceGridReader(projectedGrid)!;
+    const projectedReader = useEditorStore.getState().contentSurface.reader;
     const projectedRevision = isIncrementalCanvasSurfaceReader(projectedReader)
       ? projectedReader.getRevision()
       : -1;
@@ -166,7 +165,7 @@ describe("remote canvas document projection", () => {
     defaultCanvasDocuments.yStructuredScene.unobserve(observer);
 
     expect(changedKeys).toEqual(new Set(["node-500"]));
-    expect(useEditorStore.getState().grid).toBe(projectedGrid);
+    expect(useEditorStore.getState().contentSurface.reader).toBe(projectedReader);
     expect(
       isIncrementalCanvasSurfaceReader(projectedReader) &&
         projectedReader.getRevision()
@@ -183,7 +182,7 @@ describe("remote canvas document projection", () => {
       canvasMode: "structured",
       structuredScene: [],
       structuredComponents: [],
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       canvasSessions: [
         {
           id: sessionId,
@@ -219,7 +218,7 @@ describe("remote canvas document projection", () => {
     const state = useEditorStore.getState();
     expect(projectionCount).toBe(1);
     expect(state.structuredScene).toEqual([textNode("remote-text", "Remote")]);
-    expect(state.grid.get("2,3")?.char).toBe("R");
+    expect(state.contentSurface.reader.materialize().get("2,3")?.char).toBe("R");
     expect(state.canvasSessions[0].scene).toEqual([]);
   });
 });

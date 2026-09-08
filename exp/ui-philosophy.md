@@ -7,7 +7,7 @@
 3. **Every Cell has an Owner**：最终可见 Cell 属于 Widget 或 chrome；renderer 不创建 DOM-per-cell。
 4. **Every Input becomes a Command**：keyboard、pointer、wheel、textarea 与 AT action 汇入 Engine command。
 5. **State lives in the Grid**：focused、selected、expanded、disabled 和 editing 在 Cell Scene 中可见。
-6. **Keyboard is Complete; Pointer is Direct**：键盘不依赖 hover/drag；pointer down 定位，完整 tap 才执行。
+6. **Keyboard is Complete; Pointer is Direct**：共享 `KeyInput` 保留 phase、逻辑 key、物理 code、location、modifiers、repeat 与 composition；Widget command 不依赖 hover/drag，pointer down 定位，完整 tap 才执行。Host 拥有快捷键 scope、chord 与用户 keymap，Cell UI 只解释 Widget 行为。
 7. **One State, Many Projections**：Canvas、Semantic DOM、clipboard 与 tests 消费同一次 Widget commit。
 
 ## 当前状态语言

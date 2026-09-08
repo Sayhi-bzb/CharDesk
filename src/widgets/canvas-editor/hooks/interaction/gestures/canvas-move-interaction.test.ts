@@ -17,6 +17,7 @@ const baseInput = {
   linkHit,
   structuredSelectCursor: null,
   eraserHoverPoint: null,
+  staticRangeMoveHit: false,
 };
 
 describe("canvas move interaction decisions", () => {
@@ -46,6 +47,19 @@ describe("canvas move interaction decisions", () => {
       type: "canvas-hover",
       linkHit: null,
       action: { type: "pan-hover" },
+    });
+  });
+
+  it("routes a selected static range to a grab cursor", () => {
+    expect(
+      resolveCanvasMoveDecision({
+        ...baseInput,
+        staticRangeMoveHit: true,
+      })
+    ).toEqual({
+      type: "canvas-hover",
+      linkHit: null,
+      action: { type: "static-range-move-hover" },
     });
   });
 
@@ -93,4 +107,3 @@ describe("canvas move interaction decisions", () => {
   });
 
 });
-

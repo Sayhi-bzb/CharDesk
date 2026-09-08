@@ -1,4 +1,4 @@
-import type { GridMap, Point } from "@/shared/types";
+import type { GridCellSource, Point } from "@/shared/types";
 import type { StructuredNode } from "@/domains/structured-content/public";
 import { resolveCanvasLinkHit, type CanvasLinkHit } from "./linkHitTesting";
 import {
@@ -40,12 +40,12 @@ export type CanvasPointerContextResolver = {
 export const createCanvasPointerContextResolver = ({
   getRect,
   getViewport,
-  getGrid,
+  getContentSource,
   getGridBounds,
 }: {
   getRect: () => CanvasRect | null | undefined;
   getViewport: () => CanvasViewport;
-  getGrid: () => GridMap;
+  getContentSource: () => GridCellSource;
   getGridBounds?: () => { columns: number; rows: number } | null;
 }): CanvasPointerContextResolver => {
   const hasCanvasRect = () => !!getRect();
@@ -64,7 +64,7 @@ export const createCanvasPointerContextResolver = ({
       clientY,
       rect,
       viewport: getViewport(),
-      grid: getGrid(),
+      source: getContentSource(),
     });
   };
 
@@ -98,7 +98,7 @@ export const createCanvasPointerContextResolver = ({
       rect,
       offset: viewport.offset,
       zoom: viewport.zoom,
-      grid: getGrid(),
+      source: getContentSource(),
     });
   };
 
@@ -169,6 +169,5 @@ export const createCanvasPointerContextResolver = ({
     resolveMoveContext,
   };
 };
-
 
 

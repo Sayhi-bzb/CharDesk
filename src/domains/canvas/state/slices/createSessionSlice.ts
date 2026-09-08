@@ -28,7 +28,7 @@ import {
   sameCollaborationRoom,
 } from "@/domains/collaboration/public";
 import { createSessionActivationPatch } from "../transitions/editorTransitions";
-import { rebuildGridFromContent } from "../helpers/gridHelpers";
+import { rebuildContentSurface } from "../helpers/gridHelpers";
 import type { CanvasDocumentResidency } from "../documentResidencyPort";
 import { createGridSurfaceReader } from "../../cell-plane/model";
 
@@ -267,7 +267,7 @@ export const createSessionSlice = (
         runtime,
         runtime.nextMode === "structured"
           ? undefined
-          : rebuildGridFromContent(documents)
+          : rebuildContentSurface(documents).reader
       )
     );
     residency?.touch(newSession.id);
@@ -307,7 +307,7 @@ export const createSessionSlice = (
       nextSessions,
       newSession.id,
       runtime,
-      rebuildGridFromContent(documents),
+      rebuildContentSurface(documents).reader,
     ));
     residency?.touch(newSession.id);
   },
@@ -339,7 +339,7 @@ export const createSessionSlice = (
         runtime,
         runtime.nextMode === "structured"
           ? undefined
-          : rebuildGridFromContent(documents)
+          : rebuildContentSurface(documents).reader
       ),
       pendingCameraPlacement:
         importedSnapshot.mode === "slide"
@@ -452,7 +452,7 @@ export const createSessionSlice = (
       runtime,
       runtime.nextMode === "structured"
         ? undefined
-        : rebuildGridFromContent(documents)
+        : rebuildContentSurface(documents).reader
     ));
   },
   applySourceProjection: (sessionId, snapshot, options) => {
@@ -529,7 +529,7 @@ export const createSessionSlice = (
         nextSessions,
         sessionId,
         runtime,
-        rebuildGridFromContent(documents),
+        rebuildContentSurface(documents).reader,
       ));
       return;
     }
@@ -563,7 +563,7 @@ export const createSessionSlice = (
       nextSessions,
       sessionId,
       resolveSessionRuntime(replacement, state.tool),
-      rebuildGridFromContent(documents),
+      rebuildContentSurface(documents).reader,
     ));
   },
   switchCanvasSession: async (canvasId) => {
@@ -591,7 +591,7 @@ export const createSessionSlice = (
         runtime,
         runtime.nextMode === "structured"
           ? undefined
-          : rebuildGridFromContent(documents)
+          : rebuildContentSurface(documents).reader
       )
     );
     residency?.touch(canvasId);
@@ -632,7 +632,7 @@ export const createSessionSlice = (
         runtime,
         runtime.nextMode === "structured"
           ? undefined
-          : rebuildGridFromContent(documents)
+          : rebuildContentSurface(documents).reader
       )
     );
 

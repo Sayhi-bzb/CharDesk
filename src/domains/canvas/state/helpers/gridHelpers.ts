@@ -1,10 +1,8 @@
 import type { CanvasDocumentRegistry } from "../CanvasDocumentRegistry";
-import {
-  createSurfaceGridProjection,
-  getSurfaceGridReader,
-} from "../../cell-plane/model";
+import type { CanvasSurfaceReader } from "../../cell-plane/model";
 import type { StructuredNode } from "@/domains/structured-content/public";
 import type { EditorState } from "../interfaces";
+import type { CanvasContentSurfaceState } from "../interfaces";
 import { getDefaultCanvasPageId, type CanvasDocumentAddress } from "../canvasDocumentModel";
 import {
   cloneStructuredNode,
@@ -23,7 +21,7 @@ export const resolveEditorDocumentAddress = (
     | "activeCanvasId"
     | "canvasMode"
     | "slideDeck"
-    | "grid"
+    | "contentSurface"
     | "structuredScene"
     | "structuredComponents"
   >
@@ -64,7 +62,7 @@ export const resolveEditorDocumentAddress = (
             scene: state.structuredScene,
             components: state.structuredComponents,
           }
-        : { grid: Array.from(state.grid.entries()) }),
+        : { grid: Array.from(state.contentSurface.reader.materialize()) }),
     });
     documents.activatePage(state.activeCanvasId, pageId);
   } else {
@@ -73,24 +71,32 @@ export const resolveEditorDocumentAddress = (
   return { documentId: state.activeCanvasId, pageId };
 };
 
-export const rebuildGridFromContent = (documents: CanvasDocumentRegistry) =>
-  createSurfaceGridProjection(() => documents.getContentReader());
+let contentSurfaceRevision = 0;
 
-export const createStructuredGridProjection = (
+export const createCanvasContentSurface = (
+  reader: CanvasSurfaceReader
+): CanvasContentSurfaceState => ({
+  reader,
+  revision: ++contentSurfaceRevision,
+});
+
+export const rebuildContentSurface = (documents: CanvasDocumentRegistry) =>
+  createCanvasContentSurface(documents.getContentReader());
+
+export const createStructuredContentSurface = (
   scene: readonly StructuredNode[]
-) => createSurfaceGridProjection(createStructuredSceneSurface(scene));
+) => createCanvasContentSurface(createStructuredSceneSurface(scene));
 
-export const updateStructuredGridProjection = (
-  current: Map<string, import("@/shared/types").GridCell>,
+export const updateStructuredContentSurface = (
+  current: CanvasContentSurfaceState,
   scene: readonly StructuredNode[],
   changedIds: readonly string[]
 ) => {
-  const reader = getSurfaceGridReader(current);
-  if (reader instanceof StructuredSceneSurfaceIndex) {
-    reader.update(scene, changedIds);
-    return current;
+  if (current.reader instanceof StructuredSceneSurfaceIndex) {
+    current.reader.update(scene, changedIds);
+    return createCanvasContentSurface(current.reader);
   }
-  return createStructuredGridProjection(scene);
+  return createStructuredContentSurface(scene);
 };
 
 export const rebuildSceneFromYMap = (documents: CanvasDocumentRegistry) => {

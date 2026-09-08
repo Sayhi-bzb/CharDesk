@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useCreation } from "ahooks";
 import { useCanvasRuntime } from "@/domains/canvas/public";
+import type { StaticGridRangeMovePlan } from "@/domains/canvas/public";
 import type { CanvasEditorRuntime } from "@/domains/editor/public";
 import type { SelectionArea } from "@/shared/types";
 import type { CanvasLinkHit } from "./core/linkHitTesting";
@@ -32,7 +33,7 @@ import type { useCanvasEditorModels } from "../useCanvasEditorModels";
 type ControllerStore = Pick<
   ReturnType<typeof useCanvasEditorModels>["interaction"],
   | "tool"
-  | "grid"
+  | "contentReader"
   | "canvasMode"
   | "setHoveredGrid"
   | "applyStructuredScene"
@@ -62,7 +63,7 @@ export const useInteractionControllers = ({
   const {
     tool,
     activeCanvasId,
-    grid,
+    contentReader,
     canvasMode,
     slideDeck,
     setHoveredGrid,
@@ -76,14 +77,16 @@ export const useInteractionControllers = ({
     structuredMovePreviewRef ?? fallbackStructuredMovePreviewRef;
   const activeRequestRenderRef = requestRenderRef ?? fallbackRequestRenderRef;
   const [draggingSelection, setDraggingSelection] = useState<SelectionArea | null>(null);
-  const pointerInputsRef = useRef({ grid, canvasMode, slideDeck });
+  const [staticRangeMovePreview, setStaticRangeMovePreview] =
+    useState<StaticGridRangeMovePlan | null>(null);
+  const pointerInputsRef = useRef({ contentReader, canvasMode, slideDeck });
   const hoverOutputsRef = useRef({ setHoveredLink, setHoveredGrid });
   useLayoutEffect(() => {
-    pointerInputsRef.current = { grid, canvasMode, slideDeck };
+    pointerInputsRef.current = { contentReader, canvasMode, slideDeck };
     hoverOutputsRef.current = { setHoveredLink, setHoveredGrid };
   }, [
     canvasMode,
-    grid,
+    contentReader,
     setHoveredGrid,
     setHoveredLink,
     slideDeck,
@@ -103,7 +106,7 @@ export const useInteractionControllers = ({
       createCanvasPointerContextResolver({
         getRect: () => containerRef.current?.getBoundingClientRect(),
         getViewport: () => runtime.camera.getViewport(),
-        getGrid: () => pointerInputsRef.current.grid,
+        getContentSource: () => pointerInputsRef.current.contentReader,
         getGridBounds: () => {
           const current = pointerInputsRef.current;
           return current.canvasMode === "slide" && current.slideDeck
@@ -173,6 +176,7 @@ export const useInteractionControllers = ({
         structuredPreviewQueue,
         clearStructuredMovePreview: structuredPreview.clear,
         selectionPreview,
+        clearStaticRangeMovePreview: () => setStaticRangeMovePreview(null),
       }).reset,
     [canvas, selectionPreview, structuredPreview, structuredPreviewQueue]
   );
@@ -299,9 +303,9 @@ export const useInteractionControllers = ({
   useShortcutLayer({
     id: "canvas-active-interaction-cancel",
     priority: SHORTCUT_PRIORITY.canvasInteraction,
-    onKeyDown: (event, context) => {
+    onKeyDown: (input, context) => {
       if (
-        event.key !== "Escape" ||
+        input.key !== "Escape" ||
         !interactionTransaction.hasActive() ||
         context.targetKind === "editable" ||
         context.targetKind === "overlay"
@@ -350,6 +354,8 @@ export const useInteractionControllers = ({
     completeInteraction,
     cursor,
     draggingSelection,
+    staticRangeMovePreview,
+    setStaticRangeMovePreview,
     edgeScroll,
     hoverInteraction,
     pointerContext,

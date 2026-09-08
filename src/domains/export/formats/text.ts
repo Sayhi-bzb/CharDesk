@@ -1,6 +1,6 @@
 import { COLOR_PRIMARY_TEXT, EXPORT_PADDING } from "@/shared/lib/constants";
 import { getCellOccupancy } from "@/shared/metrics";
-import type { GridCell, GridMap, SelectionArea } from "@/shared/types";
+import type { GridCell, GridCellSource, SelectionArea } from "@/shared/types";
 import {
   cloneTextAttributes,
   isSameTextAttributes,
@@ -47,7 +47,7 @@ const DEFAULT_ANSI_STYLE: ActiveAnsiStyle = {
 };
 
 const buildAnsiPiecesFromBounds = (
-  grid: GridMap,
+  grid: GridCellSource,
   minX: number,
   maxX: number,
   y: number,
@@ -56,7 +56,7 @@ const buildAnsiPiecesFromBounds = (
   const pieces: AnsiPiece[] = [];
 
   for (let x = minX; x <= maxX; x++) {
-    const cell = grid.get(GridManager.toKey(x, y));
+    const cell = grid.get({ x, y });
     if (cell) {
       pieces.push({
         char: cell.char,
@@ -72,7 +72,7 @@ const buildAnsiPiecesFromBounds = (
 };
 
 const serializeAnsiRows = (
-  grid: GridMap,
+  grid: GridCellSource,
   minX: number,
   maxX: number,
   minY: number,
@@ -246,7 +246,7 @@ const serializeAnsiLine = (pieces: AnsiPiece[]) => {
 };
 
 const generateStringFromBounds = (
-  grid: GridMap,
+  grid: GridCellSource,
   minX: number,
   maxX: number,
   minY: number,
@@ -257,7 +257,7 @@ const generateStringFromBounds = (
   for (let y = minY; y <= maxY; y++) {
     let line = "";
     for (let x = minX; x <= maxX; x++) {
-      const cell = grid.get(GridManager.toKey(x, y));
+      const cell = grid.get({ x, y });
       if (cell) {
         line += cell.char;
         if (getCellOccupancy(cell.char) === 2) x++;
@@ -270,8 +270,8 @@ const generateStringFromBounds = (
   return lines.join("\n");
 };
 
-export const exportToString = (grid: GridMap) => {
-  if (grid.size === 0) return "";
+export const exportToString = (grid: GridCellSource) => {
+  if (!grid.getContentBounds()) return "";
   const { minX, maxX, minY, maxY } = GridManager.getGridBounds(grid);
 
   return generateStringFromBounds(
@@ -284,7 +284,7 @@ export const exportToString = (grid: GridMap) => {
 };
 
 export const exportSelectionToString = (
-  grid: GridMap,
+  grid: GridCellSource,
   selections: SelectionArea[]
 ) => {
   if (selections.length === 0) return "";
@@ -293,7 +293,7 @@ export const exportSelectionToString = (
 };
 
 export const exportSelectionToAnsi = (
-  grid: GridMap,
+  grid: GridCellSource,
   selections: SelectionArea[],
   options?: AnsiExportOptions
 ) => {
@@ -303,22 +303,22 @@ export const exportSelectionToAnsi = (
 };
 
 export const exportToAnsi = (
-  grid: GridMap,
+  grid: GridCellSource,
   options?: AnsiExportOptions
 ) => {
-  if (grid.size === 0) return "";
+  if (!grid.getContentBounds()) return "";
 
   const { minX, maxX, minY, maxY } = GridManager.getGridBounds(grid);
   return serializeAnsiRows(grid, minX, maxX, minY, maxY, options);
 };
 
 export const exportToCharDesk = (
-  grid: GridMap,
+  grid: GridCellSource,
   options?: AnsiExportOptions
 ) => exportToAnsi(grid, options).replaceAll("\u001b[", "[");
 
 export const exportSelectionToJSON = (
-  grid: GridMap,
+  grid: GridCellSource,
   selections: SelectionArea[]
 ) => {
   if (selections.length === 0) return null;
@@ -328,7 +328,7 @@ export const exportSelectionToJSON = (
 
   for (let y = minY; y <= maxY; y++) {
     for (let x = minX; x <= maxX; x++) {
-      const cell = grid.get(GridManager.toKey(x, y));
+      const cell = grid.get({ x, y });
       if (cell) {
         cells.push({
           x: x - minX,

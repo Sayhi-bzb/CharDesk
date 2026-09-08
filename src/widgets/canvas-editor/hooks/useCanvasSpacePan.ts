@@ -1,11 +1,12 @@
+import type { KeyInput } from "@chardesk/keyboard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   SHORTCUT_PRIORITY,
   useShortcutLayer,
 } from "@/shared/shortcuts/dispatcher";
 
-const isSpaceKey = (event: Pick<KeyboardEvent, "code" | "key">) =>
-  event.code === "Space" || event.key === " ";
+const isSpaceKey = (input: Pick<KeyInput, "code" | "key">) =>
+  input.code === "Space" || input.key === " ";
 
 export const useCanvasSpacePan = ({ enabled }: { enabled: boolean }) => {
   const [active, setActive] = useState(false);
@@ -21,22 +22,22 @@ export const useCanvasSpacePan = ({ enabled }: { enabled: boolean }) => {
     id: "canvas-space-pan",
     priority: SHORTCUT_PRIORITY.canvasGesture,
     enabled,
-    onKeyDown: (event, context) => {
+    onKeyDown: (input, context) => {
       if (
         context.targetKind !== "managed-canvas" ||
-        !isSpaceKey(event) ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey ||
-        event.shiftKey
+        !isSpaceKey(input) ||
+        input.modifiers.ctrl ||
+        input.modifiers.meta ||
+        input.modifiers.alt ||
+        input.modifiers.shift
       ) {
         return;
       }
-      if (!event.repeat) setTemporaryPan(true);
+      if (!input.repeat) setTemporaryPan(true);
       return { claimed: true, preventDefault: true };
     },
-    onKeyUp: (event) => {
-      if (!isSpaceKey(event) || !activeRef.current) return;
+    onKeyUp: (input) => {
+      if (!isSpaceKey(input) || !activeRef.current) return;
       setTemporaryPan(false);
       return { claimed: true, preventDefault: true };
     },

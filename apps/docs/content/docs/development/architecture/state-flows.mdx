@@ -125,13 +125,15 @@ separate lifecycle operation. Reopening an evicted Canvas restores content but n
 
 Freeform documents contain only ordered `cell-plane-operations`. Canvas rendering queries
 occupied spans inside the viewport, and Minimap caches its reader projection by document
-revision; camera movement never materializes the compatibility Map. A legacy local `main-grid`
+revision; camera movement never materializes a grid snapshot. A legacy local `main-grid`
 is converted once into a bootstrap operation and then cleared. `CanvasSurfaceReader` is the read
-contract for rendering and export. Freeform and
-Slide expose a read-only, non-owning Map facade to legacy interaction algorithms. Structured exposes
-the same facade over a disposable spatial index that projects only requested 128x64 chunks; drag
-previews use the same surface. Structured scene and components are persisted once, never with a
-duplicate cell grid. Chunk indexes and projections are never synchronized.
+contract for rendering, interaction, selection, and export. `CanvasState.contentSurface` carries the
+active Reader plus a projection revision; it never carries a live `GridMap`. Freeform and Slide read
+their CellPlane indexes directly. Structured uses a disposable spatial index that projects only
+requested 128x64 chunks. A `GridMap` is created only at an explicit snapshot boundary such as
+serialization, clipboard payload construction, or a transient drag preview. Structured scene and
+components are persisted once, never with a duplicate cell grid. Chunk indexes and projections are
+never synchronized.
 
 Freeform, Structured, and Slide session records contain metadata only at runtime. Switching sessions
 restores content from the matching Yjs document; the projector never writes content back into

@@ -16,17 +16,15 @@ import { DEFAULT_CELL_UI_THEME, resolveCellStateStyle, resolveCellTextStyle, typ
 import { intersectSceneRects } from "./scene.js";
 import { thumbGlyph } from "./scrollbar.js";
 import { paintBorder } from "./border.js";
-
-const interactiveKinds = new Set<WidgetNode["kind"]>([
-  "list-item", "menu-item", "tree-item", "tab", "grid-cell",
-]);
+import { isActionableKind, isFilledSurfaceKind } from "./widget-capabilities.js";
+import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
 
 const stateOwner = (tree: WidgetTree, node: WidgetNode): WidgetNode | null => {
   let current: WidgetNode | undefined = node;
   while (current) {
-    if (interactiveKinds.has(current.kind)) return current;
+    if (isActionableKind(current.kind)) return current;
     current = current.parentId ? tree.nodes.get(current.parentId) : undefined;
   }
   return null;
@@ -42,8 +40,13 @@ const stateStyle = (
     ?? (node.kind === "text-input" || node.kind === "text-area" ? node : null);
   const focused = focusNode?.focused === true && focusNode.focusVisible;
   const selected = owner?.selected === true;
+  const baseStyle = isFilledSurfaceKind(node.kind)
+    || owner?.kind === "button"
+    || owner?.kind === "select-trigger"
+    ? { ...theme.surfaceStyle, ...node.textStyle }
+    : node.textStyle;
   return resolveCellStateStyle(
-    node.kind === "overlay" ? { ...theme.surfaceStyle, ...node.textStyle } : node.textStyle,
+    baseStyle,
     { focused, selected, hovered: owner?.hovered, collection: owner !== null, disabled: node.disabled || owner?.disabled },
     theme
   );
@@ -171,14 +174,14 @@ export const paintScene = (
 
       // Surface: state and overlay backgrounds establish the Cell style first.
       if (style.backgroundColor || (
-        interactiveKinds.has(node.kind)
+        isActionableKind(node.kind)
         && (node.selected || (node.focused && node.focusVisible))
       )) {
         fill(buffer, entry.layoutBounds, id, style, outerClip);
       }
 
       // Chrome: glyphs are painted after surfaces so state fills cannot erase them.
-      if (node.style.border) {
+      if (node.style.border ?? node.kind === "select-content") {
         paintBorder(buffer, id, entry.layoutBounds, theme.borderShape, { ...style, ...theme.borderStyle }, outerClip);
       }
 
@@ -231,6 +234,62 @@ export const paintScene = (
           node.hasChildren
             ? node.expanded ? theme.treeExpandedIndicator : theme.treeCollapsedIndicator
             : " ",
+          id,
+          style,
+          decorationClip,
+          "over"
+        );
+      }
+      if (node.kind === "checkbox") {
+        const x = entry.decorationBounds.x;
+        const indicator = node.checked === "indeterminate"
+          ? theme.checkboxIndeterminateIndicator
+          : node.checked
+            ? theme.checkboxCheckedIndicator
+            : theme.checkboxUncheckedIndicator;
+        buffer.writeGrapheme(x, entry.decorationBounds.y, "[", id, style, decorationClip, "over");
+        buffer.writeGrapheme(x + 1, entry.decorationBounds.y, indicator, id, style, decorationClip, "over");
+        buffer.writeGrapheme(x + 2, entry.decorationBounds.y, "]", id, style, decorationClip, "over");
+      }
+      if (node.kind === "slider") {
+        const track = entry.decorationBounds;
+        const thumb = cellSliderThumbOffset(
+          node.sliderValue,
+          track.width,
+          resolveCellSliderRange(node.sliderMin, node.sliderMax, node.sliderStep)
+        );
+        for (let offset = 0; offset < track.width; offset += 1) {
+          buffer.writeGrapheme(
+            track.x + offset,
+            track.y,
+            offset === thumb
+              ? theme.sliderThumb
+              : offset < thumb
+                ? theme.sliderFilledTrack
+                : theme.sliderEmptyTrack,
+            id,
+            style,
+            decorationClip,
+            "over"
+          );
+        }
+      }
+      if (node.kind === "select-trigger") {
+        buffer.writeGrapheme(
+          entry.decorationBounds.x + entry.decorationBounds.width - 1,
+          entry.decorationBounds.y,
+          node.expanded ? theme.selectExpandedIndicator : theme.selectCollapsedIndicator,
+          id,
+          style,
+          decorationClip,
+          "over"
+        );
+      }
+      if (node.kind === "select-item" && node.selected) {
+        buffer.writeGrapheme(
+          entry.decorationBounds.x + entry.decorationBounds.width - 1,
+          entry.decorationBounds.y,
+          theme.selectSelectedIndicator,
           id,
           style,
           decorationClip,

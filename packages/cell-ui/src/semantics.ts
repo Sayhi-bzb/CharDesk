@@ -6,6 +6,11 @@ import type {
   WidgetNode,
   WidgetTree,
 } from "./types.js";
+import {
+  isActionableKind,
+  isSelectableKind,
+  isTextEditorKind,
+} from "./widget-capabilities.js";
 
 export type SemanticAuditIssue = Readonly<{
   nodeId: WidgetId | null;
@@ -46,6 +51,7 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
       || parent.kind === "tabs"
       || parent.kind === "grid"
       || parent.kind === "grid-row"
+      || parent.kind === "select-content"
       || parent.kind === "overlay"
     ) return parent.id;
     parentId = parent.parentId;
@@ -55,6 +61,12 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
 
 const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
   if (node.kind === "overlay") return "dialog";
+  if (node.kind === "button") return "button";
+  if (node.kind === "checkbox") return "checkbox";
+  if (node.kind === "slider") return "slider";
+  if (node.kind === "select-trigger") return "button";
+  if (node.kind === "select-content") return "listbox";
+  if (node.kind === "select-item") return "option";
   if (node.kind === "list") return "listbox";
   if (node.kind === "list-item") return "option";
   if (node.kind === "menu") return "menu";
@@ -71,10 +83,7 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
   return null;
 };
 
-const selectable = (node: WidgetNode) => node.kind === "list-item"
-  || node.kind === "tree-item"
-  || node.kind === "tab"
-  || node.kind === "grid-cell";
+const selectable = (node: WidgetNode) => isSelectableKind(node.kind);
 
 const isDescendantOf = (
   tree: WidgetTree,
@@ -113,7 +122,7 @@ export const createSemanticSnapshot = (
   }
 
   for (const node of tree.nodes.values()) {
-    const isTextEditor = node.kind === "text-input" || node.kind === "text-area";
+    const isTextEditor = isTextEditorKind(node.kind);
     const role = semanticRole(node);
     if (!role) continue;
     if (modalId && !isDescendantOf(tree, node.id, modalId)) continue;
@@ -130,11 +139,25 @@ export const createSemanticSnapshot = (
       hidden: sceneEntry === undefined,
       focused: node.focused,
       ...(selectable(node) ? { selected: node.selected } : {}),
+      ...(node.kind === "checkbox"
+        ? { checked: node.checked === "indeterminate" ? "mixed" as const : node.checked }
+        : {}),
+      ...(node.kind === "slider"
+        ? {
+            valueNow: node.sliderValue,
+            valueMin: node.sliderMin,
+            valueMax: node.sliderMax,
+            valueText: node.sliderValueText ?? undefined,
+            orientation: "horizontal" as const,
+          }
+        : {}),
       ...(node.kind === "tree-item"
         ? {
             expanded: node.hasChildren ? node.expanded : undefined,
             level: node.level ?? undefined,
           }
+        : node.kind === "select-trigger"
+          ? { expanded: node.expanded, hasPopup: "listbox" as const }
         : {}),
       ...(node.rowIndex !== null ? { rowIndex: node.rowIndex } : {}),
       ...(node.columnIndex !== null ? { columnIndex: node.columnIndex } : {}),
@@ -155,13 +178,13 @@ export const createSemanticSnapshot = (
       ...(node.kind === "overlay" ? { modal: node.modal } : {}),
       actions: node.disabled || node.kind === "overlay"
         ? []
+        : node.kind === "slider"
+          ? ["focus"]
         : node.kind === "tree-item" && node.hasChildren
           ? ["focus", node.expanded ? "collapse" : "expand"]
-          : node.kind === "list-item"
-            || node.kind === "menu-item"
-            || node.kind === "tree-item"
-            || node.kind === "tab"
-            || node.kind === "grid-cell"
+          : node.kind === "select-trigger"
+            ? ["focus", node.expanded ? "collapse" : "expand"]
+          : isActionableKind(node.kind)
             ? ["focus", "activate"]
             : isTextEditor
               ? ["focus"]
@@ -172,6 +195,7 @@ export const createSemanticSnapshot = (
         || node.kind === "tree"
         || node.kind === "tabs"
         || node.kind === "grid"
+        || node.kind === "select-content"
         ? {
             activeDescendantId: activeFocusedId && activeAncestorIds.has(node.id)
               ? activeFocusedId
@@ -188,10 +212,10 @@ export const createSemanticSnapshot = (
 };
 
 const focusRoles = new Set<SemanticNode["role"]>([
-  "option", "textbox", "menuitem", "treeitem", "tab", "gridcell",
+  "button", "checkbox", "slider", "option", "textbox", "menuitem", "treeitem", "tab", "gridcell",
 ]);
 const activateRoles = new Set<SemanticNode["role"]>([
-  "option", "menuitem", "treeitem", "tab", "gridcell",
+  "button", "checkbox", "option", "menuitem", "treeitem", "tab", "gridcell",
 ]);
 const selectedRoles = new Set<SemanticNode["role"]>([
   "option", "treeitem", "tab", "gridcell",
@@ -251,8 +275,18 @@ export const auditSemanticSnapshot = (
     if (node.selected !== undefined && !selectedRoles.has(node.role)) {
       issue(node.id, "invalid-state", `selected is invalid for role ${node.role}.`);
     }
-    if (node.expanded !== undefined && node.role !== "treeitem") {
+    if (node.checked !== undefined && node.role !== "checkbox") {
+      issue(node.id, "invalid-state", `checked is invalid for role ${node.role}.`);
+    }
+    if (
+      node.expanded !== undefined
+      && node.role !== "treeitem"
+      && !(node.role === "button" && node.hasPopup === "listbox")
+    ) {
       issue(node.id, "invalid-state", `expanded is invalid for role ${node.role}.`);
+    }
+    if (node.hasPopup !== undefined && node.role !== "button") {
+      issue(node.id, "invalid-state", `hasPopup is invalid for role ${node.role}.`);
     }
     if (node.level !== undefined && (node.role !== "treeitem" || !positiveInteger(node.level))) {
       issue(node.id, "invalid-state", `level must be a positive treeitem index.`);
@@ -269,9 +303,23 @@ export const auditSemanticSnapshot = (
     if (node.modal !== undefined && node.role !== "dialog") {
       issue(node.id, "invalid-state", `modal is invalid for role ${node.role}.`);
     }
-    if (node.orientation !== undefined && !compositeRoles.has(node.role)) {
+    if (node.orientation !== undefined && !compositeRoles.has(node.role) && node.role !== "slider") {
       issue(node.id, "invalid-state", `orientation is invalid for role ${node.role}.`);
     }
+    if (
+      (node.valueNow !== undefined
+        || node.valueMin !== undefined
+        || node.valueMax !== undefined
+        || node.valueText !== undefined)
+      && node.role !== "slider"
+    ) issue(node.id, "invalid-state", `Numeric value is invalid for role ${node.role}.`);
+    if (node.role === "slider" && (
+      node.valueNow === undefined
+      || node.valueMin === undefined
+      || node.valueMax === undefined
+      || node.valueNow < node.valueMin
+      || node.valueNow > node.valueMax
+    )) issue(node.id, "invalid-state", "Slider value must be inside its numeric range.");
     if (
       (node.value !== undefined || node.multiline !== undefined || node.readOnly !== undefined)
       && node.role !== "textbox"
@@ -308,7 +356,8 @@ export const auditSemanticSnapshot = (
         : action === "activate"
           ? activateRoles.has(node.role)
             && !(node.role === "treeitem" && node.expanded !== undefined)
-          : node.role === "treeitem" && node.expanded !== undefined;
+          : (node.role === "treeitem" || node.hasPopup === "listbox")
+            && node.expanded !== undefined;
       if (!valid) issue(node.id, "invalid-action", `${action} is invalid for role ${node.role}.`);
     }
     if (!node.disabled) {
@@ -317,12 +366,16 @@ export const auditSemanticSnapshot = (
       }
       if (
         activateRoles.has(node.role)
-        && !(node.role === "treeitem" && node.expanded !== undefined)
+        && !(node.expanded !== undefined
+          && (node.role === "treeitem" || node.hasPopup === "listbox"))
         && !node.actions.includes("activate")
       ) {
         issue(node.id, "missing-action", `Role ${node.role} must expose activate.`);
       }
-      if (node.role === "treeitem" && node.expanded !== undefined) {
+      if (
+        node.expanded !== undefined
+        && (node.role === "treeitem" || node.hasPopup === "listbox")
+      ) {
         const expected = node.expanded ? "collapse" : "expand";
         if (!node.actions.includes(expected)) {
           issue(node.id, "missing-action", `Expandable treeitem must expose ${expected}.`);

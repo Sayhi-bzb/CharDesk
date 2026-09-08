@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import {
   buildClipboardPayload,
   buildStructuredClipboardPayload,
@@ -35,7 +36,7 @@ const mapAnsiCells = (text: string, color: string, y = 0, startX = 0) => {
 describe("clipboardActions", () => {
   it("copies a complete wide character when only its follower is requested", () => {
     const payload = buildClipboardPayload(
-      new Map([["0,0", { char: "你", color: "#ffffff" }]]),
+      new GridSnapshotSource([["0,0", { char: "你", color: "#ffffff" }]]),
       [{ start: { x: 1, y: 0 }, end: { x: 1, y: 0 } }],
       null,
       "#ffffff"
@@ -259,7 +260,7 @@ describe("clipboardActions", () => {
 
   it("builds ANSI clipboard payloads without app-rich data", () => {
     const payload = buildClipboardPayload(
-      new Map([
+      new GridSnapshotSource([
         ["0,0", { char: "A", color: "#ff0000" }],
         ["1,0", { char: "B", color: "#00ff00" }],
       ]),
@@ -277,7 +278,7 @@ describe("clipboardActions", () => {
 
   it("copies only the union mask while preserving relative cell positions", () => {
     const payload = buildClipboardPayload(
-      new Map([
+      new GridSnapshotSource([
         ["0,0", { char: "a", color: "#ffffff" }],
         ["1,0", { char: "b", color: "#ffffff" }],
         ["0,1", { char: "c", color: "#ffffff" }],
@@ -304,7 +305,7 @@ describe("clipboardActions", () => {
 
   it("materializes selected empty cells without materializing holes", () => {
     const payload = buildClipboardPayload(
-      new Map([["1,0", { char: "X", color: "#ffffff" }]]),
+      new GridSnapshotSource([["1,0", { char: "X", color: "#ffffff" }]]),
       [
         { start: { x: 0, y: 0 }, end: { x: 0, y: 0 } },
         { start: { x: 2, y: 0 }, end: { x: 2, y: 0 } },
@@ -326,7 +327,7 @@ describe("clipboardActions", () => {
 
   it("round-trips compact ANSI clipboard style diffs", () => {
     const payload = buildClipboardPayload(
-      new Map([
+      new GridSnapshotSource([
         [
           "0,0",
           {
@@ -366,7 +367,7 @@ describe("clipboardActions", () => {
 
   it("round-trips exact ANSI256 clipboard colors", () => {
     const payload = buildClipboardPayload(
-      new Map([["0,0", { char: "A", color: "#5f87af" }]]),
+      new GridSnapshotSource([["0,0", { char: "A", color: "#5f87af" }]]),
       [{ start: { x: 0, y: 0 }, end: { x: 0, y: 0 } }],
       null,
       "#ffffff",
@@ -381,7 +382,7 @@ describe("clipboardActions", () => {
 
   it("preserves trailing background spaces in ANSI clipboard payloads", () => {
     const payload = buildClipboardPayload(
-      new Map(
+      new GridSnapshotSource(
         Array.from(" BUTTON ").map((char, x) => [
           `${x},0`,
           { char, color: "#000000", bgColor: "#dbeafe" },

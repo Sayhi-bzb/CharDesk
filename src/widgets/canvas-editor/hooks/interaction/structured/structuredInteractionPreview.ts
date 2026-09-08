@@ -5,7 +5,7 @@ import {
   createStructuredSceneSurface,
   getSplitBoxPoints,
 } from "@/domains/structured-content/public";
-import { createSurfaceGridProjection } from "@/domains/canvas/public";
+import { materializeGridSource } from "@/shared/utils/grid-source";
 import {
   moveStructuredNode,
   resizeStructuredSplitBox,
@@ -80,7 +80,7 @@ export const buildStructuredMovePreview = (
     baseScene: drag.baseScene,
     movingNodes,
     baseGrid: drag.baseGrid,
-    movingGrid: createSurfaceGridProjection(createStructuredSceneSurface(movingNodes)),
+    movingGrid: materializeGridSource(createStructuredSceneSurface(movingNodes)),
   };
 };
 

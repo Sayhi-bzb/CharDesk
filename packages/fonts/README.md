@@ -42,18 +42,18 @@ The current optional compatibility display is [`@chardesk/font-maple`](../font-m
 
 Font assets retain their upstream licenses beside each family. Package code is MIT licensed.
 
-## Ark Mono workspace
+## Fusion Mono workspace
 
-[`@chardesk/font-ark`](../font-ark/README.md) is a private optional resource pack.
-The Gallery consumes `ARK_FONT_FAMILY` / `ARK_FONT_SOURCES` and imports
-`@chardesk/font-ark/fonts.css?url` with Vite, attaching the stylesheet only when
+[`@chardesk/font-fusion`](../font-fusion/README.md) is a private optional resource pack.
+The Gallery consumes `FUSION_FONT_FAMILY` / `FUSION_FONT_SOURCES` and imports
+`@chardesk/font-fusion/fonts.css?url` with Vite, attaching the stylesheet only when
 selected. It awaits font loading and grid measurement before committing the
 switch; failure preserves the current font and offers retry.
 
 The font stays at 15px with regular-only weight; its `12px` name is the upstream
 design size. Maple's source and the Cell metric algorithm are unchanged.
-Use `npm run fonts:sync -- --target=ark` to vendor the pinned release (requires
-`unzip`), and `npm run fonts:verify -- --target=ark` for offline verification.
+Use `npm run fonts:sync -- --target=fusion` to vendor the pinned release (requires
+`unzip`), and `npm run fonts:verify -- --target=fusion` for offline verification.
 See [package scripts](../../package.json) for the command authority.
 
 ## Grid calibration
@@ -71,12 +71,14 @@ fallback coverage remain separate host concerns.
 
 ## Weight capability
 
-Declare `weightPolicy: "regular"` on a face with no supported bold weight to
-decline Cell bold requests, including browser synthetic bold. The default
-`"inherit"` follows Cell bold and selects `families.bold ?? families.regular`.
-The policy applies to the entire capability stack, including fallbacks, not
-just its first family. See the [Canvas resolution contract](../rendering/README.md)
-for host overrides and loading.
+`boldStrategy` is normalized when a Profile is created. `display` and `cjk`
+default to `auto`: a declared `families.bold` selects `native`; otherwise the
+renderer selects `overdraw`. `cell-glyph`, `symbol`, `nerd`, and `emoji` default
+to `none`. The browser is never asked to synthesize bold for `overdraw` or
+`none`.
 
-The factory's display-first `symbol` capability inherits the display face's
-weight policy; dedicated Nerd and emoji stacks remain regular-only.
+`overdraw` repeats the regular glyph at `boldOverdrawEm`, defaulting to `1/15em`
+(one CSS pixel at the default 15px size). `native` requires `families.bold`.
+`weightPolicy` remains a deprecated profile-input compatibility field and is
+normalized immediately. See the [Canvas resolution contract](../rendering/README.md)
+for drawing, loading, and audit behavior.

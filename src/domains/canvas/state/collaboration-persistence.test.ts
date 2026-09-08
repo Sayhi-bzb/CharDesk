@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import { useEditorStore } from "@/domains/canvas/testing";
 import { createPersistedEditorSnapshot } from "./editorPersistence";
 import type { CollaborationDescriptorV6 } from "@/domains/collaboration/public";
@@ -23,7 +24,7 @@ describe("collaborative session persistence", () => {
     useEditorStore.setState({
       activeCanvasId: "room-session",
       canvasMode: "freeform",
-      grid: new Map([["0,0", { char: "A", color: "#fff" }]]),
+      contentSurface: new TestCanvasContentSurface([["0,0", { char: "A", color: "#fff" }]]),
       structuredScene: [],
       structuredComponents: [],
       brushBackgroundColor: "#445566",

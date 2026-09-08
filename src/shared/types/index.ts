@@ -1,3 +1,5 @@
+import type { CellSource } from "@chardesk/cell-core";
+
 export interface Point {
   x: number;
   y: number;
@@ -25,6 +27,11 @@ export interface SelectionArea {
 }
 
 export type GridMap = Map<string, GridCell>;
+
+/** Read-only cell content shared across domain boundaries. */
+export type GridCellSource = CellSource<GridCell> & {
+  getLineOriginX?(point: Point): number;
+};
 
 export interface NodeBounds {
   x: number;

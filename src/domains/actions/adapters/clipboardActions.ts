@@ -9,8 +9,15 @@ import {
   getGridSelectionSpans,
 } from "@/domains/selection/public";
 import { GridManager } from "@/shared/utils/grid";
+import { createGridMapSource } from "@/shared/utils/grid-source";
 import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
-import type { GridMap, NodeBounds, Point, SelectionArea } from "@/shared/types";
+import type {
+  GridCellSource,
+  GridMap,
+  NodeBounds,
+  Point,
+  SelectionArea,
+} from "@/shared/types";
 import type { StructuredNode, StructuredNodeStyle, StructuredTextNode, StructuredTextStyleRange } from "@/domains/structured-content/public";
 import type { RichTextCell } from "@/domains/canvas/public";
 import {
@@ -131,7 +138,7 @@ export const hasClipboardSource = (
 };
 
 const projectGridSelection = (
-  grid: GridMap,
+  grid: GridCellSource,
   selections: SelectionArea[],
   brushColor: string
 ): GridMap => {
@@ -140,14 +147,14 @@ const projectGridSelection = (
     for (let x = minX; x <= maxX; x++) {
       const key = GridManager.toKey(x, y);
       if (resolveGridSlot(grid, { x, y })?.offset === 1) continue;
-      projection.set(key, grid.get(key) ?? { char: " ", color: brushColor });
+      projection.set(key, grid.get({ x, y }) ?? { char: " ", color: brushColor });
     }
   }, grid);
   return projection;
 };
 
 export const buildClipboardPayload = (
-  grid: GridMap,
+  grid: GridCellSource,
   selections: SelectionArea[],
   textCursor: Point | null,
   brushColor: string,
@@ -167,15 +174,16 @@ export const buildClipboardPayload = (
       effectiveSelections,
       brushColor
     );
+    const projectedSource = createGridMapSource(projectedGrid);
     return {
       plain:
         format === "ansi"
-          ? toAnsiLikeClipboardText(exportSelectionToAnsi(projectedGrid, effectiveSelections))
-          : exportSelectionToString(projectedGrid, effectiveSelections),
+          ? toAnsiLikeClipboardText(exportSelectionToAnsi(projectedSource, effectiveSelections))
+          : exportSelectionToString(projectedSource, effectiveSelections),
       rich:
         format === "ansi"
           ? null
-          : exportSelectionToJSON(projectedGrid, effectiveSelections),
+          : exportSelectionToJSON(projectedSource, effectiveSelections),
     };
   }
 
@@ -200,7 +208,7 @@ export const buildClipboardPayload = (
   return {
     plain:
       format === "ansi"
-        ? toAnsiLikeClipboardText(exportToAnsi(singleCellGrid))
+        ? toAnsiLikeClipboardText(exportToAnsi(createGridMapSource(singleCellGrid)))
         : char,
     rich:
       format === "ansi"
@@ -344,7 +352,7 @@ export const buildStructuredClipboardPayload = (
   };
 
   return {
-    plain: exportSelectionToString(surfaceGrid, [selection]),
+    plain: exportSelectionToString(createGridMapSource(surfaceGrid), [selection]),
     rich: JSON.stringify(rich),
   };
 };

@@ -11,7 +11,7 @@ import {
 
 describe("core font profile", () => {
   it("keeps its stable id, routes, and pinned source versions together", () => {
-    expect(CHARDESK_SYSTEM_FONT_PROFILE.id).toBe("chardesk/system-v4");
+    expect(CHARDESK_SYSTEM_FONT_PROFILE.id).toBe("chardesk/system-v5");
     expect(CHARDESK_SYSTEM_FONT_PROFILE_ID).toBe(CHARDESK_SYSTEM_FONT_PROFILE.id);
     expect(CHARDESK_SYSTEM_FONT_PROFILE.families.text).toBe(
       CHARDESK_SYSTEM_FONT_FAMILY
@@ -21,6 +21,8 @@ describe("core font profile", () => {
     expect(CHARDESK_SYSTEM_FONT_PROFILE.capabilities.display.families.regular).toBe(
       CHARDESK_SYSTEM_FONT_FAMILY
     );
+    expect(CHARDESK_SYSTEM_FONT_PROFILE.capabilities.display.boldStrategy).toBe("native");
+    expect(CHARDESK_SYSTEM_FONT_PROFILE.capabilities["cell-glyph"].boldStrategy).toBe("none");
     expect(CHARDESK_SYSTEM_FONT_PROFILE.capabilities.emoji.families.regular)
       .toBe(CHARDESK_SYSTEM_FONT_PROFILE.families.emoji);
     expect(CHARDESK_SYSTEM_FONT_PROFILE.sources.map(({ id }) => id)).toEqual([
@@ -45,10 +47,12 @@ describe("core font profile", () => {
       .toBeLessThan(profile.capabilities.symbol.families.regular.indexOf("JuliaMono"));
     expect(profile.capabilities.symbol.families.regular.indexOf("Test CJK"))
       .toBeLessThan(profile.capabilities.symbol.families.regular.indexOf("JuliaMono"));
-    expect(profile.capabilities.symbol.weightPolicy).toBeUndefined();
+    expect(profile.capabilities.display.boldStrategy).toBe("overdraw");
+    expect(profile.capabilities.cjk.boldStrategy).toBe("overdraw");
+    expect(profile.capabilities.symbol.boldStrategy).toBe("none");
   });
 
-  it("lets symbols inherit the selected display weight before the JuliaMono fallback", () => {
+  it("keeps structural, symbol, Nerd, and emoji capabilities regular-only", () => {
     const profile = createCharDeskFontProfile({
       id: "test/display-weight",
       display: { families: { regular: "Display Regular", bold: "Display Bold" } },
@@ -59,21 +63,84 @@ describe("core font profile", () => {
       .toBe("Display Regular, CJK Regular, 'JuliaMono'");
     expect(profile.capabilities.symbol.families.bold)
       .toBe("Display Bold, CJK Bold, 'JuliaMono'");
+    expect(profile.capabilities["cell-glyph"].boldStrategy).toBe("none");
+    expect(profile.capabilities.symbol.boldStrategy).toBe("none");
+    expect(profile.capabilities.nerd.boldStrategy).toBe("none");
+    expect(profile.capabilities.emoji.boldStrategy).toBe("none");
     expect(profile.capabilities.nerd.families.regular)
       .toMatch(/^'Symbols Nerd Font Mono'/);
     expect(profile.capabilities.emoji.families.regular)
       .toMatch(/^'Noto Emoji', 'JuliaMono'/);
   });
 
-  it("propagates regular-only display policy to display-first symbols", () => {
+  it("normalizes the deprecated regular-only policy at the profile boundary", () => {
     const profile = createCharDeskFontProfile({
       id: "test/regular-display",
       display: { families: { regular: "Regular Only" }, weightPolicy: "regular" },
     });
-    expect(profile.capabilities.symbol.weightPolicy).toBe("regular");
+    expect(profile.capabilities.display.boldStrategy).toBe("none");
+    expect(profile.capabilities.symbol.boldStrategy).toBe("none");
     expect(profile.capabilities.symbol.families.regular).toContain("Regular Only");
-    expect(profile.capabilities.nerd.weightPolicy).toBe("regular");
-    expect(profile.capabilities.emoji.weightPolicy).toBe("regular");
+    expect(profile.capabilities.nerd.boldStrategy).toBe("none");
+    expect(profile.capabilities.emoji.boldStrategy).toBe("none");
+
+    const legacyOverdraw = createCharDeskFontProfile({
+      id: "test/legacy-overdraw",
+      display: {
+        families: { regular: "Regular Only" },
+        weightPolicy: "regular",
+        boldOverdrawEm: 1 / 15,
+      },
+    });
+    expect(legacyOverdraw.capabilities.display.boldStrategy).toBe("overdraw");
+    expect(legacyOverdraw.capabilities.display.boldOverdrawEm).toBe(1 / 15);
+  });
+
+  it("automatically uses native bold when declared and overdraw when absent", () => {
+    const profile = createCharDeskFontProfile({
+      id: "test/overdraw",
+      display: { families: { regular: "Display" } },
+      cjk: { families: { regular: "CJK" }, boldOverdrawEm: 1 / 15 },
+    });
+
+    expect(profile.capabilities.display.boldStrategy).toBe("overdraw");
+    expect(profile.capabilities.cjk.boldStrategy).toBe("overdraw");
+    expect(profile.capabilities.display.boldOverdrawEm).toBe(1 / 15);
+    expect(profile.capabilities.cjk.boldOverdrawEm).toBe(1 / 15);
+    expect(profile.capabilities["cell-glyph"].boldOverdrawEm).toBe(0);
+    expect(profile.capabilities.symbol.boldOverdrawEm).toBe(0);
+    expect(profile.capabilities.nerd.boldOverdrawEm).toBe(0);
+    expect(profile.capabilities.emoji.boldOverdrawEm).toBe(0);
+
+    const native = createCharDeskFontProfile({
+      id: "test/native",
+      display: { families: { regular: "Regular", bold: "Bold" } },
+    });
+    expect(native.capabilities.display.boldStrategy).toBe("native");
+    expect(native.capabilities.display.boldOverdrawEm).toBe(0);
+  });
+
+  it("rejects contradictory or incomplete bold declarations", () => {
+    expect(() => createCharDeskFontProfile({
+      id: "test/conflict",
+      display: {
+        families: { regular: "Regular" },
+        boldStrategy: "overdraw",
+        weightPolicy: "regular",
+      },
+    })).toThrow(/cannot combine boldStrategy/);
+    expect(() => createCharDeskFontProfile({
+      id: "test/native-without-face",
+      display: { families: { regular: "Regular" }, boldStrategy: "native" },
+    })).toThrow(/requires families.bold/);
+    expect(() => createCharDeskFontProfile({
+      id: "test/invalid-overdraw",
+      display: {
+        families: { regular: "Regular" },
+        boldStrategy: "overdraw",
+        boldOverdrawEm: 0,
+      },
+    })).toThrow(/positive finite/);
   });
 
   it("classifies graphemes by font capability without changing render routes", () => {

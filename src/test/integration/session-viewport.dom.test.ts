@@ -1,4 +1,5 @@
 import { createEditorCommandsExtension } from '@/domains/actions/public';
+import { TestCanvasContentSurface } from '@/domains/canvas/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   applyFreeformSnapshotToYMaps,
@@ -60,7 +61,7 @@ describe('canvas session viewport state', () => {
         ...initialState,
         offset: { x: 0, y: 0 },
         zoom: 1,
-        grid: new Map(),
+        contentSurface: new TestCanvasContentSurface(),
         canvasSessions: initialState.canvasSessions.map((session) =>
           session.id === DEFAULT_SESSION_ID
             ? { ...session, grid: [], viewport: undefined }
@@ -126,7 +127,7 @@ describe('canvas session viewport state', () => {
     expect(activeSession?.mode).toBe('structured');
     expect(state.canvasMode).toBe('structured');
     expect(state.structuredScene).toEqual([]);
-    expect(state.grid.size).toBe(0);
+    expect(state.contentSurface.reader.materialize().size).toBe(0);
   });
   it('accepts arrow lines only in structured sessions', () => {
     useEditorStore.getState().createCanvasSession('structured');
@@ -180,7 +181,7 @@ describe('canvas session viewport state', () => {
       start: { x: 3, y: 4 },
       end: { x: 5, y: 6 },
     });
-    expect(state.grid.size).toBeGreaterThan(0);
+    expect(state.contentSurface.reader.materialize().size).toBeGreaterThan(0);
   });
   it('deletes selected structured nodes', () => {
     useEditorStore.getState().createCanvasSession('structured');
@@ -349,7 +350,7 @@ describe('canvas session viewport state', () => {
     useEditorStore.getState().writeTextString('A');
     expect(useEditorStore.getState().canUndo).toBe(true);
     expect(editorRuntime.commands.execute('undo', undefined, 'global-hotkey').status).toBe('succeeded');
-    expect(useEditorStore.getState().grid.size).toBe(0);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().size).toBe(0);
     expect(editorRuntime.commands.execute('undo', undefined, 'global-hotkey').status).toBe('rejected');
   });
 
@@ -459,8 +460,8 @@ describe('canvas session viewport state', () => {
       status: 'failed',
       reason: 'stale-target',
     });
-    expect(useEditorStore.getState().grid.get('0,0')?.char).toBe('A');
-    expect(useEditorStore.getState().grid.get('1,0')?.char).toBe('B');
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get('0,0')?.char).toBe('A');
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get('1,0')?.char).toBe('B');
   });
 
   it('cuts only cells inside a disjoint grid selection union', async () => {
@@ -499,7 +500,7 @@ describe('canvas session viewport state', () => {
       { x: 1, y: 0, char: 'b', color: '#ffffff' },
       { x: 0, y: 1, char: 'c', color: '#ffffff' },
     ]);
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ['0,0', { char: 'a', color: '#ffffff' }],
         ['1,1', { char: 'd', color: '#ffffff' }],
@@ -528,8 +529,8 @@ describe('canvas session viewport state', () => {
       status: 'failed',
       reason: 'stale-target',
     });
-    expect(useEditorStore.getState().grid.get('0,0')?.char).toBe('A');
-    expect(useEditorStore.getState().grid.get('1,0')?.char).toBe('B');
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get('0,0')?.char).toBe('A');
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get('1,0')?.char).toBe('B');
   });
 
   it('shows one warning after pasted text falls back from limited rendering', async () => {
@@ -599,15 +600,15 @@ describe('canvas session viewport state', () => {
     const state = useEditorStore.getState();
     expect(state.canvasMode).toBe('freeform');
     expect(state.structuredScene).toEqual([]);
-    expect(state.grid.get('0,0')).toMatchObject({
+    expect(state.contentSurface.reader.materialize().get('0,0')).toMatchObject({
       char: '╭',
       color: '#111111',
     });
-    expect(state.grid.get('1,1')).toMatchObject({
+    expect(state.contentSurface.reader.materialize().get('1,1')).toMatchObject({
       char: 'H',
       color: '#ffffff',
     });
-    expect(state.grid.get('2,1')).toMatchObject({
+    expect(state.contentSurface.reader.materialize().get('2,1')).toMatchObject({
       char: 'i',
       color: '#ffffff',
     });
@@ -640,12 +641,12 @@ describe('canvas session viewport state', () => {
 
     const state = useEditorStore.getState();
     expect(state.canvasMode).toBe('freeform');
-    expect(state.grid.get('0,0')).toMatchObject({
+    expect(state.contentSurface.reader.materialize().get('0,0')).toMatchObject({
       char: '你',
       color: '#ffffff',
     });
-    expect(state.grid.get('1,0')).toBeUndefined();
-    expect(state.grid.get('2,0')).toMatchObject({
+    expect(state.contentSurface.reader.materialize().get('1,0')).toBeUndefined();
+    expect(state.contentSurface.reader.materialize().get('2,0')).toMatchObject({
       char: 'A',
       color: '#ffffff',
     });
@@ -665,12 +666,12 @@ describe('canvas session viewport state', () => {
       style: { color: '#000000', bgColor: '#334155' },
     });
     expect(state.selectedStructuredNodeIds).toEqual([state.structuredScene[0].id]);
-    expect(state.grid.get('1,2')).toEqual({
+    expect(state.contentSurface.reader.materialize().get('1,2')).toEqual({
       char: ' ',
       color: '#000000',
       bgColor: '#334155',
     });
-    expect(state.grid.get('3,4')).toEqual({
+    expect(state.contentSurface.reader.materialize().get('3,4')).toEqual({
       char: ' ',
       color: '#000000',
       bgColor: '#334155',
@@ -694,7 +695,7 @@ describe('canvas session viewport state', () => {
       endMarker: 'arrow',
       style: { color: '#334155' },
     });
-    expect(useEditorStore.getState().grid.get('3,0')).toMatchObject({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get('3,0')).toMatchObject({
       char: '>',
       color: '#334155',
     });
@@ -715,7 +716,7 @@ describe('canvas session viewport state', () => {
       end: { x: 3, y: 2 },
       endMarker: 'arrow',
     });
-    expect(useEditorStore.getState().grid.get('3,2')?.char).toBe('>');
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get('3,2')?.char).toBe('>');
 
     expect(undoCanvas()).toBe(true);
     expect(useEditorStore.getState().structuredScene).toHaveLength(1);
@@ -743,9 +744,9 @@ describe('canvas session viewport state', () => {
       style: { color: '#334155' },
     });
     expect(state.selectedStructuredNodeIds).toEqual([state.structuredScene[0].id]);
-    expect(state.grid.get('0,0')).toMatchObject({ char: '╭', color: '#334155' });
-    expect(state.grid.get('4,1')).toMatchObject({ char: '┬', color: '#334155' });
-    expect(state.grid.get('4,3')).toMatchObject({ char: '┴', color: '#334155' });
+    expect(state.contentSurface.reader.materialize().get('0,0')).toMatchObject({ char: '╭', color: '#334155' });
+    expect(state.contentSurface.reader.materialize().get('4,1')).toMatchObject({ char: '┬', color: '#334155' });
+    expect(state.contentSurface.reader.materialize().get('4,3')).toMatchObject({ char: '┴', color: '#334155' });
   });
 
   it('deletes a selected structured split box split line without deleting the node', () => {
@@ -808,7 +809,7 @@ describe('canvas session viewport state', () => {
     useEditorStore.getState().updateScratchForShape('bg', { x: 0, y: 0 }, { x: 1, y: 1 });
     useEditorStore.getState().commitScratch();
 
-    const grid = useEditorStore.getState().grid;
+    const grid = useEditorStore.getState().contentSurface.reader.materialize();
     expect(grid.get('0,0')).toEqual({
       char: ' ',
       color: '#000000',
@@ -850,7 +851,7 @@ describe('canvas session viewport state', () => {
     });
 
     expect(
-      Array.from({ length: 5 }, (_, x) => useEditorStore.getState().grid.get(`${x},0`))
+      Array.from({ length: 5 }, (_, x) => useEditorStore.getState().contentSurface.reader.materialize().get(`${x},0`))
     ).toEqual(
       Array.from('Spot5').map((char, x) => ({
         char,
@@ -881,7 +882,7 @@ describe('canvas session viewport state', () => {
       } as unknown as DataTransfer,
     });
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ['0,0', { char: 'X', color: '#ffffff', bgColor: '#000000' }],
         ['1,0', { char: 'B', color: '#222222', bgColor: '#0000ff' }],
@@ -908,11 +909,11 @@ describe('canvas session viewport state', () => {
     });
 
     const state = useEditorStore.getState();
-    expect(state.grid.get('20,4')).toEqual({ char: 'A', color: '#ffffff' });
-    expect(state.grid.get('21,4')).toEqual({ char: 'B', color: '#ffffff' });
-    expect(state.grid.get('20,5')).toEqual({ char: 'C', color: '#ffffff' });
-    expect(state.grid.get('21,5')).toEqual({ char: 'D', color: '#ffffff' });
-    expect(state.grid.get('0,5')).toBeUndefined();
+    expect(state.contentSurface.reader.materialize().get('20,4')).toEqual({ char: 'A', color: '#ffffff' });
+    expect(state.contentSurface.reader.materialize().get('21,4')).toEqual({ char: 'B', color: '#ffffff' });
+    expect(state.contentSurface.reader.materialize().get('20,5')).toEqual({ char: 'C', color: '#ffffff' });
+    expect(state.contentSurface.reader.materialize().get('21,5')).toEqual({ char: 'D', color: '#ffffff' });
+    expect(state.contentSurface.reader.materialize().get('0,5')).toBeUndefined();
     expect(state).toMatchObject({
       textCursor: null,
       staticGridEditMode: 'navigate',
@@ -945,7 +946,7 @@ describe('canvas session viewport state', () => {
       } as unknown as DataTransfer,
     });
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ['0,0', { char: 'A', color: '#ff0000', bgColor: '#000000' }],
         ['1,0', { char: 'B', color: '#ff0000', bgColor: '#000080' }],
@@ -1359,10 +1360,10 @@ describe('canvas session viewport state', () => {
       position: { x: 4, y: 5 },
       text: 'A\nB',
     });
-    expect(useEditorStore.getState().grid.get('4,5')).toMatchObject({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get('4,5')).toMatchObject({
       char: 'A',
     });
-    expect(useEditorStore.getState().grid.get('4,6')).toMatchObject({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get('4,6')).toMatchObject({
       char: 'B',
     });
   });

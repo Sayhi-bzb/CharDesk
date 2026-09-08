@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
-import { GalleryBorderToggle, GalleryFontToggle, GalleryThemeToggle } from "./appearance";
+import { GalleryBorderToggle, GalleryFontSelect, GalleryThemeToggle } from "./appearance";
 
 type Fixture = Readonly<{
   id: string;
@@ -48,7 +48,7 @@ function FixtureShell({ title, children }: Readonly<{ title: string; children: R
     <>
       <header className="gallery-header">
         <span className="gallery-brand">CharDesk / Cell UI</span>
-        <div className="gallery-appearance-controls"><GalleryFontToggle /><GalleryBorderToggle /><GalleryThemeToggle /></div>
+        <div className="gallery-appearance-controls"><GalleryFontSelect /><GalleryBorderToggle /><GalleryThemeToggle /></div>
       </header>
       <main className="fixture-page">
         <h1>{title}</h1>

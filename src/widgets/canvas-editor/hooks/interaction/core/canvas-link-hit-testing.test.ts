@@ -1,27 +1,28 @@
 import { describe, expect, it } from "vitest";
+import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import { resolveCanvasLinkHit } from "@/widgets/canvas-editor/hooks/interaction/core/linkHitTesting";
 import {
   shouldUseCanvasLinkPointer,
   shouldOpenCanvasLink,
 } from "@/widgets/canvas-editor/hooks/useCanvasInteraction";
 import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
-import type { GridMap } from "@/shared/types";
+import type { GridCellSource } from "@/shared/types";
 
 const rect = { left: 10, top: 20 } as DOMRect;
 
-const baseInput = (grid: GridMap) => ({
+const baseInput = (grid: GridCellSource) => ({
   clientX: 10,
   clientY: 20,
   rect,
   offset: { x: 0, y: 0 },
   zoom: 1,
-  grid,
+  source: grid,
   canvasMode: "freeform" as const,
 });
 
 describe("resolveCanvasLinkHit", () => {
   it("returns the full href run for linked cells", () => {
-    const grid: GridMap = new Map([
+    const grid = new GridSnapshotSource([
       ["0,0", { char: "A", color: "#ffffff", href: "https://example.com" }],
       ["1,0", { char: "B", color: "#ffffff", href: "https://example.com" }],
       ["2,0", { char: "C", color: "#ffffff", href: "https://example.com" }],
@@ -41,7 +42,7 @@ describe("resolveCanvasLinkHit", () => {
   });
 
   it("returns null for non-link cells", () => {
-    const grid: GridMap = new Map([
+    const grid = new GridSnapshotSource([
       ["0,0", { char: "A", color: "#ffffff" }],
     ]);
 
@@ -49,7 +50,7 @@ describe("resolveCanvasLinkHit", () => {
   });
 
   it("keeps adjacent different href values in separate runs", () => {
-    const grid: GridMap = new Map([
+    const grid = new GridSnapshotSource([
       ["0,0", { char: "A", color: "#ffffff", href: "https://a.example" }],
       ["1,0", { char: "B", color: "#ffffff", href: "https://b.example" }],
     ]);
@@ -63,7 +64,7 @@ describe("resolveCanvasLinkHit", () => {
   });
 
   it("snaps wide character follower cells back to the linked anchor range", () => {
-    const grid: GridMap = new Map([
+    const grid = new GridSnapshotSource([
       ["0,0", { char: "你", color: "#ffffff", href: "https://example.com" }],
       ["2,0", { char: "A", color: "#ffffff", href: "https://example.com" }],
     ]);

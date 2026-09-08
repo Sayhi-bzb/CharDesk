@@ -13,6 +13,7 @@ import type { Point } from "@/shared/types";
 import type { CanvasPointerContextResolver } from "./core/pointerContext";
 import type { CanvasDragStartRouteAdapter } from "./gestures/dragStartExecution";
 import { resolveDrawingUpdateDecision } from "./gestures/drawingInteraction";
+import { updateRangeMoveInteraction } from "./gestures/rangeMoveInteraction";
 
 export class InteractionStateCapture {
   #state: CanvasInteractionState = { type: "idle" };
@@ -76,6 +77,10 @@ export type CanvasInteractionPortDependencies = {
   erasePoints: (points: Point[]) => void;
   setHoveredGrid: (point: Point) => void;
   beginAppendSelection?: (point: Point) => void;
+  canStartStaticRangeMove?: (point: Point) => boolean;
+  updateStaticRangeMove?: (anchor: Point, current: Point) => void;
+  commitStaticRangeMove?: (anchor: Point, current: Point) => void;
+  clearStaticRangeMovePreview?: () => void;
 };
 
 export const createCanvasInteractionPort = ({
@@ -99,6 +104,10 @@ export const createCanvasInteractionPort = ({
   erasePoints,
   setHoveredGrid,
   beginAppendSelection,
+  canStartStaticRangeMove,
+  updateStaticRangeMove,
+  commitStaticRangeMove,
+  clearStaticRangeMovePreview,
 }: CanvasInteractionPortDependencies): CanvasInteractionPort => ({
   begin: beginInteraction,
   start: (event, selectionAnchor) => {
@@ -120,6 +129,24 @@ export const createCanvasInteractionPort = ({
       capture.setState(state);
       beginAppendSelection?.(event.gridPoint);
       return { state, selectionAnchor: event.gridPoint };
+    }
+    if (
+      canvasMode !== "structured" &&
+      tool === "select" &&
+      event.button === 0 &&
+      !event.isCtrlOrMetaPressed &&
+      !event.shiftKey &&
+      event.gridPoint &&
+      canStartStaticRangeMove?.(event.gridPoint)
+    ) {
+      const state: CanvasInteractionState = {
+        type: "rangeMovePending",
+        anchor: event.gridPoint,
+        current: event.gridPoint,
+        accumulated: { x: 0, y: 0 },
+      };
+      capture.setState(state);
+      return { state };
     }
     const started = dragStart({
       canvasMode: event.canvasMode,
@@ -159,6 +186,19 @@ export const createCanvasInteractionPort = ({
 
     const currentGrid = event.currentGrid;
     if (!currentGrid) return state;
+    if (state.type === "rangeMovePending" || state.type === "movingRange") {
+      const result = updateRangeMoveInteraction({
+        state,
+        eventDelta: event.delta,
+        currentGrid,
+      });
+      if (result.preview) {
+        updateStaticRangeMove?.(result.state.anchor, result.state.current);
+        setCursor("grabbing");
+      }
+      capture.setState(result.state);
+      return result.state;
+    }
     if (state.type === "drawing") {
       const decision = resolveDrawingUpdateDecision({
         tool: state.tool,
@@ -186,6 +226,15 @@ export const createCanvasInteractionPort = ({
     return capture.getState();
   },
   complete: (state, endGrid) => {
+    if (state.type === "rangeMovePending" || state.type === "movingRange") {
+      if (state.type === "movingRange") {
+        commitStaticRangeMove?.(state.anchor, endGrid ?? state.current);
+      }
+      clearStaticRangeMovePreview?.();
+      setCursor("");
+      completeInteraction();
+      return;
+    }
     if (state.type === "panning") {
       flushPan();
       clearLinkHover();

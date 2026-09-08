@@ -105,7 +105,9 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
   const column = node.kind === "list"
     || node.kind === "menu"
     || node.kind === "tree"
-    || node.kind === "grid";
+    || node.kind === "grid"
+    || node.kind === "select"
+    || node.kind === "select-content";
   const defaults: CellLayoutStyle = item
     ? {
         direction: "row",
@@ -116,15 +118,24 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
           : node.kind === "list-item" || node.kind === "menu-item"
             ? 0
             : 1,
+        ...(node.kind === "select-item" ? { paddingRight: 2 } : {}),
       }
-    : node.kind === "button"
+    : node.kind === "slider"
+      ? { width: 20, minWidth: 2, minHeight: 1, flexShrink: 0 }
+    : node.kind === "button" || node.kind === "checkbox" || node.kind === "select-trigger"
       ? {
           direction: "row",
           minHeight: 1,
           flexShrink: 0,
-          paddingLeft: 1,
-          paddingRight: 1,
+          paddingLeft: node.kind === "checkbox" ? 0 : 1,
+          paddingRight: node.kind === "select-trigger"
+            ? 2
+            : node.kind === "checkbox"
+              ? 0
+              : 1,
         }
+    : node.kind === "select-content"
+      ? { direction: "column", width: "100%", border: true, flexShrink: 0 }
     : row
       ? { direction: "row", flexShrink: 0 }
     : column
@@ -136,11 +147,23 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
           : {};
   applyStyle(target, { ...defaults, ...node.style });
   // The last inner row belongs to Tab chrome, in addition to user padding.
-  target.setPadding(Edge.Bottom, node.kind === "tab" ? (node.style.padding ?? 0) + 1 : undefined);
-  if (node.kind === "overlay") {
+  if (node.kind === "tab") {
+    target.setPadding(
+      Edge.Bottom,
+      (node.style.paddingBottom ?? node.style.padding ?? 0) + 1
+    );
+  }
+  // Checkbox chrome owns `[x] `; user padding starts after those four Cells.
+  if (node.kind === "checkbox") {
+    target.setPadding(
+      Edge.Left,
+      (node.style.paddingLeft ?? node.style.padding ?? 0) + 4
+    );
+  }
+  if (node.kind === "overlay" || node.kind === "select-content") {
     target.setPositionType(PositionType.Absolute);
-    target.setPosition(Edge.Left, node.overlayPosition?.x ?? 0);
-    target.setPosition(Edge.Top, node.overlayPosition?.y ?? 0);
+    target.setPosition(Edge.Left, node.kind === "overlay" ? node.overlayPosition?.x ?? 0 : 0);
+    target.setPosition(Edge.Top, node.kind === "overlay" ? node.overlayPosition?.y ?? 0 : 0);
   }
   if (node.kind === "scroll-area") target.setOverflow(Overflow.Hidden);
   if (node.kind === "text") {

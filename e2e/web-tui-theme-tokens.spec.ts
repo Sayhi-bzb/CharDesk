@@ -14,7 +14,8 @@ test("CSS token inheritance, aliases, local overrides and fallback resolve witho
     host.append(child);
     const inherited = readCellCssTheme(child);
     child.style.setProperty("--cell-highlight", "oklch(60% 0.1 120)");
-    child.style.setProperty("--cell-range-selection", "rgba(1, 2, 3, 0.25)");
+    child.style.setProperty("--cell-range-surface", "rgba(1, 2, 3, 0.25)");
+    child.style.setProperty("--cell-range-border", "rgb(10, 20, 30)");
     child.style.setProperty("--cell-cursor", "rgb(4, 5, 6)");
     child.style.setProperty("--cell-cursor-foreground", "rgb(7, 8, 9)");
     const local = readCellCssTheme(child);
@@ -29,7 +30,10 @@ test("CSS token inheritance, aliases, local overrides and fallback resolve witho
   expect(result.inherited.theme.selectedStyle.backgroundColor).toBe("rgb(12, 34, 56)");
   expect(result.inherited.theme.selectedStyle).toEqual(result.inherited.theme.focusedSurfaceStyle);
   expect(result.local.theme.selectedStyle.backgroundColor).toContain("oklch(");
-  expect(result.local.theme.rangeSelectionColor).toBe("rgba(1, 2, 3, 0.25)");
+  expect(result.local.theme.rangeStyle).toEqual({
+    surface: "rgba(1, 2, 3, 0.25)",
+    border: "rgb(10, 20, 30)",
+  });
   expect(result.local.theme.cursorStyle).toMatchObject({
     shape: "block",
     color: "rgb(4, 5, 6)",
@@ -79,7 +83,7 @@ test("terminal cursor and rectangle overlay consume theme tokens in actual pixel
   await page.evaluate(() => {
     document.documentElement.style.setProperty("--cell-cursor", "rgb(255, 0, 0)");
     document.documentElement.style.setProperty("--cell-cursor-foreground", "rgb(0, 0, 0)");
-    document.documentElement.style.setProperty("--cell-range-selection", "rgb(0, 255, 0)");
+    document.documentElement.style.setProperty("--cell-range-surface", "rgb(0, 255, 0)");
   });
   await page.getByRole("button", { name: "Dark" }).click();
   await page.getByRole("textbox", { name: "File name", exact: true }).fill("");

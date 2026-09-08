@@ -113,7 +113,7 @@ export function CanvasInspectorControl({
       brushColor: value.brushColor,
       brushBackgroundColor: value.brushBackgroundColor,
       canvasColorPickerTarget: value.canvasColorPickerTarget,
-      grid: value.grid,
+      contentSurface: value.contentSurface,
       staticGridSelection: value.staticGridSelection,
       structuredScene: value.structuredScene,
       selectedStructuredNodeIds: value.selectedStructuredNodeIds,
@@ -127,7 +127,7 @@ export function CanvasInspectorControl({
         tool: state.tool,
         brushColor: state.brushColor,
         brushBackgroundColor: state.brushBackgroundColor,
-        grid: state.grid,
+        grid: state.contentSurface.reader,
         staticGridSelection: state.staticGridSelection,
         structuredScene: state.structuredScene,
         selectedStructuredNodeIds: state.selectedStructuredNodeIds,
@@ -137,7 +137,7 @@ export function CanvasInspectorControl({
       state.brushBackgroundColor,
       state.brushColor,
       state.canvasMode,
-      state.grid,
+      state.contentSurface,
       state.selectedStructuredNodeIds,
       state.structuredScene,
       state.structuredTextSelection,
@@ -228,14 +228,14 @@ export function CanvasInspectorControl({
     id: "canvas-inspector",
     priority: SHORTCUT_PRIORITY.dynamicCanvasCommand,
     enabled: available && state.tool !== "pan",
-    onKeyDown: (event, context) => {
+    onKeyDown: (input, context) => {
       if (
         context.targetKind === "editable" ||
         context.targetKind === "overlay"
       ) {
         return;
       }
-      if (event.key === "Escape" && (panelOpen || state.canvasColorPickerTarget)) {
+      if (input.key === "Escape" && (panelOpen || state.canvasColorPickerTarget)) {
         close();
         return { claimed: true, preventDefault: true };
       }

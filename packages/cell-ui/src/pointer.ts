@@ -1,16 +1,23 @@
 import { cellRectContainsPoint } from "@chardesk/cell-core";
 import type { FocusManager, WidgetCommand } from "./interaction.js";
-import { commandForInput, getScrollRange, topModalOverlayId } from "./interaction.js";
+import { commandForInput, getScrollRange, topFocusScopeId } from "./interaction.js";
 import type { GestureCandidate, GestureSignal } from "./gestures.js";
 import { getEventPath, hitTestCell } from "./scene.js";
 import type { CellPoint, FrameSnapshot, WidgetId } from "./types.js";
 import { cellCenter } from "./scrollbar.js";
 import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
+import { isActionableKind } from "./widget-capabilities.js";
+import { cellSliderValueAtCoordinate, resolveCellSliderRange } from "./slider.js";
 
 export const validGestureCandidate = (frame: FrameSnapshot, candidate: GestureCandidate): boolean => {
   const node = frame.tree.nodes.get(candidate.targetId);
   const entry = frame.scene.entries.get(candidate.targetId);
   if (!node || node.disabled || !entry?.paintVisible) return false;
+  if (candidate.slider) {
+    return node.kind === "slider"
+      && candidate.slider.trackStart === entry.decorationBounds.x
+      && candidate.slider.trackLength === entry.decorationBounds.width;
+  }
   const anchor = candidate.scrollbar;
   if (!anchor) return true;
   const horizontal = candidate.part === "scrollbar-x";
@@ -31,7 +38,7 @@ export const resolvePointerAppearance = (frame: FrameSnapshot, point: CellPoint)
   const hit = hitTestCell(frame.scene, point);
   if (!hit) return { hoveredId: null, cursor: "default" };
   const path = getEventPath(frame.scene, hit.ownerId);
-  const modalId = topModalOverlayId(frame.tree);
+  const modalId = topFocusScopeId(frame.tree);
   if (modalId && !path.includes(modalId)) return { hoveredId: null, cursor: "default" };
   for (const id of path) {
     const node = frame.tree.nodes.get(id)!;
@@ -39,10 +46,10 @@ export const resolvePointerAppearance = (frame: FrameSnapshot, point: CellPoint)
     if (node.kind === "text-input" || node.kind === "text-area") {
       return { hoveredId: null, cursor: "default" };
     }
-    if (["list-item", "menu-item", "tree-item", "tab", "grid-cell"].includes(node.kind)) {
+    if (isActionableKind(node.kind)) {
       return { hoveredId: id, cursor: "pointer" };
     }
-    if (node.kind === "overlay" || node.kind === "scroll-area") break;
+    if (node.kind === "overlay" || node.kind === "select-content" || node.kind === "scroll-area") break;
   }
   return { hoveredId: null, cursor: "default" };
 };
@@ -55,11 +62,7 @@ export const gestureCandidatesForFrame = (
 ): readonly GestureCandidate[] => {
   const item = path.find((id) => {
     const kind = frame.tree.nodes.get(id)?.kind;
-    return kind === "list-item"
-      || kind === "menu-item"
-      || kind === "tree-item"
-      || kind === "tab"
-      || kind === "grid-cell";
+    return kind ? isActionableKind(kind) : false;
   });
   const scroll = path.find((id) => frame.scene.entries.get(id)?.scrollMetrics);
   const hit = hitTestCell(frame.scene, point);
@@ -83,9 +86,19 @@ export const gestureCandidatesForFrame = (
     trackLength: horizontal ? track.width : track.height,
     thumbLength: thumb.length,
   } : undefined;
+  const sliderNode = item ? frame.tree.nodes.get(item) : undefined;
+  const sliderBounds = sliderNode?.kind === "slider"
+    ? frame.scene.entries.get(sliderNode.id)?.decorationBounds
+    : undefined;
+  const slider = sliderBounds
+    ? { trackStart: sliderBounds.x, trackLength: sliderBounds.width }
+    : undefined;
   return [
     ...(item && !frame.tree.nodes.get(item)?.disabled
       ? [{ targetId: item, kind: "tap" as const }]
+      : []),
+    ...(item && slider
+      ? [{ targetId: item, kind: "drag" as const, axis: "x" as const, slider }]
       : []),
     ...(scrollbarPart && scroll
       ? [
@@ -115,6 +128,17 @@ export const commandForGestureSignal = (
   if (signal.kind === "tap" && signal.phase === "end") {
     const entry = frame.scene.entries.get(signal.targetId);
     const node = frame.tree.nodes.get(signal.targetId);
+    if (node?.kind === "slider" && entry) {
+      const value = cellSliderValueAtCoordinate(
+        (signal.precisePoint ?? cellCenter(signal.point)).x,
+        entry.decorationBounds.x,
+        entry.decorationBounds.width,
+        resolveCellSliderRange(node.sliderMin, node.sliderMax, node.sliderStep)
+      );
+      return value === node.sliderValue
+        ? null
+        : { type: "set-value", targetId: node.id, value };
+    }
     if (node && entry?.scrollMetrics && signal.part) {
       const metrics = entry.scrollMetrics;
       const horizontal = signal.part === "scrollbar-x";
@@ -138,6 +162,23 @@ export const commandForGestureSignal = (
       focus
     );
     return command?.targetId === signal.targetId ? command : null;
+  }
+  if (
+    signal.kind === "drag"
+    && (signal.phase === "start" || signal.phase === "update" || signal.phase === "end")
+    && signal.slider
+  ) {
+    const node = frame.tree.nodes.get(signal.targetId);
+    if (!node || node.kind !== "slider") return null;
+    const value = cellSliderValueAtCoordinate(
+      (signal.precisePoint ?? cellCenter(signal.point)).x,
+      signal.slider.trackStart,
+      signal.slider.trackLength,
+      resolveCellSliderRange(node.sliderMin, node.sliderMax, node.sliderStep)
+    );
+    return value === node.sliderValue
+      ? null
+      : { type: "set-value", targetId: node.id, value };
   }
   if (
     signal.kind === "drag"

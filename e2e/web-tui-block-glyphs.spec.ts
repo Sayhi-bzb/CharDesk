@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
+import { selectGalleryFont } from "./helpers/gallery-font-select";
 
 type GlyphCall = Readonly<{ text: string; font: string }>;
 
@@ -37,12 +38,12 @@ test("component chrome uses Cell graphics across all display fonts without Julia
     .presentation?.cellGraphics?.cells.some(({ text }) => text === "╭")).toBe(true);
 
   for (const [label, id, family] of [
-    ["Ark Pixel 12px Mono", "ark-mono", "Ark Pixel"],
+    ["Fusion Pixel 12px Mono", "fusion-mono", "Fusion Pixel"],
     ["Xiaolai Mono", "xiaolai-mono", "Xiaolai Mono"],
     ["Maple Mono", "maple", "Maple Mono"],
   ]) {
     await page.evaluate(() => { (window as Window & { __chardeskGlyphCalls: GlyphCall[] }).__chardeskGlyphCalls.length = 0; });
-    await page.getByRole("button", { name: `Use ${label}` }).click();
+    await selectGalleryFont(page, label);
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font", id);
     await expect.poll(async () => (await glyphCalls()).some(({ text, font }) =>
       /^[A-Za-z]$/.test(text) && font.includes(family))).toBe(true);

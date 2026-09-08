@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import { applyFreeformSnapshotToYMaps, useEditorStore } from "@/domains/canvas/testing";
 import {
   createGridSelectionState,
@@ -20,7 +21,7 @@ const resetStore = () => {
   useEditorStore.setState(
     {
       ...initialState,
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       canvasSessions: initialState.canvasSessions.map((session) =>
         session.id === DEFAULT_SESSION_ID ? { ...session, grid: [] } : session
       ),
@@ -66,7 +67,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
 
     useEditorStore.getState().setSelectionTextAttributes({ bold: true });
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["0,0", { char: "A", color: "#ffffff", attrs: { bold: true } }],
         [
@@ -92,7 +93,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
 
     useEditorStore.getState().setSelectionTextAttributes({ underline: true });
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["0,0", { char: " ", color: "#2563eb", attrs: { underline: true } }],
         ["1,0", { char: " ", color: "#2563eb", attrs: { underline: true } }],
@@ -110,7 +111,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
 
     useEditorStore.getState().setSelectionTextAttributes({ strike: true });
 
-    expect(useEditorStore.getState().grid.get("0,0")).toEqual({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")).toEqual({
       char: " ",
       color: "#ef4444",
       attrs: { strike: true },
@@ -127,7 +128,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
 
     useEditorStore.getState().setSelectionTextAttributes({ inverse: true });
 
-    expect(useEditorStore.getState().grid.get("0,0")).toEqual({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")).toEqual({
       char: " ",
       color: "#22c55e",
       attrs: { inverse: true },
@@ -145,7 +146,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
       .getState()
       .setSelectionTextAttributes({ bold: true, italic: true });
 
-    expect(useEditorStore.getState().grid).toEqual(new Map());
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
   });
 
   it("removes only toggled attributes and preserves other styling", () => {
@@ -167,7 +168,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
 
     useEditorStore.getState().setSelectionTextAttributes({ bold: false });
 
-    expect(useEditorStore.getState().grid.get("0,0")).toEqual({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")).toEqual({
       char: "A",
       color: "#ffffff",
       bgColor: "#111111",
@@ -186,7 +187,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
 
     useEditorStore.getState().setSelectionTextAttributes({ underline: false });
 
-    expect(useEditorStore.getState().grid.get("0,0")).toEqual({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")).toEqual({
       char: "A",
       color: "#ffffff",
     });
@@ -203,19 +204,19 @@ describe("selectionSlice setSelectionTextAttributes", () => {
 
     useEditorStore.getState().setSelectionTextAttributes({ underline: false });
 
-    expect(useEditorStore.getState().grid).toEqual(new Map());
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
   });
 
   it("does not update cells in structured mode", () => {
     useEditorStore.setState({
       canvasMode: "structured",
-      grid: new Map([["0,0", { char: "A", color: "#ffffff" }]]),
+      contentSurface: new TestCanvasContentSurface([["0,0", { char: "A", color: "#ffffff" }]]),
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
     });
 
     useEditorStore.getState().setSelectionTextAttributes({ bold: true });
 
-    expect(useEditorStore.getState().grid.get("0,0")).toEqual({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")).toEqual({
       char: "A",
       color: "#ffffff",
     });
@@ -244,7 +245,7 @@ describe("selectionSlice static grid selection compatibility", () => {
 
     useEditorStore.getState().fillSelectionsWithChar("X");
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["0,0", { char: "X", color: "#22c55e" }],
         ["1,0", { char: "X", color: "#22c55e" }],
@@ -272,7 +273,7 @@ describe("selectionSlice static grid selection compatibility", () => {
 
     useEditorStore.getState().setSelectionBackgroundColor("#0f172a");
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["0,0", { char: "A", color: "#ffffff", bgColor: "#0f172a" }],
         ["1,0", { char: " ", color: "#f8fafc", bgColor: "#0f172a" }],
@@ -300,7 +301,7 @@ describe("selectionSlice setSelectionBackgroundColor", () => {
 
     useEditorStore.getState().setSelectionBackgroundColor("#2563eb");
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["0,0", { char: "A", color: "#ffffff", bgColor: "#2563eb" }],
         ["1,0", { char: " ", color: "#f8fafc", bgColor: "#2563eb" }],
@@ -336,7 +337,7 @@ describe("selectionSlice setSelectionBackgroundColor", () => {
 
     useEditorStore.getState().setSelectionBackgroundColor(null);
 
-    expect(useEditorStore.getState().grid.get("0,0")).toEqual({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")).toEqual({
       char: "A",
       color: "#ffffff",
       attrs: { underline: true },
@@ -354,7 +355,7 @@ describe("selectionSlice setSelectionBackgroundColor", () => {
 
     useEditorStore.getState().setSelectionBackgroundColor(null);
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["1,0", { char: "A", color: "#ffffff" }],
       ])
@@ -372,19 +373,19 @@ describe("selectionSlice setSelectionBackgroundColor", () => {
 
     useEditorStore.getState().setSelectionBackgroundColor(null);
 
-    expect(useEditorStore.getState().grid).toEqual(new Map());
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
   });
 
   it("does not update background color in structured mode", () => {
     useEditorStore.setState({
       canvasMode: "structured",
-      grid: new Map([["0,0", { char: "A", color: "#ffffff" }]]),
+      contentSurface: new TestCanvasContentSurface([["0,0", { char: "A", color: "#ffffff" }]]),
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
     });
 
     useEditorStore.getState().setSelectionBackgroundColor("#2563eb");
 
-    expect(useEditorStore.getState().grid.get("0,0")).toEqual({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")).toEqual({
       char: "A",
       color: "#ffffff",
     });

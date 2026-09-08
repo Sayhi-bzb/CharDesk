@@ -45,12 +45,20 @@ export type CellTextStyle = Readonly<{
   underline?: boolean;
 }>;
 
+export type CellCheckboxState = boolean | "indeterminate";
+
 export type WidgetKind =
   | "root"
   | "box"
   | "overlay"
   | "text"
   | "button"
+  | "checkbox"
+  | "slider"
+  | "select"
+  | "select-trigger"
+  | "select-content"
+  | "select-item"
   | "list"
   | "list-item"
   | "menu"
@@ -82,6 +90,12 @@ export type WidgetNode = Readonly<{
   focusVisible: boolean;
   hovered: boolean;
   selected: boolean;
+  checked: CellCheckboxState;
+  sliderValue: number;
+  sliderMin: number;
+  sliderMax: number;
+  sliderStep: number;
+  sliderValueText: string | null;
   expanded: boolean;
   hasChildren: boolean;
   level: number | null;
@@ -213,6 +227,8 @@ export type SemanticNode = Readonly<{
   role:
     | "dialog"
     | "button"
+    | "checkbox"
+    | "slider"
     | "listbox"
     | "option"
     | "textbox"
@@ -231,6 +247,11 @@ export type SemanticNode = Readonly<{
   hidden: boolean;
   focused: boolean;
   selected?: boolean;
+  checked?: boolean | "mixed";
+  valueNow?: number;
+  valueMin?: number;
+  valueMax?: number;
+  valueText?: string;
   expanded?: boolean;
   level?: number;
   rowIndex?: number;
@@ -240,6 +261,7 @@ export type SemanticNode = Readonly<{
   positionInSet?: number;
   setSize?: number;
   orientation?: "horizontal" | "vertical";
+  hasPopup?: "listbox";
   controlsId?: WidgetId;
   labelledById?: WidgetId;
   value?: string;

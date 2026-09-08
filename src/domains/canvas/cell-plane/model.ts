@@ -1,7 +1,6 @@
-import type { GridCell, NodeBounds, Point, TextAttributes } from "@/shared/types";
+import type { GridCell, GridCellSource, NodeBounds, Point, TextAttributes } from "@/shared/types";
 import type {
   CellChanges,
-  CellSource,
 } from "@chardesk/cell-core";
 import {
   getCellOccupancy,
@@ -10,7 +9,10 @@ import {
 } from "@/shared/metrics";
 import { GridManager } from "@/shared/utils/grid";
 import { deleteCellAt, writeStyledCell } from "@/shared/utils/grid-ops";
-import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
+import {
+  createPointGridReader,
+  resolveGridSlot,
+} from "@/shared/utils/grid-occupancy";
 
 const CELL_PLANE_CHUNK_WIDTH = 128;
 const CELL_PLANE_CHUNK_HEIGHT = 64;
@@ -555,7 +557,7 @@ export type CellPlaneRow = {
   spans: readonly CellSpan[];
 };
 
-export interface CanvasSurfaceReader extends CellSource<GridCell> {
+export interface CanvasSurfaceReader extends GridCellSource {
   /** @deprecated Use the CellSource-compatible get(). */
   getCell(point: Point): GridCell | undefined;
   /** @deprecated Use the CellSource-compatible visit(). */
@@ -574,10 +576,6 @@ export interface IncrementalCanvasSurfaceReader extends CanvasSurfaceReader {
   getChangesSince(revision: number): CanvasSurfaceChanges;
 }
 
-interface CanvasSurfaceLineNavigator extends CanvasSurfaceReader {
-  getLineOriginX(point: Point): number;
-}
-
 export const isIncrementalCanvasSurfaceReader = (
   reader: CanvasSurfaceReader
 ): reader is IncrementalCanvasSurfaceReader =>
@@ -588,7 +586,7 @@ export const isIncrementalCanvasSurfaceReader = (
 
 export const createGridSurfaceReader = (
   grid: ReadonlyMap<string, GridCell>
-): CanvasSurfaceReader => getSurfaceGridReader(grid) ?? ({
+): CanvasSurfaceReader => ({
   get: ({ x, y }) => grid.get(GridManager.toKey(x, y)),
   getCell: ({ x, y }) => grid.get(GridManager.toKey(x, y)),
   visit(bounds, visitor) {
@@ -665,70 +663,6 @@ export const createGridSurfaceReader = (
     return result;
   },
 });
-
-const surfaceGridProjectionReaders = new WeakMap<
-  ReadonlyMap<string, GridCell>,
-  () => CanvasSurfaceReader
->();
-
-export const isSurfaceGridProjection = (
-  grid: ReadonlyMap<string, GridCell>
-) => surfaceGridProjectionReaders.has(grid);
-
-export const getSurfaceGridReader = (
-  grid: ReadonlyMap<string, GridCell>
-): CanvasSurfaceReader | null => surfaceGridProjectionReaders.get(grid)?.() ?? null;
-
-export const getSurfaceGridLineOriginX = (
-  grid: ReadonlyMap<string, GridCell>,
-  point: Point
-) => {
-  const reader = surfaceGridProjectionReaders.get(grid)?.();
-  return reader && "getLineOriginX" in reader &&
-    typeof reader.getLineOriginX === "function"
-    ? (reader as CanvasSurfaceLineNavigator).getLineOriginX(point)
-    : undefined;
-};
-
-/** Map-compatible, non-owning facade for legacy interaction consumers. */
-export const createSurfaceGridProjection = (
-  source: CanvasSurfaceReader | (() => CanvasSurfaceReader)
-): Map<string, GridCell> => {
-  const grid = new Map<string, GridCell>();
-  const reader = () => typeof source === "function" ? source() : source;
-  const materialize = () => reader().materialize();
-  const rejectMutation = () => {
-    throw new Error("Canvas surface projections are read-only");
-  };
-  Object.defineProperties(grid, {
-    size: { get: () => materialize().size },
-    get: {
-      value: (key: string) => reader().getCell(GridManager.fromKey(key)),
-    },
-    has: {
-      value: (key: string) => reader().getCell(GridManager.fromKey(key)) !== undefined,
-    },
-    entries: { value: () => materialize().entries() },
-    keys: { value: () => materialize().keys() },
-    values: { value: () => materialize().values() },
-    [Symbol.iterator]: { value: () => materialize().entries() },
-    forEach: {
-      value: (
-        callbackfn: (value: GridCell, key: string, map: Map<string, GridCell>) => void,
-        thisArg?: unknown
-      ) => {
-        for (const [key, value] of materialize()) {
-          callbackfn.call(thisArg, value, key, grid);
-        }
-      },
-    },
-    set: { value: rejectMutation },
-    delete: { value: rejectMutation },
-    clear: { value: rejectMutation },
-  });
-  surfaceGridProjectionReaders.set(grid, reader);
-  return grid;
-};
 
 const floorDiv = (value: number, divisor: number) => Math.floor(value / divisor);
 const chunkKey = (x: number, y: number) => `${x},${y}`;
@@ -1524,6 +1458,7 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
       height: CELL_PLANE_CHUNK_HEIGHT,
     };
     const projection = new Map<string, GridCell>();
+    const projectionReader = createPointGridReader(projection);
     for (const reference of this.#referencesByChunk.get(key) ?? []) {
       for (const rowIndex of reference.rowIndexes) {
         const row = getOperationRow(reference.operation, rowIndex);
@@ -1544,7 +1479,7 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
             for (let index = asciiSlice.start; index < asciiSlice.end; index += 1) {
               const x = span.x + index;
               const targetBackground = span.preserveTargetBackground
-                ? resolveGridSlot(projection, { x, y: row.y })?.cell.bgColor
+                ? resolveGridSlot(projectionReader, { x, y: row.y })?.cell.bgColor
                 : undefined;
               writeStyledCell(
                 projection,
@@ -1574,7 +1509,7 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
               continue;
             }
             const targetBackground = span.preserveTargetBackground
-              ? resolveGridSlot(projection, { x, y: row.y })?.cell.bgColor
+              ? resolveGridSlot(projectionReader, { x, y: row.y })?.cell.bgColor
               : undefined;
             writeStyledCell(
               projection,

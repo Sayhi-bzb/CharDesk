@@ -124,4 +124,22 @@ describe("TestPilot", () => {
     expect(() => pilot.getByRole("dialog")).toThrow("found 0");
     pilot.dispose();
   });
+
+  it("replays key phases and repeat without duplicate activation", async () => {
+    const commands: WidgetCommand[] = [];
+    const pilot = createTestPilot({
+      viewport: { width: 12, height: 1 },
+      render: () => (
+        <Root><List><ListItem id="open" focused><Text>Open</Text></ListItem></List></Root>
+      ),
+      onCommand: (command) => commands.push(command),
+    });
+
+    await pilot.pressKey("Enter", { code: "Enter" });
+    expect(commands).toEqual([{ type: "activate", targetId: "open" }]);
+    await pilot.keyDown("Enter", { repeat: true });
+    await pilot.keyUp("Enter");
+    expect(commands).toHaveLength(1);
+    pilot.dispose();
+  });
 });

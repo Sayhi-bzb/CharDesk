@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import {
   advanceStaticGridInputFlow,
   advanceStaticGridInputFlowLine,
@@ -13,7 +14,7 @@ const bounds = {
 describe("static grid input flow", () => {
   it("advances freeform input by grapheme display width", () => {
     let flow = createStaticGridInputFlow({
-      grid: new Map(),
+      grid: new GridSnapshotSource(),
       address: { x: 2, y: 3 },
     });
 
@@ -27,7 +28,7 @@ describe("static grid input flow", () => {
 
   it("wraps to the input line origin without splitting a wide grapheme", () => {
     const flow = createStaticGridInputFlow({
-      grid: new Map(),
+      grid: new GridSnapshotSource(),
       address: { x: 3, y: 0 },
       bounds,
     });
@@ -55,7 +56,7 @@ describe("static grid input flow", () => {
 
   it("stops at the final cell and keeps repeated input as a no-op", () => {
     const flow = createStaticGridInputFlow({
-      grid: new Map(),
+      grid: new GridSnapshotSource(),
       address: { x: 4, y: 1 },
       bounds,
     });
@@ -74,7 +75,7 @@ describe("static grid input flow", () => {
 
   it("exhausts when the line origin cannot fit a wide grapheme", () => {
     const flow = createStaticGridInputFlow({
-      grid: new Map(),
+      grid: new GridSnapshotSource(),
       address: { x: 4, y: 0 },
       bounds,
     });
@@ -86,7 +87,7 @@ describe("static grid input flow", () => {
 
   it("uses the same line origin for explicit line advances", () => {
     const flow = createStaticGridInputFlow({
-      grid: new Map([["2,0", { char: "A", color: "#fff" }]]),
+      grid: new GridSnapshotSource([["2,0", { char: "A", color: "#fff" }]]),
       address: { x: 4, y: 0 },
       bounds,
     });

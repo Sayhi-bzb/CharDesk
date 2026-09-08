@@ -94,14 +94,14 @@ export function ZoomControl({
   const workspace = useCanvasWorkspaceOptional();
   const activeCanvasView = useCanvasViewOptional();
   const liveViewport = useCanvasLiveViewportOptional();
-  const { zoom: storedZoom, canvasMode, slideDeck, showGrid, activeCanvasId, grid } = useCanvasState(
+  const { zoom: storedZoom, canvasMode, slideDeck, showGrid, activeCanvasId, contentSurface } = useCanvasState(
     useShallow((state) => ({
       zoom: state.zoom,
       canvasMode: state.canvasMode,
       slideDeck: state.slideDeck,
       showGrid: state.showGrid,
       activeCanvasId: state.activeCanvasId,
-      grid: state.grid,
+      contentSurface: state.contentSurface,
     }))
   );
   const zoom = liveViewport?.zoom ?? storedZoom;
@@ -115,13 +115,16 @@ export function ZoomControl({
               ...slideDeck,
               slides: slideDeck.slides.map((slide) =>
                 slide.id === slideDeck.activeSlideId
-                  ? { ...slide, grid: Array.from(grid.entries()) }
+                  ? {
+                      ...slide,
+                      grid: Array.from(contentSurface.reader.materialize()),
+                    }
                   : slide
               ),
             }
           )
         : null,
-    [activeCanvasId, canvas.documents, grid, slideDeck]
+    [activeCanvasId, canvas.documents, contentSurface, slideDeck]
   );
   const setShowGrid = canvas.commands.preferences.setShowGrid;
   const [minimapOpen, setMinimapOpen] = useState(false);

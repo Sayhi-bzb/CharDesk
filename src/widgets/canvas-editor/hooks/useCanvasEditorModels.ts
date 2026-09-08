@@ -1,9 +1,10 @@
 import {
   createGridSurfaceReader,
-  createSurfaceGridProjection,
+  isIncrementalCanvasSurfaceReader,
   useCanvasRuntime,
   useCanvasState,
   type CanvasState,
+  type CanvasSurfaceReader,
 } from "@/domains/canvas/public";
 import { useShallow } from "zustand/react/shallow";
 import { useCanvasViewOptional } from '../engine/CanvasWorkspace';
@@ -17,10 +18,19 @@ type SessionContent = Pick<
   | 'activeCanvasId'
   | 'canvasMode'
   | 'slideDeck'
-  | 'grid'
   | 'structuredScene'
   | 'structuredComponents'
->;
+> & {
+  contentReader: CanvasSurfaceReader;
+  contentRevision: number;
+};
+
+const contentModel = (contentReader: CanvasSurfaceReader) => ({
+  contentReader,
+  contentRevision: isIncrementalCanvasSurfaceReader(contentReader)
+    ? contentReader.getRevision()
+    : 0,
+});
 
 const resolveSessionContent = (
   session: CanvasSession,
@@ -30,18 +40,15 @@ const resolveSessionContent = (
     const activeSlide = session.slideDeck.slides.find(
       (slide) => slide.id === session.slideDeck.activeSlideId
     );
+    const contentReader = activeSlide
+      ? documents.getContentReader(session.id, activeSlide.id) ??
+        createGridSurfaceReader(new Map(activeSlide.grid))
+      : createGridSurfaceReader(new Map());
     return {
       activeCanvasId: session.id,
       canvasMode: session.mode,
       slideDeck: session.slideDeck,
-    grid: activeSlide
-      ? (() => {
-          const reader = documents.getContentReader(session.id, activeSlide.id);
-          return reader
-            ? createSurfaceGridProjection(reader)
-            : new Map(activeSlide.grid);
-        })()
-      : new Map(),
+      ...contentModel(contentReader),
       structuredScene: [],
       structuredComponents: [],
     };
@@ -51,18 +58,15 @@ const resolveSessionContent = (
     session.mode,
   );
   const structuredScene = seed?.scene ?? session.scene;
+  const contentReader = session.mode === 'structured'
+    ? createStructuredSceneSurface(structuredScene)
+    : documents.getContentReader(session.id) ??
+      createGridSurfaceReader(new Map(seed?.grid ?? session.grid));
   return {
     activeCanvasId: session.id,
     canvasMode: session.mode,
     slideDeck: null,
-    grid: session.mode === 'structured'
-      ? createSurfaceGridProjection(createStructuredSceneSurface(structuredScene))
-      : (() => {
-          const reader = documents.getContentReader(session.id);
-          return reader
-            ? createSurfaceGridProjection(reader)
-            : new Map(seed?.grid ?? session.grid);
-        })(),
+    ...contentModel(contentReader),
     structuredScene,
     structuredComponents: seed?.components ?? session.components ?? [],
   };
@@ -88,7 +92,8 @@ export const useCanvasEditorModels = () => {
       canvasColorPickerTarget: state.canvasColorPickerTarget,
       offset: state.offset,
       zoom: state.zoom,
-      grid: state.grid,
+      contentReader: state.contentSurface.reader,
+      contentRevision: state.contentSurface.revision,
       staticGridSelection: state.staticGridSelection,
       structuredScene: state.structuredScene,
       editingStructuredTextNodeId: state.editingStructuredTextNodeId,
@@ -147,6 +152,7 @@ export const useCanvasEditorModels = () => {
         ? canvasCommands.interaction.setHoveredGrid
         : () => undefined,
     fillArea: canvasCommands.grid.fillArea,
+    moveStaticGridSelection: canvasCommands.selection.moveStaticRange,
     setStructuredGridFocus: canvasCommands.interaction.setStructuredGridFocus,
     setStructuredContextPoint: canvasCommands.interaction.setStructuredContextPoint,
     setSelectedStructuredNodeIds: canvasCommands.interaction.setSelectedStructuredNodeIds,
@@ -162,7 +168,8 @@ export const useCanvasEditorModels = () => {
       activeCanvasId: state.activeCanvasId,
       offset: state.offset,
       zoom: state.zoom,
-      grid: state.grid,
+      contentReader: state.contentSurface.reader,
+      contentRevision: state.contentSurface.revision,
       scratchLayer: state.scratchLayer,
       textCursor: state.textCursor,
       staticGridSelection: state.staticGridSelection,
@@ -217,28 +224,9 @@ export const useCanvasEditorModels = () => {
           : null,
       }
     : rendererStore;
-  const contentDocumentId = viewRendererStore.activeCanvasId;
-  const contentPageId =
-    viewRendererStore.canvasMode === 'slide'
-      ? viewRendererStore.slideDeck?.activeSlideId
-      : undefined;
-  const contentReader = useMemo(
-    () =>
-      viewRendererStore.canvasMode === 'structured'
-        ? createGridSurfaceReader(viewRendererStore.grid)
-        : documents.getContentReader(contentDocumentId, contentPageId) ??
-          createGridSurfaceReader(viewRendererStore.grid),
-    [
-      contentDocumentId,
-      contentPageId,
-      documents,
-      viewRendererStore.canvasMode,
-      viewRendererStore.grid,
-    ]
-  );
   const editorState = useCanvasState(
     useShallow((state) => ({
-      grid: state.grid,
+      contentReader: state.contentSurface.reader,
       textCursor: state.textCursor,
       staticGridSelection: state.staticGridSelection,
       staticGridEditMode: state.staticGridEditMode,
@@ -287,6 +275,7 @@ export const useCanvasEditorModels = () => {
     setOffset: canvasView?.setOffset ?? canvasCommands.viewport.setOffset,
     consumePendingCameraPlacement: canvasCommands.viewport.consumePendingPlacement,
     fillSelectionsWithChar: canvasCommands.selection.fillWithChar,
+    moveStaticGridSelection: canvasCommands.selection.moveStaticRange,
     clearSelections: canvasCommands.selection.clear,
     setStructuredGridFocus: canvasCommands.interaction.setStructuredGridFocus,
     setSelectedStructuredNodeIds: canvasCommands.interaction.setSelectedStructuredNodeIds,
@@ -305,7 +294,7 @@ export const useCanvasEditorModels = () => {
 
   return {
     interaction: interactionStore,
-    renderer: { ...viewRendererStore, contentReader },
+    renderer: viewRendererStore,
     editor: editorStore,
   };
 };

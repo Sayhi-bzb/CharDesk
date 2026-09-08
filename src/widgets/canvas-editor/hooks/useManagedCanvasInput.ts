@@ -12,6 +12,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
+import { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
 import { isStaticGridMode, type CanvasMode } from "@/domains/sessions/public";
 import {
   DEFAULT_GRID_RENDER_METRICS,
@@ -23,12 +24,9 @@ import {
 } from "@/domains/selection/public";
 import { classifyShortcutTarget } from "@/shared/utils/dom-focus";
 import { shouldIgnoreCanvasSurfaceGesture } from "./interaction/core/gestureGuards";
+import { isActionAccepted } from "@/domains/actions/public";
 import {
-  resolveFillHotkeyChar,
-  isActionAccepted,
-} from "@/domains/actions/public";
-import {
-  resolveEditorKeymapEvent,
+  resolveEditorKeymapInput,
   useEditor,
 } from "@/domains/editor/public";
 import type { ActionResult } from "@/domains/actions/public";
@@ -46,6 +44,11 @@ import {
   shouldSuppressFinalizedCompositionInput,
   type FinalizedManagedComposition,
 } from "./managedTextInputSession";
+import {
+  modifiedArrowEdgeFor,
+  resolveManagedCanvasKeyIntent,
+  type ManagedCanvasKeyIntent,
+} from "./managedCanvasKeyboard";
 import {
   ManagedInputBatchScheduler,
   resolveManagedInputBatchLimit,
@@ -126,17 +129,6 @@ type UseManagedCanvasInputOptions = {
   mutateEnabled?: boolean;
   active?: boolean;
   onManagedInputBatch?: (sample: ManagedInputBatchCommitSample) => void;
-};
-
-const getModifiedArrowEdge = (
-  event: Pick<globalThis.KeyboardEvent, "ctrlKey" | "key" | "metaKey">
-) => {
-  if (!event.ctrlKey && !event.metaKey) return null;
-  if (event.key === "ArrowLeft") return "left" as const;
-  if (event.key === "ArrowRight") return "right" as const;
-  if (event.key === "ArrowUp") return "top" as const;
-  if (event.key === "ArrowDown") return "bottom" as const;
-  return null;
 };
 
 export const useManagedCanvasInput = ({
@@ -235,9 +227,9 @@ export const useManagedCanvasInput = ({
         selection: staticGridSelection,
         editMode: staticGridEditMode,
         textCursor,
-        grid: model.grid,
+        grid: model.contentReader,
       }),
-    [model.grid, staticGridEditMode, staticGridSelection, textCursor]
+    [model.contentReader, staticGridEditMode, staticGridSelection, textCursor]
   );
   const staticGridMode = isStaticGridMode(canvasMode);
   const activeTextCursor = staticGridMode ? staticGridView.textCursor : textCursor;
@@ -426,22 +418,22 @@ export const useManagedCanvasInput = ({
     id: "managed-canvas-commands",
     priority: SHORTCUT_PRIORITY.managedCanvas,
     enabled: (copyEnabled || mutateEnabled) && canvasOwnsInputFocus,
-    onKeyDown: (event, context) => {
+    onKeyDown: (input, context) => {
       if (
         !canvasOwnsInputFocusRef.current ||
-        (event.target !== textareaRef.current &&
+        (context.targetKind !== 'managed-canvas' &&
           context.targetKind !== 'canvas-surface' &&
           context.targetKind !== 'document')
       ) {
         return;
       }
       const contentNavigationEdge = staticGridMode
-        ? getModifiedArrowEdge(event)
+        ? modifiedArrowEdgeFor(input)
         : null;
       if (contentNavigationEdge) {
         flushPendingManagedText();
         moveStaticGridFocusToContentBoundary(contentNavigationEdge, {
-          extend: event.shiftKey,
+          extend: input.modifiers.shift,
         });
         return {
           claimed: true,
@@ -449,9 +441,9 @@ export const useManagedCanvasInput = ({
           stopImmediatePropagation: true,
         };
       }
-      const resolution = resolveEditorKeymapEvent(
+      const resolution = resolveEditorKeymapInput(
         editor,
-        event,
+        input,
         context.targetKind === 'document'
           ? 'managed-canvas'
           : context.targetKind
@@ -534,9 +526,9 @@ export const useManagedCanvasInput = ({
     id: "canvas-color-picker",
     priority: SHORTCUT_PRIORITY.dynamicCanvasCommand,
     enabled: !!canvasColorPickerTarget,
-    onKeyDown: (event, context) => {
+    onKeyDown: (input, context) => {
       if (
-        event.key !== "Escape" ||
+        input.key !== "Escape" ||
         context.targetKind === "editable" ||
         context.targetKind === "overlay"
       ) {
@@ -584,150 +576,95 @@ export const useManagedCanvasInput = ({
     if (!isComposing.current) finalizedCompositionRef.current = null;
     if (e.defaultPrevented) return;
     if (isComposing.current) return;
-    const mod = e.ctrlKey || e.metaKey;
-    if (
-      mod ||
-      e.altKey ||
-      e.key.length !== 1 ||
-      (staticGridView.hasSelection && !activeTextCursor)
-    ) {
-      flushPendingManagedText();
-    }
-    if (!mutateEnabled && (e.key === "Backspace" || e.key === "Delete")) {
-      e.preventDefault();
-      return;
-    }
-    if (activeTextCursor) {
-      if (e.key === 'Backspace') {
-        e.preventDefault();
-        backspaceText();
-        return;
-      }
-      if (e.key === 'Delete') {
-        e.preventDefault();
-        deleteTextForward();
-        return;
-      }
-    }
-
-    if ((e.key === 'Delete' || e.key === 'Backspace') && hasActiveSelection) {
-      e.preventDefault();
-      editor.commands.execute('delete-selection', undefined, 'canvas-keydown');
-      return;
-    }
-
-    if (staticGridMode && mod && e.key.toLowerCase() === 'a') {
-      e.preventDefault();
-      selectStaticGridAll();
-    } else if (
-      staticGridMode &&
-      staticGridEditMode === 'navigate' &&
-      e.shiftKey &&
-      e.code === 'Space' &&
-      !mod
-    ) {
-      e.preventDefault();
-      selectStaticGridRow();
-    } else if (
-      staticGridMode &&
-      staticGridEditMode === 'navigate' &&
-      e.ctrlKey &&
-      e.code === 'Space' &&
-      !e.metaKey
-    ) {
-      e.preventDefault();
-      selectStaticGridColumn();
-    } else if (staticGridMode && e.key === 'F2' && mutateEnabled) {
-      e.preventDefault();
-      enterStaticGridTextEdit(staticGridActiveCell ?? undefined);
-    } else if (
-      staticGridMode &&
-      staticGridEditMode === 'navigate' &&
-      (e.key === 'Home' || e.key === 'End')
-    ) {
-      e.preventDefault();
-      moveStaticGridFocusToEdge(
-        mod
-          ? e.key === 'Home' ? 'top-left' : 'bottom-right'
-          : e.key === 'Home' ? 'left' : 'right',
-        { extend: e.shiftKey }
-      );
-    } else if (
-      staticGridMode &&
-      staticGridEditMode === 'navigate' &&
-      (e.key === 'PageUp' || e.key === 'PageDown')
-    ) {
-      e.preventDefault();
-      const pageRows = Math.max(
-        1,
-        Math.floor(
-          (size?.height ?? DEFAULT_GRID_RENDER_METRICS.cellHeight) /
-            (DEFAULT_GRID_RENDER_METRICS.cellHeight * zoom)
-        ) - 1
-      );
-      moveStaticGridFocus(0, e.key === 'PageUp' ? -pageRows : pageRows, {
-        extend: e.shiftKey,
-      });
-    } else if (e.key === 'Backspace') {
-      if (activeTextCursor) {
-        e.preventDefault();
-        backspaceText();
-      }
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (staticGridMode && staticGridEditMode === 'navigate') {
-        moveStaticGridFocus(0, e.shiftKey ? -1 : 1);
-      } else {
-        newlineText();
-      }
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
-      if (staticGridMode && staticGridEditMode === 'navigate') {
-        moveStaticGridFocus(e.shiftKey ? -1 : 1, 0);
-      } else {
-        indentText();
-      }
-    } else if (e.key.startsWith('Arrow')) {
-      e.preventDefault();
-      const dx = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
-      const dy = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
-      if (staticGridMode && staticGridEditMode === 'navigate') {
-        moveStaticGridFocus(dx, dy, { extend: e.shiftKey });
-      } else if (staticGridMode && activeTextCursor) {
-        moveTextCursor(dx, dy);
-      } else if (textCursor) {
-        moveTextCursor(dx, dy);
-      } else if (!hasStructuredSelection) {
-        moveStructuredGridFocus(dx, dy);
-      }
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      if (canvasColorPickerTarget) {
-        setCanvasColorPickerTarget(null);
-        setHoveredGrid(null);
-      } else if (staticGridMode && staticGridEditMode === 'text-edit') {
-        exitStaticGridTextEdit();
-      } else if (activeTextCursor) {
-        setTextCursor(null);
-        setEditingStructuredTextNodeId(null);
-        setStructuredTextSelection(null);
-      } else if (hasStructuredSelection) {
-        setSelectedStructuredNodeIds([]);
-      } else if (hasStructuredGridFocus) {
-        setStructuredGridFocus(null);
-      } else if (hasActiveSelection) {
-        clearSelections();
-      }
-    } else if (staticGridView.hasSelection && !activeTextCursor) {
-      if (!mutateEnabled) return;
-      const fillChar = resolveFillHotkeyChar(e);
-      if (!fillChar) return;
-
-      // Direct character fill when selection is active
-      e.preventDefault();
-      fillSelectionsWithChar(fillChar);
-    }
+    const input = keyInputFromKeyboardEvent(e.nativeEvent);
+    const pageRows = Math.max(
+      1,
+      Math.floor(
+        (size?.height ?? DEFAULT_GRID_RENDER_METRICS.cellHeight) /
+          (DEFAULT_GRID_RENDER_METRICS.cellHeight * zoom)
+      ) - 1
+    );
+    const decision = resolveManagedCanvasKeyIntent(input, {
+      mutateEnabled,
+      staticGridMode,
+      staticGridEditMode,
+      hasStaticGridSelection: staticGridView.hasSelection,
+      hasTextCursor: !!activeTextCursor,
+      hasActiveSelection,
+      hasStructuredSelection,
+      hasStructuredGridFocus,
+      colorPickerOpen: !!canvasColorPickerTarget,
+      pageRows,
+    });
+    if (decision.flushPendingText) flushPendingManagedText();
+    if (decision.preventDefault) e.preventDefault();
+    if (decision.intent) executeManagedCanvasKeyIntent(decision.intent);
   };
+
+  function executeManagedCanvasKeyIntent(intent: ManagedCanvasKeyIntent) {
+    switch (intent.type) {
+      case "delete-text":
+        if (intent.direction === "backward") backspaceText();
+        else deleteTextForward();
+        return;
+      case "delete-selection":
+        editor.commands.execute('delete-selection', undefined, 'canvas-keydown');
+        return;
+      case "select-grid-all":
+        selectStaticGridAll();
+        return;
+      case "select-grid-row":
+        selectStaticGridRow();
+        return;
+      case "select-grid-column":
+        selectStaticGridColumn();
+        return;
+      case "enter-grid-text-edit":
+        enterStaticGridTextEdit(staticGridActiveCell ?? undefined);
+        return;
+      case "move-grid-edge":
+        moveStaticGridFocusToEdge(intent.edge, { extend: intent.extend });
+        return;
+      case "move-grid-page":
+        moveStaticGridFocus(0, intent.rows, { extend: intent.extend });
+        return;
+      case "move-grid-focus":
+        moveStaticGridFocus(intent.dx, intent.dy, { extend: intent.extend });
+        return;
+      case "newline-text":
+        newlineText();
+        return;
+      case "indent-text":
+        indentText();
+        return;
+      case "move-text-cursor":
+        moveTextCursor(intent.dx, intent.dy);
+        return;
+      case "move-structured-grid-focus":
+        moveStructuredGridFocus(intent.dx, intent.dy);
+        return;
+      case "fill-selection":
+        fillSelectionsWithChar(intent.char);
+        return;
+      case "escape":
+        if (intent.target === "color-picker") {
+          setCanvasColorPickerTarget(null);
+          setHoveredGrid(null);
+        } else if (intent.target === "grid-text-edit") {
+          exitStaticGridTextEdit();
+        } else if (intent.target === "text-cursor") {
+          setTextCursor(null);
+          setEditingStructuredTextNodeId(null);
+          setStructuredTextSelection(null);
+        } else if (intent.target === "structured-selection") {
+          setSelectedStructuredNodeIds([]);
+        } else if (intent.target === "structured-grid-focus") {
+          setStructuredGridFocus(null);
+        } else if (intent.target === "selection") {
+          clearSelections();
+        }
+    }
+  }
 
   const readManagedText = (value: string) =>
     value.replaceAll(MANAGED_TEXTAREA_SENTINEL, "");

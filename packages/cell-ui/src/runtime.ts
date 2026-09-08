@@ -74,6 +74,10 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.focusVisible !== after.focusVisible
   || before.hovered !== after.hovered
   || before.selected !== after.selected
+  || before.checked !== after.checked
+  || before.sliderValue !== after.sliderValue
+  || before.sliderMin !== after.sliderMin
+  || before.sliderMax !== after.sliderMax
   || before.expanded !== after.expanded
   || before.disabled !== after.disabled
   || !sameWidgetValue(before.textStyle, after.textStyle)
@@ -84,6 +88,11 @@ const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
   || before.disabled !== after.disabled
   || before.focused !== after.focused
   || before.selected !== after.selected
+  || before.checked !== after.checked
+  || before.sliderValue !== after.sliderValue
+  || before.sliderMin !== after.sliderMin
+  || before.sliderMax !== after.sliderMax
+  || before.sliderValueText !== after.sliderValueText
   || before.expanded !== after.expanded
   || before.hasChildren !== after.hasChildren
   || before.level !== after.level

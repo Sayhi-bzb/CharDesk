@@ -30,12 +30,12 @@ describe("slideSlice", () => {
     });
 
     useEditorStore.getState().activateSlide(firstSlideId!);
-    expect(useEditorStore.getState().grid.get("0,0")?.char).toBe("A");
-    expect(useEditorStore.getState().grid.has("1,0")).toBe(false);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().has("1,0")).toBe(false);
 
     useEditorStore.getState().activateSlide(secondSlideId!);
-    expect(useEditorStore.getState().grid.get("1,0")?.char).toBe("B");
-    expect(useEditorStore.getState().grid.has("0,0")).toBe(false);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("B");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().has("0,0")).toBe(false);
   });
 
   it("keeps slide metadata free of projected cell content", () => {
@@ -47,7 +47,7 @@ describe("slideSlice", () => {
       grid.set("2,0", { char: "B", color: "#000" });
     });
 
-    expect(Array.from(useEditorStore.getState().grid.keys())).toEqual(["1,0", "2,0"]);
+    expect(Array.from(useEditorStore.getState().contentSurface.reader.materialize().keys())).toEqual(["1,0", "2,0"]);
     expect(useEditorStore.getState().slideDeck?.slides[0].grid).toEqual([]);
   });
 
@@ -144,7 +144,7 @@ describe("slideSlice", () => {
     expect(useEditorStore.getState().canUndo).toBe(true);
     expect(useEditorStore.getState().canRedo).toBe(false);
     expect(defaultCanvasDocuments.undo()).toBe(true);
-    expect(useEditorStore.getState().grid.has("0,0")).toBe(false);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().has("0,0")).toBe(false);
     expect(
       useEditorStore.getState().slideDeck?.slides.find((slide) => slide.id === activeSlideId)?.name
     ).toBe("Renamed");
@@ -175,8 +175,8 @@ describe("slideSlice", () => {
       columns: 3,
       rows: 2,
     });
-    expect(useEditorStore.getState().grid.has("3,1")).toBe(false);
-    expect(useEditorStore.getState().grid.get("0,0")?.char).toBe("A");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().has("3,1")).toBe(false);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
     expect(useEditorStore.getState().canUndo).toBe(false);
   });
 
@@ -202,6 +202,6 @@ describe("slideSlice", () => {
     ).toEqual({ columns: 4, rows: 2 });
 
     useEditorStore.getState().activateSlide(firstSlideId);
-    expect(useEditorStore.getState().grid.has("3,1")).toBe(false);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().has("3,1")).toBe(false);
   });
 });

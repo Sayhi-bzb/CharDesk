@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { TestCanvasContentSurface } from '@/domains/canvas/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  canvasCommands,
   defaultCanvasDocuments,
   useEditorStore,
 } from '@/domains/canvas/testing';
@@ -16,7 +18,7 @@ function ModelHarness({ viewId }: { viewId: CanvasViewId }) {
   const view = useCanvasViewOptional();
   const models = useCanvasEditorModels();
   if (!view) return null;
-  const chars = Array.from(models.renderer.grid.values()).map((cell) => cell.char).join('');
+  const chars = Array.from(models.renderer.contentReader.materialize().values()).map((cell) => cell.char).join('');
   return (
     <div>
       <output data-testid={`${viewId}-model`}>
@@ -34,12 +36,37 @@ function ModelHarness({ viewId }: { viewId: CanvasViewId }) {
   );
 }
 
+function RevisionHarness() {
+  const { renderer } = useCanvasEditorModels();
+  return (
+    <output data-testid="active-content">
+      {renderer.contentRevision}:{renderer.contentReader.get({ x: 0, y: 0 })?.char ?? ""}
+    </output>
+  );
+}
+
 describe('useCanvasEditorModels session binding', () => {
   const initialState = useEditorStore.getState();
 
   afterEach(() => {
     localStorage.clear();
     useEditorStore.setState(initialState, true);
+  });
+
+  it('publishes a new model revision when a stable Reader changes', () => {
+    canvasCommands.grid.replace([]);
+    const initialRevision = useEditorStore.getState().contentSurface.revision;
+    render(<RevisionHarness />);
+
+    act(() => {
+      canvasCommands.interaction.setTextCursor({ x: 0, y: 0 });
+      canvasCommands.text.write('A');
+    });
+
+    expect(screen.getByTestId('active-content')).toHaveTextContent(':A');
+    expect(useEditorStore.getState().contentSurface.revision).toBeGreaterThan(
+      initialRevision
+    );
   });
 
   it('renders inactive structured and slide sessions from their snapshots', () => {
@@ -74,7 +101,7 @@ describe('useCanvasEditorModels session binding', () => {
       useEditorStore.setState({
         activeCanvasId: 'canvas-a',
         canvasMode: 'freeform',
-        grid: new Map([['0,0', { char: 'A', color: '#000000' }]]),
+        contentSurface: new TestCanvasContentSurface([['0,0', { char: 'A', color: '#000000' }]]),
         selectedStructuredNodeIds: ['global-selection'],
         canvasSessions: [
           {

@@ -11,6 +11,7 @@ import {
   ScrollArea,
   Text,
   commandForInput,
+  createKeyInput,
   getScrollRange,
 } from "./index.js";
 
@@ -72,14 +73,42 @@ describe("cell interaction", () => {
     const focus = new FocusManager();
     focus.sync(frame.tree, "open");
 
-    expect(commandForInput({ type: "key", key: "ArrowDown" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "ArrowDown" }), frame, focus))
       .toEqual({ type: "focus", targetId: "one" });
-    expect(commandForInput({ type: "key", key: "Enter" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "Enter" }), frame, focus))
       .toEqual({ type: "activate", targetId: "open" });
     expect(commandForInput({
       type: "pointer", phase: "up", point: { x: 3, y: 1 }, button: 0,
     }, frame, focus))
       .toEqual({ type: "activate", targetId: "open" });
+    runtime.dispose();
+  });
+
+  it("distinguishes key phase, repeat, modifiers, and composition", () => {
+    const { runtime, frame } = renderFixture();
+    const focus = new FocusManager();
+    focus.sync(frame.tree, "open");
+
+    expect(commandForInput(createKeyInput({
+      key: "ArrowDown",
+      phase: "up",
+    }), frame, focus)).toBeNull();
+    expect(commandForInput(createKeyInput({
+      key: "ArrowDown",
+      repeat: true,
+    }), frame, focus)).toEqual({ type: "focus", targetId: "one" });
+    expect(commandForInput(createKeyInput({
+      key: "Enter",
+      repeat: true,
+    }), frame, focus)).toBeNull();
+    expect(commandForInput(createKeyInput({
+      key: "ArrowDown",
+      modifiers: { ctrl: true },
+    }), frame, focus)).toBeNull();
+    expect(commandForInput(createKeyInput({
+      key: "Enter",
+      composing: true,
+    }), frame, focus)).toBeNull();
     runtime.dispose();
   });
 
@@ -103,7 +132,7 @@ describe("cell interaction", () => {
     const { runtime, frame } = renderFixture();
     const focus = new FocusManager();
     focus.sync(frame.tree, "one");
-    expect(commandForInput({ type: "key", key: "PageDown" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "PageDown" }), frame, focus))
       .toEqual({
         type: "scroll",
         targetId: "files",
@@ -118,7 +147,7 @@ describe("cell interaction", () => {
     const { runtime, frame } = renderFixture();
     const focus = new FocusManager();
     focus.sync(frame.tree, "two");
-    expect(commandForInput({ type: "key", key: "ArrowDown" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "ArrowDown" }), frame, focus))
       .toEqual({
         type: "focus",
         targetId: "three",
@@ -182,9 +211,9 @@ describe("cell interaction", () => {
     const opened = render(true);
     focus.sync(opened.tree);
     expect(focus.focusedId).toBe("command-a");
-    expect(commandForInput({ type: "key", key: "ArrowDown" }, opened, focus))
+    expect(commandForInput(createKeyInput({ key: "ArrowDown" }), opened, focus))
       .toEqual({ type: "focus", targetId: "command-b" });
-    expect(commandForInput({ type: "key", key: "Escape" }, opened, focus))
+    expect(commandForInput(createKeyInput({ key: "Escape" }), opened, focus))
       .toEqual({ type: "dismiss", targetId: "palette" });
     expect(commandForInput(
       { type: "pointer", phase: "down", point: { x: 19, y: 6 }, button: 0 },

@@ -93,6 +93,21 @@ const readLiveInteraction = (page: Page) =>
     'import("/src/app/compositionRoot.ts").then(({ getApplicationEditorHost }) => { const host = getApplicationEditorHost(); return { scratchSize: host.canvas.getState().scratchLayer?.size ?? 0, interactionType: host.editor.getInteractionState().type }; })'
   );
 
+const readLiveGridChars = (page: Page) =>
+  page.evaluate<Record<string, string>>(
+    'import("/src/app/compositionRoot.ts").then(({ getApplicationEditorHost }) => { const canvas = getApplicationEditorHost().canvas; const grid = canvas.documents.getDocumentSeed(canvas.documents.getActiveDocumentId(), "freeform")?.grid ?? []; return Object.fromEntries(grid.map(([key, cell]) => [key, cell.char])); })'
+  );
+
+const readLiveSelectionMode = (page: Page) =>
+  page.evaluate<string>(
+    'import("/src/app/compositionRoot.ts").then(({ getApplicationEditorHost }) => getApplicationEditorHost().canvas.getState().staticGridSelection.mode)'
+  );
+
+const readLiveInteractionState = (page: Page) =>
+  page.evaluate(
+    'import("/src/app/compositionRoot.ts").then(({ getApplicationEditorHost }) => getApplicationEditorHost().editor.getInteractionState())'
+  );
+
 const gridClientPoint = async (page: Page, point: { x: number; y: number }) => {
   const box = await page.getByTestId("canvas-editor-surface").boundingBox();
   expect(box).not.toBeNull();
@@ -105,6 +120,27 @@ const gridClientPoint = async (page: Page, point: { x: number; y: number }) => {
       box!.y +
       VIEWPORT.offset.y +
       point.y * DEFAULT_GRID_GEOMETRY.cellHeight,
+  };
+};
+
+const liveGridClientPoint = async (
+  page: Page,
+  point: { x: number; y: number }
+) => {
+  const box = await page.getByTestId("canvas-editor-surface").boundingBox();
+  expect(box).not.toBeNull();
+  const viewport = await page.evaluate<{ offset: { x: number; y: number }; zoom: number }>(
+    'import("/src/app/compositionRoot.ts").then(({ getApplicationEditorHost }) => { const { offset, zoom } = getApplicationEditorHost().canvas.getState(); return { offset, zoom }; })'
+  );
+  return {
+    x:
+      box!.x +
+      viewport.offset.x +
+      point.x * DEFAULT_GRID_GEOMETRY.cellWidth * viewport.zoom,
+    y:
+      box!.y +
+      viewport.offset.y +
+      point.y * DEFAULT_GRID_GEOMETRY.cellHeight * viewport.zoom,
   };
 };
 
@@ -282,6 +318,49 @@ test.describe("editor interaction lifecycle", () => {
 
     await expect.poll(async () => (await readState(page))?.offset?.x)
       .not.toBe(VIEWPORT.offset.x);
+  });
+
+  test("range drag previews transactionally and commits as one undoable move", async ({ page }) => {
+    await seedSession(page, {
+      id: "range-drag-move",
+      mode: "freeform",
+    });
+    await page.getByRole("button", { name: "Select", exact: true }).click();
+    await page.evaluate(
+      'import("/src/app/compositionRoot.ts").then(({ getApplicationEditorHost }) => { const canvas = getApplicationEditorHost().canvas; canvas.getState().createCanvasSession("freeform", { name: "Range drag" }); canvas.getState().writeTextString("AB", { x: 20, y: 15 }); canvas.getState().writeTextString("XY", { x: 23, y: 15 }); canvas.documents.clearHistory(); canvas.getState().setStaticGridSelectionRange({ start: { x: 20, y: 15 }, end: { x: 21, y: 15 } }); })'
+    );
+    await expect.poll(() => readLiveSelectionMode(page)).toBe("range");
+    await expect.poll(() => readLiveGridChars(page)).toEqual({
+      "20,15": "A",
+      "21,15": "B",
+      "23,15": "X",
+      "24,15": "Y",
+    });
+    const original = await readLiveGridChars(page);
+    const start = await liveGridClientPoint(page, { x: 20, y: 15 });
+    const end = await liveGridClientPoint(page, { x: 23, y: 15 });
+    const center = {
+      x: DEFAULT_GRID_GEOMETRY.cellWidth / 2,
+      y: DEFAULT_GRID_GEOMETRY.cellHeight / 2,
+    };
+
+    await page.mouse.move(start.x + center.x, start.y + center.y);
+    await page.mouse.down();
+    await page.mouse.move(end.x + center.x, end.y + center.y, { steps: 4 });
+
+    await expect.poll(() => readLiveInteractionState(page)).toMatchObject({
+      type: "movingRange",
+    });
+    await expect.poll(() => readLiveGridChars(page)).toEqual(original);
+
+    await page.mouse.up();
+    await expect.poll(() => readLiveGridChars(page)).toEqual({
+      "23,15": "A",
+      "24,15": "B",
+    });
+
+    await page.keyboard.press(UNDO_SHORTCUT);
+    await expect.poll(() => readLiveGridChars(page)).toEqual(original);
   });
 
   test("canvas color picking updates the active brush color", async ({ page }) => {

@@ -55,17 +55,17 @@ describe("Blackboard source projection", () => {
     await act(async () => Promise.resolve());
     expect(result.current.status.state).toBe("current");
     expect(result.current.firstFitRevision).toBe(1);
-    expect(host.canvas.getState().grid.get("0,0")).toMatchObject({
+    expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")).toMatchObject({
       char: "A",
       color: "#800000",
     });
     expect(host.canvas.getState().canvasSessions).toHaveLength(1);
     expect(host.canvas.getState().canvasSessions[0]?.name).toBe("agent-board");
 
-    const grid = host.canvas.getState().grid;
+    const reader = host.canvas.getState().contentSurface.reader;
     await act(async () => vi.advanceTimersByTimeAsync(500));
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(host.canvas.getState().grid).toBe(grid);
+    expect(host.canvas.getState().contentSurface.reader).toBe(reader);
   });
 
   it("keeps the last valid projection when the next revision is malformed", async () => {
@@ -91,11 +91,11 @@ describe("Blackboard source projection", () => {
     );
 
     await act(async () => Promise.resolve());
-    const grid = host.canvas.getState().grid;
+    const reader = host.canvas.getState().contentSurface.reader;
     await act(async () => vi.advanceTimersByTimeAsync(500));
     expect(result.current.status.state).toBe("warning");
-    expect(host.canvas.getState().grid).toBe(grid);
-    expect(host.canvas.getState().grid.get("0,0")?.char).toBe("A");
+    expect(host.canvas.getState().contentSurface.reader).toBe(reader);
+    expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
   });
 
   it("applies later valid revisions without resetting the viewport", async () => {
@@ -127,7 +127,7 @@ describe("Blackboard source projection", () => {
     })));
     await act(async () => vi.advanceTimersByTimeAsync(500));
 
-    expect(host.canvas.getState().grid.get("0,0")?.char).toBe("B");
+    expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("B");
     expect(host.canvas.getState().offset).toEqual({ x: 123, y: 456 });
     expect(host.canvas.getState().zoom).toBe(1.75);
     expect(result.current.firstFitRevision).toBe(1);

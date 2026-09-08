@@ -1,13 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
+import { selectGalleryFont } from "./helpers/gallery-font-select";
 
 for (const dpr of [1, 1.25, 2]) {
   test.describe(`font audit DPR ${dpr}`, () => {
     test.use({ deviceScaleFactor: dpr });
     test("prints native, Profile and Surface metrics with the production Mono font", async ({ page }, testInfo) => {
       await page.goto("/exp/web-tui/#/__fixtures/all");
-      await page.getByRole("button", { name: "Use Ark Pixel 12px Mono" }).click();
-      await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font", "ark-mono");
+      await selectGalleryFont(page, "Fusion Pixel 12px Mono");
+      await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font", "fusion-mono");
       const surface = page.locator('[data-cell-probe="editor"]');
       await expect.poll(async () => (await readCellProbe(surface)).presentation?.fontAudit?.status).toBe("ready");
       const probe = await readCellProbe(surface);

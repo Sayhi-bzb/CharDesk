@@ -10,8 +10,7 @@ import type {
   StructuredNode,
   StructuredTextSelection,
 } from "@/domains/structured-content/public";
-import type { GridMap } from "@/shared/types";
-import { GridManager } from "@/shared/utils/grid";
+import type { GridCell, GridCellSource } from "@/shared/types";
 import { deriveStructuredInspectorModel } from "./structured-model";
 import {
   deriveTextFormattingModel,
@@ -53,7 +52,7 @@ export const deriveCanvasInspectorModel = ({
   tool: ToolType;
   brushColor: string;
   brushBackgroundColor: string;
-  grid: GridMap;
+  grid: GridCellSource;
   staticGridSelection: GridSelectionState;
   structuredScene: StructuredNode[];
   selectedStructuredNodeIds: string[];
@@ -61,12 +60,12 @@ export const deriveCanvasInspectorModel = ({
 }): CanvasInspectorModel => {
   if (canvasMode !== "structured") {
     const isBackgroundTool = tool === "bg";
-    const selectedCells: Array<NonNullable<ReturnType<GridMap["get"]>>> = [];
+    const selectedCells: GridCell[] = [];
     forEachGridSelectionSpan(
       getGridSelectionRanges(staticGridSelection),
       ({ y, minX, maxX }) => {
         for (let x = minX; x <= maxX; x++) {
-          const cell = grid.get(GridManager.toKey(x, y));
+          const cell = grid.get({ x, y });
           if (cell) selectedCells.push(cell);
         }
       },

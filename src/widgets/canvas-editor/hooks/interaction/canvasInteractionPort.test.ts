@@ -139,4 +139,81 @@ describe("CanvasInteractionPort controller", () => {
     expect(dependencies.beginAppendSelection).toHaveBeenCalledWith({ x: 3, y: 4 });
     expect(dependencies.dragStart).not.toHaveBeenCalled();
   });
+
+  it("keeps a selected range press pending, previews after threshold, and commits once", () => {
+    const dependencies = createDependencies();
+    dependencies.tool = "select";
+    dependencies.canStartStaticRangeMove = vi.fn(() => true);
+    dependencies.updateStaticRangeMove = vi.fn();
+    dependencies.commitStaticRangeMove = vi.fn();
+    dependencies.clearStaticRangeMovePreview = vi.fn();
+    const port = createCanvasInteractionPort(dependencies);
+
+    const started = port.start({
+      type: "canvas-drag-start",
+      canvasMode: "freeform",
+      button: 0,
+      isCtrlOrMetaPressed: false,
+      shiftKey: false,
+      detail: 1,
+      screenPoint: { x: 20, y: 20 },
+      gridPoint: { x: 2, y: 1 },
+      brushChar: "#",
+    }, null);
+    expect(started?.state.type).toBe("rangeMovePending");
+    expect(dependencies.dragStart).not.toHaveBeenCalled();
+
+    const pending = port.update(started!.state, {
+      type: "canvas-drag-update",
+      delta: { x: 2, y: 1 },
+      currentGrid: { x: 2, y: 1 },
+    });
+    expect(pending.type).toBe("rangeMovePending");
+    expect(dependencies.updateStaticRangeMove).not.toHaveBeenCalled();
+
+    const moving = port.update(pending, {
+      type: "canvas-drag-update",
+      delta: { x: 3, y: 0 },
+      currentGrid: { x: 4, y: 2 },
+    });
+    expect(moving.type).toBe("movingRange");
+    expect(dependencies.updateStaticRangeMove).toHaveBeenCalledWith(
+      { x: 2, y: 1 },
+      { x: 4, y: 2 }
+    );
+    expect(dependencies.setCursor).toHaveBeenCalledWith("grabbing");
+
+    port.complete(moving, { x: 5, y: 3 });
+    expect(dependencies.commitStaticRangeMove).toHaveBeenCalledOnce();
+    expect(dependencies.commitStaticRangeMove).toHaveBeenCalledWith(
+      { x: 2, y: 1 },
+      { x: 5, y: 3 }
+    );
+    expect(dependencies.clearStaticRangeMovePreview).toHaveBeenCalledOnce();
+    expect(dependencies.completeInteraction).toHaveBeenCalledOnce();
+  });
+
+  it("preserves the range when the press ends below the move threshold", () => {
+    const dependencies = createDependencies();
+    dependencies.tool = "select";
+    dependencies.canStartStaticRangeMove = vi.fn(() => true);
+    dependencies.commitStaticRangeMove = vi.fn();
+    dependencies.clearStaticRangeMovePreview = vi.fn();
+    const port = createCanvasInteractionPort(dependencies);
+    const pending = port.start({
+      type: "canvas-drag-start",
+      canvasMode: "freeform",
+      button: 0,
+      isCtrlOrMetaPressed: false,
+      shiftKey: false,
+      detail: 1,
+      screenPoint: { x: 20, y: 20 },
+      gridPoint: { x: 2, y: 1 },
+      brushChar: "#",
+    }, null)!.state;
+
+    port.complete(pending, { x: 2, y: 1 });
+    expect(dependencies.commitStaticRangeMove).not.toHaveBeenCalled();
+    expect(dependencies.clearStaticRangeMovePreview).toHaveBeenCalledOnce();
+  });
 });

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { createKeyInput } from '@chardesk/keyboard';
 import {
-  matchesShortcutEvent,
+  matchesShortcutInput,
   normalizeShortcut,
-  shortcutFromKeyboardEvent,
+  shortcutFromKeyInput,
 } from './shortcut';
 
 describe('editor shortcut adapter', () => {
@@ -20,30 +21,30 @@ describe('editor shortcut adapter', () => {
   });
 
   it('never records left or right modifier keys as strokes', () => {
-    expect(shortcutFromKeyboardEvent(new KeyboardEvent('keydown', {
-      key: 'Meta', code: 'MetaLeft', metaKey: true,
+    expect(shortcutFromKeyInput(createKeyInput({
+      key: 'Meta', code: 'MetaLeft', modifiers: { meta: true },
     }))).toBeNull();
-    expect(shortcutFromKeyboardEvent(new KeyboardEvent('keydown', {
-      key: 'Control', code: 'ControlRight', ctrlKey: true,
+    expect(shortcutFromKeyInput(createKeyInput({
+      key: 'Control', code: 'ControlRight', modifiers: { ctrl: true },
     }))).toBeNull();
   });
 
   it('records portable Mod and matches physical fallbacks for layouts and dead keys', () => {
-    const commandR = new KeyboardEvent('keydown', { key: 'r', code: 'KeyR', metaKey: true });
-    expect(shortcutFromKeyboardEvent(commandR, 'mac')).toBe('Mod+R');
-    expect(matchesShortcutEvent(
-      new KeyboardEvent('keydown', { key: 'Dead', code: 'KeyE', altKey: true }),
+    const commandR = createKeyInput({ key: 'r', code: 'KeyR', modifiers: { meta: true } });
+    expect(shortcutFromKeyInput(commandR, 'mac')).toBe('Mod+R');
+    expect(matchesShortcutInput(
+      createKeyInput({ key: 'Dead', code: 'KeyE', modifiers: { alt: true } }),
       'Alt+E',
       'mac'
     )).toBe(true);
-    expect(matchesShortcutEvent(
-      new KeyboardEvent('keydown', { key: '¡', code: 'Digit1', altKey: true }),
+    expect(matchesShortcutInput(
+      createKeyInput({ key: '¡', code: 'Digit1', modifiers: { alt: true } }),
       'Alt+1',
       'mac'
     )).toBe(true);
-    expect(matchesShortcutEvent(commandR, 'Mod+R', 'linux')).toBe(true);
-    expect(matchesShortcutEvent(
-      new KeyboardEvent('keydown', { key: 'r', code: 'KeyR', ctrlKey: true }),
+    expect(matchesShortcutInput(commandR, 'Mod+R', 'linux')).toBe(true);
+    expect(matchesShortcutInput(
+      createKeyInput({ key: 'r', code: 'KeyR', modifiers: { ctrl: true } }),
       'Mod+R',
       'mac'
     )).toBe(true);

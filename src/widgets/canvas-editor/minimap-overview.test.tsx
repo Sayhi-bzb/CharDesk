@@ -1,4 +1,5 @@
 import { act, cleanup, createEvent, fireEvent, render, screen } from "@testing-library/react";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Minimap } from "@/widgets/canvas-editor/Minimap";
 import { useEditorStore } from "@/domains/canvas/testing";
@@ -76,7 +77,7 @@ describe("Minimap canvas", () => {
 
   const seedContent = () => {
     useEditorStore.setState({
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         [GridManager.toKey(0, 0), { char: "A", color: "#ffffff" }],
         [GridManager.toKey(199, 99), { char: "B", color: "#ffffff" }],
       ]),

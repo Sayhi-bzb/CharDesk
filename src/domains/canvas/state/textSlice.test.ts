@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import {
   applyFreeformSnapshotToYMaps,
   defaultCanvasDocuments,
@@ -16,12 +17,12 @@ const resetStore = () => {
 
 const setTextState = (
   state: Partial<
-    Pick<EditorState, "grid" | "textCursor" | "canvasMode">
+    Pick<EditorState, "contentSurface" | "textCursor" | "canvasMode">
   >
 ) => {
   useEditorStore.setState({
     canvasMode: "freeform",
-    grid: new Map(),
+    contentSurface: new TestCanvasContentSurface(),
     ...state,
   });
 };
@@ -44,7 +45,7 @@ describe("textSlice newlineText", () => {
   it("inherits real leading indentation when the cursor is after text", () => {
     setTextState({
       textCursor: { x: 8, y: 0 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["4,0", { char: "f", color: "#ffffff" }],
         ["5,0", { char: "o", color: "#ffffff" }],
         ["6,0", { char: "o", color: "#ffffff" }],
@@ -59,7 +60,7 @@ describe("textSlice newlineText", () => {
   it("finds the start of a contiguous row containing wide characters", () => {
     setTextState({
       textCursor: { x: 8, y: 0 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["4,0", { char: "你", color: "#ffffff" }],
         ["6,0", { char: "好", color: "#ffffff" }],
       ]),
@@ -73,7 +74,7 @@ describe("textSlice newlineText", () => {
   it("keeps the current column when the cursor is inside indentation", () => {
     setTextState({
       textCursor: { x: 2, y: 0 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["4,0", { char: "f", color: "#ffffff" }],
         ["5,0", { char: "o", color: "#ffffff" }],
         ["6,0", { char: "o", color: "#ffffff" }],
@@ -88,7 +89,7 @@ describe("textSlice newlineText", () => {
   it("keeps the current column when text starts to the right of the cursor", () => {
     setTextState({
       textCursor: { x: 3, y: 0 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["10,0", { char: "x", color: "#ffffff" }],
       ]),
     });
@@ -101,7 +102,7 @@ describe("textSlice newlineText", () => {
   it("returns to the nearest text run instead of unrelated content on the left", () => {
     setTextState({
       textCursor: { x: 15, y: 0 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["0,0", { char: "x", color: "#ffffff" }],
         ["10,0", { char: "h", color: "#ffffff" }],
         ["11,0", { char: " ", color: "#ffffff" }],
@@ -117,7 +118,7 @@ describe("textSlice newlineText", () => {
   it("supports text runs at negative columns", () => {
     setTextState({
       textCursor: { x: -1, y: 2 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["-4,2", { char: "a", color: "#ffffff" }],
         ["-3,2", { char: "b", color: "#ffffff" }],
       ]),
@@ -142,7 +143,7 @@ describe("textSlice writeTextString", () => {
 
     useEditorStore.getState().writeTextString("a\r\nb");
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["3,4", { char: "a", color: "#000000" }],
         ["3,5", { char: "b", color: "#000000" }],
@@ -154,7 +155,7 @@ describe("textSlice writeTextString", () => {
   it("fills the formal 1x1 selection at the static active cell", () => {
     useEditorStore.setState({
       canvasMode: "freeform",
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
       staticGridSelection: {
         mode: "range",
@@ -168,7 +169,7 @@ describe("textSlice writeTextString", () => {
 
     useEditorStore.getState().writeTextString("A");
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([["6,7", { char: "A", color: "#000000" }]])
     );
     expect(useEditorStore.getState().textCursor).toBeNull();
@@ -182,7 +183,7 @@ describe("textSlice writeTextString", () => {
 
     useEditorStore.getState().writeTextString("X");
 
-    expect(useEditorStore.getState().grid.get("0,0")).toEqual({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")).toEqual({
       char: "X",
       color: "#000000",
     });
@@ -193,7 +194,7 @@ describe("textSlice writeTextString", () => {
 
     useEditorStore.getState().writeTextString("A你 ");
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["2,1", { char: "A", color: "#000000" }],
         ["3,1", { char: "你", color: "#000000" }],
@@ -212,7 +213,7 @@ describe("textSlice writeTextString", () => {
 
     useEditorStore.getState().writeTextString("AB你");
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["3,0", { char: "A", color: "#000000" }],
         ["4,0", { char: "B", color: "#000000" }],
@@ -234,18 +235,18 @@ describe("textSlice writeTextString", () => {
     useEditorStore.getState().enterStaticGridTextEdit({ x: 0, y: 0 });
 
     useEditorStore.getState().writeTextString(" ");
-    const terminalGrid = useEditorStore.getState().grid;
+    const terminalReader = useEditorStore.getState().contentSurface.reader;
     const terminalState = useEditorStore.getState();
     useEditorStore.getState().writeTextString(" ");
 
     expect(useEditorStore.getState()).toBe(terminalState);
-    expect(useEditorStore.getState().grid).toBe(terminalGrid);
-    expect(useEditorStore.getState().grid.get("0,0")?.char).toBe(" ");
+    expect(useEditorStore.getState().contentSurface.reader).toBe(terminalReader);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe(" ");
     expect(useEditorStore.getState().staticGridInputFlow?.exhausted).toBe(true);
 
     useEditorStore.getState().backspaceText();
 
-    expect(useEditorStore.getState().grid).toEqual(new Map());
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
     expect(useEditorStore.getState().textCursor).toEqual({ x: 0, y: 0 });
     expect(useEditorStore.getState().staticGridInputFlow?.exhausted).toBe(false);
   });
@@ -259,7 +260,7 @@ describe("textSlice writeTextString", () => {
 
     useEditorStore.getState().backspaceText();
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([["1,0", { char: "A", color: "#000000" }]])
     );
     expect(useEditorStore.getState().textCursor).toEqual({ x: 2, y: 0 });
@@ -300,7 +301,7 @@ describe("textSlice paste background merging", () => {
       },
     ]);
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["0,0", { char: "X", color: "#ff0000", bgColor: "#000000" }],
         ["1,0", { char: "Y", color: "#00ff00", bgColor: "#0000ff" }],
@@ -332,7 +333,7 @@ describe("textSlice paste background merging", () => {
         y: 2,
         spans: [{ x: 3, text: "A你B", preserveTargetBackground: true }],
       }]);
-    expect(useEditorStore.getState().grid).toEqual(new Map([
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map([
       ["3,2", { char: "A", color: "#ff0000" }],
       ["4,2", { char: "你", color: "#ff0000" }],
       ["6,2", { char: "B", color: "#ff0000" }],
@@ -349,7 +350,7 @@ describe("textSlice paste background merging", () => {
       { x: 0, y: 0, char: "X", color: "#ff0000" },
     ]);
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["1,0", { char: "X", color: "#ff0000", bgColor: "#000000" }],
       ])
@@ -382,7 +383,7 @@ describe("textSlice paste background merging", () => {
       { x: 0, y: 1, char: "c", color: "#00ff00" },
     ]);
 
-    expect(useEditorStore.getState().grid).toEqual(
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
         ["2,3", { char: "A", color: "#ffffff" }],
         ["3,3", { char: "b", color: "#ff0000" }],
@@ -664,7 +665,7 @@ describe("textSlice structured box name editing", () => {
     useEditorStore.setState({
       canvasMode: "structured",
       structuredScene: [],
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
       structuredGridFocus: { x: 7, y: 4 },
       selectedStructuredNodeIds: [],

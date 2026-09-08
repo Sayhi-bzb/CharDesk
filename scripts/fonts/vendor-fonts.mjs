@@ -38,15 +38,15 @@ const targets = {
   "canvas-core": {
     outputRoot: path.join(repoRoot, "packages", "fonts"),
     assetPrefix: "assets",
-    profileId: "chardesk/system-v4",
+    profileId: "chardesk/system-v5",
   },
   maple: {
     outputRoot: path.join(repoRoot, "packages", "font-maple"),
     assetPrefix: "assets",
-    profileId: "chardesk/maple-v4",
+    profileId: "chardesk/maple-v5",
   },
-  ark: {
-    outputRoot: path.join(repoRoot, "packages", "font-ark"),
+  fusion: {
+    outputRoot: path.join(repoRoot, "packages", "font-fusion"),
     assetPrefix: "assets",
   },
 };
@@ -168,14 +168,19 @@ const nerdSource = {
 };
 
 const archiveSources = [{
-  target: "ark",
-  id: "ark-mono",
-  family: "Ark Pixel 12px Mono latin",
+  target: "fusion",
+  id: "fusion-mono",
+  family: "Fusion Pixel 12px Mono latin",
   version: "2026.09.01",
-  archiveUrl: "https://github.com/TakWolf/ark-pixel-font/releases/download/2026.09.01/ark-pixel-font-12px-monospaced-ttf.woff2-v2026.09.01.zip",
-  archiveSha256: "2f2c684aec287f0d5634dae8cf5d1a5ce76dcf102bfbc77436cd7f95fa24aa25",
-  fontFile: "ark-pixel-12px-monospaced-latin.ttf.woff2",
-  licenseFile: "OFL.txt",
+  archiveUrl: "https://github.com/TakWolf/fusion-pixel-font/releases/download/2026.09.01/fusion-pixel-font-12px-monospaced-ttf.woff2-v2026.09.01.zip",
+  archiveSha256: "b264613025d57c793cab0cefc09ae83aa40caafb5155b818d1feb4136340ab66",
+  fontFile: "fusion-pixel-12px-monospaced-latin.ttf.woff2",
+  licenseFiles: [
+    "OFL.txt",
+    "LICENSES/ark-pixel/OFL.txt",
+    "LICENSES/cubic-11/OFL.txt",
+    "LICENSES/galmuri/LICENSE.txt",
+  ],
 }];
 
 const sourceIdsForTarget = (targetId) => [
@@ -567,13 +572,15 @@ const vendorArchiveFont = async (source, target, manifest, stylesheets) => {
     await writeFile(archivePath, archive);
     const relativeDir = path.posix.join(target.assetPrefix, source.id);
     await mkdir(path.join(target.outputRoot, relativeDir), { recursive: true });
-    for (const member of [source.fontFile, source.licenseFile]) {
+    for (const member of [source.fontFile, ...source.licenseFiles]) {
       // Extract only pinned members to stdout, never archive-controlled paths.
       const { stdout } = await execFileAsync("unzip", ["-p", archivePath, member], {
         encoding: "buffer", maxBuffer: 16 * 1024 * 1024,
       });
       const relativePath = path.posix.join(relativeDir, member);
-      await writeFile(path.join(target.outputRoot, relativePath), stdout);
+      const outputPath = path.join(target.outputRoot, relativePath);
+      await mkdir(path.dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, stdout);
       manifest.assets.push({ path: relativePath, size: stdout.length, sha256: sha256(stdout) });
     }
     stylesheets.push(`/* ${source.family} ${source.version} */\n@font-face {\n  font-family: "${source.family}";\n  font-style: normal;\n  font-weight: 400;\n  font-display: swap;\n  src: url("./${relativeDir}/${source.fontFile}") format("woff2");\n}`);

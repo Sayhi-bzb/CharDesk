@@ -1,4 +1,4 @@
-import type { GridMap, Point, SelectionArea } from "@/shared/types";
+import type { GridCellSource, Point, SelectionArea } from "@/shared/types";
 import { GridManager } from "@/shared/utils/grid";
 import { resolveGridAnchor, resolveGridSlot } from "@/shared/utils/grid-occupancy";
 import { getGridSelectionGeometry, getGridSelectionSpans } from "./grid-selection-geometry";
@@ -61,7 +61,7 @@ export const gridRangesEqual = (left: GridRange, right: GridRange) => {
 };
 
 export const getEffectiveGridBounds = (input: {
-  grid: GridMap;
+  grid: GridCellSource;
   activeCell: GridAddress;
   ranges?: GridRange[];
   fixedBounds?: GridBounds | null;
@@ -104,7 +104,7 @@ export const moveGridAddressToEdge = (
 };
 
 const getVisibleCellOrigin = (
-  grid: GridMap,
+  grid: GridCellSource,
   address: GridAddress
 ): GridAddress | null => {
   const slot = resolveGridSlot(grid, address);
@@ -112,7 +112,7 @@ const getVisibleCellOrigin = (
 };
 
 const getContentNavigationBounds = (input: {
-  grid: GridMap;
+  grid: GridCellSource;
   activeCell: GridAddress;
   fixedBounds?: GridBounds | null;
 }): GridBounds => {
@@ -133,7 +133,7 @@ const getContentNavigationBounds = (input: {
 };
 
 export const moveGridAddressToContentBoundary = (input: {
-  grid: GridMap;
+  grid: GridCellSource;
   address: GridAddress;
   edge: GridEdge;
   fixedBounds?: GridBounds | null;
@@ -150,9 +150,7 @@ export const moveGridAddressToContentBoundary = (input: {
   const withinBounds = ({ x, y }: GridAddress) =>
     x >= bounds.start.x && x <= bounds.end.x && y >= bounds.start.y && y <= bounds.end.y;
 
-  const currentCell = input.grid.get(
-    GridManager.toKey(input.address.x, input.address.y)
-  );
+  const currentCell = input.grid.get(input.address);
   const horizontalStep =
     step.x > 0 && currentCell?.char.trim()
       ? Math.max(1, GridManager.getCharWidth(currentCell.char))
@@ -180,7 +178,7 @@ export const moveGridAddressToContentBoundary = (input: {
 };
 
 export const getConnectedGridRange = (
-  grid: GridMap,
+  grid: GridCellSource,
   origin: GridAddress
 ): GridRange => {
   const resolvedOrigin = resolveGridSlot(grid, origin);
@@ -241,7 +239,7 @@ export const getGridSelectionRanges = (state: GridSelectionState) => [
 
 export const getStaticGridSelectionAreas = (
   state: GridSelectionState,
-  grid?: GridMap
+  grid?: GridCellSource
 ) =>
   grid
     ? getGridSelectionSpans(getGridSelectionRanges(state), grid).map((span) => ({
@@ -258,7 +256,7 @@ export const getStaticGridViewState = (input: {
   selection: GridSelectionState;
   editMode: GridEditMode;
   textCursor: Point | null;
-  grid?: GridMap;
+  grid?: GridCellSource;
 }): StaticGridViewState => {
   const selectionAreas = getStaticGridSelectionAreas(input.selection, input.grid);
   const isTextEditing = input.editMode === "text-edit";

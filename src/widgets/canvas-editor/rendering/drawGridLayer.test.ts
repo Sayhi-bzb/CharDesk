@@ -13,7 +13,7 @@ describe("drawGridLayer", () => {
     const ctx = createContext();
     const samples: Array<{ char: string; font: string; x: number; y: number }> = [];
     vi.mocked(ctx.fillText).mockImplementation((char, x, y) => { samples.push({ char, font: ctx.font, x, y }); });
-    for (const id of ["maple", "ark-mono", "xiaolai-mono"] as const) {
+    for (const id of ["maple", "fusion-mono", "xiaolai-mono"] as const) {
       const sampleCount = samples.length;
       drawGridLayer(ctx, reader, { startX: 0, endX: 5, startY: 0, endY: 1 }, 1, { x: 0, y: 0 }, {
         fontProfile: withCharDeskCoreCellGlyphs(displayFontOptions[id].profile),

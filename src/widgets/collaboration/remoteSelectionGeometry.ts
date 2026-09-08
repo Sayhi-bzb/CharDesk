@@ -8,7 +8,7 @@ import {
   type StructuredNode,
 } from "@/domains/structured-content/public";
 import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
-import type { GridMap, Point } from "@/shared/types";
+import type { GridCellSource, Point } from "@/shared/types";
 
 type RemoteSelection =
   | { mode: "freeform"; areas: Array<{ start: Point; end: Point }> }
@@ -151,7 +151,7 @@ export const resolveRemoteSelectionVisuals = ({
 }: {
   peers: RemotePeer[];
   canvasMode: CanvasMode;
-  grid: GridMap;
+  grid: GridCellSource;
   structuredScene: StructuredNode[];
   viewport: { offset: Point; zoom: number };
 }): RemoteSelectionVisual[] => peers.flatMap((peer) => {

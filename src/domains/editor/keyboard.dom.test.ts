@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { createKeyInput } from "@chardesk/keyboard";
 import { getCanvasState } from "@/domains/canvas/testing";
 import { createCanvasEditorRuntime } from "./runtime";
-import { EditorShortcutEngine, executeEditorKeymapEvent } from "./keyboard";
+import { EditorShortcutEngine, executeEditorKeymapInput } from "./keyboard";
 
 describe("editor keymap execution", () => {
   it("stops executing the old binding and executes the reassigned binding", () => {
@@ -32,20 +33,20 @@ describe("editor keymap execution", () => {
     });
     editor.keymap.setUserBindings("command:test-command", [["mod+u"]]);
 
-    const oldBinding = new KeyboardEvent("keydown", {
+    const oldBinding = createKeyInput({
       key: "z",
-      ctrlKey: true,
+      modifiers: { ctrl: true },
     });
-    const newBinding = new KeyboardEvent("keydown", {
+    const newBinding = createKeyInput({
       key: "u",
-      ctrlKey: true,
+      modifiers: { ctrl: true },
     });
 
     expect(
-      executeEditorKeymapEvent(editor, oldBinding, "canvas-surface")
+      executeEditorKeymapInput(editor, oldBinding, "canvas-surface")
     ).toEqual({ type: "none" });
     expect(
-      executeEditorKeymapEvent(editor, newBinding, "canvas-surface")
+      executeEditorKeymapInput(editor, newBinding, "canvas-surface")
     ).toMatchObject({ type: "executed" });
     expect(execute).toHaveBeenCalledOnce();
   });
@@ -76,14 +77,14 @@ describe("editor keymap execution", () => {
     });
     const engine = new EditorShortcutEngine(editor);
 
-    expect(engine.handleKeyDown(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }), "canvas-surface"))
+    expect(engine.handleKeyDown(createKeyInput({ key: "k", modifiers: { ctrl: true } }), "canvas-surface"))
       .toEqual({ type: "pending" });
-    expect(engine.handleKeyDown(new KeyboardEvent("keydown", { key: "c", ctrlKey: true }), "canvas-surface"))
+    expect(engine.handleKeyDown(createKeyInput({ key: "c", modifiers: { ctrl: true } }), "canvas-surface"))
       .toMatchObject({ type: "executed" });
     expect(chord).toHaveBeenCalledOnce();
 
-    engine.handleKeyDown(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }), "canvas-surface");
-    expect(engine.handleKeyDown(new KeyboardEvent("keydown", { key: "x", ctrlKey: true }), "canvas-surface"))
+    engine.handleKeyDown(createKeyInput({ key: "k", modifiers: { ctrl: true } }), "canvas-surface");
+    expect(engine.handleKeyDown(createKeyInput({ key: "x", modifiers: { ctrl: true } }), "canvas-surface"))
       .toMatchObject({ type: "executed" });
     expect(root).toHaveBeenCalledOnce();
     engine.dispose();
@@ -120,11 +121,11 @@ describe("editor keymap execution", () => {
     );
 
     expect(engine.handleKeyDown(
-      new KeyboardEvent("keydown", { key: "c", ctrlKey: true }),
+      createKeyInput({ key: "c", modifiers: { ctrl: true } }),
       "canvas-surface",
     )).toMatchObject({ type: "executed" });
     expect(engine.handleKeyDown(
-      new KeyboardEvent("keydown", { key: "v", ctrlKey: true }),
+      createKeyInput({ key: "v", modifiers: { ctrl: true } }),
       "canvas-surface",
     )).toEqual({ type: "none" });
     expect(copy).toHaveBeenCalledOnce();

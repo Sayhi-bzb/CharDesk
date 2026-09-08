@@ -16,6 +16,9 @@ type CanvasFontSnapshot = Readonly<{
 export const isDisplayFont = (value: unknown): value is DisplayFont =>
   typeof value === "string" && Object.hasOwn(displayFontOptions, value);
 
+const migrateStoredDisplayFont = (value: unknown): unknown =>
+  value === "ark-mono" ? "fusion-mono" : value;
+
 const loadCanvasFont = async (font: DisplayFont) => {
   const option = displayFontOptions[font];
   await loadDisplayFont(option);
@@ -75,7 +78,9 @@ export function createCanvasFontRuntime({
       started = true;
       let font: DisplayFont = "maple";
       try {
-        const stored = storage && storage.getItem(CANVAS_FONT_STORAGE_KEY);
+        const stored = migrateStoredDisplayFont(
+          storage && storage.getItem(CANVAS_FONT_STORAGE_KEY),
+        );
         if (isDisplayFont(stored)) font = stored;
       } catch { /* Default remains available without storage. */ }
       void select(font);

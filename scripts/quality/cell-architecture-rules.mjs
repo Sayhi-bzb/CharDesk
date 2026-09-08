@@ -18,17 +18,19 @@ const forbiddenCoreDependency = (dependency) => dependency === "react"
   || dependency === "canvas"
   || dependency.startsWith("@chardesk/");
 const forbiddenCoreGlobal = /\b(?:React|document|window|HTMLElement|HTMLCanvasElement|CanvasRenderingContext2D|OffscreenCanvas)\b/;
+const forbiddenKeyboardCoreGlobal = /\b(?:React|document|window|EventTarget|KeyboardEvent|HTMLElement|HTMLCanvasElement)\b/;
 
 export function checkCellArchitecture(content, file) {
   const violations = [];
   const report = (message) => violations.push({ file, message });
 
-  if (file === "packages/cell-core/package.json") {
+  if (file === "packages/cell-core/package.json" || file === "packages/keyboard/package.json") {
     const manifest = JSON.parse(content);
     for (const field of ["dependencies", "peerDependencies", "optionalDependencies"]) {
       for (const dependency of Object.keys(manifest[field] ?? {})) {
         if (forbiddenCoreDependency(dependency)) {
-          report(`Cell Core must not have host or product dependency ${dependency}`);
+          const owner = file.includes("keyboard") ? "Keyboard Core" : "Cell Core";
+          report(`${owner} must not have host or product dependency ${dependency}`);
         }
       }
     }
@@ -45,6 +47,16 @@ export function checkCellArchitecture(content, file) {
     }
     if (forbiddenCoreGlobal.test(content)) {
       report("Cell Core source must not use React, DOM, or Canvas globals");
+    }
+  }
+  if (file === "packages/keyboard/src/index.ts") {
+    for (const dependency of moduleImports) {
+      if (forbiddenCoreDependency(dependency)) {
+        report(`Keyboard Core source must not import host or product dependency ${dependency}`);
+      }
+    }
+    if (forbiddenKeyboardCoreGlobal.test(content)) {
+      report("Keyboard Core source must not use React, DOM, or browser event globals");
     }
   }
   if (

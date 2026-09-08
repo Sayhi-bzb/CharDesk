@@ -10,9 +10,18 @@ import type {
   WidgetTree,
 } from "./types.js";
 import type { CellTextCommand } from "./text.js";
+import type { KeyInput } from "@chardesk/keyboard";
+import { acceptsWidgetKeyInput } from "./keyboard.js";
+import {
+  isActionableKind,
+  isCollectionItemKind,
+  isDismissableFocusScopeKind,
+  isFocusableKind,
+} from "./widget-capabilities.js";
+import { resolveCellSliderRange, stepCellSliderValue } from "./slider.js";
 
 export type EngineInput =
-  | Readonly<{ type: "key"; key: string }>
+  | KeyInput
   | Readonly<{
       type: "pointer";
       phase: "down" | "move" | "up" | "cancel";
@@ -31,6 +40,7 @@ export type WidgetCommand =
   | Readonly<{ type: "activate"; targetId: WidgetId }>
   | Readonly<{ type: "dismiss"; targetId: WidgetId }>
   | Readonly<{ type: "set-expanded"; targetId: WidgetId; expanded: boolean }>
+  | Readonly<{ type: "set-value"; targetId: WidgetId; value: number }>
   | Readonly<{ type: "text"; targetId: WidgetId; command: CellTextCommand }>
   | Readonly<{
       type: "scroll";
@@ -53,28 +63,22 @@ const isDescendantOf = (
   return false;
 };
 
-const modalOverlayIds = (tree: WidgetTree): readonly WidgetId[] =>
+const focusScopeIds = (tree: WidgetTree): readonly WidgetId[] =>
   [...tree.nodes.values()]
-    .filter((node) => node.kind === "overlay" && node.modal)
+    .filter((node) => (
+      node.kind === "overlay" && node.modal
+    ) || isDismissableFocusScopeKind(node.kind))
     .map(({ id }) => id);
 
-export const topModalOverlayId = (tree: WidgetTree): WidgetId | null =>
-  modalOverlayIds(tree).at(-1) ?? null;
+export const topFocusScopeId = (tree: WidgetTree): WidgetId | null =>
+  focusScopeIds(tree).at(-1) ?? null;
 
 const focusableWidgets = (
   tree: WidgetTree,
   scopeId: WidgetId | null = null
 ): readonly WidgetNode[] =>
   [...tree.nodes.values()].filter(
-    (node) => (
-      node.kind === "list-item"
-      || node.kind === "menu-item"
-      || node.kind === "tree-item"
-      || node.kind === "tab"
-      || node.kind === "grid-cell"
-      || node.kind === "text-input"
-      || node.kind === "text-area"
-    )
+    (node) => isFocusableKind(node.kind)
       && !node.disabled
       && (!scopeId || isDescendantOf(tree, node.id, scopeId))
   );
@@ -107,6 +111,7 @@ const collectionOwner = (
       || node.kind === "tree"
       || node.kind === "tabs"
       || node.kind === "grid"
+      || node.kind === "select-content"
     ) return node;
     id = node.parentId;
   }
@@ -121,13 +126,7 @@ const interactiveItem = (
   while (id) {
     const node = tree.nodes.get(id);
     if (!node) return undefined;
-    if (
-      node.kind === "list-item"
-      || node.kind === "menu-item"
-      || node.kind === "tree-item"
-      || node.kind === "tab"
-      || node.kind === "grid-cell"
-    ) return node;
+    if (isActionableKind(node.kind)) return node;
     id = node.parentId ?? undefined;
   }
   return undefined;
@@ -154,7 +153,7 @@ const commandForSemanticAction = (
     || (modalId !== null && !isDescendantOf(frame.tree, node.id, modalId))
   ) return null;
   if (action === "expand" || action === "collapse") {
-    return node.kind === "tree-item" && node.hasChildren
+    return (node.kind === "tree-item" && node.hasChildren) || node.kind === "select-trigger"
       ? {
           type: "set-expanded",
           targetId: node.id,
@@ -168,7 +167,9 @@ const commandForSemanticAction = (
 };
 
 const collectionItems = (tree: WidgetTree, ownerId: WidgetId) =>
-  focusableWidgets(tree).filter((node) => isDescendantOf(tree, node.id, ownerId));
+  focusableWidgets(tree).filter(
+    (node) => isCollectionItemKind(node.kind) && isDescendantOf(tree, node.id, ownerId)
+  );
 
 const moveInCollection = (
   items: readonly WidgetNode[],
@@ -211,7 +212,7 @@ export class FocusManager {
   }
 
   sync(tree: WidgetTree, preferredId?: WidgetId | null): void {
-    const nextScopeIds = modalOverlayIds(tree);
+    const nextScopeIds = focusScopeIds(tree);
     let shared = 0;
     while (
       shared < this.#scopes.length
@@ -265,7 +266,12 @@ export class FocusManager {
   }
 
   apply(command: WidgetCommand): void {
-    if (command.type === "focus" || command.type === "activate" || command.type === "text") {
+    if (
+      command.type === "focus"
+      || command.type === "activate"
+      || command.type === "set-value"
+      || command.type === "text"
+    ) {
       this.#focusedId = command.targetId;
     }
   }
@@ -303,13 +309,13 @@ export const resolveWheelInput = (
   input: Extract<EngineInput, { type: "wheel" }>
 ): Readonly<{ consumed: boolean; command: WidgetCommand | null }> => {
   const hit = hitTest(frame.scene, input.point)[0];
-  const modalId = topModalOverlayId(frame.tree);
-  if (modalId && (!hit || !isDescendantOf(frame.tree, hit, modalId))) {
+  const scopeId = topFocusScopeId(frame.tree);
+  if (scopeId && (!hit || !isDescendantOf(frame.tree, hit, scopeId))) {
     return { consumed: false, command: null };
   }
   let scroll = hit ? frame.tree.nodes.get(hit) : undefined;
   while (scroll) {
-    if (modalId && !isDescendantOf(frame.tree, scroll.id, modalId)) break;
+    if (scopeId && !isDescendantOf(frame.tree, scroll.id, scopeId)) break;
     const range = getScrollRange(frame, scroll.id);
     if (!scroll.disabled && (range.x.max > range.x.min || range.y.max > range.y.min)) {
       const offset = scrollOffsetFor(scroll);
@@ -393,7 +399,7 @@ export const commandForInput = (
   frame: FrameSnapshot,
   focus: FocusManager
 ): WidgetCommand | null => {
-  const modalId = topModalOverlayId(frame.tree);
+  const modalId = topFocusScopeId(frame.tree);
   if (input.type === "semantic") {
     return commandForSemanticAction(frame, input.targetId, input.action, modalId);
   }
@@ -416,6 +422,8 @@ export const commandForInput = (
     return resolveWheelInput(frame, input).command;
   }
 
+  if (!acceptsWidgetKeyInput(input)) return null;
+
   if (input.key === "Escape" && modalId) {
     return { type: "dismiss", targetId: modalId };
   }
@@ -423,6 +431,40 @@ export const commandForInput = (
     ? frame.tree.nodes.get(focus.focusedId)
     : undefined;
   const owner = collectionOwner(frame.tree, focused?.id ?? null);
+  if (focused?.kind === "slider") {
+    const range = resolveCellSliderRange(
+      focused.sliderMin,
+      focused.sliderMax,
+      focused.sliderStep
+    );
+    const direction = input.key === "ArrowRight" || input.key === "ArrowUp"
+      ? 1
+      : input.key === "ArrowLeft" || input.key === "ArrowDown"
+        ? -1
+        : null;
+    const value = input.key === "Home"
+      ? range.min
+      : input.key === "End"
+        ? range.max
+        : direction
+          ? stepCellSliderValue(focused.sliderValue, range, direction)
+          : input.key === "PageUp"
+            ? stepCellSliderValue(focused.sliderValue, range, 1, 10)
+            : input.key === "PageDown"
+              ? stepCellSliderValue(focused.sliderValue, range, -1, 10)
+              : null;
+    if (value !== null) {
+      return value === focused.sliderValue
+        ? null
+        : { type: "set-value", targetId: focused.id, value };
+    }
+  }
+  if (
+    focused?.kind === "select-trigger"
+    && (input.key === "ArrowDown" || input.key === "ArrowUp")
+  ) {
+    return { type: "set-expanded", targetId: focused.id, expanded: true };
+  }
   if (focused?.kind === "tree-item" && input.key === "ArrowRight") {
     if (focused.hasChildren && !focused.expanded) {
       return { type: "set-expanded", targetId: focused.id, expanded: true };

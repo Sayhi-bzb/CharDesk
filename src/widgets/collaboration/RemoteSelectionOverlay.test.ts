@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import type { StructuredNode } from "@/domains/structured-content/public";
-import type { GridMap } from "@/shared/types";
 import {
   resolveRemoteSelectionLayout,
   resolveRemoteSelectionRevealViewport,
@@ -15,7 +15,7 @@ const viewport = {
 
 describe("resolveRemoteSelectionVisuals", () => {
   it("uses the shared grid geometry for cells, ranges, and CJK footprints", () => {
-    const grid: GridMap = new Map([
+    const grid = new GridSnapshotSource([
       ["0,0", { char: "界", color: "#000000" }],
     ]);
     const visuals = resolveRemoteSelectionVisuals({
@@ -65,7 +65,7 @@ describe("resolveRemoteSelectionVisuals", () => {
         selection: { mode: "structured", nodeIds: ["missing", "note"] },
       }],
       canvasMode: "structured",
-      grid: new Map(),
+      grid: new GridSnapshotSource(),
       structuredScene: scene,
       viewport,
     });
@@ -86,7 +86,7 @@ describe("resolveRemoteSelectionVisuals", () => {
         selection: { mode: "structured", nodeIds: ["node"] },
       }],
       canvasMode: "freeform",
-      grid: new Map(),
+      grid: new GridSnapshotSource(),
       structuredScene: [],
       viewport,
     })).toEqual([]);

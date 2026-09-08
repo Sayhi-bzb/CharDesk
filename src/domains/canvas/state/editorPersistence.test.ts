@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import type { EditorState } from "./interfaces";
 import { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 import {
@@ -26,7 +27,7 @@ describe("syncHydratedStateToCanvasDocument", () => {
       canvasMode: "structured",
       structuredScene: scene,
       structuredComponents: [],
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["2,3", { char: "H", color: "#111111" }],
       ]),
       canvasSessions: [
@@ -81,7 +82,7 @@ describe("syncHydratedStateToCanvasDocument", () => {
       ...state,
       activeCanvasId: "source-board",
       canvasMode: "freeform",
-      grid: new Map([["0,0", { char: "A", color: "#111111" }]]),
+      contentSurface: new TestCanvasContentSurface([["0,0", { char: "A", color: "#111111" }]]),
       canvasSessions: [{
         id: "source-board",
         name: "Board",

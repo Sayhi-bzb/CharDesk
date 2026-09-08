@@ -10,6 +10,7 @@ type CanvasMoveAction =
   | { type: "structured-text-cursor" }
   | { type: "structured-shape-hover"; point: Point | null }
   | { type: "structured-select-hover"; cursor: string }
+  | { type: "static-range-move-hover" }
   | { type: "eraser-hover"; point: Point | null };
 
 export type CanvasMoveDecision =
@@ -24,6 +25,7 @@ export const resolveCanvasMoveDecision = ({
   linkHit,
   structuredSelectCursor,
   eraserHoverPoint,
+  staticRangeMoveHit,
 }: {
   hasColorPickerTarget: boolean;
   canvasMode: CanvasMode;
@@ -32,6 +34,7 @@ export const resolveCanvasMoveDecision = ({
   linkHit: CanvasLinkHit | null;
   structuredSelectCursor: string | null;
   eraserHoverPoint: Point | null;
+  staticRangeMoveHit: boolean;
 }): CanvasMoveDecision => {
   if (hasColorPickerTarget) {
     return { type: "color-picker-hover", point };
@@ -65,6 +68,14 @@ export const resolveCanvasMoveDecision = ({
     return { type: "canvas-hover", linkHit, action: { type: "none" } };
   }
 
+  if (tool === "select" && staticRangeMoveHit) {
+    return {
+      type: "canvas-hover",
+      linkHit: null,
+      action: { type: "static-range-move-hover" },
+    };
+  }
+
   if (tool === "eraser") {
     return {
       type: "canvas-hover",
@@ -75,5 +86,3 @@ export const resolveCanvasMoveDecision = ({
 
   return { type: "canvas-hover", linkHit, action: { type: "none" } };
 };
-
-

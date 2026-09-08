@@ -2,6 +2,7 @@
 import {
   alignCharDeskCanvasRect,
   CELL_GRAPHICS_VERSION,
+  drawCharDeskCanvasRange,
   resolveCharDeskCanvasGlyphSource,
   getCharDeskCanvasFont,
   loadCharDeskCanvasFonts,
@@ -13,8 +14,10 @@ import {
 } from "@chardesk/rendering/canvas";
 import { cellRectContainsPoint } from "@chardesk/cell-core";
 import {
+  createCharDeskRectRangeGeometry,
   resolveCharDeskFontRoute,
   type CharDeskCellMetrics,
+  type CharDeskCellRangePhase,
 } from "@chardesk/rendering";
 import {
   useCallback,
@@ -52,6 +55,8 @@ import {
   type GestureSignal,
 } from "./gestures.js";
 import { CellTextInputLayer } from "./browser-input.js";
+import { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
+import { isCellKeyPress } from "./keyboard.js";
 import { useCellRangeState } from "./browser-range.js";
 import { offsetAtCellPoint } from "./text.js";
 import {
@@ -92,12 +97,14 @@ import type {
 
 export { useCellTextState } from "./browser-input.js";
 export type { CellTextState } from "./browser-input.js";
+export { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
 export { useCellRangeState } from "./browser-range.js";
 export type { CellRangeState } from "./browser-range.js";
 export {
   useCellGridState,
   useCellListState,
   useCellMenuState,
+  useCellSelectState,
   useCellTabsState,
   useCellTreeState,
 } from "./browser-collections.js";
@@ -108,6 +115,8 @@ export type {
   CellListItem,
   CellListState,
   CellMenuState,
+  CellSelectItem,
+  CellSelectState,
   CellTabItem,
   CellTabsState,
   CellTreeItem,
@@ -293,6 +302,7 @@ const presentFrame = (
   metrics: CharDeskCellMetrics,
   palette: CharDeskCanvasPalette,
   cellRange: CellRangeSnapshot | null,
+  rangePhase: CharDeskCellRangePhase,
   theme: CellUiTheme,
   fontProfile?: CharDeskFontProfile,
   glyphOverflow: "clip" | "visible" = "clip",
@@ -335,23 +345,12 @@ const presentFrame = (
     }
   );
   if (cellRange) {
-    const { bounds } = cellRange;
-    context.save();
-    context.fillStyle = theme.rangeSelectionColor;
-    for (const region of regions) {
-      const x = Math.max(bounds.x, region.x);
-      const y = Math.max(bounds.y, region.y);
-      const right = Math.min(bounds.x + bounds.width, region.x + region.width);
-      const bottom = Math.min(bounds.y + bounds.height, region.y + region.height);
-      if (right <= x || bottom <= y) continue;
-      context.fillRect(
-        x * metrics.cellWidth,
-        y * metrics.cellHeight,
-        (right - x) * metrics.cellWidth,
-        (bottom - y) * metrics.cellHeight
-      );
-    }
-    context.restore();
+    drawCharDeskCanvasRange(context, {
+      geometry: createCharDeskRectRangeGeometry(cellRange.bounds),
+      phase: rangePhase,
+      style: theme.rangeStyle,
+      options: { metrics, clipRegions: regions },
+    });
   }
 };
 
@@ -362,6 +361,7 @@ const presentFrameWithCursor = (
   metrics: CharDeskCellMetrics,
   palette: CharDeskCanvasPalette,
   cellRange: CellRangeSnapshot | null,
+  rangePhase: CharDeskCellRangePhase,
   theme: CellUiTheme,
   fontProfile?: CharDeskFontProfile,
   glyphOverflow: "clip" | "visible" = "clip",
@@ -374,18 +374,21 @@ const presentFrameWithCursor = (
     metrics,
     palette,
     cellRange,
+    rangePhase,
     theme,
     fontProfile,
     glyphOverflow,
     dirtyRegions
   );
-  cursor.afterBasePresent({
-    frame,
-    metrics,
-    palette,
-    style: theme.cursorStyle,
-    ...(fontProfile ? { fontProfile } : {}),
-  });
+  if (!cellRange) {
+    cursor.afterBasePresent({
+      frame,
+      metrics,
+      palette,
+      style: theme.cursorStyle,
+      ...(fontProfile ? { fontProfile } : {}),
+    });
+  }
 };
 
 const hiddenSemanticStyle: CSSProperties = {
@@ -445,6 +448,7 @@ export const SemanticDom = ({
           : undefined}
         aria-selected={node.selected}
         aria-expanded={node.expanded}
+        aria-haspopup={node.hasPopup}
         aria-disabled={node.disabled || undefined}
         aria-modal={node.role === "dialog" && node.modal ? true : undefined}
         aria-orientation={node.orientation}
@@ -455,6 +459,11 @@ export const SemanticDom = ({
         aria-colcount={node.columnCount}
         aria-posinset={node.positionInSet}
         aria-setsize={node.setSize}
+        aria-checked={node.checked}
+        aria-valuenow={node.valueNow}
+        aria-valuemin={node.valueMin}
+        aria-valuemax={node.valueMax}
+        aria-valuetext={node.valueText}
         data-focused={snapshot.focusedId === node.id || undefined}
         data-cell-semantic-id={node.id}
         tabIndex={focusable ? -1 : undefined}
@@ -548,7 +557,8 @@ const captureCellProbePresentation = (
         fontSize: metrics.fontSize * face.fontSizeScale,
         scaleX: face.scaleX,
         baselineShiftEm: face.baselineShiftEm,
-        weightPolicy: face.weightPolicy,
+        boldStrategy: face.boldStrategy,
+        boldOverdrawEm: face.boldOverdrawEm,
       }];
     })
   ) as CellProbePresentation["requestedFontRoutes"];
@@ -585,9 +595,13 @@ const captureCellProbePresentation = (
             route,
             fontFamily: face.family,
             fontSizeScale: face.fontSizeScale,
-            weightPolicy: face.weightPolicy,
+            boldStrategy: face.boldStrategy,
           });
-          const measuredWidth = context.measureText(cell.text).width * face.scaleX;
+          const overdrawWidth = bold && face.boldStrategy === "overdraw"
+            ? face.boldOverdrawEm * metrics.fontSize * face.fontSizeScale
+            : 0;
+          // A centered glyph shifted right needs matching allocation room on both sides.
+          const measuredWidth = context.measureText(cell.text).width * face.scaleX + overdrawWidth * 2;
           const availableWidth = cell.width * metrics.cellWidth;
           if (measuredWidth <= availableWidth + 0.5) continue;
           glyphOverflow.push({
@@ -804,6 +818,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       metrics,
       palette,
       cellRange,
+      rangeDragRef.current ? "selecting" : "resting",
       resolvedTheme,
       fontProfile,
       glyphOverflow,
@@ -822,7 +837,18 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       const current = frameRef.current;
       if (canvas && current) {
         const cursor = cursorPresenterRef.current ??= new CellCursorPresenter(canvas);
-        presentFrameWithCursor(cursor, canvas, current, metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow);
+        presentFrameWithCursor(
+          cursor,
+          canvas,
+          current,
+          metrics,
+          palette,
+          cellRange,
+          rangeDragRef.current ? "selecting" : "resting",
+          resolvedTheme,
+          fontProfile,
+          glyphOverflow
+        );
         setFontPresentationRevision((revision) => revision + 1);
       }
     };
@@ -903,7 +929,18 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     if (!canvas || !frame || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
       const cursor = cursorPresenterRef.current ??= new CellCursorPresenter(canvas);
-      presentFrameWithCursor(cursor, canvas, frame, metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow);
+      presentFrameWithCursor(
+        cursor,
+        canvas,
+        frame,
+        metrics,
+        palette,
+        cellRange,
+        rangeDragRef.current ? "selecting" : "resting",
+        resolvedTheme,
+        fontProfile,
+        glyphOverflow
+      );
     });
     observer.observe(canvas);
     return () => observer.disconnect();
@@ -998,22 +1035,19 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented) return;
     inputModalityRef.current = "keyboard";
-    if (event.key === "Escape" && cellRange && rangeEditable) {
+    const input = keyInputFromKeyboardEvent(event.nativeEvent);
+    if (isCellKeyPress(input, "Escape") && cellRange && rangeEditable) {
       event.preventDefault();
       dispatchCellRange({ type: "clear" });
       return;
     }
     if (
       !frame
-      || event.defaultPrevented
       || (event.target instanceof HTMLTextAreaElement && event.key !== "Escape")
     ) return;
-    const command = commandForInput(
-      { type: "key", key: event.key },
-      frame,
-      focusRef.current
-    );
+    const command = commandForInput(input, frame, focusRef.current);
     if (command) {
       event.preventDefault();
       dispatch(command);
@@ -1213,6 +1247,22 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       }}
       onBlur={onSurfaceBlur}
       onKeyDown={onKeyDown}
+      onKeyUp={(event) => {
+        if (
+          event.defaultPrevented
+          || !frame
+          || (event.target instanceof HTMLTextAreaElement && event.key !== "Escape")
+        ) return;
+        const command = commandForInput(
+          keyInputFromKeyboardEvent(event.nativeEvent),
+          frame,
+          focusRef.current
+        );
+        if (command) {
+          event.preventDefault();
+          dispatch(command);
+        }
+      }}
       style={{ position: "relative", width: "fit-content", outline: "none" }}
     >
       <canvas

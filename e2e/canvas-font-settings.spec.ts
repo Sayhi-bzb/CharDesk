@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { arkMonoStylesheetRequest } from "./helpers/ark-mono";
+import { fusionMonoStylesheetRequest } from "./helpers/fusion-mono";
 
 // Vite HMR timestamps are part of module identity; use the page's live Host instance.
 const liveHostImport = `import(performance.getEntriesByType('resource').find(entry =>
@@ -43,7 +43,7 @@ test("Host font switching redraws Unicode cells, survives reload, and agrees wit
   await openFontSettings(page);
   const evidence: unknown[] = [];
   for (const [id, label, family] of [
-    ["ark-mono", "Ark Pixel 12px Mono", "Ark Pixel"],
+    ["fusion-mono", "Fusion Pixel 12px Mono", "Fusion Pixel"],
     ["xiaolai-mono", "Xiaolai Mono", "Xiaolai Mono"],
     ["maple", "Maple Mono", "Maple Mono"],
   ]) {
@@ -78,17 +78,17 @@ test("Host font switching redraws Unicode cells, survives reload, and agrees wit
 });
 
 test("failed font loading keeps the Canvas and offers an inline retry", async ({ page }) => {
-  await page.route(arkMonoStylesheetRequest, (route) => route.abort());
+  await page.route(fusionMonoStylesheetRequest, (route) => route.abort());
   await page.goto("/");
   await expect.poll(() => fontState(page)).toMatchObject({ status: "idle" });
   await openFontSettings(page);
   await page.getByRole("combobox", { name: "Canvas font" }).click();
-  await page.getByRole("option", { name: "Ark Pixel 12px Mono", exact: true }).click();
+  await page.getByRole("option", { name: "Fusion Pixel 12px Mono", exact: true }).click();
   await expect(page.getByRole("button", { name: "Retry", exact: true })).toBeVisible();
-  expect(await fontState(page)).toMatchObject({ font: "maple", requestedFont: "ark-mono", status: "error" });
-  await page.unroute(arkMonoStylesheetRequest);
+  expect(await fontState(page)).toMatchObject({ font: "maple", requestedFont: "fusion-mono", status: "error" });
+  await page.unroute(fusionMonoStylesheetRequest);
   await page.getByRole("button", { name: "Retry", exact: true }).click();
-  await expect.poll(() => fontState(page)).toMatchObject({ font: "ark-mono", status: "idle" });
+  await expect.poll(() => fontState(page)).toMatchObject({ font: "fusion-mono", status: "idle" });
 });
 
 test("font setting fits a narrow Host and supports keyboard selection", async ({ page }, testInfo) => {
@@ -100,9 +100,9 @@ test("font setting fits a narrow Host and supports keyboard selection", async ({
   await page.keyboard.press("Enter");
   await expect(page.getByRole("option", { name: "Maple Mono", exact: true })).toBeFocused();
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("option", { name: "Ark Pixel 12px Mono", exact: true })).toBeFocused();
+  await expect(page.getByRole("option", { name: "Fusion Pixel 12px Mono", exact: true })).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect.poll(() => fontState(page)).toMatchObject({ font: "ark-mono", status: "idle" });
+  await expect.poll(() => fontState(page)).toMatchObject({ font: "fusion-mono", status: "idle" });
   const dialog = page.getByRole("dialog", { name: "Settings" });
   const bounds = (await dialog.boundingBox())!;
   expect(bounds.x).toBeGreaterThanOrEqual(0);

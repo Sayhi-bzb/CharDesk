@@ -1,5 +1,5 @@
 import { union, type Polygon } from "polygon-clipping";
-import type { GridMap, Point } from "@/shared/types";
+import type { GridCellSource, Point } from "@/shared/types";
 import { getGridFootprint } from "@/shared/utils/grid-occupancy";
 import type { GridBounds, GridRange } from "./grid-types";
 
@@ -42,7 +42,7 @@ const rangeToPolygon = (range: GridRange): Polygon => {
 
 export const getGridSelectionGeometry = (
   ranges: GridRange[],
-  grid?: GridMap
+  grid?: GridCellSource
 ): GridSelectionGeometry => {
   if (ranges.length === 0) return { polygons: [], bounds: null };
 
@@ -114,7 +114,7 @@ const mergeRowSpans = (spans: GridSelectionSpan[]) => {
 
 export const getGridSelectionSpans = (
   ranges: GridRange[],
-  grid?: GridMap
+  grid?: GridCellSource
 ): GridSelectionSpan[] => {
   const spans = getRawGridSelectionSpans(ranges);
   if (!grid) return spans;
@@ -134,7 +134,7 @@ export const getGridSelectionSpans = (
 export const forEachGridSelectionSpan = (
   ranges: GridRange[],
   visit: (span: GridSelectionSpan) => void,
-  grid?: GridMap
+  grid?: GridCellSource
 ) => {
   getGridSelectionSpans(ranges, grid).forEach(visit);
 };

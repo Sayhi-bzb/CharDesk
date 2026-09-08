@@ -1,7 +1,12 @@
 import { useEffect, useRef } from "react";
 import { createSequenceMatcher, type Hotkey } from "@tanstack/hotkeys";
+import type { KeyInput } from "@chardesk/keyboard";
 import { useEditor } from "./react";
-import { shortcutFromKeyboardEvent, type ShortcutSequence } from "./core/shortcut";
+import {
+  matchHotkeySequenceInput,
+  shortcutFromKeyInput,
+  type ShortcutSequence,
+} from "./core/shortcut";
 import type { EditorRuntime, EditorShortcutContext } from "./core/runtime";
 import type { RegisteredKeymapEntry } from "./core/keymap";
 import type { CanvasState } from "@/domains/canvas/public";
@@ -37,15 +42,15 @@ const createEditorShortcutContext = (
   };
 };
 
-export const resolveEditorKeymapEvent = (
+export const resolveEditorKeymapInput = (
   editor: EditorRuntime<CanvasState>,
-  event: KeyboardEvent,
+  input: KeyInput,
   targetKind: ShortcutTargetKind,
   phase: "keydown" | "keyup" = "keydown"
 ) => {
-  if (!shortcutFromKeyboardEvent(event)) return { type: "none" as const };
-  const entry = editor.keymap.resolveEvent(
-    event,
+  if (!shortcutFromKeyInput(input)) return { type: "none" as const };
+  const entry = editor.keymap.resolveInput(
+    input,
     createEditorShortcutContext(editor, targetKind, phase)
   )[0];
   return entry ? { type: "match" as const, entry } : { type: "none" as const };
@@ -71,14 +76,14 @@ const executeEntry = (
     : { type: "none" as const };
 };
 
-export const executeEditorKeymapEvent = (
+export const executeEditorKeymapInput = (
   editor: EditorRuntime<CanvasState>,
-  event: KeyboardEvent,
+  input: KeyInput,
   targetKind: ShortcutTargetKind
 ) => {
-  const resolution = resolveEditorKeymapEvent(editor, event, targetKind);
+  const resolution = resolveEditorKeymapInput(editor, input, targetKind);
   if (resolution.type !== "match") return resolution;
-  if (event.repeat && (resolution.entry.repeat ?? "ignore") === "ignore") {
+  if (input.repeat && (resolution.entry.repeat ?? "ignore") === "ignore") {
     return { type: "none" as const };
   }
   return executeEntry(editor, resolution.entry);
@@ -120,43 +125,43 @@ export class EditorShortcutEngine {
     return createEditorShortcutContext(this.#editor, targetKind);
   }
 
-  #beginChord(starts: readonly { sequence: ShortcutSequence }[], event: KeyboardEvent) {
+  #beginChord(starts: readonly { sequence: ShortcutSequence }[], input: KeyInput) {
     this.cancelChord();
     this.#pending = starts.map(({ sequence }) => {
       const matcher = createSequenceMatcher([...sequence] as Hotkey[], { timeout: this.#timeoutMs });
-      matcher.match(event);
+      matchHotkeySequenceInput(matcher, input);
       return { sequence, matcher };
     });
     this.#timer = setTimeout(this.cancelChord, this.#timeoutMs);
     return { type: "pending" as const };
   }
 
-  handleKeyDown(event: KeyboardEvent, targetKind: ShortcutTargetKind) {
-    if (event.key === "Escape" && this.#pending) {
+  handleKeyDown(input: KeyInput, targetKind: ShortcutTargetKind) {
+    if (input.key === "Escape" && this.#pending) {
       this.cancelChord();
       return { type: "cancelled" as const };
     }
-    if (!shortcutFromKeyboardEvent(event)) return { type: "none" as const };
+    if (!shortcutFromKeyInput(input)) return { type: "none" as const };
     const context = this.#context(targetKind);
 
     if (this.#pending) {
       const sequences = this.#pending
-        .filter(({ matcher }) => matcher.match(event))
+        .filter(({ matcher }) => matchHotkeySequenceInput(matcher, input))
         .map(({ sequence }) => sequence);
       this.cancelChord();
       const entry = this.#editor.keymap.resolveCandidates(sequences, context)[0];
-      if (entry && (!event.repeat || (entry.repeat ?? "ignore") === "allow")) {
+      if (entry && (!input.repeat || (entry.repeat ?? "ignore") === "allow")) {
         return executeEntry(this.#editor, entry, context, this.#canExecuteEntry);
       }
       // A mismatched second stroke starts a fresh root resolution.
     }
 
-    const starts = this.#editor.keymap.getSequenceStarts(event, context);
+    const starts = this.#editor.keymap.getSequenceStarts(input, context);
     if (starts.length > 0) {
-      return this.#beginChord(starts, event);
+      return this.#beginChord(starts, input);
     }
-    const entry = this.#editor.keymap.resolveEvent(event, context)[0];
-    if (!entry || (event.repeat && (entry.repeat ?? "ignore") === "ignore")) {
+    const entry = this.#editor.keymap.resolveInput(input, context)[0];
+    if (!entry || (input.repeat && (entry.repeat ?? "ignore") === "ignore")) {
       return { type: "none" as const };
     }
     return executeEntry(this.#editor, entry, context, this.#canExecuteEntry);
@@ -198,8 +203,8 @@ export const useEditorShortcutLayer = ({
     id: "editor-keymap",
     priority: SHORTCUT_PRIORITY.globalAction,
     enabled,
-    onKeyDown: (event, context) => {
-      const result = engineRef.current!.handleKeyDown(event, context.targetKind);
+    onKeyDown: (input, context) => {
+      const result = engineRef.current!.handleKeyDown(input, context.targetKind);
       return result.type === "executed" || result.type === "pending" || result.type === "cancelled"
         ? { claimed: true, preventDefault: true }
         : undefined;

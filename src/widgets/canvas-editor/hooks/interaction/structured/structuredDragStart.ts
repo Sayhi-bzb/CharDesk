@@ -1,7 +1,7 @@
 import type { Point } from "@/shared/types";
 import type { StructuredNode } from "@/domains/structured-content/public";
 import { createStructuredSceneSurface } from "@/domains/structured-content/public";
-import { createSurfaceGridProjection } from "@/domains/canvas/public";
+import { materializeGridSource } from "@/shared/utils/grid-source";
 import {
   isStructuredSplitBoxLineHandle,
   type StructuredNodeHit,
@@ -59,7 +59,7 @@ export const resolveStructuredDragStartDecision = ({
     selectedIds,
     selectedNodes: selectedNodes.length > 0 ? selectedNodes : [hit.node],
     baseScene,
-    baseGrid: createSurfaceGridProjection(createStructuredSceneSurface(baseScene)),
+    baseGrid: materializeGridSource(createStructuredSceneSurface(baseScene)),
     handle: hit.handle,
   };
 

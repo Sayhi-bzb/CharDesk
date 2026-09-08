@@ -9,6 +9,12 @@ import type { CanvasSession } from "@/domains/sessions/public";
 import type { SessionCommands } from "@/domains/sessions/public";
 import type { CanvasHistoryMode } from "./CanvasDocumentRegistry";
 import type { SlideDeck, SlideSize } from "@/domains/slides/public";
+import type { CanvasSurfaceReader } from "../cell-plane/model";
+
+export type CanvasContentSurfaceState = Readonly<{
+  reader: CanvasSurfaceReader;
+  revision: number;
+}>;
 
 export type CanvasColorPickerTarget =
   | "auto"
@@ -179,6 +185,7 @@ export interface SelectionSlice {
   clearInteractionState: () => void;
   canCopyOrCut: () => boolean;
   deleteSelection: () => void;
+  moveStaticGridSelection: (delta: Point) => boolean;
   copySelection: (options?: { rich?: boolean; ansi?: boolean; event?: ClipboardEvent }) => Promise<ClipboardCommandResult>;
   cutSelection: (options?: { event?: ClipboardEvent }) => Promise<ClipboardCommandResult>;
   pasteFromClipboard: (options?: { eventDataTransfer?: DataTransfer }) => Promise<ClipboardCommandResult>;
@@ -213,7 +220,7 @@ export type EditorState = {
   brushChar: string;
   brushColor: string;
   brushBackgroundColor: string;
-  grid: GridMap;
+  contentSurface: CanvasContentSurfaceState;
   structuredScene: StructuredNode[];
   structuredComponents: StructuredComponentInstance[];
   selectedStructuredNodeIds: string[];

@@ -1,7 +1,10 @@
 import { useCreation } from "ahooks";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { GridManager } from "@/shared/utils/grid";
-import { useCanvasRuntime } from "@/domains/canvas/public";
+import {
+  createStaticGridRangeMovePlan,
+  isPointInStaticGridRange,
+  useCanvasRuntime,
+} from "@/domains/canvas/public";
 import { isStaticGridMode } from "@/domains/sessions/public";
 import { hasGridRangeSelection } from "@/domains/selection/public";
 import {
@@ -105,6 +108,7 @@ export const useCanvasInteraction = (
     canvasColorPickerTarget,
     setCanvasColorPickerTarget,
     canvasMode,
+    slideDeck,
     addScratchPoints,
     commitScratch,
     commitStructuredShape,
@@ -118,8 +122,9 @@ export const useCanvasInteraction = (
     erasePoints,
     offset,
     zoom,
-    grid,
+    contentReader,
     staticGridSelection,
+    moveStaticGridSelection,
     updateScratchForShape,
     setHoveredGrid,
     fillArea,
@@ -168,6 +173,8 @@ export const useCanvasInteraction = (
     completeInteraction,
     cursor,
     draggingSelection,
+    staticRangeMovePreview,
+    setStaticRangeMovePreview,
     edgeScroll,
     hoverInteraction,
     pointerContext,
@@ -357,7 +364,7 @@ export const useCanvasInteraction = (
     isStaticGridSelectionActive:
       isStaticGridMode(canvasMode) &&
       hasGridRangeSelection(staticGridSelection),
-    getCell: (point) => grid.get(GridManager.toKey(point.x, point.y)),
+    getCell: (point) => contentReader.get(point),
     executor: colorPickerDragStartExecutor,
   });
   const selectColorSource = (source: "foreground" | "background") => {
@@ -438,6 +445,16 @@ export const useCanvasInteraction = (
   const canvasWheelRouteHandler = createCanvasWheelRouteHandler({
     handler: canvasWheelHandler,
   });
+  const canStartStaticRangeMove = (point: { x: number; y: number }) =>
+    capabilities.mutateContent &&
+    isStaticGridMode(canvasMode) &&
+    staticGridSelection.mode === "range" &&
+    staticGridSelection.additionalRanges.length === 0 &&
+    isPointInStaticGridRange(
+      contentReader,
+      staticGridSelection.primaryRange,
+      point
+    );
   const coreInteractionPort = useCreation(
     () =>
       createCanvasInteractionPort({
@@ -463,15 +480,52 @@ export const useCanvasInteraction = (
         beginAppendSelection: (point) => {
           selectionPreview.set({ start: point, end: point }, { immediate: true });
         },
+        canStartStaticRangeMove,
+        updateStaticRangeMove: (anchor, current) => {
+          const activeSlide = canvasMode === "slide"
+            ? slideDeck?.slides.find(
+                (slide) => slide.id === slideDeck.activeSlideId
+              )
+            : null;
+          setStaticRangeMovePreview(
+            createStaticGridRangeMovePlan({
+              source: contentReader,
+              range: staticGridSelection.primaryRange,
+              requestedDelta: {
+                x: current.x - anchor.x,
+                y: current.y - anchor.y,
+              },
+              bounds: activeSlide
+                ? {
+                    start: { x: 0, y: 0 },
+                    end: {
+                      x: activeSlide.size.columns - 1,
+                      y: activeSlide.size.rows - 1,
+                    },
+                  }
+                : null,
+            })
+          );
+        },
+        commitStaticRangeMove: (anchor, current) => {
+          moveStaticGridSelection({
+            x: current.x - anchor.x,
+            y: current.y - anchor.y,
+          });
+        },
+        clearStaticRangeMovePreview: () => setStaticRangeMovePreview(null),
       }),
     [
       addScratchPoints,
       brushChar,
       canvasMode,
+      capabilities.mutateContent,
       completeInteraction,
+      contentReader,
       erasePoints,
       hoverInteraction,
       primaryDragEndHandler,
+      moveStaticGridSelection,
       setHoveredGrid,
       staticGridSelection,
       offset,
@@ -485,6 +539,8 @@ export const useCanvasInteraction = (
       dragUpdateHandler,
       pointerContext,
       selectionPreview,
+      setStaticRangeMovePreview,
+      slideDeck,
     ]
   );
   const coreInteractionPortRef = useRef(coreInteractionPort);
@@ -512,6 +568,7 @@ export const useCanvasInteraction = (
       const type = editorRuntime.getInteractionState().type;
       return (
         type === "selecting" ||
+        type === "movingRange" ||
         type === "structuredMoving" ||
         type === "structuredRectResizing" ||
         type === "structuredSplitBoxResizing" ||
@@ -562,6 +619,7 @@ export const useCanvasInteraction = (
     canvasClickRouteHandler,
     canvasWheelRouteHandler,
     capabilities,
+    canStartStaticRangeMove,
   });
 
   const handleDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -592,6 +650,7 @@ export const useCanvasInteraction = (
     activateInteractionOwner,
     cursor,
     draggingSelection,
+    staticRangeMovePreview,
     handleDoubleClick,
     colorSourceChoice,
     selectColorSource,

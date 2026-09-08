@@ -1,7 +1,7 @@
 import { isEmojiGrapheme } from "@chardesk/protocol";
 import { NERD_FONT_RANGES } from "./generated/nerd-font-ranges.js";
 
-export const CHARDESK_SYSTEM_FONT_PROFILE_ID = "chardesk/system-v4";
+export const CHARDESK_SYSTEM_FONT_PROFILE_ID = "chardesk/system-v5";
 
 export const CHARDESK_SYSTEM_FONT_FAMILY =
   "ui-monospace, " +
@@ -28,6 +28,12 @@ export type CharDeskFontCapability =
 /** inherit follows Cell bold; regular always requests the regular face/weight. */
 export type CharDeskFontWeightPolicy = "inherit" | "regular";
 
+export type CharDeskFontBoldStrategy = "auto" | "native" | "overdraw" | "none";
+export type CharDeskResolvedFontBoldStrategy = Exclude<CharDeskFontBoldStrategy, "auto">;
+
+/** One CSS pixel at the default 15px Cell font size. */
+export const DEFAULT_CHARDESK_BOLD_OVERDRAW_EM = 1 / 15;
+
 export type CharDeskFontFaceSpec = Readonly<{
   families: Readonly<{
     regular: string;
@@ -36,9 +42,24 @@ export type CharDeskFontFaceSpec = Readonly<{
   fontSizeScale?: number;
   scaleX?: number;
   baselineShiftEm?: number;
+  /** auto uses a declared bold family, otherwise renderer overdraw. */
+  boldStrategy?: CharDeskFontBoldStrategy;
+  /** Optional overdraw offset in em; defaults to one CSS pixel at 15px. */
+  boldOverdrawEm?: number;
   /** Optional grid calibration, in em of this face's effective font size. */
   cellMetrics?: Readonly<{ width?: number; height?: number; baseline?: number }>;
+  /** @deprecated Use boldStrategy. Accepted only as profile input. */
   weightPolicy?: CharDeskFontWeightPolicy;
+}>;
+
+export type CharDeskResolvedFontFaceSpec = Readonly<{
+  families: CharDeskFontFaceSpec["families"];
+  fontSizeScale?: number;
+  scaleX?: number;
+  baselineShiftEm?: number;
+  boldStrategy: CharDeskResolvedFontBoldStrategy;
+  boldOverdrawEm: number;
+  cellMetrics?: CharDeskFontFaceSpec["cellMetrics"];
 }>;
 
 export type CharDeskFontSource = Readonly<{
@@ -49,7 +70,7 @@ export type CharDeskFontSource = Readonly<{
 
 export type CharDeskFontProfile = Readonly<{
   id: string;
-  capabilities: Readonly<Record<CharDeskFontCapability, CharDeskFontFaceSpec>>;
+  capabilities: Readonly<Record<CharDeskFontCapability, CharDeskResolvedFontFaceSpec>>;
   sources: readonly CharDeskFontSource[];
   resolveCapability: (grapheme: string) => CharDeskFontCapability;
   /** Compatibility stacks for the original text/emoji renderer routes. */
@@ -98,12 +119,77 @@ const systemFace: CharDeskFontFaceSpec = {
 
 export const CHARDESK_CORE_CELL_GLYPH_FACE = {
   families: { regular: "'JuliaMono'" },
-  weightPolicy: "regular",
-} as const satisfies CharDeskFontFaceSpec;
+  boldStrategy: "none",
+  boldOverdrawEm: 0,
+} as const satisfies CharDeskResolvedFontFaceSpec;
+
+const resolveInputBoldStrategy = (
+  spec: CharDeskFontFaceSpec,
+  defaultStrategy: "auto" | "none"
+): CharDeskResolvedFontBoldStrategy => {
+  if (spec.boldStrategy !== undefined && spec.weightPolicy !== undefined) {
+    throw new TypeError("Font faces cannot combine boldStrategy with deprecated weightPolicy.");
+  }
+  if (spec.boldOverdrawEm !== undefined
+    && (!Number.isFinite(spec.boldOverdrawEm) || spec.boldOverdrawEm <= 0)) {
+    throw new RangeError("boldOverdrawEm must be a positive finite number.");
+  }
+  let requested = spec.boldStrategy;
+  if (requested === undefined && spec.weightPolicy !== undefined) {
+    if (spec.weightPolicy === "regular") {
+      requested = spec.boldOverdrawEm === undefined ? "none" : "overdraw";
+    } else {
+      if (spec.boldOverdrawEm !== undefined) {
+        throw new TypeError("Legacy inherit weightPolicy cannot be combined with boldOverdrawEm.");
+      }
+      requested = "auto";
+    }
+  }
+  if (requested === undefined && spec.boldOverdrawEm !== undefined) requested = "overdraw";
+  requested ??= defaultStrategy;
+  const resolved = requested === "auto"
+    ? (spec.families.bold ? "native" : "overdraw")
+    : requested;
+  if (resolved === "native" && !spec.families.bold) {
+    throw new TypeError("Native bold requires families.bold.");
+  }
+  if (resolved !== "overdraw" && spec.boldOverdrawEm !== undefined) {
+    throw new TypeError("boldOverdrawEm is valid only for overdraw bold.");
+  }
+  return resolved;
+};
+
+const normalizeFontFace = (
+  spec: CharDeskFontFaceSpec,
+  defaultStrategy: "auto" | "none"
+): CharDeskResolvedFontFaceSpec => {
+  const boldStrategy = resolveInputBoldStrategy(spec, defaultStrategy);
+  return {
+    families: spec.families,
+    ...(spec.fontSizeScale !== undefined ? { fontSizeScale: spec.fontSizeScale } : {}),
+    ...(spec.scaleX !== undefined ? { scaleX: spec.scaleX } : {}),
+    ...(spec.baselineShiftEm !== undefined ? { baselineShiftEm: spec.baselineShiftEm } : {}),
+    ...(spec.cellMetrics !== undefined ? { cellMetrics: spec.cellMetrics } : {}),
+    boldStrategy,
+    boldOverdrawEm: boldStrategy === "overdraw"
+      ? spec.boldOverdrawEm ?? DEFAULT_CHARDESK_BOLD_OVERDRAW_EM
+      : 0,
+  };
+};
+
+const inheritFontFaceWithoutBold = (
+  spec: CharDeskFontFaceSpec
+): CharDeskFontFaceSpec => ({
+  families: spec.families,
+  ...(spec.fontSizeScale !== undefined ? { fontSizeScale: spec.fontSizeScale } : {}),
+  ...(spec.scaleX !== undefined ? { scaleX: spec.scaleX } : {}),
+  ...(spec.baselineShiftEm !== undefined ? { baselineShiftEm: spec.baselineShiftEm } : {}),
+  ...(spec.cellMetrics !== undefined ? { cellMetrics: spec.cellMetrics } : {}),
+});
 
 const capabilityFallbacks = (
-  display: CharDeskFontFaceSpec,
-  cjk: CharDeskFontFaceSpec
+  display: CharDeskResolvedFontFaceSpec,
+  cjk: CharDeskResolvedFontFaceSpec
 ) => {
   const displayStack = (weight: "regular" | "bold") => {
     const displayFamily = weight === "bold"
@@ -128,27 +214,32 @@ const capabilityFallbacks = (
         bold: coreFirst("'Symbols Nerd Font Mono'", "bold"),
       },
       scaleX: 0.6,
-      weightPolicy: "regular",
+      boldStrategy: "none",
+      boldOverdrawEm: 0,
     },
     symbol: {
-      ...(display.weightPolicy ? { weightPolicy: display.weightPolicy } : {}),
       families: {
         regular: displayFirst("'JuliaMono'", "regular"),
         bold: displayFirst("'JuliaMono'", "bold"),
       },
+      boldStrategy: "none",
+      boldOverdrawEm: 0,
     },
     emoji: {
       families: {
         regular: coreFirst("'Noto Emoji', 'JuliaMono'", "regular"),
         bold: coreFirst("'Noto Emoji', 'JuliaMono'", "bold"),
       },
-      weightPolicy: "regular",
+      boldStrategy: "none",
+      boldOverdrawEm: 0,
     },
   } as const;
 };
 
-export const CHARDESK_CORE_FONT_CAPABILITIES = capabilityFallbacks(systemFace, systemFace) satisfies Pick<
-  Record<CharDeskFontCapability, CharDeskFontFaceSpec>,
+const normalizedSystemFace = normalizeFontFace(systemFace, "auto");
+
+export const CHARDESK_CORE_FONT_CAPABILITIES = capabilityFallbacks(normalizedSystemFace, normalizedSystemFace) satisfies Pick<
+  Record<CharDeskFontCapability, CharDeskResolvedFontFaceSpec>,
   "nerd" | "symbol" | "emoji"
 >;
 
@@ -173,17 +264,22 @@ export const CHARDESK_CORE_FONT_SOURCES = [
 export const createCharDeskFontProfile = (
   input: CharDeskDisplayFontProfileInput
 ): CharDeskFontProfile => {
-  const cjk = input.cjk ?? input.display;
-  const core = capabilityFallbacks(input.display, cjk);
+  const display = normalizeFontFace(input.display, "auto");
+  const cjk = normalizeFontFace(input.cjk ?? input.display, "auto");
+  const cellGlyph = normalizeFontFace(
+    input.cellGlyph ?? inheritFontFaceWithoutBold(input.display),
+    "none"
+  );
+  const core = capabilityFallbacks(display, cjk);
   return {
     id: input.id,
     families: {
-      text: input.display.families.regular,
+      text: display.families.regular,
       emoji: core.emoji.families.regular,
     },
     capabilities: {
-      display: input.display,
-      "cell-glyph": input.cellGlyph ?? input.display,
+      display,
+      "cell-glyph": cellGlyph,
       cjk,
       ...core,
     },

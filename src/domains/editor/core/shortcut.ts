@@ -10,6 +10,7 @@ import {
   validateHotkey,
   type Hotkey,
 } from '@tanstack/hotkeys';
+import type { KeyInput } from '@chardesk/keyboard';
 
 export type ShortcutStroke = string;
 export type ShortcutSequence = readonly ShortcutStroke[];
@@ -83,10 +84,21 @@ export const shortcutSequenceKey = (sequence: ShortcutSequence) => sequence.join
 export const shortcutsEqual = (left: ShortcutSequence, right: ShortcutSequence) =>
   left.length === right.length && left.every((stroke, index) => stroke === right[index]);
 
-export const shortcutFromKeyboardEvent = (
-  event: KeyboardEvent,
+const hotkeyEventFromInput = (input: KeyInput): KeyboardEvent => ({
+  key: input.key,
+  code: input.code,
+  ctrlKey: input.modifiers.ctrl,
+  shiftKey: input.modifiers.shift,
+  altKey: input.modifiers.alt,
+  metaKey: input.modifiers.meta,
+}) as KeyboardEvent;
+
+export const shortcutFromKeyInput = (
+  input: KeyInput,
   platform: ShortcutPlatform = getPlatform()
 ): ShortcutStroke | null => {
+  if (input.composing || input.modifiers.altGraph || input.phase !== 'down') return null;
+  const event = hotkeyEventFromInput(input);
   const key = normalizeKeyName(event.key);
   if (isModifierKey(key)) return null;
   const recordingPlatform = event.metaKey && !event.ctrlKey
@@ -98,11 +110,13 @@ export const shortcutFromKeyboardEvent = (
   return hasNonModifierKey(stroke, recordingPlatform) ? stroke : null;
 };
 
-export const matchesShortcutEvent = (
-  event: KeyboardEvent,
+export const matchesShortcutInput = (
+  input: KeyInput,
   stroke: ShortcutStroke,
   platform: ShortcutPlatform = getPlatform()
 ) => {
+  if (input.composing || input.modifiers.altGraph || input.phase !== 'down') return false;
+  const event = hotkeyEventFromInput(input);
   if (matchesKeyboardEvent(event, stroke as Hotkey, platform)) return true;
   if (!stroke.includes('Mod+')) return false;
   const eventPlatform = event.metaKey && !event.ctrlKey
@@ -112,6 +126,11 @@ export const matchesShortcutEvent = (
       : platform;
   return eventPlatform !== platform && matchesKeyboardEvent(event, stroke as Hotkey, eventPlatform);
 };
+
+export const matchHotkeySequenceInput = (
+  matcher: Readonly<{ match: (event: KeyboardEvent) => boolean }>,
+  input: KeyInput
+) => matcher.match(hotkeyEventFromInput(input));
 
 export const formatShortcutStroke = (
   stroke: ShortcutStroke,

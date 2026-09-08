@@ -3,6 +3,7 @@ import type { CellBorderShape } from "./border.js";
 import {
   DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS,
   type CharDeskCellCursorPaintStyle,
+  type CharDeskCellRangePaintStyle,
   type CharDeskCellCursorShape,
 } from "@chardesk/rendering";
 
@@ -20,9 +21,18 @@ export type CellUiTheme = Readonly<{
   borderStyle: CellTextStyle;
   borderShape: CellBorderShape;
   cursorStyle: CellCursorStyle;
-  rangeSelectionColor: string;
+  rangeStyle: CharDeskCellRangePaintStyle;
   treeExpandedIndicator: string;
   treeCollapsedIndicator: string;
+  checkboxUncheckedIndicator: string;
+  checkboxCheckedIndicator: string;
+  checkboxIndeterminateIndicator: string;
+  sliderFilledTrack: string;
+  sliderEmptyTrack: string;
+  sliderThumb: string;
+  selectExpandedIndicator: string;
+  selectCollapsedIndicator: string;
+  selectSelectedIndicator: string;
   tabUnderline: string;
   focusedSurfaceStyle: CellTextStyle;
   hoveredItemStyle: CellTextStyle;
@@ -48,9 +58,21 @@ export const DEFAULT_CELL_UI_THEME: CellUiTheme = Object.freeze({
     blink: true,
     blinkIntervalMs: DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS,
   }),
-  rangeSelectionColor: "rgba(82, 155, 255, 0.32)",
+  rangeStyle: Object.freeze({
+    surface: "rgba(82, 155, 255, 0.32)",
+    border: "#529bff",
+  }),
   treeExpandedIndicator: "▾",
   treeCollapsedIndicator: "▸",
+  checkboxUncheckedIndicator: " ",
+  checkboxCheckedIndicator: "x",
+  checkboxIndeterminateIndicator: "-",
+  sliderFilledTrack: "━",
+  sliderEmptyTrack: "─",
+  sliderThumb: "┃",
+  selectExpandedIndicator: "▴",
+  selectCollapsedIndicator: "▾",
+  selectSelectedIndicator: "✓",
   tabUnderline: "▬",
   focusedSurfaceStyle: { color: "#FFFFFF", backgroundColor: "#1a1a1a" },
   hoveredItemStyle: { backgroundColor: "#25292e" },

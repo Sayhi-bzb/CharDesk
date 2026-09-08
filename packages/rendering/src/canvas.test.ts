@@ -4,11 +4,16 @@ import {
   createCharDeskFontProfile,
   type CharDeskFontProfile,
 } from "@chardesk/fonts";
-import { createCharDeskRenderModel, resolveCharDeskCellVisual } from "./index.js";
+import {
+  createCharDeskRectRangeGeometry,
+  createCharDeskRenderModel,
+  resolveCharDeskCellVisual,
+} from "./index.js";
 import {
   drawCharDeskCanvasCells,
   drawCharDeskCanvasCursor,
   drawCharDeskCanvasDocument,
+  drawCharDeskCanvasRange,
   getCharDeskCanvasFont,
   loadCharDeskCanvasFonts,
   measureCharDeskCanvasDocument,
@@ -22,6 +27,7 @@ const createContext = (dpr = 1) => {
   const operations: string[] = [];
   const context = {
     beginPath: vi.fn(),
+    closePath: vi.fn(),
     arc: vi.fn(),
     rect: vi.fn(),
     clip: vi.fn(),
@@ -92,6 +98,92 @@ describe("CharDesk Canvas 2D renderer", () => {
     expect(context.fillRect).toHaveBeenCalledWith(9, 39, 18, 1);
   });
 
+  it("draws Range phases from one Cell-coordinate primitive", () => {
+    const { context } = createContext(2);
+    const geometry = createCharDeskRectRangeGeometry({
+      x: 1,
+      y: 2,
+      width: 3,
+      height: 2,
+    });
+    const entry = {
+      geometry,
+      phase: "resting" as const,
+      style: { surface: "selection", border: "outline" },
+      options: {
+        metrics: {
+          cellWidth: 9,
+          cellHeight: 20,
+          fontSize: 15,
+          fontFamily: "Test",
+        },
+        offset: { x: 0.25, y: 0.25 },
+        zoom: 1,
+      },
+    };
+
+    drawCharDeskCanvasRange(context, entry);
+    expect(context.moveTo).toHaveBeenCalledWith(9.5, 40.5);
+    expect(context.lineTo).toHaveBeenCalledWith(36.5, 40.5);
+    expect(context.fill).toHaveBeenCalledWith("evenodd");
+    expect(context.stroke).not.toHaveBeenCalled();
+
+    drawCharDeskCanvasRange(context, { ...entry, phase: "moving" });
+    expect(context.stroke).toHaveBeenCalledOnce();
+  });
+
+  it("clips Range painting to dirty Cell regions", () => {
+    const { context } = createContext();
+    drawCharDeskCanvasRange(context, {
+      geometry: createCharDeskRectRangeGeometry({ x: 0, y: 0, width: 4, height: 3 }),
+      phase: "selecting",
+      style: { surface: "selection", border: "outline" },
+      options: {
+        metrics: {
+          cellWidth: 9,
+          cellHeight: 20,
+          fontSize: 15,
+          fontFamily: "Test",
+        },
+        clipRegions: [{ x: 2, y: 1, width: 1, height: 1 }],
+      },
+    });
+
+    expect(context.rect).toHaveBeenCalledWith(18, 20, 9, 20);
+    expect(context.clip).toHaveBeenCalledOnce();
+  });
+
+  it("preserves compound Range rings for even-odd holes", () => {
+    const { context } = createContext();
+    drawCharDeskCanvasRange(context, {
+      geometry: {
+        polygons: [{
+          rings: [
+            [
+              { x: 0, y: 0 },
+              { x: 4, y: 0 },
+              { x: 4, y: 4 },
+              { x: 0, y: 4 },
+              { x: 0, y: 0 },
+            ],
+            [
+              { x: 1, y: 1 },
+              { x: 1, y: 3 },
+              { x: 3, y: 3 },
+              { x: 3, y: 1 },
+              { x: 1, y: 1 },
+            ],
+          ],
+        }],
+      },
+      phase: "resting",
+      style: { surface: "selection", border: "outline" },
+    });
+
+    expect(context.closePath).toHaveBeenCalledTimes(2);
+    expect(context.fill).toHaveBeenCalledWith("evenodd");
+  });
+
   it("presents bounded Cell Frames with shared metrics and dirty filtering", () => {
     const { context } = createContext();
     const cells = new Map([
@@ -134,7 +226,12 @@ describe("CharDesk Canvas 2D renderer", () => {
         const { context } = createContext(dpr);
         const metrics = { cellWidth: 7.5, cellHeight: 15, baseline: 12, fontSize: 15, fontFamily: "Test" };
         const fontProfile = customFontProfile({
-          display: { families: { regular: "Test" }, baselineShiftEm: 0.05 },
+          display: {
+            families: { regular: "Test" },
+            baselineShiftEm: 0.05,
+            boldStrategy: "overdraw",
+            boldOverdrawEm: 1 / 15,
+          },
         });
         drawCharDeskCanvasCells(context, ["A", "B", "C", "中"].map((text, column) => ({
           cell: resolveCharDeskCellVisual({ text }),
@@ -155,7 +252,11 @@ describe("CharDesk Canvas 2D renderer", () => {
 
   it("uses the same effective weight for resolver, loading and drawing", async () => {
     const fontProfile = customFontProfile({
-      display: { families: { regular: "Regular", bold: "Bold" }, weightPolicy: "regular" },
+      display: {
+        families: { regular: "Regular", bold: "Bold" },
+        boldStrategy: "none",
+        boldOverdrawEm: 0,
+      },
     });
     const fontResolver = vi.fn(({ bold }: { bold: boolean }) => bold ? "Wrong Bold" : "Resolved Regular");
     const load = vi.fn().mockResolvedValue([{}]);
@@ -173,6 +274,52 @@ describe("CharDesk Canvas 2D renderer", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it("overdraws configured regular faces for bold Cells without requesting browser bold", () => {
+    const { context } = createContext();
+    const fontProfile = customFontProfile({
+      display: {
+        families: { regular: "Regular Only" },
+        boldStrategy: "overdraw",
+        boldOverdrawEm: 1 / 15,
+      },
+    });
+    drawCharDeskCanvasCells(context, [
+      { cell: resolveCharDeskCellVisual({ text: "A" }), x: 0, y: 0, options: { fontProfile } },
+      { cell: resolveCharDeskCellVisual({ text: "B", attrs: { bold: true } }), x: 9, y: 0, options: { fontProfile } },
+    ]);
+
+    expect(context.font).toBe("15px Regular Only");
+    expect(context.fillText).toHaveBeenNthCalledWith(1, "A", 4.5, 15);
+    expect(context.fillText).toHaveBeenNthCalledWith(2, "B", 13.5, 15);
+    expect(context.fillText).toHaveBeenNthCalledWith(3, "B", 14.5, 15);
+  });
+
+  it("scales the overdraw offset with zoom while reusing scale, clip, and decorations", () => {
+    const { context } = createContext();
+    const fontProfile = customFontProfile({
+      display: {
+        families: { regular: "Compressed" },
+        scaleX: 0.6,
+        boldStrategy: "overdraw",
+        boldOverdrawEm: 1 / 15,
+      },
+    });
+    drawCharDeskCanvasCells(context, [{
+      cell: resolveCharDeskCellVisual({ text: "A", attrs: { bold: true, underline: true } }),
+      x: 0,
+      y: 0,
+      options: { fontProfile, zoom: 2, clipToCell: true },
+    }]);
+
+    expect(context.translate).toHaveBeenNthCalledWith(1, 9, 30);
+    expect(context.translate).toHaveBeenNthCalledWith(2, 11, 30);
+    expect(context.scale).toHaveBeenNthCalledWith(1, 0.6, 1);
+    expect(context.scale).toHaveBeenNthCalledWith(2, 0.6, 1);
+    expect(context.fillText).toHaveBeenCalledTimes(2);
+    expect(context.clip).toHaveBeenCalledOnce();
+    expect(context.stroke).toHaveBeenCalledOnce();
   });
 
   it("preserves inverse colors and decorations on block glyphs", () => {
@@ -285,7 +432,12 @@ describe("CharDesk Canvas 2D renderer", () => {
 
   it("resolves capability faces without changing semantic render routes", () => {
     const fontProfile = customFontProfile({
-      cjk: { families: { regular: "CJK Face" }, scaleX: 1.2 },
+      cjk: {
+        families: { regular: "CJK Face" },
+        scaleX: 1.2,
+        boldStrategy: "overdraw",
+        boldOverdrawEm: 1 / 15,
+      },
     });
 
     expect(resolveCharDeskCanvasFontFace({
@@ -297,7 +449,7 @@ describe("CharDesk Canvas 2D renderer", () => {
     })).toMatchObject({ capability: "cjk", family: "CJK Face", scaleX: 1.2 });
   });
 
-  it("renders symbols through the selected display weight before the JuliaMono fallback", () => {
+  it("keeps symbols regular even when the display face has native bold", () => {
     const fontProfile = createCharDeskFontProfile({
       id: "test/display-first-symbol",
       display: { families: { regular: "Display Regular", bold: "Display Bold" } },
@@ -312,8 +464,8 @@ describe("CharDesk Canvas 2D renderer", () => {
     });
     expect(face).toMatchObject({
       capability: "symbol",
-      family: "Display Bold, CJK Bold, 'JuliaMono'",
-      weightPolicy: "inherit",
+      family: "Display Regular, CJK Regular, 'JuliaMono'",
+      boldStrategy: "none",
     });
 
     const { context } = createContext();
@@ -323,7 +475,7 @@ describe("CharDesk Canvas 2D renderer", () => {
       y: 0,
       options: { fontProfile },
     }]);
-    expect(context.font).toContain("700 15px Display Bold");
+    expect(context.font).toBe("15px Display Regular, CJK Regular, 'JuliaMono'");
   });
 
   it("applies face metrics around the glyph without scaling Cell decorations", () => {
@@ -334,7 +486,8 @@ describe("CharDesk Canvas 2D renderer", () => {
         fontSizeScale: 0.9,
         scaleX: 0.6,
         baselineShiftEm: 0.1,
-        weightPolicy: "regular",
+        boldStrategy: "none",
+        boldOverdrawEm: 0,
       },
     });
 
@@ -459,7 +612,7 @@ describe("CharDesk Canvas 2D renderer", () => {
     }
   });
 
-  it("loads the supplied capability face and honors its weight policy", async () => {
+  it("loads a supplied capability face with bold disabled", async () => {
     const load = vi.fn().mockResolvedValue([{}]);
     vi.stubGlobal("document", {
       fonts: { load, ready: Promise.resolve() },
@@ -467,7 +620,8 @@ describe("CharDesk Canvas 2D renderer", () => {
     const fontProfile = customFontProfile({
       nerd: {
         families: { regular: "Nerd Symbols" },
-        weightPolicy: "regular",
+        boldStrategy: "none",
+        boldOverdrawEm: 0,
       },
     });
 
@@ -479,6 +633,28 @@ describe("CharDesk Canvas 2D renderer", () => {
       expect(load).toHaveBeenCalledOnce();
       expect(load.mock.calls[0]?.[0]).toContain("15px Nerd Symbols");
       expect(load.mock.calls[0]?.[0]).not.toContain("700");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("loads native bold once while overdraw loads only the regular face", async () => {
+    const load = vi.fn().mockResolvedValue([{}]);
+    vi.stubGlobal("document", { fonts: { load, ready: Promise.resolve() } });
+    const native = createCharDeskFontProfile({
+      id: "test/native-load",
+      display: { families: { regular: "Native Regular", bold: "Native Bold" } },
+    });
+    const overdraw = createCharDeskFontProfile({
+      id: "test/overdraw-load",
+      display: { families: { regular: "Overdraw Regular" } },
+    });
+
+    try {
+      await loadCharDeskCanvasFonts([{ grapheme: "A", bold: true }], { fontProfile: native });
+      await loadCharDeskCanvasFonts([{ grapheme: "A", bold: true }], { fontProfile: overdraw });
+      expect(load).toHaveBeenNthCalledWith(1, "700 15px Native Bold", "A");
+      expect(load).toHaveBeenNthCalledWith(2, "15px Overdraw Regular", "A");
     } finally {
       vi.unstubAllGlobals();
     }

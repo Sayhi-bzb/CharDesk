@@ -1,9 +1,9 @@
 {
-  "name": "@chardesk/font-ark",
+  "name": "@chardesk/font-fusion",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Vendored Ark Pixel Mono resources for the Web TUI Gallery",
+  "description": "Vendored Fusion Pixel Mono resources for the Web TUI Gallery",
   "license": "OFL-1.1",
   "sideEffects": ["./fonts.css"],
   "exports": {

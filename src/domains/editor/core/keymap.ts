@@ -1,5 +1,6 @@
+import type { KeyInput } from '@chardesk/keyboard';
 import {
-  matchesShortcutEvent,
+  matchesShortcutInput,
   normalizeShortcut,
   shortcutSequenceKey,
   shortcutsEqual,
@@ -293,23 +294,23 @@ export class EditorKeymap<Context = unknown> {
     return [...matches.values()].sort(this.#compare);
   }
 
-  resolveEvent(event: KeyboardEvent, context: Context) {
+  resolveInput(input: KeyInput, context: Context) {
     return [...this.#entries.values()]
       .filter((entry) => this.#matchesContext(entry, context))
       .filter((entry) =>
         (this.#overrides.get(entry.id) ?? entry.shortcuts).some(
-          (sequence) => sequence.length === 1 && matchesShortcutEvent(event, sequence[0])
+          (sequence) => sequence.length === 1 && matchesShortcutInput(input, sequence[0])
         )
       )
       .sort(this.#compare);
   }
 
-  getSequenceStarts(event: KeyboardEvent, context: Context) {
+  getSequenceStarts(input: KeyInput, context: Context) {
     return [...this.#entries.values()]
       .flatMap((entry) => {
         if (!this.#matchesContext(entry, context)) return [];
         return (this.#overrides.get(entry.id) ?? entry.shortcuts)
-          .filter((sequence) => sequence.length > 1 && matchesShortcutEvent(event, sequence[0]))
+          .filter((sequence) => sequence.length > 1 && matchesShortcutInput(input, sequence[0]))
           .map((sequence) => ({ entry, sequence }));
       })
       .sort((left, right) => this.#compare(left.entry, right.entry));

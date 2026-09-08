@@ -1,5 +1,6 @@
 import { DEFAULT_SLIDE_SIZE, type SlideDeck } from '@/domains/slides/public';
 import { GridManager } from '@/shared/utils/grid';
+import { createGridMapSource } from '@/shared/utils/grid-source';
 import { exportSelectionToAnsi } from './text';
 
 const escapeFrontMatterValue = (value: string) => value.replace(/\r?\n/g, ' ').trim();
@@ -26,7 +27,7 @@ const renderSlide = (
     return Math.max(max, point.y);
   }, 0);
   const source = exportSelectionToAnsi(
-    grid,
+    createGridMapSource(grid),
     [
       {
         start: { x: 0, y: 0 },

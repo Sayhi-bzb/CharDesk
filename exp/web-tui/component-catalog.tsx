@@ -1,9 +1,13 @@
 import type { ComponentType } from "react";
 import {
   BoxComponentDemo,
+  ButtonComponentDemo,
+  CheckboxComponentDemo,
   InputComponentDemo,
   ListComponentDemo,
   ScrollAreaComponentDemo,
+  SelectComponentDemo,
+  SliderComponentDemo,
   TextComponentDemo,
 } from "./sections/components";
 
@@ -89,6 +93,201 @@ export function BoxExample() {
       { name: "disabled?", type: "boolean", description: "Marks the widget disabled." },
       { name: "children?", type: "ReactNode", description: "Nested Cell descriptors." },
       { name: "style?", type: "CellLayoutStyle", description: "Cell size, direction, gap, padding, and border." },
+    ],
+  },
+  {
+    slug: "button",
+    title: "Button",
+    description: "Trigger one action through keyboard, pointer, or assistive input.",
+    probeId: "component-button",
+    Demo: ButtonComponentDemo,
+    usage: `import { useState } from "react";
+import { Button, Root, Text, type WidgetCommand } from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function ButtonExample() {
+  const [focusedId, setFocusedId] = useState("save");
+  const [saved, setSaved] = useState(false);
+  const dispatch = (command: WidgetCommand) => {
+    if (command.type === "focus") setFocusedId(command.targetId);
+    if (command.type === "activate" && command.targetId === "save") setSaved(true);
+  };
+  return (
+    <CellSurface viewport={{ width: 24, height: 3 }} focusedId={focusedId} onCommand={dispatch}>
+      <Root id="root">
+        <Button id="save" label="Save document" focused={focusedId === "save"}>
+          <Text>{saved ? "✓ Saved" : "Save"}</Text>
+        </Button>
+      </Root>
+    </CellSurface>
+  );
+}`,
+    api: [
+      { name: "id?", type: "string", description: "Stable focus and activate command target." },
+      { name: "label?", type: "string", description: "Accessible name; descendant text is the fallback." },
+      { name: "disabled?", type: "boolean", description: "Prevents focus, hover, and activation." },
+      { name: "focused?", type: "boolean", description: "Controlled logical focus state." },
+      { name: "children?", type: "ReactNode", description: "Cell-native button content." },
+      { name: "style?", type: "CellLayoutStyle", description: "Cell size and layout overrides." },
+      { name: "textStyle?", type: "CellTextStyle", description: "Base foreground, background, and emphasis." },
+    ],
+  },
+  {
+    slug: "select",
+    title: "Select",
+    description: "Choose one value from a Cell-anchored listbox.",
+    probeId: "component-select",
+    Demo: SelectComponentDemo,
+    usage: `import {
+  Root,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  Text,
+} from "@chardesk/cell-ui";
+import { CellSurface, useCellSelectState } from "@chardesk/cell-ui/browser";
+
+const themes = [
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+  { id: "system", label: "System" },
+];
+
+export function SelectExample() {
+  const select = useCellSelectState("theme", themes, {
+    defaultSelectedId: "dark",
+  });
+  return (
+    <CellSurface focusedId={select.focusedId} onCommand={select.dispatch} viewport={{ width: 32, height: 7 }}>
+      <Root id="root">
+        <Select id={select.id} label="Theme" style={{ width: 30 }}>
+          <SelectTrigger
+            id={select.triggerId}
+            label="Theme"
+            expanded={select.open}
+            controlsId={select.open ? select.contentId : undefined}
+          ><Text>{select.selectedItem?.label ?? "Select theme"}</Text></SelectTrigger>
+          {select.open ? (
+            <SelectContent id={select.contentId} label="Theme options">
+              {select.items.map((item, index) => (
+                <SelectItem
+                  id={item.id}
+                  key={item.id}
+                  disabled={item.disabled}
+                  selected={select.selectedId === item.id}
+                  positionInSet={index + 1}
+                  setSize={select.items.length}
+                ><Text>{item.label}</Text></SelectItem>
+              ))}
+            </SelectContent>
+          ) : null}
+        </Select>
+      </Root>
+    </CellSurface>
+  );
+}`,
+    api: [
+      { name: "Select.style", type: "CellLayoutStyle", description: "Sets the shared Trigger and Content width." },
+      { name: "SelectTrigger.expanded", type: "boolean", description: "Controls disclosure state and chrome." },
+      { name: "SelectTrigger.controlsId?", type: "string", description: "Relates the open Trigger to its listbox." },
+      { name: "SelectContent", type: "Cell primitive", description: "Portaled listbox anchored to the Trigger." },
+      { name: "SelectItem.selected?", type: "boolean", description: "Persistent committed selection." },
+      { name: "useCellSelectState", type: "CellSelectState", description: "Owns open, provisional focus, selection, and commands." },
+    ],
+  },
+  {
+    slug: "checkbox",
+    title: "Checkbox",
+    description: "Toggle boolean or indeterminate state through one Cell command path.",
+    probeId: "component-checkbox",
+    Demo: CheckboxComponentDemo,
+    usage: `import { useState } from "react";
+import {
+  Checkbox,
+  Root,
+  Text,
+  nextCellCheckboxState,
+  type CellCheckboxState,
+  type WidgetCommand,
+} from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function CheckboxExample() {
+  const [checked, setChecked] = useState<CellCheckboxState>("indeterminate");
+  const [focusedId, setFocusedId] = useState("autosave");
+  const dispatch = (command: WidgetCommand) => {
+    if (command.type === "focus") setFocusedId(command.targetId);
+    if (command.type === "activate" && command.targetId === "autosave") {
+      setChecked(nextCellCheckboxState);
+    }
+  };
+  return (
+    <CellSurface focusedId={focusedId} onCommand={dispatch} viewport={{ width: 24, height: 1 }}>
+      <Root id="root">
+        <Checkbox
+          id="autosave"
+          label="Autosave"
+          checked={checked}
+          focused={focusedId === "autosave"}
+        ><Text>Autosave</Text></Checkbox>
+      </Root>
+    </CellSurface>
+  );
+}`,
+    api: [
+      { name: "checked?", type: "boolean | \"indeterminate\"", description: "Controls [ ], [x], or [-]." },
+      { name: "id?", type: "string", description: "Stable focus and activate command target." },
+      { name: "label?", type: "string", description: "Accessible name; descendant text is the fallback." },
+      { name: "disabled?", type: "boolean", description: "Prevents focus, hover, and activation." },
+      { name: "focused?", type: "boolean", description: "Controlled logical focus state." },
+      { name: "children?", type: "ReactNode", description: "Cell-native label content." },
+      { name: "nextCellCheckboxState", type: "(CellCheckboxState) => CellCheckboxState", description: "Maps mixed to checked, then toggles the binary cycle." },
+    ],
+  },
+  {
+    slug: "slider",
+    title: "Slider",
+    description: "Select one stepped numeric value on a Cell-native track.",
+    probeId: "component-slider",
+    Demo: SliderComponentDemo,
+    usage: `import { useState } from "react";
+import { Root, Slider, type WidgetCommand } from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function SliderExample() {
+  const [value, setValue] = useState(50);
+  const dispatch = (command: WidgetCommand) => {
+    if (command.type === "set-value" && command.targetId === "volume") {
+      setValue(command.value);
+    }
+  };
+  return (
+    <CellSurface focusedId="volume" onCommand={dispatch} viewport={{ width: 26, height: 1 }}>
+      <Root id="root" style={{ direction: "row" }}>
+        <Slider
+          id="volume"
+          label="Volume"
+          value={value}
+          valueText={String(value) + " percent"}
+          min={0}
+          max={100}
+          step={1}
+          focused
+          style={{ width: 26 }}
+        />
+      </Root>
+    </CellSurface>
+  );
+}`,
+    api: [
+      { name: "value", type: "number", description: "Controlled numeric value projected onto the track." },
+      { name: "min? / max?", type: "number", description: "Allowed range; defaults to 0–100." },
+      { name: "step?", type: "number", description: "Keyboard and pointer increment; defaults to 1." },
+      { name: "valueText?", type: "string", description: "Human-readable aria-valuetext without visible UI." },
+      { name: "disabled?", type: "boolean", description: "Prevents focus, hover, keyboard, tap, and drag." },
+      { name: "focused?", type: "boolean", description: "Controlled logical focus state." },
+      { name: "WidgetCommand", type: "set-value", description: "Unifies keyboard, track tap, drag, and assistive input." },
     ],
   },
   {

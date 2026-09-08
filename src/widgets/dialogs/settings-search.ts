@@ -75,7 +75,7 @@ export const getSettingsSearchResults = (
       groupTitle: generalTitle,
       title: t('settings.canvasFont'),
       target: { section: 'general', focus: { type: 'canvas-font' } },
-      searchText: searchable([t('settings.canvasFont'), 'font', '字体', 'Maple Mono', 'Ark Pixel', 'Xiaolai Mono']),
+      searchText: searchable([t('settings.canvasFont'), 'font', '字体', 'Maple Mono', 'Fusion Pixel', 'Xiaolai Mono']),
     },
     {
       id: 'section:general',

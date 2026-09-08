@@ -39,7 +39,6 @@ import {
 import { clampPointToActiveSlide, getActiveSlideGridBounds } from "../slideBounds";
 import { resolveGridAnchor, resolveGridSlot } from "@/shared/utils/grid-occupancy";
 import { resolveEditorDocumentAddress } from "../helpers/gridHelpers";
-import { getSurfaceGridLineOriginX } from "../../cell-plane/model";
 
 const toCharIndexByColumn = (text: string, columnOffset: number) => {
   if (columnOffset <= 0) return 0;
@@ -84,10 +83,10 @@ const createInputFlow = (
   state: EditorState,
   address: Point
 ) => createStaticGridInputFlow({
-  grid: state.grid,
+  grid: state.contentSurface.reader,
   address,
   bounds: getActiveSlideGridBounds(state),
-  lineOriginX: getSurfaceGridLineOriginX(state.grid, address),
+  lineOriginX: state.contentSurface.reader.getLineOriginX?.(address),
 });
 
 const isWideFollowerRichCell = (
@@ -176,7 +175,7 @@ export const createTextSlice = (
     set((state) => {
       const resolvedPos =
         pos && state.canvasMode !== "structured"
-          ? resolveGridAnchor(state.grid, pos)
+          ? resolveGridAnchor(state.contentSurface.reader, pos)
           : pos;
       const nextPos = resolvedPos
         ? clampPointToActiveSlide(state, resolvedPos)
@@ -380,7 +379,7 @@ export const createTextSlice = (
       selection: staticGridSelection,
       editMode: staticGridEditMode,
       textCursor,
-      grid: get().grid,
+      grid: get().contentSurface.reader,
     });
 
     if (staticGridView.hasSelection && graphemes.length === 1 && graphemes[0] !== "\n") {
@@ -459,7 +458,7 @@ export const createTextSlice = (
       selection: staticGridSelection,
       editMode: staticGridEditMode,
       textCursor,
-      grid: get().grid,
+      grid: get().contentSurface.reader,
     });
 
     const basePos =
@@ -514,7 +513,7 @@ export const createTextSlice = (
       selection: staticGridSelection,
       editMode: staticGridEditMode,
       textCursor,
-      grid: get().grid,
+      grid: get().contentSurface.reader,
     });
     const basePos =
       startPos ??
@@ -566,12 +565,13 @@ export const createTextSlice = (
   moveTextCursor: (dx, dy) => {
     const {
       textCursor,
-      grid,
+      contentSurface,
       canvasMode,
       structuredScene,
       editingStructuredTextNodeId,
       staticGridInputFlow,
     } = get();
+    const grid = contentSurface.reader;
     if (!textCursor) return;
     if (canvasMode === "structured" && editingStructuredTextNodeId && dy === 0 && dx !== 0) {
       const node = structuredScene.find(
@@ -623,13 +623,14 @@ export const createTextSlice = (
   backspaceText: () => {
     const {
       textCursor,
-      grid,
+      contentSurface,
       canvasMode,
       structuredScene,
       applyStructuredScene,
       editingStructuredTextNodeId,
       staticGridInputFlow,
     } = get();
+    const grid = contentSurface.reader;
     if (!textCursor) return;
 
     if (canvasMode === "structured") {

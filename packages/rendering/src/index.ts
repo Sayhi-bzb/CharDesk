@@ -2,7 +2,13 @@ import {
   CHARDESK_SYSTEM_FONT_PROFILE,
   type CharDeskFontRoute,
 } from "@chardesk/fonts";
-import { formatCellFrame, type CellFrame } from "@chardesk/cell-core";
+import {
+  formatCellFrame,
+  normalizeCellRect,
+  type CellFrame,
+  type CellPoint,
+  type CellRect,
+} from "@chardesk/cell-core";
 import {
   getGraphemeCellWidth,
   isEmojiGrapheme,
@@ -43,6 +49,39 @@ export type CharDeskCellCursorPaintStyle = Readonly<{
 }>;
 
 export const DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS = 600;
+
+export type CharDeskCellRangePhase = "selecting" | "resting" | "moving";
+
+export type CharDeskCellRangeGeometry = Readonly<{
+  polygons: readonly Readonly<{
+    rings: readonly (readonly CellPoint[])[];
+  }>[];
+}>;
+
+export type CharDeskCellRangePaintStyle = Readonly<{
+  surface: string;
+  border: string;
+}>;
+
+export const createCharDeskRectRangeGeometry = (
+  input: CellRect
+): CharDeskCellRangeGeometry => {
+  const rect = normalizeCellRect(input);
+  if (rect.width === 0 || rect.height === 0) return { polygons: [] };
+  const right = rect.x + rect.width;
+  const bottom = rect.y + rect.height;
+  return {
+    polygons: [{
+      rings: [[
+        { x: rect.x, y: rect.y },
+        { x: right, y: rect.y },
+        { x: right, y: bottom },
+        { x: rect.x, y: bottom },
+        { x: rect.x, y: rect.y },
+      ]],
+    }],
+  };
+};
 
 export type CharDeskCellVisualInput = {
   text: string;

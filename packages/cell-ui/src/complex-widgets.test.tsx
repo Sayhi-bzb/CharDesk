@@ -15,6 +15,7 @@ import {
   Tree,
   TreeItem,
   commandForInput,
+  createKeyInput,
   Box,
   ScrollArea,
   hitTest,
@@ -174,26 +175,26 @@ describe("complex Cell widgets", () => {
     const focus = new FocusManager();
 
     focus.sync(frame.tree, "menu-open");
-    expect(commandForInput({ type: "key", key: "ArrowDown" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "ArrowDown" }), frame, focus))
       .toEqual({ type: "focus", targetId: "menu-save" });
 
     focus.sync(frame.tree, "tree-src");
-    expect(commandForInput({ type: "key", key: "ArrowRight" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "ArrowRight" }), frame, focus))
       .toEqual({ type: "focus", targetId: "tree-index" });
-    expect(commandForInput({ type: "key", key: "ArrowLeft" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "ArrowLeft" }), frame, focus))
       .toEqual({ type: "set-expanded", targetId: "tree-src", expanded: false });
     focus.sync(frame.tree, "tree-index");
-    expect(commandForInput({ type: "key", key: "ArrowLeft" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "ArrowLeft" }), frame, focus))
       .toEqual({ type: "focus", targetId: "tree-src" });
 
     focus.sync(frame.tree, "tab-code");
-    expect(commandForInput({ type: "key", key: "ArrowLeft" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "ArrowLeft" }), frame, focus))
       .toEqual({ type: "activate", targetId: "tab-preview" });
 
     focus.sync(frame.tree, "grid-1-1");
-    expect(commandForInput({ type: "key", key: "ArrowRight" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "ArrowRight" }), frame, focus))
       .toEqual({ type: "focus", targetId: "grid-1-2" });
-    expect(commandForInput({ type: "key", key: "ArrowDown" }, frame, focus))
+    expect(commandForInput(createKeyInput({ key: "ArrowDown" }), frame, focus))
       .toEqual({ type: "focus", targetId: "grid-2-1" });
     runtime.dispose();
   });
@@ -248,7 +249,7 @@ describe("complex Cell widgets", () => {
       expanded: false,
     });
     focus.sync(frame.tree, "tree-src");
-    expect(commandForInput({ type: "key", key: "Enter" }, frame, focus)).toEqual({
+    expect(commandForInput(createKeyInput({ key: "Enter" }), frame, focus)).toEqual({
       type: "set-expanded",
       targetId: "tree-src",
       expanded: false,

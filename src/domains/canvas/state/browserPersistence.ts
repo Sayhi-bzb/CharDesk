@@ -46,7 +46,7 @@ import {
   recoverPersistedEditorState,
 } from "./editorPersistence";
 import { getSessionCanvasDocumentId } from "./helpers/storeUtils";
-import { rebuildGridFromContent } from "./helpers/gridHelpers";
+import { rebuildContentSurface } from "./helpers/gridHelpers";
 import {
   CANVAS_DOCUMENT_SCHEMA_VERSION,
   getCanvasDocumentRoot,
@@ -1561,9 +1561,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
         if (id !== activeSession.id) await this.#releaseDocument(id);
       }
       this.touch(activeSession.id);
-      if (hydrated.canvasMode !== "structured") {
-        hydrated.grid = rebuildGridFromContent(documents);
-      }
+      hydrated.contentSurface = rebuildContentSurface(documents);
       store.setState(hydrated, true);
       committed = true;
       this.#publish({

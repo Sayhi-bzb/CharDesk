@@ -1,4 +1,5 @@
 import type { ActionSource } from "@/domains/actions/core/types";
+import type { KeyInput } from "@chardesk/keyboard";
 import { shouldIgnoreClipboardShortcut } from "@/shared/utils/dom-focus";
 import { getFirstGrapheme } from "@/shared/utils/characters";
 
@@ -18,19 +19,19 @@ export const shouldIgnoreEditorCommandByFocus = (
 };
 
 export const resolveFillHotkeyChar = (
-  event: Pick<KeyboardEvent, "ctrlKey" | "metaKey" | "altKey" | "key">
+  input: Pick<KeyInput, "key" | "modifiers">
 ) => {
-  if (event.ctrlKey || event.metaKey || event.altKey) return null;
-  if (!event.key) return null;
+  if (input.modifiers.ctrl || input.modifiers.meta || input.modifiers.alt) return null;
+  if (!input.key) return null;
   if (
-    event.key === "Dead" ||
-    event.key === "Process" ||
-    event.key === "Unidentified"
+    input.key === "Dead" ||
+    input.key === "Process" ||
+    input.key === "Unidentified"
   ) {
     return null;
   }
-  if (isNamedKey(event.key)) return null;
+  if (isNamedKey(input.key)) return null;
 
-  const char = getFirstGrapheme(event.key);
+  const char = getFirstGrapheme(input.key);
   return char || null;
 };

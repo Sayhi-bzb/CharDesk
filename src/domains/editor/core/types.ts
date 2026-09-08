@@ -1,4 +1,5 @@
 import type { ShortcutTargetKind } from "@/shared/utils/dom-focus";
+import type { KeyInput } from "@chardesk/keyboard";
 
 export type EditorCommandCompletion<Data = unknown> =
   | { succeeded: true; changed: boolean; data?: Data; reason?: string }
@@ -88,7 +89,7 @@ export const defineEditorCommand = <State, Input = void, Data = unknown>(
 
 export type EditorInputEvent =
   | { type: "pointer"; name: "down" | "move" | "up"; payload: unknown }
-  | { type: "keyboard"; name: "down" | "up" | "repeat"; payload: unknown }
+  | { type: "keyboard"; input: KeyInput }
   | { type: "wheel" | "pinch" | "tick"; payload: unknown }
   | { type: "misc"; name: "cancel" | "complete" | "interrupt"; payload?: unknown };
 

@@ -1,0 +1,52 @@
+{
+  "target": "fusion",
+  "generatedAt": "2026-09-08T05:22:34.569Z",
+  "sources": [
+    {
+      "id": "fusion-mono",
+      "family": "Fusion Pixel 12px Mono latin",
+      "version": "2026.09.01",
+      "archiveUrl": "https://github.com/TakWolf/fusion-pixel-font/releases/download/2026.09.01/fusion-pixel-font-12px-monospaced-ttf.woff2-v2026.09.01.zip",
+      "archiveSha256": "b264613025d57c793cab0cefc09ae83aa40caafb5155b818d1feb4136340ab66",
+      "fontFile": "fusion-pixel-12px-monospaced-latin.ttf.woff2",
+      "licenseFiles": [
+        "OFL.txt",
+        "LICENSES/ark-pixel/OFL.txt",
+        "LICENSES/cubic-11/OFL.txt",
+        "LICENSES/galmuri/LICENSE.txt"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "path": "assets/fusion-mono/fusion-pixel-12px-monospaced-latin.ttf.woff2",
+      "size": 913216,
+      "sha256": "8a158fb6cc7c72a2c800772e406bafa4665431480872dc2a7930ebffbab14eac"
+    },
+    {
+      "path": "assets/fusion-mono/LICENSES/ark-pixel/OFL.txt",
+      "size": 4412,
+      "sha256": "3ab41567e68e3988ba1ef16dd2644eca95ca5648ea12e7d46e6287fc0bbe5aee"
+    },
+    {
+      "path": "assets/fusion-mono/LICENSES/cubic-11/OFL.txt",
+      "size": 5364,
+      "sha256": "2b6e5938e5cffa0b9e183bd05f8c363e174e7ebed1a0556e2855fd1707fa2188"
+    },
+    {
+      "path": "assets/fusion-mono/LICENSES/galmuri/LICENSE.txt",
+      "size": 4360,
+      "sha256": "86a3ee9495f942f0243f18c103da9faca27adb88142613edb8bb852e56c892c1"
+    },
+    {
+      "path": "assets/fusion-mono/OFL.txt",
+      "size": 4418,
+      "sha256": "bc518cf64b8032c07690f33cc270c35c179255a6ac8efa7c165ebae7e8f76a63"
+    },
+    {
+      "path": "fonts.css",
+      "size": 269,
+      "sha256": "d9b13c0d55070d9059657edf34920568c14d10ecd2a907290284f606d21c6459"
+    }
+  ]
+}

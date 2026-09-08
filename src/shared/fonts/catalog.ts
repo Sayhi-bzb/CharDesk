@@ -4,10 +4,10 @@ import {
   MAPLE_FONT_SOURCES,
 } from "@chardesk/font-maple";
 import { createCharDeskFontProfile, type CharDeskFontProfile } from "@chardesk/fonts";
-import { ARK_FONT_FAMILY, ARK_FONT_SOURCES } from "@chardesk/font-ark";
-import arkStylesheet from "@chardesk/font-ark/fonts.css?url";
+import { FUSION_FONT_FAMILY, FUSION_FONT_SOURCES } from "@chardesk/font-fusion";
+import fusionStylesheet from "@chardesk/font-fusion/fonts.css?url";
 
-export type DisplayFont = "maple" | "ark-mono" | "xiaolai-mono";
+export type DisplayFont = "maple" | "fusion-mono" | "xiaolai-mono";
 
 export type DisplayFontOption = Readonly<{
   id: DisplayFont;
@@ -18,17 +18,16 @@ export type DisplayFontOption = Readonly<{
   loadSamples?: readonly string[];
 }>;
 
-const arkFamily = ARK_FONT_FAMILY;
-const arkFace = {
-  families: { regular: `'${arkFamily}', ${MAPLE_FONT_FAMILY}` },
-  weightPolicy: "regular",
+const fusionFamily = FUSION_FONT_FAMILY;
+const fusionFace = {
+  families: { regular: `'${fusionFamily}', ${MAPLE_FONT_FAMILY}` },
 } as const;
-const arkProfile = createCharDeskFontProfile({
-  id: "chardesk/gallery-ark-mono-maple-core-v4-2026.09.01",
-  display: arkFace,
-  cjk: arkFace,
+const fusionProfile = createCharDeskFontProfile({
+  id: "chardesk/gallery-fusion-mono-maple-core-v6-2026.09.01",
+  display: fusionFace,
+  cjk: fusionFace,
   sources: [
-    ...ARK_FONT_SOURCES,
+    ...FUSION_FONT_SOURCES,
     ...MAPLE_FONT_SOURCES,
   ],
 });
@@ -36,10 +35,9 @@ const arkProfile = createCharDeskFontProfile({
 const xiaolaiFamily = "Xiaolai Mono";
 const xiaolaiFace = {
   families: { regular: `'${xiaolaiFamily}', ${MAPLE_FONT_FAMILY}` },
-  weightPolicy: "regular",
 } as const;
 const xiaolaiProfile = createCharDeskFontProfile({
-  id: "chardesk/gallery-xiaolai-mono-maple-core-v4-v1",
+  id: "chardesk/gallery-xiaolai-mono-maple-core-v6-3.126",
   display: xiaolaiFace,
   cjk: xiaolaiFace,
   sources: [
@@ -51,12 +49,12 @@ const xiaolaiProfile = createCharDeskFontProfile({
 export const displayFontOptions: Record<DisplayFont, DisplayFontOption> = {
   maple: { id: "maple", label: "Maple Mono", profile: MAPLE_FONT_PROFILE,
     fontSpec: "15px 'Maple Mono NF CN'", loadSamples: ["AgWi09", "世界，。"] },
-  "ark-mono": {
-    id: "ark-mono",
-    label: "Ark Pixel 12px Mono",
-    profile: arkProfile,
-    stylesheet: arkStylesheet,
-    fontSpec: `15px '${arkFamily}'`,
+  "fusion-mono": {
+    id: "fusion-mono",
+    label: "Fusion Pixel 12px Mono",
+    profile: fusionProfile,
+    stylesheet: fusionStylesheet,
+    fontSpec: `15px '${fusionFamily}'`,
     loadSamples: ["AgWi09", "世界，。"],
   },
   "xiaolai-mono": {

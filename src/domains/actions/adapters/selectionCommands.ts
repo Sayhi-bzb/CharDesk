@@ -39,7 +39,10 @@ import {
 type SelectionCommandState = ReturnType<Parameters<SelectionCommandFactory>[1]>;
 
 const resolveSelectionAreas = (state: SelectionCommandState) => {
-  return getStaticGridSelectionAreas(state.staticGridSelection, state.grid);
+  return getStaticGridSelectionAreas(
+    state.staticGridSelection,
+    state.contentSurface.reader
+  );
 };
 
 const materializeRichRows = (rows: readonly RichTextRow[]): RichTextCell[] => {
@@ -382,8 +385,9 @@ export const createSelectionCommandFactory = ({
 
   copySelection: async (options) => {
     const state = get();
-    const { grid, textCursor, brushColor, canvasMode, structuredScene, selectedStructuredNodeIds } =
+    const { contentSurface, textCursor, brushColor, canvasMode, structuredScene, selectedStructuredNodeIds } =
       state;
+    const grid = contentSurface.reader;
     const selections = resolveSelectionAreas(state);
     if (canvasMode === "structured") {
       const textSelection = getActiveStructuredTextSelection(state);
@@ -420,7 +424,8 @@ export const createSelectionCommandFactory = ({
 
   cutSelection: async (options) => {
     const state = get();
-    const { grid, textCursor, brushColor, canvasMode } = state;
+    const { contentSurface, textCursor, brushColor, canvasMode } = state;
+    const grid = contentSurface.reader;
     const selections = resolveSelectionAreas(state);
     const targetFingerprint = getClipboardTargetFingerprint(getActiveDocumentId, state);
     if (canvasMode === "structured") {
@@ -514,7 +519,7 @@ export const createSelectionCommandFactory = ({
     const current = get();
     const currentSelections = resolveSelectionAreas(current);
     const currentPayload = buildClipboardPayload(
-      current.grid,
+      current.contentSurface.reader,
       currentSelections,
       current.textCursor,
       current.brushColor
@@ -675,7 +680,7 @@ export const createSelectionCommandFactory = ({
 
   copySelectionAsPng: async (withGrid) => {
     const state = get();
-    const { grid } = state;
+    const grid = state.contentSurface.reader;
     const selections = resolveSelectionAreas(state);
     if (selections.length === 0) return;
     const showFailure = (code?: string) => {

@@ -7,6 +7,10 @@ import {
   type EngineInput,
   type WidgetCommand,
 } from "./interaction.js";
+import {
+  createKeyInput,
+  type KeyInputInit,
+} from "@chardesk/keyboard";
 import type { RootProps } from "./react.js";
 import { captureCellProbe, inspectCell } from "./probe.js";
 import {
@@ -42,6 +46,8 @@ export type TestPilotOptions = Readonly<{
   onCommand?: (command: WidgetCommand) => void;
 }>;
 
+export type TestKeyOptions = Omit<KeyInputInit, "key" | "phase">;
+
 const matchesName = (label: string, name: string | RegExp | undefined) =>
   name === undefined || (typeof name === "string" ? label === name : name.test(label));
 
@@ -71,7 +77,20 @@ export class TestPilot {
   }
 
   async press(...keys: string[]): Promise<void> {
-    for (const key of keys) await this.input({ type: "key", key });
+    for (const key of keys) await this.pressKey(key);
+  }
+
+  async keyDown(key: string, options: TestKeyOptions = {}): Promise<void> {
+    await this.input(createKeyInput({ ...options, key, phase: "down" }));
+  }
+
+  async keyUp(key: string, options: TestKeyOptions = {}): Promise<void> {
+    await this.input(createKeyInput({ ...options, key, phase: "up" }));
+  }
+
+  async pressKey(key: string, options: TestKeyOptions = {}): Promise<void> {
+    await this.keyDown(key, options);
+    await this.keyUp(key, options);
   }
 
   async click(point: CellPoint): Promise<void> {

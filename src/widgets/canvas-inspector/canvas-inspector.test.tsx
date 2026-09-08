@@ -237,10 +237,10 @@ describe("CanvasInspectorControl", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Pick ANSI color #ff0000" }));
     expect(useEditorStore.getState().brushColor).toBe("#ff0000");
-    expect(useEditorStore.getState().grid.get("0,0")?.color).toBe("#ff0000");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.color).toBe("#ff0000");
     fireEvent.click(screen.getByRole("button", { name: "Restore default color" }));
     expect(useEditorStore.getState().brushColor).toBe("#000000");
-    expect(useEditorStore.getState().grid.get("0,0")?.color).toBe("#000000");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.color).toBe("#000000");
 
     act(() => useEditorStore.setState({ tool: "bg" }));
     expect(screen.getByTestId("canvas-inspector-swatch")).toHaveStyle({
@@ -248,10 +248,10 @@ describe("CanvasInspectorControl", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Pick ANSI color #0000ff" }));
     expect(useEditorStore.getState().brushBackgroundColor).toBe("#0000ff");
-    expect(useEditorStore.getState().grid.get("0,0")?.bgColor).toBe("#0000ff");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.bgColor).toBe("#0000ff");
     fireEvent.click(screen.getByRole("button", { name: "Restore default color" }));
     expect(useEditorStore.getState().brushBackgroundColor).toBe("#000000");
-    expect(useEditorStore.getState().grid.get("0,0")?.bgColor).toBe("#000000");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.bgColor).toBe("#000000");
   });
 
   it("toggles grid text attributes independently and exposes mixed state", () => {
@@ -316,33 +316,33 @@ describe("CanvasInspectorControl", () => {
     expect(toolbar.querySelectorAll('button[data-size="xs"]')).toHaveLength(5);
 
     fireEvent.click(strike);
-    expect(useEditorStore.getState().grid.get("0,0")?.attrs?.strike).toBe(true);
-    expect(useEditorStore.getState().grid.get("1,0")?.attrs).toMatchObject({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.attrs?.strike).toBe(true);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.attrs).toMatchObject({
       strike: true,
       inverse: true,
     });
 
     fireEvent.click(inverse);
-    expect(useEditorStore.getState().grid.get("0,0")?.attrs).toMatchObject({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.attrs).toMatchObject({
       bold: true,
       strike: true,
       inverse: true,
     });
-    expect(useEditorStore.getState().grid.get("1,0")?.attrs?.inverse).toBe(true);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.attrs?.inverse).toBe(true);
 
     fireEvent.click(italic);
-    expect(useEditorStore.getState().grid.get("0,0")?.attrs).toMatchObject({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.attrs).toMatchObject({
       bold: true,
       italic: true,
     });
-    expect(useEditorStore.getState().grid.get("1,0")?.attrs).toMatchObject({
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.attrs).toMatchObject({
       italic: true,
     });
-    expect(useEditorStore.getState().grid.get("1,0")?.attrs?.bold).toBeUndefined();
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.attrs?.bold).toBeUndefined();
 
     fireEvent.click(bold);
-    expect(useEditorStore.getState().grid.get("0,0")?.attrs?.bold).toBe(true);
-    expect(useEditorStore.getState().grid.get("1,0")?.attrs?.bold).toBe(true);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.attrs?.bold).toBe(true);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.attrs?.bold).toBe(true);
   });
 
   it("applies structured semantic colors and exposes layer arrangement", () => {
@@ -487,7 +487,7 @@ describe("CanvasInspectorControl", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Pick ANSI color #ff0000" }));
     expect(useEditorStore.getState().brushColor).toBe("#ff0000");
-    expect(useEditorStore.getState().grid.get("0,0")?.color).toBe("#ff0000");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.color).toBe("#ff0000");
     expect(useEditorStore.getState().slideDeck?.slides[0].grid).toEqual([]);
     expect(
       defaultCanvasDocuments
@@ -521,11 +521,11 @@ describe("CanvasInspectorControl", () => {
     act(() => useEditorStore.getState().setTool("bg"));
     fireEvent.click(screen.getByRole("button", { name: "Pick ANSI color #0000ff" }));
     expect(useEditorStore.getState().brushBackgroundColor).toBe("#0000ff");
-    expect(useEditorStore.getState().grid.get("0,0")?.bgColor).toBe("#0000ff");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.bgColor).toBe("#0000ff");
 
     fireEvent.click(screen.getByRole("button", { name: "Restore default color" }));
     expect(useEditorStore.getState().brushBackgroundColor).toBe("#000000");
-    expect(useEditorStore.getState().grid.get("0,0")?.bgColor).toBe("#000000");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.bgColor).toBe("#000000");
   });
 
   it("keeps the Slides formatting row visible without a selection", () => {
@@ -569,6 +569,6 @@ describe("CanvasInspectorControl", () => {
     expect(screen.getByTestId("canvas-inspector-panel")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Pick ANSI color #ff0000" }));
     expect(useEditorStore.getState().brushColor).toBe("#111111");
-    expect(useEditorStore.getState().grid.get("0,0")?.color).toBe("#111111");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.color).toBe("#111111");
   });
 });

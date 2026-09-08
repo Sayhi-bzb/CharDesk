@@ -7,6 +7,7 @@ export type DragResetExecutor = {
   clearStructuredSplitBoxResizeQueueLast: () => void;
   clearStructuredMovePreview: () => void;
   clearSelectionPreview: () => void;
+  clearStaticRangeMovePreview: () => void;
 };
 
 type DragResetController = {
@@ -19,6 +20,7 @@ export const executeDragReset = (executor: DragResetExecutor): void => {
   executor.clearStructuredSplitBoxResizeQueueLast();
   executor.clearStructuredMovePreview();
   executor.clearSelectionPreview();
+  executor.clearStaticRangeMovePreview();
 };
 
 export const createDragResetController = ({
@@ -26,11 +28,13 @@ export const createDragResetController = ({
   structuredPreviewQueue,
   clearStructuredMovePreview,
   selectionPreview,
+  clearStaticRangeMovePreview,
 }: {
   clearScratch: () => void;
   structuredPreviewQueue: StructuredPreviewQueueController;
   clearStructuredMovePreview: () => void;
   selectionPreview: SelectionPreviewController;
+  clearStaticRangeMovePreview: () => void;
 }): DragResetController => ({
   reset: () => {
     executeDragReset({
@@ -41,6 +45,7 @@ export const createDragResetController = ({
       clearStructuredMovePreview,
       clearSelectionPreview: () =>
         selectionPreview.set(null, { immediate: true }),
+      clearStaticRangeMovePreview,
     });
   },
 });

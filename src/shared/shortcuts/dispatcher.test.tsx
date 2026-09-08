@@ -12,6 +12,41 @@ function RegisteredLayer(props: ShortcutLayer) {
 }
 
 describe("ShortcutProvider", () => {
+  it("adapts the native event once into normalized keyboard facts", () => {
+    const inputs: Parameters<NonNullable<ShortcutLayer["onKeyDown"]>>[0][] = [];
+    render(
+      <ShortcutProvider>
+        <RegisteredLayer
+          id="facts"
+          priority={10}
+          onKeyDown={(input) => {
+            inputs.push(input);
+            return { claimed: true };
+          }}
+        />
+      </ShortcutProvider>
+    );
+
+    fireEvent.keyDown(window, {
+      key: "K",
+      code: "KeyK",
+      ctrlKey: true,
+      shiftKey: true,
+      repeat: true,
+      location: 2,
+    });
+    expect(inputs[0]).toMatchObject({
+      type: "key",
+      phase: "down",
+      key: "K",
+      code: "KeyK",
+      location: 2,
+      modifiers: { ctrl: true, shift: true },
+      repeat: true,
+      composing: false,
+    });
+  });
+
   it("dispatches by priority and stops after a layer claims the event", () => {
     const calls: string[] = [];
     render(

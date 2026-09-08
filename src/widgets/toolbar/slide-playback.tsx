@@ -96,8 +96,8 @@ export function SlidePlaybackOverlay({
   useShortcutLayer({
     id: 'slide-playback-exit',
     priority: SHORTCUT_PRIORITY.presentation,
-    onKeyDown: (event) => {
-      if (event.key !== 'Escape') return;
+    onKeyDown: (input) => {
+      if (input.key !== 'Escape') return;
       onExit();
       return { claimed: true, preventDefault: true };
     },

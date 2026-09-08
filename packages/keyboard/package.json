@@ -1,0 +1,36 @@
+{
+  "name": "@chardesk/keyboard",
+  "version": "0.0.0",
+  "description": "Shared normalized keyboard input contracts for CharDesk",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts && vitest run --config vitest.browser.config.ts"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.2",
+    "jsdom": "^29.0.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

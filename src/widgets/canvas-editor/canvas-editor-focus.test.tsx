@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import { act, createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { CanvasEditor as CanvasEditorUnderTest } from "@/widgets/canvas-editor";
@@ -109,10 +110,10 @@ function ModifiedArrowHijacker({ onClaim }: { onClaim: () => void }) {
   useShortcutLayer({
     id: "modified-arrow-hijacker",
     priority: SHORTCUT_PRIORITY.globalAction,
-    onKeyDown: (event) => {
+    onKeyDown: (input) => {
       if (
-        !(event.ctrlKey || event.metaKey) ||
-        !event.key.startsWith("Arrow")
+        !(input.modifiers.ctrl || input.modifiers.meta) ||
+        !input.key.startsWith("Arrow")
       ) {
         return;
       }
@@ -211,7 +212,7 @@ describe("CanvasEditor focus management", () => {
       slideDeck,
       offset: { x: -100_000, y: -100_000 },
       zoom: 5,
-      grid: new Map(slideDeck.slides[1].grid),
+      contentSurface: new TestCanvasContentSurface(slideDeck.slides[1].grid),
       canvasSessions: [
         {
           id: "slides-restored",
@@ -376,8 +377,8 @@ describe("CanvasEditor focus management", () => {
     fireEvent(textarea!, keyDown);
 
     expect(keyDown.defaultPrevented).toBe(true);
-    expect(useEditorStore.getState().grid.get("0,0")?.char).toBe("A");
-    expect(useEditorStore.getState().grid.get("1,0")?.char).toBe("A");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("A");
   });
 
   it("runs redo shortcuts from the managed textarea", () => {
@@ -508,8 +509,8 @@ describe("CanvasEditor focus management", () => {
     fireEvent.keyDown(textarea!, { key: "x", metaKey: true });
 
     await vi.waitFor(() => {
-      expect(useEditorStore.getState().grid.has("0,0")).toBe(false);
-      expect(useEditorStore.getState().grid.has("1,0")).toBe(false);
+      expect(useEditorStore.getState().contentSurface.reader.materialize().has("0,0")).toBe(false);
+      expect(useEditorStore.getState().contentSurface.reader.materialize().has("1,0")).toBe(false);
     });
     expect(writeText).toHaveBeenCalledWith("AB");
   });
@@ -545,7 +546,7 @@ describe("CanvasEditor focus management", () => {
     useEditorStore.setState({
       canvasMode: "freeform",
       textCursor: null,
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["0,0", { char: "A", color: "#ffffff" }],
         ["1,0", { char: "B", color: "#ffffff" }],
       ]),
@@ -566,7 +567,7 @@ describe("CanvasEditor focus management", () => {
     fireEvent.keyDown(textarea!, { key: "c", metaKey: true });
 
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith("AB"));
-    expect(useEditorStore.getState().grid.size).toBe(2);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().size).toBe(2);
   });
 
   it("releases Canvas input ownership when focus moves to an external control", async () => {
@@ -625,8 +626,8 @@ describe("CanvasEditor focus management", () => {
     });
 
     await vi.waitFor(() => {
-      expect(useEditorStore.getState().grid.has("0,0")).toBe(false);
-      expect(useEditorStore.getState().grid.has("1,0")).toBe(false);
+      expect(useEditorStore.getState().contentSurface.reader.materialize().has("0,0")).toBe(false);
+      expect(useEditorStore.getState().contentSurface.reader.materialize().has("1,0")).toBe(false);
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(cutSelection).toHaveBeenCalledTimes(1);
@@ -655,8 +656,8 @@ describe("CanvasEditor focus management", () => {
       expect(writeText).toHaveBeenCalledOnce();
     });
 
-    expect(useEditorStore.getState().grid.get("0,0")?.char).toBe("A");
-    expect(useEditorStore.getState().grid.get("1,0")?.char).toBe("B");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("B");
     expect(
       getGridSelectionRanges(useEditorStore.getState().staticGridSelection)
     ).toHaveLength(1);
@@ -680,8 +681,8 @@ describe("CanvasEditor focus management", () => {
     fireEvent.keyDown(textarea!, { key: "v", metaKey: true });
 
     await vi.waitFor(() => {
-      expect(useEditorStore.getState().grid.get("0,0")?.char).toBe("A");
-      expect(useEditorStore.getState().grid.get("1,0")?.char).toBe("B");
+      expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
+      expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("B");
     });
     expect(readText).toHaveBeenCalledTimes(1);
   });
@@ -707,10 +708,10 @@ describe("CanvasEditor focus management", () => {
     fireEvent.keyDown(textarea!, { key: "v", metaKey: true });
 
     await vi.waitFor(() => {
-      expect(useEditorStore.getState().grid.get("0,0")?.char).toBe("A");
-      expect(useEditorStore.getState().grid.get("1,0")?.char).toBe("B");
-      expect(useEditorStore.getState().grid.get("0,1")?.char).toBe("C");
-      expect(useEditorStore.getState().grid.get("1,1")?.char).toBe("D");
+      expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
+      expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("B");
+      expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,1")?.char).toBe("C");
+      expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,1")?.char).toBe("D");
     });
 
     const getData = vi.fn((type: string) =>
@@ -730,7 +731,7 @@ describe("CanvasEditor focus management", () => {
     useEditorStore.setState({
       canvasMode: "freeform",
       textCursor: null,
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       staticGridSelection: {
         mode: "cell",
         activeCell: { x: 4, y: 3 },
@@ -753,7 +754,7 @@ describe("CanvasEditor focus management", () => {
     fireEvent.input(textarea!, { target: { value: "A" } });
 
     await waitFor(() => {
-      expect(useEditorStore.getState().grid.get("4,3")).toMatchObject({
+      expect(useEditorStore.getState().contentSurface.reader.materialize().get("4,3")).toMatchObject({
         char: "A",
       });
     });
@@ -951,7 +952,7 @@ describe("CanvasEditor focus management", () => {
     useEditorStore.setState({
       canvasMode: "freeform",
       textCursor: null,
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["0,0", { char: "A", color: "#ffffff" }],
         ["1,0", { char: "B", color: "#ffffff" }],
       ]),
@@ -977,7 +978,7 @@ describe("CanvasEditor focus management", () => {
     useEditorStore.setState({
       canvasMode: "freeform",
       offset: { x: 0, y: 0 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["1,5", { char: "A", color: "#fff" }],
         ["2,5", { char: "B", color: "#fff" }],
         ["4,5", { char: " ", color: "#fff", bgColor: "#333" }],
@@ -1037,7 +1038,7 @@ describe("CanvasEditor focus management", () => {
     useEditorStore.setState({
       canvasMode: "freeform",
       offset: { x: 0, y: 0 },
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["1,2", { char: "A", color: "#fff" }],
         ["4,2", { char: "B", color: "#fff" }],
       ]),
@@ -1173,7 +1174,7 @@ describe("CanvasEditor focus management", () => {
     ]);
     useEditorStore.setState({
       canvasMode: "freeform",
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["0,0", { char: "A", color: "#fff" }],
         ["4,3", { char: "B", color: "#fff" }],
       ]),
@@ -1212,7 +1213,7 @@ describe("CanvasEditor focus management", () => {
     ]);
     useEditorStore.setState({
       canvasMode: "freeform",
-      grid: new Map([
+      contentSurface: new TestCanvasContentSurface([
         ["1,1", { char: "A", color: "#fff" }],
         ["2,1", { char: "B", color: "#fff" }],
         ["5,4", { char: "C", color: "#fff" }],
@@ -1257,7 +1258,7 @@ describe("CanvasEditor focus management", () => {
   it("keeps Space selection shortcuts out of static-grid text edit", async () => {
     useEditorStore.setState({
       canvasMode: "freeform",
-      grid: new Map(),
+      contentSurface: new TestCanvasContentSurface(),
       textCursor: { x: 2, y: 1 },
       staticGridSelection: createGridSelectionState({ x: 2, y: 1 }),
       staticGridEditMode: "text-edit",
@@ -1287,7 +1288,7 @@ describe("CanvasEditor focus management", () => {
 
     fireEvent.input(textarea, { target: { value: " " } });
     await waitFor(() => {
-      expect(useEditorStore.getState().grid.get("2,1")?.char).toBe(" ");
+      expect(useEditorStore.getState().contentSurface.reader.materialize().get("2,1")?.char).toBe(" ");
     });
     expect(useEditorStore.getState().staticGridSelection.mode).toBe("cell");
   });

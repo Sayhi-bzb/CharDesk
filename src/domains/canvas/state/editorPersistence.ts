@@ -13,7 +13,6 @@ import { normalizeBrushChar } from "@/shared/utils/characters";
 import { DEFAULT_DEMO_GRID } from "./helpers/defaultDemo";
 import {
   cloneScene,
-  createMapFromEntries,
 } from "./helpers/snapshotHelpers";
 import {
   buildSessionSnapshot,
@@ -29,7 +28,11 @@ import {
 } from "./helpers/storeUtils";
 import type { EditorState } from "./interfaces";
 import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
-import { createStructuredGridProjection } from "./helpers/gridHelpers";
+import {
+  createCanvasContentSurface,
+  createStructuredContentSurface,
+} from "./helpers/gridHelpers";
+import { createGridSurfaceReader } from "../cell-plane/model";
 
 const DEFAULT_STRUCTURED_SAFARI_TEMPLATE = buildStructuredTemplate(
   "safari",
@@ -95,9 +98,11 @@ export const recoverPersistedEditorState = (
   state.selectedStructuredBoxId = null;
   state.selectedStructuredSplitHandle = null;
   state.structuredContextPoint = null;
-  state.grid = runtime.nextMode === "structured"
-    ? createStructuredGridProjection(runtime.nextScene)
-    : createMapFromEntries(runtime.nextGridEntries);
+  state.contentSurface = runtime.nextMode === "structured"
+    ? createStructuredContentSurface(runtime.nextScene)
+    : createCanvasContentSurface(
+        createGridSurfaceReader(new Map(runtime.nextGridEntries))
+      );
   state.tool = runtime.nextTool;
   state.offset = runtime.nextOffset;
   state.zoom = runtime.nextZoom;
@@ -136,7 +141,7 @@ export const syncHydratedStateToCanvasDocument = (
       grid:
         hydratedState.canvasMode === "structured"
           ? []
-          : Array.from(hydratedState.grid.entries()),
+          : Array.from(hydratedState.contentSurface.reader.materialize()),
       scene:
         hydratedState.canvasMode === "structured" ? hydratedState.structuredScene : [],
       components: hydratedState.structuredComponents,
@@ -177,7 +182,7 @@ export const createPersistedEditorSnapshot = (state: EditorState) => {
         ? []
         : state.canvasMode === "structured"
           ? []
-          : Array.from(state.grid.entries()),
+          : Array.from(state.contentSurface.reader.materialize()),
     },
     sessions: { items: persistedSessions, activeId: state.activeCanvasId },
     preferences: {
@@ -197,7 +202,7 @@ export const shouldScheduleEditorPersistence = (
   !previous ||
   previous.offset !== next.offset ||
   previous.zoom !== next.zoom ||
-  previous.grid !== next.grid ||
+  previous.contentSurface !== next.contentSurface ||
   previous.canvasMode !== next.canvasMode ||
   previous.slideDeck !== next.slideDeck ||
   previous.structuredScene !== next.structuredScene ||

@@ -33,7 +33,7 @@ export const useGlobalShortcutCommands = ({
     id: "global-printable-selection-fill",
     priority: SHORTCUT_PRIORITY.globalAction,
     enabled: capabilities.mutateContent,
-    onKeyDown: (event, context) => {
+    onKeyDown: (input, context) => {
       if (
         context.targetKind === "editable" ||
         context.targetKind === "managed-canvas" ||
@@ -42,7 +42,7 @@ export const useGlobalShortcutCommands = ({
         return;
       }
 
-      const fillChar = resolveFillHotkeyChar(event);
+      const fillChar = resolveFillHotkeyChar(input);
       if (!fillChar) return;
       const result = editor.commands.execute("fill-selection-char", {
         source: "global-hotkey",

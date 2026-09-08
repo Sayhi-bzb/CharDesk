@@ -1,9 +1,10 @@
 import { GridManager } from "@/shared/utils/grid";
-import type { GridCell, GridMap } from "@/shared/types";
+import type { GridCell, GridCellSource } from "@/shared/types";
 import {
   getGridCellWidth,
   getIntersectingGridAnchors,
   resolveGridSlot,
+  createPointGridReader,
 } from "@/shared/utils/grid-occupancy";
 
 type GridTarget = {
@@ -49,7 +50,11 @@ export const writeStyledCell = (
   }
 
   const width = getGridCellWidth(cell);
-  const intersecting = getIntersectingGridAnchors(target, { x, y }, width);
+  const intersecting = getIntersectingGridAnchors(
+    createPointGridReader(target),
+    { x, y },
+    width
+  );
   const removedLeftAnchor = intersecting.some((anchor) => anchor.x < x);
   const removedRightFollower = width === 2;
   intersecting.forEach((anchor) =>
@@ -69,9 +74,10 @@ export const deleteCellAt = (
   x: number,
   y: number
 ): RemoveResult => {
-  const anchors = getIntersectingGridAnchors(target, { x, y }, 1);
+  const reader = createPointGridReader(target);
+  const anchors = getIntersectingGridAnchors(reader, { x, y }, 1);
   if (anchors.length === 0) return { removedAnchors: 0, removedFollowers: 0 };
-  const selectedSlot = resolveGridSlot(target, { x, y });
+  const selectedSlot = resolveGridSlot(reader, { x, y });
   anchors.forEach((anchor) => target.delete(GridManager.toKey(anchor.x, anchor.y)));
   return {
     removedAnchors: anchors.length,
@@ -101,7 +107,7 @@ export const deleteRect = (
 };
 
 export const resolveBackspaceAnchor = (
-  grid: GridMap,
+  grid: GridCellSource,
   cursorX: number,
   cursorY: number
 ) => {

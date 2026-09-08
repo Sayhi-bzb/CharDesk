@@ -27,13 +27,21 @@ gesture is routed through the same pane that received it.
 ## Entry direction
 
 ```text
-DOM dispatcher -> editor keymap or native adapter -> command/tool -> canvas port -> Yjs document
+native KeyboardEvent -> browser adapter -> KeyInput
+                                         ├─ shortcut dispatcher -> editor keymap -> command/tool
+                                         └─ managed Canvas rules -> Canvas Intent -> canvas port
+native beforeinput/composition/clipboard -------------------------> native adapter
+command/tool or native adapter -> canvas port -> Yjs document
 ```
 
 - Commands own discrete semantic operations; tools own continuous interaction
   through one hierarchical state tree for freeform and structured drag state.
-- The DOM dispatcher owns focus and layer priority; the keymap owns configurable
-  semantic bindings.
+- `@chardesk/keyboard` owns DOM-free keyboard facts. Its browser entry performs
+  the only native-event conversion.
+- The shortcut dispatcher owns focus classification, layer priority, and native
+  event effects; the keymap owns configurable semantic bindings.
+- Managed Canvas key rules are pure `KeyInput + context -> Intent`; the hook
+  executes Intents through its model and editor command ports.
 - Native clipboard events invoke the same commands through adapters.
 - Widgets use provider-bound selectors and commands, never private stores or Yjs maps.
 
@@ -43,7 +51,7 @@ Extensions register before `EditorRuntime.start()`. Extension, command, tool, an
 state-scope IDs have one owner; disposal unwinds lifecycle registrations in reverse order.
 
 Device-local key overrides load after registration and before start, persist
-under `chardesk-editor-keymap-v1`, and never enter document state, collaboration,
+under `chardesk-editor-keymap-v3`, and never enter document state, collaboration,
 or undo history. App chrome, menu navigation, presentation controls, IME,
 native clipboard events, and hold gestures remain Host adapters.
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import {
   getLocalCanvasPoint,
   resolveClampedZoom,
@@ -19,7 +20,7 @@ describe("canvas coordinate helpers", () => {
       clientY: rect.top + 1,
       rect,
       viewport,
-      grid: new Map([["0,0", { char: "你", color: "#ffffff" }]]),
+      source: new GridSnapshotSource([["0,0", { char: "你", color: "#ffffff" }]]),
     })).toEqual({ x: 0, y: 0 });
     expect(resolveHoverGridPoint({ clientX: 11, clientY: 21, rect, viewport })).toEqual({ x: 0, y: 0 });
   });

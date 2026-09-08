@@ -1,8 +1,0 @@
-/* Ark Pixel 12px Mono latin 2026.09.01 */
-@font-face {
-  font-family: "Ark Pixel 12px Mono latin";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("./assets/ark-mono/ark-pixel-12px-monospaced-latin.ttf.woff2") format("woff2");
-}

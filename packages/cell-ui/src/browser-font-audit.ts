@@ -41,7 +41,7 @@ function createStore(profile: CharDeskFontProfile, metrics: CharDeskCellMetrics)
         const route = resolveCharDeskFontRoute(sample.grapheme);
         const face = resolveCharDeskCanvasFontFace({ ...sample, route, italic: false, fontProfile: profile });
         const font = getCharDeskCanvasFont(metrics, 1, { bold: sample.bold,
-          fontFamily: face.family, fontSizeScale: face.fontSizeScale, weightPolicy: face.weightPolicy });
+          fontFamily: face.family, fontSizeScale: face.fontSizeScale, boldStrategy: face.boldStrategy });
         const group = groups.get(font) ?? new Set<string>();
         group.add(sample.grapheme);
         groups.set(font, group);

@@ -2,7 +2,6 @@ import type { CanvasSession } from "@/domains/sessions/public";
 import type { SlideDeck } from "@/domains/slides/public";
 import type { GridCell } from "@/shared/types";
 import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
-import { createSurfaceGridProjection } from "../cell-plane/model";
 
 /** Slide metadata lives in the deck; the Canvas document owns each page. */
 
@@ -40,9 +39,7 @@ export const activateSlidePage = (
     );
   }
   documents.activatePage(sessionId, slideId);
-  return createSurfaceGridProjection(
-    () => documents.getContentReader(sessionId, slideId)!
-  );
+  return documents.getContentReader(sessionId, slideId)!;
 };
 
 export const readSlideGrid = (

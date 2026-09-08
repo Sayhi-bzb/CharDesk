@@ -4,13 +4,10 @@ import {
   CanvasProjectionCacheBudget,
   cellPlanePatchToOperation,
   createGridSurfaceReader,
-  createSurfaceGridProjection,
-  getSurfaceGridLineOriginX,
   decodeCellPlaneOperationRows,
   encodeCellPlaneOperation,
   isIncrementalCanvasSurfaceReader,
   isCellPlaneOperation,
-  isSurfaceGridProjection,
   type LegacyCellPlaneOperation,
 } from "./model";
 
@@ -432,28 +429,9 @@ describe("CellPlaneIndex", () => {
     expect(reader.getCell({ x: 2, y: 3 })?.char).toBe("你");
     expect(reader.getContentBounds()).toEqual({ x: 2, y: 3, width: 2, height: 1 });
     expect([...reader.query({ x: 0, y: 0, width: 5, height: 5 })]).toHaveLength(1);
-    const projection = createSurfaceGridProjection(reader);
-    expect(isSurfaceGridProjection(projection)).toBe(true);
-    expect(isSurfaceGridProjection(new Map())).toBe(false);
-    expect(new Map(projection)).toEqual(
+    expect(reader.materialize()).toEqual(
       new Map([["2,3", { char: "你", color: "#fff" }]])
     );
-    expect(() => projection.set("0,0", { char: "X", color: "#fff" }))
-      .toThrow("read-only");
-  });
-
-  it("resolves replaceable authorities lazily", () => {
-    let reader = createGridSurfaceReader(new Map([
-      ["0,0", { char: "A", color: "#fff" }],
-    ]));
-    const projection = createSurfaceGridProjection(() => reader);
-
-    reader = createGridSurfaceReader(new Map([
-      ["1,0", { char: "B", color: "#fff" }],
-    ]));
-
-    expect(projection.has("0,0")).toBe(false);
-    expect(projection.get("1,0")?.char).toBe("B");
   });
 
   it("reports merged bounds since an observed revision", () => {
@@ -501,7 +479,7 @@ describe("CellPlaneIndex", () => {
     expect(plane.getChangesSince(0)).toEqual({ revision: 257, full: true });
   });
 
-  it("finds a row origin through a surface projection without materializing it", () => {
+  it("finds a row origin directly through the cell surface", () => {
     const plane = new CellPlaneIndex([{
       id: "line",
       bounds: { x: 2, y: 4, width: 6, height: 1 },
@@ -514,10 +492,7 @@ describe("CellPlaneIndex", () => {
         ],
       }],
     }]);
-    const projection = createSurfaceGridProjection(plane);
-
-    expect(getSurfaceGridLineOriginX(projection, { x: 8, y: 4 })).toBe(7);
-    expect(getSurfaceGridLineOriginX(projection, { x: 4, y: 4 })).toBe(2);
-    expect(getSurfaceGridLineOriginX(new Map(), { x: 4, y: 4 })).toBeUndefined();
+    expect(plane.getLineOriginX({ x: 8, y: 4 })).toBe(7);
+    expect(plane.getLineOriginX({ x: 4, y: 4 })).toBe(2);
   });
 });
