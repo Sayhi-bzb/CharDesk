@@ -15,14 +15,22 @@ providers; fallback injection is test-only. Additional hosts disable persistence
 or use a distinct non-empty storage key.
 
 `CanvasWorkspaceRuntime` owns one frame scheduler and a registry of canvas view
-runtimes. Each view binds one session and owns its camera-and-size snapshot,
-viewport presentation, hover, and imperative renderer managers. Only the active
-view projects its session into the shared editor, publishes its viewport, and
-owns managed input; inactive views render their bound session snapshot. Pane
+runtimes. Each view binds one session and owns its live and committed camera,
+size, and imperative renderer managers. `CanvasViewportRuntime` is the command
+boundary: a mounted workspace binds its active view, while a headless host uses
+its single-view fallback. Only committed active-view cameras update the session's
+saved viewport. Only the active view projects its session into the shared editor
+and owns managed input; inactive views render their bound session with an empty
+interaction snapshot. Pane
 resize preserves the camera's world center. Manager and frame keys are scoped by
 view ID. Canvas interaction ports are also registered by view ID; capture-phase
 activation selects the port before the workspace switches session, so the first
 gesture is routed through the same pane that received it.
+
+Canvas interaction is one atomic snapshot scoped by the active Yjs document and
+page address. Session and page activation reset it; metadata-only changes retain
+it. Legacy flat interaction and viewport fields in the internal Zustand state are
+projections for existing selectors, not independent write authorities.
 
 ## Entry direction
 

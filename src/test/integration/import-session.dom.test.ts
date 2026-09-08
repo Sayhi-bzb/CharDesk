@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { TestCanvasContentSurface } from "@/domains/canvas/testing";
-import { applyFreeformSnapshotToYMaps, useEditorStore } from "@/domains/canvas/testing";
+import {
+  applyFreeformSnapshotToYMaps,
+  testingCanvasRuntime,
+  useEditorStore,
+} from "@/domains/canvas/testing";
 import { DEFAULT_SESSION_ID } from "@/domains/canvas/state/helpers/storeUtils";
 import { createDocumentInteractionResetPatch } from "@/domains/canvas/state/transitions/editorTransitions";
 
@@ -34,13 +38,13 @@ describe("importCanvasSession", () => {
     expect(state.canvasMode).toBe("freeform");
     expect(state.contentSurface.reader.materialize().get("0,0")).toEqual({ char: "A", color: "#ff0000" });
     expect(state.contentSurface.reader.materialize().get("2,1")).toEqual({ char: "B", color: "#00ff00" });
-    expect(state.pendingCameraPlacement).toEqual({
+    expect(testingCanvasRuntime.viewport.getPendingPlacement()).toEqual({
       sessionId: session.id,
       kind: "content-start",
     });
 
-    state.consumePendingCameraPlacement(session.id);
-    expect(useEditorStore.getState().pendingCameraPlacement).toBeNull();
+    testingCanvasRuntime.commands.viewport.consumePendingPlacement(session.id);
+    expect(testingCanvasRuntime.viewport.getPendingPlacement()).toBeNull();
   });
 
   it("clears document interaction when importing a session", async () => {
@@ -95,7 +99,7 @@ describe("importCanvasSession", () => {
       { columns: 100, rows: 27 },
     ]);
     expect(state.contentSurface.reader.materialize().get("1,0")).toMatchObject({ char: "A" });
-    expect(state.pendingCameraPlacement).toBeNull();
+    expect(testingCanvasRuntime.viewport.getPendingPlacement()).toBeNull();
   });
 
   it("does not mutate sessions when the payload is invalid", async () => {

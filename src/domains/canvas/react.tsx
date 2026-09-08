@@ -15,6 +15,7 @@ type CanvasRuntimeContextValue = Pick<
   CanvasRuntime,
   | "store"
   | "documents"
+  | "viewport"
   | "commands"
   | "queries"
   | "getState"
@@ -64,6 +65,15 @@ export const useCanvasRuntime = () => {
 export const useCanvasState = <Selected,>(
   selector: (state: CanvasState) => Selected
 ) => useStore(useCanvasRuntime().store, selector);
+
+export const useCanvasViewport = () => {
+  const viewport = useCanvasRuntime().viewport;
+  return useSyncExternalStore(
+    viewport.subscribe,
+    viewport.getSnapshot,
+    viewport.getSnapshot
+  );
+};
 
 export const useCanvasPersistence = () => {
   const runtime = useCanvasRuntime();

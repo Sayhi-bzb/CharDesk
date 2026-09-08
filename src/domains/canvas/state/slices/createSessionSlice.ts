@@ -34,6 +34,8 @@ import { createSessionActivationPatch } from "../transitions/editorTransitions";
 import { rebuildContentSurface } from "../helpers/gridHelpers";
 import type { CanvasDocumentResidency } from "../documentResidencyPort";
 import { createGridSurfaceReader } from "../../cell-plane/model";
+import type { CanvasViewportRuntime } from "../../viewportRuntime";
+import { normalizeCanvasViewport } from "../../viewportRuntime";
 
 const activationGenerations = new WeakMap<CanvasDocumentRegistry, number>();
 
@@ -143,23 +145,14 @@ const destroySessionDocuments = async (
 };
 
 const checkpointActiveSessionViewport = (
-  state: Pick<EditorState, "canvasSessions" | "activeCanvasId" | "offset" | "zoom">
+  state: Pick<EditorState, "canvasSessions" | "activeCanvasId">,
+  viewport: ReturnType<CanvasViewportRuntime["getSnapshot"]>
 ): CanvasSessionDescriptor[] =>
-  state.canvasSessions.map((session): CanvasSessionDescriptor => {
-    if (session.id !== state.activeCanvasId) return session;
-    const viewport = {
-      offset: { ...state.offset },
-      zoom: state.zoom,
-    };
-    switch (session.mode) {
-      case "slide":
-        return { ...session, viewport };
-      case "structured":
-        return { ...session, viewport };
-      case "freeform":
-        return { ...session, viewport };
-    }
-  });
+  state.canvasSessions.map((session) =>
+    session.id === state.activeCanvasId
+      ? { ...session, viewport: normalizeCanvasViewport(viewport) }
+      : session
+  );
 
 const activateSessionRuntime = (
   documents: CanvasDocumentRegistry,
@@ -176,6 +169,7 @@ const activateSessionRuntime = (
 export const createSessionSlice = (
   documents: CanvasDocumentRegistry,
   parseSessionSource: CanvasSessionSourceParser,
+  viewportRuntime: CanvasViewportRuntime,
   residency?: CanvasDocumentResidency
 ): StateCreator<
   EditorState,
@@ -185,7 +179,10 @@ export const createSessionSlice = (
 > => (set, get) => ({
   createCanvasSession: (mode = "freeform", options) => {
     const state = get();
-    const sessionsWithSnapshot = checkpointActiveSessionViewport(state);
+    const sessionsWithSnapshot = checkpointActiveSessionViewport(
+      state,
+      viewportRuntime.getSnapshot()
+    );
 
     const normalizedMode = normalizeSessionMode(mode);
     const sessionId = createSessionId(sessionsWithSnapshot);
@@ -218,11 +215,15 @@ export const createSessionSlice = (
         rebuildContentSurface(documents).reader
       )
     );
+    viewportRuntime.resetFallback(normalizeCanvasViewport(newSession.viewport));
     residency?.touch(newSession.id);
   },
   openSourceSession: (sourceBinding, options) => {
     const state = get();
-    const sessionsWithSnapshot = checkpointActiveSessionViewport(state);
+    const sessionsWithSnapshot = checkpointActiveSessionViewport(
+      state,
+      viewportRuntime.getSnapshot()
+    );
     const sessionId = createSessionId(sessionsWithSnapshot);
     const mode = options?.initialMode ?? "freeform";
     const name = options?.name?.trim() || "Blackboard";
@@ -249,6 +250,7 @@ export const createSessionSlice = (
       runtime,
       rebuildContentSurface(documents).reader,
     ));
+    viewportRuntime.resetFallback(normalizeCanvasViewport(newSession.viewport));
     residency?.touch(newSession.id);
   },
   importCanvasSession: async (raw, options) => {
@@ -256,7 +258,10 @@ export const createSessionSlice = (
       sourceName: options?.sourceName,
     });
     const state = get();
-    const sessionsWithSnapshot = checkpointActiveSessionViewport(state);
+    const sessionsWithSnapshot = checkpointActiveSessionViewport(
+      state,
+      viewportRuntime.getSnapshot()
+    );
     const sessionId = createSessionId(sessionsWithSnapshot);
     const sessionName = resolveImportedSessionName(
       sessionsWithSnapshot,
@@ -272,18 +277,19 @@ export const createSessionSlice = (
     replaceDocumentSnapshot(documents, sessionId, importedSnapshot, false);
     const runtime = activateSessionRuntime(documents, newSession, state.tool);
     const nextSessions = [...sessionsWithSnapshot, newSession];
-    set({
-      ...createSessionActivationPatch(
-        nextSessions,
-        newSession.id,
-        runtime,
-        rebuildContentSurface(documents).reader
-      ),
-      pendingCameraPlacement:
-        importedSnapshot.mode === "slide"
-          ? null
-          : { sessionId: newSession.id, kind: "content-start" },
-    });
+    set(createSessionActivationPatch(
+      nextSessions,
+      newSession.id,
+      runtime,
+      rebuildContentSurface(documents).reader
+    ));
+    viewportRuntime.resetFallback(normalizeCanvasViewport(newSession.viewport));
+    if (importedSnapshot.mode !== "slide") {
+      viewportRuntime.requestPlacement({
+        sessionId: newSession.id,
+        kind: "content-start",
+      });
+    }
     residency?.touch(newSession.id);
 
     return newSession;
@@ -303,7 +309,7 @@ export const createSessionSlice = (
 
     const preservedViewport = options.preserveViewport
       ? sessionId === state.activeCanvasId
-        ? { offset: { ...state.offset }, zoom: state.zoom }
+        ? normalizeCanvasViewport(viewportRuntime.getSnapshot())
         : target.viewport
       : undefined;
     const replacement: CanvasSessionDescriptor = {
@@ -329,6 +335,7 @@ export const createSessionSlice = (
       runtime,
       rebuildContentSurface(documents).reader
     ));
+    viewportRuntime.resetFallback(normalizeCanvasViewport(replacement.viewport));
   },
   applySourceProjection: (sessionId, snapshot, options) => {
     const state = get();
@@ -340,7 +347,7 @@ export const createSessionSlice = (
     const viewport = options?.preserveViewport === false
       ? undefined
       : sessionId === state.activeCanvasId
-        ? { offset: { ...state.offset }, zoom: state.zoom }
+        ? normalizeCanvasViewport(viewportRuntime.getSnapshot())
         : target.viewport;
     const currentSlideDeck = target.mode === "slide"
       ? sessionId === state.activeCanvasId
@@ -387,6 +394,7 @@ export const createSessionSlice = (
         runtime,
         rebuildContentSurface(documents).reader,
       ));
+      viewportRuntime.resetFallback(normalizeCanvasViewport(replacement.viewport));
       return;
     }
     const surface = createGridSurfaceReader(new Map(snapshot.grid));
@@ -416,6 +424,7 @@ export const createSessionSlice = (
       activateSessionRuntime(documents, replacement, state.tool),
       rebuildContentSurface(documents).reader,
     ));
+    viewportRuntime.resetFallback(normalizeCanvasViewport(replacement.viewport));
   },
   switchCanvasSession: async (canvasId) => {
     const state = get();
@@ -424,7 +433,10 @@ export const createSessionSlice = (
       return true;
     }
 
-    const sessionsWithSnapshot = checkpointActiveSessionViewport(state);
+    const sessionsWithSnapshot = checkpointActiveSessionViewport(
+      state,
+      viewportRuntime.getSnapshot()
+    );
     const target = sessionsWithSnapshot.find(
       (session) => session.id === canvasId
     );
@@ -443,6 +455,7 @@ export const createSessionSlice = (
         rebuildContentSurface(documents).reader
       )
     );
+    viewportRuntime.resetFallback(normalizeCanvasViewport(target.viewport));
     residency?.touch(canvasId);
     return true;
   },
@@ -450,7 +463,10 @@ export const createSessionSlice = (
     const state = get();
     if (state.canvasSessions.length <= 1) return false;
 
-    const sessionsWithSnapshot = checkpointActiveSessionViewport(state);
+    const sessionsWithSnapshot = checkpointActiveSessionViewport(
+      state,
+      viewportRuntime.getSnapshot()
+    );
     const removedIndex = sessionsWithSnapshot.findIndex(
       (session) => session.id === canvasId
     );
@@ -482,6 +498,7 @@ export const createSessionSlice = (
         rebuildContentSurface(documents).reader
       )
     );
+    viewportRuntime.resetFallback(normalizeCanvasViewport(nextSession.viewport));
 
     await destroySessionDocuments(
       documents,
@@ -490,6 +507,23 @@ export const createSessionSlice = (
     );
     residency?.touch(nextSession.id);
     return true;
+  },
+  saveCanvasSessionViewport: (canvasId, nextViewport) => {
+    const viewport = normalizeCanvasViewport(nextViewport);
+    set((state) => {
+      const current = state.canvasSessions.find((session) => session.id === canvasId);
+      if (!current) return state;
+      if (
+        current.viewport?.zoom === viewport.zoom &&
+        current.viewport.offset.x === viewport.offset.x &&
+        current.viewport.offset.y === viewport.offset.y
+      ) return state;
+      return {
+        canvasSessions: state.canvasSessions.map((session) =>
+          session.id === canvasId ? { ...session, viewport } : session
+        ),
+      };
+    });
   },
   renameCanvasSession: (canvasId, nextName) => {
     const name = nextName.trim();

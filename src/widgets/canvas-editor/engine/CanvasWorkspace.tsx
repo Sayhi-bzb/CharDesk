@@ -14,6 +14,7 @@ import { useLocalStorageState } from 'ahooks';
 import {
   useCanvasRuntime,
   useCanvasState,
+  normalizeCanvasViewport,
   type CanvasViewportState,
 } from '@/domains/canvas/public';
 import { CanvasEngineRuntime } from './CanvasEngineRuntime';
@@ -251,12 +252,13 @@ class CanvasViewRuntime {
 class CanvasWorkspaceRuntime {
   readonly views: Record<CanvasViewId, CanvasViewRuntime>;
   private readonly frameScheduler = new CanvasFrameScheduler();
-  private readonly publishViewport: (viewport: CanvasViewportState) => void;
+  private readonly publishViewport: (sessionId: string, viewport: CanvasViewportState) => void;
   private readonly switchSession: (sessionId: string) => Promise<boolean>;
   private globalSessionId: string | null;
   private activeViewId: CanvasViewId = 'primary';
   private secondaryInitialized = false;
   private readonly activeListeners = new Set<() => void>();
+  private readonly activeViewportListeners = new Set<() => void>();
   private ownerCount = 0;
   private releaseGeneration = 0;
   private disposed = false;
@@ -266,18 +268,20 @@ class CanvasWorkspaceRuntime {
   constructor(
     sessionId: string | null,
     viewport: CanvasViewportState,
-    publishViewport: (viewport: CanvasViewportState) => void,
+    publishViewport: (sessionId: string, viewport: CanvasViewportState) => void,
     switchSession: (sessionId: string) => Promise<boolean>
   ) {
     this.globalSessionId = sessionId;
     this.publishViewport = publishViewport;
     this.switchSession = switchSession;
     const publish = (viewId: CanvasViewId) => (next: CanvasViewportState) => {
+      const sessionId = this.globalSessionId;
       if (
+        sessionId &&
         viewId === this.activeViewId &&
-        this.views?.[viewId].getSessionId() === this.globalSessionId
+        this.views?.[viewId].getSessionId() === sessionId
       ) {
-        this.publishViewport(cloneViewport(next));
+        this.publishViewport(sessionId, cloneViewport(next));
       }
     };
     this.views = {
@@ -296,6 +300,13 @@ class CanvasWorkspaceRuntime {
         publish('secondary')
       ),
     };
+    for (const [viewId, view] of Object.entries(this.views)) {
+      view.subscribe(() => {
+        if (viewId === this.activeViewId) {
+          this.activeViewportListeners.forEach((listener) => listener());
+        }
+      });
+    }
   }
 
   getActiveViewId = () => this.activeViewId;
@@ -305,11 +316,28 @@ class CanvasWorkspaceRuntime {
     return () => this.activeListeners.delete(listener);
   };
 
+  getActiveViewport = () => this.views[this.activeViewId].getViewport();
+
+  getActiveViewportSnapshot = () =>
+    this.views[this.activeViewId].getSnapshot().viewport;
+
+  setActiveViewport = (
+    updater: (viewport: CanvasViewportState) => CanvasViewportState,
+    options?: { transient?: boolean }
+  ) => this.views[this.activeViewId].setViewport(updater, options);
+
+  subscribeActiveViewport = (listener: () => void) => {
+    this.activeViewportListeners.add(listener);
+    return () => this.activeViewportListeners.delete(listener);
+  };
+
   async activate(viewId: CanvasViewId) {
     const generation = ++this.activationGeneration;
     const changedView = this.activeViewId !== viewId;
     this.activeViewId = viewId;
-    if (changedView) this.activeListeners.forEach((listener) => listener());
+    if (changedView) {
+      this.activeListeners.forEach((listener) => listener());
+    }
 
     const view = this.views[viewId];
     const sessionId = view.getRequestedSessionId();
@@ -321,15 +349,17 @@ class CanvasWorkspaceRuntime {
       this.switchingSessionId = null;
       if (!switched) {
         view.failSessionRequest('Canvas could not be loaded');
+        this.activeViewportListeners.forEach((listener) => listener());
         return false;
       }
       view.bindSession(sessionId, viewport);
       view.replaceViewport(viewport);
-      this.publishViewport(viewport);
+      this.publishViewport(sessionId, viewport);
     } else {
       if (sessionId) view.bindSession(sessionId, viewport);
-      this.publishViewport(viewport);
+      if (sessionId) this.publishViewport(sessionId, viewport);
     }
+    this.activeViewportListeners.forEach((listener) => listener());
     return true;
   }
 
@@ -370,9 +400,6 @@ class CanvasWorkspaceRuntime {
       this.activationGeneration += 1;
     }
     this.globalSessionId = sessionId;
-    const isInternalSwitch =
-      !!sessionId && this.switchingSessionId === sessionId;
-
     if (sessionId) {
       for (const view of Object.values(this.views)) {
         const boundSessionId = view.getSessionId();
@@ -385,9 +412,7 @@ class CanvasWorkspaceRuntime {
     const activeView = this.views[this.activeViewId];
     if (sessionId && activeView.getSessionId() !== sessionId) {
       activeView.bindSession(sessionId, viewport);
-      this.publishViewport(activeView.getViewport());
-    } else if (!isInternalSwitch) {
-      activeView.replaceViewport(viewport);
+      this.publishViewport(sessionId, activeView.getViewport());
     }
   }
 
@@ -446,8 +471,8 @@ export function CanvasWorkspaceProvider({ children }: { children: ReactNode }) {
     const state = canvas.getState();
     return new CanvasWorkspaceRuntime(
       state.activeCanvasId,
-      { offset: state.offset, zoom: state.zoom },
-      (viewport) => canvas.commands.viewport.setViewport(() => viewport),
+      canvas.viewport.getSnapshot(),
+      canvas.commands.sessions.saveViewport,
       canvas.commands.sessions.switch
     );
   });
@@ -464,9 +489,12 @@ export function CanvasWorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const sync = () => {
       const state = canvas.getState();
+      const activeSession = state.canvasSessions.find(
+        (session) => session.id === state.activeCanvasId
+      );
       runtime.syncCanvasState(
         state.activeCanvasId,
-        { offset: state.offset, zoom: state.zoom },
+        normalizeCanvasViewport(activeSession?.viewport),
         new Set(state.canvasSessions.map((session) => session.id))
       );
     };
@@ -474,13 +502,18 @@ export function CanvasWorkspaceProvider({ children }: { children: ReactNode }) {
     return canvas.subscribe((state, previous) => {
       if (
         state.activeCanvasId === previous.activeCanvasId &&
-        state.offset === previous.offset &&
-        state.zoom === previous.zoom &&
         state.canvasSessions === previous.canvasSessions
       ) return;
       sync();
     });
   }, [activeCanvasId, canvas, runtime]);
+
+  useEffect(() => canvas.viewport.bind({
+    getViewport: runtime.getActiveViewport,
+    getSnapshot: runtime.getActiveViewportSnapshot,
+    setViewport: runtime.setActiveViewport,
+    subscribe: runtime.subscribeActiveViewport,
+  }), [canvas.viewport, runtime]);
 
   useEffect(() => runtime.acquire(), [runtime]);
 

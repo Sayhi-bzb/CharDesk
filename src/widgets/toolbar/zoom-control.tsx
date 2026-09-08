@@ -15,6 +15,7 @@ import {
   materializeSlideDeckContent,
   useCanvasRuntime,
   useCanvasState,
+  useCanvasViewport,
 } from '@/domains/canvas/public';
 import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
 import { MAX_ZOOM, MIN_ZOOM } from '@/shared/lib/constants';
@@ -94,9 +95,9 @@ export function ZoomControl({
   const workspace = useCanvasWorkspaceOptional();
   const activeCanvasView = useCanvasViewOptional();
   const liveViewport = useCanvasLiveViewportOptional();
-  const { zoom: storedZoom, canvasMode, slideDeck, showGrid, activeCanvasId, contentSurface } = useCanvasState(
+  const fallbackViewport = useCanvasViewport();
+  const { canvasMode, slideDeck, showGrid, activeCanvasId, contentSurface } = useCanvasState(
     useShallow((state) => ({
-      zoom: state.zoom,
       canvasMode: state.canvasMode,
       slideDeck: state.slideDeck,
       showGrid: state.showGrid,
@@ -104,7 +105,7 @@ export function ZoomControl({
       contentSurface: state.contentSurface,
     }))
   );
-  const zoom = liveViewport?.zoom ?? storedZoom;
+  const zoom = liveViewport?.zoom ?? fallbackViewport.zoom;
   const playbackDeck = useMemo(
     () =>
       slideDeck

@@ -13,6 +13,7 @@ import { useShallow } from "zustand/react/shallow";
 import {
   isIncrementalCanvasSurfaceReader,
   useCanvasState,
+  useCanvasViewport,
 } from "@/domains/canvas/public";
 import { useUiI18n } from "@/shared/i18n";
 import { useHostVisualTheme } from "@/shared/hooks/useHostVisualTheme";
@@ -66,15 +67,14 @@ export const Minimap = ({
   const { t } = useUiI18n();
   const runtime = useCanvasEngineRuntime();
   const liveViewport = useCanvasLiveViewportOptional();
-  const { contentSurface, offset: storedOffset, zoom: storedZoom } = useCanvasState(
+  const fallbackViewport = useCanvasViewport();
+  const { contentSurface } = useCanvasState(
     useShallow((state) => ({
       contentSurface: state.contentSurface,
-      offset: state.offset,
-      zoom: state.zoom,
     }))
   );
-  const offset = liveViewport?.offset ?? storedOffset;
-  const zoom = liveViewport?.zoom ?? storedZoom;
+  const offset = liveViewport?.offset ?? fallbackViewport.offset;
+  const zoom = liveViewport?.zoom ?? fallbackViewport.zoom;
   const contentReader = contentSurface.reader;
 
   const removeDragEndListeners = useCallback(() => {

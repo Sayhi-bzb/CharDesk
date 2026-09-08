@@ -1,13 +1,18 @@
 export { CanvasRuntime, createCanvasRuntime } from "./runtime";
 export type { CanvasSessionMaterialization } from "./runtime";
+export { CanvasViewportRuntime, normalizeCanvasViewport } from "./viewportRuntime";
+export type { CanvasViewportPort } from "./viewportRuntime";
 export {
   CanvasRuntimeProvider,
   useCanvasPersistence,
   useCanvasPersistenceSelector,
   useCanvasRuntime,
   useCanvasState,
+  useCanvasViewport,
 } from "./react";
 export type { CanvasState } from "./state/interfaces";
+export { createEmptyCanvasInteraction } from "./state/canvasInteractionState";
+export type { CanvasInteractionSnapshot } from "./state/canvasInteractionState";
 export type {
   CanvasColorPickerTarget,
   CanvasContentSurfaceState,

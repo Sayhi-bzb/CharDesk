@@ -35,6 +35,7 @@ import {
   type BrowserCanvasPersistence,
   type CanvasPersistenceStatus,
 } from "./state/browserPersistence";
+import { CanvasViewportRuntime, normalizeCanvasViewport } from "./viewportRuntime";
 
 const DISABLED_PERSISTENCE_STATUS: CanvasPersistenceStatus = {
   phase: "ready",
@@ -73,9 +74,11 @@ export class CanvasRuntime {
   readonly store;
   readonly commands;
   readonly queries;
+  readonly viewport: CanvasViewportRuntime;
   readonly persistence: BrowserCanvasPersistence | null;
   readonly ready: Promise<void>;
   readonly #disposeStore: () => void;
+  readonly #disposeViewportPersistence: () => void;
   #disposed = false;
 
   constructor(options: CanvasRuntimeOptions) {
@@ -93,6 +96,9 @@ export class CanvasRuntime {
         })
       : null;
     const initialSessions = options.initialSessions ?? createDefaultCanvasSessions();
+    this.viewport = new CanvasViewportRuntime(
+      normalizeCanvasViewport(initialSessions[0]?.viewport)
+    );
     const storeInstance = createEditorStore({
       documents: this.documents,
       selectionCommands: options.selectionCommands,
@@ -102,12 +108,20 @@ export class CanvasRuntime {
       // Yjs documents. Zustand remains an in-memory projection.
       persistence: false,
       initialSessions,
+      viewport: this.viewport,
       documentResidency: this.persistence ?? undefined,
     });
     this.store = storeInstance.store;
     this.#disposeStore = storeInstance.dispose;
-    this.commands = createCanvasCommands(this.store, this.documents);
+    this.commands = createCanvasCommands(this.store, this.documents, this.viewport);
     this.queries = createCanvasQueries(this.store, this.documents);
+    this.#disposeViewportPersistence = this.viewport.subscribe(() => {
+      const state = this.store.getState();
+      this.commands.sessions.saveViewport(
+        state.activeCanvasId,
+        this.viewport.getSnapshot()
+      );
+    });
     this.ready = this.persistence
       ? this.persistence.initialize(
           this.documents,
@@ -212,7 +226,9 @@ export class CanvasRuntime {
   dispose = () => {
     if (this.#disposed) return;
     this.#disposed = true;
+    this.#disposeViewportPersistence();
     this.#disposeStore();
+    this.viewport.dispose();
     this.persistence?.dispose();
     this.documents.dispose();
   };

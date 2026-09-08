@@ -5,7 +5,7 @@ import {
 } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { useCanvasRuntime, useCanvasState } from "@/domains/canvas/public";
+import { useCanvasRuntime, useCanvasState, useCanvasViewport } from "@/domains/canvas/public";
 import {
   canSplitStructuredSplitBoxLeaf,
   getStructuredNodeBounds,
@@ -104,12 +104,11 @@ export function StructuredSplitToolbar({
 }: StructuredSplitToolbarProps) {
   const canvas = useCanvasRuntime();
   const liveViewport = useCanvasLiveViewportOptional();
+  const fallbackViewport = useCanvasViewport();
   const { t } = useUiI18n();
   const tooltipHandle = useMemo(() => TooltipCreateHandle<string>(), []);
   const {
     canvasMode,
-    offset: storedOffset,
-    zoom: storedZoom,
     structuredScene,
     selectedStructuredNodeIds,
     selectedStructuredSplitHandle,
@@ -118,8 +117,6 @@ export function StructuredSplitToolbar({
   } = useCanvasState(
     useShallow((state) => ({
       canvasMode: state.canvasMode,
-      offset: state.offset,
-      zoom: state.zoom,
       structuredScene: state.structuredScene,
       selectedStructuredNodeIds: state.selectedStructuredNodeIds,
       selectedStructuredSplitHandle: state.selectedStructuredSplitHandle,
@@ -127,8 +124,8 @@ export function StructuredSplitToolbar({
       structuredContextPoint: state.structuredContextPoint,
     }))
   );
-  const offset = liveViewport?.offset ?? storedOffset;
-  const zoom = liveViewport?.zoom ?? storedZoom;
+  const offset = liveViewport?.offset ?? fallbackViewport.offset;
+  const zoom = liveViewport?.zoom ?? fallbackViewport.zoom;
 
   const model = useMemo(() => {
     if (canvasMode !== "structured" || selectedStructuredNodeIds.length !== 1) {

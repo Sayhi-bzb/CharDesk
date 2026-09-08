@@ -50,9 +50,6 @@ type SessionActivationPatch = Pick<
   | "structuredComponents"
   | "contentSurface"
   | "tool"
-  | "offset"
-  | "zoom"
-  | "pendingCameraPlacement"
 > &
   DocumentInteractionResetPatch;
 
@@ -173,9 +170,6 @@ export const createSessionActivationPatch = (
     ? createStructuredContentSurface(runtime.nextScene)
     : createCanvasContentSurface(contentReader),
   tool: runtime.nextTool,
-  offset: runtime.nextOffset,
-  zoom: runtime.nextZoom,
-  pendingCameraPlacement: null,
   ...createDocumentInteractionResetPatch(),
 });
 

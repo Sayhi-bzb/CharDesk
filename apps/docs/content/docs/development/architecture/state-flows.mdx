@@ -27,9 +27,10 @@ use Registry focus as an implicit write target.
   is operation composition, not a per-cell read/modify/write pass.
 - Structured content: immutable scene edit -> changed-node Yjs patch -> changed-key
   canvas projection -> editor state -> chunked viewport surface -> widgets.
-- Session activation: catalog descriptor -> restored mode-authoritative Yjs document
-  -> one editor-state activation patch. The outgoing session checkpoints only
-  its viewport because content projection is already current.
+- Session activation: active ViewRuntime checkpoint -> catalog descriptor ->
+  restored mode-authoritative Yjs document -> one editor-state activation patch.
+  Content projection is already current; interaction resets against the newly
+  active document/page address.
 - Slide activation: deck metadata -> matching page in the session Yjs document -> active projection.
 - Slide edit: command -> active Yjs page -> derived active grid.
 - Local restore: IndexedDB catalog -> `y-indexeddb` document restore -> canvas recovery
@@ -42,6 +43,9 @@ use Registry focus as an implicit write target.
 - Session persistence: metadata projection -> sessions catalog transaction. Canvas content
   remains in its Yjs document and persists as incremental `y-indexeddb` updates. A flush
   visits dirty documents only; routine edits never force workspace-wide snapshots.
+- Viewport: pointer, keyboard, minimap, or zoom command -> active-view port ->
+  live camera -> settled camera -> session saved viewport -> catalog persistence.
+  Animation frames never write session metadata.
 - Slide preview: deck metadata + page reader -> explicit grid snapshot -> canonical slide renderer.
 - Selection command: DOM dispatcher -> editor keymap -> command registry ->
   canvas selection port -> Yjs document.

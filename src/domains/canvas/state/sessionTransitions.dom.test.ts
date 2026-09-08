@@ -43,9 +43,11 @@ const markDocumentInteractionDirty = () => {
 };
 
 const expectDocumentInteractionReset = () => {
-  expect(useEditorStore.getState()).toMatchObject(
-    createDocumentInteractionResetPatch()
-  );
+  const state = useEditorStore.getState();
+  const reset = createDocumentInteractionResetPatch();
+  expect(state).toMatchObject(reset);
+  expect(state.interaction).toMatchObject(reset);
+  expect(state.interaction.address).toEqual(defaultCanvasDocuments.getActiveAddress());
 };
 
 describe("session transitions", () => {
@@ -76,6 +78,18 @@ describe("session transitions", () => {
 
     useEditorStore.getState().removeCanvasSession(activeSessionId);
     expectDocumentInteractionReset();
+  });
+
+  it("preserves the page-scoped interaction snapshot for metadata changes", () => {
+    markDocumentInteractionDirty();
+    const before = useEditorStore.getState().interaction;
+
+    useEditorStore.getState().renameCanvasSession(
+      useEditorStore.getState().activeCanvasId,
+      "Renamed"
+    );
+
+    expect(useEditorStore.getState().interaction).toBe(before);
   });
 
   it("preserves Hand while entering and restoring a structured session", () => {

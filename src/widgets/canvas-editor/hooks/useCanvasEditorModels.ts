@@ -1,5 +1,6 @@
 import {
   createGridSurfaceReader,
+  createEmptyCanvasInteraction,
   isIncrementalCanvasSurfaceReader,
   readSlideDeckDescriptor,
   useCanvasRuntime,
@@ -9,9 +10,8 @@ import {
 } from "@/domains/canvas/public";
 import { useShallow } from "zustand/react/shallow";
 import { useCanvasViewOptional } from '../engine/CanvasWorkspace';
-import { createStaticGridState } from '@/domains/selection/public';
 import type { CanvasSessionDescriptor } from '@/domains/sessions/public';
-import { useMemo } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { createStructuredSceneSurface } from '@/domains/structured-content/public';
 
 type SessionContent = Pick<
@@ -74,12 +74,23 @@ const resolveSessionContent = (
 };
 
 export const useCanvasEditorModels = () => {
+  const canvas = useCanvasRuntime();
   const {
     commands: canvasCommands,
     documents,
     queries: canvasQueries,
-  } = useCanvasRuntime();
+  } = canvas;
   const canvasView = useCanvasViewOptional();
+  const fallbackViewport = useSyncExternalStore(
+    canvas.viewport.subscribe,
+    canvas.viewport.getSnapshot,
+    canvas.viewport.getSnapshot
+  );
+  const pendingCameraPlacement = useSyncExternalStore(
+    canvas.viewport.subscribePlacement,
+    canvas.viewport.getPendingPlacement,
+    canvas.viewport.getPendingPlacement
+  );
   const canvasSessions = useCanvasState((state) => state.canvasSessions);
   const interactionState = useCanvasState(
     useShallow((state) => ({
@@ -90,16 +101,10 @@ export const useCanvasEditorModels = () => {
       brushChar: state.brushChar,
       brushColor: state.brushColor,
       brushBackgroundColor: state.brushBackgroundColor,
-      canvasColorPickerTarget: state.canvasColorPickerTarget,
-      offset: state.offset,
-      zoom: state.zoom,
       contentReader: state.contentSurface.reader,
       contentRevision: state.contentSurface.revision,
-      staticGridSelection: state.staticGridSelection,
       structuredScene: state.structuredScene,
-      editingStructuredTextNodeId: state.editingStructuredTextNodeId,
-      selectedStructuredNodeIds: state.selectedStructuredNodeIds,
-      structuredTextSelection: state.structuredTextSelection,
+      interaction: state.interaction,
     }))
   );
   const boundSession = canvasView?.sessionId
@@ -113,23 +118,24 @@ export const useCanvasEditorModels = () => {
         : null,
     [boundSession, documents, usesSessionSnapshot]
   );
-  const inactiveStaticGrid = useMemo(() => createStaticGridState(), []);
+  const inactiveInteraction = useMemo(
+    () => createEmptyCanvasInteraction(interactionState.interaction.address),
+    [interactionState.interaction.address]
+  );
+  const activeInteractionState = {
+    ...interactionState,
+    ...interactionState.interaction,
+  };
   const resolvedInteractionState = sessionContent
     ? {
-        ...interactionState,
+        ...activeInteractionState,
         ...sessionContent,
-        textCursor: null,
-        staticGridSelection: inactiveStaticGrid.selection,
-        editingStructuredTextNodeId: null,
-        selectedStructuredNodeIds: [],
-        structuredTextSelection: null,
-        structuredGridFocus: null,
-        canvasColorPickerTarget: null,
+        ...inactiveInteraction,
       }
-    : interactionState;
+    : activeInteractionState;
   const interactionStore = {
     ...resolvedInteractionState,
-    ...(canvasView ? canvasView.viewport : null),
+    ...(canvasView?.viewport ?? fallbackViewport),
     setBrushColor: canvasCommands.preferences.setBrushColor,
     setBrushBackgroundColor: canvasCommands.preferences.setBrushBackgroundColor,
     setCanvasColorPickerTarget: canvasCommands.interaction.setColorPickerTarget,
@@ -167,95 +173,41 @@ export const useCanvasEditorModels = () => {
   const rendererStore = useCanvasState(
     useShallow((state) => ({
       activeCanvasId: state.activeCanvasId,
-      offset: state.offset,
-      zoom: state.zoom,
       contentReader: state.contentSurface.reader,
       contentRevision: state.contentSurface.revision,
-      scratchLayer: state.scratchLayer,
-      textCursor: state.textCursor,
-      staticGridSelection: state.staticGridSelection,
-      staticGridEditMode: state.staticGridEditMode,
       showGrid: state.showGrid,
-      hoveredGrid: state.hoveredGrid,
       tool: state.tool,
       canvasMode: state.canvasMode,
       slideDeck: state.slideDeck,
       structuredScene: state.structuredScene,
-      selectedStructuredNodeIds: state.selectedStructuredNodeIds,
-      selectedStructuredBoxId: state.selectedStructuredBoxId,
-      structuredContextPoint: state.structuredContextPoint,
-      structuredGridFocus: state.structuredGridFocus,
-      editingStructuredTextNodeId: state.editingStructuredTextNodeId,
-      structuredTextSelection: state.structuredTextSelection,
-      canvasColorPickerTarget: state.canvasColorPickerTarget,
+      interaction: state.interaction,
     }))
   );
+  const activeRendererStore = { ...rendererStore, ...rendererStore.interaction };
   const viewRendererStore = canvasView
     ? {
-        ...rendererStore,
+        ...activeRendererStore,
         ...(sessionContent ?? null),
         ...canvasView.viewport,
-        scratchLayer: canvasView.isActive ? rendererStore.scratchLayer : null,
-        staticGridSelection: canvasView.isActive
-          ? rendererStore.staticGridSelection
-          : inactiveStaticGrid.selection,
-        staticGridEditMode: canvasView.isActive
-          ? rendererStore.staticGridEditMode
-          : inactiveStaticGrid.editMode,
-        selectedStructuredNodeIds: canvasView.isActive
-          ? rendererStore.selectedStructuredNodeIds
-          : [],
-        selectedStructuredBoxId: canvasView.isActive
-          ? rendererStore.selectedStructuredBoxId
-          : null,
-        structuredContextPoint: canvasView.isActive
-          ? rendererStore.structuredContextPoint
-          : null,
-        hoveredGrid: canvasView.isActive ? rendererStore.hoveredGrid : null,
-        textCursor: canvasView.isActive ? rendererStore.textCursor : null,
-        structuredGridFocus: canvasView.isActive ? rendererStore.structuredGridFocus : null,
-        editingStructuredTextNodeId: canvasView.isActive
-          ? rendererStore.editingStructuredTextNodeId
-          : null,
-        structuredTextSelection: canvasView.isActive
-          ? rendererStore.structuredTextSelection
-          : null,
-        canvasColorPickerTarget: canvasView.isActive
-          ? rendererStore.canvasColorPickerTarget
-          : null,
+        ...(canvasView.isActive ? null : inactiveInteraction),
       }
-    : rendererStore;
+    : { ...activeRendererStore, ...fallbackViewport };
   const editorState = useCanvasState(
     useShallow((state) => ({
       contentReader: state.contentSurface.reader,
-      textCursor: state.textCursor,
-      staticGridSelection: state.staticGridSelection,
-      staticGridEditMode: state.staticGridEditMode,
-      offset: state.offset,
-      zoom: state.zoom,
-      structuredGridFocus: state.structuredGridFocus,
-      selectedStructuredNodeIds: state.selectedStructuredNodeIds,
+      interaction: state.interaction,
       structuredScene: state.structuredScene,
       structuredComponents: state.structuredComponents,
       brushColor: state.brushColor,
-      canvasColorPickerTarget: state.canvasColorPickerTarget,
-      pendingCameraPlacement: state.pendingCameraPlacement,
     }))
   );
   const editorStore = {
     ...editorState,
+    ...editorState.interaction,
     ...(sessionContent ?? null),
-    ...(canvasView ? canvasView.viewport : null),
-    ...(canvasView && !canvasView.isActive
-      ? {
-          textCursor: null,
-          staticGridSelection: inactiveStaticGrid.selection,
-          staticGridEditMode: inactiveStaticGrid.editMode,
-          structuredGridFocus: null,
-          selectedStructuredNodeIds: [],
-          canvasColorPickerTarget: null,
-        }
-      : null),
+    ...(canvasView?.viewport ?? fallbackViewport),
+    pendingCameraPlacement,
+    ...(canvasView && !canvasView.isActive ? inactiveInteraction : null),
     writeTextString: canvasCommands.text.write,
     backspaceText: canvasCommands.text.backspace,
     deleteTextForward: canvasCommands.text.deleteForward,

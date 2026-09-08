@@ -40,6 +40,9 @@ export const buildSessionSnapshot = (
   state: EditorState,
   documents: CanvasDocumentRegistry
 ) => {
+  const viewport = normalizeSessionViewport(
+    state.canvasSessions.find((session) => session.id === state.activeCanvasId)?.viewport
+  ) ?? DEFAULT_VIEWPORT;
   if (state.canvasMode === 'slide') {
     if (!state.slideDeck) {
       throw new Error('Active slide session has no deck projection');
@@ -51,7 +54,7 @@ export const buildSessionSnapshot = (
         state.activeCanvasId,
         state.slideDeck
       ),
-      viewport: { offset: { ...state.offset }, zoom: state.zoom },
+      viewport,
     };
   }
   if (state.canvasMode === 'structured') {
@@ -60,7 +63,7 @@ export const buildSessionSnapshot = (
       scene: state.structuredScene,
       components: state.structuredComponents,
       grid: [],
-      viewport: { offset: { ...state.offset }, zoom: state.zoom },
+      viewport,
     };
   }
 
@@ -69,7 +72,7 @@ export const buildSessionSnapshot = (
     scene: [],
     components: [],
     grid: Array.from(state.contentSurface.reader.materialize()),
-    viewport: { offset: { ...state.offset }, zoom: state.zoom },
+    viewport,
   };
 };
 

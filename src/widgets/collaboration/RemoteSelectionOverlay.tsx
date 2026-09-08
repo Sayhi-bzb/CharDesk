@@ -1,5 +1,5 @@
 import { Button, Tooltip, TooltipPopup, TooltipTrigger } from "@chardesk/ui";
-import { useCanvasState } from "@/domains/canvas/public";
+import { useCanvasState, useCanvasViewport } from "@/domains/canvas/public";
 import type { Point } from "@/shared/types";
 import {
   useCanvasLiveViewportOptional,
@@ -21,14 +21,13 @@ export function RemoteSelectionOverlay({
   const { peers } = useCollaborationSnapshot();
   const canvasView = useCanvasViewOptional();
   const liveViewport = useCanvasLiveViewportOptional();
-  const storeOffset = useCanvasState((state) => state.offset);
-  const storeZoom = useCanvasState((state) => state.zoom);
+  const fallbackViewport = useCanvasViewport();
   const canvasMode = useCanvasState((state) => state.canvasMode);
   const contentSurface = useCanvasState((state) => state.contentSurface);
   const structuredScene = useCanvasState((state) => state.structuredScene);
   const viewport = {
-    offset: liveViewport?.offset ?? storeOffset,
-    zoom: liveViewport?.zoom ?? storeZoom,
+    offset: liveViewport?.offset ?? fallbackViewport.offset,
+    zoom: liveViewport?.zoom ?? fallbackViewport.zoom,
   };
   const visuals = resolveRemoteSelectionVisuals({
     peers,

@@ -2,6 +2,7 @@ import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 import type { CanvasStore } from "./editorStore";
 import type { EditorState } from "./interfaces";
 import { resolveEditorDocumentAddress } from "./helpers/gridHelpers";
+import type { CanvasViewportRuntime } from "../viewportRuntime";
 
 const createCall = (store: CanvasStore) => <Key extends keyof EditorState>(
   key: Key,
@@ -21,7 +22,8 @@ const createCall = (store: CanvasStore) => <Key extends keyof EditorState>(
 
 export const createCanvasCommands = (
   store: CanvasStore,
-  documents: CanvasDocumentRegistry
+  documents: CanvasDocumentRegistry,
+  viewport: CanvasViewportRuntime
 ) => {
 const call = createCall(store);
 const resolveAddress = () =>
@@ -53,13 +55,10 @@ return {
     },
   },
   viewport: {
-    setOffset: (...args: Parameters<EditorState["setOffset"]>) => call("setOffset", ...args),
-    setZoom: (...args: Parameters<EditorState["setZoom"]>) => call("setZoom", ...args),
-    setViewport: (...args: Parameters<EditorState["setViewport"]>) =>
-      call("setViewport", ...args),
-    consumePendingPlacement: (
-      ...args: Parameters<EditorState["consumePendingCameraPlacement"]>
-    ) => call("consumePendingCameraPlacement", ...args),
+    setOffset: viewport.setOffset,
+    setZoom: viewport.setZoom,
+    setViewport: viewport.setViewport,
+    consumePendingPlacement: viewport.consumePlacement,
   },
   tools: {
     set: (...args: Parameters<EditorState["setTool"]>) => call("setTool", ...args),
@@ -231,6 +230,8 @@ return {
       call("switchCanvasSession", ...args),
     remove: (...args: Parameters<EditorState["removeCanvasSession"]>) =>
       call("removeCanvasSession", ...args),
+    saveViewport: (...args: Parameters<EditorState["saveCanvasSessionViewport"]>) =>
+      call("saveCanvasSessionViewport", ...args),
     rename: (...args: Parameters<EditorState["renameCanvasSession"]>) =>
       call("renameCanvasSession", ...args),
     setCollaboration: (

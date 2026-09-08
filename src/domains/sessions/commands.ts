@@ -6,6 +6,7 @@ import type {
 } from "./model";
 import type { CollaborationDescriptor } from "@/domains/collaboration/public";
 import type { SlideSize } from "@/domains/slides/public";
+import type { Point } from "@/shared/types";
 
 type CreateCanvasSessionOptions = {
   slideSize?: SlideSize;
@@ -37,6 +38,10 @@ export interface SessionCommands {
   ) => void;
   switchCanvasSession: (canvasId: string) => Promise<boolean>;
   removeCanvasSession: (canvasId: string) => Promise<boolean>;
+  saveCanvasSessionViewport: (
+    canvasId: string,
+    viewport: { offset: Point; zoom: number }
+  ) => void;
   renameCanvasSession: (canvasId: string, nextName: string) => void;
   setCanvasSessionCollaboration: (
     canvasId: string,

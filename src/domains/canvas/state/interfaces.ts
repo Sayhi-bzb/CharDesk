@@ -10,6 +10,7 @@ import type { SessionCommands } from "@/domains/sessions/public";
 import type { CanvasHistoryMode } from "./CanvasDocumentRegistry";
 import type { SlideDeckDescriptor, SlideSize } from "@/domains/slides/public";
 import type { CanvasSurfaceReader } from "../cell-plane/model";
+import type { CanvasInteractionSnapshot } from "./canvasInteractionState";
 
 export type CanvasContentSurfaceState = Readonly<{
   reader: CanvasSurfaceReader;
@@ -213,7 +214,11 @@ export type PendingCanvasCameraPlacement = {
 };
 
 export type EditorState = {
+  /** Atomic, page-scoped interaction authority. Flat fields are command projections. */
+  interaction: CanvasInteractionSnapshot;
+  /** Active ViewRuntime projection. Viewport commands remain the write boundary. */
   offset: Point;
+  /** Active ViewRuntime projection. Viewport commands remain the write boundary. */
   zoom: number;
   tool: ToolType;
   canvasMode: CanvasMode;
@@ -237,14 +242,12 @@ export type EditorState = {
   canvasColorPickerTarget: CanvasColorPickerTarget | null;
   canvasSessions: CanvasSessionDescriptor[];
   activeCanvasId: string;
-  pendingCameraPlacement: PendingCanvasCameraPlacement | null;
   canUndo: boolean;
   canRedo: boolean;
 
   setOffset: (updater: (prev: Point) => Point) => void;
   setZoom: (updater: (prev: number) => number) => void;
   setViewport: (updater: (prev: CanvasViewportState) => CanvasViewportState) => void;
-  consumePendingCameraPlacement: (sessionId: string) => void;
   setTool: (tool: ToolType) => void;
   applyStructuredScene: (
     scene: StructuredNode[],

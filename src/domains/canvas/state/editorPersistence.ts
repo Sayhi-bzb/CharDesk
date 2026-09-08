@@ -228,6 +228,7 @@ export const createPersistedEditorSnapshot = (
   const activeSession = state.canvasSessions.find(
     (session) => session.id === state.activeCanvasId
   );
+  const activeViewport = activeSession?.viewport ?? { offset: { x: 0, y: 0 }, zoom: 1 };
   const activeIsExternallyOwned = isSourceBackedCanvasSession(activeSession) ||
     (activeSession?.mode !== "slide" && !!activeSession?.collaboration);
   const persistedSessions = withActiveCanvasSnapshot(
@@ -240,8 +241,8 @@ export const createPersistedEditorSnapshot = (
   return {
     schemaVersion: EDITOR_PERSISTENCE_VERSION,
     workspace: {
-      offset: state.offset,
-      zoom: state.zoom,
+      offset: activeViewport.offset,
+      zoom: activeViewport.zoom,
       canvasMode: state.canvasMode,
       structuredScene: activeIsExternallyOwned ? [] : cloneScene(state.structuredScene),
       structuredComponents: activeIsExternallyOwned
@@ -269,8 +270,6 @@ export const shouldScheduleEditorPersistence = (
   next: EditorState
 ): boolean =>
   !previous ||
-  previous.offset !== next.offset ||
-  previous.zoom !== next.zoom ||
   previous.contentSurface !== next.contentSurface ||
   previous.canvasMode !== next.canvasMode ||
   previous.slideDeck !== next.slideDeck ||

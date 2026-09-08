@@ -52,6 +52,8 @@ function InteractionHarnessContent() {
   const requestRenderRef = useRef<(() => void) | null>(null);
   const store = useEditorStore(
     useShallow((state) => ({
+      ...state.interaction,
+      interaction: state.interaction,
       activeCanvasId: state.activeCanvasId,
       tool: state.tool,
       brushChar: state.brushChar,

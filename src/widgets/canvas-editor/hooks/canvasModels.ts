@@ -2,6 +2,8 @@ import type {
   CanvasRuntime,
   CanvasState,
   CanvasSurfaceReader,
+  CanvasViewportState,
+  PendingCanvasCameraPlacement,
 } from "@/domains/canvas/public";
 
 type CanvasCommands = CanvasRuntime["commands"];
@@ -9,8 +11,6 @@ type CanvasQueries = CanvasRuntime["queries"];
 
 export type CanvasRenderModel = Pick<CanvasState,
   | "activeCanvasId"
-  | "offset"
-  | "zoom"
   | "scratchLayer"
   | "textCursor"
   | "staticGridSelection"
@@ -29,6 +29,8 @@ export type CanvasRenderModel = Pick<CanvasState,
   | "structuredTextSelection"
   | "canvasColorPickerTarget"
 > & {
+  offset: CanvasViewportState["offset"];
+  zoom: number;
   contentReader: CanvasSurfaceReader;
   contentRevision: number;
 };
@@ -37,16 +39,16 @@ export type CanvasEditorModel = Pick<CanvasState,
   | "textCursor"
   | "staticGridSelection"
   | "staticGridEditMode"
-  | "offset"
-  | "zoom"
   | "structuredGridFocus"
   | "selectedStructuredNodeIds"
   | "structuredScene"
   | "structuredComponents"
   | "brushColor"
   | "canvasColorPickerTarget"
-  | "pendingCameraPlacement"
 > & {
+  offset: CanvasViewportState["offset"];
+  zoom: number;
+  pendingCameraPlacement?: PendingCanvasCameraPlacement | null;
   contentReader: CanvasSurfaceReader;
   writeTextString: CanvasCommands["text"]["write"];
   backspaceText: CanvasCommands["text"]["backspace"];
@@ -65,7 +67,7 @@ export type CanvasEditorModel = Pick<CanvasState,
   moveStructuredGridFocus: CanvasCommands["interaction"]["moveStructuredGridFocus"];
   setTextCursor: CanvasCommands["interaction"]["setTextCursor"];
   setOffset: CanvasCommands["viewport"]["setOffset"];
-  consumePendingCameraPlacement: CanvasCommands["viewport"]["consumePendingPlacement"];
+  consumePendingCameraPlacement?: CanvasCommands["viewport"]["consumePendingPlacement"];
   fillSelectionsWithChar: CanvasCommands["selection"]["fillWithChar"];
   moveStaticGridSelection: CanvasCommands["selection"]["moveStaticRange"];
   clearSelections: CanvasCommands["selection"]["clear"];

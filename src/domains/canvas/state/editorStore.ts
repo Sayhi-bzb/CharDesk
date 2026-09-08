@@ -1,6 +1,6 @@
 import { create, type StateCreator, type StoreApi, type UseBoundStore } from "zustand";
 import { persist } from "zustand/middleware";
-import { MIN_ZOOM, MAX_ZOOM, COLOR_PRIMARY_TEXT, DEFAULT_BRUSH_CHAR } from "@/shared/lib/constants";
+import { COLOR_PRIMARY_TEXT, DEFAULT_BRUSH_CHAR } from "@/shared/lib/constants";
 import { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 import type { EditorState } from "./interfaces";
 import {
@@ -61,6 +61,12 @@ import {
 } from "@/domains/sessions/public";
 import { createGridSurfaceReader } from "../cell-plane/model";
 import type { CanvasDocumentResidency } from "./documentResidencyPort";
+import type { CanvasViewportRuntime } from "../viewportRuntime";
+import {
+  createEmptyCanvasInteraction,
+  hasCanvasInteractionProjectionChanged,
+  projectCanvasInteraction,
+} from "./canvasInteractionState";
 
 export type CanvasStore = UseBoundStore<StoreApi<EditorState>>;
 
@@ -78,6 +84,7 @@ type CanvasStoreDependencies = {
   persistence: CanvasStorePersistence;
   initialSessions?: readonly CanvasSessionSnapshot[];
   documentResidency?: CanvasDocumentResidency;
+  viewport: CanvasViewportRuntime;
 };
 
 const seedSessionDocuments = (
@@ -120,6 +127,7 @@ export const createEditorStore = ({
   persistence,
   initialSessions: configuredInitialSessions,
   documentResidency,
+  viewport,
 }: CanvasStoreDependencies): { store: CanvasStore; dispose: () => void } => {
   if (persistence && persistence.key.trim().length === 0) {
     throw new Error("Canvas persistence requires a non-empty instance key");
@@ -172,8 +180,8 @@ export const createEditorStore = ({
       ));
 
       return {
-        offset: initialRuntime.nextOffset,
-        zoom: initialRuntime.nextZoom,
+        ...viewport.getSnapshot(),
+        interaction: createEmptyCanvasInteraction(initialAddress),
         contentSurface:
           initialRuntime.nextMode === "structured"
             ? createStructuredContentSurface(initialRuntime.nextScene)
@@ -188,7 +196,6 @@ export const createEditorStore = ({
         structuredGridFocus: null,
         canvasSessions: initialSessions,
         activeCanvasId: initialSession.id,
-        pendingCameraPlacement: null,
         ...documents.getHistoryAvailability(),
         tool: initialRuntime.nextTool,
         brushChar: DEFAULT_BRUSH_CHAR,
@@ -199,25 +206,9 @@ export const createEditorStore = ({
         hoveredGrid: null,
         canvasColorPickerTarget: null,
 
-        setOffset: (updater) => set((state) => ({ offset: updater(state.offset) })),
-        setZoom: (updater) =>
-          set((state) => ({
-            zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, updater(state.zoom))),
-          })),
-        setViewport: (updater) =>
-          set((state) => {
-            const viewport = updater({ offset: state.offset, zoom: state.zoom });
-            return {
-              offset: viewport.offset,
-              zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewport.zoom)),
-            };
-          }),
-        consumePendingCameraPlacement: (sessionId) =>
-          set((state) =>
-            state.pendingCameraPlacement?.sessionId === sessionId
-              ? { pendingCameraPlacement: null }
-              : {}
-          ),
+        setOffset: viewport.setOffset,
+        setZoom: viewport.setZoom,
+        setViewport: viewport.setViewport,
         setTool: (tool) =>
           set((state) => {
             if (!isToolAllowedForMode(tool, state.canvasMode)) return state;
@@ -315,7 +306,7 @@ export const createEditorStore = ({
               },
             };
           }),
-        ...createSessionSlice(documents, parseSessionSource, documentResidency)(set, get, ...a),
+        ...createSessionSlice(documents, parseSessionSource, viewport, documentResidency)(set, get, ...a),
         ...createStaticGridSlice(set, get, ...a),
         ...createSlideSlice(documents)(set, get, ...a),
         slideDeck: initialRuntime.nextSlideDeck,
@@ -373,6 +364,29 @@ export const createEditorStore = ({
       },
     }))
     : create<EditorState>()(stateCreator);
+  let syncingViewport = false;
+  disposers.push(viewport.subscribe(() => {
+    const next = viewport.getSnapshot();
+    const current = store.getState();
+    if (
+      current.zoom === next.zoom &&
+      current.offset.x === next.offset.x &&
+      current.offset.y === next.offset.y
+    ) return;
+    syncingViewport = true;
+    store.setState({ offset: next.offset, zoom: next.zoom });
+    syncingViewport = false;
+  }));
+  disposers.push(store.subscribe((state, previous) => {
+    if (syncingViewport || (state.offset === previous.offset && state.zoom === previous.zoom)) return;
+    viewport.setViewport(() => ({ offset: state.offset, zoom: state.zoom }));
+  }));
+  disposers.push(store.subscribe((state, previous) => {
+    if (!hasCanvasInteractionProjectionChanged(state, previous)) return;
+    store.setState({
+      interaction: projectCanvasInteraction(state, documents.getActiveAddress()),
+    });
+  }));
   return {
     store,
     dispose: () => {

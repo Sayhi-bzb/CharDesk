@@ -79,7 +79,7 @@ describe('ZoomControl', () => {
     const reset = screen.getByTestId('zoom-reset');
 
     expect(reset).toHaveClass('w-12');
-    expect(reset).toHaveTextContent('10%');
+    expect(reset).toHaveTextContent('25%');
 
     act(() => useEditorStore.setState({ zoom: 1 }));
     expect(reset).toHaveTextContent('100%');

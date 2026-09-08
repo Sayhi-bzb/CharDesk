@@ -1121,10 +1121,7 @@ const createCatalogSnapshot = (
     name: session.name,
     mode: session.mode,
     ...(session.sourceBinding ? { sourceBinding: session.sourceBinding } : {}),
-    viewport:
-      session.id === state.activeCanvasId
-        ? { offset: { ...state.offset }, zoom: state.zoom }
-        : session.viewport,
+    viewport: session.viewport,
     ...(session.mode !== "slide" && session.collaboration
       ? {
           collaboration: session.collaboration,
