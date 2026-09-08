@@ -61,6 +61,7 @@ import { shouldDrawCanvasGrid } from '../rendering/canvasGridVisibility';
 import { drawCanvasCellCursor } from '../rendering/canvasCellCursor';
 import { resolveCanvasCellPresentation } from '../presentation/canvasCellPresentation';
 import type { CanvasCursorPreference } from '@/shared/canvas-cursor/runtime';
+import { DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS } from '@chardesk/rendering';
 import {
   resolveCanvasContentDpr,
   resolveCanvasContentResolutionMode,
@@ -76,7 +77,7 @@ interface LayerRefs {
 
 export type CanvasInteractionPalette = HostVisualTheme['canvas'];
 
-export type CanvasCellPresentationContext = Readonly<{
+type CanvasCellPresentationContext = Readonly<{
   viewActive: boolean;
   inputFocused: boolean;
   cursorPreference: CanvasCursorPreference;
@@ -232,13 +233,9 @@ export const useCanvasRenderer = (
   structuredMovePreviewRef: React.RefObject<StructuredMovePreview | null>,
   hoveredLink: CanvasLinkHit | null,
   visualTheme: HostVisualTheme | null,
+  cellContext: CanvasCellPresentationContext,
   requestRenderRef?: React.MutableRefObject<(() => void) | null>,
-  runtime?: CanvasEngineRuntime,
-  cellContext: CanvasCellPresentationContext = {
-    viewActive: true,
-    inputFocused: true,
-    cursorPreference: { shape: 'block', blink: true },
-  }
+  runtime?: CanvasEngineRuntime
 ) => {
   const { profile: fontProfile } = useCanvasFont();
   const {
@@ -826,7 +823,7 @@ export const useCanvasRenderer = (
         cursorVisibleRef.current = !cursorVisibleRef.current;
         scheduleRender(CANVAS_FRAME_INVALIDATION.overlay, 'interaction');
         scheduleCursorBlink();
-      }, 600);
+      }, DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS);
     };
     const handleVisibilityChange = () => {
       clearCursorTimer();

@@ -77,6 +77,7 @@ export type { EngineInput, WidgetCommand } from "./interaction.js";
 export type { CellUiRuntimeOptions } from "./runtime.js";
 export {
   Box,
+  Button,
   Grid,
   GridCell,
   GridRow,
@@ -99,6 +100,7 @@ export {
 } from "./react.js";
 export type {
   BoxProps,
+  ButtonProps,
   GridCellProps,
   GridProps,
   GridRowProps,

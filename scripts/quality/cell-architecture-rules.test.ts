@@ -33,6 +33,8 @@ describe("Cell architecture rules", () => {
     "CharDeskCanvasMetrics",
     "DEFAULT_CHARDESK_CANVAS_METRICS",
     "CharDeskCanvasFrameCell",
+    "CharDeskCanvasCursorShape",
+    "CharDeskCanvasCursorStyle",
   ])("rejects retired production contract %s", (contract) => {
     expect(messages(`export const value: ${contract} = source;`,
       "packages/example/src/index.ts")[0]).toContain("Retired");

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createCharDeskRenderModel,
+  DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS,
   DEFAULT_CHARDESK_CELL_METRICS,
   formatCharDeskCellFrame,
   getCharDeskFontFamilyForGrapheme,
@@ -26,6 +27,7 @@ describe("CharDesk rendering core", () => {
       fontSize: 15,
       baseline: 15,
     });
+    expect(DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS).toBe(600);
     expect(formatCharDeskCellFrame({
       revision: 0,
       viewport: { x: 0, y: 0, width: 3, height: 1 },

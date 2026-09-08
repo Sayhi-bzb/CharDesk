@@ -26,7 +26,6 @@ describe("Canvas Cell presentation", () => {
       cursor: {
         point: { x: 1, y: 2 },
         shape: "block",
-        mode: "active",
         blink: false,
       },
     });
@@ -37,7 +36,6 @@ describe("Canvas Cell presentation", () => {
     }).cursor).toEqual({
       point: { x: 4, y: 5 },
       shape: "underline",
-      mode: "editing",
       blink: true,
     });
   });
@@ -47,7 +45,7 @@ describe("Canvas Cell presentation", () => {
       inputFocused: false,
       editMode: "text-edit",
       textCursor: { x: 2, y: 3 },
-    }).cursor).toMatchObject({ mode: "editing", blink: false });
+    }).cursor).toMatchObject({ blink: false });
   });
 
   it("lets Range and inactive-view state take precedence", () => {

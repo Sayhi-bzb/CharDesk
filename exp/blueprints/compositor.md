@@ -6,7 +6,7 @@
 
 Layout 产生 Widget 的 parent-relative Cell Rect。SceneGeometry 将其投影为 root Cell geometry，并统一拥有 scroll、clip、layer、visibility、paint order 与 hit geometry。Canvas Surface 只把最终 CellBuffer 映射为 px。
 
-逻辑 geometry、source 与 frame 类型及通用 Rect 运算由 [`@chardesk/cell-core`](../../packages/cell-core/README.md) 持有；跨后端的 `CharDeskCellMetrics`、`CharDeskCellFrameCell` 与字符检查出口由 [`@chardesk/rendering`](../../packages/rendering/README.md) 根入口持有；Widget、Layout、Scene 与 Semantic 类型由 [`@chardesk/cell-ui`](../../packages/cell-ui/src/types.ts) 持有。本页不复制类型声明。
+逻辑 geometry、source 与 frame 类型及通用 Rect 运算由 [`@chardesk/cell-core`](../../packages/cell-core/README.md) 持有；跨后端的 Cell metrics、frame、cursor paint 契约与字符检查出口由 [`@chardesk/rendering`](../../packages/rendering/README.md) 根入口持有；Widget、Layout、Scene 与 Semantic 类型由 [`@chardesk/cell-ui`](../../packages/cell-ui/src/types.ts) 持有。本页不复制类型声明。
 
 ```text
 Widget Tree → LayoutSnapshot → SceneSnapshot → CellBuffer → Browser Surface

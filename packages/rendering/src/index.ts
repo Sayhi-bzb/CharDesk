@@ -34,6 +34,16 @@ export const DEFAULT_CHARDESK_CELL_METRICS = Object.freeze({
   fontFamily: CHARDESK_SYSTEM_FONT_PROFILE.families.text,
 } satisfies CharDeskCellMetrics);
 
+export type CharDeskCellCursorShape = "block" | "bar" | "underline";
+
+export type CharDeskCellCursorPaintStyle = Readonly<{
+  shape: CharDeskCellCursorShape;
+  color: string;
+  textColor: string;
+}>;
+
+export const DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS = 600;
+
 export type CharDeskCellVisualInput = {
   text: string;
   color?: string;

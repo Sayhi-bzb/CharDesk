@@ -1,4 +1,4 @@
-import type { CharDeskCanvasCursorShape } from "@chardesk/rendering/canvas";
+import type { CharDeskCellCursorShape } from "@chardesk/rendering";
 import type {
   GridEditMode,
   GridSelectionGeometry,
@@ -9,8 +9,7 @@ export type CanvasCellPresentation = Readonly<{
   selectionGeometry: GridSelectionGeometry | null;
   cursor: Readonly<{
     point: Point;
-    shape: CharDeskCanvasCursorShape;
-    mode: "active" | "editing";
+    shape: CharDeskCellCursorShape;
     blink: boolean;
   }> | null;
 }>;
@@ -24,7 +23,7 @@ export const resolveCanvasCellPresentation = (input: Readonly<{
   hasRangeSelection: boolean;
   selectionGeometry: GridSelectionGeometry;
   cursorPreference: Readonly<{
-    shape: CharDeskCanvasCursorShape;
+    shape: CharDeskCellCursorShape;
     blink: boolean;
   }>;
 }>): CanvasCellPresentation => {
@@ -38,7 +37,6 @@ export const resolveCanvasCellPresentation = (input: Readonly<{
     cursor: {
       point: editing && input.textCursor ? input.textCursor : input.activeCell,
       shape: input.cursorPreference.shape,
-      mode: editing ? "editing" : "active",
       blink: editing && input.inputFocused && input.cursorPreference.blink,
     },
   };

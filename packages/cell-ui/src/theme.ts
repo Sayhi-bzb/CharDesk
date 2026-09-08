@@ -1,13 +1,14 @@
 import type { CellTextStyle } from "./types.js";
 import type { CellBorderShape } from "./border.js";
-import type { CharDeskCanvasCursorShape } from "@chardesk/rendering/canvas";
+import {
+  DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS,
+  type CharDeskCellCursorPaintStyle,
+  type CharDeskCellCursorShape,
+} from "@chardesk/rendering";
 
-export type CellCursorShape = CharDeskCanvasCursorShape;
+export type CellCursorShape = CharDeskCellCursorShape;
 
-export type CellCursorStyle = Readonly<{
-  shape: CellCursorShape;
-  color: string;
-  textColor: string;
+export type CellCursorStyle = CharDeskCellCursorPaintStyle & Readonly<{
   blink: boolean;
   blinkIntervalMs: number;
 }>;
@@ -45,7 +46,7 @@ export const DEFAULT_CELL_UI_THEME: CellUiTheme = Object.freeze({
     color: "#e8edf2",
     textColor: "#101419",
     blink: true,
-    blinkIntervalMs: 600,
+    blinkIntervalMs: DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS,
   }),
   rangeSelectionColor: "rgba(82, 155, 255, 0.32)",
   treeExpandedIndicator: "▾",

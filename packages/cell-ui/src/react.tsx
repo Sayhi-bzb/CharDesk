@@ -34,6 +34,11 @@ export type TextProps = Readonly<{
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
+export type ButtonProps = CommonProps & Readonly<{
+  focused?: boolean;
+  style?: CellLayoutStyle;
+  textStyle?: CellTextStyle;
+}>;
 export type ListProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
 export type ListItemProps = CommonProps & Readonly<{
   focused?: boolean;
@@ -98,6 +103,7 @@ type PrimitiveProps =
   | BoxProps
   | OverlayProps
   | TextProps
+  | ButtonProps
   | ListProps
   | ListItemProps
   | MenuProps
@@ -134,6 +140,7 @@ export const Root = primitive<RootProps>("root");
 export const Box = primitive<BoxProps>("box");
 export const Overlay = primitive<OverlayProps>("overlay");
 export const Text = primitive<TextProps>("text");
+export const Button = primitive<ButtonProps>("button");
 export const List = primitive<ListProps>("list");
 export const ListItem = primitive<ListItemProps>("list-item");
 export const Menu = primitive<MenuProps>("menu");

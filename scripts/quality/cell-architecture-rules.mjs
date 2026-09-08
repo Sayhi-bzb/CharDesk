@@ -10,6 +10,8 @@ const retiredContracts = [
   "CharDeskCanvasMetrics",
   "DEFAULT_CHARDESK_CANVAS_METRICS",
   "CharDeskCanvasFrameCell",
+  "CharDeskCanvasCursorShape",
+  "CharDeskCanvasCursorStyle",
 ];
 const forbiddenCoreDependency = (dependency) => dependency === "react"
   || dependency === "react-dom"

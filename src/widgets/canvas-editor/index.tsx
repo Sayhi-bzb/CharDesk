@@ -357,13 +357,13 @@ export const CanvasEditor = ({
     structuredMovePreviewRef,
     hoveredLink,
     visualTheme,
-    requestCanvasRenderRef,
-    runtime,
     {
       viewActive: active,
       inputFocused: canvasOwnsInputFocus,
       cursorPreference,
-    }
+    },
+    requestCanvasRenderRef,
+    runtime
   );
 
   const activeContextMenu =

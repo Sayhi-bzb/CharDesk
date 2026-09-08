@@ -20,8 +20,9 @@ drawCharDeskCanvasDocument(context, model, {
 });
 ```
 
-`drawCharDeskCanvasCursor()` is the shared terminal-cursor primitive for Canvas
-hosts. Block, bar, and underline shapes use the allocated Cell rectangle; block
+The rendering root owns the backend-neutral Cell cursor shape, paint style, and
+default blink interval. `drawCharDeskCanvasCursor()` is the shared terminal-cursor
+primitive for Canvas hosts. Block, bar, and underline shapes use the allocated Cell rectangle; block
 temporarily paints cursor colors and redraws the Cell glyph without changing its
 Unicode or stored attributes. Visibility, blink timing, focus, and selection
 precedence remain Host interaction state.

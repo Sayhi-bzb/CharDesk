@@ -31,6 +31,8 @@ export type CellLayoutStyle = Readonly<{
   gap?: number;
   padding?: number;
   paddingTop?: number;
+  paddingRight?: number;
+  paddingBottom?: number;
   paddingLeft?: number;
   border?: boolean;
 }>;
@@ -48,6 +50,7 @@ export type WidgetKind =
   | "box"
   | "overlay"
   | "text"
+  | "button"
   | "list"
   | "list-item"
   | "menu"
@@ -209,6 +212,7 @@ export type SemanticNode = Readonly<{
   bounds: CellRect | null;
   role:
     | "dialog"
+    | "button"
     | "listbox"
     | "option"
     | "textbox"

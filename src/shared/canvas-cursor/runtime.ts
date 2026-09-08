@@ -1,4 +1,4 @@
-import type { CharDeskCanvasCursorShape } from "@chardesk/rendering/canvas";
+import type { CharDeskCellCursorShape } from "@chardesk/rendering";
 
 export const CANVAS_CURSOR_STORAGE_KEY = "chardesk-canvas-cursor-v1";
 export const DEFAULT_CANVAS_CURSOR_PREFERENCE = Object.freeze({
@@ -7,16 +7,16 @@ export const DEFAULT_CANVAS_CURSOR_PREFERENCE = Object.freeze({
 } satisfies CanvasCursorPreference);
 
 export type CanvasCursorPreference = Readonly<{
-  shape: CharDeskCanvasCursorShape;
+  shape: CharDeskCellCursorShape;
   blink: boolean;
 }>;
 
 export type CanvasCursorStorage = Pick<Storage, "getItem" | "setItem">;
 
-const isCursorShape = (value: unknown): value is CharDeskCanvasCursorShape =>
+const isCursorShape = (value: unknown): value is CharDeskCellCursorShape =>
   value === "block" || value === "bar" || value === "underline";
 
-export const decodeCanvasCursorPreference = (value: unknown): CanvasCursorPreference => {
+const decodeCanvasCursorPreference = (value: unknown): CanvasCursorPreference => {
   if (!value || typeof value !== "object") return DEFAULT_CANVAS_CURSOR_PREFERENCE;
   const candidate = value as { shape?: unknown; blink?: unknown };
   if (!isCursorShape(candidate.shape) || typeof candidate.blink !== "boolean") {
@@ -51,7 +51,7 @@ export function createCanvasCursorRuntime({
       listeners.add(listener);
       return () => { listeners.delete(listener); };
     },
-    setShape: (shape: CharDeskCanvasCursorShape) => {
+    setShape: (shape: CharDeskCellCursorShape) => {
       if (!disposed && isCursorShape(shape)) publish({ ...snapshot, shape });
     },
     setBlink: (blink: boolean) => {

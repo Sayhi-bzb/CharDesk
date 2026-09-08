@@ -6,6 +6,7 @@ import {
 import { getGraphemeCellWidth, type CharDeskTextAttributes } from "@chardesk/protocol";
 import { type CellFrame, type CellPoint, type CellRect } from "@chardesk/cell-core";
 import type {
+  CharDeskCellCursorPaintStyle,
   CharDeskCellFrameCell,
   CharDeskCellMetrics,
   CharDeskCellVisual,
@@ -85,19 +86,11 @@ export type CharDeskCanvasCellVisual = CharDeskCellVisual & {
   color: string;
 };
 
-export type CharDeskCanvasCursorShape = "block" | "bar" | "underline";
-
-export type CharDeskCanvasCursorStyle = Readonly<{
-  shape: CharDeskCanvasCursorShape;
-  color: string;
-  textColor: string;
-}>;
-
 export type CharDeskCanvasCursorEntry = Readonly<{
   cell: CharDeskCellVisual;
   x: number;
   y: number;
-  style: CharDeskCanvasCursorStyle;
+  style: CharDeskCellCursorPaintStyle;
   options?: CharDeskCanvasCellDrawOptions;
   drawText?: boolean;
 }>;

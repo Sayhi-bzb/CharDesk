@@ -23,6 +23,7 @@ import type {
   WidgetNode,
   WidgetTree,
 } from "./types.js";
+import { isCollectionItemKind } from "./widget-capabilities.js";
 
 const integer = (value: number, label: string) => {
   if (!Number.isFinite(value)) throw new RangeError(`${label} must be finite.`);
@@ -60,6 +61,8 @@ const applyStyle = (target: YogaNode, style: CellLayoutStyle): void => {
   target.setGap(Gutter.All, style.gap);
   target.setPadding(Edge.All, style.padding);
   target.setPadding(Edge.Top, style.paddingTop);
+  target.setPadding(Edge.Right, style.paddingRight);
+  target.setPadding(Edge.Bottom, style.paddingBottom);
   target.setPadding(Edge.Left, style.paddingLeft);
   target.setBorder(Edge.All, style.border ? 1 : 0);
 };
@@ -97,11 +100,7 @@ const measureText = (
 };
 
 const configureNode = (node: WidgetNode, target: YogaNode): void => {
-  const item = node.kind === "list-item"
-    || node.kind === "menu-item"
-    || node.kind === "tree-item"
-    || node.kind === "tab"
-    || node.kind === "grid-cell";
+  const item = isCollectionItemKind(node.kind);
   const row = node.kind === "tabs" || node.kind === "grid-row";
   const column = node.kind === "list"
     || node.kind === "menu"
@@ -118,6 +117,14 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
             ? 0
             : 1,
       }
+    : node.kind === "button"
+      ? {
+          direction: "row",
+          minHeight: 1,
+          flexShrink: 0,
+          paddingLeft: 1,
+          paddingRight: 1,
+        }
     : row
       ? { direction: "row", flexShrink: 0 }
     : column
