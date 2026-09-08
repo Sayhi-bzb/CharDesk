@@ -30,6 +30,13 @@ and preview defaults belong to this bridge. Document cell colors, ANSI palettes,
 export defaults, and CharGraph render themes remain artifact-owned and do not
 consume the Host palette.
 
+Freeform and Slide use one terminal Cell cursor for both Navigate and Text Edit.
+The global Host preference selects block, bar, or underline and independently
+enables the 600ms edit blink; it is local UI state, not document or history state.
+Navigate is steady. Text Edit blinks only while its Canvas owns input focus,
+becoming steady on focus loss. A Range hides the cursor, and inactive split views
+draw neither cursor nor Range. Structured mode retains its own focus contract.
+
 Third-party UI integrations live behind product adapters. The onboarding
 adapter is the sole Driver.js owner and maps shared overlay, motion, radius, and
 reduced-motion semantics into Driver configuration. Product onboarding code

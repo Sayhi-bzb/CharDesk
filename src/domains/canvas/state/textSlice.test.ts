@@ -265,13 +265,13 @@ describe("textSlice writeTextString", () => {
     expect(useEditorStore.getState().textCursor).toEqual({ x: 2, y: 0 });
   });
 
-  it("keeps the advanced active cell when leaving text edit mode", () => {
+  it("keeps the advanced active cell and clears edit state when leaving text edit mode", () => {
     setTextState({ textCursor: { x: 0, y: 0 } });
     useEditorStore.getState().writeTextString("AB");
 
     useEditorStore.getState().exitStaticGridTextEdit();
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 2, y: 0 });
+    expect(useEditorStore.getState().textCursor).toBeNull();
     expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 2, y: 0 });
     expect(useEditorStore.getState().staticGridInputFlow).toBeNull();
   });

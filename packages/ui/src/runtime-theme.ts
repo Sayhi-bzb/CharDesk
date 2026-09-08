@@ -15,7 +15,6 @@ export type UiRuntimeTheme = {
   canvas: {
     selectionSurface: string;
     selectionBorder: string;
-    selectionMarker: string;
     textCursorSurface: string;
     textCursorForeground: string;
     pickerOuter: string;
@@ -38,7 +37,6 @@ const runtimeColorTokens = {
   previewText: "--canvas-preview-text",
   selectionSurface: "--canvas-selection-surface",
   selectionBorder: "--canvas-selection-border",
-  selectionMarker: "--canvas-selection-marker",
   textCursorSurface: "--canvas-text-cursor-surface",
   textCursorForeground: "--canvas-text-cursor-foreground",
   pickerOuter: "--canvas-picker-outer",
@@ -127,7 +125,6 @@ export function readUiRuntimeTheme(element: HTMLElement): UiRuntimeTheme {
       canvas: {
         selectionSurface: colors.selectionSurface,
         selectionBorder: colors.selectionBorder,
-        selectionMarker: colors.selectionMarker,
         textCursorSurface: colors.textCursorSurface,
         textCursorForeground: colors.textCursorForeground,
         pickerOuter: colors.pickerOuter,

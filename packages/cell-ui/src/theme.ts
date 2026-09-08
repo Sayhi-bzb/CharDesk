@@ -1,7 +1,8 @@
 import type { CellTextStyle } from "./types.js";
 import type { CellBorderShape } from "./border.js";
+import type { CharDeskCanvasCursorShape } from "@chardesk/rendering/canvas";
 
-export type CellCursorShape = "block" | "bar" | "underline";
+export type CellCursorShape = CharDeskCanvasCursorShape;
 
 export type CellCursorStyle = Readonly<{
   shape: CellCursorShape;

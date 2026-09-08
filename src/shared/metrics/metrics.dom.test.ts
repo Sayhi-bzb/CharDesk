@@ -193,7 +193,7 @@ describe("metrics", () => {
 
     it("keeps background drawing separate from glyph drawing", () => {
       const ctx = createContext();
-      const cell = { char: "\ue0b0", color: "#111111", bgColor: "#eeeeee" };
+      const cell = { char: "A", color: "#111111", bgColor: "#eeeeee" };
 
       drawCellBackground(ctx, cell, 0, 0);
       drawCellText(ctx, cell, 0, 0);

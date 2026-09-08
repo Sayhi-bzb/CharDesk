@@ -54,7 +54,7 @@ export const createStaticGridSlice: StateCreator<
       staticGridSelection: selection,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
-      textCursor: activeCell,
+      textCursor: null,
     });
   },
 
@@ -114,7 +114,10 @@ export const createStaticGridSlice: StateCreator<
         !options?.extend && state.staticGridEditMode === "text-edit"
           ? createInputFlow(state, nextCell)
           : null,
-      textCursor: options?.extend ? null : nextCell,
+      textCursor:
+        !options?.extend && state.staticGridEditMode === "text-edit"
+          ? nextCell
+          : null,
     });
   },
 
@@ -146,7 +149,7 @@ export const createStaticGridSlice: StateCreator<
       staticGridSelection: selection,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
-      textCursor: options?.extend ? null : nextCell,
+      textCursor: null,
     });
   },
 
@@ -172,7 +175,7 @@ export const createStaticGridSlice: StateCreator<
       staticGridSelection: selection,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
-      textCursor: options?.extend ? null : nextCell,
+      textCursor: null,
     });
   },
 
@@ -252,11 +255,10 @@ export const createStaticGridSlice: StateCreator<
   },
 
   exitStaticGridTextEdit: () => {
-    const activeCell = get().staticGridSelection.activeCell;
     set({
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
-      textCursor: activeCell,
+      textCursor: null,
     });
   },
 

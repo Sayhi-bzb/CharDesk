@@ -177,8 +177,7 @@
   --control-active-surface: oklch(0.9 0.006 286);
   --canvas-selection-surface: color-mix(in oklab, var(--primary) 12%, transparent);
   --canvas-selection-border: var(--primary);
-  --canvas-selection-marker: color-mix(in oklab, var(--primary) 65%, transparent);
-  --canvas-text-cursor-surface: color-mix(in oklab, var(--foreground) 55%, transparent);
+  --canvas-text-cursor-surface: var(--foreground);
   --canvas-text-cursor-foreground: var(--background);
   --canvas-picker-outer: var(--background);
   --canvas-picker-inner: var(--foreground);

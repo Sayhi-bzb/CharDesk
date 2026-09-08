@@ -25,6 +25,7 @@ import type { StructuredMovePreview } from './hooks/useCanvasRenderer';
 import { isStaticGridMode } from '@/domains/sessions/public';
 import { useCanvasEngineRuntime } from './engine/useCanvasEngineRuntime';
 import { useCanvasViewOptional } from './engine/CanvasWorkspace';
+import { useCanvasCursor } from '@/shared/canvas-cursor/hooks';
 import { resolveCanvasSurfaceGeometry } from './canvasSurfaceGeometry';
 import type { EditorViewportFrame } from '@/widgets/editor-chrome/public';
 import { computeVisibleSurfaceBounds } from './minimap/geometry';
@@ -67,6 +68,7 @@ export const CanvasEditor = ({
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const visualTheme = useHostVisualTheme(containerRef);
+  const cursorPreference = useCanvasCursor();
   const [hoveredLink, setHoveredLink] = useState<CanvasLinkHit | null>(null);
   const structuredMovePreviewRef = useRef<StructuredMovePreview | null>(null);
   const requestCanvasRenderRef = useRef<(() => void) | null>(null);
@@ -356,7 +358,12 @@ export const CanvasEditor = ({
     hoveredLink,
     visualTheme,
     requestCanvasRenderRef,
-    runtime
+    runtime,
+    {
+      viewActive: active,
+      inputFocused: canvasOwnsInputFocus,
+      cursorPreference,
+    }
   );
 
   const activeContextMenu =

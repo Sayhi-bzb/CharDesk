@@ -17,6 +17,8 @@ export type SettingsTarget = {
     | { type: 'language' }
     | { type: 'text-renderer' }
     | { type: 'canvas-font' }
+    | { type: 'canvas-cursor' }
+    | { type: 'canvas-cursor-blink' }
     | { type: 'render-feature'; featureId: string }
     | { type: 'shortcut'; entryId: string };
 };
@@ -44,6 +46,29 @@ export const getSettingsSearchResults = (
   const displayTitle = t('settings.display');
   const languageTitle = t('appMenu.language');
   const results: SettingsSearchResult[] = [
+    {
+      id: 'setting:canvas-cursor',
+      group: 'general',
+      groupTitle: generalTitle,
+      title: t('settings.canvasCursor'),
+      target: { section: 'general', focus: { type: 'canvas-cursor' } },
+      searchText: searchable([
+        t('settings.canvasCursor'),
+        t('settings.canvasCursor.block'),
+        t('settings.canvasCursor.bar'),
+        t('settings.canvasCursor.underline'),
+        'cursor',
+        '光标',
+      ]),
+    },
+    {
+      id: 'setting:canvas-cursor-blink',
+      group: 'general',
+      groupTitle: generalTitle,
+      title: t('settings.canvasCursorBlink'),
+      target: { section: 'general', focus: { type: 'canvas-cursor-blink' } },
+      searchText: searchable([t('settings.canvasCursorBlink'), 'blink', '闪烁']),
+    },
     {
       id: 'setting:canvas-font',
       group: 'general',

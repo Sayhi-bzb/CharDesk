@@ -1,10 +1,10 @@
 import {
-  alignCharDeskCanvasRect,
-  drawCharDeskCanvasCells,
+  drawCharDeskCanvasCursor,
   type CharDeskCanvasPalette,
   type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
 import {
+  resolveCharDeskCellVisual,
   resolveCharDeskFontRoute,
   type CharDeskCellMetrics,
 } from "@chardesk/rendering";
@@ -81,41 +81,32 @@ const drawCursor = (
       width: 1 as const,
       fontRoute: resolveCharDeskFontRoute(" "),
     };
-    drawCharDeskCanvasCells(context, [{
-      cell: {
-        ...visual,
-        color: style.textColor,
-        bgColor: style.color,
-      },
+    drawCharDeskCanvasCursor(context, {
+      cell: visual,
       x: bounds.x * metrics.cellWidth,
       y: bounds.y * metrics.cellHeight,
+      style,
       options: {
         metrics,
         palette,
-        clipToCell: true,
         ...(fontProfile ? { fontProfile } : {}),
       },
-      drawBackground: true,
       drawText: cell?.drawText !== false,
-    }]);
+    });
     return;
   }
-  const logical = style.shape === "bar"
-    ? {
-        x: bounds.x * metrics.cellWidth,
-        y: bounds.y * metrics.cellHeight,
-        width: 1,
-        height: metrics.cellHeight,
-      }
-    : {
-        x: bounds.x * metrics.cellWidth,
-        y: (bounds.y + 1) * metrics.cellHeight - 1,
-        width: bounds.width * metrics.cellWidth,
-        height: 1,
-      };
-  const aligned = alignCharDeskCanvasRect(logical, context.getTransform());
-  context.fillStyle = style.color;
-  context.fillRect(aligned.x, aligned.y, aligned.width, aligned.height);
+  drawCharDeskCanvasCursor(context, {
+    cell: resolveCharDeskCellVisual({ text: bounds.width === 2 ? "中" : " " }),
+    x: bounds.x * metrics.cellWidth,
+    y: bounds.y * metrics.cellHeight,
+    style,
+    options: {
+      metrics,
+      palette,
+      ...(fontProfile ? { fontProfile } : {}),
+    },
+    drawText: false,
+  });
 };
 
 /** Browser-only cursor overlay that preserves the committed Cell frame underneath it. */

@@ -85,6 +85,23 @@ export type CharDeskCanvasCellVisual = CharDeskCellVisual & {
   color: string;
 };
 
+export type CharDeskCanvasCursorShape = "block" | "bar" | "underline";
+
+export type CharDeskCanvasCursorStyle = Readonly<{
+  shape: CharDeskCanvasCursorShape;
+  color: string;
+  textColor: string;
+}>;
+
+export type CharDeskCanvasCursorEntry = Readonly<{
+  cell: CharDeskCellVisual;
+  x: number;
+  y: number;
+  style: CharDeskCanvasCursorStyle;
+  options?: CharDeskCanvasCellDrawOptions;
+  drawText?: boolean;
+}>;
+
 export type CharDeskCanvasDocumentOptions = {
   metrics?: CharDeskCellMetrics;
   palette: CharDeskCanvasPalette;
@@ -559,6 +576,52 @@ export const drawCharDeskCanvasCells = (
       drawCellText(ctx, entry, visuals[index]!, textState);
     }
   }
+  ctx.restore();
+};
+
+/** Draws a terminal-style cursor without changing the underlying Cell value. */
+export const drawCharDeskCanvasCursor = (
+  ctx: CharDeskCanvasContext,
+  entry: CharDeskCanvasCursorEntry
+) => {
+  const { cell, style, options } = entry;
+  if (style.shape === "block") {
+    drawCharDeskCanvasCells(ctx, [{
+      cell: {
+        ...cell,
+        color: style.textColor,
+        bgColor: style.color,
+        ...(cell.attrs ? { attrs: { ...cell.attrs, inverse: undefined } } : {}),
+      },
+      x: entry.x,
+      y: entry.y,
+      options: { ...options, clipToCell: true },
+      drawBackground: true,
+      drawText: entry.drawText !== false,
+    }]);
+    return;
+  }
+
+  const metrics = options?.metrics ?? DEFAULT_CHARDESK_CELL_METRICS;
+  const zoom = options?.zoom ?? 1;
+  const thickness = Math.max(1, Math.round(zoom));
+  const logical = style.shape === "bar"
+    ? {
+        x: entry.x,
+        y: entry.y,
+        width: thickness,
+        height: metrics.cellHeight * zoom,
+      }
+    : {
+        x: entry.x,
+        y: entry.y + metrics.cellHeight * zoom - thickness,
+        width: metrics.cellWidth * zoom * cell.width,
+        height: thickness,
+      };
+  const aligned = alignCanvasRect(logical, ctx.getTransform?.());
+  ctx.save();
+  ctx.fillStyle = style.color;
+  ctx.fillRect(aligned.x, aligned.y, aligned.width, aligned.height);
   ctx.restore();
 };
 

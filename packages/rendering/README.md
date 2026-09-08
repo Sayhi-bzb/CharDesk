@@ -20,6 +20,12 @@ drawCharDeskCanvasDocument(context, model, {
 });
 ```
 
+`drawCharDeskCanvasCursor()` is the shared terminal-cursor primitive for Canvas
+hosts. Block, bar, and underline shapes use the allocated Cell rectangle; block
+temporarily paints cursor colors and redraws the Cell glyph without changing its
+Unicode or stored attributes. Visibility, blink timing, focus, and selection
+precedence remain Host interaction state.
+
 `zoom` rasterizes at the requested character size; hosts should size the DPR
 backing surface to the returned scaled document layout instead of applying a
 CSS bitmap transform.

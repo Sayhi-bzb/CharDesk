@@ -37,6 +37,11 @@ import {
   type BlackboardWorkspaceRepository,
 } from "@/domains/blackboard/public";
 import { createCanvasFontRuntime, type CanvasFontRuntime, type CanvasFontStorage } from "@/shared/fonts/runtime";
+import {
+  createCanvasCursorRuntime,
+  type CanvasCursorRuntime,
+  type CanvasCursorStorage,
+} from "@/shared/canvas-cursor/runtime";
 
 type KeymapStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -45,6 +50,7 @@ type ApplicationEditorHostOptions = {
   keymapStorage?: KeymapStorage | false;
   textRenderingStorage?: TextRenderingStorage | false;
   canvasFontStorage?: CanvasFontStorage | false;
+  canvasCursorStorage?: CanvasCursorStorage | false;
   profile?: EditorHostProfile;
   initialSessions?: readonly CanvasSession[];
   blackboardRepository?: BlackboardWorkspaceRepository;
@@ -56,6 +62,7 @@ export class ApplicationEditorHost {
   readonly editor: CanvasEditorRuntime;
   readonly textRendering: TextRenderingRuntime;
   readonly canvasFont: CanvasFontRuntime;
+  readonly canvasCursor: CanvasCursorRuntime;
   readonly textRenderingWorker: TextRenderingWorkerClient;
   readonly blackboard: BlackboardRuntime;
   readonly profile: EditorHostProfile;
@@ -66,12 +73,14 @@ export class ApplicationEditorHost {
     keymapStorage = false,
     textRenderingStorage = false,
     canvasFontStorage = false,
+    canvasCursorStorage = false,
     profile = EDITOR_HOST_PROFILE,
     initialSessions,
     blackboardRepository = new IndexedDbBlackboardRepository(),
   }: ApplicationEditorHostOptions = {}) {
     this.profile = profile;
     this.canvasFont = createCanvasFontRuntime({ storage: canvasFontStorage });
+    this.canvasCursor = createCanvasCursorRuntime({ storage: canvasCursorStorage });
     this.collaboration = createCollaborationRuntime();
     this.textRendering = createTextRenderingRuntime({ storage: textRenderingStorage });
     this.textRenderingWorker = new TextRenderingWorkerClient(this.textRendering);
@@ -112,6 +121,7 @@ export class ApplicationEditorHost {
     this.#disposed = true;
     this.editor.dispose();
     this.canvasFont.dispose();
+    this.canvasCursor.dispose();
     this.textRenderingWorker.dispose();
     await this.collaboration.disconnect();
     this.canvas.dispose();
@@ -142,6 +152,7 @@ export const getApplicationEditorHost = (
       keymapStorage: storage,
       textRenderingStorage: storage,
       canvasFontStorage: storage,
+      canvasCursorStorage: storage,
     });
   }
   return applicationHost;

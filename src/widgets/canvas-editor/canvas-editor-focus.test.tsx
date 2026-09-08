@@ -1152,7 +1152,7 @@ describe("CanvasEditor focus management", () => {
       x: 2,
       y: 1,
     });
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 2, y: 1 });
+    expect(useEditorStore.getState().textCursor).toBeNull();
 
     fireEvent.keyDown(textarea!, { key: "ArrowUp", shiftKey: true });
     expect(useEditorStore.getState().staticGridSelection).toEqual({

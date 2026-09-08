@@ -7,6 +7,7 @@ import {
 import { createCharDeskRenderModel, resolveCharDeskCellVisual } from "./index.js";
 import {
   drawCharDeskCanvasCells,
+  drawCharDeskCanvasCursor,
   drawCharDeskCanvasDocument,
   getCharDeskCanvasFont,
   loadCharDeskCanvasFonts,
@@ -57,6 +58,40 @@ const customFontProfile = (overrides: Partial<CharDeskFontProfile["capabilities"
 });
 
 describe("CharDesk Canvas 2D renderer", () => {
+  it("draws block, bar, and underline cursors from one Cell primitive", () => {
+    const { context } = createContext(2);
+    const cell = resolveCharDeskCellVisual({ text: "中", color: "#123456" });
+    drawCharDeskCanvasCursor(context, {
+      cell,
+      x: 9,
+      y: 20,
+      style: { shape: "block", color: "#ffffff", textColor: "#000000" },
+      options: { metrics: { cellWidth: 9, cellHeight: 20, fontSize: 15, fontFamily: "Test" } },
+    });
+    expect(context.fillRect).toHaveBeenCalledWith(9, 20, 18, 20);
+    expect(context.fillText).toHaveBeenCalledWith("中", 18, 30);
+
+    vi.mocked(context.fillRect).mockClear();
+    drawCharDeskCanvasCursor(context, {
+      cell,
+      x: 9,
+      y: 20,
+      style: { shape: "bar", color: "#ffffff", textColor: "#000000" },
+      options: { metrics: { cellWidth: 9, cellHeight: 20, fontSize: 15, fontFamily: "Test" } },
+    });
+    expect(context.fillRect).toHaveBeenCalledWith(9, 20, 1, 20);
+
+    vi.mocked(context.fillRect).mockClear();
+    drawCharDeskCanvasCursor(context, {
+      cell,
+      x: 9,
+      y: 20,
+      style: { shape: "underline", color: "#ffffff", textColor: "#000000" },
+      options: { metrics: { cellWidth: 9, cellHeight: 20, fontSize: 15, fontFamily: "Test" } },
+    });
+    expect(context.fillRect).toHaveBeenCalledWith(9, 39, 18, 1);
+  });
+
   it("presents bounded Cell Frames with shared metrics and dirty filtering", () => {
     const { context } = createContext();
     const cells = new Map([

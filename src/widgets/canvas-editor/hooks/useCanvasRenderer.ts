@@ -58,6 +58,9 @@ import {
 } from '../engine/FrameScheduler';
 import { CanvasRenderManager } from '../engine/CanvasRenderManager';
 import { shouldDrawCanvasGrid } from '../rendering/canvasGridVisibility';
+import { drawCanvasCellCursor } from '../rendering/canvasCellCursor';
+import { resolveCanvasCellPresentation } from '../presentation/canvasCellPresentation';
+import type { CanvasCursorPreference } from '@/shared/canvas-cursor/runtime';
 import {
   resolveCanvasContentDpr,
   resolveCanvasContentResolutionMode,
@@ -72,6 +75,12 @@ interface LayerRefs {
 }
 
 export type CanvasInteractionPalette = HostVisualTheme['canvas'];
+
+export type CanvasCellPresentationContext = Readonly<{
+  viewActive: boolean;
+  inputFocused: boolean;
+  cursorPreference: CanvasCursorPreference;
+}>;
 
 export const resolveCanvasRenderPasses = (invalidation: CanvasFrameInvalidation) => ({
   content: CanvasRenderManager.includes(invalidation, 'background'),
@@ -214,26 +223,6 @@ export const drawGridSelectionGeometry = (
   ctx.restore();
 };
 
-export const drawGridActiveCellMarker = (
-  ctx: CanvasRenderingContext2D,
-  point: Point,
-  viewport: { offset: Point; zoom: number },
-  palette: CanvasInteractionPalette
-) => {
-  const pos = gridCellRect(point, viewport);
-  const inset = Math.max(1, Math.round(viewport.zoom));
-  ctx.save();
-  ctx.strokeStyle = palette.selectionMarker;
-  ctx.lineWidth = Math.max(1, Math.round(viewport.zoom));
-  ctx.strokeRect(
-    Math.round(pos.x) + inset,
-    Math.round(pos.y) + inset,
-    Math.max(1, Math.round(pos.width) - inset * 2),
-    Math.max(1, Math.round(pos.height) - inset * 2)
-  );
-  ctx.restore();
-};
-
 export const useCanvasRenderer = (
   layers: LayerRefs,
   size: { width: number; height: number } | undefined,
@@ -244,7 +233,12 @@ export const useCanvasRenderer = (
   hoveredLink: CanvasLinkHit | null,
   visualTheme: HostVisualTheme | null,
   requestRenderRef?: React.MutableRefObject<(() => void) | null>,
-  runtime?: CanvasEngineRuntime
+  runtime?: CanvasEngineRuntime,
+  cellContext: CanvasCellPresentationContext = {
+    viewActive: true,
+    inputFocused: true,
+    cursorPreference: { shape: 'block', blink: true },
+  }
 ) => {
   const { profile: fontProfile } = useCanvasFont();
   const {
@@ -281,7 +275,32 @@ export const useCanvasRenderer = (
       }),
     [grid, staticGridEditMode, staticGridSelection, textCursor]
   );
-  const renderedTextCursor = canvasMode !== 'structured' ? staticGridView.textCursor : textCursor;
+  const renderedTextCursor = isStaticGridMode(canvasMode) ? null : textCursor;
+  const cellPresentation = useMemo(
+    () => resolveCanvasCellPresentation({
+      viewActive: cellContext.viewActive && isStaticGridMode(canvasMode),
+      inputFocused: cellContext.inputFocused,
+      editMode: staticGridEditMode,
+      activeCell: staticGridView.activeCell,
+      textCursor: staticGridView.textCursor,
+      hasRangeSelection: staticGridView.hasSelection || !!draggingSelection,
+      selectionGeometry: staticGridView.selectionGeometry,
+      cursorPreference: cellContext.cursorPreference,
+    }),
+    [
+      cellContext.inputFocused,
+      cellContext.cursorPreference,
+      cellContext.viewActive,
+      canvasMode,
+      draggingSelection,
+      staticGridEditMode,
+      staticGridView.activeCell,
+      staticGridView.hasSelection,
+      staticGridView.selectionGeometry,
+      staticGridView.textCursor,
+    ]
+  );
+  const cursorVisibleRef = useRef(true);
   const [renderManager] = useState(() => new CanvasRenderManager());
   const contentResolutionModeRef = useRef<CanvasContentResolutionMode>('full');
   const fallbackViewportRef = useRef({ offset, zoom });
@@ -322,6 +341,8 @@ export const useCanvasRenderer = (
   useEffect(() => {
     if (!visualTheme) return;
     let disposed = false;
+    let cursorTimer: number | null = null;
+    cursorVisibleRef.current = true;
     const palette = visualTheme.canvas;
     const render = (invalidation: CanvasFrameInvalidation) => {
       if (!size || !surfaceGeometry || size.width === 0 || size.height === 0) return;
@@ -506,16 +527,18 @@ export const useCanvasRenderer = (
 
         if (canvasMode !== 'structured') {
           const ranges = getGridSelectionRanges(staticGridSelection);
-          const geometry = draggingSelection
+          const geometry = draggingSelection && cellPresentation.selectionGeometry
             ? getGridSelectionGeometry([
                 ...ranges,
                 gridRangeFromSelectionArea(draggingSelection),
               ], grid)
-            : staticGridView.selectionGeometry;
-          drawGridSelectionGeometry(uiCtx, geometry, {
-            offset: renderOffset,
-            zoom,
-          }, palette);
+            : cellPresentation.selectionGeometry;
+          if (geometry) {
+            drawGridSelectionGeometry(uiCtx, geometry, {
+              offset: renderOffset,
+              zoom,
+            }, palette);
+          }
         } else if (draggingSelection) {
           drawGridSelectionPreview(
             uiCtx,
@@ -526,6 +549,20 @@ export const useCanvasRenderer = (
         }
         if (canvasMode === 'structured' && structuredPreviewMovingGrid) {
           drawLayer(uiCtx, structuredPreviewMovingGrid, viewBounds, zoom, renderOffset);
+        }
+
+        if (
+          isStaticGridMode(canvasMode) &&
+          cellPresentation.cursor &&
+          cursorVisibleRef.current
+        ) {
+          drawCanvasCellCursor(uiCtx, cellPresentation.cursor, {
+            grid: renderedGrid,
+            offset: renderOffset,
+            zoom,
+            palette,
+            fontProfile,
+          });
         }
 
         if (canvasMode === 'structured') {
@@ -695,7 +732,7 @@ export const useCanvasRenderer = (
           );
         }
 
-        if (renderedTextCursor && !isStaticGridMode(canvasMode)) {
+        if (renderedTextCursor) {
           const pos = gridCellRect(renderedTextCursor, { offset: renderOffset, zoom });
           if (canvasMode === 'structured' && editingStructuredTextNodeId) {
             uiCtx.fillStyle = palette.textCursorSurface;
@@ -771,6 +808,33 @@ export const useCanvasRenderer = (
         render(pendingInvalidation);
       });
     };
+    const clearCursorTimer = () => {
+      if (cursorTimer === null) return;
+      window.clearTimeout(cursorTimer);
+      cursorTimer = null;
+    };
+    const scheduleCursorBlink = () => {
+      clearCursorTimer();
+      if (
+        !cellPresentation.cursor?.blink ||
+        visualTheme.motion.reduced ||
+        document.visibilityState === 'hidden'
+      ) return;
+      cursorTimer = window.setTimeout(() => {
+        cursorTimer = null;
+        if (disposed) return;
+        cursorVisibleRef.current = !cursorVisibleRef.current;
+        scheduleRender(CANVAS_FRAME_INVALIDATION.overlay, 'interaction');
+        scheduleCursorBlink();
+      }, 600);
+    };
+    const handleVisibilityChange = () => {
+      clearCursorTimer();
+      if (document.visibilityState === 'hidden') return;
+      cursorVisibleRef.current = true;
+      scheduleRender(CANVAS_FRAME_INVALIDATION.overlay, 'interaction');
+      scheduleCursorBlink();
+    };
     const structuredMovePreview = structuredMovePreviewRef.current;
     const sharedViewportInputs = [
       fontProfile,
@@ -817,6 +881,7 @@ export const useCanvasRenderer = (
         textCursor,
         staticGridSelection,
         staticGridEditMode,
+        cellPresentation,
         draggingSelection,
         hoveredLink,
         hoveredGrid,
@@ -838,7 +903,8 @@ export const useCanvasRenderer = (
         movePreview?.movingGrid.size ||
         hoveredLink ||
         draggingSelection ||
-        staticGridView.hasSelection ||
+        cellPresentation.selectionGeometry ||
+        cellPresentation.cursor ||
         (canvasMode === 'structured' && (
           structuredGridFocus ||
           structuredTextSelection ||
@@ -866,6 +932,7 @@ export const useCanvasRenderer = (
       scheduleRender(renderManager.reset());
     };
     fonts?.addEventListener('loadingdone', handleFontLoad);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     const unsubscribeActivity = runtime?.renderActivity.subscribe((mode, previous) => {
       if (mode === "settled" && !disposed) {
         runtime.renderExperience.markSettling(previous);
@@ -874,8 +941,10 @@ export const useCanvasRenderer = (
     });
 
     scheduleRender(invalidation);
+    scheduleCursorBlink();
     return () => {
       disposed = true;
+      clearCursorTimer();
       runtime?.frameScheduler.cancel("canvas-renderer");
       if (manualRenderRafRef.current !== null) {
         cancelAnimationFrame(manualRenderRafRef.current);
@@ -886,6 +955,7 @@ export const useCanvasRenderer = (
         requestRenderRef.current = null;
       }
       fonts?.removeEventListener('loadingdone', handleFontLoad);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       unsubscribeActivity?.();
     };
   }, [
@@ -919,9 +989,7 @@ export const useCanvasRenderer = (
     requestRenderRef,
     drawLayer,
     renderedTextCursor,
-    staticGridView.activeCell,
-    staticGridView.hasSelection,
-    staticGridView.selectionGeometry,
+    cellPresentation,
     renderManager,
     runtime,
     visualTheme,

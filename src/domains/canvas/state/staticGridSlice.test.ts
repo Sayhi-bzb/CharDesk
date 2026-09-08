@@ -24,7 +24,7 @@ describe("staticGridSlice", () => {
     resetStore();
   });
 
-  it("moves the active cell and keeps the text cursor in sync", () => {
+  it("moves the active cell without creating editing cursor state", () => {
     useEditorStore.getState().setStaticGridActiveCell({ x: 4, y: 5 });
     useEditorStore.getState().moveStaticGridFocus(1, -2);
 
@@ -35,7 +35,7 @@ describe("staticGridSlice", () => {
       primaryRange: { start: { x: 5, y: 3 }, end: { x: 5, y: 3 } },
       additionalRanges: [],
     });
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 5, y: 3 });
+    expect(useEditorStore.getState().textCursor).toBeNull();
   });
 
   it("anchors either half of a wide cell and moves across it atomically", () => {
@@ -156,7 +156,7 @@ describe("staticGridSlice", () => {
     useEditorStore.getState().moveStaticGridFocus(1, 1);
 
     expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 2, y: 1 });
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 2, y: 1 });
+    expect(useEditorStore.getState().textCursor).toBeNull();
   });
 
   it("uses content bounds for edge, row, and column navigation in freeform", () => {
@@ -168,7 +168,7 @@ describe("staticGridSlice", () => {
 
     useEditorStore.getState().moveStaticGridFocusToEdge("left");
     expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: -2, y: 2 });
-    expect(useEditorStore.getState().textCursor).toEqual({ x: -2, y: 2 });
+    expect(useEditorStore.getState().textCursor).toBeNull();
 
     useEditorStore.getState().selectStaticGridRow();
     expect(getGridSelectionRanges(useEditorStore.getState().staticGridSelection)).toEqual([
@@ -206,7 +206,7 @@ describe("staticGridSlice", () => {
     useEditorStore.getState().exitStaticGridTextEdit();
 
     expect(useEditorStore.getState().staticGridEditMode).toBe("navigate");
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 3, y: 2 });
+    expect(useEditorStore.getState().textCursor).toBeNull();
     expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 3, y: 2 });
   });
 
@@ -222,7 +222,7 @@ describe("staticGridSlice", () => {
     useEditorStore.getState().moveStaticGridFocusToContentBoundary("right");
     expect(useEditorStore.getState()).toMatchObject({
       staticGridEditMode: "navigate",
-      textCursor: { x: 2, y: 1 },
+      textCursor: null,
       staticGridSelection: {
         activeCell: { x: 2, y: 1 },
         anchorCell: { x: 2, y: 1 },

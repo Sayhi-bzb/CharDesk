@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   drawActiveCellFocus,
   drawCanvasColorPickerAnchor,
-  drawGridActiveCellMarker,
   drawGridSelectionGeometry,
   getStructuredSplitBoxActiveLeafBounds,
   type CanvasInteractionPalette,
@@ -16,7 +15,6 @@ import {
 const palette: CanvasInteractionPalette = {
   selectionSurface: "selection-surface",
   selectionBorder: "selection-border",
-  selectionMarker: "selection-marker",
   textCursorSurface: "cursor-surface",
   textCursorForeground: "cursor-foreground",
   pickerOuter: "picker-outer",
@@ -59,31 +57,6 @@ describe("useCanvasRenderer structured rect handles", () => {
     });
     expect(ctx.fillRect).toHaveBeenCalledWith(18, 60, 9, 20);
     expect(ctx.strokeRect).toHaveBeenCalledWith(18, 60, 9, 20);
-  });
-
-  it("draws the active-cell marker independently from the range contour", () => {
-    const styles: { stroke?: string; lineWidth?: number } = {};
-    const ctx = {
-      save: vi.fn(),
-      restore: vi.fn(),
-      strokeRect: vi.fn(),
-      set strokeStyle(value: string | CanvasGradient | CanvasPattern) {
-        styles.stroke = String(value);
-      },
-      set lineWidth(value: number) {
-        styles.lineWidth = value;
-      },
-    } as unknown as CanvasRenderingContext2D;
-
-    drawGridActiveCellMarker(ctx, { x: 4, y: 3 }, {
-      offset: { x: 0, y: 0 },
-      zoom: 1,
-    }, palette);
-    expect(styles).toEqual({
-      stroke: "selection-marker",
-      lineWidth: 1,
-    });
-    expect(ctx.strokeRect).toHaveBeenCalledWith(37, 61, 7, 18);
   });
 
   it("fills overlapping ranges once and strokes their union contour", () => {

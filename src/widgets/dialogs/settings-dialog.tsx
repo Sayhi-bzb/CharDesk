@@ -28,6 +28,10 @@ import {
 } from './keyboard-shortcuts-dialog';
 import { DisplaySettingsPanel } from './display-settings-panel';
 import { CanvasFontSelect, CanvasFontStatus } from './canvas-font-setting';
+import {
+  CanvasCursorBlinkCheckbox,
+  CanvasCursorShapeSelect,
+} from './canvas-cursor-setting';
 import { SettingsContentSection } from './settings-content-section';
 import { SettingsNavigation } from './settings-navigation';
 import {
@@ -86,7 +90,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   ] as const;
 
   useEffect(() => {
-    if (section !== 'general' || (revealTarget?.type !== 'language' && revealTarget?.type !== 'canvas-font')) return;
+    if (
+      section !== 'general' ||
+      !revealTarget ||
+      !['language', 'canvas-font', 'canvas-cursor', 'canvas-cursor-blink'].includes(
+        revealTarget.type
+      )
+    ) return;
     const frame = requestAnimationFrame(() => {
       const control = document.getElementById(`settings-${revealTarget.type}`);
       if (typeof control?.scrollIntoView === 'function') {
@@ -263,6 +273,20 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </div>
                 </div>
                 <CanvasFontStatus />
+                <div className="flex min-w-0 items-center justify-between gap-4 py-2">
+                  <Label htmlFor="settings-canvas-cursor" className="min-w-0 truncate">
+                    {t('settings.canvasCursor')}
+                  </Label>
+                  <div className="w-2/5 min-w-24 max-w-40 shrink-0">
+                    <CanvasCursorShapeSelect />
+                  </div>
+                </div>
+                <div className="flex min-w-0 items-center justify-between gap-4 py-2">
+                  <Label htmlFor="settings-canvas-cursor-blink" className="min-w-0 truncate">
+                    {t('settings.canvasCursorBlink')}
+                  </Label>
+                  <CanvasCursorBlinkCheckbox />
+                </div>
               </SettingsContentSection>
             ) : section === 'display' ? (
               <SettingsContentSection key="display" heading={t('settings.display')}>
