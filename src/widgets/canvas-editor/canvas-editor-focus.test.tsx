@@ -27,7 +27,7 @@ import {
 } from "@/shared/shortcuts/dispatcher";
 import { CanvasCameraManager } from "@/widgets/canvas-editor/engine/CanvasCameraManager";
 import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
-import type { SlideDeck } from "@/domains/slides/public";
+import type { SlideDeckSnapshot } from "@/domains/slides/public";
 
 const useSizeMock = vi.hoisted(() => vi.fn());
 
@@ -189,7 +189,7 @@ describe("CanvasEditor focus management", () => {
     const fitBounds = vi
       .spyOn(CanvasCameraManager.prototype, "fitBounds")
       .mockImplementation(() => undefined);
-    const slideDeck: SlideDeck = {
+    const slideDeck: SlideDeckSnapshot = {
       activeSlideId: "slide-2",
       slides: [
         {
@@ -218,11 +218,7 @@ describe("CanvasEditor focus management", () => {
           id: "slides-restored",
           name: "Slides",
           mode: "slide",
-          slideDeck,
           viewport: { offset: { x: -100_000, y: -100_000 }, zoom: 5 },
-          scene: [],
-          components: [],
-          grid: [],
         },
       ],
     });
@@ -1124,7 +1120,6 @@ describe("CanvasEditor focus management", () => {
             id: "slide-1",
             name: "Slide 1",
             size: { columns: 3, rows: 2 },
-            grid: [],
           },
         ],
       },

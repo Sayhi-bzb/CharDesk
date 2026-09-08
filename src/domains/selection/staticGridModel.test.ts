@@ -103,17 +103,18 @@ describe("staticGridModel", () => {
       textCursor: null,
     });
 
-    expect(view.activeCell).toEqual({ x: 4, y: 2 });
-    expect(view.textCursor).toBeNull();
-    expect(view.selectionAreas).toEqual([
+    expect(view.interaction).toMatchObject({
+      kind: "range",
+      activeCell: { x: 4, y: 2 },
+    });
+    expect(view.target.areas).toEqual([
       { start: { x: 2, y: 2 }, end: { x: 4, y: 2 } },
     ]);
-    expect(view.selectionGeometry.bounds).toEqual({
+    if (view.interaction.kind !== "range") throw new Error("Expected range interaction");
+    expect(view.interaction.geometry.bounds).toEqual({
       start: { x: 2, y: 2 },
       end: { x: 4, y: 2 },
     });
-    expect(view.hasSelection).toBe(true);
-    expect(view.isTextEditing).toBe(false);
   });
 
   it("keeps a legacy cursor hidden while the static grid is navigating", () => {
@@ -123,8 +124,55 @@ describe("staticGridModel", () => {
       textCursor: { x: 9, y: 9 },
     });
 
-    expect(view.activeCell).toEqual({ x: 4, y: 2 });
-    expect(view.textCursor).toBeNull();
+    expect(view.interaction).toEqual({
+      kind: "navigate",
+      activeCell: { x: 4, y: 2 },
+    });
+    expect(view.target.areas).toEqual([
+      { start: { x: 4, y: 2 }, end: { x: 4, y: 2 } },
+    ]);
+  });
+
+  it("gives text editing semantic precedence over a retained range target", () => {
+    const view = getStaticGridViewState({
+      selection: {
+        mode: "range",
+        activeCell: { x: 4, y: 2 },
+        anchorCell: { x: 2, y: 2 },
+        primaryRange: { start: { x: 2, y: 2 }, end: { x: 4, y: 2 } },
+        additionalRanges: [],
+      },
+      editMode: "text-edit",
+      textCursor: { x: 3, y: 2 },
+    });
+
+    expect(view.interaction).toEqual({
+      kind: "text-edit",
+      activeCell: { x: 3, y: 2 },
+      cursor: { x: 3, y: 2 },
+    });
+    expect(view.target.areas).toEqual([
+      { start: { x: 2, y: 2 }, end: { x: 4, y: 2 } },
+    ]);
+  });
+
+  it("keeps an explicit single-cell range distinct from navigation", () => {
+    const view = getStaticGridViewState({
+      selection: {
+        mode: "range",
+        activeCell: { x: 3, y: 4 },
+        anchorCell: { x: 3, y: 4 },
+        primaryRange: { start: { x: 3, y: 4 }, end: { x: 3, y: 4 } },
+        additionalRanges: [],
+      },
+      editMode: "navigate",
+      textCursor: null,
+    });
+
+    expect(view.interaction.kind).toBe("range");
+    expect(view.target.areas).toEqual([
+      { start: { x: 3, y: 4 }, end: { x: 3, y: 4 } },
+    ]);
   });
 
   it("derives effective bounds from negative sparse content and selection", () => {
@@ -304,12 +352,16 @@ describe("staticGridModel", () => {
       grid,
     });
 
-    expect(view.activeCell).toEqual({ x: 2, y: 1 });
-    expect(view.selectionAreas).toEqual([
+    expect(view.interaction).toMatchObject({
+      kind: "range",
+      activeCell: { x: 2, y: 1 },
+    });
+    expect(view.target.areas).toEqual([
       { start: { x: 1, y: 0 }, end: { x: 2, y: 0 } },
       { start: { x: 2, y: 1 }, end: { x: 2, y: 1 } },
     ]);
-    expect(view.selectionGeometry.bounds).toEqual({
+    if (view.interaction.kind !== "range") throw new Error("Expected range interaction");
+    expect(view.interaction.geometry.bounds).toEqual({
       start: { x: 1, y: 0 },
       end: { x: 2, y: 1 },
     });

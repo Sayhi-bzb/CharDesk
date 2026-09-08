@@ -84,6 +84,7 @@
     "@chardesk/fonts": "*",
     "@chardesk/font-fusion": "*",
     "@chardesk/font-maple": "*",
+    "@chardesk/font-xiaolai": "*",
     "@chardesk/keyboard": "*",
     "@chardesk/protocol": "*",
     "@chardesk/rendering": "*",

@@ -35,14 +35,18 @@ describe("syncHydratedStateToCanvasDocument", () => {
           id: "hydrated-structured",
           name: "Hydrated Structured",
           mode: "structured",
-          scene,
-          components: [],
-          grid: [["2,3", { char: "H", color: "#111111" }]],
         },
       ],
     };
 
-    syncHydratedStateToCanvasDocument(documents, hydratedState);
+    syncHydratedStateToCanvasDocument(documents, hydratedState, {
+      id: "hydrated-structured",
+      name: "Hydrated Structured",
+      mode: "structured",
+      scene,
+      components: [],
+      grid: [],
+    });
 
     expect(documents.getContentReader().materialize()).toEqual(new Map());
     expect(documents.yStructuredScene.get("hydrated-text")).toEqual(scene[0]);
@@ -66,14 +70,22 @@ describe("syncHydratedStateToCanvasDocument", () => {
       ],
       structuredComponents: [],
     };
+    const documents = new CanvasDocumentRegistry(state.activeCanvasId);
+    documents.activateDocument(state.activeCanvasId, {
+      mode: "structured",
+      grid: [],
+      scene: structuredState.structuredScene,
+      components: [],
+    }, { replace: true });
 
-    const snapshot = createPersistedEditorSnapshot(structuredState);
+    const snapshot = createPersistedEditorSnapshot(structuredState, documents);
 
     expect(snapshot.workspace.structuredScene).toHaveLength(1);
     expect(snapshot.workspace.grid).toEqual([]);
     expect(
       snapshot.sessions.items.find((session) => session.id === state.activeCanvasId)?.grid
     ).toEqual([]);
+    documents.dispose();
   });
 
   it("persists source-backed sessions as metadata-only shells", () => {
@@ -92,18 +104,17 @@ describe("syncHydratedStateToCanvasDocument", () => {
           provider: "browser-workspace",
           id: "workspace-1",
         },
-        scene: [],
-        components: [],
-        grid: [],
       }],
     };
+    const documents = new CanvasDocumentRegistry("source-board");
 
-    const snapshot = createPersistedEditorSnapshot(sourceState);
+    const snapshot = createPersistedEditorSnapshot(sourceState, documents);
 
     expect(snapshot.workspace.grid).toEqual([]);
     expect(snapshot.sessions.items[0]).toMatchObject({
       sourceBinding: { id: "workspace-1" },
       grid: [],
     });
+    documents.dispose();
   });
 });

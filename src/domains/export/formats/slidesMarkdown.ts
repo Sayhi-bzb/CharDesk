@@ -1,11 +1,11 @@
-import { DEFAULT_SLIDE_SIZE, type SlideDeck } from '@/domains/slides/public';
+import { DEFAULT_SLIDE_SIZE, type SlideDeckSnapshot } from '@/domains/slides/public';
 import { GridManager } from '@/shared/utils/grid';
 import { createGridMapSource } from '@/shared/utils/grid-source';
 import { exportSelectionToAnsi } from './text';
 
 const escapeFrontMatterValue = (value: string) => value.replace(/\r?\n/g, ' ').trim();
 
-const isDefaultSlideSize = (size: SlideDeck['slides'][number]['size']) =>
+const isDefaultSlideSize = (size: SlideDeckSnapshot['slides'][number]['size']) =>
   size.columns === DEFAULT_SLIDE_SIZE.columns && size.rows === DEFAULT_SLIDE_SIZE.rows;
 
 const resolveFence = (source: string) => {
@@ -17,7 +17,7 @@ const resolveFence = (source: string) => {
 };
 
 const renderSlide = (
-  slide: SlideDeck['slides'][number],
+  slide: SlideDeckSnapshot['slides'][number],
   includeColor: boolean
 ) => {
   const gridEntries = slide.grid;
@@ -44,7 +44,7 @@ const renderSlide = (
 };
 
 export const exportSlideDeckBodyToMarkdown = (
-  slideDeck: SlideDeck,
+  slideDeck: SlideDeckSnapshot,
   options?: { includeColor?: boolean }
 ) => {
   const pages = slideDeck.slides.map((slide) => {

@@ -38,8 +38,8 @@ export const resolvePointerAppearance = (frame: FrameSnapshot, point: CellPoint)
   const hit = hitTestCell(frame.scene, point);
   if (!hit) return { hoveredId: null, cursor: "default" };
   const path = getEventPath(frame.scene, hit.ownerId);
-  const modalId = topFocusScopeId(frame.tree);
-  if (modalId && !path.includes(modalId)) return { hoveredId: null, cursor: "default" };
+  const focusScopeId = topFocusScopeId(frame.tree);
+  if (focusScopeId && !path.includes(focusScopeId)) return { hoveredId: null, cursor: "default" };
   for (const id of path) {
     const node = frame.tree.nodes.get(id)!;
     if (node.disabled) return { hoveredId: null, cursor: "default" };

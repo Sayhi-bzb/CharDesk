@@ -48,7 +48,7 @@ describe("slideSlice", () => {
     });
 
     expect(Array.from(useEditorStore.getState().contentSurface.reader.materialize().keys())).toEqual(["1,0", "2,0"]);
-    expect(useEditorStore.getState().slideDeck?.slides[0].grid).toEqual([]);
+    expect(useEditorStore.getState().slideDeck?.slides[0]).not.toHaveProperty("grid");
   });
 
   it("clears document interaction for every active page transition", () => {

@@ -4,6 +4,9 @@ export type {
   GridEditMode,
   GridRange,
   GridSelectionState,
+  StaticGridInteraction,
+  StaticGridTarget,
+  StaticGridViewState,
 } from "./model/static-grid";
 export type {
   StaticGridInputFlow,

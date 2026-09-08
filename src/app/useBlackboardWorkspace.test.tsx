@@ -82,8 +82,8 @@ describe("Blackboard workspace projection", () => {
     expect(host.canvas.getState().canvasSessions[0]).toMatchObject({
       mode: "freeform",
       sourceBinding: { kind: "blackboard", provider: "browser-workspace", id: "board" },
-      grid: [],
     });
+    expect(host.canvas.getState().canvasSessions[0]).not.toHaveProperty("grid");
     const validReader = host.canvas.getState().contentSurface.reader;
 
     await repository.apply("board", [
@@ -190,23 +190,23 @@ describe("Blackboard workspace projection", () => {
       sourceBinding: { provider: "browser-workspace", id: "deck" },
     });
     if (session?.mode !== "slide") throw new Error("Expected a Slide session");
-    expect(session.slideDeck.slides.map(({ name }) => name)).toEqual([
+    const slideDeck = host.canvas.getState().slideDeck!;
+    expect(slideDeck.slides.map(({ name }) => name)).toEqual([
       "opening",
       "Details",
     ]);
-    expect(session.slideDeck.slides[0].size).not.toEqual({ columns: 100, rows: 27 });
+    expect(slideDeck.slides[0].size).not.toEqual({ columns: 100, rows: 27 });
 
-    host.canvas.commands.slides.activate(session.slideDeck.slides[1].id);
+    host.canvas.commands.slides.activate(slideDeck.slides[1].id);
     await repository.apply("deck", [
       { op: "write", path: "panels/details.panel", content: "Details v2" },
     ]);
 
     await waitFor(() => {
-      const current = host.canvas.getState().canvasSessions[0];
-      expect(current.mode).toBe("slide");
-      if (current.mode !== "slide") return;
-      const active = current.slideDeck.slides.find(
-        ({ id }) => id === current.slideDeck.activeSlideId,
+      expect(host.canvas.getState().canvasSessions[0].mode).toBe("slide");
+      const currentDeck = host.canvas.getState().slideDeck;
+      const active = currentDeck?.slides.find(
+        ({ id }) => id === currentDeck.activeSlideId,
       );
       expect(active?.name).toBe("Details");
     });

@@ -17,13 +17,20 @@ import {
   decodePersistedEditorState,
   migratePersistedStateToV6,
   isSourceBackedCanvasSession,
+  getCanvasSessionFallbackSnapshot,
+  getCanvasSessionRestoreRecord,
+  type CanvasImportSnapshot,
   type CanvasCatalog,
   type CanvasCatalogFailureReason,
   type CanvasCatalogSnapshot,
-  type CanvasSession,
-  type SourceBackedCanvasSession,
+  type CanvasSessionSnapshot,
+  type CanvasSessionDescriptor,
+  type SourceBackedCanvasSessionSnapshot,
 } from "@/domains/sessions/public";
-import { SLIDE_SIZE_PRESETS } from "@/domains/slides/public";
+import {
+  SLIDE_SIZE_PRESETS,
+  type SlideDeckDescriptor,
+} from "@/domains/slides/public";
 import {
   getCollaborationDocumentId,
   isCollaborationDescriptor,
@@ -45,8 +52,15 @@ import {
   createPersistedEditorSnapshot,
   recoverPersistedEditorState,
 } from "./editorPersistence";
-import { getSessionCanvasDocumentId } from "./helpers/storeUtils";
-import { rebuildContentSurface } from "./helpers/gridHelpers";
+import {
+  getSessionCanvasDocumentId,
+  resolveSessionDocumentRuntime,
+} from "./helpers/storeUtils";
+import {
+  createStructuredContentSurface,
+  rebuildContentSurface,
+} from "./helpers/gridHelpers";
+import { readSlideDeckDescriptor } from "./slideDocumentPages";
 import {
   CANVAS_DOCUMENT_SCHEMA_VERSION,
   getCanvasDocumentRoot,
@@ -56,7 +70,10 @@ import {
   readCanvasYPage,
   writeCanvasDocumentMetadata,
 } from "./canvasDocumentModel";
-import type { CanvasDocumentResidency } from "./documentResidencyPort";
+import type {
+  CanvasDocumentLoadRequest,
+  CanvasDocumentResidency,
+} from "./documentResidencyPort";
 import {
   applyCanvasDocumentSeed,
   createCompactedDocument,
@@ -212,7 +229,7 @@ type PersistedDocumentLocation = {
 };
 
 type RestoredSessions = {
-  sessions: CanvasSession[];
+  sessions: CanvasSessionSnapshot[];
   activeDocument: Y.Doc;
   activeSessionId: string;
 };
@@ -402,17 +419,62 @@ const hasLegacyCellPlaneOperations = (doc: Y.Doc) => {
   });
 };
 
-const seedFromSession = (session: CanvasSession): CanvasDocumentSeed =>
-  session.mode === "structured"
+const seedFromImportSnapshot = (
+  snapshot: CanvasImportSnapshot
+): CanvasDocumentSeed =>
+  snapshot.mode === "slide"
+    ? {
+        mode: "slide",
+        activePageId: snapshot.slideDeck.activeSlideId,
+        pages: snapshot.slideDeck.slides.map((slide) => ({
+          id: slide.id,
+          name: slide.name,
+          size: slide.size,
+          kind: "cell-plane",
+          grid: slide.grid,
+        })),
+        grid: [],
+        scene: [],
+        components: [],
+      }
+    : snapshot.mode === "structured"
       ? {
         mode: "structured",
         grid: [],
-        scene: session.scene,
-        components: session.components ?? [],
+        scene: snapshot.scene,
+        components: snapshot.components,
       }
-    : session.mode === "freeform"
-      ? { mode: "freeform", grid: session.grid, scene: [], components: [] }
-      : emptySeed();
+    : { mode: "freeform", grid: snapshot.grid, scene: [], components: [] };
+
+const seedFromSessionSnapshot = (
+  session: CanvasSessionSnapshot
+): CanvasDocumentSeed =>
+  seedFromImportSnapshot(getCanvasSessionFallbackSnapshot(session));
+
+const createBlankDescriptorSeed = (
+  session: CanvasSessionDescriptor
+): CanvasDocumentSeed =>
+  session.mode === "slide"
+    ? {
+        mode: "slide",
+        activePageId: `${session.id}-slide-1`,
+        pages: [{
+          id: `${session.id}-slide-1`,
+          name: "Slide 1",
+          size: { ...SLIDE_SIZE_PRESETS.widescreen },
+          kind: "cell-plane",
+          grid: [],
+        }],
+        grid: [],
+        scene: [],
+        components: [],
+      }
+    : {
+        mode: session.mode,
+        grid: [],
+        scene: [],
+        components: [],
+      };
 
 const readActiveSessionSeed = (doc: Y.Doc, id: string): CanvasDocumentSeed => {
   const seed = readDocumentSeed(doc, id);
@@ -682,7 +744,7 @@ const readPersistedDocumentShell = async (
   id: string,
   recoveredIndex: number,
   generation = 0
-): Promise<CanvasSession | null> => {
+): Promise<CanvasSessionSnapshot | null> => {
   const doc = new Y.Doc({ guid: id });
   const provider = new IndexeddbPersistence(
     getDocumentDatabaseName(id, generation),
@@ -794,21 +856,21 @@ const resolveDocumentGenerations = async (
 };
 
 const isBootstrapCatalogSession = (
-  session: Pick<CanvasSession, "name" | "mode">,
-  initial: CanvasSession | undefined
+  session: Pick<CanvasSessionSnapshot, "name" | "mode">,
+  initial: CanvasSessionSnapshot | undefined
 ) => !!initial && session.name === initial.name && session.mode === initial.mode;
 
 const mergeRecoverableSessions = (
-  catalogSessions: CanvasSession[],
+  catalogSessions: CanvasSessionSnapshot[],
   snapshots: LegacySessionSnapshot[],
   persistedDocumentIds: readonly string[],
-  initialSessions: readonly CanvasSession[]
+  initialSessions: readonly CanvasSessionSnapshot[]
 ) => {
   if (persistedDocumentIds.length === 0) return catalogSessions;
   const persisted = new Set(persistedDocumentIds);
   const catalog = new Map(catalogSessions.map((session) => [session.id, session]));
   const initial = new Map(initialSessions.map((session) => [session.id, session]));
-  const recovered: CanvasSession[] = [];
+  const recovered: CanvasSessionSnapshot[] = [];
   const seen = new Set<string>();
 
   for (const snapshot of snapshots) {
@@ -831,8 +893,8 @@ const mergeRecoverableSessions = (
   return recovered;
 };
 
-const sessionsFromCatalog = (catalog: CanvasCatalogSnapshot): CanvasSession[] =>
-  catalog.sessions.map((session): CanvasSession => {
+const sessionsFromCatalog = (catalog: CanvasCatalogSnapshot): CanvasSessionSnapshot[] =>
+  catalog.sessions.map((session): CanvasSessionSnapshot => {
     const base = {
       id: session.id,
       name: session.name,
@@ -889,7 +951,7 @@ const sessionsFromCatalog = (catalog: CanvasCatalogSnapshot): CanvasSession[] =>
   });
 
 const recoveredSessionName = (
-  sessions: readonly CanvasSession[],
+  sessions: readonly CanvasSessionSnapshot[],
   index: number
 ) => {
   const base = index === 0 ? "Recovered Canvas" : `Recovered Canvas ${index + 1}`;
@@ -901,7 +963,7 @@ const recoveredSessionName = (
   return `Recovered Canvas ${suffix}`;
 };
 
-const hasRecoverableSessionContent = (session: CanvasSession) =>
+const hasRecoverableSessionContent = (session: CanvasSessionSnapshot) =>
   isSourceBackedCanvasSession(session)
     ? false
     : session.mode === "slide"
@@ -910,7 +972,7 @@ const hasRecoverableSessionContent = (session: CanvasSession) =>
       (session.components?.length ?? 0) > 0;
 
 const createSourceSessionSeed = (
-  session: SourceBackedCanvasSession,
+  session: SourceBackedCanvasSessionSnapshot,
 ): CanvasDocumentSeed => session.mode === "slide"
   ? {
       mode: "slide",
@@ -933,13 +995,13 @@ const createSourceSessionSeed = (
       components: [],
     };
 
-const createSourceSessionDocument = (session: SourceBackedCanvasSession) => {
+const createSourceSessionDocument = (session: SourceBackedCanvasSessionSnapshot) => {
   const doc = new Y.Doc({ guid: session.id });
   applyCanvasDocumentSeed(doc, session.id, createSourceSessionSeed(session));
   return doc;
 };
 
-const recoverySourceId = (key: string, session: CanvasSession) => {
+const recoverySourceId = (key: string, session: CanvasSessionSnapshot) => {
   const value = JSON.stringify(session);
   let hash = 2_166_136_261;
   for (let index = 0; index < value.length; index += 1) {
@@ -950,7 +1012,7 @@ const recoverySourceId = (key: string, session: CanvasSession) => {
 };
 
 const uniqueRecoveredName = (
-  sessions: readonly CanvasSession[],
+  sessions: readonly CanvasSessionSnapshot[],
   originalName: string
 ) => {
   const base = `Recovered · ${originalName.trim() || "Canvas"}`;
@@ -961,10 +1023,10 @@ const uniqueRecoveredName = (
 };
 
 const appendHistoricalRecoverySessions = (
-  sessions: readonly CanvasSession[],
+  sessions: readonly CanvasSessionSnapshot[],
   snapshots: readonly LegacySessionSnapshot[],
   persistedDocumentIds: ReadonlySet<string>,
-  initialSessions: readonly CanvasSession[],
+  initialSessions: readonly CanvasSessionSnapshot[],
   recoveredSources: Set<string>,
   deletedSessionIds: ReadonlySet<string>
 ) => {
@@ -985,7 +1047,7 @@ const appendHistoricalRecoverySessions = (
         !isBootstrapCatalogSession(current, initial.get(current.id));
       if (represented || persistedDocumentIds.has(historical.id)) continue;
       const id = createSessionId(recovered);
-      const session: CanvasSession = historical.mode === "slide"
+      const session: CanvasSessionSnapshot = historical.mode === "slide"
         ? {
             ...structuredClone(historical),
             id,
@@ -1008,15 +1070,15 @@ const appendHistoricalRecoverySessions = (
 };
 
 const cloneRecoveredSessions = (
-  source: readonly CanvasSession[],
-  restored: readonly CanvasSession[],
+  source: readonly CanvasSessionSnapshot[],
+  restored: readonly CanvasSessionSnapshot[],
   activeSessionId: string
 ) => {
   const sessions = [...restored];
   let recoveredActiveId: string | null = null;
   source.forEach((session, index) => {
     const id = createSessionId(sessions);
-    const recovered: CanvasSession = session.mode === "slide"
+    const recovered: CanvasSessionSnapshot = session.mode === "slide"
       ? {
           ...structuredClone(session),
           id,
@@ -1036,12 +1098,21 @@ const cloneRecoveredSessions = (
 
 const createCatalogSnapshot = (
   state: ReturnType<CanvasStore["getState"]>,
+  getSlideDeck: (sessionId: string) => SlideDeckDescriptor | null,
   documentGenerations: ReadonlyMap<string, number> = new Map(),
   previousDocumentGenerations: ReadonlyMap<string, number> = new Map(),
   revision = 0,
   recoveredSources: ReadonlySet<string> = new Set(),
   deletedSessionIds: ReadonlySet<string> = new Set()
-): CanvasCatalogSnapshot => ({
+): CanvasCatalogSnapshot => {
+  const slideDecks = new Map(
+    state.canvasSessions.flatMap((session) => {
+      if (session.mode !== "slide") return [];
+      const deck = getSlideDeck(session.id);
+      return deck ? [[session.id, deck] as const] : [];
+    })
+  );
+  return {
   revision,
   activeSessionId: state.activeCanvasId,
   sessions: state.canvasSessions.map((session, order) => ({
@@ -1060,8 +1131,8 @@ const createCatalogSnapshot = (
           collaborationRole: session.collaborationRole ?? "host",
         }
       : {}),
-    ...(session.mode === "slide"
-      ? { activeSlideId: session.slideDeck.activeSlideId }
+    ...(session.mode === "slide" && slideDecks.has(session.id)
+      ? { activeSlideId: slideDecks.get(session.id)!.activeSlideId }
       : {}),
     ...(documentGenerations.get(session.id)
       ? {
@@ -1077,7 +1148,7 @@ const createCatalogSnapshot = (
   })),
   slides: state.canvasSessions.flatMap((session) =>
     session.mode === "slide"
-      ? session.slideDeck.slides.map((slide, order) => ({
+      ? (slideDecks.get(session.id)?.slides ?? []).map((slide, order) => ({
           id: slide.id,
           sessionId: session.id,
           name: slide.name,
@@ -1095,7 +1166,8 @@ const createCatalogSnapshot = (
   },
   recoveredSources: Array.from(recoveredSources).sort(),
   deletedSessionIds: Array.from(deletedSessionIds).sort(),
-});
+  };
+};
 
 const catalogStructureJson = (snapshot: CanvasCatalogSnapshot) => JSON.stringify({
   activeSessionId: snapshot.activeSessionId,
@@ -1237,6 +1309,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
   readonly #listeners = new Set<Listener>();
   readonly #documents = new Map<string, PersistedDocument>();
   readonly #dirtyDocuments = new Map<string, number>();
+  readonly #fallbackSeeds = new Map<string, CanvasDocumentSeed>();
   readonly #documentGenerations = new Map<string, number>();
   readonly #previousDocumentGenerations = new Map<string, number>();
   readonly #documentRevisions = new Map<string, number>();
@@ -1272,7 +1345,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
   #coordinatorLease: ExclusiveLease | null = null;
   #coordinationWaitController: AbortController | null = null;
   #coordinationRetryTimer: ReturnType<typeof setTimeout> | null = null;
-  #bootstrapSessions: readonly CanvasSession[] | undefined;
+  #bootstrapSessions: readonly CanvasSessionSnapshot[] | undefined;
   #temporaryStoreSubscription: (() => void) | null = null;
   #temporaryMutationSubscription: (() => void) | null = null;
   #temporarySessionShell = "";
@@ -1315,6 +1388,27 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
 
   getSnapshot = () => this.#status;
 
+  #getSlideDeckDescriptor = (sessionId: string): SlideDeckDescriptor | null => {
+    const resident = this.#registry
+      ? readSlideDeckDescriptor(this.#registry, sessionId)
+      : null;
+    if (resident) return resident;
+    const seed = this.#fallbackSeeds.get(sessionId);
+    const pages = seed?.pages?.filter((page) => page.kind === "cell-plane") ?? [];
+    if (pages.length === 0) return null;
+    return {
+      activeSlideId:
+        pages.some((page) => page.id === seed?.activePageId)
+          ? seed!.activePageId!
+          : pages[0].id,
+      slides: pages.map((page, index) => ({
+        id: page.id,
+        name: page.name?.trim() || `Slide ${index + 1}`,
+        size: page.size ?? { ...SLIDE_SIZE_PRESETS.widescreen },
+      })),
+    };
+  };
+
   subscribe = (listener: Listener) => {
     this.#listeners.add(listener);
     return () => { this.#listeners.delete(listener); };
@@ -1323,12 +1417,14 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
   initialize = async (
     documents: CanvasDocumentRegistry,
     store: CanvasStore,
-    bootstrapSessions?: readonly CanvasSession[]
+    bootstrapSessions?: readonly CanvasSessionSnapshot[]
   ) => {
     this.#registry = documents;
     this.#store = store;
-    this.#bootstrapSessions = (bootstrapSessions ?? store.getState().canvasSessions)
-      .map((session) => structuredClone(session));
+    this.#bootstrapSessions = (
+      bootstrapSessions ??
+      createPersistedEditorSnapshot(store.getState(), documents).sessions.items
+    ).map((session) => structuredClone(session));
     await this.#runRestore();
   };
 
@@ -1340,7 +1436,10 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     ) return false;
     const temporaryDirty = this.#status.restore.temporaryDirty;
     const recovery = temporaryDirty
-      ? createPersistedEditorSnapshot(this.#store.getState()).sessions
+      ? createPersistedEditorSnapshot(
+          this.#store.getState(),
+          this.#registry
+        ).sessions
       : null;
     this.#stopTemporaryTracking();
     this.#publish({
@@ -1410,7 +1509,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
           }
             : session
       );
-      const initialSessions = (this.#bootstrapSessions ?? store.getState().canvasSessions)
+      const initialSessions = (this.#bootstrapSessions ?? [])
         .map((session) => structuredClone(session));
       const catalogSessions = (storedCatalog
         ? sessionsFromCatalog(storedCatalog)
@@ -1468,7 +1567,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
             index,
             this.#documentGenerations.get(id) ?? 0
           ))
-      )).filter((session): session is CanvasSession => session !== null);
+      )).filter((session): session is CanvasSessionSnapshot => session !== null);
       const historicalRecovery = appendHistoricalRecoverySessions(
         [...recoveredCatalogSessions, ...recoveredDocumentShells],
         legacySnapshots,
@@ -1522,28 +1621,43 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       ) ?? restored.sessions[0];
       if (!activeSession) throw new Error("Canvas persistence restored no sessions");
 
+      const restoreRecords = restored.sessions.map(getCanvasSessionRestoreRecord);
+      this.#fallbackSeeds.clear();
+      restoreRecords.forEach(({ descriptor, fallbackSnapshot }) => {
+        if (fallbackSnapshot) {
+          this.#fallbackSeeds.set(
+            descriptor.id,
+            seedFromImportSnapshot(fallbackSnapshot)
+          );
+        }
+      });
+      const sessionDescriptors = restoreRecords.map(({ descriptor }) => descriptor);
+      const activeDescriptor = restoreRecords.find(
+        ({ descriptor }) => descriptor.id === activeSession.id
+      )!.descriptor;
+
       const current = store.getState();
       const preferences = storedCatalog?.preferences ?? legacy?.state.preferences;
       const hydrated = recoverPersistedEditorState({
         ...current,
-        canvasSessions: restored.sessions,
+        canvasSessions: sessionDescriptors,
         activeCanvasId: activeSession.id,
         ...(preferences ?? {}),
-      });
+      }, activeSession);
       documents.adoptDocument(activeSession.id, restored.activeDocument);
-      if (activeSession.mode !== "slide" && activeSession.collaboration) {
+      if (activeDescriptor.mode !== "slide" && activeDescriptor.collaboration) {
         documents.prepareDocumentForCollaboration(
-          activeSession.id,
+          activeDescriptor.id,
           {
-            mode: activeSession.mode,
-            documentVersion: activeSession.collaboration.documentVersion,
-            roomId: activeSession.collaboration.roomId,
-            sharedDocumentId: getCollaborationDocumentId(activeSession.collaboration),
+            mode: activeDescriptor.mode,
+            documentVersion: activeDescriptor.collaboration.documentVersion,
+            roomId: activeDescriptor.collaboration.roomId,
+            sharedDocumentId: getCollaborationDocumentId(activeDescriptor.collaboration),
           }
         );
       }
       documents.activateDocument(
-        getSessionCanvasDocumentId(activeSession),
+        getSessionCanvasDocumentId(activeDescriptor),
         emptySeed()
       );
       if (
@@ -1561,7 +1675,17 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
         if (id !== activeSession.id) await this.#releaseDocument(id);
       }
       this.touch(activeSession.id);
-      hydrated.contentSurface = rebuildContentSurface(documents);
+      const documentRuntime = resolveSessionDocumentRuntime(
+        documents,
+        activeDescriptor,
+        hydrated.tool
+      );
+      hydrated.slideDeck = documentRuntime.nextSlideDeck;
+      hydrated.structuredScene = documentRuntime.nextScene;
+      hydrated.structuredComponents = documentRuntime.nextComponents;
+      hydrated.contentSurface = activeDescriptor.mode === "structured"
+        ? createStructuredContentSurface(documentRuntime.nextScene)
+        : rebuildContentSurface(documents);
       store.setState(hydrated, true);
       committed = true;
       this.#publish({
@@ -1753,7 +1877,10 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     ? this.#checkpointServices.get(id)?.run() ?? Promise.resolve(false)
     : Promise.resolve(false);
 
-  ensureLoaded = async (session: CanvasSession): Promise<boolean> => {
+  ensureLoaded = async ({
+    descriptor: session,
+    fallbackSeed,
+  }: CanvasDocumentLoadRequest): Promise<boolean> => {
     const documents = this.#registry;
     if (!documents) return false;
     if (documents.getDocument(session.id)) {
@@ -1761,13 +1888,19 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       return true;
     }
     try {
+      const seed = fallbackSeed ?? this.#fallbackSeeds.get(session.id);
       let doc: Y.Doc;
       if (isSourceBackedCanvasSession(session)) {
-        doc = createSourceSessionDocument(session);
+        doc = new Y.Doc({ guid: session.id });
+        applyCanvasDocumentSeed(
+          doc,
+          session.id,
+          seed ?? createBlankDescriptorSeed(session)
+        );
       } else {
         doc = session.collaboration
           ? new Y.Doc({ guid: session.id })
-          : await this.#loadSessionDocument(session, false);
+          : await this.#loadDescriptorDocument(session, seed);
       }
       documents.adoptDocument(session.id, doc);
       if (session.mode !== "slide" && session.collaboration) {
@@ -1914,11 +2047,11 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
 
   async #restoreSessions(
     documents: CanvasDocumentRegistry,
-    sessions: CanvasSession[],
+    sessions: CanvasSessionSnapshot[],
     resetDocuments: boolean,
     activeSessionId: string
   ): Promise<RestoredSessions> {
-    const restored: CanvasSession[] = [];
+    const restored: CanvasSessionSnapshot[] = [];
     let activeDocument: Y.Doc | null = null;
     for (const session of sessions) {
       const isActive = session.id === activeSessionId;
@@ -1976,7 +2109,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       );
       const doc = await this.#openDocument(
         session.id,
-        existingSeed ?? seedFromSession(session)
+        existingSeed ?? seedFromSessionSnapshot(session)
       );
       if (isActive) activeDocument = doc;
       const seed = readActiveSessionSeed(doc, session.id);
@@ -2010,8 +2143,8 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
   }
 
   async #prepareRecoveredSessions(
-    restoredSessions: CanvasSession[],
-    temporarySessions: readonly CanvasSession[],
+    restoredSessions: CanvasSessionSnapshot[],
+    temporarySessions: readonly CanvasSessionSnapshot[],
     temporaryActiveId: string
   ): Promise<RestoredSessions> {
     const recovered = cloneRecoveredSessions(
@@ -2044,7 +2177,20 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     };
   }
 
-  async #loadSessionDocument(session: CanvasSession, resetDocument: boolean) {
+  async #loadDescriptorDocument(
+    session: CanvasSessionDescriptor,
+    fallbackSeed?: CanvasDocumentSeed
+  ) {
+    const residentSeed = session.mode === "slide"
+      ? undefined
+      : this.#registry?.getDocumentSeed(session.id, session.mode) ?? undefined;
+    return this.#openDocument(
+      session.id,
+      residentSeed ?? fallbackSeed ?? createBlankDescriptorSeed(session)
+    );
+  }
+
+  async #loadSessionDocument(session: CanvasSessionSnapshot, resetDocument: boolean) {
     if (isSourceBackedCanvasSession(session)) {
       return createSourceSessionDocument(session);
     }
@@ -2065,12 +2211,12 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       });
     }
     const seed = resetDocument
-      ? seedFromSession(session)
+      ? seedFromSessionSnapshot(session)
       : this.#registry?.getDocumentSeed(
           session.id,
           session.mode,
         ) ??
-        seedFromSession(session);
+        seedFromSessionSnapshot(session);
     return this.#openDocument(session.id, seed);
   }
 
@@ -2294,6 +2440,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     if (!this.#store) return;
     const initialSnapshot = createCatalogSnapshot(
       this.#store.getState(),
+      this.#getSlideDeckDescriptor,
       this.#documentGenerations,
       this.#previousDocumentGenerations,
       this.#catalogRevision,
@@ -2313,6 +2460,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       });
       const snapshot = createCatalogSnapshot(
         state,
+        this.#getSlideDeckDescriptor,
         this.#documentGenerations,
         this.#previousDocumentGenerations,
         this.#catalogRevision,
@@ -2557,6 +2705,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       async () => {
         const localSnapshot = createCatalogSnapshot(
           store.getState(),
+          this.#getSlideDeckDescriptor,
           this.#documentGenerations,
           this.#previousDocumentGenerations,
           this.#catalogRevision + 1,
@@ -2593,6 +2742,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     if (!this.#store) return;
     const snapshot = createCatalogSnapshot(
       this.#store.getState(),
+      this.#getSlideDeckDescriptor,
       this.#documentGenerations,
       this.#previousDocumentGenerations,
       this.#catalogRevision + 1,

@@ -27,7 +27,6 @@ import {
   setTextRenderStyle,
 } from '@/shared/metrics';
 import {
-  getGridSelectionRanges,
   getStaticGridViewState,
 } from '@/domains/selection/public';
 import {
@@ -62,7 +61,10 @@ import {
 } from '../presentation/canvasCellPresentation';
 import type { CanvasCursorPreference } from '@/shared/canvas-cursor/runtime';
 import { DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS } from '@chardesk/rendering';
-import { drawCharDeskCanvasRange } from '@chardesk/rendering/canvas';
+import {
+  drawCharDeskCanvasRange,
+  loadCharDeskCanvasFonts,
+} from '@chardesk/rendering/canvas';
 import {
   resolveCanvasContentDpr,
   resolveCanvasContentResolutionMode,
@@ -207,8 +209,7 @@ export const useCanvasRenderer = (
     () => resolveCanvasRangePresentation({
       canvasMode,
       source: contentReader,
-      selectionRanges: getGridSelectionRanges(staticGridSelection),
-      selectionGeometry: staticGridView.selectionGeometry,
+      staticGrid: staticGridView,
       draggingSelection,
       movePreview: staticRangeMovePreview,
     }),
@@ -216,8 +217,7 @@ export const useCanvasRenderer = (
       canvasMode,
       contentReader,
       draggingSelection,
-      staticGridSelection,
-      staticGridView.selectionGeometry,
+      staticGridView,
       staticRangeMovePreview,
     ]
   );
@@ -227,11 +227,7 @@ export const useCanvasRenderer = (
       inputFocused: cellContext.inputFocused,
       canvasMode,
       range: rangePresentation,
-      staticGrid: {
-        editMode: staticGridEditMode,
-        activeCell: staticGridView.activeCell,
-        textCursor: staticGridView.textCursor,
-      },
+      staticGrid: staticGridView.interaction,
       structured: {
         gridFocus: structuredGridFocus,
         editingText: !!editingStructuredTextNodeId,
@@ -247,9 +243,7 @@ export const useCanvasRenderer = (
       editingStructuredTextNodeId,
       rangePresentation,
       selectedStructuredNodeIds.length,
-      staticGridEditMode,
-      staticGridView.activeCell,
-      staticGridView.textCursor,
+      staticGridView.interaction,
       structuredGridFocus,
     ]
   );
@@ -266,6 +260,44 @@ export const useCanvasRenderer = (
     reader: CanvasSurfaceReader;
     revision: number | null;
   } | null>(null);
+  const requestedFontSamplesRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    requestedFontSamplesRef.current.clear();
+  }, [fontProfile]);
+
+  useEffect(() => {
+    if (!surfaceGeometry || surfaceGeometry.width <= 0 || surfaceGeometry.height <= 0) return;
+    const viewBounds = GridManager.getViewportGridBounds(
+      surfaceGeometry.width,
+      surfaceGeometry.height,
+      offset.x,
+      offset.y,
+      zoom
+    );
+    const samples: Array<{ grapheme: string; bold: boolean; italic: boolean }> = [];
+    for (const span of contentReader.query({
+      x: viewBounds.startX,
+      y: viewBounds.startY,
+      width: viewBounds.endX - viewBounds.startX + 1,
+      height: viewBounds.endY - viewBounds.startY + 1,
+    })) {
+      for (const cell of span.cells) {
+        if (!cell.char.trim()) continue;
+        const bold = !!cell.attrs?.bold;
+        const italic = !!cell.attrs?.italic;
+        const key = `${bold ? 1 : 0}:${italic ? 1 : 0}:${cell.char}`;
+        if (requestedFontSamplesRef.current.has(key)) continue;
+        requestedFontSamplesRef.current.add(key);
+        samples.push({ grapheme: cell.char, bold, italic });
+      }
+    }
+    if (!samples.length) return;
+    void loadCharDeskCanvasFonts(samples, {
+      metrics: DEFAULT_GRID_RENDER_METRICS,
+      fontProfile,
+    }).then(() => requestRenderRef?.current?.());
+  }, [contentReader, contentRevision, fontProfile, offset, requestRenderRef, surfaceGeometry, zoom]);
 
   const drawLayer = useCallback(
     (

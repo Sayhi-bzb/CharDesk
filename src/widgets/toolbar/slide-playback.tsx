@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { TriangleAlert } from 'lucide-react';
-import type { SlideDeck } from '@/domains/slides/public';
+import type { SlideDeckSnapshot } from '@/domains/slides/public';
 import { useEditor } from '@/domains/editor/public';
 import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
 import { BACKGROUND_COLOR } from '@/shared/lib/constants';
@@ -28,7 +28,7 @@ export function SlidePlaybackOverlay({
   onActiveSlideChange,
   onExit,
 }: {
-  deck: SlideDeck;
+  deck: SlideDeckSnapshot;
   activeSlideId: string;
   warning?: string | null;
   onActiveSlideChange: (slideId: string) => void;

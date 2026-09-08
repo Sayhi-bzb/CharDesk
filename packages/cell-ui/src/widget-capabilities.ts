@@ -1,4 +1,4 @@
-import type { WidgetKind } from "./types.js";
+import type { WidgetKind, WidgetNode } from "./types.js";
 
 const collectionItemKinds = new Set<WidgetKind>([
   "list-item",
@@ -39,8 +39,11 @@ export const isFocusableKind = (kind: WidgetKind): boolean =>
 export const isPortalKind = (kind: WidgetKind): boolean =>
   kind === "overlay" || kind === "select-content";
 
-export const isDismissableFocusScopeKind = (kind: WidgetKind): boolean =>
-  kind === "select-content";
+export const isFocusScope = (node: WidgetNode): boolean =>
+  (node.kind === "overlay" && node.modal) || node.kind === "select-content";
+
+export const isDismissableScope = (node: WidgetNode): boolean =>
+  (node.kind === "overlay" && node.modal) || node.kind === "select-content";
 
 export const isFilledSurfaceKind = (kind: WidgetKind): boolean =>
   kind === "overlay" || kind === "select-content";

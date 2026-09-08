@@ -232,9 +232,16 @@ export const useManagedCanvasInput = ({
     [model.contentReader, staticGridEditMode, staticGridSelection, textCursor]
   );
   const staticGridMode = isStaticGridMode(canvasMode);
-  const activeTextCursor = staticGridMode ? staticGridView.textCursor : textCursor;
-  const activeSelections = staticGridMode ? staticGridView.selectionAreas : [];
-  const staticGridActiveCell = staticGridMode ? staticGridView.activeCell : null;
+  const staticGridInteraction = staticGridView.interaction;
+  const activeTextCursor = staticGridMode
+    ? staticGridInteraction.kind === "text-edit"
+      ? staticGridInteraction.cursor
+      : null
+    : textCursor;
+  const activeSelections = staticGridMode ? staticGridView.target.areas : [];
+  const staticGridActiveCell = staticGridMode
+    ? staticGridInteraction.activeCell
+    : null;
   const hasStructuredSelection =
     canvasMode === 'structured' && selectedStructuredNodeIds.length > 0;
   const hasStructuredGridFocus =
@@ -586,9 +593,7 @@ export const useManagedCanvasInput = ({
     );
     const decision = resolveManagedCanvasKeyIntent(input, {
       mutateEnabled,
-      staticGridMode,
-      staticGridEditMode,
-      hasStaticGridSelection: staticGridView.hasSelection,
+      staticGridInteraction: staticGridMode ? staticGridInteraction.kind : null,
       hasTextCursor: !!activeTextCursor,
       hasActiveSelection,
       hasStructuredSelection,

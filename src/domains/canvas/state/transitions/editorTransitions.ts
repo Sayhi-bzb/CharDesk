@@ -1,8 +1,8 @@
-import type { CanvasSession } from "@/domains/sessions/public";
-import type { SlideDeck } from "@/domains/slides/public";
+import type { CanvasSessionDescriptor } from "@/domains/sessions/public";
+import type { SlideDeckDescriptor } from "@/domains/slides/public";
 import { createStaticGridState } from "@/domains/selection/public";
 import type { EditorState } from "../interfaces";
-import type { resolveSessionRuntime } from "../helpers/storeUtils";
+import type { resolveSessionDescriptorRuntime } from "../helpers/storeUtils";
 import {
   getStructuredTextCaretPoint,
   getStructuredTextOffsetAtPoint,
@@ -14,12 +14,13 @@ import {
   createCanvasContentSurface,
   createStructuredContentSurface,
 } from "../helpers/gridHelpers";
-import {
-  createGridSurfaceReader,
-  type CanvasSurfaceReader,
-} from "../../cell-plane/model";
+import type { CanvasSurfaceReader } from "../../cell-plane/model";
 
-type SessionRuntime = ReturnType<typeof resolveSessionRuntime>;
+type SessionRuntime = ReturnType<typeof resolveSessionDescriptorRuntime> & {
+  nextSlideDeck: SlideDeckDescriptor | null;
+  nextScene: StructuredNode[];
+  nextComponents: EditorState["structuredComponents"];
+};
 
 type DocumentInteractionResetPatch = Pick<
   EditorState,
@@ -57,7 +58,7 @@ type SessionActivationPatch = Pick<
 
 type SlideActivationPatch = Pick<
   EditorState,
-  "slideDeck" | "canvasSessions" | "contentSurface"
+  "slideDeck" | "contentSurface"
 > &
   DocumentInteractionResetPatch;
 
@@ -157,10 +158,10 @@ export const reconcileStructuredInteraction = (
 };
 
 export const createSessionActivationPatch = (
-  canvasSessions: CanvasSession[],
+  canvasSessions: CanvasSessionDescriptor[],
   activeCanvasId: string,
   runtime: SessionRuntime,
-  contentReader?: CanvasSurfaceReader
+  contentReader: CanvasSurfaceReader
 ): SessionActivationPatch => ({
   canvasSessions,
   activeCanvasId,
@@ -168,15 +169,9 @@ export const createSessionActivationPatch = (
   slideDeck: runtime.nextSlideDeck,
   structuredScene: runtime.nextScene,
   structuredComponents: runtime.nextComponents,
-  // Runtime session entries have already crossed the persistence/import decoder.
-  // Avoid decoding and cloning every cell again during an interactive switch.
-  contentSurface: contentReader
-    ? createCanvasContentSurface(contentReader)
-    : runtime.nextMode === "structured"
-      ? createStructuredContentSurface(runtime.nextScene)
-      : createCanvasContentSurface(
-          createGridSurfaceReader(new Map(runtime.nextGridEntries))
-        ),
+  contentSurface: runtime.nextMode === "structured"
+    ? createStructuredContentSurface(runtime.nextScene)
+    : createCanvasContentSurface(contentReader),
   tool: runtime.nextTool,
   offset: runtime.nextOffset,
   zoom: runtime.nextZoom,
@@ -185,16 +180,10 @@ export const createSessionActivationPatch = (
 });
 
 export const createSlideActivationPatch = (
-  state: Pick<EditorState, "canvasSessions" | "activeCanvasId">,
-  slideDeck: SlideDeck,
+  slideDeck: SlideDeckDescriptor,
   activeReader: CanvasSurfaceReader
 ): SlideActivationPatch => ({
   slideDeck,
-  canvasSessions: state.canvasSessions.map((session) =>
-    session.id === state.activeCanvasId && session.mode === "slide"
-      ? { ...session, slideDeck }
-      : session
-  ),
   contentSurface: createCanvasContentSurface(activeReader),
   ...createDocumentInteractionResetPatch(),
 });

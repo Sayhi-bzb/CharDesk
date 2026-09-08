@@ -15,7 +15,7 @@ import {
   EDITOR_PERSISTENCE_KEY,
   PREVIOUS_EDITOR_PERSISTENCE_VERSION,
   createIndexedDbCanvasCatalog,
-  type CanvasSession,
+  type CanvasSessionSnapshot,
 } from "@/domains/sessions/public";
 import type { StructuredNode } from "@/domains/structured-content/public";
 import { createCanvasRuntime, type CanvasRuntime } from "../runtime";
@@ -77,7 +77,7 @@ const clearTestDocumentDatabases = async () => {
 
 const createRuntime = (
   storage: Storage,
-  initialSessions: readonly CanvasSession[] = [{
+  initialSessions: readonly CanvasSessionSnapshot[] = [{
     id: SESSION_ID,
     name: "Persisted",
     mode: "freeform",
@@ -245,7 +245,7 @@ describe("browser canvas persistence", () => {
 
   it("loads Canvas documents on demand and keeps only pinned plus recent documents", async () => {
     const storage = new MemoryStorage();
-    const sessions: CanvasSession[] = RESIDENCY_SESSION_IDS.map((id, index) => ({
+    const sessions: CanvasSessionSnapshot[] = RESIDENCY_SESSION_IDS.map((id, index) => ({
       id,
       name: `Canvas ${index}`,
       mode: "freeform",
@@ -377,7 +377,7 @@ describe("browser canvas persistence", () => {
 
   it("reattaches persisted sessions and names after a bootstrap catalog overwrite", async () => {
     const storage = new MemoryStorage();
-    const bootstrapSessions: CanvasSession[] = [{
+    const bootstrapSessions: CanvasSessionSnapshot[] = [{
       id: SESSION_ID,
       name: "Welcome",
       mode: "freeform",
@@ -479,7 +479,7 @@ describe("browser canvas persistence", () => {
 
   it("recovers a full historical backup even when its IndexedDB document is gone", async () => {
     const storage = new MemoryStorage();
-    const bootstrapSessions: CanvasSession[] = [{
+    const bootstrapSessions: CanvasSessionSnapshot[] = [{
       id: SESSION_ID,
       name: "Welcome",
       mode: "freeform",
@@ -702,7 +702,7 @@ describe("browser canvas persistence", () => {
 
   it("persists slide pages in one session Yjs document", async () => {
     const storage = new MemoryStorage();
-    const slides: CanvasSession[] = [{
+    const slides: CanvasSessionSnapshot[] = [{
       id: SLIDE_SESSION_ID,
       name: "Slides",
       mode: "slide",
@@ -764,7 +764,7 @@ describe("browser canvas persistence", () => {
 
   it("migrates legacy per-slide IndexedDB content into the session document", async () => {
     const storage = new MemoryStorage();
-    const slides: CanvasSession[] = [{
+    const slides: CanvasSessionSnapshot[] = [{
       id: SLIDE_SESSION_ID,
       name: "Slides",
       mode: "slide",

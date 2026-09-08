@@ -16,7 +16,7 @@ import {
 } from "@/domains/canvas/public";
 import {
   getSlideResizeCropCount,
-  type Slide,
+  type SlideDescriptor,
   type SlideSize,
 } from "@/domains/slides/public";
 import { HOST_ICONOLOGY } from "@/shared/icons/iconology";
@@ -110,7 +110,7 @@ const SlideContentPreview = memo(function SlideContentPreview({
   slide,
 }: {
   sessionId: string;
-  slide: Slide;
+  slide: SlideDescriptor;
 }) {
   const canvas = useCanvasRuntime();
   const subscribe = useCallback(
@@ -139,8 +139,8 @@ const SlideContentPreview = memo(function SlideContentPreview({
   );
   const loadGrid = useCallback(() => {
     const reader = canvas.documents.getContentReader(sessionId, slide.id);
-    return reader ? Array.from(reader.materialize()) : slide.grid;
-  }, [canvas.documents, sessionId, slide.grid, slide.id]);
+    return reader ? Array.from(reader.materialize()) : [];
+  }, [canvas.documents, sessionId, slide.id]);
 
   return (
     <SlidePreviewCanvas
@@ -227,7 +227,7 @@ function EditableSlideNavigator() {
           );
           return reader
             ? Array.from(reader.materialize())
-            : configureSlideMetadata.grid;
+            : [];
         })(),
       }
     : null;
@@ -237,7 +237,7 @@ function EditableSlideNavigator() {
     from,
     to,
     total,
-  }: ReorderAnnouncement<Slide>) => {
+  }: ReorderAnnouncement<SlideDescriptor>) => {
     const values = {
       name: item.name,
       from: from + 1,

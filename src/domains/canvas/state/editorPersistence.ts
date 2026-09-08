@@ -1,8 +1,10 @@
 import {
   EDITOR_PERSISTENCE_VERSION,
+  getCanvasSessionDescriptor,
   isSourceBackedCanvasSession,
   withActiveCanvasSnapshot,
-  type CanvasSession,
+  type CanvasSessionDescriptor,
+  type CanvasSessionSnapshot,
 } from "@/domains/sessions/public";
 import {
   buildStructuredTemplate,
@@ -22,24 +24,25 @@ import {
   DEFAULT_STRUCTURED_SESSION_ID,
   DEFAULT_STRUCTURED_SESSION_NAME,
   getSessionCanvasDocumentId,
-  resolveSessionRuntime,
-  stripSessionContent,
-  stripSlideDeckContent,
+  resolveSessionDescriptorRuntime,
 } from "./helpers/storeUtils";
 import type { EditorState } from "./interfaces";
 import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 import {
-  createCanvasContentSurface,
   createStructuredContentSurface,
 } from "./helpers/gridHelpers";
-import { createGridSurfaceReader } from "../cell-plane/model";
+import {
+  materializeSlideDeckContent,
+  readSlideDeckDescriptor,
+} from "./slideDocumentPages";
+import { toSlideDeckDescriptor } from "@/domains/slides/public";
 
 const DEFAULT_STRUCTURED_SAFARI_TEMPLATE = buildStructuredTemplate(
   "safari",
   { x: 4, y: 2 },
   { brushColor: COLOR_PRIMARY_TEXT, startOrder: 1 }
 );
-export const createDefaultCanvasSessions = (): CanvasSession[] => [
+export const createDefaultCanvasSessions = (): CanvasSessionSnapshot[] => [
   {
     id: DEFAULT_SESSION_ID,
     name: DEFAULT_SESSION_NAME,
@@ -58,7 +61,8 @@ export const createDefaultCanvasSessions = (): CanvasSession[] => [
 ];
 
 export const recoverPersistedEditorState = (
-  hydratedState: EditorState
+  hydratedState: EditorState,
+  activeSnapshot?: CanvasSessionSnapshot
 ): EditorState => {
   const state = { ...hydratedState };
   state.brushChar = normalizeBrushChar(state.brushChar, DEFAULT_BRUSH_CHAR);
@@ -75,7 +79,7 @@ export const recoverPersistedEditorState = (
   const sessions =
     state.canvasSessions.length > 0
       ? state.canvasSessions
-      : createDefaultCanvasSessions();
+      : createDefaultCanvasSessions().map(getCanvasSessionDescriptor);
 
   const activeCanvasId =
     typeof state.activeCanvasId === "string" &&
@@ -84,25 +88,27 @@ export const recoverPersistedEditorState = (
       : sessions[0].id;
   const activeSession =
     sessions.find((session) => session.id === activeCanvasId) ?? sessions[0];
-  const runtime = resolveSessionRuntime(activeSession, state.tool || "select");
+  const runtime = resolveSessionDescriptorRuntime(
+    activeSession,
+    state.tool || "select"
+  );
 
-  state.canvasSessions = sessions.map(stripSessionContent);
+  state.canvasSessions = sessions;
   state.activeCanvasId = activeCanvasId;
   state.canvasMode = runtime.nextMode;
-  state.slideDeck = runtime.nextSlideDeck
-    ? stripSlideDeckContent(runtime.nextSlideDeck)
-    : null;
-  state.structuredScene = runtime.nextScene;
-  state.structuredComponents = runtime.nextComponents;
+  state.slideDeck =
+    activeSnapshot?.mode === "slide"
+      ? toSlideDeckDescriptor(activeSnapshot.slideDeck)
+      : state.canvasMode === "slide"
+        ? state.slideDeck
+        : null;
   state.selectedStructuredNodeIds = [];
   state.selectedStructuredBoxId = null;
   state.selectedStructuredSplitHandle = null;
   state.structuredContextPoint = null;
   state.contentSurface = runtime.nextMode === "structured"
-    ? createStructuredContentSurface(runtime.nextScene)
-    : createCanvasContentSurface(
-        createGridSurfaceReader(new Map(runtime.nextGridEntries))
-      );
+    ? createStructuredContentSurface(state.structuredScene)
+    : state.contentSurface;
   state.tool = runtime.nextTool;
   state.offset = runtime.nextOffset;
   state.zoom = runtime.nextZoom;
@@ -111,7 +117,8 @@ export const recoverPersistedEditorState = (
 
 export const syncHydratedStateToCanvasDocument = (
   documents: CanvasDocumentRegistry,
-  hydratedState: EditorState
+  hydratedState: EditorState,
+  activeSnapshot?: CanvasSessionSnapshot
 ) => {
   const activeSession = hydratedState.canvasSessions.find(
     (session) => session.id === hydratedState.activeCanvasId
@@ -135,6 +142,23 @@ export const syncHydratedStateToCanvasDocument = (
     });
     return;
   }
+  if (activeSession.mode === "slide" && activeSnapshot?.mode === "slide") {
+    documents.activateDocument(activeSession.id, {
+      mode: "slide",
+      activePageId: activeSnapshot.slideDeck.activeSlideId,
+      pages: activeSnapshot.slideDeck.slides.map((slide) => ({
+        id: slide.id,
+        name: slide.name,
+        size: slide.size,
+        kind: "cell-plane",
+        grid: slide.grid,
+      })),
+      grid: [],
+      scene: [],
+      components: [],
+    }, { replace: true });
+    return;
+  }
   documents.activateDocument(
     getSessionCanvasDocumentId(activeSession),
     {
@@ -150,23 +174,68 @@ export const syncHydratedStateToCanvasDocument = (
   );
 };
 
-const stripExternallyOwnedSessionContent = (session: CanvasSession): CanvasSession => {
-  if (isSourceBackedCanvasSession(session)) return stripSessionContent(session);
-  return session.mode !== "slide" && session.collaboration
-    ? { ...session, grid: [], scene: [], components: [] }
-    : session;
+const materializeSessionSnapshot = (
+  documents: CanvasDocumentRegistry,
+  session: CanvasSessionDescriptor
+): CanvasSessionSnapshot => {
+  if (session.mode === "slide") {
+    const deck = readSlideDeckDescriptor(documents, session.id);
+    if (!deck) {
+      throw new Error(`Slide document not loaded: ${session.id}`);
+    }
+    return {
+      ...session,
+      slideDeck: materializeSlideDeckContent(documents, session.id, deck),
+      grid: [],
+      scene: [],
+      components: [],
+    };
+  }
+  const seed = documents.getDocumentSeed(session.id, session.mode);
+  return {
+    ...session,
+    grid: seed?.grid ?? [],
+    scene: seed?.scene ?? [],
+    components: seed?.components ?? [],
+  };
 };
 
-export const createPersistedEditorSnapshot = (state: EditorState) => {
+const stripExternallyOwnedSessionContent = (
+  session: CanvasSessionSnapshot
+): CanvasSessionSnapshot => {
+  if (!isSourceBackedCanvasSession(getCanvasSessionDescriptor(session)) &&
+      !(session.mode !== "slide" && session.collaboration)) {
+    return session;
+  }
+  return session.mode === "slide"
+    ? {
+        ...session,
+        slideDeck: {
+          ...session.slideDeck,
+          slides: session.slideDeck.slides.map((slide) => ({
+            ...slide,
+            grid: [],
+          })),
+        },
+      }
+    : { ...session, grid: [], scene: [], components: [] };
+};
+
+export const createPersistedEditorSnapshot = (
+  state: EditorState,
+  documents: CanvasDocumentRegistry
+) => {
   const activeSession = state.canvasSessions.find(
     (session) => session.id === state.activeCanvasId
   );
   const activeIsExternallyOwned = isSourceBackedCanvasSession(activeSession) ||
     (activeSession?.mode !== "slide" && !!activeSession?.collaboration);
   const persistedSessions = withActiveCanvasSnapshot(
-    state.canvasSessions,
+    state.canvasSessions.map((session) =>
+      materializeSessionSnapshot(documents, session)
+    ),
     state.activeCanvasId,
-    buildSessionSnapshot(state)
+    buildSessionSnapshot(state, documents)
   ).map(stripExternallyOwnedSessionContent);
   return {
     schemaVersion: EDITOR_PERSISTENCE_VERSION,

@@ -31,11 +31,15 @@ describe("Web TUI gallery font profiles", () => {
     expect(galleryFontOptions["fusion-mono"].profile.capabilities.display.cellMetrics).toBeUndefined();
     expect(galleryFontOptions.maple.profile.capabilities.display.cellMetrics).toBeUndefined();
   });
-  it("routes the Xiaolai trial through the existing display/CJK stack", () => {
+  it("routes packaged Xiaolai shards through the existing display/CJK stack", () => {
     const option = galleryFontOptions["xiaolai-mono"];
-    expect(option.stylesheet).toBe("/fonts/xiaolai-mono/fonts.css");
+    expect(option.stylesheet).not.toMatch(/^https?:/);
     expect(option.fontSpec).toBe("15px 'Xiaolai Mono'");
-    expect(option.loadSamples).toEqual(["AgWi09", "世界，。"]);
+    expect(option.loadSamples).toEqual(["AgWi09"]);
+    expect(option.profile.id).toBe("chardesk/gallery-xiaolai-mono-maple-core-v7-3.126");
+    expect(option.profile.sources).toContainEqual(expect.objectContaining({
+      id: "xiaolai-mono", version: "3.126",
+    }));
     for (const text of ["A", "界", "│", "█", "→"]) {
       expect(resolve("xiaolai-mono", text)).toMatchObject({
         family: expect.stringMatching(/^'Xiaolai Mono'.*Maple Mono/),

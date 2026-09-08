@@ -488,7 +488,7 @@ describe("CanvasInspectorControl", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pick ANSI color #ff0000" }));
     expect(useEditorStore.getState().brushColor).toBe("#ff0000");
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.color).toBe("#ff0000");
-    expect(useEditorStore.getState().slideDeck?.slides[0].grid).toEqual([]);
+    expect(useEditorStore.getState().slideDeck?.slides[0]).not.toHaveProperty("grid");
     expect(
       defaultCanvasDocuments
         .getContentReader(

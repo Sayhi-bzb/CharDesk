@@ -42,6 +42,13 @@ selection border. Structured mode retains a distinct navigation-focus contract
 rather than treating its active Cell as a text cursor. Canvas and Cell UI adapt
 their own theme values to the shared rendering contracts.
 
+Static Grid separates command targets from interaction semantics. The Selection
+domain publishes a target plus one `navigate`, `text-edit`, or `range`
+interaction. A default one-Cell target remains `navigate`; only an explicit
+`GridSelectionState.mode === "range"` publishes Range geometry. Renderers must
+consume this discriminant and never infer a Range from non-empty target areas,
+geometry, or Cell count.
+
 Third-party UI integrations live behind product adapters. The onboarding
 adapter is the sole Driver.js owner and maps shared overlay, motion, radius, and
 reduced-motion semantics into Driver configuration. Product onboarding code

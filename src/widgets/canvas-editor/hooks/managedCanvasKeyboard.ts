@@ -1,13 +1,12 @@
 import type { KeyInput } from "@chardesk/keyboard";
 import { resolveFillHotkeyChar } from "@/domains/actions/public";
+import type { StaticGridInteraction } from "@/domains/selection/public";
 
 type Direction = -1 | 0 | 1;
 
 export type ManagedCanvasKeyboardContext = Readonly<{
   mutateEnabled: boolean;
-  staticGridMode: boolean;
-  staticGridEditMode: "navigate" | "text-edit";
-  hasStaticGridSelection: boolean;
+  staticGridInteraction: StaticGridInteraction["kind"] | null;
   hasTextCursor: boolean;
   hasActiveSelection: boolean;
   hasStructuredSelection: boolean;
@@ -84,10 +83,14 @@ export const resolveManagedCanvasKeyIntent = (
   }
 
   const mod = input.modifiers.ctrl || input.modifiers.meta;
+  const staticGridMode = context.staticGridInteraction !== null;
+  const staticGridNavigating = context.staticGridInteraction === "navigate"
+    || context.staticGridInteraction === "range";
+  const staticGridRange = context.staticGridInteraction === "range";
   const flushPendingText = mod
     || input.modifiers.alt
     || input.key.length !== 1
-    || (context.hasStaticGridSelection && !context.hasTextCursor);
+    || (staticGridRange && !context.hasTextCursor);
   const decide = (
     intent: ManagedCanvasKeyIntent | null,
     preventDefault: boolean
@@ -109,29 +112,26 @@ export const resolveManagedCanvasKeyIntent = (
     && (input.key === "Delete" || input.key === "Backspace")
   ) return decide({ type: "delete-selection" }, true);
 
-  if (context.staticGridMode && mod && input.key.toLowerCase() === "a") {
+  if (staticGridMode && mod && input.key.toLowerCase() === "a") {
     return decide({ type: "select-grid-all" }, true);
   }
   if (
-    context.staticGridMode
-    && context.staticGridEditMode === "navigate"
+    staticGridNavigating
     && input.modifiers.shift
     && input.code === "Space"
     && !mod
   ) return decide({ type: "select-grid-row" }, true);
   if (
-    context.staticGridMode
-    && context.staticGridEditMode === "navigate"
+    staticGridNavigating
     && input.modifiers.ctrl
     && input.code === "Space"
     && !input.modifiers.meta
   ) return decide({ type: "select-grid-column" }, true);
-  if (context.staticGridMode && input.key === "F2" && context.mutateEnabled) {
+  if (staticGridMode && input.key === "F2" && context.mutateEnabled) {
     return decide({ type: "enter-grid-text-edit" }, true);
   }
   if (
-    context.staticGridMode
-    && context.staticGridEditMode === "navigate"
+    staticGridNavigating
     && (input.key === "Home" || input.key === "End")
   ) {
     return decide({
@@ -143,8 +143,7 @@ export const resolveManagedCanvasKeyIntent = (
     }, true);
   }
   if (
-    context.staticGridMode
-    && context.staticGridEditMode === "navigate"
+    staticGridNavigating
     && (input.key === "PageUp" || input.key === "PageDown")
   ) {
     return decide({
@@ -155,7 +154,7 @@ export const resolveManagedCanvasKeyIntent = (
   }
   if (input.key === "Enter") {
     return decide(
-      context.staticGridMode && context.staticGridEditMode === "navigate"
+      staticGridNavigating
         ? {
             type: "move-grid-focus",
             dx: 0,
@@ -168,7 +167,7 @@ export const resolveManagedCanvasKeyIntent = (
   }
   if (input.key === "Tab") {
     return decide(
-      context.staticGridMode && context.staticGridEditMode === "navigate"
+      staticGridNavigating
         ? {
             type: "move-grid-focus",
             dx: input.modifiers.shift ? -1 : 1,
@@ -181,7 +180,7 @@ export const resolveManagedCanvasKeyIntent = (
   }
   if (input.key.startsWith("Arrow")) {
     const direction = directionFor(input.key);
-    if (context.staticGridMode && context.staticGridEditMode === "navigate") {
+    if (staticGridNavigating) {
       return decide({
         type: "move-grid-focus",
         ...direction,
@@ -201,7 +200,7 @@ export const resolveManagedCanvasKeyIntent = (
   if (input.key === "Escape") {
     const target = context.colorPickerOpen
       ? "color-picker"
-      : context.staticGridMode && context.staticGridEditMode === "text-edit"
+      : context.staticGridInteraction === "text-edit"
         ? "grid-text-edit"
         : context.hasTextCursor
           ? "text-cursor"
@@ -214,7 +213,7 @@ export const resolveManagedCanvasKeyIntent = (
                 : "none";
     return decide({ type: "escape", target }, true);
   }
-  if (context.hasStaticGridSelection && !context.hasTextCursor && context.mutateEnabled) {
+  if (staticGridRange && !context.hasTextCursor && context.mutateEnabled) {
     const char = resolveFillHotkeyChar(input);
     if (char) return decide({ type: "fill-selection", char }, true);
   }

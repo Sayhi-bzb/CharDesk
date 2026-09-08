@@ -58,8 +58,8 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
   const response = await page.goto("/exp/web-tui/");
   expect(response?.headers()["content-security-policy"]).toBe(CSP);
   await expect(page.getByRole("heading", { name: "Text", level: 1 })).toBeVisible();
-  await expect(page.locator("canvas")).toHaveCount(1);
-  await expect(page.locator("canvas")).toHaveAttribute("data-cell-text", /Unicode: 世界 👋/);
+  await expect(page.locator(".docs-preview canvas")).toHaveCount(1);
+  await expect(page.locator(".docs-preview canvas")).toHaveAttribute("data-cell-text", /Unicode: 世界 👋/);
   const gallery = page.locator(".gallery-page");
   await selectGalleryFont(page, "Fusion Pixel 12px Mono");
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");

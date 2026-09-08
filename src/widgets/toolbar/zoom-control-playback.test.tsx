@@ -1,6 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useEditorStore } from "@/domains/canvas/testing";
+import {
+  defaultCanvasDocuments,
+  useEditorStore,
+} from "@/domains/canvas/testing";
 import { ShortcutProvider } from "@/shared/shortcuts/dispatcher";
 import { SlideNavigator } from "./slide-navigator";
 import { ZoomControl } from "./zoom-control";
@@ -74,6 +77,30 @@ describe("ZoomControl slide playback", () => {
       configurable: true,
       value: exitFullscreen,
     });
+    const sessionId = useEditorStore.getState().activeCanvasId;
+    defaultCanvasDocuments.activateDocument(sessionId, {
+      mode: "slide",
+      activePageId: "slide-2",
+      pages: [
+        {
+          id: "slide-1",
+          name: "First",
+          size: { columns: 3, rows: 2 },
+          kind: "cell-plane",
+          grid: [["2,1", { char: "A", color: "#000" }]],
+        },
+        {
+          id: "slide-2",
+          name: "Second",
+          size: { columns: 3, rows: 2 },
+          kind: "cell-plane",
+          grid: [],
+        },
+      ],
+      grid: [],
+      scene: [],
+      components: [],
+    }, { replace: true });
     useEditorStore.setState({
       canvasMode: "slide",
       slideDeck: {
@@ -83,9 +110,8 @@ describe("ZoomControl slide playback", () => {
             id: "slide-1",
             name: "First",
             size: { columns: 3, rows: 2 },
-            grid: [["2,1", { char: "A", color: "#000" }]],
           },
-          { id: "slide-2", name: "Second", size: { columns: 3, rows: 2 }, grid: [] },
+          { id: "slide-2", name: "Second", size: { columns: 3, rows: 2 } },
         ],
       },
     });
@@ -370,8 +396,13 @@ describe("ZoomControl slide playback", () => {
     fireEvent.click(screen.getByRole("button", { name: "Crop and apply" }));
     expect(useEditorStore.getState().slideDeck?.slides[0]).toMatchObject({
       size: { columns: 2, rows: 1 },
-      grid: [],
     });
+    expect(useEditorStore.getState().slideDeck?.slides[0]).not.toHaveProperty("grid");
+    expect(
+      defaultCanvasDocuments
+        .getContentReader(useEditorStore.getState().activeCanvasId, "slide-1")
+        ?.materialize()
+    ).toEqual(new Map());
   });
 
   it("exits owned fullscreen from the presentation close control", async () => {

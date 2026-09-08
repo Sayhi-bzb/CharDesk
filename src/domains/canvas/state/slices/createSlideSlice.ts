@@ -2,13 +2,14 @@ import type { StateCreator } from "zustand";
 import type { CanvasDocumentRegistry } from "../CanvasDocumentRegistry";
 import {
   activateSlide as activateDeckSlide,
-  addSlide as addDeckSlide,
+  addSlideDescriptor as addDeckSlide,
   createSlideId,
-  duplicateSlide as duplicateDeckSlide,
+  duplicateSlideDescriptor as duplicateDeckSlide,
   moveSlide as moveDeckSlide,
   removeSlide as removeDeckSlide,
   renameSlide as renameDeckSlide,
-  resizeSlide as resizeDeckSlide,
+  resizeSlide as resizeDeckSnapshot,
+  resizeSlideDescriptor as resizeDeckSlide,
   getSlideResizeCropCount,
 } from "@/domains/slides/public";
 import type { EditorState, SlideSlice } from "../interfaces";
@@ -17,11 +18,9 @@ import {
   activateSlidePage,
   ensureSlidePage,
   readSlideGrid,
-  replaceSlideDeckSession,
   removeSlidePage,
   resetSlidePage,
 } from "../slideDocumentPages";
-import { stripSlideDeckContent } from "../helpers/storeUtils";
 
 export const createSlideSlice = (
   documents: CanvasDocumentRegistry
@@ -51,7 +50,7 @@ export const createSlideSlice = (
       name: active.name,
       size: active.size,
     });
-    set(createSlideActivationPatch(state, stripSlideDeckContent(next), activeGrid));
+    set(createSlideActivationPatch(next, activeGrid));
   },
 
   duplicateSlide: (slideId) => {
@@ -63,32 +62,26 @@ export const createSlideSlice = (
       documents,
       state.activeCanvasId,
       slideId,
-      source.grid
+      []
     );
-    const hydrated = {
-      ...state.slideDeck,
-      slides: state.slideDeck.slides.map((slide) =>
-        slide.id === slideId ? { ...slide, grid: sourceGrid } : slide
-      ),
-    };
-    const next = duplicateDeckSlide(hydrated, {
+    const next = duplicateDeckSlide(state.slideDeck, {
       sourceSlideId: slideId,
-      id: createSlideId(hydrated.slides),
+      id: createSlideId(state.slideDeck.slides),
     });
-    if (next === hydrated) return;
+    if (next === state.slideDeck) return;
     const active = next.slides.find((slide) => slide.id === next.activeSlideId);
     if (!active) return;
     const activeGrid = activateSlidePage(
       documents,
       state.activeCanvasId,
       active.id,
-      active.grid
+      sourceGrid
     );
     documents.updatePage(state.activeCanvasId, active.id, {
       name: active.name,
       size: active.size,
     });
-    set(createSlideActivationPatch(state, stripSlideDeckContent(next), activeGrid));
+    set(createSlideActivationPatch(next, activeGrid));
   },
 
   removeSlide: (slideId) => {
@@ -102,9 +95,9 @@ export const createSlideSlice = (
       documents,
       state.activeCanvasId,
       active.id,
-      active.grid
+      []
     );
-    set(createSlideActivationPatch(state, stripSlideDeckContent(next), activeGrid));
+    set(createSlideActivationPatch(next, activeGrid));
     removeSlidePage(documents, state.activeCanvasId, slideId);
   },
 
@@ -116,7 +109,6 @@ export const createSlideSlice = (
     documents.updatePage(state.activeCanvasId, slideId, { name });
     set({
       slideDeck: next,
-      canvasSessions: replaceSlideDeckSession(state.canvasSessions, state.activeCanvasId, next),
     });
   },
 
@@ -131,7 +123,6 @@ export const createSlideSlice = (
     );
     set({
       slideDeck: next,
-      canvasSessions: replaceSlideDeckSession(state.canvasSessions, state.activeCanvasId, next),
     });
   },
 
@@ -152,9 +143,9 @@ export const createSlideSlice = (
       documents,
       state.activeCanvasId,
       active.id,
-      active.grid
+      []
     );
-    set(createSlideActivationPatch(state, stripSlideDeckContent(next), activeGrid));
+    set(createSlideActivationPatch(next, activeGrid));
   },
 
   resizeSlide: (slideId, size) => {
@@ -168,20 +159,18 @@ export const createSlideSlice = (
         documents,
         state.activeCanvasId,
         slideId,
-        source.grid
+        []
       ),
     };
     const cropCount = getSlideResizeCropCount(sourceWithGrid, size);
-    const hydrated = {
-      ...state.slideDeck,
-      slides: state.slideDeck.slides.map((slide) =>
-        slide.id === slideId ? sourceWithGrid : slide
-      ),
-    };
-    const contentNext = resizeDeckSlide(hydrated, slideId, size);
-    if (contentNext === hydrated) return;
-    const next = stripSlideDeckContent(contentNext);
-    const resizedContent = contentNext.slides.find((slide) => slide.id === slideId);
+    const contentNext = resizeDeckSnapshot(
+      { slides: [sourceWithGrid], activeSlideId: slideId },
+      slideId,
+      size
+    );
+    const next = resizeDeckSlide(state.slideDeck, slideId, size);
+    if (next === state.slideDeck) return;
+    const resizedContent = contentNext.slides[0];
     const active = next.slides.find((slide) => slide.id === next.activeSlideId);
     if (!active || !resizedContent) return;
     documents.updatePage(state.activeCanvasId, slideId, { size });
@@ -209,12 +198,11 @@ export const createSlideSlice = (
         active.id,
         resizedContent.grid
       );
-      set(createSlideActivationPatch(state, next, activeGrid));
+      set(createSlideActivationPatch(next, activeGrid));
       return;
     }
     set({
       slideDeck: next,
-      canvasSessions: replaceSlideDeckSession(state.canvasSessions, state.activeCanvasId, next),
     });
   },
 });

@@ -1,17 +1,14 @@
-import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 
 import { create as createFont } from "fontkit";
 
+import { runPyftsubset } from "./fonttools.mjs";
 import {
   groupNerdFontCatalog,
   nerdFontCodePoints,
 } from "./nerd-font-catalog.mjs";
-
-const execFileAsync = promisify(execFile);
 
 export const MAX_NERD_FONT_SHARD_BYTES = 96 * 1024;
 
@@ -21,7 +18,7 @@ const subsetFont = async ({
   outputPath,
   subsetCommand,
 }) => {
-  await execFileAsync(subsetCommand, [
+  await runPyftsubset([
     inputPath,
     `--output-file=${outputPath}`,
     "--flavor=woff2",
@@ -37,14 +34,14 @@ const subsetFont = async ({
     "--name-IDs=*",
     "--name-legacy",
     "--name-languages=*",
-  ]);
+  ], subsetCommand);
 };
 
 export const buildNerdFontSubsets = async ({
   catalog,
   fontBytes,
   maxShardBytes = MAX_NERD_FONT_SHARD_BYTES,
-  subsetCommand = process.env.PYFTSUBSET || "pyftsubset",
+  subsetCommand = process.env.PYFTSUBSET,
 }) => {
   const catalogCodePoints = [...nerdFontCodePoints(catalog)];
   const sourceFont = createFont(fontBytes);

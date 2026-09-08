@@ -1,7 +1,7 @@
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import type { CanvasMode } from "@/domains/sessions/public";
 import type { StructuredComponentInstance, StructuredNode } from "@/domains/structured-content/public";
-import type { SlideDeck } from "@/domains/slides/public";
+import type { SlideDeckSnapshot } from "@/domains/slides/public";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
 
 export type ExportFormat =
@@ -18,7 +18,7 @@ export type ExportContext = {
   structuredComponents: StructuredComponentInstance[];
   includeColor: boolean;
   showGrid: boolean;
-  slideDeck?: SlideDeck | null;
+  slideDeck?: SlideDeckSnapshot | null;
   documentName?: string;
 };
 

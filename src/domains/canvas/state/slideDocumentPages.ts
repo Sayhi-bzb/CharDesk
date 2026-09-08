@@ -1,20 +1,27 @@
-import type { CanvasSession } from "@/domains/sessions/public";
-import type { SlideDeck } from "@/domains/slides/public";
+import {
+  DEFAULT_SLIDE_SIZE,
+  type SlideDeckDescriptor,
+  type SlideDeckSnapshot,
+} from "@/domains/slides/public";
 import type { GridCell } from "@/shared/types";
 import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 
-/** Slide metadata lives in the deck; the Canvas document owns each page. */
+/** Slide metadata and content live in the Canvas document; the deck is a projection. */
 
-export const replaceSlideDeckSession = (
-  sessions: CanvasSession[],
-  sessionId: string,
-  slideDeck: SlideDeck
-) =>
-  sessions.map((session): CanvasSession =>
-    session.id === sessionId && session.mode === "slide"
-      ? { ...session, slideDeck }
-      : session
-  );
+export const readSlideDeckDescriptor = (
+  documents: CanvasDocumentRegistry,
+  sessionId: string
+): SlideDeckDescriptor | null => {
+  const address = documents.getDocumentAddress(sessionId);
+  if (!address) return null;
+  const slides = documents.getPageDescriptors(sessionId).map((page, index) => ({
+    id: page.id,
+    name: page.name?.trim() || `Slide ${index + 1}`,
+    size: page.size ?? { ...DEFAULT_SLIDE_SIZE },
+  }));
+  if (slides.length === 0) return null;
+  return { slides, activeSlideId: address.pageId };
+};
 
 export const activateSlidePage = (
   documents: CanvasDocumentRegistry,
@@ -55,12 +62,12 @@ export const readSlideGrid = (
 export const materializeSlideDeckContent = (
   documents: CanvasDocumentRegistry,
   sessionId: string,
-  deck: SlideDeck
-): SlideDeck => ({
+  deck: SlideDeckDescriptor
+): SlideDeckSnapshot => ({
   ...deck,
   slides: deck.slides.map((slide) => ({
     ...slide,
-    grid: readSlideGrid(documents, sessionId, slide.id, slide.grid),
+    grid: readSlideGrid(documents, sessionId, slide.id),
   })),
 });
 

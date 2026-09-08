@@ -4,6 +4,7 @@ import { GalleryAppearance, GalleryFontSelect } from "./appearance";
 
 // Vitest disables CSS processing; exercise the link lifecycle with a local URL.
 vi.mock("@chardesk/font-fusion/fonts.css?url", () => ({ default: "/packages/font-fusion/fonts.css" }));
+vi.mock("@chardesk/font-xiaolai/fonts.css?url", () => ({ default: "/packages/font-xiaolai/fonts.css" }));
 
 describe("Web TUI gallery font loading", () => {
   afterEach(() => {

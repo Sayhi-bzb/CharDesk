@@ -1,12 +1,15 @@
-import type { CanvasSession } from "./model";
+import type {
+  CanvasSessionDescriptor,
+  CanvasSessionSnapshot,
+} from "./model";
 import type { Point } from "@/shared/types";
 import type { CanvasMode } from "./mode";
 import type { StructuredComponentInstance, StructuredNode } from "@/domains/structured-content/public";
-import type { SlideDeck } from "@/domains/slides/public";
+import type { SlideDeckSnapshot } from "@/domains/slides/public";
 import { createEntityId } from "@/shared/utils/id";
 
 export const resolveNextSessionName = (
-  sessions: CanvasSession[],
+  sessions: readonly CanvasSessionDescriptor[],
   mode: CanvasMode = "freeform"
 ) => {
   const prefix = mode === "slide"
@@ -25,7 +28,7 @@ export const resolveNextSessionName = (
   return `${prefix} ${maxIndex + 1}`;
 };
 
-export const createSessionId = (sessions: CanvasSession[]) => {
+export const createSessionId = (sessions: readonly CanvasSessionDescriptor[]) => {
   const existing = new Set(sessions.map((session) => session.id));
   let candidate = "";
   do {
@@ -44,18 +47,18 @@ type StaticActiveSnapshot = {
 
 type SlideActiveSnapshot = {
   mode: "slide";
-  slideDeck: SlideDeck;
+  slideDeck: SlideDeckSnapshot;
   viewport?: { offset: Point; zoom: number };
 };
 
 type ActiveSnapshot = StaticActiveSnapshot | SlideActiveSnapshot;
 
 export const withActiveCanvasSnapshot = (
-  sessions: CanvasSession[],
+  sessions: CanvasSessionSnapshot[],
   activeCanvasId: string,
   snapshot: ActiveSnapshot
 ) => {
-  return sessions.map((session): CanvasSession => {
+  return sessions.map((session): CanvasSessionSnapshot => {
     if (session.id !== activeCanvasId) return session;
     if (snapshot.mode === "slide") {
       return {
@@ -79,7 +82,7 @@ export const withActiveCanvasSnapshot = (
       components: snapshot.components,
       grid: snapshot.grid,
       viewport: snapshot.viewport,
-    } as CanvasSession;
+    } as CanvasSessionSnapshot;
   });
 };
 

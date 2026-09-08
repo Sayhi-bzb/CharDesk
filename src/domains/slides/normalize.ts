@@ -3,8 +3,8 @@ import { createSlideDeck } from "./deck";
 import { isValidSlideSize, normalizeSlideGridEntries } from "./grid";
 import {
   DEFAULT_SLIDE_SIZE,
-  type Slide,
-  type SlideDeck,
+  type SlideSnapshot,
+  type SlideDeckSnapshot,
   type SlideSize,
 } from "./model";
 
@@ -21,7 +21,7 @@ const normalizeSize = (value: unknown): SlideSize | null => {
     : null;
 };
 
-const normalizeSlide = (value: unknown, fallbackSize: SlideSize): Slide | null => {
+const normalizeSlide = (value: unknown, fallbackSize: SlideSize): SlideSnapshot | null => {
   if (!isRecord(value) || typeof value.id !== "string" || !value.id.trim()) {
     return null;
   }
@@ -40,10 +40,10 @@ const normalizeSlide = (value: unknown, fallbackSize: SlideSize): Slide | null =
   };
 };
 
-export const normalizeSlideDeck = (
+export const normalizeSlideDeckSnapshot = (
   value: unknown,
   fallbackSlideId: string
-): SlideDeck => {
+): SlideDeckSnapshot => {
   if (!isRecord(value)) {
     return createSlideDeck({ initialSlideId: fallbackSlideId });
   }
@@ -52,7 +52,7 @@ export const normalizeSlideDeck = (
   const seen = new Set<string>();
   const slides = (Array.isArray(value.slides) ? value.slides : [])
     .map((slide) => normalizeSlide(slide, legacySize))
-    .filter((slide): slide is Slide => {
+    .filter((slide): slide is SlideSnapshot => {
       if (!slide || seen.has(slide.id)) return false;
       seen.add(slide.id);
       return true;

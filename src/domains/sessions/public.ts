@@ -1,14 +1,22 @@
 export type {
   CanvasSourceBinding,
   CanvasImportSnapshot,
-  CanvasSession,
-  FreeformCanvasSession,
+  CanvasSessionDescriptor,
+  CanvasSessionRestoreRecord,
+  CanvasSessionSnapshot,
+  FreeformCanvasSessionDescriptor,
   FreeformCanvasImportSnapshot,
-  SourceBackedCanvasSession,
-  StructuredCanvasSession,
+  SourceBackedCanvasSessionDescriptor,
+  SourceBackedCanvasSessionSnapshot,
+  StructuredCanvasSessionDescriptor,
   StructuredCanvasImportSnapshot,
 } from "./model";
 export { isSourceBackedCanvasSession } from "./model";
+export {
+  getCanvasSessionDescriptor,
+  getCanvasSessionFallbackSnapshot,
+  getCanvasSessionRestoreRecord,
+} from "./model";
 export {
   createSessionId,
   normalizeSessionMode,

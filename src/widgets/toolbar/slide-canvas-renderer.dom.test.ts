@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Slide } from "@/domains/slides/public";
+import type { SlideSnapshot } from "@/domains/slides/public";
 import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
 import { drawSlideCanvas } from "./slide-canvas-renderer";
 
@@ -123,7 +123,7 @@ describe("drawSlideCanvas", () => {
 
   it("renders the complete slide with backgrounds before text", () => {
     const { calls, canvas, ctx } = createCanvas();
-    const slide: Slide = {
+    const slide: SlideSnapshot = {
       id: "slide-1",
       name: "Complete slide",
       size: { columns: 100, rows: 27 },

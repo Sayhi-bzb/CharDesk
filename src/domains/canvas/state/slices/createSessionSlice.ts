@@ -4,25 +4,28 @@ import type {
 } from "../interfaces";
 import type {
   CanvasImportSnapshot,
-  CanvasSession,
+  CanvasSessionDescriptor,
   SessionCommands,
 } from "@/domains/sessions/public";
 import {
-  resolveSessionRuntime,
-  getSessionCanvasDocumentId,
-  stripSessionContent,
-  stripSlideDeckContent,
+  resolveSessionDocumentRuntime,
 } from "../helpers/storeUtils";
-import { activateSlidePage } from "../slideDocumentPages";
+import { readSlideDeckDescriptor } from "../slideDocumentPages";
 import {
   normalizeSessionMode,
   createSessionId,
   isSourceBackedCanvasSession,
   resolveNextSessionName,
 } from "@/domains/sessions/public";
-import { createSlideDeck } from "@/domains/slides/public";
+import {
+  createSlideDeck,
+  type SlideDeckSnapshot,
+} from "@/domains/slides/public";
 import type { CanvasSessionSourceParser } from "../sessionImportPort";
-import type { CanvasDocumentRegistry } from "../CanvasDocumentRegistry";
+import type {
+  CanvasDocumentRegistry,
+  CanvasDocumentSeed,
+} from "../CanvasDocumentRegistry";
 import {
   getCollaborationDocumentId,
   sameCollaborationRoom,
@@ -57,7 +60,7 @@ const getImportedSessionBaseName = (mode: CanvasImportSnapshot["mode"]) => {
 };
 
 const resolveImportedSessionName = (
-  sessions: CanvasSession[],
+  sessions: CanvasSessionDescriptor[],
   preferredName: string
 ) => {
   const baseName = preferredName.trim() || "Imported Canvas";
@@ -74,45 +77,65 @@ const resolveImportedSessionName = (
   return candidate;
 };
 
-const createImportedSession = (
+const createImportedSessionDescriptor = (
   sessionId: string,
   name: string,
   snapshot: CanvasImportSnapshot
-): CanvasSession => {
-  if (snapshot.mode === "slide") {
-    return {
-      id: sessionId,
-      name,
-      mode: "slide",
-      slideDeck: snapshot.slideDeck,
-      scene: [],
-      components: [],
-      grid: [],
-    };
-  }
+): CanvasSessionDescriptor => ({ id: sessionId, name, mode: snapshot.mode });
 
-  return snapshot.mode === "structured"
+const createDocumentSeed = (
+  snapshot: CanvasImportSnapshot
+): CanvasDocumentSeed =>
+  snapshot.mode === "slide"
     ? {
-        id: sessionId,
-        name,
-        mode: "structured",
-        scene: snapshot.scene,
-        components: snapshot.components,
-        grid: snapshot.grid,
+        mode: "slide",
+        activePageId: snapshot.slideDeck.activeSlideId,
+        pages: snapshot.slideDeck.slides.map((slide) => ({
+          id: slide.id,
+          name: slide.name,
+          size: slide.size,
+          kind: "cell-plane",
+          grid: slide.grid,
+        })),
+        grid: [],
+        scene: [],
+        components: [],
       }
     : {
-        id: sessionId,
-        name,
-        mode: "freeform",
-        scene: snapshot.scene,
-        components: snapshot.components,
-        grid: snapshot.grid,
+        mode: snapshot.mode,
+        grid: snapshot.mode === "freeform" ? snapshot.grid : [],
+        scene: snapshot.mode === "structured" ? snapshot.scene : [],
+        components:
+          snapshot.mode === "structured" ? snapshot.components : [],
       };
+
+const createBlankSnapshot = (
+  mode: CanvasSessionDescriptor["mode"],
+  sessionId: string,
+  slideDeck?: SlideDeckSnapshot
+): CanvasImportSnapshot =>
+  mode === "slide"
+    ? {
+        mode,
+        slideDeck:
+          slideDeck ??
+          createSlideDeck({ initialSlideId: `${sessionId}-slide-1` }),
+      }
+    : { mode, grid: [], scene: [], components: [] };
+
+const replaceDocumentSnapshot = (
+  documents: CanvasDocumentRegistry,
+  sessionId: string,
+  snapshot: CanvasImportSnapshot,
+  replace = true
+) => {
+  const seed = createDocumentSeed(snapshot);
+  documents.activateDocument(sessionId, seed, { replace });
 };
 
 const destroySessionDocuments = async (
   documents: CanvasDocumentRegistry,
-  session: CanvasSession,
+  session: CanvasSessionDescriptor,
   residency?: CanvasDocumentResidency
 ) => {
   if (residency) await residency.delete(session.id);
@@ -121,8 +144,8 @@ const destroySessionDocuments = async (
 
 const checkpointActiveSessionViewport = (
   state: Pick<EditorState, "canvasSessions" | "activeCanvasId" | "offset" | "zoom">
-): CanvasSession[] =>
-  state.canvasSessions.map((session): CanvasSession => {
+): CanvasSessionDescriptor[] =>
+  state.canvasSessions.map((session): CanvasSessionDescriptor => {
     if (session.id !== state.activeCanvasId) return session;
     const viewport = {
       offset: { ...state.offset },
@@ -140,66 +163,14 @@ const checkpointActiveSessionViewport = (
 
 const activateSessionRuntime = (
   documents: CanvasDocumentRegistry,
-  session: CanvasSession,
+  session: CanvasSessionDescriptor,
   currentTool: EditorState["tool"]
 ) => {
-  const initialRuntime = resolveSessionRuntime(session, currentTool);
-  if (session.mode === "slide" && initialRuntime.nextSlideDeck) {
-    const activeSlide = initialRuntime.nextSlideDeck.slides.find(
-      (slide) => slide.id === initialRuntime.nextSlideDeck?.activeSlideId
-    );
-    documents.activateDocument(session.id, {
-      mode: "slide",
-      activePageId: initialRuntime.nextSlideDeck.activeSlideId,
-      pages: initialRuntime.nextSlideDeck.slides.map((slide) => ({
-        id: slide.id,
-        name: slide.name,
-        size: slide.size,
-        kind: "cell-plane",
-        grid: slide.grid,
-      })),
-      grid: [],
-      scene: [],
-      components: [],
-    });
-    if (activeSlide) documents.activatePage(session.id, activeSlide.id);
-    return {
-      ...initialRuntime,
-      nextSlideDeck: stripSlideDeckContent(initialRuntime.nextSlideDeck),
-      nextGridEntries: activeSlide
-        ? Array.from(documents.getContentReader().materialize())
-        : [],
-    };
+  const address = documents.getDocumentAddress(session.id);
+  if (!address || !documents.activatePage(address.documentId, address.pageId)) {
+    throw new Error(`Canvas document not loaded: ${session.id}`);
   }
-  if (session.mode === "slide") return initialRuntime;
-  documents.activateDocument(
-    getSessionCanvasDocumentId(session),
-    {
-      grid:
-        initialRuntime.nextMode === "structured"
-          ? []
-          : initialRuntime.nextGridEntries,
-      scene:
-        initialRuntime.nextMode === "structured"
-          ? initialRuntime.nextScene
-          : [],
-      components: initialRuntime.nextComponents,
-      mode: initialRuntime.nextMode,
-    }
-  );
-
-  const documentSeed = documents.getDocumentSeed(session.id, session.mode);
-  return resolveSessionRuntime(
-    documentSeed
-      ? {
-          ...session,
-          grid: documentSeed.grid,
-          scene: documentSeed.scene,
-          components: documentSeed.components,
-        }
-      : session,
-    currentTool
-  );
+  return resolveSessionDocumentRuntime(documents, session, currentTool);
 };
 
 export const createSessionSlice = (
@@ -218,56 +189,33 @@ export const createSessionSlice = (
 
     const normalizedMode = normalizeSessionMode(mode);
     const sessionId = createSessionId(sessionsWithSnapshot);
-    const newSession: CanvasSession = normalizedMode === "slide"
-        ? {
-            id: sessionId,
-            name: resolveNextSessionName(sessionsWithSnapshot, normalizedMode),
-            mode: "slide",
-            slideDeck: createSlideDeck({
-              initialSlideId: `${sessionId}-slide-1`,
-              size: options?.slideSize,
-            }),
-            scene: [],
-            components: [],
-            grid: [],
-          }
-        : normalizedMode === "structured"
-        ? {
-            id: sessionId,
-            name: options?.name?.trim() || resolveNextSessionName(
-              sessionsWithSnapshot,
-              normalizedMode,
-            ),
-            mode: "structured",
-            scene: [],
-            components: [],
-            grid: [],
-          }
-        : {
-            id: sessionId,
-            name: options?.name?.trim() || resolveNextSessionName(
-              sessionsWithSnapshot,
-              normalizedMode,
-            ),
-            mode: "freeform",
-            scene: [],
-            components: [],
-            grid: [],
-          };
+    const newSession: CanvasSessionDescriptor = {
+      id: sessionId,
+      name:
+        options?.name?.trim() ||
+        resolveNextSessionName(sessionsWithSnapshot, normalizedMode),
+      mode: normalizedMode,
+    };
+    const snapshot = createBlankSnapshot(
+      normalizedMode,
+      sessionId,
+      normalizedMode === "slide"
+        ? createSlideDeck({
+            initialSlideId: `${sessionId}-slide-1`,
+            size: options?.slideSize,
+          })
+        : undefined
+    );
 
+    replaceDocumentSnapshot(documents, sessionId, snapshot, false);
     const runtime = activateSessionRuntime(documents, newSession, state.tool);
-    const nextSessions = [
-      ...sessionsWithSnapshot,
-      stripSessionContent(newSession),
-    ];
+    const nextSessions = [...sessionsWithSnapshot, newSession];
     set(
       createSessionActivationPatch(
         nextSessions,
         newSession.id,
         runtime,
-        runtime.nextMode === "structured"
-          ? undefined
-          : rebuildContentSurface(documents).reader
+        rebuildContentSurface(documents).reader
       )
     );
     residency?.touch(newSession.id);
@@ -278,30 +226,22 @@ export const createSessionSlice = (
     const sessionId = createSessionId(sessionsWithSnapshot);
     const mode = options?.initialMode ?? "freeform";
     const name = options?.name?.trim() || "Blackboard";
-    const newSession: CanvasSession = mode === "slide"
-      ? {
-          id: sessionId,
-          name,
-          mode: "slide",
-          sourceBinding,
-          slideDeck: createSlideDeck({ initialSlideId: `${sessionId}-slide-1` }),
-          scene: [],
-          components: [],
-          grid: [],
-        }
-      : {
-          id: sessionId,
-          name,
-          mode: "freeform",
-          sourceBinding,
-          scene: [],
-          components: [],
-          grid: [],
-        };
-    const nextSessions = [...sessionsWithSnapshot, stripSessionContent(newSession)];
+    const newSession: CanvasSessionDescriptor = {
+      id: sessionId,
+      name,
+      mode,
+      sourceBinding,
+    };
+    const nextSessions = [...sessionsWithSnapshot, newSession];
     // Register source ownership before the document lifecycle observes activation.
     // Persistence can then keep the runtime shell ephemeral from its first frame.
     set({ canvasSessions: nextSessions });
+    replaceDocumentSnapshot(
+      documents,
+      sessionId,
+      createBlankSnapshot(mode, sessionId),
+      false
+    );
     const runtime = activateSessionRuntime(documents, newSession, state.tool);
     set(createSessionActivationPatch(
       nextSessions,
@@ -324,22 +264,20 @@ export const createSessionSlice = (
         importedSnapshot.name?.trim() ||
         getImportedSessionBaseName(importedSnapshot.mode)
     );
-    const newSession = createImportedSession(
+    const newSession = createImportedSessionDescriptor(
       sessionId,
       sessionName,
       importedSnapshot
     );
+    replaceDocumentSnapshot(documents, sessionId, importedSnapshot, false);
     const runtime = activateSessionRuntime(documents, newSession, state.tool);
-    const storedSession = stripSessionContent(newSession);
-    const nextSessions = [...sessionsWithSnapshot, storedSession];
+    const nextSessions = [...sessionsWithSnapshot, newSession];
     set({
       ...createSessionActivationPatch(
         nextSessions,
         newSession.id,
         runtime,
-        runtime.nextMode === "structured"
-          ? undefined
-          : rebuildContentSurface(documents).reader
+        rebuildContentSurface(documents).reader
       ),
       pendingCameraPlacement:
         importedSnapshot.mode === "slide"
@@ -348,7 +286,7 @@ export const createSessionSlice = (
     });
     residency?.touch(newSession.id);
 
-    return storedSession;
+    return newSession;
   },
   replaceCanvasSessionSnapshot: (sessionId, snapshot, options) => {
     const state = get();
@@ -368,91 +306,28 @@ export const createSessionSlice = (
         ? { offset: { ...state.offset }, zoom: state.zoom }
         : target.viewport
       : undefined;
-    const imported = createImportedSession(target.id, target.name, snapshot);
-    const replacement: CanvasSession = imported.mode === "slide"
-      ? {
-          ...imported,
-          ...(preservedViewport ? { viewport: preservedViewport } : {}),
-        }
-      : {
-          ...imported,
-          ...(target.collaboration ? { collaboration: target.collaboration } : {}),
-          ...(preservedViewport ? { viewport: preservedViewport } : {}),
-        };
-    const storedReplacement = stripSessionContent(replacement);
+    const replacement: CanvasSessionDescriptor = {
+      ...target,
+      ...(preservedViewport ? { viewport: preservedViewport } : {}),
+    };
     const nextSessions = state.canvasSessions.map((session) =>
-      session.id === sessionId ? storedReplacement : session
+      session.id === sessionId ? replacement : session
     );
-    const runtime = resolveSessionRuntime(replacement, state.tool);
-
-    if (replacement.mode === "slide" && runtime.nextSlideDeck) {
-      documents.activateDocument(replacement.id, {
-        mode: "slide",
-        activePageId: runtime.nextSlideDeck.activeSlideId,
-        pages: runtime.nextSlideDeck.slides.map((slide) => ({
-          id: slide.id,
-          name: slide.name,
-          size: slide.size,
-          kind: "cell-plane",
-          grid: slide.grid,
-        })),
-        grid: [],
-        scene: [],
-        components: [],
-      }, { replace: true });
-      if (sessionId !== state.activeCanvasId) {
-        set({ canvasSessions: nextSessions });
-        return;
-      }
-      const active = runtime.nextSlideDeck.slides.find(
-        (slide) => slide.id === runtime.nextSlideDeck?.activeSlideId
-      );
-      if (!active) return;
-      const activeGrid = activateSlidePage(
-        documents,
-        replacement.id,
-        active.id,
-        active.grid
-      );
-      if (options.resetHistory) documents.clearHistory();
-      set(createSessionActivationPatch(
-        nextSessions,
-        sessionId,
-        { ...runtime, nextSlideDeck: stripSlideDeckContent(runtime.nextSlideDeck) },
-        activeGrid
-      ));
-      return;
-    }
 
     if (sessionId !== state.activeCanvasId) {
-      documents.resetDocument(replacement.id, {
-        mode: runtime.nextMode,
-        grid: runtime.nextMode === "structured" ? [] : runtime.nextGridEntries,
-        scene: runtime.nextMode === "structured" ? runtime.nextScene : [],
-        components: runtime.nextComponents,
-      });
+      documents.resetDocument(replacement.id, createDocumentSeed(snapshot));
       set({ canvasSessions: nextSessions });
       return;
     }
 
-    documents.activateDocument(
-      getSessionCanvasDocumentId(replacement),
-      {
-        mode: runtime.nextMode,
-        grid: runtime.nextMode === "structured" ? [] : runtime.nextGridEntries,
-        scene: runtime.nextMode === "structured" ? runtime.nextScene : [],
-        components: runtime.nextComponents,
-      },
-      { replace: true }
-    );
+    replaceDocumentSnapshot(documents, replacement.id, snapshot);
+    const runtime = activateSessionRuntime(documents, replacement, state.tool);
     if (options.resetHistory) documents.clearHistory();
     set(createSessionActivationPatch(
       nextSessions,
       sessionId,
       runtime,
-      runtime.nextMode === "structured"
-        ? undefined
-        : rebuildContentSurface(documents).reader
+      rebuildContentSurface(documents).reader
     ));
   },
   applySourceProjection: (sessionId, snapshot, options) => {
@@ -467,62 +342,43 @@ export const createSessionSlice = (
       : sessionId === state.activeCanvasId
         ? { offset: { ...state.offset }, zoom: state.zoom }
         : target.viewport;
-    const retainedSlide = snapshot.mode === "slide" && target.mode === "slide"
-      ? target.slideDeck.slides.find(
-          (slide) => slide.id === target.slideDeck.activeSlideId,
+    const currentSlideDeck = target.mode === "slide"
+      ? sessionId === state.activeCanvasId
+        ? state.slideDeck
+        : readSlideDeckDescriptor(documents, sessionId)
+      : null;
+    const retainedSlide = snapshot.mode === "slide" && currentSlideDeck
+      ? currentSlideDeck.slides.find(
+          (slide) => slide.id === currentSlideDeck.activeSlideId,
         )
       : null;
     const retainedSlideId = retainedSlide && snapshot.mode === "slide"
       ? snapshot.slideDeck.slides.find((slide) => slide.name === retainedSlide.name)?.id
       : undefined;
-    const replacement: CanvasSession = snapshot.mode === "slide"
-      ? {
-          id: target.id,
-          name: title || target.name,
-          mode: "slide",
-          sourceBinding: target.sourceBinding,
-          slideDeck: retainedSlideId
-            ? { ...snapshot.slideDeck, activeSlideId: retainedSlideId }
-            : snapshot.slideDeck,
-          ...(viewport ? { viewport } : {}),
-          grid: [],
-          scene: [],
-          components: [],
-        }
-      : {
-          id: target.id,
-          name: title || target.name,
-          mode: "freeform",
-          sourceBinding: target.sourceBinding,
-          ...(viewport ? { viewport } : {}),
-          grid: [],
-          scene: [],
-          components: [],
-        };
+    const replacement: CanvasSessionDescriptor = {
+      id: target.id,
+      name: title || target.name,
+      mode: snapshot.mode,
+      sourceBinding: target.sourceBinding,
+      ...(viewport ? { viewport } : {}),
+    };
     const nextSessions = state.canvasSessions.map((session) =>
-      session.id === sessionId ? stripSessionContent(replacement) : session
+      session.id === sessionId ? replacement : session
     );
     if (snapshot.mode === "slide") {
-      if (replacement.mode !== "slide") return;
+      const slideSnapshot = retainedSlideId
+        ? {
+            ...snapshot,
+            slideDeck: { ...snapshot.slideDeck, activeSlideId: retainedSlideId },
+          }
+        : snapshot;
       documents.clearDerivedSurface(sessionId);
       if (sessionId !== state.activeCanvasId) {
-        documents.resetDocument(sessionId, {
-          mode: "slide",
-          activePageId: replacement.slideDeck.activeSlideId,
-          pages: replacement.slideDeck.slides.map((slide) => ({
-            id: slide.id,
-            name: slide.name,
-            size: slide.size,
-            kind: "cell-plane",
-            grid: slide.grid,
-          })),
-          grid: [],
-          scene: [],
-          components: [],
-        });
+        documents.resetDocument(sessionId, createDocumentSeed(slideSnapshot));
         set({ canvasSessions: nextSessions });
         return;
       }
+      replaceDocumentSnapshot(documents, sessionId, slideSnapshot);
       const runtime = activateSessionRuntime(documents, replacement, state.tool);
       if (options?.resetHistory !== false) documents.clearHistory();
       set(createSessionActivationPatch(
@@ -550,19 +406,14 @@ export const createSessionSlice = (
       return;
     }
     if (target.mode === "slide") {
-      documents.activateDocument(sessionId, {
-        mode: "freeform",
-        grid: [],
-        scene: [],
-        components: [],
-      }, { replace: true });
+      replaceDocumentSnapshot(documents, sessionId, snapshot);
     }
     documents.setDerivedSurface(sessionId, surface);
     if (options?.resetHistory !== false) documents.clearHistory();
     set(createSessionActivationPatch(
       nextSessions,
       sessionId,
-      resolveSessionRuntime(replacement, state.tool),
+      activateSessionRuntime(documents, replacement, state.tool),
       rebuildContentSurface(documents).reader,
     ));
   },
@@ -580,7 +431,7 @@ export const createSessionSlice = (
     if (!target) return false;
 
     const generation = beginActivation(documents);
-    if (residency && !await residency.ensureLoaded(target)) return false;
+    if (residency && !await residency.ensureLoaded({ descriptor: target })) return false;
     if (!isCurrentActivation(documents, generation)) return false;
 
     const runtime = activateSessionRuntime(documents, target, state.tool);
@@ -589,9 +440,7 @@ export const createSessionSlice = (
         sessionsWithSnapshot,
         canvasId,
         runtime,
-        runtime.nextMode === "structured"
-          ? undefined
-          : rebuildContentSurface(documents).reader
+        rebuildContentSurface(documents).reader
       )
     );
     residency?.touch(canvasId);
@@ -622,7 +471,7 @@ export const createSessionSlice = (
     const nextIndex = Math.min(removedIndex, remaining.length - 1);
     const nextSession = remaining[nextIndex];
     const generation = beginActivation(documents);
-    if (residency && !await residency.ensureLoaded(nextSession)) return false;
+    if (residency && !await residency.ensureLoaded({ descriptor: nextSession })) return false;
     if (!isCurrentActivation(documents, generation)) return false;
     const runtime = activateSessionRuntime(documents, nextSession, state.tool);
     set(
@@ -630,9 +479,7 @@ export const createSessionSlice = (
         remaining,
         nextSession.id,
         runtime,
-        runtime.nextMode === "structured"
-          ? undefined
-          : rebuildContentSurface(documents).reader
+        rebuildContentSurface(documents).reader
       )
     );
 

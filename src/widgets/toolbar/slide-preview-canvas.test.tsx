@@ -1,6 +1,9 @@
 import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Slide } from "@/domains/slides/public";
+import type {
+  SlideDescriptor,
+  SlideGridEntry,
+} from "@/domains/slides/public";
 import { SlidePreviewCanvas } from "./slide-preview-canvas";
 
 const { drawSlideCanvas, visualTheme } = vi.hoisted(() => ({
@@ -16,12 +19,13 @@ vi.mock("@/shared/hooks/useHostVisualTheme", () => ({
   useHostVisualTheme: () => visualTheme,
 }));
 
-const slide: Slide = {
+const slide: SlideDescriptor = {
   id: "slide-1",
   name: "Preview",
   size: { columns: 100, rows: 27 },
-  grid: [],
 };
+let grid: SlideGridEntry[] = [];
+const loadGrid = () => grid;
 
 describe("SlidePreviewCanvas", () => {
   let resize: ResizeObserverCallback;
@@ -33,6 +37,7 @@ describe("SlidePreviewCanvas", () => {
   const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
 
   beforeEach(() => {
+    grid = [];
     intersectionVisible = true;
     drawSlideCanvas.mockReset();
     disconnect.mockReset();
@@ -97,11 +102,13 @@ describe("SlidePreviewCanvas", () => {
   });
 
   it("redraws for content, size, element resize, and font changes", () => {
-    const { rerender, unmount } = render(<SlidePreviewCanvas slide={slide} />);
+    const { rerender, unmount } = render(
+      <SlidePreviewCanvas slide={slide} loadGrid={loadGrid} />
+    );
 
     expect(drawSlideCanvas).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        slide,
+        slide: { ...slide, grid: [] },
         size: { columns: 100, rows: 27 },
         viewportWidth: 180,
         viewportHeight: 103,
@@ -120,10 +127,19 @@ describe("SlidePreviewCanvas", () => {
     const updatedSlide = {
       ...slide,
       size: { columns: 80, rows: 24 },
-      grid: [["99,26", { char: "A", color: "#000000" }]] as Slide["grid"],
     };
-    rerender(<SlidePreviewCanvas slide={updatedSlide} />);
+    grid = [["79,23", { char: "A", color: "#000000" }]];
+    rerender(
+      <SlidePreviewCanvas
+        slide={updatedSlide}
+        contentRevision={1}
+        loadGrid={loadGrid}
+      />
+    );
     expect(drawSlideCanvas).toHaveBeenCalledTimes(4);
+    expect(drawSlideCanvas).toHaveBeenLastCalledWith(
+      expect.objectContaining({ slide: { ...updatedSlide, grid } })
+    );
     expect(disconnect).toHaveBeenCalledTimes(1);
 
     unmount();
@@ -134,7 +150,9 @@ describe("SlidePreviewCanvas", () => {
 
   it("does not mount or draw a canvas while the preview is outside the viewport", () => {
     intersectionVisible = false;
-    const { container } = render(<SlidePreviewCanvas slide={slide} />);
+    const { container } = render(
+      <SlidePreviewCanvas slide={slide} loadGrid={loadGrid} />
+    );
 
     expect(container.querySelector("canvas")).not.toBeInTheDocument();
     expect(drawSlideCanvas).not.toHaveBeenCalled();

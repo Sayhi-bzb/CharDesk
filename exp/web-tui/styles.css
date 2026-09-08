@@ -121,7 +121,7 @@ code, pre { font-family: inherit; }
   max-width: 1024px;
   margin-inline: auto;
 }
-.gallery-nav { position: sticky; top: 24px; align-self: start; line-height: 1.8; }
+.gallery-nav { position: sticky; top: 24px; align-self: start; display: grid; gap: 20px; line-height: 1.8; }
 .gallery-nav__title { font-weight: 700; }
 .gallery-nav ul { list-style: none; margin: 8px 0 0; padding: 0; }
 .gallery-nav a { color: var(--cell-muted-foreground); text-decoration: none; }

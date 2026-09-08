@@ -38,6 +38,7 @@ import {
 import {
   FocusManager,
   commandForInput,
+  dismissCommandForFocusExit,
   primarySemanticAction,
   textEditorAtPoint,
   resolveWheelInput,
@@ -506,6 +507,7 @@ export type CellSurfaceProps = Readonly<{
   label?: string;
   className?: string;
   probeId?: string;
+  fontAudit?: boolean;
   onCommand: (command: WidgetCommand) => void;
   cellRange?: CellRangeSnapshot | null;
   onCellRangeCommand?: (command: CellRangeCommand) => void;
@@ -652,13 +654,18 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     label = "Cell interface",
     className,
     probeId,
+    fontAudit: auditFonts = false,
     onCommand,
     cellRange: controlledCellRange,
     onCellRangeCommand,
   } = props;
   const fontProfile = useMemo(() => createCellUiFontProfile(requestedFontProfile), [requestedFontProfile]);
   const fontMetrics = useCellFontMetrics(fontProfile, fontSize, explicitMetrics);
-  const fontAudit = useCellFontAudit(!!probeId && fontMetrics.ready, fontProfile, fontMetrics.metrics);
+  const fontAudit = useCellFontAudit(
+    !!probeId && auditFonts && fontMetrics.ready,
+    fontProfile,
+    fontMetrics.metrics
+  );
   const { metrics } = fontMetrics;
   const resolvedTheme = useMemo(() => resolveCellUiTheme(theme), [theme]);
   const palette = useMemo(() => paletteOverride ?? {
@@ -912,7 +919,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       presentation: {
         ...captureCellProbePresentation(frame, canvas, metrics, fontProfile),
         measurement: { source: fontMetrics.source, ready: fontMetrics.ready },
-        fontAudit,
+        ...(auditFonts ? { fontAudit } : {}),
         glyphOverflowMode: glyphOverflow,
       },
     };
@@ -922,7 +929,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         delete surface[CELL_SURFACE_PROBE_PROPERTY];
       }
     };
-  }, [fontPresentationRevision, fontProfile, frame, metrics, probeId, fontMetrics, fontAudit, glyphOverflow]);
+  }, [auditFonts, fontPresentationRevision, fontProfile, frame, metrics, probeId, fontMetrics, fontAudit, glyphOverflow]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1056,13 +1063,17 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
 
   const onSurfaceBlur = (event: FocusEvent<HTMLDivElement>) => {
     surfaceFocus.leave(event);
-    if (!cellRange || !rangeEditable) return;
     const surface = event.currentTarget;
     const relatedTarget = event.relatedTarget;
     if (relatedTarget instanceof Node && surface.contains(relatedTarget)) return;
     if (!surface.ownerDocument.hasFocus()) return;
+    const confirmExit = () => {
+      const current = frameRef.current;
+      if (current) dispatch(dismissCommandForFocusExit(current));
+      if (cellRange && rangeEditable) dispatchCellRange({ type: "clear" });
+    };
     if (relatedTarget) {
-      dispatchCellRange({ type: "clear" });
+      confirmExit();
       return;
     }
     // A null relatedTarget can mean either page chrome or a transient browser/
@@ -1073,7 +1084,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         surface.isConnected
         && document.hasFocus()
         && !surface.contains(document.activeElement)
-      ) dispatchCellRange({ type: "clear" });
+      ) confirmExit();
     });
   };
 

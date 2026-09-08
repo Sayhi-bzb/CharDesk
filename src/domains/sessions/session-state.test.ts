@@ -5,7 +5,10 @@ import {
   normalizeSessionMode,
   withActiveCanvasSnapshot
 } from './public';
-import type { CanvasSession } from './public';
+import type {
+  CanvasSessionDescriptor,
+  CanvasSessionSnapshot,
+} from './public';
 
 describe('sessionHelpers', () => {
   describe('resolveNextSessionName', () => {
@@ -14,32 +17,32 @@ describe('sessionHelpers', () => {
     });
 
     it('should return next number for sequential names', () => {
-      const sessions: CanvasSession[] = [
-        { id: '1', name: 'Canvas 1', mode: 'freeform', scene: [], grid: [] },
-        { id: '2', name: 'Canvas 2', mode: 'freeform', scene: [], grid: [] }
+      const sessions: CanvasSessionDescriptor[] = [
+        { id: '1', name: 'Canvas 1', mode: 'freeform' },
+        { id: '2', name: 'Canvas 2', mode: 'freeform' }
       ];
       expect(resolveNextSessionName(sessions)).toBe('Canvas 3');
     });
 
     it('should find max number for non-sequential names', () => {
-      const sessions: CanvasSession[] = [
-        { id: '1', name: 'Canvas 5', mode: 'freeform', scene: [], grid: [] },
-        { id: '2', name: 'Canvas 2', mode: 'freeform', scene: [], grid: [] }
+      const sessions: CanvasSessionDescriptor[] = [
+        { id: '1', name: 'Canvas 5', mode: 'freeform' },
+        { id: '2', name: 'Canvas 2', mode: 'freeform' }
       ];
       expect(resolveNextSessionName(sessions)).toBe('Canvas 6');
     });
 
     it('should ignore non-matching names', () => {
-      const sessions: CanvasSession[] = [
-        { id: '1', name: 'My Canvas', mode: 'freeform', scene: [], grid: [] },
-        { id: '2', name: 'Canvas 3', mode: 'freeform', scene: [], grid: [] }
+      const sessions: CanvasSessionDescriptor[] = [
+        { id: '1', name: 'My Canvas', mode: 'freeform' },
+        { id: '2', name: 'Canvas 3', mode: 'freeform' }
       ];
       expect(resolveNextSessionName(sessions)).toBe('Canvas 4');
     });
 
     it('should handle case-insensitive matching', () => {
-      const sessions: CanvasSession[] = [
-        { id: '1', name: 'CANVAS 5', mode: 'freeform', scene: [], grid: [] }
+      const sessions: CanvasSessionDescriptor[] = [
+        { id: '1', name: 'CANVAS 5', mode: 'freeform' }
       ];
       expect(resolveNextSessionName(sessions)).toBe('Canvas 6');
     });
@@ -47,7 +50,7 @@ describe('sessionHelpers', () => {
 
   describe('createSessionId', () => {
     it('should create unique IDs', () => {
-      const sessions: CanvasSession[] = [];
+      const sessions: CanvasSessionDescriptor[] = [];
       const id1 = createSessionId(sessions);
       const id2 = createSessionId(sessions);
       expect(id1).not.toBe(id2);
@@ -57,8 +60,8 @@ describe('sessionHelpers', () => {
 
     it('should not use existing IDs', () => {
       const existingId = 'canvas-test123';
-      const sessions: CanvasSession[] = [
-        { id: existingId, name: 'Test', mode: 'freeform', scene: [], grid: [] }
+      const sessions: CanvasSessionDescriptor[] = [
+        { id: existingId, name: 'Test', mode: 'freeform' }
       ];
       // Generate multiple IDs to increase collision chance
       for (let i = 0; i < 10; i++) {
@@ -69,8 +72,8 @@ describe('sessionHelpers', () => {
 
     it('should generate different IDs on collision', () => {
       // Create a session with ID that looks like a timestamp-based ID
-      const sessions: CanvasSession[] = [
-        { id: 'canvas-abc123-def45', name: 'Test', mode: 'freeform', scene: [], grid: [] }
+      const sessions: CanvasSessionDescriptor[] = [
+        { id: 'canvas-abc123-def45', name: 'Test', mode: 'freeform' }
       ];
       const id = createSessionId(sessions);
       expect(id).not.toBe('canvas-abc123-def45');
@@ -98,7 +101,7 @@ describe('sessionHelpers', () => {
 
   describe('withActiveCanvasSnapshot', () => {
     it('should update active session with snapshot', () => {
-      const sessions: CanvasSession[] = [
+      const sessions: CanvasSessionSnapshot[] = [
         { id: '1', name: 'Canvas 1', mode: 'freeform', scene: [], grid: [] },
         { id: '2', name: 'Canvas 2', mode: 'freeform', scene: [], grid: [] }
       ];
@@ -116,7 +119,7 @@ describe('sessionHelpers', () => {
     });
 
     it('should not modify non-active sessions', () => {
-      const sessions: CanvasSession[] = [
+      const sessions: CanvasSessionSnapshot[] = [
         { id: '1', name: 'Canvas 1', mode: 'freeform', scene: [], grid: [] },
         { id: '2', name: 'Canvas 2', mode: 'freeform', scene: [], grid: [] }
       ];

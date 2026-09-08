@@ -6,9 +6,8 @@ import type {
 import type { StaticGridRangeMovePlan } from "@/domains/canvas/public";
 import type { CanvasMode } from "@/domains/sessions/public";
 import type {
-  GridEditMode,
-  GridRange,
-  GridSelectionGeometry,
+  StaticGridInteraction,
+  StaticGridViewState,
 } from "@/domains/selection/public";
 import {
   getGridSelectionGeometry,
@@ -45,11 +44,13 @@ export type CanvasCellPresentation = Readonly<{
 export const resolveCanvasRangePresentation = (input: Readonly<{
   canvasMode: CanvasMode;
   source: GridCellSource;
-  selectionRanges: readonly GridRange[];
-  selectionGeometry: GridSelectionGeometry;
+  staticGrid: StaticGridViewState;
   draggingSelection: SelectionArea | null;
   movePreview: StaticGridRangeMovePlan | null;
 }>): CanvasRangeVisualIntent | null => {
+  const committedRange = input.staticGrid.interaction.kind === "range"
+    ? input.staticGrid.interaction
+    : null;
   if (input.canvasMode !== "structured" && input.movePreview) {
     return {
       kind: "range",
@@ -68,20 +69,20 @@ export const resolveCanvasRangePresentation = (input: Readonly<{
       geometry: getGridSelectionGeometry(
         input.canvasMode === "structured"
           ? [draggingRange]
-          : [...input.selectionRanges, draggingRange],
+          : [
+              ...(committedRange ? input.staticGrid.target.ranges : []),
+              draggingRange,
+            ],
         input.canvasMode === "structured" ? undefined : input.source
       ),
       phase: "selecting",
     };
   }
 
-  if (
-    input.canvasMode !== "structured" &&
-    input.selectionGeometry.polygons.length > 0
-  ) {
+  if (input.canvasMode !== "structured" && committedRange) {
     return {
       kind: "range",
-      geometry: input.selectionGeometry,
+      geometry: committedRange.geometry,
       phase: "resting",
     };
   }
@@ -93,11 +94,7 @@ export const resolveCanvasCellPresentation = (input: Readonly<{
   inputFocused: boolean;
   canvasMode: CanvasMode;
   range: CanvasRangeVisualIntent | null;
-  staticGrid: Readonly<{
-    editMode: GridEditMode;
-    activeCell: Point;
-    textCursor: Point | null;
-  }>;
+  staticGrid: StaticGridInteraction;
   structured: Readonly<{
     gridFocus: Point | null;
     editingText: boolean;
@@ -120,14 +117,11 @@ export const resolveCanvasCellPresentation = (input: Readonly<{
           : null,
     };
   }
-  const editing = input.staticGrid.editMode === "text-edit";
+  const editing = input.staticGrid.kind === "text-edit";
   return {
     visual: {
       kind: "terminal-cursor",
-      point:
-        editing && input.staticGrid.textCursor
-          ? input.staticGrid.textCursor
-          : input.staticGrid.activeCell,
+      point: editing ? input.staticGrid.cursor : input.staticGrid.activeCell,
       shape: input.cursorPreference.shape,
       blink: editing && input.inputFocused && input.cursorPreference.blink,
     },

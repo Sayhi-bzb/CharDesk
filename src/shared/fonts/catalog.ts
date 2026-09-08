@@ -6,6 +6,8 @@ import {
 import { createCharDeskFontProfile, type CharDeskFontProfile } from "@chardesk/fonts";
 import { FUSION_FONT_FAMILY, FUSION_FONT_SOURCES } from "@chardesk/font-fusion";
 import fusionStylesheet from "@chardesk/font-fusion/fonts.css?url";
+import { XIAOLAI_FONT_FAMILY, XIAOLAI_FONT_SOURCES } from "@chardesk/font-xiaolai";
+import xiaolaiStylesheet from "@chardesk/font-xiaolai/fonts.css?url";
 
 export type DisplayFont = "maple" | "fusion-mono" | "xiaolai-mono";
 
@@ -32,16 +34,16 @@ const fusionProfile = createCharDeskFontProfile({
   ],
 });
 
-const xiaolaiFamily = "Xiaolai Mono";
+const xiaolaiFamily = XIAOLAI_FONT_FAMILY;
 const xiaolaiFace = {
   families: { regular: `'${xiaolaiFamily}', ${MAPLE_FONT_FAMILY}` },
 } as const;
 const xiaolaiProfile = createCharDeskFontProfile({
-  id: "chardesk/gallery-xiaolai-mono-maple-core-v6-3.126",
+  id: "chardesk/gallery-xiaolai-mono-maple-core-v7-3.126",
   display: xiaolaiFace,
   cjk: xiaolaiFace,
   sources: [
-    { id: "xiaolai-mono-local", family: xiaolaiFamily, version: "3.126" },
+    ...XIAOLAI_FONT_SOURCES,
     ...MAPLE_FONT_SOURCES,
   ],
 });
@@ -61,8 +63,8 @@ export const displayFontOptions: Record<DisplayFont, DisplayFontOption> = {
     id: "xiaolai-mono",
     label: xiaolaiFamily,
     profile: xiaolaiProfile,
-    stylesheet: `${import.meta.env.BASE_URL}fonts/xiaolai-mono/fonts.css`,
+    stylesheet: xiaolaiStylesheet,
     fontSpec: `15px '${xiaolaiFamily}'`,
-    loadSamples: ["AgWi09", "世界，。"],
+    loadSamples: ["AgWi09"],
   },
 };

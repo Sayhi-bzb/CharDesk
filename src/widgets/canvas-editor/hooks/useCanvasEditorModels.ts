@@ -1,6 +1,7 @@
 import {
   createGridSurfaceReader,
   isIncrementalCanvasSurfaceReader,
+  readSlideDeckDescriptor,
   useCanvasRuntime,
   useCanvasState,
   type CanvasState,
@@ -9,7 +10,7 @@ import {
 import { useShallow } from "zustand/react/shallow";
 import { useCanvasViewOptional } from '../engine/CanvasWorkspace';
 import { createStaticGridState } from '@/domains/selection/public';
-import type { CanvasSession } from '@/domains/sessions/public';
+import type { CanvasSessionDescriptor } from '@/domains/sessions/public';
 import { useMemo } from 'react';
 import { createStructuredSceneSurface } from '@/domains/structured-content/public';
 
@@ -33,42 +34,42 @@ const contentModel = (contentReader: CanvasSurfaceReader) => ({
 });
 
 const resolveSessionContent = (
-  session: CanvasSession,
+  session: CanvasSessionDescriptor,
   documents: ReturnType<typeof useCanvasRuntime>["documents"]
 ): SessionContent => {
   if (session.mode === 'slide') {
-    const activeSlide = session.slideDeck.slides.find(
-      (slide) => slide.id === session.slideDeck.activeSlideId
+    const slideDeck = readSlideDeckDescriptor(documents, session.id);
+    const activeSlide = slideDeck?.slides.find(
+      (slide) => slide.id === slideDeck.activeSlideId
     );
     const contentReader = activeSlide
       ? documents.getContentReader(session.id, activeSlide.id) ??
-        createGridSurfaceReader(new Map(activeSlide.grid))
+        createGridSurfaceReader(new Map())
       : createGridSurfaceReader(new Map());
     return {
       activeCanvasId: session.id,
       canvasMode: session.mode,
-      slideDeck: session.slideDeck,
+      slideDeck,
       ...contentModel(contentReader),
       structuredScene: [],
       structuredComponents: [],
     };
   }
-  const seed = documents.getDocumentSeed(
-    session.id,
-    session.mode,
-  );
-  const structuredScene = seed?.scene ?? session.scene;
+  const seed = session.mode === 'structured'
+    ? documents.getDocumentSeed(session.id, session.mode)
+    : null;
+  const structuredScene = seed?.scene ?? [];
   const contentReader = session.mode === 'structured'
     ? createStructuredSceneSurface(structuredScene)
     : documents.getContentReader(session.id) ??
-      createGridSurfaceReader(new Map(seed?.grid ?? session.grid));
+      createGridSurfaceReader(new Map());
   return {
     activeCanvasId: session.id,
     canvasMode: session.mode,
     slideDeck: null,
     ...contentModel(contentReader),
     structuredScene,
-    structuredComponents: seed?.components ?? session.components ?? [],
+    structuredComponents: seed?.components ?? [],
   };
 };
 

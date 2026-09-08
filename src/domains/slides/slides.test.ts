@@ -20,7 +20,7 @@ import {
   normalizeSlideGridEntries,
 } from "./grid";
 import { DEFAULT_SLIDE_SIZE, SLIDE_SIZE_PRESETS } from "./model";
-import { normalizeSlideDeck } from "./normalize";
+import { normalizeSlideDeckSnapshot } from "./normalize";
 
 const createDeck = () => createSlideDeck({ initialSlideId: "slide-1" });
 
@@ -143,7 +143,7 @@ describe("slide deck model", () => {
   });
 
   it("migrates a legacy deck size onto every slide", () => {
-    const normalized = normalizeSlideDeck(
+    const normalized = normalizeSlideDeckSnapshot(
       {
         size: { columns: 7, rows: 3 },
         activeSlideId: "slide-2",

@@ -3,8 +3,10 @@ import { createEntityId } from "@/shared/utils/id";
 import { normalizeSlideGridEntries } from "./grid";
 import {
   DEFAULT_SLIDE_SIZE,
-  type Slide,
-  type SlideDeck,
+  type SlideDeckDescriptor,
+  type SlideSnapshot,
+  type SlideDeckSnapshot,
+  type SlideDescriptor,
   type SlideSize,
 } from "./model";
 import { isValidSlideSize } from "./grid";
@@ -24,6 +26,8 @@ type AddSlideInput = {
   afterSlideId?: string;
 };
 
+type AddSlideDescriptorInput = Omit<AddSlideInput, "grid">;
+
 type DuplicateSlideInput = {
   sourceSlideId: string;
   id: string;
@@ -32,10 +36,10 @@ type DuplicateSlideInput = {
 
 const hasUsableId = (id: string) => id.trim().length > 0;
 
-const hasSlide = (deck: SlideDeck, id: string) =>
+const hasSlide = (deck: SlideDeckDescriptor, id: string) =>
   deck.slides.some((slide) => slide.id === id);
 
-export const createSlideId = (slides: readonly Slide[]) => {
+export const createSlideId = (slides: readonly SlideDescriptor[]) => {
   const existing = new Set(slides.map((slide) => slide.id));
   let candidate = "";
   do {
@@ -44,7 +48,7 @@ export const createSlideId = (slides: readonly Slide[]) => {
   return candidate;
 };
 
-export const resolveNextSlideName = (slides: readonly Slide[]) => {
+export const resolveNextSlideName = (slides: readonly SlideDescriptor[]) => {
   let maxIndex = 0;
   slides.forEach((slide) => {
     const match = slide.name.match(/^Slide\s+(\d+)$/i);
@@ -64,7 +68,7 @@ export const createSlideDeck = ({
   initialSlideName,
   initialGrid = [],
   size = DEFAULT_SLIDE_SIZE,
-}: CreateSlideDeckInput): SlideDeck => {
+}: CreateSlideDeckInput): SlideDeckSnapshot => {
   if (!hasUsableId(initialSlideId)) {
     throw new Error("A slide deck requires a non-empty initial slide ID");
   }
@@ -73,7 +77,7 @@ export const createSlideDeck = ({
   }
 
   const normalizedSize = { ...size };
-  const initialSlide: Slide = {
+  const initialSlide: SlideSnapshot = {
     id: initialSlideId,
     name: resolveName(initialSlideName, "Slide 1"),
     size: normalizedSize,
@@ -85,7 +89,81 @@ export const createSlideDeck = ({
   };
 };
 
-export const addSlide = (deck: SlideDeck, input: AddSlideInput): SlideDeck => {
+export const createSlideDeckDescriptor = ({
+  initialSlideId,
+  initialSlideName,
+  size = DEFAULT_SLIDE_SIZE,
+}: Omit<CreateSlideDeckInput, "initialGrid">): SlideDeckDescriptor => {
+  const snapshot = createSlideDeck({ initialSlideId, initialSlideName, size });
+  return {
+    activeSlideId: snapshot.activeSlideId,
+    slides: snapshot.slides.map(({ id, name, size }) => ({ id, name, size })),
+  };
+};
+
+export const toSlideDeckDescriptor = (
+  deck: SlideDeckSnapshot
+): SlideDeckDescriptor => ({
+  activeSlideId: deck.activeSlideId,
+  slides: deck.slides.map(({ id, name, size }) => ({ id, name, size })),
+});
+
+export const addSlideDescriptor = (
+  deck: SlideDeckDescriptor,
+  input: AddSlideDescriptorInput
+): SlideDeckDescriptor => {
+  if (!hasUsableId(input.id) || deck.slides.some((slide) => slide.id === input.id)) {
+    return deck;
+  }
+  const afterSlideId = input.afterSlideId ?? deck.activeSlideId;
+  const afterIndex = deck.slides.findIndex((slide) => slide.id === afterSlideId);
+  if (afterIndex < 0) return deck;
+  const size = input.size ?? deck.slides[afterIndex].size;
+  if (!isValidSlideSize(size)) return deck;
+  const slide: SlideDescriptor = {
+    id: input.id,
+    name: resolveName(input.name, resolveNextSlideName(deck.slides)),
+    size: { ...size },
+  };
+  const slides = [...deck.slides];
+  slides.splice(afterIndex + 1, 0, slide);
+  return { slides, activeSlideId: slide.id };
+};
+
+export const duplicateSlideDescriptor = (
+  deck: SlideDeckDescriptor,
+  input: DuplicateSlideInput
+): SlideDeckDescriptor => {
+  const source = deck.slides.find((slide) => slide.id === input.sourceSlideId);
+  if (!source) return deck;
+  return addSlideDescriptor(deck, {
+    id: input.id,
+    name: input.name,
+    size: source.size,
+    afterSlideId: source.id,
+  });
+};
+
+export const resizeSlideDescriptor = (
+  deck: SlideDeckDescriptor,
+  slideId: string,
+  size: SlideSize
+): SlideDeckDescriptor => {
+  if (!isValidSlideSize(size)) return deck;
+  const target = deck.slides.find((slide) => slide.id === slideId);
+  if (!target) return deck;
+  if (target.size.columns === size.columns && target.size.rows === size.rows) {
+    return deck;
+  }
+  return {
+    ...deck,
+    slides: deck.slides.map((slide) =>
+      slide.id === slideId ? { ...slide, size: { ...size } } : slide
+    ),
+  };
+};
+
+export const addSlide = (deck: SlideDeckSnapshot, input: AddSlideInput): SlideDeckSnapshot => {
   if (!hasUsableId(input.id) || hasSlide(deck, input.id)) return deck;
   const afterSlideId = input.afterSlideId ?? deck.activeSlideId;
   const afterIndex = deck.slides.findIndex((slide) => slide.id === afterSlideId);
@@ -93,7 +171,7 @@ export const addSlide = (deck: SlideDeck, input: AddSlideInput): SlideDeck => {
   const size = input.size ?? deck.slides[afterIndex].size;
   if (!isValidSlideSize(size)) return deck;
 
-  const slide: Slide = {
+  const slide: SlideSnapshot = {
     id: input.id,
     name: resolveName(input.name, resolveNextSlideName(deck.slides)),
     size: { ...size },
@@ -105,9 +183,9 @@ export const addSlide = (deck: SlideDeck, input: AddSlideInput): SlideDeck => {
 };
 
 export const duplicateSlide = (
-  deck: SlideDeck,
+  deck: SlideDeckSnapshot,
   input: DuplicateSlideInput
-): SlideDeck => {
+): SlideDeckSnapshot => {
   const source = deck.slides.find((slide) => slide.id === input.sourceSlideId);
   if (!source) return deck;
   return addSlide(deck, {
@@ -119,22 +197,25 @@ export const duplicateSlide = (
   });
 };
 
-export const removeSlide = (deck: SlideDeck, slideId: string): SlideDeck => {
+export const removeSlide = <Deck extends SlideDeckDescriptor>(
+  deck: Deck,
+  slideId: string
+): Deck => {
   if (deck.slides.length <= 1) return deck;
   const removeIndex = deck.slides.findIndex((slide) => slide.id === slideId);
   if (removeIndex < 0) return deck;
 
   const slides = deck.slides.filter((slide) => slide.id !== slideId);
-  if (deck.activeSlideId !== slideId) return { ...deck, slides };
+  if (deck.activeSlideId !== slideId) return { ...deck, slides } as Deck;
   const fallbackIndex = removeIndex === 0 ? 0 : removeIndex - 1;
-  return { ...deck, slides, activeSlideId: slides[fallbackIndex].id };
+  return { ...deck, slides, activeSlideId: slides[fallbackIndex].id } as Deck;
 };
 
-export const renameSlide = (
-  deck: SlideDeck,
+export const renameSlide = <Deck extends SlideDeckDescriptor>(
+  deck: Deck,
   slideId: string,
   name: string
-): SlideDeck => {
+): Deck => {
   const trimmed = name.trim();
   if (!trimmed || !hasSlide(deck, slideId)) return deck;
   return {
@@ -142,17 +223,20 @@ export const renameSlide = (
     slides: deck.slides.map((slide) =>
       slide.id === slideId ? { ...slide, name: trimmed } : slide
     ),
-  };
+  } as Deck;
 };
 
-export const activateSlide = (deck: SlideDeck, slideId: string): SlideDeck =>
-  hasSlide(deck, slideId) ? { ...deck, activeSlideId: slideId } : deck;
+export const activateSlide = <Deck extends SlideDeckDescriptor>(
+  deck: Deck,
+  slideId: string
+): Deck =>
+  hasSlide(deck, slideId) ? ({ ...deck, activeSlideId: slideId } as Deck) : deck;
 
-export const moveSlide = (
-  deck: SlideDeck,
+export const moveSlide = <Deck extends SlideDeckDescriptor>(
+  deck: Deck,
   slideId: string,
   targetIndex: number
-): SlideDeck => {
+): Deck => {
   const sourceIndex = deck.slides.findIndex((slide) => slide.id === slideId);
   if (sourceIndex < 0 || !Number.isFinite(targetIndex)) return deck;
   const clampedIndex = Math.min(
@@ -164,14 +248,14 @@ export const moveSlide = (
   const slides = [...deck.slides];
   const [slide] = slides.splice(sourceIndex, 1);
   slides.splice(clampedIndex, 0, slide);
-  return { ...deck, slides };
+  return { ...deck, slides } as Deck;
 };
 
 export const updateSlideGrid = (
-  deck: SlideDeck,
+  deck: SlideDeckSnapshot,
   slideId: string,
   grid: ReadonlyArray<readonly [string, GridCell]>
-): SlideDeck => {
+): SlideDeckSnapshot => {
   const target = deck.slides.find((slide) => slide.id === slideId);
   if (!target) return deck;
   return {
@@ -185,7 +269,7 @@ export const updateSlideGrid = (
 };
 
 export const getSlideResizeCropCount = (
-  slide: Slide,
+  slide: SlideSnapshot,
   size: SlideSize
 ) => {
   if (!isValidSlideSize(size)) return 0;
@@ -193,10 +277,10 @@ export const getSlideResizeCropCount = (
 };
 
 export const resizeSlide = (
-  deck: SlideDeck,
+  deck: SlideDeckSnapshot,
   slideId: string,
   size: SlideSize
-): SlideDeck => {
+): SlideDeckSnapshot => {
   if (!isValidSlideSize(size)) return deck;
   const target = deck.slides.find((slide) => slide.id === slideId);
   if (!target) return deck;

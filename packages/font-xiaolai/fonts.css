@@ -1,0 +1,49 @@
+/* Xiaolai Mono 3.126: base */
+@font-face {
+  font-family: 'Xiaolai Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./assets/xiaolai-mono/base.woff2) format('woff2');
+  unicode-range: U+0000-33FF, U+4DC0-4DFF, U+A000-ABFF, U+D7B0-D7FF, U+E000-FFFF;
+}
+
+/* Xiaolai Mono 3.126: cjk-extension-a */
+@font-face {
+  font-family: 'Xiaolai Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./assets/xiaolai-mono/cjk-extension-a.woff2) format('woff2');
+  unicode-range: U+3400-4DBF;
+}
+
+/* Xiaolai Mono 3.126: cjk-unified */
+@font-face {
+  font-family: 'Xiaolai Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./assets/xiaolai-mono/cjk-unified.woff2) format('woff2');
+  unicode-range: U+4E00-9FFF;
+}
+
+/* Xiaolai Mono 3.126: hangul */
+@font-face {
+  font-family: 'Xiaolai Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./assets/xiaolai-mono/hangul.woff2) format('woff2');
+  unicode-range: U+AC00-D7AF;
+}
+
+/* Xiaolai Mono 3.126: supplementary */
+@font-face {
+  font-family: 'Xiaolai Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./assets/xiaolai-mono/supplementary.woff2) format('woff2');
+  unicode-range: U+10000-10FFFF;
+}

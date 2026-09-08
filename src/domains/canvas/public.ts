@@ -55,6 +55,7 @@ export type {
 } from "./cell-plane/rangeMove";
 export {
   materializeSlideDeckContent,
+  readSlideDeckDescriptor,
 } from "./state/slideDocumentPages";
 export type {
   CanvasDocumentAddress,

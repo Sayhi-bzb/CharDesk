@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createStaticGridRangeMovePlan } from "@/domains/canvas/public";
 import {
+  createGridSelectionState,
   getGridSelectionGeometry,
+  getStaticGridViewState,
+  type GridRange,
   type GridSelectionGeometry,
 } from "@/domains/selection/public";
 import { GridSnapshotSource } from "@/shared/utils/grid-source";
@@ -24,6 +27,27 @@ const range = (
   phase,
 });
 
+const navigateView = () => getStaticGridViewState({
+  selection: createGridSelectionState({ x: 1, y: 2 }),
+  editMode: "navigate",
+  textCursor: null,
+});
+
+const rangeView = (ranges: readonly GridRange[]) => {
+  const primaryRange = ranges[ranges.length - 1]!;
+  return getStaticGridViewState({
+    selection: {
+      mode: "range",
+      activeCell: primaryRange.end,
+      anchorCell: primaryRange.start,
+      primaryRange,
+      additionalRanges: ranges.slice(0, -1),
+    },
+    editMode: "navigate",
+    textCursor: null,
+  });
+};
+
 const resolve = (
   overrides: Partial<Parameters<typeof resolveCanvasCellPresentation>[0]> = {}
 ) => resolveCanvasCellPresentation({
@@ -32,9 +56,8 @@ const resolve = (
   canvasMode: "freeform",
   range: null,
   staticGrid: {
-    editMode: "navigate",
+    kind: "navigate",
     activeCell: { x: 1, y: 2 },
-    textCursor: null,
   },
   structured: {
     gridFocus: null,
@@ -50,8 +73,7 @@ const resolveRange = (
 ) => resolveCanvasRangePresentation({
   canvasMode: "freeform",
   source: new GridSnapshotSource(),
-  selectionRanges: [],
-  selectionGeometry: getGridSelectionGeometry([]),
+  staticGrid: navigateView(),
   draggingSelection: null,
   movePreview: null,
   ...overrides,
@@ -69,9 +91,9 @@ describe("Canvas Cell presentation", () => {
     });
     expect(resolve({
       staticGrid: {
-        editMode: "text-edit",
+        kind: "text-edit",
         activeCell: { x: 1, y: 2 },
-        textCursor: { x: 4, y: 5 },
+        cursor: { x: 4, y: 5 },
       },
       cursorPreference: { shape: "underline", blink: true },
     }).visual).toEqual({
@@ -86,9 +108,9 @@ describe("Canvas Cell presentation", () => {
     expect(resolve({
       inputFocused: false,
       staticGrid: {
-        editMode: "text-edit",
+        kind: "text-edit",
         activeCell: { x: 1, y: 2 },
-        textCursor: { x: 2, y: 3 },
+        cursor: { x: 2, y: 3 },
       },
     }).visual).toMatchObject({ blink: false });
   });
@@ -123,17 +145,25 @@ describe("Canvas Cell presentation", () => {
 });
 
 describe("Canvas Range presentation", () => {
+  it("does not infer a Range from the navigate target", () => {
+    const view = navigateView();
+    expect(view.target.areas).toHaveLength(1);
+    expect(resolveRange({ staticGrid: view })).toBeNull();
+  });
+
   it("maps committed selection to a resting Range", () => {
     expect(resolveRange({
-      selectionRanges: [{ start: { x: 1, y: 2 }, end: { x: 3, y: 2 } }],
-      selectionGeometry: geometry,
+      staticGrid: rangeView([
+        { start: { x: 1, y: 2 }, end: { x: 3, y: 2 } },
+      ]),
     })).toEqual(range("resting"));
   });
 
   it("merges the active drag with committed static ranges", () => {
     const result = resolveRange({
-      selectionRanges: [{ start: { x: 1, y: 2 }, end: { x: 2, y: 2 } }],
-      selectionGeometry: geometry,
+      staticGrid: rangeView([
+        { start: { x: 1, y: 2 }, end: { x: 2, y: 2 } },
+      ]),
       draggingSelection: {
         start: { x: 3, y: 2 },
         end: { x: 4, y: 2 },
@@ -152,8 +182,9 @@ describe("Canvas Range presentation", () => {
   it("keeps structured drag independent from stale static selection", () => {
     const result = resolveRange({
       canvasMode: "structured",
-      selectionRanges: [{ start: { x: 1, y: 2 }, end: { x: 3, y: 2 } }],
-      selectionGeometry: geometry,
+      staticGrid: rangeView([
+        { start: { x: 1, y: 2 }, end: { x: 3, y: 2 } },
+      ]),
       draggingSelection: {
         start: { x: 7, y: 8 },
         end: { x: 8, y: 9 },
@@ -168,8 +199,9 @@ describe("Canvas Range presentation", () => {
     ));
     expect(resolveRange({
       canvasMode: "structured",
-      selectionRanges: [{ start: { x: 1, y: 2 }, end: { x: 3, y: 2 } }],
-      selectionGeometry: geometry,
+      staticGrid: rangeView([
+        { start: { x: 1, y: 2 }, end: { x: 3, y: 2 } },
+      ]),
     })).toBeNull();
   });
 
@@ -186,7 +218,9 @@ describe("Canvas Range presentation", () => {
 
     const result = resolveRange({
       source,
-      selectionGeometry: geometry,
+      staticGrid: rangeView([
+        { start: { x: 1, y: 2 }, end: { x: 3, y: 2 } },
+      ]),
       draggingSelection: {
         start: { x: 9, y: 9 },
         end: { x: 10, y: 10 },

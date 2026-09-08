@@ -438,7 +438,7 @@ function AppContent() {
     [contentSurface, staticGridEditMode, staticGridSelection, textCursor]
   );
   const isCanvasTextEditing = isStaticGridMode(canvasMode)
-    ? !!staticGridView.textCursor
+    ? staticGridView.interaction.kind === "text-edit"
     : !!textCursor || !!editingStructuredTextNodeId || !!structuredTextSelection;
   const exitCanvasTextEditing = useCallback(() => {
     exitStaticGridTextEdit();

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ShortcutProvider } from "@/shared/shortcuts/dispatcher";
 import { useEditorShortcutLayer } from "@/domains/editor/public";
-import type { SlideDeck } from "@/domains/slides/public";
+import type { SlideDeckSnapshot } from "@/domains/slides/public";
 import { SlidePlaybackOverlay } from "./slide-playback";
 import {
   resolveSlidePlaybackIndex,
@@ -11,7 +11,7 @@ import {
   SLIDE_PLAYBACK_MAX_ZOOM,
 } from "./slide-playback-model";
 
-const deck: SlideDeck = {
+const deck: SlideDeckSnapshot = {
   activeSlideId: "slide-2",
   slides: [
     {

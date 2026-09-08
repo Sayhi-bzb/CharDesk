@@ -15,7 +15,8 @@ import { acceptsWidgetKeyInput } from "./keyboard.js";
 import {
   isActionableKind,
   isCollectionItemKind,
-  isDismissableFocusScopeKind,
+  isDismissableScope,
+  isFocusScope,
   isFocusableKind,
 } from "./widget-capabilities.js";
 import { resolveCellSliderRange, stepCellSliderValue } from "./slider.js";
@@ -63,15 +64,29 @@ const isDescendantOf = (
   return false;
 };
 
-const focusScopeIds = (tree: WidgetTree): readonly WidgetId[] =>
+const scopeIds = (
+  tree: WidgetTree,
+  includes: (node: WidgetNode) => boolean
+): readonly WidgetId[] =>
   [...tree.nodes.values()]
-    .filter((node) => (
-      node.kind === "overlay" && node.modal
-    ) || isDismissableFocusScopeKind(node.kind))
+    .filter(includes)
     .map(({ id }) => id);
+
+const focusScopeIds = (tree: WidgetTree): readonly WidgetId[] =>
+  scopeIds(tree, isFocusScope);
 
 export const topFocusScopeId = (tree: WidgetTree): WidgetId | null =>
   focusScopeIds(tree).at(-1) ?? null;
+
+export const topDismissableScopeId = (tree: WidgetTree): WidgetId | null =>
+  scopeIds(tree, isDismissableScope).at(-1) ?? null;
+
+export const dismissCommandForFocusExit = (
+  frame: FrameSnapshot
+): WidgetCommand | null => {
+  const scopeId = topDismissableScopeId(frame.tree);
+  return scopeId ? { type: "dismiss", targetId: scopeId } : null;
+};
 
 const focusableWidgets = (
   tree: WidgetTree,
@@ -142,7 +157,7 @@ const commandForSemanticAction = (
   frame: FrameSnapshot,
   targetId: WidgetId,
   action: SemanticAction,
-  modalId: WidgetId | null
+  focusScopeId: WidgetId | null
 ): WidgetCommand | null => {
   const node = frame.tree.nodes.get(targetId);
   const semantic = frame.semantics.nodes.get(targetId);
@@ -150,7 +165,7 @@ const commandForSemanticAction = (
     !node
     || !semantic?.actions.includes(action)
     || node.disabled
-    || (modalId !== null && !isDescendantOf(frame.tree, node.id, modalId))
+    || (focusScopeId !== null && !isDescendantOf(frame.tree, node.id, focusScopeId))
   ) return null;
   if (action === "expand" || action === "collapse") {
     return (node.kind === "tree-item" && node.hasChildren) || node.kind === "select-trigger"
@@ -399,23 +414,28 @@ export const commandForInput = (
   frame: FrameSnapshot,
   focus: FocusManager
 ): WidgetCommand | null => {
-  const modalId = topFocusScopeId(frame.tree);
+  const focusScopeId = topFocusScopeId(frame.tree);
+  const dismissableScopeId = topDismissableScopeId(frame.tree);
   if (input.type === "semantic") {
-    return commandForSemanticAction(frame, input.targetId, input.action, modalId);
+    return commandForSemanticAction(frame, input.targetId, input.action, focusScopeId);
   }
 
   if (input.type === "pointer") {
     if (input.button !== 0 || input.phase === "move" || input.phase === "cancel") return null;
     const hit = hitTest(frame.scene, input.point)[0];
-    if (modalId && (!hit || !isDescendantOf(frame.tree, hit, modalId))) {
-      return { type: "dismiss", targetId: modalId };
+    if (
+      dismissableScopeId
+      && (!hit || !isDescendantOf(frame.tree, hit, dismissableScopeId))
+    ) {
+      return { type: "dismiss", targetId: dismissableScopeId };
     }
+    if (focusScopeId && (!hit || !isDescendantOf(frame.tree, hit, focusScopeId))) return null;
     const item = interactiveItem(frame.tree, hit);
     if (!item || item.disabled) return null;
     if (input.phase === "down") return focusCommand(frame, item.id);
     const semantic = frame.semantics.nodes.get(item.id);
     const action = semantic ? primarySemanticAction(semantic) : null;
-    return action ? commandForSemanticAction(frame, item.id, action, modalId) : null;
+    return action ? commandForSemanticAction(frame, item.id, action, focusScopeId) : null;
   }
 
   if (input.type === "wheel") {
@@ -424,8 +444,8 @@ export const commandForInput = (
 
   if (!acceptsWidgetKeyInput(input)) return null;
 
-  if (input.key === "Escape" && modalId) {
-    return { type: "dismiss", targetId: modalId };
+  if (input.key === "Escape" && dismissableScopeId) {
+    return { type: "dismiss", targetId: dismissableScopeId };
   }
   const focused = focus.focusedId
     ? frame.tree.nodes.get(focus.focusedId)
@@ -523,7 +543,7 @@ export const commandForInput = (
     const semantic = frame.semantics.nodes.get(focus.focusedId);
     const action = semantic ? primarySemanticAction(semantic) : null;
     return action
-      ? commandForSemanticAction(frame, focus.focusedId, action, modalId)
+      ? commandForSemanticAction(frame, focus.focusedId, action, focusScopeId)
       : null;
   }
   if (input.key === "PageUp" || input.key === "PageDown") {

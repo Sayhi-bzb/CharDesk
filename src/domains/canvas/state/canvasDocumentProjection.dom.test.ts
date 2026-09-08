@@ -45,9 +45,6 @@ describe("remote canvas document projection", () => {
           id: sessionId,
           name: "Projection",
           mode: "freeform",
-          grid: [],
-          scene: [],
-          components: [],
         },
       ],
     });
@@ -91,9 +88,6 @@ describe("remote canvas document projection", () => {
           id: sessionId,
           name: "Structured Local",
           mode: "structured",
-          grid: [],
-          scene: [],
-          components: [],
         },
       ],
     });
@@ -110,7 +104,7 @@ describe("remote canvas document projection", () => {
     expect(projectionCount).toBe(1);
     expect(state.structuredScene).toEqual([textNode("local-text", "Local")]);
     expect(state.contentSurface.reader.materialize().get("2,3")?.char).toBe("L");
-    expect(state.canvasSessions[0].scene).toEqual([]);
+    expect(state.canvasSessions[0]).not.toHaveProperty("scene");
   });
 
   it("writes only the changed structured node for an immutable scene edit", () => {
@@ -126,9 +120,6 @@ describe("remote canvas document projection", () => {
           id: sessionId,
           name: "Structured Patch",
           mode: "structured",
-          grid: [],
-          scene: [],
-          components: [],
         },
       ],
     });
@@ -188,9 +179,6 @@ describe("remote canvas document projection", () => {
           id: sessionId,
           name: "Structured Remote",
           mode: "structured",
-          grid: [],
-          scene: [],
-          components: [],
         },
       ],
     });
@@ -219,6 +207,6 @@ describe("remote canvas document projection", () => {
     expect(projectionCount).toBe(1);
     expect(state.structuredScene).toEqual([textNode("remote-text", "Remote")]);
     expect(state.contentSurface.reader.materialize().get("2,3")?.char).toBe("R");
-    expect(state.canvasSessions[0].scene).toEqual([]);
+    expect(state.canvasSessions[0]).not.toHaveProperty("scene");
   });
 });

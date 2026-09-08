@@ -3,11 +3,11 @@ import * as Y from "yjs";
 import { createSelectionCommandFactory } from "@/domains/actions/public";
 import { parseDocumentSessionSource } from "@/domains/document/public";
 import type { CollaborationDescriptorV6 } from "@/domains/collaboration/public";
-import type { CanvasSession } from "@/domains/sessions/public";
+import type { CanvasSessionSnapshot } from "@/domains/sessions/public";
 import { createCanvasRuntime, type CanvasRuntime } from "./runtime";
 import { CanvasDocumentRegistry } from "./state/CanvasDocumentRegistry";
 
-const sessions: CanvasSession[] = [
+const sessions: CanvasSessionSnapshot[] = [
   {
     id: "canvas-a",
     name: "Alpha",
@@ -194,7 +194,7 @@ describe("CanvasRuntime.materializeSession", () => {
 });
 
 describe("CanvasRuntime collaboration", () => {
-  const createRuntime = (initialSessions: CanvasSession[]) => {
+  const createRuntime = (initialSessions: CanvasSessionSnapshot[]) => {
     const documents = new CanvasDocumentRegistry();
     return createCanvasRuntime({
       documents,

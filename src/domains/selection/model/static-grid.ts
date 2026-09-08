@@ -22,14 +22,31 @@ interface StaticGridState {
   editMode: GridEditMode;
 }
 
-interface StaticGridViewState {
-  activeCell: GridAddress;
-  textCursor: GridAddress | null;
-  selectionAreas: SelectionArea[];
-  selectionGeometry: import("./grid-selection-geometry").GridSelectionGeometry;
-  hasSelection: boolean;
-  isTextEditing: boolean;
-}
+export type StaticGridTarget = Readonly<{
+  ranges: readonly GridRange[];
+  areas: readonly SelectionArea[];
+}>;
+
+export type StaticGridInteraction =
+  | Readonly<{
+      kind: "navigate";
+      activeCell: GridAddress;
+    }>
+  | Readonly<{
+      kind: "text-edit";
+      activeCell: GridAddress;
+      cursor: GridAddress;
+    }>
+  | Readonly<{
+      kind: "range";
+      activeCell: GridAddress;
+      geometry: import("./grid-selection-geometry").GridSelectionGeometry;
+    }>;
+
+export type StaticGridViewState = Readonly<{
+  target: StaticGridTarget;
+  interaction: StaticGridInteraction;
+}>;
 
 const createGridAddress = (x = 0, y = 0): GridAddress => ({ x, y });
 
@@ -258,7 +275,8 @@ export const getStaticGridViewState = (input: {
   textCursor: Point | null;
   grid?: GridCellSource;
 }): StaticGridViewState => {
-  const selectionAreas = getStaticGridSelectionAreas(input.selection, input.grid);
+  const ranges = getGridSelectionRanges(input.selection);
+  const areas = getStaticGridSelectionAreas(input.selection, input.grid);
   const isTextEditing = input.editMode === "text-edit";
   const rawActiveCell = isTextEditing && input.textCursor
     ? { ...input.textCursor }
@@ -267,16 +285,26 @@ export const getStaticGridViewState = (input: {
     ? resolveGridAnchor(input.grid, rawActiveCell)
     : rawActiveCell;
 
+  const target = { ranges, areas };
+  if (isTextEditing) {
+    return {
+      target,
+      interaction: { kind: "text-edit", activeCell, cursor: activeCell },
+    };
+  }
+  if (hasGridRangeSelection(input.selection)) {
+    return {
+      target,
+      interaction: {
+        kind: "range",
+        activeCell,
+        geometry: getGridSelectionGeometry(ranges, input.grid),
+      },
+    };
+  }
   return {
-    activeCell,
-    textCursor: isTextEditing ? activeCell : null,
-    selectionAreas,
-    selectionGeometry: getGridSelectionGeometry(
-      getGridSelectionRanges(input.selection),
-      input.grid
-    ),
-    hasSelection: !isTextEditing && hasGridRangeSelection(input.selection),
-    isTextEditing,
+    target,
+    interaction: { kind: "navigate", activeCell },
   };
 };
 

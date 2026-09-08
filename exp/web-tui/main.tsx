@@ -5,7 +5,12 @@ import { Close } from "pixelarticons/react/Close";
 import { Copy } from "pixelarticons/react/Copy";
 import { formatCellProbe } from "@chardesk/cell-ui";
 import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
-import { componentDocumentBySlug, componentDocuments, type ComponentDocument } from "./component-catalog";
+import {
+  componentDocumentBySlug,
+  componentNavigationGroups,
+  defaultComponentSlug,
+  type ComponentDocument,
+} from "./component-catalog";
 import { FixturePage } from "./fixtures";
 import { GalleryAppearance, GalleryBorderToggle, GalleryFontSelect, GalleryIconButton, GalleryThemeToggle } from "./appearance";
 import "./styles.css";
@@ -25,8 +30,10 @@ const subscribeToHash = (callback: () => void) => {
   window.addEventListener("hashchange", callback);
   return () => window.removeEventListener("hashchange", callback);
 };
-const readRoute = () => window.location.hash.slice(1) || "/components/text";
-const useRoute = () => useSyncExternalStore(subscribeToHash, readRoute, () => "/components/text");
+const defaultComponentRoute = `/components/${defaultComponentSlug}`;
+const defaultComponentHref = `#${defaultComponentRoute}`;
+const readRoute = () => window.location.hash.slice(1) || defaultComponentRoute;
+const useRoute = () => useSyncExternalStore(subscribeToHash, readRoute, () => defaultComponentRoute);
 
 export function CopyButton({ readText }: Readonly<{ readText: () => string | Promise<string> }>) {
   const [state, setState] = useState<CopyState>("idle");
@@ -81,20 +88,25 @@ const workspaceDependency = `{
 
 export function GalleryNavigation({ activeSlug }: Readonly<{ activeSlug: string }>) {
   return (
-    <nav className="gallery-nav" aria-label="Components">
-      <span className="gallery-nav__title">Components</span>
-      <ul>
-        {componentDocuments.map((document) => (
-          <li key={document.slug}>
-            <a
-              href={`#/components/${document.slug}`}
-              aria-current={activeSlug === document.slug ? "page" : undefined}
-            >
-              {document.title}
-            </a>
-          </li>
-        ))}
-      </ul>
+    <nav className="gallery-nav" aria-label="Cell UI">
+      {componentNavigationGroups.map((group) => {
+        const titleId = `gallery-nav-${group.id}`;
+        return <div className="gallery-nav__group" role="group" aria-labelledby={titleId} key={group.id}>
+          <span className="gallery-nav__title" id={titleId}>{group.title}</span>
+          <ul>
+            {group.documents.map((document) => (
+              <li key={document.slug}>
+                <a
+                  href={`#/components/${document.slug}`}
+                  aria-current={activeSlug === document.slug ? "page" : undefined}
+                >
+                  {document.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>;
+      })}
     </nav>
   );
 }
@@ -172,7 +184,7 @@ export function DocumentationShell({ document }: Readonly<{ document: ComponentD
   return (
     <>
       <header className="gallery-header">
-        <a className="gallery-brand" href="#/components/text">CharDesk / Cell UI</a>
+        <a className="gallery-brand" href={defaultComponentHref}>CharDesk / Cell UI</a>
         <div className="gallery-appearance-controls"><GalleryFontSelect /><GalleryBorderToggle /><GalleryThemeToggle /></div>
       </header>
       <div className="gallery-layout">
@@ -187,7 +199,7 @@ export function NotFound() {
   return (
     <main className="not-found">
       <h1>Component not found</h1>
-      <p><a href="#/components/text">Open Text</a></p>
+      <p><a href={defaultComponentHref}>Open Button</a></p>
     </main>
   );
 }
@@ -195,7 +207,7 @@ export function NotFound() {
 export function WebTuiApp(): ReactNode {
   const route = useRoute();
   useEffect(() => {
-    if (!window.location.hash) window.location.replace("#/components/text");
+    if (!window.location.hash) window.location.replace(defaultComponentHref);
   }, []);
   const fixture = route.match(/^\/__fixtures\/([^/]+)$/);
   if (fixture) return <FixturePage slug={fixture[1]!} />;

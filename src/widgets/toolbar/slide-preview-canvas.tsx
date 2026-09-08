@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Slide } from "@/domains/slides/public";
+import type {
+  SlideDescriptor,
+  SlideGridEntry,
+} from "@/domains/slides/public";
 import { useHostVisualTheme } from "@/shared/hooks/useHostVisualTheme";
 import { drawSlideCanvas } from "./slide-canvas-renderer";
 
@@ -10,9 +13,9 @@ export function SlidePreviewCanvas({
   contentRevision = 0,
   loadGrid,
 }: {
-  slide: Slide;
+  slide: SlideDescriptor;
   contentRevision?: number;
-  loadGrid?: () => Slide["grid"];
+  loadGrid?: () => SlideGridEntry[];
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -41,7 +44,7 @@ export function SlidePreviewCanvas({
       const { width, height } = canvas.getBoundingClientRect();
       drawSlideCanvas({
         canvas,
-        slide: loadGrid ? { ...slide, grid: loadGrid() } : slide,
+        slide: { ...slide, grid: loadGrid?.() ?? [] },
         size: slide.size,
         viewportWidth: width,
         viewportHeight: height,

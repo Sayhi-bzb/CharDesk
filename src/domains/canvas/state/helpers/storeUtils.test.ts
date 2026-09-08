@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { CanvasSession } from "@/domains/sessions/public";
+import type { CanvasSessionDescriptor } from "@/domains/sessions/public";
 import type { StructuredNode } from "@/domains/structured-content/public";
-import type { StructuredComponentInstance } from "@/domains/structured-content/public";
-import { resolveSessionRuntime } from "./storeUtils";
+import { CanvasDocumentRegistry } from "../CanvasDocumentRegistry";
+import {
+  resolveSessionDescriptorRuntime,
+  resolveSessionDocumentRuntime,
+} from "./storeUtils";
 
 const textNode: StructuredNode = {
   id: "text-1",
@@ -13,44 +16,42 @@ const textNode: StructuredNode = {
   style: { color: "#111111" },
 };
 
-describe("resolveSessionRuntime", () => {
-  it("reuses a normalized structured session and its cached grid", () => {
-    const grid: CanvasSession["grid"] = [
-      ["2,3", { char: "C", color: "#111111" }],
-    ];
-    const scene = [textNode];
-    const components: StructuredComponentInstance[] = [];
-    const session: CanvasSession = {
+describe("session runtime projections", () => {
+  it("resolves mode, tool, and viewport from the descriptor only", () => {
+    const session: CanvasSessionDescriptor = {
       id: "structured-cached",
       name: "Structured Cached",
       mode: "structured",
-      scene,
-      components,
-      grid,
+      viewport: { offset: { x: 4, y: 5 }, zoom: 2 },
     };
 
-    const runtime = resolveSessionRuntime(session, "select");
-
-    expect(runtime.nextScene).toBe(scene);
-    expect(runtime.nextComponents).toBe(components);
-    expect(runtime.nextGridEntries).toBe(grid);
+    expect(resolveSessionDescriptorRuntime(session, "brush")).toEqual({
+      nextMode: "structured",
+      nextTool: "select",
+      nextOffset: { x: 4, y: 5 },
+      nextZoom: 2,
+    });
   });
 
-  it("does not synthesize a duplicate grid when structured content has only a scene", () => {
-    const scene = [textNode];
-    const session: CanvasSession = {
-      id: "structured-missing-grid",
-      name: "Structured Missing Grid",
+  it("reads structured content from the document registry", () => {
+    const documents = new CanvasDocumentRegistry();
+    const session: CanvasSessionDescriptor = {
+      id: "structured-cached",
+      name: "Structured Cached",
       mode: "structured",
-      scene,
-      components: [],
-      grid: [],
     };
+    documents.activateDocument(session.id, {
+      mode: "structured",
+      grid: [],
+      scene: [textNode],
+      components: [],
+    });
 
-    const runtime = resolveSessionRuntime(session, "select");
+    const runtime = resolveSessionDocumentRuntime(documents, session, "select");
 
-    expect(runtime.nextScene).toBe(scene);
-    expect(runtime.nextGridEntries).toBe(session.grid);
-    expect(runtime.nextGridEntries).toEqual([]);
+    expect(runtime.nextScene).toEqual([textNode]);
+    expect(runtime.nextComponents).toEqual([]);
+    expect(runtime.nextSlideDeck).toBeNull();
+    documents.dispose();
   });
 });

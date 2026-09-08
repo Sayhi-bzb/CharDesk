@@ -1,7 +1,7 @@
 import type { CanvasMode } from "./mode";
 import type {
   CanvasImportSnapshot,
-  CanvasSession,
+  CanvasSessionDescriptor,
   CanvasSourceBinding,
 } from "./model";
 import type { CollaborationDescriptor } from "@/domains/collaboration/public";
@@ -24,7 +24,7 @@ export interface SessionCommands {
   importCanvasSession: (
     raw: string | unknown,
     options?: { name?: string; sourceName?: string }
-  ) => Promise<CanvasSession>;
+  ) => Promise<CanvasSessionDescriptor>;
   replaceCanvasSessionSnapshot: (
     sessionId: string,
     snapshot: CanvasImportSnapshot,

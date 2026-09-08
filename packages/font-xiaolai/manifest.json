@@ -1,0 +1,79 @@
+{
+  "target": "xiaolai",
+  "generatedAt": "2026-09-08T05:56:08.151Z",
+  "sources": [
+    {
+      "id": "xiaolai-mono",
+      "family": "Xiaolai Mono",
+      "version": "3.126",
+      "binaryUrl": "https://github.com/lxgw/kose-font/releases/download/v3.126/XiaolaiMono-Regular.ttf",
+      "binarySha256": "802b658db492e02ae5b659f5b56d7d4ef8f77609515bdcc82f462ae912888c33",
+      "fontFile": "XiaolaiMono-Regular.ttf",
+      "subsets": [
+        {
+          "id": "base",
+          "file": "base.woff2",
+          "unicodeRange": "U+0000-33FF, U+4DC0-4DFF, U+A000-ABFF, U+D7B0-D7FF, U+E000-FFFF"
+        },
+        {
+          "id": "cjk-extension-a",
+          "file": "cjk-extension-a.woff2",
+          "unicodeRange": "U+3400-4DBF"
+        },
+        {
+          "id": "cjk-unified",
+          "file": "cjk-unified.woff2",
+          "unicodeRange": "U+4E00-9FFF"
+        },
+        {
+          "id": "hangul",
+          "file": "hangul.woff2",
+          "unicodeRange": "U+AC00-D7AF"
+        },
+        {
+          "id": "supplementary",
+          "file": "supplementary.woff2",
+          "unicodeRange": "U+10000-10FFFF"
+        }
+      ],
+      "licenseUrl": "https://raw.githubusercontent.com/lxgw/kose-font/v3.126/OFL.txt"
+    }
+  ],
+  "assets": [
+    {
+      "path": "assets/xiaolai-mono/base.woff2",
+      "size": 696040,
+      "sha256": "4573ffa46797d4b5700e1e1362f4426ff45ac72ab3feb7a8554b9d50488b4a14"
+    },
+    {
+      "path": "assets/xiaolai-mono/cjk-extension-a.woff2",
+      "size": 2502700,
+      "sha256": "c3afbf7fc46162411ddaf04a5e7f00011b78a243b0cf34ed3dfa9e34c00d7ba3"
+    },
+    {
+      "path": "assets/xiaolai-mono/cjk-unified.woff2",
+      "size": 5620972,
+      "sha256": "39f32aee7ef80c6e807601f0e95ad98553acc018abcbb2fd8323eb14ecdd651b"
+    },
+    {
+      "path": "assets/xiaolai-mono/hangul.woff2",
+      "size": 2802676,
+      "sha256": "adc85db52ef0e231a4ba59b936769240a4ab9b39404f610e282d32ea965ed595"
+    },
+    {
+      "path": "assets/xiaolai-mono/OFL.txt",
+      "size": 4432,
+      "sha256": "0df7e09be4c2c850a48bd8beb9cd64b343aad49cd5d3f6cfb2ad2e3d28a56ca4"
+    },
+    {
+      "path": "assets/xiaolai-mono/supplementary.woff2",
+      "size": 307400,
+      "sha256": "f8c616f1ba6435ebeddb71f3c9c37b0b72c94574ccb49bb8e4b99a42c072dcc6"
+    },
+    {
+      "path": "fonts.css",
+      "size": 1282,
+      "sha256": "1b754613ff75c68d7f56af626f544128c9cb065a876cfea69a93bf30cf172f6d"
+    }
+  ]
+}

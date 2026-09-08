@@ -381,17 +381,22 @@ export const createTextSlice = (
       textCursor,
       grid: get().contentSurface.reader,
     });
+    const staticGridInteraction = staticGridView.interaction;
+    const hasRangeTarget = staticGridInteraction.kind === "range";
 
-    if (staticGridView.hasSelection && graphemes.length === 1 && graphemes[0] !== "\n") {
+    if (hasRangeTarget && graphemes.length === 1 && graphemes[0] !== "\n") {
       fillSelectionsWithChar(graphemes[0], options);
       return;
     }
 
-    const fallbackSelectionStart = !startPos && !textCursor && staticGridView.hasSelection
-      ? staticGridView.selectionAreas[0].start
+    const fallbackSelectionStart = !startPos && !textCursor && hasRangeTarget
+      ? staticGridView.target.areas[0]?.start ?? null
       : null;
 
-    const cursor = startPos || textCursor || fallbackSelectionStart || staticGridView.activeCell;
+    const cursor = startPos
+      || textCursor
+      || fallbackSelectionStart
+      || staticGridInteraction.activeCell;
 
     const state = get();
     const bounds = getActiveSlideGridBounds(state);
@@ -460,15 +465,18 @@ export const createTextSlice = (
       textCursor,
       grid: get().contentSurface.reader,
     });
+    const staticGridInteraction = staticGridView.interaction;
 
     const basePos =
       startPos ??
-      staticGridView.textCursor ??
-      (staticGridView.hasSelection
-        ? staticGridView.selectionGeometry.bounds?.start
+      (staticGridInteraction.kind === "text-edit"
+        ? staticGridInteraction.cursor
+        : null) ??
+      (staticGridInteraction.kind === "range"
+        ? staticGridInteraction.geometry.bounds?.start
         : null) ??
       textCursor ??
-      staticGridView.activeCell;
+      staticGridInteraction.activeCell;
     const cellsBySourcePoint = new Map(
       cells.map((cell) => [GridManager.toKey(cell.x, cell.y), cell])
     );
@@ -515,14 +523,17 @@ export const createTextSlice = (
       textCursor,
       grid: get().contentSurface.reader,
     });
+    const staticGridInteraction = staticGridView.interaction;
     const basePos =
       startPos ??
-      staticGridView.textCursor ??
-      (staticGridView.hasSelection
-        ? staticGridView.selectionGeometry.bounds?.start
+      (staticGridInteraction.kind === "text-edit"
+        ? staticGridInteraction.cursor
+        : null) ??
+      (staticGridInteraction.kind === "range"
+        ? staticGridInteraction.geometry.bounds?.start
         : null) ??
       textCursor ??
-      staticGridView.activeCell;
+      staticGridInteraction.activeCell;
     const operation = documents.applyCellPlanePatchAt(
       resolveEditorDocumentAddress(documents, get()),
       {

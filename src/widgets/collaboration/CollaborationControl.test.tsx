@@ -42,8 +42,6 @@ describe('CollaborationControl', () => {
             id: 'collaboration-canvas',
             name: 'Collaboration Canvas',
             mode,
-            scene: [],
-            grid: [],
             collaboration,
           },
         ],
@@ -141,8 +139,6 @@ describe('CollaborationControl', () => {
             provider: 'browser-workspace',
             id: 'workspace',
           },
-          scene: [],
-          grid: [],
         }],
       });
     });

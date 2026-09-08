@@ -69,8 +69,14 @@ describe('useCanvasEditorModels session binding', () => {
     );
   });
 
-  it('renders inactive structured and slide sessions from their snapshots', () => {
+  it('renders inactive structured and slide sessions from the document registry', () => {
     act(() => {
+      defaultCanvasDocuments.activateDocument('canvas-a', {
+        mode: 'freeform',
+        grid: [['0,0', { char: 'A', color: '#000000' }]],
+        scene: [],
+        components: [],
+      });
       defaultCanvasDocuments.activateDocument('canvas-b', {
         grid: [],
         scene: [{
@@ -108,38 +114,16 @@ describe('useCanvasEditorModels session binding', () => {
             id: 'canvas-a',
             name: 'Alpha',
             mode: 'freeform',
-            scene: [],
-            grid: [['0,0', { char: 'A', color: '#000000' }]],
           },
           {
             id: 'canvas-b',
             name: 'Beta',
             mode: 'structured',
-            scene: [{
-              id: 'text-b',
-              type: 'text',
-              order: 0,
-              position: { x: 0, y: 0 },
-              text: 'B',
-              style: { color: '#000000' },
-            }],
-            grid: [['0,0', { char: 'B', color: '#000000' }]],
           },
           {
             id: 'canvas-c',
             name: 'Slides',
             mode: 'slide',
-            scene: [],
-            grid: [],
-            slideDeck: {
-              activeSlideId: 'slide-c',
-              slides: [{
-                id: 'slide-c',
-                name: 'Slide',
-                size: { columns: 10, rows: 5 },
-                grid: [['0,0', { char: 'C', color: '#000000' }]],
-              }],
-            },
           },
         ],
       });

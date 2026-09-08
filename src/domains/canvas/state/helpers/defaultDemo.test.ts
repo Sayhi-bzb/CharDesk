@@ -248,7 +248,7 @@ describe("default demo canvas", () => {
     expect(DEFAULT_DEMO_GRID.length).toBeGreaterThan(0);
     expect(firstSession?.name).toBe(DEFAULT_SESSION_NAME);
     expect(DEFAULT_SESSION_NAME).toBe("Welcome");
-    expect(firstSession?.grid).toEqual([]);
+    expect(firstSession).not.toHaveProperty("grid");
     expect(state.contentSurface.reader.materialize()).toEqual(new Map(DEFAULT_DEMO_GRID));
     expect(state.contentSurface.reader.materialize().get(GridManager.toKey(1, 0))).toEqual({
       char: "█",
@@ -294,7 +294,7 @@ describe("default demo canvas", () => {
       DEFAULT_STRUCTURED_SESSION_ID,
       "structured"
     );
-    expect(structuredSession?.scene).toEqual([]);
+    expect(structuredSession).not.toHaveProperty("scene");
     expect(structuredSeed?.scene.some((node) => node.type === "splitBox")).toBe(
       true
     );
@@ -302,6 +302,6 @@ describe("default demo canvas", () => {
       templateId: "safari",
       label: "Safari",
     });
-    expect(structuredSession?.grid).toEqual([]);
+    expect(structuredSession).not.toHaveProperty("grid");
   });
 });

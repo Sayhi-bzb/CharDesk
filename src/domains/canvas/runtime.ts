@@ -13,9 +13,9 @@ import {
 import {
   isSourceBackedCanvasSession,
   type CanvasMode,
-  type CanvasSession,
+  type CanvasSessionSnapshot,
 } from "@/domains/sessions/public";
-import type { SlideDeck } from "@/domains/slides/public";
+import type { SlideDeckSnapshot } from "@/domains/slides/public";
 import type {
   StructuredComponentInstance,
   StructuredNode,
@@ -25,7 +25,11 @@ import {
   type CanvasSurfaceReader,
 } from "./cell-plane/model";
 import { createStructuredSceneSurface } from "@/domains/structured-content/public";
-import { materializeSlideDeckContent } from "./state/slideDocumentPages";
+import {
+  materializeSlideDeckContent,
+  readSlideDeckDescriptor,
+} from "./state/slideDocumentPages";
+import { createDefaultCanvasSessions } from "./state/editorPersistence";
 import {
   createBrowserCanvasPersistence,
   type BrowserCanvasPersistence,
@@ -51,7 +55,7 @@ type CanvasRuntimeOptions = {
   selectionCommands: SelectionCommandFactory;
   parseSessionSource: CanvasSessionSourceParser;
   reportIntegrityIssues?: (issues: CollaborationIntegrityIssue[]) => void;
-  initialSessions?: readonly CanvasSession[];
+  initialSessions?: readonly CanvasSessionSnapshot[];
 };
 
 export type CanvasSessionMaterialization = {
@@ -61,7 +65,7 @@ export type CanvasSessionMaterialization = {
   surface: CanvasSurfaceReader;
   structuredScene: StructuredNode[];
   structuredComponents: StructuredComponentInstance[];
-  slideDeck: SlideDeck | null;
+  slideDeck: SlideDeckSnapshot | null;
 };
 
 export class CanvasRuntime {
@@ -88,6 +92,7 @@ export class CanvasRuntime {
           legacyKey: options.persistence.key,
         })
       : null;
+    const initialSessions = options.initialSessions ?? createDefaultCanvasSessions();
     const storeInstance = createEditorStore({
       documents: this.documents,
       selectionCommands: options.selectionCommands,
@@ -96,7 +101,7 @@ export class CanvasRuntime {
       // Browser content persistence is coordinated against the authoritative
       // Yjs documents. Zustand remains an in-memory projection.
       persistence: false,
-      initialSessions: options.initialSessions,
+      initialSessions,
       documentResidency: this.persistence ?? undefined,
     });
     this.store = storeInstance.store;
@@ -107,7 +112,7 @@ export class CanvasRuntime {
       ? this.persistence.initialize(
           this.documents,
           this.store,
-          options.initialSessions
+          initialSessions
         )
       : Promise.resolve();
   }
@@ -146,16 +151,18 @@ export class CanvasRuntime {
     if (!session) return null;
     if (
       !this.documents.getDocument(session.id) &&
-      !(await this.persistence?.ensureLoaded(session))
+      !(await this.persistence?.ensureLoaded({ descriptor: session }))
     ) {
       return null;
     }
 
     if (session.mode === "slide") {
+      const descriptor = readSlideDeckDescriptor(this.documents, session.id);
+      if (!descriptor) return null;
       const slideDeck = materializeSlideDeckContent(
         this.documents,
         session.id,
-        session.slideDeck
+        descriptor
       );
       const activeSlide = slideDeck.slides.find(
         (slide) => slide.id === slideDeck.activeSlideId

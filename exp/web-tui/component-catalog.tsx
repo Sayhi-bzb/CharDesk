@@ -17,9 +17,13 @@ type ComponentApiRow = Readonly<{
   description: string;
 }>;
 
+export type ComponentGroupId = "components" | "primitives" | "collections";
+
 export type ComponentDocument = Readonly<{
   slug: string;
   title: string;
+  group: ComponentGroupId;
+  navigationOrder: number;
   description: string;
   probeId: string;
   Demo: ComponentType;
@@ -31,6 +35,8 @@ export const componentDocuments: readonly ComponentDocument[] = [
   {
     slug: "text",
     title: "Text",
+    group: "primitives",
+    navigationOrder: 0,
     description: "Render text, Unicode, and Cell-native wrapping.",
     probeId: "component-text",
     Demo: TextComponentDemo,
@@ -66,6 +72,8 @@ export function TextExample() {
   {
     slug: "box",
     title: "Box",
+    group: "primitives",
+    navigationOrder: 1,
     description: "Compose nested Cell layout, spacing, and borders.",
     probeId: "component-box",
     Demo: BoxComponentDemo,
@@ -98,6 +106,8 @@ export function BoxExample() {
   {
     slug: "button",
     title: "Button",
+    group: "components",
+    navigationOrder: 0,
     description: "Trigger one action through keyboard, pointer, or assistive input.",
     probeId: "component-button",
     Demo: ButtonComponentDemo,
@@ -135,6 +145,8 @@ export function ButtonExample() {
   {
     slug: "select",
     title: "Select",
+    group: "components",
+    navigationOrder: 1,
     description: "Choose one value from a Cell-anchored listbox.",
     probeId: "component-select",
     Demo: SelectComponentDemo,
@@ -199,6 +211,8 @@ export function SelectExample() {
   {
     slug: "checkbox",
     title: "Checkbox",
+    group: "components",
+    navigationOrder: 3,
     description: "Toggle boolean or indeterminate state through one Cell command path.",
     probeId: "component-checkbox",
     Demo: CheckboxComponentDemo,
@@ -248,6 +262,8 @@ export function CheckboxExample() {
   {
     slug: "slider",
     title: "Slider",
+    group: "components",
+    navigationOrder: 2,
     description: "Select one stepped numeric value on a Cell-native track.",
     probeId: "component-slider",
     Demo: SliderComponentDemo,
@@ -293,6 +309,8 @@ export function SliderExample() {
   {
     slug: "input",
     title: "Input",
+    group: "components",
+    navigationOrder: 4,
     description: "Edit a single line of Unicode text on the Cell grid.",
     probeId: "component-input",
     Demo: InputComponentDemo,
@@ -330,6 +348,8 @@ export function InputExample() {
   {
     slug: "list",
     title: "List",
+    group: "collections",
+    navigationOrder: 0,
     description: "Move focus and confirm a selection through one command path.",
     probeId: "component-list",
     Demo: ListComponentDemo,
@@ -379,6 +399,8 @@ export function ListExample() {
   {
     slug: "scroll-area",
     title: "ScrollArea",
+    group: "components",
+    navigationOrder: 5,
     description: "Scroll overflowing Cell content with keys, wheel, track, or thumb.",
     probeId: "component-scroll-area",
     Demo: ScrollAreaComponentDemo,
@@ -416,3 +438,21 @@ export function ScrollAreaExample() {
 export const componentDocumentBySlug = new Map(
   componentDocuments.map((document) => [document.slug, document] as const),
 );
+
+export const defaultComponentSlug = "button";
+
+const navigationGroupDefinitions: ReadonlyArray<Readonly<{
+  id: ComponentGroupId;
+  title: string;
+}>> = [
+  { id: "components", title: "Components" },
+  { id: "primitives", title: "Primitives" },
+  { id: "collections", title: "Collections" },
+];
+
+export const componentNavigationGroups = navigationGroupDefinitions.map((group) => ({
+  ...group,
+  documents: componentDocuments
+    .filter((document) => document.group === group.id)
+    .toSorted((left, right) => left.navigationOrder - right.navigationOrder),
+}));

@@ -45,8 +45,7 @@ import {
 
 import {
   getSessionCanvasDocumentId,
-  resolveSessionRuntime,
-  stripSessionContent,
+  resolveSessionDocumentRuntime,
 } from "./helpers/storeUtils";
 import { isToolAllowedForMode } from "../model/tool";
 import { createDeferredSnapshotPersistStorage } from "./persistenceCoordinator";
@@ -55,7 +54,11 @@ import { resolveEditorDocumentAddress } from "./helpers/gridHelpers";
 import type { CollaborationIntegrityIssue } from "@/domains/collaboration/public";
 import type { SelectionCommandFactory } from "./selectionCommandPort";
 import type { CanvasSessionSourceParser } from "./sessionImportPort";
-import type { CanvasSession } from "@/domains/sessions/public";
+import {
+  getCanvasSessionRestoreRecord,
+  type CanvasSessionDescriptor,
+  type CanvasSessionSnapshot,
+} from "@/domains/sessions/public";
 import { createGridSurfaceReader } from "../cell-plane/model";
 import type { CanvasDocumentResidency } from "./documentResidencyPort";
 
@@ -73,20 +76,19 @@ type CanvasStoreDependencies = {
   parseSessionSource: CanvasSessionSourceParser;
   reportIntegrityIssues: (issues: CollaborationIntegrityIssue[]) => void;
   persistence: CanvasStorePersistence;
-  initialSessions?: readonly CanvasSession[];
+  initialSessions?: readonly CanvasSessionSnapshot[];
   documentResidency?: CanvasDocumentResidency;
 };
 
 const seedSessionDocuments = (
   documents: CanvasDocumentRegistry,
-  session: CanvasSession,
-  runtime: ReturnType<typeof resolveSessionRuntime>
+  session: CanvasSessionSnapshot
 ) => {
-  if (session.mode === "slide" && runtime.nextSlideDeck) {
+  if (session.mode === "slide") {
     documents.activateDocument(session.id, {
       mode: "slide",
-      activePageId: runtime.nextSlideDeck.activeSlideId,
-      pages: runtime.nextSlideDeck.slides.map((slide) => ({
+      activePageId: session.slideDeck.activeSlideId,
+      pages: session.slideDeck.slides.map((slide) => ({
         id: slide.id,
         name: slide.name,
         size: slide.size,
@@ -102,10 +104,10 @@ const seedSessionDocuments = (
   documents.activateDocument(
     getSessionCanvasDocumentId(session),
     {
-      grid: runtime.nextMode === "structured" ? [] : runtime.nextGridEntries,
-      scene: runtime.nextMode === "structured" ? runtime.nextScene : [],
-      components: runtime.nextComponents,
-      mode: runtime.nextMode,
+      grid: session.mode === "structured" ? [] : session.grid,
+      scene: session.mode === "structured" ? session.scene : [],
+      components: session.components,
+      mode: session.mode,
     }
   );
 };
@@ -125,20 +127,26 @@ export const createEditorStore = ({
   if (configuredInitialSessions?.length === 0) {
     throw new Error("Canvas runtime requires at least one initial session");
   }
-  const initialSessions = configuredInitialSessions
+  const initialSnapshots = configuredInitialSessions
     ? configuredInitialSessions.map((session) => structuredClone(session))
     : createDefaultCanvasSessions();
+  const initialSessions: CanvasSessionDescriptor[] = initialSnapshots.map(
+    (session) => getCanvasSessionRestoreRecord(session).descriptor
+  );
   const initialSession = initialSessions[0]!;
-  const initialRuntime = resolveSessionRuntime(initialSession, "select");
   const disposers: Array<() => void> = [];
   const stateCreator: StateCreator<EditorState> = (set, get, ...a) => {
-      seedSessionDocuments(documents, initialSession, initialRuntime);
+      seedSessionDocuments(documents, initialSnapshots[0]!);
       if (!documentResidency) {
-        initialSessions.slice(1).forEach((session) => {
-          const runtime = resolveSessionRuntime(session, "select");
-          seedSessionDocuments(documents, session, runtime);
+        initialSnapshots.slice(1).forEach((session) => {
+          seedSessionDocuments(documents, session);
         });
       }
+      const initialRuntime = resolveSessionDocumentRuntime(
+        documents,
+        initialSession,
+        "select"
+      );
       const initialAddress = documents.getDocumentAddress(
         initialSession.id,
         initialSession.mode === "slide"
@@ -178,7 +186,7 @@ export const createEditorStore = ({
         selectedStructuredSplitHandle: null,
         structuredContextPoint: null,
         structuredGridFocus: null,
-        canvasSessions: initialSessions.map(stripSessionContent),
+        canvasSessions: initialSessions,
         activeCanvasId: initialSession.id,
         pendingCameraPlacement: null,
         ...documents.getHistoryAvailability(),
@@ -310,6 +318,7 @@ export const createEditorStore = ({
         ...createSessionSlice(documents, parseSessionSource, documentResidency)(set, get, ...a),
         ...createStaticGridSlice(set, get, ...a),
         ...createSlideSlice(documents)(set, get, ...a),
+        slideDeck: initialRuntime.nextSlideDeck,
 
         ...createDrawingSlice(documents)(set, get, ...a),
         ...createTextSlice(documents)(set, get, ...a),
@@ -327,7 +336,7 @@ export const createEditorStore = ({
           }
           return persistence.storage;
         },
-        createSnapshot: createPersistedEditorSnapshot,
+        createSnapshot: (state) => createPersistedEditorSnapshot(state, documents),
         shouldSchedule: shouldScheduleEditorPersistence,
       }),
       migrate: (persistedState, version) => {
@@ -341,18 +350,26 @@ export const createEditorStore = ({
         if (!persistedState) return currentState;
         const normalizedPersistedState = decodePersistedEditorState(persistedState);
         const flattened = flattenPersistedEditorState(normalizedPersistedState);
+        const sessionSnapshots = flattened.canvasSessions;
+        const restoreRecords = sessionSnapshots.map(getCanvasSessionRestoreRecord);
+        const descriptors = restoreRecords.map(({ descriptor }) => descriptor);
+        const activeSnapshot = sessionSnapshots.find(
+          (session) => session.id === flattened.activeCanvasId
+        );
         const mergedState = {
           ...currentState,
           ...flattened,
+          canvasSessions: descriptors,
           contentSurface: createCanvasContentSurface(createGridSurfaceReader(
             createMapFromEntries(normalizeGridEntries(flattened.grid))
           )),
         } as EditorState;
-        return recoverPersistedEditorState(mergedState);
-      },
-      onRehydrateStorage: () => (hydratedState, error) => {
-        if (error || !hydratedState) return;
-        syncHydratedStateToCanvasDocument(documents, hydratedState);
+        const recovered = recoverPersistedEditorState(
+          mergedState,
+          activeSnapshot
+        );
+        syncHydratedStateToCanvasDocument(documents, recovered, activeSnapshot);
+        return recovered;
       },
     }))
     : create<EditorState>()(stateCreator);

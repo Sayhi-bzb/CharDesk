@@ -1,4 +1,8 @@
-import type { Slide, SlideSize } from "@/domains/slides/public";
+import type {
+  SlideDescriptor,
+  SlideGridEntry,
+  SlideSize,
+} from "@/domains/slides/public";
 import {
   BACKGROUND_COLOR,
   COLOR_PRIMARY_TEXT,
@@ -18,8 +22,8 @@ import {
 
 type DrawSlideCanvasOptions = {
   canvas: HTMLCanvasElement;
-  slide: Omit<Slide, "grid"> & {
-    grid: Iterable<Slide["grid"][number]>;
+  slide: SlideDescriptor & {
+    grid: Iterable<SlideGridEntry>;
   };
   size: SlideSize;
   viewportWidth: number;

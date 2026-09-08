@@ -1,5 +1,4 @@
 import { type CharDeskFontProfile } from "@chardesk/fonts";
-import { loadCharDeskCanvasFonts } from "@chardesk/rendering/canvas";
 import { displayFontOptions, type DisplayFont } from "./catalog";
 import { DEFAULT_CANVAS_FONT_PROFILE } from "./canvas-profile";
 import { loadDisplayFont } from "./loading";
@@ -22,8 +21,6 @@ const migrateStoredDisplayFont = (value: unknown): unknown =>
 const loadCanvasFont = async (font: DisplayFont) => {
   const option = displayFontOptions[font];
   await loadDisplayFont(option);
-  const profile = option.profile;
-  await loadCharDeskCanvasFonts(["AgWi09", "世界，。", "─", "│", "╭", "█"], { fontProfile: profile });
 };
 
 /** Host-owned preference; no document/history state and no renderer-side globals. */

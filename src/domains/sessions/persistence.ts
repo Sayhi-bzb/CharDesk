@@ -1,5 +1,5 @@
 import { isCollaborationDescriptor } from "@/domains/collaboration/public";
-import { normalizeSlideDeck } from "@/domains/slides/public";
+import { normalizeSlideDeckSnapshot } from "@/domains/slides/public";
 import {
   cloneStructuredNode,
   decodeStructuredComponents,
@@ -11,7 +11,7 @@ import {
 import type { GridCell, Point } from "@/shared/types";
 import { decodeGridEntries } from "@/shared/utils/grid-codec";
 import type { CanvasMode } from "./mode";
-import type { CanvasSession, CanvasSourceBinding } from "./model";
+import type { CanvasSessionSnapshot, CanvasSourceBinding } from "./model";
 import {
   migrateLegacyGridOffset,
   migrateLegacyGridViewport,
@@ -34,7 +34,7 @@ interface PersistedEditorStateV6 {
     structuredComponents: StructuredComponentInstance[];
   };
   sessions: {
-    items: CanvasSession[];
+    items: CanvasSessionSnapshot[];
     activeId: string;
   };
   preferences: {
@@ -81,7 +81,7 @@ const decodeLegacySourceBinding = (value: Record<string, unknown>) => {
   };
 };
 
-const decodeViewport = (value: unknown): CanvasSession["viewport"] | undefined => {
+const decodeViewport = (value: unknown): CanvasSessionSnapshot["viewport"] | undefined => {
   if (!isRecord(value)) return undefined;
   const offset = decodePoint(value.offset);
   return offset && typeof value.zoom === "number" && Number.isFinite(value.zoom)
@@ -97,7 +97,7 @@ const decodeScene = (value: unknown): StructuredNode[] =>
       .map(cloneStructuredNode)
   );
 
-const decodeCanvasSession = (value: unknown): CanvasSession | null => {
+const decodeCanvasSession = (value: unknown): CanvasSessionSnapshot | null => {
   if (!isRecord(value) || typeof value.id !== "string" ||
       (!isCanvasMode(value.mode) && value.mode !== "blackboard")) {
     return null;
@@ -112,7 +112,7 @@ const decodeCanvasSession = (value: unknown): CanvasSession | null => {
           ? value.name
           : "Slides",
       mode: "slide",
-      slideDeck: normalizeSlideDeck(value.slideDeck, `${value.id}-slide-1`),
+      slideDeck: normalizeSlideDeckSnapshot(value.slideDeck, `${value.id}-slide-1`),
       ...(sourceBinding ? { sourceBinding } : {}),
       scene: [],
       components: [],
@@ -173,7 +173,7 @@ const decodeCanvasSession = (value: unknown): CanvasSession | null => {
       };
 };
 
-const createBlankSession = (): CanvasSession => ({
+const createBlankSession = (): CanvasSessionSnapshot => ({
   id: "canvas-1",
   name: "Canvas 1",
   mode: "freeform",
@@ -196,7 +196,7 @@ export const decodePersistedEditorState = (
       : [];
   const items = rawItems
     .map(decodeCanvasSession)
-    .filter((session): session is CanvasSession => session !== null);
+    .filter((session): session is CanvasSessionSnapshot => session !== null);
   if (items.length === 0) items.push(createBlankSession());
 
   const requestedActiveId =

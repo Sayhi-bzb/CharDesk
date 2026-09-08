@@ -17,11 +17,11 @@ Core 默认由系统 monospace 承担 display/CJK，并独立分发 Nerd、symbo
 
 常用箭头、数学和几何符号按 display → CJK → JuliaMono 解析；Nerd 与 emoji 保持专用 Core face 优先。Maple 文件仍包含上游 NF glyph，但 Profile 不把 Nerd 请求路由给 Maple。
 
-## Gallery 当前试验
+## Gallery 显示字体
 
-Gallery 顺序为 `Maple → Ark → Xiaolai → Maple`，默认 Maple。Ark 固定官方 2026.09.01；Xiaolai 固定本地 3.126 TTF，来源与许可证见 [资源说明](../../public/fonts/xiaolai-mono/README.md)。两者均按需加载，不依赖第三方字体请求。
+Gallery 顺序为 `Maple → Fusion → Xiaolai → Maple`，默认 Maple。Fusion 固定官方 2026.09.01 完整 WOFF2；Xiaolai 固定官方 3.126，并将 22,199,284 B 源 TTF 生成为五个互斥 WOFF2：base 696,040 B、CJK Extension A 2,502,700 B、CJK Unified 5,620,972 B、Hangul 2,802,676 B、supplementary 307,400 B。两者均由独立 workspace 包按需加载，不依赖第三方运行时请求。
 
-Xiaolai 的显示字体测量：原生 Cell 7.5×15px / baseline 13px；Latin/CJK advance 7.5/15px；原始 `│─┌└→` advance 15px。Gallery Surface 固定 9×20px / baseline 15px；已登记 Cell graphics 使用共享专用绘制器，未登记箭头仍走显示字体。Chromium/WebKit、DPR 1/1.25/2 的编辑、命中和矩形复制通过；这不证明完整 Unicode 覆盖或所有墨水接缝无缝。
+Xiaolai 的五片合计保留源字体 44,871 个 cmap 字符；拉丁/CJK advance 为 0.5/1em。Gallery Surface 固定 9×20px / baseline 15px；已登记 Cell graphics 使用共享专用绘制器，未登记箭头仍走显示字体。Chromium/WebKit、DPR 1/1.25/2 的编辑、命中和矩形复制通过；覆盖校验不等价于所有字形墨水都适配 Cell。
 
 ## Host 字体切换
 
@@ -35,6 +35,6 @@ Host 持有有效 Profile 与加载状态；成功后同步替换，失败保留
 
 ## 权威证据
 
-- 版本、checksum 与资产体积：[Core manifest](../../packages/fonts/manifest.json)、[Maple manifest](../../packages/font-maple/manifest.json)。
+- 版本、checksum 与资产体积：[Core manifest](../../packages/fonts/manifest.json)、[Maple manifest](../../packages/font-maple/manifest.json)、[Fusion manifest](../../packages/font-fusion/manifest.json)、[Xiaolai manifest](../../packages/font-xiaolai/manifest.json)。
 - capability 与分发：[Core fonts](../../packages/fonts/README.md)、[Rendering](../../packages/rendering/README.md)。
 - 浏览器测量：[font metrics E2E](../../e2e/web-tui-font-metrics.spec.ts)、[font audit E2E](../../e2e/web-tui-font-audit.spec.ts)。

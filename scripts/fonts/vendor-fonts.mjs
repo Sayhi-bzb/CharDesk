@@ -11,6 +11,7 @@ import {
   nerdFontCodePoints,
 } from "./nerd-font-catalog.mjs";
 import { buildNerdFontSubsets } from "./nerd-font-subsets.mjs";
+import { runPyftsubset } from "./fonttools.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
@@ -47,6 +48,10 @@ const targets = {
   },
   fusion: {
     outputRoot: path.join(repoRoot, "packages", "font-fusion"),
+    assetPrefix: "assets",
+  },
+  xiaolai: {
+    outputRoot: path.join(repoRoot, "packages", "font-xiaolai"),
     assetPrefix: "assets",
   },
 };
@@ -124,30 +129,74 @@ const sources = [
   },
 ];
 
-const binarySources = [{
-  target: "canvas-core",
-  id: "julia-mono",
-  family: "JuliaMono",
-  version: "0.63.2",
-  binaryUrl:
-    "https://raw.githubusercontent.com/cormullion/juliamono/v0.63.2/" +
-    "webfonts/JuliaMono-Regular.woff2",
-  binarySha256:
-    "cd371c92e94978a6888b71e89a4b57f443604ad63595150511ceb7d5c354b857",
-  fontFile: "JuliaMono-Regular.woff2",
-  subsets: [
-    { id: "base", file: "base.woff2", unicodeRange: "U+0000-1FFF" },
-    { id: "punctuation", file: "punctuation.woff2", unicodeRange: "U+2000-218F" },
-    { id: "arrows", file: "arrows.woff2", unicodeRange: "U+2190-21FF, U+27F0-27FF, U+2900-297F" },
-    { id: "math-technical", file: "math-technical.woff2", unicodeRange: "U+2200-23FF, U+27C0-27EF, U+2980-2AFF" },
-    { id: "graphics", file: "graphics.woff2", unicodeRange: "U+2400-27BF, U+2800-28FF, U+2B00-2BFF" },
-    { id: "scripts", file: "scripts.woff2", unicodeRange: "U+2C00-1D3FF" },
-    { id: "math-alphanumerics", file: "math-alphanumerics.woff2", unicodeRange: "U+1D400-1D7FF" },
-    { id: "supplemental", file: "supplemental.woff2", unicodeRange: "U+1D800-10FFFF" },
-  ],
-  licenseUrl:
-    "https://raw.githubusercontent.com/cormullion/juliamono/v0.63.2/LICENSE",
-}];
+const binarySources = [
+  {
+    target: "canvas-core",
+    id: "julia-mono",
+    family: "JuliaMono",
+    version: "0.63.2",
+    binaryUrl:
+      "https://raw.githubusercontent.com/cormullion/juliamono/v0.63.2/" +
+      "webfonts/JuliaMono-Regular.woff2",
+    binarySha256:
+      "cd371c92e94978a6888b71e89a4b57f443604ad63595150511ceb7d5c354b857",
+    fontFile: "JuliaMono-Regular.woff2",
+    subsets: [
+      { id: "base", file: "base.woff2", unicodeRange: "U+0000-1FFF" },
+      { id: "punctuation", file: "punctuation.woff2", unicodeRange: "U+2000-218F" },
+      { id: "arrows", file: "arrows.woff2", unicodeRange: "U+2190-21FF, U+27F0-27FF, U+2900-297F" },
+      { id: "math-technical", file: "math-technical.woff2", unicodeRange: "U+2200-23FF, U+27C0-27EF, U+2980-2AFF" },
+      { id: "graphics", file: "graphics.woff2", unicodeRange: "U+2400-27BF, U+2800-28FF, U+2B00-2BFF" },
+      { id: "scripts", file: "scripts.woff2", unicodeRange: "U+2C00-1D3FF" },
+      { id: "math-alphanumerics", file: "math-alphanumerics.woff2", unicodeRange: "U+1D400-1D7FF" },
+      { id: "supplemental", file: "supplemental.woff2", unicodeRange: "U+1D800-10FFFF" },
+    ],
+    licenseUrl:
+      "https://raw.githubusercontent.com/cormullion/juliamono/v0.63.2/LICENSE",
+  },
+  {
+    target: "xiaolai",
+    id: "xiaolai-mono",
+    family: "Xiaolai Mono",
+    version: "3.126",
+    binaryUrl:
+      "https://github.com/lxgw/kose-font/releases/download/v3.126/" +
+      "XiaolaiMono-Regular.ttf",
+    binarySha256:
+      "802b658db492e02ae5b659f5b56d7d4ef8f77609515bdcc82f462ae912888c33",
+    fontFile: "XiaolaiMono-Regular.ttf",
+    subsets: [
+      {
+        id: "base",
+        file: "base.woff2",
+        unicodeRange:
+          "U+0000-33FF, U+4DC0-4DFF, U+A000-ABFF, U+D7B0-D7FF, U+E000-FFFF",
+      },
+      {
+        id: "cjk-extension-a",
+        file: "cjk-extension-a.woff2",
+        unicodeRange: "U+3400-4DBF",
+      },
+      {
+        id: "cjk-unified",
+        file: "cjk-unified.woff2",
+        unicodeRange: "U+4E00-9FFF",
+      },
+      {
+        id: "hangul",
+        file: "hangul.woff2",
+        unicodeRange: "U+AC00-D7AF",
+      },
+      {
+        id: "supplementary",
+        file: "supplementary.woff2",
+        unicodeRange: "U+10000-10FFFF",
+      },
+    ],
+    licenseUrl:
+      "https://raw.githubusercontent.com/lxgw/kose-font/v3.126/OFL.txt",
+  },
+];
 
 const nerdSource = {
   target: "canvas-core",
@@ -468,13 +517,12 @@ const vendorBinaryFont = async (source, target, manifest, stylesheets) => {
     const temporaryRoot = await mkdtemp(path.join(tmpdir(), `chardesk-${source.id}-`));
     const inputPath = path.join(temporaryRoot, source.fontFile);
     await writeFile(inputPath, font);
-    const subsetCommand = process.env.PYFTSUBSET || "pyftsubset";
     try {
       for (const subset of parsedSubsets) {
         const relativeFontPath = path.posix.join(relativeDir, subset.file);
         const outputPath = path.join(target.outputRoot, relativeFontPath);
         try {
-          await execFileAsync(subsetCommand, [
+          await runPyftsubset([
             inputPath,
             `--output-file=${outputPath}`,
             "--flavor=woff2",

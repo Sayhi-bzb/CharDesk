@@ -4,7 +4,10 @@ import {
   CanvasBreadcrumb,
   CanvasSessionSelector,
 } from "@/widgets/session-tabs/CanvasBreadcrumb";
-import { useEditorStore } from "@/domains/canvas/testing";
+import {
+  defaultCanvasDocuments,
+  useEditorStore,
+} from "@/domains/canvas/testing";
 import { setUiLanguage } from "@/shared/i18n";
 
 describe("CanvasBreadcrumb", () => {
@@ -35,6 +38,18 @@ describe("CanvasBreadcrumb", () => {
 
   const setTwoSessions = () => {
     act(() => {
+      defaultCanvasDocuments.activateDocument("canvas-b", {
+        mode: "structured",
+        grid: [],
+        scene: [],
+        components: [],
+      });
+      defaultCanvasDocuments.activateDocument("canvas-a", {
+        mode: "freeform",
+        grid: [],
+        scene: [],
+        components: [],
+      });
       useEditorStore.setState({
         activeCanvasId: "canvas-a",
         canvasMode: "freeform",
@@ -43,15 +58,11 @@ describe("CanvasBreadcrumb", () => {
             id: "canvas-a",
             name: "Alpha",
             mode: "freeform",
-            scene: [],
-            grid: [],
           },
           {
             id: "canvas-b",
             name: "Beta",
             mode: "structured",
-            scene: [],
-            grid: [],
           },
         ],
       });

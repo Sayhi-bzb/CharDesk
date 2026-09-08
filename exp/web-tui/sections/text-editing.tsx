@@ -33,6 +33,7 @@ export const TextEditingDemo = () => {
     onCellRangeCommand={range.dispatch}
     label="Cell text editor"
     probeId="editor"
+    fontAudit
   >
     <Root id="editor-root">
       <Box id="editor-workspace">

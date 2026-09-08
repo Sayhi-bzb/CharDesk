@@ -1,7 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { TestCanvasContentSurface } from '@/domains/canvas/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useEditorStore } from '@/domains/canvas/testing';
+import {
+  defaultCanvasDocuments,
+  useEditorStore,
+} from '@/domains/canvas/testing';
 import {
   CanvasViewProvider,
   CanvasWorkspaceProvider,
@@ -77,6 +80,18 @@ describe('CanvasWorkspace', () => {
   });
 
   const setTwoSessions = () => {
+    defaultCanvasDocuments.activateDocument('canvas-b', {
+      mode: 'freeform',
+      grid: [],
+      scene: [],
+      components: [],
+    });
+    defaultCanvasDocuments.activateDocument('canvas-a', {
+      mode: 'freeform',
+      grid: [],
+      scene: [],
+      components: [],
+    });
     useEditorStore.setState({
       activeCanvasId: 'canvas-a',
       canvasMode: 'freeform',
@@ -84,8 +99,8 @@ describe('CanvasWorkspace', () => {
       offset: { x: 0, y: 0 },
       zoom: 1,
       canvasSessions: [
-        { id: 'canvas-a', name: 'Alpha', mode: 'freeform', scene: [], grid: [] },
-        { id: 'canvas-b', name: 'Beta', mode: 'freeform', scene: [], grid: [] },
+        { id: 'canvas-a', name: 'Alpha', mode: 'freeform' },
+        { id: 'canvas-b', name: 'Beta', mode: 'freeform' },
       ],
     });
   };
@@ -152,6 +167,18 @@ describe('CanvasWorkspace', () => {
   });
 
   it('restores each canvas camera after an async session switch settles', async () => {
+    defaultCanvasDocuments.activateDocument('canvas-b', {
+      mode: 'freeform',
+      grid: [],
+      scene: [],
+      components: [],
+    });
+    defaultCanvasDocuments.activateDocument('canvas-a', {
+      mode: 'freeform',
+      grid: [],
+      scene: [],
+      components: [],
+    });
     useEditorStore.setState({
       activeCanvasId: 'canvas-a',
       canvasMode: 'freeform',
@@ -163,16 +190,12 @@ describe('CanvasWorkspace', () => {
           id: 'canvas-a',
           name: 'Alpha',
           mode: 'freeform',
-          scene: [],
-          grid: [],
           viewport: { offset: { x: 10, y: 15 }, zoom: 1 },
         },
         {
           id: 'canvas-b',
           name: 'Beta',
           mode: 'freeform',
-          scene: [],
-          grid: [],
           viewport: { offset: { x: 100, y: 200 }, zoom: 2 },
         },
       ],

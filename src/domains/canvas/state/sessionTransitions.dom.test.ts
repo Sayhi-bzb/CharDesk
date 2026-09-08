@@ -118,7 +118,7 @@ describe("session transitions", () => {
     useEditorStore.getState().switchCanvasSession(structuredSessionId);
 
     const restored = useEditorStore.getState();
-    expect(projectedSession.scene).toEqual([]);
+    expect(projectedSession).not.toHaveProperty("scene");
     expect(restored.structuredScene).toEqual([
       expect.objectContaining({ id: "cached-text", text: "Cached" }),
     ]);
@@ -155,9 +155,6 @@ describe("session transitions", () => {
           id: structuredSessionId,
           name: "Structured Cache",
           mode: "structured",
-          scene: [],
-          components: [],
-          grid: [],
         },
       ],
     }));
@@ -166,7 +163,7 @@ describe("session transitions", () => {
     const repaired = useEditorStore
       .getState()
       .canvasSessions.find((session) => session.id === structuredSessionId)!;
-    expect(repaired.grid).toEqual([]);
+    expect(repaired).not.toHaveProperty("grid");
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("4,5")?.char).toBe("R");
 
     useEditorStore.getState().switchCanvasSession(freeformSessionId);
@@ -174,7 +171,7 @@ describe("session transitions", () => {
     const restored = useEditorStore
       .getState()
       .canvasSessions.find((session) => session.id === structuredSessionId)!;
-    expect(restored.grid).toEqual([]);
+    expect(restored).not.toHaveProperty("grid");
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("4,5")?.char).toBe("R");
   });
 });

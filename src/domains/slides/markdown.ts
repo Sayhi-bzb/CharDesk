@@ -8,7 +8,7 @@ import { CHARDESK_LIGHT_RENDER_THEME } from '@chardesk/chargraph/theme';
 import { COLOR_PRIMARY_TEXT } from '@/shared/lib/constants';
 import { GridManager } from '@/shared/utils/grid';
 import { createSlideDeck, addSlide } from './deck';
-import { DEFAULT_SLIDE_SIZE, type SlideDeck, type SlideSize } from './model';
+import { DEFAULT_SLIDE_SIZE, type SlideDeckSnapshot, type SlideSize } from './model';
 
 const SLIDE_MARKDOWN_SIGNATURE = 'slides/v1';
 const AUTO_SLIDE_PADDING = { columns: 4, rows: 2 } as const satisfies SlideSize;
@@ -26,7 +26,7 @@ export const isSlideMarkdownSource = (source: string) => {
 
 type ParsedSlideMarkdown = {
   title?: string;
-  slideDeck: SlideDeck;
+  slideDeck: SlideDeckSnapshot;
 };
 
 const parseFrontMatter = (source: string) => {

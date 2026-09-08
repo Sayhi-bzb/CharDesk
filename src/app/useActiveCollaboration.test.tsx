@@ -53,8 +53,6 @@ describe("useActiveCollaboration", () => {
             id: "local-canvas",
             name: "Local canvas",
             mode: "freeform",
-            scene: [],
-            grid: [],
           },
         ],
       });
@@ -112,7 +110,7 @@ describe("useActiveCollaboration", () => {
         activeCanvasId: "local",
         canvasMode: "freeform",
         canvasSessions: [
-          { id: "local", name: "Local", mode: "freeform", scene: [], grid: [] },
+          { id: "local", name: "Local", mode: "freeform" },
         ],
       });
       window.history.replaceState(null, "", "/#room=invalid");

@@ -183,7 +183,6 @@ describe("staticGridSlice", () => {
             id: "slide-1",
             name: "Slide 1",
             size: { columns: 3, rows: 2 },
-            grid: [],
           },
         ],
       },

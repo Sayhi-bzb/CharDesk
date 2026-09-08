@@ -56,6 +56,20 @@ Use `npm run fonts:sync -- --target=fusion` to vendor the pinned release (requir
 `unzip`), and `npm run fonts:verify -- --target=fusion` for offline verification.
 See [package scripts](../../package.json) for the command authority.
 
+## Xiaolai Mono workspace
+
+[`@chardesk/font-xiaolai`](../font-xiaolai/README.md) is the optional Xiaolai
+Mono display/CJK pack. Consumers import `XIAOLAI_FONT_FAMILY` /
+`XIAOLAI_FONT_SOURCES` and attach `@chardesk/font-xiaolai/fonts.css?url` only
+when selected. The CSS partitions v3.126 into base, CJK Extension A, CJK
+Unified, Hangul, and supplementary-plane WOFF2 ranges; rendered graphemes select
+the required files without application-owned shard routing.
+
+Generated assets and the OFL are committed. `npm run fonts:sync --
+--target=xiaolai` reproduces them with pinned FontTools through `uvx`; set
+`PYFTSUBSET` only to override that executable. `npm run fonts:verify --
+--target=xiaolai` verifies the package offline.
+
 ## Grid calibration
 
 `display.cellMetrics` optionally overrides `width`, `height`, and `baseline`, in

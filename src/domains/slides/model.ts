@@ -7,15 +7,23 @@ export interface SlideSize {
 
 export type SlideGridEntry = [string, GridCell];
 
-export interface Slide {
+export interface SlideDescriptor {
   id: string;
   name: string;
   size: SlideSize;
+}
+
+export interface SlideSnapshot extends SlideDescriptor {
   grid: SlideGridEntry[];
 }
 
-export interface SlideDeck {
-  slides: Slide[];
+export interface SlideDeckDescriptor {
+  slides: SlideDescriptor[];
+  activeSlideId: string;
+}
+
+export interface SlideDeckSnapshot {
+  slides: SlideSnapshot[];
   activeSlideId: string;
 }
 

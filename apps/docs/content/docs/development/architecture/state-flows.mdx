@@ -7,7 +7,7 @@ description: Authority, projection, history, persistence, and synchronization di
 | --- | --- | --- | --- |
 | `document` | Ordered pages whose content kind is CellPlane or Structured in one Yjs document | Page-local local origins | When collaborative |
 | `workspace` | Tool, local interaction, active viewport, and preferences | No | No |
-| `session` | Canvas identity, presentation mode, saved viewport, slide metadata, and optional external-source binding in the IndexedDB catalog | No | No |
+| `session` | Canvas identity, presentation mode, saved viewport, and optional external-source binding | No | No |
 | `presence` | Remote identity, cursor, transient selection | No | Ephemeral |
 | `derived` | Rendering, minimap, preview projections | No | No |
 | `blackboard` | Versioned source files in the browser repository or local Reader | Repository revisions | No |
@@ -85,8 +85,9 @@ a distinct recovered session. The mounted workspace becomes inert during that co
 and is never replaced by a second loading screen.
 
 Every editable local session persists one Yjs document. A Freeform or Structured document has one page;
-a Slide document has one page per slide. The catalog owns session identity and slide ordering,
-names, and sizes. Collaborative
+a Slide document has one page per slide. The runtime session list contains
+`CanvasSessionDescriptor` values only. The Canvas document owns page order, names, sizes,
+and content; the IndexedDB catalog stores the restore metadata needed before a document is resident. Collaborative
 sessions persist only their catalog shell and descriptor; room content is restored through
 collaboration persistence and never copied into local session persistence.
 The catalog records whether a collaborating session is the local host or a guest. A guest with
@@ -135,8 +136,10 @@ serialization, clipboard payload construction, or a transient drag preview. Stru
 components are persisted once, never with a duplicate cell grid. Chunk indexes and projections are
 never synchronized.
 
-Freeform, Structured, and Slide session records contain metadata only at runtime. Switching sessions
-restores content from the matching Yjs document; the projector never writes content back into
-the session record. For Structured sessions, scene and components are authoritative and the
-rendering grid is derived on activation or projection. Slide preview, playback, resize, duplicate,
+Freeform, Structured, and Slide session descriptors contain no content at runtime. Imports use
+`CanvasImportSnapshot`; persistence uses `CanvasSessionSnapshot`, while Slide export and playback
+use `SlideDeckSnapshot`. Switching sessions restores content from the matching Yjs document; the
+projector never writes content back into the descriptor. For Structured sessions, scene and
+components are authoritative and the rendering grid is derived on activation or projection.
+Slide runtime state uses `SlideDeckDescriptor`; preview, playback, resize, duplicate, persistence,
 and export materialize page content only at their explicit boundary.

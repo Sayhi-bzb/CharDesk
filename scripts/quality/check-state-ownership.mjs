@@ -30,6 +30,17 @@ const CONTENT_STATE_FIELDS = new Set([
   "structuredScene",
   "structuredComponents",
 ]);
+const DESCRIPTOR_CONTENT_FIELDS = new Set([
+  "grid",
+  "scene",
+  "components",
+  "slideDeck",
+]);
+const LEGACY_SESSION_CONTENT_HELPERS = new Set([
+  "resolveSessionRuntime",
+  "stripSessionContent",
+  "stripSlideDeckContent",
+]);
 const CONTENT_STATE_WRITE_OWNERS = new Set([
   "domains/canvas/state/browserPersistence.ts",
   "domains/canvas/state/canvasDocumentProjection.ts",
@@ -83,6 +94,34 @@ for (const absolute of collect(SRC_ROOT)) {
     return false;
   }
   function inspect(node) {
+    if (
+      ts.isIdentifier(node) &&
+      LEGACY_SESSION_CONTENT_HELPERS.has(node.text)
+    ) {
+      report(node, `legacy session-content helper ${node.text}`);
+    }
+    if (
+      ts.isPropertySignature(node) &&
+      (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+      DESCRIPTOR_CONTENT_FIELDS.has(node.name.text)
+    ) {
+      let declaration = node.parent;
+      while (
+        declaration &&
+        !ts.isInterfaceDeclaration(declaration) &&
+        !ts.isTypeAliasDeclaration(declaration)
+      ) {
+        declaration = declaration.parent;
+      }
+      const declarationName = declaration?.name?.text ?? "";
+      if (
+        declarationName.includes("CanvasSessionDescriptor") ||
+        declarationName === "SlideDescriptor" ||
+        declarationName === "SlideDeckDescriptor"
+      ) {
+        report(node, `${declarationName} must not own ${node.name.text}`);
+      }
+    }
     if (
       ts.isStringLiteral(node) &&
       node.text === "main-grid" &&
@@ -143,6 +182,15 @@ for (const absolute of collect(SRC_ROOT)) {
       node.name.text === "grid"
     ) {
       report(node, "Canvas state must expose contentSurface, never a live GridMap");
+    }
+    if (
+      sourcePath === "domains/canvas/state/interfaces.ts" &&
+      ts.isPropertySignature(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "canvasSessions" &&
+      !node.type.getText(sourceFile).includes("CanvasSessionDescriptor")
+    ) {
+      report(node, "runtime canvasSessions must contain descriptors only");
     }
     if (
       ts.isPropertyAssignment(node) &&

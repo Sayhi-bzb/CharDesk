@@ -177,13 +177,15 @@ describe("Blackboard source projection", () => {
       sourceBinding: { provider: "local-reader", id: "local-reader" },
     });
     if (initial?.mode !== "slide") throw new Error("Expected a Slide session");
-    host.canvas.commands.slides.activate(initial.slideDeck.slides[1].id);
+    const initialDeck = host.canvas.getState().slideDeck!;
+    host.canvas.commands.slides.activate(initialDeck.slides[1].id);
 
     await act(async () => vi.advanceTimersByTimeAsync(500));
     const current = host.canvas.getState().canvasSessions[0];
     if (current?.mode !== "slide") throw new Error("Expected a Slide session");
-    expect(current.slideDeck.slides.find(
-      ({ id }) => id === current.slideDeck.activeSlideId,
+    const currentDeck = host.canvas.getState().slideDeck!;
+    expect(currentDeck.slides.find(
+      ({ id }) => id === currentDeck.activeSlideId,
     )?.name).toBe("Details");
   });
 });

@@ -3,6 +3,7 @@ import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import { useEditorStore } from "@/domains/canvas/testing";
 import { createPersistedEditorSnapshot } from "./editorPersistence";
 import type { CollaborationDescriptorV6 } from "@/domains/collaboration/public";
+import { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 
 const initialState = useEditorStore.getState();
 
@@ -33,16 +34,17 @@ describe("collaborative session persistence", () => {
           id: "room-session",
           name: "Room",
           mode: "freeform",
-          grid: [["0,0", { char: "A", color: "#fff" }]],
-          scene: [],
-          components: [],
           collaboration: descriptor,
           collaborationRole: "guest",
         },
       ],
     });
 
-    const persisted = createPersistedEditorSnapshot(useEditorStore.getState()) as unknown as {
+    const documents = new CanvasDocumentRegistry("room-session");
+    const persisted = createPersistedEditorSnapshot(
+      useEditorStore.getState(),
+      documents
+    ) as unknown as {
       workspace: { grid: unknown[]; structuredScene: unknown[] };
       sessions: {
         items: Array<{ grid: unknown[]; scene: unknown[]; collaborationRole?: string }>;
@@ -58,5 +60,6 @@ describe("collaborative session persistence", () => {
       collaborationRole: "guest",
     });
     expect(persisted.preferences.brushBackgroundColor).toBe("#445566");
+    documents.dispose();
   });
 });

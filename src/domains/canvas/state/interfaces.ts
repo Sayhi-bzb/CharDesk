@@ -5,10 +5,10 @@ import type { StructuredNode, StructuredBoxNode, StructuredComponentInstance, St
 import type { StructuredTextSelection } from "@/domains/structured-content/public";
 import type { GridAddress, GridEditMode, GridRange, GridSelectionState, StaticGridInputFlow } from "@/domains/selection/public";
 import type { StructuredSplitBoxHandle } from "@/domains/structured-content/public";
-import type { CanvasSession } from "@/domains/sessions/public";
+import type { CanvasSessionDescriptor } from "@/domains/sessions/public";
 import type { SessionCommands } from "@/domains/sessions/public";
 import type { CanvasHistoryMode } from "./CanvasDocumentRegistry";
-import type { SlideDeck, SlideSize } from "@/domains/slides/public";
+import type { SlideDeckDescriptor, SlideSize } from "@/domains/slides/public";
 import type { CanvasSurfaceReader } from "../cell-plane/model";
 
 export type CanvasContentSurfaceState = Readonly<{
@@ -101,7 +101,7 @@ export interface DrawingSlice {
 }
 
 export interface SlideSlice {
-  slideDeck: SlideDeck | null;
+  slideDeck: SlideDeckDescriptor | null;
   addSlide: () => void;
   duplicateSlide: (slideId: string) => void;
   removeSlide: (slideId: string) => void;
@@ -235,7 +235,7 @@ export type EditorState = {
   exportShowGrid: boolean;
   hoveredGrid: Point | null;
   canvasColorPickerTarget: CanvasColorPickerTarget | null;
-  canvasSessions: CanvasSession[];
+  canvasSessions: CanvasSessionDescriptor[];
   activeCanvasId: string;
   pendingCameraPlacement: PendingCanvasCameraPlacement | null;
   canUndo: boolean;

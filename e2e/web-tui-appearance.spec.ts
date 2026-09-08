@@ -2,11 +2,12 @@ import { expect, test } from "@playwright/test";
 import { copyCellRange, readCellProbe } from "./helpers/cell-probe";
 import { fusionMonoFontRequest, fusionMonoStylesheetRequest } from "./helpers/fusion-mono";
 import { galleryFontSelect, selectGalleryFont } from "./helpers/gallery-font-select";
+import { xiaolaiStylesheetRequest } from "./helpers/xiaolai";
 
 test.describe("display font", () => {
   test("loads the local font on demand and preserves Cell state", async ({ page }) => {
     let trialRequests = 0;
-    await page.route("**/fonts/xiaolai-mono/fonts.css", (route) => {
+    await page.route(xiaolaiStylesheetRequest, (route) => {
       trialRequests += 1;
       return route.continue();
     });
@@ -108,6 +109,52 @@ test.describe("display font", () => {
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
   });
   }
+});
+
+test("header font Select uses Cell pointer geometry without moving the header", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/exp/web-tui/#/components/text");
+  const gallery = page.locator(".gallery-page");
+  const header = page.locator(".gallery-header");
+  const select = galleryFontSelect(page);
+  const closedHeader = await header.boundingBox();
+  const closedCanvas = await select.locator("canvas").boundingBox();
+  expect(closedHeader).not.toBeNull();
+  expect(closedCanvas).not.toBeNull();
+
+  await page.mouse.click(
+    closedCanvas!.x + closedCanvas!.width / 2,
+    closedCanvas!.y + closedCanvas!.height / 2,
+  );
+  await expect(select.getByRole("listbox", { name: "Fonts" })).toBeAttached();
+  const openProbe = await readCellProbe(select);
+  expect(openProbe.viewport).toEqual({ width: 27, height: 6 });
+  expect(openProbe.text).toContain("Fusion Pixel 12px Mono");
+  expect((await header.boundingBox())?.height).toBe(closedHeader!.height);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+
+  await gallery.click({ position: { x: 4, y: 640 } });
+  await expect(select.getByRole("listbox", { name: "Fonts" })).toHaveCount(0);
+  await expect(select.getByRole("button", { name: "Font: Maple Mono" }))
+    .toHaveAttribute("aria-expanded", "false");
+
+  const reopenedCanvas = await select.locator("canvas").boundingBox();
+  expect(reopenedCanvas).not.toBeNull();
+  await page.mouse.click(
+    reopenedCanvas!.x + reopenedCanvas!.width / 2,
+    reopenedCanvas!.y + reopenedCanvas!.height / 2,
+  );
+  await expect(select.getByRole("listbox", { name: "Fonts" })).toBeAttached();
+
+  const openCanvas = await select.locator("canvas").boundingBox();
+  expect(openCanvas).not.toBeNull();
+  await page.mouse.click(
+    openCanvas!.x + 2.5 * openCanvas!.width / openProbe.viewport.width,
+    openCanvas!.y + 3.5 * openCanvas!.height / openProbe.viewport.height,
+  );
+  await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
+  await expect(select.getByRole("listbox", { name: "Fonts" })).toHaveCount(0);
+  await expect(select.getByRole("button", { name: "Font: Fusion Pixel 12px Mono" })).toBeAttached();
 });
 
 test("theme icon toggles, persists, and preserves Cell state", async ({ page }) => {

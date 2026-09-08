@@ -76,7 +76,7 @@ Every `render()` is one commit and emits exactly one read-only `FrameSnapshot` t
 
 Geometry distinguishes the root-relative border box, decoration box, and content box. Yoga exports per-edge border/padding Insets; SceneGeometry derives `decorationBounds`, `outerClip`, and `contentClip`. Painting is ordered Surface → Chrome → Content → Decoration, and decoration is clipped inside the border. Borders, padding, and Widget chrome are therefore protected from state fills, ordinary content, descendants, and focus/disclosure decoration. Portal capability is shared: `Overlay` uses an explicit integer Cell `position`, while `SelectContent` anchors to its preceding `SelectTrigger` and flips within the viewport. Both retain their declaration parent for events and semantics and escape its visual clip.
 
-`@chardesk/cell-ui/browser` owns `CellSurface`, Canvas DPR/resize presentation, px-to-Cell conversion, DOM keyboard adaptation, Semantic DOM, React Stately collection adapters, `useCellSelectState`, `useCellTextState`, and `useCellRangeState`. `useCellSelectState` supports controlled or uncontrolled open/selection state; direction keys move provisional focus, activation commits, and dismissal restores the Trigger without changing the selected value. Text fields use a real transparent textarea for browser input and textbox semantics while Canvas renders the Cell projection. Semantic DOM emits `EngineInput.semantic`; keyboard, pointer, and accessibility channels converge through `commandForInput` before the single `WidgetCommand` callback. In keyboard/assistive mode, DOM focus follows the same logical `focusedId`, including across modal semantic-tree replacement; pointer mode retains Canvas focus behavior. A modal `Overlay` scopes focus and semantics; Escape or a pointer press outside emits one `dismiss` command, and unmount restores the prior focus target. The browser projection creates DOM per semantic widget, never per Cell. The runnable [component documentation](../../exp/web-tui/#/components/text) owns public previews, workspace distribution facts, usage, and API; complex behavior remains verified by its browser E2E suites.
+`@chardesk/cell-ui/browser` owns `CellSurface`, Canvas DPR/resize presentation, px-to-Cell conversion, DOM keyboard adaptation, Semantic DOM, React Stately collection adapters, `useCellSelectState`, `useCellTextState`, and `useCellRangeState`. `useCellSelectState` supports controlled or uncontrolled open/selection state; direction keys move provisional focus, activation commits, and dismissal restores the Trigger without changing the selected value. An open Select dismisses on Escape, a pointer press outside its Content, or confirmed browser focus exit from its `CellSurface`; internal Semantic DOM and textarea focus transfers are preserved. Text fields use a real transparent textarea for browser input and textbox semantics while Canvas renders the Cell projection. Semantic DOM emits `EngineInput.semantic`; keyboard, pointer, and accessibility channels converge through `commandForInput` before the single `WidgetCommand` callback. In keyboard/assistive mode, DOM focus follows the same logical `focusedId`, including across modal semantic-tree replacement; pointer mode retains Canvas focus behavior. A modal `Overlay` scopes focus and semantics; Escape or a pointer press outside emits one `dismiss` command, and unmount restores the prior focus target. The browser projection creates DOM per semantic widget, never per Cell. The runnable [component documentation](../../exp/web-tui/#/components/text) owns public previews, workspace distribution facts, usage, and API; complex behavior remains verified by its browser E2E suites.
 
 `CellSurface.fontProfile` selects text faces without overriding Box/Block fonts. Single-codepoint `U+2500–U+259F` uses the [shared Cell graphics renderer](../rendering/README.md#cell-graphics); Block Cursor redraw uses the same glyph route as its underlying Cell. Loading and Surface font audit skip these graphics. Probe exposes their codepoint, allocated rectangle and renderer version in `cellGraphics`, and omits the unused `requestedFontRoutes["cell-glyph"]` face. Other requested routes describe font rendering; changing the input Profile repaints without changing protocol Cell widths.
 
@@ -113,8 +113,10 @@ own boundary, background, and editor sizing behavior.
 
 ## Cell inspection
 
-With `probeId`, `presentation.fontAudit` reports `loading`, `ready`, or
-`unavailable` plus the shared [font audit](../rendering/README.md#font-grid-audit).
+With `probeId`, the snapshot remains observational and requests only glyphs in
+the current frame. Set `fontAudit` explicitly to make `presentation.fontAudit`
+report `loading`, `ready`, or `unavailable` plus the shared
+[font audit](../rendering/README.md#font-grid-audit).
 `ready` means measurements are available, not that the font fits every Cell.
 Its native, Profile and actual Surface metrics remain separate, including when
 explicit Surface metrics override the Profile. `formatCellProbe(..., { header:
@@ -122,7 +124,7 @@ true })` prints dimension sources and a bounded list of gaps/overhangs; JSON
 retains all samples and requested family stacks, not inferred fallback identity.
 
 The browser loads a fixed ASCII/CJK/border sample set in regular/requested-bold
-states only for enabled probes. Audits are cached by Profile identity and actual
+states only for `fontAudit` surfaces. Audits are cached by Profile identity and actual
 metrics, refreshed on `loadingdone` and re-subscription, and never resize a grid
 or repeat on ordinary frame updates. Failed loads or unavailable bounds are
 reported as unverified. Existing v3 fields remain unchanged.
@@ -140,7 +142,7 @@ TextArea automatically consumes the shared scroll geometry and half-Cell rails o
 Set `probeId` only on development or test surfaces. The browser adapter then stores the latest snapshot on that Surface; `readCellSurfaceProbe(element)` retrieves it from the Surface or any descendant. Without `probeId`, no structured snapshot is created. `data-cell-text` remains the lightweight readable projection.
 
 ```tsx
-<CellSurface probeId="editor" viewport={{ width: 40, height: 13 }} onCommand={dispatch}>
+<CellSurface probeId="editor" fontAudit viewport={{ width: 40, height: 13 }} onCommand={dispatch}>
   {children}
 </CellSurface>
 

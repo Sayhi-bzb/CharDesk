@@ -10,9 +10,7 @@ const context = (
   overrides: Partial<ManagedCanvasKeyboardContext> = {}
 ): ManagedCanvasKeyboardContext => ({
   mutateEnabled: true,
-  staticGridMode: true,
-  staticGridEditMode: "navigate",
-  hasStaticGridSelection: false,
+  staticGridInteraction: "navigate",
   hasTextCursor: false,
   hasActiveSelection: false,
   hasStructuredSelection: false,
@@ -53,15 +51,15 @@ describe("managed Canvas keyboard rules", () => {
 
   it("keeps text and structured navigation as separate intents", () => {
     expect(decide({ key: "Backspace" }, {
-      staticGridEditMode: "text-edit",
+      staticGridInteraction: "text-edit",
       hasTextCursor: true,
     }).intent).toEqual({ type: "delete-text", direction: "backward" });
     expect(decide({ key: "ArrowDown" }, {
-      staticGridMode: false,
+      staticGridInteraction: null,
       hasTextCursor: true,
     }).intent).toEqual({ type: "move-text-cursor", dx: 0, dy: 1 });
     expect(decide({ key: "ArrowLeft" }, {
-      staticGridMode: false,
+      staticGridInteraction: null,
       hasStructuredGridFocus: true,
     }).intent).toEqual({ type: "move-structured-grid-focus", dx: -1, dy: 0 });
   });
@@ -72,7 +70,7 @@ describe("managed Canvas keyboard rules", () => {
       string,
     ]> = [
       [{ colorPickerOpen: true }, "color-picker"],
-      [{ staticGridEditMode: "text-edit" }, "grid-text-edit"],
+      [{ staticGridInteraction: "text-edit" }, "grid-text-edit"],
       [{ hasTextCursor: true }, "text-cursor"],
       [{ hasStructuredSelection: true }, "structured-selection"],
       [{ hasStructuredGridFocus: true }, "structured-grid-focus"],
@@ -88,15 +86,15 @@ describe("managed Canvas keyboard rules", () => {
   });
 
   it("routes printable selection fill and rejects ambiguous text keys", () => {
-    expect(decide({ key: "界" }, { hasStaticGridSelection: true }).intent)
+    expect(decide({ key: "界" }, { staticGridInteraction: "range" }).intent)
       .toEqual({ type: "fill-selection", char: "界" });
-    expect(decide({ key: "Dead" }, { hasStaticGridSelection: true }).intent)
+    expect(decide({ key: "Dead" }, { staticGridInteraction: "range" }).intent)
       .toBeNull();
     expect(decide({ key: "x", modifiers: { altGraph: true } }, {
-      hasStaticGridSelection: true,
+      staticGridInteraction: "range",
     })).toMatchObject({ preventDefault: false, intent: null });
     expect(decide({ key: "x", composing: true }, {
-      hasStaticGridSelection: true,
+      staticGridInteraction: "range",
     })).toMatchObject({ preventDefault: false, intent: null });
   });
 

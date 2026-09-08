@@ -1,35 +1,55 @@
 import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
+import { galleryFontSelect } from "./helpers/gallery-font-select";
 
-const componentLinks = [
-  ["Text", "#/components/text"],
-  ["Box", "#/components/box"],
-  ["Button", "#/components/button"],
-  ["Select", "#/components/select"],
-  ["Checkbox", "#/components/checkbox"],
-  ["Slider", "#/components/slider"],
-  ["Input", "#/components/input"],
-  ["List", "#/components/list"],
-  ["ScrollArea", "#/components/scroll-area"],
+const navigationGroups = [
+  {
+    name: "Components",
+    links: [
+      ["Button", "#/components/button"],
+      ["Select", "#/components/select"],
+      ["Slider", "#/components/slider"],
+      ["Checkbox", "#/components/checkbox"],
+      ["Input", "#/components/input"],
+      ["ScrollArea", "#/components/scroll-area"],
+    ],
+  },
+  {
+    name: "Primitives",
+    links: [
+      ["Text", "#/components/text"],
+      ["Box", "#/components/box"],
+    ],
+  },
+  {
+    name: "Collections",
+    links: [["List", "#/components/list"]],
+  },
 ] as const;
 
 test("component catalog drives concise, addressable documentation", async ({ page }) => {
   await page.goto("/exp/web-tui/");
-  const nav = page.getByRole("navigation", { name: "Components" });
-  await expect(page.getByRole("heading", { name: "Text", level: 1 })).toBeVisible();
-  await expect(nav.locator(".gallery-nav__title")).toHaveText("Components");
+  const nav = page.getByRole("navigation", { name: "Cell UI" });
+  await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
+  await expect(page.locator(".gallery-brand")).toHaveAttribute("href", "#/components/button");
   await expect(nav.getByRole("link")).toHaveCount(9);
-  for (const [name, href] of componentLinks) {
-    await expect(nav.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
+  for (const groupDefinition of navigationGroups) {
+    const group = nav.getByRole("group", { name: groupDefinition.name });
+    await expect(group).toBeVisible();
+    await expect(group.getByRole("link")).toHaveText(groupDefinition.links.map(([name]) => name));
+    for (const [name, href] of groupDefinition.links) {
+      await expect(group.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
+    }
   }
-  await expect(nav.getByRole("link", { name: "Text", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Button", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("heading", { name: "Preview" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Distribution" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Usage" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "API" })).toBeVisible();
   await expect(page.getByText("private workspace package", { exact: false })).toBeVisible();
   await expect(page.getByText("not published to npm", { exact: false })).toBeVisible();
-  await expect(page.locator("canvas")).toHaveCount(1);
+  await expect(page.locator(".docs-preview canvas")).toHaveCount(1);
+  await expect(galleryFontSelect(page).locator("canvas")).toHaveCount(1);
   await expect(page.locator("#core, #complex, #editor, #overlay, #virtualization")).toHaveCount(0);
 
   await nav.getByRole("link", { name: "Box", exact: true }).click();
@@ -37,7 +57,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("heading", { name: "Box", level: 1 })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Box", exact: true })).toHaveAttribute("aria-current", "page");
   await page.goBack();
-  await expect(page.getByRole("heading", { name: "Text", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
 
   await page.setViewportSize({ width: 320, height: 700 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
@@ -46,7 +66,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
 test("unknown component routes fail honestly", async ({ page }) => {
   await page.goto("/exp/web-tui/#/components/missing");
   await expect(page.getByRole("heading", { name: "Component not found" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open Text" })).toHaveAttribute("href", "#/components/text");
+  await expect(page.getByRole("link", { name: "Open Button" })).toHaveAttribute("href", "#/components/button");
 });
 
 test("Text and Box expose Cell-native content and layout", async ({ page }) => {

@@ -15,6 +15,10 @@ import {
   Overlay,
   Root,
   ScrollArea,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
   Slider,
   Tab,
   TabPanel,
@@ -28,6 +32,7 @@ import {
   createTestPilot,
   nextCellCheckboxState,
   type CellCheckboxState,
+  type WidgetCommand,
 } from "./index.js";
 import {
   CellSurface,
@@ -39,6 +44,7 @@ import {
   useCellListState,
   useCellMenuState,
   useCellRangeState,
+  useCellSelectState,
   useCellTextState,
   useCellTabsState,
   useCellTreeState,
@@ -158,6 +164,51 @@ const Product = ({
             ))}
           </List>
         </ScrollArea>
+      </Root>
+    </CellSurface>
+  );
+};
+
+const SelectProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => void }) => {
+  const select = useCellSelectState("surface-theme", [
+    { id: "surface-light", label: "Light" },
+    { id: "surface-dark", label: "Dark" },
+  ], { defaultSelectedId: "surface-dark" });
+  const dispatch = (command: WidgetCommand) => {
+    onCommand?.(command);
+    select.dispatch(command);
+  };
+  return (
+    <CellSurface
+      viewport={{ width: 20, height: 5 }}
+      focusedId={select.focusedId}
+      onCommand={dispatch}
+      metrics={{ cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" }}
+      label="Select surface"
+    >
+      <Root id="surface-select-root">
+        <Select id={select.id} label="Theme" style={{ width: 18 }}>
+          <SelectTrigger
+            id={select.triggerId}
+            label="Theme"
+            expanded={select.open}
+            controlsId={select.open ? select.contentId : undefined}
+          ><Text>Dark</Text></SelectTrigger>
+          {select.open ? (
+            <SelectContent id={select.contentId} label="Theme options">
+              {select.items.map((item, index) => (
+                <SelectItem
+                  id={item.id}
+                  key={item.id}
+                  focused={select.focusedId === item.id}
+                  selected={select.selectedId === item.id}
+                  positionInSet={index + 1}
+                  setSize={select.items.length}
+                ><Text>{item.label}</Text></SelectItem>
+              ))}
+            </SelectContent>
+          ) : null}
+        </Select>
       </Root>
     </CellSurface>
   );
@@ -572,6 +623,58 @@ const ComplexWidgetProduct = () => {
 };
 
 describe("CellSurface", () => {
+  it("dismisses the active Select after confirmed external focus exit without stealing focus", async () => {
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    const commands = vi.fn();
+    const outsideAction = vi.fn();
+    render(<><SelectProduct onCommand={commands} /><button onClick={outsideAction}>Outside Select</button></>);
+    const trigger = screen.getByRole("button", { name: "Theme" });
+    const outside = screen.getByRole("button", { name: "Outside Select" });
+
+    trigger.focus();
+    fireEvent.click(trigger);
+    expect(screen.getByRole("listbox", { name: "Theme options" })).toBeInTheDocument();
+    const option = screen.getByRole("option", { name: "Light" });
+    option.focus();
+    expect(screen.getByRole("listbox", { name: "Theme options" })).toBeInTheDocument();
+
+    outside.focus();
+    await waitFor(() => expect(
+      screen.queryByRole("listbox", { name: "Theme options" })
+    ).not.toBeInTheDocument());
+    expect(commands).toHaveBeenLastCalledWith({ type: "dismiss", targetId: "surface-theme-content" });
+    expect(screen.getByRole("button", { name: "Theme" })).toHaveAttribute("aria-expanded", "false");
+    expect(outside).toHaveFocus();
+    fireEvent.click(outside);
+    expect(outsideAction).toHaveBeenCalledTimes(1);
+    hasFocus.mockRestore();
+  });
+
+  it("settles null-target focus exits before dismissing and preserves Select on window blur", async () => {
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    render(<SelectProduct />);
+    const openSelect = () => {
+      const trigger = screen.getByRole("button", { name: "Theme" });
+      trigger.focus();
+      fireEvent.click(trigger);
+      expect(screen.getByRole("listbox", { name: "Theme options" })).toBeInTheDocument();
+    };
+
+    openSelect();
+    (document.activeElement as HTMLElement).blur();
+    await waitFor(() => expect(
+      screen.queryByRole("listbox", { name: "Theme options" })
+    ).not.toBeInTheDocument());
+
+    openSelect();
+    hasFocus.mockReturnValue(false);
+    fireEvent(window, new Event("blur"));
+    (document.activeElement as HTMLElement).blur();
+    await Promise.resolve();
+    expect(screen.getByRole("listbox", { name: "Theme options" })).toBeInTheDocument();
+    hasFocus.mockRestore();
+  });
+
   it("paints terminal cursor shapes over a wide glyph and keeps browser pointers neutral", () => {
     const fills: { color: string; rect: number[] }[] = [];
     const glyphs: { color: string; text: string }[] = [];

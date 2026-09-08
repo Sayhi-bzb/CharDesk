@@ -26,7 +26,7 @@ import {
 } from "@/domains/editor/public";
 import { EDITOR_PERSISTENCE_KEY } from "@/domains/sessions/public";
 import type { CanvasState } from "@/domains/canvas/public";
-import type { CanvasSession } from "@/domains/sessions/public";
+import type { CanvasSessionSnapshot } from "@/domains/sessions/public";
 import {
   EDITOR_HOST_PROFILE,
   type EditorHostProfile,
@@ -52,7 +52,7 @@ type ApplicationEditorHostOptions = {
   canvasFontStorage?: CanvasFontStorage | false;
   canvasCursorStorage?: CanvasCursorStorage | false;
   profile?: EditorHostProfile;
-  initialSessions?: readonly CanvasSession[];
+  initialSessions?: readonly CanvasSessionSnapshot[];
   blackboardRepository?: BlackboardWorkspaceRepository;
 };
 

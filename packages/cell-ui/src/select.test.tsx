@@ -13,6 +13,7 @@ import {
   commandForInput,
   createKeyInput,
 } from "./index.js";
+import { dismissCommandForFocusExit, topDismissableScopeId } from "./interaction.js";
 
 const selectView = (open: boolean, focusedId = open ? "dark" : "theme-trigger") => (
   <Root id="root">
@@ -98,6 +99,10 @@ describe("Select", () => {
 
     const open = runtime.render(selectView(true), { focusedId: "dark" });
     focus.sync(open.tree, "dark");
+    expect(topDismissableScopeId(open.tree)).toBe("theme-content");
+    expect(dismissCommandForFocusExit(open))
+      .toEqual({ type: "dismiss", targetId: "theme-content" });
+    expect(dismissCommandForFocusExit(closed)).toBeNull();
     expect(commandForInput(createKeyInput({ key: "ArrowDown" }), open, focus))
       .toEqual({ type: "focus", targetId: "system" });
     expect(commandForInput(createKeyInput({ key: "Home" }), open, focus))
