@@ -3,7 +3,6 @@ import type { EditorState, StaticGridSlice } from "../interfaces";
 import {
   collapseGridSelectionTo,
   createStaticGridInputFlow,
-  createStaticGridState,
   extendGridSelectionTo,
   getConnectedGridRange,
   getEffectiveGridBounds,
@@ -19,6 +18,7 @@ import {
 } from "@/domains/selection/public";
 import { clampPointToActiveSlide, getActiveSlideGridBounds } from "../slideBounds";
 import { resolveGridAnchor, resolveGridSlot } from "@/shared/utils/grid-occupancy";
+import { createCanvasInteractionPatch } from "../canvasInteractionState";
 
 const resolveStaticGridAddress = (
   state: EditorState,
@@ -44,20 +44,19 @@ export const createStaticGridSlice: StateCreator<
   [],
   StaticGridSlice
 > = (set, get) => ({
-  staticGridSelection: createStaticGridState().selection,
-  staticGridEditMode: "navigate",
-  staticGridInputFlow: null,
-
   setStaticGridActiveCell: (address) => {
     const state = get();
     const activeCell = resolveStaticGridAddress(state, address);
-    const selection = collapseGridSelectionTo(state.staticGridSelection, activeCell);
-    set({
+    const selection = collapseGridSelectionTo(
+      state.interaction.staticGridSelection,
+      activeCell
+    );
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: selection,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
       textCursor: null,
-    });
+    }));
   },
 
   setStaticGridSelectionRange: (range) => {
@@ -65,37 +64,37 @@ export const createStaticGridSlice: StateCreator<
     const start = resolveStaticGridAddress(state, range.start);
     const end = resolveStaticGridAddress(state, range.end);
     const selection = selectGridRange(
-      state.staticGridSelection,
+      state.interaction.staticGridSelection,
       { start, end },
       { activeCell: "start" }
     );
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: selection,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
       textCursor: null,
-    });
+    }));
   },
 
   appendStaticGridSelectionRange: (range) => {
     const state = get();
     const start = resolveStaticGridAddress(state, range.start);
     const end = resolveStaticGridAddress(state, range.end);
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: selectGridRange(
-        state.staticGridSelection,
+        state.interaction.staticGridSelection,
         { start, end },
         { append: true, activeCell: "start" }
       ),
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
       textCursor: null,
-    });
+    }));
   },
 
   moveStaticGridFocus: (dx, dy, options) => {
     const state = get();
-    const current = state.staticGridSelection;
+    const current = state.interaction.staticGridSelection;
     const focusCell = options?.extend
       ? getGridSelectionExtent(current)
       : current.activeCell;
@@ -109,23 +108,25 @@ export const createStaticGridSlice: StateCreator<
       ? extendGridSelectionTo(current, nextCell)
       : collapseGridSelectionTo(current, nextCell);
 
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: selection,
-      staticGridEditMode: options?.extend ? "navigate" : state.staticGridEditMode,
+      staticGridEditMode: options?.extend
+        ? "navigate"
+        : state.interaction.staticGridEditMode,
       staticGridInputFlow:
-        !options?.extend && state.staticGridEditMode === "text-edit"
+        !options?.extend && state.interaction.staticGridEditMode === "text-edit"
           ? createInputFlow(state, nextCell)
           : null,
       textCursor:
-        !options?.extend && state.staticGridEditMode === "text-edit"
+        !options?.extend && state.interaction.staticGridEditMode === "text-edit"
           ? nextCell
           : null,
-    });
+    }));
   },
 
   moveStaticGridFocusToEdge: (edge, options) => {
     const state = get();
-    const current = state.staticGridSelection;
+    const current = state.interaction.staticGridSelection;
     const bounds = getEffectiveGridBounds({
       grid: state.contentSurface.reader,
       activeCell: current.activeCell,
@@ -147,17 +148,17 @@ export const createStaticGridSlice: StateCreator<
     const selection = options?.extend
       ? extendGridSelectionTo(current, nextCell)
       : collapseGridSelectionTo(current, nextCell);
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: selection,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
       textCursor: null,
-    });
+    }));
   },
 
   moveStaticGridFocusToContentBoundary: (edge, options) => {
     const state = get();
-    const current = state.staticGridSelection;
+    const current = state.interaction.staticGridSelection;
     const focusCell = options?.extend
       ? getGridSelectionExtent(current)
       : current.activeCell;
@@ -173,17 +174,17 @@ export const createStaticGridSlice: StateCreator<
     const selection = options?.extend
       ? extendGridSelectionTo(current, nextCell)
       : collapseGridSelectionTo(current, nextCell);
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: selection,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
       textCursor: null,
-    });
+    }));
   },
 
   selectStaticGridAll: () => {
     const state = get();
-    const current = state.staticGridSelection;
+    const current = state.interaction.staticGridSelection;
     const bounds = getEffectiveGridBounds({
       grid: state.contentSurface.reader,
       activeCell: current.activeCell,
@@ -200,17 +201,17 @@ export const createStaticGridSlice: StateCreator<
         ? bounds
         : connected;
     const selection = selectGridRange(current, range);
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: selection,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
       textCursor: null,
-    });
+    }));
   },
 
   selectStaticGridRow: () => {
     const state = get();
-    const current = state.staticGridSelection;
+    const current = state.interaction.staticGridSelection;
     const bounds = getEffectiveGridBounds({
       grid: state.contentSurface.reader,
       activeCell: current.activeCell,
@@ -218,17 +219,17 @@ export const createStaticGridSlice: StateCreator<
       fixedBounds: getActiveSlideGridBounds(state),
     });
     const selection = selectGridRow(current, bounds);
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: selection,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
       textCursor: null,
-    });
+    }));
   },
 
   selectStaticGridColumn: () => {
     const state = get();
-    const current = state.staticGridSelection;
+    const current = state.interaction.staticGridSelection;
     const bounds = getEffectiveGridBounds({
       grid: state.contentSurface.reader,
       activeCell: current.activeCell,
@@ -236,45 +237,47 @@ export const createStaticGridSlice: StateCreator<
       fixedBounds: getActiveSlideGridBounds(state),
     });
     const selection = selectGridColumn(current, bounds);
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: selection,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
       textCursor: null,
-    });
+    }));
   },
 
   enterStaticGridTextEdit: (address) => {
     const state = get();
-    const current = state.staticGridSelection;
+    const current = state.interaction.staticGridSelection;
     const activeCell = resolveStaticGridAddress(
       state,
       address ?? current.activeCell
     );
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: collapseGridSelectionTo(current, activeCell),
       staticGridEditMode: "text-edit",
       staticGridInputFlow: createInputFlow(state, activeCell),
       textCursor: activeCell,
-    });
+    }));
   },
 
   exitStaticGridTextEdit: () => {
-    set({
-      staticGridEditMode: "navigate",
-      staticGridInputFlow: null,
-      textCursor: null,
-    });
+    set((state) =>
+      createCanvasInteractionPatch(state.interaction, {
+        staticGridEditMode: "navigate",
+        staticGridInputFlow: null,
+        textCursor: null,
+      })
+    );
   },
 
   clearStaticGridSelection: () => {
     const state = get();
-    const current = state.staticGridSelection;
-    set({
+    const current = state.interaction.staticGridSelection;
+    set(createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: collapseGridSelectionTo(current, current.activeCell),
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
       textCursor: null,
-    });
+    }));
   },
 });

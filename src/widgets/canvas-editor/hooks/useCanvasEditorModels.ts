@@ -203,11 +203,13 @@ export const useCanvasEditorModels = () => {
   );
   const editorStore = {
     ...editorState,
-    ...editorState.interaction,
     ...(sessionContent ?? null),
     ...(canvasView?.viewport ?? fallbackViewport),
     pendingCameraPlacement,
-    ...(canvasView && !canvasView.isActive ? inactiveInteraction : null),
+    interaction:
+      canvasView && !canvasView.isActive
+        ? inactiveInteraction
+        : editorState.interaction,
     writeTextString: canvasCommands.text.write,
     backspaceText: canvasCommands.text.backspace,
     deleteTextForward: canvasCommands.text.deleteForward,

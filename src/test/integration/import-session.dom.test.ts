@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import {
   applyFreeformSnapshotToYMaps,
+  defaultCanvasDocuments,
   testingCanvasRuntime,
+  setCanvasTestState,
   useEditorStore,
 } from "@/domains/canvas/testing";
 import { DEFAULT_SESSION_ID } from "@/domains/canvas/state/helpers/storeUtils";
@@ -48,7 +50,7 @@ describe("importCanvasSession", () => {
   });
 
   it("clears document interaction when importing a session", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       textCursor: { x: 3, y: 4 },
       structuredGridFocus: { x: 5, y: 6 },
       staticGridEditMode: "text-edit",
@@ -62,7 +64,9 @@ describe("importCanvasSession", () => {
     await useEditorStore.getState().importCanvasSession("");
 
     expect(useEditorStore.getState()).toMatchObject(
-      createDocumentInteractionResetPatch()
+      createDocumentInteractionResetPatch(
+        defaultCanvasDocuments.getActiveAddress()
+      )
     );
   });
   it("imports an Agent-generated CharDesk document as a new active Slide Deck", async () => {

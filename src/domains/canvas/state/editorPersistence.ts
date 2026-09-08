@@ -102,16 +102,10 @@ export const recoverPersistedEditorState = (
       : state.canvasMode === "slide"
         ? state.slideDeck
         : null;
-  state.selectedStructuredNodeIds = [];
-  state.selectedStructuredBoxId = null;
-  state.selectedStructuredSplitHandle = null;
-  state.structuredContextPoint = null;
   state.contentSurface = runtime.nextMode === "structured"
     ? createStructuredContentSurface(state.structuredScene)
     : state.contentSurface;
   state.tool = runtime.nextTool;
-  state.offset = runtime.nextOffset;
-  state.zoom = runtime.nextZoom;
   return state;
 };
 

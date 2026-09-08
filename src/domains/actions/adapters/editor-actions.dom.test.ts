@@ -10,6 +10,7 @@ import {
   applyFreeformSnapshotToYMaps,
   canvasCommands,
   testingCanvasRuntime,
+  setCanvasTestState,
   useEditorStore,
 } from "@/domains/canvas/testing";
 import { clipboard } from "@/shared/services/effects";
@@ -61,7 +62,10 @@ describe("editorHandlers clipboard sources", () => {
     const state = {
       ...useEditorStore.getState(),
       canvasMode: "freeform" as const,
-      textCursor: { x: 0, y: 0 },
+      interaction: {
+        ...useEditorStore.getState().interaction,
+        textCursor: { x: 0, y: 0 },
+      },
     };
 
     const result = editorHandlers["copy-ansi"](
@@ -113,10 +117,13 @@ describe("editorHandlers clipboard sources", () => {
     const state = {
       ...useEditorStore.getState(),
       canvasMode: "structured" as const,
-      structuredTextSelection: {
-        nodeId: "text-1",
-        anchor: 0,
-        focus: 2,
+      interaction: {
+        ...useEditorStore.getState().interaction,
+        structuredTextSelection: {
+          nodeId: "text-1",
+          anchor: 0,
+          focus: 2,
+        },
       },
     };
 
@@ -151,8 +158,11 @@ describe("editorHandlers clipboard sources", () => {
     const state = {
       ...useEditorStore.getState(),
       canvasMode: "structured" as const,
-      selectedStructuredNodeIds: ["box-1"],
-      structuredTextSelection: null,
+      interaction: {
+        ...useEditorStore.getState().interaction,
+        selectedStructuredNodeIds: ["box-1"],
+        structuredTextSelection: null,
+      },
     };
 
     const result = editorHandlers.cut(
@@ -183,8 +193,11 @@ describe("editorHandlers clipboard sources", () => {
     const selectedState = {
       ...useEditorStore.getState(),
       canvasMode: "structured" as const,
-      selectedStructuredNodeIds: ["box-1"],
-      structuredTextSelection: null,
+      interaction: {
+        ...useEditorStore.getState().interaction,
+        selectedStructuredNodeIds: ["box-1"],
+        structuredTextSelection: null,
+      },
     };
     expect(editorCheckers.cut?.(selectedState)).toBe(true);
 
@@ -192,7 +205,13 @@ describe("editorHandlers clipboard sources", () => {
     const result = editorHandlers.cut(
       { source: "context-menu" },
       {
-        state: { ...selectedState, selectedStructuredNodeIds: [] },
+        state: {
+          ...selectedState,
+          interaction: {
+            ...selectedState.interaction,
+            selectedStructuredNodeIds: [],
+          },
+        },
         canvas: testingCanvasRuntime as never,
         setTool: vi.fn(),
         onUndo: vi.fn(),
@@ -216,9 +235,9 @@ describe("editorHandlers text formatting", () => {
   });
 
   afterEach(() => {
-    useEditorStore.setState({ canvasMode: "structured" });
+    setCanvasTestState({ canvasMode: "structured" });
     canvasCommands.structured.applyScene([], false);
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       selectedStructuredNodeIds: [],
       structuredTextSelection: null,
@@ -233,7 +252,7 @@ describe("editorHandlers text formatting", () => {
       { start: { x: 0, y: 0 }, end: { x: 1, y: 0 } },
       { activeCell: "start" }
     );
-    useEditorStore.setState({ canvasMode: "freeform", staticGridSelection: selection });
+    setCanvasTestState({ canvasMode: "freeform", staticGridSelection: selection });
     applyFreeformSnapshotToYMaps([
       ["0,0", { char: "A", color: "#fff", attrs: { bold: true } }],
       ["1,0", { char: "B", color: "#fff" }],
@@ -250,7 +269,7 @@ describe("editorHandlers text formatting", () => {
   });
 
   it("routes structured text formatting through the selected text range", () => {
-    useEditorStore.setState({ canvasMode: "structured" });
+    setCanvasTestState({ canvasMode: "structured" });
     canvasCommands.structured.applyScene(
       [
         {
@@ -264,7 +283,7 @@ describe("editorHandlers text formatting", () => {
       ],
       false
     );
-    useEditorStore.setState({
+    setCanvasTestState({
       selectedStructuredNodeIds: ["text-1"],
       structuredTextSelection: { nodeId: "text-1", anchor: 0, focus: 2 },
     });
@@ -360,8 +379,11 @@ describe("editorHandlers structured rename", () => {
     const state = {
       ...baseState,
       canvasMode: "structured" as const,
-      selectedStructuredBoxId: "box-1",
-      selectedStructuredNodeIds: ["box-1"],
+      interaction: {
+        ...baseState.interaction,
+        selectedStructuredBoxId: "box-1",
+        selectedStructuredNodeIds: ["box-1"],
+      },
       structuredScene: [
         {
           id: "box-1",
@@ -394,8 +416,11 @@ describe("editorHandlers structured rename", () => {
     const state = {
       ...baseState,
       canvasMode: "structured" as const,
-      selectedStructuredBoxId: null,
-      selectedStructuredNodeIds: ["line-1"],
+      interaction: {
+        ...baseState.interaction,
+        selectedStructuredBoxId: null,
+        selectedStructuredNodeIds: ["line-1"],
+      },
       structuredScene: [
         {
           id: "line-1",
@@ -431,8 +456,11 @@ describe("editorHandlers structured rename", () => {
     const state = {
       ...baseState,
       canvasMode: "structured" as const,
-      selectedStructuredBoxId: null,
-      selectedStructuredNodeIds: ["text-1"],
+      interaction: {
+        ...baseState.interaction,
+        selectedStructuredBoxId: null,
+        selectedStructuredNodeIds: ["text-1"],
+      },
       structuredScene: [
         {
           id: "text-1",
@@ -464,8 +492,11 @@ describe("editorHandlers structured rename", () => {
     const state = {
       ...baseState,
       canvasMode: "structured" as const,
-      selectedStructuredBoxId: "box-1",
-      selectedStructuredNodeIds: ["box-1"],
+      interaction: {
+        ...baseState.interaction,
+        selectedStructuredBoxId: "box-1",
+        selectedStructuredNodeIds: ["box-1"],
+      },
       structuredScene: [
         {
           id: "box-1",
@@ -517,8 +548,11 @@ describe("editorHandlers structured rename", () => {
     const state = {
       ...baseState,
       canvasMode: "structured" as const,
-      selectedStructuredBoxId: "box-1",
-      selectedStructuredNodeIds: ["box-1"],
+      interaction: {
+        ...baseState.interaction,
+        selectedStructuredBoxId: "box-1",
+        selectedStructuredNodeIds: ["box-1"],
+      },
       structuredScene: [
         {
           id: "box-1",

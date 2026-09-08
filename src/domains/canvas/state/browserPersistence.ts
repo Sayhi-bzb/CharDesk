@@ -91,6 +91,7 @@ import {
   type CanvasCheckpointDiagnostics,
 } from "./CanvasCheckpointService";
 import { acquireOriginExclusiveLease } from "@/shared/services/originExclusiveLease";
+import { createEmptyCanvasInteraction } from "./canvasInteractionState";
 
 const LOCAL_DOCUMENT_PREFIX = "chardesk-local-document-v1:";
 const HISTORICAL_EDITOR_PERSISTENCE_KEYS = [
@@ -1668,6 +1669,9 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
           `Canvas persistence could not activate slide: ${activeSession.id}/${activeSession.slideDeck.activeSlideId}`
         );
       }
+      hydrated.interaction = createEmptyCanvasInteraction(
+        documents.getActiveAddress()
+      );
       for (const id of documents.getDocumentIds()) {
         if (id !== activeSession.id) await this.#releaseDocument(id);
       }

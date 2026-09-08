@@ -3,6 +3,7 @@ import type { StructuredNode } from "@/domains/structured-content/public";
 import {
   canReorderStructuredNodes,
   duplicateStructuredNodes,
+  getNextStructuredOrder,
   reorderStructuredNodes,
 } from "@/domains/structured-content/public";
 
@@ -33,6 +34,13 @@ const scene = (): StructuredNode[] => [
     style: { color: "#fff" },
   },
 ];
+
+describe("getNextStructuredOrder", () => {
+  it("uses one for an empty scene and follows the highest existing order", () => {
+    expect(getNextStructuredOrder([])).toBe(1);
+    expect(getNextStructuredOrder(scene())).toBe(4);
+  });
+});
 
 const idsByOrder = (nodes: StructuredNode[]) =>
   [...nodes].sort((a, b) => a.order - b.order).map((node) => node.id);

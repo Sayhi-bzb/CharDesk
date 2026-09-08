@@ -157,9 +157,11 @@ describe("ApplicationEditorHost", () => {
     expect(state.canvasSessions).toHaveLength(1);
     expect(state.activeCanvasId).toBe("external-source");
     expect(state.contentSurface.reader.materialize().get("0,0")?.char).toBe("外");
-    expect(state.offset).toEqual({ x: 120, y: 80 });
-    expect(state.zoom).toBe(1.5);
-    expect(state.textCursor).toBeNull();
+    expect(host.canvas.viewport.getSnapshot()).toEqual({
+      offset: { x: 120, y: 80 },
+      zoom: 1.5,
+    });
+    expect(state.interaction.textCursor).toBeNull();
     expect(state.canUndo).toBe(false);
     expect(host.canvas.commands.history.undo()).toBe(false);
   });

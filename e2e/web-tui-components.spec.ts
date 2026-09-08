@@ -59,7 +59,15 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
 
+  const widePlayground = await readCellProbe(page.locator('[data-cell-probe="component-button"]'));
+  expect(widePlayground.viewport).toEqual({ width: 64, height: 7 });
+  expect(widePlayground.text).not.toContain("Props");
+  expect(widePlayground.text).toContain("variant    default");
+
   await page.setViewportSize({ width: 320, height: 700 });
+  await expect.poll(async () => (
+    await readCellProbe(page.locator('[data-cell-probe="component-button"]'))
+  ).viewport).toEqual({ width: 29, height: 15 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });
 
@@ -114,25 +122,51 @@ test("Input edits Unicode through the real textbox and Cell frame", async ({ pag
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("│世界 👋");
 });
 
-test("Button shares pointer, keyboard, disabled, and semantic behavior", async ({ page }) => {
+test("Button Playground drives its semantic API through Cell controls", async ({ page }) => {
   await page.goto("/exp/web-tui/#/components/button");
   const surface = page.getByLabel("Button component");
   const save = page.getByRole("button", { name: "Save document" });
-  const disabled = page.getByRole("button", { name: "Disabled" });
+  const variant = page.getByRole("button", { name: "variant" });
+  const size = page.getByRole("button", { name: "size" });
+  const disabled = page.getByRole("checkbox", { name: "disabled" });
 
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
   await expect(save).not.toHaveAttribute("aria-disabled");
-  await expect(disabled).toHaveAttribute("aria-disabled", "true");
+  await expect(variant).toHaveAttribute("aria-expanded", "false");
+  await expect(size).toHaveAttribute("aria-expanded", "false");
+  await expect(disabled).toHaveAttribute("aria-checked", "false");
 
   const initial = await readCellProbe(surface);
-  const saveCell = initial.cells.find((cell) => cell.ownerId === "component-button-save");
+  expect(initial.viewport).toEqual({ width: 64, height: 7 });
+  expect(initial.text).toContain("│   variant");
+  expect(initial.text).toContain("│   size");
+  expect(initial.text).toContain("               Save               │   disabled  [ ]");
+  expect(initial.cells.some((cell) => (
+    cell.ownerId === "component-button-playground-controls-scroll" && "█▀▄".includes(cell.text)
+  ))).toBe(false);
+
+  await variant.evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "variant options" })).toBeAttached();
+  await page.getByRole("option", { name: "outline" }).evaluate((element: HTMLElement) => element.click());
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("[ Save ]");
+
+  await size.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "lg" }).evaluate((element: HTMLElement) => element.click());
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("[  Save  ]");
+
+  const configured = await readCellProbe(surface);
+  const saveCell = configured.cells.find((cell) => cell.ownerId === "component-button-save");
   const canvasBounds = await surface.locator("canvas").boundingBox();
   expect(saveCell).toBeDefined();
   expect(canvasBounds).not.toBeNull();
-  await page.mouse.click(
-    canvasBounds!.x + (saveCell!.x + 0.5) * canvasBounds!.width / initial.viewport.width,
-    canvasBounds!.y + (saveCell!.y + 0.5) * canvasBounds!.height / initial.viewport.height,
-  );
+  const savePoint = {
+    x: canvasBounds!.x + (saveCell!.x + 0.5) * canvasBounds!.width / configured.viewport.width,
+    y: canvasBounds!.y + (saveCell!.y + 0.5) * canvasBounds!.height / configured.viewport.height,
+  };
+  await page.mouse.move(savePoint.x, savePoint.y);
+  await page.mouse.down();
+  expect((await readCellProbe(surface)).text).toContain("[  Save  ]");
+  await page.mouse.up();
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("✓ Saved");
 
   await page.reload();
@@ -142,8 +176,12 @@ test("Button shares pointer, keyboard, disabled, and semantic behavior", async (
   await page.keyboard.press("Enter");
   await expect.poll(async () => (await readCellProbe(reloadedSurface)).text).toContain("✓ Saved");
 
-  await page.getByRole("button", { name: "Disabled" }).evaluate((element: HTMLElement) => element.click());
-  await expect(reloadedSurface).toHaveAttribute("data-cell-focused", "component-button-save");
+  await page.reload();
+  const disabledSurface = page.getByLabel("Button component");
+  await page.getByRole("checkbox", { name: "disabled" }).evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("button", { name: "Save document" })).toHaveAttribute("aria-disabled", "true");
+  await page.getByRole("button", { name: "Save document" }).evaluate((element: HTMLElement) => element.click());
+  expect((await readCellProbe(disabledSurface)).text).not.toContain("✓ Saved");
 });
 
 test("Select opens a Cell listbox and commits only explicit activation", async ({ page }) => {

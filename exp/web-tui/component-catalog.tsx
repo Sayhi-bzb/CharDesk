@@ -125,7 +125,13 @@ export function ButtonExample() {
   return (
     <CellSurface viewport={{ width: 24, height: 3 }} focusedId={focusedId} onCommand={dispatch}>
       <Root id="root">
-        <Button id="save" label="Save document" focused={focusedId === "save"}>
+        <Button
+          id="save"
+          label="Save document"
+          variant="default"
+          size="default"
+          focused={focusedId === "save"}
+        >
           <Text>{saved ? "✓ Saved" : "Save"}</Text>
         </Button>
       </Root>
@@ -135,6 +141,8 @@ export function ButtonExample() {
     api: [
       { name: "id?", type: "string", description: "Stable focus and activate command target." },
       { name: "label?", type: "string", description: "Accessible name; descendant text is the fallback." },
+      { name: "variant?", type: '"default" | "outline" | "ghost"', description: "Semantic surface treatment; defaults to default." },
+      { name: "size?", type: '"sm" | "default" | "lg"', description: "Horizontal Cell density; defaults to default." },
       { name: "disabled?", type: "boolean", description: "Prevents focus, hover, and activation." },
       { name: "focused?", type: "boolean", description: "Controlled logical focus state." },
       { name: "children?", type: "ReactNode", description: "Cell-native button content." },

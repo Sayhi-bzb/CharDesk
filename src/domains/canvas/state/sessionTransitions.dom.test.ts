@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import type { EditorState } from "./interfaces";
-import { useEditorStore } from "@/domains/canvas/testing";
+import { canvasCommands, setCanvasTestState, useEditorStore } from "@/domains/canvas/testing";
 import {
   applyFreeformSnapshotToYMaps,
   defaultCanvasDocuments,
@@ -10,7 +9,7 @@ import { createDocumentInteractionResetPatch } from "./transitions/editorTransit
 const initialState = useEditorStore.getState();
 
 const markDocumentInteractionDirty = () => {
-  useEditorStore.setState({
+  setCanvasTestState({
     textCursor: { x: 3, y: 4 },
     editingStructuredTextNodeId: "text-node",
     structuredTextSelection: {
@@ -39,14 +38,16 @@ const markDocumentInteractionDirty = () => {
       ["0,0", { char: "X", color: "#fff" }],
     ]),
     canvasColorPickerTarget: "auto",
-  } satisfies Partial<EditorState>);
+  });
 };
 
 const expectDocumentInteractionReset = () => {
   const state = useEditorStore.getState();
-  const reset = createDocumentInteractionResetPatch();
+  const reset = createDocumentInteractionResetPatch(
+    defaultCanvasDocuments.getActiveAddress()
+  );
   expect(state).toMatchObject(reset);
-  expect(state.interaction).toMatchObject(reset);
+  expect(state.interaction).toMatchObject(reset.interaction);
   expect(state.interaction.address).toEqual(defaultCanvasDocuments.getActiveAddress());
 };
 
@@ -96,7 +97,7 @@ describe("session transitions", () => {
     useEditorStore.getState().createCanvasSession("structured");
     const structuredSessionId = useEditorStore.getState().activeCanvasId;
 
-    useEditorStore.getState().setTool("pan");
+    canvasCommands.tools.set("pan");
     expect(useEditorStore.getState()).toMatchObject({
       canvasMode: "structured",
       tool: "pan",

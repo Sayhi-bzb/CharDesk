@@ -29,8 +29,9 @@ gesture is routed through the same pane that received it.
 
 Canvas interaction is one atomic snapshot scoped by the active Yjs document and
 page address. Session and page activation reset it; metadata-only changes retain
-it. Legacy flat interaction and viewport fields in the internal Zustand state are
-projections for existing selectors, not independent write authorities.
+it. The internal Zustand state owns this snapshot without flat field mirrors.
+`CanvasViewportRuntime` is the sole active-camera authority; saved descriptor
+viewports are checkpoints and never live Zustand projections.
 
 ## Entry direction
 
@@ -39,7 +40,7 @@ native KeyboardEvent -> browser adapter -> KeyInput
                                          ├─ shortcut dispatcher -> editor keymap -> command/tool
                                          └─ managed Canvas rules -> Canvas Intent -> canvas port
 native beforeinput/composition/clipboard -------------------------> native adapter
-command/tool or native adapter -> canvas port -> Yjs document
+command/tool or native adapter -> canvas port -> CanvasCommands -> pure transition or Yjs document
 ```
 
 - Commands own discrete semantic operations; tools own continuous interaction
@@ -52,6 +53,10 @@ command/tool or native adapter -> canvas port -> Yjs document
   executes Intents through its model and editor command ports.
 - Native clipboard events invoke the same commands through adapters.
 - Widgets use provider-bound selectors and commands, never private stores or Yjs maps.
+
+`CanvasCommands` owns workspace and interaction mutations. Zustand exposes the
+read projection; reusable interaction rules are pure transitions applied by the
+command boundary. Content commands continue through the addressed Yjs document.
 
 ## Extensions
 

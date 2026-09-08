@@ -212,7 +212,8 @@ export const createSessionSlice = (
         nextSessions,
         newSession.id,
         runtime,
-        rebuildContentSurface(documents).reader
+        rebuildContentSurface(documents).reader,
+        documents.getActiveAddress()
       )
     );
     viewportRuntime.resetFallback(normalizeCanvasViewport(newSession.viewport));
@@ -249,6 +250,7 @@ export const createSessionSlice = (
       newSession.id,
       runtime,
       rebuildContentSurface(documents).reader,
+      documents.getActiveAddress(),
     ));
     viewportRuntime.resetFallback(normalizeCanvasViewport(newSession.viewport));
     residency?.touch(newSession.id);
@@ -281,7 +283,8 @@ export const createSessionSlice = (
       nextSessions,
       newSession.id,
       runtime,
-      rebuildContentSurface(documents).reader
+      rebuildContentSurface(documents).reader,
+      documents.getActiveAddress()
     ));
     viewportRuntime.resetFallback(normalizeCanvasViewport(newSession.viewport));
     if (importedSnapshot.mode !== "slide") {
@@ -333,7 +336,8 @@ export const createSessionSlice = (
       nextSessions,
       sessionId,
       runtime,
-      rebuildContentSurface(documents).reader
+      rebuildContentSurface(documents).reader,
+      documents.getActiveAddress()
     ));
     viewportRuntime.resetFallback(normalizeCanvasViewport(replacement.viewport));
   },
@@ -393,6 +397,7 @@ export const createSessionSlice = (
         sessionId,
         runtime,
         rebuildContentSurface(documents).reader,
+        documents.getActiveAddress(),
       ));
       viewportRuntime.resetFallback(normalizeCanvasViewport(replacement.viewport));
       return;
@@ -423,6 +428,7 @@ export const createSessionSlice = (
       sessionId,
       activateSessionRuntime(documents, replacement, state.tool),
       rebuildContentSurface(documents).reader,
+      documents.getActiveAddress(),
     ));
     viewportRuntime.resetFallback(normalizeCanvasViewport(replacement.viewport));
   },
@@ -452,7 +458,8 @@ export const createSessionSlice = (
         sessionsWithSnapshot,
         canvasId,
         runtime,
-        rebuildContentSurface(documents).reader
+        rebuildContentSurface(documents).reader,
+        documents.getActiveAddress()
       )
     );
     viewportRuntime.resetFallback(normalizeCanvasViewport(target.viewport));
@@ -495,7 +502,8 @@ export const createSessionSlice = (
         remaining,
         nextSession.id,
         runtime,
-        rebuildContentSurface(documents).reader
+        rebuildContentSurface(documents).reader,
+        documents.getActiveAddress()
       )
     );
     viewportRuntime.resetFallback(normalizeCanvasViewport(nextSession.viewport));

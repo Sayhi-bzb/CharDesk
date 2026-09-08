@@ -5,6 +5,7 @@ import {
   canvasCommands,
   defaultCanvasDocuments,
   replaceCanvasGrid,
+  setCanvasTestState,
   useEditorStore,
 } from "@/domains/canvas/testing";
 import { ShortcutProvider } from "@/shared/shortcuts/dispatcher";
@@ -50,7 +51,7 @@ describe("CanvasInspectorControl", () => {
   });
 
   it("removes the surface and shortcut registration while preserving its open state", () => {
-    useEditorStore.setState({ canvasMode: "freeform", tool: "select" });
+    setCanvasTestState({ canvasMode: "freeform", tool: "select" });
     const { rerender } = render(<Inspector />);
 
     fireEvent.click(screen.getByRole("button", { name: "Toggle inspector" }));
@@ -69,7 +70,7 @@ describe("CanvasInspectorControl", () => {
 
   it("uses one persistent swatch trigger and one global open state", () => {
     replaceCanvasGrid([]);
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       tool: "select",
       brushColor: "#123456",
@@ -107,7 +108,7 @@ describe("CanvasInspectorControl", () => {
     fireEvent.click(toggle);
     expect(screen.queryByTestId("canvas-inspector-panel")).not.toBeInTheDocument();
 
-    act(() => useEditorStore.setState({ canvasMode: "structured" }));
+    act(() => setCanvasTestState({ canvasMode: "structured" }));
     expect(screen.queryByTestId("canvas-inspector-panel")).not.toBeInTheDocument();
 
     fireEvent.click(toggle);
@@ -117,12 +118,12 @@ describe("CanvasInspectorControl", () => {
     expect(
       screen.queryByRole("button", { name: "Toggle bold" })
     ).not.toBeInTheDocument();
-    act(() => useEditorStore.setState({ canvasMode: "freeform" }));
+    act(() => setCanvasTestState({ canvasMode: "freeform" }));
     expect(screen.getByTestId("canvas-inspector-panel")).toBeVisible();
   });
 
   it("starts expanded on desktop and collapsed on phone by product policy", () => {
-    useEditorStore.setState({ canvasMode: "structured", tool: "select" });
+    setCanvasTestState({ canvasMode: "structured", tool: "select" });
     const view = render(<Inspector formFactor="desktop" />);
     expect(screen.getByTestId("canvas-inspector-panel")).toBeVisible();
 
@@ -131,37 +132,37 @@ describe("CanvasInspectorControl", () => {
   });
 
   it("automatically closes for Hand in every canvas mode without reopening on tool exit", () => {
-    useEditorStore.setState({ canvasMode: "freeform", tool: "select" });
+    setCanvasTestState({ canvasMode: "freeform", tool: "select" });
     render(<Inspector />);
     expect(screen.getByTestId("canvas-inspector-panel")).toBeVisible();
 
-    act(() => useEditorStore.getState().setTool("pan"));
+    act(() => canvasCommands.tools.set("pan"));
     expect(useEditorStore.getState().tool).toBe("pan");
     expect(screen.queryByTestId("canvas-inspector-panel")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Toggle inspector" })).toBeDisabled();
 
-    act(() => useEditorStore.getState().setTool("select"));
+    act(() => canvasCommands.tools.set("select"));
     expect(screen.queryByTestId("canvas-inspector-panel")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Toggle inspector" }));
     expect(screen.getByTestId("canvas-inspector-panel")).toBeVisible();
 
-    act(() => useEditorStore.setState({ canvasMode: "structured", tool: "select" }));
-    act(() => useEditorStore.getState().setTool("pan"));
+    act(() => setCanvasTestState({ canvasMode: "structured", tool: "select" }));
+    act(() => canvasCommands.tools.set("pan"));
     expect(useEditorStore.getState().tool).toBe("pan");
     expect(screen.queryByTestId("canvas-inspector-panel")).not.toBeInTheDocument();
 
     act(() => {
       useEditorStore.getState().createCanvasSession("slide");
-      useEditorStore.getState().setTool("select");
+      canvasCommands.tools.set("select");
     });
     fireEvent.click(screen.getByRole("button", { name: "Toggle inspector" }));
     expect(screen.getByTestId("canvas-inspector-panel")).toBeVisible();
-    act(() => useEditorStore.getState().setTool("pan"));
+    act(() => canvasCommands.tools.set("pan"));
     expect(screen.queryByTestId("canvas-inspector-panel")).not.toBeInTheDocument();
   });
 
   it("owns the inspector chord and Escape across canvas modes", () => {
-    useEditorStore.setState({ canvasMode: "freeform", tool: "select" });
+    setCanvasTestState({ canvasMode: "freeform", tool: "select" });
     render(<Inspector />);
 
     fireEvent.keyDown(window, { key: "Escape" });
@@ -170,14 +171,14 @@ describe("CanvasInspectorControl", () => {
     fireEvent.keyDown(window, { key: "p" });
     expect(screen.getByTestId("canvas-inspector-panel")).toBeVisible();
 
-    act(() => useEditorStore.setState({ canvasMode: "structured" }));
+    act(() => setCanvasTestState({ canvasMode: "structured" }));
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     fireEvent.keyDown(window, { key: "p" });
     expect(screen.queryByTestId("canvas-inspector-panel")).not.toBeInTheDocument();
   });
 
   it("preserves a structured text range when opening on phone", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: "select",
       selectedStructuredNodeIds: ["text-1"],
@@ -198,7 +199,7 @@ describe("CanvasInspectorControl", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Toggle inspector" }));
 
-    expect(useEditorStore.getState().structuredTextSelection).toEqual({
+    expect(useEditorStore.getState().interaction.structuredTextSelection).toEqual({
       nodeId: "text-1",
       anchor: 0,
       focus: 2,
@@ -211,7 +212,7 @@ describe("CanvasInspectorControl", () => {
   });
 
   it("closes the hex editor with Escape without closing the inspector", () => {
-    useEditorStore.setState({ canvasMode: "structured", tool: "select" });
+    setCanvasTestState({ canvasMode: "structured", tool: "select" });
     render(<Inspector />);
 
     fireEvent.click(screen.getByRole("button", { name: /^Hex:/ }));
@@ -225,7 +226,7 @@ describe("CanvasInspectorControl", () => {
   it("applies freeform foreground and background colors to defaults and selections", () => {
     act(() => {
       replaceCanvasGrid([["0,0", { char: "A", color: "#111111" }]]);
-      useEditorStore.setState({
+      setCanvasTestState({
         canvasMode: "freeform",
         tool: "select",
         brushColor: "#111111",
@@ -242,7 +243,7 @@ describe("CanvasInspectorControl", () => {
     expect(useEditorStore.getState().brushColor).toBe("#000000");
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.color).toBe("#000000");
 
-    act(() => useEditorStore.setState({ tool: "bg" }));
+    act(() => setCanvasTestState({ tool: "bg" }));
     expect(screen.getByTestId("canvas-inspector-swatch")).toHaveStyle({
       backgroundColor: "#222222",
     });
@@ -275,7 +276,7 @@ describe("CanvasInspectorControl", () => {
           { char: "B", color: "#ffffff", attrs: { inverse: true } },
         ],
       ]);
-      useEditorStore.setState({
+      setCanvasTestState({
         canvasMode: "freeform",
         tool: "select",
         staticGridSelection: selectedRow,
@@ -346,7 +347,7 @@ describe("CanvasInspectorControl", () => {
   });
 
   it("applies structured semantic colors and exposes layer arrangement", () => {
-    useEditorStore.setState({ canvasMode: "structured", tool: "select" });
+    setCanvasTestState({ canvasMode: "structured", tool: "select" });
     canvasCommands.structured.applyScene(
       [
         {
@@ -368,7 +369,7 @@ describe("CanvasInspectorControl", () => {
       ],
       "reset"
     );
-    useEditorStore.setState({
+    setCanvasTestState({
       selectedStructuredNodeIds: ["box-1", "bg-1"],
     });
     render(<Inspector />);
@@ -400,7 +401,7 @@ describe("CanvasInspectorControl", () => {
   });
 
   it("restores a structured text range and the creation default together", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: "select",
       brushColor: "#ff0000",
@@ -436,7 +437,7 @@ describe("CanvasInspectorControl", () => {
   });
 
   it("remains inspectable but immutable in read-only sessions", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: "select",
       selectedStructuredNodeIds: ["box-1"],
@@ -468,7 +469,7 @@ describe("CanvasInspectorControl", () => {
         slideSize: { columns: 4, rows: 2 },
       });
       replaceCanvasGrid([["0,0", { char: "A", color: "#111111" }]]);
-      useEditorStore.setState({
+      setCanvasTestState({
         tool: "select",
         brushColor: "#111111",
         brushBackgroundColor: "#222222",
@@ -501,7 +502,7 @@ describe("CanvasInspectorControl", () => {
     act(() => {
       useEditorStore.getState().addSlide();
       replaceCanvasGrid([["0,0", { char: "B", color: "#222222" }]]);
-      useEditorStore.setState({
+      setCanvasTestState({
         staticGridSelection: selectedCell,
       });
     });
@@ -518,7 +519,7 @@ describe("CanvasInspectorControl", () => {
         ?.getCell({ x: 0, y: 0 })?.color
     ).toBe("#00ff00");
 
-    act(() => useEditorStore.getState().setTool("bg"));
+    act(() => canvasCommands.tools.set("bg"));
     fireEvent.click(screen.getByRole("button", { name: "Pick ANSI color #0000ff" }));
     expect(useEditorStore.getState().brushBackgroundColor).toBe("#0000ff");
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.bgColor).toBe("#0000ff");
@@ -533,7 +534,7 @@ describe("CanvasInspectorControl", () => {
       useEditorStore.getState().createCanvasSession("slide", {
         slideSize: { columns: 4, rows: 2 },
       });
-      useEditorStore.setState({
+      setCanvasTestState({
         tool: "select",
         staticGridSelection: createGridSelectionState({ x: 0, y: 0 }),
       });
@@ -558,7 +559,7 @@ describe("CanvasInspectorControl", () => {
         slideSize: { columns: 4, rows: 2 },
       });
       replaceCanvasGrid([["0,0", { char: "A", color: "#111111" }]]);
-      useEditorStore.setState({
+      setCanvasTestState({
         tool: "select",
         brushColor: "#111111",
         staticGridSelection: selectedCell,

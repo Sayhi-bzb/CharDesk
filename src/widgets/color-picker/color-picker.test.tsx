@@ -293,12 +293,12 @@ describe('ColorPickerPanel', () => {
     fireEvent.click(eyedropperTrigger);
 
     expect(onCanvasPickStarted).toHaveBeenCalledTimes(1);
-    expect(useEditorStore.getState().canvasColorPickerTarget).toBe('auto');
+    expect(useEditorStore.getState().interaction.canvasColorPickerTarget).toBe('auto');
     expect(eyedropperTrigger).toHaveAttribute('aria-pressed', 'true');
     expect(eyedropperTrigger).toHaveClass('bg-control-pressed-surface', 'text-foreground');
 
     fireEvent.click(eyedropperTrigger);
-    expect(useEditorStore.getState().canvasColorPickerTarget).toBeNull();
+    expect(useEditorStore.getState().interaction.canvasColorPickerTarget).toBeNull();
     expect(eyedropperTrigger).toHaveAttribute('aria-pressed', 'false');
     expect(onCanvasPickStarted).toHaveBeenCalledTimes(1);
 
@@ -311,7 +311,7 @@ describe('ColorPickerPanel', () => {
       />
     );
     fireEvent.click(screen.getByRole('button', { name: 'Pick color from canvas' }));
-    expect(useEditorStore.getState().canvasColorPickerTarget).toBe('auto-to-background');
+    expect(useEditorStore.getState().interaction.canvasColorPickerTarget).toBe('auto-to-background');
     expect(onCanvasPickStarted).toHaveBeenCalledTimes(2);
   });
 

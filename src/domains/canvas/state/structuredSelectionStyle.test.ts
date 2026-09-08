@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { canvasCommands, undoCanvas, useEditorStore } from "@/domains/canvas/testing";
+import { canvasCommands, undoCanvas, setCanvasTestState, useEditorStore } from "@/domains/canvas/testing";
 import type { StructuredNode } from "@/domains/structured-content/public";
 
 const initialScene: StructuredNode[] = [
@@ -26,9 +26,9 @@ const initialScene: StructuredNode[] = [
 ];
 
 const reset = () => {
-  useEditorStore.setState({ canvasMode: "structured" });
+  setCanvasTestState({ canvasMode: "structured" });
   canvasCommands.structured.applyScene([], "reset");
-  useEditorStore.setState({
+  setCanvasTestState({
     canvasMode: "freeform",
     selectedStructuredNodeIds: [],
     structuredTextSelection: null,
@@ -39,9 +39,9 @@ describe("structured selection style command", () => {
   afterEach(reset);
 
   it("updates each selected node's semantic primary color in one undo step", () => {
-    useEditorStore.setState({ canvasMode: "structured" });
+    setCanvasTestState({ canvasMode: "structured" });
     canvasCommands.structured.applyScene(initialScene, "reset");
-    useEditorStore.setState({
+    setCanvasTestState({
       selectedStructuredNodeIds: ["text-1", "bg-1"],
     });
 
@@ -63,9 +63,9 @@ describe("structured selection style command", () => {
   });
 
   it("updates every selected node in one undoable scene change", () => {
-    useEditorStore.setState({ canvasMode: "structured" });
+    setCanvasTestState({ canvasMode: "structured" });
     canvasCommands.structured.applyScene(initialScene, "reset");
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       selectedStructuredNodeIds: ["text-1", "bg-1"],
     });

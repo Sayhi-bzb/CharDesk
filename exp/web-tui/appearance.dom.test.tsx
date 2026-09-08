@@ -36,10 +36,11 @@ describe("Web TUI gallery font loading", () => {
       <GalleryAppearance><GalleryFontSelect /></GalleryAppearance>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Font: Maple Mono" }));
+    fireEvent.click(screen.getByRole("button", { name: "Font: Maple" }));
     expect(screen.getByRole("listbox", { name: "Fonts" })).toBeInTheDocument();
-    expect(screen.getAllByRole("option")).toHaveLength(3);
-    fireEvent.click(screen.getByRole("option", { name: "Fusion Pixel 12px Mono" }));
+    expect(screen.getAllByRole("option").map((option) => option.getAttribute("aria-label")))
+      .toEqual(["Maple", "Fusion", "Xiaolai"]);
+    fireEvent.click(screen.getByRole("option", { name: "Fusion" }));
     const link = document.querySelector<HTMLLinkElement>(
       'link[data-display-font-source="fusion-mono"]'
     );
@@ -49,7 +50,7 @@ describe("Web TUI gallery font loading", () => {
     await waitFor(() => expect(container.firstElementChild).toHaveAttribute(
       "data-gallery-font", "fusion-mono"
     ));
-    expect(screen.getByRole("button", { name: "Font: Fusion Pixel 12px Mono" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Font: Fusion" })).toBeInTheDocument();
     expect(load).toHaveBeenCalledWith("15px 'Fusion Pixel 12px Mono latin'", "AgWi09");
     expect(load).toHaveBeenCalledWith("15px 'Fusion Pixel 12px Mono latin'", "世界，。");
     expect(container.firstElementChild).toHaveStyle({

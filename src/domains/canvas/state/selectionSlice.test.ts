@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { TestCanvasContentSurface } from "@/domains/canvas/testing";
-import { applyFreeformSnapshotToYMaps, useEditorStore } from "@/domains/canvas/testing";
+import { applyFreeformSnapshotToYMaps, setCanvasTestState, useEditorStore } from "@/domains/canvas/testing";
 import {
   createGridSelectionState,
   selectGridRange,
@@ -44,7 +44,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
       end: { x: 2, y: 2 },
     });
 
-    expect(useEditorStore.getState().staticGridSelection).toEqual({
+    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
       mode: "range",
       activeCell: { x: 4, y: 3 },
       anchorCell: { x: 4, y: 3 },
@@ -56,7 +56,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
   });
 
   it("adds attributes to existing selected cells only", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 2, y: 0 }),
     });
@@ -84,7 +84,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
   });
 
   it("materializes blank selected cells for underline using the brush color", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#2563eb",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
@@ -102,7 +102,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
   });
 
   it("materializes blank selected cells for strike using the brush color", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#ef4444",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
@@ -119,7 +119,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
   });
 
   it("materializes blank selected cells for inverse without rewriting colors", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#22c55e",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
@@ -136,7 +136,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
   });
 
   it("does not materialize blank selected cells for bold or italic only", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
     });
@@ -150,7 +150,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
   });
 
   it("removes only toggled attributes and preserves other styling", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
     });
@@ -177,7 +177,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
   });
 
   it("removes attrs when no text attributes remain", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
     });
@@ -194,7 +194,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
   });
 
   it("deletes materialized blank cells when underline is removed", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
     });
@@ -208,7 +208,7 @@ describe("selectionSlice setSelectionTextAttributes", () => {
   });
 
   it("does not update cells in structured mode", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       contentSurface: new TestCanvasContentSurface([["0,0", { char: "A", color: "#ffffff" }]]),
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
@@ -230,7 +230,7 @@ describe("selectionSlice static grid selection compatibility", () => {
   });
 
   it("fills cells from static grid ranges", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#22c55e",
       staticGridSelection: {
@@ -255,7 +255,7 @@ describe("selectionSlice static grid selection compatibility", () => {
   });
 
   it("styles and materializes cells from static grid ranges", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#f8fafc",
       staticGridSelection: {
@@ -289,7 +289,7 @@ describe("selectionSlice setSelectionBackgroundColor", () => {
   });
 
   it("fills background color and materializes empty selected cells", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#f8fafc",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 2, y: 0 }),
@@ -319,7 +319,7 @@ describe("selectionSlice setSelectionBackgroundColor", () => {
   });
 
   it("clears background color while preserving foreground and attributes", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
     });
@@ -345,7 +345,7 @@ describe("selectionSlice setSelectionBackgroundColor", () => {
   });
 
   it("clears background color without materializing empty selected positions", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 2, y: 0 }),
     });
@@ -363,7 +363,7 @@ describe("selectionSlice setSelectionBackgroundColor", () => {
   });
 
   it("deletes materialized blank cells when background color is cleared", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
     });
@@ -377,7 +377,7 @@ describe("selectionSlice setSelectionBackgroundColor", () => {
   });
 
   it("does not update background color in structured mode", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       contentSurface: new TestCanvasContentSurface([["0,0", { char: "A", color: "#ffffff" }]]),
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),

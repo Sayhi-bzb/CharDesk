@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { STRUCTURED_CONTEXT_MENU } from "@/domains/actions/public";
-import { useEditorStore } from "@/domains/canvas/testing";
+import { setCanvasTestState, useEditorStore } from "@/domains/canvas/testing";
 import { StructuredSplitToolbar } from "./StructuredSplitToolbar";
 
 const splitBox = {
@@ -26,7 +26,7 @@ describe("StructuredSplitToolbar", () => {
   });
 
   it("splits the active split box leaf", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       offset: { x: 0, y: 0 },
       zoom: 1,
@@ -62,7 +62,7 @@ describe("StructuredSplitToolbar", () => {
   });
 
   it("disables split actions without an active leaf", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       offset: { x: 0, y: 0 },
       zoom: 1,
@@ -80,7 +80,7 @@ describe("StructuredSplitToolbar", () => {
   });
 
   it("deletes a selected split divider", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       offset: { x: 0, y: 0 },
       zoom: 1,

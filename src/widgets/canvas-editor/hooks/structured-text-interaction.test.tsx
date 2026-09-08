@@ -6,8 +6,12 @@ import { useRef } from "react";
 import { useCanvasInteraction } from "@/widgets/canvas-editor/hooks/useCanvasInteraction";
 import { CanvasColorSourceChooser } from "@/widgets/canvas-editor/CanvasColorSourceChooser";
 import type { StructuredMovePreview } from "@/widgets/canvas-editor/hooks/useCanvasRenderer";
-import { useEditorStore } from "@/domains/canvas/testing";
-import { canvasCommands } from "@/domains/canvas/testing";
+import {
+  canvasCommands,
+  setCanvasTestState,
+  testingCanvasRuntime,
+  useEditorStore,
+} from "@/domains/canvas/testing";
 import { useShallow } from "zustand/react/shallow";
 import type { ToolType } from "@/domains/canvas/testing";
 import { ShortcutProvider } from "@/shared/shortcuts/dispatcher";
@@ -25,15 +29,8 @@ let interactionRuntime: CanvasEngineRuntime | undefined;
 const getInteractionRuntime = () => {
   if (interactionRuntime) return interactionRuntime;
   interactionRuntime = new CanvasEngineRuntime({
-    getViewport: () => {
-      const state = useEditorStore.getState();
-      return { offset: state.offset, zoom: state.zoom };
-    },
-    setViewport: (updater) => {
-      const state = useEditorStore.getState();
-      const next = updater({ offset: state.offset, zoom: state.zoom });
-      useEditorStore.setState({ offset: next.offset, zoom: next.zoom });
-    },
+    getViewport: testingCanvasRuntime.viewport.getSnapshot,
+    setViewport: testingCanvasRuntime.commands.viewport.setViewport,
   });
   return interactionRuntime;
 };
@@ -59,19 +56,18 @@ function InteractionHarnessContent() {
       brushChar: state.brushChar,
       brushColor: state.brushColor,
       brushBackgroundColor: state.brushBackgroundColor,
-      setBrushColor: state.setBrushColor,
-      setBrushBackgroundColor: state.setBrushBackgroundColor,
-      canvasColorPickerTarget: state.canvasColorPickerTarget,
-      setCanvasColorPickerTarget: state.setCanvasColorPickerTarget,
-      setOffset: state.setOffset,
-      setZoom: state.setZoom,
-      setViewport: state.setViewport,
+      setBrushColor: canvasCommands.preferences.setBrushColor,
+      setBrushBackgroundColor: canvasCommands.preferences.setBrushBackgroundColor,
+      setCanvasColorPickerTarget: canvasCommands.interaction.setColorPickerTarget,
+      setOffset: canvasCommands.viewport.setOffset,
+      setZoom: canvasCommands.viewport.setZoom,
+      setViewport: canvasCommands.viewport.setViewport,
       canvasMode: state.canvasMode,
       slideDeck: state.slideDeck,
       addScratchPoints: state.addScratchPoints,
       commitScratch: state.commitScratch,
       commitStructuredShape: state.commitStructuredShape,
-      setTextCursor: state.setTextCursor,
+      setTextCursor: canvasCommands.interaction.setTextCursor,
       setStaticGridActiveCell: state.setStaticGridActiveCell,
       enterStaticGridTextEdit: state.enterStaticGridTextEdit,
       setStaticGridSelectionRange: state.setStaticGridSelectionRange,
@@ -80,24 +76,21 @@ function InteractionHarnessContent() {
       clearInteractionState: state.clearInteractionState,
       moveStaticGridSelection: state.moveStaticGridSelection,
       erasePoints: state.erasePoints,
-      offset: state.offset,
-      zoom: state.zoom,
+      ...testingCanvasRuntime.viewport.getSnapshot(),
       contentReader: state.contentSurface.reader,
       contentRevision: state.contentSurface.revision,
-      staticGridSelection: state.staticGridSelection,
       updateScratchForShape: state.updateScratchForShape,
-      setHoveredGrid: state.setHoveredGrid,
+      setHoveredGrid: canvasCommands.interaction.setHoveredGrid,
       fillArea: state.fillArea,
       structuredScene: state.structuredScene,
-      editingStructuredTextNodeId: state.editingStructuredTextNodeId,
-      selectedStructuredNodeIds: state.selectedStructuredNodeIds,
-      setStructuredGridFocus: state.setStructuredGridFocus,
-      setStructuredContextPoint: state.setStructuredContextPoint,
-      setSelectedStructuredNodeIds: state.setSelectedStructuredNodeIds,
-      setSelectedStructuredSplitHandle: state.setSelectedStructuredSplitHandle,
-      setEditingStructuredTextNodeId: state.setEditingStructuredTextNodeId,
-      setStructuredTextSelection: state.setStructuredTextSelection,
-      structuredTextSelection: state.structuredTextSelection,
+      setStructuredGridFocus: canvasCommands.interaction.setStructuredGridFocus,
+      setStructuredContextPoint: canvasCommands.interaction.setStructuredContextPoint,
+      setSelectedStructuredNodeIds: canvasCommands.interaction.setSelectedStructuredNodeIds,
+      setSelectedStructuredSplitHandle:
+        canvasCommands.interaction.setSelectedStructuredSplitHandle,
+      setEditingStructuredTextNodeId:
+        canvasCommands.interaction.setEditingStructuredTextNodeId,
+      setStructuredTextSelection: canvasCommands.interaction.setStructuredTextSelection,
       setStructuredTextColor: state.setStructuredTextColor,
       applyStructuredScene: state.applyStructuredScene,
       updateStructuredNode: state.updateStructuredNode,
@@ -163,7 +156,7 @@ describe("structured text interaction", () => {
   });
 
   const setStructuredTextScene = (options?: { editing?: boolean }) => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -190,7 +183,7 @@ describe("structured text interaction", () => {
   };
 
   const setStructuredMixedScene = () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -239,7 +232,7 @@ describe("structured text interaction", () => {
         style: { color: "#ffffff" },
       },
     ];
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -250,13 +243,13 @@ describe("structured text interaction", () => {
       selectedStructuredNodeIds: ["box-1", "text-1"],
     });
     useEditorStore.getState().applyStructuredScene(scene, "reset");
-    useEditorStore.setState({
+    setCanvasTestState({
       selectedStructuredNodeIds: ["box-1", "text-1"],
     });
   };
 
   const setStructuredBgScene = (selected = false) => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -279,7 +272,7 @@ describe("structured text interaction", () => {
   };
 
   const setStructuredLineScene = (selected = false) => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -303,7 +296,7 @@ describe("structured text interaction", () => {
   };
 
   const setStructuredSplitBoxScene = () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -359,7 +352,7 @@ describe("structured text interaction", () => {
 
   it("commits and clears structured marquee selection across repeated drags", () => {
     setStructuredMixedScene();
-    useEditorStore.setState({ selectedStructuredNodeIds: [] });
+    setCanvasTestState({ selectedStructuredNodeIds: [] });
     const { getByTestId } = render(<InteractionHarness />);
 
     for (let index = 0; index < 20; index += 1) {
@@ -379,7 +372,7 @@ describe("structured text interaction", () => {
         });
       });
 
-      expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([
+      expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([
         "box-1",
         "text-1",
       ]);
@@ -392,7 +385,7 @@ describe("structured text interaction", () => {
 
   it("finishes an active selection when drag end is retargeted to canvas UI", () => {
     setStructuredMixedScene();
-    useEditorStore.setState({ selectedStructuredNodeIds: [] });
+    setCanvasTestState({ selectedStructuredNodeIds: [] });
     const { getByTestId } = render(<InteractionHarness />);
     const canvasUi = document.createElement("button");
     canvasUi.dataset.canvasUi = "true";
@@ -413,7 +406,7 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([
       "box-1",
       "text-1",
     ]);
@@ -425,7 +418,7 @@ describe("structured text interaction", () => {
 
   it("clears an interrupted marquee without committing it", () => {
     setStructuredMixedScene();
-    useEditorStore.setState({ selectedStructuredNodeIds: [] });
+    setCanvasTestState({ selectedStructuredNodeIds: [] });
     const { getByTestId } = render(<InteractionHarness />);
 
     act(() => {
@@ -444,7 +437,7 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([]);
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([]);
     expect(getByTestId("canvas-root")).toHaveAttribute(
       "data-selection-preview",
       "none"
@@ -461,18 +454,18 @@ describe("structured text interaction", () => {
       clientY: 1,
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([
       "text-1",
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 0, y: 0 });
-    expect(useEditorStore.getState().editingStructuredTextNodeId).toBe(
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 0, y: 0 });
+    expect(useEditorStore.getState().interaction.editingStructuredTextNodeId).toBe(
       "text-1"
     );
-    expect(useEditorStore.getState().structuredTextSelection).toBeNull();
+    expect(useEditorStore.getState().interaction.structuredTextSelection).toBeNull();
   });
 
   it("enters static-grid text editing at a wide character anchor on double-click", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -488,9 +481,9 @@ describe("structured text interaction", () => {
       clientY: 1,
     });
 
-    expect(useEditorStore.getState().staticGridEditMode).toBe("text-edit");
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 1, y: 0 });
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({
+    expect(useEditorStore.getState().interaction.staticGridEditMode).toBe("text-edit");
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 1, y: 0 });
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({
       x: 1,
       y: 0,
     });
@@ -511,7 +504,7 @@ describe("structured text interaction", () => {
       id: "text-1",
       text: "Edit!",
     });
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 5, y: 0 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 5, y: 0 });
   });
 
   it("inserts text at the clicked middle offset while structured text is editing", () => {
@@ -530,12 +523,12 @@ describe("structured text interaction", () => {
       id: "text-1",
       text: "Ed!it",
     });
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 3, y: 0 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 3, y: 0 });
   });
 
   it("keeps active text caret targeting above overlapping background nodes", () => {
     setStructuredTextScene({ editing: true });
-    useEditorStore.setState({
+    setCanvasTestState({
       structuredScene: [
         {
           id: "text-1",
@@ -565,7 +558,7 @@ describe("structured text interaction", () => {
     });
     useEditorStore.getState().writeTextString("!");
 
-    expect(useEditorStore.getState().editingStructuredTextNodeId).toBe("text-1");
+    expect(useEditorStore.getState().interaction.editingStructuredTextNodeId).toBe("text-1");
     expect(useEditorStore.getState().structuredScene[0]).toMatchObject({
       id: "text-1",
       text: "Ed!it",
@@ -588,7 +581,7 @@ describe("structured text interaction", () => {
     });
     useEditorStore.getState().writeTextString("!");
 
-    expect(useEditorStore.getState().editingStructuredTextNodeId).toBe("text-1");
+    expect(useEditorStore.getState().interaction.editingStructuredTextNodeId).toBe("text-1");
     expect(useEditorStore.getState().structuredScene[0]).toMatchObject({
       id: "text-1",
       text: "Edit!",
@@ -619,11 +612,11 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 2, y: 0 });
-    expect(useEditorStore.getState().editingStructuredTextNodeId).toBe(
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 2, y: 0 });
+    expect(useEditorStore.getState().interaction.editingStructuredTextNodeId).toBe(
       "text-1"
     );
-    expect(useEditorStore.getState().structuredTextSelection).toEqual({
+    expect(useEditorStore.getState().interaction.structuredTextSelection).toEqual({
       nodeId: "text-1",
       anchor: 0,
       focus: 2,
@@ -655,7 +648,7 @@ describe("structured text interaction", () => {
     const linkedEntry = DEFAULT_DEMO_GRID.find(([, cell]) => !!cell.href);
     expect(linkedEntry).toBeDefined();
     const linkedPoint = GridManager.fromKey(linkedEntry![0]);
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -664,15 +657,8 @@ describe("structured text interaction", () => {
       structuredScene: [],
     });
     const runtime = new CanvasEngineRuntime({
-      getViewport: () => {
-        const state = useEditorStore.getState();
-        return { offset: state.offset, zoom: state.zoom };
-      },
-      setViewport: (updater) => {
-        const state = useEditorStore.getState();
-        const next = updater({ offset: state.offset, zoom: state.zoom });
-        useEditorStore.setState({ offset: next.offset, zoom: next.zoom });
-      },
+      getViewport: testingCanvasRuntime.viewport.getSnapshot,
+      setViewport: testingCanvasRuntime.commands.viewport.setViewport,
     });
     const unregisterManager = vi.spyOn(runtime, "unregisterManager");
     interactionRuntime = runtime;
@@ -717,7 +703,7 @@ describe("structured text interaction", () => {
   });
 
   it("uses a drawing cursor when hovering with structured shape tools", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: "box",
       offset: { x: 0, y: 0 },
@@ -736,7 +722,7 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().hoveredGrid).toEqual({ x: 2, y: 3 });
+    expect(useEditorStore.getState().interaction.hoveredGrid).toEqual({ x: 2, y: 3 });
     expect(getByTestId("canvas-root").style.cursor).toBe("crosshair");
   });
 
@@ -746,7 +732,7 @@ describe("structured text interaction", () => {
     ["line", "line"],
     ["bg", "bg"],
   ] as const)("creates a structured %s node by dragging", (tool, expectedType) => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       tool: tool as ToolType,
       offset: { x: 0, y: 0 },
@@ -783,13 +769,13 @@ describe("structured text interaction", () => {
       start: { x: 1, y: 1 },
       end: { x: 5, y: 3 },
     });
-    expect(state.selectedStructuredNodeIds).toEqual([
+    expect(state.interaction.selectedStructuredNodeIds).toEqual([
       state.structuredScene[0].id,
     ]);
   });
 
   it("anchors the hovered cell while canvas color picking is active", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -809,12 +795,12 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().hoveredGrid).toEqual({ x: 2, y: 3 });
+    expect(useEditorStore.getState().interaction.hoveredGrid).toEqual({ x: 2, y: 3 });
     expect(getByTestId("canvas-root").style.cursor).toBe("crosshair");
   });
 
   it("picks char color from a visible canvas cell", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -837,12 +823,12 @@ describe("structured text interaction", () => {
 
     const state = useEditorStore.getState();
     expect(state.brushColor).toBe("#112233");
-    expect(state.canvasColorPickerTarget).toBeNull();
-    expect(state.hoveredGrid).toBeNull();
+    expect(state.interaction.canvasColorPickerTarget).toBeNull();
+    expect(state.interaction.hoveredGrid).toBeNull();
   });
 
   it("keeps automatic color picking active after an empty cell click", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -872,13 +858,13 @@ describe("structured text interaction", () => {
 
     const state = useEditorStore.getState();
     expect(state.brushColor).toBe("#000000");
-    expect(state.canvasColorPickerTarget).toBe("auto");
-    expect(state.hoveredGrid).toEqual({ x: 2, y: 3 });
+    expect(state.interaction.canvasColorPickerTarget).toBe("auto");
+    expect(state.interaction.hoveredGrid).toEqual({ x: 2, y: 3 });
     expect(getByTestId("canvas-root").style.cursor).toBe("crosshair");
   });
 
   it("picks background color from a blank canvas cell", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -901,12 +887,12 @@ describe("structured text interaction", () => {
 
     const state = useEditorStore.getState();
     expect(state.brushColor).toBe("#445566");
-    expect(state.canvasColorPickerTarget).toBeNull();
-    expect(state.hoveredGrid).toBeNull();
+    expect(state.interaction.canvasColorPickerTarget).toBeNull();
+    expect(state.interaction.hoveredGrid).toBeNull();
   });
 
   it("asks which source to use when a cell has different foreground and background colors", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       tool: "select",
       offset: { x: 0, y: 0 },
@@ -928,7 +914,7 @@ describe("structured text interaction", () => {
     });
 
     expect(useEditorStore.getState().brushColor).toBe("#000000");
-    expect(useEditorStore.getState().canvasColorPickerTarget).toBeNull();
+    expect(useEditorStore.getState().interaction.canvasColorPickerTarget).toBeNull();
     fireEvent.click(
       await screen.findByRole("button", {
         name: "Use cell background color #445566",
@@ -952,13 +938,13 @@ describe("structured text interaction", () => {
     });
 
     const state = useEditorStore.getState();
-    expect(state.selectedStructuredNodeIds).toEqual(["split-1"]);
-    expect(state.structuredContextPoint).toEqual({ x: 2, y: 2 });
+    expect(state.interaction.selectedStructuredNodeIds).toEqual(["split-1"]);
+    expect(state.interaction.structuredContextPoint).toEqual({ x: 2, y: 2 });
   });
 
   it("selects a split divider handle from a left click", () => {
     setStructuredSplitBoxScene();
-    useEditorStore.setState({
+    setCanvasTestState({
       structuredScene: [
         {
           id: "split-1",
@@ -991,8 +977,8 @@ describe("structured text interaction", () => {
     });
 
     const state = useEditorStore.getState();
-    expect(state.selectedStructuredNodeIds).toEqual(["split-1"]);
-    expect(state.selectedStructuredSplitHandle).toEqual({
+    expect(state.interaction.selectedStructuredNodeIds).toEqual(["split-1"]);
+    expect(state.interaction.selectedStructuredSplitHandle).toEqual({
       nodeId: "split-1",
       handle: "split:split-existing",
     });
@@ -1004,7 +990,7 @@ describe("structured text interaction", () => {
 
   it("resizes a split divider only after dragging away from the clicked cell", () => {
     setStructuredSplitBoxScene();
-    useEditorStore.setState({
+    setCanvasTestState({
       selectedStructuredNodeIds: ["split-1"],
       structuredScene: [
         {
@@ -1082,7 +1068,7 @@ describe("structured text interaction", () => {
     });
     expect(node.type === "splitBox" && node.root?.type === "split" && node.root.ratio)
       .toBeGreaterThan(0.5);
-    expect(useEditorStore.getState().selectedStructuredSplitHandle).toEqual({
+    expect(useEditorStore.getState().interaction.selectedStructuredSplitHandle).toEqual({
       nodeId: "split-1",
       handle: "split:split-existing",
     });
@@ -1090,7 +1076,7 @@ describe("structured text interaction", () => {
 
   it("clears stale split box focus when left-clicking another structured node", () => {
     setStructuredMixedScene();
-    useEditorStore.setState({
+    setCanvasTestState({
       selectedStructuredNodeIds: [],
       structuredContextPoint: { x: 2, y: 2 },
     });
@@ -1103,15 +1089,15 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([
       "box-1",
     ]);
-    expect(useEditorStore.getState().structuredContextPoint).toBeNull();
+    expect(useEditorStore.getState().interaction.structuredContextPoint).toBeNull();
   });
 
   it("focuses an empty structured cell after a blank select click", () => {
     setStructuredTextScene();
-    useEditorStore.setState({
+    setCanvasTestState({
       selectedStructuredNodeIds: ["text-1"],
       structuredGridFocus: null,
     });
@@ -1130,9 +1116,9 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([]);
-    expect(useEditorStore.getState().textCursor).toBeNull();
-    expect(useEditorStore.getState().structuredGridFocus).toEqual({ x: 5, y: 2 });
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([]);
+    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(useEditorStore.getState().interaction.structuredGridFocus).toEqual({ x: 5, y: 2 });
   });
 
   it("does not start moving text on the second press of a double-click", () => {
@@ -1151,10 +1137,10 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([
       "text-1",
     ]);
-    expect(useEditorStore.getState().editingStructuredTextNodeId).toBeNull();
+    expect(useEditorStore.getState().interaction.editingStructuredTextNodeId).toBeNull();
     expect(useEditorStore.getState().structuredScene[0]).toMatchObject({
       id: "text-1",
       position: { x: 0, y: 0 },
@@ -1181,8 +1167,8 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().textCursor).toBeNull();
-    expect(useEditorStore.getState().editingStructuredTextNodeId).toBeNull();
+    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(useEditorStore.getState().interaction.editingStructuredTextNodeId).toBeNull();
     expect(useEditorStore.getState().structuredScene[0]).toMatchObject({
       id: "text-1",
       position: { x: 2, y: 0 },
@@ -1217,7 +1203,7 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([
       "box-1",
       "text-1",
     ]);
@@ -1290,7 +1276,7 @@ describe("structured text interaction", () => {
 
   it("switches to single-node movement when dragging an unselected structured node", () => {
     setStructuredMixedScene();
-    useEditorStore.setState({ selectedStructuredNodeIds: ["text-1"] });
+    setCanvasTestState({ selectedStructuredNodeIds: ["text-1"] });
     render(<InteractionHarness />);
 
     act(() => {
@@ -1309,7 +1295,7 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([
       "box-1",
     ]);
     expect(useEditorStore.getState().structuredScene).toMatchObject([
@@ -1345,7 +1331,7 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([
       "bg-1",
     ]);
     expect(useEditorStore.getState().structuredScene[0]).toMatchObject({
@@ -1371,7 +1357,7 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([
       "bg-1",
     ]);
     expect(useEditorStore.getState().structuredScene[0]).toMatchObject({
@@ -1484,7 +1470,7 @@ describe("structured text interaction", () => {
 
   it("resizes the hit rectangle instead of moving every selected node", () => {
     setStructuredMixedScene();
-    useEditorStore.setState({ selectedStructuredNodeIds: ["box-1"] });
+    setCanvasTestState({ selectedStructuredNodeIds: ["box-1"] });
     render(<InteractionHarness />);
 
     act(() => {
@@ -1499,7 +1485,7 @@ describe("structured text interaction", () => {
       });
     });
 
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual([
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual([
       "box-1",
     ]);
     expect(useEditorStore.getState().structuredScene).toMatchObject([

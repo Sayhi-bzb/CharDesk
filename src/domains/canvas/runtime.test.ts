@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { createSelectionCommandFactory } from "@/domains/actions/public";
 import { parseDocumentSessionSource } from "@/domains/document/public";
@@ -67,6 +67,49 @@ const sessions: CanvasSessionSnapshot[] = [
   },
 ];
 
+const createTestRuntime = (initialSessions: CanvasSessionSnapshot[] = sessions) => {
+  const documents = new CanvasDocumentRegistry();
+  return createCanvasRuntime({
+    documents,
+    persistence: false,
+    initialSessions,
+    parseSessionSource: parseDocumentSessionSource,
+    selectionCommands: createSelectionCommandFactory({
+      getActiveDocumentId: documents.getActiveDocumentId,
+      renderClipboardText: async () => ({
+        kind: "spans",
+        renderer: "raw",
+        pipeline: [],
+        rows: [],
+        width: 0,
+        height: 0,
+        diagnostics: [],
+      }),
+    }),
+  });
+};
+
+describe("CanvasRuntime command boundary", () => {
+  it("exposes data snapshots while commands own interaction mutations", () => {
+    const runtime = createTestRuntime();
+    const listener = vi.fn();
+    const unsubscribe = runtime.subscribe(listener);
+
+    try {
+      expect(runtime.getState()).not.toHaveProperty("setTool");
+      expect(runtime.getState()).not.toHaveProperty("setTextCursor");
+
+      runtime.commands.tools.set("pan");
+
+      expect(runtime.getState().tool).toBe("pan");
+      expect(listener).toHaveBeenCalledOnce();
+    } finally {
+      unsubscribe();
+      runtime.dispose();
+    }
+  });
+});
+
 describe("CanvasRuntime.materializeSession", () => {
   let runtime: CanvasRuntime | null = null;
 
@@ -94,15 +137,19 @@ describe("CanvasRuntime.materializeSession", () => {
       }),
     });
     runtime.commands.sessions.switch("canvas-b");
+    expect(runtime.getState()).not.toHaveProperty("offset");
+    expect(runtime.getState()).not.toHaveProperty("zoom");
+    expect(runtime.getState()).not.toHaveProperty("textCursor");
+    expect(runtime.getState()).toHaveProperty("interaction.textCursor", null);
     const activeCanvasId = runtime.getState().activeCanvasId;
-    const viewport = runtime.getState().offset;
+    const viewport = runtime.viewport.getSnapshot();
 
     const materialized = await runtime.materializeSession("canvas-a");
 
     expect(materialized?.name).toBe("Alpha");
     expect(materialized?.surface.getCell({ x: 0, y: 0 })?.char).toBe("A");
     expect(runtime.getState().activeCanvasId).toBe(activeCanvasId);
-    expect(runtime.getState().offset).toEqual(viewport);
+    expect(runtime.viewport.getSnapshot()).toEqual(viewport);
   });
 
   it("returns null for an unknown session", async () => {

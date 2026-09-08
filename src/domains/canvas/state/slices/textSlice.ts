@@ -31,14 +31,18 @@ import {
 } from "@/shared/metrics";
 import {
   getStructuredTextCaretPoint,
+  getNextStructuredOrder,
   getStructuredTextOffsetAtPoint,
   getStructuredTextSelectionRange,
-  normalizeStructuredTextSelection,
   replaceStructuredTextRange as replaceStructuredTextNodeRange,
 } from "@/domains/structured-content/public";
 import { clampPointToActiveSlide, getActiveSlideGridBounds } from "../slideBounds";
-import { resolveGridAnchor, resolveGridSlot } from "@/shared/utils/grid-occupancy";
+import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
 import { resolveEditorDocumentAddress } from "../helpers/gridHelpers";
+import {
+  createCanvasInteractionPatch,
+  type CanvasInteractionSnapshot,
+} from "../canvasInteractionState";
 
 const toCharIndexByColumn = (text: string, columnOffset: number) => {
   if (columnOffset <= 0) return 0;
@@ -54,7 +58,7 @@ const toCharIndexByColumn = (text: string, columnOffset: number) => {
 
 const findTextNodeAtCursor = (
   scene: EditorState["structuredScene"],
-  cursor: EditorState["textCursor"],
+  cursor: CanvasInteractionSnapshot["textCursor"],
   preferredNodeId?: string | null
 ) => {
   if (!cursor) return null;
@@ -108,7 +112,7 @@ type WrittenBounds = {
 };
 
 const selectWrittenBounds = (
-  selection: EditorState["staticGridSelection"],
+  selection: CanvasInteractionSnapshot["staticGridSelection"],
   bounds: WrittenBounds
 ) => {
   const start = { x: bounds.minX, y: bounds.minY };
@@ -123,7 +127,7 @@ const selectWrittenBounds = (
 };
 
 const selectWrittenCells = (
-  selection: EditorState["staticGridSelection"],
+  selection: CanvasInteractionSnapshot["staticGridSelection"],
   writes: WrittenCell[]
 ) => {
   if (writes.length === 0) return selection;
@@ -145,7 +149,7 @@ const selectWrittenCells = (
 
 const findBoxNameTargetAtCursor = (
   scene: EditorState["structuredScene"],
-  cursor: EditorState["textCursor"]
+  cursor: CanvasInteractionSnapshot["textCursor"]
 ) => {
   if (!cursor) return null;
   const candidates = scene
@@ -168,59 +172,6 @@ const findBoxNameTargetAtCursor = (
 export const createTextSlice = (
   documents: CanvasDocumentRegistry
 ): StateCreator<EditorState, [], [], TextSlice> => (set, get) => ({
-  textCursor: null,
-  editingStructuredTextNodeId: null,
-  structuredTextSelection: null,
-  setTextCursor: (pos) =>
-    set((state) => {
-      const resolvedPos =
-        pos && state.canvasMode !== "structured"
-          ? resolveGridAnchor(state.contentSurface.reader, pos)
-          : pos;
-      const nextPos = resolvedPos
-        ? clampPointToActiveSlide(state, resolvedPos)
-        : null;
-      return {
-        textCursor: nextPos,
-        ...(state.canvasMode === "structured" && nextPos ? { structuredGridFocus: null } : {}),
-        ...(nextPos ? {} : { editingStructuredTextNodeId: null, structuredTextSelection: null }),
-        ...(nextPos
-          ? {
-              staticGridSelection: collapseGridSelectionTo(state.staticGridSelection, nextPos),
-              staticGridEditMode: "text-edit" as const,
-              staticGridInputFlow:
-                state.canvasMode !== "structured"
-                  ? createInputFlow(state, nextPos)
-                  : null,
-            }
-          : { staticGridInputFlow: null }),
-      };
-    }),
-  setEditingStructuredTextNodeId: (id) =>
-    set((state) => {
-      if (!id) return { editingStructuredTextNodeId: null, structuredTextSelection: null };
-      const node = state.structuredScene.find(
-        (sceneNode) => sceneNode.id === id && sceneNode.type === "text"
-      );
-      return {
-        editingStructuredTextNodeId: node ? id : null,
-        structuredTextSelection: node ? state.structuredTextSelection : null,
-      };
-    }),
-  setStructuredTextSelection: (selection) =>
-    set((state) => {
-      if (!selection) return { structuredTextSelection: null };
-      const node = state.structuredScene.find(
-        (sceneNode) => sceneNode.id === selection.nodeId && sceneNode.type === "text"
-      );
-      if (!node || node.type !== "text") return { structuredTextSelection: null };
-      return {
-        structuredTextSelection: normalizeStructuredTextSelection(
-          selection,
-          splitGraphemes(node.text).length
-        ),
-      };
-    }),
   replaceStructuredTextRange: (nodeId, start, end, text, styleRanges) => {
     const state = get();
     if (state.canvasMode !== "structured") return;
@@ -248,7 +199,7 @@ export const createTextSlice = (
         start + splitGraphemes(text).length
       )
     );
-    set({
+    set((current) => createCanvasInteractionPatch(current.interaction, {
       textCursor: getStructuredTextCaretPoint(replacementTextNode, cursorOffset),
       editingStructuredTextNodeId: nodeId,
       structuredTextSelection: null,
@@ -257,32 +208,34 @@ export const createTextSlice = (
       selectedStructuredSplitHandle: null,
       structuredContextPoint: null,
       structuredGridFocus: null,
-    });
+    }));
   },
 
   writeTextString: (str, startPos, options) => {
+    const current = get();
     const {
       staticGridSelection,
       staticGridEditMode,
       staticGridInputFlow,
-      fillSelectionsWithChar,
       textCursor,
+      editingStructuredTextNodeId,
+      structuredGridFocus,
+    } = current.interaction;
+    const {
+      fillSelectionsWithChar,
       brushColor,
       canvasMode,
       structuredScene,
       applyStructuredScene,
-      getNextStructuredOrder,
-      editingStructuredTextNodeId,
-      structuredGridFocus,
-    } = get();
+    } = current;
 
     if (canvasMode === "structured") {
       const normalized = str.replace(/\r\n?/g, "\n");
       if (!normalized) return;
       const selectedRange = getStructuredTextSelectionRange(
-        get().structuredTextSelection
+        get().interaction.structuredTextSelection
       );
-      const selectedNodeId = get().structuredTextSelection?.nodeId;
+      const selectedNodeId = get().interaction.structuredTextSelection?.nodeId;
       if (selectedRange && selectedNodeId) {
         get().replaceStructuredTextRange(
           selectedNodeId,
@@ -321,13 +274,13 @@ export const createTextSlice = (
           labelCapacity
         );
         const nextCursorColumn = getTextColumnWidth(nextCursorText);
-        set({
+        set((state) => createCanvasInteractionPatch(state.interaction, {
           textCursor: {
             x: labelStartX + nextCursorColumn,
             y: bounds.y,
           },
           structuredGridFocus: null,
-        });
+        }));
         return;
       }
 
@@ -341,13 +294,13 @@ export const createTextSlice = (
         const nextNode: StructuredTextNode = {
           id: nodeId,
           type: "text",
-          order: getNextStructuredOrder(),
+          order: getNextStructuredOrder(structuredScene),
           position: { ...cursor },
           text: normalized,
           style: { color: brushColor },
         };
         applyStructuredScene([...structuredScene, nextNode], true);
-        set({
+        set((state) => createCanvasInteractionPatch(state.interaction, {
           textCursor: getStructuredTextCaretPoint(
             nextNode,
             splitGraphemes(normalized).length
@@ -357,7 +310,7 @@ export const createTextSlice = (
           selectedStructuredNodeIds: [nodeId],
           selectedStructuredBoxId: null,
           structuredGridFocus: null,
-        });
+        }));
         return;
       }
 
@@ -432,9 +385,12 @@ export const createTextSlice = (
     }
 
     if (options?.selectResult && canvasMode === "freeform" && writes.length > 0) {
-      set((current) => ({
+      set((current) => createCanvasInteractionPatch(current.interaction, {
         textCursor: null,
-        staticGridSelection: selectWrittenCells(current.staticGridSelection, writes),
+        staticGridSelection: selectWrittenCells(
+          current.interaction.staticGridSelection,
+          writes
+        ),
         staticGridEditMode: "navigate",
         staticGridInputFlow: null,
       }));
@@ -442,21 +398,25 @@ export const createTextSlice = (
     }
 
     const activeCell = clampPointToActiveSlide(state, flow.activeCell);
-    set((current) => ({
+    set((current) => createCanvasInteractionPatch(current.interaction, {
       textCursor: activeCell,
-      staticGridSelection: collapseGridSelectionTo(current.staticGridSelection, activeCell),
+      staticGridSelection: collapseGridSelectionTo(
+        current.interaction.staticGridSelection,
+        activeCell
+      ),
       staticGridEditMode: "text-edit",
       staticGridInputFlow: flow,
     }));
   },
 
   pasteRichData: (cells, startPos, options) => {
+    const state = get();
     const {
       textCursor,
       staticGridSelection,
       staticGridEditMode,
-      canvasMode,
-    } = get();
+    } = state.interaction;
+    const { canvasMode } = state;
     if (canvasMode === "structured") return;
 
     const staticGridView = getStaticGridViewState({
@@ -505,9 +465,12 @@ export const createTextSlice = (
       });
     });
     if (options?.selectResult && canvasMode === "freeform" && writes.length > 0) {
-      set((current) => ({
+      set((current) => createCanvasInteractionPatch(current.interaction, {
         textCursor: null,
-        staticGridSelection: selectWrittenCells(current.staticGridSelection, writes),
+        staticGridSelection: selectWrittenCells(
+          current.interaction.staticGridSelection,
+          writes
+        ),
         staticGridEditMode: "navigate",
         staticGridInputFlow: null,
       }));
@@ -515,7 +478,9 @@ export const createTextSlice = (
   },
 
   pasteRichRows: (rows, startPos, options) => {
-    const { textCursor, staticGridSelection, staticGridEditMode, canvasMode } = get();
+    const state = get();
+    const { textCursor, staticGridSelection, staticGridEditMode } = state.interaction;
+    const { canvasMode } = state;
     if (canvasMode === "structured" || rows.length === 0) return;
     const staticGridView = getStaticGridViewState({
       selection: staticGridSelection,
@@ -561,10 +526,10 @@ export const createTextSlice = (
         }
       : null;
     if (options?.selectResult && writtenBounds) {
-      set((current) => ({
+      set((current) => createCanvasInteractionPatch(current.interaction, {
         textCursor: null,
         staticGridSelection: selectWrittenBounds(
-          current.staticGridSelection,
+          current.interaction.staticGridSelection,
           writtenBounds!
         ),
         staticGridEditMode: "navigate",
@@ -574,14 +539,17 @@ export const createTextSlice = (
   },
 
   moveTextCursor: (dx, dy) => {
+    const state = get();
     const {
       textCursor,
+      editingStructuredTextNodeId,
+      staticGridInputFlow,
+    } = state.interaction;
+    const {
       contentSurface,
       canvasMode,
       structuredScene,
-      editingStructuredTextNodeId,
-      staticGridInputFlow,
-    } = get();
+    } = state;
     const grid = contentSurface.reader;
     if (!textCursor) return;
     if (canvasMode === "structured" && editingStructuredTextNodeId && dy === 0 && dx !== 0) {
@@ -593,7 +561,9 @@ export const createTextSlice = (
         const currentOffset = getStructuredTextOffsetAtPoint(node, textCursor);
         const textLength = splitGraphemes(node.text).length;
         const nextOffset = Math.max(0, Math.min(textLength, currentOffset + dx));
-        set({ textCursor: getStructuredTextCaretPoint(node, nextOffset) });
+        set(createCanvasInteractionPatch(state.interaction, {
+          textCursor: getStructuredTextCaretPoint(node, nextOffset),
+        }));
         return;
       }
     }
@@ -607,13 +577,15 @@ export const createTextSlice = (
       } else if (dx < 0) {
         newX = resolveGridSlot(grid, { x: newX - 1, y: currentPoint.y })?.anchor.x ?? newX + dx;
       }
-      const state = get();
       const nextCell = clampPointToActiveSlide(state, { x: newX, y: newY });
-      set({
+      set(createCanvasInteractionPatch(state.interaction, {
         textCursor: nextCell,
-        staticGridSelection: collapseGridSelectionTo(state.staticGridSelection, nextCell),
+        staticGridSelection: collapseGridSelectionTo(
+          state.interaction.staticGridSelection,
+          nextCell
+        ),
         staticGridInputFlow: createInputFlow(state, nextCell),
-      });
+      }));
       return;
     }
     let newX = textCursor.x;
@@ -626,29 +598,32 @@ export const createTextSlice = (
         resolveGridSlot(grid, { x: newX - 1, y: textCursor.y })?.anchor.x ??
         newX - 1;
     }
-    set((state) => ({
-      textCursor: clampPointToActiveSlide(state, { x: newX, y: newY }),
+    set((current) => createCanvasInteractionPatch(current.interaction, {
+      textCursor: clampPointToActiveSlide(current, { x: newX, y: newY }),
     }));
   },
 
   backspaceText: () => {
+    const state = get();
     const {
       textCursor,
+      editingStructuredTextNodeId,
+      staticGridInputFlow,
+    } = state.interaction;
+    const {
       contentSurface,
       canvasMode,
       structuredScene,
       applyStructuredScene,
-      editingStructuredTextNodeId,
-      staticGridInputFlow,
-    } = get();
+    } = state;
     const grid = contentSurface.reader;
     if (!textCursor) return;
 
     if (canvasMode === "structured") {
       const selectedRange = getStructuredTextSelectionRange(
-        get().structuredTextSelection
+        get().interaction.structuredTextSelection
       );
-      const selectedNodeId = get().structuredTextSelection?.nodeId;
+      const selectedNodeId = get().interaction.structuredTextSelection?.nodeId;
       if (selectedRange && selectedNodeId) {
         get().replaceStructuredTextRange(
           selectedNodeId,
@@ -682,12 +657,12 @@ export const createTextSlice = (
           ),
           true
         );
-        set({
+        set((current) => createCanvasInteractionPatch(current.interaction, {
           textCursor: {
             x: labelStartX + nextCursorColumn,
             y: bounds.y,
           },
-        });
+        }));
         return;
       }
 
@@ -726,27 +701,33 @@ export const createTextSlice = (
       previousCell: null,
       exhausted: false,
     };
-    set((state) => ({
+    set((current) => createCanvasInteractionPatch(current.interaction, {
       textCursor: deletePos,
-      staticGridSelection: collapseGridSelectionTo(state.staticGridSelection, deletePos),
+      staticGridSelection: collapseGridSelectionTo(
+        current.interaction.staticGridSelection,
+        deletePos
+      ),
       staticGridInputFlow: nextFlow,
     }));
   },
 
   deleteTextForward: () => {
+    const state = get();
     const {
       textCursor,
+      editingStructuredTextNodeId,
+    } = state.interaction;
+    const {
       canvasMode,
       structuredScene,
       applyStructuredScene,
-      editingStructuredTextNodeId,
-    } = get();
+    } = state;
     if (!textCursor || canvasMode !== "structured") return;
 
     const selectedRange = getStructuredTextSelectionRange(
-      get().structuredTextSelection
+      get().interaction.structuredTextSelection
     );
-    const selectedNodeId = get().structuredTextSelection?.nodeId;
+    const selectedNodeId = get().interaction.structuredTextSelection?.nodeId;
     if (selectedRange && selectedNodeId) {
       get().replaceStructuredTextRange(
         selectedNodeId,
@@ -798,23 +779,28 @@ export const createTextSlice = (
       ),
       true
     );
-    set({ textCursor: { x: textCursor.x, y: bounds.y } });
+    set(createCanvasInteractionPatch(state.interaction, {
+      textCursor: { x: textCursor.x, y: bounds.y },
+    }));
   },
 
   newlineText: () => {
+    const state = get();
     const {
       textCursor,
-      canvasMode,
-      structuredScene,
       editingStructuredTextNodeId,
       staticGridInputFlow,
-    } = get();
+    } = state.interaction;
+    const {
+      canvasMode,
+      structuredScene,
+    } = state;
     if (!textCursor) return;
     if (canvasMode === "structured") {
       const selectedRange = getStructuredTextSelectionRange(
-        get().structuredTextSelection
+        get().interaction.structuredTextSelection
       );
-      const selectedNodeId = get().structuredTextSelection?.nodeId;
+      const selectedNodeId = get().interaction.structuredTextSelection?.nodeId;
       if (selectedRange && selectedNodeId) {
         get().replaceStructuredTextRange(
           selectedNodeId,
@@ -841,11 +827,12 @@ export const createTextSlice = (
         return;
       }
 
-      set({ textCursor: { x: textCursor.x, y: textCursor.y + 1 } });
+      set(createCanvasInteractionPatch(state.interaction, {
+        textCursor: { x: textCursor.x, y: textCursor.y + 1 },
+      }));
       return;
     }
 
-    const state = get();
     const flow =
       staticGridInputFlow ??
       createInputFlow(state, textCursor);
@@ -854,31 +841,37 @@ export const createTextSlice = (
       bounds: getActiveSlideGridBounds(state),
     });
     const activeCell = clampPointToActiveSlide(state, nextFlow.activeCell);
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       textCursor: activeCell,
-      staticGridSelection: collapseGridSelectionTo(state.staticGridSelection, activeCell),
+      staticGridSelection: collapseGridSelectionTo(
+        state.interaction.staticGridSelection,
+        activeCell
+      ),
       staticGridInputFlow: nextFlow,
-    });
+    }));
   },
 
   indentText: () => {
     const state = get();
-    const { textCursor } = state;
+    const { textCursor } = state.interaction;
     if (!textCursor) return;
     if (state.canvasMode !== "structured") {
       const activeCell = clampPointToActiveSlide(state, {
         x: textCursor.x + 2,
         y: textCursor.y,
       });
-      set({
+      set(createCanvasInteractionPatch(state.interaction, {
         textCursor: activeCell,
-        staticGridSelection: collapseGridSelectionTo(state.staticGridSelection, activeCell),
+        staticGridSelection: collapseGridSelectionTo(
+          state.interaction.staticGridSelection,
+          activeCell
+        ),
         staticGridInputFlow: createInputFlow(state, activeCell),
-      });
+      }));
       return;
     }
-    set({
+    set(createCanvasInteractionPatch(state.interaction, {
       textCursor: { x: textCursor.x + 2, y: textCursor.y },
-    });
+    }));
   },
 });

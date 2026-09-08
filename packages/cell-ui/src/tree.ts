@@ -33,6 +33,8 @@ const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.hovered === right.hovered
   && left.selected === right.selected
   && left.checked === right.checked
+  && left.buttonVariant === right.buttonVariant
+  && left.buttonSize === right.buttonSize
   && left.sliderValue === right.sliderValue
   && left.sliderMin === right.sliderMin
   && left.sliderMax === right.sliderMax
@@ -90,6 +92,8 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       hovered: false,
       selected: current.selected,
       checked: current.checked,
+      buttonVariant: current.buttonVariant,
+      buttonSize: current.buttonSize,
       sliderValue: current.sliderValue,
       sliderMin: current.sliderMin,
       sliderMax: current.sliderMax,

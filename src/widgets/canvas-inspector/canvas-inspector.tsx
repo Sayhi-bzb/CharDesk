@@ -112,12 +112,9 @@ export function CanvasInspectorControl({
       tool: value.tool,
       brushColor: value.brushColor,
       brushBackgroundColor: value.brushBackgroundColor,
-      canvasColorPickerTarget: value.canvasColorPickerTarget,
       contentSurface: value.contentSurface,
-      staticGridSelection: value.staticGridSelection,
       structuredScene: value.structuredScene,
-      selectedStructuredNodeIds: value.selectedStructuredNodeIds,
-      structuredTextSelection: value.structuredTextSelection,
+      interaction: value.interaction,
     }))
   );
   const model = useMemo(
@@ -128,20 +125,20 @@ export function CanvasInspectorControl({
         brushColor: state.brushColor,
         brushBackgroundColor: state.brushBackgroundColor,
         grid: state.contentSurface.reader,
-        staticGridSelection: state.staticGridSelection,
+        staticGridSelection: state.interaction.staticGridSelection,
         structuredScene: state.structuredScene,
-        selectedStructuredNodeIds: state.selectedStructuredNodeIds,
-        structuredTextSelection: state.structuredTextSelection,
+        selectedStructuredNodeIds: state.interaction.selectedStructuredNodeIds,
+        structuredTextSelection: state.interaction.structuredTextSelection,
       }),
     [
       state.brushBackgroundColor,
       state.brushColor,
       state.canvasMode,
       state.contentSurface,
-      state.selectedStructuredNodeIds,
+      state.interaction.selectedStructuredNodeIds,
       state.structuredScene,
-      state.structuredTextSelection,
-      state.staticGridSelection,
+      state.interaction.structuredTextSelection,
+      state.interaction.staticGridSelection,
       state.tool,
     ]
   );
@@ -235,7 +232,7 @@ export function CanvasInspectorControl({
       ) {
         return;
       }
-      if (input.key === "Escape" && (panelOpen || state.canvasColorPickerTarget)) {
+      if (input.key === "Escape" && (panelOpen || state.interaction.canvasColorPickerTarget)) {
         close();
         return { claimed: true, preventDefault: true };
       }

@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyFreeformSnapshotToYMaps,
   redoCanvas,
+  testingCanvasRuntime,
   undoCanvas,
+  setCanvasTestState,
   useEditorStore,
 } from "@/domains/canvas/testing";
 import { ShortcutProvider } from "@/shared/shortcuts/dispatcher";
@@ -21,7 +23,26 @@ const managedKeyDownEvent = (
 
 const getEditorModel = () => {
   const state = useEditorStore.getState();
-  return { ...state, contentReader: state.contentSurface.reader };
+  const { commands, queries } = testingCanvasRuntime;
+  return {
+    ...state,
+    ...testingCanvasRuntime.viewport.getSnapshot(),
+    setOffset: commands.viewport.setOffset,
+    moveStructuredGridFocus: commands.interaction.moveStructuredGridFocus,
+    setTextCursor: commands.interaction.setTextCursor,
+    setStructuredGridFocus: commands.interaction.setStructuredGridFocus,
+    setSelectedStructuredNodeIds: commands.interaction.setSelectedStructuredNodeIds,
+    setSelectedStructuredSplitHandle:
+      commands.interaction.setSelectedStructuredSplitHandle,
+    setEditingStructuredTextNodeId:
+      commands.interaction.setEditingStructuredTextNodeId,
+    setStructuredTextSelection: commands.interaction.setStructuredTextSelection,
+    setCanvasColorPickerTarget: commands.interaction.setColorPickerTarget,
+    setHoveredGrid: commands.interaction.setHoveredGrid,
+    setStructuredContextPoint: commands.interaction.setStructuredContextPoint,
+    getNextStructuredOrder: queries.getNextStructuredOrder,
+    contentReader: state.contentSurface.reader,
+  };
 };
 
 describe("useManagedCanvasInput", () => {
@@ -58,8 +79,11 @@ describe("useManagedCanvasInput", () => {
     const fillSelectionsWithChar = vi.fn();
     const model = {
       ...getEditorModel(),
-      textCursor: null,
-      selectedStructuredNodeIds: [],
+      interaction: {
+        ...getEditorModel().interaction,
+        textCursor: null,
+        selectedStructuredNodeIds: [],
+      },
       fillSelectionsWithChar,
     };
     const { result } = renderHook(
@@ -87,7 +111,7 @@ describe("useManagedCanvasInput", () => {
   });
 
   it("keeps consecutive half-width input, including Space, on one advancing grid flow", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
@@ -138,8 +162,8 @@ describe("useManagedCanvasInput", () => {
         ["6,3", { char: "B", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 7, y: 3 });
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 7, y: 3 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 7, y: 3 });
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 7, y: 3 });
     expect(undoCanvas()).toBe(true);
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
     expect(redoCanvas()).toBe(true);
@@ -151,7 +175,7 @@ describe("useManagedCanvasInput", () => {
   });
 
   it("keeps printable keydown as direct fill for a freeform range", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
@@ -191,12 +215,12 @@ describe("useManagedCanvasInput", () => {
         ["5,3", { char: "X", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().staticGridEditMode).toBe("navigate");
-    expect(useEditorStore.getState().staticGridInputFlow).toBeNull();
+    expect(useEditorStore.getState().interaction.staticGridEditMode).toBe("navigate");
+    expect(useEditorStore.getState().interaction.staticGridInputFlow).toBeNull();
   });
 
   it("continues the same grid flow when composition is followed by half-width input", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
@@ -243,11 +267,11 @@ describe("useManagedCanvasInput", () => {
         ["4,1", { char: "A", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 5, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 5, y: 1 });
   });
 
   it("suppresses a delayed terminal input after compositionend", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
@@ -292,11 +316,11 @@ describe("useManagedCanvasInput", () => {
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([["2,1", { char: "你", color: "#000000" }]])
     );
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 4, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 4, y: 1 });
   });
 
   it("accepts the same text as a new input after a real keydown", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
@@ -343,7 +367,7 @@ describe("useManagedCanvasInput", () => {
       ["2,1", { char: "你", color: "#000000" }],
       ["4,1", { char: "你", color: "#000000" }],
     ]));
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 6, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 6, y: 1 });
   });
 
   it("commits consecutive managed input once per animation frame", () => {
@@ -393,7 +417,10 @@ describe("useManagedCanvasInput", () => {
         canvasMode: "structured",
         model: {
           ...getEditorModel(),
-          textCursor: { x: 1, y: 0 },
+          interaction: {
+            ...getEditorModel().interaction,
+            textCursor: { x: 1, y: 0 },
+          },
           writeTextString,
           backspaceText,
         },

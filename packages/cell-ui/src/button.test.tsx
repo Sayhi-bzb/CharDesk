@@ -51,6 +51,71 @@ describe("Button", () => {
     runtime.dispose();
   });
 
+  it("resolves semantic variants and sizes without changing the one-row contract", () => {
+    const render = (
+      variant: "default" | "outline" | "ghost",
+      size: "sm" | "default" | "lg",
+    ) => {
+      const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
+      const frame = runtime.render(
+        <Root id="root" style={{ direction: "row" }}>
+          <Button id="save" variant={variant} size={size}><Text>Save</Text></Button>
+        </Root>
+      );
+      runtime.dispose();
+      return frame;
+    };
+
+    const expectations = [
+      ["default", "sm", 4, "Save"],
+      ["default", "default", 6, " Save"],
+      ["default", "lg", 8, "  Save"],
+      ["outline", "sm", 6, "[Save]"],
+      ["outline", "default", 8, "[ Save ]"],
+      ["outline", "lg", 10, "[  Save  ]"],
+      ["ghost", "sm", 4, "Save"],
+      ["ghost", "default", 6, " Save"],
+      ["ghost", "lg", 8, "  Save"],
+    ] as const;
+
+    for (const [variant, size, width, text] of expectations) {
+      const frame = render(variant, size);
+      expect(frame.layout.entries.get("save")?.rect).toMatchObject({ width, height: 1 });
+      expect(frame.buffer.toText({ trimEnd: true })).toBe(text);
+    }
+
+    const filled = render("default", "default");
+    const outline = render("outline", "default");
+    const ghost = render("ghost", "default");
+    expect(filled.buffer.get(0, 0)?.style.backgroundColor).toBe("#191d22");
+    expect(outline.buffer.get(0, 0)).toMatchObject({ text: "[", ownerId: "save" });
+    expect(outline.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
+    expect(ghost.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
+
+    const focus = new FocusManager();
+    focus.sync(outline.tree, "save");
+    expect(commandForInput(
+      { type: "pointer", phase: "up", point: { x: 0, y: 0 }, button: 0 },
+      outline,
+      focus,
+    )).toEqual({ type: "activate", targetId: "save" });
+  });
+
+  it("invalidates layout when semantic appearance changes geometry", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
+    const render = (variant: "default" | "outline", size: "default" | "lg") => runtime.render(
+      <Root id="root" style={{ direction: "row" }}>
+        <Button id="save" variant={variant} size={size}><Text>Save</Text></Button>
+      </Root>
+    );
+
+    expect(render("default", "default").layout.entries.get("save")?.rect.width).toBe(6);
+    expect(render("outline", "default").layout.entries.get("save")?.rect.width).toBe(8);
+    expect(render("outline", "lg").layout.entries.get("save")?.rect.width).toBe(10);
+
+    runtime.dispose();
+  });
+
   it("shares hover, focus, disabled, keyboard, pointer, and semantic behavior", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 30, height: 1 } });
     const frame = runtime.render(buttons());

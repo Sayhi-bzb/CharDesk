@@ -29,7 +29,6 @@ import {
   normalizeStructuredComponents,
 } from "@/domains/structured-content/public";
 import { areJsonValuesEqual } from "@/shared/utils/equality";
-import { normalizeBrushChar } from "@/shared/utils/characters";
 import { subscribeCanvasDocumentProjection } from "./canvasDocumentProjection";
 import {
   createCanvasContentSurface,
@@ -47,9 +46,7 @@ import {
   getSessionCanvasDocumentId,
   resolveSessionDocumentRuntime,
 } from "./helpers/storeUtils";
-import { isToolAllowedForMode } from "../model/tool";
 import { createDeferredSnapshotPersistStorage } from "./persistenceCoordinator";
-import { createStructuredGridFocusPatch } from "./transitions/editorTransitions";
 import { resolveEditorDocumentAddress } from "./helpers/gridHelpers";
 import type { CollaborationIntegrityIssue } from "@/domains/collaboration/public";
 import type { SelectionCommandFactory } from "./selectionCommandPort";
@@ -61,12 +58,11 @@ import {
 } from "@/domains/sessions/public";
 import { createGridSurfaceReader } from "../cell-plane/model";
 import type { CanvasDocumentResidency } from "./documentResidencyPort";
-import type { CanvasViewportRuntime } from "../viewportRuntime";
 import {
-  createEmptyCanvasInteraction,
-  hasCanvasInteractionProjectionChanged,
-  projectCanvasInteraction,
-} from "./canvasInteractionState";
+  normalizeCanvasViewport,
+  type CanvasViewportRuntime,
+} from "../viewportRuntime";
+import { createEmptyCanvasInteraction } from "./canvasInteractionState";
 
 export type CanvasStore = UseBoundStore<StoreApi<EditorState>>;
 
@@ -180,7 +176,6 @@ export const createEditorStore = ({
       ));
 
       return {
-        ...viewport.getSnapshot(),
         interaction: createEmptyCanvasInteraction(initialAddress),
         contentSurface:
           initialRuntime.nextMode === "structured"
@@ -189,11 +184,6 @@ export const createEditorStore = ({
         canvasMode: initialRuntime.nextMode,
         structuredScene: initialRuntime.nextScene,
         structuredComponents: initialRuntime.nextComponents,
-        selectedStructuredNodeIds: [],
-        selectedStructuredBoxId: null,
-        selectedStructuredSplitHandle: null,
-        structuredContextPoint: null,
-        structuredGridFocus: null,
         canvasSessions: initialSessions,
         activeCanvasId: initialSession.id,
         ...documents.getHistoryAvailability(),
@@ -203,23 +193,6 @@ export const createEditorStore = ({
         brushBackgroundColor: COLOR_PRIMARY_TEXT,
         showGrid: false,
         exportShowGrid: false,
-        hoveredGrid: null,
-        canvasColorPickerTarget: null,
-
-        setOffset: viewport.setOffset,
-        setZoom: viewport.setZoom,
-        setViewport: viewport.setViewport,
-        setTool: (tool) =>
-          set((state) => {
-            if (!isToolAllowedForMode(tool, state.canvasMode)) return state;
-            return {
-              tool,
-              textCursor: null,
-              editingStructuredTextNodeId: null,
-              structuredTextSelection: null,
-              hoveredGrid: null,
-            };
-          }),
         applyStructuredScene: (scene, history = "save", components) => {
           const current = get();
           const normalizedScene = normalizeScene(scene);
@@ -276,36 +249,6 @@ export const createEditorStore = ({
             history
           );
         },
-        getNextStructuredOrder: () => {
-          const scene = get().structuredScene;
-          if (scene.length === 0) return 1;
-          return Math.max(...scene.map((node) => node.order)) + 1;
-        },
-        setBrushChar: (char) =>
-          set((state) => ({
-            brushChar: normalizeBrushChar(char, state.brushChar),
-          })),
-        setBrushColor: (color) => set({ brushColor: color }),
-        setBrushBackgroundColor: (color) =>
-          set({ brushBackgroundColor: color }),
-        setCanvasColorPickerTarget: (target) => set({ canvasColorPickerTarget: target }),
-        setStructuredContextPoint: (point) =>
-          set({ structuredContextPoint: point ? { ...point } : null }),
-        setShowGrid: (show) => set({ showGrid: show }),
-        setExportShowGrid: (show) => set({ exportShowGrid: show }),
-        setHoveredGrid: (pos) => set({ hoveredGrid: pos }),
-        setStructuredGridFocus: (point) =>
-          set(createStructuredGridFocusPatch(point)),
-        moveStructuredGridFocus: (dx, dy) =>
-          set((state) => {
-            const current = state.structuredGridFocus ?? { x: 0, y: 0 };
-            return {
-              structuredGridFocus: {
-                x: current.x + dx,
-                y: current.y + dy,
-              },
-            };
-          }),
         ...createSessionSlice(documents, parseSessionSource, viewport, documentResidency)(set, get, ...a),
         ...createStaticGridSlice(set, get, ...a),
         ...createSlideSlice(documents)(set, get, ...a),
@@ -349,7 +292,15 @@ export const createEditorStore = ({
         );
         const mergedState = {
           ...currentState,
-          ...flattened,
+          canvasMode: flattened.canvasMode,
+          structuredScene: flattened.structuredScene,
+          structuredComponents: flattened.structuredComponents,
+          activeCanvasId: flattened.activeCanvasId,
+          brushChar: flattened.brushChar,
+          brushColor: flattened.brushColor,
+          brushBackgroundColor: flattened.brushBackgroundColor,
+          showGrid: flattened.showGrid,
+          exportShowGrid: flattened.exportShowGrid,
           canvasSessions: descriptors,
           contentSurface: createCanvasContentSurface(createGridSurfaceReader(
             createMapFromEntries(normalizeGridEntries(flattened.grid))
@@ -360,33 +311,19 @@ export const createEditorStore = ({
           activeSnapshot
         );
         syncHydratedStateToCanvasDocument(documents, recovered, activeSnapshot);
+        recovered.interaction = createEmptyCanvasInteraction(
+          documents.getActiveAddress()
+        );
+        const activeDescriptor = recovered.canvasSessions.find(
+          (session) => session.id === recovered.activeCanvasId
+        );
+        viewport.resetFallback(
+          normalizeCanvasViewport(activeDescriptor?.viewport)
+        );
         return recovered;
       },
     }))
     : create<EditorState>()(stateCreator);
-  let syncingViewport = false;
-  disposers.push(viewport.subscribe(() => {
-    const next = viewport.getSnapshot();
-    const current = store.getState();
-    if (
-      current.zoom === next.zoom &&
-      current.offset.x === next.offset.x &&
-      current.offset.y === next.offset.y
-    ) return;
-    syncingViewport = true;
-    store.setState({ offset: next.offset, zoom: next.zoom });
-    syncingViewport = false;
-  }));
-  disposers.push(store.subscribe((state, previous) => {
-    if (syncingViewport || (state.offset === previous.offset && state.zoom === previous.zoom)) return;
-    viewport.setViewport(() => ({ offset: state.offset, zoom: state.zoom }));
-  }));
-  disposers.push(store.subscribe((state, previous) => {
-    if (!hasCanvasInteractionProjectionChanged(state, previous)) return;
-    store.setState({
-      interaction: projectCanvasInteraction(state, documents.getActiveAddress()),
-    });
-  }));
   return {
     store,
     dispose: () => {

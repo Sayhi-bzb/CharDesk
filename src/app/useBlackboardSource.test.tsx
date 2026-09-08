@@ -128,8 +128,10 @@ describe("Blackboard source projection", () => {
     await act(async () => vi.advanceTimersByTimeAsync(500));
 
     expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("B");
-    expect(host.canvas.getState().offset).toEqual({ x: 123, y: 456 });
-    expect(host.canvas.getState().zoom).toBe(1.75);
+    expect(host.canvas.viewport.getSnapshot()).toEqual({
+      offset: { x: 123, y: 456 },
+      zoom: 1.75,
+    });
     expect(result.current.firstFitRevision).toBe(1);
   });
 

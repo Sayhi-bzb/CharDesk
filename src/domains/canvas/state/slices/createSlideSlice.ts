@@ -50,7 +50,7 @@ export const createSlideSlice = (
       name: active.name,
       size: active.size,
     });
-    set(createSlideActivationPatch(next, activeGrid));
+    set(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
   },
 
   duplicateSlide: (slideId) => {
@@ -81,7 +81,7 @@ export const createSlideSlice = (
       name: active.name,
       size: active.size,
     });
-    set(createSlideActivationPatch(next, activeGrid));
+    set(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
   },
 
   removeSlide: (slideId) => {
@@ -97,7 +97,7 @@ export const createSlideSlice = (
       active.id,
       []
     );
-    set(createSlideActivationPatch(next, activeGrid));
+    set(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
     removeSlidePage(documents, state.activeCanvasId, slideId);
   },
 
@@ -145,7 +145,7 @@ export const createSlideSlice = (
       active.id,
       []
     );
-    set(createSlideActivationPatch(next, activeGrid));
+    set(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
   },
 
   resizeSlide: (slideId, size) => {
@@ -198,7 +198,7 @@ export const createSlideSlice = (
         active.id,
         resizedContent.grid
       );
-      set(createSlideActivationPatch(next, activeGrid));
+      set(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
       return;
     }
     set({

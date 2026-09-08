@@ -33,10 +33,11 @@ import { getStructuredTextSelectionRange } from "@/domains/structured-content/pu
 import { resolveEditorDocumentAddress } from "../helpers/gridHelpers";
 import { createStaticGridRangeMovePlan } from "../../cell-plane/rangeMove";
 import { getActiveSlideGridBounds } from "../slideBounds";
+import { createCanvasInteractionPatch } from "../canvasInteractionState";
 
 const resolveSelectionAreas = (state: EditorState) => {
   return getStaticGridSelectionAreas(
-    state.staticGridSelection,
+    state.interaction.staticGridSelection,
     state.contentSurface.reader
   );
 };
@@ -45,7 +46,7 @@ const forEachSelectionSpan = (
   state: EditorState,
   visit: (span: { y: number; minX: number; maxX: number }) => void
 ) => forEachGridSelectionSpan(
-  getGridSelectionRanges(state.staticGridSelection),
+  getGridSelectionRanges(state.interaction.staticGridSelection),
   visit,
   state.contentSurface.reader
 );
@@ -55,11 +56,12 @@ const isUnstyledBlankCell = (cell: GridCell) =>
 
 const getActiveStructuredTextSelection = (state: EditorState) => {
   if (state.canvasMode !== "structured") return null;
-  const range = getStructuredTextSelectionRange(state.structuredTextSelection);
-  if (!range || !state.structuredTextSelection) return null;
+  const selection = state.interaction.structuredTextSelection;
+  const range = getStructuredTextSelectionRange(selection);
+  if (!range || !selection) return null;
   const node = state.structuredScene.find(
     (sceneNode) =>
-      sceneNode.id === state.structuredTextSelection?.nodeId &&
+      sceneNode.id === selection.nodeId &&
       sceneNode.type === "text"
   );
   if (!node || node.type !== "text") return null;
@@ -76,14 +78,14 @@ export const createSelectionSlice = (
   SelectionSlice
 > => (set, get) => ({
   clearSelections: () =>
-    set((state) => ({
+    set((state) => createCanvasInteractionPatch(state.interaction, {
       staticGridSelection: collapseGridSelectionTo(
-        state.staticGridSelection,
-        state.staticGridSelection.activeCell
+        state.interaction.staticGridSelection,
+        state.interaction.staticGridSelection.activeCell
       ),
     })),
   clearInteractionState: () =>
-    set((state) => ({
+    set((state) => createCanvasInteractionPatch(state.interaction, {
       textCursor: null,
       editingStructuredTextNodeId: null,
       structuredTextSelection: null,
@@ -93,7 +95,7 @@ export const createSelectionSlice = (
       structuredContextPoint: null,
       structuredGridFocus: null,
       staticGridSelection: createGridSelectionState(
-        state.staticGridSelection.activeCell
+        state.interaction.staticGridSelection.activeCell
       ),
       staticGridEditMode: "navigate" as const,
       staticGridInputFlow: null,
@@ -101,14 +103,12 @@ export const createSelectionSlice = (
   canCopyOrCut: () => selectionCommands(set, get).canCopyOrCut(),
   deleteSelection: () => {
     const state = get();
+    const { canvasMode, structuredScene, applyStructuredScene } = state;
     const {
-      canvasMode,
-      structuredScene,
       selectedStructuredNodeIds,
       selectedStructuredSplitHandle,
-      applyStructuredScene,
       textCursor,
-    } = state;
+    } = state.interaction;
     const selections = resolveSelectionAreas(state);
     if (canvasMode === "structured") {
       const textSelection = getActiveStructuredTextSelection(state);
@@ -144,7 +144,10 @@ export const createSelectionSlice = (
         });
         if (didUpdate) {
           applyStructuredScene(nextScene, true);
-          set({ selectedStructuredSplitHandle: null, structuredContextPoint: null });
+          set(createCanvasInteractionPatch(get().interaction, {
+            selectedStructuredSplitHandle: null,
+            structuredContextPoint: null,
+          }));
         }
         return;
       }
@@ -153,7 +156,12 @@ export const createSelectionSlice = (
         const nextScene = structuredScene.filter((node) => !selectedIds.has(node.id));
         if (nextScene.length !== structuredScene.length) {
           applyStructuredScene(nextScene, true);
-          set({ selectedStructuredNodeIds: [], selectedStructuredBoxId: null, selectedStructuredSplitHandle: null, structuredContextPoint: null });
+          set(createCanvasInteractionPatch(get().interaction, {
+            selectedStructuredNodeIds: [],
+            selectedStructuredBoxId: null,
+            selectedStructuredSplitHandle: null,
+            structuredContextPoint: null,
+          }));
         }
         return;
       }
@@ -193,7 +201,7 @@ export const createSelectionSlice = (
 
   moveStaticGridSelection: (requestedDelta) => {
     const state = get();
-    const selection = state.staticGridSelection;
+    const selection = state.interaction.staticGridSelection;
     if (
       state.canvasMode === "structured" ||
       selection.mode !== "range" ||
@@ -216,16 +224,16 @@ export const createSelectionSlice = (
     );
     if (!operation) return false;
 
-    set((current) => ({
+    set((current) => createCanvasInteractionPatch(current.interaction, {
       staticGridSelection: {
-        ...current.staticGridSelection,
+        ...current.interaction.staticGridSelection,
         activeCell: {
-          x: current.staticGridSelection.activeCell.x + plan.delta.x,
-          y: current.staticGridSelection.activeCell.y + plan.delta.y,
+          x: current.interaction.staticGridSelection.activeCell.x + plan.delta.x,
+          y: current.interaction.staticGridSelection.activeCell.y + plan.delta.y,
         },
         anchorCell: {
-          x: current.staticGridSelection.anchorCell.x + plan.delta.x,
-          y: current.staticGridSelection.anchorCell.y + plan.delta.y,
+          x: current.interaction.staticGridSelection.anchorCell.x + plan.delta.x,
+          y: current.interaction.staticGridSelection.anchorCell.y + plan.delta.y,
         },
         primaryRange: plan.targetRange,
       },

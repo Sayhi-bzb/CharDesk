@@ -2,7 +2,11 @@ import { act, cleanup, createEvent, fireEvent, render, screen } from "@testing-l
 import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Minimap } from "@/widgets/canvas-editor/Minimap";
-import { useEditorStore } from "@/domains/canvas/testing";
+import {
+  setCanvasTestState,
+  testingCanvasRuntime,
+  useEditorStore,
+} from "@/domains/canvas/testing";
 import { GridManager } from "@/shared/utils/grid";
 import { setUiLanguage } from "@/shared/i18n";
 
@@ -15,9 +19,11 @@ const visualTheme = vi.hoisted(() => ({
       minimapViewportBorder: "black",
     },
 }));
+const visualThemeState = vi.hoisted(() => ({ available: true }));
 
 vi.mock("@/shared/hooks/useHostVisualTheme", () => ({
-  useHostVisualTheme: () => visualTheme,
+  useHostVisualTheme: () =>
+    visualThemeState.available ? visualTheme : null,
 }));
 
 const initialState = useEditorStore.getState();
@@ -49,6 +55,7 @@ const createMockContext = () => ({
 describe("Minimap canvas", () => {
   beforeEach(() => {
     setUiLanguage("en");
+    visualThemeState.available = true;
     pathInstances.length = 0;
     vi.stubGlobal("Path2D", MockPath2D);
     vi.stubGlobal(
@@ -76,7 +83,7 @@ describe("Minimap canvas", () => {
   });
 
   const seedContent = () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       contentSurface: new TestCanvasContentSurface([
         [GridManager.toKey(0, 0), { char: "A", color: "#ffffff" }],
         [GridManager.toKey(199, 99), { char: "B", color: "#ffffff" }],
@@ -115,6 +122,22 @@ describe("Minimap canvas", () => {
     expect(canvas).toHaveStyle({ width: "220px", height: "140px" });
   });
 
+  it("draws initial content when the host theme becomes available", () => {
+    seedContent();
+    visualThemeState.available = false;
+    const { rerender } = render(
+      <Minimap containerSize={{ width: 1000, height: 700 }} />
+    );
+
+    expect(pathInstances).toHaveLength(0);
+
+    visualThemeState.available = true;
+    rerender(<Minimap containerSize={{ width: 1000, height: 700 }} />);
+
+    expect(pathInstances.length).toBeGreaterThan(0);
+    expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledOnce();
+  });
+
   it("localizes the minimap accessible name", () => {
     setUiLanguage("zh");
     seedContent();
@@ -129,7 +152,7 @@ describe("Minimap canvas", () => {
     const initialPathCount = pathInstances.length;
 
     act(() => {
-      useEditorStore.getState().setOffset(() => ({ x: -200, y: -100 }));
+      testingCanvasRuntime.commands.viewport.setOffset(() => ({ x: -200, y: -100 }));
     });
 
     expect(pathInstances).toHaveLength(initialPathCount);
@@ -149,7 +172,7 @@ describe("Minimap canvas", () => {
     });
     fireEvent(canvas, pointerDown);
 
-    expect(useEditorStore.getState().offset).not.toEqual({ x: 0, y: 0 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).not.toEqual({ x: 0, y: 0 });
   });
 
   it("drags the viewport while preserving the pointer grab offset", () => {
@@ -175,8 +198,8 @@ describe("Minimap canvas", () => {
     });
     fireEvent(canvas, pointerMove);
 
-    expect(useEditorStore.getState().offset.x).toBeLessThan(-50);
-    expect(useEditorStore.getState().offset.y).toBeLessThan(-50);
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset.x).toBeLessThan(-50);
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset.y).toBeLessThan(-50);
     fireEvent.pointerUp(document.body, { pointerId: 1 });
   });
 
@@ -196,7 +219,7 @@ describe("Minimap canvas", () => {
       clientX: 61,
       clientY: 21,
     });
-    expect(useEditorStore.getState().offset).toEqual({ x: 0, y: 0 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: 0, y: 0 });
 
     fireEvent.pointerCancel(canvas, { pointerId: 1 });
     fireEvent.pointerMove(canvas, {
@@ -204,7 +227,7 @@ describe("Minimap canvas", () => {
       clientX: 90,
       clientY: 50,
     });
-    expect(useEditorStore.getState().offset).toEqual({ x: 0, y: 0 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: 0, y: 0 });
   });
 
   it("routes wheel pan and anchored zoom through camera controllers", () => {
@@ -213,9 +236,9 @@ describe("Minimap canvas", () => {
     const canvas = prepareCanvas();
 
     fireEvent.wheel(canvas, { deltaX: 5, deltaY: 10 });
-    expect(useEditorStore.getState().offset).toEqual({ x: -5, y: -10 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: -5, y: -10 });
 
     fireEvent.wheel(canvas, { deltaY: -100, metaKey: true });
-    expect(useEditorStore.getState().zoom).toBeGreaterThan(1);
+    expect(testingCanvasRuntime.viewport.getSnapshot().zoom).toBeGreaterThan(1);
   });
 });

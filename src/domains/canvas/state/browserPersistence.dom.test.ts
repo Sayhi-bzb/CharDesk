@@ -691,9 +691,11 @@ describe("browser canvas persistence", () => {
 
     expect(runtime.getState()).toMatchObject({
       activeCanvasId: LEGACY_SESSION_ID,
+      brushChar: "@",
+    });
+    expect(runtime.viewport.getSnapshot()).toEqual({
       offset: { x: 20, y: 600 / 19 },
       zoom: 1.25,
-      brushChar: "@",
     });
     expect(runtime.getState().contentSurface.reader.materialize().get("4,5")?.char).toBe("迁");
     expect(storage.getItem(EDITOR_PERSISTENCE_KEY)).toBeNull();

@@ -3,9 +3,11 @@ import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import {
   applyFreeformSnapshotToYMaps,
   defaultCanvasDocuments,
+  setCanvasTestState,
   useEditorStore,
 } from "@/domains/canvas/testing";
 import type { EditorState } from "@/domains/canvas/state/interfaces";
+import type { CanvasInteractionSnapshot } from "@/domains/canvas/public";
 import { decodeCellPlaneOperationRows } from "@/domains/canvas/cell-plane/model";
 
 const initialState = useEditorStore.getState();
@@ -17,10 +19,11 @@ const resetStore = () => {
 
 const setTextState = (
   state: Partial<
-    Pick<EditorState, "contentSurface" | "textCursor" | "canvasMode">
+    Pick<EditorState, "contentSurface" | "canvasMode"> &
+      Pick<CanvasInteractionSnapshot, "textCursor">
   >
 ) => {
-  useEditorStore.setState({
+  setCanvasTestState({
     canvasMode: "freeform",
     contentSurface: new TestCanvasContentSurface(),
     ...state,
@@ -39,7 +42,7 @@ describe("textSlice newlineText", () => {
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 20, y: 4 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 20, y: 4 });
   });
 
   it("inherits real leading indentation when the cursor is after text", () => {
@@ -54,7 +57,7 @@ describe("textSlice newlineText", () => {
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 4, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 4, y: 1 });
   });
 
   it("finds the start of a contiguous row containing wide characters", () => {
@@ -68,7 +71,7 @@ describe("textSlice newlineText", () => {
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 4, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 4, y: 1 });
   });
 
   it("keeps the current column when the cursor is inside indentation", () => {
@@ -83,7 +86,7 @@ describe("textSlice newlineText", () => {
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 2, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 2, y: 1 });
   });
 
   it("keeps the current column when text starts to the right of the cursor", () => {
@@ -96,7 +99,7 @@ describe("textSlice newlineText", () => {
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 3, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 3, y: 1 });
   });
 
   it("returns to the nearest text run instead of unrelated content on the left", () => {
@@ -112,7 +115,7 @@ describe("textSlice newlineText", () => {
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 10, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 10, y: 1 });
   });
 
   it("supports text runs at negative columns", () => {
@@ -126,7 +129,7 @@ describe("textSlice newlineText", () => {
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: -4, y: 3 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: -4, y: 3 });
   });
 
 });
@@ -149,11 +152,11 @@ describe("textSlice writeTextString", () => {
         ["3,5", { char: "b", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 4, y: 5 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 4, y: 5 });
   });
 
   it("fills the formal 1x1 selection at the static active cell", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
       textCursor: null,
@@ -172,7 +175,7 @@ describe("textSlice writeTextString", () => {
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([["6,7", { char: "A", color: "#000000" }]])
     );
-    expect(useEditorStore.getState().textCursor).toBeNull();
+    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
   });
 
   it("keeps ordinary text input on the existing full-cell replacement policy", () => {
@@ -201,8 +204,8 @@ describe("textSlice writeTextString", () => {
         ["5,1", { char: " ", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 6, y: 1 });
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 6, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 6, y: 1 });
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 6, y: 1 });
   });
 
   it("wraps bounded input to its nonzero line origin without splitting CJK", () => {
@@ -220,8 +223,8 @@ describe("textSlice writeTextString", () => {
         ["3,1", { char: "你", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 3, y: 1 });
-    expect(useEditorStore.getState().staticGridInputFlow).toMatchObject({
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 3, y: 1 });
+    expect(useEditorStore.getState().interaction.staticGridInputFlow).toMatchObject({
       lineOriginX: 3,
       activeCell: { x: 3, y: 1 },
       exhausted: true,
@@ -242,13 +245,13 @@ describe("textSlice writeTextString", () => {
     expect(useEditorStore.getState()).toBe(terminalState);
     expect(useEditorStore.getState().contentSurface.reader).toBe(terminalReader);
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe(" ");
-    expect(useEditorStore.getState().staticGridInputFlow?.exhausted).toBe(true);
+    expect(useEditorStore.getState().interaction.staticGridInputFlow?.exhausted).toBe(true);
 
     useEditorStore.getState().backspaceText();
 
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 0, y: 0 });
-    expect(useEditorStore.getState().staticGridInputFlow?.exhausted).toBe(false);
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 0, y: 0 });
+    expect(useEditorStore.getState().interaction.staticGridInputFlow?.exhausted).toBe(false);
   });
 
   it("backspaces the previous row after an automatic wrap", () => {
@@ -263,7 +266,7 @@ describe("textSlice writeTextString", () => {
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([["1,0", { char: "A", color: "#000000" }]])
     );
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 2, y: 0 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 2, y: 0 });
   });
 
   it("keeps the advanced active cell and clears edit state when leaving text edit mode", () => {
@@ -272,9 +275,9 @@ describe("textSlice writeTextString", () => {
 
     useEditorStore.getState().exitStaticGridTextEdit();
 
-    expect(useEditorStore.getState().textCursor).toBeNull();
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 2, y: 0 });
-    expect(useEditorStore.getState().staticGridInputFlow).toBeNull();
+    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 2, y: 0 });
+    expect(useEditorStore.getState().interaction.staticGridInputFlow).toBeNull();
   });
 });
 
@@ -359,7 +362,7 @@ describe("textSlice paste background merging", () => {
 
   it("anchors sparse rich data at the selection union top-left and preserves holes", () => {
     setTextState({ textCursor: null });
-    useEditorStore.setState({
+    setCanvasTestState({
       staticGridEditMode: "navigate",
       staticGridSelection: {
         mode: "range",
@@ -405,7 +408,7 @@ describe("textSlice paste background merging", () => {
       { selectResult: true }
     );
 
-    expect(useEditorStore.getState()).toMatchObject({
+    expect(useEditorStore.getState().interaction).toMatchObject({
       textCursor: null,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
@@ -427,7 +430,7 @@ describe("textSlice paste background merging", () => {
       selectResult: true,
     });
 
-    expect(useEditorStore.getState()).toMatchObject({
+    expect(useEditorStore.getState().interaction).toMatchObject({
       textCursor: null,
       staticGridEditMode: "navigate",
       staticGridInputFlow: null,
@@ -449,7 +452,7 @@ describe("textSlice structured box name editing", () => {
   });
 
   it("places the cursor after inserted CJK box name text", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 5, y: 2 },
       structuredScene: [
@@ -469,11 +472,11 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "box-1", name: "接口" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 9, y: 2 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 9, y: 2 });
   });
 
   it("keeps overflow CJK name text while placing the cursor after the visible text", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 3, y: 0 },
       structuredScene: [
@@ -493,11 +496,11 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "box-1", name: "接口" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 5, y: 0 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 5, y: 0 });
   });
 
   it("reveals overflow CJK name text after the box is widened", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 3, y: 0 },
       structuredScene: [
@@ -524,7 +527,7 @@ describe("textSlice structured box name editing", () => {
   });
 
   it("backspaces one CJK box name grapheme and moves by its display width", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 9, y: 2 },
       selectedStructuredNodeIds: ["box-1"],
@@ -547,11 +550,11 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "box-1", name: "接" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 7, y: 2 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 7, y: 2 });
   });
 
   it("deletes the next CJK box name grapheme without removing the box", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 5, y: 2 },
       selectedStructuredNodeIds: ["box-1"],
@@ -574,12 +577,12 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "box-1", name: "口" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 5, y: 2 });
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual(["box-1"]);
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 5, y: 2 });
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual(["box-1"]);
   });
 
   it("deletes the next box name character without removing the box", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 6, y: 2 },
       selectedStructuredNodeIds: ["box-1"],
@@ -602,12 +605,12 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "box-1", name: "AI" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 6, y: 2 });
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual(["box-1"]);
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 6, y: 2 });
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual(["box-1"]);
   });
 
   it("keeps the box when deleting forward at the end of the name", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 8, y: 2 },
       selectedStructuredNodeIds: ["box-1"],
@@ -630,11 +633,11 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "box-1", name: "API" },
     ]);
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual(["box-1"]);
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual(["box-1"]);
   });
 
   it("backspaces the previous box name character without removing the box", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 6, y: 2 },
       selectedStructuredNodeIds: ["box-1"],
@@ -657,12 +660,12 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "box-1", name: "PI" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 5, y: 2 });
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual(["box-1"]);
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 5, y: 2 });
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual(["box-1"]);
   });
 
   it("creates a structured text node from structured grid focus input", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       structuredScene: [],
       contentSurface: new TestCanvasContentSurface(),
@@ -683,13 +686,15 @@ describe("textSlice structured box name editing", () => {
       text: "Hi",
       style: { color: "#abcdef" },
     });
-    expect(state.structuredGridFocus).toBeNull();
-    expect(state.textCursor).toEqual({ x: 9, y: 4 });
-    expect(state.selectedStructuredNodeIds).toEqual([state.structuredScene[0].id]);
+    expect(state.interaction.structuredGridFocus).toBeNull();
+    expect(state.interaction.textCursor).toEqual({ x: 9, y: 4 });
+    expect(state.interaction.selectedStructuredNodeIds).toEqual([
+      state.structuredScene[0].id,
+    ]);
   });
 
   it("inserts structured text at the clicked offset on a later line", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 1, y: 1 },
       editingStructuredTextNodeId: "text-1",
@@ -711,11 +716,11 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "text-1", text: "AB\nC!D" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 2, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 2, y: 1 });
   });
 
   it("inserts a newline inside the active structured text node", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 1, y: 0 },
       editingStructuredTextNodeId: "text-1",
@@ -737,11 +742,11 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "text-1", text: "A\nB" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 0, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 0, y: 1 });
   });
 
   it("backspaces structured text by layout offset on later lines", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 1, y: 1 },
       editingStructuredTextNodeId: "text-1",
@@ -763,11 +768,11 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "text-1", text: "AB\nD" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 0, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 0, y: 1 });
   });
 
   it("deletes structured text forward by layout offset on later lines", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 1, y: 1 },
       editingStructuredTextNodeId: "text-1",
@@ -789,11 +794,11 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "text-1", text: "AB\nC" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 1, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 1, y: 1 });
   });
 
   it("inserts structured text after a wide character and moves the caret by width", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 2, y: 0 },
       editingStructuredTextNodeId: "text-1",
@@ -815,11 +820,11 @@ describe("textSlice structured box name editing", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "text-1", text: "你!A" },
     ]);
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 3, y: 0 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 3, y: 0 });
   });
 
   it("moves left across a structured CJK character by its display width", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 2, y: 0 },
       editingStructuredTextNodeId: "text-1",
@@ -837,11 +842,11 @@ describe("textSlice structured box name editing", () => {
 
     useEditorStore.getState().moveTextCursor(-1, 0);
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 0, y: 0 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 0, y: 0 });
   });
 
   it("moves right across a structured CJK character by its display width", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 0, y: 0 },
       editingStructuredTextNodeId: "text-1",
@@ -859,11 +864,11 @@ describe("textSlice structured box name editing", () => {
 
     useEditorStore.getState().moveTextCursor(1, 0);
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 2, y: 0 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 2, y: 0 });
   });
 
   it("moves left from after a structured wide character to its anchor", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 3, y: 0 },
       editingStructuredTextNodeId: "text-1",
@@ -881,6 +886,6 @@ describe("textSlice structured box name editing", () => {
 
     useEditorStore.getState().moveTextCursor(-1, 0);
 
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 1, y: 0 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 1, y: 0 });
   });
 });

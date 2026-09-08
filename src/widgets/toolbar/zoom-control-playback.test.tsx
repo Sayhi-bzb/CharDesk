@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   defaultCanvasDocuments,
+  setCanvasTestState,
   useEditorStore,
 } from "@/domains/canvas/testing";
 import { ShortcutProvider } from "@/shared/shortcuts/dispatcher";
@@ -101,7 +102,7 @@ describe("ZoomControl slide playback", () => {
       scene: [],
       components: [],
     }, { replace: true });
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "slide",
       slideDeck: {
         activeSlideId: "slide-2",
@@ -144,7 +145,7 @@ describe("ZoomControl slide playback", () => {
 
   it("keeps slide metadata mounted without drawing offscreen previews", () => {
     intersectionVisible = false;
-    useEditorStore.setState({
+    setCanvasTestState({
       slideDeck: {
         activeSlideId: "slide-1",
         slides: Array.from({ length: 30 }, (_, index) => ({

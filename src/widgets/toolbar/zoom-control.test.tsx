@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useEditorStore } from '@/domains/canvas/testing';
+import {
+  setCanvasTestState,
+  testingCanvasRuntime,
+  useEditorStore,
+} from '@/domains/canvas/testing';
 import { ZoomControl } from './zoom-control';
 import { CanvasWorkspaceProvider } from '@/widgets/canvas-editor/engine/CanvasWorkspace';
 
@@ -34,12 +38,13 @@ describe('ZoomControl', () => {
     isMobile = false;
     cleanup();
     useEditorStore.setState(initialState, true);
+    testingCanvasRuntime.viewport.resetFallback({ offset: { x: 0, y: 0 }, zoom: 1 });
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
   it('renders a position-neutral compound control for the chrome slot', async () => {
-    useEditorStore.setState({ zoom: 1.256 });
+    setCanvasTestState({ zoom: 1.256 });
 
     render(<ZoomControl containerSize={{ width: 1000, height: 700 }} />);
 
@@ -74,23 +79,23 @@ describe('ZoomControl', () => {
   });
 
   it('keeps the zoom number width fixed across the supported range', () => {
-    useEditorStore.setState({ zoom: 0.1 });
+    setCanvasTestState({ zoom: 0.1 });
     render(<ZoomControl containerSize={{ width: 1000, height: 700 }} />);
     const reset = screen.getByTestId('zoom-reset');
 
     expect(reset).toHaveClass('w-12');
     expect(reset).toHaveTextContent('25%');
 
-    act(() => useEditorStore.setState({ zoom: 1 }));
+    act(() => setCanvasTestState({ zoom: 1 }));
     expect(reset).toHaveTextContent('100%');
 
-    act(() => useEditorStore.setState({ zoom: 5 }));
+    act(() => setCanvasTestState({ zoom: 5 }));
     expect(reset).toHaveTextContent('500%');
     expect(reset).toHaveClass('w-12');
   });
 
   it('replaces the minimap with play in slide mode', () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: 'slide',
       slideDeck: {
         activeSlideId: 'slide-1',
@@ -115,7 +120,7 @@ describe('ZoomControl', () => {
   });
 
   it('toggles the workspace grid and minimap from the viewport group', async () => {
-    useEditorStore.setState({ canvasMode: 'freeform', showGrid: true });
+    setCanvasTestState({ canvasMode: 'freeform', showGrid: true });
     render(<ZoomControl containerSize={{ width: 1000, height: 700 }} />);
 
     const grid = screen.getByTestId('zoom-grid');
@@ -154,7 +159,7 @@ describe('ZoomControl', () => {
   });
 
   it('zooms around the canvas center and resets directly when motion is reduced', () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: 'freeform',
       zoom: 1,
       offset: { x: 10, y: 20 },
@@ -163,26 +168,26 @@ describe('ZoomControl', () => {
     render(<ZoomControl containerSize={{ width: 1000, height: 700 }} />);
     fireEvent.click(screen.getByTestId('zoom-in'));
 
-    expect(useEditorStore.getState().zoom).toBeCloseTo(1.2);
-    expect(useEditorStore.getState().offset).toEqual({
+    expect(testingCanvasRuntime.viewport.getSnapshot().zoom).toBeCloseTo(1.2);
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({
       x: -88,
       y: -46,
     });
     fireEvent.click(screen.getByTestId('zoom-out'));
-    expect(useEditorStore.getState().zoom).toBeCloseTo(1);
-    expect(useEditorStore.getState().offset.x).toBeCloseTo(10);
-    expect(useEditorStore.getState().offset.y).toBeCloseTo(20);
+    expect(testingCanvasRuntime.viewport.getSnapshot().zoom).toBeCloseTo(1);
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset.x).toBeCloseTo(10);
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset.y).toBeCloseTo(20);
 
     fireEvent.click(screen.getByTestId('zoom-in'));
     fireEvent.click(screen.getByTestId('zoom-reset'));
-    expect(useEditorStore.getState().zoom).toBeCloseTo(1);
-    expect(useEditorStore.getState().offset.x).toBeCloseTo(10);
-    expect(useEditorStore.getState().offset.y).toBeCloseTo(20);
+    expect(testingCanvasRuntime.viewport.getSnapshot().zoom).toBeCloseTo(1);
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset.x).toBeCloseTo(10);
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset.y).toBeCloseTo(20);
   });
 
 
   it('disables directional actions at their limits', async () => {
-    useEditorStore.setState({ zoom: 5 });
+    setCanvasTestState({ zoom: 5 });
 
     render(<ZoomControl containerSize={{ width: 1000, height: 700 }} />);
     expect(screen.getByTestId('zoom-in')).toBeDisabled();
@@ -190,7 +195,7 @@ describe('ZoomControl', () => {
     expect(screen.getByTestId('zoom-reset')).toBeEnabled();
 
     act(() => {
-      useEditorStore.setState({ zoom: 0.1 });
+      setCanvasTestState({ zoom: 0.1 });
     });
     await waitFor(() => expect(screen.getByTestId('zoom-out')).toBeDisabled());
   });

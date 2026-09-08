@@ -5,7 +5,13 @@ import type { ComponentProps } from "react";
 import { CanvasEditor as CanvasEditorUnderTest } from "@/widgets/canvas-editor";
 import { useCanvasInteraction } from "@/widgets/canvas-editor/hooks/useCanvasInteraction";
 import { useCanvasRenderer } from "@/widgets/canvas-editor/hooks/useCanvasRenderer";
-import { undoCanvas, useEditorStore } from "@/domains/canvas/testing";
+import {
+  setCanvasTestState,
+  testingCanvasRuntime,
+  canvasCommands,
+  undoCanvas,
+  useEditorStore,
+} from "@/domains/canvas/testing";
 import { replaceCanvasGrid as applyFreeformSnapshotToYMaps } from "@/domains/canvas/testing";
 import {
   createGridSelectionState,
@@ -176,7 +182,7 @@ describe("CanvasEditor focus management", () => {
     );
 
     act(() => {
-      useEditorStore.setState({ activeCanvasId: "renderer-target-canvas" });
+      setCanvasTestState({ activeCanvasId: "renderer-target-canvas" });
     });
 
     const switchedCall = vi.mocked(useCanvasRenderer).mock.calls.at(-1);
@@ -206,7 +212,7 @@ describe("CanvasEditor focus management", () => {
         },
       ],
     };
-    useEditorStore.setState({
+    setCanvasTestState({
       activeCanvasId: "slides-restored",
       canvasMode: "slide",
       slideDeck,
@@ -239,12 +245,12 @@ describe("CanvasEditor focus management", () => {
     );
 
     fitBounds.mockClear();
-    act(() => useEditorStore.setState({ brushColor: "#123456" }));
+    act(() => setCanvasTestState({ brushColor: "#123456" }));
     expect(fitBounds).not.toHaveBeenCalled();
   });
 
   it("claims input focus on pointerdown before selection state changes", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       textCursor: null,
       canvasMode: "freeform",
     });
@@ -279,7 +285,7 @@ describe("CanvasEditor focus management", () => {
     expect(document.activeElement).toBe(previous);
 
     act(() => {
-      useEditorStore.setState({ activeCanvasId: "managed-input-next-canvas" });
+      setCanvasTestState({ activeCanvasId: "managed-input-next-canvas" });
     });
 
     const next = container.querySelector("textarea");
@@ -313,7 +319,7 @@ describe("CanvasEditor focus management", () => {
 
   it("uses Space as a temporary pan override in navigate mode without changing a range", () => {
     const selection = createRangeSelection({ x: 1, y: 1 }, { x: 4, y: 2 });
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       tool: "select",
       staticGridSelection: selection,
@@ -334,18 +340,18 @@ describe("CanvasEditor focus management", () => {
 
     expect(keydown.defaultPrevented).toBe(true);
     expect(vi.mocked(useCanvasInteraction).mock.calls.at(-1)?.[0].tool).toBe("pan");
-    expect(useEditorStore.getState().staticGridSelection).toEqual(selection);
+    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual(selection);
 
     fireEvent.keyDown(textarea, { key: " ", code: "Space", repeat: true });
     expect(vi.mocked(useCanvasInteraction).mock.calls.at(-1)?.[0].tool).toBe("pan");
 
     fireEvent.keyUp(textarea, { key: " ", code: "Space" });
     expect(vi.mocked(useCanvasInteraction).mock.calls.at(-1)?.[0].tool).toBe("select");
-    expect(useEditorStore.getState().staticGridSelection).toEqual(selection);
+    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual(selection);
   });
 
   it("handles an ordinary character immediately after selecting the canvas", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       staticGridSelection: {
@@ -378,7 +384,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("runs redo shortcuts from the managed textarea", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       textCursor: { x: 0, y: 0 },
       canvasMode: "freeform",
     });
@@ -386,7 +392,7 @@ describe("CanvasEditor focus management", () => {
     expect(undoCanvas()).toBe(true);
     expect(useEditorStore.getState().canRedo).toBe(true);
 
-    useEditorStore.setState({
+    setCanvasTestState({
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 1 }),
       textCursor: null,
       canvasMode: "freeform",
@@ -420,7 +426,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("restores Canvas undo after the application regains focus", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       textCursor: { x: 0, y: 0 },
       canvasMode: "freeform",
     });
@@ -467,7 +473,7 @@ describe("CanvasEditor focus management", () => {
       ],
       false
     );
-    useEditorStore.getState().setSelectedStructuredNodeIds(["shortcut-box"]);
+    canvasCommands.interaction.setSelectedStructuredNodeIds(["shortcut-box"]);
     const writeText = vi.spyOn(clipboard, "writeText").mockResolvedValue(true);
     const { container } = render(
       <CanvasEditor onUndo={vi.fn()} onRedo={vi.fn()} />
@@ -485,7 +491,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("falls back to the Clipboard API when Meta+X produces no cut event", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
@@ -512,7 +518,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("copies a range while the managed textarea is reconciling a transient blur", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
@@ -539,7 +545,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("copies a Blackboard range without granting mutation capability", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       contentSurface: new TestCanvasContentSurface([
@@ -567,7 +573,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("releases Canvas input ownership when focus moves to an external control", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
@@ -599,7 +605,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("lets a native cut event cancel the keyboard fallback", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
@@ -630,7 +636,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("keeps the selection when the fallback clipboard write fails", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
@@ -655,12 +661,12 @@ describe("CanvasEditor focus management", () => {
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("B");
     expect(
-      getGridSelectionRanges(useEditorStore.getState().staticGridSelection)
+      getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)
     ).toHaveLength(1);
   });
 
   it("falls back to the Clipboard API when Meta+V produces no paste event", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: { x: 0, y: 0 },
     });
@@ -684,7 +690,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("suppresses a native paste event that arrives after the fallback", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: { x: 0, y: 0 },
     });
@@ -724,7 +730,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("focuses the managed textarea for a freeform active cell and writes input there", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       contentSurface: new TestCanvasContentSurface(),
@@ -754,11 +760,11 @@ describe("CanvasEditor focus management", () => {
         char: "A",
       });
     });
-    expect(useEditorStore.getState().textCursor).toEqual({ x: 5, y: 3 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 5, y: 3 });
   });
 
   it("does not steal focus from an external text input", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       staticGridSelection: {
@@ -781,7 +787,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("preserves the same focused proxy across selection changes", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       staticGridSelection: {
@@ -803,7 +809,7 @@ describe("CanvasEditor focus management", () => {
     expect(document.activeElement).toBe(textarea);
 
     act(() => {
-      useEditorStore.setState({
+      setCanvasTestState({
         staticGridSelection: createRangeSelection({ x: 1, y: 1 }, { x: 3, y: 2 }),
       });
     });
@@ -814,7 +820,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("claims structured text focus on pointerdown without pointerup refocus", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 2, y: 0 },
       editingStructuredTextNodeId: "text-1",
@@ -847,7 +853,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("does not reclaim focus from canvas UI controls", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 2, y: 0 },
       editingStructuredTextNodeId: "text-1",
@@ -881,7 +887,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("keeps a selected structured box when Delete edits its active name", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: { x: 6, y: 2 },
       selectedStructuredNodeIds: ["box-1"],
@@ -911,11 +917,11 @@ describe("CanvasEditor focus management", () => {
     expect(useEditorStore.getState().structuredScene).toMatchObject([
       { id: "box-1", name: "AI" },
     ]);
-    expect(useEditorStore.getState().selectedStructuredNodeIds).toEqual(["box-1"]);
+    expect(useEditorStore.getState().interaction.selectedStructuredNodeIds).toEqual(["box-1"]);
   });
 
   it("renders structured layer actions behind a Layer context submenu", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: null,
       selectedStructuredNodeIds: ["box-1"],
@@ -945,7 +951,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("shows only copy actions in a read-only Blackboard context menu", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       textCursor: null,
       contentSurface: new TestCanvasContentSurface([
@@ -971,7 +977,7 @@ describe("CanvasEditor focus management", () => {
     expect(screen.queryByText("Delete")).not.toBeInTheDocument();
   });
   it("uses ctrl or command arrow keys for static-grid content navigation", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       offset: { x: 0, y: 0 },
       contentSurface: new TestCanvasContentSurface([
@@ -1000,26 +1006,26 @@ describe("CanvasEditor focus management", () => {
     focusCanvasInput(container);
 
     fireEvent.keyDown(textarea!, { key: "ArrowRight", ctrlKey: true });
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({
       x: 2,
       y: 5,
     });
-    expect(useEditorStore.getState().staticGridEditMode).toBe("navigate");
-    expect(useEditorStore.getState().offset).toEqual({ x: 0, y: 0 });
+    expect(useEditorStore.getState().interaction.staticGridEditMode).toBe("navigate");
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: 0, y: 0 });
 
     fireEvent.keyDown(textarea!, { key: "ArrowRight", metaKey: true });
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({
       x: 5,
       y: 5,
     });
-    expect(useEditorStore.getState().offset).toEqual({ x: 0, y: 0 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: 0, y: 0 });
 
     fireEvent.keyDown(textarea!, {
       key: "ArrowLeft",
       ctrlKey: true,
       shiftKey: true,
     });
-    expect(useEditorStore.getState().staticGridSelection).toEqual({
+    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
       mode: "range",
       activeCell: { x: 5, y: 5 },
       anchorCell: { x: 5, y: 5 },
@@ -1031,7 +1037,7 @@ describe("CanvasEditor focus management", () => {
   it("claims modified arrows before lower-priority shortcut layers", () => {
     const hijacker = vi.fn();
     const targetHandler = vi.fn();
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       offset: { x: 0, y: 0 },
       contentSurface: new TestCanvasContentSurface([
@@ -1068,15 +1074,15 @@ describe("CanvasEditor focus management", () => {
     expect(event.defaultPrevented).toBe(true);
     expect(hijacker).not.toHaveBeenCalled();
     expect(targetHandler).not.toHaveBeenCalled();
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({
       x: 4,
       y: 2,
     });
-    expect(useEditorStore.getState().offset).toEqual({ x: 0, y: 0 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: 0, y: 0 });
   });
 
   it("does not claim modified arrows while canvas input is unfocused", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       staticGridSelection: {
         mode: "cell",
@@ -1104,14 +1110,14 @@ describe("CanvasEditor focus management", () => {
     fireEvent(outside, event);
 
     expect(event.defaultPrevented).toBe(false);
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({
       x: 2,
       y: 2,
     });
   });
 
   it("uses static-grid keyboard navigation and range extension in slides", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "slide",
       slideDeck: {
         activeSlideId: "slide-1",
@@ -1144,22 +1150,22 @@ describe("CanvasEditor focus management", () => {
     fireEvent.pointerDown(getByTestId("canvas-editor-surface"));
 
     fireEvent.keyDown(textarea!, { key: "ArrowRight" });
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({
       x: 2,
       y: 1,
     });
-    expect(useEditorStore.getState().textCursor).toBeNull();
+    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
 
     fireEvent.keyDown(textarea!, { key: "ArrowUp", shiftKey: true });
-    expect(useEditorStore.getState().staticGridSelection).toEqual({
+    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
       mode: "range",
       activeCell: { x: 2, y: 1 },
       anchorCell: { x: 2, y: 1 },
       primaryRange: { start: { x: 2, y: 0 }, end: { x: 2, y: 1 } },
       additionalRanges: [],
     });
-    expect(useEditorStore.getState().textCursor).toBeNull();
-    expect(useEditorStore.getState().structuredGridFocus).toBeNull();
+    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(useEditorStore.getState().interaction.structuredGridFocus).toBeNull();
   });
 
   it("uses Excel-style navigation keys only in static-grid navigate mode", () => {
@@ -1167,7 +1173,7 @@ describe("CanvasEditor focus management", () => {
       ["0,0", { char: "A", color: "#fff" }],
       ["4,3", { char: "B", color: "#fff" }],
     ]);
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface([
         ["0,0", { char: "A", color: "#fff" }],
@@ -1191,13 +1197,13 @@ describe("CanvasEditor focus management", () => {
     fireEvent.pointerDown(getByTestId("canvas-editor-surface"));
 
     fireEvent.keyDown(textarea, { key: "Home" });
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 0, y: 1 });
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 0, y: 1 });
     fireEvent.keyDown(textarea, { key: "End", ctrlKey: true });
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 4, y: 3 });
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 4, y: 3 });
     fireEvent.keyDown(textarea, { key: "Enter", shiftKey: true });
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 4, y: 2 });
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 4, y: 2 });
     fireEvent.keyDown(textarea, { key: "Tab", shiftKey: true });
-    expect(useEditorStore.getState().staticGridSelection.activeCell).toEqual({ x: 3, y: 2 });
+    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 3, y: 2 });
   });
 
   it("selects bounded rows, columns, and two-stage content with keyboard shortcuts", () => {
@@ -1206,7 +1212,7 @@ describe("CanvasEditor focus management", () => {
       ["2,1", { char: "B", color: "#fff" }],
       ["5,4", { char: "C", color: "#fff" }],
     ]);
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface([
         ["1,1", { char: "A", color: "#fff" }],
@@ -1231,27 +1237,27 @@ describe("CanvasEditor focus management", () => {
     fireEvent.pointerDown(getByTestId("canvas-editor-surface"));
 
     fireEvent.keyDown(textarea, { key: " ", code: "Space", shiftKey: true });
-    expect(getGridSelectionRanges(useEditorStore.getState().staticGridSelection)).toEqual([
+    expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
       { start: { x: 1, y: 1 }, end: { x: 5, y: 1 } },
     ]);
     useEditorStore.getState().clearStaticGridSelection();
     fireEvent.keyDown(textarea, { key: " ", code: "Space", ctrlKey: true });
-    expect(getGridSelectionRanges(useEditorStore.getState().staticGridSelection)).toEqual([
+    expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
       { start: { x: 1, y: 1 }, end: { x: 1, y: 4 } },
     ]);
     useEditorStore.getState().clearStaticGridSelection();
     fireEvent.keyDown(textarea, { key: "a", ctrlKey: true });
-    expect(getGridSelectionRanges(useEditorStore.getState().staticGridSelection)).toEqual([
+    expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
       { start: { x: 1, y: 1 }, end: { x: 2, y: 1 } },
     ]);
     fireEvent.keyDown(textarea, { key: "a", ctrlKey: true });
-    expect(getGridSelectionRanges(useEditorStore.getState().staticGridSelection)).toEqual([
+    expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
       { start: { x: 1, y: 1 }, end: { x: 5, y: 4 } },
     ]);
   });
 
   it("keeps Space selection shortcuts out of static-grid text edit", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
       textCursor: { x: 2, y: 1 },
@@ -1279,17 +1285,17 @@ describe("CanvasEditor focus management", () => {
 
     expect(rowShortcut.defaultPrevented).toBe(false);
     expect(columnShortcut.defaultPrevented).toBe(false);
-    expect(useEditorStore.getState().staticGridSelection.mode).toBe("cell");
+    expect(useEditorStore.getState().interaction.staticGridSelection.mode).toBe("cell");
 
     fireEvent.input(textarea, { target: { value: " " } });
     await waitFor(() => {
       expect(useEditorStore.getState().contentSurface.reader.materialize().get("2,1")?.char).toBe(" ");
     });
-    expect(useEditorStore.getState().staticGridSelection.mode).toBe("cell");
+    expect(useEditorStore.getState().interaction.staticGridSelection.mode).toBe("cell");
   });
 
   it("moves and clears structured grid focus from the managed textarea", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: null,
       selectedStructuredNodeIds: [],
@@ -1306,17 +1312,17 @@ describe("CanvasEditor focus management", () => {
     expect(document.activeElement).toBe(textarea);
 
     fireEvent.keyDown(textarea!, { key: "ArrowRight" });
-    expect(useEditorStore.getState().structuredGridFocus).toEqual({ x: 3, y: 3 });
+    expect(useEditorStore.getState().interaction.structuredGridFocus).toEqual({ x: 3, y: 3 });
 
     fireEvent.keyDown(textarea!, { key: "ArrowDown" });
-    expect(useEditorStore.getState().structuredGridFocus).toEqual({ x: 3, y: 4 });
+    expect(useEditorStore.getState().interaction.structuredGridFocus).toEqual({ x: 3, y: 4 });
 
     fireEvent.keyDown(textarea!, { key: "Escape" });
-    expect(useEditorStore.getState().structuredGridFocus).toBeNull();
+    expect(useEditorStore.getState().interaction.structuredGridFocus).toBeNull();
   });
 
   it("cancels canvas color picking with Escape outside the managed textarea", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasColorPickerTarget: "auto",
       hoveredGrid: { x: 4, y: 6 },
     });
@@ -1334,12 +1340,12 @@ describe("CanvasEditor focus management", () => {
     toolbarControl.focus();
     fireEvent.keyDown(toolbarControl, { key: "Escape" });
 
-    expect(useEditorStore.getState().canvasColorPickerTarget).toBeNull();
-    expect(useEditorStore.getState().hoveredGrid).toBeNull();
+    expect(useEditorStore.getState().interaction.canvasColorPickerTarget).toBeNull();
+    expect(useEditorStore.getState().interaction.hoveredGrid).toBeNull();
   });
 
   it("creates structured text from managed textarea input at structured grid focus", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       textCursor: null,
       selectedStructuredNodeIds: [],
@@ -1369,12 +1375,12 @@ describe("CanvasEditor focus management", () => {
       text: "Go",
       style: { color: "#123456" },
     });
-    expect(state.structuredGridFocus).toBeNull();
-    expect(state.textCursor).toEqual({ x: 5, y: 4 });
+    expect(state.interaction.structuredGridFocus).toBeNull();
+    expect(state.interaction.textCursor).toEqual({ x: 5, y: 4 });
   });
 
   it("drops a structured button template onto the canvas", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       offset: { x: 0, y: 0 },
       zoom: 1,
@@ -1445,14 +1451,14 @@ describe("CanvasEditor focus management", () => {
       text: "[BUTTON]",
       style: { color: "#000000" },
     });
-    expect(state.selectedStructuredNodeIds).toEqual(
+    expect(state.interaction.selectedStructuredNodeIds).toEqual(
       state.structuredScene.map((node) => node.id)
     );
-    expect(state.structuredGridFocus).toBeNull();
+    expect(state.interaction.structuredGridFocus).toBeNull();
   });
 
   it("drops a structured badge template onto the canvas", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       offset: { x: 0, y: 0 },
       zoom: 1,
@@ -1513,13 +1519,13 @@ describe("CanvasEditor focus management", () => {
     expect(stripNodeIds(state.structuredScene)).toEqual(
       stripNodeIds(expectedNodes)
     );
-    expect(state.selectedStructuredNodeIds).toEqual(
+    expect(state.interaction.selectedStructuredNodeIds).toEqual(
       state.structuredScene.map((node) => node.id)
     );
   });
 
   it("drops a structured textarea template onto the canvas", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       offset: { x: 0, y: 0 },
       zoom: 1,
@@ -1583,13 +1589,13 @@ describe("CanvasEditor focus management", () => {
     expect(stripNodeIds(state.structuredScene)).toEqual(
       stripNodeIds(expectedNodes)
     );
-    expect(state.selectedStructuredNodeIds).toEqual(
+    expect(state.interaction.selectedStructuredNodeIds).toEqual(
       state.structuredScene.map((node) => node.id)
     );
   });
 
   it("uses the active dragged template when dragover cannot read custom data", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       offset: { x: 0, y: 0 },
       zoom: 1,
@@ -1632,7 +1638,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("coalesces structured template dragover previews to the latest frame position", async () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       offset: { x: 0, y: 0 },
       zoom: 1,
@@ -1681,7 +1687,7 @@ describe("CanvasEditor focus management", () => {
   });
 
   it("drops at the latest dragover point even before the preview frame flushes", () => {
-    useEditorStore.setState({
+    setCanvasTestState({
       canvasMode: "structured",
       offset: { x: 0, y: 0 },
       zoom: 1,

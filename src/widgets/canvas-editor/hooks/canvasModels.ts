@@ -1,5 +1,6 @@
 import type {
   CanvasRuntime,
+  CanvasInteractionSnapshot,
   CanvasState,
   CanvasSurfaceReader,
   CanvasViewportState,
@@ -11,16 +12,17 @@ type CanvasQueries = CanvasRuntime["queries"];
 
 export type CanvasRenderModel = Pick<CanvasState,
   | "activeCanvasId"
-  | "scratchLayer"
-  | "textCursor"
-  | "staticGridSelection"
-  | "staticGridEditMode"
   | "showGrid"
-  | "hoveredGrid"
   | "tool"
   | "canvasMode"
   | "slideDeck"
   | "structuredScene"
+> & Pick<CanvasInteractionSnapshot,
+  | "scratchLayer"
+  | "textCursor"
+  | "staticGridSelection"
+  | "staticGridEditMode"
+  | "hoveredGrid"
   | "selectedStructuredNodeIds"
   | "selectedStructuredBoxId"
   | "structuredContextPoint"
@@ -36,16 +38,18 @@ export type CanvasRenderModel = Pick<CanvasState,
 };
 
 export type CanvasEditorModel = Pick<CanvasState,
-  | "textCursor"
-  | "staticGridSelection"
-  | "staticGridEditMode"
-  | "structuredGridFocus"
-  | "selectedStructuredNodeIds"
   | "structuredScene"
   | "structuredComponents"
   | "brushColor"
-  | "canvasColorPickerTarget"
 > & {
+  interaction: Pick<CanvasInteractionSnapshot,
+    | "textCursor"
+    | "staticGridSelection"
+    | "staticGridEditMode"
+    | "structuredGridFocus"
+    | "selectedStructuredNodeIds"
+    | "canvasColorPickerTarget"
+  >;
   offset: CanvasViewportState["offset"];
   zoom: number;
   pendingCameraPlacement?: PendingCanvasCameraPlacement | null;

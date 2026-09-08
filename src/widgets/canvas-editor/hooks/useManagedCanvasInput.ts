@@ -88,9 +88,9 @@ const traceClipboardShortcut = (
     activeElement: document.activeElement?.tagName ?? null,
     canvasOwnsInputFocus,
     interaction: editor.getInteractionState().type,
-    selectionMode: editor.getState().staticGridSelection.mode,
+    selectionMode: editor.getState().interaction.staticGridSelection.mode,
     selectionRangeCount: getGridSelectionRanges(
-      editor.getState().staticGridSelection
+      editor.getState().interaction.staticGridSelection
     ).length,
   });
 };
@@ -114,7 +114,7 @@ const traceClipboardAction = (
     activeElement: document.activeElement?.tagName ?? null,
     canvasOwnsInputFocus,
     interaction: editor.getInteractionState().type,
-    selectionMode: editor.getState().staticGridSelection.mode,
+    selectionMode: editor.getState().interaction.staticGridSelection.mode,
   });
 };
 
@@ -148,9 +148,6 @@ export const useManagedCanvasInput = ({
   const isComposing = useRef(false);
   const finalizedCompositionRef = useRef<FinalizedManagedComposition | null>(null);
   const {
-    textCursor,
-    staticGridSelection,
-    staticGridEditMode,
     writeTextString,
     backspaceText,
     deleteTextForward,
@@ -171,16 +168,21 @@ export const useManagedCanvasInput = ({
     zoom,
     fillSelectionsWithChar,
     clearSelections,
-    structuredGridFocus,
     setStructuredGridFocus,
-    selectedStructuredNodeIds,
     setSelectedStructuredNodeIds,
     setEditingStructuredTextNodeId,
     setStructuredTextSelection,
-    canvasColorPickerTarget,
     setCanvasColorPickerTarget,
     setHoveredGrid,
   } = model;
+  const {
+    textCursor,
+    staticGridSelection,
+    staticGridEditMode,
+    structuredGridFocus,
+    selectedStructuredNodeIds,
+    canvasColorPickerTarget,
+  } = model.interaction;
   const [managedInputScheduler] = useState(() => new ManagedInputBatchScheduler({
     now: () => performance.now(),
     requestFrame: (callback) => requestAnimationFrame(callback),

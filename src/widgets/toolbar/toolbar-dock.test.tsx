@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { Toolbar as ToolbarUnderTest } from '@/widgets/toolbar/dock';
-import { useEditorStore } from '@/domains/canvas/testing';
+import { canvasCommands, useEditorStore } from '@/domains/canvas/testing';
 import { setUiLanguage } from '@/shared/i18n';
 import { ShortcutProvider } from '@/shared/shortcuts/dispatcher';
 import { useEditorShortcutLayer } from '@/domains/editor/public';
@@ -52,9 +52,8 @@ function Toolbar({
 
 function StoreToolbar() {
   const tool = useEditorStore((state) => state.tool);
-  const setTool = useEditorStore((state) => state.setTool);
 
-  return <Toolbar tool={tool} setTool={setTool} onUndo={() => {}} />;
+  return <Toolbar tool={tool} setTool={canvasCommands.tools.set} onUndo={() => {}} />;
 }
 
 describe('Toolbar dock', () => {
@@ -200,7 +199,7 @@ describe('Toolbar dock', () => {
     render(
       <Toolbar
         tool="select"
-        setTool={useEditorStore.getState().setTool}
+        setTool={canvasCommands.tools.set}
         onUndo={vi.fn()}
       />
     );

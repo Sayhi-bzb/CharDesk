@@ -23,6 +23,7 @@ import type {
   WidgetNode,
   WidgetTree,
 } from "./types.js";
+import { buttonHorizontalPadding, buttonLayoutDefaults } from "./button.js";
 import { isCollectionItemKind } from "./widget-capabilities.js";
 
 const integer = (value: number, label: string) => {
@@ -122,7 +123,9 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
       }
     : node.kind === "slider"
       ? { width: 20, minWidth: 2, minHeight: 1, flexShrink: 0 }
-    : node.kind === "button" || node.kind === "checkbox" || node.kind === "select-trigger"
+    : node.kind === "button"
+      ? buttonLayoutDefaults(node.buttonSize)
+    : node.kind === "checkbox" || node.kind === "select-trigger"
       ? {
           direction: "row",
           minHeight: 1,
@@ -146,6 +149,18 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
           ? { minHeight: 3, flexShrink: 0 }
           : {};
   applyStyle(target, { ...defaults, ...node.style });
+  // Outline chrome owns one Cell on each side; user padding remains inside it.
+  if (node.kind === "button" && node.buttonVariant === "outline") {
+    const recipePadding = buttonHorizontalPadding(node.buttonSize);
+    target.setPadding(
+      Edge.Left,
+      (node.style.paddingLeft ?? node.style.padding ?? recipePadding) + 1
+    );
+    target.setPadding(
+      Edge.Right,
+      (node.style.paddingRight ?? node.style.padding ?? recipePadding) + 1
+    );
+  }
   // The last inner row belongs to Tab chrome, in addition to user padding.
   if (node.kind === "tab") {
     target.setPadding(

@@ -10,6 +10,9 @@ const normalizeOrders = (scene: StructuredNode[]) =>
 const sortByOrder = (scene: StructuredNode[]) =>
   [...scene].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
 
+export const getNextStructuredOrder = (scene: readonly StructuredNode[]) =>
+  scene.length === 0 ? 1 : Math.max(...scene.map((node) => node.order)) + 1;
+
 export const canReorderStructuredNodes = (
   scene: StructuredNode[],
   selectedIds: string[],

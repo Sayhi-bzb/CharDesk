@@ -30,6 +30,24 @@ const CONTENT_STATE_FIELDS = new Set([
   "structuredScene",
   "structuredComponents",
 ]);
+const LEGACY_FLAT_RUNTIME_FIELDS = new Set([
+  "offset",
+  "zoom",
+  "textCursor",
+  "editingStructuredTextNodeId",
+  "structuredTextSelection",
+  "selectedStructuredNodeIds",
+  "selectedStructuredBoxId",
+  "selectedStructuredSplitHandle",
+  "structuredContextPoint",
+  "structuredGridFocus",
+  "staticGridSelection",
+  "staticGridEditMode",
+  "staticGridInputFlow",
+  "hoveredGrid",
+  "scratchLayer",
+  "canvasColorPickerTarget",
+]);
 const DESCRIPTOR_CONTENT_FIELDS = new Set([
   "grid",
   "scene",
@@ -51,6 +69,25 @@ const EDITOR_STORE_IMPORT_OWNERS = new Set([
   "domains/canvas/state/canvasCommands.ts",
   "domains/canvas/state/canvasState.ts",
   "domains/canvas/testing.ts",
+]);
+const CANVAS_COMMAND_OWNED_MUTATIONS = new Set([
+  "setTool",
+  "setBrushChar",
+  "setBrushColor",
+  "setBrushBackgroundColor",
+  "setShowGrid",
+  "setExportShowGrid",
+  "setCanvasColorPickerTarget",
+  "setStructuredContextPoint",
+  "setHoveredGrid",
+  "setStructuredGridFocus",
+  "moveStructuredGridFocus",
+  "setTextCursor",
+  "setEditingStructuredTextNodeId",
+  "setStructuredTextSelection",
+  "setSelectedStructuredNodeIds",
+  "setSelectedStructuredBoxId",
+  "setSelectedStructuredSplitHandle",
 ]);
 
 function collect(directory) {
@@ -92,6 +129,19 @@ for (const absolute of collect(SRC_ROOT)) {
       current = current.parent;
     }
     return false;
+  }
+  function getEnclosingTypeName(node) {
+    let current = node.parent;
+    while (current) {
+      if (
+        ts.isInterfaceDeclaration(current) ||
+        ts.isTypeAliasDeclaration(current)
+      ) {
+        return current.name.text;
+      }
+      current = current.parent;
+    }
+    return "";
   }
   function inspect(node) {
     if (
@@ -191,6 +241,36 @@ for (const absolute of collect(SRC_ROOT)) {
       !node.type.getText(sourceFile).includes("CanvasSessionDescriptor")
     ) {
       report(node, "runtime canvasSessions must contain descriptors only");
+    }
+    if (
+      sourcePath === "domains/canvas/state/interfaces.ts" &&
+      ts.isPropertySignature(node) &&
+      (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+      CANVAS_COMMAND_OWNED_MUTATIONS.has(node.name.text)
+    ) {
+      report(node, `${node.name.text} belongs to CanvasCommands, not EditorState`);
+    }
+    if (
+      sourcePath === "domains/canvas/state/canvasCommands.ts" &&
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "call" &&
+      ts.isStringLiteral(node.arguments[0]) &&
+      CANVAS_COMMAND_OWNED_MUTATIONS.has(node.arguments[0].text)
+    ) {
+      report(node, `${node.arguments[0].text} must be implemented by CanvasCommands`);
+    }
+    if (
+      sourcePath === "domains/canvas/state/interfaces.ts" &&
+      ts.isPropertySignature(node) &&
+      (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+      LEGACY_FLAT_RUNTIME_FIELDS.has(node.name.text) &&
+      getEnclosingTypeName(node) !== "CanvasViewportState"
+    ) {
+      report(
+        node,
+        `EditorState must not mirror ${node.name.text}; use interaction or CanvasViewportRuntime`
+      );
     }
     if (
       ts.isPropertyAssignment(node) &&

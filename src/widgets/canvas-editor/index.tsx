@@ -91,14 +91,13 @@ export const CanvasEditor = ({
     offset,
     zoom,
     setStructuredGridFocus,
-    selectedStructuredNodeIds,
     setSelectedStructuredNodeIds,
     setSelectedStructuredSplitHandle,
     structuredScene,
     setStructuredContextPoint,
     setTextCursor,
-    textCursor,
   } = editorStore;
+  const { selectedStructuredNodeIds, textCursor } = editorStore.interaction;
   const structuredSceneQuery = useMemo(
     () => createStructuredSceneQuery(structuredScene),
     [structuredScene]
@@ -233,7 +232,7 @@ export const CanvasEditor = ({
     onManagedInputBatch: recordManagedInputBatch,
   });
   const isCanvasTextEditing = isStaticGridMode(canvasMode)
-    ? editorStore.staticGridEditMode === 'text-edit'
+    ? editorStore.interaction.staticGridEditMode === 'text-edit'
     : !!rendererStore.textCursor ||
       !!rendererStore.editingStructuredTextNodeId ||
       !!rendererStore.structuredTextSelection;

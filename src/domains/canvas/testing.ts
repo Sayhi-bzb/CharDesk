@@ -5,10 +5,25 @@ import { CanvasDocumentRegistry } from "./state/CanvasDocumentRegistry";
 import type { CanvasStore } from "./state/editorStore";
 import type { createCanvasCommands } from "./state/canvasCommands";
 import { CanvasRuntime } from "./runtime";
-import type { CanvasContentSurfaceState } from "./state/interfaces";
+import type {
+  CanvasContentSurfaceState,
+  CanvasState,
+} from "./state/interfaces";
 import { createCanvasContentSurface } from "./state/helpers/gridHelpers";
 import { createGridSurfaceReader } from "./cell-plane/model";
 import type { GridCell } from "@/shared/types";
+import {
+  updateCanvasInteraction,
+  type CanvasInteractionSnapshot,
+  type CanvasInteractionUpdate,
+} from "./state/canvasInteractionState";
+
+type CanvasTestStatePatch = Partial<Omit<CanvasState, "interaction">> &
+  CanvasInteractionUpdate & {
+    interaction?: CanvasInteractionSnapshot;
+    offset?: { x: number; y: number };
+    zoom?: number;
+  };
 
 export let defaultCanvasDocuments: CanvasDocumentRegistry;
 export let useEditorStore: CanvasStore;
@@ -36,6 +51,64 @@ export const initializeCanvasTesting = ({
 };
 
 export const getCanvasState = () => useEditorStore.getState();
+
+/** Test fixture adapter; production state has no flat interaction or viewport fields. */
+export const setCanvasTestState = (patch: CanvasTestStatePatch) => {
+  const {
+    interaction,
+    offset,
+    zoom,
+    textCursor,
+    editingStructuredTextNodeId,
+    structuredTextSelection,
+    selectedStructuredNodeIds,
+    selectedStructuredBoxId,
+    selectedStructuredSplitHandle,
+    structuredContextPoint,
+    structuredGridFocus,
+    staticGridSelection,
+    staticGridEditMode,
+    staticGridInputFlow,
+    hoveredGrid,
+    scratchLayer,
+    canvasColorPickerTarget,
+    ...statePatch
+  } = patch;
+  const interactionUpdate: CanvasInteractionUpdate = {
+    ...(textCursor !== undefined ? { textCursor } : {}),
+    ...(editingStructuredTextNodeId !== undefined
+      ? { editingStructuredTextNodeId }
+      : {}),
+    ...(structuredTextSelection !== undefined ? { structuredTextSelection } : {}),
+    ...(selectedStructuredNodeIds !== undefined ? { selectedStructuredNodeIds } : {}),
+    ...(selectedStructuredBoxId !== undefined ? { selectedStructuredBoxId } : {}),
+    ...(selectedStructuredSplitHandle !== undefined
+      ? { selectedStructuredSplitHandle }
+      : {}),
+    ...(structuredContextPoint !== undefined ? { structuredContextPoint } : {}),
+    ...(structuredGridFocus !== undefined ? { structuredGridFocus } : {}),
+    ...(staticGridSelection !== undefined ? { staticGridSelection } : {}),
+    ...(staticGridEditMode !== undefined ? { staticGridEditMode } : {}),
+    ...(staticGridInputFlow !== undefined ? { staticGridInputFlow } : {}),
+    ...(hoveredGrid !== undefined ? { hoveredGrid } : {}),
+    ...(scratchLayer !== undefined ? { scratchLayer } : {}),
+    ...(canvasColorPickerTarget !== undefined ? { canvasColorPickerTarget } : {}),
+  };
+  const current = useEditorStore.getState();
+  useEditorStore.setState({
+    ...statePatch,
+    interaction: updateCanvasInteraction(
+      interaction ?? current.interaction,
+      interactionUpdate
+    ),
+  });
+  if (offset !== undefined || zoom !== undefined) {
+    testingCanvasRuntime.viewport.setViewport((viewport) => ({
+      offset: offset ?? viewport.offset,
+      zoom: zoom ?? viewport.zoom,
+    }));
+  }
+};
 export class TestCanvasContentSurface implements CanvasContentSurfaceState {
   readonly reader;
   readonly revision;

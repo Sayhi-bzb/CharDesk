@@ -118,10 +118,10 @@ export function StructuredSplitToolbar({
     useShallow((state) => ({
       canvasMode: state.canvasMode,
       structuredScene: state.structuredScene,
-      selectedStructuredNodeIds: state.selectedStructuredNodeIds,
-      selectedStructuredSplitHandle: state.selectedStructuredSplitHandle,
-      hoveredGrid: state.hoveredGrid,
-      structuredContextPoint: state.structuredContextPoint,
+      selectedStructuredNodeIds: state.interaction.selectedStructuredNodeIds,
+      selectedStructuredSplitHandle: state.interaction.selectedStructuredSplitHandle,
+      hoveredGrid: state.interaction.hoveredGrid,
+      structuredContextPoint: state.interaction.structuredContextPoint,
     }))
   );
   const offset = liveViewport?.offset ?? fallbackViewport.offset;

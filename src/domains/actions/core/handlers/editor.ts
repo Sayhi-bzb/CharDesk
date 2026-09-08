@@ -57,7 +57,7 @@ const FORMAT_ATTRIBUTES: Record<FormatActionId, TextAttributeName> = {
 };
 
 const hasStructuredSelection = (state: CanvasState) =>
-  state.canvasMode === "structured" && state.selectedStructuredNodeIds.length > 0;
+  state.canvasMode === "structured" && state.interaction.selectedStructuredNodeIds.length > 0;
 
 const canReorderStructuredSelection = (
   state: CanvasState,
@@ -66,19 +66,19 @@ const canReorderStructuredSelection = (
   state.canvasMode === "structured" &&
   canReorderStructuredNodes(
     state.structuredScene,
-    state.selectedStructuredNodeIds,
+    state.interaction.selectedStructuredNodeIds,
     direction
   );
 
 const getContextSplitBox = (state: CanvasState) => {
   if (
     state.canvasMode !== "structured" ||
-    state.selectedStructuredNodeIds.length !== 1 ||
-    !state.structuredContextPoint
+    state.interaction.selectedStructuredNodeIds.length !== 1 ||
+    !state.interaction.structuredContextPoint
   ) {
     return null;
   }
-  const selectedId = state.selectedStructuredNodeIds[0];
+  const selectedId = state.interaction.selectedStructuredNodeIds[0];
   return (
     state.structuredScene.find((node) => node.id === selectedId && node.type === "splitBox") ?? null
   );
@@ -89,29 +89,29 @@ const canSplitContextSplitBox = (
   axis: "horizontal" | "vertical"
 ) => {
   const splitBox = getContextSplitBox(state);
-  if (!splitBox || splitBox.type !== "splitBox" || !state.structuredContextPoint) {
+  if (!splitBox || splitBox.type !== "splitBox" || !state.interaction.structuredContextPoint) {
     return false;
   }
-  if (state.selectedStructuredSplitHandle) return false;
-  const leaf = getStructuredSplitBoxLeafAtPoint(splitBox, state.structuredContextPoint);
+  if (state.interaction.selectedStructuredSplitHandle) return false;
+  const leaf = getStructuredSplitBoxLeafAtPoint(splitBox, state.interaction.structuredContextPoint);
   return !!leaf && canSplitStructuredSplitBoxLeaf(leaf, axis);
 };
 
 const hasSelectedStructuredDivider = (state: CanvasState) =>
   state.canvasMode === "structured" &&
-  !!state.selectedStructuredSplitHandle &&
-  isStructuredSplitBoxLineHandle(state.selectedStructuredSplitHandle.handle);
+  !!state.interaction.selectedStructuredSplitHandle &&
+  isStructuredSplitBoxLineHandle(state.interaction.selectedStructuredSplitHandle.handle);
 
 const hasStructuredTextSelection = (state: CanvasState) =>
   state.canvasMode === "structured" &&
-  !!getStructuredTextSelectionRange(state.structuredTextSelection);
+  !!getStructuredTextSelectionRange(state.interaction.structuredTextSelection);
 
 const hasStructuredCutSource = (
   state: CanvasState
 ) =>
   hasStructuredTextSelection(state) ||
   (state.canvasMode === "structured" &&
-    state.selectedStructuredNodeIds.length > 0);
+    state.interaction.selectedStructuredNodeIds.length > 0);
 
 const isStructuredBoxNode = (node: { type: string }): node is StructuredBoxNode =>
   node.type === "box";
@@ -120,11 +120,11 @@ const isStructuredTextNode = (node: { type: string }): node is StructuredTextNod
   node.type === "text";
 
 const getSelectedStructuredBox = (state: CanvasState) => {
-  if (state.canvasMode !== "structured" || !state.selectedStructuredBoxId) return null;
+  if (state.canvasMode !== "structured" || !state.interaction.selectedStructuredBoxId) return null;
   return (
     state.structuredScene.find(
       (node): node is StructuredBoxNode =>
-        node.id === state.selectedStructuredBoxId && isStructuredBoxNode(node)
+        node.id === state.interaction.selectedStructuredBoxId && isStructuredBoxNode(node)
     ) ?? null
   );
 };
@@ -132,9 +132,9 @@ const getSelectedStructuredBox = (state: CanvasState) => {
 const getSelectedStructuredEditCursor = (state: CanvasState) => {
   const box = getSelectedStructuredBox(state);
   if (box) return getStructuredBoxNameEndPoint(box);
-  if (state.canvasMode !== "structured" || state.selectedStructuredNodeIds.length !== 1)
+  if (state.canvasMode !== "structured" || state.interaction.selectedStructuredNodeIds.length !== 1)
     return null;
-  const selectedId = state.selectedStructuredNodeIds[0];
+  const selectedId = state.interaction.selectedStructuredNodeIds[0];
   const text = state.structuredScene.find(
     (node): node is StructuredTextNode => node.id === selectedId && isStructuredTextNode(node)
   );
@@ -152,26 +152,26 @@ const canCopyOrCut = (state: CanvasState): boolean => {
   }
   return hasClipboardSource(
     getStaticGridSelectionAreas(
-      state.staticGridSelection,
+      state.interaction.staticGridSelection,
       state.contentSurface.reader
     ),
-    state.textCursor
+    state.interaction.textCursor
   );
 };
 
 const hasStaticGridRangeSelection = (state: CanvasState) =>
-  state.canvasMode !== "structured" && hasGridRangeSelection(state.staticGridSelection);
+  state.canvasMode !== "structured" && hasGridRangeSelection(state.interaction.staticGridSelection);
 
 const getSelectedTextAttributeValues = (
   state: CanvasState,
   attribute: TextAttributeName
 ): boolean[] => {
   if (state.canvasMode === "structured") {
-    const range = getStructuredTextSelectionRange(state.structuredTextSelection);
-    const node = range && state.structuredTextSelection
+    const range = getStructuredTextSelectionRange(state.interaction.structuredTextSelection);
+    const node = range && state.interaction.structuredTextSelection
       ? state.structuredScene.find(
           (candidate) =>
-            candidate.id === state.structuredTextSelection?.nodeId && candidate.type === "text"
+            candidate.id === state.interaction.structuredTextSelection?.nodeId && candidate.type === "text"
         )
       : null;
     if (!range || node?.type !== "text") return [];
@@ -182,7 +182,7 @@ const getSelectedTextAttributeValues = (
 
   const values: boolean[] = [];
   forEachGridSelectionSpan(
-    getGridSelectionRanges(state.staticGridSelection),
+    getGridSelectionRanges(state.interaction.staticGridSelection),
     ({ y, minX, maxX }) => {
       for (let x = minX; x <= maxX; x++) {
         const cell = state.contentSurface.reader.get({ x, y });
@@ -346,7 +346,7 @@ export const editorHandlers: Record<EditorActionId, ActionHandler<unknown>> = {
     if (!fillChar) {
       return actionFailed("no-fill-char");
     }
-    const hasTextCursor = context.state.textCursor !== null;
+    const hasTextCursor = context.state.interaction.textCursor !== null;
     if (!hasStaticGridRangeSelection(context.state) || hasTextCursor) {
       return actionFailed("no-selection");
     }
@@ -437,7 +437,7 @@ export const editorHandlers: Record<EditorActionId, ActionHandler<unknown>> = {
     }
     const text = exportStructuredHierarchyText(
       context.state.structuredScene,
-      context.state.selectedStructuredNodeIds,
+      context.state.interaction.selectedStructuredNodeIds,
       context.state.structuredComponents
     );
     void clipboard.writeText(text).then((copied) => {
@@ -451,7 +451,7 @@ export const editorHandlers: Record<EditorActionId, ActionHandler<unknown>> = {
   },
 
   "structured-split-horizontal": (_options, context): ActionResult => {
-    const point = context.state.structuredContextPoint;
+    const point = context.state.interaction.structuredContextPoint;
     const splitBox = getContextSplitBox(context.state);
     if (!point || !splitBox || splitBox.type !== "splitBox") {
       return actionFailed("empty-selection");
@@ -462,7 +462,7 @@ export const editorHandlers: Record<EditorActionId, ActionHandler<unknown>> = {
   },
 
   "structured-split-vertical": (_options, context): ActionResult => {
-    const point = context.state.structuredContextPoint;
+    const point = context.state.interaction.structuredContextPoint;
     const splitBox = getContextSplitBox(context.state);
     if (!point || !splitBox || splitBox.type !== "splitBox") {
       return actionFailed("empty-selection");
@@ -515,5 +515,5 @@ export const editorCheckers: Partial<Record<EditorActionId, (state: CanvasState)
   "structured-split-vertical": (state) => canSplitContextSplitBox(state, "vertical"),
   "structured-delete-divider": hasSelectedStructuredDivider,
   "fill-selection-char": (state) =>
-    hasStaticGridRangeSelection(state) && state.textCursor === null,
+    hasStaticGridRangeSelection(state) && state.interaction.textCursor === null,
 };

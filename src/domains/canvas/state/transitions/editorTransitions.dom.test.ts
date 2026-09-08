@@ -3,33 +3,38 @@ import { createDocumentInteractionResetPatch } from "./editorTransitions";
 
 describe("editor transitions", () => {
   it("creates a complete document interaction reset", () => {
-    expect(createDocumentInteractionResetPatch()).toEqual({
-      textCursor: null,
-      editingStructuredTextNodeId: null,
-      structuredTextSelection: null,
-      selectedStructuredNodeIds: [],
-      selectedStructuredBoxId: null,
-      selectedStructuredSplitHandle: null,
-      structuredContextPoint: null,
-      structuredGridFocus: null,
-      staticGridSelection: {
-        mode: "cell",
-        activeCell: { x: 0, y: 0 },
-        anchorCell: { x: 0, y: 0 },
-        primaryRange: { start: { x: 0, y: 0 }, end: { x: 0, y: 0 } },
-        additionalRanges: [],
+    const address = { documentId: "document", pageId: "page" };
+    expect(createDocumentInteractionResetPatch(address)).toEqual({
+      interaction: {
+        address,
+        textCursor: null,
+        editingStructuredTextNodeId: null,
+        structuredTextSelection: null,
+        selectedStructuredNodeIds: [],
+        selectedStructuredBoxId: null,
+        selectedStructuredSplitHandle: null,
+        structuredContextPoint: null,
+        structuredGridFocus: null,
+        staticGridSelection: {
+          mode: "cell",
+          activeCell: { x: 0, y: 0 },
+          anchorCell: { x: 0, y: 0 },
+          primaryRange: { start: { x: 0, y: 0 }, end: { x: 0, y: 0 } },
+          additionalRanges: [],
+        },
+        staticGridEditMode: "navigate",
+        staticGridInputFlow: null,
+        hoveredGrid: null,
+        scratchLayer: null,
+        canvasColorPickerTarget: null,
       },
-      staticGridEditMode: "navigate",
-      staticGridInputFlow: null,
-      hoveredGrid: null,
-      scratchLayer: null,
-      canvasColorPickerTarget: null,
     });
   });
 
   it("does not share mutable reset values between transitions", () => {
-    const first = createDocumentInteractionResetPatch();
-    const second = createDocumentInteractionResetPatch();
+    const address = { documentId: "document", pageId: "page" };
+    const first = createDocumentInteractionResetPatch(address).interaction;
+    const second = createDocumentInteractionResetPatch(address).interaction;
 
     expect(first.selectedStructuredNodeIds).not.toBe(
       second.selectedStructuredNodeIds

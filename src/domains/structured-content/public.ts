@@ -46,6 +46,7 @@ export {
 export {
   canReorderStructuredNodes,
   duplicateStructuredNodes,
+  getNextStructuredOrder,
   reorderStructuredNodes,
 } from "./model/node-actions";
 export {

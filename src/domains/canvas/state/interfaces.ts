@@ -1,10 +1,8 @@
-import type { GridMap, GridPoint, Point, SelectionArea, TextAttributes } from "@/shared/types";
+import type { GridPoint, Point, SelectionArea, TextAttributes } from "@/shared/types";
 import type { CanvasMode } from "@/domains/sessions/public";
 import type { ToolType } from "../model/tool";
 import type { StructuredNode, StructuredBoxNode, StructuredComponentInstance, StructuredSelectionStylePatch, StructuredTextStyleRange } from "@/domains/structured-content/public";
-import type { StructuredTextSelection } from "@/domains/structured-content/public";
-import type { GridAddress, GridEditMode, GridRange, GridSelectionState, StaticGridInputFlow } from "@/domains/selection/public";
-import type { StructuredSplitBoxHandle } from "@/domains/structured-content/public";
+import type { GridAddress, GridRange } from "@/domains/selection/public";
 import type { CanvasSessionDescriptor } from "@/domains/sessions/public";
 import type { SessionCommands } from "@/domains/sessions/public";
 import type { CanvasHistoryMode } from "./CanvasDocumentRegistry";
@@ -16,10 +14,6 @@ export type CanvasContentSurfaceState = Readonly<{
   reader: CanvasSurfaceReader;
   revision: number;
 }>;
-
-export type CanvasColorPickerTarget =
-  | "auto"
-  | "auto-to-background";
 
 export interface RichTextCell {
   x: number;
@@ -53,7 +47,6 @@ export type ClipboardCommandResult =
     };
 
 export interface DrawingSlice {
-  scratchLayer: GridMap | null;
   setScratchLayer: (points: GridPoint[]) => void;
   addScratchPoints: (points: GridPoint[]) => void;
   commitScratch: () => void;
@@ -71,11 +64,6 @@ export interface DrawingSlice {
     start: Point,
     end: Point,
     options?: { axis?: "vertical" | "horizontal" | null }
-  ) => void;
-  setSelectedStructuredNodeIds: (ids: string[]) => void;
-  setSelectedStructuredBoxId: (id: string | null) => void;
-  setSelectedStructuredSplitHandle: (
-    handle: { nodeId: string; handle: StructuredSplitBoxHandle } | null
   ) => void;
   splitStructuredSplitBoxLeaf: (
     nodeId: string,
@@ -113,9 +101,6 @@ export interface SlideSlice {
 }
 
 export interface StaticGridSlice {
-  staticGridSelection: GridSelectionState;
-  staticGridEditMode: GridEditMode;
-  staticGridInputFlow: StaticGridInputFlow | null;
   setStaticGridActiveCell: (address: GridAddress) => void;
   setStaticGridSelectionRange: (range: GridRange) => void;
   appendStaticGridSelectionRange: (range: GridRange) => void;
@@ -136,19 +121,7 @@ export interface StaticGridSlice {
   clearStaticGridSelection: () => void;
 }
 
-interface StructuredGridFocusSlice {
-  structuredGridFocus: Point | null;
-  setStructuredGridFocus: (point: Point | null) => void;
-  moveStructuredGridFocus: (dx: number, dy: number) => void;
-}
-
 export interface TextSlice {
-  textCursor: Point | null;
-  editingStructuredTextNodeId: string | null;
-  structuredTextSelection: StructuredTextSelection | null;
-  setTextCursor: (pos: Point | null) => void;
-  setEditingStructuredTextNodeId: (id: string | null) => void;
-  setStructuredTextSelection: (selection: StructuredTextSelection | null) => void;
   replaceStructuredTextRange: (
     nodeId: string,
     start: number,
@@ -214,12 +187,8 @@ export type PendingCanvasCameraPlacement = {
 };
 
 export type EditorState = {
-  /** Atomic, page-scoped interaction authority. Flat fields are command projections. */
+  /** Atomic, page-scoped interaction authority. */
   interaction: CanvasInteractionSnapshot;
-  /** Active ViewRuntime projection. Viewport commands remain the write boundary. */
-  offset: Point;
-  /** Active ViewRuntime projection. Viewport commands remain the write boundary. */
-  zoom: number;
   tool: ToolType;
   canvasMode: CanvasMode;
   brushChar: string;
@@ -228,45 +197,21 @@ export type EditorState = {
   contentSurface: CanvasContentSurfaceState;
   structuredScene: StructuredNode[];
   structuredComponents: StructuredComponentInstance[];
-  selectedStructuredNodeIds: string[];
-  selectedStructuredBoxId: string | null;
-  selectedStructuredSplitHandle: {
-    nodeId: string;
-    handle: StructuredSplitBoxHandle;
-  } | null;
-  structuredContextPoint: Point | null;
-  structuredGridFocus: Point | null;
   showGrid: boolean;
   exportShowGrid: boolean;
-  hoveredGrid: Point | null;
-  canvasColorPickerTarget: CanvasColorPickerTarget | null;
   canvasSessions: CanvasSessionDescriptor[];
   activeCanvasId: string;
   canUndo: boolean;
   canRedo: boolean;
 
-  setOffset: (updater: (prev: Point) => Point) => void;
-  setZoom: (updater: (prev: number) => number) => void;
-  setViewport: (updater: (prev: CanvasViewportState) => CanvasViewportState) => void;
-  setTool: (tool: ToolType) => void;
   applyStructuredScene: (
     scene: StructuredNode[],
     history?: CanvasHistoryMode | boolean,
     components?: StructuredComponentInstance[]
   ) => void;
-  getNextStructuredOrder: () => number;
-  setBrushChar: (char: string) => void;
-  setBrushColor: (color: string) => void;
-  setBrushBackgroundColor: (color: string) => void;
-  setCanvasColorPickerTarget: (target: CanvasColorPickerTarget | null) => void;
-  setStructuredContextPoint: (point: Point | null) => void;
-  setShowGrid: (show: boolean) => void;
-  setExportShowGrid: (show: boolean) => void;
-  setHoveredGrid: (pos: Point | null) => void;
 } & DrawingSlice &
   SlideSlice &
   StaticGridSlice &
-  StructuredGridFocusSlice &
   TextSlice &
   SelectionSlice &
   SessionCommands;

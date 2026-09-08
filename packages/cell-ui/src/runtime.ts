@@ -58,6 +58,8 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.parentId !== after.parentId
   || before.index !== after.index
   || before.text !== after.text
+  || before.buttonVariant !== after.buttonVariant
+  || before.buttonSize !== after.buttonSize
   || !sameWidgetValue(before.style, after.style)
   || !sameWidgetValue(before.children, after.children);
 
@@ -75,6 +77,7 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.hovered !== after.hovered
   || before.selected !== after.selected
   || before.checked !== after.checked
+  || before.buttonVariant !== after.buttonVariant
   || before.sliderValue !== after.sliderValue
   || before.sliderMin !== after.sliderMin
   || before.sliderMax !== after.sliderMax

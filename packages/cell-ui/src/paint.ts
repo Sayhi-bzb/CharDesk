@@ -41,7 +41,7 @@ const stateStyle = (
   const focused = focusNode?.focused === true && focusNode.focusVisible;
   const selected = owner?.selected === true;
   const baseStyle = isFilledSurfaceKind(node.kind)
-    || owner?.kind === "button"
+    || (owner?.kind === "button" && owner.buttonVariant === "default")
     || owner?.kind === "select-trigger"
     ? { ...theme.surfaceStyle, ...node.textStyle }
     : node.textStyle;
@@ -183,6 +183,26 @@ export const paintScene = (
       // Chrome: glyphs are painted after surfaces so state fills cannot erase them.
       if (node.style.border ?? node.kind === "select-content") {
         paintBorder(buffer, id, entry.layoutBounds, theme.borderShape, { ...style, ...theme.borderStyle }, outerClip);
+      }
+      if (node.kind === "button" && node.buttonVariant === "outline" && entry.layoutBounds.width >= 2) {
+        buffer.writeGrapheme(
+          entry.layoutBounds.x,
+          entry.layoutBounds.y,
+          "[",
+          id,
+          style,
+          outerClip,
+          "over"
+        );
+        buffer.writeGrapheme(
+          entry.layoutBounds.x + entry.layoutBounds.width - 1,
+          entry.layoutBounds.y,
+          "]",
+          id,
+          style,
+          outerClip,
+          "over"
+        );
       }
 
       // Content: local text and editor glyphs stay within contentClip.

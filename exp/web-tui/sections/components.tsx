@@ -15,6 +15,8 @@ import {
   Text,
   TextInput,
   nextCellCheckboxState,
+  type ButtonSize,
+  type ButtonVariant,
   type CellCheckboxState,
   type WidgetCommand,
 } from "@chardesk/cell-ui";
@@ -24,6 +26,7 @@ import {
   useCellTextState,
 } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "../appearance";
+import { ComponentPlayground } from "../component-playground";
 
 const noCommand = () => undefined;
 
@@ -73,36 +76,123 @@ export const BoxComponentDemo = () => (
   </GallerySurface>
 );
 
+const buttonVariantItems = (["default", "outline", "ghost"] as const).map((variant) => ({
+  id: `component-button-variant-${variant}`,
+  label: variant,
+}));
+
+const buttonSizeItems = (["sm", "default", "lg"] as const).map((size) => ({
+  id: `component-button-size-${size}`,
+  label: size,
+}));
+
+const renderButtonSelectControl = (
+  label: string,
+  select: ReturnType<typeof useCellSelectState>,
+  focusedId: string,
+) => (
+  <Box id={`${select.id}-field`} key={select.id} style={{ direction: "row", height: 1 }}>
+    <Text style={{ width: 10 }}>{label}</Text>
+    <Select id={select.id} label={label} style={{ width: 15 }}>
+      <SelectTrigger
+        id={select.triggerId}
+        label={label}
+        expanded={select.open}
+        controlsId={select.open ? select.contentId : undefined}
+        focused={focusedId === select.triggerId}
+        style={{ width: 15 }}
+      ><Text>{select.selectedItem?.label ?? "default"}</Text></SelectTrigger>
+      {select.open ? (
+        <SelectContent id={select.contentId} label={`${label} options`} style={{ width: 15 }}>
+          {select.items.map((item, index) => (
+            <SelectItem
+              id={item.id}
+              key={item.id}
+              focused={focusedId === item.id}
+              selected={select.selectedId === item.id}
+              positionInSet={index + 1}
+              setSize={select.items.length}
+            ><Text>{item.label}</Text></SelectItem>
+          ))}
+        </SelectContent>
+      ) : null}
+    </Select>
+  </Box>
+);
+
 export const ButtonComponentDemo = () => {
   const [focusedId, setFocusedId] = useState("component-button-save");
   const [saved, setSaved] = useState(false);
+  const [variant, setVariant] = useState<ButtonVariant>("default");
+  const [size, setSize] = useState<ButtonSize>("default");
+  const [disabled, setDisabled] = useState(false);
+  const variantSelect = useCellSelectState("component-button-variant", buttonVariantItems, {
+    defaultSelectedId: "component-button-variant-default",
+    onSelectionChange: (id) => setVariant(id.slice("component-button-variant-".length) as ButtonVariant),
+  });
+  const sizeSelect = useCellSelectState("component-button-size", buttonSizeItems, {
+    defaultSelectedId: "component-button-size-default",
+    onSelectionChange: (id) => setSize(id.slice("component-button-size-".length) as ButtonSize),
+  });
+  const activeSelect = variantSelect.open
+    ? variantSelect
+    : sizeSelect.open
+      ? sizeSelect
+      : null;
+  const resolvedFocusedId = activeSelect?.focusedId ?? focusedId;
   const dispatch = (command: WidgetCommand) => {
     if (command.type === "focus") setFocusedId(command.targetId);
-    if (command.type === "activate" && command.targetId === "component-button-save") {
+    variantSelect.dispatch(command);
+    sizeSelect.dispatch(command);
+    if (command.type === "dismiss" && command.targetId === variantSelect.contentId) {
+      setFocusedId(variantSelect.triggerId);
+    }
+    if (command.type === "dismiss" && command.targetId === sizeSelect.contentId) {
+      setFocusedId(sizeSelect.triggerId);
+    }
+    if (command.type === "activate" && variantSelect.items.some(({ id }) => id === command.targetId)) {
+      setFocusedId(variantSelect.triggerId);
+    }
+    if (command.type === "activate" && sizeSelect.items.some(({ id }) => id === command.targetId)) {
+      setFocusedId(sizeSelect.triggerId);
+    }
+    if (command.type === "activate" && command.targetId === "component-button-disabled") {
+      setDisabled((current) => !current);
+    }
+    if (command.type === "activate" && command.targetId === "component-button-save" && !disabled) {
       setSaved(true);
     }
   };
-  return <GallerySurface
-    viewport={{ width: 36, height: 4 }}
-    focusedId={focusedId}
+  return <ComponentPlayground
+    id="component-button-playground"
+    focusedId={resolvedFocusedId}
     onCommand={dispatch}
     label="Button component"
     probeId="component-button"
-  >
-    <Root id="component-button-root">
-      <Box id="component-button-frame" style={{ gap: 1 }}>
-        <Text id="component-button-title">Document</Text>
-        <Box id="component-button-row" style={{ direction: "row", gap: 1 }}>
-          <Button
-            id="component-button-save"
-            label="Save document"
-            focused={focusedId === "component-button-save"}
-          ><Text>{saved ? "✓ Saved" : "Save"}</Text></Button>
-          <Button id="component-button-disabled" disabled><Text>Disabled</Text></Button>
-        </Box>
-      </Box>
-    </Root>
-  </GallerySurface>;
+    preview={
+      <Button
+        id="component-button-save"
+        label="Save document"
+        variant={variant}
+        size={size}
+        disabled={disabled}
+        focused={resolvedFocusedId === "component-button-save"}
+      ><Text>{saved ? "✓ Saved" : "Save"}</Text></Button>
+    }
+    controls={[
+      renderButtonSelectControl("variant", variantSelect, resolvedFocusedId),
+      renderButtonSelectControl("size", sizeSelect, resolvedFocusedId),
+      <Box id="component-button-disabled-field" key="disabled" style={{ direction: "row", height: 1 }}>
+        <Text style={{ width: 10 }}>disabled</Text>
+        <Checkbox
+          id="component-button-disabled"
+          label="disabled"
+          checked={disabled}
+          focused={resolvedFocusedId === "component-button-disabled"}
+        ><Text> </Text></Checkbox>
+      </Box>,
+    ]}
+  />;
 };
 
 const selectItems = [

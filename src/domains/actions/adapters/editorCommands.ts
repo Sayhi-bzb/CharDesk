@@ -56,9 +56,9 @@ export const runEditorCommand = (
     case "cut":
       if (state.canvasMode === "structured") {
         const hasStructuredTextSelection = !!getStructuredTextSelectionRange(
-          state.structuredTextSelection
+          state.interaction.structuredTextSelection
         );
-        if (!hasStructuredTextSelection && state.selectedStructuredNodeIds.length === 0) {
+        if (!hasStructuredTextSelection && state.interaction.selectedStructuredNodeIds.length === 0) {
           return false;
         }
         return canvas.commands.selection.cut({ event: options.clipboardEvent });
@@ -73,7 +73,7 @@ export const runEditorCommand = (
       if (state.canvasMode === "structured") return false;
       const fillChar = options.fillChar ? getFirstGrapheme(options.fillChar) : "";
       if (!fillChar) return false;
-      if (!hasGridRangeSelection(state.staticGridSelection) || state.textCursor) return false;
+      if (!hasGridRangeSelection(state.interaction.staticGridSelection) || state.interaction.textCursor) return false;
       const activeTag = document.activeElement?.tagName.toLowerCase();
       if (activeTag === "input" || activeTag === "textarea") return false;
       canvas.commands.selection.fillWithChar(fillChar);

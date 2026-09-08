@@ -63,8 +63,7 @@ configureCollaborationRuntimeFallbackForTesting(collaboration);
 
 const engine = new CanvasEngineRuntime({
   getViewport: () => {
-    const state = testingCanvasRuntime.getState();
-    return { offset: state.offset, zoom: state.zoom };
+    return testingCanvasRuntime.viewport.getSnapshot();
   },
   setViewport: testingCanvasRuntime.commands.viewport.setViewport,
 });

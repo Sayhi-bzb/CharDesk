@@ -105,14 +105,13 @@ export const Minimap = ({
   useEffect(() => {
     const canvas = canvasRef.current;
     const host = hostRef.current;
-    if (!canvas || !host || !minimapColors) return;
+    if (!canvas || !host) return;
     try {
       const manager = new MinimapManager(
         canvas,
         host,
         MINIMAP_DIMENSIONS,
-        MINIMAP_PADDING,
-        minimapColors
+        MINIMAP_PADDING
       );
       managerRef.current = manager;
       return () => {
@@ -124,7 +123,7 @@ export const Minimap = ({
       console.error("Minimap initialization failed", error);
       return;
     }
-  }, [endPointerSession, minimapColors]);
+  }, [endPointerSession]);
 
   useEffect(
     () => () => runtime.camera.cancelAnimation(),
@@ -132,9 +131,10 @@ export const Minimap = ({
   );
 
   useEffect(() => {
-    if (!containerSize) return;
+    if (!minimapColors || !containerSize) return;
     if (!contentReader) return;
     managerRef.current?.update({
+      colors: minimapColors,
       reader: contentReader,
       contentRevision: isIncrementalCanvasSurfaceReader(contentReader)
         ? contentReader.getRevision()
@@ -143,15 +143,14 @@ export const Minimap = ({
       zoom,
       viewportSize: containerSize,
     });
-  }, [containerSize, contentReader, contentSurface.revision, offset, zoom]);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      if (!minimapColors) return;
-      managerRef.current?.setColors(minimapColors);
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [minimapColors]);
+  }, [
+    containerSize,
+    contentReader,
+    contentSurface.revision,
+    minimapColors,
+    offset,
+    zoom,
+  ]);
 
   const addDragEndListeners = useCallback(() => {
     document.body.addEventListener("pointerup", endPointerSession);

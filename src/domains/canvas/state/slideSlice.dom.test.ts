@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { defaultCanvasDocuments, useEditorStore } from "@/domains/canvas/testing";
+import { defaultCanvasDocuments, setCanvasTestState, useEditorStore } from "@/domains/canvas/testing";
 import { GridManager } from "@/shared/utils/grid";
 import { createDocumentInteractionResetPatch } from "./transitions/editorTransitions";
 
@@ -53,7 +53,7 @@ describe("slideSlice", () => {
 
   it("clears document interaction for every active page transition", () => {
     const markDirty = () =>
-      useEditorStore.setState({
+      setCanvasTestState({
         textCursor: { x: 1, y: 1 },
         editingStructuredTextNodeId: "stale-text",
         structuredGridFocus: { x: 2, y: 2 },
@@ -66,7 +66,9 @@ describe("slideSlice", () => {
       });
     const expectReset = () =>
       expect(useEditorStore.getState()).toMatchObject(
-        createDocumentInteractionResetPatch()
+        createDocumentInteractionResetPatch(
+          defaultCanvasDocuments.getActiveAddress()
+        )
       );
 
     useEditorStore.getState().createCanvasSession("slide", {
@@ -106,7 +108,7 @@ describe("slideSlice", () => {
     const firstSlideId = useEditorStore.getState().slideDeck!.activeSlideId;
     useEditorStore.getState().addSlide();
     const activeSlideId = useEditorStore.getState().slideDeck!.activeSlideId;
-    useEditorStore.setState({
+    setCanvasTestState({
       hoveredGrid: { x: 2, y: 1 },
       canvasColorPickerTarget: "auto",
     });
@@ -118,7 +120,7 @@ describe("slideSlice", () => {
       rows: 2,
     });
 
-    expect(useEditorStore.getState()).toMatchObject({
+    expect(useEditorStore.getState().interaction).toMatchObject({
       hoveredGrid: { x: 2, y: 1 },
       canvasColorPickerTarget: "auto",
     });

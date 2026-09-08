@@ -91,6 +91,8 @@ export type WidgetNode = Readonly<{
   hovered: boolean;
   selected: boolean;
   checked: CellCheckboxState;
+  buttonVariant: import("./button.js").ButtonVariant;
+  buttonSize: import("./button.js").ButtonSize;
   sliderValue: number;
   sliderMin: number;
   sliderMax: number;

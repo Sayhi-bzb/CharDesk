@@ -12,9 +12,11 @@ export {
 } from "./react";
 export type { CanvasState } from "./state/interfaces";
 export { createEmptyCanvasInteraction } from "./state/canvasInteractionState";
-export type { CanvasInteractionSnapshot } from "./state/canvasInteractionState";
 export type {
   CanvasColorPickerTarget,
+  CanvasInteractionSnapshot,
+} from "./state/canvasInteractionState";
+export type {
   CanvasContentSurfaceState,
   PendingCanvasCameraPlacement,
   CanvasViewportState,

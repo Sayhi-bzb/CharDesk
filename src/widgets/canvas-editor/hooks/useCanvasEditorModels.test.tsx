@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   canvasCommands,
   defaultCanvasDocuments,
+  setCanvasTestState,
   useEditorStore,
 } from '@/domains/canvas/testing';
 import {
@@ -104,7 +105,7 @@ describe('useCanvasEditorModels session binding', () => {
           components: [],
         }
       );
-      useEditorStore.setState({
+      setCanvasTestState({
         activeCanvasId: 'canvas-a',
         canvasMode: 'freeform',
         contentSurface: new TestCanvasContentSurface([['0,0', { char: 'A', color: '#000000' }]]),

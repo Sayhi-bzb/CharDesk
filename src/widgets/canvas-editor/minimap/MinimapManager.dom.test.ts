@@ -31,6 +31,13 @@ const operation = (id: string, x: number): CellPlaneOperation => ({
   }],
 });
 
+const colors = {
+  background: "background",
+  foreground: "foreground",
+  viewportFill: "viewport-fill",
+  viewportStroke: "viewport-stroke",
+};
+
 describe("MinimapManager incremental content", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -59,13 +66,7 @@ describe("MinimapManager incremental content", () => {
       canvas,
       document.createElement("div"),
       { width: 220, height: 140 },
-      4,
-      {
-        background: "background",
-        foreground: "foreground",
-        viewportFill: "viewport-fill",
-        viewportStroke: "viewport-stroke",
-      }
+      4
     );
     const viewport = {
       reader: plane,
@@ -73,11 +74,11 @@ describe("MinimapManager incremental content", () => {
       zoom: 1,
       viewportSize: { width: 1000, height: 700 },
     };
-    manager.update({ ...viewport, contentRevision: plane.getRevision() });
+    manager.update({ colors, ...viewport, contentRevision: plane.getRevision() });
     rows.mockClear();
 
     plane.append(operation("B", 200));
-    manager.update({ ...viewport, contentRevision: plane.getRevision() });
+    manager.update({ colors, ...viewport, contentRevision: plane.getRevision() });
     vi.advanceTimersByTime(160);
 
     expect(rows).toHaveBeenCalledTimes(1);
@@ -87,6 +88,47 @@ describe("MinimapManager incremental content", () => {
       width: 128,
       height: 64,
     });
+    manager.close();
+  });
+
+  it("accepts observer events before its first render snapshot", () => {
+    let resize!: ResizeObserverCallback;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resize = callback;
+        }
+        observe = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
+    const canvas = document.createElement("canvas");
+    const context = createContext();
+    vi.spyOn(canvas, "getContext").mockReturnValue(
+      context as unknown as CanvasRenderingContext2D
+    );
+    const manager = new MinimapManager(
+      canvas,
+      document.createElement("div"),
+      { width: 220, height: 140 },
+      4
+    );
+
+    expect(() => resize([], {} as ResizeObserver)).not.toThrow();
+    expect(context.fillRect).not.toHaveBeenCalled();
+
+    const plane = new CellPlaneIndex([operation("A", 0)]);
+    manager.update({
+      colors,
+      reader: plane,
+      contentRevision: plane.getRevision(),
+      offset: { x: 0, y: 0 },
+      zoom: 1,
+      viewportSize: { width: 1000, height: 700 },
+    });
+
+    expect(context.fillRect).toHaveBeenCalledOnce();
     manager.close();
   });
 });

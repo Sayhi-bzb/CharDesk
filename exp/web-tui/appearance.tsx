@@ -14,6 +14,11 @@ import { loadDisplayFont, resetDisplayFontStylesheet } from "../../src/shared/fo
 
 const defaultTheme = resolveCellUiTheme(undefined);
 type GalleryFontStatus = "idle" | "loading" | "error";
+const galleryFontLabels: Record<GalleryFont, string> = {
+  maple: "Maple",
+  "fusion-mono": "Fusion",
+  "xiaolai-mono": "Xiaolai",
+};
 
 const AppearanceContext = createContext({
   mode: "light" as "light" | "dark",
@@ -66,7 +71,7 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
     const option = galleryFontOptions[target];
     setPendingFont(target);
     setFontStatus("loading");
-    setFontMessage(`Loading ${option.label}.`);
+    setFontMessage(`Loading ${galleryFontLabels[target]}.`);
     try {
       await loadDisplayFont(option);
       await loadCellFontMetrics(option.profile);
@@ -74,12 +79,12 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
       setFont(target);
       setPendingFont(null);
       setFontStatus("idle");
-      setFontMessage(`Display font: ${option.label}.`);
+      setFontMessage(`Display font: ${galleryFontLabels[target]}.`);
     } catch {
       if (request !== fontRequestRef.current) return;
       resetDisplayFontStylesheet(option);
       setFontStatus("error");
-      setFontMessage(`${option.label} is unavailable. Display remains ${galleryFontOptions[font].label}.`);
+      setFontMessage(`${galleryFontLabels[target]} is unavailable. Display remains ${galleryFontLabels[font]}.`);
     }
   };
   useLayoutEffect(() => {
@@ -143,14 +148,9 @@ export function GalleryBorderToggle() {
 }
 const galleryFontItems = (Object.keys(galleryFontOptions) as GalleryFont[]).map((font) => ({
   id: `gallery-font-option-${font}`,
-  label: galleryFontOptions[font].label,
+  label: galleryFontLabels[font],
   font,
 }));
-const galleryFontShortLabels: Record<GalleryFont, string> = {
-  maple: "Maple",
-  "fusion-mono": "Fusion",
-  "xiaolai-mono": "Xiaolai",
-};
 const fontItemId = (font: GalleryFont) => `gallery-font-option-${font}`;
 
 export function GalleryFontSelect() {
@@ -163,17 +163,17 @@ export function GalleryFontSelect() {
     },
   });
   const target = pendingFont ?? font;
-  const shortLabel = galleryFontShortLabels[target];
+  const shortLabel = galleryFontLabels[target];
   const triggerText = fontStatus === "loading"
     ? `…${shortLabel}`
     : fontStatus === "error"
       ? `!${shortLabel}`
-      : galleryFontShortLabels[font];
+      : galleryFontLabels[font];
   const triggerLabel = fontStatus === "loading"
-    ? `Loading ${galleryFontOptions[target].label}. Current font: ${galleryFontOptions[font].label}`
+    ? `Loading ${galleryFontLabels[target]}. Current font: ${galleryFontLabels[font]}`
     : fontStatus === "error"
-      ? `${galleryFontOptions[target].label} unavailable. Current font: ${galleryFontOptions[font].label}`
-      : `Font: ${galleryFontOptions[font].label}`;
+      ? `${galleryFontLabels[target]} unavailable. Current font: ${galleryFontLabels[font]}`
+      : `Font: ${galleryFontLabels[font]}`;
   const open = select.open && fontStatus !== "loading";
   return <div className="gallery-font-select" data-state={fontStatus} data-open={open || undefined}>
     <GallerySurface

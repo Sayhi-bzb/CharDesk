@@ -36,6 +36,7 @@ import {
   type CanvasPersistenceStatus,
 } from "./state/browserPersistence";
 import { CanvasViewportRuntime, normalizeCanvasViewport } from "./viewportRuntime";
+import type { CanvasState } from "./state/interfaces";
 
 const DISABLED_PERSISTENCE_STATUS: CanvasPersistenceStatus = {
   phase: "ready",
@@ -115,7 +116,9 @@ export class CanvasRuntime {
     this.#disposeStore = storeInstance.dispose;
     this.commands = createCanvasCommands(this.store, this.documents, this.viewport);
     this.queries = createCanvasQueries(this.store, this.documents);
+    let restoringViewport = this.persistence !== null;
     this.#disposeViewportPersistence = this.viewport.subscribe(() => {
+      if (restoringViewport) return;
       const state = this.store.getState();
       this.commands.sessions.saveViewport(
         state.activeCanvasId,
@@ -127,13 +130,25 @@ export class CanvasRuntime {
           this.documents,
           this.store,
           initialSessions
-        )
+        ).then(() => {
+          const state = this.store.getState();
+          const activeSession = state.canvasSessions.find(
+            (session) => session.id === state.activeCanvasId
+          );
+          this.viewport.resetFallback(
+            normalizeCanvasViewport(activeSession?.viewport)
+          );
+        })
+        .finally(() => {
+          restoringViewport = false;
+        })
       : Promise.resolve();
   }
 
-  getState = () => this.store.getState();
-  subscribe = (listener: Parameters<typeof this.store.subscribe>[0]) =>
-    this.store.subscribe(listener);
+  getState = (): CanvasState => this.store.getState();
+  subscribe = (
+    listener: (state: CanvasState, previousState: CanvasState) => void
+  ) => this.store.subscribe(listener);
 
   getPersistenceSnapshot = (): CanvasPersistenceStatus =>
     this.persistence?.getSnapshot() ?? DISABLED_PERSISTENCE_STATUS;

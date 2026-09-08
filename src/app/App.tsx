@@ -407,12 +407,12 @@ function AppContent() {
     useShallow((state) => ({
       tool: state.tool,
       canvasMode: state.canvasMode,
-      textCursor: state.textCursor,
-      staticGridSelection: state.staticGridSelection,
-      staticGridEditMode: state.staticGridEditMode,
+      textCursor: state.interaction.textCursor,
+      staticGridSelection: state.interaction.staticGridSelection,
+      staticGridEditMode: state.interaction.staticGridEditMode,
       contentSurface: state.contentSurface,
-      editingStructuredTextNodeId: state.editingStructuredTextNodeId,
-      structuredTextSelection: state.structuredTextSelection,
+      editingStructuredTextNodeId: state.interaction.editingStructuredTextNodeId,
+      structuredTextSelection: state.interaction.structuredTextSelection,
     }))
   );
   const editor = useEditor();

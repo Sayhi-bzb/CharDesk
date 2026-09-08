@@ -26,6 +26,7 @@ import type {
 import {
   cloneStructuredNode,
   createStructuredNodeId,
+  getNextStructuredOrder,
 } from "@/domains/structured-content/public";
 import { getCellOccupancy, splitGraphemes } from "@/shared/metrics";
 import { cloneTextAttributes } from "@/shared/utils/ansi";
@@ -40,7 +41,7 @@ type SelectionCommandState = ReturnType<Parameters<SelectionCommandFactory>[1]>;
 
 const resolveSelectionAreas = (state: SelectionCommandState) => {
   return getStaticGridSelectionAreas(
-    state.staticGridSelection,
+    state.interaction.staticGridSelection,
     state.contentSurface.reader
   );
 };
@@ -122,15 +123,15 @@ const getClipboardTargetFingerprint = (
     documentId: getActiveDocumentId(),
     canvasMode: state.canvasMode,
     selections: resolveSelectionAreas(state),
-    textCursor: state.textCursor,
-    staticGridSelection: state.staticGridSelection,
-    staticGridEditMode: state.staticGridEditMode,
-    structuredGridFocus: state.structuredGridFocus,
-    selectedStructuredNodeIds: state.selectedStructuredNodeIds,
-    selectedStructuredBoxId: state.selectedStructuredBoxId,
-    selectedStructuredSplitHandle: state.selectedStructuredSplitHandle,
-    editingStructuredTextNodeId: state.editingStructuredTextNodeId,
-    structuredTextSelection: state.structuredTextSelection,
+    textCursor: state.interaction.textCursor,
+    staticGridSelection: state.interaction.staticGridSelection,
+    staticGridEditMode: state.interaction.staticGridEditMode,
+    structuredGridFocus: state.interaction.structuredGridFocus,
+    selectedStructuredNodeIds: state.interaction.selectedStructuredNodeIds,
+    selectedStructuredBoxId: state.interaction.selectedStructuredBoxId,
+    selectedStructuredSplitHandle: state.interaction.selectedStructuredSplitHandle,
+    editingStructuredTextNodeId: state.interaction.editingStructuredTextNodeId,
+    structuredTextSelection: state.interaction.structuredTextSelection,
   });
 
 const moveStructuredClipboardNode = (
@@ -167,16 +168,16 @@ const moveStructuredClipboardNode = (
 };
 
 const resolveStructuredPastePoint = (state: SelectionCommandState): Point => {
-  return state.structuredGridFocus ?? state.textCursor ?? { x: 0, y: 0 };
+  return state.interaction.structuredGridFocus ?? state.interaction.textCursor ?? { x: 0, y: 0 };
 };
 
 const getActiveStructuredTextSelection = (state: SelectionCommandState) => {
   if (state.canvasMode !== "structured") return null;
-  const range = getStructuredTextSelectionRange(state.structuredTextSelection);
-  if (!range || !state.structuredTextSelection) return null;
+  const range = getStructuredTextSelectionRange(state.interaction.structuredTextSelection);
+  if (!range || !state.interaction.structuredTextSelection) return null;
   const node = state.structuredScene.find(
     (sceneNode) =>
-      sceneNode.id === state.structuredTextSelection?.nodeId && sceneNode.type === "text"
+      sceneNode.id === state.interaction.structuredTextSelection?.nodeId && sceneNode.type === "text"
   );
   if (!node || node.type !== "text") return null;
   return { node, range };
@@ -193,16 +194,16 @@ const getStructuredTextPasteTarget = (state: SelectionCommandState) => {
   }
   if (
     state.canvasMode !== "structured" ||
-    !state.editingStructuredTextNodeId ||
-    !state.textCursor
+    !state.interaction.editingStructuredTextNodeId ||
+    !state.interaction.textCursor
   ) {
     return null;
   }
   const node = state.structuredScene.find(
-    (sceneNode) => sceneNode.id === state.editingStructuredTextNodeId && sceneNode.type === "text"
+    (sceneNode) => sceneNode.id === state.interaction.editingStructuredTextNodeId && sceneNode.type === "text"
   );
   if (!node || node.type !== "text") return null;
-  const offset = getStructuredTextOffsetAtPoint(node, state.textCursor);
+  const offset = getStructuredTextOffsetAtPoint(node, state.interaction.textCursor);
   return { node, start: offset, end: offset };
 };
 
@@ -357,7 +358,7 @@ const createStructuredTextNodeFromPaste = (
 ): StructuredTextNode => ({
   id: createStructuredNodeId(),
   type: "text",
-  order: state.getNextStructuredOrder(),
+  order: getNextStructuredOrder(state.structuredScene),
   position: resolveStructuredPastePoint(state),
   text,
   style,
@@ -375,7 +376,8 @@ export const createSelectionCommandFactory = ({
 }): SelectionCommandFactory => (set, get) => ({
   canCopyOrCut: () => {
     const state = get();
-    const { textCursor, canvasMode, structuredScene } = state;
+    const { textCursor } = state.interaction;
+    const { canvasMode, structuredScene } = state;
     const selections = resolveSelectionAreas(state);
     if (canvasMode === "structured") {
       return !!getActiveStructuredTextSelection(state) || structuredScene.length > 0;
@@ -385,8 +387,8 @@ export const createSelectionCommandFactory = ({
 
   copySelection: async (options) => {
     const state = get();
-    const { contentSurface, textCursor, brushColor, canvasMode, structuredScene, selectedStructuredNodeIds } =
-      state;
+    const { textCursor, selectedStructuredNodeIds } = state.interaction;
+    const { contentSurface, brushColor, canvasMode, structuredScene } = state;
     const grid = contentSurface.reader;
     const selections = resolveSelectionAreas(state);
     if (canvasMode === "structured") {
@@ -424,7 +426,8 @@ export const createSelectionCommandFactory = ({
 
   cutSelection: async (options) => {
     const state = get();
-    const { contentSurface, textCursor, brushColor, canvasMode } = state;
+    const { textCursor } = state.interaction;
+    const { contentSurface, brushColor, canvasMode } = state;
     const grid = contentSurface.reader;
     const selections = resolveSelectionAreas(state);
     const targetFingerprint = getClipboardTargetFingerprint(getActiveDocumentId, state);
@@ -467,16 +470,16 @@ export const createSelectionCommandFactory = ({
         return applied(true);
       }
 
-      if (state.selectedStructuredNodeIds.length === 0) {
+      if (state.interaction.selectedStructuredNodeIds.length === 0) {
         return noop("empty-source");
       }
       const nodesToCut = selectStructuredClipboardNodes(
         state.structuredScene,
-        state.selectedStructuredNodeIds
+        state.interaction.selectedStructuredNodeIds
       );
       const payload = buildStructuredClipboardPayload(
         state.structuredScene,
-        state.selectedStructuredNodeIds
+        state.interaction.selectedStructuredNodeIds
       );
       if (!payload || nodesToCut.length === 0) return noop("empty-source");
       const copied = await writeClipboardPayload(payload, {
@@ -488,11 +491,11 @@ export const createSelectionCommandFactory = ({
       const current = get();
       const currentNodesToCut = selectStructuredClipboardNodes(
         current.structuredScene,
-        current.selectedStructuredNodeIds
+        current.interaction.selectedStructuredNodeIds
       );
       const currentPayload = buildStructuredClipboardPayload(
         current.structuredScene,
-        current.selectedStructuredNodeIds
+        current.interaction.selectedStructuredNodeIds
       );
       if (
         getClipboardTargetFingerprint(getActiveDocumentId, current) !== targetFingerprint ||
@@ -521,7 +524,7 @@ export const createSelectionCommandFactory = ({
     const currentPayload = buildClipboardPayload(
       current.contentSurface.reader,
       currentSelections,
-      current.textCursor,
+      current.interaction.textCursor,
       current.brushColor
     );
     if (
@@ -532,8 +535,8 @@ export const createSelectionCommandFactory = ({
     }
     if (currentSelections.length > 0) {
       current.deleteSelection();
-    } else if (current.textCursor) {
-      current.erasePoints([current.textCursor]);
+    } else if (current.interaction.textCursor) {
+      current.erasePoints([current.interaction.textCursor]);
     }
     return applied(true);
   },
@@ -604,15 +607,20 @@ export const createSelectionCommandFactory = ({
           .sort((a, b) => a.order - b.order)
           .map((node, index) => moveStructuredClipboardNode(node, dx, dy, maxOrder + index + 1));
         state.applyStructuredScene([...state.structuredScene, ...pastedNodes], true);
-        set({
-          selectedStructuredNodeIds: pastedNodes.map((node) => node.id),
-          selectedStructuredBoxId:
-            pastedNodes.length === 1 && pastedNodes[0].type === "box" ? pastedNodes[0].id : null,
-          structuredGridFocus: null,
-          textCursor: null,
-          editingStructuredTextNodeId: null,
-          structuredTextSelection: null,
-        });
+        set((current) => ({
+          interaction: {
+            ...current.interaction,
+            selectedStructuredNodeIds: pastedNodes.map((node) => node.id),
+            selectedStructuredBoxId:
+              pastedNodes.length === 1 && pastedNodes[0].type === "box"
+                ? pastedNodes[0].id
+                : null,
+            structuredGridFocus: null,
+            textCursor: null,
+            editingStructuredTextNodeId: null,
+            structuredTextSelection: null,
+          },
+        }));
         return completePaste();
       }
 
@@ -640,16 +648,19 @@ export const createSelectionCommandFactory = ({
         pastedText.styleRanges
       );
       state.applyStructuredScene([...state.structuredScene, nextNode], true);
-      set({
-        selectedStructuredNodeIds: [nextNode.id],
-        selectedStructuredBoxId: null,
-        selectedStructuredSplitHandle: null,
-        structuredContextPoint: null,
-        structuredGridFocus: null,
-        textCursor: null,
-        editingStructuredTextNodeId: null,
-        structuredTextSelection: null,
-      });
+      set((current) => ({
+        interaction: {
+          ...current.interaction,
+          selectedStructuredNodeIds: [nextNode.id],
+          selectedStructuredBoxId: null,
+          selectedStructuredSplitHandle: null,
+          structuredContextPoint: null,
+          structuredGridFocus: null,
+          textCursor: null,
+          editingStructuredTextNodeId: null,
+          structuredTextSelection: null,
+        },
+      }));
       return completePaste();
     }
 

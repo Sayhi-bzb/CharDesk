@@ -30,13 +30,13 @@ const createEditorShortcutContext = (
     canvas: {
       mode: state.canvasMode,
       readOnly: false,
-      hasTextCursor: state.textCursor !== null,
+      hasTextCursor: state.interaction.textCursor !== null,
     },
     grid: {
-      editMode: state.staticGridEditMode,
-      hasRange: state.staticGridSelection.mode === "range",
+      editMode: state.interaction.staticGridEditMode,
+      hasRange: state.interaction.staticGridSelection.mode === "range",
     },
-    structured: { hasSelection: state.selectedStructuredNodeIds.length > 0 },
+    structured: { hasSelection: state.interaction.selectedStructuredNodeIds.length > 0 },
     presentation: { active: false },
     tool: { id: state.tool },
   };

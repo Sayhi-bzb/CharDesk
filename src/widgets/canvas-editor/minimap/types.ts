@@ -22,10 +22,19 @@ export type MinimapTransform = {
   scale: number;
 };
 
-export type MinimapRenderState = {
+export type MinimapColors = {
+  background: string;
+  foreground: string;
+  viewportFill: string;
+  viewportStroke: string;
+};
+
+/** Complete input required for one deterministic minimap frame. */
+export type MinimapRenderSnapshot = {
   reader: CanvasSurfaceReader;
   contentRevision: unknown;
   offset: Point;
   zoom: number;
   viewportSize: MinimapDimensions;
+  colors: MinimapColors;
 };

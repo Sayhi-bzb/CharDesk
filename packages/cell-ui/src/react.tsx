@@ -14,6 +14,12 @@ import type {
 } from "./types.js";
 import type { CellTextSnapshot } from "./text.js";
 import { normalizeCellSliderValue, resolveCellSliderRange } from "./slider.js";
+import {
+  resolveButtonSize,
+  resolveButtonVariant,
+  type ButtonSize,
+  type ButtonVariant,
+} from "./button.js";
 
 type CommonProps = Readonly<{
   id?: string;
@@ -37,6 +43,8 @@ export type TextProps = Readonly<{
   textStyle?: CellTextStyle;
 }>;
 export type ButtonProps = CommonProps & Readonly<{
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
@@ -218,6 +226,8 @@ export type WidgetDescriptor = Readonly<{
   focused: boolean;
   selected: boolean;
   checked: CellCheckboxState;
+  buttonVariant: ButtonVariant;
+  buttonSize: ButtonSize;
   sliderValue: number;
   sliderMin: number;
   sliderMax: number;
@@ -316,6 +326,8 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
     focused: props.focused === true,
     selected: props.selected === true,
     checked: props.checked === "indeterminate" ? "indeterminate" : props.checked === true,
+    buttonVariant: kind === "button" ? resolveButtonVariant(props.variant) : "default",
+    buttonSize: kind === "button" ? resolveButtonSize(props.size) : "default",
     sliderValue: normalizeCellSliderValue(
       typeof props.value === "number" ? props.value : sliderRange.min,
       sliderRange

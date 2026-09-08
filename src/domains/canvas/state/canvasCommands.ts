@@ -3,6 +3,29 @@ import type { CanvasStore } from "./editorStore";
 import type { EditorState } from "./interfaces";
 import { resolveEditorDocumentAddress } from "./helpers/gridHelpers";
 import type { CanvasViewportRuntime } from "../viewportRuntime";
+import type { ToolType } from "../model/tool";
+import { isToolAllowedForMode } from "../model/tool";
+import { normalizeBrushChar } from "@/shared/utils/characters";
+import type { Point } from "@/shared/types";
+import {
+  getNextStructuredOrder,
+  type StructuredSplitBoxHandle,
+  type StructuredTextSelection,
+} from "@/domains/structured-content/public";
+import {
+  createCanvasInteractionPatch,
+  type CanvasColorPickerTarget,
+} from "./canvasInteractionState";
+import {
+  createEditingStructuredTextNodePatch,
+  createMovedStructuredGridFocusPatch,
+  createStructuredBoxSelectionPatch,
+  createStructuredGridFocusPatch,
+  createStructuredNodeSelectionPatch,
+  createStructuredSplitHandlePatch,
+  createStructuredTextSelectionPatch,
+  createTextCursorPatch,
+} from "./transitions/canvasInteractionTransitions";
 
 const createCall = (store: CanvasStore) => <Key extends keyof EditorState>(
   key: Key,
@@ -61,49 +84,76 @@ return {
     consumePendingPlacement: viewport.consumePlacement,
   },
   tools: {
-    set: (...args: Parameters<EditorState["setTool"]>) => call("setTool", ...args),
+    set: (tool: ToolType) =>
+      store.setState((state) => {
+        if (!isToolAllowedForMode(tool, state.canvasMode)) return state;
+        return {
+          tool,
+          ...createCanvasInteractionPatch(state.interaction, {
+            textCursor: null,
+            editingStructuredTextNodeId: null,
+            structuredTextSelection: null,
+            hoveredGrid: null,
+          }),
+        };
+      }),
   },
   preferences: {
-    setBrushChar: (...args: Parameters<EditorState["setBrushChar"]>) =>
-      call("setBrushChar", ...args),
-    setBrushColor: (...args: Parameters<EditorState["setBrushColor"]>) =>
-      call("setBrushColor", ...args),
-    setBrushBackgroundColor: (
-      ...args: Parameters<EditorState["setBrushBackgroundColor"]>
-    ) => call("setBrushBackgroundColor", ...args),
-    setShowGrid: (...args: Parameters<EditorState["setShowGrid"]>) =>
-      call("setShowGrid", ...args),
-    setExportShowGrid: (...args: Parameters<EditorState["setExportShowGrid"]>) =>
-      call("setExportShowGrid", ...args),
+    setBrushChar: (char: string) =>
+      store.setState((state) => ({
+        brushChar: normalizeBrushChar(char, state.brushChar),
+      })),
+    setBrushColor: (color: string) => store.setState({ brushColor: color }),
+    setBrushBackgroundColor: (color: string) =>
+      store.setState({ brushBackgroundColor: color }),
+    setShowGrid: (show: boolean) => store.setState({ showGrid: show }),
+    setExportShowGrid: (show: boolean) => store.setState({ exportShowGrid: show }),
   },
   interaction: {
-    setColorPickerTarget: (...args: Parameters<EditorState["setCanvasColorPickerTarget"]>) =>
-      call("setCanvasColorPickerTarget", ...args),
-    setStructuredContextPoint: (...args: Parameters<EditorState["setStructuredContextPoint"]>) =>
-      call("setStructuredContextPoint", ...args),
-    setHoveredGrid: (...args: Parameters<EditorState["setHoveredGrid"]>) =>
-      call("setHoveredGrid", ...args),
-    setStructuredGridFocus: (...args: Parameters<EditorState["setStructuredGridFocus"]>) =>
-      call("setStructuredGridFocus", ...args),
-    moveStructuredGridFocus: (...args: Parameters<EditorState["moveStructuredGridFocus"]>) =>
-      call("moveStructuredGridFocus", ...args),
-    setTextCursor: (...args: Parameters<EditorState["setTextCursor"]>) =>
-      call("setTextCursor", ...args),
-    setEditingStructuredTextNodeId: (
-      ...args: Parameters<EditorState["setEditingStructuredTextNodeId"]>
-    ) => call("setEditingStructuredTextNodeId", ...args),
-    setStructuredTextSelection: (
-      ...args: Parameters<EditorState["setStructuredTextSelection"]>
-    ) => call("setStructuredTextSelection", ...args),
-    setSelectedStructuredNodeIds: (
-      ...args: Parameters<EditorState["setSelectedStructuredNodeIds"]>
-    ) => call("setSelectedStructuredNodeIds", ...args),
-    setSelectedStructuredBoxId: (
-      ...args: Parameters<EditorState["setSelectedStructuredBoxId"]>
-    ) => call("setSelectedStructuredBoxId", ...args),
+    setColorPickerTarget: (target: CanvasColorPickerTarget | null) =>
+      store.setState((state) =>
+        createCanvasInteractionPatch(state.interaction, {
+          canvasColorPickerTarget: target,
+        })
+      ),
+    setStructuredContextPoint: (point: Point | null) =>
+      store.setState((state) =>
+        createCanvasInteractionPatch(state.interaction, {
+          structuredContextPoint: point ? { ...point } : null,
+        })
+      ),
+    setHoveredGrid: (position: Point | null) =>
+      store.setState((state) =>
+        createCanvasInteractionPatch(state.interaction, {
+          hoveredGrid: position,
+        })
+      ),
+    setStructuredGridFocus: (point: Point | null) =>
+      store.setState((state) =>
+        createStructuredGridFocusPatch(state.interaction, point)
+      ),
+    moveStructuredGridFocus: (dx: number, dy: number) =>
+      store.setState((state) =>
+        createMovedStructuredGridFocusPatch(state.interaction, dx, dy)
+      ),
+    setTextCursor: (position: Point | null) =>
+      store.setState((state) => createTextCursorPatch(state, position)),
+    setEditingStructuredTextNodeId: (id: string | null) =>
+      store.setState((state) => createEditingStructuredTextNodePatch(state, id)),
+    setStructuredTextSelection: (selection: StructuredTextSelection | null) =>
+      store.setState((state) =>
+        createStructuredTextSelectionPatch(state, selection)
+      ),
+    setSelectedStructuredNodeIds: (ids: string[]) =>
+      store.setState((state) => createStructuredNodeSelectionPatch(state, ids)),
+    setSelectedStructuredBoxId: (id: string | null) =>
+      store.setState((state) => createStructuredBoxSelectionPatch(state, id)),
     setSelectedStructuredSplitHandle: (
-      ...args: Parameters<EditorState["setSelectedStructuredSplitHandle"]>
-    ) => call("setSelectedStructuredSplitHandle", ...args),
+      handle: { nodeId: string; handle: StructuredSplitBoxHandle } | null
+    ) =>
+      store.setState((state) =>
+        createStructuredSplitHandlePatch(state, handle)
+      ),
   },
   grid: {
     replace: (entries: Parameters<CanvasDocumentRegistry["replaceCellPage"]>[1]) =>
@@ -260,7 +310,7 @@ export const createCanvasQueries = (
   documents: CanvasDocumentRegistry
 ) => ({
   canCopyOrCut: () => store.getState().canCopyOrCut(),
-  getNextStructuredOrder: () => store.getState().getNextStructuredOrder(),
+  getNextStructuredOrder: () => getNextStructuredOrder(store.getState().structuredScene),
   getActiveDocumentId: documents.getActiveDocumentId,
   getCollaborationDocument: documents.getCollaborationDocument,
   getActiveCellCount: documents.getActiveCellCount,

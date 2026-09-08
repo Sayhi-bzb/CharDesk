@@ -1,7 +1,11 @@
 import type { CanvasSessionDescriptor } from "@/domains/sessions/public";
 import type { SlideDeckDescriptor } from "@/domains/slides/public";
-import { createStaticGridState } from "@/domains/selection/public";
 import type { EditorState } from "../interfaces";
+import type { CanvasDocumentAddress } from "../canvasDocumentModel";
+import {
+  createCanvasInteractionPatch,
+  createEmptyCanvasInteraction,
+} from "../canvasInteractionState";
 import type { resolveSessionDescriptorRuntime } from "../helpers/storeUtils";
 import {
   getStructuredTextCaretPoint,
@@ -22,23 +26,7 @@ type SessionRuntime = ReturnType<typeof resolveSessionDescriptorRuntime> & {
   nextComponents: EditorState["structuredComponents"];
 };
 
-type DocumentInteractionResetPatch = Pick<
-  EditorState,
-  | "textCursor"
-  | "editingStructuredTextNodeId"
-  | "structuredTextSelection"
-  | "selectedStructuredNodeIds"
-  | "selectedStructuredBoxId"
-  | "selectedStructuredSplitHandle"
-  | "structuredContextPoint"
-  | "structuredGridFocus"
-  | "staticGridSelection"
-  | "staticGridEditMode"
-  | "staticGridInputFlow"
-  | "hoveredGrid"
-  | "scratchLayer"
-  | "canvasColorPickerTarget"
->;
+type DocumentInteractionResetPatch = Pick<EditorState, "interaction">;
 
 type SessionActivationPatch = Pick<
   EditorState,
@@ -59,106 +47,74 @@ type SlideActivationPatch = Pick<
 > &
   DocumentInteractionResetPatch;
 
-export const createDocumentInteractionResetPatch =
-  (): DocumentInteractionResetPatch => {
-    const staticGrid = createStaticGridState();
-    return {
-      textCursor: null,
-      editingStructuredTextNodeId: null,
-      structuredTextSelection: null,
-      selectedStructuredNodeIds: [],
-      selectedStructuredBoxId: null,
-      selectedStructuredSplitHandle: null,
-      structuredContextPoint: null,
-      structuredGridFocus: null,
-      staticGridSelection: staticGrid.selection,
-      staticGridEditMode: staticGrid.editMode,
-      staticGridInputFlow: null,
-      hoveredGrid: null,
-      scratchLayer: null,
-      canvasColorPickerTarget: null,
-    };
-  };
-
-export const createStructuredGridFocusPatch = (
-  point: EditorState["structuredGridFocus"]
-): Partial<EditorState> => ({
-  structuredGridFocus: point ? { ...point } : null,
-  ...(point
-    ? {
-        selectedStructuredNodeIds: [],
-        selectedStructuredBoxId: null,
-        selectedStructuredSplitHandle: null,
-        structuredContextPoint: null,
-        editingStructuredTextNodeId: null,
-        structuredTextSelection: null,
-        textCursor: null,
-        staticGridEditMode: "navigate" as const,
-        staticGridInputFlow: null,
-      }
-    : {}),
+export const createDocumentInteractionResetPatch = (
+  address: CanvasDocumentAddress
+): DocumentInteractionResetPatch => ({
+  interaction: createEmptyCanvasInteraction(address),
 });
 
 export const reconcileStructuredInteraction = (
   state: EditorState,
   structuredScene: StructuredNode[]
 ) => {
+  const interaction = state.interaction;
   const byId = new Map(structuredScene.map((node) => [node.id, node]));
-  const selectedStructuredNodeIds = state.selectedStructuredNodeIds.filter((id) => byId.has(id));
-  const selectedBox = state.selectedStructuredBoxId
-    ? byId.get(state.selectedStructuredBoxId)
+  const selectedStructuredNodeIds = interaction.selectedStructuredNodeIds.filter((id) => byId.has(id));
+  const selectedBox = interaction.selectedStructuredBoxId
+    ? byId.get(interaction.selectedStructuredBoxId)
     : null;
-  const selectedSplit = state.selectedStructuredSplitHandle
-    ? byId.get(state.selectedStructuredSplitHandle.nodeId)
+  const selectedSplit = interaction.selectedStructuredSplitHandle
+    ? byId.get(interaction.selectedStructuredSplitHandle.nodeId)
     : null;
-  const editingNode = state.editingStructuredTextNodeId
-    ? byId.get(state.editingStructuredTextNodeId)
+  const editingNode = interaction.editingStructuredTextNodeId
+    ? byId.get(interaction.editingStructuredTextNodeId)
     : null;
-  const selectedTextNode = state.structuredTextSelection
-    ? byId.get(state.structuredTextSelection.nodeId)
+  const selectedTextNode = interaction.structuredTextSelection
+    ? byId.get(interaction.structuredTextSelection.nodeId)
     : null;
   const structuredTextSelection =
-    state.structuredTextSelection && selectedTextNode?.type === "text"
+    interaction.structuredTextSelection && selectedTextNode?.type === "text"
       ? normalizeStructuredTextSelection(
-          state.structuredTextSelection,
+          interaction.structuredTextSelection,
           splitGraphemes(selectedTextNode.text).length
         )
       : null;
 
-  let textCursor = state.textCursor;
-  if (state.editingStructuredTextNodeId && editingNode?.type !== "text") {
+  let textCursor = interaction.textCursor;
+  if (interaction.editingStructuredTextNodeId && editingNode?.type !== "text") {
     textCursor = null;
-  } else if (editingNode?.type === "text" && state.textCursor) {
+  } else if (editingNode?.type === "text" && interaction.textCursor) {
     const previousNode = state.structuredScene.find(
       (node) => node.id === editingNode.id && node.type === "text"
     );
     if (previousNode?.type === "text") {
       const offset = Math.min(
-        getStructuredTextOffsetAtPoint(previousNode, state.textCursor),
+        getStructuredTextOffsetAtPoint(previousNode, interaction.textCursor),
         splitGraphemes(editingNode.text).length
       );
       textCursor = getStructuredTextCaretPoint(editingNode, offset);
     }
   }
 
-  return {
+  return createCanvasInteractionPatch(interaction, {
     selectedStructuredNodeIds,
     selectedStructuredBoxId: selectedBox?.type === "box" ? selectedBox.id : null,
     selectedStructuredSplitHandle:
-      selectedSplit?.type === "splitBox" ? state.selectedStructuredSplitHandle : null,
+      selectedSplit?.type === "splitBox" ? interaction.selectedStructuredSplitHandle : null,
     structuredContextPoint:
-      selectedStructuredNodeIds.length === 1 ? state.structuredContextPoint : null,
+      selectedStructuredNodeIds.length === 1 ? interaction.structuredContextPoint : null,
     editingStructuredTextNodeId: editingNode?.type === "text" ? editingNode.id : null,
     structuredTextSelection,
     textCursor,
-  };
+  });
 };
 
 export const createSessionActivationPatch = (
   canvasSessions: CanvasSessionDescriptor[],
   activeCanvasId: string,
   runtime: SessionRuntime,
-  contentReader: CanvasSurfaceReader
+  contentReader: CanvasSurfaceReader,
+  address: CanvasDocumentAddress
 ): SessionActivationPatch => ({
   canvasSessions,
   activeCanvasId,
@@ -170,14 +126,15 @@ export const createSessionActivationPatch = (
     ? createStructuredContentSurface(runtime.nextScene)
     : createCanvasContentSurface(contentReader),
   tool: runtime.nextTool,
-  ...createDocumentInteractionResetPatch(),
+  ...createDocumentInteractionResetPatch(address),
 });
 
 export const createSlideActivationPatch = (
   slideDeck: SlideDeckDescriptor,
-  activeReader: CanvasSurfaceReader
+  activeReader: CanvasSurfaceReader,
+  address: CanvasDocumentAddress
 ): SlideActivationPatch => ({
   slideDeck,
   contentSurface: createCanvasContentSurface(activeReader),
-  ...createDocumentInteractionResetPatch(),
+  ...createDocumentInteractionResetPatch(address),
 });

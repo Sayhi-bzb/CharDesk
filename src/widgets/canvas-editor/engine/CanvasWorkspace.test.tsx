@@ -1,8 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { TestCanvasContentSurface } from '@/domains/canvas/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   defaultCanvasDocuments,
+  setCanvasTestState,
+  testingCanvasRuntime,
   useEditorStore,
 } from '@/domains/canvas/testing';
 import {
@@ -75,8 +77,10 @@ describe('CanvasWorkspace', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    cleanup();
     localStorage.clear();
     useEditorStore.setState(initialState, true);
+    testingCanvasRuntime.viewport.resetFallback({ offset: { x: 0, y: 0 }, zoom: 1 });
   });
 
   const setTwoSessions = () => {
@@ -92,7 +96,7 @@ describe('CanvasWorkspace', () => {
       scene: [],
       components: [],
     });
-    useEditorStore.setState({
+    setCanvasTestState({
       activeCanvasId: 'canvas-a',
       canvasMode: 'freeform',
       contentSurface: new TestCanvasContentSurface(),
@@ -106,7 +110,7 @@ describe('CanvasWorkspace', () => {
   };
 
   it('keeps pane cameras independent and mirrors only the active pane to the session', () => {
-    useEditorStore.setState({ offset: { x: 10, y: 15 }, zoom: 1 });
+    setCanvasTestState({ offset: { x: 10, y: 15 }, zoom: 1 });
     render(
       <CanvasWorkspaceProvider>
         <WorkspaceHarness />
@@ -120,7 +124,7 @@ describe('CanvasWorkspace', () => {
     expect(screen.getByTestId('primary-viewport')).toHaveTextContent('10,15,1');
     expect(screen.getByTestId('secondary-viewport')).toHaveTextContent('50,35,1');
     expect(screen.getByTestId('secondary-active')).toHaveTextContent('true');
-    expect(useEditorStore.getState().offset).toEqual({ x: 50, y: 35 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: 50, y: 35 });
   });
 
   it('publishes transient camera movement live and commits it once settled', async () => {
@@ -136,12 +140,12 @@ describe('CanvasWorkspace', () => {
 
     expect(screen.getByTestId('primary-live-viewport')).toHaveTextContent('40,20,1');
     expect(screen.getByTestId('primary-viewport')).toHaveTextContent('0,0,1');
-    expect(useEditorStore.getState().offset).toEqual({ x: 0, y: 0 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: 0, y: 0 });
 
     await act(() => vi.advanceTimersByTimeAsync(120));
 
     expect(screen.getByTestId('primary-viewport')).toHaveTextContent('40,20,1');
-    expect(useEditorStore.getState().offset).toEqual({ x: 40, y: 20 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: 40, y: 20 });
   });
 
   it('binds each pane to a session and switches the global editor with the active pane', () => {
@@ -159,7 +163,7 @@ describe('CanvasWorkspace', () => {
     expect(screen.getByTestId('secondary-session')).toHaveTextContent('canvas-b');
     expect(screen.getByTestId('secondary-active')).toHaveTextContent('true');
     expect(useEditorStore.getState().activeCanvasId).toBe('canvas-b');
-    expect(useEditorStore.getState().offset).toEqual({ x: 40, y: 20 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: 40, y: 20 });
 
     fireEvent.click(screen.getByRole('button', { name: 'activate-primary' }));
     expect(useEditorStore.getState().activeCanvasId).toBe('canvas-a');
@@ -179,7 +183,7 @@ describe('CanvasWorkspace', () => {
       scene: [],
       components: [],
     });
-    useEditorStore.setState({
+    setCanvasTestState({
       activeCanvasId: 'canvas-a',
       canvasMode: 'freeform',
       contentSurface: new TestCanvasContentSurface(),
@@ -229,7 +233,7 @@ describe('CanvasWorkspace', () => {
   });
 
   it('preserves the same world center while split panes resize independently', () => {
-    useEditorStore.setState({ offset: { x: 10, y: 15 }, zoom: 2 });
+    setCanvasTestState({ offset: { x: 10, y: 15 }, zoom: 2 });
     render(
       <CanvasWorkspaceProvider>
         <WorkspaceHarness />
@@ -248,11 +252,11 @@ describe('CanvasWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'activate-secondary' }));
     fireEvent.click(screen.getByRole('button', { name: 'size-primary-600' }));
     expect(screen.getByTestId('primary-viewport')).toHaveTextContent('-190,15,2');
-    expect(useEditorStore.getState().offset).toEqual({ x: -240, y: 15 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: -240, y: 15 });
 
     fireEvent.click(screen.getByRole('button', { name: 'size-secondary-400' }));
     expect(screen.getByTestId('secondary-viewport')).toHaveTextContent('-290,15,2');
-    expect(useEditorStore.getState().offset).toEqual({ x: -290, y: 15 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: -290, y: 15 });
   });
 
   it('keeps session bindings and cameras when split view closes and reopens', () => {
@@ -273,7 +277,7 @@ describe('CanvasWorkspace', () => {
     expect(screen.getByTestId('secondary-session')).toHaveTextContent('canvas-b');
     expect(screen.getByTestId('secondary-viewport')).toHaveTextContent('40,20,1');
     expect(screen.getByTestId('secondary-active')).toHaveTextContent('true');
-    expect(useEditorStore.getState().offset).toEqual({ x: 40, y: 20 });
+    expect(testingCanvasRuntime.viewport.getSnapshot().offset).toEqual({ x: 40, y: 20 });
   });
 
   it('rebinds only the active pane for external switches and repairs deleted bindings', async () => {

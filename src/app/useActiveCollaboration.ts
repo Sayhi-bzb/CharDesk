@@ -40,9 +40,9 @@ export const useActiveCollaboration = ({ enabled = true }: { enabled?: boolean }
   );
   const canvasMode = useCanvasState((state) => state.canvasMode);
   const selectedStructuredNodeIds = useCanvasState(
-    (state) => state.selectedStructuredNodeIds
+    (state) => state.interaction.selectedStructuredNodeIds
   );
-  const staticGridSelection = useCanvasState((state) => state.staticGridSelection);
+  const staticGridSelection = useCanvasState((state) => state.interaction.staticGridSelection);
   const contentSurface = useCanvasState((state) => state.contentSurface);
   const selection = useMemo(
     () => {

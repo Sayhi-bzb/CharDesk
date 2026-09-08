@@ -113,9 +113,9 @@ export const createEditorCommandsExtension = (
           targetKind === 'managed-canvas' ||
           targetKind === 'canvas-surface') &&
         (command.id !== 'delete-selection' ||
-          (!state.textCursor &&
-            !state.editingStructuredTextNodeId &&
-            !state.structuredTextSelection)),
+          (!state.interaction.textCursor &&
+            !state.interaction.editingStructuredTextNodeId &&
+            !state.interaction.structuredTextSelection)),
     })),
   };
 };

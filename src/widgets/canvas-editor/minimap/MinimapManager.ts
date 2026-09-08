@@ -11,17 +11,10 @@ import {
 import type {
   MinimapDimensions,
   MinimapRect,
-  MinimapRenderState,
+  MinimapRenderSnapshot,
   MinimapTransform,
 } from "./types";
 import type { Point } from "@/shared/types";
-
-type MinimapColors = {
-  background: string;
-  foreground: string;
-  viewportFill: string;
-  viewportStroke: string;
-};
 
 type MinimapContentChunk = {
   paths: Map<string, Path2D>;
@@ -40,25 +33,23 @@ export class MinimapManager {
   private readonly padding: number;
   private readonly ctx: CanvasRenderingContext2D;
   private readonly observer: ResizeObserver | null;
-  private renderState: MinimapRenderState | null = null;
+  private renderSnapshot: MinimapRenderSnapshot | null = null;
   private transform: MinimapTransform | null = null;
   private viewportRect: MinimapRect | null = null;
   private cachedContentRevision: unknown;
-  private cachedReader: MinimapRenderState["reader"] | null = null;
+  private cachedReader: MinimapRenderSnapshot["reader"] | null = null;
   private hasCachedContent = false;
   private cachedContentBounds: MinimapRect | null = null;
   private lastRenderedViewportKey: string | null = null;
   private cancelScheduledContentRebuild: (() => void) | null = null;
   private cachedForeground = "";
   private contentChunks = new Map<string, MinimapContentChunk>();
-  private colors: MinimapColors;
 
   constructor(
     canvas: HTMLCanvasElement,
     host: HTMLElement,
     dimensions: MinimapDimensions,
-    padding: number,
-    colors: MinimapColors
+    padding: number
   ) {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Minimap: could not get 2D canvas context");
@@ -66,7 +57,6 @@ export class MinimapManager {
     this.dimensions = dimensions;
     this.padding = padding;
     this.ctx = ctx;
-    this.colors = colors;
     this.observer =
       typeof ResizeObserver === "undefined"
         ? null
@@ -77,7 +67,7 @@ export class MinimapManager {
 
   close = () => {
     this.observer?.disconnect();
-    this.renderState = null;
+    this.renderSnapshot = null;
     this.transform = null;
     this.viewportRect = null;
     this.lastRenderedViewportKey = null;
@@ -86,15 +76,13 @@ export class MinimapManager {
     this.contentChunks.clear();
   };
 
-  update = (state: MinimapRenderState) => {
-    this.renderState = state;
-    this.render();
-  };
-
-  setColors = (colors: MinimapColors) => {
-    const previousForeground = this.colors.foreground;
-    this.colors = colors;
-    if (previousForeground !== this.colors.foreground) {
+  update = (snapshot: MinimapRenderSnapshot) => {
+    const previousForeground = this.renderSnapshot?.colors.foreground;
+    this.renderSnapshot = snapshot;
+    if (
+      previousForeground !== undefined &&
+      previousForeground !== snapshot.colors.foreground
+    ) {
       this.hasCachedContent = false;
     }
     this.render();
@@ -202,7 +190,7 @@ export class MinimapManager {
   };
 
   private rebuildChunk = (
-    state: MinimapRenderState,
+    state: MinimapRenderSnapshot,
     column: number,
     row: number
   ) => {
@@ -229,7 +217,7 @@ export class MinimapManager {
               occupancy,
               hasBackground
                 ? cell.bgColor!
-                : cell.color || this.colors.foreground
+                : cell.color || state.colors.foreground
             );
           }
           x += occupancy;
@@ -240,12 +228,12 @@ export class MinimapManager {
     if (rebuilt) this.contentChunks.set(key, rebuilt);
   };
 
-  private rebuildPaths = (state: MinimapRenderState) => {
+  private rebuildPaths = (state: MinimapRenderSnapshot) => {
     if (
       this.hasCachedContent &&
       this.cachedReader === state.reader &&
       this.cachedContentRevision === state.contentRevision &&
-      this.cachedForeground === this.colors.foreground
+      this.cachedForeground === state.colors.foreground
     ) {
       return;
     }
@@ -257,7 +245,7 @@ export class MinimapManager {
       this.cachedReader === state.reader &&
       typeof this.cachedContentRevision === "number" &&
       typeof state.contentRevision === "number" &&
-      this.cachedForeground === this.colors.foreground &&
+      this.cachedForeground === state.colors.foreground &&
       incrementalReader !== null;
     if (canIncrement && incrementalReader) {
       const changes = incrementalReader.getChangesSince(
@@ -297,7 +285,7 @@ export class MinimapManager {
     this.hasCachedContent = true;
     this.cachedReader = state.reader;
     this.cachedContentRevision = state.contentRevision;
-    this.cachedForeground = this.colors.foreground;
+    this.cachedForeground = state.colors.foreground;
     this.cachedContentBounds = null;
     this.contentChunks = new Map();
     const bounds = state.reader.getContentBounds();
@@ -311,7 +299,7 @@ export class MinimapManager {
           if (hasBackground || (cell.char && cell.char !== " ")) {
             const color = hasBackground
               ? cell.bgColor!
-              : cell.color || this.colors.foreground;
+              : cell.color || state.colors.foreground;
             this.addCellToChunk(
               this.contentChunks,
               x,
@@ -332,7 +320,7 @@ export class MinimapManager {
     this.cancelScheduledContentRebuild = null;
     const rebuild = () => {
       this.cancelScheduledContentRebuild = null;
-      const state = this.renderState;
+      const state = this.renderSnapshot;
       if (!state) return;
       this.rebuildPaths(state);
       this.render();
@@ -352,7 +340,7 @@ export class MinimapManager {
   };
 
   render = () => {
-    const state = this.renderState;
+    const state = this.renderSnapshot;
     if (!state) return;
     const viewportKey = [
       state.offset.x,
@@ -394,7 +382,7 @@ export class MinimapManager {
     const { ctx } = this;
     ctx.resetTransform();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = this.colors.background;
+    ctx.fillStyle = state.colors.background;
     ctx.fillRect(0, 0, width, height);
     if (!transform) return;
 
@@ -434,11 +422,11 @@ export class MinimapManager {
       );
     }
     ctx.globalAlpha = 0.12;
-    ctx.fillStyle = this.colors.viewportFill;
+    ctx.fillStyle = state.colors.viewportFill;
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.lineWidth = 1.5 / scale;
-    ctx.strokeStyle = this.colors.viewportStroke;
+    ctx.strokeStyle = state.colors.viewportStroke;
     ctx.stroke();
   };
 }

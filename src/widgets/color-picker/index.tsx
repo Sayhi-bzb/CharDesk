@@ -145,7 +145,7 @@ function CanvasColorPickerAction({
 }) {
   const canvas = useCanvasRuntime();
   const { t } = useUiI18n();
-  const canvasColorPickerTarget = useCanvasState((state) => state.canvasColorPickerTarget);
+  const canvasColorPickerTarget = useCanvasState((state) => state.interaction.canvasColorPickerTarget);
   const setCanvasColorPickerTarget = canvas.commands.interaction.setColorPickerTarget;
   const toggleCanvasColorPicker = () => {
     const target: CanvasColorPickerTarget =
