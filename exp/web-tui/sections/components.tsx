@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -86,9 +86,36 @@ const buttonSizeItems = (["sm", "default", "lg"] as const).map((size) => ({
   label: size,
 }));
 
-const renderButtonSelectControl = (
+type PlaygroundSelectState = ReturnType<typeof useCellSelectState>;
+
+const usePlaygroundFocus = (
+  initialFocusedId: string,
+  selects: readonly PlaygroundSelectState[],
+) => {
+  const [focusedId, setFocusedId] = useState(initialFocusedId);
+  const activeSelect = selects.find(({ open }) => open) ?? null;
+  const dispatch = (command: WidgetCommand) => {
+    if (command.type === "focus") setFocusedId(command.targetId);
+    selects.forEach((select) => {
+      select.dispatch(command);
+      if (command.type === "dismiss" && command.targetId === select.contentId) {
+        setFocusedId(select.triggerId);
+      }
+      if (command.type === "activate" && select.items.some(({ id }) => id === command.targetId)) {
+        setFocusedId(select.triggerId);
+      }
+    });
+  };
+  return {
+    activeSelect,
+    dispatch,
+    focusedId: activeSelect?.focusedId ?? focusedId,
+  };
+};
+
+const renderPlaygroundSelectControl = (
   label: string,
-  select: ReturnType<typeof useCellSelectState>,
+  select: PlaygroundSelectState,
   focusedId: string,
 ) => (
   <Box id={`${select.id}-field`} key={select.id} style={{ direction: "row", height: 1 }}>
@@ -103,7 +130,12 @@ const renderButtonSelectControl = (
         style={{ width: 15 }}
       ><Text>{select.selectedItem?.label ?? "default"}</Text></SelectTrigger>
       {select.open ? (
-        <SelectContent id={select.contentId} label={`${label} options`} style={{ width: 15 }}>
+        <SelectContent
+          id={select.contentId}
+          label={`${label} options`}
+          scrollY={select.scrollY}
+          style={{ width: 15 }}
+        >
           {select.items.map((item, index) => (
             <SelectItem
               id={item.id}
@@ -120,9 +152,24 @@ const renderButtonSelectControl = (
   </Box>
 );
 
+const renderPlaygroundCheckboxControl = (
+  label: string,
+  id: string,
+  checked: boolean,
+  focusedId: string,
+) => (
+  <Box id={`${id}-field`} key={id} style={{ direction: "row", height: 1 }}>
+    <Text style={{ width: 10 }}>{label}</Text>
+    <Checkbox
+      id={id}
+      label={label}
+      checked={checked}
+      focused={focusedId === id}
+    />
+  </Box>
+);
+
 export const ButtonComponentDemo = () => {
-  const [focusedId, setFocusedId] = useState("component-button-save");
-  const [saved, setSaved] = useState(false);
   const [variant, setVariant] = useState<ButtonVariant>("default");
   const [size, setSize] = useState<ButtonSize>("default");
   const [disabled, setDisabled] = useState(false);
@@ -134,41 +181,25 @@ export const ButtonComponentDemo = () => {
     defaultSelectedId: "component-button-size-default",
     onSelectionChange: (id) => setSize(id.slice("component-button-size-".length) as ButtonSize),
   });
-  const activeSelect = variantSelect.open
-    ? variantSelect
-    : sizeSelect.open
-      ? sizeSelect
-      : null;
-  const resolvedFocusedId = activeSelect?.focusedId ?? focusedId;
+  const focus = usePlaygroundFocus(
+    "component-button-save",
+    [variantSelect, sizeSelect],
+  );
   const dispatch = (command: WidgetCommand) => {
-    if (command.type === "focus") setFocusedId(command.targetId);
-    variantSelect.dispatch(command);
-    sizeSelect.dispatch(command);
-    if (command.type === "dismiss" && command.targetId === variantSelect.contentId) {
-      setFocusedId(variantSelect.triggerId);
-    }
-    if (command.type === "dismiss" && command.targetId === sizeSelect.contentId) {
-      setFocusedId(sizeSelect.triggerId);
-    }
-    if (command.type === "activate" && variantSelect.items.some(({ id }) => id === command.targetId)) {
-      setFocusedId(variantSelect.triggerId);
-    }
-    if (command.type === "activate" && sizeSelect.items.some(({ id }) => id === command.targetId)) {
-      setFocusedId(sizeSelect.triggerId);
-    }
+    focus.dispatch(command);
     if (command.type === "activate" && command.targetId === "component-button-disabled") {
       setDisabled((current) => !current);
-    }
-    if (command.type === "activate" && command.targetId === "component-button-save" && !disabled) {
-      setSaved(true);
     }
   };
   return <ComponentPlayground
     id="component-button-playground"
-    focusedId={resolvedFocusedId}
+    focusedId={focus.focusedId}
     onCommand={dispatch}
     label="Button component"
     probeId="component-button"
+    previewMinColumns={10}
+    controlsColumns={25}
+    overlayRows={focus.activeSelect ? focus.activeSelect.items.length + 2 : 0}
     preview={
       <Button
         id="component-button-save"
@@ -176,21 +207,18 @@ export const ButtonComponentDemo = () => {
         variant={variant}
         size={size}
         disabled={disabled}
-        focused={resolvedFocusedId === "component-button-save"}
-      ><Text>{saved ? "✓ Saved" : "Save"}</Text></Button>
+        focused={focus.focusedId === "component-button-save"}
+      ><Text>Save</Text></Button>
     }
     controls={[
-      renderButtonSelectControl("variant", variantSelect, resolvedFocusedId),
-      renderButtonSelectControl("size", sizeSelect, resolvedFocusedId),
-      <Box id="component-button-disabled-field" key="disabled" style={{ direction: "row", height: 1 }}>
-        <Text style={{ width: 10 }}>disabled</Text>
-        <Checkbox
-          id="component-button-disabled"
-          label="disabled"
-          checked={disabled}
-          focused={resolvedFocusedId === "component-button-disabled"}
-        ><Text> </Text></Checkbox>
-      </Box>,
+      renderPlaygroundSelectControl("variant", variantSelect, focus.focusedId),
+      renderPlaygroundSelectControl("size", sizeSelect, focus.focusedId),
+      renderPlaygroundCheckboxControl(
+        "disabled",
+        "component-button-disabled",
+        disabled,
+        focus.focusedId,
+      ),
     ]}
   />;
 };
@@ -201,18 +229,43 @@ const selectItems = [
   { id: "component-select-system", label: "System" },
 ] as const;
 
+type SelectDemoValue = "light" | "dark" | "system";
+
 export const SelectComponentDemo = () => {
+  const [value, setValue] = useState<SelectDemoValue>("dark");
+  const [border, setBorder] = useState(false);
+  const [disabled, setDisabled] = useState(false);
+  const [rounded, setRounded] = useState(false);
   const select = useCellSelectState("component-select", selectItems, {
-    defaultSelectedId: "component-select-dark",
+    selectedId: `component-select-${value}`,
+    onSelectionChange: (id) => {
+      setValue(id.slice("component-select-".length) as SelectDemoValue);
+    },
   });
-  return <GallerySurface
-    viewport={{ width: 36, height: 8 }}
-    focusedId={select.focusedId}
-    onCommand={select.dispatch}
+  const focus = usePlaygroundFocus(select.triggerId, [select]);
+  const dispatch = (command: WidgetCommand) => {
+    focus.dispatch(command);
+    if (command.type === "activate" && command.targetId === "component-select-border") {
+      setBorder((current) => !current);
+    }
+    if (command.type === "activate" && command.targetId === "component-select-disabled") {
+      setDisabled((current) => !current);
+    }
+    if (command.type === "activate" && command.targetId === "component-select-rounded") {
+      setRounded((current) => !current);
+    }
+  };
+  return <ComponentPlayground
+    id="component-select-playground"
+    focusedId={focus.focusedId}
+    onCommand={dispatch}
     label="Select component"
     probeId="component-select"
-  >
-    <Root id="component-select-root">
+    previewMinColumns={30}
+    controlsColumns={25}
+    overlayRows={select.open ? select.items.length + (border ? 2 : 0) : 0}
+    preview={
+      <Box id="component-select-preview" style={{ width: 30 }}>
       <Text id="component-select-label">Theme</Text>
       <Select id={select.id} label="Theme" style={{ width: 30 }}>
         <SelectTrigger
@@ -220,14 +273,25 @@ export const SelectComponentDemo = () => {
           label="Theme"
           expanded={select.open}
           controlsId={select.open ? select.contentId : undefined}
+          disabled={disabled}
+          focused={focus.focusedId === select.triggerId}
         ><Text>{select.selectedItem?.label ?? "Select theme"}</Text></SelectTrigger>
         {select.open ? (
-          <SelectContent id={select.contentId} label="Theme options">
+          <SelectContent
+            id={select.contentId}
+            label="Theme options"
+            scrollY={select.scrollY}
+            style={{
+              border,
+              borderShape: rounded ? "rounded" : "square",
+            }}
+          >
             {select.items.map((item, index) => (
               <SelectItem
                 id={item.id}
                 key={item.id}
                 disabled={item.disabled}
+                focused={focus.focusedId === item.id}
                 selected={select.selectedId === item.id}
                 positionInSet={index + 1}
                 setSize={select.items.length}
@@ -236,161 +300,248 @@ export const SelectComponentDemo = () => {
           </SelectContent>
         ) : null}
       </Select>
-    </Root>
-  </GallerySurface>;
+      </Box>
+    }
+    controls={[
+      renderPlaygroundCheckboxControl(
+        "border",
+        "component-select-border",
+        border,
+        focus.focusedId,
+      ),
+      renderPlaygroundCheckboxControl(
+        "disabled",
+        "component-select-disabled",
+        disabled,
+        focus.focusedId,
+      ),
+      renderPlaygroundCheckboxControl(
+        "rounded",
+        "component-select-rounded",
+        rounded,
+        focus.focusedId,
+      ),
+    ]}
+  />;
 };
 
-type CheckboxDemoId =
-  | "component-checkbox-autosave"
-  | "component-checkbox-word-wrap"
-  | "component-checkbox-select-all"
-  | "component-checkbox-disabled";
-
-const checkboxInitialState: Record<CheckboxDemoId, CellCheckboxState> = {
-  "component-checkbox-autosave": true,
-  "component-checkbox-word-wrap": false,
-  "component-checkbox-select-all": "indeterminate",
-  "component-checkbox-disabled": false,
-};
-
-const checkboxItems: readonly Readonly<{
-  id: CheckboxDemoId;
+const checkboxStateItems: readonly Readonly<{
+  id: string;
   label: string;
-  disabled?: boolean;
+  value: CellCheckboxState;
 }>[] = [
-  { id: "component-checkbox-autosave", label: "Autosave" },
-  { id: "component-checkbox-word-wrap", label: "Word wrap" },
-  { id: "component-checkbox-select-all", label: "Select all" },
-  { id: "component-checkbox-disabled", label: "Disabled", disabled: true },
+  { id: "component-checkbox-state-unchecked", label: "unchecked", value: false },
+  { id: "component-checkbox-state-checked", label: "checked", value: true },
+  { id: "component-checkbox-state-mixed", label: "mixed", value: "indeterminate" },
 ];
 
 export const CheckboxComponentDemo = () => {
-  const [focusedId, setFocusedId] = useState<CheckboxDemoId>("component-checkbox-autosave");
-  const [checked, setChecked] = useState(checkboxInitialState);
+  const [checked, setChecked] = useState<CellCheckboxState>(true);
+  const [disabled, setDisabled] = useState(false);
+  const selectedState = checkboxStateItems.find(({ value }) => value === checked)!;
+  const stateSelect = useCellSelectState("component-checkbox-state", checkboxStateItems, {
+    selectedId: selectedState.id,
+    onSelectionChange: (id) => {
+      const item = checkboxStateItems.find(({ id: itemId }) => itemId === id);
+      if (item) setChecked(item.value);
+    },
+  });
+  const focus = usePlaygroundFocus(
+    "component-checkbox-autosave",
+    [stateSelect],
+  );
   const dispatch = (command: WidgetCommand) => {
-    if (command.type === "focus" && command.targetId in checkboxInitialState) {
-      setFocusedId(command.targetId as CheckboxDemoId);
+    focus.dispatch(command);
+    if (command.type === "activate" && command.targetId === "component-checkbox-autosave") {
+      if (!disabled) setChecked(nextCellCheckboxState);
     }
-    if (command.type === "activate" && command.targetId in checkboxInitialState) {
-      const id = command.targetId as CheckboxDemoId;
-      if (id === "component-checkbox-disabled") return;
-      setChecked((current) => ({ ...current, [id]: nextCellCheckboxState(current[id]) }));
+    if (command.type === "activate" && command.targetId === "component-checkbox-disabled-control") {
+      setDisabled((current) => !current);
     }
   };
-  return <GallerySurface
-    viewport={{ width: 36, height: 5 }}
-    focusedId={focusedId}
+  return <ComponentPlayground
+    id="component-checkbox-playground"
+    focusedId={focus.focusedId}
     onCommand={dispatch}
     label="Checkbox component"
     probeId="component-checkbox"
-  >
-    <Root id="component-checkbox-root">
-      <Text id="component-checkbox-title">Editor</Text>
-      {checkboxItems.map((item) => (
-        <Checkbox
-          id={item.id}
-          key={item.id}
-          label={item.label}
-          checked={checked[item.id]}
-          disabled={item.disabled}
-          focused={focusedId === item.id}
-        ><Text>{item.label}</Text></Checkbox>
-      ))}
-    </Root>
-  </GallerySurface>;
+    previewMinColumns={14}
+    controlsColumns={25}
+    overlayRows={focus.activeSelect ? focus.activeSelect.items.length + 2 : 0}
+    preview={
+      <Checkbox
+        id="component-checkbox-autosave"
+        label="Autosave"
+        checked={checked}
+        disabled={disabled}
+        focused={focus.focusedId === "component-checkbox-autosave"}
+      ><Text>Autosave</Text></Checkbox>
+    }
+    controls={[
+      renderPlaygroundSelectControl("checked", stateSelect, focus.focusedId),
+      renderPlaygroundCheckboxControl(
+        "disabled",
+        "component-checkbox-disabled-control",
+        disabled,
+        focus.focusedId,
+      ),
+    ]}
+  />;
 };
 
-type SliderDemoId =
-  | "component-slider-volume"
-  | "component-slider-brightness"
-  | "component-slider-minimum"
-  | "component-slider-maximum"
-  | "component-slider-disabled";
-
-const sliderItems: readonly Readonly<{
-  id: SliderDemoId;
-  label: string;
-  disabled?: boolean;
-}>[] = [
-  { id: "component-slider-volume", label: "Volume" },
-  { id: "component-slider-brightness", label: "Brightness" },
-  { id: "component-slider-minimum", label: "Minimum" },
-  { id: "component-slider-maximum", label: "Maximum" },
-  { id: "component-slider-disabled", label: "Disabled", disabled: true },
-];
-
-const sliderInitialValues: Record<SliderDemoId, number> = {
-  "component-slider-volume": 50,
-  "component-slider-brightness": 25,
-  "component-slider-minimum": 0,
-  "component-slider-maximum": 100,
-  "component-slider-disabled": 40,
-};
+type SliderDemoStep = 1 | 5 | 10;
+const sliderStepItems = ([1, 5, 10] as const).map((step) => ({
+  id: `component-slider-step-${step}`,
+  label: String(step),
+}));
 
 export const SliderComponentDemo = () => {
-  const [focusedId, setFocusedId] = useState<SliderDemoId>("component-slider-volume");
-  const [values, setValues] = useState(sliderInitialValues);
+  const [value, setValue] = useState(50);
+  const [step, setStep] = useState<SliderDemoStep>(1);
+  const [disabled, setDisabled] = useState(false);
+  const stepSelect = useCellSelectState("component-slider-step", sliderStepItems, {
+    selectedId: `component-slider-step-${step}`,
+    onSelectionChange: (id) => {
+      const next = Number(id.slice("component-slider-step-".length)) as SliderDemoStep;
+      setStep(next);
+      setValue((current) => Math.round(current / next) * next);
+    },
+  });
+  const focus = usePlaygroundFocus("component-slider-volume", [stepSelect]);
   const dispatch = (command: WidgetCommand) => {
-    if (command.type === "focus" && command.targetId in sliderInitialValues) {
-      setFocusedId(command.targetId as SliderDemoId);
+    focus.dispatch(command);
+    if (command.type === "set-value") {
+      if (command.targetId === "component-slider-value") setValue(command.value);
+      if (command.targetId === "component-slider-volume" && !disabled) setValue(command.value);
     }
-    if (command.type === "set-value" && command.targetId in sliderInitialValues) {
-      const id = command.targetId as SliderDemoId;
-      if (id === "component-slider-disabled") return;
-      setValues((current) => ({ ...current, [id]: command.value }));
+    if (command.type === "activate" && command.targetId === "component-slider-disabled") {
+      setDisabled((current) => !current);
     }
   };
-  return <GallerySurface
-    viewport={{ width: 36, height: 10 }}
-    focusedId={focusedId}
+  return <ComponentPlayground
+    id="component-slider-playground"
+    focusedId={focus.focusedId}
     onCommand={dispatch}
     label="Slider component"
     probeId="component-slider"
-  >
-    <Root id="component-slider-root">
-      {sliderItems.map((item) => (
-        <Box id={`${item.id}-field`} key={item.id}>
-          <Box id={`${item.id}-label`} style={{ direction: "row" }}>
-            <Text style={{ width: 24 }}>{item.label}</Text>
-            <Text>{values[item.id]}</Text>
-          </Box>
-          <Slider
-            id={item.id}
-            label={item.label}
-            value={values[item.id]}
-            valueText={`${values[item.id]} percent`}
-            disabled={item.disabled}
-            focused={focusedId === item.id}
-            style={{ width: 26 }}
-          />
+    previewMinColumns={26}
+    controlsColumns={25}
+    overlayRows={focus.activeSelect ? focus.activeSelect.items.length + 2 : 0}
+    preview={
+      <Box id="component-slider-preview" style={{ width: 26 }}>
+        <Box id="component-slider-label" style={{ direction: "row" }}>
+          <Text style={{ width: 23 }}>Volume</Text>
+          <Text>{value}</Text>
         </Box>
-      ))}
-    </Root>
-  </GallerySurface>;
+        <Slider
+          id="component-slider-volume"
+          label="Volume"
+          value={value}
+          valueText={`${value} percent`}
+          min={0}
+          max={100}
+          step={step}
+          disabled={disabled}
+          focused={focus.focusedId === "component-slider-volume"}
+          style={{ width: 26 }}
+        />
+      </Box>
+    }
+    controls={[
+      <Box id="component-slider-value-field" key="value" style={{ direction: "row", height: 1 }}>
+        <Text style={{ width: 10 }}>value</Text>
+        <Slider
+          id="component-slider-value"
+          label="value"
+          value={value}
+          valueText={String(value)}
+          min={0}
+          max={100}
+          step={step}
+          focused={focus.focusedId === "component-slider-value"}
+          style={{ width: 15 }}
+        />
+      </Box>,
+      renderPlaygroundSelectControl("step", stepSelect, focus.focusedId),
+      renderPlaygroundCheckboxControl(
+        "disabled",
+        "component-slider-disabled",
+        disabled,
+        focus.focusedId,
+      ),
+    ]}
+  />;
 };
 
 export const InputComponentDemo = () => {
   const input = useCellTextState("component-input-field", {
     value: "notes.txt",
   });
-  return <GallerySurface
-    viewport={{ width: 36, height: 4 }}
-    onCommand={input.dispatch}
+  const [readOnly, setReadOnly] = useState(false);
+  const [disabled, setDisabled] = useState(false);
+  const [rounded, setRounded] = useState(false);
+  const focus = usePlaygroundFocus("component-input-field", []);
+  const dispatch = (command: WidgetCommand) => {
+    focus.dispatch(command);
+    input.dispatch(command);
+    if (command.type === "activate" && command.targetId === "component-input-read-only") {
+      setReadOnly((current) => !current);
+    }
+    if (command.type === "activate" && command.targetId === "component-input-disabled") {
+      setDisabled((current) => !current);
+    }
+    if (command.type === "activate" && command.targetId === "component-input-rounded") {
+      setRounded((current) => !current);
+    }
+  };
+  return <ComponentPlayground
+    id="component-input-playground"
+    focusedId={focus.focusedId}
+    onCommand={dispatch}
     label="Input component"
     probeId="component-input"
-  >
-    <Root id="component-input-root">
-      <Box id="component-input-frame">
+    previewMinColumns={30}
+    controlsColumns={25}
+    preview={
+      <Box id="component-input-frame" style={{ width: 30 }}>
         <Text id="component-input-label">File name</Text>
         <TextInput
           id="component-input-field"
           label="File name"
           state={input.snapshot}
-          style={{ border: true, height: 3 }}
+          focused={focus.focusedId === "component-input-field"}
+          readOnly={readOnly}
+          disabled={disabled}
+          style={{
+            border: true,
+            borderShape: rounded ? "rounded" : "square",
+            width: 30,
+            height: 3,
+          }}
         />
       </Box>
-    </Root>
-  </GallerySurface>;
+    }
+    controls={[
+      renderPlaygroundCheckboxControl(
+        "readOnly",
+        "component-input-read-only",
+        readOnly,
+        focus.focusedId,
+      ),
+      renderPlaygroundCheckboxControl(
+        "disabled",
+        "component-input-disabled",
+        disabled,
+        focus.focusedId,
+      ),
+      renderPlaygroundCheckboxControl(
+        "rounded",
+        "component-input-rounded",
+        rounded,
+        focus.focusedId,
+      ),
+    ]}
+  />;
 };
 
 const listItems = [
@@ -430,46 +581,113 @@ export const ListComponentDemo = () => {
   </GallerySurface>;
 };
 
-const scrollItems = Array.from({ length: 10 }, (_, index) => ({
+const scrollItems = Array.from({ length: 20 }, (_, index) => ({
   id: `component-scroll-row-${index + 1}`,
   label: `${String(index + 1).padStart(2, "0")}  Row ${index + 1}`,
+}));
+type ScrollDemoHeight = 4 | 6;
+type ScrollDemoRows = 3 | 10 | 20;
+const scrollHeightItems = ([4, 6] as const).map((height) => ({
+  id: `component-scroll-height-${height}`,
+  label: String(height),
+}));
+const scrollRowCountItems = ([3, 10, 20] as const).map((rows) => ({
+  id: `component-scroll-rows-${rows}`,
+  label: String(rows),
 }));
 
 export const ScrollAreaComponentDemo = () => {
   const [scrollY, setScrollY] = useState(0);
-  const list = useCellListState(scrollItems, {
+  const [height, setHeight] = useState<ScrollDemoHeight>(6);
+  const [rowCount, setRowCount] = useState<ScrollDemoRows>(10);
+  const [border, setBorder] = useState(true);
+  const [rounded, setRounded] = useState(false);
+  const visibleItems = useMemo(() => scrollItems.slice(0, rowCount), [rowCount]);
+  const list = useCellListState(visibleItems, {
     defaultFocusedId: "component-scroll-row-1",
     defaultSelectedId: "component-scroll-row-1",
   });
+  const heightSelect = useCellSelectState("component-scroll-height", scrollHeightItems, {
+    selectedId: `component-scroll-height-${height}`,
+    onSelectionChange: (id) => {
+      setHeight(Number(id.slice("component-scroll-height-".length)) as ScrollDemoHeight);
+      setScrollY(0);
+    },
+  });
+  const rowsSelect = useCellSelectState("component-scroll-rows", scrollRowCountItems, {
+    selectedId: `component-scroll-rows-${rowCount}`,
+    onSelectionChange: (id) => {
+      setRowCount(Number(id.slice("component-scroll-rows-".length)) as ScrollDemoRows);
+      setScrollY(0);
+    },
+  });
+  const focus = usePlaygroundFocus(
+    "component-scroll-row-1",
+    [heightSelect, rowsSelect],
+  );
   const dispatch = (command: WidgetCommand) => {
+    focus.dispatch(command);
     list.dispatch(command);
-    if (command.type === "scroll") setScrollY(command.scrollY);
-    if (command.type === "focus" && command.reveal) setScrollY(command.reveal.scrollY);
+    if (command.type === "scroll" && command.targetId === "component-scroll-area") {
+      setScrollY(command.scrollY);
+    }
+    if (command.type === "focus" && command.reveal?.targetId === "component-scroll-area") {
+      setScrollY(command.reveal.scrollY);
+    }
+    if (command.type === "activate" && command.targetId === "component-scroll-border") {
+      setBorder((current) => !current);
+    }
+    if (command.type === "activate" && command.targetId === "component-scroll-rounded") {
+      setRounded((current) => !current);
+    }
   };
-  return <GallerySurface
-    viewport={{ width: 32, height: 6 }}
-    focusedId={list.focusedId}
+  return <ComponentPlayground
+    id="component-scroll-playground"
+    focusedId={focus.focusedId}
     onCommand={dispatch}
     label="ScrollArea component"
     probeId="component-scroll-area"
-  >
-    <Root id="component-scroll-root">
+    previewMinColumns={28}
+    controlsColumns={25}
+    overlayRows={focus.activeSelect ? focus.activeSelect.items.length + 2 : 0}
+    preview={
       <ScrollArea
         id="component-scroll-area"
         scrollY={scrollY}
-        style={{ border: true, height: 6 }}
+        style={{
+          border,
+          borderShape: rounded ? "rounded" : "square",
+          width: 28,
+          height,
+        }}
       >
         <List id="component-scroll-items" label="Scrollable rows">
           {list.items.map((item) => (
             <ListItem
               id={item.id}
               key={item.id}
-              focused={list.focusedId === item.id}
+              focused={focus.focusedId === item.id}
               selected={list.selectedId === item.id}
             ><Text>{item.label}</Text></ListItem>
           ))}
         </List>
       </ScrollArea>
-    </Root>
-  </GallerySurface>;
+    }
+    controls={[
+      renderPlaygroundSelectControl("height", heightSelect, focus.focusedId),
+      renderPlaygroundSelectControl("rows", rowsSelect, focus.focusedId),
+      renderPlaygroundCheckboxControl(
+        "border",
+        "component-scroll-border",
+        border,
+        focus.focusedId,
+      ),
+      renderPlaygroundCheckboxControl(
+        "rounded",
+        "component-scroll-rounded",
+        rounded,
+        focus.focusedId,
+      ),
+    ]}
+  />;
 };

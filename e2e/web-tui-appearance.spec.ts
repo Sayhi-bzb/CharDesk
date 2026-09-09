@@ -128,17 +128,21 @@ test("header font Select uses Cell pointer geometry without moving the header", 
   );
   await expect(select.getByRole("listbox", { name: "Fonts" })).toBeAttached();
   const openProbe = await readCellProbe(select);
-  expect(openProbe.viewport).toEqual({ width: 27, height: 6 });
-  expect(openProbe.text).toContain("Fusion Pixel 12px Mono");
+  expect(openProbe.viewport).toEqual({ width: 12, height: 1 });
+  expect(openProbe.overlayViewport).toEqual({ width: 12, height: 6 });
+  expect(openProbe.overlays).toHaveLength(1);
+  expect(openProbe.overlays[0]!.rootId).toBe("gallery-font-content");
+  expect(openProbe.overlays[0]!.text).toContain("Fusion");
+  await expect(select.locator('[data-cell-overlay-root="gallery-font-content"]')).toHaveCount(1);
   expect((await header.boundingBox())?.height).toBe(closedHeader!.height);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 
   await gallery.click({ position: { x: 4, y: 640 } });
   await expect(select.getByRole("listbox", { name: "Fonts" })).toHaveCount(0);
-  await expect(select.getByRole("button", { name: "Font: Maple Mono" }))
+  await expect(select.getByRole("button", { name: "Font: Maple" }))
     .toHaveAttribute("aria-expanded", "false");
 
-  const reopenedCanvas = await select.locator("canvas").boundingBox();
+  const reopenedCanvas = await select.locator("canvas:not([data-cell-overlay-root])").boundingBox();
   expect(reopenedCanvas).not.toBeNull();
   await page.mouse.click(
     reopenedCanvas!.x + reopenedCanvas!.width / 2,
@@ -146,15 +150,24 @@ test("header font Select uses Cell pointer geometry without moving the header", 
   );
   await expect(select.getByRole("listbox", { name: "Fonts" })).toBeAttached();
 
-  const openCanvas = await select.locator("canvas").boundingBox();
-  expect(openCanvas).not.toBeNull();
+  const reopenedProbe = await readCellProbe(select);
+  const fontOverlay = reopenedProbe.overlays[0]!;
+  const fontLines = fontOverlay.text.split("\n");
+  const fusionRow = fontLines.findIndex((line) => line.includes("Fusion"));
+  const fusionColumn = fontLines[fusionRow]?.indexOf("Fusion") ?? -1;
+  expect(fusionRow).toBeGreaterThanOrEqual(0);
+  expect(fusionColumn).toBeGreaterThanOrEqual(0);
   await page.mouse.click(
-    openCanvas!.x + 2.5 * openCanvas!.width / openProbe.viewport.width,
-    openCanvas!.y + 3.5 * openCanvas!.height / openProbe.viewport.height,
+    reopenedCanvas!.x + (
+      fontOverlay.bounds.x + fusionColumn + 0.5
+    ) * reopenedProbe.presentation!.metrics.cellWidth,
+    reopenedCanvas!.y + (
+      fontOverlay.bounds.y + fusionRow + 0.5
+    ) * reopenedProbe.presentation!.metrics.cellHeight,
   );
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
   await expect(select.getByRole("listbox", { name: "Fonts" })).toHaveCount(0);
-  await expect(select.getByRole("button", { name: "Font: Fusion Pixel 12px Mono" })).toBeAttached();
+  await expect(select.getByRole("button", { name: "Font: Fusion" })).toBeAttached();
 });
 
 test("theme icon toggles, persists, and preserves Cell state", async ({ page }) => {

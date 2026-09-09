@@ -13,9 +13,7 @@ import {
 import {
   createDrawingSlice,
   createTextSlice,
-  createSelectionSlice,
   createSessionSlice,
-  createStaticGridSlice,
   createSlideSlice,
 } from "./slices";
 import {
@@ -49,7 +47,6 @@ import {
 import { createDeferredSnapshotPersistStorage } from "./persistenceCoordinator";
 import { resolveEditorDocumentAddress } from "./helpers/gridHelpers";
 import type { CollaborationIntegrityIssue } from "@/domains/collaboration/public";
-import type { SelectionCommandFactory } from "./selectionCommandPort";
 import type { CanvasSessionSourceParser } from "./sessionImportPort";
 import {
   getCanvasSessionRestoreRecord,
@@ -74,7 +71,6 @@ export type CanvasStorePersistence = false | {
 
 type CanvasStoreDependencies = {
   documents: CanvasDocumentRegistry;
-  selectionCommands: SelectionCommandFactory;
   parseSessionSource: CanvasSessionSourceParser;
   reportIntegrityIssues: (issues: CollaborationIntegrityIssue[]) => void;
   persistence: CanvasStorePersistence;
@@ -117,7 +113,6 @@ const seedSessionDocuments = (
 
 export const createEditorStore = ({
   documents,
-  selectionCommands,
   parseSessionSource,
   reportIntegrityIssues,
   persistence,
@@ -250,13 +245,11 @@ export const createEditorStore = ({
           );
         },
         ...createSessionSlice(documents, parseSessionSource, viewport, documentResidency)(set, get, ...a),
-        ...createStaticGridSlice(set, get, ...a),
         ...createSlideSlice(documents)(set, get, ...a),
         slideDeck: initialRuntime.nextSlideDeck,
 
         ...createDrawingSlice(documents)(set, get, ...a),
         ...createTextSlice(documents)(set, get, ...a),
-        ...createSelectionSlice(documents, selectionCommands)(set, get, ...a),
       };
     };
   const store = persistence

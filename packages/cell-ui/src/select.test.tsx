@@ -8,6 +8,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  ScrollArea,
   Text,
   auditSemanticSnapshot,
   commandForInput,
@@ -62,6 +63,40 @@ describe("Select", () => {
     runtime.dispose();
   });
 
+  it("lets SelectContent remove border layout and chrome explicitly", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
+    const frame = runtime.render(
+      <Root id="root">
+        <Select id="theme" style={{ width: 20 }}>
+          <SelectTrigger id="theme-trigger" label="Theme" expanded controlsId="theme-content">
+            <Text>Dark</Text>
+          </SelectTrigger>
+          <SelectContent id="theme-content" label="Theme options" style={{ border: false }}>
+            <SelectItem id="light"><Text>Light</Text></SelectItem>
+            <SelectItem id="dark" selected><Text>Dark</Text></SelectItem>
+            <SelectItem id="system"><Text>System</Text></SelectItem>
+          </SelectContent>
+        </Select>
+      </Root>,
+      { focusedId: "dark" },
+    );
+
+    expect(frame.layout.entries.get("theme-content")).toMatchObject({
+      rect: { x: 0, y: 0, width: 20, height: 3 },
+      borderInsets: { top: 0, right: 0, bottom: 0, left: 0 },
+    });
+    expect(frame.scene.entries.get("theme-content")?.layoutBounds)
+      .toEqual({ x: 0, y: 1, width: 20, height: 3 });
+    expect(frame.buffer.toText({ trimEnd: true }).trimEnd()).toBe([
+      " Dark              ▴",
+      " Light",
+      " Dark              ✓",
+      " System",
+    ].join("\n"));
+    expect(frame.buffer.toText({ trimEnd: true })).not.toMatch(/[┌┐└┘│─]/u);
+    runtime.dispose();
+  });
+
   it("flips above the trigger when the lower viewport cannot fit the content", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
     const frame = runtime.render(
@@ -82,6 +117,135 @@ describe("Select", () => {
     );
     expect(frame.scene.entries.get("theme-trigger")?.layoutBounds.y).toBe(6);
     expect(frame.scene.entries.get("theme-content")?.layoutBounds.y).toBe(1);
+    runtime.dispose();
+  });
+
+  it("constrains to the larger side, keeps the trigger visible, and scrolls internally", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 24, height: 7 } });
+    const view = (scrollY: number) => (
+      <Root id="root">
+        <Box id="spacer" style={{ height: 2 }} />
+        <Select id="theme" style={{ width: 20 }}>
+          <SelectTrigger id="theme-trigger" label="Theme" expanded controlsId="theme-content">
+            <Text>Maple</Text>
+          </SelectTrigger>
+          <SelectContent id="theme-content" label="Theme options" scrollY={scrollY}>
+            {Array.from({ length: 6 }, (_, index) => (
+              <SelectItem id={`font-${index}`} key={index} selected={index === 5}>
+                <Text>{`Font ${index}`}</Text>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Root>
+    );
+    const frame = runtime.render(view(0), { focusedId: "font-0" });
+    const trigger = frame.scene.entries.get("theme-trigger")!.layoutBounds;
+    const content = frame.scene.entries.get("theme-content")!;
+
+    expect(trigger).toEqual({ x: 0, y: 2, width: 20, height: 1 });
+    expect(content.layoutBounds).toEqual({ x: 0, y: 3, width: 20, height: 4 });
+    expect(content.layoutBounds.y).toBeGreaterThanOrEqual(trigger.y + trigger.height);
+    expect(content.scrollMetrics).toMatchObject({
+      horizontalTrack: null,
+      maxOffset: { x: 0, y: 4 },
+    });
+    expect(content.scrollMetrics?.verticalTrack).not.toBeNull();
+    expect(frame.buffer.toText({ trimEnd: true }).split("\n")[2]).toContain("Maple");
+
+    const focus = new FocusManager();
+    focus.sync(frame.tree, "font-0");
+    const end = commandForInput(createKeyInput({ key: "End" }), frame, focus);
+    expect(end).toMatchObject({
+      type: "focus",
+      targetId: "font-5",
+      reveal: { targetId: "theme-content", scrollY: 4 },
+    });
+    expect(commandForInput(
+      { type: "wheel", point: { x: 2, y: 4 }, deltaX: 0, deltaY: 1 },
+      frame,
+      focus
+    )).toEqual({ type: "scroll", targetId: "theme-content", scrollX: 0, scrollY: 1 });
+
+    const scrolled = runtime.render(view(4), { focusedId: "font-5" });
+    expect(scrolled.buffer.toText({ trimEnd: true })).toContain("Font 5");
+    expect(scrolled.buffer.toText({ trimEnd: true })).toContain("✓█│");
+    expect(scrolled.buffer.toText({ trimEnd: true }).split("\n")[2]).toContain("Maple");
+    runtime.dispose();
+  });
+
+  it("excludes portaled SelectContent from ancestor ScrollArea measurement", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 24, height: 7 } });
+    const view = (open: boolean) => (
+      <Root id="root">
+        <ScrollArea id="properties" style={{ width: 20, height: 7 }}>
+          <Select id="theme" style={{ width: 15 }}>
+            <SelectTrigger id="theme-trigger" label="Theme" expanded={open} controlsId={open ? "theme-content" : undefined}>
+              <Text>Maple</Text>
+            </SelectTrigger>
+            {open ? (
+              <SelectContent id="theme-content" label="Theme options">
+                {Array.from({ length: 10 }, (_, index) => (
+                  <SelectItem id={`theme-${index}`} key={index}><Text>{`Theme ${index}`}</Text></SelectItem>
+                ))}
+              </SelectContent>
+            ) : null}
+          </Select>
+        </ScrollArea>
+      </Root>
+    );
+    const closed = runtime.render(view(false));
+    const closedMetrics = closed.scene.entries.get("properties")!.scrollMetrics!;
+    const open = runtime.render(view(true));
+    const openMetrics = open.scene.entries.get("properties")!.scrollMetrics!;
+
+    expect(openMetrics.contentSize).toEqual(closedMetrics.contentSize);
+    expect(openMetrics.verticalTrack).toEqual(closedMetrics.verticalTrack);
+    expect(open.scene.entries.get("theme-content")!.scrollMetrics?.verticalTrack).not.toBeNull();
+    runtime.dispose();
+  });
+
+  it("renders a full dropdown on an overlay viewport without resizing the base plane", () => {
+    const runtime = new CellUiRuntime({
+      viewport: { width: 24, height: 7 },
+      overlayViewport: { width: 24, height: 12 },
+    });
+    const frame = runtime.render(
+      <Root id="root">
+        <Box style={{ height: 3 }} />
+        <Select id="size" style={{ width: 15 }}>
+          <SelectTrigger id="size-trigger" label="Size" expanded controlsId="size-content">
+            <Text>default</Text>
+          </SelectTrigger>
+          <SelectContent id="size-content" label="Size options">
+            <SelectItem id="default" selected><Text>default</Text></SelectItem>
+            <SelectItem id="sm"><Text>sm</Text></SelectItem>
+            <SelectItem id="lg"><Text>lg</Text></SelectItem>
+          </SelectContent>
+        </Select>
+      </Root>
+    );
+
+    expect(frame.scene.viewport).toEqual({ x: 0, y: 0, width: 24, height: 7 });
+    expect(frame.scene.overlayViewport).toEqual({ x: 0, y: 0, width: 24, height: 12 });
+    expect(frame.baseBuffer.height).toBe(7);
+    expect(frame.overlayBuffer.height).toBe(12);
+    expect(frame.buffer.height).toBe(12);
+    expect(frame.overlayPlanes).toEqual([{
+      rootId: "size-content",
+      bounds: { x: 0, y: 4, width: 15, height: 5 },
+      layer: 1,
+      paintOrder: 5,
+    }]);
+    expect(frame.scene.entries.get("size-content")?.scrollMetrics?.verticalTrack).toBeNull();
+    expect(frame.buffer.toText({ trimEnd: true })).toContain([
+      "┌─────────────┐",
+      "│ default    ✓│",
+      "│ sm          │",
+      "│ lg          │",
+      "└─────────────┘",
+    ].join("\n"));
+    expect(frame.baseBuffer.toText({ trimEnd: true })).not.toContain("┌─────────────┐");
     runtime.dispose();
   });
 

@@ -15,6 +15,7 @@ export { createEmptyCanvasInteraction } from "./state/canvasInteractionState";
 export type {
   CanvasColorPickerTarget,
   CanvasInteractionSnapshot,
+  CanvasInteractionUpdate,
 } from "./state/canvasInteractionState";
 export type {
   CanvasContentSurfaceState,
@@ -25,7 +26,12 @@ export type {
   RichTextRow,
   RichTextSpan,
 } from "./state/interfaces";
-export type { SelectionCommandFactory } from "./state/selectionCommandPort";
+export type {
+  SelectionCommandFactory,
+  SelectionCommandContext,
+  SelectionCommands,
+  SelectionMutationPort,
+} from "./state/selectionCommandPort";
 export { isToolAllowedForMode } from "./model/tool";
 export type { ToolType } from "./model/tool";
 export { DEFAULT_DEMO_GRID } from "./state/helpers/defaultDemo";

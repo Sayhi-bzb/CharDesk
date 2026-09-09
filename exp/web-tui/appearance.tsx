@@ -1,11 +1,9 @@
 import { Moon } from "pixelarticons/react/Moon";
-import { Square } from "pixelarticons/react/Square";
-import { SquareSharp } from "pixelarticons/react/SquareSharp";
 import { Sun } from "pixelarticons/react/Sun";
 import { createContext, useContext, useLayoutEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
 import { CellSurface, DEFAULT_CELL_UI_METRICS, loadCellFontMetrics, useCellCssTheme, useCellSelectState, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
-import { Box, Root, Select, SelectContent, SelectItem, SelectTrigger, Text, resolveCellUiTheme, type CellBorderShape } from "@chardesk/cell-ui";
+import { Root, Select, SelectContent, SelectItem, SelectTrigger, Text, resolveCellUiTheme } from "@chardesk/cell-ui";
 import {
   galleryFontOptions,
   type GalleryFont,
@@ -30,7 +28,6 @@ const AppearanceContext = createContext({
   theme: defaultTheme,
   palette: { color: defaultTheme.foreground, background: defaultTheme.background },
   toggleTheme: () => {},
-  toggleBorder: () => {},
   selectFont: (font: GalleryFont) => { void font; },
 });
 const themePreferenceKey = "chardesk-web-tui-theme";
@@ -54,8 +51,6 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
   const [pendingFont, setPendingFont] = useState<GalleryFont | null>(null);
   const [fontStatus, setFontStatus] = useState<GalleryFontStatus>("idle");
   const [fontMessage, setFontMessage] = useState("");
-  const [borderShape, setBorderShape] = useState<CellBorderShape>("square");
-  const toggleBorder = () => setBorderShape((shape) => shape === "square" ? "rounded" : "square");
   const mode = preference ?? (dark ? "dark" : "light");
   const rootRef = useRef<HTMLDivElement>(null);
   const fontRequestRef = useRef(0);
@@ -111,7 +106,7 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
     colorScheme: mode,
     "--gallery-font-size": `${DEFAULT_CELL_UI_METRICS.fontSize}px`,
   } as CSSProperties;
-  return <AppearanceContext.Provider value={{ ...appearance, theme: { ...appearance.theme, borderShape }, mode, font, pendingFont, fontStatus, fontMessage, fontProfile, toggleTheme, toggleBorder, selectFont }}>
+  return <AppearanceContext.Provider value={{ ...appearance, mode, font, pendingFont, fontStatus, fontMessage, fontProfile, toggleTheme, selectFont }}>
     <div ref={rootRef} className="gallery-page" data-gallery-theme={mode} data-gallery-font={font} data-gallery-font-status={fontStatus} style={style}>{children}</div>
   </AppearanceContext.Provider>;
 }
@@ -134,16 +129,6 @@ export function GalleryThemeToggle() {
     {mode === "light"
       ? <Moon aria-hidden="true" data-gallery-icon="moon" />
       : <Sun aria-hidden="true" data-gallery-icon="sun" />}
-  </GalleryIconButton>;
-}
-export function GalleryBorderToggle() {
-  const { theme, toggleBorder } = useGalleryAppearance();
-  const rounded = theme.borderShape === "rounded";
-  const label = rounded ? "Square" : "Rounded";
-  return <GalleryIconButton label={label} aria-pressed={rounded} onClick={toggleBorder}>
-    {rounded
-      ? <SquareSharp aria-hidden="true" data-gallery-icon="square" />
-      : <Square aria-hidden="true" data-gallery-icon="rounded" />}
   </GalleryIconButton>;
 }
 const galleryFontItems = (Object.keys(galleryFontOptions) as GalleryFont[]).map((font) => ({
@@ -178,25 +163,30 @@ export function GalleryFontSelect() {
   return <div className="gallery-font-select" data-state={fontStatus} data-open={open || undefined}>
     <GallerySurface
       className="gallery-font-select__surface"
-      viewport={{ width: open ? 27 : 11, height: open ? 6 : 1 }}
+      viewport={{ width: 12, height: 1 }}
+      overlayViewport={{ width: 12, height: open ? 6 : 1 }}
       focusedId={select.focusedId}
       onCommand={select.dispatch}
       label="Font"
       probeId="gallery-font-select"
     >
       <Root id="gallery-font-root" style={{ direction: "row" }}>
-        {open ? <Box id="gallery-font-spacer" style={{ width: 16 }} /> : null}
-        <Select id={select.id} label="Font" style={{ width: 11 }}>
+        <Select id={select.id} label="Font" style={{ width: 12 }}>
           <SelectTrigger
             id={select.triggerId}
             label={triggerLabel}
             expanded={open}
             controlsId={open ? select.contentId : undefined}
             disabled={fontStatus === "loading"}
-            style={{ width: 11 }}
+            style={{ width: 12 }}
           ><Text>{triggerText}</Text></SelectTrigger>
           {open ? (
-            <SelectContent id={select.contentId} label="Fonts" style={{ width: 27 }}>
+            <SelectContent
+              id={select.contentId}
+              label="Fonts"
+              scrollY={select.scrollY}
+              style={{ width: 12 }}
+            >
               {galleryFontItems.map((item, index) => (
                 <SelectItem
                   id={item.id}

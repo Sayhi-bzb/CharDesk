@@ -88,7 +88,39 @@ const CANVAS_COMMAND_OWNED_MUTATIONS = new Set([
   "setSelectedStructuredNodeIds",
   "setSelectedStructuredBoxId",
   "setSelectedStructuredSplitHandle",
+  "clearSelections",
+  "clearInteractionState",
+  "setStaticGridActiveCell",
+  "setStaticGridSelectionRange",
+  "appendStaticGridSelectionRange",
+  "moveStaticGridFocus",
+  "moveStaticGridFocusToEdge",
+  "moveStaticGridFocusToContentBoundary",
+  "selectStaticGridAll",
+  "selectStaticGridRow",
+  "selectStaticGridColumn",
+  "enterStaticGridTextEdit",
+  "exitStaticGridTextEdit",
+  "clearStaticGridSelection",
+  "setScratchLayer",
+  "addScratchPoints",
+  "updateScratchForShape",
+  "clearScratch",
+  "commitScratch",
+  "fillArea",
+  "moveStaticGridSelection",
+  "deleteSelection",
+  "erasePoints",
+  "copySelection",
+  "cutSelection",
+  "pasteFromClipboard",
+  "copySelectionAsPng",
+  "fillSelectionsWithChar",
+  "setSelectionTextAttributes",
+  "setSelectionForegroundColor",
+  "setSelectionBackgroundColor",
 ]);
+const CANVAS_QUERY_OWNED_FIELDS = new Set(["canCopyOrCut"]);
 
 function collect(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -226,6 +258,14 @@ for (const absolute of collect(SRC_ROOT)) {
       }
     }
     if (
+      sourcePath === "domains/canvas/state/editorStore.ts" &&
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteral(node.moduleSpecifier) &&
+      node.moduleSpecifier.text.endsWith("selectionCommandPort")
+    ) {
+      report(node, "EditorStore must not depend on the selection command port");
+    }
+    if (
       sourcePath === "domains/canvas/state/interfaces.ts" &&
       ts.isPropertySignature(node) &&
       ts.isIdentifier(node.name) &&
@@ -249,6 +289,14 @@ for (const absolute of collect(SRC_ROOT)) {
       CANVAS_COMMAND_OWNED_MUTATIONS.has(node.name.text)
     ) {
       report(node, `${node.name.text} belongs to CanvasCommands, not EditorState`);
+    }
+    if (
+      sourcePath === "domains/canvas/state/interfaces.ts" &&
+      ts.isPropertySignature(node) &&
+      (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+      CANVAS_QUERY_OWNED_FIELDS.has(node.name.text)
+    ) {
+      report(node, `${node.name.text} belongs to CanvasQueries, not EditorState`);
     }
     if (
       sourcePath === "domains/canvas/state/canvasCommands.ts" &&

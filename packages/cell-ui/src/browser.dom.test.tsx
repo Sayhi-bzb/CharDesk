@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -100,7 +100,10 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const Product = ({
   onAction,
@@ -195,12 +198,65 @@ const SelectProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => 
             controlsId={select.open ? select.contentId : undefined}
           ><Text>Dark</Text></SelectTrigger>
           {select.open ? (
-            <SelectContent id={select.contentId} label="Theme options">
+            <SelectContent
+              id={select.contentId}
+              label="Theme options"
+              scrollY={select.scrollY}
+            >
               {select.items.map((item, index) => (
                 <SelectItem
                   id={item.id}
                   key={item.id}
                   focused={select.focusedId === item.id}
+                  selected={select.selectedId === item.id}
+                  positionInSet={index + 1}
+                  setSize={select.items.length}
+                ><Text>{item.label}</Text></SelectItem>
+              ))}
+            </SelectContent>
+          ) : null}
+        </Select>
+      </Root>
+    </CellSurface>
+  );
+};
+
+const ConstrainedSelectProduct = ({ overlay = false }: { overlay?: boolean }) => {
+  const items = Array.from({ length: 6 }, (_, index) => ({
+    id: `surface-font-${index}`,
+    label: `Font ${index}`,
+  }));
+  const select = useCellSelectState("surface-font", items, {
+    defaultSelectedId: "surface-font-5",
+  });
+  return (
+    <CellSurface
+      viewport={{ width: 20, height: 5 }}
+      overlayViewport={overlay ? { width: 20, height: 12 } : undefined}
+      focusedId={select.focusedId}
+      onCommand={select.dispatch}
+      metrics={{ cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" }}
+      label={overlay ? "Overlay Select surface" : "Constrained Select surface"}
+      probeId="constrained-select"
+    >
+      <Root id="surface-font-root">
+        <Select id={select.id} label="Font" style={{ width: 18 }}>
+          <SelectTrigger
+            id={select.triggerId}
+            label="Font"
+            expanded={select.open}
+            controlsId={select.open ? select.contentId : undefined}
+          ><Text>Font 5</Text></SelectTrigger>
+          {select.open ? (
+            <SelectContent
+              id={select.contentId}
+              label="Font options"
+              scrollY={select.scrollY}
+            >
+              {select.items.map((item, index) => (
+                <SelectItem
+                  id={item.id}
+                  key={item.id}
                   selected={select.selectedId === item.id}
                   positionInSet={index + 1}
                   setSize={select.items.length}
@@ -254,6 +310,7 @@ const CheckboxProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) =
     }
   };
   return <CellSurface
+    probeId="checkbox-product"
     viewport={{ width: 20, height: 1 }}
     focusedId={focusedId}
     onCommand={dispatch}
@@ -623,6 +680,46 @@ const ComplexWidgetProduct = () => {
 };
 
 describe("CellSurface", () => {
+  it("reveals the selected option inside constrained SelectContent without hiding its Trigger", async () => {
+    render(<ConstrainedSelectProduct />);
+    const surface = screen.getByLabelText("Constrained Select surface");
+    fireEvent.click(screen.getByRole("button", { name: "Font" }));
+
+    await waitFor(() => {
+      const probe = readCellSurfaceProbe(surface)!;
+      const lines = probe.text.split("\n");
+      expect(lines[0]).toContain("Font 5");
+      expect(probe.cells).toContainEqual(expect.objectContaining({
+        ownerId: "surface-font-5",
+        text: "✓",
+      }));
+    });
+  });
+
+  it("presents SelectContent on an overlay plane without resizing its base canvas", async () => {
+    render(<ConstrainedSelectProduct overlay />);
+    const surface = screen.getByLabelText("Overlay Select surface");
+    const baseCanvas = surface.querySelector("canvas")!;
+    fireEvent.click(screen.getByRole("button", { name: "Font" }));
+
+    await waitFor(() => expect(surface.querySelectorAll("canvas")).toHaveLength(2));
+    const overlayCanvas = surface.querySelector<HTMLCanvasElement>(
+      '[data-cell-overlay-root="surface-font-content"]'
+    )!;
+    const probe = readCellSurfaceProbe(surface)!;
+    expect(probe.viewport).toEqual({ width: 20, height: 5 });
+    expect(probe.overlayViewport).toEqual({ width: 20, height: 12 });
+    expect(probe.overlays).toEqual([
+      expect.objectContaining({
+        rootId: "surface-font-content",
+        text: expect.stringContaining("Font 5"),
+      }),
+    ]);
+    expect(probe.overlays[0]!.cells.some((cell) => "█▀▄".includes(cell.text))).toBe(false);
+    expect(baseCanvas.style.height).toBe("100px");
+    expect(overlayCanvas.style.height).toBe("240px");
+  });
+
   it("dismisses the active Select after confirmed external focus exit without stealing focus", async () => {
     const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
     const commands = vi.fn();
@@ -693,6 +790,24 @@ describe("CellSurface", () => {
       expect(canvas).toHaveStyle({ cursor: "default" });
       expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 20, 20, 20] });
       expect(glyphs).toContainEqual({ color: "rgb(0, 255, 255)", text: "中" });
+
+      fills.length = 0;
+      fireEvent.pointerDown(canvas, {
+        button: 0,
+        pointerId: 30,
+        pointerType: "mouse",
+        clientX: 15,
+        clientY: 30,
+      });
+      expect(screen.getByLabelText("Cursor surface")).not.toHaveAttribute("data-cell-focus-visible");
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 20, 20, 20] });
+      fireEvent.pointerUp(screen.getByLabelText("Cursor surface"), {
+        pointerId: 30,
+        pointerType: "mouse",
+        buttons: 0,
+        clientX: 15,
+        clientY: 30,
+      });
 
       fills.length = 0;
       mounted.rerender(<CursorProduct shape="bar" />);
@@ -1151,41 +1266,91 @@ describe("CellSurface", () => {
     expect(onAction).toHaveBeenCalledTimes(1);
   });
 
-  it("uses the same focus style for keyboard, pointer, and semantic focus", () => {
-    const { container } = render(<Product onAction={() => undefined} />);
-    const surface = screen.getByLabelText("Cell interface");
+  it("keeps pointer focus logical while reserving visible focus emphasis for keyboard and semantics", () => {
+    vi.useFakeTimers();
+    const { container } = render(<CheckboxProduct />);
+    const surface = screen.getByLabelText("Checkbox product");
     const canvas = container.querySelector("canvas")!;
-    expect(canvas.dataset.cellText).not.toContain("▶");
 
     fireEvent.focus(surface);
     expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
-    const keyboard = readCellSurfaceProbe(surface)!.cells;
-    expect(keyboard.find((cell) => cell.x === 29 && cell.y === 1)?.style)
+    expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style)
       .toMatchObject({ bold: true, backgroundColor: "#1a1a1a" });
 
     fireEvent.pointerDown(canvas, {
       button: 0,
       pointerId: 29,
-      clientX: 35,
+      pointerType: "mouse",
+      clientX: 5,
+      clientY: 10,
+    });
+    expect(surface).not.toHaveAttribute("data-cell-focus-visible");
+    expect(surface).toHaveAttribute("data-cell-focused", "autosave");
+    expect(surface).toHaveAttribute("data-cell-press-active", "autosave");
+    expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style)
+      .toMatchObject({ color: "#101419", backgroundColor: "#e8edf2" });
+
+    fireEvent.pointerMove(surface, {
+      pointerId: 29,
+      pointerType: "mouse",
+      buttons: 1,
+      clientX: 5,
       clientY: 30,
     });
-    expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
-    expect(canvas.dataset.cellText).not.toContain("▶");
-    expect(readCellSurfaceProbe(surface)!.cells).toEqual(keyboard);
+    expect(surface).not.toHaveAttribute("data-cell-press-active");
+    fireEvent.pointerMove(surface, {
+      pointerId: 29,
+      pointerType: "mouse",
+      buttons: 1,
+      clientX: 5,
+      clientY: 10,
+    });
+    expect(surface).toHaveAttribute("data-cell-press-active", "autosave");
 
     fireEvent.pointerUp(surface, {
       pointerId: 29,
-      clientX: 35,
-      clientY: 30,
+      pointerType: "mouse",
+      buttons: 0,
+      clientX: 5,
+      clientY: 10,
     });
-    fireEvent.blur(surface);
-    const matches = vi.spyOn(surface, "matches")
-      .mockImplementation((selector) => selector === ":focus-visible");
-    fireEvent.focus(surface);
+    expect(surface).not.toHaveAttribute("data-cell-press-active");
+    expect(surface).toHaveAttribute("data-cell-activation-flash", "autosave");
+    expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style)
+      .toMatchObject({ color: "#25292e", backgroundColor: "#e8edf2" });
+    expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style.bold)
+      .not.toBe(true);
+    act(() => vi.advanceTimersByTime(120));
+    expect(surface).not.toHaveAttribute("data-cell-activation-flash");
+    expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style)
+      .toMatchObject({ backgroundColor: "#25292e" });
+
+    fireEvent.pointerLeave(surface, { pointerType: "mouse" });
+    expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style.backgroundColor)
+      .toBeUndefined();
+    expect(surface).toHaveAttribute("data-cell-focused", "autosave");
+
+    fireEvent.keyDown(surface, { key: " " });
     expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
-    fireEvent.focus(screen.getByRole("option", { name: "Open file" }));
-    expect(readCellSurfaceProbe(surface)!.cells).toEqual(keyboard);
-    matches.mockRestore();
+    expect(surface).toHaveAttribute("data-cell-press-active", "autosave");
+    expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style.bold)
+      .toBe(true);
+    fireEvent.keyUp(surface, { key: " " });
+    expect(surface).not.toHaveAttribute("data-cell-press-active");
+    expect(surface).toHaveAttribute("data-cell-activation-flash", "autosave");
+
+    fireEvent.pointerDown(canvas, {
+      button: 0,
+      pointerId: 30,
+      pointerType: "mouse",
+      clientX: 5,
+      clientY: 10,
+    });
+    expect(surface).not.toHaveAttribute("data-cell-focus-visible");
+    fireEvent.pointerCancel(surface, { pointerId: 30, pointerType: "mouse" });
+    fireEvent.focus(screen.getByRole("checkbox", { name: "Autosave" }));
+    expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
+    vi.useRealTimers();
   });
 
   it("pages scrollbar tracks and drags owned Cell thumbs", () => {
@@ -1751,7 +1916,7 @@ describe("CellSurface", () => {
     const snapshot = readCellSurfaceProbe(surface)!;
     expect(surface).toHaveAttribute("data-cell-probe", "browser-test");
     expect(snapshot).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       probeId: "browser-test",
       text: pilot.text(),
       focusedId: "probe-open",

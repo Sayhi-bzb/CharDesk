@@ -206,7 +206,7 @@ describe('canvas session viewport state', () => {
     );
 
     canvasCommands.interaction.setSelectedStructuredNodeIds(['box-1', 'line-1']);
-    useEditorStore.getState().deleteSelection();
+    canvasCommands.selection.delete();
 
     const state = useEditorStore.getState();
     expect(state.structuredScene).toEqual([]);
@@ -224,7 +224,7 @@ describe('canvas session viewport state', () => {
     canvasCommands.interaction.moveStructuredGridFocus(2, -3);
     expect(useEditorStore.getState().interaction.structuredGridFocus).toEqual({ x: 6, y: 2 });
 
-    useEditorStore.getState().clearInteractionState();
+    canvasCommands.selection.clearInteraction();
     expect(useEditorStore.getState().interaction.structuredGridFocus).toBeNull();
   });
 
@@ -379,10 +379,10 @@ describe('canvas session viewport state', () => {
     canvasCommands.interaction.setSelectedStructuredNodeIds(['box-1', 'text-1']);
     const capture = createClipboardEventCapture();
 
-    await useEditorStore.getState().copySelection({ event: capture.event });
+    await canvasCommands.selection.copy({ event: capture.event });
     canvasCommands.interaction.setTextCursor({ x: 10, y: 10 });
     canvasCommands.interaction.setStructuredGridFocus({ x: 12, y: 8 });
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: dataTransferFromCapture(capture.data),
     });
 
@@ -425,9 +425,9 @@ describe('canvas session viewport state', () => {
     canvasCommands.interaction.setSelectedStructuredNodeIds(['text-undo-source']);
     const capture = createClipboardEventCapture();
 
-    await useEditorStore.getState().copySelection({ event: capture.event });
+    await canvasCommands.selection.copy({ event: capture.event });
     canvasCommands.interaction.setStructuredGridFocus({ x: 10, y: 10 });
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: dataTransferFromCapture(capture.data),
     });
 
@@ -451,7 +451,7 @@ describe('canvas session viewport state', () => {
       () => new Promise((resolve) => (resolveWrite = resolve))
     );
 
-    const pendingCut = useEditorStore.getState().cutSelection();
+    const pendingCut = canvasCommands.selection.cut();
     canvasCommands.interaction.setTextCursor({ x: 1, y: 0 });
     resolveWrite(true);
 
@@ -487,7 +487,7 @@ describe('canvas session viewport state', () => {
     const capture = createClipboardEventCapture();
 
     await expect(
-      useEditorStore.getState().cutSelection({ event: capture.event })
+      canvasCommands.selection.cut({ event: capture.event })
     ).resolves.toEqual({ status: 'applied', changed: true });
 
     expect(capture.data.get('text/plain')).toBe(' b\nc');
@@ -520,7 +520,7 @@ describe('canvas session viewport state', () => {
     );
     vi.spyOn(clipboard, 'readText').mockResolvedValue('Z');
 
-    const pendingPaste = useEditorStore.getState().pasteFromClipboard();
+    const pendingPaste = canvasCommands.selection.paste();
     canvasCommands.interaction.setTextCursor({ x: 1, y: 0 });
     resolveItems(null);
 
@@ -537,7 +537,7 @@ describe('canvas session viewport state', () => {
     canvasCommands.interaction.setTextCursor({ x: 0, y: 0 });
     const warning = vi.spyOn(feedback, 'warning').mockImplementation(() => {});
 
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) => type === 'text/plain'
           ? '```not-a-language\nvalue\n```'
@@ -555,7 +555,7 @@ describe('canvas session viewport state', () => {
     );
 
     canvasCommands.interaction.setTextCursor({ x: 0, y: 2 });
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) => type === 'text/plain' ? 'plain text' : '',
       } as unknown as DataTransfer,
@@ -589,10 +589,10 @@ describe('canvas session viewport state', () => {
     canvasCommands.interaction.setSelectedStructuredNodeIds(['box-1']);
     const capture = createClipboardEventCapture();
 
-    await useEditorStore.getState().copySelection({ event: capture.event });
+    await canvasCommands.selection.copy({ event: capture.event });
     useEditorStore.getState().createCanvasSession('freeform');
     canvasCommands.interaction.setTextCursor({ x: 0, y: 0 });
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: dataTransferFromCapture(capture.data),
     });
 
@@ -631,10 +631,10 @@ describe('canvas session viewport state', () => {
     canvasCommands.interaction.setSelectedStructuredNodeIds(['text-1']);
     const capture = createClipboardEventCapture();
 
-    await useEditorStore.getState().copySelection({ event: capture.event });
+    await canvasCommands.selection.copy({ event: capture.event });
     useEditorStore.getState().createCanvasSession('freeform');
     canvasCommands.interaction.setTextCursor({ x: 0, y: 0 });
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: dataTransferFromCapture(capture.data),
     });
 
@@ -702,9 +702,9 @@ describe('canvas session viewport state', () => {
     });
 
     const capture = createClipboardEventCapture();
-    await useEditorStore.getState().copySelection({ event: capture.event });
+    await canvasCommands.selection.copy({ event: capture.event });
     canvasCommands.interaction.setStructuredGridFocus({ x: 0, y: 2 });
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: dataTransferFromCapture(capture.data),
     });
 
@@ -766,7 +766,7 @@ describe('canvas session viewport state', () => {
       nodeId: splitBox.id,
       handle: 'split:split-middle',
     });
-    useEditorStore.getState().deleteSelection();
+    canvasCommands.selection.delete();
 
     const state = useEditorStore.getState();
     expect(state.structuredScene).toHaveLength(1);
@@ -809,8 +809,8 @@ describe('canvas session viewport state', () => {
     });
     applyFreeformSnapshotToYMaps([['1,1', { char: 'A', color: '#ffffff', attrs: { bold: true } }]]);
 
-    useEditorStore.getState().updateScratchForShape('bg', { x: 0, y: 0 }, { x: 1, y: 1 });
-    useEditorStore.getState().commitScratch();
+    canvasCommands.grid.updateScratchForShape('bg', { x: 0, y: 0 }, { x: 1, y: 1 });
+    canvasCommands.grid.commitScratch();
 
     const grid = useEditorStore.getState().contentSurface.reader.materialize();
     expect(grid.get('0,0')).toEqual({
@@ -842,12 +842,12 @@ describe('canvas session viewport state', () => {
         },
       ])
     );
-    useEditorStore.getState().appendStaticGridSelectionRange({
+    canvasCommands.staticGrid.appendSelectionRange({
       start: { x: 0, y: 0 },
       end: { x: 4, y: 0 },
     });
 
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) => (type === 'text/plain' ? 'Spot' : ''),
       } as unknown as DataTransfer,
@@ -874,12 +874,12 @@ describe('canvas session viewport state', () => {
       ['0,0', { char: 'A', color: '#111111', bgColor: '#000000' }],
       ['1,0', { char: 'B', color: '#222222', bgColor: '#0000ff' }],
     ]);
-    useEditorStore.getState().appendStaticGridSelectionRange({
+    canvasCommands.staticGrid.appendSelectionRange({
       start: { x: 0, y: 0 },
       end: { x: 1, y: 0 },
     });
 
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) => (type === 'text/plain' ? 'X' : ''),
       } as unknown as DataTransfer,
@@ -905,7 +905,7 @@ describe('canvas session viewport state', () => {
         { char, color: '#808080' },
       ])
     );
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) => (type === 'text/plain' ? 'AB\nCD' : ''),
       } as unknown as DataTransfer,
@@ -943,7 +943,7 @@ describe('canvas session viewport state', () => {
       ['1,0', { char: 'B', color: '#ffffff', bgColor: '#000000' }],
     ]);
 
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) => (type === 'text/plain' ? '[91mA[44mB[m' : ''),
       } as unknown as DataTransfer,
@@ -963,7 +963,7 @@ describe('canvas session viewport state', () => {
       textCursor: { x: 0, y: 0 },
     });
 
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) =>
           type === 'text/plain' ? '[101m CapabilitySearch [m' : '',
@@ -984,7 +984,7 @@ describe('canvas session viewport state', () => {
     });
 
     const capture = createClipboardEventCapture();
-    await useEditorStore.getState().copySelection({ event: capture.event });
+    await canvasCommands.selection.copy({ event: capture.event });
     const rich = JSON.parse(
       capture.data.get('web application/x-ascii-metropolis') ?? '{}'
     );
@@ -1300,7 +1300,7 @@ describe('canvas session viewport state', () => {
     });
 
     const capture = createClipboardEventCapture();
-    await useEditorStore.getState().copySelection({ event: capture.event });
+    await canvasCommands.selection.copy({ event: capture.event });
 
     expect(capture.data.get('text/plain')).toBe('ell');
     const rich = JSON.parse(capture.data.get('web application/x-ascii-metropolis') ?? '{}');
@@ -1341,7 +1341,7 @@ describe('canvas session viewport state', () => {
       focus: 4,
     });
 
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) => (type === 'text/plain' ? 'X' : ''),
       } as unknown as DataTransfer,
@@ -1359,7 +1359,7 @@ describe('canvas session viewport state', () => {
     useEditorStore.getState().createCanvasSession('structured');
     canvasCommands.interaction.setStructuredGridFocus({ x: 4, y: 5 });
 
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) => (type === 'text/plain' ? 'A\nB' : ''),
       } as unknown as DataTransfer,
@@ -1383,7 +1383,7 @@ describe('canvas session viewport state', () => {
     useEditorStore.getState().createCanvasSession('structured');
     canvasCommands.interaction.setStructuredGridFocus({ x: 2, y: 3 });
 
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) => (type === 'text/plain' ? '[38;2;239;68;68mHi[0m' : ''),
       } as unknown as DataTransfer,
@@ -1402,7 +1402,7 @@ describe('canvas session viewport state', () => {
     useEditorStore.getState().createCanvasSession('structured');
     canvasCommands.interaction.setStructuredGridFocus({ x: 1, y: 1 });
 
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) =>
           type === 'web application/x-ascii-metropolis'
@@ -1460,7 +1460,7 @@ describe('canvas session viewport state', () => {
     });
 
     const capture = createClipboardEventCapture();
-    await useEditorStore.getState().cutSelection({ event: capture.event });
+    await canvasCommands.selection.cut({ event: capture.event });
 
     expect(capture.data.get('text/plain')).toBe('ell');
     expect(useEditorStore.getState().structuredScene).toHaveLength(1);
@@ -1505,7 +1505,7 @@ describe('canvas session viewport state', () => {
     canvasCommands.interaction.setSelectedStructuredBoxId('parent-box');
     const capture = createClipboardEventCapture();
 
-    await expect(useEditorStore.getState().cutSelection({ event: capture.event })).resolves.toEqual(
+    await expect(canvasCommands.selection.cut({ event: capture.event })).resolves.toEqual(
       { status: 'applied', changed: true }
     );
 
@@ -1534,7 +1534,7 @@ describe('canvas session viewport state', () => {
     ]);
 
     canvasCommands.interaction.setStructuredGridFocus({ x: 30, y: 10 });
-    await useEditorStore.getState().pasteFromClipboard({
+    await canvasCommands.selection.paste({
       eventDataTransfer: dataTransferFromCapture(capture.data),
     });
     const pasted = useEditorStore
@@ -1565,7 +1565,7 @@ describe('canvas session viewport state', () => {
     vi.stubGlobal('ClipboardItem', undefined);
     vi.spyOn(clipboard, 'writeText').mockResolvedValue(false);
 
-    await expect(useEditorStore.getState().cutSelection()).resolves.toEqual({
+    await expect(canvasCommands.selection.cut()).resolves.toEqual({
       status: 'failed',
       reason: 'clipboard-failed',
     });
@@ -1606,7 +1606,7 @@ describe('canvas session viewport state', () => {
       () => new Promise((resolve) => (resolveWrite = resolve))
     );
 
-    const pendingCut = useEditorStore.getState().cutSelection();
+    const pendingCut = canvasCommands.selection.cut();
     canvasCommands.interaction.setSelectedStructuredNodeIds(['box-next']);
     resolveWrite(true);
 

@@ -6,10 +6,7 @@ import {
   createEditorStore,
   type CanvasStorePersistence,
 } from "./state/editorStore";
-import {
-  createCanvasCommands,
-  createCanvasQueries,
-} from "./state/canvasCommands";
+import { createCanvasFacade } from "./state/canvasCommands";
 import {
   isSourceBackedCanvasSession,
   type CanvasMode,
@@ -102,7 +99,6 @@ export class CanvasRuntime {
     );
     const storeInstance = createEditorStore({
       documents: this.documents,
-      selectionCommands: options.selectionCommands,
       parseSessionSource: options.parseSessionSource,
       reportIntegrityIssues: options.reportIntegrityIssues ?? (() => undefined),
       // Browser content persistence is coordinated against the authoritative
@@ -114,8 +110,14 @@ export class CanvasRuntime {
     });
     this.store = storeInstance.store;
     this.#disposeStore = storeInstance.dispose;
-    this.commands = createCanvasCommands(this.store, this.documents, this.viewport);
-    this.queries = createCanvasQueries(this.store, this.documents);
+    const facade = createCanvasFacade(
+      this.store,
+      this.documents,
+      this.viewport,
+      options.selectionCommands
+    );
+    this.commands = facade.commands;
+    this.queries = facade.queries;
     let restoringViewport = this.persistence !== null;
     this.#disposeViewportPersistence = this.viewport.subscribe(() => {
       if (restoringViewport) return;

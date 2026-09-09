@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import {
   applyFreeformSnapshotToYMaps,
+  canvasCommands,
   defaultCanvasDocuments,
   setCanvasTestState,
   useEditorStore,
@@ -212,7 +213,7 @@ describe("textSlice writeTextString", () => {
     useEditorStore.getState().createCanvasSession("slide", {
       slideSize: { columns: 5, rows: 2 },
     });
-    useEditorStore.getState().enterStaticGridTextEdit({ x: 3, y: 0 });
+    canvasCommands.staticGrid.enterTextEdit({ x: 3, y: 0 });
 
     useEditorStore.getState().writeTextString("AB你");
 
@@ -235,7 +236,7 @@ describe("textSlice writeTextString", () => {
     useEditorStore.getState().createCanvasSession("slide", {
       slideSize: { columns: 1, rows: 1 },
     });
-    useEditorStore.getState().enterStaticGridTextEdit({ x: 0, y: 0 });
+    canvasCommands.staticGrid.enterTextEdit({ x: 0, y: 0 });
 
     useEditorStore.getState().writeTextString(" ");
     const terminalReader = useEditorStore.getState().contentSurface.reader;
@@ -258,7 +259,7 @@ describe("textSlice writeTextString", () => {
     useEditorStore.getState().createCanvasSession("slide", {
       slideSize: { columns: 3, rows: 2 },
     });
-    useEditorStore.getState().enterStaticGridTextEdit({ x: 1, y: 0 });
+    canvasCommands.staticGrid.enterTextEdit({ x: 1, y: 0 });
     useEditorStore.getState().writeTextString("AB");
 
     useEditorStore.getState().backspaceText();
@@ -273,7 +274,7 @@ describe("textSlice writeTextString", () => {
     setTextState({ textCursor: { x: 0, y: 0 } });
     useEditorStore.getState().writeTextString("AB");
 
-    useEditorStore.getState().exitStaticGridTextEdit();
+    canvasCommands.staticGrid.exitTextEdit();
 
     expect(useEditorStore.getState().interaction.textCursor).toBeNull();
     expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 2, y: 0 });

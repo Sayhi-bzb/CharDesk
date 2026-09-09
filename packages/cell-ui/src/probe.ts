@@ -81,11 +81,18 @@ export type CellProbePresentation = Readonly<{
 }>;
 
 export type CellProbeSnapshot = Readonly<{
-  schemaVersion: 3;
+  schemaVersion: 4;
   probeId: string | null;
   revision: number;
   region: CellRect;
   viewport: CellSize;
+  overlayViewport: CellSize;
+  overlays: readonly Readonly<{
+    rootId: WidgetId;
+    bounds: CellRect;
+    text: string;
+    cells: readonly CellProbeCell[];
+  }>[];
   text: string;
   cells: readonly CellProbeCell[];
   focusedId: WidgetId | null;
@@ -149,12 +156,32 @@ export const captureCellProbe = (
       if (cell) cells.push(cloneCell(cell, x, y));
     }
   }
+  const overlays = frame.overlayPlanes.map((plane) => {
+    const overlayCells: CellProbeCell[] = [];
+    for (let y = plane.bounds.y; y < plane.bounds.y + plane.bounds.height; y += 1) {
+      for (let x = plane.bounds.x; x < plane.bounds.x + plane.bounds.width; x += 1) {
+        const cell = frame.overlayBuffer.get(x, y);
+        if (cell) overlayCells.push(cloneCell(cell, x, y));
+      }
+    }
+    return {
+      rootId: plane.rootId,
+      bounds: { ...plane.bounds },
+      text: formatCellBuffer(frame.overlayBuffer, { region: plane.bounds, trimEnd: true }),
+      cells: overlayCells,
+    };
+  });
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     probeId: options.probeId ?? null,
     revision: frame.revision,
     region,
-    viewport: { width: frame.buffer.width, height: frame.buffer.height },
+    viewport: { width: frame.scene.viewport.width, height: frame.scene.viewport.height },
+    overlayViewport: {
+      width: frame.scene.overlayViewport.width,
+      height: frame.scene.overlayViewport.height,
+    },
+    overlays,
     text: formatCellBuffer(frame.buffer, { region, trimEnd: true }),
     cells,
     focusedId: frame.semantics.focusedId,

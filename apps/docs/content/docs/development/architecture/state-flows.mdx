@@ -13,7 +13,13 @@ description: Authority, projection, history, persistence, and synchronization di
 | `blackboard` | Versioned source files in the browser repository or local Reader | Repository revisions | No |
 
 Workspace writes enter through `CanvasCommands`; Zustand is their read projection,
-not an alternate command surface.
+not an alternate command surface. Local grid navigation and selection clearing are
+pure interaction transitions. Drawing previews update the transient scratch layer
+through the same boundary. Scratch commits, existing-cell area fills, and static
+range moves are addressed document writes owned by `CanvasCommands`, not alternate
+Zustand actions. Selection delete, erase, fill, and style commands use the same
+owner. Clipboard I/O reads a snapshot, validates its addressed selection after the
+await boundary, then commits through an explicit mutation port.
 
 A projection never writes back to its authority. Only local Yjs origins enter
 undo history. Remote values pass Canvas decoders before projection; invalid records

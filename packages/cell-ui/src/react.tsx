@@ -74,6 +74,7 @@ export type SelectTriggerProps = CommonProps & Readonly<{
   textStyle?: CellTextStyle;
 }>;
 export type SelectContentProps = CommonProps & Readonly<{
+  scrollY?: number;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;

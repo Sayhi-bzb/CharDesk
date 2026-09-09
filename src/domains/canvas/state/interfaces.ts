@@ -1,8 +1,7 @@
-import type { GridPoint, Point, SelectionArea, TextAttributes } from "@/shared/types";
+import type { Point, TextAttributes } from "@/shared/types";
 import type { CanvasMode } from "@/domains/sessions/public";
 import type { ToolType } from "../model/tool";
 import type { StructuredNode, StructuredBoxNode, StructuredComponentInstance, StructuredSelectionStylePatch, StructuredTextStyleRange } from "@/domains/structured-content/public";
-import type { GridAddress, GridRange } from "@/domains/selection/public";
 import type { CanvasSessionDescriptor } from "@/domains/sessions/public";
 import type { SessionCommands } from "@/domains/sessions/public";
 import type { CanvasHistoryMode } from "./CanvasDocumentRegistry";
@@ -47,18 +46,7 @@ export type ClipboardCommandResult =
     };
 
 export interface DrawingSlice {
-  setScratchLayer: (points: GridPoint[]) => void;
-  addScratchPoints: (points: GridPoint[]) => void;
-  commitScratch: () => void;
-  clearScratch: () => void;
   clearCanvas: () => void;
-  erasePoints: (points: Point[], shouldSaveHistory?: boolean) => void;
-  updateScratchForShape: (
-    tool: ToolType,
-    start: Point,
-    end: Point,
-    options?: { axis?: "vertical" | "horizontal" | null }
-  ) => void;
   commitStructuredShape: (
     tool: "box" | "splitBox" | "line" | "arrowLine" | "bg",
     start: Point,
@@ -100,27 +88,6 @@ export interface SlideSlice {
   resizeSlide: (slideId: string, size: SlideSize) => void;
 }
 
-export interface StaticGridSlice {
-  setStaticGridActiveCell: (address: GridAddress) => void;
-  setStaticGridSelectionRange: (range: GridRange) => void;
-  appendStaticGridSelectionRange: (range: GridRange) => void;
-  moveStaticGridFocus: (dx: number, dy: number, options?: { extend?: boolean }) => void;
-  moveStaticGridFocusToEdge: (
-    edge: "left" | "right" | "top" | "bottom" | "top-left" | "bottom-right",
-    options?: { extend?: boolean }
-  ) => void;
-  moveStaticGridFocusToContentBoundary: (
-    edge: "left" | "right" | "top" | "bottom",
-    options?: { extend?: boolean }
-  ) => void;
-  selectStaticGridAll: () => void;
-  selectStaticGridRow: () => void;
-  selectStaticGridColumn: () => void;
-  enterStaticGridTextEdit: (address?: GridAddress) => void;
-  exitStaticGridTextEdit: () => void;
-  clearStaticGridSelection: () => void;
-}
-
 export interface TextSlice {
   replaceStructuredTextRange: (
     nodeId: string,
@@ -152,28 +119,6 @@ export interface TextSlice {
   deleteTextForward: () => void;
   newlineText: () => void;
   indentText: () => void;
-}
-
-export interface SelectionSlice {
-  clearSelections: () => void;
-  clearInteractionState: () => void;
-  canCopyOrCut: () => boolean;
-  deleteSelection: () => void;
-  moveStaticGridSelection: (delta: Point) => boolean;
-  copySelection: (options?: { rich?: boolean; ansi?: boolean; event?: ClipboardEvent }) => Promise<ClipboardCommandResult>;
-  cutSelection: (options?: { event?: ClipboardEvent }) => Promise<ClipboardCommandResult>;
-  pasteFromClipboard: (options?: { eventDataTransfer?: DataTransfer }) => Promise<ClipboardCommandResult>;
-  copySelectionAsPng: (withGrid: boolean) => Promise<void>;
-  fillSelectionsWithChar: (
-    char: string,
-    options?: { preserveTargetBackground?: boolean }
-  ) => void;
-  setSelectionTextAttributes: (
-    attrs: Partial<Record<keyof TextAttributes, boolean>>
-  ) => void;
-  setSelectionForegroundColor: (color: string) => void;
-  setSelectionBackgroundColor: (bgColor: string | null) => void;
-  fillArea: (area: SelectionArea) => void;
 }
 
 export type CanvasViewportState = {
@@ -211,9 +156,7 @@ export type EditorState = {
   ) => void;
 } & DrawingSlice &
   SlideSlice &
-  StaticGridSlice &
   TextSlice &
-  SelectionSlice &
   SessionCommands;
 
 type FunctionPropertyKeys<T> = {

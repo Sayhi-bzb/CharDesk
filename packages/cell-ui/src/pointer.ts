@@ -6,7 +6,7 @@ import { getEventPath, hitTestCell } from "./scene.js";
 import type { CellPoint, FrameSnapshot, WidgetId } from "./types.js";
 import { cellCenter } from "./scrollbar.js";
 import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
-import { isActionableKind } from "./widget-capabilities.js";
+import { isActionableKind, supportsPressFeedback } from "./widget-capabilities.js";
 import { cellSliderValueAtCoordinate, resolveCellSliderRange } from "./slider.js";
 
 export const validGestureCandidate = (frame: FrameSnapshot, candidate: GestureCandidate): boolean => {
@@ -95,7 +95,11 @@ export const gestureCandidatesForFrame = (
     : undefined;
   return [
     ...(item && !frame.tree.nodes.get(item)?.disabled
-      ? [{ targetId: item, kind: "tap" as const }]
+      ? [{
+          targetId: item,
+          kind: "tap" as const,
+          ...(supportsPressFeedback(frame.tree.nodes.get(item)!.kind) ? { rearmable: true } : {}),
+        }]
       : []),
     ...(item && slider
       ? [{ targetId: item, kind: "drag" as const, axis: "x" as const, slider }]

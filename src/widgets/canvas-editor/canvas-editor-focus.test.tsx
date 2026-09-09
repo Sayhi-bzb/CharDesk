@@ -614,7 +614,7 @@ describe("CanvasEditor focus management", () => {
       ["0,0", { char: "A", color: "#ffffff" }],
       ["1,0", { char: "B", color: "#ffffff" }],
     ]);
-    const cutSelection = vi.spyOn(useEditorStore.getState(), "cutSelection");
+    const cutSelection = vi.spyOn(canvasCommands.selection, "cut");
     const { container } = render(
       <CanvasEditor onUndo={vi.fn()} onRedo={vi.fn()} />
     );
@@ -1240,12 +1240,12 @@ describe("CanvasEditor focus management", () => {
     expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
       { start: { x: 1, y: 1 }, end: { x: 5, y: 1 } },
     ]);
-    useEditorStore.getState().clearStaticGridSelection();
+    canvasCommands.staticGrid.clearSelection();
     fireEvent.keyDown(textarea, { key: " ", code: "Space", ctrlKey: true });
     expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
       { start: { x: 1, y: 1 }, end: { x: 1, y: 4 } },
     ]);
-    useEditorStore.getState().clearStaticGridSelection();
+    canvasCommands.staticGrid.clearSelection();
     fireEvent.keyDown(textarea, { key: "a", ctrlKey: true });
     expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
       { start: { x: 1, y: 1 }, end: { x: 2, y: 1 } },

@@ -117,10 +117,8 @@ import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function ButtonExample() {
   const [focusedId, setFocusedId] = useState("save");
-  const [saved, setSaved] = useState(false);
   const dispatch = (command: WidgetCommand) => {
     if (command.type === "focus") setFocusedId(command.targetId);
-    if (command.type === "activate" && command.targetId === "save") setSaved(true);
   };
   return (
     <CellSurface viewport={{ width: 24, height: 3 }} focusedId={focusedId} onCommand={dispatch}>
@@ -132,7 +130,7 @@ export function ButtonExample() {
           size="default"
           focused={focusedId === "save"}
         >
-          <Text>{saved ? "✓ Saved" : "Save"}</Text>
+          <Text>Save</Text>
         </Button>
       </Root>
     </CellSurface>
@@ -189,7 +187,11 @@ export function SelectExample() {
             controlsId={select.open ? select.contentId : undefined}
           ><Text>{select.selectedItem?.label ?? "Select theme"}</Text></SelectTrigger>
           {select.open ? (
-            <SelectContent id={select.contentId} label="Theme options">
+            <SelectContent
+              id={select.contentId}
+              label="Theme options"
+              scrollY={select.scrollY}
+            >
               {select.items.map((item, index) => (
                 <SelectItem
                   id={item.id}
@@ -212,8 +214,10 @@ export function SelectExample() {
       { name: "SelectTrigger.expanded", type: "boolean", description: "Controls disclosure state and chrome." },
       { name: "SelectTrigger.controlsId?", type: "string", description: "Relates the open Trigger to its listbox." },
       { name: "SelectContent", type: "Cell primitive", description: "Portaled listbox anchored to the Trigger." },
+      { name: "SelectContent.style.border?", type: "boolean", description: "Reserves and paints a one-Cell dropdown border; defaults to true." },
+      { name: "SelectContent.scrollY?", type: "number", description: "Controlled offset for a constrained listbox." },
       { name: "SelectItem.selected?", type: "boolean", description: "Persistent committed selection." },
-      { name: "useCellSelectState", type: "CellSelectState", description: "Owns open, provisional focus, selection, and commands." },
+      { name: "useCellSelectState", type: "CellSelectState", description: "Owns open, provisional focus, selection, listbox scroll, and commands." },
     ],
   },
   {

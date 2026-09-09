@@ -12,7 +12,7 @@ import {
   type ComponentDocument,
 } from "./component-catalog";
 import { FixturePage } from "./fixtures";
-import { GalleryAppearance, GalleryBorderToggle, GalleryFontSelect, GalleryIconButton, GalleryThemeToggle } from "./appearance";
+import { GalleryAppearance, GalleryFontSelect, GalleryIconButton, GalleryThemeToggle } from "./appearance";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
 import "@chardesk/font-maple/fonts.css";
@@ -185,7 +185,7 @@ export function DocumentationShell({ document }: Readonly<{ document: ComponentD
     <>
       <header className="gallery-header">
         <a className="gallery-brand" href={defaultComponentHref}>CharDesk / Cell UI</a>
-        <div className="gallery-appearance-controls"><GalleryFontSelect /><GalleryBorderToggle /><GalleryThemeToggle /></div>
+        <div className="gallery-appearance-controls"><GalleryFontSelect /><GalleryThemeToggle /></div>
       </header>
       <div className="gallery-layout">
         <GalleryNavigation activeSlug={document.slug} />

@@ -1,17 +1,13 @@
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Box, Root, ScrollArea, Text, type WidgetCommand } from "@chardesk/cell-ui";
+import { DEFAULT_CELL_UI_METRICS } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "./appearance";
-
-const PREVIEW_COLUMNS = 34;
-const CONTROLS_COLUMNS = 29;
-const PLAYGROUND_ROWS = 7;
-const NARROW_COLUMNS = 29;
-const narrowQuery = window.matchMedia("(max-width: 720px)");
-
-const subscribeToNarrowLayout = (listener: () => void) => {
-  narrowQuery.addEventListener("change", listener);
-  return () => narrowQuery.removeEventListener("change", listener);
-};
+import {
+  MIN_SPLIT_COLUMNS,
+  PLAYGROUND_ROWS,
+  columnsForPixelWidth,
+  resolveComponentPlaygroundLayout,
+} from "./component-playground-layout";
 
 export function ComponentPlayground({
   id,
@@ -21,6 +17,9 @@ export function ComponentPlayground({
   onCommand,
   preview,
   controls,
+  previewMinColumns,
+  controlsColumns,
+  overlayRows = 0,
 }: Readonly<{
   id: string;
   label: string;
@@ -29,37 +28,70 @@ export function ComponentPlayground({
   onCommand: (command: WidgetCommand) => void;
   preview: ReactNode;
   controls: ReactNode;
+  previewMinColumns: number;
+  controlsColumns: number;
+  overlayRows?: number;
 }>) {
-  const narrow = useSyncExternalStore(
-    subscribeToNarrowLayout,
-    () => narrowQuery.matches,
-    () => false,
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [totalColumns, setTotalColumns] = useState(MIN_SPLIT_COLUMNS);
+  const measuredColumnsRef = useRef(MIN_SPLIT_COLUMNS);
+  const [controlsScroll, setControlsScroll] = useState({ x: 0, y: 0 });
+  const layout = resolveComponentPlaygroundLayout(
+    totalColumns,
+    previewMinColumns,
+    controlsColumns,
   );
-  const [controlsScrollY, setControlsScrollY] = useState(0);
   const controlsScrollId = `${id}-controls-scroll`;
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const measure = () => {
+      if (host.clientWidth <= 0) return;
+      const next = columnsForPixelWidth(
+        host.clientWidth,
+        DEFAULT_CELL_UI_METRICS.cellWidth,
+      );
+      if (measuredColumnsRef.current === next) return;
+      measuredColumnsRef.current = next;
+      setTotalColumns(next);
+      setControlsScroll({ x: 0, y: 0 });
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure);
+      return () => window.removeEventListener("resize", measure);
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
   const dispatch = (command: WidgetCommand) => {
     if (command.type === "scroll" && command.targetId === controlsScrollId) {
-      setControlsScrollY(command.scrollY);
+      setControlsScroll({ x: command.scrollX, y: command.scrollY });
     }
     if (command.type === "focus" && command.reveal?.targetId === controlsScrollId) {
-      setControlsScrollY(command.reveal.scrollY);
+      setControlsScroll({ x: command.reveal.scrollX, y: command.reveal.scrollY });
     }
     onCommand(command);
   };
 
-  return <GallerySurface
-    viewport={narrow
-      ? { width: NARROW_COLUMNS, height: PLAYGROUND_ROWS * 2 + 1 }
-      : { width: PREVIEW_COLUMNS + 1 + CONTROLS_COLUMNS, height: PLAYGROUND_ROWS }}
-    focusedId={focusedId}
-    onCommand={dispatch}
-    label={label}
-    probeId={probeId}
-  >
-    <Root id={`${id}-root`} style={{ direction: narrow ? "column" : "row" }}>
+  return <div ref={hostRef} className="component-playground">
+    <GallerySurface
+      className="component-playground__surface"
+      viewport={layout.viewport}
+      overlayViewport={{
+        width: layout.viewport.width,
+        height: layout.viewport.height + overlayRows,
+      }}
+      focusedId={focusedId}
+      onCommand={dispatch}
+      label={label}
+      probeId={probeId}
+    >
+      <Root id={`${id}-root`} style={{ direction: layout.stacked ? "column" : "row" }}>
       <Box
         id={`${id}-preview`}
-        style={{ width: narrow ? NARROW_COLUMNS : PREVIEW_COLUMNS, height: PLAYGROUND_ROWS }}
+        style={{ width: layout.previewColumns, height: PLAYGROUND_ROWS }}
       >
         <Box id={`${id}-preview-top`} style={{ flexGrow: 1 }} />
         <Box id={`${id}-preview-row`} style={{ direction: "row" }}>
@@ -69,8 +101,8 @@ export function ComponentPlayground({
         </Box>
         <Box id={`${id}-preview-bottom`} style={{ flexGrow: 1 }} />
       </Box>
-      {narrow
-        ? <Text id={`${id}-divider`} textStyle={{ dim: true }}>{"─".repeat(NARROW_COLUMNS)}</Text>
+      {layout.stacked
+        ? <Text id={`${id}-divider`} textStyle={{ dim: true }}>{"─".repeat(layout.viewport.width)}</Text>
         : <Box id={`${id}-divider`} style={{ width: 1, height: PLAYGROUND_ROWS }}>
             {Array.from({ length: PLAYGROUND_ROWS }, (_, row) => (
               <Text id={`${id}-divider-${row}`} key={row} textStyle={{ dim: true }}>│</Text>
@@ -79,21 +111,31 @@ export function ComponentPlayground({
       <ScrollArea
         id={controlsScrollId}
         label={`${label} properties`}
-        scrollY={controlsScrollY}
-        style={{ width: CONTROLS_COLUMNS, height: PLAYGROUND_ROWS }}
+        scrollX={controlsScroll.x}
+        scrollY={controlsScroll.y}
+        style={{ width: layout.propsColumns, height: PLAYGROUND_ROWS }}
       >
         <Box
-          id={`${id}-controls`}
+          id={`${id}-controls-alignment`}
           style={{
-            width: CONTROLS_COLUMNS - 1,
-            paddingTop: 1,
-            paddingBottom: 1,
-            paddingLeft: 3,
+            width: layout.controlsExtentColumns,
+            minHeight: layout.controlsMinRows,
           }}
         >
-          {controls}
+          <Box id={`${id}-controls-before`} style={{ flexGrow: 1 }} />
+          <Box
+            id={`${id}-controls`}
+            style={{
+              width: layout.controlsInset + controlsColumns,
+              paddingLeft: layout.controlsInset,
+            }}
+          >
+            {controls}
+          </Box>
+          <Box id={`${id}-controls-after`} style={{ flexGrow: 1 }} />
         </Box>
       </ScrollArea>
-    </Root>
-  </GallerySurface>;
+      </Root>
+    </GallerySurface>
+  </div>;
 }

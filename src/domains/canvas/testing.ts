@@ -3,7 +3,6 @@ import type { CanvasSessionSourceParser } from "./state/sessionImportPort";
 import type { SelectionCommandFactory } from "./state/selectionCommandPort";
 import { CanvasDocumentRegistry } from "./state/CanvasDocumentRegistry";
 import type { CanvasStore } from "./state/editorStore";
-import type { createCanvasCommands } from "./state/canvasCommands";
 import { CanvasRuntime } from "./runtime";
 import type {
   CanvasContentSurfaceState,
@@ -27,21 +26,21 @@ type CanvasTestStatePatch = Partial<Omit<CanvasState, "interaction">> &
 
 export let defaultCanvasDocuments: CanvasDocumentRegistry;
 export let useEditorStore: CanvasStore;
-export let canvasCommands: ReturnType<typeof createCanvasCommands>;
+export let canvasCommands: CanvasRuntime["commands"];
 export let testingCanvasRuntime: CanvasRuntime;
 
 export const initializeCanvasTesting = ({
   selectionCommands,
   parseSessionSource,
 }: {
-  selectionCommands: (documents: CanvasDocumentRegistry) => SelectionCommandFactory;
+  selectionCommands: SelectionCommandFactory;
   parseSessionSource: CanvasSessionSourceParser;
 }) => {
   if (testingCanvasRuntime) return testingCanvasRuntime;
   defaultCanvasDocuments = new CanvasDocumentRegistry();
   testingCanvasRuntime = new CanvasRuntime({
     documents: defaultCanvasDocuments,
-    selectionCommands: selectionCommands(defaultCanvasDocuments),
+    selectionCommands,
     parseSessionSource,
     persistence: false,
   });

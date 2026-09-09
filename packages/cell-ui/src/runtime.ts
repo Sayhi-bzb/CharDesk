@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { intersectCellRects } from "@chardesk/cell-core";
 import { YogaLayoutEngine, type LayoutEngine } from "./layout.js";
+import { CellBuffer } from "./buffer.js";
 import { paintScene } from "./paint.js";
 import {
   createWidgetDescriptor,
@@ -11,6 +12,11 @@ import { createSemanticSnapshot } from "./semantics.js";
 import { reconcileWidgetTree, sameWidgetValue } from "./tree.js";
 import { createCellTextLayout } from "./text.js";
 import { resolveCellUiTheme, type CellUiTheme } from "./theme.js";
+import {
+  isPortalKind,
+  supportsActivationFeedback,
+  supportsPressFeedback,
+} from "./widget-capabilities.js";
 import type {
   CellRect,
   CellSize,
@@ -32,7 +38,7 @@ const regionsFor = (
   for (const id of ids) {
     for (const entry of [previous?.entries.get(id), next.entries.get(id)]) {
       if (!entry) continue;
-      const region = intersectCellRects(entry.paintBounds, next.viewport);
+      const region = intersectCellRects(entry.paintBounds, next.overlayViewport);
       if (!region) continue;
       const key = `${region.x}:${region.y}:${region.width}:${region.height}`;
       if (!keys.has(key)) {
@@ -73,8 +79,11 @@ const hasGeometryChange = (before: WidgetNode, after: WidgetNode) =>
 
 const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   before.focused !== after.focused
+  || before.focusActive !== after.focusActive
   || before.focusVisible !== after.focusVisible
   || before.hovered !== after.hovered
+  || before.pressActive !== after.pressActive
+  || before.activationFlash !== after.activationFlash
   || before.selected !== after.selected
   || before.checked !== after.checked
   || before.buttonVariant !== after.buttonVariant
@@ -115,6 +124,7 @@ const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
 
 export type CellUiRuntimeOptions = Readonly<{
   viewport: CellSize;
+  overlayViewport?: CellSize;
   onFrame?: (frame: FrameSnapshot) => void;
   layoutEngine?: LayoutEngine;
   theme?: Partial<CellUiTheme>;
@@ -123,6 +133,7 @@ export type CellUiRuntimeOptions = Readonly<{
 export class CellUiRuntime {
   readonly #layout: LayoutEngine;
   #viewport: CellSize;
+  #overlayViewport: CellSize;
   readonly #onFrame: ((frame: FrameSnapshot) => void) | undefined;
   #theme: CellUiTheme;
   #themeDirty = false;
@@ -132,8 +143,16 @@ export class CellUiRuntime {
   #disposed = false;
 
   constructor(options: CellUiRuntimeOptions) {
+    const overlayViewport = options.overlayViewport ?? options.viewport;
+    if (
+      !Number.isInteger(overlayViewport.width)
+      || !Number.isInteger(overlayViewport.height)
+      || overlayViewport.width < options.viewport.width
+      || overlayViewport.height < options.viewport.height
+    ) throw new RangeError("CellUiRuntime overlay viewport must contain the base viewport.");
     this.#layout = options.layoutEngine ?? new YogaLayoutEngine();
     this.#viewport = { ...options.viewport };
+    this.#overlayViewport = { ...overlayViewport };
     this.#onFrame = options.onFrame;
     this.#theme = resolveCellUiTheme(options.theme);
   }
@@ -142,8 +161,11 @@ export class CellUiRuntime {
     element: ReactElement<RootProps> | null,
     state: Readonly<{
       focusedId?: string | null;
+      focusActive?: boolean;
       focusVisible?: boolean;
       hoveredId?: string | null;
+      pressActiveId?: string | null;
+      activationFlashId?: string | null;
       resolveFocusedId?: (tree: WidgetTree) => string | null;
     }> = {}
   ): FrameSnapshot {
@@ -154,20 +176,27 @@ export class CellUiRuntime {
       ?? state.focusedId
       ?? [...reconciliation.tree.nodes.values()].find((node) => node.focused)?.id
       ?? null;
-    const focusVisible = state.focusVisible ?? focusedId !== null;
+    const focusActive = state.focusActive ?? state.focusVisible ?? focusedId !== null;
+    const focusVisible = state.focusVisible ?? focusActive;
     const tree: WidgetTree = {
       rootId: reconciliation.tree.rootId,
       nodes: new Map([...reconciliation.tree.nodes].map(([id, node]) => [
         id,
         node.focused === (id === focusedId)
+          && node.focusActive === (id === focusedId && focusActive)
           && node.focusVisible === (id === focusedId && focusVisible)
           && node.hovered === (id === state.hoveredId && !node.disabled)
+          && node.pressActive === (id === state.pressActiveId && supportsPressFeedback(node.kind) && !node.disabled)
+          && node.activationFlash === (id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled)
           ? node
           : {
               ...node,
               focused: id === focusedId,
+              focusActive: id === focusedId && focusActive,
               focusVisible: id === focusedId && focusVisible,
               hovered: id === state.hoveredId && !node.disabled,
+              pressActive: id === state.pressActiveId && supportsPressFeedback(node.kind) && !node.disabled,
+              activationFlash: id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled,
             },
       ])),
     };
@@ -175,6 +204,8 @@ export class CellUiRuntime {
     const viewportDirty = !!previous && (
       previous.layout.viewport.width !== this.#viewport.width
       || previous.layout.viewport.height !== this.#viewport.height
+      || previous.scene.overlayViewport.width !== this.#overlayViewport.width
+      || previous.scene.overlayViewport.height !== this.#overlayViewport.height
     );
     const structuralDirty = !previous || reconciliation.mutations.some(
       ({ type }) => type === "mount" || type === "unmount" || type === "move"
@@ -214,7 +245,12 @@ export class CellUiRuntime {
       ? this.#layout.compute(tree, this.#viewport)
       : previous.layout;
     const scene = geometryDirty || !previous
-      ? composeScene(tree, layout)
+      ? composeScene(tree, layout, {
+          x: 0,
+          y: 0,
+          width: this.#overlayViewport.width,
+          height: this.#overlayViewport.height,
+        })
       : previous.scene;
     const textLayouts = paintDirty || !previous
       ? new Map([...tree.nodes.values()].flatMap((node) => {
@@ -236,19 +272,71 @@ export class CellUiRuntime {
       ? createSemanticSnapshot(tree, scene, revision, focusedId)
       : { ...previous.semantics, revision };
     const rawDirtyRegions = !previous || layoutDirty || this.#themeDirty
-      ? [scene.viewport]
+      ? [scene.overlayViewport]
       : geometryDirty
         ? regionsFor(geometryIds, previous.scene, scene)
         : paintDirty
           ? regionsFor(paintIds, previous.scene, scene)
           : [];
-    const dirtyRegions = expandForWideCells(rawDirtyRegions, scene.viewport);
-    const buffer = paintDirty || !previous
+    const dirtyRegions = expandForWideCells(rawDirtyRegions, scene.overlayViewport);
+    const hasOverlayLayer = scene.paintList.some((id) => scene.entries.get(id)?.layer !== 0);
+    const baseBuffer = paintDirty || !previous
       ? paintScene(tree, scene, textLayouts, this.#theme, {
-          previous: previous?.buffer,
+          previous: previous?.baseBuffer,
           dirtyRegions,
+          viewport: scene.viewport,
+          layer: "base",
         })
-      : previous.buffer;
+      : previous.baseBuffer;
+    let overlayBuffer: CellBuffer;
+    if (hasOverlayLayer && (paintDirty || !previous)) {
+      overlayBuffer = paintScene(tree, scene, textLayouts, this.#theme, {
+        previous: previous?.overlayBuffer,
+        dirtyRegions,
+        viewport: scene.overlayViewport,
+        layer: "overlay",
+      });
+    } else if (hasOverlayLayer) {
+      overlayBuffer = previous!.overlayBuffer;
+    } else if (
+      previous
+      && previous.overlayPlanes.length === 0
+      && previous.overlayBuffer.width === scene.overlayViewport.width
+      && previous.overlayBuffer.height === scene.overlayViewport.height
+    ) {
+      overlayBuffer = previous.overlayBuffer;
+    } else {
+      overlayBuffer = new CellBuffer(scene.overlayViewport);
+    }
+    const canUseBaseProjection = !hasOverlayLayer
+      && scene.viewport.width === scene.overlayViewport.width
+      && scene.viewport.height === scene.overlayViewport.height;
+    const buffer = canUseBaseProjection
+      ? baseBuffer
+      : paintDirty || !previous
+        ? new CellBuffer({
+          width: scene.overlayViewport.width,
+          height: scene.overlayViewport.height,
+        })
+        : previous.buffer;
+    if (!canUseBaseProjection && (paintDirty || !previous)) {
+      buffer.overlay(baseBuffer);
+      buffer.overlay(overlayBuffer);
+    }
+    const overlayPlanes = [...tree.nodes.values()]
+      .filter((node) => isPortalKind(node.kind))
+      .flatMap((node) => {
+        const entry = scene.entries.get(node.id);
+        return entry && entry.paintVisible
+          ? [{
+              rootId: node.id,
+              bounds: entry.outerClip,
+              layer: entry.layer,
+              paintOrder: entry.paintOrder,
+            }]
+          : [];
+      })
+      .sort((left, right) => left.layer - right.layer || left.paintOrder - right.paintOrder);
     const phases: FramePhase[] = [
       ...(structuralDirty ? ["tree" as const] : []),
       ...(layoutDirty ? ["layout" as const] : []),
@@ -264,7 +352,10 @@ export class CellUiRuntime {
       scene,
       semantics,
       textLayouts,
+      baseBuffer,
+      overlayBuffer,
       buffer,
+      overlayPlanes,
       mutations: reconciliation.mutations,
       invalidation: {
         phases,
@@ -294,7 +385,7 @@ export class CellUiRuntime {
     this.#themeDirty = true;
   }
 
-  resize(viewport: CellSize): void {
+  resize(viewport: CellSize, overlayViewport: CellSize = viewport): void {
     if (this.#disposed) throw new Error("CellUiRuntime has been disposed.");
     if (
       !Number.isInteger(viewport.width)
@@ -302,7 +393,14 @@ export class CellUiRuntime {
       || viewport.width < 0
       || viewport.height < 0
     ) throw new RangeError("CellUiRuntime viewport must use non-negative integer Cells.");
+    if (
+      !Number.isInteger(overlayViewport.width)
+      || !Number.isInteger(overlayViewport.height)
+      || overlayViewport.width < viewport.width
+      || overlayViewport.height < viewport.height
+    ) throw new RangeError("CellUiRuntime overlay viewport must contain the base viewport.");
     this.#viewport = { ...viewport };
+    this.#overlayViewport = { ...overlayViewport };
   }
 
   dispose(): void {

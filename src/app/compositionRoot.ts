@@ -88,7 +88,6 @@ export class ApplicationEditorHost {
     this.canvas = createCanvasRuntime({
       persistence: canvasPersistence,
       selectionCommands: createSelectionCommandFactory({
-        getActiveDocumentId: () => this.canvas.documents.getActiveDocumentId(),
         renderClipboardText: this.textRenderingWorker.render,
         getFontProfile: () => this.canvasFont.getSnapshot().profile,
       }),

@@ -29,7 +29,7 @@ test("Web TUI shares keyboard, pointer, scroll, and semantic state", async ({ pa
   await expect.poll(() => readCellText(surface)).toContain("Open file");
   const initialProbe = await readCellProbe(surface);
   expect(initialProbe).toMatchObject({
-    schemaVersion: 3,
+    schemaVersion: 4,
     probeId: "core",
     viewport: { width: 32, height: 10 },
     focusedId: "core-open",

@@ -37,7 +37,8 @@ import {
   getStructuredTextSelectionRange,
   mergeStructuredTextStyle,
 } from "@/domains/structured-content/public";
-type SelectionCommandState = ReturnType<Parameters<SelectionCommandFactory>[1]>;
+type SelectionCommandContext = Parameters<SelectionCommandFactory>[0];
+type SelectionCommandState = ReturnType<SelectionCommandContext["getState"]>;
 
 const resolveSelectionAreas = (state: SelectionCommandState) => {
   return getStaticGridSelectionAreas(
@@ -116,11 +117,10 @@ const notifyPasteRenderDiagnostics = (
 };
 
 const getClipboardTargetFingerprint = (
-  getActiveDocumentId: () => string,
   state: SelectionCommandState
 ) =>
   JSON.stringify({
-    documentId: getActiveDocumentId(),
+    address: state.interaction.address,
     canvasMode: state.canvasMode,
     selections: resolveSelectionAreas(state),
     textCursor: state.interaction.textCursor,
@@ -366,14 +366,12 @@ const createStructuredTextNodeFromPaste = (
 });
 
 export const createSelectionCommandFactory = ({
-  getActiveDocumentId,
   renderClipboardText,
   getFontProfile,
 }: {
-  getActiveDocumentId: () => string;
   renderClipboardText: RenderClipboardText;
   getFontProfile?: () => import("@chardesk/fonts").CharDeskFontProfile;
-}): SelectionCommandFactory => (set, get) => ({
+}): SelectionCommandFactory => ({ getState: get, mutations }) => ({
   canCopyOrCut: () => {
     const state = get();
     const { textCursor } = state.interaction;
@@ -430,7 +428,7 @@ export const createSelectionCommandFactory = ({
     const { contentSurface, brushColor, canvasMode } = state;
     const grid = contentSurface.reader;
     const selections = resolveSelectionAreas(state);
-    const targetFingerprint = getClipboardTargetFingerprint(getActiveDocumentId, state);
+    const targetFingerprint = getClipboardTargetFingerprint(state);
     if (canvasMode === "structured") {
       const textSelection = getActiveStructuredTextSelection(state);
       if (textSelection) {
@@ -456,12 +454,12 @@ export const createSelectionCommandFactory = ({
             )
           : null;
         if (
-          getClipboardTargetFingerprint(getActiveDocumentId, current) !== targetFingerprint ||
+          getClipboardTargetFingerprint(current) !== targetFingerprint ||
           !areJsonValuesEqual(currentPayload, payload)
         ) {
           return failed("stale-target");
         }
-        current.replaceStructuredTextRange(
+        mutations.replaceStructuredTextRange(
           textSelection.node.id,
           textSelection.range.start,
           textSelection.range.end,
@@ -498,13 +496,13 @@ export const createSelectionCommandFactory = ({
         current.interaction.selectedStructuredNodeIds
       );
       if (
-        getClipboardTargetFingerprint(getActiveDocumentId, current) !== targetFingerprint ||
+        getClipboardTargetFingerprint(current) !== targetFingerprint ||
         !areJsonValuesEqual(currentPayload, payload)
       ) {
         return failed("stale-target");
       }
       const cutIds = new Set(currentNodesToCut.map((node) => node.id));
-      current.applyStructuredScene(
+      mutations.applyStructuredScene(
         current.structuredScene.filter((node) => !cutIds.has(node.id)),
         true
       );
@@ -528,15 +526,15 @@ export const createSelectionCommandFactory = ({
       current.brushColor
     );
     if (
-      getClipboardTargetFingerprint(getActiveDocumentId, current) !== targetFingerprint ||
+      getClipboardTargetFingerprint(current) !== targetFingerprint ||
       !areJsonValuesEqual(currentPayload, payload)
     ) {
       return failed("stale-target");
     }
     if (currentSelections.length > 0) {
-      current.deleteSelection();
+      mutations.deleteSelection();
     } else if (current.interaction.textCursor) {
-      current.erasePoints([current.interaction.textCursor]);
+      mutations.erasePoints([current.interaction.textCursor]);
     }
     return applied(true);
   },
@@ -544,10 +542,7 @@ export const createSelectionCommandFactory = ({
   pasteFromClipboard: async (options) => {
     const initialState = get();
     const { brushColor } = initialState;
-    const targetFingerprint = getClipboardTargetFingerprint(
-      getActiveDocumentId,
-      initialState
-    );
+    const targetFingerprint = getClipboardTargetFingerprint(initialState);
     const payload = await readClipboardPayload(
       options?.eventDataTransfer,
       brushColor,
@@ -555,10 +550,10 @@ export const createSelectionCommandFactory = ({
     );
     const state = get();
     if ("error" in payload && payload.error) return failed(payload.error);
-    if (getClipboardTargetFingerprint(getActiveDocumentId, state) !== targetFingerprint) {
+    if (getClipboardTargetFingerprint(state) !== targetFingerprint) {
       return failed("stale-target");
     }
-    const { pasteRichData, pasteRichRows, canvasMode } = state;
+    const { canvasMode } = state;
     const completePaste = () => {
       notifyPasteRenderDiagnostics(payload.diagnostics);
       return applied(true);
@@ -581,7 +576,7 @@ export const createSelectionCommandFactory = ({
           richCellsToPlainText(payload.structured?.surfaceCells);
         if (!text) return noop("empty-clipboard");
         const normalizedText = text.replace(/\r\n?/g, "\n");
-        state.replaceStructuredTextRange(
+        mutations.replaceStructuredTextRange(
           textTarget.node.id,
           textTarget.start,
           textTarget.end,
@@ -606,21 +601,21 @@ export const createSelectionCommandFactory = ({
           .slice()
           .sort((a, b) => a.order - b.order)
           .map((node, index) => moveStructuredClipboardNode(node, dx, dy, maxOrder + index + 1));
-        state.applyStructuredScene([...state.structuredScene, ...pastedNodes], true);
-        set((current) => ({
-          interaction: {
-            ...current.interaction,
-            selectedStructuredNodeIds: pastedNodes.map((node) => node.id),
-            selectedStructuredBoxId:
-              pastedNodes.length === 1 && pastedNodes[0].type === "box"
-                ? pastedNodes[0].id
-                : null,
-            structuredGridFocus: null,
-            textCursor: null,
-            editingStructuredTextNodeId: null,
-            structuredTextSelection: null,
-          },
-        }));
+        mutations.applyStructuredScene(
+          [...state.structuredScene, ...pastedNodes],
+          true
+        );
+        mutations.updateInteraction({
+          selectedStructuredNodeIds: pastedNodes.map((node) => node.id),
+          selectedStructuredBoxId:
+            pastedNodes.length === 1 && pastedNodes[0].type === "box"
+              ? pastedNodes[0].id
+              : null,
+          structuredGridFocus: null,
+          textCursor: null,
+          editingStructuredTextNodeId: null,
+          structuredTextSelection: null,
+        });
         return completePaste();
       }
 
@@ -647,32 +642,29 @@ export const createSelectionCommandFactory = ({
         pastedText.style,
         pastedText.styleRanges
       );
-      state.applyStructuredScene([...state.structuredScene, nextNode], true);
-      set((current) => ({
-        interaction: {
-          ...current.interaction,
-          selectedStructuredNodeIds: [nextNode.id],
-          selectedStructuredBoxId: null,
-          selectedStructuredSplitHandle: null,
-          structuredContextPoint: null,
-          structuredGridFocus: null,
-          textCursor: null,
-          editingStructuredTextNodeId: null,
-          structuredTextSelection: null,
-        },
-      }));
+      mutations.applyStructuredScene([...state.structuredScene, nextNode], true);
+      mutations.updateInteraction({
+        selectedStructuredNodeIds: [nextNode.id],
+        selectedStructuredBoxId: null,
+        selectedStructuredSplitHandle: null,
+        structuredContextPoint: null,
+        structuredGridFocus: null,
+        textCursor: null,
+        editingStructuredTextNodeId: null,
+        structuredTextSelection: null,
+      });
       return completePaste();
     }
 
     if ("richRows" in payload && payload.richRows) {
-      pasteRichRows(payload.richRows, undefined, {
+      mutations.pasteRichRows(payload.richRows, undefined, {
         selectResult: canvasMode === "freeform",
       });
       return completePaste();
     }
 
     if (payload.richCells) {
-      pasteRichData(payload.richCells, undefined, {
+      mutations.pasteRichData(payload.richCells, undefined, {
         selectResult: canvasMode === "freeform",
       });
       return completePaste();
@@ -681,7 +673,7 @@ export const createSelectionCommandFactory = ({
     if (payload.plainText) {
       const cells = parsePlainTextCells(payload.plainText, brushColor);
       if (cells.length === 0) return noop("empty-clipboard");
-      pasteRichData(cells, undefined, {
+      mutations.pasteRichData(cells, undefined, {
         selectResult: canvasMode === "freeform",
       });
       return completePaste();

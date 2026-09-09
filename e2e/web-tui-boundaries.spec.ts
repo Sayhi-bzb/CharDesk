@@ -71,9 +71,9 @@ test("editor consumes its full layout width and paints blank focused Cells", asy
   expect((await readCellProbe(surface)).text.split("\n")[2]).toBe(`│${"a".repeat(37)} │`);
   await input.fill("short");
   const cells = await surface.evaluate((node) => {
-    const probe = (node as HTMLElement & { __chardeskCellProbeV3: {
+    const probe = (node as HTMLElement & { __chardeskCellProbeV4: {
       cells: { x: number; y: number; style: { backgroundColor?: string }; ownerId: string | null }[];
-    } }).__chardeskCellProbeV3;
+    } }).__chardeskCellProbeV4;
     return probe.cells.filter(({ y }) => y >= 1 && y <= 3);
   });
   expect(cells).toHaveLength(120);

@@ -33,6 +33,12 @@ export const isActionableKind = (kind: WidgetKind): boolean =>
   || kind === "select-trigger"
   || isCollectionItemKind(kind);
 
+export const supportsPressFeedback = (kind: WidgetKind): boolean =>
+  kind === "button" || kind === "checkbox" || kind === "select-trigger";
+
+export const supportsActivationFeedback = (kind: WidgetKind): boolean =>
+  supportsPressFeedback(kind);
+
 export const isFocusableKind = (kind: WidgetKind): boolean =>
   isActionableKind(kind) || isTextEditorKind(kind);
 

@@ -57,7 +57,7 @@ describe("Cell probe", () => {
 
     const snapshot = pilot.probe({ x: 0, y: 0, width: 12, height: 1 });
     expect(snapshot).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       probeId: null,
       region: { x: 0, y: 0, width: 12, height: 1 },
       viewport: { width: 12, height: 3 },
@@ -68,7 +68,7 @@ describe("Cell probe", () => {
     expect(snapshot.cells.filter((cell) => cell.continuation)).toHaveLength(2);
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
     expect(formatCellProbe(snapshot, { header: true })).toBe(
-      "cell-ui/probe@3  anonymous  12×1  focus=open\nOpen 世界"
+      "cell-ui/probe@4  anonymous  12×1  focus=open\nOpen 世界"
     );
 
     expect(pilot.inspect({ x: 0, y: 0 })).toMatchObject({
@@ -125,7 +125,7 @@ describe("Cell probe", () => {
     };
 
     expect(formatCellProbe(snapshot, { header: true })).toBe(
-      "cell-ui/probe@3  font-contract  2×1  focus=none\n" +
+      "cell-ui/probe@4  font-contract  2×1  focus=none\n" +
       "font-profile=gallery/test-font cell=9×19 base=15px\n" +
       "font display=Test Font size=15px scaleX=1 bold-strategy=overdraw bold-overdraw=1px\n" +
       "font cjk=Test Font size=15px scaleX=1 bold-strategy=native\n" +

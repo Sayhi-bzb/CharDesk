@@ -75,7 +75,6 @@ const createTestRuntime = (initialSessions: CanvasSessionSnapshot[] = sessions) 
     initialSessions,
     parseSessionSource: parseDocumentSessionSource,
     selectionCommands: createSelectionCommandFactory({
-      getActiveDocumentId: documents.getActiveDocumentId,
       renderClipboardText: async () => ({
         kind: "spans",
         renderer: "raw",
@@ -98,13 +97,86 @@ describe("CanvasRuntime command boundary", () => {
     try {
       expect(runtime.getState()).not.toHaveProperty("setTool");
       expect(runtime.getState()).not.toHaveProperty("setTextCursor");
+      expect(runtime.getState()).not.toHaveProperty("setStaticGridActiveCell");
+      expect(runtime.getState()).not.toHaveProperty("updateScratchForShape");
+      expect(runtime.getState()).not.toHaveProperty("commitScratch");
+      expect(runtime.getState()).not.toHaveProperty("fillArea");
+      expect(runtime.getState()).not.toHaveProperty("moveStaticGridSelection");
+      expect(runtime.getState()).not.toHaveProperty("deleteSelection");
+      expect(runtime.getState()).not.toHaveProperty("erasePoints");
+      expect(runtime.getState()).not.toHaveProperty("copySelection");
+      expect(runtime.getState()).not.toHaveProperty("cutSelection");
+      expect(runtime.getState()).not.toHaveProperty("pasteFromClipboard");
+      expect(runtime.getState()).not.toHaveProperty("copySelectionAsPng");
+      expect(runtime.getState()).not.toHaveProperty("fillSelectionsWithChar");
+      expect(runtime.getState()).not.toHaveProperty("setSelectionTextAttributes");
+      expect(runtime.getState()).not.toHaveProperty("setSelectionForegroundColor");
+      expect(runtime.getState()).not.toHaveProperty("setSelectionBackgroundColor");
+      expect(runtime.getState()).not.toHaveProperty("canCopyOrCut");
 
       runtime.commands.tools.set("pan");
+      runtime.commands.staticGrid.setActiveCell({ x: 2, y: 3 });
+      runtime.commands.grid.updateScratchForShape(
+        "box",
+        { x: 0, y: 0 },
+        { x: 2, y: 2 }
+      );
 
       expect(runtime.getState().tool).toBe("pan");
-      expect(listener).toHaveBeenCalledOnce();
+      expect(runtime.getState().interaction.staticGridSelection.activeCell).toEqual({
+        x: 2,
+        y: 3,
+      });
+      expect(runtime.getState().interaction.scratchLayer?.size).toBeGreaterThan(0);
+      expect(runtime.queries.canCopyOrCut()).toBe(true);
+      expect(listener).toHaveBeenCalledTimes(3);
     } finally {
       unsubscribe();
+      runtime.dispose();
+    }
+  });
+
+  it("fills only existing cell anchors through the document command", () => {
+    const runtime = createTestRuntime();
+
+    try {
+      runtime.commands.grid.replace([
+        ["0,0", { char: "A", color: "#111111" }],
+        ["2,0", { char: "你", color: "#222222" }],
+      ]);
+      runtime.commands.preferences.setBrushColor("#ef4444");
+
+      runtime.commands.grid.fillArea({
+        start: { x: 0, y: 0 },
+        end: { x: 3, y: 0 },
+      });
+
+      expect(runtime.getState().contentSurface.reader.materialize()).toEqual(
+        new Map([
+          ["0,0", { char: "A", color: "#ef4444" }],
+          ["2,0", { char: "你", color: "#ef4444" }],
+        ])
+      );
+    } finally {
+      runtime.dispose();
+    }
+  });
+
+  it("clears structured scratch without mutating document content", () => {
+    const runtime = createTestRuntime();
+
+    try {
+      runtime.commands.sessions.switch("canvas-structured");
+      const scene = runtime.getState().structuredScene;
+      runtime.commands.grid.setScratchLayer([
+        { x: 0, y: 0, char: "X", color: "#ffffff" },
+      ]);
+
+      runtime.commands.grid.commitScratch();
+
+      expect(runtime.getState().interaction.scratchLayer).toBeNull();
+      expect(runtime.getState().structuredScene).toBe(scene);
+    } finally {
       runtime.dispose();
     }
   });
@@ -124,7 +196,6 @@ describe("CanvasRuntime.materializeSession", () => {
       initialSessions: sessions,
       parseSessionSource: parseDocumentSessionSource,
       selectionCommands: createSelectionCommandFactory({
-        getActiveDocumentId: () => runtime!.documents.getActiveDocumentId(),
         renderClipboardText: async () => ({
           kind: "spans",
           renderer: "raw",
@@ -158,7 +229,6 @@ describe("CanvasRuntime.materializeSession", () => {
       initialSessions: sessions,
       parseSessionSource: parseDocumentSessionSource,
       selectionCommands: createSelectionCommandFactory({
-        getActiveDocumentId: () => runtime!.documents.getActiveDocumentId(),
         renderClipboardText: async () => ({
           kind: "spans",
           renderer: "raw",
@@ -180,7 +250,6 @@ describe("CanvasRuntime.materializeSession", () => {
       initialSessions: sessions,
       parseSessionSource: parseDocumentSessionSource,
       selectionCommands: createSelectionCommandFactory({
-        getActiveDocumentId: () => runtime!.documents.getActiveDocumentId(),
         renderClipboardText: async () => ({
           kind: "spans",
           renderer: "raw",
@@ -215,7 +284,6 @@ describe("CanvasRuntime.materializeSession", () => {
       initialSessions: sessions,
       parseSessionSource: parseDocumentSessionSource,
       selectionCommands: createSelectionCommandFactory({
-        getActiveDocumentId: () => runtime!.documents.getActiveDocumentId(),
         renderClipboardText: async () => ({
           kind: "spans",
           renderer: "raw",
@@ -249,7 +317,6 @@ describe("CanvasRuntime collaboration", () => {
       initialSessions,
       parseSessionSource: parseDocumentSessionSource,
       selectionCommands: createSelectionCommandFactory({
-        getActiveDocumentId: documents.getActiveDocumentId,
         renderClipboardText: async () => ({
           kind: "spans",
           renderer: "raw",

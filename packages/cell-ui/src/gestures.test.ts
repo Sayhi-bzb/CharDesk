@@ -87,4 +87,16 @@ describe("GestureManager", () => {
     ]);
     expect(gestures.end(5, { x: 2, y: 0 })).toEqual([]);
   });
+
+  it("retains a rearmable pure tap until release", () => {
+    const gestures = new GestureManager();
+    gestures.begin(6, { x: 0, y: 0 }, [
+      { targetId: "button", kind: "tap", rearmable: true },
+    ]);
+
+    expect(gestures.move(6, { x: 4, y: 0 })).toEqual([]);
+    expect(gestures.end(6, { x: 0, y: 0 })).toEqual([
+      expect.objectContaining({ targetId: "button", kind: "tap", phase: "end" }),
+    ]);
+  });
 });

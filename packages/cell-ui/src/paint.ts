@@ -18,6 +18,7 @@ import { thumbGlyph } from "./scrollbar.js";
 import { paintBorder } from "./border.js";
 import { isActionableKind, isFilledSurfaceKind } from "./widget-capabilities.js";
 import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
+import { checkboxChromeMetrics } from "./checkbox.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
 
@@ -47,7 +48,15 @@ const stateStyle = (
     : node.textStyle;
   return resolveCellStateStyle(
     baseStyle,
-    { focused, selected, hovered: owner?.hovered, collection: owner !== null, disabled: node.disabled || owner?.disabled },
+    {
+      focused,
+      selected,
+      hovered: owner?.hovered,
+      pressActive: owner?.pressActive,
+      activationFlash: owner?.activationFlash,
+      collection: owner !== null,
+      disabled: node.disabled || owner?.disabled,
+    },
     theme
   );
 };
@@ -143,6 +152,8 @@ const paintScrollbars = (
 export type PaintSceneOptions = Readonly<{
   previous?: CellBuffer;
   dirtyRegions?: readonly CellRect[];
+  viewport?: CellRect;
+  layer?: "all" | "base" | "overlay";
 }>;
 
 export const paintScene = (
@@ -152,19 +163,22 @@ export const paintScene = (
   theme: CellUiTheme = DEFAULT_CELL_UI_THEME,
   options: PaintSceneOptions = {}
 ): CellBuffer => {
+  const viewport = options.viewport ?? scene.viewport;
   const incremental = options.previous
-    && options.previous.width === scene.viewport.width
-    && options.previous.height === scene.viewport.height
+    && options.previous.width === viewport.width
+    && options.previous.height === viewport.height
     && options.dirtyRegions !== undefined;
   const buffer = incremental
     ? options.previous!.clone()
-    : new CellBuffer(scene.viewport);
-  const regions = incremental ? options.dirtyRegions! : [scene.viewport];
+    : new CellBuffer(viewport);
+  const regions = incremental ? options.dirtyRegions! : [viewport];
   for (const region of regions) buffer.clear(region);
   for (const id of scene.paintList) {
     const node = tree.nodes.get(id);
     const entry = scene.entries.get(id);
     if (!node || !entry) continue;
+    if (options.layer === "base" && entry.layer !== 0) continue;
+    if (options.layer === "overlay" && entry.layer === 0) continue;
     const style = stateStyle(tree, node, theme);
     for (const region of regions) {
       const outerClip = intersectSceneRects(entry.outerClip, region);
@@ -175,14 +189,21 @@ export const paintScene = (
       // Surface: state and overlay backgrounds establish the Cell style first.
       if (style.backgroundColor || (
         isActionableKind(node.kind)
-        && (node.selected || (node.focused && node.focusVisible))
+        && (node.pressActive || node.activationFlash || node.selected || (node.focused && node.focusVisible))
       )) {
         fill(buffer, entry.layoutBounds, id, style, outerClip);
       }
 
       // Chrome: glyphs are painted after surfaces so state fills cannot erase them.
       if (node.style.border ?? node.kind === "select-content") {
-        paintBorder(buffer, id, entry.layoutBounds, theme.borderShape, { ...style, ...theme.borderStyle }, outerClip);
+        paintBorder(
+          buffer,
+          id,
+          entry.layoutBounds,
+          node.style.borderShape ?? theme.borderShape,
+          { ...style, ...theme.borderStyle },
+          outerClip
+        );
       }
       if (node.kind === "button" && node.buttonVariant === "outline" && entry.layoutBounds.width >= 2) {
         buffer.writeGrapheme(
@@ -261,7 +282,8 @@ export const paintScene = (
         );
       }
       if (node.kind === "checkbox") {
-        const x = entry.decorationBounds.x;
+        const x = entry.decorationBounds.x
+          + checkboxChromeMetrics(node.children.length > 0).indicatorOffset;
         const indicator = node.checked === "indeterminate"
           ? theme.checkboxIndeterminateIndicator
           : node.checked
@@ -306,8 +328,17 @@ export const paintScene = (
         );
       }
       if (node.kind === "select-item" && node.selected) {
+        const ownerViewport = node.parentId
+          ? scene.entries.get(node.parentId)?.scrollMetrics?.viewport
+          : undefined;
+        const visibleRight = Math.min(
+          entry.decorationBounds.x + entry.decorationBounds.width,
+          ownerViewport
+            ? ownerViewport.x + ownerViewport.width
+            : Number.POSITIVE_INFINITY
+        );
         buffer.writeGrapheme(
-          entry.decorationBounds.x + entry.decorationBounds.width - 1,
+          visibleRight - 1,
           entry.decorationBounds.y,
           theme.selectSelectedIndicator,
           id,

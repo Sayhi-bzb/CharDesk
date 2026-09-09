@@ -35,6 +35,7 @@ export type CellLayoutStyle = Readonly<{
   paddingBottom?: number;
   paddingLeft?: number;
   border?: boolean;
+  borderShape?: import("./border.js").CellBorderShape;
 }>;
 
 export type CellTextStyle = Readonly<{
@@ -87,8 +88,11 @@ export type WidgetNode = Readonly<{
   label: string | null;
   disabled: boolean;
   focused: boolean;
+  focusActive: boolean;
   focusVisible: boolean;
   hovered: boolean;
+  pressActive: boolean;
+  activationFlash: boolean;
   selected: boolean;
   checked: CellCheckboxState;
   buttonVariant: import("./button.js").ButtonVariant;
@@ -193,8 +197,16 @@ export type CellHit = Readonly<{
 
 export type SceneSnapshot = Readonly<{
   viewport: CellRect;
+  overlayViewport: CellRect;
   entries: ReadonlyMap<WidgetId, SceneEntry>;
   paintList: readonly WidgetId[];
+}>;
+
+export type CellOverlayPlane = Readonly<{
+  rootId: WidgetId;
+  bounds: CellRect;
+  layer: number;
+  paintOrder: number;
 }>;
 
 export type FramePhase = "tree" | "layout" | "geometry" | "paint" | "semantics" | "present";
@@ -288,7 +300,10 @@ export type FrameSnapshot = Readonly<{
   scene: SceneSnapshot;
   semantics: SemanticSnapshot;
   textLayouts: ReadonlyMap<WidgetId, import("./text.js").CellTextLayoutSnapshot>;
+  baseBuffer: import("./buffer.js").CellBuffer;
+  overlayBuffer: import("./buffer.js").CellBuffer;
   buffer: import("./buffer.js").CellBuffer;
+  overlayPlanes: readonly CellOverlayPlane[];
   mutations: readonly WidgetMutation[];
   invalidation: FrameInvalidation;
 }>;

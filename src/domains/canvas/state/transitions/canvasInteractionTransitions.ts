@@ -1,4 +1,8 @@
-import { collapseGridSelectionTo, createStaticGridInputFlow } from "@/domains/selection/public";
+import {
+  collapseGridSelectionTo,
+  createGridSelectionState,
+  createStaticGridInputFlow,
+} from "@/domains/selection/public";
 import {
   normalizeStructuredTextSelection,
   type StructuredSplitBoxHandle,
@@ -20,6 +24,35 @@ type InteractionState = Pick<
 >;
 
 type InteractionPatch = Pick<CanvasState, "interaction">;
+
+export const createClearedSelectionsPatch = (
+  interaction: CanvasInteractionSnapshot
+): InteractionPatch =>
+  createCanvasInteractionPatch(interaction, {
+    staticGridSelection: collapseGridSelectionTo(
+      interaction.staticGridSelection,
+      interaction.staticGridSelection.activeCell
+    ),
+  });
+
+export const createClearedInteractionPatch = (
+  interaction: CanvasInteractionSnapshot
+): InteractionPatch =>
+  createCanvasInteractionPatch(interaction, {
+    textCursor: null,
+    editingStructuredTextNodeId: null,
+    structuredTextSelection: null,
+    selectedStructuredNodeIds: [],
+    selectedStructuredBoxId: null,
+    selectedStructuredSplitHandle: null,
+    structuredContextPoint: null,
+    structuredGridFocus: null,
+    staticGridSelection: createGridSelectionState(
+      interaction.staticGridSelection.activeCell
+    ),
+    staticGridEditMode: "navigate",
+    staticGridInputFlow: null,
+  });
 
 export const createStructuredGridFocusPatch = (
   interaction: CanvasInteractionSnapshot,

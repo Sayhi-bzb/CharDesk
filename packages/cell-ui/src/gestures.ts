@@ -23,6 +23,7 @@ export type GesturePhase = "start" | "update" | "end" | "cancel";
 export type GestureCandidate = Readonly<{
   targetId: WidgetId;
   kind: GestureKind;
+  rearmable?: boolean;
   axis?: GestureAxis;
   part?: CellHitPart;
   scrollbar?: ScrollDragAnchor;
@@ -145,6 +146,11 @@ export class GestureManager {
       (candidate) => candidate.kind !== "tap" && acceptsAxis(candidate, axis)
     );
     if (!winner) {
+      // A discrete control keeps tracking a pure tap while captured so moving
+      // out and back in can re-arm it. Competing drag/scroll candidates still
+      // cancel the tap when they win below.
+      if (arena.candidates.every((candidate) => candidate.kind === "tap")
+        && arena.candidates.some((candidate) => candidate.rearmable)) return [];
       this.#arenas.delete(pointerId);
       return arena.candidates.map((candidate) =>
         signal(pointerId, candidate, "cancel", point, total)

@@ -24,6 +24,7 @@ import type {
   WidgetTree,
 } from "./types.js";
 import { buttonHorizontalPadding, buttonLayoutDefaults } from "./button.js";
+import { checkboxChromeMetrics } from "./checkbox.js";
 import { isCollectionItemKind } from "./widget-capabilities.js";
 
 const integer = (value: number, label: string) => {
@@ -168,11 +169,16 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
       (node.style.paddingBottom ?? node.style.padding ?? 0) + 1
     );
   }
-  // Checkbox chrome owns `[x] `; user padding starts after those four Cells.
+  // Checkbox chrome owns either `[x] ` before content or a centered ` [x] ` indicator.
   if (node.kind === "checkbox") {
+    const chrome = checkboxChromeMetrics(node.children.length > 0);
     target.setPadding(
       Edge.Left,
-      (node.style.paddingLeft ?? node.style.padding ?? 0) + 4
+      (node.style.paddingLeft ?? node.style.padding ?? 0) + chrome.paddingLeft
+    );
+    target.setPadding(
+      Edge.Right,
+      (node.style.paddingRight ?? node.style.padding ?? 0) + chrome.paddingRight
     );
   }
   if (node.kind === "overlay" || node.kind === "select-content") {

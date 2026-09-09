@@ -6,7 +6,8 @@ import type { CanvasViewportRuntime } from "../viewportRuntime";
 import type { ToolType } from "../model/tool";
 import { isToolAllowedForMode } from "../model/tool";
 import { normalizeBrushChar } from "@/shared/utils/characters";
-import type { Point } from "@/shared/types";
+import type { GridPoint, Point } from "@/shared/types";
+import type { GridAddress, GridRange } from "@/domains/selection/public";
 import {
   getNextStructuredOrder,
   type StructuredSplitBoxHandle,
@@ -17,6 +18,8 @@ import {
   type CanvasColorPickerTarget,
 } from "./canvasInteractionState";
 import {
+  createClearedInteractionPatch,
+  createClearedSelectionsPatch,
   createEditingStructuredTextNodePatch,
   createMovedStructuredGridFocusPatch,
   createStructuredBoxSelectionPatch,
@@ -26,6 +29,27 @@ import {
   createStructuredTextSelectionPatch,
   createTextCursorPatch,
 } from "./transitions/canvasInteractionTransitions";
+import {
+  createClearedStaticGridSelectionPatch,
+  createMovedStaticGridFocusPatch,
+  createStaticGridActiveCellPatch,
+  createStaticGridColumnSelectionPatch,
+  createStaticGridContentBoundaryFocusPatch,
+  createStaticGridEdgeFocusPatch,
+  createStaticGridRowSelectionPatch,
+  createStaticGridSelectAllPatch,
+  createStaticGridSelectionRangePatch,
+  createStaticGridTextEditExitPatch,
+  createStaticGridTextEditPatch,
+} from "./transitions/staticGridTransitions";
+import {
+  createAddedScratchPointsPatch,
+  createClearedScratchLayerPatch,
+  createScratchLayerPatch,
+  createShapeScratchLayerPatch,
+} from "./transitions/scratchLayerTransitions";
+import type { SelectionCommandFactory } from "./selectionCommandPort";
+import { createCanvasDocumentCommands } from "./canvasDocumentCommands";
 
 const createCall = (store: CanvasStore) => <Key extends keyof EditorState>(
   key: Key,
@@ -43,15 +67,37 @@ const createCall = (store: CanvasStore) => <Key extends keyof EditorState>(
   return command(...args);
 };
 
-export const createCanvasCommands = (
+export const createCanvasFacade = (
   store: CanvasStore,
   documents: CanvasDocumentRegistry,
-  viewport: CanvasViewportRuntime
+  viewport: CanvasViewportRuntime,
+  selectionCommandFactory: SelectionCommandFactory
 ) => {
 const call = createCall(store);
 const resolveAddress = () =>
   resolveEditorDocumentAddress(documents, store.getState());
-return {
+const documentCommands = createCanvasDocumentCommands(store, documents, {
+  applyStructuredScene: (...args) => call("applyStructuredScene", ...args),
+  replaceStructuredTextRange: (...args) =>
+    call("replaceStructuredTextRange", ...args),
+});
+const selectionCommands = selectionCommandFactory({
+  getState: store.getState,
+  mutations: {
+    deleteSelection: documentCommands.deleteSelection,
+    erasePoints: documentCommands.erasePoints,
+    applyStructuredScene: (...args) => call("applyStructuredScene", ...args),
+    replaceStructuredTextRange: (...args) =>
+      call("replaceStructuredTextRange", ...args),
+    pasteRichData: (...args) => call("pasteRichData", ...args),
+    pasteRichRows: (...args) => call("pasteRichRows", ...args),
+    updateInteraction: (update) =>
+      store.setState((state) =>
+        createCanvasInteractionPatch(state.interaction, update)
+      ),
+  },
+});
+const commands = {
   history: {
     undo: () => {
       resolveAddress();
@@ -158,18 +204,27 @@ return {
   grid: {
     replace: (entries: Parameters<CanvasDocumentRegistry["replaceCellPage"]>[1]) =>
       documents.replaceCellPage(resolveAddress(), entries),
-    setScratchLayer: (...args: Parameters<EditorState["setScratchLayer"]>) =>
-      call("setScratchLayer", ...args),
-    addScratchPoints: (...args: Parameters<EditorState["addScratchPoints"]>) =>
-      call("addScratchPoints", ...args),
-    commitScratch: () => call("commitScratch"),
-    clearScratch: () => call("clearScratch"),
+    setScratchLayer: (points: GridPoint[]) =>
+      store.setState((state) => createScratchLayerPatch(state, points)),
+    addScratchPoints: (points: GridPoint[]) =>
+      store.setState((state) => createAddedScratchPointsPatch(state, points)),
+    commitScratch: documentCommands.commitScratch,
+    clearScratch: () =>
+      store.setState((state) =>
+        createClearedScratchLayerPatch(state.interaction)
+      ),
     clear: () => call("clearCanvas"),
-    erasePoints: (...args: Parameters<EditorState["erasePoints"]>) =>
-      call("erasePoints", ...args),
-    updateScratchForShape: (...args: Parameters<EditorState["updateScratchForShape"]>) =>
-      call("updateScratchForShape", ...args),
-    fillArea: (...args: Parameters<EditorState["fillArea"]>) => call("fillArea", ...args),
+    erasePoints: documentCommands.erasePoints,
+    updateScratchForShape: (
+      tool: ToolType,
+      start: Point,
+      end: Point,
+      options?: { axis?: "vertical" | "horizontal" | null }
+    ) =>
+      store.setState((state) =>
+        createShapeScratchLayerPatch(state, tool, start, end, options)
+      ),
+    fillArea: documentCommands.fillArea,
   },
   text: {
     replaceStructuredRange: (...args: Parameters<EditorState["replaceStructuredTextRange"]>) =>
@@ -186,26 +241,22 @@ return {
     indent: () => call("indentText"),
   },
   selection: {
-    clear: () => call("clearSelections"),
-    clearInteraction: () => call("clearInteractionState"),
-    delete: () => call("deleteSelection"),
-    moveStaticRange: (...args: Parameters<EditorState["moveStaticGridSelection"]>) =>
-      call("moveStaticGridSelection", ...args),
-    copy: (...args: Parameters<EditorState["copySelection"]>) => call("copySelection", ...args),
-    cut: (...args: Parameters<EditorState["cutSelection"]>) => call("cutSelection", ...args),
-    paste: (...args: Parameters<EditorState["pasteFromClipboard"]>) =>
-      call("pasteFromClipboard", ...args),
-    copyAsPng: (...args: Parameters<EditorState["copySelectionAsPng"]>) =>
-      call("copySelectionAsPng", ...args),
-    fillWithChar: (...args: Parameters<EditorState["fillSelectionsWithChar"]>) =>
-      call("fillSelectionsWithChar", ...args),
-    setTextAttributes: (...args: Parameters<EditorState["setSelectionTextAttributes"]>) =>
-      call("setSelectionTextAttributes", ...args),
-    setForegroundColor: (
-      ...args: Parameters<EditorState["setSelectionForegroundColor"]>
-    ) => call("setSelectionForegroundColor", ...args),
-    setBackgroundColor: (...args: Parameters<EditorState["setSelectionBackgroundColor"]>) =>
-      call("setSelectionBackgroundColor", ...args),
+    clear: () =>
+      store.setState((state) => createClearedSelectionsPatch(state.interaction)),
+    clearInteraction: () =>
+      store.setState((state) =>
+        createClearedInteractionPatch(state.interaction)
+      ),
+    delete: documentCommands.deleteSelection,
+    moveStaticRange: documentCommands.moveStaticGridSelection,
+    copy: selectionCommands.copySelection,
+    cut: selectionCommands.cutSelection,
+    paste: selectionCommands.pasteFromClipboard,
+    copyAsPng: selectionCommands.copySelectionAsPng,
+    fillWithChar: documentCommands.fillSelectionsWithChar,
+    setTextAttributes: documentCommands.setSelectionTextAttributes,
+    setForegroundColor: documentCommands.setSelectionForegroundColor,
+    setBackgroundColor: documentCommands.setSelectionBackgroundColor,
   },
   structured: {
     applyScene: (...args: Parameters<EditorState["applyStructuredScene"]>) =>
@@ -241,27 +292,48 @@ return {
     duplicateSelection: () => call("duplicateStructuredSelection"),
   },
   staticGrid: {
-    setActiveCell: (...args: Parameters<EditorState["setStaticGridActiveCell"]>) =>
-      call("setStaticGridActiveCell", ...args),
-    setSelectionRange: (...args: Parameters<EditorState["setStaticGridSelectionRange"]>) =>
-      call("setStaticGridSelectionRange", ...args),
-    appendSelectionRange: (
-      ...args: Parameters<EditorState["appendStaticGridSelectionRange"]>
-    ) => call("appendStaticGridSelectionRange", ...args),
-    moveFocus: (...args: Parameters<EditorState["moveStaticGridFocus"]>) =>
-      call("moveStaticGridFocus", ...args),
-    moveFocusToEdge: (...args: Parameters<EditorState["moveStaticGridFocusToEdge"]>) =>
-      call("moveStaticGridFocusToEdge", ...args),
+    setActiveCell: (address: GridAddress) =>
+      store.setState((state) => createStaticGridActiveCellPatch(state, address)),
+    setSelectionRange: (range: GridRange) =>
+      store.setState((state) =>
+        createStaticGridSelectionRangePatch(state, range)
+      ),
+    appendSelectionRange: (range: GridRange) =>
+      store.setState((state) =>
+        createStaticGridSelectionRangePatch(state, range, true)
+      ),
+    moveFocus: (dx: number, dy: number, options?: { extend?: boolean }) =>
+      store.setState((state) =>
+        createMovedStaticGridFocusPatch(state, dx, dy, options)
+      ),
+    moveFocusToEdge: (
+      edge: "left" | "right" | "top" | "bottom" | "top-left" | "bottom-right",
+      options?: { extend?: boolean }
+    ) =>
+      store.setState((state) =>
+        createStaticGridEdgeFocusPatch(state, edge, options)
+      ),
     moveFocusToContentBoundary: (
-      ...args: Parameters<EditorState["moveStaticGridFocusToContentBoundary"]>
-    ) => call("moveStaticGridFocusToContentBoundary", ...args),
-    selectAll: () => call("selectStaticGridAll"),
-    selectRow: () => call("selectStaticGridRow"),
-    selectColumn: () => call("selectStaticGridColumn"),
-    enterTextEdit: (...args: Parameters<EditorState["enterStaticGridTextEdit"]>) =>
-      call("enterStaticGridTextEdit", ...args),
-    exitTextEdit: () => call("exitStaticGridTextEdit"),
-    clearSelection: () => call("clearStaticGridSelection"),
+      edge: "left" | "right" | "top" | "bottom",
+      options?: { extend?: boolean }
+    ) =>
+      store.setState((state) =>
+        createStaticGridContentBoundaryFocusPatch(state, edge, options)
+      ),
+    selectAll: () =>
+      store.setState((state) => createStaticGridSelectAllPatch(state)),
+    selectRow: () =>
+      store.setState((state) => createStaticGridRowSelectionPatch(state)),
+    selectColumn: () =>
+      store.setState((state) => createStaticGridColumnSelectionPatch(state)),
+    enterTextEdit: (address?: GridAddress) =>
+      store.setState((state) => createStaticGridTextEditPatch(state, address)),
+    exitTextEdit: () =>
+      store.setState((state) => createStaticGridTextEditExitPatch(state)),
+    clearSelection: () =>
+      store.setState((state) =>
+        createClearedStaticGridSelectionPatch(state)
+      ),
   },
   sessions: {
     create: (...args: Parameters<EditorState["createCanvasSession"]>) =>
@@ -303,13 +375,8 @@ return {
     resize: (...args: Parameters<EditorState["resizeSlide"]>) => call("resizeSlide", ...args),
   },
 } as const;
-};
-
-export const createCanvasQueries = (
-  store: CanvasStore,
-  documents: CanvasDocumentRegistry
-) => ({
-  canCopyOrCut: () => store.getState().canCopyOrCut(),
+const queries = {
+  canCopyOrCut: selectionCommands.canCopyOrCut,
   getNextStructuredOrder: () => getNextStructuredOrder(store.getState().structuredScene),
   getActiveDocumentId: documents.getActiveDocumentId,
   getCollaborationDocument: documents.getCollaborationDocument,
@@ -318,4 +385,6 @@ export const createCanvasQueries = (
   setMutationPerformanceEnabled: documents.setMutationPerformanceEnabled,
   resetMutationPerformance: documents.resetMutationPerformance,
   getMutationPerformanceStats: documents.getMutationPerformanceStats,
-} as const);
+} as const;
+return { commands, queries } as const;
+};

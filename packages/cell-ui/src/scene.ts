@@ -1,4 +1,5 @@
 import { cellRectContainsPoint } from "@chardesk/cell-core";
+import { placeAnchoredOverlay } from "./anchored-overlay.js";
 import { computeScrollMetrics, scrollOffsetFor } from "./scroll.js";
 import { measureCellText } from "./text.js";
 import type {
@@ -40,13 +41,14 @@ const scrollMetricsFor = (
     const visible = node.kind === "text-area";
     return computeScrollMetrics(contentBounds, measureCellText(node.textEditor), scrollOffsetFor(node), { x: visible, y: visible });
   }
-  if (node.kind !== "scroll-area") return null;
+  if (node.kind !== "scroll-area" && node.kind !== "select-content") return null;
   let explicitHorizontalExtent = false;
-  const extent = { width: contentBounds.width, height: 0 };
+  const extent = { width: 0, height: 0 };
   const measureDescendant = (childId: string, origin: CellPoint): void => {
     const child = layout.entries.get(childId)?.rect;
     const childNode = tree.nodes.get(childId);
     if (!child || !childNode) return;
+    if (isPortalKind(childNode.kind)) return;
     const x = origin.x + child.x;
     const y = origin.y + child.y;
     const explicitWidth = childNode.style.width !== undefined
@@ -66,16 +68,27 @@ const scrollMetricsFor = (
       y: -entry.contentRect.y,
     });
   });
-  return computeScrollMetrics(contentBounds, extent, node.scrollOffset, { x: explicitHorizontalExtent, y: true }, !explicitHorizontalExtent);
+  const selectContent = node.kind === "select-content";
+  return computeScrollMetrics(
+    contentBounds,
+    {
+      width: !selectContent && explicitHorizontalExtent ? extent.width : contentBounds.width,
+      height: extent.height,
+    },
+    node.scrollOffset,
+    { x: !selectContent && explicitHorizontalExtent, y: true },
+    selectContent || !explicitHorizontalExtent,
+  );
 };
 
 export const composeScene = (
   tree: WidgetTree,
-  layout: LayoutSnapshot
+  layout: LayoutSnapshot,
+  overlayViewport: CellRect = layout.viewport
 ): SceneSnapshot => {
   const entries = new Map<string, SceneEntry>();
   const paintList: string[] = [];
-  if (!tree.rootId) return { viewport: layout.viewport, entries, paintList };
+  if (!tree.rootId) return { viewport: layout.viewport, overlayViewport, entries, paintList };
 
   let traversalOrder = 0;
   const orders = new Map<string, number>();
@@ -90,7 +103,7 @@ export const composeScene = (
     if (!widget || !layoutEntry) throw new Error(`Scene input is missing ${id}.`);
     const portal = isPortalKind(widget.kind);
     const origin = portal ? { x: 0, y: 0 } : parentOrigin;
-    const clip = portal ? layout.viewport : inheritedClip;
+    const clip = portal ? overlayViewport : inheritedClip;
     const layer = portal ? inheritedLayer + 1 : inheritedLayer;
     const selectAnchor = widget.kind === "select-content"
       ? widget.parentId
@@ -103,37 +116,40 @@ export const composeScene = (
     if (widget.kind === "select-content" && !anchorBounds) {
       throw new TypeError("SelectContent must follow SelectTrigger inside the same Select.");
     }
-    const anchoredX = anchorBounds
-      ? Math.max(0, Math.min(layout.viewport.width - layoutEntry.rect.width, anchorBounds.x))
-      : 0;
-    const belowY = anchorBounds ? anchorBounds.y + anchorBounds.height : 0;
-    const aboveY = anchorBounds ? anchorBounds.y - layoutEntry.rect.height : 0;
-    const anchoredY = anchorBounds
-      ? belowY + layoutEntry.rect.height <= layout.viewport.height
-        ? belowY
-        : aboveY >= 0
-          ? aboveY
-          : Math.max(0, Math.min(layout.viewport.height - layoutEntry.rect.height, belowY))
-      : 0;
+    const selectPlacement = anchorBounds
+      ? placeAnchoredOverlay(anchorBounds, layoutEntry.rect, overlayViewport)
+      : undefined;
     const bounds: CellRect = {
       x: widget.kind === "overlay"
         ? widget.overlayPosition!.x
         : widget.kind === "select-content"
-          ? anchoredX
+          ? selectPlacement!.bounds.x
           : origin.x + layoutEntry.rect.x,
       y: widget.kind === "overlay"
         ? widget.overlayPosition!.y
         : widget.kind === "select-content"
-          ? anchoredY
+          ? selectPlacement!.bounds.y
           : origin.y + layoutEntry.rect.y,
-      width: layoutEntry.rect.width,
-      height: layoutEntry.rect.height,
+      width: selectPlacement?.bounds.width ?? layoutEntry.rect.width,
+      height: selectPlacement?.bounds.height ?? layoutEntry.rect.height,
     };
+    const contentRightInset = layoutEntry.rect.width
+      - layoutEntry.contentRect.x
+      - layoutEntry.contentRect.width;
+    const contentBottomInset = layoutEntry.rect.height
+      - layoutEntry.contentRect.y
+      - layoutEntry.contentRect.height;
     const contentBounds: CellRect = {
       x: bounds.x + layoutEntry.contentRect.x,
       y: bounds.y + layoutEntry.contentRect.y,
-      width: layoutEntry.contentRect.width,
-      height: layoutEntry.contentRect.height,
+      width: Math.max(
+        0,
+        bounds.width - layoutEntry.contentRect.x - contentRightInset
+      ),
+      height: Math.max(
+        0,
+        bounds.height - layoutEntry.contentRect.y - contentBottomInset
+      ),
     };
     const decorationBounds: CellRect = {
       x: bounds.x + layoutEntry.borderInsets.left,
@@ -172,7 +188,7 @@ export const composeScene = (
     if (entry.paintVisible) paintList.push(id);
 
     const childClip = contentClip;
-    const childOrigin = widget.kind === "scroll-area"
+    const childOrigin = widget.kind === "scroll-area" || widget.kind === "select-content"
       ? {
           x: bounds.x - widget.scrollOffset.x,
           y: bounds.y - widget.scrollOffset.y,
@@ -191,7 +207,7 @@ export const composeScene = (
   paintList.forEach((id, paintOrder) => {
     entries.set(id, { ...entries.get(id)!, paintOrder });
   });
-  return { viewport: layout.viewport, entries, paintList };
+  return { viewport: layout.viewport, overlayViewport, entries, paintList };
 };
 
 export const getEventPath = (

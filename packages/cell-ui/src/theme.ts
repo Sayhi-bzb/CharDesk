@@ -91,6 +91,8 @@ export const resolveCellUiTheme = (
 
 export type CellVisualState = Readonly<{
   hovered?: boolean;
+  pressActive?: boolean;
+  activationFlash?: boolean;
   focused?: boolean;
   selected?: boolean;
   disabled?: boolean;
@@ -101,14 +103,22 @@ export const resolveCellStateStyle = (
   local: CellTextStyle,
   state: CellVisualState,
   theme: CellUiTheme
-): CellTextStyle => ({
-  ...local,
-  ...(state.hovered && state.collection && !state.focused && !state.selected && !state.disabled ? theme.hoveredItemStyle : {}),
-  ...(state.focused && !state.selected ? theme.focusedSurfaceStyle : {}),
-  ...(state.selected ? theme.selectedStyle : {}),
-  ...(state.focused && state.collection ? theme.focusedItemStyle : {}),
-  ...(state.disabled ? theme.disabledStyle : {}),
-});
+): CellTextStyle => {
+  const resolved = {
+    ...local,
+    ...(state.hovered && state.collection && !state.focused && !state.selected && !state.disabled ? theme.hoveredItemStyle : {}),
+    ...(state.focused && !state.selected ? theme.focusedSurfaceStyle : {}),
+    ...(state.selected ? theme.selectedStyle : {}),
+    ...(state.focused && state.collection ? theme.focusedItemStyle : {}),
+    ...(state.disabled ? theme.disabledStyle : {}),
+  };
+  if ((!state.pressActive && !state.activationFlash) || state.disabled) return resolved;
+  return {
+    ...resolved,
+    color: resolved.backgroundColor ?? theme.background,
+    backgroundColor: resolved.color ?? theme.foreground,
+  };
+};
 
 export const resolveCellTextStyle = (
   base: CellTextStyle,

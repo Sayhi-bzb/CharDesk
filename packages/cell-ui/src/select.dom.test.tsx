@@ -32,6 +32,19 @@ describe("useCellSelectState", () => {
       expanded: true,
     }));
     expect(result.current).toMatchObject({ open: true, focusedId: "dark", selectedId: "dark" });
+    act(() => result.current.dispatch({
+      type: "focus",
+      targetId: "dark",
+      reveal: { targetId: "theme-content", scrollX: 0, scrollY: 2 },
+    }));
+    expect(result.current.scrollY).toBe(2);
+    act(() => result.current.dispatch({
+      type: "scroll",
+      targetId: "theme-content",
+      scrollX: 0,
+      scrollY: 3,
+    }));
+    expect(result.current.scrollY).toBe(3);
     act(() => result.current.dispatch({ type: "focus", targetId: "system" }));
     expect(result.current).toMatchObject({ focusedId: "system", selectedId: "dark" });
     act(() => result.current.dispatch({ type: "activate", targetId: "disabled" }));
@@ -41,6 +54,7 @@ describe("useCellSelectState", () => {
       open: false,
       focusedId: "theme-trigger",
       selectedId: "dark",
+      scrollY: 0,
     });
 
     act(() => result.current.dispatch({

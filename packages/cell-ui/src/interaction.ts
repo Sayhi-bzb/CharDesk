@@ -113,6 +113,22 @@ const ancestorOfKind = (
   return undefined;
 };
 
+const scrollAncestor = (
+  frame: FrameSnapshot,
+  fromId: WidgetId | undefined
+): WidgetNode | undefined => {
+  let id = fromId
+    ? frame.tree.nodes.get(fromId)?.parentId ?? undefined
+    : undefined;
+  while (id) {
+    const node = frame.tree.nodes.get(id);
+    if (!node) return undefined;
+    if (frame.scene.entries.get(id)?.scrollMetrics) return node;
+    id = node.parentId ?? undefined;
+  }
+  return undefined;
+};
+
 const collectionOwner = (
   tree: WidgetTree,
   fromId: WidgetId | null
@@ -350,7 +366,7 @@ const scrollCommand = (
   delta: CellPoint,
   page?: Readonly<{ direction: -1 | 1; cellCount: number }>
 ): WidgetCommand | null => {
-  const scroll = ancestorOfKind(frame.tree, targetId, "scroll-area");
+  const scroll = scrollAncestor(frame, targetId);
   if (!scroll) return null;
   const range = getScrollRange(frame, scroll.id);
   const scrollX = Math.max(range.x.min, Math.min(range.x.max, scroll.scrollOffset.x + delta.x));
@@ -370,7 +386,7 @@ const focusCommand = (
   frame: FrameSnapshot,
   targetId: WidgetId
 ): WidgetCommand => {
-  const scroll = ancestorOfKind(frame.tree, targetId, "scroll-area");
+  const scroll = scrollAncestor(frame, targetId);
   const target = frame.scene.entries.get(targetId);
   const viewport = scroll ? frame.scene.entries.get(scroll.id) : undefined;
   if (!scroll || !target || !viewport) return { type: "focus", targetId };
@@ -407,6 +423,14 @@ const focusCommand = (
     targetId,
     reveal: { targetId: scroll.id, scrollX, scrollY },
   };
+};
+
+export const revealCommandForTarget = (
+  frame: FrameSnapshot,
+  targetId: WidgetId
+): WidgetCommand | null => {
+  const command = focusCommand(frame, targetId);
+  return command.type === "focus" && command.reveal ? command : null;
 };
 
 export const commandForInput = (
@@ -548,7 +572,7 @@ export const commandForInput = (
   }
   if (input.key === "PageUp" || input.key === "PageDown") {
     const focused = focus.focusedId ?? undefined;
-    const scroll = ancestorOfKind(frame.tree, focused, "scroll-area");
+    const scroll = scrollAncestor(frame, focused);
     const page = scroll ? frame.scene.entries.get(scroll.id)?.scrollMetrics?.viewport.height ?? 3 : 3;
     const direction = input.key === "PageUp" ? -1 : 1;
     return scrollCommand(

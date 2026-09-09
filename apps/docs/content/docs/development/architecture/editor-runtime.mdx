@@ -56,7 +56,14 @@ command/tool or native adapter -> canvas port -> CanvasCommands -> pure transiti
 
 `CanvasCommands` owns workspace and interaction mutations. Zustand exposes the
 read projection; reusable interaction rules are pure transitions applied by the
-command boundary. Content commands continue through the addressed Yjs document.
+command boundary. Static-grid focus, range navigation, edit-mode changes, and
+selection clearing follow this path. Drawing previews are pure transitions over
+the interaction-owned scratch layer. Scratch commits, existing-cell area fills,
+and static-range moves are addressed Yjs document commands owned behind
+`CanvasCommands`; they are not Zustand actions. Remaining content commands follow
+the same document boundary as they migrate. Selection mutations use that document
+boundary directly. Clipboard adapters receive a read-only Canvas snapshot and an
+explicit mutation port, so asynchronous I/O cannot invoke Zustand actions.
 
 ## Extensions
 

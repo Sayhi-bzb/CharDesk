@@ -29,8 +29,11 @@ const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.label === right.label
   && left.disabled === right.disabled
   && left.focused === right.focused
+  && left.focusActive === right.focusActive
   && left.focusVisible === right.focusVisible
   && left.hovered === right.hovered
+  && left.pressActive === right.pressActive
+  && left.activationFlash === right.activationFlash
   && left.selected === right.selected
   && left.checked === right.checked
   && left.buttonVariant === right.buttonVariant
@@ -88,8 +91,11 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       label: current.label,
       disabled: current.disabled,
       focused: current.focused,
+      focusActive: false,
       focusVisible: false,
       hovered: false,
+      pressActive: false,
+      activationFlash: false,
       selected: current.selected,
       checked: current.checked,
       buttonVariant: current.buttonVariant,

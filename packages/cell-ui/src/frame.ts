@@ -68,11 +68,16 @@ const toRenderCell = (cell: Cell): CharDeskCellFrameCell => {
 
 export const createCellUiRenderFrame = (
   frame: FrameSnapshot,
-  dirty: "full" | readonly CellRect[] = frame.invalidation.dirtyRegions
+  dirty: "full" | readonly CellRect[] = frame.invalidation.dirtyRegions,
+  plane: Readonly<{
+    buffer?: CellBuffer;
+    viewport?: CellRect;
+  }> = {}
 ): CellFrame<CharDeskCellFrameCell> => {
-  let renderSource = renderSourceCache.get(frame.buffer);
+  const buffer = plane.buffer ?? frame.buffer;
+  let renderSource = renderSourceCache.get(buffer);
   if (!renderSource) {
-    const source = createCellBufferSource(frame.buffer);
+    const source = createCellBufferSource(buffer);
     renderSource = {
       get(point) {
         const cell = source.get(point);
@@ -83,11 +88,11 @@ export const createCellUiRenderFrame = (
       },
       getContentBounds: () => source.getContentBounds(),
     };
-    renderSourceCache.set(frame.buffer, renderSource);
+    renderSourceCache.set(buffer, renderSource);
   }
   return {
     revision: frame.revision,
-    viewport: frame.scene.viewport,
+    viewport: plane.viewport ?? frame.scene.viewport,
     dirty,
     source: renderSource,
   };

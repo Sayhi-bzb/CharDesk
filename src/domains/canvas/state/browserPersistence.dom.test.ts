@@ -89,7 +89,6 @@ const createRuntime = (
   const runtime: CanvasRuntime = createCanvasRuntime({
     persistence: { storage, key: EDITOR_PERSISTENCE_KEY },
     selectionCommands: createSelectionCommandFactory({
-      getActiveDocumentId: () => runtime.documents.getActiveDocumentId(),
       renderClipboardText: async () => ({
         kind: "spans",
         renderer: "raw",

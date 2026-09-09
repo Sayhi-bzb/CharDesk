@@ -34,8 +34,7 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 const textRendering = createTextRenderingRuntime();
 
 initializeCanvasTesting({
-  selectionCommands: (documents) => createSelectionCommandFactory({
-    getActiveDocumentId: documents.getActiveDocumentId,
+  selectionCommands: createSelectionCommandFactory({
     renderClipboardText: textRendering.renderCompact,
   }),
   parseSessionSource: parseDocumentSessionSource,

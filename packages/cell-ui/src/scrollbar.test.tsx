@@ -84,3 +84,21 @@ it("the uncovered half of an edge Cell pages instead of capturing the thumb", ()
   expect(gestureCandidatesForFrame(frame, path, point, { x: 7.5, y: 1.75 }).some((item) => item.kind === "drag")).toBe(false);
   runtime.dispose();
 });
+
+it("does not infer horizontal overflow when explicit content fits beside a vertical rail", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 8, height: 5 } });
+  const frame = runtime.render(
+    <Root>
+      <ScrollArea id="scroll" style={{ width: 8, height: 5 }}>
+        <Box style={{ width: 7, height: 10 }} />
+      </ScrollArea>
+    </Root>
+  );
+  const metrics = frame.scene.entries.get("scroll")!.scrollMetrics!;
+
+  expect(metrics.verticalTrack).not.toBeNull();
+  expect(metrics.horizontalTrack).toBeNull();
+  expect(metrics.viewport).toEqual({ x: 0, y: 0, width: 7, height: 5 });
+  expect(metrics.contentSize).toEqual({ width: 7, height: 10 });
+  runtime.dispose();
+});

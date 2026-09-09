@@ -50,6 +50,22 @@ export class CellBuffer {
     return copy;
   }
 
+  overlay(source: CellBuffer): void {
+    const width = Math.min(this.width, source.width);
+    const height = Math.min(this.height, source.height);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const cell = source.#cells[y * source.width + x]!;
+        if (
+          cell.ownerId === null
+          && cell.text === " "
+          && Object.keys(cell.style).length === 0
+        ) continue;
+        this.#cells[y * this.width + x] = cell;
+      }
+    }
+  }
+
   clear(rect: CellRect): void {
     const left = Math.max(0, rect.x);
     const top = Math.max(0, rect.y);

@@ -65,8 +65,8 @@ code, pre { font-family: inherit; }
   position: relative;
   display: flex;
   justify-content: flex-end;
-  flex: 0 0 99px;
-  width: 99px;
+  flex: 0 0 108px;
+  width: 108px;
   height: 20px;
   overflow: visible;
 }
@@ -134,6 +134,17 @@ code, pre { font-family: inherit; }
 .docs-section__heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .docs-preview { min-width: 0; overflow-x: auto; padding: 20px; }
 .docs-preview > * { width: max-content; max-width: 100%; margin-inline: auto; }
+.docs-preview:has(> .component-playground) { padding-inline: 0; overflow: visible; }
+.docs-preview > .component-playground {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  min-height: 140px;
+  margin: 0;
+  overflow: visible;
+}
+.component-playground__surface canvas { display: block; }
+.component-playground__surface[data-cell-overlay-count] { z-index: 2; }
 .docs-code { position: relative; min-width: 0; background: var(--cell-surface); }
 .docs-code .gallery-icon-button { position: absolute; top: 8px; right: 8px; z-index: 1; }
 .docs-code pre { margin: 0; padding: 20px 52px 20px 20px; overflow-x: auto; font-size: 13px; line-height: 1.6; }

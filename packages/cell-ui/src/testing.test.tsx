@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  Button,
   List,
   ListItem,
   Root,
@@ -12,6 +13,53 @@ import {
 } from "./index.js";
 
 describe("TestPilot", () => {
+  it("exposes the complete transient press lifecycle without product state", async () => {
+    vi.useFakeTimers();
+    let focusedId = "save";
+    let activations = 0;
+    const pilot = createTestPilot({
+      viewport: { width: 12, height: 1 },
+      render: () => (
+        <Root id="root" style={{ direction: "row" }}>
+          <Button id="save" focused={focusedId === "save"}><Text>Save</Text></Button>
+        </Root>
+      ),
+      onCommand: (command) => {
+        if (command.type === "focus") focusedId = command.targetId;
+        if (command.type === "activate") activations += 1;
+      },
+    });
+
+    await pilot.pointerDown({ x: 1, y: 0 });
+    expect(pilot.frame.tree.nodes.get("save")?.pressActive).toBe(true);
+    expect(pilot.inspect({ x: 1, y: 0 }).cell?.style).toMatchObject({
+      color: "#1a1a1a",
+      backgroundColor: "#FFFFFF",
+    });
+    await pilot.pointerMove({ x: 10, y: 0 });
+    expect(pilot.frame.tree.nodes.get("save")?.pressActive).toBe(false);
+    await pilot.pointerMove({ x: 1, y: 0 });
+    expect(pilot.frame.tree.nodes.get("save")?.pressActive).toBe(true);
+    await pilot.pointerUp({ x: 1, y: 0 });
+    expect(pilot.frame.tree.nodes.get("save")?.pressActive).toBe(false);
+    expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(true);
+    expect(activations).toBe(1);
+    vi.advanceTimersByTime(120);
+    expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(false);
+
+    await pilot.keyDown(" ", { code: "Space" });
+    expect(pilot.frame.tree.nodes.get("save")?.pressActive).toBe(true);
+    expect(activations).toBe(2);
+    await pilot.keyUp(" ", { code: "Space" });
+    expect(pilot.frame.tree.nodes.get("save")?.pressActive).toBe(false);
+    expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(true);
+    expect(activations).toBe(2);
+    vi.advanceTimersByTime(120);
+    expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(false);
+    pilot.dispose();
+    vi.useRealTimers();
+  });
+
   it("synchronizes editor viewport from layout on mount and resize", async () => {
     const editor = new CellTextEditor({ value: "a".repeat(32) });
     editor.dispatch({ type: "move", direction: "line-end" });

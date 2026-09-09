@@ -38,6 +38,10 @@ describe("Web TUI gallery font loading", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Font: Maple" }));
     expect(screen.getByRole("listbox", { name: "Fonts" })).toBeInTheDocument();
+    expect(container.querySelector("canvas")).toHaveAttribute("width", "108");
+    expect(container.querySelector("canvas")).toHaveAttribute("height", "20");
+    expect(container.querySelector('[data-cell-overlay-root="gallery-font-content"]'))
+      .toHaveAttribute("height", "120");
     expect(screen.getAllByRole("option").map((option) => option.getAttribute("aria-label")))
       .toEqual(["Maple", "Fusion", "Xiaolai"]);
     fireEvent.click(screen.getByRole("option", { name: "Fusion" }));

@@ -5,6 +5,7 @@
 ## 状态与主题
 
 - `focused` 是逻辑焦点，`selected` 是持久选择；二者可共存。
+- `pressActive` 是 Host 管理的瞬时按压，不进入业务 command；默认反转控件有效前景/背景。
 - focus 与 selected 使用中性背景，focus 增加 bold；hover 更轻且不覆盖 focused/selected/disabled。
 - Surface 失去实际焦点时保留逻辑 focusedId，但撤去 focus 背景、bold 与 Canvas Cursor；selection 和编辑状态保留。
 - `CellUiTheme` 是 Widget 主题入口；局部 `textStyle` 不重定义状态语言。
@@ -30,7 +31,7 @@
 
 ## Pointer 与 Scroll
 
-- pointer down 定位焦点；pointer up 仍命中原 item 才激活。移出、drag winner 或 cancel 取消 tap。
+- pointer down 定位焦点；Button、SelectTrigger 和 Checkbox 移出时撤去按压、移回时恢复，pointer up 仍命中原目标才激活。drag winner、cancel、capture loss 或 blur 永久取消本轮 press。
 - ScrollArea 在命中范围内消费 wheel，即使已到边界；区域外页面可滚动，Ctrl+wheel 留给浏览器。
 - 横纵 scrollbar 可相互缩小 viewport；可见性在一次 geometry 计算中收敛。thumb 使用半 Cell 精度，drag 以按下时 offset/range/track 为锚。
 - scrolling 不改变 selection；Virtual List 只在 focused row 离开 viewport 时把 focus 收敛到可见可用项。

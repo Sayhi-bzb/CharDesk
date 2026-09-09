@@ -38,7 +38,7 @@ const resolveCellCursorPresentation = (
   if (!focusedId) return null;
   const node = input.frame.tree.nodes.get(focusedId);
   const layout = input.frame.textLayouts.get(focusedId);
-  if (!node?.focusVisible || !layout) return null;
+  if (!node?.focusActive || !layout) return null;
   const { caret, contentBounds } = layout;
   if (
     caret.x < contentBounds.x

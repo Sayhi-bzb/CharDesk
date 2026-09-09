@@ -58,3 +58,27 @@ it("shape changes reuse geometry across glyphs and repaint like a fresh frame", 
   }
   runtime.dispose();
 });
+
+it("local border shape overrides the theme without changing geometry or hit ownership", () => {
+  const viewport = { width: 12, height: 7 };
+  const view = <Root>
+    <Box id="local" style={{ border: true, borderShape: "rounded", width: 6, height: 3 }} />
+    <Box id="theme" style={{ border: true, width: 6, height: 3 }} />
+  </Root>;
+  const runtime = new CellUiRuntime({ viewport, theme: { borderShape: "square" } });
+  const before = runtime.render(view);
+  const localBounds = before.scene.entries.get("local")!.layoutBounds;
+  const themeBounds = before.scene.entries.get("theme")!.layoutBounds;
+
+  expect(before.buffer.get(localBounds.x, localBounds.y)?.text).toBe("╭");
+  expect(before.buffer.get(themeBounds.x, themeBounds.y)?.text).toBe("┌");
+
+  runtime.setTheme({ borderShape: "rounded" });
+  const after = runtime.render(view);
+  expect(after.layout).toBe(before.layout);
+  expect(after.scene).toBe(before.scene);
+  expect(after.buffer.get(localBounds.x, localBounds.y)?.text).toBe("╭");
+  expect(after.buffer.get(themeBounds.x, themeBounds.y)?.text).toBe("╭");
+  expect(hitTestCell(after.scene, localBounds)).toEqual(hitTestCell(before.scene, localBounds));
+  runtime.dispose();
+});

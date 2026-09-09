@@ -1,17 +1,13 @@
 import type { StateCreator } from "zustand";
 import type { EditorState, DrawingSlice } from "../interfaces";
 import type { CanvasDocumentRegistry } from "../CanvasDocumentRegistry";
-import { GridManager } from "@/shared/utils/grid";
-import type { GridCell, GridPoint, TextAttributes } from "@/shared/types";
+import type { TextAttributes } from "@/shared/types";
 import type {
   StructuredBoxNode,
   StructuredNode,
 } from "@/domains/structured-content/public";
-import { placeCharInMap, placeCharInYMap } from "../utils";
-import { deleteCellAt } from "../gridOps";
 import { COLOR_PRIMARY_TEXT } from "@/shared/lib/constants";
-import { getArrowLinePoints, getBoxPoints, getCirclePoints, getLShapeLinePoints, getStepLinePoints } from "@/shared/utils/shapes";
-import { createDefaultSplitBoxRoot, getSplitBoxPoints } from "@/domains/structured-content/public";
+import { createDefaultSplitBoxRoot } from "@/domains/structured-content/public";
 import { createStructuredNodeId } from "@/domains/structured-content/public";
 import {
   duplicateStructuredNodes,
@@ -25,8 +21,6 @@ import {
 } from "@/domains/structured-content/public";
 import { cloneTextAttributes } from "@/shared/utils/ansi";
 import { splitGraphemes } from "@/shared/metrics";
-import { createGridMapSource } from "@/shared/utils/grid-source";
-import { createPointGridReader } from "@/shared/utils/grid-occupancy";
 import {
   getStructuredTextSelectionRange,
   updateStructuredTextStyleRanges,
@@ -36,57 +30,11 @@ import {
   createStructuredNodeSelectionPatch,
 } from "../transitions/canvasInteractionTransitions";
 import { createCanvasInteractionPatch } from "../canvasInteractionState";
-import { isStaticGridMode } from "@/domains/sessions/public";
-import { writeStyledCell } from "@/shared/utils/grid-ops";
-import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
 import { resolveEditorDocumentAddress } from "../helpers/gridHelpers";
 
 type StructuredTextStyleUpdater = Parameters<
   typeof updateStructuredTextStyleRanges
 >[3];
-
-const getFilledRectPoints = (
-  start: { x: number; y: number },
-  end: { x: number; y: number }
-): GridPoint[] => {
-  const minX = Math.min(start.x, end.x);
-  const maxX = Math.max(start.x, end.x);
-  const minY = Math.min(start.y, end.y);
-  const maxY = Math.max(start.y, end.y);
-  const points: GridPoint[] = [];
-  for (let y = minY; y <= maxY; y++) {
-    for (let x = minX; x <= maxX; x++) {
-      points.push({ x, y, char: " " });
-    }
-  }
-  return points;
-};
-
-const addPointsToLayer = (
-  layer: Map<string, GridCell>,
-  points: GridPoint[],
-  brushColor: string
-) => {
-  points.forEach((point) => {
-    if (point.bgColor || point.attrs || point.href) {
-      writeStyledCell(layer, point.x, point.y, {
-        char: point.char,
-        color: point.color || brushColor,
-        ...(point.bgColor ? { bgColor: point.bgColor } : {}),
-        ...(point.attrs ? { attrs: point.attrs } : {}),
-        ...(point.href ? { href: point.href } : {}),
-      });
-      return;
-    }
-    placeCharInMap(
-      layer,
-      point.x,
-      point.y,
-      point.char,
-      point.color || brushColor
-    );
-  });
-};
 
 const updateSelectedStructuredTextStyle = (
   state: EditorState,
@@ -121,120 +69,6 @@ export const createDrawingSlice = (
   [],
   DrawingSlice
 > => (set, get) => ({
-  setScratchLayer: (points) => {
-    const { brushColor } = get();
-    const layer = new Map<string, GridCell>();
-    addPointsToLayer(layer, points, brushColor);
-    set((state) =>
-      createCanvasInteractionPatch(state.interaction, { scratchLayer: layer })
-    );
-  },
-
-  addScratchPoints: (points) => {
-    const { brushColor } = get();
-    set((state) => {
-      const layer = new Map(state.interaction.scratchLayer || []);
-      addPointsToLayer(layer, points, brushColor);
-      return createCanvasInteractionPatch(state.interaction, {
-        scratchLayer: layer,
-      });
-    });
-  },
-
-  updateScratchForShape: (tool, start, end, options) => {
-    let points: GridPoint[] = [];
-    const state = get();
-    const color = state.brushColor;
-    const backgroundColor = isStaticGridMode(state.canvasMode)
-      ? state.brushBackgroundColor
-      : state.brushColor;
-    switch (tool) {
-      case "box":
-        points = getBoxPoints(start, end);
-        break;
-      case "splitBox":
-        points = getSplitBoxPoints(start, end, {
-          verticalSplitRatio: 0.36,
-          topSplitRatio: 0.25,
-          bottomSplitRatio: 0.75,
-          root: createDefaultSplitBoxRoot({
-            verticalSplitRatio: 0.36,
-            topSplitRatio: 0.25,
-            bottomSplitRatio: 0.75,
-          }),
-        });
-        break;
-      case "bg":
-        points = getFilledRectPoints(start, end).map((point) => ({
-          ...point,
-          color: COLOR_PRIMARY_TEXT,
-          bgColor: backgroundColor,
-        }));
-        break;
-      case "circle":
-        points = getCirclePoints(start, end);
-        break;
-      case "stepline":
-        points = getStepLinePoints(start, end);
-        break;
-      case "arrowLine": {
-        const isVerticalFirst = options?.axis === "vertical";
-        points = getArrowLinePoints(start, end, isVerticalFirst);
-        break;
-      }
-      case "line": {
-        const isVerticalFirst = options?.axis === "vertical";
-        points = getLShapeLinePoints(start, end, isVerticalFirst);
-        break;
-      }
-    }
-    const coloredPoints = points.map((p) => ({ ...p, color: p.color || color }));
-    get().setScratchLayer(coloredPoints);
-  },
-
-  commitScratch: () => {
-    const state = get();
-    const { scratchLayer } = state.interaction;
-    const { canvasMode } = state;
-    if (canvasMode === "structured") {
-      set(createCanvasInteractionPatch(state.interaction, { scratchLayer: null }));
-      return;
-    }
-    if (!scratchLayer || scratchLayer.size === 0) return;
-    documents.mutateGridAt(resolveEditorDocumentAddress(documents, get()), (grid) => {
-      const reader = createPointGridReader(grid);
-      GridManager.iterate(createGridMapSource(scratchLayer), (cell, x, y) => {
-        if (cell.bgColor && cell.char === " ") {
-          const slot = resolveGridSlot(reader, { x, y });
-          const anchor = slot?.anchor ?? { x, y };
-          writeStyledCell(grid, anchor.x, anchor.y, {
-            ...(slot?.cell ?? { char: " ", color: cell.color }),
-            bgColor: cell.bgColor,
-          });
-          return;
-        }
-        if (cell.bgColor || cell.attrs || cell.href) {
-          writeStyledCell(grid, x, y, {
-            char: cell.char,
-            color: cell.color,
-            ...(cell.bgColor ? { bgColor: cell.bgColor } : {}),
-            ...(cell.attrs ? { attrs: cell.attrs } : {}),
-            ...(cell.href ? { href: cell.href } : {}),
-          });
-          return;
-        }
-        placeCharInYMap(grid, x, y, cell.char, cell.color);
-      });
-    });
-    set((current) =>
-      createCanvasInteractionPatch(current.interaction, { scratchLayer: null })
-    );
-  },
-
-  clearScratch: () =>
-    set((state) =>
-      createCanvasInteractionPatch(state.interaction, { scratchLayer: null })
-    ),
   clearCanvas: () => {
     const { canvasMode, applyStructuredScene } = get();
     if (canvasMode === "structured") {
@@ -247,17 +81,6 @@ export const createDrawingSlice = (
       (grid) => grid.clear()
     );
     set(createDocumentInteractionResetPatch(documents.getActiveAddress()));
-  },
-
-  erasePoints: (points, shouldSaveHistory = true) => {
-    const { canvasMode } = get();
-    if (canvasMode === "structured") return;
-    if (points.length === 0) return;
-    documents.mutateGridAt(resolveEditorDocumentAddress(documents, get()), (grid) => {
-      points.forEach((p) => {
-        deleteCellAt(grid, p.x, p.y);
-      });
-    }, shouldSaveHistory);
   },
 
   commitStructuredShape: (tool, start, end, options) => {

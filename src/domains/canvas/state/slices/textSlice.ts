@@ -43,6 +43,7 @@ import {
   createCanvasInteractionPatch,
   type CanvasInteractionSnapshot,
 } from "../canvasInteractionState";
+import { fillStaticGridSelectionWithChar } from "../canvasDocumentCommands";
 
 const toCharIndexByColumn = (text: string, columnOffset: number) => {
   if (columnOffset <= 0) return 0;
@@ -221,13 +222,8 @@ export const createTextSlice = (
       editingStructuredTextNodeId,
       structuredGridFocus,
     } = current.interaction;
-    const {
-      fillSelectionsWithChar,
-      brushColor,
-      canvasMode,
-      structuredScene,
-      applyStructuredScene,
-    } = current;
+    const { brushColor, canvasMode, structuredScene, applyStructuredScene } =
+      current;
 
     if (canvasMode === "structured") {
       const normalized = str.replace(/\r\n?/g, "\n");
@@ -338,7 +334,12 @@ export const createTextSlice = (
     const hasRangeTarget = staticGridInteraction.kind === "range";
 
     if (hasRangeTarget && graphemes.length === 1 && graphemes[0] !== "\n") {
-      fillSelectionsWithChar(graphemes[0], options);
+      fillStaticGridSelectionWithChar(
+        documents,
+        current,
+        graphemes[0],
+        options
+      );
       return;
     }
 

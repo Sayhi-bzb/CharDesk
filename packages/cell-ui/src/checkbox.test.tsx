@@ -76,6 +76,42 @@ describe("Checkbox", () => {
     runtime.dispose();
   });
 
+  it("uses symmetric one-Cell spacing for an indicator-only checkbox", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 8, height: 1 } });
+    const checkbox = (
+      <Root id="root" style={{ direction: "row" }}>
+        <Checkbox id="indicator" label="Disabled" />
+      </Root>
+    );
+    const frame = runtime.render(checkbox);
+
+    expect(frame.layout.entries.get("indicator")).toMatchObject({
+      rect: { width: 5, height: 1 },
+      paddingInsets: { top: 0, right: 1, bottom: 0, left: 4 },
+    });
+    expect(frame.buffer.toText({ trimEnd: true })).toBe(" [ ]");
+    expect(frame.buffer.get(1, 0)).toMatchObject({ text: "[", ownerId: "indicator" });
+    expect(frame.buffer.get(3, 0)).toMatchObject({ text: "]", ownerId: "indicator" });
+    expect(frame.semantics.nodes.get("indicator")?.label).toBe("Disabled");
+
+    const focus = new FocusManager();
+    focus.sync(frame.tree, "indicator");
+    for (const x of [0, 4]) {
+      expect(commandForInput(
+        { type: "pointer", phase: "up", point: { x, y: 0 }, button: 0 },
+        frame,
+        focus,
+      )).toEqual({ type: "activate", targetId: "indicator" });
+    }
+
+    const hovered = runtime.render(checkbox, { hoveredId: "indicator" });
+    expect([0, 1, 2, 3, 4].map((x) => hovered.buffer.get(x, 0)?.style.backgroundColor))
+      .toEqual(["#25292e", "#25292e", "#25292e", "#25292e", "#25292e"]);
+    expect(hovered.buffer.get(5, 0)?.style.backgroundColor).toBeUndefined();
+
+    runtime.dispose();
+  });
+
   it("shares focus, hover, disabled, keyboard, pointer, and semantic activation", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 20, height: 4 } });
     const frame = runtime.render(checkboxes());

@@ -39,6 +39,62 @@ const fileList = (order = ["index", "app", "layout", "theme"]) => (
 );
 
 describe("CellUiRuntime", () => {
+  it("does not make ordinary frames pay a composite-buffer copy", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 8, height: 2 } });
+    const frame = runtime.render(<Root><Text>base</Text></Root>);
+
+    expect(frame.overlayPlanes).toHaveLength(0);
+    expect(frame.buffer).toBe(frame.baseBuffer);
+    expect(frame.overlayBuffer.toText()).toBe("        \n        ");
+    runtime.dispose();
+  });
+
+  it("requires the overlay viewport to contain the base viewport", () => {
+    expect(() => new CellUiRuntime({
+      viewport: { width: 8, height: 2 },
+      overlayViewport: { width: 7, height: 2 },
+    })).toThrow("overlay viewport must contain the base viewport");
+    const runtime = new CellUiRuntime({ viewport: { width: 8, height: 2 } });
+    expect(() => runtime.resize(
+      { width: 8, height: 2 },
+      { width: 8, height: 1 },
+    )).toThrow("overlay viewport must contain the base viewport");
+    runtime.dispose();
+  });
+
+  it("separates active logical focus from visible focus emphasis", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 30, height: 9 } });
+    const keyboard = runtime.render(fileList(), { focusedId: "new" });
+    expect(keyboard.tree.nodes.get("new")).toMatchObject({
+      focused: true,
+      focusActive: true,
+      focusVisible: true,
+    });
+
+    const pointer = runtime.render(fileList(), {
+      focusedId: "new",
+      focusActive: true,
+      focusVisible: false,
+      hoveredId: "new",
+    });
+    expect(pointer.tree.nodes.get("new")).toMatchObject({
+      focused: true,
+      focusActive: true,
+      focusVisible: false,
+    });
+    expect(pointer.buffer.get(29, 0)?.style).toMatchObject({ backgroundColor: "#25292e" });
+    expect(pointer.buffer.get(29, 0)?.style.bold).not.toBe(true);
+
+    const movedAway = runtime.render(fileList(), {
+      focusedId: "new",
+      focusActive: true,
+      focusVisible: false,
+    });
+    expect(movedAway.buffer.get(29, 0)?.style.backgroundColor).toBeUndefined();
+    expect(movedAway.semantics.focusedId).toBe("new");
+    runtime.dispose();
+  });
+
   it("hover only repaints, retains semantic identity and clears when omitted", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 30, height: 9 } });
     const before = runtime.render(fileList());
@@ -576,6 +632,14 @@ describe("CellUiRuntime", () => {
     expect(getEventPath(frame.scene, "command-two"))
       .toEqual(["command-two", "commands", "palette", "clipped-panel", "root"]);
     expect(hitTest(frame.scene, { x: 5, y: 3 })[0]).toBe("command-two/text[0]");
+    expect(frame.overlayPlanes).toEqual([{
+      rootId: "palette",
+      bounds: { x: 4, y: 1, width: 12, height: 4 },
+      layer: 1,
+      paintOrder: frame.scene.entries.get("palette")!.paintOrder,
+    }]);
+    expect(frame.baseBuffer.get(4, 4)?.ownerId).not.toBe("palette");
+    expect(frame.overlayBuffer.get(4, 4)).toMatchObject({ text: "└", ownerId: "palette" });
     expect(frame.buffer.get(4, 4)).toMatchObject({ text: "└", ownerId: "palette" });
     expect(frame.buffer.get(15, 3)).toMatchObject({ text: "│", ownerId: "palette" });
     runtime.dispose();

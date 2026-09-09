@@ -94,6 +94,7 @@ export type CellSelectState = Readonly<{
   focusedId: WidgetId;
   selectedId: WidgetId | null;
   selectedItem: CellSelectItem | null;
+  scrollY: number;
   dispatch: (command: WidgetCommand) => void;
 }>;
 
@@ -118,6 +119,7 @@ export const useCellSelectState = (
     options.defaultSelectedId ?? null
   );
   const [internalOpen, setInternalOpen] = useState(options.defaultOpen ?? false);
+  const [scrollY, setScrollY] = useState(0);
   const selectedCandidate = selectedControlled
     ? options.selectedId ?? null
     : internalSelectedId;
@@ -139,6 +141,7 @@ export const useCellSelectState = (
   if (previousOpen !== open) {
     setPreviousOpen(open);
     setFocusedId(open ? preferredItemId : triggerId);
+    if (!open) setScrollY(0);
   }
 
   const updateOpen = useCallback((next: boolean) => {
@@ -146,10 +149,15 @@ export const useCellSelectState = (
       setInternalOpen(next);
       setFocusedId(next ? preferredItemId : triggerId);
     }
+    if (!next) setScrollY(0);
     if (next !== open) onOpenChange?.(next);
   }, [onOpenChange, open, openControlled, preferredItemId, triggerId]);
 
   const dispatch = useCallback((command: WidgetCommand) => {
+    if (command.type === "scroll" && command.targetId === contentId) {
+      setScrollY(command.scrollY);
+      return;
+    }
     if (command.type === "set-expanded" && command.targetId === triggerId) {
       updateOpen(command.expanded);
       return;
@@ -159,6 +167,9 @@ export const useCellSelectState = (
       return;
     }
     if (command.type === "focus") {
+      if (command.reveal?.targetId === contentId) {
+        setScrollY(command.reveal.scrollY);
+      }
       if (
         command.targetId === triggerId
         || enabledItems.some(({ id: itemId }) => itemId === command.targetId)
@@ -183,6 +194,7 @@ export const useCellSelectState = (
     focusedId,
     selectedId,
     selectedItem: items.find((item) => item.id === selectedId) ?? null,
+    scrollY,
     dispatch,
   };
 };

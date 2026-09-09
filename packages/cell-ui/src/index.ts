@@ -38,6 +38,12 @@ export type {
   GesturePhase,
   GestureSignal,
 } from "./gestures.js";
+export { PressManager, pressTargetAtPoint } from "./press.js";
+export {
+  ActivationFeedbackManager,
+  CELL_ACTIVATION_FLASH_DURATION_MS,
+  activationFeedbackTargetForCommand,
+} from "./activation-feedback.js";
 export { YogaLayoutEngine } from "./layout.js";
 export type { LayoutEngine, YogaResourceCounts } from "./layout.js";
 export { FixedVirtualGrid } from "./virtual.js";
@@ -168,6 +174,7 @@ export type {
   CellHitPart,
   CellInsets,
   CellLayoutStyle,
+  CellOverlayPlane,
   CellPoint,
   CellRect,
   CellSize,
