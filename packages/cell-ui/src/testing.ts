@@ -1,13 +1,10 @@
+import type { CellFeedbackConfig } from "./feedback.js";
+import { isPrimitiveControlKind } from "./widget-capabilities.js";
 import type { ReactElement } from "react";
 import { CellBuffer } from "./buffer.js";
-import { GestureManager, type GestureSignal } from "./gestures.js";
-import { PressManager } from "./press.js";
+import { type GestureSignal } from "./gestures.js";
+import { CellInteractionController } from "./interaction-controller.js";
 import {
-  ActivationFeedbackManager,
-  CELL_ACTIVATION_FLASH_DURATION_MS,
-} from "./activation-feedback.js";
-import {
-  FocusManager,
   commandForInput,
   type EngineInput,
   type WidgetCommand,
@@ -27,7 +24,7 @@ import { CellUiRuntime } from "./runtime.js";
 import { textViewportCommands } from "./text-viewport.js";
 import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
 import { getEventPath, hitTest } from "./scene.js";
-import { isCellKeyPress } from "./keyboard.js";
+import { type CellUiTheme } from "./theme.js";
 import type {
   CellPoint,
   CellRect,
@@ -50,6 +47,8 @@ export type TestPilotOptions = Readonly<{
   viewport: CellSize;
   render: () => ReactElement<RootProps> | null;
   onCommand?: (command: WidgetCommand) => void;
+  theme?: Partial<CellUiTheme>;
+  feedback?: Partial<CellFeedbackConfig>;
 }>;
 
 export type TestKeyOptions = Omit<KeyInputInit, "key" | "phase">;
@@ -60,22 +59,25 @@ const matchesName = (label: string, name: string | RegExp | undefined) =>
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
 
+const sameWidgetIdSet = (left: ReadonlySet<WidgetId>, right: ReadonlySet<WidgetId>) =>
+  left.size === right.size && [...left].every((id) => right.has(id));
+
 export class TestPilot {
-  readonly #focus = new FocusManager();
-  readonly #gestures = new GestureManager();
-  readonly #press = new PressManager();
-  readonly #activationFeedback = new ActivationFeedbackManager();
+  readonly #controller = new CellInteractionController(() => this.#renderFrame(), (command) => this.#onCommand(command));
+  readonly #focus = this.#controller.focus;
+  readonly #gestures = this.#controller.gestures;
+  readonly #press = this.#controller.press;
+  readonly #activationFeedback = this.#controller.feedback;
   readonly #render: () => ReactElement<RootProps> | null;
   readonly #onCommand: (command: WidgetCommand) => void;
   readonly #runtime: CellUiRuntime;
   #frame: FrameSnapshot;
-  #activationFeedbackTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
   #disposed = false;
 
   constructor(options: TestPilotOptions) {
     this.#render = options.render;
     this.#onCommand = options.onCommand ?? (() => undefined);
-    this.#runtime = new CellUiRuntime({ viewport: options.viewport });
+    this.#runtime = new CellUiRuntime({ viewport: options.viewport, theme: options.theme, feedback: options.feedback });
     this.#frame = this.#runtime.render(this.#render());
     this.#focus.sync(this.#frame.tree, this.#frame.semantics.focusedId);
     this.#syncTextViewports();
@@ -109,34 +111,34 @@ export class TestPilot {
 
   async pointerDown(point: CellPoint, pointerId = 1, precisePoint?: CellPoint): Promise<void> {
     this.#assertActive();
-    const feedbackChanged = this.#cancelActivationFeedback();
-    this.#commit(commandForInput(
+    const command = commandForInput(
       { type: "pointer", phase: "down", point, button: 0 },
       this.#frame,
       this.#focus
-    ));
+    );
+    if (this.#activationFeedback.settling) {
+      this.#commit(command);
+      await this.pause();
+      return;
+    }
+    this.#cancelActivationFeedback();
+    this.#commit(command);
     const targetId = hitTest(this.#frame.scene, point)[0];
     const path = targetId ? getEventPath(this.#frame.scene, targetId) : [];
-    this.#gestures.begin(pointerId, point, gestureCandidatesForFrame(this.#frame, path, point, precisePoint), precisePoint);
-    if (this.#press.beginPointer(this.#frame, pointerId, point) || feedbackChanged) this.#renderFrame();
+    this.#controller.beginPointer(this.#frame, pointerId, point, gestureCandidatesForFrame(this.#frame, path, point, precisePoint), precisePoint);
     await this.pause();
   }
 
   async pointerMove(point: CellPoint, pointerId = 1, precisePoint?: CellPoint): Promise<void> {
     this.#assertActive();
-    const signals = this.#gestures.move(pointerId, point, precisePoint);
-    const changed = signals.some((signal) => signal.kind === "tap" && signal.phase === "cancel")
-      ? this.#press.cancelPointer(pointerId)
-      : this.#press.movePointer(this.#frame, pointerId, point);
-    if (changed) this.#renderFrame();
+    const signals = this.#controller.movePointer(this.#frame, pointerId, point, precisePoint);
     this.#applyGestureSignals(signals);
     await this.pause();
   }
 
   async pointerUp(point: CellPoint, pointerId = 1, precisePoint?: CellPoint): Promise<void> {
     this.#assertActive();
-    const signals = this.#gestures.end(pointerId, point, precisePoint);
-    if (this.#press.endPointer(pointerId)) this.#renderFrame();
+    const signals = this.#controller.endPointer(pointerId, point, precisePoint);
     this.#applyGestureSignals(signals);
     await this.pause();
   }
@@ -147,26 +149,8 @@ export class TestPilot {
 
   async input(input: EngineInput): Promise<void> {
     this.#assertActive();
-    let feedbackChanged = false;
-    let releasedTargetId: WidgetId | null = null;
-    let pressChanged = false;
-    if (input.type === "key") {
-      if (input.phase === "down") {
-        if (isCellKeyPress(input, "Enter") || isCellKeyPress(input, " ")) {
-          feedbackChanged = this.#cancelActivationFeedback();
-        }
-        pressChanged = this.#press.beginKey(this.#frame, input, this.#focus.focusedId);
-      } else {
-        releasedTargetId = this.#press.activeId;
-        pressChanged = this.#press.endKey(input);
-      }
-    }
-    const command = commandForInput(input, this.#frame, this.#focus);
-    if (command) this.#commit(command);
-    else if (pressChanged || feedbackChanged) this.#renderFrame();
-    if (pressChanged && releasedTargetId) {
-      this.#restartActivationFeedback(releasedTargetId);
-    }
+    if (input.type === "key") this.#controller.key(this.#frame, input, this.#runtime.feedback.activationBlinkCount);
+    else this.#commit(commandForInput(input, this.#frame, this.#focus));
     await this.pause();
   }
 
@@ -262,44 +246,21 @@ export class TestPilot {
   dispose(): void {
     if (this.#disposed) return;
     this.#cancelActivationFeedback();
+    this.#gestures.sync(() => false);
     this.#runtime.dispose();
     this.#disposed = true;
   }
 
   #commit(command: WidgetCommand | null): void {
-    if (!command) return;
-    this.#focus.apply(command);
-    const feedbackTargetId = this.#activationFeedback.start(this.#frame, command);
-    this.#onCommand(command);
-    this.#renderFrame();
-    if (feedbackTargetId && this.#activationFeedback.activeId === feedbackTargetId) {
-      this.#scheduleActivationFeedbackClear();
-    }
+    this.#controller.commit(command, this.#frame, this.#runtime.feedback.activationBlinkCount);
   }
 
-  #restartActivationFeedback(targetId: WidgetId): void {
-    if (!this.#activationFeedback.restart(this.#frame, targetId)) return;
-    this.#renderFrame();
-    this.#scheduleActivationFeedbackClear();
-  }
-
-  #scheduleActivationFeedbackClear(): void {
-    if (this.#activationFeedbackTimer !== null) {
-      globalThis.clearTimeout(this.#activationFeedbackTimer);
-    }
-    this.#activationFeedbackTimer = globalThis.setTimeout(() => {
-      this.#activationFeedbackTimer = null;
-      if (this.#disposed || !this.#activationFeedback.clear()) return;
-      this.#renderFrame();
-    }, CELL_ACTIVATION_FLASH_DURATION_MS);
+  #flushActivationFeedbackCompletion(): void {
+    this.#controller.flush();
   }
 
   #cancelActivationFeedback(): boolean {
-    if (this.#activationFeedbackTimer !== null) {
-      globalThis.clearTimeout(this.#activationFeedbackTimer);
-      this.#activationFeedbackTimer = null;
-    }
-    return this.#activationFeedback.clear();
+    return this.#controller.cancel();
   }
 
   #applyGestureSignals(signals: readonly GestureSignal[]): void {
@@ -308,31 +269,44 @@ export class TestPilot {
     }
   }
 
+  #primitiveHover(): WidgetId | null {
+    const id = this.#controller.snapshot.hoveredId;
+    const node = id ? this.#frame.tree.nodes.get(id) : undefined;
+    return node && isPrimitiveControlKind(node.kind) ? id : null;
+  }
+
   #renderFrame(): void {
     this.#frame = this.#runtime.render(this.#render(), {
+      manipulatingIds: this.#gestures.manipulatingIds,
       pressActiveId: this.#press.activeId,
       activationFlashId: this.#activationFeedback.activeId,
+      activationTargetId: this.#activationFeedback.targetId,
+      focusVisible: this.#controller.snapshot.focusVisible,
+      hoveredId: this.#primitiveHover(),
       resolveFocusedId: (tree) => {
         this.#focus.sync(tree);
         return this.#focus.focusedId;
       },
     });
     let pressChanged = this.#press.sync(this.#frame);
-    const activationFeedbackChanged = this.#activationFeedback.sync(this.#frame);
-    if (activationFeedbackChanged && this.#activationFeedbackTimer !== null) {
-      globalThis.clearTimeout(this.#activationFeedbackTimer);
-      this.#activationFeedbackTimer = null;
-    }
+    const manipulatingBefore = this.#gestures.manipulatingIds;
+    const activationFeedbackChanged = this.#controller.sync(this.#frame);
     for (const pointerId of this.#gestures.sync((candidate) => validGestureCandidate(this.#frame, candidate))) {
       pressChanged = this.#press.cancelPointer(pointerId) || pressChanged;
     }
-    if (pressChanged || activationFeedbackChanged) {
+    const manipulationChanged = !sameWidgetIdSet(manipulatingBefore, this.#gestures.manipulatingIds);
+    if (pressChanged || activationFeedbackChanged || manipulationChanged) {
       this.#frame = this.#runtime.render(this.#render(), {
         focusedId: this.#focus.focusedId,
+        manipulatingIds: this.#gestures.manipulatingIds,
         pressActiveId: this.#press.activeId,
         activationFlashId: this.#activationFeedback.activeId,
+      activationTargetId: this.#activationFeedback.targetId,
+      focusVisible: this.#controller.snapshot.focusVisible,
+      hoveredId: this.#primitiveHover(),
       });
     }
+    if (activationFeedbackChanged) this.#flushActivationFeedbackCompletion();
     this.#syncTextViewports();
   }
 
@@ -342,8 +316,12 @@ export class TestPilot {
     for (const command of commands) this.#onCommand(command);
     this.#frame = this.#runtime.render(this.#render(), {
       focusedId: this.#focus.focusedId,
+      manipulatingIds: this.#gestures.manipulatingIds,
       pressActiveId: this.#press.activeId,
       activationFlashId: this.#activationFeedback.activeId,
+      activationTargetId: this.#activationFeedback.targetId,
+      focusVisible: this.#controller.snapshot.focusVisible,
+      hoveredId: this.#primitiveHover(),
     });
   }
 

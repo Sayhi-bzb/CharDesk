@@ -1,7 +1,3 @@
-import {
-  createDefaultSplitBoxRoot,
-  getSplitBoxPoints,
-} from "@/domains/structured-content/public";
 import { isStaticGridMode } from "@/domains/sessions/public";
 import { COLOR_PRIMARY_TEXT } from "@/shared/lib/constants";
 import type { GridCell, GridPoint, Point } from "@/shared/types";
@@ -14,6 +10,7 @@ import {
   getLShapeLinePoints,
   getStepLinePoints,
 } from "@/shared/utils/shapes";
+import { getDefaultSplitBoxPoints } from "@/shared/utils/split-box-shape";
 import type { ToolType } from "../../model/tool";
 import { createCanvasInteractionPatch } from "../canvasInteractionState";
 import type { CanvasState } from "../interfaces";
@@ -86,16 +83,7 @@ const createShapePoints = (
       points = getBoxPoints(start, end);
       break;
     case "splitBox":
-      points = getSplitBoxPoints(start, end, {
-        verticalSplitRatio: 0.36,
-        topSplitRatio: 0.25,
-        bottomSplitRatio: 0.75,
-        root: createDefaultSplitBoxRoot({
-          verticalSplitRatio: 0.36,
-          topSplitRatio: 0.25,
-          bottomSplitRatio: 0.75,
-        }),
-      });
+      points = getDefaultSplitBoxPoints(start, end);
       break;
     case "bg":
       points = getFilledRectPoints(start, end).map((point) => ({

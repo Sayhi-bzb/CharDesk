@@ -4,7 +4,6 @@ import type {
   CharDeskCellRangePhase,
 } from "@chardesk/rendering";
 import type { StaticGridRangeMovePlan } from "@/domains/canvas/public";
-import type { CanvasMode } from "@/domains/sessions/public";
 import type {
   StaticGridInteraction,
   StaticGridViewState,
@@ -42,7 +41,6 @@ export type CanvasCellPresentation = Readonly<{
 }>;
 
 export const resolveCanvasRangePresentation = (input: Readonly<{
-  canvasMode: CanvasMode;
   source: GridCellSource;
   staticGrid: StaticGridViewState;
   draggingSelection: SelectionArea | null;
@@ -51,7 +49,7 @@ export const resolveCanvasRangePresentation = (input: Readonly<{
   const committedRange = input.staticGrid.interaction.kind === "range"
     ? input.staticGrid.interaction
     : null;
-  if (input.canvasMode !== "structured" && input.movePreview) {
+  if (input.movePreview) {
     return {
       kind: "range",
       geometry: getGridSelectionGeometry(
@@ -67,19 +65,17 @@ export const resolveCanvasRangePresentation = (input: Readonly<{
     return {
       kind: "range",
       geometry: getGridSelectionGeometry(
-        input.canvasMode === "structured"
-          ? [draggingRange]
-          : [
-              ...(committedRange ? input.staticGrid.target.ranges : []),
-              draggingRange,
-            ],
-        input.canvasMode === "structured" ? undefined : input.source
+        [
+          ...(committedRange ? input.staticGrid.target.ranges : []),
+          draggingRange,
+        ],
+        input.source
       ),
       phase: "selecting",
     };
   }
 
-  if (input.canvasMode !== "structured" && committedRange) {
+  if (committedRange) {
     return {
       kind: "range",
       geometry: committedRange.geometry,
@@ -92,14 +88,8 @@ export const resolveCanvasRangePresentation = (input: Readonly<{
 export const resolveCanvasCellPresentation = (input: Readonly<{
   viewActive: boolean;
   inputFocused: boolean;
-  canvasMode: CanvasMode;
   range: CanvasRangeVisualIntent | null;
   staticGrid: StaticGridInteraction;
-  structured: Readonly<{
-    gridFocus: Point | null;
-    editingText: boolean;
-    hasNodeSelection: boolean;
-  }>;
   cursorPreference: Readonly<{
     shape: CharDeskCellCursorShape;
     blink: boolean;
@@ -108,15 +98,6 @@ export const resolveCanvasCellPresentation = (input: Readonly<{
   if (!input.viewActive) return { visual: null };
   if (input.range) return { visual: input.range };
 
-  if (input.canvasMode === "structured") {
-    const { gridFocus, editingText, hasNodeSelection } = input.structured;
-    return {
-      visual:
-        gridFocus && !editingText && !hasNodeSelection
-          ? { kind: "navigation-focus", point: gridFocus }
-          : null,
-    };
-  }
   const editing = input.staticGrid.kind === "text-edit";
   return {
     visual: {

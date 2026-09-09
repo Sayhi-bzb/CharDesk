@@ -58,13 +58,6 @@ export const setCanvasTestState = (patch: CanvasTestStatePatch) => {
     offset,
     zoom,
     textCursor,
-    editingStructuredTextNodeId,
-    structuredTextSelection,
-    selectedStructuredNodeIds,
-    selectedStructuredBoxId,
-    selectedStructuredSplitHandle,
-    structuredContextPoint,
-    structuredGridFocus,
     staticGridSelection,
     staticGridEditMode,
     staticGridInputFlow,
@@ -75,17 +68,6 @@ export const setCanvasTestState = (patch: CanvasTestStatePatch) => {
   } = patch;
   const interactionUpdate: CanvasInteractionUpdate = {
     ...(textCursor !== undefined ? { textCursor } : {}),
-    ...(editingStructuredTextNodeId !== undefined
-      ? { editingStructuredTextNodeId }
-      : {}),
-    ...(structuredTextSelection !== undefined ? { structuredTextSelection } : {}),
-    ...(selectedStructuredNodeIds !== undefined ? { selectedStructuredNodeIds } : {}),
-    ...(selectedStructuredBoxId !== undefined ? { selectedStructuredBoxId } : {}),
-    ...(selectedStructuredSplitHandle !== undefined
-      ? { selectedStructuredSplitHandle }
-      : {}),
-    ...(structuredContextPoint !== undefined ? { structuredContextPoint } : {}),
-    ...(structuredGridFocus !== undefined ? { structuredGridFocus } : {}),
     ...(staticGridSelection !== undefined ? { staticGridSelection } : {}),
     ...(staticGridEditMode !== undefined ? { staticGridEditMode } : {}),
     ...(staticGridInputFlow !== undefined ? { staticGridInputFlow } : {}),

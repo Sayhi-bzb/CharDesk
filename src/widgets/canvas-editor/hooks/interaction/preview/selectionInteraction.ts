@@ -1,19 +1,12 @@
 import type { SelectionArea } from "@/shared/types";
-import type { CanvasMode } from "@/domains/sessions/public";
 import type { ToolType } from "@/domains/canvas/public";
-import type { StructuredNode } from "@/domains/structured-content/public";
-import {
-  findStructuredNodeIdsInSelection,
-} from "@/domains/structured-content/public";
 
 export type SelectionCommitDecision =
   | { type: "none" }
   | { type: "fill"; selection: SelectionArea }
   | { type: "setStaticGridActiveCell"; point: SelectionArea["start"] }
   | { type: "setStaticGridSelectionRange"; selection: SelectionArea }
-  | { type: "appendStaticGridSelectionRange"; selection: SelectionArea }
-  | { type: "setStructuredSelection"; ids: string[] }
-  | { type: "setStructuredGridFocus"; point: SelectionArea["start"] };
+  | { type: "appendStaticGridSelectionRange"; selection: SelectionArea };
 
 const isSingleCellSelection = (selection: SelectionArea) =>
   selection.start.x === selection.end.x && selection.start.y === selection.end.y;
@@ -21,26 +14,15 @@ const isSingleCellSelection = (selection: SelectionArea) =>
 export const resolveSelectionCommitDecision = ({
   selection,
   tool,
-  canvasMode,
-  structuredScene,
   append = false,
 }: {
   selection: SelectionArea | null;
   tool: ToolType;
-  canvasMode: CanvasMode;
-  structuredScene: StructuredNode[];
   append?: boolean;
 }): SelectionCommitDecision => {
   if (!selection) return { type: "none" };
   if (tool === "fill") return { type: "fill", selection };
   if (tool !== "select") return { type: "none" };
-
-  if (canvasMode === "structured") {
-    const ids = findStructuredNodeIdsInSelection(structuredScene, selection);
-    return ids.length > 0
-      ? { type: "setStructuredSelection", ids }
-      : { type: "setStructuredGridFocus", point: selection.start };
-  }
 
   if (append) return { type: "appendStaticGridSelectionRange", selection };
   return isSingleCellSelection(selection)

@@ -15,7 +15,7 @@ import {
   createSessionId,
   createIndexedDbCanvasCatalog,
   decodePersistedEditorState,
-  migratePersistedStateToV6,
+  migratePersistedStateToV7,
   isSourceBackedCanvasSession,
   getCanvasSessionFallbackSnapshot,
   getCanvasSessionRestoreRecord,
@@ -57,9 +57,9 @@ import {
   resolveSessionDocumentRuntime,
 } from "./helpers/storeUtils";
 import {
-  createStructuredContentSurface,
   rebuildContentSurface,
 } from "./helpers/gridHelpers";
+import { migrateLegacyStructuredDocument } from "./migrateLegacyStructuredDocument";
 import { readSlideDeckDescriptor } from "./slideDocumentPages";
 import {
   CANVAS_DOCUMENT_SCHEMA_VERSION,
@@ -334,8 +334,6 @@ const parseDocumentDatabaseName = (
 
 const emptySeed = (): CanvasDocumentSeed => ({
   grid: [],
-  scene: [],
-  components: [],
 });
 
 const PAGE_CHANNEL_PATTERN =
@@ -386,14 +384,6 @@ const getDocumentAuthorityMetrics = (doc: Y.Doc) => {
   let authorityPayloadBytes = 0;
   readCanvasPageOrder(root).forEach((pageId) => {
     const page = readCanvasYPage(root, pageId);
-    if (page?.descriptor.kind === "structured") {
-      page.scene.forEach((value) => {
-        authorityPayloadBytes += JSON.stringify(value).length * 2;
-      });
-      page.components.forEach((value) => {
-        authorityPayloadBytes += JSON.stringify(value).length * 2;
-      });
-    }
     page?.operations.forEach((operation) => {
       if (!isCellPlaneOperation(operation)) return;
       operations += 1;
@@ -435,17 +425,8 @@ const seedFromImportSnapshot = (
           grid: slide.grid,
         })),
         grid: [],
-        scene: [],
-        components: [],
       }
-    : snapshot.mode === "structured"
-      ? {
-        mode: "structured",
-        grid: [],
-        scene: snapshot.scene,
-        components: snapshot.components,
-      }
-    : { mode: "freeform", grid: snapshot.grid, scene: [], components: [] };
+    : { mode: "freeform", grid: snapshot.grid };
 
 const seedFromSessionSnapshot = (
   session: CanvasSessionSnapshot
@@ -467,14 +448,10 @@ const createBlankDescriptorSeed = (
           grid: [],
         }],
         grid: [],
-        scene: [],
-        components: [],
       }
     : {
         mode: session.mode,
         grid: [],
-        scene: [],
-        components: [],
       };
 
 const readActiveSessionSeed = (doc: Y.Doc, id: string): CanvasDocumentSeed => {
@@ -482,21 +459,11 @@ const readActiveSessionSeed = (doc: Y.Doc, id: string): CanvasDocumentSeed => {
   const page = seed.pages?.find(({ id: pageId }) => pageId === seed.activePageId) ??
     seed.pages?.[0];
   if (!page) return seed;
-  return "grid" in page
-    ? {
-        mode: seed.mode,
-        activePageId: page.id,
-        grid: page.grid ?? [],
-        scene: [],
-        components: [],
-      }
-    : {
-        mode: seed.mode,
-        activePageId: page.id,
-        grid: [],
-        scene: page.scene ?? [],
-        components: page.components ?? [],
-      };
+  return {
+    mode: seed.mode,
+    activePageId: page.id,
+    grid: page.grid ?? [],
+  };
 };
 
 const readCellPlaneGrid = (doc: Y.Doc): [string, GridCell][] => {
@@ -542,6 +509,7 @@ const migrateLegacyDocument = (
   id: string,
   seed: CanvasDocumentSeed
 ) => {
+  const flattenedStructured = migrateLegacyStructuredDocument(doc, id);
   const root = getCanvasDocumentRoot(doc);
   const seedPages = resolveSeedPages(id, seed);
   const seedById = new Map(seedPages.map((page) => [page.id, page]));
@@ -553,12 +521,6 @@ const migrateLegacyDocument = (
   ]));
   const legacyGrid = doc.getMap<GridCell>("main-grid");
   const operations = doc.getArray<CellPlaneOperation>("cell-plane-operations");
-  const legacyScene = doc.getMap<CanvasDocumentSeed["scene"][number]>(
-    "structured-scene"
-  );
-  const legacyComponents = doc.getMap<NonNullable<CanvasDocumentSeed["components"]>[number]>(
-    "structured-components"
-  );
   const legacyContent = hasLegacyContent(doc);
   if (pageIds.length === 0 && legacyContent) {
     pageIds.push(seed.activePageId ?? getDefaultCanvasPageId(id));
@@ -575,7 +537,7 @@ const migrateLegacyDocument = (
     }) &&
     root.pageOrder.toArray().length === pageIds.length &&
     root.pageOrder.toArray().every((pageId, index) => pageId === pageIds[index]);
-  if (validCurrentDocument) return false;
+  if (validCurrentDocument) return flattenedStructured;
 
   doc.transact(() => {
     pageIds.forEach((pageId, index) => {
@@ -586,42 +548,15 @@ const migrateLegacyDocument = (
       const pageOperations = doc.getArray<CellPlaneOperation>(
         prefix + "cell-plane-operations"
       );
-      const pageScene = doc.getMap<CanvasDocumentSeed["scene"][number]>(
-        prefix + "structured-scene"
-      );
-      const pageComponents = doc.getMap<NonNullable<CanvasDocumentSeed["components"]>[number]>(
-        prefix + "structured-components"
-      );
       const nestedOperations = readNestedType(
         rawDescriptor,
         ["operations", "cell-plane-operations"]
-      );
-      const nestedScene = readNestedType(
-        rawDescriptor,
-        ["scene", "structured-scene"]
-      );
-      const nestedComponents = readNestedType(
-        rawDescriptor,
-        ["components", "structured-components"]
       );
       if (pageOperations.length === 0 && nestedOperations instanceof Y.Array) {
         const valid = nestedOperations.toArray().filter(isCellPlaneOperation);
         if (valid.length > 0) pageOperations.push(valid);
       }
-      if (pageScene.size === 0 && nestedScene instanceof Y.Map) {
-        nestedScene.forEach((value, key) => pageScene.set(key, value));
-      }
-      if (pageComponents.size === 0 && nestedComponents instanceof Y.Map) {
-        nestedComponents.forEach((value, key) => pageComponents.set(key, value));
-      }
-
-      const rootMode = root.meta.get("mode");
-      const kind = seedPage?.kind ?? currentDescriptor?.kind ??
-        (seed.mode === "structured" || rootMode === "structured" ||
-            pageScene.size > 0 || pageComponents.size > 0
-          ? "structured"
-          : "cell-plane");
-      if (index === 0 && kind === "cell-plane" && pageOperations.length === 0) {
+      if (index === 0 && pageOperations.length === 0) {
         const legacyOperation = legacyGrid.size > 0
           ? gridEntriesToCellPlaneOperation(
               `legacy-bootstrap:${id}:${pageId}`,
@@ -634,17 +569,9 @@ const migrateLegacyDocument = (
           if (valid.length > 0) pageOperations.push(valid);
         }
       }
-      if (index === 0 && kind === "structured") {
-        if (pageScene.size === 0) {
-          legacyScene.forEach((value, key) => pageScene.set(key, value));
-        }
-        if (pageComponents.size === 0) {
-          legacyComponents.forEach((value, key) => pageComponents.set(key, value));
-        }
-      }
       root.pages.set(pageId, {
         id: pageId,
-        kind,
+        kind: "cell-plane",
         ...(seedPage?.name ?? currentDescriptor?.name
           ? { name: seedPage?.name ?? currentDescriptor?.name }
           : {}),
@@ -664,17 +591,16 @@ const migrateLegacyDocument = (
         : typeof storedActivePageId === "string" && pageIds.includes(storedActivePageId)
           ? storedActivePageId
           : pageIds[0]!;
-    const activeDescriptor = readCanvasPageDescriptor(
-      activePageId,
-      root.pages.get(activePageId)
-    );
     writeCanvasDocumentMetadata(
       root,
       id,
-      seed.mode ??
-        (activeDescriptor?.kind === "structured" ? "structured" : "freeform"),
+      seed.mode ?? (root.meta.get("mode") === "slide" ? "slide" : "freeform"),
       activePageId
     );
+    legacyGrid.clear();
+    operations.delete(0, operations.length);
+    doc.getMap("structured-scene").clear();
+    doc.getMap("structured-components").clear();
   }, "local-persistence-migration");
   if (!hasValidPages(doc)) {
     throw new Error(`Canvas document migration produced no valid pages: ${id}`);
@@ -715,7 +641,7 @@ const readLegacySessionSnapshots = (
       }
       snapshots.push({
         key: candidate,
-        state: migratePersistedStateToV6(
+        state: migratePersistedStateToV7(
           (envelope as { state: unknown }).state,
           version
         ),
@@ -787,23 +713,13 @@ const readPersistedDocumentShell = async (
               ? activePageId
               : slides[0]!.id,
         },
-        scene: [],
-        components: [],
         grid: [],
       };
     }
-    const structured = mode === "structured" ||
-      doc.getMap("structured-scene").size > 0 ||
-      pageIds.some((pageId) =>
-        readCanvasPageDescriptor(pageId, root.pages.get(pageId))?.kind ===
-          "structured"
-      );
     return {
       id,
       name,
-      mode: structured ? "structured" : "freeform",
-      scene: [],
-      components: [],
+      mode: "freeform",
       grid: [],
     };
   } finally {
@@ -919,17 +835,6 @@ const sessionsFromCatalog = (catalog: CanvasCatalogSnapshot): CanvasSessionSnaps
           slides,
           activeSlideId: session.activeSlideId ?? slides[0]?.id ?? "slide-1",
         },
-        scene: [],
-        components: [],
-        grid: [],
-      };
-    }
-    if (session.mode === "structured") {
-      return {
-        ...base,
-        mode: "structured",
-        scene: [],
-        components: [],
         grid: [],
       };
     }
@@ -945,8 +850,6 @@ const sessionsFromCatalog = (catalog: CanvasCatalogSnapshot): CanvasSessionSnaps
       collaborationRole: collaboration
         ? session.collaborationRole ?? "host"
         : undefined,
-      scene: [],
-      components: [],
       grid: [],
     };
   });
@@ -969,8 +872,7 @@ const hasRecoverableSessionContent = (session: CanvasSessionSnapshot) =>
     ? false
     : session.mode === "slide"
     ? session.slideDeck.slides.some((slide) => slide.grid.length > 0)
-    : session.grid.length > 0 || session.scene.length > 0 ||
-      (session.components?.length ?? 0) > 0;
+    : session.grid.length > 0;
 
 const createSourceSessionSeed = (
   session: SourceBackedCanvasSessionSnapshot,
@@ -986,14 +888,10 @@ const createSourceSessionSeed = (
         grid: slide.grid,
       })),
       grid: [],
-      scene: [],
-      components: [],
     }
   : {
       mode: "freeform",
       grid: [],
-      scene: [],
-      components: [],
     };
 
 const createSourceSessionDocument = (session: SourceBackedCanvasSessionSnapshot) => {
@@ -1682,11 +1580,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
         hydrated.tool
       );
       hydrated.slideDeck = documentRuntime.nextSlideDeck;
-      hydrated.structuredScene = documentRuntime.nextScene;
-      hydrated.structuredComponents = documentRuntime.nextComponents;
-      hydrated.contentSurface = activeDescriptor.mode === "structured"
-        ? createStructuredContentSurface(documentRuntime.nextScene)
-        : rebuildContentSurface(documents);
+      hydrated.contentSurface = rebuildContentSurface(documents);
       store.setState(hydrated, true);
       committed = true;
       this.#publish({
@@ -2089,8 +1983,6 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
           activePageId: session.slideDeck.activeSlideId,
           pages,
           grid: [],
-          scene: [],
-          components: [],
         });
         if (isActive) activeDocument = doc;
         else await this.#closePersistedDocument(session.id, doc);
@@ -2101,7 +1993,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
         if (isActive) {
           activeDocument = new Y.Doc({ guid: session.id });
         }
-        restored.push({ ...session, grid: [], scene: [], components: [] });
+        restored.push({ ...session, grid: [] });
         continue;
       }
       const existingSeed = documents.getDocumentSeed(
@@ -2118,8 +2010,6 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       restored.push({
         ...session,
         grid: seed?.grid ?? [],
-        scene: seed?.scene ?? [],
-        components: seed?.components ?? [],
       });
     }
     const resolvedActiveSession = restored.find(
@@ -2207,8 +2097,6 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
           grid: slide.grid,
         })),
         grid: [],
-        scene: [],
-        components: [],
       });
     }
     const seed = resetDocument
@@ -2231,8 +2119,6 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       migrateLegacyDocument(doc, id, {
         mode: "freeform",
         grid: [],
-        scene: [],
-        components: [],
       });
       return readCellPlaneGrid(doc);
     } finally {

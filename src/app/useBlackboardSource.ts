@@ -78,9 +78,6 @@ export const useBlackboardSource = ({ enabled }: { enabled: boolean }) => {
         const source = await response.text();
         const sourceName = response.headers.get("X-CharDesk-Source-Name") ?? "board.chardesk";
         const snapshot = await parseDocumentSessionSource(source, { sourceName });
-        if (snapshot.mode !== "freeform" && snapshot.mode !== "slide") {
-          throw new Error(`Blackboard package cannot project ${snapshot.mode} content.`);
-        }
         const preserveViewport = hasValidRevisionRef.current;
         const target = canvas.getState().canvasSessions.find(
           (session) => isSourceBackedCanvasSession(session) &&

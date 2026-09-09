@@ -10,7 +10,6 @@ import {
 } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { EDITOR_COMMAND_META } from "@/domains/actions/public";
 import { useCanvasRuntime, useCanvasState } from "@/domains/canvas/public";
 import { useEditor } from "@/domains/editor/public";
 import { useUiI18n } from "@/shared/i18n";
@@ -79,13 +78,6 @@ const textAttributeMeta = {
   },
 } as const;
 
-const actionIds = [
-  "structured-send-to-back",
-  "structured-send-backward",
-  "structured-bring-forward",
-  "structured-bring-to-front",
-] as const;
-
 const formatActionIds = {
   bold: "format-bold",
   italic: "format-italic",
@@ -113,7 +105,6 @@ export function CanvasInspectorControl({
       brushColor: value.brushColor,
       brushBackgroundColor: value.brushBackgroundColor,
       contentSurface: value.contentSurface,
-      structuredScene: value.structuredScene,
       interaction: value.interaction,
     }))
   );
@@ -126,18 +117,12 @@ export function CanvasInspectorControl({
         brushBackgroundColor: state.brushBackgroundColor,
         grid: state.contentSurface.reader,
         staticGridSelection: state.interaction.staticGridSelection,
-        structuredScene: state.structuredScene,
-        selectedStructuredNodeIds: state.interaction.selectedStructuredNodeIds,
-        structuredTextSelection: state.interaction.structuredTextSelection,
       }),
     [
       state.brushBackgroundColor,
       state.brushColor,
       state.canvasMode,
       state.contentSurface,
-      state.interaction.selectedStructuredNodeIds,
-      state.structuredScene,
-      state.interaction.structuredTextSelection,
       state.interaction.staticGridSelection,
       state.tool,
     ]
@@ -243,39 +228,21 @@ export function CanvasInspectorControl({
 
   const applyColor = (color: string) => {
     if (readOnly) return;
-    if (model.mode === "grid") {
-      if (model.canvasPickDestination === "background") {
-        canvas.commands.preferences.setBrushBackgroundColor(color);
-        if (model.hasSelection) {
-          canvas.commands.selection.setBackgroundColor(color);
-        }
-      } else {
-        canvas.commands.preferences.setBrushColor(color);
-        if (model.hasSelection) {
-          canvas.commands.selection.setForegroundColor(color);
-        }
+    if (model.canvasPickDestination === "background") {
+      canvas.commands.preferences.setBrushBackgroundColor(color);
+      if (model.hasSelection) {
+        canvas.commands.selection.setBackgroundColor(color);
       }
-      return;
-    }
-
-    canvas.commands.preferences.setBrushColor(color);
-    if (model.structured.target === "text-range") {
-      canvas.commands.structured.setTextColor(color);
-    } else if (model.structured.target === "nodes") {
-      canvas.commands.structured.setSelectionPrimaryColor(color);
+    } else {
+      canvas.commands.preferences.setBrushColor(color);
+      if (model.hasSelection) {
+        canvas.commands.selection.setForegroundColor(color);
+      }
     }
   };
 
-  const execute = (id: (typeof actionIds)[number]) => {
-    if (readOnly) return;
-    editor.commands.execute(id, { source: "inspector" }, "inspector");
-  };
-
-  const textFormatting =
-    model.mode === "grid" ? model.textFormatting : null;
+  const textFormatting = model.textFormatting;
   const textFormattingEnabled = textFormatting !== null;
-  const layerActionsEnabled =
-    model.mode === "structured" && model.structured.target === "nodes";
 
   const setTextAttribute = (attribute: TextAttributeName) => {
     if (readOnly || !textFormattingEnabled) return;
@@ -313,35 +280,6 @@ export function CanvasInspectorControl({
             className="absolute bottom-1 h-0.5 w-2 rounded-full bg-current"
           />
         )}
-      </TooltipTrigger>
-    );
-  };
-
-  const renderAction = (id: (typeof actionIds)[number]) => {
-    const meta = EDITOR_COMMAND_META[id];
-    const Icon = meta.icon;
-    const enabled =
-      layerActionsEnabled &&
-      !readOnly &&
-      editor.commands.canExecute(id, undefined, "availability");
-    return (
-      <TooltipTrigger
-        key={id}
-        handle={actionTooltipHandle}
-        payload={meta.label}
-        render={
-          <Button
-            type="button"
-            tone={meta.destructive ? "danger" : "subtle"}
-            shape="square"
-            size="xs"
-            aria-label={meta.label}
-            disabled={!enabled}
-            onClick={() => execute(id)}
-          />
-        }
-      >
-        {Icon && <Icon />}
       </TooltipTrigger>
     );
   };
@@ -416,17 +354,11 @@ export function CanvasInspectorControl({
                 <Surface kind="embedded" asChild>
                   <div
                     role="toolbar"
-                    aria-label={t(
-                      model.mode === "grid"
-                        ? "selection.textFormatting"
-                        : "inspector.arrange"
-                    )}
+                    aria-label={t("selection.textFormatting")}
                     data-testid="canvas-inspector-footer-actions"
                     className="flex w-full items-center justify-between gap-0.5 p-px"
                   >
-                    {model.mode === "grid"
-                      ? textAttributeNames.map(renderTextAttribute)
-                      : actionIds.map(renderAction)}
+                    {textAttributeNames.map(renderTextAttribute)}
                   </div>
                 </Surface>
               </div>

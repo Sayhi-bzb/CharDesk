@@ -81,8 +81,8 @@ describe('sessionHelpers', () => {
   });
 
   describe('normalizeSessionMode', () => {
-    it('should return structured for structured input', () => {
-      expect(normalizeSessionMode('structured')).toBe('structured');
+    it('should flatten retired structured input to freeform', () => {
+      expect(normalizeSessionMode('structured')).toBe('freeform');
     });
 
     it('should return freeform for freeform input', () => {
@@ -102,31 +102,28 @@ describe('sessionHelpers', () => {
   describe('withActiveCanvasSnapshot', () => {
     it('should update active session with snapshot', () => {
       const sessions: CanvasSessionSnapshot[] = [
-        { id: '1', name: 'Canvas 1', mode: 'freeform', scene: [], grid: [] },
-        { id: '2', name: 'Canvas 2', mode: 'freeform', scene: [], grid: [] }
+        { id: '1', name: 'Canvas 1', mode: 'freeform', grid: [] },
+        { id: '2', name: 'Canvas 2', mode: 'freeform', grid: [] }
       ];
 
       const result = withActiveCanvasSnapshot(sessions, '1', {
-        mode: 'structured',
-        scene: [{ id: 'node1', type: 'box', order: 1, start: { x: 0, y: 0 }, end: { x: 10, y: 10 }, style: { color: '#000' } }],
+        mode: 'freeform',
         grid: [['key1', { char: 'A', color: '#000' }]]
       });
 
-      expect(result[0].mode).toBe('structured');
-      expect(result[0].scene).toHaveLength(1);
+      expect(result[0].mode).toBe('freeform');
       expect(result[0].grid).toHaveLength(1);
       expect(result[1]).toEqual(sessions[1]); // Unchanged
     });
 
     it('should not modify non-active sessions', () => {
       const sessions: CanvasSessionSnapshot[] = [
-        { id: '1', name: 'Canvas 1', mode: 'freeform', scene: [], grid: [] },
-        { id: '2', name: 'Canvas 2', mode: 'freeform', scene: [], grid: [] }
+        { id: '1', name: 'Canvas 1', mode: 'freeform', grid: [] },
+        { id: '2', name: 'Canvas 2', mode: 'freeform', grid: [] }
       ];
 
       const result = withActiveCanvasSnapshot(sessions, '999', {
-        mode: 'structured',
-        scene: [],
+        mode: 'freeform',
         grid: []
       });
 

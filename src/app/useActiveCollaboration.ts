@@ -39,16 +39,10 @@ export const useActiveCollaboration = ({ enabled = true }: { enabled?: boolean }
       ?.collaborationRole ?? "host"
   );
   const canvasMode = useCanvasState((state) => state.canvasMode);
-  const selectedStructuredNodeIds = useCanvasState(
-    (state) => state.interaction.selectedStructuredNodeIds
-  );
   const staticGridSelection = useCanvasState((state) => state.interaction.staticGridSelection);
   const contentSurface = useCanvasState((state) => state.contentSurface);
   const selection = useMemo(
     () => {
-      if (canvasMode === "structured") {
-        return { mode: "structured" as const, nodeIds: selectedStructuredNodeIds };
-      }
       if (canvasMode === "freeform") {
         return {
           mode: "freeform" as const,
@@ -60,7 +54,7 @@ export const useActiveCollaboration = ({ enabled = true }: { enabled?: boolean }
       }
       return undefined;
     },
-    [canvasMode, contentSurface, selectedStructuredNodeIds, staticGridSelection]
+    [canvasMode, contentSurface, staticGridSelection]
   );
   const tool = useCanvasState((state) => state.tool);
   const joinCollaboration = canvas.commands.sessions.joinCollaboration;

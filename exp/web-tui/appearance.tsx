@@ -2,6 +2,7 @@ import { Moon } from "pixelarticons/react/Moon";
 import { Sun } from "pixelarticons/react/Sun";
 import { createContext, useContext, useLayoutEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
+import { CLASSIC_CELL_FEEDBACK, resolveCellFeedback, type CellFeedbackConfig } from "@chardesk/cell-ui";
 import { CellSurface, DEFAULT_CELL_UI_METRICS, loadCellFontMetrics, useCellCssTheme, useCellSelectState, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
 import { Root, Select, SelectContent, SelectItem, SelectTrigger, Text, resolveCellUiTheme } from "@chardesk/cell-ui";
 import {
@@ -19,6 +20,7 @@ const galleryFontLabels: Record<GalleryFont, string> = {
 };
 
 const AppearanceContext = createContext({
+  feedback: CLASSIC_CELL_FEEDBACK,
   mode: "light" as "light" | "dark",
   font: "maple" as GalleryFont,
   pendingFont: null as GalleryFont | null,
@@ -44,7 +46,7 @@ const subscribe = (callback: () => void) => {
   query.addEventListener("change", callback);
   return () => query.removeEventListener("change", callback);
 };
-export function GalleryAppearance({ children }: { children: ReactNode }) {
+export function GalleryAppearance({ children, feedback }: { children: ReactNode; feedback?: Partial<CellFeedbackConfig> }) {
   const dark = useSyncExternalStore(subscribe, () => query.matches, () => false);
   const [preference, setPreference] = useState(readPreference);
   const [font, setFont] = useState<GalleryFont>("maple");
@@ -106,7 +108,7 @@ export function GalleryAppearance({ children }: { children: ReactNode }) {
     colorScheme: mode,
     "--gallery-font-size": `${DEFAULT_CELL_UI_METRICS.fontSize}px`,
   } as CSSProperties;
-  return <AppearanceContext.Provider value={{ ...appearance, mode, font, pendingFont, fontStatus, fontMessage, fontProfile, toggleTheme, selectFont }}>
+  return <AppearanceContext.Provider value={{ ...appearance, feedback: resolveCellFeedback(feedback), mode, font, pendingFont, fontStatus, fontMessage, fontProfile, toggleTheme, selectFont }}>
     <div ref={rootRef} className="gallery-page" data-gallery-theme={mode} data-gallery-font={font} data-gallery-font-status={fontStatus} style={style}>{children}</div>
   </AppearanceContext.Provider>;
 }
@@ -208,6 +210,6 @@ export function GalleryFontSelect() {
   </div>;
 }
 export function GallerySurface(props: CellSurfaceProps) {
-  const { theme, palette, fontProfile } = useGalleryAppearance();
-  return <CellSurface {...props} theme={theme} palette={palette} fontProfile={fontProfile} glyphOverflow="visible" />;
+  const { theme, palette, fontProfile, feedback } = useGalleryAppearance();
+  return <CellSurface {...props} theme={theme} feedback={feedback} palette={palette} fontProfile={fontProfile} glyphOverflow="visible" />;
 }

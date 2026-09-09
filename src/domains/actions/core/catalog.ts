@@ -81,57 +81,6 @@ export const EDITOR_COMMAND_META: Record<EditorActionId, ActionMeta<EditorAction
     label: "Inverse",
     shortcuts: ["mod+k i"],
   },
-  "structured-rename": {
-    id: "structured-rename",
-    label: "Rename",
-    icon: HOST_ICONOLOGY.editorAction["structured-rename"],
-  },
-  "structured-bring-forward": {
-    id: "structured-bring-forward",
-    label: "Bring Forward",
-    icon: HOST_ICONOLOGY.editorAction["structured-bring-forward"],
-  },
-  "structured-send-backward": {
-    id: "structured-send-backward",
-    label: "Send Backward",
-    icon: HOST_ICONOLOGY.editorAction["structured-send-backward"],
-  },
-  "structured-bring-to-front": {
-    id: "structured-bring-to-front",
-    label: "Bring to Front",
-    icon: HOST_ICONOLOGY.editorAction["structured-bring-to-front"],
-  },
-  "structured-send-to-back": {
-    id: "structured-send-to-back",
-    label: "Send to Back",
-    icon: HOST_ICONOLOGY.editorAction["structured-send-to-back"],
-  },
-  "structured-duplicate": {
-    id: "structured-duplicate",
-    label: "Duplicate",
-    icon: HOST_ICONOLOGY.editorAction["structured-duplicate"],
-  },
-  "structured-copy-hierarchy": {
-    id: "structured-copy-hierarchy",
-    label: "Copy Structure",
-    icon: HOST_ICONOLOGY.editorAction["structured-copy-hierarchy"],
-  },
-  "structured-split-horizontal": {
-    id: "structured-split-horizontal",
-    label: "Split Horizontal",
-    icon: HOST_ICONOLOGY.editorAction["structured-split-horizontal"],
-  },
-  "structured-split-vertical": {
-    id: "structured-split-vertical",
-    label: "Split Vertical",
-    icon: HOST_ICONOLOGY.editorAction["structured-split-vertical"],
-  },
-  "structured-delete-divider": {
-    id: "structured-delete-divider",
-    label: "Delete Divider",
-    icon: HOST_ICONOLOGY.editorAction["structured-delete-divider"],
-    destructive: true,
-  },
 };
 
 export const TOOLBAR_ACTION_META: Record<ToolbarActionId, ActionMeta<ToolbarActionId>> = {
@@ -202,27 +151,6 @@ export const CANVAS_CONTEXT_MENU: ContextMenuEntry[] = [
   { type: "action", id: "copy-ansi" },
   { type: "action", id: "snapshot-png" },
   { type: "action", id: "paste" },
-  { type: "separator" },
-  { type: "action", id: "delete-selection" },
-];
-
-export const STRUCTURED_CONTEXT_MENU: ContextMenuEntry[] = [
-  { type: "action", id: "structured-rename" },
-  {
-    type: "submenu",
-    label: "Layer",
-    icon: HOST_ICONOLOGY.editorAction["structured-layer-menu"],
-    children: [
-      { type: "action", id: "structured-bring-forward" },
-      { type: "action", id: "structured-send-backward" },
-      { type: "action", id: "structured-bring-to-front" },
-      { type: "action", id: "structured-send-to-back" },
-    ],
-  },
-  { type: "separator" },
-  { type: "action", id: "structured-duplicate" },
-  { type: "action", id: "structured-copy-hierarchy" },
-  { type: "action", id: "cut" },
   { type: "separator" },
   { type: "action", id: "delete-selection" },
 ];

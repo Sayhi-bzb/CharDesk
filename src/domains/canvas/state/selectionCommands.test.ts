@@ -215,20 +215,6 @@ describe("selection commands setTextAttributes", () => {
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
   });
 
-  it("does not update cells in structured mode", () => {
-    setCanvasTestState({
-      canvasMode: "structured",
-      contentSurface: new TestCanvasContentSurface([["0,0", { char: "A", color: "#ffffff" }]]),
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
-    });
-
-    canvasCommands.selection.setTextAttributes({ bold: true });
-
-    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")).toEqual({
-      char: "A",
-      color: "#ffffff",
-    });
-  });
 });
 
 
@@ -384,18 +370,4 @@ describe("selection commands setBackgroundColor", () => {
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
   });
 
-  it("does not update background color in structured mode", () => {
-    setCanvasTestState({
-      canvasMode: "structured",
-      contentSurface: new TestCanvasContentSurface([["0,0", { char: "A", color: "#ffffff" }]]),
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
-    });
-
-    canvasCommands.selection.setBackgroundColor("#2563eb");
-
-    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")).toEqual({
-      char: "A",
-      color: "#ffffff",
-    });
-  });
 });

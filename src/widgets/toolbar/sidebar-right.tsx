@@ -25,12 +25,12 @@ import {
   useLibraryStore,
   type CharacterViewId,
 } from "@/domains/character-library/public";
-import { StructuredTemplateLibrary } from "./structured-template-library";
+import { CanvasTemplateLibrary } from "./canvas-template-library";
 import { SlideAddButton, SlideNavigator } from "./slide-navigator";
 import {
-  STRUCTURED_COMPONENT_TEMPLATES,
-  STRUCTURED_PAGE_TEMPLATES,
-} from "@/domains/structured-content/public";
+  CANVAS_COMPONENT_TEMPLATES,
+  CANVAS_PAGE_TEMPLATES,
+} from "@/domains/canvas-templates/public";
 
 
 
@@ -48,23 +48,23 @@ import {
 } from "@/domains/sessions/public";
 import { useOnboardingTour } from "@/widgets/onboarding/onboarding-context";
 
-type StructuredSidebarTab = "template" | "components";
+type TemplateSidebarTab = "template" | "components";
 type SlideSidebarView = "slides" | CharacterViewId;
 
-const STRUCTURED_SIDEBAR_TABS: Array<{
-  id: StructuredSidebarTab;
+const TEMPLATE_SIDEBAR_TABS: Array<{
+  id: TemplateSidebarTab;
   labelKey: "sidebar.tab.template" | "sidebar.tab.components";
   icon: LucideIcon;
 }> = [
   {
-    id: "template",
-    labelKey: "sidebar.tab.template",
-    icon: HOST_ICONOLOGY.structuredView.template,
-  },
-  {
     id: "components",
     labelKey: "sidebar.tab.components",
-    icon: HOST_ICONOLOGY.structuredView.components,
+    icon: HOST_ICONOLOGY.templateView.components,
+  },
+  {
+    id: "template",
+    labelKey: "sidebar.tab.template",
+    icon: HOST_ICONOLOGY.templateView.template,
   },
 ];
 
@@ -80,6 +80,11 @@ const CHARACTER_VIEWS = [
   { id: "emoji", labelKey: "character.view.emoji", icon: HOST_ICONOLOGY.characterView.emoji },
   { id: "unicode", labelKey: "character.view.unicode", icon: HOST_ICONOLOGY.characterView.unicode },
 ] as const;
+
+type FreeformSidebarView = CharacterViewId | TemplateSidebarTab;
+
+const isCharacterView = (view: FreeformSidebarView): view is CharacterViewId =>
+  CHARACTER_VIEWS.some(({ id }) => id === view);
 
 function SidebarViewRail<ViewId extends string>({
   views,
@@ -186,46 +191,45 @@ export function SidebarRight({
   const isCollapsed = state === "collapsed" && !isMobile;
   const { t } = useUiI18n();
   const { phase: onboardingPhase } = useOnboardingTour();
-  const [structuredSidebarTab, setStructuredSidebarTab] =
-    useState<StructuredSidebarTab>("components");
-  const [structuredLibraryQuery, setStructuredLibraryQuery] = useState("");
-  const [activeCharacterView, setActiveCharacterView] =
-    useState<CharacterViewId>("essentials");
+  const [activeFreeformView, setActiveFreeformView] =
+    useState<FreeformSidebarView>("components");
+  const [templateQuery, setTemplateQuery] = useState("");
   const [activeSlideView, setActiveSlideView] =
     useState<SlideSidebarView>("slides");
   const [unicodeQuery, setUnicodeQuery] = useState("");
   const navigationOnly = canvasMode === "slide" && readOnly;
-  const structuredSearchRef = useRef<HTMLInputElement>(null);
+  const templateSearchRef = useRef<HTMLInputElement>(null);
   const characterViews: ReadonlyArray<SidebarView<CharacterViewId>> =
     CHARACTER_VIEWS.map((view) => ({
       id: view.id,
       label: t(view.labelKey),
       icon: view.icon,
     }));
-  const activeCharacterViewMeta =
-    characterViews.find((view) => view.id === activeCharacterView) ??
-    characterViews[0];
   const slideViews: ReadonlyArray<SidebarView<SlideSidebarView>> = [
     { id: "slides", label: t("slide.sidebar.title"), icon: HOST_ICONOLOGY.canvasMode.slide },
     ...characterViews,
   ];
-  const structuredViews = STRUCTURED_SIDEBAR_TABS.map((view) => ({
+  const templateViews = TEMPLATE_SIDEBAR_TABS.map((view) => ({
     id: view.id,
     label: t(view.labelKey),
     icon: view.icon,
   }));
-  const activeStructuredViewMeta =
-    structuredViews.find((view) => view.id === structuredSidebarTab) ??
-    structuredViews[0];
+  const freeformViews: ReadonlyArray<SidebarView<FreeformSidebarView>> = [
+    ...templateViews,
+    ...characterViews,
+  ];
+  const activeFreeformViewMeta =
+    freeformViews.find((view) => view.id === activeFreeformView) ??
+    freeformViews[0];
   const orientation = isMobile ? "horizontal" : "vertical";
-  const structuredLibrary =
-    structuredSidebarTab === "template"
+  const templateLibrary =
+    activeFreeformView === "template"
       ? {
-          templates: STRUCTURED_PAGE_TEMPLATES,
+          templates: CANVAS_PAGE_TEMPLATES,
           emptyLabel: t("sidebar.empty.templates"),
         }
       : {
-          templates: STRUCTURED_COMPONENT_TEMPLATES,
+          templates: CANVAS_COMPONENT_TEMPLATES,
           emptyLabel: t("sidebar.empty.components"),
         };
 
@@ -242,20 +246,15 @@ export function SidebarRight({
   useEffect(() => {
     if (onboardingPhase !== "preparing-template") return;
     const timeoutId = window.setTimeout(() => {
-      setStructuredSidebarTab("components");
-      setStructuredLibraryQuery("");
+    setActiveFreeformView("components");
+    setTemplateQuery("");
       setOpen(true);
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [onboardingPhase, setOpen]);
 
-  const selectCharacterView = (view: CharacterViewId) => {
-    setActiveCharacterView(view);
-    if (isCollapsed) setOpen(true);
-  };
-
-  const selectStructuredView = (view: StructuredSidebarTab) => {
-    setStructuredSidebarTab(view);
+  const selectFreeformView = (view: FreeformSidebarView) => {
+    setActiveFreeformView(view);
     if (isCollapsed) setOpen(true);
   };
 
@@ -301,79 +300,65 @@ export function SidebarRight({
     case "freeform":
       viewRail = (
         <SidebarViewRail
-          views={characterViews}
-          activeView={activeCharacterView}
+          views={freeformViews}
+          activeView={activeFreeformView}
           orientation={orientation}
-          onSelect={selectCharacterView}
+          onSelect={selectFreeformView}
           ariaLabel={t("sidebar.characterViews")}
-          testIdPrefix="character"
+          testIdPrefix="freeform"
         />
       );
-      viewContent = renderCharacterPanel(
-        activeCharacterView,
-        activeCharacterViewMeta.label
-      );
-      headerContent = renderSearchForm(activeCharacterView);
-      break;
-    case "structured":
-      viewRail = (
-        <SidebarViewRail
-          views={structuredViews}
-          activeView={structuredSidebarTab}
-          orientation={orientation}
-          onSelect={selectStructuredView}
-          ariaLabel={t("sidebar.structuredViews")}
-          testIdPrefix="structured"
-        />
-      );
-      viewContent = (
-        <SurfaceContent
-          role="tabpanel"
-          aria-label={activeStructuredViewMeta.label}
-        >
-          <StructuredTemplateLibrary
-            templates={structuredLibrary.templates}
-            query={structuredLibraryQuery}
-            emptyLabel={structuredLibrary.emptyLabel}
-          />
-        </SurfaceContent>
-      );
-      headerContent = (
-        <div className="relative min-w-0 flex-1">
-          <Input
-            ref={structuredSearchRef}
-            type="search"
-            aria-label={t("sidebar.search.structured")}
-            value={structuredLibraryQuery}
-            onChange={(event) => setStructuredLibraryQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key !== "Escape" || !structuredLibraryQuery) return;
-              event.preventDefault();
-              event.stopPropagation();
-              setStructuredLibraryQuery("");
-            }}
-            placeholder={t("sidebar.search.placeholder")}
-            appearance="search"
-            className={cn(
-              "h-8 w-full px-2 pr-9 [&::-webkit-search-cancel-button]:hidden"
-            )}
-          />
-          {structuredLibraryQuery ? (
-            <IconButton
-              type="button"
-              size="xs"
-              aria-label={t("search.clear")}
-              onClick={() => {
-                setStructuredLibraryQuery("");
-                structuredSearchRef.current?.focus();
+      if (isCharacterView(activeFreeformView)) {
+        viewContent = renderCharacterPanel(
+          activeFreeformView,
+          activeFreeformViewMeta.label
+        );
+        headerContent = renderSearchForm(activeFreeformView);
+      } else {
+        viewContent = (
+          <SurfaceContent role="tabpanel" aria-label={activeFreeformViewMeta.label}>
+            <CanvasTemplateLibrary
+              templates={templateLibrary.templates}
+              query={templateQuery}
+              emptyLabel={templateLibrary.emptyLabel}
+            />
+          </SurfaceContent>
+        );
+        headerContent = (
+          <div className="relative min-w-0 flex-1">
+            <Input
+              ref={templateSearchRef}
+              type="search"
+              aria-label={t("sidebar.search.templates")}
+              value={templateQuery}
+              onChange={(event) => setTemplateQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape" || !templateQuery) return;
+                event.preventDefault();
+                event.stopPropagation();
+                setTemplateQuery("");
               }}
-              className="absolute right-1 top-1/2 -translate-y-1/2"
-            >
-              <X />
-            </IconButton>
-          ) : null}
-        </div>
-      );
+              placeholder={t("sidebar.search.placeholder")}
+              appearance="search"
+              className="h-8 w-full px-2 pr-9 [&::-webkit-search-cancel-button]:hidden"
+            />
+            {templateQuery ? (
+              <IconButton
+                type="button"
+                size="xs"
+                aria-label={t("search.clear")}
+                onClick={() => {
+                  setTemplateQuery("");
+                  templateSearchRef.current?.focus();
+                }}
+                className="absolute right-1 top-1/2 -translate-y-1/2"
+              >
+                <X />
+              </IconButton>
+            ) : null}
+          </div>
+        );
+      }
       break;
     case "slide": {
       if (navigationOnly) {

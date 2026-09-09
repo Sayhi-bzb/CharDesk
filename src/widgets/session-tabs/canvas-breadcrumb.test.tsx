@@ -39,16 +39,12 @@ describe("CanvasBreadcrumb", () => {
   const setTwoSessions = () => {
     act(() => {
       defaultCanvasDocuments.activateDocument("canvas-b", {
-        mode: "structured",
+        mode: "freeform",
         grid: [],
-        scene: [],
-        components: [],
       });
       defaultCanvasDocuments.activateDocument("canvas-a", {
         mode: "freeform",
         grid: [],
-        scene: [],
-        components: [],
       });
       useEditorStore.setState({
         activeCanvasId: "canvas-a",
@@ -62,7 +58,7 @@ describe("CanvasBreadcrumb", () => {
           {
             id: "canvas-b",
             name: "Beta",
-            mode: "structured",
+            mode: "freeform",
           },
         ],
       });
@@ -152,13 +148,13 @@ describe("CanvasBreadcrumb", () => {
     act(() => {
       useEditorStore.setState((state) => ({
         canvasSessions: state.canvasSessions.map((session) =>
-          session.id === "canvas-b" && session.mode === "structured"
+          session.id === "canvas-b"
             ? {
                 ...session,
                 collaboration: {
                   version: 6,
                   documentVersion: 6,
-                  mode: "structured",
+                  mode: "freeform",
                   provider: "websocket",
                   roomId: "room-id-1234567890",
                   key: "room-key-1234567890123456789012345678901234567890",
@@ -184,7 +180,7 @@ describe("CanvasBreadcrumb", () => {
     expect(sharedRow).toHaveClass("bg-success-muted");
   });
 
-  it("exposes stable onboarding targets for creating a Structured Canvas", async () => {
+  it("exposes stable onboarding targets for creating a Freeform Canvas", async () => {
     render(<CanvasBreadcrumb />);
 
     const trigger = screen.getByRole("button", { name: "Select canvas" });
@@ -200,9 +196,9 @@ describe("CanvasBreadcrumb", () => {
       "w-[calc(50vw-1.5rem)]",
       "max-w-44"
     );
-    expect(screen.getByRole("menuitem", { name: "New Structured" })).toHaveAttribute(
+    expect(screen.getByRole("menuitem", { name: "New Freeform" })).toHaveAttribute(
       "data-onboarding-target",
-      "create-structured"
+      "create-freeform"
     );
   });
 

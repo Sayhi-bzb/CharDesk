@@ -13,8 +13,6 @@ const context = (
   staticGridInteraction: "navigate",
   hasTextCursor: false,
   hasActiveSelection: false,
-  hasStructuredSelection: false,
-  hasStructuredGridFocus: false,
   colorPickerOpen: false,
   pageRows: 12,
   ...overrides,
@@ -49,7 +47,7 @@ describe("managed Canvas keyboard rules", () => {
     });
   });
 
-  it("keeps text and structured navigation as separate intents", () => {
+  it("keeps text navigation separate from grid navigation", () => {
     expect(decide({ key: "Backspace" }, {
       staticGridInteraction: "text-edit",
       hasTextCursor: true,
@@ -58,10 +56,6 @@ describe("managed Canvas keyboard rules", () => {
       staticGridInteraction: null,
       hasTextCursor: true,
     }).intent).toEqual({ type: "move-text-cursor", dx: 0, dy: 1 });
-    expect(decide({ key: "ArrowLeft" }, {
-      staticGridInteraction: null,
-      hasStructuredGridFocus: true,
-    }).intent).toEqual({ type: "move-structured-grid-focus", dx: -1, dy: 0 });
   });
 
   it("resolves Escape by the existing ownership priority", () => {
@@ -72,8 +66,6 @@ describe("managed Canvas keyboard rules", () => {
       [{ colorPickerOpen: true }, "color-picker"],
       [{ staticGridInteraction: "text-edit" }, "grid-text-edit"],
       [{ hasTextCursor: true }, "text-cursor"],
-      [{ hasStructuredSelection: true }, "structured-selection"],
-      [{ hasStructuredGridFocus: true }, "structured-grid-focus"],
       [{ hasActiveSelection: true }, "selection"],
       [{}, "none"],
     ];

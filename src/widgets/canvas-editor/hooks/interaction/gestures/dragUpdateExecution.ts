@@ -1,40 +1,15 @@
-import type { Point } from "@/shared/types";
-import type { CanvasMode } from "@/domains/sessions/public";
 import type { ToolType } from "@/domains/canvas/public";
-import type { StructuredNode } from "@/domains/structured-content/public";
 import type { CanvasInteractionState } from "@/domains/editor/public";
-import {
-  resizeStructuredLine,
-  resizeStructuredRect,
-  resizeStructuredSplitBox,
-} from "@/domains/structured-content/public";
-import type { StructuredNodeDragPayload } from "../structured/structuredDragStart";
-import type { StructuredPreviewQueueController } from "../structured/structuredPreviewQueueExecution";
+import type { CanvasMode } from "@/domains/sessions/public";
+import type { Point } from "@/shared/types";
 import { resolveDragUpdateDecision, type DragUpdateDecision } from "./dragUpdateInteraction";
 
 export type DragUpdateExecutor = {
   setInteractionState: (state: CanvasInteractionState) => void;
-  setSelectionPreview: (selection: Extract<DragUpdateDecision, { type: "selection-preview" }>["preview"]) => void;
+  setSelectionPreview: (
+    selection: Extract<DragUpdateDecision, { type: "selection-preview" }>["preview"]
+  ) => void;
   draw: (point: Point) => void;
-  queueStructuredMove: (
-    drag: StructuredNodeDragPayload,
-    delta: Point,
-    scene: StructuredNode[]
-  ) => void;
-  queueStructuredSplitBoxResize: (
-    drag: StructuredNodeDragPayload,
-    point: Point,
-    scene: StructuredNode[]
-  ) => void;
-  updateStructuredNode: (
-    nodeId: string,
-    updater: (node: StructuredNode) => StructuredNode,
-    mode: "merge"
-  ) => void;
-  setStructuredTextSelection: (
-    selection: Extract<DragUpdateDecision, { type: "structured-text-selection" }>["selection"]
-  ) => void;
-  setTextCursor: (point: Point) => void;
   updateScratchForShape: (
     tool: ToolType,
     start: Point,
@@ -51,72 +26,18 @@ export const executeDragUpdateDecision = (
     state: CanvasInteractionState;
     currentGrid: Point;
     tool: ToolType;
-    structuredScene: StructuredNode[];
     updateEraserHover: boolean;
   }
 ): void => {
   switch (decision.type) {
     case "selection-preview":
-      if (context.state.type === "selecting") executor.setInteractionState({
-        ...context.state,
-        current: context.currentGrid,
-      });
+      if (context.state.type === "selecting") {
+        executor.setInteractionState({ ...context.state, current: context.currentGrid });
+      }
       executor.setSelectionPreview(decision.preview);
       break;
     case "drawing":
       executor.draw(decision.point);
-      break;
-    case "structured-move":
-      executor.queueStructuredMove(
-        decision.drag,
-        decision.delta,
-        context.structuredScene
-      );
-      break;
-    case "structured-rect-resize":
-      executor.updateStructuredNode(
-        decision.node.id,
-        () => resizeStructuredRect(decision.node, decision.handle, decision.point),
-        "merge"
-      );
-      break;
-    case "structured-splitbox-begin-divider-resize":
-      executor.setInteractionState(decision.nextState);
-      executor.queueStructuredSplitBoxResize(
-        decision.drag,
-        decision.point,
-        context.structuredScene
-      );
-      break;
-    case "structured-splitbox-divider-resize":
-      executor.queueStructuredSplitBoxResize(
-        decision.drag,
-        decision.point,
-        context.structuredScene
-      );
-      break;
-    case "structured-splitbox-resize":
-      executor.updateStructuredNode(
-        decision.node.id,
-        () =>
-          resizeStructuredSplitBox(
-            decision.node,
-            decision.handle,
-            decision.point
-          ),
-        "merge"
-      );
-      break;
-    case "structured-line-resize":
-      executor.updateStructuredNode(
-        decision.node.id,
-        () => resizeStructuredLine(decision.node, decision.handle, decision.point),
-        "merge"
-      );
-      break;
-    case "structured-text-selection":
-      executor.setStructuredTextSelection(decision.selection);
-      executor.setTextCursor(decision.cursor);
       break;
     case "shape-preview":
       if (context.state.type === "shapePreview") {
@@ -136,87 +57,41 @@ export const executeDragUpdateDecision = (
     case "none":
       break;
   }
-
-  if (context.updateEraserHover) {
-    executor.setHoveredGrid(context.currentGrid);
-  }
+  if (context.updateEraserHover) executor.setHoveredGrid(context.currentGrid);
 };
 
 export const createDragUpdateExecutor = ({
   setInteractionState,
   setSelectionPreview,
   draw,
-  structuredPreviewQueue,
-  updateStructuredNode,
-  setStructuredTextSelection,
-  setTextCursor,
   updateScratchForShape,
   setHoveredGrid,
-}: {
-  setInteractionState: (state: CanvasInteractionState) => void;
-  setSelectionPreview: DragUpdateExecutor["setSelectionPreview"];
-  draw: (point: Point) => void;
-  structuredPreviewQueue: StructuredPreviewQueueController;
-  updateStructuredNode: DragUpdateExecutor["updateStructuredNode"];
-  setStructuredTextSelection: DragUpdateExecutor["setStructuredTextSelection"];
-  setTextCursor: DragUpdateExecutor["setTextCursor"];
-  updateScratchForShape: DragUpdateExecutor["updateScratchForShape"];
-  setHoveredGrid: DragUpdateExecutor["setHoveredGrid"];
-}): DragUpdateExecutor => ({
+}: DragUpdateExecutor): DragUpdateExecutor => ({
   setInteractionState,
   setSelectionPreview,
   draw,
-  queueStructuredMove: structuredPreviewQueue.queueMove,
-  queueStructuredSplitBoxResize: structuredPreviewQueue.queueSplitBoxResize,
-  updateStructuredNode,
-  setStructuredTextSelection,
-  setTextCursor,
   updateScratchForShape,
   setHoveredGrid,
 });
 
-type DragUpdateHandler = ({
+export const createDragUpdateHandler = ({ executor }: { executor: DragUpdateExecutor }) => ({
   state,
   tool,
   canvasMode,
   currentGrid,
-  structuredScene,
 }: {
   state: CanvasInteractionState;
   tool: ToolType;
   canvasMode: CanvasMode;
   currentGrid: Point;
-  structuredScene: StructuredNode[];
-}) => void;
-
-export const createDragUpdateHandler = ({
-  executor,
-}: {
-  executor: DragUpdateExecutor;
-}): DragUpdateHandler => ({
-  state,
-  tool,
-  canvasMode,
-  currentGrid,
-  structuredScene,
 }) =>
   executeDragUpdateDecision(
-    resolveDragUpdateDecision({
-      canvasMode,
-      currentGrid,
-          structuredScene,
-      state,
-    }),
+    resolveDragUpdateDecision({ canvasMode, currentGrid, state }),
     executor,
     {
       state,
       currentGrid,
-      tool:
-        state.type === "drawing" || state.type === "shapePreview"
-          ? state.tool
-          : tool,
-      structuredScene,
-      updateEraserHover:
-        state.type === "drawing" ? state.tool === "eraser" : tool === "eraser",
+      tool: state.type === "drawing" || state.type === "shapePreview" ? state.tool : tool,
+      updateEraserHover: state.type === "drawing" ? state.tool === "eraser" : tool === "eraser",
     }
   );

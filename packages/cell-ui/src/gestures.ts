@@ -97,6 +97,17 @@ export class GestureManager {
     return this.#arenas.has(pointerId);
   }
 
+  get manipulatingIds(): ReadonlySet<WidgetId> {
+    const ids = new Set<WidgetId>();
+    for (const arena of this.#arenas.values()) {
+      const candidate = arena.winner
+        ? arena.winner.kind === "drag" ? arena.winner : null
+        : arena.candidates.find((item) => item.kind === "drag") ?? null;
+      if (candidate) ids.add(candidate.targetId);
+    }
+    return ids;
+  }
+
   begin(
     pointerId: number,
     point: CellPoint,

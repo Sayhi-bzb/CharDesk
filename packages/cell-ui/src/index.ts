@@ -41,9 +41,14 @@ export type {
 export { PressManager, pressTargetAtPoint } from "./press.js";
 export {
   ActivationFeedbackManager,
-  CELL_ACTIVATION_FLASH_DURATION_MS,
   activationFeedbackTargetForCommand,
 } from "./activation-feedback.js";
+export {
+  CELL_ACTIVATION_BLINK_PHASE_MS,
+  DEFAULT_CELL_ACTIVATION_BLINK_COUNT,
+  resolveActivationBlinkCount,
+} from "./activation-feedback-config.js";
+export type { ActivationBlinkCount } from "./activation-feedback-config.js";
 export { YogaLayoutEngine } from "./layout.js";
 export type { LayoutEngine, YogaResourceCounts } from "./layout.js";
 export { FixedVirtualGrid } from "./virtual.js";
@@ -56,8 +61,13 @@ export type {
 export { paintScene } from "./paint.js";
 export type { PaintSceneOptions } from "./paint.js";
 export { CELL_UI_PERFORMANCE_BUDGET, percentile } from "./performance.js";
-export { DEFAULT_CELL_UI_THEME, resolveCellUiTheme, resolveCellStateStyle, resolveCellTextStyle } from "./theme.js";
-export type { CellCursorShape, CellCursorStyle, CellUiTheme, CellVisualState } from "./theme.js";
+export {
+  CLASSIC_MAC_DARK_THEME,
+  CLASSIC_MAC_LIGHT_THEME,
+  DEFAULT_CELL_UI_THEME,
+  resolveCellUiTheme,
+} from "./theme.js";
+export type { CellCursorShape, CellCursorStyle, CellUiTheme } from "./theme.js";
 export { nextCellCheckboxState } from "./checkbox.js";
 export type { ButtonSize, ButtonVariant } from "./button.js";
 export type { CellBorderShape } from "./border.js";
@@ -95,6 +105,13 @@ export {
   Box,
   Button,
   Checkbox,
+  Toggle,
+  Progress,
+  Separator,
+  RadioGroup,
+  RadioItem,
+  RangeSlider,
+  RangeSliderThumb,
   Slider,
   Grid,
   GridCell,
@@ -124,6 +141,13 @@ export type {
   BoxProps,
   ButtonProps,
   CheckboxProps,
+  ToggleProps,
+  ProgressProps,
+  SeparatorProps,
+  RadioGroupProps,
+  RadioItemProps,
+  RangeSliderProps,
+  RangeSliderThumbProps,
   SliderProps,
   GridCellProps,
   GridProps,
@@ -197,3 +221,8 @@ export type {
   WidgetNode,
   WidgetTree,
 } from "./types.js";
+
+export { resolveCellStateStyle, resolveCellTextStyle } from "./visual.js";
+export type { CellVisualState } from "./visual.js";
+export { CLASSIC_CELL_FEEDBACK, INSTANT_CELL_FEEDBACK, resolveCellFeedback } from "./feedback.js";
+export type { CellFeedbackConfig } from "./feedback.js";

@@ -19,7 +19,7 @@ describe("CharDesk canvas text", () => {
     });
   });
 
-  it("imports a canonical structured document without flattening its scene", async () => {
+  it("flattens a canonical legacy Structured document into Freeform cells", async () => {
     const snapshot = await parseDocumentSessionSource([
       "---",
       "chardesk: document/v1",
@@ -39,12 +39,11 @@ describe("CharDesk canvas text", () => {
       }),
     ].join("\n"));
 
-    expect(snapshot).toMatchObject({
-      mode: "structured",
-      name: "Diagram",
-      scene: [{ id: "box-1", type: "box" }],
-      components: [],
-    });
+    expect(snapshot).toMatchObject({ mode: "freeform", name: "Diagram" });
+    expect(snapshot).not.toHaveProperty("scene");
+    if (snapshot.mode !== "freeform") throw new Error("Expected Freeform migration");
+    expect(snapshot.grid.length).toBeGreaterThan(0);
+    expect(snapshot.grid.map(([, cell]) => cell.char)).toContain("╭");
   });
 
   it("rejects broken structured references", async () => {

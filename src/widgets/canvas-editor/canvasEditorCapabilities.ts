@@ -22,7 +22,6 @@ const COPY_ACTIONS = new Set<EditorActionId>([
   "copy-rich",
   "copy-ansi",
   "snapshot-png",
-  "structured-copy-hierarchy",
 ]);
 
 export const canUseCanvasEditorAction = (

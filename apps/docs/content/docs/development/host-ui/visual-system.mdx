@@ -36,11 +36,9 @@ enables the 600ms edit blink; it is local UI state, not document or history stat
 Navigate is steady. Text Edit blinks only while its Canvas owns input focus,
 becoming steady on focus loss. A Range hides the cursor, and inactive split views
 draw neither cursor nor Range. One Canvas Cell presentation resolver owns this
-precedence and emits one terminal-cursor, navigation-focus, or Range visual
-intent. Selecting and resting Ranges use a surface only; moving Ranges add the
-selection border. Structured mode retains a distinct navigation-focus contract
-rather than treating its active Cell as a text cursor. Canvas and Cell UI adapt
-their own theme values to the shared rendering contracts.
+precedence and emits one terminal-cursor or Range visual intent. Selecting and
+resting Ranges use a surface only; moving Ranges add the selection border.
+Canvas and Cell UI adapt their own theme values to the shared rendering contracts.
 
 Static Grid separates command targets from interaction semantics. The Selection
 domain publishes a target plus one `navigate`, `text-edit`, or `range`

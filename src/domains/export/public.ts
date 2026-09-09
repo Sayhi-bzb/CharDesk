@@ -11,4 +11,3 @@ export {
   exportToAnsi,
   exportToCharDesk,
 } from "./formats/text";
-export { exportStructuredHierarchyText } from "./formats/structuredText";

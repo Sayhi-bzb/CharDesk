@@ -12,8 +12,6 @@ import {
 
 export const DEFAULT_SESSION_ID = 'canvas-1';
 export const DEFAULT_SESSION_NAME = 'Welcome';
-export const DEFAULT_STRUCTURED_SESSION_ID = 'canvas-2';
-export const DEFAULT_STRUCTURED_SESSION_NAME = 'Canvas 2';
 export const DEFAULT_MODE = 'freeform' as const satisfies CanvasMode;
 const DEFAULT_VIEWPORT = { offset: { x: 0, y: 0 }, zoom: 1 };
 export const getSessionCanvasDocumentId = (
@@ -32,9 +30,7 @@ const normalizeSessionViewport = (
   return { offset: { x, y }, zoom };
 };
 
-const getFallbackToolForMode = (mode: CanvasMode): ToolType => {
-  return mode === 'structured' ? 'select' : 'brush';
-};
+const FALLBACK_TOOL: ToolType = 'brush';
 
 export const buildSessionSnapshot = (
   state: EditorState,
@@ -57,20 +53,8 @@ export const buildSessionSnapshot = (
       viewport,
     };
   }
-  if (state.canvasMode === 'structured') {
-    return {
-      mode: 'structured' as const,
-      scene: state.structuredScene,
-      components: state.structuredComponents,
-      grid: [],
-      viewport,
-    };
-  }
-
   return {
     mode: 'freeform' as const,
-    scene: [],
-    components: [],
     grid: Array.from(state.contentSurface.reader.materialize()),
     viewport,
   };
@@ -89,7 +73,7 @@ export const resolveSessionDescriptorRuntime = (
     nextMode,
     nextTool: isToolAllowedForMode(currentTool, nextMode)
       ? currentTool
-      : getFallbackToolForMode(nextMode),
+      : FALLBACK_TOOL,
     nextOffset,
     nextZoom,
   };
@@ -101,18 +85,11 @@ export const resolveSessionDocumentRuntime = (
   currentTool: ToolType
 ) => {
   const runtime = resolveSessionDescriptorRuntime(session, currentTool);
-  const seed = session.mode === 'slide'
-    ? null
-    : documents.getDocumentSeed(session.id, session.mode);
   return {
     ...runtime,
     nextSlideDeck:
       session.mode === 'slide'
         ? readSlideDeckDescriptor(documents, session.id)
         : null,
-    nextScene:
-      session.mode === 'structured' ? [...(seed?.scene ?? [])] : [],
-    nextComponents:
-      session.mode === 'structured' ? [...(seed?.components ?? [])] : [],
   };
 };

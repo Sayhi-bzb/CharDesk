@@ -1,5 +1,4 @@
 import type { GridCellSource, Point } from "@/shared/types";
-import type { StructuredNode } from "@/domains/structured-content/public";
 import { resolveCanvasLinkHit, type CanvasLinkHit } from "./linkHitTesting";
 import {
   getLocalCanvasPoint,
@@ -7,7 +6,6 @@ import {
   resolveSnappedGridPointFromScreen,
   type CanvasViewport,
 } from "./coordinates";
-import { resolveStructuredSelectHit as resolveStructuredSelectHover } from "./hitTesting";
 
 type CanvasRect = Pick<DOMRect, "left" | "top">;
 
@@ -24,15 +22,10 @@ export type CanvasPointerContextResolver = {
   resolveMoveContext: (input: {
     clientX: number;
     clientY: number;
-    shouldResolveStructuredSelectCursor: boolean;
     shouldResolveEraserHoverPoint: boolean;
-    selectedStructuredNodeIds: string[];
-    structuredScene: StructuredNode[];
-    editingStructuredTextNodeId: string | null;
   }) => {
     point: Point | null;
     linkHit: CanvasLinkHit | null;
-    structuredSelectCursor: string | null;
     eraserHoverPoint: Point | null;
   };
 };
@@ -126,33 +119,12 @@ export const createCanvasPointerContextResolver = ({
     ({
       clientX,
       clientY,
-      shouldResolveStructuredSelectCursor,
       shouldResolveEraserHoverPoint,
-      selectedStructuredNodeIds,
-      structuredScene,
-      editingStructuredTextNodeId,
     }) => {
       const point = resolveGridPoint(clientX, clientY);
-      const screenPoint = shouldResolveStructuredSelectCursor
-        ? resolveLocalPoint(clientX, clientY)
-        : null;
-      const viewport = getViewport();
-      const structuredSelectCursor = shouldResolveStructuredSelectCursor
-        ? resolveStructuredSelectHover({
-            screenPoint,
-            point,
-            selectedStructuredNodeIds,
-            structuredScene,
-            offset: viewport.offset,
-            zoom: viewport.zoom,
-            editingStructuredTextNodeId,
-          }).cursor
-        : null;
-
       return {
         point,
         linkHit: resolveLinkHit(clientX, clientY),
-        structuredSelectCursor,
         eraserHoverPoint: shouldResolveEraserHoverPoint
           ? resolveHoverPoint(clientX, clientY)
           : null,
@@ -169,5 +141,4 @@ export const createCanvasPointerContextResolver = ({
     resolveMoveContext,
   };
 };
-
 

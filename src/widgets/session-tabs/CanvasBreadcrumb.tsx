@@ -82,11 +82,6 @@ const createOptionMeta = [
     icon: HOST_ICONOLOGY.canvasMode.freeform,
   },
   {
-    kind: 'structured' as const,
-    labelKey: 'session.newStructured',
-    icon: HOST_ICONOLOGY.canvasMode.structured,
-  },
-  {
     kind: 'blackboard' as const,
     labelKey: 'session.newBlackboard',
     icon: HOST_ICONOLOGY.sourceKind.blackboard,
@@ -162,7 +157,7 @@ export function CanvasSessionSelector({
   const keepCreateMenuOpen =
     onboardingPhase === 'canvas-selector' ||
     onboardingPhase === 'create-menu' ||
-    onboardingPhase === 'structured-create';
+    onboardingPhase === 'canvas-create';
 
   const selectedId = selectedSessionId ?? activeCanvasId;
   const activeSession =
@@ -202,7 +197,7 @@ export function CanvasSessionSelector({
     closeSelector();
   };
 
-  const createSession = async (kind: 'freeform' | 'structured' | 'blackboard') => {
+  const createSession = async (kind: 'freeform' | 'blackboard') => {
     onActivate?.();
     if (kind === 'blackboard') {
       if (!blackboard) throw new Error('Blackboard runtime is unavailable.');
@@ -595,7 +590,7 @@ export function CanvasSessionSelector({
                     <DropdownMenuItem
                       key={option.kind}
                       data-onboarding-target={
-                        option.kind === 'structured' ? 'create-structured' : undefined
+                        option.kind === 'freeform' ? 'create-freeform' : undefined
                       }
                       onSelect={() => { void createSession(option.kind); }}
                     >

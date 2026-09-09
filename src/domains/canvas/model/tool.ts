@@ -1,4 +1,4 @@
-type ToolCanvasMode = "freeform" | "structured" | "slide";
+type ToolCanvasMode = "freeform" | "slide";
 
 export type ToolType =
   | "select"
@@ -15,7 +15,7 @@ export type ToolType =
   | "stepline"
   | "circle";
 
-const NON_STRUCTURED_TOOLS = [
+const CELL_PLANE_TOOLS = [
   "select",
   "pan",
   "brush",
@@ -30,18 +30,8 @@ const NON_STRUCTURED_TOOLS = [
 ] as const satisfies readonly ToolType[];
 
 const TOOLS_BY_MODE = {
-  freeform: NON_STRUCTURED_TOOLS,
-  structured: [
-    "select",
-    "pan",
-    "text",
-    "box",
-    "splitBox",
-    "line",
-    "arrowLine",
-    "bg",
-  ],
-  slide: NON_STRUCTURED_TOOLS,
+  freeform: CELL_PLANE_TOOLS,
+  slide: CELL_PLANE_TOOLS,
 } as const satisfies Record<ToolCanvasMode, readonly ToolType[]>;
 
 export const isToolAllowedForMode = (

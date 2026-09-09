@@ -1,3 +1,4 @@
+import { resolveWidgetVisual, resolveCellTextStyle } from "./visual.js";
 import {
   getGraphemeCellWidth,
   iterateGraphemes,
@@ -12,54 +13,15 @@ import type {
   WidgetTree,
 } from "./types.js";
 import type { CellTextLayoutSnapshot } from "./text.js";
-import { DEFAULT_CELL_UI_THEME, resolveCellStateStyle, resolveCellTextStyle, type CellUiTheme } from "./theme.js";
+import { DEFAULT_CELL_UI_THEME, type CellUiTheme } from "./theme.js";
 import { intersectSceneRects } from "./scene.js";
 import { thumbGlyph } from "./scrollbar.js";
 import { paintBorder } from "./border.js";
-import { isActionableKind, isFilledSurfaceKind } from "./widget-capabilities.js";
+import { isActionableKind } from "./widget-capabilities.js";
 import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
 import { checkboxChromeMetrics } from "./checkbox.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
-
-const stateOwner = (tree: WidgetTree, node: WidgetNode): WidgetNode | null => {
-  let current: WidgetNode | undefined = node;
-  while (current) {
-    if (isActionableKind(current.kind)) return current;
-    current = current.parentId ? tree.nodes.get(current.parentId) : undefined;
-  }
-  return null;
-};
-
-const stateStyle = (
-  tree: WidgetTree,
-  node: WidgetNode,
-  theme: CellUiTheme
-): CellTextStyle => {
-  const owner = stateOwner(tree, node);
-  const focusNode = owner
-    ?? (node.kind === "text-input" || node.kind === "text-area" ? node : null);
-  const focused = focusNode?.focused === true && focusNode.focusVisible;
-  const selected = owner?.selected === true;
-  const baseStyle = isFilledSurfaceKind(node.kind)
-    || (owner?.kind === "button" && owner.buttonVariant === "default")
-    || owner?.kind === "select-trigger"
-    ? { ...theme.surfaceStyle, ...node.textStyle }
-    : node.textStyle;
-  return resolveCellStateStyle(
-    baseStyle,
-    {
-      focused,
-      selected,
-      hovered: owner?.hovered,
-      pressActive: owner?.pressActive,
-      activationFlash: owner?.activationFlash,
-      collection: owner !== null,
-      disabled: node.disabled || owner?.disabled,
-    },
-    theme
-  );
-};
 
 const fill = (
   buffer: CellBuffer,
@@ -179,7 +141,8 @@ export const paintScene = (
     if (!node || !entry) continue;
     if (options.layer === "base" && entry.layer !== 0) continue;
     if (options.layer === "overlay" && entry.layer === 0) continue;
-    const style = stateStyle(tree, node, theme);
+    const visual = resolveWidgetVisual(tree, node, theme);
+    const { style } = visual;
     for (const region of regions) {
       const outerClip = intersectSceneRects(entry.outerClip, region);
       if (!nonEmpty(outerClip)) continue;
@@ -281,17 +244,36 @@ export const paintScene = (
           "over"
         );
       }
-      if (node.kind === "checkbox") {
+      if (node.kind === "toggle") {
+        const bounds = entry.decorationBounds;
+        buffer.writeGrapheme(bounds.x, bounds.y, "[", id, style, decorationClip, "over");
+        buffer.writeGrapheme(bounds.x + bounds.width - 1, bounds.y, "]", id, style, decorationClip, "over");
+      }
+      if (node.kind === "progress" || node.kind === "separator") {
+        const bounds = entry.decorationBounds;
+        const vertical = node.kind === "separator" && node.orientation === "vertical";
+        const length = vertical ? bounds.height : bounds.width;
+        const filled = node.progress ? Math.floor(length * node.progress.value / node.progress.max) : 0;
+        for (let offset = 0; offset < length; offset += 1) {
+          buffer.writeGrapheme(bounds.x + (vertical ? 0 : offset), bounds.y + (vertical ? offset : 0),
+            node.kind === "separator" ? vertical ? "│" : "─"
+              : offset < filled ? theme.progressFilledTrack : theme.progressEmptyTrack,
+            id, node.kind === "separator" ? { ...style, color: theme.borderStyle.color } : style,
+            decorationClip, "over");
+        }
+      }
+      if (node.kind === "checkbox" || node.kind === "radio-item") {
         const x = entry.decorationBounds.x
           + checkboxChromeMetrics(node.children.length > 0).indicatorOffset;
-        const indicator = node.checked === "indeterminate"
+        const radio = node.kind === "radio-item";
+        const indicator = radio ? node.checked ? theme.radioCheckedIndicator : " " : node.checked === "indeterminate"
           ? theme.checkboxIndeterminateIndicator
           : node.checked
             ? theme.checkboxCheckedIndicator
             : theme.checkboxUncheckedIndicator;
-        buffer.writeGrapheme(x, entry.decorationBounds.y, "[", id, style, decorationClip, "over");
+        buffer.writeGrapheme(x, entry.decorationBounds.y, radio ? "(" : "[", id, style, decorationClip, "over");
         buffer.writeGrapheme(x + 1, entry.decorationBounds.y, indicator, id, style, decorationClip, "over");
-        buffer.writeGrapheme(x + 2, entry.decorationBounds.y, "]", id, style, decorationClip, "over");
+        buffer.writeGrapheme(x + 2, entry.decorationBounds.y, radio ? ")" : "]", id, style, decorationClip, "over");
       }
       if (node.kind === "slider") {
         const track = entry.decorationBounds;
@@ -305,7 +287,7 @@ export const paintScene = (
             track.x + offset,
             track.y,
             offset === thumb
-              ? theme.sliderThumb
+              ? visual.thumb
               : offset < thumb
                 ? theme.sliderFilledTrack
                 : theme.sliderEmptyTrack,
@@ -315,6 +297,37 @@ export const paintScene = (
             "over"
           );
         }
+      }
+      if (node.kind === "range-slider") {
+        const track = entry.decorationBounds;
+        const range = resolveCellSliderRange(node.sliderMin, node.sliderMax, node.sliderStep);
+        const thumbs = node.children.map((childId) => tree.nodes.get(childId)!);
+        const start = cellSliderThumbOffset(thumbs[0]!.sliderValue, track.width, range);
+        const end = cellSliderThumbOffset(thumbs[1]!.sliderValue, track.width, range);
+        for (let offset = 0; offset < track.width; offset += 1) {
+          buffer.writeGrapheme(
+            track.x + offset,
+            track.y,
+            offset > start && offset < end
+              ? theme.sliderFilledTrack
+              : theme.sliderEmptyTrack,
+            id,
+            style,
+            decorationClip,
+            "over"
+          );
+        }
+      }
+      if (node.kind === "range-slider-thumb") {
+        buffer.writeGrapheme(
+          entry.decorationBounds.x,
+          entry.decorationBounds.y,
+          visual.thumb,
+          id,
+          style,
+          decorationClip,
+          "over",
+        );
       }
       if (node.kind === "select-trigger") {
         buffer.writeGrapheme(

@@ -12,7 +12,6 @@ import {
   type CanvasInteractionState,
 } from "@/domains/editor/public";
 import { type CanvasLinkHit } from "./interaction/core/linkHitTesting";
-import { type StructuredMovePreview } from "./interaction/structured/structuredInteractionPreview";
 
 import {
   createCanvasClickExecutor,
@@ -58,14 +57,6 @@ import {
   createSelectionDragStartExecutor,
 } from "./interaction/gestures/dragStartExecution";
 import {
-  createStructuredSelectStartHandler,
-  createStructuredSelectStartExecutor,
-} from "./interaction/structured/structuredSelectExecution";
-import {
-  createStructuredEditController,
-  createStructuredEditRouteHandler,
-} from "./interaction/structured/structuredEditExecution";
-import {
   shouldIgnoreActiveCanvasGesture,
   shouldIgnoreCanvasSurfaceGesture,
 } from "./interaction/core/gestureGuards";
@@ -89,8 +80,6 @@ export const useCanvasInteraction = (
   store: ReturnType<typeof useCanvasEditorModels>["interaction"],
   containerRef: React.RefObject<HTMLDivElement | null>,
   setHoveredLink: (hit: CanvasLinkHit | null) => void,
-  structuredMovePreviewRef?: React.MutableRefObject<StructuredMovePreview | null>,
-  requestRenderRef?: React.MutableRefObject<(() => void) | null>,
   runtime?: CanvasEngineRuntime,
   capabilities: CanvasEditorCapabilities = DEFAULT_CANVAS_EDITOR_CAPABILITIES,
   interactionOwnerId = "single"
@@ -111,7 +100,6 @@ export const useCanvasInteraction = (
     slideDeck,
     addScratchPoints,
     commitScratch,
-    commitStructuredShape,
     setTextCursor,
     setStaticGridActiveCell,
     enterStaticGridTextEdit,
@@ -120,26 +108,12 @@ export const useCanvasInteraction = (
     clearSelections,
     clearInteractionState,
     erasePoints,
-    offset,
-    zoom,
     contentReader,
     staticGridSelection,
     moveStaticGridSelection,
     updateScratchForShape,
     setHoveredGrid,
     fillArea,
-    structuredScene,
-    editingStructuredTextNodeId,
-    selectedStructuredNodeIds,
-    setStructuredGridFocus,
-    setStructuredContextPoint,
-    setSelectedStructuredNodeIds,
-    setSelectedStructuredSplitHandle,
-    setEditingStructuredTextNodeId,
-    setStructuredTextSelection,
-    structuredTextSelection,
-    setStructuredTextColor,
-    updateStructuredNode,
   } = store;
   const colorSourceContextKey = `${store.activeCanvasId}:${canvasMode}:${tool}`;
   const [pendingColorSourceChoice, setPendingColorSourceChoice] = useState<{
@@ -180,14 +154,11 @@ export const useCanvasInteraction = (
     pointerContext,
     resetDragState,
     selectionPreview,
-    structuredPreviewQueue,
     viewportInteraction,
   } = useInteractionControllers({
     store,
     containerRef,
     setHoveredLink,
-    structuredMovePreviewRef,
-    requestRenderRef,
     runtime,
     editorRuntime,
   });
@@ -202,29 +173,6 @@ export const useCanvasInteraction = (
   const setInteractionState = (state: CanvasInteractionState) => {
     interactionCapture.setState(state);
   };
-  const structuredEditController = createStructuredEditController({
-    getCanvasMode: () => canvasMode,
-    getTool: () => tool,
-    resolvePoint: (clientX, clientY) =>
-      pointerContext.resolveGridPoint(clientX, clientY),
-    getStructuredScene: () => structuredScene,
-    getSelectedStructuredNodeIds: () => selectedStructuredNodeIds,
-    getEditingStructuredTextNodeId: () => editingStructuredTextNodeId,
-    executor: {
-      setSelectedStructuredNodeIds,
-      setSelectedStructuredSplitHandle,
-      clearSelections,
-      setTextCursor,
-      setEditingStructuredTextNodeId,
-      setStructuredTextSelection,
-      setSelectionPreview: (selection) => selectionPreview.set(selection),
-      resetDragState,
-      setCursor: (cursor) => hoverInteraction.setCursor(cursor),
-    },
-  });
-  const structuredEditRouteHandler = createStructuredEditRouteHandler({
-    controller: structuredEditController,
-  });
   const panningDragStartExecutor = createPanningDragStartExecutor({
     setInteractionState,
     setCursor: (cursor) => hoverInteraction.setCursor(cursor),
@@ -246,8 +194,6 @@ export const useCanvasInteraction = (
     setAnchorGrid: (point) => interactionCapture.setSelectionAnchor(point),
     setInteractionState,
     clearInteractionState,
-    clearEditingStructuredTextNode: () => setEditingStructuredTextNodeId(null),
-    clearStructuredTextSelection: () => setStructuredTextSelection(null),
     addScratchPoint: (point) => addScratchPoints([point]),
     erasePoint: (point) => erasePoints([point], false),
   });
@@ -255,35 +201,10 @@ export const useCanvasInteraction = (
     selection: selectionDragStartExecutor,
     drawingShape: drawingShapeDragStartExecutor,
   });
-  const structuredSelectStartExecutor = createStructuredSelectStartExecutor({
-    setSelectedStructuredNodeIds,
-    setSelectedStructuredSplitHandle,
-    setStructuredContextPoint,
-    setEditingStructuredTextNodeId,
-    setStructuredTextSelection,
-    setTextCursor,
-    clearSelections,
-    setSelectionPreview: (selection) => selectionPreview.set(selection),
-    resetDragState,
-    setCursor: (cursor) => hoverInteraction.setCursor(cursor),
-    setInteractionState,
-  });
-  const structuredSelectStartHandler = createStructuredSelectStartHandler({
-    selectedStructuredNodeIds,
-    structuredScene,
-    offset,
-    zoom,
-    editingStructuredTextNodeId,
-    executor: structuredSelectStartExecutor,
-  });
   const dragUpdateExecutor = createDragUpdateExecutor({
     setInteractionState,
     setSelectionPreview: (selection) => selectionPreview.set(selection),
     draw: () => undefined,
-    structuredPreviewQueue,
-    updateStructuredNode,
-    setStructuredTextSelection,
-    setTextCursor,
     updateScratchForShape,
     setHoveredGrid,
   });
@@ -292,18 +213,13 @@ export const useCanvasInteraction = (
   });
   const primaryDragEndExecutor = createPrimaryDragEndExecutor({
     selectionPreview,
-    structuredPreviewQueue,
     fillArea,
-    setSelectedStructuredNodeIds,
-    setSelectedStructuredSplitHandle,
-    setStructuredGridFocus,
     setStaticGridActiveCell,
     setStaticGridSelectionRange,
     appendStaticGridSelectionRange,
     clearSelections,
     commitScratch,
     forceHistorySave: canvas.commands.history.finishCapture,
-    commitStructuredShape,
     resetDragState,
   });
   const primaryDragEndHandler = createPrimaryDragEndHandler({
@@ -330,9 +246,6 @@ export const useCanvasInteraction = (
           canvas.commands.selection.setForegroundColor,
         setSelectionBackgroundColor:
           canvas.commands.selection.setBackgroundColor,
-        setStructuredTextColor,
-        setStructuredSelectionPrimaryColor:
-          canvas.commands.structured.setSelectionPrimaryColor,
         openColorSourceChooser: (choice) =>
           setPendingColorSourceChoice({
             contextKey: colorSourceContextKey,
@@ -352,15 +265,10 @@ export const useCanvasInteraction = (
       setBrushBackgroundColor,
       setCanvasColorPickerTarget,
       setHoveredGrid,
-      setStructuredTextColor,
     ]
   );
   const colorPickerDragStartHandler = createColorPickerDragStartHandler({
     target: canvasColorPickerTarget,
-    isStructuredTextSelectionActive:
-      canvasMode === "structured" && !!structuredTextSelection,
-    isStructuredNodeSelectionActive:
-      canvasMode === "structured" && selectedStructuredNodeIds.length > 0,
     isStaticGridSelectionActive:
       isStaticGridMode(canvasMode) &&
       hasGridRangeSelection(staticGridSelection),
@@ -379,30 +287,18 @@ export const useCanvasInteraction = (
     route: dragStartRouteHandler,
     colorPicker: colorPickerDragStartHandler,
     primaryCanvas: primaryCanvasDragStartHandler,
-    structuredSelect: structuredSelectStartHandler,
   });
   const canvasClickExecutor = useCreation(
     () =>
       createCanvasClickExecutor({
         colorPickerClick: colorPickerClickRef,
         preventDefault: () => undefined,
-        clearSelections,
-        setSelectedStructuredNodeIds,
-        setSelectedStructuredSplitHandle,
-        setEditingStructuredTextNodeId,
-        setTextCursor,
-        setCursor: (cursor) => hoverInteraction.setCursor(cursor),
         openLink: (href) => window.open(href, "_blank", "noopener,noreferrer"),
         setHoveredLink,
       }),
     [
-      clearSelections,
       hoverInteraction,
-      setEditingStructuredTextNodeId,
       setHoveredLink,
-      setSelectedStructuredNodeIds,
-      setSelectedStructuredSplitHandle,
-      setTextCursor,
     ]
   );
   const canvasClickHandler = useCreation(
@@ -410,11 +306,9 @@ export const useCanvasInteraction = (
       createCanvasClickHandler({
         getColorPickerClickPending: () => colorPickerClickRef.current,
         getInteractionMode: () => editorRuntime.getInteractionState().type,
-        canvasMode,
-        tool,
         executor: canvasClickExecutor,
       }),
-    [canvasClickExecutor, canvasMode, tool]
+    [canvasClickExecutor]
   );
   const canvasClickRouteHandler = createCanvasClickRouteHandler({
     handler: canvasClickHandler,
@@ -462,7 +356,6 @@ export const useCanvasInteraction = (
         tool,
         canvasMode,
         brushChar,
-        structuredScene,
         pointerContext,
         dragStart: canvasDragStartRouteAdapter,
         dragUpdate: dragUpdateHandler,
@@ -528,9 +421,6 @@ export const useCanvasInteraction = (
       moveStaticGridSelection,
       setHoveredGrid,
       staticGridSelection,
-      offset,
-      zoom,
-      structuredScene,
       tool,
       viewportInteraction,
       beginInteraction,
@@ -568,12 +458,7 @@ export const useCanvasInteraction = (
       const type = editorRuntime.getInteractionState().type;
       return (
         type === "selecting" ||
-        type === "movingRange" ||
-        type === "structuredMoving" ||
-        type === "structuredRectResizing" ||
-        type === "structuredSplitBoxResizing" ||
-        type === "structuredSplitBoxResizePending" ||
-        type === "structuredLineResizing"
+        type === "movingRange"
       );
     };
     edgeScroll.update({
@@ -605,9 +490,6 @@ export const useCanvasInteraction = (
     brushChar,
     getViewport: runtime.camera.getViewport.bind(runtime.camera),
     hasColorPickerTarget: !!canvasColorPickerTarget,
-    selectedStructuredNodeIds,
-    structuredScene,
-    editingStructuredTextNodeId,
     pointerContext,
     editorRuntime,
     getInteractionState: editorRuntime.getInteractionState,
@@ -624,21 +506,13 @@ export const useCanvasInteraction = (
 
   const handleDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!capabilities.mutateContent) return;
-    if (isStaticGridMode(canvasMode)) {
-      if (tool !== "select" || shouldIgnoreCanvasSurfaceGesture(event.nativeEvent)) {
-        return;
-      }
-      const point = pointerContext.resolveGridPoint(event.clientX, event.clientY);
-      if (!point) return;
-      event.preventDefault();
-      enterStaticGridTextEdit(point);
+    if (tool !== "select" || shouldIgnoreCanvasSurfaceGesture(event.nativeEvent)) {
       return;
     }
-    structuredEditRouteHandler({
-      clientPoint: { x: event.clientX, y: event.clientY },
-      shouldIgnore: () => shouldIgnoreCanvasSurfaceGesture(event.nativeEvent),
-      preventDefault: () => event.preventDefault(),
-    });
+    const point = pointerContext.resolveGridPoint(event.clientX, event.clientY);
+    if (!point) return;
+    event.preventDefault();
+    enterStaticGridTextEdit(point);
   };
   const activateInteractionOwner = useCallback(
     () => editorRuntime.activateInteractionOwner(interactionOwnerId),

@@ -51,8 +51,6 @@ interface ToolbarProps {
 
 const FREEFORM_ACTION_ORDER: ToolbarActionId[] = ['pan', 'select', 'shape-group', 'bg', 'fill'];
 
-const STRUCTURED_ACTION_ORDER: ToolbarActionId[] = ['pan', 'select', 'shape-group', 'bg'];
-
 const DIRECT_TOOL_BY_ACTION: Partial<Record<ToolbarActionId, ToolType>> = {
   pan: 'pan',
   select: 'select',
@@ -114,11 +112,7 @@ export function Toolbar({
   );
 
   useEffect(() => {
-    if (canvasMode === 'structured' && tool === 'text') {
-      setTool('select');
-      return;
-    }
-    if (canvasMode !== 'structured' && tool === 'arrowLine') {
+    if (tool === 'arrowLine') {
       setTool('select');
       return;
     }
@@ -128,26 +122,20 @@ export function Toolbar({
   }, [canvasMode, setTool, tool]);
 
   const visibleActionOrder = useMemo<ToolbarActionId[]>(() => {
-    const baseOrder = canvasMode === 'structured' ? STRUCTURED_ACTION_ORDER : FREEFORM_ACTION_ORDER;
-
-    return baseOrder.filter((actionId) => {
+    return FREEFORM_ACTION_ORDER.filter((actionId) => {
       if (!mutateContent && actionId !== 'pan' && actionId !== 'select') return false;
       const directTool = DIRECT_TOOL_BY_ACTION[actionId];
       return !directTool || isToolAllowedForMode(directTool, canvasMode);
     });
   }, [canvasMode, mutateContent]);
 
-  const structuredShapeTools = useMemo<ToolType[]>(() => {
-    const candidates =
-      canvasMode === 'structured'
-        ? (['box', 'splitBox', 'line', 'arrowLine'] as ToolType[])
-        : SHAPE_TOOLS;
-    return candidates.filter((shapeTool) => isToolAllowedForMode(shapeTool, canvasMode));
+  const availableShapeTools = useMemo<ToolType[]>(() => {
+    return SHAPE_TOOLS.filter((shapeTool) => isToolAllowedForMode(shapeTool, canvasMode));
   }, [canvasMode]);
-  const isShapeGroupActive = structuredShapeTools.includes(tool);
-  const availableLastUsedShape = structuredShapeTools.includes(lastUsedShape)
+  const isShapeGroupActive = availableShapeTools.includes(tool);
+  const availableLastUsedShape = availableShapeTools.includes(lastUsedShape)
     ? lastUsedShape
-    : (structuredShapeTools[0] ?? 'box');
+    : (availableShapeTools[0] ?? 'box');
 
   const activeShapeMeta = useMemo(
     () => getToolMeta(isShapeGroupActive ? tool : availableLastUsedShape),
@@ -325,7 +313,7 @@ export function Toolbar({
                     ) : (
                       <ShapeSubmenu
                         tool={tool}
-                        shapeTools={structuredShapeTools}
+                shapeTools={availableShapeTools}
                         setTool={setTool}
                         setLastUsedShape={setLastUsedShape}
                         getToolMeta={getToolMeta}

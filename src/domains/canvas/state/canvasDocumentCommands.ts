@@ -1,14 +1,6 @@
 import { createStaticGridRangeMovePlan } from "../cell-plane/rangeMove";
 import type { StoreApi } from "zustand";
 import {
-  deleteStructuredSplitBoxSplit,
-  getStructuredNodeBounds,
-  getStructuredTextSelectionRange,
-  intersectsBounds,
-  isStructuredSplitBoxLineHandle,
-  withPointWithinBounds,
-} from "@/domains/structured-content/public";
-import {
   forEachGridSelectionSpan,
   getGridSelectionRanges,
   getStaticGridSelectionAreas,
@@ -38,11 +30,6 @@ import { createClearedScratchLayerPatch } from "./transitions/scratchLayerTransi
 import { placeCharInYMap } from "./utils";
 import { deleteCellAt, deleteRect } from "./gridOps";
 
-type CanvasDocumentCommandDependencies = Pick<
-  EditorState,
-  "applyStructuredScene" | "replaceStructuredTextRange"
->;
-
 const resolveSelectionAreas = (state: EditorState) =>
   getStaticGridSelectionAreas(
     state.interaction.staticGridSelection,
@@ -62,19 +49,6 @@ const forEachSelectionSpan = (
 const isUnstyledBlankCell = (cell: GridCell) =>
   cell.char === " " && !cell.bgColor && !cloneTextAttributes(cell.attrs);
 
-const getActiveStructuredTextSelection = (state: EditorState) => {
-  if (state.canvasMode !== "structured") return null;
-  const selection = state.interaction.structuredTextSelection;
-  const range = getStructuredTextSelectionRange(selection);
-  if (!range || !selection) return null;
-  const node = state.structuredScene.find(
-    (sceneNode) =>
-      sceneNode.id === selection.nodeId && sceneNode.type === "text"
-  );
-  if (!node || node.type !== "text") return null;
-  return { node, range };
-};
-
 export const fillStaticGridSelectionWithChar = (
   documents: CanvasDocumentRegistry,
   state: EditorState,
@@ -82,7 +56,7 @@ export const fillStaticGridSelectionWithChar = (
   options?: { preserveTargetBackground?: boolean }
 ) => {
   const selections = resolveSelectionAreas(state);
-  if (state.canvasMode === "structured" || selections.length === 0) return;
+  if (selections.length === 0) return;
 
   const charWidth = getCellOccupancy(char);
   const address = resolveEditorDocumentAddress(documents, state);
@@ -98,103 +72,10 @@ export const fillStaticGridSelectionWithChar = (
 
 export const createCanvasDocumentCommands = (
   store: Pick<StoreApi<EditorState>, "getState" | "setState">,
-  documents: CanvasDocumentRegistry,
-  dependencies: CanvasDocumentCommandDependencies
+  documents: CanvasDocumentRegistry
 ) => ({
   deleteSelection: () => {
     const state = store.getState();
-    const {
-      selectedStructuredNodeIds,
-      selectedStructuredSplitHandle,
-      textCursor,
-    } = state.interaction;
-    const selections = resolveSelectionAreas(state);
-
-    if (state.canvasMode === "structured") {
-      const textSelection = getActiveStructuredTextSelection(state);
-      if (textSelection) {
-        dependencies.replaceStructuredTextRange(
-          textSelection.node.id,
-          textSelection.range.start,
-          textSelection.range.end,
-          ""
-        );
-        return;
-      }
-      if (state.structuredScene.length === 0) return;
-
-      const splitHandle = selectedStructuredSplitHandle?.handle;
-      if (
-        selectedStructuredSplitHandle &&
-        splitHandle &&
-        isStructuredSplitBoxLineHandle(splitHandle)
-      ) {
-        let didUpdate = false;
-        const nextScene = state.structuredScene.map((node) => {
-          if (
-            node.id !== selectedStructuredSplitHandle.nodeId ||
-            node.type !== "splitBox"
-          ) {
-            return node;
-          }
-          didUpdate = true;
-          return deleteStructuredSplitBoxSplit(node, splitHandle);
-        });
-        if (didUpdate) {
-          dependencies.applyStructuredScene(nextScene, true);
-          store.setState((current) =>
-            createCanvasInteractionPatch(current.interaction, {
-              selectedStructuredSplitHandle: null,
-              structuredContextPoint: null,
-            })
-          );
-        }
-        return;
-      }
-
-      if (selectedStructuredNodeIds.length > 0) {
-        const selectedIds = new Set(selectedStructuredNodeIds);
-        const nextScene = state.structuredScene.filter(
-          (node) => !selectedIds.has(node.id)
-        );
-        if (nextScene.length !== state.structuredScene.length) {
-          dependencies.applyStructuredScene(nextScene, true);
-          store.setState((current) =>
-            createCanvasInteractionPatch(current.interaction, {
-              selectedStructuredNodeIds: [],
-              selectedStructuredBoxId: null,
-              selectedStructuredSplitHandle: null,
-              structuredContextPoint: null,
-            })
-          );
-        }
-        return;
-      }
-
-      const bounds = selections.map((area) => {
-        const { minX, maxX, minY, maxY } = getSelectionBounds(area);
-        return {
-          x: minX,
-          y: minY,
-          width: maxX - minX + 1,
-          height: maxY - minY + 1,
-        };
-      });
-      const nextScene = state.structuredScene.filter((node) => {
-        const nodeBounds = getStructuredNodeBounds(node);
-        if (textCursor && withPointWithinBounds(textCursor, nodeBounds, true)) {
-          return false;
-        }
-        return !bounds.some((selectionBounds) =>
-          intersectsBounds(nodeBounds, selectionBounds)
-        );
-      });
-      if (nextScene.length !== state.structuredScene.length) {
-        dependencies.applyStructuredScene(nextScene, true);
-      }
-      return;
-    }
-
     const address = resolveEditorDocumentAddress(documents, state);
     documents.mutateGridAt(address, (grid) => {
       forEachSelectionSpan(state, ({ y, minX, maxX }) => {
@@ -205,7 +86,7 @@ export const createCanvasDocumentCommands = (
 
   erasePoints: (points: Point[], shouldSaveHistory = true) => {
     const state = store.getState();
-    if (state.canvasMode === "structured" || points.length === 0) return;
+    if (points.length === 0) return;
     const address = resolveEditorDocumentAddress(documents, state);
     documents.mutateGridAt(
       address,
@@ -232,7 +113,7 @@ export const createCanvasDocumentCommands = (
   ) => {
     const state = store.getState();
     const selections = resolveSelectionAreas(state);
-    if (state.canvasMode === "structured" || selections.length === 0) return;
+    if (selections.length === 0) return;
 
     const shouldMaterializeBlank =
       attrs.underline === true ||
@@ -272,7 +153,7 @@ export const createCanvasDocumentCommands = (
   setSelectionForegroundColor: (color: string) => {
     const state = store.getState();
     const selections = resolveSelectionAreas(state);
-    if (state.canvasMode === "structured" || selections.length === 0) return;
+    if (selections.length === 0) return;
 
     const address = resolveEditorDocumentAddress(documents, state);
     documents.mutateGridAt(address, (grid) => {
@@ -291,7 +172,7 @@ export const createCanvasDocumentCommands = (
   setSelectionBackgroundColor: (bgColor: string | null) => {
     const state = store.getState();
     const selections = resolveSelectionAreas(state);
-    if (state.canvasMode === "structured" || selections.length === 0) return;
+    if (selections.length === 0) return;
 
     const address = resolveEditorDocumentAddress(documents, state);
     documents.mutateGridAt(address, (grid) => {
@@ -319,10 +200,6 @@ export const createCanvasDocumentCommands = (
   commitScratch: () => {
     const state = store.getState();
     const { scratchLayer } = state.interaction;
-    if (state.canvasMode === "structured") {
-      store.setState(createClearedScratchLayerPatch(state.interaction));
-      return;
-    }
     if (!scratchLayer || scratchLayer.size === 0) return;
 
     const address = resolveEditorDocumentAddress(documents, state);
@@ -358,7 +235,6 @@ export const createCanvasDocumentCommands = (
 
   fillArea: (area: SelectionArea) => {
     const state = store.getState();
-    if (state.canvasMode === "structured") return;
     const { minX, maxX, minY, maxY } = getSelectionBounds(area);
     const address = resolveEditorDocumentAddress(documents, state);
 
@@ -382,7 +258,6 @@ export const createCanvasDocumentCommands = (
     const state = store.getState();
     const selection = state.interaction.staticGridSelection;
     if (
-      state.canvasMode === "structured" ||
       selection.mode !== "range" ||
       selection.additionalRanges.length > 0
     ) {

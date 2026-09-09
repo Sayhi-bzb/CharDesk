@@ -5,9 +5,9 @@ import {
   LEGACY_EDITOR_PERSISTENCE_KEY,
   UnsupportedEditorPersistenceVersionError,
   flattenPersistedEditorState,
-  isPersistedEditorStateV6,
+  isPersistedEditorStateV7 as isPersistedEditorStateV6,
   migrateLegacyEditorPersistence,
-  migratePersistedStateToV6,
+  migratePersistedStateToV7 as migratePersistedStateToV6,
 } from "./public";
 
 const createMemoryStorage = (): Storage => {
@@ -24,14 +24,14 @@ const createMemoryStorage = (): Storage => {
   };
 };
 
-describe("editor persistence v6", () => {
+describe("editor persistence v7", () => {
   it("supports only the current and previous persistence versions", () => {
     expect(() => migratePersistedStateToV6({}, 3)).toThrow(
       UnsupportedEditorPersistenceVersionError,
     );
-    expect(migratePersistedStateToV6({}, 4).schemaVersion).toBe(6);
-    expect(migratePersistedStateToV6({}, 5).schemaVersion).toBe(6);
-    expect(migratePersistedStateToV6({}, 6).schemaVersion).toBe(6);
+    expect(migratePersistedStateToV6({}, 4).schemaVersion).toBe(7);
+    expect(migratePersistedStateToV6({}, 5).schemaVersion).toBe(7);
+    expect(migratePersistedStateToV6({}, 6).schemaVersion).toBe(7);
   });
 
   it("migrates legacy viewport pixels once while preserving zoom and x", () => {
@@ -61,7 +61,7 @@ describe("editor persistence v6", () => {
       offset: { x: -7, y: 10 },
       zoom: 2,
     });
-    expect(migratePersistedStateToV6(migrated, 6)).toEqual(migrated);
+    expect(migratePersistedStateToV6(migrated, 7)).toEqual(migrated);
   });
 
   it("defaults the grid off while preserving an explicit preference", () => {

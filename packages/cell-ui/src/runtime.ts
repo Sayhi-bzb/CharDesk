@@ -1,3 +1,5 @@
+import { resolveCellFeedback, type CellFeedbackConfig } from "./feedback.js";
+import { isPrimitiveControlKind } from "./widget-capabilities.js";
 import type { ReactElement } from "react";
 import { intersectCellRects } from "@chardesk/cell-core";
 import { YogaLayoutEngine, type LayoutEngine } from "./layout.js";
@@ -15,6 +17,7 @@ import { resolveCellUiTheme, type CellUiTheme } from "./theme.js";
 import {
   isPortalKind,
   supportsActivationFeedback,
+  supportsManipulationFeedback,
   supportsPressFeedback,
 } from "./widget-capabilities.js";
 import type {
@@ -66,11 +69,18 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.text !== after.text
   || before.buttonVariant !== after.buttonVariant
   || before.buttonSize !== after.buttonSize
+  || before.orientation !== after.orientation
   || !sameWidgetValue(before.style, after.style)
   || !sameWidgetValue(before.children, after.children);
 
 const hasGeometryChange = (before: WidgetNode, after: WidgetNode) =>
   !sameWidgetValue(before.scrollOffset, after.scrollOffset)
+  || (before.kind === "range-slider-thumb" && (
+    before.sliderValue !== after.sliderValue
+    || before.sliderMin !== after.sliderMin
+    || before.sliderMax !== after.sliderMax
+    || before.sliderStep !== after.sliderStep
+  ))
   || before.textEditor?.value !== after.textEditor?.value
   || before.textEditor?.scrollX !== after.textEditor?.scrollX
   || before.textEditor?.scrollY !== after.textEditor?.scrollY
@@ -82,10 +92,14 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.focusActive !== after.focusActive
   || before.focusVisible !== after.focusVisible
   || before.hovered !== after.hovered
+  || before.manipulating !== after.manipulating
   || before.pressActive !== after.pressActive
   || before.activationFlash !== after.activationFlash
+  || before.confirming !== after.confirming
   || before.selected !== after.selected
   || before.checked !== after.checked
+  || before.pressed !== after.pressed
+  || !sameWidgetValue(before.progress, after.progress)
   || before.buttonVariant !== after.buttonVariant
   || before.sliderValue !== after.sliderValue
   || before.sliderMin !== after.sliderMin
@@ -101,6 +115,8 @@ const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
   || before.focused !== after.focused
   || before.selected !== after.selected
   || before.checked !== after.checked
+  || before.pressed !== after.pressed
+  || !sameWidgetValue(before.progress, after.progress)
   || before.sliderValue !== after.sliderValue
   || before.sliderMin !== after.sliderMin
   || before.sliderMax !== after.sliderMax
@@ -128,6 +144,7 @@ export type CellUiRuntimeOptions = Readonly<{
   onFrame?: (frame: FrameSnapshot) => void;
   layoutEngine?: LayoutEngine;
   theme?: Partial<CellUiTheme>;
+  feedback?: Partial<CellFeedbackConfig>;
 }>;
 
 export class CellUiRuntime {
@@ -136,6 +153,13 @@ export class CellUiRuntime {
   #overlayViewport: CellSize;
   readonly #onFrame: ((frame: FrameSnapshot) => void) | undefined;
   #theme: CellUiTheme;
+  #feedback: CellFeedbackConfig;
+
+  get feedback(): CellFeedbackConfig { return this.#feedback; }
+
+  setFeedback(feedback?: Partial<CellFeedbackConfig>): void {
+    this.#feedback = resolveCellFeedback(feedback);
+  }
   #themeDirty = false;
   #tree: WidgetTree | undefined;
   #frame: FrameSnapshot | undefined;
@@ -155,6 +179,7 @@ export class CellUiRuntime {
     this.#overlayViewport = { ...overlayViewport };
     this.#onFrame = options.onFrame;
     this.#theme = resolveCellUiTheme(options.theme);
+    this.#feedback = resolveCellFeedback(options.feedback);
   }
 
   render(
@@ -164,8 +189,10 @@ export class CellUiRuntime {
       focusActive?: boolean;
       focusVisible?: boolean;
       hoveredId?: string | null;
+      manipulatingIds?: ReadonlySet<string>;
       pressActiveId?: string | null;
       activationFlashId?: string | null;
+      activationTargetId?: string | null;
       resolveFocusedId?: (tree: WidgetTree) => string | null;
     }> = {}
   ): FrameSnapshot {
@@ -178,6 +205,9 @@ export class CellUiRuntime {
       ?? null;
     const focusActive = state.focusActive ?? state.focusVisible ?? focusedId !== null;
     const focusVisible = state.focusVisible ?? focusActive;
+    const hoveredNode = state.hoveredId ? reconciliation.tree.nodes.get(state.hoveredId) : undefined;
+    const hoveredId = focusVisible && focusedId !== null && hoveredNode && isPrimitiveControlKind(hoveredNode.kind)
+      ? null : state.hoveredId;
     const tree: WidgetTree = {
       rootId: reconciliation.tree.rootId,
       nodes: new Map([...reconciliation.tree.nodes].map(([id, node]) => [
@@ -185,18 +215,22 @@ export class CellUiRuntime {
         node.focused === (id === focusedId)
           && node.focusActive === (id === focusedId && focusActive)
           && node.focusVisible === (id === focusedId && focusVisible)
-          && node.hovered === (id === state.hoveredId && !node.disabled)
+          && node.hovered === (id === hoveredId && !node.disabled)
+          && node.manipulating === (state.manipulatingIds?.has(id) === true && supportsManipulationFeedback(node.kind) && !node.disabled)
           && node.pressActive === (id === state.pressActiveId && supportsPressFeedback(node.kind) && !node.disabled)
           && node.activationFlash === (id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled)
+          && node.confirming === (id === state.activationTargetId && !node.disabled)
           ? node
           : {
               ...node,
               focused: id === focusedId,
               focusActive: id === focusedId && focusActive,
               focusVisible: id === focusedId && focusVisible,
-              hovered: id === state.hoveredId && !node.disabled,
+              hovered: id === hoveredId && !node.disabled,
+              manipulating: state.manipulatingIds?.has(id) === true && supportsManipulationFeedback(node.kind) && !node.disabled,
               pressActive: id === state.pressActiveId && supportsPressFeedback(node.kind) && !node.disabled,
               activationFlash: id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled,
+              confirming: id === state.activationTargetId && !node.disabled,
             },
       ])),
     };

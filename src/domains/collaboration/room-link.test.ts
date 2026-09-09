@@ -10,11 +10,9 @@ import {
 } from "./room-link";
 
 describe("collaboration room links", () => {
-  it.each(["freeform", "structured"] as const)(
-    "creates compact managed V7 %s links and keeps the room key in the URL fragment",
-    (mode) => {
+  it("creates compact managed V7 links and keeps the room key in the URL fragment", () => {
       vi.stubGlobal("crypto", { getRandomValues: (bytes: Uint8Array) => bytes.fill(7) });
-      const descriptor = createCollaborationDescriptor(mode);
+      const descriptor = createCollaborationDescriptor("freeform");
       const url = buildCollaborationUrl(descriptor, "https://canvas.test/editor?theme=dark");
       expect(new URL(url).searchParams.has("room")).toBe(false);
       expect(new URL(url).hash).toMatch(/^#r=[A-Za-z0-9_-]{66}$/);
@@ -26,8 +24,7 @@ describe("collaboration room links", () => {
       );
       expect(parseCollaborationUrl(url)).toEqual({ status: "valid", descriptor });
       vi.unstubAllGlobals();
-    }
-  );
+  });
 
   it("adds and removes room identity without discarding unrelated URL state", () => {
     vi.stubGlobal("crypto", { getRandomValues: (bytes: Uint8Array) => bytes.fill(7) });
@@ -51,7 +48,7 @@ describe("collaboration room links", () => {
 
   it("keeps an optional custom relay in a V7 descriptor", () => {
     vi.stubGlobal("crypto", { getRandomValues: (bytes: Uint8Array) => bytes.fill(7) });
-    expect(createCollaborationDescriptor("structured", "wss://sync.example.com")).toMatchObject({
+    expect(createCollaborationDescriptor("freeform", "wss://sync.example.com")).toMatchObject({
       version: 7,
       provider: "encrypted-relay",
       endpoint: "wss://sync.example.com",
@@ -129,6 +126,21 @@ describe("collaboration room links", () => {
     expect(parseCollaborationUrl(`https://canvas.test/#room=${encoded}`)).toEqual({
       status: "retired",
       provider: "p2p",
+    });
+  });
+
+  it("reports legacy Structured links as retired", () => {
+    const encoded = btoa(JSON.stringify({
+      version: 7,
+      documentVersion: 7,
+      mode: "structured",
+      provider: "encrypted-relay",
+      roomId: "room-id-1234567890",
+      key: "room-key-1234567890123456789012345678901234567890",
+    })).replace(/=+$/g, "");
+    expect(parseCollaborationUrl(`https://canvas.test/#room=${encoded}`)).toEqual({
+      status: "retired",
+      provider: "structured",
     });
   });
 

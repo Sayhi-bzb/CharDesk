@@ -1,9 +1,5 @@
 import * as Y from "yjs";
 import type { CanvasMode } from "@/domains/sessions/public";
-import type {
-  StructuredComponentInstance,
-  StructuredNode,
-} from "@/domains/structured-content/public";
 import type { GridCell } from "@/shared/types";
 import {
   CellPlaneIndex,
@@ -21,15 +17,9 @@ import {
   type CanvasPageDraft,
 } from "./canvasDocumentModel";
 
-type CanvasCheckpointSourcePage =
-  | {
+type CanvasCheckpointSourcePage = {
       descriptor: CanvasPageDescriptor & { kind: "cell-plane" };
       operations: readonly CellPlaneOperation[];
-    }
-  | {
-      descriptor: CanvasPageDescriptor & { kind: "structured" };
-      scene: readonly StructuredNode[];
-      components: readonly StructuredComponentInstance[];
     };
 
 export type CanvasCheckpointSource = {
@@ -43,13 +33,10 @@ export const resolveSeedPages = (
   seed: CanvasDocumentSeed
 ): CanvasPageDraft[] => {
   if (seed.pages?.length) return seed.pages;
-  const kind = seed.mode === "structured" ? "structured" : "cell-plane";
   return [{
     id: seed.activePageId ?? getDefaultCanvasPageId(id),
-    kind,
-    ...(kind === "structured"
-      ? { scene: seed.scene, components: seed.components ?? [] }
-      : { grid: seed.grid }),
+    kind: "cell-plane",
+    grid: seed.grid,
   }];
 };
 
@@ -71,7 +58,7 @@ export const applyCanvasDocumentSeed = (
     writeCanvasDocumentMetadata(
       root,
       id,
-      seed.mode ?? (pages[0]!.kind === "structured" ? "structured" : "freeform"),
+      seed.mode ?? "freeform",
       activePageId
     );
   }, "local-persistence-bootstrap");
@@ -85,25 +72,19 @@ const captureCanvasCheckpointSource = (
   const pages = readCanvasPageOrder(root).flatMap((pageId): CanvasCheckpointSourcePage[] => {
     const page = readCanvasYPage(root, pageId);
     if (!page) return [];
-    return page.descriptor.kind === "cell-plane"
-      ? [{
-          descriptor: { ...page.descriptor, kind: "cell-plane" },
-          operations: page.operations.toArray(),
-        }]
-      : [{
-          descriptor: { ...page.descriptor, kind: "structured" },
-          scene: Array.from(page.scene.values()),
-          components: Array.from(page.components.values()),
-        }];
+    return [{
+      descriptor: { ...page.descriptor, kind: "cell-plane" },
+      operations: page.operations.toArray(),
+    }];
   });
   if (pages.length === 0) {
     throw new Error(`Canvas document compaction found no pages: ${id}`);
   }
   const storedMode = root.meta.get("mode");
   const mode: CanvasMode =
-    storedMode === "freeform" || storedMode === "structured" || storedMode === "slide"
+    storedMode === "freeform" || storedMode === "slide"
       ? storedMode
-      : pages[0]!.descriptor.kind === "structured" ? "structured" : "freeform";
+      : "freeform";
   const storedActivePageId = root.meta.get("activePageId");
   return {
     mode,
@@ -122,21 +103,12 @@ export const materializeCanvasCheckpointSource = (
   mode: source.mode,
   activePageId: source.activePageId,
   pages: source.pages.map((page): CanvasPageDraft => {
-    if ("operations" in page) {
-      const index = new CellPlaneIndex(page.operations);
-      const grid = Array.from(index.materialize()) as [string, GridCell][];
-      index.dispose();
-      return { ...page.descriptor, grid };
-    }
-    return {
-      ...page.descriptor,
-      scene: [...page.scene],
-      components: [...page.components],
-    };
+    const index = new CellPlaneIndex(page.operations);
+    const grid = Array.from(index.materialize()) as [string, GridCell][];
+    index.dispose();
+    return { ...page.descriptor, grid };
   }),
   grid: [],
-  scene: [],
-  components: [],
 });
 
 export const readDocumentSeed = (doc: Y.Doc, id: string) =>

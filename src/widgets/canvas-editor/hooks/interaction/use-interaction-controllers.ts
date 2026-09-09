@@ -16,18 +16,12 @@ import { createCanvasPointerContextResolver } from "./core/pointerContext";
 import { createDragResetController } from "./gestures/dragResetExecution";
 import { createHoverInteractionController } from "./preview/hoverInteractionController";
 import { createSelectionPreviewController } from "./preview/selectionPreviewController";
-import type { StructuredMovePreview } from "./structured/structuredInteractionPreview";
-import { createStructuredPreviewQueueController } from "./structured/structuredPreviewQueueExecution";
 import {
   SHORTCUT_PRIORITY,
   useShortcutLayer,
 } from "@/shared/shortcuts/dispatcher";
 import type { CanvasEngineRuntime } from "../../engine/CanvasEngineRuntime";
 import { CanvasEdgeScrollManager } from "../../engine/CanvasEdgeScrollManager";
-import {
-  CANVAS_FRAME_INVALIDATION,
-  createFrameSchedulerRafAdapter,
-} from "../../engine/FrameScheduler";
 import type { useCanvasEditorModels } from "../useCanvasEditorModels";
 
 type ControllerStore = Pick<
@@ -36,7 +30,6 @@ type ControllerStore = Pick<
   | "contentReader"
   | "canvasMode"
   | "setHoveredGrid"
-  | "applyStructuredScene"
 > & {
   activeCanvasId?: ReturnType<typeof useCanvasEditorModels>["interaction"]["activeCanvasId"];
   slideDeck?: ReturnType<typeof useCanvasEditorModels>["interaction"]["slideDeck"];
@@ -46,16 +39,12 @@ export const useInteractionControllers = ({
   store,
   containerRef,
   setHoveredLink,
-  structuredMovePreviewRef,
-  requestRenderRef,
   runtime,
   editorRuntime,
 }: {
   store: ControllerStore;
   containerRef: React.RefObject<HTMLDivElement | null>;
   setHoveredLink: (hit: CanvasLinkHit | null) => void;
-  structuredMovePreviewRef?: React.MutableRefObject<StructuredMovePreview | null>;
-  requestRenderRef?: React.MutableRefObject<(() => void) | null>;
   runtime: CanvasEngineRuntime;
   editorRuntime: CanvasEditorRuntime;
 }) => {
@@ -67,15 +56,9 @@ export const useInteractionControllers = ({
     canvasMode,
     slideDeck,
     setHoveredGrid,
-    applyStructuredScene,
   } = store;
   const colorPickerClickRef = useRef(false);
   const [cursor, setCursor] = useState("");
-  const fallbackStructuredMovePreviewRef = useRef<StructuredMovePreview | null>(null);
-  const fallbackRequestRenderRef = useRef<(() => void) | null>(null);
-  const activeStructuredMovePreviewRef =
-    structuredMovePreviewRef ?? fallbackStructuredMovePreviewRef;
-  const activeRequestRenderRef = requestRenderRef ?? fallbackRequestRenderRef;
   const [draggingSelection, setDraggingSelection] = useState<SelectionArea | null>(null);
   const [staticRangeMovePreview, setStaticRangeMovePreview] =
     useState<StaticGridRangeMovePlan | null>(null);
@@ -91,16 +74,6 @@ export const useInteractionControllers = ({
     setHoveredLink,
     slideDeck,
   ]);
-  const previewScheduler = useCreation(
-    () =>
-      createFrameSchedulerRafAdapter(
-        runtime.frameScheduler,
-        "structured-preview",
-        CANVAS_FRAME_INVALIDATION.overlay
-      ),
-    [runtime]
-  );
-
   const pointerContext = useCreation(
     () =>
       createCanvasPointerContextResolver({
@@ -143,42 +116,14 @@ export const useInteractionControllers = ({
     }),
     [runtime]
   );
-  const structuredPreview = useCreation(
-    () => {
-      const clear = () => {
-        if (!activeStructuredMovePreviewRef.current) return;
-        activeStructuredMovePreviewRef.current = null;
-        activeRequestRenderRef.current?.();
-      };
-      const queue = createStructuredPreviewQueueController({
-        setStructuredMovePreview: (preview) => {
-          activeStructuredMovePreviewRef.current = preview;
-          activeRequestRenderRef.current?.();
-        },
-        applyStructuredScene,
-        clearStructuredMovePreview: clear,
-        scheduler: previewScheduler,
-      });
-      return { clear, queue };
-    },
-    [
-      activeRequestRenderRef,
-      activeStructuredMovePreviewRef,
-      applyStructuredScene,
-      previewScheduler,
-    ]
-  );
-  const structuredPreviewQueue = structuredPreview.queue;
   const resetDragState = useCreation(
     () =>
       createDragResetController({
         clearScratch: canvas.commands.grid.clearScratch,
-        structuredPreviewQueue,
-        clearStructuredMovePreview: structuredPreview.clear,
         selectionPreview,
         clearStaticRangeMovePreview: () => setStaticRangeMovePreview(null),
       }).reset,
-    [canvas, selectionPreview, structuredPreview, structuredPreviewQueue]
+    [canvas, selectionPreview]
   );
   const interactionTransaction = useCreation(
     () =>
@@ -198,7 +143,6 @@ export const useInteractionControllers = ({
     edgeScroll,
     interactionTransaction,
     selectionPreview,
-    structuredPreviewQueue,
     viewportInteraction,
   });
   useLayoutEffect(() => {
@@ -206,14 +150,12 @@ export const useInteractionControllers = ({
       edgeScroll,
       interactionTransaction,
       selectionPreview,
-      structuredPreviewQueue,
       viewportInteraction,
     };
   }, [
     edgeScroll,
     interactionTransaction,
     selectionPreview,
-    structuredPreviewQueue,
     viewportInteraction,
   ]);
   const interactionManager = useCreation(
@@ -223,7 +165,6 @@ export const useInteractionControllers = ({
         targets.interactionTransaction.cancel();
         targets.edgeScroll?.stop();
         targets.viewportInteraction.cancel();
-        targets.structuredPreviewQueue.cancel();
         targets.selectionPreview.cancel();
       },
     }),
@@ -361,7 +302,6 @@ export const useInteractionControllers = ({
     pointerContext,
     resetDragState,
     selectionPreview,
-    structuredPreviewQueue,
     viewportInteraction,
   };
 };

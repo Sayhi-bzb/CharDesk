@@ -1,11 +1,12 @@
-import { useCallback, useLayoutEffect, useRef, useState, type RefObject, type PointerEvent } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
+import type { CellPresentationRegistry } from "./browser-presentation.js";
 import { resolvePointerAppearance } from "./pointer.js";
 import type { FrameSnapshot } from "./types.js";
 
 const empty = { hoveredId: null, cursor: "default" } as const;
 
 export const usePointerAppearance = (
-  canvasRef: RefObject<HTMLCanvasElement | null>,
+  canvasRef: CellPresentationRegistry,
   frame: FrameSnapshot | null,
   metrics: { cellWidth: number; cellHeight: number }
 ) => {
@@ -23,8 +24,7 @@ export const usePointerAppearance = (
     let next: ReturnType<typeof resolvePointerAppearance> = empty;
     if (canvas && frame && point && !suspended.current) {
       const bounds = canvas.getBoundingClientRect();
-      const top = canvas.ownerDocument.elementFromPoint?.(point.clientX, point.clientY);
-      if (!top || top === canvas) next = resolvePointerAppearance(frame, {
+      if (canvasRef.acceptsPoint(point.clientX, point.clientY)) next = resolvePointerAppearance(frame, {
         x: Math.floor((point.clientX - bounds.left) / metrics.cellWidth),
         y: Math.floor((point.clientY - bounds.top) / metrics.cellHeight),
       });

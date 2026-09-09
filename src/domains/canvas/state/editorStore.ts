@@ -8,7 +8,7 @@ import {
   flattenPersistedEditorState,
   decodePersistedEditorState,
   migrateLegacyEditorPersistence,
-  migratePersistedStateToV6,
+  migratePersistedStateToV7,
 } from "@/domains/sessions/public";
 import {
   createDrawingSlice,
@@ -20,18 +20,8 @@ import {
   createMapFromEntries,
   normalizeGridEntries,
 } from "./helpers/snapshotHelpers";
-import {
-  cloneStructuredNode,
-  deriveStructuredComponentsFromScene,
-  normalizeScene,
-  normalizeStructuredComponents,
-} from "@/domains/structured-content/public";
-import { areJsonValuesEqual } from "@/shared/utils/equality";
 import { subscribeCanvasDocumentProjection } from "./canvasDocumentProjection";
-import {
-  createCanvasContentSurface,
-  createStructuredContentSurface,
-} from "./helpers/gridHelpers";
+import { createCanvasContentSurface } from "./helpers/gridHelpers";
 import {
   createDefaultCanvasSessions,
   createPersistedEditorSnapshot,
@@ -45,7 +35,6 @@ import {
   resolveSessionDocumentRuntime,
 } from "./helpers/storeUtils";
 import { createDeferredSnapshotPersistStorage } from "./persistenceCoordinator";
-import { resolveEditorDocumentAddress } from "./helpers/gridHelpers";
 import type { CollaborationIntegrityIssue } from "@/domains/collaboration/public";
 import type { CanvasSessionSourceParser } from "./sessionImportPort";
 import {
@@ -95,17 +84,13 @@ const seedSessionDocuments = (
         grid: slide.grid,
       })),
       grid: [],
-      scene: [],
-      components: [],
     });
     return;
   }
   documents.activateDocument(
     getSessionCanvasDocumentId(session),
     {
-      grid: session.mode === "structured" ? [] : session.grid,
-      scene: session.mode === "structured" ? session.scene : [],
-      components: session.components,
+      grid: session.grid,
       mode: session.mode,
     }
   );
@@ -162,8 +147,7 @@ export const createEditorStore = ({
       disposers.push(subscribeCanvasDocumentProjection(
         documents,
         reportIntegrityIssues,
-        set,
-        get
+        set
       ));
 
       disposers.push(documents.subscribeHistoryAvailability(
@@ -172,13 +156,8 @@ export const createEditorStore = ({
 
       return {
         interaction: createEmptyCanvasInteraction(initialAddress),
-        contentSurface:
-          initialRuntime.nextMode === "structured"
-            ? createStructuredContentSurface(initialRuntime.nextScene)
-            : createCanvasContentSurface(documents.getContentReader()),
+        contentSurface: createCanvasContentSurface(documents.getContentReader()),
         canvasMode: initialRuntime.nextMode,
-        structuredScene: initialRuntime.nextScene,
-        structuredComponents: initialRuntime.nextComponents,
         canvasSessions: initialSessions,
         activeCanvasId: initialSession.id,
         ...documents.getHistoryAvailability(),
@@ -188,62 +167,6 @@ export const createEditorStore = ({
         brushBackgroundColor: COLOR_PRIMARY_TEXT,
         showGrid: false,
         exportShowGrid: false,
-        applyStructuredScene: (scene, history = "save", components) => {
-          const current = get();
-          const normalizedScene = normalizeScene(scene);
-          const componentSource = components ?? [
-            ...current.structuredComponents,
-            ...deriveStructuredComponentsFromScene(normalizedScene).filter(
-              (component) =>
-                !current.structuredComponents.some((existing) => existing.id === component.id)
-            ),
-          ];
-          const normalizedComponents = normalizeStructuredComponents(
-            componentSource,
-            normalizedScene
-          );
-          const currentNodes = new Map(current.structuredScene.map((node) => [node.id, node]));
-          const nextNodeIds = new Set(normalizedScene.map((node) => node.id));
-          const nodeUpserts = normalizedScene.flatMap((node) => {
-            const existing = currentNodes.get(node.id);
-            if (existing === node || areJsonValuesEqual(existing, node)) return [];
-            return [cloneStructuredNode(node)];
-          });
-          const nodeDeleteIds = current.structuredScene
-            .filter((node) => !nextNodeIds.has(node.id))
-            .map((node) => node.id);
-
-          const currentComponents = new Map(
-            current.structuredComponents.map((component) => [component.id, component])
-          );
-          const nextComponentIds = new Set(normalizedComponents.map((component) => component.id));
-          const componentUpserts = normalizedComponents.filter(
-            (component) =>
-              !areJsonValuesEqual(currentComponents.get(component.id), component)
-          );
-          const componentDeleteIds = current.structuredComponents
-            .filter((component) => !nextComponentIds.has(component.id))
-            .map((component) => component.id);
-
-          if (
-            nodeUpserts.length === 0 &&
-            nodeDeleteIds.length === 0 &&
-            componentUpserts.length === 0 &&
-            componentDeleteIds.length === 0
-          ) return;
-
-          documents.patchStructuredContentAt(
-            resolveEditorDocumentAddress(documents, current),
-            {
-              nodes: { upsert: nodeUpserts, deleteIds: nodeDeleteIds },
-              components: {
-                upsert: componentUpserts,
-                deleteIds: componentDeleteIds,
-              },
-            },
-            history
-          );
-        },
         ...createSessionSlice(documents, parseSessionSource, viewport, documentResidency)(set, get, ...a),
         ...createSlideSlice(documents)(set, get, ...a),
         slideDeck: initialRuntime.nextSlideDeck,
@@ -267,8 +190,8 @@ export const createEditorStore = ({
         shouldSchedule: shouldScheduleEditorPersistence,
       }),
       migrate: (persistedState, version) => {
-        // Zustand types migrations as runtime state, while storage owns the V6 DTO.
-        return migratePersistedStateToV6(
+        // Zustand types migrations as runtime state, while storage owns the persisted DTO.
+        return migratePersistedStateToV7(
           persistedState,
           version,
         ) as unknown as EditorState;
@@ -286,8 +209,6 @@ export const createEditorStore = ({
         const mergedState = {
           ...currentState,
           canvasMode: flattened.canvasMode,
-          structuredScene: flattened.structuredScene,
-          structuredComponents: flattened.structuredComponents,
           activeCanvasId: flattened.activeCanvasId,
           brushChar: flattened.brushChar,
           brushColor: flattened.brushColor,

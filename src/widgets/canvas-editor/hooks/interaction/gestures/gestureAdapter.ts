@@ -9,7 +9,6 @@ import type {
   CanvasInteractionState,
   EditorRuntime,
 } from "@/domains/editor/public";
-import type { StructuredNode } from "@/domains/structured-content/public";
 import { isCtrlOrMeta } from "@/shared/utils/event";
 import { MAX_ZOOM, MIN_ZOOM } from "@/shared/lib/constants";
 import type { CanvasPointerContextResolver } from "../core/pointerContext";
@@ -50,9 +49,6 @@ export const useCanvasGestureAdapter = ({
   brushChar,
   getViewport,
   hasColorPickerTarget,
-  selectedStructuredNodeIds,
-  structuredScene,
-  editingStructuredTextNodeId,
   pointerContext,
   editorRuntime,
   getInteractionState,
@@ -75,9 +71,6 @@ export const useCanvasGestureAdapter = ({
   brushChar: string;
   getViewport: () => CanvasViewportState;
   hasColorPickerTarget: boolean;
-  selectedStructuredNodeIds: string[];
-  structuredScene: StructuredNode[];
-  editingStructuredTextNodeId: string | null;
   pointerContext: CanvasPointerContextResolver;
   editorRuntime: EditorRuntime<CanvasState, CanvasEditorInputEvent>;
   getInteractionState: () => CanvasInteractionState;
@@ -132,7 +125,6 @@ export const useCanvasGestureAdapter = ({
         }
         canvasMoveRouteHandler({
           hasColorPickerTarget,
-          canvasMode,
           tool,
           clientPoint: { x, y },
           staticRangeMoveHit: (() => {
@@ -141,17 +133,12 @@ export const useCanvasGestureAdapter = ({
           })(),
           resolveMoveContext: ({
             clientPoint,
-            shouldResolveStructuredSelectCursor,
             shouldResolveEraserHoverPoint,
           }) =>
             pointerContext.resolveMoveContext({
               clientX: clientPoint.x,
               clientY: clientPoint.y,
-              shouldResolveStructuredSelectCursor,
               shouldResolveEraserHoverPoint,
-              selectedStructuredNodeIds,
-              structuredScene,
-              editingStructuredTextNodeId,
             }),
         });
       },
@@ -178,12 +165,9 @@ export const useCanvasGestureAdapter = ({
             shiftKey: mouseEvent.shiftKey,
             anchorGrid: null,
             brushChar,
-            mouseDetail: mouseEvent.detail,
             preventDefault: () => event.preventDefault(),
             resolveGridPoint: (point) =>
               pointerContext.resolveGridPoint(point.x, point.y),
-            resolveLocalPoint: (point) =>
-              pointerContext.resolveLocalPoint(point.x, point.y),
           });
           if (!started) cancelInteraction();
           return;

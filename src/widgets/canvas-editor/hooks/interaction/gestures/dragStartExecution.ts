@@ -93,8 +93,6 @@ export const createSelectionDragStartExecutor = ({
 
 type DrawingShapeDragStartExecutor = {
   clearInteractionState: () => void;
-  clearEditingStructuredTextNode: () => void;
-  clearStructuredTextSelection: () => void;
   setAnchorGrid: (point: Point) => void;
   setInteractionState: (state: CanvasInteractionState) => void;
   addScratchPoint: (point: { x: number; y: number; char: string }) => void;
@@ -109,8 +107,6 @@ export const executeDrawingShapeDragStartDecision = (
   if (decision.type === "ignore") return false;
 
   executor.clearInteractionState();
-  executor.clearEditingStructuredTextNode();
-  executor.clearStructuredTextSelection();
   executor.setAnchorGrid(start);
   executor.setInteractionState(decision.state);
 
@@ -126,22 +122,16 @@ export const createDrawingShapeDragStartExecutor = ({
   setAnchorGrid,
   setInteractionState,
   clearInteractionState,
-  clearEditingStructuredTextNode,
-  clearStructuredTextSelection,
   addScratchPoint,
   erasePoint,
 }: {
   setAnchorGrid: (point: Point) => void;
   setInteractionState: (state: CanvasInteractionState) => void;
   clearInteractionState: () => void;
-  clearEditingStructuredTextNode: () => void;
-  clearStructuredTextSelection: () => void;
   addScratchPoint: (point: { x: number; y: number; char: string }) => void;
   erasePoint: (point: Point) => void;
 }): DrawingShapeDragStartExecutor => ({
   clearInteractionState,
-  clearEditingStructuredTextNode,
-  clearStructuredTextSelection,
   setAnchorGrid,
   setInteractionState,
   addScratchPoint,
@@ -155,7 +145,6 @@ type PrimaryCanvasDragStartContext = {
   shiftKey: boolean;
   anchorGrid: Point | null;
   brushChar: string;
-  executeStructuredSelectStart: (() => boolean) | null;
 };
 
 const executePrimaryCanvasDragStart = (
@@ -165,10 +154,6 @@ const executePrimaryCanvasDragStart = (
     drawingShape: DrawingShapeDragStartExecutor;
   }
 ): boolean => {
-  if (context.canvasMode === "structured" && context.tool === "select") {
-    if (context.executeStructuredSelectStart?.()) return true;
-  }
-
   const selectionDecision = resolveSelectionDragStartDecision({
     tool: context.tool,
     canvasMode: context.canvasMode,
@@ -272,10 +257,8 @@ export type CanvasDragStartRouteAdapter = ({
   shiftKey,
   anchorGrid,
   brushChar,
-  mouseDetail,
   preventDefault,
   resolveGridPoint,
-  resolveLocalPoint,
 }: {
   canvasMode: CanvasMode;
   tool: ToolType;
@@ -287,17 +270,14 @@ export type CanvasDragStartRouteAdapter = ({
   shiftKey: boolean;
   anchorGrid: Point | null;
   brushChar: string;
-  mouseDetail: number;
   preventDefault: () => void;
   resolveGridPoint: (screenPoint: Point) => Point | null;
-  resolveLocalPoint: (screenPoint: Point) => Point | null;
 }) => boolean;
 
 export const createCanvasDragStartRouteAdapter = ({
   route,
   colorPicker,
   primaryCanvas,
-  structuredSelect,
 }: {
   route: DragStartRouteHandler;
   colorPicker: (input: {
@@ -305,11 +285,6 @@ export const createCanvasDragStartRouteAdapter = ({
     preventDefault: () => void;
   }) => boolean;
   primaryCanvas: PrimaryCanvasDragStartHandler;
-  structuredSelect: (input: {
-    screenPoint: Point | null;
-    start: Point;
-    mouseDetail: number;
-  }) => boolean;
 }): CanvasDragStartRouteAdapter =>
   ({
     canvasMode,
@@ -322,10 +297,8 @@ export const createCanvasDragStartRouteAdapter = ({
     shiftKey,
     anchorGrid,
     brushChar,
-    mouseDetail,
     preventDefault,
     resolveGridPoint,
-    resolveLocalPoint,
   }) =>
     route({
       tool,
@@ -350,12 +323,6 @@ export const createCanvasDragStartRouteAdapter = ({
           shiftKey,
           anchorGrid,
           brushChar,
-          executeStructuredSelectStart: () =>
-            structuredSelect({
-              screenPoint: resolveLocalPoint(screenPoint),
-              start,
-              mouseDetail,
-            }),
         });
       },
     });

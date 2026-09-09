@@ -9,8 +9,6 @@ export type ManagedCanvasKeyboardContext = Readonly<{
   staticGridInteraction: StaticGridInteraction["kind"] | null;
   hasTextCursor: boolean;
   hasActiveSelection: boolean;
-  hasStructuredSelection: boolean;
-  hasStructuredGridFocus: boolean;
   colorPickerOpen: boolean;
   pageRows: number;
 }>;
@@ -29,15 +27,12 @@ export type ManagedCanvasKeyIntent =
   | Readonly<{ type: "move-grid-focus"; dx: Direction; dy: Direction; extend: boolean }>
   | Readonly<{ type: "newline-text" | "indent-text" }>
   | Readonly<{ type: "move-text-cursor"; dx: Direction; dy: Direction }>
-  | Readonly<{ type: "move-structured-grid-focus"; dx: Direction; dy: Direction }>
   | Readonly<{
       type: "escape";
       target:
         | "color-picker"
         | "grid-text-edit"
         | "text-cursor"
-        | "structured-selection"
-        | "structured-grid-focus"
         | "selection"
         | "none";
     }>
@@ -190,12 +185,7 @@ export const resolveManagedCanvasKeyIntent = (
     if (context.hasTextCursor) {
       return decide({ type: "move-text-cursor", ...direction }, true);
     }
-    return decide(
-      context.hasStructuredSelection
-        ? null
-        : { type: "move-structured-grid-focus", ...direction },
-      true
-    );
+    return decide(null, false);
   }
   if (input.key === "Escape") {
     const target = context.colorPickerOpen
@@ -204,13 +194,9 @@ export const resolveManagedCanvasKeyIntent = (
         ? "grid-text-edit"
         : context.hasTextCursor
           ? "text-cursor"
-          : context.hasStructuredSelection
-            ? "structured-selection"
-            : context.hasStructuredGridFocus
-              ? "structured-grid-focus"
-              : context.hasActiveSelection
-                ? "selection"
-                : "none";
+          : context.hasActiveSelection
+            ? "selection"
+            : "none";
     return decide({ type: "escape", target }, true);
   }
   if (staticGridRange && !context.hasTextCursor && context.mutateEnabled) {

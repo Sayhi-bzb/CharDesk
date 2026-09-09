@@ -127,8 +127,7 @@ html[data-onboarding-phase='language-menu'] [data-onboarding-target='language-me
 html[data-onboarding-phase='language-choice'] [data-onboarding-target='language-options'],
 html[data-onboarding-phase='character-library'] [data-onboarding-target='character-library'],
 html[data-onboarding-phase='canvas-selector'] [data-onboarding-target='canvas-selector'],
-html[data-onboarding-phase='create-menu'] [data-onboarding-target='create-menu'],
-html[data-onboarding-phase='structured-create'] [data-onboarding-target='create-structured'] {
+html[data-onboarding-phase='create-menu'] [data-onboarding-target='create-menu'] {
   background-color: var(--accent);
   color: var(--foreground);
   cursor: pointer;

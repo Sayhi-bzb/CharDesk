@@ -1,4 +1,6 @@
 export * from "./canvasDrawing";
+export * from "./cellFrame";
+export * from "./cellFrameLayout";
 export * from "./cellOccupancy";
 export * from "./fontRouting";
 export * from "./gridGeometry";

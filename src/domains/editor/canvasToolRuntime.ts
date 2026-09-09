@@ -1,32 +1,8 @@
 import type { CanvasState, ToolType } from "@/domains/canvas/public";
 import type { CanvasMode } from "@/domains/sessions/public";
-import type {
-  StructuredBoxResizeHandle,
-  StructuredLineResizeHandle,
-  StructuredNode,
-  StructuredSplitBoxHandle,
-} from "@/domains/structured-content/public";
-import type { GridMap, Point } from "@/shared/types";
+import type { Point } from "@/shared/types";
 import type { EditorCommandHost, EditorInputEvent } from "./core/types";
 import { EditorStateNode } from "./core/stateNode";
-
-export type StructuredNodeDragPayload = {
-  node: StructuredNode;
-  selectedIds: string[];
-  selectedNodes: StructuredNode[];
-  baseScene: StructuredNode[];
-  baseGrid: GridMap;
-  handle:
-    | StructuredBoxResizeHandle
-    | StructuredSplitBoxHandle
-    | StructuredLineResizeHandle
-    | null;
-};
-
-type StructuredResizeStateBase = {
-  anchor: Point;
-  drag: StructuredNodeDragPayload;
-};
 
 export type CanvasInteractionState =
   | { type: "idle" }
@@ -58,17 +34,7 @@ export type CanvasInteractionState =
       current: Point;
       axis: "horizontal" | "vertical" | null;
     }
-  | ({ type: "structuredMoving" } & StructuredResizeStateBase)
-  | ({ type: "structuredRectResizing" } & StructuredResizeStateBase)
-  | ({ type: "structuredSplitBoxResizing" } & StructuredResizeStateBase)
-  | ({ type: "structuredSplitBoxResizePending" } & StructuredResizeStateBase)
-  | ({ type: "structuredLineResizing" } & StructuredResizeStateBase)
-  | {
-      type: "structuredTextSelecting";
-      nodeId: string;
-      anchorOffset: number;
-      start: Point;
-    };
+  ;
 
 export const getInteractionStart = (state: CanvasInteractionState): Point | null => {
   switch (state.type) {
@@ -77,12 +43,6 @@ export const getInteractionStart = (state: CanvasInteractionState): Point | null
     case "movingRange": return state.anchor;
     case "drawing":
     case "shapePreview": return state.start;
-    case "structuredMoving":
-    case "structuredRectResizing":
-    case "structuredSplitBoxResizing":
-    case "structuredSplitBoxResizePending":
-    case "structuredLineResizing": return state.anchor;
-    case "structuredTextSelecting": return state.start;
     default: return null;
   }
 };
@@ -221,12 +181,6 @@ export class CanvasToolStateNode extends EditorStateNode<
       "movingRange",
       "drawing",
       "shapePreview",
-      "structuredMoving",
-      "structuredRectResizing",
-      "structuredSplitBoxResizing",
-      "structuredSplitBoxResizePending",
-      "structuredLineResizing",
-      "structuredTextSelecting",
     ] as const) {
       this.addChild(new CanvasToolInteractionStateNode(editor, stateId, this));
     }

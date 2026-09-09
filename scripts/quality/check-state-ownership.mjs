@@ -3,13 +3,8 @@ import path from "node:path";
 import ts from "typescript";
 
 const SRC_ROOT = path.resolve("src");
-const RAW_CANVAS_BINDINGS = new Set([
-  "yStructuredScene",
-  "yStructuredComponents",
-]);
 const IMPLICIT_DOCUMENT_MUTATIONS = new Set([
   "mutateGrid",
-  "replaceStructuredContent",
   "runTransaction",
 ]);
 const FORBIDDEN_PUBLIC_CANVAS_EXPORTS = new Set([
@@ -27,20 +22,11 @@ const FORBIDDEN_PUBLIC_CANVAS_EXPORTS = new Set([
 const CONTENT_STATE_FIELDS = new Set([
   "grid",
   "contentSurface",
-  "structuredScene",
-  "structuredComponents",
 ]);
 const LEGACY_FLAT_RUNTIME_FIELDS = new Set([
   "offset",
   "zoom",
   "textCursor",
-  "editingStructuredTextNodeId",
-  "structuredTextSelection",
-  "selectedStructuredNodeIds",
-  "selectedStructuredBoxId",
-  "selectedStructuredSplitHandle",
-  "structuredContextPoint",
-  "structuredGridFocus",
   "staticGridSelection",
   "staticGridEditMode",
   "staticGridInputFlow",
@@ -70,6 +56,12 @@ const EDITOR_STORE_IMPORT_OWNERS = new Set([
   "domains/canvas/state/canvasState.ts",
   "domains/canvas/testing.ts",
 ]);
+const LEGACY_STRUCTURED_IMPORT_OWNERS = new Set([
+  "domains/canvas/state/canvasCheckpointSnapshot.ts",
+  "domains/canvas/state/migrateLegacyStructuredDocument.ts",
+  "domains/document/structured-source.ts",
+  "domains/sessions/persistence.ts",
+]);
 const CANVAS_COMMAND_OWNED_MUTATIONS = new Set([
   "setTool",
   "setBrushChar",
@@ -78,16 +70,8 @@ const CANVAS_COMMAND_OWNED_MUTATIONS = new Set([
   "setShowGrid",
   "setExportShowGrid",
   "setCanvasColorPickerTarget",
-  "setStructuredContextPoint",
   "setHoveredGrid",
-  "setStructuredGridFocus",
-  "moveStructuredGridFocus",
   "setTextCursor",
-  "setEditingStructuredTextNodeId",
-  "setStructuredTextSelection",
-  "setSelectedStructuredNodeIds",
-  "setSelectedStructuredBoxId",
-  "setSelectedStructuredSplitHandle",
   "clearSelections",
   "clearInteractionState",
   "setStaticGridActiveCell",
@@ -223,16 +207,15 @@ for (const absolute of collect(SRC_ROOT)) {
       if (moduleName.endsWith("/domains/canvas/testing")) {
         report(node, "Canvas testing API imported by production code");
       }
-    }
-    if (
-      sourcePath !== "domains/canvas/state/canvasDocument.ts" &&
-      ts.isCallExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      ["set", "delete", "clear"].includes(node.expression.name.text) &&
-      ts.isIdentifier(node.expression.expression) &&
-      RAW_CANVAS_BINDINGS.has(node.expression.expression.text)
-    ) {
-      report(node, `raw canvas map mutation via ${node.expression.expression.text}`);
+      if (
+        moduleName.includes("/domains/legacy-structured/") &&
+        !LEGACY_STRUCTURED_IMPORT_OWNERS.has(sourcePath)
+      ) {
+        report(node, "retired Structured decoder imported outside a migration boundary");
+      }
+      if (moduleName.includes("/domains/structured-content/")) {
+        report(node, "removed Structured Canvas domain imported by active code");
+      }
     }
     if (
       sourcePath !== "domains/canvas/state/CanvasDocumentRegistry.ts" &&

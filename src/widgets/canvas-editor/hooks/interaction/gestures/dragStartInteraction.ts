@@ -7,13 +7,7 @@ export const isShapeTool = (
   tool: ToolType,
   canvasMode: CanvasMode
 ): boolean => {
-  if (canvasMode === "structured") {
-    return tool === "box" ||
-      tool === "splitBox" ||
-      tool === "line" ||
-      tool === "arrowLine" ||
-      tool === "bg";
-  }
+  void canvasMode;
   return ["box", "circle", "line", "stepline", "bg"].includes(tool);
 };
 
@@ -21,7 +15,7 @@ export const isSelectionTool = (
   tool: ToolType,
   canvasMode: CanvasMode
 ): boolean => {
-  if (canvasMode === "structured") return tool === "select";
+  void canvasMode;
   return tool === "select" || tool === "fill";
 };
 
@@ -119,7 +113,7 @@ export const resolveSelectionDragStartDecision = ({
     clearExistingSelection: !shiftKey,
     clearInteractionState: false,
     activateStaticGridCell:
-      tool === "select" && canvasMode !== "structured" ? start : null,
+      tool === "select" ? start : null,
     nextAnchor,
   };
 };
@@ -135,18 +129,7 @@ export const resolveDrawingShapeDragStartDecision = ({
   start: Point;
   brushChar: string;
 }): DrawingShapeDragStartDecision => {
-  if (
-    canvasMode === "structured" &&
-    tool !== "box" &&
-    tool !== "splitBox" &&
-    tool !== "line" &&
-    tool !== "arrowLine" &&
-    tool !== "bg"
-  ) {
-    return { type: "ignore" };
-  }
-
-  if (tool === "brush" && canvasMode !== "structured") {
+  if (tool === "brush") {
     return {
       type: "drawing",
       state: {
@@ -157,7 +140,7 @@ export const resolveDrawingShapeDragStartDecision = ({
     };
   }
 
-  if (tool === "eraser" && canvasMode !== "structured") {
+  if (tool === "eraser") {
     return {
       type: "drawing",
       state: {

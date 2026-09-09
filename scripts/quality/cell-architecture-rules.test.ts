@@ -6,6 +6,14 @@ const messages = (content: string, file: string) => checkCellArchitecture(conten
   .map((violation: { message: string }) => violation.message);
 
 describe("Cell architecture rules", () => {
+  it("enforces Cell behavior, appearance and feedback timing ownership", () => {
+    expect(messages('import { theme } from "./theme.js";', "packages/cell-ui/src/primitive-behavior.ts")[0]).toContain("must not depend");
+    expect(messages('window.setTimeout(callback);', "packages/cell-ui/src/interaction-controller.ts")[0]).toContain("DOM globals");
+    expect(messages('import { dispatch } from "./interaction.js";', "packages/cell-ui/src/primitive-appearance.ts")[0]).toContain("must not depend");
+    expect(messages('import type { WidgetCommand } from "./interaction.js";', "packages/cell-ui/src/confirmation-sequence.ts")[0]).toContain("must not depend");
+    expect(messages('onCommand(command);', "packages/cell-ui/src/paint.ts")[0]).toContain("must not own");
+    expect(messages('import type { CellUiTheme } from "./theme.js";', "packages/cell-ui/src/primitive-appearance.ts")).toEqual([]);
+  });
   it("keeps Cell Core free of runtime and source dependencies", () => {
     expect(messages(JSON.stringify({ dependencies: { react: "latest" } }),
       "packages/cell-core/package.json")[0]).toContain("dependency react");

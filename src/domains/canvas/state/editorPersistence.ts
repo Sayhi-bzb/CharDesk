@@ -6,57 +6,31 @@ import {
   type CanvasSessionDescriptor,
   type CanvasSessionSnapshot,
 } from "@/domains/sessions/public";
-import {
-  buildStructuredTemplate,
-  normalizeStructuredComponents,
-} from "@/domains/structured-content/public";
 import { COLOR_PRIMARY_TEXT, DEFAULT_BRUSH_CHAR } from "@/shared/lib/constants";
 import { normalizeBrushChar } from "@/shared/utils/characters";
 import { DEFAULT_DEMO_GRID } from "./helpers/defaultDemo";
-import {
-  cloneScene,
-} from "./helpers/snapshotHelpers";
 import {
   buildSessionSnapshot,
   DEFAULT_MODE,
   DEFAULT_SESSION_ID,
   DEFAULT_SESSION_NAME,
-  DEFAULT_STRUCTURED_SESSION_ID,
-  DEFAULT_STRUCTURED_SESSION_NAME,
   getSessionCanvasDocumentId,
   resolveSessionDescriptorRuntime,
 } from "./helpers/storeUtils";
 import type { EditorState } from "./interfaces";
 import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 import {
-  createStructuredContentSurface,
-} from "./helpers/gridHelpers";
-import {
   materializeSlideDeckContent,
   readSlideDeckDescriptor,
 } from "./slideDocumentPages";
 import { toSlideDeckDescriptor } from "@/domains/slides/public";
 
-const DEFAULT_STRUCTURED_SAFARI_TEMPLATE = buildStructuredTemplate(
-  "safari",
-  { x: 4, y: 2 },
-  { brushColor: COLOR_PRIMARY_TEXT, startOrder: 1 }
-);
 export const createDefaultCanvasSessions = (): CanvasSessionSnapshot[] => [
   {
     id: DEFAULT_SESSION_ID,
     name: DEFAULT_SESSION_NAME,
     mode: DEFAULT_MODE,
-    scene: [],
     grid: DEFAULT_DEMO_GRID,
-  },
-  {
-    id: DEFAULT_STRUCTURED_SESSION_ID,
-    name: DEFAULT_STRUCTURED_SESSION_NAME,
-    mode: "structured",
-    scene: DEFAULT_STRUCTURED_SAFARI_TEMPLATE.nodes,
-    components: DEFAULT_STRUCTURED_SAFARI_TEMPLATE.components,
-    grid: [],
   },
 ];
 
@@ -102,9 +76,6 @@ export const recoverPersistedEditorState = (
       : state.canvasMode === "slide"
         ? state.slideDeck
         : null;
-  state.contentSurface = runtime.nextMode === "structured"
-    ? createStructuredContentSurface(state.structuredScene)
-    : state.contentSurface;
   state.tool = runtime.nextTool;
   return state;
 };
@@ -122,8 +93,6 @@ export const syncHydratedStateToCanvasDocument = (
     documents.activateDocument(activeSession.id, {
       mode: activeSession.mode,
       grid: [],
-      scene: [],
-      components: [],
     }, { replace: true });
     return;
   }
@@ -131,8 +100,6 @@ export const syncHydratedStateToCanvasDocument = (
     documents.initializeCollaborativeDocument(activeSession.id, {
       mode: activeSession.mode,
       grid: [],
-      scene: [],
-      components: [],
     });
     return;
   }
@@ -148,21 +115,13 @@ export const syncHydratedStateToCanvasDocument = (
         grid: slide.grid,
       })),
       grid: [],
-      scene: [],
-      components: [],
     }, { replace: true });
     return;
   }
   documents.activateDocument(
     getSessionCanvasDocumentId(activeSession),
     {
-      grid:
-        hydratedState.canvasMode === "structured"
-          ? []
-          : Array.from(hydratedState.contentSurface.reader.materialize()),
-      scene:
-        hydratedState.canvasMode === "structured" ? hydratedState.structuredScene : [],
-      components: hydratedState.structuredComponents,
+      grid: Array.from(hydratedState.contentSurface.reader.materialize()),
     },
     { replace: true }
   );
@@ -181,16 +140,12 @@ const materializeSessionSnapshot = (
       ...session,
       slideDeck: materializeSlideDeckContent(documents, session.id, deck),
       grid: [],
-      scene: [],
-      components: [],
     };
   }
   const seed = documents.getDocumentSeed(session.id, session.mode);
   return {
     ...session,
     grid: seed?.grid ?? [],
-    scene: seed?.scene ?? [],
-    components: seed?.components ?? [],
   };
 };
 
@@ -212,7 +167,7 @@ const stripExternallyOwnedSessionContent = (
           })),
         },
       }
-    : { ...session, grid: [], scene: [], components: [] };
+    : { ...session, grid: [] };
 };
 
 export const createPersistedEditorSnapshot = (
@@ -238,15 +193,9 @@ export const createPersistedEditorSnapshot = (
       offset: activeViewport.offset,
       zoom: activeViewport.zoom,
       canvasMode: state.canvasMode,
-      structuredScene: activeIsExternallyOwned ? [] : cloneScene(state.structuredScene),
-      structuredComponents: activeIsExternallyOwned
-        ? []
-        : normalizeStructuredComponents(state.structuredComponents, state.structuredScene),
       grid: activeIsExternallyOwned
         ? []
-        : state.canvasMode === "structured"
-          ? []
-          : Array.from(state.contentSurface.reader.materialize()),
+        : Array.from(state.contentSurface.reader.materialize()),
     },
     sessions: { items: persistedSessions, activeId: state.activeCanvasId },
     preferences: {
@@ -267,8 +216,6 @@ export const shouldScheduleEditorPersistence = (
   previous.contentSurface !== next.contentSurface ||
   previous.canvasMode !== next.canvasMode ||
   previous.slideDeck !== next.slideDeck ||
-  previous.structuredScene !== next.structuredScene ||
-  previous.structuredComponents !== next.structuredComponents ||
   previous.canvasSessions !== next.canvasSessions ||
   previous.activeCanvasId !== next.activeCanvasId ||
   previous.brushChar !== next.brushChar ||

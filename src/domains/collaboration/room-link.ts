@@ -87,7 +87,7 @@ export const isCollaborationDescriptor = (
   if (
     (candidate.version !== 6 && candidate.version !== 7) ||
     candidate.documentVersion !== COLLABORATION_DOCUMENT_VERSION ||
-    (candidate.mode !== "freeform" && candidate.mode !== "structured") ||
+    candidate.mode !== "freeform" ||
     (candidate.version === 6
       ? candidate.provider !== "websocket"
       : candidate.provider !== "encrypted-relay") ||
@@ -140,9 +140,7 @@ const encodeCompactDescriptor = (descriptor: CollaborationDescriptorV7) => {
     const key = decodeBase64Url(descriptor.key);
     if (roomId.length !== ROOM_ID_BYTES || key.length !== ROOM_KEY_BYTES) return null;
     const bytes = new Uint8Array(1 + ROOM_ID_BYTES + ROOM_KEY_BYTES);
-    bytes[0] = descriptor.mode === "freeform"
-      ? COMPACT_LINK_FREEFORM_HEADER
-      : COMPACT_LINK_STRUCTURED_HEADER;
+    bytes[0] = COMPACT_LINK_FREEFORM_HEADER;
     bytes.set(roomId, 1);
     bytes.set(key, 1 + ROOM_ID_BYTES);
     return encodeBase64Url(bytes);
@@ -151,21 +149,20 @@ const encodeCompactDescriptor = (descriptor: CollaborationDescriptorV7) => {
   }
 };
 
-const decodeCompactDescriptor = (encoded: string): CollaborationDescriptorV7 => {
+const decodeCompactDescriptor = (encoded: string): CollaborationDescriptorV7 | "retired-structured" => {
   if (encoded.length !== COMPACT_LINK_LENGTH) throw new Error("Invalid compact link length");
   const bytes = decodeBase64Url(encoded);
-  const mode = bytes[0] === COMPACT_LINK_FREEFORM_HEADER
-    ? "freeform"
-    : bytes[0] === COMPACT_LINK_STRUCTURED_HEADER
-      ? "structured"
-      : null;
-  if (!mode || bytes.length !== 1 + ROOM_ID_BYTES + ROOM_KEY_BYTES) {
+  if (bytes.length !== 1 + ROOM_ID_BYTES + ROOM_KEY_BYTES) {
+    throw new Error("Unsupported compact link format");
+  }
+  if (bytes[0] === COMPACT_LINK_STRUCTURED_HEADER) return "retired-structured";
+  if (bytes[0] !== COMPACT_LINK_FREEFORM_HEADER) {
     throw new Error("Unsupported compact link format");
   }
   return {
     version: 7,
     documentVersion: COLLABORATION_DOCUMENT_VERSION,
-    mode,
+    mode: "freeform",
     provider: "encrypted-relay",
     roomId: encodeBase64Url(bytes.slice(1, 1 + ROOM_ID_BYTES)),
     key: encodeBase64Url(bytes.slice(1 + ROOM_ID_BYTES)),
@@ -213,6 +210,9 @@ export const parseCollaborationUrl = (
     const compact = hash.get(COMPACT_ROOM_PARAM);
     if (compact !== null) {
       const descriptor = decodeCompactDescriptor(compact);
+      if (descriptor === "retired-structured") {
+        return { status: "retired", provider: "structured" };
+      }
       return isCollaborationDescriptor(descriptor)
         ? { status: "valid", descriptor }
         : { status: "invalid" };
@@ -220,6 +220,13 @@ export const parseCollaborationUrl = (
     const encoded = hash.get(ROOM_PARAM);
     if (!encoded) return { status: "none" };
     const descriptor = decodeDescriptor(encoded);
+    if (
+      descriptor &&
+      typeof descriptor === "object" &&
+      (descriptor as { mode?: unknown }).mode === "structured"
+    ) {
+      return { status: "retired", provider: "structured" };
+    }
     if (isCollaborationDescriptor(descriptor)) {
       return { status: "valid", descriptor };
     }

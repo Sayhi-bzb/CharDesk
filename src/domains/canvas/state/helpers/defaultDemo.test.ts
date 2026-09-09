@@ -7,12 +7,8 @@ import {
 import {
   DEFAULT_SESSION_ID,
   DEFAULT_SESSION_NAME,
-  DEFAULT_STRUCTURED_SESSION_ID,
 } from "@/domains/canvas/state/helpers/storeUtils";
-import {
-  defaultCanvasDocuments,
-  useEditorStore,
-} from "@/domains/canvas/testing";
+import { useEditorStore } from "@/domains/canvas/testing";
 import { GridManager } from "@/shared/utils/grid";
 import type { GridCell } from "@/shared/types";
 import generatedCasesMarkdown from "@/domains/canvas/state/helpers/default-demo-cases.generated.md?raw";
@@ -276,32 +272,4 @@ describe("default demo canvas", () => {
     ).toBe(false);
   });
 
-  it("adds a default structured Safari canvas without activating it", () => {
-    const state = useEditorStore.getState();
-    const structuredSession = state.canvasSessions.find(
-      (session) => session.id === DEFAULT_STRUCTURED_SESSION_ID
-    );
-
-    expect(state.activeCanvasId).toBe(DEFAULT_SESSION_ID);
-    expect(state.canvasMode).toBe("freeform");
-    expect(state.canvasSessions).toHaveLength(2);
-    expect(structuredSession).toMatchObject({
-      id: DEFAULT_STRUCTURED_SESSION_ID,
-      name: "Canvas 2",
-      mode: "structured",
-    });
-    const structuredSeed = defaultCanvasDocuments.getDocumentSeed(
-      DEFAULT_STRUCTURED_SESSION_ID,
-      "structured"
-    );
-    expect(structuredSession).not.toHaveProperty("scene");
-    expect(structuredSeed?.scene.some((node) => node.type === "splitBox")).toBe(
-      true
-    );
-    expect(structuredSeed?.components?.[0]).toMatchObject({
-      templateId: "safari",
-      label: "Safari",
-    });
-    expect(structuredSession).not.toHaveProperty("grid");
-  });
 });

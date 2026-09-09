@@ -11,10 +11,14 @@ const defaults = {
   background: fallback.background,
   foreground: fallback.foreground,
   surface: fallback.surfaceStyle.backgroundColor!,
+  "button-primary": fallback.buttonPrimaryStyle.backgroundColor!,
+  "button-primary-foreground": fallback.buttonPrimaryStyle.color!,
+  "button-primary-hover": fallback.buttonPrimaryHoverStyle.backgroundColor!,
   highlight: fallback.focusedSurfaceStyle.backgroundColor!,
   hover: fallback.hoveredItemStyle.backgroundColor!,
   "highlight-foreground": fallback.focusedSurfaceStyle.color!,
   "muted-foreground": fallback.secondaryStyle.color!,
+  "disabled-foreground": fallback.disabledStyle.color!,
   border: fallback.borderStyle.color!,
   selection: fallback.textSelectionStyle.backgroundColor!,
   "selection-foreground": fallback.textSelectionStyle.color!,
@@ -23,6 +27,7 @@ const defaults = {
   cursor: fallback.cursorStyle.color,
   "cursor-foreground": fallback.cursorStyle.textColor,
   "scrollbar-thumb": fallback.scrollThumbStyle.color!,
+  "scrollbar-track": fallback.scrollTrackStyle.color!,
 };
 
 // One temporary color resolver per theme read, never DOM per Cell.
@@ -58,12 +63,20 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
       background: colors.background,
       foreground: colors.foreground,
       surfaceStyle: { backgroundColor: colors.surface },
+      buttonPrimaryStyle: {
+        color: colors["button-primary-foreground"],
+        backgroundColor: colors["button-primary"],
+      },
+      buttonPrimaryHoverStyle: {
+        color: colors["button-primary-foreground"],
+        backgroundColor: colors["button-primary-hover"],
+      },
       borderStyle: { color: colors.border },
       focusedSurfaceStyle: highlight,
       hoveredItemStyle: { backgroundColor: colors.hover },
       selectedStyle: highlight,
       secondaryStyle: { color: colors["muted-foreground"] },
-      disabledStyle: { color: colors["muted-foreground"] },
+      disabledStyle: { color: colors["disabled-foreground"] },
       textSelectionStyle: { color: colors["selection-foreground"], backgroundColor: colors.selection },
       cursorStyle: {
         ...fallback.cursorStyle,
@@ -75,7 +88,7 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
         border: colors["range-border"],
       },
       scrollThumbStyle: { color: colors["scrollbar-thumb"] },
-      scrollTrackStyle: { color: colors.border },
+      scrollTrackStyle: { color: colors["scrollbar-track"] },
     },
   };
 };

@@ -45,18 +45,6 @@ const mutateGrid = (
   const operation = gridChangesToCellPlaneOperation(id, changes);
   if (operation) getCellPlaneOperations(doc).push([operation]);
 };
-const applyYMapValueDiff = <T extends { id: string }>(map: Y.Map<T>, values: T[]) => {
-  const nextIds = new Set(values.map((value) => value.id));
-  Array.from(map.keys()).forEach((id) => {
-    if (!nextIds.has(id)) map.delete(id);
-  });
-  values.forEach((value) => {
-    if (JSON.stringify(map.get(value.id)) !== JSON.stringify(value)) {
-      map.set(value.id, value);
-    }
-  });
-};
-
 describe("canvas CRDT collaboration", () => {
   it("reattaches a bound collaboration page when a remote update removes page metadata", () => {
     const id = `collaboration-page-repair-${crypto.randomUUID()}`;
@@ -258,59 +246,4 @@ describe("canvas CRDT collaboration", () => {
     documents.dispose();
   });
 
-  it("converges atomic structured-node replacement and deletion", () => {
-    const left = new Y.Doc();
-    const right = new Y.Doc();
-    const leftScene = left.getMap("structured-scene");
-    const rightScene = right.getMap("structured-scene");
-    leftScene.set("node-1", { id: "node-1", type: "text", text: "left" });
-    Y.applyUpdate(right, Y.encodeStateAsUpdate(left));
-    leftScene.delete("node-1");
-    rightScene.set("node-1", { id: "node-1", type: "text", text: "right" });
-
-    const leftUpdate = Y.encodeStateAsUpdate(left);
-    const rightUpdate = Y.encodeStateAsUpdate(right);
-    Y.applyUpdate(left, rightUpdate);
-    Y.applyUpdate(right, leftUpdate);
-    expect(leftScene.toJSON()).toEqual(rightScene.toJSON());
-  });
-
-  it("merges concurrent edits to different structured nodes", () => {
-    const base = new Y.Doc();
-    const baseScene = base.getMap<{ id: string; text: string }>("structured-scene");
-    baseScene.set("node-a", { id: "node-a", text: "A" });
-    baseScene.set("node-b", { id: "node-b", text: "B" });
-
-    const left = new Y.Doc();
-    const right = new Y.Doc();
-    const initial = Y.encodeStateAsUpdate(base);
-    Y.applyUpdate(left, initial);
-    Y.applyUpdate(right, initial);
-
-    left.transact(() => {
-      applyYMapValueDiff(left.getMap<{ id: string; text: string }>("structured-scene"), [
-        { id: "node-a", text: "A-left" },
-        { id: "node-b", text: "B" },
-      ]);
-    });
-    right.transact(() => {
-      applyYMapValueDiff(right.getMap<{ id: string; text: string }>("structured-scene"), [
-        { id: "node-a", text: "A" },
-        { id: "node-b", text: "B-right" },
-      ]);
-    });
-
-    const leftUpdate = Y.encodeStateAsUpdate(left);
-    const rightUpdate = Y.encodeStateAsUpdate(right);
-    Y.applyUpdate(left, rightUpdate);
-    Y.applyUpdate(right, leftUpdate);
-
-    expect(left.getMap("structured-scene").toJSON()).toEqual({
-      "node-a": { id: "node-a", text: "A-left" },
-      "node-b": { id: "node-b", text: "B-right" },
-    });
-    expect(right.getMap("structured-scene").toJSON()).toEqual(
-      left.getMap("structured-scene").toJSON()
-    );
-  });
 });

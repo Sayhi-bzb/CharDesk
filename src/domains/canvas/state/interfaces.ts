@@ -1,10 +1,8 @@
 import type { Point, TextAttributes } from "@/shared/types";
 import type { CanvasMode } from "@/domains/sessions/public";
 import type { ToolType } from "../model/tool";
-import type { StructuredNode, StructuredBoxNode, StructuredComponentInstance, StructuredSelectionStylePatch, StructuredTextStyleRange } from "@/domains/structured-content/public";
 import type { CanvasSessionDescriptor } from "@/domains/sessions/public";
 import type { SessionCommands } from "@/domains/sessions/public";
-import type { CanvasHistoryMode } from "./CanvasDocumentRegistry";
 import type { SlideDeckDescriptor, SlideSize } from "@/domains/slides/public";
 import type { CanvasSurfaceReader } from "../cell-plane/model";
 import type { CanvasInteractionSnapshot } from "./canvasInteractionState";
@@ -47,34 +45,6 @@ export type ClipboardCommandResult =
 
 export interface DrawingSlice {
   clearCanvas: () => void;
-  commitStructuredShape: (
-    tool: "box" | "splitBox" | "line" | "arrowLine" | "bg",
-    start: Point,
-    end: Point,
-    options?: { axis?: "vertical" | "horizontal" | null }
-  ) => void;
-  splitStructuredSplitBoxLeaf: (
-    nodeId: string,
-    point: Point,
-    axis: "horizontal" | "vertical"
-  ) => boolean;
-  updateStructuredNode: (
-    id: string,
-    updater: (node: StructuredNode) => StructuredNode,
-    history?: CanvasHistoryMode | boolean
-  ) => void;
-  updateStructuredBox: (id: string, updater: (node: StructuredBoxNode) => StructuredBoxNode) => void;
-  setStructuredTextAttributes: (
-    attrs: Partial<Record<keyof TextAttributes, boolean>>
-  ) => void;
-  setStructuredTextColor: (color: string) => void;
-  setStructuredTextBackgroundColor: (bgColor: string | null) => void;
-  setStructuredNodeCharColor: (color: string) => void;
-  setStructuredSelectionPrimaryColor: (color: string) => void;
-  setStructuredSelectionStyle: (patch: StructuredSelectionStylePatch) => void;
-  fillStructuredTextSelectionWithChar: (char: string) => void;
-  reorderStructuredSelection: (direction: "forward" | "backward" | "front" | "back") => void;
-  duplicateStructuredSelection: () => string[];
 }
 
 export interface SlideSlice {
@@ -89,13 +59,6 @@ export interface SlideSlice {
 }
 
 export interface TextSlice {
-  replaceStructuredTextRange: (
-    nodeId: string,
-    start: number,
-    end: number,
-    text: string,
-    styleRanges?: StructuredTextStyleRange[]
-  ) => void;
   writeTextString: (
     str: string,
     startPos?: Point,
@@ -140,20 +103,12 @@ export type EditorState = {
   brushColor: string;
   brushBackgroundColor: string;
   contentSurface: CanvasContentSurfaceState;
-  structuredScene: StructuredNode[];
-  structuredComponents: StructuredComponentInstance[];
   showGrid: boolean;
   exportShowGrid: boolean;
   canvasSessions: CanvasSessionDescriptor[];
   activeCanvasId: string;
   canUndo: boolean;
   canRedo: boolean;
-
-  applyStructuredScene: (
-    scene: StructuredNode[],
-    history?: CanvasHistoryMode | boolean,
-    components?: StructuredComponentInstance[]
-  ) => void;
 } & DrawingSlice &
   SlideSlice &
   TextSlice &

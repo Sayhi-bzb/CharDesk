@@ -17,8 +17,9 @@ description: Authorities for portable contracts consumed outside the editor runt
 | Clipboard and download delivery | [Browser adapter](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/domains/export/platform/browserDelivery.ts) | [Typed failure evidence](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/domains/export/export-service.test.ts) and [`e2e/app-menu.spec.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/e2e/app-menu.spec.ts) |
 
 `.ans` retains ESC for terminals. Canonical `.chardesk` is a UTF-8 text document:
-Freeform bodies use visible ESC-less controls, Structured bodies store validated
-scene/components JSON, and Slide bodies use heading plus fenced-page text.
+Freeform bodies use visible ESC-less controls and Slide bodies use heading plus
+fenced-page text. Retired Structured bodies remain import-only and flatten to
+Freeform CellPlane content.
 Standalone Slide fences omit `size` for the compatible `100x27` default, accept
 explicit dimensions, or use `size=auto` to resolve page bounds with four
 columns of horizontal and two rows of vertical padding on each side.

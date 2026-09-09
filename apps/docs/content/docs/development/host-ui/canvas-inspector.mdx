@@ -1,6 +1,6 @@
 ---
 title: Canvas Inspector
-description: Shared appearance inspection, text formatting, layer eligibility, and responsive behavior across Canvas modes.
+description: Shared Cell appearance, text formatting, and responsive behavior across Canvas modes.
 ---
 
 One Canvas Inspector owns the host trigger, floating surface, shortcut, and open
@@ -12,28 +12,21 @@ active.
 | --- | --- |
 | Freeform defaults or selection | The active foreground or Background-tool color updates through Canvas commands |
 | Slides defaults or active-page selection | The active foreground or Background-tool color updates through the active Slide document page |
-| Structured text range | The normalized grapheme range receives the selected color |
 | Freeform or Slides | The persistent formatting row stays visible; without an applicable selection its bold, italic, underline, strikethrough, and inverse actions are disabled |
 | Freeform or Slides selection | The five text attributes expose shared, absent, or mixed state; each action mutates only its own attribute |
-| Structured nodes | One Canvas command applies each node type's semantic primary color as one undoable scene change |
-| Structured layer arrangement | The persistent Layer row stays visible; eligibility and execution share `canReorderStructuredNodes`, while defaults and text ranges leave its actions disabled |
 
 The color header exposes one restore action. It applies `COLOR_PRIMARY_TEXT`
 through the same mutation boundary as a normal color pick, so the active creation
-default and any active Freeform selection, Structured text range, or Structured
-node selection return to the canonical black default together.
+default and any active Cell selection return to the canonical black default together.
 
 Read-only sessions in supported modes retain the Inspector while its mutation
 controls remain inert. The resolved Host Contract omits the Inspector from
 Blackboard, including its trigger and shortcut registration. Availability changes
 preserve the user's open state. The floating surface never reserves Canvas viewport
 space.
-Opening the Inspector preserves the active Structured text range so its appearance
-controls retain the same color mutation target. Split Box leaf and divider actions
-remain in their spatial Canvas toolbar rather than the Inspector.
 
 Authority: [`canvas-inspector.tsx`](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/widgets/canvas-inspector/canvas-inspector.tsx),
 [`model.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/widgets/canvas-inspector/model.ts),
 [`tool.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/domains/canvas/model/tool.ts),
 and [`editorHostProfile.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/app/editorHostProfile.ts).
-Evidence: their nearest tests and `structuredSelectionStyle.test.ts`.
+Evidence: their nearest tests.

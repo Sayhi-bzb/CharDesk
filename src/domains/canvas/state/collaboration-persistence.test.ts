@@ -26,8 +26,6 @@ describe("collaborative session persistence", () => {
       activeCanvasId: "room-session",
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface([["0,0", { char: "A", color: "#fff" }]]),
-      structuredScene: [],
-      structuredComponents: [],
       brushBackgroundColor: "#445566",
       canvasSessions: [
         {
@@ -45,18 +43,16 @@ describe("collaborative session persistence", () => {
       useEditorStore.getState(),
       documents
     ) as unknown as {
-      workspace: { grid: unknown[]; structuredScene: unknown[] };
+      workspace: { grid: unknown[] };
       sessions: {
-        items: Array<{ grid: unknown[]; scene: unknown[]; collaborationRole?: string }>;
+        items: Array<{ grid: unknown[]; collaborationRole?: string }>;
       };
       preferences: { brushBackgroundColor: string };
     };
 
     expect(persisted.workspace.grid).toEqual([]);
-    expect(persisted.workspace.structuredScene).toEqual([]);
     expect(persisted.sessions.items[0]).toMatchObject({
       grid: [],
-      scene: [],
       collaborationRole: "guest",
     });
     expect(persisted.preferences.brushBackgroundColor).toBe("#445566");

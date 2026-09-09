@@ -1,8 +1,7 @@
-import type { GridCell, GridCellSource } from "@/shared/types";
+import type { CellRect } from "@chardesk/cell-core";
+import type { GridCellSource } from "@/shared/types";
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
-import { getCellOccupancy, toCanvasVisual } from "@/shared/metrics";
-import type { CellFrame, CellRect, CellSource } from "@chardesk/cell-core";
-import type { CharDeskCellFrameCell } from "@chardesk/rendering";
+import { createGridCellFrame } from "@/shared/metrics";
 
 export type CanvasCellFrameProjection = Readonly<{
   hiddenSpans: readonly Readonly<{
@@ -13,88 +12,41 @@ export type CanvasCellFrameProjection = Readonly<{
   overlay: GridCellSource;
 }>;
 
-const frameCellCache = new WeakMap<GridCell, CharDeskCellFrameCell>();
-const renderSourceCache = new WeakMap<
-  CanvasSurfaceReader,
-  CellSource<CharDeskCellFrameCell>
->();
-
-const toFrameCell = (cell: GridCell): CharDeskCellFrameCell => {
-  const cached = frameCellCache.get(cell);
-  if (cached) return cached;
-  const result = Object.freeze({
-    visual: toCanvasVisual(cell),
-    drawBackground: cell.char !== " " || !!cell.bgColor || !!cell.attrs,
-    drawText: cell.char !== " " || !!cell.attrs,
-  });
-  frameCellCache.set(cell, result);
-  return result;
-};
-
-const createCanvasRenderSource = (
+const createProjectedSource = (
   reader: CanvasSurfaceReader,
-  projection?: CanvasCellFrameProjection
-): CellSource<CharDeskCellFrameCell> => {
-  if (!projection) {
-    const cached = renderSourceCache.get(reader);
-    if (cached) return cached;
-  }
-  const hiddenByRow = projection
-    ? new Map<number, readonly Readonly<{ minX: number; maxX: number }>[]>()
-    : null;
-  if (hiddenByRow && projection) {
-    for (const span of projection.hiddenSpans) {
-      const row = hiddenByRow.get(span.y) ?? [];
-      hiddenByRow.set(span.y, [...row, span]);
-    }
+  projection: CanvasCellFrameProjection
+): GridCellSource => {
+  const hiddenByRow = new Map<
+    number,
+    readonly Readonly<{ minX: number; maxX: number }>[]
+  >();
+  for (const span of projection.hiddenSpans) {
+    hiddenByRow.set(span.y, [...(hiddenByRow.get(span.y) ?? []), span]);
   }
   const isHidden = (x: number, y: number) =>
-    hiddenByRow?.get(y)?.some((span) => x >= span.minX && x <= span.maxX) ?? false;
-  const visitReader = (
-    source: CanvasSurfaceReader,
-    bounds: CellRect,
-    visitor: (x: number, y: number, cell: GridCell) => void
-  ) => {
-    if (typeof source.visit === "function") {
-      source.visit(bounds, visitor);
-      return;
-    }
-    if (typeof source.visitCells === "function") {
-      source.visitCells(bounds, visitor);
-      return;
-    }
-    for (const span of source.query(bounds)) {
-      let x = span.x;
-      for (const cell of span.cells) {
-        visitor(x, span.y, cell);
-        x += getCellOccupancy(cell.char);
-      }
-    }
-  };
-  const source: CellSource<CharDeskCellFrameCell> = {
+    hiddenByRow.get(y)?.some((span) => x >= span.minX && x <= span.maxX) ??
+    false;
+  const getRevision =
+    "getRevision" in reader && typeof reader.getRevision === "function"
+      ? reader.getRevision.bind(reader)
+      : null;
+
+  return {
     get(point) {
-      const overlayCell = projection?.overlay.get(point);
-      if (overlayCell) return toFrameCell(overlayCell);
+      const overlayCell = projection.overlay.get(point);
+      if (overlayCell) return overlayCell;
       if (isHidden(point.x, point.y)) return undefined;
-      const cell = reader.get(point);
-      return cell ? toFrameCell(cell) : undefined;
+      return reader.get(point);
     },
     visit(bounds, visitor) {
-      const visit = (x: number, y: number, cell: GridCell) =>
-        visitor(x, y, toFrameCell(cell));
-      if (projection) {
-        visitReader(reader, bounds, (x, y, cell) => {
-          if (!isHidden(x, y)) visit(x, y, cell);
-        });
-        projection.overlay.visit(bounds, visit);
-      } else {
-        visitReader(reader, bounds, visit);
-      }
+      reader.visit(bounds, (x, y, cell) => {
+        if (!isHidden(x, y)) visitor(x, y, cell);
+      });
+      projection.overlay.visit(bounds, visitor);
     },
     getContentBounds: () => reader.getContentBounds(),
+    ...(getRevision ? { getRevision } : {}),
   };
-  if (!projection) renderSourceCache.set(reader, source);
-  return source;
 };
 
 export const createCanvasCellFrame = (
@@ -102,11 +54,9 @@ export const createCanvasCellFrame = (
   viewport: CellRect,
   dirty: "full" | readonly CellRect[] = "full",
   projection?: CanvasCellFrameProjection
-): CellFrame<CharDeskCellFrameCell> => ({
-  revision: "getRevision" in reader && typeof reader.getRevision === "function"
-    ? reader.getRevision()
-    : 0,
-  viewport,
-  source: createCanvasRenderSource(reader, projection),
-  dirty,
-});
+) =>
+  createGridCellFrame(
+    projection ? createProjectedSource(reader, projection) : reader,
+    viewport,
+    dirty
+  );

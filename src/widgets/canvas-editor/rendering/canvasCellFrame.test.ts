@@ -51,4 +51,21 @@ describe("Canvas Cell Frame adapter", () => {
     expect(frame.source.get({ x: 4, y: 0 })).toBeUndefined();
   });
 
+  it("retains the source revision through a projected frame", () => {
+    const base = createGridSurfaceReader(
+      new Map([["0,0", { char: "A", color: "#fff" }]])
+    );
+    const reader = { ...base, getRevision: () => 9 };
+    const overlay = createGridSurfaceReader(new Map());
+
+    expect(
+      createCanvasCellFrame(
+        reader,
+        { x: 0, y: 0, width: 1, height: 1 },
+        "full",
+        { hiddenSpans: [], overlay }
+      ).revision
+    ).toBe(9);
+  });
+
 });

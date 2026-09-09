@@ -1,5 +1,8 @@
 import type { WidgetKind, WidgetNode } from "./types.js";
 
+export const isPrimitiveControlKind = (kind: WidgetKind): boolean =>
+  kind === "button" || kind === "checkbox" || kind === "select-trigger" || kind === "select-item";
+
 const collectionItemKinds = new Set<WidgetKind>([
   "list-item",
   "menu-item",
@@ -29,15 +32,40 @@ export const isTextEditorKind = (kind: WidgetKind): boolean =>
 export const isActionableKind = (kind: WidgetKind): boolean =>
   kind === "button"
   || kind === "checkbox"
+  || kind === "toggle"
+  || kind === "radio-item"
   || kind === "slider"
+  || kind === "range-slider-thumb"
   || kind === "select-trigger"
   || isCollectionItemKind(kind);
 
-export const supportsPressFeedback = (kind: WidgetKind): boolean =>
-  kind === "button" || kind === "checkbox" || kind === "select-trigger";
-
-export const supportsActivationFeedback = (kind: WidgetKind): boolean =>
-  supportsPressFeedback(kind);
+type FeedbackRule = Readonly<{ region: "control" | "thumb" | "editor" | "none"; press: boolean; activation: boolean; manipulation: boolean }>;
+const control: FeedbackRule = { region: "control", press: false, activation: false, manipulation: false };
+const tap: FeedbackRule = { ...control, press: true, activation: true };
+const thumb: FeedbackRule = { region: "thumb", press: false, activation: false, manipulation: true };
+const none: FeedbackRule = { region: "none", press: false, activation: false, manipulation: false };
+const rules: Partial<Record<WidgetKind, FeedbackRule>> = {
+  button: tap,
+  checkbox: tap,
+  toggle: tap,
+  "radio-item": tap,
+  "select-item": tap,
+  "select-trigger": { ...control, press: true },
+  "list-item": control,
+  "menu-item": control,
+  "tree-item": control,
+  tab: control,
+  "grid-cell": control,
+  slider: thumb,
+  "range-slider-thumb": thumb,
+  "scroll-area": { ...none, manipulation: true },
+  "text-input": { ...none, region: "editor" },
+  "text-area": { ...none, region: "editor" },
+};
+export const feedbackRule = (kind: WidgetKind): FeedbackRule => rules[kind] ?? none;
+export const supportsPressFeedback = (kind: WidgetKind): boolean => feedbackRule(kind).press;
+export const supportsManipulationFeedback = (kind: WidgetKind): boolean => feedbackRule(kind).manipulation;
+export const supportsActivationFeedback = (kind: WidgetKind): boolean => feedbackRule(kind).activation;
 
 export const isFocusableKind = (kind: WidgetKind): boolean =>
   isActionableKind(kind) || isTextEditorKind(kind);

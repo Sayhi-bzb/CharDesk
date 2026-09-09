@@ -7,23 +7,18 @@ import {
   type RefObject,
   type TextareaHTMLAttributes,
 } from 'react';
-import { StructuredSplitToolbar } from './StructuredSplitToolbar';
 import type { CanvasSurfaceGeometry } from './canvasSurfaceGeometry';
-import { EditorWidget, type EditorViewportFrame } from '@/widgets/editor-chrome/public';
 
 type CanvasSurfaceProps = HTMLAttributes<HTMLDivElement> & {
   containerRef: RefObject<HTMLDivElement | null>;
   contentCanvasRef: RefObject<HTMLCanvasElement | null>;
   interactionCanvasRef: RefObject<HTMLCanvasElement | null>;
   surfaceGeometry: CanvasSurfaceGeometry | undefined;
-  containerSize: { width: number; height: number } | undefined;
-  viewportFrame?: EditorViewportFrame;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   textareaKey?: string;
   textareaStyle: CSSProperties;
   textareaProps: TextareaHTMLAttributes<HTMLTextAreaElement>;
   children?: ReactNode;
-  interactionUi?: boolean;
 };
 
 const assignRef = <T,>(ref: Ref<T> | undefined, value: T | null) => {
@@ -37,14 +32,11 @@ export const CanvasSurface = forwardRef<HTMLDivElement, CanvasSurfaceProps>(func
     contentCanvasRef,
     interactionCanvasRef,
     surfaceGeometry,
-    containerSize,
-    viewportFrame,
     textareaRef,
     textareaKey,
     textareaStyle,
     textareaProps,
     children,
-    interactionUi = true,
     className,
     style,
     ...surfaceProps
@@ -94,14 +86,6 @@ export const CanvasSurface = forwardRef<HTMLDivElement, CanvasSurfaceProps>(func
         />
       </div>
       {children}
-      {interactionUi && (
-        <EditorWidget role="contextual">
-          <StructuredSplitToolbar
-            containerSize={containerSize}
-            viewportFrame={viewportFrame}
-          />
-        </EditorWidget>
-      )}
       <textarea
         key={textareaKey}
         ref={textareaRef}

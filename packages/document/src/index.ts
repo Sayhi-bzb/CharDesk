@@ -1,6 +1,7 @@
 export const CHARDESK_DOCUMENT_SIGNATURE = "document/v1";
 
-export type CharDeskDocumentMode = "freeform" | "structured" | "slide";
+export type CharDeskDocumentMode = "freeform" | "slide";
+export type ParsedCharDeskDocumentMode = CharDeskDocumentMode | "structured";
 
 export type CharDeskDocumentEnvelope = {
   mode: CharDeskDocumentMode;
@@ -8,15 +9,20 @@ export type CharDeskDocumentEnvelope = {
   title?: string;
 };
 
+export type ParsedCharDeskDocumentEnvelope = Omit<
+  CharDeskDocumentEnvelope,
+  "mode"
+> & { mode: ParsedCharDeskDocumentMode };
+
 const normalizeSource = (source: string) =>
   source.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
 
-const isDocumentMode = (value: string): value is CharDeskDocumentMode =>
+const isDocumentMode = (value: string): value is ParsedCharDeskDocumentMode =>
   value === "freeform" || value === "structured" || value === "slide";
 
 export const parseCharDeskDocumentEnvelope = (
   source: string
-): CharDeskDocumentEnvelope | null => {
+): ParsedCharDeskDocumentEnvelope | null => {
   const normalized = normalizeSource(source);
   const lines = normalized.split("\n");
   if (lines[0]?.trim() !== "---") return null;

@@ -21,7 +21,7 @@ describe('shortcut conflicts', () => {
   });
 
   it('only compares shortcuts whose scopes can be active together', () => {
-    expect(shortcutScopesOverlap('application', 'structured')).toBe(true);
+    expect(shortcutScopesOverlap('application', 'canvas')).toBe(true);
     expect(shortcutScopesOverlap('canvas', 'presentation')).toBe(true);
     expect(shortcutScopesOverlap('grid', 'presentation')).toBe(false);
     expect(findShortcutConflicts(entries, 'grid-up', ['Alt+P'])).toEqual([]);
@@ -181,7 +181,7 @@ describe('EditorKeymap', () => {
     expect(keymap.resolveBest(['mod+k', 'mod+c'], active)).toMatchObject({ type: 'match' });
     expect(
       keymap.resolveBest(['mod+k', 'mod+c'], {
-        canvas: { mode: 'structured' },
+        canvas: { mode: 'slide' },
         grid: { hasRange: true },
       })
     ).toEqual({ type: 'none' });

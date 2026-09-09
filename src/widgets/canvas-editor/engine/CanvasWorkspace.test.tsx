@@ -87,14 +87,10 @@ describe('CanvasWorkspace', () => {
     defaultCanvasDocuments.activateDocument('canvas-b', {
       mode: 'freeform',
       grid: [],
-      scene: [],
-      components: [],
     });
     defaultCanvasDocuments.activateDocument('canvas-a', {
       mode: 'freeform',
       grid: [],
-      scene: [],
-      components: [],
     });
     setCanvasTestState({
       activeCanvasId: 'canvas-a',
@@ -174,14 +170,10 @@ describe('CanvasWorkspace', () => {
     defaultCanvasDocuments.activateDocument('canvas-b', {
       mode: 'freeform',
       grid: [],
-      scene: [],
-      components: [],
     });
     defaultCanvasDocuments.activateDocument('canvas-a', {
       mode: 'freeform',
       grid: [],
-      scene: [],
-      components: [],
     });
     setCanvasTestState({
       activeCanvasId: 'canvas-a',

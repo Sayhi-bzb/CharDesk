@@ -1,6 +1,93 @@
 import { expect, test } from "@playwright/test";
 import { readCellProbe, readCellPixel } from "./helpers/cell-probe";
 
+test("Gallery light and dark modes expose the Classic Macintosh token hierarchy", async ({ page }) => {
+  await page.goto("/exp/web-tui/#/__fixtures/all");
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", scheme);
+    const tokens = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement);
+      const read = (name: string) => style.getPropertyValue(name).trim();
+      return {
+        background: read("--cell-background"),
+        foreground: read("--cell-foreground"),
+        surface: read("--cell-surface"),
+        buttonPrimary: read("--cell-button-primary"),
+        buttonPrimaryForeground: read("--cell-button-primary-foreground"),
+        buttonPrimaryHover: read("--cell-button-primary-hover"),
+        highlight: read("--cell-highlight"),
+        highlightForeground: read("--cell-highlight-foreground"),
+        hover: read("--cell-hover"),
+        muted: read("--cell-muted-foreground"),
+        disabled: read("--cell-disabled-foreground"),
+        border: read("--cell-border"),
+        accent: read("--cell-accent"),
+        selection: read("--cell-selection"),
+        selectionForeground: read("--cell-selection-foreground"),
+        scrollbarThumb: read("--cell-scrollbar-thumb"),
+        scrollbarTrack: read("--cell-scrollbar-track"),
+      };
+    });
+    expect(tokens).toEqual(scheme === "light" ? {
+      background: "#ffffff",
+      foreground: "#000000",
+      surface: "#ffffff",
+      buttonPrimary: "#000000",
+      buttonPrimaryForeground: "#ffffff",
+      buttonPrimaryHover: "#1a1a1a",
+      highlight: "#000000",
+      highlightForeground: "#ffffff",
+      hover: "#e6e6e6",
+      muted: "#555555",
+      disabled: "#777777",
+      border: "#000000",
+      accent: "#000000",
+      selection: "#000000",
+      selectionForeground: "#ffffff",
+      scrollbarThumb: "#000000",
+      scrollbarTrack: "#777777",
+    } : {
+      background: "#000000",
+      foreground: "#ffffff",
+      surface: "#000000",
+      buttonPrimary: "#ffffff",
+      buttonPrimaryForeground: "#000000",
+      buttonPrimaryHover: "#e6e6e6",
+      highlight: "#ffffff",
+      highlightForeground: "#000000",
+      hover: "#1a1a1a",
+      muted: "#aaaaaa",
+      disabled: "#888888",
+      border: "#ffffff",
+      accent: "#ffffff",
+      selection: "#ffffff",
+      selectionForeground: "#000000",
+      scrollbarThumb: "#ffffff",
+      scrollbarTrack: "#888888",
+    });
+  }
+});
+
+test("default Button consumes its primary surface in Cell styles and Canvas pixels", async ({ page }) => {
+  await page.goto("/exp/web-tui/#/components/button");
+  const surface = page.locator('[data-cell-probe="component-button"]');
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", scheme);
+    const frame = await readCellProbe(surface);
+    const padding = frame.cells.find((cell) => (
+      cell.ownerId === "component-button-save" && cell.text === " "
+    ));
+    expect(padding).toBeDefined();
+    expect(padding!.style).toMatchObject(scheme === "light"
+      ? { color: "rgb(255, 255, 255)", backgroundColor: "rgb(0, 0, 0)" }
+      : { color: "rgb(0, 0, 0)", backgroundColor: "rgb(255, 255, 255)" });
+    expect(await readCellPixel(surface, padding!.x + 0.5, padding!.y + 0.5))
+      .toEqual(scheme === "light" ? [0, 0, 0, 255] : [255, 255, 255, 255]);
+  }
+});
+
 test("CSS token inheritance, aliases, local overrides and fallback resolve without leaking DOM", async ({ page }) => {
   await page.goto("/exp/web-tui/#/__fixtures/all");
   const result = await page.evaluate(async () => {
@@ -40,8 +127,8 @@ test("CSS token inheritance, aliases, local overrides and fallback resolve witho
     textColor: "rgb(7, 8, 9)",
     blink: true,
   });
-  expect(result.invalid.theme.selectedStyle.backgroundColor).toBe("#1a1a1a");
-  expect(result.missing.theme.selectedStyle.backgroundColor).toBe("#1a1a1a");
+  expect(result.invalid.theme.selectedStyle.backgroundColor).toBe("#000000");
+  expect(result.missing.theme.selectedStyle.backgroundColor).toBe("#000000");
   expect(result.nodes).toBe(0);
 });
 
@@ -60,7 +147,8 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
     root.style.setProperty("--cell-border", "rgb(90, 100, 110)");
   });
   expect((await readCellProbe(surface)).cells).toEqual(before.cells);
-  await page.getByRole("button", { name: "Dark" }).click();
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
   await expect(page.locator(".gallery-page")).toHaveCSS("background-color", "rgb(7, 8, 9)");
   await expect.poll(async () => (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "palette-title")?.style.backgroundColor)
     .toBe("rgb(30, 40, 50)");
@@ -68,13 +156,12 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
   expect(after.text).toBe(before.text);
   expect(after.focusedId).toBe(before.focusedId);
   expect(after.revision).toBeGreaterThan(before.revision);
-  await expect(surface).not.toHaveAttribute("data-cell-focus-visible");
-  await surface.focus();
+  await expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
   const refocused = await readCellProbe(surface);
   expect(refocused.cells.some((cell) => cell.style.bold && cell.style.backgroundColor === "rgb(60, 70, 80)")).toBe(true);
   expect(after.cells.some((cell) => cell.text === "┌" && cell.style.color === "rgb(90, 100, 110)")).toBe(true);
   const pixel = await readCellPixel(surface, 31.5, 7.5);
-  expect(pixel).toEqual([30, 40, 50, 255]);
+  expect(pixel).toEqual([7, 8, 9, 255]);
 });
 
 test("terminal cursor and rectangle overlay consume theme tokens in actual pixels", async ({ page }) => {

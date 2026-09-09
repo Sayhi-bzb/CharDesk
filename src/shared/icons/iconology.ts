@@ -15,7 +15,6 @@ import {
   Compass,
   Contrast,
   Copy,
-  CopyPlus,
   Download,
   Eraser,
   CircleHelp,
@@ -26,11 +25,6 @@ import {
   Hand,
   Highlighter,
   LayoutTemplate,
-  LayerArrowDown,
-  LayerArrowUp,
-  Layers,
-  LayersArrowDown,
-  LayersArrowUp,
   Languages,
   Keyboard,
   LineSquiggle,
@@ -47,7 +41,6 @@ import {
   RotateCcw,
   PanelRightOpen,
   PaintbrushVertical,
-  PanelsTopLeft,
   Plus,
   Pencil,
   Play,
@@ -56,7 +49,6 @@ import {
   ShieldCheck,
   Smile,
   Square,
-  SquarePen,
   SquareSplitHorizontal,
   SquareSplitVertical,
   Star,
@@ -77,10 +69,9 @@ type IconMap<Key extends string> = Record<Key, LucideIcon>;
 export const HOST_ICONOLOGY = {
   canvasMode: {
     freeform: Pencil,
-    structured: PanelsTopLeft,
     slide: Presentation,
     ai: Sparkles,
-  } satisfies IconMap<'freeform' | 'structured' | 'slide' | 'ai'>,
+  } satisfies IconMap<'freeform' | 'slide' | 'ai'>,
   sourceKind: {
     blackboard: BookOpen,
   } satisfies IconMap<'blackboard'>,
@@ -90,7 +81,7 @@ export const HOST_ICONOLOGY = {
     emoji: Smile,
     unicode: Omega,
   } satisfies IconMap<'essentials' | 'nerd' | 'emoji' | 'unicode'>,
-  structuredView: {
+  templateView: {
     template: LayoutTemplate,
     components: Component,
   } satisfies IconMap<'template' | 'components'>,
@@ -102,17 +93,7 @@ export const HOST_ICONOLOGY = {
     paste: ClipboardPaste,
     'snapshot-png': Camera,
     'delete-selection': Trash2,
-    'structured-rename': SquarePen,
-    'structured-bring-forward': LayerArrowUp,
-    'structured-send-backward': LayerArrowDown,
-    'structured-bring-to-front': LayersArrowUp,
-    'structured-send-to-back': LayersArrowDown,
-    'structured-duplicate': CopyPlus,
-    'structured-copy-hierarchy': Copy,
-    'structured-split-horizontal': SquareSplitVertical,
-    'structured-split-vertical': SquareSplitHorizontal,
-    'structured-delete-divider': Trash2,
-    'structured-layer-menu': Layers,
+    duplicate: Copy,
   } satisfies IconMap<
     | 'copy'
     | 'copy-rich'
@@ -121,17 +102,7 @@ export const HOST_ICONOLOGY = {
     | 'paste'
     | 'snapshot-png'
     | 'delete-selection'
-    | 'structured-rename'
-    | 'structured-bring-forward'
-    | 'structured-send-backward'
-    | 'structured-bring-to-front'
-    | 'structured-send-to-back'
-    | 'structured-duplicate'
-    | 'structured-copy-hierarchy'
-    | 'structured-split-horizontal'
-    | 'structured-split-vertical'
-    | 'structured-delete-divider'
-    | 'structured-layer-menu'
+    | 'duplicate'
   >,
   toolbarAction: {
     select: MousePointer2,

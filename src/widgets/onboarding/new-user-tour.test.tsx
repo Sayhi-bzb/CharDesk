@@ -198,7 +198,7 @@ describe("OnboardingTourProvider", () => {
   });
 
   it("omits the freeform character guide outside freeform mode", async () => {
-    useEditorStore.setState({ canvasMode: "structured" });
+    useEditorStore.setState({ canvasMode: "slide" });
     window.localStorage.removeItem(EDITOR_PERSISTENCE_KEY);
     render(
       <OnboardingTourProvider>

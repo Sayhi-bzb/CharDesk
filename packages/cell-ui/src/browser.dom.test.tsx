@@ -13,6 +13,8 @@ import {
   Menu,
   MenuItem,
   Overlay,
+  RangeSlider,
+  RangeSliderThumb,
   Root,
   ScrollArea,
   Select,
@@ -172,7 +174,13 @@ const Product = ({
   );
 };
 
-const SelectProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => void }) => {
+const SelectProduct = ({
+  onCommand,
+  activationBlinkCount,
+}: {
+  onCommand?: (command: WidgetCommand) => void;
+  activationBlinkCount?: 0 | 1 | 2 | 3;
+}) => {
   const select = useCellSelectState("surface-theme", [
     { id: "surface-light", label: "Light" },
     { id: "surface-dark", label: "Dark" },
@@ -186,8 +194,10 @@ const SelectProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => 
       viewport={{ width: 20, height: 5 }}
       focusedId={select.focusedId}
       onCommand={dispatch}
+      feedback={activationBlinkCount === undefined ? undefined : { activationBlinkCount }}
       metrics={{ cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" }}
       label="Select surface"
+      probeId="surface-select"
     >
       <Root id="surface-select-root">
         <Select id={select.id} label="Theme" style={{ width: 18 }}>
@@ -196,7 +206,7 @@ const SelectProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => 
             label="Theme"
             expanded={select.open}
             controlsId={select.open ? select.contentId : undefined}
-          ><Text>Dark</Text></SelectTrigger>
+          ><Text>{select.selectedItem?.label ?? "Select theme"}</Text></SelectTrigger>
           {select.open ? (
             <SelectContent
               id={select.contentId}
@@ -335,6 +345,7 @@ const SliderProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => 
     }
   };
   return <CellSurface
+    probeId="slider-product"
     viewport={{ width: 20, height: 1 }}
     focusedId={focusedId}
     onCommand={dispatch}
@@ -348,6 +359,47 @@ const SliderProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => 
         valueText={`${value} percent`}
         focused={focusedId === "volume"}
       />
+    </Root>
+  </CellSurface>;
+};
+
+const RangeSliderProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => void }) => {
+  const [values, setValues] = useState<readonly [number, number]>([30, 70]);
+  const [focusedId, setFocusedId] = useState("volume-start");
+  const dispatch = (command: WidgetCommand) => {
+    onCommand?.(command);
+    if (command.type === "focus") setFocusedId(command.targetId);
+    if (command.type === "set-value") {
+      setFocusedId(command.targetId);
+      setValues((current) => command.targetId === "volume-start"
+        ? [command.value, current[1]]
+        : [current[0], command.value]);
+    }
+  };
+  return <CellSurface
+    probeId="range-slider-product"
+    viewport={{ width: 20, height: 1 }}
+    focusedId={focusedId}
+    onCommand={dispatch}
+    label="Range slider product"
+  >
+    <Root id="root">
+      <RangeSlider id="volume-range" label="Volume" style={{ width: 20 }}>
+        <RangeSliderThumb
+          id="volume-start"
+          label="Minimum volume"
+          value={values[0]}
+          valueText={`${values[0]} percent`}
+          focused={focusedId === "volume-start"}
+        />
+        <RangeSliderThumb
+          id="volume-end"
+          label="Maximum volume"
+          value={values[1]}
+          valueText={`${values[1]} percent`}
+          focused={focusedId === "volume-end"}
+        />
+      </RangeSlider>
     </Root>
   </CellSurface>;
 };
@@ -680,6 +732,111 @@ const ComplexWidgetProduct = () => {
 };
 
 describe("CellSurface", () => {
+  it("closes Select immediately when activation blinking is disabled", () => {
+    render(<SelectProduct activationBlinkCount={0} />);
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    const light = screen.getByRole("option", { name: "Light" });
+    fireEvent.focus(light);
+    fireEvent.click(light);
+
+    expect(screen.queryByRole("listbox", { name: "Theme options" })).not.toBeInTheDocument();
+    expect(readCellSurfaceProbe(screen.getByLabelText("Select surface"))!.text).toContain("Light");
+  });
+
+  it("settles an active Select confirmation when blinking is disabled at runtime", () => {
+    vi.useFakeTimers();
+    const product = render(<SelectProduct activationBlinkCount={2} />);
+    const surface = screen.getByLabelText("Select surface");
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    const light = screen.getByRole("option", { name: "Light" });
+    fireEvent.focus(light);
+    fireEvent.click(light);
+
+    expect(surface).toHaveAttribute("data-cell-activation-flash", "surface-light");
+    expect(screen.getByRole("listbox", { name: "Theme options" })).toBeInTheDocument();
+
+    product.rerender(<SelectProduct activationBlinkCount={0} />);
+
+    expect(surface).not.toHaveAttribute("data-cell-activation-flash");
+    expect(screen.queryByRole("listbox", { name: "Theme options" })).not.toBeInTheDocument();
+    expect(readCellSurfaceProbe(surface)!.text).toContain("Light");
+  });
+
+  it("commits Select values before flashing the chosen item and locks the closing phase", () => {
+    vi.useFakeTimers();
+    const commands = vi.fn();
+    render(<SelectProduct onCommand={commands} />);
+    const surface = screen.getByLabelText("Select surface");
+    const trigger = screen.getByRole("button", { name: "Theme" });
+
+    fireEvent.focus(trigger);
+    fireEvent.click(trigger);
+    expect(surface).not.toHaveAttribute("data-cell-activation-flash");
+    expect(screen.getByRole("listbox", { name: "Theme options" })).toBeInTheDocument();
+
+    const light = screen.getByRole("option", { name: "Light" });
+    fireEvent.focus(light);
+    fireEvent.click(light);
+    expect(light).toHaveAttribute("aria-selected", "true");
+    expect(surface).toHaveAttribute("data-cell-activation-flash", "surface-light");
+    expect(screen.getByRole("listbox", { name: "Theme options" })).toBeInTheDocument();
+    const flashedRow = readCellSurfaceProbe(surface)!.cells
+      .filter((cell) => cell.ownerId === "surface-light");
+    expect(flashedRow.length).toBeGreaterThan(0);
+    expect(flashedRow.every((cell) => cell.style.backgroundColor === "#000000"))
+      .toBe(true);
+
+    act(() => vi.advanceTimersByTime(80));
+    expect(surface).not.toHaveAttribute("data-cell-activation-flash");
+    const dark = screen.getByRole("option", { name: "Dark" });
+    fireEvent.focus(dark);
+    fireEvent.click(dark);
+    expect(light).toHaveAttribute("aria-selected", "true");
+    expect(commands.mock.calls.filter(([command]) => (
+      command.type === "activate" && command.targetId === "surface-dark"
+    ))).toHaveLength(0);
+
+    act(() => vi.advanceTimersByTime(80));
+    expect(surface).toHaveAttribute("data-cell-activation-flash", "surface-light");
+    act(() => vi.advanceTimersByTime(80));
+    expect(screen.queryByRole("listbox", { name: "Theme options" })).not.toBeInTheDocument();
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(readCellSurfaceProbe(surface)!.text).toContain("Light");
+    expect(surface).toHaveAttribute("data-cell-focused", "surface-theme-trigger");
+  });
+
+  it("lets Escape or an external press end settling without reverting the committed value", () => {
+    vi.useFakeTimers();
+    render(<SelectProduct />);
+    const surface = screen.getByLabelText("Select surface");
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    const light = screen.getByRole("option", { name: "Light" });
+    fireEvent.focus(light);
+    fireEvent.click(light);
+
+    expect(surface).toHaveAttribute("data-cell-activation-flash", "surface-light");
+    fireEvent.keyDown(surface, { key: "Escape" });
+    expect(screen.queryByRole("listbox", { name: "Theme options" })).not.toBeInTheDocument();
+    expect(readCellSurfaceProbe(surface)!.text).toContain("Light");
+    act(() => vi.advanceTimersByTime(400));
+    expect(screen.queryByRole("listbox", { name: "Theme options" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    const dark = screen.getByRole("option", { name: "Dark" });
+    fireEvent.focus(dark);
+    fireEvent.click(dark);
+    expect(dark).toHaveAttribute("aria-selected", "true");
+    fireEvent.pointerDown(surface.querySelector("canvas")!, {
+      button: 0,
+      pointerId: 41,
+      pointerType: "mouse",
+      clientX: 195,
+      clientY: 10,
+    });
+    expect(screen.queryByRole("listbox", { name: "Theme options" })).not.toBeInTheDocument();
+    expect(readCellSurfaceProbe(surface)!.text).toContain("Dark");
+  });
+
   it("reveals the selected option inside constrained SelectContent without hiding its Trigger", async () => {
     render(<ConstrainedSelectProduct />);
     const surface = screen.getByLabelText("Constrained Select surface");
@@ -1180,6 +1337,91 @@ describe("CellSurface", () => {
     expect(slider).toHaveAttribute("aria-valuetext", "51 percent");
   });
 
+  it("keeps the Slider thumb emphasized from hover through pointer capture", () => {
+    const { container } = render(<SliderProduct />);
+    const surface = screen.getByLabelText("Slider product");
+    const canvas = container.querySelector("canvas")!;
+    const pointer = {
+      button: 0,
+      pointerId: 41,
+      pointerType: "mouse",
+      clientX: 90,
+      clientY: 10,
+    };
+
+    fireEvent.pointerMove(canvas, { ...pointer, buttons: 0 });
+    expect(readCellSurfaceProbe(surface)!.text).toContain("█");
+
+    fireEvent.pointerDown(canvas, pointer);
+    expect(surface).not.toHaveAttribute("data-cell-hovered");
+    expect(surface).toHaveAttribute("data-cell-manipulating", "true");
+    expect(readCellSurfaceProbe(surface)!.text).toContain("█");
+
+    fireEvent.pointerMove(surface, { ...pointer, buttons: 1, clientX: 135 });
+    expect(surface).toHaveAttribute("data-cell-manipulating", "true");
+    expect(readCellSurfaceProbe(surface)!.text).toContain("█");
+
+    fireEvent.pointerUp(surface, { ...pointer, buttons: 0, clientX: 135 });
+    expect(surface).not.toHaveAttribute("data-cell-manipulating");
+    expect(readCellSurfaceProbe(surface)!.text).toContain("█");
+
+    fireEvent.pointerLeave(surface, { pointerType: "mouse" });
+    expect(readCellSurfaceProbe(surface)!.text).not.toContain("█");
+  });
+
+  it("clears Slider manipulation when pointer capture is cancelled", () => {
+    const { container } = render(<SliderProduct />);
+    const surface = screen.getByLabelText("Slider product");
+    const canvas = container.querySelector("canvas")!;
+
+    fireEvent.pointerDown(canvas, {
+      button: 0,
+      pointerId: 42,
+      pointerType: "mouse",
+      clientX: 90,
+      clientY: 10,
+    });
+    expect(surface).toHaveAttribute("data-cell-manipulating", "true");
+    fireEvent.pointerCancel(surface, { pointerId: 42, pointerType: "mouse" });
+    expect(surface).not.toHaveAttribute("data-cell-manipulating");
+    expect(readCellSurfaceProbe(surface)!.text).not.toContain("█");
+  });
+
+  it("projects RangeSlider as a named group with two native slider targets", async () => {
+    const onCommand = vi.fn();
+    render(<RangeSliderProduct onCommand={onCommand} />);
+    const surface = screen.getByLabelText("Range slider product");
+    fireEvent.focus(surface);
+    const group = await screen.findByRole("group", { name: "Volume" });
+    const start = screen.getByRole("slider", { name: "Minimum volume" });
+    const end = screen.getByRole("slider", { name: "Maximum volume" });
+
+    expect(group).toContainElement(start);
+    expect(group).toContainElement(end);
+    await waitFor(() => expect(start).toHaveFocus());
+    expect(start).toHaveAttribute("aria-valuenow", "30");
+    expect(start).toHaveAttribute("aria-valuemax", "70");
+    expect(end).toHaveAttribute("aria-valuemin", "30");
+    expect(end).toHaveAttribute("aria-valuenow", "70");
+
+    fireEvent.keyDown(start, { key: "ArrowRight", code: "ArrowRight" });
+    expect(onCommand).toHaveBeenLastCalledWith({
+      type: "set-value",
+      targetId: "volume-start",
+      value: 31,
+    });
+    await waitFor(() => expect(start).toHaveAttribute("aria-valuenow", "31"));
+    expect(end).toHaveAttribute("aria-valuemin", "31");
+
+    fireEvent.keyDown(start, { key: "Tab", code: "Tab" });
+    await waitFor(() => expect(end).toHaveFocus());
+    expect(onCommand).toHaveBeenLastCalledWith({ type: "focus", targetId: "volume-end" });
+
+    fireEvent.keyDown(end, { key: "Tab", code: "Tab", shiftKey: true });
+    await waitFor(() => expect(start).toHaveFocus());
+    expect(onCommand).toHaveBeenLastCalledWith({ type: "focus", targetId: "volume-start" });
+  });
+
   it("keeps native keyboard phase, repeat, modifiers, and host claims distinct", () => {
     const onAction = vi.fn();
     const onCommand = vi.fn();
@@ -1275,7 +1517,7 @@ describe("CellSurface", () => {
     fireEvent.focus(surface);
     expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
     expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style)
-      .toMatchObject({ bold: true, backgroundColor: "#1a1a1a" });
+      .toMatchObject({ color: "#FFFFFF", backgroundColor: "#000000" });
 
     fireEvent.pointerDown(canvas, {
       button: 0,
@@ -1288,7 +1530,7 @@ describe("CellSurface", () => {
     expect(surface).toHaveAttribute("data-cell-focused", "autosave");
     expect(surface).toHaveAttribute("data-cell-press-active", "autosave");
     expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style)
-      .toMatchObject({ color: "#101419", backgroundColor: "#e8edf2" });
+      .toMatchObject({ color: "#FFFFFF", backgroundColor: "#000000" });
 
     fireEvent.pointerMove(surface, {
       pointerId: 29,
@@ -1317,13 +1559,17 @@ describe("CellSurface", () => {
     expect(surface).not.toHaveAttribute("data-cell-press-active");
     expect(surface).toHaveAttribute("data-cell-activation-flash", "autosave");
     expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style)
-      .toMatchObject({ color: "#25292e", backgroundColor: "#e8edf2" });
+      .toMatchObject({ color: "#FFFFFF", backgroundColor: "#000000" });
     expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style.bold)
       .not.toBe(true);
-    act(() => vi.advanceTimersByTime(120));
+    act(() => vi.advanceTimersByTime(80));
     expect(surface).not.toHaveAttribute("data-cell-activation-flash");
     expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style)
-      .toMatchObject({ backgroundColor: "#25292e" });
+      .toMatchObject({});
+    act(() => vi.advanceTimersByTime(80));
+    expect(surface).toHaveAttribute("data-cell-activation-flash", "autosave");
+    act(() => vi.advanceTimersByTime(80));
+    expect(surface).not.toHaveAttribute("data-cell-activation-flash");
 
     fireEvent.pointerLeave(surface, { pointerType: "mouse" });
     expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style.backgroundColor)
@@ -1334,7 +1580,7 @@ describe("CellSurface", () => {
     expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
     expect(surface).toHaveAttribute("data-cell-press-active", "autosave");
     expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style.bold)
-      .toBe(true);
+      .not.toBe(true);
     fireEvent.keyUp(surface, { key: " " });
     expect(surface).not.toHaveAttribute("data-cell-press-active");
     expect(surface).toHaveAttribute("data-cell-activation-flash", "autosave");

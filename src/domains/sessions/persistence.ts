@@ -1,13 +1,11 @@
 import { isCollaborationDescriptor } from "@/domains/collaboration/public";
 import { normalizeSlideDeckSnapshot } from "@/domains/slides/public";
 import {
-  cloneStructuredNode,
-  decodeStructuredComponents,
   decodeStructuredNode,
   normalizeScene,
-  type StructuredComponentInstance,
+  sceneToGridEntries,
   type StructuredNode,
-} from "@/domains/structured-content/public";
+} from "@/domains/legacy-structured/public";
 import type { GridCell, Point } from "@/shared/types";
 import { decodeGridEntries } from "@/shared/utils/grid-codec";
 import type { CanvasMode } from "./mode";
@@ -17,21 +15,19 @@ import {
   migrateLegacyGridViewport,
 } from "./viewportMigration";
 
-export const EDITOR_PERSISTENCE_VERSION = 6;
-export const PREVIOUS_EDITOR_PERSISTENCE_VERSION = 5;
+export const EDITOR_PERSISTENCE_VERSION = 7;
+export const PREVIOUS_EDITOR_PERSISTENCE_VERSION = 6;
 export const LEGACY_EDITOR_PERSISTENCE_VERSION = 4;
 export const EDITOR_PERSISTENCE_KEY = "chardesk-persistence";
 export const LEGACY_EDITOR_PERSISTENCE_KEY = "ascii-canvas-persistence";
 
-interface PersistedEditorStateV6 {
-  schemaVersion: 6;
+interface PersistedEditorStateV7 {
+  schemaVersion: 7;
   workspace: {
     offset: Point;
     zoom: number;
     canvasMode: CanvasMode;
     grid: [string, GridCell][];
-    structuredScene: StructuredNode[];
-    structuredComponents: StructuredComponentInstance[];
   };
   sessions: {
     items: CanvasSessionSnapshot[];
@@ -59,7 +55,10 @@ const decodePoint = (value: unknown): Point | null =>
     : null;
 
 const isCanvasMode = (value: unknown): value is CanvasMode =>
-  value === "freeform" || value === "structured" || value === "slide";
+  value === "freeform" || value === "slide";
+
+const isStoredCanvasMode = (value: unknown) =>
+  isCanvasMode(value) || value === "structured";
 
 const decodeSourceBinding = (value: unknown): CanvasSourceBinding | undefined => {
   if (!isRecord(value) || value.kind !== "blackboard" ||
@@ -94,12 +93,11 @@ const decodeScene = (value: unknown): StructuredNode[] =>
     (Array.isArray(value) ? value : [])
       .map(decodeStructuredNode)
       .filter((node): node is StructuredNode => node !== null)
-      .map(cloneStructuredNode)
   );
 
 const decodeCanvasSession = (value: unknown): CanvasSessionSnapshot | null => {
   if (!isRecord(value) || typeof value.id !== "string" ||
-      (!isCanvasMode(value.mode) && value.mode !== "blackboard")) {
+      (!isStoredCanvasMode(value.mode) && value.mode !== "blackboard")) {
     return null;
   }
   const viewport = decodeViewport(value.viewport);
@@ -114,8 +112,6 @@ const decodeCanvasSession = (value: unknown): CanvasSessionSnapshot | null => {
       mode: "slide",
       slideDeck: normalizeSlideDeckSnapshot(value.slideDeck, `${value.id}-slide-1`),
       ...(sourceBinding ? { sourceBinding } : {}),
-      scene: [],
-      components: [],
       grid: [],
       ...(viewport ? { viewport } : {}),
     };
@@ -134,8 +130,6 @@ const decodeCanvasSession = (value: unknown): CanvasSessionSnapshot | null => {
         provider: "browser-workspace",
         id: value.id,
       },
-      scene: [],
-      components: [],
       grid: [],
       ...(viewport ? { viewport } : {}),
     };
@@ -157,34 +151,30 @@ const decodeCanvasSession = (value: unknown): CanvasSessionSnapshot | null => {
       typeof value.name === "string" && value.name.trim()
         ? value.name
         : "Canvas",
-    scene,
-    components: decodeStructuredComponents(value.components, scene),
-    grid: decodeGridEntries(value.grid),
+    grid: value.mode === "structured"
+      ? sceneToGridEntries(scene)
+      : decodeGridEntries(value.grid),
     ...(viewport ? { viewport } : {}),
     ...(collaboration ? { collaboration } : {}),
     ...(collaborationRole ? { collaborationRole } : {}),
   };
-  return value.mode === "structured"
-    ? { ...base, mode: "structured" }
-    : {
-        ...base,
-        mode: "freeform",
-        ...(sourceBinding ? { sourceBinding } : {}),
-      };
+  return {
+    ...base,
+    mode: "freeform",
+    ...(sourceBinding ? { sourceBinding } : {}),
+  };
 };
 
 const createBlankSession = (): CanvasSessionSnapshot => ({
   id: "canvas-1",
   name: "Canvas 1",
   mode: "freeform",
-  scene: [],
-  components: [],
   grid: [],
 });
 
 export const decodePersistedEditorState = (
   value: unknown
-): PersistedEditorStateV6 => {
+): PersistedEditorStateV7 => {
   const state = isRecord(value) ? value : {};
   const workspace = isRecord(state.workspace) ? state.workspace : state;
   const sessions = isRecord(state.sessions) ? state.sessions : {};
@@ -209,16 +199,13 @@ export const decodePersistedEditorState = (
     ? requestedActiveId
     : items[0].id;
   const activeSession = items.find((item) => item.id === activeId) ?? items[0];
-  const workspaceMode = isCanvasMode(workspace.canvasMode)
+  const workspaceMode = isStoredCanvasMode(workspace.canvasMode)
     ? workspace.canvasMode
     : null;
-  const useWorkspace = workspaceMode === activeSession.mode;
+  const useWorkspace = workspaceMode === activeSession.mode ||
+    (workspaceMode === "structured" && activeSession.mode === "freeform");
   const workspaceScene = decodeScene(workspace.structuredScene);
   const useWorkspaceGrid = useWorkspace && Array.isArray(workspace.grid);
-  const useWorkspaceScene =
-    useWorkspace && Array.isArray(workspace.structuredScene);
-  const useWorkspaceComponents =
-    useWorkspaceScene && Array.isArray(workspace.structuredComponents);
   const viewport = activeSession.viewport;
 
   return {
@@ -235,13 +222,11 @@ export const decodePersistedEditorState = (
           ? workspace.zoom
           : viewport?.zoom ?? 1,
       canvasMode: activeSession.mode,
-      grid: useWorkspaceGrid
-        ? decodeGridEntries(workspace.grid)
-        : activeSession.grid,
-      structuredScene: useWorkspaceScene ? workspaceScene : activeSession.scene,
-      structuredComponents: useWorkspaceComponents
-        ? decodeStructuredComponents(workspace.structuredComponents, workspaceScene)
-        : activeSession.components ?? [],
+      grid: useWorkspace && workspaceMode === "structured"
+        ? sceneToGridEntries(workspaceScene)
+        : useWorkspaceGrid
+          ? decodeGridEntries(workspace.grid)
+          : activeSession.grid,
     },
     sessions: { items, activeId },
     preferences: {
@@ -281,13 +266,14 @@ const assertSupportedPersistenceVersion = (version: number) => {
   if (
     version !== EDITOR_PERSISTENCE_VERSION &&
     version !== PREVIOUS_EDITOR_PERSISTENCE_VERSION &&
+    version !== 5 &&
     version !== LEGACY_EDITOR_PERSISTENCE_VERSION
   ) {
     throw new UnsupportedEditorPersistenceVersionError(version);
   }
 };
 
-export const migratePersistedStateToV6 = (
+export const migratePersistedStateToV7 = (
   value: unknown,
   version = PREVIOUS_EDITOR_PERSISTENCE_VERSION,
 ) => {
@@ -311,12 +297,12 @@ export const migratePersistedStateToV6 = (
           : session
       ),
     },
-  } satisfies PersistedEditorStateV6;
+  } satisfies PersistedEditorStateV7;
 };
 
-export const isPersistedEditorStateV6 = (
+export const isPersistedEditorStateV7 = (
   value: unknown
-): value is PersistedEditorStateV6 => {
+): value is PersistedEditorStateV7 => {
   if (!isRecord(value) || value.schemaVersion !== EDITOR_PERSISTENCE_VERSION) {
     return false;
   }
@@ -329,8 +315,6 @@ export const isPersistedEditorStateV6 = (
     Number.isFinite(value.workspace.zoom) &&
     isCanvasMode(value.workspace.canvasMode) &&
     Array.isArray(value.workspace.grid) &&
-    Array.isArray(value.workspace.structuredScene) &&
-    Array.isArray(value.workspace.structuredComponents) &&
     Array.isArray(value.sessions.items) &&
     value.sessions.items.every((item) => decodeCanvasSession(item) !== null) &&
     typeof value.sessions.activeId === "string" &&
@@ -365,10 +349,10 @@ const isCurrentPersistedEnvelope = (raw: string | null) => {
   const envelope = decodePersistedEnvelope(raw);
   return !!envelope &&
     envelope.version === EDITOR_PERSISTENCE_VERSION &&
-    isPersistedEditorStateV6(envelope.state);
+    isPersistedEditorStateV7(envelope.state);
 };
 
-/** Moves same-origin pre-CharDesk editor data only after a verified V6 write. */
+/** Moves same-origin pre-CharDesk editor data only after a verified current write. */
 export const migrateLegacyEditorPersistence = (storage: Storage): boolean => {
   try {
     const currentRaw = storage.getItem(EDITOR_PERSISTENCE_KEY);
@@ -385,7 +369,7 @@ export const migrateLegacyEditorPersistence = (storage: Storage): boolean => {
       legacyEnvelope.version !== LEGACY_EDITOR_PERSISTENCE_VERSION
     ) return false;
 
-    const migratedState = migratePersistedStateToV6(
+    const migratedState = migratePersistedStateToV7(
       legacyEnvelope.state,
       LEGACY_EDITOR_PERSISTENCE_VERSION
     );
@@ -407,7 +391,7 @@ export const migrateLegacyEditorPersistence = (storage: Storage): boolean => {
 };
 
 export const flattenPersistedEditorState = (
-  value: PersistedEditorStateV6
+  value: PersistedEditorStateV7
 ) => ({
   ...value.workspace,
   canvasSessions: value.sessions.items,

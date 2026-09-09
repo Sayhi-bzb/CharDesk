@@ -5,6 +5,7 @@ import type {
   WidgetNode,
   WidgetTree,
 } from "./types.js";
+import { normalizeCellRangeSliderValues, resolveCellSliderRange } from "./slider.js";
 
 const EMPTY_TREE: WidgetTree = Object.freeze({
   rootId: null,
@@ -32,10 +33,15 @@ const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.focusActive === right.focusActive
   && left.focusVisible === right.focusVisible
   && left.hovered === right.hovered
+  && left.manipulating === right.manipulating
   && left.pressActive === right.pressActive
   && left.activationFlash === right.activationFlash
+  && left.confirming === right.confirming
   && left.selected === right.selected
   && left.checked === right.checked
+  && left.pressed === right.pressed
+  && left.radioValue === right.radioValue
+  && sameWidgetValue(left.progress, right.progress)
   && left.buttonVariant === right.buttonVariant
   && left.buttonSize === right.buttonSize
   && left.sliderValue === right.sliderValue
@@ -74,6 +80,13 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
     parentId: WidgetId | null,
     index: number
   ): WidgetId => {
+    const parent = parentId ? nodes.get(parentId) : undefined;
+    if (current.kind === "radio-item" && parent?.kind !== "radio-group") {
+      throw new TypeError("RadioItem must be a direct child of RadioGroup.");
+    }
+    if (current.kind === "range-slider-thumb" && parent?.kind !== "range-slider") {
+      throw new TypeError("RangeSliderThumb must be a direct child of RangeSlider.");
+    }
     const segment = segmentFor(current, index);
     const id = parentId && !current.explicitId ? `${parentId}/${segment}` : segment;
     if (!id) throw new TypeError("Widget ids must not be empty.");
@@ -89,15 +102,21 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       text: current.text,
       textStyle: current.textStyle,
       label: current.label,
-      disabled: current.disabled,
+      disabled: current.disabled || (
+        (current.kind === "range-slider-thumb" || current.kind === "radio-item") && parent?.disabled === true
+      ),
       focused: current.focused,
       focusActive: false,
       focusVisible: false,
       hovered: false,
+      manipulating: false,
       pressActive: false,
       activationFlash: false,
       selected: current.selected,
-      checked: current.checked,
+      checked: current.kind === "radio-item" ? current.radioValue === parent?.radioValue : current.checked,
+      pressed: current.pressed,
+      radioValue: current.radioValue,
+      progress: current.progress,
       buttonVariant: current.buttonVariant,
       buttonSize: current.buttonSize,
       sliderValue: current.sliderValue,
@@ -128,6 +147,39 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
     const childIds = current.children.map((child, childIndex) =>
       visit(child, id, childIndex)
     );
+    if (current.kind === "radio-group") {
+      const items = childIds.map((childId) => nodes.get(childId)!);
+      if (items.some((item) => item.kind !== "radio-item" || !item.radioValue)
+        || new Set(items.map((item) => item.radioValue)).size !== items.length) {
+        throw new TypeError("RadioGroup requires RadioItem children with unique non-empty values.");
+      }
+    }
+    if (current.kind === "range-slider") {
+      const thumbs = childIds.map((childId) => nodes.get(childId)!);
+      if (thumbs.length !== 2 || thumbs.some((child) => child.kind !== "range-slider-thumb")) {
+        throw new TypeError("RangeSlider must contain exactly two RangeSliderThumb children.");
+      }
+      const parentNode = nodes.get(id)!;
+      const range = resolveCellSliderRange(
+        parentNode.sliderMin,
+        parentNode.sliderMax,
+        parentNode.sliderStep,
+      );
+      const values = normalizeCellRangeSliderValues(
+        thumbs[0]!.sliderValue,
+        thumbs[1]!.sliderValue,
+        range,
+      );
+      thumbs.forEach((thumb, thumbIndex) => {
+        nodes.set(thumb.id, {
+          ...thumb,
+          sliderValue: values[thumbIndex as 0 | 1],
+          sliderMin: range.min,
+          sliderMax: range.max,
+          sliderStep: range.step,
+        });
+      });
+    }
     nodes.set(id, { ...nodes.get(id)!, children: childIds });
     return id;
   };

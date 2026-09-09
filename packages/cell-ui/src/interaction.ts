@@ -19,7 +19,13 @@ import {
   isFocusScope,
   isFocusableKind,
 } from "./widget-capabilities.js";
-import { resolveCellSliderRange, stepCellSliderValue } from "./slider.js";
+import {
+  cellRangeSliderThumbIndexAtCoordinate,
+  constrainCellRangeSliderThumbValue,
+  resolveCellRangeSliderThumbContext,
+  resolveCellSliderRange,
+  stepCellSliderValue,
+} from "./slider.js";
 
 export type EngineInput =
   | KeyInput
@@ -39,6 +45,7 @@ export type WidgetCommand =
       reveal?: Readonly<{ targetId: WidgetId; scrollX: number; scrollY: number }>;
     }>
   | Readonly<{ type: "activate"; targetId: WidgetId }>
+  | Readonly<{ type: "select-radio"; targetId: WidgetId }>
   | Readonly<{ type: "dismiss"; targetId: WidgetId }>
   | Readonly<{ type: "set-expanded"; targetId: WidgetId; expanded: boolean }>
   | Readonly<{ type: "set-value"; targetId: WidgetId; value: number }>
@@ -283,7 +290,30 @@ export class FocusManager {
   }
 
   first(tree: WidgetTree): WidgetId | null {
-    return focusableWidgets(tree, this.#scopes.at(-1)?.id ?? null)[0]?.id ?? null;
+    const items = focusableWidgets(tree, this.#scopes.at(-1)?.id ?? null);
+    const first = items[0];
+    return first?.kind === "radio-item"
+      ? items.find((item) => item.parentId === first.parentId && item.checked)?.id ?? first.id
+      : first?.id ?? null;
+  }
+
+  tab(tree: WidgetTree, delta: -1 | 1): WidgetId | null {
+    const items = focusableWidgets(tree, this.#scopes.at(-1)?.id ?? null);
+    const stops: WidgetNode[] = [];
+    const groups = new Set<WidgetId | null>();
+    for (const item of items) {
+      if (item.kind !== "radio-item") {
+        stops.push(item);
+        continue;
+      }
+      if (groups.has(item.parentId)) continue;
+      groups.add(item.parentId);
+      stops.push(items.find((candidate) => candidate.parentId === item.parentId && candidate.checked) ?? item);
+    }
+    const current = tree.nodes.get(this.#focusedId ?? "");
+    const index = stops.findIndex((item) => item.id === current?.id
+      || (current?.kind === "radio-item" && item.kind === "radio-item" && item.parentId === current.parentId));
+    return stops[index < 0 ? delta > 0 ? 0 : stops.length - 1 : index + delta]?.id ?? null;
   }
 
   move(tree: WidgetTree, delta: -1 | 1): WidgetId | null {
@@ -300,6 +330,7 @@ export class FocusManager {
     if (
       command.type === "focus"
       || command.type === "activate"
+      || command.type === "select-radio"
       || command.type === "set-value"
       || command.type === "text"
     ) {
@@ -454,6 +485,27 @@ export const commandForInput = (
       return { type: "dismiss", targetId: dismissableScopeId };
     }
     if (focusScopeId && (!hit || !isDescendantOf(frame.tree, hit, focusScopeId))) return null;
+    const rangeSlider = ancestorOfKind(frame.tree, hit, "range-slider");
+    if (rangeSlider && !rangeSlider.disabled && input.phase === "down") {
+      const entry = frame.scene.entries.get(rangeSlider.id);
+      const thumbs = rangeSlider.children.map((id) => frame.tree.nodes.get(id)!);
+      if (entry && thumbs.length === 2) {
+        const focusedIndex = thumbs.findIndex((thumb) => thumb.focused);
+        const thumbIndex = cellRangeSliderThumbIndexAtCoordinate(
+          input.point.x + 0.5,
+          entry.decorationBounds.x,
+          entry.decorationBounds.width,
+          [thumbs[0]!.sliderValue, thumbs[1]!.sliderValue],
+          resolveCellSliderRange(
+            rangeSlider.sliderMin,
+            rangeSlider.sliderMax,
+            rangeSlider.sliderStep,
+          ),
+          focusedIndex === 0 || focusedIndex === 1 ? focusedIndex : null,
+        );
+        return focusCommand(frame, thumbs[thumbIndex]!.id);
+      }
+    }
     const item = interactiveItem(frame.tree, hit);
     if (!item || item.disabled) return null;
     if (input.phase === "down") return focusCommand(frame, item.id);
@@ -475,21 +527,48 @@ export const commandForInput = (
     ? frame.tree.nodes.get(focus.focusedId)
     : undefined;
   const owner = collectionOwner(frame.tree, focused?.id ?? null);
-  if (focused?.kind === "slider") {
-    const range = resolveCellSliderRange(
+  if (focused?.kind === "radio-item" && (
+    input.key === "ArrowUp" || input.key === "ArrowDown"
+    || input.key === "ArrowLeft" || input.key === "ArrowRight"
+  )) {
+    const items = focusableWidgets(frame.tree).filter((item) => item.parentId === focused.parentId);
+    const targetId = moveInCollection(items, focused.id,
+      input.key === "ArrowUp" || input.key === "ArrowLeft" ? -1 : 1, true);
+    return targetId ? { type: "select-radio", targetId } : null;
+  }
+  if (focused?.kind === "range-slider-thumb" && input.key === "Tab") {
+    const context = resolveCellRangeSliderThumbContext(frame.tree, focused.id);
+    const nextIndex = input.modifiers.shift
+      ? context?.thumbIndex === 1 ? 0 : null
+      : context?.thumbIndex === 0 ? 1 : null;
+    return context && nextIndex !== null
+      ? focusCommand(frame, context.thumbs[nextIndex].id)
+      : null;
+  }
+  if (input.key === "Tab") {
+    const targetId = focus.tab(frame.tree, input.modifiers.shift ? -1 : 1);
+    return targetId ? focusCommand(frame, targetId) : null;
+  }
+  if (focused?.kind === "slider" || focused?.kind === "range-slider-thumb") {
+    const context = focused.kind === "range-slider-thumb"
+      ? resolveCellRangeSliderThumbContext(frame.tree, focused.id)
+      : null;
+    const range = context?.range ?? resolveCellSliderRange(
       focused.sliderMin,
       focused.sliderMax,
       focused.sliderStep
     );
+    const allowedMin = context?.thumbIndex === 1 ? context.values[0] : range.min;
+    const allowedMax = context?.thumbIndex === 0 ? context.values[1] : range.max;
     const direction = input.key === "ArrowRight" || input.key === "ArrowUp"
       ? 1
       : input.key === "ArrowLeft" || input.key === "ArrowDown"
         ? -1
         : null;
-    const value = input.key === "Home"
-      ? range.min
+    const candidate = input.key === "Home"
+      ? allowedMin
       : input.key === "End"
-        ? range.max
+        ? allowedMax
         : direction
           ? stepCellSliderValue(focused.sliderValue, range, direction)
           : input.key === "PageUp"
@@ -497,6 +576,14 @@ export const commandForInput = (
             : input.key === "PageDown"
               ? stepCellSliderValue(focused.sliderValue, range, -1, 10)
               : null;
+    const value = candidate === null || !context
+      ? candidate
+      : constrainCellRangeSliderThumbValue(
+          candidate,
+          context.thumbIndex,
+          context.values,
+          context.range,
+        );
     if (value !== null) {
       return value === focused.sliderValue
         ? null

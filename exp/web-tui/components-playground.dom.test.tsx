@@ -3,6 +3,10 @@ import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CheckboxComponentDemo,
+  ToggleComponentDemo,
+  ProgressComponentDemo,
+  SeparatorComponentDemo,
+  RadioComponentDemo,
   InputComponentDemo,
   ScrollAreaComponentDemo,
   SelectComponentDemo,
@@ -52,6 +56,10 @@ describe("Component Playground gallery demos", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it.each([
+    { Demo: ToggleComponentDemo, label: "Toggle component", content: ["[ B ]", "pressed", "disabled"], absent: ["variant"], rounded: false },
+    { Demo: ProgressComponentDemo, label: "Progress component", content: ["████", "value"], absent: ["variant"], rounded: false },
+    { Demo: SeparatorComponentDemo, label: "Separator component", content: ["────", "horizontal"], absent: ["variant"], rounded: false },
+    { Demo: RadioComponentDemo, label: "Radio component", content: ["(●) Light", "( ) Dark", "disabled"], absent: ["variant"], rounded: false },
     {
       Demo: SelectComponentDemo,
       label: "Select component",
@@ -62,29 +70,29 @@ describe("Component Playground gallery demos", () => {
     {
       Demo: CheckboxComponentDemo,
       label: "Checkbox component",
-      content: ["Autosave", "checked", "disabled"],
-      absent: [],
+      content: ["Autosave", "disabled"],
+      absent: ["checked"],
       rounded: false,
     },
     {
       Demo: SliderComponentDemo,
       label: "Slider component",
-      content: ["Volume", "value", "step", "disabled"],
-      absent: [],
+      content: ["Volume", "range", "disabled"],
+      absent: ["value", "step"],
       rounded: false,
     },
     {
       Demo: InputComponentDemo,
       label: "Input component",
-      content: ["File name", "notes.txt", "readOnly", "disabled", "rounded"],
-      absent: [],
+      content: ["File name", "notes.txt", "disabled", "rounded"],
+      absent: ["readOnly"],
       rounded: true,
     },
     {
       Demo: ScrollAreaComponentDemo,
       label: "ScrollArea component",
-      content: ["01  Row 1", "height", "rows", "border", "rounded"],
-      absent: [],
+      content: ["01  Row 1", "border", "rounded"],
+      absent: ["height", "rows"],
       rounded: true,
     },
   ])("$label exposes one Preview and its semantic props", async ({ Demo, label, content, absent, rounded }) => {

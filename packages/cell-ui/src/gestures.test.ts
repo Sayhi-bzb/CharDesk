@@ -2,6 +2,49 @@ import { describe, expect, it } from "vitest";
 import { GestureManager } from "./index.js";
 
 describe("GestureManager", () => {
+  it("projects pending and winning drags as continuous manipulation", () => {
+    const gestures = new GestureManager();
+    gestures.begin(1, { x: 2, y: 2 }, [
+      { targetId: "volume", kind: "tap" },
+      { targetId: "volume", kind: "drag", axis: "x" },
+      { targetId: "viewport", kind: "scroll", axis: "y" },
+    ]);
+
+    expect([...gestures.manipulatingIds]).toEqual(["volume"]);
+    gestures.move(1, { x: 3, y: 2 });
+    expect([...gestures.manipulatingIds]).toEqual(["volume"]);
+    gestures.end(1, { x: 3, y: 2 });
+    expect([...gestures.manipulatingIds]).toEqual([]);
+  });
+
+  it("clears manipulation when a competing scroll wins or the arena is cancelled", () => {
+    const gestures = new GestureManager();
+    const candidates = [
+      { targetId: "volume", kind: "tap" as const },
+      { targetId: "volume", kind: "drag" as const, axis: "x" as const },
+      { targetId: "viewport", kind: "scroll" as const, axis: "y" as const },
+    ];
+
+    gestures.begin(1, { x: 2, y: 2 }, candidates);
+    gestures.move(1, { x: 2, y: 4 });
+    expect([...gestures.manipulatingIds]).toEqual([]);
+
+    gestures.begin(2, { x: 2, y: 2 }, candidates);
+    expect([...gestures.manipulatingIds]).toEqual(["volume"]);
+    gestures.cancel(2);
+    expect([...gestures.manipulatingIds]).toEqual([]);
+  });
+
+  it("keeps independent pointer manipulations without collapsing ownership", () => {
+    const gestures = new GestureManager();
+    gestures.begin(1, { x: 0, y: 0 }, [{ targetId: "volume", kind: "drag" }]);
+    gestures.begin(2, { x: 0, y: 1 }, [{ targetId: "balance", kind: "drag" }]);
+
+    expect([...gestures.manipulatingIds]).toEqual(["volume", "balance"]);
+    gestures.cancel(1);
+    expect([...gestures.manipulatingIds]).toEqual(["balance"]);
+  });
+
   it("lets ancestor scroll win vertical movement and cancels child tap", () => {
     const gestures = new GestureManager();
     gestures.begin(1, { x: 2, y: 2 }, [

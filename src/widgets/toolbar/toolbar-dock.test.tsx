@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { Toolbar as ToolbarUnderTest } from '@/widgets/toolbar/dock';
-import { canvasCommands, useEditorStore } from '@/domains/canvas/testing';
+import { useEditorStore } from '@/domains/canvas/testing';
 import { setUiLanguage } from '@/shared/i18n';
 import { ShortcutProvider } from '@/shared/shortcuts/dispatcher';
 import { useEditorShortcutLayer } from '@/domains/editor/public';
@@ -48,12 +48,6 @@ function Toolbar({
       />
     </ShortcutProvider>
   );
-}
-
-function StoreToolbar() {
-  const tool = useEditorStore((state) => state.tool);
-
-  return <Toolbar tool={tool} setTool={canvasCommands.tools.set} onUndo={() => {}} />;
 }
 
 describe('Toolbar dock', () => {
@@ -168,44 +162,6 @@ describe('Toolbar dock', () => {
 
     expect(onExitCanvasTextEditing).not.toHaveBeenCalled();
     expect(screen.queryByRole('tablist', { name: 'Color palettes' })).not.toBeInTheDocument();
-  });
-
-  it('shows Hand first in structured mode', () => {
-    useEditorStore.setState({ canvasMode: 'structured', tool: 'select' });
-    const { container } = render(<Toolbar tool="select" setTool={vi.fn()} onUndo={vi.fn()} />);
-
-    const items = container.querySelectorAll('[data-toolbar-item]');
-    expect(items).toHaveLength(4);
-    expect(items[0]).toHaveAttribute('data-toolbar-item', 'pan');
-    expect(container.querySelector('[data-toolbar-item="color"]')).not.toBeInTheDocument();
-  });
-
-  it('does not reserve a fifth structured dock shortcut for color', () => {
-    useEditorStore.setState({ canvasMode: 'structured', tool: 'select' });
-    const setTool = vi.fn();
-    render(<Toolbar tool="select" setTool={setTool} onUndo={vi.fn()} />);
-
-    fireEvent.keyDown(window, {
-      code: 'Digit5',
-      altKey: true,
-    });
-
-    expect(setTool).not.toHaveBeenCalled();
-    expect(screen.queryByRole('tablist', { name: 'Color palettes' })).not.toBeInTheDocument();
-  });
-
-  it('activates Hand through the structured mode tool policy', () => {
-    useEditorStore.setState({ canvasMode: 'structured', tool: 'select' });
-    render(
-      <Toolbar
-        tool="select"
-        setTool={canvasCommands.tools.set}
-        onUndo={vi.fn()}
-      />
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Hand' }));
-    expect(useEditorStore.getState().tool).toBe('pan');
   });
 
   it('uses the active accent state for Hand', () => {
@@ -348,62 +304,11 @@ describe('Toolbar dock', () => {
     );
   });
 
-  it('offers arrow lines only in the structured shape menu', async () => {
-    useEditorStore.setState({ canvasMode: 'structured', tool: 'select' });
-    const setTool = vi.fn();
-    const { container } = render(<Toolbar tool="select" setTool={setTool} onUndo={vi.fn()} />);
-    const shapeItem = container.querySelector('[data-toolbar-item="shape-group"]');
-    const shapeButtons = shapeItem?.querySelectorAll('button') ?? [];
-
-    fireEvent.pointerDown(shapeButtons[1], { button: 0, ctrlKey: false });
-    const arrowLine = await screen.findByRole('menuitemradio', {
-      name: 'Arrow line',
-    });
-    expect(screen.queryByRole('menuitemradio', { name: 'Circle' })).not.toBeInTheDocument();
-
-    fireEvent.click(arrowLine);
-    expect(setTool).toHaveBeenCalledWith('arrowLine');
-  });
-
-  it('activates arrow lines through the real editor store', async () => {
-    useEditorStore.setState({ canvasMode: 'structured', tool: 'select' });
-    const { container } = render(<StoreToolbar />);
-    const shapeItem = container.querySelector('[data-toolbar-item="shape-group"]');
-    const shapeButtons = shapeItem?.querySelectorAll('button') ?? [];
-
-    fireEvent.pointerDown(shapeButtons[1], { button: 0, ctrlKey: false });
-    fireEvent.click(await screen.findByRole('menuitemradio', { name: 'Arrow line' }));
-
-    expect(useEditorStore.getState().tool).toBe('arrowLine');
-  });
-
-  it('returns a structured-only arrow line tool to select in freeform', () => {
+  it('returns an unavailable arrow line tool to select in freeform', () => {
     useEditorStore.setState({ canvasMode: 'freeform', tool: 'arrowLine' });
     const setTool = vi.fn();
 
     render(<Toolbar tool="arrowLine" setTool={setTool} onUndo={vi.fn()} />);
-
-    expect(setTool).toHaveBeenCalledWith('select');
-  });
-
-  it('hides the explicit text tool in structured mode', () => {
-    useEditorStore.setState({ canvasMode: 'structured', tool: 'select' });
-
-    render(<Toolbar tool="select" setTool={vi.fn()} onUndo={vi.fn()} />);
-
-    expect(screen.getByRole('button', { name: 'Select' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Box' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Background' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Color' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Text' })).not.toBeInTheDocument();
-  });
-
-  it('returns hidden structured text tool state to select', () => {
-    useEditorStore.setState({ canvasMode: 'structured', tool: 'text' });
-    const setTool = vi.fn();
-
-    render(<Toolbar tool="text" setTool={setTool} onUndo={vi.fn()} />);
 
     expect(setTool).toHaveBeenCalledWith('select');
   });

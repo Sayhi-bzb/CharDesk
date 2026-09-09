@@ -1,6 +1,5 @@
-import type { Point } from "@/shared/types";
-import type { CanvasMode } from "@/domains/sessions/public";
 import type { ToolType } from "@/domains/canvas/public";
+import type { Point } from "@/shared/types";
 import type { CanvasLinkHit } from "../core/linkHitTesting";
 import { resolveCanvasMoveDecision, type CanvasMoveDecision } from "./moveInteraction";
 
@@ -11,17 +10,7 @@ export type CanvasMoveExecutor = {
   setCursor: (cursor: string) => void;
 };
 
-export const createCanvasMoveExecutor = ({
-  updateColorPickerHover,
-  updateLinkHover,
-  setHoveredGrid,
-  setCursor,
-}: CanvasMoveExecutor): CanvasMoveExecutor => ({
-  updateColorPickerHover,
-  updateLinkHover,
-  setHoveredGrid,
-  setCursor,
-});
+export const createCanvasMoveExecutor = (executor: CanvasMoveExecutor): CanvasMoveExecutor => executor;
 
 export const executeCanvasMoveDecision = (
   decision: CanvasMoveDecision,
@@ -31,23 +20,9 @@ export const executeCanvasMoveDecision = (
     executor.updateColorPickerHover(decision.point);
     return;
   }
-
   executor.updateLinkHover(decision.linkHit);
-
   switch (decision.action.type) {
     case "pan-hover":
-      executor.setCursor("grab");
-      break;
-    case "structured-text-cursor":
-      executor.setCursor("text");
-      break;
-    case "structured-shape-hover":
-      executor.setHoveredGrid(decision.action.point);
-      executor.setCursor("crosshair");
-      break;
-    case "structured-select-hover":
-      if (decision.action.cursor) executor.setCursor(decision.action.cursor);
-      break;
     case "static-range-move-hover":
       executor.setCursor("grab");
       break;
@@ -59,108 +34,70 @@ export const executeCanvasMoveDecision = (
   }
 };
 
-type CanvasMoveHandler = ({
+type CanvasMoveContext = {
+  point: Point | null;
+  linkHit: CanvasLinkHit | null;
+  eraserHoverPoint: Point | null;
+};
+
+export const createCanvasMoveHandler = ({ executor }: { executor: CanvasMoveExecutor }) => ({
   hasColorPickerTarget,
-  canvasMode,
   tool,
   point,
   linkHit,
-  structuredSelectCursor,
   eraserHoverPoint,
   staticRangeMoveHit,
 }: {
   hasColorPickerTarget: boolean;
-  canvasMode: CanvasMode;
   tool: ToolType;
   point: Point | null;
   linkHit: CanvasLinkHit | null;
-  structuredSelectCursor: string | null;
   eraserHoverPoint: Point | null;
   staticRangeMoveHit: boolean;
-}) => void;
+}) => executeCanvasMoveDecision(
+  resolveCanvasMoveDecision({
+    hasColorPickerTarget,
+    tool,
+    point,
+    linkHit,
+    eraserHoverPoint,
+    staticRangeMoveHit,
+  }),
+  executor
+);
 
-export const createCanvasMoveHandler = ({
-  executor,
+export const createCanvasMoveRouteHandler = ({
+  handler,
 }: {
-  executor: CanvasMoveExecutor;
-}): CanvasMoveHandler => ({
+  handler: ReturnType<typeof createCanvasMoveHandler>;
+}) => ({
   hasColorPickerTarget,
-  canvasMode,
-  tool,
-  point,
-  linkHit,
-  structuredSelectCursor,
-  eraserHoverPoint,
-  staticRangeMoveHit,
-}) =>
-  executeCanvasMoveDecision(
-    resolveCanvasMoveDecision({
-      hasColorPickerTarget,
-      canvasMode,
-      tool,
-      point,
-      linkHit,
-      structuredSelectCursor,
-      eraserHoverPoint,
-      staticRangeMoveHit,
-    }),
-    executor
-  );
-type CanvasMoveRouteContext = {
-  point: Point | null;
-  linkHit: CanvasLinkHit | null;
-  structuredSelectCursor: string | null;
-  eraserHoverPoint: Point | null;
-};
-
-export type CanvasMoveRouteHandler = ({
-  hasColorPickerTarget,
-  canvasMode,
   tool,
   clientPoint,
   resolveMoveContext,
   staticRangeMoveHit,
 }: {
   hasColorPickerTarget: boolean;
-  canvasMode: CanvasMode;
   tool: ToolType;
   clientPoint: Point;
   resolveMoveContext: (input: {
     clientPoint: Point;
-    shouldResolveStructuredSelectCursor: boolean;
     shouldResolveEraserHoverPoint: boolean;
-  }) => CanvasMoveRouteContext;
+  }) => CanvasMoveContext;
   staticRangeMoveHit: boolean;
-}) => void;
-
-export const createCanvasMoveRouteHandler = ({
-  handler,
-}: {
-  handler: CanvasMoveHandler;
-}): CanvasMoveRouteHandler =>
-  ({
-    hasColorPickerTarget,
-    canvasMode,
-    tool,
+}) => {
+  const moveContext = resolveMoveContext({
     clientPoint,
-    resolveMoveContext,
+    shouldResolveEraserHoverPoint: tool === "eraser",
+  });
+  handler({
+    hasColorPickerTarget,
+    tool,
+    point: moveContext.point,
+    linkHit: moveContext.linkHit,
+    eraserHoverPoint: moveContext.eraserHoverPoint,
     staticRangeMoveHit,
-  }) => {
-    const moveContext = resolveMoveContext({
-      clientPoint,
-      shouldResolveStructuredSelectCursor:
-        canvasMode === "structured" && tool === "select",
-      shouldResolveEraserHoverPoint: tool === "eraser",
-    });
+  });
+};
 
-    handler({
-      hasColorPickerTarget,
-      canvasMode,
-      tool,
-      point: moveContext.point,
-      linkHit: moveContext.linkHit,
-      structuredSelectCursor: moveContext.structuredSelectCursor,
-      eraserHoverPoint: moveContext.eraserHoverPoint,
-      staticRangeMoveHit,
-    });
-  };
+export type CanvasMoveRouteHandler = ReturnType<typeof createCanvasMoveRouteHandler>;

@@ -1,9 +1,5 @@
 import * as Y from "yjs";
 import type { CollaborationIntegrityIssue } from "@/domains/collaboration/public";
-import type {
-  StructuredComponentInstance,
-  StructuredNode,
-} from "@/domains/structured-content/public";
 import type { GridCell } from "@/shared/types";
 import {
   CellPlaneIndex,
@@ -38,6 +34,7 @@ import {
 import { CanvasHistoryJournal } from "./CanvasHistoryJournal";
 import { CanvasMutationPerformance } from './CanvasMutationPerformance';
 import type { CanvasMutationEnvelope } from "./canvasMutationEnvelope";
+import { migrateLegacyStructuredDocument } from "./migrateLegacyStructuredDocument";
 export type CanvasHistoryMode = "save" | "merge" | "none" | "reset";
 export type CanvasHistoryCheckpoint = {
   commit: () => void;
@@ -46,32 +43,19 @@ export type CanvasHistoryCheckpoint = {
 
 type CanvasMutationListener = (envelope: CanvasMutationEnvelope) => void;
 
-type CanvasStructuredContentPatch = {
-  nodes?: {
-    upsert?: readonly StructuredNode[];
-    deleteIds?: readonly string[];
-  };
-  components?: {
-    upsert?: readonly StructuredComponentInstance[];
-    deleteIds?: readonly string[];
-  };
-};
-
 const LOCAL_ORIGIN = Symbol("canvas-local-origin");
 const HISTORY_IGNORED_ORIGIN = Symbol("canvas-history-ignored");
 const MAX_RESIDENT_PAGE_INDEXES = 4;
 
 export type CanvasDocumentSeed = {
   grid: [string, GridCell][];
-  scene: StructuredNode[];
-  components?: StructuredComponentInstance[];
   mode?: CanvasMode;
   activePageId?: string;
   pages?: CanvasPageDraft[];
 };
 
 type CanvasCollaborationPreparation = {
-  mode: "freeform" | "structured";
+  mode: "freeform";
   documentVersion: number;
   roomId: string;
   sharedDocumentId: string;
@@ -100,8 +84,6 @@ type CanvasYDocument = {
   activePageId: string;
   operations: Y.Array<CellPlaneOperation>;
   cellPlaneIndex: CellPlaneIndex;
-  scene: Y.Map<StructuredNode>;
-  components: Y.Map<StructuredComponentInstance>;
   meta: Y.Map<unknown>;
   integrityIssues: Map<string, CollaborationIntegrityIssue>;
   undoManager: Y.UndoManager;
@@ -112,10 +94,6 @@ type CanvasYDocument = {
 
 type CanvasDocumentTransaction = {
   address: CanvasDocumentAddress;
-  sceneChanged: boolean;
-  sceneChangedIds: readonly string[];
-  componentsChanged: boolean;
-  componentChangedIds: readonly string[];
   contentChanged: boolean;
   pagesChanged: boolean;
 };
@@ -125,31 +103,6 @@ type CanvasGridWriter = {
   set: (key: string, value: GridCell) => void;
   delete: (key: string) => void;
   clear: () => void;
-};
-
-const applyYMapValueDiff = <T extends { id: string }>(
-  map: Y.Map<T>,
-  values: T[]
-) => {
-  const nextIds = new Set(values.map((value) => value.id));
-  Array.from(map.keys()).forEach((id) => {
-    if (!nextIds.has(id)) map.delete(id);
-  });
-  values.forEach((value) => {
-    const current = map.get(value.id);
-    if (!areJsonValuesEqual(current, value)) map.set(value.id, value);
-  });
-};
-
-const applyYMapPatch = <T extends { id: string }>(
-  map: Y.Map<T>,
-  patch: {
-    upsert?: readonly T[];
-    deleteIds?: readonly string[];
-  } | undefined
-) => {
-  patch?.deleteIds?.forEach((id) => map.delete(id));
-  patch?.upsert?.forEach((value) => map.set(value.id, value));
 };
 
 const createProxy = <T extends object>(resolve: () => T): T =>
@@ -190,8 +143,6 @@ export class CanvasDocumentRegistry {
   #disposed = false;
 
   readonly yCellPlaneOperations: Y.Array<CellPlaneOperation>;
-  readonly yStructuredScene: Y.Map<StructuredNode>;
-  readonly yStructuredComponents: Y.Map<StructuredComponentInstance>;
 
   constructor(initialId = "canvas-initial") {
     this.#historyJournal = new CanvasHistoryJournal({
@@ -200,8 +151,6 @@ export class CanvasDocumentRegistry {
     this.#active = this.#createDocument(initialId);
     this.#documents.set(initialId, this.#active);
     this.yCellPlaneOperations = createProxy(() => this.#active.operations);
-    this.yStructuredScene = createProxy(() => this.#active.scene);
-    this.yStructuredComponents = createProxy(() => this.#active.components);
   }
 
   getHistoryAvailability = () => ({
@@ -288,16 +237,16 @@ export class CanvasDocumentRegistry {
         indexPreparedTextBytes += stats.preparedTextBytes;
       });
     });
-    let structuredSurfaceCount = 0;
-    let structuredResidentChunks = 0;
-    let structuredResidentBytes = 0;
+    let derivedSurfaceCount = 0;
+    let derivedResidentChunks = 0;
+    let derivedResidentBytes = 0;
     this.#derivedSurfaces.forEach((surface) => {
       if (!("getStats" in surface) || typeof surface.getStats !== "function") return;
       const stats = surface.getStats() as Record<string, number>;
       if (typeof stats.residentBytes !== "number") return;
-      structuredSurfaceCount += 1;
-      structuredResidentChunks += stats.residentChunks ?? 0;
-      structuredResidentBytes += stats.residentBytes;
+      derivedSurfaceCount += 1;
+      derivedResidentChunks += stats.residentChunks ?? 0;
+      derivedResidentBytes += stats.residentBytes;
     });
     const projectionCache = this.#projectionCacheBudget.getStats();
     const history = this.#historyJournal.getStats();
@@ -321,11 +270,11 @@ export class CanvasDocumentRegistry {
       indexPreparedTextEntries,
       indexPreparedTextBytes,
       residentPageIndexes,
-      structuredSurfaceCount,
-      structuredResidentChunks,
-      structuredResidentBytes,
+      derivedSurfaceCount,
+      derivedResidentChunks,
+      derivedResidentBytes,
       estimatedProjectionBytes:
-        indexResidentBytes + indexPreparedTextBytes + structuredResidentBytes,
+        indexResidentBytes + indexPreparedTextBytes + derivedResidentBytes,
       historyDocuments: history.documents,
       historyGroups: history.groups,
       historyActions: history.actions,
@@ -397,7 +346,7 @@ export class CanvasDocumentRegistry {
     const document = this.#documents.get(documentId);
     if (!document) return null;
     const mode = document.root.meta.get("mode");
-    if (mode !== "freeform" && mode !== "structured" && mode !== "slide") {
+    if (mode !== "freeform" && mode !== "slide") {
       return null;
     }
     return {
@@ -409,12 +358,7 @@ export class CanvasDocumentRegistry {
         if (!page) return [];
         return [{
           ...page.descriptor,
-          ...(page.operations
-            ? { grid: Array.from(this.#ensurePageIndex(document, page).materialize()) }
-            : {
-                scene: Array.from(page.scene?.values() ?? []),
-                components: Array.from(page.components?.values() ?? []),
-              }),
+          grid: Array.from(this.#ensurePageIndex(document, page).materialize()),
         }];
       }),
     };
@@ -464,7 +408,7 @@ export class CanvasDocumentRegistry {
 
   getDocumentSeed = (
     id: string,
-    mode: "freeform" | "structured",
+    mode: CanvasMode = "freeform",
     pageId?: string
   ): CanvasDocumentSeed | null => {
     const document = this.#documents.get(id);
@@ -472,18 +416,7 @@ export class CanvasDocumentRegistry {
     const page = document.pages.get(pageId ?? document.activePageId);
     if (!page) return null;
     return {
-      grid:
-        mode === "freeform" && page.operations
-          ? Array.from(this.#ensurePageIndex(document, page).materialize().entries())
-          : [],
-      scene:
-        mode === "structured" && page.scene
-          ? Array.from(page.scene.values())
-          : [],
-      components:
-        mode === "structured" && page.components
-          ? Array.from(page.components.values())
-          : [],
+      grid: Array.from(this.#ensurePageIndex(document, page).materialize().entries()),
       mode,
       activePageId: page.descriptor.id,
     };
@@ -624,7 +557,7 @@ export class CanvasDocumentRegistry {
 
   initializeCollaborativeDocument = (
     id: string,
-    seed: CanvasDocumentSeed = { grid: [], scene: [], components: [] }
+    seed: CanvasDocumentSeed = { grid: [] }
   ) => {
     const previous = this.#active;
     const existing = this.#documents.get(id);
@@ -655,24 +588,17 @@ export class CanvasDocumentRegistry {
     const sharedPage: CanvasPageDraft = !activePage
       ? {
           id: sharedPageId,
-          kind: mode === "structured" ? "structured" : "cell-plane",
+          kind: "cell-plane",
         }
       : activePage.descriptor.id === sharedPageId
         ? activePage.descriptor
-        : activePage.descriptor.kind === "cell-plane"
-          ? {
-              ...activePage.descriptor,
-              id: sharedPageId,
-              grid: Array.from(
-                this.#ensurePageIndex(document, activePage).materialize()
-              ),
-            }
-          : {
-              ...activePage.descriptor,
-              id: sharedPageId,
-              scene: Array.from(activePage.scene.values()),
-              components: Array.from(activePage.components.values()),
-            };
+        : {
+            ...activePage.descriptor,
+            id: sharedPageId,
+            grid: Array.from(
+              this.#ensurePageIndex(document, activePage).materialize()
+            ),
+          };
 
     document.doc.transact(() => {
       if (
@@ -690,12 +616,6 @@ export class CanvasDocumentRegistry {
       const page = readCanvasYPage(document.root, sharedPageId);
       if (!page) {
         throw new Error(`Failed to prepare collaboration page: ${sharedPageId}`);
-      }
-      if (mode === "structured") {
-        page.operations.delete(0, page.operations.length);
-      } else {
-        page.scene.clear();
-        page.components.clear();
       }
       writeCanvasDocumentMetadata(
         document.root,
@@ -760,8 +680,6 @@ export class CanvasDocumentRegistry {
       const change = this.#readTransaction(observed, transaction);
       if (
         change.contentChanged ||
-        change.sceneChanged ||
-        change.componentsChanged ||
         change.pagesChanged
       ) listener(change);
     };
@@ -1066,81 +984,6 @@ export class CanvasDocumentRegistry {
     return operation;
   };
 
-  replaceStructuredContent = (
-    scene: StructuredNode[],
-    components: StructuredComponentInstance[],
-    history: CanvasHistoryMode | boolean = "save"
-  ) => this.replaceStructuredContentAt(
-    this.getActiveAddress(),
-    scene,
-    components,
-    history
-  );
-
-  replaceStructuredContentAt = (
-    address: CanvasDocumentAddress,
-    scene: StructuredNode[],
-    components: StructuredComponentInstance[],
-    history: CanvasHistoryMode | boolean = "save"
-  ) => {
-    const document = this.#documents.get(address.documentId);
-    const page = document?.pages.get(address.pageId);
-    if (!document || !page) {
-      throw new Error(
-        `Structured page not found: ${address.documentId}/${address.pageId}`
-      );
-    }
-    if (page.descriptor.kind !== "structured") {
-      return this.replacePage(address.documentId, {
-        ...page.descriptor,
-        kind: "structured",
-        scene,
-        components,
-      });
-    }
-    const forward = this.#createStructuredReplacementPatch(page, scene, components);
-    const inverse = this.#invertStructuredPatch(page, forward);
-    const result = this.runTransactionAt(address, () => {
-      applyYMapValueDiff(page.scene, scene);
-      applyYMapValueDiff(page.components, components);
-      this.#captureStructuredHistory(
-        address,
-        forward,
-        inverse,
-        normalizeHistoryMode(history)
-      );
-    }, history);
-    this.#emitMutation({ kind: "structured", ...address, ...forward });
-    return result;
-  };
-
-  patchStructuredContentAt = (
-    address: CanvasDocumentAddress,
-    patch: CanvasStructuredContentPatch,
-    history: CanvasHistoryMode | boolean = "save"
-  ) => {
-    const document = this.#documents.get(address.documentId);
-    const page = document?.pages.get(address.pageId);
-    if (!document || !page || page.descriptor.kind !== "structured") {
-      throw new Error(
-        `Structured page not found: ${address.documentId}/${address.pageId}`
-      );
-    }
-    const inverse = this.#invertStructuredPatch(page, patch);
-    const result = this.runTransactionAt(address, () => {
-      applyYMapPatch(page.scene, patch.nodes);
-      applyYMapPatch(page.components, patch.components);
-      this.#captureStructuredHistory(
-        address,
-        patch,
-        inverse,
-        normalizeHistoryMode(history)
-      );
-    }, history);
-    this.#emitMutation({ kind: "structured", ...address, ...patch });
-    return result;
-  };
-
   replaceCellPage = (
     address: CanvasDocumentAddress,
     entries: [string, GridCell][]
@@ -1172,57 +1015,14 @@ export class CanvasDocumentRegistry {
     const document = this.#documents.get(documentId);
     const page = document?.pages.get(draft.id);
     if (!document || !page) return false;
-    if (page.descriptor.kind !== draft.kind) {
-      document.doc.transact(() => {
-        page.operations.delete(0, page.operations.length);
-        page.scene.clear();
-        page.components.clear();
-        document.root.pages.set(draft.id, {
-          id: draft.id,
-          kind: draft.kind,
-          ...(draft.name ? { name: draft.name } : {}),
-          ...(draft.size ? { size: draft.size } : {}),
-        });
-        if (draft.kind === "cell-plane") {
-          const bootstrap = gridEntriesToCellPlaneOperation(
-            `replace:${documentId}:${draft.id}:${this.#operationSequence++}`,
-            draft.grid ?? []
-          );
-          if (bootstrap) page.operations.push([
-            document.operationFormat === "legacy"
-              ? toLegacyCellPlaneOperation(bootstrap)
-              : bootstrap,
-          ]);
-        } else {
-          draft.scene?.forEach((node) => page.scene.set(node.id, node));
-          draft.components?.forEach((component) =>
-            page.components.set(component.id, component)
-          );
-        }
-      }, HISTORY_IGNORED_ORIGIN);
-      page.dispose();
-      document.pages.delete(draft.id);
-      this.#syncDocumentPages(document);
-      this.#emitMutation({ kind: "page-upsert", documentId, page: draft });
-      return true;
-    }
     this.updatePage(documentId, draft.id, {
       ...(draft.name !== undefined ? { name: draft.name } : {}),
       ...(draft.size ? { size: draft.size } : {}),
     });
-    if (draft.kind === "cell-plane") {
-      return this.replaceCellPage(
-        { documentId, pageId: draft.id },
-        draft.grid ?? []
-      );
-    }
-    this.replaceStructuredContentAt(
+    return this.replaceCellPage(
       { documentId, pageId: draft.id },
-      draft.scene ?? [],
-      draft.components ?? [],
-      "reset"
+      draft.grid ?? []
     );
-    return true;
   };
 
   dispose = () => {
@@ -1248,43 +1048,28 @@ export class CanvasDocumentRegistry {
     notifyLifecycle = true
   ): CanvasYDocument {
     const doc = source ?? new Y.Doc({ guid: id });
+    migrateLegacyStructuredDocument(doc, id);
     const root = getCanvasDocumentRoot(doc);
     const legacyOperations = doc.share.get("cell-plane-operations");
-    const legacyScene = doc.share.get("structured-scene");
-    const legacyComponents = doc.share.get("structured-components");
     const storedMode = root.meta.get("mode");
     const inferredMode: CanvasMode =
       seed?.mode ??
-      (storedMode === "freeform" || storedMode === "structured" || storedMode === "slide"
+      (storedMode === "freeform" || storedMode === "slide"
         ? storedMode
-        : legacyScene instanceof Y.Map && legacyScene.size > 0
-          ? "structured"
-          : seed?.scene.length
-            ? "structured"
-            : "freeform");
+        : "freeform");
     if (root.pages.size === 0) {
       doc.transact(() => {
         const pages = seed?.pages?.length
           ? seed.pages
           : [{
               id: seed?.activePageId ?? getDefaultCanvasPageId(id),
-              kind: inferredMode === "structured" ? "structured" as const : "cell-plane" as const,
+              kind: "cell-plane" as const,
               grid:
                 seed?.grid ??
                 (legacyOperations instanceof Y.Array
                   ? Array.from(new CellPlaneIndex(
                       legacyOperations.toArray().filter(isCellPlaneOperation)
                     ).materialize())
-                  : []),
-              scene:
-                seed?.scene ??
-                (legacyScene instanceof Y.Map
-                  ? Array.from(legacyScene.values()) as StructuredNode[]
-                  : []),
-              components:
-                seed?.components ??
-                (legacyComponents instanceof Y.Map
-                  ? Array.from(legacyComponents.values()) as StructuredComponentInstance[]
                   : []),
             }];
         pages.forEach((page) =>
@@ -1302,8 +1087,6 @@ export class CanvasDocumentRegistry {
         if (legacyOperations instanceof Y.Array) {
           legacyOperations.delete(0, legacyOperations.length);
         }
-        if (legacyScene instanceof Y.Map) legacyScene.clear();
-        if (legacyComponents instanceof Y.Map) legacyComponents.clear();
       }, HISTORY_IGNORED_ORIGIN);
     }
     const integrityIssues = new Map<string, CollaborationIntegrityIssue>();
@@ -1315,8 +1098,6 @@ export class CanvasDocumentRegistry {
       activePageId: "",
       operations: null!,
       cellPlaneIndex: null!,
-      scene: null!,
-      components: null!,
       meta: root.meta,
       integrityIssues,
       undoManager: null!,
@@ -1336,7 +1117,7 @@ export class CanvasDocumentRegistry {
     document: CanvasYDocument,
     page: CanvasYPage
   ): CanvasPageRuntime {
-    const { operations, scene, components } = page;
+    const { operations } = page;
     const rebuildContentIndex = () => {
       const valid: CellPlaneOperation[] = [];
       operations.toArray().forEach((operation, index) => {
@@ -1359,15 +1140,10 @@ export class CanvasDocumentRegistry {
     const runtime: CanvasPageRuntime = {
       ...page,
       cellPlaneIndex: null,
-      undoManager: new Y.UndoManager(
-        page.descriptor.kind === "cell-plane"
-          ? [operations]
-          : [scene, components],
-        {
+      undoManager: new Y.UndoManager(operations, {
           captureTimeout: 500,
           trackedOrigins: new Set([LOCAL_ORIGIN]),
-        }
-      ),
+        }),
       dispose: () => undefined,
     };
     const observeOperations = (event: Y.YArrayEvent<CellPlaneOperation>) => {
@@ -1463,8 +1239,7 @@ export class CanvasDocumentRegistry {
             document.root,
             {
               id: binding.pageId,
-              kind:
-                binding.mode === "structured" ? "structured" : "cell-plane",
+              kind: "cell-plane",
             },
             `collaboration-repair:v${binding.documentVersion}:${binding.sharedDocumentId}:${binding.pageId}:${this.#operationSequence++}`
           );
@@ -1547,22 +1322,17 @@ export class CanvasDocumentRegistry {
     document.activePageId = pageId;
     document.operations = page.operations;
     document.cellPlaneIndex = this.#ensurePageIndex(document, page);
-    document.scene = page.scene;
-    document.components = page.components;
     document.undoManager = page.undoManager;
   }
 
   #replaceDocument(document: CanvasYDocument, seed: CanvasDocumentSeed) {
-    const mode =
-      seed.mode ?? (seed.scene.length > 0 ? "structured" : "freeform");
+    const mode = seed.mode ?? "freeform";
     const pages = seed.pages?.length
       ? seed.pages
       : [{
           id: seed.activePageId ?? getDefaultCanvasPageId(document.id),
-          kind: mode === "structured" ? "structured" as const : "cell-plane" as const,
+          kind: "cell-plane" as const,
           grid: seed.grid,
-          scene: seed.scene,
-          components: seed.components,
         }];
     document.pages.forEach((page) => page.dispose());
     document.pages.clear();
@@ -1591,28 +1361,12 @@ export class CanvasDocumentRegistry {
         documentId: document.id,
         pageId: document.activePageId,
       },
-      sceneChanged: false,
-      sceneChangedIds: [],
-      componentsChanged: false,
-      componentChangedIds: [],
       contentChanged: false,
       pagesChanged: false,
     };
     const activePage = document.pages.get(document.activePageId);
-    for (const [type, keys] of transaction.changed) {
+    for (const [type] of transaction.changed) {
       if (Object.is(type, activePage?.operations)) change.contentChanged = true;
-      else if (Object.is(type, activePage?.scene)) {
-        change.sceneChanged = true;
-        change.sceneChangedIds = [...keys].filter(
-          (key): key is string => typeof key === "string"
-        );
-      }
-      else if (Object.is(type, activePage?.components)) {
-        change.componentsChanged = true;
-        change.componentChangedIds = [...keys].filter(
-          (key): key is string => typeof key === "string"
-        );
-      }
       else if (
         Object.is(type, document.root.pages) ||
         Object.is(type, document.root.pageOrder)
@@ -1631,20 +1385,6 @@ export class CanvasDocumentRegistry {
     this.#historyJournal.capture(this.#historyKey(address), {
       forward: { kind: "cell-plane", ...address, operation: forward },
       inverse: { kind: "cell-plane", ...address, operation: inverse },
-    }, mode);
-    if (address.documentId === this.#active.id) this.#emitHistory();
-  }
-
-  #captureStructuredHistory(
-    address: CanvasDocumentAddress,
-    forward: CanvasStructuredContentPatch,
-    inverse: CanvasStructuredContentPatch,
-    mode: CanvasHistoryMode
-  ) {
-    if (mode !== "save" && mode !== "merge") return;
-    this.#historyJournal.capture(this.#historyKey(address), {
-      forward: { kind: "structured", ...address, ...forward },
-      inverse: { kind: "structured", ...address, ...inverse },
     }, mode);
     if (address.documentId === this.#active.id) this.#emitHistory();
   }
@@ -1686,55 +1426,6 @@ export class CanvasDocumentRegistry {
     );
   }
 
-  #createStructuredReplacementPatch(
-    page: CanvasPageRuntime,
-    scene: readonly StructuredNode[],
-    components: readonly StructuredComponentInstance[]
-  ): CanvasStructuredContentPatch {
-    const sceneIds = new Set(scene.map(({ id }) => id));
-    const componentIds = new Set(components.map(({ id }) => id));
-    return {
-      nodes: {
-        upsert: scene,
-        deleteIds: Array.from(page.scene.keys()).filter((id) => !sceneIds.has(id)),
-      },
-      components: {
-        upsert: components,
-        deleteIds: Array.from(page.components.keys()).filter(
-          (id) => !componentIds.has(id)
-        ),
-      },
-    };
-  }
-
-  #invertStructuredPatch(
-    page: CanvasPageRuntime,
-    patch: CanvasStructuredContentPatch
-  ): CanvasStructuredContentPatch {
-    const invert = <T extends { id: string }>(
-      map: Y.Map<T>,
-      valuePatch: { upsert?: readonly T[]; deleteIds?: readonly string[] } | undefined
-    ) => {
-      if (!valuePatch) return undefined;
-      const ids = new Set([
-        ...(valuePatch.deleteIds ?? []),
-        ...(valuePatch.upsert ?? []).map(({ id }) => id),
-      ]);
-      const upsert: T[] = [];
-      const deleteIds: string[] = [];
-      ids.forEach((id) => {
-        const current = map.get(id);
-        if (current) upsert.push(current);
-        else deleteIds.push(id);
-      });
-      return { upsert, deleteIds };
-    };
-    return {
-      nodes: invert(page.scene, patch.nodes),
-      components: invert(page.components, patch.components),
-    };
-  }
-
   #applyMutationEnvelope(envelope: CanvasMutationEnvelope) {
     const document = this.#documents.get(envelope.documentId);
     if (!document) return;
@@ -1746,16 +1437,6 @@ export class CanvasDocumentRegistry {
           ? toLegacyCellPlaneOperation(envelope.operation)
           : envelope.operation,
       ]), HISTORY_IGNORED_ORIGIN);
-      this.#emitMutation(envelope);
-      return;
-    }
-    if (envelope.kind === "structured") {
-      const page = document.pages.get(envelope.pageId);
-      if (!page || page.descriptor.kind !== "structured") return;
-      document.doc.transact(() => {
-        applyYMapPatch(page.scene, envelope.nodes);
-        applyYMapPatch(page.components, envelope.components);
-      }, HISTORY_IGNORED_ORIGIN);
       this.#emitMutation(envelope);
       return;
     }
@@ -1772,8 +1453,6 @@ export class CanvasDocumentRegistry {
         const current = readCanvasYPage(document.root, envelope.page.id);
         if (current) {
           current.operations.delete(0, current.operations.length);
-          current.scene.clear();
-          current.components.clear();
         }
         createCanvasYPage(
           document.root,
@@ -1833,7 +1512,7 @@ export class CanvasDocumentRegistry {
 
   #readDocumentMode(document: CanvasYDocument): CanvasMode {
     const mode = document.root.meta.get("mode");
-    return mode === "freeform" || mode === "structured" || mode === "slide"
+    return mode === "freeform" || mode === "slide"
       ? mode
       : "freeform";
   }

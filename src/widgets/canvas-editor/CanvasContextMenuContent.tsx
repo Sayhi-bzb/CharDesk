@@ -26,16 +26,6 @@ const LABEL_KEY_BY_ID: Record<string, I18nKey> = {
   "fill-selection-char": "context.fillSelection",
   "snapshot-png": "context.snapshotPng",
   "delete-selection": "context.delete",
-  "structured-rename": "context.rename",
-  "structured-bring-forward": "context.bringForward",
-  "structured-send-backward": "context.sendBackward",
-  "structured-bring-to-front": "context.bringToFront",
-  "structured-send-to-back": "context.sendToBack",
-  "structured-duplicate": "context.duplicate",
-  "structured-copy-hierarchy": "context.copyStructure",
-  "structured-split-horizontal": "context.splitHorizontal",
-  "structured-split-vertical": "context.splitVertical",
-  "structured-delete-divider": "context.deleteDivider",
 };
 
 type CanvasContextMenuContentProps = {

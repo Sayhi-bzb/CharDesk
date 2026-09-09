@@ -11,12 +11,11 @@ import {
 import { useActiveCollaboration } from "./useActiveCollaboration";
 
 const room = (
-  roomId: string,
-  mode: "freeform" | "structured" = "freeform"
+  roomId: string
 ): CollaborationDescriptorV6 => ({
   version: 6,
   documentVersion: 6,
-  mode,
+  mode: "freeform",
   provider: "websocket",
   roomId,
   key: "room-key-1234567890123456789012345678901234567890",
@@ -43,7 +42,7 @@ describe("useActiveCollaboration", () => {
   });
 
   it("joins a valid incoming room once without clearing its URL", async () => {
-    const incoming = room("incoming-room-1234567890", "structured");
+    const incoming = room("incoming-room-1234567890");
     act(() => {
       useEditorStore.setState({
         activeCanvasId: "local-canvas",

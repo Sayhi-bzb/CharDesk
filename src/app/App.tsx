@@ -29,7 +29,6 @@ import { AppMenu } from '@/widgets/toolbar/app-menu';
 import { getStaticGridViewState } from '@/domains/selection/public';
 import {
   isSourceBackedCanvasSession,
-  isStaticGridMode,
 } from '@/domains/sessions/public';
 import { useGlobalShortcutCommands } from './useGlobalShortcutCommands';
 import { ZoomControl } from '@/widgets/toolbar/zoom-control';
@@ -396,23 +395,17 @@ function AppContent() {
   const hostedSelectorViewId: CanvasViewId = renderSplit ? 'primary' : activeView.viewId;
   const {
     tool,
-    canvasMode,
     textCursor,
     staticGridSelection,
     staticGridEditMode,
     contentSurface,
-    editingStructuredTextNodeId,
-    structuredTextSelection,
   } = useCanvasState(
     useShallow((state) => ({
       tool: state.tool,
-      canvasMode: state.canvasMode,
       textCursor: state.interaction.textCursor,
       staticGridSelection: state.interaction.staticGridSelection,
       staticGridEditMode: state.interaction.staticGridEditMode,
       contentSurface: state.contentSurface,
-      editingStructuredTextNodeId: state.interaction.editingStructuredTextNodeId,
-      structuredTextSelection: state.interaction.structuredTextSelection,
     }))
   );
   const editor = useEditor();
@@ -425,8 +418,6 @@ function AppContent() {
   );
   const exitStaticGridTextEdit = canvas.commands.staticGrid.exitTextEdit;
   const setTextCursor = canvas.commands.interaction.setTextCursor;
-  const setEditingStructuredTextNodeId = canvas.commands.interaction.setEditingStructuredTextNodeId;
-  const setStructuredTextSelection = canvas.commands.interaction.setStructuredTextSelection;
   const staticGridView = useMemo(
     () =>
       getStaticGridViewState({
@@ -437,18 +428,12 @@ function AppContent() {
       }),
     [contentSurface, staticGridEditMode, staticGridSelection, textCursor]
   );
-  const isCanvasTextEditing = isStaticGridMode(canvasMode)
-    ? staticGridView.interaction.kind === "text-edit"
-    : !!textCursor || !!editingStructuredTextNodeId || !!structuredTextSelection;
+  const isCanvasTextEditing = staticGridView.interaction.kind === "text-edit";
   const exitCanvasTextEditing = useCallback(() => {
     exitStaticGridTextEdit();
     setTextCursor(null);
-    setEditingStructuredTextNodeId(null);
-    setStructuredTextSelection(null);
   }, [
     exitStaticGridTextEdit,
-    setEditingStructuredTextNodeId,
-    setStructuredTextSelection,
     setTextCursor,
   ]);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useLocalStorageState<boolean>(

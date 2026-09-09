@@ -111,10 +111,40 @@ jobs:
             npm run "$VERIFY_SCRIPT" -- --phase build
           fi
 
+  cell-e2e:
+    name: Cell UI browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - *checkout
+      - *setup-node
+      - *install
+      - name: Plan Cell browser coverage
+        id: cell-plan
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          import { parseArguments, collectChangedFiles, createVerificationPlan } from './scripts/quality/verification.mjs';
+          const options = parseArguments(['--mode', process.env.VERIFY_SCRIPT.replace('check:', ''), '--phase', 'cell-e2e']);
+          const plan = createVerificationPlan(options, collectChangedFiles(process.env.VERIFY_BASE || undefined));
+          appendFileSync(process.env.GITHUB_OUTPUT, `required=${plan.tasks.length > 0}\n`);
+          NODE
+      - name: Install browser runtimes
+        if: steps.cell-plan.outputs.required == 'true'
+        run: npx playwright install --with-deps chromium webkit
+      - name: Verify affected Cell UI browser flows
+        if: steps.cell-plan.outputs.required == 'true'
+        run: |
+          if [ -n "$VERIFY_BASE" ]; then
+            npm run "$VERIFY_SCRIPT" -- --phase cell-e2e --base "$VERIFY_BASE"
+          else
+            npm run "$VERIFY_SCRIPT" -- --phase cell-e2e
+          fi
+
   verify:
     name: Verify
     if: ${{ always() }}
-    needs: [quality, workspace-tests, node-tests, dom-tests, build]
+    needs: [quality, workspace-tests, node-tests, dom-tests, build, cell-e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Require every verification lane
@@ -124,3 +154,4 @@ jobs:
           test "${{ needs.node-tests.result }}" = "success"
           test "${{ needs.dom-tests.result }}" = "success"
           test "${{ needs.build.result }}" = "success"
+          test "${{ needs.cell-e2e.result }}" = "success"

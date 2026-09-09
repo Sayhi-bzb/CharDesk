@@ -184,7 +184,7 @@ describe("CanvasToolStateNode", () => {
     runtime.registerExtension(createCanvasEditorExtension(runtime.interactionPort)).start("select");
     runtime.dispatch({
       type: "canvas-drag-start",
-      canvasMode: "structured",
+      canvasMode: "freeform",
       button: 0,
       isCtrlOrMetaPressed: false,
       shiftKey: false,
@@ -418,61 +418,4 @@ describe("CanvasToolStateNode", () => {
     expect(runtime.getCurrentStatePath()).toBe("root.brush.idle");
   });
 
-  it("transitions structured interaction states through the same state tree", () => {
-    const { runtime, port } = createHarness();
-    const drag = {
-      node: {
-        id: "split-1",
-        type: "splitBox" as const,
-        order: 1,
-        start: { x: 0, y: 0 },
-        end: { x: 4, y: 4 },
-        style: { color: "#fff" },
-        verticalSplitRatio: 0.5,
-        topSplitRatio: 0.5,
-        bottomSplitRatio: 0.5,
-      },
-      selectedIds: ["split-1"],
-      selectedNodes: [],
-      baseScene: [],
-      baseGrid: new Map(),
-      handle: null,
-    };
-    vi.mocked(port.start).mockReturnValueOnce({
-      state: {
-        type: "structuredSplitBoxResizePending",
-        anchor: { x: 2, y: 2 },
-        drag,
-      },
-    });
-    vi.mocked(port.update).mockReturnValueOnce({
-      type: "structuredSplitBoxResizing",
-      anchor: { x: 2, y: 2 },
-      drag,
-    });
-
-    runtime.dispatch({
-      type: "canvas-drag-start",
-      canvasMode: "structured",
-      button: 0,
-      isCtrlOrMetaPressed: false,
-      shiftKey: false,
-      detail: 1,
-      screenPoint: { x: 20, y: 20 },
-      gridPoint: { x: 2, y: 2 },
-      brushChar: "#",
-    });
-    expect(runtime.getCurrentStatePath()).toBe(
-      "root.select.structuredSplitBoxResizePending"
-    );
-
-    runtime.dispatch({
-      type: "canvas-drag-update",
-      delta: { x: 1, y: 0 },
-      currentGrid: { x: 3, y: 2 },
-    });
-    expect(runtime.getCurrentStatePath()).toBe(
-      "root.select.structuredSplitBoxResizing"
-    );
-  });
 });

@@ -53,16 +53,10 @@ const resolve = (
 ) => resolveCanvasCellPresentation({
   viewActive: true,
   inputFocused: true,
-  canvasMode: "freeform",
   range: null,
   staticGrid: {
     kind: "navigate",
     activeCell: { x: 1, y: 2 },
-  },
-  structured: {
-    gridFocus: null,
-    editingText: false,
-    hasNodeSelection: false,
   },
   cursorPreference: { shape: "block", blink: true },
   ...overrides,
@@ -71,7 +65,6 @@ const resolve = (
 const resolveRange = (
   overrides: Partial<Parameters<typeof resolveCanvasRangePresentation>[0]> = {}
 ) => resolveCanvasRangePresentation({
-  canvasMode: "freeform",
   source: new GridSnapshotSource(),
   staticGrid: navigateView(),
   draggingSelection: null,
@@ -121,27 +114,6 @@ describe("Canvas Cell presentation", () => {
     expect(resolve({ viewActive: false, range: visual })).toEqual({ visual: null });
   });
 
-  it("keeps structured navigation focus semantically distinct", () => {
-    const structured = {
-      gridFocus: { x: 6, y: 7 },
-      editingText: false,
-      hasNodeSelection: false,
-    };
-    expect(resolve({ canvasMode: "structured", structured })).toEqual({
-      visual: {
-        kind: "navigation-focus",
-        point: { x: 6, y: 7 },
-      },
-    });
-
-    for (const suppressed of [
-      { ...structured, editingText: true },
-      { ...structured, hasNodeSelection: true },
-    ]) {
-      expect(resolve({ canvasMode: "structured", structured: suppressed }))
-        .toEqual({ visual: null });
-    }
-  });
 });
 
 describe("Canvas Range presentation", () => {
@@ -179,32 +151,6 @@ describe("Canvas Range presentation", () => {
     );
   });
 
-  it("keeps structured drag independent from stale static selection", () => {
-    const result = resolveRange({
-      canvasMode: "structured",
-      staticGrid: rangeView([
-        { start: { x: 1, y: 2 }, end: { x: 3, y: 2 } },
-      ]),
-      draggingSelection: {
-        start: { x: 7, y: 8 },
-        end: { x: 8, y: 9 },
-      },
-    });
-
-    expect(result).toEqual(range(
-      "selecting",
-      getGridSelectionGeometry([
-        { start: { x: 7, y: 8 }, end: { x: 8, y: 9 } },
-      ])
-    ));
-    expect(resolveRange({
-      canvasMode: "structured",
-      staticGrid: rangeView([
-        { start: { x: 1, y: 2 }, end: { x: 3, y: 2 } },
-      ]),
-    })).toBeNull();
-  });
-
   it("gives a transactional move preview highest priority", () => {
     const source = new GridSnapshotSource([
       ["1,2", { char: "A", color: "#fff" }],
@@ -234,10 +180,5 @@ describe("Canvas Range presentation", () => {
         movePreview!.previewSource
       ).polygons
     );
-    expect(resolveRange({
-      canvasMode: "structured",
-      source,
-      movePreview,
-    })).toBeNull();
   });
 });

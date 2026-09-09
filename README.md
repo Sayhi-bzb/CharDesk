@@ -98,7 +98,7 @@ Write Markdown, Mermaid, math, GFM tables, fenced code, JSON, YAML, Vega-Lite, a
 
 ### Spatial composition
 
-Arrange content on Freeform or Structured canvases, compose multiline fields with `|||` and `---`, collect complete scenes in a Blackboard, or tell a story with Slides. Every form resolves to the same character-grid rendering pipeline.
+Arrange content on Freeform canvases, start from reusable Cell templates, compose multiline fields with `|||` and `---`, collect complete scenes in a Blackboard, or tell a story with Slides. Every form resolves to the same character-grid rendering pipeline.
 
 ### Agent access
 

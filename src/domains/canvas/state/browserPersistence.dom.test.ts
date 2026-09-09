@@ -17,7 +17,7 @@ import {
   createIndexedDbCanvasCatalog,
   type CanvasSessionSnapshot,
 } from "@/domains/sessions/public";
-import type { StructuredNode } from "@/domains/structured-content/public";
+import type { StructuredNode } from "@/domains/legacy-structured/public";
 import { createCanvasRuntime, type CanvasRuntime } from "../runtime";
 import { gridEntriesToCellPlaneOperation } from "../cell-plane/model";
 import {
@@ -81,8 +81,6 @@ const createRuntime = (
     id: SESSION_ID,
     name: "Persisted",
     mode: "freeform",
-    scene: [],
-    components: [],
     grid: [["0,0", { char: "A", color: "#111111" }]],
   }]
 ) => {
@@ -380,8 +378,6 @@ describe("browser canvas persistence", () => {
       id: SESSION_ID,
       name: "Welcome",
       mode: "freeform",
-      scene: [],
-      components: [],
       grid: [["0,0", { char: "A", color: "#111111" }]],
     }];
     const first = createRuntime(storage, bootstrapSessions);
@@ -482,8 +478,6 @@ describe("browser canvas persistence", () => {
       id: SESSION_ID,
       name: "Welcome",
       mode: "freeform",
-      scene: [],
-      components: [],
       grid: [],
     }];
     const first = createRuntime(storage, bootstrapSessions);
@@ -614,7 +608,7 @@ describe("browser canvas persistence", () => {
     expect(databaseNames).toContain(newerDatabase);
   });
 
-  it("migrates a legacy structured document without flattening its scene", async () => {
+  it("flattens a legacy Structured document into CellPlane content", async () => {
     const storage = new MemoryStorage();
     const database = `chardesk-local-document-v1:${LEGACY_SESSION_ID}`;
     const textNode: StructuredNode = {
@@ -633,20 +627,20 @@ describe("browser canvas persistence", () => {
     await provider.destroy();
     legacy.destroy();
 
-    const runtime = createRuntime(storage, [{
+    const legacySession: CanvasSessionSnapshot = {
       id: LEGACY_SESSION_ID,
       name: "Structured legacy",
-      mode: "structured",
-      scene: [],
-      components: [],
+      mode: "freeform",
       grid: [],
-    }]);
+    };
+    const runtime = createRuntime(storage, [legacySession]);
     runtimes.push(runtime);
     await runtime.ready;
 
     expect(runtime.getPersistenceSnapshot().phase).toBe("ready");
-    expect(runtime.getState().canvasMode).toBe("structured");
-    expect(runtime.getState().structuredScene).toEqual([textNode]);
+    expect(runtime.getState().canvasMode).toBe("freeform");
+    expect(runtime.getState().contentSurface.reader.getCell({ x: 3, y: 2 })?.char)
+      .toBe("P");
   });
 
   it("migrates a V5 localStorage snapshot only after IndexedDB verification", async () => {
@@ -724,8 +718,6 @@ describe("browser canvas persistence", () => {
           },
         ],
       },
-      scene: [],
-      components: [],
       grid: [],
     }];
     const first = createRuntime(storage, slides);
@@ -778,8 +770,6 @@ describe("browser canvas persistence", () => {
           grid: [],
         }],
       },
-      scene: [],
-      components: [],
       grid: [],
     }];
     const first = createRuntime(storage, slides);

@@ -7,7 +7,7 @@ import type { CanvasSourceBinding } from "./model";
 import { migrateLegacyGridViewport } from "./viewportMigration";
 
 export const CANVAS_CATALOG_DATABASE = "chardesk-canvas-catalog";
-export const CANVAS_CATALOG_VERSION = 4;
+export const CANVAS_CATALOG_VERSION = 5;
 export const CANVAS_CATALOG_MARKER_KEY = "chardesk-canvas-catalog-ready-v1";
 
 export type CanvasCatalogPreferences = {
@@ -134,12 +134,14 @@ const readLegacyWorkspaceId = (value: unknown) =>
 
 const normalizeCatalogSession = (value: CanvasCatalogSession): CanvasCatalogSession | null => {
   const storedMode: unknown = value.mode;
-  const mode = storedMode === "blackboard" ? "freeform" : storedMode;
-  if (mode !== "freeform" && mode !== "structured" && mode !== "slide") return null;
-  const sourceBinding = mode === "structured"
+  const mode = storedMode === "blackboard" || storedMode === "structured"
+    ? "freeform"
+    : storedMode;
+  if (mode !== "freeform" && mode !== "slide") return null;
+  const sourceBinding = decodeSourceBinding(value.sourceBinding, readLegacyWorkspaceId(value));
+  const collaboration = sourceBinding || storedMode === "structured"
     ? undefined
-    : decodeSourceBinding(value.sourceBinding, readLegacyWorkspaceId(value));
-  const collaboration = sourceBinding ? undefined : value.collaboration;
+    : value.collaboration;
   return {
     id: value.id,
     ...(value.order === undefined ? {} : { order: value.order }),

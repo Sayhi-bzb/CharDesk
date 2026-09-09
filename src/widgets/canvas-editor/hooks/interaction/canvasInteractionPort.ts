@@ -4,11 +4,6 @@ import type {
   CanvasInteractionState,
 } from "@/domains/editor/public";
 import type { CanvasMode } from "@/domains/sessions/public";
-import {
-  isStructuredSplitBoxLineHandle,
-  type StructuredNode,
-  type StructuredSplitBoxHandle,
-} from "@/domains/structured-content/public";
 import type { Point } from "@/shared/types";
 import type { CanvasPointerContextResolver } from "./core/pointerContext";
 import type { CanvasDragStartRouteAdapter } from "./gestures/dragStartExecution";
@@ -41,16 +36,13 @@ type DragUpdateHandler = (input: {
   tool: ToolType;
   canvasMode: CanvasMode;
   currentGrid: Point;
-  structuredScene: StructuredNode[];
 }) => void;
 
 type PrimaryDragEndHandler = (input: {
   state: CanvasInteractionState;
   tool: ToolType;
   canvasMode: CanvasMode;
-  structuredScene: StructuredNode[];
   resolvedEndGrid: Point | null;
-  isDividerHandle: (handle: StructuredSplitBoxHandle) => boolean;
 }) => boolean;
 
 export type CanvasInteractionPortDependencies = {
@@ -58,10 +50,9 @@ export type CanvasInteractionPortDependencies = {
   tool: ToolType;
   canvasMode: CanvasMode;
   brushChar: string;
-  structuredScene: StructuredNode[];
   pointerContext: Pick<
     CanvasPointerContextResolver,
-    "hasCanvasRect" | "resolveLocalPoint"
+    "hasCanvasRect"
   >;
   dragStart: CanvasDragStartRouteAdapter;
   dragUpdate: DragUpdateHandler;
@@ -88,7 +79,6 @@ export const createCanvasInteractionPort = ({
   tool,
   canvasMode,
   brushChar,
-  structuredScene,
   pointerContext,
   dragStart,
   dragUpdate,
@@ -114,7 +104,6 @@ export const createCanvasInteractionPort = ({
     capture.setState({ type: "idle" });
     capture.setSelectionAnchor(selectionAnchor);
     if (
-      canvasMode !== "structured" &&
       tool === "select" &&
       event.button === 0 &&
       event.isCtrlOrMetaPressed &&
@@ -131,7 +120,6 @@ export const createCanvasInteractionPort = ({
       return { state, selectionAnchor: event.gridPoint };
     }
     if (
-      canvasMode !== "structured" &&
       tool === "select" &&
       event.button === 0 &&
       !event.isCtrlOrMetaPressed &&
@@ -159,11 +147,8 @@ export const createCanvasInteractionPort = ({
       shiftKey: event.shiftKey,
       anchorGrid: selectionAnchor,
       brushChar: event.brushChar,
-      mouseDetail: event.detail,
       preventDefault: () => undefined,
       resolveGridPoint: () => event.gridPoint,
-      resolveLocalPoint: (point) =>
-        pointerContext.resolveLocalPoint(point.x, point.y),
     });
     return started && capture.getState().type !== "idle"
       ? {
@@ -222,7 +207,7 @@ export const createCanvasInteractionPort = ({
     }
 
     capture.setState(state);
-    dragUpdate({ state, tool, canvasMode, currentGrid, structuredScene });
+    dragUpdate({ state, tool, canvasMode, currentGrid });
     return capture.getState();
   },
   complete: (state, endGrid) => {
@@ -244,9 +229,7 @@ export const createCanvasInteractionPort = ({
         state,
         tool,
         canvasMode,
-        structuredScene,
         resolvedEndGrid: endGrid,
-        isDividerHandle: isStructuredSplitBoxLineHandle,
       });
       setCursor("");
     }

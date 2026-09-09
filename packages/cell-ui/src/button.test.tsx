@@ -29,11 +29,11 @@ describe("Button", () => {
     expect(save.paddingInsets).toEqual({ top: 0, right: 1, bottom: 0, left: 1 });
     expect(frame.buffer.get(save.rect.x, 0)).toMatchObject({
       ownerId: "save",
-      style: { backgroundColor: "#191d22" },
+      style: { color: "#FFFFFF", backgroundColor: "#000000" },
     });
     expect(frame.buffer.get(save.rect.x + 1, 0)?.text).toBe("S");
     expect(frame.buffer.get(save.rect.x + save.rect.width - 1, 0)?.style.backgroundColor)
-      .toBe("#191d22");
+      .toBe("#000000");
     expect(frame.buffer.toText({ trimEnd: true })).toBe(" Save   Disabled   Next");
 
     const insetRuntime = new CellUiRuntime({ viewport: { width: 30, height: 6 } });
@@ -87,7 +87,10 @@ describe("Button", () => {
     const filled = render("default", "default");
     const outline = render("outline", "default");
     const ghost = render("ghost", "default");
-    expect(filled.buffer.get(0, 0)?.style.backgroundColor).toBe("#191d22");
+    expect(filled.buffer.get(0, 0)?.style).toMatchObject({
+      color: "#FFFFFF",
+      backgroundColor: "#000000",
+    });
     expect(outline.buffer.get(0, 0)).toMatchObject({ text: "[", ownerId: "save" });
     expect(outline.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
     expect(ghost.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
@@ -167,15 +170,18 @@ describe("Button", () => {
     expect(focus.move(frame.tree, 1)).toBe("next");
 
     const hovered = runtime.render(buttons(), { hoveredId: "save" });
-    expect(hovered.buffer.get(save.x, save.y)?.style.backgroundColor).toBe("#25292e");
+    expect(hovered.buffer.get(save.x, save.y)?.style).toMatchObject({
+      color: "#000000",
+      backgroundColor: "#FFFFFF",
+    });
     const focused = runtime.render(buttons(), { focusedId: "save" });
     expect(focused.buffer.get(save.x, save.y)?.style).toMatchObject({
-      backgroundColor: "#1a1a1a",
-      bold: true,
+      color: "#000000",
+      backgroundColor: "#FFFFFF",
     });
     expect(frame.buffer.get(disabled.x + 1, disabled.y)?.style).toMatchObject({
-      backgroundColor: "#191d22",
-      color: "#666666",
+      backgroundColor: "#FFFFFF",
+      color: "#777777",
     });
     runtime.dispose();
   });

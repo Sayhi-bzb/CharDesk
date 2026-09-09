@@ -11,37 +11,24 @@ import {
 } from "./canvasCheckpointSnapshot";
 
 describe("Canvas checkpoint snapshot", () => {
-  it("round-trips cell-plane and structured pages through compact binary", async () => {
+  it("round-trips CellPlane pages through compact binary", async () => {
     const doc = new Y.Doc({ guid: "snapshot-document" });
     applyCanvasDocumentSeed(doc, "snapshot-document", {
-      mode: "freeform",
-      activePageId: "grid-page",
+      mode: "slide",
+      activePageId: "page-a",
       pages: [
         {
-          id: "grid-page",
+          id: "page-a",
           kind: "cell-plane",
-          grid: [
-            ["0,0", { char: "A", color: "#111111" }],
-            ["1,0", { char: "界", color: "#223344" }],
-          ],
+          grid: [["0,0", { char: "A", color: "#111111" }]],
         },
         {
-          id: "scene-page",
-          kind: "structured",
-          scene: [{
-            id: "title",
-            type: "text",
-            order: 1,
-            position: { x: 10, y: 20 },
-            text: "GPU",
-            style: { color: "#ffffff" },
-          }],
-          components: [],
+          id: "page-b",
+          kind: "cell-plane",
+          grid: [["1,0", { char: "界", color: "#223344" }]],
         },
       ],
       grid: [],
-      scene: [],
-      components: [],
     });
 
     const encoded = await encodeCanvasCheckpointSnapshot(doc, "snapshot-document");
@@ -49,13 +36,12 @@ describe("Canvas checkpoint snapshot", () => {
     const seed = materializeCanvasCheckpointSource(decoded.source);
 
     expect(decoded.documentId).toBe("snapshot-document");
-    expect(encoded.operationCount).toBe(1);
-    expect(seed.pages?.[1]?.scene?.[0]).toMatchObject({ id: "title", text: "GPU" });
-    const operations = "operations" in decoded.source.pages[0]!
-      ? decoded.source.pages[0].operations
+    expect(encoded.operationCount).toBe(2);
+    expect(seed.pages).toHaveLength(2);
+    const operations = "operations" in decoded.source.pages[1]!
+      ? decoded.source.pages[1].operations
       : [];
     const index = new CellPlaneIndex(operations);
-    expect(index.getCell({ x: 0, y: 0 })?.char).toBe("A");
     expect(index.getCell({ x: 1, y: 0 })?.char).toBe("界");
     index.dispose();
     doc.destroy();

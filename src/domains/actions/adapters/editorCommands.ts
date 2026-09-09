@@ -6,7 +6,6 @@ import {
 } from "@/domains/actions/input-arbiter";
 import { getFirstGrapheme } from "@/shared/utils/characters";
 import { hasGridRangeSelection } from "@/domains/selection/public";
-import { getStructuredTextSelectionRange } from "@/domains/structured-content/public";
 
 type EditorCommand = Extract<
   ActionId,
@@ -41,12 +40,6 @@ export const runEditorCommand = (
     case "copy":
     case "copy-rich":
     case "copy-ansi":
-      if (
-        state.canvasMode === "structured" &&
-        (command === "copy-rich" || command === "copy-ansi")
-      ) {
-        return false;
-      }
       if (!canvas.queries.canCopyOrCut()) return false;
       return canvas.commands.selection.copy({
         event: options.clipboardEvent,
@@ -54,15 +47,6 @@ export const runEditorCommand = (
         ansi: command === "copy-ansi",
       });
     case "cut":
-      if (state.canvasMode === "structured") {
-        const hasStructuredTextSelection = !!getStructuredTextSelectionRange(
-          state.interaction.structuredTextSelection
-        );
-        if (!hasStructuredTextSelection && state.interaction.selectedStructuredNodeIds.length === 0) {
-          return false;
-        }
-        return canvas.commands.selection.cut({ event: options.clipboardEvent });
-      }
       if (!canvas.queries.canCopyOrCut()) return false;
       return canvas.commands.selection.cut({ event: options.clipboardEvent });
     case "paste":
@@ -70,7 +54,6 @@ export const runEditorCommand = (
         eventDataTransfer: options.clipboardEvent?.clipboardData || undefined,
       });
     case "fill-selection-char": {
-      if (state.canvasMode === "structured") return false;
       const fillChar = options.fillChar ? getFirstGrapheme(options.fillChar) : "";
       if (!fillChar) return false;
       if (!hasGridRangeSelection(state.interaction.staticGridSelection) || state.interaction.textCursor) return false;

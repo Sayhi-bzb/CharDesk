@@ -2,17 +2,10 @@ import {
   getGridSelectionGeometry,
   gridRangeFromSelectionArea,
 } from "@/domains/selection/public";
-import type { CanvasMode } from "@/domains/sessions/public";
-import {
-  getStructuredNodeBounds,
-  type StructuredNode,
-} from "@/domains/structured-content/public";
 import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
 import type { GridCellSource, Point } from "@/shared/types";
 
-type RemoteSelection =
-  | { mode: "freeform"; areas: Array<{ start: Point; end: Point }> }
-  | { mode: "structured"; nodeIds: string[] };
+type RemoteSelection = { mode: "freeform"; areas: Array<{ start: Point; end: Point }> };
 
 type RemotePeer = {
   clientId: number;
@@ -78,18 +71,6 @@ const ringsToPath = (
     )
     .join(" ");
 
-const boundsToPath = (
-  bounds: { x: number; y: number; width: number; height: number },
-  viewport: { offset: Point; zoom: number }
-) => {
-  const start = toScreenPoint({ x: bounds.x, y: bounds.y }, viewport);
-  const end = toScreenPoint({
-    x: bounds.x + bounds.width,
-    y: bounds.y + bounds.height,
-  }, viewport);
-  return `M${start.x} ${start.y} H${end.x} V${end.y} H${start.x} Z`;
-};
-
 const pointsToScreenRect = (
   points: Point[],
   viewport: { offset: Point; zoom: number }
@@ -101,18 +82,6 @@ const pointsToScreenRect = (
     right: Math.max(...screenPoints.map((point) => point.x)),
     bottom: Math.max(...screenPoints.map((point) => point.y)),
   };
-};
-
-const boundsToScreenRect = (
-  bounds: { x: number; y: number; width: number; height: number },
-  viewport: { offset: Point; zoom: number }
-): ScreenRect => {
-  const start = toScreenPoint({ x: bounds.x, y: bounds.y }, viewport);
-  const end = toScreenPoint({
-    x: bounds.x + bounds.width,
-    y: bounds.y + bounds.height,
-  }, viewport);
-  return { left: start.x, top: start.y, right: end.x, bottom: end.y };
 };
 
 const unionScreenRects = (regions: ScreenRect[]): ScreenRect => ({
@@ -144,18 +113,14 @@ const createVisual = (
 
 export const resolveRemoteSelectionVisuals = ({
   peers,
-  canvasMode,
   grid,
-  structuredScene,
   viewport,
 }: {
   peers: RemotePeer[];
-  canvasMode: CanvasMode;
   grid: GridCellSource;
-  structuredScene: StructuredNode[];
   viewport: { offset: Point; zoom: number };
 }): RemoteSelectionVisual[] => peers.flatMap((peer) => {
-  if (canvasMode === "freeform" && peer.selection?.mode === "freeform") {
+  if (peer.selection?.mode === "freeform") {
     const geometry = getGridSelectionGeometry(
       peer.selection.areas.map(gridRangeFromSelectionArea),
       grid
@@ -170,19 +135,6 @@ export const resolveRemoteSelectionVisuals = ({
         .map(({ rings }) => ringsToPath(rings, viewport))
         .join(" "),
       regions
-    )];
-  }
-
-  if (canvasMode === "structured" && peer.selection?.mode === "structured") {
-    const selectedIds = new Set(peer.selection.nodeIds);
-    const bounds = structuredScene
-      .filter((node) => selectedIds.has(node.id))
-      .map(getStructuredNodeBounds);
-    if (bounds.length === 0) return [];
-    return [createVisual(
-      peer,
-      bounds.map((item) => boundsToPath(item, viewport)).join(" "),
-      bounds.map((item) => boundsToScreenRect(item, viewport))
     )];
   }
 

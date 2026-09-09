@@ -1,13 +1,9 @@
 import type { Point, SelectionArea } from "@/shared/types";
-import type { ToolType } from "@/domains/canvas/public";
 import type { DragEndCommitDecision } from "./commitInteraction";
 import type { SelectionCommitDecision } from "../preview/selectionInteraction";
 
 export type SelectionCommitExecutor = {
   fillArea: (selection: SelectionArea) => void;
-  setSelectedStructuredNodeIds: (ids: string[]) => void;
-  setSelectedStructuredSplitHandle: (handle: null) => void;
-  setStructuredGridFocus: (point: Point) => void;
   setStaticGridActiveCell: (point: Point) => void;
   setStaticGridSelectionRange: (selection: SelectionArea) => void;
   appendStaticGridSelectionRange: (selection: SelectionArea) => void;
@@ -18,24 +14,7 @@ export type SelectionCommitExecutor = {
 export type DragEndCommitExecutor = {
   commitScratch: () => void;
   forceHistorySave: () => void;
-  commitStructuredShape: (
-    tool: Extract<ToolType, "box" | "splitBox" | "line" | "arrowLine" | "bg">,
-    start: Point,
-    end: Point,
-    options: { axis: "horizontal" | "vertical" | null }
-  ) => void;
-  flushStructuredMove: () => void;
-  flushStructuredSplitBoxResize: () => void;
 };
-
-const isStructuredShapeTool = (
-  tool: ToolType
-): tool is Extract<ToolType, "box" | "splitBox" | "line" | "arrowLine" | "bg"> =>
-  tool === "box" ||
-  tool === "splitBox" ||
-  tool === "line" ||
-  tool === "arrowLine" ||
-  tool === "bg";
 
 export const executeSelectionCommitDecision = (
   decision: SelectionCommitDecision,
@@ -44,15 +23,6 @@ export const executeSelectionCommitDecision = (
   switch (decision.type) {
     case "fill":
       executor.fillArea(decision.selection);
-      break;
-    case "setStructuredSelection":
-      executor.setSelectedStructuredNodeIds(decision.ids);
-      executor.setSelectedStructuredSplitHandle(null);
-      executor.clearSelections();
-      break;
-    case "setStructuredGridFocus":
-      executor.setStructuredGridFocus(decision.point);
-      executor.clearSelections();
       break;
     case "setStaticGridActiveCell":
       executor.setStaticGridActiveCell(decision.point);
@@ -74,13 +44,7 @@ export const executeSelectionCommitDecision = (
 
 export const executeDragEndCommitDecision = (
   decision: DragEndCommitDecision,
-  executor: DragEndCommitExecutor,
-  context: {
-    tool: ToolType;
-    startGrid: Point | null;
-    endGrid: Point;
-    axis: "horizontal" | "vertical" | null;
-  }
+  executor: DragEndCommitExecutor
 ): void => {
   switch (decision.type) {
     case "commitScratch":
@@ -88,18 +52,6 @@ export const executeDragEndCommitDecision = (
       break;
     case "forceHistorySave":
       executor.forceHistorySave();
-      break;
-    case "commitStructuredShape":
-      if (!context.startGrid || !isStructuredShapeTool(context.tool)) break;
-      executor.commitStructuredShape(context.tool, context.startGrid, context.endGrid, {
-        axis: context.axis,
-      });
-      break;
-    case "flushStructuredMove":
-      executor.flushStructuredMove();
-      break;
-    case "flushStructuredSplitBoxResize":
-      executor.flushStructuredSplitBoxResize();
       break;
     case "none":
       break;

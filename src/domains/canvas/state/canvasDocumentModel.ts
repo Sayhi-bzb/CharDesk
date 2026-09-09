@@ -1,23 +1,19 @@
 import * as Y from "yjs";
 import type { CanvasMode } from "@/domains/sessions/public";
-import type {
-  StructuredComponentInstance,
-  StructuredNode,
-} from "@/domains/structured-content/public";
 import type { GridCell } from "@/shared/types";
 import {
   gridEntriesToCellPlaneOperation,
   type CellPlaneOperation,
 } from "../cell-plane/model";
 
-export const CANVAS_DOCUMENT_SCHEMA_VERSION = 3;
+export const CANVAS_DOCUMENT_SCHEMA_VERSION = 4;
 
 export type CanvasDocumentAddress = {
   documentId: string;
   pageId: string;
 };
 
-type CanvasPageContentKind = "cell-plane" | "structured";
+type CanvasPageContentKind = "cell-plane";
 
 export type CanvasPageDescriptor = {
   id: string;
@@ -28,8 +24,6 @@ export type CanvasPageDescriptor = {
 
 export type CanvasPageDraft = CanvasPageDescriptor & {
   grid?: [string, GridCell][];
-  scene?: StructuredNode[];
-  components?: StructuredComponentInstance[];
 };
 
 export type CanvasDocumentDraft = {
@@ -42,8 +36,6 @@ export type CanvasDocumentDraft = {
 export type CanvasYPage = {
   descriptor: CanvasPageDescriptor;
   operations: Y.Array<CellPlaneOperation>;
-  scene: Y.Map<StructuredNode>;
-  components: Y.Map<StructuredComponentInstance>;
 };
 
 export type CanvasYDocumentRoot = {
@@ -54,8 +46,6 @@ export type CanvasYDocumentRoot = {
 };
 
 const PAGE_OPERATIONS = "cell-plane-operations";
-const PAGE_SCENE = "structured-scene";
-const PAGE_COMPONENTS = "structured-components";
 
 export const getDefaultCanvasPageId = (documentId: string) =>
   `${documentId}:page:main`;
@@ -83,7 +73,7 @@ export const readCanvasPageDescriptor = (
   if (
     typeof id !== "string" ||
     id !== fallbackId ||
-    (kind !== "cell-plane" && kind !== "structured")
+    kind !== "cell-plane"
   ) {
     return null;
   }
@@ -114,8 +104,6 @@ export const readCanvasYPage = (
   return {
     descriptor,
     operations: root.doc.getArray<CellPlaneOperation>(prefix + PAGE_OPERATIONS),
-    scene: root.doc.getMap<StructuredNode>(prefix + PAGE_SCENE),
-    components: root.doc.getMap<StructuredComponentInstance>(prefix + PAGE_COMPONENTS),
   };
 };
 
@@ -132,19 +120,11 @@ export const createCanvasYPage = (
   });
   const page = readCanvasYPage(root, draft.id);
   if (!page) throw new Error(`Failed to create Canvas page: ${draft.id}`);
-  const { operations, scene, components } = page;
-  if (draft.kind === "cell-plane") {
-    const bootstrap = gridEntriesToCellPlaneOperation(
-      operationId,
-      draft.grid ?? []
-    );
-    if (bootstrap) operations.push([bootstrap]);
-  } else {
-    draft.scene?.forEach((node) => scene.set(node.id, node));
-    draft.components?.forEach((component) =>
-      components.set(component.id, component)
-    );
-  }
+  const bootstrap = gridEntriesToCellPlaneOperation(
+    operationId,
+    draft.grid ?? []
+  );
+  if (bootstrap) page.operations.push([bootstrap]);
   if (!root.pageOrder.toArray().includes(draft.id)) {
     root.pageOrder.push([draft.id]);
   }

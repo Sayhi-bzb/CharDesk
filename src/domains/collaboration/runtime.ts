@@ -71,11 +71,7 @@ const hasLocalDocumentContent = (doc: Y.Doc) => {
   for (const [pageId, descriptor] of pages) {
     if (descriptor?.id !== pageId) continue;
     const prefix = `canvas-page:${encodeURIComponent(pageId)}:`;
-    if (
-      doc.getArray(prefix + "cell-plane-operations").length > 0 ||
-      doc.getMap(prefix + "structured-scene").size > 0 ||
-      doc.getMap(prefix + "structured-components").size > 0
-    ) {
+    if (doc.getArray(prefix + "cell-plane-operations").length > 0) {
       return true;
     }
   }

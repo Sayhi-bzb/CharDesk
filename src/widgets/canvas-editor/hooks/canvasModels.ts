@@ -8,7 +8,6 @@ import type {
 } from "@/domains/canvas/public";
 
 type CanvasCommands = CanvasRuntime["commands"];
-type CanvasQueries = CanvasRuntime["queries"];
 
 export type CanvasRenderModel = Pick<CanvasState,
   | "activeCanvasId"
@@ -16,19 +15,12 @@ export type CanvasRenderModel = Pick<CanvasState,
   | "tool"
   | "canvasMode"
   | "slideDeck"
-  | "structuredScene"
 > & Pick<CanvasInteractionSnapshot,
   | "scratchLayer"
   | "textCursor"
   | "staticGridSelection"
   | "staticGridEditMode"
   | "hoveredGrid"
-  | "selectedStructuredNodeIds"
-  | "selectedStructuredBoxId"
-  | "structuredContextPoint"
-  | "structuredGridFocus"
-  | "editingStructuredTextNodeId"
-  | "structuredTextSelection"
   | "canvasColorPickerTarget"
 > & {
   offset: CanvasViewportState["offset"];
@@ -37,17 +29,11 @@ export type CanvasRenderModel = Pick<CanvasState,
   contentRevision: number;
 };
 
-export type CanvasEditorModel = Pick<CanvasState,
-  | "structuredScene"
-  | "structuredComponents"
-  | "brushColor"
-> & {
+export type CanvasEditorModel = Pick<CanvasState, "brushColor"> & {
   interaction: Pick<CanvasInteractionSnapshot,
     | "textCursor"
     | "staticGridSelection"
     | "staticGridEditMode"
-    | "structuredGridFocus"
-    | "selectedStructuredNodeIds"
     | "canvasColorPickerTarget"
   >;
   offset: CanvasViewportState["offset"];
@@ -68,21 +54,13 @@ export type CanvasEditorModel = Pick<CanvasState,
   selectStaticGridColumn: CanvasCommands["staticGrid"]["selectColumn"];
   enterStaticGridTextEdit: CanvasCommands["staticGrid"]["enterTextEdit"];
   exitStaticGridTextEdit: CanvasCommands["staticGrid"]["exitTextEdit"];
-  moveStructuredGridFocus: CanvasCommands["interaction"]["moveStructuredGridFocus"];
   setTextCursor: CanvasCommands["interaction"]["setTextCursor"];
   setOffset: CanvasCommands["viewport"]["setOffset"];
   consumePendingCameraPlacement?: CanvasCommands["viewport"]["consumePendingPlacement"];
   fillSelectionsWithChar: CanvasCommands["selection"]["fillWithChar"];
   moveStaticGridSelection: CanvasCommands["selection"]["moveStaticRange"];
+  insertRows: CanvasCommands["grid"]["insertRows"];
   clearSelections: CanvasCommands["selection"]["clear"];
-  setStructuredGridFocus: CanvasCommands["interaction"]["setStructuredGridFocus"];
-  setSelectedStructuredNodeIds: CanvasCommands["interaction"]["setSelectedStructuredNodeIds"];
-  setSelectedStructuredSplitHandle: CanvasCommands["interaction"]["setSelectedStructuredSplitHandle"];
-  setEditingStructuredTextNodeId: CanvasCommands["interaction"]["setEditingStructuredTextNodeId"];
-  setStructuredTextSelection: CanvasCommands["interaction"]["setStructuredTextSelection"];
   setCanvasColorPickerTarget: CanvasCommands["interaction"]["setColorPickerTarget"];
   setHoveredGrid: CanvasCommands["interaction"]["setHoveredGrid"];
-  getNextStructuredOrder: CanvasQueries["getNextStructuredOrder"];
-  applyStructuredScene: CanvasCommands["structured"]["applyScene"];
-  setStructuredContextPoint: CanvasCommands["interaction"]["setStructuredContextPoint"];
 };

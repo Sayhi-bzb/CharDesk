@@ -15,9 +15,6 @@ describe("canvas click interaction decisions", () => {
       resolveCanvasClickDecision({
         colorPickerClickPending: true,
         interactionMode: "idle",
-        canvasMode: "structured",
-        tool: "text",
-        point: { x: 1, y: 2 },
         linkHit,
         shouldOpenLink: true,
       })
@@ -29,51 +26,17 @@ describe("canvas click interaction decisions", () => {
       resolveCanvasClickDecision({
         colorPickerClickPending: false,
         interactionMode: "drawing",
-        canvasMode: "freeform",
-        tool: "brush",
-        point: { x: 1, y: 2 },
         linkHit,
         shouldOpenLink: true,
       })
     ).toEqual({ type: "none" });
   });
 
-  it("routes structured text tool clicks to caret placement", () => {
+  it("routes eligible link clicks", () => {
     expect(
       resolveCanvasClickDecision({
         colorPickerClickPending: false,
         interactionMode: "idle",
-        canvasMode: "structured",
-        tool: "text",
-        point: { x: 3, y: 4 },
-        linkHit,
-        shouldOpenLink: true,
-      })
-    ).toEqual({ type: "structured-text-caret", point: { x: 3, y: 4 } });
-  });
-
-  it("does not route structured text clicks without a grid point", () => {
-    expect(
-      resolveCanvasClickDecision({
-        colorPickerClickPending: false,
-        interactionMode: "idle",
-        canvasMode: "structured",
-        tool: "text",
-        point: null,
-        linkHit,
-        shouldOpenLink: true,
-      })
-    ).toEqual({ type: "none" });
-  });
-
-  it("routes eligible link clicks after structured text clicks", () => {
-    expect(
-      resolveCanvasClickDecision({
-        colorPickerClickPending: false,
-        interactionMode: "idle",
-        canvasMode: "freeform",
-        tool: "select",
-        point: { x: 1, y: 2 },
         linkHit,
         shouldOpenLink: true,
       })
@@ -85,13 +48,9 @@ describe("canvas click interaction decisions", () => {
       resolveCanvasClickDecision({
         colorPickerClickPending: false,
         interactionMode: "idle",
-        canvasMode: "freeform",
-        tool: "select",
-        point: { x: 1, y: 2 },
         linkHit,
         shouldOpenLink: false,
       })
     ).toEqual({ type: "none" });
   });
 });
-

@@ -4,7 +4,6 @@ import type {
 } from "./model";
 import type { Point } from "@/shared/types";
 import type { CanvasMode } from "./mode";
-import type { StructuredComponentInstance, StructuredNode } from "@/domains/structured-content/public";
 import type { SlideDeckSnapshot } from "@/domains/slides/public";
 import { createEntityId } from "@/shared/utils/id";
 
@@ -38,9 +37,7 @@ export const createSessionId = (sessions: readonly CanvasSessionDescriptor[]) =>
 };
 
 type StaticActiveSnapshot = {
-  mode: "freeform" | "structured";
-  scene: StructuredNode[];
-  components?: StructuredComponentInstance[];
+  mode: "freeform";
   grid: [string, { char: string; color: string }][];
   viewport?: { offset: Point; zoom: number };
 };
@@ -69,8 +66,6 @@ export const withActiveCanvasSnapshot = (
         ...(session.sourceBinding
           ? { sourceBinding: session.sourceBinding }
           : {}),
-        scene: [],
-        components: [],
         grid: [],
         viewport: snapshot.viewport,
       };
@@ -78,8 +73,6 @@ export const withActiveCanvasSnapshot = (
     return {
       ...session,
       mode: snapshot.mode,
-      scene: snapshot.scene,
-      components: snapshot.components,
       grid: snapshot.grid,
       viewport: snapshot.viewport,
     } as CanvasSessionSnapshot;
@@ -88,6 +81,6 @@ export const withActiveCanvasSnapshot = (
 
 export const normalizeSessionMode = (mode: unknown): CanvasMode => {
   if (mode === "slide") return "slide";
-  if (mode === "structured") return "structured";
+  if (mode === "structured") return "freeform";
   return "freeform";
 };

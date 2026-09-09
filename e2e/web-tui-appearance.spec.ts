@@ -204,6 +204,20 @@ test("theme icon toggles, persists, and preserves Cell state", async ({ page }) 
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
 });
 
+test("Gallery DOM lines share the 2px token across themes", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/exp/web-tui/#/components/button");
+  const codeBlock = page.locator(".docs-code").first();
+  const tableCell = page.locator(".docs-table-wrap td").first();
+
+  await expect(codeBlock).toHaveCSS("border-top", "2px solid rgb(0, 0, 0)");
+  await expect(tableCell).toHaveCSS("border-bottom", "2px solid rgb(0, 0, 0)");
+
+  await page.getByRole("button", { name: "Dark" }).click();
+  await expect(codeBlock).toHaveCSS("border-top", "2px solid rgb(255, 255, 255)");
+  await expect(tableCell).toHaveCSS("border-bottom", "2px solid rgb(255, 255, 255)");
+});
+
 for (const storage of ["invalid", "unavailable"] as const) {
   test(`theme icon works with ${storage} storage`, async ({ page }) => {
     await page.addInitScript((mode) => {

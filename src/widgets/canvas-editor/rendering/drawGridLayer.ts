@@ -4,6 +4,7 @@ import type { CanvasLinkHit } from "../hooks/interaction/core/linkHitTesting";
 import { GridManager } from "@/shared/utils/grid";
 import {
   alignCanvasCoordinate,
+  DEFAULT_ARTIFACT_CANVAS_PALETTE,
   DEFAULT_GRID_RENDER_METRICS,
   getCellOccupancy,
   resolveCellVisual,
@@ -123,7 +124,7 @@ export const drawGridLayer = (
   );
   const result = presentCharDeskCellFrame(ctx, frame, {
     metrics: DEFAULT_GRID_RENDER_METRICS,
-    palette: { color: "#000000", background: "#ffffff" },
+    palette: DEFAULT_ARTIFACT_CANVAS_PALETTE,
     offset,
     zoom,
     content,

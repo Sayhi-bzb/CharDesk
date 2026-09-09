@@ -55,8 +55,6 @@ describe("slideSlice", () => {
     const markDirty = () =>
       setCanvasTestState({
         textCursor: { x: 1, y: 1 },
-        editingStructuredTextNodeId: "stale-text",
-        structuredGridFocus: { x: 2, y: 2 },
         staticGridEditMode: "text-edit",
         hoveredGrid: { x: 3, y: 3 },
         scratchLayer: new Map([

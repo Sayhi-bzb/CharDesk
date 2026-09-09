@@ -10,7 +10,6 @@ export const SHORTCUT_CATEGORY_ORDER = [
   'Formatting',
   'Tools',
   'Presentation',
-  'Structured',
 ] as const;
 
 export type ShortcutCategory = (typeof SHORTCUT_CATEGORY_ORDER)[number];
@@ -51,7 +50,6 @@ export const getShortcutCategoryLabel = (category: ShortcutCategory, t: Translat
     Formatting: 'shortcutEditor.category.formatting',
     Tools: 'shortcutEditor.category.tools',
     Presentation: 'shortcutEditor.category.presentation',
-    Structured: 'shortcutEditor.category.structured',
   };
   return t(keys[category]);
 };
@@ -62,7 +60,6 @@ export const getShortcutScopeLabel = (scope: ShortcutScope | undefined, t: Trans
     canvas: 'shortcutEditor.scope.canvas',
     grid: 'shortcutEditor.scope.grid',
     presentation: 'shortcutEditor.scope.presentation',
-    structured: 'shortcutEditor.scope.structured',
   };
   const key = scope ? keys[scope] : undefined;
   return key ? t(key) : '—';

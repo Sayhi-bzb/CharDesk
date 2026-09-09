@@ -96,8 +96,8 @@ describe("pressActive paint", () => {
       expect(pressed.tree.nodes.get(id)?.pressActive).toBe(true);
       for (let x = rect.x; x < rect.x + rect.width; x += 1) {
         expect(pressed.buffer.get(x, rect.y)?.style, `${id}:${x}`).toMatchObject({
-          color: resting.buffer.get(x, rect.y)?.style.backgroundColor ?? "#101419",
-          backgroundColor: resting.buffer.get(x, rect.y)?.style.color ?? "#e8edf2",
+          color: resting.buffer.get(x, rect.y)?.style.backgroundColor ?? "#FFFFFF",
+          backgroundColor: resting.buffer.get(x, rect.y)?.style.color ?? "#000000",
         });
       }
       runtime.dispose();

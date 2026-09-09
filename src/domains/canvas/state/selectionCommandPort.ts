@@ -1,10 +1,4 @@
-import type {
-  StructuredComponentInstance,
-  StructuredNode,
-  StructuredTextStyleRange,
-} from "@/domains/structured-content/public";
 import type { Point } from "@/shared/types";
-import type { CanvasHistoryMode } from "./CanvasDocumentRegistry";
 import type { CanvasInteractionUpdate } from "./canvasInteractionState";
 import type {
   CanvasState,
@@ -16,18 +10,6 @@ import type {
 export type SelectionMutationPort = {
   deleteSelection: () => void;
   erasePoints: (points: Point[], shouldSaveHistory?: boolean) => void;
-  replaceStructuredTextRange: (
-    nodeId: string,
-    start: number,
-    end: number,
-    text: string,
-    styleRanges?: StructuredTextStyleRange[]
-  ) => void;
-  applyStructuredScene: (
-    scene: StructuredNode[],
-    history?: CanvasHistoryMode | boolean,
-    components?: StructuredComponentInstance[]
-  ) => void;
   pasteRichData: (
     cells: RichTextCell[],
     startPos?: Point,

@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import type { WidgetCommand } from "./interaction.js";
+import { selectCommandEffect } from "./primitive-behavior.js";
 import type { WidgetId } from "./types.js";
 
 export type CellListItem = Readonly<{
@@ -154,35 +155,20 @@ export const useCellSelectState = (
   }, [onOpenChange, open, openControlled, preferredItemId, triggerId]);
 
   const dispatch = useCallback((command: WidgetCommand) => {
-    if (command.type === "scroll" && command.targetId === contentId) {
-      setScrollY(command.scrollY);
-      return;
+    const effect = selectCommandEffect(command, triggerId, contentId, enabledItems.map((item) => item.id));
+    if (!effect) return;
+    switch (effect.type) {
+      case "scroll": setScrollY(effect.value); break;
+      case "open": updateOpen(effect.value); break;
+      case "focus":
+        if (effect.scrollY !== undefined) setScrollY(effect.scrollY);
+        setFocusedId(effect.targetId);
+        break;
+      case "select":
+        if (!selectedControlled) setInternalSelectedId(effect.targetId);
+        if (effect.targetId !== selectedId) onSelectionChange?.(effect.targetId);
+        break;
     }
-    if (command.type === "set-expanded" && command.targetId === triggerId) {
-      updateOpen(command.expanded);
-      return;
-    }
-    if (command.type === "dismiss" && command.targetId === contentId) {
-      updateOpen(false);
-      return;
-    }
-    if (command.type === "focus") {
-      if (command.reveal?.targetId === contentId) {
-        setScrollY(command.reveal.scrollY);
-      }
-      if (
-        command.targetId === triggerId
-        || enabledItems.some(({ id: itemId }) => itemId === command.targetId)
-      ) setFocusedId(command.targetId);
-      return;
-    }
-    if (
-      command.type !== "activate"
-      || !enabledItems.some(({ id: itemId }) => itemId === command.targetId)
-    ) return;
-    if (!selectedControlled) setInternalSelectedId(command.targetId);
-    if (command.targetId !== selectedId) onSelectionChange?.(command.targetId);
-    updateOpen(false);
   }, [contentId, enabledItems, onSelectionChange, selectedControlled, selectedId, triggerId, updateOpen]);
 
   return {

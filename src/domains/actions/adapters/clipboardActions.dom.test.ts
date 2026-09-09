@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import {
   buildClipboardPayload,
-  buildStructuredClipboardPayload,
   parseAnsiClipboardText,
   readClipboardPayload,
   writeClipboardPayload,
@@ -48,81 +47,7 @@ describe("clipboardActions", () => {
     ]);
   });
 
-  it("builds structured clipboard payloads with nodes and normalized surface cells", () => {
-    const payload = buildStructuredClipboardPayload(
-      [
-        {
-          id: "box-1",
-          type: "box",
-          order: 1,
-          start: { x: 2, y: 3 },
-          end: { x: 6, y: 5 },
-          style: { color: "#111111" },
-        },
-        {
-          id: "text-1",
-          type: "text",
-          order: 2,
-          position: { x: 3, y: 4 },
-          text: "Hi",
-          style: { color: "#ffffff" },
-        },
-      ],
-      ["box-1", "text-1"]
-    );
-
-    expect(payload).not.toBeNull();
-    const rich = JSON.parse(payload!.rich!);
-
-    expect(rich).toMatchObject({
-      type: "ascii-metropolis-clipboard",
-      version: 2,
-      bounds: { x: 2, y: 3, width: 5, height: 3 },
-    });
-    expect(rich.structuredNodes.map((node: { id: string }) => node.id)).toEqual([
-      "box-1",
-      "text-1",
-    ]);
-    expect(
-      rich.surfaceCells.find(
-        (cell: { x: number; y: number; char: string }) =>
-          cell.x === 1 && cell.y === 1 && cell.char === "H"
-      )
-    ).toMatchObject({ color: "#ffffff" });
-    expect(payload!.plain).toContain("Hi");
-  });
-
-  it("reads structured clipboard payloads and keeps old rich cells compatible", async () => {
-    const structuredPayload = buildStructuredClipboardPayload([
-      {
-        id: "text-1",
-        type: "text",
-        order: 1,
-        position: { x: 4, y: 2 },
-        text: "A",
-        style: { color: "#ffffff" },
-      },
-    ])!;
-    const structuredData = await readClipboardPayload(
-      {
-        getData: (type: string) =>
-          type === "web application/x-ascii-metropolis"
-            ? structuredPayload.rich!
-            : "",
-      } as unknown as DataTransfer,
-      "#ffffff"
-    );
-
-    expect(structuredData.structured?.structuredNodes[0]).toMatchObject({
-      id: "text-1",
-      type: "text",
-    });
-    expect(structuredData.richCells?.[0]).toMatchObject({
-      x: 0,
-      y: 0,
-      char: "A",
-    });
-
+  it("keeps old rich cell payloads compatible", async () => {
     const legacyData = await readClipboardPayload(
       {
         getData: (type: string) =>
@@ -137,7 +62,6 @@ describe("clipboardActions", () => {
       "#ffffff"
     );
 
-    expect(legacyData.structured).toBeNull();
     expect(legacyData.richCells).toEqual([
       { x: 0, y: 0, char: "Z", color: "#000000" },
     ]);
@@ -158,8 +82,6 @@ describe("clipboardActions", () => {
 
     await expect(pendingPayload).resolves.toMatchObject({
       plainText: "AB",
-      structured: null,
-      structuredText: null,
     });
     expect(getData.mock.calls.map(([type]) => type)).toEqual([
       "web application/x-ascii-metropolis",

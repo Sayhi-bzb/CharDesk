@@ -71,7 +71,6 @@ export type {
   CanvasInteractionPort,
   CanvasToolInputEvent,
   CanvasInteractionState,
-  StructuredNodeDragPayload,
 } from "./canvasToolRuntime";
 export { CanvasInteractionPortBinding } from "./canvasToolRuntime";
 export {

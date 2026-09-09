@@ -65,6 +65,54 @@ export type SliderProps = Omit<CommonProps, "children"> & Readonly<{
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
+export type ToggleProps = CommonProps & Readonly<{
+  pressed?: boolean;
+  focused?: boolean;
+  style?: CellLayoutStyle;
+  textStyle?: CellTextStyle;
+}>;
+export type ProgressProps = Readonly<{
+  id?: string;
+  label: string;
+  value: number;
+  max?: number;
+  valueText?: string;
+  style?: CellLayoutStyle;
+}>;
+export type SeparatorProps = Readonly<{
+  id?: string;
+  orientation?: "horizontal" | "vertical";
+  style?: CellLayoutStyle;
+}>;
+export type RadioGroupProps = CommonProps & Readonly<{
+  value?: string | null;
+  orientation?: "horizontal" | "vertical";
+  style?: CellLayoutStyle;
+}>;
+export type RadioItemProps = CommonProps & Readonly<{
+  value: string;
+  focused?: boolean;
+  style?: CellLayoutStyle;
+  textStyle?: CellTextStyle;
+}>;
+export type RangeSliderProps = Omit<CommonProps, "id" | "label" | "children"> & Readonly<{
+  id: string;
+  label: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  children: ReactNode;
+  style?: CellLayoutStyle;
+  textStyle?: CellTextStyle;
+}>;
+export type RangeSliderThumbProps = Readonly<{
+  id: string;
+  label: string;
+  value: number;
+  valueText?: string;
+  focused?: boolean;
+  textStyle?: CellTextStyle;
+}>;
 export type SelectProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
 export type SelectTriggerProps = CommonProps & Readonly<{
   focused?: boolean;
@@ -151,7 +199,14 @@ type PrimitiveProps =
   | TextProps
   | ButtonProps
   | CheckboxProps
+  | ToggleProps
+  | ProgressProps
+  | SeparatorProps
+  | RadioGroupProps
+  | RadioItemProps
   | SliderProps
+  | RangeSliderProps
+  | RangeSliderThumbProps
   | SelectProps
   | SelectTriggerProps
   | SelectContentProps
@@ -194,7 +249,14 @@ export const Overlay = primitive<OverlayProps>("overlay");
 export const Text = primitive<TextProps>("text");
 export const Button = primitive<ButtonProps>("button");
 export const Checkbox = primitive<CheckboxProps>("checkbox");
+export const Toggle = primitive<ToggleProps>("toggle");
+export const Progress = primitive<ProgressProps>("progress");
+export const Separator = primitive<SeparatorProps>("separator");
+export const RadioGroup = primitive<RadioGroupProps>("radio-group");
+export const RadioItem = primitive<RadioItemProps>("radio-item");
 export const Slider = primitive<SliderProps>("slider");
+export const RangeSlider = primitive<RangeSliderProps>("range-slider");
+export const RangeSliderThumb = primitive<RangeSliderThumbProps>("range-slider-thumb");
 export const Select = primitive<SelectProps>("select");
 export const SelectTrigger = primitive<SelectTriggerProps>("select-trigger");
 export const SelectContent = primitive<SelectContentProps>("select-content");
@@ -227,6 +289,9 @@ export type WidgetDescriptor = Readonly<{
   focused: boolean;
   selected: boolean;
   checked: CellCheckboxState;
+  pressed: boolean;
+  radioValue: string | null;
+  progress: import("./types.js").WidgetNode["progress"];
   buttonVariant: ButtonVariant;
   buttonSize: ButtonSize;
   sliderValue: number;
@@ -283,6 +348,14 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
   }
 
   const props = element.props as Record<string, unknown>;
+  const progressMax = typeof props.max === "number" && Number.isFinite(props.max) && props.max > 0
+    ? props.max : 100;
+  if (
+    (kind === "range-slider" || kind === "range-slider-thumb")
+    && (typeof props.id !== "string" || props.id.length === 0 || typeof props.label !== "string" || props.label.length === 0)
+  ) {
+    throw new TypeError(`${kind} requires non-empty id and label props.`);
+  }
   const childValues: ReactNode[] = [];
   flattenChildren(props.children as ReactNode, childValues);
 
@@ -300,6 +373,9 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
       }
       return describe(child);
     });
+  }
+  if (kind === "range-slider-thumb" && children.length > 0) {
+    throw new TypeError("RangeSliderThumb cannot contain children.");
   }
 
   const position = props.position as CellPoint | undefined;
@@ -327,12 +403,21 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
     focused: props.focused === true,
     selected: props.selected === true,
     checked: props.checked === "indeterminate" ? "indeterminate" : props.checked === true,
+    pressed: props.pressed === true,
+    radioValue: typeof props.value === "string" ? props.value : null,
+    progress: kind === "progress" ? {
+      max: progressMax,
+      value: Number.isFinite(props.value) ? Math.max(0, Math.min(props.value as number, progressMax)) : 0,
+      valueText: typeof props.valueText === "string" ? props.valueText : undefined,
+    } : null,
     buttonVariant: kind === "button" ? resolveButtonVariant(props.variant) : "default",
     buttonSize: kind === "button" ? resolveButtonSize(props.size) : "default",
-    sliderValue: normalizeCellSliderValue(
-      typeof props.value === "number" ? props.value : sliderRange.min,
-      sliderRange
-    ),
+    sliderValue: kind === "range-slider-thumb"
+      ? typeof props.value === "number" ? props.value : sliderRange.min
+      : normalizeCellSliderValue(
+          typeof props.value === "number" ? props.value : sliderRange.min,
+          sliderRange
+        ),
     sliderMin: sliderRange.min,
     sliderMax: sliderRange.max,
     sliderStep: sliderRange.step,

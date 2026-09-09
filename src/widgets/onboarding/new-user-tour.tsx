@@ -69,7 +69,6 @@ type TourActions = {
   moveNext: () => void;
   finish: () => void;
   captureSessionBaseline: () => void;
-  captureComponentBaseline: () => void;
 };
 
 function buildTourSteps(
@@ -145,18 +144,18 @@ function buildTourSteps(
       } }
     ),
     actionStep(
-      '[data-onboarding-target="create-structured"]',
-      "structured-create",
-      t("onboarding.structured.title"),
-      t("onboarding.structured.description"),
+      '[data-onboarding-target="create-freeform"]',
+      "canvas-create",
+      t("session.newFreeform"),
+      t("onboarding.template.description"),
       {
         onHighlighted: () => {
           actions.captureSessionBaseline();
-          actions.setPhase("structured-create");
+          actions.setPhase("canvas-create");
         },
         popover: {
-          title: t("onboarding.structured.title"),
-          description: t("onboarding.structured.description"),
+          title: t("session.newFreeform"),
+          description: t("onboarding.template.description"),
           side: "right",
           align: "start",
           showButtons: ["close"],
@@ -180,7 +179,6 @@ function buildTourSteps(
       element: '[data-onboarding-template-id="button"]',
       waitForElement: 5000,
       onHighlighted: () => {
-        actions.captureComponentBaseline();
         actions.setPhase("drag");
       },
       popover: {
@@ -217,32 +215,24 @@ export function OnboardingTourProvider({
   const { t } = useUiI18n();
   const canvasMode = useCanvasState((state) => state.canvasMode);
   const activeCanvasId = useCanvasState((state) => state.activeCanvasId);
-  const structuredComponentCount = useCanvasState(
-    (state) => state.structuredComponents.length
-  );
   const [phase, setPhase] = useState<OnboardingPhase>("idle");
   const driverRef = useRef<OnboardingDriver | null>(null);
   const loadingRef = useRef(false);
   const mountedRef = useRef(true);
   const tRef = useRef(t);
   const activeCanvasIdRef = useRef(activeCanvasId);
-  const structuredComponentCountRef = useRef(structuredComponentCount);
   const sessionBaselineRef = useRef<string | null>(null);
-  const componentBaselineRef = useRef(0);
-  const advancingFromDropRef = useRef(false);
   const autoStartCheckedRef = useRef(false);
   const initialHasPersistenceRef = useRef(hadEditorPersistenceOnEntry());
 
   useEffect(() => {
     tRef.current = t;
     activeCanvasIdRef.current = activeCanvasId;
-    structuredComponentCountRef.current = structuredComponentCount;
-  }, [activeCanvasId, structuredComponentCount, t]);
+  }, [activeCanvasId, t]);
 
   const cleanRuntime = useCallback(() => {
     driverRef.current = null;
     loadingRef.current = false;
-    advancingFromDropRef.current = false;
     document.documentElement.removeAttribute("data-onboarding-phase");
     if (mountedRef.current) setPhase("idle");
   }, []);
@@ -265,10 +255,6 @@ export function OnboardingTourProvider({
         finish: () => endTour("completed"),
         captureSessionBaseline: () => {
           sessionBaselineRef.current = activeCanvasIdRef.current;
-        },
-        captureComponentBaseline: () => {
-          componentBaselineRef.current = structuredComponentCountRef.current;
-          advancingFromDropRef.current = false;
         },
       },
       canvasMode === "freeform"
@@ -310,8 +296,7 @@ export function OnboardingTourProvider({
 
   useEffect(() => {
     if (
-      phase !== "structured-create" ||
-      canvasMode !== "structured" ||
+      phase !== "canvas-create" ||
       activeCanvasId === sessionBaselineRef.current
     ) {
       return;
@@ -319,18 +304,6 @@ export function OnboardingTourProvider({
     const timeoutId = window.setTimeout(() => setPhase("preparing-template"), 0);
     return () => window.clearTimeout(timeoutId);
   }, [activeCanvasId, canvasMode, phase]);
-
-  useEffect(() => {
-    if (
-      phase !== "drag" ||
-      advancingFromDropRef.current ||
-      structuredComponentCount <= componentBaselineRef.current
-    ) {
-      return;
-    }
-    advancingFromDropRef.current = true;
-    driverRef.current?.moveNext();
-  }, [phase, structuredComponentCount]);
 
   useEffect(() => {
     if (phase !== "character-library") return;

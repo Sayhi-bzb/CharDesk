@@ -110,7 +110,19 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     || node.kind === "grid"
     || node.kind === "select"
     || node.kind === "select-content";
-  const defaults: CellLayoutStyle = item
+  const defaults: CellLayoutStyle = node.kind === "progress"
+    ? { width: 20, height: 1, flexShrink: 0 }
+    : node.kind === "separator"
+      ? node.orientation === "vertical"
+        ? { width: 1, height: "100%", flexShrink: 0 }
+        : { width: "100%", height: 1, flexShrink: 0 }
+    : node.kind === "radio-group"
+      ? { direction: node.orientation === "horizontal" ? "row" : "column", flexShrink: 0 }
+    : node.kind === "toggle"
+      ? { direction: "row", minHeight: 1, paddingLeft: 2, paddingRight: 2, flexShrink: 0 }
+    : node.kind === "radio-item"
+      ? { direction: "row", minHeight: 1, flexShrink: 0 }
+    : item
     ? {
         direction: "row",
         minHeight: node.kind === "tab" ? 2 : 1,
@@ -122,8 +134,10 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
             : 1,
         ...(node.kind === "select-item" ? { paddingRight: 2 } : {}),
       }
-    : node.kind === "slider"
+    : node.kind === "slider" || node.kind === "range-slider"
       ? { width: 20, minWidth: 2, minHeight: 1, flexShrink: 0 }
+    : node.kind === "range-slider-thumb"
+      ? { width: 1, height: 1, flexShrink: 0 }
     : node.kind === "button"
       ? buttonLayoutDefaults(node.buttonSize)
     : node.kind === "checkbox" || node.kind === "select-trigger"
@@ -170,7 +184,7 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     );
   }
   // Checkbox chrome owns either `[x] ` before content or a centered ` [x] ` indicator.
-  if (node.kind === "checkbox") {
+  if (node.kind === "checkbox" || node.kind === "radio-item") {
     const chrome = checkboxChromeMetrics(node.children.length > 0);
     target.setPadding(
       Edge.Left,
@@ -181,7 +195,7 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
       (node.style.paddingRight ?? node.style.padding ?? 0) + chrome.paddingRight
     );
   }
-  if (node.kind === "overlay" || node.kind === "select-content") {
+  if (node.kind === "overlay" || node.kind === "select-content" || node.kind === "range-slider-thumb") {
     target.setPositionType(PositionType.Absolute);
     target.setPosition(Edge.Left, node.kind === "overlay" ? node.overlayPosition?.x ?? 0 : 0);
     target.setPosition(Edge.Top, node.kind === "overlay" ? node.overlayPosition?.y ?? 0 : 0);

@@ -1,13 +1,8 @@
 import { createRef } from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CanvasSurface } from './CanvasSurface';
 import { resolveCanvasSurfaceGeometry } from './canvasSurfaceGeometry';
-import { EditorPresentationProvider } from '@/widgets/editor-chrome/public';
-
-vi.mock('./StructuredSplitToolbar', () => ({
-  StructuredSplitToolbar: () => <div data-testid="selection-toolbar" />,
-}));
 
 describe('CanvasSurface', () => {
   it('composes exact canvas layers without scaling host overlays or input', () => {
@@ -23,7 +18,6 @@ describe('CanvasSurface', () => {
         contentCanvasRef={contentCanvasRef}
         interactionCanvasRef={interactionCanvasRef}
         surfaceGeometry={surfaceGeometry}
-        containerSize={{ width: 1000, height: 700 }}
         textareaRef={textareaRef}
         textareaStyle={{}}
         textareaProps={{ 'aria-label': 'Canvas input' }}
@@ -52,27 +46,22 @@ describe('CanvasSurface', () => {
       });
     });
     expect(layer).not.toContainElement(screen.getByTestId('content-overlay'));
-    expect(layer).not.toContainElement(screen.getByTestId('selection-toolbar'));
     expect(layer).not.toContainElement(screen.getByRole('textbox'));
   });
 
-  it('keeps the canvas input but hides contextual overlays in Zen Mode', () => {
+  it('keeps the canvas input mounted', () => {
     render(
-      <EditorPresentationProvider initialMode="zen">
-        <CanvasSurface
-          containerRef={createRef<HTMLDivElement>()}
-          contentCanvasRef={createRef<HTMLCanvasElement>()}
-          interactionCanvasRef={createRef<HTMLCanvasElement>()}
-          surfaceGeometry={undefined}
-          containerSize={{ width: 800, height: 600 }}
-          textareaRef={createRef<HTMLTextAreaElement>()}
-          textareaStyle={{}}
-          textareaProps={{ 'aria-label': 'Canvas input' }}
-        />
-      </EditorPresentationProvider>
+      <CanvasSurface
+        containerRef={createRef<HTMLDivElement>()}
+        contentCanvasRef={createRef<HTMLCanvasElement>()}
+        interactionCanvasRef={createRef<HTMLCanvasElement>()}
+        surfaceGeometry={undefined}
+        textareaRef={createRef<HTMLTextAreaElement>()}
+        textareaStyle={{}}
+        textareaProps={{ 'aria-label': 'Canvas input' }}
+      />
     );
 
-    expect(screen.queryByTestId('selection-toolbar')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Canvas input' })).toBeInTheDocument();
   });
 });

@@ -12,7 +12,7 @@ type ExportFormatDefinition = {
   truncatePreview: boolean;
 };
 
-const ALL_STATIC_MODES: readonly CanvasMode[] = ["freeform", "structured"];
+const ALL_STATIC_MODES: readonly CanvasMode[] = ["freeform"];
 
 const EXPORT_FORMATS: readonly ExportFormatDefinition[] = [
   {
@@ -29,7 +29,7 @@ const EXPORT_FORMATS: readonly ExportFormatDefinition[] = [
     format: "chardesk",
     label: "CharDesk",
     subLabel: "document",
-    modes: ["freeform", "structured", "slide"],
+    modes: ["freeform", "slide"],
     artifactKind: "text",
     supportsColor: true,
     supportsClipboard: true,
@@ -59,7 +59,6 @@ const EXPORT_FORMATS: readonly ExportFormatDefinition[] = [
 
 const FORMAT_ORDER: Record<CanvasMode, readonly ExportFormat[]> = {
   freeform: ["txt", "chardesk", "png"],
-  structured: ["txt", "chardesk", "png"],
   slide: ["chardesk"],
 };
 

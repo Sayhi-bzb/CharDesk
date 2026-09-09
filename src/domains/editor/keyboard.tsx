@@ -36,7 +36,6 @@ const createEditorShortcutContext = (
       editMode: state.interaction.staticGridEditMode,
       hasRange: state.interaction.staticGridSelection.mode === "range",
     },
-    structured: { hasSelection: state.interaction.selectedStructuredNodeIds.length > 0 },
     presentation: { active: false },
     tool: { id: state.tool },
   };

@@ -8,8 +8,6 @@ export type {
   FreeformCanvasImportSnapshot,
   SourceBackedCanvasSessionDescriptor,
   SourceBackedCanvasSessionSnapshot,
-  StructuredCanvasSessionDescriptor,
-  StructuredCanvasImportSnapshot,
 } from "./model";
 export { isSourceBackedCanvasSession } from "./model";
 export {
@@ -31,9 +29,9 @@ export {
   LEGACY_EDITOR_PERSISTENCE_KEY,
   decodePersistedEditorState,
   flattenPersistedEditorState,
-  isPersistedEditorStateV6,
+  isPersistedEditorStateV7,
   migrateLegacyEditorPersistence,
-  migratePersistedStateToV6,
+  migratePersistedStateToV7,
   UnsupportedEditorPersistenceVersionError,
 } from "./persistence";
 export type { SessionCommands } from "./commands";

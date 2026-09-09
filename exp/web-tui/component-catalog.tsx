@@ -3,6 +3,10 @@ import {
   BoxComponentDemo,
   ButtonComponentDemo,
   CheckboxComponentDemo,
+  ToggleComponentDemo,
+  ProgressComponentDemo,
+  SeparatorComponentDemo,
+  RadioComponentDemo,
   InputComponentDemo,
   ListComponentDemo,
   ScrollAreaComponentDemo,
@@ -32,6 +36,91 @@ export type ComponentDocument = Readonly<{
 }>;
 
 export const componentDocuments: readonly ComponentDocument[] = [
+  {
+    slug: "toggle", title: "Toggle", group: "components", navigationOrder: 6,
+    description: "Keep a mode pressed without confusing it with pointer press feedback.",
+    probeId: "component-toggle", Demo: ToggleComponentDemo,
+    usage: `import { useState } from "react";
+import { Root, Toggle, Text } from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function ToggleExample() {
+  const [pressed, setPressed] = useState(false);
+  return <CellSurface viewport={{ width: 12, height: 1 }} onCommand={(command) => {
+    if (command.type === "activate" && command.targetId === "bold") setPressed((value) => !value);
+  }}>
+    <Root><Toggle id="bold" label="Bold" pressed={pressed}><Text>B</Text></Toggle></Root>
+  </CellSurface>;
+}`,
+    api: [
+      { name: "pressed?", type: "boolean", description: "Persistent pressed state; defaults to false." },
+      { name: "disabled?", type: "boolean", description: "Prevents focus and activation." },
+      { name: "children / label", type: "ReactNode / string", description: "Cell content and accessible name." },
+    ],
+  },
+  {
+    slug: "progress", title: "Progress", group: "components", navigationOrder: 7,
+    description: "Display determinate progress in copyable block Cells.",
+    probeId: "component-progress", Demo: ProgressComponentDemo,
+    usage: `import { Progress, Root } from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function ProgressExample() {
+  return <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
+    <Root><Progress label="Upload" value={60} /></Root>
+  </CellSurface>;
+}`,
+    api: [
+      { name: "value", type: "number", description: "Clamped to 0…max; non-finite values display 0." },
+      { name: "max?", type: "number", description: "Positive finite maximum; defaults to 100." },
+      { name: "label / valueText?", type: "string", description: "Accessible name and optional value description." },
+    ],
+  },
+  {
+    slug: "separator", title: "Separator", group: "primitives", navigationOrder: 2,
+    description: "Separate Cell content with one row or column.",
+    probeId: "component-separator", Demo: SeparatorComponentDemo,
+    usage: `import { Root, Separator, Text } from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function SeparatorExample() {
+  return <CellSurface viewport={{ width: 20, height: 3 }} onCommand={() => {}}>
+    <Root><Text>Files</Text><Separator /><Text>Settings</Text></Root>
+  </CellSurface>;
+}`,
+    api: [
+      { name: "orientation?", type: '"horizontal" | "vertical"', description: "Horizontal by default; vertical fills its container height." },
+      { name: "style?", type: "CellLayoutStyle", description: "Cell length and layout constraints." },
+    ],
+  },
+  {
+    slug: "radio", title: "Radio", group: "components", navigationOrder: 8,
+    description: "Choose one value with a shared group and arrow-key navigation.",
+    probeId: "component-radio", Demo: RadioComponentDemo,
+    usage: `import { RadioGroup, RadioItem, Root, Text } from "@chardesk/cell-ui";
+import { CellSurface, useCellRadioState } from "@chardesk/cell-ui/browser";
+
+const items = [
+  { id: "light", value: "light", label: "Light" },
+  { id: "dark", value: "dark", label: "Dark" },
+];
+export function RadioExample() {
+  const radio = useCellRadioState(items, { defaultValue: "light" });
+  return <CellSurface viewport={{ width: 16, height: 2 }} focusedId={radio.focusedId} onCommand={radio.dispatch}>
+    <Root><RadioGroup label="Appearance" value={radio.value}>
+      {radio.items.map((item) => <RadioItem key={item.id} id={item.id} value={item.value}>
+        <Text>{item.label}</Text>
+      </RadioItem>)}
+    </RadioGroup></Root>
+  </CellSurface>;
+}`,
+    api: [
+      { name: "RadioGroup.value?", type: "string | null", description: "Controlled selection; items have unique non-empty values." },
+      { name: "RadioGroup.orientation?", type: '"vertical" | "horizontal"', description: "Vertical by default." },
+      { name: "disabled?", type: "boolean", description: "Disable a group or individual item." },
+      { name: "useCellRadioState", type: "(items, options) => state", description: "Owns controlled/uncontrolled selection and command dispatch." },
+    ],
+  },
   {
     slug: "text",
     title: "Text",
@@ -276,7 +365,7 @@ export function CheckboxExample() {
     title: "Slider",
     group: "components",
     navigationOrder: 2,
-    description: "Select one stepped numeric value on a Cell-native track.",
+    description: "Select one stepped value or a bounded interval on a Cell-native track.",
     probeId: "component-slider",
     Demo: SliderComponentDemo,
     usage: `import { useState } from "react";
@@ -315,6 +404,8 @@ export function SliderExample() {
       { name: "valueText?", type: "string", description: "Human-readable aria-valuetext without visible UI." },
       { name: "disabled?", type: "boolean", description: "Prevents focus, hover, keyboard, tap, and drag." },
       { name: "focused?", type: "boolean", description: "Controlled logical focus state." },
+      { name: "RangeSlider", type: "compound", description: "Owns one shared track and exactly two direct thumbs." },
+      { name: "RangeSliderThumb", type: "id + label + value", description: "Owns one independently focused interval endpoint." },
       { name: "WidgetCommand", type: "set-value", description: "Unifies keyboard, track tap, drag, and assistive input." },
     ],
   },

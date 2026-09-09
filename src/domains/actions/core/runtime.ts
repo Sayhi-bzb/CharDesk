@@ -94,12 +94,10 @@ export const createEditorCommandsExtension = (
     keybindings: Object.values(EDITOR_COMMAND_META).map((command) => ({
       id: `command:${command.id}`,
       label: command.label,
-      category: command.id.startsWith('structured-')
-        ? 'Structured'
-        : isFormattingCommand(command.id)
+      category: isFormattingCommand(command.id)
           ? 'Formatting'
           : 'General',
-      scope: command.id.startsWith('structured-') ? 'structured' : 'canvas',
+      scope: 'canvas',
       configurable: true,
       shortcuts: command.shortcuts?.map((shortcut) =>
         typeof shortcut === 'string' ? shortcut : shortcut.join('+')
@@ -112,10 +110,7 @@ export const createEditorCommandsExtension = (
         (!CANVAS_FOCUS_COMMANDS.has(command.id) ||
           targetKind === 'managed-canvas' ||
           targetKind === 'canvas-surface') &&
-        (command.id !== 'delete-selection' ||
-          (!state.interaction.textCursor &&
-            !state.interaction.editingStructuredTextNodeId &&
-            !state.interaction.structuredTextSelection)),
+        (command.id !== 'delete-selection' || !state.interaction.textCursor),
     })),
   };
 };

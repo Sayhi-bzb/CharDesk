@@ -13,8 +13,7 @@ export type ShortcutScope =
   | 'application'
   | 'canvas'
   | 'grid'
-  | 'presentation'
-  | 'structured';
+  | 'presentation';
 
 export type ShortcutConflictKind = 'exact' | 'prefix';
 

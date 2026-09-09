@@ -20,8 +20,6 @@ describe("unified Canvas documents", () => {
     documents.activateDocument("canvas-b", {
       mode: "freeform",
       grid: [],
-      scene: [],
-      components: [],
     });
 
     expect(documents.releaseDocument("canvas-a")).toBe(true);
@@ -31,8 +29,6 @@ describe("unified Canvas documents", () => {
     documents.activateDocument("canvas-c", {
       mode: "freeform",
       grid: [],
-      scene: [],
-      components: [],
     });
     expect(documents.destroyDocument("canvas-b")).toBe(true);
     expect(deleted).toEqual(["canvas-b"]);
@@ -41,7 +37,7 @@ describe("unified Canvas documents", () => {
 
   it("preserves history across residency release but clears it on deletion", () => {
     const documents = new CanvasDocumentRegistry("baseline");
-    const seed = { mode: "freeform" as const, grid: [], scene: [], components: [] };
+    const seed = { mode: "freeform" as const, grid: [] };
     documents.activateDocument("target", seed);
     documents.mutateGrid((grid) => grid.set("0,0", cell("A")));
     expect(documents.getHistoryAvailability().canUndo).toBe(true);
@@ -76,14 +72,10 @@ describe("unified Canvas documents", () => {
     documents.activateDocument("unicode", {
       mode: "freeform",
       grid: [],
-      scene: [],
-      components: [],
     });
     documents.activateDocument("unicode", {
       mode: "freeform",
       grid,
-      scene: [],
-      components: [],
     }, { replace: true });
     expect(documents.getContentReader().getCell({ x: 0, y: 0 }))
       .toEqual(cell("你"));
@@ -95,8 +87,6 @@ describe("unified Canvas documents", () => {
     documents.activateDocument("baseline", {
       mode: "freeform",
       grid: [],
-      scene: [],
-      components: [],
     });
     expect(documents.destroyDocument("unicode")).toBe(true);
     expect(documents.getMemoryStats()).toMatchObject({
@@ -114,8 +104,6 @@ describe("unified Canvas documents", () => {
     documents.activateDocument("replace-empty", {
       mode: "freeform",
       grid: [],
-      scene: [],
-      components: [],
     }, { replace: true });
 
     documents.mutateGrid((grid) => grid.set("0,0", cell("A")));
@@ -136,8 +124,6 @@ describe("unified Canvas documents", () => {
         { id: "slide-b", kind: "cell-plane" },
       ],
       grid: [],
-      scene: [],
-      components: [],
     }, { replace: true });
 
     documents.mutateGridAt(
@@ -206,8 +192,6 @@ describe("unified Canvas documents", () => {
         grid: [["0,0", cell(String(index))]],
       })),
       grid: [],
-      scene: [],
-      components: [],
     }, { replace: true });
 
     expect(documents.getMemoryStats()).toMatchObject({
@@ -218,9 +202,6 @@ describe("unified Canvas documents", () => {
       indexCachedCells: expect.any(Number),
       indexPreparedTextEntries: expect.any(Number),
       indexPreparedTextBytes: expect.any(Number),
-      structuredSurfaceCount: 0,
-      structuredResidentChunks: 0,
-      structuredResidentBytes: 0,
       estimatedProjectionBytes: expect.any(Number),
     });
     for (let index = 1; index < 8; index += 1) {

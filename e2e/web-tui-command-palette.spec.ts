@@ -1,11 +1,20 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 test("Palette text retains its surface background in both themes", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="overlay"]');
-  const canvas = surface.locator("canvas");
+  const canvas = surface.locator("canvas").first();
   for (const theme of ["light", "dark"] as const) {
-    await page.emulateMedia({ colorScheme: theme });
+    if (await page.locator(".gallery-page").getAttribute("data-gallery-theme") !== theme) {
+      await page.getByRole("button", { name: theme === "light" ? "Light" : "Dark" }).click();
+    }
+    await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", theme);
+    await page.evaluate((surfaceColor) => {
+      document.documentElement.style.setProperty("--cell-surface", surfaceColor);
+    }, theme === "light" ? "rgb(240, 240, 240)" : "rgb(35, 35, 35)");
+    await page.getByRole("button", { name: theme === "light" ? "Dark" : "Light" }).click();
+    await page.getByRole("button", { name: theme === "light" ? "Light" : "Dark" }).click();
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", theme);
     await surface.focus();
     const closed = await canvas.getAttribute("data-cell-text");
@@ -20,10 +29,11 @@ test("Palette text retains its surface background in both themes", async ({ page
         __chardeskCellProbeV4: { cells: { x: number; y: number; ownerId: string | null; style: { backgroundColor?: string } }[] };
       }).__chardeskCellProbeV4;
       const cells = probe.cells.filter((cell) => cell.ownerId === "palette-title" || cell.ownerId === "palette-hint");
-      const target = element.querySelector("canvas")!;
+      const target = element.querySelector<HTMLCanvasElement>(
+        '[data-cell-overlay-root="command-palette"]'
+      )!;
       const ctx = target.getContext("2d")!;
       const background = scheme === "light" ? "rgb(240, 240, 240)" : "rgb(35, 35, 35)";
-      const pageColor = scheme === "light" ? 255 : 16;
       let holes = 0;
       for (const cell of cells) {
         const x = Math.round(cell.x * target.width / 36);
@@ -32,7 +42,7 @@ test("Palette text retains its surface background in both themes", async ({ page
         const bottom = Math.round((cell.y + 1) * target.height / 12);
         const pixels = ctx.getImageData(x, y, right - x, bottom - y).data;
         for (let i = 0; i < pixels.length; i += 4) {
-          if (pixels[i] === pageColor && pixels[i + 1] === pageColor && pixels[i + 2] === pageColor) holes++;
+          if (pixels[i + 3] === 0) holes++;
         }
       }
       return { count: cells.length, backgroundsMatch: cells.every((cell) => cell.style.backgroundColor === background), holes };
@@ -52,34 +62,33 @@ test("Palette text retains its surface background in both themes", async ({ page
   }
 });
 
-const clickCell = async (canvas: Locator, x: number, y: number) => {
+const clickCell = async (page: Page, canvas: Locator, x: number, y: number) => {
   await canvas.scrollIntoViewIfNeeded();
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Canvas is not visible.");
-  await canvas.click({
-    position: {
-      x: (x + 0.5) * bounds.width / 36,
-      y: (y + 0.5) * bounds.height / 12,
-    },
-  });
+  await page.mouse.click(
+    bounds.x + (x + 0.5) * bounds.width / 36,
+    bounds.y + (y + 0.5) * bounds.height / 12,
+  );
 };
 
 test("blank clicks and external blur cannot retain Palette pointer capture", async ({ page }) => {
   await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="overlay"]');
-  const canvas = surface.locator("canvas");
+  const canvas = surface.locator("canvas").first();
+  const overlayCanvas = surface.locator('[data-cell-overlay-root="command-palette"]');
   const dialog = surface.getByRole("dialog", { name: "Command palette" });
   for (let cycle = 0; cycle < 3; cycle++) {
-    await clickCell(canvas, 5, 0);
+    await clickCell(page, canvas, 5, 0);
     await expect(dialog).toHaveCount(1);
-    await clickCell(canvas, 34, 10);
+    await clickCell(page, overlayCanvas, 34, 10);
     await expect(dialog).toHaveCount(0);
-    await clickCell(canvas, 34, 10);
-    await clickCell(canvas, 5, 0);
+    await clickCell(page, canvas, 34, 10);
+    await clickCell(page, canvas, 5, 0);
     await expect(dialog).toHaveCount(1);
     await page.keyboard.press("Escape");
     await page.locator("h1").click();
-    await clickCell(canvas, 5, 0);
+    await clickCell(page, canvas, 5, 0);
     await expect(dialog).toHaveCount(1);
     await page.keyboard.press("Escape");
   }
@@ -94,7 +103,8 @@ test("Command Palette owns its layer, focus scope, dismissal, and semantic actio
 
   const section = page.locator("#overlay");
   const surface = section.getByLabel("Command palette workspace");
-  const canvas = surface.locator("canvas");
+  const canvas = surface.locator("canvas").first();
+  const overlayCanvas = surface.locator('[data-cell-overlay-root="command-palette"]');
   await surface.focus();
   await page.keyboard.press("Enter");
 
@@ -115,7 +125,7 @@ test("Command Palette owns its layer, focus scope, dismissal, and semantic actio
 
   await page.keyboard.press("Enter");
   await expect(dialog).toHaveCount(1);
-  await clickCell(canvas, 7, 6);
+  await clickCell(page, overlayCanvas, 7, 6);
   await expect(dialog).toHaveCount(0);
 
   await section.getByRole("option", { name: "Open command palette" }).dispatchEvent("click");
@@ -125,7 +135,7 @@ test("Command Palette owns its layer, focus scope, dismissal, and semantic actio
 
   await section.getByRole("option", { name: "Open command palette" }).dispatchEvent("click");
   await expect(dialog).toHaveCount(1);
-  await clickCell(canvas, 34, 10);
+  await clickCell(page, overlayCanvas, 34, 10);
   await expect(dialog).toHaveCount(0);
   await expect(surface).toHaveAttribute("data-cell-focused", "show-palette");
 

@@ -13,7 +13,6 @@ import {
   type PointerEvent,
 } from "react";
 import { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
-import { isStaticGridMode, type CanvasMode } from "@/domains/sessions/public";
 import {
   DEFAULT_GRID_RENDER_METRICS,
   gridCellRect,
@@ -119,7 +118,6 @@ const traceClipboardAction = (
 };
 
 type UseManagedCanvasInputOptions = {
-  canvasMode: CanvasMode;
   inputIdentity?: string;
   model: CanvasEditorModel;
   size: { width: number; height: number } | undefined;
@@ -132,7 +130,6 @@ type UseManagedCanvasInputOptions = {
 };
 
 export const useManagedCanvasInput = ({
-  canvasMode,
   inputIdentity,
   model,
   size,
@@ -162,16 +159,11 @@ export const useManagedCanvasInput = ({
     selectStaticGridColumn,
     enterStaticGridTextEdit,
     exitStaticGridTextEdit,
-    moveStructuredGridFocus,
     setTextCursor,
     offset,
     zoom,
     fillSelectionsWithChar,
     clearSelections,
-    setStructuredGridFocus,
-    setSelectedStructuredNodeIds,
-    setEditingStructuredTextNodeId,
-    setStructuredTextSelection,
     setCanvasColorPickerTarget,
     setHoveredGrid,
   } = model;
@@ -179,8 +171,6 @@ export const useManagedCanvasInput = ({
     textCursor,
     staticGridSelection,
     staticGridEditMode,
-    structuredGridFocus,
-    selectedStructuredNodeIds,
     canvasColorPickerTarget,
   } = model.interaction;
   const [managedInputScheduler] = useState(() => new ManagedInputBatchScheduler({
@@ -233,28 +223,18 @@ export const useManagedCanvasInput = ({
       }),
     [model.contentReader, staticGridEditMode, staticGridSelection, textCursor]
   );
-  const staticGridMode = isStaticGridMode(canvasMode);
   const staticGridInteraction = staticGridView.interaction;
-  const activeTextCursor = staticGridMode
-    ? staticGridInteraction.kind === "text-edit"
-      ? staticGridInteraction.cursor
-      : null
-    : textCursor;
-  const activeSelections = staticGridMode ? staticGridView.target.areas : [];
-  const staticGridActiveCell = staticGridMode
-    ? staticGridInteraction.activeCell
+  const activeTextCursor = staticGridInteraction.kind === "text-edit"
+    ? staticGridInteraction.cursor
     : null;
-  const hasStructuredSelection =
-    canvasMode === 'structured' && selectedStructuredNodeIds.length > 0;
-  const hasStructuredGridFocus =
-    canvasMode === 'structured' && !!structuredGridFocus;
-  const hasActiveSelection = activeSelections.length > 0 || hasStructuredSelection;
+  const activeSelections = staticGridView.target.areas;
+  const staticGridActiveCell = staticGridInteraction.activeCell;
+  const hasActiveSelection = activeSelections.length > 0;
   const [canvasOwnsInputFocus, setCanvasOwnsInputFocus] = useState(false);
   const canvasOwnsInputFocusRef = useRef(false);
   const windowHasFocusRef = useRef(true);
   const managedTextareaPoint =
     activeTextCursor ??
-    structuredGridFocus ??
     activeSelections[0]?.start ??
     staticGridActiveCell ??
     null;
@@ -436,9 +416,7 @@ export const useManagedCanvasInput = ({
       ) {
         return;
       }
-      const contentNavigationEdge = staticGridMode
-        ? modifiedArrowEdgeFor(input)
-        : null;
+      const contentNavigationEdge = modifiedArrowEdgeFor(input);
       if (contentNavigationEdge) {
         flushPendingManagedText();
         moveStaticGridFocusToContentBoundary(contentNavigationEdge, {
@@ -595,11 +573,9 @@ export const useManagedCanvasInput = ({
     );
     const decision = resolveManagedCanvasKeyIntent(input, {
       mutateEnabled,
-      staticGridInteraction: staticGridMode ? staticGridInteraction.kind : null,
+      staticGridInteraction: staticGridInteraction.kind,
       hasTextCursor: !!activeTextCursor,
       hasActiveSelection,
-      hasStructuredSelection,
-      hasStructuredGridFocus,
       colorPickerOpen: !!canvasColorPickerTarget,
       pageRows,
     });
@@ -647,9 +623,6 @@ export const useManagedCanvasInput = ({
       case "move-text-cursor":
         moveTextCursor(intent.dx, intent.dy);
         return;
-      case "move-structured-grid-focus":
-        moveStructuredGridFocus(intent.dx, intent.dy);
-        return;
       case "fill-selection":
         fillSelectionsWithChar(intent.char);
         return;
@@ -661,12 +634,6 @@ export const useManagedCanvasInput = ({
           exitStaticGridTextEdit();
         } else if (intent.target === "text-cursor") {
           setTextCursor(null);
-          setEditingStructuredTextNodeId(null);
-          setStructuredTextSelection(null);
-        } else if (intent.target === "structured-selection") {
-          setSelectedStructuredNodeIds([]);
-        } else if (intent.target === "structured-grid-focus") {
-          setStructuredGridFocus(null);
         } else if (intent.target === "selection") {
           clearSelections();
         }

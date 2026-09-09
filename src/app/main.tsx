@@ -99,17 +99,15 @@ if (canvasStressParams.has("canvas-stress")) {
       removeSession: (id: string) => host.canvas.commands.sessions.remove(id),
       sessionIds: () => host.canvas.getState().canvasSessions.map(({ id }) => id),
       activeSessionId: () => host.canvas.getState().activeCanvasId,
-      createSession: (mode: "freeform" | "structured" = "freeform") => {
+      createSession: (mode: "freeform" = "freeform") => {
         host.canvas.commands.sessions.create(mode, { name: "Input scheduling probe" });
         return host.canvas.getState().activeCanvasId;
       },
       setProjectionCacheBudget: (bytes: number) =>
         host.canvas.setProjectionCacheBudget(bytes),
       loadSession: (snapshot: {
-        mode: "freeform" | "structured";
+        mode: "freeform";
         grid: [string, { char: string; color: string; bgColor?: string }][];
-        scene: [];
-        components: [];
       }) => {
         host.canvas.commands.sessions.create(snapshot.mode, { name: "Memory probe" });
         const id = host.canvas.getState().activeCanvasId;

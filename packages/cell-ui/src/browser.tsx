@@ -1,3 +1,5 @@
+import { CellPresentationRegistry } from "./browser-presentation.js";
+import { resolveCellFeedback, type CellFeedbackConfig } from "./feedback.js";
 /* eslint-disable react-refresh/only-export-components */
 import {
   alignCharDeskCanvasRect,
@@ -36,7 +38,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  FocusManager,
   commandForInput,
   dismissCommandForFocusExit,
   primarySemanticAction,
@@ -53,14 +54,9 @@ import { createCellUiFontProfile } from "./browser-font-profile.js";
 import { useCellFontAudit } from "./browser-font-audit.js";
 export { DEFAULT_CELL_UI_METRICS, loadCellFontMetrics } from "./browser-font-metrics.js";
 import {
-  GestureManager,
   type GestureSignal,
 } from "./gestures.js";
-import { PressManager } from "./press.js";
-import {
-  ActivationFeedbackManager,
-  CELL_ACTIVATION_FLASH_DURATION_MS,
-} from "./activation-feedback.js";
+import { CellInteractionController } from "./interaction-controller.js";
 import { CellTextInputLayer } from "./browser-input.js";
 import { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
 import { isCellKeyPress } from "./keyboard.js";
@@ -92,6 +88,8 @@ export { readCellCssTheme, useCellCssTheme } from "./browser-theme.js";
 export type { CellCssTheme } from "./browser-theme.js";
 import { FixedVirtualGrid, type VirtualRange } from "./virtual.js";
 import type { CellListItem } from "./browser-collections.js";
+export { useCellRadioState } from "./browser-radio.js";
+export type { CellRadioItem, CellRadioOptions } from "./browser-radio.js";
 import type {
   CellPoint,
   CellRect,
@@ -102,6 +100,9 @@ import type {
   SemanticSnapshot,
   WidgetId,
 } from "./types.js";
+
+const sameWidgetIdSet = (left: ReadonlySet<WidgetId>, right: ReadonlySet<WidgetId>) =>
+  left.size === right.size && [...left].every((id) => right.has(id));
 
 export { useCellTextState } from "./browser-input.js";
 export type { CellTextState } from "./browser-input.js";
@@ -480,6 +481,7 @@ export const SemanticDom = ({
         aria-posinset={node.positionInSet}
         aria-setsize={node.setSize}
         aria-checked={node.checked}
+        aria-pressed={node.pressed}
         aria-valuenow={node.valueNow}
         aria-valuemin={node.valueMin}
         aria-valuemax={node.valueMax}
@@ -519,6 +521,7 @@ export type CellSurfaceProps = Readonly<{
   children: ReactElement<RootProps>;
   focusedId?: WidgetId | null;
   theme?: Partial<CellUiTheme>;
+  feedback?: Partial<CellFeedbackConfig>;
   metrics?: CharDeskCellMetrics;
   fontSize?: number;
   fontProfile?: CharDeskFontProfile;
@@ -667,6 +670,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     children,
     focusedId = null,
     theme,
+    feedback,
     metrics: explicitMetrics,
     fontSize,
     fontProfile: requestedFontProfile,
@@ -689,6 +693,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     fontMetrics.metrics
   );
   const { metrics } = fontMetrics;
+  const resolvedFeedback = useMemo(() => resolveCellFeedback(feedback), [feedback]);
   const resolvedTheme = useMemo(() => resolveCellUiTheme(theme), [theme]);
   const palette = useMemo(() => paletteOverride ?? {
     color: resolvedTheme.foreground, background: resolvedTheme.background,
@@ -704,26 +709,37 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     if (!rangeControlled) dispatchInternalCellRange(command);
     onCellRangeCommand?.(command);
   }, [dispatchInternalCellRange, onCellRangeCommand, rangeControlled]);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const overlayCanvasRefs = useRef(new Map<WidgetId, HTMLCanvasElement>());
+  const [canvasRef] = useState(() => new CellPresentationRegistry());
   const cursorPresenterRef = useRef<CellCursorPresenter | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<CellUiRuntime | null>(null);
   const frameRef = useRef<FrameSnapshot | null>(null);
   const presentedRevisionRef = useRef<number | null>(null);
   const presentationRef = useRef({ metrics, palette, fontProfile, glyphOverflow });
-  const focusRef = useRef(new FocusManager());
+  const [controller] = useState(() => new CellInteractionController(
+    () => {
+      setActivationFlashId(controller.feedback.activeId);
+      setPressActiveId(controller.press.activeId);
+      setManipulatingIds((current) => sameWidgetIdSet(current, controller.gestures.manipulatingIds) ? current : controller.gestures.manipulatingIds);
+      setInteractionRevision((value) => value + 1);
+    },
+    (command) => onCommandRef.current(command),
+  ));
+  const focusRef = useRef(controller.focus);
   const eventsRef = useRef(new EventManager());
-  const gesturesRef = useRef(new GestureManager());
-  const pressRef = useRef(new PressManager());
-  const activationFeedbackRef = useRef(new ActivationFeedbackManager());
-  const activationFeedbackTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+  const gesturesRef = useRef(controller.gestures);
+  const pressRef = useRef(controller.press);
+  const activationFeedbackRef = useRef(controller.feedback);
+  const activationBlinkCountRef = useRef(resolvedFeedback.activationBlinkCount);
+  const onCommandRef = useRef(onCommand);
+  onCommandRef.current = onCommand;
   const inputModalityRef = useRef<"keyboard" | "pointer">("keyboard");
   const [inputModality, setInputModalityState] = useState<"keyboard" | "pointer">("keyboard");
   const setInputModality = useCallback((next: "keyboard" | "pointer") => {
+    controller.setInputSource(next);
     inputModalityRef.current = next;
     setInputModalityState(next);
-  }, []);
+  }, [controller]);
   const surfaceFocus = useSurfaceFocus(surfaceRef);
   const focusVisible = surfaceFocus.active && inputModality === "keyboard";
   const ownsFocus = surfaceFocus.ownsFocus;
@@ -733,9 +749,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     children: ReactElement<RootProps>;
     focusedId: WidgetId | null;
     hoveredId: WidgetId | null;
+    manipulatingIds: ReadonlySet<WidgetId>;
     pressActiveId: WidgetId | null;
     activationFlashId: WidgetId | null;
     theme: Partial<CellUiTheme> | undefined;
+    feedback: Partial<CellFeedbackConfig> | undefined;
     interactionRevision: number;
     focusActive: boolean;
     focusVisible: boolean;
@@ -754,49 +772,38 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     pointerId: number;
   }> | null>(null);
   const [interactionRevision, setInteractionRevision] = useState(0);
+  const [manipulatingIds, setManipulatingIds] = useState<ReadonlySet<WidgetId>>(() => new Set());
   const [pressActiveId, setPressActiveId] = useState<WidgetId | null>(null);
   const [activationFlashId, setActivationFlashId] = useState<WidgetId | null>(null);
   const [fontPresentationRevision, setFontPresentationRevision] = useState(0);
   const [frame, setFrame] = useState<FrameSnapshot | null>(null);
   const pointerAppearance = usePointerAppearance(canvasRef, frame, metrics);
-  const { hoveredId } = pointerAppearance;
+  const hoveredId = activationFeedbackRef.current.settling
+    ? null
+    : pointerAppearance.hoveredId;
+  useLayoutEffect(() => {
+    const current = frameRef.current;
+    if (current && inputModality === "pointer") controller.setHovered(current, hoveredId);
+  }, [controller, hoveredId, inputModality]);
+  const syncManipulatingIds = useCallback(() => {
+    const next = gesturesRef.current.manipulatingIds;
+    setManipulatingIds((current) => sameWidgetIdSet(current, next) ? current : next);
+  }, []);
 
   const cancelActivationFeedback = useCallback(() => {
-    if (activationFeedbackTimerRef.current !== null) {
-      globalThis.clearTimeout(activationFeedbackTimerRef.current);
-      activationFeedbackTimerRef.current = null;
+    if (controller.cancel()) {
+      setActivationFlashId(null);
+      setInteractionRevision((value) => value + 1);
     }
-    if (activationFeedbackRef.current.clear()) setActivationFlashId(null);
-  }, []);
+  }, [controller]);
 
-  const scheduleActivationFeedbackClear = useCallback(() => {
-    if (activationFeedbackTimerRef.current !== null) {
-      globalThis.clearTimeout(activationFeedbackTimerRef.current);
-    }
-    activationFeedbackTimerRef.current = globalThis.setTimeout(() => {
-      activationFeedbackTimerRef.current = null;
-      if (activationFeedbackRef.current.clear()) setActivationFlashId(null);
-    }, CELL_ACTIVATION_FLASH_DURATION_MS);
-  }, []);
+  const flushActivationFeedbackCompletion = useCallback(() => controller.flush(), [controller]);
 
-  const startActivationFeedback = useCallback((
-    current: FrameSnapshot,
-    command: WidgetCommand
-  ) => {
-    const targetId = activationFeedbackRef.current.start(current, command);
-    if (!targetId) return;
-    setActivationFlashId(targetId);
-    scheduleActivationFeedbackClear();
-  }, [scheduleActivationFeedbackClear]);
-
-  const restartActivationFeedback = useCallback((
-    current: FrameSnapshot,
-    targetId: WidgetId
-  ) => {
-    if (!activationFeedbackRef.current.restart(current, targetId)) return;
-    setActivationFlashId(targetId);
-    scheduleActivationFeedbackClear();
-  }, [scheduleActivationFeedbackClear]);
+  useEffect(() => {
+    if (activationBlinkCountRef.current === resolvedFeedback.activationBlinkCount) return;
+    activationBlinkCountRef.current = resolvedFeedback.activationBlinkCount;
+    controller.settle();
+  }, [controller, resolvedFeedback.activationBlinkCount]);
 
   useEffect(() => {
     const token = {};
@@ -813,12 +820,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   useEffect(() => () => {
     cursorPresenterRef.current?.dispose();
     cursorPresenterRef.current = null;
-    if (activationFeedbackTimerRef.current !== null) {
-      globalThis.clearTimeout(activationFeedbackTimerRef.current);
-      activationFeedbackTimerRef.current = null;
-    }
-    activationFeedbackRef.current.clear();
-  }, []);
+    controller.cancel();
+  }, [controller]);
 
   useLayoutEffect(() => {
     const previousProjection = projectionRef.current;
@@ -826,9 +829,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       previousProjection?.children === children
       && previousProjection.focusedId === focusedId
       && previousProjection.hoveredId === hoveredId
+      && previousProjection.manipulatingIds === manipulatingIds
       && previousProjection.pressActiveId === pressActiveId
       && previousProjection.activationFlashId === activationFlashId
       && previousProjection.theme === theme
+      && previousProjection.feedback === feedback
       && previousProjection.interactionRevision === interactionRevision
       && previousProjection.focusActive === surfaceFocus.active
       && previousProjection.focusVisible === focusVisible
@@ -840,17 +845,20 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
 
     let runtime = runtimeRef.current;
     if (!runtime) {
-      runtime = new CellUiRuntime({ viewport, overlayViewport, theme });
+      runtime = new CellUiRuntime({ viewport, overlayViewport, theme, feedback });
       runtimeRef.current = runtime;
     } else {
       runtime.resize(viewport, overlayViewport);
       runtime.setTheme(theme);
+      runtime.setFeedback(feedback);
     }
     const focusedChanged = focusedIdRef.current !== focusedId;
     const next = runtime.render(children, {
       hoveredId,
+      manipulatingIds,
       pressActiveId,
       activationFlashId,
+      activationTargetId: controller.feedback.targetId,
       focusActive: surfaceFocus.active,
       focusVisible,
       resolveFocusedId: (tree) => {
@@ -871,13 +879,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       const surface = surfaceRef.current;
       if (surface?.hasPointerCapture(pointerId)) surface.releasePointerCapture(pointerId);
     }
+    syncManipulatingIds();
     if (pressRef.current.sync(next)) setPressActiveId(pressRef.current.activeId);
-    if (activationFeedbackRef.current.sync(next)) {
-      if (activationFeedbackTimerRef.current !== null) {
-        globalThis.clearTimeout(activationFeedbackTimerRef.current);
-        activationFeedbackTimerRef.current = null;
-      }
+    if (controller.sync(next)) {
       setActivationFlashId(null);
+      flushActivationFeedbackCompletion();
     }
     focusedIdRef.current = focusedId;
     for (const command of textViewportCommands(next)) onCommand(command);
@@ -890,9 +896,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       children,
       focusedId,
       hoveredId,
+      manipulatingIds,
       pressActiveId,
       activationFlashId,
       theme,
+      feedback,
       interactionRevision,
       focusActive: surfaceFocus.active,
       focusVisible,
@@ -903,7 +911,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     };
     // The headless runtime is an external store; publish its committed snapshot.
     setFrame(next);
-  }, [activationFlashId, children, focusedId, focusVisible, hoveredId, interactionRevision, onCommand, overlayViewport, pressActiveId, theme, viewport, surfaceFocus.active]);
+  }, [controller, activationFlashId, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, syncManipulatingIds, theme, feedback, viewport, surfaceFocus.active]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -920,6 +928,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (surfaceRef.current?.hasPointerCapture(id)) surfaceRef.current.releasePointerCapture(id);
       }
       setPressActiveId(pressRef.current.activeId);
+      syncManipulatingIds();
     }
     const previousRevision = presentedRevisionRef.current;
     const incremental = previousRevision !== null && frame.revision > previousRevision
@@ -942,7 +951,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       incremental ? frame.invalidation.dirtyRegions : undefined
     );
     for (const plane of frame.overlayPlanes) {
-      const overlayCanvas = overlayCanvasRefs.current.get(plane.rootId);
+      const overlayCanvas = canvasRef.overlay(plane.rootId);
       if (!overlayCanvas) continue;
       presentFrame(
         overlayCanvas,
@@ -964,7 +973,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     }
     presentedRevisionRef.current = frame.revision;
     presentationRef.current = { metrics, palette, fontProfile, glyphOverflow };
-  }, [cellRange, fontProfile, frame, metrics, palette, resolvedTheme, glyphOverflow]);
+  }, [canvasRef, cellRange, fontProfile, frame, glyphOverflow, metrics, palette, resolvedTheme, syncManipulatingIds]);
 
   const fontPresentRef = useRef<() => void>(() => undefined);
   const scheduleFontPresentRef = useRef<() => void>(() => undefined);
@@ -988,7 +997,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           glyphOverflow
         );
         for (const plane of current.overlayPlanes) {
-          const overlayCanvas = overlayCanvasRefs.current.get(plane.rootId);
+          const overlayCanvas = canvasRef.overlay(plane.rootId);
           if (!overlayCanvas) continue;
           presentFrame(
             overlayCanvas,
@@ -1011,7 +1020,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         setFontPresentationRevision((revision) => revision + 1);
       }
     };
-  }, [metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow]);
+  }, [canvasRef, metrics, palette, cellRange, resolvedTheme, fontProfile, glyphOverflow]);
   useEffect(() => {
     requestedFontsRef.current.clear();
   }, [fontProfile]);
@@ -1081,7 +1090,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         delete surface[CELL_SURFACE_PROBE_PROPERTY];
       }
     };
-  }, [auditFonts, fontPresentationRevision, fontProfile, frame, metrics, probeId, fontMetrics, fontAudit, glyphOverflow]);
+  }, [canvasRef, auditFonts, fontPresentationRevision, fontProfile, frame, metrics, probeId, fontMetrics, fontAudit, glyphOverflow]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1103,7 +1112,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     });
     observer.observe(canvas);
     return () => observer.disconnect();
-  }, [cellRange, fontProfile, frame, metrics, palette, resolvedTheme, glyphOverflow]);
+  }, [canvasRef, cellRange, fontProfile, frame, metrics, palette, resolvedTheme, glyphOverflow]);
 
   useEffect(() => {
     if (!frame || !cellRange || !rangeEditable) return;
@@ -1130,13 +1139,9 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   useLayoutEffect(syncDomFocus, [syncDomFocus]);
 
   const dispatch = useCallback((command: WidgetCommand | null) => {
-    if (!command) return;
-    focusRef.current.apply(command);
     const current = frameRef.current;
-    if (current) startActivationFeedback(current, command);
-    onCommand(command);
-    setInteractionRevision((value) => value + 1);
-  }, [onCommand, startActivationFeedback]);
+    if (current) controller.commit(command, current, resolvedFeedback.activationBlinkCount);
+  }, [controller, resolvedFeedback.activationBlinkCount]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1144,6 +1149,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const wheel = (event: WheelEvent) => {
       const current = frameRef.current;
       if (!current || event.ctrlKey) return;
+      if (activationFeedbackRef.current.settling) {
+        event.preventDefault();
+        return;
+      }
       const result = resolveWheelInput(current, {
         type: "wheel",
         point: pxToCellPoint(event, canvas.getBoundingClientRect(), metrics),
@@ -1153,10 +1162,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       if (result.consumed) event.preventDefault();
       dispatch(result.command);
     };
-    const canvases = [canvas, ...overlayCanvasRefs.current.values()];
+    const canvases = canvasRef.canvases();
     canvases.forEach((target) => target.addEventListener("wheel", wheel, { passive: false }));
     return () => canvases.forEach((target) => target.removeEventListener("wheel", wheel));
-  }, [dispatch, frame, metrics]);
+  }, [canvasRef, dispatch, frame, metrics]);
 
   const textDragPointFor = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = canvasRef.current?.getBoundingClientRect();
@@ -1164,8 +1173,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   };
 
   const isSurfaceCanvas = (target: EventTarget | null) =>
-    target === canvasRef.current
-    || [...overlayCanvasRefs.current.values()].some((canvas) => canvas === target);
+    canvasRef.owns(target);
 
   const setCellRange = (anchor: CellPoint, head: CellPoint) => {
     if (!frame || !rangeEditable) return;
@@ -1186,6 +1194,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const { pointerId, currentTarget } = event;
     eventsRef.current.cancel(pointerId);
     gesturesRef.current.cancel(pointerId);
+    syncManipulatingIds();
     if (pressRef.current.cancelPointer(pointerId)) setPressActiveId(pressRef.current.activeId);
     if (rangeDragRef.current?.pointerId === pointerId) rangeDragRef.current = null;
     if (textDragRef.current?.pointerId === pointerId) textDragRef.current = null;
@@ -1205,6 +1214,14 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     if (event.defaultPrevented) return;
     setInputModality("keyboard");
     const input = keyInputFromKeyboardEvent(event.nativeEvent);
+    if (activationFeedbackRef.current.settling) {
+      if (isCellKeyPress(input, "Tab")) return;
+      if (isCellKeyPress(input, "Escape") && frame) {
+        dispatch(commandForInput(input, frame, focusRef.current));
+      }
+      event.preventDefault();
+      return;
+    }
     if (isCellKeyPress(input, "Escape") && cellRange && rangeEditable) {
       event.preventDefault();
       dispatchCellRange({ type: "clear" });
@@ -1214,17 +1231,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       !frame
       || (event.target instanceof HTMLTextAreaElement && event.key !== "Escape")
     ) return;
-    if (isCellKeyPress(input, "Enter") || isCellKeyPress(input, " ")) {
-      cancelActivationFeedback();
-    }
-    if (pressRef.current.beginKey(frame, input, focusRef.current.focusedId)) {
-      setPressActiveId(pressRef.current.activeId);
-    }
-    const command = commandForInput(input, frame, focusRef.current);
-    if (command) {
-      event.preventDefault();
-      dispatch(command);
-    }
+    if (controller.key(frame, input, resolvedFeedback.activationBlinkCount)) event.preventDefault();
   };
 
   const onSurfaceBlur = (event: FocusEvent<HTMLDivElement>) => {
@@ -1233,6 +1240,14 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const relatedTarget = event.relatedTarget;
     if (relatedTarget instanceof Node && surface.contains(relatedTarget)) return;
     const cancelTransientFeedback = () => {
+      const pointerIds = gesturesRef.current.sync(() => false);
+      for (const pointerId of pointerIds) {
+        eventsRef.current.cancel(pointerId);
+        if (surface.hasPointerCapture(pointerId)) surface.releasePointerCapture(pointerId);
+      }
+      rangeDragRef.current = null;
+      textDragRef.current = null;
+      syncManipulatingIds();
       if (pressRef.current.cancel()) setPressActiveId(null);
       cancelActivationFeedback();
     };
@@ -1274,6 +1289,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         : undefined}
       data-cell-focused={frame?.semantics.focusedId ?? undefined}
       data-cell-hovered={hoveredId ?? undefined}
+      data-cell-manipulating={manipulatingIds.size > 0 || undefined}
       data-cell-press-active={pressActiveId ?? undefined}
       data-cell-activation-flash={activationFlashId ?? undefined}
       data-cell-overlay-count={frame?.overlayPlanes.length || undefined}
@@ -1284,11 +1300,22 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         pointerAppearance.suspend();
         if (event.button !== 0) return;
-        cancelActivationFeedback();
         setInputModality("pointer");
         if (!frame) return;
         const point = textDragPointFor(event);
         if (!point) return;
+        if (activationFeedbackRef.current.settling) {
+          const command = commandForInput(
+            { type: "pointer", phase: "down", point, button: event.button },
+            frame,
+            focusRef.current
+          );
+          if (command?.type === "dismiss") dispatch(command);
+          event.preventDefault();
+          event.currentTarget.focus({ preventScroll: true });
+          return;
+        }
+        cancelActivationFeedback();
         if (isCellRangePointerChord(event) && rangeEditable) {
           event.preventDefault();
           rangeDragRef.current = { anchor: point, pointerId: event.pointerId };
@@ -1348,10 +1375,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         }, handlers);
         if (candidates.length > 0) {
           event.preventDefault();
-          gesturesRef.current.begin(event.pointerId, point, candidates, precisePoint);
-          if (pressRef.current.beginPointer(frame, event.pointerId, point)) {
-            setPressActiveId(pressRef.current.activeId);
-          }
+          controller.beginPointer(frame, event.pointerId, point, candidates, precisePoint);
           event.currentTarget.setPointerCapture(event.pointerId);
         }
         if (editor && !editor.disabled && onScrollbar) {
@@ -1362,6 +1386,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         }
       }}
       onPointerMove={(event: PointerEvent<HTMLDivElement>) => {
+        if (event.pointerType === "mouse" && event.buttons === 0) setInputModality("pointer");
         pointerAppearance.move(event);
         const rangeDrag = rangeDragRef.current;
         const point = textDragPointFor(event);
@@ -1392,11 +1417,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           point,
         });
         const bounds = canvasRef.current!.getBoundingClientRect();
-        const signals = gesturesRef.current.move(event.pointerId, point, pxToCellPosition(event, bounds, metrics));
-        const changed = signals.some((signal) => signal.kind === "tap" && signal.phase === "cancel")
-          ? pressRef.current.cancelPointer(event.pointerId)
-          : pressRef.current.movePointer(frame, event.pointerId, point);
-        if (changed) setPressActiveId(pressRef.current.activeId);
+        const signals = controller.movePointer(frame, event.pointerId, point, pxToCellPosition(event, bounds, metrics));
         applyGestureSignals(frame, signals);
       }}
       onPointerUp={(event: PointerEvent<HTMLDivElement>) => {
@@ -1410,8 +1431,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
               point,
             });
             const bounds = canvasRef.current!.getBoundingClientRect();
-            const signals = gesturesRef.current.end(event.pointerId, point, pxToCellPosition(event, bounds, metrics));
-            if (pressRef.current.endPointer(event.pointerId)) setPressActiveId(pressRef.current.activeId);
+            const signals = controller.endPointer(event.pointerId, point, pxToCellPosition(event, bounds, metrics));
             applyGestureSignals(frame, signals);
           }
         } finally {
@@ -1463,27 +1483,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       onKeyDown={onKeyDown}
       onKeyUp={(event) => {
         const input = keyInputFromKeyboardEvent(event.nativeEvent);
-        const releasedTargetId = pressRef.current.activeId;
-        if (pressRef.current.endKey(input)) {
-          setPressActiveId(pressRef.current.activeId);
-          if (frame && releasedTargetId) {
-            restartActivationFeedback(frame, releasedTargetId);
-          }
-        }
-        if (
-          event.defaultPrevented
-          || !frame
-          || (event.target instanceof HTMLTextAreaElement && event.key !== "Escape")
-        ) return;
-        const command = commandForInput(
-          input,
-          frame,
-          focusRef.current
-        );
-        if (command) {
-          event.preventDefault();
-          dispatch(command);
-        }
+        if (event.defaultPrevented || !frame || (event.target instanceof HTMLTextAreaElement && event.key !== "Escape")) return;
+        if (controller.key(frame, input, resolvedFeedback.activationBlinkCount)) event.preventDefault();
       }}
       style={{ position: "relative", width: "fit-content", outline: "none" }}
     >
@@ -1497,8 +1498,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         <canvas
           key={plane.rootId}
           ref={(canvas) => {
-            if (canvas) overlayCanvasRefs.current.set(plane.rootId, canvas);
-            else overlayCanvasRefs.current.delete(plane.rootId);
+            canvasRef.setOverlay(plane.rootId, canvas);
           }}
           aria-hidden="true"
           data-cell-overlay-root={plane.rootId}

@@ -19,7 +19,7 @@ describe("CellTextEditor", () => {
     const focused = runtime.render(view(true));
     for (let y = 0; y < 5; y++) {
       for (let x = 0; x < 12; x++) {
-        expect(focused.buffer.get(x, y)?.style.backgroundColor).toBe("#1a1a1a");
+        expect(focused.buffer.get(x, y)?.style.backgroundColor).toBe("#000000");
         expect(focused.buffer.get(x, y)?.ownerId).toBe("editor");
       }
     }

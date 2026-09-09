@@ -8,13 +8,6 @@ describe("editor transitions", () => {
       interaction: {
         address,
         textCursor: null,
-        editingStructuredTextNodeId: null,
-        structuredTextSelection: null,
-        selectedStructuredNodeIds: [],
-        selectedStructuredBoxId: null,
-        selectedStructuredSplitHandle: null,
-        structuredContextPoint: null,
-        structuredGridFocus: null,
         staticGridSelection: {
           mode: "cell",
           activeCell: { x: 0, y: 0 },
@@ -36,9 +29,6 @@ describe("editor transitions", () => {
     const first = createDocumentInteractionResetPatch(address).interaction;
     const second = createDocumentInteractionResetPatch(address).interaction;
 
-    expect(first.selectedStructuredNodeIds).not.toBe(
-      second.selectedStructuredNodeIds
-    );
     expect(first.staticGridSelection).not.toBe(second.staticGridSelection);
     expect(first.staticGridSelection.activeCell).not.toBe(
       second.staticGridSelection.activeCell

@@ -1,10 +1,4 @@
 import type { GridCell } from "@/shared/types";
-import type { StructuredNode } from "@/domains/structured-content/public";
-import {
-  cloneStructuredNode,
-  decodeStructuredNode,
-  normalizeScene,
-} from "@/domains/structured-content/public";
 import {
   isSameTextAttributes,
 } from "@/shared/utils/ansi";
@@ -12,13 +6,6 @@ import {
   createGridMap,
   decodeGridEntries,
 } from "@/shared/utils/grid-codec";
-
-export const cloneScene = (scene: StructuredNode[]) => {
-  return scene.map((node) => cloneStructuredNode(node));
-};
-export const normalizeAndCloneScene = (scene: StructuredNode[]) => {
-  return cloneScene(normalizeScene(scene));
-};
 
 export const serializeGrid = (grid: Map<string, GridCell>) => {
   return Array.from(grid.entries());
@@ -37,5 +24,3 @@ export const isSameCell = (a?: GridCell, b?: GridCell) => {
     isSameTextAttributes(a.attrs, b.attrs)
   );
 };
-
-export const toStructuredNode = decodeStructuredNode;

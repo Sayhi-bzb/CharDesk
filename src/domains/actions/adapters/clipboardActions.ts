@@ -14,11 +14,9 @@ import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
 import type {
   GridCellSource,
   GridMap,
-  NodeBounds,
   Point,
   SelectionArea,
 } from "@/shared/types";
-import type { StructuredNode, StructuredNodeStyle, StructuredTextNode, StructuredTextStyleRange } from "@/domains/structured-content/public";
 import type { RichTextCell } from "@/domains/canvas/public";
 import {
   renderTextSource,
@@ -28,16 +26,6 @@ import {
 import { clipboard } from "@/shared/services/effects";
 import { cloneTextAttributes } from "@/shared/utils/ansi";
 import { parseAnsiTextCells } from "@/shared/utils/ansiText";
-import {
-  buildStructuredTree,
-  getStructuredNodeBounds,
-  renderStructuredScene,
-} from "@/domains/structured-content/public";
-import {
-  decodeStructuredNode,
-  getStructuredTextSlice,
-  getStructuredTextStyleRangesInRange,
-} from "@/domains/structured-content/public";
 
 const MIME_RICH_DATA = "web application/x-ascii-metropolis";
 const DEFAULT_ANSI_PASTE_COLOR = "#ffffff";
@@ -49,39 +37,7 @@ interface ClipboardPayload {
 
 type ClipboardPayloadFormat = "plain" | "ansi";
 
-interface StructuredClipboardData {
-  structuredNodes: StructuredNode[];
-  surfaceCells: RichTextCell[];
-  bounds: NodeBounds;
-}
-
-interface StructuredTextClipboardData {
-  text: string;
-  style: StructuredNodeStyle;
-  styleRanges?: StructuredTextStyleRange[];
-}
-
-interface StructuredClipboardPayload {
-  type: "ascii-metropolis-clipboard";
-  version: 2;
-  cells: RichTextCell[];
-  surfaceCells: RichTextCell[];
-  structuredNodes: StructuredNode[];
-  bounds: NodeBounds;
-  structuredText?: StructuredTextClipboardData;
-}
-
 const toAnsiLikeClipboardText = (value: string) => value.replaceAll("\u001b[", "[");
-
-const cloneStructuredNodeStyle = (
-  style: StructuredNodeStyle
-): StructuredNodeStyle => ({
-  color: style.color,
-  ...(style.bgColor ? { bgColor: style.bgColor } : {}),
-  ...(cloneTextAttributes(style.attrs)
-    ? { attrs: cloneTextAttributes(style.attrs) }
-    : {}),
-});
 
 /** @deprecated Use the document text-rendering runtime for new clipboard paths. */
 export const parseAnsiClipboardText = (
@@ -107,8 +63,6 @@ const toRenderedClipboardPayload = async (
     return {
       richRows: rendered.rows,
       richCells: null,
-      structured: null,
-      structuredText: null,
       plainText: source,
       diagnostics: rendered.diagnostics,
     };
@@ -116,15 +70,11 @@ const toRenderedClipboardPayload = async (
   return rendered.kind === "styled"
     ? {
         richCells: rendered.cells,
-        structured: null,
-        structuredText: null,
         plainText: source,
         diagnostics: rendered.diagnostics,
       }
     : {
         richCells: null,
-        structured: null,
-        structuredText: null,
         plainText: rendered.text,
         diagnostics: rendered.diagnostics,
       };
@@ -233,164 +183,6 @@ export const buildClipboardPayload = (
   };
 };
 
-const getSceneBounds = (scene: StructuredNode[]): NodeBounds | null => {
-  if (scene.length === 0) return null;
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  scene.forEach((node) => {
-    const bounds = getStructuredNodeBounds(node);
-    minX = Math.min(minX, bounds.x);
-    minY = Math.min(minY, bounds.y);
-    maxX = Math.max(maxX, bounds.x + bounds.width - 1);
-    maxY = Math.max(maxY, bounds.y + bounds.height - 1);
-  });
-  return {
-    x: minX,
-    y: minY,
-    width: maxX - minX + 1,
-    height: maxY - minY + 1,
-  };
-};
-
-const collectStructuredSubtreeIds = (
-  node: StructuredNode,
-  childrenById: Map<string, StructuredNode[]>,
-  out: Set<string>
-) => {
-  if (out.has(node.id)) return;
-  out.add(node.id);
-  const children = childrenById.get(node.id) || [];
-  children.forEach((child) => collectStructuredSubtreeIds(child, childrenById, out));
-};
-
-export const selectStructuredClipboardNodes = (
-  scene: StructuredNode[],
-  selectedNodeIds: string[]
-) => {
-  if (selectedNodeIds.length === 0) {
-    return [...scene].sort((a, b) => a.order - b.order);
-  }
-
-  const selectedIds = new Set(selectedNodeIds);
-  const { roots, childrenById } = buildStructuredTree(scene);
-  const includedIds = new Set<string>();
-
-  const visit = (node: StructuredNode, hasSelectedAncestor: boolean) => {
-    const isSelected = selectedIds.has(node.id);
-    if (isSelected && !hasSelectedAncestor) {
-      collectStructuredSubtreeIds(node, childrenById, includedIds);
-      return;
-    }
-    const children = childrenById.get(node.id) || [];
-    children.forEach((child) => visit(child, hasSelectedAncestor || isSelected));
-  };
-
-  roots.forEach((root) => visit(root, false));
-  return scene
-    .filter((node) => includedIds.has(node.id))
-    .sort((a, b) => a.order - b.order);
-};
-
-const structuredSurfaceCellsFromScene = (
-  scene: StructuredNode[],
-  bounds: NodeBounds
-): RichTextCell[] => {
-  return Array.from(renderStructuredScene(scene).entries())
-    .map(([key, cell]) => {
-      const { x, y } = GridManager.fromKey(key);
-      return {
-        x: x - bounds.x,
-        y: y - bounds.y,
-        char: cell.char,
-        color: cell.color,
-        ...(cell.bgColor ? { bgColor: cell.bgColor } : {}),
-        ...(cloneTextAttributes(cell.attrs)
-          ? { attrs: cloneTextAttributes(cell.attrs) }
-          : {}),
-        ...(cell.href ? { href: cell.href } : {}),
-      };
-    })
-    .sort((a, b) => a.y - b.y || a.x - b.x);
-};
-
-export const buildStructuredClipboardPayload = (
-  scene: StructuredNode[],
-  selectedNodeIds: string[] = []
-): ClipboardPayload | null => {
-  const structuredNodes = selectStructuredClipboardNodes(scene, selectedNodeIds);
-  const bounds = getSceneBounds(structuredNodes);
-  if (!bounds) return null;
-
-  const surfaceCells = structuredSurfaceCellsFromScene(structuredNodes, bounds);
-  const surfaceGrid: GridMap = new Map(
-    surfaceCells.map((cell) => [
-      GridManager.toKey(cell.x, cell.y),
-      {
-        char: cell.char,
-        color: cell.color,
-        ...(cell.bgColor ? { bgColor: cell.bgColor } : {}),
-        ...(cloneTextAttributes(cell.attrs)
-          ? { attrs: cloneTextAttributes(cell.attrs) }
-          : {}),
-        ...(cell.href ? { href: cell.href } : {}),
-      },
-    ])
-  );
-  const selection = {
-    start: { x: 0, y: 0 },
-    end: { x: bounds.width - 1, y: bounds.height - 1 },
-  };
-  const rich: StructuredClipboardPayload = {
-    type: "ascii-metropolis-clipboard",
-    version: 2,
-    cells: surfaceCells,
-    surfaceCells,
-    structuredNodes,
-    bounds,
-  };
-
-  return {
-    plain: exportSelectionToString(createGridMapSource(surfaceGrid), [selection]),
-    rich: JSON.stringify(rich),
-  };
-};
-
-export const buildStructuredTextClipboardPayload = (
-  node: StructuredTextNode,
-  start: number,
-  end: number
-): ClipboardPayload | null => {
-  const text = getStructuredTextSlice(node, start, end);
-  if (!text) return null;
-  const rich: StructuredClipboardPayload = {
-    type: "ascii-metropolis-clipboard",
-    version: 2,
-    cells: [],
-    surfaceCells: [],
-    structuredNodes: [],
-    bounds: { x: 0, y: 0, width: 0, height: 0 },
-    structuredText: {
-      text,
-      style: cloneStructuredNodeStyle(node.style),
-      ...(getStructuredTextStyleRangesInRange(node.styleRanges, start, end)
-        ? {
-            styleRanges: getStructuredTextStyleRangesInRange(
-              node.styleRanges,
-              start,
-              end
-            ),
-          }
-        : {}),
-    },
-  };
-  return {
-    plain: text,
-    rich: JSON.stringify(rich),
-  };
-};
-
 interface WriteClipboardOptions {
   event?: ClipboardEvent;
   withRich?: boolean;
@@ -441,8 +233,7 @@ const parseRichClipboardText = (
   rawText: string
 ): {
   richCells: RichTextCell[] | null;
-  structured: StructuredClipboardData | null;
-  structuredText: StructuredTextClipboardData | null;
+  plainText: string | null;
 } | null => {
   if (!rawText) return null;
   try {
@@ -450,9 +241,7 @@ const parseRichClipboardText = (
       type?: string;
       cells?: RichTextCell[];
       surfaceCells?: RichTextCell[];
-      structuredNodes?: unknown[];
-      bounds?: Partial<NodeBounds>;
-      structuredText?: Partial<StructuredTextClipboardData>;
+      structuredText?: { text?: unknown };
     };
     if (parsed.type === "ascii-metropolis-clipboard") {
       const surfaceCells = Array.isArray(parsed.surfaceCells)
@@ -460,49 +249,15 @@ const parseRichClipboardText = (
         : Array.isArray(parsed.cells)
           ? parsed.cells
           : [];
-      const structuredText =
-        parsed.structuredText &&
-        typeof parsed.structuredText.text === "string" &&
-        parsed.structuredText.style &&
-        typeof parsed.structuredText.style.color === "string"
-          ? {
-              text: parsed.structuredText.text,
-              style: cloneStructuredNodeStyle(parsed.structuredText.style),
-              ...(Array.isArray(parsed.structuredText.styleRanges)
-                ? { styleRanges: parsed.structuredText.styleRanges }
-                : {}),
-            }
-          : null;
-      const structuredNodes = Array.isArray(parsed.structuredNodes)
-        ? parsed.structuredNodes
-            .map((node) => decodeStructuredNode(node))
-            .filter((node): node is StructuredNode => !!node)
-        : [];
-      const bounds =
-        parsed.bounds &&
-        typeof parsed.bounds.x === "number" &&
-        typeof parsed.bounds.y === "number" &&
-        typeof parsed.bounds.width === "number" &&
-        typeof parsed.bounds.height === "number"
-          ? {
-              x: parsed.bounds.x,
-              y: parsed.bounds.y,
-              width: parsed.bounds.width,
-              height: parsed.bounds.height,
-            }
-          : getSceneBounds(structuredNodes);
-
       return {
         richCells: surfaceCells,
-        structured:
-          structuredNodes.length > 0 && bounds
-            ? { structuredNodes, surfaceCells, bounds }
-            : null,
-        structuredText,
+        plainText: typeof parsed.structuredText?.text === "string"
+          ? parsed.structuredText.text
+          : null,
       };
     }
     if (!Array.isArray(parsed.cells)) return null;
-    return { richCells: parsed.cells, structured: null, structuredText: null };
+    return { richCells: parsed.cells, plainText: null };
   } catch {
     return null;
   }
@@ -510,8 +265,7 @@ const parseRichClipboardText = (
 
 const readRichClipboardCells = async (): Promise<{
   richCells: RichTextCell[] | null;
-  structured: StructuredClipboardData | null;
-  structuredText: StructuredTextClipboardData | null;
+  plainText: string | null;
 } | null> => {
   const items = await clipboard.readItems();
   if (items) {
@@ -539,9 +293,7 @@ export const readClipboardPayload = async (
   if (eventRichPayload) {
     return {
       richCells: eventRichPayload.richCells,
-      structured: eventRichPayload.structured,
-      structuredText: eventRichPayload.structuredText,
-      plainText: eventRichPayload.structuredText?.text ?? null,
+      plainText: eventRichPayload.plainText,
       diagnostics: [],
     };
   }
@@ -554,9 +306,7 @@ export const readClipboardPayload = async (
   if (richPayload) {
     return {
       richCells: richPayload.richCells,
-      structured: richPayload.structured,
-      structuredText: richPayload.structuredText,
-      plainText: richPayload.structuredText?.text ?? null,
+      plainText: richPayload.plainText,
       diagnostics: [],
     };
   }
@@ -565,8 +315,6 @@ export const readClipboardPayload = async (
   if (text === null) {
     return {
       richCells: null,
-      structured: null,
-      structuredText: null,
       plainText: null,
       diagnostics: [],
       error: "clipboard-failed" as const,
@@ -578,8 +326,6 @@ export const readClipboardPayload = async (
 
   return {
     richCells: null,
-    structured: null,
-    structuredText: null,
     plainText: null,
     diagnostics: [],
   };

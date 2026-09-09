@@ -169,9 +169,11 @@ describe("collaboration document contract", () => {
       mode: "freeform",
       roomId: freeform.roomId,
     });
-    expect(() =>
-      ensureCollaborationDocumentMeta({ ...freeform, mode: "structured" }, doc)
-    ).toThrow("Incompatible collaboration document");
+    doc.getMap("document-meta").set("mode", "structured");
+    expect(() => ensureCollaborationDocumentMeta(freeform, doc)).toThrow(
+      "Incompatible collaboration document"
+    );
+    doc.getMap("document-meta").set("mode", "freeform");
 
     doc.getMap("document-meta").set("documentVersion", 99);
     expect(() => ensureCollaborationDocumentMeta(freeform, doc)).toThrow(

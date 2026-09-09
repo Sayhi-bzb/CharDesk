@@ -53,7 +53,7 @@ it("shape changes reuse geometry across glyphs and repaint like a fresh frame", 
     for (let y = 0; y < viewport.height; y++) for (let x = 0; x < viewport.width; x++) {
       expect(frame.buffer.get(x, y)).toEqual(oracle.buffer.get(x, y));
     }
-    expect(frame.buffer.get(13, 0)?.style.backgroundColor).toBe("#191d22");
+    expect(frame.buffer.get(13, 0)?.style.backgroundColor).toBe("#FFFFFF");
     fresh.dispose();
   }
   runtime.dispose();

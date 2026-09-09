@@ -18,8 +18,6 @@ const createContext = (
   surface: createGridSurfaceReader(
     new Map([["0,0", { char: "A", color: "#ffffff" }]])
   ),
-  structuredScene: [],
-  structuredComponents: [],
   includeColor: true,
   showGrid: false,
   ...overrides,
@@ -52,34 +50,6 @@ describe("export service", () => {
     });
   });
 
-  it("round-trips structured scene content without flattening it", async () => {
-    const result = prepareTextExport(
-      createContext({
-        canvasMode: "structured",
-        surface: createGridSurfaceReader(
-          new Map([["0,0", { char: "X", color: "#ff0000" }]])
-        ),
-        structuredScene: [{
-          id: "box-1",
-          type: "box",
-          order: 1,
-          start: { x: 0, y: 0 },
-          end: { x: 2, y: 2 },
-          style: { color: "#ff0000" },
-        }],
-      }),
-      "chardesk"
-    );
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(await parseDocumentSessionSource(result.value.content)).toMatchObject({
-      mode: "structured",
-      scene: [{ id: "box-1", type: "box", order: 1 }],
-      components: [],
-    });
-  });
-
   it("builds text artifacts with stable metadata", () => {
     const result = prepareTextExport(createContext(), "txt");
 
@@ -93,33 +63,6 @@ describe("export service", () => {
     expect(result.value.content).toContain("A");
     expect(result.value.filename).toMatch(/^chardesk-\d+\.txt$/);
   });
-
-  it("includes arrow line markers in structured text exports", () => {
-    const result = prepareTextExport(
-      createContext({
-        canvasMode: "structured",
-        surface: createGridSurfaceReader(new Map()),
-        structuredScene: [
-          {
-            id: "arrow-1",
-            type: "line",
-            order: 1,
-            start: { x: 0, y: 0 },
-            end: { x: 4, y: 0 },
-            axis: "horizontal",
-            endMarker: "arrow",
-            style: { color: "#ffffff" },
-          },
-        ],
-      }),
-      "txt"
-    );
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.content).toContain('endMarker="arrow"');
-  });
-
 
   it("round-trips positioned ANSI slide content through a CharDesk document", async () => {
     const result = prepareTextExport(

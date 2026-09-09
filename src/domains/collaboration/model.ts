@@ -1,6 +1,6 @@
 export const COLLABORATION_DOCUMENT_VERSION = 6 as const;
 
-export type CollaborationCanvasMode = "freeform" | "structured";
+export type CollaborationCanvasMode = "freeform";
 
 export type CollaborationDescriptorV6 = {
   version: 6;
@@ -29,7 +29,7 @@ export type CollaborationDescriptor =
 export type CollaborationLinkParseResult =
   | { status: "none" }
   | { status: "valid"; descriptor: CollaborationDescriptor }
-  | { status: "retired"; provider: "p2p" }
+  | { status: "retired"; provider: "p2p" | "structured" }
   | { status: "unsupported"; version: number | null }
   | { status: "invalid" };
 
@@ -56,23 +56,19 @@ type CollaborationErrorKind =
 export type CollaborationIntegrityIssue = {
   channel:
     | "cell-plane-operations"
-    | "structured-scene"
-    | "structured-components"
     | "presence";
   key: string;
   pageId?: string;
   reason: string;
 };
 
-export type CollaborationPresenceSelection =
-  | {
+export type CollaborationPresenceSelection = {
       mode: "freeform";
       areas: Array<{
         start: { x: number; y: number };
         end: { x: number; y: number };
       }>;
-    }
-  | { mode: "structured"; nodeIds: string[] };
+    };
 
 export type CollaborationPresenceV1 = {
   version: 1;

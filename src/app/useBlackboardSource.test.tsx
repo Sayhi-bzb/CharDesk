@@ -15,8 +15,6 @@ const createHost = () => {
       name: "Blackboard",
       mode: "freeform",
       sourceBinding: { kind: "blackboard", provider: "local-reader", id: "local-reader" },
-      scene: [],
-      components: [],
       grid: [],
     }],
   });

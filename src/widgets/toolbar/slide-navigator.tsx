@@ -59,7 +59,7 @@ import { SlidePreviewCanvas } from "./slide-preview-canvas";
 import { CustomSlideSizeDialog } from "@/widgets/dialogs/custom-slide-size-dialog";
 
 const AddIcon = HOST_ICONOLOGY.sessionAction.create;
-const DuplicateIcon = HOST_ICONOLOGY.editorAction["structured-duplicate"];
+const DuplicateIcon = HOST_ICONOLOGY.editorAction.duplicate;
 const DeleteIcon = HOST_ICONOLOGY.sessionAction.close;
 const ConfigureIcon = HOST_ICONOLOGY.slideAction.configure;
 

@@ -12,10 +12,8 @@ const createDependencies = () => {
     tool: "brush",
     canvasMode: "freeform",
     brushChar: "#",
-    structuredScene: [],
     pointerContext: {
       hasCanvasRect: () => true,
-      resolveLocalPoint: (x, y) => ({ x, y }),
     },
     dragStart: vi.fn(() => {
       capture.setState({

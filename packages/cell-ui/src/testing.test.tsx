@@ -5,6 +5,10 @@ import {
   ListItem,
   Root,
   ScrollArea,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
   Text,
   createTestPilot,
   CellTextEditor,
@@ -13,6 +17,95 @@ import {
 } from "./index.js";
 
 describe("TestPilot", () => {
+  it("keeps Select open for item feedback and closes from the shared completion", async () => {
+    vi.useFakeTimers();
+    let open = false;
+    let selectedId = "dark";
+    const commands: WidgetCommand[] = [];
+    const renderSelect = () => (
+      <Root id="root">
+        <Select id="theme" style={{ width: 12 }}>
+          <SelectTrigger id="theme-trigger" expanded={open} controlsId={open ? "theme-content" : undefined}>
+            <Text>{selectedId === "light" ? "Light" : "Dark"}</Text>
+          </SelectTrigger>
+          {open ? (
+            <SelectContent id="theme-content">
+              <SelectItem id="light" selected={selectedId === "light"}><Text>Light</Text></SelectItem>
+              <SelectItem id="dark" selected={selectedId === "dark"}><Text>Dark</Text></SelectItem>
+            </SelectContent>
+          ) : null}
+        </Select>
+      </Root>
+    );
+    const pilot = createTestPilot({
+      viewport: { width: 14, height: 5 },
+      render: renderSelect,
+      onCommand: (command) => {
+        commands.push(command);
+        if (command.type === "set-expanded" && command.targetId === "theme-trigger") {
+          open = command.expanded;
+        } else if (command.type === "activate" && command.targetId === "light") {
+          selectedId = "light";
+        } else if (command.type === "dismiss" && command.targetId === "theme-content") {
+          open = false;
+        }
+      },
+    });
+
+    await pilot.click({ x: 1, y: 0 });
+    expect(open).toBe(true);
+    expect(pilot.frame.tree.nodes.get("theme-trigger")?.activationFlash).toBe(false);
+    await pilot.pointerDown({ x: 2, y: 2 });
+    expect(pilot.frame.tree.nodes.get("light")?.pressActive).toBe(true);
+    await pilot.pointerUp({ x: 2, y: 2 });
+    expect(selectedId).toBe("light");
+    expect(open).toBe(true);
+    expect(pilot.frame.tree.nodes.get("light")?.activationFlash).toBe(true);
+
+    vi.advanceTimersByTime(80);
+    expect(pilot.frame.tree.nodes.get("light")?.activationFlash).toBe(false);
+    await pilot.pressKey("ArrowDown");
+    expect(pilot.focus()).toBe("light");
+    expect(selectedId).toBe("light");
+    vi.advanceTimersByTime(160);
+    expect(open).toBe(false);
+    expect(pilot.frame.tree.nodes.has("theme-content")).toBe(false);
+    expect(commands.at(-1)).toEqual({ type: "dismiss", targetId: "theme-content" });
+    pilot.dispose();
+    vi.useRealTimers();
+  });
+
+  it("uses the root theme activation blink count", async () => {
+    vi.useFakeTimers();
+    const view = () => (
+      <Root id="root"><Button id="save" focused><Text>Save</Text></Button></Root>
+    );
+    const disabled = createTestPilot({
+      viewport: { width: 12, height: 1 },
+      render: view,
+      feedback: { activationBlinkCount: 0 },
+    });
+    await disabled.pointerDown({ x: 1, y: 0 });
+    await disabled.pointerUp({ x: 1, y: 0 });
+    expect(disabled.frame.tree.nodes.get("save")?.activationFlash).toBe(false);
+    disabled.dispose();
+
+    const single = createTestPilot({
+      viewport: { width: 12, height: 1 },
+      render: view,
+      feedback: { activationBlinkCount: 1 },
+    });
+    await single.pointerDown({ x: 1, y: 0 });
+    await single.pointerUp({ x: 1, y: 0 });
+    expect(single.frame.tree.nodes.get("save")?.activationFlash).toBe(true);
+    vi.advanceTimersByTime(80);
+    expect(single.frame.tree.nodes.get("save")?.activationFlash).toBe(false);
+    vi.advanceTimersByTime(160);
+    expect(single.frame.tree.nodes.get("save")?.activationFlash).toBe(false);
+    single.dispose();
+    vi.useRealTimers();
+  });
+
   it("exposes the complete transient press lifecycle without product state", async () => {
     vi.useFakeTimers();
     let focusedId = "save";
@@ -33,7 +126,7 @@ describe("TestPilot", () => {
     await pilot.pointerDown({ x: 1, y: 0 });
     expect(pilot.frame.tree.nodes.get("save")?.pressActive).toBe(true);
     expect(pilot.inspect({ x: 1, y: 0 }).cell?.style).toMatchObject({
-      color: "#1a1a1a",
+      color: "#000000",
       backgroundColor: "#FFFFFF",
     });
     await pilot.pointerMove({ x: 10, y: 0 });
@@ -44,7 +137,13 @@ describe("TestPilot", () => {
     expect(pilot.frame.tree.nodes.get("save")?.pressActive).toBe(false);
     expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(true);
     expect(activations).toBe(1);
-    vi.advanceTimersByTime(120);
+    vi.advanceTimersByTime(79);
+    expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(false);
+    vi.advanceTimersByTime(80);
+    expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(true);
+    vi.advanceTimersByTime(80);
     expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(false);
 
     await pilot.keyDown(" ", { code: "Space" });
@@ -54,7 +153,11 @@ describe("TestPilot", () => {
     expect(pilot.frame.tree.nodes.get("save")?.pressActive).toBe(false);
     expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(true);
     expect(activations).toBe(2);
-    vi.advanceTimersByTime(120);
+    vi.advanceTimersByTime(80);
+    expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(false);
+    vi.advanceTimersByTime(80);
+    expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(true);
+    vi.advanceTimersByTime(80);
     expect(pilot.frame.tree.nodes.get("save")?.activationFlash).toBe(false);
     pilot.dispose();
     vi.useRealTimers();

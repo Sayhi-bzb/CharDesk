@@ -29,8 +29,6 @@ export function useCanvasSessionExport() {
           canvasMode: session.mode,
           fontProfile,
           surface: session.surface,
-          structuredScene: session.structuredScene,
-          structuredComponents: session.structuredComponents,
           includeColor: true,
           showGrid: false,
           slideDeck: session.slideDeck,

@@ -1,14 +1,6 @@
-import * as Y from "yjs";
+import type * as Y from "yjs";
 import { getCanvasDocumentRoot, readCanvasPageOrder, readCanvasYPage, createCanvasYPage, writeCanvasDocumentMetadata } from "./canvasDocumentModel";
 import type { CanvasMutationEnvelope } from "./canvasMutationEnvelope";
-
-const applyPatch = <T extends { id: string }>(
-  map: Y.Map<T>,
-  patch: { upsert?: readonly T[]; deleteIds?: readonly string[] } | undefined
-) => {
-  patch?.deleteIds?.forEach((id) => map.delete(id));
-  patch?.upsert?.forEach((value) => map.set(value.id, value));
-};
 
 export const applyCanvasMutationEnvelopeToDocument = (
   doc: Y.Doc,
@@ -20,13 +12,6 @@ export const applyCanvasMutationEnvelopeToDocument = (
       readCanvasYPage(root, envelope.pageId)?.operations.push([envelope.operation]);
       return;
     }
-    if (envelope.kind === "structured") {
-      const page = readCanvasYPage(root, envelope.pageId);
-      if (!page) return;
-      applyPatch(page.scene, envelope.nodes);
-      applyPatch(page.components, envelope.components);
-      return;
-    }
     if (envelope.kind === "page-metadata") {
       root.pages.set(envelope.page.id, envelope.page);
       return;
@@ -35,8 +20,6 @@ export const applyCanvasMutationEnvelopeToDocument = (
       const current = readCanvasYPage(root, envelope.page.id);
       if (current) {
         current.operations.delete(0, current.operations.length);
-        current.scene.clear();
-        current.components.clear();
       }
       createCanvasYPage(root, envelope.page, `checkpoint-tail:${envelope.page.id}`);
       return;

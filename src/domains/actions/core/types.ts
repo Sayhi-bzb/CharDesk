@@ -22,17 +22,7 @@ export type EditorActionId =
   | "format-italic"
   | "format-underline"
   | "format-strike"
-  | "format-inverse"
-  | "structured-rename"
-  | "structured-bring-forward"
-  | "structured-send-backward"
-  | "structured-bring-to-front"
-  | "structured-send-to-back"
-  | "structured-duplicate"
-  | "structured-copy-hierarchy"
-  | "structured-split-horizontal"
-  | "structured-split-vertical"
-  | "structured-delete-divider";
+  | "format-inverse";
 
 export type EditorCommandId = EditorActionId;
 

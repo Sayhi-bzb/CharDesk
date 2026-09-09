@@ -30,7 +30,7 @@ describe('CollaborationControl', () => {
   const clipboardWrite = vi.fn();
 
   const seedSession = (
-    mode: 'freeform' | 'structured' = 'freeform',
+    mode: 'freeform' = 'freeform',
     collaboration?: CollaborationDescriptor
   ) => {
     act(() => {
@@ -209,13 +209,13 @@ describe('CollaborationControl', () => {
     const descriptor: CollaborationDescriptorV6 = {
       version: 6,
       documentVersion: 6,
-      mode: "structured",
+      mode: "freeform",
       provider: 'websocket',
       roomId: 'room-id-1234567890',
       key: 'room-key-1234567890123456789012345678901234567890',
       endpoint: 'wss://sync.example.com',
     };
-    seedSession('structured', descriptor);
+    seedSession('freeform', descriptor);
     snapshot = {
       descriptor,
       documentStatus: 'ready',

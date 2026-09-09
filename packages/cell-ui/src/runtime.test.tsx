@@ -82,7 +82,7 @@ describe("CellUiRuntime", () => {
       focusActive: true,
       focusVisible: false,
     });
-    expect(pointer.buffer.get(29, 0)?.style).toMatchObject({ backgroundColor: "#25292e" });
+    expect(pointer.buffer.get(29, 0)?.style).toMatchObject({ backgroundColor: "#E6E6E6" });
     expect(pointer.buffer.get(29, 0)?.style.bold).not.toBe(true);
 
     const movedAway = runtime.render(fileList(), {
@@ -102,7 +102,7 @@ describe("CellUiRuntime", () => {
     expect(hovered.layout).toBe(before.layout);
     expect(hovered.semantics.nodes).toBe(before.semantics.nodes);
     expect(hovered.invalidation.work.semantics).toBe("reused");
-    expect(hovered.buffer.get(29, 0)?.style.backgroundColor).toBe("#25292e");
+    expect(hovered.buffer.get(29, 0)?.style.backgroundColor).toBe("#E6E6E6");
     expect(hovered.buffer.get(0, 0)?.style.bold).not.toBe(true);
     const cleared = runtime.render(fileList());
     expect(cleared.buffer.get(29, 0)?.style.backgroundColor).toBeUndefined();
@@ -411,9 +411,9 @@ describe("CellUiRuntime", () => {
     );
     const expected = {
       ...(state.focused ? { bold: true } : {}),
-      ...(state.selected ? { color: "#FFFFFF", backgroundColor: "#1a1a1a" }
-        : state.focused ? { color: "#FFFFFF", backgroundColor: "#1a1a1a" } : {}),
-      ...(state.disabled ? { color: "#666666" } : {}),
+      ...(state.selected ? { color: "#FFFFFF", backgroundColor: "#000000" }
+        : state.focused ? { color: "#FFFFFF", backgroundColor: "#000000" } : {}),
+      ...(state.disabled ? { color: "#777777" } : {}),
     };
     expect(frame.buffer.get(0, 0)?.style).toEqual(expected);
     if (state.focused || state.selected) expect(frame.buffer.get(7, 0)?.style).toEqual(expected);

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { GridSnapshotSource } from "@/shared/utils/grid-source";
-import type { StructuredNode } from "@/domains/structured-content/public";
 import {
   resolveRemoteSelectionLayout,
   resolveRemoteSelectionRevealViewport,
@@ -31,9 +30,7 @@ describe("resolveRemoteSelectionVisuals", () => {
           ],
         },
       }],
-      canvasMode: "freeform",
       grid,
-      structuredScene: [],
       viewport,
     });
 
@@ -46,50 +43,6 @@ describe("resolveRemoteSelectionVisuals", () => {
     });
     expect(visuals[0].path).toContain("M10 20");
     expect(visuals[0].path).toContain("46 20");
-  });
-
-  it("outlines selected structured nodes and ignores missing ids", () => {
-    const scene: StructuredNode[] = [{
-      id: "note",
-      type: "text",
-      order: 0,
-      position: { x: 4, y: 3 },
-      text: "hello",
-      style: { color: "#000000" },
-    }];
-    const visuals = resolveRemoteSelectionVisuals({
-      peers: [{
-        clientId: 8,
-        name: "Lin",
-        color: "#bf3989",
-        selection: { mode: "structured", nodeIds: ["missing", "note"] },
-      }],
-      canvasMode: "structured",
-      grid: new GridSnapshotSource(),
-      structuredScene: scene,
-      viewport,
-    });
-
-    expect(visuals).toEqual([expect.objectContaining({
-      clientId: 8,
-      center: { x: 127, y: 160 },
-      path: "M82 140 H172 V180 H82 Z",
-    })]);
-  });
-
-  it("does not project selections from another canvas mode", () => {
-    expect(resolveRemoteSelectionVisuals({
-      peers: [{
-        clientId: 9,
-        name: "Kai",
-        color: "#1a7f37",
-        selection: { mode: "structured", nodeIds: ["node"] },
-      }],
-      canvasMode: "freeform",
-      grid: new GridSnapshotSource(),
-      structuredScene: [],
-      viewport,
-    })).toEqual([]);
   });
 
   it("keeps partially visible selections on canvas and tracks fully offscreen ones", () => {

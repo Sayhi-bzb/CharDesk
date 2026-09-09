@@ -1,3 +1,5 @@
+import type { WidgetNode, WidgetTree } from "./types.js";
+
 export type CellSliderRange = Readonly<{
   min: number;
   max: number;
@@ -92,4 +94,73 @@ export const cellSliderThumbOffset = (
   if (trackLength <= 1) return 0;
   const normalized = normalizeCellSliderValue(value, range);
   return Math.round((normalized - range.min) * (trackLength - 1) / (range.max - range.min));
+};
+
+export const normalizeCellRangeSliderValues = (
+  first: number,
+  second: number,
+  range: CellSliderRange
+): readonly [number, number] => {
+  const left = normalizeCellSliderValue(first, range);
+  const right = normalizeCellSliderValue(second, range);
+  return left <= right ? [left, right] : [right, left];
+};
+
+export const constrainCellRangeSliderThumbValue = (
+  value: number,
+  thumbIndex: 0 | 1,
+  values: readonly [number, number],
+  range: CellSliderRange
+): number => {
+  const normalized = normalizeCellSliderValue(value, range);
+  return thumbIndex === 0
+    ? Math.min(normalized, values[1])
+    : Math.max(normalized, values[0]);
+};
+
+export const cellRangeSliderThumbIndexAtCoordinate = (
+  coordinate: number,
+  trackStart: number,
+  trackLength: number,
+  values: readonly [number, number],
+  range: CellSliderRange,
+  focusedIndex: 0 | 1 | null = null
+): 0 | 1 => {
+  const first = trackStart + cellSliderThumbOffset(values[0], trackLength, range) + 0.5;
+  const second = trackStart + cellSliderThumbOffset(values[1], trackLength, range) + 0.5;
+  const firstDistance = Math.abs(coordinate - first);
+  const secondDistance = Math.abs(coordinate - second);
+  if (firstDistance === secondDistance) return focusedIndex ?? 0;
+  return firstDistance < secondDistance ? 0 : 1;
+};
+
+export type CellRangeSliderThumbContext = Readonly<{
+  parent: WidgetNode;
+  thumbs: readonly [WidgetNode, WidgetNode];
+  thumbIndex: 0 | 1;
+  values: readonly [number, number];
+  range: CellSliderRange;
+}>;
+
+export const resolveCellRangeSliderThumbContext = (
+  tree: WidgetTree,
+  thumbId: string
+): CellRangeSliderThumbContext | null => {
+  const thumb = tree.nodes.get(thumbId);
+  const parent = thumb?.kind === "range-slider-thumb" && thumb.parentId
+    ? tree.nodes.get(thumb.parentId)
+    : undefined;
+  if (parent?.kind !== "range-slider" || parent.children.length !== 2) return null;
+  const first = tree.nodes.get(parent.children[0]!);
+  const second = tree.nodes.get(parent.children[1]!);
+  if (first?.kind !== "range-slider-thumb" || second?.kind !== "range-slider-thumb") return null;
+  const thumbIndex = first.id === thumbId ? 0 : second.id === thumbId ? 1 : null;
+  if (thumbIndex === null) return null;
+  return {
+    parent,
+    thumbs: [first, second],
+    thumbIndex,
+    values: [first.sliderValue, second.sliderValue],
+    range: resolveCellSliderRange(parent.sliderMin, parent.sliderMax, parent.sliderStep),
+  };
 };

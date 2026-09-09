@@ -5,7 +5,7 @@ description: Authority, projection, history, persistence, and synchronization di
 
 | Scope | Authority | History | Sync |
 | --- | --- | --- | --- |
-| `document` | Ordered pages whose content kind is CellPlane or Structured in one Yjs document | Page-local local origins | When collaborative |
+| `document` | Ordered CellPlane pages in one Yjs document | Page-local local origins | When collaborative |
 | `workspace` | Tool, local interaction, active viewport, and preferences | No | No |
 | `session` | Canvas identity, presentation mode, saved viewport, and optional external-source binding | No | No |
 | `presence` | Remote identity, cursor, transient selection | No | Ephemeral |
@@ -34,8 +34,6 @@ use Registry focus as an implicit write target.
   operation in a Yjs transaction -> 128x64 spatial projection -> viewport query.
   Text runs remain compact through the write boundary; target-background inheritance
   is operation composition, not a per-cell read/modify/write pass.
-- Structured content: immutable scene edit -> changed-node Yjs patch -> changed-key
-  canvas projection -> editor state -> chunked viewport surface -> widgets.
 - Session activation: active ViewRuntime checkpoint -> catalog descriptor ->
   restored mode-authoritative Yjs document -> one editor-state activation patch.
   Content projection is already current; interaction resets against the newly
@@ -98,7 +96,7 @@ documents off-screen, then atomically activates them; temporary edits are retain
 a distinct recovered session. The mounted workspace becomes inert during that commit
 and is never replaced by a second loading screen.
 
-Every editable local session persists one Yjs document. A Freeform or Structured document has one page;
+Every editable local session persists one Yjs document. A Freeform document has one page;
 a Slide document has one page per slide. The runtime session list contains
 `CanvasSessionDescriptor` values only. The Canvas document owns page order, names, sizes,
 and content; the IndexedDB catalog stores the restore metadata needed before a document is resident. Collaborative
@@ -138,22 +136,21 @@ using most-recently-used order for the remaining slots. Releasing a document flu
 updates and disposes its runtime projections without deleting IndexedDB content. User deletion is a
 separate lifecycle operation. Reopening an evicted Canvas restores content but not its undo stack.
 
-Freeform documents contain only ordered `cell-plane-operations`. Canvas rendering queries
+Canvas pages contain only ordered `cell-plane-operations`. Canvas rendering queries
 occupied spans inside the viewport, and Minimap caches its reader projection by document
 revision; camera movement never materializes a grid snapshot. A legacy local `main-grid`
 is converted once into a bootstrap operation and then cleared. `CanvasSurfaceReader` is the read
 contract for rendering, interaction, selection, and export. `CanvasState.contentSurface` carries the
 active Reader plus a projection revision; it never carries a live `GridMap`. Freeform and Slide read
-their CellPlane indexes directly. Structured uses a disposable spatial index that projects only
-requested 128x64 chunks. A `GridMap` is created only at an explicit snapshot boundary such as
-serialization, clipboard payload construction, or a transient drag preview. Structured scene and
-components are persisted once, never with a duplicate cell grid. Chunk indexes and projections are
-never synchronized.
+their CellPlane indexes directly. A `GridMap` is created only at an explicit snapshot boundary such as
+serialization, clipboard payload construction, or a transient drag preview. Chunk indexes and
+projections are never synchronized.
 
-Freeform, Structured, and Slide session descriptors contain no content at runtime. Imports use
+Freeform and Slide session descriptors contain no content at runtime. Imports use
 `CanvasImportSnapshot`; persistence uses `CanvasSessionSnapshot`, while Slide export and playback
 use `SlideDeckSnapshot`. Switching sessions restores content from the matching Yjs document; the
-projector never writes content back into the descriptor. For Structured sessions, scene and
-components are authoritative and the rendering grid is derived on activation or projection.
+projector never writes content back into the descriptor. Retired Structured session, checkpoint,
+and `.chardesk` inputs are decoded only at migration boundaries and flattened into CellPlane content;
+old Structured collaboration links are rejected as retired.
 Slide runtime state uses `SlideDeckDescriptor`; preview, playback, resize, duplicate, persistence,
 and export materialize page content only at their explicit boundary.

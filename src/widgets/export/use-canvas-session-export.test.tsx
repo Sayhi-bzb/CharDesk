@@ -21,8 +21,6 @@ describe("useCanvasSessionExport", () => {
     name: "Alpha",
     mode: "freeform" as const,
     surface: {},
-    structuredScene: [],
-    structuredComponents: [],
     slideDeck: null,
   };
 

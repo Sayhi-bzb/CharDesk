@@ -9,24 +9,12 @@ import { normalizeBrushChar } from "@/shared/utils/characters";
 import type { GridPoint, Point } from "@/shared/types";
 import type { GridAddress, GridRange } from "@/domains/selection/public";
 import {
-  getNextStructuredOrder,
-  type StructuredSplitBoxHandle,
-  type StructuredTextSelection,
-} from "@/domains/structured-content/public";
-import {
   createCanvasInteractionPatch,
   type CanvasColorPickerTarget,
 } from "./canvasInteractionState";
 import {
   createClearedInteractionPatch,
   createClearedSelectionsPatch,
-  createEditingStructuredTextNodePatch,
-  createMovedStructuredGridFocusPatch,
-  createStructuredBoxSelectionPatch,
-  createStructuredGridFocusPatch,
-  createStructuredNodeSelectionPatch,
-  createStructuredSplitHandlePatch,
-  createStructuredTextSelectionPatch,
   createTextCursorPatch,
 } from "./transitions/canvasInteractionTransitions";
 import {
@@ -76,19 +64,12 @@ export const createCanvasFacade = (
 const call = createCall(store);
 const resolveAddress = () =>
   resolveEditorDocumentAddress(documents, store.getState());
-const documentCommands = createCanvasDocumentCommands(store, documents, {
-  applyStructuredScene: (...args) => call("applyStructuredScene", ...args),
-  replaceStructuredTextRange: (...args) =>
-    call("replaceStructuredTextRange", ...args),
-});
+const documentCommands = createCanvasDocumentCommands(store, documents);
 const selectionCommands = selectionCommandFactory({
   getState: store.getState,
   mutations: {
     deleteSelection: documentCommands.deleteSelection,
     erasePoints: documentCommands.erasePoints,
-    applyStructuredScene: (...args) => call("applyStructuredScene", ...args),
-    replaceStructuredTextRange: (...args) =>
-      call("replaceStructuredTextRange", ...args),
     pasteRichData: (...args) => call("pasteRichData", ...args),
     pasteRichRows: (...args) => call("pasteRichRows", ...args),
     updateInteraction: (update) =>
@@ -137,8 +118,6 @@ const commands = {
           tool,
           ...createCanvasInteractionPatch(state.interaction, {
             textCursor: null,
-            editingStructuredTextNodeId: null,
-            structuredTextSelection: null,
             hoveredGrid: null,
           }),
         };
@@ -162,44 +141,14 @@ const commands = {
           canvasColorPickerTarget: target,
         })
       ),
-    setStructuredContextPoint: (point: Point | null) =>
-      store.setState((state) =>
-        createCanvasInteractionPatch(state.interaction, {
-          structuredContextPoint: point ? { ...point } : null,
-        })
-      ),
     setHoveredGrid: (position: Point | null) =>
       store.setState((state) =>
         createCanvasInteractionPatch(state.interaction, {
           hoveredGrid: position,
         })
       ),
-    setStructuredGridFocus: (point: Point | null) =>
-      store.setState((state) =>
-        createStructuredGridFocusPatch(state.interaction, point)
-      ),
-    moveStructuredGridFocus: (dx: number, dy: number) =>
-      store.setState((state) =>
-        createMovedStructuredGridFocusPatch(state.interaction, dx, dy)
-      ),
     setTextCursor: (position: Point | null) =>
       store.setState((state) => createTextCursorPatch(state, position)),
-    setEditingStructuredTextNodeId: (id: string | null) =>
-      store.setState((state) => createEditingStructuredTextNodePatch(state, id)),
-    setStructuredTextSelection: (selection: StructuredTextSelection | null) =>
-      store.setState((state) =>
-        createStructuredTextSelectionPatch(state, selection)
-      ),
-    setSelectedStructuredNodeIds: (ids: string[]) =>
-      store.setState((state) => createStructuredNodeSelectionPatch(state, ids)),
-    setSelectedStructuredBoxId: (id: string | null) =>
-      store.setState((state) => createStructuredBoxSelectionPatch(state, id)),
-    setSelectedStructuredSplitHandle: (
-      handle: { nodeId: string; handle: StructuredSplitBoxHandle } | null
-    ) =>
-      store.setState((state) =>
-        createStructuredSplitHandlePatch(state, handle)
-      ),
   },
   grid: {
     replace: (entries: Parameters<CanvasDocumentRegistry["replaceCellPage"]>[1]) =>
@@ -225,10 +174,10 @@ const commands = {
         createShapeScratchLayerPatch(state, tool, start, end, options)
       ),
     fillArea: documentCommands.fillArea,
+    insertRows: (...args: Parameters<EditorState["pasteRichRows"]>) =>
+      call("pasteRichRows", ...args),
   },
   text: {
-    replaceStructuredRange: (...args: Parameters<EditorState["replaceStructuredTextRange"]>) =>
-      call("replaceStructuredTextRange", ...args),
     write: (...args: Parameters<EditorState["writeTextString"]>) =>
       call("writeTextString", ...args),
     pasteRichData: (...args: Parameters<EditorState["pasteRichData"]>) =>
@@ -257,39 +206,6 @@ const commands = {
     setTextAttributes: documentCommands.setSelectionTextAttributes,
     setForegroundColor: documentCommands.setSelectionForegroundColor,
     setBackgroundColor: documentCommands.setSelectionBackgroundColor,
-  },
-  structured: {
-    applyScene: (...args: Parameters<EditorState["applyStructuredScene"]>) =>
-      call("applyStructuredScene", ...args),
-    commitShape: (...args: Parameters<EditorState["commitStructuredShape"]>) =>
-      call("commitStructuredShape", ...args),
-    splitLeaf: (...args: Parameters<EditorState["splitStructuredSplitBoxLeaf"]>) =>
-      call("splitStructuredSplitBoxLeaf", ...args),
-    updateNode: (...args: Parameters<EditorState["updateStructuredNode"]>) =>
-      call("updateStructuredNode", ...args),
-    updateBox: (...args: Parameters<EditorState["updateStructuredBox"]>) =>
-      call("updateStructuredBox", ...args),
-    setTextAttributes: (...args: Parameters<EditorState["setStructuredTextAttributes"]>) =>
-      call("setStructuredTextAttributes", ...args),
-    setTextColor: (...args: Parameters<EditorState["setStructuredTextColor"]>) =>
-      call("setStructuredTextColor", ...args),
-    setTextBackground: (
-      ...args: Parameters<EditorState["setStructuredTextBackgroundColor"]>
-    ) => call("setStructuredTextBackgroundColor", ...args),
-    setNodeCharColor: (...args: Parameters<EditorState["setStructuredNodeCharColor"]>) =>
-      call("setStructuredNodeCharColor", ...args),
-    setSelectionPrimaryColor: (
-      ...args: Parameters<EditorState["setStructuredSelectionPrimaryColor"]>
-    ) => call("setStructuredSelectionPrimaryColor", ...args),
-    setSelectionStyle: (
-      ...args: Parameters<EditorState["setStructuredSelectionStyle"]>
-    ) => call("setStructuredSelectionStyle", ...args),
-    fillTextSelectionWithChar: (
-      ...args: Parameters<EditorState["fillStructuredTextSelectionWithChar"]>
-    ) => call("fillStructuredTextSelectionWithChar", ...args),
-    reorderSelection: (...args: Parameters<EditorState["reorderStructuredSelection"]>) =>
-      call("reorderStructuredSelection", ...args),
-    duplicateSelection: () => call("duplicateStructuredSelection"),
   },
   staticGrid: {
     setActiveCell: (address: GridAddress) =>
@@ -377,7 +293,6 @@ const commands = {
 } as const;
 const queries = {
   canCopyOrCut: selectionCommands.canCopyOrCut,
-  getNextStructuredOrder: () => getNextStructuredOrder(store.getState().structuredScene),
   getActiveDocumentId: documents.getActiveDocumentId,
   getCollaborationDocument: documents.getCollaborationDocument,
   getActiveCellCount: documents.getActiveCellCount,

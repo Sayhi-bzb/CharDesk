@@ -23,23 +23,14 @@ const managedKeyDownEvent = (
 
 const getEditorModel = () => {
   const state = useEditorStore.getState();
-  const { commands, queries } = testingCanvasRuntime;
+  const { commands } = testingCanvasRuntime;
   return {
     ...state,
     ...testingCanvasRuntime.viewport.getSnapshot(),
     setOffset: commands.viewport.setOffset,
-    moveStructuredGridFocus: commands.interaction.moveStructuredGridFocus,
     setTextCursor: commands.interaction.setTextCursor,
-    setStructuredGridFocus: commands.interaction.setStructuredGridFocus,
-    setSelectedStructuredNodeIds: commands.interaction.setSelectedStructuredNodeIds,
-    setSelectedStructuredSplitHandle:
-      commands.interaction.setSelectedStructuredSplitHandle,
-    setEditingStructuredTextNodeId:
-      commands.interaction.setEditingStructuredTextNodeId,
-    setStructuredTextSelection: commands.interaction.setStructuredTextSelection,
     setCanvasColorPickerTarget: commands.interaction.setColorPickerTarget,
     setHoveredGrid: commands.interaction.setHoveredGrid,
-    setStructuredContextPoint: commands.interaction.setStructuredContextPoint,
     moveStaticGridFocus: commands.staticGrid.moveFocus,
     moveStaticGridSelection: commands.selection.moveStaticRange,
     moveStaticGridFocusToEdge: commands.staticGrid.moveFocusToEdge,
@@ -51,7 +42,7 @@ const getEditorModel = () => {
     exitStaticGridTextEdit: commands.staticGrid.exitTextEdit,
     clearSelections: commands.selection.clear,
     fillSelectionsWithChar: commands.selection.fillWithChar,
-    getNextStructuredOrder: queries.getNextStructuredOrder,
+    insertRows: commands.grid.insertRows,
     contentReader: state.contentSurface.reader,
   };
 };
@@ -69,7 +60,6 @@ describe("useManagedCanvasInput", () => {
     const model = { ...getEditorModel() };
     const { result } = renderHook(
       () => useManagedCanvasInput({
-        canvasMode: "freeform",
         model,
         size: { width: 800, height: 600 },
         copyEnabled: false,
@@ -93,14 +83,12 @@ describe("useManagedCanvasInput", () => {
       interaction: {
         ...getEditorModel().interaction,
         textCursor: null,
-        selectedStructuredNodeIds: [],
       },
       fillSelectionsWithChar,
     };
     const { result } = renderHook(
       () =>
         useManagedCanvasInput({
-          canvasMode: "structured",
           model,
           size: { width: 800, height: 600 },
           onUndo: vi.fn(),
@@ -140,7 +128,6 @@ describe("useManagedCanvasInput", () => {
     const { result } = renderHook(
       () =>
         useManagedCanvasInput({
-          canvasMode: "freeform",
           model,
           size: { width: 800, height: 600 },
         }),
@@ -204,7 +191,6 @@ describe("useManagedCanvasInput", () => {
     const { result } = renderHook(
       () =>
         useManagedCanvasInput({
-          canvasMode: "freeform",
           model,
           size: { width: 800, height: 600 },
         }),
@@ -249,7 +235,6 @@ describe("useManagedCanvasInput", () => {
     const { result } = renderHook(
       () =>
         useManagedCanvasInput({
-          canvasMode: "freeform",
           model,
           size: { width: 800, height: 600 },
         }),
@@ -298,7 +283,6 @@ describe("useManagedCanvasInput", () => {
     });
     const { result } = renderHook(
       () => useManagedCanvasInput({
-        canvasMode: "freeform",
         model: { ...getEditorModel() },
         size: { width: 800, height: 600 },
       }),
@@ -347,7 +331,6 @@ describe("useManagedCanvasInput", () => {
     });
     const { result } = renderHook(
       () => useManagedCanvasInput({
-        canvasMode: "freeform",
         model: { ...getEditorModel() },
         size: { width: 800, height: 600 },
       }),
@@ -393,7 +376,6 @@ describe("useManagedCanvasInput", () => {
     const writeTextString = vi.fn();
     const { result } = renderHook(
       () => useManagedCanvasInput({
-        canvasMode: "freeform",
         inputIdentity: "canvas-a",
         model: { ...getEditorModel(), writeTextString },
         size: { width: 800, height: 600 },
@@ -425,12 +407,12 @@ describe("useManagedCanvasInput", () => {
     const backspaceText = vi.fn();
     const { result } = renderHook(
       () => useManagedCanvasInput({
-        canvasMode: "structured",
         model: {
           ...getEditorModel(),
           interaction: {
             ...getEditorModel().interaction,
             textCursor: { x: 1, y: 0 },
+            staticGridEditMode: "text-edit",
           },
           writeTextString,
           backspaceText,
@@ -470,7 +452,6 @@ describe("useManagedCanvasInput", () => {
     let inputIdentity = "canvas-a";
     const { result, rerender } = renderHook(
       () => useManagedCanvasInput({
-        canvasMode: "freeform",
         inputIdentity,
         model: { ...getEditorModel(), writeTextString },
         size: { width: 800, height: 600 },

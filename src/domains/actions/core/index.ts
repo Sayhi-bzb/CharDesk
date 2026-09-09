@@ -13,7 +13,6 @@ export {
   EDITOR_COMMAND_META,
   TOOLBAR_ACTION_META,
   CANVAS_CONTEXT_MENU,
-  STRUCTURED_CONTEXT_MENU,
 } from './catalog';
 
 // Runtime

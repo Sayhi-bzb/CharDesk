@@ -1,6 +1,6 @@
-export type CanvasMode = "freeform" | "structured" | "slide";
+export type CanvasMode = "freeform" | "slide";
 
-type StaticGridCanvasMode = "freeform" | "slide";
+type StaticGridCanvasMode = CanvasMode;
 
 export type CanvasModeCapabilities = Readonly<{
   navigate: boolean;
@@ -13,7 +13,7 @@ export type CanvasModeCapabilities = Readonly<{
 }>;
 
 export type CanvasModeDefinition = Readonly<{
-  surface: "cell-plane" | "structured-projection" | "slide-page";
+  surface: "cell-plane" | "slide-page";
   capabilities: CanvasModeCapabilities;
 }>;
 
@@ -26,16 +26,6 @@ export const CANVAS_MODE_DEFINITIONS = {
       ...NAVIGABLE,
       mutateCells: true,
       mutateScene: false,
-      managePages: false,
-      collaborate: true,
-    },
-  },
-  structured: {
-    surface: "structured-projection",
-    capabilities: {
-      ...NAVIGABLE,
-      mutateCells: false,
-      mutateScene: true,
       managePages: false,
       collaborate: true,
     },

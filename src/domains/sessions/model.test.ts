@@ -14,8 +14,6 @@ const slideSession = (sourceId?: string): SlideCanvasSessionSnapshot => ({
   ...(sourceId ? {
     sourceBinding: { kind: "blackboard" as const, provider: "browser-workspace" as const, id: sourceId },
   } : {}),
-  scene: [],
-  components: [],
   grid: [],
 });
 
@@ -26,8 +24,6 @@ describe("isSourceBackedCanvasSession", () => {
       name: "Board",
       mode: "freeform",
       sourceBinding: { kind: "blackboard", provider: "browser-workspace", id: "workspace-1" },
-      scene: [],
-      components: [],
       grid: [],
     })).toBe(true);
     expect(isSourceBackedCanvasSession(slideSession("workspace-1"))).toBe(true);

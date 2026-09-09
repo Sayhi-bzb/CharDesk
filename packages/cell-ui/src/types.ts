@@ -55,7 +55,14 @@ export type WidgetKind =
   | "text"
   | "button"
   | "checkbox"
+  | "toggle"
+  | "progress"
+  | "separator"
+  | "radio-group"
+  | "radio-item"
   | "slider"
+  | "range-slider"
+  | "range-slider-thumb"
   | "select"
   | "select-trigger"
   | "select-content"
@@ -91,10 +98,15 @@ export type WidgetNode = Readonly<{
   focusActive: boolean;
   focusVisible: boolean;
   hovered: boolean;
+  manipulating: boolean;
   pressActive: boolean;
   activationFlash: boolean;
+  confirming?: boolean;
   selected: boolean;
   checked: CellCheckboxState;
+  pressed: boolean;
+  radioValue: string | null;
+  progress: Readonly<{ value: number; max: number; valueText?: string }> | null;
   buttonVariant: import("./button.js").ButtonVariant;
   buttonSize: import("./button.js").ButtonSize;
   sliderValue: number;
@@ -242,7 +254,12 @@ export type SemanticNode = Readonly<{
     | "dialog"
     | "button"
     | "checkbox"
+    | "radio"
+    | "radiogroup"
+    | "progressbar"
+    | "separator"
     | "slider"
+    | "group"
     | "listbox"
     | "option"
     | "textbox"
@@ -262,6 +279,7 @@ export type SemanticNode = Readonly<{
   focused: boolean;
   selected?: boolean;
   checked?: boolean | "mixed";
+  pressed?: boolean;
   valueNow?: number;
   valueMin?: number;
   valueMax?: number;

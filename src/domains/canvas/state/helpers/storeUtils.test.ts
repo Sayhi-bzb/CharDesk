@@ -1,57 +1,47 @@
 import { describe, expect, it } from "vitest";
 import type { CanvasSessionDescriptor } from "@/domains/sessions/public";
-import type { StructuredNode } from "@/domains/structured-content/public";
 import { CanvasDocumentRegistry } from "../CanvasDocumentRegistry";
 import {
   resolveSessionDescriptorRuntime,
   resolveSessionDocumentRuntime,
 } from "./storeUtils";
 
-const textNode: StructuredNode = {
-  id: "text-1",
-  type: "text",
-  order: 1,
-  position: { x: 2, y: 3 },
-  text: "Cached",
-  style: { color: "#111111" },
-};
-
 describe("session runtime projections", () => {
-  it("resolves mode, tool, and viewport from the descriptor only", () => {
+  it("resolves mode, tool, and viewport from the descriptor", () => {
     const session: CanvasSessionDescriptor = {
-      id: "structured-cached",
-      name: "Structured Cached",
-      mode: "structured",
+      id: "freeform-cached",
+      name: "Freeform Cached",
+      mode: "freeform",
       viewport: { offset: { x: 4, y: 5 }, zoom: 2 },
     };
 
     expect(resolveSessionDescriptorRuntime(session, "brush")).toEqual({
-      nextMode: "structured",
-      nextTool: "select",
+      nextMode: "freeform",
+      nextTool: "brush",
       nextOffset: { x: 4, y: 5 },
       nextZoom: 2,
     });
   });
 
-  it("reads structured content from the document registry", () => {
+  it("does not attach a scene projection to CellPlane sessions", () => {
     const documents = new CanvasDocumentRegistry();
     const session: CanvasSessionDescriptor = {
-      id: "structured-cached",
-      name: "Structured Cached",
-      mode: "structured",
+      id: "freeform-cached",
+      name: "Freeform Cached",
+      mode: "freeform",
     };
     documents.activateDocument(session.id, {
-      mode: "structured",
-      grid: [],
-      scene: [textNode],
-      components: [],
+      mode: "freeform",
+      grid: [["2,3", { char: "C", color: "#111111" }]],
     });
 
-    const runtime = resolveSessionDocumentRuntime(documents, session, "select");
-
-    expect(runtime.nextScene).toEqual([textNode]);
-    expect(runtime.nextComponents).toEqual([]);
-    expect(runtime.nextSlideDeck).toBeNull();
+    expect(resolveSessionDocumentRuntime(documents, session, "select")).toEqual({
+      nextMode: "freeform",
+      nextTool: "select",
+      nextOffset: { x: 0, y: 0 },
+      nextZoom: 1,
+      nextSlideDeck: null,
+    });
     documents.dispose();
   });
 });

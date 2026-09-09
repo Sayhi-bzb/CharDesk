@@ -49,18 +49,18 @@ export const AGENT_NAVIGATION_CASES = [
       "src/domains/canvas/state/editorStore.ts",
     ],
     anchors: [
-      "src/domains/sessions/persistence.ts:migratePersistedStateToV5",
+      "src/domains/sessions/persistence.ts:migratePersistedStateToV7",
       "src/domains/canvas/state/editorStore.ts:migrate",
     ],
   },
   {
-    id: "structured-scene-update",
-    question: "Which capability owns structured node normalization, layout and rendering before a scene is committed to canvas?",
-    expectedOwner: "structured-content",
-    ownerPrefixes: ["src/domains/structured-content/"],
+    id: "legacy-structured-migration",
+    question: "Which capability flattens retired Structured Canvas documents into the active CellPlane model?",
+    expectedOwner: "canvas",
+    ownerPrefixes: ["src/domains/canvas/", "src/domains/legacy-structured/"],
     anchors: [
-      "src/domains/structured-content/model/scene.ts:normalizeScene",
-      "src/domains/canvas/state/editorStore.ts:applyStructuredScene",
+      "src/domains/canvas/state/migrateLegacyStructuredDocument.ts:migrateLegacyStructuredDocument",
+      "src/domains/legacy-structured/scene.ts:sceneToGridEntries",
     ],
   },
   {

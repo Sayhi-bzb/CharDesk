@@ -51,14 +51,7 @@ const isCurrentActivation = (
 ) => activationGenerations.get(documents) === generation;
 
 const getImportedSessionBaseName = (mode: CanvasImportSnapshot["mode"]) => {
-  switch (mode) {
-    case "structured":
-      return "Imported Structured";
-    case "freeform":
-      return "Imported Canvas";
-    case "slide":
-      return "Imported Slides";
-  }
+  return mode === "slide" ? "Imported Slides" : "Imported Canvas";
 };
 
 const resolveImportedSessionName = (
@@ -100,15 +93,10 @@ const createDocumentSeed = (
           grid: slide.grid,
         })),
         grid: [],
-        scene: [],
-        components: [],
       }
     : {
         mode: snapshot.mode,
-        grid: snapshot.mode === "freeform" ? snapshot.grid : [],
-        scene: snapshot.mode === "structured" ? snapshot.scene : [],
-        components:
-          snapshot.mode === "structured" ? snapshot.components : [],
+        grid: snapshot.grid,
       };
 
 const createBlankSnapshot = (
@@ -123,7 +111,7 @@ const createBlankSnapshot = (
           slideDeck ??
           createSlideDeck({ initialSlideId: `${sessionId}-slide-1` }),
       }
-    : { mode, grid: [], scene: [], components: [] };
+    : { mode, grid: [] };
 
 const replaceDocumentSnapshot = (
   documents: CanvasDocumentRegistry,
@@ -408,8 +396,6 @@ export const createSessionSlice = (
         documents.resetDocument(sessionId, {
           mode: "freeform",
           grid: [],
-          scene: [],
-          components: [],
         });
       }
       if (documents.getDocument(sessionId)) {

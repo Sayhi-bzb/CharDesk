@@ -24,7 +24,6 @@ export type EditorShortcutContext<State> = {
   target?: { kind: ShortcutTargetKind };
   canvas?: { mode?: string; readOnly?: boolean; hasTextCursor?: boolean };
   grid?: { editMode?: string; hasRange?: boolean };
-  structured?: { hasSelection?: boolean };
   presentation?: { active?: boolean };
   tool?: { id?: string | null };
 };

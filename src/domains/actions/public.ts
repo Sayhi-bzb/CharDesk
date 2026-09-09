@@ -2,7 +2,6 @@ export {
   APP_ACTION_META,
   EDITOR_COMMAND_META,
   CANVAS_CONTEXT_MENU,
-  STRUCTURED_CONTEXT_MENU,
   TOOLBAR_ACTION_META,
   isActionAccepted,
   resolveActiveToolbarAction,
@@ -28,7 +27,6 @@ export {
 export type { ShortcutDisplayStroke, ShortcutPlatform } from './core';
 export {
   buildClipboardPayload,
-  buildStructuredClipboardPayload,
   parseAnsiClipboardText,
   readClipboardPayload,
   writeClipboardPayload,

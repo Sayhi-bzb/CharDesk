@@ -110,8 +110,6 @@ describe("ApplicationEditorHost", () => {
         id: "external-source",
         name: "Board",
         mode: "freeform",
-        scene: [],
-        components: [],
         grid: [],
       }],
     });
@@ -128,8 +126,6 @@ describe("ApplicationEditorHost", () => {
         id: "external-source",
         name: "Board",
         mode: "freeform",
-        scene: [],
-        components: [],
         grid: [],
       }],
     });
@@ -146,8 +142,6 @@ describe("ApplicationEditorHost", () => {
       "external-source",
       {
         mode: "freeform",
-        scene: [],
-        components: [],
         grid: [["0,0", { char: "外", color: "#ffffff" }]],
       },
       { preserveViewport: true, resetHistory: true }

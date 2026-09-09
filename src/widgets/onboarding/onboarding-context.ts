@@ -6,7 +6,7 @@ export type OnboardingPhase =
   | "character-library"
   | "canvas-selector"
   | "create-menu"
-  | "structured-create"
+  | "canvas-create"
   | "preparing-template"
   | "template"
   | "drag"

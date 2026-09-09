@@ -12,6 +12,7 @@ import type {
   WidgetTree,
 } from "./types.js";
 import { isPortalKind } from "./widget-capabilities.js";
+import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
 
 export const intersectSceneRects = (left: CellRect, right: CellRect): CellRect => {
   const x = Math.max(left.x, right.x);
@@ -119,17 +120,34 @@ export const composeScene = (
     const selectPlacement = anchorBounds
       ? placeAnchoredOverlay(anchorBounds, layoutEntry.rect, overlayViewport)
       : undefined;
+    const rangeSliderParent = widget.kind === "range-slider-thumb" && widget.parentId
+      ? tree.nodes.get(widget.parentId)
+      : undefined;
+    const rangeSliderParentEntry = rangeSliderParent?.kind === "range-slider"
+      ? entries.get(rangeSliderParent.id)
+      : undefined;
+    const rangeThumbX = rangeSliderParent && rangeSliderParentEntry
+      ? rangeSliderParentEntry.decorationBounds.x + cellSliderThumbOffset(
+          widget.sliderValue,
+          rangeSliderParentEntry.decorationBounds.width,
+          resolveCellSliderRange(
+            rangeSliderParent.sliderMin,
+            rangeSliderParent.sliderMax,
+            rangeSliderParent.sliderStep,
+          ),
+        )
+      : undefined;
     const bounds: CellRect = {
-      x: widget.kind === "overlay"
+      x: rangeThumbX ?? (widget.kind === "overlay"
         ? widget.overlayPosition!.x
         : widget.kind === "select-content"
           ? selectPlacement!.bounds.x
-          : origin.x + layoutEntry.rect.x,
-      y: widget.kind === "overlay"
+          : origin.x + layoutEntry.rect.x),
+      y: rangeSliderParentEntry?.decorationBounds.y ?? (widget.kind === "overlay"
         ? widget.overlayPosition!.y
         : widget.kind === "select-content"
           ? selectPlacement!.bounds.y
-          : origin.y + layoutEntry.rect.y,
+          : origin.y + layoutEntry.rect.y),
       width: selectPlacement?.bounds.width ?? layoutEntry.rect.width,
       height: selectPlacement?.bounds.height ?? layoutEntry.rect.height,
     };
@@ -187,7 +205,7 @@ export const composeScene = (
     entries.set(id, entry);
     if (entry.paintVisible) paintList.push(id);
 
-    const childClip = contentClip;
+    const childClip = widget.kind === "range-slider" ? outerClip : contentClip;
     const childOrigin = widget.kind === "scroll-area" || widget.kind === "select-content"
       ? {
           x: bounds.x - widget.scrollOffset.x,

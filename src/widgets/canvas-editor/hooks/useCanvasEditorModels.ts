@@ -12,15 +12,12 @@ import { useShallow } from "zustand/react/shallow";
 import { useCanvasViewOptional } from '../engine/CanvasWorkspace';
 import type { CanvasSessionDescriptor } from '@/domains/sessions/public';
 import { useMemo, useSyncExternalStore } from 'react';
-import { createStructuredSceneSurface } from '@/domains/structured-content/public';
 
 type SessionContent = Pick<
   CanvasState,
   | 'activeCanvasId'
   | 'canvasMode'
   | 'slideDeck'
-  | 'structuredScene'
-  | 'structuredComponents'
 > & {
   contentReader: CanvasSurfaceReader;
   contentRevision: number;
@@ -51,25 +48,15 @@ const resolveSessionContent = (
       canvasMode: session.mode,
       slideDeck,
       ...contentModel(contentReader),
-      structuredScene: [],
-      structuredComponents: [],
     };
   }
-  const seed = session.mode === 'structured'
-    ? documents.getDocumentSeed(session.id, session.mode)
-    : null;
-  const structuredScene = seed?.scene ?? [];
-  const contentReader = session.mode === 'structured'
-    ? createStructuredSceneSurface(structuredScene)
-    : documents.getContentReader(session.id) ??
-      createGridSurfaceReader(new Map());
+  const contentReader = documents.getContentReader(session.id) ??
+    createGridSurfaceReader(new Map());
   return {
     activeCanvasId: session.id,
     canvasMode: session.mode,
     slideDeck: null,
     ...contentModel(contentReader),
-    structuredScene,
-    structuredComponents: seed?.components ?? [],
   };
 };
 
@@ -78,7 +65,6 @@ export const useCanvasEditorModels = () => {
   const {
     commands: canvasCommands,
     documents,
-    queries: canvasQueries,
   } = canvas;
   const canvasView = useCanvasViewOptional();
   const fallbackViewport = useSyncExternalStore(
@@ -103,7 +89,6 @@ export const useCanvasEditorModels = () => {
       brushBackgroundColor: state.brushBackgroundColor,
       contentReader: state.contentSurface.reader,
       contentRevision: state.contentSurface.revision,
-      structuredScene: state.structuredScene,
       interaction: state.interaction,
     }))
   );
@@ -144,7 +129,6 @@ export const useCanvasEditorModels = () => {
     setViewport: canvasView?.setViewport ?? canvasCommands.viewport.setViewport,
     addScratchPoints: canvasCommands.grid.addScratchPoints,
     commitScratch: canvasCommands.grid.commitScratch,
-    commitStructuredShape: canvasCommands.structured.commitShape,
     setTextCursor: canvasCommands.interaction.setTextCursor,
     setStaticGridActiveCell: canvasCommands.staticGrid.setActiveCell,
     enterStaticGridTextEdit: canvasCommands.staticGrid.enterTextEdit,
@@ -160,15 +144,7 @@ export const useCanvasEditorModels = () => {
         : () => undefined,
     fillArea: canvasCommands.grid.fillArea,
     moveStaticGridSelection: canvasCommands.selection.moveStaticRange,
-    setStructuredGridFocus: canvasCommands.interaction.setStructuredGridFocus,
-    setStructuredContextPoint: canvasCommands.interaction.setStructuredContextPoint,
-    setSelectedStructuredNodeIds: canvasCommands.interaction.setSelectedStructuredNodeIds,
-    setSelectedStructuredSplitHandle: canvasCommands.interaction.setSelectedStructuredSplitHandle,
-    setEditingStructuredTextNodeId: canvasCommands.interaction.setEditingStructuredTextNodeId,
-    setStructuredTextSelection: canvasCommands.interaction.setStructuredTextSelection,
-    setStructuredTextColor: canvasCommands.structured.setTextColor,
-    applyStructuredScene: canvasCommands.structured.applyScene,
-    updateStructuredNode: canvasCommands.structured.updateNode,
+    insertRows: canvasCommands.grid.insertRows,
   };
   const rendererStore = useCanvasState(
     useShallow((state) => ({
@@ -179,7 +155,6 @@ export const useCanvasEditorModels = () => {
       tool: state.tool,
       canvasMode: state.canvasMode,
       slideDeck: state.slideDeck,
-      structuredScene: state.structuredScene,
       interaction: state.interaction,
     }))
   );
@@ -196,8 +171,6 @@ export const useCanvasEditorModels = () => {
     useShallow((state) => ({
       contentReader: state.contentSurface.reader,
       interaction: state.interaction,
-      structuredScene: state.structuredScene,
-      structuredComponents: state.structuredComponents,
       brushColor: state.brushColor,
     }))
   );
@@ -225,26 +198,18 @@ export const useCanvasEditorModels = () => {
     selectStaticGridColumn: canvasCommands.staticGrid.selectColumn,
     enterStaticGridTextEdit: canvasCommands.staticGrid.enterTextEdit,
     exitStaticGridTextEdit: canvasCommands.staticGrid.exitTextEdit,
-    moveStructuredGridFocus: canvasCommands.interaction.moveStructuredGridFocus,
     setTextCursor: canvasCommands.interaction.setTextCursor,
     setOffset: canvasView?.setOffset ?? canvasCommands.viewport.setOffset,
     consumePendingCameraPlacement: canvasCommands.viewport.consumePendingPlacement,
     fillSelectionsWithChar: canvasCommands.selection.fillWithChar,
     moveStaticGridSelection: canvasCommands.selection.moveStaticRange,
+    insertRows: canvasCommands.grid.insertRows,
     clearSelections: canvasCommands.selection.clear,
-    setStructuredGridFocus: canvasCommands.interaction.setStructuredGridFocus,
-    setSelectedStructuredNodeIds: canvasCommands.interaction.setSelectedStructuredNodeIds,
-    setSelectedStructuredSplitHandle: canvasCommands.interaction.setSelectedStructuredSplitHandle,
-    setEditingStructuredTextNodeId: canvasCommands.interaction.setEditingStructuredTextNodeId,
-    setStructuredTextSelection: canvasCommands.interaction.setStructuredTextSelection,
     setCanvasColorPickerTarget: canvasCommands.interaction.setColorPickerTarget,
     setHoveredGrid:
       !canvasView || canvasView.isActive
         ? canvasCommands.interaction.setHoveredGrid
         : () => undefined,
-    getNextStructuredOrder: canvasQueries.getNextStructuredOrder,
-    applyStructuredScene: canvasCommands.structured.applyScene,
-    setStructuredContextPoint: canvasCommands.interaction.setStructuredContextPoint,
   };
 
   return {

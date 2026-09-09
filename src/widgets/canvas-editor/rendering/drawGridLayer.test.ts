@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
+import type { GridCell } from "@/shared/types";
 
 import { CellPlaneIndex } from "@/domains/canvas/public";
 import { drawGridLayer, drawHoveredLinkDecoration } from "./drawGridLayer";
@@ -9,7 +10,12 @@ import { displayFontOptions } from "@/shared/fonts/catalog";
 describe("drawGridLayer", () => {
   it("updates cached entries when the effective profile changes without moving cells", () => {
     const cells = [{ char: "A", color: "#fff" }, { char: "╭", color: "#fff" }];
-    const reader = { query: function* () { yield { x: 0, y: 0, cells }; } } as unknown as CanvasSurfaceReader;
+    const reader = {
+      visit: (
+        _bounds: unknown,
+        visitor: (x: number, y: number, cell: GridCell) => void
+      ) => cells.forEach((cell, x) => visitor(x, 0, cell)),
+    } as unknown as CanvasSurfaceReader;
     const ctx = createContext();
     const samples: Array<{ char: string; font: string; x: number; y: number }> = [];
     vi.mocked(ctx.fillText).mockImplementation((char, x, y) => { samples.push({ char, font: ctx.font, x, y }); });
@@ -41,18 +47,15 @@ describe("drawGridLayer", () => {
     globalAlpha: 1,
   } as unknown as CanvasRenderingContext2D);
 
-  it("queries occupied spans instead of probing every viewport coordinate", () => {
-    const getCell = vi.fn();
-    const query = vi.fn(function* () {
-      yield {
-        x: 5,
-        y: 7,
-        cells: [{ char: "A", color: "#fff" }],
-      };
-    });
+  it("visits occupied cells instead of probing every viewport coordinate", () => {
+    const get = vi.fn();
+    const visit = vi.fn((
+      _bounds: unknown,
+      visitor: (x: number, y: number, cell: GridCell) => void
+    ) => visitor(5, 7, { char: "A", color: "#fff" }));
     const reader = {
-      getCell,
-      query,
+      get,
+      visit,
     } as unknown as CanvasSurfaceReader;
     const ctx = createContext();
 
@@ -64,30 +67,33 @@ describe("drawGridLayer", () => {
       { x: 0, y: 0 }
     );
 
-    expect(query).toHaveBeenCalledWith({ x: 1, y: 3, width: 20, height: 8 });
-    expect(getCell).not.toHaveBeenCalled();
+    expect(visit).toHaveBeenCalledWith(
+      { x: 1, y: 3, width: 20, height: 8 },
+      expect.any(Function)
+    );
+    expect(get).not.toHaveBeenCalled();
     expect(ctx.fillText).toHaveBeenCalledOnce();
   });
 
-  it("uses direct cell visitation when the reader provides it", () => {
+  it("uses the standard cell-source visit contract", () => {
     const query = vi.fn(function* () {
       yield { x: 0, y: 0, cells: [{ char: "Q", color: "#fff" }] };
     });
-    const visitCells = vi.fn((
+    const visit = vi.fn((
       _bounds: unknown,
-      visitor: (x: number, y: number, cell: { char: string; color: string }) => void
+      visitor: (x: number, y: number, cell: GridCell) => void
     ) => visitor(4, 6, { char: "V", color: "#fff" }));
     const ctx = createContext();
 
     drawGridLayer(
       ctx,
-      { query, visitCells } as unknown as CanvasSurfaceReader,
+      { query, visit } as unknown as CanvasSurfaceReader,
       { startX: 4, endX: 4, startY: 6, endY: 6 },
       1,
       { x: 0, y: 0 }
     );
 
-    expect(visitCells).toHaveBeenCalledWith(
+    expect(visit).toHaveBeenCalledWith(
       { x: 3, y: 6, width: 2, height: 1 },
       expect.any(Function)
     );
@@ -96,22 +102,19 @@ describe("drawGridLayer", () => {
   });
 
   it("draws glyphs at full fidelity at every zoom level", () => {
-    const query = vi.fn(function* () {
-      yield {
-        x: 0,
-        y: 0,
-        cells: [{
-          char: "A",
-          color: "#fff",
-          attrs: { bold: true, underline: true, strike: true },
-        }],
-      };
-    });
+    const visit = vi.fn((
+      _bounds: unknown,
+      visitor: (x: number, y: number, cell: GridCell) => void
+    ) => visitor(0, 0, {
+      char: "A",
+      color: "#fff",
+      attrs: { bold: true, underline: true, strike: true },
+    }));
     const ctx = createContext();
 
     drawGridLayer(
       ctx,
-      { query } as unknown as CanvasSurfaceReader,
+      { visit } as unknown as CanvasSurfaceReader,
       { startX: 0, endX: 0, startY: 0, endY: 0 },
       0.1,
       { x: 0, y: 0 }
@@ -151,11 +154,14 @@ describe("drawGridLayer", () => {
   });
 
   it("does not draw a single-width cell from the left query halo", () => {
-    const query = vi.fn(function* () {
-      yield { x: 0, y: 0, cells: [{ char: "A", color: "#fff" }] };
-      yield { x: 1, y: 0, cells: [{ char: "B", color: "#fff" }] };
+    const visit = vi.fn((
+      _bounds: unknown,
+      visitor: (x: number, y: number, cell: GridCell) => void
+    ) => {
+      visitor(0, 0, { char: "A", color: "#fff" });
+      visitor(1, 0, { char: "B", color: "#fff" });
     });
-    const reader = { query } as unknown as CanvasSurfaceReader;
+    const reader = { visit } as unknown as CanvasSurfaceReader;
     const ctx = createContext();
 
     drawGridLayer(

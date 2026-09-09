@@ -1,5 +1,4 @@
 import type { GridCell, Point } from "@/shared/types";
-import type { StructuredComponentInstance, StructuredNode } from "@/domains/structured-content/public";
 import type { CollaborationDescriptor } from "@/domains/collaboration/public";
 import type {
   SlideDeckSnapshot,
@@ -29,23 +28,15 @@ export type FreeformCanvasSessionDescriptor = CanvasSessionDescriptorBase & {
   mode: "freeform";
 };
 
-export type StructuredCanvasSessionDescriptor = CanvasSessionDescriptorBase & {
-  mode: "structured";
-  sourceBinding?: never;
-};
-
 export type SlideCanvasSessionDescriptor = CanvasSessionDescriptorBase & {
   mode: "slide";
 };
 
 export type CanvasSessionDescriptor =
   | FreeformCanvasSessionDescriptor
-  | StructuredCanvasSessionDescriptor
   | SlideCanvasSessionDescriptor;
 
 interface StaticCanvasSessionSnapshotContent {
-  scene: StructuredNode[];
-  components?: StructuredComponentInstance[];
   grid: [string, GridCell][];
 }
 
@@ -53,15 +44,9 @@ export type FreeformCanvasSessionSnapshot = CanvasSessionDescriptorBase &
   StaticCanvasSessionSnapshotContent &
   { mode: "freeform" };
 
-export type StructuredCanvasSessionSnapshot = CanvasSessionDescriptorBase &
-  StaticCanvasSessionSnapshotContent &
-  { mode: "structured"; sourceBinding?: never };
-
 export interface SlideCanvasSessionSnapshot extends CanvasSessionDescriptorBase {
   mode: "slide";
   slideDeck: SlideDeckSnapshot;
-  scene: [];
-  components?: [];
   grid: [];
 }
 
@@ -75,7 +60,6 @@ export type SourceBackedCanvasSessionSnapshot =
 
 export type CanvasSessionSnapshot =
   | FreeformCanvasSessionSnapshot
-  | StructuredCanvasSessionSnapshot
   | SlideCanvasSessionSnapshot;
 
 export type CanvasSessionRestoreRecord = Readonly<{
@@ -102,8 +86,6 @@ export const getCanvasSessionDescriptor = (
         mode: "freeform",
         ...(session.sourceBinding ? { sourceBinding: session.sourceBinding } : {}),
       };
-    case "structured":
-      return { ...metadata, mode: "structured" };
     case "slide":
       return {
         ...metadata,
@@ -120,8 +102,6 @@ export const getCanvasSessionFallbackSnapshot = (
     ? { mode: "slide", slideDeck: session.slideDeck }
     : {
         mode: session.mode,
-        scene: session.scene,
-        components: session.components ?? [],
         grid: session.grid,
       };
 
@@ -145,8 +125,6 @@ export function isSourceBackedCanvasSession(
 }
 
 type StaticCanvasImportSnapshotBase = {
-  scene: StructuredNode[];
-  components: StructuredComponentInstance[];
   grid: [string, GridCell][];
   name?: string;
 };
@@ -155,13 +133,8 @@ export type FreeformCanvasImportSnapshot = StaticCanvasImportSnapshotBase & {
   mode: "freeform";
 };
 
-export type StructuredCanvasImportSnapshot = StaticCanvasImportSnapshotBase & {
-  mode: "structured";
-};
-
 export type CanvasImportSnapshot =
   | FreeformCanvasImportSnapshot
-  | StructuredCanvasImportSnapshot
   | {
       mode: "slide";
       slideDeck: SlideDeckSnapshot;

@@ -52,7 +52,6 @@ describe("importCanvasSession", () => {
   it("clears document interaction when importing a session", async () => {
     setCanvasTestState({
       textCursor: { x: 3, y: 4 },
-      structuredGridFocus: { x: 5, y: 6 },
       staticGridEditMode: "text-edit",
       hoveredGrid: { x: 7, y: 8 },
       scratchLayer: new Map([

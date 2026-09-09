@@ -13,15 +13,10 @@ import {
   type CanvasSessionSnapshot,
 } from "@/domains/sessions/public";
 import type { SlideDeckSnapshot } from "@/domains/slides/public";
-import type {
-  StructuredComponentInstance,
-  StructuredNode,
-} from "@/domains/structured-content/public";
 import {
   createGridSurfaceReader,
   type CanvasSurfaceReader,
 } from "./cell-plane/model";
-import { createStructuredSceneSurface } from "@/domains/structured-content/public";
 import {
   materializeSlideDeckContent,
   readSlideDeckDescriptor,
@@ -62,8 +57,6 @@ export type CanvasSessionMaterialization = {
   name: string;
   mode: CanvasMode;
   surface: CanvasSurfaceReader;
-  structuredScene: StructuredNode[];
-  structuredComponents: StructuredComponentInstance[];
   slideDeck: SlideDeckSnapshot | null;
 };
 
@@ -203,8 +196,6 @@ export class CanvasRuntime {
         name: session.name,
         mode: session.mode,
         surface: createGridSurfaceReader(new Map(activeSlide?.grid ?? [])),
-        structuredScene: [],
-        structuredComponents: [],
         slideDeck,
       };
     }
@@ -217,25 +208,17 @@ export class CanvasRuntime {
         name: session.name,
         mode: session.mode,
         surface,
-        structuredScene: [],
-        structuredComponents: [],
         slideDeck: null,
       };
     }
 
     const seed = this.documents.getDocumentSeed(session.id, session.mode);
     if (!seed) return null;
-    const structuredScene = [...seed.scene];
-    const structuredComponents = [...(seed.components ?? [])];
     return {
       id: session.id,
       name: session.name,
       mode: session.mode,
-      surface: session.mode === "structured"
-        ? createStructuredSceneSurface(structuredScene)
-        : createGridSurfaceReader(new Map(seed.grid)),
-      structuredScene,
-      structuredComponents,
+      surface: createGridSurfaceReader(new Map(seed.grid)),
       slideDeck: null,
     };
   };

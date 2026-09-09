@@ -16,7 +16,7 @@ description: Capability owners, public contracts, and non-obvious boundaries.
 | Static-grid addresses, ranges and movement | [`selection`](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/domains/selection/public.ts) | Deterministic and independent of React, DOM events and browser coordinates |
 | Session identity, catalog schema and migrations | [`sessions`](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/domains/sessions/public.ts) | Owns IndexedDB catalog records and legacy decoding; Canvas owns Yjs document persistence coordination and runtime recovery |
 | Deck, slide mutation, dimensions and Markdown container | [`slides`](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/domains/slides/public.ts) | Owns page metadata and fences; explicit `chargraph` fences use the shared compiler, while Canvas owns page content, active projection, and crop/history coordination |
-| Structured nodes, geometry, layout and scene rendering | [`structured-content`](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/domains/structured-content/public.ts) | Model operations stay UI-independent; canvas applies a scene as one semantic mutation |
+| Retired Structured input migration | `legacy-structured` (private) | Read-only decoder used only by document, session, and Canvas migration boundaries; output is always CellPlane |
 
 Use the selected `public.ts` and nearest tests. Dependency rules are owned by
 [ownership and dependency direction](/development/architecture/ownership).

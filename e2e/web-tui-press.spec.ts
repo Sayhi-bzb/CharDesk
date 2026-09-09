@@ -31,10 +31,33 @@ test("discrete Cell controls share press and activation-flash feedback", async (
   await expect(buttonSurface).not.toHaveAttribute("data-cell-press-active");
   await page.mouse.move(point.x, point.y);
   await expect(buttonSurface).toHaveAttribute("data-cell-press-active", "component-button-save");
+  await buttonSurface.evaluate((element) => {
+    const probe = element as HTMLElement & {
+      __cellActivationFlashTransitions?: (string | null)[];
+    };
+    probe.__cellActivationFlashTransitions = [];
+    new MutationObserver(() => {
+      probe.__cellActivationFlashTransitions?.push(
+        probe.getAttribute("data-cell-activation-flash")
+      );
+    }).observe(probe, {
+      attributes: true,
+      attributeFilter: ["data-cell-activation-flash"],
+    });
+  });
   await page.mouse.up();
   await expect(buttonSurface).not.toHaveAttribute("data-cell-press-active");
-  await expect(buttonSurface).toHaveAttribute("data-cell-activation-flash", "component-button-save");
-  await expect(buttonSurface).not.toHaveAttribute("data-cell-activation-flash", { timeout: 1_000 });
+  await expect.poll(() => buttonSurface.evaluate((element) => (
+    element as HTMLElement & {
+      __cellActivationFlashTransitions?: (string | null)[];
+    }
+  ).__cellActivationFlashTransitions), { timeout: 1_000 }).toEqual([
+    "component-button-save",
+    null,
+    "component-button-save",
+    null,
+  ]);
+  await expect(buttonSurface).not.toHaveAttribute("data-cell-activation-flash");
   expect((await readCellProbe(buttonSurface)).text).not.toContain("Saved");
 
   await page.goto("/exp/web-tui/#/components/select");
@@ -45,7 +68,41 @@ test("discrete Cell controls share press and activation-flash feedback", async (
   await expect(page.getByRole("button", { name: "Theme" })).toHaveAttribute("aria-expanded", "true");
   await page.keyboard.up("Enter");
   await expect(selectSurface).not.toHaveAttribute("data-cell-press-active");
-  await expect(selectSurface).toHaveAttribute("data-cell-activation-flash", "component-select-trigger");
+  await expect(selectSurface).not.toHaveAttribute("data-cell-activation-flash");
+  await page.keyboard.press("ArrowDown");
+  await expect(selectSurface).toHaveAttribute("data-cell-focused", "component-select-system");
+  await selectSurface.evaluate((element) => {
+    const probe = element as HTMLElement & {
+      __cellSelectFlashTransitions?: (string | null)[];
+    };
+    probe.__cellSelectFlashTransitions = [];
+    new MutationObserver(() => {
+      probe.__cellSelectFlashTransitions?.push(
+        probe.getAttribute("data-cell-activation-flash")
+      );
+    }).observe(probe, {
+      attributes: true,
+      attributeFilter: ["data-cell-activation-flash"],
+    });
+  });
+  await page.keyboard.down("Enter");
+  await expect(page.getByRole("option", { name: "System" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("listbox", { name: "Theme options" })).toBeVisible();
+  await expect(selectSurface).toHaveAttribute("data-cell-press-active", "component-select-system");
+  await page.keyboard.up("Enter");
+  await expect(selectSurface).not.toHaveAttribute("data-cell-press-active");
+  await expect.poll(() => selectSurface.evaluate((element) => (
+    element as HTMLElement & {
+      __cellSelectFlashTransitions?: (string | null)[];
+    }
+  ).__cellSelectFlashTransitions), { timeout: 1_000 }).toEqual([
+    "component-select-system",
+    null,
+    "component-select-system",
+    null,
+  ]);
+  await expect(page.getByRole("listbox", { name: "Theme options" })).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Theme" })).toHaveAttribute("aria-expanded", "false");
 
   await page.goto("/exp/web-tui/#/components/checkbox");
   const checkboxSurface = page.getByLabel("Checkbox component");

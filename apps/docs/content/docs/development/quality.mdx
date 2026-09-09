@@ -25,14 +25,40 @@ architecture change, update the authority and guard together; do not add a local
 
 | Lane | Scope | Owner |
 | --- | --- | --- |
-| `check:quick` | Changed projects; no production build | Local iteration |
+| `check:quick` | Changed projects; Cell UI uses risk-scoped tests | Local iteration |
 | `check:pr -- --base <ref>` | Changed projects and their consumers | Pull requests |
 | `check:full` | Entire workspace, tests and production builds | `main` and release |
 
 Root Vitest files run in Node unless their filename ends in `.dom.test.ts` or
 `.dom.spec.ts`. React component tests (`.tsx`) run in JSDOM. CI exposes one stable
 `Verify` status while quality, workspace tests, Node tests, sharded DOM tests and
-builds run in parallel.
+builds run in parallel. Cell UI browser tests have a separate required lane;
+native macOS input-service tests remain an opt-in desktop check.
+
+### Local Cell UI feedback
+
+`npm run check:quick -- --file <path> [--file <path>]` uses only the supplied
+files as impact-analysis inputs, independently of other worktree edits. Without
+`--file`, branch and worktree changes apply, including deleted files and both
+sides of a rename. PR/full reject `--file`.
+
+Append `--dry-run` to inspect the exact task plan and selection reasons without
+executing checks. `--phase cell-e2e` selects just the browser lane. Every executed
+task reports wall time, including process startup; failure stops later tasks and
+still reports elapsed time. There is no cross-run result cache.
+
+[`verification-cell.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/verification-cell.mjs)
+owns the reviewed leaf helpers, shared-contract suites, and conservative fallback.
+Gallery CSS/configuration uses explicit routes rather than import-graph inference.
+Unknown or deleted Cell inputs fall back to whole-module verification; shared
+contracts use both Chromium and WebKit. A full package selection subsumes leaf
+tests, and unfiltered browser suites share one launch.
+
+For Cell-only quick runs, type checks, architecture guards and builds are deferred
+to PR/full; `--phase typecheck` still requests type checking explicitly. Local quick
+DOM tests use one process; merge lanes retain sharding. Quick feedback is not a
+replacement for the merge gate. Other products retain their existing verification
+policy.
 
 Route boundary, public-contract and cycle failures to
 [`scripts/check-domain-boundaries.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/check-domain-boundaries.mjs);

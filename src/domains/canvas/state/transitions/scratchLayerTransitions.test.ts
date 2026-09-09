@@ -95,15 +95,6 @@ describe("scratch-layer transitions", () => {
       bgColor: "#abcdef",
     });
 
-    const structuredPatch = createShapeScratchLayerPatch(
-      { ...createState(), canvasMode: "structured" },
-      "bg",
-      { x: 0, y: 0 },
-      { x: 0, y: 0 }
-    );
-    expect(structuredPatch.interaction.scratchLayer?.get("0,0")?.bgColor).toBe(
-      "#111111"
-    );
   });
 
   it.each(["box", "splitBox", "circle", "stepline", "line", "arrowLine"] as const)(

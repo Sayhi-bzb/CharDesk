@@ -5,7 +5,7 @@ import {
 } from "./editorHostProfile";
 
 describe("Editor Host contract", () => {
-  it.each(["freeform", "structured", "slide"] as const)(
+  it.each(["freeform", "slide"] as const)(
     "exposes editable %s behavior and surfaces",
     (mode) => {
       expect(resolveEditorHostContract(EDITOR_HOST_PROFILE, {

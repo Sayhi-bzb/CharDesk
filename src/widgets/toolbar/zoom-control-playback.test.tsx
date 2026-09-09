@@ -99,8 +99,6 @@ describe("ZoomControl slide playback", () => {
         },
       ],
       grid: [],
-      scene: [],
-      components: [],
     }, { replace: true });
     setCanvasTestState({
       canvasMode: "slide",

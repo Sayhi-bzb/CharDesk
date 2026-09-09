@@ -35,8 +35,6 @@ export const activateSlidePage = (
       activePageId: slideId,
       pages: [{ id: slideId, kind: "cell-plane", grid }],
       grid: [],
-      scene: [],
-      components: [],
     });
   } else {
     documents.ensurePage(

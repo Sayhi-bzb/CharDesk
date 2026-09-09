@@ -1,8 +1,14 @@
-import type { StructuredComponentInstance, StructuredNode } from "@/domains/structured-content/public";
+import {
+  decodeStructuredNode,
+  normalizeScene,
+  sceneToGridEntries,
+  type StructuredNode,
+} from "@/domains/legacy-structured/public";
 import type { CanvasMode } from "@/domains/sessions/public";
 import {
   decodeCellPlaneOperationRows,
   encodeCellPlaneOperation,
+  gridEntriesToCellPlaneOperation,
   isEncodedCellPlaneOperation,
   type EncodedCellPlaneOperation,
   type CellPlaneOperation,
@@ -27,37 +33,30 @@ type SnapshotOperation = {
   length: number;
 };
 
-type SnapshotPage =
-  | {
+type SnapshotPage = {
       kind: "cell-plane";
       descriptor: CanvasPageDescriptor;
       operations: SnapshotOperation[];
-    }
-  | {
+    };
+
+type LegacySnapshotPage = {
       kind: "structured";
-      descriptor: CanvasPageDescriptor;
+      descriptor: Omit<CanvasPageDescriptor, "kind"> & { kind: "structured" };
       scene: StructuredNode[];
-      components: StructuredComponentInstance[];
+      components?: unknown[];
     };
 
 type SnapshotManifest = {
   documentId: string;
-  mode: CanvasMode;
+  mode: CanvasMode | "structured";
   activePageId: string;
-  pages: SnapshotPage[];
+  pages: Array<SnapshotPage | LegacySnapshotPage>;
 };
 
-type CapturedPage =
-  | {
+type CapturedPage = {
       kind: "cell-plane";
       descriptor: CanvasPageDescriptor;
       operations: readonly CellPlaneOperation[];
-    }
-  | {
-      kind: "structured";
-      descriptor: CanvasPageDescriptor;
-      scene: StructuredNode[];
-      components: StructuredComponentInstance[];
     };
 
 type EncodedCanvasCheckpointSnapshot = {
@@ -79,18 +78,11 @@ export const encodeCanvasCheckpointSnapshot = async (
   const capturedPages = pageIds.flatMap((pageId): CapturedPage[] => {
     const page = readCanvasYPage(root, pageId);
     if (!page) return [];
-    return page.descriptor.kind === "structured"
-      ? [{
-          kind: "structured",
-          descriptor: page.descriptor,
-          scene: Array.from(page.scene.values()),
-          components: Array.from(page.components.values()),
-        }]
-      : [{
-          kind: "cell-plane",
-          descriptor: page.descriptor,
-          operations: page.operations.toArray(),
-        }];
+    return [{
+      kind: "cell-plane",
+      descriptor: page.descriptor,
+      operations: page.operations.toArray(),
+    }];
   });
   const storedMode = root.meta.get("mode");
   const storedActivePageId = root.meta.get("activePageId");
@@ -105,16 +97,6 @@ export const encodeCanvasCheckpointSnapshot = async (
     sliceStartedAt = performance.now();
   };
   for (const page of capturedPages) {
-    if (page.kind === "structured") {
-      pages.push({
-        kind: "structured",
-        descriptor: page.descriptor,
-        scene: page.scene,
-        components: page.components,
-      });
-      await yieldWhenNeeded();
-      continue;
-    }
     const operations: SnapshotOperation[] = [];
     for (let index = 0; index < page.operations.length; index += OPERATION_BATCH_SIZE) {
       const batch = page.operations.slice(index, index + OPERATION_BATCH_SIZE);
@@ -144,9 +126,9 @@ export const encodeCanvasCheckpointSnapshot = async (
     throw new Error(`Canvas checkpoint snapshot has no pages: ${documentId}`);
   }
   const mode: CanvasMode =
-    storedMode === "freeform" || storedMode === "structured" || storedMode === "slide"
+    storedMode === "freeform" || storedMode === "slide"
       ? storedMode
-      : pages[0]!.descriptor.kind === "structured" ? "structured" : "freeform";
+      : "freeform";
   const manifest: SnapshotManifest = {
     documentId,
     mode,
@@ -191,15 +173,25 @@ export const decodeCanvasCheckpointSnapshot = (
     new Uint8Array(buffer, 8, manifestLength)
   )) as SnapshotManifest;
   const source: CanvasCheckpointSource = {
-    mode: manifest.mode,
+    mode: manifest.mode === "structured" ? "freeform" : manifest.mode,
     activePageId: manifest.activePageId,
-    pages: manifest.pages.map((page): CanvasCheckpointSource["pages"][number] => page.kind === "structured"
-      ? {
-          descriptor: { ...page.descriptor, kind: "structured" },
-          scene: page.scene,
-          components: page.components,
-        }
-      : {
+    pages: manifest.pages.map((page): CanvasCheckpointSource["pages"][number] => {
+      if (page.kind === "structured") {
+        const scene = normalizeScene(
+          page.scene
+            .map(decodeStructuredNode)
+            .filter((node): node is StructuredNode => node !== null)
+        );
+        const operation = gridEntriesToCellPlaneOperation(
+          `legacy-checkpoint-flatten:${manifest.documentId}:${page.descriptor.id}`,
+          sceneToGridEntries(scene)
+        );
+        return {
+          descriptor: { ...page.descriptor, kind: "cell-plane" },
+          operations: operation ? [operation] : [],
+        };
+      }
+      return {
           descriptor: { ...page.descriptor, kind: "cell-plane" },
           operations: page.operations.map((operation): EncodedCellPlaneOperation => ({
             id: operation.id,
@@ -211,7 +203,8 @@ export const decodeCanvasCheckpointSnapshot = (
               operation.length
             ),
           })),
-        }),
+        };
+    }),
   };
   return { documentId: manifest.documentId, source };
 };

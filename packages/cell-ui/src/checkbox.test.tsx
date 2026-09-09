@@ -106,7 +106,7 @@ describe("Checkbox", () => {
 
     const hovered = runtime.render(checkbox, { hoveredId: "indicator" });
     expect([0, 1, 2, 3, 4].map((x) => hovered.buffer.get(x, 0)?.style.backgroundColor))
-      .toEqual(["#25292e", "#25292e", "#25292e", "#25292e", "#25292e"]);
+      .toEqual(["#000000", "#000000", "#000000", "#000000", "#000000"]);
     expect(hovered.buffer.get(5, 0)?.style.backgroundColor).toBeUndefined();
 
     runtime.dispose();
@@ -151,13 +151,12 @@ describe("Checkbox", () => {
     expect(focus.move(frame.tree, 1)).toBe("word-wrap");
 
     const hovered = runtime.render(checkboxes(), { hoveredId: "autosave" });
-    expect(hovered.buffer.get(autosave.width - 1, 0)?.style.backgroundColor).toBe("#25292e");
+    expect(hovered.buffer.get(autosave.width - 1, 0)?.style.backgroundColor).toBe("#000000");
     const focused = runtime.render(checkboxes(), { focusedId: "autosave" });
     expect(focused.buffer.get(autosave.width - 1, 0)?.style).toMatchObject({
-      backgroundColor: "#1a1a1a",
-      bold: true,
+      backgroundColor: "#000000",
     });
-    expect(frame.buffer.get(disabled.x + 1, disabled.y)?.style.color).toBe("#666666");
+    expect(frame.buffer.get(disabled.x + 1, disabled.y)?.style.color).toBe("#777777");
     runtime.dispose();
   });
 

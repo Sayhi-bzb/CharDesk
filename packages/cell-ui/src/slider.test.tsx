@@ -72,6 +72,50 @@ describe("Slider", () => {
     runtime.dispose();
   });
 
+  it("uses a thumb-only glyph for pointer hover while visible focus keeps priority", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
+    const normal = runtime.render(slider(35));
+    const hovered = runtime.render(slider(35), { hoveredId: "volume" });
+    const manipulating = runtime.render(slider(35), {
+      manipulatingIds: new Set(["volume"]),
+    });
+    const focusedAndHovered = runtime.render(slider(35), {
+      focusedId: "volume",
+      focusVisible: true,
+      hoveredId: "volume",
+    });
+
+    expect(normal.buffer.toText({ trimEnd: true })).toBe("━━━━━━━┃────────────");
+    expect(hovered.buffer.toText({ trimEnd: true })).toBe("━━━━━━━█────────────");
+    expect(manipulating.buffer.toText({ trimEnd: true })).toBe("━━━━━━━█────────────");
+    expect(manipulating.tree.nodes.get("volume")?.manipulating).toBe(true);
+    const disabledManipulating = runtime.render(slider(35, true), {
+      manipulatingIds: new Set(["volume"]),
+    });
+    expect(disabledManipulating.buffer.toText({ trimEnd: true })).toBe("━━━━━━━┃────────────");
+    expect(disabledManipulating.tree.nodes.get("volume")?.manipulating).toBe(false);
+    expect([...Array(20).keys()].map((x) => hovered.buffer.get(x, 0)?.style.backgroundColor))
+      .toEqual(Array(20).fill(undefined));
+    expect(focusedAndHovered.buffer.toText({ trimEnd: true })).toBe("━━━━━━━┃────────────");
+    expect(focusedAndHovered.buffer.get(0, 0)?.style).toMatchObject({
+      backgroundColor: "#000000",
+      bold: true,
+    });
+
+    const themed = new CellUiRuntime({
+      viewport: { width: 5, height: 1 },
+      theme: { sliderEmphasizedThumb: "@" },
+    });
+    expect(themed.render(
+      <Root id="root">
+        <Slider id="custom" label="Custom" value={50} style={{ width: 5 }} />
+      </Root>,
+      { manipulatingIds: new Set(["custom"]) },
+    ).buffer.toText({ trimEnd: true })).toBe("━━@──");
+    themed.dispose();
+    runtime.dispose();
+  });
+
   it("uses one controlled command path for keyboard, precise tap, and drag", async () => {
     let value = 50;
     const commands: unknown[] = [];
@@ -107,8 +151,14 @@ describe("Slider", () => {
     expect(pilot.text()).toBe(firstProjection);
 
     await pilot.pointerDown({ x: 9, y: 0 }, 2, { x: 9.5, y: 0.5 });
+    expect(pilot.frame.tree.nodes.get("volume")?.manipulating).toBe(true);
+    expect(pilot.text()).toContain("█");
     await pilot.pointerMove({ x: 15, y: 0 }, 2, { x: 15.5, y: 0.5 });
+    expect(pilot.frame.tree.nodes.get("volume")?.manipulating).toBe(true);
+    expect(pilot.text()).toContain("█");
     await pilot.pointerUp({ x: 15, y: 0 }, 2, { x: 15.5, y: 0.5 });
+    expect(pilot.frame.tree.nodes.get("volume")?.manipulating).toBe(false);
+    expect(pilot.text()).not.toContain("█");
     expect(value).toBe(79);
     expect(commands).toContainEqual({ type: "set-value", targetId: "volume", value: 79 });
     pilot.dispose();
@@ -132,7 +182,7 @@ describe("Slider", () => {
       .toEqual({ hoveredId: "volume", cursor: "pointer" });
     const focused = runtime.render(slider(35), { focusedId: "volume" });
     expect(focused.buffer.get(19, 0)?.style).toMatchObject({
-      backgroundColor: "#1a1a1a",
+      backgroundColor: "#000000",
       bold: true,
     });
 

@@ -42,8 +42,6 @@ export const parseCharDeskCanvasSource = async (
   const parsed = materializeCompiledCharDeskText(compiled);
   return {
     mode: "freeform",
-    scene: [],
-    components: [],
     grid: parsed.cells.map((cell) => [
       `${cell.x},${cell.y}`,
       {

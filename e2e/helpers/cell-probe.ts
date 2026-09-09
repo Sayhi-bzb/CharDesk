@@ -12,7 +12,7 @@ export const readCellMetrics = async (surface: Locator) => {
 
 export const readCellPixel = async (surface: Locator, x: number, y: number) => {
   const metrics = await readCellMetrics(surface);
-  return surface.locator("canvas").evaluate((canvas, { metrics, x, y }) =>
+  return surface.locator("canvas").first().evaluate((canvas, { metrics, x, y }) =>
     Array.from(canvas.getContext("2d")!.getImageData(
       Math.round(x * metrics.cellWidth * devicePixelRatio),
       Math.round(y * metrics.cellHeight * devicePixelRatio), 1, 1

@@ -7,16 +7,27 @@ import type { CellPoint, FrameSnapshot, WidgetId } from "./types.js";
 import { cellCenter } from "./scrollbar.js";
 import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
 import { isActionableKind, supportsPressFeedback } from "./widget-capabilities.js";
-import { cellSliderValueAtCoordinate, resolveCellSliderRange } from "./slider.js";
+import {
+  cellRangeSliderThumbIndexAtCoordinate,
+  cellSliderValueAtCoordinate,
+  constrainCellRangeSliderThumbValue,
+  resolveCellRangeSliderThumbContext,
+  resolveCellSliderRange,
+} from "./slider.js";
 
 export const validGestureCandidate = (frame: FrameSnapshot, candidate: GestureCandidate): boolean => {
   const node = frame.tree.nodes.get(candidate.targetId);
   const entry = frame.scene.entries.get(candidate.targetId);
   if (!node || node.disabled || !entry?.paintVisible) return false;
   if (candidate.slider) {
-    return node.kind === "slider"
-      && candidate.slider.trackStart === entry.decorationBounds.x
-      && candidate.slider.trackLength === entry.decorationBounds.width;
+    const track = node.kind === "slider"
+      ? entry.decorationBounds
+      : node.kind === "range-slider-thumb"
+        ? frame.scene.entries.get(node.parentId ?? "")?.decorationBounds
+        : undefined;
+    return !!track
+      && candidate.slider.trackStart === track.x
+      && candidate.slider.trackLength === track.width;
   }
   const anchor = candidate.scrollbar;
   if (!anchor) return true;
@@ -46,6 +57,21 @@ export const resolvePointerAppearance = (frame: FrameSnapshot, point: CellPoint)
     if (node.kind === "text-input" || node.kind === "text-area") {
       return { hoveredId: null, cursor: "default" };
     }
+    if (node.kind === "range-slider") {
+      const track = frame.scene.entries.get(node.id)?.decorationBounds;
+      const thumbs = node.children.map((childId) => frame.tree.nodes.get(childId)!);
+      if (!track || thumbs.length !== 2) return { hoveredId: null, cursor: "default" };
+      const focusedIndex = thumbs.findIndex((thumb) => thumb.focused);
+      const thumbIndex = cellRangeSliderThumbIndexAtCoordinate(
+        point.x + 0.5,
+        track.x,
+        track.width,
+        [thumbs[0]!.sliderValue, thumbs[1]!.sliderValue],
+        resolveCellSliderRange(node.sliderMin, node.sliderMax, node.sliderStep),
+        focusedIndex === 0 || focusedIndex === 1 ? focusedIndex : null,
+      );
+      return { hoveredId: thumbs[thumbIndex]!.id, cursor: "pointer" };
+    }
     if (isActionableKind(node.kind)) {
       return { hoveredId: id, cursor: "pointer" };
     }
@@ -60,10 +86,35 @@ export const gestureCandidatesForFrame = (
   point: CellPoint,
   precisePoint = cellCenter(point)
 ): readonly GestureCandidate[] => {
-  const item = path.find((id) => {
+  const directItem = path.find((id) => {
     const kind = frame.tree.nodes.get(id)?.kind;
     return kind ? isActionableKind(kind) : false;
   });
+  const rangeSlider = path
+    .map((id) => frame.tree.nodes.get(id))
+    .find((node) => node?.kind === "range-slider");
+  const rangeTrack = rangeSlider
+    ? frame.scene.entries.get(rangeSlider.id)?.decorationBounds
+    : undefined;
+  const rangeThumbs = rangeSlider?.children.map((id) => frame.tree.nodes.get(id)!);
+  const focusedRangeThumb = rangeThumbs?.findIndex((thumb) => thumb.focused) ?? -1;
+  const rangeThumbIndex = rangeSlider && rangeTrack && rangeThumbs?.length === 2
+    ? cellRangeSliderThumbIndexAtCoordinate(
+        precisePoint.x,
+        rangeTrack.x,
+        rangeTrack.width,
+        [rangeThumbs[0]!.sliderValue, rangeThumbs[1]!.sliderValue],
+        resolveCellSliderRange(
+          rangeSlider.sliderMin,
+          rangeSlider.sliderMax,
+          rangeSlider.sliderStep,
+        ),
+        focusedRangeThumb === 0 || focusedRangeThumb === 1 ? focusedRangeThumb : null,
+      )
+    : null;
+  const item = rangeThumbIndex !== null && rangeThumbs
+    ? rangeThumbs[rangeThumbIndex]!.id
+    : directItem;
   const scroll = path.find((id) => frame.scene.entries.get(id)?.scrollMetrics);
   const hit = hitTestCell(frame.scene, point);
   const metrics = scroll ? frame.scene.entries.get(scroll)?.scrollMetrics : null;
@@ -89,7 +140,9 @@ export const gestureCandidatesForFrame = (
   const sliderNode = item ? frame.tree.nodes.get(item) : undefined;
   const sliderBounds = sliderNode?.kind === "slider"
     ? frame.scene.entries.get(sliderNode.id)?.decorationBounds
-    : undefined;
+    : sliderNode?.kind === "range-slider-thumb"
+      ? frame.scene.entries.get(sliderNode.parentId ?? "")?.decorationBounds
+      : undefined;
   const slider = sliderBounds
     ? { trackStart: sliderBounds.x, trackLength: sliderBounds.width }
     : undefined;
@@ -132,13 +185,28 @@ export const commandForGestureSignal = (
   if (signal.kind === "tap" && signal.phase === "end") {
     const entry = frame.scene.entries.get(signal.targetId);
     const node = frame.tree.nodes.get(signal.targetId);
-    if (node?.kind === "slider" && entry) {
-      const value = cellSliderValueAtCoordinate(
+    if ((node?.kind === "slider" || node?.kind === "range-slider-thumb") && entry) {
+      const context = node.kind === "range-slider-thumb"
+        ? resolveCellRangeSliderThumbContext(frame.tree, node.id)
+        : null;
+      const track = context
+        ? frame.scene.entries.get(context.parent.id)?.decorationBounds
+        : entry.decorationBounds;
+      if (!track) return null;
+      const candidate = cellSliderValueAtCoordinate(
         (signal.precisePoint ?? cellCenter(signal.point)).x,
-        entry.decorationBounds.x,
-        entry.decorationBounds.width,
-        resolveCellSliderRange(node.sliderMin, node.sliderMax, node.sliderStep)
+        track.x,
+        track.width,
+        context?.range ?? resolveCellSliderRange(node.sliderMin, node.sliderMax, node.sliderStep)
       );
+      const value = context
+        ? constrainCellRangeSliderThumbValue(
+            candidate,
+            context.thumbIndex,
+            context.values,
+            context.range,
+          )
+        : candidate;
       return value === node.sliderValue
         ? null
         : { type: "set-value", targetId: node.id, value };
@@ -173,13 +241,24 @@ export const commandForGestureSignal = (
     && signal.slider
   ) {
     const node = frame.tree.nodes.get(signal.targetId);
-    if (!node || node.kind !== "slider") return null;
-    const value = cellSliderValueAtCoordinate(
+    if (!node || (node.kind !== "slider" && node.kind !== "range-slider-thumb")) return null;
+    const context = node.kind === "range-slider-thumb"
+      ? resolveCellRangeSliderThumbContext(frame.tree, node.id)
+      : null;
+    const candidate = cellSliderValueAtCoordinate(
       (signal.precisePoint ?? cellCenter(signal.point)).x,
       signal.slider.trackStart,
       signal.slider.trackLength,
-      resolveCellSliderRange(node.sliderMin, node.sliderMax, node.sliderStep)
+      context?.range ?? resolveCellSliderRange(node.sliderMin, node.sliderMax, node.sliderStep)
     );
+    const value = context
+      ? constrainCellRangeSliderThumbValue(
+          candidate,
+          context.thumbIndex,
+          context.values,
+          context.range,
+        )
+      : candidate;
     return value === node.sliderValue
       ? null
       : { type: "set-value", targetId: node.id, value };

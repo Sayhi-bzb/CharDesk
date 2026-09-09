@@ -7,22 +7,15 @@ import { useCanvasEditorModels } from './hooks/useCanvasEditorModels';
 import { CanvasContextMenuContent } from './CanvasContextMenuContent';
 import { CanvasSurface } from './CanvasSurface';
 import { CanvasColorSourceChooser } from './CanvasColorSourceChooser';
-import { StructuredTemplatePreviewOverlay } from './StructuredTemplatePreviewOverlay';
-import { useStructuredTemplateDrop } from './hooks/useStructuredTemplateDrop';
+import { CanvasTemplatePreviewOverlay } from './CanvasTemplatePreviewOverlay';
+import { useCanvasTemplateDrop } from './hooks/useCanvasTemplateDrop';
 import { useManagedCanvasInput } from './hooks/useManagedCanvasInput';
 import type { ManagedInputBatchCommitSample } from './hooks/ManagedInputBatchScheduler';
 import { useCanvasSpacePan } from './hooks/useCanvasSpacePan';
 import { ContextMenu, ContextMenuTrigger } from '@chardesk/ui';
-import { CANVAS_CONTEXT_MENU, STRUCTURED_CONTEXT_MENU } from '@/domains/actions/public';
-import { GridManager } from '@/shared/utils/grid';
+import { CANVAS_CONTEXT_MENU } from '@/domains/actions/public';
 import { DEFAULT_GRID_RENDER_METRICS } from '@/shared/metrics';
-import {
-  createStructuredSceneQuery,
-  isStructuredSplitBoxLineHandle,
-} from '@/domains/structured-content/public';
 import type { CanvasLinkHit } from './hooks/interaction/core/linkHitTesting';
-import type { StructuredMovePreview } from './hooks/useCanvasRenderer';
-import { isStaticGridMode } from '@/domains/sessions/public';
 import { useCanvasEngineRuntime } from './engine/useCanvasEngineRuntime';
 import { useCanvasViewOptional } from './engine/CanvasWorkspace';
 import { useCanvasCursor } from '@/shared/canvas-cursor/hooks';
@@ -70,7 +63,6 @@ export const CanvasEditor = ({
   const visualTheme = useHostVisualTheme(containerRef);
   const cursorPreference = useCanvasCursor();
   const [hoveredLink, setHoveredLink] = useState<CanvasLinkHit | null>(null);
-  const structuredMovePreviewRef = useRef<StructuredMovePreview | null>(null);
   const requestCanvasRenderRef = useRef<(() => void) | null>(null);
   const restoringManagedInputFocusRef = useRef(false);
   const size = useSize(containerRef);
@@ -90,18 +82,9 @@ export const CanvasEditor = ({
   const {
     offset,
     zoom,
-    setStructuredGridFocus,
-    setSelectedStructuredNodeIds,
-    setSelectedStructuredSplitHandle,
-    structuredScene,
-    setStructuredContextPoint,
     setTextCursor,
   } = editorStore;
-  const { selectedStructuredNodeIds, textCursor } = editorStore.interaction;
-  const structuredSceneQuery = useMemo(
-    () => createStructuredSceneQuery(structuredScene),
-    [structuredScene]
-  );
+  const { textCursor } = editorStore.interaction;
   const lastSlideViewRef = useRef<{
     sessionId: string;
     pageKey: string;
@@ -199,7 +182,7 @@ export const CanvasEditor = ({
     return () => { unsubscribe?.(); };
   }, [subscribeViewport]);
 
-  const structuredTemplateDrop = useStructuredTemplateDrop({
+  const canvasTemplateDrop = useCanvasTemplateDrop({
     canvasMode,
     containerRef,
     model: editorStore,
@@ -220,7 +203,6 @@ export const CanvasEditor = ({
     textareaStyle,
     textareaProps,
   } = useManagedCanvasInput({
-    canvasMode,
     inputIdentity: activeCanvasId,
     model: editorStore,
     size,
@@ -231,11 +213,7 @@ export const CanvasEditor = ({
     active,
     onManagedInputBatch: recordManagedInputBatch,
   });
-  const isCanvasTextEditing = isStaticGridMode(canvasMode)
-    ? editorStore.interaction.staticGridEditMode === 'text-edit'
-    : !!rendererStore.textCursor ||
-      !!rendererStore.editingStructuredTextNodeId ||
-      !!rendererStore.structuredTextSelection;
+  const isCanvasTextEditing = editorStore.interaction.staticGridEditMode === 'text-edit';
   const isTemporaryPanActive = useCanvasSpacePan({
     enabled:
       active &&
@@ -272,8 +250,6 @@ export const CanvasEditor = ({
     interactionModel,
     containerRef,
     setHoveredLink,
-    structuredMovePreviewRef,
-    requestCanvasRenderRef,
     runtime,
     effectiveCapabilities,
     canvasView?.viewId ?? 'single'
@@ -355,7 +331,6 @@ export const CanvasEditor = ({
     rendererModel,
     draggingSelection,
     staticRangeMovePreview,
-    structuredMovePreviewRef,
     hoveredLink,
     visualTheme,
     {
@@ -367,50 +342,13 @@ export const CanvasEditor = ({
     runtime
   );
 
-  const activeContextMenu =
-    canvasMode === 'structured' ? STRUCTURED_CONTEXT_MENU : CANVAS_CONTEXT_MENU;
   const availableContextMenu = useMemo(
-    () => filterCanvasContextMenuEntries(activeContextMenu, effectiveCapabilities),
-    [activeContextMenu, effectiveCapabilities],
+    () => filterCanvasContextMenuEntries(CANVAS_CONTEXT_MENU, effectiveCapabilities),
+    [effectiveCapabilities],
   );
   const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
     if (availableContextMenu.length === 0) {
       event.preventDefault();
-      return;
-    }
-    if (canvasMode !== 'structured') return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const point = GridManager.screenToGrid(
-      event.clientX - rect.left,
-      event.clientY - rect.top,
-      offset.x,
-      offset.y,
-      zoom
-    );
-    setStructuredContextPoint(point);
-
-    const hit = structuredSceneQuery.findHit(point);
-    if (!hit) {
-      setSelectedStructuredSplitHandle(null);
-      setStructuredGridFocus(point);
-      return;
-    }
-
-    if (hit.kind === 'splitBox' && hit.handle && isStructuredSplitBoxLineHandle(hit.handle)) {
-      setSelectedStructuredNodeIds([hit.node.id]);
-      setSelectedStructuredSplitHandle({ nodeId: hit.node.id, handle: hit.handle });
-      return;
-    }
-
-    setSelectedStructuredSplitHandle(null);
-    if (hit.kind === 'splitBox') {
-      setSelectedStructuredNodeIds([hit.node.id]);
-      return;
-    }
-    if (!selectedStructuredNodeIds.includes(hit.node.id)) {
-      setSelectedStructuredNodeIds([hit.node.id]);
     }
   };
 
@@ -422,16 +360,13 @@ export const CanvasEditor = ({
           contentCanvasRef={contentCanvasRef}
           interactionCanvasRef={interactionCanvasRef}
           surfaceGeometry={surfaceGeometry}
-          containerSize={size}
-          viewportFrame={viewportFrame}
           onContextMenu={handleContextMenu}
           onFocusCapture={activateCanvas}
           onPointerDownCapture={activateCanvas}
           onWheelCapture={activateCanvas}
           data-canvas-view-active={active ? 'true' : 'false'}
           style={{ cursor: cursor || undefined }}
-          interactionUi={active}
-          {...structuredTemplateDrop.surfaceProps}
+          {...canvasTemplateDrop.surfaceProps}
           onDoubleClick={handleDoubleClick}
           onPointerDown={onCanvasPointerDown}
           textareaRef={textareaRef}
@@ -439,7 +374,7 @@ export const CanvasEditor = ({
           textareaStyle={textareaStyle}
           textareaProps={textareaProps}
         >
-          <StructuredTemplatePreviewOverlay preview={structuredTemplateDrop.preview} zoom={zoom} />
+          <CanvasTemplatePreviewOverlay preview={canvasTemplateDrop.preview} zoom={zoom} />
           {colorSourceChoice && (
             <CanvasColorSourceChooser
               choice={colorSourceChoice}

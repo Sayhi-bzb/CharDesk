@@ -64,12 +64,18 @@ describe("useCellSelectState", () => {
     }));
     act(() => result.current.dispatch({ type: "activate", targetId: "system" }));
     expect(result.current).toMatchObject({
-      open: false,
-      focusedId: "theme-trigger",
+      open: true,
+      focusedId: "dark",
       selectedId: "system",
       selectedItem: items[3],
     });
     expect(selection).toHaveBeenCalledWith("system");
+    act(() => result.current.dispatch({ type: "dismiss", targetId: "theme-content" }));
+    expect(result.current).toMatchObject({
+      open: false,
+      focusedId: "theme-trigger",
+      selectedId: "system",
+    });
     expect(opened.mock.calls.map(([value]) => value)).toEqual([true, false, true, false]);
   });
 
@@ -99,8 +105,10 @@ describe("useCellSelectState", () => {
 
     act(() => result.current.dispatch({ type: "activate", targetId: "light" }));
     expect(selection).toHaveBeenLastCalledWith("light");
-    expect(opened).toHaveBeenLastCalledWith(false);
+    expect(opened).toHaveBeenLastCalledWith(true);
     expect(result.current).toMatchObject({ open: true, focusedId: "dark", selectedId: "dark" });
+    act(() => result.current.dispatch({ type: "dismiss", targetId: "theme-content" }));
+    expect(opened).toHaveBeenLastCalledWith(false);
     rerender({ selectedId: "light", open: false });
     expect(result.current).toMatchObject({
       open: false,

@@ -45,7 +45,7 @@ describe("Select", () => {
       .toBe(" Dark              ▾");
     expect(closed.buffer.get(0, 0)).toMatchObject({
       ownerId: "theme-trigger",
-      style: { backgroundColor: "#1a1a1a", bold: true },
+      style: { backgroundColor: "#000000" },
     });
 
     const open = runtime.render(selectView(true), { focusedId: "dark" });

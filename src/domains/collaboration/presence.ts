@@ -28,12 +28,6 @@ const decodeSelection = (
   if (!value) return undefined;
   if (value && typeof value === "object" && "mode" in value) {
     const selection = value as Partial<CollaborationPresenceSelection>;
-    if (selection.mode === "structured" && Array.isArray(selection.nodeIds)) {
-      const nodeIds = selection.nodeIds.filter((id): id is string => typeof id === "string");
-      return nodeIds.length === selection.nodeIds.length
-        ? { mode: "structured", nodeIds }
-        : undefined;
-    }
     if (selection.mode === "freeform" && Array.isArray(selection.areas)) {
       const areas = selection.areas.filter(
         (area): area is { start: { x: number; y: number }; end: { x: number; y: number } } =>
@@ -46,9 +40,6 @@ const decodeSelection = (
     return undefined;
   }
   if (!Array.isArray(value)) return undefined;
-  if (mode === "structured" && value.every((id) => typeof id === "string")) {
-    return { mode, nodeIds: value };
-  }
   if (
     mode === "freeform" &&
     value.every((area) =>

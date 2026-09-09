@@ -5,7 +5,6 @@ import {
   createPngBlobFromGrid,
   createSelectionPngBlob,
 } from "../formats/raster";
-import { exportStructuredF12Text } from "../formats/structuredText";
 import { exportToAnsi, exportToCharDesk, exportToString } from "../formats/text";
 import { exportSlideDeckBodyToMarkdown } from "../formats/slidesMarkdown";
 import { getExportFormatDefinition } from "./registry";
@@ -75,12 +74,7 @@ export const prepareTextExport = (
         return exportSucceeded(
           textArtifact(
             format,
-            context.canvasMode === "structured"
-              ? exportStructuredF12Text(
-                  context.structuredScene,
-                  context.structuredComponents
-                )
-              : exportToString(grid),
+            exportToString(grid),
             `chardesk-${getTimestamp()}.txt`,
             "text/plain;charset=utf-8"
           )
@@ -89,16 +83,7 @@ export const prepareTextExport = (
         if (context.canvasMode === "slide" && !context.slideDeck) {
           return exportFailed("canvas-unavailable");
         }
-        const body = context.canvasMode === "structured"
-          ? JSON.stringify(
-              {
-                scene: context.structuredScene,
-                components: context.structuredComponents,
-              },
-              null,
-              2
-            )
-          : context.canvasMode === "slide"
+        const body = context.canvasMode === "slide"
             ? exportSlideDeckBodyToMarkdown(context.slideDeck!, {
                 includeColor: context.includeColor,
               })

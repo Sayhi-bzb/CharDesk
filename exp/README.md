@@ -39,6 +39,7 @@
 | Cell Core | [`@chardesk/cell-core`](../packages/cell-core/README.md) | 逻辑 geometry、dense/sparse source、incremental changes、Frame 与字符快照 |
 | Widget runtime | [`@chardesk/cell-ui`](../packages/cell-ui/README.md) | React descriptors、layout、scene、events、widgets、semantics 与 testing |
 | Geometry / composition | [Compositor 契约](blueprints/compositor.md) | root geometry、clips、scroll、paint/hit order 与 invalidation |
+| Visual / interaction standard | [Classic Macintosh → Cell UI](blueprints/macintosh.md) | System 6–7 原则到 Cell-native Web UI 的翻译与边界 |
 | Widget behavior | [Widget 规范](blueprints/widgets.md) | 状态语言、keyboard/pointer 和 scroll/editor 行为 |
 | Semantics | [SemanticSnapshot 契约](blueprints/semantics.md) | 独立 reading tree、actions 与 DOM projection |
 | Canvas presentation | [`@chardesk/rendering`](../packages/rendering/README.md) | 标准 CellFrame 到 Canvas px、字体解析与网格审计 |

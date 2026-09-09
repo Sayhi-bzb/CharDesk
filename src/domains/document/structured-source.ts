@@ -5,7 +5,7 @@ import {
   sceneToGridEntries,
   type StructuredComponentInstance,
   type StructuredNode,
-} from "@/domains/structured-content/public";
+} from "@/domains/legacy-structured/public";
 import type { CanvasImportSnapshot } from "@/domains/sessions/public";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -82,10 +82,9 @@ export const parseStructuredDocumentBody = (
     nodeIds.add(node.id);
   });
   const components = validateComponents(value.components, scene);
+  void components;
   return {
-    mode: "structured",
-    scene,
-    components,
+    mode: "freeform",
     grid: sceneToGridEntries(scene),
   };
 };

@@ -39,6 +39,23 @@ export function checkCellArchitecture(content, file) {
 
   if (!productionSource(file)) return violations;
   const moduleImports = imports(content);
+  const cellUiModule = file.startsWith("packages/cell-ui/src/") ? file.slice("packages/cell-ui/src/".length) : null;
+  const behaviorModules = ["primitive-behavior.ts", "interaction-controller.ts", "interaction.ts", "press.ts", "gestures.ts", "visual-state.ts"];
+  if (behaviorModules.includes(cellUiModule)) {
+    if (moduleImports.some((dependency) => /(?:browser|theme|visual\.js|primitive-appearance|paint|rendering\/canvas)/.test(dependency))) {
+      report("Cell behavior must not depend on host, theme, appearance, or Canvas rendering");
+    }
+    if (/\b(?:document|window|HTMLElement|HTMLCanvasElement)\b/.test(content)) report("Cell behavior must not use DOM globals");
+  }
+  if (cellUiModule === "primitive-appearance.ts" || cellUiModule === "confirmation-sequence.ts") {
+    const allowed = cellUiModule === "primitive-appearance.ts"
+      ? ["./types.js", "./theme.js"] : ["./activation-feedback-config.js"];
+    if (moduleImports.some((dependency) => !allowed.includes(dependency))) report("Cell appearance and feedback timing must not depend on behavior or hosts");
+    if (/\b(?:WidgetCommand|dispatch|onCommand)\b/.test(content)) report("Cell appearance and feedback timing must not dispatch commands");
+  }
+  if (cellUiModule === "paint.ts" && /\b(?:WidgetCommand|onCommand|commandForInput|CellInteractionController)\b/.test(content)) {
+    report("Cell painting must not own interaction transitions");
+  }
   if (file.startsWith("packages/cell-core/src/")) {
     for (const dependency of moduleImports) {
       if (forbiddenCoreDependency(dependency)) {

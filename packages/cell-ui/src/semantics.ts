@@ -11,6 +11,7 @@ import {
   isSelectableKind,
   isTextEditorKind,
 } from "./widget-capabilities.js";
+import { resolveCellRangeSliderThumbContext } from "./slider.js";
 
 export type SemanticAuditIssue = Readonly<{
   nodeId: WidgetId | null;
@@ -53,6 +54,8 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
       || parent.kind === "grid-row"
       || parent.kind === "select-content"
       || parent.kind === "overlay"
+      || parent.kind === "range-slider"
+      || parent.kind === "radio-group"
     ) return parent.id;
     parentId = parent.parentId;
   }
@@ -63,7 +66,14 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
   if (node.kind === "overlay") return "dialog";
   if (node.kind === "button") return "button";
   if (node.kind === "checkbox") return "checkbox";
+  if (node.kind === "toggle") return "button";
+  if (node.kind === "radio-group") return "radiogroup";
+  if (node.kind === "radio-item") return "radio";
+  if (node.kind === "progress") return "progressbar";
+  if (node.kind === "separator") return "separator";
   if (node.kind === "slider") return "slider";
+  if (node.kind === "range-slider") return "group";
+  if (node.kind === "range-slider-thumb") return "slider";
   if (node.kind === "select-trigger") return "button";
   if (node.kind === "select-content") return "listbox";
   if (node.kind === "select-item") return "option";
@@ -128,6 +138,9 @@ export const createSemanticSnapshot = (
     if (modalId && !isDescendantOf(tree, node.id, modalId)) continue;
     const parentId = semanticParent(tree, node);
     const sceneEntry = scene.entries.get(node.id);
+    const rangeThumb = node.kind === "range-slider-thumb"
+      ? resolveCellRangeSliderThumbContext(tree, node.id)
+      : null;
     const semantic: SemanticNode = {
       id: node.id,
       semanticParentId: parentId,
@@ -139,14 +152,23 @@ export const createSemanticSnapshot = (
       hidden: sceneEntry === undefined,
       focused: node.focused,
       ...(selectable(node) ? { selected: node.selected } : {}),
-      ...(node.kind === "checkbox"
+      ...(node.kind === "toggle" ? { pressed: node.pressed } : {}),
+      ...(node.progress ? { valueNow: node.progress.value, valueMin: 0, valueMax: node.progress.max,
+        valueText: node.progress.valueText } : {}),
+      ...(node.kind === "separator" || node.kind === "radio-group"
+        ? { orientation: node.orientation ?? (node.kind === "separator" ? "horizontal" : "vertical") } : {}),
+      ...(node.kind === "checkbox" || node.kind === "radio-item"
         ? { checked: node.checked === "indeterminate" ? "mixed" as const : node.checked }
         : {}),
-      ...(node.kind === "slider"
+      ...(node.kind === "slider" || node.kind === "range-slider-thumb"
         ? {
             valueNow: node.sliderValue,
-            valueMin: node.sliderMin,
-            valueMax: node.sliderMax,
+            valueMin: rangeThumb?.thumbIndex === 1
+              ? rangeThumb.values[0]
+              : node.sliderMin,
+            valueMax: rangeThumb?.thumbIndex === 0
+              ? rangeThumb.values[1]
+              : node.sliderMax,
             valueText: node.sliderValueText ?? undefined,
             orientation: "horizontal" as const,
           }
@@ -178,7 +200,7 @@ export const createSemanticSnapshot = (
       ...(node.kind === "overlay" ? { modal: node.modal } : {}),
       actions: node.disabled || node.kind === "overlay"
         ? []
-        : node.kind === "slider"
+        : node.kind === "slider" || node.kind === "range-slider-thumb"
           ? ["focus"]
         : node.kind === "tree-item" && node.hasChildren
           ? ["focus", node.expanded ? "collapse" : "expand"]
@@ -212,16 +234,16 @@ export const createSemanticSnapshot = (
 };
 
 const focusRoles = new Set<SemanticNode["role"]>([
-  "button", "checkbox", "slider", "option", "textbox", "menuitem", "treeitem", "tab", "gridcell",
+  "button", "checkbox", "radio", "slider", "option", "textbox", "menuitem", "treeitem", "tab", "gridcell",
 ]);
 const activateRoles = new Set<SemanticNode["role"]>([
-  "button", "checkbox", "option", "menuitem", "treeitem", "tab", "gridcell",
+  "button", "checkbox", "radio", "option", "menuitem", "treeitem", "tab", "gridcell",
 ]);
 const selectedRoles = new Set<SemanticNode["role"]>([
   "option", "treeitem", "tab", "gridcell",
 ]);
 const compositeRoles = new Set<SemanticNode["role"]>([
-  "listbox", "menu", "tree", "tablist", "grid",
+  "listbox", "menu", "tree", "tablist", "grid", "radiogroup",
 ]);
 
 export const auditSemanticSnapshot = (
@@ -251,7 +273,7 @@ export const auditSemanticSnapshot = (
     }
   }
   for (const node of snapshot.nodes.values()) {
-    if (node.label.trim().length === 0) issue(node.id, "missing-name", "Semantic name is empty.");
+    if (node.role !== "separator" && node.label.trim().length === 0) issue(node.id, "missing-name", "Semantic name is empty.");
     if (orders.has(node.traversalOrder) || !Number.isInteger(node.traversalOrder)) {
       issue(node.id, "invalid-order", "Traversal order must be a unique integer.");
     }
@@ -275,7 +297,10 @@ export const auditSemanticSnapshot = (
     if (node.selected !== undefined && !selectedRoles.has(node.role)) {
       issue(node.id, "invalid-state", `selected is invalid for role ${node.role}.`);
     }
-    if (node.checked !== undefined && node.role !== "checkbox") {
+    if (node.pressed !== undefined && node.role !== "button") {
+      issue(node.id, "invalid-state", `pressed is invalid for role ${node.role}.`);
+    }
+    if (node.checked !== undefined && node.role !== "checkbox" && node.role !== "radio") {
       issue(node.id, "invalid-state", `checked is invalid for role ${node.role}.`);
     }
     if (
@@ -303,7 +328,7 @@ export const auditSemanticSnapshot = (
     if (node.modal !== undefined && node.role !== "dialog") {
       issue(node.id, "invalid-state", `modal is invalid for role ${node.role}.`);
     }
-    if (node.orientation !== undefined && !compositeRoles.has(node.role) && node.role !== "slider") {
+    if (node.orientation !== undefined && !compositeRoles.has(node.role) && node.role !== "slider" && node.role !== "separator") {
       issue(node.id, "invalid-state", `orientation is invalid for role ${node.role}.`);
     }
     if (
@@ -311,9 +336,9 @@ export const auditSemanticSnapshot = (
         || node.valueMin !== undefined
         || node.valueMax !== undefined
         || node.valueText !== undefined)
-      && node.role !== "slider"
+      && node.role !== "slider" && node.role !== "progressbar"
     ) issue(node.id, "invalid-state", `Numeric value is invalid for role ${node.role}.`);
-    if (node.role === "slider" && (
+    if ((node.role === "slider" || node.role === "progressbar") && (
       node.valueNow === undefined
       || node.valueMin === undefined
       || node.valueMax === undefined

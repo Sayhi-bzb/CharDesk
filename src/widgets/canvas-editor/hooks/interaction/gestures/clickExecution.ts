@@ -1,6 +1,4 @@
 import type { Point } from "@/shared/types";
-import type { CanvasMode } from "@/domains/sessions/public";
-import type { ToolType } from "@/domains/canvas/public";
 import type { CanvasLinkHit } from "../core/linkHitTesting";
 import type { CanvasInteractionState } from "@/domains/editor/public";
 import { resolveCanvasClickDecision, type CanvasClickDecision } from "./clickInteraction";
@@ -10,12 +8,6 @@ type RefCell<T> = { current: T };
 export type CanvasClickExecutor = {
   preventDefault: () => void;
   clearColorPickerClick: () => void;
-  clearSelections: () => void;
-  setSelectedStructuredNodeIds: (ids: string[]) => void;
-  setSelectedStructuredSplitHandle: (handle: null) => void;
-  setEditingStructuredTextNodeId: (nodeId: string | null) => void;
-  setTextCursor: (point: Point) => void;
-  setCursor: (cursor: string) => void;
   openLink: (href: string) => void;
   setHoveredLink: (hit: CanvasLinkHit) => void;
 };
@@ -28,15 +20,6 @@ export const executeCanvasClickDecision = (
     case "consume-color-picker-click":
       executor.clearColorPickerClick();
       executor.preventDefault();
-      return true;
-    case "structured-text-caret":
-      executor.preventDefault();
-      executor.clearSelections();
-      executor.setSelectedStructuredNodeIds([]);
-      executor.setSelectedStructuredSplitHandle(null);
-      executor.setEditingStructuredTextNodeId(null);
-      executor.setTextCursor(decision.point);
-      executor.setCursor("text");
       return true;
     case "open-link":
       executor.preventDefault();
@@ -53,23 +36,11 @@ export const executeCanvasClickDecision = (
 export const createCanvasClickExecutor = ({
   colorPickerClick,
   preventDefault,
-  clearSelections,
-  setSelectedStructuredNodeIds,
-  setSelectedStructuredSplitHandle,
-  setEditingStructuredTextNodeId,
-  setTextCursor,
-  setCursor,
   openLink,
   setHoveredLink,
 }: {
   colorPickerClick: RefCell<boolean>;
   preventDefault: () => void;
-  clearSelections: () => void;
-  setSelectedStructuredNodeIds: (ids: string[]) => void;
-  setSelectedStructuredSplitHandle: (handle: null) => void;
-  setEditingStructuredTextNodeId: (nodeId: string | null) => void;
-  setTextCursor: (point: Point) => void;
-  setCursor: (cursor: string) => void;
   openLink: (href: string) => void;
   setHoveredLink: (hit: CanvasLinkHit) => void;
 }): CanvasClickExecutor => ({
@@ -77,23 +48,15 @@ export const createCanvasClickExecutor = ({
   clearColorPickerClick: () => {
     colorPickerClick.current = false;
   },
-  clearSelections,
-  setSelectedStructuredNodeIds,
-  setSelectedStructuredSplitHandle,
-  setEditingStructuredTextNodeId,
-  setTextCursor,
-  setCursor,
   openLink,
   setHoveredLink,
 });
 
 type CanvasClickHandler = ({
-  point,
   linkHit,
   shouldOpenLink,
   preventDefault,
 }: {
-  point: Point | null;
   linkHit: CanvasLinkHit | null;
   shouldOpenLink: boolean;
   preventDefault: () => void;
@@ -102,17 +65,12 @@ type CanvasClickHandler = ({
 export const createCanvasClickHandler = ({
   getColorPickerClickPending,
   getInteractionMode,
-  canvasMode,
-  tool,
   executor,
 }: {
   getColorPickerClickPending: () => boolean;
   getInteractionMode: () => CanvasInteractionState["type"];
-  canvasMode: CanvasMode;
-  tool: ToolType;
   executor: CanvasClickExecutor;
 }): CanvasClickHandler => ({
-  point,
   linkHit,
   shouldOpenLink,
   preventDefault,
@@ -121,9 +79,6 @@ export const createCanvasClickHandler = ({
     resolveCanvasClickDecision({
       colorPickerClickPending: getColorPickerClickPending(),
       interactionMode: getInteractionMode(),
-      canvasMode,
-      tool,
-      point,
       linkHit,
       shouldOpenLink,
     }),
@@ -157,10 +112,11 @@ export const createCanvasClickRouteHandler = ({
     resolveGridPoint,
     resolveLinkHit,
     shouldOpenLink,
-  }) =>
-    handler({
-      point: resolveGridPoint(clientPoint),
+  }) => {
+    resolveGridPoint(clientPoint);
+    return handler({
       linkHit: resolveLinkHit(clientPoint),
       shouldOpenLink: shouldOpenLink(),
       preventDefault,
     });
+  };
