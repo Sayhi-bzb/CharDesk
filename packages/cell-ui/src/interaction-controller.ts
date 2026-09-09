@@ -5,8 +5,9 @@ import { GestureManager, type GestureCandidate } from "./gestures.js";
 import { PressManager } from "./press.js";
 import { isCellKeyPress } from "./keyboard.js";
 import type { KeyInput } from "@chardesk/keyboard";
-import type { CellPoint, FrameSnapshot, WidgetId } from "./types.js";
+import type { CellPoint, ConfirmationColors, ConfirmationPresentation, FrameSnapshot, WidgetId } from "./types.js";
 import { resolvePointerAppearance } from "./pointer.js";
+import { menuScopeId } from "./primitive-behavior.js";
 
 export type InteractionClock = Readonly<{
   schedule: (callback: () => void, delay: number) => () => void;
@@ -28,6 +29,7 @@ export class CellInteractionController {
   #inputSource: "keyboard" | "pointer" = "keyboard";
   #hoveredId: WidgetId | null = null;
   #frame: FrameSnapshot | null = null;
+  #acknowledged: string | null = null;
   constructor(
     readonly notify: () => void,
     readonly emit: (command: WidgetCommand) => void,
@@ -39,7 +41,8 @@ export class CellInteractionController {
       focusedId: this.focus.focusedId,
       pressActiveId: this.press.activeId,
       activationFlashId: this.feedback.activeId,
-      activationTargetId: this.feedback.targetId,
+      activationTargetId: this.feedback.waiting ? null : this.feedback.targetId,
+      confirmation: this.feedback.presentation,
       focusVisible: this.#inputSource === "keyboard",
       hoveredId: this.#inputSource === "pointer" && !this.feedback.settling ? this.#hoveredId : null,
     });
@@ -57,7 +60,8 @@ export class CellInteractionController {
   setHovered(frame: FrameSnapshot, targetId: WidgetId | null): void {
     this.#hoveredId = targetId;
     if (this.#inputSource !== "pointer" || this.feedback.settling || targetId === this.focus.focusedId) return;
-    if (targetId && frame.tree.nodes.get(targetId)?.kind === "select-item") {
+    const kind = targetId ? frame.tree.nodes.get(targetId)?.kind : undefined;
+    if (targetId && (kind === "select-item" || kind === "menu-item")) {
       const command = { type: "focus", targetId } as const;
       this.focus.apply(command);
       this.emit(command);
@@ -66,25 +70,38 @@ export class CellInteractionController {
   }
 
   key(frame: FrameSnapshot, input: KeyInput, count: ActivationBlinkCount): boolean {
+    const sourceChanged = this.#inputSource !== "keyboard";
     this.#inputSource = "keyboard";
     if (this.feedback.settling && input.phase === "down") {
+      if (this.feedback.defersActivation && isCellKeyPress(input, "Escape")) {
+        this.cancel();
+        this.notify();
+        this.commit(commandForInput(input, frame, this.focus), frame, count);
+        return true;
+      }
       const command = commandForInput(input, frame, this.focus);
       this.commit(command, frame, count);
       return !!command;
     }
     let released: WidgetId | null = null;
-    let changed = false;
+    let releaseReference: ConfirmationColors | null = null;
+    let changed = sourceChanged;
     if (input.phase === "down") {
-      if (isCellKeyPress(input, "Enter") || isCellKeyPress(input, " ")) changed = this.cancel();
+      if (isCellKeyPress(input, "Enter") || isCellKeyPress(input, " ")) changed = this.cancel() || changed;
       changed = this.press.beginKey(frame, input, this.focus.focusedId) || changed;
     } else {
       released = this.press.activeId;
-      changed = this.press.endKey(input);
+      if (released) releaseReference = this.reference(frame, released);
+      const ended = this.press.endKey(input);
+      if (!ended) released = null;
+      changed = ended || changed;
+    }
+    if (released && releaseReference && this.feedback.waiting && this.feedback.targetId === released) {
+      this.feedback.release(releaseReference);
     }
     const command = commandForInput(input, frame, this.focus);
     if (command) this.commit(command, frame, count);
     else if (changed) this.notify();
-    if (changed && released) this.restart(frame, released, count);
     return !!command;
   }
 
@@ -93,6 +110,20 @@ export class CellInteractionController {
     this.gestures.begin(pointerId, point, candidates, precisePoint);
     this.press.beginPointer(frame, pointerId, point);
     this.notify();
+  }
+
+  /** A deferred menu locks its own rectangle; outside input cancels, then proceeds. */
+  interceptPointer(frame: FrameSnapshot, point: CellPoint): boolean {
+    if (!this.feedback.settling) return false;
+    if (!this.feedback.defersActivation) return true;
+    const scope = menuScopeId(frame, this.feedback.targetId ?? "");
+    const entry = scope ? frame.scene.entries.get(scope) : undefined;
+    const contains = (rect: { x: number; y: number; width: number; height: number }) =>
+      point.x >= rect.x && point.y >= rect.y && point.x < rect.x + rect.width && point.y < rect.y + rect.height;
+    if (entry && contains(entry.layoutBounds) && contains(entry.outerClip)) return true;
+    this.cancel();
+    this.notify();
+    return false;
   }
 
   movePointer(frame: FrameSnapshot, pointerId: number, point: CellPoint, precisePoint?: CellPoint) {
@@ -104,7 +135,8 @@ export class CellInteractionController {
     return signals;
   }
 
-  endPointer(pointerId: number, point: CellPoint, precisePoint?: CellPoint) {
+  endPointer(frame: FrameSnapshot, pointerId: number, point: CellPoint, precisePoint?: CellPoint) {
+    this.hover(frame, point);
     const signals = this.gestures.end(pointerId, point, precisePoint);
     this.press.endPointer(pointerId);
     this.notify();
@@ -115,23 +147,28 @@ export class CellInteractionController {
     this.#frame = frame;
     if (!command) return;
     if (this.feedback.settling) {
-      if (command.type !== "dismiss") return;
+      const outsideMenu = this.feedback.defersActivation
+        && menuScopeId(frame, command.targetId) !== menuScopeId(frame, this.feedback.targetId ?? "");
+      if (command.type !== "dismiss" && !outsideMenu) return;
       this.cancel();
     }
-    this.feedback.start(frame, command, count);
+    this.stopClock();
+    const reference = this.reference(frame, command.targetId);
+    this.feedback.start(frame, command, count, {
+      reference,
+      waitForRelease: this.press.activeId === command.targetId,
+    });
     this.focus.apply(command);
-    this.emit(command);
+    if (!this.feedback.defersActivation) this.emit(command);
     this.notify();
-    this.schedule();
     if (!this.feedback.running) this.flush();
   }
 
-  restart(frame: FrameSnapshot, targetId: WidgetId, count: ActivationBlinkCount): void {
-    this.#frame = frame;
-    this.feedback.restart(frame, targetId, count);
-    this.notify();
-    this.schedule();
-    if (!this.feedback.running) this.flush();
+  private reference(frame: FrameSnapshot, targetId: WidgetId): ConfirmationColors {
+    const entry = frame.scene.entries.get(targetId);
+    const rect = entry?.decorationBounds;
+    const style = rect ? frame.buffer.get(rect.x, rect.y)?.style : undefined;
+    return { color: style?.color ?? frame.colors.color, backgroundColor: style?.backgroundColor ?? frame.colors.backgroundColor };
   }
 
   stopClock(): void {
@@ -139,21 +176,28 @@ export class CellInteractionController {
     this.#cancelTimer = null;
   }
 
-  schedule(): void {
+  presented(presentation: ConfirmationPresentation | undefined): void {
+    const current = this.feedback.presentation;
+    if (!presentation || !current || presentation.sessionId !== current.sessionId || presentation.phase !== current.phase) return;
+    const key = `${current.sessionId}:${current.phase}`;
+    if (this.#acknowledged === key) return;
+    this.#acknowledged = key;
     this.stopClock();
-    if (!this.feedback.running || (this.feedback.settling && this.press.activeId !== null)) return;
     this.#cancelTimer = this.clock.schedule(() => {
+      const active = this.feedback.presentation;
+      if (!active || active.sessionId !== current.sessionId || active.phase !== current.phase) return;
       this.#cancelTimer = null;
       if (!this.feedback.advance()) return;
       this.notify();
-      if (this.feedback.running) this.schedule();
-      else this.flush();
+      if (!this.feedback.running) this.flush();
     }, CELL_ACTIVATION_BLINK_PHASE_MS);
   }
 
   flush(): void {
     const command = this.feedback.takeCompletionCommand();
-    if (!command || !this.#frame?.tree.nodes.has(command.targetId)) return;
+    const target = command ? this.#frame?.tree.nodes.get(command.targetId) : undefined;
+    if (!command || !target || target.disabled) return;
+    if (command.type === "activate" && (target.kind !== "menu-item" || !this.#frame?.scene.entries.get(target.id)?.paintVisible)) return;
     this.focus.apply(command);
     this.emit(command);
     this.notify();
@@ -165,9 +209,16 @@ export class CellInteractionController {
     this.flush();
   }
 
+  deactivate(): void {
+    const pressed = this.press.cancel();
+    this.settle();
+    if (pressed) this.notify();
+  }
+
   sync(frame: FrameSnapshot): boolean {
     this.#frame = frame;
-    const changed = this.feedback.sync(frame);
+    const changed = this.feedback.sync(frame)
+      || (this.feedback.waiting && this.press.activeId !== this.feedback.targetId && this.feedback.settle());
     if (changed) this.stopClock();
     return changed;
   }

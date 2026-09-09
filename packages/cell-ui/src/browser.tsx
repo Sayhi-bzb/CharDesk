@@ -712,6 +712,12 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const [canvasRef] = useState(() => new CellPresentationRegistry());
   const cursorPresenterRef = useRef<CellCursorPresenter | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
+  const pointerFocusRequestRef = useRef(false);
+  const focusFromPointer = (surface: HTMLDivElement) => {
+    pointerFocusRequestRef.current = true;
+    try { surface.focus({ preventScroll: true }); }
+    finally { pointerFocusRequestRef.current = false; }
+  };
   const runtimeRef = useRef<CellUiRuntime | null>(null);
   const frameRef = useRef<FrameSnapshot | null>(null);
   const presentedRevisionRef = useRef<number | null>(null);
@@ -805,6 +811,26 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     controller.settle();
   }, [controller, resolvedFeedback.activationBlinkCount]);
 
+  const confirmationThemeRef = useRef(resolvedTheme);
+  const confirmationPaletteRef = useRef(palette);
+  useLayoutEffect(() => {
+    if (!sameWidgetValue(confirmationThemeRef.current, resolvedTheme)
+      || !sameWidgetValue(confirmationPaletteRef.current, palette)) controller.settle();
+    confirmationThemeRef.current = resolvedTheme;
+    confirmationPaletteRef.current = palette;
+  }, [controller, resolvedTheme, palette]);
+
+  useEffect(() => {
+    const deactivate = () => controller.deactivate();
+    const visibility = () => { if (document.hidden) deactivate(); };
+    window.addEventListener("blur", deactivate);
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      window.removeEventListener("blur", deactivate);
+      document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [controller]);
+
   useEffect(() => {
     const token = {};
     lifetimeRef.current = token;
@@ -858,7 +884,9 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       manipulatingIds,
       pressActiveId,
       activationFlashId,
-      activationTargetId: controller.feedback.targetId,
+      activationTargetId: controller.snapshot.activationTargetId,
+      confirmation: controller.feedback.presentation,
+      colors: { color: palette.color, backgroundColor: palette.background },
       focusActive: surfaceFocus.active,
       focusVisible,
       resolveFocusedId: (tree) => {
@@ -911,7 +939,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     };
     // The headless runtime is an external store; publish its committed snapshot.
     setFrame(next);
-  }, [controller, activationFlashId, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, syncManipulatingIds, theme, feedback, viewport, surfaceFocus.active]);
+  }, [controller, palette.color, palette.background, activationFlashId, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, syncManipulatingIds, theme, feedback, viewport, surfaceFocus.active]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -950,9 +978,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       glyphOverflow,
       incremental ? frame.invalidation.dirtyRegions : undefined
     );
+    let allPlanesPresented = true;
     for (const plane of frame.overlayPlanes) {
       const overlayCanvas = canvasRef.overlay(plane.rootId);
-      if (!overlayCanvas) continue;
+      if (!overlayCanvas) { allPlanesPresented = false; continue; }
       presentFrame(
         overlayCanvas,
         frame,
@@ -973,7 +1002,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     }
     presentedRevisionRef.current = frame.revision;
     presentationRef.current = { metrics, palette, fontProfile, glyphOverflow };
-  }, [canvasRef, cellRange, fontProfile, frame, glyphOverflow, metrics, palette, resolvedTheme, syncManipulatingIds]);
+    if (allPlanesPresented) controller.presented(frame.confirmation);
+  }, [controller, canvasRef, cellRange, fontProfile, frame, glyphOverflow, metrics, palette, resolvedTheme, syncManipulatingIds]);
 
   const fontPresentRef = useRef<() => void>(() => undefined);
   const scheduleFontPresentRef = useRef<() => void>(() => undefined);
@@ -1217,7 +1247,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     if (activationFeedbackRef.current.settling) {
       if (isCellKeyPress(input, "Tab")) return;
       if (isCellKeyPress(input, "Escape") && frame) {
-        dispatch(commandForInput(input, frame, focusRef.current));
+        controller.key(frame, input, resolvedFeedback.activationBlinkCount);
       }
       event.preventDefault();
       return;
@@ -1292,6 +1322,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       data-cell-manipulating={manipulatingIds.size > 0 || undefined}
       data-cell-press-active={pressActiveId ?? undefined}
       data-cell-activation-flash={activationFlashId ?? undefined}
+      data-cell-confirmation-session={frame?.confirmation?.sessionId}
+      data-cell-confirmation-phase={frame?.confirmation?.phase}
       data-cell-overlay-count={frame?.overlayPlanes.length || undefined}
       data-cell-focus-visible={frame?.semantics.focusedId
         && frame.tree.nodes.get(frame.semantics.focusedId)?.focusVisible
@@ -1304,7 +1336,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (!frame) return;
         const point = textDragPointFor(event);
         if (!point) return;
-        if (activationFeedbackRef.current.settling) {
+        if (controller.interceptPointer(frame, point)) {
           const command = commandForInput(
             { type: "pointer", phase: "down", point, button: event.button },
             frame,
@@ -1312,7 +1344,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           );
           if (command?.type === "dismiss") dispatch(command);
           event.preventDefault();
-          event.currentTarget.focus({ preventScroll: true });
+          focusFromPointer(event.currentTarget);
           return;
         }
         cancelActivationFeedback();
@@ -1322,7 +1354,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           textDragRef.current = null;
           event.currentTarget.setPointerCapture(event.pointerId);
           setCellRange(point, point);
-          event.currentTarget.focus({ preventScroll: true });
+          focusFromPointer(event.currentTarget);
           return;
         }
         if (cellRange && rangeEditable) dispatchCellRange({ type: "clear" });
@@ -1356,7 +1388,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         );
         if (immediate?.type === "dismiss") {
           dispatch(immediate);
-          event.currentTarget.focus({ preventScroll: true });
+          focusFromPointer(event.currentTarget);
           return;
         }
         if (immediate?.type === "focus") dispatch(immediate);
@@ -1382,7 +1414,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           dispatch({ type: "focus", targetId: editor.id });
           focusTextarea(editor.id);
         } else {
-          event.currentTarget.focus({ preventScroll: true });
+          focusFromPointer(event.currentTarget);
         }
       }}
       onPointerMove={(event: PointerEvent<HTMLDivElement>) => {
@@ -1431,7 +1463,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
               point,
             });
             const bounds = canvasRef.current!.getBoundingClientRect();
-            const signals = controller.endPointer(event.pointerId, point, pxToCellPosition(event, bounds, metrics));
+            const signals = controller.endPointer(frame, event.pointerId, point, pxToCellPosition(event, bounds, metrics));
             applyGestureSignals(frame, signals);
           }
         } finally {
@@ -1440,6 +1472,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         }
       }}
       onPointerEnter={(event) => {
+        if (event.pointerType === "mouse" && event.buttons === 0) setInputModality("pointer");
         pointerAppearance.move(event);
         const point = textDragPointFor(event);
         if (frame && point && pressRef.current.movePointer(frame, event.pointerId, point)) {
@@ -1473,6 +1506,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         }
       }}
       onFocus={(event) => {
+        if (event.target === event.currentTarget && !pointerFocusRequestRef.current) setInputModality("keyboard");
         surfaceFocus.enter();
         if (event.target === event.currentTarget) syncDomFocus();
         if (!frame || focusRef.current.focusedId) return;

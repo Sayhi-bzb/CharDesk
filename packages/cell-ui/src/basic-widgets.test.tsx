@@ -6,6 +6,24 @@ import {
 } from "./index.js";
 
 describe("basic Cell widgets", () => {
+  it("clips status-light chrome and consumes global glyphs without shifting the label", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 12, height: 1 }, theme: { toggleOffIndicator: "·", toggleOnIndicator: "◆" } });
+    const view = (pressed: boolean, width = 7, disabled = false) => <Root>
+      <Toggle id="light" label="Bold" pressed={pressed} disabled={disabled} style={{ width }}><Text>Bold</Text></Toggle>
+    </Root>;
+    expect(runtime.render(view(false)).buffer.toText({ trimEnd: true })).toBe("· Bold");
+    expect(runtime.render(view(true)).buffer.toText({ trimEnd: true })).toBe("◆ Bold");
+    for (const width of [1, 2, 3, 4]) {
+      const frame = runtime.render(view(true, width));
+      expect(frame.buffer.toText({ trimEnd: true })).toBe(width === 4 ? "◆ B" : "◆");
+      expect(frame.buffer.get(width, 0)?.ownerId).not.toBe("light");
+    }
+    const disabled = runtime.render(view(true, 7, true), { hoveredId: "light", focusedId: "light", pressActiveId: "light", activationFlashId: "light" });
+    expect(disabled.buffer.toText({ trimEnd: true })).toBe("◆ Bold");
+    expect(disabled.buffer.get(0, 0)?.style).toMatchObject(CLASSIC_MAC_LIGHT_THEME.disabledStyle);
+    expect(disabled.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
+    runtime.dispose();
+  });
   it("uses one radio Tab stop between neighboring controls", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 4 } });
     const frame = runtime.render(<Root>
@@ -46,14 +64,15 @@ describe("basic Cell widgets", () => {
       <Toggle id="bold" label="Bold" pressed={pressed}><Text>B</Text></Toggle>
     </Root>;
     const first = runtime.render(view(false), { hoveredId: "bold" });
-    expect(first.buffer.toText({ trimEnd: true })).toBe("[ B ]");
-    for (let x = 0; x < 5; x++) expect(first.buffer.get(x, 0)?.style.backgroundColor).toBe("#E6E6E6");
+    expect(first.buffer.toText({ trimEnd: true })).toBe("○ B");
+    for (let x = 0; x < 4; x++) expect(first.buffer.get(x, 0)?.style.backgroundColor).toBe("#000000");
     const selected = runtime.render(view(true));
     expect(selected.layout).toBe(first.layout);
-    for (let x = 0; x < 5; x++) expect(selected.buffer.get(x, 0)?.style).toMatchObject(CLASSIC_MAC_LIGHT_THEME.selectedStyle);
+    expect(selected.buffer.toText({ trimEnd: true })).toBe("● B");
+    for (let x = 0; x < 4; x++) expect(selected.buffer.get(x, 0)?.style.backgroundColor).toBeUndefined();
     expect(selected.semantics.nodes.get("bold")).toMatchObject({ role: "button", pressed: true });
     const flash = runtime.render(view(true), { activationFlashId: "bold" });
-    expect(flash.buffer.get(2, 0)?.style.backgroundColor).toBe(CLASSIC_MAC_LIGHT_THEME.selectedStyle.color);
+    expect(flash.buffer.get(2, 0)?.style.backgroundColor).toBe(CLASSIC_MAC_LIGHT_THEME.foreground);
     expect(auditSemanticSnapshot(flash.semantics)).toEqual([]);
     const focus = new FocusManager();
     focus.sync(selected.tree, "bold");

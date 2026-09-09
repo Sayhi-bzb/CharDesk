@@ -204,9 +204,9 @@ describe("complex Cell widgets", () => {
     const tree = frame.scene.entries.get("tree-src")!.layoutBounds;
     const tab = frame.scene.entries.get("tab-code")!.layoutBounds;
     expect(frame.buffer.get(tree.x, tree.y)?.text).toBe("▾");
-    expect(frame.buffer.get(tree.x + 2, tree.y)?.text).toBe("s");
+    expect(frame.buffer.get(tree.x + 4, tree.y)?.text).toBe("s");
     expect(frame.buffer.get(tree.x, tree.y)?.style.backgroundColor).toBe("#000000");
-    expect(frame.buffer.get(tab.x, tab.y)?.style.backgroundColor).toBe("#000000");
+    expect(frame.buffer.get(tab.x, tab.y)?.style.backgroundColor).toBeUndefined();
     expect(frame.buffer.get(tab.x, tab.y + 1)?.text).toBe("▬");
     runtime.dispose();
   });

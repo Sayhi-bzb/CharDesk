@@ -201,6 +201,7 @@ export const useCellMenuState = (
   const base = useCellListState(items, { defaultFocusedId: options.defaultFocusedId });
   const dispatch = useCallback((command: WidgetCommand) => {
     if (command.type === "activate") {
+      if (!base.items.some((item) => item.id === command.targetId && !item.disabled)) return;
       base.dispatch({ type: "focus", targetId: command.targetId });
       options.onAction?.(command.targetId);
       return;

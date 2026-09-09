@@ -54,10 +54,6 @@ const targets = {
     outputRoot: path.join(repoRoot, "packages", "font-xiaolai"),
     assetPrefix: "assets",
   },
-  macintosh: {
-    outputRoot: path.join(repoRoot, "packages", "font-macintosh"),
-    assetPrefix: "assets",
-  },
 };
 
 if (requestedTarget && !Object.hasOwn(targets, requestedTarget)) {
@@ -200,55 +196,6 @@ const binarySources = [
     licenseUrl:
       "https://raw.githubusercontent.com/lxgw/kose-font/v3.126/OFL.txt",
   },
-  {
-    target: "macintosh",
-    id: "chicago-kare",
-    family: "Chicago Kare",
-    version: "dca7a9e4f2b971e39cf3a5e8a3f9309d4293d56d",
-    binaryUrl:
-      "https://raw.githubusercontent.com/KingDuane/Chicago-Kare/" +
-      "dca7a9e4f2b971e39cf3a5e8a3f9309d4293d56d/ChicagoKare-Regular.woff2",
-    binarySha256:
-      "3213740318940270dc4e099b15d49b5781bdf6208660aa970daa5c62d24bcdc4",
-    fontFile: "ChicagoKare-Regular.woff2",
-    licenseFile: "LICENSE.txt",
-    licenseUrl:
-      "https://raw.githubusercontent.com/KingDuane/Chicago-Kare/" +
-      "dca7a9e4f2b971e39cf3a5e8a3f9309d4293d56d/LICENSE",
-  },
-  ...[
-    {
-      id: "boutique-bitmap-regular",
-      fontFile: "BoutiqueBitmap9x9_1.93.ttf",
-      binarySha256:
-        "7210391e4252471fbd9b62f65d86f1f7bcdc7f8beb4fc1feeb3ad8b65a0e85e8",
-      fontWeight: 400,
-    },
-    {
-      id: "boutique-bitmap-bold",
-      fontFile: "BoutiqueBitmap9x9_1.93_Bold.ttf",
-      binarySha256:
-        "ba67f9138d43d5bc8ce6f59a74088d44973c99edeeadbebaf9541fc983bcb7ba",
-      fontWeight: 700,
-    },
-  ].map((face) => ({
-    target: "macintosh",
-    family: "BoutiqueBitmap9x9",
-    version: "1.93",
-    binaryUrl:
-      "https://raw.githubusercontent.com/scott0107000/BoutiqueBitmap9x9/" +
-      `0f343adff9fbc63267d8bcdf2bb5dd32b4d7b701/${face.fontFile}`,
-    subsets: [
-      { id: "base", file: "base.woff2", unicodeRange: "U+0000-33FF, U+4DC0-4DFF, U+A000-FFFF" },
-      { id: "cjk-extension-a", file: "cjk-extension-a.woff2", unicodeRange: "U+3400-4DBF" },
-      { id: "cjk-unified", file: "cjk-unified.woff2", unicodeRange: "U+4E00-9FFF" },
-      { id: "supplementary", file: "supplementary.woff2", unicodeRange: "U+10000-10FFFF" },
-    ],
-    licenseUrl:
-      "https://raw.githubusercontent.com/scott0107000/BoutiqueBitmap9x9/" +
-      "0f343adff9fbc63267d8bcdf2bb5dd32b4d7b701/OFL.txt",
-    ...face,
-  })),
 ];
 
 const nerdSource = {
@@ -544,7 +491,6 @@ const verifyAssets = async () => {
 };
 
 const vendorBinaryFont = async (source, target, manifest, stylesheets) => {
-  const fontWeight = source.fontWeight ?? 400;
   const font = await fetchBytes(source.binaryUrl);
   if (sha256(font) !== source.binarySha256) {
     throw new Error(`${source.id}: binary checksum mismatch`);
@@ -620,7 +566,7 @@ const vendorBinaryFont = async (source, target, manifest, stylesheets) => {
           `@font-face {\n` +
           `  font-family: '${source.family}';\n` +
           `  font-style: normal;\n` +
-          `  font-weight: ${fontWeight};\n` +
+          `  font-weight: 400;\n` +
           `  font-display: swap;\n` +
           `  src: url(./${relativeFontPath}) format('woff2');\n` +
           `  unicode-range: ${subset.unicodeRange};\n` +
@@ -643,7 +589,7 @@ const vendorBinaryFont = async (source, target, manifest, stylesheets) => {
       `@font-face {\n` +
       `  font-family: '${source.family}';\n` +
       `  font-style: normal;\n` +
-      `  font-weight: ${fontWeight};\n` +
+      `  font-weight: 400;\n` +
       `  font-display: swap;\n` +
       `  src: url(./${relativeFontPath}) format('woff2');\n` +
       `}`
@@ -651,10 +597,7 @@ const vendorBinaryFont = async (source, target, manifest, stylesheets) => {
   }
 
   const license = await fetchBytes(source.licenseUrl);
-  const relativeLicensePath = path.posix.join(
-    relativeDir,
-    source.licenseFile ?? "OFL.txt"
-  );
+  const relativeLicensePath = path.posix.join(relativeDir, "OFL.txt");
   await writeFile(path.join(target.outputRoot, relativeLicensePath), license);
   manifest.assets.push({
     path: relativeLicensePath,

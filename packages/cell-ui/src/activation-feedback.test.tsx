@@ -55,6 +55,8 @@ describe("ActivationFeedbackManager", () => {
     expect(feedback.activeId).toBe("save");
     expect(feedback.advance()).toBe(true);
     expect(feedback.activeId).toBeNull();
+    expect(feedback.running).toBe(true);
+    expect(feedback.advance()).toBe(true);
     expect(feedback.running).toBe(false);
 
     expect(feedback.start(frame, activate, 3)).toBe("save");
@@ -63,7 +65,7 @@ describe("ActivationFeedbackManager", () => {
       feedback.advance();
       phases.push(feedback.activeId);
     }
-    expect(phases).toEqual(["save", null, "save", null, "save", null]);
+    expect(phases).toEqual(["save", null, "save", null, "save", null, null]);
     runtime.dispose();
   });
 
@@ -88,6 +90,8 @@ describe("ActivationFeedbackManager", () => {
     expect(feedback.settling).toBe(true);
     feedback.advance();
     feedback.advance();
+    feedback.advance();
+    expect(feedback.takeCompletionCommand()).toBeNull();
     feedback.advance();
     expect(feedback.takeCompletionCommand())
       .toEqual({ type: "dismiss", targetId: "theme-content" });

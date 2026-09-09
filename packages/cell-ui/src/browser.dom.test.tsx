@@ -783,7 +783,7 @@ describe("CellSurface", () => {
     const flashedRow = readCellSurfaceProbe(surface)!.cells
       .filter((cell) => cell.ownerId === "surface-light");
     expect(flashedRow.length).toBeGreaterThan(0);
-    expect(flashedRow.every((cell) => cell.style.backgroundColor === "#000000"))
+    expect(flashedRow.every((cell) => cell.style.backgroundColor === "#FFFFFF"))
       .toBe(true);
 
     act(() => vi.advanceTimersByTime(80));
@@ -798,6 +798,8 @@ describe("CellSurface", () => {
 
     act(() => vi.advanceTimersByTime(80));
     expect(surface).toHaveAttribute("data-cell-activation-flash", "surface-light");
+    act(() => vi.advanceTimersByTime(80));
+    expect(screen.getByRole("listbox", { name: "Theme options" })).toBeInTheDocument();
     act(() => vi.advanceTimersByTime(80));
     expect(screen.queryByRole("listbox", { name: "Theme options" })).not.toBeInTheDocument();
     expect(trigger).toHaveAttribute("aria-expanded", "false");
@@ -1456,7 +1458,7 @@ describe("CellSurface", () => {
     if (ending === "cancel") fireEvent.pointerCancel(surface, { pointerId: 21 });
     if (ending === "lost-capture") fireEvent.lostPointerCapture(surface, { pointerId: 21 });
     if (ending === "move") fireEvent.pointerMove(surface, { ...pointer, clientX: 75 });
-    fireEvent.pointerUp(surface, pointer);
+    fireEvent.pointerUp(surface, ending === "move" ? { ...pointer, clientY: 300 } : pointer);
     expect(onAction).not.toHaveBeenCalled();
     fireEvent.pointerDown(canvas, { ...pointer, clientY: 10 });
     fireEvent.pointerUp(surface, { ...pointer, clientY: 10 });
@@ -1559,18 +1561,19 @@ describe("CellSurface", () => {
     expect(surface).not.toHaveAttribute("data-cell-press-active");
     expect(surface).toHaveAttribute("data-cell-activation-flash", "autosave");
     expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style)
-      .toMatchObject({ color: "#FFFFFF", backgroundColor: "#000000" });
+      .toMatchObject({ color: "#000000", backgroundColor: "#FFFFFF" });
     expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style.bold)
       .not.toBe(true);
     act(() => vi.advanceTimersByTime(80));
     expect(surface).not.toHaveAttribute("data-cell-activation-flash");
-    expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style)
-      .toMatchObject({});
+    expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style.backgroundColor)
+      .toBe("#000000");
     act(() => vi.advanceTimersByTime(80));
     expect(surface).toHaveAttribute("data-cell-activation-flash", "autosave");
     act(() => vi.advanceTimersByTime(80));
     expect(surface).not.toHaveAttribute("data-cell-activation-flash");
 
+    act(() => vi.advanceTimersByTime(80));
     fireEvent.pointerLeave(surface, { pointerType: "mouse" });
     expect(readCellSurfaceProbe(surface)!.cells.find((cell) => cell.x === 19 && cell.y === 0)?.style.backgroundColor)
       .toBeUndefined();
@@ -1692,7 +1695,8 @@ describe("CellSurface", () => {
     expect(screen.getByRole("option", { name: /000004\s+row/ })).toHaveFocus();
     const pageProbe = readCellSurfaceProbe(surface)!;
     expect(pageProbe.focusedId).toBe("virtual-4");
-    expect(pageProbe.cells.filter((cell) => cell.style.bold).length).toBeGreaterThan(0);
+    expect(pageProbe.cells.filter((cell) => cell.style.bold)).toHaveLength(0);
+    expect(pageProbe.cells.some((cell) => cell.ownerId === "virtual-4" && cell.style.backgroundColor)).toBe(true);
     expect(pageProbe.cells.some((cell) => cell.text === "▶")).toBe(false);
     expect(screen.getByLabelText("Virtual selected item")).toHaveTextContent("none");
 
@@ -1746,7 +1750,7 @@ describe("CellSurface", () => {
     expect(screen.getByRole("option", { name: /000005\s+row/ })).toHaveFocus();
   });
 
-  it("shares navigation and state across Menu, Tree, Tabs, and Grid semantics", () => {
+  it("shares navigation and state across Menu, Tree, Tabs, and Grid semantics", async () => {
     render(<ComplexWidgetProduct />);
     const surface = screen.getByLabelText("Complex widget surface");
     const status = screen.getByLabelText("Complex widget status");
@@ -1758,7 +1762,9 @@ describe("CellSurface", () => {
     fireEvent.focus(screen.getByRole("menuitem", { name: "Open" }));
     fireEvent.keyDown(surface, { key: "ArrowDown" });
     fireEvent.keyDown(surface, { key: "Enter" });
-    expect(status).toHaveTextContent("menu-save action");
+    expect(status).not.toHaveTextContent("menu-save action");
+    fireEvent.keyUp(surface, { key: "Enter" });
+    await waitFor(() => expect(status).toHaveTextContent("menu-save action"));
 
     const source = screen.getByRole("treeitem", { name: /src/ });
     fireEvent.focus(source);

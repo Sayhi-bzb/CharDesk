@@ -20,6 +20,7 @@ import { paintBorder } from "./border.js";
 import { isActionableKind } from "./widget-capabilities.js";
 import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
 import { checkboxChromeMetrics } from "./checkbox.js";
+import { collectionChromeMetrics } from "./collection-chrome.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
 
@@ -230,8 +231,13 @@ export const paintScene = (
       }
 
       // Decoration: interaction affordances and scrollbars remain topmost for this Widget.
+      if ((node.kind === "list-item" || node.kind === "tree-item" || node.kind === "grid-cell") && node.selected) {
+        const offset = collectionChromeMetrics(node).selectionOffset;
+        buffer.writeGrapheme(entry.decorationBounds.x + offset, entry.decorationBounds.y,
+          theme.collectionSelectedIndicator, id, style, decorationClip, "over");
+      }
       if (node.kind === "tree-item") {
-        const x = entry.decorationBounds.x + Math.max(0, (node.level ?? 1) - 1) * 2;
+        const x = entry.decorationBounds.x + collectionChromeMetrics(node).disclosureOffset;
         buffer.writeGrapheme(
           x,
           entry.decorationBounds.y,
@@ -246,8 +252,9 @@ export const paintScene = (
       }
       if (node.kind === "toggle") {
         const bounds = entry.decorationBounds;
-        buffer.writeGrapheme(bounds.x, bounds.y, "[", id, style, decorationClip, "over");
-        buffer.writeGrapheme(bounds.x + bounds.width - 1, bounds.y, "]", id, style, decorationClip, "over");
+        buffer.writeGrapheme(bounds.x, bounds.y,
+          node.pressed ? theme.toggleOnIndicator : theme.toggleOffIndicator,
+          id, style, decorationClip, "over");
       }
       if (node.kind === "progress" || node.kind === "separator") {
         const bounds = entry.decorationBounds;

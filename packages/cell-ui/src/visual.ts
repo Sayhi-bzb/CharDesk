@@ -2,7 +2,7 @@ import type { CellTextStyle, WidgetNode, WidgetTree } from "./types.js";
 import type { CellUiTheme } from "./theme.js";
 import { isPrimitiveControlKind, isFilledSurfaceKind, feedbackRule } from "./widget-capabilities.js";
 import { projectWidgetState } from "./visual-state.js";
-import { resolvePrimitiveAppearance } from "./primitive-appearance.js";
+import { resolvePrimitiveAppearance, resolveThumbAppearance } from "./primitive-appearance.js";
 
 export type CellVisualState = Readonly<{
   hovered?: boolean;
@@ -54,11 +54,20 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   const rule = feedbackRule(owner?.kind ?? node.kind);
   const primary = owner?.kind === "button" && owner.buttonVariant === "default";
   const disabled = node.disabled || owner?.disabled;
+  const confirmation = owner?.confirmation;
+  if (confirmation && !disabled) {
+    const { reference, phase } = confirmation;
+    const colors = phase % 2 === 0
+      ? { color: reference.backgroundColor, backgroundColor: reference.color }
+      : reference;
+    return { style: { ...node.textStyle, ...colors }, thumb: theme.sliderThumb };
+  }
   const focused = focusNode.focused && focusNode.focusVisible;
   const base = primary
     ? disabled ? theme.surfaceStyle : theme.buttonPrimaryStyle
     : isFilledSurfaceKind(node.kind) || owner?.kind === "select-trigger" ? theme.surfaceStyle : {};
   if (owner && isPrimitiveControlKind(owner.kind)) {
+    if (rule.region === "thumb") return resolveThumbAppearance({ ...base, ...node.textStyle }, projection, theme);
     return {
       style: resolvePrimitiveAppearance({ ...base, ...node.textStyle }, projection, theme),
       thumb: theme.sliderThumb,
@@ -67,14 +76,12 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   const style = resolveCellStateStyle({ ...base, ...node.textStyle }, {
     primary,
     focused,
-    selected: owner?.selected || owner?.pressed || (owner?.kind === "radio-item" && owner.checked === true),
+    selected: owner?.selected,
     hovered: rule.region === "control" ? owner?.hovered : false,
     pressActive: owner?.pressActive,
     activationFlash: owner?.activationFlash,
     collection: owner !== undefined,
     disabled,
   }, theme);
-  const emphasizeThumb = rule.region === "thumb" && !disabled
-    && (node.manipulating || (node.hovered && !focused));
-  return { style, thumb: emphasizeThumb ? theme.sliderEmphasizedThumb : theme.sliderThumb };
+  return { style, thumb: theme.sliderThumb };
 };

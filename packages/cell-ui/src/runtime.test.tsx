@@ -82,7 +82,7 @@ describe("CellUiRuntime", () => {
       focusActive: true,
       focusVisible: false,
     });
-    expect(pointer.buffer.get(29, 0)?.style).toMatchObject({ backgroundColor: "#E6E6E6" });
+    expect(pointer.buffer.get(29, 0)?.style).toMatchObject({ backgroundColor: "#000000" });
     expect(pointer.buffer.get(29, 0)?.style.bold).not.toBe(true);
 
     const movedAway = runtime.render(fileList(), {
@@ -97,12 +97,12 @@ describe("CellUiRuntime", () => {
 
   it("hover only repaints, retains semantic identity and clears when omitted", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 30, height: 9 } });
-    const before = runtime.render(fileList());
-    const hovered = runtime.render(fileList(), { hoveredId: "new" });
+    const before = runtime.render(fileList(), { focusVisible: false });
+    const hovered = runtime.render(fileList(), { hoveredId: "new", focusVisible: false });
     expect(hovered.layout).toBe(before.layout);
     expect(hovered.semantics.nodes).toBe(before.semantics.nodes);
     expect(hovered.invalidation.work.semantics).toBe("reused");
-    expect(hovered.buffer.get(29, 0)?.style.backgroundColor).toBe("#E6E6E6");
+    expect(hovered.buffer.get(29, 0)?.style.backgroundColor).toBe("#000000");
     expect(hovered.buffer.get(0, 0)?.style.bold).not.toBe(true);
     const cleared = runtime.render(fileList());
     expect(cleared.buffer.get(29, 0)?.style.backgroundColor).toBeUndefined();
@@ -243,14 +243,14 @@ describe("CellUiRuntime", () => {
     const frame = runtime.render(fileList());
 
     expect(frame.buffer.toText({ trimEnd: true })).toBe([
-      "New file",
-      "Open file",
-      "Save",
+      "  New file",
+      "✓ Open file",
+      "  Save",
       "┌────────────────────────────┐",
-      "│01  src/index.ts            │",
-      "│02  src/app.ts              │",
-      "│03  src/layout.ts           │",
-      "│04  src/theme.ts            │",
+      "│  01  src/index.ts          │",
+      "│  02  src/app.ts            │",
+      "│  03  src/layout.ts         │",
+      "│  04  src/theme.ts          │",
       "└────────────────────────────┘",
     ].join("\n"));
     expect([...frame.layout.entries.values()].every(({ rect }) =>
@@ -346,8 +346,8 @@ describe("CellUiRuntime", () => {
     expect(frame.scene.entries.get("a-label")?.paintVisible).toBe(false);
     expect(frame.buffer.toText({ trimEnd: true })).toBe([
       "┌──────────┐",
-      "│beta      │",
-      "│charlie  █│",
+      "│  beta    │",
+      "│  charlie█│",
       "└──────────┘",
     ].join("\n"));
     expect(hitTest(frame.scene, { x: 3, y: 1 })[0]).toBe("b-label");
@@ -383,16 +383,16 @@ describe("CellUiRuntime", () => {
     const runtime = new CellUiRuntime({
       viewport: { width: 8, height: 1 },
       theme: {
-        selectedStyle: { color: "#111111", backgroundColor: "#abcdef" },
+        foreground: "#111111", background: "#abcdef", collectionSelectedIndicator: "*",
       },
     });
     const frame = runtime.render(
       <Root id="root"><ListItem id="item" focused selected><Text>Open</Text></ListItem></Root>
     );
-    expect(frame.buffer.get(0, 0)?.text).toBe("O");
+    expect(frame.buffer.get(0, 0)?.text).toBe("*");
     expect(frame.buffer.get(2, 0)?.style).toMatchObject({
-      color: "#111111",
-      backgroundColor: "#abcdef",
+      color: "#abcdef",
+      backgroundColor: "#111111",
     });
     runtime.dispose();
   });
@@ -410,14 +410,12 @@ describe("CellUiRuntime", () => {
       { focusedId: state.focused ? "item" : null }
     );
     const expected = {
-      ...(state.focused ? { bold: true } : {}),
-      ...(state.selected ? { color: "#FFFFFF", backgroundColor: "#000000" }
-        : state.focused ? { color: "#FFFFFF", backgroundColor: "#000000" } : {}),
+      ...(state.focused && !state.disabled ? { color: "#FFFFFF", backgroundColor: "#000000" } : {}),
       ...(state.disabled ? { color: "#777777" } : {}),
     };
     expect(frame.buffer.get(0, 0)?.style).toEqual(expected);
     if (state.focused || state.selected) expect(frame.buffer.get(7, 0)?.style).toEqual(expected);
-    expect(frame.buffer.toText({ trimEnd: true })).toBe("Open");
+    expect(frame.buffer.toText({ trimEnd: true })).toBe(state.selected ? "✓ Open" : "  Open");
     runtime.dispose();
   });
 
@@ -432,7 +430,7 @@ describe("CellUiRuntime", () => {
       focusVisible: false,
     });
     expect(frame.semantics.focusedId).toBe("item");
-    expect(frame.buffer.get(0, 0)?.text).toBe("O");
+    expect(frame.buffer.get(2, 0)?.text).toBe("O");
     expect(frame.buffer.get(0, 0)?.style).toEqual({});
     runtime.dispose();
   });
@@ -518,7 +516,7 @@ describe("CellUiRuntime", () => {
     const selected = runtime.render(view(true));
 
     expect(selected.invalidation.work.paint).toBe("computed");
-    expect(selected.buffer.toText({ trimEnd: true })).toBe("┌────────┐\n│Value   │\n└────────┘");
+    expect(selected.buffer.toText({ trimEnd: true })).toBe("┌────────┐\n│✓ Value │\n└────────┘");
     runtime.dispose();
   });
 
@@ -631,7 +629,7 @@ describe("CellUiRuntime", () => {
       .toBeGreaterThan(frame.scene.paintList.indexOf("later-underlay"));
     expect(getEventPath(frame.scene, "command-two"))
       .toEqual(["command-two", "commands", "palette", "clipped-panel", "root"]);
-    expect(hitTest(frame.scene, { x: 5, y: 3 })[0]).toBe("command-two/text[0]");
+    expect(hitTest(frame.scene, { x: 7, y: 3 })[0]).toBe("command-two/text[0]");
     expect(frame.overlayPlanes).toEqual([{
       rootId: "palette",
       bounds: { x: 4, y: 1, width: 12, height: 4 },

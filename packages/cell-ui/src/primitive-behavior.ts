@@ -7,6 +7,12 @@ type SelectEffect =
   | Readonly<{ type: "focus"; targetId: WidgetId; scrollY?: number }>
   | Readonly<{ type: "scroll"; value: number }>;
 
+export const menuScopeId = (frame: FrameSnapshot, targetId: WidgetId): WidgetId | null => {
+  let node = frame.tree.nodes.get(targetId);
+  while (node && node.kind !== "menu") node = node.parentId ? frame.tree.nodes.get(node.parentId) : undefined;
+  return node?.id ?? null;
+};
+
 /** React adapters own values; this function owns Select command interpretation. */
 export const selectCommandEffect = (
   command: WidgetCommand,
@@ -24,9 +30,10 @@ export const selectCommandEffect = (
     ? { type: "select", targetId: command.targetId } : null;
 };
 
-/** Select commits immediately; only dismissal waits for confirmation. */
+/** Select defers dismissal; Menu defers the action itself. */
 export const confirmationCompletion = (frame: FrameSnapshot, targetId: WidgetId): WidgetCommand | null => {
   let node = frame.tree.nodes.get(targetId);
+  if (node?.kind === "menu-item") return { type: "activate", targetId };
   if (node?.kind !== "select-item") return null;
   while (node.parentId) {
     node = frame.tree.nodes.get(node.parentId);

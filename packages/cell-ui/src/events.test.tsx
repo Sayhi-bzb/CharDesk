@@ -44,7 +44,7 @@ describe("EventManager", () => {
     const result = events.dispatch(frame, {
       type: "pointer-down",
       pointerId: 1,
-      point: { x: 1, y: 0 },
+      point: { x: 3, y: 0 },
     }, handlers);
 
     expect(result.path).toEqual(["item/text[0]", "item", "list", "root"]);

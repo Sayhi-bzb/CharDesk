@@ -1,7 +1,9 @@
 import type { WidgetKind, WidgetNode } from "./types.js";
 
 export const isPrimitiveControlKind = (kind: WidgetKind): boolean =>
-  kind === "button" || kind === "checkbox" || kind === "select-trigger" || kind === "select-item";
+  kind === "button" || kind === "checkbox" || kind === "select-trigger" || kind === "select-item"
+  || kind === "toggle" || kind === "radio-item" || kind === "slider" || kind === "range-slider-thumb"
+  || kind === "list-item" || kind === "menu-item" || kind === "tree-item" || kind === "tab" || kind === "grid-cell";
 
 const collectionItemKinds = new Set<WidgetKind>([
   "list-item",
@@ -51,11 +53,11 @@ const rules: Partial<Record<WidgetKind, FeedbackRule>> = {
   "radio-item": tap,
   "select-item": tap,
   "select-trigger": { ...control, press: true },
-  "list-item": control,
-  "menu-item": control,
-  "tree-item": control,
-  tab: control,
-  "grid-cell": control,
+  "list-item": { ...control, press: true },
+  "menu-item": tap,
+  "tree-item": { ...control, press: true },
+  tab: { ...control, press: true },
+  "grid-cell": { ...control, press: true },
   slider: thumb,
   "range-slider-thumb": thumb,
   "scroll-area": { ...none, manipulation: true },

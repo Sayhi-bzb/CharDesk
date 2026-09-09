@@ -72,7 +72,7 @@ describe("Slider", () => {
     runtime.dispose();
   });
 
-  it("uses a thumb-only glyph for pointer hover while visible focus keeps priority", () => {
+  it("uses the same thumb-only glyph for pointer, keyboard and manipulation", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
     const normal = runtime.render(slider(35));
     const hovered = runtime.render(slider(35), { hoveredId: "volume" });
@@ -96,11 +96,8 @@ describe("Slider", () => {
     expect(disabledManipulating.tree.nodes.get("volume")?.manipulating).toBe(false);
     expect([...Array(20).keys()].map((x) => hovered.buffer.get(x, 0)?.style.backgroundColor))
       .toEqual(Array(20).fill(undefined));
-    expect(focusedAndHovered.buffer.toText({ trimEnd: true })).toBe("━━━━━━━┃────────────");
-    expect(focusedAndHovered.buffer.get(0, 0)?.style).toMatchObject({
-      backgroundColor: "#000000",
-      bold: true,
-    });
+    expect(focusedAndHovered.buffer.toText({ trimEnd: true })).toBe("━━━━━━━█────────────");
+    expect(focusedAndHovered.buffer.get(0, 0)?.style).toEqual({});
 
     const themed = new CellUiRuntime({
       viewport: { width: 5, height: 1 },
@@ -158,7 +155,10 @@ describe("Slider", () => {
     expect(pilot.text()).toContain("█");
     await pilot.pointerUp({ x: 15, y: 0 }, 2, { x: 15.5, y: 0.5 });
     expect(pilot.frame.tree.nodes.get("volume")?.manipulating).toBe(false);
+    expect(pilot.text()).toContain("█"); // release retains pointer hover
+    await pilot.pointerMove({ x: 25, y: 0 }, 2);
     expect(pilot.text()).not.toContain("█");
+    expect(pilot.frame.confirmation).toBeUndefined();
     expect(value).toBe(79);
     expect(commands).toContainEqual({ type: "set-value", targetId: "volume", value: 79 });
     pilot.dispose();
@@ -181,10 +181,8 @@ describe("Slider", () => {
     expect(resolvePointerAppearance(frame, { x: 19, y: 0 }))
       .toEqual({ hoveredId: "volume", cursor: "pointer" });
     const focused = runtime.render(slider(35), { focusedId: "volume" });
-    expect(focused.buffer.get(19, 0)?.style).toMatchObject({
-      backgroundColor: "#000000",
-      bold: true,
-    });
+    expect(focused.buffer.get(19, 0)?.style).toEqual({});
+    expect(focused.buffer.toText()).toContain("█");
 
     let disabledValue = 35;
     const disabled = createTestPilot({

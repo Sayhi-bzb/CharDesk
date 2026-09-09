@@ -4,12 +4,14 @@ import {
   Box,
   List,
   ListItem,
+  Menu,
+  MenuItem,
   Overlay,
   Root,
   Text,
   type WidgetCommand,
 } from "@chardesk/cell-ui";
-import { useCellListState } from "@chardesk/cell-ui/browser";
+import { useCellListState, useCellMenuState } from "@chardesk/cell-ui/browser";
 
 const launcherItems = [
   { id: "show-palette", label: "Open command palette" },
@@ -27,7 +29,7 @@ export const OverlayDemo = () => {
     defaultFocusedId: "show-palette",
     onAction: () => setOpen(true),
   });
-  const commands = useCellListState(commandItems, {
+  const commands = useCellMenuState(commandItems, {
     defaultFocusedId: "open-file",
     onAction: () => setOpen(false),
   });
@@ -52,7 +54,6 @@ export const OverlayDemo = () => {
             <ListItem
               id="show-palette"
               focused={launcher.focusedId === "show-palette"}
-              selected={launcher.selectedId === "show-palette"}
             ><Text>Open command palette</Text></ListItem>
           </List>
           <Box id="overlay-workspace" style={{ border: true, width: 18, height: 3 }}>
@@ -65,16 +66,15 @@ export const OverlayDemo = () => {
                 style={{ border: true, width: 30, height: 7 }}
               >
                 <Text id="palette-title" textStyle={{ bold: true }}>Commands</Text>
-                <List id="commands" label="Commands" style={{ height: 3 }}>
+                <Menu id="commands" label="Commands" style={{ height: 3 }}>
                   {commands.items.map((item) => (
-                    <ListItem
+                    <MenuItem
                       id={item.id}
                       key={item.id}
                       focused={commands.focusedId === item.id}
-                      selected={commands.selectedId === item.id}
-                    ><Text>{item.label}</Text></ListItem>
+                    ><Text>{item.label}</Text></MenuItem>
                   ))}
-                </List>
+                </Menu>
                 <Text id="palette-hint" textStyle={{ dim: true }}>Esc closes</Text>
               </Overlay>
             ) : null}

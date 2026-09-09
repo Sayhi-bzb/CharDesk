@@ -38,7 +38,7 @@ export type ComponentDocument = Readonly<{
 export const componentDocuments: readonly ComponentDocument[] = [
   {
     slug: "toggle", title: "Toggle", group: "components", navigationOrder: 6,
-    description: "Keep a mode pressed without confusing it with pointer press feedback.",
+    description: "Show a persistent mode with a status light, separate from interaction feedback.",
     probeId: "component-toggle", Demo: ToggleComponentDemo,
     usage: `import { useState } from "react";
 import { Root, Toggle, Text } from "@chardesk/cell-ui";
@@ -49,7 +49,7 @@ export function ToggleExample() {
   return <CellSurface viewport={{ width: 12, height: 1 }} onCommand={(command) => {
     if (command.type === "activate" && command.targetId === "bold") setPressed((value) => !value);
   }}>
-    <Root><Toggle id="bold" label="Bold" pressed={pressed}><Text>B</Text></Toggle></Root>
+    <Root><Toggle id="bold" label="Bold" pressed={pressed}><Text>Bold</Text></Toggle></Root>
   </CellSurface>;
 }`,
     api: [

@@ -592,6 +592,11 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
   await volume.focus();
   await page.keyboard.press("ArrowRight");
   await expect(volume).toHaveAttribute("aria-valuenow", "53");
+  const keyboardFrame = await readCellProbe(surface);
+  expect(keyboardFrame.cells.filter((cell) => cell.ownerId === "component-slider-volume" && cell.text === "█")).toHaveLength(1);
+  expect(keyboardFrame.cells.filter((cell) => cell.ownerId === "component-slider-volume"
+    && (cell.style.backgroundColor !== undefined || cell.style.bold))).toHaveLength(0);
+  await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
 
   await disabled.evaluate((element: HTMLElement) => element.click());
   await expect(disabled).toHaveAttribute("aria-checked", "true");

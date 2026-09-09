@@ -110,10 +110,10 @@ test("Command Palette owns its layer, focus scope, dismissal, and semantic actio
 
   const dialog = section.getByRole("dialog", { name: "Command palette" });
   await expect(dialog).toHaveAttribute("aria-modal", "true");
-  await expect(section.getByRole("listbox", { name: "Commands" }))
+  await expect(section.getByRole("menu", { name: "Commands" }))
     .toHaveAttribute("aria-activedescendant", "cell-semantic-open-file");
   await expect(surface).toHaveAttribute("data-cell-focused", "open-file");
-  await expect(section.getByRole("option", { name: "Open file" })).toBeFocused();
+  await expect(section.getByRole("menuitem", { name: "Open file" })).toBeFocused();
   await expect(canvas).toHaveAttribute("data-cell-text", /Commands/);
 
   await page.keyboard.press("ArrowDown");
@@ -130,7 +130,7 @@ test("Command Palette owns its layer, focus scope, dismissal, and semantic actio
 
   await section.getByRole("option", { name: "Open command palette" }).dispatchEvent("click");
   await expect(dialog).toHaveCount(1);
-  await section.getByRole("option", { name: "Open file" }).dispatchEvent("click");
+  await section.getByRole("menuitem", { name: "Open file" }).dispatchEvent("click");
   await expect(dialog).toHaveCount(0);
 
   await section.getByRole("option", { name: "Open command palette" }).dispatchEvent("click");

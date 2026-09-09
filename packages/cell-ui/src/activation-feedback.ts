@@ -1,7 +1,7 @@
 import type { WidgetCommand } from "./interaction.js";
 import { confirmationCompletion } from "./primitive-behavior.js";
 import { ConfirmationSequence } from "./confirmation-sequence.js";
-import type { FrameSnapshot, WidgetId } from "./types.js";
+import type { ConfirmationColors, ConfirmationPresentation, FrameSnapshot, WidgetId } from "./types.js";
 import { supportsActivationFeedback } from "./widget-capabilities.js";
 import {
   DEFAULT_CELL_ACTIVATION_BLINK_COUNT,
@@ -34,11 +34,27 @@ export const activationFeedbackTargetForCommand = (
 export class ActivationFeedbackManager {
   #targetId: WidgetId | null = null;
   readonly #sequence = new ConfirmationSequence();
+  #sessionId = 0;
+  #waiting = false;
+  #reference: ConfirmationColors | null = null;
   #completionCommand: WidgetCommand | null = null;
   #readyCompletionCommand: WidgetCommand | null = null;
 
   get activeId(): WidgetId | null {
-    return this.#sequence.visible ? this.#targetId : null;
+    return !this.#waiting && this.#sequence.visible ? this.#targetId : null;
+  }
+
+  get waiting(): boolean { return this.#waiting; }
+  get presentation(): ConfirmationPresentation | undefined {
+    if (!this.#targetId || this.#waiting || !this.#reference) return undefined;
+    return { sessionId: this.#sessionId, targetId: this.#targetId, phase: this.#sequence.index, reference: this.#reference };
+  }
+
+  release(reference: ConfirmationColors): boolean {
+    if (!this.#waiting) return false;
+    this.#waiting = false;
+    this.#reference = reference;
+    return true;
   }
 
   get targetId(): WidgetId | null {
@@ -53,10 +69,15 @@ export class ActivationFeedbackManager {
     return this.#completionCommand !== null || this.#readyCompletionCommand !== null;
   }
 
+  get defersActivation(): boolean {
+    return this.#completionCommand?.type === "activate" || this.#readyCompletionCommand?.type === "activate";
+  }
+
   start(
     frame: FrameSnapshot,
     command: WidgetCommand,
-    count: ActivationBlinkCount = DEFAULT_CELL_ACTIVATION_BLINK_COUNT
+    count: ActivationBlinkCount = DEFAULT_CELL_ACTIVATION_BLINK_COUNT,
+    options: Readonly<{ waitForRelease?: boolean; reference?: ConfirmationColors }> = {},
   ): WidgetId | null {
     const targetId = activationFeedbackTargetForCommand(frame, command);
     if (!targetId) {
@@ -70,6 +91,8 @@ export class ActivationFeedbackManager {
       return null;
     }
     this.#targetId = targetId;
+    this.#waiting = options.waitForRelease ?? false;
+    this.#reference = options.reference ?? null;
     this.#sequence.start(count);
     return targetId;
   }
@@ -79,23 +102,11 @@ export class ActivationFeedbackManager {
     targetId: WidgetId,
     count: ActivationBlinkCount = DEFAULT_CELL_ACTIVATION_BLINK_COUNT
   ): WidgetId | null {
-    if (!validActivationFeedbackTarget(frame, targetId)) {
-      this.clear();
-      return null;
-    }
-    this.clear();
-    this.#completionCommand = confirmationCompletion(frame, targetId);
-    if (count === 0) {
-      this.#finish();
-      return null;
-    }
-    this.#targetId = targetId;
-    this.#sequence.start(count);
-    return targetId;
+    return this.start(frame, { type: "activate", targetId }, count);
   }
 
   advance(): boolean {
-    if (this.#targetId === null) return false;
+    if (this.#targetId === null || this.#waiting) return false;
     this.#sequence.advance();
     if (!this.#sequence.running) this.#finish();
     return true;
@@ -106,6 +117,9 @@ export class ActivationFeedbackManager {
       || this.#completionCommand !== null
       || this.#readyCompletionCommand !== null;
     this.#targetId = null;
+    this.#sessionId += 1;
+    this.#waiting = false;
+    this.#reference = null;
     this.#sequence.clear();
     this.#completionCommand = null;
     this.#readyCompletionCommand = null;
@@ -113,6 +127,7 @@ export class ActivationFeedbackManager {
   }
 
   settle(): boolean {
+    if (this.defersActivation) return this.clear();
     if (this.#targetId === null && this.#completionCommand === null) return false;
     this.#finish();
     return true;
@@ -134,6 +149,8 @@ export class ActivationFeedbackManager {
 
   #finish(): void {
     this.#targetId = null;
+    this.#waiting = false;
+    this.#reference = null;
     this.#sequence.clear();
     this.#readyCompletionCommand = this.#completionCommand;
     this.#completionCommand = null;

@@ -37,6 +37,7 @@ const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.pressActive === right.pressActive
   && left.activationFlash === right.activationFlash
   && left.confirming === right.confirming
+  && sameWidgetValue(left.confirmation, right.confirmation)
   && left.selected === right.selected
   && left.checked === right.checked
   && left.pressed === right.pressed

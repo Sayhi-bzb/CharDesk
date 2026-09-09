@@ -15,6 +15,7 @@ export const projectWidgetState = (tree: WidgetTree, node: WidgetNode) => {
     disabled,
     highlighted: !disabled && ((target.focused && target.focusVisible) || target.hovered),
     pressed: !disabled && target.pressActive,
+    manipulating: !disabled && !!target.manipulating,
     confirming: !disabled && !!target.confirming,
     flash: !disabled && target.activationFlash,
   };

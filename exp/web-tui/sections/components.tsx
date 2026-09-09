@@ -43,7 +43,7 @@ export const ToggleComponentDemo = () => {
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
     if (command.type !== "activate") return;
-    if (command.targetId === "component-toggle-bold" || command.targetId === "component-toggle-pressed") {
+    if (command.targetId === "component-toggle-bold") {
       setPressed((value) => !value);
     }
     if (command.targetId === "component-toggle-disabled") setDisabled((value) => !value);
@@ -51,30 +51,20 @@ export const ToggleComponentDemo = () => {
   return <ComponentPlayground id="component-toggle-playground" label="Toggle component" probeId="component-toggle"
     focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={10} controlsColumns={25}
     preview={<Toggle id="component-toggle-bold" label="Bold" pressed={pressed} disabled={disabled}
-      focused={focus.focusedId === "component-toggle-bold"}><Text>B</Text></Toggle>}
+      focused={focus.focusedId === "component-toggle-bold"}><Text>Bold</Text></Toggle>}
     controls={[
-      renderPlaygroundCheckboxControl("pressed", "component-toggle-pressed", pressed, focus.focusedId),
       renderPlaygroundCheckboxControl("disabled", "component-toggle-disabled", disabled, focus.focusedId),
     ]} />;
 };
 
-export const ProgressComponentDemo = () => {
-  const [value, setValue] = useState(60);
-  const focus = usePlaygroundFocus("component-progress-value", []);
-  const dispatch = (command: WidgetCommand) => {
-    focus.dispatch(command);
-    if (command.type === "set-value" && command.targetId === "component-progress-value") setValue(command.value);
-  };
-  return <ComponentPlayground id="component-progress-playground" label="Progress component" probeId="component-progress"
-    focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={20} controlsColumns={25}
-    preview={<Progress id="component-progress-bar" label="Progress" value={value} />}
-    controls={<Box style={{ direction: "row", height: 1 }}>
-      <Text style={{ width: 10 }}>value</Text>
-      <Slider id="component-progress-value" label="value" value={value} step={10} style={{ width: 10 }}
-        focused={focus.focusedId === "component-progress-value"} />
-      <Text style={{ width: 5 }}>{` ${value}`}</Text>
-    </Box>} />;
-};
+export const ProgressComponentDemo = () => (
+  <GallerySurface label="Progress component" probeId="component-progress"
+    viewport={{ width: 20, height: 7 }} onCommand={noCommand}>
+    <Root id="component-progress-root" style={{ paddingTop: 3 }}>
+      <Progress id="component-progress-bar" label="Progress" value={60} />
+    </Root>
+  </GallerySurface>
+);
 
 const orientationItems = ["horizontal", "vertical"].map((value) => ({ id: value, label: value }));
 export const SeparatorComponentDemo = () => {
@@ -98,11 +88,7 @@ export const RadioComponentDemo = () => {
   const [value, setValue] = useState("light");
   const [disabled, setDisabled] = useState(false);
   const radio = useCellRadioState(radioItems, { value, disabled, onValueChange: setValue });
-  const valueSelect = useCellSelectState("component-radio-value", radioItems.map((item) => ({ ...item, id: `${item.id}-option` })), {
-    selectedId: `${radioItems.find((item) => item.value === value)!.id}-option`,
-    onSelectionChange: (id) => setValue(radioItems.find((item) => `${item.id}-option` === id)!.value),
-  });
-  const focus = usePlaygroundFocus(radio.focusedId ?? "component-radio-disabled", [valueSelect]);
+  const focus = usePlaygroundFocus(radio.focusedId ?? "component-radio-disabled", []);
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
     radio.dispatch(command);
@@ -113,13 +99,11 @@ export const RadioComponentDemo = () => {
   };
   return <ComponentPlayground id="component-radio-playground" label="Radio component" probeId="component-radio"
     focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={14} controlsColumns={25}
-    overlayRows={focus.activeSelect ? 5 : 0}
     preview={<RadioGroup id="component-radio-group" label="Appearance" value={value} disabled={disabled}>
       {radio.items.map((item) => <RadioItem key={item.id} id={item.id} value={item.value}
         focused={focus.focusedId === item.id}><Text>{item.label}</Text></RadioItem>)}
     </RadioGroup>}
     controls={[
-      renderPlaygroundSelectControl("value", valueSelect, focus.focusedId),
       renderPlaygroundCheckboxControl("disabled", "component-radio-disabled", disabled, focus.focusedId),
     ]} />;
 };

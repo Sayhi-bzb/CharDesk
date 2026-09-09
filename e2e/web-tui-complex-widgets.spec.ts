@@ -66,7 +66,12 @@ test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", a
     },
   });
   await expect(surface).toHaveAttribute("data-cell-focused", "menu-new");
+  await expect(surface).toHaveAttribute("data-cell-confirmation-phase", /[0-3]/);
 
+  await section.getByRole("menuitem", { name: "Open file" })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(surface).toHaveAttribute("data-cell-focused", "menu-new");
+  await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
   await section.getByRole("menuitem", { name: "Open file" })
     .evaluate((element: HTMLElement) => element.click());
   await expect(surface).toHaveAttribute("data-cell-focused", "menu-open");

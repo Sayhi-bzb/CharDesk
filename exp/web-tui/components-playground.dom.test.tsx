@@ -56,10 +56,10 @@ describe("Component Playground gallery demos", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it.each([
-    { Demo: ToggleComponentDemo, label: "Toggle component", content: ["[ B ]", "pressed", "disabled"], absent: ["variant"], rounded: false },
-    { Demo: ProgressComponentDemo, label: "Progress component", content: ["████", "value"], absent: ["variant"], rounded: false },
+    { Demo: ToggleComponentDemo, label: "Toggle component", content: ["○ Bold", "disabled"], absent: ["variant", "pressed", "value"], rounded: false },
+    { Demo: ProgressComponentDemo, label: "Progress component", content: ["████"], absent: ["variant", "value", "│"], rounded: false },
     { Demo: SeparatorComponentDemo, label: "Separator component", content: ["────", "horizontal"], absent: ["variant"], rounded: false },
-    { Demo: RadioComponentDemo, label: "Radio component", content: ["(●) Light", "( ) Dark", "disabled"], absent: ["variant"], rounded: false },
+    { Demo: RadioComponentDemo, label: "Radio component", content: ["(●) Light", "( ) Dark", "disabled"], absent: ["variant", "value"], rounded: false },
     {
       Demo: SelectComponentDemo,
       label: "Select component",
@@ -101,7 +101,7 @@ describe("Component Playground gallery demos", () => {
     await waitFor(() => expect(readCellSurfaceProbe(surface)).not.toBeNull());
     const probe = readCellSurfaceProbe(surface)!;
 
-    expect(probe.viewport).toEqual({ width: 64, height: 7 });
+    expect(probe.viewport).toEqual({ width: Demo === ProgressComponentDemo ? 20 : 64, height: 7 });
     content.forEach((text) => expect(probe.text).toContain(text));
     absent.forEach((text) => expect(probe.text).not.toContain(text));
     expect(screen.queryByRole("checkbox", { name: "rounded" }) !== null).toBe(rounded);

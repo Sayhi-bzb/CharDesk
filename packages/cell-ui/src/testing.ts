@@ -67,7 +67,6 @@ export class TestPilot {
   readonly #focus = this.#controller.focus;
   readonly #gestures = this.#controller.gestures;
   readonly #press = this.#controller.press;
-  readonly #activationFeedback = this.#controller.feedback;
   readonly #render: () => ReactElement<RootProps> | null;
   readonly #onCommand: (command: WidgetCommand) => void;
   readonly #runtime: CellUiRuntime;
@@ -116,7 +115,7 @@ export class TestPilot {
       this.#frame,
       this.#focus
     );
-    if (this.#activationFeedback.settling) {
+    if (this.#controller.interceptPointer(this.#frame, point)) {
       this.#commit(command);
       await this.pause();
       return;
@@ -138,7 +137,7 @@ export class TestPilot {
 
   async pointerUp(point: CellPoint, pointerId = 1, precisePoint?: CellPoint): Promise<void> {
     this.#assertActive();
-    const signals = this.#controller.endPointer(pointerId, point, precisePoint);
+    const signals = this.#controller.endPointer(this.#frame, pointerId, point, precisePoint);
     this.#applyGestureSignals(signals);
     await this.pause();
   }
@@ -277,11 +276,8 @@ export class TestPilot {
 
   #renderFrame(): void {
     this.#frame = this.#runtime.render(this.#render(), {
+      ...this.#controller.snapshot,
       manipulatingIds: this.#gestures.manipulatingIds,
-      pressActiveId: this.#press.activeId,
-      activationFlashId: this.#activationFeedback.activeId,
-      activationTargetId: this.#activationFeedback.targetId,
-      focusVisible: this.#controller.snapshot.focusVisible,
       hoveredId: this.#primitiveHover(),
       resolveFocusedId: (tree) => {
         this.#focus.sync(tree);
@@ -297,17 +293,14 @@ export class TestPilot {
     const manipulationChanged = !sameWidgetIdSet(manipulatingBefore, this.#gestures.manipulatingIds);
     if (pressChanged || activationFeedbackChanged || manipulationChanged) {
       this.#frame = this.#runtime.render(this.#render(), {
-        focusedId: this.#focus.focusedId,
+        ...this.#controller.snapshot,
         manipulatingIds: this.#gestures.manipulatingIds,
-        pressActiveId: this.#press.activeId,
-        activationFlashId: this.#activationFeedback.activeId,
-      activationTargetId: this.#activationFeedback.targetId,
-      focusVisible: this.#controller.snapshot.focusVisible,
-      hoveredId: this.#primitiveHover(),
+        hoveredId: this.#primitiveHover(),
       });
     }
     if (activationFeedbackChanged) this.#flushActivationFeedbackCompletion();
     this.#syncTextViewports();
+    this.#controller.presented(this.#frame.confirmation);
   }
 
   #syncTextViewports(): void {
@@ -315,12 +308,8 @@ export class TestPilot {
     if (!commands.length) return;
     for (const command of commands) this.#onCommand(command);
     this.#frame = this.#runtime.render(this.#render(), {
-      focusedId: this.#focus.focusedId,
+      ...this.#controller.snapshot,
       manipulatingIds: this.#gestures.manipulatingIds,
-      pressActiveId: this.#press.activeId,
-      activationFlashId: this.#activationFeedback.activeId,
-      activationTargetId: this.#activationFeedback.targetId,
-      focusVisible: this.#controller.snapshot.focusVisible,
       hoveredId: this.#primitiveHover(),
     });
   }

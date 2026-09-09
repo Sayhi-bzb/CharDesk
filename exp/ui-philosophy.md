@@ -13,16 +13,10 @@
 
 视觉与交互判断以 [Classic Macintosh → Cell UI](blueprints/macintosh.md) 为标准；OpenTUI 只提供终端构图与工程参考。
 
-## 当前状态语言
+## 状态与底座权威
 
-- keyboard/AT focused 使用完整 item/Cell 背景＋bold；pointer focus 保留逻辑位置但只显示 hover；selected 使用持久背景。编辑器由 Surface active 驱动终端式 Cell Cursor 和 selection，不整段加粗；浏览器 pointer 保持普通箭头，不表达第二套 I-beam caret。
-- hover 只作用于可交互目标，不改变任何 Widget state；离散控件使用更轻背景。Slider 的 hover 和 manipulating 共用 thumb 强化 `┃→█`，pointer down 到 drag/release 之间不闪断。
-- manipulating 是 GestureManager 拥有的连续操控状态，从 pointer down 开始，经 pointer capture 保持，在 release、cancel、capture loss、blur 或目标失效时清除；它不伪装成 hover，也不复用离散控件 pressActive。
-- pressActive 是 down→up 的瞬时输入状态；支持 press 的控件在按住时反转完整矩形的有效前景/背景，能力由 [Widget 规范](blueprints/widgets.md)对应的能力表拥有。移出撤销、移回恢复，释放或取消后清除；它不替代 open、checked、selected 或 Toggle pressed。
-- activationFlash 是 command 已接受后的确认状态；支持确认的控件使用全局次数反相完整矩形。SelectTrigger 展开和 Radio 方向键导航不闪烁。SelectItem 先提交业务值，再在锁定的 Content 中完成确认并关闭；Escape、外部按压或 blur 可提前关闭但不回滚。
-- disclosure、Tab underline、scrollbar 和 border 由公共 chrome painter 生成，业务内容不手写。
-- content 只在 `contentClip` 内 paint/hit；chrome 不被内容或状态背景覆盖。
-- keyboard 与 AT 共用 focus 样式；pointer 使用较轻的临时 hover，并在移出后退出。
-- Gallery 配色只消费 CSS token → `CellUiTheme`；Canvas painter 不拥有产品颜色。
+[Widget 规范](blueprints/widgets.md)拥有高亮、选择、按压、确认、编辑与连续操控规则；[Cell Primitives 底座](blueprints/primitives.md)拥有共享控制器、组件行为、反馈与外观的依赖边界。页面只组合内容、行为与 Cell 布局，不重新实现这些机制。
 
-具体组件行为见 [Widget 规范](blueprints/widgets.md)，Gallery 实现见 [`exp/web-tui`](web-tui/)。
+Gallery 实现见 [`exp/web-tui`](web-tui/)。
+
+Gallery props panel 只放有用的配置项，不重复添加 `value`、`pressed` 等运行状态控件；可交互状态直接在 Preview 操作。没有配置项时只展示 Preview，不保留空面板。

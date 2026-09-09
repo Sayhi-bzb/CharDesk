@@ -7,7 +7,7 @@ for (const dpr of [1, 1.25, 2]) {
     test.use({ deviceScaleFactor: dpr });
     test("prints native, Profile and Surface metrics with the production Mono font", async ({ page }, testInfo) => {
       await page.goto("/exp/web-tui/#/__fixtures/all");
-      await selectGalleryFont(page, "Fusion Pixel 12px Mono");
+      await selectGalleryFont(page, "Fusion");
       await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font", "fusion-mono");
       const surface = page.locator('[data-cell-probe="editor"]');
       await expect.poll(async () => (await readCellProbe(surface)).presentation?.fontAudit?.status).toBe("ready");

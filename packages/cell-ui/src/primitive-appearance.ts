@@ -9,6 +9,17 @@ export type PrimitiveVisualState = Readonly<{
   flash: boolean;
 }>;
 
+/** Continuous controls emphasize the handle, never the whole track. */
+export const resolveThumbAppearance = (
+  base: CellTextStyle,
+  state: PrimitiveVisualState & Readonly<{ manipulating: boolean }>,
+  theme: CellUiTheme,
+) => ({
+  style: { ...base, ...(state.disabled ? theme.disabledStyle : {}) },
+  thumb: !state.disabled && (state.highlighted || state.manipulating)
+    ? theme.sliderEmphasizedThumb : theme.sliderThumb,
+});
+
 /** A feedback phase replaces highlight; inversion is never additive. */
 export const resolvePrimitiveAppearance = (
   base: CellTextStyle,

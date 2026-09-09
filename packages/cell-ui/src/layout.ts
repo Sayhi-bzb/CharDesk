@@ -13,6 +13,7 @@ import Yoga, {
   type Config,
   type Node as YogaNode,
 } from "yoga-layout";
+import { collectionChromeMetrics } from "./collection-chrome.js";
 import type {
   CellLayoutStyle,
   CellInsets,
@@ -119,7 +120,7 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     : node.kind === "radio-group"
       ? { direction: node.orientation === "horizontal" ? "row" : "column", flexShrink: 0 }
     : node.kind === "toggle"
-      ? { direction: "row", minHeight: 1, paddingLeft: 2, paddingRight: 2, flexShrink: 0 }
+      ? { direction: "row", minHeight: 1, paddingLeft: 2, paddingRight: 1, flexShrink: 0 }
     : node.kind === "radio-item"
       ? { direction: "row", minHeight: 1, flexShrink: 0 }
     : item
@@ -127,11 +128,9 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
         direction: "row",
         minHeight: node.kind === "tab" ? 2 : 1,
         flexShrink: 0,
-        paddingLeft: node.kind === "tree-item"
-          ? 2 + Math.max(0, (node.level ?? 1) - 1) * 2
-          : node.kind === "list-item" || node.kind === "menu-item"
-            ? 0
-            : 1,
+        paddingLeft: node.kind === "tree-item" || node.kind === "list-item" || node.kind === "grid-cell"
+          ? collectionChromeMetrics(node).contentInset
+          : node.kind === "menu-item" ? 0 : 1,
         ...(node.kind === "select-item" ? { paddingRight: 2 } : {}),
       }
     : node.kind === "slider" || node.kind === "range-slider"

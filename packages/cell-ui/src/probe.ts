@@ -81,6 +81,7 @@ export type CellProbePresentation = Readonly<{
 }>;
 
 export type CellProbeSnapshot = Readonly<{
+  confirmation?: FrameSnapshot["confirmation"];
   schemaVersion: 4;
   probeId: string | null;
   revision: number;
@@ -185,6 +186,7 @@ export const captureCellProbe = (
     text: formatCellBuffer(frame.buffer, { region, trimEnd: true }),
     cells,
     focusedId: frame.semantics.focusedId,
+    confirmation: frame.confirmation,
     invalidation: {
       phases: [...frame.invalidation.phases],
       dirtyRegions: frame.invalidation.dirtyRegions.map((dirty) => ({ ...dirty })),

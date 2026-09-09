@@ -102,6 +102,7 @@ export type WidgetNode = Readonly<{
   pressActive: boolean;
   activationFlash: boolean;
   confirming?: boolean;
+  confirmation?: ConfirmationPresentation;
   selected: boolean;
   checked: CellCheckboxState;
   pressed: boolean;
@@ -311,7 +312,17 @@ export type SemanticSnapshot = Readonly<{
   revision: number;
 }>;
 
+export type ConfirmationColors = Readonly<{ color: string; backgroundColor: string }>;
+export type ConfirmationPresentation = Readonly<{
+  sessionId: number;
+  targetId: WidgetId;
+  phase: number;
+  reference: ConfirmationColors;
+}>;
+
 export type FrameSnapshot = Readonly<{
+  colors: ConfirmationColors;
+  confirmation?: ConfirmationPresentation;
   revision: number;
   tree: WidgetTree;
   layout: LayoutSnapshot;

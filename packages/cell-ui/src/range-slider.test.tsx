@@ -59,7 +59,7 @@ describe("RangeSlider", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
     const frame = runtime.render(rangeSlider());
 
-    expect(frame.buffer.toText({ trimEnd: true })).toBe("──────┃━━━━━━┃──────");
+    expect(frame.buffer.toText({ trimEnd: true })).toBe("──────█━━━━━━┃──────");
     expect(frame.scene.entries.get("volume-range")?.layoutBounds)
       .toEqual({ x: 0, y: 0, width: 20, height: 1 });
     expect(frame.scene.entries.get("volume-start")?.layoutBounds)
@@ -102,10 +102,8 @@ describe("RangeSlider", () => {
       focusedId: "volume-start",
       focusVisible: true,
     });
-    expect(focused.buffer.get(6, 0)?.style).toMatchObject({
-      backgroundColor: "#000000",
-      bold: true,
-    });
+    expect(focused.buffer.get(6, 0)?.style).toEqual({});
+    expect(focused.buffer.toText({ trimEnd: true })).toBe("──────█━━━━━━┃──────");
     expect(focused.buffer.get(7, 0)?.style.backgroundColor).toBeUndefined();
     runtime.dispose();
   });

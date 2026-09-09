@@ -24,10 +24,15 @@ test("Toggle keeps pressed state after mouse exit and supports keyboard release"
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
   await page.getByRole("heading", { name: "Toggle", exact: true }).click();
   await expect(surface).not.toHaveAttribute("data-cell-activation-flash");
+  await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
+  const idle = await readCellProbe(surface);
+  expect(idle.text).toContain("● Bold");
+  expect(idle.cells.filter((cell) => cell.ownerId === "component-toggle-bold"
+    && cell.style.backgroundColor !== undefined)).toHaveLength(0);
   await toggle.focus();
   await page.keyboard.press("Space");
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
-  expect(await readCellText(surface)).toContain("[ B ]");
+  expect(await readCellText(surface)).toContain("○ Bold");
 });
 
 test("Radio mouse and arrow selection share one semantic group", async ({ page }) => {
@@ -42,27 +47,24 @@ test("Radio mouse and arrow selection share one semantic group", async ({ page }
   await group.getByRole("radio", { name: "Dark", exact: true }).focus();
   await page.keyboard.press("ArrowDown");
   await expect(group.getByRole("radio", { name: "System" })).toHaveAttribute("aria-checked", "true");
+  await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
   await page.keyboard.press("ArrowDown");
   await expect(group.getByRole("radio", { name: "Light", exact: true })).toHaveAttribute("aria-checked", "true");
   expect(await readCellText(surface)).toContain("(●) Light");
   await page.keyboard.press("Tab");
-  await expect(surface.getByRole("button", { name: "value", exact: true })).toBeFocused();
+  await expect(surface.getByRole("checkbox", { name: "disabled", exact: true })).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect(group.getByRole("radio", { name: "Light", exact: true })).toBeFocused();
 });
 
-test("Progress playground changes both block snapshot and accessible value", async ({ page }) => {
+test("Progress preview has no redundant value control or empty props panel", async ({ page }) => {
   await page.goto("/exp/web-tui/#/components/progress");
   const surface = page.locator('[data-cell-probe="component-progress"]');
   const bar = surface.getByRole("progressbar");
   await expect(bar).toHaveAttribute("aria-valuenow", "60");
-  await surface.getByRole("slider", { name: "value", exact: true }).focus();
-  await page.keyboard.press("End");
-  await expect(bar).toHaveAttribute("aria-valuenow", "100");
-  expect(await readCellText(surface)).toContain("█".repeat(20));
-  await page.keyboard.press("Home");
-  await expect(bar).toHaveAttribute("aria-valuenow", "0");
-  expect(await readCellText(surface)).toContain("░".repeat(20));
+  await expect(surface.getByRole("slider")).toHaveCount(0);
+  expect(await readCellText(surface)).toContain("█".repeat(12) + "░".repeat(8));
+  expect(await readCellText(surface)).not.toContain("│");
 });
 
 test("Separator changes orientation through its Cell Select", async ({ page }) => {

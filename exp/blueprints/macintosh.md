@@ -18,10 +18,9 @@
 
 - Macintosh 决定交互与视觉层级；Everything is Cell 决定整数布局、字符 chrome、Canvas paint、hit、copy 和 probe。
 - Light 是 System 6–7 正典；Dark 是同一黑白层级的系统反相，不声称历史复刻。
-- 状态优先级从高到低为 disabled → transient inverse → selected → keyboard focus → hover。Disabled 拒绝 transient feedback；press/activation 反相最终解析样式；selected 决定持久背景；focus 增加 bold；hover 只在无 focus/selection/disabled 时出现。
-- Pointer hover 是 Web 可发现性适配，只改变 paint，不改变布局、command 或业务 state。
-- Button variant 必须在静止状态可区分：default 使用高对比 primary surface，outline 使用字符边框，ghost 保持透明。Primary hover 使用同向的轻微明度变化；disabled 退回普通 surface，press 与 activation feedback 反相最终有效颜色。
-- Maple Mono 9×20 仍是默认 Cell metrics。Chicago-like 字体属于后续独立 preset。
+- 当前操作目标与持久选择分开表达；鼠标和键盘消费同一种操作强调，确认反馈不叠加反色。具体优先级、组件迁移范围与字符标记由 [Widget 状态规范](widgets.md#状态与主题)拥有。
+- Button variant 在静止状态可区分：default 使用高对比 primary surface，outline 使用字符边框，ghost 保持透明。
+- Maple Mono 9×20 仍是默认 Cell metrics；当前没有 Macintosh 字体 preset。
 - Semantic DOM、keyboard、touch、IME、reduced motion 与 accessibility 是现代 Host 契约，不以历史行为降级。
 
 ## 当前边界

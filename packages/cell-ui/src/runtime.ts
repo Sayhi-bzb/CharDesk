@@ -96,6 +96,7 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.pressActive !== after.pressActive
   || before.activationFlash !== after.activationFlash
   || before.confirming !== after.confirming
+  || !sameWidgetValue(before.confirmation, after.confirmation)
   || before.selected !== after.selected
   || before.checked !== after.checked
   || before.pressed !== after.pressed
@@ -193,6 +194,8 @@ export class CellUiRuntime {
       pressActiveId?: string | null;
       activationFlashId?: string | null;
       activationTargetId?: string | null;
+      confirmation?: FrameSnapshot["confirmation"];
+      colors?: FrameSnapshot["colors"];
       resolveFocusedId?: (tree: WidgetTree) => string | null;
     }> = {}
   ): FrameSnapshot {
@@ -220,6 +223,7 @@ export class CellUiRuntime {
           && node.pressActive === (id === state.pressActiveId && supportsPressFeedback(node.kind) && !node.disabled)
           && node.activationFlash === (id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled)
           && node.confirming === (id === state.activationTargetId && !node.disabled)
+          && sameWidgetValue(node.confirmation, id === state.confirmation?.targetId ? state.confirmation : undefined)
           ? node
           : {
               ...node,
@@ -231,6 +235,7 @@ export class CellUiRuntime {
               pressActive: id === state.pressActiveId && supportsPressFeedback(node.kind) && !node.disabled,
               activationFlash: id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled,
               confirming: id === state.activationTargetId && !node.disabled,
+              confirmation: id === state.confirmation?.targetId ? state.confirmation : undefined,
             },
       ])),
     };
@@ -380,6 +385,8 @@ export class CellUiRuntime {
       ...(dirtyRegions.length > 0 ? ["present" as const] : []),
     ];
     const frame: FrameSnapshot = {
+      colors: state.colors ?? { color: this.#theme.foreground, backgroundColor: this.#theme.background },
+      confirmation: state.confirmation,
       revision,
       tree,
       layout,

@@ -62,16 +62,16 @@ describe("Cell probe", () => {
       region: { x: 0, y: 0, width: 12, height: 1 },
       viewport: { width: 12, height: 3 },
       focusedId: "open",
-      text: "Open 世界",
+      text: "✓ Open 世界",
     });
     expect(snapshot.cells).toHaveLength(12);
     expect(snapshot.cells.filter((cell) => cell.continuation)).toHaveLength(2);
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
     expect(formatCellProbe(snapshot, { header: true })).toBe(
-      "cell-ui/probe@4  anonymous  12×1  focus=open\nOpen 世界"
+      "cell-ui/probe@4  anonymous  12×1  focus=open\n✓ Open 世界"
     );
 
-    expect(pilot.inspect({ x: 0, y: 0 })).toMatchObject({
+    expect(pilot.inspect({ x: 2, y: 0 })).toMatchObject({
       cell: { text: "O", ownerId: "open/text[0]" },
       hit: { ownerId: "open/text[0]", part: "content" },
       hitStack: ["open/text[0]", "open", "actions", "root"],

@@ -67,7 +67,7 @@ test("hover shares hit testing, is paint-only, and never activates a command", a
   const hovered = await readCellProbe(surface);
   expect(hovered.focusedId).toBe(before.focusedId);
   expect(hovered.text).toBe(before.text);
-  expect(hovered.cells.find((cell) => cell.x === 20 && cell.y === 0)?.style.backgroundColor).toBe("rgb(230, 230, 230)");
+  expect(hovered.cells.find((cell) => cell.x === 20 && cell.y === 0)?.style.backgroundColor).toBe("rgb(0, 0, 0)");
   await page.mouse.move(bounds.x + 24, bounds.y + 9);
   expect((await readCellProbe(surface)).revision).toBe(hovered.revision);
   await page.mouse.move(0, 0);

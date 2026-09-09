@@ -29,6 +29,9 @@ export type CellUiTheme = Readonly<{
   checkboxUncheckedIndicator: string;
   checkboxCheckedIndicator: string;
   radioCheckedIndicator: string;
+  toggleOffIndicator: string;
+  toggleOnIndicator: string;
+  collectionSelectedIndicator: string;
   progressFilledTrack: string;
   progressEmptyTrack: string;
   checkboxIndeterminateIndicator: string;
@@ -58,6 +61,9 @@ const CLASSIC_MAC_SHARED_THEME = Object.freeze({
   checkboxUncheckedIndicator: " ",
   checkboxCheckedIndicator: "x",
   radioCheckedIndicator: "●",
+  toggleOffIndicator: "○",
+  toggleOnIndicator: "●",
+  collectionSelectedIndicator: "✓",
   progressFilledTrack: "█",
   progressEmptyTrack: "░",
   checkboxIndeterminateIndicator: "-",

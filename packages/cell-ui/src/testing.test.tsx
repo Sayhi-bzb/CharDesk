@@ -67,7 +67,7 @@ describe("TestPilot", () => {
     await pilot.pressKey("ArrowDown");
     expect(pilot.focus()).toBe("light");
     expect(selectedId).toBe("light");
-    vi.advanceTimersByTime(160);
+    vi.advanceTimersByTime(240);
     expect(open).toBe(false);
     expect(pilot.frame.tree.nodes.has("theme-content")).toBe(false);
     expect(commands.at(-1)).toEqual({ type: "dismiss", targetId: "theme-content" });

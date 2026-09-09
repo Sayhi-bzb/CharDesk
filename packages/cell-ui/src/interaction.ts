@@ -1,4 +1,5 @@
 import { hitTest } from "./scene.js";
+import { gridEntry, gridOwnerId, gridTarget } from "./grid-navigation.js";
 import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
 import type {
   CellPoint,
@@ -223,26 +224,11 @@ const moveInCollection = (
   return items[Math.max(0, Math.min(items.length - 1, candidate))]!.id;
 };
 
-const gridTarget = (
-  items: readonly WidgetNode[],
-  current: WidgetNode,
-  key: string
-) => {
-  const row = current.rowIndex ?? 1;
-  const column = current.columnIndex ?? 1;
-  if (key === "Home" || key === "End") {
-    const rowItems = items.filter((item) => item.rowIndex === row);
-    return (key === "Home" ? rowItems[0] : rowItems.at(-1))?.id ?? current.id;
-  }
-  const nextRow = row + (key === "ArrowUp" ? -1 : key === "ArrowDown" ? 1 : 0);
-  const nextColumn = column + (key === "ArrowLeft" ? -1 : key === "ArrowRight" ? 1 : 0);
-  return items.find((item) => (
-    item.rowIndex === nextRow && item.columnIndex === nextColumn
-  ))?.id ?? current.id;
-};
-
 export class FocusManager {
   #focusedId: WidgetId | null = null;
+  #focusedGridId: WidgetId | null = null;
+  readonly #gridEntries = new Map<WidgetId, WidgetId>();
+  #treeAncestors: WidgetId[] = [];
   #scopes: Array<Readonly<{ id: WidgetId; restoreId: WidgetId | null }>> = [];
 
   get focusedId(): WidgetId | null {
@@ -273,6 +259,7 @@ export class FocusManager {
 
     const scopeId = this.#scopes.at(-1)?.id ?? null;
     const enabled = focusableWidgets(tree, scopeId);
+    for (const id of this.#gridEntries.keys()) if (tree.nodes.get(id)?.kind !== "grid") this.#gridEntries.delete(id);
     const requested = preferredId
       ? enabled.find(({ id }) => id === preferredId)?.id
       : undefined;
@@ -284,24 +271,42 @@ export class FocusManager {
       : undefined;
     this.#focusedId = requested
       ?? retained
+      ?? (this.#focusedGridId ? gridEntry(enabled.filter((item) => gridOwnerId(tree, item.id) === this.#focusedGridId),
+        this.#gridEntries.get(this.#focusedGridId))?.id : undefined)
+      ?? this.#treeAncestors.find((id) => enabled.some((item) => item.id === id))
       ?? restored
       ?? (scopeId ? enabled[0]?.id : null)
       ?? null;
+    this.#focusedGridId = this.#focusedId && tree.nodes.get(this.#focusedId)?.kind === "grid-cell"
+      ? gridOwnerId(tree, this.#focusedId) : null;
+    if (this.#focusedGridId && this.#focusedId) this.#gridEntries.set(this.#focusedGridId, this.#focusedId);
+    this.#treeAncestors = [];
+    let ancestor = tree.nodes.get(this.#focusedId ?? "")?.parentItemId;
+    while (ancestor) {
+      this.#treeAncestors.push(ancestor);
+      ancestor = tree.nodes.get(ancestor)?.parentItemId;
+    }
   }
 
   first(tree: WidgetTree): WidgetId | null {
-    const items = focusableWidgets(tree, this.#scopes.at(-1)?.id ?? null);
-    const first = items[0];
-    return first?.kind === "radio-item"
-      ? items.find((item) => item.parentId === first.parentId && item.checked)?.id ?? first.id
-      : first?.id ?? null;
+    return this.tabStops(tree)[0]?.id ?? null;
   }
 
-  tab(tree: WidgetTree, delta: -1 | 1): WidgetId | null {
+  private tabStops(tree: WidgetTree): WidgetNode[] {
     const items = focusableWidgets(tree, this.#scopes.at(-1)?.id ?? null);
     const stops: WidgetNode[] = [];
     const groups = new Set<WidgetId | null>();
     for (const item of items) {
+      if (item.kind === "grid-cell") {
+        const gridId = gridOwnerId(tree, item.id);
+        if (gridId) {
+          if (groups.has(gridId)) continue;
+          groups.add(gridId);
+          const entry = gridEntry(items.filter((cell) => gridOwnerId(tree, cell.id) === gridId), this.#gridEntries.get(gridId));
+          if (entry) stops.push(entry);
+          continue;
+        }
+      }
       if (item.kind !== "radio-item") {
         stops.push(item);
         continue;
@@ -310,8 +315,14 @@ export class FocusManager {
       groups.add(item.parentId);
       stops.push(items.find((candidate) => candidate.parentId === item.parentId && candidate.checked) ?? item);
     }
+    return stops;
+  }
+
+  tab(tree: WidgetTree, delta: -1 | 1): WidgetId | null {
+    const stops = this.tabStops(tree);
     const current = tree.nodes.get(this.#focusedId ?? "");
     const index = stops.findIndex((item) => item.id === current?.id
+      || (current?.kind === "grid-cell" && item.kind === "grid-cell" && gridOwnerId(tree, item.id) === gridOwnerId(tree, current.id))
       || (current?.kind === "radio-item" && item.kind === "radio-item" && item.parentId === current.parentId));
     return stops[index < 0 ? delta > 0 ? 0 : stops.length - 1 : index + delta]?.id ?? null;
   }
@@ -626,9 +637,10 @@ export const commandForInput = (
       gridTarget(collectionItems(frame.tree, owner.id), focused, input.key)
     );
   }
-  if (owner?.kind === "tabs" && (input.key === "ArrowLeft" || input.key === "ArrowRight")) {
-    const targetId = moveInCollection(
-      collectionItems(frame.tree, owner.id),
+  if (owner?.kind === "tabs" && (input.key === "ArrowLeft" || input.key === "ArrowRight" || input.key === "Home" || input.key === "End")) {
+    const items = collectionItems(frame.tree, owner.id);
+    const targetId = input.key === "Home" ? items[0]?.id : input.key === "End" ? items.at(-1)?.id : moveInCollection(
+      items,
       focus.focusedId,
       input.key === "ArrowLeft" ? -1 : 1,
       true
