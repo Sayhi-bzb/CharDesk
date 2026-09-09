@@ -2,6 +2,7 @@ import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import type { CanvasMode } from "@/domains/sessions/public";
 import type { SlideDeckSnapshot } from "@/domains/slides/public";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
+import type { CanvasArtifactPalette } from "@/shared/metrics";
 
 export type ExportFormat =
   | "txt"
@@ -11,6 +12,7 @@ export type ExportFormat =
 
 export type ExportContext = {
   fontProfile?: CharDeskFontProfile;
+  artifactPalette?: CanvasArtifactPalette;
   canvasMode: CanvasMode;
   surface: CanvasSurfaceReader;
   includeColor: boolean;

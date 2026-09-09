@@ -2,10 +2,10 @@ import { useEffect, useRef } from "react";
 import type { CellRect } from "@chardesk/cell-core";
 import { presentCharDeskCellFrame } from "@chardesk/rendering/canvas";
 import { useCanvasFont } from "@/shared/fonts/hooks";
+import { useCanvasAppearance } from "@/shared/canvas-appearance/hooks";
 import type { GridCellSource } from "@/shared/types";
 import {
   createGridCellFrame,
-  DEFAULT_ARTIFACT_CANVAS_PALETTE,
   DEFAULT_GRID_RENDER_METRICS,
   loadRenderFonts,
   prepareCanvasSurface,
@@ -32,6 +32,7 @@ export function CellFrameCanvas({
   className,
 }: CellFrameCanvasProps) {
   const { profile: fontProfile } = useCanvasFont();
+  const appearance = useCanvasAppearance();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nativeWidth =
     viewport.width * DEFAULT_GRID_RENDER_METRICS.cellWidth * zoom;
@@ -94,10 +95,10 @@ export function CellFrameCanvas({
       if (!layout) return;
       presentCharDeskCellFrame(
         ctx,
-        createGridCellFrame(source, viewport),
+        createGridCellFrame(source, viewport, "full", appearance.palette),
         {
           metrics: DEFAULT_GRID_RENDER_METRICS,
-          palette: DEFAULT_ARTIFACT_CANVAS_PALETTE,
+          palette: appearance.palette,
           offset: layout.offset,
           zoom: layout.scale,
           fontProfile,
@@ -125,6 +126,7 @@ export function CellFrameCanvas({
     };
   }, [
     fit,
+    appearance.palette,
     fontProfile,
     maxScale,
     nativeHeight,

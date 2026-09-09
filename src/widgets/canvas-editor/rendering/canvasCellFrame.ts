@@ -2,6 +2,7 @@ import type { CellRect } from "@chardesk/cell-core";
 import type { GridCellSource } from "@/shared/types";
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import { createGridCellFrame } from "@/shared/metrics";
+import type { CanvasArtifactPalette } from "@/shared/metrics";
 
 export type CanvasCellFrameProjection = Readonly<{
   hiddenSpans: readonly Readonly<{
@@ -53,10 +54,12 @@ export const createCanvasCellFrame = (
   reader: CanvasSurfaceReader,
   viewport: CellRect,
   dirty: "full" | readonly CellRect[] = "full",
-  projection?: CanvasCellFrameProjection
+  projection?: CanvasCellFrameProjection,
+  palette?: CanvasArtifactPalette
 ) =>
   createGridCellFrame(
     projection ? createProjectedSource(reader, projection) : reader,
     viewport,
-    dirty
+    dirty,
+    palette
   );

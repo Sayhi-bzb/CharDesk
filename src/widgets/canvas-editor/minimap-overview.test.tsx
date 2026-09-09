@@ -11,7 +11,6 @@ import { GridManager } from "@/shared/utils/grid";
 import { setUiLanguage } from "@/shared/i18n";
 
 const visualTheme = vi.hoisted(() => ({
-    revision: "light",
     canvas: {
       minimapSurface: "white",
       minimapContent: "black",
@@ -21,9 +20,13 @@ const visualTheme = vi.hoisted(() => ({
 }));
 const visualThemeState = vi.hoisted(() => ({ available: true }));
 
-vi.mock("@/shared/hooks/useHostVisualTheme", () => ({
-  useHostVisualTheme: () =>
-    visualThemeState.available ? visualTheme : null,
+vi.mock("@/shared/canvas-appearance/hooks", () => ({
+  useCanvasAppearance: () => ({
+    resolvedTheme: "light",
+    visualTheme: visualThemeState.available ? visualTheme : null,
+    palette: { color: "black", background: "white", grid: "gray" },
+    revision: 1,
+  }),
 }));
 
 const initialState = useEditorStore.getState();

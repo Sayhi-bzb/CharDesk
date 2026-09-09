@@ -1,5 +1,6 @@
 import { serializeCharDeskDocumentEnvelope } from "@chardesk/document";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
+import type { CanvasArtifactPalette } from "@/shared/metrics";
 import type { GridCellSource, SelectionArea } from "@/shared/types";
 import {
   createPngBlobFromGrid,
@@ -39,14 +40,22 @@ export const prepareSelectionPngExport = (
   selections: SelectionArea[],
   showGrid: boolean,
   includeColor = true,
-  fontProfile?: CharDeskFontProfile
+  fontProfile?: CharDeskFontProfile,
+  artifactPalette?: CanvasArtifactPalette
 ): ExportResult<ExportArtifact> => {
   if (selections.length === 0) return exportFailed("empty-content");
   try {
     return exportSucceeded({
       kind: "blob",
       format: "png",
-      content: createSelectionPngBlob(grid, selections, showGrid, includeColor, fontProfile),
+      content: createSelectionPngBlob(
+        grid,
+        selections,
+        showGrid,
+        includeColor,
+        fontProfile,
+        artifactPalette
+      ),
       filename: `chardesk-selection-${getTimestamp()}.png`,
       mimeType: "image/png",
     });
@@ -138,7 +147,10 @@ export const prepareExport = (
         context.surface,
         context.showGrid,
         context.includeColor,
-        context.fontProfile
+        context.fontProfile,
+        context.canvasMode === "freeform"
+          ? context.artifactPalette
+          : undefined
       ),
       filename: `chardesk-${getTimestamp()}.png`,
       mimeType: "image/png",

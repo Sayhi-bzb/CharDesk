@@ -5,7 +5,7 @@ import type {
   SlideDescriptor,
   SlideGridEntry,
 } from "@/domains/slides/public";
-import { useHostVisualTheme } from "@/shared/hooks/useHostVisualTheme";
+import { useCanvasAppearance } from "@/shared/canvas-appearance/hooks";
 import { drawSlideCanvas } from "./slide-canvas-renderer";
 
 export function SlidePreviewCanvas({
@@ -19,7 +19,7 @@ export function SlidePreviewCanvas({
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const visualTheme = useHostVisualTheme(hostRef);
+  const { visualTheme } = useCanvasAppearance();
   const [visible, setVisible] = useState(
     () => typeof IntersectionObserver === "undefined"
   );

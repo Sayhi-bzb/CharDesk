@@ -5,6 +5,7 @@ import {
   resolveCharDeskCanvasCellVisual,
   type CharDeskCanvasCellDrawOptions,
   type CharDeskCanvasContext,
+  type CharDeskCanvasPalette,
 } from "@chardesk/rendering/canvas";
 import type { RenderFontRoute } from "./fontRouting";
 import { DEFAULT_CANVAS_FONT_PROFILE } from "@/shared/fonts/canvas-profile";
@@ -14,6 +15,10 @@ import {
   getCanvasFont,
   type GridRenderMetrics,
 } from "./renderMetrics";
+import {
+  DEFAULT_ARTIFACT_CANVAS_PALETTE,
+  projectArtifactCellStyle,
+} from "./artifactPalette";
 
 type ResolvedCellVisual = {
   char: string;
@@ -42,14 +47,14 @@ export type CanvasCellDrawEntry = {
 type CharDeskDrawEntry = Parameters<typeof drawCharDeskCanvasCells>[1][number];
 const canvasDrawEntryCache = new WeakMap<CanvasCellDrawEntry, CharDeskDrawEntry>();
 
-export const resolveCellVisual = (cell: GridCell): ResolvedCellVisual => {
-  const visual = resolveCharDeskCanvasCellVisual(resolveCharDeskCellVisual({
-    text: cell.char,
-    color: cell.color,
-    ...(cell.bgColor ? { bgColor: cell.bgColor } : {}),
-    ...(cell.attrs ? { attrs: cell.attrs } : {}),
-    ...(cell.href ? { href: cell.href } : {}),
-  }));
+export const resolveCellVisual = (
+  cell: GridCell,
+  palette: CharDeskCanvasPalette = DEFAULT_ARTIFACT_CANVAS_PALETTE
+): ResolvedCellVisual => {
+  const visual = resolveCharDeskCanvasCellVisual(
+    toCanvasVisual(cell, palette),
+    palette
+  );
   return {
     char: visual.text,
     color: visual.color,
@@ -60,21 +65,31 @@ export const resolveCellVisual = (cell: GridCell): ResolvedCellVisual => {
   };
 };
 
-const canvasVisualCache = new WeakMap<GridCell, ReturnType<typeof resolveCharDeskCellVisual>>();
+const canvasVisualCache = new WeakMap<
+  GridCell,
+  WeakMap<CharDeskCanvasPalette, ReturnType<typeof resolveCharDeskCellVisual>>
+>();
 
-export const toCanvasVisual = (cell: GridCell) => {
-  const cached = canvasVisualCache.get(cell);
+export function toCanvasVisual(
+  cell: GridCell,
+  palette: CharDeskCanvasPalette = DEFAULT_ARTIFACT_CANVAS_PALETTE
+) {
+  const byPalette = canvasVisualCache.get(cell);
+  const cached = byPalette?.get(palette);
   if (cached) return cached;
+  const style = projectArtifactCellStyle(cell, palette);
   const visual = resolveCharDeskCellVisual({
     text: cell.char,
-    color: cell.color,
-    ...(cell.bgColor ? { bgColor: cell.bgColor } : {}),
+    color: style.color,
+    ...(style.bgColor ? { bgColor: style.bgColor } : {}),
     ...(cell.attrs ? { attrs: cell.attrs } : {}),
     ...(cell.href ? { href: cell.href } : {}),
   });
-  canvasVisualCache.set(cell, visual);
+  const cache = byPalette ?? new WeakMap();
+  cache.set(palette, visual);
+  if (!byPalette) canvasVisualCache.set(cell, cache);
   return visual;
-};
+}
 
 export const drawGridLines = (
   ctx: CharDeskCanvasContext,
@@ -142,7 +157,12 @@ export const drawTextCell = (
   y: number,
   options?: CanvasCellDrawOptions
 ) => {
-  drawCharDeskCanvasCells(ctx, [{ cell: toCanvasVisual(cell), x, y, options: withProductFont(options) }]);
+  drawCharDeskCanvasCells(ctx, [{
+    cell: toCanvasVisual(cell, options?.palette ?? DEFAULT_ARTIFACT_CANVAS_PALETTE),
+    x,
+    y,
+    options: withProductFont(options),
+  }]);
 };
 
 export const drawCellBackground = (
@@ -150,10 +170,10 @@ export const drawCellBackground = (
   cell: GridCell,
   x: number,
   y: number,
-  options?: Pick<CanvasCellDrawOptions, "zoom" | "metrics">
+  options?: Pick<CanvasCellDrawOptions, "zoom" | "metrics" | "palette">
 ) => {
   drawCharDeskCanvasCells(ctx, [{
-    cell: toCanvasVisual(cell),
+    cell: toCanvasVisual(cell, options?.palette ?? DEFAULT_ARTIFACT_CANVAS_PALETTE),
     x,
     y,
     options: withProductFont(options),
@@ -169,7 +189,7 @@ export const drawCellText = (
   options?: CanvasCellDrawOptions
 ) => {
   drawCharDeskCanvasCells(ctx, [{
-    cell: toCanvasVisual(cell),
+    cell: toCanvasVisual(cell, options?.palette ?? DEFAULT_ARTIFACT_CANVAS_PALETTE),
     x,
     y,
     options: withProductFont(options),
@@ -184,11 +204,17 @@ export const drawCellBatch = (
 ) => {
   drawCharDeskCanvasCells(ctx, entries.map((entry) => {
     const cached = canvasDrawEntryCache.get(entry) ?? {
-      cell: toCanvasVisual(entry.cell),
+      cell: toCanvasVisual(
+        entry.cell,
+        entry.options?.palette ?? options?.palette ?? DEFAULT_ARTIFACT_CANVAS_PALETTE
+      ),
       x: entry.x,
       y: entry.y,
     };
-    cached.cell = toCanvasVisual(entry.cell);
+    cached.cell = toCanvasVisual(
+      entry.cell,
+      entry.options?.palette ?? options?.palette ?? DEFAULT_ARTIFACT_CANVAS_PALETTE
+    );
     cached.x = entry.x;
     cached.y = entry.y;
     cached.options = withProductFont({ ...options, ...entry.options });

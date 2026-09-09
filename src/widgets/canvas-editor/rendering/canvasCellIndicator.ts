@@ -4,17 +4,18 @@ import {
   type CharDeskCanvasContext,
   type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
-import type { HostVisualTheme } from "@/shared/hooks/useHostVisualTheme";
+import type { CanvasInteractionPalette } from "@/shared/canvas-appearance/runtime";
 import {
   DEFAULT_GRID_RENDER_METRICS,
   gridCellRect,
   toCanvasVisual,
+  type CanvasArtifactPalette,
 } from "@/shared/metrics";
 import type { GridCellSource, Point } from "@/shared/types";
 import type { CanvasCellIndicator } from "../presentation/canvasCellPresentation";
 
 type CanvasCellIndicatorPalette = Pick<
-  HostVisualTheme["canvas"],
+  CanvasInteractionPalette,
   | "selectionSurface"
   | "selectionBorder"
   | "textCursorSurface"
@@ -60,6 +61,7 @@ export const drawCanvasCellIndicator = (
     offset: Point;
     zoom: number;
     palette: CanvasCellIndicatorPalette;
+    artifactPalette: CanvasArtifactPalette;
     fontProfile: CharDeskFontProfile;
   }>
 ) => {
@@ -71,7 +73,9 @@ export const drawCanvasCellIndicator = (
   const position = gridCellRect(indicator.point, input);
   const cell = input.source.get(indicator.point);
   drawCharDeskCanvasCursor(ctx, {
-    cell: cell ? toCanvasVisual(cell) : resolveCharDeskCellVisual({ text: " " }),
+    cell: cell
+      ? toCanvasVisual(cell, input.artifactPalette)
+      : resolveCharDeskCellVisual({ text: " " }),
     x: position.x,
     y: position.y,
     style: {

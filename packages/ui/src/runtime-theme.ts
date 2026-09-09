@@ -13,6 +13,11 @@ export type UiRuntimeTheme = {
     radiusPx: number;
   };
   canvas: {
+    artifact: {
+      foreground: string;
+      background: string;
+      grid: string;
+    };
     selectionSurface: string;
     selectionBorder: string;
     textCursorSurface: string;
@@ -35,6 +40,9 @@ const runtimeColorTokens = {
   foreground: "--foreground",
   overlay: "--dialog-overlay",
   previewText: "--canvas-preview-text",
+  artifactForeground: "--canvas-artifact-foreground",
+  artifactBackground: "--canvas-artifact-background",
+  artifactGrid: "--canvas-artifact-grid",
   selectionSurface: "--canvas-selection-surface",
   selectionBorder: "--canvas-selection-border",
   textCursorSurface: "--canvas-text-cursor-surface",
@@ -123,6 +131,11 @@ export function readUiRuntimeTheme(element: HTMLElement): UiRuntimeTheme {
         radiusPx: readRadiusPx(probe, "--surface-radius"),
       },
       canvas: {
+        artifact: {
+          foreground: colors.artifactForeground,
+          background: colors.artifactBackground,
+          grid: colors.artifactGrid,
+        },
         selectionSurface: colors.selectionSurface,
         selectionBorder: colors.selectionBorder,
         textCursorSurface: colors.textCursorSurface,

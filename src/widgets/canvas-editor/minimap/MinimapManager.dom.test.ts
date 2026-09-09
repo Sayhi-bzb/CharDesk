@@ -32,8 +32,11 @@ const operation = (id: string, x: number): CellPlaneOperation => ({
 });
 
 const colors = {
-  background: "background",
-  foreground: "foreground",
+  artifact: {
+    background: "background",
+    color: "foreground",
+    grid: "grid",
+  },
   viewportFill: "viewport-fill",
   viewportStroke: "viewport-stroke",
 };

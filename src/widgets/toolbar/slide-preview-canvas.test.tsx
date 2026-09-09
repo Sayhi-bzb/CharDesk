@@ -9,14 +9,13 @@ import { SlidePreviewCanvas } from "./slide-preview-canvas";
 const { drawSlideCanvas, visualTheme } = vi.hoisted(() => ({
   drawSlideCanvas: vi.fn(),
   visualTheme: {
-    revision: "light",
     host: { previewText: "#f8fafc" },
   },
 }));
 
 vi.mock("./slide-canvas-renderer", () => ({ drawSlideCanvas }));
-vi.mock("@/shared/hooks/useHostVisualTheme", () => ({
-  useHostVisualTheme: () => visualTheme,
+vi.mock("@/shared/canvas-appearance/hooks", () => ({
+  useCanvasAppearance: () => ({ visualTheme }),
 }));
 
 const slide: SlideDescriptor = {

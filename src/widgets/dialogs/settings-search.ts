@@ -15,6 +15,7 @@ export type SettingsTarget = {
   section: SettingsSection;
   focus?:
     | { type: 'language' }
+    | { type: 'host-theme' }
     | { type: 'text-renderer' }
     | { type: 'canvas-font' }
     | { type: 'canvas-cursor' }
@@ -46,6 +47,21 @@ export const getSettingsSearchResults = (
   const displayTitle = t('settings.display');
   const languageTitle = t('appMenu.language');
   const results: SettingsSearchResult[] = [
+    {
+      id: 'setting:host-theme',
+      group: 'general',
+      groupTitle: generalTitle,
+      title: t('settings.theme'),
+      target: { section: 'general', focus: { type: 'host-theme' } },
+      searchText: searchable([
+        t('settings.theme'),
+        t('settings.theme.light'),
+        t('settings.theme.dark'),
+        t('settings.theme.system'),
+        'theme',
+        '主题',
+      ]),
+    },
     {
       id: 'setting:canvas-cursor',
       group: 'general',

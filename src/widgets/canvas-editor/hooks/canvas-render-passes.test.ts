@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { CANVAS_FRAME_INVALIDATION } from '../engine/FrameScheduler';
 import {
   resolveCanvasRenderPasses,
+  resolveCanvasContentPalette,
   shouldSuppressCanvasContentRendering,
 } from './useCanvasRenderer';
+import { DEFAULT_ARTIFACT_CANVAS_PALETTE } from '@/shared/metrics';
 
 describe('canvas render passes', () => {
   it('keeps dynamic interaction updates off the content surface', () => {
@@ -25,6 +27,17 @@ describe('canvas render passes', () => {
           CANVAS_FRAME_INVALIDATION.overlay
       )
     ).toEqual({ content: true, interaction: true });
+  });
+});
+
+describe('canvas content palette', () => {
+  const dark = { color: '#eee', background: '#111', grid: '#222' };
+
+  it('uses the Host-resolved palette only for Freeform Canvas', () => {
+    expect(resolveCanvasContentPalette('freeform', dark)).toBe(dark);
+    expect(resolveCanvasContentPalette('slide', dark)).toBe(
+      DEFAULT_ARTIFACT_CANVAS_PALETTE
+    );
   });
 });
 

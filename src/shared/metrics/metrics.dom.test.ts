@@ -225,6 +225,29 @@ describe("metrics", () => {
       });
     });
 
+    it("keeps explicit color pairs literal before resolving inverse colors", () => {
+      const palette = {
+        color: "#f5f5f5",
+        background: "#111111",
+        grid: "#222222",
+      };
+
+      expect(
+        resolveCellVisual(
+          {
+            char: "A",
+            color: "#000000",
+            bgColor: "#ffcc00",
+            attrs: { inverse: true },
+          },
+          palette
+        )
+      ).toMatchObject({
+        color: "#ffcc00",
+        bgColor: "#000000",
+      });
+    });
+
     it("draws every background before drawing any glyph", () => {
       let fillStyle = "";
       const operations: string[] = [];

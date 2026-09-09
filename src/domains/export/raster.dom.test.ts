@@ -14,10 +14,12 @@ describe("PNG raster export", () => {
   let font = "";
   let drawnFonts: Array<{ char: string; font: string }>;
   let drawnText: Array<{ char: string; color: string }>;
+  let filledColors: string[];
 
   beforeEach(() => {
     drawnText = [];
     drawnFonts = [];
+    filledColors = [];
     fillStyle = "";
     strokeStyle = "";
     Object.defineProperty(document, "fonts", {
@@ -29,7 +31,7 @@ describe("PNG raster export", () => {
       save: vi.fn(),
       restore: vi.fn(),
       setTransform: vi.fn(),
-      fillRect: vi.fn(),
+      fillRect: vi.fn(() => filledColors.push(fillStyle)),
       fill: vi.fn(),
       rect: vi.fn(),
       clip: vi.fn(),
@@ -148,6 +150,32 @@ describe("PNG raster export", () => {
 
     expect(drawnText).toContainEqual({ char: "A", color: "#ffffff" });
     expect(strokeStyle).toBe("#ffffff");
+  });
+
+  it("uses one dark artifact palette for the background, grid, and default text", async () => {
+    const palette = {
+      color: "#f5f5f5",
+      background: "#111111",
+      grid: "#2a2a2a",
+    };
+    await createSelectionPngBlob(
+      new GridSnapshotSource([
+        ["0,0", { char: "A", color: "#000000" }],
+        ["1,0", { char: "B", color: "#ff0000" }],
+        ["2,0", { char: "C", color: "#000000", bgColor: "#ffcc00" }],
+      ]),
+      [{ start: { x: 0, y: 0 }, end: { x: 2, y: 0 } }],
+      true,
+      true,
+      undefined,
+      palette
+    );
+
+    expect(filledColors).toContain("#111111");
+    expect(strokeStyle).toBe("#2a2a2a");
+    expect(drawnText).toContainEqual({ char: "A", color: "#f5f5f5" });
+    expect(drawnText).toContainEqual({ char: "B", color: "#ff0000" });
+    expect(drawnText).toContainEqual({ char: "C", color: "#000000" });
   });
 
   it("keeps the complete bounding box between multiple ranges", async () => {

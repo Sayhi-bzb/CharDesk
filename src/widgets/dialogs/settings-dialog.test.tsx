@@ -106,6 +106,7 @@ describe('SettingsDialog', () => {
     expect(screen.getByRole('heading', { name: 'General' })).toBeInTheDocument();
     expect(dialog.querySelector('[data-slot="separator"]')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Language')).toHaveClass('shrink-0');
+    expect(screen.getByText('Theme', { selector: 'label' })).toBeInTheDocument();
     expect(screen.getByText('Language', { selector: 'label' })).toHaveClass('min-w-0', 'truncate');
     expect(dialog.querySelector('[data-slot="settings-section-scroll"]')).toHaveClass(
       'overflow-x-hidden',

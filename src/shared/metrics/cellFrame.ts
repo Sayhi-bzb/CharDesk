@@ -1,66 +1,77 @@
 import type { CellFrame, CellRect, CellSource } from "@chardesk/cell-core";
-import type {
-  CharDeskCanvasPalette,
-} from "@chardesk/rendering/canvas";
 import type { CharDeskCellFrameCell } from "@chardesk/rendering";
 import type { GridCell, GridCellSource } from "@/shared/types";
-import { BACKGROUND_COLOR, COLOR_PRIMARY_TEXT } from "@/shared/lib/constants";
 import { toCanvasVisual } from "./canvasDrawing";
+import {
+  DEFAULT_ARTIFACT_CANVAS_PALETTE,
+  type CanvasArtifactPalette,
+} from "./artifactPalette";
 
-export const DEFAULT_ARTIFACT_CANVAS_PALETTE: CharDeskCanvasPalette = {
-  color: COLOR_PRIMARY_TEXT,
-  background: BACKGROUND_COLOR,
-};
-
-const frameCellCache = new WeakMap<GridCell, CharDeskCellFrameCell>();
+const frameCellCache = new WeakMap<
+  GridCell,
+  WeakMap<CanvasArtifactPalette, CharDeskCellFrameCell>
+>();
 const frameSourceCache = new WeakMap<
   GridCellSource,
-  CellSource<CharDeskCellFrameCell>
+  WeakMap<CanvasArtifactPalette, CellSource<CharDeskCellFrameCell>>
 >();
 
-const toFrameCell = (cell: GridCell): CharDeskCellFrameCell => {
-  const cached = frameCellCache.get(cell);
+const toFrameCell = (
+  cell: GridCell,
+  palette: CanvasArtifactPalette
+): CharDeskCellFrameCell => {
+  const byPalette = frameCellCache.get(cell);
+  const cached = byPalette?.get(palette);
   if (cached) return cached;
   const result = Object.freeze({
-    visual: toCanvasVisual(cell),
+    visual: toCanvasVisual(cell, palette),
     // A present source cell replaces the cell beneath it, even when it uses the
     // palette background. Missing source cells remain transparent to overlays.
     drawBackground: true,
     drawText: cell.char !== " " || !!cell.attrs,
   });
-  frameCellCache.set(cell, result);
+  const cache = byPalette ?? new WeakMap();
+  cache.set(palette, result);
+  if (!byPalette) frameCellCache.set(cell, cache);
   return result;
 };
 
 const createFrameSource = (
-  source: GridCellSource
+  source: GridCellSource,
+  palette: CanvasArtifactPalette
 ): CellSource<CharDeskCellFrameCell> => {
-  const cached = frameSourceCache.get(source);
+  const byPalette = frameSourceCache.get(source);
+  const cached = byPalette?.get(palette);
   if (cached) return cached;
   const result: CellSource<CharDeskCellFrameCell> = {
     get(point) {
       const cell = source.get(point);
-      return cell ? toFrameCell(cell) : undefined;
+      return cell ? toFrameCell(cell, palette) : undefined;
     },
     visit(bounds, visitor) {
-      source.visit(bounds, (x, y, cell) => visitor(x, y, toFrameCell(cell)));
+      source.visit(bounds, (x, y, cell) =>
+        visitor(x, y, toFrameCell(cell, palette))
+      );
     },
     getContentBounds: () => source.getContentBounds(),
   };
-  frameSourceCache.set(source, result);
+  const cache = byPalette ?? new WeakMap();
+  cache.set(palette, result);
+  if (!byPalette) frameSourceCache.set(source, cache);
   return result;
 };
 
 export const createGridCellFrame = (
   source: GridCellSource,
   viewport: CellRect,
-  dirty: "full" | readonly CellRect[] = "full"
+  dirty: "full" | readonly CellRect[] = "full",
+  palette: CanvasArtifactPalette = DEFAULT_ARTIFACT_CANVAS_PALETTE
 ): CellFrame<CharDeskCellFrameCell> => ({
   revision:
     "getRevision" in source && typeof source.getRevision === "function"
       ? source.getRevision()
       : 0,
   viewport,
-  source: createFrameSource(source),
+  source: createFrameSource(source, palette),
   dirty,
 });

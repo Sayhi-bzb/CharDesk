@@ -2,7 +2,6 @@ import { useCallback, useRef, useEffect, useLayoutEffect, useMemo, useState } fr
 import { useSize } from 'ahooks';
 import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 import { useCanvasRenderer } from './hooks/useCanvasRenderer';
-import { useHostVisualTheme } from '@/shared/hooks/useHostVisualTheme';
 import { useCanvasEditorModels } from './hooks/useCanvasEditorModels';
 import { CanvasContextMenuContent } from './CanvasContextMenuContent';
 import { CanvasSurface } from './CanvasSurface';
@@ -19,6 +18,7 @@ import type { CanvasLinkHit } from './hooks/interaction/core/linkHitTesting';
 import { useCanvasEngineRuntime } from './engine/useCanvasEngineRuntime';
 import { useCanvasViewOptional } from './engine/CanvasWorkspace';
 import { useCanvasCursor } from '@/shared/canvas-cursor/hooks';
+import { useCanvasAppearance } from '@/shared/canvas-appearance/hooks';
 import { resolveCanvasSurfaceGeometry } from './canvasSurfaceGeometry';
 import type { EditorViewportFrame } from '@/widgets/editor-chrome/public';
 import { computeVisibleSurfaceBounds } from './minimap/geometry';
@@ -60,7 +60,7 @@ export const CanvasEditor = ({
     [],
   );
   const containerRef = useRef<HTMLDivElement>(null);
-  const visualTheme = useHostVisualTheme(containerRef);
+  const canvasAppearance = useCanvasAppearance();
   const cursorPreference = useCanvasCursor();
   const [hoveredLink, setHoveredLink] = useState<CanvasLinkHit | null>(null);
   const requestCanvasRenderRef = useRef<(() => void) | null>(null);
@@ -332,7 +332,7 @@ export const CanvasEditor = ({
     draggingSelection,
     staticRangeMovePreview,
     hoveredLink,
-    visualTheme,
+    canvasAppearance,
     {
       viewActive: active,
       inputFocused: canvasOwnsInputFocus,

@@ -16,7 +16,7 @@ import {
   useCanvasViewport,
 } from "@/domains/canvas/public";
 import { useUiI18n } from "@/shared/i18n";
-import { useHostVisualTheme } from "@/shared/hooks/useHostVisualTheme";
+import { useCanvasAppearance } from "@/shared/canvas-appearance/hooks";
 import { cn } from "@chardesk/ui";
 import type { Point } from "@/shared/types";
 import { resolveCanvasWheelDecision } from "./hooks/interaction/gestures/wheelInteraction";
@@ -57,13 +57,13 @@ export const Minimap = ({
   const endPointerSessionRef = useRef<() => void>(() => {});
   const [isViewportHovered, setIsViewportHovered] = useState(false);
   const [isDraggingViewport, setIsDraggingViewport] = useState(false);
-  const visualTheme = useHostVisualTheme(hostRef);
+  const appearance = useCanvasAppearance();
+  const visualTheme = appearance.visualTheme;
   const minimapColors = useMemo(() => visualTheme ? ({
-    background: visualTheme.canvas.minimapSurface,
-    foreground: visualTheme.canvas.minimapContent,
+    artifact: appearance.palette,
     viewportFill: visualTheme.canvas.minimapViewportSurface,
     viewportStroke: visualTheme.canvas.minimapViewportBorder,
-  }) : null, [visualTheme]);
+  }) : null, [appearance.palette, visualTheme]);
   const { t } = useUiI18n();
   const runtime = useCanvasEngineRuntime();
   const liveViewport = useCanvasLiveViewportOptional();

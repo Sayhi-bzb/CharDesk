@@ -15,6 +15,7 @@ import type {
   MinimapTransform,
 } from "./types";
 import type { Point } from "@/shared/types";
+import { projectArtifactCellStyle } from "@/shared/metrics";
 
 type MinimapContentChunk = {
   paths: Map<string, Path2D>;
@@ -77,11 +78,11 @@ export class MinimapManager {
   };
 
   update = (snapshot: MinimapRenderSnapshot) => {
-    const previousForeground = this.renderSnapshot?.colors.foreground;
+    const previousForeground = this.renderSnapshot?.colors.artifact.color;
     this.renderSnapshot = snapshot;
     if (
       previousForeground !== undefined &&
-      previousForeground !== snapshot.colors.foreground
+      previousForeground !== snapshot.colors.artifact.color
     ) {
       this.hasCachedContent = false;
     }
@@ -207,6 +208,7 @@ export class MinimapManager {
       for (const span of surfaceRow.spans) {
         let x = span.x;
         for (const cell of span.cells) {
+          const style = projectArtifactCellStyle(cell, state.colors.artifact);
           const occupancy = Math.max(GridManager.getCharWidth(cell.char), 1);
           const hasBackground = !!cell.bgColor && cell.bgColor !== "transparent";
           if (hasBackground || (cell.char && cell.char !== " ")) {
@@ -217,7 +219,7 @@ export class MinimapManager {
               occupancy,
               hasBackground
                 ? cell.bgColor!
-                : cell.color || state.colors.foreground
+                : style.color
             );
           }
           x += occupancy;
@@ -233,7 +235,7 @@ export class MinimapManager {
       this.hasCachedContent &&
       this.cachedReader === state.reader &&
       this.cachedContentRevision === state.contentRevision &&
-      this.cachedForeground === state.colors.foreground
+      this.cachedForeground === state.colors.artifact.color
     ) {
       return;
     }
@@ -245,7 +247,7 @@ export class MinimapManager {
       this.cachedReader === state.reader &&
       typeof this.cachedContentRevision === "number" &&
       typeof state.contentRevision === "number" &&
-      this.cachedForeground === state.colors.foreground &&
+      this.cachedForeground === state.colors.artifact.color &&
       incrementalReader !== null;
     if (canIncrement && incrementalReader) {
       const changes = incrementalReader.getChangesSince(
@@ -285,7 +287,7 @@ export class MinimapManager {
     this.hasCachedContent = true;
     this.cachedReader = state.reader;
     this.cachedContentRevision = state.contentRevision;
-    this.cachedForeground = state.colors.foreground;
+    this.cachedForeground = state.colors.artifact.color;
     this.cachedContentBounds = null;
     this.contentChunks = new Map();
     const bounds = state.reader.getContentBounds();
@@ -294,12 +296,13 @@ export class MinimapManager {
       for (const span of row.spans) {
         let x = span.x;
         for (const cell of span.cells) {
+          const style = projectArtifactCellStyle(cell, state.colors.artifact);
           const occupancy = Math.max(GridManager.getCharWidth(cell.char), 1);
           const hasBackground = !!cell.bgColor && cell.bgColor !== "transparent";
           if (hasBackground || (cell.char && cell.char !== " ")) {
             const color = hasBackground
               ? cell.bgColor!
-              : cell.color || state.colors.foreground;
+              : style.color;
             this.addCellToChunk(
               this.contentChunks,
               x,
@@ -382,7 +385,7 @@ export class MinimapManager {
     const { ctx } = this;
     ctx.resetTransform();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = state.colors.background;
+    ctx.fillStyle = state.colors.artifact.background;
     ctx.fillRect(0, 0, width, height);
     if (!transform) return;
 

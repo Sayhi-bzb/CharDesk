@@ -190,6 +190,9 @@
   --canvas-workspace-surface: var(--muted);
   --canvas-page-shadow: color-mix(in oklab, var(--foreground) 18%, transparent);
   --canvas-preview-text: var(--foreground);
+  --canvas-artifact-background: var(--background);
+  --canvas-artifact-foreground: var(--foreground);
+  --canvas-artifact-grid: color-mix(in oklab, var(--foreground) 10%, var(--background));
   --accent: oklch(0.955 0.003 286);
   --accent-foreground: var(--foreground);
   --destructive: oklch(0.577 0.245 27.325);

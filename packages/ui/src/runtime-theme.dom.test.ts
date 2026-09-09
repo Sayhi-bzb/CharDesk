@@ -7,6 +7,9 @@ const colors: Record<string, string> = {
   "--foreground": "rgb(20, 20, 20)",
   "--dialog-overlay": "rgba(20, 20, 20, 0.32)",
   "--canvas-preview-text": "rgb(20, 20, 20)",
+  "--canvas-artifact-background": "rgb(250, 250, 250)",
+  "--canvas-artifact-foreground": "rgb(20, 20, 20)",
+  "--canvas-artifact-grid": "rgb(230, 230, 230)",
   "--canvas-selection-surface": "rgba(10, 20, 30, 0.12)",
   "--canvas-selection-border": "rgb(10, 20, 30)",
   "--canvas-text-cursor-surface": "rgb(20, 20, 20)",
@@ -39,6 +42,11 @@ describe("readUiRuntimeTheme", () => {
     expect(theme.motion.slowMs).toBe(240);
     expect(theme.surface.radiusPx).toBe(12);
     expect(theme.canvas.selectionBorder).toBe("rgb(10, 20, 30)");
+    expect(theme.canvas.artifact).toEqual({
+      foreground: "rgb(20, 20, 20)",
+      background: "rgb(250, 250, 250)",
+      grid: "rgb(230, 230, 230)",
+    });
     expect(theme.host.previewText).toBe("rgb(20, 20, 20)");
   });
 

@@ -77,6 +77,7 @@ import { useUiI18n } from '@/shared/i18n';
 import { RecoverableLazyBoundary } from '@/shared/components/RecoverableLazyBoundary';
 import { requireLoadedModule } from '@/shared/lib/moduleLoadRecovery';
 import { CanvasStartupBoundary } from './CanvasStartupBoundary';
+import { CanvasAppearanceBridge } from '@/shared/canvas-appearance/react';
 
 
 const SidebarRight = lazy(() =>
@@ -613,6 +614,7 @@ export default function App() {
 
   return (
     <UiProvider messages={uiMessages}>
+      <CanvasAppearanceBridge />
       <ShortcutProvider>
         <TooltipProvider>
           <EditorPresentationProvider>

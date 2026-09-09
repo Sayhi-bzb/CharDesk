@@ -4,6 +4,7 @@ import { getStaticGridSelectionAreas } from "@/domains/selection/public";
 import { feedback } from "@/shared/services/effects";
 import { parsePlainTextCells } from "@/shared/utils/ansiText";
 import { areJsonValuesEqual } from "@/shared/utils/equality";
+import type { CanvasArtifactPalette } from "@/shared/metrics";
 import {
   buildClipboardPayload,
   hasClipboardSource,
@@ -74,9 +75,11 @@ const getClipboardTargetFingerprint = (state: SelectionCommandState) =>
 export const createSelectionCommandFactory = ({
   renderClipboardText,
   getFontProfile,
+  getArtifactPalette,
 }: {
   renderClipboardText: RenderClipboardText;
   getFontProfile?: () => import("@chardesk/fonts").CharDeskFontProfile;
+  getArtifactPalette?: () => CanvasArtifactPalette;
 }): SelectionCommandFactory => ({ getState: get, mutations }) => ({
   canCopyOrCut: () => {
     const state = get();
@@ -184,7 +187,8 @@ export const createSelectionCommandFactory = ({
         selections,
         withGrid,
         true,
-        getFontProfile?.()
+        getFontProfile?.(),
+        state.canvasMode === "freeform" ? getArtifactPalette?.() : undefined
       );
       if (!prepared.ok) return showFailure(prepared.error.code);
       const delivered = await deliverExportClipboard(prepared.value);

@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useCanvasFontRuntime } from "@/shared/fonts/hooks";
+import { useCanvasAppearance } from "@/shared/canvas-appearance/hooks";
 import { useCanvasRuntime } from "@/domains/canvas/public";
 import {
   deliverExportDownload,
@@ -16,6 +17,7 @@ type CanvasSessionExportResult =
 export function useCanvasSessionExport() {
   const canvas = useCanvasRuntime();
   const fonts = useCanvasFontRuntime();
+  const appearance = useCanvasAppearance();
   const save = useCallback(
     async (
       sessionId: string,
@@ -28,6 +30,8 @@ export function useCanvasSessionExport() {
         {
           canvasMode: session.mode,
           fontProfile,
+          artifactPalette:
+            session.mode === "freeform" ? appearance.palette : undefined,
           surface: session.surface,
           includeColor: true,
           showGrid: false,
@@ -49,7 +53,7 @@ export function useCanvasSessionExport() {
                 : "save-failed",
           };
     },
-    [canvas, fonts]
+    [appearance.palette, canvas, fonts]
   );
 
   return { save };

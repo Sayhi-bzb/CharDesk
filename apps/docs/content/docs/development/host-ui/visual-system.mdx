@@ -23,12 +23,18 @@ publishes through the package's stable `notify` API.
 
 Canvas DOM and Canvas-rendered interaction affordances share the same Host
 contract. `readUiRuntimeTheme` is the only bridge from CSS semantics to
-imperative drawing values. The Host visual-theme hook supplies its typed palette
-and revision to the main renderer, Minimap, and slide preview so theme changes
-invalidate their frames. Selection, cursor, handles, picker, viewport chrome,
-and preview defaults belong to this bridge. Document cell colors, ANSI palettes,
-export defaults, and CharGraph render themes remain artifact-owned and do not
-consume the Host palette.
+imperative drawing values. `CanvasAppearanceBridge` publishes one typed theme
+snapshot and revision to the main renderer, Minimap, slide preview, and imperative
+commands so theme changes invalidate every affected layer together. Selection,
+cursor, handles, picker, viewport chrome, and preview defaults belong to this
+bridge. Document cell colors, ANSI palettes,
+and CharGraph render themes remain artifact-owned. Freeform Canvas projects
+those colors through the Host-resolved `CanvasArtifactPalette`; the canonical
+`#000000` foreground follows the Host only on cells without an explicit
+background. Foregrounds paired with a background and all other colors remain
+literal. Main Canvas, CellFrame previews, Minimap, and PNG export consume that
+same runtime snapshot. Slide pages retain their white-paper palette. Theme state
+does not enter document, history, session, or collaboration data.
 
 Freeform and Slide use one terminal Cell cursor for both Navigate and Text Edit.
 The global Host preference selects block, bar, or underline and independently

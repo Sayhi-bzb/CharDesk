@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCanvasFont } from '@/shared/fonts/hooks';
 import {
   BACKGROUND_COLOR,
-  GRID_COLOR,
 } from '@/shared/lib/constants';
-import type { HostVisualTheme } from '@/shared/hooks/useHostVisualTheme';
+import type {
+  CanvasAppearanceSnapshot,
+  CanvasInteractionPalette,
+} from '@/shared/canvas-appearance/runtime';
 import { isStaticGridMode } from '@/domains/sessions/public';
 import type { CanvasRenderModel } from './canvasModels';
 import { GridManager } from '@/shared/utils/grid';
@@ -17,6 +19,7 @@ import {
 } from '@/domains/canvas/public';
 import type { CanvasLinkHit } from './interaction/core/linkHitTesting';
 import {
+  DEFAULT_ARTIFACT_CANVAS_PALETTE,
   DEFAULT_GRID_RENDER_METRICS,
   drawGridLines,
   drawTextCell,
@@ -24,6 +27,7 @@ import {
   gridCellRect,
   prepareCanvasSurface,
   setTextRenderStyle,
+  type CanvasArtifactPalette,
 } from '@/shared/metrics';
 import {
   getStaticGridViewState,
@@ -62,8 +66,6 @@ interface LayerRefs {
   interaction: React.RefObject<HTMLCanvasElement | null>;
 }
 
-export type CanvasInteractionPalette = HostVisualTheme['canvas'];
-
 type CanvasCellPresentationContext = Readonly<{
   viewActive: boolean;
   inputFocused: boolean;
@@ -81,6 +83,11 @@ export const shouldSuppressCanvasContentRendering = (search: string) => {
   const params = new URLSearchParams(search);
   return params.has('canvas-stress') && params.get('canvas-stress-render') === 'off';
 };
+
+export const resolveCanvasContentPalette = (
+  canvasMode: CanvasRenderModel['canvasMode'],
+  palette: CanvasArtifactPalette
+) => canvasMode === 'slide' ? DEFAULT_ARTIFACT_CANVAS_PALETTE : palette;
 
 export const drawCanvasColorPickerAnchor = (
   ctx: CanvasRenderingContext2D,
@@ -132,7 +139,7 @@ export const useCanvasRenderer = (
   draggingSelection: SelectionArea | null,
   staticRangeMovePreview: StaticGridRangeMovePlan | null,
   hoveredLink: CanvasLinkHit | null,
-  visualTheme: HostVisualTheme | null,
+  canvasAppearance: CanvasAppearanceSnapshot,
   cellContext: CanvasCellPresentationContext,
   requestRenderRef?: React.MutableRefObject<(() => void) | null>,
   runtime?: CanvasEngineRuntime
@@ -155,6 +162,11 @@ export const useCanvasRenderer = (
     slideDeck,
     canvasColorPickerTarget,
   } = store;
+  const artifactPalette = resolveCanvasContentPalette(
+    canvasMode,
+    canvasAppearance.palette
+  );
+  const visualTheme = canvasAppearance.visualTheme;
 
   const staticGridView = useMemo(
     () =>
@@ -269,9 +281,10 @@ export const useCanvasRenderer = (
           alpha,
           content,
           fontProfile,
+          palette: artifactPalette,
         }
       ),
-    [fontProfile]
+    [artifactPalette, fontProfile]
   );
   useEffect(() => {
     if (!visualTheme) return;
@@ -350,7 +363,9 @@ export const useCanvasRenderer = (
           surfaceGeometry.height,
           contentDpr
         );
-          bgCtx.fillStyle = slidePageRect ? palette.workspaceSurface : BACKGROUND_COLOR;
+          bgCtx.fillStyle = slidePageRect
+            ? palette.workspaceSurface
+            : artifactPalette.background;
           bgCtx.fillRect(0, 0, surfaceGeometry.width, surfaceGeometry.height);
           if (slidePageRect) {
             bgCtx.save();
@@ -379,7 +394,7 @@ export const useCanvasRenderer = (
               width: surfaceGeometry.width,
               height: surfaceGeometry.height,
               zoom,
-              color: GRID_COLOR,
+              color: artifactPalette.grid,
             });
           }
           const rangeMoveProjection = staticRangeMovePreview
@@ -394,7 +409,11 @@ export const useCanvasRenderer = (
             viewBounds,
             zoom,
             renderOffset,
-            { fontProfile, projection: rangeMoveProjection }
+            {
+              fontProfile,
+              projection: rangeMoveProjection,
+              palette: artifactPalette,
+            }
           ).glyphs;
           if (slidePageRect) bgCtx.restore();
         renderedInvalidation |= CANVAS_FRAME_INVALIDATION.background;
@@ -442,7 +461,8 @@ export const useCanvasRenderer = (
             contentReader,
             hoveredLink,
             zoom,
-            renderOffset
+            renderOffset,
+            artifactPalette
           );
         }
 
@@ -470,6 +490,7 @@ export const useCanvasRenderer = (
             offset: renderOffset,
             zoom,
             palette,
+            artifactPalette,
             fontProfile,
           });
         }
@@ -501,6 +522,7 @@ export const useCanvasRenderer = (
             drawTextCell(uiCtx, cell, pos.x, pos.y, {
               fontProfile,
               color: palette.textCursorForeground,
+              palette: artifactPalette,
               zoom,
             });
           }
@@ -610,11 +632,13 @@ export const useCanvasRenderer = (
         readerRevision,
         showGrid,
         staticRangeMovePreview,
+        canvasAppearance.revision,
       ],
       scratch: [
         layers.interaction.current,
         ...sharedViewportInputs,
         scratchLayer,
+        canvasAppearance.revision,
       ],
       overlay: [
         layers.interaction.current,
@@ -630,6 +654,7 @@ export const useCanvasRenderer = (
         tool,
         canvasColorPickerTarget,
         staticRangeMovePreview,
+        canvasAppearance.revision,
       ],
     });
     const hasViewportInteractionContent = () => {
@@ -715,6 +740,8 @@ export const useCanvasRenderer = (
     renderManager,
     runtime,
     visualTheme,
+    canvasAppearance.revision,
+    artifactPalette,
     fontProfile,
   ]);
 };

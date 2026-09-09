@@ -42,6 +42,10 @@ import {
   type CanvasCursorRuntime,
   type CanvasCursorStorage,
 } from "@/shared/canvas-cursor/runtime";
+import {
+  createCanvasAppearanceRuntime,
+  type CanvasAppearanceRuntime,
+} from "@/shared/canvas-appearance/runtime";
 
 type KeymapStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -63,6 +67,7 @@ export class ApplicationEditorHost {
   readonly textRendering: TextRenderingRuntime;
   readonly canvasFont: CanvasFontRuntime;
   readonly canvasCursor: CanvasCursorRuntime;
+  readonly canvasAppearance: CanvasAppearanceRuntime;
   readonly textRenderingWorker: TextRenderingWorkerClient;
   readonly blackboard: BlackboardRuntime;
   readonly profile: EditorHostProfile;
@@ -81,6 +86,7 @@ export class ApplicationEditorHost {
     this.profile = profile;
     this.canvasFont = createCanvasFontRuntime({ storage: canvasFontStorage });
     this.canvasCursor = createCanvasCursorRuntime({ storage: canvasCursorStorage });
+    this.canvasAppearance = createCanvasAppearanceRuntime();
     this.collaboration = createCollaborationRuntime();
     this.textRendering = createTextRenderingRuntime({ storage: textRenderingStorage });
     this.textRenderingWorker = new TextRenderingWorkerClient(this.textRendering);
@@ -90,6 +96,7 @@ export class ApplicationEditorHost {
       selectionCommands: createSelectionCommandFactory({
         renderClipboardText: this.textRenderingWorker.render,
         getFontProfile: () => this.canvasFont.getSnapshot().profile,
+        getArtifactPalette: () => this.canvasAppearance.getSnapshot().palette,
       }),
       parseSessionSource: parseDocumentSessionSource,
       reportIntegrityIssues: (issues) =>
@@ -121,6 +128,7 @@ export class ApplicationEditorHost {
     this.editor.dispose();
     this.canvasFont.dispose();
     this.canvasCursor.dispose();
+    this.canvasAppearance.dispose();
     this.textRenderingWorker.dispose();
     await this.collaboration.disconnect();
     this.canvas.dispose();

@@ -34,6 +34,7 @@ import {
 } from './canvas-cursor-setting';
 import { SettingsContentSection } from './settings-content-section';
 import { SettingsNavigation } from './settings-navigation';
+import { HostThemeSelect } from './host-theme-setting';
 import {
   getSettingsSearchResults,
   type SettingsSearchResult,
@@ -93,7 +94,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     if (
       section !== 'general' ||
       !revealTarget ||
-      !['language', 'canvas-font', 'canvas-cursor', 'canvas-cursor-blink'].includes(
+      !['language', 'host-theme', 'canvas-font', 'canvas-cursor', 'canvas-cursor-blink'].includes(
         revealTarget.type
       )
     ) return;
@@ -263,6 +264,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="flex min-w-0 items-center justify-between gap-4 py-2">
+                  <Label htmlFor="settings-host-theme" className="min-w-0 truncate">
+                    {t('settings.theme')}
+                  </Label>
+                  <div className="w-2/5 min-w-24 max-w-40 shrink-0">
+                    <HostThemeSelect />
+                  </div>
                 </div>
                 <div className="flex min-w-0 items-center justify-between gap-4 py-2">
                   <Label htmlFor="settings-canvas-font" className="min-w-0 truncate">

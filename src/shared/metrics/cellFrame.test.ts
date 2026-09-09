@@ -66,4 +66,31 @@ describe("createGridCellFrame", () => {
         .revision
     ).toBe(17);
   });
+
+  it("projects the canonical default foreground through the active palette", () => {
+    const source = createGridMapSource(new Map<string, GridCell>([
+      ["0,0", { char: "A", color: "#000000" }],
+      ["1,0", { char: "B", color: "#000000", bgColor: "#ffcc00" }],
+      ["2,0", { char: "C", color: "#000000", bgColor: "transparent" }],
+      ["3,0", { char: "D", color: "#123456" }],
+    ]));
+    const viewport = { x: 0, y: 0, width: 4, height: 1 };
+    const dark = { color: "#f5f5f5", background: "#111111", grid: "#222222" };
+    const light = { color: "#101010", background: "#ffffff", grid: "#eeeeee" };
+
+    const darkFrame = createGridCellFrame(source, viewport, "full", dark);
+    const lightFrame = createGridCellFrame(source, viewport, "full", light);
+
+    expect(darkFrame.source.get({ x: 0, y: 0 })?.visual.color).toBe("#f5f5f5");
+    expect(lightFrame.source.get({ x: 0, y: 0 })?.visual.color).toBe("#101010");
+    expect(darkFrame.source.get({ x: 1, y: 0 })?.visual).toMatchObject({
+      color: "#000000",
+      bgColor: "#ffcc00",
+    });
+    expect(darkFrame.source.get({ x: 2, y: 0 })?.visual).toMatchObject({
+      color: "#000000",
+      bgColor: "transparent",
+    });
+    expect(darkFrame.source.get({ x: 3, y: 0 })?.visual.color).toBe("#123456");
+  });
 });

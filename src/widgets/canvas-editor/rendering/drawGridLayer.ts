@@ -9,6 +9,7 @@ import {
   getCellOccupancy,
   resolveCellVisual,
   setTextRenderStyle,
+  type CanvasArtifactPalette,
 } from "@/shared/metrics";
 import {
   presentCharDeskCellFrame,
@@ -27,6 +28,7 @@ type DrawGridLayerOptions = {
   hoveredLink?: CanvasLinkHit | null;
   content?: "all" | "background" | "text";
   projection?: CanvasCellFrameProjection;
+  palette?: CanvasArtifactPalette;
 };
 
 /** @internal */
@@ -40,7 +42,8 @@ export const drawHoveredLinkDecoration = (
   reader: CanvasSurfaceReader | null,
   hoveredLink: CanvasLinkHit,
   zoom: number,
-  offset: Point
+  offset: Point,
+  palette: CanvasArtifactPalette = DEFAULT_ARTIFACT_CANVAS_PALETTE
 ) => {
   if (!reader) return;
   const lineWidth = Math.max(1, Math.round(zoom));
@@ -80,7 +83,7 @@ export const drawHoveredLinkDecoration = (
           zoom
         );
         ctx.beginPath();
-        ctx.strokeStyle = resolveCellVisual(cell).color;
+        ctx.strokeStyle = resolveCellVisual(cell, palette).color;
         ctx.moveTo(position.x, lineY);
         ctx.lineTo(
           position.x + DEFAULT_GRID_RENDER_METRICS.cellWidth * zoom * width,
@@ -104,6 +107,7 @@ export const drawGridLayer = (
 ): DrawGridLayerResult => {
   if (!reader) return { cells: 0, glyphs: 0 };
   const { alpha = 1, hoveredLink = null } = options;
+  const palette = options.palette ?? DEFAULT_ARTIFACT_CANVAS_PALETTE;
   const content = options.content ?? "all";
 
   ctx.save();
@@ -120,11 +124,12 @@ export const drawGridLayer = (
     reader,
     viewport,
     "full",
-    options.projection
+    options.projection,
+    palette
   );
   const result = presentCharDeskCellFrame(ctx, frame, {
     metrics: DEFAULT_GRID_RENDER_METRICS,
-    palette: DEFAULT_ARTIFACT_CANVAS_PALETTE,
+    palette,
     offset,
     zoom,
     content,

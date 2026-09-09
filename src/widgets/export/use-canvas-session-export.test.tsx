@@ -1,6 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
 import { CanvasFontProvider } from "@/shared/fonts/react";
 import { createCanvasFontRuntime } from "@/shared/fonts/runtime";
+import { CanvasAppearanceProvider } from "@/shared/canvas-appearance/react";
+import { createCanvasAppearanceRuntime } from "@/shared/canvas-appearance/runtime";
+import { createCanvasVisualThemeFixture } from "@/shared/canvas-appearance/test-theme";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { testingCanvasRuntime } from "@/domains/canvas/testing";
 import { useCanvasSessionExport } from "./use-canvas-session-export";
@@ -64,6 +67,46 @@ describe("useCanvasSessionExport", () => {
     await pending;
     expect(prepareExport).toHaveBeenCalledWith(expect.objectContaining({ fontProfile: profile }), "png");
     fonts.dispose();
+  });
+
+  it("captures the Canvas palette before asynchronous session materialization", async () => {
+    const appearance = createCanvasAppearanceRuntime();
+    const dark = { color: "#eee", background: "#111", grid: "#222" };
+    appearance.sync("dark", createCanvasVisualThemeFixture({
+      canvas: {
+        artifact: {
+          foreground: dark.color,
+          background: dark.background,
+          grid: dark.grid,
+        },
+      },
+    }));
+    const { result } = renderHook(() => useCanvasSessionExport(), {
+      wrapper: ({ children }) => (
+        <CanvasAppearanceProvider runtime={appearance}>
+          {children}
+        </CanvasAppearanceProvider>
+      ),
+    });
+    let complete!: () => void;
+    vi.mocked(testingCanvasRuntime.materializeSession).mockReturnValueOnce(
+      new Promise((resolve) => {
+        complete = () => resolve(materialized as never);
+      })
+    );
+    prepareExport.mockReturnValue({ ok: true, value: { kind: "blob" } });
+    deliverExportDownload.mockResolvedValue({ ok: true, value: true });
+
+    const pending = result.current.save("canvas-a", "png");
+    appearance.sync("light", createCanvasVisualThemeFixture());
+    complete();
+    await pending;
+
+    expect(prepareExport).toHaveBeenCalledWith(
+      expect.objectContaining({ artifactPalette: dark }),
+      "png"
+    );
+    appearance.dispose();
   });
 
   it("preserves the oversized-image error category for the menu", async () => {
