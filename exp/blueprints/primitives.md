@@ -13,7 +13,7 @@
 | State projection / appearance | 从状态派生高亮，再消费主题生成样式；不持有第二份业务值 | 命令派发、输入副作用 |
 | Runtime / Scene | 布局、裁剪、浮层与同次提交的 Buffer／SemanticSnapshot | 不把 Canvas 作为状态来源 |
 
-统一外观覆盖 Button、Checkbox、Select、Toggle、RadioGroup/RadioItem、Slider/RangeSlider、List、Menu、Tree、Tabs。能力表区分整控件反色与 thumb 字符强调；`collection-chrome.ts` 统一列表标记、树展开列和内容缩进。Grid 与编辑器保留原配方。底座仍属于同一个包，内部控制器不是新的公开插件 API。
+统一外观覆盖 Button、Checkbox、Select、Toggle、RadioGroup/RadioItem、Slider/RangeSlider、List、Menu、Tree、Tabs、Grid。能力表区分整控件反色与 thumb 字符强调；`collection-chrome.ts` 统一选择标记、树展开列和内容缩进。`grid-navigation.ts` 拥有坐标导航与入口选择，FocusManager 保存 Grid 入口 ID。编辑器保留独立配方。底座仍属于同一个包，内部控制器不是新的公开插件 API。
 
 ## 生命周期
 

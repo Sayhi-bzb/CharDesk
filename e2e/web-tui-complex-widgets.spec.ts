@@ -1,4 +1,55 @@
 import { expect, test } from "@playwright/test";
+import { copyCellRange, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
+
+test("Grid has one remembered Tab entry and range copy never selects a cell", async ({ page }) => {
+  await page.goto("/exp/web-tui/#/__fixtures/all");
+  const surface = page.getByLabel("Complex widget surface");
+  await surface.scrollIntoViewIfNeeded();
+  await surface.evaluate((element) => {
+    const after = document.createElement("input");
+    after.id = "grid-exit-sentinel";
+    after.setAttribute("aria-label", "After Grid");
+    element.after(after);
+  });
+  const preview = surface.getByRole("tab", { name: "Preview", exact: true });
+  await preview.focus();
+  await page.keyboard.press("Tab");
+  await expect(surface.getByRole("gridcell", { name: "Name", exact: true })).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  const value = surface.getByRole("gridcell", { name: "Value", exact: true });
+  await expect(value).toBeFocused();
+  await expect(value).toHaveAttribute("aria-selected", "false");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#grid-exit-sentinel")).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(value).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(preview).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(value).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(value).toHaveAttribute("aria-selected", "true");
+  await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
+
+  const probe = await readCellProbe(surface);
+  const row = probe.cells.find((cell) => cell.ownerId === "property-value" && cell.text === "✓")!;
+  expect(row).toBeDefined();
+  const metrics = await readCellMetrics(surface);
+  const bounds = (await surface.locator("canvas").boundingBox())!;
+  await page.keyboard.down("Alt");
+  await page.keyboard.down("Meta");
+  await page.mouse.move(bounds.x + 0.5 * metrics.cellWidth, bounds.y + (row.y + 0.5) * metrics.cellHeight);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + 35.5 * metrics.cellWidth, bounds.y + (row.y + 1.5) * metrics.cellHeight, { steps: 5 });
+  await page.mouse.up();
+  await page.keyboard.up("Meta");
+  await page.keyboard.up("Alt");
+  await expect(value).toHaveAttribute("aria-selected", "true");
+  await expect(surface.getByRole("gridcell", { name: "Dark", exact: true })).toHaveAttribute("aria-selected", "false");
+  const copied = await copyCellRange(surface);
+  expect(copied).toContain("✓ Value");
+  expect(copied).toContain("Theme");
+});
 
 test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", async ({ page }) => {
   const pageErrors: string[] = [];

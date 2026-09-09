@@ -18,6 +18,7 @@
 
 | ID | Phase / 切片 | 已交付事实 | 验收证据 |
 | --- | --- | --- | --- |
+| P5.26 | Phase 5 / Grid 二维导航与状态统一 | GridCell 使用固定 ✓ 列及统一临时反色；单 Grid 单 Tab 入口并记忆可用焦点，方向导航跨缺格与 disabled、不跨行换列；目标失效按入口规则收敛，不改业务选择；Cell Range 复制与激活隔离 | [导航与布局测试](../packages/cell-ui/src/grid-navigation.test.tsx)、[真实 Tab 与范围复制](../e2e/web-tui-complex-widgets.spec.ts)、[Widget 规范](blueprints/widgets.md) |
 | P5.25 | Phase 5 / 集合控件与延迟菜单动作 | List/Menu/Tree/Tabs 共用临时反色；List/Tree 固定 ✓ 列、Tabs 保留下划线；Menu 完整确认后派发一次动作，取消不执行，外部焦点解除菜单锁；树折叠焦点收敛到可用祖先 | [集合测试](../packages/cell-ui/src/collection-primitives.test.tsx)、[确认与取消](../packages/cell-ui/src/interaction-controller.test.tsx)、[Canvas 阶段采样](../e2e/web-tui-press.spec.ts)、[菜单浮层](../e2e/web-tui-command-palette.spec.ts)、[集合导航](../e2e/web-tui-complex-widgets.spec.ts) |
 | P5.24 | Phase 5 / 离散与连续基础控件统一 | Toggle/Radio 消费统一反色与确认会话，持久值仅用字符标记；Toggle 使用全局 ○/● 状态灯；Slider/RangeSlider 的鼠标、键盘与拖动共用 thumb 配方，无轨道反色或连续确认闪烁 | [Widget 规范](blueprints/widgets.md)、[状态与主题测试](../packages/cell-ui/src/visual.test.tsx)、[状态灯与裁剪](../packages/cell-ui/src/basic-widgets.test.tsx)、[真实 Canvas 确认周期](../e2e/web-tui-press.spec.ts)、[Gallery 回归](../e2e/web-tui-components.spec.ts) |
 | P5.23 | Phase 5 / Cell Primitives 与确认会话 | Browser/TestPilot 共用交互控制器；Button、Checkbox、Select 分离行为与外观；确认等待释放、相对参照颜色播放完整周期，每阶段呈现后计时，完成后交还高亮；过期确认及回调隔离 | [底座契约](blueprints/primitives.md)、[控制器测试](../packages/cell-ui/src/interaction-controller.test.tsx)、[真实 Canvas 阶段采样](../e2e/web-tui-press.spec.ts)、[组件与焦点回归](../e2e/web-tui-components.spec.ts) |

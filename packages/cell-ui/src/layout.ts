@@ -128,9 +128,9 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
         direction: "row",
         minHeight: node.kind === "tab" ? 2 : 1,
         flexShrink: 0,
-        paddingLeft: node.kind === "tree-item" || node.kind === "list-item" || node.kind === "grid-cell"
+        paddingLeft: node.kind === "tree-item" || node.kind === "list-item"
           ? collectionChromeMetrics(node).contentInset
-          : node.kind === "menu-item" ? 0 : 1,
+          : node.kind === "menu-item" || node.kind === "grid-cell" ? 0 : 1,
         ...(node.kind === "select-item" ? { paddingRight: 2 } : {}),
       }
     : node.kind === "slider" || node.kind === "range-slider"
@@ -163,6 +163,11 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
           ? { minHeight: 3, flexShrink: 0 }
           : {};
   applyStyle(target, { ...defaults, ...node.style });
+  // Grid selection chrome is reserved independently of consumer padding.
+  if (node.kind === "grid-cell") {
+    target.setPadding(Edge.Left,
+      (node.style.paddingLeft ?? node.style.padding ?? 0) + collectionChromeMetrics(node).contentInset);
+  }
   // Outline chrome owns one Cell on each side; user padding remains inside it.
   if (node.kind === "button" && node.buttonVariant === "outline") {
     const recipePadding = buttonHorizontalPadding(node.buttonSize);
