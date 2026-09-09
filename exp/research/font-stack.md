@@ -11,7 +11,7 @@ Core 默认由系统 monospace 承担 display/CJK，并独立分发 Nerd、symbo
 | 能力 | 当前来源 | 分发事实 | 覆盖事实 |
 | --- | --- | --- | --- |
 | display + CJK | Maple Mono NF CN 7.900（可选） | Regular 10,724,692 B；Bold 10,905,480 B | 33,092 cmap；Latin `0.6em`，CJK `1.2em` |
-| Nerd | Symbols Nerd Font Mono 3.5.1 | 1,344,296 B；27 个互斥 WOFF2；最大 83,252 B | 官方 catalog 10,617/10,617；Canvas `scaleX: 0.6` |
+| Nerd | Symbols Nerd Font Mono 3.5.1 | 1,344,296 B；27 个互斥 WOFF2；最大 83,252 B | 官方 catalog 10,617/10,617；单 Cell；Canvas 等比 `fontSizeScale: 0.8` |
 | symbol fallback | JuliaMono 0.63.2 | 1,081,536 B；8 个互斥 WOFF2 | 11,191 cmap；已测目标 glyph 为 `0.6em` advance |
 | monochrome emoji | Noto Emoji | 520,316 B | 1,453 cmap |
 
@@ -30,6 +30,10 @@ Settings → General → Canvas font 提供同一字体目录的三种字体，�
 Host 持有有效 Profile 与加载状态；成功后同步替换，失败保留原字体并提供就地重试，连续选择仅最新请求生效。正文层、临时绘制层、模板预览、整图与选区 PNG 显式消费 Profile；PNG 捕获导出启动时的有效字体。Host DOM 字体和文本导出 Unicode 不变。
 
 主 Canvas 与 Cell UI 默认使用 9×20 / 15px / baseline 15。精确命中 778 字符 registry 的 grapheme 共用专用绘制器，不等待字体；未登记 symbol fallback 保留。覆盖范围与像素验收矩阵由[共享渲染契约](../../packages/rendering/README.md#cell-graphics)拥有。
+
+Nerd 字形维持一格数据宽度。以 `󰄳` 为事实样本，Symbols Nerd Font Mono
+原始 15px 字形约为 15×15px，Canvas 使用 0.8 等比字号得到约 12×12px，
+在 9×20px Cell 中居中并允许左右墨水越界；Cell 仍独占布局、命中和复制。
 
 实现：[共享字体目录与加载](../../src/shared/fonts/catalog.ts)、[Host runtime](../../src/shared/fonts/runtime.ts)。验证：[状态测试](../../src/shared/fonts/runtime.test.ts)、[Canvas 缓存重绘](../../src/widgets/canvas-editor/rendering/drawGridLayer.test.ts)、[PNG 路由](../../src/domains/export/raster.dom.test.ts)、[Chromium/WebKit 设置与导出](../../e2e/canvas-font-settings.spec.ts)。
 

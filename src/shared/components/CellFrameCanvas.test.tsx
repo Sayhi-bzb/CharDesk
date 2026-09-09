@@ -20,9 +20,9 @@ vi.mock("@/shared/metrics", async (importOriginal) => ({
 }));
 
 import {
-  DEFAULT_ARTIFACT_CANVAS_PALETTE,
   DEFAULT_GRID_RENDER_METRICS,
 } from "@/shared/metrics";
+import { DEFAULT_ARTIFACT_CANVAS_PALETTE } from "@/shared/canvas-appearance/artifact-style";
 import { CellFrameCanvas } from "./CellFrameCanvas";
 
 describe("CellFrameCanvas", () => {

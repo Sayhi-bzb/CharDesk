@@ -3,6 +3,7 @@ import { createCharGraphFragment } from "./fragments.js";
 import type {
   CharGraphDiagnostic,
   CharGraphFragment,
+  CharGraphInlineAlignment,
   CharGraphRenderResult,
   CharGraphSourceRange,
 } from "./model.js";
@@ -21,6 +22,10 @@ export type BlockLayoutDocument = {
 export type BlockLayoutParseResult = {
   document: BlockLayoutDocument | null;
   recognized: boolean;
+  boundaries: {
+    fields: number;
+    rows: number;
+  };
   diagnostics: CharGraphDiagnostic[];
 };
 
@@ -90,7 +95,8 @@ export const parseBlockLayout = (source: string): BlockLayoutParseResult => {
   let protectedBlockLines: string[] = [];
   let blockStart = 0;
   let offset = 0;
-  let controlCount = 0;
+  let fieldBoundaryCount = 0;
+  let rowBoundaryCount = 0;
 
   const finishBlock = (to: number) => {
     const blockSource = blockLines.join("\n");
@@ -113,7 +119,8 @@ export const parseBlockLayout = (source: string): BlockLayoutParseResult => {
       return;
     }
 
-    controlCount += 1;
+    if (direction === "next-field") fieldBoundaryCount += 1;
+    else rowBoundaryCount += 1;
     finishBlock(offset);
     if (direction === "next-row") rows.push([]);
     blockStart = line.next;
@@ -121,10 +128,14 @@ export const parseBlockLayout = (source: string): BlockLayoutParseResult => {
   });
 
   finishBlock(source.length);
-  if (controlCount === 0) {
-    return { document: null, recognized: false, diagnostics: [] };
+  const boundaries = {
+    fields: fieldBoundaryCount,
+    rows: rowBoundaryCount,
+  };
+  if (fieldBoundaryCount + rowBoundaryCount === 0) {
+    return { document: null, recognized: false, boundaries, diagnostics: [] };
   }
-  return { document: { rows }, recognized: true, diagnostics: [] };
+  return { document: { rows }, recognized: true, boundaries, diagnostics: [] };
 };
 
 export const serializeBlockLayout = (document: BlockLayoutDocument) =>
@@ -144,6 +155,15 @@ type PlacedSpan = {
 
 const normalizeGap = (value: number | undefined, fallback: number) =>
   Number.isInteger(value) && value !== undefined && value >= 0 ? value : fallback;
+
+const resolveInlineInset = (
+  alignment: CharGraphInlineAlignment,
+  remaining: number
+) => {
+  if (alignment === "center") return Math.floor(remaining / 2);
+  if (alignment === "end") return remaining;
+  return 0;
+};
 
 const visualGroupInsets = (
   rendered: CharGraphRenderResult,
@@ -169,9 +189,10 @@ const visualGroupInsets = (
         row.spans.map((span) => span.x + span.width)
       )
     );
-    const inset = groupWidth < fieldWidth
-      ? Math.floor((fieldWidth - groupWidth) / 2)
-      : 0;
+    const inset = resolveInlineInset(
+      group.inlineAlignment ?? "start",
+      Math.max(0, fieldWidth - groupWidth)
+    );
     for (let row = group.fromRow; row < group.toRow; row += 1) {
       insets.set(row, inset);
     }

@@ -11,7 +11,7 @@ import {
 
 describe("core font profile", () => {
   it("keeps its stable id, routes, and pinned source versions together", () => {
-    expect(CHARDESK_SYSTEM_FONT_PROFILE.id).toBe("chardesk/system-v5");
+    expect(CHARDESK_SYSTEM_FONT_PROFILE.id).toBe("chardesk/system-v6");
     expect(CHARDESK_SYSTEM_FONT_PROFILE_ID).toBe(CHARDESK_SYSTEM_FONT_PROFILE.id);
     expect(CHARDESK_SYSTEM_FONT_PROFILE.families.text).toBe(
       CHARDESK_SYSTEM_FONT_FAMILY
@@ -22,6 +22,7 @@ describe("core font profile", () => {
       CHARDESK_SYSTEM_FONT_FAMILY
     );
     expect(CHARDESK_SYSTEM_FONT_PROFILE.capabilities.display.boldStrategy).toBe("native");
+    expect(CHARDESK_SYSTEM_FONT_PROFILE.capabilities.nerd.fontSizeScale).toBe(0.8);
     expect(CHARDESK_SYSTEM_FONT_PROFILE.capabilities["cell-glyph"].boldStrategy).toBe("none");
     expect(CHARDESK_SYSTEM_FONT_PROFILE.capabilities.emoji.families.regular)
       .toBe(CHARDESK_SYSTEM_FONT_PROFILE.families.emoji);
@@ -150,6 +151,7 @@ describe("core font profile", () => {
     expect(resolveCharDeskFontCapability("。")).toBe("cjk");
     expect(resolveCharDeskFontCapability("，")).toBe("cjk");
     expect(resolveCharDeskFontCapability("\ue0b0")).toBe("nerd");
+    expect(resolveCharDeskFontCapability("󰄳")).toBe("nerd");
     for (const glyph of ["┌", "─", "╭", "│", "█", "▀", "▄", "▌", "▐"]) {
       expect(resolveCharDeskFontCapability(glyph)).toBe("cell-glyph");
     }

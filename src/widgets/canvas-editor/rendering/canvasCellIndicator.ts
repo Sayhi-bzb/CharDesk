@@ -5,11 +5,11 @@ import {
   type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
 import type { CanvasInteractionPalette } from "@/shared/canvas-appearance/runtime";
+import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
 import {
   DEFAULT_GRID_RENDER_METRICS,
   gridCellRect,
   toCanvasVisual,
-  type CanvasArtifactPalette,
 } from "@/shared/metrics";
 import type { GridCellSource, Point } from "@/shared/types";
 import type { CanvasCellIndicator } from "../presentation/canvasCellPresentation";

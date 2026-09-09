@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { DEFAULT_TEXT_RENDER_PROFILE } from "@/domains/document/public";
 import { gridEntriesToCellPlaneOperation } from "@/domains/canvas/public";
+import { createCanvasVisualThemeFixture } from "@/shared/canvas-appearance/test-theme";
 import {
   createApplicationEditorHost,
   getApplicationEditorHost,
@@ -78,6 +79,85 @@ describe("ApplicationEditorHost", () => {
       Array.from(host.canvas.getState().contentSurface.reader.materialize().values()).map((cell) => cell.char).join("")
     ).toBe("remark");
     expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.color).toBe("#0969da");
+  });
+
+  it("pastes Markdown thematic breaks without centering prose", async () => {
+    const host = createHost();
+    host.canvas.commands.grid.replace([]);
+    host.canvas.commands.interaction.setTextCursor({ x: 0, y: 0 });
+    const source = [
+      "也就是说，**不需要某一天突然出现“自我修改源码”的 AGI。**",
+      "",
+      "Codex/Research Agent 今天帮助研究员写代码、跑实验、分析结果，本身就可以是 RSI 的早期形态。",
+      "",
+      "文章明确说，OpenAI 正把研究方向朝 RSI 集中，因为他们认为继续处于 AI 前沿最终必须走这条路。([OpenAI][1])",
+      "",
+      "---",
+    ].join("\n");
+
+    const result = await host.canvas.commands.selection.paste({
+      eventDataTransfer: {
+        getData: (type: string) => type === "text/plain" ? source : "",
+      } as unknown as DataTransfer,
+    });
+    const cells = [...host.canvas.getState().contentSurface.reader.materialize()]
+      .map(([key, cell]) => ({ x: Number(key.split(",")[0]), y: Number(key.split(",")[1]), cell }));
+    const populatedRows = [...new Set(cells.map(({ y }) => y))]
+      .map((y) => cells.filter((cell) => cell.y === y));
+
+    expect(result).toMatchObject({ status: "applied" });
+    expect(populatedRows.every((row) => Math.min(...row.map(({ x }) => x)) === 0))
+      .toBe(true);
+    expect(cells.filter(({ y }) => y === Math.max(...cells.map((item) => item.y)))
+      .map(({ cell }) => cell.char).join(""))
+      .toBe("———");
+  });
+
+  it("freezes the resolved theme into each pasted Markdown result", async () => {
+    const host = createHost();
+    host.canvas.commands.grid.replace([]);
+    host.textRendering.setProfile({
+      ...DEFAULT_TEXT_RENDER_PROFILE,
+      mode: "markdown",
+    });
+    host.canvasAppearance.sync("dark", createCanvasVisualThemeFixture({
+      canvas: {
+        artifact: {
+          foreground: "#f0f6fc",
+          background: "#0d1117",
+          grid: "#21262d",
+        },
+      },
+    }));
+    host.canvas.commands.interaction.setTextCursor({ x: 0, y: 0 });
+
+    await host.canvas.commands.selection.paste({
+      eventDataTransfer: {
+        getData: (type: string) => type === "text/plain" ? "**Dark** `code`" : "",
+      } as unknown as DataTransfer,
+    });
+    const darkCells = host.canvas.getState().contentSurface.reader.materialize();
+    expect(darkCells.get("0,0")?.color).toBe("#f0f6fc");
+    expect(darkCells.get("5,0")).toMatchObject({
+      color: "#58a6ff",
+      bgColor: "#161b22",
+    });
+
+    host.canvasAppearance.sync("light", createCanvasVisualThemeFixture());
+    expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.color)
+      .toBe("#f0f6fc");
+    host.canvas.commands.interaction.setTextCursor({ x: 0, y: 2 });
+    await host.canvas.commands.selection.paste({
+      eventDataTransfer: {
+        getData: (type: string) => type === "text/plain" ? "**Light** `code`" : "",
+      } as unknown as DataTransfer,
+    });
+    const lightCells = host.canvas.getState().contentSurface.reader.materialize();
+    expect(lightCells.get("0,2")?.color).toBe("#1f2328");
+    expect(lightCells.get("6,2")).toMatchObject({
+      color: "#0969da",
+      bgColor: "#f6f8fa",
+    });
   });
 
   it("persists pasted Mermaid diagrams as editable Unicode grid cells", async () => {

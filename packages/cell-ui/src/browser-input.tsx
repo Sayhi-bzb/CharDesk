@@ -22,6 +22,7 @@ import {
   type CellTextSnapshot,
 } from "./text.js";
 import type { FrameSnapshot, WidgetId, WidgetNode } from "./types.js";
+import { commandForComboboxKey } from "./combobox.js";
 
 export type CellTextState = Readonly<{
   snapshot: CellTextSnapshot;
@@ -163,6 +164,14 @@ const ManagedCellTextarea = ({
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.defaultPrevented || composing.current) return;
     const input = keyInputFromKeyboardEvent(event.nativeEvent);
+    if (node.kind === "combobox-input") {
+      const command = commandForComboboxKey(frame.tree, node, input);
+      if (command) {
+        event.preventDefault();
+        dispatch(command);
+        return;
+      }
+    }
     if (!multiline && isCellKeyPress(input, "Enter")) {
       event.preventDefault();
       dispatch({ type: "activate", targetId: node.id });
@@ -198,9 +207,17 @@ const ManagedCellTextarea = ({
   return (
     <textarea
       ref={ref}
+      id={node.kind === "combobox-input" ? `cell-semantic-${node.id}` : undefined}
       data-cell-text-editor={node.id}
       aria-label={node.label ?? (multiline ? "Text area" : "Text input")}
       aria-multiline={multiline || undefined}
+      role={node.kind === "combobox-input" ? "combobox" : undefined}
+      aria-expanded={node.kind === "combobox-input" ? node.expanded : undefined}
+      aria-controls={node.kind === "combobox-input" && node.controlsId
+        ? `cell-semantic-${node.controlsId}` : undefined}
+      aria-activedescendant={node.kind === "combobox-input" && node.activeDescendantId
+        ? `cell-semantic-${node.activeDescendantId}` : undefined}
+      aria-autocomplete={node.kind === "combobox-input" ? "list" : undefined}
       disabled={node.disabled}
       readOnly={node.readOnly}
       autoCapitalize="off"

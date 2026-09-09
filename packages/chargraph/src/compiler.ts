@@ -30,6 +30,9 @@ export type CompileCharDeskTextOptions = Omit<
   sourceKind: CharDeskSourceKind;
   chargraphMode?: CharGraphTextRenderOptions["mode"];
   defaultStyle?: CharDeskTextStyle;
+  pipelineDefaultStyles?: Partial<
+    Record<CharDeskTextCompilerId, CharDeskTextStyle>
+  >;
   tabSize?: number;
 };
 
@@ -111,8 +114,12 @@ export const compileCharDeskText = async (
         layout: options.layout,
       })
     : compileProtocolSource(source, options.sourceKind);
+  const pipelineDefaultStyle = [...rendered.pipeline]
+    .reverse()
+    .map((renderer) => options.pipelineDefaultStyles?.[renderer])
+    .find((style) => style !== undefined);
   const document = layoutCharDeskTextRunsToRows(rendered.fragments, {
-    defaultStyle: options.defaultStyle,
+    defaultStyle: pipelineDefaultStyle ?? options.defaultStyle,
     tabSize: options.tabSize,
   });
   const renderedProtocolDiagnostics: CharDeskTextDiagnostic[] =

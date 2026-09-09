@@ -70,6 +70,7 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.buttonVariant !== after.buttonVariant
   || before.buttonSize !== after.buttonSize
   || before.orientation !== after.orientation
+  || (after.kind === "accordion-content" && before.expanded !== after.expanded)
   || !sameWidgetValue(before.style, after.style)
   || !sameWidgetValue(before.children, after.children);
 
@@ -98,9 +99,11 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.confirming !== after.confirming
   || !sameWidgetValue(before.confirmation, after.confirmation)
   || before.selected !== after.selected
+  || before.active !== after.active
   || before.checked !== after.checked
   || before.pressed !== after.pressed
   || !sameWidgetValue(before.progress, after.progress)
+  || before.separatorVariant !== after.separatorVariant
   || before.buttonVariant !== after.buttonVariant
   || before.sliderValue !== after.sliderValue
   || before.sliderMin !== after.sliderMin
@@ -133,7 +136,11 @@ const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
   || before.setSize !== after.setSize
   || before.orientation !== after.orientation
   || before.controlsId !== after.controlsId
+  || before.activeDescendantId !== after.activeDescendantId
   || before.labelledById !== after.labelledById
+  || before.describedById !== after.describedById
+  || before.dialogPart !== after.dialogPart
+  || !sameWidgetValue(before.dialog, after.dialog)
   || before.readOnly !== after.readOnly
   || before.modal !== after.modal
   || before.text !== after.text
@@ -187,7 +194,7 @@ export class CellUiRuntime {
     element: ReactElement<RootProps> | null,
     state: Readonly<{
       focusedId?: string | null;
-      focusActive?: boolean;
+      activeFocusId?: string | null;
       focusVisible?: boolean;
       hoveredId?: string | null;
       manipulatingIds?: ReadonlySet<string>;
@@ -202,11 +209,18 @@ export class CellUiRuntime {
     if (this.#disposed) throw new Error("CellUiRuntime has been disposed.");
     const descriptor = createWidgetDescriptor(element);
     const reconciliation = reconcileWidgetTree(this.#tree, descriptor);
-    const focusedId = state.resolveFocusedId?.(reconciliation.tree)
-      ?? state.focusedId
-      ?? [...reconciliation.tree.nodes.values()].find((node) => node.focused)?.id
-      ?? null;
-    const focusActive = state.focusActive ?? state.focusVisible ?? focusedId !== null;
+    const focusedId = state.resolveFocusedId
+      ? state.resolveFocusedId(reconciliation.tree)
+      : state.focusedId
+        ?? [...reconciliation.tree.nodes.values()].find((node) => node.focused)?.id
+        ?? null;
+    const defaultActiveFocusId = (state.focusVisible ?? focusedId !== null)
+      ? focusedId
+      : null;
+    const activeFocusId = state.activeFocusId === undefined
+      ? defaultActiveFocusId
+      : state.activeFocusId;
+    const focusActive = focusedId !== null && activeFocusId === focusedId;
     const focusVisible = state.focusVisible ?? focusActive;
     const hoveredNode = state.hoveredId ? reconciliation.tree.nodes.get(state.hoveredId) : undefined;
     const hoveredId = focusVisible && focusedId !== null && hoveredNode && isPrimitiveControlKind(hoveredNode.kind)

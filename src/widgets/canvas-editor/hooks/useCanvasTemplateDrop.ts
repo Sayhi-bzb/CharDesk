@@ -3,16 +3,16 @@ import type { Point } from "@/shared/types";
 import type { CanvasMode } from "@/domains/sessions/public";
 import { GridManager } from "@/shared/utils/grid";
 import { gridCellRect } from "@/shared/metrics";
-import { getTextCellWidth } from "@/shared/metrics";
 import {
   CANVAS_TEMPLATE_MIME,
   getActiveCanvasTemplateDragId,
-  getCanvasTemplate,
-  getCanvasTemplateProjection,
+  getCanvasTemplateMaterialization,
   isCanvasTemplateId,
   setActiveCanvasTemplateDragId,
   type CanvasTemplateId,
 } from "@/domains/canvas-templates/public";
+import { useResolvedContentTheme } from "@/domains/document/public";
+import { useUiTheme } from "@chardesk/ui";
 import type { CanvasEditorModel } from "./canvasModels";
 
 type CanvasTemplatePreviewState = {
@@ -33,6 +33,8 @@ export const useCanvasTemplateDrop = ({
   model,
   enabled = true,
 }: UseCanvasTemplateDropOptions) => {
+  const { resolvedTheme } = useUiTheme();
+  const contentTheme = useResolvedContentTheme(resolvedTheme);
   const [preview, setPreviewState] =
     useState<CanvasTemplatePreviewState | null>(null);
   const previewRef = useRef<CanvasTemplatePreviewState | null>(null);
@@ -154,15 +156,8 @@ export const useCanvasTemplateDrop = ({
 
     clearPreview();
     setActiveCanvasTemplateDragId(null);
-    const template = getCanvasTemplate(templateId);
     model.insertRows(
-      template.rows.map((row) => ({
-        y: row.y,
-        spans: row.spans.map((span) => ({
-          ...span,
-          width: getTextCellWidth(span.text),
-        })),
-      })),
+      getCanvasTemplateMaterialization(templateId, contentTheme).rows,
       point,
       { selectResult: true }
     );
@@ -173,7 +168,7 @@ export const useCanvasTemplateDrop = ({
       ? gridCellRect(preview.position, { offset: model.offset, zoom: model.zoom })
       : null;
   const projection = preview
-    ? getCanvasTemplateProjection(preview.templateId)
+    ? getCanvasTemplateMaterialization(preview.templateId, contentTheme)
     : null;
 
   return {

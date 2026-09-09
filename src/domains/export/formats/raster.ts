@@ -4,9 +4,11 @@ import {
   drawGridLines,
   loadRenderFonts,
   type CanvasCellDrawEntry,
+} from "@/shared/metrics";
+import {
   DEFAULT_ARTIFACT_CANVAS_PALETTE,
   type CanvasArtifactPalette,
-} from "@/shared/metrics";
+} from "@/shared/canvas-appearance/artifact-style";
 import type { GridCell, GridCellSource, SelectionArea } from "@/shared/types";
 import { GridManager } from "@/shared/utils/grid";
 import { getSelectionsBoundingBox } from "@/shared/utils/selection";

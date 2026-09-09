@@ -1,6 +1,7 @@
 export {
   CANVAS_TEMPLATES,
   type CanvasTemplateDefinition,
+  type CanvasTemplateColor,
   type CanvasTemplateGroup,
   type CanvasTemplateId,
   type CanvasTemplateRow,
@@ -12,9 +13,11 @@ export {
   CANVAS_TEMPLATE_MIME,
   getActiveCanvasTemplateDragId,
   getCanvasTemplate,
-  getCanvasTemplateProjection,
+  getCanvasTemplateMaterialization,
   getCanvasTemplatesByGroup,
   isCanvasTemplateId,
   setActiveCanvasTemplateDragId,
-  type CanvasTemplateProjection,
+  type CanvasTemplateMaterialization,
+  type MaterializedCanvasTemplateRow,
+  type MaterializedCanvasTemplateSpan,
 } from "./runtime";

@@ -1,18 +1,21 @@
 import type {
-  CharDeskRenderColorDefault,
-  CharDeskRenderTheme,
-  CharDeskRenderThemeToken,
-} from "@chardesk/chargraph/theme";
+  CharDeskContentColorDefault,
+  CharDeskContentTheme,
+  CharDeskContentThemeMode,
+  CharDeskContentThemeToken,
+} from "@chardesk/rendering/theme";
 import type { I18nKey } from "@/shared/i18n";
 import type { GridCell } from "@/shared/types";
 
 export type BuiltInTextRendererId = "raw" | "ansi" | "markdown";
 export type TextRendererId = BuiltInTextRendererId | "block-layout";
 export type TextRendererMode = "auto" | BuiltInTextRendererId;
-export type TextRenderThemeTokenId = CharDeskRenderThemeToken;
-export type TextRenderTheme = CharDeskRenderTheme;
+export type TextRenderThemeTokenId = CharDeskContentThemeToken;
+export type TextRenderThemeMode = CharDeskContentThemeMode;
+export type TextRenderTheme = CharDeskContentTheme;
 export type TextRenderThemeOverrides = Partial<TextRenderTheme>;
-export type TextRenderColorDefault = CharDeskRenderColorDefault;
+export type TextRenderThemeMap<Value> = Record<TextRenderThemeMode, Value>;
+export type TextRenderColorDefault = CharDeskContentColorDefault;
 export type TextRenderFeatureId = string;
 export type TextRenderFeatureColorSlotDefinition = {
   readonly id: string;
@@ -36,7 +39,7 @@ export type TextRenderFeatureDefinition = {
 };
 export type TextRenderFeatureConfig = {
   enabled: boolean;
-  colors: Record<string, string>;
+  colors: TextRenderThemeMap<Record<string, string>>;
 };
 export type TextRenderFeatureSettings = Record<
   TextRenderFeatureId,
@@ -45,8 +48,12 @@ export type TextRenderFeatureSettings = Record<
 
 export type TextRenderProfile = {
   mode: TextRendererMode;
-  renderTheme: TextRenderThemeOverrides;
+  renderThemes: TextRenderThemeMap<TextRenderThemeOverrides>;
   features: TextRenderFeatureSettings;
+};
+
+export type TextRenderContext = {
+  themeMode: TextRenderThemeMode;
 };
 
 export type RenderedTextCell = GridCell & { x: number; y: number };

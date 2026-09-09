@@ -15,7 +15,12 @@ import type {
   TextRenderFeatureId,
   TextRenderFeatureSettings,
   TextRenderTheme,
+  TextRenderThemeMode,
 } from "./types";
+import {
+  createTextRenderThemeMap,
+  TEXT_RENDER_THEME_MODES,
+} from "./theme";
 
 type InternalColorSlot = TextRenderFeatureDefinition["colorSlots"][number] & {
   readonly legacyIds: readonly string[];
@@ -414,7 +419,7 @@ export const getTextRenderFeatureDefinition = (id: TextRenderFeatureId) =>
 export const createDefaultFeatureSettings = (): TextRenderFeatureSettings =>
   Object.fromEntries(TEXT_RENDER_FEATURES.map((feature) => [
     feature.id,
-    { enabled: feature.defaultEnabled, colors: {} },
+    { enabled: feature.defaultEnabled, colors: createTextRenderThemeMap(() => ({})) },
   ]));
 
 const normalizeColor = (value: unknown) =>
@@ -436,6 +441,26 @@ const decodeColors = (
   }));
 };
 
+const colorsForMode = (
+  value: unknown,
+  mode: TextRenderThemeMode
+) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const source = value as Record<string, unknown>;
+  const hasThemeMaps = ["light", "dark"].some((key) => {
+    const candidate = source[key];
+    return !!candidate && typeof candidate === "object" && !Array.isArray(candidate);
+  });
+  return hasThemeMaps ? source[mode] : mode === "light" ? source : {};
+};
+
+const decodeThemeColors = (
+  value: unknown,
+  definition: InternalFeatureDefinition
+) => createTextRenderThemeMap((mode) =>
+  decodeColors(colorsForMode(value, mode), definition)
+);
+
 export const decodeFeatureSettings = (value: unknown): TextRenderFeatureSettings => {
   const source = value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -450,40 +475,41 @@ export const decodeFeatureSettings = (value: unknown): TextRenderFeatureSettings
       enabled: typeof record.enabled === "boolean"
         ? record.enabled
         : definition.defaultEnabled,
-      colors: decodeColors(record.colors, definition),
+      colors: decodeThemeColors(record.colors, definition),
     }];
     })
   );
   const mathStyle = settings["markdown.math-style"];
-  if (mathStyle && !mathStyle.colors.content) {
-    const previousMathColor = ["markdown.inline-math", "markdown.block-math"]
-      .map((id) => source[id])
-      .flatMap((candidate) =>
-        candidate && typeof candidate === "object" && !Array.isArray(candidate)
-          ? [normalizeColor(
-              (candidate as Partial<TextRenderFeatureConfig>).colors?.foreground
-            )]
-          : []
-      )
-      .find(Boolean);
-    if (previousMathColor) mathStyle.colors.content = previousMathColor;
+  if (mathStyle) {
+    for (const mode of TEXT_RENDER_THEME_MODES) {
+      if (mathStyle.colors[mode].content) continue;
+      const previousMathColor = ["markdown.inline-math", "markdown.block-math"]
+        .map((id) => source[id])
+        .flatMap((candidate) => {
+          if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return [];
+          const colors = (candidate as { colors?: unknown }).colors;
+          const modeColors = colorsForMode(colors, mode) as Record<string, unknown>;
+          return [normalizeColor(modeColors.foreground)];
+        })
+        .find(Boolean);
+      if (previousMathColor) mathStyle.colors[mode].content = previousMathColor;
+    }
   }
   const mermaid = settings["markdown.mermaid"];
   const previousMermaid = source["markdown.mermaid"];
-  if (
-    mermaid &&
-    !mermaid.colors["node.border"] &&
-    previousMermaid &&
-    typeof previousMermaid === "object" &&
-    !Array.isArray(previousMermaid)
-  ) {
-    const previousColors = (previousMermaid as Partial<TextRenderFeatureConfig>)
-      .colors;
-    const previousStructuralColor = normalizeColor(previousColors?.["flow.node.border"])
-      ?? normalizeColor(previousColors?.["edge.line"])
-      ?? normalizeColor(previousColors?.["edge.arrow"]);
-    if (previousStructuralColor) {
-      mermaid.colors["node.border"] = previousStructuralColor;
+  if (mermaid && previousMermaid && typeof previousMermaid === "object" && !Array.isArray(previousMermaid)) {
+    for (const mode of TEXT_RENDER_THEME_MODES) {
+      if (mermaid.colors[mode]["node.border"]) continue;
+      const previousColors = colorsForMode(
+        (previousMermaid as { colors?: unknown }).colors,
+        mode
+      ) as Record<string, unknown>;
+      const previousStructuralColor = normalizeColor(previousColors["flow.node.border"])
+        ?? normalizeColor(previousColors["edge.line"])
+        ?? normalizeColor(previousColors["edge.arrow"]);
+      if (previousStructuralColor) {
+        mermaid.colors[mode]["node.border"] = previousStructuralColor;
+      }
     }
   }
   return settings;
@@ -512,7 +538,9 @@ export const migrateLegacyFeatureSettings = (
       enabled: typeof legacyEnabled === "boolean"
         ? legacyEnabled
         : definition.defaultEnabled,
-      colors: migratedColors,
+      colors: createTextRenderThemeMap((mode) =>
+        mode === "light" ? migratedColors : {}
+      ),
     }];
   }));
 };
@@ -520,18 +548,19 @@ export const migrateLegacyFeatureSettings = (
 export const createRegisteredMarkdownOptions = (
   settings: TextRenderFeatureSettings,
   theme: TextRenderTheme,
-  forced: boolean
+  forced: boolean,
+  themeMode: TextRenderThemeMode = "light"
 ): MarkdownRenderOptions => {
   const features: CharDeskMarkdownFeatureStates = {};
 
   for (const definition of INTERNAL_FEATURES) {
     const config = settings[definition.id] ?? {
       enabled: definition.defaultEnabled,
-      colors: {},
+      colors: createTextRenderThemeMap(() => ({})),
     };
     const colors: Record<string, string> = {};
     for (const colorSlot of definition.colorSlots) {
-      const configured = normalizeColor(config.colors[colorSlot.id]);
+      const configured = normalizeColor(config.colors[themeMode][colorSlot.id]);
       if (!configured) continue;
       colors[colorSlot.id] = configured;
     }

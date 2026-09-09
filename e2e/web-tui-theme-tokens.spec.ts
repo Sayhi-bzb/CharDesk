@@ -25,6 +25,8 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
         accent: read("--cell-accent"),
         selection: read("--cell-selection"),
         selectionForeground: read("--cell-selection-foreground"),
+        rangeSurface: read("--cell-range-surface"),
+        rangeSurfaceEffect: read("--cell-range-surface-effect"),
         scrollbarThumb: read("--cell-scrollbar-thumb"),
         scrollbarTrack: read("--cell-scrollbar-track"),
       };
@@ -45,6 +47,8 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
       accent: "#000000",
       selection: "#000000",
       selectionForeground: "#ffffff",
+      rangeSurface: "rgba(0, 0, 0, 0.22)",
+      rangeSurfaceEffect: "tint",
       scrollbarThumb: "#000000",
       scrollbarTrack: "#777777",
     } : {
@@ -63,6 +67,8 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
       accent: "#ffffff",
       selection: "#ffffff",
       selectionForeground: "#000000",
+      rangeSurface: "rgba(255, 255, 255, 0.18)",
+      rangeSurfaceEffect: "contrast",
       scrollbarThumb: "#ffffff",
       scrollbarTrack: "#888888",
     });
@@ -103,6 +109,7 @@ test("CSS token inheritance, aliases, local overrides and fallback resolve witho
     child.style.setProperty("--cell-highlight", "oklch(60% 0.1 120)");
     child.style.setProperty("--cell-range-surface", "rgba(1, 2, 3, 0.25)");
     child.style.setProperty("--cell-range-border", "rgb(10, 20, 30)");
+    child.style.setProperty("--cell-range-surface-effect", "tint");
     child.style.setProperty("--cell-cursor", "rgb(4, 5, 6)");
     child.style.setProperty("--cell-cursor-foreground", "rgb(7, 8, 9)");
     const local = readCellCssTheme(child);
@@ -120,6 +127,7 @@ test("CSS token inheritance, aliases, local overrides and fallback resolve witho
   expect(result.local.theme.rangeStyle).toEqual({
     surface: "rgba(1, 2, 3, 0.25)",
     border: "rgb(10, 20, 30)",
+    surfaceEffect: "tint",
   });
   expect(result.local.theme.cursorStyle).toMatchObject({
     shape: "block",
@@ -158,29 +166,32 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
   expect(after.revision).toBeGreaterThan(before.revision);
   await expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
   const refocused = await readCellProbe(surface);
-  expect(refocused.cells.some((cell) => cell.style.bold && cell.style.backgroundColor === "rgb(60, 70, 80)")).toBe(true);
+  expect(refocused.cells.some((cell) => !cell.style.bold
+    && cell.style.color === "rgb(7, 8, 9)"
+    && cell.style.backgroundColor === "rgb(255, 255, 255)")).toBe(true);
   expect(after.cells.some((cell) => cell.text === "┌" && cell.style.color === "rgb(90, 100, 110)")).toBe(true);
   const pixel = await readCellPixel(surface, 31.5, 7.5);
   expect(pixel).toEqual([7, 8, 9, 255]);
 });
 
-test("terminal cursor and rectangle overlay consume theme tokens in actual pixels", async ({ page }) => {
+test("inverse cursor ignores fixed color tokens while rectangle overlay consumes its tokens", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
   await page.goto("/exp/web-tui/#/__fixtures/all");
   await page.evaluate(() => {
     document.documentElement.style.setProperty("--cell-cursor", "rgb(255, 0, 0)");
     document.documentElement.style.setProperty("--cell-cursor-foreground", "rgb(0, 0, 0)");
     document.documentElement.style.setProperty("--cell-range-surface", "rgb(0, 255, 0)");
+    document.documentElement.style.setProperty("--cell-range-surface-effect", "tint");
   });
   await page.getByRole("button", { name: "Dark" }).click();
   await page.getByRole("textbox", { name: "File name", exact: true }).fill("");
   const editor = page.locator('[data-cell-probe="editor"]');
   const cursor = await readCellPixel(editor, 1.5, 2.5);
-  expect(cursor).toEqual([255, 0, 0, 255]);
+  expect(cursor).toEqual([0, 0, 0, 255]);
   const input = page.getByRole("textbox", { name: "File name", exact: true });
   await input.fill("中A");
   await input.press("Home");
-  expect(await readCellPixel(editor, 2.8, 2.1)).toEqual([255, 0, 0, 255]);
+  expect(await readCellPixel(editor, 2.8, 2.1)).toEqual([0, 0, 0, 255]);
   const canvas = page.locator('[data-cell-probe="complex"] canvas');
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
@@ -195,4 +206,31 @@ test("terminal cursor and rectangle overlay consume theme tokens in actual pixel
   await expect(page.locator('[data-cell-probe="complex"]')).toHaveAttribute("data-cell-range", "0,8,4,2");
   await expect.poll(() => readCellPixel(page.locator('[data-cell-probe="complex"]'), 1.5, 8.5))
     .toEqual([0, 255, 0, 255]);
+});
+
+test("dark Range contrast changes final pixels without changing Cell content", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await page.goto("/exp/web-tui/#/__fixtures/all");
+  const surface = page.locator('[data-cell-probe="complex"]');
+  const canvas = surface.locator("canvas");
+  await canvas.scrollIntoViewIfNeeded();
+  const bounds = (await canvas.boundingBox())!;
+  const beforeProbe = await readCellProbe(surface);
+  const beforePixel = await readCellPixel(surface, 1.5, 8.5);
+
+  await page.keyboard.down("Alt");
+  await page.keyboard.down("Meta");
+  await page.mouse.move(bounds.x + bounds.width / 44 / 2, bounds.y + 8.5 * bounds.height / 16);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + 3.5 * bounds.width / 44, bounds.y + 9.5 * bounds.height / 16);
+  await page.mouse.up();
+  await page.keyboard.up("Meta");
+  await page.keyboard.up("Alt");
+
+  await expect(surface).toHaveAttribute("data-cell-range", "0,8,4,2");
+  await expect.poll(async () => await readCellPixel(surface, 1.5, 8.5))
+    .not.toEqual(beforePixel);
+  const afterProbe = await readCellProbe(surface);
+  expect(afterProbe.cells).toEqual(beforeProbe.cells);
+  expect(afterProbe.text).toBe(beforeProbe.text);
 });

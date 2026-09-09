@@ -31,6 +31,7 @@ describe('ColorPickerPanel', () => {
       <ColorPickerPanel
         value="#000000"
         onPick={vi.fn()}
+        appearance="light"
         defaultColor="#000000"
         density="compact"
       />
@@ -45,7 +46,14 @@ describe('ColorPickerPanel', () => {
   it('switches between ansi 16 and preset color tabs', async () => {
     const onPick = vi.fn();
 
-    render(<ColorPickerPanel value="#000000" onPick={onPick} defaultColor="#000000" />);
+    render(
+      <ColorPickerPanel
+        value="#000000"
+        onPick={onPick}
+        appearance="light"
+        defaultColor="#000000"
+      />
+    );
 
     expect(screen.getByRole('tab', { name: 'ANSI 16' })).toHaveAttribute('aria-selected', 'true');
     const activeSwatch = screen.getByRole('button', { name: 'Pick ANSI color #000000' });
@@ -184,10 +192,36 @@ describe('ColorPickerPanel', () => {
     expect(onPick).toHaveBeenCalledWith('#93c5fd');
   });
 
+  it('switches only the curated presets for dark appearance', () => {
+    const onPick = vi.fn();
+    const view = render(
+      <ColorPickerPanel value="#000000" onPick={onPick} appearance="light" />
+    );
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Presets' }), { button: 0 });
+    expect(screen.getByRole('button', { name: 'Pick preset color #7f1d1d' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Pick preset color #fca5a5' })).toBeNull();
+
+    view.rerender(
+      <ColorPickerPanel value="#000000" onPick={onPick} appearance="dark" />
+    );
+    const darkPreset = screen.getByRole('button', { name: 'Pick preset color #fca5a5' });
+    expect(screen.queryByRole('button', { name: 'Pick preset color #7f1d1d' })).toBeNull();
+    fireEvent.click(darkPreset);
+    expect(onPick).toHaveBeenCalledWith('#fca5a5');
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'ANSI 16' }), { button: 0 });
+    const darkAnsi = screen.getAllByRole('button', { name: /Pick ANSI color/ });
+    expect(darkAnsi[0]).toHaveAccessibleName('Pick ANSI color #000000');
+    expect(darkAnsi[8]).toHaveAccessibleName('Pick ANSI color #808080');
+    expect(screen.getByRole('button', { name: 'Pick ANSI color #000000' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pick ANSI color #ffffff' })).toBeInTheDocument();
+  });
+
   it('normalizes short hex colors before picking with Enter', () => {
     const onPick = vi.fn();
 
-    render(<ColorPickerPanel value="#000000" onPick={onPick} />);
+    render(<ColorPickerPanel value="#000000" onPick={onPick} appearance="light" />);
     fireEvent.click(screen.getByRole('button', { name: 'Hex: #000000' }));
     const input = screen.getByRole('textbox', { name: 'Hex' });
     fireEvent.change(input, {
@@ -204,7 +238,7 @@ describe('ColorPickerPanel', () => {
   it('keeps visual color changes local until the value popover is closed', async () => {
     const onPick = vi.fn();
 
-    render(<ColorPickerPanel value="#ff0000" onPick={onPick} />);
+    render(<ColorPickerPanel value="#ff0000" onPick={onPick} appearance="light" />);
     const colorValueTrigger = screen.getByRole('button', { name: 'Hex: #ff0000' });
     fireEvent.click(colorValueTrigger);
 
@@ -227,7 +261,7 @@ describe('ColorPickerPanel', () => {
   it('rejects alpha-bearing hex values', () => {
     const onPick = vi.fn();
 
-    render(<ColorPickerPanel value="#000000" onPick={onPick} />);
+    render(<ColorPickerPanel value="#000000" onPick={onPick} appearance="light" />);
     fireEvent.click(screen.getByRole('button', { name: 'Hex: #000000' }));
     const input = screen.getByRole('textbox', { name: 'Hex' });
     expect(input).toHaveAttribute('maxlength', '7');
@@ -243,7 +277,7 @@ describe('ColorPickerPanel', () => {
   it('commits valid hex outside the panel and restores invalid input', () => {
     const onPick = vi.fn();
 
-    render(<ColorPickerPanel value="#000000" onPick={onPick} />);
+    render(<ColorPickerPanel value="#000000" onPick={onPick} appearance="light" />);
     fireEvent.click(screen.getByRole('button', { name: 'Hex: #000000' }));
     let input = screen.getByRole('textbox', { name: 'Hex' });
     fireEvent.change(input, { target: { value: '#123456' } });
@@ -263,7 +297,7 @@ describe('ColorPickerPanel', () => {
   it('cancels pending hex while focus moves within the picker', () => {
     const onPick = vi.fn();
 
-    render(<ColorPickerPanel value="#000000" onPick={onPick} />);
+    render(<ColorPickerPanel value="#000000" onPick={onPick} appearance="light" />);
     fireEvent.click(screen.getByRole('button', { name: 'Hex: #000000' }));
     const input = screen.getByRole('textbox', { name: 'Hex' });
     const eyedropperTrigger = screen.getByRole('button', {
@@ -283,6 +317,7 @@ describe('ColorPickerPanel', () => {
       <ColorPickerPanel
         value="#000000"
         onPick={vi.fn()}
+        appearance="light"
         onCanvasPickStarted={onCanvasPickStarted}
       />
     );
@@ -306,6 +341,7 @@ describe('ColorPickerPanel', () => {
       <ColorPickerPanel
         value="#000000"
         onPick={vi.fn()}
+        appearance="light"
         onCanvasPickStarted={onCanvasPickStarted}
         canvasPickDestination="background"
       />
@@ -320,6 +356,7 @@ describe('ColorPickerPanel', () => {
       <ColorPickerPanel
         value="#000000"
         onPick={vi.fn()}
+        appearance="light"
         defaultColor="#000000"
         showCustomInput={false}
       />
@@ -341,13 +378,20 @@ describe('ColorPickerPanel', () => {
   it('restores the configured default color without requiring a custom color tool', () => {
     const onPick = vi.fn();
     const view = render(
-      <ColorPickerPanel value="#ff0000" onPick={onPick} defaultColor="#000000" />
+      <ColorPickerPanel
+        value="#ff0000"
+        onPick={onPick}
+        appearance="light"
+        defaultColor="#000000"
+      />
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore default color' }));
     expect(onPick).toHaveBeenCalledWith('#000000');
 
-    view.rerender(<ColorPickerPanel value="#ff0000" onPick={onPick} />);
+    view.rerender(
+      <ColorPickerPanel value="#ff0000" onPick={onPick} appearance="light" />
+    );
     expect(screen.queryByRole('button', { name: 'Restore default color' })).not.toBeInTheDocument();
   });
 });

@@ -55,9 +55,9 @@ describe("TestPilot", () => {
     await pilot.click({ x: 1, y: 0 });
     expect(open).toBe(true);
     expect(pilot.frame.tree.nodes.get("theme-trigger")?.activationFlash).toBe(false);
-    await pilot.pointerDown({ x: 2, y: 2 });
+    await pilot.pointerDown({ x: 2, y: 1 });
     expect(pilot.frame.tree.nodes.get("light")?.pressActive).toBe(true);
-    await pilot.pointerUp({ x: 2, y: 2 });
+    await pilot.pointerUp({ x: 2, y: 1 });
     expect(selectedId).toBe("light");
     expect(open).toBe(true);
     expect(pilot.frame.tree.nodes.get("light")?.activationFlash).toBe(true);
@@ -168,7 +168,7 @@ describe("TestPilot", () => {
     editor.dispatch({ type: "move", direction: "line-end" });
     const pilot = createTestPilot({
       viewport: { width: 40, height: 3 },
-      render: () => <Root><TextInput id="name" state={editor.snapshot()} style={{ border: true, height: 3 }} /></Root>,
+      render: () => <Root><TextInput id="name" state={editor.snapshot()} /></Root>,
       onCommand: (command) => { if (command.type === "text") editor.dispatch(command.command); },
     });
     expect(editor.snapshot().viewport).toEqual({ columns: 38, rows: 1 });

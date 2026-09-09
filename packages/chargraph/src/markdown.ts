@@ -24,6 +24,7 @@ import {
   defineCharGraphRenderer,
   type CharGraphDiagnostic,
   type CharGraphFragment,
+  type CharGraphInlineAlignment,
   type CharGraphRenderResult,
   type CharGraphSourceRange,
   type CharGraphVisualGroup,
@@ -143,6 +144,16 @@ type LocatedRender = {
   cursor: number;
 };
 
+type RenderedBlock = {
+  fragments: CharGraphFragment[];
+  inlineAlignment: CharGraphInlineAlignment;
+};
+
+const renderedBlock = (
+  fragments: CharGraphFragment[],
+  inlineAlignment: CharGraphInlineAlignment = "start"
+): RenderedBlock => ({ fragments, inlineAlignment });
+
 const stripTrailingLineEnding = (raw: string) => raw.replace(/\n$/, "");
 
 const rawFragment = (
@@ -198,7 +209,7 @@ const renderExtension = async (
   const rendered = await extension.render(request, extensionContext(context));
   if (!rendered) return null;
   context.diagnostics.push(...rendered.diagnostics);
-  return rendered.fragments;
+  return rendered;
 };
 
 const findTokenExtension = (
@@ -236,7 +247,7 @@ const renderInline = async (
         sourceOrigin: range,
       }, context);
       if (rendered) {
-        output.push(...withStyle(rendered, style));
+        output.push(...withStyle(rendered.fragments, style));
         continue;
       }
     }
@@ -395,11 +406,13 @@ const renderCode = async (
   token: Tokens.Code,
   range: CharGraphSourceRange,
   context: RenderContext
-) => {
-  if (!context.rules["code-block"]) return rawFragment(token.raw, range);
+): Promise<RenderedBlock> => {
+  if (!context.rules["code-block"]) {
+    return renderedBlock(rawFragment(token.raw, range));
+  }
   const codeRange = locateRaw(context.source, token.text, range, range.from);
   const language = token.lang?.split(/[\s,]/, 1)[0]?.toLowerCase();
-  if (!language) return [fragment(token.text, {}, codeRange)];
+  if (!language) return renderedBlock([fragment(token.text, {}, codeRange)]);
   const extension = findFencedExtension(context, language);
   if (extension) {
     const rendered = await renderExtension(extension, {
@@ -410,7 +423,12 @@ const renderCode = async (
       rawSource: token.raw,
       rawOrigin: range,
     }, context);
-    if (rendered) return rendered;
+    if (rendered) {
+      return renderedBlock(
+        rendered.fragments,
+        rendered.preferredInlineAlignment ?? "start"
+      );
+    }
   }
   try {
     const { codeToTokens } = await import("shiki");
@@ -441,7 +459,7 @@ const renderCode = async (
         offset += 1;
       }
     });
-    return output;
+    return renderedBlock(output);
   } catch (error) {
     context.diagnostics.push({
       code: "markdown-highlight-failed",
@@ -451,7 +469,7 @@ const renderCode = async (
       offset: range.from,
       length: range.to - range.from,
     });
-    return [fragment(token.text, {}, codeRange)];
+    return renderedBlock([fragment(token.text, {}, codeRange)]);
   }
 };
 
@@ -511,7 +529,7 @@ const renderBlock = async (
   token: Token,
   range: CharGraphSourceRange,
   context: RenderContext
-): Promise<CharGraphFragment[]> => {
+): Promise<RenderedBlock> => {
   const extension = findTokenExtension(context, token.type);
   if (extension) {
     const rendered = await renderExtension(extension, {
@@ -520,26 +538,35 @@ const renderBlock = async (
       source: token.raw,
       sourceOrigin: range,
     }, context);
-    if (rendered) return rendered;
+    if (rendered) {
+      return renderedBlock(
+        rendered.fragments,
+        rendered.preferredInlineAlignment ?? "start"
+      );
+    }
   }
   switch (token.type) {
     case "space":
     case "def":
-      return [];
-    case "paragraph":
-      return (await renderInline(
+      return renderedBlock([]);
+    case "paragraph": {
+      const rendered = await renderInline(
         (token as Tokens.Paragraph).tokens,
         range,
         {},
         context
-      )).fragments;
+      );
+      return renderedBlock(rendered.fragments);
+    }
     case "text":
-      return token.tokens?.length
+      return renderedBlock(token.tokens?.length
         ? (await renderInline(token.tokens, range, {}, context)).fragments
-        : textFragments(token.text, {}, range);
+        : textFragments(token.text, {}, range));
     case "heading": {
       const heading = token as Tokens.Heading;
-      if (!context.rules.heading) return rawFragment(token.raw, range);
+      if (!context.rules.heading) {
+        return renderedBlock(rawFragment(token.raw, range));
+      }
       const body = await renderInline(heading.tokens, range, {}, context);
       const firstBodyOrigin = body.fragments.find((item) => item.origin)?.origin;
       const markerRange = firstBodyOrigin && firstBodyOrigin.from > range.from
@@ -547,14 +574,16 @@ const renderBlock = async (
         : range;
       const depth = Math.min(6, Math.max(1, heading.depth));
       const role = `heading-${Math.min(depth, 4)}` as MarkdownTextStyleRole;
-      return [
+      return renderedBlock([
         fragment(`${"#".repeat(depth)} `, context.styles["heading-marker"], markerRange),
         ...withStyle(body.fragments, context.styles[role]),
-      ];
+      ]);
     }
     case "blockquote": {
       const blockquote = token as Tokens.Blockquote;
-      if (!context.rules.blockquote) return rawFragment(token.raw, range);
+      if (!context.rules.blockquote) {
+        return renderedBlock(rawFragment(token.raw, range));
+      }
       const content = await renderBlocks(blockquote.tokens, range, context, "source");
       const markerRanges = [...token.raw.matchAll(/^ {0,3}>[ \t]?/gm)].map((match) => ({
         from: range.from + (match.index ?? 0),
@@ -568,22 +597,27 @@ const renderBlock = async (
         ),
         ...line,
       ]);
-      return joinLines(lines, range);
+      return renderedBlock(joinLines(lines, range));
     }
     case "list":
-      return renderList(token as Tokens.List, range, context);
+      return renderedBlock(await renderList(token as Tokens.List, range, context));
     case "code":
       return renderCode(token as Tokens.Code, range, context);
     case "hr":
-      return context.rules["thematic-break"]
+      return renderedBlock(context.rules["thematic-break"]
         ? [fragment("———", context.styles["thematic-break"], range)]
-        : rawFragment(token.raw, range);
-    case "table":
-      return renderTable(token as Tokens.Table, range, context);
+        : rawFragment(token.raw, range));
+    case "table": {
+      const enhanced = context.rules.table;
+      return renderedBlock(
+        await renderTable(token as Tokens.Table, range, context),
+        enhanced ? "center" : "start"
+      );
+    }
     case "html":
-      return unsupported(context, token, range);
+      return renderedBlock(unsupported(context, token, range));
     default:
-      return unsupported(context, token, range);
+      return renderedBlock(unsupported(context, token, range));
   }
 };
 
@@ -606,7 +640,7 @@ const renderBlocks = async (
       continue;
     }
     const rendered = await renderBlock(token, range, context);
-    if (!rendered.length) continue;
+    if (!rendered.fragments.length) continue;
     if (output.length) {
       const lineBreaks = separate === true
         ? 2
@@ -619,12 +653,16 @@ const renderBlocks = async (
       }
     }
     const fromRow = outputRow;
-    output.push(...rendered);
-    outputRow += rendered.reduce(
+    output.push(...rendered.fragments);
+    outputRow += rendered.fragments.reduce(
       (total, item) => total + (item.text.match(/\n/g)?.length ?? 0),
       0
     );
-    visualGroups?.push({ fromRow, toRow: outputRow + 1 });
+    visualGroups?.push({
+      fromRow,
+      toRow: outputRow + 1,
+      inlineAlignment: rendered.inlineAlignment,
+    });
     sourceHasBlankLine = false;
   }
   return output;

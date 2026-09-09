@@ -9,18 +9,23 @@ import {
   type DragEvent as ReactDragEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { SidebarGroup, SidebarGroupContent, SelectableItem, Surface } from "@chardesk/ui";
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SelectableItem,
+  Surface,
+  useUiTheme,
+} from "@chardesk/ui";
 import {
   CANVAS_COMPONENT_TEMPLATES,
   CANVAS_TEMPLATE_MIME,
-  getCanvasTemplateProjection,
+  getCanvasTemplateMaterialization,
   setActiveCanvasTemplateDragId,
   type CanvasTemplateDefinition,
   type CanvasTemplateId,
 } from "@/domains/canvas-templates/public";
+import { useResolvedContentTheme } from "@/domains/document/public";
 import { CellFrameCanvas } from "@/shared/components/CellFrameCanvas";
-
-
 
 const sortTemplatesByLabel = <
   T extends { id: CanvasTemplateId; label: string },
@@ -103,10 +108,15 @@ function CanvasTemplateDragOverlay({
 }: {
   preview: CanvasTemplateDragPreview | null;
 }) {
+  const { resolvedTheme } = useUiTheme();
+  const contentTheme = useResolvedContentTheme(resolvedTheme);
   if (!preview || !preview.overSidebar || typeof document === "undefined") {
     return null;
   }
-  const projection = getCanvasTemplateProjection(preview.templateId);
+  const projection = getCanvasTemplateMaterialization(
+    preview.templateId,
+    contentTheme
+  );
 
   return createPortal(
     <div
@@ -135,7 +145,9 @@ function VisibleCanvasTemplatePreview({
 }: {
   templateId: CanvasTemplateId;
 }) {
-  const projection = getCanvasTemplateProjection(templateId);
+  const { resolvedTheme } = useUiTheme();
+  const contentTheme = useResolvedContentTheme(resolvedTheme);
+  const projection = getCanvasTemplateMaterialization(templateId, contentTheme);
   const hostRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(
     () => typeof IntersectionObserver === "undefined"

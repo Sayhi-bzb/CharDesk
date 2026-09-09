@@ -86,6 +86,7 @@ export const markdownMermaidExtension: MarkdownSyntaxExtension<
       })),
       recognized: true,
       diagnostics: [],
+      preferredInlineAlignment: "center",
     };
   },
 };

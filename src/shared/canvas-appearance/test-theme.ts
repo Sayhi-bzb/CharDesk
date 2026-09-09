@@ -24,6 +24,9 @@ export const createCanvasVisualThemeFixture = (
   canvas: {
     selectionSurface: "rgba(0, 0, 0, 0.12)",
     selectionBorder: "#000000",
+    rangeSurface: "rgba(0, 0, 0, 0.12)",
+    rangeBorder: "#000000",
+    rangeSurfaceEffect: "tint",
     textCursorSurface: "#000000",
     textCursorForeground: "#ffffff",
     pickerOuter: "#ffffff",

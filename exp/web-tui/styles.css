@@ -18,6 +18,7 @@
   --cell-selection-foreground: #ffffff;
   --cell-range-surface: rgba(0, 0, 0, 0.22);
   --cell-range-border: #000000;
+  --cell-range-surface-effect: tint;
   --cell-cursor: var(--cell-foreground);
   --cell-cursor-foreground: var(--cell-background);
   --cell-scrollbar-thumb: #000000;
@@ -42,8 +43,9 @@
   --cell-accent: #ffffff;
   --cell-selection: #ffffff;
   --cell-selection-foreground: #000000;
-  --cell-range-surface: rgba(255, 255, 255, 0.22);
+  --cell-range-surface: rgba(255, 255, 255, 0.18);
   --cell-range-border: #ffffff;
+  --cell-range-surface-effect: contrast;
   --cell-scrollbar-thumb: #ffffff;
   --cell-scrollbar-track: #888888;
 }

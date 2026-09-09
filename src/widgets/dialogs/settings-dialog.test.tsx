@@ -6,6 +6,7 @@ import {
   TextRenderingProvider,
 } from '@/domains/document/public';
 import { setUiLanguage } from '@/shared/i18n';
+import { UiProvider } from '@chardesk/ui';
 import { SettingsDialog } from './settings-dialog';
 
 vi.mock('@/domains/editor/public', async (importOriginal) => {
@@ -161,7 +162,8 @@ describe('SettingsDialog', () => {
       'aria-expanded',
       'true'
     );
-    expect(screen.getByRole('button', { name: 'Collapse Renderer theme' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Collapse Content theme · Light' }))
+      .toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Collapse Inline' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Collapse Blocks' })).toBeInTheDocument();
     const displayGrid = screen
@@ -343,7 +345,7 @@ describe('SettingsDialog', () => {
     expect(screen.queryByRole('button', { name: 'Pick color from canvas' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Pick ANSI color #800000' }));
 
-    expect(runtime.getProfile().features['markdown.strong']?.colors).toEqual({
+    expect(runtime.getProfile().features['markdown.strong']?.colors.light).toEqual({
       foreground: '#800000',
     });
     const customBoldColor = screen.getByRole('button', {
@@ -356,7 +358,7 @@ describe('SettingsDialog', () => {
       backgroundColor: '#800000',
     });
     fireEvent.click(screen.getByRole('button', { name: 'Restore default color' }));
-    expect(runtime.getProfile().features['markdown.strong']?.colors).toEqual({});
+    expect(runtime.getProfile().features['markdown.strong']?.colors.light).toEqual({});
     expect(
       screen.getByRole('button', { name: 'Customize color for Bold: Default (Inherited)' })
     ).toHaveAttribute('data-inherited', 'true');
@@ -380,7 +382,7 @@ describe('SettingsDialog', () => {
     }));
     fireEvent.click(screen.getByRole('button', { name: 'Pick ANSI color #800000' }));
 
-    expect(runtime.getProfile().renderTheme).toEqual({ accent: '#800000' });
+    expect(runtime.getProfile().renderThemes.light).toEqual({ accent: '#800000' });
     expect(screen.getByRole('button', {
       name: 'Customize color for Headings: Default (#800000)',
     }).querySelector('[data-slot="color-swatch"]')).toHaveStyle({
@@ -388,7 +390,44 @@ describe('SettingsDialog', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore default color' }));
-    expect(runtime.getProfile().renderTheme).toEqual({});
+    expect(runtime.getProfile().renderThemes.light).toEqual({});
+  });
+
+  it('edits the resolved dark palette without changing light overrides', async () => {
+    const runtime = createTextRenderingRuntime();
+    render(
+      <UiProvider defaultTheme="dark">
+        <TextRenderingProvider runtime={runtime}>
+          <SettingsDialog open onOpenChange={vi.fn()} />
+        </TextRenderingProvider>
+      </UiProvider>
+    );
+    fireEvent.click(
+      within(screen.getByRole('navigation', { name: 'Settings sections' })).getByRole('button', {
+        name: 'Display',
+      })
+    );
+
+    expect(await screen.findByRole('button', {
+      name: 'Collapse Content theme · Dark',
+    })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Customize color for Accent: Default (#58a6ff)',
+    }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pick ANSI color #800000' }));
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Customize color for Bold: Default (Inherited)',
+    }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pick ANSI color #008000' }));
+
+    expect(runtime.getProfile().renderThemes).toEqual({
+      light: {},
+      dark: { accent: '#800000' },
+    });
+    expect(runtime.getProfile().features['markdown.strong']?.colors).toEqual({
+      light: {},
+      dark: { foreground: '#008000' },
+    });
   });
 
   it('customizes and restores task state colors independently', () => {
@@ -413,7 +452,7 @@ describe('SettingsDialog', () => {
     }));
     fireEvent.click(screen.getByRole('button', { name: 'Pick ANSI color #008000' }));
 
-    expect(runtime.getProfile().features['markdown.task-list']?.colors).toEqual({
+    expect(runtime.getProfile().features['markdown.task-list']?.colors.light).toEqual({
       unchecked: '#800000',
       checked: '#008000',
     });
@@ -422,7 +461,7 @@ describe('SettingsDialog', () => {
       name: 'Customize color for Unchecked tasks: #800000',
     }));
     fireEvent.click(screen.getByRole('button', { name: 'Restore default color' }));
-    expect(runtime.getProfile().features['markdown.task-list']?.colors).toEqual({
+    expect(runtime.getProfile().features['markdown.task-list']?.colors.light).toEqual({
       checked: '#008000',
     });
   });

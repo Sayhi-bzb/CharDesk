@@ -4,11 +4,15 @@ export type CharGraphAwaitable<T> = T | Promise<T>;
 
 export type CharGraphSourceRange = { from: number; to: number };
 
+export type CharGraphInlineAlignment = "start" | "center" | "end";
+
 export type CharGraphVisualGroup = {
   /** Inclusive output row containing the group's first mark. */
   fromRow: number;
   /** Exclusive output row after the group's last mark. */
   toRow: number;
+  /** Placement requested by the group producer when embedded in a wider field. */
+  inlineAlignment: CharGraphInlineAlignment;
 };
 
 export type CharGraphFragment = CharDeskTextRun & {
@@ -26,7 +30,9 @@ export type CharGraphRenderResult = {
   fragments: CharGraphFragment[];
   recognized: boolean;
   diagnostics: CharGraphDiagnostic[];
-  /** Top-level visual units that layout renderers may place as a whole. */
+  /** Preferred placement when this complete result is embedded by another renderer. */
+  preferredInlineAlignment?: CharGraphInlineAlignment;
+  /** Top-level visual units with explicit placement intent. */
   visualGroups?: CharGraphVisualGroup[];
 };
 

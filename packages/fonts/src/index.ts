@@ -1,7 +1,7 @@
 import { isEmojiGrapheme } from "@chardesk/protocol";
 import { NERD_FONT_RANGES } from "./generated/nerd-font-ranges.js";
 
-export const CHARDESK_SYSTEM_FONT_PROFILE_ID = "chardesk/system-v5";
+export const CHARDESK_SYSTEM_FONT_PROFILE_ID = "chardesk/system-v6";
 
 export const CHARDESK_SYSTEM_FONT_FAMILY =
   "ui-monospace, " +
@@ -40,7 +40,6 @@ export type CharDeskFontFaceSpec = Readonly<{
     bold?: string;
   }>;
   fontSizeScale?: number;
-  scaleX?: number;
   baselineShiftEm?: number;
   /** auto uses a declared bold family, otherwise renderer overdraw. */
   boldStrategy?: CharDeskFontBoldStrategy;
@@ -55,7 +54,6 @@ export type CharDeskFontFaceSpec = Readonly<{
 export type CharDeskResolvedFontFaceSpec = Readonly<{
   families: CharDeskFontFaceSpec["families"];
   fontSizeScale?: number;
-  scaleX?: number;
   baselineShiftEm?: number;
   boldStrategy: CharDeskResolvedFontBoldStrategy;
   boldOverdrawEm: number;
@@ -167,7 +165,6 @@ const normalizeFontFace = (
   return {
     families: spec.families,
     ...(spec.fontSizeScale !== undefined ? { fontSizeScale: spec.fontSizeScale } : {}),
-    ...(spec.scaleX !== undefined ? { scaleX: spec.scaleX } : {}),
     ...(spec.baselineShiftEm !== undefined ? { baselineShiftEm: spec.baselineShiftEm } : {}),
     ...(spec.cellMetrics !== undefined ? { cellMetrics: spec.cellMetrics } : {}),
     boldStrategy,
@@ -182,7 +179,6 @@ const inheritFontFaceWithoutBold = (
 ): CharDeskFontFaceSpec => ({
   families: spec.families,
   ...(spec.fontSizeScale !== undefined ? { fontSizeScale: spec.fontSizeScale } : {}),
-  ...(spec.scaleX !== undefined ? { scaleX: spec.scaleX } : {}),
   ...(spec.baselineShiftEm !== undefined ? { baselineShiftEm: spec.baselineShiftEm } : {}),
   ...(spec.cellMetrics !== undefined ? { cellMetrics: spec.cellMetrics } : {}),
 });
@@ -213,7 +209,7 @@ const capabilityFallbacks = (
         regular: coreFirst("'Symbols Nerd Font Mono'", "regular"),
         bold: coreFirst("'Symbols Nerd Font Mono'", "bold"),
       },
-      scaleX: 0.6,
+      fontSizeScale: 0.8,
       boldStrategy: "none",
       boldOverdrawEm: 0,
     },

@@ -79,6 +79,7 @@ export class TestPilot {
     this.#runtime = new CellUiRuntime({ viewport: options.viewport, theme: options.theme, feedback: options.feedback });
     this.#frame = this.#runtime.render(this.#render());
     this.#focus.sync(this.#frame.tree, this.#frame.semantics.focusedId);
+    if (this.#focus.focusedId !== this.#frame.semantics.focusedId) this.#renderFrame();
     this.#syncTextViewports();
   }
 
@@ -122,6 +123,10 @@ export class TestPilot {
     }
     this.#cancelActivationFeedback();
     this.#commit(command);
+    if (command?.type === "dismiss") {
+      await this.pause();
+      return;
+    }
     const targetId = hitTest(this.#frame.scene, point)[0];
     const path = targetId ? getEventPath(this.#frame.scene, targetId) : [];
     this.#controller.beginPointer(this.#frame, pointerId, point, gestureCandidatesForFrame(this.#frame, path, point, precisePoint), precisePoint);
@@ -274,11 +279,19 @@ export class TestPilot {
     return node && isPrimitiveControlKind(node.kind) ? id : null;
   }
 
-  #renderFrame(): void {
-    this.#frame = this.#runtime.render(this.#render(), {
+  get #renderState() {
+    return {
       ...this.#controller.snapshot,
+      // A headless pilot represents an active host; modality only gates navigation highlights.
+      activeFocusId: this.#focus.focusedId,
       manipulatingIds: this.#gestures.manipulatingIds,
       hoveredId: this.#primitiveHover(),
+    };
+  }
+
+  #renderFrame(): void {
+    this.#frame = this.#runtime.render(this.#render(), {
+      ...this.#renderState,
       resolveFocusedId: (tree) => {
         this.#focus.sync(tree);
         return this.#focus.focusedId;
@@ -292,11 +305,7 @@ export class TestPilot {
     }
     const manipulationChanged = !sameWidgetIdSet(manipulatingBefore, this.#gestures.manipulatingIds);
     if (pressChanged || activationFeedbackChanged || manipulationChanged) {
-      this.#frame = this.#runtime.render(this.#render(), {
-        ...this.#controller.snapshot,
-        manipulatingIds: this.#gestures.manipulatingIds,
-        hoveredId: this.#primitiveHover(),
-      });
+      this.#frame = this.#runtime.render(this.#render(), this.#renderState);
     }
     if (activationFeedbackChanged) this.#flushActivationFeedbackCompletion();
     this.#syncTextViewports();
@@ -307,11 +316,7 @@ export class TestPilot {
     const commands = textViewportCommands(this.#frame);
     if (!commands.length) return;
     for (const command of commands) this.#onCommand(command);
-    this.#frame = this.#runtime.render(this.#render(), {
-      ...this.#controller.snapshot,
-      manipulatingIds: this.#gestures.manipulatingIds,
-      hoveredId: this.#primitiveHover(),
-    });
+    this.#frame = this.#runtime.render(this.#render(), this.#renderState);
   }
 
   #assertActive(): void {

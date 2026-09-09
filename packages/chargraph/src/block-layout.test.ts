@@ -28,6 +28,7 @@ describe("block layout stream", () => {
       ["A", "B"],
       ["C"],
     ]);
+    expect(parsed.boundaries).toEqual({ fields: 1, rows: 1 });
     expect(parsed.document?.rows[0]?.[0]?.range).toEqual({ from: 0, to: 3 });
     expect(parsed.document?.rows[1]?.[0]?.range.to).toBe(source.length);
   });
@@ -61,6 +62,7 @@ describe("block layout stream", () => {
     expect(parsed).toEqual({
       document: null,
       recognized: false,
+      boundaries: { fields: 0, rows: 0 },
       diagnostics: [],
     });
   });
@@ -74,7 +76,7 @@ describe("block layout stream", () => {
     expect(getCharGraphText(rendered)).toBe("AA  B\nAA\nAA\n\nC  DD");
   });
 
-  it("centers narrower structured groups inside each field", async () => {
+  it("centers only table and Mermaid groups inside each field", async () => {
     const rendered = await renderCharGraphText([
       "123456789012",
       "",
@@ -91,7 +93,7 @@ describe("block layout stream", () => {
     ].join("\n"), { layout: { columnGap: 4 } });
 
     expect(getCharGraphText(rendered)).toBe([
-      "123456789012        Label",
+      "123456789012    Label",
       "",
       "   A    B       ╭───╮   ╭───╮",
       "  ━━━  ━━━      │ 1 ├──>│ 2 │",
@@ -99,13 +101,29 @@ describe("block layout stream", () => {
     ].join("\n"));
   });
 
-  it("uses protocol cell width and floors odd centering space", async () => {
+  it("keeps ordinary Markdown groups start-aligned inside wider fields", async () => {
     const rendered = await renderCharGraphText(
       "123456789\n\n**界**\n|||\nX",
       { layout: { columnGap: 2 } }
     );
 
-    expect(getCharGraphText(rendered)).toBe("123456789  X\n\n   界");
+    expect(getCharGraphText(rendered)).toBe("123456789  X\n\n界");
+  });
+
+  it("applies explicit end alignment without changing the field width", async () => {
+    const rendered = await renderBlockLayoutDocument({
+      rows: [[{ source: "", range: { from: 0, to: 0 } }]],
+    }, async () => ({
+      fragments: [{ text: "AB\n123456" }],
+      recognized: true,
+      diagnostics: [],
+      visualGroups: [
+        { fromRow: 0, toRow: 1, inlineAlignment: "end" },
+        { fromRow: 1, toRow: 2, inlineAlignment: "start" },
+      ],
+    }));
+
+    expect(getCharGraphText(rendered)).toBe("    AB\n123456");
   });
 
   it("ignores visual groups outside the rendered field", async () => {
@@ -115,7 +133,11 @@ describe("block layout stream", () => {
       fragments: [{ text: "A" }],
       recognized: true,
       diagnostics: [],
-      visualGroups: [{ fromRow: 0, toRow: Number.MAX_SAFE_INTEGER }],
+      visualGroups: [{
+        fromRow: 0,
+        toRow: Number.MAX_SAFE_INTEGER,
+        inlineAlignment: "center",
+      }],
     }));
 
     expect(getCharGraphText(rendered)).toBe("A");

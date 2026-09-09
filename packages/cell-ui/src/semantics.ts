@@ -53,6 +53,7 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
       || parent.kind === "grid"
       || parent.kind === "grid-row"
       || parent.kind === "select-content"
+      || parent.kind === "combobox-content"
       || parent.kind === "overlay"
       || parent.kind === "range-slider"
       || parent.kind === "radio-group"
@@ -63,6 +64,10 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
 };
 
 const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
+  if (node.dialogPart === "title") return "heading";
+  if (node.dialogPart === "description") return "paragraph";
+  if (node.kind === "accordion-trigger") return "button";
+  if (node.kind === "accordion-content") return "region";
   if (node.kind === "overlay") return "dialog";
   if (node.kind === "button") return "button";
   if (node.kind === "checkbox") return "checkbox";
@@ -75,8 +80,9 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
   if (node.kind === "range-slider") return "group";
   if (node.kind === "range-slider-thumb") return "slider";
   if (node.kind === "select-trigger") return "button";
-  if (node.kind === "select-content") return "listbox";
-  if (node.kind === "select-item") return "option";
+  if (node.kind === "combobox-input") return "combobox";
+  if (node.kind === "select-content" || node.kind === "combobox-content") return "listbox";
+  if (node.kind === "select-item" || node.kind === "combobox-item") return "option";
   if (node.kind === "list") return "listbox";
   if (node.kind === "list-item") return "option";
   if (node.kind === "menu") return "menu";
@@ -118,7 +124,7 @@ export const createSemanticSnapshot = (
   const roots: WidgetId[] = [];
   let traversalOrder = 0;
   const modalId = [...tree.nodes.values()]
-    .filter((node) => node.kind === "overlay" && node.modal)
+    .filter((node) => node.kind === "overlay" && node.modal && scene.entries.has(node.id))
     .at(-1)?.id ?? null;
   const activeFocusedId = [...tree.nodes.values()]
     .find((node) => node.focused)?.id ?? null;
@@ -147,12 +153,15 @@ export const createSemanticSnapshot = (
       traversalOrder,
       bounds: sceneEntry?.layoutBounds ?? null,
       role,
-      label: node.label ?? descendantText(tree, node),
+      label: node.label ?? (node.kind === "accordion-content" && node.labelledById
+        ? tree.nodes.get(node.labelledById)!.label ?? descendantText(tree, tree.nodes.get(node.labelledById)!)
+        : descendantText(tree, node)),
       disabled: node.disabled,
       hidden: sceneEntry === undefined,
       focused: node.focused,
       ...(selectable(node) ? { selected: node.selected } : {}),
       ...(node.kind === "toggle" ? { pressed: node.pressed } : {}),
+      ...(node.kind === "accordion-trigger" ? { expanded: node.expanded } : {}),
       ...(node.progress ? { valueNow: node.progress.value, valueMin: 0, valueMax: node.progress.max,
         valueText: node.progress.valueText } : {}),
       ...(node.kind === "separator" || node.kind === "radio-group"
@@ -178,7 +187,7 @@ export const createSemanticSnapshot = (
             expanded: node.hasChildren ? node.expanded : undefined,
             level: node.level ?? undefined,
           }
-        : node.kind === "select-trigger"
+        : node.kind === "select-trigger" || node.kind === "combobox-input"
           ? { expanded: node.expanded, hasPopup: "listbox" as const }
         : {}),
       ...(node.rowIndex !== null ? { rowIndex: node.rowIndex } : {}),
@@ -190,6 +199,8 @@ export const createSemanticSnapshot = (
       ...(node.orientation ? { orientation: node.orientation } : {}),
       ...(node.controlsId ? { controlsId: node.controlsId } : {}),
       ...(node.labelledById ? { labelledById: node.labelledById } : {}),
+      ...(node.describedById ? { describedById: node.describedById } : {}),
+      ...(node.dialogPart === "title" ? { level: 2 } : {}),
       ...(isTextEditor
         ? {
             value: node.textEditor?.value ?? "",
@@ -198,13 +209,18 @@ export const createSemanticSnapshot = (
           }
         : {}),
       ...(node.kind === "overlay" ? { modal: node.modal } : {}),
-      actions: node.disabled || node.kind === "overlay"
+      actions: node.disabled || (node.kind === "overlay" && !node.dialog) || sceneEntry === undefined
         ? []
+        : node.dialog ? ["focus"]
         : node.kind === "slider" || node.kind === "range-slider-thumb"
           ? ["focus"]
+        : node.kind === "combobox-input"
+          ? ["focus", node.expanded ? "collapse" : "expand"]
+        : node.kind === "combobox-item"
+          ? ["activate"]
         : node.kind === "tree-item" && node.hasChildren
           ? ["focus", node.expanded ? "collapse" : "expand"]
-          : node.kind === "select-trigger"
+          : node.kind === "select-trigger" || node.kind === "accordion-trigger"
             ? ["focus", node.expanded ? "collapse" : "expand"]
           : isActionableKind(node.kind)
             ? ["focus", "activate"]
@@ -212,7 +228,9 @@ export const createSemanticSnapshot = (
               ? ["focus"]
               : [],
       ...(
-        node.kind === "list"
+        node.kind === "combobox-input"
+        ? { activeDescendantId: node.activeDescendantId ?? undefined }
+        : node.kind === "list"
         || node.kind === "menu"
         || node.kind === "tree"
         || node.kind === "tabs"
@@ -234,7 +252,7 @@ export const createSemanticSnapshot = (
 };
 
 const focusRoles = new Set<SemanticNode["role"]>([
-  "button", "checkbox", "radio", "slider", "option", "textbox", "menuitem", "treeitem", "tab", "gridcell",
+  "button", "checkbox", "radio", "slider", "option", "textbox", "combobox", "menuitem", "treeitem", "tab", "gridcell",
 ]);
 const activateRoles = new Set<SemanticNode["role"]>([
   "button", "checkbox", "radio", "option", "menuitem", "treeitem", "tab", "gridcell",
@@ -306,15 +324,16 @@ export const auditSemanticSnapshot = (
     if (
       node.expanded !== undefined
       && node.role !== "treeitem"
-      && !(node.role === "button" && node.hasPopup === "listbox")
+      && node.role !== "combobox"
+      && !(node.role === "button" && (node.hasPopup === "listbox" || node.controlsId))
     ) {
       issue(node.id, "invalid-state", `expanded is invalid for role ${node.role}.`);
     }
-    if (node.hasPopup !== undefined && node.role !== "button") {
+    if (node.hasPopup !== undefined && node.role !== "button" && node.role !== "combobox") {
       issue(node.id, "invalid-state", `hasPopup is invalid for role ${node.role}.`);
     }
-    if (node.level !== undefined && (node.role !== "treeitem" || !positiveInteger(node.level))) {
-      issue(node.id, "invalid-state", `level must be a positive treeitem index.`);
+    if (node.level !== undefined && ((node.role !== "treeitem" && node.role !== "heading") || !positiveInteger(node.level))) {
+      issue(node.id, "invalid-state", `level must be a positive treeitem or heading index.`);
     }
     if (node.rowIndex !== undefined && (
       (node.role !== "row" && node.role !== "gridcell") || !positiveInteger(node.rowIndex)
@@ -347,12 +366,12 @@ export const auditSemanticSnapshot = (
     )) issue(node.id, "invalid-state", "Slider value must be inside its numeric range.");
     if (
       (node.value !== undefined || node.multiline !== undefined || node.readOnly !== undefined)
-      && node.role !== "textbox"
+      && node.role !== "textbox" && node.role !== "combobox"
     ) issue(node.id, "invalid-state", `Text state is invalid for role ${node.role}.`);
-    if (node.focused && !focusRoles.has(node.role)) {
+    if (node.focused && !focusRoles.has(node.role) && node.role !== "dialog") {
       issue(node.id, "invalid-focus", `Role ${node.role} cannot own focus.`);
     }
-    if (node.activeDescendantId !== undefined && !compositeRoles.has(node.role)) {
+    if (node.activeDescendantId !== undefined && !compositeRoles.has(node.role) && node.role !== "combobox") {
       issue(node.id, "invalid-state", `activeDescendantId is invalid for role ${node.role}.`);
     }
     if (node.semanticParentId) {
@@ -364,42 +383,46 @@ export const auditSemanticSnapshot = (
     } else if (!snapshot.roots.includes(node.id)) {
       issue(node.id, "invalid-root", "Parentless semantic node is missing from roots.");
     }
-    for (const relatedId of [node.controlsId, node.labelledById]) {
+    for (const relatedId of [node.controlsId, node.labelledById, node.describedById]) {
       if (relatedId && !snapshot.nodes.has(relatedId)) {
         issue(node.id, "invalid-relation", `Related semantic node ${relatedId} does not exist.`);
       }
     }
     if (node.activeDescendantId) {
       const active = snapshot.nodes.get(node.activeDescendantId);
-      if (!active || !descendantOf(active.id, node.id) || !active.focused) {
+      const validComboboxTarget = node.role === "combobox" && !!node.controlsId
+        && descendantOf(active?.id ?? "", node.controlsId);
+      if (!active || (!(descendantOf(active.id, node.id) && active.focused) && !validComboboxTarget)) {
         issue(node.id, "invalid-relation", "Active descendant must be a focused semantic descendant.");
       }
     }
     for (const action of node.actions) {
       const valid = action === "focus"
-        ? focusRoles.has(node.role)
+        ? focusRoles.has(node.role) || node.role === "dialog"
         : action === "activate"
           ? activateRoles.has(node.role)
             && !(node.role === "treeitem" && node.expanded !== undefined)
-          : (node.role === "treeitem" || node.hasPopup === "listbox")
+          : (node.role === "treeitem" || node.hasPopup === "listbox" || (node.role === "button" && !!node.controlsId))
             && node.expanded !== undefined;
       if (!valid) issue(node.id, "invalid-action", `${action} is invalid for role ${node.role}.`);
     }
     if (!node.disabled) {
-      if (focusRoles.has(node.role) && !node.actions.includes("focus")) {
+      const comboboxOption = node.role === "option" && [...snapshot.nodes.values()]
+        .some((owner) => owner.role === "combobox" && owner.controlsId === node.semanticParentId);
+      if (focusRoles.has(node.role) && !comboboxOption && !node.actions.includes("focus")) {
         issue(node.id, "missing-action", `Role ${node.role} must expose focus.`);
       }
       if (
         activateRoles.has(node.role)
         && !(node.expanded !== undefined
-          && (node.role === "treeitem" || node.hasPopup === "listbox"))
+          && (node.role === "treeitem" || node.hasPopup === "listbox" || (node.role === "button" && !!node.controlsId)))
         && !node.actions.includes("activate")
       ) {
         issue(node.id, "missing-action", `Role ${node.role} must expose activate.`);
       }
       if (
         node.expanded !== undefined
-        && (node.role === "treeitem" || node.hasPopup === "listbox")
+        && (node.role === "treeitem" || node.hasPopup === "listbox" || (node.role === "button" && !!node.controlsId))
       ) {
         const expected = node.expanded ? "collapse" : "expand";
         if (!node.actions.includes(expected)) {

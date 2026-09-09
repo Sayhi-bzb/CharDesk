@@ -33,7 +33,7 @@ for (const dpr of [1, 1.25, 2]) {
           drawCharDeskCanvasCells(ctx, Array.from("0iMWm0iMWm", (text, column) => ({
             cell: resolveCharDeskCellVisual({ text, color: "black", attrs: { bold } }),
             x: column * metrics.cellWidth, y: 0, drawBackground: false,
-            options: { metrics, fontProfile: profile, clipToCell: false },
+            options: { metrics, fontProfile: profile },
           })));
           return canvas.toDataURL();
         };

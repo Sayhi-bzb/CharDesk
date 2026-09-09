@@ -59,14 +59,12 @@ export type CharDeskCanvasResolvedFontFace = Readonly<{
   capability: CharDeskFontCapability;
   family: string;
   fontSizeScale: number;
-  scaleX: number;
   baselineShiftEm: number;
   boldStrategy: CharDeskResolvedFontBoldStrategy;
   boldOverdrawEm: number;
 }>;
 
 export type CharDeskCanvasCellDrawOptions = {
-  clipToCell?: boolean;
   color?: string;
   underline?: boolean;
   zoom?: number;
@@ -100,16 +98,26 @@ export type CharDeskCanvasCursorEntry = Readonly<{
   drawText?: boolean;
 }>;
 
+export type CharDeskCanvasRangeOptions = Readonly<{
+  metrics?: CharDeskCellMetrics;
+  offset?: CellPoint;
+  zoom?: number;
+  clipRegions?: readonly CellRect[];
+}>;
+
 export type CharDeskCanvasRangeEntry = Readonly<{
   geometry: CharDeskCellRangeGeometry;
   phase: CharDeskCellRangePhase;
   style: CharDeskCellRangePaintStyle;
-  options?: Readonly<{
-    metrics?: CharDeskCellMetrics;
-    offset?: CellPoint;
-    zoom?: number;
-    clipRegions?: readonly CellRect[];
-  }>;
+  options?: CharDeskCanvasRangeOptions;
+}>;
+
+export type CharDeskCanvasRangeBackdropEntry = Readonly<{
+  geometry: CharDeskCellRangeGeometry;
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  options?: CharDeskCanvasRangeOptions;
 }>;
 
 export type CharDeskCanvasDocumentOptions = {
@@ -209,7 +217,6 @@ export const resolveCharDeskCanvasFontFace = (input: Readonly<{
     capability,
     family,
     fontSizeScale: spec.fontSizeScale ?? 1,
-    scaleX: spec.scaleX ?? 1,
     baselineShiftEm: spec.baselineShiftEm ?? 0,
     boldStrategy: spec.boldStrategy,
     boldOverdrawEm: spec.boldOverdrawEm,
@@ -240,7 +247,7 @@ export const measureCharDeskCanvasFont = (
       fontFamily: face.family, fontSizeScale: face.fontSizeScale,
     });
     context.textBaseline = "alphabetic";
-    const width = context.measureText("0").width * face.scaleX;
+    const width = context.measureText("0").width;
     const sample = context.measureText("Mg");
     const fontBounds = Number.isFinite(sample.fontBoundingBoxAscent)
       && Number.isFinite(sample.fontBoundingBoxDescent)
@@ -275,6 +282,10 @@ export type CharDeskFontAuditSample = Readonly<{
   advance: number | null;
   availableWidth: number;
   advanceOverflow: number | null;
+  inkLeft: number | null;
+  inkRight: number | null;
+  overflowLeft: number | null;
+  overflowRight: number | null;
   top: number | null;
   bottom: number | null;
   overflowTop: number | null;
@@ -320,12 +331,26 @@ export const auditCharDeskCanvasFont = (
       const measured = [bounds.width, bounds.actualBoundingBoxAscent, bounds.actualBoundingBoxDescent].every(Number.isFinite);
       const baseline = (metrics.baseline ?? metrics.cellHeight / 2)
         + face.baselineShiftEm * metrics.fontSize * face.fontSizeScale;
-      const advance = measured ? bounds.width * face.scaleX : null;
+      const advance = measured ? bounds.width : null;
+      const overdrawWidth = bold && face.boldStrategy === "overdraw"
+        ? face.boldOverdrawEm * metrics.fontSize * face.fontSizeScale
+        : 0;
+      const leftExtent = measured
+        ? (Number.isFinite(bounds.actualBoundingBoxLeft) ? bounds.actualBoundingBoxLeft : bounds.width / 2)
+        : null;
+      const rightExtent = measured
+        ? (Number.isFinite(bounds.actualBoundingBoxRight) ? bounds.actualBoundingBoxRight : bounds.width / 2) + overdrawWidth
+        : null;
+      const inkLeft = leftExtent === null ? null : availableWidth / 2 - leftExtent;
+      const inkRight = rightExtent === null ? null : availableWidth / 2 + rightExtent;
       const top = measured ? baseline - bounds.actualBoundingBoxAscent : null;
       const bottom = measured ? baseline + bounds.actualBoundingBoxDescent : null;
       result.push({ text, requestedFamily: face.family, requestedBold: bold,
         effectiveBold: bold && face.boldStrategy === "native", status: measured ? "measured" : "unavailable",
         advance, availableWidth, advanceOverflow: advance === null ? null : Math.max(0, advance - availableWidth),
+        inkLeft, inkRight,
+        overflowLeft: inkLeft === null ? null : Math.max(0, -inkLeft),
+        overflowRight: inkRight === null ? null : Math.max(0, inkRight - availableWidth),
         top, bottom, overflowTop: top === null ? null : Math.max(0, -top),
         overflowBottom: bottom === null ? null : Math.max(0, bottom - metrics.cellHeight),
         verticalGap: measured && (text === "│" || text === "█")
@@ -484,7 +509,6 @@ const prepareFontGlyph = (
     // Glyph positions preserve grid spacing; only allocation edges are pixel-aligned.
     x: anchor.x,
     y: anchor.y + face.baselineShiftEm * metrics.fontSize * face.fontSizeScale * zoom,
-    scaleX: face.scaleX,
     boldOverdrawX: attrs?.bold && face.boldStrategy === "overdraw"
       ? face.boldOverdrawEm * metrics.fontSize * face.fontSizeScale * zoom
       : 0,
@@ -496,15 +520,7 @@ const drawPreparedFontGlyph = (
   glyph: ReturnType<typeof prepareFontGlyph>
 ) => {
   const drawAt = (offsetX: number) => {
-    if (glyph.scaleX === 1) {
-      ctx.fillText(glyph.text, glyph.x + offsetX, glyph.y);
-      return;
-    }
-    ctx.save();
-    ctx.translate(glyph.x + offsetX, glyph.y);
-    ctx.scale(glyph.scaleX, 1);
-    ctx.fillText(glyph.text, 0, 0);
-    ctx.restore();
+    ctx.fillText(glyph.text, glyph.x + offsetX, glyph.y);
   };
   drawAt(0);
   if (glyph.boldOverdrawX > 0) drawAt(glyph.boldOverdrawX);
@@ -525,14 +541,6 @@ const drawCellText = (
   if (textColor !== state.color) {
     ctx.fillStyle = textColor;
     state.color = textColor;
-  }
-  if (options?.clipToCell) {
-    ctx.save();
-    ctx.beginPath();
-    const bounds = { x: entry.x, y: entry.y, width: metrics.cellWidth * zoom * visual.width, height: metrics.cellHeight * zoom };
-    const aligned = alignCanvasRect(bounds, state.transform);
-    ctx.rect(aligned.x, aligned.y, aligned.width, aligned.height);
-    ctx.clip();
   }
   if (resolveCharDeskCanvasGlyphSource(visual.text) === "cell-graphics") {
     drawCharDeskCellGraphic(ctx, visual.text, {
@@ -570,7 +578,6 @@ const drawCellText = (
       lineWidth
     );
   }
-  if (options?.clipToCell) ctx.restore();
 };
 
 export const drawCharDeskCanvasCells = (
@@ -624,7 +631,7 @@ export const drawCharDeskCanvasCursor = (
       },
       x: entry.x,
       y: entry.y,
-      options: { ...options, clipToCell: true },
+      options,
       drawBackground: true,
       drawText: entry.drawText !== false,
     }]);
@@ -654,46 +661,29 @@ export const drawCharDeskCanvasCursor = (
   ctx.restore();
 };
 
-/** Draws a Cell-coordinate Range without coupling rendering to selection state. */
-export const drawCharDeskCanvasRange = (
+const createCanvasRangeBoundary = (
   ctx: CharDeskCanvasContext,
-  entry: CharDeskCanvasRangeEntry
+  options?: CharDeskCanvasRangeOptions
 ) => {
-  if (entry.geometry.polygons.length === 0) return;
-  const metrics = entry.options?.metrics ?? DEFAULT_CHARDESK_CELL_METRICS;
-  const offset = entry.options?.offset ?? { x: 0, y: 0 };
-  const zoom = entry.options?.zoom ?? 1;
-  const clipRegions = entry.options?.clipRegions;
-  if (clipRegions?.length === 0) return;
+  const metrics = options?.metrics ?? DEFAULT_CHARDESK_CELL_METRICS;
+  const offset = options?.offset ?? { x: 0, y: 0 };
+  const zoom = options?.zoom ?? 1;
   const transform = ctx.getTransform?.();
-  const boundary = (point: CellPoint) => alignCanvasRect({
+  return (point: CellPoint) => alignCanvasRect({
     x: point.x * metrics.cellWidth * zoom + offset.x,
     y: point.y * metrics.cellHeight * zoom + offset.y,
     width: 0,
     height: 0,
   }, transform);
+};
 
-  ctx.save();
-  if (clipRegions) {
-    ctx.beginPath();
-    for (const region of clipRegions) {
-      const topLeft = boundary({ x: region.x, y: region.y });
-      const bottomRight = boundary({
-        x: region.x + region.width,
-        y: region.y + region.height,
-      });
-      ctx.rect(
-        topLeft.x,
-        topLeft.y,
-        bottomRight.x - topLeft.x,
-        bottomRight.y - topLeft.y
-      );
-    }
-    ctx.clip();
-  }
-
+const traceCanvasRangePath = (
+  ctx: CharDeskCanvasContext,
+  geometry: CharDeskCellRangeGeometry,
+  boundary: ReturnType<typeof createCanvasRangeBoundary>
+) => {
   ctx.beginPath();
-  for (const polygon of entry.geometry.polygons) {
+  for (const polygon of geometry.polygons) {
     for (const ring of polygon.rings) {
       ring.forEach((point, index) => {
         const position = boundary(point);
@@ -703,8 +693,66 @@ export const drawCharDeskCanvasRange = (
       ctx.closePath();
     }
   }
+};
+
+const clipCanvasRangeRegions = (
+  ctx: CharDeskCanvasContext,
+  clipRegions: readonly CellRect[] | undefined,
+  boundary: ReturnType<typeof createCanvasRangeBoundary>
+) => {
+  if (!clipRegions) return;
+  ctx.beginPath();
+  for (const region of clipRegions) {
+    const topLeft = boundary({ x: region.x, y: region.y });
+    const bottomRight = boundary({
+      x: region.x + region.width,
+      y: region.y + region.height,
+    });
+    ctx.rect(
+      topLeft.x,
+      topLeft.y,
+      bottomRight.x - topLeft.x,
+      bottomRight.y - topLeft.y
+    );
+  }
+  ctx.clip();
+};
+
+/** Seeds a transparent overlay with the pixels a contrast Range must adapt against. */
+export const drawCharDeskCanvasRangeBackdrop = (
+  ctx: CharDeskCanvasContext,
+  entry: CharDeskCanvasRangeBackdropEntry
+) => {
+  if (entry.geometry.polygons.length === 0 || entry.options?.clipRegions?.length === 0) return;
+  const boundary = createCanvasRangeBoundary(ctx, entry.options);
+  ctx.save();
+  clipCanvasRangeRegions(ctx, entry.options?.clipRegions, boundary);
+  traceCanvasRangePath(ctx, entry.geometry, boundary);
+  ctx.clip("evenodd");
+  ctx.drawImage(entry.source, 0, 0, entry.width, entry.height);
+  ctx.restore();
+};
+
+/** Draws a Cell-coordinate Range without coupling rendering to selection state. */
+export const drawCharDeskCanvasRange = (
+  ctx: CharDeskCanvasContext,
+  entry: CharDeskCanvasRangeEntry
+) => {
+  if (entry.geometry.polygons.length === 0 || entry.options?.clipRegions?.length === 0) return;
+  const zoom = entry.options?.zoom ?? 1;
+  const boundary = createCanvasRangeBoundary(ctx, entry.options);
+  ctx.save();
+  clipCanvasRangeRegions(ctx, entry.options?.clipRegions, boundary);
+  traceCanvasRangePath(ctx, entry.geometry, boundary);
   ctx.fillStyle = entry.style.surface;
+  if (entry.style.surfaceEffect === "contrast") {
+    ctx.globalCompositeOperation = "difference";
+  }
   ctx.fill("evenodd");
+  if (entry.style.surfaceEffect === "contrast") {
+    // Range borders are ordinary Host chrome even when the surface is adaptive.
+    ctx.globalCompositeOperation = "source-over";
+  }
   if (entry.phase === "moving") {
     ctx.strokeStyle = entry.style.border;
     ctx.lineWidth = Math.max(1, Math.round(2 * zoom));
@@ -725,7 +773,6 @@ export type CharDeskCanvasFrameOptions = Readonly<{
     top?: number;
     bottom?: number;
   }>;
-  clipToCell?: boolean;
   fontAvailability?: CharDeskCanvasFontAvailability;
   fontProfile?: CharDeskFontProfile;
   fontFamilies?: CharDeskCanvasFontFamilies;
@@ -786,7 +833,6 @@ export const presentCharDeskCellFrame = (
       metrics,
       zoom,
       palette: options.palette,
-      clipToCell: options.clipToCell,
       underline: options.underline?.(x, y, cell),
       ...(options.fontAvailability
         ? { fontAvailability: options.fontAvailability }
@@ -914,26 +960,50 @@ export const loadCharDeskCanvasFonts = async (
     text: !Array.from(groups.values()).some(({ route }) => route === "text"),
     emoji: !Array.from(groups.values()).some(({ route }) => route === "emoji"),
   };
-  await Promise.all(Array.from(groups.values(), async (group) => {
-    try {
-      const faces = await document.fonts.load(
-        getCharDeskCanvasFont(
-          options.metrics ?? DEFAULT_CHARDESK_CELL_METRICS,
-          1,
-          {
-            ...group,
-            fontFamily: group.face.family,
-            fontSizeScale: group.face.fontSizeScale,
-            boldStrategy: group.face.boldStrategy,
-          }
-        ),
-        Array.from(group.graphemes).join("")
+  const sentinels: HTMLElement[] = [];
+  if (typeof document.createElement === "function" && document.body) {
+    for (const group of groups.values()) {
+      const sentinel = document.createElement("span");
+      sentinel.ariaHidden = "true";
+      sentinel.style.cssText = "position:fixed;pointer-events:none;opacity:0";
+      sentinel.style.font = getCharDeskCanvasFont(
+        options.metrics ?? DEFAULT_CHARDESK_CELL_METRICS,
+        1,
+        { ...group, fontFamily: group.face.family,
+          fontSizeScale: group.face.fontSizeScale, boldStrategy: group.face.boldStrategy }
       );
-      availability[group.route] ||= faces.length > 0;
-    } catch {
-      availability[group.route] ||= false;
+      sentinel.textContent = Array.from(group.graphemes).join("");
+      document.body.append(sentinel);
+      sentinels.push(sentinel);
     }
-  }));
+  }
+  try {
+    // WebKit may not activate supplementary-plane unicode-range faces for a
+    // Canvas-only request until the same face participates in DOM shaping.
+    try { await document.fonts.ready; } catch { /* Per-route loads report failure below. */ }
+    await Promise.all(Array.from(groups.values(), async (group) => {
+      try {
+        const faces = await document.fonts.load(
+          getCharDeskCanvasFont(
+            options.metrics ?? DEFAULT_CHARDESK_CELL_METRICS,
+            1,
+            {
+              ...group,
+              fontFamily: group.face.family,
+              fontSizeScale: group.face.fontSizeScale,
+              boldStrategy: group.face.boldStrategy,
+            }
+          ),
+          Array.from(group.graphemes).join("")
+        );
+        availability[group.route] ||= faces.length > 0;
+      } catch {
+        availability[group.route] ||= false;
+      }
+    }));
+  } finally {
+    for (const sentinel of sentinels) sentinel.remove();
+  }
   try {
     await document.fonts.ready;
   } catch {

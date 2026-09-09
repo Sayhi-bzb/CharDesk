@@ -20,11 +20,37 @@ describe("canonical CharGraph text renderer", () => {
     expect(output).not.toContain("```json");
   });
 
-  it("treats either standalone boundary as layout before Markdown", async () => {
-    const rendered = await renderCharGraphText("Top\n---\nBottom");
+  it("keeps a standalone row boundary as a Markdown thematic break", async () => {
+    const rendered = await renderCharGraphText("Top\n\n---\n\nBottom");
+
+    expect(rendered.renderer).toBe("markdown");
+    expect(getCharGraphText(rendered)).toBe("Top\n\n———\n\nBottom");
+  });
+
+  it("allows callers to explicitly activate row-only block layout", async () => {
+    const rendered = await renderCharGraphText("Top\n---\nBottom", {
+      layout: { activation: "any-boundary" },
+    });
 
     expect(rendered.renderer).toBe("block-layout");
     expect(getCharGraphText(rendered)).toBe("Top\n\nBottom");
+  });
+
+  it("keeps ordinary pasted Markdown paragraphs start-aligned", async () => {
+    const rendered = await renderCharGraphText([
+      "也就是说，**不需要某一天突然出现“自我修改源码”的 AGI。**",
+      "",
+      "Codex/Research Agent 今天帮助研究员写代码、跑实验、分析结果，本身就可以是 RSI 的早期形态。",
+      "",
+      "文章明确说，OpenAI 正把研究方向朝 RSI 集中，因为他们认为继续处于 AI 前沿最终必须走这条路。([OpenAI][1])",
+      "",
+      "---",
+    ].join("\n"));
+    const lines = getCharGraphText(rendered).split("\n").filter(Boolean);
+
+    expect(rendered.renderer).toBe("markdown");
+    expect(lines.at(-1)).toBe("———");
+    expect(lines.every((line) => !line.startsWith(" "))).toBe(true);
   });
 
   it("keeps escaped boundaries literal and leaves alternate Markdown rules available", async () => {

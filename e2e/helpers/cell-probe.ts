@@ -3,7 +3,7 @@ import type { CellProbeSnapshot } from "@chardesk/cell-ui";
 
 export type BrowserCellProbe = CellProbeSnapshot;
 
-const PROBE_PROPERTY = "__chardeskCellProbeV4";
+const PROBE_PROPERTY = "__chardeskCellProbeV5";
 
 export const readCellMetrics = async (surface: Locator) => {
   await expect.poll(async () => (await readCellProbe(surface)).presentation?.measurement?.ready).toBe(true);

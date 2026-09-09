@@ -4,7 +4,7 @@ import {
   type CharDeskSourceKind,
 } from "@chardesk/chargraph";
 import { createCharDeskMarkdownRenderOptions } from "@chardesk/chargraph/markdown";
-import { CHARDESK_LIGHT_RENDER_THEME } from "@chardesk/chargraph/theme";
+import { CHARDESK_LIGHT_CONTENT_THEME } from "@chardesk/rendering/theme";
 import type { CanvasImportSnapshot } from "@/domains/sessions/public";
 import { COLOR_PRIMARY_TEXT } from "@/shared/lib/constants";
 
@@ -30,7 +30,7 @@ export const parseCharDeskCanvasSource = async (
     sourceKind,
     defaultStyle: { color: COLOR_PRIMARY_TEXT },
     markdown: createCharDeskMarkdownRenderOptions({
-      theme: CHARDESK_LIGHT_RENDER_THEME,
+      theme: CHARDESK_LIGHT_CONTENT_THEME,
     }),
   });
   if (

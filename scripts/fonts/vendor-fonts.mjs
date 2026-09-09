@@ -39,12 +39,12 @@ const targets = {
   "canvas-core": {
     outputRoot: path.join(repoRoot, "packages", "fonts"),
     assetPrefix: "assets",
-    profileId: "chardesk/system-v5",
+    profileId: "chardesk/system-v6",
   },
   maple: {
     outputRoot: path.join(repoRoot, "packages", "font-maple"),
     assetPrefix: "assets",
-    profileId: "chardesk/maple-v5",
+    profileId: "chardesk/maple-v6",
   },
   fusion: {
     outputRoot: path.join(repoRoot, "packages", "font-fusion"),

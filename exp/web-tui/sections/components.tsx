@@ -1,11 +1,24 @@
 import { useState } from "react";
 import {
   Box,
+  Dialog,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
   Button,
   Checkbox,
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
   Toggle,
   Progress,
   Separator,
+  type SeparatorVariant,
   RadioGroup,
   RadioItem,
   List,
@@ -15,10 +28,6 @@ import {
   Root,
   ScrollArea,
   Slider,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
   Text,
   TextInput,
   type ButtonSize,
@@ -27,14 +36,94 @@ import {
 } from "@chardesk/cell-ui";
 import {
   useCellListState,
+  useCellComboboxState,
   useCellRadioState,
   useCellSelectState,
   useCellTextState,
 } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "../appearance";
 import { ComponentPlayground } from "../component-playground";
+import {
+  renderGalleryCheckbox,
+  renderGallerySelect,
+} from "../gallery-component-recipes";
 
 const noCommand = () => undefined;
+
+export const DialogComponentDemo = () => {
+  const [open, setOpen] = useState(false);
+  const [modal, setModal] = useState(true);
+  const [outside, setOutside] = useState(true);
+  const focus = usePlaygroundFocus("dialog-open", []);
+  const dispatch = (command: WidgetCommand) => {
+    focus.dispatch(command);
+    if (command.type === "dismiss" && command.targetId === "demo-dialog") setOpen(false);
+    if (command.type !== "activate") return;
+    if (command.targetId === "dialog-open") setOpen(true);
+    if (command.targetId === "dialog-cancel" || command.targetId === "dialog-confirm") setOpen(false);
+    if (command.targetId === "dialog-modal") setModal((value) => !value);
+    if (command.targetId === "dialog-outside") setOutside((value) => !value);
+  };
+  return <ComponentPlayground id="component-dialog-playground" label="Dialog component" probeId="component-dialog"
+    focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={36} controlsColumns={29} overlayRows={5}
+    preview={<Box>
+      <Button id="dialog-open"><Text>Open dialog</Text></Button>
+      {open && <Dialog id="demo-dialog" modal={modal} closeOnOutsideClick={outside} initialFocusId="dialog-cancel">
+        <DialogTitle>Continue?</DialogTitle>
+        <DialogDescription>This is a preview confirmation.</DialogDescription>
+        <DialogFooter>
+          <Button id="dialog-cancel" variant="ghost"><Text>Cancel</Text></Button>
+          <Button id="dialog-confirm"><Text>Continue</Text></Button>
+        </DialogFooter>
+      </Dialog>}
+    </Box>}
+    controls={[
+      renderPlaygroundCheckboxControl("modal", "dialog-modal", modal, focus.focusedId),
+      renderPlaygroundCheckboxControl(
+        "closeOnOutsideClick",
+        "dialog-outside",
+        outside,
+        focus.focusedId,
+      ),
+    ]} />;
+};
+
+export const AccordionComponentDemo = () => {
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const [disabled, setDisabled] = useState(false);
+  const [sound, setSound] = useState(true);
+  const theme = useCellSelectState("accordion-theme", [
+    { id: "accordion-dark", label: "Dark" }, { id: "accordion-light", label: "Light" },
+  ], { defaultSelectedId: "accordion-dark" });
+  const focus = usePlaygroundFocus("accordion-general-trigger", [theme]);
+  const dispatch = (command: WidgetCommand) => {
+    focus.dispatch(command);
+    if (command.type === "set-expanded" && ["accordion-general", "accordion-appearance", "accordion-advanced"].includes(command.targetId)) {
+      setExpanded((current) => {
+        const next = new Set(current);
+        if (command.expanded) next.add(command.targetId); else next.delete(command.targetId);
+        return next;
+      });
+    }
+    if (command.type === "activate" && command.targetId === "accordion-sound") setSound((current) => !current);
+    if (command.type === "activate" && command.targetId === "accordion-disabled") setDisabled((current) => !current);
+  };
+  return <ComponentPlayground id="component-accordion-playground" label="Accordion component" probeId="component-accordion"
+    focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={30} controlsColumns={25}
+    overlayRows={theme.open ? theme.items.length : 0}
+    preview={<Accordion id="accordion-settings" disabled={disabled} style={{ width: 30 }}>
+      {["general", "appearance", "advanced"].map((name) => <AccordionItem key={name} id={`accordion-${name}`} expanded={expanded.has(`accordion-${name}`)}>
+        <AccordionTrigger id={`accordion-${name}-trigger`}><Text>{name[0].toUpperCase() + name.slice(1)}</Text></AccordionTrigger>
+        <AccordionContent style={{ paddingLeft: 4 }}>
+          {name === "appearance" ? <Box>
+            {renderPlaygroundSelectControl("Theme", theme, focus.focusedId)}
+            <Checkbox id="accordion-sound" label="Sound" checked={sound}><Text>Sound</Text></Checkbox>
+          </Box> : <Text>{name === "general" ? "Project settings" : "Advanced settings"}</Text>}
+        </AccordionContent>
+      </AccordionItem>)}
+    </Accordion>}
+    controls={[renderPlaygroundCheckboxControl("disabled", "accordion-disabled", disabled, focus.focusedId)]} />;
+};
 
 export const ToggleComponentDemo = () => {
   const [pressed, setPressed] = useState(false);
@@ -67,18 +156,31 @@ export const ProgressComponentDemo = () => (
 );
 
 const orientationItems = ["horizontal", "vertical"].map((value) => ({ id: value, label: value }));
+const separatorVariantItems = [
+  { id: "line", label: "───────" },
+  { id: "slash", label: "///////" },
+  { id: "double", label: "═══════" },
+  { id: "dots", label: "·······" },
+] satisfies readonly Readonly<{ id: SeparatorVariant; label: string }>[];
 export const SeparatorComponentDemo = () => {
+  const variant = useCellSelectState("component-separator-variant", separatorVariantItems, {
+    defaultSelectedId: "line",
+  });
   const orientation = useCellSelectState("component-separator-orientation", orientationItems, {
     defaultSelectedId: "horizontal",
   });
-  const focus = usePlaygroundFocus(orientation.triggerId, [orientation]);
+  const focus = usePlaygroundFocus(variant.triggerId, [variant, orientation]);
   const vertical = orientation.selectedId === "vertical";
   return <ComponentPlayground id="component-separator-playground" label="Separator component" probeId="component-separator"
     focusedId={focus.focusedId} onCommand={focus.dispatch} previewMinColumns={20} controlsColumns={25}
-    overlayRows={focus.activeSelect ? 4 : 0}
+    overlayRows={focus.activeSelect ? focus.activeSelect.items.length : 0}
     preview={<Separator id="component-separator-line" orientation={vertical ? "vertical" : "horizontal"}
+      variant={variant.selectedId as SeparatorVariant}
       style={vertical ? { height: 5 } : { width: 20 }} />}
-    controls={renderPlaygroundSelectControl("direction", orientation, focus.focusedId)} />;
+    controls={[
+      renderPlaygroundSelectControl("variant", variant, focus.focusedId, (id) => id),
+      renderPlaygroundSelectControl("direction", orientation, focus.focusedId),
+    ]} />;
 };
 
 const radioItems = ["Light", "Dark", "System"].map((label) => ({
@@ -195,57 +297,21 @@ const renderPlaygroundSelectControl = (
   label: string,
   select: PlaygroundSelectState,
   focusedId: string,
-) => (
-  <Box id={`${select.id}-field`} key={select.id} style={{ direction: "row", height: 1 }}>
-    <Text style={{ width: 10 }}>{label}</Text>
-    <Select id={select.id} label={label} style={{ width: 15 }}>
-      <SelectTrigger
-        id={select.triggerId}
-        label={label}
-        expanded={select.open}
-        controlsId={select.open ? select.contentId : undefined}
-        focused={focusedId === select.triggerId}
-        style={{ width: 15 }}
-      ><Text>{select.selectedItem?.label ?? "default"}</Text></SelectTrigger>
-      {select.open ? (
-        <SelectContent
-          id={select.contentId}
-          label={`${label} options`}
-          scrollY={select.scrollY}
-          style={{ width: 15 }}
-        >
-          {select.items.map((item, index) => (
-            <SelectItem
-              id={item.id}
-              key={item.id}
-              focused={focusedId === item.id}
-              selected={select.selectedId === item.id}
-              positionInSet={index + 1}
-              setSize={select.items.length}
-            ><Text>{item.label}</Text></SelectItem>
-          ))}
-        </SelectContent>
-      ) : null}
-    </Select>
-  </Box>
-);
+  itemSemanticLabel?: (id: string) => string,
+) => renderGallerySelect({
+  label,
+  select,
+  focusedId,
+  width: 15,
+  itemSemanticLabel,
+});
 
 const renderPlaygroundCheckboxControl = (
   label: string,
   id: string,
   checked: boolean,
   focusedId: string,
-) => (
-  <Box id={`${id}-field`} key={id} style={{ direction: "row", height: 1 }}>
-    <Text style={{ width: 10 }}>{label}</Text>
-    <Checkbox
-      id={id}
-      label={label}
-      checked={checked}
-      focused={focusedId === id}
-    />
-  </Box>
-);
+) => renderGalleryCheckbox({ id, label, checked, focusedId });
 
 export const ButtonComponentDemo = () => {
   const [variant, setVariant] = useState<ButtonVariant>("default");
@@ -277,7 +343,7 @@ export const ButtonComponentDemo = () => {
     probeId="component-button"
     previewMinColumns={10}
     controlsColumns={25}
-    overlayRows={focus.activeSelect ? focus.activeSelect.items.length + 2 : 0}
+    overlayRows={focus.activeSelect ? focus.activeSelect.items.length : 0}
     preview={
       <Button
         id="component-button-save"
@@ -342,44 +408,18 @@ export const SelectComponentDemo = () => {
     previewMinColumns={30}
     controlsColumns={25}
     overlayRows={select.open ? select.items.length + (border ? 2 : 0) : 0}
-    preview={
-      <Box id="component-select-preview" style={{ width: 30 }}>
-      <Text id="component-select-label">Theme</Text>
-      <Select id={select.id} label="Theme" style={{ width: 30 }}>
-        <SelectTrigger
-          id={select.triggerId}
-          label="Theme"
-          expanded={select.open}
-          controlsId={select.open ? select.contentId : undefined}
-          disabled={disabled}
-          focused={focus.focusedId === select.triggerId}
-        ><Text>{select.selectedItem?.label ?? "Select theme"}</Text></SelectTrigger>
-        {select.open ? (
-          <SelectContent
-            id={select.contentId}
-            label="Theme options"
-            scrollY={select.scrollY}
-            style={{
-              border,
-              borderShape: rounded ? "rounded" : "square",
-            }}
-          >
-            {select.items.map((item, index) => (
-              <SelectItem
-                id={item.id}
-                key={item.id}
-                disabled={item.disabled}
-                focused={focus.focusedId === item.id}
-                selected={select.selectedId === item.id}
-                positionInSet={index + 1}
-                setSize={select.items.length}
-              ><Text>{item.label}</Text></SelectItem>
-            ))}
-          </SelectContent>
-        ) : null}
-      </Select>
-      </Box>
-    }
+    preview={renderGallerySelect({
+      fieldId: "component-select-preview",
+      labelId: "component-select-label",
+      label: "Theme",
+      select,
+      focusedId: focus.focusedId,
+      width: 30,
+      disabled,
+      border,
+      rounded,
+      emptyLabel: "Select theme",
+    })}
     controls={[
       renderPlaygroundCheckboxControl(
         "border",
@@ -403,6 +443,60 @@ export const SelectComponentDemo = () => {
   />;
 };
 
+const comboboxFonts = [
+  { id: "component-combobox-maple", label: "Maple Mono" },
+  { id: "component-combobox-fusion", label: "Fusion Pixel 12px Mono" },
+  { id: "component-combobox-xiaolai", label: "Xiaolai Mono" },
+] as const;
+const comboboxValueItems = comboboxFonts.map(({ id, label }) => ({
+  id: id.replace("component-combobox-", "component-combobox-value-"),
+  label,
+}));
+
+export const ComboboxComponentDemo = () => {
+  const [value, setValue] = useState("component-combobox-maple");
+  const [disabled, setDisabled] = useState(false);
+  const combo = useCellComboboxState("component-combobox", comboboxFonts, {
+    selectedId: value,
+    onSelectionChange: setValue,
+  });
+  const valueSelect = useCellSelectState("component-combobox-value", comboboxValueItems, {
+    selectedId: value.replace("component-combobox-", "component-combobox-value-"),
+    onSelectionChange: (id) => setValue(id.replace("component-combobox-value-", "component-combobox-")),
+  });
+  const focus = usePlaygroundFocus(combo.inputId, [valueSelect]);
+  const dispatch = (command: WidgetCommand) => {
+    focus.dispatch(command);
+    combo.dispatch(command);
+    if (command.type === "activate" && command.targetId === "component-combobox-disabled") {
+      setDisabled((current) => !current);
+    }
+  };
+  return <ComponentPlayground id="component-combobox-playground" label="Combobox component"
+    probeId="component-combobox" focusedId={focus.focusedId} onCommand={dispatch}
+    previewMinColumns={30} controlsColumns={25}
+    overlayRows={combo.open ? Math.min(combo.filteredItems.length, 3) + 2 : focus.activeSelect ? focus.activeSelect.items.length : 0}
+    preview={<Box id="component-combobox-preview" style={{ width: 30 }}>
+      <Text>Font</Text>
+      <Combobox id={combo.id} label="Font" disabled={disabled} style={{ width: 30 }}>
+        <ComboboxInput id={combo.inputId} label="Font" state={combo.inputSnapshot} expanded={combo.open}
+          activeDescendantId={combo.activeId ?? undefined} />
+        {combo.open ? <ComboboxContent id={combo.contentId} label="Font options" scrollY={combo.scrollY}
+          style={{ maxHeight: 5 }}>
+          {combo.filteredItems.length ? combo.filteredItems.map((item, index) => <ComboboxItem
+            id={item.id} key={item.id} active={combo.activeId === item.id} selected={combo.selectedId === item.id}
+            disabled={item.disabled} positionInSet={index + 1} setSize={combo.filteredItems.length}>
+            <Text>{item.label}</Text>
+          </ComboboxItem>) : <Text>No matches</Text>}
+        </ComboboxContent> : null}
+      </Combobox>
+    </Box>}
+    controls={[
+      renderPlaygroundSelectControl("value", valueSelect, focus.focusedId),
+      renderPlaygroundCheckboxControl("disabled", "component-combobox-disabled", disabled, focus.focusedId),
+    ]} />;
+};
+
 export const CheckboxComponentDemo = () => {
   const [checked, setChecked] = useState(true);
   const [disabled, setDisabled] = useState(false);
@@ -424,15 +518,13 @@ export const CheckboxComponentDemo = () => {
     probeId="component-checkbox"
     previewMinColumns={14}
     controlsColumns={25}
-    preview={
-      <Checkbox
-        id="component-checkbox-autosave"
-        label="Autosave"
-        checked={checked}
-        disabled={disabled}
-        focused={focus.focusedId === "component-checkbox-autosave"}
-      ><Text>Autosave</Text></Checkbox>
-    }
+    preview={renderGalleryCheckbox({
+      id: "component-checkbox-autosave",
+      label: "Autosave",
+      checked,
+      disabled,
+      focusedId: focus.focusedId,
+    })}
     controls={[
       renderPlaygroundCheckboxControl(
         "disabled",
@@ -547,16 +639,12 @@ export const InputComponentDemo = () => {
     value: "notes.txt",
   });
   const [disabled, setDisabled] = useState(false);
-  const [rounded, setRounded] = useState(false);
   const focus = usePlaygroundFocus("component-input-field", []);
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
     input.dispatch(command);
     if (command.type === "activate" && command.targetId === "component-input-disabled") {
       setDisabled((current) => !current);
-    }
-    if (command.type === "activate" && command.targetId === "component-input-rounded") {
-      setRounded((current) => !current);
     }
   };
   return <ComponentPlayground
@@ -576,12 +664,7 @@ export const InputComponentDemo = () => {
           state={input.snapshot}
           focused={focus.focusedId === "component-input-field"}
           disabled={disabled}
-          style={{
-            border: true,
-            borderShape: rounded ? "rounded" : "square",
-            width: 30,
-            height: 3,
-          }}
+          style={{ width: 30 }}
         />
       </Box>
     }
@@ -590,12 +673,6 @@ export const InputComponentDemo = () => {
         "disabled",
         "component-input-disabled",
         disabled,
-        focus.focusedId,
-      ),
-      renderPlaygroundCheckboxControl(
-        "rounded",
-        "component-input-rounded",
-        rounded,
         focus.focusedId,
       ),
     ]}

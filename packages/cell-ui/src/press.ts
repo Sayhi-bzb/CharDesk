@@ -3,6 +3,7 @@ import { isCellKeyPress } from "./keyboard.js";
 import { getEventPath, hitTest } from "./scene.js";
 import type { CellPoint, FrameSnapshot, WidgetId } from "./types.js";
 import { supportsPressFeedback } from "./widget-capabilities.js";
+import { isInFocusScope, topFocusScopeId } from "./interaction.js";
 
 type PointerPress = {
   pointerId: number;
@@ -29,6 +30,8 @@ const validPressTarget = (
     && supportsPressFeedback(node.kind)
     && !node.disabled
     && !!entry?.paintVisible
+    && (isInFocusScope(frame.tree, targetId)
+      || (node.kind === "select-trigger" && node.controlsId === topFocusScopeId(frame.tree)))
     && (!requireFocus || node.focused);
 };
 
@@ -40,7 +43,7 @@ export const pressTargetAtPoint = (
   if (!hit) return null;
   return getEventPath(frame.scene, hit).find((id) => {
     const node = frame.tree.nodes.get(id);
-    return !!node && supportsPressFeedback(node.kind) && !node.disabled;
+    return !!node && supportsPressFeedback(node.kind) && !node.disabled && isInFocusScope(frame.tree, id);
   }) ?? null;
 };
 

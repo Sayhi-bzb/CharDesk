@@ -89,7 +89,7 @@ describe("clipboardActions", () => {
     ]);
   });
 
-  it("renders external Markdown through the injected text runtime", async () => {
+  it("renders external Markdown through the injected dark text runtime", async () => {
     const runtime = createTextRenderingRuntime();
     const payload = await readClipboardPayload(
       {
@@ -97,7 +97,8 @@ describe("clipboardActions", () => {
           type === "text/plain" ? "**粗体** [site](https://example.com)" : "",
       } as unknown as DataTransfer,
       "#abcdef",
-      runtime.render
+      runtime.render,
+      { themeMode: "dark" }
     );
 
     expect(payload.plainText).toBe("**粗体** [site](https://example.com)");
@@ -105,12 +106,13 @@ describe("clipboardActions", () => {
     expect(payload.richCells?.[0]).toMatchObject({
       x: 0,
       char: "粗",
-      color: "#abcdef",
+      color: "#f0f6fc",
       attrs: { bold: true },
     });
-    expect(payload.richCells?.find((cell) => cell.char === "s")?.href).toBe(
-      "https://example.com"
-    );
+    expect(payload.richCells?.find((cell) => cell.char === "s")).toMatchObject({
+      color: "#58a6ff",
+      href: "https://example.com",
+    });
   });
 
   it("awaits lazy code highlighting before returning clipboard cells", async () => {
@@ -317,7 +319,7 @@ describe("clipboardActions", () => {
     );
 
     expect(payload).toEqual({
-      plain: "[48;2;219;234;254m BUTTON [m",
+      plain: "[30;48;2;219;234;254m BUTTON [m",
       rich: null,
     });
   });

@@ -13,12 +13,19 @@ export {
   getTextRenderFeatureDefinition,
   TEXT_RENDER_FEATURES,
 } from "./rendering/features";
-export { DEFAULT_TEXT_RENDER_THEME } from "./rendering/theme";
+export {
+  DEFAULT_TEXT_RENDER_THEME,
+  DEFAULT_TEXT_RENDER_THEMES,
+  createTextRenderThemeMap,
+  resolveTextRenderTheme,
+  TEXT_RENDER_THEME_MODES,
+} from "./rendering/theme";
 export {
   configureTextRenderingRuntimeFallbackForTesting,
   TextRenderingProvider,
   useTextRenderingRuntime,
   useTextRenderProfile,
+  useResolvedContentTheme,
 } from "./react";
 export type {
   BuiltInTextRendererId,
@@ -27,11 +34,14 @@ export type {
   RenderedTextRow,
   RenderedTextSpan,
   TextRenderProfile,
+  TextRenderContext,
   TextRenderResult,
   TextRendererId,
   TextRendererMode,
   TextRenderingStorage,
   TextRenderTheme,
+  TextRenderThemeMap,
+  TextRenderThemeMode,
   TextRenderThemeOverrides,
   TextRenderThemeTokenId,
   TextRenderColorDefault,

@@ -73,7 +73,7 @@ describe("CellUiRuntime", () => {
 
     const pointer = runtime.render(fileList(), {
       focusedId: "new",
-      focusActive: true,
+      activeFocusId: "new",
       focusVisible: false,
       hoveredId: "new",
     });
@@ -87,7 +87,7 @@ describe("CellUiRuntime", () => {
 
     const movedAway = runtime.render(fileList(), {
       focusedId: "new",
-      focusActive: true,
+      activeFocusId: "new",
       focusVisible: false,
     });
     expect(movedAway.buffer.get(29, 0)?.style.backgroundColor).toBeUndefined();

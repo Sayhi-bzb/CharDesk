@@ -57,6 +57,9 @@ use Registry focus as an implicit write target.
 - Slide preview: deck metadata + page reader -> explicit grid snapshot -> canonical slide renderer.
 - Selection command: DOM dispatcher -> editor keymap -> command registry ->
   canvas selection port -> Yjs document.
+- Artifact appearance: stored Cell style -> canonical default-foreground classification ->
+  active Canvas palette for visual projections or default SGR state for ANSI serialization.
+  A stored background makes its foreground explicit; persistence retains literal colors.
 - Block layout text: `|||`-recognized layout -> per-field normal text renderer ->
   composed CellPlane rows. A lone `---` remains a Markdown thematic break in auto mode.
 - Source-backed Blackboard: source-tree transaction -> shared compiler -> derived Freeform surface or Slide pages.

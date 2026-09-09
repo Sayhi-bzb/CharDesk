@@ -20,6 +20,21 @@ import {
 } from "@chardesk/protocol";
 
 export type { CharDeskNormalizedCellRect } from "./canvas-geometry.js";
+export {
+  CHARDESK_CONTENT_THEMES,
+  CHARDESK_CONTENT_THEME_TOKENS,
+  CHARDESK_DARK_CONTENT_THEME,
+  CHARDESK_LIGHT_CONTENT_THEME,
+  resolveCharDeskContentColor,
+  resolveCharDeskContentTheme,
+} from "./content-theme.js";
+export type {
+  CharDeskContentColorDefault,
+  CharDeskContentTheme,
+  CharDeskContentThemeInput,
+  CharDeskContentThemeMode,
+  CharDeskContentThemeToken,
+} from "./content-theme.js";
 
 export type CharDeskRenderFontRoute = CharDeskFontRoute;
 
@@ -61,6 +76,8 @@ export type CharDeskCellRangeGeometry = Readonly<{
 export type CharDeskCellRangePaintStyle = Readonly<{
   surface: string;
   border: string;
+  /** `contrast` adapts the surface against already-painted pixels without repainting Cells. */
+  surfaceEffect?: "tint" | "contrast";
 }>;
 
 export const createCharDeskRectRangeGeometry = (

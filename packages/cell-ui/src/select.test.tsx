@@ -38,7 +38,7 @@ const selectView = (open: boolean, focusedId = open ? "dark" : "theme-trigger") 
 );
 
 describe("Select", () => {
-  it("renders a filled trigger and a Cell-anchored listbox with owned chrome", () => {
+  it("renders a filled trigger and a borderless Cell-anchored listbox by default", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
     const closed = runtime.render(selectView(false), { focusedId: "theme-trigger" });
     expect(closed.buffer.toText({ trimEnd: true }).split("\n")[0])
@@ -51,19 +51,17 @@ describe("Select", () => {
     const open = runtime.render(selectView(true), { focusedId: "dark" });
     expect(open.buffer.toText({ trimEnd: true }).trimEnd()).toBe([
       " Dark              ▴",
-      "┌──────────────────┐",
-      "│ Light            │",
-      "│ Dark            ✓│",
-      "│ System           │",
-      "└──────────────────┘",
+      " Light",
+      " Dark              ✓",
+      " System",
     ].join("\n"));
     expect(open.scene.entries.get("theme-content")?.layoutBounds)
-      .toEqual({ x: 0, y: 1, width: 20, height: 5 });
-    expect(open.buffer.get(18, 3)?.ownerId).toBe("dark");
+      .toEqual({ x: 0, y: 1, width: 20, height: 3 });
+    expect(open.buffer.get(18, 2)?.ownerId).toBe("dark");
     runtime.dispose();
   });
 
-  it("lets SelectContent remove border layout and chrome explicitly", () => {
+  it("lets SelectContent add border layout and chrome explicitly", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
     const frame = runtime.render(
       <Root id="root">
@@ -71,7 +69,7 @@ describe("Select", () => {
           <SelectTrigger id="theme-trigger" label="Theme" expanded controlsId="theme-content">
             <Text>Dark</Text>
           </SelectTrigger>
-          <SelectContent id="theme-content" label="Theme options" style={{ border: false }}>
+          <SelectContent id="theme-content" label="Theme options" style={{ border: true }}>
             <SelectItem id="light"><Text>Light</Text></SelectItem>
             <SelectItem id="dark" selected><Text>Dark</Text></SelectItem>
             <SelectItem id="system"><Text>System</Text></SelectItem>
@@ -82,18 +80,19 @@ describe("Select", () => {
     );
 
     expect(frame.layout.entries.get("theme-content")).toMatchObject({
-      rect: { x: 0, y: 0, width: 20, height: 3 },
-      borderInsets: { top: 0, right: 0, bottom: 0, left: 0 },
+      rect: { x: 0, y: 0, width: 20, height: 5 },
+      borderInsets: { top: 1, right: 1, bottom: 1, left: 1 },
     });
     expect(frame.scene.entries.get("theme-content")?.layoutBounds)
-      .toEqual({ x: 0, y: 1, width: 20, height: 3 });
+      .toEqual({ x: 0, y: 1, width: 20, height: 5 });
     expect(frame.buffer.toText({ trimEnd: true }).trimEnd()).toBe([
       " Dark              ▴",
-      " Light",
-      " Dark              ✓",
-      " System",
+      "┌──────────────────┐",
+      "│ Light            │",
+      "│ Dark            ✓│",
+      "│ System           │",
+      "└──────────────────┘",
     ].join("\n"));
-    expect(frame.buffer.toText({ trimEnd: true })).not.toMatch(/[┌┐└┘│─]/u);
     runtime.dispose();
   });
 
@@ -116,7 +115,7 @@ describe("Select", () => {
       { focusedId: "dark" }
     );
     expect(frame.scene.entries.get("theme-trigger")?.layoutBounds.y).toBe(6);
-    expect(frame.scene.entries.get("theme-content")?.layoutBounds.y).toBe(1);
+    expect(frame.scene.entries.get("theme-content")?.layoutBounds.y).toBe(3);
     runtime.dispose();
   });
 
@@ -148,7 +147,7 @@ describe("Select", () => {
     expect(content.layoutBounds.y).toBeGreaterThanOrEqual(trigger.y + trigger.height);
     expect(content.scrollMetrics).toMatchObject({
       horizontalTrack: null,
-      maxOffset: { x: 0, y: 4 },
+      maxOffset: { x: 0, y: 2 },
     });
     expect(content.scrollMetrics?.verticalTrack).not.toBeNull();
     expect(frame.buffer.toText({ trimEnd: true }).split("\n")[2]).toContain("Maple");
@@ -159,7 +158,7 @@ describe("Select", () => {
     expect(end).toMatchObject({
       type: "focus",
       targetId: "font-5",
-      reveal: { targetId: "theme-content", scrollY: 4 },
+      reveal: { targetId: "theme-content", scrollY: 2 },
     });
     expect(commandForInput(
       { type: "wheel", point: { x: 2, y: 4 }, deltaX: 0, deltaY: 1 },
@@ -167,9 +166,10 @@ describe("Select", () => {
       focus
     )).toEqual({ type: "scroll", targetId: "theme-content", scrollX: 0, scrollY: 1 });
 
-    const scrolled = runtime.render(view(4), { focusedId: "font-5" });
+    const scrolled = runtime.render(view(2), { focusedId: "font-5" });
     expect(scrolled.buffer.toText({ trimEnd: true })).toContain("Font 5");
-    expect(scrolled.buffer.toText({ trimEnd: true })).toContain("✓█│");
+    expect(scrolled.buffer.toText({ trimEnd: true })).toContain("✓█");
+    expect(scrolled.buffer.toText({ trimEnd: true })).not.toMatch(/[┌┐└┘│─]/u);
     expect(scrolled.buffer.toText({ trimEnd: true }).split("\n")[2]).toContain("Maple");
     runtime.dispose();
   });
@@ -233,19 +233,17 @@ describe("Select", () => {
     expect(frame.buffer.height).toBe(12);
     expect(frame.overlayPlanes).toEqual([{
       rootId: "size-content",
-      bounds: { x: 0, y: 4, width: 15, height: 5 },
+      bounds: { x: 0, y: 4, width: 15, height: 3 },
       layer: 1,
       paintOrder: 5,
     }]);
     expect(frame.scene.entries.get("size-content")?.scrollMetrics?.verticalTrack).toBeNull();
     expect(frame.buffer.toText({ trimEnd: true })).toContain([
-      "┌─────────────┐",
-      "│ default    ✓│",
-      "│ sm          │",
-      "│ lg          │",
-      "└─────────────┘",
+      " default      ✓",
+      " sm",
+      " lg",
     ].join("\n"));
-    expect(frame.baseBuffer.toText({ trimEnd: true })).not.toContain("┌─────────────┐");
+    expect(frame.overlayBuffer.toText({ trimEnd: true })).not.toMatch(/[┌┐└┘│─]/u);
     runtime.dispose();
   });
 

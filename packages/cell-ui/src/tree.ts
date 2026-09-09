@@ -39,10 +39,12 @@ const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.confirming === right.confirming
   && sameWidgetValue(left.confirmation, right.confirmation)
   && left.selected === right.selected
+  && left.active === right.active
   && left.checked === right.checked
   && left.pressed === right.pressed
   && left.radioValue === right.radioValue
   && sameWidgetValue(left.progress, right.progress)
+  && left.separatorVariant === right.separatorVariant
   && left.buttonVariant === right.buttonVariant
   && left.buttonSize === right.buttonSize
   && left.sliderValue === right.sliderValue
@@ -62,11 +64,16 @@ const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.setSize === right.setSize
   && left.orientation === right.orientation
   && left.controlsId === right.controlsId
+  && left.activeDescendantId === right.activeDescendantId
   && left.labelledById === right.labelledById
   && sameWidgetValue(left.textEditor, right.textEditor)
   && left.readOnly === right.readOnly
   && sameWidgetValue(left.overlayPosition, right.overlayPosition)
   && left.modal === right.modal
+  && sameWidgetValue(left.dialog, right.dialog)
+  && left.dialogPart === right.dialogPart
+  && left.closeOnOutsideClick === right.closeOnOutsideClick
+  && left.describedById === right.describedById
   && sameWidgetValue(left.style, right.style)
   && sameWidgetValue(left.textStyle, right.textStyle)
   && sameWidgetValue(left.scrollOffset, right.scrollOffset)
@@ -82,11 +89,33 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
     index: number
   ): WidgetId => {
     const parent = parentId ? nodes.get(parentId) : undefined;
+    if (current.dialogPart && !parent?.dialog) {
+      throw new TypeError("DialogTitle and DialogDescription must be direct children of Dialog.");
+    }
+    let inheritedDisabled = false;
+    let ancestor = parent;
+    while (ancestor) {
+      if ((ancestor.kind === "accordion" || ancestor.kind === "accordion-item" || ancestor.kind === "combobox")
+        && ancestor.disabled) inheritedDisabled = true;
+      ancestor = ancestor.parentId ? nodes.get(ancestor.parentId) : undefined;
+    }
+    if (current.kind === "accordion-item" && (parent?.kind !== "accordion" || !current.explicitId)) {
+      throw new TypeError("AccordionItem requires an id and must be a direct child of Accordion.");
+    }
+    if ((current.kind === "accordion-trigger" || current.kind === "accordion-content") && parent?.kind !== "accordion-item") {
+      throw new TypeError("AccordionTrigger and AccordionContent must be direct children of AccordionItem.");
+    }
     if (current.kind === "radio-item" && parent?.kind !== "radio-group") {
       throw new TypeError("RadioItem must be a direct child of RadioGroup.");
     }
     if (current.kind === "range-slider-thumb" && parent?.kind !== "range-slider") {
       throw new TypeError("RangeSliderThumb must be a direct child of RangeSlider.");
+    }
+    if ((current.kind === "combobox-input" || current.kind === "combobox-content") && parent?.kind !== "combobox") {
+      throw new TypeError("ComboboxInput and ComboboxContent must be direct children of Combobox.");
+    }
+    if (current.kind === "combobox-item" && parent?.kind !== "combobox-content") {
+      throw new TypeError("ComboboxItem must be a direct child of ComboboxContent.");
     }
     const segment = segmentFor(current, index);
     const id = parentId && !current.explicitId ? `${parentId}/${segment}` : segment;
@@ -103,7 +132,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       text: current.text,
       textStyle: current.textStyle,
       label: current.label,
-      disabled: current.disabled || (
+      disabled: current.disabled || inheritedDisabled || (
         (current.kind === "range-slider-thumb" || current.kind === "radio-item") && parent?.disabled === true
       ),
       focused: current.focused,
@@ -114,10 +143,12 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       pressActive: false,
       activationFlash: false,
       selected: current.selected,
+      active: current.active,
       checked: current.kind === "radio-item" ? current.radioValue === parent?.radioValue : current.checked,
       pressed: current.pressed,
       radioValue: current.radioValue,
       progress: current.progress,
+      separatorVariant: current.separatorVariant,
       buttonVariant: current.buttonVariant,
       buttonSize: current.buttonSize,
       sliderValue: current.sliderValue,
@@ -137,11 +168,15 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       setSize: current.setSize,
       orientation: current.orientation,
       controlsId: current.controlsId,
+      activeDescendantId: current.activeDescendantId,
       labelledById: current.labelledById,
       textEditor: current.textEditor,
       readOnly: current.readOnly,
       overlayPosition: current.overlayPosition,
       modal: current.modal,
+      dialog: current.dialog,
+      dialogPart: current.dialogPart,
+      closeOnOutsideClick: current.closeOnOutsideClick,
       scrollOffset: { x: current.scrollX, y: current.scrollY },
       children: [],
     });
@@ -182,6 +217,46 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       });
     }
     nodes.set(id, { ...nodes.get(id)!, children: childIds });
+    if (current.kind === "combobox") {
+      const [input, content] = childIds.map((child) => nodes.get(child)!);
+      if (input?.kind !== "combobox-input" || childIds.length > 2 || (content && content.kind !== "combobox-content")) {
+        throw new TypeError("Combobox requires one Input followed by optional Content.");
+      }
+      if (content) {
+        const activeItems = content.children.map((child) => nodes.get(child)!)
+          .filter((child) => child.kind === "combobox-item" && child.active);
+        if (activeItems.length > 1 || (activeItems[0]?.id ?? null) !== input.activeDescendantId) {
+          throw new TypeError("Combobox must have at most one active Item matching Input.activeDescendantId.");
+        }
+        nodes.set(input.id, { ...input, controlsId: content.id });
+        nodes.set(content.id, { ...content, labelledById: input.id });
+      }
+    }
+    if (current.kind === "combobox-content" && childIds.some((child) => {
+      const kind = nodes.get(child)?.kind;
+      return kind !== "combobox-item" && kind !== "text";
+    })) throw new TypeError("ComboboxContent accepts ComboboxItem or Text children.");
+    if (current.dialog) {
+      const parts = childIds.map((child) => nodes.get(child)!);
+      const titles = parts.filter((node) => node.dialogPart === "title");
+      const descriptions = parts.filter((node) => node.dialogPart === "description");
+      const title = titles[0];
+      if (titles.length !== 1 || !title?.text?.trim() || descriptions.length > 1) {
+        throw new TypeError("Dialog requires one direct, non-empty DialogTitle and at most one DialogDescription.");
+      }
+      nodes.set(id, { ...nodes.get(id)!, label: title.text, labelledById: title.id, describedById: descriptions[0]?.id });
+    }
+    if (current.kind === "accordion" && childIds.some((child) => nodes.get(child)?.kind !== "accordion-item")) {
+      throw new TypeError("Accordion requires AccordionItem children.");
+    }
+    if (current.kind === "accordion-item") {
+      const [trigger, content] = childIds.map((child) => nodes.get(child)!);
+      if (childIds.length !== 2 || trigger?.kind !== "accordion-trigger" || content?.kind !== "accordion-content") {
+        throw new TypeError("AccordionItem requires one Trigger followed by one Content.");
+      }
+      nodes.set(trigger.id, { ...trigger, expanded: current.expanded, controlsId: content.id });
+      nodes.set(content.id, { ...content, expanded: current.expanded, labelledById: trigger.id });
+    }
     return id;
   };
 

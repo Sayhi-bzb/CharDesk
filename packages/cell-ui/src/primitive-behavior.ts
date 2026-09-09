@@ -34,11 +34,11 @@ export const selectCommandEffect = (
 export const confirmationCompletion = (frame: FrameSnapshot, targetId: WidgetId): WidgetCommand | null => {
   let node = frame.tree.nodes.get(targetId);
   if (node?.kind === "menu-item") return { type: "activate", targetId };
-  if (node?.kind !== "select-item") return null;
+  if (node?.kind !== "select-item" && node?.kind !== "combobox-item") return null;
   while (node.parentId) {
     node = frame.tree.nodes.get(node.parentId);
     if (!node) return null;
-    if (node.kind === "select-content") return { type: "dismiss", targetId: node.id };
+    if (node.kind === "select-content" || node.kind === "combobox-content") return { type: "dismiss", targetId: node.id };
   }
   return null;
 };

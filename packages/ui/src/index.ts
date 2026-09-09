@@ -5,6 +5,7 @@ export * from "./checkbox.js";
 export * from "./collapsible.js";
 export * from "./collection-card.js";
 export * from "./color-swatch.js";
+export * from "./color-presets.js";
 export * from "./content-scroll-area.js";
 export * from "./context-menu.js";
 export * from "./dialog.js";

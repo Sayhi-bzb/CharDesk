@@ -43,8 +43,8 @@ describe("renderMarkdown", () => {
 
     expect(getCharGraphText(rendered)).toBe("First\nSecond\n\nYou can combine them");
     expect(rendered.visualGroups).toEqual([
-      { fromRow: 0, toRow: 2 },
-      { fromRow: 3, toRow: 4 },
+      { fromRow: 0, toRow: 2, inlineAlignment: "start" },
+      { fromRow: 3, toRow: 4, inlineAlignment: "start" },
     ]);
     expect(getCharGraphText(rendered)).not.toContain("<br>");
     expect(can?.attrs).toMatchObject({ bold: true, italic: true });
@@ -66,9 +66,45 @@ describe("renderMarkdown", () => {
     ].join("\n"));
 
     expect(rendered.visualGroups).toEqual([
-      { fromRow: 0, toRow: 1 },
-      { fromRow: 2, toRow: 5 },
+      { fromRow: 0, toRow: 1, inlineAlignment: "start" },
+      { fromRow: 2, toRow: 5, inlineAlignment: "start" },
     ]);
+  });
+
+  it("declares placement only from the block that owns it", async () => {
+    const rendered = await renderMarkdown([
+      "Paragraph",
+      "",
+      "| A | B |",
+      "|---|---|",
+      "| 1 | 2 |",
+      "",
+      "```mermaid",
+      "flowchart LR",
+      "  A --> B",
+      "```",
+    ].join("\n"));
+
+    expect(rendered.visualGroups?.map((group) => group.inlineAlignment)).toEqual([
+      "start",
+      "center",
+      "center",
+    ]);
+
+    const disabledTable = await renderMarkdown([
+      "| A | B |",
+      "|---|---|",
+      "| 1 | 2 |",
+    ].join("\n"), { forced: true, rules: { table: false } });
+    const disabledMermaid = await renderMarkdown([
+      "```mermaid",
+      "flowchart LR",
+      "  A --> B",
+      "```",
+    ].join("\n"), { extensionRules: { mermaid: false } });
+
+    expect(disabledTable.visualGroups?.[0]?.inlineAlignment).toBe("start");
+    expect(disabledMermaid.visualGroups?.[0]?.inlineAlignment).toBe("start");
   });
 
   it("preserves unsupported image and HTML source with diagnostics", async () => {
@@ -121,7 +157,9 @@ describe("renderMarkdown", () => {
 
     expect(getCharGraphText(diagram)).toContain("开始");
     expect(getCharGraphText(diagram)).not.toContain("```");
+    expect(diagram.visualGroups?.[0]?.inlineAlignment).toBe("center");
     expect(getCharGraphText(unsupported)).toContain("```mermaid");
+    expect(unsupported.visualGroups?.[0]?.inlineAlignment).toBe("start");
     expect(unsupported.diagnostics[0]?.code).toBe("markdown-mermaid-render-failed");
     expect(getCharGraphText(partiallySupported)).toContain("click A");
     expect(getCharGraphText(partiallySupported)).toContain("```mermaid");

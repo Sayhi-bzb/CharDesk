@@ -4,6 +4,7 @@ import {
 } from "@chardesk/protocol";
 import Yoga, {
   Direction,
+  Display,
   Edge,
   FlexDirection,
   Gutter,
@@ -27,6 +28,7 @@ import type {
 import { buttonHorizontalPadding, buttonLayoutDefaults } from "./button.js";
 import { checkboxChromeMetrics } from "./checkbox.js";
 import { isCollectionItemKind } from "./widget-capabilities.js";
+import { resolveWidgetBorder } from "./border.js";
 
 const integer = (value: number, label: string) => {
   if (!Number.isFinite(value)) throw new RangeError(`${label} must be finite.`);
@@ -110,7 +112,9 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     || node.kind === "tree"
     || node.kind === "grid"
     || node.kind === "select"
-    || node.kind === "select-content";
+    || node.kind === "select-content"
+    || node.kind === "combobox"
+    || node.kind === "combobox-content";
   const defaults: CellLayoutStyle = node.kind === "progress"
     ? { width: 20, height: 1, flexShrink: 0 }
     : node.kind === "separator"
@@ -131,7 +135,7 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
         paddingLeft: node.kind === "tree-item" || node.kind === "list-item"
           ? collectionChromeMetrics(node).contentInset
           : node.kind === "menu-item" || node.kind === "grid-cell" ? 0 : 1,
-        ...(node.kind === "select-item" ? { paddingRight: 2 } : {}),
+        ...(node.kind === "select-item" || node.kind === "combobox-item" ? { paddingRight: 2 } : {}),
       }
     : node.kind === "slider" || node.kind === "range-slider"
       ? { width: 20, minWidth: 2, minHeight: 1, flexShrink: 0 }
@@ -151,18 +155,33 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
               ? 0
               : 1,
         }
-    : node.kind === "select-content"
-      ? { direction: "column", width: "100%", border: true, flexShrink: 0 }
+    : node.kind === "select-content" || node.kind === "combobox-content"
+      ? { direction: "column", width: "100%", flexShrink: 0 }
     : row
       ? { direction: "row", flexShrink: 0 }
     : column
       ? { direction: "column", flexShrink: 0 }
+      : node.kind === "combobox-input"
+        ? { width: "100%", height: 1, paddingLeft: 1, paddingRight: 2, flexShrink: 0 }
       : node.kind === "text-input"
-        ? { minHeight: 1, flexShrink: 0 }
+        ? { height: 1, paddingLeft: 1, paddingRight: 1, flexShrink: 0 }
         : node.kind === "text-area"
           ? { minHeight: 3, flexShrink: 0 }
           : {};
-  applyStyle(target, { ...defaults, ...node.style });
+  applyStyle(target, {
+    ...defaults,
+    ...node.style,
+    ...(node.kind === "select-content" || node.kind === "combobox-content"
+      ? { border: resolveWidgetBorder(node.kind, node.style.border) }
+      : {}),
+  });
+  target.setDisplay(node.kind === "accordion-content" && !node.expanded ? Display.None : Display.Flex);
+  if (node.kind === "accordion-trigger") {
+    target.setFlexDirection(FlexDirection.Row);
+    target.setMinHeight(1);
+    target.setFlexShrink(0);
+    target.setPadding(Edge.Left, (node.style.paddingLeft ?? node.style.padding ?? 0) + 2);
+  }
   // Grid selection chrome is reserved independently of consumer padding.
   if (node.kind === "grid-cell") {
     target.setPadding(Edge.Left,
@@ -199,7 +218,7 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
       (node.style.paddingRight ?? node.style.padding ?? 0) + chrome.paddingRight
     );
   }
-  if (node.kind === "overlay" || node.kind === "select-content" || node.kind === "range-slider-thumb") {
+  if (node.kind === "overlay" || node.kind === "select-content" || node.kind === "combobox-content" || node.kind === "range-slider-thumb") {
     target.setPositionType(PositionType.Absolute);
     target.setPosition(Edge.Left, node.kind === "overlay" ? node.overlayPosition?.x ?? 0 : 0);
     target.setPosition(Edge.Top, node.kind === "overlay" ? node.overlayPosition?.y ?? 0 : 0);
@@ -263,6 +282,11 @@ export class YogaLayoutEngine implements LayoutEngine {
         liveYogaResources.nodes += 1;
       }
       configureNode(widget, node);
+      if (widget.dialog) {
+        const max = widget.style.maxWidth;
+        const limit = typeof max === "string" ? viewport.width * parseFloat(max) / 100 : max ?? viewport.width;
+        node.setMaxWidth(Math.min(limit, viewport.width));
+      }
     }
     for (const [id, widget] of tree.nodes) {
       const parent = this.#nodes.get(id)!;

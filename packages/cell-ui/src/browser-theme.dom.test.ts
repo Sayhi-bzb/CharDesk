@@ -67,6 +67,7 @@ describe("readCellCssTheme", () => {
       "--cell-selection-foreground": CLASSIC_MAC_DARK_THEME.textSelectionStyle.color!,
       "--cell-range-surface": CLASSIC_MAC_DARK_THEME.rangeStyle.surface,
       "--cell-range-border": CLASSIC_MAC_DARK_THEME.rangeStyle.border,
+      "--cell-range-surface-effect": CLASSIC_MAC_DARK_THEME.rangeStyle.surfaceEffect!,
       "--cell-cursor": CLASSIC_MAC_DARK_THEME.cursorStyle.color,
       "--cell-cursor-foreground": CLASSIC_MAC_DARK_THEME.cursorStyle.textColor,
       "--cell-scrollbar-thumb": CLASSIC_MAC_DARK_THEME.scrollThumbStyle.color!,
@@ -108,8 +109,9 @@ describe("readCellCssTheme", () => {
         textColor: "rgb(0, 0, 0)",
       },
       rangeStyle: {
-        surface: "rgba(255, 255, 255, 0.22)",
+        surface: "rgba(255, 255, 255, 0.18)",
         border: "rgb(255, 255, 255)",
+        surfaceEffect: "contrast",
       },
       scrollThumbStyle: { color: "rgb(255, 255, 255)" },
       scrollTrackStyle: { color: "rgb(136, 136, 136)" },

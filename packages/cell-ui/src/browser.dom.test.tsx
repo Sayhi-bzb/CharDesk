@@ -297,12 +297,13 @@ const EditorProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => 
     <CellSurface
       viewport={{ width: 18, height: 9 }}
       onCommand={dispatch}
+      probeId="editor-product"
       cellRange={range.snapshot}
       onCellRangeCommand={range.dispatch}
       metrics={{ cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" }}
     >
       <Root id="editor-root">
-        <TextInput id="name" label="Name" state={name.snapshot} style={{ border: true, height: 3 }} />
+        <TextInput id="name" label="Name" state={name.snapshot} />
         <TextArea id="body" label="Document" state={body.snapshot} style={{ border: true, height: 5 }} />
       </Root>
     </CellSurface>
@@ -420,6 +421,7 @@ const CursorProduct = ({
       onCommand={editor.dispatch}
       theme={{
         cursorStyle: {
+          colorMode: "fixed",
           shape,
           color: "rgb(255, 0, 255)",
           textColor: "rgb(0, 255, 255)",
@@ -436,7 +438,6 @@ const CursorProduct = ({
           id="cursor-editor"
           label="Cursor editor"
           state={editor.snapshot}
-          style={{ border: true, height: 3 }}
         />
       </Root>
     </CellSurface>
@@ -512,7 +513,6 @@ const ModalEditorProduct = ({ open }: { open: boolean }) => {
           id="background-editor"
           label="Background editor"
           state={editor.snapshot}
-          style={{ border: true, height: 3 }}
         />
         {open ? (
           <Overlay
@@ -947,7 +947,7 @@ describe("CellSurface", () => {
       fireEvent.focus(input);
       expect(input).toHaveStyle({ cursor: "default" });
       expect(canvas).toHaveStyle({ cursor: "default" });
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 20, 20, 20] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 0, 20, 20] });
       expect(glyphs).toContainEqual({ color: "rgb(0, 255, 255)", text: "中" });
 
       fills.length = 0;
@@ -956,25 +956,25 @@ describe("CellSurface", () => {
         pointerId: 30,
         pointerType: "mouse",
         clientX: 15,
-        clientY: 30,
+        clientY: 10,
       });
       expect(screen.getByLabelText("Cursor surface")).not.toHaveAttribute("data-cell-focus-visible");
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 20, 20, 20] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 0, 20, 20] });
       fireEvent.pointerUp(screen.getByLabelText("Cursor surface"), {
         pointerId: 30,
         pointerType: "mouse",
         buttons: 0,
         clientX: 15,
-        clientY: 30,
+        clientY: 10,
       });
 
       fills.length = 0;
       mounted.rerender(<CursorProduct shape="bar" />);
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 20, 1, 20] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 0, 1, 20] });
 
       fills.length = 0;
       mounted.rerender(<CursorProduct shape="underline" />);
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 39, 20, 1] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 19, 20, 1] });
     } finally {
       context.fillRect.mockReset();
       context.fillText.mockReset();
@@ -997,7 +997,7 @@ describe("CellSurface", () => {
 
       context.fillRect.mockClear();
       vi.advanceTimersByTime(100);
-      expect(context.fillRect).toHaveBeenCalledWith(10, 20, 20, 20);
+      expect(context.fillRect).toHaveBeenCalledWith(10, 0, 20, 20);
       expect(readCellSurfaceProbe(surface)!.revision).toBe(revision);
       mounted.unmount();
     } finally {
@@ -1030,35 +1030,28 @@ describe("CellSurface", () => {
     }
   });
 
-  it("visible glyphs use full presentations; switching back restores clipping without changing Cells", () => {
+  it("repaints the full Surface for unbounded glyph ink without changing Cells", () => {
     const metrics = { cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" };
     const children = <Root><Text>→</Text></Root>;
     const onCommand = () => undefined;
     const viewport = { width: 8, height: 2 };
-    const view = (glyphOverflow?: "clip" | "visible", color = "red") => <CellSurface
+    const view = (color = "red") => <CellSurface
       viewport={viewport} metrics={metrics} onCommand={onCommand} probeId="overflow"
-      label="Overflow" glyphOverflow={glyphOverflow} palette={{ color, background: "white" }}>
+      label="Overflow" palette={{ color, background: "white" }}>
       {children}
     </CellSurface>;
     context.clip.mockClear();
     const mounted = render(view());
-    expect(context.clip).toHaveBeenCalled();
+    expect(context.clip).not.toHaveBeenCalled();
     const surface = screen.getByLabelText("Overflow");
     const before = readCellSurfaceProbe(surface)!;
-    context.clip.mockClear(); context.fillRect.mockClear();
-    mounted.rerender(view("visible"));
+    context.fillRect.mockClear();
+    mounted.rerender(view("blue"));
     expect(context.clip).not.toHaveBeenCalled();
     expect(context.fillRect).toHaveBeenCalledWith(0, 0, 80, 40);
-    expect(readCellSurfaceProbe(surface)!.presentation?.glyphOverflowMode).toBe("visible");
-    context.fillRect.mockClear();
-    mounted.rerender(view("visible", "blue"));
-    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 80, 40);
-    mounted.rerender(view("clip"));
-    expect(context.clip).toHaveBeenCalled();
     const after = readCellSurfaceProbe(surface)!;
     expect(after.cells).toEqual(before.cells);
     expect(after.revision).toBe(before.revision);
-    expect(after.presentation?.glyphOverflowMode).toBe("clip");
   });
   it("cancels a captured rectangle drag when metrics change and preserves its selection", () => {
     const children = <Root><Text>abcdefgh</Text></Root>;
@@ -1098,7 +1091,7 @@ describe("CellSurface", () => {
     await waitFor(() => expect(YogaLayoutEngine.getResourceCounts()).toEqual(baseline));
   });
 
-  it("presents paint-only commits without clearing the full Canvas", () => {
+  it("repaints the full Canvas for paint-only commits so overhanging ink cannot persist", () => {
     const view = (selectedId: string) => (
       <CellSurface
         viewport={{ width: 10, height: 3 }}
@@ -1119,10 +1112,8 @@ describe("CellSurface", () => {
     context.fillRect.mockClear();
     mounted.rerender(view("b"));
 
-    expect(context.clearRect).not.toHaveBeenCalled();
-    expect(context.fillRect).not.toHaveBeenCalledWith(0, 0, 100, 60);
-    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 100, 20);
-    expect(context.fillRect).toHaveBeenCalledWith(0, 20, 100, 20);
+    expect(context.clearRect).toHaveBeenCalledWith(0, 0, 100, 60);
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 100, 60);
   });
 
   it("uses one font profile for loading and presentation, then reloads on profile change", async () => {
@@ -1210,11 +1201,13 @@ describe("CellSurface", () => {
       metrics: { cellWidth: 9, cellHeight: 19, fontSize: 15 },
       fontProfileId: "test/prop/cell-ui-graphics-v1",
       requestedFontRoutes: {
-        display: { family: "Prop Face", fontSize: 15, scaleX: 1 },
-        cjk: { family: "Prop CJK", fontSize: 15, scaleX: 1 },
+        display: { family: "Prop Face", fontSize: 15 },
+        cjk: { family: "Prop CJK", fontSize: 15 },
       },
-      glyphOverflow: [{
-        text: "W", row: 0, col: 0, spanCells: 1, measuredWidth: 12, availableWidth: 9,
+      glyphInkOverhang: [{
+        text: "W", row: 0, col: 0, spanCells: 1,
+        inkLeft: -1.5, inkRight: 10.5, allocatedLeft: 0, allocatedRight: 9,
+        overhangLeft: 1.5, overhangRight: 1.5,
       }],
     });
   });
@@ -1825,6 +1818,36 @@ describe("CellSurface", () => {
     expect(screen.getAllByRole("textbox")).toHaveLength(2);
   });
 
+  it("keeps logical editor focus dormant when the Surface blank area owns DOM focus", () => {
+    const { container } = render(<EditorProduct />);
+    const surface = screen.getByLabelText("Cell interface");
+    const input = screen.getByRole("textbox", { name: "Name" });
+    const canvas = container.querySelector("canvas")!;
+
+    fireEvent.focus(input);
+    expect(surface).toHaveAttribute("data-cell-focused", "name");
+    expect(surface).toHaveAttribute("data-cell-active-focus", "name");
+    expect(readCellSurfaceProbe(surface)).toMatchObject({
+      focusedId: "name",
+      activeFocusId: "name",
+    });
+
+    fireEvent.pointerDown(canvas, {
+      button: 0,
+      pointerId: 41,
+      clientX: 5,
+      clientY: 170,
+    });
+
+    expect(surface).toHaveFocus();
+    expect(surface).toHaveAttribute("data-cell-focused", "name");
+    expect(surface).not.toHaveAttribute("data-cell-active-focus");
+    expect(readCellSurfaceProbe(surface)).toMatchObject({
+      focusedId: "name",
+      activeFocusId: null,
+    });
+  });
+
   it("does not activate or navigate a text editor through composition or modified arrows", () => {
     const onCommand = vi.fn();
     render(<EditorProduct onCommand={onCommand} />);
@@ -2168,7 +2191,7 @@ describe("CellSurface", () => {
     const snapshot = readCellSurfaceProbe(surface)!;
     expect(surface).toHaveAttribute("data-cell-probe", "browser-test");
     expect(snapshot).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       probeId: "browser-test",
       text: pilot.text(),
       focusedId: "probe-open",

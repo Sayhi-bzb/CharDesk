@@ -21,6 +21,7 @@ it("defaults to a blinking terminal block cursor", () => {
   expect(theme).toBe(CLASSIC_MAC_LIGHT_THEME);
   expect(resolveCellFeedback().activationBlinkCount).toBe(2);
   expect(theme.cursorStyle).toEqual({
+    colorMode: "inverse",
     shape: "block",
     color: "#000000",
     textColor: "#FFFFFF",
@@ -30,6 +31,7 @@ it("defaults to a blinking terminal block cursor", () => {
   expect(theme.rangeStyle).toEqual({
     surface: "rgba(0, 0, 0, 0.22)",
     border: "#000000",
+    surfaceEffect: "tint",
   });
 });
 

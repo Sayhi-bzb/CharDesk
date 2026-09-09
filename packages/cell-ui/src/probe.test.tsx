@@ -57,7 +57,7 @@ describe("Cell probe", () => {
 
     const snapshot = pilot.probe({ x: 0, y: 0, width: 12, height: 1 });
     expect(snapshot).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       probeId: null,
       region: { x: 0, y: 0, width: 12, height: 1 },
       viewport: { width: 12, height: 3 },
@@ -68,7 +68,7 @@ describe("Cell probe", () => {
     expect(snapshot.cells.filter((cell) => cell.continuation)).toHaveLength(2);
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
     expect(formatCellProbe(snapshot, { header: true })).toBe(
-      "cell-ui/probe@4  anonymous  12×1  focus=open\n✓ Open 世界"
+      "cell-ui/probe@5  anonymous  12×1  focus=open active=open\n✓ Open 世界"
     );
 
     expect(pilot.inspect({ x: 2, y: 0 })).toMatchObject({
@@ -111,26 +111,28 @@ describe("Cell probe", () => {
         metrics: { cellWidth: 9, cellHeight: 19, fontSize: 15 },
         fontProfileId: "gallery/test-font",
         requestedFontRoutes: {
-          "cell-glyph": { family: "'JuliaMono'", fontSize: 15, scaleX: 1, baselineShiftEm: 0, boldStrategy: "none" as const },
-          display: { family: "Test Font", fontSize: 15, scaleX: 1, baselineShiftEm: 0, boldStrategy: "overdraw" as const, boldOverdrawEm: 1 / 15 },
-          cjk: { family: "Test Font", fontSize: 15, scaleX: 1, baselineShiftEm: 0, boldStrategy: "native" as const },
-          nerd: { family: "Nerd", fontSize: 15, scaleX: 0.6, baselineShiftEm: 0, boldStrategy: "none" as const },
-          symbol: { family: "Symbol", fontSize: 15, scaleX: 1, baselineShiftEm: 0, boldStrategy: "none" as const },
-          emoji: { family: "Emoji", fontSize: 15, scaleX: 1, baselineShiftEm: 0, boldStrategy: "none" as const },
+          "cell-glyph": { family: "'JuliaMono'", fontSize: 15, baselineShiftEm: 0, boldStrategy: "none" as const },
+          display: { family: "Test Font", fontSize: 15, baselineShiftEm: 0, boldStrategy: "overdraw" as const, boldOverdrawEm: 1 / 15 },
+          cjk: { family: "Test Font", fontSize: 15, baselineShiftEm: 0, boldStrategy: "native" as const },
+          nerd: { family: "Nerd", fontSize: 12, baselineShiftEm: 0, boldStrategy: "none" as const },
+          symbol: { family: "Symbol", fontSize: 15, baselineShiftEm: 0, boldStrategy: "none" as const },
+          emoji: { family: "Emoji", fontSize: 15, baselineShiftEm: 0, boldStrategy: "none" as const },
         },
-        glyphOverflow: [{
-          text: "W", row: 0, col: 0, spanCells: 1, measuredWidth: 12.5, availableWidth: 9,
+        glyphInkOverhang: [{
+          text: "W", row: 0, col: 0, spanCells: 1,
+          inkLeft: -1.75, inkRight: 10.75, allocatedLeft: 0, allocatedRight: 9,
+          overhangLeft: 1.75, overhangRight: 1.75,
         }],
       },
     };
 
     expect(formatCellProbe(snapshot, { header: true })).toBe(
-      "cell-ui/probe@4  font-contract  2×1  focus=none\n" +
+      "cell-ui/probe@5  font-contract  2×1  focus=none active=none\n" +
       "font-profile=gallery/test-font cell=9×19 base=15px\n" +
-      "font display=Test Font size=15px scaleX=1 bold-strategy=overdraw bold-overdraw=1px\n" +
-      "font cjk=Test Font size=15px scaleX=1 bold-strategy=native\n" +
-      "font cell-glyph='JuliaMono' size=15px scaleX=1 bold-strategy=none\n" +
-      "glyph-overflow \"W\"@(0,0) 12.5px>9px\n" +
+      "font display=Test Font size=15px bold-strategy=overdraw bold-overdraw=1px\n" +
+      "font cjk=Test Font size=15px bold-strategy=native\n" +
+      "font cell-glyph='JuliaMono' size=15px bold-strategy=none\n" +
+      "glyph-ink \"W\"@(0,0) left=1.75px right=1.75px\n" +
       "W"
     );
     pilot.dispose();

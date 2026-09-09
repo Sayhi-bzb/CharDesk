@@ -9,7 +9,7 @@ import {
 
 describe("Maple display font pack", () => {
   it("composes Maple display and CJK with independent core fallbacks", () => {
-    expect(MAPLE_FONT_PROFILE.id).toBe("chardesk/maple-v5");
+    expect(MAPLE_FONT_PROFILE.id).toBe("chardesk/maple-v6");
     expect(MAPLE_FONT_PROFILE.capabilities.display.families.regular).toBe(MAPLE_FONT_FAMILY);
     expect(MAPLE_FONT_PROFILE.capabilities.cjk.families.regular).toBe(MAPLE_FONT_FAMILY);
     expect(MAPLE_FONT_PROFILE.capabilities.nerd.families.regular).toContain("Symbols Nerd Font Mono");

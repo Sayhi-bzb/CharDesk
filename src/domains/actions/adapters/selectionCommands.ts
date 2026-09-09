@@ -4,7 +4,8 @@ import { getStaticGridSelectionAreas } from "@/domains/selection/public";
 import { feedback } from "@/shared/services/effects";
 import { parsePlainTextCells } from "@/shared/utils/ansiText";
 import { areJsonValuesEqual } from "@/shared/utils/equality";
-import type { CanvasArtifactPalette } from "@/shared/metrics";
+import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
+import type { ResolvedCanvasTheme } from "@/shared/canvas-appearance/runtime";
 import {
   buildClipboardPayload,
   hasClipboardSource,
@@ -76,10 +77,12 @@ export const createSelectionCommandFactory = ({
   renderClipboardText,
   getFontProfile,
   getArtifactPalette,
+  getResolvedTheme,
 }: {
   renderClipboardText: RenderClipboardText;
   getFontProfile?: () => import("@chardesk/fonts").CharDeskFontProfile;
   getArtifactPalette?: () => CanvasArtifactPalette;
+  getResolvedTheme?: () => ResolvedCanvasTheme;
 }): SelectionCommandFactory => ({ getState: get, mutations }) => ({
   canCopyOrCut: () => {
     const state = get();
@@ -139,11 +142,13 @@ export const createSelectionCommandFactory = ({
 
   pasteFromClipboard: async (options) => {
     const initialState = get();
+    const themeMode = getResolvedTheme?.() ?? "light";
     const targetFingerprint = getClipboardTargetFingerprint(initialState);
     const payload = await readClipboardPayload(
       options?.eventDataTransfer,
       initialState.brushColor,
-      renderClipboardText
+      renderClipboardText,
+      { themeMode }
     );
     const state = get();
     if ("error" in payload && payload.error) return failed(payload.error);

@@ -1,6 +1,6 @@
 import type { CellTextStyle, WidgetNode, WidgetTree } from "./types.js";
 import type { CellUiTheme } from "./theme.js";
-import { isPrimitiveControlKind, isFilledSurfaceKind, feedbackRule } from "./widget-capabilities.js";
+import { isPrimitiveControlKind, isFilledSurfaceKind, isTextEditorKind, feedbackRule } from "./widget-capabilities.js";
 import { projectWidgetState } from "./visual-state.js";
 import { resolvePrimitiveAppearance, resolveThumbAppearance } from "./primitive-appearance.js";
 
@@ -49,6 +49,33 @@ export const resolveCellTextStyle = (
 
 export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: CellUiTheme) => {
   const projection = projectWidgetState(tree, node);
+  const finish = (
+    style: CellTextStyle,
+    thumb = theme.sliderThumb,
+    surfaceRegion: "layout" | "content" = "layout",
+  ) => ({
+    style,
+    thumb,
+    surfaceRegion,
+    borderStyle: {
+      ...style,
+      ...theme.borderStyle,
+      ...(projection.editingActive ? { color: style.color, backgroundColor: style.backgroundColor } : {}),
+    },
+  });
+  if (isTextEditorKind(node.kind)) {
+    const singleLine = node.kind === "text-input" || node.kind === "combobox-input";
+    return finish(
+      {
+        ...(singleLine ? theme.surfaceStyle : {}),
+        ...node.textStyle,
+        ...(projection.editingActive ? theme.focusedSurfaceStyle : {}),
+        ...(projection.disabled ? theme.disabledStyle : {}),
+      },
+      theme.sliderThumb,
+      singleLine || node.style.border ? "layout" : "content",
+    );
+  }
   const { owner } = projection;
   const focusNode = owner ?? node;
   const rule = feedbackRule(owner?.kind ?? node.kind);
@@ -60,18 +87,18 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     const colors = phase % 2 === 0
       ? { color: reference.backgroundColor, backgroundColor: reference.color }
       : reference;
-    return { style: { ...node.textStyle, ...colors }, thumb: theme.sliderThumb };
+    return finish({ ...node.textStyle, ...colors });
   }
-  const focused = focusNode.focused && focusNode.focusVisible;
+  const focused = (focusNode.focused && focusNode.focusVisible) || focusNode.active;
   const base = primary
     ? disabled ? theme.surfaceStyle : theme.buttonPrimaryStyle
     : isFilledSurfaceKind(node.kind) || owner?.kind === "select-trigger" ? theme.surfaceStyle : {};
   if (owner && isPrimitiveControlKind(owner.kind)) {
-    if (rule.region === "thumb") return resolveThumbAppearance({ ...base, ...node.textStyle }, projection, theme);
-    return {
-      style: resolvePrimitiveAppearance({ ...base, ...node.textStyle }, projection, theme),
-      thumb: theme.sliderThumb,
-    };
+    if (rule.region === "thumb") {
+      const appearance = resolveThumbAppearance({ ...base, ...node.textStyle }, projection, theme);
+      return finish(appearance.style, appearance.thumb);
+    }
+    return finish(resolvePrimitiveAppearance({ ...base, ...node.textStyle }, projection, theme));
   }
   const style = resolveCellStateStyle({ ...base, ...node.textStyle }, {
     primary,
@@ -83,5 +110,5 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     collection: owner !== undefined,
     disabled,
   }, theme);
-  return { style, thumb: theme.sliderThumb };
+  return finish(style);
 };

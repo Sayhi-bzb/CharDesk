@@ -1,5 +1,8 @@
 import type { TextRenderingRuntime } from "./runtime";
-import type { CompactTextRenderResult } from "./types";
+import type {
+  CompactTextRenderResult,
+  TextRenderContext,
+} from "./types";
 
 const WORKER_RENDER_THRESHOLD = 50_000;
 
@@ -28,11 +31,13 @@ export class TextRenderingWorkerClient {
   render = (
     source: string,
     defaultColor: string,
-    options?: { signal?: AbortSignal }
+    options?: { signal?: AbortSignal } & Partial<TextRenderContext>
   ) => {
     if (options?.signal?.aborted) return Promise.reject(createAbortError());
     if (source.length < WORKER_RENDER_THRESHOLD || typeof Worker === "undefined") {
-      return this.#runtime.renderCompact(source, defaultColor);
+      return this.#runtime.renderCompact(source, defaultColor, {
+        themeMode: options?.themeMode ?? "light",
+      });
     }
     const worker = this.#getWorker();
     const id = this.#nextId++;
@@ -53,6 +58,7 @@ export class TextRenderingWorkerClient {
       source,
       defaultColor,
       profile: this.#runtime.getProfile(),
+      context: { themeMode: options?.themeMode ?? "light" },
     });
     return result;
   };

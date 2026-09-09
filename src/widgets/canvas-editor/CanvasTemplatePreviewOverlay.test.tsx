@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { getCanvasTemplateProjection } from "@/domains/canvas-templates/public";
+import { getCanvasTemplateMaterialization } from "@/domains/canvas-templates/public";
+import { CHARDESK_LIGHT_CONTENT_THEME } from "@chardesk/rendering/theme";
 
 vi.mock("@/shared/components/CellFrameCanvas", () => ({
   CellFrameCanvas: ({ zoom }: { zoom?: number }) => (
@@ -12,7 +13,10 @@ import { CanvasTemplatePreviewOverlay } from "./CanvasTemplatePreviewOverlay";
 
 describe("CanvasTemplatePreviewOverlay", () => {
   it("places the shared artifact presenter on the target grid rectangle", () => {
-    const projection = getCanvasTemplateProjection("button");
+    const projection = getCanvasTemplateMaterialization(
+      "button",
+      CHARDESK_LIGHT_CONTENT_THEME
+    );
 
     render(
       <CanvasTemplatePreviewOverlay

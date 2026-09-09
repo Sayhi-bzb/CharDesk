@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  CHARDESK_DARK_RENDER_THEME,
   CHARDESK_LIGHT_RENDER_THEME,
   CHARDESK_RENDER_THEME_TOKENS,
   resolveCharDeskRenderTheme,
 } from "./render-theme.js";
 
-const contrastOnWhite = (hex: string) => {
+const luminance = (hex: string) => {
   const linear = (channel: number) => {
     const value = channel / 255;
     return value <= 0.04045
@@ -15,10 +16,15 @@ const contrastOnWhite = (hex: string) => {
   const rgb = [1, 3, 5].map((offset) =>
     Number.parseInt(hex.slice(offset, offset + 2), 16)
   );
-  const luminance = 0.2126 * linear(rgb[0]!)
+  return 0.2126 * linear(rgb[0]!)
     + 0.7152 * linear(rgb[1]!)
     + 0.0722 * linear(rgb[2]!);
-  return 1.05 / (luminance + 0.05);
+};
+
+const contrast = (left: string, right: string) => {
+  const [lighter, darker] = [luminance(left), luminance(right)]
+    .sort((a, b) => b - a);
+  return (lighter! + 0.05) / (darker! + 0.05);
 };
 
 describe("CharDesk render theme", () => {
@@ -54,6 +60,27 @@ describe("CharDesk render theme", () => {
     });
   });
 
+  it("publishes the matching Primer dark palette", () => {
+    expect(CHARDESK_DARK_RENDER_THEME).toEqual({
+      foreground: "#f0f6fc",
+      background: "#0d1117",
+      accent: "#58a6ff",
+      "accent-foreground": "#ffffff",
+      info: "#58a6ff",
+      done: "#a371f7",
+      success: "#3fb950",
+      warning: "#d29922",
+      danger: "#f85149",
+      "muted-foreground": "#8b949e",
+      "border-subtle": "#30363d",
+      "grid-subtle": "#21262d",
+      surface: "#161b22",
+      "surface-foreground": "#c9d1d9",
+    });
+    expect(Object.keys(CHARDESK_DARK_RENDER_THEME))
+      .toEqual([...CHARDESK_RENDER_THEME_TOKENS]);
+  });
+
   it("keeps semantic text readable and structural strokes stronger than grids", () => {
     const textTokens = [
       "foreground",
@@ -67,11 +94,36 @@ describe("CharDesk render theme", () => {
     ] as const;
 
     expect(textTokens.every((token) =>
-      contrastOnWhite(CHARDESK_LIGHT_RENDER_THEME[token]) >= 4.5
+      contrast(
+        CHARDESK_LIGHT_RENDER_THEME[token],
+        CHARDESK_LIGHT_RENDER_THEME.background
+      ) >= 4.5
     )).toBe(true);
-    expect(contrastOnWhite(CHARDESK_LIGHT_RENDER_THEME["border-subtle"]))
+    expect(contrast(
+      CHARDESK_LIGHT_RENDER_THEME["border-subtle"],
+      CHARDESK_LIGHT_RENDER_THEME.background
+    ))
       .toBeGreaterThan(
-        contrastOnWhite(CHARDESK_LIGHT_RENDER_THEME["grid-subtle"])
+        contrast(
+          CHARDESK_LIGHT_RENDER_THEME["grid-subtle"],
+          CHARDESK_LIGHT_RENDER_THEME.background
+        )
       );
+
+    expect(textTokens.every((token) =>
+      contrast(
+        CHARDESK_DARK_RENDER_THEME[token],
+        CHARDESK_DARK_RENDER_THEME.background
+      ) >= 4.5
+    )).toBe(true);
+    expect(contrast(
+      CHARDESK_DARK_RENDER_THEME["border-subtle"],
+      CHARDESK_DARK_RENDER_THEME.background
+    )).toBeGreaterThan(
+      contrast(
+        CHARDESK_DARK_RENDER_THEME["grid-subtle"],
+        CHARDESK_DARK_RENDER_THEME.background
+      )
+    );
   });
 });

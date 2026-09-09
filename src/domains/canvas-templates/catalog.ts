@@ -1,12 +1,16 @@
 import type { TextAttributes } from "@/shared/types";
+import type { CharDeskContentThemeToken } from "@chardesk/rendering/theme";
 
 export type CanvasTemplateGroup = "template" | "component";
 export type CanvasTemplateId = "button" | "badge" | "switch" | "alert" | "tabs" | "input" | "checkbox" | "radio" | "divider" | "card" | "textarea" | "status" | "accordion" | "avatar" | "breadcrumb" | "calendar" | "barChart" | "lineChart" | "table" | "pagination" | "slider" | "progress" | "scrollArea" | "amibios" | "spotify" | "safari" | "filetree" | "timeline" | "snippet" | "terminal" | "phone";
+export type CanvasTemplateColor =
+  | string
+  | Readonly<{ token: CharDeskContentThemeToken }>;
 export type CanvasTemplateSpan = Readonly<{
   x: number;
   text: string;
-  color: string;
-  bgColor?: string;
+  color: CanvasTemplateColor;
+  bgColor?: CanvasTemplateColor;
   attrs?: TextAttributes;
   href?: string;
 }>;
@@ -23,6 +27,13 @@ export type CanvasTemplateDefinition = Readonly<{
   rows: readonly CanvasTemplateRow[];
 }>;
 
+export const FIXED_COLOR_CANVAS_TEMPLATE_IDS = [
+  "amibios",
+  "spotify",
+  "safari",
+  "terminal",
+] as const satisfies readonly CanvasTemplateId[];
+
 export const CANVAS_TEMPLATES = [
   {
     "id": "button",
@@ -37,8 +48,8 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "[BUTTON]",
-            "color": "#000000",
-            "bgColor": "#dbeafe"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           }
         ]
       }
@@ -57,20 +68,20 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": " ",
-            "color": "#000000",
-            "bgColor": "#dcfcf3"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           },
           {
             "x": 1,
             "text": " badge",
-            "color": "#0d9488",
-            "bgColor": "#dcfcf3"
+            "color": { "token": "info" },
+            "bgColor": { "token": "surface" }
           },
           {
             "x": 8,
             "text": " ",
-            "color": "#000000",
-            "bgColor": "#dcfcf3"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           }
         ]
       }
@@ -89,7 +100,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "󰨙 Switch",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -108,7 +119,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "╭──────────────────────╮",
-            "color": "#0d9488"
+            "color": { "token": "info" }
           }
         ]
       },
@@ -118,22 +129,22 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#0d9488"
+            "color": { "token": "info" }
           },
           {
             "x": 2,
             "text": "󰄳",
-            "color": "#0d9488"
+            "color": { "token": "info" }
           },
           {
             "x": 5,
             "text": "AlertTitle",
-            "color": "#0d9488"
+            "color": { "token": "info" }
           },
           {
             "x": 23,
             "text": "│",
-            "color": "#0d9488"
+            "color": { "token": "info" }
           }
         ]
       },
@@ -143,17 +154,17 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#0d9488"
+            "color": { "token": "info" }
           },
           {
             "x": 5,
             "text": "AlertDescription",
-            "color": "#0d9488"
+            "color": { "token": "info" }
           },
           {
             "x": 23,
             "text": "│",
-            "color": "#0d9488"
+            "color": { "token": "info" }
           }
         ]
       },
@@ -163,7 +174,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "╰──────────────────────╯",
-            "color": "#0d9488"
+            "color": { "token": "info" }
           }
         ]
       }
@@ -182,13 +193,13 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "tab 1 |",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 7,
             "text": " tab 2 ",
-            "color": "#2563eb",
-            "bgColor": "#eff6ff",
+            "color": { "token": "accent" },
+            "bgColor": { "token": "surface" },
             "attrs": {
               "underline": true
             }
@@ -196,7 +207,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 14,
             "text": "| tab 3",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -215,13 +226,13 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "Name: ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 6,
             "text": "[ CharDesk     |   ]",
-            "color": "#000000",
-            "bgColor": "#dbeafe"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           }
         ]
       }
@@ -240,7 +251,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "󰱒 checkbox 1",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -250,7 +261,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "󰄱 checkbox 2",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -269,7 +280,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "󰄰 radio 1",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -279,7 +290,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "󰄳 radio 2",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -289,7 +300,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "󰄰 radio 3",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -308,7 +319,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "────────────",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -327,7 +338,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "╭───────────────────╮",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -337,12 +348,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│CardTitle",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 20,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -352,7 +363,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "├───────────────────┤",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -362,12 +373,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│CardContent",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 20,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -377,12 +388,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 20,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -392,12 +403,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 20,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -407,12 +418,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 20,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -422,7 +433,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "├───────────────────┤",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -432,12 +443,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│CardFooter",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 20,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -447,7 +458,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "╰───────────────────╯",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -466,12 +477,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "TextArea                 ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "█",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           }
         ]
       },
@@ -481,7 +492,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "                         │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -491,12 +502,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "Press Ctrl+S to save...",
-            "color": "#6b7280"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 23,
             "text": "  │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -506,8 +517,8 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "󰦨 UTF-8  󰚰 Ln 2, Col 44   ",
-            "color": "#2563eb",
-            "bgColor": "#eff6ff"
+            "color": { "token": "accent" },
+            "bgColor": { "token": "surface" }
           }
         ]
       }
@@ -526,7 +537,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "󰄳 Success",
-            "color": "#22c55e"
+            "color": { "token": "success" }
           }
         ]
       },
@@ -536,7 +547,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": " Warning",
-            "color": "#eab308"
+            "color": { "token": "warning" }
           }
         ]
       },
@@ -546,7 +557,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": " Error",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           }
         ]
       },
@@ -556,7 +567,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": " Loading",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           }
         ]
       }
@@ -575,7 +586,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "Accordion          󰅃",
-            "color": "#000000",
+            "color": { "token": "foreground" },
             "attrs": {
               "bold": true,
               "underline": true
@@ -589,8 +600,8 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "AccordionContent    ",
-            "color": "#000000",
-            "bgColor": "#e2e8f0"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           }
         ]
       },
@@ -600,8 +611,8 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "                    ",
-            "color": "#000000",
-            "bgColor": "#e2e8f0"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           }
         ]
       },
@@ -611,7 +622,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "Accordion          󰅀",
-            "color": "#000000",
+            "color": { "token": "foreground" },
             "attrs": {
               "bold": true
             }
@@ -633,17 +644,17 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "󰀉",
-            "color": "#0d9488"
+            "color": { "token": "info" }
           },
           {
             "x": 1,
             "text": " ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 2,
             "text": "󰭕 󰭕",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           }
         ]
       }
@@ -662,7 +673,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "BreadcrumbItem / ... / BreadcrumbItem",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -681,8 +692,8 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "󰃭  July 2026          󰁍  󰁔",
-            "color": "#000000",
-            "bgColor": "#f3f4f6"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           }
         ]
       },
@@ -692,8 +703,8 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "Su  Mo  Tu  We  Th  Fr  Sa",
-            "color": "#9ca3af",
-            "bgColor": "#f3f4f6"
+            "color": { "token": "muted-foreground" },
+            "bgColor": { "token": "surface" }
           }
         ]
       },
@@ -703,23 +714,23 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "28  29  30  ",
-            "color": "#9ca3af"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 12,
             "text": "01 ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 15,
             "text": " 02 ",
-            "color": "#1d4ed8",
-            "bgColor": "#dbeafe"
+            "color": { "token": "accent" },
+            "bgColor": { "token": "surface" }
           },
           {
             "x": 19,
             "text": " 03  04",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -729,7 +740,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "05  06  07  08  09  10  11",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -739,7 +750,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "12  13  14  15  16  17  18",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -749,7 +760,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "19  20  21  22  23  24  25",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -759,12 +770,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "26  27  28  29  30  31 ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 23,
             "text": " 01",
-            "color": "#9ca3af"
+            "color": { "token": "muted-foreground" }
           }
         ]
       }
@@ -783,17 +794,17 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│     ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 6,
             "text": "█",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 7,
             "text": "       ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -803,37 +814,37 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "├ ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 2,
             "text": "▄",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 3,
             "text": "   ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 6,
             "text": "█",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 7,
             "text": "   ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 10,
             "text": "▆",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 11,
             "text": "   ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -843,62 +854,62 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│ ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 2,
             "text": "█",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 3,
             "text": " ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 4,
             "text": "▇",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 5,
             "text": " ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 6,
             "text": "█",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 7,
             "text": " ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 8,
             "text": "▃",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 9,
             "text": " ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 10,
             "text": "█",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 11,
             "text": " ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 12,
             "text": "█",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           }
         ]
       },
@@ -908,7 +919,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "└─┴─┴─┴─┴─┴─┴─",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -927,12 +938,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "├         ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 10,
             "text": "╭─",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           }
         ]
       },
@@ -942,22 +953,22 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│   ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 4,
             "text": "╭─╮",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           },
           {
             "x": 7,
             "text": "   ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 10,
             "text": "│",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           }
         ]
       },
@@ -967,32 +978,32 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "├ ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 2,
             "text": "──╯",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           },
           {
             "x": 5,
             "text": " ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 6,
             "text": "│",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           },
           {
             "x": 7,
             "text": " ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 8,
             "text": "╭─╯",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           }
         ]
       },
@@ -1002,12 +1013,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│     ",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           },
           {
             "x": 6,
             "text": "╰─╯",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           }
         ]
       },
@@ -1017,7 +1028,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "└─┴─┴─┴─┴─┴─┴",
-            "color": "#1f2937"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -1036,8 +1047,8 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": " TableCaption                    ",
-            "color": "#ffffff",
-            "bgColor": "#1f2937"
+            "color": { "token": "accent-foreground" },
+            "bgColor": { "token": "accent" }
           }
         ]
       },
@@ -1047,7 +1058,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "         Head 1   Head 2   Head 3",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -1057,8 +1068,8 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": " Row 1   Cell     Cell     Cell  ",
-            "color": "#000000",
-            "bgColor": "#d1d5db"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           }
         ]
       },
@@ -1068,7 +1079,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": " Row 2   Cell     Cell     Cell",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -1078,8 +1089,8 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": " Row 3   Cell     Cell     Cell  ",
-            "color": "#000000",
-            "bgColor": "#d1d5db"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           }
         ]
       },
@@ -1089,8 +1100,8 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": " TableFooter                     ",
-            "color": "#ffffff",
-            "bgColor": "#1f2937"
+            "color": { "token": "accent-foreground" },
+            "bgColor": { "token": "accent" }
           }
         ]
       }
@@ -1109,13 +1120,13 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "< Previous  1  2 ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 17,
             "text": " 3 ",
-            "color": "#1d4ed8",
-            "bgColor": "#dbeafe",
+            "color": { "token": "accent" },
+            "bgColor": { "token": "surface" },
             "attrs": {
               "bold": true
             }
@@ -1123,7 +1134,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 20,
             "text": "   Next >",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -1142,22 +1153,22 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "Slider ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 7,
             "text": "────",
-            "color": "#d1d5db"
+            "color": { "token": "border-subtle" }
           },
           {
             "x": 11,
             "text": "●────────────●",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 25,
             "text": "───",
-            "color": "#d1d5db"
+            "color": { "token": "border-subtle" }
           }
         ]
       }
@@ -1176,19 +1187,19 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "         ",
-            "color": "#6b7280",
-            "bgColor": "#3b82f6"
+            "color": { "token": "muted-foreground" },
+            "bgColor": { "token": "accent" }
           },
           {
             "x": 9,
             "text": "    ",
-            "color": "#6b7280",
-            "bgColor": "#f3f4f6"
+            "color": { "token": "muted-foreground" },
+            "bgColor": { "token": "surface" }
           },
           {
             "x": 13,
             "text": "70%",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           }
         ]
       }
@@ -1207,7 +1218,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "ScrollArea │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -1217,17 +1228,17 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "├─Item    ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 10,
             "text": " ",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 11,
             "text": "█",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -1237,7 +1248,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "├─Item     │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -1247,7 +1258,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "└─Item     │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -2800,7 +2811,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": " PROJECT-ROOT",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -2810,12 +2821,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "󰉋 node_modules",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -2825,12 +2836,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": " src",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -2840,17 +2851,17 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 4,
             "text": " app",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -2860,22 +2871,22 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 4,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 6,
             "text": " layout.tsx",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -2885,22 +2896,22 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 4,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 6,
             "text": " page.tsx",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -2910,17 +2921,17 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 4,
             "text": " components",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -2930,22 +2941,22 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 4,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 6,
             "text": " ui",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -2955,27 +2966,27 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 4,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 6,
             "text": "┼",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 8,
             "text": " button.tsx",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -2985,22 +2996,22 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 4,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 6,
             "text": " footer.tsx",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3010,22 +3021,22 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 4,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 6,
             "text": " header.tsx",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3035,17 +3046,17 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 4,
             "text": " lib",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3055,22 +3066,22 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 4,
             "text": "┼",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 6,
             "text": " utils.ts",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3080,12 +3091,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "󰉋 public",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3095,12 +3106,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "󰘦 package.json",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3110,12 +3121,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": " README.md",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -3134,7 +3145,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "● Q1",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3144,12 +3155,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "Jan - Mar",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3159,7 +3170,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           }
         ]
       },
@@ -3169,7 +3180,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "● Q2",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3179,12 +3190,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "Apr - Jun",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3194,7 +3205,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           }
         ]
       },
@@ -3204,7 +3215,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "○ Q3",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3214,12 +3225,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#64748b"
+            "color": { "token": "muted-foreground" }
           },
           {
             "x": 2,
             "text": "Jul - Sep",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -3238,7 +3249,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "npm  pnpm  yarn  bun        ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3248,7 +3259,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "▔▔▔",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3258,7 +3269,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "npm install @xx/xx",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }
@@ -3471,7 +3482,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "╭────────────────────────╮",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3481,7 +3492,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│          ━━━━         │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3491,7 +3502,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│────────────────────────│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3501,17 +3512,17 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│ 󰢽      5:25 PM   󰖩  ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 22,
             "text": "",
-            "color": "#eab308"
+            "color": { "token": "warning" }
           },
           {
             "x": 23,
             "text": "  │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3521,12 +3532,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3536,17 +3547,17 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│ Welcome Back  ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 16,
             "text": "󱠡",
-            "color": "#eab308"
+            "color": { "token": "warning" }
           },
           {
             "x": 17,
             "text": "        │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3556,12 +3567,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3571,30 +3582,30 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│    ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 5,
             "text": "24°C  ",
-            "color": "#000000",
-            "bgColor": "#86efac"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           },
           {
             "x": 11,
             "text": "",
-            "color": "#eab308",
-            "bgColor": "#86efac"
+            "color": { "token": "warning" },
+            "bgColor": { "token": "surface" }
           },
           {
             "x": 12,
             "text": " Sunny",
-            "color": "#000000",
-            "bgColor": "#86efac"
+            "color": { "token": "foreground" },
+            "bgColor": { "token": "surface" }
           },
           {
             "x": 18,
             "text": "       │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3604,12 +3615,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3619,12 +3630,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3634,52 +3645,52 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│ ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 2,
             "text": "",
-            "color": "#eab308"
+            "color": { "token": "warning" }
           },
           {
             "x": 3,
             "text": "°",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           },
           {
             "x": 4,
             "text": "   ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 8,
             "text": "°",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           },
           {
             "x": 9,
             "text": "   ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 12,
             "text": "",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           },
           {
             "x": 13,
             "text": "        ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 22,
             "text": "",
-            "color": "#ef4444"
+            "color": { "token": "danger" }
           },
           {
             "x": 23,
             "text": "  │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3689,12 +3700,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3704,12 +3715,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3719,47 +3730,47 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│ ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 2,
             "text": "",
-            "color": "#10b981"
+            "color": { "token": "success" }
           },
           {
             "x": 3,
             "text": "    ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 7,
             "text": "",
-            "color": "#6366f1"
+            "color": { "token": "done" }
           },
           {
             "x": 8,
             "text": "    ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 12,
             "text": "",
-            "color": "#06b6d4"
+            "color": { "token": "info" }
           },
           {
             "x": 13,
             "text": "    ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 17,
             "text": "",
-            "color": "#22c55e"
+            "color": { "token": "success" }
           },
           {
             "x": 18,
             "text": "      │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3769,12 +3780,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3784,12 +3795,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3799,47 +3810,47 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│     ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 7,
             "text": "",
-            "color": "#22c55e"
+            "color": { "token": "success" }
           },
           {
             "x": 8,
             "text": "    ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 12,
             "text": "󰋾",
-            "color": "#ec4899"
+            "color": { "token": "done" }
           },
           {
             "x": 13,
             "text": "    ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 17,
             "text": "",
-            "color": "#3b82f6"
+            "color": { "token": "accent" }
           },
           {
             "x": 18,
             "text": "    ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 22,
             "text": "󰘑",
-            "color": "#22c55e"
+            "color": { "token": "success" }
           },
           {
             "x": 23,
             "text": "  │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3849,12 +3860,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3864,12 +3875,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3879,12 +3890,12 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 25,
             "text": "│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3894,27 +3905,27 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│   ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 4,
             "text": "",
-            "color": "#22c55e"
+            "color": { "token": "success" }
           },
           {
             "x": 5,
             "text": "       ",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           },
           {
             "x": 12,
             "text": "",
-            "color": "#22c55e"
+            "color": { "token": "success" }
           },
           {
             "x": 13,
             "text": "           │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3924,7 +3935,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│────────────────────────│",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3934,7 +3945,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "│          (  )          │",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       },
@@ -3944,7 +3955,7 @@ export const CANVAS_TEMPLATES = [
           {
             "x": 0,
             "text": "╰────────────────────────╯",
-            "color": "#000000"
+            "color": { "token": "foreground" }
           }
         ]
       }

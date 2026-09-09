@@ -25,7 +25,7 @@ const fusionFace = {
   families: { regular: `'${fusionFamily}', ${MAPLE_FONT_FAMILY}` },
 } as const;
 const fusionProfile = createCharDeskFontProfile({
-  id: "chardesk/gallery-fusion-mono-maple-core-v6-2026.09.01",
+  id: "chardesk/gallery-fusion-mono-maple-core-v7-2026.09.01",
   display: fusionFace,
   cjk: fusionFace,
   sources: [
@@ -39,7 +39,7 @@ const xiaolaiFace = {
   families: { regular: `'${xiaolaiFamily}', ${MAPLE_FONT_FAMILY}` },
 } as const;
 const xiaolaiProfile = createCharDeskFontProfile({
-  id: "chardesk/gallery-xiaolai-mono-maple-core-v7-3.126",
+  id: "chardesk/gallery-xiaolai-mono-maple-core-v8-3.126",
   display: xiaolaiFace,
   cjk: xiaolaiFace,
   sources: [

@@ -32,7 +32,7 @@ it("TextInput retains hidden horizontal scrolling and TextArea gains owned rails
   const editor = new CellTextEditor({ value: "abcdefghijk", multiline: true });
   const runtime = new CellUiRuntime({ viewport: { width: 10, height: 9 } });
   const frame = runtime.render(<Root>
-    <TextInput id="input" state={editor.snapshot()} style={{ border: true, height: 3 }} />
+    <TextInput id="input" state={editor.snapshot()} />
     <TextArea id="area" state={editor.snapshot()} style={{ border: true, height: 5 }} />
   </Root>);
   expect(frame.scene.entries.get("input")!.scrollMetrics?.horizontalTrack).toBeNull();

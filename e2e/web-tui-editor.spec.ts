@@ -1,5 +1,67 @@
 import { expect, test } from "@playwright/test";
-import { copyCellRange, readCellMetrics } from "./helpers/cell-probe";
+import { copyCellRange, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`editor activity and borders follow actual focus, not input modality (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto("/exp/web-tui/#/__fixtures/all");
+    const surface = page.locator('[data-cell-probe="editor"]');
+    const canvas = surface.locator("canvas");
+    const heading = page.getByRole("heading", { name: "Cell UI Fixtures", exact: true });
+    const inverse = scheme === "light"
+      ? { color: "rgb(255, 255, 255)", backgroundColor: "rgb(0, 0, 0)" }
+      : { color: "rgb(0, 0, 0)", backgroundColor: "rgb(255, 255, 255)" };
+    for (const [name, id] of [["File name", "editor-name"], ["Document", "editor-document"]]) {
+      const input = surface.getByRole("textbox", { name, exact: true });
+      await input.fill("");
+      await heading.click();
+      await canvas.scrollIntoViewIfNeeded();
+      const idle = await readCellProbe(surface);
+      const ownCells = idle.cells.filter((cell) => cell.ownerId === id);
+      const corner = ownCells.find((cell) => cell.text === "┌")!;
+      expect(corner).toBeDefined();
+      const metrics = await readCellMetrics(surface);
+      const bounds = (await canvas.boundingBox())!;
+      await page.mouse.click(bounds.x + (corner.x + 1.5) * metrics.cellWidth,
+        bounds.y + (corner.y + 1.5) * metrics.cellHeight);
+      await expect(input).toBeFocused();
+      // No key event has occurred: every owned cell, including border and padding, is active.
+      const assertActive = async () => {
+        await expect.poll(async () => {
+          const cells = (await readCellProbe(surface)).cells.filter((cell) => cell.ownerId === id);
+          return cells.length >= ownCells.length && cells.every((cell) =>
+            cell.style.color === inverse.color && cell.style.backgroundColor === inverse.backgroundColor);
+        }).toBe(true);
+      };
+      await assertActive();
+      await page.mouse.move(bounds.x + bounds.width + 10, bounds.y);
+      await assertActive();
+      await page.keyboard.type("x");
+      await assertActive();
+      await page.keyboard.press("Backspace");
+      await assertActive();
+      await expect(input).toHaveValue("");
+      const assertIdle = async () => {
+        await expect.poll(async () => (await readCellProbe(surface)).cells.filter((cell) => cell.ownerId === id))
+          .toEqual(ownCells);
+      };
+      await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+      await assertIdle();
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      await assertActive();
+      await heading.click();
+      await assertIdle();
+      expect((await readCellProbe(surface)).text).toBe(idle.text);
+    }
+    await surface.getByRole("textbox", { name: "File name", exact: true }).focus();
+    await page.keyboard.press("Tab");
+    await expect(surface.getByRole("textbox", { name: "Document", exact: true })).toBeFocused();
+    const tabbed = await readCellProbe(surface);
+    expect(tabbed.cells.filter((cell) => cell.ownerId === "editor-document")
+      .every((cell) => cell.style.color === inverse.color && cell.style.backgroundColor === inverse.backgroundColor)).toBe(true);
+    expect(tabbed.cells.find((cell) => cell.ownerId === "editor-name" && cell.text === "┌")?.style.backgroundColor).toBeUndefined();
+  });
+}
 
 test("Cell editor shares Unicode, composition, selection, and history across Canvas and textarea", async ({ page }) => {
   const pageErrors: string[] = [];

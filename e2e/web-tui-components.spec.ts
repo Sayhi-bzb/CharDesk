@@ -8,6 +8,7 @@ const navigationGroups = [
     links: [
       ["Button", "#/components/button"],
       ["Select", "#/components/select"],
+      ["Combobox", "#/components/combobox"],
       ["Slider", "#/components/slider"],
       ["Checkbox", "#/components/checkbox"],
       ["Input", "#/components/input"],
@@ -15,6 +16,8 @@ const navigationGroups = [
       ["Toggle", "#/components/toggle"],
       ["Progress", "#/components/progress"],
       ["Radio", "#/components/radio"],
+      ["Accordion", "#/components/accordion"],
+      ["Dialog", "#/components/dialog"],
     ],
   },
   {
@@ -36,7 +39,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   const nav = page.getByRole("navigation", { name: "Cell UI" });
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
   await expect(page.locator(".gallery-brand")).toHaveAttribute("href", "#/components/button");
-  await expect(nav.getByRole("link")).toHaveCount(13);
+  await expect(nav.getByRole("link")).toHaveCount(16);
   for (const groupDefinition of navigationGroups) {
     const group = nav.getByRole("group", { name: groupDefinition.name });
     await expect(group).toBeVisible();
@@ -109,7 +112,8 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   );
   expect(wideDivider?.x).toBe(Math.floor((widePlayground.viewport.width - 1) / 2));
   expect(widePlayground.text).not.toContain("Props");
-  expect(widePlayground.text).toContain("variant    default");
+  expect(widePlayground.text).toContain("variant");
+  expect(widePlayground.text).toContain("default");
 
   await page.setViewportSize({ width: 320, height: 700 });
   await expect.poll(async () => (await readCellProbe(
@@ -117,9 +121,11 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   )).viewport).toEqual({ width: 32, height: 15 });
   const narrowPlayground = await readCellProbe(page.locator('[data-cell-probe="component-button"]'));
   const narrowLines = narrowPlayground.text.split("\n");
-  expect(narrowLines[10]).toContain("   variant");
+  expect(narrowLines[9]).toContain("   variant");
+  expect(narrowLines[10]).toContain("   default");
   expect(narrowLines[11]).toContain("   size");
-  expect(narrowLines[12]).toContain("   disabled");
+  expect(narrowLines[12]).toContain("   default");
+  expect(narrowLines[13]).toContain("   [ ] disabled");
   const narrowPreviewBounds = await page.locator(".docs-preview").boundingBox();
   const narrowHostBounds = await page.locator(".component-playground").boundingBox();
   const narrowPlaygroundBounds = await page.locator('[data-cell-probe="component-button"]').boundingBox();
@@ -137,6 +143,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   expect(narrowRemainder).toBeLessThan(9);
   for (const [slug, probeId] of [
     ["select", "component-select"],
+    ["combobox", "component-combobox"],
     ["slider", "component-slider"],
     ["checkbox", "component-checkbox"],
     ["input", "component-input"],
@@ -199,32 +206,105 @@ test("Text and Box expose Cell-native content and layout", async ({ page }) => {
   expect(box.cells.filter((cell) => cell.text === "┌").length).toBe(3);
 });
 
+test("Separator Playground switches themed variants without changing its geometry", async ({ page }) => {
+  await page.goto("/exp/web-tui/#/components/separator");
+  const surface = page.getByLabel("Separator component");
+  const variant = page.getByRole("button", { name: "variant", exact: true });
+  const direction = page.getByRole("button", { name: "direction", exact: true });
+  const separator = page.getByRole("separator");
+  const initial = await readCellProbe(surface);
+  const separatorCells = async () => (await readCellProbe(surface)).cells
+    .filter((cell) => cell.ownerId === "component-separator-line");
+  expect((await separatorCells()).map((cell) => cell.text).join("")).toBe("─".repeat(20));
+  expect(initial.text).toContain("───────");
+  await expect(separator).toHaveAttribute("aria-orientation", "horizontal");
+
+  await variant.evaluate((element: HTMLElement) => element.click());
+  for (const [name, sample] of [["line", "───────"], ["slash", "///////"], ["double", "═══════"], ["dots", "·······"]] as const) {
+    await expect(page.getByRole("option", { name, exact: true })).toBeAttached();
+    expect((await readCellProbe(surface)).overlays.find((overlay) => (
+      overlay.rootId === "component-separator-variant-content"
+    ))?.text).toContain(sample);
+  }
+  await page.getByRole("option", { name: "line", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
+
+  const choose = async (trigger: typeof variant, option: string) => {
+    await trigger.evaluate((element: HTMLElement) => element.click());
+    await page.getByRole("option", { name: option, exact: true })
+      .evaluate((element: HTMLElement) => element.click());
+    await expect(page.getByRole("option", { name: option, exact: true })).toHaveCount(0);
+  };
+  for (const [name, glyph] of [["slash", "/"], ["double", "═"], ["dots", "·"], ["line", "─"]] as const) {
+    await choose(variant, name);
+    await expect.poll(async () => (await separatorCells()).map((cell) => cell.text).join(""))
+      .toBe(glyph.repeat(20));
+    expect((await readCellProbe(surface)).viewport).toEqual(initial.viewport);
+  }
+
+  await choose(variant, "slash");
+  await choose(direction, "vertical");
+  await expect(separator).toHaveAttribute("aria-orientation", "vertical");
+  await expect.poll(async () => (await separatorCells()).map((cell) => cell.text).join(""))
+    .toBe("/".repeat(5));
+  await choose(variant, "double");
+  await expect.poll(async () => (await separatorCells()).map((cell) => cell.text).join(""))
+    .toBe("║".repeat(5));
+  expect((await readCellProbe(surface)).viewport).toEqual(initial.viewport);
+});
+
 test("Input edits Unicode through the real textbox and Cell frame", async ({ page }) => {
   await page.goto("/exp/web-tui/#/components/input");
   const surface = page.getByLabel("Input component");
   const input = page.getByRole("textbox", { name: "File name" });
   const disabled = page.getByRole("checkbox", { name: "disabled" });
-  const rounded = page.getByRole("checkbox", { name: "rounded" });
 
   await expect(page.getByRole("heading", { name: "Input", level: 1 })).toBeVisible();
   await expect(input).toHaveValue("notes.txt");
   const initial = await readCellProbe(surface);
   expect(initial.viewport.height).toBe(7);
   expect(initial.text).toContain("File name");
-  expect(initial.text).toContain("┌────────────────────────────┐");
-  expect(initial.text).toContain("│notes.txt");
-  expect(initial.text).toMatch(/disabled\s+\[ \]/);
-  expect(initial.text).toMatch(/rounded\s+\[ \]/);
+  expect(initial.text).toContain(" notes.txt");
+  expect(initial.text).toMatch(/\[ \] disabled/);
+  const idleCells = initial.cells.filter((cell) => cell.ownerId === "component-input-field");
+  expect(idleCells).toHaveLength(30);
+  expect(new Set(idleCells.map((cell) => cell.y)).size).toBe(1);
+  expect(idleCells.some((cell) => /^[┌┐└┘╭╮╰╯─│]$/u.test(cell.text))).toBe(false);
+  const idleBackground = idleCells[0]!.style.backgroundColor;
+  expect(idleCells.every((cell) => cell.style.backgroundColor === idleBackground)).toBe(true);
 
   await input.fill("世界 👋");
   await expect(input).toHaveValue("世界 👋");
-  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("│世界 👋");
-  await rounded.evaluate((element: HTMLElement) => element.click());
-  await expect(rounded).toHaveAttribute("aria-checked", "true");
-  await expect(input).toHaveValue("世界 👋");
-  expect((await readCellProbe(surface)).cells.some((cell) => (
-    cell.ownerId === "component-input-field" && "╭╮╰╯".includes(cell.text)
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain(" 世界 👋");
+  const active = await readCellProbe(surface);
+  const activeCells = active.cells.filter((cell) => cell.ownerId === "component-input-field");
+  expect(activeCells).toHaveLength(30);
+  expect(activeCells.every((cell) => (
+    cell.style.backgroundColor !== undefined
+    && cell.style.backgroundColor !== idleBackground
   ))).toBe(true);
+
+  await input.press("End");
+  await input.press("x");
+  await expect(input).toHaveValue("世界 👋x");
+  await input.press("Control+z");
+  await expect(input).toHaveValue("世界 👋");
+  const restored = await readCellProbe(surface);
+
+  const surfaceBounds = await surface.boundingBox();
+  const metrics = restored.presentation!.metrics;
+  await page.mouse.click(
+    surfaceBounds!.x + 2.5 * metrics.cellWidth,
+    surfaceBounds!.y + 2.5 * metrics.cellHeight,
+  );
+  await expect(surface).toHaveAttribute("data-cell-focused", "component-input-field");
+  await expect(surface).not.toHaveAttribute("data-cell-active-focus");
+  await expect.poll(async () => (await readCellProbe(surface)).activeFocusId).toBeNull();
+  const dormantCells = (await readCellProbe(surface)).cells
+    .filter((cell) => cell.ownerId === "component-input-field");
+  expect(dormantCells).toHaveLength(30);
+  expect(dormantCells.every((cell) => cell.style.backgroundColor === idleBackground)).toBe(true);
 
   await disabled.evaluate((element: HTMLElement) => element.click());
   await expect(input).toHaveJSProperty("disabled", true);
@@ -251,10 +331,12 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   const initialSurfaceBounds = await surface.boundingBox();
   const initialHostBounds = await page.locator(".component-playground").boundingBox();
   const initialLines = initial.text.split("\n");
-  expect(initialLines[2]).toContain("variant    default");
+  expect(initialLines[1]).toContain("variant");
+  expect(initialLines[2]).toContain("default");
   expect(initialLines[3]).toContain("Save");
-  expect(initialLines[3]).toContain("size       default");
-  expect(initialLines[4]).toContain("disabled   [ ]");
+  expect(initialLines[3]).toContain("size");
+  expect(initialLines[4]).toContain("default");
+  expect(initialLines[5]).toContain("[ ] disabled");
   expect(initial.cells.some((cell) => (
     cell.ownerId === "component-button-playground-controls-scroll" && "█▀▄".includes(cell.text)
   ))).toBe(false);
@@ -268,8 +350,9 @@ test("Button Playground drives its semantic API through Cell controls", async ({
     initialCanvasBounds!.y + (indicatorCell!.y + 0.5) * initialCanvasBounds!.height / initial.viewport.height,
   );
   await expect.poll(async () => (await readCellProbe(surface)).cells.filter((cell) => (
-    cell.ownerId === "component-button-disabled" && cell.style.backgroundColor !== undefined
-  )).length).toBe(5);
+    cell.ownerId?.startsWith("component-button-disabled")
+      && cell.style.backgroundColor !== undefined
+  )).length).toBe(12);
 
   await page.mouse.down();
   await expect(surface).toHaveAttribute("data-cell-press-active", "component-button-disabled");
@@ -277,7 +360,7 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   await expect(surface).not.toHaveAttribute("data-cell-press-active");
   await expect(disabled).toHaveAttribute("aria-checked", "true");
   expect((await readCellProbe(surface)).cells.filter((cell) => (
-    cell.ownerId === "component-button-disabled" && cell.style.bold
+    cell.ownerId?.startsWith("component-button-disabled") && cell.style.bold
   ))).toHaveLength(0);
 
   await page.mouse.move(
@@ -285,7 +368,8 @@ test("Button Playground drives its semantic API through Cell controls", async ({
     initialCanvasBounds!.y + 0.5 * initialCanvasBounds!.height / initial.viewport.height,
   );
   await expect.poll(async () => (await readCellProbe(surface)).cells.filter((cell) => (
-    cell.ownerId === "component-button-disabled" && cell.style.backgroundColor !== undefined
+    cell.ownerId?.startsWith("component-button-disabled")
+      && cell.style.backgroundColor !== undefined
   )).length).toBe(0);
   await expect(surface).toHaveAttribute("data-cell-focused", "component-button-disabled");
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");
@@ -299,7 +383,7 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   expect(opened.viewport).toEqual(initial.viewport);
   expect(opened.overlayViewport).toEqual({
     width: initial.viewport.width,
-    height: initial.viewport.height + 5,
+    height: initial.viewport.height + 3,
   });
   expect(opened.overlays).toHaveLength(1);
   expect(opened.overlays[0]!.rootId).toBe("component-button-variant-content");
@@ -307,7 +391,7 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   expect(opened.overlays[0]!.text).toContain("outline");
   expect(opened.overlays[0]!.text).toContain("ghost");
   expect(opened.overlays[0]!.cells.some((cell) => "█▀▄".includes(cell.text))).toBe(false);
-  expect(opened.text.split("\n")[2]).toContain("variant    default      ▴");
+  expect(opened.text.split("\n")[2]).toContain("default      ▴");
   expect(opened.cells.some((cell) => (
     cell.ownerId === "component-button-playground-controls-scroll" && "█▀▄".includes(cell.text)
   ))).toBe(false);
@@ -537,8 +621,8 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
   const initial = await readCellProbe(surface);
   expect(initial.text).toContain("Volume");
   expect(initial.text).not.toMatch(/\b(?:value|step)\b/u);
-  expect(initial.text).toMatch(/range\s+\[ \]/);
-  expect(initial.text).toMatch(/disabled\s+\[ \]/);
+  expect(initial.text).toMatch(/\[ \] range/);
+  expect(initial.text).toMatch(/\[ \] disabled/);
   const volumeThumb = initial.cells.find((cell) => (
     cell.ownerId === "component-slider-volume" && cell.text === "┃"
   ));
@@ -619,7 +703,7 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
   await expect(end).toHaveAttribute("aria-valuenow", "70");
   const interval = await readCellProbe(surface);
   expect(interval.text).toContain("30–70");
-  expect(interval.text).toMatch(/range\s+\[x\]/);
+  expect(interval.text).toMatch(/\[x\] range/);
   expect(interval.cells.some((cell) => (
     cell.ownerId === "component-slider-start" && cell.text === "┃"
   ))).toBe(true);

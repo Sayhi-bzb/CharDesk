@@ -30,6 +30,15 @@ const defaults = {
   "scrollbar-track": fallback.scrollTrackStyle.color!,
 };
 
+const readRangeSurfaceEffect = (
+  source: CSSStyleDeclaration
+): NonNullable<CellUiTheme["rangeStyle"]["surfaceEffect"]> => {
+  const value = source.getPropertyValue("--cell-range-surface-effect").trim();
+  return value === "tint" || value === "contrast"
+    ? value
+    : fallback.rangeStyle.surfaceEffect ?? "tint";
+};
+
 // One temporary color resolver per theme read, never DOM per Cell.
 export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
   const view = element.ownerDocument.defaultView!;
@@ -86,6 +95,7 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
       rangeStyle: {
         surface: colors["range-surface"],
         border: colors["range-border"],
+        surfaceEffect: readRangeSurfaceEffect(source),
       },
       scrollThumbStyle: { color: colors["scrollbar-thumb"] },
       scrollTrackStyle: { color: colors["scrollbar-track"] },

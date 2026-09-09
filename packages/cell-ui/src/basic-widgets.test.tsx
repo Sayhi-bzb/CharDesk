@@ -3,6 +3,7 @@ import {
   Root, Text, Toggle, Progress, Separator, RadioGroup, RadioItem, CellUiRuntime,
   FocusManager, commandForInput, createKeyInput, auditSemanticSnapshot,
   activationFeedbackTargetForCommand, CLASSIC_MAC_LIGHT_THEME, Button, ActivationFeedbackManager,
+  type SeparatorVariant,
 } from "./index.js";
 
 describe("basic Cell widgets", () => {
@@ -98,18 +99,44 @@ describe("basic Cell widgets", () => {
     runtime.dispose();
   });
 
-  it("reflows separator orientation and exposes a non-interactive unnamed separator", () => {
+  it("paints themed separator variants without coupling appearance to semantics or layout", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 6, height: 3 } });
-    const view = (orientation: "horizontal" | "vertical") => <Root id="root">
-      <Separator id="line" orientation={orientation} />
+    const view = (orientation: "horizontal" | "vertical", variant?: SeparatorVariant) => <Root id="root">
+      <Separator id="line" orientation={orientation} variant={variant} />
     </Root>;
     const horizontal = runtime.render(view("horizontal"));
     expect(horizontal.buffer.toText({ trimEnd: true }).split("\n")[0]).toBe("──────");
+    for (const [variant, glyph] of [["slash", "/"], ["double", "═"], ["dots", "·"]] as const) {
+      const rendered = runtime.render(view("horizontal", variant));
+      expect(rendered.buffer.toText({ trimEnd: true }).split("\n")[0]).toBe(glyph.repeat(6));
+      expect(rendered.layout).toBe(horizontal.layout);
+      expect(rendered.semantics.nodes).toEqual(horizontal.semantics.nodes);
+    }
     const vertical = runtime.render(view("vertical"));
     expect(vertical.buffer.toText({ trimEnd: true })).toBe("│\n│\n│");
+    for (const [variant, glyph] of [["slash", "/"], ["double", "║"], ["dots", "·"]] as const) {
+      expect(runtime.render(view("vertical", variant)).buffer.toText({ trimEnd: true }))
+        .toBe(`${glyph}\n${glyph}\n${glyph}`);
+    }
     expect(vertical.layout).not.toBe(horizontal.layout);
     expect(vertical.semantics.nodes.get("line")).toMatchObject({ role: "separator", orientation: "vertical", actions: [] });
     expect(auditSemanticSnapshot(vertical.semantics)).toEqual([]);
+    expect(runtime.render(view("horizontal", "unknown" as SeparatorVariant))
+      .buffer.toText({ trimEnd: true }).split("\n")[0]).toBe("──────");
+    runtime.dispose();
+  });
+
+  it("consumes separator glyphs from the global theme", () => {
+    const runtime = new CellUiRuntime({
+      viewport: { width: 4, height: 1 },
+      theme: {
+        separatorGlyphs: {
+          ...CLASSIC_MAC_LIGHT_THEME.separatorGlyphs,
+          slash: { horizontal: "#", vertical: "#" },
+        },
+      },
+    });
+    expect(runtime.render(<Root><Separator variant="slash" /></Root>).buffer.toText()).toBe("####");
     runtime.dispose();
   });
 

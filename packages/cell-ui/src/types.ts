@@ -38,6 +38,13 @@ export type CellLayoutStyle = Readonly<{
   borderShape?: import("./border.js").CellBorderShape;
 }>;
 
+type CellSingleLineInputStyleKey = "width" | "minWidth" | "maxWidth" | "flexGrow" | "flexShrink";
+
+export type CellSingleLineInputStyle = Readonly<
+  Pick<CellLayoutStyle, CellSingleLineInputStyleKey>
+  & { [Key in Exclude<keyof CellLayoutStyle, CellSingleLineInputStyleKey>]?: never }
+>;
+
 export type CellTextStyle = Readonly<{
   color?: string;
   backgroundColor?: string;
@@ -50,6 +57,10 @@ export type CellCheckboxState = boolean | "indeterminate";
 
 export type WidgetKind =
   | "root"
+  | "accordion"
+  | "accordion-item"
+  | "accordion-trigger"
+  | "accordion-content"
   | "box"
   | "overlay"
   | "text"
@@ -67,6 +78,10 @@ export type WidgetKind =
   | "select-trigger"
   | "select-content"
   | "select-item"
+  | "combobox"
+  | "combobox-input"
+  | "combobox-content"
+  | "combobox-item"
   | "list"
   | "list-item"
   | "menu"
@@ -104,10 +119,12 @@ export type WidgetNode = Readonly<{
   confirming?: boolean;
   confirmation?: ConfirmationPresentation;
   selected: boolean;
+  active: boolean;
   checked: CellCheckboxState;
   pressed: boolean;
   radioValue: string | null;
   progress: Readonly<{ value: number; max: number; valueText?: string }> | null;
+  separatorVariant: import("./separator.js").SeparatorVariant;
   buttonVariant: import("./button.js").ButtonVariant;
   buttonSize: import("./button.js").ButtonSize;
   sliderValue: number;
@@ -127,11 +144,16 @@ export type WidgetNode = Readonly<{
   setSize: number | null;
   orientation: "horizontal" | "vertical" | null;
   controlsId: WidgetId | null;
+  activeDescendantId: WidgetId | null;
   labelledById: WidgetId | null;
   textEditor: import("./text.js").CellTextSnapshot | null;
   readOnly: boolean;
   overlayPosition: CellPoint | null;
   modal: boolean;
+  dialog?: Readonly<{ initialFocusId?: string }>;
+  dialogPart?: "title" | "description";
+  closeOnOutsideClick?: boolean;
+  describedById?: WidgetId;
   scrollOffset: CellPoint;
   children: readonly WidgetId[];
 }>;
@@ -253,6 +275,9 @@ export type SemanticNode = Readonly<{
   bounds: CellRect | null;
   role:
     | "dialog"
+    | "heading"
+    | "paragraph"
+    | "region"
     | "button"
     | "checkbox"
     | "radio"
@@ -264,6 +289,7 @@ export type SemanticNode = Readonly<{
     | "listbox"
     | "option"
     | "textbox"
+    | "combobox"
     | "menu"
     | "menuitem"
     | "tree"
@@ -301,6 +327,7 @@ export type SemanticNode = Readonly<{
   multiline?: boolean;
   readOnly?: boolean;
   modal?: boolean;
+  describedById?: WidgetId;
   actions: readonly SemanticAction[];
   activeDescendantId?: WidgetId;
 }>;

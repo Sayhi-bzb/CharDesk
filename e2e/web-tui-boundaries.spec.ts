@@ -22,7 +22,6 @@ for (const dpr of [1, 2]) {
         await page.emulateMedia({ colorScheme });
         await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", colorScheme);
         const probe = await readCellProbe(surface);
-        expect(probe.presentation?.glyphOverflowMode).toBe("visible");
         expect(probe.cells.find(({ x, y }) => x === 24 && y === 7)?.text).toBe(" ");
         const before = await canvas.evaluate((node: HTMLCanvasElement) => node.toDataURL());
         await canvas.evaluate(async (node: HTMLCanvasElement) => {
@@ -71,9 +70,9 @@ test("editor consumes its full layout width and paints blank focused Cells", asy
   expect((await readCellProbe(surface)).text.split("\n")[2]).toBe(`│${"a".repeat(37)} │`);
   await input.fill("short");
   const cells = await surface.evaluate((node) => {
-    const probe = (node as HTMLElement & { __chardeskCellProbeV4: {
+    const probe = (node as HTMLElement & { __chardeskCellProbeV5: {
       cells: { x: number; y: number; style: { backgroundColor?: string }; ownerId: string | null }[];
-    } }).__chardeskCellProbeV4;
+    } }).__chardeskCellProbeV5;
     return probe.cells.filter(({ y }) => y >= 1 && y <= 3);
   });
   expect(cells).toHaveLength(120);

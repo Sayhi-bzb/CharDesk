@@ -1,7 +1,12 @@
 import type { CellBuffer } from "./buffer.js";
-import type { CellRect, CellTextStyle, WidgetId } from "./types.js";
+import type { CellRect, CellTextStyle, WidgetId, WidgetKind } from "./types.js";
 
 export type CellBorderShape = "square" | "rounded";
+
+export const resolveWidgetBorder = (
+  kind: WidgetKind,
+  border: boolean | undefined,
+): boolean => border ?? (kind === "combobox-content" || kind === "combobox-input");
 
 const corners = {
   square: ["┌", "┐", "└", "┘"],

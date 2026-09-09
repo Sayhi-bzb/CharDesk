@@ -1,82 +1,39 @@
 # Web TUI Roadmap
 
-本页是 Web TUI 交付状态的唯一权威。产品约束、架构契约和上游采用结论见[事实白板](README.md)。
+本页拥有 Web TUI 的交付状态；规则与决策见文末权威入口。
 
-看板只记录可验收的产品切片。状态变化直接更新卡片；不记录轮次、日期、百分比或过程叙述。
+## 维护规则
 
-## 状态定义
+- 按可验收能力维护固定切片；修复、重构和扩展原位更新，不追加交付流水账。
+- 每项只保留当前边界与权威入口；不记录历史编号、日期、测试数量或迁移过程。历史由 Git 保存。
+- `DONE` 必须有可定位的验收证据；`VERIFY` 表示仍有明确验证门槛；`READY` 表示依赖已满足、尚未交付。
+- 仅在存在实际条目时登记 `BACKLOG`（前置未完成）或 `BLOCKED`（明确外部阻塞）；不把局部完成当作阶段全部完成。
 
-| 状态 | 判定 |
-| --- | --- |
-| `DONE` | 实现存在，并有可定位的自动化测试或权威文档证据 |
-| `VERIFY` | 实现存在，但生产环境、真实设备或专项门槛尚未验证 |
-| `READY` | 依赖已满足，可以直接实施 |
-| `BACKLOG` | 目标已定义，但前置切片尚未完成 |
-| `BLOCKED` | 存在无法由仓库内工作解除的明确外部阻塞 |
+## 当前切片
 
-## DONE
-
-| ID | Phase / 切片 | 已交付事实 | 验收证据 |
+| 阶段 / 能力 | 状态 | 当前边界 | 权威入口 |
 | --- | --- | --- | --- |
-| P5.26 | Phase 5 / Grid 二维导航与状态统一 | GridCell 使用固定 ✓ 列及统一临时反色；单 Grid 单 Tab 入口并记忆可用焦点，方向导航跨缺格与 disabled、不跨行换列；目标失效按入口规则收敛，不改业务选择；Cell Range 复制与激活隔离 | [导航与布局测试](../packages/cell-ui/src/grid-navigation.test.tsx)、[真实 Tab 与范围复制](../e2e/web-tui-complex-widgets.spec.ts)、[Widget 规范](blueprints/widgets.md) |
-| P5.25 | Phase 5 / 集合控件与延迟菜单动作 | List/Menu/Tree/Tabs 共用临时反色；List/Tree 固定 ✓ 列、Tabs 保留下划线；Menu 完整确认后派发一次动作，取消不执行，外部焦点解除菜单锁；树折叠焦点收敛到可用祖先 | [集合测试](../packages/cell-ui/src/collection-primitives.test.tsx)、[确认与取消](../packages/cell-ui/src/interaction-controller.test.tsx)、[Canvas 阶段采样](../e2e/web-tui-press.spec.ts)、[菜单浮层](../e2e/web-tui-command-palette.spec.ts)、[集合导航](../e2e/web-tui-complex-widgets.spec.ts) |
-| P5.24 | Phase 5 / 离散与连续基础控件统一 | Toggle/Radio 消费统一反色与确认会话，持久值仅用字符标记；Toggle 使用全局 ○/● 状态灯；Slider/RangeSlider 的鼠标、键盘与拖动共用 thumb 配方，无轨道反色或连续确认闪烁 | [Widget 规范](blueprints/widgets.md)、[状态与主题测试](../packages/cell-ui/src/visual.test.tsx)、[状态灯与裁剪](../packages/cell-ui/src/basic-widgets.test.tsx)、[真实 Canvas 确认周期](../e2e/web-tui-press.spec.ts)、[Gallery 回归](../e2e/web-tui-components.spec.ts) |
-| P5.23 | Phase 5 / Cell Primitives 与确认会话 | Browser/TestPilot 共用交互控制器；Button、Checkbox、Select 分离行为与外观；确认等待释放、相对参照颜色播放完整周期，每阶段呈现后计时，完成后交还高亮；过期确认及回调隔离 | [底座契约](blueprints/primitives.md)、[控制器测试](../packages/cell-ui/src/interaction-controller.test.tsx)、[真实 Canvas 阶段采样](../e2e/web-tui-press.spec.ts)、[组件与焦点回归](../e2e/web-tui-components.spec.ts) |
-| P5.22 | Phase 5 / Host Canvas 领域收敛 | 主应用只保留 Freeform 与 Slide 两种 CellPlane 模式；页面模板和组件作为静态 CellPlane 内容在 Freeform 侧栏消费；旧 Structured 本地会话、checkpoint 和 `.chardesk` 输入在私有迁移边界扁平化，旧协作链接标记为 retired | [状态流](../apps/docs/content/docs/development/architecture/state-flows.mdx)、[领域表](../apps/docs/content/docs/development/domains.mdx)、[迁移测试](../src/domains/canvas/state/migrateLegacyStructuredDocument.dom.test.ts)、[架构守卫](../scripts/quality/check-state-ownership.mjs) |
-| P5.21 | Phase 5 / Host 键盘拓扑 | Browser adapter 将原生事件一次转换为共享 `KeyInput`；ShortcutProvider 只拥有 target classification、层级路由与原生事件 effect；Editor keymap 和 Cell UI 分别解释同一事实；主 Canvas 巨型 keydown 已拆为纯 `KeyInput + context → Intent` 规则与 model/command 执行层；beforeinput、composition 与 clipboard 保持独立 | [键盘包](../packages/keyboard/README.md)、[分发器测试](../src/shared/shortcuts/dispatcher.test.tsx)、[Canvas 规则测试](../src/widgets/canvas-editor/hooks/managedCanvasKeyboard.test.ts)、[Editor keymap 测试](../src/domains/editor/keyboard.dom.test.ts)、[架构守卫](../scripts/quality/cell-architecture-rules.test.ts) |
-| P5.20 | Phase 5 / 完整键盘输入 | 共享 `KeyInput` 保留 down/up、key/code/location、Alt/Ctrl/Meta/Shift/AltGraph、repeat 与 composition；Browser Surface、文本编辑、TestPilot 与 Host 共用该事实；Widget 导航可 repeat，activate/dismiss 不重复触发 | [共享键盘契约](../packages/keyboard/README.md)、[Cell UI 契约](../packages/cell-ui/README.md)、[keyboard tests](../packages/keyboard/src/index.test.ts)、[interaction tests](../packages/cell-ui/src/interaction.test.tsx)、[browser integration tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Pilot tests](../packages/cell-ui/src/testing.test.tsx) |
-| P5.19 | Phase 5 / 主 Canvas Cell Cursor | Freeform 与 Slide 的 Navigate active cell、Text Edit cursor 共用 block/bar/underline 终端 Cell primitive；Navigate 常亮，Text Edit 仅在输入焦点内按 600ms 闪烁，失焦转常亮；Range 优先且隐藏 cursor，非活动 split 隐藏两者；偏好由 Settings → General 全局持久化，不进入文档或历史 | [Host 视觉契约](../apps/docs/content/docs/development/host-ui/visual-system.mdx)、[状态与优先级测试](../src/widgets/canvas-editor/presentation/canvasCellPresentation.test.ts)、[绘制测试](../packages/rendering/src/canvas.test.ts)、[Chromium/WebKit 设置验证](../e2e/canvas-cursor-settings.spec.ts) |
-| P5.17 | Phase 5 / Cell graphics 扩展 | 主 Canvas、Cell UI 与 PNG 以精确 registry 共用 778 个确定性 Unicode 图形：Box 128、Block 32、Braille 256、Powerline 38、Progress 12、Git Branch 62、Legacy 250；支持完整定义类型、CHAR/CELL scale、clip 与负片背景，字体切换不改变图形，复制/Range/Probe 保留原 Unicode | [绘制契约](../packages/rendering/README.md#cell-graphics)、[定义同步](../scripts/rendering/sync-xterm-cell-graphics.mjs)、[覆盖测试](../packages/rendering/src/cell-graphics.test.ts)、[双浏览器像素矩阵](../e2e/web-tui-cell-graphics.spec.ts) |
-| P5.18 | Phase 5 / Terminal Cell Cursor | CellSurface 默认使用可闪烁 Block Cursor，并支持 block/bar/underline 主题形态；Block 按 grapheme allocation 覆盖 1/2 Cell 并反色重绘 glyph；blink 缓存/恢复局部像素，不产生 Runtime commit，失焦隐藏、后台暂停、reduced-motion 常亮；编辑区域 browser pointer 统一为 default | [Cursor 契约](../packages/cell-ui/README.md#theme-consumption)、[Browser tests](../packages/cell-ui/src/browser.dom.test.tsx)、[双浏览器像素与 token](../e2e/web-tui-theme-tokens.spec.ts)、[Pointer 验证](../e2e/web-tui-hover.spec.ts) |
-| P5.15 | Phase 5 / Box/Block 绘制基础 | 当前 778 字符 registry 中的 U+2500–U+259F 160 字符保持字体独立与原 Unicode；Box 默认 1.5× 线宽，笔画中心对齐设备像素，圆角使用等半径相切圆弧、双线保持分离 | [绘制契约](../packages/rendering/README.md#cell-graphics)、[覆盖测试](../packages/rendering/src/cell-graphics.test.ts)、[清晰度与连接](../e2e/web-tui-box-clarity.spec.ts) |
-| P5.16 | Phase 5 / Host 字体消费 | Settings → General 切换本地 Maple/Fusion/Xiaolai；偏好独立持久化；主 Canvas、模板预览、整图与选区 PNG 消费有效 Profile；失败重试与最新请求提交，不改 Cell 几何或文档 | [Host 字体契约](research/font-stack.md#host-字体切换)、[状态测试](../src/shared/fonts/runtime.test.ts)、[PNG 测试](../src/domains/export/raster.dom.test.ts)、[Chromium/WebKit 设置验证](../e2e/canvas-font-settings.spec.ts) |
-| P6.2 | Phase 6 / Cell Core | 独立公共包 `@chardesk/cell-core` 持有逻辑 geometry、通用 Rect 运算、dense/sparse source、incremental changes、Frame 与字符快照；不依赖 React、DOM、Canvas、字体或产品状态，并进入统一版本、打包与 npm 发布链路 | [包契约](../packages/cell-core/README.md)、[contract tests](../packages/cell-core/src/index.test.ts)、[架构守卫](../scripts/quality/cell-architecture-rules.test.ts)、[发布契约](../release-please-config.json) |
-| P6.3 | Phase 6 / 统一 Presenter | rendering 根入口持有 `CharDeskCellMetrics`、`CharDeskCellFrameCell` 与字符检查；Canvas 子入口只持有 context、raster 与 Presenter 专属契约；glyph span、物理背景 span、dirty filtering 和 query overscan 有明确契约 | [渲染契约](../packages/rendering/README.md#fixed-cell-grids-and-font-measurement)、[Presenter tests](../packages/rendering/src/canvas.test.ts)、[架构守卫](../scripts/quality/check-cell-architecture.mjs) |
-| P6.4 | Phase 6 / 双生产者接入 | Cell UI 的 bounded CellBuffer 与主 Canvas 的 sparse reader 均输出 `CellFrame<CharDeskCellFrameCell>` 并使用同一 Presenter；adapter 不互相依赖，各自保留 Scene、Semantics、编辑工具与 overlay 状态机 | [Cell UI adapter](../packages/cell-ui/src/frame.test.ts)、[Canvas adapter](../src/widgets/canvas-editor/rendering/canvasCellFrame.test.ts)、[双 adapter parity](../scripts/quality/cell-frame-adapter-parity.test.ts)、[Canvas presenter parity](../src/widgets/canvas-editor/rendering/drawGridLayer.test.ts) |
-| P6.5 | Phase 6 / Frame 检查 | rendering 根入口可从 storage-neutral Frame 输出保留负坐标、空白和 wide grapheme 的字符快照；Cell UI 与 Canvas adapter 共享同一检查出口 | [Core formatter](../packages/cell-core/src/index.test.ts)、[adapter parity](../scripts/quality/cell-frame-adapter-parity.test.ts) |
-| P0.1 | Phase 0 / 上游地图 | 当前依赖、参考与未采用边界已有单一登记处 | [事实白板](README.md#当前上游关系)、[卡片规则](research/checklist.md) |
-| P0.2 | Phase 0 / 架构收敛 | Compositor、SceneGeometry、事件、Portal、虚拟化与 SemanticSnapshot 的目标契约已定义 | [Compositor 蓝图](blueprints/compositor.md)、[Semantics 蓝图](blueprints/semantics.md) |
-| P1.1 | Phase 1 / Headless Cell Engine | React descriptors、stable Widget Tree、Yoga Cell layout、SceneSnapshot 和 owner-aware CellBuffer 已形成 headless frame | [包契约](../packages/cell-ui/README.md)、[runtime tests](../packages/cell-ui/src/runtime.test.tsx) |
-| P1.2 | Phase 1 / 几何与 chrome | border/decoration/content bounds、outer/content clip、nested scroll、paint/hit order 共用 SceneGeometry；Surface → Chrome → Content → Decoration 在全量和增量 paint 中保护 border | [Compositor 契约](blueprints/compositor.md)、[runtime tests](../packages/cell-ui/src/runtime.test.tsx) |
-| P1.3 | Phase 1 / Yoga 生产资格 | Yoga Node 按 stable WidgetId 增量复用；整数/百分比/nested flex/Unicode measure、incremental=fresh、StrictMode/1000 次资源归零、10k 规模、Vite production 和 Chromium/WebKit CSP 均已验证 | [Yoga qualification tests](../packages/cell-ui/src/layout.test.tsx)、[performance tests](../packages/cell-ui/src/performance.test.tsx)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx)、[CSP E2E](../e2e/web-tui-csp.spec.ts) |
-| P2.1 | Phase 2 / 首个交互切片 | Button、Checkbox、Slider、List、Select、ScrollArea 共用鼠标、键盘和 Semantic DOM command path；Checkbox 支持 copy-stable 三态，Slider 支持 stepped keyboard 与精确 tap/drag，Select 分离临时 focus 与 committed selection，Content 使用自动避让的 Cell portal | [Checkbox 文档](web-tui/#/components/checkbox)、[Slider 文档](web-tui/#/components/slider)、[Select 文档](web-tui/#/components/select)、[List 文档](web-tui/#/components/list)、[ScrollArea 文档](web-tui/#/components/scroll-area)、[Slider headless tests](../packages/cell-ui/src/slider.test.tsx)、[Gallery E2E](../e2e/web-tui-components.spec.ts) |
-| P3.1 | Phase 3 / 编辑状态 | CodeMirror EditorState 持有 UTF-16 文档与 history；grapheme、Cell 和 UTF-16 offset 可映射 | [CodeMirror 采用结论](research/codemirror.md)、[text tests](../packages/cell-ui/src/text.test.tsx) |
-| P3.2 | Phase 3 / 浏览器输入 | 真实 textarea 接入 beforeinput、composition、paste/cut/copy；Canvas 支持 caret、selection 与 textbox semantics | [browser DOM tests](../packages/cell-ui/src/browser.dom.test.tsx)、[browser E2E](../e2e/web-tui-editor.spec.ts) |
-| P3.3 | Phase 3 / 原生输入矩阵 | macOS 原生输入源与系统键盘已在 headed Chromium/WebKit 验证 ABC dead key、简体拼音 composition、含 emoji 的系统剪贴板、单次 undo，以及 textarea/Canvas 同步；验证器恢复输入源、剪贴板和前台应用 | [原生输入验证](verification/native-input.md)、[native input E2E](../e2e/web-tui-native-input.spec.ts)、[runner](../scripts/quality/run-cell-ui-native-input.mjs) |
-| P4.0 | Phase 4 基础 / Cell Range | `CellSurface` 默认支持 macOS `⌥⌘`、其他平台 Alt 拖动选择最终 CellBuffer；跨行 wide-grapheme 定点闭包保证矩形边界不截断字符，并以纯文本复制边框、空白和内容 | [range tests](../packages/cell-ui/src/range.test.ts)、[browser DOM tests](../packages/cell-ui/src/browser.dom.test.tsx)、[complex widgets E2E](../e2e/web-tui-complex-widgets.spec.ts) |
-| P4.7 | Phase 4 / 基础组件扩展 | Toggle、Progress、Separator、RadioGroup/RadioItem 接入统一状态、主题、字符快照和 Semantic DOM；Gallery 提供 Cell props 面板 | [Widget 规范](blueprints/widgets.md)、[字符测试](../packages/cell-ui/src/basic-widgets.test.tsx)、[Gallery E2E](../e2e/web-tui-basic-widgets.spec.ts) |
-| P4.1 | Phase 4 / Command Palette | Overlay portal 到 root Scene layer，同时保留逻辑 event parent；modal focus/semantics、restore、Escape、outside click、键盘和 pointer 共用 Widget state | [runtime tests](../packages/cell-ui/src/runtime.test.tsx)、[interaction tests](../packages/cell-ui/src/interaction.test.tsx)、[Chromium/WebKit E2E](../e2e/web-tui-command-palette.spec.ts) |
-| P4.2 | Phase 4 / EventManager 与 gesture | pointer input 沿逻辑 event path capture/bubble；stop propagation/default 独立；pointer capture 跨 hit bounds 并在 owner 失效时 cancel；tap/drag/scroll arena 确定 winner 并取消 losers | [event tests](../packages/cell-ui/src/events.test.tsx)、[gesture tests](../packages/cell-ui/src/gestures.test.ts)、[browser DOM tests](../packages/cell-ui/src/browser.dom.test.tsx) |
-| P4.3 | Phase 4 / Virtual List/Grid | 固定 Cell 二维 provider 在 100k-row/1000-column 数据上保持有界 cache window；stable-key anchor、reveal、bounded keepAlive、分页 focus、keyboard/pointer hit 和 browser List adapter 已接通 | [virtualization tests](../packages/cell-ui/src/virtual.test.ts)、[browser DOM tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Chromium/WebKit E2E](../e2e/web-tui-virtual-list.spec.ts) |
-| P4.4 | Phase 4 / 复杂 Widget | Menu、Tree、Tabs 和 Grid 共用 Widget Tree、FocusManager、GestureManager、React Stately adapter 与 SemanticSnapshot；keyboard、Canvas pointer 和 semantic action 经同一 EngineInput 归一入口写回状态 | [headless widget tests](../packages/cell-ui/src/complex-widgets.test.tsx)、[browser DOM tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Chromium/WebKit E2E](../e2e/web-tui-complex-widgets.spec.ts) |
-| P4.5 | Phase 4 / Cell-native UI 规范化 | focused/selected、按输入方式显示的 focus decoration、组件自有状态语言、renderer-owned chrome 与双轴 ScrollArea 已形成统一契约 | [UI 哲学](ui-philosophy.md)、[Widget 规范](blueprints/widgets.md)、[headless tests](../packages/cell-ui/src/interaction.test.tsx)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx) |
-| P4.6 | Phase 4 / Overlay presentation plane | Runtime 将 layout-sized base plane 与可扩展 overlay plane 分离，同时保留同一 Scene、Cell 坐标、事件、focus 与 semantics；CellSurface 以不参与文档流的透明 Canvas 呈现 portal；Button Playground 与字体 Select 展开不撑高容器，完整菜单可在 base 外命中；Probe v4 分别暴露 base/overlay viewport 与 overlay 字符快照 | [包契约](../packages/cell-ui/README.md)、[headless Select tests](../packages/cell-ui/src/select.test.tsx)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Gallery E2E](../e2e/web-tui-components.spec.ts) |
-| P5.1 | Phase 5 / Accessibility 加固 | SemanticSnapshot audit 覆盖 role、name、state、focus、reading order、relations、actions 和虚拟集合位置；Semantic DOM 与 Headless 查询同源；keyboard/AT DOM focus、modal scope/restore 及 Chromium/WebKit 行为已验证 | [Accessibility 验收](verification/accessibility.md)、[semantic audit tests](../packages/cell-ui/src/semantics.test.tsx)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Chromium/WebKit E2E](../e2e/web-tui-complex-widgets.spec.ts) |
-| P5.2 | Phase 5 / 性能加固 | commit 按 tree/layout/geometry/paint/semantics/present 分级；paint-only 复用 Layout/Scene，scroll 复用 Layout；dirty Cell region 驱动增量 raster/present；Semantic focused ancestry 与 DOM children 使用一次性索引；10k/1000-scroll/120×40 预算可执行 | [runtime tests](../packages/cell-ui/src/runtime.test.tsx)、[performance tests](../packages/cell-ui/src/performance.test.tsx)、[semantic tests](../packages/cell-ui/src/semantics.test.tsx)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx) |
-| P5.3 | Phase 5 / TestPilot | Headless Pilot 可执行 keyboard、pointer/gesture、semantic action、scroll、resize 与 idle barrier，并查询 frame、cells/text、scene、hit、focus 和 semantics；role/name 查询与 browser Semantic DOM 同源验证 | [Pilot tests](../packages/cell-ui/src/testing.test.tsx)、[browser parity tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Compositor 契约](blueprints/compositor.md#帧与检查) |
-| P5.4 | Phase 5 / Cell 可检查性 | `CellBuffer.toText` 统一 Range、Probe、TestPilot 与 Browser 字符提取并保留 Unicode space/grapheme；versioned `CellProbeSnapshot` 提供无损 Cell JSON 和 owner/style/hit/clip/focus 诊断 | [probe tests](../packages/cell-ui/src/probe.test.tsx)、[range tests](../packages/cell-ui/src/range.test.ts)、[browser parity tests](../packages/cell-ui/src/browser.dom.test.tsx)、[Chromium/WebKit E2E](../e2e/web-tui.spec.ts)、[包契约](../packages/cell-ui/README.md#cell-inspection) |
-| P5.5 | Phase 5 / 字体能力路由 | Font Profile 将 display/CJK/Nerd/symbol/emoji face 与 Cell geometry 解耦；family、font scale、baseline 和 weight policy 贯通 Canvas、字体加载与 CellSurface | [字体能力栈](research/font-stack.md)、[font profile tests](../packages/fonts/src/index.test.ts)、[Canvas tests](../packages/rendering/src/canvas.test.ts)、[browser tests](../packages/cell-ui/src/browser.dom.test.tsx)、[font audit](../scripts/fonts/audit-font-capabilities.test.ts) |
-| P5.6 | Phase 5 / 字体分发拆层 | `@chardesk/fonts` 仅分发 Nerd/symbol/emoji Core；`@chardesk/font-maple` 独立承载兼容显示层且 Profile 只把 Maple 用于 display/CJK；渲染默认使用 system Profile，现有产品显式选择 Maple | [Core package](../packages/fonts/README.md)、[Maple package](../packages/font-maple/README.md)、[manifests](../packages/fonts/manifest.json)、[字体能力栈](research/font-stack.md) |
-| P5.7 | Phase 5 / Cell Unicode 投影 | `Cell.text` 是唯一前景；border/thumb 与内容均渲染 Unicode 字形，由 Profile 路由字体；Canvas、复制、Range、Probe 和 LLM 共用相同 Unicode | [顶层哲学](ui-philosophy.md)、[Compositor 契约](blueprints/compositor.md)、[Canvas tests](../packages/rendering/src/canvas.test.ts)、[probe tests](../packages/cell-ui/src/probe.test.tsx) |
-| P5.8 | Phase 5 / 确定性产品网格 | `CellSurface`、CharDesk Canvas、`@chardesk/rendering` 与 Viewer 的产品默认值统一为 `9×20 / 15px / baseline 15`；字体加载只更新 readiness、字形与审计，不改变布局；绘制、命中、caret、Range、输入框与幻灯片几何共用稳定 metrics，显式 metrics 优先；持久化 v4/v5 与 Catalog v1-v3 的 viewport y 按 `20/19` 一次性迁移 | [应用网格权威](../src/shared/metrics/gridGeometry.ts)、[渲染契约](../packages/rendering/README.md#fixed-cell-grids-and-font-measurement)、[持久化迁移](../src/domains/sessions/persistence.test.ts)、[Catalog 迁移](../src/domains/sessions/indexedDbCatalog.test.ts)、[跨字体交互](../e2e/web-tui-font-metrics.spec.ts) |
-| P5.10 | Phase 5 / 字体绘制契约 | 字形保留小数锚点，背景与裁剪独立对齐；resolver、加载、绘制共同遵守有效字重；Fusion/Xiaolai 的 regular-only face 由 renderer overdraw，Maple 使用原生粗体，浏览器不合成粗体；真实 Fusion ASCII 在 Chromium/WebKit 的 DPR 1、1.25、2 下通过字距、字重和编辑/Range 检查 | [绘制契约](../packages/rendering/README.md#fixed-cell-grids-and-font-measurement)、[Canvas tests](../packages/rendering/src/canvas.test.ts)、[真实字体测试](../e2e/web-tui-fusion-mono.spec.ts)、[跨字体交互](../e2e/web-tui-font-metrics.spec.ts)、[正式字体与已知边界](../packages/font-fusion/README.md) |
-| P5.11 | Phase 5 / 字体网格适配审计 | Probe 区分字体原始尺寸、Profile 校准与实际 Surface 网格，缓存固定样本的字重、越格和理论断缝报告；通用校准、加载失败恢复与缓存失效由单元测试覆盖，真实 Fusion Mono 验证浏览器报告 | [审计契约](../packages/rendering/README.md#font-grid-audit)、[Probe 消费](../packages/cell-ui/README.md#cell-inspection)、[审计测试](../packages/rendering/src/font-audit.test.ts)、[真实字体验证](../e2e/web-tui-font-audit.spec.ts) |
-| P5.12 | Phase 5 / Fusion 本地资源 | 私有 Fusion 字体包固定官方 2026.09.01 Latin 等宽版，含 36,539 字符、完整 WOFF2、全部上游许可证与校验清单；Gallery 与测试消费同一资源，按需加载、失败重试且不产生第三方字体请求；15px 下 ASCII 宽 7.5px，CJK 与部分边框/块/箭头为 15px，Probe 如实报告单 Cell 越格 | [资源事实](../packages/font-fusion/README.md)、[离线校验](../scripts/fonts/fusion-font.test.ts)、[加载回归](../e2e/web-tui-appearance.spec.ts)、[CSP 回归](../e2e/web-tui-csp.spec.ts) |
-| P5.14 | Phase 5 / Nerd 字体分发 | Core 固定官方 Symbols Nerd Font Mono 3.5.1 与同版 10,617 码点 catalog；语义组按 96 KiB 上限递归切为 27 个互斥 shard；CSS、运行时识别和字符数据同源生成 | [Core 字体契约](../packages/fonts/README.md)、[字体事实](research/font-stack.md)、[切片测试](../scripts/fonts/nerd-font.test.ts)、[浏览器请求测试](../e2e/web-tui-nerd-font.spec.ts) |
-| P5.13 | Phase 5 / Xiaolai Mono 分发 | 私有 Xiaolai 字体包固定官方 3.126；44,871 个 cmap 字符完整分入五个互斥 WOFF2，总计 11,929,788 B，基础片 696,040 B；Gallery 与 Host 保留 `xiaolai-mono` 设置并按实际字符请求资源 | [资源事实](../packages/font-xiaolai/README.md)、[离线覆盖校验](../scripts/fonts/xiaolai-font.test.ts)、[交互探针](../e2e/web-tui-font-metrics.spec.ts)、[加载恢复](../e2e/web-tui-xiaolai.spec.ts) |
+| 0 / 上游与架构收敛 | DONE | 采用关系、职责边界与运行链路已有明确登记 | [事实白板](README.md) |
+| 1 / Headless Engine 与布局合成 | DONE | React Widget Tree、Yoga 整数布局、Scene、裁剪与增量合成；布局及资源生命周期有验证 | [包契约](../packages/cell-ui/README.md)、[Compositor](blueprints/compositor.md) |
+| 2 / 基础交互组件与 Gallery | DONE | 基础控件、Combobox、Accordion、Dialog 支持鼠标、键盘和语义操作；Gallery 提供用法与 Cell props 面板 | [Widget 规范](blueprints/widgets.md)、[Gallery 验证](../e2e/web-tui-components.spec.ts)、[Dialog 验证](../e2e/web-tui-dialog.spec.ts) |
+| 3 / Unicode 编辑与浏览器输入 | DONE | 文档、历史、grapheme/Cell/UTF-16 映射及 IME/clipboard 接通；macOS 原生输入矩阵已验证 | [编辑契约](../packages/cell-ui/README.md)、[原生输入证据](verification/native-input.md) |
+| 4 / 集合、浮层与虚拟化 | DONE | Menu/Tree/Tabs/Grid、模态焦点、独立浮层呈现及有界虚拟窗口可用 | [Widget 规范](blueprints/widgets.md)、[包契约](../packages/cell-ui/README.md) |
+| 4–5 / Cell Range、复制与探针 | DONE | 矩形选择与复制保留边框、空白和 Unicode；TestPilot/Probe 支持字符、样式与几何检查 | [检查契约](../packages/cell-ui/README.md#cell-inspection)、[Range 验证](../packages/cell-ui/src/range.test.ts) |
+| 5 / 统一状态、主题与 Cursor | DONE | 共享输入与交互底座；行为、反馈、外观分离；编辑器完整区域高亮及最终 Cell 颜色驱动 Cursor | [底座](blueprints/primitives.md)、[主题与 Cursor](../packages/cell-ui/README.md#theme-consumption) |
+| 5–6 / 网格、字体与共享渲染 | DONE | 固定网格与字体加载解耦；Cell Core、Frame、Presenter 被 Cell UI 与主 Canvas 共用；字形越界策略见待验证项 | [渲染契约](../packages/rendering/README.md)、[字体事实](research/font-stack.md) |
+| 5 / Accessibility 与性能 | DONE | 语义审计、焦点及双浏览器行为有验证；增量更新和大规模场景有自动化预算 | [Accessibility 边界](verification/accessibility.md)、[性能验证](../packages/cell-ui/src/performance.test.tsx) |
+| 6 / 独立产品化 | READY | 共享底座已拆分并接入发布链路；Cell UI 的稳定 API、集成及发布契约尚未完成 | [Cell Core](../packages/cell-core/README.md)、[Cell UI](../packages/cell-ui/README.md) |
 
-## VERIFY
+## 待验证与下一步
 
-| ID | Phase / 切片 | 已有基础 | 完成门槛 | 依赖 |
-| --- | --- | --- | --- | --- |
-| P5.9 | Phase 5 / 完整字形试验 | Gallery 使用 `glyphOverflow="visible"`；保留 Cell 数据隔离，允许墨水越格，全 Surface 重绘防残影；默认消费方保持裁剪 | 根据完整字形的实际重叠效果决定组件像素隔离与后续重绘策略 | [CellSurface](../packages/cell-ui/README.md)、[越界墨水测试](../e2e/web-tui-glyph-overflow.spec.ts) |
+| 切片 | 状态 | 完成门槛 |
+| --- | --- | --- |
+| 字形越界策略 | VERIFY | Gallery 允许字形墨水越格，默认消费方保持裁剪；需确定组件像素隔离与重绘策略。[现有验证](../e2e/web-tui-glyph-overflow.spec.ts) |
+| 独立产品化 | READY | 稳定公共 API、集成入口、版本策略、迁移文档及发布自动化均有验证；共享 Core 已发布不等于 Cell UI 产品化完成 |
 
-## READY
+## 规则与决策入口
 
-| ID | Phase / 切片 | 目标 | 完成门槛 | 依赖 |
-| --- | --- | --- | --- | --- |
-| P6.1 | Phase 6 / 独立产品化 | 提供稳定公共 API、集成入口和发布契约 | public exports、版本策略、迁移文档、产品集成与发布自动化均有验证 | P1.3、P3.3、P5.1、P5.2、P5.3、P5.4 |
-
-## BACKLOG / BLOCKED
-
-当前没有 backlog 或已知外部阻塞。
+- [事实白板](README.md)：产品约束、上游采用和架构所有权。
+- [UI 哲学](ui-philosophy.md)：顶层设计原则与美学标准。
+- [Widget 规范](blueprints/widgets.md)：状态、交互、编辑与滚动规则。
+- [Cell Primitives 底座](blueprints/primitives.md)：输入、行为、反馈、外观与渲染的职责边界。

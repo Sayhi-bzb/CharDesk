@@ -43,6 +43,23 @@ describe("compileCharDeskText", () => {
     ]);
   });
 
+  it("selects the last matching pipeline default without changing raw input", async () => {
+    const options = {
+      sourceKind: "chargraph" as const,
+      defaultStyle: { color: "#111111" },
+      pipelineDefaultStyles: { markdown: { color: "#eeeeee" } },
+    };
+    const markdown = materializeCompiledCharDeskText(
+      await compileCharDeskText("**styled**", options)
+    );
+    const raw = materializeCompiledCharDeskText(
+      await compileCharDeskText("plain", options)
+    );
+
+    expect(markdown.cells.every((cell) => cell.color === "#eeeeee")).toBe(true);
+    expect(raw.cells.every((cell) => cell.color === "#111111")).toBe(true);
+  });
+
   it("rejects terminal escapes in canonical CharDesk input", async () => {
     await expect(compileCharDeskText("\u001b[31mred", {
       sourceKind: "chardesk",

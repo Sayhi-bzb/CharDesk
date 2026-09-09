@@ -5,7 +5,7 @@ import {
   resolveCanvasContentPalette,
   shouldSuppressCanvasContentRendering,
 } from './useCanvasRenderer';
-import { DEFAULT_ARTIFACT_CANVAS_PALETTE } from '@/shared/metrics';
+import { DEFAULT_ARTIFACT_CANVAS_PALETTE } from '@/shared/canvas-appearance/artifact-style';
 
 describe('canvas render passes', () => {
   it('keeps dynamic interaction updates off the content surface', () => {
@@ -27,6 +27,14 @@ describe('canvas render passes', () => {
           CANVAS_FRAME_INVALIDATION.overlay
       )
     ).toEqual({ content: true, interaction: true });
+  });
+
+  it('refreshes a contrast Range backdrop whenever content changes', () => {
+    expect(resolveCanvasRenderPasses(CANVAS_FRAME_INVALIDATION.background))
+      .toEqual({ content: true, interaction: false });
+    expect(resolveCanvasRenderPasses(CANVAS_FRAME_INVALIDATION.background, {
+      contrastRangeActive: true,
+    })).toEqual({ content: true, interaction: true });
   });
 });
 

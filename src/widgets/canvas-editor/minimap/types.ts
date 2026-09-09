@@ -1,6 +1,6 @@
 import type { Point } from "@/shared/types";
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
-import type { CanvasArtifactPalette } from "@/shared/metrics";
+import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
 
 export type MinimapDimensions = {
   width: number;

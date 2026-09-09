@@ -7,6 +7,10 @@ import type {
   CanvasAppearanceSnapshot,
   CanvasInteractionPalette,
 } from '@/shared/canvas-appearance/runtime';
+import {
+  DEFAULT_ARTIFACT_CANVAS_PALETTE,
+  type CanvasArtifactPalette,
+} from '@/shared/canvas-appearance/artifact-style';
 import { isStaticGridMode } from '@/domains/sessions/public';
 import type { CanvasRenderModel } from './canvasModels';
 import { GridManager } from '@/shared/utils/grid';
@@ -19,7 +23,6 @@ import {
 } from '@/domains/canvas/public';
 import type { CanvasLinkHit } from './interaction/core/linkHitTesting';
 import {
-  DEFAULT_ARTIFACT_CANVAS_PALETTE,
   DEFAULT_GRID_RENDER_METRICS,
   drawGridLines,
   drawTextCell,
@@ -27,7 +30,6 @@ import {
   gridCellRect,
   prepareCanvasSurface,
   setTextRenderStyle,
-  type CanvasArtifactPalette,
 } from '@/shared/metrics';
 import {
   getStaticGridViewState,
@@ -52,6 +54,7 @@ import type { CanvasCursorPreference } from '@/shared/canvas-cursor/runtime';
 import { DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS } from '@chardesk/rendering';
 import {
   drawCharDeskCanvasRange,
+  drawCharDeskCanvasRangeBackdrop,
   loadCharDeskCanvasFonts,
 } from '@chardesk/rendering/canvas';
 import {
@@ -72,12 +75,19 @@ type CanvasCellPresentationContext = Readonly<{
   cursorPreference: CanvasCursorPreference;
 }>;
 
-export const resolveCanvasRenderPasses = (invalidation: CanvasFrameInvalidation) => ({
-  content: CanvasRenderManager.includes(invalidation, 'background'),
-  interaction:
-    CanvasRenderManager.includes(invalidation, 'scratch') ||
-    CanvasRenderManager.includes(invalidation, 'overlay'),
-});
+export const resolveCanvasRenderPasses = (
+  invalidation: CanvasFrameInvalidation,
+  options: Readonly<{ contrastRangeActive?: boolean }> = {}
+) => {
+  const content = CanvasRenderManager.includes(invalidation, 'background');
+  return {
+    content,
+    interaction:
+      CanvasRenderManager.includes(invalidation, 'scratch') ||
+      CanvasRenderManager.includes(invalidation, 'overlay') ||
+      (content && options.contrastRangeActive === true),
+  };
+};
 
 export const shouldSuppressCanvasContentRendering = (search: string) => {
   const params = new URLSearchParams(search);
@@ -341,7 +351,12 @@ export const useCanvasRenderer = (
         ctx.clip();
         return true;
       };
-      const renderPasses = resolveCanvasRenderPasses(invalidation);
+      const contrastRangeActive =
+        cellPresentation.visual?.kind === 'range' &&
+        palette.rangeSurfaceEffect === 'contrast';
+      const renderPasses = resolveCanvasRenderPasses(invalidation, {
+        contrastRangeActive,
+      });
       const renderBackground = renderPasses.content;
       const suppressContentRendering = shouldSuppressCanvasContentRendering(
         window.location.search
@@ -433,6 +448,23 @@ export const useCanvasRenderer = (
           Math.min(2, dpr)
         );
         clipToSlidePage(scratchCtx);
+        if (
+          bgCanvas &&
+          contrastRangeActive &&
+          cellPresentation.visual?.kind === 'range'
+        ) {
+          drawCharDeskCanvasRangeBackdrop(scratchCtx, {
+            geometry: cellPresentation.visual.geometry,
+            source: bgCanvas,
+            width: surfaceGeometry.width,
+            height: surfaceGeometry.height,
+            options: {
+              metrics: DEFAULT_GRID_RENDER_METRICS,
+              offset: renderOffset,
+              zoom,
+            },
+          });
+        }
         drawLayer(
           scratchCtx,
           scratchLayer,
@@ -472,8 +504,9 @@ export const useCanvasRenderer = (
             geometry: cellVisual.geometry,
             phase: cellVisual.phase,
             style: {
-              surface: palette.selectionSurface,
-              border: palette.selectionBorder,
+              surface: palette.rangeSurface,
+              border: palette.rangeBorder,
+              surfaceEffect: palette.rangeSurfaceEffect,
             },
             options: {
               metrics: DEFAULT_GRID_RENDER_METRICS,

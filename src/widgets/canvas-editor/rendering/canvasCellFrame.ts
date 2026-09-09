@@ -2,7 +2,7 @@ import type { CellRect } from "@chardesk/cell-core";
 import type { GridCellSource } from "@/shared/types";
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import { createGridCellFrame } from "@/shared/metrics";
-import type { CanvasArtifactPalette } from "@/shared/metrics";
+import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
 
 export type CanvasCellFrameProjection = Readonly<{
   hiddenSpans: readonly Readonly<{

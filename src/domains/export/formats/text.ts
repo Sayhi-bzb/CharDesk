@@ -1,4 +1,5 @@
-import { COLOR_PRIMARY_TEXT, EXPORT_PADDING } from "@/shared/lib/constants";
+import { EXPORT_PADDING } from "@/shared/lib/constants";
+import { isDefaultArtifactForeground } from "@/shared/canvas-appearance/artifact-style";
 import { getCellOccupancy } from "@/shared/metrics";
 import type { GridCell, GridCellSource, SelectionArea } from "@/shared/types";
 import {
@@ -11,18 +12,6 @@ import { GridManager } from "@/shared/utils/grid";
 import { getSelectionsBoundingBox } from "@/shared/utils/selection";
 
 const ANSI_RESET = "\u001b[m";
-const ANSI_DEFAULT_FOREGROUND_COLORS = new Set([
-  "#000000",
-  COLOR_PRIMARY_TEXT.toLowerCase(),
-  "#0f172a",
-]);
-const isAnsiDefaultForeground = (color: string) => {
-  const parsedColor = parseAnsiHexColor(color);
-  return (
-    ANSI_DEFAULT_FOREGROUND_COLORS.has(color.toLowerCase()) ||
-    (parsedColor?.red === 0 && parsedColor.green === 0 && parsedColor.blue === 0)
-  );
-};
 
 type AnsiPiece = {
   char: string;
@@ -93,7 +82,7 @@ const resolveAnsiPieceStyle = (piece: AnsiPiece): ActiveAnsiState => {
   if (!piece.cell) return DEFAULT_ANSI_STYLE;
   const style = piece.cell;
   const foregroundColor =
-    parseAnsiHexColor(style.color) && !isAnsiDefaultForeground(style.color)
+    parseAnsiHexColor(style.color) && !isDefaultArtifactForeground(style)
       ? style.color
       : null;
   const backgroundColor =

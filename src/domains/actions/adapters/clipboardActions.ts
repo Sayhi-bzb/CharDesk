@@ -21,6 +21,7 @@ import type { RichTextCell } from "@/domains/canvas/public";
 import {
   renderTextSource,
   type CompactTextRenderResult,
+  type TextRenderContext,
   type TextRenderResult,
 } from "@/domains/document/public";
 import { clipboard } from "@/shared/services/effects";
@@ -47,7 +48,8 @@ export const parseAnsiClipboardText = (
 
 export type RenderClipboardText = (
   source: string,
-  defaultColor: string
+  defaultColor: string,
+  context?: TextRenderContext
 ) =>
   | TextRenderResult
   | CompactTextRenderResult
@@ -56,9 +58,10 @@ export type RenderClipboardText = (
 const toRenderedClipboardPayload = async (
   source: string,
   defaultColor: string,
-  renderText: RenderClipboardText
+  renderText: RenderClipboardText,
+  context?: TextRenderContext
 ) => {
-  const rendered = await renderText(source, defaultColor);
+  const rendered = await renderText(source, defaultColor, context);
   if (rendered.kind === "spans") {
     return {
       richRows: rendered.rows,
@@ -283,7 +286,8 @@ const readRichClipboardCells = async (): Promise<{
 export const readClipboardPayload = async (
   eventDataTransfer?: DataTransfer,
   defaultColor = DEFAULT_ANSI_PASTE_COLOR,
-  renderText: RenderClipboardText = renderTextSource
+  renderText: RenderClipboardText = renderTextSource,
+  context?: TextRenderContext
 ) => {
   // ClipboardEvent data is only guaranteed to remain readable while the
   // event is being dispatched. Snapshot every format before the first await.
@@ -299,7 +303,12 @@ export const readClipboardPayload = async (
   }
 
   if (eventPlainText) {
-    return await toRenderedClipboardPayload(eventPlainText, defaultColor, renderText);
+    return await toRenderedClipboardPayload(
+      eventPlainText,
+      defaultColor,
+      renderText,
+      context
+    );
   }
 
   const richPayload = await readRichClipboardCells();
@@ -321,7 +330,7 @@ export const readClipboardPayload = async (
     };
   }
   if (text) {
-    return await toRenderedClipboardPayload(text, defaultColor, renderText);
+    return await toRenderedClipboardPayload(text, defaultColor, renderText, context);
   }
 
   return {

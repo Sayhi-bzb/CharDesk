@@ -27,7 +27,7 @@ export const TextEditingDemo = () => {
   };
 
   return <GallerySurface
-    viewport={{ width: 40, height: 13 }}
+    viewport={{ width: 40, height: 10 }}
     onCommand={dispatch}
     cellRange={range.snapshot}
     onCellRangeCommand={range.dispatch}
@@ -42,7 +42,6 @@ export const TextEditingDemo = () => {
           id="editor-name"
           label="File name"
           state={name.snapshot}
-          style={{ border: true, height: 3 }}
         />
         <Text id="editor-document-label">Document</Text>
         <TextArea

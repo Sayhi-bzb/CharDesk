@@ -1,5 +1,7 @@
 import { hitTest } from "./scene.js";
+import { accordionItem, accordionTriggers, accordionFocusCandidates, isAccordionHidden } from "./accordion.js";
 import { gridEntry, gridOwnerId, gridTarget } from "./grid-navigation.js";
+import { commandForComboboxKey } from "./combobox.js";
 import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
 import type {
   CellPoint,
@@ -47,6 +49,7 @@ export type WidgetCommand =
     }>
   | Readonly<{ type: "activate"; targetId: WidgetId }>
   | Readonly<{ type: "select-radio"; targetId: WidgetId }>
+  | Readonly<{ type: "set-active"; targetId: WidgetId }>
   | Readonly<{ type: "dismiss"; targetId: WidgetId }>
   | Readonly<{ type: "set-expanded"; targetId: WidgetId; expanded: boolean }>
   | Readonly<{ type: "set-value"; targetId: WidgetId; value: number }>
@@ -77,7 +80,7 @@ const scopeIds = (
   includes: (node: WidgetNode) => boolean
 ): readonly WidgetId[] =>
   [...tree.nodes.values()]
-    .filter(includes)
+    .filter((node) => includes(node) && !isAccordionHidden(tree, node))
     .map(({ id }) => id);
 
 const focusScopeIds = (tree: WidgetTree): readonly WidgetId[] =>
@@ -86,6 +89,11 @@ const focusScopeIds = (tree: WidgetTree): readonly WidgetId[] =>
 export const topFocusScopeId = (tree: WidgetTree): WidgetId | null =>
   focusScopeIds(tree).at(-1) ?? null;
 
+export const isInFocusScope = (tree: WidgetTree, targetId: WidgetId): boolean => {
+  const scopeId = topFocusScopeId(tree);
+  return !scopeId || isDescendantOf(tree, targetId, scopeId);
+};
+
 export const topDismissableScopeId = (tree: WidgetTree): WidgetId | null =>
   scopeIds(tree, isDismissableScope).at(-1) ?? null;
 
@@ -93,18 +101,20 @@ export const dismissCommandForFocusExit = (
   frame: FrameSnapshot
 ): WidgetCommand | null => {
   const scopeId = topDismissableScopeId(frame.tree);
-  return scopeId ? { type: "dismiss", targetId: scopeId } : null;
+  return scopeId && !frame.tree.nodes.get(scopeId)?.dialog ? { type: "dismiss", targetId: scopeId } : null;
 };
 
 const focusableWidgets = (
   tree: WidgetTree,
   scopeId: WidgetId | null = null
-): readonly WidgetNode[] =>
-  [...tree.nodes.values()].filter(
-    (node) => isFocusableKind(node.kind)
-      && !node.disabled
-      && (!scopeId || isDescendantOf(tree, node.id, scopeId))
+): readonly WidgetNode[] => {
+  const available = [...tree.nodes.values()].filter((node) => !node.disabled
+    && !isAccordionHidden(tree, node) && (!scopeId || isDescendantOf(tree, node.id, scopeId)));
+  const controls = available.filter((node) => isFocusableKind(node.kind));
+  return available.filter((node) => isFocusableKind(node.kind)
+    || (!!node.dialog && !controls.some((child) => isDescendantOf(tree, child.id, node.id)))
   );
+};
 
 const ancestorOfKind = (
   tree: WidgetTree,
@@ -187,15 +197,16 @@ const commandForSemanticAction = (
   const semantic = frame.semantics.nodes.get(targetId);
   if (
     !node
+    || semantic?.hidden
     || !semantic?.actions.includes(action)
     || node.disabled
     || (focusScopeId !== null && !isDescendantOf(frame.tree, node.id, focusScopeId))
   ) return null;
   if (action === "expand" || action === "collapse") {
-    return (node.kind === "tree-item" && node.hasChildren) || node.kind === "select-trigger"
+    return (node.kind === "tree-item" && node.hasChildren) || node.kind === "select-trigger" || node.kind === "combobox-input" || node.kind === "accordion-trigger"
       ? {
           type: "set-expanded",
-          targetId: node.id,
+          targetId: node.kind === "accordion-trigger" ? node.parentId! : node.id,
           expanded: action === "expand",
         }
       : null;
@@ -229,6 +240,8 @@ export class FocusManager {
   #focusedGridId: WidgetId | null = null;
   readonly #gridEntries = new Map<WidgetId, WidgetId>();
   #treeAncestors: WidgetId[] = [];
+  #accordionCandidates: string[] = [];
+  #dialogs = new Map<WidgetId, WidgetId | null>();
   #scopes: Array<Readonly<{ id: WidgetId; restoreId: WidgetId | null }>> = [];
 
   get focusedId(): WidgetId | null {
@@ -259,6 +272,20 @@ export class FocusManager {
 
     const scopeId = this.#scopes.at(-1)?.id ?? null;
     const enabled = focusableWidgets(tree, scopeId);
+    const dialogIds = scopeIds(tree, (node) => !!node.dialog);
+    let dialogEntry: WidgetId | undefined;
+    for (const [id, returnId] of this.#dialogs) {
+      if (dialogIds.includes(id)) continue;
+      if ((!this.#focusedId || !enabled.some((node) => node.id === this.#focusedId))
+        && enabled.some((node) => node.id === returnId)) restoreId = returnId;
+      this.#dialogs.delete(id);
+    }
+    for (const id of dialogIds) {
+      if (this.#dialogs.has(id)) continue;
+      this.#dialogs.set(id, this.#scopes.find((scope) => scope.id === id)?.restoreId ?? this.#focusedId);
+      const targets = enabled.filter((node) => isDescendantOf(tree, node.id, id));
+      dialogEntry = targets.find((node) => node.id === tree.nodes.get(id)?.dialog?.initialFocusId)?.id ?? targets[0]?.id;
+    }
     for (const id of this.#gridEntries.keys()) if (tree.nodes.get(id)?.kind !== "grid") this.#gridEntries.delete(id);
     const requested = preferredId
       ? enabled.find(({ id }) => id === preferredId)?.id
@@ -269,18 +296,21 @@ export class FocusManager {
     const restored = restoreId
       ? enabled.find(({ id }) => id === restoreId)?.id
       : undefined;
-    this.#focusedId = requested
+    this.#focusedId = dialogEntry
+      ?? restored
+      ?? requested
       ?? retained
+      ?? this.#accordionCandidates.find((id) => enabled.some((node) => node.id === id))
       ?? (this.#focusedGridId ? gridEntry(enabled.filter((item) => gridOwnerId(tree, item.id) === this.#focusedGridId),
         this.#gridEntries.get(this.#focusedGridId))?.id : undefined)
       ?? this.#treeAncestors.find((id) => enabled.some((item) => item.id === id))
-      ?? restored
       ?? (scopeId ? enabled[0]?.id : null)
       ?? null;
     this.#focusedGridId = this.#focusedId && tree.nodes.get(this.#focusedId)?.kind === "grid-cell"
       ? gridOwnerId(tree, this.#focusedId) : null;
     if (this.#focusedGridId && this.#focusedId) this.#gridEntries.set(this.#focusedGridId, this.#focusedId);
     this.#treeAncestors = [];
+    this.#accordionCandidates = accordionFocusCandidates(tree, this.#focusedId);
     let ancestor = tree.nodes.get(this.#focusedId ?? "")?.parentItemId;
     while (ancestor) {
       this.#treeAncestors.push(ancestor);
@@ -324,7 +354,10 @@ export class FocusManager {
     const index = stops.findIndex((item) => item.id === current?.id
       || (current?.kind === "grid-cell" && item.kind === "grid-cell" && gridOwnerId(tree, item.id) === gridOwnerId(tree, current.id))
       || (current?.kind === "radio-item" && item.kind === "radio-item" && item.parentId === current.parentId));
-    return stops[index < 0 ? delta > 0 ? 0 : stops.length - 1 : index + delta]?.id ?? null;
+    let next = index < 0 ? delta > 0 ? 0 : stops.length - 1 : index + delta;
+    const scope = tree.nodes.get(this.#scopes.at(-1)?.id ?? "");
+    if (scope?.dialog && scope.modal && stops.length) next = (next + stops.length) % stops.length;
+    return stops[next]?.id ?? null;
   }
 
   move(tree: WidgetTree, delta: -1 | 1): WidgetId | null {
@@ -373,6 +406,7 @@ export const textEditorAtPoint = (
   point: CellPoint
 ): WidgetNode | undefined => {
   const hit = hitTest(frame.scene, point)[0];
+  if (!hit || !isInFocusScope(frame.tree, hit)) return undefined;
   const input = ancestorOfKind(frame.tree, hit, "text-input");
   return input ?? ancestorOfKind(frame.tree, hit, "text-area");
 };
@@ -493,9 +527,19 @@ export const commandForInput = (
       dismissableScopeId
       && (!hit || !isDescendantOf(frame.tree, hit, dismissableScopeId))
     ) {
-      return { type: "dismiss", targetId: dismissableScopeId };
+      if (frame.tree.nodes.get(dismissableScopeId)?.closeOnOutsideClick !== false) {
+        return { type: "dismiss", targetId: dismissableScopeId };
+      }
+      if (frame.tree.nodes.get(dismissableScopeId)?.modal) return null;
     }
     if (focusScopeId && (!hit || !isDescendantOf(frame.tree, hit, focusScopeId))) return null;
+    const hitNode = hit ? frame.tree.nodes.get(hit) : undefined;
+    const comboboxInput = hitNode?.kind === "combobox-input" ? hitNode : undefined;
+    const comboboxEntry = comboboxInput ? frame.scene.entries.get(comboboxInput.id) : undefined;
+    if (input.phase === "down" && comboboxInput && !comboboxInput.disabled && comboboxEntry
+      && input.point.x === comboboxEntry.decorationBounds.x + comboboxEntry.decorationBounds.width - 1) {
+      return { type: "set-expanded", targetId: comboboxInput.id, expanded: !comboboxInput.expanded };
+    }
     const rangeSlider = ancestorOfKind(frame.tree, hit, "range-slider");
     if (rangeSlider && !rangeSlider.disabled && input.phase === "down") {
       const entry = frame.scene.entries.get(rangeSlider.id);
@@ -519,7 +563,9 @@ export const commandForInput = (
     }
     const item = interactiveItem(frame.tree, hit);
     if (!item || item.disabled) return null;
-    if (input.phase === "down") return focusCommand(frame, item.id);
+    if (input.phase === "down") return item.kind === "combobox-item"
+      ? { type: "set-active", targetId: item.id }
+      : focusCommand(frame, item.id);
     const semantic = frame.semantics.nodes.get(item.id);
     const action = semantic ? primarySemanticAction(semantic) : null;
     return action ? commandForSemanticAction(frame, item.id, action, focusScopeId) : null;
@@ -538,6 +584,18 @@ export const commandForInput = (
     ? frame.tree.nodes.get(focus.focusedId)
     : undefined;
   const owner = collectionOwner(frame.tree, focused?.id ?? null);
+  if (focused?.kind === "combobox-input") {
+    const command = commandForComboboxKey(frame.tree, focused, input);
+    if (command) return command;
+  }
+  if (focused?.kind === "accordion-trigger" && ["ArrowUp", "ArrowDown", "Home", "End"].includes(input.key)) {
+    const item = accordionItem(frame.tree, focused.id);
+    const headers = item?.parentId ? accordionTriggers(frame.tree, item.parentId)
+      .filter((node) => !node.disabled && !isAccordionHidden(frame.tree, node)) : [];
+    const target = input.key === "Home" ? headers[0]?.id : input.key === "End" ? headers.at(-1)?.id
+      : moveInCollection(headers, focused.id, input.key === "ArrowUp" ? -1 : 1);
+    return target ? focusCommand(frame, target) : null;
+  }
   if (focused?.kind === "radio-item" && (
     input.key === "ArrowUp" || input.key === "ArrowDown"
     || input.key === "ArrowLeft" || input.key === "ArrowRight"

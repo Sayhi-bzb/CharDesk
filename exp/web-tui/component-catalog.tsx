@@ -1,8 +1,11 @@
 import type { ComponentType } from "react";
 import {
   BoxComponentDemo,
+  DialogComponentDemo,
+  AccordionComponentDemo,
   ButtonComponentDemo,
   CheckboxComponentDemo,
+  ComboboxComponentDemo,
   ToggleComponentDemo,
   ProgressComponentDemo,
   SeparatorComponentDemo,
@@ -37,7 +40,65 @@ export type ComponentDocument = Readonly<{
 
 export const componentDocuments: readonly ComponentDocument[] = [
   {
-    slug: "toggle", title: "Toggle", group: "components", navigationOrder: 6,
+    slug: "dialog", title: "Dialog", group: "components", navigationOrder: 11,
+    description: "A named Cell dialog with shared overlay placement and focus management.",
+    probeId: "component-dialog", Demo: DialogComponentDemo,
+    usage: `import { useState } from "react";
+import { Root, Button, Text, Dialog, DialogTitle, DialogDescription, DialogFooter } from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function DialogExample() {
+  const [open, setOpen] = useState(false);
+  return <CellSurface viewport={{ width: 48, height: 14 }} onCommand={(command) => {
+    if (command.type === "activate" && command.targetId === "open") setOpen(true);
+    if ((command.type === "dismiss" && command.targetId === "dialog")
+      || (command.type === "activate" && command.targetId === "close")) setOpen(false);
+  }}><Root>
+    <Button id="open"><Text>Open dialog</Text></Button>
+    {open && <Dialog id="dialog">
+      <DialogTitle>Continue?</DialogTitle>
+      <DialogDescription>This is a preview confirmation.</DialogDescription>
+      <DialogFooter><Button id="close"><Text>Close</Text></Button></DialogFooter>
+    </Dialog>}
+  </Root></CellSurface>;
+}`,
+    api: [
+      { name: "id", type: "string", description: "Required stable dismiss-command target." },
+      { name: "modal", type: "boolean", description: "Trap focus and exclude background semantics; default true." },
+      { name: "closeOnOutsideClick", type: "boolean", description: "Request dismissal on outside pointer down; default true." },
+      { name: "initialFocusId", type: "string", description: "Preferred available content control on opening." },
+      { name: "children", type: "Cell primitives", description: "One direct Title, optional direct Description, and composable content/Footer." },
+    ],
+  },
+  {
+    slug: "accordion", title: "Accordion", group: "components", navigationOrder: 10,
+    description: "Expand independent sections without losing their content state.",
+    probeId: "component-accordion", Demo: AccordionComponentDemo,
+    usage: `import { useState } from "react";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Root, Text } from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function AccordionExample() {
+  const [expanded, setExpanded] = useState(false);
+  return <CellSurface viewport={{ width: 30, height: 6 }} onCommand={(command) => {
+    if (command.type === "set-expanded" && command.targetId === "general") setExpanded(command.expanded);
+  }}>
+    <Root><Accordion><AccordionItem id="general" expanded={expanded}>
+      <AccordionTrigger><Text>General</Text></AccordionTrigger>
+      <AccordionContent><Text>Project settings</Text></AccordionContent>
+    </AccordionItem></Accordion></Root>
+  </CellSurface>;
+}`,
+    api: [
+      { name: "Accordion.disabled?", type: "boolean", description: "Disables all items and content controls." },
+      { name: "AccordionItem.id", type: "string", description: "Stable item ID; target of set-expanded commands." },
+      { name: "AccordionItem.expanded?", type: "boolean", description: "Controlled expansion; defaults to false. Items expand independently." },
+      { name: "AccordionItem.disabled?", type: "boolean", description: "Disables this item and its content controls." },
+      { name: "children", type: "Trigger + Content", description: "One Trigger followed by one Content per Item. Relations are automatic; collapsed content retains state." },
+    ],
+  },
+  {
+    slug: "toggle", title: "Toggle", group: "components", navigationOrder: 7,
     description: "Show a persistent mode with a status light, separate from interaction feedback.",
     probeId: "component-toggle", Demo: ToggleComponentDemo,
     usage: `import { useState } from "react";
@@ -59,7 +120,7 @@ export function ToggleExample() {
     ],
   },
   {
-    slug: "progress", title: "Progress", group: "components", navigationOrder: 7,
+    slug: "progress", title: "Progress", group: "components", navigationOrder: 8,
     description: "Display determinate progress in copyable block Cells.",
     probeId: "component-progress", Demo: ProgressComponentDemo,
     usage: `import { Progress, Root } from "@chardesk/cell-ui";
@@ -89,12 +150,13 @@ export function SeparatorExample() {
   </CellSurface>;
 }`,
     api: [
+      { name: "variant?", type: '"line" | "slash" | "double" | "dots"', description: "Line by default; glyphs come from the global Cell UI theme." },
       { name: "orientation?", type: '"horizontal" | "vertical"', description: "Horizontal by default; vertical fills its container height." },
       { name: "style?", type: "CellLayoutStyle", description: "Cell length and layout constraints." },
     ],
   },
   {
-    slug: "radio", title: "Radio", group: "components", navigationOrder: 8,
+    slug: "radio", title: "Radio", group: "components", navigationOrder: 9,
     description: "Choose one value with a shared group and arrow-key navigation.",
     probeId: "component-radio", Demo: RadioComponentDemo,
     usage: `import { RadioGroup, RadioItem, Root, Text } from "@chardesk/cell-ui";
@@ -303,17 +365,60 @@ export function SelectExample() {
       { name: "SelectTrigger.expanded", type: "boolean", description: "Controls disclosure state and chrome." },
       { name: "SelectTrigger.controlsId?", type: "string", description: "Relates the open Trigger to its listbox." },
       { name: "SelectContent", type: "Cell primitive", description: "Portaled listbox anchored to the Trigger." },
-      { name: "SelectContent.style.border?", type: "boolean", description: "Reserves and paints a one-Cell dropdown border; defaults to true." },
+      { name: "SelectContent.style.border?", type: "boolean", description: "Reserves and paints a one-Cell dropdown border; defaults to false." },
       { name: "SelectContent.scrollY?", type: "number", description: "Controlled offset for a constrained listbox." },
       { name: "SelectItem.selected?", type: "boolean", description: "Persistent committed selection." },
       { name: "useCellSelectState", type: "CellSelectState", description: "Owns open, provisional focus, selection, listbox scroll, and commands." },
     ],
   },
   {
+    slug: "combobox",
+    title: "Combobox",
+    group: "components",
+    navigationOrder: 2,
+    description: "Filter local options in one Cell input, then commit one value.",
+    probeId: "component-combobox",
+    Demo: ComboboxComponentDemo,
+    usage: `import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, Root, Text } from "@chardesk/cell-ui";
+import { CellSurface, useCellComboboxState } from "@chardesk/cell-ui/browser";
+
+const fonts = [
+  { id: "maple", label: "Maple Mono" },
+  { id: "fusion", label: "Fusion Pixel 12px Mono" },
+];
+
+export function ComboboxExample() {
+  const combo = useCellComboboxState("font", fonts, { defaultSelectedId: "maple" });
+  return <CellSurface viewport={{ width: 32, height: 8 }} focusedId={combo.focusedId}
+    onCommand={combo.dispatch}><Root>
+    <Combobox id={combo.id} label="Font" style={{ width: 30 }}>
+      <ComboboxInput id={combo.inputId} label="Font" state={combo.inputSnapshot}
+        expanded={combo.open} activeDescendantId={combo.activeId ?? undefined} />
+      {combo.open && <ComboboxContent id={combo.contentId} label="Font options" scrollY={combo.scrollY}>
+        {combo.filteredItems.map((item, index) => <ComboboxItem id={item.id} key={item.id}
+          active={combo.activeId === item.id} selected={combo.selectedId === item.id}
+          positionInSet={index + 1} setSize={combo.filteredItems.length}>
+          <Text>{item.label}</Text>
+        </ComboboxItem>)}
+      </ComboboxContent>}
+    </Combobox>
+  </Root></CellSurface>;
+}`,
+    api: [
+      { name: "Combobox.disabled?", type: "boolean", description: "Disables the input and every candidate." },
+      { name: "ComboboxInput.state", type: "CellTextSnapshot", description: "Controlled editor state; the input remains the only focus owner." },
+      { name: "ComboboxInput.style?", type: "CellSingleLineInputStyle", description: "Width constraints and flex behavior; height, padding, and border belong to the component." },
+      { name: "ComboboxInput.activeDescendantId?", type: "string", description: "Relates keyboard navigation to one active option without moving focus." },
+      { name: "ComboboxContent", type: "Cell primitive", description: "Portaled listbox anchored to the input." },
+      { name: "ComboboxItem.active?", type: "boolean", description: "Provisional keyboard or pointer candidate, separate from committed selection." },
+      { name: "useCellComboboxState", type: "CellComboboxState", description: "Owns local filtering, editor state, active candidate, selection, opening, and scroll." },
+    ],
+  },
+  {
     slug: "checkbox",
     title: "Checkbox",
     group: "components",
-    navigationOrder: 3,
+    navigationOrder: 4,
     description: "Toggle boolean or indeterminate state through one Cell command path.",
     probeId: "component-checkbox",
     Demo: CheckboxComponentDemo,
@@ -364,7 +469,7 @@ export function CheckboxExample() {
     slug: "slider",
     title: "Slider",
     group: "components",
-    navigationOrder: 2,
+    navigationOrder: 3,
     description: "Select one stepped value or a bounded interval on a Cell-native track.",
     probeId: "component-slider",
     Demo: SliderComponentDemo,
@@ -413,7 +518,7 @@ export function SliderExample() {
     slug: "input",
     title: "Input",
     group: "components",
-    navigationOrder: 4,
+    navigationOrder: 5,
     description: "Edit a single line of Unicode text on the Cell grid.",
     probeId: "component-input",
     Demo: InputComponentDemo,
@@ -423,7 +528,7 @@ import { CellSurface, useCellTextState } from "@chardesk/cell-ui/browser";
 export function InputExample() {
   const input = useCellTextState("file-name", { value: "notes.txt" });
   return (
-    <CellSurface viewport={{ width: 36, height: 4 }} onCommand={input.dispatch}>
+    <CellSurface viewport={{ width: 36, height: 2 }} onCommand={input.dispatch}>
       <Root id="root">
         <Box>
           <Text>File name</Text>
@@ -431,7 +536,7 @@ export function InputExample() {
             id="file-name"
             label="File name"
             state={input.snapshot}
-            style={{ border: true, height: 3 }}
+            style={{ width: 36 }}
           />
         </Box>
       </Root>
@@ -444,7 +549,7 @@ export function InputExample() {
       { name: "label?", type: "string", description: "Accessible textbox name." },
       { name: "disabled?", type: "boolean", description: "Prevents focus and editing." },
       { name: "readOnly?", type: "boolean", description: "Allows focus and selection without editing." },
-      { name: "style?", type: "CellLayoutStyle", description: "Cell size, padding, and border." },
+      { name: "style?", type: "CellSingleLineInputStyle", description: "Width constraints and flex behavior; height, padding, and border belong to the component." },
       { name: "textStyle?", type: "CellTextStyle", description: "Foreground, background, and emphasis." },
     ],
   },
@@ -503,7 +608,7 @@ export function ListExample() {
     slug: "scroll-area",
     title: "ScrollArea",
     group: "components",
-    navigationOrder: 5,
+    navigationOrder: 6,
     description: "Scroll overflowing Cell content with keys, wheel, track, or thumb.",
     probeId: "component-scroll-area",
     Demo: ScrollAreaComponentDemo,

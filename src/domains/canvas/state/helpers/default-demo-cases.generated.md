@@ -127,7 +127,7 @@
 ╰────────────────────────────╯    │ Sync          18 ms  │    한국어     준비 완료
                                   ╰──────────────────────╯    Emoji      👋 🚀
 
-  [1mInput · canvas.json[0m       ╭────────────────────────╮    [1mOutput · scene[0m
+[1mInput · canvas.json[0m         ╭────────────────────────╮    [1mOutput · scene[0m
                             │ Transform pipeline     │    launch-plan
 [38;2;129;139;152m├─ [0m[38;2;9;105;218mcanvas[0m[38;2;129;139;152m: [0m[38;2;26;127;55m"launch-plan"[0m    │                        │    ├─ brief
 [38;2;129;139;152m├─ [0m[38;2;9;105;218mowner[0m[38;2;129;139;152m: [0m[38;2;26;127;55m"Ada"[0m             │ Markdown               │    │  ├─ goals

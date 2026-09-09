@@ -61,8 +61,10 @@ export class CellInteractionController {
     this.#hoveredId = targetId;
     if (this.#inputSource !== "pointer" || this.feedback.settling || targetId === this.focus.focusedId) return;
     const kind = targetId ? frame.tree.nodes.get(targetId)?.kind : undefined;
-    if (targetId && (kind === "select-item" || kind === "menu-item")) {
-      const command = { type: "focus", targetId } as const;
+    if (targetId && (kind === "select-item" || kind === "menu-item" || kind === "combobox-item")) {
+      const command = kind === "combobox-item"
+        ? { type: "set-active", targetId } as const
+        : { type: "focus", targetId } as const;
       this.focus.apply(command);
       this.emit(command);
       this.notify();

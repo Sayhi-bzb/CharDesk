@@ -12,6 +12,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { useCanvasRuntime, useCanvasState } from "@/domains/canvas/public";
 import { useEditor } from "@/domains/editor/public";
+import { useCanvasAppearance } from "@/shared/canvas-appearance/hooks";
 import { useUiI18n } from "@/shared/i18n";
 import { HOST_ICONOLOGY } from "@/shared/icons/iconology";
 import { COLOR_PRIMARY_TEXT } from "@/shared/lib/constants";
@@ -92,6 +93,7 @@ export function CanvasInspectorControl({
   readOnly = false,
 }: CanvasInspectorControlProps) {
   const canvas = useCanvasRuntime();
+  const { resolvedTheme } = useCanvasAppearance();
   const editor = useEditor();
   const { t } = useUiI18n();
   const actionTooltipHandle = useMemo(
@@ -341,6 +343,7 @@ export function CanvasInspectorControl({
               <ColorPickerPanel
                 value={model.activeColor}
                 onPick={applyColor}
+                appearance={resolvedTheme}
                 density="compact"
                 defaultColor={COLOR_PRIMARY_TEXT}
                 canvasPickDestination={model.canvasPickDestination}

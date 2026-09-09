@@ -28,6 +28,7 @@ export type {
   CharGraphAwaitable,
   CharGraphDiagnostic,
   CharGraphFragment,
+  CharGraphInlineAlignment,
   CharGraphRenderer,
   CharGraphRenderResult,
   CharGraphSourceRange,
@@ -53,6 +54,7 @@ export type {
 } from "./block-layout.js";
 export { renderCharGraphText } from "./text.js";
 export type {
+  CharGraphBlockLayoutOptions,
   CharGraphTextMode,
   CharGraphTextRenderOptions,
   CharGraphTextRenderResult,

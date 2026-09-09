@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_TEXT_RENDER_THEME } from "./theme";
+import {
+  DEFAULT_TEXT_RENDER_THEME,
+  DEFAULT_TEXT_RENDER_THEMES,
+} from "./theme";
 import {
   createDefaultFeatureSettings,
   createRegisteredMarkdownOptions,
@@ -33,21 +36,21 @@ describe("text render feature registry", () => {
 
     expect(Object.keys(left)).toEqual(TEXT_RENDER_FEATURES.map((feature) => feature.id));
     expect(Object.values(left).every((config) => config.enabled)).toBe(true);
-    left["markdown.strong"]!.colors.foreground = "#123456";
-    expect(right["markdown.strong"]!.colors).toEqual({});
+    left["markdown.strong"]!.colors.light.foreground = "#123456";
+    expect(right["markdown.strong"]!.colors).toEqual({ light: {}, dark: {} });
   });
 
   it("builds core and extension options from the same feature settings", () => {
     const settings = createDefaultFeatureSettings();
     settings["markdown.strong"]!.enabled = false;
     settings["markdown.inline-math"]!.enabled = false;
-    settings["markdown.math-style"]!.colors.operator = "#abcdef";
-    settings["markdown.mermaid"]!.colors["node.border"] = "#654321";
-    settings["markdown.mermaid"]!.colors["sequence.activation"] = "#abcdef";
-    settings["markdown.mermaid"]!.colors["flow.node.marker"] = "#fedcba";
-    settings["markdown.mermaid"]!.colors["state.start"] = "#123abc";
-    settings["markdown.mermaid"]!.colors["state.end"] = "#456def";
-    settings["markdown.table"]!.colors["header.background"] = "#123456";
+    settings["markdown.math-style"]!.colors.light.operator = "#abcdef";
+    settings["markdown.mermaid"]!.colors.light["node.border"] = "#654321";
+    settings["markdown.mermaid"]!.colors.light["sequence.activation"] = "#abcdef";
+    settings["markdown.mermaid"]!.colors.light["flow.node.marker"] = "#fedcba";
+    settings["markdown.mermaid"]!.colors.light["state.start"] = "#123abc";
+    settings["markdown.mermaid"]!.colors.light["state.end"] = "#456def";
+    settings["markdown.table"]!.colors.light["header.background"] = "#123456";
 
     const options = createRegisteredMarkdownOptions(
       settings,
@@ -101,6 +104,26 @@ describe("text render feature registry", () => {
     expect(options.forced).toBe(true);
   });
 
+  it("resolves Mermaid, diff, and code defaults from the dark palette", () => {
+    const options = createRegisteredMarkdownOptions(
+      createDefaultFeatureSettings(),
+      DEFAULT_TEXT_RENDER_THEMES.dark,
+      true,
+      "dark"
+    );
+
+    expect(options.extensionStyles?.["mermaid.node.text"]?.color).toBe("#f0f6fc");
+    expect(options.extensionStyles?.["mermaid.node.border"]?.color).toBe("#58a6ff");
+    expect(options.extensionStyles?.["mermaid.chart.grid"]?.color).toBe("#21262d");
+    expect(options.extensionStyles?.["diff-added"]).toMatchObject({
+      color: "#3fb950",
+      bgColor: "#13251e",
+    });
+    expect(options.codeTheme).toMatchObject({
+      name: expect.stringContaining("f0f6fc-0d1117-58a6ff"),
+    });
+  });
+
   it("migrates v1 global rule and color keys into feature-local config", () => {
     const settings = migrateLegacyFeatureSettings(
       { strong: false },
@@ -115,27 +138,27 @@ describe("text render feature registry", () => {
 
     expect(settings["markdown.strong"]).toEqual({
       enabled: false,
-      colors: { foreground: "#aabbcc" },
+      colors: { light: { foreground: "#aabbcc" }, dark: {} },
     });
-    expect(settings["markdown.table"]?.colors).toEqual({
+    expect(settings["markdown.table"]?.colors.light).toEqual({
       "header.background": "#123456",
       separator: "#123456",
     });
     expect(settings["markdown.block-math"]?.enabled).toBe(true);
     expect(settings["markdown.math-style"]).toEqual({
       enabled: true,
-      colors: { content: "#456789" },
+      colors: { light: { content: "#456789" }, dark: {} },
     });
     expect(settings["markdown.github-alert"]?.enabled).toBe(true);
     expect(settings["markdown.diff"]?.enabled).toBe(true);
     expect(settings["markdown.json-tree"]?.enabled).toBe(true);
     expect(settings["markdown.yaml-tree"]?.enabled).toBe(true);
-    expect(settings["markdown.json-tree"]?.colors).toMatchObject({
+    expect(settings["markdown.json-tree"]?.colors.light).toMatchObject({
       boolean: "#234567",
       null: "#234567",
       empty: "#234567",
     });
-    expect(settings["markdown.yaml-tree"]?.colors).toMatchObject({
+    expect(settings["markdown.yaml-tree"]?.colors.light).toMatchObject({
       boolean: "#345678",
       null: "#345678",
       empty: "#345678",
@@ -157,20 +180,20 @@ describe("text render feature registry", () => {
 
     expect(settings["markdown.inline-math"]).toEqual({
       enabled: false,
-      colors: {},
+      colors: { light: {}, dark: {} },
     });
     expect(settings["markdown.block-math"]).toEqual({
       enabled: true,
-      colors: {},
+      colors: { light: {}, dark: {} },
     });
-    expect(settings["markdown.math-style"]?.colors).toEqual({
+    expect(settings["markdown.math-style"]?.colors.light).toEqual({
       content: "#abcdef",
     });
   });
 
   it("applies an optional Mermaid node fill behind text and empty cells", () => {
     const settings = createDefaultFeatureSettings();
-    settings["markdown.mermaid"]!.colors["node.background"] = "#123456";
+    settings["markdown.mermaid"]!.colors.light["node.background"] = "#123456";
     const options = createRegisteredMarkdownOptions(
       settings,
       DEFAULT_TEXT_RENDER_THEME,
@@ -186,7 +209,7 @@ describe("text render feature registry", () => {
       {},
       { "mermaid.foreground": "#123456" }
     );
-    const colors = settings["markdown.mermaid"]!.colors;
+    const colors = settings["markdown.mermaid"]!.colors.light;
 
     expect(colors["node.text"]).toBe("#123456");
     expect(colors["node.border"]).toBe("#123456");
@@ -232,7 +255,7 @@ describe("text render feature registry", () => {
           "edge.line": "#654321",
         },
       },
-    })["markdown.mermaid"]!.colors;
+    })["markdown.mermaid"]!.colors.light;
 
     expect(colors).toEqual({ "node.border": "#654321" });
   });
@@ -247,7 +270,7 @@ describe("text render feature registry", () => {
           "edge.arrow": "#abcdef",
         },
       },
-    })["markdown.mermaid"]!.colors;
+    })["markdown.mermaid"]!.colors.light;
 
     expect(colors["node.border"]).toBe("#123456");
     expect(colors["edge.line"]).toBeUndefined();
@@ -260,7 +283,7 @@ describe("text render feature registry", () => {
         enabled: true,
         colors: { "flow.node.border": "#ABCDEF" },
       },
-    })["markdown.mermaid"]!.colors;
+    })["markdown.mermaid"]!.colors.light;
 
     expect(colors).toEqual({ "node.border": "#abcdef" });
   });
@@ -274,7 +297,7 @@ describe("text render feature registry", () => {
           "flow.node.border": "#abcdef",
         },
       },
-    })["markdown.mermaid"]!.colors;
+    })["markdown.mermaid"]!.colors.light;
 
     expect(colors).toEqual({ "node.border": "#123456" });
   });
@@ -285,7 +308,7 @@ describe("text render feature registry", () => {
         enabled: true,
         colors: { "edge.arrow": "#abcdef" },
       },
-    })["markdown.mermaid"]!.colors;
+    })["markdown.mermaid"]!.colors.light;
 
     expect(colors).toEqual({ "node.border": "#abcdef" });
   });
@@ -296,7 +319,7 @@ describe("text render feature registry", () => {
         enabled: true,
         colors: { foreground: "#ABCDEF" },
       },
-    })["markdown.mermaid"]!.colors;
+    })["markdown.mermaid"]!.colors.light;
 
     expect(colors["title"]).toBe("#abcdef");
     expect(colors["container.title"]).toBe("#abcdef");
@@ -316,18 +339,18 @@ describe("text render feature registry", () => {
       },
     });
 
-    expect(settings["markdown.json-tree"]!.colors).toMatchObject({
+    expect(settings["markdown.json-tree"]!.colors.light).toMatchObject({
       boolean: "#abcdef",
       null: "#abcdef",
       empty: "#abcdef",
     });
-    expect(settings["markdown.yaml-tree"]!.colors).toMatchObject({
+    expect(settings["markdown.yaml-tree"]!.colors.light).toMatchObject({
       boolean: "#123456",
       null: "#123456",
       empty: "#123456",
       reference: "#123456",
     });
-    expect(settings["markdown.json-tree"]!.colors.keyword).toBeUndefined();
+    expect(settings["markdown.json-tree"]!.colors.light.keyword).toBeUndefined();
   });
 
   it("publishes grouped data-tree color rows", () => {
@@ -353,9 +376,9 @@ describe("text render feature registry", () => {
 
   it("keeps JSON and YAML tree color overrides independent", () => {
     const settings = createDefaultFeatureSettings();
-    settings["markdown.json-tree"]!.colors.boolean = "#111111";
-    settings["markdown.yaml-tree"]!.colors.boolean = "#222222";
-    settings["markdown.yaml-tree"]!.colors.reference = "#333333";
+    settings["markdown.json-tree"]!.colors.light.boolean = "#111111";
+    settings["markdown.yaml-tree"]!.colors.light.boolean = "#222222";
+    settings["markdown.yaml-tree"]!.colors.light.reference = "#333333";
 
     const options = createRegisteredMarkdownOptions(
       settings,

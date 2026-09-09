@@ -1,6 +1,6 @@
 import { cellRectContainsPoint } from "@chardesk/cell-core";
 import type { FocusManager, WidgetCommand } from "./interaction.js";
-import { commandForInput, getScrollRange, topFocusScopeId } from "./interaction.js";
+import { commandForInput, getScrollRange, topFocusScopeId, isInFocusScope } from "./interaction.js";
 import type { GestureCandidate, GestureSignal } from "./gestures.js";
 import { getEventPath, hitTestCell } from "./scene.js";
 import type { CellPoint, FrameSnapshot, WidgetId } from "./types.js";
@@ -18,7 +18,7 @@ import {
 export const validGestureCandidate = (frame: FrameSnapshot, candidate: GestureCandidate): boolean => {
   const node = frame.tree.nodes.get(candidate.targetId);
   const entry = frame.scene.entries.get(candidate.targetId);
-  if (!node || node.disabled || !entry?.paintVisible) return false;
+  if (!node || node.disabled || !entry?.paintVisible || !isInFocusScope(frame.tree, node.id)) return false;
   if (candidate.slider) {
     const track = node.kind === "slider"
       ? entry.decorationBounds
@@ -233,7 +233,8 @@ export const commandForGestureSignal = (
       frame,
       focus
     );
-    return command?.targetId === signal.targetId ? command : null;
+    const commandTarget = node?.kind === "accordion-trigger" ? node.parentId : signal.targetId;
+    return command?.targetId === commandTarget ? command : null;
   }
   if (
     signal.kind === "drag"

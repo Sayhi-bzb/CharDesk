@@ -20,6 +20,9 @@ export type UiRuntimeTheme = {
     };
     selectionSurface: string;
     selectionBorder: string;
+    rangeSurface: string;
+    rangeBorder: string;
+    rangeSurfaceEffect: "tint" | "contrast";
     textCursorSurface: string;
     textCursorForeground: string;
     pickerOuter: string;
@@ -45,6 +48,8 @@ const runtimeColorTokens = {
   artifactGrid: "--canvas-artifact-grid",
   selectionSurface: "--canvas-selection-surface",
   selectionBorder: "--canvas-selection-border",
+  rangeSurface: "--canvas-range-surface",
+  rangeBorder: "--canvas-range-border",
   textCursorSurface: "--canvas-text-cursor-surface",
   textCursorForeground: "--canvas-text-cursor-foreground",
   pickerOuter: "--canvas-picker-outer",
@@ -103,6 +108,15 @@ const readRadiusPx = (probe: HTMLElement, token: string) => {
   return radius;
 };
 
+const readRangeSurfaceEffect = (probe: HTMLElement) => {
+  const token = "--canvas-range-surface-effect";
+  const value = probe.ownerDocument.defaultView!.getComputedStyle(probe)
+    .getPropertyValue(token)
+    .trim();
+  if (value === "tint" || value === "contrast") return value;
+  throw new Error(`CharDesk UI runtime theme has an invalid ${token}: ${value}`);
+};
+
 export function readUiRuntimeTheme(element: HTMLElement): UiRuntimeTheme {
   const probe = element.ownerDocument.createElement("span");
   probe.setAttribute("aria-hidden", "true");
@@ -138,6 +152,9 @@ export function readUiRuntimeTheme(element: HTMLElement): UiRuntimeTheme {
         },
         selectionSurface: colors.selectionSurface,
         selectionBorder: colors.selectionBorder,
+        rangeSurface: colors.rangeSurface,
+        rangeBorder: colors.rangeBorder,
+        rangeSurfaceEffect: readRangeSurfaceEffect(probe),
         textCursorSurface: colors.textCursorSurface,
         textCursorForeground: colors.textCursorForeground,
         pickerOuter: colors.pickerOuter,

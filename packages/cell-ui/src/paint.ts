@@ -16,7 +16,7 @@ import type { CellTextLayoutSnapshot } from "./text.js";
 import { DEFAULT_CELL_UI_THEME, type CellUiTheme } from "./theme.js";
 import { intersectSceneRects } from "./scene.js";
 import { thumbGlyph } from "./scrollbar.js";
-import { paintBorder } from "./border.js";
+import { paintBorder, resolveWidgetBorder } from "./border.js";
 import { isActionableKind } from "./widget-capabilities.js";
 import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
 import { checkboxChromeMetrics } from "./checkbox.js";
@@ -155,17 +155,24 @@ export const paintScene = (
         isActionableKind(node.kind)
         && (node.pressActive || node.activationFlash || node.selected || (node.focused && node.focusVisible))
       )) {
-        fill(buffer, entry.layoutBounds, id, style, outerClip);
+        const contentSurface = visual.surfaceRegion === "content";
+        fill(
+          buffer,
+          contentSurface ? entry.contentBounds : entry.layoutBounds,
+          id,
+          style,
+          contentSurface ? contentClip : outerClip,
+        );
       }
 
       // Chrome: glyphs are painted after surfaces so state fills cannot erase them.
-      if (node.style.border ?? node.kind === "select-content") {
+      if (resolveWidgetBorder(node.kind, node.style.border)) {
         paintBorder(
           buffer,
           id,
           entry.layoutBounds,
           node.style.borderShape ?? theme.borderShape,
-          { ...style, ...theme.borderStyle },
+          visual.borderStyle,
           outerClip
         );
       }
@@ -261,9 +268,12 @@ export const paintScene = (
         const vertical = node.kind === "separator" && node.orientation === "vertical";
         const length = vertical ? bounds.height : bounds.width;
         const filled = node.progress ? Math.floor(length * node.progress.value / node.progress.max) : 0;
+        const separatorGlyph = node.kind === "separator"
+          ? theme.separatorGlyphs[node.separatorVariant][vertical ? "vertical" : "horizontal"]
+          : null;
         for (let offset = 0; offset < length; offset += 1) {
           buffer.writeGrapheme(bounds.x + (vertical ? 0 : offset), bounds.y + (vertical ? offset : 0),
-            node.kind === "separator" ? vertical ? "│" : "─"
+            node.kind === "separator" ? separatorGlyph ?? theme.separatorGlyphs.line.horizontal
               : offset < filled ? theme.progressFilledTrack : theme.progressEmptyTrack,
             id, node.kind === "separator" ? { ...style, color: theme.borderStyle.color } : style,
             decorationClip, "over");
@@ -336,7 +346,12 @@ export const paintScene = (
           "over",
         );
       }
-      if (node.kind === "select-trigger") {
+      if (node.kind === "accordion-trigger") {
+        buffer.writeGrapheme(entry.decorationBounds.x, entry.decorationBounds.y,
+          node.expanded ? theme.treeExpandedIndicator : theme.treeCollapsedIndicator,
+          id, style, decorationClip, "over");
+      }
+      if (node.kind === "select-trigger" || node.kind === "combobox-input") {
         buffer.writeGrapheme(
           entry.decorationBounds.x + entry.decorationBounds.width - 1,
           entry.decorationBounds.y,
@@ -347,7 +362,7 @@ export const paintScene = (
           "over"
         );
       }
-      if (node.kind === "select-item" && node.selected) {
+      if ((node.kind === "select-item" || node.kind === "combobox-item") && node.selected) {
         const ownerViewport = node.parentId
           ? scene.entries.get(node.parentId)?.scrollMetrics?.viewport
           : undefined;

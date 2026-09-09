@@ -1,6 +1,8 @@
 import type { UiRuntimeTheme } from "@chardesk/ui";
-import type { CanvasArtifactPalette } from "@/shared/metrics/artifactPalette";
-import { DEFAULT_ARTIFACT_CANVAS_PALETTE } from "@/shared/metrics/artifactPalette";
+import {
+  DEFAULT_ARTIFACT_CANVAS_PALETTE,
+  type CanvasArtifactPalette,
+} from "./artifact-style";
 import { areJsonValuesEqual } from "@/shared/utils/equality";
 
 export type ResolvedCanvasTheme = "light" | "dark";

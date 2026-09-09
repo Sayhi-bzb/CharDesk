@@ -97,6 +97,7 @@ export class ApplicationEditorHost {
         renderClipboardText: this.textRenderingWorker.render,
         getFontProfile: () => this.canvasFont.getSnapshot().profile,
         getArtifactPalette: () => this.canvasAppearance.getSnapshot().palette,
+        getResolvedTheme: () => this.canvasAppearance.getSnapshot().resolvedTheme,
       }),
       parseSessionSource: parseDocumentSessionSource,
       reportIntegrityIssues: (issues) =>

@@ -36,6 +36,16 @@ literal. Main Canvas, CellFrame previews, Minimap, and PNG export consume that
 same runtime snapshot. Slide pages retain their white-paper palette. Theme state
 does not enter document, history, session, or collaboration data.
 
+Display owns paired Light and Dark content palettes shared by CharGraph and
+theme-aware Canvas templates. Paste and template Drop capture the resolved Host
+theme once, then materialize ordinary literal Cell colors. Sidebar and drag
+previews follow the active content palette, including its user overrides;
+switching Host theme never recolors existing Freeform content. Display settings
+edit the overrides for the currently resolved Host theme, while renderer feature
+toggles remain shared. Profiles saved by the former Light-only renderer migrate
+their color overrides to Light; Dark starts from its built-in palette. Template
+tokens are catalog metadata and never enter document or collaboration data.
+
 Freeform and Slide use one terminal Cell cursor for both Navigate and Text Edit.
 The global Host preference selects block, bar, or underline and independently
 enables the 600ms edit blink; it is local UI state, not document or history state.
@@ -44,6 +54,8 @@ becoming steady on focus loss. A Range hides the cursor, and inactive split view
 draw neither cursor nor Range. One Canvas Cell presentation resolver owns this
 precedence and emits one terminal-cursor or Range visual intent. Selecting and
 resting Ranges use a surface only; moving Ranges add the selection border.
+Dark Range surfaces use low-strength contrast compositing over final pixels so
+literal Cell colors remain readable without introducing a resting border.
 Canvas and Cell UI adapt their own theme values to the shared rendering contracts.
 
 Static Grid separates command targets from interaction semantics. The Selection
@@ -62,6 +74,10 @@ owns only steps, copy, workflow state, and lifecycle callbacks.
 `surface`, `control`, and `item` are the radius ladder. Surface and dialog
 shells use 12px; controls, fields, menu items, and selectable items use 8px;
 color swatches remain circular.
+ANSI swatches keep their values and order across appearances. Curated presets
+are owned by `@chardesk/ui` and resolve to separate Light and Dark literal
+palettes before product widgets consume them. Picking a swatch always
+materializes its hex value; changing Host theme never recolors existing content.
 Page backgrounds, embedded regions, floating hosts, overlays, and dialogs form
 one neutral surface ladder. Embedded regions use tone without a contour;
 floating, overlay, and modal surfaces use the shared low-contrast ring and

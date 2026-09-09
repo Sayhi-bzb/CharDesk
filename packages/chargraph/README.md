@@ -24,7 +24,13 @@ CharGraph emits diagnostics and source-aware fragments. `@chardesk/protocol`
 alone owns grapheme segmentation, CJK width, tabs, and cell coordinates. See
 [UPSTREAM.md](./UPSTREAM.md) for adapted renderer attribution.
 
-Markdown results expose top-level `visualGroups` as half-open output row ranges.
-Block layout uses those semantic units to center narrower rendered groups inside
-each intrinsic-width field; results without group metadata retain their original
-alignment.
+Markdown results expose top-level `visualGroups` as half-open output row ranges
+with an explicit inline alignment. Ordinary blocks request `start`; enhanced
+tables and successfully rendered Mermaid diagrams request `center`. Block layout
+applies that placement inside each intrinsic-width field instead of inferring
+alignment from group membership.
+
+Auto rendering activates block layout only after an unescaped `|||` field
+boundary. Once active, `---` separates layout rows; without `|||`, it remains
+Markdown. Callers that intentionally accept row-only layouts can opt into
+`layout.activation: "any-boundary"`.

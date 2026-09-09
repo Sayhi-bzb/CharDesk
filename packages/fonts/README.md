@@ -18,7 +18,7 @@ import {
 const profile = createCharDeskFontProfile({
   id: "product/display-v1",
   display: { families: { regular: "'Product Latin', monospace" } },
-  cjk: { families: { regular: "'Product CJK', monospace" }, scaleX: 1.2 },
+  cjk: { families: { regular: "'Product CJK', monospace" } },
 });
 ```
 
@@ -37,6 +37,10 @@ every WOFF2 shard is at most 96 KiB. CSS ranges, runtime capability ranges, and
 the character explorer are generated from that same catalog. Use
 `npm run fonts:sync:nerd` to refresh this independently from the other pinned
 Core sources; `npm run fonts:verify -- --target=canvas-core` is offline.
+
+Nerd glyphs remain one protocol Cell and use `fontSizeScale: 0.8`. The scale is
+uniform: font profiles cannot stretch one axis independently. Glyph ink may
+cross a Cell boundary; the containing Canvas Surface is the paint boundary.
 
 The current optional compatibility display is [`@chardesk/font-maple`](../font-maple/README.md). Source versions and checksums are authoritative in `manifest.json`; candidate evaluation lives in the [font capability research card](../../exp/research/font-stack.md).
 

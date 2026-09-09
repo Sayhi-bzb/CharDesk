@@ -3,6 +3,7 @@ import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CheckboxComponentDemo,
+  ComboboxComponentDemo,
   ToggleComponentDemo,
   ProgressComponentDemo,
   SeparatorComponentDemo,
@@ -58,7 +59,7 @@ describe("Component Playground gallery demos", () => {
   it.each([
     { Demo: ToggleComponentDemo, label: "Toggle component", content: ["○ Bold", "disabled"], absent: ["variant", "pressed", "value"], rounded: false },
     { Demo: ProgressComponentDemo, label: "Progress component", content: ["████"], absent: ["variant", "value", "│"], rounded: false },
-    { Demo: SeparatorComponentDemo, label: "Separator component", content: ["────", "horizontal"], absent: ["variant"], rounded: false },
+    { Demo: SeparatorComponentDemo, label: "Separator component", content: ["───────", "variant", "direction", "horizontal"], absent: ["line", "slash", "double", "dots", "value"], rounded: false },
     { Demo: RadioComponentDemo, label: "Radio component", content: ["(●) Light", "( ) Dark", "disabled"], absent: ["variant", "value"], rounded: false },
     {
       Demo: SelectComponentDemo,
@@ -66,6 +67,13 @@ describe("Component Playground gallery demos", () => {
       content: ["Theme", "Dark", "border", "disabled", "rounded"],
       absent: ["value"],
       rounded: true,
+    },
+    {
+      Demo: ComboboxComponentDemo,
+      label: "Combobox component",
+      content: ["Font", "Maple Mono", "value", "disabled"],
+      absent: ["query"],
+      rounded: false,
     },
     {
       Demo: CheckboxComponentDemo,
@@ -84,9 +92,9 @@ describe("Component Playground gallery demos", () => {
     {
       Demo: InputComponentDemo,
       label: "Input component",
-      content: ["File name", "notes.txt", "disabled", "rounded"],
-      absent: ["readOnly"],
-      rounded: true,
+      content: ["File name", "notes.txt", "disabled"],
+      absent: ["border", "rounded", "readOnly"],
+      rounded: false,
     },
     {
       Demo: ScrollAreaComponentDemo,

@@ -42,7 +42,7 @@ const scrollMetricsFor = (
     const visible = node.kind === "text-area";
     return computeScrollMetrics(contentBounds, measureCellText(node.textEditor), scrollOffsetFor(node), { x: visible, y: visible });
   }
-  if (node.kind !== "scroll-area" && node.kind !== "select-content") return null;
+  if (node.kind !== "scroll-area" && node.kind !== "select-content" && node.kind !== "combobox-content") return null;
   let explicitHorizontalExtent = false;
   const extent = { width: 0, height: 0 };
   const measureDescendant = (childId: string, origin: CellPoint): void => {
@@ -69,7 +69,7 @@ const scrollMetricsFor = (
       y: -entry.contentRect.y,
     });
   });
-  const selectContent = node.kind === "select-content";
+  const selectContent = node.kind === "select-content" || node.kind === "combobox-content";
   return computeScrollMetrics(
     contentBounds,
     {
@@ -102,20 +102,23 @@ export const composeScene = (
     const widget = tree.nodes.get(id);
     const layoutEntry = layout.entries.get(id);
     if (!widget || !layoutEntry) throw new Error(`Scene input is missing ${id}.`);
+    if (widget.kind === "accordion-content" && !widget.expanded) return;
     const portal = isPortalKind(widget.kind);
     const origin = portal ? { x: 0, y: 0 } : parentOrigin;
     const clip = portal ? overlayViewport : inheritedClip;
     const layer = portal ? inheritedLayer + 1 : inheritedLayer;
-    const selectAnchor = widget.kind === "select-content"
+    const dropdownContent = widget.kind === "select-content" || widget.kind === "combobox-content";
+    const anchorKind = widget.kind === "combobox-content" ? "combobox-input" : "select-trigger";
+    const selectAnchor = dropdownContent
       ? widget.parentId
         ? tree.nodes.get(widget.parentId)?.children
           .map((childId) => tree.nodes.get(childId))
-          .find((child) => child?.kind === "select-trigger")
+          .find((child) => child?.kind === anchorKind)
         : undefined
       : undefined;
     const anchorBounds = selectAnchor ? entries.get(selectAnchor.id)?.layoutBounds : undefined;
-    if (widget.kind === "select-content" && !anchorBounds) {
-      throw new TypeError("SelectContent must follow SelectTrigger inside the same Select.");
+    if (dropdownContent && !anchorBounds) {
+      throw new TypeError("Dropdown content must follow its input or trigger.");
     }
     const selectPlacement = anchorBounds
       ? placeAnchoredOverlay(anchorBounds, layoutEntry.rect, overlayViewport)
@@ -139,13 +142,13 @@ export const composeScene = (
       : undefined;
     const bounds: CellRect = {
       x: rangeThumbX ?? (widget.kind === "overlay"
-        ? widget.overlayPosition!.x
-        : widget.kind === "select-content"
+        ? widget.overlayPosition?.x ?? Math.max(0, Math.floor((layout.viewport.width - layoutEntry.rect.width) / 2))
+        : dropdownContent
           ? selectPlacement!.bounds.x
           : origin.x + layoutEntry.rect.x),
       y: rangeSliderParentEntry?.decorationBounds.y ?? (widget.kind === "overlay"
-        ? widget.overlayPosition!.y
-        : widget.kind === "select-content"
+        ? widget.overlayPosition?.y ?? Math.max(0, Math.floor((layout.viewport.height - layoutEntry.rect.height) / 2))
+        : dropdownContent
           ? selectPlacement!.bounds.y
           : origin.y + layoutEntry.rect.y),
       width: selectPlacement?.bounds.width ?? layoutEntry.rect.width,
@@ -206,7 +209,7 @@ export const composeScene = (
     if (entry.paintVisible) paintList.push(id);
 
     const childClip = widget.kind === "range-slider" ? outerClip : contentClip;
-    const childOrigin = widget.kind === "scroll-area" || widget.kind === "select-content"
+    const childOrigin = widget.kind === "scroll-area" || dropdownContent
       ? {
           x: bounds.x - widget.scrollOffset.x,
           y: bounds.y - widget.scrollOffset.y,

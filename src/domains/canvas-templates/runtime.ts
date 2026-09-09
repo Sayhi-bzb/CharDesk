@@ -1,8 +1,14 @@
-import { getCellOccupancy, splitGraphemes } from "@/shared/metrics";
+import {
+  getCellOccupancy,
+  getTextCellWidth,
+  splitGraphemes,
+} from "@/shared/metrics";
 import type { GridCell, GridCellSource } from "@/shared/types";
 import { createGridMapSource } from "@/shared/utils/grid-source";
+import type { CharDeskContentTheme } from "@chardesk/rendering/theme";
 import {
   CANVAS_TEMPLATES,
+  type CanvasTemplateColor,
   type CanvasTemplateDefinition,
   type CanvasTemplateGroup,
   type CanvasTemplateId,
@@ -37,21 +43,58 @@ export const setActiveCanvasTemplateDragId = (id: CanvasTemplateId | null) => {
 
 export const getActiveCanvasTemplateDragId = () => activeCanvasTemplateDragId;
 
-export type CanvasTemplateProjection = Readonly<{
+export type MaterializedCanvasTemplateSpan = {
+  x: number;
+  text: string;
+  width: number;
+  color: string;
+  bgColor?: string;
+  attrs?: CanvasTemplateDefinition["rows"][number]["spans"][number]["attrs"];
+  href?: string;
+};
+
+export type MaterializedCanvasTemplateRow = {
+  y: number;
+  spans: MaterializedCanvasTemplateSpan[];
+};
+
+export type CanvasTemplateMaterialization = Readonly<{
+  rows: MaterializedCanvasTemplateRow[];
   source: GridCellSource;
   viewport: Readonly<{ x: number; y: number; width: number; height: number }>;
 }>;
 
-const projectionCache = new Map<CanvasTemplateId, CanvasTemplateProjection>();
+const materializationCache = new WeakMap<
+  CharDeskContentTheme,
+  Map<CanvasTemplateId, CanvasTemplateMaterialization>
+>();
 
-export const getCanvasTemplateProjection = (
-  id: CanvasTemplateId
-): CanvasTemplateProjection => {
-  const cached = projectionCache.get(id);
+const resolveTemplateColor = (
+  color: CanvasTemplateColor,
+  theme: CharDeskContentTheme
+) => typeof color === "string" ? color : theme[color.token];
+
+export const getCanvasTemplateMaterialization = (
+  id: CanvasTemplateId,
+  theme: CharDeskContentTheme
+): CanvasTemplateMaterialization => {
+  const themeCache = materializationCache.get(theme);
+  const cached = themeCache?.get(id);
   if (cached) return cached;
   const template = getCanvasTemplate(id);
+  const rows = template.rows.map((row) => ({
+    y: row.y,
+    spans: row.spans.map(({ color, bgColor, ...span }) => ({
+      ...span,
+      width: getTextCellWidth(span.text),
+      color: resolveTemplateColor(color, theme),
+      ...(bgColor
+        ? { bgColor: resolveTemplateColor(bgColor, theme) }
+        : {}),
+    })),
+  }));
   const cells = new Map<string, GridCell>();
-  template.rows.forEach((row) => {
+  rows.forEach((row) => {
     row.spans.forEach((span) => {
       let x = span.x;
       splitGraphemes(span.text).forEach((char) => {
@@ -68,7 +111,8 @@ export const getCanvasTemplateProjection = (
       });
     });
   });
-  const projection = Object.freeze({
+  const materialization = Object.freeze({
+    rows,
     source: createGridMapSource(cells),
     viewport: Object.freeze({
       x: 0,
@@ -77,8 +121,10 @@ export const getCanvasTemplateProjection = (
       height: template.height,
     }),
   });
-  projectionCache.set(id, projection);
-  return projection;
+  const cache = themeCache ?? new Map();
+  cache.set(id, materialization);
+  if (!themeCache) materializationCache.set(theme, cache);
+  return materialization;
 };
 
 export const getCanvasTemplatesByGroup = (group: CanvasTemplateGroup) =>

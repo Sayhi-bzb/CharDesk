@@ -107,7 +107,7 @@ describe("TextRenderingRuntime", () => {
       (cell) => cell.color === "#800000"
     )).toBe(true);
     expect(result.cells.filter((cell) => cell.x < 4 || cell.x > 6).every(
-      (cell) => cell.color === "#111111"
+      (cell) => cell.color === "#1f2328"
     )).toBe(true);
   });
 
@@ -216,7 +216,7 @@ describe("TextRenderingRuntime", () => {
       color: "#1a7f37",
     });
     expect(result.cells.find((cell) => cell.y === 2 && cell.char === "q")?.color).toBe(
-      "#111111"
+      "#1f2328"
     );
     expect(result.cells.find((cell) => cell.y === 4 && cell.char === "1")).toMatchObject({
       color: "#0969da",
@@ -251,11 +251,14 @@ describe("TextRenderingRuntime", () => {
   it("resolves theme tokens before rule overrides", async () => {
     const runtime = new TextRenderingRuntime();
     runtime.setProfile(profileWithMarkdown({
-      renderTheme: {
-        accent: "#112233",
-        info: "#223344",
-        success: "#334455",
-        surface: "#445566",
+      renderThemes: {
+        light: {
+          accent: "#112233",
+          info: "#223344",
+          success: "#334455",
+          surface: "#445566",
+        },
+        dark: {},
       },
       colors: { "heading.marker": "#abcdef" },
     }));
@@ -272,6 +275,74 @@ describe("TextRenderingRuntime", () => {
       bgColor: "#445566",
     });
     expect(result.cells.find((cell) => cell.y === 4 && cell.char === "l")?.color).toBe("#223344");
+  });
+
+  it("keeps layout stable while materializing light and dark Markdown colors", async () => {
+    const runtime = new TextRenderingRuntime();
+    const source = "**Body** `code`";
+    const light = await runtime.render(source, "#ff00ff", { themeMode: "light" });
+    const dark = await runtime.render(source, "#ff00ff", { themeMode: "dark" });
+
+    expect(textFrom(light)).toBe(textFrom(dark));
+    if (light.kind !== "styled" || dark.kind !== "styled") {
+      throw new Error("Expected styled Markdown");
+    }
+    expect(light.cells.find((cell) => cell.char === "B")?.color).toBe("#1f2328");
+    expect(dark.cells.find((cell) => cell.char === "B")?.color).toBe("#f0f6fc");
+    expect(light.cells.find((cell) => cell.char === "c")).toMatchObject({
+      color: "#0969da",
+      bgColor: "#f6f8fa",
+    });
+    expect(dark.cells.find((cell) => cell.char === "c")).toMatchObject({
+      color: "#58a6ff",
+      bgColor: "#161b22",
+    });
+  });
+
+  it("shares stable resolved theme objects until the profile changes", () => {
+    const runtime = new TextRenderingRuntime();
+    const light = runtime.getResolvedTheme("light");
+
+    expect(runtime.getResolvedTheme("light")).toBe(light);
+    expect(runtime.getResolvedTheme("dark")).not.toBe(light);
+
+    runtime.setProfile(profileWithMarkdown({
+      renderThemes: {
+        light: { accent: "#123456" },
+        dark: {},
+      },
+    }));
+
+    expect(runtime.getResolvedTheme("light")).not.toBe(light);
+    expect(runtime.getResolvedTheme("light").accent).toBe("#123456");
+  });
+
+  it("keeps light and dark feature overrides independent", async () => {
+    const runtime = new TextRenderingRuntime();
+    const profile = profileWithMarkdown();
+    profile.features["markdown.link"]!.colors.dark.foreground = "#abcdef";
+    runtime.setProfile(profile);
+
+    const source = "[link](https://example.com)";
+    const light = await runtime.render(source, "#111111", { themeMode: "light" });
+    const dark = await runtime.render(source, "#111111", { themeMode: "dark" });
+    if (light.kind !== "styled" || dark.kind !== "styled") {
+      throw new Error("Expected styled Markdown");
+    }
+    expect(light.cells[0]?.color).toBe("#0969da");
+    expect(dark.cells[0]?.color).toBe("#abcdef");
+  });
+
+  it("keeps ANSI-only default text on the brush color in dark mode", async () => {
+    const result = await new TextRenderingRuntime().render(
+      "[31mred[0m plain",
+      "#123456",
+      { themeMode: "dark" }
+    );
+
+    expect(result.renderer).toBe("ansi");
+    if (result.kind !== "styled") throw new Error("Expected styled ANSI");
+    expect(result.cells.find((cell) => cell.char === "p")?.color).toBe("#123456");
   });
 
   it("colors block decorations without recoloring their content", async () => {
@@ -291,11 +362,11 @@ describe("TextRenderingRuntime", () => {
 
     if (result.kind !== "styled") throw new Error("Expected styled Markdown");
     expect(result.cells.find((cell) => cell.y === 0 && cell.char === "#")?.color).toBe("#aa0000");
-    expect(result.cells.find((cell) => cell.y === 0 && cell.char === "H")?.color).toBe("#111111");
+    expect(result.cells.find((cell) => cell.y === 0 && cell.char === "H")?.color).toBe("#1f2328");
     expect(result.cells.find((cell) => cell.y === 2 && cell.char === "│")?.color).toBe("#00aa00");
-    expect(result.cells.find((cell) => cell.y === 2 && cell.char === "Q")?.color).toBe("#111111");
+    expect(result.cells.find((cell) => cell.y === 2 && cell.char === "Q")?.color).toBe("#1f2328");
     expect(result.cells.find((cell) => cell.y === 4 && cell.char === "-")?.color).toBe("#0000aa");
-    expect(result.cells.find((cell) => cell.y === 4 && cell.char === "I")?.color).toBe("#111111");
+    expect(result.cells.find((cell) => cell.y === 4 && cell.char === "I")?.color).toBe("#1f2328");
     expect(result.cells.find((cell) => cell.y === 6)?.color).toBe("#aaaa00");
   });
 
@@ -324,7 +395,7 @@ describe("TextRenderingRuntime", () => {
     )).toBe(true);
     expect(rowText(result, 1)).toBe("━━━━━━  ━━━━━━━");
     expect(result.cells.find((cell) => cell.y === 1)?.color).toBe("#654321");
-    expect(result.cells.find((cell) => cell.y === 2 && cell.char === "B")?.color).toBe("#111111");
+    expect(result.cells.find((cell) => cell.y === 2 && cell.char === "B")?.color).toBe("#1f2328");
   });
 
   it("keeps nested quote and list prefixes deterministic", async () => {
@@ -359,8 +430,8 @@ describe("TextRenderingRuntime", () => {
       x: 0,
       color: "#1a7f37",
     });
-    expect(result.cells.find((cell) => cell.char === "T")?.color).toBe("#111111");
-    expect(result.cells.find((cell) => cell.char === "D")?.color).toBe("#111111");
+    expect(result.cells.find((cell) => cell.char === "T")?.color).toBe("#1f2328");
+    expect(result.cells.find((cell) => cell.char === "D")?.color).toBe("#1f2328");
   });
 
   it("keeps list and task-list rules independently switchable", async () => {
@@ -640,9 +711,12 @@ describe("TextRenderingRuntime", () => {
     profile.features["markdown.math-style"] = {
       enabled: true,
       colors: {
-        content: "#111122",
-        operator: "#223344",
-        structure: "#334455",
+        light: {
+          content: "#111122",
+          operator: "#223344",
+          structure: "#334455",
+        },
+        dark: {},
       },
     };
     runtime.setProfile(profile);
@@ -724,9 +798,12 @@ describe("TextRenderingRuntime", () => {
     const runtime = new TextRenderingRuntime({ storage });
     runtime.setProfile(profileWithMarkdown({
       mode: "markdown",
-      renderTheme: {
-        accent: "#AABBCC",
-        info: "invalid",
+      renderThemes: {
+        light: {
+          accent: "#AABBCC",
+          info: "invalid",
+        },
+        dark: {},
       },
       colors: {
         "strong.foreground": "#AABBCC",
@@ -739,25 +816,35 @@ describe("TextRenderingRuntime", () => {
 
     expect(new TextRenderingRuntime({ storage }).getProfile()).toMatchObject({
       mode: "markdown",
-      renderTheme: { accent: "#aabbcc" },
+      renderThemes: { light: { accent: "#aabbcc" }, dark: {} },
       features: {
-        "markdown.strong": { colors: { foreground: "#aabbcc" } },
+        "markdown.strong": {
+          colors: { light: { foreground: "#aabbcc" }, dark: {} },
+        },
         "markdown.task-list": {
-          colors: { unchecked: "#123456", checked: "#654321" },
+          colors: {
+            light: { unchecked: "#123456", checked: "#654321" },
+            dark: {},
+          },
         },
       },
     });
     expect(values.has(TEXT_RENDER_PROFILE_STORAGE_KEY)).toBe(true);
   });
 
-  it("migrates the legacy muted theme override into split semantic roles", () => {
-    const values = new Map([[TEXT_RENDER_PROFILE_STORAGE_KEY, JSON.stringify({
+  it("migrates the v2 theme and feature colors into the light scheme", () => {
+    const values = new Map([["chardesk-text-render-profile-v2", JSON.stringify({
       mode: "markdown",
       renderTheme: {
         muted: "#778899",
         "grid-subtle": "#aabbcc",
       },
-      features: {},
+      features: {
+        "markdown.strong": {
+          enabled: true,
+          colors: { foreground: "#abcdef" },
+        },
+      },
     })]]);
     const storage = {
       getItem: (key: string) => values.get(key) ?? null,
@@ -765,15 +852,20 @@ describe("TextRenderingRuntime", () => {
     };
     const runtime = new TextRenderingRuntime({ storage });
 
-    expect(runtime.getProfile().renderTheme).toEqual({
+    expect(runtime.getProfile().renderThemes.light).toEqual({
       "muted-foreground": "#778899",
       "border-subtle": "#778899",
       "grid-subtle": "#aabbcc",
     });
+    expect(runtime.getProfile().renderThemes.dark).toEqual({});
+    expect(runtime.getProfile().features["markdown.strong"]?.colors).toEqual({
+      light: { foreground: "#abcdef" },
+      dark: {},
+    });
 
     runtime.setProfile(runtime.getProfile());
     expect(JSON.parse(values.get(TEXT_RENDER_PROFILE_STORAGE_KEY) ?? "{}")
-      .renderTheme).not.toHaveProperty("muted");
+      .renderThemes.light).not.toHaveProperty("muted");
   });
 
   it("loads profiles saved before Markdown color overrides existed", () => {
@@ -781,10 +873,16 @@ describe("TextRenderingRuntime", () => {
 
     expect(new TextRenderingRuntime({ storage }).getProfile()).toMatchObject({
       mode: "markdown",
-      renderTheme: {},
+      renderThemes: { light: {}, dark: {} },
       features: {
-        "markdown.task-list": { enabled: true, colors: {} },
-        "markdown.mermaid": { enabled: true, colors: {} },
+        "markdown.task-list": {
+          enabled: true,
+          colors: { light: {}, dark: {} },
+        },
+        "markdown.mermaid": {
+          enabled: true,
+          colors: { light: {}, dark: {} },
+        },
       },
     });
   });
@@ -813,10 +911,17 @@ describe("TextRenderingRuntime", () => {
     });
 
     expect(new TextRenderingRuntime({ storage }).getProfile().features).toMatchObject({
-      "markdown.heading": { colors: { marker: "#123456" } },
-      "markdown.blockquote": { colors: { marker: "#234567" } },
+      "markdown.heading": {
+        colors: { light: { marker: "#123456" }, dark: {} },
+      },
+      "markdown.blockquote": {
+        colors: { light: { marker: "#234567" }, dark: {} },
+      },
       "markdown.table": {
-        colors: { "header.background": "#345678", separator: "#345678" },
+        colors: {
+          light: { "header.background": "#345678", separator: "#345678" },
+          dark: {},
+        },
       },
     });
   });

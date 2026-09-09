@@ -35,19 +35,22 @@ export type CellProbeFontCapability =
 export type CellProbeRequestedFontFace = Readonly<{
   family: string;
   fontSize: number;
-  scaleX: number;
   baselineShiftEm: number;
   boldStrategy: "native" | "overdraw" | "none";
   boldOverdrawEm?: number;
 }>;
 
-export type CellProbeGlyphOverflow = Readonly<{
+export type CellProbeGlyphInkOverhang = Readonly<{
   text: string;
   row: number;
   col: number;
   spanCells: number;
-  measuredWidth: number;
-  availableWidth: number;
+  inkLeft: number;
+  inkRight: number;
+  allocatedLeft: number;
+  allocatedRight: number;
+  overhangLeft: number;
+  overhangRight: number;
 }>;
 
 export type CellProbePresentation = Readonly<{
@@ -61,7 +64,6 @@ export type CellProbePresentation = Readonly<{
     reason?: "font-load-failed" | "measurement-unavailable";
     report?: CharDeskFontAudit;
   }>;
-  glyphOverflowMode?: "clip" | "visible";
   metrics: Readonly<{
     cellWidth: number;
     cellHeight: number;
@@ -77,12 +79,12 @@ export type CellProbePresentation = Readonly<{
     CellProbeFontCapability,
     CellProbeRequestedFontFace
   >>>;
-  glyphOverflow: readonly CellProbeGlyphOverflow[];
+  glyphInkOverhang: readonly CellProbeGlyphInkOverhang[];
 }>;
 
 export type CellProbeSnapshot = Readonly<{
   confirmation?: FrameSnapshot["confirmation"];
-  schemaVersion: 4;
+  schemaVersion: 5;
   probeId: string | null;
   revision: number;
   region: CellRect;
@@ -97,6 +99,7 @@ export type CellProbeSnapshot = Readonly<{
   text: string;
   cells: readonly CellProbeCell[];
   focusedId: WidgetId | null;
+  activeFocusId: WidgetId | null;
   invalidation: FrameInvalidation;
   presentation?: CellProbePresentation;
 }>;
@@ -173,7 +176,7 @@ export const captureCellProbe = (
     };
   });
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     probeId: options.probeId ?? null,
     revision: frame.revision,
     region,
@@ -186,6 +189,7 @@ export const captureCellProbe = (
     text: formatCellBuffer(frame.buffer, { region, trimEnd: true }),
     cells,
     focusedId: frame.semantics.focusedId,
+    activeFocusId: [...frame.tree.nodes.values()].find((node) => node.focusActive)?.id ?? null,
     confirmation: frame.confirmation,
     invalidation: {
       phases: [...frame.invalidation.phases],
@@ -202,7 +206,8 @@ export const formatCellProbe = (
   if (!options.header) return snapshot.text;
   const id = snapshot.probeId ?? "anonymous";
   const focus = snapshot.focusedId ?? "none";
-  const header = `cell-ui/probe@${snapshot.schemaVersion}  ${id}  ${snapshot.region.width}×${snapshot.region.height}  focus=${focus}`;
+  const activeFocus = snapshot.activeFocusId ?? "none";
+  const header = `cell-ui/probe@${snapshot.schemaVersion}  ${id}  ${snapshot.region.width}×${snapshot.region.height}  focus=${focus} active=${activeFocus}`;
   const presentation = snapshot.presentation;
   if (!presentation) return snapshot.text.length > 0 ? `${header}\n${snapshot.text}` : header;
   const formatFace = (capability: "display" | "cjk" | "cell-glyph") => {
@@ -211,7 +216,7 @@ export const formatCellProbe = (
     const overdraw = face.boldStrategy === "overdraw" && face.boldOverdrawEm && face.boldOverdrawEm > 0
       ? ` bold-overdraw=${Number((face.boldOverdrawEm * face.fontSize).toFixed(4))}px`
       : "";
-    return `font ${capability}=${face.family} size=${face.fontSize}px scaleX=${face.scaleX} bold-strategy=${face.boldStrategy}${overdraw}`;
+    return `font ${capability}=${face.family} size=${face.fontSize}px bold-strategy=${face.boldStrategy}${overdraw}`;
   };
   const diagnostics = [
     `font-profile=${presentation.fontProfileId} cell=${presentation.metrics.cellWidth}×${presentation.metrics.cellHeight} base=${presentation.metrics.fontSize}px`,
@@ -219,7 +224,7 @@ export const formatCellProbe = (
     formatFace("cjk"),
     formatFace("cell-glyph"),
   ];
-  const visibleOverflow = presentation.glyphOverflow.slice(0, 8);
+  const visibleOverhang = presentation.glyphInkOverhang.slice(0, 8);
   const audit = presentation.fontAudit;
   if (audit) {
     diagnostics.push(`font-audit=${audit.status}${audit.reason ? ` reason=${audit.reason}` : ""}`);
@@ -231,17 +236,18 @@ export const formatCellProbe = (
         `surface-grid=${size(metrics)} source=${presentation.measurement?.source ?? "unknown"}`,
         "font-identity=requested-stack-only");
       const issues = samples.filter((s) => s.status === "unavailable" || (s.advanceOverflow ?? 0) > 0.01
+        || (s.overflowLeft ?? 0) > 0.01 || (s.overflowRight ?? 0) > 0.01
         || (s.overflowTop ?? 0) > 0.01 || (s.overflowBottom ?? 0) > 0.01 || s.verticalGap !== null)
         .sort((a, b) => Number(b.verticalGap !== null) - Number(a.verticalGap !== null));
       diagnostics.push(...issues.slice(0, 12).map((s) =>
-        `font-sample ${JSON.stringify(s.text)} bold=${s.requestedBold}->${s.effectiveBold} status=${s.status} advance-overflow=${s.advanceOverflow} top=${s.top} bottom=${s.bottom} vertical-gap=${s.verticalGap}`));
+        `font-sample ${JSON.stringify(s.text)} bold=${s.requestedBold}->${s.effectiveBold} status=${s.status} advance-overflow=${s.advanceOverflow} ink-overflow=${s.overflowLeft},${s.overflowRight} top=${s.top} bottom=${s.bottom} vertical-gap=${s.verticalGap}`));
       if (issues.length > 12) diagnostics.push(`font-sample +${issues.length - 12} more (JSON contains all samples)`);
     }
   }
-  diagnostics.push(...visibleOverflow.map((overflow) =>
-    `glyph-overflow ${JSON.stringify(overflow.text)}@(${overflow.col},${overflow.row}) ${overflow.measuredWidth}px>${overflow.availableWidth}px`));
-  if (presentation.glyphOverflow.length > visibleOverflow.length) {
-    diagnostics.push(`glyph-overflow +${presentation.glyphOverflow.length - visibleOverflow.length} more`);
+  diagnostics.push(...visibleOverhang.map((overhang) =>
+    `glyph-ink ${JSON.stringify(overhang.text)}@(${overhang.col},${overhang.row}) left=${overhang.overhangLeft}px right=${overhang.overhangRight}px`));
+  if (presentation.glyphInkOverhang.length > visibleOverhang.length) {
+    diagnostics.push(`glyph-ink +${presentation.glyphInkOverhang.length - visibleOverhang.length} more`);
   }
   return [header, ...diagnostics, snapshot.text].filter((line) => line.length > 0).join("\n");
 };

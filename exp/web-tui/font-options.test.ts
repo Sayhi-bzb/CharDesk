@@ -36,14 +36,14 @@ describe("Web TUI gallery font profiles", () => {
     expect(option.stylesheet).not.toMatch(/^https?:/);
     expect(option.fontSpec).toBe("15px 'Xiaolai Mono'");
     expect(option.loadSamples).toEqual(["AgWi09"]);
-    expect(option.profile.id).toBe("chardesk/gallery-xiaolai-mono-maple-core-v7-3.126");
+    expect(option.profile.id).toBe("chardesk/gallery-xiaolai-mono-maple-core-v8-3.126");
     expect(option.profile.sources).toContainEqual(expect.objectContaining({
       id: "xiaolai-mono", version: "3.126",
     }));
     for (const text of ["A", "界", "│", "█", "→"]) {
       expect(resolve("xiaolai-mono", text)).toMatchObject({
         family: expect.stringMatching(/^'Xiaolai Mono'.*Maple Mono/),
-        fontSizeScale: 1, scaleX: 1, baselineShiftEm: 0,
+        fontSizeScale: 1, baselineShiftEm: 0,
         boldStrategy: text === "A" || text === "界" ? "overdraw" : "none",
         boldOverdrawEm: text === "A" || text === "界" ? 1 / 15 : 0,
       });
@@ -59,11 +59,11 @@ describe("Web TUI gallery font profiles", () => {
 
       expect(display.family).toContain(option.label);
       expect(cjk.family).toBe(display.family);
-      expect(display).toMatchObject({ capability: "display", fontSizeScale: 1, scaleX: 1, baselineShiftEm: 0 });
-      expect(cjk).toMatchObject({ capability: "cjk", fontSizeScale: 1, scaleX: 1, baselineShiftEm: 0 });
+      expect(display).toMatchObject({ capability: "display", fontSizeScale: 1, baselineShiftEm: 0 });
+      expect(cjk).toMatchObject({ capability: "cjk", fontSizeScale: 1, baselineShiftEm: 0 });
       expect(option.fontSpec).toMatch(/^15px /);
       expect(option.loadSamples).toEqual(["AgWi09", "世界，。"]);
-      expect(option.profile.id).toBe(`chardesk/gallery-${id}-maple-core-v6-2026.09.01`);
+      expect(option.profile.id).toBe(`chardesk/gallery-${id}-maple-core-v7-2026.09.01`);
       expect(option.stylesheet).not.toMatch(/^https?:/);
       expect(option.profile.sources).toContainEqual(expect.objectContaining({ id: "fusion-mono", version: "2026.09.01" }));
       expect(resolve(id, "\ue0b0").family).toMatch(/^'Symbols Nerd Font Mono'/);

@@ -1,5 +1,6 @@
 import type { CellTextStyle } from "./types.js";
 import type { CellBorderShape } from "./border.js";
+import type { SeparatorVariant } from "./separator.js";
 import {
   DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS,
   type CharDeskCellCursorPaintStyle,
@@ -8,8 +9,13 @@ import {
 } from "@chardesk/rendering";
 
 export type CellCursorShape = CharDeskCellCursorShape;
+export type SeparatorGlyphs = Readonly<Record<
+  SeparatorVariant,
+  Readonly<Record<"horizontal" | "vertical", string>>
+>>;
 
 export type CellCursorStyle = CharDeskCellCursorPaintStyle & Readonly<{
+  colorMode?: "inverse" | "fixed";
   blink: boolean;
   blinkIntervalMs: number;
 }>;
@@ -34,6 +40,7 @@ export type CellUiTheme = Readonly<{
   collectionSelectedIndicator: string;
   progressFilledTrack: string;
   progressEmptyTrack: string;
+  separatorGlyphs: SeparatorGlyphs;
   checkboxIndeterminateIndicator: string;
   sliderFilledTrack: string;
   sliderEmptyTrack: string;
@@ -66,6 +73,12 @@ const CLASSIC_MAC_SHARED_THEME = Object.freeze({
   collectionSelectedIndicator: "✓",
   progressFilledTrack: "█",
   progressEmptyTrack: "░",
+  separatorGlyphs: Object.freeze({
+    line: Object.freeze({ horizontal: "─", vertical: "│" }),
+    slash: Object.freeze({ horizontal: "/", vertical: "/" }),
+    double: Object.freeze({ horizontal: "═", vertical: "║" }),
+    dots: Object.freeze({ horizontal: "·", vertical: "·" }),
+  }),
   checkboxIndeterminateIndicator: "-",
   sliderFilledTrack: "━",
   sliderEmptyTrack: "─",
@@ -87,6 +100,7 @@ export const CLASSIC_MAC_LIGHT_THEME: CellUiTheme = Object.freeze({
   buttonPrimaryHoverStyle: { color: "#FFFFFF", backgroundColor: "#1A1A1A" },
   borderStyle: { color: "#000000" },
   cursorStyle: Object.freeze({
+    colorMode: "inverse",
     shape: "block",
     color: "#000000",
     textColor: "#FFFFFF",
@@ -96,6 +110,7 @@ export const CLASSIC_MAC_LIGHT_THEME: CellUiTheme = Object.freeze({
   rangeStyle: Object.freeze({
     surface: "rgba(0, 0, 0, 0.22)",
     border: "#000000",
+    surfaceEffect: "tint",
   }),
   focusedSurfaceStyle: { color: "#FFFFFF", backgroundColor: "#000000" },
   hoveredItemStyle: { backgroundColor: "#E6E6E6" },
@@ -116,6 +131,7 @@ export const CLASSIC_MAC_DARK_THEME: CellUiTheme = Object.freeze({
   buttonPrimaryHoverStyle: { color: "#000000", backgroundColor: "#E6E6E6" },
   borderStyle: { color: "#FFFFFF" },
   cursorStyle: Object.freeze({
+    colorMode: "inverse",
     shape: "block",
     color: "#FFFFFF",
     textColor: "#000000",
@@ -123,8 +139,9 @@ export const CLASSIC_MAC_DARK_THEME: CellUiTheme = Object.freeze({
     blinkIntervalMs: DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS,
   }),
   rangeStyle: Object.freeze({
-    surface: "rgba(255, 255, 255, 0.22)",
+    surface: "rgba(255, 255, 255, 0.18)",
     border: "#FFFFFF",
+    surfaceEffect: "contrast",
   }),
   focusedSurfaceStyle: { color: "#000000", backgroundColor: "#FFFFFF" },
   hoveredItemStyle: { backgroundColor: "#1A1A1A" },

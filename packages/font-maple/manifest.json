@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generatedAt": "2026-09-06T04:28:33.503Z",
   "target": "maple",
-  "profileId": "chardesk/maple-v5",
+  "profileId": "chardesk/maple-v6",
   "sources": [
     {
       "id": "maple-mono-nf-cn",

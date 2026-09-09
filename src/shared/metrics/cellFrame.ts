@@ -5,7 +5,7 @@ import { toCanvasVisual } from "./canvasDrawing";
 import {
   DEFAULT_ARTIFACT_CANVAS_PALETTE,
   type CanvasArtifactPalette,
-} from "./artifactPalette";
+} from "@/shared/canvas-appearance/artifact-style";
 
 const frameCellCache = new WeakMap<
   GridCell,

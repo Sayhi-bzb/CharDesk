@@ -1,6 +1,6 @@
 import { serializeCharDeskDocumentEnvelope } from "@chardesk/document";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
-import type { CanvasArtifactPalette } from "@/shared/metrics";
+import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
 import type { GridCellSource, SelectionArea } from "@/shared/types";
 import {
   createPngBlobFromGrid,

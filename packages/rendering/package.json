@@ -33,6 +33,10 @@
     "./canvas": {
       "types": "./dist/canvas.d.ts",
       "import": "./dist/canvas.js"
+    },
+    "./theme": {
+      "types": "./dist/content-theme.d.ts",
+      "import": "./dist/content-theme.js"
     }
   },
   "scripts": {

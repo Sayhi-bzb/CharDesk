@@ -1,5 +1,4 @@
 export * from "./canvasDrawing";
-export * from "./artifactPalette";
 export * from "./cellFrame";
 export * from "./cellFrameLayout";
 export * from "./cellOccupancy";

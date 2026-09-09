@@ -12,6 +12,8 @@ const colors: Record<string, string> = {
   "--canvas-artifact-grid": "rgb(230, 230, 230)",
   "--canvas-selection-surface": "rgba(10, 20, 30, 0.12)",
   "--canvas-selection-border": "rgb(10, 20, 30)",
+  "--canvas-range-surface": "rgba(255, 255, 255, 0.18)",
+  "--canvas-range-border": "rgb(240, 240, 240)",
   "--canvas-text-cursor-surface": "rgb(20, 20, 20)",
   "--canvas-text-cursor-foreground": "rgb(250, 250, 250)",
   "--canvas-picker-outer": "rgb(250, 250, 250)",
@@ -36,12 +38,16 @@ describe("readUiRuntimeTheme", () => {
       color: colors[tokenFrom((element as HTMLElement).style.color)] ?? "",
       transitionDuration: "0.24s",
       borderTopLeftRadius: "12px",
+      getPropertyValue: (token: string) => token === "--canvas-range-surface-effect"
+        ? "contrast"
+        : "",
     }) as CSSStyleDeclaration);
 
     const theme = readUiRuntimeTheme(document.body);
     expect(theme.motion.slowMs).toBe(240);
     expect(theme.surface.radiusPx).toBe(12);
     expect(theme.canvas.selectionBorder).toBe("rgb(10, 20, 30)");
+    expect(theme.canvas.rangeSurfaceEffect).toBe("contrast");
     expect(theme.canvas.artifact).toEqual({
       foreground: "rgb(20, 20, 20)",
       background: "rgb(250, 250, 250)",

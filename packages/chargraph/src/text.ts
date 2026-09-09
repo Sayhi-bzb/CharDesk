@@ -21,10 +21,15 @@ import type {
 
 export type CharGraphTextMode = "auto" | "raw" | "ansi" | "markdown";
 
+export type CharGraphBlockLayoutOptions = BlockLayoutRenderOptions & {
+  /** Controls which parsed boundary evidence activates layout composition. */
+  activation?: "field-boundary" | "any-boundary";
+};
+
 export type CharGraphTextRenderOptions = {
   mode?: CharGraphTextMode;
   markdown?: MarkdownRenderOptions;
-  layout?: false | BlockLayoutRenderOptions;
+  layout?: false | CharGraphBlockLayoutOptions;
 };
 
 export type CharGraphTextRendererId = Exclude<CharGraphTextMode, "auto"> | "block-layout";
@@ -281,11 +286,18 @@ export const renderCharGraphText = async (
 ): Promise<CharGraphTextRenderResult> => {
   if (options.layout !== false) {
     const parsed = parseBlockLayout(source);
-    if (parsed.document) {
+    const {
+      activation = "field-boundary",
+      ...renderOptions
+    } = options.layout ?? {};
+    const layoutActivated = activation === "any-boundary"
+      ? parsed.recognized
+      : parsed.boundaries.fields > 0;
+    if (parsed.document && layoutActivated) {
       const rendered = await renderBlockLayoutDocument(
         parsed.document,
         (block) => renderLayoutField(block, options),
-        options.layout ?? {}
+        renderOptions
       );
       return {
         ...rendered,

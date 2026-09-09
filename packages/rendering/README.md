@@ -5,6 +5,10 @@ entry owns backend-neutral visuals, frame cells, metrics, and character snapshot
 `./canvas` owns font loading, DPR surface preparation, raster drawing, and the
 Canvas frame presenter.
 
+`./theme` owns the backend-neutral Light/Dark content palette used by CharGraph
+and theme-aware Cell templates. Producers may keep semantic tokens in derived
+catalogs, but persisted Cells contain resolved literal colors.
+
 ```ts
 import { createCharDeskRenderModel } from "@chardesk/rendering";
 
@@ -33,16 +37,23 @@ selections; hosts with compound selections supply equivalent polygon rings.
 `drawCharDeskCanvasRange()` applies shared Cell-to-pixel, zoom, DPR alignment,
 even-odd filling, optional dirty-region clipping, and phase styling. Selecting
 and resting Ranges use only the selection surface; moving Ranges add the shared
-border. Range ownership, normalization, copying, movement, and history remain
+border. A `contrast` surface effect uses local Canvas compositing over the final
+pixels without repainting Cells or changing document colors. Range ownership,
+normalization, copying, movement, and history remain
 Host state.
+
+Layered hosts call `drawCharDeskCanvasRangeBackdrop()` before their transient
+overlay content so the Range painter adapts against the content Canvas rather
+than transparent overlay pixels.
 
 `zoom` rasterizes at the requested character size; hosts should size the DPR
 backing surface to the returned scaled document layout instead of applying a
 CSS bitmap transform.
 
-Cell draw options accept `clipToCell: true` to constrain glyphs and text decorations
-to their one- or two-cell pixel allocation. It is opt-in; other consumers keep
-the existing unrestricted glyph rendering.
+Cell rectangles own layout, hit testing, selection, and copying; they do not clip
+font ink. Glyphs may cross adjacent Cell boundaries and are clipped only by the
+containing Canvas Surface. Backgrounds are painted before foreground glyphs;
+later Cells deterministically paint over earlier Cells when ink overlaps.
 
 Every foreground Cell retains Unicode `cell.text`. Exact registered Cell graphics use the
 shared deterministic painter; other graphemes use the active font profile. Background and clip edges align to device pixels for axis-aligned
@@ -109,7 +120,7 @@ font loading defaults.
 
 `fontProfile` is the capability-level path for modular stacks. The same Profile
 drives face selection and `loadCharDeskCanvasFonts`; its `fontSizeScale`,
-`scaleX`, `baselineShiftEm`, `boldStrategy`, and `boldOverdrawEm` calibrate glyphs without changing
+`baselineShiftEm`, `boldStrategy`, and `boldOverdrawEm` calibrate glyphs without changing
 protocol Cell allocation. `fontResolver` and `fontFamilies` remain family-only
 host overrides; Profile metrics still apply. The resolver receives effective
 `bold` after strategy resolution, consistently in loading and drawing. Only
@@ -147,8 +158,7 @@ Canvas contexts, raster options, and presenter functions from
 `measureCharDeskCanvasFont(context, profile, fontSize = 15)` measures a loaded
 display face and returns `{ metrics, source, fontMetrics, fontMetricsSource }`.
 `fontMetrics` preserves the uncalibrated grid; `metrics` applies the Profile's
-overrides. Width is the regular `0` advance
-(including profile `scaleX`); height is the `Mg` font ascent + descent, falling
+overrides. Width is the regular `0` advance; height is the `Mg` font ascent + descent, falling
 back to its actual glyph bounds when font bounds are unavailable. Measurements
 retain fractional CSS pixels and do not depend on content or DPR.
 

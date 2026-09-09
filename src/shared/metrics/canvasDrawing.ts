@@ -18,7 +18,7 @@ import {
 import {
   DEFAULT_ARTIFACT_CANVAS_PALETTE,
   projectArtifactCellStyle,
-} from "./artifactPalette";
+} from "@/shared/canvas-appearance/artifact-style";
 
 type ResolvedCellVisual = {
   char: string;

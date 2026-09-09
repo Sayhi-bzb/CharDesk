@@ -8,11 +8,22 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CANVAS_COMPONENT_TEMPLATES } from "@/domains/canvas-templates/public";
+import {
+  createTextRenderingRuntime,
+  TextRenderingProvider,
+} from "@/domains/document/public";
 import { CanvasTemplateLibrary } from "./canvas-template-library";
 
 vi.mock("@/shared/components/CellFrameCanvas", () => ({
-  CellFrameCanvas: ({ fit }: { fit?: string }) => (
-    <canvas data-testid="cell-frame-canvas" data-fit={fit} />
+  CellFrameCanvas: ({ fit, source }: {
+    fit?: string;
+    source: { get(point: { x: number; y: number }): { color: string } | undefined };
+  }) => (
+    <canvas
+      data-testid="cell-frame-canvas"
+      data-fit={fit}
+      data-color={source.get({ x: 0, y: 0 })?.color}
+    />
   ),
 }));
 
@@ -26,6 +37,37 @@ describe("CanvasTemplateLibrary", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("refreshes visible previews when the active content palette changes", () => {
+    vi.stubGlobal("IntersectionObserver", undefined);
+    const runtime = createTextRenderingRuntime({ storage: false });
+    render(
+      <TextRenderingProvider runtime={runtime}>
+        <CanvasTemplateLibrary templates={[CANVAS_COMPONENT_TEMPLATES[0]]} />
+      </TextRenderingProvider>
+    );
+
+    expect(screen.getByTestId("cell-frame-canvas")).toHaveAttribute(
+      "data-color",
+      "#1f2328"
+    );
+
+    act(() => {
+      const profile = runtime.getProfile();
+      runtime.setProfile({
+        ...profile,
+        renderThemes: {
+          ...profile.renderThemes,
+          light: { foreground: "#abcdef" },
+        },
+      });
+    });
+
+    expect(screen.getByTestId("cell-frame-canvas")).toHaveAttribute(
+      "data-color",
+      "#abcdef"
+    );
   });
 
   it("defers a template preview until its viewport is near the visible area", () => {

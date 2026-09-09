@@ -1,7 +1,8 @@
 import type { WidgetKind, WidgetNode } from "./types.js";
 
 export const isPrimitiveControlKind = (kind: WidgetKind): boolean =>
-  kind === "button" || kind === "checkbox" || kind === "select-trigger" || kind === "select-item"
+  kind === "accordion-trigger" ||
+  kind === "button" || kind === "checkbox" || kind === "select-trigger" || kind === "select-item" || kind === "combobox-item"
   || kind === "toggle" || kind === "radio-item" || kind === "slider" || kind === "range-slider-thumb"
   || kind === "list-item" || kind === "menu-item" || kind === "tree-item" || kind === "tab" || kind === "grid-cell";
 
@@ -12,6 +13,7 @@ const collectionItemKinds = new Set<WidgetKind>([
   "tab",
   "grid-cell",
   "select-item",
+  "combobox-item",
 ]);
 
 const selectableKinds = new Set<WidgetKind>([
@@ -20,6 +22,7 @@ const selectableKinds = new Set<WidgetKind>([
   "tab",
   "grid-cell",
   "select-item",
+  "combobox-item",
 ]);
 
 export const isCollectionItemKind = (kind: WidgetKind): boolean =>
@@ -29,9 +32,10 @@ export const isSelectableKind = (kind: WidgetKind): boolean =>
   selectableKinds.has(kind);
 
 export const isTextEditorKind = (kind: WidgetKind): boolean =>
-  kind === "text-input" || kind === "text-area";
+  kind === "text-input" || kind === "text-area" || kind === "combobox-input";
 
 export const isActionableKind = (kind: WidgetKind): boolean =>
+  kind === "accordion-trigger" ||
   kind === "button"
   || kind === "checkbox"
   || kind === "toggle"
@@ -47,11 +51,13 @@ const tap: FeedbackRule = { ...control, press: true, activation: true };
 const thumb: FeedbackRule = { region: "thumb", press: false, activation: false, manipulation: true };
 const none: FeedbackRule = { region: "none", press: false, activation: false, manipulation: false };
 const rules: Partial<Record<WidgetKind, FeedbackRule>> = {
+  "accordion-trigger": { ...control, press: true },
   button: tap,
   checkbox: tap,
   toggle: tap,
   "radio-item": tap,
   "select-item": tap,
+  "combobox-item": tap,
   "select-trigger": { ...control, press: true },
   "list-item": { ...control, press: true },
   "menu-item": tap,
@@ -63,6 +69,7 @@ const rules: Partial<Record<WidgetKind, FeedbackRule>> = {
   "scroll-area": { ...none, manipulation: true },
   "text-input": { ...none, region: "editor" },
   "text-area": { ...none, region: "editor" },
+  "combobox-input": { ...none, region: "editor" },
 };
 export const feedbackRule = (kind: WidgetKind): FeedbackRule => rules[kind] ?? none;
 export const supportsPressFeedback = (kind: WidgetKind): boolean => feedbackRule(kind).press;
@@ -70,16 +77,16 @@ export const supportsManipulationFeedback = (kind: WidgetKind): boolean => feedb
 export const supportsActivationFeedback = (kind: WidgetKind): boolean => feedbackRule(kind).activation;
 
 export const isFocusableKind = (kind: WidgetKind): boolean =>
-  isActionableKind(kind) || isTextEditorKind(kind);
+  (isActionableKind(kind) && kind !== "combobox-item") || isTextEditorKind(kind);
 
 export const isPortalKind = (kind: WidgetKind): boolean =>
-  kind === "overlay" || kind === "select-content";
+  kind === "overlay" || kind === "select-content" || kind === "combobox-content";
 
 export const isFocusScope = (node: WidgetNode): boolean =>
   (node.kind === "overlay" && node.modal) || node.kind === "select-content";
 
 export const isDismissableScope = (node: WidgetNode): boolean =>
-  (node.kind === "overlay" && node.modal) || node.kind === "select-content";
+  (node.kind === "overlay" && (node.modal || !!node.dialog)) || node.kind === "select-content" || node.kind === "combobox-content";
 
 export const isFilledSurfaceKind = (kind: WidgetKind): boolean =>
-  kind === "overlay" || kind === "select-content";
+  kind === "overlay" || kind === "select-content" || kind === "combobox-content";

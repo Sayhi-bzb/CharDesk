@@ -9,6 +9,7 @@ import type {
   CellCheckboxState,
   CellLayoutStyle,
   CellPoint,
+  CellSingleLineInputStyle,
   CellTextStyle,
   WidgetKind,
 } from "./types.js";
@@ -20,6 +21,7 @@ import {
   type ButtonSize,
   type ButtonVariant,
 } from "./button.js";
+import { resolveSeparatorVariant, type SeparatorVariant } from "./separator.js";
 
 type CommonProps = Readonly<{
   id?: string;
@@ -28,14 +30,36 @@ type CommonProps = Readonly<{
   children?: ReactNode;
 }>;
 
+const normalizeSingleLineInputStyle = (
+  style: CellLayoutStyle | undefined,
+): CellSingleLineInputStyle => ({
+  ...(style?.width !== undefined ? { width: style.width } : {}),
+  ...(style?.minWidth !== undefined ? { minWidth: style.minWidth } : {}),
+  ...(style?.maxWidth !== undefined ? { maxWidth: style.maxWidth } : {}),
+  ...(style?.flexGrow !== undefined ? { flexGrow: style.flexGrow } : {}),
+  ...(style?.flexShrink !== undefined ? { flexShrink: style.flexShrink } : {}),
+});
+
 export type RootProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
 export type BoxProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
+export type AccordionProps = BoxProps;
+export type AccordionItemProps = Omit<BoxProps, "id"> & Readonly<{ id: string; expanded?: boolean }>;
+export type AccordionTriggerProps = CommonProps & Readonly<{ focused?: boolean; style?: CellLayoutStyle; textStyle?: CellTextStyle }>;
+export type AccordionContentProps = BoxProps;
 export type OverlayProps = CommonProps & Readonly<{
   position: CellPoint;
   modal?: boolean;
+  closeOnOutsideClick?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
+export type DialogProps = Omit<OverlayProps, "id" | "position"> & Readonly<{
+  id: string;
+  initialFocusId?: string;
+}>;
+export type DialogTitleProps = TextProps;
+export type DialogDescriptionProps = TextProps;
+export type DialogFooterProps = BoxProps;
 export type TextProps = Readonly<{
   id?: string;
   children: string | number;
@@ -82,6 +106,7 @@ export type ProgressProps = Readonly<{
 export type SeparatorProps = Readonly<{
   id?: string;
   orientation?: "horizontal" | "vertical";
+  variant?: SeparatorVariant;
   style?: CellLayoutStyle;
 }>;
 export type RadioGroupProps = CommonProps & Readonly<{
@@ -133,6 +158,14 @@ export type SelectItemProps = CommonProps & Readonly<{
   setSize?: number;
   style?: CellLayoutStyle;
 }>;
+export type ComboboxProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
+export type ComboboxInputProps = TextInputProps & Readonly<{
+  expanded?: boolean;
+  controlsId?: string;
+  activeDescendantId?: string;
+}>;
+export type ComboboxContentProps = SelectContentProps;
+export type ComboboxItemProps = Omit<SelectItemProps, "focused"> & Readonly<{ active?: boolean }>;
 export type ListProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
 export type ListItemProps = CommonProps & Readonly<{
   focused?: boolean;
@@ -189,7 +222,9 @@ export type TextEditorProps = CommonProps & Readonly<{
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type TextInputProps = TextEditorProps;
+export type TextInputProps = Omit<TextEditorProps, "style"> & Readonly<{
+  style?: CellSingleLineInputStyle;
+}>;
 export type TextAreaProps = TextEditorProps;
 
 type PrimitiveProps =
@@ -211,6 +246,10 @@ type PrimitiveProps =
   | SelectTriggerProps
   | SelectContentProps
   | SelectItemProps
+  | ComboboxProps
+  | ComboboxInputProps
+  | ComboboxContentProps
+  | ComboboxItemProps
   | ListProps
   | ListItemProps
   | MenuProps
@@ -245,7 +284,15 @@ const primitive = <Props extends PrimitiveProps>(
 
 export const Root = primitive<RootProps>("root");
 export const Box = primitive<BoxProps>("box");
+export const Accordion = primitive<AccordionProps>("accordion");
+export const AccordionItem = primitive<AccordionItemProps>("accordion-item");
+export const AccordionTrigger = primitive<AccordionTriggerProps>("accordion-trigger");
+export const AccordionContent = primitive<AccordionContentProps>("accordion-content");
 export const Overlay = primitive<OverlayProps>("overlay");
+export const Dialog = primitive<DialogProps>("overlay");
+export const DialogTitle = primitive<DialogTitleProps>("text");
+export const DialogDescription = primitive<DialogDescriptionProps>("text");
+export const DialogFooter = primitive<DialogFooterProps>("box");
 export const Text = primitive<TextProps>("text");
 export const Button = primitive<ButtonProps>("button");
 export const Checkbox = primitive<CheckboxProps>("checkbox");
@@ -261,6 +308,10 @@ export const Select = primitive<SelectProps>("select");
 export const SelectTrigger = primitive<SelectTriggerProps>("select-trigger");
 export const SelectContent = primitive<SelectContentProps>("select-content");
 export const SelectItem = primitive<SelectItemProps>("select-item");
+export const Combobox = primitive<ComboboxProps>("combobox");
+export const ComboboxInput = primitive<ComboboxInputProps>("combobox-input");
+export const ComboboxContent = primitive<ComboboxContentProps>("combobox-content");
+export const ComboboxItem = primitive<ComboboxItemProps>("combobox-item");
 export const List = primitive<ListProps>("list");
 export const ListItem = primitive<ListItemProps>("list-item");
 export const Menu = primitive<MenuProps>("menu");
@@ -288,10 +339,12 @@ export type WidgetDescriptor = Readonly<{
   disabled: boolean;
   focused: boolean;
   selected: boolean;
+  active: boolean;
   checked: CellCheckboxState;
   pressed: boolean;
   radioValue: string | null;
   progress: import("./types.js").WidgetNode["progress"];
+  separatorVariant: SeparatorVariant;
   buttonVariant: ButtonVariant;
   buttonSize: ButtonSize;
   sliderValue: number;
@@ -311,11 +364,15 @@ export type WidgetDescriptor = Readonly<{
   setSize: number | null;
   orientation: "horizontal" | "vertical" | null;
   controlsId: string | null;
+  activeDescendantId: string | null;
   labelledById: string | null;
   textEditor: CellTextSnapshot | null;
   readOnly: boolean;
   overlayPosition: CellPoint | null;
   modal: boolean;
+  dialog?: Readonly<{ initialFocusId?: string }>;
+  dialogPart?: "title" | "description";
+  closeOnOutsideClick?: boolean;
   scrollX: number;
   scrollY: number;
   children: readonly WidgetDescriptor[];
@@ -348,6 +405,10 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
   }
 
   const props = element.props as Record<string, unknown>;
+  const isDialog = element.type === Dialog;
+  if (isDialog && (typeof props.id !== "string" || !props.id.trim())) {
+    throw new TypeError("Dialog requires a non-empty id.");
+  }
   const progressMax = typeof props.max === "number" && Number.isFinite(props.max) && props.max > 0
     ? props.max : 100;
   if (
@@ -366,7 +427,7 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
       throw new TypeError("Text children must be strings or numbers.");
     }
     text = childValues.join("");
-  } else if (kind !== "text-input" && kind !== "text-area") {
+  } else if (kind !== "text-input" && kind !== "text-area" && kind !== "combobox-input") {
     children = childValues.flatMap((child) => {
       if (!isValidElement(child)) {
         throw new TypeError(`${kind} children must be Cell UI primitives.`);
@@ -377,6 +438,7 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
   if (kind === "range-slider-thumb" && children.length > 0) {
     throw new TypeError("RangeSliderThumb cannot contain children.");
   }
+  if (element.type === DialogFooter) children.unshift(...describe(<Box style={{ flexGrow: 1 }} />));
 
   const position = props.position as CellPoint | undefined;
   const sliderRange = resolveCellSliderRange(
@@ -386,6 +448,7 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
   );
   if (
     kind === "overlay"
+    && !isDialog
     && (!position || !Number.isInteger(position.x) || !Number.isInteger(position.y))
   ) {
     throw new TypeError("Overlay position must use integer Cell coordinates.");
@@ -395,13 +458,20 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
     kind,
     explicitId: typeof props.id === "string" ? props.id : null,
     key: element.key === null ? null : String(element.key),
-    style: (props.style as CellLayoutStyle | undefined) ?? {},
+    style: {
+      ...(isDialog ? { width: 36, border: true, padding: 1, gap: 1 } : {}),
+      ...(element.type === DialogFooter ? { direction: "row" as const, gap: 1 } : {}),
+      ...(kind === "text-input" || kind === "combobox-input"
+        ? normalizeSingleLineInputStyle(props.style as CellLayoutStyle | undefined)
+        : props.style as CellLayoutStyle | undefined),
+    },
     text,
-    textStyle: (props.textStyle as CellTextStyle | undefined) ?? {},
+    textStyle: { ...(element.type === DialogTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
     label: typeof props.label === "string" ? props.label : null,
     disabled: props.disabled === true,
     focused: props.focused === true,
     selected: props.selected === true,
+    active: props.active === true,
     checked: props.checked === "indeterminate" ? "indeterminate" : props.checked === true,
     pressed: props.pressed === true,
     radioValue: typeof props.value === "string" ? props.value : null,
@@ -410,6 +480,7 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
       value: Number.isFinite(props.value) ? Math.max(0, Math.min(props.value as number, progressMax)) : 0,
       valueText: typeof props.valueText === "string" ? props.valueText : undefined,
     } : null,
+    separatorVariant: kind === "separator" ? resolveSeparatorVariant(props.variant) : "line",
     buttonVariant: kind === "button" ? resolveButtonVariant(props.variant) : "default",
     buttonSize: kind === "button" ? resolveButtonSize(props.size) : "default",
     sliderValue: kind === "range-slider-thumb"
@@ -436,13 +507,18 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
       ? props.orientation
       : null,
     controlsId: typeof props.controlsId === "string" ? props.controlsId : null,
+    activeDescendantId: typeof props.activeDescendantId === "string" ? props.activeDescendantId : null,
     labelledById: typeof props.labelledById === "string" ? props.labelledById : null,
-    textEditor: kind === "text-input" || kind === "text-area"
+    textEditor: kind === "text-input" || kind === "text-area" || kind === "combobox-input"
       ? props.state as CellTextSnapshot
       : null,
     readOnly: props.readOnly === true,
     overlayPosition: kind === "overlay" ? position! : null,
     modal: kind === "overlay" && props.modal !== false,
+    ...(isDialog ? { dialog: { initialFocusId: typeof props.initialFocusId === "string" ? props.initialFocusId : undefined } } : {}),
+    ...(element.type === DialogTitle ? { dialogPart: "title" as const } : {}),
+    ...(element.type === DialogDescription ? { dialogPart: "description" as const } : {}),
+    closeOnOutsideClick: props.closeOnOutsideClick !== false,
     scrollX: Number.isFinite(props.scrollX) ? Math.max(0, Math.trunc(props.scrollX as number)) : 0,
     scrollY: Number.isFinite(props.scrollY) ? Math.max(0, Math.trunc(props.scrollY as number)) : 0,
     children,

@@ -1,6 +1,6 @@
 # Web TUI 原生输入验证
 
-本页登记 P3.3 的 macOS 输入系统到真实浏览器 textarea 的证据。编辑状态与合成事件由 [`text.test.tsx`](../../packages/cell-ui/src/text.test.tsx) 和 [`browser.dom.test.tsx`](../../packages/cell-ui/src/browser.dom.test.tsx) 负责。
+本页登记 macOS 输入系统到真实浏览器 textarea 的证据。交付状态见 [Roadmap](../roadmap.md)；编辑状态与合成事件由 [`text.test.tsx`](../../packages/cell-ui/src/text.test.tsx) 和 [`browser.dom.test.tsx`](../../packages/cell-ui/src/browser.dom.test.tsx) 负责。
 
 ## 验证命令
 

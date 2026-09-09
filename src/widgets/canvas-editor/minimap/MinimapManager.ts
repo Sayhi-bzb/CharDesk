@@ -15,7 +15,7 @@ import type {
   MinimapTransform,
 } from "./types";
 import type { Point } from "@/shared/types";
-import { projectArtifactCellStyle } from "@/shared/metrics";
+import { projectArtifactCellStyle } from "@/shared/canvas-appearance/artifact-style";
 
 type MinimapContentChunk = {
   paths: Map<string, Path2D>;

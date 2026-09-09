@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo } from 'react';
 import {
-  DEFAULT_TEXT_RENDER_THEME,
+  DEFAULT_TEXT_RENDER_THEMES,
+  createTextRenderThemeMap,
   TEXT_RENDER_FEATURES,
   useTextRenderingRuntime,
   useTextRenderProfile,
@@ -30,6 +31,7 @@ import {
   Tooltip,
   TooltipPopup,
   TooltipTrigger,
+  useUiTheme,
 } from '@chardesk/ui';
 
 
@@ -177,6 +179,7 @@ function MarkdownColorControl({
   defaultSegments,
   label,
   color,
+  appearance,
   className,
   onPick,
   onReset,
@@ -184,6 +187,7 @@ function MarkdownColorControl({
   defaultSegments: readonly ColorSegment[];
   label: string;
   color?: string;
+  appearance: 'light' | 'dark';
   className?: string;
   onPick: (color: string) => void;
   onReset: () => void;
@@ -242,6 +246,7 @@ function MarkdownColorControl({
         <ColorPickerPanel
           value={color ?? ''}
           onPick={onPick}
+          appearance={appearance}
           onReset={color ? onReset : undefined}
           showCanvasPicker={false}
         />
@@ -267,6 +272,7 @@ function FeatureColorControls({
   label,
   theme,
   colors,
+  appearance,
   onPick,
   onReset,
 }: {
@@ -274,6 +280,7 @@ function FeatureColorControls({
   label: string;
   theme: TextRenderTheme;
   colors: Record<string, string>;
+  appearance: 'light' | 'dark';
   onPick: (slot: string, color: string) => void;
   onReset: (slot: string) => void;
 }) {
@@ -289,6 +296,7 @@ function FeatureColorControls({
           defaultSegments={resolveDefaultSegments(slot.default, theme)}
           label={slot.label ? t(slot.label) : label}
           color={colors[slot.id]}
+          appearance={appearance}
           className="ml-0"
           onPick={(color) => onPick(slot.id, color)}
           onReset={() => onReset(slot.id)}
@@ -303,12 +311,12 @@ export function DisplaySettingsPanel({
   onRevealComplete,
 }: DisplaySettingsPanelProps) {
   const { t } = useUiI18n();
+  const { resolvedTheme: hostResolvedTheme } = useUiTheme();
   const textRendering = useTextRenderingRuntime();
   const textRenderProfile = useTextRenderProfile();
-  const resolvedTheme: TextRenderTheme = {
-    ...DEFAULT_TEXT_RENDER_THEME,
-    ...textRenderProfile.renderTheme,
-  };
+  const themeMode = hostResolvedTheme === 'dark' ? 'dark' : 'light';
+  const activeRenderTheme = textRenderProfile.renderThemes[themeMode];
+  const resolvedRenderTheme = textRendering.getResolvedTheme(themeMode);
   const columns = useMemo<SettingsDataTableColumn<DisplaySettingsColumnId>[]>(
     () => [
       {
@@ -337,12 +345,16 @@ export function DisplaySettingsPanel({
   const groups = useMemo<SettingsDataTableGroup<DisplaySetting>[]>(
     () => [
       { id: 'rendering', label: t('settings.rendering'), items: [rendererSetting] },
-      { id: 'theme', label: t('settings.renderTheme'), items: themeSettings },
+      {
+        id: 'theme',
+        label: `${t('settings.renderTheme')} · ${t(`settings.theme.${themeMode}`)}`,
+        items: themeSettings,
+      },
       { id: 'inline', label: t('settings.markdownRules.inline'), items: inlineSettings },
       { id: 'math', label: t('settings.markdownRules.math'), items: mathSettings },
       { id: 'blocks', label: t('settings.markdownRules.block'), items: blockSettings },
     ],
-    [t]
+    [t, themeMode]
   );
   const revealSetting = useCallback((row: HTMLTableRowElement) => {
     if (typeof row.scrollIntoView === 'function') {
@@ -372,7 +384,7 @@ export function DisplaySettingsPanel({
         const featureConfig = renderFeature
           ? textRenderProfile.features[renderFeature.id] ?? {
               enabled: renderFeature.defaultEnabled,
-              colors: {},
+              colors: createTextRenderThemeMap(() => ({})),
             }
           : null;
         if (columnId === 'setting') {
@@ -442,22 +454,32 @@ export function DisplaySettingsPanel({
               </span>
             ) : setting.kind === 'theme-token' ? (
               <MarkdownColorControl
-                defaultSegments={[{ color: DEFAULT_TEXT_RENDER_THEME[setting.token] }]}
+                defaultSegments={[{ color: DEFAULT_TEXT_RENDER_THEMES[themeMode][setting.token] }]}
                 label={t(setting.label)}
-                color={textRenderProfile.renderTheme[setting.token]}
+                color={activeRenderTheme[setting.token]}
+                appearance={themeMode}
                 onPick={(color) =>
                   textRendering.setProfile({
                     ...textRenderProfile,
-                    renderTheme: {
-                      ...textRenderProfile.renderTheme,
-                      [setting.token]: color,
+                    renderThemes: {
+                      ...textRenderProfile.renderThemes,
+                      [themeMode]: {
+                        ...activeRenderTheme,
+                        [setting.token]: color,
+                      },
                     },
                   })
                 }
                 onReset={() => {
-                  const renderTheme = { ...textRenderProfile.renderTheme };
+                  const renderTheme = { ...activeRenderTheme };
                   delete renderTheme[setting.token];
-                  textRendering.setProfile({ ...textRenderProfile, renderTheme });
+                  textRendering.setProfile({
+                    ...textRenderProfile,
+                    renderThemes: {
+                      ...textRenderProfile.renderThemes,
+                      [themeMode]: renderTheme,
+                    },
+                  });
                 }}
               />
             ) : setting.kind === 'render-feature' && setting.feature.colorRows?.length ? (
@@ -468,8 +490,9 @@ export function DisplaySettingsPanel({
                   ? setting.feature.colorSlots.filter((slot) => setting.slotIds.includes(slot.id))
                   : setting.feature.colorSlots}
                 label={t(setting.label)}
-                theme={resolvedTheme}
-                colors={featureConfig!.colors}
+                theme={resolvedRenderTheme}
+                colors={featureConfig!.colors[themeMode]}
+                appearance={themeMode}
                 onPick={(slot, color) => {
                   textRendering.setProfile({
                     ...textRenderProfile,
@@ -477,19 +500,28 @@ export function DisplaySettingsPanel({
                       ...textRenderProfile.features,
                       [setting.feature.id]: {
                         ...featureConfig!,
-                        colors: { ...featureConfig!.colors, [slot]: color },
+                        colors: {
+                          ...featureConfig!.colors,
+                          [themeMode]: {
+                            ...featureConfig!.colors[themeMode],
+                            [slot]: color,
+                          },
+                        },
                       },
                     },
                   });
                 }}
                 onReset={(slot) => {
-                  const colors = { ...featureConfig!.colors };
+                  const colors = { ...featureConfig!.colors[themeMode] };
                   delete colors[slot];
                   textRendering.setProfile({
                     ...textRenderProfile,
                     features: {
                       ...textRenderProfile.features,
-                      [setting.feature.id]: { ...featureConfig!, colors },
+                      [setting.feature.id]: {
+                        ...featureConfig!,
+                        colors: { ...featureConfig!.colors, [themeMode]: colors },
+                      },
                     },
                   });
                 }}

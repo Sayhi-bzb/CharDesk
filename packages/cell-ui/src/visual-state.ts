@@ -1,5 +1,5 @@
 import type { WidgetNode, WidgetTree } from "./types.js";
-import { isActionableKind } from "./widget-capabilities.js";
+import { isActionableKind, isTextEditorKind } from "./widget-capabilities.js";
 
 /** Geometry/behavior projection, independent of colors and rendering. */
 export const projectWidgetState = (tree: WidgetTree, node: WidgetNode) => {
@@ -13,6 +13,7 @@ export const projectWidgetState = (tree: WidgetTree, node: WidgetNode) => {
     owner,
     target,
     disabled,
+    editingActive: isTextEditorKind(node.kind) && node.focusActive && !disabled,
     highlighted: !disabled && ((target.focused && target.focusVisible) || target.hovered),
     pressed: !disabled && target.pressActive,
     manipulating: !disabled && !!target.manipulating,

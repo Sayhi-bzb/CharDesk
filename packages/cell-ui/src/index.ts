@@ -1,4 +1,10 @@
 export { CellBuffer } from "./buffer.js";
+export { Dialog, DialogTitle, DialogDescription, DialogFooter } from "./react.js";
+export type { DialogProps, DialogTitleProps, DialogDescriptionProps, DialogFooterProps } from "./react.js";
+export { Combobox, ComboboxInput, ComboboxContent, ComboboxItem } from "./react.js";
+export type { ComboboxProps, ComboboxInputProps, ComboboxContentProps, ComboboxItemProps } from "./react.js";
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./react.js";
+export type { AccordionProps, AccordionItemProps, AccordionTriggerProps, AccordionContentProps } from "./react.js";
 export { createCellBufferSource, createCellUiRenderFrame } from "./frame.js";
 export type { CellTextOptions, CellComposition } from "./buffer.js";
 export {
@@ -11,7 +17,7 @@ export type {
   CellInspection,
   CellProbeCell,
   CellProbeFontCapability,
-  CellProbeGlyphOverflow,
+  CellProbeGlyphInkOverhang,
   CellProbeOptions,
   CellProbePresentation,
   CellProbeRequestedFontFace,
@@ -20,6 +26,7 @@ export type {
   FormatCellProbeOptions,
 } from "./probe.js";
 export { EventManager } from "./events.js";
+export type { SeparatorVariant } from "./separator.js";
 export type {
   CellEventDispatch,
   CellEventHandler,
@@ -198,6 +205,7 @@ export type {
   CellHitPart,
   CellInsets,
   CellLayoutStyle,
+  CellSingleLineInputStyle,
   CellOverlayPlane,
   CellPoint,
   CellRect,

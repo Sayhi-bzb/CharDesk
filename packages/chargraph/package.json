@@ -52,7 +52,7 @@
     }
   },
   "scripts": {
-    "build:deps": "npm run build -w @chardesk/protocol",
+    "build:deps": "npm run build -w @chardesk/protocol && npm run build -w @chardesk/rendering",
     "prebuild": "npm run build:deps",
     "build": "tsc -p tsconfig.json",
     "pretest": "npm run build:deps",
@@ -60,6 +60,7 @@
   },
   "dependencies": {
     "@chardesk/protocol": "^0.3.0",
+    "@chardesk/rendering": "^0.1.0",
     "d3-scale": "^4.0.2",
     "elkjs": "^0.11.1",
     "jsonc-parser": "^3.3.1",

@@ -3,13 +3,15 @@ import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import type { CanvasLinkHit } from "../hooks/interaction/core/linkHitTesting";
 import { GridManager } from "@/shared/utils/grid";
 import {
-  alignCanvasCoordinate,
   DEFAULT_ARTIFACT_CANVAS_PALETTE,
+  type CanvasArtifactPalette,
+} from "@/shared/canvas-appearance/artifact-style";
+import {
+  alignCanvasCoordinate,
   DEFAULT_GRID_RENDER_METRICS,
   getCellOccupancy,
   resolveCellVisual,
   setTextRenderStyle,
-  type CanvasArtifactPalette,
 } from "@/shared/metrics";
 import {
   presentCharDeskCellFrame,

@@ -83,9 +83,9 @@ for (const candidate of ["substitute-mono", "fusion-mono", "xiaolai-mono"]) {
               context.clearRect(0, 0, 36, 20);
               drawCharDeskCanvasCells(context, [
                 { cell: resolveCharDeskCellVisual({ text: "A", color: "black", attrs: { bold } }), x: 0, y: 0,
-                  options: { metrics, fontProfile: galleryFontOptions["xiaolai-mono"].profile, clipToCell: true } },
+                  options: { metrics, fontProfile: galleryFontOptions["xiaolai-mono"].profile } },
                 { cell: resolveCharDeskCellVisual({ text: "界", color: "black", attrs: { bold } }), x: 9, y: 0,
-                  options: { metrics, fontProfile: galleryFontOptions["xiaolai-mono"].profile, clipToCell: true } },
+                  options: { metrics, fontProfile: galleryFontOptions["xiaolai-mono"].profile } },
               ]);
               return canvas.toDataURL();
             };

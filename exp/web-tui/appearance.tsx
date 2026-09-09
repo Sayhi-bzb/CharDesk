@@ -1,18 +1,26 @@
 import { Moon } from "pixelarticons/react/Moon";
 import { Sun } from "pixelarticons/react/Sun";
-import { createContext, useContext, useLayoutEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
 import { CLASSIC_CELL_FEEDBACK, resolveCellFeedback, type CellFeedbackConfig } from "@chardesk/cell-ui";
 import { CellSurface, DEFAULT_CELL_UI_METRICS, loadCellFontMetrics, useCellCssTheme, useCellSelectState, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
-import { Root, Select, SelectContent, SelectItem, SelectTrigger, Text, resolveCellUiTheme } from "@chardesk/cell-ui";
+import { Root, resolveCellUiTheme } from "@chardesk/cell-ui";
 import {
   galleryFontOptions,
   type GalleryFont,
 } from "./font-options";
 import { loadDisplayFont, resetDisplayFontStylesheet } from "../../src/shared/fonts/loading";
+import { renderGallerySelect } from "./gallery-component-recipes";
 
 const defaultTheme = resolveCellUiTheme(undefined);
 type GalleryFontStatus = "idle" | "loading" | "error";
+type GalleryFontState = Readonly<{
+  font: GalleryFont;
+  pendingFont: GalleryFont | null;
+  errorFont: GalleryFont | null;
+  status: GalleryFontStatus;
+  message: string;
+}>;
 const galleryFontLabels: Record<GalleryFont, string> = {
   maple: "Maple",
   "fusion-mono": "Fusion",
@@ -24,6 +32,7 @@ const AppearanceContext = createContext({
   mode: "light" as "light" | "dark",
   font: "maple" as GalleryFont,
   pendingFont: null as GalleryFont | null,
+  errorFont: null as GalleryFont | null,
   fontStatus: "idle" as GalleryFontStatus,
   fontMessage: "",
   fontProfile: MAPLE_FONT_PROFILE,
@@ -33,6 +42,7 @@ const AppearanceContext = createContext({
   selectFont: (font: GalleryFont) => { void font; },
 });
 const themePreferenceKey = "chardesk-web-tui-theme";
+const fontPreferenceKey = "chardesk-web-tui-font";
 const readPreference = (): "light" | "dark" | null => {
   try {
     const value = localStorage.getItem(themePreferenceKey);
@@ -40,6 +50,31 @@ const readPreference = (): "light" | "dark" | null => {
   } catch {
     return null;
   }
+};
+const readFontPreference = (): GalleryFont => {
+  try {
+    const value = localStorage.getItem(fontPreferenceKey);
+    return value && Object.prototype.hasOwnProperty.call(galleryFontOptions, value)
+      ? value as GalleryFont
+      : "maple";
+  } catch {
+    return "maple";
+  }
+};
+const writeFontPreference = (font: GalleryFont) => {
+  try { localStorage.setItem(fontPreferenceKey, font); } catch { /* In-memory switching remains available. */ }
+};
+const initialFontState = (): GalleryFontState => {
+  const preferredFont = readFontPreference();
+  return preferredFont === "maple"
+    ? { font: "maple", pendingFont: null, errorFont: null, status: "idle", message: "" }
+    : {
+        font: "maple",
+        pendingFont: preferredFont,
+        errorFont: null,
+        status: "loading",
+        message: `Loading ${galleryFontLabels[preferredFont]}.`,
+      };
 };
 const query = window.matchMedia("(prefers-color-scheme: dark)");
 const subscribe = (callback: () => void) => {
@@ -49,41 +84,57 @@ const subscribe = (callback: () => void) => {
 export function GalleryAppearance({ children, feedback }: { children: ReactNode; feedback?: Partial<CellFeedbackConfig> }) {
   const dark = useSyncExternalStore(subscribe, () => query.matches, () => false);
   const [preference, setPreference] = useState(readPreference);
-  const [font, setFont] = useState<GalleryFont>("maple");
-  const [pendingFont, setPendingFont] = useState<GalleryFont | null>(null);
-  const [fontStatus, setFontStatus] = useState<GalleryFontStatus>("idle");
-  const [fontMessage, setFontMessage] = useState("");
+  const [fontState, setFontState] = useState(initialFontState);
+  const { font, pendingFont, errorFont, status: fontStatus, message: fontMessage } = fontState;
   const mode = preference ?? (dark ? "dark" : "light");
   const rootRef = useRef<HTMLDivElement>(null);
   const fontRequestRef = useRef(0);
-  useLayoutEffect(() => () => { fontRequestRef.current += 1; }, []);
   const toggleTheme = () => {
     const next = mode === "light" ? "dark" : "light";
     setPreference(next);
     try { localStorage.setItem(themePreferenceKey, next); } catch { /* In-memory switching remains available. */ }
   };
-  const selectFont = async (target: GalleryFont) => {
-    if (fontStatus === "loading") return;
-    const request = ++fontRequestRef.current;
-    const option = galleryFontOptions[target];
-    setPendingFont(target);
-    setFontStatus("loading");
-    setFontMessage(`Loading ${galleryFontLabels[target]}.`);
-    try {
-      await loadDisplayFont(option);
-      await loadCellFontMetrics(option.profile);
-      if (request !== fontRequestRef.current) return;
-      setFont(target);
-      setPendingFont(null);
-      setFontStatus("idle");
-      setFontMessage(`Display font: ${galleryFontLabels[target]}.`);
-    } catch {
-      if (request !== fontRequestRef.current) return;
-      resetDisplayFontStylesheet(option);
-      setFontStatus("error");
-      setFontMessage(`${galleryFontLabels[target]} is unavailable. Display remains ${galleryFontLabels[font]}.`);
-    }
+  const selectFont = (target: GalleryFont) => {
+    setFontState((current) => current.status === "loading" ? current : {
+      font: current.font,
+      pendingFont: target,
+      errorFont: null,
+      status: "loading",
+      message: `Loading ${galleryFontLabels[target]}.`,
+    });
   };
+  useEffect(() => {
+    if (fontState.status !== "loading" || !fontState.pendingFont) return;
+    const target = fontState.pendingFont;
+    const option = galleryFontOptions[target];
+    const request = ++fontRequestRef.current;
+    void (async () => {
+      try {
+        await loadDisplayFont(option);
+        await loadCellFontMetrics(option.profile);
+        if (request !== fontRequestRef.current) return;
+        writeFontPreference(target);
+        setFontState({
+          font: target,
+          pendingFont: null,
+          errorFont: null,
+          status: "idle",
+          message: `Display font: ${galleryFontLabels[target]}.`,
+        });
+      } catch {
+        if (request !== fontRequestRef.current) return;
+        resetDisplayFontStylesheet(option);
+        setFontState((current) => ({
+          font: current.font,
+          pendingFont: null,
+          errorFont: target,
+          status: "error",
+          message: `${galleryFontLabels[target]} is unavailable. Display remains ${galleryFontLabels[current.font]}.`,
+        }));
+      }
+    })();
+    return () => { fontRequestRef.current += 1; };
+  }, [fontState.pendingFont, fontState.status]);
   useLayoutEffect(() => {
     const root = document.documentElement;
     const previousTheme = root.dataset.galleryTheme;
@@ -108,7 +159,7 @@ export function GalleryAppearance({ children, feedback }: { children: ReactNode;
     colorScheme: mode,
     "--gallery-font-size": `${DEFAULT_CELL_UI_METRICS.fontSize}px`,
   } as CSSProperties;
-  return <AppearanceContext.Provider value={{ ...appearance, feedback: resolveCellFeedback(feedback), mode, font, pendingFont, fontStatus, fontMessage, fontProfile, toggleTheme, selectFont }}>
+  return <AppearanceContext.Provider value={{ ...appearance, feedback: resolveCellFeedback(feedback), mode, font, pendingFont, errorFont, fontStatus, fontMessage, fontProfile, toggleTheme, selectFont }}>
     <div ref={rootRef} className="gallery-page" data-gallery-theme={mode} data-gallery-font={font} data-gallery-font-status={fontStatus} style={style}>{children}</div>
   </AppearanceContext.Provider>;
 }
@@ -141,15 +192,18 @@ const galleryFontItems = (Object.keys(galleryFontOptions) as GalleryFont[]).map(
 const fontItemId = (font: GalleryFont) => `gallery-font-option-${font}`;
 
 export function GalleryFontSelect() {
-  const { font, pendingFont, fontStatus, fontMessage, selectFont } = useGalleryAppearance();
+  const { font, pendingFont, errorFont, fontStatus, fontMessage, selectFont } = useGalleryAppearance();
+  const [open, setOpen] = useState(false);
   const select = useCellSelectState("gallery-font", galleryFontItems, {
     selectedId: fontItemId(font),
+    open,
+    onOpenChange: setOpen,
     onSelectionChange: (itemId) => {
       const item = galleryFontItems.find(({ id }) => id === itemId);
       if (item) void selectFont(item.font);
     },
   });
-  const target = pendingFont ?? font;
+  const target = pendingFont ?? errorFont ?? font;
   const shortLabel = galleryFontLabels[target];
   const triggerText = fontStatus === "loading"
     ? `…${shortLabel}`
@@ -161,49 +215,35 @@ export function GalleryFontSelect() {
     : fontStatus === "error"
       ? `${galleryFontLabels[target]} unavailable. Current font: ${galleryFontLabels[font]}`
       : `Font: ${galleryFontLabels[font]}`;
-  const open = select.open && fontStatus !== "loading";
   return <div className="gallery-font-select" data-state={fontStatus} data-open={open || undefined}>
     <GallerySurface
       className="gallery-font-select__surface"
       viewport={{ width: 12, height: 1 }}
-      overlayViewport={{ width: 12, height: open ? 6 : 1 }}
+      overlayViewport={{ width: 12, height: open ? 4 : 1 }}
       focusedId={select.focusedId}
       onCommand={select.dispatch}
       label="Font"
       probeId="gallery-font-select"
     >
       <Root id="gallery-font-root" style={{ direction: "row" }}>
-        <Select id={select.id} label="Font" style={{ width: 12 }}>
-          <SelectTrigger
-            id={select.triggerId}
-            label={triggerLabel}
-            expanded={open}
-            controlsId={open ? select.contentId : undefined}
-            disabled={fontStatus === "loading"}
-            style={{ width: 12 }}
-          ><Text>{triggerText}</Text></SelectTrigger>
-          {open ? (
-            <SelectContent
-              id={select.contentId}
-              label="Fonts"
-              scrollY={select.scrollY}
-              style={{ width: 12 }}
-            >
-              {galleryFontItems.map((item, index) => (
-                <SelectItem
-                  id={item.id}
-                  key={item.id}
-                  label={fontStatus === "error" && pendingFont === item.font
-                    ? `${item.label} unavailable; retry`
-                    : item.label}
-                  selected={select.selectedId === item.id}
-                  positionInSet={index + 1}
-                  setSize={galleryFontItems.length}
-                ><Text>{item.label}</Text></SelectItem>
-              ))}
-            </SelectContent>
-          ) : null}
-        </Select>
+        {renderGallerySelect({
+          label: "Font",
+          select,
+          focusedId: select.focusedId,
+          width: 12,
+          open,
+          showLabel: false,
+          disabled: fontStatus === "loading",
+          triggerText,
+          triggerLabel,
+          contentLabel: "Fonts",
+          itemSemanticLabel: (itemId) => {
+            const item = galleryFontItems.find(({ id }) => id === itemId);
+            return fontStatus === "error" && errorFont === item?.font
+              ? `${item.label} unavailable; retry`
+              : item?.label ?? itemId;
+          },
+        })}
       </Root>
     </GallerySurface>
     {fontMessage ? <span className="gallery-visually-hidden" role="status" aria-live="polite">{fontMessage}</span> : null}
@@ -211,5 +251,5 @@ export function GalleryFontSelect() {
 }
 export function GallerySurface(props: CellSurfaceProps) {
   const { theme, palette, fontProfile, feedback } = useGalleryAppearance();
-  return <CellSurface {...props} theme={theme} feedback={feedback} palette={palette} fontProfile={fontProfile} glyphOverflow="visible" />;
+  return <CellSurface {...props} theme={theme} feedback={feedback} palette={palette} fontProfile={fontProfile} />;
 }

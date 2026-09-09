@@ -25,6 +25,8 @@ import {
   TooltipCreateHandle,
   TooltipPopup,
   TooltipTrigger,
+  resolveColorPickerPalettes,
+  type ColorPaletteAppearance,
 } from '@chardesk/ui';
 
 
@@ -38,6 +40,7 @@ import {
 type ColorPickerPanelProps = {
   value: string;
   onPick: (color: string) => void;
+  appearance: ColorPaletteAppearance;
   density?: 'default' | 'compact';
   defaultColor?: string;
   onReset?: () => void;
@@ -47,78 +50,6 @@ type ColorPickerPanelProps = {
   className?: string;
   canvasPickDestination?: 'foreground' | 'background';
 };
-
-const ANSI_16_COLORS = [
-  '#000000',
-  '#800000',
-  '#008000',
-  '#808000',
-  '#000080',
-  '#800080',
-  '#008080',
-  '#c0c0c0',
-  '#808080',
-  '#ff0000',
-  '#00ff00',
-  '#ffff00',
-  '#0000ff',
-  '#ff00ff',
-  '#00ffff',
-  '#ffffff',
-];
-
-const PRESET_COLOR_MATRIX = [
-  [
-    '#7f1d1d',
-    '#7c2d12',
-    '#713f12',
-    '#14532d',
-    '#064e3b',
-    '#164e63',
-    '#1e3a8a',
-    '#312e81',
-    '#581c87',
-    '#0f172a',
-  ],
-  [
-    '#dc2626',
-    '#ea580c',
-    '#ca8a04',
-    '#16a34a',
-    '#10b981',
-    '#06b6d4',
-    '#3b82f6',
-    '#6366f1',
-    '#a855f7',
-    '#475569',
-  ],
-  [
-    '#f87171',
-    '#fdba74',
-    '#fde047',
-    '#86efac',
-    '#6ee7b7',
-    '#67e8f9',
-    '#93c5fd',
-    '#a5b4fc',
-    '#d8b4fe',
-    '#94a3b8',
-  ],
-  [
-    '#fee2e2',
-    '#ffedd5',
-    '#fef9c3',
-    '#dcfce7',
-    '#ccfbf1',
-    '#cffafe',
-    '#dbeafe',
-    '#e0e7ff',
-    '#f3e8ff',
-    '#f8fafc',
-  ],
-] as const;
-
-const PRESET_COLORS = PRESET_COLOR_MATRIX.flat();
 
 const normalizeHexColor = (value: string) => {
   const trimmed = value.trim().replace(/^#?/, '#').toLowerCase();
@@ -181,6 +112,7 @@ function CanvasColorPickerAction({
 export function ColorPickerPanel({
   value,
   onPick,
+  appearance,
   density = 'default',
   defaultColor,
   onReset,
@@ -204,6 +136,7 @@ export function ColorPickerPanel({
   const displayColor = normalizedCustomColor ?? normalizedValue ?? '#000000';
   const RestoreDefaultIcon = HOST_ICONOLOGY.colorPalette.restoreDefault;
   const headerActionSize = density === 'compact' ? 'xs' : 'sm';
+  const palettes = resolveColorPickerPalettes(appearance);
 
   useEffect(() => {
     setCustomColor(value);
@@ -243,7 +176,7 @@ export function ColorPickerPanel({
       id: 'ansi16',
       label: t('color.ansi16'),
       icon: HOST_ICONOLOGY.colorPalette.ansi16,
-      colors: ANSI_16_COLORS,
+      colors: palettes.ansi16,
       colorLabelKey: 'color.pickAnsi',
       gridClassName: 'grid-cols-4',
     },
@@ -251,7 +184,7 @@ export function ColorPickerPanel({
       id: 'presets',
       label: t('color.presets'),
       icon: HOST_ICONOLOGY.colorPalette.presets,
-      colors: PRESET_COLORS,
+      colors: palettes.presets,
       colorLabelKey: 'color.pickPreset',
       gridClassName: 'grid-cols-5',
     },

@@ -25,7 +25,9 @@ import {
 } from "./render-theme.js";
 
 export {
+  CHARDESK_DARK_RENDER_THEME,
   CHARDESK_LIGHT_RENDER_THEME,
+  CHARDESK_RENDER_THEMES,
   CHARDESK_RENDER_THEME_TOKENS,
   resolveCharDeskRenderTheme,
 } from "./render-theme.js";
@@ -33,6 +35,7 @@ export type {
   CharDeskRenderColorDefault,
   CharDeskRenderTheme,
   CharDeskRenderThemeInput,
+  CharDeskRenderThemeMode,
   CharDeskRenderThemeToken,
 } from "./render-theme.js";
 export type {

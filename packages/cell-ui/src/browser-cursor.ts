@@ -4,11 +4,11 @@ import {
   type CharDeskFontProfile,
 } from "@chardesk/rendering/canvas";
 import {
-  resolveCharDeskCellVisual,
   resolveCharDeskFontRoute,
   type CharDeskCellMetrics,
 } from "@chardesk/rendering";
 import { createCellUiRenderFrame } from "./frame.js";
+import { resolveCellCursorStyle } from "./cursor-appearance.js";
 import type { CellCursorStyle } from "./theme.js";
 import type { CellRect, FrameSnapshot } from "./types.js";
 
@@ -70,33 +70,14 @@ const drawCursor = (
 ) => {
   const context = canvas.getContext("2d");
   if (!context) return;
-  const { frame, metrics, palette, style, fontProfile } = presentation.input;
+  const { frame, metrics, palette, fontProfile } = presentation.input;
   const { bounds } = presentation;
   const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
   context.setTransform(dpr, 0, 0, dpr, 0, 0);
-  if (style.shape === "block") {
-    const cell = createCellUiRenderFrame(frame).source.get({ x: bounds.x, y: bounds.y });
-    const visual = cell?.visual ?? {
-      text: " ",
-      width: 1 as const,
-      fontRoute: resolveCharDeskFontRoute(" "),
-    };
-    drawCharDeskCanvasCursor(context, {
-      cell: visual,
-      x: bounds.x * metrics.cellWidth,
-      y: bounds.y * metrics.cellHeight,
-      style,
-      options: {
-        metrics,
-        palette,
-        ...(fontProfile ? { fontProfile } : {}),
-      },
-      drawText: cell?.drawText !== false,
-    });
-    return;
-  }
+  const cell = createCellUiRenderFrame(frame).source.get(bounds);
+  const style = resolveCellCursorStyle(frame.buffer.get(bounds.x, bounds.y)?.style, palette, presentation.input.style);
   drawCharDeskCanvasCursor(context, {
-    cell: resolveCharDeskCellVisual({ text: bounds.width === 2 ? "中" : " " }),
+    cell: cell?.visual ?? { text: " ", width: 1, fontRoute: resolveCharDeskFontRoute(" ") },
     x: bounds.x * metrics.cellWidth,
     y: bounds.y * metrics.cellHeight,
     style,
@@ -105,7 +86,7 @@ const drawCursor = (
       palette,
       ...(fontProfile ? { fontProfile } : {}),
     },
-    drawText: false,
+    drawText: style.shape === "block" && cell?.drawText !== false,
   });
 };
 

@@ -180,6 +180,7 @@ describe("CharDesk Text Protocol v1 conformance", () => {
     expect(getGraphemeCellWidth("é")).toBe(1);
     expect(getGraphemeCellWidth("界")).toBe(2);
     expect(getGraphemeCellWidth("👩🏽‍💻")).toBe(2);
+    expect(getGraphemeCellWidth("󰄳")).toBe(1);
   });
 
   it("rejects invalid tab sizes", () => {

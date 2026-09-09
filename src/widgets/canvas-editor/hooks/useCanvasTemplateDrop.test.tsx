@@ -1,8 +1,14 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CANVAS_TEMPLATE_MIME } from "@/domains/canvas-templates/public";
+import { CHARDESK_DARK_CONTENT_THEME } from "@chardesk/rendering/theme";
 import type { CanvasEditorModel } from "./canvasModels";
 import { useCanvasTemplateDrop } from "./useCanvasTemplateDrop";
+
+vi.mock("@chardesk/ui", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@chardesk/ui")>(),
+  useUiTheme: () => ({ resolvedTheme: "dark" as const }),
+}));
 
 describe("useCanvasTemplateDrop", () => {
   it("commits the same template artifact and selects the inserted result", () => {
@@ -48,6 +54,10 @@ describe("useCanvasTemplateDrop", () => {
 
     expect(preventDefault).toHaveBeenCalledOnce();
     expect(insertRows).toHaveBeenCalledOnce();
+    expect(insertRows.mock.calls[0][0][0].spans[0]).toMatchObject({
+      color: CHARDESK_DARK_CONTENT_THEME.foreground,
+      bgColor: CHARDESK_DARK_CONTENT_THEME.surface,
+    });
     expect(insertRows.mock.calls[0][1]).toEqual({ x: 2, y: 2 });
     expect(insertRows.mock.calls[0][2]).toEqual({ selectResult: true });
   });

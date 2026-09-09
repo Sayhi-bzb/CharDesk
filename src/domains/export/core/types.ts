@@ -2,7 +2,7 @@ import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import type { CanvasMode } from "@/domains/sessions/public";
 import type { SlideDeckSnapshot } from "@/domains/slides/public";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
-import type { CanvasArtifactPalette } from "@/shared/metrics";
+import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
 
 export type ExportFormat =
   | "txt"
