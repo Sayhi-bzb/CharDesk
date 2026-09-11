@@ -87,6 +87,3 @@ export const isFocusScope = (node: WidgetNode): boolean =>
 
 export const isDismissableScope = (node: WidgetNode): boolean =>
   (node.kind === "overlay" && (node.modal || !!node.dialog)) || node.kind === "select-content" || node.kind === "combobox-content";
-
-export const isFilledSurfaceKind = (kind: WidgetKind): boolean =>
-  kind === "overlay" || kind === "select-content" || kind === "combobox-content";

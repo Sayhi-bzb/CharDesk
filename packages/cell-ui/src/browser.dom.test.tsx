@@ -156,7 +156,7 @@ const Product = ({
             ><Text>{item.label}</Text></ListItem>
           ))}
         </List>
-        <ScrollArea id="files" scrollY={scrollY} style={{ border: true, height: 4 }}>
+        <ScrollArea id="files" variant="bordered" scrollY={scrollY} style={{ height: 4 }}>
           <List id="file-list" label="Files">
             {files.items.map((item) => (
               <ListItem
@@ -304,7 +304,7 @@ const EditorProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => 
     >
       <Root id="editor-root">
         <TextInput id="name" label="Name" state={name.snapshot} />
-        <TextArea id="body" label="Document" state={body.snapshot} style={{ border: true, height: 5 }} />
+        <TextArea id="body" label="Document" variant="bordered" state={body.snapshot} style={{ height: 5 }} />
       </Root>
     </CellSurface>
   );
@@ -463,7 +463,7 @@ const RangeProduct = ({
         label="Range surface"
       >
         <Root id="range-root">
-          <Box id="range-panel" style={{ border: true, height: 3 }}>
+          <Box id="range-panel" variant="bordered" style={{ height: 3 }}>
             <Text>{text}</Text>
           </Box>
         </Root>
@@ -489,7 +489,7 @@ const DefaultRangeProduct = ({
     label="Default range surface"
   >
     <Root id="default-range-root">
-      <Box id="default-range-panel" style={{ border: true, height: 3 }}>
+      <Box id="default-range-panel" variant="bordered" style={{ height: 3 }}>
         <Text>AB</Text>
       </Box>
     </Root>
@@ -519,7 +519,8 @@ const ModalEditorProduct = ({ open }: { open: boolean }) => {
             id="modal-overlay"
             label="Commands"
             position={{ x: 2, y: 1 }}
-            style={{ border: true, width: 20, height: 4 }}
+            variant="bordered"
+            style={{ width: 20, height: 4 }}
           >
             <List id="modal-commands" label="Commands">
               <ListItem id="modal-command" focused><Text>Open file</Text></ListItem>
@@ -564,7 +565,8 @@ const VirtualListProduct = ({
           <ScrollArea
             id="virtual-scroll"
             scrollY={virtual.scrollY}
-            style={{ border: true, height: 6 }}
+            variant="bordered"
+            style={{ height: 6 }}
           >
             <List
               id="virtual-list"
@@ -699,7 +701,7 @@ const ComplexWidgetProduct = () => {
               id={selectedTab.panelId}
               label={`${selectedTab.label} panel`}
               labelledById={selectedTab.id}
-              style={{ border: true, height: 3 }}
+              style={{ height: 3 }}
             ><Text>{`${selectedTab.label} content`}</Text></TabPanel>
           ) : null}
           <Grid
@@ -783,7 +785,7 @@ describe("CellSurface", () => {
     const flashedRow = readCellSurfaceProbe(surface)!.cells
       .filter((cell) => cell.ownerId === "surface-light");
     expect(flashedRow.length).toBeGreaterThan(0);
-    expect(flashedRow.every((cell) => cell.style.backgroundColor === "#FFFFFF"))
+    expect(flashedRow.every((cell) => cell.style.backgroundColor === "#E6E6E6"))
       .toBe(true);
 
     act(() => vi.advanceTimersByTime(80));

@@ -71,7 +71,8 @@ export const CoreControlsDemo = () => {
             <ScrollArea
               id="core-files"
               scrollY={scrollY}
-              style={{ border: true, height: 6 }}
+              variant="bordered"
+              style={{ height: 6 }}
             >
               <List id="core-file-list" label="Files">
                 {files.items.map((item) => (

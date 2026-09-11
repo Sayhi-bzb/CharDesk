@@ -198,7 +198,7 @@ export function TextExample() {
   return (
     <CellSurface viewport={{ width: 36, height: 14 }} onCommand={() => {}}>
       <Root id="root">
-        <Box style={{ border: true, height: 14, padding: 1 }}>
+        <Box variant="bordered" style={{ height: 14, padding: 1 }}>
           <Text textStyle={{ bold: true }}>◆ Plain text · READY</Text>
           <Text>→ Unicode: 世界 👋</Text>
           <Text>↔ Move: ← ↑ ↓ →</Text>
@@ -225,7 +225,7 @@ export function TextExample() {
     title: "Box",
     group: "primitives",
     navigationOrder: 1,
-    description: "Compose nested Cell layout, spacing, and borders.",
+    description: "Compose nested Cell layout, spacing, and block boundaries.",
     probeId: "component-box",
     Demo: BoxComponentDemo,
     usage: `import { Box, Root, Text } from "@chardesk/cell-ui";
@@ -235,11 +235,12 @@ export function BoxExample() {
   return (
     <CellSurface viewport={{ width: 36, height: 8 }} onCommand={() => {}}>
       <Root id="root">
-        <Box style={{ border: true, height: 8, padding: 1 }}>
-          <Text>Nested boxes</Text>
+        <Box style={{ height: 8 }}>
+          <Text>Block variants</Text>
           <Box style={{ direction: "row", gap: 1 }}>
-            <Box style={{ border: true, width: 14 }}><Text>Left</Text></Box>
-            <Box style={{ border: true, width: 14 }}><Text>Right</Text></Box>
+            <Box variant="plain" style={{ width: 10 }}><Text>plain</Text></Box>
+            <Box variant="raised" style={{ width: 10 }}><Text>raised</Text></Box>
+            <Box variant="bordered" style={{ width: 12 }}><Text>bordered</Text></Box>
           </Box>
         </Box>
       </Root>
@@ -251,7 +252,9 @@ export function BoxExample() {
       { name: "label?", type: "string", description: "Accessible name when the Box owns meaning." },
       { name: "disabled?", type: "boolean", description: "Marks the widget disabled." },
       { name: "children?", type: "ReactNode", description: "Nested Cell descriptors." },
-      { name: "style?", type: "CellLayoutStyle", description: "Cell size, direction, gap, padding, and border." },
+      { name: "variant?", type: '"plain" | "raised" | "bordered"', description: "Mutually exclusive block boundary; plain by default." },
+      { name: "borderShape?", type: '"square" | "rounded"', description: "Border glyphs when variant is bordered." },
+      { name: "style?", type: "CellLayoutStyle", description: "Cell size, direction, gap, and padding." },
     ],
   },
   {
@@ -365,7 +368,8 @@ export function SelectExample() {
       { name: "SelectTrigger.expanded", type: "boolean", description: "Controls disclosure state and chrome." },
       { name: "SelectTrigger.controlsId?", type: "string", description: "Relates the open Trigger to its listbox." },
       { name: "SelectContent", type: "Cell primitive", description: "Portaled listbox anchored to the Trigger." },
-      { name: "SelectContent.style.border?", type: "boolean", description: "Reserves and paints a one-Cell dropdown border; defaults to false." },
+      { name: "SelectContent.variant?", type: '"plain" | "raised" | "bordered"', description: "Raised by default; bordered reserves a one-Cell frame." },
+      { name: "SelectContent.borderShape?", type: '"square" | "rounded"', description: "Border glyphs when Content is bordered." },
       { name: "SelectContent.scrollY?", type: "number", description: "Controlled offset for a constrained listbox." },
       { name: "SelectItem.selected?", type: "boolean", description: "Persistent committed selection." },
       { name: "useCellSelectState", type: "CellSelectState", description: "Owns open, provisional focus, selection, listbox scroll, and commands." },
@@ -624,7 +628,7 @@ export function ScrollAreaExample() {
   return (
     <CellSurface viewport={{ width: 32, height: 6 }} onCommand={dispatch}>
       <Root id="root">
-        <ScrollArea scrollY={scrollY} style={{ border: true, height: 6 }}>
+        <ScrollArea variant="bordered" scrollY={scrollY} style={{ height: 6 }}>
           {Array.from({ length: 10 }, (_, index) => (
             <Text key={index}>Row {index + 1}</Text>
           ))}
@@ -638,7 +642,9 @@ export function ScrollAreaExample() {
       { name: "label?", type: "string", description: "Accessible viewport name." },
       { name: "scrollX?", type: "number", description: "Controlled horizontal Cell offset." },
       { name: "scrollY?", type: "number", description: "Controlled vertical Cell offset." },
-      { name: "style?", type: "CellLayoutStyle", description: "Viewport size, padding, and border." },
+      { name: "variant?", type: '"plain" | "raised" | "bordered"', description: "Plain by default; bordered reserves a one-Cell frame." },
+      { name: "borderShape?", type: '"square" | "rounded"', description: "Border glyphs when the viewport is bordered." },
+      { name: "style?", type: "CellLayoutStyle", description: "Viewport size and padding." },
     ],
   },
 ];

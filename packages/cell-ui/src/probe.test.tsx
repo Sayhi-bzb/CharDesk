@@ -141,7 +141,7 @@ describe("Cell probe", () => {
   it("serializes component chrome as Unicode Cell text", () => {
     const pilot = createTestPilot({
       viewport: { width: 4, height: 3 },
-      render: () => <Root><Box id="box" style={{ border: true, width: 4, height: 3 }} /></Root>,
+      render: () => <Root><Box id="box" variant="bordered" style={{ width: 4, height: 3 }} /></Root>,
     });
     const snapshot = pilot.probe();
     expect(snapshot.text).toBe("┌──┐\n│  │\n└──┘");

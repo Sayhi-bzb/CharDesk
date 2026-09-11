@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-test("Palette text retains its surface background in both themes", async ({ page }) => {
+test("Palette text retains its raised surface background in both themes", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/exp/web-tui/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="overlay"]');
@@ -11,7 +11,7 @@ test("Palette text retains its surface background in both themes", async ({ page
     }
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", theme);
     await page.evaluate((surfaceColor) => {
-      document.documentElement.style.setProperty("--cell-surface", surfaceColor);
+      document.documentElement.style.setProperty("--cell-surface-raised", surfaceColor);
     }, theme === "light" ? "rgb(240, 240, 240)" : "rgb(35, 35, 35)");
     await page.getByRole("button", { name: theme === "light" ? "Dark" : "Light" }).click();
     await page.getByRole("button", { name: theme === "light" ? "Light" : "Dark" }).click();
@@ -125,7 +125,7 @@ test("Command Palette owns its layer, focus scope, dismissal, and semantic actio
 
   await page.keyboard.press("Enter");
   await expect(dialog).toHaveCount(1);
-  await clickCell(page, overlayCanvas, 7, 6);
+  await clickCell(page, overlayCanvas, 7, 5);
   await expect(dialog).toHaveCount(0);
 
   await section.getByRole("option", { name: "Open command palette" }).dispatchEvent("click");

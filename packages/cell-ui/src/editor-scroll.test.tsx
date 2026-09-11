@@ -33,7 +33,7 @@ it("TextInput retains hidden horizontal scrolling and TextArea gains owned rails
   const runtime = new CellUiRuntime({ viewport: { width: 10, height: 9 } });
   const frame = runtime.render(<Root>
     <TextInput id="input" state={editor.snapshot()} />
-    <TextArea id="area" state={editor.snapshot()} style={{ border: true, height: 5 }} />
+    <TextArea id="area" variant="bordered" state={editor.snapshot()} style={{ height: 5 }} />
   </Root>);
   expect(frame.scene.entries.get("input")!.scrollMetrics?.horizontalTrack).toBeNull();
   expect(frame.textLayouts.get("input")!.contentBounds.height).toBe(1);
@@ -48,7 +48,7 @@ it("editor rails page and drag without changing selection, cancel on geometry ch
   let height = 7;
   const pilot = createTestPilot({
     viewport: { width: 12, height: 8 },
-    render: () => <Root><TextArea id="area" state={editor.snapshot()} style={{ width: 12, height, border: true }} /></Root>,
+    render: () => <Root><TextArea id="area" variant="bordered" state={editor.snapshot()} style={{ width: 12, height }} /></Root>,
     onCommand: (command) => { if (command.type === "text") editor.dispatch(command.command); },
   });
   const selection = editor.snapshot().selection;
@@ -81,7 +81,7 @@ it("editor rails page and drag without changing selection, cancel on geometry ch
 it("editor wheel consumption is independent of movement and respects disabled state", () => {
   const editor = new CellTextEditor({ value: "x".repeat(30), multiline: true });
   const runtime = new CellUiRuntime({ viewport: { width: 10, height: 5 } });
-  const view = (disabled: boolean) => <Root><TextArea id="area" disabled={disabled} readOnly state={editor.snapshot()} style={{ border: true, height: 5 }} /></Root>;
+  const view = (disabled: boolean) => <Root><TextArea id="area" variant="bordered" disabled={disabled} readOnly state={editor.snapshot()} style={{ height: 5 }} /></Root>;
   const wheel = { type: "wheel" as const, point: { x: 2, y: 2 }, deltaX: -1, deltaY: 0 };
   expect(resolveWheelInput(runtime.render(view(false)), wheel)).toEqual({ consumed: true, command: null });
   expect(resolveWheelInput(runtime.render(view(false)), { ...wheel, deltaX: 1 }).command).toEqual({ type: "text", targetId: "area", command: { type: "set-scroll", x: 1, y: 0 } });
@@ -93,7 +93,7 @@ it("editor geometry updates and incremental frames match fresh rendering through
   const editor = new CellTextEditor({ value: "ok", multiline: true, viewport: { columns: 7, rows: 2 } });
   const viewport = { width: 10, height: 5 };
   const runtime = new CellUiRuntime({ viewport });
-  const view = () => <Root><TextArea id="area" state={editor.snapshot()} style={{ border: true, height: 5 }} /></Root>;
+  const view = () => <Root><TextArea id="area" variant="bordered" state={editor.snapshot()} style={{ height: 5 }} /></Root>;
   const first = runtime.render(view());
   editor.dispatch({ type: "set-selection", anchor: 1 });
   expect(runtime.render(view()).scene).toBe(first.scene);

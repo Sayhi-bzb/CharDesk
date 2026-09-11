@@ -58,7 +58,7 @@ it("paints owned block thumbs along both scroll axes", () => {
   for (const offset of [0, 4, 20]) {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 8 } });
     const frame = runtime.render(<Root>
-      <ScrollArea id="scroll" scrollX={offset} scrollY={offset} style={{ width: 12, height: 8, border: true }}>
+      <ScrollArea id="scroll" variant="bordered" scrollX={offset} scrollY={offset} style={{ width: 12, height: 8 }}>
         <Box style={{ width: 24, height: 16 }}><Text>content</Text></Box>
       </ScrollArea>
     </Root>);

@@ -12,6 +12,7 @@
 - Cursor 默认反转所在 Cell 的最终颜色，不重新解释编辑状态；形状、fixed 模式、CSS token 与底图恢复契约由[包配置](../../packages/cell-ui/README.md#cursor)拥有。
 - Surface 失去实际焦点时保留逻辑 focusedId，但撤去 focus 背景、bold 与 Canvas Cursor；selection 和编辑状态保留。
 - `CellUiTheme` 是颜色与字符主题入口；`CellFeedbackConfig` 是反馈入口，classic 默认闪烁 2 次，instant 为 0 次。两者共享 hover、focus、press 规则。
+- Block 边界只有互斥的 `plain / raised / bordered`：Plain 透明；Raised 用 `raisedSurfaceStyle` 填满矩形且不占 Cell；Bordered 用 `surfaceStyle` 遮挡底层并以 Unicode 边框占一圈 Cell。后代状态消费最近的 Block substrate。Raised 不进入字符、语义或 Range Copy；Bordered 边框会进入。
 - `widget-capabilities.ts` 拥有能力表；状态投影与外观配方分离，painter 只绘制解析结果。局部 `textStyle` 不重定义状态语言；[底座契约](primitives.md)拥有模块边界。
 - 统一控件的按压与高亮最多反色一次；确认阶段独占颜色，相对进入时的有效颜色对执行反色／恢复，disabled 拒绝全部临时强调。default Button 保留 primary 基底，outline 保留字符边框，ghost 静止时透明。
 - 解析后的状态背景覆盖 Widget 完整布局矩形，包括空白 Cell；透明状态不填充。
@@ -21,8 +22,8 @@
 
 | Primitive | Cell 表现 | 输入与语义 |
 | --- | --- | --- |
-| Root / Box / Text | 结构、背景或文本 | 不产生独立 command；Text 可被 Cell Range 复制 |
-| Overlay | root layer、clip、border、背景 | Escape/outside down dismiss；modal `dialog` |
+| Root / Box / Text | Root 只建立画布；Box 用 Block variant 表达边界；Text 提供字符 | 不产生独立 command；Text 与 Bordered chrome 可被 Cell Range 复制 |
+| Overlay | root layer、clip，默认 Raised | Escape/outside down dismiss；modal `dialog` |
 | Dialog / Title / Description / Footer | 复用 Overlay，默认居中、36 Cell 宽、全局背景及边框；Title/Description 保留字符，Footer 只排列按钮 | 条件挂载；modal/outside-click 默认开启；初始焦点、模态 Tab 循环、Escape 与恢复焦点由共享底座拥有 |
 | Button | 单行填充矩形，左右各 1 Cell padding | 全局 focus traversal；完整 tap、Enter、Space 或 AT 激活 |
 | Accordion / Item / Trigger / Content | `▸` / `▾` 显示展开状态；标题消费共享反色与 press，无确认闪烁 | 多项独立展开；tap、Enter、Space 输出 Item 的 `set-expanded`；上下/Home/End 在同组可用标题间导航，不循环 |
@@ -41,7 +42,7 @@
 | Tabs | selected 保留第二行 `▬`，临时反色不改变当前页 | Left/Right wrap、Home/End 即时聚焦并切换可用页面，无确认闪烁；`tab` 与 `tabpanel` relations |
 | Grid | GridCell 固定预留 2 Cell 选择列，selected 使用全局 `collectionSelectedIndicator`；外部宽度不变，用户 padding 叠加于标记列内侧；临时强调覆盖整个格子 | 一个 Grid 一个 Tab 入口，优先上次可用焦点、已选可用格子、行列排序首项；方向键沿同一行／列跳过 disabled 与缺格，边界停止；Home/End 定位当前行端点；点击、Enter/Space 即时激活，无确认闪烁；row/column semantics |
 | TextInput / ComboboxInput | 固定 1 Cell 高、无边框、消费全局 Surface；实际焦点驱动整行反色，保留 Cursor、selection、composition | 真实 textarea；textbox/combobox value/readOnly/disabled；style 仅允许宽度与 flex 约束 |
-| TextArea | 多行 content、可选 border、terminal Cell Cursor、selection、composition；实际焦点驱动完整矩形及自身边框反色 | 真实 textarea；multiline textbox value/readOnly/disabled |
+| TextArea | 多行 content、Block variant、terminal Cell Cursor、selection、composition；实际焦点驱动完整矩形及自身边框反色 | 真实 textarea；multiline textbox value/readOnly/disabled |
 | ScrollArea | overflow 时使用内部 rail 和 corner | wheel、page、track、thumb drag；不建立 DOM scrollbar |
 
 ## Pointer 与 Scroll

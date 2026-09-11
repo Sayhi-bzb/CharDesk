@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readCellMetrics, readCellProbe } from "./helpers/cell-probe";
 
 test("Accordion independently expands, preserves content, and shares keyboard and pointer feedback", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/exp/web-tui/#/components/accordion");
   const surface = page.locator('[data-cell-probe="component-accordion"]');
   const general = surface.getByRole("button", { name: "General", exact: true });
@@ -27,6 +28,13 @@ test("Accordion independently expands, preserves content, and shares keyboard an
   await page.keyboard.press("Tab");
   await expect(surface.getByRole("button", { name: "Theme", exact: true })).toBeFocused();
   await page.keyboard.press("Enter");
+  const opened = await readCellProbe(surface);
+  const popup = opened.overlays.find(({ rootId }) => rootId === "accordion-theme-content");
+  expect(popup).toBeDefined();
+  expect(popup!.cells).toHaveLength(popup!.bounds.width * popup!.bounds.height);
+  expect(popup!.cells.every((cell) => cell.style.backgroundColor !== undefined)).toBe(true);
+  expect(popup!.cells.some((cell) => cell.style.backgroundColor === "rgb(230, 230, 230)")).toBe(true);
+  expect(opened.text).toContain("Dark");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
   await expect(surface.getByRole("listbox")).toHaveCount(0);

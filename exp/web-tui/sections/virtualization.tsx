@@ -36,7 +36,8 @@ export const VirtualizationDemo = () => {
           <ScrollArea
             id="virtual-files"
             scrollY={virtual.scrollY}
-            style={{ border: true, height: 11 }}
+            variant="bordered"
+            style={{ height: 11 }}
           >
             <List
               id="virtual-file-list"

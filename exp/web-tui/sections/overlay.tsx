@@ -56,14 +56,14 @@ export const OverlayDemo = () => {
               focused={launcher.focusedId === "show-palette"}
             ><Text>Open command palette</Text></ListItem>
           </List>
-          <Box id="overlay-workspace" style={{ border: true, width: 18, height: 3 }}>
+          <Box id="overlay-workspace" variant="bordered" style={{ width: 18, height: 3 }}>
             <Text id="overlay-workspace-label">Document workspace</Text>
             {open ? (
               <Overlay
                 id="command-palette"
                 label="Command palette"
                 position={{ x: 3, y: 2 }}
-                style={{ border: true, width: 30, height: 7 }}
+                style={{ width: 30, height: 7 }}
               >
                 <Text id="palette-title" textStyle={{ bold: true }}>Commands</Text>
                 <Menu id="commands" label="Commands" style={{ height: 3 }}>

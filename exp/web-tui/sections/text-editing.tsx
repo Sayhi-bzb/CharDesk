@@ -48,7 +48,8 @@ export const TextEditingDemo = () => {
           id="editor-document"
           label="Document"
           state={document.snapshot}
-          style={{ border: true, height: 7 }}
+          variant="bordered"
+          style={{ height: 7 }}
         />
       </Box>
     </Root>

@@ -22,6 +22,11 @@ import {
   type ButtonVariant,
 } from "./button.js";
 import { resolveSeparatorVariant, type SeparatorVariant } from "./separator.js";
+import {
+  resolveCellBlockVariant,
+  type CellBlockVariant,
+  type CellBorderShape,
+} from "./border.js";
 
 type CommonProps = Readonly<{
   id?: string;
@@ -40,13 +45,18 @@ const normalizeSingleLineInputStyle = (
   ...(style?.flexShrink !== undefined ? { flexShrink: style.flexShrink } : {}),
 });
 
+type BlockAppearanceProps = Readonly<{
+  variant?: CellBlockVariant;
+  borderShape?: CellBorderShape;
+}>;
+
 export type RootProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
-export type BoxProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
-export type AccordionProps = BoxProps;
-export type AccordionItemProps = Omit<BoxProps, "id"> & Readonly<{ id: string; expanded?: boolean }>;
+export type BoxProps = CommonProps & BlockAppearanceProps & Readonly<{ style?: CellLayoutStyle }>;
+export type AccordionProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
+export type AccordionItemProps = Omit<AccordionProps, "id"> & Readonly<{ id: string; expanded?: boolean }>;
 export type AccordionTriggerProps = CommonProps & Readonly<{ focused?: boolean; style?: CellLayoutStyle; textStyle?: CellTextStyle }>;
-export type AccordionContentProps = BoxProps;
-export type OverlayProps = CommonProps & Readonly<{
+export type AccordionContentProps = AccordionProps;
+export type OverlayProps = CommonProps & BlockAppearanceProps & Readonly<{
   position: CellPoint;
   modal?: boolean;
   closeOnOutsideClick?: boolean;
@@ -59,7 +69,7 @@ export type DialogProps = Omit<OverlayProps, "id" | "position"> & Readonly<{
 }>;
 export type DialogTitleProps = TextProps;
 export type DialogDescriptionProps = TextProps;
-export type DialogFooterProps = BoxProps;
+export type DialogFooterProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
 export type TextProps = Readonly<{
   id?: string;
   children: string | number;
@@ -146,7 +156,7 @@ export type SelectTriggerProps = CommonProps & Readonly<{
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type SelectContentProps = CommonProps & Readonly<{
+export type SelectContentProps = CommonProps & BlockAppearanceProps & Readonly<{
   scrollY?: number;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
@@ -210,7 +220,7 @@ export type GridCellProps = CollectionItemProps & Readonly<{
   rowIndex: number;
   columnIndex: number;
 }>;
-export type ScrollAreaProps = CommonProps & Readonly<{
+export type ScrollAreaProps = CommonProps & BlockAppearanceProps & Readonly<{
   scrollX?: number;
   scrollY?: number;
   style?: CellLayoutStyle;
@@ -225,7 +235,7 @@ export type TextEditorProps = CommonProps & Readonly<{
 export type TextInputProps = Omit<TextEditorProps, "style"> & Readonly<{
   style?: CellSingleLineInputStyle;
 }>;
-export type TextAreaProps = TextEditorProps;
+export type TextAreaProps = TextEditorProps & BlockAppearanceProps;
 
 type PrimitiveProps =
   | RootProps
@@ -333,6 +343,8 @@ export type WidgetDescriptor = Readonly<{
   explicitId: string | null;
   key: string | null;
   style: CellLayoutStyle;
+  blockVariant: CellBlockVariant;
+  borderShape: CellBorderShape | null;
   text: string | null;
   textStyle: CellTextStyle;
   label: string | null;
@@ -453,18 +465,40 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
   ) {
     throw new TypeError("Overlay position must use integer Cell coordinates.");
   }
+  const ownsBlockAppearance = element.type === Box
+    || element.type === Overlay
+    || element.type === Dialog
+    || element.type === ScrollArea
+    || element.type === TextArea
+    || element.type === SelectContent
+    || element.type === ComboboxContent;
+  const blockVariant = ownsBlockAppearance
+    ? resolveCellBlockVariant(
+        props.variant,
+        isDialog
+          ? "bordered"
+          : kind === "overlay" || kind === "select-content" || kind === "combobox-content"
+            ? "raised"
+            : "plain",
+      )
+    : "plain";
 
   return [{
     kind,
     explicitId: typeof props.id === "string" ? props.id : null,
     key: element.key === null ? null : String(element.key),
     style: {
-      ...(isDialog ? { width: 36, border: true, padding: 1, gap: 1 } : {}),
+      ...(isDialog ? { width: 36, padding: 1, gap: 1 } : {}),
       ...(element.type === DialogFooter ? { direction: "row" as const, gap: 1 } : {}),
       ...(kind === "text-input" || kind === "combobox-input"
         ? normalizeSingleLineInputStyle(props.style as CellLayoutStyle | undefined)
         : props.style as CellLayoutStyle | undefined),
     },
+    blockVariant,
+    borderShape: blockVariant === "bordered"
+      && (props.borderShape === "square" || props.borderShape === "rounded")
+      ? props.borderShape
+      : null,
     text,
     textStyle: { ...(element.type === DialogTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
     label: typeof props.label === "string" ? props.label : null,

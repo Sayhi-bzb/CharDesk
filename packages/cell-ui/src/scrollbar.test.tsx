@@ -27,7 +27,7 @@ it("half-Cell geometry is monotonic, aligned at endpoints, and retains exact cov
 
 it("half-Cell thumb movement repaints exactly like a fresh frame", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 8, height: 7 } });
-  const view = (scrollY: number) => <Root><ScrollArea id="scroll" scrollY={scrollY} style={{ width: 8, height: 7, border: true }}><Box style={{ height: 20 }} /></ScrollArea></Root>;
+  const view = (scrollY: number) => <Root><ScrollArea id="scroll" variant="bordered" scrollY={scrollY} style={{ width: 8, height: 7 }}><Box style={{ height: 20 }} /></ScrollArea></Root>;
   for (let offset = 0; offset <= 15; offset++) {
     const frame = runtime.render(view(offset));
     const fresh = new CellUiRuntime({ viewport: { width: 8, height: 7 } });

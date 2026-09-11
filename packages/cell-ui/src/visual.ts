@@ -1,6 +1,6 @@
 import type { CellTextStyle, WidgetNode, WidgetTree } from "./types.js";
 import type { CellUiTheme } from "./theme.js";
-import { isPrimitiveControlKind, isFilledSurfaceKind, isTextEditorKind, feedbackRule } from "./widget-capabilities.js";
+import { isPrimitiveControlKind, isTextEditorKind, feedbackRule } from "./widget-capabilities.js";
 import { projectWidgetState } from "./visual-state.js";
 import { resolvePrimitiveAppearance, resolveThumbAppearance } from "./primitive-appearance.js";
 
@@ -47,6 +47,26 @@ export const resolveCellTextStyle = (
   ...(state.composing ? { underline: true } : {}),
 });
 
+const blockSurfaceStyleForNode = (
+  tree: WidgetTree,
+  node: WidgetNode,
+  theme: CellUiTheme,
+): CellTextStyle | null => {
+  let current: WidgetNode | undefined = node;
+  let backgroundColor: string | undefined;
+  while (current) {
+    backgroundColor ??= current.textStyle.backgroundColor;
+    if (current.blockVariant !== "plain") {
+      return {
+        ...(current.blockVariant === "raised" ? theme.raisedSurfaceStyle : theme.surfaceStyle),
+        ...(backgroundColor !== undefined ? { backgroundColor } : {}),
+      };
+    }
+    current = current.parentId ? tree.nodes.get(current.parentId) : undefined;
+  }
+  return null;
+};
+
 export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: CellUiTheme) => {
   const projection = projectWidgetState(tree, node);
   const finish = (
@@ -65,15 +85,16 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   });
   if (isTextEditorKind(node.kind)) {
     const singleLine = node.kind === "text-input" || node.kind === "combobox-input";
+    const blockSurface = blockSurfaceStyleForNode(tree, node, theme);
     return finish(
       {
-        ...(singleLine ? theme.surfaceStyle : {}),
+        ...(singleLine ? theme.surfaceStyle : blockSurface ?? {}),
         ...node.textStyle,
         ...(projection.editingActive ? theme.focusedSurfaceStyle : {}),
         ...(projection.disabled ? theme.disabledStyle : {}),
       },
       theme.sliderThumb,
-      singleLine || node.style.border ? "layout" : "content",
+      singleLine || node.blockVariant !== "plain" ? "layout" : "content",
     );
   }
   const { owner } = projection;
@@ -81,6 +102,7 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   const rule = feedbackRule(owner?.kind ?? node.kind);
   const primary = owner?.kind === "button" && owner.buttonVariant === "default";
   const disabled = node.disabled || owner?.disabled;
+  const blockSurface = blockSurfaceStyleForNode(tree, node, theme);
   const confirmation = owner?.confirmation;
   if (confirmation && !disabled) {
     const { reference, phase } = confirmation;
@@ -92,7 +114,9 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   const focused = (focusNode.focused && focusNode.focusVisible) || focusNode.active;
   const base = primary
     ? disabled ? theme.surfaceStyle : theme.buttonPrimaryStyle
-    : isFilledSurfaceKind(node.kind) || owner?.kind === "select-trigger" ? theme.surfaceStyle : {};
+    : blockSurface
+      ? blockSurface
+      : owner?.kind === "select-trigger" ? theme.surfaceStyle : {};
   if (owner && isPrimitiveControlKind(owner.kind)) {
     if (rule.region === "thumb") {
       const appearance = resolveThumbAppearance({ ...base, ...node.textStyle }, projection, theme);

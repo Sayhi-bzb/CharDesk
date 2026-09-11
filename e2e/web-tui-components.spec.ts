@@ -75,14 +75,8 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page).toHaveURL(/#\/components\/box$/);
   await expect(page.getByRole("heading", { name: "Box", level: 1 })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Box", exact: true })).toHaveAttribute("aria-current", "page");
-  const centeredPreviewBounds = await page.locator(".docs-preview").boundingBox();
-  const centeredDemoBounds = await page.locator('[data-cell-probe="component-box"]').boundingBox();
-  expect(centeredPreviewBounds).not.toBeNull();
-  expect(centeredDemoBounds).not.toBeNull();
-  const centeredLeftGap = centeredDemoBounds!.x - centeredPreviewBounds!.x;
-  const centeredRightGap = centeredPreviewBounds!.x + centeredPreviewBounds!.width
-    - centeredDemoBounds!.x - centeredDemoBounds!.width;
-  expect(Math.abs(centeredLeftGap - centeredRightGap)).toBeLessThanOrEqual(1);
+  await expect(page.locator('[data-cell-probe="component-box"]')).toBeVisible();
+  await expect(page.getByRole("button", { name: "variant", exact: true })).toBeAttached();
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
 
@@ -199,11 +193,39 @@ test("Text and Box expose Cell-native content and layout", async ({ page }) => {
   expect(wrappedRows.size).toBeGreaterThan(1);
 
   await page.goto("/exp/web-tui/#/components/box");
-  const box = await readCellProbe(page.locator('[data-cell-probe="component-box"]'));
-  expect(box.text).toContain("Nested boxes");
-  expect(box.text).toContain("Left");
-  expect(box.text).toContain("Right");
-  expect(box.cells.filter((cell) => cell.text === "┌").length).toBe(3);
+  const boxSurface = page.getByLabel("Box component");
+  const boxVariant = page.getByRole("button", { name: "variant", exact: true });
+  const boxPreview = async () => (await readCellProbe(boxSurface)).cells
+    .filter((cell) => cell.ownerId === "component-box-preview");
+  const initialBox = await readCellProbe(boxSurface);
+  expect(initialBox.text).toContain("Block");
+  expect(initialBox.text).toContain("variant");
+  expect(initialBox.text).toContain("plain");
+  expect((await boxPreview()).every((cell) => cell.style.backgroundColor === undefined)).toBe(true);
+  await boxVariant.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "raised", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
+  await expect.poll(async () => (await boxPreview()).some((cell) => (
+    cell.style.backgroundColor === "rgb(230, 230, 230)"
+  ))).toBe(true);
+  await boxVariant.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "bordered", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
+  const borderShape = page.getByRole("button", { name: "border shape", exact: true });
+  await expect(borderShape).toBeAttached();
+  expect((await readCellProbe(boxSurface)).text).toContain("┌──────────────────┐");
+  await borderShape.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "rounded", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "border shape options" })).toHaveCount(0);
+  await expect.poll(async () => (await readCellProbe(boxSurface)).text).toContain("╭──────────────────╮");
+  await boxVariant.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "plain", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
+  await expect(borderShape).toHaveCount(0);
 });
 
 test("Separator Playground switches themed variants without changing its geometry", async ({ page }) => {
@@ -482,16 +504,16 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
   await page.goto("/exp/web-tui/#/components/select");
   const surface = page.getByLabel("Select component");
   const trigger = page.getByRole("button", { name: "Theme" });
-  const border = page.getByRole("checkbox", { name: "border" });
+  const contentVariant = page.getByRole("button", { name: "content variant", exact: true });
   const disabled = page.getByRole("checkbox", { name: "disabled" });
-  const rounded = page.getByRole("checkbox", { name: "rounded" });
   const initialSurfaceBounds = await surface.boundingBox();
   const initialHostBounds = await page.locator(".component-playground").boundingBox();
 
   await expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
   await expect(trigger).toHaveAttribute("aria-expanded", "false");
-  await expect(border).toHaveAttribute("aria-checked", "false");
-  await expect(rounded).toHaveAttribute("aria-checked", "false");
+  await expect(contentVariant).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("button", { name: "border shape", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: "border" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "value" })).toHaveCount(0);
   await surface.focus();
   await expect(trigger).toBeFocused();
@@ -538,8 +560,12 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
   await expect(page.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Light");
 
-  await border.evaluate((element: HTMLElement) => element.click());
-  await expect(border).toHaveAttribute("aria-checked", "true");
+  await contentVariant.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "bordered", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "content variant options" })).toHaveCount(0);
+  const borderShape = page.getByRole("button", { name: "border shape", exact: true });
+  await expect(borderShape).toBeAttached();
   await trigger.evaluate((element: HTMLElement) => element.click());
   const bordered = await readCellProbe(surface);
   const borderedOverlay = bordered.overlays.find(
@@ -555,8 +581,10 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
     .toBe(initialHostBounds?.height);
   await page.keyboard.press("Escape");
 
-  await rounded.evaluate((element: HTMLElement) => element.click());
-  await expect(rounded).toHaveAttribute("aria-checked", "true");
+  await borderShape.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "rounded", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "border shape options" })).toHaveCount(0);
   await trigger.evaluate((element: HTMLElement) => element.click());
   const roundedProbe = await readCellProbe(surface);
   const roundedOverlay = roundedProbe.overlays.find(
@@ -566,6 +594,12 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
   expect(roundedOverlay?.text).toContain("╰");
   expect(roundedOverlay?.text).not.toContain("┌");
   await page.keyboard.press("Escape");
+
+  await contentVariant.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "raised", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "content variant options" })).toHaveCount(0);
+  await expect(borderShape).toHaveCount(0);
 
   await disabled.evaluate((element: HTMLElement) => element.click());
   await expect(trigger).toHaveAttribute("aria-disabled", "true");
@@ -781,8 +815,7 @@ test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling t
   await page.goto("/exp/web-tui/#/components/scroll-area");
   const surface = page.getByLabel("ScrollArea component");
   const canvas = surface.locator("canvas");
-  const border = page.getByRole("checkbox", { name: "border" });
-  const rounded = page.getByRole("checkbox", { name: "rounded" });
+  const variant = page.getByRole("button", { name: "variant", exact: true });
   await canvas.scrollIntoViewIfNeeded();
   await surface.focus();
   const surfaceBounds = await surface.boundingBox();
@@ -802,30 +835,28 @@ test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling t
   ]);
   expect(thumbGlyphs(sizingInitial)).toEqual(["█", "▀"]);
 
-  await border.evaluate((element: HTMLElement) => element.click());
-  await expect(border).toHaveAttribute("aria-checked", "false");
-  const borderless = await readCellProbe(surface);
-  expect(visibleRows(borderless.text)).toEqual(visibleRows(sizingInitial.text));
-  expect(thumbGlyphs(borderless)).toEqual(thumbGlyphs(sizingInitial));
-  expect(borderless.cells.some((cell) => (
+  expect(sizingInitial.cells.some((cell) => (
     cell.ownerId === "component-scroll-area" && "┌┐└┘╭╮╰╯─│".includes(cell.text)
   ))).toBe(false);
-  expect((await surface.boundingBox())?.height).toBe(surfaceBounds?.height);
-  expect((await page.locator(".component-playground").boundingBox())?.height)
-    .toBe(hostBounds?.height);
 
-  await border.evaluate((element: HTMLElement) => element.click());
-  await expect(border).toHaveAttribute("aria-checked", "true");
-  await page.reload();
-  await canvas.scrollIntoViewIfNeeded();
-  await surface.focus();
-  const initial = await readCellProbe(surface);
+  const initial = sizingInitial;
 
   await page.keyboard.press("PageDown");
   await expect.poll(async () => (await readCellProbe(surface)).text).not.toBe(initial.text);
   const paged = await readCellProbe(surface);
   const pageY = await page.evaluate(() => window.scrollY);
-  await canvas.hover({ position: { x: 80, y: 50 } });
+  const wheelTarget = paged.cells.find((cell) => (
+    cell.ownerId === "component-scroll-area" && "█▀▄".includes(cell.text)
+  ));
+  const wheelBounds = await canvas.boundingBox();
+  expect(wheelTarget).toBeDefined();
+  expect(wheelBounds).not.toBeNull();
+  await canvas.hover({
+    position: {
+      x: (wheelTarget!.x + 0.5) * wheelBounds!.width / paged.viewport.width,
+      y: (wheelTarget!.y + 0.5) * wheelBounds!.height / paged.viewport.height,
+    },
+  });
   await page.mouse.wheel(0, 120);
   await expect.poll(async () => (await readCellProbe(surface)).text).not.toBe(paged.text);
   expect(await page.evaluate(() => window.scrollY)).toBe(pageY);
@@ -848,14 +879,36 @@ test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling t
   await page.mouse.up();
   await expect.poll(async () => (await readCellProbe(surface)).text).not.toBe(beforeDrag.text);
 
-  await rounded.evaluate((element: HTMLElement) => element.click());
-  await expect(rounded).toHaveAttribute("aria-checked", "true");
+  const beforeBorder = await readCellProbe(surface);
+  await variant.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "bordered", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
+  const borderShape = page.getByRole("button", { name: "border shape", exact: true });
+  await expect(borderShape).toBeAttached();
+  const bordered = await readCellProbe(surface);
+  expect(visibleRows(bordered.text)).toEqual(visibleRows(beforeBorder.text));
+  expect(thumbGlyphs(bordered)).toEqual(thumbGlyphs(beforeBorder));
+  expect(bordered.cells.some((cell) => (
+    cell.ownerId === "component-scroll-area" && "┌┐└┘─│".includes(cell.text)
+  ))).toBe(true);
+  expect((await surface.boundingBox())?.height).toBe(surfaceBounds?.height);
+  expect((await page.locator(".component-playground").boundingBox())?.height)
+    .toBe(hostBounds?.height);
+
+  await borderShape.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "rounded", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "border shape options" })).toHaveCount(0);
   expect((await readCellProbe(surface)).cells.some((cell) => (
     cell.ownerId === "component-scroll-area" && "╭╮╰╯".includes(cell.text)
   ))).toBe(true);
 
-  await border.evaluate((element: HTMLElement) => element.click());
-  await expect(border).toHaveAttribute("aria-checked", "false");
+  await variant.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "plain", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
+  await expect(borderShape).toHaveCount(0);
   expect((await readCellProbe(surface)).cells.some((cell) => (
     cell.ownerId === "component-scroll-area" && "┌┐└┘╭╮╰╯".includes(cell.text)
   ))).toBe(false);

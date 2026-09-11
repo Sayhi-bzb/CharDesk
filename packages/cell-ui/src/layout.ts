@@ -28,7 +28,6 @@ import type {
 import { buttonHorizontalPadding, buttonLayoutDefaults } from "./button.js";
 import { checkboxChromeMetrics } from "./checkbox.js";
 import { isCollectionItemKind } from "./widget-capabilities.js";
-import { resolveWidgetBorder } from "./border.js";
 
 const integer = (value: number, label: string) => {
   if (!Number.isFinite(value)) throw new RangeError(`${label} must be finite.`);
@@ -53,7 +52,11 @@ const computedInsets = (
   left: integer(read.call(node, Edge.Left), `${label}.left`),
 });
 
-const applyStyle = (target: YogaNode, style: CellLayoutStyle): void => {
+const applyStyle = (
+  target: YogaNode,
+  style: CellLayoutStyle,
+  bordered: boolean,
+): void => {
   target.setFlexDirection(style.direction === "row" ? FlexDirection.Row : FlexDirection.Column);
   target.setWidth(style.width);
   target.setHeight(style.height);
@@ -69,7 +72,7 @@ const applyStyle = (target: YogaNode, style: CellLayoutStyle): void => {
   target.setPadding(Edge.Right, style.paddingRight);
   target.setPadding(Edge.Bottom, style.paddingBottom);
   target.setPadding(Edge.Left, style.paddingLeft);
-  target.setBorder(Edge.All, style.border ? 1 : 0);
+  target.setBorder(Edge.All, bordered ? 1 : 0);
 };
 
 const measureText = (
@@ -171,10 +174,7 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
   applyStyle(target, {
     ...defaults,
     ...node.style,
-    ...(node.kind === "select-content" || node.kind === "combobox-content"
-      ? { border: resolveWidgetBorder(node.kind, node.style.border) }
-      : {}),
-  });
+  }, node.blockVariant === "bordered");
   target.setDisplay(node.kind === "accordion-content" && !node.expanded ? Display.None : Display.Flex);
   if (node.kind === "accordion-trigger") {
     target.setFlexDirection(FlexDirection.Row);

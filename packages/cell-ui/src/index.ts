@@ -77,7 +77,7 @@ export {
 export type { CellCursorShape, CellCursorStyle, CellUiTheme } from "./theme.js";
 export { nextCellCheckboxState } from "./checkbox.js";
 export type { ButtonSize, ButtonVariant } from "./button.js";
-export type { CellBorderShape } from "./border.js";
+export type { CellBlockVariant, CellBorderShape } from "./border.js";
 export {
   createCellRangeSnapshot,
   equalCellRangeSnapshot,

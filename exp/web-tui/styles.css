@@ -4,6 +4,7 @@
   --cell-background: #ffffff;
   --cell-foreground: #000000;
   --cell-surface: #ffffff;
+  --cell-surface-raised: #e6e6e6;
   --cell-button-primary: #000000;
   --cell-button-primary-foreground: #ffffff;
   --cell-button-primary-hover: #1a1a1a;
@@ -31,6 +32,7 @@
   --cell-background: #000000;
   --cell-foreground: #ffffff;
   --cell-surface: #000000;
+  --cell-surface-raised: #1a1a1a;
   --cell-button-primary: #ffffff;
   --cell-button-primary-foreground: #000000;
   --cell-button-primary-hover: #e6e6e6;

@@ -102,17 +102,17 @@ it("navigation and hover never activate, while Enter commits once without confir
   pilot.dispose();
 });
 
-it("clips selection chrome inside a narrow bordered cell without touching its neighbor", () => {
+it("clips selection chrome inside a narrow cell without touching its neighbor", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 12, height: 3 }, theme: { collectionSelectedIndicator: "*" } });
   const view = (disabled = false) => <Root><Grid><GridRow rowIndex={1}>
-    <GridCell id="narrow" rowIndex={1} columnIndex={1} selected disabled={disabled} style={{ border: true, width: 5, height: 3, paddingLeft: 0 }}><Text>Alphabet</Text></GridCell>
+    <GridCell id="narrow" rowIndex={1} columnIndex={1} selected disabled={disabled} style={{ width: 5, height: 3, paddingLeft: 0 }}><Text>Alphabet</Text></GridCell>
     <GridCell id="neighbor" rowIndex={1} columnIndex={2} style={{ width: 7 }}><Text>Next</Text></GridCell>
   </GridRow></Grid></Root>;
   const frame = runtime.render(view(), { hoveredId: "narrow" });
-  expect(frame.buffer.toText().split("\n")[1]?.slice(0, 5)).toBe("│* A│");
+  expect(frame.buffer.toText().split("\n")[0]?.slice(0, 5)).toBe("* Alp");
   expect(frame.buffer.get(5, 0)?.style.backgroundColor).toBeUndefined();
   const disabled = runtime.render(view(true), { focusedId: "narrow", hoveredId: "narrow", pressActiveId: "narrow" });
-  expect(disabled.buffer.get(1, 1)?.text).toBe("*");
-  expect(disabled.buffer.get(1, 1)?.style.backgroundColor).toBeUndefined();
+  expect(disabled.buffer.get(0, 0)?.text).toBe("*");
+  expect(disabled.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
   runtime.dispose();
 });

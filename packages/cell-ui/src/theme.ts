@@ -24,6 +24,7 @@ export type CellUiTheme = Readonly<{
   background: string;
   foreground: string;
   surfaceStyle: CellTextStyle;
+  raisedSurfaceStyle: CellTextStyle;
   buttonPrimaryStyle: CellTextStyle;
   buttonPrimaryHoverStyle: CellTextStyle;
   borderStyle: CellTextStyle;
@@ -96,6 +97,7 @@ export const CLASSIC_MAC_LIGHT_THEME: CellUiTheme = Object.freeze({
   background: "#FFFFFF",
   foreground: "#000000",
   surfaceStyle: { backgroundColor: "#FFFFFF" },
+  raisedSurfaceStyle: { backgroundColor: "#E6E6E6" },
   buttonPrimaryStyle: { color: "#FFFFFF", backgroundColor: "#000000" },
   buttonPrimaryHoverStyle: { color: "#FFFFFF", backgroundColor: "#1A1A1A" },
   borderStyle: { color: "#000000" },
@@ -127,6 +129,7 @@ export const CLASSIC_MAC_DARK_THEME: CellUiTheme = Object.freeze({
   background: "#000000",
   foreground: "#FFFFFF",
   surfaceStyle: { backgroundColor: "#000000" },
+  raisedSurfaceStyle: { backgroundColor: "#1A1A1A" },
   buttonPrimaryStyle: { color: "#000000", backgroundColor: "#FFFFFF" },
   buttonPrimaryHoverStyle: { color: "#000000", backgroundColor: "#E6E6E6" },
   borderStyle: { color: "#FFFFFF" },

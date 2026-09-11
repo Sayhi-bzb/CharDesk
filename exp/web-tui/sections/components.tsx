@@ -30,6 +30,8 @@ import {
   Slider,
   Text,
   TextInput,
+  type CellBlockVariant,
+  type CellBorderShape,
   type ButtonSize,
   type ButtonVariant,
   type WidgetCommand,
@@ -218,7 +220,7 @@ export const TextComponentDemo = () => (
     probeId="component-text"
   >
     <Root id="component-text-root">
-      <Box id="component-text-frame" style={{ border: true, height: 14, padding: 1 }}>
+      <Box id="component-text-frame" variant="bordered" style={{ height: 14, padding: 1 }}>
         <Text id="component-text-plain" textStyle={{ bold: true }}>◆ Plain text · READY</Text>
         <Text id="component-text-unicode">→ Unicode: 世界 👋</Text>
         <Text id="component-text-move">↔ Move: ← ↑ ↓ →</Text>
@@ -233,29 +235,6 @@ export const TextComponentDemo = () => (
   </GallerySurface>
 );
 
-export const BoxComponentDemo = () => (
-  <GallerySurface
-    viewport={{ width: 36, height: 8 }}
-    onCommand={noCommand}
-    label="Box component"
-    probeId="component-box"
-  >
-    <Root id="component-box-root">
-      <Box id="component-box-outer" style={{ border: true, height: 8, padding: 1 }}>
-        <Text id="component-box-title">Nested boxes</Text>
-        <Box id="component-box-row" style={{ direction: "row", gap: 1, height: 3 }}>
-          <Box id="component-box-left" style={{ border: true, width: 14, height: 3, paddingLeft: 1 }}>
-            <Text>Left</Text>
-          </Box>
-          <Box id="component-box-right" style={{ border: true, width: 14, height: 3, paddingLeft: 1 }}>
-            <Text>Right</Text>
-          </Box>
-        </Box>
-      </Box>
-    </Root>
-  </GallerySurface>
-);
-
 const buttonVariantItems = (["default", "outline", "ghost"] as const).map((variant) => ({
   id: `component-button-variant-${variant}`,
   label: variant,
@@ -264,6 +243,16 @@ const buttonVariantItems = (["default", "outline", "ghost"] as const).map((varia
 const buttonSizeItems = (["sm", "default", "lg"] as const).map((size) => ({
   id: `component-button-size-${size}`,
   label: size,
+}));
+
+const blockVariantItems = (["plain", "raised", "bordered"] as const).map((variant) => ({
+  id: variant,
+  label: variant,
+}));
+
+const borderShapeItems = (["square", "rounded"] as const).map((shape) => ({
+  id: shape,
+  label: shape,
 }));
 
 type PlaygroundSelectState = ReturnType<typeof useCellSelectState>;
@@ -312,6 +301,42 @@ const renderPlaygroundCheckboxControl = (
   checked: boolean,
   focusedId: string,
 ) => renderGalleryCheckbox({ id, label, checked, focusedId });
+
+export const BoxComponentDemo = () => {
+  const variant = useCellSelectState("component-box-variant", blockVariantItems, {
+    defaultSelectedId: "plain",
+  });
+  const borderShape = useCellSelectState("component-box-border-shape", borderShapeItems, {
+    defaultSelectedId: "square",
+  });
+  const focus = usePlaygroundFocus(variant.triggerId, [variant, borderShape]);
+  const blockVariant = variant.selectedId as CellBlockVariant;
+  const shape = borderShape.selectedId as CellBorderShape;
+  return <ComponentPlayground
+    id="component-box-playground"
+    focusedId={focus.focusedId}
+    onCommand={focus.dispatch}
+    label="Box component"
+    probeId="component-box"
+    previewMinColumns={20}
+    controlsColumns={25}
+    overlayRows={focus.activeSelect ? focus.activeSelect.items.length : 0}
+    preview={
+      <Box
+        id="component-box-preview"
+        variant={blockVariant}
+        borderShape={blockVariant === "bordered" ? shape : undefined}
+        style={{ width: 20, height: 3, paddingLeft: 1 }}
+      ><Text>Block</Text></Box>
+    }
+    controls={[
+      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+      ...(blockVariant === "bordered"
+        ? [renderPlaygroundSelectControl("border shape", borderShape, focus.focusedId)]
+        : []),
+    ]}
+  />;
+};
 
 export const ButtonComponentDemo = () => {
   const [variant, setVariant] = useState<ButtonVariant>("default");
@@ -377,26 +402,25 @@ type SelectDemoValue = "light" | "dark" | "system";
 
 export const SelectComponentDemo = () => {
   const [value, setValue] = useState<SelectDemoValue>("dark");
-  const [border, setBorder] = useState(false);
   const [disabled, setDisabled] = useState(false);
-  const [rounded, setRounded] = useState(false);
   const select = useCellSelectState("component-select", selectItems, {
     selectedId: `component-select-${value}`,
     onSelectionChange: (id) => {
       setValue(id.slice("component-select-".length) as SelectDemoValue);
     },
   });
-  const focus = usePlaygroundFocus(select.triggerId, [select]);
+  const contentVariant = useCellSelectState("component-select-content-variant", blockVariantItems, {
+    defaultSelectedId: "raised",
+  });
+  const contentBorderShape = useCellSelectState("component-select-content-border-shape", borderShapeItems, {
+    defaultSelectedId: "square",
+  });
+  const focus = usePlaygroundFocus(select.triggerId, [select, contentVariant, contentBorderShape]);
+  const blockVariant = contentVariant.selectedId as CellBlockVariant;
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
-    if (command.type === "activate" && command.targetId === "component-select-border") {
-      setBorder((current) => !current);
-    }
     if (command.type === "activate" && command.targetId === "component-select-disabled") {
       setDisabled((current) => !current);
-    }
-    if (command.type === "activate" && command.targetId === "component-select-rounded") {
-      setRounded((current) => !current);
     }
   };
   return <ComponentPlayground
@@ -407,7 +431,9 @@ export const SelectComponentDemo = () => {
     probeId="component-select"
     previewMinColumns={30}
     controlsColumns={25}
-    overlayRows={select.open ? select.items.length + (border ? 2 : 0) : 0}
+    overlayRows={focus.activeSelect
+      ? focus.activeSelect.items.length + (focus.activeSelect === select && blockVariant === "bordered" ? 2 : 0)
+      : 0}
     preview={renderGallerySelect({
       fieldId: "component-select-preview",
       labelId: "component-select-label",
@@ -416,27 +442,21 @@ export const SelectComponentDemo = () => {
       focusedId: focus.focusedId,
       width: 30,
       disabled,
-      border,
-      rounded,
+      contentVariant: blockVariant,
+      contentBorderShape: blockVariant === "bordered"
+        ? contentBorderShape.selectedId as CellBorderShape
+        : undefined,
       emptyLabel: "Select theme",
     })}
     controls={[
-      renderPlaygroundCheckboxControl(
-        "border",
-        "component-select-border",
-        border,
-        focus.focusedId,
-      ),
+      renderPlaygroundSelectControl("content variant", contentVariant, focus.focusedId),
+      ...(blockVariant === "bordered"
+        ? [renderPlaygroundSelectControl("border shape", contentBorderShape, focus.focusedId)]
+        : []),
       renderPlaygroundCheckboxControl(
         "disabled",
         "component-select-disabled",
         disabled,
-        focus.focusedId,
-      ),
-      renderPlaygroundCheckboxControl(
-        "rounded",
-        "component-select-rounded",
-        rounded,
         focus.focusedId,
       ),
     ]}
@@ -699,7 +719,7 @@ export const ListComponentDemo = () => {
     probeId="component-list"
   >
     <Root id="component-list-root">
-      <Box id="component-list-frame" style={{ border: true, height: 6, paddingLeft: 1 }}>
+      <Box id="component-list-frame" variant="bordered" style={{ height: 6, paddingLeft: 1 }}>
         <List id="component-list-items" label="Greek letters">
           {list.items.map((item) => (
             <ListItem
@@ -726,14 +746,19 @@ const scrollDemoBorderSize = 2;
 
 export const ScrollAreaComponentDemo = () => {
   const [scrollY, setScrollY] = useState(0);
-  const [border, setBorder] = useState(true);
-  const [rounded, setRounded] = useState(false);
-  const borderSize = border ? scrollDemoBorderSize : 0;
+  const variant = useCellSelectState("component-scroll-variant", blockVariantItems, {
+    defaultSelectedId: "plain",
+  });
+  const borderShape = useCellSelectState("component-scroll-border-shape", borderShapeItems, {
+    defaultSelectedId: "square",
+  });
+  const blockVariant = variant.selectedId as CellBlockVariant;
+  const borderSize = blockVariant === "bordered" ? scrollDemoBorderSize : 0;
   const list = useCellListState(scrollItems, {
     defaultFocusedId: "component-scroll-row-1",
     defaultSelectedId: "component-scroll-row-1",
   });
-  const focus = usePlaygroundFocus("component-scroll-row-1", []);
+  const focus = usePlaygroundFocus("component-scroll-row-1", [variant, borderShape]);
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
     list.dispatch(command);
@@ -742,12 +767,6 @@ export const ScrollAreaComponentDemo = () => {
     }
     if (command.type === "focus" && command.reveal?.targetId === "component-scroll-area") {
       setScrollY(command.reveal.scrollY);
-    }
-    if (command.type === "activate" && command.targetId === "component-scroll-border") {
-      setBorder((current) => !current);
-    }
-    if (command.type === "activate" && command.targetId === "component-scroll-rounded") {
-      setRounded((current) => !current);
     }
   };
   return <ComponentPlayground
@@ -758,13 +777,16 @@ export const ScrollAreaComponentDemo = () => {
     probeId="component-scroll-area"
     previewMinColumns={28}
     controlsColumns={25}
+    overlayRows={focus.activeSelect ? focus.activeSelect.items.length : 0}
     preview={
       <ScrollArea
         id="component-scroll-area"
         scrollY={scrollY}
+        variant={blockVariant}
+        borderShape={blockVariant === "bordered"
+          ? borderShape.selectedId as CellBorderShape
+          : undefined}
         style={{
-          border,
-          borderShape: rounded ? "rounded" : "square",
           width: scrollDemoViewportWidth + borderSize,
           height: scrollDemoViewportHeight + borderSize,
         }}
@@ -782,18 +804,10 @@ export const ScrollAreaComponentDemo = () => {
       </ScrollArea>
     }
     controls={[
-      renderPlaygroundCheckboxControl(
-        "border",
-        "component-scroll-border",
-        border,
-        focus.focusedId,
-      ),
-      renderPlaygroundCheckboxControl(
-        "rounded",
-        "component-scroll-rounded",
-        rounded,
-        focus.focusedId,
-      ),
+      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+      ...(blockVariant === "bordered"
+        ? [renderPlaygroundSelectControl("border shape", borderShape, focus.focusedId)]
+        : []),
     ]}
   />;
 };

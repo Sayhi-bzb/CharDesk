@@ -54,6 +54,7 @@ describe("readCellCssTheme", () => {
       "--cell-background": CLASSIC_MAC_DARK_THEME.background,
       "--cell-foreground": CLASSIC_MAC_DARK_THEME.foreground,
       "--cell-surface": CLASSIC_MAC_DARK_THEME.surfaceStyle.backgroundColor!,
+      "--cell-surface-raised": CLASSIC_MAC_DARK_THEME.raisedSurfaceStyle.backgroundColor!,
       "--cell-button-primary": CLASSIC_MAC_DARK_THEME.buttonPrimaryStyle.backgroundColor!,
       "--cell-button-primary-foreground": CLASSIC_MAC_DARK_THEME.buttonPrimaryStyle.color!,
       "--cell-button-primary-hover": CLASSIC_MAC_DARK_THEME.buttonPrimaryHoverStyle.backgroundColor!,
@@ -79,6 +80,7 @@ describe("readCellCssTheme", () => {
       background: "rgb(0, 0, 0)",
       foreground: "rgb(255, 255, 255)",
       surfaceStyle: { backgroundColor: "rgb(0, 0, 0)" },
+      raisedSurfaceStyle: { backgroundColor: "rgb(26, 26, 26)" },
       buttonPrimaryStyle: {
         color: "rgb(0, 0, 0)",
         backgroundColor: "rgb(255, 255, 255)",

@@ -12,9 +12,9 @@ for (const [name, Editor] of [["TextArea", TextArea]] as const) {
         const runtime = new CellUiRuntime({ viewport: { width: 16, height: 7 }, theme });
         const editor = new CellTextEditor({ value: "Hi", multiline: Editor === TextArea });
         const view = (disabled = false, readOnly = false) => <Root>
-          <Box id="outer" style={{ border: true, width: 16, height: 7 }}>
+          <Box id="outer" variant="bordered" style={{ width: 16, height: 7 }}>
             <Editor id="editor" state={editor.snapshot()} disabled={disabled} readOnly={readOnly}
-              style={{ border: true, borderShape, width: 12, height: 3 }} />
+              variant="bordered" borderShape={borderShape} style={{ width: 12, height: 3 }} />
           </Box>
         </Root>;
         const idle = runtime.render(view());
@@ -36,7 +36,8 @@ for (const [name, Editor] of [["TextArea", TextArea]] as const) {
         expect(blurred.buffer.toText()).toBe(pointer.buffer.toText());
         const disabled = runtime.render(view(true), { focusedId: "editor", activeFocusId: "editor", focusVisible: true });
         expect(disabled.buffer.get(layout.x + 1, layout.y + 1)?.style).toMatchObject(theme.disabledStyle);
-        expect(disabled.buffer.get(layout.x + 1, layout.y + 1)?.style.backgroundColor).toBeUndefined();
+        expect(disabled.buffer.get(layout.x + 1, layout.y + 1)?.style.backgroundColor)
+          .toBe(theme.surfaceStyle.backgroundColor);
         runtime.dispose();
       });
     }
@@ -47,20 +48,18 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
   it(`TextInput owns one filled Cell row (${theme.background})`, () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 3 }, theme });
     const editor = new CellTextEditor({ value: "Hi" });
-    const legacyStyle = {
+    const unsupportedMultilineStyle = {
       width: 12,
       height: 3,
       minHeight: 3,
       maxHeight: 3,
-      border: true,
-      borderShape: "rounded" as const,
       padding: 2,
     } as unknown as CellSingleLineInputStyle;
     const view = (disabled = false) => <Root><TextInput
       id="editor"
       state={editor.snapshot()}
       disabled={disabled}
-      style={legacyStyle}
+      style={unsupportedMultilineStyle}
     /></Root>;
     const idle = runtime.render(view());
     const layout = idle.layout.entries.get("editor")!;
@@ -144,7 +143,7 @@ it("resolves editor border tokens before activity and retains selection/composit
   };
   const runtime = new CellUiRuntime({ viewport: { width: 12, height: 3 }, theme });
   const editor = new CellTextEditor({ value: "Hi", multiline: true });
-  const view = () => <Root><TextArea id="editor" state={editor.snapshot()} style={{ border: true, height: 3 }} /></Root>;
+  const view = () => <Root><TextArea id="editor" variant="bordered" state={editor.snapshot()} style={{ height: 3 }} /></Root>;
   expect(runtime.render(view()).buffer.get(0, 0)?.style).toMatchObject(theme.borderStyle);
   editor.dispatch({ type: "set-selection", anchor: 0, head: 1 });
   const selected = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor", focusVisible: false });

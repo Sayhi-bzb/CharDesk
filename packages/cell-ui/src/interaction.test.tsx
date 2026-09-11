@@ -24,7 +24,7 @@ const renderFixture = (scrollY = 0) => {
         <ListItem id="open" focused selected><Text>Open file</Text></ListItem>
         <ListItem id="save" disabled><Text>Save</Text></ListItem>
       </List>
-      <ScrollArea id="files" scrollY={scrollY} style={{ border: true, height: 4 }}>
+      <ScrollArea id="files" variant="bordered" scrollY={scrollY} style={{ height: 4 }}>
         <List id="file-list" label="Files">
           {['one', 'two', 'three', 'four'].map((id) => (
             <ListItem id={id} key={id}><Text>{id}</Text></ListItem>
@@ -185,14 +185,15 @@ describe("cell interaction", () => {
         <List id="launchers" label="Launchers" style={{ height: 1 }}>
           <ListItem id="launcher" focused><Text>Commands</Text></ListItem>
         </List>
-        <Box id="clipped" style={{ border: true, width: 8, height: 3 }}>
+        <Box id="clipped" variant="bordered" style={{ width: 8, height: 3 }}>
           <Text>Workspace</Text>
           {open ? (
             <Overlay
               id="palette"
               label="Command palette"
               position={{ x: 3, y: 1 }}
-              style={{ border: true, width: 14, height: 4 }}
+              variant="bordered"
+              style={{ width: 14, height: 4 }}
             >
               <List id="commands" label="Commands">
                 <ListItem id="command-a" focused><Text>Alpha</Text></ListItem>

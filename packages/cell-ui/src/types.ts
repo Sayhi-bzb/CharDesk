@@ -34,8 +34,6 @@ export type CellLayoutStyle = Readonly<{
   paddingRight?: number;
   paddingBottom?: number;
   paddingLeft?: number;
-  border?: boolean;
-  borderShape?: import("./border.js").CellBorderShape;
 }>;
 
 type CellSingleLineInputStyleKey = "width" | "minWidth" | "maxWidth" | "flexGrow" | "flexShrink";
@@ -105,6 +103,8 @@ export type WidgetNode = Readonly<{
   parentId: WidgetId | null;
   index: number;
   style: CellLayoutStyle;
+  blockVariant: import("./border.js").CellBlockVariant;
+  borderShape: import("./border.js").CellBorderShape | null;
   text: string | null;
   textStyle: CellTextStyle;
   label: string | null;

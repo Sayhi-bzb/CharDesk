@@ -52,6 +52,10 @@ it("projects one focused Combobox with a separate active option", () => {
     paddingInsets: { top: 0, right: 2, bottom: 0, left: 1 },
   });
   expect(frame.scene.entries.get("font-content")?.layoutBounds.y).toBe(1);
+  expect(frame.tree.nodes.get("font-content")?.blockVariant).toBe("raised");
+  expect(frame.layout.entries.get("font-content")?.borderInsets)
+    .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  expect(frame.buffer.get(20, 1)?.style.backgroundColor).toBe("#E6E6E6");
   expect(formatCellBuffer(frame.buffer, { trimEnd: true })).toMatch(/Maple Mono\s+✓/);
   expect(formatCellBuffer(frame.buffer, { trimEnd: true })).toContain("JetBrains Mono");
   expect(auditSemanticSnapshot(frame.semantics)).toEqual([]);

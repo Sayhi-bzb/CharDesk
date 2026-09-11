@@ -127,7 +127,7 @@ export const ComplexWidgetsDemo = () => {
               id={selectedTab.panelId}
               label={`${selectedTab.label} panel`}
               labelledById={selectedTab.id}
-              style={{ border: true, height: 3 }}
+              style={{ height: 3 }}
             ><Text>{`${selectedTab.label} content`}</Text></TabPanel>
           ) : null}
           <Grid

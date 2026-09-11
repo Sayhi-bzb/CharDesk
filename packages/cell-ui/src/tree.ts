@@ -26,6 +26,8 @@ export const sameWidgetValue = (left: unknown, right: unknown) =>
 const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   left.kind === right.kind
   && left.key === right.key
+  && left.blockVariant === right.blockVariant
+  && left.borderShape === right.borderShape
   && left.text === right.text
   && left.label === right.label
   && left.disabled === right.disabled
@@ -129,6 +131,8 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       parentId,
       index,
       style: current.style,
+      blockVariant: current.blockVariant,
+      borderShape: current.borderShape,
       text: current.text,
       textStyle: current.textStyle,
       label: current.label,

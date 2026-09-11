@@ -16,7 +16,7 @@ import type { CellTextLayoutSnapshot } from "./text.js";
 import { DEFAULT_CELL_UI_THEME, type CellUiTheme } from "./theme.js";
 import { intersectSceneRects } from "./scene.js";
 import { thumbGlyph } from "./scrollbar.js";
-import { paintBorder, resolveWidgetBorder } from "./border.js";
+import { paintBorder } from "./border.js";
 import { isActionableKind } from "./widget-capabilities.js";
 import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
 import { checkboxChromeMetrics } from "./checkbox.js";
@@ -166,12 +166,12 @@ export const paintScene = (
       }
 
       // Chrome: glyphs are painted after surfaces so state fills cannot erase them.
-      if (resolveWidgetBorder(node.kind, node.style.border)) {
+      if (node.blockVariant === "bordered") {
         paintBorder(
           buffer,
           id,
           entry.layoutBounds,
-          node.style.borderShape ?? theme.borderShape,
+          node.borderShape ?? theme.borderShape,
           visual.borderStyle,
           outerClip
         );

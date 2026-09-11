@@ -13,6 +13,7 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
         background: read("--cell-background"),
         foreground: read("--cell-foreground"),
         surface: read("--cell-surface"),
+        surfaceRaised: read("--cell-surface-raised"),
         buttonPrimary: read("--cell-button-primary"),
         buttonPrimaryForeground: read("--cell-button-primary-foreground"),
         buttonPrimaryHover: read("--cell-button-primary-hover"),
@@ -35,6 +36,7 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
       background: "#ffffff",
       foreground: "#000000",
       surface: "#ffffff",
+      surfaceRaised: "#e6e6e6",
       buttonPrimary: "#000000",
       buttonPrimaryForeground: "#ffffff",
       buttonPrimaryHover: "#1a1a1a",
@@ -55,6 +57,7 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
       background: "#000000",
       foreground: "#ffffff",
       surface: "#000000",
+      surfaceRaised: "#1a1a1a",
       buttonPrimary: "#ffffff",
       buttonPrimaryForeground: "#000000",
       buttonPrimaryHover: "#e6e6e6",
@@ -151,6 +154,7 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
     const root = document.documentElement;
     root.style.setProperty("--cell-background", "rgb(7, 8, 9)");
     root.style.setProperty("--cell-surface", "rgb(30, 40, 50)");
+    root.style.setProperty("--cell-surface-raised", "rgb(30, 40, 50)");
     root.style.setProperty("--cell-highlight", "rgb(60, 70, 80)");
     root.style.setProperty("--cell-border", "rgb(90, 100, 110)");
   });
@@ -167,7 +171,7 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
   await expect(surface).toHaveAttribute("data-cell-focus-visible", "true");
   const refocused = await readCellProbe(surface);
   expect(refocused.cells.some((cell) => !cell.style.bold
-    && cell.style.color === "rgb(7, 8, 9)"
+    && cell.style.color === "rgb(30, 40, 50)"
     && cell.style.backgroundColor === "rgb(255, 255, 255)")).toBe(true);
   expect(after.cells.some((cell) => cell.text === "┌" && cell.style.color === "rgb(90, 100, 110)")).toBe(true);
   const pixel = await readCellPixel(surface, 31.5, 7.5);

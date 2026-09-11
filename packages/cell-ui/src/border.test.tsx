@@ -1,6 +1,60 @@
 import { expect, it } from "vitest";
 import { paintBorder, type CellBorderShape } from "./border.js";
-import { Box, CellBuffer, CellUiRuntime, Overlay, Root, ScrollArea, TextArea, hitTestCell } from "./index.js";
+import { Box, CellBuffer, CellUiRuntime, Dialog, DialogTitle, Overlay, Root, ScrollArea, Text, TextArea, hitTestCell } from "./index.js";
+
+it("keeps Block variants mutually exclusive in geometry, characters, and substrate", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 12, height: 3 } });
+  const frame = runtime.render(<Root style={{ direction: "row" }}>
+    <Box id="plain" variant="plain" style={{ width: 4, height: 3 }}><Text>P</Text></Box>
+    <Box id="raised" variant="raised" style={{ width: 4, height: 3 }}><Text>R</Text></Box>
+    <Box id="bordered" variant="bordered" style={{ width: 4, height: 3 }}><Text>B</Text></Box>
+  </Root>);
+
+  expect(frame.layout.entries.get("plain")?.borderInsets)
+    .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  expect(frame.layout.entries.get("raised")?.borderInsets)
+    .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  expect(frame.layout.entries.get("bordered")?.borderInsets)
+    .toEqual({ top: 1, right: 1, bottom: 1, left: 1 });
+  expect(frame.buffer.get(1, 1)?.style.backgroundColor).toBeUndefined();
+  expect(frame.buffer.get(5, 1)?.style.backgroundColor).toBe("#E6E6E6");
+  expect(frame.buffer.toText({ trimEnd: true })).toBe("P   R   ┌──┐\n        │B │\n        └──┘");
+  runtime.dispose();
+});
+
+it("uses raised Overlay and bordered Dialog defaults", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 10, height: 5 } });
+  const overlay = runtime.render(<Root>
+    <Overlay id="overlay" position={{ x: 0, y: 0 }} style={{ width: 4, height: 3 }}><Text>O</Text></Overlay>
+  </Root>);
+  expect(overlay.tree.nodes.get("overlay")?.blockVariant).toBe("raised");
+  expect(overlay.layout.entries.get("overlay")?.borderInsets)
+    .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  expect(overlay.buffer.get(3, 2)?.style.backgroundColor).toBe("#E6E6E6");
+  const dialog = runtime.render(<Root>
+    <Dialog id="dialog"><DialogTitle>Title</DialogTitle></Dialog>
+  </Root>);
+  expect(dialog.tree.nodes.get("dialog")?.blockVariant).toBe("bordered");
+  expect(dialog.layout.entries.get("dialog")?.borderInsets)
+    .toEqual({ top: 1, right: 1, bottom: 1, left: 1 });
+  runtime.dispose();
+});
+
+it("invalidates Block geometry and paint at their owning boundaries", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 6, height: 3 } });
+  const view = (variant: "plain" | "raised" | "bordered", borderShape: CellBorderShape = "square") => (
+    <Root><Box id="block" variant={variant} borderShape={borderShape} style={{ width: 6, height: 3 }} /></Root>
+  );
+  runtime.render(view("plain"));
+  const raised = runtime.render(view("raised"));
+  expect(raised.invalidation.work).toMatchObject({ layout: "reused", paint: "computed" });
+  const bordered = runtime.render(view("bordered"));
+  expect(bordered.invalidation.work).toMatchObject({ layout: "computed", paint: "computed" });
+  const rounded = runtime.render(view("bordered", "rounded"));
+  expect(rounded.invalidation.work).toMatchObject({ layout: "reused", paint: "computed" });
+  expect(rounded.buffer.get(0, 0)?.text).toBe("╭");
+  runtime.dispose();
+});
 
 it.each([
   ["square", "┌─┐\n│ │\n└─┘"],
@@ -28,12 +82,12 @@ it.each([
 it("shape changes reuse geometry across glyphs and repaint like a fresh frame", () => {
   const viewport = { width: 18, height: 15 };
   const view = <Root>
-    <Box id="box" style={{ border: true, width: 12, height: 5 }}>
-      <Box id="nested" style={{ border: true, width: 6, height: 3 }} />
+    <Box id="box" variant="bordered" style={{ width: 12, height: 5 }}>
+      <Box id="nested" variant="bordered" style={{ width: 6, height: 3 }} />
     </Box>
-    <ScrollArea id="scroll" style={{ border: true, width: 12, height: 4 }}><Box style={{ height: 12 }} /></ScrollArea>
-    <TextArea id="editor" style={{ border: true, width: 12, height: 4 }} />
-    <Overlay id="overlay" position={{ x: 13, y: 0 }} style={{ border: true, width: 5, height: 4 }} />
+    <ScrollArea id="scroll" variant="bordered" style={{ width: 12, height: 4 }}><Box style={{ height: 12 }} /></ScrollArea>
+    <TextArea id="editor" variant="bordered" style={{ width: 12, height: 4 }} />
+    <Overlay id="overlay" variant="bordered" position={{ x: 13, y: 0 }} style={{ width: 5, height: 4 }} />
   </Root>;
   const runtime = new CellUiRuntime({ viewport });
   const before = runtime.render(view);
@@ -62,8 +116,8 @@ it("shape changes reuse geometry across glyphs and repaint like a fresh frame", 
 it("local border shape overrides the theme without changing geometry or hit ownership", () => {
   const viewport = { width: 12, height: 7 };
   const view = <Root>
-    <Box id="local" style={{ border: true, borderShape: "rounded", width: 6, height: 3 }} />
-    <Box id="theme" style={{ border: true, width: 6, height: 3 }} />
+    <Box id="local" variant="bordered" borderShape="rounded" style={{ width: 6, height: 3 }} />
+    <Box id="theme" variant="bordered" style={{ width: 6, height: 3 }} />
   </Root>;
   const runtime = new CellUiRuntime({ viewport, theme: { borderShape: "square" } });
   const before = runtime.render(view);

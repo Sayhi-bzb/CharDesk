@@ -200,7 +200,7 @@ describe("TestPilot", () => {
             ><Text>{item.label}</Text></ListItem>
           ))}
         </List>
-        <ScrollArea id="files" scrollY={scrollY} style={{ border: true, height: 3 }}>
+        <ScrollArea id="files" variant="bordered" scrollY={scrollY} style={{ height: 3 }}>
           <List id="file-list" label="Files">
             {["one", "two", "three", "four"].map((name) => (
               <ListItem id={`file-${name}`} key={name}><Text>{name}</Text></ListItem>

@@ -38,7 +38,7 @@ const selectView = (open: boolean, focusedId = open ? "dark" : "theme-trigger") 
 );
 
 describe("Select", () => {
-  it("renders a filled trigger and a borderless Cell-anchored listbox by default", () => {
+  it("renders a filled trigger and a raised borderless listbox by default", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
     const closed = runtime.render(selectView(false), { focusedId: "theme-trigger" });
     expect(closed.buffer.toText({ trimEnd: true }).split("\n")[0])
@@ -57,7 +57,10 @@ describe("Select", () => {
     ].join("\n"));
     expect(open.scene.entries.get("theme-content")?.layoutBounds)
       .toEqual({ x: 0, y: 1, width: 20, height: 3 });
+    expect(open.tree.nodes.get("theme-content")?.blockVariant).toBe("raised");
+    expect(open.buffer.get(18, 1)?.style.backgroundColor).toBe("#E6E6E6");
     expect(open.buffer.get(18, 2)?.ownerId).toBe("dark");
+    expect(open.buffer.get(18, 3)?.style.backgroundColor).toBe("#E6E6E6");
     runtime.dispose();
   });
 
@@ -69,7 +72,7 @@ describe("Select", () => {
           <SelectTrigger id="theme-trigger" label="Theme" expanded controlsId="theme-content">
             <Text>Dark</Text>
           </SelectTrigger>
-          <SelectContent id="theme-content" label="Theme options" style={{ border: true }}>
+          <SelectContent id="theme-content" label="Theme options" variant="bordered">
             <SelectItem id="light"><Text>Light</Text></SelectItem>
             <SelectItem id="dark" selected><Text>Dark</Text></SelectItem>
             <SelectItem id="system"><Text>System</Text></SelectItem>

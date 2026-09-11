@@ -38,8 +38,8 @@ describe("YogaLayoutEngine qualification", () => {
   it("covers nested flex, gap, padding, border, min/max, absolute position, and reorder", () => {
     const engine = new YogaLayoutEngine();
     const first = treeFor(
-      <Root id="root" style={{ direction: "row", gap: 1, padding: 1, border: true }}>
-        <Box id="bounded" style={{ flexGrow: 1, minWidth: 4, maxWidth: 7 }}>
+      <Root id="root" style={{ direction: "row", gap: 1, padding: 1 }}>
+        <Box id="bounded" variant="bordered" style={{ flexGrow: 1, minWidth: 4, maxWidth: 7 }}>
           <Box id="percent" style={{ width: "50%", height: 1 }} />
         </Box>
         <Box id="fixed" style={{ width: 3, height: 2 }} />
@@ -48,15 +48,17 @@ describe("YogaLayoutEngine qualification", () => {
     );
     const initial = engine.compute(first, { width: 16, height: 6 });
     expect(initial.entries.get("root")).toMatchObject({
-      borderInsets: { top: 1, right: 1, bottom: 1, left: 1 },
+      borderInsets: { top: 0, right: 0, bottom: 0, left: 0 },
       paddingInsets: { top: 1, right: 1, bottom: 1, left: 1 },
     });
+    expect(initial.entries.get("bounded")?.borderInsets)
+      .toEqual({ top: 1, right: 1, bottom: 1, left: 1 });
     expect(initial.entries.get("bounded")!.rect.width).toBeGreaterThanOrEqual(4);
     expect(initial.entries.get("bounded")!.rect.width).toBeLessThanOrEqual(7);
     expect(initial.entries.get("percent")!.rect.width).toBe(
       Math.round(initial.entries.get("bounded")!.contentRect.width / 2)
     );
-    expect(initial.entries.get("absolute")!.rect).toMatchObject({ x: 10, y: 4 });
+    expect(initial.entries.get("absolute")!.rect).toMatchObject({ x: 9, y: 3 });
 
     const reordered = treeFor(
       <Root id="root" style={{ direction: "row", gap: 1 }}>
