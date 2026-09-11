@@ -21,6 +21,11 @@ Zustand actions. Selection delete, erase, fill, and style commands use the same
 owner. Clipboard I/O reads a snapshot, validates its addressed selection after the
 await boundary, then commits through an explicit mutation port.
 
+`interaction.staticGrid` is the sole static-grid interaction authority. Its
+`navigate` branch owns selection; its `text-edit` branch owns the input session.
+Selection and cursor views are derived from that discriminated state, so they cannot
+represent conflicting modes.
+
 A projection never writes back to its authority. Only local Yjs origins enter
 undo history. Remote values pass Canvas decoders before projection; invalid records
 stay out of editor state and surface as collaboration integrity issues.

@@ -27,6 +27,7 @@ import {
   DEFAULT_CANVAS_EDITOR_CAPABILITIES,
   type CanvasEditorCapabilities,
 } from './canvasEditorCapabilities';
+import { getStaticGridCursor } from '@/domains/selection/public';
 
 interface CanvasEditorProps {
   onUndo: () => void;
@@ -82,9 +83,9 @@ export const CanvasEditor = ({
   const {
     offset,
     zoom,
-    setTextCursor,
+    enterStaticGridTextEdit,
   } = editorStore;
-  const { textCursor } = editorStore.interaction;
+  const textCursor = getStaticGridCursor(editorStore.interaction.staticGrid);
   const lastSlideViewRef = useRef<{
     sessionId: string;
     pageKey: string;
@@ -213,7 +214,7 @@ export const CanvasEditor = ({
     active,
     onManagedInputBatch: recordManagedInputBatch,
   });
-  const isCanvasTextEditing = editorStore.interaction.staticGridEditMode === 'text-edit';
+  const isCanvasTextEditing = editorStore.interaction.staticGrid.mode === 'text-edit';
   const isTemporaryPanActive = useCanvasSpacePan({
     enabled:
       active &&
@@ -274,20 +275,20 @@ export const CanvasEditor = ({
       __chardeskCanvasExperienceResetManagedInput?: () => void;
       __chardeskCanvasManagedInputFocus?: () => void;
       __chardeskCanvasManagedInputIdentity?: () => string;
-      __chardeskCanvasManagedInputSetCursor?: (point: { x: number; y: number }) => void;
+      __chardeskCanvasManagedInputEnterTextEdit?: (point: { x: number; y: number }) => void;
       __chardeskCanvasManagedInputCursor?: () => { x: number; y: number } | null;
     };
     const readStats = () => runtime.renderExperience.getStats();
     const resetManagedInput = () => runtime.renderExperience.resetManagedInputStats();
     const readManagedInputIdentity = () => activeCanvasId;
     const setManagedInputCursor = (point: { x: number; y: number }) =>
-      setTextCursor(point);
+      enterStaticGridTextEdit(point);
     const readManagedInputCursor = () => textCursor;
     diagnostics.__chardeskCanvasExperienceStats = readStats;
     diagnostics.__chardeskCanvasExperienceResetManagedInput = resetManagedInput;
     diagnostics.__chardeskCanvasManagedInputFocus = focusManagedTextarea;
     diagnostics.__chardeskCanvasManagedInputIdentity = readManagedInputIdentity;
-    diagnostics.__chardeskCanvasManagedInputSetCursor = setManagedInputCursor;
+    diagnostics.__chardeskCanvasManagedInputEnterTextEdit = setManagedInputCursor;
     diagnostics.__chardeskCanvasManagedInputCursor = readManagedInputCursor;
     return () => {
       if (diagnostics.__chardeskCanvasExperienceStats === readStats) {
@@ -307,9 +308,9 @@ export const CanvasEditor = ({
         delete diagnostics.__chardeskCanvasManagedInputIdentity;
       }
       if (
-        diagnostics.__chardeskCanvasManagedInputSetCursor === setManagedInputCursor
+        diagnostics.__chardeskCanvasManagedInputEnterTextEdit === setManagedInputCursor
       ) {
-        delete diagnostics.__chardeskCanvasManagedInputSetCursor;
+        delete diagnostics.__chardeskCanvasManagedInputEnterTextEdit;
       }
       if (diagnostics.__chardeskCanvasManagedInputCursor === readManagedInputCursor) {
         delete diagnostics.__chardeskCanvasManagedInputCursor;
@@ -320,7 +321,7 @@ export const CanvasEditor = ({
     activeCanvasId,
     focusManagedTextarea,
     runtime,
-    setTextCursor,
+    enterStaticGridTextEdit,
     textCursor,
   ]);
 

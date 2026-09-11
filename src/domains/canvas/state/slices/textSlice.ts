@@ -7,6 +7,8 @@ import {
   advanceStaticGridInputLine,
   collapseGridSelectionTo,
   createStaticGridInputSession,
+  getStaticGridCursor,
+  getStaticGridSelection,
   getStaticGridViewState,
   selectGridRange,
 } from "@/domains/selection/public";
@@ -21,7 +23,6 @@ import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
 import { resolveEditorDocumentAddress } from "../helpers/gridHelpers";
 import {
   createCanvasInteractionPatch,
-  type CanvasInteractionSnapshot,
 } from "../canvasInteractionState";
 import { fillStaticGridSelectionWithChar } from "../canvasDocumentCommands";
 
@@ -52,7 +53,7 @@ type WrittenBounds = {
 };
 
 const selectWrittenBounds = (
-  selection: CanvasInteractionSnapshot["staticGridSelection"],
+  selection: ReturnType<typeof getStaticGridSelection>,
   bounds: WrittenBounds
 ) => {
   const start = { x: bounds.minX, y: bounds.minY };
@@ -67,7 +68,7 @@ const selectWrittenBounds = (
 };
 
 const selectWrittenCells = (
-  selection: CanvasInteractionSnapshot["staticGridSelection"],
+  selection: ReturnType<typeof getStaticGridSelection>,
   writes: WrittenCell[]
 ) => {
   if (writes.length === 0) return selection;
@@ -92,12 +93,11 @@ export const createTextSlice = (
 ): StateCreator<EditorState, [], [], TextSlice> => (set, get) => ({
   writeTextString: (str, startPos, options) => {
     const current = get();
-    const {
-      staticGridSelection,
-      staticGridEditMode,
-      staticGridInputSession,
-      textCursor,
-    } = current.interaction;
+    const staticGrid = current.interaction.staticGrid;
+    const textCursor = getStaticGridCursor(staticGrid);
+    const inputSession = staticGrid.mode === "text-edit"
+      ? staticGrid.session
+      : null;
     const { brushColor, canvasMode } = current;
 
     const normalized = str.replace(/\r\n?/g, "\n");
@@ -105,9 +105,7 @@ export const createTextSlice = (
     if (graphemes.length === 0) return;
 
     const staticGridView = getStaticGridViewState({
-      selection: staticGridSelection,
-      editMode: staticGridEditMode,
-      textCursor,
+      state: staticGrid,
       grid: get().contentSurface.reader,
     });
     const staticGridInteraction = staticGridView.interaction;
@@ -134,31 +132,31 @@ export const createTextSlice = (
 
     const state = get();
     const bounds = getActiveSlideGridBounds(state);
-    let inputSession =
-      startPos || !staticGridInputSession
+    let nextInputSession =
+      startPos || !inputSession
         ? createInputSession(state, cursor)
-        : staticGridInputSession;
+        : inputSession;
     const writes: Array<{ point: Point; char: string }> = [];
 
     for (const char of graphemes) {
       if (char === "\n") {
-        inputSession = advanceStaticGridInputLine({
-          session: inputSession,
+        nextInputSession = advanceStaticGridInputLine({
+          session: nextInputSession,
           bounds,
         });
       } else {
         const step = advanceStaticGridInput({
-          session: inputSession,
+          session: nextInputSession,
           width: getCellOccupancy(char),
           bounds,
         });
-        inputSession = step.session;
+        nextInputSession = step.session;
         if (step.writeAt) writes.push({ point: step.writeAt, char });
       }
-      if (inputSession.exhausted) break;
+      if (nextInputSession.exhausted) break;
     }
 
-    if (writes.length === 0 && inputSession === staticGridInputSession) return;
+    if (writes.length === 0 && nextInputSession === inputSession) return;
 
     if (writes.length > 0) {
       documents.mutateGridAt(resolveEditorDocumentAddress(documents, get()), (gridWriter) => {
@@ -170,41 +168,28 @@ export const createTextSlice = (
 
     if (options?.selectResult && canvasMode === "freeform" && writes.length > 0) {
       set((current) => createCanvasInteractionPatch(current.interaction, {
-        textCursor: null,
-        staticGridSelection: selectWrittenCells(
-          current.interaction.staticGridSelection,
-          writes
-        ),
-        staticGridEditMode: "navigate",
-        staticGridInputSession: null,
+        staticGrid: {
+          mode: "navigate",
+          selection: selectWrittenCells(
+            getStaticGridSelection(current.interaction.staticGrid),
+            writes
+          ),
+        },
       }));
       return;
     }
 
-    const activeCell = clampPointToActiveSlide(state, inputSession.activeCell);
     set((current) => createCanvasInteractionPatch(current.interaction, {
-      textCursor: activeCell,
-      staticGridSelection: collapseGridSelectionTo(
-        current.interaction.staticGridSelection,
-        activeCell
-      ),
-      staticGridEditMode: "text-edit",
-      staticGridInputSession: inputSession,
+      staticGrid: { mode: "text-edit", session: nextInputSession },
     }));
   },
 
   pasteRichData: (cells, startPos, options) => {
     const state = get();
     const { canvasMode } = state;
-    const {
-      textCursor,
-      staticGridSelection,
-      staticGridEditMode,
-    } = state.interaction;
+    const staticGrid = state.interaction.staticGrid;
     const staticGridView = getStaticGridViewState({
-      selection: staticGridSelection,
-      editMode: staticGridEditMode,
-      textCursor,
+      state: staticGrid,
       grid: get().contentSurface.reader,
     });
     const staticGridInteraction = staticGridView.interaction;
@@ -217,7 +202,6 @@ export const createTextSlice = (
       (staticGridInteraction.kind === "range"
         ? staticGridInteraction.geometry.bounds?.start
         : null) ??
-      textCursor ??
       staticGridInteraction.activeCell;
     const cellsBySourcePoint = new Map(
       cells.map((cell) => [GridManager.toKey(cell.x, cell.y), cell])
@@ -248,25 +232,22 @@ export const createTextSlice = (
     });
     if (options?.selectResult && canvasMode === "freeform" && writes.length > 0) {
       set((current) => createCanvasInteractionPatch(current.interaction, {
-        textCursor: null,
-        staticGridSelection: selectWrittenCells(
-          current.interaction.staticGridSelection,
-          writes
-        ),
-        staticGridEditMode: "navigate",
-        staticGridInputSession: null,
+        staticGrid: {
+          mode: "navigate",
+          selection: selectWrittenCells(
+            getStaticGridSelection(current.interaction.staticGrid),
+            writes
+          ),
+        },
       }));
     }
   },
 
   pasteRichRows: (rows, startPos, options) => {
     const state = get();
-    const { textCursor, staticGridSelection, staticGridEditMode } = state.interaction;
     if (rows.length === 0) return;
     const staticGridView = getStaticGridViewState({
-      selection: staticGridSelection,
-      editMode: staticGridEditMode,
-      textCursor,
+      state: state.interaction.staticGrid,
       grid: get().contentSurface.reader,
     });
     const staticGridInteraction = staticGridView.interaction;
@@ -278,7 +259,6 @@ export const createTextSlice = (
       (staticGridInteraction.kind === "range"
         ? staticGridInteraction.geometry.bounds?.start
         : null) ??
-      textCursor ??
       staticGridInteraction.activeCell;
     const operation = documents.applyCellPlanePatchAt(
       resolveEditorDocumentAddress(documents, get()),
@@ -308,24 +288,23 @@ export const createTextSlice = (
       : null;
     if (options?.selectResult && writtenBounds) {
       set((current) => createCanvasInteractionPatch(current.interaction, {
-        textCursor: null,
-        staticGridSelection: selectWrittenBounds(
-          current.interaction.staticGridSelection,
-          writtenBounds!
-        ),
-        staticGridEditMode: "navigate",
-        staticGridInputSession: null,
+        staticGrid: {
+          mode: "navigate",
+          selection: selectWrittenBounds(
+            getStaticGridSelection(current.interaction.staticGrid),
+            writtenBounds!
+          ),
+        },
       }));
     }
   },
 
   moveTextCursor: (dx, dy) => {
     const state = get();
-    const { textCursor, staticGridInputSession } = state.interaction;
+    if (state.interaction.staticGrid.mode !== "text-edit") return;
     const { contentSurface } = state;
     const grid = contentSurface.reader;
-    if (!textCursor) return;
-    const currentPoint = staticGridInputSession?.activeCell ?? textCursor;
+    const currentPoint = state.interaction.staticGrid.session.activeCell;
     let newX = currentPoint.x;
     const newY = currentPoint.y + dy;
     if (dx > 0) {
@@ -336,53 +315,38 @@ export const createTextSlice = (
     }
     const nextCell = clampPointToActiveSlide(state, { x: newX, y: newY });
     set(createCanvasInteractionPatch(state.interaction, {
-      textCursor: nextCell,
-      staticGridSelection: collapseGridSelectionTo(
-        state.interaction.staticGridSelection,
-        nextCell
-      ),
-      staticGridInputSession: createInputSession(state, nextCell),
+      staticGrid: {
+        mode: "text-edit",
+        session: createInputSession(state, nextCell),
+      },
     }));
   },
 
   newlineText: () => {
     const state = get();
-    const { textCursor, staticGridInputSession } = state.interaction;
-    if (!textCursor) return;
-
-    const inputSession =
-      staticGridInputSession ??
-      createInputSession(state, textCursor);
+    if (state.interaction.staticGrid.mode !== "text-edit") return;
     const nextSession = advanceStaticGridInputLine({
-      session: inputSession,
+      session: state.interaction.staticGrid.session,
       bounds: getActiveSlideGridBounds(state),
     });
-    const activeCell = clampPointToActiveSlide(state, nextSession.activeCell);
     set(createCanvasInteractionPatch(state.interaction, {
-      textCursor: activeCell,
-      staticGridSelection: collapseGridSelectionTo(
-        state.interaction.staticGridSelection,
-        activeCell
-      ),
-      staticGridInputSession: nextSession,
+      staticGrid: { mode: "text-edit", session: nextSession },
     }));
   },
 
   indentText: () => {
     const state = get();
-    const { textCursor } = state.interaction;
-    if (!textCursor) return;
+    if (state.interaction.staticGrid.mode !== "text-edit") return;
+    const textCursor = state.interaction.staticGrid.session.activeCell;
     const activeCell = clampPointToActiveSlide(state, {
       x: textCursor.x + 2,
       y: textCursor.y,
     });
     set(createCanvasInteractionPatch(state.interaction, {
-      textCursor: activeCell,
-      staticGridSelection: collapseGridSelectionTo(
-        state.interaction.staticGridSelection,
-        activeCell
-      ),
-      staticGridInputSession: createInputSession(state, activeCell),
+      staticGrid: {
+        mode: "text-edit",
+        session: createInputSession(state, activeCell),
+      },
     }));
   },
 });

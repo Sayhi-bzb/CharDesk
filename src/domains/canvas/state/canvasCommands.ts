@@ -7,7 +7,11 @@ import type { ToolType } from "../model/tool";
 import { isToolAllowedForMode } from "../model/tool";
 import { normalizeBrushChar } from "@/shared/utils/characters";
 import type { GridPoint, Point } from "@/shared/types";
-import type { GridAddress, GridRange } from "@/domains/selection/public";
+import {
+  getStaticGridSelection,
+  type GridAddress,
+  type GridRange,
+} from "@/domains/selection/public";
 import {
   createCanvasInteractionPatch,
   type CanvasColorPickerTarget,
@@ -15,7 +19,6 @@ import {
 import {
   createClearedInteractionPatch,
   createClearedSelectionsPatch,
-  createTextCursorPatch,
 } from "./transitions/canvasInteractionTransitions";
 import {
   createClearedStaticGridSelectionPatch,
@@ -117,7 +120,10 @@ const commands = {
         return {
           tool,
           ...createCanvasInteractionPatch(state.interaction, {
-            textCursor: null,
+            staticGrid: {
+              mode: "navigate",
+              selection: getStaticGridSelection(state.interaction.staticGrid),
+            },
             hoveredGrid: null,
           }),
         };
@@ -147,8 +153,6 @@ const commands = {
           hoveredGrid: position,
         })
       ),
-    setTextCursor: (position: Point | null) =>
-      store.setState((state) => createTextCursorPatch(state, position)),
   },
   grid: {
     replace: (entries: Parameters<CanvasDocumentRegistry["replaceCellPage"]>[1]) =>

@@ -5,7 +5,10 @@ import {
   shouldIgnoreEditorCommandByFocus,
 } from "@/domains/actions/input-arbiter";
 import { getFirstGrapheme } from "@/shared/utils/characters";
-import { hasGridRangeSelection } from "@/domains/selection/public";
+import {
+  getStaticGridSelection,
+  hasGridRangeSelection,
+} from "@/domains/selection/public";
 
 type EditorCommand = Extract<
   ActionId,
@@ -56,7 +59,10 @@ export const runEditorCommand = (
     case "fill-selection-char": {
       const fillChar = options.fillChar ? getFirstGrapheme(options.fillChar) : "";
       if (!fillChar) return false;
-      if (!hasGridRangeSelection(state.interaction.staticGridSelection) || state.interaction.textCursor) return false;
+      if (
+        state.interaction.staticGrid.mode === "text-edit"
+        || !hasGridRangeSelection(getStaticGridSelection(state.interaction.staticGrid))
+      ) return false;
       const activeTag = document.activeElement?.tagName.toLowerCase();
       if (activeTag === "input" || activeTag === "textarea") return false;
       canvas.commands.selection.fillWithChar(fillChar);

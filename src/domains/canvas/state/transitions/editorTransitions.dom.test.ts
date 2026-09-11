@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getStaticGridSelection } from "@/domains/selection/public";
 import { createDocumentInteractionResetPatch } from "./editorTransitions";
 
 describe("editor transitions", () => {
@@ -7,16 +8,16 @@ describe("editor transitions", () => {
     expect(createDocumentInteractionResetPatch(address)).toEqual({
       interaction: {
         address,
-        textCursor: null,
-        staticGridSelection: {
-          mode: "cell",
-          activeCell: { x: 0, y: 0 },
-          anchorCell: { x: 0, y: 0 },
-          primaryRange: { start: { x: 0, y: 0 }, end: { x: 0, y: 0 } },
-          additionalRanges: [],
+        staticGrid: {
+          mode: "navigate",
+          selection: {
+            mode: "cell",
+            activeCell: { x: 0, y: 0 },
+            anchorCell: { x: 0, y: 0 },
+            primaryRange: { start: { x: 0, y: 0 }, end: { x: 0, y: 0 } },
+            additionalRanges: [],
+          },
         },
-        staticGridEditMode: "navigate",
-        staticGridInputSession: null,
         hoveredGrid: null,
         scratchLayer: null,
         canvasColorPickerTarget: null,
@@ -29,15 +30,17 @@ describe("editor transitions", () => {
     const first = createDocumentInteractionResetPatch(address).interaction;
     const second = createDocumentInteractionResetPatch(address).interaction;
 
-    expect(first.staticGridSelection).not.toBe(second.staticGridSelection);
-    expect(first.staticGridSelection.activeCell).not.toBe(
-      second.staticGridSelection.activeCell
+    const firstSelection = getStaticGridSelection(first.staticGrid);
+    const secondSelection = getStaticGridSelection(second.staticGrid);
+    expect(firstSelection).not.toBe(secondSelection);
+    expect(firstSelection.activeCell).not.toBe(
+      secondSelection.activeCell
     );
-    expect(first.staticGridSelection.primaryRange).not.toBe(
-      second.staticGridSelection.primaryRange
+    expect(firstSelection.primaryRange).not.toBe(
+      secondSelection.primaryRange
     );
-    expect(first.staticGridSelection.additionalRanges).not.toBe(
-      second.staticGridSelection.additionalRanges
+    expect(firstSelection.additionalRanges).not.toBe(
+      secondSelection.additionalRanges
     );
   });
 });

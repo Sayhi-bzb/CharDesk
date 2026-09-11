@@ -12,6 +12,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { useCanvasRuntime, useCanvasState } from "@/domains/canvas/public";
 import { useEditor } from "@/domains/editor/public";
+import { getStaticGridSelection } from "@/domains/selection/public";
 import { useCanvasAppearance } from "@/shared/canvas-appearance/hooks";
 import { useUiI18n } from "@/shared/i18n";
 import { HOST_ICONOLOGY } from "@/shared/icons/iconology";
@@ -118,14 +119,14 @@ export function CanvasInspectorControl({
         brushColor: state.brushColor,
         brushBackgroundColor: state.brushBackgroundColor,
         grid: state.contentSurface.reader,
-        staticGridSelection: state.interaction.staticGridSelection,
+        staticGridSelection: getStaticGridSelection(state.interaction.staticGrid),
       }),
     [
       state.brushBackgroundColor,
       state.brushColor,
       state.canvasMode,
       state.contentSurface,
-      state.interaction.staticGridSelection,
+      state.interaction.staticGrid,
       state.tool,
     ]
   );

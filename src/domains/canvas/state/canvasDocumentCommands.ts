@@ -6,6 +6,7 @@ import {
   forEachGridSelectionSpan,
   getGridSelectionRanges,
   getStaticGridSelectionAreas,
+  getStaticGridSelection,
   getStaticGridViewState,
   resolveStaticGridDeletePlan,
   type StaticGridDeleteDirection,
@@ -37,7 +38,7 @@ import { deleteCellAt, deleteRect } from "./gridOps";
 
 const resolveSelectionAreas = (state: EditorState) =>
   getStaticGridSelectionAreas(
-    state.interaction.staticGridSelection,
+    getStaticGridSelection(state.interaction.staticGrid),
     state.contentSurface.reader
   );
 
@@ -46,7 +47,7 @@ const forEachSelectionSpan = (
   visit: (span: { y: number; minX: number; maxX: number }) => void
 ) =>
   forEachGridSelectionSpan(
-    getGridSelectionRanges(state.interaction.staticGridSelection),
+    getGridSelectionRanges(getStaticGridSelection(state.interaction.staticGrid)),
     visit,
     state.contentSurface.reader
   );
@@ -96,9 +97,7 @@ export const createCanvasDocumentCommands = (
   deleteStaticGrid: (direction: StaticGridDeleteDirection) => {
     const state = store.getState();
     const interaction = getStaticGridViewState({
-      selection: state.interaction.staticGridSelection,
-      editMode: state.interaction.staticGridEditMode,
-      textCursor: state.interaction.textCursor,
+      state: state.interaction.staticGrid,
       grid: state.contentSurface.reader,
     }).interaction;
     const plan = resolveStaticGridDeletePlan({
@@ -106,7 +105,9 @@ export const createCanvasDocumentCommands = (
       direction,
       grid: state.contentSurface.reader,
       bounds: getActiveSlideGridBounds(state),
-      previousInputCell: state.interaction.staticGridInputSession?.previousCell,
+      previousInputCell: state.interaction.staticGrid.mode === "text-edit"
+        ? state.interaction.staticGrid.session.previousCell
+        : null,
     });
     if (plan.kind === "noop") return;
     if (plan.kind === "range") {
@@ -120,11 +121,12 @@ export const createCanvasDocumentCommands = (
     });
 
     if (interaction.kind === "text-edit") {
-      const inputSession = state.interaction.staticGridInputSession
-        ?? createStaticGridInputSession({
-          origin: interaction.activeCell,
-          bounds: getActiveSlideGridBounds(state),
-        });
+      const inputSession = state.interaction.staticGrid.mode === "text-edit"
+        ? state.interaction.staticGrid.session
+        : createStaticGridInputSession({
+            origin: interaction.activeCell,
+            bounds: getActiveSlideGridBounds(state),
+          });
       const nextSession = direction === "backward"
         ? {
             ...inputSession,
@@ -137,12 +139,7 @@ export const createCanvasDocumentCommands = (
       store.setState((current) => createCanvasInteractionPatch(
         current.interaction,
         {
-          textCursor: plan.nextActiveCell,
-          staticGridSelection: collapseGridSelectionTo(
-            current.interaction.staticGridSelection,
-            plan.nextActiveCell
-          ),
-          staticGridInputSession: nextSession,
+          staticGrid: { mode: "text-edit", session: nextSession },
         }
       ));
       return;
@@ -151,12 +148,13 @@ export const createCanvasDocumentCommands = (
     store.setState((current) => createCanvasInteractionPatch(
       current.interaction,
       {
-        staticGridSelection: collapseGridSelectionTo(
-          current.interaction.staticGridSelection,
-          plan.nextActiveCell
-        ),
-        staticGridInputSession: null,
-        textCursor: null,
+        staticGrid: {
+          mode: "navigate",
+          selection: collapseGridSelectionTo(
+            getStaticGridSelection(current.interaction.staticGrid),
+            plan.nextActiveCell
+          ),
+        },
       }
     ));
   },
@@ -333,7 +331,7 @@ export const createCanvasDocumentCommands = (
 
   moveStaticGridSelection: (requestedDelta: Point) => {
     const state = store.getState();
-    const selection = state.interaction.staticGridSelection;
+    const selection = getStaticGridSelection(state.interaction.staticGrid);
     if (
       selection.mode !== "range" ||
       selection.additionalRanges.length > 0
@@ -359,29 +357,21 @@ export const createCanvasDocumentCommands = (
 
     store.setState((current) =>
       createCanvasInteractionPatch(current.interaction, {
-        staticGridSelection: {
-          ...current.interaction.staticGridSelection,
-          activeCell: {
-            x:
-              current.interaction.staticGridSelection.activeCell.x +
-              plan.delta.x,
-            y:
-              current.interaction.staticGridSelection.activeCell.y +
-              plan.delta.y,
+        staticGrid: {
+          mode: "navigate",
+          selection: {
+            ...getStaticGridSelection(current.interaction.staticGrid),
+            activeCell: {
+              x: selection.activeCell.x + plan.delta.x,
+              y: selection.activeCell.y + plan.delta.y,
+            },
+            anchorCell: {
+              x: selection.anchorCell.x + plan.delta.x,
+              y: selection.anchorCell.y + plan.delta.y,
+            },
+            primaryRange: plan.targetRange,
           },
-          anchorCell: {
-            x:
-              current.interaction.staticGridSelection.anchorCell.x +
-              plan.delta.x,
-            y:
-              current.interaction.staticGridSelection.anchorCell.y +
-              plan.delta.y,
-          },
-          primaryRange: plan.targetRange,
         },
-        staticGridEditMode: "navigate" as const,
-        staticGridInputSession: null,
-        textCursor: null,
       })
     );
     return true;

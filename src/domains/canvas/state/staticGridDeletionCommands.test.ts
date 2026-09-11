@@ -6,6 +6,7 @@ import {
   setCanvasTestState,
   useEditorStore,
 } from "@/domains/canvas/testing";
+import { getStaticGridCursor, getStaticGridSelection } from "@/domains/selection/public";
 
 const initialState = useEditorStore.getState();
 const cell = (char: string) => ({ char, color: "#fff" });
@@ -29,12 +30,15 @@ describe("static grid deletion commands", () => {
 
     canvasCommands.staticGrid.delete("forward");
 
-    expect(cells()).toEqual(new Map([
-      ["0,0", cell("A")],
-      ["2,0", cell("C")],
-    ]));
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell)
-      .toEqual({ x: 1, y: 0 });
+    expect(cells()).toEqual(
+      new Map([
+        ["0,0", cell("A")],
+        ["2,0", cell("C")],
+      ])
+    );
+    expect(
+      getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell
+    ).toEqual({ x: 1, y: 0 });
   });
 
   it("deletes the Cell to the left and moves navigation left", () => {
@@ -47,34 +51,35 @@ describe("static grid deletion commands", () => {
 
     canvasCommands.staticGrid.delete("backward");
 
-    expect(cells()).toEqual(new Map([
-      ["0,0", cell("A")],
-      ["2,0", cell("C")],
-    ]));
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell)
-      .toEqual({ x: 1, y: 0 });
+    expect(cells()).toEqual(
+      new Map([
+        ["0,0", cell("A")],
+        ["2,0", cell("C")],
+      ])
+    );
+    expect(
+      getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell
+    ).toEqual({ x: 1, y: 0 });
   });
 
-  it.each(["backward", "forward"] as const)(
-    "deletes a Range %s and preserves it",
-    (direction) => {
-      applyFreeformSnapshotToYMaps([
-        ["0,0", cell("A")],
-        ["1,0", cell("B")],
-        ["2,0", cell("C")],
-      ]);
-      canvasCommands.staticGrid.setSelectionRange({
-        start: { x: 1, y: 0 },
-        end: { x: 2, y: 0 },
-      });
+  it.each(["backward", "forward"] as const)("deletes a Range %s and preserves it", (direction) => {
+    applyFreeformSnapshotToYMaps([
+      ["0,0", cell("A")],
+      ["1,0", cell("B")],
+      ["2,0", cell("C")],
+    ]);
+    canvasCommands.staticGrid.setSelectionRange({
+      start: { x: 1, y: 0 },
+      end: { x: 2, y: 0 },
+    });
 
-      canvasCommands.staticGrid.delete(direction);
+    canvasCommands.staticGrid.delete(direction);
 
-      expect(cells()).toEqual(new Map([["0,0", cell("A")]]));
-      expect(useEditorStore.getState().interaction.staticGridSelection.mode)
-        .toBe("range");
-    }
-  );
+    expect(cells()).toEqual(new Map([["0,0", cell("A")]]));
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).mode).toBe(
+      "range"
+    );
+  });
 
   it("deletes the current Cell forward while text editing", () => {
     applyFreeformSnapshotToYMaps([
@@ -86,8 +91,10 @@ describe("static grid deletion commands", () => {
     canvasCommands.staticGrid.delete("forward");
 
     expect(cells()).toEqual(new Map([["2,0", cell("C")]]));
-    expect(useEditorStore.getState().interaction.textCursor)
-      .toEqual({ x: 1, y: 0 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 1,
+      y: 0,
+    });
   });
 
   it("deletes a wide Cell atomically when moving backward", () => {
@@ -100,8 +107,9 @@ describe("static grid deletion commands", () => {
     canvasCommands.staticGrid.delete("backward");
 
     expect(cells()).toEqual(new Map([["3,0", cell("B")]]));
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell)
-      .toEqual({ x: 1, y: 0 });
+    expect(
+      getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell
+    ).toEqual({ x: 1, y: 0 });
   });
 
   it("keeps a bounded cursor in place at the left edge", () => {
@@ -113,34 +121,47 @@ describe("static grid deletion commands", () => {
     canvasCommands.staticGrid.delete("backward");
     useEditorStore.getState().writeTextString("X");
 
-    expect(cells()).toEqual(new Map([["0,1", {
-      char: "X",
-      color: "#000000",
-    }]]));
-    expect(useEditorStore.getState().interaction.textCursor)
-      .toEqual({ x: 1, y: 1 });
+    expect(cells()).toEqual(
+      new Map([
+        [
+          "0,1",
+          {
+            char: "X",
+            color: "#000000",
+          },
+        ],
+      ])
+    );
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 1,
+      y: 1,
+    });
   });
 
   it("moves backward through an empty Cell without creating content", () => {
     setCanvasTestState({
       canvasMode: "freeform",
-      staticGridSelection: {
-        mode: "cell",
-        activeCell: { x: 2, y: 0 },
-        anchorCell: { x: 2, y: 0 },
-        primaryRange: {
-          start: { x: 2, y: 0 },
-          end: { x: 2, y: 0 },
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "cell",
+          activeCell: { x: 2, y: 0 },
+          anchorCell: { x: 2, y: 0 },
+          primaryRange: {
+            start: { x: 2, y: 0 },
+            end: { x: 2, y: 0 },
+          },
+          additionalRanges: [],
         },
-        additionalRanges: [],
       },
     });
 
     canvasCommands.staticGrid.delete("backward");
 
     expect(cells()).toEqual(new Map());
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell)
-      .toEqual({ x: 1, y: 0 });
+    expect(
+      getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell
+    ).toEqual({ x: 1, y: 0 });
   });
 
   it("records content deletion but not an empty forward deletion in history", () => {

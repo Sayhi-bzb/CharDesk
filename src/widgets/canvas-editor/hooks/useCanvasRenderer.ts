@@ -11,7 +11,6 @@ import {
   DEFAULT_ARTIFACT_CANVAS_PALETTE,
   type CanvasArtifactPalette,
 } from '@/shared/canvas-appearance/artifact-style';
-import { isStaticGridMode } from '@/domains/sessions/public';
 import type { CanvasRenderModel } from './canvasModels';
 import { GridManager } from '@/shared/utils/grid';
 import type { SelectionArea, GridMap, Point } from '@/shared/types';
@@ -22,12 +21,7 @@ import {
   type CanvasSurfaceReader,
 } from '@/domains/canvas/public';
 import type { CanvasLinkHit } from './interaction/core/linkHitTesting';
-import {
-  drawGridLines,
-  drawTextCell,
-  setTextRenderStyle,
-} from '@/shared/cell-rendering/canvas-drawing';
-import { getGraphemeCellWidth as getCellOccupancy } from '@chardesk/protocol';
+import { drawGridLines } from '@/shared/cell-rendering/canvas-drawing';
 import { getCellViewportRect as gridCellRect } from '@chardesk/rendering';
 import { prepareCharDeskCanvasSurface } from '@chardesk/rendering/canvas';
 import { DEFAULT_CANVAS_CELL_METRICS } from '@/shared/fonts/canvas-profile';
@@ -162,9 +156,7 @@ export const useCanvasRenderer = (
     contentReader,
     contentRevision,
     scratchLayer,
-    textCursor,
-    staticGridSelection,
-    staticGridEditMode,
+    staticGrid,
     showGrid,
     hoveredGrid,
     tool,
@@ -181,14 +173,11 @@ export const useCanvasRenderer = (
   const staticGridView = useMemo(
     () =>
       getStaticGridViewState({
-        selection: staticGridSelection,
-        editMode: staticGridEditMode,
-        textCursor,
+        state: staticGrid,
         grid: contentReader,
       }),
-    [contentReader, staticGridEditMode, staticGridSelection, textCursor]
+    [contentReader, staticGrid]
   );
-  const renderedTextCursor = isStaticGridMode(canvasMode) ? null : textCursor;
   const rangePresentation = useMemo(
     () => resolveCanvasRangePresentation({
       source: contentReader,
@@ -544,32 +533,6 @@ export const useCanvasRenderer = (
           );
         }
 
-        if (renderedTextCursor) {
-          const pos = gridCellRect(
-            renderedTextCursor,
-            { offset: renderOffset, zoom },
-            DEFAULT_CANVAS_CELL_METRICS
-          );
-          const cell = renderedContentSource.get(renderedTextCursor);
-          const occupancy = cell ? getCellOccupancy(cell.char) : 1;
-          uiCtx.fillStyle = palette.textCursorSurface;
-          uiCtx.fillRect(
-            Math.round(pos.x),
-            Math.round(pos.y),
-            Math.round(pos.width * occupancy),
-            Math.round(pos.height)
-          );
-          if (cell) {
-            setTextRenderStyle(uiCtx, zoom, DEFAULT_CANVAS_CELL_METRICS);
-            drawTextCell(uiCtx, cell, pos.x, pos.y, {
-              fontProfile,
-              color: palette.textCursorForeground,
-              palette: artifactPalette,
-              zoom,
-            });
-          }
-        }
-
         if (canvasColorPickerTarget && hoveredGrid) {
           drawCanvasColorPickerAnchor(uiCtx, hoveredGrid, {
             offset: renderOffset,
@@ -686,9 +649,7 @@ export const useCanvasRenderer = (
         layers.interaction.current,
         ...sharedViewportInputs,
         contentReader,
-        textCursor,
-        staticGridSelection,
-        staticGridEditMode,
+        staticGrid,
         cellPresentation,
         draggingSelection,
         hoveredLink,
@@ -706,7 +667,6 @@ export const useCanvasRenderer = (
         draggingSelection ||
         cellPresentation.visual ||
         (tool === 'eraser' && hoveredGrid) ||
-        renderedTextCursor ||
         (canvasColorPickerTarget && hoveredGrid)
       );
     };
@@ -762,9 +722,7 @@ export const useCanvasRenderer = (
     contentReader,
     contentRevision,
     scratchLayer,
-    textCursor,
-    staticGridSelection,
-    staticGridEditMode,
+    staticGrid,
     draggingSelection,
     staticRangeMovePreview,
     showGrid,
@@ -777,7 +735,6 @@ export const useCanvasRenderer = (
     hoveredLink,
     requestRenderRef,
     drawLayer,
-    renderedTextCursor,
     cellPresentation,
     renderManager,
     runtime,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import {
   collapseGridSelectionTo,
+  createStaticGridInputSession,
   createGridSelectionState,
   extendGridSelectionTo,
   forEachGridSelectionSpan,
@@ -92,15 +93,16 @@ describe("staticGridModel", () => {
 
   it("derives freeform view state from the static selection", () => {
     const view = getStaticGridViewState({
-      selection: {
-        mode: "range",
-        activeCell: { x: 4, y: 2 },
-        anchorCell: { x: 2, y: 2 },
-        primaryRange: { start: { x: 2, y: 2 }, end: { x: 4, y: 2 } },
-        additionalRanges: [],
+      state: {
+        mode: "navigate",
+        selection: {
+          mode: "range",
+          activeCell: { x: 4, y: 2 },
+          anchorCell: { x: 2, y: 2 },
+          primaryRange: { start: { x: 2, y: 2 }, end: { x: 4, y: 2 } },
+          additionalRanges: [],
+        },
       },
-      editMode: "navigate",
-      textCursor: null,
     });
 
     expect(view.interaction).toMatchObject({
@@ -117,11 +119,12 @@ describe("staticGridModel", () => {
     });
   });
 
-  it("keeps a legacy cursor hidden while the static grid is navigating", () => {
+  it("derives navigation from the canonical state", () => {
     const view = getStaticGridViewState({
-      selection: createGridSelectionState({ x: 4, y: 2 }),
-      editMode: "navigate",
-      textCursor: { x: 9, y: 9 },
+      state: {
+        mode: "navigate",
+        selection: createGridSelectionState({ x: 4, y: 2 }),
+      },
     });
 
     expect(view.interaction).toEqual({
@@ -133,17 +136,12 @@ describe("staticGridModel", () => {
     ]);
   });
 
-  it("gives text editing semantic precedence over a retained range target", () => {
+  it("derives a collapsed target from the canonical text-edit session", () => {
     const view = getStaticGridViewState({
-      selection: {
-        mode: "range",
-        activeCell: { x: 4, y: 2 },
-        anchorCell: { x: 2, y: 2 },
-        primaryRange: { start: { x: 2, y: 2 }, end: { x: 4, y: 2 } },
-        additionalRanges: [],
+      state: {
+        mode: "text-edit",
+        session: createStaticGridInputSession({ origin: { x: 3, y: 2 } }),
       },
-      editMode: "text-edit",
-      textCursor: { x: 3, y: 2 },
     });
 
     expect(view.interaction).toEqual({
@@ -152,21 +150,22 @@ describe("staticGridModel", () => {
       cursor: { x: 3, y: 2 },
     });
     expect(view.target.areas).toEqual([
-      { start: { x: 2, y: 2 }, end: { x: 4, y: 2 } },
+      { start: { x: 3, y: 2 }, end: { x: 3, y: 2 } },
     ]);
   });
 
   it("keeps an explicit single-cell range distinct from navigation", () => {
     const view = getStaticGridViewState({
-      selection: {
-        mode: "range",
-        activeCell: { x: 3, y: 4 },
-        anchorCell: { x: 3, y: 4 },
-        primaryRange: { start: { x: 3, y: 4 }, end: { x: 3, y: 4 } },
-        additionalRanges: [],
+      state: {
+        mode: "navigate",
+        selection: {
+          mode: "range",
+          activeCell: { x: 3, y: 4 },
+          anchorCell: { x: 3, y: 4 },
+          primaryRange: { start: { x: 3, y: 4 }, end: { x: 3, y: 4 } },
+          additionalRanges: [],
+        },
       },
-      editMode: "navigate",
-      textCursor: null,
     });
 
     expect(view.interaction.kind).toBe("range");
@@ -340,15 +339,16 @@ describe("staticGridModel", () => {
       ["1,1", { char: "A", color: "#fff" }],
     ]);
     const view = getStaticGridViewState({
-      selection: {
-        mode: "range",
-        activeCell: { x: 2, y: 1 },
-        anchorCell: { x: 2, y: 0 },
-        primaryRange: { start: { x: 2, y: 0 }, end: { x: 2, y: 1 } },
-        additionalRanges: [],
+      state: {
+        mode: "navigate",
+        selection: {
+          mode: "range",
+          activeCell: { x: 2, y: 1 },
+          anchorCell: { x: 2, y: 0 },
+          primaryRange: { start: { x: 2, y: 0 }, end: { x: 2, y: 1 } },
+          additionalRanges: [],
+        },
       },
-      editMode: "navigate",
-      textCursor: null,
       grid,
     });
 

@@ -17,9 +17,7 @@ export type CanvasRenderModel = Pick<CanvasState,
   | "slideDeck"
 > & Pick<CanvasInteractionSnapshot,
   | "scratchLayer"
-  | "textCursor"
-  | "staticGridSelection"
-  | "staticGridEditMode"
+  | "staticGrid"
   | "hoveredGrid"
   | "canvasColorPickerTarget"
 > & {
@@ -31,9 +29,7 @@ export type CanvasRenderModel = Pick<CanvasState,
 
 export type CanvasEditorModel = Pick<CanvasState, "brushColor"> & {
   interaction: Pick<CanvasInteractionSnapshot,
-    | "textCursor"
-    | "staticGridSelection"
-    | "staticGridEditMode"
+    | "staticGrid"
     | "canvasColorPickerTarget"
   >;
   offset: CanvasViewportState["offset"];
@@ -53,7 +49,6 @@ export type CanvasEditorModel = Pick<CanvasState, "brushColor"> & {
   selectStaticGridColumn: CanvasCommands["staticGrid"]["selectColumn"];
   enterStaticGridTextEdit: CanvasCommands["staticGrid"]["enterTextEdit"];
   exitStaticGridTextEdit: CanvasCommands["staticGrid"]["exitTextEdit"];
-  setTextCursor: CanvasCommands["interaction"]["setTextCursor"];
   setOffset: CanvasCommands["viewport"]["setOffset"];
   consumePendingCameraPlacement?: CanvasCommands["viewport"]["consumePendingPlacement"];
   fillSelectionsWithChar: CanvasCommands["selection"]["fillWithChar"];

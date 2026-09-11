@@ -1,6 +1,10 @@
 import type { ClipboardCommandResult, SelectionCommandFactory } from "@/domains/canvas/public";
 import { deliverExportClipboard, prepareSelectionPngExport } from "@/domains/export/public";
-import { getStaticGridSelectionAreas } from "@/domains/selection/public";
+import {
+  getStaticGridCursor,
+  getStaticGridSelection,
+  getStaticGridSelectionAreas,
+} from "@/domains/selection/public";
 import { feedback } from "@/shared/services/effects";
 import { parsePlainTextCells } from "@/shared/utils/ansiText";
 import { areJsonValuesEqual } from "@/shared/utils/equality";
@@ -19,9 +23,12 @@ type SelectionCommandState = ReturnType<SelectionCommandContext["getState"]>;
 
 const resolveSelectionAreas = (state: SelectionCommandState) =>
   getStaticGridSelectionAreas(
-    state.interaction.staticGridSelection,
+    getStaticGridSelection(state.interaction.staticGrid),
     state.contentSurface.reader
   );
+
+const resolveTextCursor = (state: SelectionCommandState) =>
+  getStaticGridCursor(state.interaction.staticGrid);
 
 const applied = (changed: boolean): ClipboardCommandResult => ({ status: "applied", changed });
 const noop = (
@@ -68,9 +75,7 @@ const getClipboardTargetFingerprint = (state: SelectionCommandState) =>
     address: state.interaction.address,
     canvasMode: state.canvasMode,
     selections: resolveSelectionAreas(state),
-    textCursor: state.interaction.textCursor,
-    staticGridSelection: state.interaction.staticGridSelection,
-    staticGridEditMode: state.interaction.staticGridEditMode,
+    staticGrid: state.interaction.staticGrid,
   });
 
 export const createSelectionCommandFactory = ({
@@ -86,7 +91,7 @@ export const createSelectionCommandFactory = ({
 }): SelectionCommandFactory => ({ getState: get, mutations }) => ({
   canCopyOrCut: () => {
     const state = get();
-    return hasClipboardSource(resolveSelectionAreas(state), state.interaction.textCursor);
+    return hasClipboardSource(resolveSelectionAreas(state), resolveTextCursor(state));
   },
 
   copySelection: async (options) => {
@@ -94,7 +99,7 @@ export const createSelectionCommandFactory = ({
     const payload = buildClipboardPayload(
       state.contentSurface.reader,
       resolveSelectionAreas(state),
-      state.interaction.textCursor,
+      resolveTextCursor(state),
       state.brushColor,
       options?.ansi ? "ansi" : "plain"
     );
@@ -113,7 +118,7 @@ export const createSelectionCommandFactory = ({
     const payload = buildClipboardPayload(
       state.contentSurface.reader,
       selections,
-      state.interaction.textCursor,
+      resolveTextCursor(state),
       state.brushColor
     );
     if (!payload) return noop("empty-source");
@@ -128,7 +133,7 @@ export const createSelectionCommandFactory = ({
     const currentPayload = buildClipboardPayload(
       current.contentSurface.reader,
       currentSelections,
-      current.interaction.textCursor,
+      resolveTextCursor(current),
       current.brushColor
     );
     if (
@@ -136,7 +141,10 @@ export const createSelectionCommandFactory = ({
       !areJsonValuesEqual(currentPayload, payload)
     ) return failed("stale-target");
     if (currentSelections.length > 0) mutations.deleteSelection();
-    else if (current.interaction.textCursor) mutations.erasePoints([current.interaction.textCursor]);
+    else {
+      const cursor = resolveTextCursor(current);
+      if (cursor) mutations.erasePoints([cursor]);
+    }
     return applied(true);
   },
 

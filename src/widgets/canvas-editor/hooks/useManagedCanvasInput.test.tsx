@@ -10,12 +10,15 @@ import {
   useEditorStore,
 } from "@/domains/canvas/testing";
 import { ShortcutProvider } from "@/shared/shortcuts/dispatcher";
+import {
+  createStaticGridInputSession,
+  getStaticGridCursor,
+  getStaticGridInputSession,
+  getStaticGridSelection,
+} from "@/domains/selection/public";
 import { useManagedCanvasInput } from "./useManagedCanvasInput";
 
-const managedKeyDownEvent = (
-  init: KeyboardEventInit,
-  preventDefault = vi.fn()
-) => ({
+const managedKeyDownEvent = (init: KeyboardEventInit, preventDefault = vi.fn()) => ({
   defaultPrevented: false,
   nativeEvent: new KeyboardEvent("keydown", init),
   preventDefault,
@@ -28,7 +31,6 @@ const getEditorModel = () => {
     ...state,
     ...testingCanvasRuntime.viewport.getSnapshot(),
     setOffset: commands.viewport.setOffset,
-    setTextCursor: commands.interaction.setTextCursor,
     setCanvasColorPickerTarget: commands.interaction.setColorPickerTarget,
     setHoveredGrid: commands.interaction.setHoveredGrid,
     moveStaticGridFocus: commands.staticGrid.moveFocus,
@@ -60,13 +62,14 @@ describe("useManagedCanvasInput", () => {
   it("suppresses native copy when copy capability is unavailable", () => {
     const model = { ...getEditorModel() };
     const { result } = renderHook(
-      () => useManagedCanvasInput({
-        model,
-        size: { width: 800, height: 600 },
-        copyEnabled: false,
-        mutateEnabled: false,
-      }),
-      { wrapper: ShortcutProvider },
+      () =>
+        useManagedCanvasInput({
+          model,
+          size: { width: 800, height: 600 },
+          copyEnabled: false,
+          mutateEnabled: false,
+        }),
+      { wrapper: ShortcutProvider }
     );
     const preventDefault = vi.fn();
 
@@ -81,10 +84,6 @@ describe("useManagedCanvasInput", () => {
     const fillSelectionsWithChar = vi.fn();
     const model = {
       ...getEditorModel(),
-      interaction: {
-        ...getEditorModel().interaction,
-        textCursor: null,
-      },
       fillSelectionsWithChar,
     };
     const { result } = renderHook(
@@ -114,16 +113,16 @@ describe("useManagedCanvasInput", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
-      textCursor: null,
-      staticGridSelection: {
-        mode: "cell",
-        activeCell: { x: 4, y: 3 },
-        anchorCell: { x: 4, y: 3 },
-        primaryRange: { start: { x: 4, y: 3 }, end: { x: 4, y: 3 } },
-        additionalRanges: [],
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "cell",
+          activeCell: { x: 4, y: 3 },
+          anchorCell: { x: 4, y: 3 },
+          primaryRange: { start: { x: 4, y: 3 }, end: { x: 4, y: 3 } },
+          additionalRanges: [],
+        },
       },
-      staticGridEditMode: "navigate",
-      staticGridInputSession: null,
     });
     const model = { ...getEditorModel() };
     const { result } = renderHook(
@@ -142,10 +141,15 @@ describe("useManagedCanvasInput", () => {
         ["B", "KeyB"],
       ]) {
         const preventDefault = vi.fn();
-        result.current.textareaProps.onKeyDown?.(managedKeyDownEvent({
-          key,
-          code,
-        }, preventDefault) as never);
+        result.current.textareaProps.onKeyDown?.(
+          managedKeyDownEvent(
+            {
+              key,
+              code,
+            },
+            preventDefault
+          ) as never
+        );
         expect(preventDefault).not.toHaveBeenCalled();
         result.current.textareaProps.onInput?.({
           currentTarget: { value: key },
@@ -161,32 +165,35 @@ describe("useManagedCanvasInput", () => {
         ["6,3", { char: "B", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 7, y: 3 });
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 7, y: 3 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 7,
+      y: 3,
+    });
+    expect(
+      getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell
+    ).toEqual({ x: 7, y: 3 });
     expect(undoCanvas()).toBe(true);
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
     expect(redoCanvas()).toBe(true);
-    expect([...getEditorModel().contentSurface.reader.materialize().values()].map(({ char }) => char)).toEqual([
-      "A",
-      " ",
-      "B",
-    ]);
+    expect(
+      [...getEditorModel().contentSurface.reader.materialize().values()].map(({ char }) => char)
+    ).toEqual(["A", " ", "B"]);
   });
 
   it("keeps printable keydown as direct fill for a freeform range", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
-      textCursor: null,
-      staticGridSelection: {
-        mode: "range",
-        activeCell: { x: 5, y: 3 },
-        anchorCell: { x: 4, y: 3 },
-        primaryRange: { start: { x: 4, y: 3 }, end: { x: 5, y: 3 } },
-        additionalRanges: [],
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "range",
+          activeCell: { x: 5, y: 3 },
+          anchorCell: { x: 4, y: 3 },
+          primaryRange: { start: { x: 4, y: 3 }, end: { x: 5, y: 3 } },
+          additionalRanges: [],
+        },
       },
-      staticGridEditMode: "navigate",
-      staticGridInputSession: null,
     });
     const model = { ...getEditorModel() };
     const { result } = renderHook(
@@ -200,10 +207,15 @@ describe("useManagedCanvasInput", () => {
     const preventDefault = vi.fn();
 
     act(() => {
-      result.current.textareaProps.onKeyDown?.(managedKeyDownEvent({
-        key: "X",
-        code: "KeyX",
-      }, preventDefault) as never);
+      result.current.textareaProps.onKeyDown?.(
+        managedKeyDownEvent(
+          {
+            key: "X",
+            code: "KeyX",
+          },
+          preventDefault
+        ) as never
+      );
     });
 
     expect(preventDefault).toHaveBeenCalledOnce();
@@ -213,24 +225,24 @@ describe("useManagedCanvasInput", () => {
         ["5,3", { char: "X", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().interaction.staticGridEditMode).toBe("navigate");
-    expect(useEditorStore.getState().interaction.staticGridInputSession).toBeNull();
+    expect(useEditorStore.getState().interaction.staticGrid.mode).toBe("navigate");
+    expect(getStaticGridInputSession(useEditorStore.getState().interaction.staticGrid)).toBeNull();
   });
 
   it("continues the same grid flow when composition is followed by half-width input", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
-      textCursor: null,
-      staticGridSelection: {
-        mode: "cell",
-        activeCell: { x: 2, y: 1 },
-        anchorCell: { x: 2, y: 1 },
-        primaryRange: { start: { x: 2, y: 1 }, end: { x: 2, y: 1 } },
-        additionalRanges: [],
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "cell",
+          activeCell: { x: 2, y: 1 },
+          anchorCell: { x: 2, y: 1 },
+          primaryRange: { start: { x: 2, y: 1 }, end: { x: 2, y: 1 } },
+          additionalRanges: [],
+        },
       },
-      staticGridEditMode: "navigate",
-      staticGridInputSession: null,
     });
     const model = { ...getEditorModel() };
     const { result } = renderHook(
@@ -264,29 +276,33 @@ describe("useManagedCanvasInput", () => {
         ["4,1", { char: "A", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 5, y: 1 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 5,
+      y: 1,
+    });
   });
 
   it("suppresses a delayed terminal input after compositionend", async () => {
     setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
-      textCursor: null,
-      staticGridSelection: {
-        mode: "cell",
-        activeCell: { x: 2, y: 1 },
-        anchorCell: { x: 2, y: 1 },
-        primaryRange: { start: { x: 2, y: 1 }, end: { x: 2, y: 1 } },
-        additionalRanges: [],
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "cell",
+          activeCell: { x: 2, y: 1 },
+          anchorCell: { x: 2, y: 1 },
+          primaryRange: { start: { x: 2, y: 1 }, end: { x: 2, y: 1 } },
+          additionalRanges: [],
+        },
       },
-      staticGridEditMode: "navigate",
-      staticGridInputSession: null,
     });
     const { result } = renderHook(
-      () => useManagedCanvasInput({
-        model: { ...getEditorModel() },
-        size: { width: 800, height: 600 },
-      }),
+      () =>
+        useManagedCanvasInput({
+          model: { ...getEditorModel() },
+          size: { width: 800, height: 600 },
+        }),
       { wrapper: ShortcutProvider }
     );
 
@@ -312,29 +328,33 @@ describe("useManagedCanvasInput", () => {
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([["2,1", { char: "你", color: "#000000" }]])
     );
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 4, y: 1 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 4,
+      y: 1,
+    });
   });
 
   it("accepts the same text as a new input after a real keydown", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
-      textCursor: null,
-      staticGridSelection: {
-        mode: "cell",
-        activeCell: { x: 2, y: 1 },
-        anchorCell: { x: 2, y: 1 },
-        primaryRange: { start: { x: 2, y: 1 }, end: { x: 2, y: 1 } },
-        additionalRanges: [],
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "cell",
+          activeCell: { x: 2, y: 1 },
+          anchorCell: { x: 2, y: 1 },
+          primaryRange: { start: { x: 2, y: 1 }, end: { x: 2, y: 1 } },
+          additionalRanges: [],
+        },
       },
-      staticGridEditMode: "navigate",
-      staticGridInputSession: null,
     });
     const { result } = renderHook(
-      () => useManagedCanvasInput({
-        model: { ...getEditorModel() },
-        size: { width: 800, height: 600 },
-      }),
+      () =>
+        useManagedCanvasInput({
+          model: { ...getEditorModel() },
+          size: { width: 800, height: 600 },
+        }),
       { wrapper: ShortcutProvider }
     );
 
@@ -344,9 +364,11 @@ describe("useManagedCanvasInput", () => {
         data: "你",
         currentTarget: { value: "你" },
       } as never);
-      result.current.textareaProps.onKeyDown?.(managedKeyDownEvent({
-        key: "Unidentified",
-      }) as never);
+      result.current.textareaProps.onKeyDown?.(
+        managedKeyDownEvent({
+          key: "Unidentified",
+        }) as never
+      );
       result.current.textareaProps.onInput?.({
         currentTarget: { value: "你" },
         nativeEvent: {
@@ -358,29 +380,37 @@ describe("useManagedCanvasInput", () => {
       result.current.textareaProps.onBlur?.();
     });
 
-    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map([
-      ["2,1", { char: "你", color: "#000000" }],
-      ["4,1", { char: "你", color: "#000000" }],
-    ]));
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 6, y: 1 });
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
+      new Map([
+        ["2,1", { char: "你", color: "#000000" }],
+        ["4,1", { char: "你", color: "#000000" }],
+      ])
+    );
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 6,
+      y: 1,
+    });
   });
 
   it("commits consecutive managed input once per animation frame", () => {
     let scheduled: FrameRequestCallback | undefined;
-    const requestFrame = vi.spyOn(window, "requestAnimationFrame")
+    const requestFrame = vi
+      .spyOn(window, "requestAnimationFrame")
       .mockImplementation((callback) => {
         scheduled = callback;
         return 1;
       });
-    const cancelFrame = vi.spyOn(window, "cancelAnimationFrame")
+    const cancelFrame = vi
+      .spyOn(window, "cancelAnimationFrame")
       .mockImplementation(() => undefined);
     const writeTextString = vi.fn();
     const { result } = renderHook(
-      () => useManagedCanvasInput({
-        inputIdentity: "canvas-a",
-        model: { ...getEditorModel(), writeTextString },
-        size: { width: 800, height: 600 },
-      }),
+      () =>
+        useManagedCanvasInput({
+          inputIdentity: "canvas-a",
+          model: { ...getEditorModel(), writeTextString },
+          size: { width: 800, height: 600 },
+        }),
       { wrapper: ShortcutProvider }
     );
 
@@ -407,19 +437,24 @@ describe("useManagedCanvasInput", () => {
     const writeTextString = vi.fn();
     const deleteStaticGrid = vi.fn();
     const { result } = renderHook(
-      () => useManagedCanvasInput({
-        model: {
-          ...getEditorModel(),
-          interaction: {
-            ...getEditorModel().interaction,
-            textCursor: { x: 1, y: 0 },
-            staticGridEditMode: "text-edit",
+      () =>
+        useManagedCanvasInput({
+          model: {
+            ...getEditorModel(),
+            interaction: {
+              ...getEditorModel().interaction,
+              staticGrid: {
+                mode: "text-edit",
+                session: createStaticGridInputSession({
+                  origin: { x: 1, y: 0 },
+                }),
+              },
+            },
+            writeTextString,
+            deleteStaticGrid,
           },
-          writeTextString,
-          deleteStaticGrid,
-        },
-        size: { width: 800, height: 600 },
-      }),
+          size: { width: 800, height: 600 },
+        }),
       { wrapper: ShortcutProvider }
     );
 
@@ -428,9 +463,11 @@ describe("useManagedCanvasInput", () => {
         currentTarget: { value: "A" },
         nativeEvent: { data: "A", isComposing: false },
       } as never);
-      result.current.textareaProps.onKeyDown?.(managedKeyDownEvent({
-        key: "Backspace",
-      }) as never);
+      result.current.textareaProps.onKeyDown?.(
+        managedKeyDownEvent({
+          key: "Backspace",
+        }) as never
+      );
     });
 
     expect(writeTextString).toHaveBeenCalledWith("A");
@@ -443,17 +480,20 @@ describe("useManagedCanvasInput", () => {
   it("executes forward deletion for a navigated Cell", () => {
     const deleteStaticGrid = vi.fn();
     const { result } = renderHook(
-      () => useManagedCanvasInput({
-        model: { ...getEditorModel(), deleteStaticGrid },
-        size: { width: 800, height: 600 },
-      }),
+      () =>
+        useManagedCanvasInput({
+          model: { ...getEditorModel(), deleteStaticGrid },
+          size: { width: 800, height: 600 },
+        }),
       { wrapper: ShortcutProvider }
     );
 
     act(() => {
-      result.current.textareaProps.onKeyDown?.(managedKeyDownEvent({
-        key: "Delete",
-      }) as never);
+      result.current.textareaProps.onKeyDown?.(
+        managedKeyDownEvent({
+          key: "Delete",
+        }) as never
+      );
     });
 
     expect(deleteStaticGrid).toHaveBeenCalledWith("forward");
@@ -471,11 +511,12 @@ describe("useManagedCanvasInput", () => {
     const writeTextString = vi.fn();
     let inputIdentity = "canvas-a";
     const { result, rerender } = renderHook(
-      () => useManagedCanvasInput({
-        inputIdentity,
-        model: { ...getEditorModel(), writeTextString },
-        size: { width: 800, height: 600 },
-      }),
+      () =>
+        useManagedCanvasInput({
+          inputIdentity,
+          model: { ...getEditorModel(), writeTextString },
+          size: { width: 800, height: 600 },
+        }),
       { wrapper: ShortcutProvider }
     );
 

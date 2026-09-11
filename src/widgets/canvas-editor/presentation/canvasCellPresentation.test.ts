@@ -28,23 +28,25 @@ const range = (
 });
 
 const navigateView = () => getStaticGridViewState({
-  selection: createGridSelectionState({ x: 1, y: 2 }),
-  editMode: "navigate",
-  textCursor: null,
+  state: {
+    mode: "navigate",
+    selection: createGridSelectionState({ x: 1, y: 2 }),
+  },
 });
 
 const rangeView = (ranges: readonly GridRange[]) => {
   const primaryRange = ranges[ranges.length - 1]!;
   return getStaticGridViewState({
-    selection: {
-      mode: "range",
-      activeCell: primaryRange.end,
-      anchorCell: primaryRange.start,
-      primaryRange,
-      additionalRanges: ranges.slice(0, -1),
+    state: {
+      mode: "navigate",
+      selection: {
+        mode: "range",
+        activeCell: primaryRange.end,
+        anchorCell: primaryRange.start,
+        primaryRange,
+        additionalRanges: ranges.slice(0, -1),
+      },
     },
-    editMode: "navigate",
-    textCursor: null,
   });
 };
 

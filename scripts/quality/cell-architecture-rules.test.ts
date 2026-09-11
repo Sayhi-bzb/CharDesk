@@ -81,6 +81,17 @@ describe("Cell architecture rules", () => {
     )[0]).toContain("Retired split deletion contract");
   });
 
+  it("keeps static-grid interaction in one discriminated state", () => {
+    expect(messages(
+      "export const cursor = interaction.textCursor;",
+      "src/example.ts"
+    )[0]).toContain("Retired split static-grid state contract");
+    expect(messages(
+      "export const setTextCursor = () => undefined;",
+      "src/example.ts"
+    )[0]).toContain("Retired split static-grid state contract");
+  });
+
   it.each([
     "CharDeskCanvasMetrics",
     "DEFAULT_CHARDESK_CANVAS_METRICS",

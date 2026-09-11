@@ -7,7 +7,12 @@ import {
   setCanvasTestState,
   useEditorStore,
 } from "@/domains/canvas/testing";
-import { createGridSelectionState, getGridSelectionRanges } from "@/domains/selection/public";
+import {
+  createGridSelectionState,
+  getGridSelectionRanges,
+  getStaticGridCursor,
+  getStaticGridSelection,
+} from "@/domains/selection/public";
 
 const initialState = useEditorStore.getState();
 
@@ -18,9 +23,10 @@ const resetStore = () => {
     contentSurface: new TestCanvasContentSurface(),
   });
   setCanvasTestState({
-    textCursor: null,
-    staticGridSelection: createGridSelectionState(),
-    staticGridEditMode: "navigate",
+    staticGrid: {
+      mode: "navigate",
+      selection: createGridSelectionState(),
+    },
   });
   applyFreeformSnapshotToYMaps([]);
 };
@@ -34,14 +40,14 @@ describe("static-grid commands", () => {
     canvasCommands.staticGrid.setActiveCell({ x: 4, y: 5 });
     canvasCommands.staticGrid.moveFocus(1, -2);
 
-    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid)).toEqual({
       mode: "cell",
       activeCell: { x: 5, y: 3 },
       anchorCell: { x: 5, y: 3 },
       primaryRange: { start: { x: 5, y: 3 }, end: { x: 5, y: 3 } },
       additionalRanges: [],
     });
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
   });
 
   it("moves a selected range as one undoable cell-plane operation", () => {
@@ -62,7 +68,7 @@ describe("static-grid commands", () => {
     expect(moved.get({ x: 0, y: 0 })).toBeUndefined();
     expect(moved.get({ x: 2, y: 0 })?.char).toBe("A");
     expect(moved.get({ x: 3, y: 0 })?.char).toBe("B");
-    expect(useEditorStore.getState().interaction.staticGridSelection.primaryRange).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).primaryRange).toEqual({
       start: { x: 2, y: 0 },
       end: { x: 3, y: 0 },
     });
@@ -82,18 +88,18 @@ describe("static-grid commands", () => {
     ]);
 
     canvasCommands.staticGrid.setActiveCell({ x: 3, y: 1 });
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell).toEqual({
       x: 2,
       y: 1,
     });
 
     canvasCommands.staticGrid.moveFocus(1, 0);
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell).toEqual({
       x: 4,
       y: 1,
     });
     canvasCommands.staticGrid.moveFocus(-1, 0);
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell).toEqual({
       x: 2,
       y: 1,
     });
@@ -103,14 +109,14 @@ describe("static-grid commands", () => {
     canvasCommands.staticGrid.setActiveCell({ x: 2, y: 2 });
     canvasCommands.staticGrid.moveFocus(3, 1, { extend: true });
 
-    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid)).toEqual({
       mode: "range",
       activeCell: { x: 2, y: 2 },
       anchorCell: { x: 2, y: 2 },
       primaryRange: { start: { x: 2, y: 2 }, end: { x: 5, y: 3 } },
       additionalRanges: [],
     });
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
   });
 
   it("replaces the old range and keeps a reverse drag anchored at its start", () => {
@@ -120,7 +126,7 @@ describe("static-grid commands", () => {
       end: { x: 2, y: 3 },
     });
 
-    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid)).toEqual({
       mode: "range",
       activeCell: { x: 5, y: 4 },
       anchorCell: { x: 5, y: 4 },
@@ -134,14 +140,14 @@ describe("static-grid commands", () => {
     canvasCommands.staticGrid.moveFocus(-1, 0, { extend: true });
     canvasCommands.staticGrid.moveFocus(-1, 0, { extend: true });
 
-    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid)).toEqual({
       mode: "range",
       activeCell: { x: 5, y: 5 },
       anchorCell: { x: 5, y: 5 },
       primaryRange: { start: { x: 3, y: 5 }, end: { x: 5, y: 5 } },
       additionalRanges: [],
     });
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
   });
 
   it("extends selection up across repeated shift arrow moves", () => {
@@ -149,14 +155,14 @@ describe("static-grid commands", () => {
     canvasCommands.staticGrid.moveFocus(0, -1, { extend: true });
     canvasCommands.staticGrid.moveFocus(0, -1, { extend: true });
 
-    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid)).toEqual({
       mode: "range",
       activeCell: { x: 5, y: 5 },
       anchorCell: { x: 5, y: 5 },
       primaryRange: { start: { x: 5, y: 3 }, end: { x: 5, y: 5 } },
       additionalRanges: [],
     });
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
   });
   it("clears the range without losing the active cell", () => {
     canvasCommands.staticGrid.setSelectionRange({
@@ -165,14 +171,14 @@ describe("static-grid commands", () => {
     });
     canvasCommands.staticGrid.clearSelection();
 
-    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid)).toEqual({
       mode: "cell",
       activeCell: { x: 1, y: 1 },
       anchorCell: { x: 1, y: 1 },
       primaryRange: { start: { x: 1, y: 1 }, end: { x: 1, y: 1 } },
       additionalRanges: [],
     });
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
   });
   it("clamps keyboard navigation to slide bounds", () => {
     setCanvasTestState({
@@ -191,8 +197,8 @@ describe("static-grid commands", () => {
     canvasCommands.staticGrid.setActiveCell({ x: 2, y: 1 });
     canvasCommands.staticGrid.moveFocus(1, 1);
 
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 2, y: 1 });
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell).toEqual({ x: 2, y: 1 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
   });
 
   it("uses content bounds for edge, row, and column navigation in freeform", () => {
@@ -203,17 +209,17 @@ describe("static-grid commands", () => {
     canvasCommands.staticGrid.setActiveCell({ x: 1, y: 2 });
 
     canvasCommands.staticGrid.moveFocusToEdge("left");
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: -2, y: 2 });
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell).toEqual({ x: -2, y: 2 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
 
     canvasCommands.staticGrid.selectRow();
-    expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
+    expect(getGridSelectionRanges(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid))).toEqual([
       { start: { x: -2, y: 2 }, end: { x: 5, y: 2 } },
     ]);
 
     canvasCommands.staticGrid.clearSelection();
     canvasCommands.staticGrid.selectColumn();
-    expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
+    expect(getGridSelectionRanges(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid))).toEqual([
       { start: { x: -2, y: -1 }, end: { x: -2, y: 4 } },
     ]);
   });
@@ -227,12 +233,12 @@ describe("static-grid commands", () => {
     canvasCommands.staticGrid.setActiveCell({ x: 0, y: 0 });
 
     canvasCommands.staticGrid.selectAll();
-    expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
+    expect(getGridSelectionRanges(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid))).toEqual([
       { start: { x: 0, y: 0 }, end: { x: 1, y: 0 } },
     ]);
 
     canvasCommands.staticGrid.selectAll();
-    expect(getGridSelectionRanges(useEditorStore.getState().interaction.staticGridSelection)).toEqual([
+    expect(getGridSelectionRanges(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid))).toEqual([
       { start: { x: 0, y: 0 }, end: { x: 5, y: 5 } },
     ]);
   });
@@ -241,9 +247,9 @@ describe("static-grid commands", () => {
     canvasCommands.staticGrid.enterTextEdit({ x: 3, y: 2 });
     canvasCommands.staticGrid.exitTextEdit();
 
-    expect(useEditorStore.getState().interaction.staticGridEditMode).toBe("navigate");
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 3, y: 2 });
+    expect(useEditorStore.getState().interaction.staticGrid.mode).toBe("navigate");
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell).toEqual({ x: 3, y: 2 });
   });
 
   it("jumps to visible content boundaries and extends from the active anchor", () => {
@@ -257,27 +263,28 @@ describe("static-grid commands", () => {
 
     canvasCommands.staticGrid.moveFocusToContentBoundary("right");
     expect(useEditorStore.getState().interaction).toMatchObject({
-      staticGridEditMode: "navigate",
-      textCursor: null,
-      staticGridSelection: {
-        activeCell: { x: 2, y: 1 },
-        anchorCell: { x: 2, y: 1 },
-        primaryRange: { start: { x: 2, y: 1 }, end: { x: 2, y: 1 } },
-        additionalRanges: [],
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          activeCell: { x: 2, y: 1 },
+          anchorCell: { x: 2, y: 1 },
+          primaryRange: { start: { x: 2, y: 1 }, end: { x: 2, y: 1 } },
+          additionalRanges: [],
+        },
       },
     });
 
     canvasCommands.staticGrid.moveFocusToContentBoundary("right", {
       extend: true,
     });
-    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid)).toEqual({
       mode: "range",
       activeCell: { x: 2, y: 1 },
       anchorCell: { x: 2, y: 1 },
       primaryRange: { start: { x: 2, y: 1 }, end: { x: 5, y: 1 } },
       additionalRanges: [],
     });
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
   });
 
   it("uses the static-grid background color for slide background shapes", () => {

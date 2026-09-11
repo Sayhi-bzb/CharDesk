@@ -20,6 +20,7 @@ import { getCellViewportRect as gridCellRect } from "@chardesk/rendering";
 import {
   getStaticGridViewState,
   getGridSelectionRanges,
+  getStaticGridSelection,
 } from "@/domains/selection/public";
 import { classifyShortcutTarget } from "@/shared/utils/dom-focus";
 import { shouldIgnoreCanvasSurfaceGesture } from "./interaction/core/gestureGuards";
@@ -87,9 +88,11 @@ const traceClipboardShortcut = (
     activeElement: document.activeElement?.tagName ?? null,
     canvasOwnsInputFocus,
     interaction: editor.getInteractionState().type,
-    selectionMode: editor.getState().interaction.staticGridSelection.mode,
+    selectionMode: getStaticGridSelection(
+      editor.getState().interaction.staticGrid
+    ).mode,
     selectionRangeCount: getGridSelectionRanges(
-      editor.getState().interaction.staticGridSelection
+      getStaticGridSelection(editor.getState().interaction.staticGrid)
     ).length,
   });
 };
@@ -113,7 +116,9 @@ const traceClipboardAction = (
     activeElement: document.activeElement?.tagName ?? null,
     canvasOwnsInputFocus,
     interaction: editor.getInteractionState().type,
-    selectionMode: editor.getState().interaction.staticGridSelection.mode,
+    selectionMode: getStaticGridSelection(
+      editor.getState().interaction.staticGrid
+    ).mode,
   });
 };
 
@@ -158,7 +163,6 @@ export const useManagedCanvasInput = ({
     selectStaticGridColumn,
     enterStaticGridTextEdit,
     exitStaticGridTextEdit,
-    setTextCursor,
     offset,
     zoom,
     fillSelectionsWithChar,
@@ -166,12 +170,7 @@ export const useManagedCanvasInput = ({
     setCanvasColorPickerTarget,
     setHoveredGrid,
   } = model;
-  const {
-    textCursor,
-    staticGridSelection,
-    staticGridEditMode,
-    canvasColorPickerTarget,
-  } = model.interaction;
+  const { staticGrid, canvasColorPickerTarget } = model.interaction;
   const [managedInputScheduler] = useState(() => new ManagedInputBatchScheduler({
     now: () => performance.now(),
     requestFrame: (callback) => requestAnimationFrame(callback),
@@ -215,12 +214,10 @@ export const useManagedCanvasInput = ({
   const staticGridView = useMemo(
     () =>
       getStaticGridViewState({
-        selection: staticGridSelection,
-        editMode: staticGridEditMode,
-        textCursor,
+        state: staticGrid,
         grid: model.contentReader,
       }),
-    [model.contentReader, staticGridEditMode, staticGridSelection, textCursor]
+    [model.contentReader, staticGrid]
   );
   const staticGridInteraction = staticGridView.interaction;
   const activeTextCursor = staticGridInteraction.kind === "text-edit"
@@ -573,7 +570,6 @@ export const useManagedCanvasInput = ({
     const decision = resolveManagedCanvasKeyIntent(input, {
       mutateEnabled,
       staticGridInteraction: staticGridInteraction.kind,
-      hasTextCursor: !!activeTextCursor,
       hasActiveSelection,
       colorPickerOpen: !!canvasColorPickerTarget,
       pageRows,
@@ -627,8 +623,6 @@ export const useManagedCanvasInput = ({
           setHoveredGrid(null);
         } else if (intent.target === "grid-text-edit") {
           exitStaticGridTextEdit();
-        } else if (intent.target === "text-cursor") {
-          setTextCursor(null);
         } else if (intent.target === "selection") {
           clearSelections();
         }

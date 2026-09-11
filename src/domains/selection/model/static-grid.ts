@@ -1,11 +1,11 @@
-import type { GridCellSource, Point, SelectionArea } from "@/shared/types";
+import type { GridCellSource, SelectionArea } from "@/shared/types";
 import { normalizeCellRangeEndpoints } from "@chardesk/cell-core";
 import { GridManager } from "@/shared/utils/grid";
 import { resolveGridAnchor, resolveGridSlot } from "@/shared/utils/grid-occupancy";
 import { getGridSelectionGeometry, getGridSelectionSpans } from "./grid-selection-geometry";
 import type { GridAddress, GridBounds, GridRange } from "./grid-types";
+import type { StaticGridInputSession } from "./static-grid-input-session";
 
-export type GridEditMode = "navigate" | "text-edit";
 export type { GridAddress, GridBounds, GridRange } from "./grid-types";
 
 type GridEdge = "left" | "right" | "top" | "bottom";
@@ -18,10 +18,15 @@ export interface GridSelectionState {
   additionalRanges: GridRange[];
 }
 
-interface StaticGridState {
-  selection: GridSelectionState;
-  editMode: GridEditMode;
-}
+export type StaticGridState =
+  | Readonly<{
+      mode: "navigate";
+      selection: GridSelectionState;
+    }>
+  | Readonly<{
+      mode: "text-edit";
+      session: StaticGridInputSession;
+    }>;
 
 export type StaticGridTarget = Readonly<{
   ranges: readonly GridRange[];
@@ -267,30 +272,46 @@ export const hasGridRangeSelection = (state: GridSelectionState) => {
   return state.mode === "range";
 };
 
+export const getStaticGridSelection = (
+  state: StaticGridState
+): GridSelectionState => state.mode === "navigate"
+  ? state.selection
+  : createGridSelectionState(state.session.activeCell);
+
+export const getStaticGridCursor = (
+  state: StaticGridState
+): GridAddress | null => state.mode === "text-edit"
+  ? state.session.activeCell
+  : null;
+
+export const getStaticGridInputSession = (
+  state: StaticGridState
+): StaticGridInputSession | null => state.mode === "text-edit"
+  ? state.session
+  : null;
+
 export const getStaticGridViewState = (input: {
-  selection: GridSelectionState;
-  editMode: GridEditMode;
-  textCursor: Point | null;
+  state: StaticGridState;
   grid?: GridCellSource;
 }): StaticGridViewState => {
-  const ranges = getGridSelectionRanges(input.selection);
-  const areas = getStaticGridSelectionAreas(input.selection, input.grid);
-  const isTextEditing = input.editMode === "text-edit";
-  const rawActiveCell = isTextEditing && input.textCursor
-    ? { ...input.textCursor }
-    : { ...input.selection.activeCell };
+  const selection = getStaticGridSelection(input.state);
+  const ranges = getGridSelectionRanges(selection);
+  const areas = getStaticGridSelectionAreas(selection, input.grid);
+  const rawActiveCell = input.state.mode === "text-edit"
+    ? { ...input.state.session.activeCell }
+    : { ...selection.activeCell };
   const activeCell = input.grid
     ? resolveGridAnchor(input.grid, rawActiveCell)
     : rawActiveCell;
 
   const target = { ranges, areas };
-  if (isTextEditing) {
+  if (input.state.mode === "text-edit") {
     return {
       target,
       interaction: { kind: "text-edit", activeCell, cursor: activeCell },
     };
   }
-  if (hasGridRangeSelection(input.selection)) {
+  if (hasGridRangeSelection(selection)) {
     return {
       target,
       interaction: {
@@ -324,8 +345,8 @@ export const createGridSelectionState = (
 export const createStaticGridState = (
   activeCell: GridAddress = createGridAddress()
 ): StaticGridState => ({
+  mode: "navigate",
   selection: createGridSelectionState(activeCell),
-  editMode: "navigate",
 });
 
 export const collapseGridSelectionTo = (

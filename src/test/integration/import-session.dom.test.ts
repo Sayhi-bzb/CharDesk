@@ -9,6 +9,7 @@ import {
 } from "@/domains/canvas/testing";
 import { DEFAULT_SESSION_ID } from "@/domains/canvas/state/helpers/storeUtils";
 import { createDocumentInteractionResetPatch } from "@/domains/canvas/state/transitions/editorTransitions";
+import { createStaticGridInputSession } from "@/domains/selection/public";
 
 describe("importCanvasSession", () => {
   const initialState = useEditorStore.getState();
@@ -51,8 +52,10 @@ describe("importCanvasSession", () => {
 
   it("clears document interaction when importing a session", async () => {
     setCanvasTestState({
-      textCursor: { x: 3, y: 4 },
-      staticGridEditMode: "text-edit",
+      staticGrid: {
+        mode: "text-edit",
+        session: createStaticGridInputSession({ origin: { x: 3, y: 4 } }),
+      },
       hoveredGrid: { x: 7, y: 8 },
       scratchLayer: new Map([
         ["0,0", { char: "X", color: "#fff" }],

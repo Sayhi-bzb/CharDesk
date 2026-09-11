@@ -1,9 +1,4 @@
-import {
-  afterEach,
-  describe,
-  expect,
-  it,
-} from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import {
   applyFreeformSnapshotToYMaps,
@@ -13,6 +8,7 @@ import {
 } from "@/domains/canvas/testing";
 import {
   createGridSelectionState,
+  getStaticGridSelection,
   selectGridRange,
 } from "@/domains/selection/public";
 import type { Point } from "@/shared/types";
@@ -21,11 +17,7 @@ import { DEFAULT_SESSION_ID } from "@/domains/canvas/state/helpers/storeUtils";
 const initialState = useEditorStore.getState();
 
 const createRangeSelection = (start: Point, end: Point) =>
-  selectGridRange(
-    createGridSelectionState(start),
-    { start, end },
-    { activeCell: "start" }
-  );
+  selectGridRange(createGridSelectionState(start), { start, end }, { activeCell: "start" });
 
 const resetStore = () => {
   useEditorStore.setState(
@@ -54,21 +46,22 @@ describe("selection commands setTextAttributes", () => {
       end: { x: 2, y: 2 },
     });
 
-    expect(useEditorStore.getState().interaction.staticGridSelection).toEqual({
+    expect(getStaticGridSelection(useEditorStore.getState().interaction.staticGrid)).toEqual({
       mode: "range",
       activeCell: { x: 4, y: 3 },
       anchorCell: { x: 4, y: 3 },
       primaryRange: { start: { x: 2, y: 2 }, end: { x: 4, y: 3 } },
-      additionalRanges: [
-        { start: { x: 1, y: 1 }, end: { x: 1, y: 1 } },
-      ],
+      additionalRanges: [{ start: { x: 1, y: 1 }, end: { x: 1, y: 1 } }],
     });
   });
 
   it("adds attributes to existing selected cells only", () => {
     setCanvasTestState({
       canvasMode: "freeform",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 2, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 2, y: 0 }),
+      },
     });
     applyFreeformSnapshotToYMaps([
       ["0,0", { char: "A", color: "#ffffff" }],
@@ -97,7 +90,10 @@ describe("selection commands setTextAttributes", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#2563eb",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
+      },
     });
     applyFreeformSnapshotToYMaps([]);
 
@@ -115,7 +111,10 @@ describe("selection commands setTextAttributes", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#ef4444",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      },
     });
     applyFreeformSnapshotToYMaps([]);
 
@@ -132,7 +131,10 @@ describe("selection commands setTextAttributes", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#22c55e",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      },
     });
     applyFreeformSnapshotToYMaps([]);
 
@@ -148,7 +150,10 @@ describe("selection commands setTextAttributes", () => {
   it("does not materialize blank selected cells for bold or italic only", () => {
     setCanvasTestState({
       canvasMode: "freeform",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 1, y: 0 }),
+      },
     });
     applyFreeformSnapshotToYMaps([]);
 
@@ -160,7 +165,10 @@ describe("selection commands setTextAttributes", () => {
   it("removes only toggled attributes and preserves other styling", () => {
     setCanvasTestState({
       canvasMode: "freeform",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      },
     });
     applyFreeformSnapshotToYMaps([
       [
@@ -187,7 +195,10 @@ describe("selection commands setTextAttributes", () => {
   it("removes attrs when no text attributes remain", () => {
     setCanvasTestState({
       canvasMode: "freeform",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      },
     });
     applyFreeformSnapshotToYMaps([
       ["0,0", { char: "A", color: "#ffffff", attrs: { underline: true } }],
@@ -204,7 +215,10 @@ describe("selection commands setTextAttributes", () => {
   it("deletes materialized blank cells when underline is removed", () => {
     setCanvasTestState({
       canvasMode: "freeform",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      },
     });
     applyFreeformSnapshotToYMaps([
       ["0,0", { char: " ", color: "#ffffff", attrs: { underline: true } }],
@@ -214,9 +228,7 @@ describe("selection commands setTextAttributes", () => {
 
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
   });
-
 });
-
 
 describe("selection commands static-grid behavior", () => {
   afterEach(() => {
@@ -227,12 +239,15 @@ describe("selection commands static-grid behavior", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#22c55e",
-      staticGridSelection: {
-        mode: "range",
-        activeCell: { x: 2, y: 0 },
-        anchorCell: { x: 0, y: 0 },
-        primaryRange: { start: { x: 0, y: 0 }, end: { x: 2, y: 0 } },
-        additionalRanges: [],
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "range",
+          activeCell: { x: 2, y: 0 },
+          anchorCell: { x: 0, y: 0 },
+          primaryRange: { start: { x: 0, y: 0 }, end: { x: 2, y: 0 } },
+          additionalRanges: [],
+        },
       },
     });
     applyFreeformSnapshotToYMaps([]);
@@ -252,12 +267,15 @@ describe("selection commands static-grid behavior", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#f8fafc",
-      staticGridSelection: {
-        mode: "range",
-        activeCell: { x: 2, y: 0 },
-        anchorCell: { x: 0, y: 0 },
-        primaryRange: { start: { x: 0, y: 0 }, end: { x: 2, y: 0 } },
-        additionalRanges: [],
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "range",
+          activeCell: { x: 2, y: 0 },
+          anchorCell: { x: 0, y: 0 },
+          primaryRange: { start: { x: 0, y: 0 }, end: { x: 2, y: 0 } },
+          additionalRanges: [],
+        },
       },
     });
     applyFreeformSnapshotToYMaps([
@@ -275,7 +293,6 @@ describe("selection commands static-grid behavior", () => {
       ])
     );
   });
-
 });
 describe("selection commands setBackgroundColor", () => {
   afterEach(() => {
@@ -286,7 +303,10 @@ describe("selection commands setBackgroundColor", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       brushColor: "#f8fafc",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 2, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 2, y: 0 }),
+      },
     });
     applyFreeformSnapshotToYMaps([
       ["0,0", { char: "A", color: "#ffffff" }],
@@ -315,7 +335,10 @@ describe("selection commands setBackgroundColor", () => {
   it("clears background color while preserving foreground and attributes", () => {
     setCanvasTestState({
       canvasMode: "freeform",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      },
     });
     applyFreeformSnapshotToYMaps([
       [
@@ -341,33 +364,32 @@ describe("selection commands setBackgroundColor", () => {
   it("clears background color without materializing empty selected positions", () => {
     setCanvasTestState({
       canvasMode: "freeform",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 2, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 2, y: 0 }),
+      },
     });
-    applyFreeformSnapshotToYMaps([
-      ["1,0", { char: "A", color: "#ffffff", bgColor: "#2563eb" }],
-    ]);
+    applyFreeformSnapshotToYMaps([["1,0", { char: "A", color: "#ffffff", bgColor: "#2563eb" }]]);
 
     canvasCommands.selection.setBackgroundColor(null);
 
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
-      new Map([
-        ["1,0", { char: "A", color: "#ffffff" }],
-      ])
+      new Map([["1,0", { char: "A", color: "#ffffff" }]])
     );
   });
 
   it("deletes materialized blank cells when background color is cleared", () => {
     setCanvasTestState({
       canvasMode: "freeform",
-      staticGridSelection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      staticGrid: {
+        mode: "navigate",
+        selection: createRangeSelection({ x: 0, y: 0 }, { x: 0, y: 0 }),
+      },
     });
-    applyFreeformSnapshotToYMaps([
-      ["0,0", { char: " ", color: "#ffffff", bgColor: "#2563eb" }],
-    ]);
+    applyFreeformSnapshotToYMaps([["0,0", { char: " ", color: "#ffffff", bgColor: "#2563eb" }]]);
 
     canvasCommands.selection.setBackgroundColor(null);
 
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
   });
-
 });

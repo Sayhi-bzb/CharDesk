@@ -10,7 +10,10 @@ import {
   stripCollaborationUrl,
   useCollaborationRuntime,
 } from "@/domains/collaboration/public";
-import { getStaticGridSelectionAreas } from "@/domains/selection/public";
+import {
+  getStaticGridSelection,
+  getStaticGridSelectionAreas,
+} from "@/domains/selection/public";
 
 export const useActiveCollaboration = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const canvas = useCanvasRuntime();
@@ -39,7 +42,7 @@ export const useActiveCollaboration = ({ enabled = true }: { enabled?: boolean }
       ?.collaborationRole ?? "host"
   );
   const canvasMode = useCanvasState((state) => state.canvasMode);
-  const staticGridSelection = useCanvasState((state) => state.interaction.staticGridSelection);
+  const staticGrid = useCanvasState((state) => state.interaction.staticGrid);
   const contentSurface = useCanvasState((state) => state.contentSurface);
   const selection = useMemo(
     () => {
@@ -47,14 +50,14 @@ export const useActiveCollaboration = ({ enabled = true }: { enabled?: boolean }
         return {
           mode: "freeform" as const,
           areas: getStaticGridSelectionAreas(
-            staticGridSelection,
+            getStaticGridSelection(staticGrid),
             contentSurface.reader
           ),
         };
       }
       return undefined;
     },
-    [canvasMode, contentSurface, staticGridSelection]
+    [canvasMode, contentSurface, staticGrid]
   );
   const tool = useCanvasState((state) => state.tool);
   const joinCollaboration = canvas.commands.sessions.joinCollaboration;

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { defaultCanvasDocuments, setCanvasTestState, useEditorStore } from "@/domains/canvas/testing";
+import { createStaticGridInputSession } from "@/domains/selection/public";
 import { GridManager } from "@/shared/utils/grid";
 import { createDocumentInteractionResetPatch } from "./transitions/editorTransitions";
 
@@ -54,8 +55,10 @@ describe("slideSlice", () => {
   it("clears document interaction for every active page transition", () => {
     const markDirty = () =>
       setCanvasTestState({
-        textCursor: { x: 1, y: 1 },
-        staticGridEditMode: "text-edit",
+        staticGrid: {
+          mode: "text-edit",
+          session: createStaticGridInputSession({ origin: { x: 1, y: 1 } }),
+        },
         hoveredGrid: { x: 3, y: 3 },
         scratchLayer: new Map([
           ["0,0", { char: "X", color: "#fff" }],

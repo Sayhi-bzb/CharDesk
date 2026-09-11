@@ -71,7 +71,6 @@ const CANVAS_COMMAND_OWNED_MUTATIONS = new Set([
   "setExportShowGrid",
   "setCanvasColorPickerTarget",
   "setHoveredGrid",
-  "setTextCursor",
   "clearSelections",
   "clearInteractionState",
   "setStaticGridActiveCell",

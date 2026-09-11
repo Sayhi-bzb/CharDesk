@@ -6,7 +6,10 @@ import {
   useCanvasRuntime,
 } from "@/domains/canvas/public";
 import { isStaticGridMode } from "@/domains/sessions/public";
-import { hasGridRangeSelection } from "@/domains/selection/public";
+import {
+  getStaticGridSelection,
+  hasGridRangeSelection,
+} from "@/domains/selection/public";
 import {
   useEditor,
   type CanvasInteractionState,
@@ -100,21 +103,22 @@ export const useCanvasInteraction = (
     slideDeck,
     addScratchPoints,
     commitScratch,
-    setTextCursor,
     setStaticGridActiveCell,
     enterStaticGridTextEdit,
+    exitStaticGridTextEdit,
     setStaticGridSelectionRange,
     appendStaticGridSelectionRange,
     clearSelections,
     clearInteractionState,
     erasePoints,
     contentReader,
-    staticGridSelection,
+    staticGrid,
     moveStaticGridSelection,
     updateScratchForShape,
     setHoveredGrid,
     fillArea,
   } = store;
+  const staticGridSelection = getStaticGridSelection(staticGrid);
   const colorSourceContextKey = `${store.activeCanvasId}:${canvasMode}:${tool}`;
   const [pendingColorSourceChoice, setPendingColorSourceChoice] = useState<{
     contextKey: string;
@@ -188,7 +192,7 @@ export const useCanvasInteraction = (
     setStaticGridSelectionStart: (point) =>
       setStaticGridSelectionRange({ start: point, end: point }),
     setSelectionPreview: (selection) => selectionPreview.set(selection),
-    clearTextCursor: () => setTextCursor(null),
+    clearTextCursor: exitStaticGridTextEdit,
   });
   const drawingShapeDragStartExecutor = createDrawingShapeDragStartExecutor({
     setAnchorGrid: (point) => interactionCapture.setSelectionAnchor(point),

@@ -7,7 +7,6 @@ type Direction = -1 | 0 | 1;
 export type ManagedCanvasKeyboardContext = Readonly<{
   mutateEnabled: boolean;
   staticGridInteraction: StaticGridInteraction["kind"] | null;
-  hasTextCursor: boolean;
   hasActiveSelection: boolean;
   colorPickerOpen: boolean;
   pageRows: number;
@@ -31,7 +30,6 @@ export type ManagedCanvasKeyIntent =
       target:
         | "color-picker"
         | "grid-text-edit"
-        | "text-cursor"
         | "selection"
         | "none";
     }>
@@ -84,7 +82,7 @@ export const resolveManagedCanvasKeyIntent = (
   const flushPendingText = mod
     || input.modifiers.alt
     || input.key.length !== 1
-    || (staticGridRange && !context.hasTextCursor);
+    || staticGridRange;
   const decide = (
     intent: ManagedCanvasKeyIntent | null,
     preventDefault: boolean
@@ -96,7 +94,7 @@ export const resolveManagedCanvasKeyIntent = (
   ) return decide(null, true);
 
   if (
-    (staticGridMode || context.hasTextCursor || context.hasActiveSelection)
+    (staticGridMode || context.hasActiveSelection)
     && (input.key === "Delete" || input.key === "Backspace")
   ) {
     return decide({
@@ -180,7 +178,7 @@ export const resolveManagedCanvasKeyIntent = (
         extend: input.modifiers.shift,
       }, true);
     }
-    if (context.hasTextCursor) {
+    if (context.staticGridInteraction === "text-edit") {
       return decide({ type: "move-text-cursor", ...direction }, true);
     }
     return decide(null, false);
@@ -190,14 +188,12 @@ export const resolveManagedCanvasKeyIntent = (
       ? "color-picker"
       : context.staticGridInteraction === "text-edit"
         ? "grid-text-edit"
-        : context.hasTextCursor
-          ? "text-cursor"
-          : context.hasActiveSelection
-            ? "selection"
-            : "none";
+        : context.hasActiveSelection
+          ? "selection"
+          : "none";
     return decide({ type: "escape", target }, true);
   }
-  if (staticGridRange && !context.hasTextCursor && context.mutateEnabled) {
+  if (staticGridRange && context.mutateEnabled) {
     const char = resolveFillHotkeyChar(input);
     if (char) return decide({ type: "fill-selection", char }, true);
   }

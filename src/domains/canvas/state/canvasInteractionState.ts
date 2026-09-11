@@ -1,7 +1,5 @@
 import type {
-  GridEditMode,
-  GridSelectionState,
-  StaticGridInputSession,
+  StaticGridState,
 } from "@/domains/selection/public";
 import { createStaticGridState } from "@/domains/selection/public";
 import type { GridMap, Point } from "@/shared/types";
@@ -11,10 +9,7 @@ export type CanvasColorPickerTarget = "auto" | "auto-to-background";
 
 export type CanvasInteractionSnapshot = Readonly<{
   address: CanvasDocumentAddress;
-  textCursor: Point | null;
-  staticGridSelection: GridSelectionState;
-  staticGridEditMode: GridEditMode;
-  staticGridInputSession: StaticGridInputSession | null;
+  staticGrid: StaticGridState;
   hoveredGrid: Point | null;
   scratchLayer: GridMap | null;
   canvasColorPickerTarget: CanvasColorPickerTarget | null;
@@ -30,10 +25,7 @@ export const createEmptyCanvasInteraction = (
   const staticGrid = createStaticGridState();
   return {
     address: { ...address },
-    textCursor: null,
-    staticGridSelection: staticGrid.selection,
-    staticGridEditMode: staticGrid.editMode,
-    staticGridInputSession: null,
+    staticGrid,
     hoveredGrid: null,
     scratchLayer: null,
     canvasColorPickerTarget: null,

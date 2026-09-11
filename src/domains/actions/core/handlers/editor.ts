@@ -12,6 +12,8 @@ import type {
 import {
   forEachGridSelectionSpan,
   getGridSelectionRanges,
+  getStaticGridCursor,
+  getStaticGridSelection,
   getStaticGridSelectionAreas,
   hasGridRangeSelection,
 } from "@/domains/selection/public";
@@ -47,15 +49,15 @@ const FORMAT_ATTRIBUTES: Record<FormatActionId, TextAttributeName> = {
 const canCopyOrCut = (state: CanvasState): boolean => {
   return hasClipboardSource(
     getStaticGridSelectionAreas(
-      state.interaction.staticGridSelection,
+      getStaticGridSelection(state.interaction.staticGrid),
       state.contentSurface.reader
     ),
-    state.interaction.textCursor
+    getStaticGridCursor(state.interaction.staticGrid)
   );
 };
 
 const hasStaticGridRangeSelection = (state: CanvasState) =>
-  hasGridRangeSelection(state.interaction.staticGridSelection);
+  hasGridRangeSelection(getStaticGridSelection(state.interaction.staticGrid));
 
 const getSelectedTextAttributeValues = (
   state: CanvasState,
@@ -63,7 +65,7 @@ const getSelectedTextAttributeValues = (
 ): boolean[] => {
   const values: boolean[] = [];
   forEachGridSelectionSpan(
-    getGridSelectionRanges(state.interaction.staticGridSelection),
+    getGridSelectionRanges(getStaticGridSelection(state.interaction.staticGrid)),
     ({ y, minX, maxX }) => {
       for (let x = minX; x <= maxX; x++) {
         const cell = state.contentSurface.reader.get({ x, y });
@@ -207,7 +209,7 @@ export const editorHandlers: Record<EditorActionId, ActionHandler<unknown>> = {
     if (!fillChar) {
       return actionFailed("no-fill-char");
     }
-    const hasTextCursor = context.state.interaction.textCursor !== null;
+    const hasTextCursor = context.state.interaction.staticGrid.mode === "text-edit";
     if (!hasStaticGridRangeSelection(context.state) || hasTextCursor) {
       return actionFailed("no-selection");
     }
@@ -262,5 +264,5 @@ export const editorCheckers: Partial<Record<EditorActionId, (state: CanvasState)
   "format-strike": canFormatTextSelection,
   "format-inverse": canFormatTextSelection,
   "fill-selection-char": (state) =>
-    hasStaticGridRangeSelection(state) && state.interaction.textCursor === null,
+    hasStaticGridRangeSelection(state) && state.interaction.staticGrid.mode === "navigate",
 };

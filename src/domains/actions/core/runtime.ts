@@ -110,7 +110,7 @@ export const createEditorCommandsExtension = (
         (!CANVAS_FOCUS_COMMANDS.has(command.id) ||
           targetKind === 'managed-canvas' ||
           targetKind === 'canvas-surface') &&
-        (command.id !== 'delete-selection' || !state.interaction.textCursor),
+        (command.id !== 'delete-selection' || state.interaction.staticGrid.mode === 'navigate'),
     })),
   };
 };

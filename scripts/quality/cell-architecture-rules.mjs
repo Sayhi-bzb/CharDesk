@@ -27,6 +27,14 @@ const retiredDeletionContracts = [
   "resolveBackspaceAnchor",
   'type: "delete-text"',
 ];
+const retiredStaticGridStateContracts = [
+  "interaction.textCursor",
+  "interaction.staticGridSelection",
+  "interaction.staticGridEditMode",
+  "interaction.staticGridInputSession",
+  "setTextCursor",
+  "GridEditMode",
+];
 const forbiddenCoreDependency = (dependency) => dependency === "react"
   || dependency === "react-dom"
   || dependency === "canvas"
@@ -146,6 +154,9 @@ export function checkCellArchitecture(content, file) {
   }
   for (const contract of retiredDeletionContracts) {
     if (content.includes(contract)) report(`Retired split deletion contract: ${contract}`);
+  }
+  for (const contract of retiredStaticGridStateContracts) {
+    if (content.includes(contract)) report(`Retired split static-grid state contract: ${contract}`);
   }
   return violations;
 }

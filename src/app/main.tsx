@@ -119,22 +119,22 @@ if (canvasStressParams.has("canvas-stress")) {
         return id;
       },
       generateHistory: (operationCount: number) => {
-        host.canvas.commands.interaction.setTextCursor({ x: 0, y: 0 });
+        host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
         for (let index = 0; index < operationCount; index += 1) {
           host.canvas.commands.text.write("x");
         }
       },
-      setTextCursor: (point: { x: number; y: number }) =>
+      enterTextEdit: (point: { x: number; y: number }) =>
         (window as Window & {
-          __chardeskCanvasManagedInputSetCursor?: (
+          __chardeskCanvasManagedInputEnterTextEdit?: (
             point: { x: number; y: number }
           ) => void;
-        }).__chardeskCanvasManagedInputSetCursor?.(point),
+        }).__chardeskCanvasManagedInputEnterTextEdit?.(point),
       managedInputCursor: () => (window as Window & {
         __chardeskCanvasManagedInputCursor?: () => { x: number; y: number } | null;
       }).__chardeskCanvasManagedInputCursor?.() ?? null,
       writeText: (value: string, start = { x: 0, y: 0 }) => {
-        host.canvas.commands.interaction.setTextCursor(start);
+        host.canvas.commands.staticGrid.enterTextEdit(start);
         const startedAt = performance.now();
         host.canvas.commands.text.write(value);
         return performance.now() - startedAt;

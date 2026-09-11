@@ -394,18 +394,10 @@ function AppContent() {
   const splitAvailable = viewportFrame.width === 0 || viewportFrame.width >= 640;
   const renderSplit = workspace.splitEnabled && splitAvailable;
   const hostedSelectorViewId: CanvasViewId = renderSplit ? 'primary' : activeView.viewId;
-  const {
-    tool,
-    textCursor,
-    staticGridSelection,
-    staticGridEditMode,
-    contentSurface,
-  } = useCanvasState(
+  const { tool, staticGrid, contentSurface } = useCanvasState(
     useShallow((state) => ({
       tool: state.tool,
-      textCursor: state.interaction.textCursor,
-      staticGridSelection: state.interaction.staticGridSelection,
-      staticGridEditMode: state.interaction.staticGridEditMode,
+      staticGrid: state.interaction.staticGrid,
       contentSurface: state.contentSurface,
     }))
   );
@@ -418,25 +410,19 @@ function AppContent() {
     [editor]
   );
   const exitStaticGridTextEdit = canvas.commands.staticGrid.exitTextEdit;
-  const setTextCursor = canvas.commands.interaction.setTextCursor;
   const staticGridView = useMemo(
     () =>
       getStaticGridViewState({
-        selection: staticGridSelection,
-        editMode: staticGridEditMode,
-        textCursor,
+        state: staticGrid,
         grid: contentSurface.reader,
       }),
-    [contentSurface, staticGridEditMode, staticGridSelection, textCursor]
+    [contentSurface, staticGrid]
   );
   const isCanvasTextEditing = staticGridView.interaction.kind === "text-edit";
-  const exitCanvasTextEditing = useCallback(() => {
-    exitStaticGridTextEdit();
-    setTextCursor(null);
-  }, [
-    exitStaticGridTextEdit,
-    setTextCursor,
-  ]);
+  const exitCanvasTextEditing = useCallback(
+    () => exitStaticGridTextEdit(),
+    [exitStaticGridTextEdit]
+  );
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useLocalStorageState<boolean>(
     'ui-right-panel-status',
     { defaultValue: true }

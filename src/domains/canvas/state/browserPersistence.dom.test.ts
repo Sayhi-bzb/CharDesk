@@ -140,7 +140,7 @@ describe("browser canvas persistence", () => {
     const first = createRuntime(storage);
     runtimes.push(first);
     await first.ready;
-    first.commands.interaction.setTextCursor({ x: 1, y: 0 });
+    first.commands.staticGrid.enterTextEdit({ x: 1, y: 0 });
     first.commands.text.write("B");
     await first.retryPersistence();
     first.dispose();
@@ -548,7 +548,7 @@ describe("browser canvas persistence", () => {
     await first.ready;
     first.commands.sessions.create("freeform");
     const deletedId = first.getState().activeCanvasId;
-    first.commands.interaction.setTextCursor({ x: 2, y: 1 });
+    first.commands.staticGrid.enterTextEdit({ x: 2, y: 1 });
     first.commands.text.write("D");
     await first.retryPersistence();
 
@@ -727,7 +727,7 @@ describe("browser canvas persistence", () => {
     first.commands.slides.activate("slide-b");
     expect(first.getState().slideDeck?.activeSlideId).toBe("slide-b");
     expect(first.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("Z");
-    first.commands.interaction.setTextCursor({ x: 1, y: 0 });
+    first.commands.staticGrid.enterTextEdit({ x: 1, y: 0 });
     first.commands.text.write("Y");
     expect(first.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("Z");
     const staleDocument = first.documents.getCollaborationDocument(SLIDE_SESSION_ID);

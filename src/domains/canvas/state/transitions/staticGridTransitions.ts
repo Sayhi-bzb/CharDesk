@@ -6,6 +6,7 @@ import {
   getEffectiveGridBounds,
   getGridSelectionExtent,
   getGridSelectionRanges,
+  getStaticGridSelection,
   gridRangesEqual,
   moveGridAddress,
   moveGridAddressToContentBoundary,
@@ -49,17 +50,14 @@ const createInputSession = (state: StaticGridState, address: GridAddress) =>
 
 const createNavigationPatch = (
   state: StaticGridState,
-  staticGridSelection: GridSelectionState
+  selection: GridSelectionState
 ): InteractionPatch =>
   createCanvasInteractionPatch(state.interaction, {
-    staticGridSelection,
-    staticGridEditMode: "navigate",
-    staticGridInputSession: null,
-    textCursor: null,
+    staticGrid: { mode: "navigate", selection },
   });
 
 const getGridBounds = (state: StaticGridState) => {
-  const current = state.interaction.staticGridSelection;
+  const current = getStaticGridSelection(state.interaction.staticGrid);
   return getEffectiveGridBounds({
     grid: state.contentSurface.reader,
     activeCell: current.activeCell,
@@ -75,7 +73,10 @@ export const createStaticGridActiveCellPatch = (
   const activeCell = resolveStaticGridAddress(state, address);
   return createNavigationPatch(
     state,
-    collapseGridSelectionTo(state.interaction.staticGridSelection, activeCell)
+    collapseGridSelectionTo(
+      getStaticGridSelection(state.interaction.staticGrid),
+      activeCell
+    )
   );
 };
 
@@ -89,7 +90,7 @@ export const createStaticGridSelectionRangePatch = (
   return createNavigationPatch(
     state,
     selectGridRange(
-      state.interaction.staticGridSelection,
+      getStaticGridSelection(state.interaction.staticGrid),
       { start, end },
       { append, activeCell: "start" }
     )
@@ -102,7 +103,7 @@ export const createMovedStaticGridFocusPatch = (
   dy: number,
   options?: MoveOptions
 ): InteractionPatch => {
-  const current = state.interaction.staticGridSelection;
+  const current = getStaticGridSelection(state.interaction.staticGrid);
   const focusCell = options?.extend
     ? getGridSelectionExtent(current)
     : current.activeCell;
@@ -112,24 +113,19 @@ export const createMovedStaticGridFocusPatch = (
     state,
     moveGridAddress(focusCell, visualDx, dy)
   );
-  const staticGridSelection = options?.extend
+  const selection = options?.extend
     ? extendGridSelectionTo(current, nextCell)
     : collapseGridSelectionTo(current, nextCell);
 
-  return createCanvasInteractionPatch(state.interaction, {
-    staticGridSelection,
-    staticGridEditMode: options?.extend
-      ? "navigate"
-      : state.interaction.staticGridEditMode,
-    staticGridInputSession:
-      !options?.extend && state.interaction.staticGridEditMode === "text-edit"
-        ? createInputSession(state, nextCell)
-        : null,
-    textCursor:
-      !options?.extend && state.interaction.staticGridEditMode === "text-edit"
-        ? nextCell
-        : null,
-  });
+  if (!options?.extend && state.interaction.staticGrid.mode === "text-edit") {
+    return createCanvasInteractionPatch(state.interaction, {
+      staticGrid: {
+        mode: "text-edit",
+        session: createInputSession(state, nextCell),
+      },
+    });
+  }
+  return createNavigationPatch(state, selection);
 };
 
 export const createStaticGridEdgeFocusPatch = (
@@ -137,7 +133,7 @@ export const createStaticGridEdgeFocusPatch = (
   edge: GridCornerOrEdge,
   options?: MoveOptions
 ): InteractionPatch => {
-  const current = state.interaction.staticGridSelection;
+  const current = getStaticGridSelection(state.interaction.staticGrid);
   const bounds = getGridBounds(state);
   const focusCell = options?.extend
     ? getGridSelectionExtent(current)
@@ -162,7 +158,7 @@ export const createStaticGridContentBoundaryFocusPatch = (
   edge: GridEdge,
   options?: MoveOptions
 ): InteractionPatch => {
-  const current = state.interaction.staticGridSelection;
+  const current = getStaticGridSelection(state.interaction.staticGrid);
   const focusCell = options?.extend
     ? getGridSelectionExtent(current)
     : current.activeCell;
@@ -184,7 +180,7 @@ export const createStaticGridContentBoundaryFocusPatch = (
 export const createStaticGridSelectAllPatch = (
   state: StaticGridState
 ): InteractionPatch => {
-  const current = state.interaction.staticGridSelection;
+  const current = getStaticGridSelection(state.interaction.staticGrid);
   const connected = getConnectedGridRange(
     state.contentSurface.reader,
     current.activeCell
@@ -202,7 +198,10 @@ export const createStaticGridRowSelectionPatch = (
 ): InteractionPatch =>
   createNavigationPatch(
     state,
-    selectGridRow(state.interaction.staticGridSelection, getGridBounds(state))
+    selectGridRow(
+      getStaticGridSelection(state.interaction.staticGrid),
+      getGridBounds(state)
+    )
   );
 
 export const createStaticGridColumnSelectionPatch = (
@@ -210,23 +209,26 @@ export const createStaticGridColumnSelectionPatch = (
 ): InteractionPatch =>
   createNavigationPatch(
     state,
-    selectGridColumn(state.interaction.staticGridSelection, getGridBounds(state))
+    selectGridColumn(
+      getStaticGridSelection(state.interaction.staticGrid),
+      getGridBounds(state)
+    )
   );
 
 export const createStaticGridTextEditPatch = (
   state: StaticGridState,
   address?: GridAddress
 ): InteractionPatch => {
-  const current = state.interaction.staticGridSelection;
+  const current = getStaticGridSelection(state.interaction.staticGrid);
   const activeCell = resolveStaticGridAddress(
     state,
     address ?? current.activeCell
   );
   return createCanvasInteractionPatch(state.interaction, {
-    staticGridSelection: collapseGridSelectionTo(current, activeCell),
-    staticGridEditMode: "text-edit",
-    staticGridInputSession: createInputSession(state, activeCell),
-    textCursor: activeCell,
+    staticGrid: {
+      mode: "text-edit",
+      session: createInputSession(state, activeCell),
+    },
   });
 };
 
@@ -234,13 +236,13 @@ export const createStaticGridTextEditExitPatch = (
   state: StaticGridState
 ): InteractionPatch => createNavigationPatch(
   state,
-  state.interaction.staticGridSelection
+  getStaticGridSelection(state.interaction.staticGrid)
 );
 
 export const createClearedStaticGridSelectionPatch = (
   state: StaticGridState
 ): InteractionPatch => {
-  const current = state.interaction.staticGridSelection;
+  const current = getStaticGridSelection(state.interaction.staticGrid);
   return createNavigationPatch(
     state,
     collapseGridSelectionTo(current, current.activeCell)

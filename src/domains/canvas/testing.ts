@@ -57,20 +57,14 @@ export const setCanvasTestState = (patch: CanvasTestStatePatch) => {
     interaction,
     offset,
     zoom,
-    textCursor,
-    staticGridSelection,
-    staticGridEditMode,
-    staticGridInputSession,
+    staticGrid,
     hoveredGrid,
     scratchLayer,
     canvasColorPickerTarget,
     ...statePatch
   } = patch;
   const interactionUpdate: CanvasInteractionUpdate = {
-    ...(textCursor !== undefined ? { textCursor } : {}),
-    ...(staticGridSelection !== undefined ? { staticGridSelection } : {}),
-    ...(staticGridEditMode !== undefined ? { staticGridEditMode } : {}),
-    ...(staticGridInputSession !== undefined ? { staticGridInputSession } : {}),
+    ...(staticGrid !== undefined ? { staticGrid } : {}),
     ...(hoveredGrid !== undefined ? { hoveredGrid } : {}),
     ...(scratchLayer !== undefined ? { scratchLayer } : {}),
     ...(canvasColorPickerTarget !== undefined ? { canvasColorPickerTarget } : {}),

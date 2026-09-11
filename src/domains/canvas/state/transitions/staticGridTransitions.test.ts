@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { TestCanvasContentSurface } from "@/domains/canvas/testing";
+import {
+  getStaticGridCursor,
+  getStaticGridSelection,
+} from "@/domains/selection/public";
 import { createEmptyCanvasInteraction } from "../canvasInteractionState";
 import {
   createMovedStaticGridFocusPatch,
@@ -32,9 +36,9 @@ describe("static-grid transitions", () => {
     );
 
     expect(state.interaction).toBe(initialInteraction);
-    expect(state.interaction.staticGridSelection.activeCell).toEqual({ x: 0, y: 0 });
-    expect(activePatch.interaction.staticGridSelection.activeCell).toEqual({ x: 2, y: 1 });
-    expect(movedPatch.interaction.staticGridSelection.activeCell).toEqual({ x: 4, y: 1 });
-    expect(movedPatch.interaction.textCursor).toBeNull();
+    expect(getStaticGridSelection(state.interaction.staticGrid).activeCell).toEqual({ x: 0, y: 0 });
+    expect(getStaticGridSelection(activePatch.interaction.staticGrid).activeCell).toEqual({ x: 2, y: 1 });
+    expect(getStaticGridSelection(movedPatch.interaction.staticGrid).activeCell).toEqual({ x: 4, y: 1 });
+    expect(getStaticGridCursor(movedPatch.interaction.staticGrid)).toBeNull();
   });
 });

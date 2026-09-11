@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { DEFAULT_TEXT_RENDER_PROFILE } from "@/domains/document/public";
 import { gridEntriesToCellPlaneOperation } from "@/domains/canvas/public";
+import { getStaticGridCursor } from "@/domains/selection/public";
 import { createCanvasVisualThemeFixture } from "@/shared/canvas-appearance/test-theme";
 import {
   createApplicationEditorHost,
@@ -37,7 +38,7 @@ describe("ApplicationEditorHost", () => {
   it("routes clipboard text through the host rendering profile before Canvas mutation", async () => {
     const host = createHost();
     host.canvas.commands.grid.replace([]);
-    host.canvas.commands.interaction.setTextCursor({ x: 0, y: 0 });
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
     host.textRendering.setProfile({
       ...DEFAULT_TEXT_RENDER_PROFILE,
       mode: "markdown",
@@ -62,7 +63,7 @@ describe("ApplicationEditorHost", () => {
   it("persists external inline-code rendering into GridMap cells", async () => {
     const host = createHost();
     host.canvas.commands.grid.replace([]);
-    host.canvas.commands.interaction.setTextCursor({ x: 0, y: 0 });
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
     host.textRendering.setProfile({
       ...DEFAULT_TEXT_RENDER_PROFILE,
       mode: "auto",
@@ -84,7 +85,7 @@ describe("ApplicationEditorHost", () => {
   it("pastes Markdown thematic breaks without centering prose", async () => {
     const host = createHost();
     host.canvas.commands.grid.replace([]);
-    host.canvas.commands.interaction.setTextCursor({ x: 0, y: 0 });
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
     const source = [
       "也就是说，**不需要某一天突然出现“自我修改源码”的 AGI。**",
       "",
@@ -129,7 +130,7 @@ describe("ApplicationEditorHost", () => {
         },
       },
     }));
-    host.canvas.commands.interaction.setTextCursor({ x: 0, y: 0 });
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
 
     await host.canvas.commands.selection.paste({
       eventDataTransfer: {
@@ -146,7 +147,7 @@ describe("ApplicationEditorHost", () => {
     host.canvasAppearance.sync("light", createCanvasVisualThemeFixture());
     expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.color)
       .toBe("#f0f6fc");
-    host.canvas.commands.interaction.setTextCursor({ x: 0, y: 2 });
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 2 });
     await host.canvas.commands.selection.paste({
       eventDataTransfer: {
         getData: (type: string) => type === "text/plain" ? "**Light** `code`" : "",
@@ -163,7 +164,7 @@ describe("ApplicationEditorHost", () => {
   it("persists pasted Mermaid diagrams as editable Unicode grid cells", async () => {
     const host = createHost();
     host.canvas.commands.grid.replace([]);
-    host.canvas.commands.interaction.setTextCursor({ x: 0, y: 0 });
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
     host.textRendering.setProfile({
       ...DEFAULT_TEXT_RENDER_PROFILE,
       mode: "markdown",
@@ -214,7 +215,7 @@ describe("ApplicationEditorHost", () => {
       offset: { x: 120, y: 80 },
       zoom: 1.5,
     }));
-    host.canvas.commands.interaction.setTextCursor({ x: 4, y: 2 });
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 4, y: 2 });
     host.canvas.commands.text.write("local");
     expect(host.canvas.getState().canUndo).toBe(true);
 
@@ -235,7 +236,7 @@ describe("ApplicationEditorHost", () => {
       offset: { x: 120, y: 80 },
       zoom: 1.5,
     });
-    expect(state.interaction.textCursor).toBeNull();
+    expect(getStaticGridCursor(state.interaction.staticGrid)).toBeNull();
     expect(state.canUndo).toBe(false);
     expect(host.canvas.commands.history.undo()).toBe(false);
   });
@@ -246,7 +247,7 @@ describe("ApplicationEditorHost", () => {
     first.canvas.commands.grid.replace([]);
     second.canvas.commands.grid.replace([]);
 
-    first.canvas.commands.interaction.setTextCursor({ x: 0, y: 0 });
+    first.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
     first.canvas.commands.text.write("A");
     first.editor.setCurrentTool("brush");
 
@@ -278,7 +279,7 @@ describe("ApplicationEditorHost", () => {
     ]);
 
     Y.applyUpdate(local, Y.encodeStateAsUpdate(remote));
-    host.canvas.commands.interaction.setTextCursor({ x: 1, y: 0 });
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 1, y: 0 });
     host.canvas.commands.text.write("L");
 
     expect(Object.fromEntries(host.canvas.getState().contentSurface.reader.materialize())).toMatchObject({

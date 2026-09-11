@@ -8,8 +8,14 @@ import {
   useEditorStore,
 } from "@/domains/canvas/testing";
 import type { EditorState } from "@/domains/canvas/state/interfaces";
-import type { CanvasInteractionSnapshot } from "@/domains/canvas/public";
 import { decodeCellPlaneOperationRows } from "@/domains/canvas/cell-plane/model";
+import {
+  createStaticGridInputSession,
+  getStaticGridCursor,
+  getStaticGridInputSession,
+  getStaticGridSelection,
+} from "@/domains/selection/public";
+import type { Point } from "@/shared/types";
 
 const initialState = useEditorStore.getState();
 
@@ -18,17 +24,23 @@ const resetStore = () => {
   applyFreeformSnapshotToYMaps([]);
 };
 
-const setTextState = (
-  state: Partial<
-    Pick<EditorState, "contentSurface" | "canvasMode"> &
-      Pick<CanvasInteractionSnapshot, "textCursor">
-  >
-) => {
+const setTextState = ({
+  editAt,
+  ...state
+}: Partial<Pick<EditorState, "contentSurface" | "canvasMode">> & { editAt?: Point | null }) => {
   setCanvasTestState({
     canvasMode: "freeform",
     contentSurface: new TestCanvasContentSurface(),
     ...state,
   });
+  if (editAt) {
+    setCanvasTestState({
+      staticGrid: {
+        mode: "text-edit",
+        session: createStaticGridInputSession({ origin: editAt }),
+      },
+    });
+  } else if (editAt === null) canvasCommands.staticGrid.exitTextEdit();
 };
 
 describe("textSlice newlineText", () => {
@@ -37,40 +49,46 @@ describe("textSlice newlineText", () => {
   });
 
   it("keeps the current column when the current row is empty", () => {
-    setTextState({
-      textCursor: { x: 20, y: 3 },
-    });
+    setTextState({ editAt: { x: 20, y: 3 } });
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 20, y: 4 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 20,
+      y: 4,
+    });
   });
 
   it("returns to the explicit origin of one continuous input session", () => {
-    setTextState({
-      textCursor: { x: 0, y: 0 },
-    });
+    setTextState({ editAt: { x: 0, y: 0 } });
 
     useEditorStore.getState().writeTextString("abc          123森");
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 18, y: 0 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 18,
+      y: 0,
+    });
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 0, y: 1 });
-    expect(useEditorStore.getState().interaction.staticGridInputSession?.origin)
-      .toEqual({ x: 0, y: 0 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 0,
+      y: 1,
+    });
+    expect(
+      getStaticGridInputSession(useEditorStore.getState().interaction.staticGrid)?.origin
+    ).toEqual({ x: 0, y: 0 });
   });
 
   it("does not infer a new session origin from literal space cells", () => {
     setTextState({
-      textCursor: { x: 18, y: 0 },
+      editAt: { x: 18, y: 0 },
       contentSurface: new TestCanvasContentSurface([
         ["0,0", { char: "a", color: "#ffffff" }],
         ["1,0", { char: "b", color: "#ffffff" }],
         ["2,0", { char: "c", color: "#ffffff" }],
-        ...Array.from({ length: 10 }, (_, index) => [
-          `${index + 3},0`,
-          { char: " ", color: "#ffffff" },
-        ] as const),
+        ...Array.from(
+          { length: 10 },
+          (_, index) => [`${index + 3},0`, { char: " ", color: "#ffffff" }] as const
+        ),
         ["13,0", { char: "1", color: "#ffffff" }],
         ["14,0", { char: "2", color: "#ffffff" }],
         ["15,0", { char: "3", color: "#ffffff" }],
@@ -80,12 +98,15 @@ describe("textSlice newlineText", () => {
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 18, y: 1 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 18,
+      y: 1,
+    });
   });
 
   it("does not infer a new session origin from empty cells", () => {
     setTextState({
-      textCursor: { x: 18, y: 0 },
+      editAt: { x: 18, y: 0 },
       contentSurface: new TestCanvasContentSurface([
         ["0,0", { char: "a", color: "#ffffff" }],
         ["1,0", { char: "b", color: "#ffffff" }],
@@ -99,9 +120,11 @@ describe("textSlice newlineText", () => {
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 18, y: 1 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 18,
+      y: 1,
+    });
   });
-
 });
 describe("textSlice writeTextString", () => {
   afterEach(() => {
@@ -109,9 +132,7 @@ describe("textSlice writeTextString", () => {
   });
 
   it("preserves CRLF new lines when writing pasted text", () => {
-    setTextState({
-      textCursor: { x: 3, y: 4 },
-    });
+    setTextState({ editAt: { x: 3, y: 4 } });
 
     useEditorStore.getState().writeTextString("a\r\nb");
 
@@ -121,22 +142,26 @@ describe("textSlice writeTextString", () => {
         ["3,5", { char: "b", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 4, y: 5 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 4,
+      y: 5,
+    });
   });
 
   it("fills the formal 1x1 selection at the static active cell", () => {
     setCanvasTestState({
       canvasMode: "freeform",
       contentSurface: new TestCanvasContentSurface(),
-      textCursor: null,
-      staticGridSelection: {
-        mode: "range",
-        activeCell: { x: 6, y: 7 },
-        anchorCell: { x: 6, y: 7 },
-        primaryRange: { start: { x: 6, y: 7 }, end: { x: 6, y: 7 } },
-        additionalRanges: [],
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "range",
+          activeCell: { x: 6, y: 7 },
+          anchorCell: { x: 6, y: 7 },
+          primaryRange: { start: { x: 6, y: 7 }, end: { x: 6, y: 7 } },
+          additionalRanges: [],
+        },
       },
-      staticGridEditMode: "navigate",
     });
 
     useEditorStore.getState().writeTextString("A");
@@ -144,14 +169,12 @@ describe("textSlice writeTextString", () => {
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([["6,7", { char: "A", color: "#000000" }]])
     );
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
   });
 
   it("keeps ordinary text input on the existing full-cell replacement policy", () => {
-    setTextState({ textCursor: { x: 0, y: 0 } });
-    applyFreeformSnapshotToYMaps([
-      ["0,0", { char: "A", color: "#ffffff", bgColor: "#000000" }],
-    ]);
+    setTextState({ editAt: { x: 0, y: 0 } });
+    applyFreeformSnapshotToYMaps([["0,0", { char: "A", color: "#ffffff", bgColor: "#000000" }]]);
 
     useEditorStore.getState().writeTextString("X");
 
@@ -162,7 +185,7 @@ describe("textSlice writeTextString", () => {
   });
 
   it("advances the active cell by each grapheme's display width", () => {
-    setTextState({ textCursor: { x: 2, y: 1 } });
+    setTextState({ editAt: { x: 2, y: 1 } });
 
     useEditorStore.getState().writeTextString("A你 ");
 
@@ -173,8 +196,13 @@ describe("textSlice writeTextString", () => {
         ["5,1", { char: " ", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 6, y: 1 });
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 6, y: 1 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 6,
+      y: 1,
+    });
+    expect(
+      getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell
+    ).toEqual({ x: 6, y: 1 });
   });
 
   it("wraps bounded input to its nonzero line origin without splitting CJK", () => {
@@ -192,8 +220,13 @@ describe("textSlice writeTextString", () => {
         ["3,1", { char: "你", color: "#000000" }],
       ])
     );
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 3, y: 1 });
-    expect(useEditorStore.getState().interaction.staticGridInputSession).toMatchObject({
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 3,
+      y: 1,
+    });
+    expect(
+      getStaticGridInputSession(useEditorStore.getState().interaction.staticGrid)
+    ).toMatchObject({
       origin: { x: 3, y: 0 },
       activeCell: { x: 3, y: 1 },
       exhausted: true,
@@ -213,14 +246,23 @@ describe("textSlice writeTextString", () => {
 
     expect(useEditorStore.getState()).toBe(terminalState);
     expect(useEditorStore.getState().contentSurface.reader).toBe(terminalReader);
-    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe(" ");
-    expect(useEditorStore.getState().interaction.staticGridInputSession?.exhausted).toBe(true);
+    expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe(
+      " "
+    );
+    expect(
+      getStaticGridInputSession(useEditorStore.getState().interaction.staticGrid)?.exhausted
+    ).toBe(true);
 
     canvasCommands.staticGrid.delete("backward");
 
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 0, y: 0 });
-    expect(useEditorStore.getState().interaction.staticGridInputSession?.exhausted).toBe(false);
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 0,
+      y: 0,
+    });
+    expect(
+      getStaticGridInputSession(useEditorStore.getState().interaction.staticGrid)?.exhausted
+    ).toBe(false);
   });
 
   it("backspaces the previous row after an automatic wrap", () => {
@@ -235,52 +277,63 @@ describe("textSlice writeTextString", () => {
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([["1,0", { char: "A", color: "#000000" }]])
     );
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 2, y: 0 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 2,
+      y: 0,
+    });
   });
 
   it("keeps the session origin while backspacing", () => {
-    setTextState({ textCursor: { x: 4, y: 2 } });
+    setTextState({ editAt: { x: 4, y: 2 } });
     useEditorStore.getState().writeTextString("AB");
 
     canvasCommands.staticGrid.delete("backward");
 
-    expect(useEditorStore.getState().interaction.staticGridInputSession)
-      .toMatchObject({
-        origin: { x: 4, y: 2 },
-        activeCell: { x: 5, y: 2 },
-      });
+    expect(
+      getStaticGridInputSession(useEditorStore.getState().interaction.staticGrid)
+    ).toMatchObject({
+      origin: { x: 4, y: 2 },
+      activeCell: { x: 5, y: 2 },
+    });
   });
 
   it("starts a new session after explicit cursor movement", () => {
-    setTextState({ textCursor: { x: 0, y: 0 } });
+    setTextState({ editAt: { x: 0, y: 0 } });
     useEditorStore.getState().writeTextString("AB");
 
     useEditorStore.getState().moveTextCursor(1, 0);
-    expect(useEditorStore.getState().interaction.staticGridInputSession?.origin)
-      .toEqual({ x: 3, y: 0 });
+    expect(
+      getStaticGridInputSession(useEditorStore.getState().interaction.staticGrid)?.origin
+    ).toEqual({ x: 3, y: 0 });
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 3, y: 1 });
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toEqual({
+      x: 3,
+      y: 1,
+    });
   });
 
   it("starts a new session after indentation", () => {
-    setTextState({ textCursor: { x: 0, y: 0 } });
+    setTextState({ editAt: { x: 0, y: 0 } });
     useEditorStore.getState().writeTextString("A");
 
     useEditorStore.getState().indentText();
-    expect(useEditorStore.getState().interaction.staticGridInputSession?.origin)
-      .toEqual({ x: 3, y: 0 });
+    expect(
+      getStaticGridInputSession(useEditorStore.getState().interaction.staticGrid)?.origin
+    ).toEqual({ x: 3, y: 0 });
   });
 
   it("keeps the advanced active cell and clears edit state when leaving text edit mode", () => {
-    setTextState({ textCursor: { x: 0, y: 0 } });
+    setTextState({ editAt: { x: 0, y: 0 } });
     useEditorStore.getState().writeTextString("AB");
 
     canvasCommands.staticGrid.exitTextEdit();
 
-    expect(useEditorStore.getState().interaction.textCursor).toBeNull();
-    expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 2, y: 0 });
-    expect(useEditorStore.getState().interaction.staticGridInputSession).toBeNull();
+    expect(getStaticGridCursor(useEditorStore.getState().interaction.staticGrid)).toBeNull();
+    expect(
+      getStaticGridSelection(useEditorStore.getState().interaction.staticGrid).activeCell
+    ).toEqual({ x: 2, y: 0 });
+    expect(getStaticGridInputSession(useEditorStore.getState().interaction.staticGrid)).toBeNull();
   });
 });
 
@@ -290,7 +343,7 @@ describe("textSlice paste background merging", () => {
   });
 
   it("inherits target backgrounds unless rich cells provide one", () => {
-    setTextState({ textCursor: { x: 0, y: 0 } });
+    setTextState({ editAt: { x: 0, y: 0 } });
     applyFreeformSnapshotToYMaps([
       ["0,0", { char: "A", color: "#ffffff", bgColor: "#000000" }],
       ["1,0", { char: "B", color: "#ffffff", bgColor: "#000000" }],
@@ -316,18 +369,22 @@ describe("textSlice paste background merging", () => {
   });
 
   it("commits rich rows as one compact CellPlane operation", () => {
-    setTextState({ textCursor: { x: 3, y: 2 } });
+    setTextState({ editAt: { x: 3, y: 2 } });
     const before = defaultCanvasDocuments.yCellPlaneOperations.length;
 
-    useEditorStore.getState().pasteRichRows([{
-      y: 0,
-      spans: [{
-        x: 0,
-        text: "A你B",
-        width: 4,
-        color: "#ff0000",
-      }],
-    }]);
+    useEditorStore.getState().pasteRichRows([
+      {
+        y: 0,
+        spans: [
+          {
+            x: 0,
+            text: "A你B",
+            width: 4,
+            color: "#ff0000",
+          },
+        ],
+      },
+    ]);
 
     expect(defaultCanvasDocuments.yCellPlaneOperations.length).toBe(before + 1);
     const operation = defaultCanvasDocuments.yCellPlaneOperations.get(before)!;
@@ -335,46 +392,46 @@ describe("textSlice paste background merging", () => {
       bounds: { x: 3, y: 2, width: 4, height: 1 },
       format: 2,
     });
-    expect(decodeCellPlaneOperationRows(operation)).toMatchObject([{
+    expect(decodeCellPlaneOperationRows(operation)).toMatchObject([
+      {
         y: 2,
         spans: [{ x: 3, text: "A你B", preserveTargetBackground: true }],
-      }]);
-    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map([
-      ["3,2", { char: "A", color: "#ff0000" }],
-      ["4,2", { char: "你", color: "#ff0000" }],
-      ["6,2", { char: "B", color: "#ff0000" }],
-    ]));
-  });
-
-  it("inherits the anchor background when pasting onto a wide follower", () => {
-    setTextState({ textCursor: { x: 1, y: 0 } });
-    applyFreeformSnapshotToYMaps([
-      ["0,0", { char: "你", color: "#ffffff", bgColor: "#000000" }],
+      },
     ]);
-
-    useEditorStore.getState().pasteRichData([
-      { x: 0, y: 0, char: "X", color: "#ff0000" },
-    ]);
-
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([
-        ["1,0", { char: "X", color: "#ff0000", bgColor: "#000000" }],
+        ["3,2", { char: "A", color: "#ff0000" }],
+        ["4,2", { char: "你", color: "#ff0000" }],
+        ["6,2", { char: "B", color: "#ff0000" }],
       ])
     );
   });
 
+  it("inherits the anchor background when pasting onto a wide follower", () => {
+    setTextState({ editAt: null });
+    applyFreeformSnapshotToYMaps([["0,0", { char: "你", color: "#ffffff", bgColor: "#000000" }]]);
+
+    useEditorStore
+      .getState()
+      .pasteRichData([{ x: 0, y: 0, char: "X", color: "#ff0000" }], { x: 1, y: 0 });
+
+    expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
+      new Map([["1,0", { char: "X", color: "#ff0000", bgColor: "#000000" }]])
+    );
+  });
+
   it("anchors sparse rich data at the selection union top-left and preserves holes", () => {
-    setTextState({ textCursor: null });
+    setTextState({ editAt: null });
     setCanvasTestState({
-      staticGridEditMode: "navigate",
-      staticGridSelection: {
-        mode: "range",
-        activeCell: { x: 5, y: 4 },
-        anchorCell: { x: 5, y: 4 },
-        primaryRange: { start: { x: 5, y: 4 }, end: { x: 6, y: 5 } },
-        additionalRanges: [
-          { start: { x: 2, y: 3 }, end: { x: 2, y: 3 } },
-        ],
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "range",
+          activeCell: { x: 5, y: 4 },
+          anchorCell: { x: 5, y: 4 },
+          primaryRange: { start: { x: 5, y: 4 }, end: { x: 6, y: 5 } },
+          additionalRanges: [{ start: { x: 2, y: 3 }, end: { x: 2, y: 3 } }],
+        },
       },
     });
     applyFreeformSnapshotToYMaps([
@@ -400,7 +457,7 @@ describe("textSlice paste background merging", () => {
   });
 
   it("selects the actual rich paste footprint including wide cells", () => {
-    setTextState({ textCursor: { x: 4, y: 2 } });
+    setTextState({ editAt: { x: 4, y: 2 } });
 
     useEditorStore.getState().pasteRichData(
       [
@@ -412,37 +469,37 @@ describe("textSlice paste background merging", () => {
     );
 
     expect(useEditorStore.getState().interaction).toMatchObject({
-      textCursor: null,
-      staticGridEditMode: "navigate",
-      staticGridInputSession: null,
-      staticGridSelection: {
-        mode: "range",
-        activeCell: { x: 4, y: 2 },
-        primaryRange: {
-          start: { x: 4, y: 2 },
-          end: { x: 5, y: 3 },
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "range",
+          activeCell: { x: 4, y: 2 },
+          primaryRange: {
+            start: { x: 4, y: 2 },
+            end: { x: 5, y: 3 },
+          },
         },
       },
     });
   });
 
   it("selects a multiline plain-text paste without changing normal input flow", () => {
-    setTextState({ textCursor: { x: 3, y: 1 } });
+    setTextState({ editAt: { x: 3, y: 1 } });
 
     useEditorStore.getState().writeTextString("AB\n你", undefined, {
       selectResult: true,
     });
 
     expect(useEditorStore.getState().interaction).toMatchObject({
-      textCursor: null,
-      staticGridEditMode: "navigate",
-      staticGridInputSession: null,
-      staticGridSelection: {
-        mode: "range",
-        activeCell: { x: 3, y: 1 },
-        primaryRange: {
-          start: { x: 3, y: 1 },
-          end: { x: 4, y: 2 },
+      staticGrid: {
+        mode: "navigate",
+        selection: {
+          mode: "range",
+          activeCell: { x: 3, y: 1 },
+          primaryRange: {
+            start: { x: 3, y: 1 },
+            end: { x: 4, y: 2 },
+          },
         },
       },
     });

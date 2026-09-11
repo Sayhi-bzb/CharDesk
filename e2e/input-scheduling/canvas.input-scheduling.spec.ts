@@ -32,7 +32,7 @@ type ManagedInputStats = {
 type Diagnostics = {
   ready: () => Promise<void>;
   createSession: (mode?: 'freeform' | 'structured') => string;
-  setTextCursor: (point: { x: number; y: number }) => void;
+  enterTextEdit: (point: { x: number; y: number }) => void;
   managedInputCursor: () => { x: number; y: number } | null;
   undo: () => boolean;
   redo: () => boolean;
@@ -155,7 +155,7 @@ const measureRun = async (
       () => handle.evaluate((api) => api.activeSessionId()),
       { timeout: 15_000 }
     ).toBe(sessionId);
-    await handle.evaluate((api) => api.setTextCursor({ x: 0, y: 0 }));
+    await handle.evaluate((api) => api.enterTextEdit({ x: 0, y: 0 }));
     await expect.poll(
       () => handle.evaluate((api) => api.managedInputCursor()),
       { timeout: 15_000 }

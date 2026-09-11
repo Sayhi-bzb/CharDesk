@@ -11,7 +11,6 @@ const context = (
 ): ManagedCanvasKeyboardContext => ({
   mutateEnabled: true,
   staticGridInteraction: "navigate",
-  hasTextCursor: false,
   hasActiveSelection: false,
   colorPickerOpen: false,
   pageRows: 12,
@@ -50,7 +49,6 @@ describe("managed Canvas keyboard rules", () => {
   it("routes directional deletion through one grid intent", () => {
     expect(decide({ key: "Backspace" }, {
       staticGridInteraction: "text-edit",
-      hasTextCursor: true,
     }).intent).toEqual({ type: "delete-grid", direction: "backward" });
     expect(decide({ key: "Delete" }, {
       staticGridInteraction: "navigate",
@@ -61,8 +59,7 @@ describe("managed Canvas keyboard rules", () => {
       hasActiveSelection: true,
     }).intent).toEqual({ type: "delete-grid", direction: "backward" });
     expect(decide({ key: "ArrowDown" }, {
-      staticGridInteraction: null,
-      hasTextCursor: true,
+      staticGridInteraction: "text-edit",
     }).intent).toEqual({ type: "move-text-cursor", dx: 0, dy: 1 });
   });
 
@@ -73,7 +70,6 @@ describe("managed Canvas keyboard rules", () => {
     ]> = [
       [{ colorPickerOpen: true }, "color-picker"],
       [{ staticGridInteraction: "text-edit" }, "grid-text-edit"],
-      [{ hasTextCursor: true }, "text-cursor"],
       [{ hasActiveSelection: true }, "selection"],
       [{}, "none"],
     ];
