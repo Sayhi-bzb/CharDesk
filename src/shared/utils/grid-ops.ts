@@ -1,5 +1,5 @@
 import { GridManager } from "@/shared/utils/grid";
-import type { GridCell, GridCellSource } from "@/shared/types";
+import type { GridCell } from "@/shared/types";
 import {
   getGridCellWidth,
   getIntersectingGridAnchors,
@@ -104,15 +104,4 @@ export const deleteRect = (
   }
 
   return { removedAnchors, removedFollowers };
-};
-
-export const resolveBackspaceAnchor = (
-  grid: GridCellSource,
-  cursorX: number,
-  cursorY: number
-) => {
-  return resolveGridSlot(grid, { x: cursorX - 1, y: cursorY })?.anchor ?? {
-    x: cursorX - 1,
-    y: cursorY,
-  };
 };

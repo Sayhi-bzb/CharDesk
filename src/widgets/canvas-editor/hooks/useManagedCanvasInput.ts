@@ -146,8 +146,7 @@ export const useManagedCanvasInput = ({
   const finalizedCompositionRef = useRef<FinalizedManagedComposition | null>(null);
   const {
     writeTextString,
-    backspaceText,
-    deleteTextForward,
+    deleteStaticGrid,
     newlineText,
     indentText,
     moveTextCursor,
@@ -586,12 +585,8 @@ export const useManagedCanvasInput = ({
 
   function executeManagedCanvasKeyIntent(intent: ManagedCanvasKeyIntent) {
     switch (intent.type) {
-      case "delete-text":
-        if (intent.direction === "backward") backspaceText();
-        else deleteTextForward();
-        return;
-      case "delete-selection":
-        editor.commands.execute('delete-selection', undefined, 'canvas-keydown');
+      case "delete-grid":
+        deleteStaticGrid(intent.direction);
         return;
       case "select-grid-all":
         selectStaticGridAll();

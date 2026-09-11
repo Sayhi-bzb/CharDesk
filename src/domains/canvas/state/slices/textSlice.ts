@@ -11,10 +11,6 @@ import {
   selectGridRange,
 } from "@/domains/selection/public";
 import { placeCharInYMap, placeStyledCellInYMap } from "../utils";
-import {
-  deleteCellAt,
-  resolveBackspaceAnchor,
-} from "../gridOps";
 import type { Point } from "@/shared/types";
 import {
   getGraphemeCellWidth as getCellOccupancy,
@@ -348,44 +344,6 @@ export const createTextSlice = (
       staticGridInputSession: createInputSession(state, nextCell),
     }));
   },
-
-  backspaceText: () => {
-    const state = get();
-    const { textCursor, staticGridInputSession } = state.interaction;
-    const { contentSurface } = state;
-    const grid = contentSurface.reader;
-    if (!textCursor) return;
-
-    const inputSession =
-      staticGridInputSession ??
-      createInputSession(get(), textCursor);
-    const backspaceOrigin = inputSession.exhausted
-      ? inputSession.activeCell
-      : inputSession.nextCell;
-    const deletePos =
-      inputSession.previousCell
-      ?? resolveBackspaceAnchor(grid, backspaceOrigin.x, backspaceOrigin.y);
-    documents.mutateGridAt(resolveEditorDocumentAddress(documents, get()), (gridWriter) => {
-      deleteCellAt(gridWriter, deletePos.x, deletePos.y);
-    });
-    const nextSession = {
-      ...inputSession,
-      nextCell: { ...deletePos },
-      activeCell: { ...deletePos },
-      previousCell: null,
-      exhausted: false,
-    };
-    set((current) => createCanvasInteractionPatch(current.interaction, {
-      textCursor: deletePos,
-      staticGridSelection: collapseGridSelectionTo(
-        current.interaction.staticGridSelection,
-        deletePos
-      ),
-      staticGridInputSession: nextSession,
-    }));
-  },
-
-  deleteTextForward: () => undefined,
 
   newlineText: () => {
     const state = get();

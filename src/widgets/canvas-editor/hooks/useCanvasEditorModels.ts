@@ -184,8 +184,7 @@ export const useCanvasEditorModels = () => {
         ? inactiveInteraction
         : editorState.interaction,
     writeTextString: canvasCommands.text.write,
-    backspaceText: canvasCommands.text.backspace,
-    deleteTextForward: canvasCommands.text.deleteForward,
+    deleteStaticGrid: canvasCommands.staticGrid.delete,
     newlineText: canvasCommands.text.newline,
     indentText: canvasCommands.text.indent,
     moveTextCursor: canvasCommands.text.moveCursor,

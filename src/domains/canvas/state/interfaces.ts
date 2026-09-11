@@ -78,8 +78,6 @@ export interface TextSlice {
     options?: { selectResult?: boolean }
   ) => void;
   moveTextCursor: (dx: number, dy: number) => void;
-  backspaceText: () => void;
-  deleteTextForward: () => void;
   newlineText: () => void;
   indentText: () => void;
 }

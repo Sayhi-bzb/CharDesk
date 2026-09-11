@@ -74,6 +74,13 @@ describe("Cell architecture rules", () => {
     )[0]).toContain("Retired inferred input-flow");
   });
 
+  it("keeps Cell deletion behind one directional contract", () => {
+    expect(messages(
+      "export const deleteTextForward = () => undefined;",
+      "src/example.ts"
+    )[0]).toContain("Retired split deletion contract");
+  });
+
   it.each([
     "CharDeskCanvasMetrics",
     "DEFAULT_CHARDESK_CANVAS_METRICS",

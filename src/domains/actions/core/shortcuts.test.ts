@@ -57,8 +57,7 @@ describe('editor command shortcut labels', () => {
     expect(getEditorCommandShortcutLabel(editor.keymap, 'undo', 'mac')).toBe('⌘Z');
     expect(getEditorCommandShortcutLabel(editor.keymap, 'undo', 'other')).toBe('Ctrl+Z');
     expect(getEditorCommandShortcutLabel(editor.keymap, 'redo', 'mac')).toBe('⌘⇧Z / ⌘Y');
-    expect(getEditorCommandShortcutLabel(editor.keymap, 'delete-selection', 'other')).toBe(
-      'Backspace / Delete'
-    );
+    expect(getEditorCommandShortcutLabel(editor.keymap, 'delete-selection', 'other'))
+      .toBeUndefined();
   });
 });

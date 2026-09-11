@@ -184,8 +184,6 @@ const commands = {
       call("pasteRichData", ...args),
     moveCursor: (...args: Parameters<EditorState["moveTextCursor"]>) =>
       call("moveTextCursor", ...args),
-    backspace: () => call("backspaceText"),
-    deleteForward: () => call("deleteTextForward"),
     newline: () => call("newlineText"),
     indent: () => call("indentText"),
   },
@@ -208,6 +206,7 @@ const commands = {
     setBackgroundColor: documentCommands.setSelectionBackgroundColor,
   },
   staticGrid: {
+    delete: documentCommands.deleteStaticGrid,
     setActiveCell: (address: GridAddress) =>
       store.setState((state) => createStaticGridActiveCellPatch(state, address)),
     setSelectionRange: (range: GridRange) =>

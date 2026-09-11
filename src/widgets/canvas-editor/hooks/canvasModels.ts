@@ -41,8 +41,7 @@ export type CanvasEditorModel = Pick<CanvasState, "brushColor"> & {
   pendingCameraPlacement?: PendingCanvasCameraPlacement | null;
   contentReader: CanvasSurfaceReader;
   writeTextString: CanvasCommands["text"]["write"];
-  backspaceText: CanvasCommands["text"]["backspace"];
-  deleteTextForward: CanvasCommands["text"]["deleteForward"];
+  deleteStaticGrid: CanvasCommands["staticGrid"]["delete"];
   newlineText: CanvasCommands["text"]["newline"];
   indentText: CanvasCommands["text"]["indent"];
   moveTextCursor: CanvasCommands["text"]["moveCursor"];

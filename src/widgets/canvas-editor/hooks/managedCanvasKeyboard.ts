@@ -14,8 +14,7 @@ export type ManagedCanvasKeyboardContext = Readonly<{
 }>;
 
 export type ManagedCanvasKeyIntent =
-  | Readonly<{ type: "delete-text"; direction: "backward" | "forward" }>
-  | Readonly<{ type: "delete-selection" }>
+  | Readonly<{ type: "delete-grid"; direction: "backward" | "forward" }>
   | Readonly<{ type: "select-grid-all" | "select-grid-row" | "select-grid-column" }>
   | Readonly<{ type: "enter-grid-text-edit" }>
   | Readonly<{
@@ -96,16 +95,15 @@ export const resolveManagedCanvasKeyIntent = (
     && (input.key === "Backspace" || input.key === "Delete")
   ) return decide(null, true);
 
-  if (context.hasTextCursor && input.key === "Backspace") {
-    return decide({ type: "delete-text", direction: "backward" }, true);
-  }
-  if (context.hasTextCursor && input.key === "Delete") {
-    return decide({ type: "delete-text", direction: "forward" }, true);
-  }
   if (
-    context.hasActiveSelection
+    (staticGridMode || context.hasTextCursor || context.hasActiveSelection)
     && (input.key === "Delete" || input.key === "Backspace")
-  ) return decide({ type: "delete-selection" }, true);
+  ) {
+    return decide({
+      type: "delete-grid",
+      direction: input.key === "Backspace" ? "backward" : "forward",
+    }, true);
+  }
 
   if (staticGridMode && mod && input.key.toLowerCase() === "a") {
     return decide({ type: "select-grid-all" }, true);

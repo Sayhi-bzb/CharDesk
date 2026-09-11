@@ -21,6 +21,12 @@ const retiredInputFlowContracts = [
   "lineOriginX",
   "getLineOriginX",
 ];
+const retiredDeletionContracts = [
+  "backspaceText",
+  "deleteTextForward",
+  "resolveBackspaceAnchor",
+  'type: "delete-text"',
+];
 const forbiddenCoreDependency = (dependency) => dependency === "react"
   || dependency === "react-dom"
   || dependency === "canvas"
@@ -137,6 +143,9 @@ export function checkCellArchitecture(content, file) {
   }
   for (const contract of retiredInputFlowContracts) {
     if (content.includes(contract)) report(`Retired inferred input-flow contract: ${contract}`);
+  }
+  for (const contract of retiredDeletionContracts) {
+    if (content.includes(contract)) report(`Retired split deletion contract: ${contract}`);
   }
   return violations;
 }

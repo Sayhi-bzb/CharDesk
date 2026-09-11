@@ -216,7 +216,7 @@ describe("textSlice writeTextString", () => {
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe(" ");
     expect(useEditorStore.getState().interaction.staticGridInputSession?.exhausted).toBe(true);
 
-    useEditorStore.getState().backspaceText();
+    canvasCommands.staticGrid.delete("backward");
 
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
     expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 0, y: 0 });
@@ -230,7 +230,7 @@ describe("textSlice writeTextString", () => {
     canvasCommands.staticGrid.enterTextEdit({ x: 1, y: 0 });
     useEditorStore.getState().writeTextString("AB");
 
-    useEditorStore.getState().backspaceText();
+    canvasCommands.staticGrid.delete("backward");
 
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(
       new Map([["1,0", { char: "A", color: "#000000" }]])
@@ -242,7 +242,7 @@ describe("textSlice writeTextString", () => {
     setTextState({ textCursor: { x: 4, y: 2 } });
     useEditorStore.getState().writeTextString("AB");
 
-    useEditorStore.getState().backspaceText();
+    canvasCommands.staticGrid.delete("backward");
 
     expect(useEditorStore.getState().interaction.staticGridInputSession)
       .toMatchObject({

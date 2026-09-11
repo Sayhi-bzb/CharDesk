@@ -17,6 +17,13 @@ export {
   createStaticGridInputSession,
 } from "./model/static-grid-input-session";
 export type {
+  StaticGridDeleteDirection,
+  StaticGridDeletePlan,
+} from "./model/static-grid-deletion";
+export {
+  resolveStaticGridDeletePlan,
+} from "./model/static-grid-deletion";
+export type {
   GridSelectionGeometry,
 } from "./model/grid-selection-geometry";
 export {

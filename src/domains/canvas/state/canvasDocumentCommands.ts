@@ -1,9 +1,14 @@
 import { createStaticGridRangeMovePlan } from "../cell-plane/rangeMove";
 import type { StoreApi } from "zustand";
 import {
+  collapseGridSelectionTo,
+  createStaticGridInputSession,
   forEachGridSelectionSpan,
   getGridSelectionRanges,
   getStaticGridSelectionAreas,
+  getStaticGridViewState,
+  resolveStaticGridDeletePlan,
+  type StaticGridDeleteDirection,
 } from "@/domains/selection/public";
 import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 import type {
@@ -70,18 +75,90 @@ export const fillStaticGridSelectionWithChar = (
   });
 };
 
+const deleteStaticGridSelection = (
+  documents: CanvasDocumentRegistry,
+  state: EditorState
+) => {
+  const address = resolveEditorDocumentAddress(documents, state);
+  documents.mutateGridAt(address, (grid) => {
+    forEachSelectionSpan(state, ({ y, minX, maxX }) => {
+      deleteRect(grid, minX, y, maxX, y);
+    });
+  });
+};
+
 export const createCanvasDocumentCommands = (
   store: Pick<StoreApi<EditorState>, "getState" | "setState">,
   documents: CanvasDocumentRegistry
 ) => ({
-  deleteSelection: () => {
+  deleteSelection: () => deleteStaticGridSelection(documents, store.getState()),
+
+  deleteStaticGrid: (direction: StaticGridDeleteDirection) => {
     const state = store.getState();
+    const interaction = getStaticGridViewState({
+      selection: state.interaction.staticGridSelection,
+      editMode: state.interaction.staticGridEditMode,
+      textCursor: state.interaction.textCursor,
+      grid: state.contentSurface.reader,
+    }).interaction;
+    const plan = resolveStaticGridDeletePlan({
+      interaction,
+      direction,
+      grid: state.contentSurface.reader,
+      bounds: getActiveSlideGridBounds(state),
+      previousInputCell: state.interaction.staticGridInputSession?.previousCell,
+    });
+    if (plan.kind === "noop") return;
+    if (plan.kind === "range") {
+      deleteStaticGridSelection(documents, state);
+      return;
+    }
+
     const address = resolveEditorDocumentAddress(documents, state);
     documents.mutateGridAt(address, (grid) => {
-      forEachSelectionSpan(state, ({ y, minX, maxX }) => {
-        deleteRect(grid, minX, y, maxX, y);
-      });
+      deleteCellAt(grid, plan.target.x, plan.target.y);
     });
+
+    if (interaction.kind === "text-edit") {
+      const inputSession = state.interaction.staticGridInputSession
+        ?? createStaticGridInputSession({
+          origin: interaction.activeCell,
+          bounds: getActiveSlideGridBounds(state),
+        });
+      const nextSession = direction === "backward"
+        ? {
+            ...inputSession,
+            nextCell: { ...plan.nextActiveCell },
+            activeCell: { ...plan.nextActiveCell },
+            previousCell: null,
+            exhausted: false,
+          }
+        : inputSession;
+      store.setState((current) => createCanvasInteractionPatch(
+        current.interaction,
+        {
+          textCursor: plan.nextActiveCell,
+          staticGridSelection: collapseGridSelectionTo(
+            current.interaction.staticGridSelection,
+            plan.nextActiveCell
+          ),
+          staticGridInputSession: nextSession,
+        }
+      ));
+      return;
+    }
+
+    store.setState((current) => createCanvasInteractionPatch(
+      current.interaction,
+      {
+        staticGridSelection: collapseGridSelectionTo(
+          current.interaction.staticGridSelection,
+          plan.nextActiveCell
+        ),
+        staticGridInputSession: null,
+        textCursor: null,
+      }
+    ));
   },
 
   erasePoints: (points: Point[], shouldSaveHistory = true) => {

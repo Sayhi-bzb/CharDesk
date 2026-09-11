@@ -47,11 +47,19 @@ describe("managed Canvas keyboard rules", () => {
     });
   });
 
-  it("keeps text navigation separate from grid navigation", () => {
+  it("routes directional deletion through one grid intent", () => {
     expect(decide({ key: "Backspace" }, {
       staticGridInteraction: "text-edit",
       hasTextCursor: true,
-    }).intent).toEqual({ type: "delete-text", direction: "backward" });
+    }).intent).toEqual({ type: "delete-grid", direction: "backward" });
+    expect(decide({ key: "Delete" }, {
+      staticGridInteraction: "navigate",
+      hasActiveSelection: true,
+    }).intent).toEqual({ type: "delete-grid", direction: "forward" });
+    expect(decide({ key: "Backspace" }, {
+      staticGridInteraction: "range",
+      hasActiveSelection: true,
+    }).intent).toEqual({ type: "delete-grid", direction: "backward" });
     expect(decide({ key: "ArrowDown" }, {
       staticGridInteraction: null,
       hasTextCursor: true,

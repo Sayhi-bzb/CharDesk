@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { GridCell, GridMap } from "@/shared/types";
-import { createGridMapSource } from "@/shared/utils/grid-source";
 import {
   deleteCellAt,
-  resolveBackspaceAnchor,
   writeStyledCell,
 } from "./grid-ops";
 
@@ -32,10 +30,5 @@ describe("atomic grid operations", () => {
       removedFollowers: 1,
     });
     expect(grid.size).toBe(0);
-  });
-
-  it("resolves backspace to the preceding logical anchor", () => {
-    const grid: GridMap = new Map([["2,0", cell("你")]]);
-    expect(resolveBackspaceAnchor(createGridMapSource(grid), 4, 0)).toEqual({ x: 2, y: 0 });
   });
 });

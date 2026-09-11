@@ -32,6 +32,7 @@ const getEditorModel = () => {
     setCanvasColorPickerTarget: commands.interaction.setColorPickerTarget,
     setHoveredGrid: commands.interaction.setHoveredGrid,
     moveStaticGridFocus: commands.staticGrid.moveFocus,
+    deleteStaticGrid: commands.staticGrid.delete,
     moveStaticGridSelection: commands.selection.moveStaticRange,
     moveStaticGridFocusToEdge: commands.staticGrid.moveFocusToEdge,
     moveStaticGridFocusToContentBoundary: commands.staticGrid.moveFocusToContentBoundary,
@@ -404,7 +405,7 @@ describe("useManagedCanvasInput", () => {
     vi.spyOn(window, "requestAnimationFrame").mockReturnValue(1);
     vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
     const writeTextString = vi.fn();
-    const backspaceText = vi.fn();
+    const deleteStaticGrid = vi.fn();
     const { result } = renderHook(
       () => useManagedCanvasInput({
         model: {
@@ -415,7 +416,7 @@ describe("useManagedCanvasInput", () => {
             staticGridEditMode: "text-edit",
           },
           writeTextString,
-          backspaceText,
+          deleteStaticGrid,
         },
         size: { width: 800, height: 600 },
       }),
@@ -433,10 +434,29 @@ describe("useManagedCanvasInput", () => {
     });
 
     expect(writeTextString).toHaveBeenCalledWith("A");
-    expect(backspaceText).toHaveBeenCalledOnce();
+    expect(deleteStaticGrid).toHaveBeenCalledWith("backward");
     expect(writeTextString.mock.invocationCallOrder[0]).toBeLessThan(
-      backspaceText.mock.invocationCallOrder[0]!
+      deleteStaticGrid.mock.invocationCallOrder[0]!
     );
+  });
+
+  it("executes forward deletion for a navigated Cell", () => {
+    const deleteStaticGrid = vi.fn();
+    const { result } = renderHook(
+      () => useManagedCanvasInput({
+        model: { ...getEditorModel(), deleteStaticGrid },
+        size: { width: 800, height: 600 },
+      }),
+      { wrapper: ShortcutProvider }
+    );
+
+    act(() => {
+      result.current.textareaProps.onKeyDown?.(managedKeyDownEvent({
+        key: "Delete",
+      }) as never);
+    });
+
+    expect(deleteStaticGrid).toHaveBeenCalledWith("forward");
   });
 
   it("discards pending text when the input identity changes", () => {

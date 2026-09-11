@@ -54,7 +54,6 @@ export const EDITOR_COMMAND_META: Record<EditorActionId, ActionMeta<EditorAction
     label: "Delete",
     icon: HOST_ICONOLOGY.editorAction["delete-selection"],
     destructive: true,
-    shortcuts: [["backspace"], ["delete"]],
   },
   "format-bold": {
     id: "format-bold",
