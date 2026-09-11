@@ -3,10 +3,10 @@ import type { EditorState, TextSlice } from "../interfaces";
 import type { CanvasDocumentRegistry } from "../CanvasDocumentRegistry";
 import { GridManager } from "@/shared/utils/grid";
 import {
-  advanceStaticGridInputFlow,
-  advanceStaticGridInputFlowLine,
+  advanceStaticGridInput,
+  advanceStaticGridInputLine,
   collapseGridSelectionTo,
-  createStaticGridInputFlow,
+  createStaticGridInputSession,
   getStaticGridViewState,
   selectGridRange,
 } from "@/domains/selection/public";
@@ -17,10 +17,9 @@ import {
 } from "../gridOps";
 import type { Point } from "@/shared/types";
 import {
-  getCellOccupancy,
-  isWideCell,
+  getGraphemeCellWidth as getCellOccupancy,
   splitGraphemes,
-} from "@/shared/metrics";
+} from "@chardesk/protocol";
 import { clampPointToActiveSlide, getActiveSlideGridBounds } from "../slideBounds";
 import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
 import { resolveEditorDocumentAddress } from "../helpers/gridHelpers";
@@ -30,14 +29,12 @@ import {
 } from "../canvasInteractionState";
 import { fillStaticGridSelectionWithChar } from "../canvasDocumentCommands";
 
-const createInputFlow = (
+const createInputSession = (
   state: EditorState,
   address: Point
-) => createStaticGridInputFlow({
-  grid: state.contentSurface.reader,
-  address,
+) => createStaticGridInputSession({
+  origin: address,
   bounds: getActiveSlideGridBounds(state),
-  lineOriginX: state.contentSurface.reader.getLineOriginX?.(address),
 });
 
 const isWideFollowerRichCell = (
@@ -46,7 +43,7 @@ const isWideFollowerRichCell = (
 ) => {
   if (cell.char !== " ") return false;
   const leftCell = cellsBySourcePoint.get(GridManager.toKey(cell.x - 1, cell.y));
-  return !!leftCell && isWideCell(leftCell.char);
+  return !!leftCell && getCellOccupancy(leftCell.char) === 2;
 };
 
 type WrittenCell = { point: Point; char: string };
@@ -102,7 +99,7 @@ export const createTextSlice = (
     const {
       staticGridSelection,
       staticGridEditMode,
-      staticGridInputFlow,
+      staticGridInputSession,
       textCursor,
     } = current.interaction;
     const { brushColor, canvasMode } = current;
@@ -141,28 +138,31 @@ export const createTextSlice = (
 
     const state = get();
     const bounds = getActiveSlideGridBounds(state);
-    let flow =
-      startPos || !staticGridInputFlow
-        ? createInputFlow(state, cursor)
-        : staticGridInputFlow;
+    let inputSession =
+      startPos || !staticGridInputSession
+        ? createInputSession(state, cursor)
+        : staticGridInputSession;
     const writes: Array<{ point: Point; char: string }> = [];
 
     for (const char of graphemes) {
       if (char === "\n") {
-        flow = advanceStaticGridInputFlowLine({ flow, bounds });
+        inputSession = advanceStaticGridInputLine({
+          session: inputSession,
+          bounds,
+        });
       } else {
-        const step = advanceStaticGridInputFlow({
-          flow,
+        const step = advanceStaticGridInput({
+          session: inputSession,
           width: getCellOccupancy(char),
           bounds,
         });
-        flow = step.flow;
+        inputSession = step.session;
         if (step.writeAt) writes.push({ point: step.writeAt, char });
       }
-      if (flow.exhausted) break;
+      if (inputSession.exhausted) break;
     }
 
-    if (writes.length === 0 && flow === staticGridInputFlow) return;
+    if (writes.length === 0 && inputSession === staticGridInputSession) return;
 
     if (writes.length > 0) {
       documents.mutateGridAt(resolveEditorDocumentAddress(documents, get()), (gridWriter) => {
@@ -180,12 +180,12 @@ export const createTextSlice = (
           writes
         ),
         staticGridEditMode: "navigate",
-        staticGridInputFlow: null,
+        staticGridInputSession: null,
       }));
       return;
     }
 
-    const activeCell = clampPointToActiveSlide(state, flow.activeCell);
+    const activeCell = clampPointToActiveSlide(state, inputSession.activeCell);
     set((current) => createCanvasInteractionPatch(current.interaction, {
       textCursor: activeCell,
       staticGridSelection: collapseGridSelectionTo(
@@ -193,7 +193,7 @@ export const createTextSlice = (
         activeCell
       ),
       staticGridEditMode: "text-edit",
-      staticGridInputFlow: flow,
+      staticGridInputSession: inputSession,
     }));
   },
 
@@ -258,7 +258,7 @@ export const createTextSlice = (
           writes
         ),
         staticGridEditMode: "navigate",
-        staticGridInputFlow: null,
+        staticGridInputSession: null,
       }));
     }
   },
@@ -318,18 +318,18 @@ export const createTextSlice = (
           writtenBounds!
         ),
         staticGridEditMode: "navigate",
-        staticGridInputFlow: null,
+        staticGridInputSession: null,
       }));
     }
   },
 
   moveTextCursor: (dx, dy) => {
     const state = get();
-    const { textCursor, staticGridInputFlow } = state.interaction;
+    const { textCursor, staticGridInputSession } = state.interaction;
     const { contentSurface } = state;
     const grid = contentSurface.reader;
     if (!textCursor) return;
-    const currentPoint = staticGridInputFlow?.activeCell ?? textCursor;
+    const currentPoint = staticGridInputSession?.activeCell ?? textCursor;
     let newX = currentPoint.x;
     const newY = currentPoint.y + dy;
     if (dx > 0) {
@@ -345,28 +345,31 @@ export const createTextSlice = (
         state.interaction.staticGridSelection,
         nextCell
       ),
-      staticGridInputFlow: createInputFlow(state, nextCell),
+      staticGridInputSession: createInputSession(state, nextCell),
     }));
   },
 
   backspaceText: () => {
     const state = get();
-    const { textCursor, staticGridInputFlow } = state.interaction;
+    const { textCursor, staticGridInputSession } = state.interaction;
     const { contentSurface } = state;
     const grid = contentSurface.reader;
     if (!textCursor) return;
 
-    const flow =
-      staticGridInputFlow ??
-      createInputFlow(get(), textCursor);
-    const backspaceOrigin = flow.exhausted ? flow.activeCell : flow.nextCell;
+    const inputSession =
+      staticGridInputSession ??
+      createInputSession(get(), textCursor);
+    const backspaceOrigin = inputSession.exhausted
+      ? inputSession.activeCell
+      : inputSession.nextCell;
     const deletePos =
-      flow.previousCell ?? resolveBackspaceAnchor(grid, backspaceOrigin.x, backspaceOrigin.y);
+      inputSession.previousCell
+      ?? resolveBackspaceAnchor(grid, backspaceOrigin.x, backspaceOrigin.y);
     documents.mutateGridAt(resolveEditorDocumentAddress(documents, get()), (gridWriter) => {
       deleteCellAt(gridWriter, deletePos.x, deletePos.y);
     });
-    const nextFlow = {
-      ...flow,
+    const nextSession = {
+      ...inputSession,
       nextCell: { ...deletePos },
       activeCell: { ...deletePos },
       previousCell: null,
@@ -378,7 +381,7 @@ export const createTextSlice = (
         current.interaction.staticGridSelection,
         deletePos
       ),
-      staticGridInputFlow: nextFlow,
+      staticGridInputSession: nextSession,
     }));
   },
 
@@ -386,24 +389,24 @@ export const createTextSlice = (
 
   newlineText: () => {
     const state = get();
-    const { textCursor, staticGridInputFlow } = state.interaction;
+    const { textCursor, staticGridInputSession } = state.interaction;
     if (!textCursor) return;
 
-    const flow =
-      staticGridInputFlow ??
-      createInputFlow(state, textCursor);
-    const nextFlow = advanceStaticGridInputFlowLine({
-      flow,
+    const inputSession =
+      staticGridInputSession ??
+      createInputSession(state, textCursor);
+    const nextSession = advanceStaticGridInputLine({
+      session: inputSession,
       bounds: getActiveSlideGridBounds(state),
     });
-    const activeCell = clampPointToActiveSlide(state, nextFlow.activeCell);
+    const activeCell = clampPointToActiveSlide(state, nextSession.activeCell);
     set(createCanvasInteractionPatch(state.interaction, {
       textCursor: activeCell,
       staticGridSelection: collapseGridSelectionTo(
         state.interaction.staticGridSelection,
         activeCell
       ),
-      staticGridInputFlow: nextFlow,
+      staticGridInputSession: nextSession,
     }));
   },
 
@@ -421,7 +424,7 @@ export const createTextSlice = (
         state.interaction.staticGridSelection,
         activeCell
       ),
-      staticGridInputFlow: createInputFlow(state, activeCell),
+      staticGridInputSession: createInputSession(state, activeCell),
     }));
   },
 });

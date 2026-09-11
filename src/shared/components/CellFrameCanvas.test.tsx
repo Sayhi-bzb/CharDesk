@@ -11,17 +11,11 @@ const rendering = vi.hoisted(() => ({
 vi.mock("@chardesk/rendering/canvas", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@chardesk/rendering/canvas")>()),
   presentCharDeskCellFrame: rendering.present,
+  loadCharDeskCanvasFonts: vi.fn(() => new Promise<void>(() => undefined)),
+  prepareCharDeskCanvasSurface: rendering.prepare,
 }));
 
-vi.mock("@/shared/metrics", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/shared/metrics")>()),
-  loadRenderFonts: vi.fn(() => new Promise<void>(() => undefined)),
-  prepareCanvasSurface: rendering.prepare,
-}));
-
-import {
-  DEFAULT_GRID_RENDER_METRICS,
-} from "@/shared/metrics";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import { DEFAULT_ARTIFACT_CANVAS_PALETTE } from "@/shared/canvas-appearance/artifact-style";
 import { CellFrameCanvas } from "./CellFrameCanvas";
 
@@ -76,7 +70,7 @@ describe("CellFrameCanvas", () => {
       drawText: true,
     });
     expect(options).toMatchObject({
-      metrics: DEFAULT_GRID_RENDER_METRICS,
+      metrics: DEFAULT_CANVAS_CELL_METRICS,
       palette: DEFAULT_ARTIFACT_CANVAS_PALETTE,
       offset: { x: 0, y: 0 },
       zoom: 1,

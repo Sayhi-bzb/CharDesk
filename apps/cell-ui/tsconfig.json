@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@chardesk/cell-ui": ["packages/cell-ui/src/index.ts"],
+      "@chardesk/cell-ui/browser": ["packages/cell-ui/src/browser.tsx"],
+      "@chardesk/font-fusion": ["packages/font-fusion/src/index.ts"],
+      "@chardesk/font-maple": ["packages/font-maple/src/index.ts"],
+      "@chardesk/font-xiaolai": ["packages/font-xiaolai/src/index.ts"],
+      "@chardesk/fonts": ["packages/fonts/src/index.ts"],
+      "@chardesk/fonts/browser": ["packages/fonts/src/browser.ts"],
+      "@chardesk/rendering": ["packages/rendering/src/index.ts"],
+      "@chardesk/rendering/canvas": ["packages/rendering/src/canvas.ts"]
+    },
+    "target": "ES2023",
+    "useDefineForClassFields": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vite/client", "react", "react-dom", "@testing-library/jest-dom"],
+    "noEmit": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
+  },
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+}

@@ -1,10 +1,9 @@
 import {
-  DEFAULT_GRID_RENDER_METRICS,
   drawCellBatch,
   drawGridLines,
-  loadRenderFonts,
   type CanvasCellDrawEntry,
-} from "@/shared/metrics";
+} from "@/shared/cell-rendering/canvas-drawing";
+import { loadCharDeskCanvasFonts } from "@chardesk/rendering/canvas";
 import {
   DEFAULT_ARTIFACT_CANVAS_PALETTE,
   type CanvasArtifactPalette,
@@ -14,7 +13,10 @@ import { GridManager } from "@/shared/utils/grid";
 import { getSelectionsBoundingBox } from "@/shared/utils/selection";
 import { ExportPipelineError } from "../core/types";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
-import { DEFAULT_CANVAS_FONT_PROFILE } from "@/shared/fonts/canvas-profile";
+import {
+  DEFAULT_CANVAS_CELL_METRICS,
+  DEFAULT_CANVAS_FONT_PROFILE,
+} from "@/shared/fonts/canvas-profile";
 
 const MAX_RASTER_EDGE = 8192;
 const MAX_RASTER_PIXELS = 16_777_216;
@@ -28,7 +30,7 @@ type RasterLayout = {
 };
 
 export const resolveRasterLayout = (cols: number, rows: number): RasterLayout => {
-  const { cellWidth, cellHeight } = DEFAULT_GRID_RENDER_METRICS;
+  const { cellWidth, cellHeight } = DEFAULT_CANVAS_CELL_METRICS;
   const width = cols * cellWidth;
   const height = rows * cellHeight;
 
@@ -144,13 +146,16 @@ export const createSelectionPngBlob = async (
       if (!cell) continue;
       entries.push({
         cell: resolveRasterCell(cell, includeColor, palette),
-        x: (x - startX) * DEFAULT_GRID_RENDER_METRICS.cellWidth,
-        y: (y - startY) * DEFAULT_GRID_RENDER_METRICS.cellHeight,
+        x: (x - startX) * DEFAULT_CANVAS_CELL_METRICS.cellWidth,
+        y: (y - startY) * DEFAULT_CANVAS_CELL_METRICS.cellHeight,
       });
     }
   }
 
-  await loadRenderFonts(getFontSamples(entries.map(({ cell }) => cell)), fontProfile);
+  await loadCharDeskCanvasFonts(
+    getFontSamples(entries.map(({ cell }) => cell)),
+    { fontProfile }
+  );
   return encodePng(entries, cols, rows, showGrid, fontProfile, palette);
 };
 
@@ -172,11 +177,14 @@ export const createPngBlobFromGrid = async (
   GridManager.iterate(grid, (cell, x, y) => {
     entries.push({
       cell: resolveRasterCell(cell, includeColor, palette),
-      x: (x - minX + padding) * DEFAULT_GRID_RENDER_METRICS.cellWidth,
-      y: (y - minY + padding) * DEFAULT_GRID_RENDER_METRICS.cellHeight,
+      x: (x - minX + padding) * DEFAULT_CANVAS_CELL_METRICS.cellWidth,
+      y: (y - minY + padding) * DEFAULT_CANVAS_CELL_METRICS.cellHeight,
     });
   });
 
-  await loadRenderFonts(getFontSamples(entries.map(({ cell }) => cell)), fontProfile);
+  await loadCharDeskCanvasFonts(
+    getFontSamples(entries.map(({ cell }) => cell)),
+    { fontProfile }
+  );
   return encodePng(entries, cols, rows, showGrid, fontProfile, palette);
 };

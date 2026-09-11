@@ -41,4 +41,4 @@ Nerd 字形维持一格数据宽度。以 `󰄳` 为事实样本，Symbols Nerd 
 
 - 版本、checksum 与资产体积：[Core manifest](../../packages/fonts/manifest.json)、[Maple manifest](../../packages/font-maple/manifest.json)、[Fusion manifest](../../packages/font-fusion/manifest.json)、[Xiaolai manifest](../../packages/font-xiaolai/manifest.json)。
 - capability 与分发：[Core fonts](../../packages/fonts/README.md)、[Rendering](../../packages/rendering/README.md)。
-- 浏览器测量：[font metrics E2E](../../e2e/web-tui-font-metrics.spec.ts)、[font audit E2E](../../e2e/web-tui-font-audit.spec.ts)。
+- 浏览器测量：[font metrics E2E](../../apps/cell-ui/e2e/font-metrics.spec.ts)、[font audit E2E](../../apps/cell-ui/e2e/font-audit.spec.ts)。

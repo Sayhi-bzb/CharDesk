@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { FUSION_FONT_PROFILE } from "@chardesk/font-fusion";
+import { XIAOLAI_FONT_PROFILE } from "@chardesk/font-xiaolai";
 import { displayFontOptions } from "./catalog";
 import { CANVAS_FONT_STORAGE_KEY, createCanvasFontRuntime } from "./runtime";
 
@@ -10,6 +12,11 @@ function deferred() {
 }
 
 describe("Host Canvas font preference", () => {
+  it("consumes profiles owned by the font packages", () => {
+    expect(displayFontOptions["fusion-mono"].profile).toBe(FUSION_FONT_PROFILE);
+    expect(displayFontOptions["xiaolai-mono"].profile).toBe(XIAOLAI_FONT_PROFILE);
+  });
+
   it.each(["fusion-mono", "xiaolai-mono"] as const)(
     "%s derives one-pixel bold overdraw without a bold face",
     (font) => {

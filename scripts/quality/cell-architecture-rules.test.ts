@@ -48,6 +48,32 @@ describe("Cell architecture rules", () => {
       "packages/rendering/src/index.ts")[0]).toContain("must not depend");
   });
 
+  it("routes metrics, built-in Profiles, and range geometry to one owner", () => {
+    expect(messages('import { x } from "@/shared/metrics";',
+      "src/widgets/example.ts")[0]).toContain("Cell primitives");
+    expect(messages('import { x } from "../shared/metrics/gridGeometry";',
+      "src/example.ts")[0]).toContain("Cell primitives");
+    expect(messages("createCharDeskFontProfile({});",
+      "apps/cell-ui/src/font-options.ts")[0]).toContain("font Profiles");
+    expect(messages("export const range = {};",
+      "packages/viewer/src/grid-interaction.ts")[0]).toContain("Cell range geometry");
+    expect(messages(
+      'import { resolveCellRangeBounds } from "@chardesk/cell-core";',
+      "packages/viewer/src/grid-interaction.ts"
+    )).toEqual([]);
+  });
+
+  it("keeps the input session independent from Cell content", () => {
+    expect(messages(
+      'import type { GridCellSource } from "@/shared/types";',
+      "src/domains/selection/model/static-grid-input-session.ts"
+    )[0]).toContain("must not infer");
+    expect(messages(
+      "export const getLineOriginX = () => 0;",
+      "src/shared/example.ts"
+    )[0]).toContain("Retired inferred input-flow");
+  });
+
   it.each([
     "CharDeskCanvasMetrics",
     "DEFAULT_CHARDESK_CANVAS_METRICS",

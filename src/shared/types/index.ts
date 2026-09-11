@@ -29,9 +29,7 @@ export interface SelectionArea {
 export type GridMap = Map<string, GridCell>;
 
 /** Read-only cell content shared across domain boundaries. */
-export type GridCellSource = CellSource<GridCell> & {
-  getLineOriginX?(point: Point): number;
-};
+export type GridCellSource = CellSource<GridCell>;
 
 export interface NodeBounds {
   x: number;

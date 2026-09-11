@@ -2,6 +2,7 @@ import path from "path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig, loadEnv, type Plugin } from "vite";
+import { workspaceAliases } from "./scripts/testing/workspace-aliases.js";
 
 function staticSiteDevRedirect(): Plugin {
   return {
@@ -114,115 +115,18 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: /^@chardesk\/cell-core$/,
-        replacement: path.resolve(import.meta.dirname, "./packages/cell-core/src/index.ts"),
-      },
-      {
-        find: /^@chardesk\/cell-ui\/browser$/,
-        replacement: path.resolve(import.meta.dirname, "./packages/cell-ui/src/browser.tsx"),
-      },
-      {
-        find: /^@chardesk\/cell-ui$/,
-        replacement: path.resolve(import.meta.dirname, "./packages/cell-ui/src/index.ts"),
-      },
-      {
-        find: /^@chardesk\/collaboration-protocol$/,
-        replacement: path.resolve(
-          import.meta.dirname,
-          "./packages/collaboration-protocol/src/index.ts"
-        ),
-      },
-      {
         find: /^@chardesk\/ui\/theme\.css$/,
         replacement: path.resolve(import.meta.dirname, "./packages/ui/theme.css"),
-      },
-      {
-        find: /^@chardesk\/ui\/styles$/,
-        replacement: path.resolve(import.meta.dirname, "./packages/ui/src/styles.ts"),
-      },
-      {
-        find: /^@chardesk\/ui$/,
-        replacement: path.resolve(import.meta.dirname, "./packages/ui/src/index.ts"),
       },
       {
         find: /^@chardesk\/font-maple\/fonts\.css$/,
         replacement: path.resolve(import.meta.dirname, "./packages/font-maple/fonts.css"),
       },
       {
-        find: /^@chardesk\/font-maple$/,
-        replacement: path.resolve(import.meta.dirname, "./packages/font-maple/src/index.ts"),
-      },
-      {
         find: /^@chardesk\/fonts\/fonts\.css$/,
         replacement: path.resolve(import.meta.dirname, "./packages/fonts/fonts.css"),
       },
-      {
-        find: /^@chardesk\/fonts$/,
-        replacement: path.resolve(import.meta.dirname, "./packages/fonts/src/index.ts"),
-      },
-      {
-        find: /^@chardesk\/blackboard$/,
-        replacement: path.resolve(
-          import.meta.dirname,
-          "./packages/blackboard/src/index.ts"
-        ),
-      },
-      {
-        find: /^@chardesk\/chargraph\/markdown$/,
-        replacement: path.resolve(
-          import.meta.dirname,
-          "./packages/chargraph/src/markdown-default.ts"
-        ),
-      },
-      {
-        find: /^@chardesk\/chargraph\/mermaid$/,
-        replacement: path.resolve(
-          import.meta.dirname,
-          "./packages/chargraph/src/mermaid.ts"
-        ),
-      },
-      {
-        find: /^@chardesk\/chargraph\/theme$/,
-        replacement: path.resolve(
-          import.meta.dirname,
-          "./packages/chargraph/src/render-theme.ts"
-        ),
-      },
-      {
-        find: /^@chardesk\/chargraph$/,
-        replacement: path.resolve(
-          import.meta.dirname,
-          "./packages/chargraph/src/index.ts"
-        ),
-      },
-      {
-        find: /^@chardesk\/rendering\/canvas$/,
-        replacement: path.resolve(
-          import.meta.dirname,
-          "./packages/rendering/src/canvas.ts"
-        ),
-      },
-      {
-        find: /^@chardesk\/rendering$/,
-        replacement: path.resolve(
-          import.meta.dirname,
-          "./packages/rendering/src/index.ts"
-        ),
-      },
-      {
-        find: "@chardesk/document",
-        replacement: path.resolve(
-          import.meta.dirname,
-          "./packages/document/src/index.ts"
-        ),
-      },
-      {
-        find: "@chardesk/protocol",
-        replacement: path.resolve(
-          import.meta.dirname,
-          "./packages/protocol/src/index.ts"
-        ),
-      },
+      ...workspaceAliases,
       { find: "@", replacement: path.resolve(import.meta.dirname, "./src") },
     ],
   },

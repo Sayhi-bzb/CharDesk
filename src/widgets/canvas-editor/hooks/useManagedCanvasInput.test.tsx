@@ -122,7 +122,7 @@ describe("useManagedCanvasInput", () => {
         additionalRanges: [],
       },
       staticGridEditMode: "navigate",
-      staticGridInputFlow: null,
+      staticGridInputSession: null,
     });
     const model = { ...getEditorModel() };
     const { result } = renderHook(
@@ -185,7 +185,7 @@ describe("useManagedCanvasInput", () => {
         additionalRanges: [],
       },
       staticGridEditMode: "navigate",
-      staticGridInputFlow: null,
+      staticGridInputSession: null,
     });
     const model = { ...getEditorModel() };
     const { result } = renderHook(
@@ -213,7 +213,7 @@ describe("useManagedCanvasInput", () => {
       ])
     );
     expect(useEditorStore.getState().interaction.staticGridEditMode).toBe("navigate");
-    expect(useEditorStore.getState().interaction.staticGridInputFlow).toBeNull();
+    expect(useEditorStore.getState().interaction.staticGridInputSession).toBeNull();
   });
 
   it("continues the same grid flow when composition is followed by half-width input", () => {
@@ -229,7 +229,7 @@ describe("useManagedCanvasInput", () => {
         additionalRanges: [],
       },
       staticGridEditMode: "navigate",
-      staticGridInputFlow: null,
+      staticGridInputSession: null,
     });
     const model = { ...getEditorModel() };
     const { result } = renderHook(
@@ -279,7 +279,7 @@ describe("useManagedCanvasInput", () => {
         additionalRanges: [],
       },
       staticGridEditMode: "navigate",
-      staticGridInputFlow: null,
+      staticGridInputSession: null,
     });
     const { result } = renderHook(
       () => useManagedCanvasInput({
@@ -327,7 +327,7 @@ describe("useManagedCanvasInput", () => {
         additionalRanges: [],
       },
       staticGridEditMode: "navigate",
-      staticGridInputFlow: null,
+      staticGridInputSession: null,
     });
     const { result } = renderHook(
       () => useManagedCanvasInput({

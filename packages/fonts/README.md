@@ -44,6 +44,8 @@ cross a Cell boundary; the containing Canvas Surface is the paint boundary.
 
 The current optional compatibility display is [`@chardesk/font-maple`](../font-maple/README.md). Source versions and checksums are authoritative in `manifest.json`; candidate evaluation lives in the [font capability research card](../../exp/research/font-stack.md).
 
+`@chardesk/fonts/browser` owns browser stylesheet and `document.fonts` loading. Consumers provide a `BrowserFontLoadTarget`; `loadBrowserFont` commits only after every requested sample resolves, and `resetBrowserFont` clears a failed stylesheet request.
+
 Font assets retain their upstream licenses beside each family. Package code is MIT licensed.
 
 ## Fusion Mono workspace

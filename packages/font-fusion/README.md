@@ -1,8 +1,9 @@
 # @chardesk/font-fusion
 
-Private workspace resource pack for the Web TUI Gallery; not published to npm.
-Exports family/source metadata, `fonts.css`, and `manifest.json`. Gallery owns
-the regular-only profile and Maple fallback; Core does not depend on this pack.
+Private workspace resource pack for the Cell UI portal; not published to npm.
+Exports family/source metadata, the regular-only `FUSION_FONT_PROFILE` with its
+Maple fallback, `fonts.css`, and `manifest.json`. Consumers own labels and loading
+UI; Core does not depend on this pack.
 
 The [manifest](manifest.json) owns the pinned official release, archive checksum,
 and asset checksums. The unmodified Latin-variant WOFF2 includes CJK glyphs;
@@ -19,4 +20,4 @@ named Mono as one-Cell compatible.
 
 Consumption and resource commands: [font guide](../fonts/README.md#fusion-mono-workspace).
 Browser regressions read this same asset through
-[the test helper](../../e2e/helpers/fusion-mono.ts); there is no separate test font.
+[the test helper](../../apps/cell-ui/e2e/helpers/fusion-mono.ts); there is no separate test font.

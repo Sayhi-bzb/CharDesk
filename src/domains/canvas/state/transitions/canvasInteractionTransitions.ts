@@ -1,7 +1,7 @@
 import {
   collapseGridSelectionTo,
   createGridSelectionState,
-  createStaticGridInputFlow,
+  createStaticGridInputSession,
 } from "@/domains/selection/public";
 import type { Point } from "@/shared/types";
 import { resolveGridAnchor } from "@/shared/utils/grid-occupancy";
@@ -38,7 +38,7 @@ export const createClearedInteractionPatch = (
       interaction.staticGridSelection.activeCell
     ),
     staticGridEditMode: "navigate",
-    staticGridInputFlow: null,
+    staticGridInputSession: null,
   });
 
 export const createTextCursorPatch = (
@@ -61,15 +61,13 @@ export const createTextCursorPatch = (
             nextPosition
           ),
           staticGridEditMode: "text-edit" as const,
-          staticGridInputFlow: createStaticGridInputFlow({
-            grid: state.contentSurface.reader,
-            address: nextPosition,
+          staticGridInputSession: createStaticGridInputSession({
+            origin: nextPosition,
             bounds: getActiveSlideGridBounds(state),
-            lineOriginX: state.contentSurface.reader.getLineOriginX?.(nextPosition),
           }),
         }
       : {
-          staticGridInputFlow: null,
+          staticGridInputSession: null,
         }),
   });
 };

@@ -43,12 +43,13 @@ const originalFrontmostApplication = execFileSync("osascript", [
 ], { encoding: "utf8" }).trim();
 const projects = process.argv.length > 2
   ? process.argv.slice(2)
-  : ["chromium", "webkit-cell-gallery"];
+  : ["chromium", "webkit"];
 
 try {
   execFileSync(resolve("node_modules/.bin/playwright"), [
     "test",
-    "e2e/web-tui-native-input.spec.ts",
+    "e2e/native-input.spec.ts",
+    "--config=apps/cell-ui/playwright.config.ts",
     ...projects.map((project) => `--project=${project}`),
     "--headed",
     "--workers=1",

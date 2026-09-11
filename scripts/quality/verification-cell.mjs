@@ -2,8 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 
 export const isCellInput = file => file.startsWith('packages/cell-ui/')
-  || file.startsWith('exp/web-tui/') || /^e2e\/web-tui.*\.spec\.ts$/u.test(file)
-  || /^e2e\/helpers\/(cell-probe|gallery-font-select)\.ts$/u.test(file)
+  || file.startsWith('apps/cell-ui/')
 
 const leafTests = {
   'button.ts': ['button.test.tsx', 'press.test.tsx', 'activation-feedback.test.tsx'],
@@ -49,18 +48,17 @@ export function cellVerificationScope(files, { mode, selected, root, global = fa
     const name = path.basename(file)
     if (!existsSync(path.join(root, file))) {
       fallback(`deleted/unresolved input: ${file}`)
-    } else if (file.startsWith('e2e/helpers/')) {
-      fallback('shared Cell browser probe/helper')
-    } else if (file.startsWith('e2e/')) {
-      addBrowser(file)
+    } else if (file.startsWith('apps/cell-ui/e2e/')) {
+      if (/\.spec\.ts$/u.test(file)) addBrowser(file.slice('apps/cell-ui/'.length))
+      else fallback('shared Cell browser probe/helper')
       reasons.add('explicit browser test')
-    } else if (file.startsWith('exp/web-tui/')) {
+    } else if (file.startsWith('apps/cell-ui/src/')) {
       gallery = true
-      addBrowser('e2e/web-tui-components.spec.ts')
-      addBrowser('e2e/web-tui-basic-widgets.spec.ts')
+      addBrowser('e2e/components.spec.ts')
+      addBrowser('e2e/basic-widgets.spec.ts')
       if (file.endsWith('.css') || /appearance|font|main/u.test(name)) {
-        addBrowser('e2e/web-tui-theme-tokens.spec.ts')
-        addBrowser('e2e/web-tui-appearance.spec.ts')
+        addBrowser('e2e/theme-tokens.spec.ts')
+        addBrowser('e2e/appearance.spec.ts')
       }
       if (!['styles.css', 'component-catalog.tsx', 'components.tsx'].includes(name)
         && !/\.(dom\.)?test\.tsx?$/u.test(name)) fallback('unclassified Gallery module or configuration')
@@ -74,13 +72,13 @@ export function cellVerificationScope(files, { mode, selected, root, global = fa
     } else if (file === `packages/cell-ui/src/${name}` && leafTests[name]
       && leafTests[name].every(test => existsSync(path.join(root, 'packages/cell-ui/src', test)))) {
       leafTests[name].forEach(test => nodeTests.add(`src/${test}`))
-      if (name === 'slider.ts') addBrowser('e2e/web-tui-components.spec.ts', 'Slider Playground')
+      if (name === 'slider.ts') addBrowser('e2e/components.spec.ts', 'Slider Playground')
       reasons.add(`reviewed component helper: ${name}`)
     } else if (file === `packages/cell-ui/src/${name}` && sharedBrowserSuites[name]) {
       fullPackage = true
       gallery = true
       dualBrowser = true
-      sharedBrowserSuites[name].forEach(suite => addBrowser(`e2e/web-tui-${suite}.spec.ts`))
+      sharedBrowserSuites[name].forEach(suite => addBrowser(`e2e/${suite}.spec.ts`))
       reasons.add(`shared interaction/visual contract: ${name}`)
     } else {
       fallback(`shared or unclassified Cell input: ${name}`)
@@ -91,7 +89,7 @@ export function cellVerificationScope(files, { mode, selected, root, global = fa
     nodeTests: fullPackage ? [] : [...nodeTests].sort(),
     domTests: fullPackage ? [] : [...domTests].sort(),
     browser: !active ? [] : allBrowser
-      ? [{ file: 'e2e/web-tui.*\\.spec\\.ts', grep: null }]
+      ? [{ file: 'e2e', grep: null }]
       : [...browser].map(([file, patterns]) => ({ file, grep: patterns ? [...patterns].join('|') : null })),
     reason: [...reasons].join('; '),
   }

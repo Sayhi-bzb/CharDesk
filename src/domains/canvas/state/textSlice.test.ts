@@ -46,91 +46,60 @@ describe("textSlice newlineText", () => {
     expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 20, y: 4 });
   });
 
-  it("inherits real leading indentation when the cursor is after text", () => {
+  it("returns to the explicit origin of one continuous input session", () => {
     setTextState({
-      textCursor: { x: 8, y: 0 },
-      contentSurface: new TestCanvasContentSurface([
-        ["4,0", { char: "f", color: "#ffffff" }],
-        ["5,0", { char: "o", color: "#ffffff" }],
-        ["6,0", { char: "o", color: "#ffffff" }],
-      ]),
+      textCursor: { x: 0, y: 0 },
     });
 
+    useEditorStore.getState().writeTextString("abc          123森");
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 18, y: 0 });
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 4, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 0, y: 1 });
+    expect(useEditorStore.getState().interaction.staticGridInputSession?.origin)
+      .toEqual({ x: 0, y: 0 });
   });
 
-  it("finds the start of a contiguous row containing wide characters", () => {
+  it("does not infer a new session origin from literal space cells", () => {
     setTextState({
-      textCursor: { x: 8, y: 0 },
+      textCursor: { x: 18, y: 0 },
       contentSurface: new TestCanvasContentSurface([
-        ["4,0", { char: "你", color: "#ffffff" }],
-        ["6,0", { char: "好", color: "#ffffff" }],
+        ["0,0", { char: "a", color: "#ffffff" }],
+        ["1,0", { char: "b", color: "#ffffff" }],
+        ["2,0", { char: "c", color: "#ffffff" }],
+        ...Array.from({ length: 10 }, (_, index) => [
+          `${index + 3},0`,
+          { char: " ", color: "#ffffff" },
+        ] as const),
+        ["13,0", { char: "1", color: "#ffffff" }],
+        ["14,0", { char: "2", color: "#ffffff" }],
+        ["15,0", { char: "3", color: "#ffffff" }],
+        ["16,0", { char: "森", color: "#ffffff" }],
       ]),
     });
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 4, y: 1 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 18, y: 1 });
   });
 
-  it("keeps the current column when the cursor is inside indentation", () => {
+  it("does not infer a new session origin from empty cells", () => {
     setTextState({
-      textCursor: { x: 2, y: 0 },
+      textCursor: { x: 18, y: 0 },
       contentSurface: new TestCanvasContentSurface([
-        ["4,0", { char: "f", color: "#ffffff" }],
-        ["5,0", { char: "o", color: "#ffffff" }],
-        ["6,0", { char: "o", color: "#ffffff" }],
+        ["0,0", { char: "a", color: "#ffffff" }],
+        ["1,0", { char: "b", color: "#ffffff" }],
+        ["2,0", { char: "c", color: "#ffffff" }],
+        ["13,0", { char: "1", color: "#ffffff" }],
+        ["14,0", { char: "2", color: "#ffffff" }],
+        ["15,0", { char: "3", color: "#ffffff" }],
+        ["16,0", { char: "森", color: "#ffffff" }],
       ]),
     });
 
     useEditorStore.getState().newlineText();
 
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 2, y: 1 });
-  });
-
-  it("keeps the current column when text starts to the right of the cursor", () => {
-    setTextState({
-      textCursor: { x: 3, y: 0 },
-      contentSurface: new TestCanvasContentSurface([
-        ["10,0", { char: "x", color: "#ffffff" }],
-      ]),
-    });
-
-    useEditorStore.getState().newlineText();
-
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 3, y: 1 });
-  });
-
-  it("returns to the nearest text run instead of unrelated content on the left", () => {
-    setTextState({
-      textCursor: { x: 15, y: 0 },
-      contentSurface: new TestCanvasContentSurface([
-        ["0,0", { char: "x", color: "#ffffff" }],
-        ["10,0", { char: "h", color: "#ffffff" }],
-        ["11,0", { char: " ", color: "#ffffff" }],
-        ["12,0", { char: "好", color: "#ffffff" }],
-      ]),
-    });
-
-    useEditorStore.getState().newlineText();
-
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 10, y: 1 });
-  });
-
-  it("supports text runs at negative columns", () => {
-    setTextState({
-      textCursor: { x: -1, y: 2 },
-      contentSurface: new TestCanvasContentSurface([
-        ["-4,2", { char: "a", color: "#ffffff" }],
-        ["-3,2", { char: "b", color: "#ffffff" }],
-      ]),
-    });
-
-    useEditorStore.getState().newlineText();
-
-    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: -4, y: 3 });
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 18, y: 1 });
   });
 
 });
@@ -224,14 +193,14 @@ describe("textSlice writeTextString", () => {
       ])
     );
     expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 3, y: 1 });
-    expect(useEditorStore.getState().interaction.staticGridInputFlow).toMatchObject({
-      lineOriginX: 3,
+    expect(useEditorStore.getState().interaction.staticGridInputSession).toMatchObject({
+      origin: { x: 3, y: 0 },
       activeCell: { x: 3, y: 1 },
       exhausted: true,
     });
   });
 
-  it("stores terminal spaces once and lets Backspace resume an exhausted flow", () => {
+  it("stores terminal spaces once and lets Backspace resume an exhausted session", () => {
     useEditorStore.getState().createCanvasSession("slide", {
       slideSize: { columns: 1, rows: 1 },
     });
@@ -245,13 +214,13 @@ describe("textSlice writeTextString", () => {
     expect(useEditorStore.getState()).toBe(terminalState);
     expect(useEditorStore.getState().contentSurface.reader).toBe(terminalReader);
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe(" ");
-    expect(useEditorStore.getState().interaction.staticGridInputFlow?.exhausted).toBe(true);
+    expect(useEditorStore.getState().interaction.staticGridInputSession?.exhausted).toBe(true);
 
     useEditorStore.getState().backspaceText();
 
     expect(useEditorStore.getState().contentSurface.reader.materialize()).toEqual(new Map());
     expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 0, y: 0 });
-    expect(useEditorStore.getState().interaction.staticGridInputFlow?.exhausted).toBe(false);
+    expect(useEditorStore.getState().interaction.staticGridInputSession?.exhausted).toBe(false);
   });
 
   it("backspaces the previous row after an automatic wrap", () => {
@@ -269,6 +238,40 @@ describe("textSlice writeTextString", () => {
     expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 2, y: 0 });
   });
 
+  it("keeps the session origin while backspacing", () => {
+    setTextState({ textCursor: { x: 4, y: 2 } });
+    useEditorStore.getState().writeTextString("AB");
+
+    useEditorStore.getState().backspaceText();
+
+    expect(useEditorStore.getState().interaction.staticGridInputSession)
+      .toMatchObject({
+        origin: { x: 4, y: 2 },
+        activeCell: { x: 5, y: 2 },
+      });
+  });
+
+  it("starts a new session after explicit cursor movement", () => {
+    setTextState({ textCursor: { x: 0, y: 0 } });
+    useEditorStore.getState().writeTextString("AB");
+
+    useEditorStore.getState().moveTextCursor(1, 0);
+    expect(useEditorStore.getState().interaction.staticGridInputSession?.origin)
+      .toEqual({ x: 3, y: 0 });
+    useEditorStore.getState().newlineText();
+
+    expect(useEditorStore.getState().interaction.textCursor).toEqual({ x: 3, y: 1 });
+  });
+
+  it("starts a new session after indentation", () => {
+    setTextState({ textCursor: { x: 0, y: 0 } });
+    useEditorStore.getState().writeTextString("A");
+
+    useEditorStore.getState().indentText();
+    expect(useEditorStore.getState().interaction.staticGridInputSession?.origin)
+      .toEqual({ x: 3, y: 0 });
+  });
+
   it("keeps the advanced active cell and clears edit state when leaving text edit mode", () => {
     setTextState({ textCursor: { x: 0, y: 0 } });
     useEditorStore.getState().writeTextString("AB");
@@ -277,7 +280,7 @@ describe("textSlice writeTextString", () => {
 
     expect(useEditorStore.getState().interaction.textCursor).toBeNull();
     expect(useEditorStore.getState().interaction.staticGridSelection.activeCell).toEqual({ x: 2, y: 0 });
-    expect(useEditorStore.getState().interaction.staticGridInputFlow).toBeNull();
+    expect(useEditorStore.getState().interaction.staticGridInputSession).toBeNull();
   });
 });
 
@@ -411,7 +414,7 @@ describe("textSlice paste background merging", () => {
     expect(useEditorStore.getState().interaction).toMatchObject({
       textCursor: null,
       staticGridEditMode: "navigate",
-      staticGridInputFlow: null,
+      staticGridInputSession: null,
       staticGridSelection: {
         mode: "range",
         activeCell: { x: 4, y: 2 },
@@ -433,7 +436,7 @@ describe("textSlice paste background merging", () => {
     expect(useEditorStore.getState().interaction).toMatchObject({
       textCursor: null,
       staticGridEditMode: "navigate",
-      staticGridInputFlow: null,
+      staticGridInputSession: null,
       staticGridSelection: {
         mode: "range",
         activeCell: { x: 3, y: 1 },

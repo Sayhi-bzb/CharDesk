@@ -50,7 +50,8 @@ import {
   useInPlaceFeedback,
   type InPlaceFeedback,
 } from '@/shared/hooks/use-in-place-feedback';
-import { getRenderFontFamilyForGrapheme } from '@/shared/metrics';
+import { resolveCharDeskFontRoute } from "@chardesk/rendering";
+import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
 import { useUiI18n, type I18nKey } from '@/shared/i18n';
 
 
@@ -195,7 +196,9 @@ function CharButton({
           aria-hidden="true"
           style={{
             color: 'var(--character-library-foreground)',
-            fontFamily: getRenderFontFamilyForGrapheme(entry.grapheme),
+            fontFamily: MAPLE_FONT_PROFILE.families[
+              resolveCharDeskFontRoute(entry.grapheme)
+            ],
           }}
           className={cn(
             'font-mono text-sm leading-none transition-[opacity,transform] duration-[var(--motion-fast)] ease-out motion-reduce:transition-none',

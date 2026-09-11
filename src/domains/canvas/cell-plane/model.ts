@@ -3,10 +3,10 @@ import type {
   CellChanges,
 } from "@chardesk/cell-core";
 import {
-  getCellOccupancy,
+  getGraphemeCellWidth as getCellOccupancy,
   getTextCellWidth,
   iterateGraphemes,
-} from "@/shared/metrics";
+} from "@chardesk/protocol";
 import { GridManager } from "@/shared/utils/grid";
 import { deleteCellAt, writeStyledCell } from "@/shared/utils/grid-ops";
 import {
@@ -1065,43 +1065,6 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
       }
     }
     return { revision: this.#revision, full: false, bounds };
-  }
-
-  getLineOriginX(point: Point) {
-    let seedX: number | null = null;
-    const maxChunkX = floorDiv(point.x + 1, CELL_PLANE_CHUNK_WIDTH);
-    for (const chunkX of this.#chunkXsByRow.get(point.y) ?? []) {
-      if (chunkX > maxChunkX) continue;
-      const chunk = this.#resolveChunk(
-        chunkX,
-        floorDiv(point.y, CELL_PLANE_CHUNK_HEIGHT)
-      );
-      for (const key of chunk.keys()) {
-        const candidate = GridManager.fromKey(key);
-        if (
-          candidate.y === point.y &&
-          candidate.x <= point.x &&
-          (seedX === null || candidate.x > seedX)
-        ) seedX = candidate.x;
-      }
-    }
-    if (seedX === null) return point.x;
-
-    let runStartX = seedX;
-    while (true) {
-      const immediate = this.getCell({ x: runStartX - 1, y: point.y });
-      if (immediate && getCellOccupancy(immediate.char) === 1) {
-        runStartX -= 1;
-        continue;
-      }
-      const wide = this.getCell({ x: runStartX - 2, y: point.y });
-      if (wide && getCellOccupancy(wide.char) === 2) {
-        runStartX -= 2;
-        continue;
-      }
-      break;
-    }
-    return Math.min(point.x, runStartX);
   }
 
   getCell(point: Point) {

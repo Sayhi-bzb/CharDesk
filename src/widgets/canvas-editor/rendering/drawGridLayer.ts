@@ -7,12 +7,12 @@ import {
   type CanvasArtifactPalette,
 } from "@/shared/canvas-appearance/artifact-style";
 import {
-  alignCanvasCoordinate,
-  DEFAULT_GRID_RENDER_METRICS,
-  getCellOccupancy,
   resolveCellVisual,
   setTextRenderStyle,
-} from "@/shared/metrics";
+} from "@/shared/cell-rendering/canvas-drawing";
+import { alignCharDeskCanvasCoordinate as alignCanvasCoordinate } from "@chardesk/rendering/canvas";
+import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import {
   presentCharDeskCellFrame,
   type CharDeskCanvasContext,
@@ -56,7 +56,7 @@ export const drawHoveredLinkDecoration = (
       offset.x,
       offset.y,
       zoom
-    ).y + DEFAULT_GRID_RENDER_METRICS.cellHeight * zoom * 0.82,
+    ).y + DEFAULT_CANVAS_CELL_METRICS.cellHeight * zoom * 0.82,
     lineWidth
   );
 
@@ -88,7 +88,7 @@ export const drawHoveredLinkDecoration = (
         ctx.strokeStyle = resolveCellVisual(cell, palette).color;
         ctx.moveTo(position.x, lineY);
         ctx.lineTo(
-          position.x + DEFAULT_GRID_RENDER_METRICS.cellWidth * zoom * width,
+          position.x + DEFAULT_CANVAS_CELL_METRICS.cellWidth * zoom * width,
           lineY
         );
         ctx.stroke();
@@ -130,7 +130,7 @@ export const drawGridLayer = (
     palette
   );
   const result = presentCharDeskCellFrame(ctx, frame, {
-    metrics: DEFAULT_GRID_RENDER_METRICS,
+    metrics: DEFAULT_CANVAS_CELL_METRICS,
     palette,
     offset,
     zoom,

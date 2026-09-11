@@ -1,4 +1,4 @@
-import { getCellOccupancy } from "@/shared/metrics";
+import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 import type { GridCell, Point } from "@/shared/types";
 import { cloneTextAttributes } from "@/shared/utils/ansi";
 import { GridManager } from "@/shared/utils/grid";

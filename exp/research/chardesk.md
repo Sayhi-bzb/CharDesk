@@ -4,7 +4,7 @@
 
 ## 当前关系
 
-CharDesk 是 Web TUI 的内部实现基础，不是外部兼容目标。
+CharDesk 是 Cell UI 的内部实现基础，不是外部兼容目标。
 
 ## 已消费能力
 

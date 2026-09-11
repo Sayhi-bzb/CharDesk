@@ -1,4 +1,5 @@
 import type { GridCellSource, Point, SelectionArea } from "@/shared/types";
+import { normalizeCellRangeEndpoints } from "@chardesk/cell-core";
 import { GridManager } from "@/shared/utils/grid";
 import { resolveGridAnchor, resolveGridSlot } from "@/shared/utils/grid-occupancy";
 import { getGridSelectionGeometry, getGridSelectionSpans } from "./grid-selection-geometry";
@@ -55,16 +56,13 @@ const createSingleCellRange = (address: GridAddress): GridRange => ({
   end: { ...address },
 });
 
-export const normalizeGridRange = (range: GridRange): GridRange => ({
-  start: {
-    x: Math.min(range.start.x, range.end.x),
-    y: Math.min(range.start.y, range.end.y),
-  },
-  end: {
-    x: Math.max(range.start.x, range.end.x),
-    y: Math.max(range.start.y, range.end.y),
-  },
-});
+export const normalizeGridRange = (range: GridRange): GridRange => {
+  const normalized = normalizeCellRangeEndpoints({
+    anchor: range.start,
+    focus: range.end,
+  });
+  return { start: normalized.anchor, end: normalized.focus };
+};
 
 export const gridRangesEqual = (left: GridRange, right: GridRange) => {
   const a = normalizeGridRange(left);

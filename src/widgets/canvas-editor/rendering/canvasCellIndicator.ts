@@ -7,10 +7,10 @@ import {
 import type { CanvasInteractionPalette } from "@/shared/canvas-appearance/runtime";
 import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
 import {
-  DEFAULT_GRID_RENDER_METRICS,
-  gridCellRect,
   toCanvasVisual,
-} from "@/shared/metrics";
+} from "@/shared/cell-rendering/canvas-drawing";
+import { getCellViewportRect as gridCellRect } from "@chardesk/rendering";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import type { GridCellSource, Point } from "@/shared/types";
 import type { CanvasCellIndicator } from "../presentation/canvasCellPresentation";
 
@@ -33,7 +33,7 @@ export const drawCanvasNavigationFocus = (
   viewport: CanvasCellIndicatorViewport,
   palette: CanvasCellIndicatorPalette
 ) => {
-  const position = gridCellRect(point, viewport);
+  const position = gridCellRect(point, viewport, DEFAULT_CANVAS_CELL_METRICS);
   ctx.save();
   ctx.fillStyle = palette.selectionSurface;
   ctx.strokeStyle = palette.selectionBorder;
@@ -70,7 +70,11 @@ export const drawCanvasCellIndicator = (
     return;
   }
 
-  const position = gridCellRect(indicator.point, input);
+  const position = gridCellRect(
+    indicator.point,
+    input,
+    DEFAULT_CANVAS_CELL_METRICS
+  );
   const cell = input.source.get(indicator.point);
   drawCharDeskCanvasCursor(ctx, {
     cell: cell
@@ -84,7 +88,7 @@ export const drawCanvasCellIndicator = (
       textColor: input.palette.textCursorForeground,
     },
     options: {
-      metrics: DEFAULT_GRID_RENDER_METRICS,
+      metrics: DEFAULT_CANVAS_CELL_METRICS,
       zoom: input.zoom,
       fontProfile: input.fontProfile,
     },

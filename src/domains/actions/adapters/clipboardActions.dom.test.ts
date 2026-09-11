@@ -6,7 +6,7 @@ import {
   readClipboardPayload,
   writeClipboardPayload,
 } from "@/domains/actions/public";
-import { getCellOccupancy } from "@/shared/metrics";
+import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 import { createTextRenderingRuntime } from "@/domains/document/public";
 
 const ansiThemeSample = `[38;2;148;163;184m╭──────────────────────────╮[0m

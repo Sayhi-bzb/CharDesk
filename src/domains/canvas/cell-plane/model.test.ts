@@ -479,20 +479,4 @@ describe("CellPlaneIndex", () => {
     expect(plane.getChangesSince(0)).toEqual({ revision: 257, full: true });
   });
 
-  it("finds a row origin directly through the cell surface", () => {
-    const plane = new CellPlaneIndex([{
-      id: "line",
-      bounds: { x: 2, y: 4, width: 6, height: 1 },
-      rows: [{
-        y: 4,
-        erase: [],
-        spans: [
-          { x: 2, text: "你A", color: "#fff" },
-          { x: 7, text: "B", color: "#fff" },
-        ],
-      }],
-    }]);
-    expect(plane.getLineOriginX({ x: 8, y: 4 })).toBe(7);
-    expect(plane.getLineOriginX({ x: 4, y: 4 })).toBe(2);
-  });
 });

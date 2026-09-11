@@ -1,6 +1,6 @@
 import type { GridCellSource, Point } from "@/shared/types";
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
-import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import { GridManager } from "@/shared/utils/grid";
 import type {
   MinimapDimensions,
@@ -22,7 +22,7 @@ export const computeVisibleContentBounds = (
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  const { cellWidth, cellHeight } = DEFAULT_GRID_RENDER_METRICS;
+  const { cellWidth, cellHeight } = DEFAULT_CANVAS_CELL_METRICS;
 
   GridManager.iterate(source, (cell, x, y) => {
     if (!hasVisibleContent(cell)) return;
@@ -46,7 +46,7 @@ export const computeVisibleSurfaceBounds = (
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  const { cellWidth, cellHeight } = DEFAULT_GRID_RENDER_METRICS;
+  const { cellWidth, cellHeight } = DEFAULT_CANVAS_CELL_METRICS;
 
   for (const row of reader.rows(bounds)) {
     for (const span of row.spans) {

@@ -1,6 +1,6 @@
 import type { Point } from "@/shared/types";
 import type { ToolType } from "@/domains/canvas/public";
-import { getCellOccupancy } from "@/shared/metrics";
+import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 import bresenham from "bresenham";
 
 type DrawingUpdateDecision =

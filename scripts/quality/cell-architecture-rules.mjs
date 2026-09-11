@@ -13,6 +13,14 @@ const retiredContracts = [
   "CharDeskCanvasCursorShape",
   "CharDeskCanvasCursorStyle",
 ];
+const retiredInputFlowContracts = [
+  "StaticGridInputFlow",
+  "staticGridInputFlow",
+  "createStaticGridInputFlow",
+  "advanceStaticGridInputFlow",
+  "lineOriginX",
+  "getLineOriginX",
+];
 const forbiddenCoreDependency = (dependency) => dependency === "react"
   || dependency === "react-dom"
   || dependency === "canvas"
@@ -39,6 +47,28 @@ export function checkCellArchitecture(content, file) {
 
   if (!productionSource(file)) return violations;
   const moduleImports = imports(content);
+  if (moduleImports.some((dependency) => /(?:^|\/)shared\/metrics(?:\/|$)/.test(dependency))) {
+    report("Consumers must import Cell primitives from their Core, protocol, rendering, font, or app owner");
+  }
+  if (
+    (file === "src/shared/fonts/catalog.ts"
+      || file === "apps/cell-ui/src/font-options.ts")
+    && content.includes("createCharDeskFontProfile")
+  ) {
+    report("Built-in font Profiles must be imported from their font package");
+  }
+  const rangeAdapters = new Map([
+    ["packages/cell-ui/src/range.ts", "resolveCellRangeBounds"],
+    ["packages/viewer/src/grid-interaction.ts", "resolveCellRangeBounds"],
+    ["src/domains/selection/model/grid-selection-geometry.ts", "resolveCellRangeSpans"],
+  ]);
+  const rangeOwner = rangeAdapters.get(file);
+  if (rangeOwner && (
+    !moduleImports.includes("@chardesk/cell-core")
+    || !content.includes(rangeOwner)
+  )) {
+    report(`Cell range geometry must consume Cell Core ${rangeOwner}`);
+  }
   const cellUiModule = file.startsWith("packages/cell-ui/src/") ? file.slice("packages/cell-ui/src/".length) : null;
   const behaviorModules = ["primitive-behavior.ts", "interaction-controller.ts", "interaction.ts", "press.ts", "gestures.ts", "visual-state.ts"];
   if (behaviorModules.includes(cellUiModule)) {
@@ -96,8 +126,17 @@ export function checkCellArchitecture(content, file) {
   ) {
     report("The rendering root must not depend on the Canvas presenter");
   }
+  if (
+    file === "src/domains/selection/model/static-grid-input-session.ts"
+    && (content.includes("GridCellSource") || moduleImports.includes("@/shared/types"))
+  ) {
+    report("The input session must not infer its origin from Cell content");
+  }
   for (const contract of retiredContracts) {
     if (content.includes(contract)) report(`Retired Canvas-owned Cell contract: ${contract}`);
+  }
+  for (const contract of retiredInputFlowContracts) {
+    if (content.includes(contract)) report(`Retired inferred input-flow contract: ${contract}`);
   }
   return violations;
 }

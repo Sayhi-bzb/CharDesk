@@ -1,16 +1,18 @@
 import { useEffect, useRef } from "react";
 import type { CellRect } from "@chardesk/cell-core";
-import { presentCharDeskCellFrame } from "@chardesk/rendering/canvas";
+import { resolveCellFrameViewportLayout } from "@chardesk/rendering";
+import {
+  loadCharDeskCanvasFonts,
+  prepareCharDeskCanvasSurface,
+  presentCharDeskCellFrame,
+} from "@chardesk/rendering/canvas";
 import { useCanvasFont } from "@/shared/fonts/hooks";
 import { useCanvasAppearance } from "@/shared/canvas-appearance/hooks";
 import type { GridCellSource } from "@/shared/types";
+import { createGridCellFrame } from "@/shared/cell-rendering/cell-frame";
 import {
-  createGridCellFrame,
-  DEFAULT_GRID_RENDER_METRICS,
-  loadRenderFonts,
-  prepareCanvasSurface,
-  resolveCellFrameCanvasLayout,
-} from "@/shared/metrics";
+  DEFAULT_CANVAS_CELL_METRICS,
+} from "@/shared/fonts/canvas-profile";
 
 type CellFrameCanvasProps = {
   source: GridCellSource;
@@ -35,9 +37,9 @@ export function CellFrameCanvas({
   const appearance = useCanvasAppearance();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nativeWidth =
-    viewport.width * DEFAULT_GRID_RENDER_METRICS.cellWidth * zoom;
+    viewport.width * DEFAULT_CANVAS_CELL_METRICS.cellWidth * zoom;
   const nativeHeight =
-    viewport.height * DEFAULT_GRID_RENDER_METRICS.cellHeight * zoom;
+    viewport.height * DEFAULT_CANVAS_CELL_METRICS.cellHeight * zoom;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -52,7 +54,7 @@ export function CellFrameCanvas({
         fit === "contain"
           ? canvas.getBoundingClientRect()
           : { width: nativeWidth, height: nativeHeight };
-      prepareCanvasSurface(
+      prepareCharDeskCanvasSurface(
         canvas,
         ctx,
         surface.width,
@@ -65,11 +67,11 @@ export function CellFrameCanvas({
       }
       const layout =
         fit === "contain"
-          ? resolveCellFrameCanvasLayout({
+          ? resolveCellFrameViewportLayout({
               viewportWidth: surface.width,
               viewportHeight: surface.height,
               frameViewport: viewport,
-              metrics: DEFAULT_GRID_RENDER_METRICS,
+              metrics: DEFAULT_CANVAS_CELL_METRICS,
               padding,
               maxScale,
             })
@@ -79,13 +81,13 @@ export function CellFrameCanvas({
                   viewport.x === 0
                     ? 0
                     : -viewport.x *
-                      DEFAULT_GRID_RENDER_METRICS.cellWidth *
+                      DEFAULT_CANVAS_CELL_METRICS.cellWidth *
                       zoom,
                 y:
                   viewport.y === 0
                     ? 0
                     : -viewport.y *
-                      DEFAULT_GRID_RENDER_METRICS.cellHeight *
+                      DEFAULT_CANVAS_CELL_METRICS.cellHeight *
                       zoom,
               },
               width: nativeWidth,
@@ -97,7 +99,7 @@ export function CellFrameCanvas({
         ctx,
         createGridCellFrame(source, viewport, "full", appearance.palette),
         {
-          metrics: DEFAULT_GRID_RENDER_METRICS,
+          metrics: DEFAULT_CANVAS_CELL_METRICS,
           palette: appearance.palette,
           offset: layout.offset,
           zoom: layout.scale,
@@ -115,7 +117,7 @@ export function CellFrameCanvas({
     document.fonts?.addEventListener("loadingdone", render);
     const samples: string[] = [];
     source.visit(viewport, (_x, _y, cell) => samples.push(cell.char));
-    void loadRenderFonts(samples, fontProfile)
+    void loadCharDeskCanvasFonts(samples, { fontProfile })
       .then(render)
       .catch(() => {});
 

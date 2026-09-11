@@ -29,7 +29,7 @@ const LEGACY_FLAT_RUNTIME_FIELDS = new Set([
   "textCursor",
   "staticGridSelection",
   "staticGridEditMode",
-  "staticGridInputFlow",
+  "staticGridInputSession",
   "hoveredGrid",
   "scratchLayer",
   "canvasColorPickerTarget",

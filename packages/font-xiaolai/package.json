@@ -6,6 +6,10 @@
   "description": "Vendored Xiaolai Mono resources for CharDesk",
   "license": "OFL-1.1",
   "sideEffects": ["./fonts.css"],
+  "dependencies": {
+    "@chardesk/font-maple": "^0.3.7",
+    "@chardesk/fonts": "^0.3.7"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./fonts.css": "./fonts.css",

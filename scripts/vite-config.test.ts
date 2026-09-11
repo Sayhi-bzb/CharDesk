@@ -60,8 +60,11 @@ describe("Vite workspace aliases", () => {
     ["@chardesk/cell-core", "packages/cell-core/src/index.ts"],
     ["@chardesk/chargraph/markdown", "packages/chargraph/src/markdown-default.ts"],
     ["@chardesk/chargraph/theme", "packages/chargraph/src/render-theme.ts"],
+    ["@chardesk/keyboard", "packages/keyboard/src/index.ts"],
+    ["@chardesk/keyboard/browser", "packages/keyboard/src/browser.ts"],
     ["@chardesk/rendering", "packages/rendering/src/index.ts"],
     ["@chardesk/rendering/canvas", "packages/rendering/src/canvas.ts"],
+    ["@chardesk/rendering/theme", "packages/rendering/src/content-theme.ts"],
   ])("resolves %s from source in TypeScript, Vite, and Vitest", (
     specifier,
     sourcePath

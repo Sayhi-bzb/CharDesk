@@ -1,0 +1,15 @@
+{
+  "title": "Cell UI",
+  "pages": [
+    "overview",
+    "design",
+    "macintosh",
+    "primitives",
+    "compositor",
+    "widgets",
+    "semantics",
+    "accessibility",
+    "native-input",
+    "status"
+  ]
+}

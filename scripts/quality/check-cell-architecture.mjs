@@ -15,6 +15,7 @@ function collect(directory) {
 
 const targets = [
   join(root, "packages", "cell-core", "package.json"),
+  join(root, "apps", "cell-ui", "src", "font-options.ts"),
   ...sourceRoots.flatMap(collect),
 ];
 const violations = targets.flatMap((absolute) => checkCellArchitecture(

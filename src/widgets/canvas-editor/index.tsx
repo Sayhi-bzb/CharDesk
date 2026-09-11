@@ -13,7 +13,7 @@ import type { ManagedInputBatchCommitSample } from './hooks/ManagedInputBatchSch
 import { useCanvasSpacePan } from './hooks/useCanvasSpacePan';
 import { ContextMenu, ContextMenuTrigger } from '@chardesk/ui';
 import { CANVAS_CONTEXT_MENU } from '@/domains/actions/public';
-import { DEFAULT_GRID_RENDER_METRICS } from '@/shared/metrics';
+import { DEFAULT_CANVAS_CELL_METRICS } from '@/shared/fonts/canvas-profile';
 import type { CanvasLinkHit } from './hooks/interaction/core/linkHitTesting';
 import { useCanvasEngineRuntime } from './engine/useCanvasEngineRuntime';
 import { useCanvasViewOptional } from './engine/CanvasWorkspace';
@@ -161,9 +161,9 @@ export const CanvasEditor = ({
         x: 0,
         y: 0,
         width:
-          activeSlide.size.columns * DEFAULT_GRID_RENDER_METRICS.cellWidth,
+          activeSlide.size.columns * DEFAULT_CANVAS_CELL_METRICS.cellWidth,
         height:
-          activeSlide.size.rows * DEFAULT_GRID_RENDER_METRICS.cellHeight,
+          activeSlide.size.rows * DEFAULT_CANVAS_CELL_METRICS.cellHeight,
       },
       size,
       { padding: 48, insets: viewportFrame?.insets }

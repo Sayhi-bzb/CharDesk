@@ -9,13 +9,13 @@ export type {
   StaticGridViewState,
 } from "./model/static-grid";
 export type {
-  StaticGridInputFlow,
-} from "./model/static-grid-input-flow";
+  StaticGridInputSession,
+} from "./model/static-grid-input-session";
 export {
-  advanceStaticGridInputFlow,
-  advanceStaticGridInputFlowLine,
-  createStaticGridInputFlow,
-} from "./model/static-grid-input-flow";
+  advanceStaticGridInput,
+  advanceStaticGridInputLine,
+  createStaticGridInputSession,
+} from "./model/static-grid-input-session";
 export type {
   GridSelectionGeometry,
 } from "./model/grid-selection-geometry";

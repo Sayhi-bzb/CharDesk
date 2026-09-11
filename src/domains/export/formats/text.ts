@@ -1,6 +1,6 @@
 import { EXPORT_PADDING } from "@/shared/lib/constants";
 import { isDefaultArtifactForeground } from "@/shared/canvas-appearance/artifact-style";
-import { getCellOccupancy } from "@/shared/metrics";
+import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 import type { GridCell, GridCellSource, SelectionArea } from "@/shared/types";
 import {
   cloneTextAttributes,

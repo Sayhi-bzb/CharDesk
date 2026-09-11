@@ -1,4 +1,5 @@
 import type { CharDeskTextCell, ParsedCharDeskText } from "@chardesk/protocol";
+import { resolveCellRangeBounds } from "@chardesk/cell-core";
 
 export type CharDeskGridPoint = Readonly<{
   x: number;
@@ -103,23 +104,26 @@ export const createCharDeskGridSelection = (
   const normalizedFocus = normalizeCharDeskGridPoint(index, focus);
   if (!normalizedAnchor || !normalizedFocus) return null;
 
-  let left = Math.min(normalizedAnchor.x, normalizedFocus.x);
-  let right = Math.max(normalizedAnchor.x, normalizedFocus.x);
-  const top = Math.min(normalizedAnchor.y, normalizedFocus.y);
-  const bottom = Math.max(normalizedAnchor.y, normalizedFocus.y);
-  for (const cell of index.document.cells) {
-    if (cell.y < top || cell.y > bottom || cell.width !== 2) continue;
-    const cellRight = cell.x + 1;
-    if (cell.x <= right && cellRight >= left) {
-      left = Math.min(left, cell.x);
-      right = Math.max(right, cellRight);
-    }
-  }
+  const bounds = resolveCellRangeBounds({
+    anchor: normalizedAnchor,
+    focus: normalizedFocus,
+  }, {
+    clip: { x: 0, y: 0, width: index.document.width, height: index.document.height },
+    getFootprint: (point) => {
+      const cell = getCharDeskGridCell(index, point);
+      return cell ? { x: cell.x, y: cell.y, width: cell.width, height: 1 } : null;
+    },
+  })!;
 
   return {
     anchor: normalizedAnchor,
     focus: normalizedFocus,
-    rect: { left, top, right, bottom },
+    rect: {
+      left: bounds.x,
+      top: bounds.y,
+      right: bounds.x + bounds.width - 1,
+      bottom: bounds.y + bounds.height - 1,
+    },
   };
 };
 

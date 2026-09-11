@@ -1,10 +1,10 @@
-import { DEFAULT_GRID_GEOMETRY } from "@/shared/metrics/gridGeometry";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import type { Point } from "@/shared/types";
 
 const LEGACY_GRID_CELL_HEIGHT = 19;
 
 const LEGACY_TO_CURRENT_HEIGHT_RATIO =
-  DEFAULT_GRID_GEOMETRY.cellHeight / LEGACY_GRID_CELL_HEIGHT;
+  DEFAULT_CANVAS_CELL_METRICS.cellHeight / LEGACY_GRID_CELL_HEIGHT;
 
 export const migrateLegacyGridOffset = (offset: Point): Point =>
   Number.isFinite(offset.y)

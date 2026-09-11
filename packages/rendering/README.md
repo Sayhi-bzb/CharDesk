@@ -108,10 +108,10 @@ rotated/sheared paths retain unsnapped geometry.
 
 Coverage and source preservation: [unit tests](src/cell-graphics.test.ts).
 Chromium/WebKit raster checks at DPR 1/1.25/2 and zoom 0.75/1/1.25/2:
-[browser tests](../../e2e/web-tui-cell-graphics.spec.ts). This is an axis-aligned
+[browser tests](../../apps/cell-ui/e2e/cell-graphics.spec.ts). This is an axis-aligned
 test matrix, not a guarantee at every transform or subpixel cell size.
 Opacity, double-line separation and outline connectivity with fractional translations
-are checked by [Box clarity tests](../../e2e/web-tui-box-clarity.spec.ts).
+are checked by [Box clarity tests](../../apps/cell-ui/e2e/box-clarity.spec.ts).
 
 Headless hosts that register subset fonts under unique family names may pass
 `fontFamilies` in document or cell draw options. It selects regular and bold
@@ -155,6 +155,12 @@ Import their Cell-named replacements from `@chardesk/rendering`; import only
 Canvas contexts, raster options, and presenter functions from
 `@chardesk/rendering/canvas`.
 
+The package root also owns Cell/viewport projection:
+`viewportToCellPoint()`, `cellToViewportPoint()`, `getCellViewportRect()`,
+`getViewportCellBounds()`, and `resolveCellFrameViewportLayout()`. Product code
+supplies its metrics and retains camera state; no parallel metrics facade is
+required.
+
 `measureCharDeskCanvasFont(context, profile, fontSize = 15)` measures a loaded
 display face and returns `{ metrics, source, fontMetrics, fontMetricsSource }`.
 `fontMetrics` preserves the uncalibrated grid; `metrics` applies the Profile's
@@ -192,5 +198,5 @@ Missing ink metrics produce `status: "unavailable"` and null measurements, not
 a passing result. Canvas only identifies the requested stack, not the actual
 fallback face. These are geometric observations, not a font coverage or raster
 certificate; browsers differ on signed glyph bounds. Real-pixel seam checks are
-owned by [glyph raster tests](../../e2e/web-tui-glyph-overflow.spec.ts);
-the [real-font audit test](../../e2e/web-tui-font-audit.spec.ts) verifies Probe output.
+owned by [glyph raster tests](../../apps/cell-ui/e2e/glyph-overflow.spec.ts);
+the [real-font audit test](../../apps/cell-ui/e2e/font-audit.spec.ts) verifies Probe output.

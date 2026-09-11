@@ -17,7 +17,8 @@ import type {
   CharDeskRenderFontRoute,
   CharDeskRenderModel,
 } from "./index.js";
-import { DEFAULT_CHARDESK_CELL_METRICS, resolveCharDeskFontRoute } from "./index.js";
+import { DEFAULT_CHARDESK_CELL_METRICS } from "./metrics.js";
+import { resolveCharDeskFontRoute } from "./index.js";
 import { drawCharDeskCellGraphic, resolveCharDeskCanvasGlyphSource } from "./cell-graphics.js";
 export { CELL_GRAPHICS_VERSION, resolveCharDeskCanvasGlyphSource } from "./cell-graphics.js";
 import {

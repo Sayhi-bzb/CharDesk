@@ -23,14 +23,14 @@ import {
 } from '@/domains/canvas/public';
 import type { CanvasLinkHit } from './interaction/core/linkHitTesting';
 import {
-  DEFAULT_GRID_RENDER_METRICS,
   drawGridLines,
   drawTextCell,
-  getCellOccupancy,
-  gridCellRect,
-  prepareCanvasSurface,
   setTextRenderStyle,
-} from '@/shared/metrics';
+} from '@/shared/cell-rendering/canvas-drawing';
+import { getGraphemeCellWidth as getCellOccupancy } from '@chardesk/protocol';
+import { getCellViewportRect as gridCellRect } from '@chardesk/rendering';
+import { prepareCharDeskCanvasSurface } from '@chardesk/rendering/canvas';
+import { DEFAULT_CANVAS_CELL_METRICS } from '@/shared/fonts/canvas-profile';
 import {
   getStaticGridViewState,
 } from '@/domains/selection/public';
@@ -105,7 +105,7 @@ export const drawCanvasColorPickerAnchor = (
   viewport: { offset: Point; zoom: number },
   palette: CanvasInteractionPalette
 ) => {
-  const pos = gridCellRect(point, viewport);
+  const pos = gridCellRect(point, viewport, DEFAULT_CANVAS_CELL_METRICS);
   const x = Math.round(pos.x);
   const y = Math.round(pos.y);
   const width = Math.round(pos.width);
@@ -266,7 +266,7 @@ export const useCanvasRenderer = (
     }
     if (!samples.length) return;
     void loadCharDeskCanvasFonts(samples, {
-      metrics: DEFAULT_GRID_RENDER_METRICS,
+      metrics: DEFAULT_CANVAS_CELL_METRICS,
       fontProfile,
     }).then(() => requestRenderRef?.current?.());
   }, [contentReader, contentRevision, fontProfile, offset, requestRenderRef, surfaceGeometry, zoom]);
@@ -333,7 +333,8 @@ export const useCanvasRenderer = (
           ? (() => {
               const origin = gridCellRect(
                 { x: 0, y: 0 },
-                { offset: renderOffset, zoom }
+                { offset: renderOffset, zoom },
+                DEFAULT_CANVAS_CELL_METRICS
               );
               return {
                 x: origin.x,
@@ -371,7 +372,7 @@ export const useCanvasRenderer = (
       const bgCtx = bgCanvas?.getContext('2d', { alpha: false });
       if (renderBackground && bgCanvas && bgCtx && !suppressContentRendering) {
         const drawVisibleGrid = showGrid && shouldDrawCanvasGrid(zoom);
-        prepareCanvasSurface(
+        prepareCharDeskCanvasSurface(
           bgCanvas,
           bgCtx,
           surfaceGeometry.width,
@@ -440,7 +441,7 @@ export const useCanvasRenderer = (
       const scratchCanvas = layers.interaction.current;
       const scratchCtx = scratchCanvas?.getContext('2d');
       if (renderScratch && scratchCanvas && scratchCtx) {
-        prepareCanvasSurface(
+        prepareCharDeskCanvasSurface(
           scratchCanvas,
           scratchCtx,
           surfaceGeometry.width,
@@ -459,7 +460,7 @@ export const useCanvasRenderer = (
             width: surfaceGeometry.width,
             height: surfaceGeometry.height,
             options: {
-              metrics: DEFAULT_GRID_RENDER_METRICS,
+              metrics: DEFAULT_CANVAS_CELL_METRICS,
               offset: renderOffset,
               zoom,
             },
@@ -509,7 +510,7 @@ export const useCanvasRenderer = (
               surfaceEffect: palette.rangeSurfaceEffect,
             },
             options: {
-              metrics: DEFAULT_GRID_RENDER_METRICS,
+              metrics: DEFAULT_CANVAS_CELL_METRICS,
               offset: renderOffset,
               zoom,
             },
@@ -529,7 +530,11 @@ export const useCanvasRenderer = (
         }
 
         if (tool === 'eraser' && hoveredGrid) {
-          const pos = gridCellRect(hoveredGrid, { offset: renderOffset, zoom });
+          const pos = gridCellRect(
+            hoveredGrid,
+            { offset: renderOffset, zoom },
+            DEFAULT_CANVAS_CELL_METRICS
+          );
           uiCtx.fillStyle = palette.eraserSurface;
           uiCtx.fillRect(
             Math.round(pos.x),
@@ -540,7 +545,11 @@ export const useCanvasRenderer = (
         }
 
         if (renderedTextCursor) {
-          const pos = gridCellRect(renderedTextCursor, { offset: renderOffset, zoom });
+          const pos = gridCellRect(
+            renderedTextCursor,
+            { offset: renderOffset, zoom },
+            DEFAULT_CANVAS_CELL_METRICS
+          );
           const cell = renderedContentSource.get(renderedTextCursor);
           const occupancy = cell ? getCellOccupancy(cell.char) : 1;
           uiCtx.fillStyle = palette.textCursorSurface;
@@ -551,7 +560,7 @@ export const useCanvasRenderer = (
             Math.round(pos.height)
           );
           if (cell) {
-            setTextRenderStyle(uiCtx, zoom, DEFAULT_GRID_RENDER_METRICS);
+            setTextRenderStyle(uiCtx, zoom, DEFAULT_CANVAS_CELL_METRICS);
             drawTextCell(uiCtx, cell, pos.x, pos.y, {
               fontProfile,
               color: palette.textCursorForeground,

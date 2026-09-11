@@ -3,9 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Vendored Fusion Pixel Mono resources for the Web TUI Gallery",
+  "description": "Vendored Fusion Pixel Mono resources for the Cell UI portal",
   "license": "OFL-1.1",
   "sideEffects": ["./fonts.css"],
+  "dependencies": {
+    "@chardesk/font-maple": "^0.3.7",
+    "@chardesk/fonts": "^0.3.7"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./fonts.css": "./fonts.css",

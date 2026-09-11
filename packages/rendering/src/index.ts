@@ -21,6 +21,17 @@ import {
 
 export type { CharDeskNormalizedCellRect } from "./canvas-geometry.js";
 export {
+  cellToViewportPoint,
+  getCellViewportRect,
+  getViewportCellBounds,
+  resolveCellFrameViewportLayout,
+  viewportToCellPoint,
+} from "./viewport.js";
+export type {
+  CharDeskCellFrameViewportLayout,
+  CharDeskViewportTransform,
+} from "./viewport.js";
+export {
   CHARDESK_CONTENT_THEMES,
   CHARDESK_CONTENT_THEME_TOKENS,
   CHARDESK_DARK_CONTENT_THEME,
@@ -38,22 +49,8 @@ export type {
 
 export type CharDeskRenderFontRoute = CharDeskFontRoute;
 
-export type CharDeskCellMetrics = {
-  cellWidth: number;
-  cellHeight: number;
-  fontSize: number;
-  fontFamily: string;
-  /** Alphabetic baseline from the Cell top; omitted preserves middle alignment. */
-  baseline?: number;
-};
-
-export const DEFAULT_CHARDESK_CELL_METRICS = Object.freeze({
-  cellWidth: 9,
-  cellHeight: 20,
-  baseline: 15,
-  fontSize: 15,
-  fontFamily: CHARDESK_SYSTEM_FONT_PROFILE.families.text,
-} satisfies CharDeskCellMetrics);
+export { DEFAULT_CHARDESK_CELL_METRICS } from "./metrics.js";
+export type { CharDeskCellMetrics } from "./metrics.js";
 
 export type CharDeskCellCursorShape = "block" | "bar" | "underline";
 

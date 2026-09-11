@@ -1,7 +1,8 @@
 import { useRef } from "react";
 import type { Point } from "@/shared/types";
 import type { CanvasColorSourceChoice } from "./hooks/interaction/gestures/colorPickerInteraction";
-import { gridCellRect } from "@/shared/metrics";
+import { getCellViewportRect as gridCellRect } from "@chardesk/rendering";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import { HOST_ICONOLOGY } from "@/shared/icons/iconology";
 import { useUiI18n } from "@/shared/i18n";
 import { Button, ColorSwatch, Popover, PopoverAnchor, PopoverContent } from "@chardesk/ui";
@@ -24,7 +25,7 @@ export function CanvasColorSourceChooser({
 }: CanvasColorSourceChooserProps) {
   const { t } = useUiI18n();
   const foregroundButtonRef = useRef<HTMLButtonElement>(null);
-  const rect = gridCellRect(choice.point, { offset, zoom });
+  const rect = gridCellRect(choice.point, { offset, zoom }, DEFAULT_CANVAS_CELL_METRICS);
   const ForegroundIcon = HOST_ICONOLOGY.toolbarAction.text;
   const BackgroundIcon = HOST_ICONOLOGY.toolbarAction.bg;
 

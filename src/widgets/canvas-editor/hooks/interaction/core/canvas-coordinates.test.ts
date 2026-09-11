@@ -7,7 +7,7 @@ import {
   resolveSnappedGridPointFromScreen,
   resolveZoomAnchoredOffset,
 } from "./coordinates";
-import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 
 describe("canvas coordinate helpers", () => {
   const rect = { left: 10, top: 20 } as DOMRect;
@@ -16,7 +16,7 @@ describe("canvas coordinate helpers", () => {
   it("converts and snaps screen coordinates", () => {
     expect(getLocalCanvasPoint({ clientX: 18, clientY: 31, rect })).toEqual({ x: 8, y: 11 });
     expect(resolveSnappedGridPointFromScreen({
-      clientX: rect.left + DEFAULT_GRID_RENDER_METRICS.cellWidth + 1,
+      clientX: rect.left + DEFAULT_CANVAS_CELL_METRICS.cellWidth + 1,
       clientY: rect.top + 1,
       rect,
       viewport,

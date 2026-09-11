@@ -2,7 +2,7 @@ import {
   getGridSelectionGeometry,
   gridRangeFromSelectionArea,
 } from "@/domains/selection/public";
-import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import type { GridCellSource, Point } from "@/shared/types";
 
 type RemoteSelection = { mode: "freeform"; areas: Array<{ start: Point; end: Point }> };
@@ -49,10 +49,10 @@ const toScreenPoint = (
 ): Point => ({
   x:
     viewport.offset.x +
-    point.x * DEFAULT_GRID_RENDER_METRICS.cellWidth * viewport.zoom,
+    point.x * DEFAULT_CANVAS_CELL_METRICS.cellWidth * viewport.zoom,
   y:
     viewport.offset.y +
-    point.y * DEFAULT_GRID_RENDER_METRICS.cellHeight * viewport.zoom,
+    point.y * DEFAULT_CANVAS_CELL_METRICS.cellHeight * viewport.zoom,
 });
 
 const ringsToPath = (

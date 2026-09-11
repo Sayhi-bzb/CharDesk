@@ -5,7 +5,7 @@ import {
   getGridSelectionRanges,
   getStaticGridSelectionAreas,
 } from "@/domains/selection/public";
-import { getCellOccupancy } from "@/shared/metrics";
+import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 import type {
   GridCell,
   Point,
@@ -303,7 +303,7 @@ export const createCanvasDocumentCommands = (
           primaryRange: plan.targetRange,
         },
         staticGridEditMode: "navigate" as const,
-        staticGridInputFlow: null,
+        staticGridInputSession: null,
         textCursor: null,
       })
     );

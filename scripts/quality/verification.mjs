@@ -119,7 +119,7 @@ export function affectedProjectNames(projects, changedFiles, forceFull = false) 
     )
     if (project) affected.add(project.name)
     else if (file.startsWith('src/') || file.startsWith('scripts/')
-      || file.startsWith('exp/web-tui/') || file.startsWith('e2e/')) affected.add('root')
+      || file.startsWith('e2e/')) affected.add('root')
   }
 
   const reverse = new Map(projects.map(project => [project.name, new Set()]))
@@ -282,11 +282,8 @@ const runRootTests = (project, mode, changedFiles, shard, run, cell, cellOnlyQui
   const conservative = changedFiles.some(file => isGlobalInput(file)
     || !existsSync(path.join(repositoryRoot, file)) || /\.(css|json)$/u.test(file))
   const related = mode !== 'full' && !conservative ? sourceFiles(changedFiles) : []
-  if (cellOnlyQuick) {
-    if (!cell.gallery) return
-    args.push('run', 'exp/web-tui')
-  }
-  else if (related.length > 0) args.push('related', ...related, '--run')
+  if (cellOnlyQuick) return
+  if (related.length > 0) args.push('related', ...related, '--run')
   else args.push('run')
   args.push('--project', project, '--passWithNoTests')
   if (shard) args.push('--shard', shard)
@@ -344,7 +341,7 @@ export function createVerificationPlan(options, changes, projects = loadWorkspac
   })
   const cellOnlyQuick = options.mode === 'quick' && !options.target
     && changes.files.length > 0 && changes.files.every(isCellInput)
-  if (cell.gallery) selected.add('root')
+  if (cell.gallery) selected.add('@chardesk/cell-ui-site')
   if (cell.fullPackage && cell.active) selected.add('@chardesk/cell-ui')
   const deferred = options.mode === 'quick'
     ? ['PR/full: complete quality checks, production builds and merge browser coverage'] : []
@@ -376,8 +373,8 @@ export function createVerificationPlan(options, changes, projects = loadWorkspac
       .map(suite => ({ files: [suite.file], grep: suite.grep }))
     if (unfiltered.length) suites.unshift({ files: unfiltered, grep: null })
     for (const suite of suites) {
-      run(npmCommand, ['run', 'test:e2e', '--', ...suite.files, '--project=chromium',
-        ...(cell.dualBrowser ? ['--project=webkit-cell-gallery'] : []),
+      run(npmCommand, ['run', 'test:e2e', '-w', '@chardesk/cell-ui-site', '--', ...suite.files, '--project=chromium',
+        ...(cell.dualBrowser ? ['--project=webkit'] : []),
         ...(suite.grep ? ['--grep', suite.grep] : [])], { label: 'Cell browser tests', reason: cell.reason })
     }
   }

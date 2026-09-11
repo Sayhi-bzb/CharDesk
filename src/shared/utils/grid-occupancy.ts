@@ -1,4 +1,4 @@
-import { getCellOccupancy } from "@/shared/metrics";
+import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 import type { GridCell, GridCellSource, Point } from "@/shared/types";
 
 type GridReader = Pick<GridCellSource, "get">;

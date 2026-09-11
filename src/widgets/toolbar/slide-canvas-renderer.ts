@@ -8,11 +8,11 @@ import {
   COLOR_PRIMARY_TEXT,
 } from "@/shared/lib/constants";
 import {
-  DEFAULT_GRID_RENDER_METRICS,
   drawCellBackground,
   drawCellText,
-  prepareCanvasSurface,
-} from "@/shared/metrics";
+} from "@/shared/cell-rendering/canvas-drawing";
+import { prepareCharDeskCanvasSurface } from "@chardesk/rendering/canvas";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import { GridManager } from "@/shared/utils/grid";
 import { effectiveCellStyle } from "@/shared/utils/ansi";
 import {
@@ -53,7 +53,7 @@ export const drawSlideCanvas = ({
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  prepareCanvasSurface(canvas, ctx, viewportWidth, viewportHeight, dpr);
+  prepareCharDeskCanvasSurface(canvas, ctx, viewportWidth, viewportHeight, dpr);
   const resolvedBackdropColor = backdropColor === undefined
     ? pageColor
     : backdropColor;
@@ -92,8 +92,8 @@ export const drawSlideCanvas = ({
     drawCellBackground(
       ctx,
       cell,
-      layout.x + x * DEFAULT_GRID_RENDER_METRICS.cellWidth * layout.zoom,
-      layout.y + y * DEFAULT_GRID_RENDER_METRICS.cellHeight * layout.zoom,
+      layout.x + x * DEFAULT_CANVAS_CELL_METRICS.cellWidth * layout.zoom,
+      layout.y + y * DEFAULT_CANVAS_CELL_METRICS.cellHeight * layout.zoom,
       { zoom: layout.zoom }
     );
   }
@@ -109,8 +109,8 @@ export const drawSlideCanvas = ({
     drawCellText(
       ctx,
       cell,
-      layout.x + x * DEFAULT_GRID_RENDER_METRICS.cellWidth * layout.zoom,
-      layout.y + y * DEFAULT_GRID_RENDER_METRICS.cellHeight * layout.zoom,
+      layout.x + x * DEFAULT_CANVAS_CELL_METRICS.cellWidth * layout.zoom,
+      layout.y + y * DEFAULT_CANVAS_CELL_METRICS.cellHeight * layout.zoom,
       { color, zoom: layout.zoom }
     );
   }

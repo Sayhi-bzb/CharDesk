@@ -1,5 +1,5 @@
 import type { GridCell, GridCellSource, GridMap, NodeBounds } from "@/shared/types";
-import { getCellOccupancy } from "@/shared/metrics";
+import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 
 const keyOf = (x: number, y: number) => `${x},${y}`;
 

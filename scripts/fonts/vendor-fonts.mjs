@@ -639,10 +639,22 @@ const vendorArchiveFont = async (source, target, manifest, stylesheets) => {
   }
 };
 
-const vendorAssets = async () => {
+const withWorkingRoots = async (task) => {
+  const workingRoots = new Map();
+  try {
+    return await task(workingRoots);
+  } finally {
+    await Promise.all(
+      [...workingRoots.values()].map((workingRoot) =>
+        rm(workingRoot, { recursive: true, force: true })
+      )
+    );
+  }
+};
+
+const vendorAssets = async () => withWorkingRoots(async (workingRoots) => {
   const manifests = new Map();
   const stylesheets = new Map();
-  const workingRoots = new Map();
   let generatedNerdCatalog;
 
   for (const [targetId, target] of targetEntries) {
@@ -877,7 +889,7 @@ const vendorAssets = async () => {
       "utf8"
     );
   }
-};
+});
 
 if (verifyOnly) {
   await verifyAssets();

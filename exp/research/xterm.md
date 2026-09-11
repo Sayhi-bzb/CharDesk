@@ -4,7 +4,7 @@
 
 ## 当前关系
 
-xterm.js 是 browser terminal 的 IME、selection、accessibility、viewport 和 dirty rendering 参考；不作为 Web TUI Engine Base。
+xterm.js 是 browser terminal 的 IME、selection、accessibility、viewport 和 dirty rendering 参考；不作为 Cell UI engine base。
 
 ## 已消费的参考
 

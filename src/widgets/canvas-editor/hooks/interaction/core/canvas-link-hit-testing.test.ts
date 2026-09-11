@@ -5,7 +5,7 @@ import {
   shouldUseCanvasLinkPointer,
   shouldOpenCanvasLink,
 } from "@/widgets/canvas-editor/hooks/useCanvasInteraction";
-import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import type { GridCellSource } from "@/shared/types";
 
 const rect = { left: 10, top: 20 } as DOMRect;
@@ -31,7 +31,7 @@ describe("resolveCanvasLinkHit", () => {
     expect(
       resolveCanvasLinkHit({
         ...baseInput(grid),
-        clientX: rect.left + DEFAULT_GRID_RENDER_METRICS.cellWidth + 1,
+        clientX: rect.left + DEFAULT_CANVAS_CELL_METRICS.cellWidth + 1,
       })
     ).toEqual({
       y: 0,
@@ -72,7 +72,7 @@ describe("resolveCanvasLinkHit", () => {
     expect(
       resolveCanvasLinkHit({
         ...baseInput(grid),
-        clientX: rect.left + DEFAULT_GRID_RENDER_METRICS.cellWidth + 1,
+        clientX: rect.left + DEFAULT_CANVAS_CELL_METRICS.cellWidth + 1,
       })
     ).toEqual({
       y: 0,

@@ -7,7 +7,6 @@
         "src/app/App.tsx",
         "src/domains/*/public.ts",
         "src/widgets/dialogs/clear-canvas-dialog.tsx",
-        "exp/web-tui/main.tsx",
         "scripts/**/*.{mjs,ts}",
         "e2e/**/*.ts",
         "vite.config.ts",
@@ -16,7 +15,6 @@
       ],
       "project": [
         "src/**/*.{ts,tsx}",
-        "exp/web-tui/**/*.{ts,tsx}",
         "scripts/**/*.{ts,mjs}",
         "e2e/**/*.ts",
         "*.config.{ts,js}"
@@ -27,7 +25,7 @@
       "project": ["src/**/*.ts"]
     },
     "packages/fonts": {
-      "entry": ["src/index.ts", "src/**/*.test.ts", "vitest.config.ts"],
+      "entry": ["src/index.ts", "src/browser.ts", "src/**/*.test.ts", "vitest.config.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/document": {
@@ -84,6 +82,10 @@
     "apps/chargraph": {
       "entry": ["src/main.tsx", "src/**/*.test.ts", "vite.config.ts", "vitest.config.ts"],
       "project": ["src/**/*.{ts,tsx}", "*.config.ts"]
+    },
+    "apps/cell-ui": {
+      "entry": ["src/main.tsx", "src/**/*.test.ts", "src/**/*.dom.test.tsx", "e2e/**/*.ts", "*.config.ts"],
+      "project": ["src/**/*.{ts,tsx}", "e2e/**/*.ts", "*.config.ts"]
     }
   },
   "include": [

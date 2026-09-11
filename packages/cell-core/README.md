@@ -27,3 +27,9 @@ const frame: CellFrame<MyCell> = {
 `formatCellFrame(frame, project, options)` is the storage-neutral character
 snapshot authority. The projector supplies only `text` and logical width; Core
 preserves sparse positions and wide-Cell continuation columns.
+
+`resolveCellRangeBounds()` owns rectangular selection normalization.
+`resolveCellRangeSpans()` owns per-row normalization and merging for compound
+selections. Hosts provide optional bounds and a footprint resolver so wide
+graphemes remain complete; interaction state and text extraction stay with the
+host.

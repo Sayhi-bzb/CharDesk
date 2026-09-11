@@ -1,7 +1,7 @@
 import { type CharDeskFontProfile } from "@chardesk/fonts";
+import { loadBrowserFont } from "@chardesk/fonts/browser";
 import { displayFontOptions, type DisplayFont } from "./catalog";
 import { DEFAULT_CANVAS_FONT_PROFILE } from "./canvas-profile";
-import { loadDisplayFont } from "./loading";
 
 export const CANVAS_FONT_STORAGE_KEY = "chardesk-canvas-font-v1";
 export type CanvasFontStorage = Pick<Storage, "getItem" | "setItem">;
@@ -20,7 +20,7 @@ const migrateStoredDisplayFont = (value: unknown): unknown =>
 
 const loadCanvasFont = async (font: DisplayFont) => {
   const option = displayFontOptions[font];
-  await loadDisplayFont(option);
+  await loadBrowserFont(option);
 };
 
 /** Host-owned preference; no document/history state and no renderer-side globals. */

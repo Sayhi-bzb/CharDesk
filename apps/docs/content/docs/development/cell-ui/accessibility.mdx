@@ -1,0 +1,22 @@
+---
+title: Cell UI Accessibility
+description: Current accessibility acceptance evidence.
+---
+
+# Cell UI Accessibility 验收
+
+本页登记 Phase 5 的 Accessibility 事实。语义契约由 [SemanticSnapshot](semantics) 负责。
+
+## 门槛
+
+| 门槛 | 状态 | 证据 |
+| --- | --- | --- |
+| role、name、state、focus、reading order、relations、actions、set position | PASS | [Semantic audit tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/semantics.test.tsx) |
+| Headless role/name 查询与 Semantic DOM 一致 | PASS | [Browser parity tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser.dom.test.tsx) |
+| keyboard/AT DOM focus 与逻辑 `focusedId` 同步，包括 modal 重建与 focus restore | PASS | [Chromium/WebKit command palette E2E](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/command-palette.spec.ts)、[complex widgets E2E](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/complex-widgets.spec.ts) |
+| Virtual List 保持有界 DOM，并公开逻辑 position/total 与 active item | PASS | [Browser tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser.dom.test.tsx)、[Chromium/WebKit virtual list E2E](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/virtual-list.spec.ts) |
+| Canvas 不重复暴露 Cell；文本编辑使用原生 textarea semantics | PASS | [Browser tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser.dom.test.tsx)、[Chromium/WebKit editor E2E](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/editor.spec.ts) |
+
+## 边界
+
+现有证据验证 accessibility tree、DOM focus 和 actions，不声明真实读屏的语音、措辞或任意浏览器/OS 组合体验。

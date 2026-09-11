@@ -14,9 +14,9 @@ import {
 } from "react";
 import { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
 import {
-  DEFAULT_GRID_RENDER_METRICS,
-  gridCellRect,
-} from "@/shared/metrics";
+  DEFAULT_CANVAS_CELL_METRICS,
+} from "@/shared/fonts/canvas-profile";
+import { getCellViewportRect as gridCellRect } from "@chardesk/rendering";
 import {
   getStaticGridViewState,
   getGridSelectionRanges,
@@ -530,7 +530,7 @@ export const useManagedCanvasInput = ({
   const textareaStyle: CSSProperties = useMemo(() => {
     const point = managedTextareaPoint ?? { x: 0, y: 0 };
     const pos = size
-      ? gridCellRect(point, { offset, zoom })
+      ? gridCellRect(point, { offset, zoom }, DEFAULT_CANVAS_CELL_METRICS)
       : { x: 0, y: 0 };
     const bounds = size ?? { width: 1, height: 1 };
 
@@ -567,8 +567,8 @@ export const useManagedCanvasInput = ({
     const pageRows = Math.max(
       1,
       Math.floor(
-        (size?.height ?? DEFAULT_GRID_RENDER_METRICS.cellHeight) /
-          (DEFAULT_GRID_RENDER_METRICS.cellHeight * zoom)
+        (size?.height ?? DEFAULT_CANVAS_CELL_METRICS.cellHeight) /
+          (DEFAULT_CANVAS_CELL_METRICS.cellHeight * zoom)
       ) - 1
     );
     const decision = resolveManagedCanvasKeyIntent(input, {

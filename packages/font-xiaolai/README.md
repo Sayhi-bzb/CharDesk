@@ -1,7 +1,8 @@
 # @chardesk/font-xiaolai
 
 Private optional Xiaolai Mono resource pack for CharDesk; not published to npm.
-It exports family/source metadata, `fonts.css`, and `manifest.json`.
+It exports family/source metadata, `XIAOLAI_FONT_PROFILE` with its Maple
+fallback, `fonts.css`, and `manifest.json`.
 
 The [manifest](manifest.json) owns the pinned official v3.126 source checksum and
 generated asset checksums. FontTools partitions the original 22,199,284-byte TTF

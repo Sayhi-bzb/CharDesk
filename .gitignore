@@ -26,6 +26,7 @@ proofshot-artifacts
 
 # Temporary files
 .tmp
+.font-sync-*
 
 # Editor directories and files
 .vscode/*

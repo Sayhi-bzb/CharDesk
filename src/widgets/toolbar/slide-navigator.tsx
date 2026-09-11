@@ -21,7 +21,7 @@ import {
 } from "@/domains/slides/public";
 import { HOST_ICONOLOGY } from "@/shared/icons/iconology";
 import { useUiI18n } from "@/shared/i18n";
-import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import {
   cn,
   Button,
@@ -64,8 +64,8 @@ const DeleteIcon = HOST_ICONOLOGY.sessionAction.close;
 const ConfigureIcon = HOST_ICONOLOGY.slideAction.configure;
 
 const getSlideAspectRatio = (size: SlideSize) =>
-  `${size.columns * DEFAULT_GRID_RENDER_METRICS.cellWidth} / ${
-    size.rows * DEFAULT_GRID_RENDER_METRICS.cellHeight
+  `${size.columns * DEFAULT_CANVAS_CELL_METRICS.cellWidth} / ${
+    size.rows * DEFAULT_CANVAS_CELL_METRICS.cellHeight
   }`;
 
 type PendingResize = {

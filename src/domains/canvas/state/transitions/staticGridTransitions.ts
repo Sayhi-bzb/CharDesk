@@ -1,6 +1,6 @@
 import {
   collapseGridSelectionTo,
-  createStaticGridInputFlow,
+  createStaticGridInputSession,
   extendGridSelectionTo,
   getConnectedGridRange,
   getEffectiveGridBounds,
@@ -41,12 +41,10 @@ const resolveStaticGridAddress = (
     clampPointToActiveSlide(state, address)
   );
 
-const createInputFlow = (state: StaticGridState, address: GridAddress) =>
-  createStaticGridInputFlow({
-    grid: state.contentSurface.reader,
-    address,
+const createInputSession = (state: StaticGridState, address: GridAddress) =>
+  createStaticGridInputSession({
+    origin: address,
     bounds: getActiveSlideGridBounds(state),
-    lineOriginX: state.contentSurface.reader.getLineOriginX?.(address),
   });
 
 const createNavigationPatch = (
@@ -56,7 +54,7 @@ const createNavigationPatch = (
   createCanvasInteractionPatch(state.interaction, {
     staticGridSelection,
     staticGridEditMode: "navigate",
-    staticGridInputFlow: null,
+    staticGridInputSession: null,
     textCursor: null,
   });
 
@@ -123,9 +121,9 @@ export const createMovedStaticGridFocusPatch = (
     staticGridEditMode: options?.extend
       ? "navigate"
       : state.interaction.staticGridEditMode,
-    staticGridInputFlow:
+    staticGridInputSession:
       !options?.extend && state.interaction.staticGridEditMode === "text-edit"
-        ? createInputFlow(state, nextCell)
+        ? createInputSession(state, nextCell)
         : null,
     textCursor:
       !options?.extend && state.interaction.staticGridEditMode === "text-edit"
@@ -227,7 +225,7 @@ export const createStaticGridTextEditPatch = (
   return createCanvasInteractionPatch(state.interaction, {
     staticGridSelection: collapseGridSelectionTo(current, activeCell),
     staticGridEditMode: "text-edit",
-    staticGridInputFlow: createInputFlow(state, activeCell),
+    staticGridInputSession: createInputSession(state, activeCell),
     textCursor: activeCell,
   });
 };

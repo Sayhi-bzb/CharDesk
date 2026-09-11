@@ -1,7 +1,7 @@
-import { getFirstGrapheme as getFirstMetricGrapheme } from "@/shared/metrics";
+import { splitGraphemes } from "@chardesk/protocol";
 
 export const getFirstGrapheme = (value: string) => {
-  return getFirstMetricGrapheme(value);
+  return splitGraphemes(value)[0] ?? "";
 };
 
 export const normalizeBrushChar = (value: string, fallback: string) => {

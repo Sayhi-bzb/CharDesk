@@ -1,4 +1,4 @@
-import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 
 export const shouldDrawCanvasGrid = (zoom: number) =>
-  DEFAULT_GRID_RENDER_METRICS.cellWidth * zoom >= 4;
+  DEFAULT_CANVAS_CELL_METRICS.cellWidth * zoom >= 4;

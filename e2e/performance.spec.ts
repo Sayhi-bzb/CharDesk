@@ -1,5 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
-import { DEFAULT_GRID_GEOMETRY } from "../src/shared/metrics/gridGeometry";
+import { DEFAULT_CANVAS_CELL_METRICS } from "../src/shared/fonts/canvas-profile";
 
 type GridCell = {
   char: string;
@@ -551,8 +551,8 @@ test.describe.serial("Performance smoke", () => {
     await openSeededCanvas(page, "structured");
 
     const dragPoint = {
-      x: 180 + 10 * DEFAULT_GRID_GEOMETRY.cellWidth,
-      y: 130 + 7 * DEFAULT_GRID_GEOMETRY.cellHeight,
+      x: 180 + 10 * DEFAULT_CANVAS_CELL_METRICS.cellWidth,
+      y: 130 + 7 * DEFAULT_CANVAS_CELL_METRICS.cellHeight,
     };
     const selection = await runSmoothScenario(
       page,

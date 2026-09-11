@@ -7,9 +7,9 @@ import { mergeStructuredTextStyle } from "./text-ranges";
 import { getArrowLinePoints, getBoxPoints, getLShapeLinePoints } from "@/shared/utils/shapes";
 import { getSplitBoxPoints } from "./split-box-geometry";
 import {
-  getCellOccupancy,
+  getGraphemeCellWidth as getCellOccupancy,
   splitGraphemes,
-} from "@/shared/metrics";
+} from "@chardesk/protocol";
 import {
   createTextLayout,
   getTextLayoutSurfaceCells,

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { DEFAULT_GRID_GEOMETRY } from "../src/shared/metrics/gridGeometry";
+import { DEFAULT_CANVAS_CELL_METRICS } from "../src/shared/fonts/canvas-profile";
 
 const STORAGE_KEY = "chardesk-persistence";
 const VIEWPORT = { offset: { x: 180, y: 130 }, zoom: 1 };
@@ -115,11 +115,11 @@ const gridClientPoint = async (page: Page, point: { x: number; y: number }) => {
     x:
       box!.x +
       VIEWPORT.offset.x +
-      point.x * DEFAULT_GRID_GEOMETRY.cellWidth,
+      point.x * DEFAULT_CANVAS_CELL_METRICS.cellWidth,
     y:
       box!.y +
       VIEWPORT.offset.y +
-      point.y * DEFAULT_GRID_GEOMETRY.cellHeight,
+      point.y * DEFAULT_CANVAS_CELL_METRICS.cellHeight,
   };
 };
 
@@ -136,11 +136,11 @@ const liveGridClientPoint = async (
     x:
       box!.x +
       viewport.offset.x +
-      point.x * DEFAULT_GRID_GEOMETRY.cellWidth * viewport.zoom,
+      point.x * DEFAULT_CANVAS_CELL_METRICS.cellWidth * viewport.zoom,
     y:
       box!.y +
       viewport.offset.y +
-      point.y * DEFAULT_GRID_GEOMETRY.cellHeight * viewport.zoom,
+      point.y * DEFAULT_CANVAS_CELL_METRICS.cellHeight * viewport.zoom,
   };
 };
 
@@ -340,8 +340,8 @@ test.describe("editor interaction lifecycle", () => {
     const start = await liveGridClientPoint(page, { x: 20, y: 15 });
     const end = await liveGridClientPoint(page, { x: 23, y: 15 });
     const center = {
-      x: DEFAULT_GRID_GEOMETRY.cellWidth / 2,
-      y: DEFAULT_GRID_GEOMETRY.cellHeight / 2,
+      x: DEFAULT_CANVAS_CELL_METRICS.cellWidth / 2,
+      y: DEFAULT_CANVAS_CELL_METRICS.cellHeight / 2,
     };
 
     await page.mouse.move(start.x + center.x, start.y + center.y);
@@ -377,8 +377,8 @@ test.describe("editor interaction lifecycle", () => {
     }).click();
     const cell = await gridClientPoint(page, { x: 0, y: 0 });
     await page.mouse.click(
-      cell.x + DEFAULT_GRID_GEOMETRY.cellWidth / 2,
-      cell.y + DEFAULT_GRID_GEOMETRY.cellHeight / 2
+      cell.x + DEFAULT_CANVAS_CELL_METRICS.cellWidth / 2,
+      cell.y + DEFAULT_CANVAS_CELL_METRICS.cellHeight / 2
     );
 
     await expect.poll(async () => (await readState(page))?.brushColor)

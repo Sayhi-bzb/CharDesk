@@ -1,12 +1,8 @@
-import {
-  MAPLE_FONT_FAMILY,
-  MAPLE_FONT_PROFILE,
-  MAPLE_FONT_SOURCES,
-} from "@chardesk/font-maple";
-import { createCharDeskFontProfile, type CharDeskFontProfile } from "@chardesk/fonts";
-import { FUSION_FONT_FAMILY, FUSION_FONT_SOURCES } from "@chardesk/font-fusion";
+import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
+import type { CharDeskFontProfile } from "@chardesk/fonts";
+import { FUSION_FONT_FAMILY, FUSION_FONT_PROFILE } from "@chardesk/font-fusion";
 import fusionStylesheet from "@chardesk/font-fusion/fonts.css?url";
-import { XIAOLAI_FONT_FAMILY, XIAOLAI_FONT_SOURCES } from "@chardesk/font-xiaolai";
+import { XIAOLAI_FONT_FAMILY, XIAOLAI_FONT_PROFILE } from "@chardesk/font-xiaolai";
 import xiaolaiStylesheet from "@chardesk/font-xiaolai/fonts.css?url";
 
 export type DisplayFont = "maple" | "fusion-mono" | "xiaolai-mono";
@@ -20,51 +16,23 @@ export type DisplayFontOption = Readonly<{
   loadSamples?: readonly string[];
 }>;
 
-const fusionFamily = FUSION_FONT_FAMILY;
-const fusionFace = {
-  families: { regular: `'${fusionFamily}', ${MAPLE_FONT_FAMILY}` },
-} as const;
-const fusionProfile = createCharDeskFontProfile({
-  id: "chardesk/gallery-fusion-mono-maple-core-v7-2026.09.01",
-  display: fusionFace,
-  cjk: fusionFace,
-  sources: [
-    ...FUSION_FONT_SOURCES,
-    ...MAPLE_FONT_SOURCES,
-  ],
-});
-
-const xiaolaiFamily = XIAOLAI_FONT_FAMILY;
-const xiaolaiFace = {
-  families: { regular: `'${xiaolaiFamily}', ${MAPLE_FONT_FAMILY}` },
-} as const;
-const xiaolaiProfile = createCharDeskFontProfile({
-  id: "chardesk/gallery-xiaolai-mono-maple-core-v8-3.126",
-  display: xiaolaiFace,
-  cjk: xiaolaiFace,
-  sources: [
-    ...XIAOLAI_FONT_SOURCES,
-    ...MAPLE_FONT_SOURCES,
-  ],
-});
-
 export const displayFontOptions: Record<DisplayFont, DisplayFontOption> = {
   maple: { id: "maple", label: "Maple Mono", profile: MAPLE_FONT_PROFILE,
     fontSpec: "15px 'Maple Mono NF CN'", loadSamples: ["AgWi09", "世界，。"] },
   "fusion-mono": {
     id: "fusion-mono",
     label: "Fusion Pixel 12px Mono",
-    profile: fusionProfile,
+    profile: FUSION_FONT_PROFILE,
     stylesheet: fusionStylesheet,
-    fontSpec: `15px '${fusionFamily}'`,
+    fontSpec: `15px '${FUSION_FONT_FAMILY}'`,
     loadSamples: ["AgWi09", "世界，。"],
   },
   "xiaolai-mono": {
     id: "xiaolai-mono",
-    label: xiaolaiFamily,
-    profile: xiaolaiProfile,
+    label: XIAOLAI_FONT_FAMILY,
+    profile: XIAOLAI_FONT_PROFILE,
     stylesheet: xiaolaiStylesheet,
-    fontSpec: `15px '${xiaolaiFamily}'`,
+    fontSpec: `15px '${XIAOLAI_FONT_FAMILY}'`,
     loadSamples: ["AgWi09"],
   },
 };

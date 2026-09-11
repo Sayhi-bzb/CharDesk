@@ -60,7 +60,7 @@ describe('verification task graph', () => {
     const options = parseArguments(['--file', './packages/cell-ui/src/checkbox.ts', '--file', 'packages/cell-ui/src/checkbox.ts', '--dry-run'])
     expect(options.files).toEqual(['packages/cell-ui/src/checkbox.ts'])
     expect(options.dryRun).toBe(true)
-    expect(planFor(options.files).selected).toEqual(['@chardesk/cell-ui'])
+    expect(planFor(options.files).selected).toEqual(['@chardesk/cell-ui', '@chardesk/cell-ui-site'])
   })
 
   it.each(['pr', 'full'])('rejects narrowed %s gates', mode => {
@@ -77,11 +77,11 @@ describe('verification task graph', () => {
   it('collects removed paths and both sides of renames with NUL-safe git output', () => {
     const readGit = vi.fn((args: string[]) => {
       if (args.includes('base...HEAD')) return 'packages/cell-ui/src/removed.ts\0'
-      if (args[0] === 'ls-files') return 'exp/web-tui/new file.tsx\0'
-      return 'exp/web-tui/old.tsx\0exp/web-tui/renamed.tsx\0'
+      if (args[0] === 'ls-files') return 'apps/cell-ui/src/new file.tsx\0'
+      return 'apps/cell-ui/src/old.tsx\0apps/cell-ui/src/renamed.tsx\0'
     })
     expect(collectChangedFiles('base', readGit).files).toEqual([
-      'exp/web-tui/new file.tsx', 'exp/web-tui/old.tsx', 'exp/web-tui/renamed.tsx', 'packages/cell-ui/src/removed.ts',
+      'apps/cell-ui/src/new file.tsx', 'apps/cell-ui/src/old.tsx', 'apps/cell-ui/src/renamed.tsx', 'packages/cell-ui/src/removed.ts',
     ])
     for (const [args] of readGit.mock.calls.filter(([args]) => args[0] === 'diff')) {
       expect(args).toContain('--no-renames')
@@ -91,18 +91,19 @@ describe('verification task graph', () => {
 
   it('keeps a leaf helper on deterministic tests without browser or dependency builds', () => {
     const plan = planFor(['packages/cell-ui/src/checkbox.ts'])
-    expect(plan.tasks).toHaveLength(2)
+    expect(plan.tasks).toHaveLength(3)
     expect(plan.tasks[1].args).toEqual(['run', 'test:node', '-w', '@chardesk/cell-ui', '--', 'src/checkbox.test.tsx', 'src/press.test.tsx'])
+    expect(plan.tasks[2].args).toEqual(['run', 'test', '--workspace', '@chardesk/cell-ui-site', '--ignore-scripts'])
     expect(plan.deferred).not.toEqual([])
   })
 
   it('routes Gallery CSS to Gallery tests and Chromium, without splitting local DOM', () => {
-    const plan = planFor(['exp/web-tui/styles.css'])
-    expect(plan.selected).toContain('root')
-    expect(plan.tasks.filter(task => task.label === 'dom tests')).toHaveLength(1)
+    const plan = planFor(['apps/cell-ui/src/styles.css'])
+    expect(plan.selected).toContain('@chardesk/cell-ui-site')
+    expect(plan.tasks.filter(task => task.label === 'test @chardesk/cell-ui-site')).toHaveLength(1)
     const browser = plan.tasks.find(task => task.label === 'Cell browser tests')!
     expect(browser.args).toContain('--project=chromium')
-    expect(browser.args).not.toContain('--project=webkit-cell-gallery')
+    expect(browser.args).not.toContain('--project=webkit')
     expect(plan.tasks.some(task => task.args.includes('--shard'))).toBe(false)
   })
 
@@ -111,16 +112,16 @@ describe('verification task graph', () => {
     expect(plan.cell.nodeTests).toEqual([])
     expect(plan.tasks.filter(task => task.label === 'test @chardesk/cell-ui')).toHaveLength(1)
     expect(plan.tasks.filter(task => task.label === 'Cell browser tests')).toHaveLength(1)
-    expect(plan.tasks.find(task => task.label === 'Cell browser tests')!.args).toContain('--project=webkit-cell-gallery')
+    expect(plan.tasks.find(task => task.label === 'Cell browser tests')!.args).toContain('--project=webkit')
     expect(new Set(plan.tasks.map(task => JSON.stringify([task.command, task.args]))).size).toBe(plan.tasks.length)
   })
 
-  it.each(['packages/cell-ui/src/index.ts', 'packages/cell-ui/src/deleted.ts', 'exp/web-tui/unclassified.tsx', 'e2e/helpers/cell-probe.ts'])(
+  it.each(['packages/cell-ui/src/index.ts', 'packages/cell-ui/src/deleted.ts', 'apps/cell-ui/src/unclassified.tsx', 'apps/cell-ui/e2e/helpers/cell-probe.ts'])(
     'falls back safely for %s', file => {
       const plan = planFor([file])
       expect(plan.cell.fullPackage).toBe(true)
       expect(plan.cell.dualBrowser).toBe(true)
-      expect(plan.cell.browser).toEqual([{ file: 'e2e/web-tui.*\\.spec\\.ts', grep: null }])
+      expect(plan.cell.browser).toEqual([{ file: 'e2e', grep: null }])
     },
   )
 
@@ -153,7 +154,7 @@ describe('verification task graph', () => {
     expect(plan.tasks.some(task => task.args.includes('knip'))).toBe(true)
     expect(plan.tasks.some(task => task.args.includes('check:architecture'))).toBe(true)
     expect(plan.tasks.some(task => task.label.startsWith('build '))).toBe(true)
-    expect(plan.tasks.find(task => task.label === 'Cell browser tests')!.args).toContain('--project=webkit-cell-gallery')
+    expect(plan.tasks.find(task => task.label === 'Cell browser tests')!.args).toContain('--project=webkit')
   })
 
   it('uses the identical task list for dry-run and execution and reports failed stages', () => {

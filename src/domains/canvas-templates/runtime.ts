@@ -1,8 +1,8 @@
 import {
-  getCellOccupancy,
+  getGraphemeCellWidth as getCellOccupancy,
   getTextCellWidth,
   splitGraphemes,
-} from "@/shared/metrics";
+} from "@chardesk/protocol";
 import type { GridCell, GridCellSource } from "@/shared/types";
 import { createGridMapSource } from "@/shared/utils/grid-source";
 import type { CharDeskContentTheme } from "@chardesk/rendering/theme";

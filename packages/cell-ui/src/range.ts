@@ -1,5 +1,6 @@
 import type { CellBuffer } from "./buffer.js";
 import type { CellPoint, CellRect } from "./types.js";
+import { resolveCellRangeBounds } from "@chardesk/cell-core";
 
 export type CellRangeSnapshot = Readonly<{
   anchor: CellPoint;
@@ -15,6 +16,18 @@ export type CellRangeCommand =
 const clamp = (value: number, maximum: number) =>
   Math.max(0, Math.min(maximum, Math.trunc(value)));
 
+const getFootprint = (buffer: CellBuffer, point: CellPoint): CellRect | null => {
+  const cell = buffer.get(point.x, point.y);
+  if (!cell) return null;
+  if (cell.continuation) {
+    const owner = buffer.get(point.x - 1, point.y);
+    return owner?.width === 2
+      ? { x: point.x - 1, y: point.y, width: 2, height: 1 }
+      : null;
+  }
+  return { x: point.x, y: point.y, width: cell.width, height: 1 };
+};
+
 export const normalizeCellRange = (
   buffer: CellBuffer,
   anchor: CellPoint,
@@ -23,47 +36,19 @@ export const normalizeCellRange = (
   if (buffer.width === 0 || buffer.height === 0) {
     return { x: 0, y: 0, width: 0, height: 0 };
   }
-  let left = Math.min(
-    clamp(anchor.x, buffer.width - 1),
-    clamp(head.x, buffer.width - 1)
-  );
-  let right = Math.max(
-    clamp(anchor.x, buffer.width - 1),
-    clamp(head.x, buffer.width - 1)
-  );
-  const top = Math.min(
-    clamp(anchor.y, buffer.height - 1),
-    clamp(head.y, buffer.height - 1)
-  );
-  const bottom = Math.max(
-    clamp(anchor.y, buffer.height - 1),
-    clamp(head.y, buffer.height - 1)
-  );
-
-  // A boundary expansion on a later row can expose another half-grapheme on
-  // an earlier row. Iterate to the smallest rectangle whose vertical edges
-  // contain complete wide graphemes on every selected row.
-  let stable = false;
-  while (!stable) {
-    stable = true;
-    for (let y = top; y <= bottom; y += 1) {
-      if (buffer.get(left, y)?.continuation && left > 0) {
-        left -= 1;
-        stable = false;
-      }
-      if (buffer.get(right, y)?.width === 2 && right < buffer.width - 1) {
-        right += 1;
-        stable = false;
-      }
-    }
-  }
-
-  return {
-    x: left,
-    y: top,
-    width: right - left + 1,
-    height: bottom - top + 1,
-  };
+  return resolveCellRangeBounds({
+    anchor: {
+      x: clamp(anchor.x, buffer.width - 1),
+      y: clamp(anchor.y, buffer.height - 1),
+    },
+    focus: {
+      x: clamp(head.x, buffer.width - 1),
+      y: clamp(head.y, buffer.height - 1),
+    },
+  }, {
+    clip: { x: 0, y: 0, width: buffer.width, height: buffer.height },
+    getFootprint: (point) => getFootprint(buffer, point),
+  })!;
 };
 
 export const extractCellRange = (

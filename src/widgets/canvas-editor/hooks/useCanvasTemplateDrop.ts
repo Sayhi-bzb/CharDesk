@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type DragEvent, type RefObject } from "rea
 import type { Point } from "@/shared/types";
 import type { CanvasMode } from "@/domains/sessions/public";
 import { GridManager } from "@/shared/utils/grid";
-import { gridCellRect } from "@/shared/metrics";
+import { getCellViewportRect as gridCellRect } from "@chardesk/rendering";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import {
   CANVAS_TEMPLATE_MIME,
   getActiveCanvasTemplateDragId,
@@ -165,7 +166,11 @@ export const useCanvasTemplateDrop = ({
 
   const cellRect =
     preview
-      ? gridCellRect(preview.position, { offset: model.offset, zoom: model.zoom })
+      ? gridCellRect(
+          preview.position,
+          { offset: model.offset, zoom: model.zoom },
+          DEFAULT_CANVAS_CELL_METRICS
+        )
       : null;
   const projection = preview
     ? getCanvasTemplateMaterialization(preview.templateId, contentTheme)

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { DEFAULT_GRID_GEOMETRY } from "../src/shared/metrics/gridGeometry";
+import { DEFAULT_CANVAS_CELL_METRICS } from "../src/shared/fonts/canvas-profile";
 
 const STORAGE_KEY = "chardesk-persistence";
 // Keep seeded content in the unobstructed center of the Canvas. Coordinates near
@@ -62,7 +62,7 @@ const seedFreeformSelection = async (
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
   await page.mouse.move(
-    start.x + DEFAULT_GRID_GEOMETRY.cellWidth + 4,
+    start.x + DEFAULT_CANVAS_CELL_METRICS.cellWidth + 4,
     start.y,
     { steps: 3 }
   );
@@ -145,7 +145,7 @@ const seedFreeformNavigation = async (page: Page) => {
     clientX:
       box!.x +
       VIEWPORT.offset.x +
-      DEFAULT_GRID_GEOMETRY.cellWidth / 2,
+      DEFAULT_CANVAS_CELL_METRICS.cellWidth / 2,
     clientY: box!.y + VIEWPORT.offset.y + 9,
     pointerId: 1,
     pointerType: "mouse",

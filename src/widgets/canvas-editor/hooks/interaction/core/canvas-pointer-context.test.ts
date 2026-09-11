@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GridSnapshotSource } from "@/shared/utils/grid-source";
-import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import { createCanvasPointerContextResolver } from "./pointerContext";
 
 const rect = { left: 10, top: 20 } as DOMRect;
@@ -23,7 +23,7 @@ describe("canvas pointer context resolver", () => {
     const resolver = createResolver();
     expect(resolver.resolveLocalPoint(18, 31)).toEqual({ x: 8, y: 11 });
     expect(resolver.resolveGridPoint(
-      rect.left + DEFAULT_GRID_RENDER_METRICS.cellWidth + 1,
+      rect.left + DEFAULT_CANVAS_CELL_METRICS.cellWidth + 1,
       rect.top + 1
     )).toEqual({ x: 0, y: 0 });
   });
@@ -36,8 +36,8 @@ describe("canvas pointer context resolver", () => {
       getGridBounds: () => ({ columns: 2, rows: 2 }),
     });
 
-    const outsideX = rect.left + DEFAULT_GRID_RENDER_METRICS.cellWidth * 4;
-    const insideY = rect.top + DEFAULT_GRID_RENDER_METRICS.cellHeight;
+    const outsideX = rect.left + DEFAULT_CANVAS_CELL_METRICS.cellWidth * 4;
+    const insideY = rect.top + DEFAULT_CANVAS_CELL_METRICS.cellHeight;
     expect(resolver.resolveGridPoint(outsideX, insideY)).toBeNull();
     expect(resolver.resolveClampedGridPoint(outsideX, insideY)).toEqual({ x: 1, y: 1 });
   });

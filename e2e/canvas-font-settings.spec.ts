@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fusionMonoStylesheetRequest } from "./helpers/fusion-mono";
+
+const fusionMonoStylesheetRequest = /\/font-fusion\/fonts\.css(?:\?direct)?$/;
 
 // Vite HMR timestamps are part of module identity; use the page's live Host instance.
 const liveHostImport = `import(performance.getEntriesByType('resource').find(entry =>

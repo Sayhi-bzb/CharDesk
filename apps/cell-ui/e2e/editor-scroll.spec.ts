@@ -1,0 +1,44 @@
+import { expect, test } from "@playwright/test";
+import { readCellProbe, readCellMetrics } from "./helpers/cell-probe";
+
+test("TextArea shares draggable rails without stealing selection or scrolling the page", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/#/__fixtures/all");
+  const surface = page.locator('[data-cell-probe="editor"]');
+  const editor = page.getByRole("textbox", { name: "Document", exact: true });
+  const value = Array.from({ length: 20 }, (_, index) => `${index}: ${"x".repeat(80)}`).join("\n");
+  await editor.fill(value);
+  const canvas = surface.locator("canvas");
+  await canvas.scrollIntoViewIfNeeded();
+  const { cellWidth, cellHeight } = await readCellMetrics(surface);
+  const bounds = (await canvas.boundingBox())!;
+  const before = await readCellProbe(surface);
+  const rail = before.cells.filter((cell) => cell.y === 10 && cell.ownerId === "editor-document");
+  expect(rail.some((cell) => cell.text === "█")).toBe(true);
+  expect(before.cells.some((cell) => cell.x === 38 && cell.y >= 6 && cell.y < 10 && ["█", "▀", "▄"].includes(cell.text))).toBe(true);
+  const selection = await editor.evaluate((input) => [input.selectionStart, input.selectionEnd]);
+  const thumb = rail.find((cell) => cell.text === "█")!;
+  await page.mouse.move(bounds.x + (thumb.x + 0.5) * cellWidth, bounds.y + 10.5 * cellHeight);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + (thumb.x - 2) * cellWidth, bounds.y + 10.5 * cellHeight, { steps: 8 });
+  await page.mouse.up();
+  const after = await readCellProbe(surface);
+  expect(after.text.split("\n")[10]).not.toBe(before.text.split("\n")[10]);
+  expect(await editor.evaluate((input) => [input.selectionStart, input.selectionEnd])).toEqual(selection);
+  await expect(editor).toBeFocused();
+  await expect(editor).toHaveValue(value);
+  // Scroll away from the caret; neither the hidden input nor a browser wheel may move the page.
+  const pageY = await page.evaluate(() => scrollY);
+  await page.mouse.move(bounds.x + 10 * cellWidth, bounds.y + 7 * cellHeight);
+  const revision = after.revision;
+  await page.mouse.wheel(0, -100);
+  await expect.poll(async () => (await readCellProbe(surface)).revision).toBeGreaterThan(revision);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(pageY);
+  expect(await editor.evaluate((input) => [input.selectionStart, input.selectionEnd])).toEqual(selection);
+  await editor.press("ArrowLeft");
+  await editor.press("z");
+  await expect(editor).toHaveValue(value.slice(0, -1) + "zx");
+  await editor.fill("ok");
+  const cleared = await readCellProbe(surface);
+  expect(cleared.cells.filter((cell) => cell.ownerId === "editor-document").some((cell) => ["█", "▀", "▄", "▐", "▌"].includes(cell.text))).toBe(false);
+});

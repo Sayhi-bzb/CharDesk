@@ -1,5 +1,8 @@
 import type { GridCell, Point } from "@/shared/types";
-import { getCellOccupancy, splitGraphemes } from "@/shared/metrics";
+import {
+  getGraphemeCellWidth as getCellOccupancy,
+  splitGraphemes,
+} from "@chardesk/protocol";
 import { normalizeCellStyle } from "@/shared/utils/ansi";
 import type { StructuredNodeStyle } from "./types";
 

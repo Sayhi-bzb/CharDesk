@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SlideSnapshot } from "@/domains/slides/public";
-import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import { drawSlideCanvas } from "./slide-canvas-renderer";
 
 const createCanvas = () => {
@@ -169,15 +169,15 @@ describe("drawSlideCanvas", () => {
     expect(ctx.fillRect).toHaveBeenCalledTimes(4);
     expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 900, 513);
     const lastCellX =
-      layout.x + 99 * DEFAULT_GRID_RENDER_METRICS.cellWidth * layout.zoom;
+      layout.x + 99 * DEFAULT_CANVAS_CELL_METRICS.cellWidth * layout.zoom;
     const lastCellY =
-      layout.y + 26 * DEFAULT_GRID_RENDER_METRICS.cellHeight * layout.zoom;
-    const lastCellWidth = DEFAULT_GRID_RENDER_METRICS.cellWidth * layout.zoom;
-    const cellHeight = DEFAULT_GRID_RENDER_METRICS.cellHeight * layout.zoom;
+      layout.y + 26 * DEFAULT_CANVAS_CELL_METRICS.cellHeight * layout.zoom;
+    const lastCellWidth = DEFAULT_CANVAS_CELL_METRICS.cellWidth * layout.zoom;
+    const cellHeight = DEFAULT_CANVAS_CELL_METRICS.cellHeight * layout.zoom;
     expect(ctx.fillRect).toHaveBeenCalledWith(
       layout.x,
       layout.y,
-      DEFAULT_GRID_RENDER_METRICS.cellWidth * 2 * layout.zoom,
+      DEFAULT_CANVAS_CELL_METRICS.cellWidth * 2 * layout.zoom,
       cellHeight
     );
     expect(ctx.fillRect).toHaveBeenCalledWith(
@@ -189,7 +189,7 @@ describe("drawSlideCanvas", () => {
     expect(ctx.fillText).toHaveBeenCalledWith(
       "A",
       lastCellX + lastCellWidth / 2,
-      lastCellY + DEFAULT_GRID_RENDER_METRICS.baseline * layout.zoom
+      lastCellY + DEFAULT_CANVAS_CELL_METRICS.baseline * layout.zoom
     );
     expect(ctx.fillText).not.toHaveBeenCalledWith(
       "X",

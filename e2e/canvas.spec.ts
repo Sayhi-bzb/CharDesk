@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { DEFAULT_GRID_GEOMETRY } from '../src/shared/metrics/gridGeometry';
+import { DEFAULT_CANVAS_CELL_METRICS } from '../src/shared/fonts/canvas-profile';
 
 const STORAGE_KEY = 'chardesk-persistence';
 
@@ -1005,13 +1005,13 @@ test.describe('Canvas', () => {
     const box = await surface.boundingBox();
     expect(box).not.toBeNull();
     const start = {
-      x: box!.x + viewport.offset.x + 2 * DEFAULT_GRID_GEOMETRY.cellWidth,
-      y: box!.y + viewport.offset.y + 2 * DEFAULT_GRID_GEOMETRY.cellHeight,
+      x: box!.x + viewport.offset.x + 2 * DEFAULT_CANVAS_CELL_METRICS.cellWidth,
+      y: box!.y + viewport.offset.y + 2 * DEFAULT_CANVAS_CELL_METRICS.cellHeight,
     };
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     await page.mouse.move(
-      start.x + 3 * DEFAULT_GRID_GEOMETRY.cellWidth,
+      start.x + 3 * DEFAULT_CANVAS_CELL_METRICS.cellWidth,
       start.y,
       { steps: 4 }
     );
@@ -1037,14 +1037,14 @@ test.describe('Canvas', () => {
     const box = await page.getByTestId('canvas-editor-surface').boundingBox();
     expect(box).not.toBeNull();
     const start = {
-      x: box!.x + viewport.offset.x + 4 * DEFAULT_GRID_GEOMETRY.cellWidth,
-      y: box!.y + viewport.offset.y + 2 * DEFAULT_GRID_GEOMETRY.cellHeight,
+      x: box!.x + viewport.offset.x + 4 * DEFAULT_CANVAS_CELL_METRICS.cellWidth,
+      y: box!.y + viewport.offset.y + 2 * DEFAULT_CANVAS_CELL_METRICS.cellHeight,
     };
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     await page.mouse.move(
-      start.x + 2 * DEFAULT_GRID_GEOMETRY.cellWidth,
-      start.y + DEFAULT_GRID_GEOMETRY.cellHeight,
+      start.x + 2 * DEFAULT_CANVAS_CELL_METRICS.cellWidth,
+      start.y + DEFAULT_CANVAS_CELL_METRICS.cellHeight,
       { steps: 4 }
     );
     await page.mouse.up();
@@ -1070,8 +1070,8 @@ test.describe('Canvas', () => {
     const box = await page.getByTestId('canvas-editor-surface').boundingBox();
     expect(box).not.toBeNull();
     const caret = {
-      x: box!.x + viewport.offset.x + 3 * DEFAULT_GRID_GEOMETRY.cellWidth,
-      y: box!.y + viewport.offset.y + 2 * DEFAULT_GRID_GEOMETRY.cellHeight,
+      x: box!.x + viewport.offset.x + 3 * DEFAULT_CANVAS_CELL_METRICS.cellWidth,
+      y: box!.y + viewport.offset.y + 2 * DEFAULT_CANVAS_CELL_METRICS.cellHeight,
     };
 
     await page.mouse.dblclick(caret.x, caret.y);

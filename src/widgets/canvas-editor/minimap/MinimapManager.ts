@@ -1,4 +1,4 @@
-import { DEFAULT_GRID_RENDER_METRICS } from "@/shared/metrics";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import { isIncrementalCanvasSurfaceReader } from "@/domains/canvas/public";
 import { GridManager } from "@/shared/utils/grid";
 import {
@@ -132,7 +132,7 @@ export class MinimapManager {
     occupancy: number,
     color: string
   ) => {
-    const { cellWidth, cellHeight } = DEFAULT_GRID_RENDER_METRICS;
+    const { cellWidth, cellHeight } = DEFAULT_CANVAS_CELL_METRICS;
     const column = floorDiv(x, MINIMAP_CHUNK_COLUMNS);
     const row = floorDiv(y, MINIMAP_CHUNK_ROWS);
     const key = chunkKey(column, row);

@@ -1,10 +1,11 @@
 import type { GridCell, GridCellSource, Point } from "@/shared/types";
+import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 import {
-  getCellOccupancy,
-  gridToScreen,
-  screenToGrid,
-  getViewportGridBounds,
-} from "@/shared/metrics";
+  cellToViewportPoint as gridToScreen,
+  getViewportCellBounds as getViewportGridBounds,
+  viewportToCellPoint as screenToGrid,
+} from "@chardesk/rendering";
+import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import { resolveGridAnchor } from "@/shared/utils/grid-occupancy";
 
 export const GridManager = {
@@ -18,7 +19,7 @@ export const GridManager = {
     return screenToGrid(screenX, screenY, {
       offset: { x: offsetX, y: offsetY },
       zoom,
-    });
+    }, DEFAULT_CANVAS_CELL_METRICS);
   },
 
   gridToScreen(
@@ -31,7 +32,7 @@ export const GridManager = {
     return gridToScreen(gridX, gridY, {
       offset: { x: offsetX, y: offsetY },
       zoom,
-    });
+    }, DEFAULT_CANVAS_CELL_METRICS);
   },
 
   toKey(x: number, y: number): string {
@@ -85,6 +86,6 @@ export const GridManager = {
     return getViewportGridBounds(width, height, {
       offset: { x: offsetX, y: offsetY },
       zoom,
-    });
+    }, DEFAULT_CANVAS_CELL_METRICS);
   },
 };
