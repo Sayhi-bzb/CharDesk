@@ -1,8 +1,8 @@
-import type { StoreApi } from "zustand";
 import type { CollaborationIntegrityIssue } from "@/domains/collaboration/public";
 import { rebuildContentSurface } from "./helpers/gridHelpers";
 import type { EditorState } from "./interfaces";
 import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
+import type { CanvasStateCommitCoordinator } from "./CanvasStateCommitCoordinator";
 
 const projectObservedSurface = (
   contentSurface: EditorState["contentSurface"]
@@ -16,15 +16,15 @@ const projectObservedSurface = (
 export const subscribeCanvasDocumentProjection = (
   documents: CanvasDocumentRegistry,
   reportIntegrityIssues: (issues: CollaborationIntegrityIssue[]) => void,
-  setState: StoreApi<EditorState>["setState"]
+  commits: CanvasStateCommitCoordinator
 ) => {
   const reportCurrentIntegrityIssues = () =>
     reportIntegrityIssues(documents.getIntegrityIssues());
 
   const unsubscribe = documents.observeActiveTransactions((transaction) => {
     if (!transaction.contentChanged) return;
-    setState(projectObservedSurface(rebuildContentSurface(documents)));
-    reportCurrentIntegrityIssues();
+    commits.setState(projectObservedSurface(rebuildContentSurface(documents)));
+    commits.deferUntilCommitted(reportCurrentIntegrityIssues);
   });
 
   return unsubscribe;

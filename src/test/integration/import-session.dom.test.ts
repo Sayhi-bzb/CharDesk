@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import {
   applyFreeformSnapshotToYMaps,
+  canvasCommands,
   defaultCanvasDocuments,
   testingCanvasRuntime,
   setCanvasTestState,
@@ -30,7 +31,7 @@ describe("importCanvasSession", () => {
 
   it("imports CharDesk text into a new active session", async () => {
     const sessionCount = useEditorStore.getState().canvasSessions.length;
-    const session = await useEditorStore.getState().importCanvasSession(
+    const session = await canvasCommands.sessions.import(
       "[38;2;255;0;0mA[0m  \n  [38;2;0;255;0mB[0m"
     );
 
@@ -63,7 +64,7 @@ describe("importCanvasSession", () => {
       canvasColorPickerTarget: "auto",
     });
 
-    await useEditorStore.getState().importCanvasSession("");
+    await canvasCommands.sessions.import("");
 
     expect(useEditorStore.getState()).toMatchObject(
       createDocumentInteractionResetPatch(
@@ -73,7 +74,7 @@ describe("importCanvasSession", () => {
   });
   it("imports an Agent-generated CharDesk document as a new active Slide Deck", async () => {
     const before = useEditorStore.getState();
-    const session = await before.importCanvasSession(
+    const session = await canvasCommands.sessions.import(
       [
         "---",
         "chardesk: document/v1",
@@ -114,9 +115,7 @@ describe("importCanvasSession", () => {
     const sessionCount = before.canvasSessions.length;
 
     await expect(
-      useEditorStore
-        .getState()
-        .importCanvasSession('{"type":"chardesk-document","version":1}')
+      canvasCommands.sessions.import('{"type":"chardesk-document","version":1}')
     ).rejects.toThrow("Legacy JSON");
 
     const after = useEditorStore.getState();

@@ -40,14 +40,23 @@ class MemoryStorage implements Storage {
 
 class FailingStorage extends MemoryStorage {
   #remainingFailures: number;
+  #failureKey: string | null = null;
 
   constructor(remainingFailures: number) {
     super();
     this.#remainingFailures = remainingFailures;
   }
 
+  failNext(count = 1, key: string | null = null) {
+    this.#remainingFailures = count;
+    this.#failureKey = key;
+  }
+
   override setItem(key: string, value: string) {
-    if (this.#remainingFailures > 0) {
+    if (
+      this.#remainingFailures > 0 &&
+      (this.#failureKey === null || this.#failureKey === key)
+    ) {
       this.#remainingFailures -= 1;
       throw new Error("Storage is temporarily unavailable");
     }
@@ -553,6 +562,7 @@ describe("browser canvas persistence", () => {
     await first.retryPersistence();
 
     expect(await first.commands.sessions.remove(deletedId)).toBe(true);
+    await first.retryPersistence();
     expect(first.documents.getMemoryStats()).toMatchObject({
       historyDocuments: 0,
       historyGroups: 0,
@@ -574,6 +584,23 @@ describe("browser canvas persistence", () => {
     await restored.ready;
     expect(restored.getState().canvasSessions.some(({ id }) => id === deletedId))
       .toBe(false);
+  });
+
+  it("keeps a Canvas visible when its durable deletion intent cannot be written", async () => {
+    const storage = new FailingStorage(0);
+    const runtime = createRuntime(storage);
+    runtimes.push(runtime);
+    await runtime.ready;
+    runtime.commands.sessions.create("freeform");
+    const deletedId = runtime.getState().activeCanvasId;
+    storage.failNext(1, "chardesk-canvas-catalog-intent-v1");
+
+    await expect(runtime.commands.sessions.remove(deletedId))
+      .rejects.toThrow("Storage is temporarily unavailable");
+
+    expect(runtime.getState().canvasSessions.some(({ id }) => id === deletedId))
+      .toBe(true);
+    expect(runtime.getState().activeCanvasId).toBe(deletedId);
   });
 
   it("prefers a valid newer generation without deleting older databases", async () => {

@@ -1,18 +1,23 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { defaultCanvasDocuments, setCanvasTestState, useEditorStore } from "@/domains/canvas/testing";
+import {
+  canvasCommands,
+  defaultCanvasDocuments,
+  setCanvasTestState,
+  useEditorStore,
+} from "@/domains/canvas/testing";
 import { createStaticGridInputSession } from "@/domains/selection/public";
 import { GridManager } from "@/shared/utils/grid";
 import { createDocumentInteractionResetPatch } from "./transitions/editorTransitions";
 
 const initialState = useEditorStore.getState();
 
-describe("slideSlice", () => {
+describe("Canvas slide commands", () => {
   afterEach(() => {
     useEditorStore.setState(initialState, true);
   });
 
   it("keeps each slide grid isolated while switching pages", () => {
-    useEditorStore.getState().createCanvasSession("slide", {
+    canvasCommands.sessions.create("slide", {
       slideSize: { columns: 3, rows: 2 },
     });
     const firstSlideId = useEditorStore.getState().slideDeck?.activeSlideId;
@@ -21,7 +26,7 @@ describe("slideSlice", () => {
     defaultCanvasDocuments.mutateGrid((grid) => {
       grid.set(GridManager.toKey(0, 0), { char: "A", color: "#000" });
     });
-    useEditorStore.getState().addSlide();
+    canvasCommands.slides.add();
     const secondSlideId = useEditorStore.getState().slideDeck?.activeSlideId;
     expect(secondSlideId).toBeTruthy();
     expect(secondSlideId).not.toBe(firstSlideId);
@@ -30,17 +35,17 @@ describe("slideSlice", () => {
       grid.set(GridManager.toKey(1, 0), { char: "B", color: "#000" });
     });
 
-    useEditorStore.getState().activateSlide(firstSlideId!);
+    canvasCommands.slides.activate(firstSlideId!);
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("0,0")?.char).toBe("A");
     expect(useEditorStore.getState().contentSurface.reader.materialize().has("1,0")).toBe(false);
 
-    useEditorStore.getState().activateSlide(secondSlideId!);
+    canvasCommands.slides.activate(secondSlideId!);
     expect(useEditorStore.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("B");
     expect(useEditorStore.getState().contentSurface.reader.materialize().has("0,0")).toBe(false);
   });
 
   it("keeps slide metadata free of projected cell content", () => {
-    useEditorStore.getState().createCanvasSession("slide", {
+    canvasCommands.sessions.create("slide", {
       slideSize: { columns: 2, rows: 1 },
     });
     defaultCanvasDocuments.mutateGrid((grid) => {
@@ -72,51 +77,51 @@ describe("slideSlice", () => {
         )
       );
 
-    useEditorStore.getState().createCanvasSession("slide", {
+    canvasCommands.sessions.create("slide", {
       slideSize: { columns: 4, rows: 2 },
     });
     const firstSlideId = useEditorStore.getState().slideDeck!.activeSlideId;
 
     markDirty();
-    useEditorStore.getState().addSlide();
+    canvasCommands.slides.add();
     expectReset();
     const secondSlideId = useEditorStore.getState().slideDeck!.activeSlideId;
 
     markDirty();
-    useEditorStore.getState().duplicateSlide(secondSlideId);
+    canvasCommands.slides.duplicate(secondSlideId);
     expectReset();
 
     markDirty();
-    useEditorStore.getState().activateSlide(firstSlideId);
+    canvasCommands.slides.activate(firstSlideId);
     expectReset();
 
     markDirty();
-    useEditorStore.getState().resizeSlide(firstSlideId, {
+    canvasCommands.slides.resize(firstSlideId, {
       columns: 5,
       rows: 3,
     });
     expectReset();
 
     markDirty();
-    useEditorStore.getState().removeSlide(firstSlideId);
+    canvasCommands.slides.remove(firstSlideId);
     expectReset();
   });
 
   it("preserves interaction for deck metadata and inactive page changes", () => {
-    useEditorStore.getState().createCanvasSession("slide", {
+    canvasCommands.sessions.create("slide", {
       slideSize: { columns: 4, rows: 2 },
     });
     const firstSlideId = useEditorStore.getState().slideDeck!.activeSlideId;
-    useEditorStore.getState().addSlide();
+    canvasCommands.slides.add();
     const activeSlideId = useEditorStore.getState().slideDeck!.activeSlideId;
     setCanvasTestState({
       hoveredGrid: { x: 2, y: 1 },
       canvasColorPickerTarget: "auto",
     });
 
-    useEditorStore.getState().renameSlide(activeSlideId, "Renamed");
-    useEditorStore.getState().moveSlide(activeSlideId, 0);
-    useEditorStore.getState().resizeSlide(firstSlideId, {
+    canvasCommands.slides.rename(activeSlideId, "Renamed");
+    canvasCommands.slides.move(activeSlideId, 0);
+    canvasCommands.slides.resize(firstSlideId, {
       columns: 3,
       rows: 2,
     });
@@ -128,10 +133,10 @@ describe("slideSlice", () => {
   });
 
   it("keeps deck metadata changes outside the active slide history", () => {
-    useEditorStore.getState().createCanvasSession("slide", {
+    canvasCommands.sessions.create("slide", {
       slideSize: { columns: 3, rows: 2 },
     });
-    useEditorStore.getState().addSlide();
+    canvasCommands.slides.add();
     const activeSlideId = useEditorStore.getState().slideDeck?.activeSlideId;
     expect(activeSlideId).toBeTruthy();
 
@@ -141,8 +146,8 @@ describe("slideSlice", () => {
     expect(useEditorStore.getState().canUndo).toBe(true);
     expect(useEditorStore.getState().canRedo).toBe(false);
 
-    useEditorStore.getState().renameSlide(activeSlideId!, "Renamed");
-    useEditorStore.getState().moveSlide(activeSlideId!, 0);
+    canvasCommands.slides.rename(activeSlideId!, "Renamed");
+    canvasCommands.slides.move(activeSlideId!, 0);
 
     expect(useEditorStore.getState().canUndo).toBe(true);
     expect(useEditorStore.getState().canRedo).toBe(false);
@@ -155,7 +160,7 @@ describe("slideSlice", () => {
   });
 
   it("resizes one slide and clears history only when content is cropped", () => {
-    useEditorStore.getState().createCanvasSession("slide", {
+    canvasCommands.sessions.create("slide", {
       slideSize: { columns: 4, rows: 2 },
     });
     const firstSlideId = useEditorStore.getState().slideDeck!.activeSlideId;
@@ -164,7 +169,7 @@ describe("slideSlice", () => {
       grid.set("3,1", { char: "B", color: "#000" });
     });
 
-    useEditorStore.getState().resizeSlide(firstSlideId, {
+    canvasCommands.slides.resize(firstSlideId, {
       columns: 6,
       rows: 3,
     });
@@ -174,7 +179,7 @@ describe("slideSlice", () => {
       rows: 3,
     });
 
-    useEditorStore.getState().resizeSlide(firstSlideId, {
+    canvasCommands.slides.resize(firstSlideId, {
       columns: 3,
       rows: 2,
     });
@@ -184,17 +189,17 @@ describe("slideSlice", () => {
   });
 
   it("crops an inactive slide without changing the active page size", () => {
-    useEditorStore.getState().createCanvasSession("slide", {
+    canvasCommands.sessions.create("slide", {
       slideSize: { columns: 4, rows: 2 },
     });
     const firstSlideId = useEditorStore.getState().slideDeck!.activeSlideId;
     defaultCanvasDocuments.mutateGrid((grid) => {
       grid.set("3,1", { char: "A", color: "#000" });
     });
-    useEditorStore.getState().addSlide();
+    canvasCommands.slides.add();
     const secondSlideId = useEditorStore.getState().slideDeck!.activeSlideId;
 
-    useEditorStore.getState().resizeSlide(firstSlideId, {
+    canvasCommands.slides.resize(firstSlideId, {
       columns: 3,
       rows: 2,
     });
@@ -204,7 +209,7 @@ describe("slideSlice", () => {
       )?.size
     ).toEqual({ columns: 4, rows: 2 });
 
-    useEditorStore.getState().activateSlide(firstSlideId);
+    canvasCommands.slides.activate(firstSlideId);
     expect(useEditorStore.getState().contentSurface.reader.materialize().has("3,1")).toBe(false);
   });
 });

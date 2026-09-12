@@ -440,13 +440,12 @@ export class CanvasDocumentRegistry {
 
   getIntegrityIssues = () => Array.from(this.#active.integrityIssues.values());
 
-  activateDocument = (
+  registerDocument = (
     id: string,
     seed: CanvasDocumentSeed,
     options?: { replace?: boolean }
   ) => {
     this.#assertActive();
-    const previous = this.#active;
     let next = this.#documents.get(id);
     if (!next) {
       next = this.#createDocument(id, seed);
@@ -454,11 +453,21 @@ export class CanvasDocumentRegistry {
     } else if (options?.replace) {
       this.#replaceDocument(next, seed);
     }
-    this.#active = next;
     const requestedPageId = seed.activePageId;
     if (requestedPageId && next.pages.has(requestedPageId)) {
       this.#setActivePage(next, requestedPageId);
     }
+    return next;
+  };
+
+  activateDocument = (
+    id: string,
+    seed: CanvasDocumentSeed,
+    options?: { replace?: boolean }
+  ) => {
+    const previous = this.#active;
+    const next = this.registerDocument(id, seed, options);
+    this.#active = next;
     if (next !== previous) {
       this.#activeListeners.forEach((listener) => listener(next!, previous));
     }

@@ -128,24 +128,26 @@ export const createSelectionCommandFactory = ({
     });
     if (!copied) return failed("clipboard-failed");
 
-    const current = get();
-    const currentSelections = resolveSelectionAreas(current);
-    const currentPayload = buildClipboardPayload(
-      current.contentSurface.reader,
-      currentSelections,
-      resolveTextCursor(current),
-      current.brushColor
-    );
-    if (
-      getClipboardTargetFingerprint(current) !== targetFingerprint ||
-      !areJsonValuesEqual(currentPayload, payload)
-    ) return failed("stale-target");
-    if (currentSelections.length > 0) mutations.deleteSelection();
-    else {
-      const cursor = resolveTextCursor(current);
-      if (cursor) mutations.erasePoints([cursor]);
-    }
-    return applied(true);
+    return mutations.transact(() => {
+      const current = get();
+      const currentSelections = resolveSelectionAreas(current);
+      const currentPayload = buildClipboardPayload(
+        current.contentSurface.reader,
+        currentSelections,
+        resolveTextCursor(current),
+        current.brushColor
+      );
+      if (
+        getClipboardTargetFingerprint(current) !== targetFingerprint ||
+        !areJsonValuesEqual(currentPayload, payload)
+      ) return failed("stale-target");
+      if (currentSelections.length > 0) mutations.deleteSelection();
+      else {
+        const cursor = resolveTextCursor(current);
+        if (cursor) mutations.erasePoints([cursor]);
+      }
+      return applied(true);
+    });
   },
 
   pasteFromClipboard: async (options) => {
@@ -158,29 +160,33 @@ export const createSelectionCommandFactory = ({
       renderClipboardText,
       { themeMode }
     );
-    const state = get();
     if ("error" in payload && payload.error) return failed(payload.error);
-    if (getClipboardTargetFingerprint(state) !== targetFingerprint) return failed("stale-target");
-    const completePaste = () => {
-      notifyPasteRenderDiagnostics(payload.diagnostics);
-      return applied(true);
-    };
-    const selectResult = state.canvasMode === "freeform";
-    if ("richRows" in payload && payload.richRows) {
-      mutations.pasteRichRows(payload.richRows, undefined, { selectResult });
-      return completePaste();
-    }
-    if (payload.richCells) {
-      mutations.pasteRichData(payload.richCells, undefined, { selectResult });
-      return completePaste();
-    }
-    if (payload.plainText) {
-      const cells = parsePlainTextCells(payload.plainText, state.brushColor);
-      if (cells.length === 0) return noop("empty-clipboard");
-      mutations.pasteRichData(cells, undefined, { selectResult });
-      return completePaste();
-    }
-    return noop("empty-clipboard");
+    return mutations.transact(() => {
+      const state = get();
+      if (getClipboardTargetFingerprint(state) !== targetFingerprint) {
+        return failed("stale-target");
+      }
+      const completePaste = () => {
+        notifyPasteRenderDiagnostics(payload.diagnostics);
+        return applied(true);
+      };
+      const selectResult = state.canvasMode === "freeform";
+      if ("richRows" in payload && payload.richRows) {
+        mutations.pasteRichRows(payload.richRows, undefined, { selectResult });
+        return completePaste();
+      }
+      if (payload.richCells) {
+        mutations.pasteRichData(payload.richCells, undefined, { selectResult });
+        return completePaste();
+      }
+      if (payload.plainText) {
+        const cells = parsePlainTextCells(payload.plainText, state.brushColor);
+        if (cells.length === 0) return noop("empty-clipboard");
+        mutations.pasteRichData(cells, undefined, { selectResult });
+        return completePaste();
+      }
+      return noop("empty-clipboard");
+    });
   },
 
   copySelectionAsPng: async (withGrid) => {

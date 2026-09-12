@@ -3,7 +3,7 @@ import type { CanvasSessionSourceParser } from "./state/sessionImportPort";
 import type { SelectionCommandFactory } from "./state/selectionCommandPort";
 import { CanvasDocumentRegistry } from "./state/CanvasDocumentRegistry";
 import type { CanvasStore } from "./state/editorStore";
-import { CanvasRuntime } from "./runtime";
+import { CanvasRuntime, getMutableCanvasStoreForTesting } from "./runtime";
 import type {
   CanvasContentSurfaceState,
   CanvasState,
@@ -44,7 +44,7 @@ export const initializeCanvasTesting = ({
     parseSessionSource,
     persistence: false,
   });
-  useEditorStore = testingCanvasRuntime.store;
+  useEditorStore = getMutableCanvasStoreForTesting(testingCanvasRuntime);
   canvasCommands = testingCanvasRuntime.commands;
   return testingCanvasRuntime;
 };

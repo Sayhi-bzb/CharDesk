@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DataSecurityDialog } from "./data-security-dialog";
 import {
+  canvasCommands,
   testingCanvasRuntime,
   useEditorStore,
 } from "@/domains/canvas/testing";
@@ -24,7 +25,7 @@ describe("DataSecurityDialog", () => {
 
   it("replaces local-only claims with the active sync-server data boundary", () => {
     const state = useEditorStore.getState();
-    state.setCanvasSessionCollaboration(state.activeCanvasId, {
+    canvasCommands.sessions.setCollaboration(state.activeCanvasId, {
       version: 6,
       documentVersion: 6,
       mode: "freeform",
@@ -41,12 +42,12 @@ describe("DataSecurityDialog", () => {
     expect(dialog).toHaveTextContent("Anyone with the edit link can edit");
     expect(dialog).not.toHaveTextContent("No analytics");
 
-    useEditorStore.getState().setCanvasSessionCollaboration(state.activeCanvasId, null);
+    canvasCommands.sessions.setCollaboration(state.activeCanvasId, null);
   });
 
   it("describes the encrypted relay boundary for V7 rooms", () => {
     const state = useEditorStore.getState();
-    state.setCanvasSessionCollaboration(state.activeCanvasId, {
+    canvasCommands.sessions.setCollaboration(state.activeCanvasId, {
       version: 7,
       documentVersion: 6,
       mode: "freeform",
@@ -62,7 +63,7 @@ describe("DataSecurityDialog", () => {
     expect(dialog).toHaveTextContent("stores no room content");
     expect(dialog).not.toHaveTextContent("may retain data");
 
-    useEditorStore.getState().setCanvasSessionCollaboration(state.activeCanvasId, null);
+    canvasCommands.sessions.setCollaboration(state.activeCanvasId, null);
   });
 
   it("shows the concrete persistence failure alongside recovery guidance", () => {

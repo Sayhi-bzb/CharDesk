@@ -10,7 +10,7 @@ export {
   useCanvasState,
   useCanvasViewport,
 } from "./react";
-export type { CanvasState } from "./state/interfaces";
+export type { CanvasState, CanvasStateStore } from "./state/interfaces";
 export { createEmptyCanvasInteraction } from "./state/canvasInteractionState";
 export type {
   CanvasColorPickerTarget,
@@ -22,10 +22,12 @@ export type {
   PendingCanvasCameraPlacement,
   CanvasViewportState,
   ClipboardCommandResult,
+} from "./state/interfaces";
+export type {
   RichTextCell,
   RichTextRow,
   RichTextSpan,
-} from "./state/interfaces";
+} from "./state/textCommandTypes";
 export type {
   SelectionCommandFactory,
   SelectionCommandContext,

@@ -1,6 +1,4 @@
 import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
-import type { CanvasStore } from "./editorStore";
-import type { EditorState } from "./interfaces";
 import { resolveEditorDocumentAddress } from "./helpers/gridHelpers";
 import type { CanvasViewportRuntime } from "../viewportRuntime";
 import type { ToolType } from "../model/tool";
@@ -41,70 +39,82 @@ import {
 } from "./transitions/scratchLayerTransitions";
 import type { SelectionCommandFactory } from "./selectionCommandPort";
 import { createCanvasDocumentCommands } from "./canvasDocumentCommands";
-
-const createCall = (store: CanvasStore) => <Key extends keyof EditorState>(
-  key: Key,
-  ...args: EditorState[Key] extends (...params: infer Params) => unknown
-    ? Params
-    : never
-) => {
-  type Result = EditorState[Key] extends (...params: never[]) => infer Return
-    ? Return
-    : never;
-  const command = store.getState()[key] as (...params: typeof args) => Result;
-  if (typeof command !== "function") {
-    throw new TypeError(`Canvas command ${String(key)} is not callable`);
-  }
-  return command(...args);
-};
+import { createCanvasTextCommands } from "./canvasTextCommands";
+import type { CanvasStateCommitCoordinator } from "./CanvasStateCommitCoordinator";
+import { createCanvasSessionCommands } from "./canvasSessionCommands";
+import { createCanvasSlideCommands } from "./canvasSlideCommands";
+import type { CanvasSessionSourceParser } from "./sessionImportPort";
+import type { CanvasDocumentResidency } from "./documentResidencyPort";
 
 export const createCanvasFacade = (
-  store: CanvasStore,
+  commits: CanvasStateCommitCoordinator,
   documents: CanvasDocumentRegistry,
   viewport: CanvasViewportRuntime,
-  selectionCommandFactory: SelectionCommandFactory
+  selectionCommandFactory: SelectionCommandFactory,
+  parseSessionSource: CanvasSessionSourceParser,
+  residency?: CanvasDocumentResidency
 ) => {
-const call = createCall(store);
 const resolveAddress = () =>
-  resolveEditorDocumentAddress(documents, store.getState());
-const documentCommands = createCanvasDocumentCommands(store, documents);
+  resolveEditorDocumentAddress(documents, commits.getState());
+const documentCommands = createCanvasDocumentCommands(commits, documents);
+const textCommands = createCanvasTextCommands(commits, documents);
+const sessionCommands = createCanvasSessionCommands(
+  commits,
+  documents,
+  parseSessionSource,
+  viewport,
+  residency
+);
+const slideCommands = createCanvasSlideCommands(commits, documents);
 const selectionCommands = selectionCommandFactory({
-  getState: store.getState,
+  getState: commits.getState,
   mutations: {
+    transact: commits.run,
     deleteSelection: documentCommands.deleteSelection,
     erasePoints: documentCommands.erasePoints,
-    pasteRichData: (...args) => call("pasteRichData", ...args),
-    pasteRichRows: (...args) => call("pasteRichRows", ...args),
+    pasteRichData: textCommands.pasteRichData,
+    pasteRichRows: textCommands.pasteRichRows,
     updateInteraction: (update) =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createCanvasInteractionPatch(state.interaction, update)
       ),
   },
 });
 const commands = {
   history: {
-    undo: () => {
+    undo: () => commits.run(() => {
       resolveAddress();
       return documents.undo();
-    },
-    redo: () => {
+    }),
+    redo: () => commits.run(() => {
       resolveAddress();
       return documents.redo();
-    },
+    }),
     beginCheckpoint: () => {
       resolveAddress();
-      return documents.beginHistoryCheckpoint();
+      const checkpoint = documents.beginHistoryCheckpoint();
+      return {
+        commit: () => commits.run(checkpoint.commit),
+        cancel: () => commits.run(checkpoint.cancel),
+      };
     },
     finishCapture: () => {
       resolveAddress();
       return documents.finishHistoryCapture();
     },
     transact: <Result>(fn: () => Result, history: "save" | "merge" | "none" | "reset" = "save") => {
-      let result!: Result;
-      documents.runTransactionAt(resolveAddress(), () => {
-        result = fn();
-      }, history);
-      return result;
+      return commits.run(() => {
+        resolveAddress();
+        if (history === "save" || history === "reset") {
+          documents.finishHistoryCapture();
+        }
+        try {
+          return commits.withHistory(history, fn);
+        } finally {
+          if (history === "save") documents.finishHistoryCapture();
+          else if (history === "reset") documents.clearHistory();
+        }
+      });
     },
   },
   viewport: {
@@ -115,7 +125,7 @@ const commands = {
   },
   tools: {
     set: (tool: ToolType) =>
-      store.setState((state) => {
+      commits.setState((state) => {
         if (!isToolAllowedForMode(tool, state.canvasMode)) return state;
         return {
           tool,
@@ -131,24 +141,24 @@ const commands = {
   },
   preferences: {
     setBrushChar: (char: string) =>
-      store.setState((state) => ({
+      commits.setState((state) => ({
         brushChar: normalizeBrushChar(char, state.brushChar),
       })),
-    setBrushColor: (color: string) => store.setState({ brushColor: color }),
+    setBrushColor: (color: string) => commits.setState({ brushColor: color }),
     setBrushBackgroundColor: (color: string) =>
-      store.setState({ brushBackgroundColor: color }),
-    setShowGrid: (show: boolean) => store.setState({ showGrid: show }),
-    setExportShowGrid: (show: boolean) => store.setState({ exportShowGrid: show }),
+      commits.setState({ brushBackgroundColor: color }),
+    setShowGrid: (show: boolean) => commits.setState({ showGrid: show }),
+    setExportShowGrid: (show: boolean) => commits.setState({ exportShowGrid: show }),
   },
   interaction: {
     setColorPickerTarget: (target: CanvasColorPickerTarget | null) =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createCanvasInteractionPatch(state.interaction, {
           canvasColorPickerTarget: target,
         })
       ),
     setHoveredGrid: (position: Point | null) =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createCanvasInteractionPatch(state.interaction, {
           hoveredGrid: position,
         })
@@ -156,17 +166,17 @@ const commands = {
   },
   grid: {
     replace: (entries: Parameters<CanvasDocumentRegistry["replaceCellPage"]>[1]) =>
-      documents.replaceCellPage(resolveAddress(), entries),
+      commits.run(() => documents.replaceCellPage(resolveAddress(), entries)),
     setScratchLayer: (points: GridPoint[]) =>
-      store.setState((state) => createScratchLayerPatch(state, points)),
+      commits.setState((state) => createScratchLayerPatch(state, points)),
     addScratchPoints: (points: GridPoint[]) =>
-      store.setState((state) => createAddedScratchPointsPatch(state, points)),
+      commits.setState((state) => createAddedScratchPointsPatch(state, points)),
     commitScratch: documentCommands.commitScratch,
     clearScratch: () =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createClearedScratchLayerPatch(state.interaction)
       ),
-    clear: () => call("clearCanvas"),
+    clear: documentCommands.clearCanvas,
     erasePoints: documentCommands.erasePoints,
     updateScratchForShape: (
       tool: ToolType,
@@ -174,28 +184,24 @@ const commands = {
       end: Point,
       options?: { axis?: "vertical" | "horizontal" | null }
     ) =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createShapeScratchLayerPatch(state, tool, start, end, options)
       ),
     fillArea: documentCommands.fillArea,
-    insertRows: (...args: Parameters<EditorState["pasteRichRows"]>) =>
-      call("pasteRichRows", ...args),
+    insertRows: textCommands.pasteRichRows,
   },
   text: {
-    write: (...args: Parameters<EditorState["writeTextString"]>) =>
-      call("writeTextString", ...args),
-    pasteRichData: (...args: Parameters<EditorState["pasteRichData"]>) =>
-      call("pasteRichData", ...args),
-    moveCursor: (...args: Parameters<EditorState["moveTextCursor"]>) =>
-      call("moveTextCursor", ...args),
-    newline: () => call("newlineText"),
-    indent: () => call("indentText"),
+    write: textCommands.write,
+    pasteRichData: textCommands.pasteRichData,
+    moveCursor: textCommands.moveCursor,
+    newline: textCommands.newline,
+    indent: textCommands.indent,
   },
   selection: {
     clear: () =>
-      store.setState((state) => createClearedSelectionsPatch(state.interaction)),
+      commits.setState((state) => createClearedSelectionsPatch(state.interaction)),
     clearInteraction: () =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createClearedInteractionPatch(state.interaction)
       ),
     delete: documentCommands.deleteSelection,
@@ -212,86 +218,69 @@ const commands = {
   staticGrid: {
     delete: documentCommands.deleteStaticGrid,
     setActiveCell: (address: GridAddress) =>
-      store.setState((state) => createStaticGridActiveCellPatch(state, address)),
+      commits.setState((state) => createStaticGridActiveCellPatch(state, address)),
     setSelectionRange: (range: GridRange) =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createStaticGridSelectionRangePatch(state, range)
       ),
     appendSelectionRange: (range: GridRange) =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createStaticGridSelectionRangePatch(state, range, true)
       ),
     moveFocus: (dx: number, dy: number, options?: { extend?: boolean }) =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createMovedStaticGridFocusPatch(state, dx, dy, options)
       ),
     moveFocusToEdge: (
       edge: "left" | "right" | "top" | "bottom" | "top-left" | "bottom-right",
       options?: { extend?: boolean }
     ) =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createStaticGridEdgeFocusPatch(state, edge, options)
       ),
     moveFocusToContentBoundary: (
       edge: "left" | "right" | "top" | "bottom",
       options?: { extend?: boolean }
     ) =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createStaticGridContentBoundaryFocusPatch(state, edge, options)
       ),
     selectAll: () =>
-      store.setState((state) => createStaticGridSelectAllPatch(state)),
+      commits.setState((state) => createStaticGridSelectAllPatch(state)),
     selectRow: () =>
-      store.setState((state) => createStaticGridRowSelectionPatch(state)),
+      commits.setState((state) => createStaticGridRowSelectionPatch(state)),
     selectColumn: () =>
-      store.setState((state) => createStaticGridColumnSelectionPatch(state)),
+      commits.setState((state) => createStaticGridColumnSelectionPatch(state)),
     enterTextEdit: (address?: GridAddress) =>
-      store.setState((state) => createStaticGridTextEditPatch(state, address)),
+      commits.setState((state) => createStaticGridTextEditPatch(state, address)),
     exitTextEdit: () =>
-      store.setState((state) => createStaticGridTextEditExitPatch(state)),
+      commits.setState((state) => createStaticGridTextEditExitPatch(state)),
     clearSelection: () =>
-      store.setState((state) =>
+      commits.setState((state) =>
         createClearedStaticGridSelectionPatch(state)
       ),
   },
   sessions: {
-    create: (...args: Parameters<EditorState["createCanvasSession"]>) =>
-      call("createCanvasSession", ...args),
-    openSource: (...args: Parameters<EditorState["openSourceSession"]>) =>
-      call("openSourceSession", ...args),
-    import: (...args: Parameters<EditorState["importCanvasSession"]>) =>
-      call("importCanvasSession", ...args),
-    replaceSnapshot: (
-      ...args: Parameters<EditorState["replaceCanvasSessionSnapshot"]>
-    ) => call("replaceCanvasSessionSnapshot", ...args),
-    applySourceProjection: (
-      ...args: Parameters<EditorState["applySourceProjection"]>
-    ) => call("applySourceProjection", ...args),
-    switch: (...args: Parameters<EditorState["switchCanvasSession"]>) =>
-      call("switchCanvasSession", ...args),
-    remove: (...args: Parameters<EditorState["removeCanvasSession"]>) =>
-      call("removeCanvasSession", ...args),
-    saveViewport: (...args: Parameters<EditorState["saveCanvasSessionViewport"]>) =>
-      call("saveCanvasSessionViewport", ...args),
-    rename: (...args: Parameters<EditorState["renameCanvasSession"]>) =>
-      call("renameCanvasSession", ...args),
-    setCollaboration: (
-      ...args: Parameters<EditorState["setCanvasSessionCollaboration"]>
-    ) => call("setCanvasSessionCollaboration", ...args),
-    joinCollaboration: (
-      ...args: Parameters<EditorState["joinCanvasSessionCollaboration"]>
-    ) => call("joinCanvasSessionCollaboration", ...args),
+    create: sessionCommands.createCanvasSession,
+    openSource: sessionCommands.openSourceSession,
+    import: sessionCommands.importCanvasSession,
+    replaceSnapshot: sessionCommands.replaceCanvasSessionSnapshot,
+    applySourceProjection: sessionCommands.applySourceProjection,
+    switch: sessionCommands.switchCanvasSession,
+    remove: sessionCommands.removeCanvasSession,
+    saveViewport: sessionCommands.saveCanvasSessionViewport,
+    rename: sessionCommands.renameCanvasSession,
+    setCollaboration: sessionCommands.setCanvasSessionCollaboration,
+    joinCollaboration: sessionCommands.joinCanvasSessionCollaboration,
   },
   slides: {
-    add: () => call("addSlide"),
-    duplicate: (...args: Parameters<EditorState["duplicateSlide"]>) =>
-      call("duplicateSlide", ...args),
-    remove: (...args: Parameters<EditorState["removeSlide"]>) => call("removeSlide", ...args),
-    rename: (...args: Parameters<EditorState["renameSlide"]>) => call("renameSlide", ...args),
-    move: (...args: Parameters<EditorState["moveSlide"]>) => call("moveSlide", ...args),
-    activate: (...args: Parameters<EditorState["activateSlide"]>) =>
-      call("activateSlide", ...args),
-    resize: (...args: Parameters<EditorState["resizeSlide"]>) => call("resizeSlide", ...args),
+    add: slideCommands.addSlide,
+    duplicate: slideCommands.duplicateSlide,
+    remove: slideCommands.removeSlide,
+    rename: slideCommands.renameSlide,
+    move: slideCommands.moveSlide,
+    activate: slideCommands.activateSlide,
+    resize: slideCommands.resizeSlide,
   },
 } as const;
 const queries = {

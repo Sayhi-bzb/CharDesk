@@ -11,12 +11,6 @@ import {
   migratePersistedStateToV7,
 } from "@/domains/sessions/public";
 import {
-  createDrawingSlice,
-  createTextSlice,
-  createSessionSlice,
-  createSlideSlice,
-} from "./slices";
-import {
   createMapFromEntries,
   normalizeGridEntries,
 } from "./helpers/snapshotHelpers";
@@ -36,7 +30,6 @@ import {
 } from "./helpers/storeUtils";
 import { createDeferredSnapshotPersistStorage } from "./persistenceCoordinator";
 import type { CollaborationIntegrityIssue } from "@/domains/collaboration/public";
-import type { CanvasSessionSourceParser } from "./sessionImportPort";
 import {
   getCanvasSessionRestoreRecord,
   type CanvasSessionDescriptor,
@@ -49,6 +42,7 @@ import {
   type CanvasViewportRuntime,
 } from "../viewportRuntime";
 import { createEmptyCanvasInteraction } from "./canvasInteractionState";
+import { CanvasStateCommitCoordinator } from "./CanvasStateCommitCoordinator";
 
 export type CanvasStore = UseBoundStore<StoreApi<EditorState>>;
 
@@ -60,7 +54,6 @@ export type CanvasStorePersistence = false | {
 
 type CanvasStoreDependencies = {
   documents: CanvasDocumentRegistry;
-  parseSessionSource: CanvasSessionSourceParser;
   reportIntegrityIssues: (issues: CollaborationIntegrityIssue[]) => void;
   persistence: CanvasStorePersistence;
   initialSessions?: readonly CanvasSessionSnapshot[];
@@ -98,13 +91,16 @@ const seedSessionDocuments = (
 
 export const createEditorStore = ({
   documents,
-  parseSessionSource,
   reportIntegrityIssues,
   persistence,
   initialSessions: configuredInitialSessions,
   documentResidency,
   viewport,
-}: CanvasStoreDependencies): { store: CanvasStore; dispose: () => void } => {
+}: CanvasStoreDependencies): {
+  store: CanvasStore;
+  commits: CanvasStateCommitCoordinator;
+  dispose: () => void;
+} => {
   if (persistence && persistence.key.trim().length === 0) {
     throw new Error("Canvas persistence requires a non-empty instance key");
   }
@@ -119,62 +115,52 @@ export const createEditorStore = ({
   );
   const initialSession = initialSessions[0]!;
   const disposers: Array<() => void> = [];
-  const stateCreator: StateCreator<EditorState> = (set, get, ...a) => {
-      seedSessionDocuments(documents, initialSnapshots[0]!);
-      if (!documentResidency) {
-        initialSnapshots.slice(1).forEach((session) => {
-          seedSessionDocuments(documents, session);
-        });
-      }
-      const initialRuntime = resolveSessionDocumentRuntime(
-        documents,
-        initialSession,
-        "select"
-      );
-      const initialAddress = documents.getDocumentAddress(
-        initialSession.id,
-        initialSession.mode === "slide"
-          ? initialRuntime.nextSlideDeck?.activeSlideId
-          : undefined
-      );
-      if (!initialAddress || !documents.activatePage(
+  const stateCreator: StateCreator<EditorState> = () => {
+    seedSessionDocuments(documents, initialSnapshots[0]!);
+    if (!documentResidency) {
+      initialSnapshots.slice(1).forEach((session) => {
+        seedSessionDocuments(documents, session);
+      });
+    }
+    const initialRuntime = resolveSessionDocumentRuntime(
+      documents,
+      initialSession,
+      "select"
+    );
+    const initialAddress = documents.getDocumentAddress(
+      initialSession.id,
+      initialSession.mode === "slide"
+        ? initialRuntime.nextSlideDeck?.activeSlideId
+        : undefined
+    );
+    if (
+      !initialAddress ||
+      !documents.activatePage(
         initialAddress.documentId,
         initialAddress.pageId
-      )) {
-        throw new Error(`Failed to activate initial Canvas session: ${initialSession.id}`);
-      }
+      )
+    ) {
+      throw new Error(
+        `Failed to activate initial Canvas session: ${initialSession.id}`
+      );
+    }
 
-      disposers.push(subscribeCanvasDocumentProjection(
-        documents,
-        reportIntegrityIssues,
-        set
-      ));
-
-      disposers.push(documents.subscribeHistoryAvailability(
-        (availability) => set(availability)
-      ));
-
-      return {
-        interaction: createEmptyCanvasInteraction(initialAddress),
-        contentSurface: createCanvasContentSurface(documents.getContentReader()),
-        canvasMode: initialRuntime.nextMode,
-        canvasSessions: initialSessions,
-        activeCanvasId: initialSession.id,
-        ...documents.getHistoryAvailability(),
-        tool: initialRuntime.nextTool,
-        brushChar: DEFAULT_BRUSH_CHAR,
-        brushColor: COLOR_PRIMARY_TEXT,
-        brushBackgroundColor: COLOR_PRIMARY_TEXT,
-        showGrid: false,
-        exportShowGrid: false,
-        ...createSessionSlice(documents, parseSessionSource, viewport, documentResidency)(set, get, ...a),
-        ...createSlideSlice(documents)(set, get, ...a),
-        slideDeck: initialRuntime.nextSlideDeck,
-
-        ...createDrawingSlice(documents)(set, get, ...a),
-        ...createTextSlice(documents)(set, get, ...a),
-      };
+    return {
+      interaction: createEmptyCanvasInteraction(initialAddress),
+      contentSurface: createCanvasContentSurface(documents.getContentReader()),
+      canvasMode: initialRuntime.nextMode,
+      canvasSessions: initialSessions,
+      activeCanvasId: initialSession.id,
+      ...documents.getHistoryAvailability(),
+      tool: initialRuntime.nextTool,
+      brushChar: DEFAULT_BRUSH_CHAR,
+      brushColor: COLOR_PRIMARY_TEXT,
+      brushBackgroundColor: COLOR_PRIMARY_TEXT,
+      showGrid: false,
+      exportShowGrid: false,
+      slideDeck: initialRuntime.nextSlideDeck,
     };
+  };
   const store = persistence
     ? create<EditorState>()(persist(stateCreator, {
       name: persistence.key,
@@ -238,8 +224,18 @@ export const createEditorStore = ({
       },
     }))
     : create<EditorState>()(stateCreator);
+  const commits = new CanvasStateCommitCoordinator(store);
+  disposers.push(subscribeCanvasDocumentProjection(
+    documents,
+    reportIntegrityIssues,
+    commits
+  ));
+  disposers.push(documents.subscribeHistoryAvailability(
+    (availability) => commits.setState(availability)
+  ));
   return {
     store,
+    commits,
     dispose: () => {
       disposers.splice(0).reverse().forEach((dispose) => dispose());
     },

@@ -12,8 +12,10 @@ description: Authority, projection, history, persistence, and synchronization di
 | `derived` | Rendering, minimap, preview projections | No | No |
 | `blackboard` | Versioned source files in the browser repository or local Reader | Repository revisions | No |
 
-Workspace writes enter through `CanvasCommands`; Zustand is their read projection,
-not an alternate command surface. Local grid navigation and selection clearing are
+Workspace writes enter through `CanvasCommands`; `EditorState` contains data only and
+Zustand is its read projection, not an alternate command surface. `CanvasRuntime.store`
+exposes only `getState`, `getInitialState`, and `subscribe`; its mutable Store is test-internal.
+Local grid navigation and selection clearing are
 pure interaction transitions. Drawing previews update the transient scratch layer
 through the same boundary. Scratch commits, existing-cell area fills, and static
 range moves are addressed document writes owned by `CanvasCommands`, not alternate
@@ -25,6 +27,23 @@ await boundary, then commits through an explicit mutation port.
 `navigate` branch owns selection; its `text-edit` branch owns the input session.
 Selection and cursor views are derived from that discriminated state, so they cannot
 represent conflicting modes.
+
+Text mutation enters through the Canvas text command executor. It derives CellPlane
+writes and the next `interaction.staticGrid` from one initial snapshot; text actions
+are not part of `EditorState`.
+
+Session and Slide lifecycle mutations enter through their Canvas command executors.
+One activation coordinator orders create, source-open, import, switch, active deletion,
+and collaboration join. Asynchronous work runs outside the commit boundary, then validates
+the latest activation intent and publishes a short synchronous commit; no draft spans an
+`await` boundary. A stale import still registers its document and descriptor but does not
+replace the user's newer active Canvas.
+
+`CanvasStateCommitCoordinator` owns the synchronous command publication boundary.
+Yjs content projection, local interaction, and history availability update one shared
+draft; nested commands read that draft, and only the outer command publishes to
+Zustand subscribers. Remote Yjs transactions outside a local command publish
+immediately. This boundary provides one observable snapshot, not Yjs rollback.
 
 A projection never writes back to its authority. Only local Yjs origins enter
 undo history. Remote values pass Canvas decoders before projection; invalid records
@@ -142,7 +161,10 @@ The catalog is the startup index; it does not make every Canvas resident. The ac
 both visible Split panes are pinned. The document repository retains at most four Canvas documents,
 using most-recently-used order for the remaining slots. Releasing a document flushes dirty local
 updates and disposes its runtime projections without deleting IndexedDB content. User deletion is a
-separate lifecycle operation. Reopening an evicted Canvas restores content but not its undo stack.
+separate lifecycle operation: a durable catalog intent records its tombstone before the Session
+disappears from runtime state, then runtime resources are released. Recovery databases remain
+available but tombstoned Sessions are never restored. Reopening an evicted Canvas restores content
+but not its undo stack.
 
 Canvas pages contain only ordered `cell-plane-operations`. Canvas rendering queries
 occupied spans inside the viewport, and Minimap caches its reader projection by document

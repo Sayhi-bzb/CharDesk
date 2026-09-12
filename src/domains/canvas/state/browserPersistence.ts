@@ -1004,8 +1004,11 @@ const createCatalogSnapshot = (
   recoveredSources: ReadonlySet<string> = new Set(),
   deletedSessionIds: ReadonlySet<string> = new Set()
 ): CanvasCatalogSnapshot => {
+  const sessions = state.canvasSessions.filter(
+    (session) => !deletedSessionIds.has(session.id)
+  );
   const slideDecks = new Map(
-    state.canvasSessions.flatMap((session) => {
+    sessions.flatMap((session) => {
       if (session.mode !== "slide") return [];
       const deck = getSlideDeck(session.id);
       return deck ? [[session.id, deck] as const] : [];
@@ -1013,8 +1016,10 @@ const createCatalogSnapshot = (
   );
   return {
   revision,
-  activeSessionId: state.activeCanvasId,
-  sessions: state.canvasSessions.map((session, order) => ({
+  activeSessionId: sessions.some((session) => session.id === state.activeCanvasId)
+    ? state.activeCanvasId
+    : sessions[0]?.id ?? state.activeCanvasId,
+  sessions: sessions.map((session, order) => ({
     id: session.id,
     order,
     name: session.name,
@@ -1042,7 +1047,7 @@ const createCatalogSnapshot = (
         }
       : {}),
   })),
-  slides: state.canvasSessions.flatMap((session) =>
+  slides: sessions.flatMap((session) =>
     session.mode === "slide"
       ? (slideDecks.get(session.id)?.slides ?? []).map((slide, order) => ({
           id: slide.id,
@@ -1605,7 +1610,9 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       } else this.#waitForCoordinatorHandoff();
       documents.configureDocumentLifecycle({
         onCreate: (id, doc) => this.#attachDocument(id, doc),
-        onDelete: (id) => { void this.#deleteDocument(id); },
+        onDelete: (id) => {
+          void this.delete(id).catch((error) => this.#handleError(error));
+        },
       });
       this.#subscribeToStore();
       this.#publish({ phase: "ready", save: "saved", error: null });
@@ -1902,10 +1909,26 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     void this.#queueEviction().catch((error) => this.#handleError(error));
   };
 
-  delete = async (id: string) => {
+  tombstone = async (id: string) => {
+    if (this.#deletedSessionIds.has(id)) return;
+    this.#deletedSessionIds.add(id);
+    try {
+      this.#writeCatalogIntent();
+    } catch (error) {
+      this.#deletedSessionIds.delete(id);
+      throw error;
+    }
+    void this.#saveCatalog().catch((error) => this.#handleError(error));
+  };
+
+  releaseDeleted = (id: string) => {
     this.#registry?.clearDocumentHistory(id);
-    await this.#releaseDocument(id);
-    await this.#deleteDocument(id);
+    void this.#releaseDeletedDocument(id).catch((error) => this.#handleError(error));
+  };
+
+  delete = async (id: string) => {
+    await this.tombstone(id);
+    this.releaseDeleted(id);
   };
 
   dispose = () => {
@@ -2306,21 +2329,12 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     return task;
   }
 
-  async #deleteDocument(id: string) {
-    this.#deletedSessionIds.add(id);
-    const current = this.#documents.get(id);
-    if (current) {
-      current.doc.off("update", current.updateListener);
-      this.#documents.delete(id);
-      this.#dirtyDocuments.delete(id);
-      await current.provider.destroy();
-    }
+  async #releaseDeletedDocument(id: string) {
+    await this.#releaseDocument(id);
     this.#documentGenerations.delete(id);
     this.#previousDocumentGenerations.delete(id);
     this.#documentRevisions.delete(id);
     this.#clearCheckpoint(id);
-    this.#writeCatalogIntent();
-    await this.#saveCatalog();
   }
 
   #subscribeToStore() {

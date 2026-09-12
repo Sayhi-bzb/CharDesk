@@ -92,6 +92,54 @@ describe("Cell architecture rules", () => {
     )[0]).toContain("Retired split static-grid state contract");
   });
 
+  it("keeps text mutations out of the Store command surface", () => {
+    expect(messages(
+      "export const createTextSlice = () => undefined;",
+      "src/example.ts"
+    )[0]).toContain("Retired text Store command contract");
+    expect(messages(
+      "store.getState().writeTextString(value);",
+      "src/example.ts"
+    )[0]).toContain("Text mutations must enter through CanvasCommands");
+  });
+
+  it("keeps Canvas mutation commands behind the coordinated state port", () => {
+    expect(messages(
+      'import type { StoreApi } from "zustand";',
+      "src/domains/canvas/state/canvasTextCommands.ts"
+    )[0]).toContain("coordinated state port");
+    expect(messages(
+      'import { CanvasStateCommitCoordinator } from "./CanvasStateCommitCoordinator";',
+      "src/domains/canvas/state/canvasDocumentCommands.ts"
+    )).toEqual([]);
+    expect(messages(
+      'import type { StoreApi } from "zustand";',
+      "src/domains/canvas/state/canvasSessionCommands.ts"
+    )[0]).toContain("coordinated state port");
+  });
+
+  it("keeps session and slide lifecycle commands out of Store slices", () => {
+    expect(messages(
+      "export const createSessionSlice = () => undefined;",
+      "src/example.ts"
+    )[0]).toContain("Retired lifecycle Store command contract");
+    expect(messages(
+      "export interface SlideSlice {}",
+      "src/example.ts"
+    )[0]).toContain("Retired lifecycle Store command contract");
+  });
+
+  it("keeps Canvas clearing out of the Store command surface", () => {
+    expect(messages(
+      "export const createDrawingSlice = () => undefined;",
+      "src/example.ts"
+    )[0]).toContain("Retired drawing Store command contract");
+    expect(messages(
+      "store.getState().clearCanvas();",
+      "src/example.ts"
+    )[0]).toContain("Canvas clearing must enter through CanvasCommands");
+  });
+
   it.each([
     "CharDeskCanvasMetrics",
     "DEFAULT_CHARDESK_CANVAS_METRICS",

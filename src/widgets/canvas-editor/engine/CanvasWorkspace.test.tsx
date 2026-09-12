@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { TestCanvasContentSurface } from '@/domains/canvas/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  canvasCommands,
   defaultCanvasDocuments,
   setCanvasTestState,
   testingCanvasRuntime,
@@ -282,12 +283,12 @@ describe('CanvasWorkspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'select-secondary-b' }));
     fireEvent.click(screen.getByRole('button', { name: 'activate-primary' }));
-    await act(() => useEditorStore.getState().switchCanvasSession('canvas-b'));
+    await act(() => canvasCommands.sessions.switch('canvas-b'));
 
     expect(screen.getByTestId('primary-session')).toHaveTextContent('canvas-b');
     expect(screen.getByTestId('secondary-session')).toHaveTextContent('canvas-b');
 
-    await act(() => useEditorStore.getState().removeCanvasSession('canvas-b'));
+    await act(() => canvasCommands.sessions.remove('canvas-b'));
     expect(screen.getByTestId('primary-session')).toHaveTextContent('canvas-a');
     expect(screen.getByTestId('secondary-session')).toHaveTextContent('canvas-a');
   });

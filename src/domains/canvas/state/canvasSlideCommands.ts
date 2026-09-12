@@ -1,5 +1,4 @@
-import type { StateCreator } from "zustand";
-import type { CanvasDocumentRegistry } from "../CanvasDocumentRegistry";
+import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 import {
   activateSlide as activateDeckSlide,
   addSlideDescriptor as addDeckSlide,
@@ -12,28 +11,22 @@ import {
   resizeSlideDescriptor as resizeDeckSlide,
   getSlideResizeCropCount,
 } from "@/domains/slides/public";
-import type { EditorState, SlideSlice } from "../interfaces";
-import { createSlideActivationPatch } from "../transitions/editorTransitions";
+import { createSlideActivationPatch } from "./transitions/editorTransitions";
 import {
   activateSlidePage,
   ensureSlidePage,
   readSlideGrid,
   removeSlidePage,
   resetSlidePage,
-} from "../slideDocumentPages";
+} from "./slideDocumentPages";
+import type { CanvasStateCommitCoordinator } from "./CanvasStateCommitCoordinator";
 
-export const createSlideSlice = (
+export const createCanvasSlideCommands = (
+  commits: CanvasStateCommitCoordinator,
   documents: CanvasDocumentRegistry
-): StateCreator<
-  EditorState,
-  [],
-  [],
-  SlideSlice
-> => (set, get) => ({
-  slideDeck: null,
-
-  addSlide: () => {
-    const state = get();
+) => ({
+  addSlide: () => commits.run(() => {
+    const state = commits.getState();
     if (state.canvasMode !== "slide" || !state.slideDeck) return;
     const next = addDeckSlide(state.slideDeck, {
       id: createSlideId(state.slideDeck.slides),
@@ -50,11 +43,11 @@ export const createSlideSlice = (
       name: active.name,
       size: active.size,
     });
-    set(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
-  },
+    commits.setState(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
+  }),
 
-  duplicateSlide: (slideId) => {
-    const state = get();
+  duplicateSlide: (slideId: string) => commits.run(() => {
+    const state = commits.getState();
     if (state.canvasMode !== "slide" || !state.slideDeck) return;
     const source = state.slideDeck.slides.find((slide) => slide.id === slideId);
     if (!source) return;
@@ -81,11 +74,11 @@ export const createSlideSlice = (
       name: active.name,
       size: active.size,
     });
-    set(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
-  },
+    commits.setState(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
+  }),
 
-  removeSlide: (slideId) => {
-    const state = get();
+  removeSlide: (slideId: string) => commits.run(() => {
+    const state = commits.getState();
     if (state.canvasMode !== "slide" || !state.slideDeck) return;
     const next = removeDeckSlide(state.slideDeck, slideId);
     if (next === state.slideDeck) return;
@@ -97,23 +90,23 @@ export const createSlideSlice = (
       active.id,
       []
     );
-    set(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
+    commits.setState(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
     removeSlidePage(documents, state.activeCanvasId, slideId);
-  },
+  }),
 
-  renameSlide: (slideId, name) => {
-    const state = get();
+  renameSlide: (slideId: string, name: string) => commits.run(() => {
+    const state = commits.getState();
     if (state.canvasMode !== "slide" || !state.slideDeck) return;
     const next = renameDeckSlide(state.slideDeck, slideId, name);
     if (next === state.slideDeck) return;
     documents.updatePage(state.activeCanvasId, slideId, { name });
-    set({
+    commits.setState({
       slideDeck: next,
     });
-  },
+  }),
 
-  moveSlide: (slideId, targetIndex) => {
-    const state = get();
+  moveSlide: (slideId: string, targetIndex: number) => commits.run(() => {
+    const state = commits.getState();
     if (state.canvasMode !== "slide" || !state.slideDeck) return;
     const next = moveDeckSlide(state.slideDeck, slideId, targetIndex);
     if (next === state.slideDeck) return;
@@ -121,13 +114,13 @@ export const createSlideSlice = (
       state.activeCanvasId,
       next.slides.map((slide) => slide.id)
     );
-    set({
+    commits.setState({
       slideDeck: next,
     });
-  },
+  }),
 
-  activateSlide: (slideId) => {
-    const state = get();
+  activateSlide: (slideId: string) => commits.run(() => {
+    const state = commits.getState();
     if (
       state.canvasMode !== "slide" ||
       !state.slideDeck ||
@@ -145,11 +138,14 @@ export const createSlideSlice = (
       active.id,
       []
     );
-    set(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
-  },
+    commits.setState(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
+  }),
 
-  resizeSlide: (slideId, size) => {
-    const state = get();
+  resizeSlide: (
+    slideId: string,
+    size: Parameters<typeof resizeDeckSnapshot>[2]
+  ) => commits.run(() => {
+    const state = commits.getState();
     if (state.canvasMode !== "slide" || !state.slideDeck) return;
     const source = state.slideDeck.slides.find((slide) => slide.id === slideId);
     if (!source) return;
@@ -198,11 +194,11 @@ export const createSlideSlice = (
         active.id,
         resizedContent.grid
       );
-      set(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
+      commits.setState(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
       return;
     }
-    set({
+    commits.setState({
       slideDeck: next,
     });
-  },
+  }),
 });

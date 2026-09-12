@@ -2,6 +2,7 @@ import { TestCanvasContentSurface } from "@/domains/canvas/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyFreeformSnapshotToYMaps,
+  canvasCommands,
   testingCanvasRuntime,
   useEditorStore,
 } from "@/domains/canvas/testing";
@@ -39,21 +40,21 @@ describe("canvas session viewport state", () => {
     expect(snapshots).toEqual([{ offset: { x: -80, y: -40 }, zoom: 2 }]);
   });
 
-  it("saves and restores offset and zoom per canvas session", () => {
+  it("saves and restores offset and zoom per canvas session", async () => {
     testingCanvasRuntime.commands.viewport.setOffset(() => ({ x: 10, y: 20 }));
     testingCanvasRuntime.commands.viewport.setZoom(() => 2);
-    useEditorStore.getState().createCanvasSession("freeform");
+    canvasCommands.sessions.create("freeform");
     const secondCanvasId = useEditorStore.getState().activeCanvasId;
 
     testingCanvasRuntime.commands.viewport.setOffset(() => ({ x: 100, y: 200 }));
     testingCanvasRuntime.commands.viewport.setZoom(() => 3);
-    useEditorStore.getState().switchCanvasSession(DEFAULT_SESSION_ID);
+    await canvasCommands.sessions.switch(DEFAULT_SESSION_ID);
     expect(testingCanvasRuntime.viewport.getSnapshot()).toEqual({
       offset: { x: 10, y: 20 },
       zoom: 2,
     });
 
-    useEditorStore.getState().switchCanvasSession(secondCanvasId);
+    await canvasCommands.sessions.switch(secondCanvasId);
     expect(testingCanvasRuntime.viewport.getSnapshot()).toEqual({
       offset: { x: 100, y: 200 },
       zoom: 3,

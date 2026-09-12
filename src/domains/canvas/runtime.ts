@@ -4,6 +4,7 @@ import type { SelectionCommandFactory } from "./state/selectionCommandPort";
 import { CanvasDocumentRegistry } from "./state/CanvasDocumentRegistry";
 import {
   createEditorStore,
+  type CanvasStore,
   type CanvasStorePersistence,
 } from "./state/editorStore";
 import { createCanvasFacade } from "./state/canvasCommands";
@@ -28,7 +29,10 @@ import {
   type CanvasPersistenceStatus,
 } from "./state/browserPersistence";
 import { CanvasViewportRuntime, normalizeCanvasViewport } from "./viewportRuntime";
-import type { CanvasState } from "./state/interfaces";
+import type { CanvasState, CanvasStateStore } from "./state/interfaces";
+import type { CanvasStateCommitCoordinator } from "./state/CanvasStateCommitCoordinator";
+
+const mutableCanvasStores = new WeakMap<object, CanvasStore>();
 
 const DISABLED_PERSISTENCE_STATUS: CanvasPersistenceStatus = {
   phase: "ready",
@@ -62,7 +66,7 @@ export type CanvasSessionMaterialization = {
 
 export class CanvasRuntime {
   readonly documents: CanvasDocumentRegistry;
-  readonly store;
+  readonly store: CanvasStateStore;
   readonly commands;
   readonly queries;
   readonly viewport: CanvasViewportRuntime;
@@ -70,6 +74,7 @@ export class CanvasRuntime {
   readonly ready: Promise<void>;
   readonly #disposeStore: () => void;
   readonly #disposeViewportPersistence: () => void;
+  readonly #commits: CanvasStateCommitCoordinator;
   #disposed = false;
 
   constructor(options: CanvasRuntimeOptions) {
@@ -92,7 +97,6 @@ export class CanvasRuntime {
     );
     const storeInstance = createEditorStore({
       documents: this.documents,
-      parseSessionSource: options.parseSessionSource,
       reportIntegrityIssues: options.reportIntegrityIssues ?? (() => undefined),
       // Browser content persistence is coordinated against the authoritative
       // Yjs documents. Zustand remains an in-memory projection.
@@ -101,20 +105,29 @@ export class CanvasRuntime {
       viewport: this.viewport,
       documentResidency: this.persistence ?? undefined,
     });
-    this.store = storeInstance.store;
+    const mutableStore = storeInstance.store;
+    mutableCanvasStores.set(this, mutableStore);
+    this.store = Object.freeze({
+      getState: mutableStore.getState,
+      getInitialState: mutableStore.getInitialState,
+      subscribe: mutableStore.subscribe,
+    });
+    this.#commits = storeInstance.commits;
     this.#disposeStore = storeInstance.dispose;
     const facade = createCanvasFacade(
-      this.store,
+      this.#commits,
       this.documents,
       this.viewport,
-      options.selectionCommands
+      options.selectionCommands,
+      options.parseSessionSource,
+      this.persistence ?? undefined
     );
     this.commands = facade.commands;
     this.queries = facade.queries;
     let restoringViewport = this.persistence !== null;
     this.#disposeViewportPersistence = this.viewport.subscribe(() => {
       if (restoringViewport) return;
-      const state = this.store.getState();
+      const state = this.#commits.getState();
       this.commands.sessions.saveViewport(
         state.activeCanvasId,
         this.viewport.getSnapshot()
@@ -123,7 +136,7 @@ export class CanvasRuntime {
     this.ready = this.persistence
       ? this.persistence.initialize(
           this.documents,
-          this.store,
+          mutableStore,
           initialSessions
         ).then(() => {
           const state = this.store.getState();
@@ -140,7 +153,7 @@ export class CanvasRuntime {
       : Promise.resolve();
   }
 
-  getState = (): CanvasState => this.store.getState();
+  getState = (): CanvasState => this.#commits.getState();
   subscribe = (
     listener: (state: CanvasState, previousState: CanvasState) => void
   ) => this.store.subscribe(listener);
@@ -233,6 +246,13 @@ export class CanvasRuntime {
     this.documents.dispose();
   };
 }
+
+/** Internal test seam; intentionally absent from the Canvas public barrel. */
+export const getMutableCanvasStoreForTesting = (runtime: CanvasRuntime) => {
+  const store = mutableCanvasStores.get(runtime);
+  if (!store) throw new Error("Canvas runtime Store is unavailable");
+  return store;
+};
 
 export const createCanvasRuntime = (options: CanvasRuntimeOptions) =>
   new CanvasRuntime(options);

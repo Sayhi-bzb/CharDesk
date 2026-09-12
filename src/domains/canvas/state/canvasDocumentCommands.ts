@@ -1,5 +1,4 @@
 import { createStaticGridRangeMovePlan } from "../cell-plane/rangeMove";
-import type { StoreApi } from "zustand";
 import {
   collapseGridSelectionTo,
   createStaticGridInputSession,
@@ -27,7 +26,10 @@ import {
 } from "@/shared/utils/grid-occupancy";
 import { writeStyledCell } from "@/shared/utils/grid-ops";
 import { getSelectionBounds } from "@/shared/utils/selection";
-import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
+import type {
+  CanvasDocumentRegistry,
+  CanvasHistoryMode,
+} from "./CanvasDocumentRegistry";
 import { createCanvasInteractionPatch } from "./canvasInteractionState";
 import { resolveEditorDocumentAddress } from "./helpers/gridHelpers";
 import type { EditorState } from "./interfaces";
@@ -35,6 +37,11 @@ import { getActiveSlideGridBounds } from "./slideBounds";
 import { createClearedScratchLayerPatch } from "./transitions/scratchLayerTransitions";
 import { placeCharInYMap } from "./utils";
 import { deleteCellAt, deleteRect } from "./gridOps";
+import { createDocumentInteractionResetPatch } from "./transitions/editorTransitions";
+import {
+  coordinateCanvasCommands,
+  type CanvasStateCommitCoordinator,
+} from "./CanvasStateCommitCoordinator";
 
 const resolveSelectionAreas = (state: EditorState) =>
   getStaticGridSelectionAreas(
@@ -59,43 +66,67 @@ export const fillStaticGridSelectionWithChar = (
   documents: CanvasDocumentRegistry,
   state: EditorState,
   char: string,
-  options?: { preserveTargetBackground?: boolean }
+  options?: { preserveTargetBackground?: boolean },
+  history?: CanvasHistoryMode
 ) => {
   const selections = resolveSelectionAreas(state);
   if (selections.length === 0) return;
 
   const charWidth = getCellOccupancy(char);
   const address = resolveEditorDocumentAddress(documents, state);
-  documents.mutateGridAt(address, (grid) => {
-    forEachSelectionSpan(state, ({ y, minX, maxX }) => {
-      for (let x = minX; x <= maxX; x += charWidth) {
-        if (x + charWidth - 1 > maxX) break;
-        placeCharInYMap(grid, x, y, char, state.brushColor, options);
-      }
-    });
-  });
+  documents.mutateGridAt(
+    address,
+    (grid) => {
+      forEachSelectionSpan(state, ({ y, minX, maxX }) => {
+        for (let x = minX; x <= maxX; x += charWidth) {
+          if (x + charWidth - 1 > maxX) break;
+          placeCharInYMap(grid, x, y, char, state.brushColor, options);
+        }
+      });
+    },
+    history
+  );
 };
 
 const deleteStaticGridSelection = (
   documents: CanvasDocumentRegistry,
-  state: EditorState
+  state: EditorState,
+  history?: CanvasHistoryMode
 ) => {
   const address = resolveEditorDocumentAddress(documents, state);
-  documents.mutateGridAt(address, (grid) => {
-    forEachSelectionSpan(state, ({ y, minX, maxX }) => {
-      deleteRect(grid, minX, y, maxX, y);
-    });
-  });
+  documents.mutateGridAt(
+    address,
+    (grid) => {
+      forEachSelectionSpan(state, ({ y, minX, maxX }) => {
+        deleteRect(grid, minX, y, maxX, y);
+      });
+    },
+    history
+  );
 };
 
 export const createCanvasDocumentCommands = (
-  store: Pick<StoreApi<EditorState>, "getState" | "setState">,
+  commits: CanvasStateCommitCoordinator,
   documents: CanvasDocumentRegistry
-) => ({
-  deleteSelection: () => deleteStaticGridSelection(documents, store.getState()),
+) => coordinateCanvasCommands(commits, {
+  clearCanvas: () => {
+    const state = commits.getState();
+    documents.mutateGridAt(
+      resolveEditorDocumentAddress(documents, state),
+      (grid) => grid.clear(),
+      commits.getDocumentHistoryMode()
+    );
+    commits.setState(createDocumentInteractionResetPatch(documents.getActiveAddress()));
+  },
+
+  deleteSelection: () => deleteStaticGridSelection(
+    documents,
+    commits.getState(),
+    commits.getDocumentHistoryMode()
+  ),
 
   deleteStaticGrid: (direction: StaticGridDeleteDirection) => {
-    const state = store.getState();
+    const state = commits.getState();
     const interaction = getStaticGridViewState({
       state: state.interaction.staticGrid,
       grid: state.contentSurface.reader,
@@ -111,14 +142,18 @@ export const createCanvasDocumentCommands = (
     });
     if (plan.kind === "noop") return;
     if (plan.kind === "range") {
-      deleteStaticGridSelection(documents, state);
+      deleteStaticGridSelection(documents, state, commits.getDocumentHistoryMode());
       return;
     }
 
     const address = resolveEditorDocumentAddress(documents, state);
-    documents.mutateGridAt(address, (grid) => {
-      deleteCellAt(grid, plan.target.x, plan.target.y);
-    });
+    documents.mutateGridAt(
+      address,
+      (grid) => {
+        deleteCellAt(grid, plan.target.x, plan.target.y);
+      },
+      commits.getDocumentHistoryMode()
+    );
 
     if (interaction.kind === "text-edit") {
       const inputSession = state.interaction.staticGrid.mode === "text-edit"
@@ -136,7 +171,7 @@ export const createCanvasDocumentCommands = (
             exhausted: false,
           }
         : inputSession;
-      store.setState((current) => createCanvasInteractionPatch(
+      commits.setState((current) => createCanvasInteractionPatch(
         current.interaction,
         {
           staticGrid: { mode: "text-edit", session: nextSession },
@@ -145,7 +180,7 @@ export const createCanvasDocumentCommands = (
       return;
     }
 
-    store.setState((current) => createCanvasInteractionPatch(
+    commits.setState((current) => createCanvasInteractionPatch(
       current.interaction,
       {
         staticGrid: {
@@ -160,7 +195,7 @@ export const createCanvasDocumentCommands = (
   },
 
   erasePoints: (points: Point[], shouldSaveHistory = true) => {
-    const state = store.getState();
+    const state = commits.getState();
     if (points.length === 0) return;
     const address = resolveEditorDocumentAddress(documents, state);
     documents.mutateGridAt(
@@ -168,7 +203,7 @@ export const createCanvasDocumentCommands = (
       (grid) => {
         points.forEach((point) => deleteCellAt(grid, point.x, point.y));
       },
-      shouldSaveHistory
+      shouldSaveHistory ? commits.getDocumentHistoryMode() : false
     );
   },
 
@@ -178,15 +213,16 @@ export const createCanvasDocumentCommands = (
   ) =>
     fillStaticGridSelectionWithChar(
       documents,
-      store.getState(),
+      commits.getState(),
       char,
-      options
+      options,
+      commits.getDocumentHistoryMode()
     ),
 
   setSelectionTextAttributes: (
     attrs: Partial<Record<keyof TextAttributes, boolean>>
   ) => {
-    const state = store.getState();
+    const state = commits.getState();
     const selections = resolveSelectionAreas(state);
     if (selections.length === 0) return;
 
@@ -222,11 +258,11 @@ export const createCanvasDocumentCommands = (
           else grid.set(key, nextCell);
         }
       });
-    });
+    }, commits.getDocumentHistoryMode());
   },
 
   setSelectionForegroundColor: (color: string) => {
-    const state = store.getState();
+    const state = commits.getState();
     const selections = resolveSelectionAreas(state);
     if (selections.length === 0) return;
 
@@ -241,11 +277,11 @@ export const createCanvasDocumentCommands = (
           if (existingCell) grid.set(key, { ...existingCell, color });
         }
       });
-    });
+    }, commits.getDocumentHistoryMode());
   },
 
   setSelectionBackgroundColor: (bgColor: string | null) => {
-    const state = store.getState();
+    const state = commits.getState();
     const selections = resolveSelectionAreas(state);
     if (selections.length === 0) return;
 
@@ -269,11 +305,11 @@ export const createCanvasDocumentCommands = (
           else grid.set(key, nextCell);
         }
       });
-    });
+    }, commits.getDocumentHistoryMode());
   },
 
   commitScratch: () => {
-    const state = store.getState();
+    const state = commits.getState();
     const { scratchLayer } = state.interaction;
     if (!scratchLayer || scratchLayer.size === 0) return;
 
@@ -302,14 +338,14 @@ export const createCanvasDocumentCommands = (
         }
         placeCharInYMap(grid, x, y, cell.char, cell.color);
       });
-    });
-    store.setState((current) =>
+    }, commits.getDocumentHistoryMode());
+    commits.setState((current) =>
       createClearedScratchLayerPatch(current.interaction)
     );
   },
 
   fillArea: (area: SelectionArea) => {
-    const state = store.getState();
+    const state = commits.getState();
     const { minX, maxX, minY, maxY } = getSelectionBounds(area);
     const address = resolveEditorDocumentAddress(documents, state);
 
@@ -326,11 +362,11 @@ export const createCanvasDocumentCommands = (
           grid.set(key, { ...slot.cell, color: state.brushColor });
         }
       }
-    });
+    }, commits.getDocumentHistoryMode());
   },
 
   moveStaticGridSelection: (requestedDelta: Point) => {
-    const state = store.getState();
+    const state = commits.getState();
     const selection = getStaticGridSelection(state.interaction.staticGrid);
     if (
       selection.mode !== "range" ||
@@ -351,11 +387,11 @@ export const createCanvasDocumentCommands = (
     const operation = documents.applyCellPlanePatchAt(
       address,
       plan.patch,
-      "save"
+      commits.getDocumentHistoryMode()
     );
     if (!operation) return false;
 
-    store.setState((current) =>
+    commits.setState((current) =>
       createCanvasInteractionPatch(current.interaction, {
         staticGrid: {
           mode: "navigate",

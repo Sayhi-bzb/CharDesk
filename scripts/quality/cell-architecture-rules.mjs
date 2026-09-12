@@ -35,6 +35,21 @@ const retiredStaticGridStateContracts = [
   "setTextCursor",
   "GridEditMode",
 ];
+const retiredTextStoreContracts = [
+  "createTextSlice",
+  "interface TextSlice",
+];
+const retiredDrawingStoreContracts = [
+  "createDrawingSlice",
+  "interface DrawingSlice",
+];
+const retiredLifecycleStoreContracts = [
+  "createSessionSlice",
+  "createSlideSlice",
+  "interface SlideSlice",
+];
+const directTextStoreAction = /getState\(\)\.(?:writeTextString|pasteRichData|pasteRichRows|moveTextCursor|newlineText|indentText)\b/;
+const directDrawingStoreAction = /getState\(\)\.clearCanvas\b/;
 const forbiddenCoreDependency = (dependency) => dependency === "react"
   || dependency === "react-dom"
   || dependency === "canvas"
@@ -61,6 +76,20 @@ export function checkCellArchitecture(content, file) {
 
   if (!productionSource(file)) return violations;
   const moduleImports = imports(content);
+  if (
+    ([
+      "src/domains/canvas/state/canvasTextCommands.ts",
+      "src/domains/canvas/state/canvasDocumentCommands.ts",
+      "src/domains/canvas/state/canvasSessionCommands.ts",
+      "src/domains/canvas/state/canvasSlideCommands.ts",
+    ].includes(file))
+    && (
+      moduleImports.includes("zustand")
+      || !moduleImports.includes("./CanvasStateCommitCoordinator")
+    )
+  ) {
+    report("Canvas mutation commands must consume the coordinated state port, not the raw Store");
+  }
   if (moduleImports.some((dependency) => /(?:^|\/)shared\/metrics(?:\/|$)/.test(dependency))) {
     report("Consumers must import Cell primitives from their Core, protocol, rendering, font, or app owner");
   }
@@ -157,6 +186,21 @@ export function checkCellArchitecture(content, file) {
   }
   for (const contract of retiredStaticGridStateContracts) {
     if (content.includes(contract)) report(`Retired split static-grid state contract: ${contract}`);
+  }
+  for (const contract of retiredTextStoreContracts) {
+    if (content.includes(contract)) report(`Retired text Store command contract: ${contract}`);
+  }
+  for (const contract of retiredDrawingStoreContracts) {
+    if (content.includes(contract)) report(`Retired drawing Store command contract: ${contract}`);
+  }
+  for (const contract of retiredLifecycleStoreContracts) {
+    if (content.includes(contract)) report(`Retired lifecycle Store command contract: ${contract}`);
+  }
+  if (directTextStoreAction.test(content)) {
+    report("Text mutations must enter through CanvasCommands, not the Store");
+  }
+  if (directDrawingStoreAction.test(content)) {
+    report("Canvas clearing must enter through CanvasCommands, not the Store");
   }
   return violations;
 }

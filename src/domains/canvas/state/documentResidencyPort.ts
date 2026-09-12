@@ -10,5 +10,8 @@ export interface CanvasDocumentResidency {
   ensureLoaded(request: CanvasDocumentLoadRequest): Promise<boolean>;
   setPinnedCanvasIds(ids: readonly string[]): void;
   touch(id: string): void;
-  delete(id: string): Promise<void>;
+  /** Resolves only after a durable deletion intent prevents resurrection. */
+  tombstone(id: string): Promise<void>;
+  /** Releases runtime resources without deleting recovery data. */
+  releaseDeleted(id: string): void;
 }

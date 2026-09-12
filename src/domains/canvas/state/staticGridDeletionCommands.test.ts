@@ -113,13 +113,13 @@ describe("static grid deletion commands", () => {
   });
 
   it("keeps a bounded cursor in place at the left edge", () => {
-    useEditorStore.getState().createCanvasSession("slide", {
+    canvasCommands.sessions.create("slide", {
       slideSize: { columns: 3, rows: 2 },
     });
     canvasCommands.staticGrid.enterTextEdit({ x: 0, y: 1 });
 
     canvasCommands.staticGrid.delete("backward");
-    useEditorStore.getState().writeTextString("X");
+    canvasCommands.text.write("X");
 
     expect(cells()).toEqual(
       new Map([

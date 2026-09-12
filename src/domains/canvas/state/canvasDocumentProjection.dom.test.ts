@@ -55,4 +55,32 @@ describe("remote canvas document projection", () => {
     });
     remote.destroy();
   });
+
+  it("publishes one committed projection for a remote transaction", () => {
+    const local = defaultCanvasDocuments.getCollaborationDocument(
+      useEditorStore.getState().activeCanvasId
+    )!;
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(local));
+    const pageId = remote.getArray<string>("document-page-order").get(0)!;
+    const operation = gridEntriesToCellPlaneOperation("remote-commit", [
+      ["7,4", cell("R")],
+    ]);
+    const observed: typeof initialState[] = [];
+    const unsubscribe = useEditorStore.subscribe((state) => observed.push(state));
+
+    if (operation) {
+      remote
+        .getArray<CellPlaneOperation>(
+          `canvas-page:${encodeURIComponent(pageId)}:cell-plane-operations`
+        )
+        .push([operation]);
+    }
+    Y.applyUpdate(local, Y.encodeStateAsUpdate(remote));
+    unsubscribe();
+
+    expect(observed).toHaveLength(1);
+    expect(observed[0]!.contentSurface.reader.materialize().get("7,4")?.char).toBe("R");
+    remote.destroy();
+  });
 });

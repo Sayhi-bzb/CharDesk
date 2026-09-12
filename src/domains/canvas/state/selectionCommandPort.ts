@@ -3,22 +3,26 @@ import type { CanvasInteractionUpdate } from "./canvasInteractionState";
 import type {
   CanvasState,
   ClipboardCommandResult,
+} from "./interfaces";
+import type {
   RichTextCell,
   RichTextRow,
-} from "./interfaces";
+  TextPasteOptions,
+} from "./textCommandTypes";
 
 export type SelectionMutationPort = {
+  transact: <Result>(fn: () => Result) => Result;
   deleteSelection: () => void;
   erasePoints: (points: Point[], shouldSaveHistory?: boolean) => void;
   pasteRichData: (
     cells: RichTextCell[],
     startPos?: Point,
-    options?: { selectResult?: boolean }
+    options?: TextPasteOptions
   ) => void;
   pasteRichRows: (
     rows: readonly RichTextRow[],
     startPos?: Point,
-    options?: { selectResult?: boolean }
+    options?: TextPasteOptions
   ) => void;
   updateInteraction: (update: CanvasInteractionUpdate) => void;
 };

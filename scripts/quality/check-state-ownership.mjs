@@ -15,6 +15,8 @@ const FORBIDDEN_PUBLIC_CANVAS_EXPORTS = new Set([
   "undoManager",
   "useEditorStore",
   "EditorState",
+  "CanvasStore",
+  "getMutableCanvasStoreForTesting",
   "createSurfaceGridProjection",
   "getSurfaceGridReader",
   "isSurfaceGridProjection",
@@ -263,6 +265,24 @@ for (const absolute of collect(SRC_ROOT)) {
       !node.type.getText(sourceFile).includes("CanvasSessionDescriptor")
     ) {
       report(node, "runtime canvasSessions must contain descriptors only");
+    }
+    if (
+      sourcePath === "domains/canvas/state/interfaces.ts" &&
+      ts.isPropertySignature(node) &&
+      node.type &&
+      ts.isFunctionTypeNode(node.type) &&
+      getEnclosingTypeName(node) === "EditorState"
+    ) {
+      report(node, "EditorState is a data projection and must not contain commands");
+    }
+    if (
+      sourcePath === "domains/canvas/runtime.ts" &&
+      ts.isPropertyDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "store" &&
+      node.type?.getText(sourceFile) !== "CanvasStateStore"
+    ) {
+      report(node, "CanvasRuntime.store must expose the read-only CanvasStateStore port");
     }
     if (
       sourcePath === "domains/canvas/state/interfaces.ts" &&

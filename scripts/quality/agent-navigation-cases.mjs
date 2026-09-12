@@ -3,10 +3,10 @@ export const AGENT_NAVIGATION_CASES = [
     id: "slide-size",
     question: "Where are custom slide size validation, resizing, crop, and editor coordination owned?",
     expectedOwner: "slides",
-    ownerPrefixes: ["src/domains/slides/", "src/domains/canvas/state/slices/createSlideSlice.ts"],
+    ownerPrefixes: ["src/domains/slides/", "src/domains/canvas/state/canvasSlideCommands.ts"],
     anchors: [
       "src/domains/slides/deck.ts:resizeSlide",
-      "src/domains/canvas/state/slices/createSlideSlice.ts:resizeSlide",
+      "src/domains/canvas/state/canvasSlideCommands.ts:resizeSlide",
     ],
   },
   {
