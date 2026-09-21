@@ -303,6 +303,11 @@ test("Input edits Unicode through the real textbox and Cell frame", async ({ pag
   const idleBackground = idleCells[0]!.style.backgroundColor;
   expect(idleCells.every((cell) => cell.style.backgroundColor === idleBackground)).toBe(true);
 
+  await input.click();
+  await input.press("ControlOrMeta+A");
+  await expect.poll(async () => (await readCellProbe(surface)).cells.find((cell) =>
+    cell.ownerId === "component-input-field" && cell.text === "n"
+  )?.style.underline).toBe(true);
   await input.fill("世界 👋");
   await expect(input).toHaveValue("世界 👋");
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain(" 世界 👋");

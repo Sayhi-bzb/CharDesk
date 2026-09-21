@@ -48,6 +48,9 @@ export const resolveCellTextStyle = (
 });
 
 const usesUnderlinedSelection = (node: WidgetNode): boolean =>
+  node.kind === "text-input" || node.kind === "combobox-input";
+
+const preservesEditorSurfaceWhenActive = (node: WidgetNode): boolean =>
   node.kind === "combobox-input"
   || (node.kind === "text-input" && node.selectionVariant === "plain");
 
@@ -132,7 +135,8 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
       {
         ...(selectionSurface ?? (singleLine ? theme.elevatedSurfaceStyle : blockSurface ?? {})),
         ...node.textStyle,
-        ...(projection.editingActive && !usesUnderlinedSelection(node) ? theme.focusedSurfaceStyle : {}),
+        ...(projection.editingActive && !preservesEditorSurfaceWhenActive(node)
+          ? theme.focusedSurfaceStyle : {}),
         ...(projection.disabled ? theme.disabledStyle : {}),
       },
       theme.sliderThumb,

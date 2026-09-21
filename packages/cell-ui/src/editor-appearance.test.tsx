@@ -69,6 +69,7 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     for (let x = 0; x < layout.rect.width; x++) {
       expect(idle.buffer.get(x, 0)?.style).toMatchObject(theme.elevatedSurfaceStyle);
     }
+    editor.dispatch({ type: "select-all" });
 
     const active = runtime.render(view(), {
       focusedId: "editor",
@@ -78,6 +79,11 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     for (let x = 0; x < layout.rect.width; x++) {
       expect(active.buffer.get(x, 0)?.style).toMatchObject(theme.focusedSurfaceStyle);
     }
+    expect(active.buffer.get(1, 0)?.style.underline).toBe(true);
+    expect(active.buffer.get(2, 0)?.style.underline).toBe(true);
+    expect(active.buffer.get(5, 0)?.style.underline).not.toBe(true);
+    const blurred = runtime.render(view(), { focusedId: "editor", activeFocusId: null });
+    expect(blurred.buffer.get(1, 0)?.style.underline).not.toBe(true);
     const disabled = runtime.render(view(true), {
       focusedId: "editor",
       activeFocusId: "editor",
