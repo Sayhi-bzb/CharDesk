@@ -54,6 +54,44 @@ const ComboProduct = () => {
   </CellSurface>;
 };
 
+it("renders the selected closed value normally and underlines it only while editing", async () => {
+  vi.spyOn(document, "hasFocus").mockReturnValue(true);
+  render(<><ComboProduct /><button>Outside</button></>);
+  const surface = screen.getByLabelText("Combobox surface");
+  const input = screen.getByRole("combobox", { name: "Font" });
+  const selectedGlyph = () => readCellSurfaceProbe(surface)!.cells.find((cell) => (
+    cell.ownerId === "font-input" && cell.text === "M"
+  ))!;
+  expect(input).toHaveValue("Maple Mono");
+  expect(selectedGlyph().style.backgroundColor).toBe("#E6E6E6");
+  expect(selectedGlyph().style.underline).not.toBe(true);
+
+  input.focus();
+  await waitFor(() => expect(selectedGlyph().style.underline).toBe(true));
+  expect(selectedGlyph().style.backgroundColor).toBe("#E6E6E6");
+  screen.getByRole("button", { name: "Outside" }).focus();
+  await waitFor(() => expect(selectedGlyph().style.underline).not.toBe(true));
+});
+
+it("opens from Canvas and the real textarea, while only the arrow closes an open input", () => {
+  render(<ComboProduct />);
+  const surface = screen.getByLabelText("Combobox surface");
+  const canvas = surface.querySelector("canvas")!;
+  vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+    left: 0, top: 0, right: 240, bottom: 160, width: 240, height: 160,
+    x: 0, y: 0, toJSON: () => ({}),
+  });
+  const input = screen.getByRole("combobox", { name: "Font" });
+  fireEvent.pointerDown(input, { button: 0, pointerId: 1, clientX: 5, clientY: 10 });
+  expect(input).toHaveAttribute("aria-expanded", "true");
+  fireEvent.pointerDown(input, { button: 0, pointerId: 2, clientX: 5, clientY: 10 });
+  expect(input).toHaveAttribute("aria-expanded", "true");
+  fireEvent.pointerDown(canvas, { button: 0, pointerId: 3, clientX: 215, clientY: 10 });
+  expect(input).toHaveAttribute("aria-expanded", "false");
+  fireEvent.pointerDown(canvas, { button: 0, pointerId: 4, clientX: 45, clientY: 10 });
+  expect(input).toHaveAttribute("aria-expanded", "true");
+});
+
 it("keeps DOM focus on the input while active candidates and selection change", () => {
   render(<ComboProduct />);
   const input = screen.getByRole("combobox", { name: "Font" });

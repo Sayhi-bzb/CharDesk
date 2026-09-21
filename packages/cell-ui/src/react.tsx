@@ -24,8 +24,10 @@ import {
 import { resolveSeparatorVariant, type SeparatorVariant } from "./separator.js";
 import {
   resolveCellBlockVariant,
+  resolveCellFrame,
   type CellBlockVariant,
   type CellBorderShape,
+  type CellFrame,
 } from "./border.js";
 
 type CommonProps = Readonly<{
@@ -47,6 +49,7 @@ const normalizeSingleLineInputStyle = (
 
 type BlockAppearanceProps = Readonly<{
   variant?: CellBlockVariant;
+  frame?: CellFrame;
   borderShape?: CellBorderShape;
 }>;
 
@@ -148,7 +151,8 @@ export type RangeSliderThumbProps = Readonly<{
   focused?: boolean;
   textStyle?: CellTextStyle;
 }>;
-export type SelectProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
+export type SelectionSurfaceVariant = "plain" | "elevated";
+export type SelectProps = CommonProps & Readonly<{ style?: CellLayoutStyle; variant?: SelectionSurfaceVariant }>;
 export type SelectTriggerProps = CommonProps & Readonly<{
   focused?: boolean;
   expanded?: boolean;
@@ -156,7 +160,9 @@ export type SelectTriggerProps = CommonProps & Readonly<{
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type SelectContentProps = CommonProps & BlockAppearanceProps & Readonly<{
+export type SelectContentProps = CommonProps & Readonly<{
+  frame?: CellFrame;
+  borderShape?: CellBorderShape;
   scrollY?: number;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
@@ -168,8 +174,8 @@ export type SelectItemProps = CommonProps & Readonly<{
   setSize?: number;
   style?: CellLayoutStyle;
 }>;
-export type ComboboxProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
-export type ComboboxInputProps = TextInputProps & Readonly<{
+export type ComboboxProps = CommonProps & Readonly<{ style?: CellLayoutStyle; variant?: SelectionSurfaceVariant }>;
+export type ComboboxInputProps = Omit<TextInputProps, "variant"> & Readonly<{
   expanded?: boolean;
   controlsId?: string;
   activeDescendantId?: string;
@@ -233,6 +239,7 @@ export type TextEditorProps = CommonProps & Readonly<{
   textStyle?: CellTextStyle;
 }>;
 export type TextInputProps = Omit<TextEditorProps, "style"> & Readonly<{
+  variant?: SelectionSurfaceVariant;
   style?: CellSingleLineInputStyle;
 }>;
 export type TextAreaProps = TextEditorProps & BlockAppearanceProps;
@@ -344,6 +351,8 @@ export type WidgetDescriptor = Readonly<{
   key: string | null;
   style: CellLayoutStyle;
   blockVariant: CellBlockVariant;
+  frame: CellFrame;
+  selectionVariant: SelectionSurfaceVariant | null;
   borderShape: CellBorderShape | null;
   text: string | null;
   textStyle: CellTextStyle;
@@ -469,19 +478,16 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
     || element.type === Overlay
     || element.type === Dialog
     || element.type === ScrollArea
-    || element.type === TextArea
-    || element.type === SelectContent
-    || element.type === ComboboxContent;
+    || element.type === TextArea;
   const blockVariant = ownsBlockAppearance
     ? resolveCellBlockVariant(
         props.variant,
-        isDialog
-          ? "bordered"
-          : kind === "overlay" || kind === "select-content" || kind === "combobox-content"
-            ? "raised"
-            : "plain",
+        isDialog || kind === "overlay" ? "elevated" : "plain",
       )
     : "plain";
+  const frame = ownsBlockAppearance || kind === "select-content" || kind === "combobox-content"
+    ? resolveCellFrame(props.frame, isDialog ? "bordered" : "none")
+    : "none";
 
   return [{
     kind,
@@ -495,7 +501,11 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
         : props.style as CellLayoutStyle | undefined),
     },
     blockVariant,
-    borderShape: blockVariant === "bordered"
+    frame,
+    selectionVariant: kind === "select" || kind === "combobox" || kind === "text-input"
+      ? props.variant === "plain" ? "plain" : "elevated"
+      : null,
+    borderShape: frame === "bordered"
       && (props.borderShape === "square" || props.borderShape === "rounded")
       ? props.borderShape
       : null,

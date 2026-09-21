@@ -104,6 +104,8 @@ export type WidgetNode = Readonly<{
   index: number;
   style: CellLayoutStyle;
   blockVariant: import("./border.js").CellBlockVariant;
+  frame: import("./border.js").CellFrame;
+  selectionVariant: import("./react.js").SelectionSurfaceVariant | null;
   borderShape: import("./border.js").CellBorderShape | null;
   text: string | null;
   textStyle: CellTextStyle;

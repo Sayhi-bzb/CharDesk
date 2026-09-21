@@ -1,10 +1,10 @@
 import type { CellLayoutStyle } from "./types.js";
 
-export type ButtonVariant = "default" | "outline" | "ghost";
+export type ButtonVariant = "default" | "elevated" | "outline" | "ghost";
 export type ButtonSize = "sm" | "default" | "lg";
 
 export const resolveButtonVariant = (value: unknown): ButtonVariant =>
-  value === "outline" || value === "ghost" ? value : "default";
+  value === "elevated" || value === "outline" || value === "ghost" ? value : "default";
 
 export const resolveButtonSize = (value: unknown): ButtonSize =>
   value === "sm" || value === "lg" ? value : "default";

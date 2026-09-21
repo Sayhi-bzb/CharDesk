@@ -21,6 +21,7 @@ import {
   isDismissableScope,
   isFocusScope,
   isFocusableKind,
+  isTextEditorKind,
 } from "./widget-capabilities.js";
 import {
   cellRangeSliderThumbIndexAtCoordinate,
@@ -405,10 +406,15 @@ export const textEditorAtPoint = (
   frame: FrameSnapshot,
   point: CellPoint
 ): WidgetNode | undefined => {
-  const hit = hitTest(frame.scene, point)[0];
-  if (!hit || !isInFocusScope(frame.tree, hit)) return undefined;
-  const input = ancestorOfKind(frame.tree, hit, "text-input");
-  return input ?? ancestorOfKind(frame.tree, hit, "text-area");
+  let id = hitTest(frame.scene, point)[0];
+  if (!id || !isInFocusScope(frame.tree, id)) return undefined;
+  while (id) {
+    const node = frame.tree.nodes.get(id);
+    if (!node) return undefined;
+    if (isTextEditorKind(node.kind)) return node;
+    id = node.parentId ?? undefined;
+  }
+  return undefined;
 };
 
 export const resolveWheelInput = (
@@ -523,22 +529,28 @@ export const commandForInput = (
   if (input.type === "pointer") {
     if (input.button !== 0 || input.phase === "move" || input.phase === "cancel") return null;
     const hit = hitTest(frame.scene, input.point)[0];
+    const dismissable = dismissableScopeId ? frame.tree.nodes.get(dismissableScopeId) : undefined;
+    const comboboxAnchor = dismissable?.kind === "combobox-content"
+      ? ancestorOfKind(frame.tree, hit, "combobox-input") : undefined;
+    const onComboboxAnchor = !!comboboxAnchor && comboboxAnchor.parentId === dismissable?.parentId;
     if (
       dismissableScopeId
       && (!hit || !isDescendantOf(frame.tree, hit, dismissableScopeId))
+      && !onComboboxAnchor
     ) {
-      if (frame.tree.nodes.get(dismissableScopeId)?.closeOnOutsideClick !== false) {
+      if (dismissable?.closeOnOutsideClick !== false) {
         return { type: "dismiss", targetId: dismissableScopeId };
       }
-      if (frame.tree.nodes.get(dismissableScopeId)?.modal) return null;
+      if (dismissable?.modal) return null;
     }
     if (focusScopeId && (!hit || !isDescendantOf(frame.tree, hit, focusScopeId))) return null;
-    const hitNode = hit ? frame.tree.nodes.get(hit) : undefined;
-    const comboboxInput = hitNode?.kind === "combobox-input" ? hitNode : undefined;
+    const comboboxInput = ancestorOfKind(frame.tree, hit, "combobox-input");
     const comboboxEntry = comboboxInput ? frame.scene.entries.get(comboboxInput.id) : undefined;
-    if (input.phase === "down" && comboboxInput && !comboboxInput.disabled && comboboxEntry
-      && input.point.x === comboboxEntry.decorationBounds.x + comboboxEntry.decorationBounds.width - 1) {
-      return { type: "set-expanded", targetId: comboboxInput.id, expanded: !comboboxInput.expanded };
+    if (input.phase === "down" && comboboxInput && !comboboxInput.disabled && comboboxEntry) {
+      const arrow = input.point.x === comboboxEntry.decorationBounds.x + comboboxEntry.decorationBounds.width - 1;
+      if (arrow || !comboboxInput.expanded) {
+        return { type: "set-expanded", targetId: comboboxInput.id, expanded: arrow ? !comboboxInput.expanded : true };
+      }
     }
     const rangeSlider = ancestorOfKind(frame.tree, hit, "range-slider");
     if (rangeSlider && !rangeSlider.disabled && input.phase === "down") {

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   Box,
   CellUiRuntime,
+  CLASSIC_MAC_DARK_THEME,
+  CLASSIC_MAC_LIGHT_THEME,
   FocusManager,
   Root,
   Select,
@@ -38,7 +40,7 @@ const selectView = (open: boolean, focusedId = open ? "dark" : "theme-trigger") 
 );
 
 describe("Select", () => {
-  it("renders a filled trigger and a raised borderless listbox by default", () => {
+  it("renders an elevated trigger and borderless listbox by default", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
     const closed = runtime.render(selectView(false), { focusedId: "theme-trigger" });
     expect(closed.buffer.toText({ trimEnd: true }).split("\n")[0])
@@ -57,12 +59,80 @@ describe("Select", () => {
     ].join("\n"));
     expect(open.scene.entries.get("theme-content")?.layoutBounds)
       .toEqual({ x: 0, y: 1, width: 20, height: 3 });
-    expect(open.tree.nodes.get("theme-content")?.blockVariant).toBe("raised");
+    expect(open.tree.nodes.get("theme-content")?.blockVariant).toBe("plain");
+    expect(open.tree.nodes.get("theme")?.selectionVariant).toBe("elevated");
     expect(open.buffer.get(18, 1)?.style.backgroundColor).toBe("#E6E6E6");
     expect(open.buffer.get(18, 2)?.ownerId).toBe("dark");
     expect(open.buffer.get(18, 3)?.style.backgroundColor).toBe("#E6E6E6");
     runtime.dispose();
   });
+
+  for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
+    it(`binds Select background and dropdown frame independently (${theme.background})`, () => {
+      const runtime = new CellUiRuntime({ viewport: { width: 20, height: 7 }, theme });
+      const view = (variant: "plain" | "elevated", frame: "none" | "bordered", backgroundColor?: string) => (
+        <Root><Select id="theme" variant={variant} style={{ width: 18 }}>
+          <SelectTrigger id="trigger" label="Theme" expanded><Text>Dark</Text></SelectTrigger>
+          <SelectContent id="content" frame={frame} textStyle={backgroundColor ? { backgroundColor } : undefined}>
+            <SelectItem id="light"><Text>Light</Text></SelectItem>
+          </SelectContent>
+        </Select></Root>
+      );
+      for (const variant of ["plain", "elevated"] as const) {
+        for (const frame of ["none", "bordered"] as const) {
+          const result = runtime.render(view(variant, frame));
+          const content = result.scene.entries.get("content")!.layoutBounds;
+          expect(content.height).toBe(frame === "bordered" ? 3 : 1);
+          expect(result.buffer.get(16, 0)?.style.backgroundColor)
+            .toBe(variant === "elevated" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
+          expect(result.buffer.get(16, content.y + (frame === "bordered" ? 1 : 0))?.style.backgroundColor)
+            .toBe(variant === "elevated" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
+        }
+      }
+      const custom = runtime.render(view("plain", "none", "#abcdef"));
+      expect(custom.buffer.get(16, 1)?.style.backgroundColor).toBe("#abcdef");
+      runtime.dispose();
+    });
+
+    it(`keeps the Select trigger elevated inside a Block (${theme.background})`, () => {
+      const runtime = new CellUiRuntime({ viewport: { width: 22, height: 3 }, theme });
+      const view = (disabled = false, backgroundColor?: string, variant: "plain" | "elevated" = "elevated") => <Root>
+        <Box frame="bordered" style={{ width: 22, height: 3 }}>
+          <Select id="theme" variant={variant} style={{ width: 20 }}>
+            <SelectTrigger id="trigger" disabled={disabled} label="Theme"
+              textStyle={backgroundColor ? { backgroundColor } : undefined}>
+              <Text>Dark</Text>
+            </SelectTrigger>
+          </Select>
+        </Box>
+      </Root>;
+      const idle = runtime.render(view());
+      const bounds = idle.scene.entries.get("trigger")!.layoutBounds;
+      for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
+        expect(idle.buffer.get(x, bounds.y)?.style.backgroundColor)
+          .toBe(theme.elevatedSurfaceStyle.backgroundColor);
+      }
+      const focused = runtime.render(view(), { focusedId: "trigger" });
+      expect(focused.buffer.get(bounds.x + 1, bounds.y)?.style).toMatchObject({
+        color: theme.elevatedSurfaceStyle.backgroundColor,
+        backgroundColor: theme.foreground,
+      });
+      const disabled = runtime.render(view(true));
+      expect(disabled.buffer.get(bounds.x + 1, bounds.y)?.style).toMatchObject({
+        ...theme.elevatedSurfaceStyle,
+        ...theme.disabledStyle,
+      });
+      const custom = runtime.render(view(false, "#abcdef"));
+      expect(custom.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor).toBe("#abcdef");
+      const plain = runtime.render(view(false, undefined, "plain"));
+      expect(plain.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor)
+        .toBeUndefined();
+      const plainDisabled = runtime.render(view(true, undefined, "plain"));
+      expect(plainDisabled.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor)
+        .toBeUndefined();
+      runtime.dispose();
+    });
+  }
 
   it("lets SelectContent add border layout and chrome explicitly", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
@@ -72,7 +142,7 @@ describe("Select", () => {
           <SelectTrigger id="theme-trigger" label="Theme" expanded controlsId="theme-content">
             <Text>Dark</Text>
           </SelectTrigger>
-          <SelectContent id="theme-content" label="Theme options" variant="bordered">
+          <SelectContent id="theme-content" label="Theme options" frame="bordered">
             <SelectItem id="light"><Text>Light</Text></SelectItem>
             <SelectItem id="dark" selected><Text>Dark</Text></SelectItem>
             <SelectItem id="system"><Text>System</Text></SelectItem>

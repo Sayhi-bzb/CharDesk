@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  Box,
   Button,
   CellUiRuntime,
+  CLASSIC_MAC_DARK_THEME,
+  CLASSIC_MAC_LIGHT_THEME,
   FocusManager,
   Root,
   Text,
@@ -53,7 +56,7 @@ describe("Button", () => {
 
   it("resolves semantic variants and sizes without changing the one-row contract", () => {
     const render = (
-      variant: "default" | "outline" | "ghost",
+      variant: "default" | "elevated" | "outline" | "ghost",
       size: "sm" | "default" | "lg",
     ) => {
       const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
@@ -70,6 +73,9 @@ describe("Button", () => {
       ["default", "sm", 4, "Save"],
       ["default", "default", 6, " Save"],
       ["default", "lg", 8, "  Save"],
+      ["elevated", "sm", 4, "Save"],
+      ["elevated", "default", 6, " Save"],
+      ["elevated", "lg", 8, "  Save"],
       ["outline", "sm", 6, "[Save]"],
       ["outline", "default", 8, "[ Save ]"],
       ["outline", "lg", 10, "[  Save  ]"],
@@ -118,6 +124,48 @@ describe("Button", () => {
 
     runtime.dispose();
   });
+
+  for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
+    it(`uses the elevated surface across Button states (${theme.background})`, () => {
+      const runtime = new CellUiRuntime({ viewport: { width: 16, height: 3 }, theme });
+      const view = (disabled = false, textStyle?: { color?: string; backgroundColor?: string }) => (
+        <Root><Box frame="bordered" style={{ width: 16, height: 3 }}>
+          <Button id="save" variant="elevated" disabled={disabled} textStyle={textStyle} style={{ width: 6 }}>
+            <Text>Save</Text>
+          </Button>
+        </Box></Root>
+      );
+      const idle = runtime.render(view());
+      const bounds = idle.layout.entries.get("save")!.rect;
+      expect(bounds.width).toBe(6);
+      for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
+        expect(idle.buffer.get(x, bounds.y)?.style).toMatchObject({
+          color: theme.foreground,
+          backgroundColor: theme.elevatedSurfaceStyle.backgroundColor,
+        });
+      }
+      const focused = runtime.render(view(), { focusedId: "save", focusVisible: true });
+      expect(focused.buffer.get(bounds.x, bounds.y)?.style).toMatchObject({
+        color: theme.elevatedSurfaceStyle.backgroundColor,
+        backgroundColor: theme.foreground,
+      });
+      const pressed = runtime.render(view(), { pressActiveId: "save" });
+      expect(pressed.buffer.get(bounds.x, bounds.y)?.style).toMatchObject({
+        color: theme.elevatedSurfaceStyle.backgroundColor,
+        backgroundColor: theme.foreground,
+      });
+      const disabled = runtime.render(view(true), { focusedId: "save", pressActiveId: "save" });
+      expect(disabled.buffer.get(bounds.x, bounds.y)?.style).toMatchObject({
+        ...theme.disabledStyle,
+        backgroundColor: theme.elevatedSurfaceStyle.backgroundColor,
+      });
+      const custom = runtime.render(view(false, { color: "#123456", backgroundColor: "#abcdef" }));
+      expect(custom.buffer.get(bounds.x, bounds.y)?.style).toMatchObject({
+        color: "#123456", backgroundColor: "#abcdef",
+      });
+      runtime.dispose();
+    });
+  }
 
   it("shares hover, focus, disabled, keyboard, pointer, and semantic behavior", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 30, height: 1 } });

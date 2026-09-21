@@ -1,4 +1,4 @@
-import { resolveWidgetVisual, resolveCellTextStyle } from "./visual.js";
+import { resolveWidgetVisual, resolveEditorGlyphStyle } from "./visual.js";
 import {
   getGraphemeCellWidth,
   iterateGraphemes,
@@ -166,7 +166,7 @@ export const paintScene = (
       }
 
       // Chrome: glyphs are painted after surfaces so state fills cannot erase them.
-      if (node.blockVariant === "bordered") {
+      if (node.frame === "bordered") {
         paintBorder(
           buffer,
           id,
@@ -218,7 +218,7 @@ export const paintScene = (
                 glyph.point.y,
                 " ",
                 id,
-                resolveCellTextStyle(style, glyph, theme),
+                resolveEditorGlyphStyle(style, glyph, theme, node),
                 contentClip,
                 "over"
               );
@@ -230,7 +230,7 @@ export const paintScene = (
             glyph.point.y,
             glyph.text,
             id,
-            resolveCellTextStyle(style, glyph, theme),
+            resolveEditorGlyphStyle(style, glyph, theme, node),
             contentClip,
             "over"
           );

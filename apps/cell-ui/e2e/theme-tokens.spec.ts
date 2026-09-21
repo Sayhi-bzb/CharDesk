@@ -13,7 +13,7 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
         background: read("--cell-background"),
         foreground: read("--cell-foreground"),
         surface: read("--cell-surface"),
-        surfaceRaised: read("--cell-surface-raised"),
+        surfaceElevated: read("--cell-surface-elevated"),
         buttonPrimary: read("--cell-button-primary"),
         buttonPrimaryForeground: read("--cell-button-primary-foreground"),
         buttonPrimaryHover: read("--cell-button-primary-hover"),
@@ -36,7 +36,7 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
       background: "#ffffff",
       foreground: "#000000",
       surface: "#ffffff",
-      surfaceRaised: "#e6e6e6",
+      surfaceElevated: "#e6e6e6",
       buttonPrimary: "#000000",
       buttonPrimaryForeground: "#ffffff",
       buttonPrimaryHover: "#1a1a1a",
@@ -57,7 +57,7 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
       background: "#000000",
       foreground: "#ffffff",
       surface: "#000000",
-      surfaceRaised: "#1a1a1a",
+      surfaceElevated: "#1a1a1a",
       buttonPrimary: "#ffffff",
       buttonPrimaryForeground: "#000000",
       buttonPrimaryHover: "#e6e6e6",
@@ -154,7 +154,7 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
     const root = document.documentElement;
     root.style.setProperty("--cell-background", "rgb(7, 8, 9)");
     root.style.setProperty("--cell-surface", "rgb(30, 40, 50)");
-    root.style.setProperty("--cell-surface-raised", "rgb(30, 40, 50)");
+    root.style.setProperty("--cell-surface-elevated", "rgb(30, 40, 50)");
     root.style.setProperty("--cell-highlight", "rgb(60, 70, 80)");
     root.style.setProperty("--cell-border", "rgb(90, 100, 110)");
   });

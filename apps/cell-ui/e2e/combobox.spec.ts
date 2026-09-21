@@ -1,14 +1,138 @@
 import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
 
+test("Combobox Playground configures its shared background and dropdown frame", async ({ page }) => {
+  await page.goto("/#/components/combobox");
+  const surface = page.getByLabel("Combobox component");
+  const input = page.getByRole("combobox", { name: "Font" });
+  const background = page.getByRole("button", { name: "background", exact: true });
+  const dropdownFrame = page.getByRole("button", { name: "dropdown frame", exact: true });
+  const borderShape = page.getByRole("button", { name: "border shape", exact: true });
+
+  await expect(page.getByRole("button", { name: "value", exact: true })).toHaveCount(0);
+  await expect(borderShape).toHaveCount(0);
+  await expect(dropdownFrame).toBeAttached();
+  const initial = await readCellProbe(surface);
+  const elevatedBackground = initial.cells.find((cell) =>
+    cell.ownerId === "component-combobox-input" && cell.text === " "
+  )?.style.backgroundColor;
+  expect(elevatedBackground).toBeTruthy();
+
+  await input.click();
+  const elevatedOverlay = (await readCellProbe(surface)).overlays.find((overlay) =>
+    overlay.rootId === "component-combobox-content"
+  );
+  expect(elevatedOverlay?.cells.find((cell) =>
+    cell.ownerId === "component-combobox-fusion" && cell.text === " "
+  )?.style.backgroundColor).toBe(elevatedBackground);
+  await input.press("Escape");
+
+  await dropdownFrame.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "bordered", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "dropdown frame options" })).toHaveCount(0);
+  await expect(surface).not.toHaveAttribute("data-cell-activation-flash");
+  await expect(borderShape).toBeAttached();
+  await input.click();
+  await expect(input).toHaveAttribute("aria-expanded", "true");
+  const borderedOverlay = (await readCellProbe(surface)).overlays.find((overlay) =>
+    overlay.rootId === "component-combobox-content"
+  );
+  expect(borderedOverlay?.bounds.height).toBe(5);
+  expect(borderedOverlay?.text).toContain("┌");
+  expect(borderedOverlay?.text).toContain("└");
+  await input.press("Escape");
+
+  await borderShape.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "rounded", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "border shape options" })).toHaveCount(0);
+  await expect(surface).not.toHaveAttribute("data-cell-activation-flash");
+  await input.click();
+  await expect(input).toHaveAttribute("aria-expanded", "true");
+  const roundedOverlay = (await readCellProbe(surface)).overlays.find((overlay) =>
+    overlay.rootId === "component-combobox-content"
+  );
+  expect(roundedOverlay?.text).toContain("╭");
+  expect(roundedOverlay?.text).toContain("╰");
+  await input.press("Escape");
+
+  await background.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "plain", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "background options" })).toHaveCount(0);
+  await expect(surface).not.toHaveAttribute("data-cell-activation-flash");
+  const plain = await readCellProbe(surface);
+  expect(plain.cells.find((cell) =>
+    cell.ownerId === "component-combobox-input" && cell.text === " "
+  )?.style.backgroundColor).not.toBe(elevatedBackground);
+  await input.click();
+  await expect(input).toHaveAttribute("aria-expanded", "true");
+  const plainOverlay = (await readCellProbe(surface)).overlays.find((overlay) =>
+    overlay.rootId === "component-combobox-content"
+  );
+  expect(plainOverlay?.cells.find((cell) =>
+    cell.ownerId === "component-combobox-fusion" && cell.text === " "
+  )?.style.backgroundColor).not.toBe(elevatedBackground);
+  await input.fill("no matching font");
+  await expect(page.getByRole("option")).toHaveCount(0);
+  const emptyOverlay = (await readCellProbe(surface)).overlays.find((overlay) =>
+    overlay.rootId === "component-combobox-content"
+  );
+  expect(emptyOverlay?.bounds.height).toBe(3);
+  expect(emptyOverlay?.text).toContain("No matches");
+});
+
+test("Combobox input row opens on click, keeps editing open, and closes from its arrow", async ({ page }) => {
+  await page.goto("/#/components/combobox");
+  const surface = page.getByLabel("Combobox component");
+  const input = page.getByRole("combobox", { name: "Font" });
+  const probe = await readCellProbe(surface);
+  const arrow = probe.cells.find((cell) => cell.ownerId === "component-combobox-input" && cell.text === "▾");
+  const firstInputCell = probe.cells.find((cell) => cell.ownerId === "component-combobox-input" && cell.y === arrow?.y);
+  expect(arrow).toBeDefined();
+  expect(firstInputCell).toBeDefined();
+  const canvas = surface.locator("canvas").first();
+  const bounds = await canvas.boundingBox();
+  const metrics = probe.presentation!.metrics;
+  const clickCell = (x: number, y: number) => page.mouse.click(
+    bounds!.x + (x + 0.5) * metrics.cellWidth,
+    bounds!.y + (y + 0.5) * metrics.cellHeight,
+  );
+
+  await clickCell(arrow!.x - 3, arrow!.y);
+  await expect(input).toHaveAttribute("aria-expanded", "true");
+  await clickCell(firstInputCell!.x + 3, arrow!.y);
+  await expect(input).toHaveAttribute("aria-expanded", "true");
+  const selection = await input.evaluate((element: HTMLTextAreaElement) => [element.selectionStart, element.selectionEnd]);
+  expect(selection[0]).toBeGreaterThan(0);
+  expect(selection[0]).toBe(selection[1]);
+  await expect(input).toBeFocused();
+  await clickCell(arrow!.x, arrow!.y);
+  await expect(input).toHaveAttribute("aria-expanded", "false");
+  await input.click();
+  await expect(input).toHaveAttribute("aria-expanded", "true");
+});
+
 test("Combobox filters without moving DOM focus and restores uncommitted text", async ({ page }) => {
   await page.goto("/#/components/combobox");
   const surface = page.getByLabel("Combobox component");
   const input = page.getByRole("combobox", { name: "Font" });
 
   await expect(input).toHaveValue("Maple Mono");
+  const closed = await readCellProbe(surface);
+  const closedText = closed.cells.find((cell) => cell.ownerId === "component-combobox-input" && cell.text === "M");
+  const closedBlank = closed.cells.find((cell) => cell.ownerId === "component-combobox-input" && cell.text === " ");
+  expect(closedText?.style.backgroundColor).toBe(closedBlank?.style.backgroundColor);
+  expect(closedText?.style.underline).not.toBe(true);
   await input.focus();
   await expect(page.getByRole("listbox", { name: "Font" })).toHaveCount(0);
+  await expect.poll(async () => (await readCellProbe(surface)).cells.find((cell) => (
+    cell.ownerId === "component-combobox-input" && cell.text === "M"
+  ))?.style.underline).toBe(true);
+  const active = await readCellProbe(surface);
+  expect(active.cells.find((cell) => cell.ownerId === "component-combobox-input" && cell.text === "M")?.style.backgroundColor)
+    .toBe(closedBlank?.style.backgroundColor);
 
   await input.fill("xiao");
   await expect(page.getByRole("option", { name: "Xiaolai Mono" })).toBeVisible();

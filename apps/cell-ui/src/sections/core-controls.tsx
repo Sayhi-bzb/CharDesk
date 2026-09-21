@@ -71,7 +71,7 @@ export const CoreControlsDemo = () => {
             <ScrollArea
               id="core-files"
               scrollY={scrollY}
-              variant="bordered"
+              frame="bordered"
               style={{ height: 6 }}
             >
               <List id="core-file-list" label="Files">

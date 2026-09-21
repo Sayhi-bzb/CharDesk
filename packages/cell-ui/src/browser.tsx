@@ -47,7 +47,7 @@ import {
   type WidgetCommand,
 } from "./interaction.js";
 import { EventManager, type CellEventHandlerMap } from "./events.js";
-import { getEventPath, hitTestCell } from "./scene.js";
+import { getEventPath, hitTest, hitTestCell } from "./scene.js";
 import { useSurfaceFocus } from "./browser-focus.js";
 import { useCellFontMetrics } from "./browser-font-metrics.js";
 import { createCellUiFontProfile } from "./browser-font-profile.js";
@@ -1349,7 +1349,18 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           return;
         }
         if (cellRange && rangeEditable) dispatchCellRange({ type: "clear" });
-        if (!isSurfaceCanvas(event.target)) return;
+        if (!isSurfaceCanvas(event.target)) {
+          const textarea = event.target instanceof HTMLTextAreaElement ? event.target : null;
+          if (textarea?.dataset.cellTextEditor === hitTest(frame.scene, point)[0]) {
+            const command = commandForInput(
+              { type: "pointer", phase: "down", point, button: event.button },
+              frame,
+              focusRef.current
+            );
+            if (command?.type === "set-expanded" || command?.type === "dismiss") dispatch(command);
+          }
+          return;
+        }
         const immediate = commandForInput(
           { type: "pointer", phase: "down", point, button: event.button },
           frame,

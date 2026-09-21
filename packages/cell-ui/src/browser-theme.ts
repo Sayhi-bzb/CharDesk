@@ -11,7 +11,7 @@ const defaults = {
   background: fallback.background,
   foreground: fallback.foreground,
   surface: fallback.surfaceStyle.backgroundColor!,
-  "surface-raised": fallback.raisedSurfaceStyle.backgroundColor!,
+  "surface-elevated": fallback.elevatedSurfaceStyle.backgroundColor!,
   "button-primary": fallback.buttonPrimaryStyle.backgroundColor!,
   "button-primary-foreground": fallback.buttonPrimaryStyle.color!,
   "button-primary-hover": fallback.buttonPrimaryHoverStyle.backgroundColor!,
@@ -73,7 +73,7 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
       background: colors.background,
       foreground: colors.foreground,
       surfaceStyle: { backgroundColor: colors.surface },
-      raisedSurfaceStyle: { backgroundColor: colors["surface-raised"] },
+      elevatedSurfaceStyle: { backgroundColor: colors["surface-elevated"] },
       buttonPrimaryStyle: {
         color: colors["button-primary-foreground"],
         backgroundColor: colors["button-primary"],

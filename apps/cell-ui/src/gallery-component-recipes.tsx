@@ -6,8 +6,9 @@ import {
   SelectItem,
   SelectTrigger,
   Text,
-  type CellBlockVariant,
   type CellBorderShape,
+  type CellFrame,
+  type SelectionSurfaceVariant,
 } from "@chardesk/cell-ui";
 import type { CellSelectState } from "@chardesk/cell-ui/browser";
 
@@ -19,7 +20,8 @@ export const renderGallerySelect = ({
   disabled = false,
   open = select.open,
   showLabel = true,
-  contentVariant,
+  variant,
+  contentFrame,
   contentBorderShape,
   emptyLabel = "default",
   triggerText = select.selectedItem?.label ?? emptyLabel,
@@ -36,7 +38,8 @@ export const renderGallerySelect = ({
   disabled?: boolean;
   open?: boolean;
   showLabel?: boolean;
-  contentVariant?: CellBlockVariant;
+  variant?: SelectionSurfaceVariant;
+  contentFrame?: CellFrame;
   contentBorderShape?: CellBorderShape;
   emptyLabel?: string;
   triggerText?: string;
@@ -48,7 +51,7 @@ export const renderGallerySelect = ({
 }>) => (
   <Box id={fieldId} key={select.id} style={{ width }}>
     {showLabel ? <Text id={labelId}>{label}</Text> : null}
-    <Select id={select.id} label={label} style={{ width }}>
+    <Select id={select.id} label={label} style={{ width }} variant={variant}>
       <SelectTrigger
         id={select.triggerId}
         label={triggerLabel}
@@ -63,7 +66,7 @@ export const renderGallerySelect = ({
           id={select.contentId}
           label={contentLabel}
           scrollY={select.scrollY}
-          variant={contentVariant}
+          frame={contentFrame}
           borderShape={contentBorderShape}
           style={{
             width,

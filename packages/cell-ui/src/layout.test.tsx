@@ -39,7 +39,7 @@ describe("YogaLayoutEngine qualification", () => {
     const engine = new YogaLayoutEngine();
     const first = treeFor(
       <Root id="root" style={{ direction: "row", gap: 1, padding: 1 }}>
-        <Box id="bounded" variant="bordered" style={{ flexGrow: 1, minWidth: 4, maxWidth: 7 }}>
+        <Box id="bounded" frame="bordered" style={{ flexGrow: 1, minWidth: 4, maxWidth: 7 }}>
           <Box id="percent" style={{ width: "50%", height: 1 }} />
         </Box>
         <Box id="fixed" style={{ width: 3, height: 2 }} />

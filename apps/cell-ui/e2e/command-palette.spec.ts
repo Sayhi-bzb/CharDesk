@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-test("Palette text retains its raised surface background in both themes", async ({ page }) => {
+test("Palette text retains its elevated surface background in both themes", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/#/__fixtures/all");
   const surface = page.locator('[data-cell-probe="overlay"]');
@@ -11,7 +11,7 @@ test("Palette text retains its raised surface background in both themes", async 
     }
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", theme);
     await page.evaluate((surfaceColor) => {
-      document.documentElement.style.setProperty("--cell-surface-raised", surfaceColor);
+      document.documentElement.style.setProperty("--cell-surface-elevated", surfaceColor);
     }, theme === "light" ? "rgb(240, 240, 240)" : "rgb(35, 35, 35)");
     await page.getByRole("button", { name: theme === "light" ? "Dark" : "Light" }).click();
     await page.getByRole("button", { name: theme === "light" ? "Light" : "Dark" }).click();

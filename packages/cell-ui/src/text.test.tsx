@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   CellTextEditor,
   CellUiRuntime,
-  CLASSIC_MAC_LIGHT_THEME,
   Root,
   TextArea,
   createCellTextLayout,
@@ -15,7 +14,7 @@ describe("CellTextEditor", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 5 } });
     const editor = new CellTextEditor({ multiline: true });
     const view = (focused: boolean) => <Root>
-      <TextArea id="editor" variant="bordered" focused={focused} state={editor.snapshot()} style={{ height: 5 }} />
+      <TextArea id="editor" frame="bordered" focused={focused} state={editor.snapshot()} style={{ height: 5 }} />
     </Root>;
     const focused = runtime.render(view(true));
     for (let y = 0; y < 5; y++) {
@@ -26,7 +25,7 @@ describe("CellTextEditor", () => {
     }
     const blurred = runtime.render(view(false));
     expect(blurred.buffer.get(5, 2)?.style.backgroundColor)
-      .toBe(CLASSIC_MAC_LIGHT_THEME.surfaceStyle.backgroundColor);
+      .toBeUndefined();
     const fresh = new CellUiRuntime({ viewport: { width: 12, height: 5 } });
     const oracle = fresh.render(view(false));
     for (let y = 0; y < 5; y++) {
@@ -120,7 +119,7 @@ describe("Cell text projection", () => {
           id="editor"
           label="Document"
           state={editor.snapshot()}
-          variant="bordered"
+          frame="bordered"
           style={{ height: 4 }}
         />
       </Root>,

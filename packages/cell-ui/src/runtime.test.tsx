@@ -25,7 +25,7 @@ const fileList = (order = ["index", "app", "layout", "theme"]) => (
         <ListItem id="open" focused selected><Text id="open-label">Open file</Text></ListItem>
         <ListItem id="save"><Text id="save-label">Save</Text></ListItem>
       </List>
-      <ScrollArea id="files" variant="bordered" style={{ height: 6 }}>
+      <ScrollArea id="files" frame="bordered" style={{ height: 6 }}>
         <List id="file-list">
           {order.map((name, index) => (
             <ListItem id={`file-${name}`} key={name}>
@@ -114,7 +114,7 @@ describe("CellUiRuntime", () => {
     const view = (open: boolean, x: number, backgroundColor: string) => <Root>
       <Box id="base" style={{ width: 20, height: 8 }} textStyle={{ backgroundColor: "#112233", bold: true }}>
         <Text>Underneath</Text>
-        {open && <Overlay id="overlay" variant="bordered" position={{ x, y: 1 }} style={{ width: 14, height: 5 }} textStyle={{ backgroundColor }}>
+        {open && <Overlay id="overlay" frame="bordered" position={{ x, y: 1 }} style={{ width: 14, height: 5 }} textStyle={{ backgroundColor }}>
           <Text id="title" textStyle={{ color: "#abcdef" }}>Commands中</Text>
           <Box id="nested" style={{ height: 1 }} textStyle={{ backgroundColor: "#778899" }}><Text id="nested-text">Nested</Text></Box>
           <Text id="hint">Esc closes</Text>
@@ -331,7 +331,7 @@ describe("CellUiRuntime", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 4 } });
     const frame = runtime.render(
       <Root id="root">
-        <ScrollArea id="scroll" variant="bordered" scrollY={1} style={{ height: 4 }}>
+        <ScrollArea id="scroll" frame="bordered" scrollY={1} style={{ height: 4 }}>
           <List id="list">
             <ListItem id="a"><Text id="a-label">alpha</Text></ListItem>
             <ListItem id="b"><Text id="b-label">beta</Text></ListItem>
@@ -358,7 +358,7 @@ describe("CellUiRuntime", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 8, height: 4 } });
     const frame = runtime.render(
       <Root id="root">
-        <ScrollArea id="scroll" variant="bordered" scrollX={2} scrollY={1} style={{ width: 8, height: 4 }}>
+        <ScrollArea id="scroll" frame="bordered" scrollX={2} scrollY={1} style={{ width: 8, height: 4 }}>
           <Box id="content" style={{ width: 12, height: 3 }}><Text>wide content</Text></Box>
         </ScrollArea>
       </Root>
@@ -453,7 +453,7 @@ describe("CellUiRuntime", () => {
       <Root id="root">
         <Box
           id="padded"
-          variant="bordered"
+          frame="bordered"
           style={{ padding: 1, paddingLeft: 2, height: 5 }}
         ><Text>AB</Text></Box>
       </Root>
@@ -470,7 +470,7 @@ describe("CellUiRuntime", () => {
       contentClip: { x: 3, y: 2, width: 7, height: 1 },
     });
     expect(frame.buffer.get(3, 2)?.text).toBe("A");
-    expect(frame.buffer.get(1, 1)).toMatchObject({ text: " ", ownerId: "padded" });
+    expect(frame.buffer.get(1, 1)).toMatchObject({ text: " ", ownerId: null });
     runtime.dispose();
   });
 
@@ -483,7 +483,7 @@ describe("CellUiRuntime", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 10, height: 3 } });
     const view = () => (
       <Root id="root">
-        <Box id="boundary" variant="bordered" style={{ width: 10, height: 3 }}>
+        <Box id="boundary" frame="bordered" style={{ width: 10, height: 3 }}>
           <ListItem id="item" {...state}>
             <Text>Value</Text>
           </ListItem>
@@ -506,7 +506,7 @@ describe("CellUiRuntime", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 10, height: 3 } });
     const view = (selected: boolean) => (
       <Root id="root">
-        <Box id="boundary" variant="bordered" style={{ width: 10, height: 3 }}>
+        <Box id="boundary" frame="bordered" style={{ width: 10, height: 3 }}>
           <ListItem id="item" selected={selected}>
             <Text>Value</Text>
           </ListItem>
@@ -525,7 +525,7 @@ describe("CellUiRuntime", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 8, height: 3 } });
     const frame = runtime.render(
       <Root id="root">
-        <Box id="panel" variant="bordered" style={{ height: 3 }}>
+        <Box id="panel" frame="bordered" style={{ height: 3 }}>
           <Text id="overflow" style={{ width: 12 }}>ABCDEFGHIJK</Text>
         </Box>
       </Root>
@@ -554,7 +554,7 @@ describe("CellUiRuntime", () => {
           id="editor"
           label="Document"
           state={editor.snapshot()}
-          variant="bordered"
+          frame="bordered"
           style={{ height: 5 }}
         />
       </Root>
@@ -586,7 +586,7 @@ describe("CellUiRuntime", () => {
           id="editor"
           label="Document"
           state={editor.snapshot()}
-          variant="bordered"
+          frame="bordered"
           style={{ height: 3 }}
         />
       </Root>
@@ -600,13 +600,13 @@ describe("CellUiRuntime", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 20, height: 6 } });
     const frame = runtime.render(
       <Root id="root">
-        <Box id="clipped-panel" variant="bordered" style={{ width: 8, height: 3 }}>
+        <Box id="clipped-panel" frame="bordered" style={{ width: 8, height: 3 }}>
           <Text id="underlay" style={{ width: 20 }}>underlay content</Text>
           <Overlay
             id="palette"
             label="Command palette"
             position={{ x: 4, y: 1 }}
-            variant="bordered"
+            frame="bordered"
             style={{ width: 12, height: 4 }}
             textStyle={{ backgroundColor: "#20252b" }}
           >

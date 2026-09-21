@@ -2,14 +2,18 @@ import type { CellBuffer } from "./buffer.js";
 import type { CellRect, CellTextStyle, WidgetId } from "./types.js";
 
 export type CellBorderShape = "square" | "rounded";
-export type CellBlockVariant = "plain" | "raised" | "bordered";
+export type CellBlockVariant = "plain" | "elevated";
+export type CellFrame = "none" | "bordered";
 
 export const resolveCellBlockVariant = (
   variant: unknown,
   fallback: CellBlockVariant = "plain",
-): CellBlockVariant => variant === "plain" || variant === "raised" || variant === "bordered"
+): CellBlockVariant => variant === "plain" || variant === "elevated"
   ? variant
   : fallback;
+
+export const resolveCellFrame = (frame: unknown, fallback: CellFrame = "none"): CellFrame =>
+  frame === "none" || frame === "bordered" ? frame : fallback;
 
 const corners = {
   square: ["┌", "┐", "└", "┘"],

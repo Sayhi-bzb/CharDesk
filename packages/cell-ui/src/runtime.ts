@@ -69,7 +69,7 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.text !== after.text
   || before.buttonVariant !== after.buttonVariant
   || before.buttonSize !== after.buttonSize
-  || (before.blockVariant === "bordered") !== (after.blockVariant === "bordered")
+  || before.frame !== after.frame
   || before.orientation !== after.orientation
   || (after.kind === "accordion-content" && before.expanded !== after.expanded)
   || !sameWidgetValue(before.style, after.style)
@@ -107,6 +107,8 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.separatorVariant !== after.separatorVariant
   || before.buttonVariant !== after.buttonVariant
   || before.blockVariant !== after.blockVariant
+  || before.frame !== after.frame
+  || before.selectionVariant !== after.selectionVariant
   || before.borderShape !== after.borderShape
   || before.sliderValue !== after.sliderValue
   || before.sliderMin !== after.sliderMin

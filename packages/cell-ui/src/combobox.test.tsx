@@ -8,7 +8,12 @@ import {
   Text,
   CellTextEditor,
   CellUiRuntime,
+  FocusManager,
+  CLASSIC_MAC_DARK_THEME,
+  CLASSIC_MAC_LIGHT_THEME,
   auditSemanticSnapshot,
+  commandForInput,
+  textEditorAtPoint,
 } from "./index.js";
 import { filterCellComboboxItems } from "./browser-combobox.js";
 import { formatCellBuffer } from "./probe.js";
@@ -19,6 +24,121 @@ const items = [
   { id: "plex", label: "IBM Plex Mono" },
   { id: "fusion", label: "融合像素字体" },
 ] as const;
+
+it("opens from the whole input row, keeps editing open, and toggles from the arrow", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
+  const editor = new CellTextEditor({ value: "Maple" });
+  const focus = new FocusManager();
+  const render = (expanded: boolean, disabled = false) => runtime.render(<Root>
+    <Combobox id="font" style={{ width: 16 }} disabled={disabled}>
+      <ComboboxInput id="input" label="Font" state={editor.snapshot()} expanded={expanded} />
+      {expanded && <ComboboxContent id="content">
+        <ComboboxItem id="maple"><Text>Maple</Text></ComboboxItem>
+      </ComboboxContent>}
+    </Combobox>
+  </Root>);
+  const closed = render(false);
+  const bounds = closed.scene.entries.get("input")!.decorationBounds;
+  const textPoint = { x: bounds.x + 1, y: bounds.y };
+  const arrowPoint = { x: bounds.x + bounds.width - 1, y: bounds.y };
+  const pointer = (point: typeof textPoint) => ({ type: "pointer" as const, phase: "down" as const, point, button: 0 });
+  expect(textEditorAtPoint(closed, textPoint)?.id).toBe("input");
+  expect(commandForInput(pointer(textPoint), closed, focus))
+    .toEqual({ type: "set-expanded", targetId: "input", expanded: true });
+  expect(commandForInput(pointer(arrowPoint), closed, focus))
+    .toEqual({ type: "set-expanded", targetId: "input", expanded: true });
+
+  const open = render(true);
+  expect(commandForInput(pointer(textPoint), open, focus)).toBeNull();
+  expect(textEditorAtPoint(open, textPoint)?.id).toBe("input");
+  expect(commandForInput(pointer(arrowPoint), open, focus))
+    .toEqual({ type: "set-expanded", targetId: "input", expanded: false });
+  expect(commandForInput(pointer({ x: 23, y: 7 }), open, focus))
+    .toEqual({ type: "dismiss", targetId: "content" });
+  expect(commandForInput(pointer(textPoint), render(false, true), focus)).toBeNull();
+  runtime.dispose();
+});
+
+for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
+  it(`binds Combobox input and dropdown background (${theme.background})`, () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 18, height: 6 }, theme });
+    const editor = new CellTextEditor({ value: "Maple" });
+    const view = (variant: "plain" | "elevated", frame: "none" | "bordered", disabled = false) => (
+      <Root><Combobox id="font" variant={variant} style={{ width: 16 }}>
+        <ComboboxInput id="input" label="Font" state={editor.snapshot()} expanded disabled={disabled} />
+        <ComboboxContent id="content" frame={frame}>
+          <ComboboxItem id="maple"><Text>Maple</Text></ComboboxItem>
+        </ComboboxContent>
+      </Combobox></Root>
+    );
+    for (const variant of ["plain", "elevated"] as const) {
+      for (const frame of ["none", "bordered"] as const) {
+        const result = runtime.render(view(variant, frame));
+        const content = result.scene.entries.get("content")!.layoutBounds;
+        expect(content.height).toBe(frame === "bordered" ? 3 : 1);
+        expect(result.buffer.get(14, 0)?.style.backgroundColor)
+          .toBe(variant === "elevated" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
+        expect(result.buffer.get(14, content.y + (frame === "bordered" ? 1 : 0))?.style.backgroundColor)
+          .toBe(variant === "elevated" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
+      }
+    }
+    const plainDisabled = runtime.render(view("plain", "none", true), {
+      focusedId: "input", activeFocusId: "input",
+    });
+    expect(plainDisabled.buffer.get(14, 0)?.style.backgroundColor).toBeUndefined();
+    runtime.dispose();
+  });
+
+  it(`keeps the idle ComboboxInput elevated (${theme.background})`, () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 12, height: 1 }, theme });
+    const editor = new CellTextEditor({ value: "Maple" });
+    const view = (disabled = false, backgroundColor?: string) => <Root>
+      <Combobox style={{ width: 12 }}>
+        <ComboboxInput id="input" label="Font" state={editor.snapshot()} disabled={disabled}
+          textStyle={backgroundColor ? { backgroundColor } : undefined} />
+      </Combobox>
+    </Root>;
+    const idle = runtime.render(view());
+    for (let x = 0; x < 12; x++) {
+      expect(idle.buffer.get(x, 0)?.style.backgroundColor)
+        .toBe(theme.elevatedSurfaceStyle.backgroundColor);
+    }
+    const active = runtime.render(view(), { focusedId: "input", activeFocusId: "input" });
+    expect(active.buffer.get(1, 0)?.style.backgroundColor)
+      .toBe(theme.elevatedSurfaceStyle.backgroundColor);
+    const disabled = runtime.render(view(true), { focusedId: "input", activeFocusId: "input" });
+    expect(disabled.buffer.get(1, 0)?.style).toMatchObject({
+      ...theme.elevatedSurfaceStyle,
+      ...theme.disabledStyle,
+    });
+    const custom = runtime.render(view(false, "#abcdef"));
+    expect(custom.buffer.get(1, 0)?.style.backgroundColor).toBe("#abcdef");
+    runtime.dispose();
+  });
+
+  it(`keeps Combobox selection understated until editing starts (${theme.background})`, () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 12, height: 1 }, theme });
+    const editor = new CellTextEditor({ value: "Maple" });
+    editor.dispatch({ type: "select-all" });
+    for (const variant of ["plain", "elevated"] as const) {
+      const view = <Root><Combobox variant={variant} style={{ width: 12 }}>
+        <ComboboxInput id="input" label="Font" state={editor.snapshot()} />
+      </Combobox></Root>;
+      const background = variant === "elevated" ? theme.elevatedSurfaceStyle.backgroundColor : undefined;
+      const idle = runtime.render(view);
+      expect(idle.buffer.get(1, 0)?.style.underline).not.toBe(true);
+      expect(idle.buffer.get(1, 0)?.style.backgroundColor).toBe(background);
+      expect(idle.buffer.get(9, 0)?.style.backgroundColor).toBe(background);
+      const active = runtime.render(view, { focusedId: "input", activeFocusId: "input" });
+      expect(active.buffer.get(1, 0)?.style).toMatchObject({ underline: true });
+      expect(active.buffer.get(1, 0)?.style.backgroundColor).toBe(background);
+      expect(active.buffer.get(9, 0)?.style.backgroundColor).toBe(background);
+      const blurred = runtime.render(view, { focusedId: "input", activeFocusId: null });
+      expect(blurred.buffer.get(1, 0)?.style.underline).not.toBe(true);
+    }
+    runtime.dispose();
+  });
+}
 
 it("filters Combobox candidates by stable, case-insensitive substring", () => {
   expect(filterCellComboboxItems(items, "mono").map(({ id }) => id))
@@ -52,7 +172,8 @@ it("projects one focused Combobox with a separate active option", () => {
     paddingInsets: { top: 0, right: 2, bottom: 0, left: 1 },
   });
   expect(frame.scene.entries.get("font-content")?.layoutBounds.y).toBe(1);
-  expect(frame.tree.nodes.get("font-content")?.blockVariant).toBe("raised");
+  expect(frame.tree.nodes.get("font-content")?.blockVariant).toBe("plain");
+  expect(frame.tree.nodes.get("font")?.selectionVariant).toBe("elevated");
   expect(frame.layout.entries.get("font-content")?.borderInsets)
     .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
   expect(frame.buffer.get(20, 1)?.style.backgroundColor).toBe("#E6E6E6");

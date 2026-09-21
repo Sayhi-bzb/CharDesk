@@ -156,7 +156,7 @@ const Product = ({
             ><Text>{item.label}</Text></ListItem>
           ))}
         </List>
-        <ScrollArea id="files" variant="bordered" scrollY={scrollY} style={{ height: 4 }}>
+        <ScrollArea id="files" frame="bordered" scrollY={scrollY} style={{ height: 4 }}>
           <List id="file-list" label="Files">
             {files.items.map((item) => (
               <ListItem
@@ -304,7 +304,7 @@ const EditorProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand) => 
     >
       <Root id="editor-root">
         <TextInput id="name" label="Name" state={name.snapshot} />
-        <TextArea id="body" label="Document" variant="bordered" state={body.snapshot} style={{ height: 5 }} />
+        <TextArea id="body" label="Document" frame="bordered" state={body.snapshot} style={{ height: 5 }} />
       </Root>
     </CellSurface>
   );
@@ -463,7 +463,7 @@ const RangeProduct = ({
         label="Range surface"
       >
         <Root id="range-root">
-          <Box id="range-panel" variant="bordered" style={{ height: 3 }}>
+          <Box id="range-panel" frame="bordered" style={{ height: 3 }}>
             <Text>{text}</Text>
           </Box>
         </Root>
@@ -489,7 +489,7 @@ const DefaultRangeProduct = ({
     label="Default range surface"
   >
     <Root id="default-range-root">
-      <Box id="default-range-panel" variant="bordered" style={{ height: 3 }}>
+      <Box id="default-range-panel" frame="bordered" style={{ height: 3 }}>
         <Text>AB</Text>
       </Box>
     </Root>
@@ -519,7 +519,7 @@ const ModalEditorProduct = ({ open }: { open: boolean }) => {
             id="modal-overlay"
             label="Commands"
             position={{ x: 2, y: 1 }}
-            variant="bordered"
+            frame="bordered"
             style={{ width: 20, height: 4 }}
           >
             <List id="modal-commands" label="Commands">
@@ -565,7 +565,7 @@ const VirtualListProduct = ({
           <ScrollArea
             id="virtual-scroll"
             scrollY={virtual.scrollY}
-            variant="bordered"
+            frame="bordered"
             style={{ height: 6 }}
           >
             <List

@@ -27,6 +27,8 @@ const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   left.kind === right.kind
   && left.key === right.key
   && left.blockVariant === right.blockVariant
+  && left.frame === right.frame
+  && left.selectionVariant === right.selectionVariant
   && left.borderShape === right.borderShape
   && left.text === right.text
   && left.label === right.label
@@ -132,6 +134,8 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       index,
       style: current.style,
       blockVariant: current.blockVariant,
+      frame: current.frame,
+      selectionVariant: current.selectionVariant,
       borderShape: current.borderShape,
       text: current.text,
       textStyle: current.textStyle,

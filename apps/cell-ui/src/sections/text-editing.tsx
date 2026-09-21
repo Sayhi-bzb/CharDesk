@@ -48,7 +48,7 @@ export const TextEditingDemo = () => {
           id="editor-document"
           label="Document"
           state={document.snapshot}
-          variant="bordered"
+          frame="bordered"
           style={{ height: 7 }}
         />
       </Box>

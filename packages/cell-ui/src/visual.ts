@@ -47,6 +47,23 @@ export const resolveCellTextStyle = (
   ...(state.composing ? { underline: true } : {}),
 });
 
+const usesUnderlinedSelection = (node: WidgetNode): boolean =>
+  node.kind === "combobox-input"
+  || (node.kind === "text-input" && node.selectionVariant === "plain");
+
+export const resolveEditorGlyphStyle = (
+  base: CellTextStyle,
+  state: Readonly<{ selected?: boolean; composing?: boolean }>,
+  theme: CellUiTheme,
+  node: WidgetNode,
+): CellTextStyle => usesUnderlinedSelection(node)
+  ? {
+      ...base,
+      ...(!node.disabled && ((state.selected && node.focusActive) || state.composing)
+        ? { underline: true } : {}),
+    }
+  : resolveCellTextStyle(base, state, theme);
+
 const blockSurfaceStyleForNode = (
   tree: WidgetTree,
   node: WidgetNode,
@@ -56,9 +73,29 @@ const blockSurfaceStyleForNode = (
   let backgroundColor: string | undefined;
   while (current) {
     backgroundColor ??= current.textStyle.backgroundColor;
-    if (current.blockVariant !== "plain") {
+    if (current.blockVariant === "elevated") {
       return {
-        ...(current.blockVariant === "raised" ? theme.raisedSurfaceStyle : theme.surfaceStyle),
+        ...theme.elevatedSurfaceStyle,
+        ...(backgroundColor !== undefined ? { backgroundColor } : {}),
+      };
+    }
+    current = current.parentId ? tree.nodes.get(current.parentId) : undefined;
+  }
+  return null;
+};
+
+const selectionSurfaceStyleForNode = (
+  tree: WidgetTree,
+  node: WidgetNode,
+  theme: CellUiTheme,
+): CellTextStyle | null => {
+  let current: WidgetNode | undefined = node;
+  let backgroundColor: string | undefined;
+  while (current) {
+    backgroundColor ??= current.textStyle.backgroundColor;
+    if (current.selectionVariant) {
+      return {
+        ...(current.selectionVariant === "elevated" ? theme.elevatedSurfaceStyle : {}),
         ...(backgroundColor !== undefined ? { backgroundColor } : {}),
       };
     }
@@ -86,15 +123,20 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   if (isTextEditorKind(node.kind)) {
     const singleLine = node.kind === "text-input" || node.kind === "combobox-input";
     const blockSurface = blockSurfaceStyleForNode(tree, node, theme);
+    const selectionSurface = node.kind === "combobox-input"
+      ? selectionSurfaceStyleForNode(tree, node, theme)
+      : node.kind === "text-input"
+        ? node.selectionVariant === "plain" ? {} : theme.elevatedSurfaceStyle
+        : null;
     return finish(
       {
-        ...(singleLine ? theme.surfaceStyle : blockSurface ?? {}),
+        ...(selectionSurface ?? (singleLine ? theme.elevatedSurfaceStyle : blockSurface ?? {})),
         ...node.textStyle,
-        ...(projection.editingActive ? theme.focusedSurfaceStyle : {}),
+        ...(projection.editingActive && !usesUnderlinedSelection(node) ? theme.focusedSurfaceStyle : {}),
         ...(projection.disabled ? theme.disabledStyle : {}),
       },
       theme.sliderThumb,
-      singleLine || node.blockVariant !== "plain" ? "layout" : "content",
+      singleLine || node.blockVariant !== "plain" || node.frame === "bordered" ? "layout" : "content",
     );
   }
   const { owner } = projection;
@@ -103,6 +145,7 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   const primary = owner?.kind === "button" && owner.buttonVariant === "default";
   const disabled = node.disabled || owner?.disabled;
   const blockSurface = blockSurfaceStyleForNode(tree, node, theme);
+  const selectionSurface = selectionSurfaceStyleForNode(tree, node, theme);
   const confirmation = owner?.confirmation;
   if (confirmation && !disabled) {
     const { reference, phase } = confirmation;
@@ -114,9 +157,9 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   const focused = (focusNode.focused && focusNode.focusVisible) || focusNode.active;
   const base = primary
     ? disabled ? theme.surfaceStyle : theme.buttonPrimaryStyle
-    : blockSurface
-      ? blockSurface
-      : owner?.kind === "select-trigger" ? theme.surfaceStyle : {};
+    : owner?.kind === "button" && owner.buttonVariant === "elevated"
+      ? { color: theme.foreground, ...theme.elevatedSurfaceStyle }
+    : selectionSurface ?? blockSurface ?? {};
   if (owner && isPrimitiveControlKind(owner.kind)) {
     if (rule.region === "thumb") {
       const appearance = resolveThumbAppearance({ ...base, ...node.textStyle }, projection, theme);

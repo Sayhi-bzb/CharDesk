@@ -174,7 +174,7 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
   applyStyle(target, {
     ...defaults,
     ...node.style,
-  }, node.blockVariant === "bordered");
+  }, node.frame === "bordered");
   target.setDisplay(node.kind === "accordion-content" && !node.expanded ? Display.None : Display.Flex);
   if (node.kind === "accordion-trigger") {
     target.setFlexDirection(FlexDirection.Row);
