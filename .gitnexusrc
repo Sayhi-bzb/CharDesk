@@ -1,0 +1,6 @@
+{
+  "analyze": {
+    "skipAgentsMd": true,
+    "skipSkills": true
+  }
+}
