@@ -299,9 +299,11 @@ const runBuild = (mode, projects, selected, buildRunner, target, run) => {
   if (target && target !== 'app') return
 
   if (mode === 'full' || selected.has('root') || target === 'app') {
+    run(npmCommand, ['run', 'sitemap:verify'], { label: 'verify sitemap' })
     run('node', ['scripts/data/generate-welcome-canvas.mjs', '--verify'], { label: 'verify welcome canvas' })
     run(npxCommand, ['tsc', '-b'], { label: 'compile app' })
     run(npxCommand, ['vite', 'build'], { label: 'build app' })
+    run('node', ['scripts/seo/verify-build.mjs'], { label: 'verify app SEO' })
   }
   if (target === 'app') return
   const docs = projects.find(project => project.name === '@chardesk/docs')

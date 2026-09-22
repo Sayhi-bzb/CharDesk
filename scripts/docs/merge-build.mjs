@@ -1,4 +1,4 @@
-import { access, cp, mkdir, rm } from "node:fs/promises";
+import { access, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,4 +19,12 @@ await mkdir(docsOutput, { recursive: true });
 await mkdir(appAssets, { recursive: true });
 await cp(docsPages, docsOutput, { recursive: true });
 await cp(docsAssets, appAssets, { recursive: true });
-await cp(path.join(docsBuild, "index.html"), path.join(docsOutput, "404.html"));
+const fallback = await readFile(path.join(docsBuild, "index.html"), "utf8");
+const noIndexFallback = fallback.replace(
+  "</head>",
+  '<meta name="robots" content="noindex, nofollow" /></head>',
+);
+if (noIndexFallback === fallback) {
+  throw new Error("Documentation fallback is missing a closing head element");
+}
+await writeFile(path.join(docsOutput, "404.html"), noIndexFallback);

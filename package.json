@@ -29,6 +29,8 @@
     "welcome:verify": "npm run build -w @chardesk/protocol && npm run build -w @chardesk/chargraph && node scripts/data/generate-welcome-canvas.mjs --verify",
     "showcase:generate": "npm run build:cli && node scripts/docs/generate-readme-showcase.mjs",
     "showcase:verify": "npm run build:cli && node scripts/docs/generate-readme-showcase.mjs --verify",
+    "sitemap:generate": "node scripts/seo/sitemap.mjs",
+    "sitemap:verify": "node scripts/seo/sitemap.mjs --verify",
     "characters:verify": "node scripts/data/generate-character-data.mjs --verify",
     "cell-graphics:sync": "node scripts/rendering/sync-xterm-cell-graphics.mjs",
     "fonts:sync": "node scripts/fonts/vendor-fonts.mjs",

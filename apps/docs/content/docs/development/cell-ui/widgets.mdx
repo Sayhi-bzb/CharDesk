@@ -5,7 +5,7 @@ description: State, input, scroll, and editor behavior contracts.
 
 # Cell Widget 行为规范
 
-[返回事实白板](overview) · [UI 哲学](design) · [Macintosh 标准](macintosh) · [Semantics](semantics)
+[返回事实白板](/development/cell-ui/overview) · [UI 哲学](/development/cell-ui/design) · [Macintosh 标准](/development/cell-ui/macintosh) · [Semantics](/development/cell-ui/semantics)
 
 ## 状态与主题
 
@@ -19,7 +19,7 @@ description: State, input, scroll, and editor behavior contracts.
 - `CellUiTheme` 是颜色与字符主题入口；`CellFeedbackConfig` 是反馈入口，classic 默认闪烁 2 次，instant 为 0 次。两者共享 hover、focus、press 规则。
 - [Block 外观契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#theme-consumption)分别定义背景与边框；后代状态消费最近的 Block substrate。背景不进入字符、语义或 Range Copy；边框会进入。
 - Select 与 Combobox 的 `variant` 共同决定 Trigger/Input 和 Content 背景：默认 `elevated` 使用 `elevatedSurfaceStyle`，`plain` 透明。Content 的 `frame` 独立控制下拉层边框。TextInput 的同名 `variant` 只控制自身行，默认 `elevated`；局部背景覆盖主题背景。ComboboxInput 与 plain TextInput 活动时保留背景，SelectTrigger 的 focus 与 press 沿用底色反色规则，disabled 保留底色并使用禁用文字色。
-- `widget-capabilities.ts` 拥有能力表；状态投影与外观配方分离，painter 只绘制解析结果。局部 `textStyle` 不重定义状态语言；[底座契约](primitives)拥有模块边界。
+- `widget-capabilities.ts` 拥有能力表；状态投影与外观配方分离，painter 只绘制解析结果。局部 `textStyle` 不重定义状态语言；[底座契约](/development/cell-ui/primitives)拥有模块边界。
 - 统一控件的按压与高亮最多反色一次；确认阶段独占颜色，相对进入时的有效颜色对执行反色／恢复，disabled 拒绝全部临时强调。default Button 保留 primary 基底，elevated 使用 `elevatedSurfaceStyle` 与普通文字色，outline 保留字符边框，ghost 静止时透明。
 - 解析后的状态背景覆盖 Widget 完整布局矩形，包括空白 Cell；透明状态不填充。
 - border、disclosure、Tab underline 和 scrollbar 是公共 chrome；全部写入 owner-aware CellBuffer。
@@ -56,7 +56,7 @@ description: State, input, scroll, and editor behavior contracts.
 - Surface 的基础 Canvas 与 Overlay Canvas 由同一呈现节点注册表拥有；hover、pointer、wheel 共用归属判断。Canvas 事件只接受当前 Surface 的呈现节点；真实编辑 textarea 的 pointer down 按同一 Scene 命中规则分派，其他 DOM 目标不进入 Cell 指针命令。Widget、clip 与 modal scope 由 Scene 判定。所有层使用基础 Canvas 原点和共享 Cell metrics，浮层可以超出基础 viewport。浮层提交、scroll 与 resize 会重新计算静止鼠标的命中。
 
 - pointer down 定位焦点；Button、SelectTrigger、SelectItem、ComboboxItem、Checkbox、Toggle、RadioItem、ListItem、MenuItem、TreeItem、Tab、GridCell 移出时撤去按压、移回时恢复，pointer up 仍命中原目标才激活。drag winner、cancel、capture loss 或 blur 永久取消本轮 press。
-- Button、Checkbox、Toggle、RadioItem 与 SelectItem 接受 activate 后，在物理释放后播放 `activationBlinkCount` 次完整确认；AT 直接激活立即播放，`0` 立即完成。SelectTrigger 展开与 Radio `select-radio` 导航不闪烁。SelectItem 等待释放及播放期间锁定导航、选择和滚动；控制器完成后执行一次 `dismiss`。[反馈会话契约](primitives#生命周期)拥有阶段时长和呈现确认。
+- Button、Checkbox、Toggle、RadioItem 与 SelectItem 接受 activate 后，在物理释放后播放 `activationBlinkCount` 次完整确认；AT 直接激活立即播放，`0` 立即完成。SelectTrigger 展开与 Radio `select-radio` 导航不闪烁。SelectItem 等待释放及播放期间锁定导航、选择和滚动；控制器完成后执行一次 `dismiss`。[反馈会话契约](/development/cell-ui/primitives#生命周期)拥有阶段时长和呈现确认。
 - SelectItem/MenuItem pointer hover 同步临时焦点；ComboboxItem hover 同步 active descendant；均不提交选择或执行动作。随后 Enter 确认临时目标。其他组件的 hover 不派发业务命令。
 - Tab/Shift+Tab 在当前焦点 scope 内遍历可用控件；RadioGroup 折叠为已选可用项或首个可用项一个入口，到 Surface 边界交还浏览器。
 - Grid 导航与入口选择由 `grid-navigation.ts` 拥有，FocusManager 仅保存每个 Grid 的目标 ID，卸载清理。禁用／删除焦点按入口规则收敛，不改写业务选择；全部 disabled 时跳过。Semantic DOM 保留 Surface 管理的程序化焦点，不维护另一套 Tab 顺序。Cell Range 与 Grid selection 独立，范围拖动不激活格子，复制包含可见 `✓` 和边框。

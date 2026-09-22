@@ -18,6 +18,12 @@ import {
 } from "@/lib/docs-head";
 import { baseOptions } from "@/lib/layout";
 import { docs, source } from "@/lib/source";
+import {
+  createDocsSeo,
+  DOCS_SOCIAL_IMAGE,
+  DOCS_SOCIAL_IMAGE_ALT,
+  serializeStructuredData,
+} from "@/lib/seo";
 
 export async function loader({ params }: Route.LoaderArgs) {
   const slugs = (params["*"] ?? "").split("/").filter(Boolean);
@@ -27,10 +33,17 @@ export async function loader({ params }: Route.LoaderArgs) {
   return {
     path: page.path,
     pageTree: await source.serializePageTree(source.getPageTree()),
+    seo: createDocsSeo(slugs, page.data),
   };
 }
 
-function Content({ path }: { path: string }) {
+function Content({
+  path,
+  seo,
+}: {
+  path: string;
+  seo: ReturnType<typeof createDocsSeo>;
+}) {
   const page = docs.getPage(path);
   if (!page) throw new Error(`Unknown documentation page: ${path}`);
 
@@ -39,8 +52,26 @@ function Content({ path }: { path: string }) {
 
   return (
     <DocsPage toc={toc}>
-      <title>{`${page.title} | CharDesk Docs`}</title>
-      <meta name="description" content={page.description} />
+      <title>{seo.title}</title>
+      <meta name="description" content={seo.description} />
+      <meta name="robots" content="index, follow" />
+      <link rel="canonical" href={seo.canonical} />
+      <meta property="og:type" content="article" />
+      <meta property="og:url" content={seo.canonical} />
+      <meta property="og:title" content={seo.title} />
+      <meta property="og:description" content={seo.description} />
+      <meta property="og:image" content={DOCS_SOCIAL_IMAGE} />
+      <meta property="og:image:alt" content={DOCS_SOCIAL_IMAGE_ALT} />
+      <meta property="og:site_name" content="CharDesk" />
+      <meta property="og:locale" content="en_US" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={seo.title} />
+      <meta name="twitter:description" content={seo.description} />
+      <meta name="twitter:image" content={DOCS_SOCIAL_IMAGE} />
+      <meta name="twitter:image:alt" content={DOCS_SOCIAL_IMAGE_ALT} />
+      <script type="application/ld+json">
+        {serializeStructuredData(seo.structuredData)}
+      </script>
       <meta name="chardesk-docs-head" content={DOCS_HEAD} />
       <DocsTitle>{page.title}</DocsTitle>
       <DocsDescription>{page.description}</DocsDescription>
@@ -62,7 +93,7 @@ function Content({ path }: { path: string }) {
 }
 
 export default function DocsRoute({ loaderData }: Route.ComponentProps) {
-  const { pageTree, path } = useFumadocsLoader(loaderData);
+  const { pageTree, path, seo } = useFumadocsLoader(loaderData);
 
   return (
     <DocsLayout
@@ -70,7 +101,7 @@ export default function DocsRoute({ loaderData }: Route.ComponentProps) {
       tree={pageTree}
       slots={{ container: DocsShellContainer }}
     >
-      <Content path={path} />
+      <Content path={path} seo={seo} />
     </DocsLayout>
   );
 }

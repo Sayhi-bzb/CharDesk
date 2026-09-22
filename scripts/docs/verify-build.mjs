@@ -138,6 +138,10 @@ for (const route of removedDevelopmentRoutes) {
 const internalLinks = new Set();
 for (const entry of htmlPages) {
   const html = await readFile(path.join(docsOutput, entry), "utf8");
+  const route = entry === "index.html"
+    ? ""
+    : entry.replace(/index\.html$/u, "");
+  const canonical = `https://chardesk.com/docs/${route}`;
   if (
     !html.includes("chardesk-docs-head") ||
     !html.includes(`data-docs-head="${docsHead}"`)
@@ -147,9 +151,31 @@ for (const entry of htmlPages) {
   if (html.includes("/docs/docs")) {
     throw new Error(`Duplicated docs prefix in ${entry}`);
   }
+  const canonicalMatches = html.match(/rel="canonical"/gu) ?? [];
+  if (canonicalMatches.length !== 1 || !html.includes(`href="${canonical}"`)) {
+    throw new Error(`Invalid canonical URL in ${entry}: expected ${canonical}`);
+  }
+  for (const required of [
+    '<meta name="robots" content="index, follow"',
+    'property="og:title"',
+    'property="og:description"',
+    'name="twitter:card"',
+    'type="application/ld+json"',
+    '"@type":"TechArticle"',
+    '"@type":"BreadcrumbList"',
+  ]) {
+    if (!html.includes(required)) {
+      throw new Error(`Documentation SEO metadata is missing from ${entry}: ${required}`);
+    }
+  }
   for (const match of html.matchAll(/href="(\/docs(?:\/[^"?#]*)?)/g)) {
     internalLinks.add(match[1]);
   }
+}
+
+const fallbackHtml = await readFile(path.join(docsOutput, "404.html"), "utf8");
+if (!fallbackHtml.includes('name="robots" content="noindex, nofollow"')) {
+  throw new Error("Documentation 404 fallback must not be indexed");
 }
 
 for (const entry of markdownPages) {

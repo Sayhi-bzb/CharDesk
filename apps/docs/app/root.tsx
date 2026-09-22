@@ -47,6 +47,8 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
   return (
     <DocsErrorShell>
+      <title>{notFound ? "Page not found | CharDesk Docs" : "Documentation unavailable | CharDesk Docs"}</title>
+      <meta name="robots" content="noindex, nofollow" />
       <div className="mx-auto w-full max-w-3xl p-8">
         <p className="mb-2 text-sm text-muted-foreground">
           {notFound ? "404" : "Error"}

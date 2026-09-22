@@ -12,6 +12,18 @@ const html = await readFile(path.join(siteOutput, "index.html"), "utf8");
 if (!html.includes("https://chardesk.com/chargraph/")) {
   throw new Error("CharGraph build is missing its canonical URL.");
 }
+for (const required of [
+  '<meta name="robots" content="index, follow"',
+  'property="og:title"',
+  'property="og:image:alt"',
+  'name="twitter:card"',
+  'type="application/ld+json"',
+  '"@type": "WebApplication"',
+]) {
+  if (!html.includes(required)) {
+    throw new Error(`CharGraph build is missing SEO metadata: ${required}`);
+  }
+}
 if (!html.includes("/chargraph/assets/")) {
   throw new Error("CharGraph build assets are not scoped to /chargraph/.");
 }
