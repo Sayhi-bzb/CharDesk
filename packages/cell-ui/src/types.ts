@@ -63,6 +63,8 @@ export type WidgetKind =
   | "overlay"
   | "text"
   | "button"
+  | "badge"
+  | "badge-action"
   | "checkbox"
   | "toggle"
   | "progress"
@@ -129,6 +131,7 @@ export type WidgetNode = Readonly<{
   progressVariant: import("./progress.js").ProgressVariant;
   separatorVariant: import("./separator.js").SeparatorVariant;
   buttonVariant: import("./button.js").ButtonVariant;
+  badgeTone: import("./badge.js").BadgeTone;
   sliderValue: number;
   sliderMin: number;
   sliderMax: number;

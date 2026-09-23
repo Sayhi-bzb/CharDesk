@@ -2,7 +2,7 @@ import type { WidgetKind, WidgetNode } from "./types.js";
 
 export const isPrimitiveControlKind = (kind: WidgetKind): boolean =>
   kind === "accordion-trigger" ||
-  kind === "button" || kind === "checkbox" || kind === "select-trigger" || kind === "select-item" || kind === "combobox-item"
+  kind === "button" || kind === "badge-action" || kind === "checkbox" || kind === "select-trigger" || kind === "select-item" || kind === "combobox-item"
   || kind === "toggle" || kind === "radio-item" || kind === "slider" || kind === "range-slider-thumb"
   || kind === "list-item" || kind === "menu-item" || kind === "tree-item" || kind === "tab" || kind === "grid-cell";
 
@@ -37,6 +37,7 @@ export const isTextEditorKind = (kind: WidgetKind): boolean =>
 export const isActionableKind = (kind: WidgetKind): boolean =>
   kind === "accordion-trigger" ||
   kind === "button"
+  || kind === "badge-action"
   || kind === "checkbox"
   || kind === "toggle"
   || kind === "radio-item"
@@ -53,6 +54,7 @@ const none: FeedbackRule = { region: "none", press: false, activation: false, ma
 const rules: Partial<Record<WidgetKind, FeedbackRule>> = {
   "accordion-trigger": { ...control, press: true },
   button: tap,
+  "badge-action": tap,
   checkbox: tap,
   toggle: tap,
   "radio-item": tap,

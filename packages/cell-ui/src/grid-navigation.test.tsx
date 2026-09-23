@@ -75,7 +75,7 @@ it("projects fixed marks and identical pointer/keyboard emphasis without reflow"
     const runtime = new CellUiRuntime({ viewport: { width: 24, height: 4 }, theme });
     const view = <Root>{grid("a")}</Root>;
     const idle = runtime.render(view);
-    expect(idle.buffer.toText()).toContain("✓ Value");
+    expect(idle.buffer.toText()).toContain("✓ Valu");
     const selected = idle.scene.entries.get("a-1-4")!.layoutBounds;
     expect(idle.buffer.get(selected.x, selected.y)?.style.backgroundColor).toBeUndefined();
     for (const state of [{ hoveredId: "a-1-4", focusVisible: false }, { focusedId: "a-1-4" }]) {
@@ -109,10 +109,10 @@ it("clips selection chrome inside a narrow cell without touching its neighbor", 
     <GridCell id="neighbor" rowIndex={1} columnIndex={2} style={{ width: 7 }}><Text>Next</Text></GridCell>
   </GridRow></Grid></Root>;
   const frame = runtime.render(view(), { hoveredId: "narrow" });
-  expect(frame.buffer.toText().split("\n")[0]?.slice(0, 5)).toBe("* Alp");
+  expect(frame.buffer.toText().split("\n")[0]?.slice(0, 5)).toBe(" * A ");
   expect(frame.buffer.get(5, 0)?.style.backgroundColor).toBeUndefined();
   const disabled = runtime.render(view(true), { focusedId: "narrow", hoveredId: "narrow", pressActiveId: "narrow" });
-  expect(disabled.buffer.get(0, 0)?.text).toBe("*");
+  expect(disabled.buffer.get(0, 0)?.text).toBe(" ");
   expect(disabled.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
   runtime.dispose();
 });

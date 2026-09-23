@@ -4,6 +4,9 @@ import {
   CLASSIC_MAC_LIGHT_THEME,
 } from "./theme.js";
 import { readCellCssTheme } from "./browser-theme.js";
+import { BADGE_TONES } from "./badge.js";
+
+const asRgb = (hex: string) => `rgb(${hex.slice(1).match(/../g)!.map((part) => Number.parseInt(part, 16)).join(", ")})`;
 
 afterEach(() => document.body.replaceChildren());
 
@@ -57,6 +60,15 @@ describe("readCellCssTheme", () => {
     expect(theme.scrollTrackStyle.color).toBe("rgb(100, 110, 120)");
   });
 
+  it("reads paired Badge tone tokens independently", () => {
+    const { theme } = readCellCssTheme(mountTheme({
+      "--cell-badge-success": "rgb(1, 20, 3)",
+      "--cell-badge-success-foreground": "rgb(240, 250, 241)",
+    }));
+    expect(theme.badgeStyles.success).toEqual({ color: "rgb(240, 250, 241)", backgroundColor: "rgb(1, 20, 3)" });
+    expect(theme.badgeStyles.error).toEqual(CLASSIC_MAC_LIGHT_THEME.badgeStyles.error);
+  });
+
   it("can consume the complete dark inverse through CSS tokens", () => {
     const { theme } = readCellCssTheme(mountTheme({
       "--cell-background": CLASSIC_MAC_DARK_THEME.background,
@@ -65,6 +77,10 @@ describe("readCellCssTheme", () => {
       "--cell-surface-elevated": CLASSIC_MAC_DARK_THEME.elevatedSurfaceStyle.backgroundColor!,
       "--cell-button-solid": CLASSIC_MAC_DARK_THEME.buttonSolidStyle.backgroundColor!,
       "--cell-button-solid-foreground": CLASSIC_MAC_DARK_THEME.buttonSolidStyle.color!,
+      ...Object.fromEntries(BADGE_TONES.flatMap((tone) => [
+        [`--cell-badge-${tone}`, CLASSIC_MAC_DARK_THEME.badgeStyles[tone].backgroundColor!],
+        [`--cell-badge-${tone}-foreground`, CLASSIC_MAC_DARK_THEME.badgeStyles[tone].color!],
+      ])),
       "--cell-highlight": CLASSIC_MAC_DARK_THEME.focusedSurfaceStyle.backgroundColor!,
       "--cell-hover": CLASSIC_MAC_DARK_THEME.hoveredItemStyle.backgroundColor!,
       "--cell-highlight-foreground": CLASSIC_MAC_DARK_THEME.focusedSurfaceStyle.color!,
@@ -84,6 +100,10 @@ describe("readCellCssTheme", () => {
 
     expect(theme).toMatchObject({
       ...CLASSIC_MAC_DARK_THEME,
+      badgeStyles: Object.fromEntries(BADGE_TONES.map((tone) => [tone, {
+        color: asRgb(CLASSIC_MAC_DARK_THEME.badgeStyles[tone].color!),
+        backgroundColor: asRgb(CLASSIC_MAC_DARK_THEME.badgeStyles[tone].backgroundColor!),
+      }])),
       background: "rgb(0, 0, 0)",
       foreground: "rgb(255, 255, 255)",
       surfaceStyle: { backgroundColor: "rgb(0, 0, 0)" },

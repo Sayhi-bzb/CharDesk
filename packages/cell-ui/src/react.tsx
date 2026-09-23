@@ -21,6 +21,7 @@ import {
 } from "./button.js";
 import { resolveSurfaceVariant, type SurfaceVariant } from "./surface-variant.js";
 import type { CellUiRecipe } from "./recipe.js";
+import { resolveBadgeTone, type BadgeTone } from "./badge.js";
 import { resolveSeparatorVariant, type SeparatorVariant } from "./separator.js";
 import { resolveProgressVariant, type ProgressVariant } from "./progress.js";
 import {
@@ -92,6 +93,12 @@ export type ButtonProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
+}>;
+export type BadgeProps = NamedContainerProps & Readonly<{
+  tone?: BadgeTone;
+  interactive?: boolean;
+  focused?: boolean;
+  style?: CellLayoutStyle;
 }>;
 export type CheckboxProps = NamedContainerProps & Readonly<{
   checked?: CellCheckboxState;
@@ -258,6 +265,7 @@ type PrimitiveProps =
   | OverlayProps
   | TextProps
   | ButtonProps
+  | BadgeProps
   | CheckboxProps
   | ToggleProps
   | ProgressProps
@@ -320,6 +328,7 @@ export const DialogDescription = primitive<DialogDescriptionProps>("text");
 export const DialogFooter = primitive<DialogFooterProps>("box");
 export const Text = primitive<TextProps>("text");
 export const Button = primitive<ButtonProps>("button");
+export const Badge = primitive<BadgeProps>("badge");
 export const Checkbox = primitive<CheckboxProps>("checkbox");
 export const Toggle = primitive<ToggleProps>("toggle");
 export const Progress = primitive<ProgressProps>("progress");
@@ -375,6 +384,7 @@ export type WidgetDescriptor = Readonly<{
   progressVariant: ProgressVariant;
   separatorVariant: SeparatorVariant;
   buttonVariant: ButtonVariant;
+  badgeTone: BadgeTone;
   sliderValue: number;
   sliderMin: number;
   sliderMax: number;
@@ -427,12 +437,16 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
     });
   }
 
-  const kind = kinds.get(element.type);
+  const primitiveKind = kinds.get(element.type);
+  const props = element.props as Record<string, unknown>;
+  const kind = element.type === Badge && props.interactive === true
+    ? "badge-action" : primitiveKind;
   if (!kind) {
     throw new TypeError("Cell UI only accepts Cell-native descriptors.");
   }
-
-  const props = element.props as Record<string, unknown>;
+  if (kind === "badge-action" && (typeof props.id !== "string" || !props.id.trim())) {
+    throw new TypeError("Interactive Badge requires a non-empty id.");
+  }
   const isDialog = element.type === Dialog;
   if (isDialog && (typeof props.id !== "string" || !props.id.trim())) {
     throw new TypeError("Dialog requires a non-empty id.");
@@ -549,6 +563,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
     buttonVariant: kind === "button"
       ? resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")
       : "solid",
+    badgeTone: kind === "badge" || kind === "badge-action"
+      ? resolveBadgeTone(props.tone) : "neutral",
     sliderValue: kind === "range-slider-thumb"
       ? typeof props.value === "number" ? props.value : sliderRange.min
       : normalizeCellSliderValue(

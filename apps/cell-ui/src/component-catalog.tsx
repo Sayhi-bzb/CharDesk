@@ -4,6 +4,7 @@ import {
   DialogComponentDemo,
   AccordionComponentDemo,
   ButtonComponentDemo,
+  BadgeComponentDemo,
   CheckboxComponentDemo,
   ComboboxComponentDemo,
   ToggleComponentDemo,
@@ -48,6 +49,7 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   text: ["react.tsx", "text-viewport.ts"],
   box: ["react.tsx", "layout.ts"],
   button: ["react.tsx", "button.ts"],
+  badge: ["react.tsx", "badge.ts", "theme.ts"],
   select: ["react.tsx", "browser-collections.tsx"],
   combobox: ["react.tsx", "combobox.ts", "browser-combobox.tsx"],
   checkbox: ["react.tsx", "primitive-behavior.ts"],
@@ -338,6 +340,34 @@ export function ButtonExample() {
       { name: "children?", type: "ReactNode", description: "Cell-native button content." },
       { name: "style?", type: "CellLayoutStyle", description: "Layout and horizontal padding; defaults to one content Cell per side." },
       { name: "textStyle?", type: "CellTextStyle", description: "Base foreground, background, and emphasis." },
+    ],
+  },
+  {
+    slug: "badge",
+    title: "Badge",
+    group: "components",
+    navigationOrder: 0.5,
+    description: "Show a compact state label, optionally acting as a command target.",
+    probeId: "component-badge",
+    Demo: BadgeComponentDemo,
+    usage: `import { Badge, Root, Text } from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function BadgeExample() {
+  return <CellSurface viewport={{ width: 22, height: 1 }} onCommand={() => {}}>
+    <Root style={{ direction: "row", gap: 1 }}>
+      <Badge tone="success"><Text>Done</Text></Badge>
+      <Badge id="retry" tone="error" interactive><Text>Retry</Text></Badge>
+    </Root>
+  </CellSurface>;
+}`,
+    api: [
+      { name: "tone?", type: '"neutral" | "info" | "success" | "warning" | "error"', description: "Semantic color pair; neutral by default." },
+      { name: "interactive?", type: "boolean", description: "Opt in to focus, pointer, keyboard, and assistive activation; false by default." },
+      { name: "id?", type: "string", description: "Required non-empty command target when interactive." },
+      { name: "label?", type: "string", description: "Accessible name override; descendant text is the fallback." },
+      { name: "disabled?", type: "boolean", description: "Disables an interactive Badge." },
+      { name: "style?", type: "CellLayoutStyle", description: "Cell layout; one content Cell is reserved on each side by default." },
     ],
   },
   {

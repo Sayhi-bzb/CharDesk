@@ -3,6 +3,7 @@ import {
   iterateGraphemes,
 } from "@chardesk/protocol";
 import Yoga, {
+  Align,
   Direction,
   Display,
   Edge,
@@ -139,9 +140,6 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
         direction: "row",
         minHeight: node.kind === "tab" ? 2 : 1,
         flexShrink: 0,
-        paddingLeft: node.kind === "tree-item" || node.kind === "list-item"
-          ? collectionChromeMetrics(node).contentInset
-          : 0,
       }
     : node.kind === "slider" || node.kind === "range-slider"
       ? { width: 20, minWidth: 2, minHeight: 1, flexShrink: 0 }
@@ -149,6 +147,8 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
       ? { width: 1, height: 1, flexShrink: 0 }
     : node.kind === "button"
       ? { direction: "row", minHeight: 1, flexShrink: 0 }
+    : node.kind === "badge" || node.kind === "badge-action"
+      ? { direction: "row", height: 1, flexShrink: 0 }
     : node.kind === "checkbox"
       ? {
           direction: "row",
@@ -180,6 +180,7 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     ...defaults,
     ...node.style,
   }, node.frame === "bordered");
+  if (node.kind === "badge" || node.kind === "badge-action") target.setAlignSelf(Align.FlexStart);
   target.setDisplay(node.kind === "accordion-content" && !node.expanded ? Display.None : Display.Flex);
   if (node.kind === "accordion-trigger") {
     target.setFlexDirection(FlexDirection.Row);
@@ -187,10 +188,15 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     target.setFlexShrink(0);
     target.setPadding(Edge.Left, (node.style.paddingLeft ?? node.style.padding ?? 0) + 2);
   }
-  // Grid selection chrome is reserved independently of consumer padding.
-  if (node.kind === "grid-cell") {
-    target.setPadding(Edge.Left,
-      (node.style.paddingLeft ?? node.style.padding ?? 0) + collectionChromeMetrics(node).contentInset);
+  if (node.kind === "list-item" || node.kind === "tree-item" || node.kind === "grid-cell") {
+    const chrome = collectionChromeMetrics(node);
+    const requestedLeft = (node.style.paddingLeft ?? node.style.padding ?? 0) + chrome.contentInset;
+    const requestedRight = (node.style.paddingRight ?? node.style.padding ?? 0) + chrome.trailingGuard;
+    const explicitWidth = typeof node.style.width === "number" ? Math.max(0, node.style.width) : null;
+    const left = explicitWidth === null ? requestedLeft : Math.min(requestedLeft, Math.max(0, explicitWidth - 1));
+    const right = explicitWidth === null ? requestedRight : Math.min(requestedRight, Math.max(0, explicitWidth - left - 1));
+    target.setPadding(Edge.Left, left);
+    target.setPadding(Edge.Right, right);
   }
   // The last inner row belongs to Tab chrome, in addition to user padding.
   if (node.kind === "tab") {

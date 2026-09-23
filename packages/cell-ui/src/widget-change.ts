@@ -31,6 +31,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.progressVariant === right.progressVariant
   && left.separatorVariant === right.separatorVariant
   && left.buttonVariant === right.buttonVariant
+  && left.badgeTone === right.badgeTone
   && left.sliderValue === right.sliderValue
   && left.sliderMin === right.sliderMin
   && left.sliderMax === right.sliderMax
@@ -109,6 +110,7 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.progressVariant !== after.progressVariant
   || before.separatorVariant !== after.separatorVariant
   || before.buttonVariant !== after.buttonVariant
+  || before.badgeTone !== after.badgeTone
   || before.surfaceVariant !== after.surfaceVariant
   || before.frame !== after.frame
   || before.borderShape !== after.borderShape

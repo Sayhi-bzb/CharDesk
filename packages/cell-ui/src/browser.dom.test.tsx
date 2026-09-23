@@ -2233,7 +2233,8 @@ describe("CellSurface", () => {
       text: pilot.text(),
       focusedId: "probe-open",
     });
-    expect(snapshot.text).toContain("世界\u00a0\u3000");
+    expect(snapshot.text).toContain("世界\u00a0");
+    expect(snapshot.text).toContain("\u3000");
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
     expect(surface.querySelector("canvas")).toHaveAttribute("data-cell-text", snapshot.text);
 

@@ -77,6 +77,12 @@ const surfaceStyleForNode = (
   while (current) {
     backgroundColor ??= current.textStyle.backgroundColor;
     hasSurfaceOwner ||= current.surfaceVariant !== null;
+    if (current.kind === "badge" || current.kind === "badge-action") {
+      return {
+        ...theme.badgeStyles[current.badgeTone],
+        ...(backgroundColor !== undefined ? { backgroundColor } : {}),
+      };
+    }
     if (current.surfaceVariant === "surface") {
       return {
         ...theme.elevatedSurfaceStyle,

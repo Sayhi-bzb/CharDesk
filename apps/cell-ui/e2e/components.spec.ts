@@ -7,6 +7,7 @@ const navigationGroups = [
     name: "Components",
     links: [
       ["Button", "#/components/button"],
+      ["Badge", "#/components/badge"],
       ["Select", "#/components/select"],
       ["Combobox", "#/components/combobox"],
       ["Slider", "#/components/slider"],
@@ -39,7 +40,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   const nav = page.getByRole("navigation", { name: "Cell UI" });
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
   await expect(page.locator(".gallery-brand")).toHaveAttribute("href", "#/components/button");
-  await expect(nav.getByRole("link")).toHaveCount(16);
+  await expect(nav.getByRole("link")).toHaveCount(17);
   for (const groupDefinition of navigationGroups) {
     const group = nav.getByRole("group", { name: groupDefinition.name });
     await expect(group).toBeVisible();
@@ -652,6 +653,12 @@ test("Cell Range clears when Preview focus moves outside its Surface", async ({ 
 test("List shares focus, selection, disabled state, and semantic actions", async ({ page }) => {
   await page.goto("/#/components/list");
   const surface = page.getByLabel("List component");
+  const probe = await readCellProbe(surface);
+  const betaCells = probe.cells.filter((cell) => cell.ownerId === "component-list-beta")
+    .sort((left, right) => left.x - right.x);
+  expect(betaCells[0]?.text).toBe(" ");
+  expect(betaCells[1]?.text).toBe("✓");
+  expect(betaCells.at(-1)?.text).toBe(" ");
   const beta = page.getByRole("option", { name: "Beta" });
   const disabled = page.getByRole("option", { name: "Disabled" });
   await expect(page.getByRole("option")).toHaveCount(4);

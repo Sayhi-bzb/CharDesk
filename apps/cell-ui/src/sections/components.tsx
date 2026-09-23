@@ -10,6 +10,7 @@ import {
   AccordionTrigger,
   AccordionContent,
   Button,
+  Badge,
   Checkbox,
   Combobox,
   ComboboxContent,
@@ -461,6 +462,36 @@ export const ButtonComponentDemo = () => {
   />;
 };
 
+export const BadgeComponentDemo = () => {
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  return <ComponentPlayground
+    id="component-badge-playground"
+    focusedId={focusedId}
+    onCommand={(command) => {
+      if (command.type === "focus") setFocusedId(command.targetId);
+    }}
+    label="Badge component"
+    probeId="component-badge"
+    previewMinColumns={26}
+    preview={<Box style={{ direction: "column", gap: 1 }}>
+      <Box style={{ direction: "row", gap: 1 }}>
+        <Badge id="component-badge-neutral" tone="neutral"><Text>Waiting</Text></Badge>
+        <Badge id="component-badge-info" tone="info"><Text>Syncing</Text></Badge>
+        <Badge id="component-badge-success" tone="success"><Text>Done</Text></Badge>
+      </Box>
+      <Box style={{ direction: "row", gap: 1 }}>
+        <Badge id="component-badge-warning" tone="warning"><Text>Delayed</Text></Badge>
+        <Badge id="component-badge-error" tone="error"><Text>Failed</Text></Badge>
+      </Box>
+      <Box style={{ direction: "row", gap: 1 }}>
+        <Badge id="component-badge-retry" tone="error" interactive
+          focused={focusedId === "component-badge-retry"}><Text>Retry</Text></Badge>
+        <Badge id="component-badge-disabled" tone="neutral" interactive disabled><Text>Disabled</Text></Badge>
+      </Box>
+    </Box>}
+  />;
+};
+
 const selectItems = [
   { id: "component-select-light", label: "Light" },
   { id: "component-select-dark", label: "Dark" },
@@ -805,7 +836,7 @@ export const ListComponentDemo = () => {
     probeId="component-list"
   >
     <Root id="component-list-root">
-      <Box id="component-list-frame" frame="bordered" style={{ height: 6, paddingLeft: 1 }}>
+      <Box id="component-list-frame" frame="bordered" style={{ height: 6 }}>
         <List id="component-list-items" label="Greek letters">
           {list.items.map((item) => (
             <ListItem

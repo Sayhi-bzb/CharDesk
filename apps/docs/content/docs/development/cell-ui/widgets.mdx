@@ -23,7 +23,8 @@ description: State, input, scroll, and editor behavior contracts.
 - `widget-capabilities.ts` 拥有能力表；状态投影与外观配方分离，painter 只绘制解析结果。局部 `textStyle` 不重定义状态语言；[底座契约](/development/cell-ui/primitives)拥有模块边界。
 - 统一控件的按压与高亮最多反色一次；确认阶段独占颜色，相对进入时的有效颜色对执行反色／恢复，disabled 拒绝全部临时强调。solid Button 使用 `buttonSolidStyle`，surface 使用 `elevatedSurfaceStyle` 与普通文字色，outline 保留字符边框，ghost 静止时透明。
 - 解析后的状态背景覆盖 Widget 完整布局矩形，包括空白 Cell；透明状态不填充。
-- `inline-control-chrome.ts` 统一行内 spacing recipe：Button 与 TextInput 默认左右各留 1 个 content Cell，Button 可通过 `style.paddingLeft/Right` 覆盖；Checkbox、RadioItem、Toggle、Select 与 Combobox 提供固定 guard、状态标记和间隔；guard 是 owner-aware 空 Cell。border、collection disclosure、Tab underline 和 scrollbar 保持独立 chrome 职责。
+- `inline-control-chrome.ts` 统一行内 spacing recipe：Button、Badge 与 TextInput 默认左右各留 1 个 content Cell，Button/Badge 可通过 `style.paddingLeft/Right` 覆盖；Checkbox、RadioItem、Toggle、Select 与 Combobox 提供固定 guard、状态标记和间隔；guard 是 owner-aware 空 Cell。border、collection disclosure、Tab underline 和 scrollbar 保持独立 chrome 职责。
+- Badge 默认是只读状态文字；`interactive` 才加入共享焦点、按压、确认和 `activate` 命令。`tone` 从主题的成对前景／背景色中取值，文字和语义不依赖颜色；不自动作为 live region 播报。
 
 ## Primitive 快照
 
@@ -33,6 +34,7 @@ description: State, input, scroll, and editor behavior contracts.
 | Overlay | root layer、clip，默认 Elevated | Escape/outside down dismiss；modal `dialog` |
 | Dialog / Title / Description / Footer | 复用 Overlay，默认居中、36 Cell 宽、`surface` variant 及边框；`surface` 使用 elevated surface token，`ghost` 使用 base surface token，弹窗均不透明；Title/Description 保留字符，Footer 只排列按钮 | 条件挂载；modal/outside-click 默认开启；初始焦点、模态 Tab 循环、Escape 与恢复焦点由共享底座拥有 |
 | Button | 单行填充矩形；默认左右各 1 Cell，`style.paddingLeft/Right` 可分别覆盖 | 全局 focus traversal；完整 tap、Enter、Space 或 AT 激活 |
+| Badge | 单行内容宽度，文字左右各 1 Cell；`neutral/info/success/warning/error` 由主题着色，无边框字符 | 默认只读、无焦点和动作；`interactive` 要求稳定 `id`，成为 button 并沿用完整 tap、Enter、Space、AT 激活；disabled 不激活 |
 | Accordion / Item / Trigger / Content | `▸` / `▾` 显示展开状态；标题消费共享反色与 press，无确认闪烁 | 多项独立展开；tap、Enter、Space 输出 Item 的 `set-expanded`；上下/Home/End 在同组可用标题间导航，不循环 |
 | Checkbox | ` [ ] Label ` / ` [x] Label ` / ` [-] Label `；两侧 guard、三 Cell 标记及内容间隔由 renderer 拥有 | checked 与 mixed 进入 Semantic DOM；完整行 tap、Enter、Space 或 AT 激活，disabled 跳过 |
 | Toggle | ` ○ Bold ` / ` ● Bold `；两侧 guard、状态灯及内容间隔由 renderer 拥有，状态灯取自全局主题 | button + aria-pressed；整行 tap/Enter/Space 使用统一 press 与确认反馈；状态灯和 guard 保留在字符快照及复制中 |
@@ -43,11 +45,11 @@ description: State, input, scroll, and editor behavior contracts.
 | RangeSlider | `RangeSlider` 拥有共享单行轨道，两个直接 `RangeSliderThumb` 分别拥有 `id/label/value`；外轨 `─`、双 thumb 之间 `━`；thumb 复用 Slider 的统一外观配方 | 两个 thumb 独立 focus 并沿用 `set-value`，无确认闪烁；点击轨道选择最近 thumb，平局优先已 focus thumb再 lower；thumb 不交叉，区间不整体拖动；Semantic DOM 投影 named group 与两个受彼此约束的 numeric slider |
 | Select | 填充 Trigger＋`▾/▴`，Content 锚定并按 viewport 上下翻转，selected item 使用 `✓`；共享 inline chrome 固定左右 guard 及右侧间隔/标记 | focus 与 committed selection 分离；Trigger 只展开，item 的 Enter/click 立即提交并确认闪烁，确认结束后 dismiss；Escape/outside/blur 可提前关闭并保留提交值 |
 | Combobox | 单行填充 Input＋`▾/▴`，Content 复用 Select 的浮层、scroll、`✓` 和右侧保护 Cell；active item 临时反色 | 关闭时点击输入行任意位置展开；展开后文字区保留编辑，箭头及其尾部保护 Cell 切换关闭。DOM focus 始终留在 Input，`aria-activedescendant` 指向 active item；本地稳定子串过滤，Enter/click 提交，Escape/Tab/outside 恢复已选 label；IME 只在 composition commit 后过滤 |
-| List | 固定 2 Cell 选择列，selected 使用全局 `collectionSelectedIndicator`（默认 `✓`）；整行临时反色 | Up/Down/Home/End 仅定位；完整 tap、Enter/Space 即时激活，无确认闪烁 |
+| List | Item 左右各 1 Cell guard；guard 内侧为 2 Cell 选择列，selected 使用全局 `collectionSelectedIndicator`（默认 `✓`）；用户 padding 在 chrome 内侧叠加，整行临时反色 | Up/Down/Home/End 仅定位；完整 tap、Enter/Space 即时激活，无确认闪烁 |
 | Menu | 整行临时反色，无持久选择标记 | hover 更新临时导航目标；Up/Down/Home/End 导航；完整 tap、Enter/Space 在确认完成后执行，取消丢弃待执行动作 |
-| Tree | 每层缩进 2 Cell，独立 `▾/▸` 展开列、`✓` 选择列及 label | Left/Right 层级导航；branch expand/collapse，leaf activate；无确认闪烁；折叠移除焦点后代时收敛到仍可用祖先 |
+| Tree | Item 左右各 1 Cell guard；内侧每层缩进 2 Cell，独立 `▾/▸` 展开列、`✓` 选择列及 label；用户 padding 叠加于 chrome 内侧 | Left/Right 层级导航；branch expand/collapse，leaf activate；无确认闪烁；折叠移除焦点后代时收敛到仍可用祖先 |
 | Tabs | selected 保留第二行 `▬`，临时反色不改变当前页 | Left/Right wrap、Home/End 即时聚焦并切换可用页面，无确认闪烁；`tab` 与 `tabpanel` relations |
-| Grid | GridCell 固定预留 2 Cell 选择列，selected 使用全局 `collectionSelectedIndicator`；外部宽度不变，用户 padding 叠加于标记列内侧；临时强调覆盖整个格子 | 一个 Grid 一个 Tab 入口，优先上次可用焦点、已选可用格子、行列排序首项；方向键沿同一行／列跳过 disabled 与缺格，边界停止；Home/End 定位当前行端点；点击、Enter/Space 即时激活，无确认闪烁；row/column semantics |
+| Grid | GridCell 左右各 1 Cell guard；内侧 2 Cell 选择列使用全局 `collectionSelectedIndicator`；声明宽度不变，用户 padding 叠加于 chrome 内侧；临时强调覆盖整个格子 | 一个 Grid 一个 Tab 入口，优先上次可用焦点、已选可用格子、行列排序首项；方向键沿同一行／列跳过 disabled 与缺格，边界停止；Home/End 定位当前行端点；点击、Enter/Space 即时激活，无确认闪烁；row/column semantics |
 | TextInput / ComboboxInput | 固定 1 Cell 高、无边框；TextInput 默认 surface，实际焦点驱动整行反色，ghost TextInput 与 ComboboxInput 保留背景；三者都以选区下划线及反色 Cell Cursor 表示编辑，并保留 selection、composition | 真实 textarea；textbox/combobox value/readOnly/disabled；style 仅允许宽度与 flex 约束 |
 | TextArea | 多行 content、Block 背景与边框、terminal Cell Cursor、selection、composition；实际焦点驱动完整矩形及自身边框反色 | 真实 textarea；multiline textbox value/readOnly/disabled |
 | ScrollArea | overflow 时使用内部 rail 和 corner | wheel、page、track、thumb drag；不建立 DOM scrollbar |

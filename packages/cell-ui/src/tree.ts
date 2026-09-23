@@ -111,6 +111,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       progressVariant: current.progressVariant,
       separatorVariant: current.separatorVariant,
       buttonVariant: current.buttonVariant,
+      badgeTone: current.badgeTone,
       sliderValue: current.sliderValue,
       sliderMin: current.sliderMin,
       sliderMax: current.sliderMax,

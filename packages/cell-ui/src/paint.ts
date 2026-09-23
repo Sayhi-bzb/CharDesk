@@ -19,7 +19,7 @@ import { thumbGlyph } from "./scrollbar.js";
 import { paintBorder } from "./border.js";
 import { isActionableKind } from "./widget-capabilities.js";
 import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
-import { collectionChromeMetrics } from "./collection-chrome.js";
+import { collectionChromeGeometry } from "./collection-chrome.js";
 import {
   inlineControlChromeGeometry,
   inlineControlChromeMetrics,
@@ -292,23 +292,24 @@ export const paintScene = (
           buffer.writeGrapheme(x, entry.decorationBounds.y, " ", id, style, decorationClip, "over");
         }
       }
-      if ((node.kind === "list-item" || node.kind === "tree-item" || node.kind === "grid-cell") && node.selected) {
-        const offset = collectionChromeMetrics(node).selectionOffset;
-        buffer.writeGrapheme(entry.decorationBounds.x + offset, entry.decorationBounds.y,
-          theme.collectionSelectedIndicator, id, style, decorationClip, "over");
-      }
-      if (node.kind === "tree-item") {
-        const x = entry.decorationBounds.x + collectionChromeMetrics(node).disclosureOffset;
-        buffer.writeGrapheme(
-          x,
-          entry.decorationBounds.y,
+      if (node.kind === "list-item" || node.kind === "tree-item" || node.kind === "grid-cell") {
+        const chrome = collectionChromeGeometry(node, entry.decorationBounds.width);
+        for (const offset of [chrome.leadingGuardOffset, chrome.trailingGuardOffset]) {
+          if (offset !== null) buffer.writeGrapheme(
+            entry.decorationBounds.x + offset, entry.decorationBounds.y,
+            " ", id, style, decorationClip, "over"
+          );
+        }
+        if (node.selected) buffer.writeGrapheme(
+          entry.decorationBounds.x + chrome.selectionOffset, entry.decorationBounds.y,
+          theme.collectionSelectedIndicator, id, style, decorationClip, "over"
+        );
+        if (node.kind === "tree-item") buffer.writeGrapheme(
+          entry.decorationBounds.x + chrome.disclosureOffset, entry.decorationBounds.y,
           node.hasChildren
             ? node.expanded ? theme.treeExpandedIndicator : theme.treeCollapsedIndicator
             : " ",
-          id,
-          style,
-          decorationClip,
-          "over"
+          id, style, decorationClip, "over"
         );
       }
       if (node.kind === "toggle") {

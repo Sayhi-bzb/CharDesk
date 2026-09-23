@@ -111,9 +111,11 @@ export type {
   KeyPhase,
 } from "@chardesk/keyboard";
 export type { CellUiRuntimeOptions } from "./runtime.js";
+export type { BadgeTone } from "./badge.js";
 export {
   Box,
   Button,
+  Badge,
   Checkbox,
   Toggle,
   Progress,
@@ -150,6 +152,7 @@ export {
 export type {
   BoxProps,
   ButtonProps,
+  BadgeProps,
   CheckboxProps,
   ToggleProps,
   ProgressProps,

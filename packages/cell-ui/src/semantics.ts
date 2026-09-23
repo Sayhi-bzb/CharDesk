@@ -71,6 +71,8 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
   if (node.kind === "accordion-content") return "region";
   if (node.kind === "overlay") return "dialog";
   if (node.kind === "button") return "button";
+  if (node.kind === "badge-action") return "button";
+  if (node.kind === "badge") return "paragraph";
   if (node.kind === "checkbox") return "checkbox";
   if (node.kind === "toggle") return "button";
   if (node.kind === "radio-group") return "radiogroup";

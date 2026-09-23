@@ -2,6 +2,7 @@ import type { CellTextStyle } from "./types.js";
 import type { CellBorderShape } from "./border.js";
 import type { SeparatorVariant } from "./separator.js";
 import type { ProgressVariant } from "./progress.js";
+import type { BadgeTone } from "./badge.js";
 import {
   DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS,
   type CharDeskCellCursorPaintStyle,
@@ -31,6 +32,7 @@ export type CellUiTheme = Readonly<{
   surfaceStyle: CellTextStyle;
   elevatedSurfaceStyle: CellTextStyle;
   buttonSolidStyle: CellTextStyle;
+  badgeStyles: Readonly<Record<BadgeTone, CellTextStyle>>;
   borderStyle: CellTextStyle;
   borderShape: CellBorderShape;
   cursorStyle: CellCursorStyle;
@@ -104,6 +106,13 @@ export const CLASSIC_MAC_LIGHT_THEME: CellUiTheme = Object.freeze({
   surfaceStyle: { backgroundColor: "#FFFFFF" },
   elevatedSurfaceStyle: { backgroundColor: "#E6E6E6" },
   buttonSolidStyle: { color: "#FFFFFF", backgroundColor: "#000000" },
+  badgeStyles: {
+    neutral: { color: "#000000", backgroundColor: "#E6E6E6" },
+    info: { color: "#17476B", backgroundColor: "#DDEEFF" },
+    success: { color: "#174E2B", backgroundColor: "#DFF2E2" },
+    warning: { color: "#664600", backgroundColor: "#FFF0CC" },
+    error: { color: "#8C2522", backgroundColor: "#FBE0DF" },
+  },
   borderStyle: { color: "#000000" },
   cursorStyle: Object.freeze({
     colorMode: "inverse",
@@ -135,6 +144,13 @@ export const CLASSIC_MAC_DARK_THEME: CellUiTheme = Object.freeze({
   surfaceStyle: { backgroundColor: "#000000" },
   elevatedSurfaceStyle: { backgroundColor: "#1A1A1A" },
   buttonSolidStyle: { color: "#000000", backgroundColor: "#FFFFFF" },
+  badgeStyles: {
+    neutral: { color: "#FFFFFF", backgroundColor: "#303030" },
+    info: { color: "#B8E4FF", backgroundColor: "#12344B" },
+    success: { color: "#B7EAC4", backgroundColor: "#143821" },
+    warning: { color: "#FFE3A1", backgroundColor: "#47340B" },
+    error: { color: "#FFC6C4", backgroundColor: "#4B1B1B" },
+  },
   borderStyle: { color: "#FFFFFF" },
   cursorStyle: Object.freeze({
     colorMode: "inverse",

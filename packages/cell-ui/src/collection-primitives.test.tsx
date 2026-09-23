@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { CellUiRuntime, Root, List, ListItem, Menu, MenuItem, Tree, TreeItem, Tabs, Tab, Text, FocusManager, commandForInput, createKeyInput, CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME } from "./index.js";
+import { CellUiRuntime, Root, Box, List, ListItem, Menu, MenuItem, Tree, TreeItem, Grid, GridRow, GridCell, Tabs, Tab, Text, FocusManager, commandForInput, createKeyInput, CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME } from "./index.js";
 import { CellInteractionController } from "./interaction-controller.js";
 
 it.each(["list", "menu", "tree", "tabs"])("%s separates selection chrome from transient input appearance", (kind) => {
@@ -14,7 +14,7 @@ it.each(["list", "menu", "tree", "tabs"])("%s separates selection chrome from tr
           : <Tabs><Tab id="item" selected disabled={disabled} style={{ width: 8 }}><Text>Open</Text></Tab></Tabs>}</Root>;
     const idle = runtime.render(view());
     const text = idle.buffer.toText();
-    if (kind === "tree") expect(text).toContain("▾ ✓ Open");
+    if (kind === "tree") expect(text).toContain("▾ ✓ Op");
     if (kind === "list") expect(text).toContain("✓ Open");
     if (kind === "tabs") expect(text).toContain("▬▬▬▬▬▬▬▬");
     for (let x = 0; x < 8; x++) expect(idle.buffer.get(x, 0)?.style.backgroundColor).toBeUndefined();
@@ -32,6 +32,50 @@ it.each(["list", "menu", "tree", "tabs"])("%s separates selection chrome from tr
     expect(runtime.render(view(), { focusedId: "item", focusVisible: false }).buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
     runtime.dispose();
   }
+});
+
+it.each(["list", "tree", "grid"])("%s owns both guard Cells and keeps user padding additive", (kind) => {
+  const runtime = new CellUiRuntime({ viewport: { width: 20, height: 2 } });
+  const itemStyle = { width: 12, paddingLeft: 2, paddingRight: 2 };
+  const item = <Text>A</Text>;
+  const view = <Root>{kind === "list"
+    ? <List><ListItem id="item" selected style={itemStyle}>{item}</ListItem></List>
+    : kind === "tree"
+      ? <Tree><TreeItem id="item" selected hasChildren expanded style={itemStyle}>{item}</TreeItem></Tree>
+      : <Grid><GridRow><GridCell id="item" selected style={itemStyle}>{item}</GridCell></GridRow></Grid>}</Root>;
+  const frame = runtime.render(view);
+  const entry = frame.scene.entries.get("item")!;
+  const left = entry.decorationBounds.x;
+  const right = left + entry.decorationBounds.width - 1;
+  expect(entry.decorationBounds.width).toBe(12);
+  expect(frame.buffer.get(left, 0)).toMatchObject({ text: " ", ownerId: "item" });
+  expect(frame.buffer.get(right, 0)).toMatchObject({ text: " ", ownerId: "item" });
+  expect(frame.buffer.get(left + (kind === "tree" ? 3 : 1), 0)).toMatchObject({ text: "✓", ownerId: "item" });
+  expect(entry.contentBounds.x - left).toBe(kind === "tree" ? 7 : 5);
+  expect(right - (entry.contentBounds.x + entry.contentBounds.width - 1)).toBe(3);
+  runtime.dispose();
+});
+
+it.each(["list", "tree", "grid"])("%s keeps its first indicator visible at one Cell", (kind) => {
+  const runtime = new CellUiRuntime({ viewport: { width: 4, height: 1 } });
+  const view = <Root>{kind === "list"
+    ? <List><ListItem id="item" selected style={{ width: 1 }} /></List>
+    : kind === "tree"
+      ? <Tree><TreeItem id="item" hasChildren expanded style={{ width: 1 }} /></Tree>
+      : <Grid><GridRow><GridCell id="item" selected style={{ width: 1 }} /></GridRow></Grid>}</Root>;
+  const frame = runtime.render(view);
+  expect(frame.scene.entries.get("item")?.decorationBounds.width).toBe(1);
+  expect(frame.buffer.get(0, 0)).toMatchObject({ text: kind === "tree" ? "▾" : "✓", ownerId: "item" });
+  runtime.dispose();
+});
+
+it("grows an unconstrained ListItem to include both guards", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
+  const frame = runtime.render(<Root><Box style={{ direction: "row" }}><ListItem id="item"><Text>A</Text></ListItem></Box></Root>);
+  expect(frame.scene.entries.get("item")?.decorationBounds.width).toBe(5);
+  expect(frame.buffer.toText({ trimEnd: true })).toBe("   A");
+  expect(frame.buffer.get(4, 0)).toMatchObject({ text: " ", ownerId: "item" });
+  runtime.dispose();
 });
 
 it("only menu hover changes navigation and never executes an action", () => {

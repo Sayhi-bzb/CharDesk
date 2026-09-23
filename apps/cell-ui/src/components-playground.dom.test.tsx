@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BoxComponentDemo,
   ButtonComponentDemo,
+  BadgeComponentDemo,
   CheckboxComponentDemo,
   ComboboxComponentDemo,
   DialogComponentDemo,
@@ -62,6 +63,7 @@ describe("Component Playground gallery demos", () => {
   it.each([
     { Demo: DialogComponentDemo, label: "Dialog component", content: ["variant", "surface", "frame", "bordered", "border shape", "square"], absent: ["modal", "closeOnOutsideClick", "ghost"] },
     { Demo: ToggleComponentDemo, label: "Toggle component", content: ["○ Bold", "disabled"], absent: ["variant", "pressed", "value"] },
+    { Demo: BadgeComponentDemo, label: "Badge component", content: ["Waiting", "Syncing", "Done", "Delayed", "Failed", "Retry", "Disabled"], absent: ["tone", "interactive", "Activated:", "variant"] },
     { Demo: ProgressComponentDemo, label: "Progress component", content: ["variant", "solid", "number", "indeterminate"], absent: ["outline", "value"] },
     { Demo: SeparatorComponentDemo, label: "Separator component", content: ["───────", "variant", "direction", "horizontal"], absent: ["slash", "double", "dots", "value"] },
     { Demo: RadioComponentDemo, label: "Radio component", content: ["(●) Light", "( ) Dark", "disabled"], absent: ["variant", "value"] },
@@ -115,6 +117,22 @@ describe("Component Playground gallery demos", () => {
     fireEvent.click(screen.getByRole("option", { name: "outline" }));
     await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("[ \uEB4B Save ]"));
     expect(save).toHaveAccessibleName("Save document");
+  });
+
+  it("shows every Badge tone without a config pane or persistent activation feedback", async () => {
+    render(<BadgeComponentDemo />);
+    const surface = screen.getByLabelText("Badge component");
+    const statuses = screen.getAllByRole("paragraph");
+    for (const name of ["Waiting", "Syncing", "Done", "Delayed", "Failed"]) {
+      expect(statuses.some((status) => status.textContent === name)).toBe(true);
+    }
+    const retry = screen.getByRole("button", { name: "Retry" });
+    expect(screen.getByRole("button", { name: "Disabled" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("button", { name: "tone" })).toBeNull();
+    expect(readCellSurfaceProbe(surface)?.text).not.toContain("│");
+    fireEvent.click(retry);
+    await waitFor(() => expect(surface).not.toHaveAttribute("data-cell-confirmation-phase"));
+    expect(readCellSurfaceProbe(surface)?.text).not.toContain("Activated:");
   });
 
   it("keeps Dialog border shape while its frame is temporarily disabled", async () => {

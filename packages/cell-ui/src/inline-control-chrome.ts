@@ -81,7 +81,7 @@ export const inlineControlSpacingRecipe = (
 ): InlineControlSpacingRecipe => {
   return {
     chrome: chromeMetrics(node),
-    defaultContentInsets: node.kind === "button"
+    defaultContentInsets: node.kind === "button" || node.kind === "badge" || node.kind === "badge-action"
       ? { left: 1, right: 1 }
       : node.kind === "text-input"
         ? { left: 0, right: 1 }
