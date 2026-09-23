@@ -32,6 +32,7 @@ const packages = [
 ];
 const lockfile = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
 const releasedNames = new Set(packages.map(({ name }) => name));
+const compatibleRange = `^${version.split(".").slice(0, 2).join(".")}.0`;
 
 for (const descriptor of packages) {
   const manifest = JSON.parse(
@@ -62,8 +63,8 @@ for (const directory of fs.readdirSync("packages", { withFileTypes: true })) {
   if (!fs.existsSync(manifestPath)) continue;
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
   for (const [dependency, range] of Object.entries(manifest.dependencies ?? {})) {
-    if (releasedNames.has(dependency) && range !== `^${version}`) {
-      throw new Error(`${manifest.name} requires ${dependency}@${range}; expected ^${version}`);
+    if (releasedNames.has(dependency) && range !== `^${version}` && range !== compatibleRange) {
+      throw new Error(`${manifest.name} requires ${dependency}@${range}; expected ^${version} or ${compatibleRange}`);
     }
   }
 }

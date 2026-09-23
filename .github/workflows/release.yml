@@ -116,6 +116,9 @@ jobs:
             echo "cli_published=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Install browser runtimes for release verification
+        run: npx playwright install --with-deps chromium webkit
+
       - name: Verify repository
         run: npm run verify
 
