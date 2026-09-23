@@ -78,7 +78,7 @@ export {
 } from "./theme.js";
 export type { CellCursorShape, CellCursorStyle, CellUiTheme } from "./theme.js";
 export { nextCellCheckboxState } from "./checkbox.js";
-export type { ButtonSize, ButtonVariant } from "./button.js";
+export type { ButtonVariant } from "./button.js";
 export type { ProgressVariant } from "./progress.js";
 export type { CellBorderShape, CellFrame } from "./border.js";
 export {

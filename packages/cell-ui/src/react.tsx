@@ -16,9 +16,7 @@ import type {
 import type { CellTextSnapshot } from "./text.js";
 import { normalizeCellSliderValue, resolveCellSliderRange } from "./slider.js";
 import {
-  resolveButtonSize,
   resolveButtonVariant,
-  type ButtonSize,
   type ButtonVariant,
 } from "./button.js";
 import { resolveSurfaceVariant, type SurfaceVariant } from "./surface-variant.js";
@@ -31,12 +29,21 @@ import {
   type CellFrame,
 } from "./border.js";
 
-type CommonProps = Readonly<{
+type IdentityProps = Readonly<{
   id?: string;
+}>;
+type NamedProps = Readonly<{
   label?: string;
+}>;
+type DisableableProps = Readonly<{
   disabled?: boolean;
+}>;
+type ChildrenProps = Readonly<{
   children?: ReactNode;
 }>;
+type ContainerProps = IdentityProps & DisableableProps & ChildrenProps;
+type NamedContainerProps = ContainerProps & NamedProps;
+type NamedLeafProps = IdentityProps & DisableableProps & NamedProps;
 
 const normalizeSingleLineInputStyle = (
   style: CellLayoutStyle | undefined,
@@ -54,13 +61,13 @@ type SurfaceAppearanceProps = Readonly<{
   borderShape?: CellBorderShape;
 }>;
 
-export type RootProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
-export type BoxProps = CommonProps & SurfaceAppearanceProps & Readonly<{ style?: CellLayoutStyle }>;
-export type AccordionProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
+export type RootProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
+export type BoxProps = ContainerProps & SurfaceAppearanceProps & Readonly<{ style?: CellLayoutStyle }>;
+export type AccordionProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
 export type AccordionItemProps = Omit<AccordionProps, "id"> & Readonly<{ id: string; expanded?: boolean }>;
-export type AccordionTriggerProps = CommonProps & Readonly<{ focused?: boolean; style?: CellLayoutStyle; textStyle?: CellTextStyle }>;
-export type AccordionContentProps = AccordionProps;
-export type OverlayProps = CommonProps & SurfaceAppearanceProps & Readonly<{
+export type AccordionTriggerProps = NamedContainerProps & Readonly<{ focused?: boolean; style?: CellLayoutStyle; textStyle?: CellTextStyle }>;
+export type AccordionContentProps = NamedContainerProps & Readonly<{ style?: CellLayoutStyle }>;
+export type OverlayProps = NamedContainerProps & SurfaceAppearanceProps & Readonly<{
   position: CellPoint;
   modal?: boolean;
   closeOnOutsideClick?: boolean;
@@ -73,27 +80,26 @@ export type DialogProps = Omit<OverlayProps, "id" | "position"> & Readonly<{
 }>;
 export type DialogTitleProps = TextProps;
 export type DialogDescriptionProps = TextProps;
-export type DialogFooterProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
+export type DialogFooterProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
 export type TextProps = Readonly<{
   id?: string;
   children: string | number;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type ButtonProps = CommonProps & Readonly<{
+export type ButtonProps = NamedContainerProps & Readonly<{
   variant?: ButtonVariant;
-  size?: ButtonSize;
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type CheckboxProps = CommonProps & Readonly<{
+export type CheckboxProps = NamedContainerProps & Readonly<{
   checked?: CellCheckboxState;
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type SliderProps = Omit<CommonProps, "children"> & Readonly<{
+export type SliderProps = NamedLeafProps & Readonly<{
   value: number;
   min?: number;
   max?: number;
@@ -103,7 +109,7 @@ export type SliderProps = Omit<CommonProps, "children"> & Readonly<{
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type ToggleProps = CommonProps & Readonly<{
+export type ToggleProps = NamedContainerProps & Readonly<{
   pressed?: boolean;
   focused?: boolean;
   style?: CellLayoutStyle;
@@ -124,18 +130,18 @@ export type SeparatorProps = Readonly<{
   variant?: SeparatorVariant;
   style?: CellLayoutStyle;
 }>;
-export type RadioGroupProps = CommonProps & Readonly<{
+export type RadioGroupProps = NamedContainerProps & Readonly<{
   value?: string | null;
   orientation?: "horizontal" | "vertical";
   style?: CellLayoutStyle;
 }>;
-export type RadioItemProps = CommonProps & Readonly<{
+export type RadioItemProps = NamedContainerProps & Readonly<{
   value: string;
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type RangeSliderProps = Omit<CommonProps, "id" | "label" | "children"> & Readonly<{
+export type RangeSliderProps = DisableableProps & Readonly<{
   id: string;
   label: string;
   min?: number;
@@ -153,29 +159,29 @@ export type RangeSliderThumbProps = Readonly<{
   focused?: boolean;
   textStyle?: CellTextStyle;
 }>;
-export type SelectProps = CommonProps & Readonly<{ style?: CellLayoutStyle; variant?: SurfaceVariant }>;
-export type SelectTriggerProps = CommonProps & Readonly<{
+export type SelectProps = ContainerProps & Readonly<{ style?: CellLayoutStyle; variant?: SurfaceVariant }>;
+export type SelectTriggerProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   expanded?: boolean;
   controlsId?: string;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type SelectContentProps = CommonProps & Readonly<{
+export type SelectContentProps = NamedContainerProps & Readonly<{
   frame?: CellFrame;
   borderShape?: CellBorderShape;
   scrollY?: number;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type SelectItemProps = CommonProps & Readonly<{
+export type SelectItemProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   selected?: boolean;
   positionInSet?: number;
   setSize?: number;
   style?: CellLayoutStyle;
 }>;
-export type ComboboxProps = CommonProps & Readonly<{ style?: CellLayoutStyle; variant?: SurfaceVariant }>;
+export type ComboboxProps = ContainerProps & Readonly<{ style?: CellLayoutStyle; variant?: SurfaceVariant }>;
 export type ComboboxInputProps = Omit<TextInputProps, "variant"> & Readonly<{
   expanded?: boolean;
   controlsId?: string;
@@ -183,19 +189,19 @@ export type ComboboxInputProps = Omit<TextInputProps, "variant"> & Readonly<{
 }>;
 export type ComboboxContentProps = SelectContentProps;
 export type ComboboxItemProps = Omit<SelectItemProps, "focused"> & Readonly<{ active?: boolean }>;
-export type ListProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
-export type ListItemProps = CommonProps & Readonly<{
+export type ListProps = NamedContainerProps & Readonly<{ style?: CellLayoutStyle }>;
+export type ListItemProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   selected?: boolean;
   positionInSet?: number;
   setSize?: number;
   style?: CellLayoutStyle;
 }>;
-type CollectionProps = CommonProps & Readonly<{
+type CollectionProps = NamedContainerProps & Readonly<{
   orientation?: "horizontal" | "vertical";
   style?: CellLayoutStyle;
 }>;
-type CollectionItemProps = CommonProps & Readonly<{
+type CollectionItemProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   selected?: boolean;
   style?: CellLayoutStyle;
@@ -211,7 +217,7 @@ export type TreeItemProps = CollectionItemProps & Readonly<{
 }>;
 export type TabsProps = CollectionProps;
 export type TabProps = CollectionItemProps & Readonly<{ controlsId?: string }>;
-export type TabPanelProps = CommonProps & Readonly<{
+export type TabPanelProps = NamedContainerProps & Readonly<{
   labelledById?: string;
   style?: CellLayoutStyle;
 }>;
@@ -219,7 +225,7 @@ export type GridProps = CollectionProps & Readonly<{
   rowCount?: number;
   columnCount?: number;
 }>;
-export type GridRowProps = CommonProps & Readonly<{
+export type GridRowProps = NamedContainerProps & Readonly<{
   rowIndex: number;
   style?: CellLayoutStyle;
 }>;
@@ -227,12 +233,12 @@ export type GridCellProps = CollectionItemProps & Readonly<{
   rowIndex: number;
   columnIndex: number;
 }>;
-export type ScrollAreaProps = CommonProps & SurfaceAppearanceProps & Readonly<{
+export type ScrollAreaProps = ContainerProps & SurfaceAppearanceProps & Readonly<{
   scrollX?: number;
   scrollY?: number;
   style?: CellLayoutStyle;
 }>;
-export type TextEditorProps = CommonProps & Readonly<{
+export type TextEditorProps = NamedLeafProps & Readonly<{
   state: CellTextSnapshot;
   focused?: boolean;
   readOnly?: boolean;
@@ -368,7 +374,6 @@ export type WidgetDescriptor = Readonly<{
   progressVariant: ProgressVariant;
   separatorVariant: SeparatorVariant;
   buttonVariant: ButtonVariant;
-  buttonSize: ButtonSize;
   sliderValue: number;
   sliderMin: number;
   sliderMax: number;
@@ -542,7 +547,6 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
     buttonVariant: kind === "button"
       ? resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")
       : "solid",
-    buttonSize: kind === "button" ? resolveButtonSize(props.size) : "default",
     sliderValue: kind === "range-slider-thumb"
       ? typeof props.value === "number" ? props.value : sliderRange.min
       : normalizeCellSliderValue(

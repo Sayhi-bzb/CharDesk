@@ -39,7 +39,7 @@ const ComboProduct = () => {
   return <CellSurface label="Combobox surface" probeId="combobox" viewport={{ width: 24, height: 8 }}
     overlayViewport={{ width: 24, height: 12 }} focusedId={combo.focusedId} onCommand={combo.dispatch}
     feedback={{ activationBlinkCount: 0 }} metrics={{ cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" }}>
-    <Root><Combobox id={combo.id} label="Font" style={{ width: 22 }}>
+    <Root><Combobox id={combo.id} style={{ width: 22 }}>
       <ComboboxInput id={combo.inputId} label="Font" state={combo.inputSnapshot} expanded={combo.open}
         activeDescendantId={combo.activeId ?? undefined} />
       {combo.open ? <ComboboxContent id={combo.contentId} label="Font options" scrollY={combo.scrollY}

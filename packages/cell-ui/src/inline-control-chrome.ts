@@ -34,9 +34,6 @@ const EMPTY_CHROME: InlineControlChromeMetrics = {
 
 const NO_CONTENT_INSETS: InlineControlInsets = { left: 0, right: 0 };
 
-const buttonContentInset = (node: WidgetNode): number =>
-  node.buttonSize === "sm" ? 0 : node.buttonSize === "lg" ? 2 : 1;
-
 const chromeMetrics = (node: WidgetNode): InlineControlChromeMetrics => {
   if (node.kind === "checkbox" || node.kind === "radio-item") {
     return {
@@ -58,6 +55,9 @@ const chromeMetrics = (node: WidgetNode): InlineControlChromeMetrics => {
       trailingGuard: 1,
     };
   }
+  if (node.kind === "text-input") {
+    return { ...EMPTY_CHROME, leadingGuard: 1, leadingGap: 1 };
+  }
   if (
     node.kind === "select-trigger"
     || node.kind === "combobox-input"
@@ -67,7 +67,7 @@ const chromeMetrics = (node: WidgetNode): InlineControlChromeMetrics => {
     return {
       leadingGuard: 1,
       leadingIndicator: 0,
-      leadingGap: 0,
+      leadingGap: node.kind === "combobox-input" ? 1 : 0,
       trailingGap: 1,
       trailingIndicator: 1,
       trailingGuard: 1,
@@ -79,14 +79,13 @@ const chromeMetrics = (node: WidgetNode): InlineControlChromeMetrics => {
 export const inlineControlSpacingRecipe = (
   node: WidgetNode,
 ): InlineControlSpacingRecipe => {
-  const contentInset = node.kind === "button"
-    ? buttonContentInset(node)
-    : node.kind === "text-input" ? 1 : 0;
   return {
     chrome: chromeMetrics(node),
-    defaultContentInsets: contentInset === 0
-      ? NO_CONTENT_INSETS
-      : { left: contentInset, right: contentInset },
+    defaultContentInsets: node.kind === "button"
+      ? { left: 1, right: 1 }
+      : node.kind === "text-input"
+        ? { left: 0, right: 1 }
+        : NO_CONTENT_INSETS,
   };
 };
 

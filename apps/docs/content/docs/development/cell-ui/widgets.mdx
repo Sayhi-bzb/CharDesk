@@ -23,7 +23,7 @@ description: State, input, scroll, and editor behavior contracts.
 - `widget-capabilities.ts` 拥有能力表；状态投影与外观配方分离，painter 只绘制解析结果。局部 `textStyle` 不重定义状态语言；[底座契约](/development/cell-ui/primitives)拥有模块边界。
 - 统一控件的按压与高亮最多反色一次；确认阶段独占颜色，相对进入时的有效颜色对执行反色／恢复，disabled 拒绝全部临时强调。solid Button 使用 `buttonSolidStyle`，surface 使用 `elevatedSurfaceStyle` 与普通文字色，outline 保留字符边框，ghost 静止时透明。
 - 解析后的状态背景覆盖 Widget 完整布局矩形，包括空白 Cell；透明状态不填充。
-- `inline-control-chrome.ts` 统一行内 spacing recipe：Button size 与 TextInput 提供默认 content inset，Checkbox、RadioItem、Toggle、Select 与 Combobox 提供固定 guard、状态标记和间隔；guard 是 owner-aware 空 Cell。border、collection disclosure、Tab underline 和 scrollbar 保持独立 chrome 职责。
+- `inline-control-chrome.ts` 统一行内 spacing recipe：Button 与 TextInput 默认左右各留 1 个 content Cell，Button 可通过 `style.paddingLeft/Right` 覆盖；Checkbox、RadioItem、Toggle、Select 与 Combobox 提供固定 guard、状态标记和间隔；guard 是 owner-aware 空 Cell。border、collection disclosure、Tab underline 和 scrollbar 保持独立 chrome 职责。
 
 ## Primitive 快照
 
@@ -32,7 +32,7 @@ description: State, input, scroll, and editor behavior contracts.
 | Root / Box / Text | Root 只建立画布；Box 用背景 variant 和独立 frame 表达边界；Text 提供字符 | 不产生独立 command；Text 与边框字符可被 Cell Range 复制 |
 | Overlay | root layer、clip，默认 Elevated | Escape/outside down dismiss；modal `dialog` |
 | Dialog / Title / Description / Footer | 复用 Overlay，默认居中、36 Cell 宽、`surface` variant 及边框；Title/Description 保留字符，Footer 只排列按钮 | 条件挂载；modal/outside-click 默认开启；初始焦点、模态 Tab 循环、Escape 与恢复焦点由共享底座拥有 |
-| Button | 单行填充矩形；`sm/default/lg` 对应左右 `0/1/2` Cell content inset | 全局 focus traversal；完整 tap、Enter、Space 或 AT 激活 |
+| Button | 单行填充矩形；默认左右各 1 Cell，`style.paddingLeft/Right` 可分别覆盖 | 全局 focus traversal；完整 tap、Enter、Space 或 AT 激活 |
 | Accordion / Item / Trigger / Content | `▸` / `▾` 显示展开状态；标题消费共享反色与 press，无确认闪烁 | 多项独立展开；tap、Enter、Space 输出 Item 的 `set-expanded`；上下/Home/End 在同组可用标题间导航，不循环 |
 | Checkbox | ` [ ] Label ` / ` [x] Label ` / ` [-] Label `；两侧 guard、三 Cell 标记及内容间隔由 renderer 拥有 | checked 与 mixed 进入 Semantic DOM；完整行 tap、Enter、Space 或 AT 激活，disabled 跳过 |
 | Toggle | ` ○ Bold ` / ` ● Bold `；两侧 guard、状态灯及内容间隔由 renderer 拥有，状态灯取自全局主题 | button + aria-pressed；整行 tap/Enter/Space 使用统一 press 与确认反馈；状态灯和 guard 保留在字符快照及复制中 |

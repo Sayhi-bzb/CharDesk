@@ -171,11 +171,11 @@ describe("TestPilot", () => {
       render: () => <Root><TextInput id="name" state={editor.snapshot()} /></Root>,
       onCommand: (command) => { if (command.type === "text") editor.dispatch(command.command); },
     });
-    expect(editor.snapshot().viewport).toEqual({ columns: 38, rows: 1 });
+    expect(editor.snapshot().viewport).toEqual({ columns: 37, rows: 1 });
     expect(editor.snapshot().scrollX).toBe(0);
     await pilot.resize({ width: 15, height: 3 });
-    expect(editor.snapshot().viewport).toEqual({ columns: 13, rows: 1 });
-    expect(editor.snapshot().scrollX).toBe(20);
+    expect(editor.snapshot().viewport).toEqual({ columns: 12, rows: 1 });
+    expect(editor.snapshot().scrollX).toBe(21);
     await pilot.resize({ width: 40, height: 3 });
     expect(editor.snapshot().scrollX).toBe(0);
     pilot.dispose();

@@ -177,7 +177,7 @@ it("Select commits before confirmation, locks selection, and completes once in b
     let selected = "apple";
     let open = true;
     const commands: WidgetCommand[] = [];
-    const view = () => <Root id="root"><Select id="fruit" label="Fruit">
+    const view = () => <Root id="root"><Select id="fruit">
       <SelectTrigger id="trigger" expanded={open}><Text>{selected}</Text></SelectTrigger>
       {open && <SelectContent id="options">
         <SelectItem id="apple" selected={selected === "apple"}><Text>Apple</Text></SelectItem>
@@ -215,7 +215,7 @@ it("does not deliver dismissal into an unmounted scope", () => {
   const time = manualClock();
   const runtime = new CellUiRuntime({ viewport: { width: 20, height: 5 } });
   const commands: WidgetCommand[] = [];
-  const frame = runtime.render(<Root id="root"><Select id="fruit" label="Fruit">
+  const frame = runtime.render(<Root id="root"><Select id="fruit">
     <SelectTrigger id="trigger" expanded><Text>Fruit</Text></SelectTrigger>
     <SelectContent id="options"><SelectItem id="apple"><Text>Apple</Text></SelectItem></SelectContent>
   </Select></Root>);

@@ -129,7 +129,6 @@ export type WidgetNode = Readonly<{
   progressVariant: import("./progress.js").ProgressVariant;
   separatorVariant: import("./separator.js").SeparatorVariant;
   buttonVariant: import("./button.js").ButtonVariant;
-  buttonSize: import("./button.js").ButtonSize;
   sliderValue: number;
   sliderMin: number;
   sliderMax: number;

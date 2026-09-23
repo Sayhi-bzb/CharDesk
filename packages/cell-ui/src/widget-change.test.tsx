@@ -11,7 +11,10 @@ it("keeps content mutations distinct from phase invalidation", () => {
   expect(classifyWidgetChange(before, { ...before, radioValue: "run" })).toEqual({
     layout: false, geometry: false, paint: false, semantics: false,
   });
-  expect(classifyWidgetChange(before, { ...before, buttonSize: "lg" })).toMatchObject({
+  expect(classifyWidgetChange(before, {
+    ...before,
+    style: { ...before.style, paddingLeft: 2, paddingRight: 2 },
+  })).toMatchObject({
     layout: true, geometry: false, paint: false, semantics: false,
   });
   expect(classifyWidgetChange(before, { ...before, scrollOffset: { x: 0, y: 1 } })).toMatchObject({

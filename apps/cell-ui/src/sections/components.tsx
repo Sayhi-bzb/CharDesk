@@ -32,7 +32,6 @@ import {
   TextInput,
   type CellBorderShape,
   type CellFrame,
-  type ButtonSize,
   type ButtonVariant,
   type ProgressVariant,
   type SurfaceVariant,
@@ -292,11 +291,6 @@ export const TextComponentDemo = () => (
   </GallerySurface>
 );
 
-const buttonSizeItems = (["sm", "default", "lg"] as const).map((size) => ({
-  id: `component-button-size-${size}`,
-  label: size,
-}));
-
 const buttonVariantItems = (["solid", "surface", "outline", "ghost"] as const).map((variant) => ({
   id: `component-button-variant-${variant}`,
   label: variant,
@@ -407,19 +401,14 @@ export const BoxComponentDemo = () => {
 
 export const ButtonComponentDemo = () => {
   const [variant, setVariant] = useState<ButtonVariant>("solid");
-  const [size, setSize] = useState<ButtonSize>("default");
   const [disabled, setDisabled] = useState(false);
   const variantSelect = useCellSelectState("component-button-variant", buttonVariantItems, {
     defaultSelectedId: "component-button-variant-solid",
     onSelectionChange: (id) => setVariant(id.slice("component-button-variant-".length) as ButtonVariant),
   });
-  const sizeSelect = useCellSelectState("component-button-size", buttonSizeItems, {
-    defaultSelectedId: "component-button-size-default",
-    onSelectionChange: (id) => setSize(id.slice("component-button-size-".length) as ButtonSize),
-  });
   const focus = usePlaygroundFocus(
     "component-button-save",
-    [variantSelect, sizeSelect],
+    [variantSelect],
   );
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
@@ -441,14 +430,12 @@ export const ButtonComponentDemo = () => {
         id="component-button-save"
         label="Save document"
         variant={variant}
-        size={size}
         disabled={disabled}
         focused={focus.focusedId === "component-button-save"}
       ><Text>Save</Text></Button>
     }
     controls={[
       renderPlaygroundSelectControl("variant", variantSelect, focus.focusedId),
-      renderPlaygroundSelectControl("size", sizeSelect, focus.focusedId),
       renderPlaygroundCheckboxControl(
         "disabled",
         "component-button-disabled",
@@ -574,7 +561,7 @@ export const ComboboxComponentDemo = () => {
       : focus.activeSelect ? focus.activeSelect.items.length : 0}
     preview={<Box id="component-combobox-preview" variant="ghost" style={{ width: 30 }}>
       <Text>Font</Text>
-      <Combobox id={combo.id} label="Font" disabled={disabled} style={{ width: 30 }}
+      <Combobox id={combo.id} disabled={disabled} style={{ width: 30 }}
         variant={surfaceVariant.selectedId as SurfaceVariant}>
         <ComboboxInput id={combo.inputId} label="Font" state={combo.inputSnapshot} expanded={combo.open}
           activeDescendantId={combo.activeId ?? undefined} />

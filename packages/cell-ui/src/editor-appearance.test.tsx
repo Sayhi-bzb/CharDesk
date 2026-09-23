@@ -65,7 +65,10 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     const layout = idle.layout.entries.get("editor")!;
     expect(layout.rect).toEqual({ x: 0, y: 0, width: 12, height: 1 });
     expect(layout.borderInsets).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
-    expect(layout.paddingInsets).toEqual({ top: 0, right: 1, bottom: 0, left: 1 });
+    expect(layout.paddingInsets).toEqual({ top: 0, right: 1, bottom: 0, left: 2 });
+    expect(idle.buffer.get(0, 0)?.text).toBe(">");
+    expect(idle.buffer.get(1, 0)).toMatchObject({ text: " ", ownerId: "editor" });
+    expect(idle.buffer.get(2, 0)?.text).toBe("H");
     for (let x = 0; x < layout.rect.width; x++) {
       expect(idle.buffer.get(x, 0)?.style).toMatchObject(theme.elevatedSurfaceStyle);
     }
@@ -76,11 +79,13 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
       activeFocusId: "editor",
       focusVisible: false,
     });
+    expect(active.buffer.get(0, 0)?.text).toBe(">");
     for (let x = 0; x < layout.rect.width; x++) {
       expect(active.buffer.get(x, 0)?.style).toMatchObject(theme.focusedSurfaceStyle);
     }
-    expect(active.buffer.get(1, 0)?.style.underline).toBe(true);
     expect(active.buffer.get(2, 0)?.style.underline).toBe(true);
+    expect(active.buffer.get(3, 0)?.style.underline).toBe(true);
+    expect(active.buffer.get(1, 0)?.style.underline).not.toBe(true);
     expect(active.buffer.get(5, 0)?.style.underline).not.toBe(true);
     const blurred = runtime.render(view(), { focusedId: "editor", activeFocusId: null });
     expect(blurred.buffer.get(1, 0)?.style.underline).not.toBe(true);
@@ -89,6 +94,7 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
       activeFocusId: "editor",
       focusVisible: true,
     });
+    expect(disabled.buffer.get(0, 0)?.text).toBe(">");
     expect(disabled.buffer.get(1, 0)?.style).toMatchObject({
       ...theme.elevatedSurfaceStyle,
       ...theme.disabledStyle,
@@ -114,22 +120,25 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
         style={{ width: 12 }} />
     </Root>;
     const idle = runtime.render(view());
+    expect(idle.buffer.get(0, 0)?.text).toBe(">");
+    expect(idle.buffer.get(1, 0)).toMatchObject({ text: " ", ownerId: "editor" });
     expect(idle.buffer.get(1, 0)?.style.backgroundColor).toBeUndefined();
     expect(idle.buffer.get(1, 0)?.style.underline).not.toBe(true);
 
     const active = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor" });
-    expect(active.buffer.get(1, 0)?.style).toMatchObject({ underline: true });
-    expect(active.buffer.get(1, 0)?.style.backgroundColor).toBeUndefined();
+    expect(active.buffer.get(2, 0)?.style).toMatchObject({ underline: true });
+    expect(active.buffer.get(2, 0)?.style.backgroundColor).toBeUndefined();
+    expect(active.buffer.get(1, 0)?.style.underline).not.toBe(true);
     expect(active.buffer.get(5, 0)?.style.backgroundColor).toBeUndefined();
     expect(active.buffer.get(5, 0)?.style.underline).not.toBe(true);
 
     const blurred = runtime.render(view(), { focusedId: "editor", activeFocusId: null });
     expect(blurred.buffer.get(1, 0)?.style.underline).not.toBe(true);
     const readonly = runtime.render(view(false, true), { focusedId: "editor", activeFocusId: "editor" });
-    expect(readonly.buffer.get(1, 0)?.style.underline).toBe(true);
+    expect(readonly.buffer.get(2, 0)?.style.underline).toBe(true);
     const disabled = runtime.render(view(true), { focusedId: "editor", activeFocusId: "editor" });
-    expect(disabled.buffer.get(1, 0)?.style).toMatchObject(theme.disabledStyle);
-    expect(disabled.buffer.get(1, 0)?.style.underline).not.toBe(true);
+    expect(disabled.buffer.get(2, 0)?.style).toMatchObject(theme.disabledStyle);
+    expect(disabled.buffer.get(2, 0)?.style.underline).not.toBe(true);
     const custom = runtime.render(view(false, false, "#abcdef"), {
       focusedId: "editor", activeFocusId: "editor",
     });
@@ -138,7 +147,7 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     editor.dispatch({ type: "composition-start" });
     editor.dispatch({ type: "composition-update", text: "中" });
     const composing = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor" });
-    expect(composing.buffer.get(1, 0)?.style.underline).toBe(true);
+    expect(composing.buffer.get(2, 0)?.style.underline).toBe(true);
     const disabledComposing = runtime.render(view(true), {
       focusedId: "editor", activeFocusId: "editor",
     });
@@ -179,7 +188,8 @@ it("gives TextInput a stable one-row content viewport", () => {
   const view = () => <Root><TextInput id="editor" state={editor.snapshot()} style={{ width: 12 }} /></Root>;
   const idle = runtime.render(view());
   expect(idle.textLayouts.get("editor")!.contentBounds)
-    .toEqual({ x: 1, y: 0, width: 10, height: 1 });
+    .toEqual({ x: 2, y: 0, width: 9, height: 1 });
+  expect(idle.semantics.nodes.get("editor")?.value).toBe("Hi");
   const active = runtime.render(view(), {
     focusedId: "editor",
     activeFocusId: "editor",
@@ -188,6 +198,22 @@ it("gives TextInput a stable one-row content viewport", () => {
   for (let x = 0; x < 12; x++) {
     expect(active.buffer.get(x, 0)?.style).toMatchObject(CLASSIC_MAC_LIGHT_THEME.focusedSurfaceStyle);
   }
+  runtime.dispose();
+});
+
+it("keeps the prompt visible for an empty narrow input without adding it to TextArea or value", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 12, height: 4 } });
+  const input = new CellTextEditor();
+  const area = new CellTextEditor({ multiline: true });
+  const frame = runtime.render(<Root>
+    <TextInput id="input" state={input.snapshot()} style={{ width: 1 }} />
+    <TextArea id="area" state={area.snapshot()} style={{ width: 12, height: 3 }} />
+  </Root>);
+  expect(frame.buffer.get(0, 0)?.text).toBe(">");
+  expect(frame.textLayouts.get("input")?.contentBounds.width).toBe(0);
+  expect(frame.semantics.nodes.get("input")?.value).toBe("");
+  expect(frame.buffer.get(0, 1)?.text).not.toBe(">");
+  expect(frame.semantics.nodes.get("area")?.value).toBe("");
   runtime.dispose();
 });
 

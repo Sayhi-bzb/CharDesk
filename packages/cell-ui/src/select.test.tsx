@@ -21,7 +21,7 @@ import { dismissCommandForFocusExit, topDismissableScopeId } from "./interaction
 
 const selectView = (open: boolean, focusedId = open ? "dark" : "theme-trigger") => (
   <Root id="root">
-    <Select id="theme" label="Theme" style={{ width: 20 }}>
+    <Select id="theme" style={{ width: 20 }}>
       <SelectTrigger
         id="theme-trigger"
         label="Theme"

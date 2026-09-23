@@ -201,7 +201,7 @@ const SelectProduct = ({
       probeId="surface-select"
     >
       <Root id="surface-select-root">
-        <Select id={select.id} label="Theme" style={{ width: 18 }}>
+        <Select id={select.id} style={{ width: 18 }}>
           <SelectTrigger
             id={select.triggerId}
             label="Theme"
@@ -251,7 +251,7 @@ const ConstrainedSelectProduct = ({ overlay = false }: { overlay?: boolean }) =>
       probeId="constrained-select"
     >
       <Root id="surface-font-root">
-        <Select id={select.id} label="Font" style={{ width: 18 }}>
+        <Select id={select.id} style={{ width: 18 }}>
           <SelectTrigger
             id={select.triggerId}
             label="Font"
@@ -950,7 +950,7 @@ describe("CellSurface", () => {
       fireEvent.focus(input);
       expect(input).toHaveStyle({ cursor: "default" });
       expect(canvas).toHaveStyle({ cursor: "default" });
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 0, 20, 20] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [20, 0, 20, 20] });
       expect(glyphs).toContainEqual({ color: "rgb(0, 255, 255)", text: "中" });
 
       fills.length = 0;
@@ -962,7 +962,7 @@ describe("CellSurface", () => {
         clientY: 10,
       });
       expect(screen.getByLabelText("Cursor surface")).not.toHaveAttribute("data-cell-focus-visible");
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 0, 20, 20] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [20, 0, 20, 20] });
       fireEvent.pointerUp(screen.getByLabelText("Cursor surface"), {
         pointerId: 30,
         pointerType: "mouse",
@@ -973,11 +973,11 @@ describe("CellSurface", () => {
 
       fills.length = 0;
       mounted.rerender(<CursorProduct shape="bar" />);
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 0, 1, 20] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [20, 0, 1, 20] });
 
       fills.length = 0;
       mounted.rerender(<CursorProduct shape="underline" />);
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [10, 19, 20, 1] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [20, 19, 20, 1] });
     } finally {
       context.fillRect.mockReset();
       context.fillText.mockReset();
@@ -1000,7 +1000,7 @@ describe("CellSurface", () => {
 
       context.fillRect.mockClear();
       vi.advanceTimersByTime(100);
-      expect(context.fillRect).toHaveBeenCalledWith(10, 0, 20, 20);
+      expect(context.fillRect).toHaveBeenCalledWith(20, 0, 20, 20);
       expect(readCellSurfaceProbe(surface)!.revision).toBe(revision);
       mounted.unmount();
     } finally {

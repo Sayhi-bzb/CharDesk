@@ -15,22 +15,20 @@ const node = (kind: WidgetKind, hasContent = true) => ({
 }) as unknown as WidgetNode;
 
 describe("inline control chrome", () => {
-  it.each([
-    ["sm", 0],
-    ["default", 1],
-    ["lg", 2],
-  ] as const)("maps Button size %s to content inset %d", (buttonSize, inset) => {
-    const recipe = inlineControlSpacingRecipe({
-      ...node("button"),
-      buttonSize,
-    });
-    expect(recipe.defaultContentInsets).toEqual({ left: inset, right: inset });
+  it("keeps Button's default content inset independent of consumer padding", () => {
+    const recipe = inlineControlSpacingRecipe(node("button"));
+    expect(recipe.defaultContentInsets).toEqual({ left: 1, right: 1 });
     expect(inlineControlChromeInsets(recipe.chrome)).toEqual({ left: 0, right: 0 });
   });
 
-  it("owns the fixed TextInput content inset in the shared spacing recipe", () => {
-    expect(inlineControlSpacingRecipe(node("text-input")).defaultContentInsets)
-      .toEqual({ left: 1, right: 1 });
+  it("reserves a guard and a gap before TextInput content", () => {
+    const recipe = inlineControlSpacingRecipe(node("text-input"));
+    expect(recipe.defaultContentInsets).toEqual({ left: 0, right: 1 });
+    expect(inlineControlChromeInsets(recipe.chrome)).toEqual({ left: 2, right: 0 });
+    expect(inlineControlChromeGeometry(recipe.chrome, 0, 12)).toMatchObject({
+      leadingGuardX: 0,
+      trailingGuardX: null,
+    });
   });
 
   it.each([
@@ -38,7 +36,7 @@ describe("inline control chrome", () => {
     ["radio-item", { left: 5, right: 1 }, { leading: { x: 1, width: 3 }, trailing: null }],
     ["toggle", { left: 3, right: 1 }, { leading: { x: 1, width: 1 }, trailing: null }],
     ["select-trigger", { left: 1, right: 3 }, { leading: null, trailing: { x: 10, width: 1 } }],
-    ["combobox-input", { left: 1, right: 3 }, { leading: null, trailing: { x: 10, width: 1 } }],
+    ["combobox-input", { left: 2, right: 3 }, { leading: null, trailing: { x: 10, width: 1 } }],
     ["select-item", { left: 1, right: 3 }, { leading: null, trailing: { x: 10, width: 1 } }],
     ["combobox-item", { left: 1, right: 3 }, { leading: null, trailing: { x: 10, width: 1 } }],
   ] as const)("shares owned insets and positions for %s", (kind, insets, indicators) => {
@@ -73,5 +71,14 @@ describe("inline control chrome", () => {
     expect(isInlineControlTrailingActionX(select, 0, 0, 1)).toBe(false);
     expect(isInlineControlTrailingActionX(select, 0, 0, 2)).toBe(true);
     expect(isInlineControlTrailingActionX(select, 1, 0, 2)).toBe(true);
+
+    const input = inlineControlChromeMetrics(node("text-input"));
+    expect(inlineControlChromeGeometry(input, 0, 0).leadingGuardX).toBeNull();
+    expect(inlineControlChromeGeometry(input, 0, 1).leadingGuardX).toBe(0);
+    const combobox = inlineControlChromeMetrics(node("combobox-input"));
+    expect(inlineControlChromeGeometry(combobox, 0, 1)).toMatchObject({
+      leadingGuardX: 0,
+      trailingGuardX: 0,
+    });
   });
 });

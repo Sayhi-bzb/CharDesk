@@ -263,17 +263,27 @@ export const paintScene = (
       }
 
       // Decoration: interaction affordances and scrollbars remain topmost for this Widget.
+      const promptGuardX = (node.kind === "text-input" || node.kind === "combobox-input")
+        && inlineChrome.leadingGuardX !== inlineChrome.trailingGuardX
+        ? inlineChrome.leadingGuardX : null;
       for (const guardX of [inlineChrome.leadingGuardX, inlineChrome.trailingGuardX]) {
         if (guardX !== null) {
           buffer.writeGrapheme(
             guardX,
             entry.decorationBounds.y,
-            " ",
+            guardX === promptGuardX ? ">" : " ",
             id,
             style,
             decorationClip,
             "over",
           );
+        }
+      }
+      if (promptGuardX !== null) {
+        for (let offset = 0; offset < inlineChromeMetrics.leadingGap; offset += 1) {
+          const x = promptGuardX + 1 + offset;
+          if (x >= entry.contentBounds.x) break;
+          buffer.writeGrapheme(x, entry.decorationBounds.y, " ", id, style, decorationClip, "over");
         }
       }
       if ((node.kind === "list-item" || node.kind === "tree-item" || node.kind === "grid-cell") && node.selected) {

@@ -14,7 +14,7 @@ import {
 const controls = (disabled = false) => (
   <Root id="root" style={{ direction: "column" }}>
     <Button id="save" disabled={disabled}><Text>Save</Text></Button>
-    <Select id="theme" label="Theme">
+    <Select id="theme">
       <SelectTrigger id="theme-trigger"><Text>Dark</Text></SelectTrigger>
     </Select>
     <Checkbox id="autosave" checked={false} />
@@ -80,7 +80,7 @@ describe("pressActive paint", () => {
     const cases = [
       ["save", <Button id="save"><Text>Save</Text></Button>],
       ["theme-trigger", (
-        <Select id="theme" label="Theme">
+        <Select id="theme">
           <SelectTrigger id="theme-trigger"><Text>Dark</Text></SelectTrigger>
         </Select>
       )],

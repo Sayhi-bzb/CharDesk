@@ -253,8 +253,7 @@ export function BoxExample() {
 }`,
     api: [
       { name: "id?", type: "string", description: "Stable widget identity." },
-      { name: "label?", type: "string", description: "Accessible name when the Box owns meaning." },
-      { name: "disabled?", type: "boolean", description: "Marks the widget disabled." },
+      { name: "disabled?", type: "boolean", description: "Applies the disabled visual state." },
       { name: "children?", type: "ReactNode", description: "Nested Cell descriptors." },
       { name: "variant?", type: '"surface" | "ghost"', description: "Local surface recipe; overrides the global recipe and otherwise defaults to ghost." },
       { name: "frame?", type: '"none" | "bordered"', description: "Optional one-Cell border, independent of background." },
@@ -286,7 +285,6 @@ export function ButtonExample() {
           id="save"
           label="Save document"
           variant="solid"
-          size="default"
           focused={focusedId === "save"}
         >
           <Text>Save</Text>
@@ -299,11 +297,10 @@ export function ButtonExample() {
       { name: "id?", type: "string", description: "Stable focus and activate command target." },
       { name: "label?", type: "string", description: "Accessible name; descendant text is the fallback." },
       { name: "variant?", type: '"solid" | "surface" | "outline" | "ghost"', description: "Local visual recipe; overrides the global recipe and otherwise defaults to solid." },
-      { name: "size?", type: '"sm" | "default" | "lg"', description: "Horizontal Cell density; defaults to default." },
       { name: "disabled?", type: "boolean", description: "Prevents focus, hover, and activation." },
       { name: "focused?", type: "boolean", description: "Controlled logical focus state." },
       { name: "children?", type: "ReactNode", description: "Cell-native button content." },
-      { name: "style?", type: "CellLayoutStyle", description: "Cell size and layout overrides." },
+      { name: "style?", type: "CellLayoutStyle", description: "Layout and horizontal padding; defaults to one content Cell per side." },
       { name: "textStyle?", type: "CellTextStyle", description: "Base foreground, background, and emphasis." },
     ],
   },
@@ -338,7 +335,7 @@ export function SelectExample() {
   return (
     <CellSurface focusedId={select.focusedId} onCommand={select.dispatch} viewport={{ width: 32, height: 7 }}>
       <Root id="root">
-        <Select id={select.id} label="Theme" style={{ width: 30 }}>
+        <Select id={select.id} style={{ width: 30 }}>
           <SelectTrigger
             id={select.triggerId}
             label="Theme"
@@ -401,7 +398,7 @@ export function ComboboxExample() {
   const combo = useCellComboboxState("font", fonts, { defaultSelectedId: "maple" });
   return <CellSurface viewport={{ width: 32, height: 8 }} focusedId={combo.focusedId}
     onCommand={combo.dispatch}><Root>
-    <Combobox id={combo.id} label="Font" style={{ width: 30 }}>
+    <Combobox id={combo.id} style={{ width: 30 }}>
       <ComboboxInput id={combo.inputId} label="Font" state={combo.inputSnapshot}
         expanded={combo.open} activeDescendantId={combo.activeId ?? undefined} />
       {combo.open && <ComboboxContent id={combo.contentId} label="Font options" scrollY={combo.scrollY}>
@@ -648,7 +645,6 @@ export function ScrollAreaExample() {
 }`,
     api: [
       { name: "id?", type: "string", description: "Stable scroll target identity." },
-      { name: "label?", type: "string", description: "Accessible viewport name." },
       { name: "scrollX?", type: "number", description: "Controlled horizontal Cell offset." },
       { name: "scrollY?", type: "number", description: "Controlled vertical Cell offset." },
       { name: "variant?", type: '"surface" | "ghost"', description: "Local surface recipe; overrides the global recipe and otherwise defaults to ghost." },

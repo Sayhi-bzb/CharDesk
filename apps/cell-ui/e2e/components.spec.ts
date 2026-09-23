@@ -115,11 +115,10 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   )).viewport).toEqual({ width: 32, height: 15 });
   const narrowPlayground = await readCellProbe(page.locator('[data-cell-probe="component-button"]'));
   const narrowLines = narrowPlayground.text.split("\n");
-  expect(narrowLines[9]).toContain("   variant");
-  expect(narrowLines[10]).toContain("   solid");
-  expect(narrowLines[11]).toContain("   size");
-  expect(narrowLines[12]).toContain("   default");
-  expect(narrowLines[13]).toContain("   [ ] disabled");
+  const narrowVariantRow = narrowLines.findIndex((line) => line.includes("   variant"));
+  expect(narrowVariantRow).toBeGreaterThan(0);
+  expect(narrowLines[narrowVariantRow + 1]).toContain("   solid");
+  expect(narrowLines[narrowVariantRow + 2]).toContain("   [ ] disabled");
   const narrowPreviewBounds = await page.locator(".docs-preview").boundingBox();
   const narrowHostBounds = await page.locator(".component-playground").boundingBox();
   const narrowPlaygroundBounds = await page.locator('[data-cell-probe="component-button"]').boundingBox();
@@ -294,10 +293,12 @@ test("Input edits Unicode through the real textbox and Cell frame", async ({ pag
   const initial = await readCellProbe(surface);
   expect(initial.viewport.height).toBe(7);
   expect(initial.text).toContain("File name");
-  expect(initial.text).toContain(" notes.txt");
+  expect(initial.text).toContain("> notes.txt");
   expect(initial.text).toMatch(/\[ \] disabled/);
   const idleCells = initial.cells.filter((cell) => cell.ownerId === "component-input-field");
   expect(idleCells).toHaveLength(30);
+  expect(idleCells[0]?.text).toBe(">");
+  expect(idleCells[1]?.text).toBe(" ");
   expect(new Set(idleCells.map((cell) => cell.y)).size).toBe(1);
   expect(idleCells.some((cell) => /^[┌┐└┘╭╮╰╯─│]$/u.test(cell.text))).toBe(false);
   const idleBackground = idleCells[0]!.style.backgroundColor;
@@ -310,7 +311,7 @@ test("Input edits Unicode through the real textbox and Cell frame", async ({ pag
   )?.style.underline).toBe(true);
   await input.fill("世界 👋");
   await expect(input).toHaveValue("世界 👋");
-  await expect.poll(async () => (await readCellProbe(surface)).text).toContain(" 世界 👋");
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("> 世界 👋");
   const active = await readCellProbe(surface);
   const activeCells = active.cells.filter((cell) => cell.ownerId === "component-input-field");
   expect(activeCells).toHaveLength(30);
@@ -381,13 +382,12 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   const surface = page.getByLabel("Button component");
   const save = page.getByRole("button", { name: "Save document" });
   const variant = page.getByRole("button", { name: "variant" });
-  const size = page.getByRole("button", { name: "size" });
   const disabled = page.getByRole("checkbox", { name: "disabled" });
 
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
   await expect(save).not.toHaveAttribute("aria-disabled");
   await expect(variant).toHaveAttribute("aria-expanded", "false");
-  await expect(size).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("button", { name: "padding L/R" })).toHaveCount(0);
   await expect(disabled).toHaveAttribute("aria-checked", "false");
 
   const initial = await readCellProbe(surface);
@@ -398,8 +398,6 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   expect(initial.text).toContain("variant");
   expect(initial.text).toContain("solid");
   expect(initial.text).toContain("Save");
-  expect(initial.text).toContain("size");
-  expect(initial.text).toContain("default");
   expect(initial.text).toContain("[ ] disabled");
   expect(initial.cells.some((cell) => (
     cell.ownerId === "component-button-playground-controls-scroll" && "█▀▄".includes(cell.text)
@@ -461,29 +459,6 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("[ Save ]");
 
-  const baseCanvasBounds = await baseCanvas.boundingBox();
-  expect(baseCanvasBounds).not.toBeNull();
-  await size.evaluate((element: HTMLElement) => element.click());
-  const sizeOpened = await readCellProbe(surface);
-  const sizeOverlay = sizeOpened.overlays.find(
-    (overlay) => overlay.rootId === "component-button-size-content",
-  );
-  const sizeLines = sizeOverlay?.text.split("\n") ?? [];
-  const largeRow = sizeLines.findIndex((line) => line.includes("lg"));
-  const largeColumn = sizeLines[largeRow]?.indexOf("lg") ?? -1;
-  expect(largeRow).toBeGreaterThanOrEqual(0);
-  expect(largeColumn).toBeGreaterThanOrEqual(0);
-  await page.mouse.click(
-    baseCanvasBounds!.x + (
-      sizeOverlay!.bounds.x + largeColumn + 0.5
-    ) * sizeOpened.presentation!.metrics.cellWidth,
-    baseCanvasBounds!.y + (
-      sizeOverlay!.bounds.y + largeRow + 0.5
-    ) * sizeOpened.presentation!.metrics.cellHeight,
-  );
-  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("[  Save  ]");
-  await expect(page.getByRole("listbox", { name: "size options" })).toHaveCount(0);
-
   const configured = await readCellProbe(surface);
   const saveCell = configured.cells.find((cell) => cell.ownerId === "component-button-save");
   const canvasBounds = await baseCanvas.boundingBox();
@@ -496,13 +471,13 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   await page.mouse.move(savePoint.x, savePoint.y);
   await page.mouse.down();
   await expect(surface).toHaveAttribute("data-cell-press-active", "component-button-save");
-  expect((await readCellProbe(surface)).text).toContain("[  Save  ]");
+  expect((await readCellProbe(surface)).text).toContain("[ Save ]");
   expect((await readCellProbe(surface)).cells.some((cell) => (
     cell.ownerId === "component-button-save" && cell.style.backgroundColor !== undefined
   ))).toBe(true);
   await page.mouse.up();
   await expect(surface).not.toHaveAttribute("data-cell-press-active");
-  expect((await readCellProbe(surface)).text).toContain("[  Save  ]");
+  expect((await readCellProbe(surface)).text).toContain("[ Save ]");
   expect((await readCellProbe(surface)).text).not.toContain("Saved");
 
   await page.reload();

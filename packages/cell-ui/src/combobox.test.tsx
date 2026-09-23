@@ -76,7 +76,8 @@ it("treats its trailing indicator and guard as disclosure chrome", () => {
     type: "pointer" as const, phase: "down" as const, point: { x, y: 0 }, button: 0,
   });
   expect(frame.buffer.toText({ region: { x: 0, y: 0, width: 16, height: 1 } }))
-    .toBe(" Maple        ▴ ");
+    .toBe("> Maple       ▴ ");
+  expect(frame.buffer.get(1, 0)).toMatchObject({ text: " ", ownerId: "input" });
   for (const x of [14, 15]) {
     expect(commandForInput(pointer(x), frame, focus))
       .toEqual({ type: "set-expanded", targetId: "input", expanded: false });
@@ -156,8 +157,9 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
       expect(idle.buffer.get(1, 0)?.style.backgroundColor).toBe(background);
       expect(idle.buffer.get(9, 0)?.style.backgroundColor).toBe(background);
       const active = runtime.render(view, { focusedId: "input", activeFocusId: "input" });
-      expect(active.buffer.get(1, 0)?.style).toMatchObject({ underline: true });
-      expect(active.buffer.get(1, 0)?.style.backgroundColor).toBe(background);
+      expect(active.buffer.get(2, 0)?.style).toMatchObject({ underline: true });
+      expect(active.buffer.get(2, 0)?.style.backgroundColor).toBe(background);
+      expect(active.buffer.get(1, 0)?.style.underline).not.toBe(true);
       expect(active.buffer.get(9, 0)?.style.backgroundColor).toBe(background);
       const blurred = runtime.render(view, { focusedId: "input", activeFocusId: null });
       expect(blurred.buffer.get(1, 0)?.style.underline).not.toBe(true);
@@ -177,7 +179,7 @@ it("filters Combobox candidates by stable, case-insensitive substring", () => {
 it("projects one focused Combobox with a separate active option", () => {
   const editor = new CellTextEditor({ value: "Maple Mono" });
   const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
-  const frame = runtime.render(<Root><Combobox id="font" label="Font" style={{ width: 22 }}>
+  const frame = runtime.render(<Root><Combobox id="font" style={{ width: 22 }}>
     <ComboboxInput id="font-input" label="Font" state={editor.snapshot()} expanded
       activeDescendantId="jetbrains" focused />
     <ComboboxContent id="font-content" label="Font options">
@@ -195,7 +197,7 @@ it("projects one focused Combobox with a separate active option", () => {
   expect(frame.layout.entries.get("font-input")).toMatchObject({
     rect: { x: 0, y: 0, width: 22, height: 1 },
     borderInsets: { top: 0, right: 0, bottom: 0, left: 0 },
-    paddingInsets: { top: 0, right: 3, bottom: 0, left: 1 },
+    paddingInsets: { top: 0, right: 3, bottom: 0, left: 2 },
   });
   expect(frame.scene.entries.get("font-content")?.layoutBounds.y).toBe(1);
   expect(frame.tree.nodes.get("font-content")?.surfaceVariant).toBeNull();

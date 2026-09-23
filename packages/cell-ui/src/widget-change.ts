@@ -31,7 +31,6 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.progressVariant === right.progressVariant
   && left.separatorVariant === right.separatorVariant
   && left.buttonVariant === right.buttonVariant
-  && left.buttonSize === right.buttonSize
   && left.sliderValue === right.sliderValue
   && left.sliderMin === right.sliderMin
   && left.sliderMax === right.sliderMax
@@ -71,7 +70,6 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.text !== after.text
   || before.buttonVariant !== after.buttonVariant
   || before.progressVariant !== after.progressVariant
-  || before.buttonSize !== after.buttonSize
   || before.frame !== after.frame
   || before.orientation !== after.orientation
   || (after.kind === "accordion-content" && before.expanded !== after.expanded)

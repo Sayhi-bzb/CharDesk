@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ownerCells, readCellMetrics, readCellPixel, readCellProbe } from "./helpers/cell-probe";
+import { ownerBounds, ownerCells, readCellMetrics, readCellPixel, readCellProbe } from "./helpers/cell-probe";
 
 test("inverse cursor follows committed editor colors, wide glyphs, movement and theme", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
@@ -52,10 +52,12 @@ test("inverse cursor follows committed editor colors, wide glyphs, movement and 
   await expect.poll(() => pixel(2)).toEqual([230, 230, 230, 255]);
   expect((await readCellProbe(surface)).text).toBe(wideText);
   await input.fill("x".repeat(80));
-  await expect.poll(() => pixel(37)).toEqual([210, 220, 230, 255]);
+  const inputBounds = ownerBounds(await readCellProbe(surface), "editor-name");
+  const finalContentOffset = inputBounds.x + inputBounds.width - 2 - x;
+  await expect.poll(() => pixel(finalContentOffset)).toEqual([210, 220, 230, 255]);
   await input.press("Home");
   await expect.poll(() => pixel()).toEqual([210, 220, 230, 255]);
-  expect(await pixel(37)).toEqual([30, 40, 50, 255]);
+  expect(await pixel(finalContentOffset)).toEqual([30, 40, 50, 255]);
 });
 
 test("cursor blink restores current pixels without changing character snapshots", async ({ page }) => {

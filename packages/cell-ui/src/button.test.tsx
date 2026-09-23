@@ -54,15 +54,15 @@ describe("Button", () => {
     runtime.dispose();
   });
 
-  it("resolves semantic variants and sizes without changing the one-row contract", () => {
+  it("resolves variants and horizontal padding without changing the one-row contract", () => {
     const render = (
       variant: "solid" | "surface" | "outline" | "ghost",
-      size: "sm" | "default" | "lg",
+      inset: 0 | 1 | 2,
     ) => {
       const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
       const frame = runtime.render(
         <Root id="root" style={{ direction: "row" }}>
-          <Button id="save" variant={variant} size={size}><Text>Save</Text></Button>
+          <Button id="save" variant={variant} style={{ paddingLeft: inset, paddingRight: inset }}><Text>Save</Text></Button>
         </Root>
       );
       runtime.dispose();
@@ -70,29 +70,29 @@ describe("Button", () => {
     };
 
     const expectations = [
-      ["solid", "sm", 4, "Save"],
-      ["solid", "default", 6, " Save"],
-      ["solid", "lg", 8, "  Save"],
-      ["surface", "sm", 4, "Save"],
-      ["surface", "default", 6, " Save"],
-      ["surface", "lg", 8, "  Save"],
-      ["outline", "sm", 6, "[Save]"],
-      ["outline", "default", 8, "[ Save ]"],
-      ["outline", "lg", 10, "[  Save  ]"],
-      ["ghost", "sm", 4, "Save"],
-      ["ghost", "default", 6, " Save"],
-      ["ghost", "lg", 8, "  Save"],
+      ["solid", 0, 4, "Save"],
+      ["solid", 1, 6, " Save"],
+      ["solid", 2, 8, "  Save"],
+      ["surface", 0, 4, "Save"],
+      ["surface", 1, 6, " Save"],
+      ["surface", 2, 8, "  Save"],
+      ["outline", 0, 6, "[Save]"],
+      ["outline", 1, 8, "[ Save ]"],
+      ["outline", 2, 10, "[  Save  ]"],
+      ["ghost", 0, 4, "Save"],
+      ["ghost", 1, 6, " Save"],
+      ["ghost", 2, 8, "  Save"],
     ] as const;
 
-    for (const [variant, size, width, text] of expectations) {
-      const frame = render(variant, size);
+    for (const [variant, inset, width, text] of expectations) {
+      const frame = render(variant, inset);
       expect(frame.layout.entries.get("save")?.rect).toMatchObject({ width, height: 1 });
       expect(frame.buffer.toText({ trimEnd: true })).toBe(text);
     }
 
-    const filled = render("solid", "default");
-    const outline = render("outline", "default");
-    const ghost = render("ghost", "default");
+    const filled = render("solid", 1);
+    const outline = render("outline", 1);
+    const ghost = render("ghost", 1);
     expect(filled.buffer.get(0, 0)?.style).toMatchObject({
       color: "#FFFFFF",
       backgroundColor: "#000000",
@@ -112,16 +112,30 @@ describe("Button", () => {
 
   it("invalidates layout when semantic appearance changes geometry", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
-    const render = (variant: "solid" | "outline", size: "default" | "lg") => runtime.render(
+    const render = (variant: "solid" | "outline", inset: 1 | 2) => runtime.render(
       <Root id="root" style={{ direction: "row" }}>
-        <Button id="save" variant={variant} size={size}><Text>Save</Text></Button>
+        <Button id="save" variant={variant} style={{ paddingLeft: inset, paddingRight: inset }}><Text>Save</Text></Button>
       </Root>
     );
 
-    expect(render("solid", "default").layout.entries.get("save")?.rect.width).toBe(6);
-    expect(render("outline", "default").layout.entries.get("save")?.rect.width).toBe(8);
-    expect(render("outline", "lg").layout.entries.get("save")?.rect.width).toBe(10);
+    expect(render("solid", 1).layout.entries.get("save")?.rect.width).toBe(6);
+    expect(render("outline", 1).layout.entries.get("save")?.rect.width).toBe(8);
+    expect(render("outline", 2).layout.entries.get("save")?.rect.width).toBe(10);
 
+    runtime.dispose();
+  });
+
+  it("overrides each horizontal inset without adding vertical padding", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 16, height: 1 } });
+    const frame = runtime.render(
+      <Root style={{ direction: "row" }}><Button id="save" variant="outline" style={{ paddingLeft: 0, paddingRight: 2 }}>
+        <Text>Save</Text>
+      </Button></Root>,
+    );
+    expect(frame.layout.entries.get("save")?.rect).toMatchObject({ width: 8, height: 1 });
+    expect(frame.layout.entries.get("save")?.paddingInsets)
+      .toEqual({ top: 0, right: 3, bottom: 0, left: 1 });
+    expect(frame.buffer.toText({ trimEnd: true })).toBe("[Save  ]");
     runtime.dispose();
   });
 

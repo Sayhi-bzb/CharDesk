@@ -111,7 +111,6 @@ export function ComponentPlayground({
           </Box>}
       <ScrollArea
         id={controlsScrollId}
-        label={`${label} properties`}
         variant="ghost"
         scrollX={controlsScroll.x}
         scrollY={controlsScroll.y}

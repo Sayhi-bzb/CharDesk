@@ -51,7 +51,7 @@ export const renderGallerySelect = ({
 }>) => (
   <Box id={fieldId} key={select.id} variant="ghost" style={{ width }}>
     {showLabel ? <Text id={labelId}>{label}</Text> : null}
-    <Select id={select.id} label={label} style={{ width }} variant={variant}>
+    <Select id={select.id} style={{ width }} variant={variant}>
       <SelectTrigger
         id={select.triggerId}
         label={triggerLabel}

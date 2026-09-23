@@ -92,6 +92,9 @@ test("Combobox input row opens on click, keeps editing open, and closes from its
   const firstInputCell = probe.cells.find((cell) => cell.ownerId === "component-combobox-input" && cell.y === arrow?.y);
   expect(arrow).toBeDefined();
   expect(firstInputCell).toBeDefined();
+  expect(firstInputCell?.text).toBe(">");
+  expect(probe.cells.find((cell) => cell.ownerId === "component-combobox-input"
+    && cell.x === firstInputCell!.x + 1 && cell.y === firstInputCell!.y)?.text).toBe(" ");
   const canvas = surface.locator("canvas").first();
   const bounds = await canvas.boundingBox();
   const metrics = probe.presentation!.metrics;

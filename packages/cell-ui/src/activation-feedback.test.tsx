@@ -15,7 +15,7 @@ import {
 const controls = () => (
   <Root id="root" style={{ direction: "column" }}>
     <Button id="save"><Text>Save</Text></Button>
-    <Select id="theme" label="Theme">
+    <Select id="theme">
       <SelectTrigger id="theme-trigger"><Text>Dark</Text></SelectTrigger>
     </Select>
     <Checkbox id="autosave" checked={false} />
@@ -24,7 +24,7 @@ const controls = () => (
 
 const openSelect = () => (
   <Root id="root">
-    <Select id="theme" label="Theme" style={{ width: 20 }}>
+    <Select id="theme" style={{ width: 20 }}>
       <SelectTrigger id="theme-trigger" expanded controlsId="theme-content">
         <Text>Dark</Text>
       </SelectTrigger>
@@ -129,7 +129,7 @@ describe("activationFlash paint", () => {
     const cases = [
       ["save", <Button id="save"><Text>Save</Text></Button>],
       ["light", (
-        <Select id="theme" label="Theme">
+        <Select id="theme">
           <SelectTrigger id="theme-trigger" expanded controlsId="theme-content">
             <Text>Dark</Text>
           </SelectTrigger>
