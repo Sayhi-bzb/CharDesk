@@ -6,7 +6,7 @@
 
 CharDesk turns Unicode text into a shared workspace: a canvas for people, editable tokens for agents.
 
-[Open CharDesk](https://chardesk.com/) · [Explore CharGraph](https://chardesk.com/chargraph/) · [CLI reference](packages/cli/README.md)
+[Open CharDesk](https://chardesk.com/) · [Explore CharGraph](https://chardesk.com/chargraph/) · [Cell UI Gallery](https://ui.chardesk.com/) · [CLI reference](packages/cli/README.md)
 
 ## Start with your agent
 

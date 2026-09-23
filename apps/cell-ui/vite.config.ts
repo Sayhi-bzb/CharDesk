@@ -25,7 +25,7 @@ function repositorySourceModules(): Plugin {
 
 export default defineConfig({
   plugins: [repositorySourceModules(), react()],
-  publicDir: path.join(repositoryRoot, "public"),
+  publicDir: path.join(import.meta.dirname, "public"),
   server: {
     fs: { allow: [repositoryRoot] },
     headers: { "Origin-Agent-Cluster": "?1" },

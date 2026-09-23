@@ -2,6 +2,8 @@
 
 React Cell UI runtime. Its root entry is headless; the `/browser` entry projects the same committed frame to Canvas2D and Semantic DOM.
 
+[Live Gallery](https://ui.chardesk.com/) previews the components and links to their source.
+
 ## Source installation
 
 The [GitHub Registry](../../registry.json) distributes the entire editable Cell UI source, including the private keyboard adapter, as one `cell-ui` item. In a React project with a shadcn `components.json` and a `lib` alias, install from the CharDesk GitHub repository:
@@ -105,7 +107,7 @@ import {
   Root,
   ScrollArea,
   Text,
-} from "@chardesk/cell-ui";
+} from "@/lib/cell-ui";
 
 const runtime = new CellUiRuntime({ viewport: { width: 30, height: 9 } });
 const frame = runtime.render(

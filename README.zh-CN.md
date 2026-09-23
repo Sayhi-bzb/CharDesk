@@ -6,7 +6,7 @@
 
 CharDesk 把 Unicode 文本变成共享工作区：人看到画布，Agent 编辑 token。
 
-[打开 CharDesk](https://chardesk.com/) · [探索 CharGraph](https://chardesk.com/chargraph/) · [CLI 文档](packages/cli/README.md)
+[打开 CharDesk](https://chardesk.com/) · [探索 CharGraph](https://chardesk.com/chargraph/) · [Cell UI Gallery](https://ui.chardesk.com/) · [CLI 文档](packages/cli/README.md)
 
 ## 从 Agent 开始
 

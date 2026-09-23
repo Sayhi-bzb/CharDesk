@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5190 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 5191 --strictPort",
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
     "typecheck": "tsc --noEmit"

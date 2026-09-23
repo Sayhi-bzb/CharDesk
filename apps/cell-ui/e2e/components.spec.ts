@@ -47,10 +47,12 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("heading", { name: "Distribution" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Usage" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "API" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "GitHub Registry item" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "source installation guide" })).toHaveAttribute(
     "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#source-installation",
   );
-  await expect(page.getByText("Fresh-project installation awaits", { exact: false })).toBeVisible();
+  await expect(page.getByText("npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui")).toBeVisible();
+  await expect(page.getByText("@/lib/cell-ui/browser", { exact: true })).toBeVisible();
+  await expect(page.locator("#usage-title + .docs-code")).not.toContainText("@chardesk/cell-ui");
   const codeBlocks = page.locator(".docs-code");
   await expect(codeBlocks).toHaveCount(2);
   for (const codeBlock of await codeBlocks.all()) {

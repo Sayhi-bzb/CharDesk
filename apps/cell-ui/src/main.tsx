@@ -81,11 +81,10 @@ export function CodeBlock({ children }: Readonly<{ children: string }>) {
   );
 }
 
-const workspaceDependency = `{
-  "dependencies": {
-    "@chardesk/cell-ui": "*"
-  }
-}`;
+const installCommand = "npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui";
+const publicUsage = (usage: string) => usage
+  .replaceAll('"@chardesk/cell-ui/browser"', '"@/lib/cell-ui/browser"')
+  .replaceAll('"@chardesk/cell-ui"', '"@/lib/cell-ui"');
 
 export function GalleryNavigation({ activeSlug }: Readonly<{ activeSlug: string }>) {
   return (
@@ -139,19 +138,18 @@ export function ComponentPage({ document }: Readonly<{ document: ComponentDocume
       <section className="docs-section" aria-labelledby="distribution-title">
         <h2 id="distribution-title">Distribution</h2>
         <p>
-          Editable source is prepared as a <a href="https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#source-installation">GitHub Registry item</a>.
-          Fresh-project installation awaits the public <code>@chardesk</code> dependency release.
+          Install the editable source in a React project with a shadcn <code>components.json</code> and
+          a <code>lib</code> alias. See the <a href="https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#source-installation">source installation guide</a> for the setup contract.
         </p>
-        <p>Until then, add the private package to a workspace package and run <code>npm install</code> at the repository root.</p>
-        <CodeBlock>{workspaceDependency}</CodeBlock>
+        <CodeBlock>{installCommand}</CodeBlock>
         <p>
-          Import Cell descriptors from <code>@chardesk/cell-ui</code>. Import the browser Surface
-          and state adapters from <code>@chardesk/cell-ui/browser</code>.
+          With <code>aliases.lib</code> set to <code>@/lib</code>, import Cell descriptors from
+          <code> @/lib/cell-ui</code> and browser adapters from <code> @/lib/cell-ui/browser</code>.
         </p>
       </section>
       <section className="docs-section" aria-labelledby="usage-title">
         <h2 id="usage-title">Usage</h2>
-        <CodeBlock>{document.usage}</CodeBlock>
+        <CodeBlock>{publicUsage(document.usage)}</CodeBlock>
       </section>
       <section className="docs-section" aria-labelledby="source-title">
         <h2 id="source-title">View source</h2>

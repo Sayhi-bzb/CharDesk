@@ -81,7 +81,7 @@ for (const file of ["index.ts", "browser.ts"]) {
 const registry = {
   $schema: "https://ui.shadcn.com/schema/registry.json",
   name: "cell-ui",
-  homepage: "https://github.com/Sayhi-bzb/CharDesk",
+  homepage: "https://ui.chardesk.com/",
   items: [{
     name: "cell-ui",
     type: "registry:item",

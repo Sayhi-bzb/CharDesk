@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = process.env.PLAYWRIGHT_PORT ?? "5190";
-const baseURL = `http://localhost:${port}`;
+const preview = process.env.CELL_UI_PREVIEW === "1";
+const port = process.env.PLAYWRIGHT_PORT ?? (preview ? "5191" : "5190");
+const baseURL = process.env.CELL_UI_BASE_URL ?? `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -15,8 +16,10 @@ export default defineConfig({
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "webkit", use: { ...devices["Desktop Safari"] } },
   ],
-  webServer: {
-    command: `npm run dev -w @chardesk/cell-ui-site -- --port ${port}`,
+  webServer: process.env.CELL_UI_BASE_URL ? undefined : {
+    command: preview
+      ? `npm run preview -w @chardesk/cell-ui-site -- --port ${port}`
+      : `npm run dev -w @chardesk/cell-ui-site -- --port ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI && !process.env.PLAYWRIGHT_PORT,
   },
