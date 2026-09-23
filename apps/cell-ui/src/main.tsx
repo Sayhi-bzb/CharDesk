@@ -98,7 +98,6 @@ const installationCommands = {
 } as const;
 type PackageManager = keyof typeof installationCommands;
 const packageManagers = Object.keys(installationCommands) as PackageManager[];
-const sourceInstallationGuide = "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#source-installation";
 const manualInstallationGuide = "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#manual-source-installation";
 const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -167,7 +166,6 @@ export function Installation() {
         <button id="installation-manual-tab" type="button" role="tab" aria-selected={method === "manual"} aria-controls="installation-manual-panel" tabIndex={method === "manual" ? 0 : -1} onClick={() => setMethod("manual")}>Manual</button>
       </div>
       <div id="installation-command-panel" role="tabpanel" aria-labelledby="installation-command-tab" hidden={method !== "command"}>
-        <p>Install the editable Cell UI source in a React project with a shadcn <code>components.json</code> and a <code>lib</code> alias. This installs the full library, not just this component. See the <a href={sourceInstallationGuide}>source installation guide</a> for the setup contract.</p>
         <div className="docs-tabs" role="tablist" aria-label="Package manager" onKeyDown={handleTabKeyDown}>
           {packageManagers.map((name) => (
             <button key={name} type="button" role="tab" aria-selected={manager === name} aria-controls="installation-command" tabIndex={manager === name ? 0 : -1} onClick={() => setManager(name)}>{name}</button>
@@ -178,7 +176,7 @@ export function Installation() {
         </div>
       </div>
       <div id="installation-manual-panel" role="tabpanel" aria-labelledby="installation-manual-tab" hidden={method !== "manual"}>
-        <p>Copy the Registry source into your configured <code>lib</code> directory and install its declared dependencies. Follow the <a href={manualInstallationGuide}>manual source installation guide</a> for the authoritative file mapping.</p>
+        <p>See the <a href={manualInstallationGuide}>manual installation guide</a>.</p>
       </div>
     </section>
   );

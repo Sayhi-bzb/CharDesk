@@ -50,9 +50,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   const toc = page.getByRole("navigation", { name: "On This Page" });
   await expect(toc.getByRole("link")).toHaveText(["Installation", "Usage", "View source", "API"]);
   await expect(toc.getByRole("link", { name: "Installation" })).toHaveAttribute("href", "#/components/button?section=installation");
-  await expect(page.getByRole("link", { name: "source installation guide" })).toHaveAttribute(
-    "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#source-installation",
-  );
+  await expect(page.locator("#installation-command-panel > p")).toHaveCount(0);
   await expect(page.getByText("npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui")).toBeVisible();
   await expect(page.locator("#usage + .docs-code")).toContainText("@/lib/cell-ui/browser");
   await expect(page.locator("#usage + .docs-code")).not.toContainText("@chardesk/cell-ui");
@@ -179,7 +177,7 @@ test("installation tabs expose copyable package-manager commands and the manual 
   await page.keyboard.press("Home");
   await expect(managers.getByRole("tab", { name: "pnpm" })).toHaveAttribute("aria-selected", "true");
   await methods.getByRole("tab", { name: "Manual" }).click();
-  await expect(installation.getByRole("link", { name: "manual source installation guide" })).toHaveAttribute(
+  await expect(installation.getByRole("link", { name: "manual installation guide" })).toHaveAttribute(
     "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#manual-source-installation",
   );
   await expect(installation.getByRole("tablist", { name: "Package manager" })).toBeHidden();
