@@ -44,15 +44,18 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("link", { name: "button.ts" })).toHaveAttribute(
     "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/button.ts",
   );
-  await expect(page.getByRole("heading", { name: "Distribution" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Installation" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Usage" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "API" })).toBeVisible();
+  const toc = page.getByRole("navigation", { name: "On This Page" });
+  await expect(toc.getByRole("link")).toHaveText(["Installation", "Usage", "View source", "API"]);
+  await expect(toc.getByRole("link", { name: "Installation" })).toHaveAttribute("href", "#/components/button?section=installation");
   await expect(page.getByRole("link", { name: "source installation guide" })).toHaveAttribute(
     "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#source-installation",
   );
   await expect(page.getByText("npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui")).toBeVisible();
-  await expect(page.getByText("@/lib/cell-ui/browser", { exact: true })).toBeVisible();
-  await expect(page.locator("#usage-title + .docs-code")).not.toContainText("@chardesk/cell-ui");
+  await expect(page.locator("#usage + .docs-code")).toContainText("@/lib/cell-ui/browser");
+  await expect(page.locator("#usage + .docs-code")).not.toContainText("@chardesk/cell-ui");
   const codeBlocks = page.locator(".docs-code");
   await expect(codeBlocks).toHaveCount(2);
   for (const codeBlock of await codeBlocks.all()) {
@@ -143,6 +146,68 @@ test("component catalog drives concise, addressable documentation", async ({ pag
     )).viewport).toEqual({ width: 32, height: 15 });
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+});
+
+test("installation tabs expose copyable package-manager commands and the manual guide", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (value: string) => { sessionStorage.setItem("copied-command", value); } },
+    });
+  });
+  await page.goto("/#/components/button");
+  const installation = page.locator("#installation").locator("xpath=..");
+  const methods = installation.getByRole("tablist", { name: "Installation method" });
+  const managers = installation.getByRole("tablist", { name: "Package manager" });
+  await expect(methods.getByRole("tab", { name: "Command" })).toHaveAttribute("aria-selected", "true");
+  await expect(managers.getByRole("tab", { name: "npm", exact: true })).toHaveAttribute("aria-selected", "true");
+  const commands = {
+    pnpm: "pnpm dlx",
+    npm: "npx",
+    yarn: "yarn dlx",
+    bun: "bunx",
+  } as const;
+  for (const [manager, prefix] of Object.entries(commands)) {
+    await managers.getByRole("tab", { name: manager, exact: true }).click();
+    const command = `${prefix} shadcn@latest add Sayhi-bzb/CharDesk/cell-ui`;
+    const panel = installation.getByRole("tabpanel", { name: `${manager} installation command` });
+    await expect(panel).toContainText(command);
+    await panel.getByRole("button").click();
+    await expect.poll(() => page.evaluate(() => sessionStorage.getItem("copied-command"))).toBe(command);
+  }
+  await managers.getByRole("tab", { name: "bun" }).focus();
+  await page.keyboard.press("Home");
+  await expect(managers.getByRole("tab", { name: "pnpm" })).toHaveAttribute("aria-selected", "true");
+  await methods.getByRole("tab", { name: "Manual" }).click();
+  await expect(installation.getByRole("link", { name: "manual source installation guide" })).toHaveAttribute(
+    "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#manual-source-installation",
+  );
+  await expect(installation.getByRole("tablist", { name: "Package manager" })).toBeHidden();
+  await methods.getByRole("tab", { name: "Manual" }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(methods.getByRole("tab", { name: "Command" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("on-page navigation survives direct load, component changes, and browser history", async ({ page }) => {
+  await page.goto("/#/components/button?section=usage");
+  await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
+  const toc = page.getByRole("navigation", { name: "On This Page" });
+  await expect(toc.getByRole("link", { name: "Usage" })).toHaveAttribute("aria-current", "location");
+  await expect(page.locator("#usage")).toBeInViewport();
+  await toc.getByRole("link", { name: "API" }).click();
+  await expect(page).toHaveURL(/#\/components\/button\?section=api$/);
+  await expect(page.locator("#api")).toBeInViewport();
+  await page.reload();
+  await expect(page.locator("#api")).toBeInViewport();
+  await page.goBack();
+  await expect(toc.getByRole("link", { name: "Usage" })).toHaveAttribute("aria-current", "location");
+  await page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: "Tabs", exact: true }).click();
+  await expect(page).toHaveURL(/#\/components\/tabs$/);
+  await expect(page.getByRole("heading", { name: "Tabs", level: 1 })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(toc.getByRole("link", { name: "Installation" })).toBeVisible();
+  await toc.getByRole("link", { name: "Installation" }).click();
+  await expect(page.locator("#installation")).toBeInViewport();
 });
 
 test("removed Gallery pages do not leave navigable component routes", async ({ page }) => {

@@ -93,7 +93,7 @@ code, pre { font-family: inherit; }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  max-width: 1024px;
+  max-width: 1240px;
   margin: 0 auto 48px;
 }
 .gallery-brand { font-weight: 700; text-decoration: none; }
@@ -153,22 +153,34 @@ code, pre { font-family: inherit; }
 }
 .gallery-layout {
   display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
-  gap: 56px;
-  max-width: 1024px;
+  grid-template-areas: "nav page toc";
+  grid-template-columns: 160px minmax(0, 1fr) 160px;
+  gap: 40px;
+  max-width: 1240px;
   margin-inline: auto;
 }
-.gallery-nav { position: sticky; top: 24px; align-self: start; display: grid; gap: 20px; line-height: 1.8; }
+.gallery-nav { grid-area: nav; position: sticky; top: 24px; align-self: start; display: grid; gap: 20px; line-height: 1.8; }
 .gallery-nav__title { font-weight: 700; }
 .gallery-nav ul { list-style: none; margin: 8px 0 0; padding: 0; }
 .gallery-nav a { color: var(--cell-muted-foreground); text-decoration: none; }
 .gallery-nav a:hover { color: var(--cell-foreground); }
 .gallery-nav a[aria-current="page"] { color: var(--cell-foreground); font-weight: 700; }
-.docs-page { display: grid; gap: 48px; min-width: 0; }
+.gallery-toc { grid-area: toc; position: sticky; top: 24px; align-self: start; line-height: 1.8; }
+.gallery-toc__title { font-weight: 700; }
+.gallery-toc ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.gallery-toc a { color: var(--cell-muted-foreground); text-decoration: none; }
+.gallery-toc a:hover, .gallery-toc a[aria-current="location"] { color: var(--cell-foreground); }
+.gallery-toc a[aria-current="location"] { font-weight: 700; }
+.docs-page { grid-area: page; display: grid; gap: 48px; min-width: 0; }
 .docs-page__header { display: grid; gap: 8px; }
 .docs-page__header p, .docs-section > p { max-width: 72ch; color: var(--cell-muted-foreground); }
 .docs-section { display: grid; gap: 16px; min-width: 0; }
 .docs-section__heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.docs-tabs { display: flex; flex-wrap: wrap; gap: 4px 20px; border-bottom: var(--gallery-dom-line-width) solid var(--cell-border); }
+.docs-tabs [role="tab"] { padding: 6px 0; border: 0; border-bottom: var(--gallery-dom-line-width) solid transparent; margin-bottom: calc(-1 * var(--gallery-dom-line-width)); background: transparent; color: var(--cell-muted-foreground); cursor: pointer; }
+.docs-tabs [role="tab"][aria-selected="true"] { border-bottom-color: var(--cell-border); color: var(--cell-foreground); font-weight: 700; }
+.docs-section [role="tabpanel"]:not([hidden]) { display: grid; gap: 16px; min-width: 0; }
+.docs-section [role="tabpanel"] > p { max-width: 72ch; color: var(--cell-muted-foreground); }
 .docs-preview { min-width: 0; overflow-x: auto; padding: 20px; }
 .docs-preview > * { width: max-content; max-width: 100%; margin-inline: auto; }
 .docs-preview:has(> .component-playground) { padding-inline: 0; overflow: visible; }
@@ -198,12 +210,18 @@ td:first-child, td:nth-child(2) { white-space: nowrap; }
 .not-found { display: grid; gap: 12px; }
 .not-found a { color: var(--cell-accent); }
 .gallery-page :focus { outline: none; }
+.gallery-page a:focus-visible, .gallery-page button:focus-visible { outline: var(--gallery-dom-line-width) solid var(--cell-accent); outline-offset: 3px; }
 ::selection { background: var(--cell-selection); color: var(--cell-selection-foreground); }
+@media (max-width: 1050px) {
+  .gallery-layout { grid-template-areas: "nav toc" "nav page"; grid-template-columns: 160px minmax(0, 1fr); }
+  .gallery-toc { position: static; }
+  .gallery-toc ul { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+}
 @media (max-width: 720px) {
   .gallery-page { padding: 20px 16px 56px; }
   .gallery-header { flex-wrap: wrap; margin-bottom: 28px; }
   .gallery-appearance-controls { margin-left: auto; }
-  .gallery-layout { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .gallery-layout { grid-template-areas: "nav" "toc" "page"; grid-template-columns: minmax(0, 1fr); gap: 32px; }
   .gallery-nav { position: static; }
   .gallery-nav ul { display: flex; flex-wrap: wrap; gap: 4px 20px; }
   .docs-page { gap: 36px; }
