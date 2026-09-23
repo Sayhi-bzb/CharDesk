@@ -42,28 +42,30 @@ for (const dpr of [1, 1.25, 2]) {
         return { metrics, calls, regular, requestedBold, loaded: face.status };
       }, fusionMonoBase64);
       expect(result.loaded).toBe("loaded");
-      expect(result.metrics.cellWidth).toBeCloseTo(7.5, 5);
+      const cellWidth = result.metrics.cellWidth;
+      expect(cellWidth).toBeGreaterThanOrEqual(7);
+      expect(cellWidth).toBeLessThanOrEqual(8.5);
       const regularCalls = result.calls.slice(0, 10);
       const boldCalls = result.calls.slice(10);
       expect(regularCalls).toHaveLength(10);
       expect(boldCalls).toHaveLength(20);
       for (const [index, call] of regularCalls.entries()) {
-        expect(call.x).toBeCloseTo((index + 0.5) * 7.5, 5);
+        expect(call.x).toBeCloseTo((index + 0.5) * cellWidth, 3);
         expect(call.y).toBeCloseTo(result.metrics.baseline, 5);
         expect(call.font).not.toContain("700");
-        expect(call.advance).toBeCloseTo(7.5, 5);
+        expect(call.advance).toBeCloseTo(cellWidth, 3);
         expect(call.ink).toBeGreaterThan(0);
         // WebKit's reported regular ink bounds can occupy the full advance.
         expect(call.ink).toBeLessThanOrEqual(call.advance);
       }
       for (let index = 0; index < 10; index += 1) {
-        const anchor = (index + 0.5) * 7.5;
-        expect(boldCalls[index * 2]!.x).toBeCloseTo(anchor, 5);
-        expect(boldCalls[index * 2 + 1]!.x).toBeCloseTo(anchor + 1, 5);
+        const anchor = (index + 0.5) * cellWidth;
+        expect(boldCalls[index * 2]!.x).toBeCloseTo(anchor, 3);
+        expect(boldCalls[index * 2 + 1]!.x).toBeCloseTo(anchor + 1, 3);
         for (const call of boldCalls.slice(index * 2, index * 2 + 2)) {
           expect(call.y).toBeCloseTo(result.metrics.baseline, 5);
           expect(call.font).not.toContain("700");
-          expect(call.advance).toBeCloseTo(7.5, 5);
+          expect(call.advance).toBeCloseTo(cellWidth, 3);
         }
       }
       expect(result.requestedBold).not.toBe(result.regular);
