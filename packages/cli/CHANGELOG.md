@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/Sayhi-bzb/CharDesk/compare/v0.4.0...v0.4.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* install browser runtimes for release verification ([728157a](https://github.com/Sayhi-bzb/CharDesk/commit/728157a6b82c40ebc364033c981e3746e815e19f))
+
 ## [0.4.0](https://github.com/Sayhi-bzb/CharDesk/compare/v0.3.7...v0.4.0) (2026-09-23)
 
 
