@@ -1,6 +1,6 @@
 import { cellRectContainsPoint } from "@chardesk/cell-core";
 import { placeAnchoredOverlay } from "./anchored-overlay.js";
-import { computeScrollMetrics, scrollOffsetFor } from "./scroll.js";
+import { clampScrollOffset, computeScrollMetrics, scrollOffsetFor } from "./scroll.js";
 import { measureCellText } from "./text.js";
 import type {
   CellPoint,
@@ -59,6 +59,7 @@ const scrollMetricsFor = (
       extent.width = Math.max(extent.width, x + child.width);
     }
     extent.height = Math.max(extent.height, y + child.height);
+    if (childNode.kind === "scroll-area") return;
     childNode.children.forEach((grandchildId) => {
       measureDescendant(grandchildId, { x, y });
     });
@@ -209,10 +210,11 @@ export const composeScene = (
     if (entry.paintVisible) paintList.push(id);
 
     const childClip = widget.kind === "range-slider" ? outerClip : contentClip;
+    const offset = scrollMetrics ? clampScrollOffset(widget.scrollOffset, scrollMetrics) : widget.scrollOffset;
     const childOrigin = widget.kind === "scroll-area" || dropdownContent
       ? {
-          x: bounds.x - widget.scrollOffset.x,
-          y: bounds.y - widget.scrollOffset.y,
+          x: bounds.x - offset.x,
+          y: bounds.y - offset.y,
         }
       : { x: bounds.x, y: bounds.y };
     for (const childId of widget.children) visit(childId, childOrigin, childClip, layer);

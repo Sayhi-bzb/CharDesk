@@ -22,6 +22,8 @@ test("Button content choices keep Cell geometry, semantics, and input behavior",
 
   await expect.poll(() => page.evaluate((glyph) =>
     document.fonts.check("12px 'Symbols Nerd Font Mono'", glyph), saveGlyph)).toBe(true);
+  await expect.poll(async () => (await readCellProbe(surface)).presentation?.glyphInkOverhang
+    .some((entry) => entry.text === saveGlyph)).toBe(true);
 
   const iconCell = (await buttonCells()).find((cell) => cell.text === saveGlyph)!;
   const point = await cellPoint(surface, iconCell.x, iconCell.y);

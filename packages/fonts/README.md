@@ -38,9 +38,9 @@ the character explorer are generated from that same catalog. Use
 `npm run fonts:sync:nerd` to refresh this independently from the other pinned
 Core sources; `npm run fonts:verify -- --target=canvas-core` is offline.
 
-Nerd glyphs remain one protocol Cell and use `fontSizeScale: 0.8`. The scale is
-uniform: font profiles cannot stretch one axis independently. Glyph ink may
-cross a Cell boundary; the containing Canvas Surface is the paint boundary.
+Nerd glyphs remain one protocol Cell and use `fontSizeScale: 0.8`. Font profiles
+cannot stretch one axis independently; the [Canvas paint contract](../rendering/README.md#font-ink-and-cell-boundaries)
+owns ink alignment and allows ink to cross Cell boundaries.
 
 The current optional compatibility display is [`@chardesk/font-maple`](../font-maple/README.md). Source versions and checksums are authoritative in `manifest.json`; candidate evaluation lives in the [font capability research card](../../exp/research/font-stack.md).
 

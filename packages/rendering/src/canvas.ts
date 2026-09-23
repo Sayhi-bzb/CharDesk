@@ -224,6 +224,58 @@ export const resolveCharDeskCanvasFontFace = (input: Readonly<{
   };
 };
 
+/** Ink placement for an NF glyph; null retains ordinary font drawing when metrics are unavailable. */
+export const measureCharDeskCanvasNerdGlyph = (
+  context: Pick<CharDeskCanvasContext, "font" | "textAlign" | "textBaseline" | "measureText">,
+  input: Readonly<{
+    grapheme: string;
+    metrics: CharDeskCellMetrics;
+    zoom?: number;
+    bold?: boolean;
+    italic?: boolean;
+    fontProfile?: CharDeskFontProfile;
+    fontFamilies?: CharDeskCanvasFontFamilies;
+    fontResolver?: CharDeskCanvasFontResolver;
+  }>
+) => {
+  if (typeof context.measureText !== "function") return null;
+  const { grapheme, metrics, bold = false, italic = false, zoom = 1 } = input;
+  const profile = input.fontProfile ?? CHARDESK_SYSTEM_FONT_PROFILE;
+  const face = resolveCharDeskCanvasFontFace({ grapheme, route: resolveCharDeskFontRoute(grapheme),
+    bold, italic, fontProfile: profile, fontFamilies: input.fontFamilies, fontResolver: input.fontResolver });
+  if (face.capability !== "nerd") return null;
+  const previous = { font: context.font, align: context.textAlign, baseline: context.textBaseline };
+  try {
+    context.textAlign = "center";
+    context.textBaseline = "alphabetic";
+    const font = getCharDeskCanvasFont(metrics, zoom, { bold, italic,
+      fontFamily: face.family, boldStrategy: face.boldStrategy, fontSizeScale: face.fontSizeScale });
+    context.font = font;
+    const icon = context.measureText(grapheme);
+    const { actualBoundingBoxLeft: left, actualBoundingBoxRight: right,
+      actualBoundingBoxAscent: ascent, actualBoundingBoxDescent: descent } = icon;
+    if (![left, right, ascent, descent].every(Number.isFinite) || left + right <= 0) return null;
+    const offsetX = (left - right) / 2;
+    const displayFace = resolveCharDeskCanvasFontFace({ grapheme: "H", route: "text", bold, italic,
+      fontProfile: profile, fontFamilies: input.fontFamilies, fontResolver: input.fontResolver });
+    context.font = getCharDeskCanvasFont(metrics, zoom, { bold, italic, fontFamily: displayFace.family,
+      fontSizeScale: displayFace.fontSizeScale, boldStrategy: displayFace.boldStrategy });
+    const cap = context.measureText("H");
+    const faceBaselineShift = face.baselineShiftEm * metrics.fontSize * face.fontSizeScale * zoom;
+    const baselineOffset = Number.isFinite(cap.actualBoundingBoxAscent)
+      && Number.isFinite(cap.actualBoundingBoxDescent)
+      ? displayFace.baselineShiftEm * metrics.fontSize * displayFace.fontSizeScale * zoom
+        + (cap.actualBoundingBoxDescent - cap.actualBoundingBoxAscent + ascent - descent) / 2
+        + faceBaselineShift
+      : faceBaselineShift;
+    return { font, offsetX, baselineOffset, inkLeft: offsetX - left, inkRight: offsetX + right };
+  } finally {
+    context.font = previous.font;
+    context.textAlign = previous.align;
+    context.textBaseline = previous.baseline;
+  }
+};
+
 export type CharDeskFontMeasurement = Readonly<{
   metrics: CharDeskCellMetrics;
   source: "font-bounds" | "glyph-bounds" | "calibrated";
@@ -459,6 +511,7 @@ type CanvasTextState = {
   font: string | null;
   color: string | null;
   transform?: AxisTransform;
+  nerdPlacements: Map<string, ReturnType<typeof measureCharDeskCanvasNerdGlyph>>;
 };
 
 const prepareFontGlyph = (
@@ -501,15 +554,31 @@ const prepareFontGlyph = (
     fontSizeScale: face.fontSizeScale,
     boldStrategy: face.boldStrategy,
   });
-  if (font !== state.font) {
-    ctx.font = font;
-    state.font = font;
+  const placementKey = face.capability === "nerd" && !options?.fontResolver && !options?.fontFamilies
+    ? `${visual.text}:${font}:${face.baselineShiftEm}:${options?.fontProfile?.id ?? "system"}`
+    : null;
+  let placement = placementKey === null ? undefined : state.nerdPlacements.get(placementKey);
+  if (placement === undefined && face.capability === "nerd") {
+    placement = measureCharDeskCanvasNerdGlyph(ctx, {
+      grapheme: visual.text, metrics, zoom,
+      bold: !!attrs?.bold, italic: !!attrs?.italic,
+      ...(options?.fontProfile ? { fontProfile: options.fontProfile } : {}),
+      ...(options?.fontFamilies ? { fontFamilies: options.fontFamilies } : {}),
+      ...(options?.fontResolver ? { fontResolver: options.fontResolver } : {}),
+    });
+    if (placementKey !== null) state.nerdPlacements.set(placementKey, placement);
+  }
+  const drawingFont = placement?.font ?? font;
+  if (drawingFont !== state.font) {
+    ctx.font = drawingFont;
+    state.font = drawingFont;
   }
   return {
     text,
     // Glyph positions preserve grid spacing; only allocation edges are pixel-aligned.
-    x: anchor.x,
-    y: anchor.y + face.baselineShiftEm * metrics.fontSize * face.fontSizeScale * zoom,
+    x: anchor.x + (placement?.offsetX ?? 0),
+    y: anchor.y + (placement?.baselineOffset
+      ?? face.baselineShiftEm * metrics.fontSize * face.fontSizeScale * zoom),
     boldOverdrawX: attrs?.bold && face.boldStrategy === "overdraw"
       ? face.boldOverdrawEm * metrics.fontSize * face.fontSizeScale * zoom
       : 0,
@@ -606,6 +675,7 @@ export const drawCharDeskCanvasCells = (
     font: null,
     color: null,
     transform,
+    nerdPlacements: new Map(),
   };
   for (let index = 0; index < entries.length; index += 1) {
     const entry = entries[index]!;

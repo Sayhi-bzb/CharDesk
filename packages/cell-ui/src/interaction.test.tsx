@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveWheelInput } from "./interaction.js";
+import { resolveWheelInput, revealCommandForTarget } from "./interaction.js";
 import {
   Box,
   CellUiRuntime,
@@ -48,11 +48,11 @@ it("consumes wheel at ScrollArea boundaries independently of movement", () => {
   runtime.dispose();
 });
 
-it("keeps nested wheel ownership at the innermost scrollable viewport", () => {
+it("measures nested viewports and passes boundary wheels to the outer scroll area", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 20, height: 5 } });
-  const view = (innerHeight: number) => <Root>
+  const view = (innerHeight: number, innerScrollY = 0) => <Root>
     <ScrollArea id="outer" style={{ height: 5 }}>
-      <ScrollArea id="inner" style={{ height: 2 }}>
+      <ScrollArea id="inner" scrollY={innerScrollY} style={{ height: 2 }}>
         <Box id="inner-content" style={{ height: innerHeight }}><Text>inner</Text></Box>
       </ScrollArea>
       <Box style={{ height: 10 }}><Text>outer</Text></Box>
@@ -60,10 +60,35 @@ it("keeps nested wheel ownership at the innermost scrollable viewport", () => {
   </Root>;
   const input = { type: "wheel" as const, point: { x: 1, y: 0 }, deltaX: 0, deltaY: -100 };
   const nested = runtime.render(view(6));
+  expect(getScrollRange(nested, "outer").y.max).toBe(7);
   expect(resolveWheelInput(nested, input)).toEqual({ consumed: true, command: null });
   expect(resolveWheelInput(nested, { ...input, deltaY: 100 }).command?.targetId).toBe("inner");
+  const innerAtEnd = runtime.render(view(6, 4));
+  expect(resolveWheelInput(innerAtEnd, { ...input, deltaY: 100 }).command?.targetId).toBe("outer");
   const fits = runtime.render(view(1));
   expect(resolveWheelInput(fits, { ...input, deltaY: 100 }).command?.targetId).toBe("outer");
+  runtime.dispose();
+});
+
+it("reveals focus through every enclosing scroll viewport", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 20, height: 3 } });
+  const frame = runtime.render(<Root><ScrollArea id="outer" style={{ height: 3 }}>
+    <Box style={{ height: 2 }}><Text>before</Text></Box>
+    <ScrollArea id="inner" style={{ height: 2 }}>
+      <List id="rows" label="Rows">
+        {Array.from({ length: 5 }, (_, index) => <ListItem id={`row-${index}`} key={index}><Text>{index}</Text></ListItem>)}
+      </List>
+    </ScrollArea>
+  </ScrollArea></Root>);
+  expect(revealCommandForTarget(frame, "row-4")).toEqual({
+    type: "focus",
+    targetId: "row-4",
+    reveal: { targetId: "inner", scrollX: 0, scrollY: 3 },
+    reveals: [
+      { targetId: "inner", scrollX: 0, scrollY: 3 },
+      { targetId: "outer", scrollX: 0, scrollY: 1 },
+    ],
+  });
   runtime.dispose();
 });
 

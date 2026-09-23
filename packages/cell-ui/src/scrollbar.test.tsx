@@ -1,8 +1,9 @@
 import { expect, it } from "vitest";
 import { thumbAxis, thumbCellSpan, thumbGlyph } from "./scrollbar.js";
-import { CellUiRuntime, Root, Box, ScrollArea, createTestPilot } from "./index.js";
+import { Button, CellUiRuntime, Root, Box, ScrollArea, Text, createTestPilot } from "./index.js";
 import { gestureCandidatesForFrame } from "./pointer.js";
 import { getEventPath } from "./scene.js";
+import { scrollViewportCommands } from "./scroll.js";
 
 it("half-Cell geometry is monotonic, aligned at endpoints, and retains exact coverage", () => {
   for (const track of [1, 2, 5, 11]) {
@@ -82,6 +83,46 @@ it("the uncovered half of an edge Cell pages instead of capturing the thumb", ()
   const point = { x: 7, y: 1 };
   expect(gestureCandidatesForFrame(frame, path, point, { x: 7.5, y: 1.25 }).some((item) => item.kind === "drag")).toBe(true);
   expect(gestureCandidatesForFrame(frame, path, point, { x: 7.5, y: 1.75 }).some((item) => item.kind === "drag")).toBe(false);
+  runtime.dispose();
+});
+
+it("offers a drag gesture only on axes with actual scroll range", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 12, height: 5 } });
+  const candidates = (width: number, height: number) => {
+    const frame = runtime.render(<Root><ScrollArea id="scroll" style={{ width: 12, height: 5 }}>
+      <Box style={{ width, height }}><Button id="save"><Text>Save</Text></Button></Box>
+    </ScrollArea></Root>);
+    return gestureCandidatesForFrame(frame, getEventPath(frame.scene, "save"), { x: 1, y: 0 });
+  };
+  expect(candidates(10, 1)).toMatchObject([{ targetId: "save", kind: "tap", rearmable: true }]);
+  expect(candidates(10, 8).find((candidate) => candidate.kind === "scroll")?.axis).toBe("y");
+  expect(candidates(20, 1).find((candidate) => candidate.kind === "scroll")?.axis).toBe("x");
+  runtime.dispose();
+});
+
+it("lets an overflowing parent own drag when its nested scroll area fits", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 12, height: 5 } });
+  const frame = runtime.render(<Root><ScrollArea id="outer" style={{ width: 12, height: 5 }}>
+    <ScrollArea id="inner" style={{ width: 10, height: 2 }}>
+      <Button id="save"><Text>Save</Text></Button>
+    </ScrollArea>
+    <Box style={{ height: 8 }} />
+  </ScrollArea></Root>);
+  expect(gestureCandidatesForFrame(frame, getEventPath(frame.scene, "save"), { x: 1, y: 0 })
+    .find((candidate) => candidate.kind === "scroll")).toMatchObject({ targetId: "outer", axis: "y" });
+  runtime.dispose();
+});
+
+it("clamps stale offsets when scroll content shrinks", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 12, height: 5 } });
+  const view = (height: number) => <Root><ScrollArea id="scroll" scrollY={5} style={{ width: 12, height: 5 }}>
+    <Box style={{ height }}><Text id="content">content</Text></Box>
+  </ScrollArea></Root>;
+  runtime.render(view(10));
+  const shrunk = runtime.render(view(1));
+  expect(shrunk.scene.entries.get("content")?.paintVisible).toBe(true);
+  expect(shrunk.scene.entries.get("scroll")?.scrollMetrics?.verticalTrack).toBeNull();
+  expect(scrollViewportCommands(shrunk)).toEqual([{ type: "scroll", targetId: "scroll", scrollX: 0, scrollY: 0 }]);
   runtime.dispose();
 });
 

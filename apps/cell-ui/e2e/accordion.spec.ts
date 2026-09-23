@@ -1,6 +1,43 @@
 import { expect, test } from "@playwright/test";
 import { cellPoint, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
 
+test("Accordion preview scrolls overflow and reveals keyboard-focused items", async ({ page }) => {
+  await page.goto("/#/components/accordion");
+  const surface = page.locator('[data-cell-probe="component-accordion"]');
+  const general = surface.getByRole("button", { name: "General", exact: true });
+  const appearance = surface.getByRole("button", { name: "Appearance", exact: true });
+  const advanced = surface.getByRole("button", { name: "Advanced", exact: true });
+  await surface.getByRole("checkbox", { name: "separator", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
+  for (const trigger of [general, appearance, advanced]) {
+    await trigger.evaluate((element: HTMLElement) => element.click());
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  }
+
+  const before = await readCellProbe(surface);
+  expect(before.cells.some((cell) => cell.ownerId === "component-accordion-playground-preview-scroll" && "█▀▄".includes(cell.text))).toBe(true);
+  expect(before.cells.some((cell) => cell.ownerId === "accordion-advanced-trigger")).toBe(false);
+  const previewPoint = await cellPoint(surface, 8, 3);
+  await page.mouse.move(previewPoint.x, previewPoint.y);
+  for (let index = 0; index < 3; index += 1) await page.mouse.wheel(0, 120);
+  await expect.poll(async () => (await readCellProbe(surface)).cells
+    .some((cell) => cell.ownerId === "accordion-advanced-trigger")).toBe(true);
+
+  for (let index = 0; index < 3; index += 1) await page.mouse.wheel(0, -120);
+  await general.evaluate((element: HTMLElement) => element.focus());
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await expect(advanced).toBeFocused();
+  expect((await readCellProbe(surface)).cells.some((cell) => cell.ownerId === "accordion-advanced-trigger")).toBe(true);
+
+  for (const trigger of [advanced, appearance, general]) {
+    await trigger.evaluate((element: HTMLElement) => element.click());
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  }
+  await expect.poll(async () => (await readCellProbe(surface)).cells
+    .some((cell) => cell.ownerId === "accordion-general-trigger")).toBe(true);
+});
+
 test("Accordion separators are opt-in and do not interrupt item state or navigation", async ({ page }) => {
   await page.goto("/#/components/accordion");
   const surface = page.locator('[data-cell-probe="component-accordion"]');

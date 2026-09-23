@@ -22,6 +22,7 @@ import {
   isDismissableScope,
   isFocusScope,
   isFocusableKind,
+  isPortalKind,
   isTextEditorKind,
 } from "./widget-capabilities.js";
 import {
@@ -52,6 +53,7 @@ export type WidgetCommand =
       type: "focus";
       targetId: WidgetId;
       reveal?: Readonly<{ targetId: WidgetId; scrollX: number; scrollY: number }>;
+      reveals?: readonly Readonly<{ targetId: WidgetId; scrollX: number; scrollY: number }>[];
     }>
   | Readonly<{ type: "activate"; targetId: WidgetId }>
   | Readonly<{ type: "select-radio"; targetId: WidgetId }>
@@ -419,19 +421,23 @@ export const resolveWheelInput = (
     return { consumed: false, command: null };
   }
   let scroll = hit ? frame.tree.nodes.get(hit) : undefined;
+  let consumed = false;
   while (scroll) {
     if (scopeId && !isDescendantOf(frame.tree, scroll.id, scopeId)) break;
     const range = getScrollRange(frame, scroll.id);
     if (!scroll.disabled && (range.x.max > range.x.min || range.y.max > range.y.min)) {
+      consumed = true;
       const offset = scrollOffsetFor(scroll);
-      return {
-        consumed: true,
-        command: scrollCommandForOffset(frame, scroll.id, { x: offset.x + Math.sign(input.deltaX), y: offset.y + Math.sign(input.deltaY) }),
-      };
+      const command = scrollCommandForOffset(frame, scroll.id, {
+        x: offset.x + Math.sign(input.deltaX),
+        y: offset.y + Math.sign(input.deltaY),
+      });
+      if (command) return { consumed, command };
     }
+    if (isPortalKind(scroll.kind)) break;
     scroll = scroll.parentId ? frame.tree.nodes.get(scroll.parentId) : undefined;
   }
-  return { consumed: false, command: null };
+  return { consumed, command: null };
 };
 
 const scrollCommand = (
@@ -460,42 +466,47 @@ const focusCommand = (
   frame: FrameSnapshot,
   targetId: WidgetId
 ): WidgetCommand => {
-  const scroll = scrollAncestor(frame, targetId);
   const target = frame.scene.entries.get(targetId);
-  const viewport = scroll ? frame.scene.entries.get(scroll.id) : undefined;
-  if (!scroll || !target || !viewport) return { type: "focus", targetId };
-  const visible = viewport.scrollMetrics?.viewport ?? viewport.contentBounds;
-  const top = visible.y;
-  const left = visible.x;
-  const bottom = visible.y + visible.height;
-  const right = visible.x + visible.width;
-  const deltaY = target.layoutBounds.y < top
-    ? target.layoutBounds.y - top
-    : target.layoutBounds.y + target.layoutBounds.height > bottom
-      ? target.layoutBounds.y + target.layoutBounds.height - bottom
-      : 0;
-  const deltaX = target.layoutBounds.x < left
-    ? target.layoutBounds.x - left
-    : target.layoutBounds.x + target.layoutBounds.width > right
-      ? target.layoutBounds.x + target.layoutBounds.width - right
-      : 0;
-  if (deltaX === 0 && deltaY === 0) return { type: "focus", targetId };
-  const range = getScrollRange(frame, scroll.id);
-  const scrollX = Math.max(
-    range.x.min,
-    Math.min(range.x.max, scroll.scrollOffset.x + deltaX)
-  );
-  const scrollY = Math.max(
-    range.y.min,
-    Math.min(range.y.max, scroll.scrollOffset.y + deltaY)
-  );
-  if (scrollX === scroll.scrollOffset.x && scrollY === scroll.scrollOffset.y) {
-    return { type: "focus", targetId };
+  if (!target) return { type: "focus", targetId };
+  const reveals: { targetId: WidgetId; scrollX: number; scrollY: number }[] = [];
+  let bounds = target.layoutBounds;
+  let id = frame.tree.nodes.get(targetId)?.parentId;
+  while (id) {
+    const scroll = frame.tree.nodes.get(id);
+    if (!scroll) break;
+    const viewport = frame.scene.entries.get(id)?.scrollMetrics?.viewport;
+    if (viewport) {
+      const deltaX = bounds.x < viewport.x
+        ? bounds.x - viewport.x
+        : bounds.x + bounds.width > viewport.x + viewport.width
+          ? bounds.x + bounds.width - viewport.x - viewport.width
+          : 0;
+      const deltaY = bounds.y < viewport.y
+        ? bounds.y - viewport.y
+        : bounds.y + bounds.height > viewport.y + viewport.height
+          ? bounds.y + bounds.height - viewport.y - viewport.height
+          : 0;
+      const range = getScrollRange(frame, id);
+      const scrollX = Math.max(range.x.min, Math.min(range.x.max, scroll.scrollOffset.x + deltaX));
+      const scrollY = Math.max(range.y.min, Math.min(range.y.max, scroll.scrollOffset.y + deltaY));
+      if (scrollX !== scroll.scrollOffset.x || scrollY !== scroll.scrollOffset.y) {
+        reveals.push({ targetId: id, scrollX, scrollY });
+        bounds = {
+          ...bounds,
+          x: bounds.x - (scrollX - scroll.scrollOffset.x),
+          y: bounds.y - (scrollY - scroll.scrollOffset.y),
+        };
+      }
+    }
+    if (isPortalKind(scroll.kind)) break;
+    id = scroll.parentId;
   }
+  if (reveals.length === 0) return { type: "focus", targetId };
   return {
     type: "focus",
     targetId,
-    reveal: { targetId: scroll.id, scrollX, scrollY },
+    reveal: reveals[0],
+    ...(reveals.length > 1 ? { reveals } : {}),
   };
 };
 

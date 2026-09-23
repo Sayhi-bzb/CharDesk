@@ -6,7 +6,7 @@ import { getEventPath, hitTestCell } from "./scene.js";
 import type { CellPoint, FrameSnapshot, WidgetId } from "./types.js";
 import { cellCenter } from "./scrollbar.js";
 import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
-import { isActionableKind, supportsPressFeedback } from "./widget-capabilities.js";
+import { isActionableKind, isPortalKind, supportsPressFeedback } from "./widget-capabilities.js";
 import {
   cellRangeSliderThumbIndexAtCoordinate,
   cellSliderValueAtCoordinate,
@@ -115,7 +115,16 @@ export const gestureCandidatesForFrame = (
   const item = rangeThumbIndex !== null && rangeThumbs
     ? rangeThumbs[rangeThumbIndex]!.id
     : directItem;
-  const scroll = path.find((id) => frame.scene.entries.get(id)?.scrollMetrics);
+  let scroll: WidgetId | undefined;
+  for (const id of path) {
+    const metrics = frame.scene.entries.get(id)?.scrollMetrics;
+    if (metrics && (metrics.maxOffset.x > 0 || metrics.maxOffset.y > 0)) {
+      scroll = id;
+      break;
+    }
+    const node = frame.tree.nodes.get(id);
+    if (node && isPortalKind(node.kind)) break;
+  }
   const hit = hitTestCell(frame.scene, point);
   const metrics = scroll ? frame.scene.entries.get(scroll)?.scrollMetrics : null;
   const scrollbarPart = hit && hit.ownerId === scroll
@@ -171,7 +180,14 @@ export const gestureCandidatesForFrame = (
             : []),
         ]
       : scroll && frame.tree.nodes.get(scroll)?.kind === "scroll-area"
-        ? [{ targetId: scroll, kind: "scroll" as const, axis: "both" as const }]
+        && metrics && (metrics.maxOffset.x > 0 || metrics.maxOffset.y > 0)
+        ? [{
+            targetId: scroll,
+            kind: "scroll" as const,
+            axis: metrics.maxOffset.x > 0 && metrics.maxOffset.y > 0
+              ? "both" as const
+              : metrics.maxOffset.x > 0 ? "x" as const : "y" as const,
+          }]
         : []),
   ];
 };

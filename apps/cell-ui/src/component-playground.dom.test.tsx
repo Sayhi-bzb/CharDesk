@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { Text } from "@chardesk/cell-ui";
+import { Box, Text } from "@chardesk/cell-ui";
+import type { ReactNode } from "react";
 import {
   DEFAULT_CELL_UI_METRICS,
   readCellSurfaceProbe,
@@ -43,10 +44,17 @@ const context = {
 
 let hostWidth = 0;
 const resizeObservers = new Map<Element, { callback: ResizeObserverCallback; observer: ResizeObserver }>();
+const tallPreview = <Box>
+  {Array.from({ length: 10 }, (_, index) => <Text id={`preview-row-${index}`} key={index}>{`preview-${index}`}</Text>)}
+</Box>;
 
 const renderPlayground = (
   controls: readonly string[],
-  { previewMinColumns = 10, controlsColumns = 25 } = {},
+  { previewMinColumns = 10, controlsColumns = 25, preview = <Text id="preview-content">Save</Text> }: {
+    previewMinColumns?: number;
+    controlsColumns?: number;
+    preview?: ReactNode;
+  } = {},
 ) => render(
   <ComponentPlayground
     id="test-playground"
@@ -54,7 +62,7 @@ const renderPlayground = (
     probeId="test-playground"
     focusedId={null}
     onCommand={() => undefined}
-    preview={<Text id="preview-content">Save</Text>}
+    preview={preview}
     previewMinColumns={previewMinColumns}
     controlsColumns={controlsColumns}
     controls={controls.map((label, index) => (
@@ -139,6 +147,64 @@ describe("ComponentPlayground controls layout", () => {
       });
     }
     await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("row-9"));
+  });
+
+  it("scrolls overflowing preview content independently from controls", async () => {
+    renderPlayground(["variant"], { preview: tallPreview });
+    const surface = screen.getByLabelText("Test playground");
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("preview-0"));
+    const initial = readCellSurfaceProbe(surface)!;
+    expect(initial.cells.some((cell) => cell.ownerId === "test-playground-preview-scroll" && "█▀▄".includes(cell.text))).toBe(true);
+    expect(initial.text).toContain("variant");
+
+    for (let index = 0; index < 4; index += 1) {
+      fireEvent.wheel(surface.querySelector("canvas")!, {
+        clientX: 10 * DEFAULT_CELL_UI_METRICS.cellWidth,
+        clientY: 3 * DEFAULT_CELL_UI_METRICS.cellHeight,
+        deltaY: 100,
+      });
+    }
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("preview-9"));
+    expect(readCellSurfaceProbe(surface)?.text).toContain("variant");
+  });
+
+  it("keeps both panes accessible when stacked and the preview overflows", async () => {
+    hostWidth = 32 * DEFAULT_CELL_UI_METRICS.cellWidth;
+    renderPlayground(["variant"], { preview: tallPreview });
+    const surface = screen.getByLabelText("Test playground");
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.viewport).toEqual({ width: 32, height: 15 }));
+    const initial = readCellSurfaceProbe(surface)!;
+    expect(initial.text).toContain("preview-0");
+    expect(initial.text).toContain("variant");
+    for (let index = 0; index < 4; index += 1) {
+      fireEvent.wheel(surface.querySelector("canvas")!, {
+        clientX: 10 * DEFAULT_CELL_UI_METRICS.cellWidth,
+        clientY: 3 * DEFAULT_CELL_UI_METRICS.cellHeight,
+        deltaY: 100,
+      });
+    }
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("preview-9"));
+    expect(readCellSurfaceProbe(surface)?.text).toContain("variant");
+  });
+
+  it("allows horizontal preview overflow without moving the controls pane", async () => {
+    renderPlayground(["variant"], { preview: <Box style={{ width: 42 }}>
+      <Text id="wide-preview">abcdefghijklmnopqrstuvwxyz0123456789</Text>
+    </Box> });
+    const surface = screen.getByLabelText("Test playground");
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("abcdefghijkl"));
+    const initial = readCellSurfaceProbe(surface)!;
+    expect(initial.cells.some((cell) => cell.ownerId === "test-playground-preview-scroll" && "█▀▄".includes(cell.text))).toBe(true);
+
+    fireEvent.wheel(surface.querySelector("canvas")!, {
+      clientX: 10 * DEFAULT_CELL_UI_METRICS.cellWidth,
+      clientY: 3 * DEFAULT_CELL_UI_METRICS.cellHeight,
+      deltaX: 100,
+    });
+    await waitFor(() => expect(readCellSurfaceProbe(surface)!.cells
+      .filter((cell) => cell.ownerId === "wide-preview")
+      .sort((left, right) => left.x - right.x)[0]?.text).not.toBe("a"));
+    expect(readCellSurfaceProbe(surface)?.text).toContain("variant");
   });
 
   it("measures whole Cells, squeezes Props, and resets stale horizontal scroll on resize", async () => {

@@ -138,7 +138,8 @@ same object used by the Canvas renderer. See [fixed grids and font
 measurement](../rendering/README.md#fixed-cell-grids-and-font-measurement).
 
 Font ink may cross Cell and widget boundaries, retaining only the Canvas Surface
-boundary. Every presentation redraws the full Surface to erase overhanging ink;
+boundary; [NF font glyphs use Cell-local ink calibration](../rendering/README.md#font-ink-and-cell-boundaries).
+Every presentation redraws the full Surface to erase overhanging ink;
 headless invalidation remains incremental. Cell allocation, hit testing, and
 copying do not change. Probe v5 reports measured `glyphInkOverhang` as paint
 geometry rather than an error or rendering mode.

@@ -8,6 +8,7 @@ import {
   resolveCharDeskCanvasGlyphSource,
   getCharDeskCanvasFont,
   loadCharDeskCanvasFonts,
+  measureCharDeskCanvasNerdGlyph,
   presentCharDeskCellFrame,
   prepareCharDeskCanvasSurface,
   resolveCharDeskCanvasFontFace,
@@ -75,6 +76,7 @@ import { CellUiRuntime } from "./runtime.js";
 import { createCellUiRenderFrame } from "./frame.js";
 import type { CellBuffer } from "./buffer.js";
 import { textViewportCommands } from "./text-viewport.js";
+import { scrollViewportCommands } from "./scroll.js";
 import { usePointerAppearance } from "./browser-hover.js";
 import { CellCursorPresenter } from "./browser-cursor.js";
 import { sameWidgetValue } from "./tree.js";
@@ -611,14 +613,21 @@ const captureCellProbePresentation = (
           const overdrawWidth = bold && face.boldStrategy === "overdraw"
             ? face.boldOverdrawEm * metrics.fontSize * face.fontSizeScale
             : 0;
-          const measurement = context.measureText(cell.text);
-          const halfAdvance = measurement.width / 2;
-          const leftExtent = Number.isFinite(measurement.actualBoundingBoxLeft)
-            ? measurement.actualBoundingBoxLeft
-            : halfAdvance;
-          const rightExtent = (Number.isFinite(measurement.actualBoundingBoxRight)
-            ? measurement.actualBoundingBoxRight
-            : halfAdvance) + overdrawWidth;
+          const placement = face.capability === "nerd"
+            ? measureCharDeskCanvasNerdGlyph(context, { grapheme: cell.text, metrics,
+              bold, ...(fontProfile ? { fontProfile } : {}) })
+            : null;
+          const measurement = placement ? null : context.measureText(cell.text);
+          const halfAdvance = (measurement?.width ?? 0) / 2;
+          let leftExtent = placement ? -placement.inkLeft : halfAdvance;
+          let rightExtent = placement ? placement.inkRight : halfAdvance;
+          if (measurement && Number.isFinite(measurement.actualBoundingBoxLeft)) {
+            leftExtent = measurement.actualBoundingBoxLeft;
+          }
+          if (measurement && Number.isFinite(measurement.actualBoundingBoxRight)) {
+            rightExtent = measurement.actualBoundingBoxRight;
+          }
+          rightExtent += overdrawWidth;
           const allocatedLeft = col * metrics.cellWidth;
           const allocatedRight = allocatedLeft + cell.width * metrics.cellWidth;
           const center = (allocatedLeft + allocatedRight) / 2;
@@ -963,7 +972,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       flushActivationFeedbackCompletion();
     }
     focusedIdRef.current = focusedId;
-    for (const command of textViewportCommands(next)) onCommand(command);
+    for (const command of [...textViewportCommands(next), ...scrollViewportCommands(next)]) onCommand(command);
     if (focusedChanged && focusedId) {
       const reveal = revealCommandForTarget(next, focusedId);
       if (reveal) onCommand(reveal);

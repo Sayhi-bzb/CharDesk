@@ -50,10 +50,16 @@ than transparent overlay pixels.
 backing surface to the returned scaled document layout instead of applying a
 CSS bitmap transform.
 
+## Font ink and Cell boundaries
+
 Cell rectangles own layout, hit testing, selection, and copying; they do not clip
 font ink. Glyphs may cross adjacent Cell boundaries and are clipped only by the
 containing Canvas Surface. Backgrounds are painted before foreground glyphs;
 later Cells deterministically paint over earlier Cells when ink overlaps.
+NF font glyphs retain their Profile size and may cross Cell boundaries. Canvas
+uses measured ink to center them horizontally and align their vertical center
+to the display face's capital `H`. If ink metrics are unavailable, they retain
+the ordinary font path. Registered Cell graphics do not use this calibration.
 
 Every foreground Cell retains Unicode `cell.text`. Exact registered Cell graphics use the
 shared deterministic painter; other graphemes use the active font profile. Background and clip edges align to device pixels for axis-aligned

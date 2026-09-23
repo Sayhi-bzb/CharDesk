@@ -22,7 +22,7 @@ import {
 } from "./pointer.js";
 import { CellUiRuntime } from "./runtime.js";
 import { textViewportCommands } from "./text-viewport.js";
-import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
+import { scrollCommandForOffset, scrollOffsetFor, scrollViewportCommands } from "./scroll.js";
 import { getEventPath, hitTest } from "./scene.js";
 import { type CellUiTheme } from "./theme.js";
 import type { CellUiRecipe } from "./recipe.js";
@@ -84,7 +84,7 @@ export class TestPilot {
     this.#frame = this.#runtime.render(this.#render());
     this.#focus.sync(this.#frame.tree, this.#frame.semantics.focusedId);
     if (this.#focus.focusedId !== this.#frame.semantics.focusedId) this.#renderFrame();
-    this.#syncTextViewports();
+    this.#syncViewports();
   }
 
   get frame(): FrameSnapshot {
@@ -311,12 +311,12 @@ export class TestPilot {
       this.#frame = this.#runtime.render(this.#render(), this.#renderState);
     }
     if (activationFeedbackChanged) this.#flushActivationFeedbackCompletion();
-    this.#syncTextViewports();
+    this.#syncViewports();
     this.#controller.presented(this.#frame.confirmation);
   }
 
-  #syncTextViewports(): void {
-    const commands = textViewportCommands(this.#frame);
+  #syncViewports(): void {
+    const commands = [...textViewportCommands(this.#frame), ...scrollViewportCommands(this.#frame)];
     if (!commands.length) return;
     for (const command of commands) this.#onCommand(command);
     this.#frame = this.#runtime.render(this.#render(), this.#renderState);

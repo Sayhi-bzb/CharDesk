@@ -17,6 +17,7 @@ import {
   drawCharDeskCanvasRangeBackdrop,
   getCharDeskCanvasFont,
   loadCharDeskCanvasFonts,
+  measureCharDeskCanvasNerdGlyph,
   measureCharDeskCanvasDocument,
   presentCharDeskCellFrame,
   prepareCharDeskCanvasSurface,
@@ -573,6 +574,51 @@ describe("CharDesk Canvas 2D renderer", () => {
     expect(context.fillText).toHaveBeenCalledWith("󰄳", 4.5, 15);
     expect(context.scale).not.toHaveBeenCalled();
     expect(context.clip).not.toHaveBeenCalled();
+  });
+
+  it("keeps oversized Nerd ink at its profile size and aligns its center to display capitals", () => {
+    const { context } = createContext();
+    context.measureText = vi.fn((text: string) => {
+      if (text === "H") return { actualBoundingBoxLeft: 3, actualBoundingBoxRight: 3,
+        actualBoundingBoxAscent: 11.1, actualBoundingBoxDescent: 0.15 } as TextMetrics;
+      const size = Number.parseFloat(context.font);
+      return { actualBoundingBoxLeft: size / 2, actualBoundingBoxRight: size / 2,
+        actualBoundingBoxAscent: size * 0.8, actualBoundingBoxDescent: size * 0.2 } as TextMetrics;
+    });
+    drawCharDeskCanvasCells(context, [{
+      cell: resolveCharDeskCellVisual({ text: "\uEB4B" }), x: 0, y: 0,
+    }]);
+
+    expect(context.font).toContain("12px 'Symbols Nerd Font Mono'");
+    expect(context.fillText).toHaveBeenCalledWith("\uEB4B", 4.5, 13.125);
+    expect(context.scale).not.toHaveBeenCalled();
+    expect(context.clip).not.toHaveBeenCalled();
+  });
+
+  it("centers asymmetric Nerd ink and falls back when ink is unavailable", () => {
+    const { context } = createContext();
+    context.measureText = vi.fn((text: string) => text === "H"
+      ? { actualBoundingBoxAscent: 11, actualBoundingBoxDescent: 0 } as TextMetrics
+      : { actualBoundingBoxLeft: 2, actualBoundingBoxRight: 4,
+        actualBoundingBoxAscent: 6, actualBoundingBoxDescent: 1 } as TextMetrics);
+    const placement = measureCharDeskCanvasNerdGlyph(context, {
+      grapheme: "\uEB4B", metrics: { cellWidth: 9, cellHeight: 20, fontSize: 15, fontFamily: "Test" },
+    });
+    expect(placement).toMatchObject({ offsetX: -1, inkLeft: -3, inkRight: 3 });
+    expect(placement?.font).toContain("12px 'Symbols Nerd Font Mono'");
+
+    context.measureText = vi.fn((text: string) => text === "H"
+      ? {} as TextMetrics
+      : { actualBoundingBoxLeft: 3, actualBoundingBoxRight: 3,
+        actualBoundingBoxAscent: 6, actualBoundingBoxDescent: 1 } as TextMetrics);
+    expect(measureCharDeskCanvasNerdGlyph(context, {
+      grapheme: "\uEB4B", metrics: { cellWidth: 9, cellHeight: 20, fontSize: 15, fontFamily: "Test" },
+    })?.baselineOffset).toBe(0);
+
+    context.measureText = vi.fn(() => ({ actualBoundingBoxLeft: 0, actualBoundingBoxRight: 0 } as TextMetrics));
+    expect(measureCharDeskCanvasNerdGlyph(context, {
+      grapheme: "\uEB4B", metrics: { cellWidth: 9, cellHeight: 20, fontSize: 15, fontFamily: "Test" },
+    })).toBeNull();
   });
 
   it("draws all backgrounds before text and resolves inverse colors", () => {
