@@ -6,7 +6,7 @@ import {
   clearDocument,
   storeState,
 } from "y-indexeddb";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSelectionCommandFactory } from "@/domains/actions/public";
 import { parseDocumentSessionSource } from "@/domains/document/public";
 import {
@@ -845,9 +845,9 @@ describe("browser canvas persistence", () => {
       ...reader.getState().contentSurface.reader.materialize().entries(),
       ["1,0", { char: "P", color: "#222222" }],
     ]);
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(writer.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("P");
+    await vi.waitFor(() => {
+      expect(writer.getState().contentSurface.reader.materialize().get("1,0")?.char).toBe("P");
+    });
   });
 
   it("merges concurrent catalog changes from coordinator and peer tabs", async () => {

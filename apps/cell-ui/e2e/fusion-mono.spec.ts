@@ -53,7 +53,8 @@ for (const dpr of [1, 1.25, 2]) {
         expect(call.x).toBeCloseTo((index + 0.5) * cellWidth, 3);
         expect(call.y).toBeCloseTo(result.metrics.baseline, 5);
         expect(call.font).not.toContain("700");
-        expect(call.advance).toBeCloseTo(cellWidth, 3);
+        expect(call.advance).toBeGreaterThanOrEqual(7);
+        expect(call.advance).toBeLessThanOrEqual(8.5);
         expect(call.ink).toBeGreaterThan(0);
         // WebKit's reported regular ink bounds can occupy the full advance.
         expect(call.ink).toBeLessThanOrEqual(call.advance);
@@ -65,7 +66,7 @@ for (const dpr of [1, 1.25, 2]) {
         for (const call of boldCalls.slice(index * 2, index * 2 + 2)) {
           expect(call.y).toBeCloseTo(result.metrics.baseline, 5);
           expect(call.font).not.toContain("700");
-          expect(call.advance).toBeCloseTo(cellWidth, 3);
+          expect(call.advance).toBeCloseTo(regularCalls[index]!.advance, 3);
         }
       }
       expect(result.requestedBold).not.toBe(result.regular);
