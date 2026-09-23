@@ -12,6 +12,12 @@ The [GitHub Registry](../../registry.json) distributes the entire editable Cell 
 npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui
 ```
 
+The same item is also available from the [hosted JSON Registry](https://sayhi-bzb.github.io/CharDesk/registry.json):
+
+```sh
+npx shadcn@latest add https://sayhi-bzb.github.io/CharDesk/cell-ui.json
+```
+
 The files land under the configured `@lib/cell-ui/` target. Import headless descriptors and `CellUiRuntime` from that directory's `index`, or import `CellSurface` from its `browser` entry. For example, if `aliases.lib` points to `@/lib`, use `@/lib/cell-ui` and `@/lib/cell-ui/browser`. The Registry declares the npm dependencies from [the package manifest](package.json), while the keyboard source is copied locally. Source installation does not require the private `@chardesk/cell-ui` package or a CharDesk workspace. Verify public installation in a fresh React project with `npm run cell-ui:registry:smoke`.
 
 Edit the installed source in your project. A later `shadcn add` may replace local edits if you choose to overwrite files; review its diff before updating. To publish a new Registry snapshot from this repository, run `npm run cell-ui:registry:generate`; CI checks it with `npm run cell-ui:registry:verify`.
