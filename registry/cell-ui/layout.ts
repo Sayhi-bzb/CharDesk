@@ -123,7 +123,9 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     || node.kind === "select-content"
     || node.kind === "combobox"
     || node.kind === "combobox-content";
-  const defaults: CellLayoutStyle = node.kind === "progress"
+  const defaults: CellLayoutStyle = node.kind === "spinner"
+    ? { width: 1, height: 1, flexShrink: 0 }
+    : node.kind === "progress"
     ? { width: 20, height: 1, flexShrink: 0 }
     : node.kind === "separator"
       ? node.orientation === "vertical"
@@ -198,6 +200,10 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     target.setPadding(Edge.Left, left);
     target.setPadding(Edge.Right, right);
   }
+  if (node.kind === "tab" && node.tabsVariant === "underline") {
+    target.setMinHeight(2);
+    target.setPadding(Edge.Bottom, (node.style.paddingBottom ?? node.style.padding ?? 0) + 1);
+  }
   const spacing = inlineControlSpacingRecipe(node);
   const ownedInlineChromeInsets = inlineControlChromeInsets(spacing.chrome);
   const outlineInset = hasInlineOutline(node) ? INLINE_OUTLINE_INSET : 0;
@@ -223,7 +229,7 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
       inlineChromeInsets.right,
     );
   }
-  if (node.kind === "overlay" || node.kind === "select-content" || node.kind === "combobox-content" || node.kind === "range-slider-thumb") {
+  if (node.kind === "overlay" || node.kind === "select-content" || node.kind === "combobox-content" || node.kind === "tooltip" || node.kind === "range-slider-thumb") {
     target.setPositionType(PositionType.Absolute);
     target.setPosition(Edge.Left, node.kind === "overlay" ? node.overlayPosition?.x ?? 0 : 0);
     target.setPosition(Edge.Top, node.kind === "overlay" ? node.overlayPosition?.y ?? 0 : 0);

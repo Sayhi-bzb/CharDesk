@@ -14,6 +14,7 @@ import {
   MenuItem,
   Overlay,
   Progress,
+  Spinner,
   RangeSlider,
   RangeSliderThumb,
   Root,
@@ -1059,6 +1060,29 @@ describe("CellSurface", () => {
       expect(requestAnimationFrame).not.toHaveBeenCalled();
       expect(screen.getByRole("progressbar", { name: "Loading" }))
         .not.toHaveAttribute("aria-valuenow");
+    } finally {
+      requestAnimationFrame.mockRestore();
+      if (original) Object.defineProperty(window, "matchMedia", original);
+      else Reflect.deleteProperty(window, "matchMedia");
+    }
+  });
+
+  it("keeps Spinner static under reduced motion", async () => {
+    const original = Object.getOwnPropertyDescriptor(window, "matchMedia");
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
+    });
+    const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
+    try {
+      render(<CellSurface viewport={{ width: 1, height: 1 }} onCommand={() => undefined}
+        label="Spinner surface" probeId="reduced-motion-spinner">
+        <Root><Spinner id="loading-spinner" label="Loading" /></Root>
+      </CellSurface>);
+      const surface = screen.getByLabelText("Spinner surface");
+      await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toBe("◐"));
+      expect(requestAnimationFrame).not.toHaveBeenCalled();
+      expect(screen.getByRole("progressbar", { name: "Loading" })).not.toHaveAttribute("aria-valuenow");
     } finally {
       requestAnimationFrame.mockRestore();
       if (original) Object.defineProperty(window, "matchMedia", original);

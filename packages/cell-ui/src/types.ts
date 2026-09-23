@@ -68,6 +68,8 @@ export type WidgetKind =
   | "checkbox"
   | "toggle"
   | "progress"
+  | "spinner"
+  | "tooltip"
   | "separator"
   | "radio-group"
   | "radio-item"
@@ -127,8 +129,12 @@ export type WidgetNode = Readonly<{
   pressed: boolean;
   radioValue: string | null;
   progress: Readonly<{ value: number | null; max: number; valueText?: string; number: boolean }> | null;
-  progressAnimationTimeMs: number;
+  animationTimeMs: number;
   progressVariant: import("./progress.js").ProgressVariant;
+  spinnerVariant: import("./spinner.js").SpinnerVariant;
+  tooltipTargetId: WidgetId | null;
+  tooltipOpen: boolean;
+  tabsVariant: import("./tabs.js").TabsVariant;
   separatorVariant: import("./separator.js").SeparatorVariant;
   buttonVariant: import("./button.js").ButtonVariant;
   badgeTone: import("./badge.js").BadgeTone;
@@ -288,6 +294,7 @@ export type SemanticNode = Readonly<{
     | "radio"
     | "radiogroup"
     | "progressbar"
+    | "tooltip"
     | "separator"
     | "slider"
     | "group"

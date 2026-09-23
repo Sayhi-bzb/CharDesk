@@ -82,7 +82,7 @@ export const isFocusableKind = (kind: WidgetKind): boolean =>
   (isActionableKind(kind) && kind !== "combobox-item") || isTextEditorKind(kind);
 
 export const isPortalKind = (kind: WidgetKind): boolean =>
-  kind === "overlay" || kind === "select-content" || kind === "combobox-content";
+  kind === "overlay" || kind === "select-content" || kind === "combobox-content" || kind === "tooltip";
 
 export const isFocusScope = (node: WidgetNode): boolean =>
   (node.kind === "overlay" && node.modal) || node.kind === "select-content";

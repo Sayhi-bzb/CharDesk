@@ -115,6 +115,11 @@
           "target": "@lib/cell-ui/browser-theme.ts"
         },
         {
+          "path": "registry/cell-ui/browser-tooltip.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-tooltip.ts"
+        },
+        {
           "path": "registry/cell-ui/browser.tsx",
           "type": "registry:file",
           "target": "@lib/cell-ui/browser.tsx"
@@ -305,9 +310,19 @@
           "target": "@lib/cell-ui/slider.ts"
         },
         {
+          "path": "registry/cell-ui/spinner.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/spinner.ts"
+        },
+        {
           "path": "registry/cell-ui/surface-variant.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/surface-variant.ts"
+        },
+        {
+          "path": "registry/cell-ui/tabs.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/tabs.ts"
         },
         {
           "path": "registry/cell-ui/testing.ts",
@@ -328,6 +343,11 @@
           "path": "registry/cell-ui/theme.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/theme.ts"
+        },
+        {
+          "path": "registry/cell-ui/tooltip.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/tooltip.ts"
         },
         {
           "path": "registry/cell-ui/tree.ts",

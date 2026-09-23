@@ -81,6 +81,7 @@ import { usePointerAppearance } from "./browser-hover.js";
 import { CellCursorPresenter } from "./browser-cursor.js";
 import { sameWidgetValue } from "./tree.js";
 import { INDETERMINATE_PROGRESS_STEP_MS } from "./progress.js";
+import { useCellTooltipTarget } from "./browser-tooltip.js";
 import {
   commandForGestureSignal,
   gestureCandidatesForFrame,
@@ -768,6 +769,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     children: ReactElement<RootProps>;
     focusedId: WidgetId | null;
     hoveredId: WidgetId | null;
+    tooltipTargetId: WidgetId | null;
     manipulatingIds: ReadonlySet<WidgetId>;
     pressActiveId: WidgetId | null;
     activationFlashId: WidgetId | null;
@@ -799,19 +801,42 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const [fontPresentationRevision, setFontPresentationRevision] = useState(0);
   const [frame, setFrame] = useState<FrameSnapshot | null>(null);
   const [animationTimeMs, setAnimationTimeMs] = useState(0);
-  const hasIndeterminateProgress = frame
-    ? [...frame.tree.nodes.values()].some((node) => node.progress?.value === null)
+  const hasAnimatedWidget = frame
+    ? [...frame.tree.nodes.values()].some((node) =>
+        frame.scene.entries.has(node.id) && (node.kind === "spinner" || node.progress?.value === null))
     : false;
   const pointerAppearance = usePointerAppearance(canvasRef, frame, metrics);
   const hoveredId = activationFeedbackRef.current.settling
     ? null
     : pointerAppearance.hoveredId;
+  const availableTooltipTargets = new Set(
+    [...(frame?.tree.nodes.values() ?? [])].flatMap((node) =>
+      node.kind === "tooltip" && node.tooltipTargetId ? [node.tooltipTargetId] : []),
+  );
+  const logicalFocusedId = frame?.semantics.focusedId ?? focusedId ?? null;
+  const tooltip = useCellTooltipTarget(
+    hoveredId && availableTooltipTargets.has(hoveredId) ? hoveredId : null,
+    logicalFocusedId && availableTooltipTargets.has(logicalFocusedId) ? logicalFocusedId : null,
+    focusVisible,
+    pressActiveId,
+  );
+  const tooltipTargetId = tooltip.targetId;
+  useEffect(() => {
+    if (!tooltipTargetId) return;
+    const dismiss = () => tooltip.dismiss();
+    window.addEventListener("scroll", dismiss, true);
+    window.addEventListener("blur", dismiss);
+    return () => {
+      window.removeEventListener("scroll", dismiss, true);
+      window.removeEventListener("blur", dismiss);
+    };
+  }, [tooltipTargetId]);
   useLayoutEffect(() => {
     const current = frameRef.current;
     if (current && inputModality === "pointer") controller.setHovered(current, hoveredId);
   }, [controller, hoveredId, inputModality]);
   useEffect(() => {
-    if (!hasIndeterminateProgress) {
+    if (!hasAnimatedWidget) {
       setAnimationTimeMs(0);
       return;
     }
@@ -848,7 +873,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       reducedMotion?.removeEventListener("change", sync);
       document.removeEventListener("visibilitychange", sync);
     };
-  }, [hasIndeterminateProgress]);
+  }, [hasAnimatedWidget]);
   const syncManipulatingIds = useCallback(() => {
     const next = gesturesRef.current.manipulatingIds;
     setManipulatingIds((current) => sameWidgetIdSet(current, next) ? current : next);
@@ -913,6 +938,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       previousProjection?.children === children
       && previousProjection.focusedId === focusedId
       && previousProjection.hoveredId === hoveredId
+      && previousProjection.tooltipTargetId === tooltipTargetId
       && previousProjection.manipulatingIds === manipulatingIds
       && previousProjection.pressActiveId === pressActiveId
       && previousProjection.activationFlashId === activationFlashId
@@ -943,6 +969,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const next = runtime.render(children, {
       ...controller.renderState,
       hoveredId,
+      tooltipTargetId,
       animationTimeMs,
       colors: { color: palette.color, backgroundColor: palette.background },
       activeFocusId: runtimeActiveFocusId,
@@ -982,6 +1009,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       children,
       focusedId,
       hoveredId,
+      tooltipTargetId,
       manipulatingIds,
       pressActiveId,
       activationFlashId,
@@ -999,7 +1027,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     };
     // The headless runtime is an external store; publish its committed snapshot.
     setFrame(next);
-  }, [controller, palette.color, palette.background, activationFlashId, animationTimeMs, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, recipe, runtimeActiveFocusId, syncManipulatingIds, theme, feedback, viewport]);
+  }, [controller, palette.color, palette.background, activationFlashId, animationTimeMs, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, tooltipTargetId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, recipe, runtimeActiveFocusId, syncManipulatingIds, theme, feedback, viewport]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -1288,6 +1316,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     if (event.defaultPrevented) return;
     setInputModality("keyboard");
     const input = keyInputFromKeyboardEvent(event.nativeEvent);
+    if (isCellKeyPress(input, "Escape") && tooltipTargetId) {
+      tooltip.dismiss();
+      event.preventDefault();
+      return;
+    }
     if (activationFeedbackRef.current.settling) {
       if (isCellKeyPress(input, "Tab")) return;
       if (isCellKeyPress(input, "Escape") && frame) {
@@ -1326,6 +1359,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       cancelActivationFeedback();
     };
     const confirmExit = () => {
+      tooltip.dismiss();
       setActiveFocusId(null);
       cancelTransientFeedback();
       const current = frameRef.current;
@@ -1378,6 +1412,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         ? true
         : undefined}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
+        tooltip.dismiss();
         pointerAppearance.suspend();
         if (event.button !== 0) return;
         setInputModality("pointer");
@@ -1579,8 +1614,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (targetId) dispatch({ type: "focus", targetId });
       }}
       onBlur={onSurfaceBlur}
+      onWheelCapture={() => tooltip.dismiss()}
       onKeyDown={onKeyDown}
       onKeyUp={(event) => {
+        if (event.key === "Escape" && tooltip.dismissedId
+          && availableTooltipTargets.has(tooltip.dismissedId)) return;
         const input = keyInputFromKeyboardEvent(event.nativeEvent);
         if (event.defaultPrevented || !frame || (event.target instanceof HTMLTextAreaElement && event.key !== "Escape")) return;
         if (controller.key(frame, input, resolvedFeedback.activationBlinkCount)) event.preventDefault();

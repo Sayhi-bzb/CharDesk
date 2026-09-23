@@ -27,7 +27,7 @@ try {
     style: "new-york",
     rsc: false,
     tsx: true,
-    tailwind: { config: "", css: "src/app.css", baseColor: "neutral", cssVariables: true, prefix: "" },
+    tailwind: { config: "", css: "src/app.css", baseColor: "", cssVariables: true, prefix: "" },
     iconLibrary: "lucide",
     aliases: {
       components: "@/components",
@@ -49,6 +49,7 @@ try {
       skipLibCheck: true,
       outDir: "dist",
       rootDir: "src",
+      paths: { "@/*": ["./src/*"] },
       noUncheckedIndexedAccess: true,
       verbatimModuleSyntax: true,
     },

@@ -26,6 +26,9 @@ import {
 } from "./inline-control-chrome.js";
 import { hasInlineOutline, inlineOutlineEdges } from "./inline-outline.js";
 import { indeterminateProgressRanges, progressNumberLayout } from "./progress.js";
+import { spinnerGlyph } from "./spinner.js";
+import { fitTooltipText } from "./tooltip.js";
+import { TAB_UNDERLINE_GLYPH } from "./tabs.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
 
@@ -178,9 +181,13 @@ export const paintScene = (
         && (node.pressActive || node.activationFlash || node.selected || (node.focused && node.focusVisible))
       )) {
         const contentSurface = visual.surfaceRegion === "content";
+        let surfaceBounds = contentSurface ? entry.contentBounds : entry.layoutBounds;
+        if (node.kind === "tab" && node.tabsVariant === "underline" && !contentSurface) {
+          surfaceBounds = entry.hitBounds;
+        }
         fill(
           buffer,
-          contentSurface ? entry.contentBounds : entry.layoutBounds,
+          surfaceBounds,
           id,
           style,
           contentSurface ? contentClip : outerClip,
@@ -239,6 +246,27 @@ export const paintScene = (
           contentClip
         );
       }
+      if (node.kind === "tooltip") {
+        paintText(
+          buffer,
+          fitTooltipText(node.text ?? "", entry.contentBounds.width),
+          id,
+          style,
+          entry.contentBounds,
+          contentClip,
+        );
+      }
+      if (node.kind === "spinner") {
+        buffer.writeGrapheme(
+          entry.decorationBounds.x,
+          entry.decorationBounds.y,
+          spinnerGlyph(theme.spinnerGlyphs[node.spinnerVariant], node.animationTimeMs),
+          id,
+          style,
+          decorationClip,
+          "over",
+        );
+      }
       const textLayout = textLayouts.get(id);
       if (textLayout) {
         for (const glyph of textLayout.glyphs) {
@@ -292,6 +320,13 @@ export const paintScene = (
           buffer.writeGrapheme(x, entry.decorationBounds.y, " ", id, style, decorationClip, "over");
         }
       }
+      if (node.kind === "tab" && node.tabsVariant === "underline" && node.selected && !node.disabled) {
+        const underlineY = entry.contentBounds.y + entry.contentBounds.height;
+        const underlineStyle = { color: theme.selectedStyle.backgroundColor ?? theme.foreground };
+        for (let x = entry.contentBounds.x; x < entry.contentBounds.x + entry.contentBounds.width; x += 1) {
+          buffer.writeGrapheme(x, underlineY, TAB_UNDERLINE_GLYPH, id, underlineStyle, decorationClip, "over");
+        }
+      }
       if (node.kind === "list-item" || node.kind === "tree-item" || node.kind === "grid-cell") {
         const chrome = collectionChromeGeometry(node, entry.decorationBounds.width);
         for (const offset of [chrome.leadingGuardOffset, chrome.trailingGuardOffset]) {
@@ -335,7 +370,7 @@ export const paintScene = (
           ? bounds.height
           : Math.max(0, (node.kind === "progress" ? progressTrackWidth : bounds.width) - progressOutlineInset * 2);
         const progressRanges = node.progress?.value === null
-          ? indeterminateProgressRanges(length, node.progressAnimationTimeMs)
+          ? indeterminateProgressRanges(length, node.animationTimeMs)
           : null;
         const filled = node.progress && node.progress.value !== null
           ? Math.floor(length * node.progress.value / node.progress.max)

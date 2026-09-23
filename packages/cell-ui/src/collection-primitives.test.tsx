@@ -34,7 +34,7 @@ it.each(["list", "menu", "tree"])("%s separates selection chrome from transient 
 it("Tabs keep one selected surface across hover and focus while available tabs use normal text", () => {
   for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     const runtime = new CellUiRuntime({ viewport: { width: 26, height: 2 }, theme });
-    const view = () => <Root><Tabs id="tabs">
+    const view = () => <Root><Tabs id="tabs" variant="solid">
       <Tab id="selected" selected><Text>Code</Text></Tab>
       <Tab id="inactive"><Text>Preview</Text></Tab>
       <Tab id="disabled" disabled><Text>Off</Text></Tab>

@@ -210,6 +210,8 @@ const ManagedCellTextarea = ({
       id={node.kind === "combobox-input" ? `cell-semantic-${node.id}` : undefined}
       data-cell-text-editor={node.id}
       aria-label={node.label ?? (multiline ? "Text area" : "Text input")}
+      aria-describedby={frame.semantics.nodes.get(node.id)?.describedById
+        ? `cell-semantic-${frame.semantics.nodes.get(node.id)!.describedById}` : undefined}
       aria-multiline={multiline || undefined}
       role={node.kind === "combobox-input" ? "combobox" : undefined}
       aria-expanded={node.kind === "combobox-input" ? node.expanded : undefined}

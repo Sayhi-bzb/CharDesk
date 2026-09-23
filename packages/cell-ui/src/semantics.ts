@@ -78,6 +78,8 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
   if (node.kind === "radio-group") return "radiogroup";
   if (node.kind === "radio-item") return "radio";
   if (node.kind === "progress") return "progressbar";
+  if (node.kind === "tooltip") return "tooltip";
+  if (node.kind === "spinner") return "progressbar";
   if (node.kind === "separator") return "separator";
   if (node.kind === "slider") return "slider";
   if (node.kind === "range-slider") return "group";
@@ -119,6 +121,14 @@ export const createSemanticSnapshot = (
   const activeFocusedId = [...tree.nodes.values()]
     .find((node) => node.focused)?.id ?? null;
   const activeAncestorIds = new Set<WidgetId>();
+  const visibleTooltips = new Map<WidgetId, WidgetId>();
+  for (const id of scene.entries.keys()) {
+    const node = tree.nodes.get(id);
+    if (node?.kind === "tooltip" && node.tooltipTargetId
+      && (!modalId || isDescendantOf(tree, node.tooltipTargetId, modalId))) {
+      visibleTooltips.set(node.tooltipTargetId, id);
+    }
+  }
   let activeAncestorId = activeFocusedId
     ? tree.nodes.get(activeFocusedId)?.parentId ?? null
     : null;
@@ -131,8 +141,10 @@ export const createSemanticSnapshot = (
     const isTextEditor = isTextEditorKind(node.kind);
     const role = semanticRole(node);
     if (!role) continue;
-    if (modalId && !isDescendantOf(tree, node.id, modalId)) continue;
-    const parentId = semanticParent(tree, node);
+    const tooltipTargetInModal = modalId && node.kind === "tooltip" && node.tooltipTargetId
+      && isDescendantOf(tree, node.tooltipTargetId, modalId);
+    if (modalId && !isDescendantOf(tree, node.id, modalId) && !tooltipTargetInModal) continue;
+    const parentId = tooltipTargetInModal ? modalId : semanticParent(tree, node);
     const sceneEntry = scene.entries.get(node.id);
     const rangeThumb = node.kind === "range-slider-thumb"
       ? resolveCellRangeSliderThumbContext(tree, node.id)
@@ -191,7 +203,9 @@ export const createSemanticSnapshot = (
       ...(node.orientation ? { orientation: node.orientation } : {}),
       ...(node.controlsId ? { controlsId: node.controlsId } : {}),
       ...(node.labelledById ? { labelledById: node.labelledById } : {}),
-      ...(node.describedById ? { describedById: node.describedById } : {}),
+      ...(visibleTooltips.get(node.id) || node.describedById
+        ? { describedById: visibleTooltips.get(node.id) ?? node.describedById }
+        : {}),
       ...(node.dialogPart === "title" ? { level: 2 } : {}),
       ...(isTextEditor
         ? {

@@ -2,6 +2,7 @@ import type { CellTextStyle } from "./types.js";
 import type { CellBorderShape } from "./border.js";
 import type { SeparatorVariant } from "./separator.js";
 import type { ProgressVariant } from "./progress.js";
+import type { SpinnerVariant } from "./spinner.js";
 import type { BadgeTone } from "./badge.js";
 import {
   DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS,
@@ -46,6 +47,7 @@ export type CellUiTheme = Readonly<{
   toggleOnIndicator: string;
   collectionSelectedIndicator: string;
   progressGlyphs: ProgressGlyphs;
+  spinnerGlyphs: Readonly<Record<SpinnerVariant, readonly string[]>>;
   separatorGlyphs: SeparatorGlyphs;
   checkboxIndeterminateIndicator: string;
   sliderFilledTrack: string;
@@ -79,6 +81,10 @@ const CLASSIC_MAC_SHARED_THEME = Object.freeze({
   progressGlyphs: Object.freeze({
     solid: Object.freeze({ filled: "█", empty: "░" }),
     outline: Object.freeze({ filled: "/", empty: "-" }),
+  }),
+  spinnerGlyphs: Object.freeze({
+    wheel: Object.freeze(["◐", "◓", "◑", "◒"]),
+    dots: Object.freeze(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
   }),
   separatorGlyphs: Object.freeze({
     line: Object.freeze({ horizontal: "─", vertical: "│" }),

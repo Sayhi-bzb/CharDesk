@@ -3,21 +3,23 @@ import { readCellProbe } from "./helpers/cell-probe";
 import { galleryFontSelect } from "./helpers/gallery-font-select";
 
 const navigationLinks = [
-  ["Button", "#/components/button"],
+  ["Accordion", "#/components/accordion"],
   ["Badge", "#/components/badge"],
-  ["Select", "#/components/select"],
-  ["Combobox", "#/components/combobox"],
-  ["Slider", "#/components/slider"],
+  ["Button", "#/components/button"],
   ["Checkbox", "#/components/checkbox"],
+  ["Combobox", "#/components/combobox"],
+  ["Dialog", "#/components/dialog"],
   ["Input", "#/components/input"],
-  ["ScrollArea", "#/components/scroll-area"],
-  ["Toggle", "#/components/toggle"],
   ["Progress", "#/components/progress"],
   ["Radio", "#/components/radio"],
-  ["Accordion", "#/components/accordion"],
-  ["Dialog", "#/components/dialog"],
-  ["Tabs", "#/components/tabs"],
+  ["ScrollArea", "#/components/scroll-area"],
+  ["Select", "#/components/select"],
   ["Separator", "#/components/separator"],
+  ["Slider", "#/components/slider"],
+  ["Spinner", "#/components/spinner"],
+  ["Tabs", "#/components/tabs"],
+  ["Toggle", "#/components/toggle"],
+  ["Tooltip", "#/components/tooltip"],
 ] as const;
 
 test("component catalog drives concise, addressable documentation", async ({ page }) => {
@@ -27,7 +29,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.locator(".gallery-brand")).toHaveAttribute("href", "#/components/button");
   const group = nav.getByRole("group", { name: "Components" });
   await expect(nav.getByRole("group")).toHaveCount(1);
-  await expect(nav.getByRole("link")).toHaveCount(15);
+  await expect(nav.getByRole("link")).toHaveCount(17);
   await expect(group.getByRole("link")).toHaveText(navigationLinks.map(([name]) => name));
   for (const [name, href] of navigationLinks) {
     await expect(group.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);

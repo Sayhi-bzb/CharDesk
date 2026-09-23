@@ -1,12 +1,40 @@
 import { describe, expect, it } from "vitest";
 import {
-  Root, Text, Toggle, Progress, Separator, RadioGroup, RadioItem, CellUiRuntime,
+  Root, Text, Toggle, Progress, Spinner, Separator, RadioGroup, RadioItem, CellUiRuntime,
   FocusManager, commandForInput, createKeyInput, auditSemanticSnapshot,
   activationFeedbackTargetForCommand, CLASSIC_MAC_LIGHT_THEME, Button, ActivationFeedbackManager,
   type SeparatorVariant,
 } from "./index.js";
 
 describe("basic Cell widgets", () => {
+  it("renders both Spinner sequences as one owned Cell with paint-only animation", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 1, height: 1 } });
+    for (const [variant, glyphs] of [
+      ["wheel", ["◐", "◓", "◑", "◒"]],
+      ["dots", ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]],
+    ] as const) {
+      const view = <Root><Spinner id="loading" label="Loading" variant={variant} /></Root>;
+      let previous = runtime.render(view, { animationTimeMs: 0 });
+      expect(previous.layout.entries.get("loading")?.rect).toMatchObject({ width: 1, height: 1 });
+      expect(previous.semantics.nodes.get("loading")).toMatchObject({ role: "progressbar", label: "Loading", actions: [] });
+      expect(previous.semantics.nodes.get("loading")).not.toHaveProperty("valueNow");
+      for (const [index, glyph] of glyphs.entries()) {
+        const frame = runtime.render(view, { animationTimeMs: index * 120 });
+        expect(frame.buffer.get(0, 0)).toMatchObject({ text: glyph, ownerId: "loading" });
+        expect(frame.buffer.toText()).toBe(glyph);
+        expect(frame.layout).toBe(previous.layout);
+        expect(frame.scene).toBe(previous.scene);
+        expect(frame.semantics.nodes).toBe(previous.semantics.nodes);
+        if (index > 0) expect(frame.invalidation.work).toMatchObject({
+          layout: "reused", geometry: "reused", paint: "computed", semantics: "reused",
+        });
+        previous = frame;
+      }
+      expect(runtime.render(view, { animationTimeMs: glyphs.length * 120 }).buffer.toText()).toBe(glyphs[0]);
+      expect(auditSemanticSnapshot(previous.semantics)).toEqual([]);
+    }
+    runtime.dispose();
+  });
   it("clips status-light chrome and consumes global glyphs without shifting the label", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 1 }, theme: { toggleOffIndicator: "·", toggleOnIndicator: "◆" } });
     const view = (pressed: boolean, width = 8, disabled = false) => <Root>

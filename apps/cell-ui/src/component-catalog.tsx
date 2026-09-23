@@ -8,6 +8,8 @@ import {
   ComboboxComponentDemo,
   ToggleComponentDemo,
   ProgressComponentDemo,
+  SpinnerComponentDemo,
+  TooltipComponentDemo,
   SeparatorComponentDemo,
   RadioComponentDemo,
   InputComponentDemo,
@@ -26,7 +28,6 @@ type ComponentApiRow = Readonly<{
 export type ComponentDocument = Readonly<{
   slug: string;
   title: string;
-  navigationOrder: number;
   description: string;
   probeId: string;
   Demo: ComponentType;
@@ -39,6 +40,8 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   accordion: ["react.tsx", "interaction.ts"],
   toggle: ["react.tsx", "press.ts"],
   progress: ["react.tsx", "progress.ts"],
+  spinner: ["react.tsx", "spinner.ts"],
+  tooltip: ["react.tsx", "tooltip.ts", "anchored-overlay.ts"],
   separator: ["react.tsx", "separator.ts"],
   radio: ["react.tsx", "browser-collections.tsx"],
   button: ["react.tsx", "button.ts"],
@@ -60,7 +63,7 @@ export const sourceLinksForComponent = (slug: string) =>
 
 export const componentDocuments: readonly ComponentDocument[] = [
   {
-    slug: "dialog", title: "Dialog", navigationOrder: 11,
+    slug: "dialog", title: "Dialog",
     description: "A named Cell dialog with shared overlay placement and focus management.",
     probeId: "component-dialog", Demo: DialogComponentDemo,
     usage: `import { useState } from "react";
@@ -85,8 +88,7 @@ export function DialogExample() {
     api: [
       { name: "id", type: "string", description: "Required stable dismiss-command target." },
       { name: "variant?", type: '"surface" | "ghost"', description: "Both are opaque: surface uses the elevated surface token; ghost uses the base surface token." },
-      { name: "frame?", type: '"none" | "bordered"', description: "Independent Cell border; bordered by default." },
-      { name: "borderShape?", type: '"square" | "rounded"', description: "Border glyphs when framed." },
+      { name: "border?", type: '"none" | "square" | "rounded"', description: "Independent Cell border; omitted uses the theme border shape." },
       { name: "modal", type: "boolean", description: "Trap focus and exclude background semantics; default true." },
       { name: "closeOnOutsideClick", type: "boolean", description: "Request dismissal on outside pointer down; default true." },
       { name: "initialFocusId", type: "string", description: "Preferred available content control on opening." },
@@ -94,7 +96,7 @@ export function DialogExample() {
     ],
   },
   {
-    slug: "accordion", title: "Accordion", navigationOrder: 10,
+    slug: "accordion", title: "Accordion",
     description: "Expand independent sections without losing their content state.",
     probeId: "component-accordion", Demo: AccordionComponentDemo,
     usage: `import { useState } from "react";
@@ -131,7 +133,7 @@ export function AccordionExample() {
     ],
   },
   {
-    slug: "toggle", title: "Toggle", navigationOrder: 7,
+    slug: "toggle", title: "Toggle",
     description: "Show a persistent mode with a status light, separate from interaction feedback.",
     probeId: "component-toggle", Demo: ToggleComponentDemo,
     usage: `import { useState } from "react";
@@ -153,7 +155,7 @@ export function ToggleExample() {
     ],
   },
   {
-    slug: "progress", title: "Progress", navigationOrder: 8,
+    slug: "progress", title: "Progress",
     description: "Display determinate or indeterminate progress as a solid or outlined track, with an optional percentage.",
     probeId: "component-progress", Demo: ProgressComponentDemo,
     usage: `import { Progress, Root } from "@chardesk/cell-ui";
@@ -173,7 +175,50 @@ export function ProgressExample() {
     ],
   },
   {
-    slug: "separator", title: "Separator", navigationOrder: 14,
+    slug: "spinner", title: "Spinner",
+    description: "Show indeterminate activity in a single Unicode Cell, using a wheel or dots.",
+    probeId: "component-spinner", Demo: SpinnerComponentDemo,
+    usage: `import { Box, Root, Spinner, Text } from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function SpinnerExample() {
+  return <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
+    <Root><Box style={{ direction: "row", gap: 1 }}>
+      <Spinner label="Loading" variant="wheel" /><Text>Loading…</Text>
+    </Box></Root>
+  </CellSurface>;
+}`,
+    api: [
+      { name: "label", type: "string", description: "Required accessible name; visible text is composed separately." },
+      { name: "variant?", type: '"wheel" | "dots"', description: "Wheel by default; both variants occupy one Cell." },
+      { name: "id?", type: "string", description: "Stable Cell owner and probe identifier." },
+    ],
+  },
+  {
+    slug: "tooltip", title: "Tooltip",
+    description: "Explain a Cell control on delayed hover or keyboard focus without changing its layout.",
+    probeId: "component-tooltip", Demo: TooltipComponentDemo,
+    usage: `import { Button, Root, Text, Tooltip } from "@chardesk/cell-ui";
+import { CellSurface } from "@chardesk/cell-ui/browser";
+
+export function TooltipExample() {
+  return <CellSurface viewport={{ width: 28, height: 7 }} onCommand={() => {}}>
+    <Root>
+      <Button id="save" label="Save document"><Text>Save</Text></Button>
+      <Tooltip targetId="save" text="Save current document" />
+    </Root>
+  </CellSurface>;
+}`,
+    api: [
+      { name: "targetId", type: "string", description: "Stable id of an existing focusable Cell control." },
+      { name: "text", type: "string", description: "Non-empty, single-line supplementary text; clipped to the viewport." },
+      { name: "id?", type: "string", description: "Optional stable tooltip owner and semantic identifier." },
+      { name: "variant?", type: '"surface" | "ghost"', description: "Opaque elevated or base surface; surface by default." },
+      { name: "border?", type: '"none" | "square" | "rounded"', description: "Independent Cell border; omitted uses the theme border shape." },
+    ],
+  },
+  {
+    slug: "separator", title: "Separator",
     description: "Separate Cell content with one row or column.",
     probeId: "component-separator", Demo: SeparatorComponentDemo,
     usage: `import { Root, Separator, Text } from "@chardesk/cell-ui";
@@ -191,7 +236,7 @@ export function SeparatorExample() {
     ],
   },
   {
-    slug: "radio", title: "Radio", navigationOrder: 9,
+    slug: "radio", title: "Radio",
     description: "Choose one value with a shared group and arrow-key navigation.",
     probeId: "component-radio", Demo: RadioComponentDemo,
     usage: `import { RadioGroup, RadioItem, Root, Text } from "@chardesk/cell-ui";
@@ -221,7 +266,6 @@ export function RadioExample() {
   {
     slug: "button",
     title: "Button",
-    navigationOrder: 0,
     description: "Trigger one action through keyboard, pointer, or assistive input.",
     probeId: "component-button",
     Demo: ButtonComponentDemo,
@@ -263,7 +307,6 @@ export function ButtonExample() {
   {
     slug: "badge",
     title: "Badge",
-    navigationOrder: 0.5,
     description: "Show a compact state label, optionally acting as a command target.",
     probeId: "component-badge",
     Demo: BadgeComponentDemo,
@@ -290,7 +333,6 @@ export function BadgeExample() {
   {
     slug: "select",
     title: "Select",
-    navigationOrder: 1,
     description: "Choose one value from a Cell-anchored listbox.",
     probeId: "component-select",
     Demo: SelectComponentDemo,
@@ -363,7 +405,6 @@ export function SelectExample() {
   {
     slug: "combobox",
     title: "Combobox",
-    navigationOrder: 2,
     description: "Click the input row to open local options, filter, then commit one value.",
     probeId: "component-combobox",
     Demo: ComboboxComponentDemo,
@@ -407,7 +448,6 @@ export function ComboboxExample() {
   {
     slug: "checkbox",
     title: "Checkbox",
-    navigationOrder: 4,
     description: "Toggle boolean or indeterminate state through one Cell command path.",
     probeId: "component-checkbox",
     Demo: CheckboxComponentDemo,
@@ -457,7 +497,6 @@ export function CheckboxExample() {
   {
     slug: "slider",
     title: "Slider",
-    navigationOrder: 3,
     description: "Select one stepped value or a bounded interval on a Cell-native track.",
     probeId: "component-slider",
     Demo: SliderComponentDemo,
@@ -505,7 +544,6 @@ export function SliderExample() {
   {
     slug: "input",
     title: "Input",
-    navigationOrder: 5,
     description: "Edit a single line of Unicode text on the Cell grid.",
     probeId: "component-input",
     Demo: InputComponentDemo,
@@ -544,7 +582,6 @@ export function InputExample() {
   {
     slug: "tabs",
     title: "Tabs",
-    navigationOrder: 13,
     description: "Switch between related Cell panels with one selected tab.",
     probeId: "component-tabs",
     Demo: TabsComponentDemo,
@@ -576,6 +613,7 @@ export function TabsExample() {
     api: [
       { name: "Tabs.label?", type: "string", description: "Accessible tab-list name." },
       { name: "Tabs.orientation?", type: '"horizontal" | "vertical"', description: "Collection orientation; this example uses horizontal navigation." },
+      { name: "Tabs.variant?", type: '"underline" | "solid"', description: "Underline by default; solid keeps the one-row inverse selection." },
       { name: "Tab.id", type: "string", description: "Stable focus and activation target." },
       { name: "Tab.controlsId?", type: "string", description: "ID of the associated TabPanel." },
       { name: "Tab.focused?", type: "boolean", description: "Controlled logical focus state." },
@@ -588,7 +626,6 @@ export function TabsExample() {
   {
     slug: "scroll-area",
     title: "ScrollArea",
-    navigationOrder: 6,
     description: "Scroll overflowing Cell content with keys, wheel, track, or thumb.",
     probeId: "component-scroll-area",
     Demo: ScrollAreaComponentDemo,
@@ -632,4 +669,4 @@ export const componentDocumentBySlug = new Map(
 export const defaultComponentSlug = "button";
 
 export const componentNavigationDocuments = componentDocuments
-  .toSorted((left, right) => left.navigationOrder - right.navigationOrder);
+  .toSorted((left, right) => left.title.localeCompare(right.title, "en"));

@@ -27,8 +27,12 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.pressed === right.pressed
   && left.radioValue === right.radioValue
   && sameWidgetValue(left.progress, right.progress)
-  && left.progressAnimationTimeMs === right.progressAnimationTimeMs
+  && left.animationTimeMs === right.animationTimeMs
   && left.progressVariant === right.progressVariant
+  && left.spinnerVariant === right.spinnerVariant
+  && left.tooltipTargetId === right.tooltipTargetId
+  && left.tooltipOpen === right.tooltipOpen
+  && left.tabsVariant === right.tabsVariant
   && left.separatorVariant === right.separatorVariant
   && left.buttonVariant === right.buttonVariant
   && left.badgeTone === right.badgeTone
@@ -71,6 +75,7 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.text !== after.text
   || before.buttonVariant !== after.buttonVariant
   || before.progressVariant !== after.progressVariant
+  || before.tabsVariant !== after.tabsVariant
   || before.frame !== after.frame
   || before.orientation !== after.orientation
   || (after.kind === "accordion-content" && before.expanded !== after.expanded)
@@ -78,7 +83,9 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || !sameWidgetValue(before.children, after.children);
 
 const hasGeometryChange = (before: WidgetNode, after: WidgetNode) =>
-  !sameWidgetValue(before.scrollOffset, after.scrollOffset)
+  before.tooltipOpen !== after.tooltipOpen
+  || before.tooltipTargetId !== after.tooltipTargetId
+  || !sameWidgetValue(before.scrollOffset, after.scrollOffset)
   || (before.kind === "range-slider-thumb" && (
     before.sliderValue !== after.sliderValue
     || before.sliderMin !== after.sliderMin
@@ -106,8 +113,11 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.checked !== after.checked
   || before.pressed !== after.pressed
   || !sameWidgetValue(before.progress, after.progress)
-  || before.progressAnimationTimeMs !== after.progressAnimationTimeMs
+  || before.animationTimeMs !== after.animationTimeMs
   || before.progressVariant !== after.progressVariant
+  || before.spinnerVariant !== after.spinnerVariant
+  || before.tooltipOpen !== after.tooltipOpen
+  || before.tabsVariant !== after.tabsVariant
   || before.separatorVariant !== after.separatorVariant
   || before.buttonVariant !== after.buttonVariant
   || before.badgeTone !== after.badgeTone

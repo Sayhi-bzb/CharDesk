@@ -94,16 +94,23 @@ export const composeScene = (
 
   let traversalOrder = 0;
   const orders = new Map<string, number>();
+  const deferredTooltips: string[] = [];
   const visit = (
     id: string,
     parentOrigin: CellPoint,
     inheritedClip: CellRect,
-    inheritedLayer: number
+    inheritedLayer: number,
+    deferred = false,
   ): void => {
     const widget = tree.nodes.get(id);
     const layoutEntry = layout.entries.get(id);
     if (!widget || !layoutEntry) throw new Error(`Scene input is missing ${id}.`);
     if (widget.kind === "accordion-content" && !widget.expanded) return;
+    if (widget.kind === "tooltip" && !deferred) {
+      deferredTooltips.push(id);
+      return;
+    }
+    if (widget.kind === "tooltip" && !widget.tooltipOpen) return;
     const portal = isPortalKind(widget.kind);
     const origin = portal ? { x: 0, y: 0 } : parentOrigin;
     const clip = portal ? overlayViewport : inheritedClip;
@@ -124,6 +131,16 @@ export const composeScene = (
     const selectPlacement = anchorBounds
       ? placeAnchoredOverlay(anchorBounds, layoutEntry.rect, overlayViewport)
       : undefined;
+    const tooltipAnchor = widget.kind === "tooltip" && widget.tooltipTargetId
+      ? entries.get(widget.tooltipTargetId)
+      : undefined;
+    if (widget.kind === "tooltip" && (!tooltipAnchor || !tooltipAnchor.paintVisible)) return;
+    const tooltipPlacement = tooltipAnchor
+      ? placeAnchoredOverlay(tooltipAnchor.layoutBounds, layoutEntry.rect, overlayViewport,
+          { preferredSide: "above", gap: 0 })
+      : undefined;
+    if (tooltipPlacement && tooltipPlacement.bounds.height < (widget.frame === "bordered" ? 3 : 1)) return;
+    const placement = tooltipPlacement ?? selectPlacement;
     const rangeSliderParent = widget.kind === "range-slider-thumb" && widget.parentId
       ? tree.nodes.get(widget.parentId)
       : undefined;
@@ -144,16 +161,16 @@ export const composeScene = (
     const bounds: CellRect = {
       x: rangeThumbX ?? (widget.kind === "overlay"
         ? widget.overlayPosition?.x ?? Math.max(0, Math.floor((layout.viewport.width - layoutEntry.rect.width) / 2))
-        : dropdownContent
-          ? selectPlacement!.bounds.x
+        : placement
+          ? placement.bounds.x
           : origin.x + layoutEntry.rect.x),
       y: rangeSliderParentEntry?.decorationBounds.y ?? (widget.kind === "overlay"
         ? widget.overlayPosition?.y ?? Math.max(0, Math.floor((layout.viewport.height - layoutEntry.rect.height) / 2))
-        : dropdownContent
-          ? selectPlacement!.bounds.y
+        : placement
+          ? placement.bounds.y
           : origin.y + layoutEntry.rect.y),
-      width: selectPlacement?.bounds.width ?? layoutEntry.rect.width,
-      height: selectPlacement?.bounds.height ?? layoutEntry.rect.height,
+      width: placement?.bounds.width ?? layoutEntry.rect.width,
+      height: placement?.bounds.height ?? layoutEntry.rect.height,
     };
     const contentRightInset = layoutEntry.rect.width
       - layoutEntry.contentRect.x
@@ -196,7 +213,11 @@ export const composeScene = (
       decorationBounds,
       contentBounds,
       paintBounds: bounds,
-      hitBounds: bounds,
+      hitBounds: widget.kind === "tooltip"
+        ? { ...bounds, width: 0, height: 0 }
+        : widget.kind === "tab" && widget.tabsVariant === "underline"
+        ? { ...bounds, height: Math.min(1, bounds.height) }
+        : bounds,
       outerClip,
       contentClip,
       scrollMetrics,
@@ -221,6 +242,11 @@ export const composeScene = (
   };
 
   visit(tree.rootId, { x: 0, y: 0 }, layout.viewport, 0);
+  for (const id of deferredTooltips) {
+    const targetId = tree.nodes.get(id)?.tooltipTargetId;
+    const target = targetId ? entries.get(targetId) : undefined;
+    visit(id, { x: 0, y: 0 }, overlayViewport, target?.layer ?? 0, true);
+  }
   paintList.sort((left, right) => {
     const leftEntry = entries.get(left)!;
     const rightEntry = entries.get(right)!;

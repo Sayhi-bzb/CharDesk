@@ -111,6 +111,38 @@ test("Progress loads continuously, shows its number, and switches to indetermina
   await expect.poll(numberedText).toMatch(/^[█░]{15} \d{1,3}% *$/);
 });
 
+test("Spinner switches Unicode sequences while retaining one Cell and an indeterminate name", async ({ page }) => {
+  await page.goto("/#/components/spinner");
+  const surface = page.locator('[data-cell-probe="component-spinner"]');
+  const spinner = surface.getByRole("progressbar", { name: "Loading" });
+  await expect(spinner).toBeAttached();
+  await expect(spinner).not.toHaveAttribute("aria-valuenow");
+  const glyph = async () => {
+    const cells = (await readCellProbe(surface)).cells.filter((cell) => cell.ownerId === "component-spinner-indicator");
+    expect(cells).toHaveLength(1);
+    return cells[0]!.text;
+  };
+  await expect.poll(glyph).toMatch(/^[◐◓◑◒]$/u);
+  const wheelGlyph = await glyph();
+  await expect.poll(glyph).not.toBe(wheelGlyph);
+  await surface.getByRole("button", { name: "variant" }).evaluate((element: HTMLElement) => element.click());
+  await surface.getByRole("option", { name: "dots" }).evaluate((element: HTMLElement) => element.click());
+  await expect.poll(glyph).toMatch(/^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]$/u);
+  const dotsGlyph = await glyph();
+  await expect.poll(glyph).not.toBe(dotsGlyph);
+});
+
+test("Spinner freezes on its first glyph with reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/#/components/spinner");
+  const surface = page.locator('[data-cell-probe="component-spinner"]');
+  const glyph = async () => (await readCellProbe(surface)).cells
+    .find((cell) => cell.ownerId === "component-spinner-indicator")?.text;
+  await expect.poll(glyph).toBe("◐");
+  await page.waitForTimeout(400);
+  expect(await glyph()).toBe("◐");
+});
+
 test("Separator changes orientation through its Cell Select", async ({ page }) => {
   await page.goto("/#/components/separator");
   const surface = page.locator('[data-cell-probe="component-separator"]');

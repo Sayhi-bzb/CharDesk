@@ -63,7 +63,7 @@ it("uses surface Overlay and surface plus bordered Dialog defaults", () => {
   expect(dialog.layout.entries.get("dialog")?.borderInsets)
     .toEqual({ top: 1, right: 1, bottom: 1, left: 1 });
   const frameless = runtime.render(<Root>
-    <Dialog id="dialog" frame="none"><DialogTitle>Title</DialogTitle></Dialog>
+    <Dialog id="dialog" border="none"><DialogTitle>Title</DialogTitle></Dialog>
   </Root>);
   expect(frameless.layout.entries.get("dialog")?.borderInsets)
     .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
@@ -80,7 +80,7 @@ it("supports surface backgrounds inside framed Overlay, Dialog, ScrollArea, and 
         ? <Overlay id={kind} position={{ x: 0, y: 0 }} variant="surface" frame="bordered"
             style={{ width: 8, height: 4 }}><Text>Hi</Text></Overlay>
         : kind === "dialog"
-          ? <Dialog id={kind} variant="surface" frame="bordered" style={{ width: 8, height: 4 }}>
+          ? <Dialog id={kind} variant="surface" border="square" style={{ width: 8, height: 4 }}>
               <DialogTitle>Hi</DialogTitle>
             </Dialog>
           : kind === "scroll"

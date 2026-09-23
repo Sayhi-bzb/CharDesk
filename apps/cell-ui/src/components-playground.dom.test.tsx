@@ -10,6 +10,8 @@ import {
   DialogComponentDemo,
   ToggleComponentDemo,
   ProgressComponentDemo,
+  SpinnerComponentDemo,
+  TooltipComponentDemo,
   SeparatorComponentDemo,
   RadioComponentDemo,
   InputComponentDemo,
@@ -62,11 +64,13 @@ describe("Component Playground gallery demos", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it.each([
-    { Demo: DialogComponentDemo, label: "Dialog component", content: ["variant", "surface", "frame", "bordered", "border shape", "square"], absent: ["modal", "closeOnOutsideClick", "ghost"] },
+    { Demo: DialogComponentDemo, label: "Dialog component", content: ["variant", "surface", "border", "square"], absent: ["modal", "closeOnOutsideClick", "frame", "bordered", "ghost"] },
     { Demo: ToggleComponentDemo, label: "Toggle component", content: ["○ Bold", "disabled"], absent: ["variant", "pressed", "value"] },
     { Demo: BadgeComponentDemo, label: "Badge component", content: ["Waiting", "Syncing", "Done", "Delayed", "Failed", "Retry", "Disabled"], absent: ["tone", "interactive", "Activated:", "variant"] },
-    { Demo: TabsComponentDemo, label: "Tabs component", content: ["Code", "Preview", "Settings", 'const greeting = "Hello";'], absent: ["variant", "Activated:", "│"] },
+    { Demo: TabsComponentDemo, label: "Tabs component", content: ["Code", "Preview", "Settings", "⎺⎺⎺⎺", "variant", "underline", 'const greeting = "Hello";'], absent: ["Activated:"] },
     { Demo: ProgressComponentDemo, label: "Progress component", content: ["variant", "solid", "number", "indeterminate"], absent: ["outline", "value"] },
+    { Demo: SpinnerComponentDemo, label: "Spinner component", content: ["◐ Loading…", "variant", "wheel"], absent: ["dots", "number"] },
+    { Demo: TooltipComponentDemo, label: "Tooltip component", content: ["Save", "variant", "surface", "border", "square"], absent: ["frame", "bordered", "ghost"] },
     { Demo: SeparatorComponentDemo, label: "Separator component", content: ["───────", "variant", "direction", "horizontal"], absent: ["slash", "double", "dots", "value"] },
     { Demo: RadioComponentDemo, label: "Radio component", content: ["(●) Light", "( ) Dark", "disabled"], absent: ["variant", "value"] },
     { Demo: BoxComponentDemo, label: "Box component", content: ["Block", "variant", "frame"], absent: ["rounded"] },
@@ -158,7 +162,7 @@ describe("Component Playground gallery demos", () => {
     expect(preview).toHaveAttribute("aria-selected", "true");
   });
 
-  it("keeps Dialog border shape while its frame is temporarily disabled", async () => {
+  it("changes Dialog border through one selector", async () => {
     render(<DialogComponentDemo />);
     const surface = screen.getByLabelText("Dialog component");
     const select = async (label: string, value: string) => {
@@ -169,12 +173,12 @@ describe("Component Playground gallery demos", () => {
     };
     expect(screen.queryByRole("checkbox", { name: "modal" })).toBeNull();
     expect(screen.queryByRole("checkbox", { name: "closeOnOutsideClick" })).toBeNull();
-    await select("border shape", "rounded");
+    await select("border", "rounded");
     await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("rounded"));
-    await select("frame", "none");
-    await waitFor(() => expect(screen.queryByRole("button", { name: "border shape" })).toBeNull());
-    await select("frame", "bordered");
-    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("rounded"));
+    await select("border", "none");
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("none"));
+    await select("border", "square");
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("square"));
   });
 
   it("advances determinate Progress through a repeatable stalled schedule", () => {

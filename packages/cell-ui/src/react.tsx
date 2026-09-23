@@ -24,6 +24,9 @@ import type { CellUiRecipe } from "./recipe.js";
 import { resolveBadgeTone, type BadgeTone } from "./badge.js";
 import { resolveSeparatorVariant, type SeparatorVariant } from "./separator.js";
 import { resolveProgressVariant, type ProgressVariant } from "./progress.js";
+import { resolveSpinnerVariant, type SpinnerVariant } from "./spinner.js";
+import { tooltipText, tooltipTextWidth } from "./tooltip.js";
+import { resolveTabsVariant, type TabsVariant } from "./tabs.js";
 import {
   resolveCellFrame,
   type CellBorderShape,
@@ -61,6 +64,10 @@ type SurfaceAppearanceProps = Readonly<{
   frame?: CellFrame;
   borderShape?: CellBorderShape;
 }>;
+type FloatingSurfaceAppearanceProps = Readonly<{
+  variant?: SurfaceVariant;
+  border?: "none" | CellBorderShape;
+}>;
 
 export type RootProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
 export type BoxProps = ContainerProps & SurfaceAppearanceProps & Readonly<{ style?: CellLayoutStyle }>;
@@ -75,7 +82,7 @@ export type OverlayProps = NamedContainerProps & SurfaceAppearanceProps & Readon
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type DialogProps = Omit<OverlayProps, "id" | "position"> & Readonly<{
+export type DialogProps = Omit<OverlayProps, "id" | "position" | "variant" | "frame" | "borderShape"> & FloatingSurfaceAppearanceProps & Readonly<{
   id: string;
   initialFocusId?: string;
 }>;
@@ -131,6 +138,16 @@ export type ProgressProps = Readonly<{
   number?: boolean;
   variant?: ProgressVariant;
   style?: CellLayoutStyle;
+}>;
+export type SpinnerProps = Readonly<{
+  id?: string;
+  label: string;
+  variant?: SpinnerVariant;
+}>;
+export type TooltipProps = FloatingSurfaceAppearanceProps & Readonly<{
+  id?: string;
+  targetId: string;
+  text: string;
 }>;
 export type SeparatorProps = Readonly<{
   id?: string;
@@ -223,7 +240,7 @@ export type TreeItemProps = CollectionItemProps & Readonly<{
   level: number;
   parentItemId?: string;
 }>;
-export type TabsProps = CollectionProps;
+export type TabsProps = CollectionProps & Readonly<{ variant?: TabsVariant }>;
 export type TabProps = CollectionItemProps & Readonly<{ controlsId?: string }>;
 export type TabPanelProps = NamedContainerProps & Readonly<{
   labelledById?: string;
@@ -269,6 +286,8 @@ type PrimitiveProps =
   | CheckboxProps
   | ToggleProps
   | ProgressProps
+  | SpinnerProps
+  | TooltipProps
   | SeparatorProps
   | RadioGroupProps
   | RadioItemProps
@@ -332,6 +351,8 @@ export const Badge = primitive<BadgeProps>("badge");
 export const Checkbox = primitive<CheckboxProps>("checkbox");
 export const Toggle = primitive<ToggleProps>("toggle");
 export const Progress = primitive<ProgressProps>("progress");
+export const Spinner = primitive<SpinnerProps>("spinner");
+export const Tooltip = primitive<TooltipProps>("tooltip");
 export const Separator = primitive<SeparatorProps>("separator");
 export const RadioGroup = primitive<RadioGroupProps>("radio-group");
 export const RadioItem = primitive<RadioItemProps>("radio-item");
@@ -382,6 +403,9 @@ export type WidgetDescriptor = Readonly<{
   radioValue: string | null;
   progress: import("./types.js").WidgetNode["progress"];
   progressVariant: ProgressVariant;
+  spinnerVariant: SpinnerVariant;
+  tooltipTargetId: string | null;
+  tabsVariant: TabsVariant;
   separatorVariant: SeparatorVariant;
   buttonVariant: ButtonVariant;
   badgeTone: BadgeTone;
@@ -447,6 +471,10 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
   if (kind === "badge-action" && (typeof props.id !== "string" || !props.id.trim())) {
     throw new TypeError("Interactive Badge requires a non-empty id.");
   }
+  if (kind === "tooltip" && (
+    typeof props.targetId !== "string" || !props.targetId.trim()
+    || typeof props.text !== "string" || !tooltipText(props.text)
+  )) throw new TypeError("Tooltip requires non-empty targetId and text props.");
   const isDialog = element.type === Dialog;
   if (isDialog && (typeof props.id !== "string" || !props.id.trim())) {
     throw new TypeError("Dialog requires a non-empty id.");
@@ -467,7 +495,10 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
 
   let text: string | null = null;
   let children: WidgetDescriptor[] = [];
-  if (kind === "text") {
+  if (kind === "tooltip") {
+    if (childValues.length > 0) throw new TypeError("Tooltip does not accept children.");
+    text = tooltipText(props.text as string);
+  } else if (kind === "text") {
     if (childValues.some((child) => typeof child !== "string" && typeof child !== "number")) {
       throw new TypeError("Text children must be strings or numbers.");
     }
@@ -508,7 +539,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
   const controlSurface = kind === "select"
     || kind === "combobox"
     || kind === "text-input";
-  const ownsSurface = ownsFramedSurface || controlSurface;
+  const ownsSurface = ownsFramedSurface || controlSurface || kind === "tooltip";
   const defaultsToSurface = controlSurface
     || isDialog
     || kind === "overlay";
@@ -519,9 +550,12 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
             ?? (defaultsToSurface ? "surface" : "ghost"),
         )
       : null;
-  const frame = ownsFramedSurface || kind === "select-content" || kind === "combobox-content"
-    ? resolveCellFrame(props.frame, isDialog ? "bordered" : "none")
-    : "none";
+  const frame = isDialog || kind === "tooltip"
+    ? props.border === "none" ? "none" : "bordered"
+    : ownsFramedSurface || kind === "select-content" || kind === "combobox-content"
+      ? resolveCellFrame(props.frame, "none")
+      : "none";
+  const requestedBorderShape = isDialog || kind === "tooltip" ? props.border : props.borderShape;
 
   return [{
     kind,
@@ -529,6 +563,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
     key: element.key === null ? null : String(element.key),
     style: {
       ...(isDialog ? { width: 36, padding: 1, gap: 1 } : {}),
+      ...(kind === "tooltip" ? { width: tooltipTextWidth(text ?? "") + (frame === "bordered" ? 4 : 2),
+        height: frame === "bordered" ? 3 : 1, paddingLeft: 1, paddingRight: 1 } : {}),
       ...(element.type === DialogFooter ? { direction: "row" as const, gap: 1 } : {}),
       ...(kind === "text-input" || kind === "combobox-input"
         ? normalizeSingleLineInputStyle(props.style as CellLayoutStyle | undefined)
@@ -536,10 +572,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
     },
     surfaceVariant,
     frame,
-    borderShape: frame === "bordered"
-      && (props.borderShape === "square" || props.borderShape === "rounded")
-      ? props.borderShape
-      : null,
+    borderShape: frame === "bordered" && (requestedBorderShape === "square" || requestedBorderShape === "rounded")
+      ? requestedBorderShape : null,
     text,
     textStyle: { ...(element.type === DialogTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
     label: typeof props.label === "string" ? props.label : null,
@@ -559,6 +593,9 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
       number: props.number === true,
     } : null,
     progressVariant,
+    spinnerVariant: kind === "spinner" ? resolveSpinnerVariant(props.variant) : "wheel",
+    tooltipTargetId: kind === "tooltip" ? props.targetId as string : null,
+    tabsVariant: kind === "tabs" ? resolveTabsVariant(props.variant) : "underline",
     separatorVariant: kind === "separator" ? resolveSeparatorVariant(props.variant) : "line",
     buttonVariant: kind === "button"
       ? resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")

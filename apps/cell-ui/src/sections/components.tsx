@@ -18,6 +18,8 @@ import {
   ComboboxItem,
   Toggle,
   Progress,
+  Spinner,
+  Tooltip,
   Separator,
   RadioGroup,
   RadioItem,
@@ -37,8 +39,10 @@ import {
   type CellBorderShape,
   type CellFrame,
   type ProgressVariant,
+  type SpinnerVariant,
   type SeparatorVariant,
   type SurfaceVariant,
+  type TabsVariant,
   type WidgetCommand,
 } from "@chardesk/cell-ui";
 import {
@@ -59,8 +63,7 @@ import {
 const noCommand = () => undefined;
 
 const dialogVariantItems = (["surface", "ghost"] as const).map((value) => ({ id: value, label: value }));
-const dialogFrameItems = (["bordered", "none"] as const).map((value) => ({ id: value, label: value }));
-const dialogBorderShapeItems = (["square", "rounded"] as const).map((value) => ({ id: value, label: value }));
+const floatingBorderItems = (["square", "rounded", "none"] as const).map((value) => ({ id: value, label: value }));
 const buttonVariantItems = (["solid", "surface", "outline", "ghost"] as const).map((value) => ({ id: value, label: value }));
 const buttonSaveIcon = "\uEB4B"; // cod-save in the pinned Nerd Fonts 3.5.1 catalog.
 const buttonContentItems = [
@@ -72,6 +75,8 @@ const surfaceVariantItems = (["surface", "ghost"] as const).map((value) => ({ id
 const frameItems = (["none", "bordered"] as const).map((value) => ({ id: value, label: value }));
 const borderShapeItems = (["square", "rounded"] as const).map((value) => ({ id: value, label: value }));
 const progressVariantItems = (["solid", "outline"] as const).map((value) => ({ id: value, label: value }));
+const spinnerVariantItems = (["wheel", "dots"] as const).map((value) => ({ id: value, label: value }));
+const tabsVariantItems = (["underline", "solid"] as const).map((value) => ({ id: value, label: value }));
 const separatorVariantItems = [
   { id: "line", label: "───────" },
   { id: "slash", label: "///////" },
@@ -84,13 +89,10 @@ export const DialogComponentDemo = () => {
   const variant = useCellSelectState("component-dialog-variant", dialogVariantItems, {
     defaultSelectedId: "surface",
   });
-  const frame = useCellSelectState("component-dialog-frame", dialogFrameItems, {
-    defaultSelectedId: "bordered",
-  });
-  const borderShape = useCellSelectState("component-dialog-border-shape", dialogBorderShapeItems, {
+  const border = useCellSelectState("component-dialog-border", floatingBorderItems, {
     defaultSelectedId: "square",
   });
-  const focus = usePlaygroundFocus("dialog-open", [variant, frame, borderShape]);
+  const focus = usePlaygroundFocus("dialog-open", [variant, border]);
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
     if (command.type === "dismiss" && command.targetId === "demo-dialog") setOpen(false);
@@ -104,8 +106,7 @@ export const DialogComponentDemo = () => {
       <Button id="dialog-open"><Text>Open dialog</Text></Button>
       {open && <Dialog id="demo-dialog" initialFocusId="dialog-cancel"
         variant={variant.selectedId as SurfaceVariant}
-        frame={frame.selectedId as CellFrame}
-        borderShape={frame.selectedId === "bordered" ? borderShape.selectedId as CellBorderShape : undefined}>
+        border={border.selectedId as "none" | CellBorderShape}>
         <DialogTitle>Continue?</DialogTitle>
         <DialogDescription>This is a preview confirmation.</DialogDescription>
         <DialogFooter>
@@ -116,10 +117,7 @@ export const DialogComponentDemo = () => {
     </Box>}
     controls={[
       renderPlaygroundSelectControl("variant", variant, focus.focusedId),
-      renderPlaygroundSelectControl("frame", frame, focus.focusedId),
-      ...(frame.selectedId === "bordered"
-        ? [renderPlaygroundSelectControl("border shape", borderShape, focus.focusedId)]
-        : []),
+      renderPlaygroundSelectControl("border", border, focus.focusedId),
     ]} />;
 };
 
@@ -257,6 +255,43 @@ export const ProgressComponentDemo = () => {
         indeterminate,
         focus.focusedId,
       ),
+    ]} />;
+};
+
+export const SpinnerComponentDemo = () => {
+  const variant = useCellSelectState("component-spinner-variant", spinnerVariantItems, {
+    defaultSelectedId: "wheel",
+  });
+  const focus = usePlaygroundFocus(variant.triggerId, [variant]);
+  return <ComponentPlayground id="component-spinner-playground" label="Spinner component"
+    probeId="component-spinner" focusedId={focus.focusedId} onCommand={focus.dispatch}
+    previewMinColumns={20} controlsColumns={22} overlayRows={focus.activeSelect?.items.length ?? 0}
+    preview={<Box style={{ direction: "row", gap: 1 }}>
+      <Spinner id="component-spinner-indicator" label="Loading" variant={variant.selectedId as SpinnerVariant} />
+      <Text>Loading…</Text>
+    </Box>}
+    controls={[renderPlaygroundSelectControl("variant", variant, focus.focusedId)]} />;
+};
+
+export const TooltipComponentDemo = () => {
+  const variant = useCellSelectState("component-tooltip-variant", surfaceVariantItems, {
+    defaultSelectedId: "surface",
+  });
+  const border = useCellSelectState("component-tooltip-border", floatingBorderItems, {
+    defaultSelectedId: "square",
+  });
+  const focus = usePlaygroundFocus("component-tooltip-save", [variant, border]);
+  return <ComponentPlayground id="component-tooltip-playground" label="Tooltip component"
+    probeId="component-tooltip" focusedId={focus.focusedId} onCommand={focus.dispatch}
+    previewMinColumns={28} controlsColumns={25} overlayRows={focus.activeSelect?.items.length ?? 4}
+    preview={<Box>
+      <Button id="component-tooltip-save" label="Save document"><Text>Save</Text></Button>
+      <Tooltip id="component-tooltip-help" targetId="component-tooltip-save" text="Save current document"
+        variant={variant.selectedId as SurfaceVariant} border={border.selectedId as "none" | CellBorderShape} />
+    </Box>}
+    controls={[
+      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+      renderPlaygroundSelectControl("border", border, focus.focusedId),
     ]} />;
 };
 
@@ -504,16 +539,28 @@ const tabItems = [
 
 export const TabsComponentDemo = () => {
   const tabs = useCellTabsState(tabItems, { defaultSelectedId: "component-tabs-code" });
+  const variant = useCellSelectState("component-tabs-variant", tabsVariantItems, {
+    defaultSelectedId: "underline",
+  });
+  const focus = usePlaygroundFocus(tabs.focusedId ?? variant.triggerId, [variant]);
+  const dispatch = (command: WidgetCommand) => {
+    focus.dispatch(command);
+    if ((command.type === "focus" || command.type === "activate")
+      && tabs.items.some((item) => item.id === command.targetId)) tabs.dispatch(command);
+  };
   const selectedTab = tabs.items.find((item) => item.id === tabs.selectedId);
   return <ComponentPlayground
     id="component-tabs-playground"
     label="Tabs component"
     probeId="component-tabs"
-    focusedId={tabs.focusedId}
-    onCommand={tabs.dispatch}
+    focusedId={focus.focusedId}
+    onCommand={dispatch}
     previewMinColumns={32}
+    controlsColumns={25}
+    overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={<Box style={{ direction: "column", width: 32 }}>
-      <Tabs id="component-tabs-list" label="Views" orientation="horizontal">
+      <Tabs id="component-tabs-list" label="Views" orientation="horizontal"
+        variant={variant.selectedId as TabsVariant}>
         {tabs.items.map((item) => <Tab
           id={item.id}
           key={item.id}
@@ -532,6 +579,7 @@ export const TabsComponentDemo = () => {
         ? 'const greeting = "Hello";'
         : "Hello"}</Text></TabPanel>}
     </Box>}
+    controls={[renderPlaygroundSelectControl("variant", variant, focus.focusedId)]}
   />;
 };
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CellUiRuntime,
+  CLASSIC_MAC_LIGHT_THEME,
   FocusManager,
   Grid,
   GridCell,
@@ -24,7 +25,7 @@ import {
 it("renders one-row Tabs with content-width labels and one Cell of selectable guard", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 30, height: 2 } });
   for (const label of ["Code", "Preview", "Settings"]) {
-    const frame = runtime.render(<Root><Tabs id="tabs"><Tab id="tab" selected>
+    const frame = runtime.render(<Root><Tabs id="tabs" variant="solid"><Tab id="tab" selected>
       <Text id="label">{label}</Text>
     </Tab></Tabs></Root>);
     const entry = frame.scene.entries.get("tab")!;
@@ -37,6 +38,53 @@ it("renders one-row Tabs with content-width labels and one Cell of selectable gu
     }
     expect(frame.buffer.toText()).not.toContain("▬");
   }
+  runtime.dispose();
+});
+
+it("underlines only the selected Tab's label and moves its panel below the second row", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 24, height: 4 } });
+  const view = (selectedId: string, variant?: "underline" | "solid") => <Root>
+    <Tabs id="tabs" variant={variant}>
+      <Tab id="first" selected={selectedId === "first"}><Text>Tab 1</Text></Tab>
+      <Tab id="second" selected={selectedId === "second"}><Text>Tab 2</Text></Tab>
+      <Tab id="disabled" disabled><Text>Off</Text></Tab>
+    </Tabs>
+    <TabPanel id="panel"><Text>Content</Text></TabPanel>
+  </Root>;
+  const first = runtime.render(view("first"));
+  const firstTab = first.scene.entries.get("first")!;
+  expect(firstTab.layoutBounds.height).toBe(2);
+  expect(first.scene.entries.get("panel")!.layoutBounds.y).toBe(2);
+  for (let offset = 0; offset < 5; offset += 1) {
+    expect(first.buffer.get(firstTab.contentBounds.x + offset, 1)).toMatchObject({
+      text: "⎺", ownerId: "first", style: { color: CLASSIC_MAC_LIGHT_THEME.selectedStyle.backgroundColor },
+    });
+  }
+  expect(first.buffer.get(firstTab.layoutBounds.x, 1)?.text).not.toBe("⎺");
+  expect(first.buffer.get(firstTab.layoutBounds.x + firstTab.layoutBounds.width - 1, 1)?.text).not.toBe("⎺");
+  expect(first.buffer.get(firstTab.contentBounds.x, 0)?.style.backgroundColor).toBeUndefined();
+  expect(hitTest(first.scene, { x: firstTab.contentBounds.x, y: 1 })).not.toContain("first");
+
+  const inactiveTab = first.scene.entries.get("second")!;
+  expect(hitTest(first.scene, { x: inactiveTab.contentBounds.x, y: 0 })[0]).toBe("second/text[0]");
+  expect(hitTest(first.scene, { x: inactiveTab.contentBounds.x, y: 1 })).not.toContain("second");
+  const hovered = runtime.render(view("first"), { hoveredId: "second" });
+  expect(hovered.buffer.get(inactiveTab.layoutBounds.x, 0)?.style.backgroundColor)
+    .toBe(CLASSIC_MAC_LIGHT_THEME.hoveredItemStyle.backgroundColor);
+  expect(hovered.buffer.get(inactiveTab.layoutBounds.x, 1)?.style.backgroundColor).toBeUndefined();
+  expect(hovered.buffer.toText()).not.toContain("⎺⎺⎺⎺⎺⎺⎺");
+
+  const second = runtime.render(view("second"));
+  const secondTab = second.scene.entries.get("second")!;
+  expect(second.buffer.get(firstTab.contentBounds.x, 1)?.text).not.toBe("⎺");
+  expect(second.buffer.get(secondTab.contentBounds.x, 1)?.text).toBe("⎺");
+  expect(second.buffer.toText()).toContain("Content");
+
+  const solid = runtime.render(view("first", "solid"));
+  expect(solid.scene.entries.get("first")!.layoutBounds.height).toBe(1);
+  expect(solid.scene.entries.get("panel")!.layoutBounds.y).toBe(1);
+  expect(solid.buffer.toText()).not.toContain("⎺");
+  expect(solid.buffer.get(firstTab.layoutBounds.x, 0)?.style.backgroundColor).toBe(CLASSIC_MAC_LIGHT_THEME.selectedStyle.backgroundColor);
   runtime.dispose();
 });
 
@@ -80,7 +128,7 @@ const renderComplexWidgets = (focusedId = "menu-open") => {
           <Text>index.ts</Text>
         </TreeItem>
       </Tree>
-      <Tabs id="tabs" label="Views" orientation="horizontal">
+      <Tabs id="tabs" label="Views" orientation="horizontal" variant="solid">
         <Tab id="tab-code" controlsId="panel-code" selected>
           <Text>Code</Text>
         </Tab>

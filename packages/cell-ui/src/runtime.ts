@@ -1,5 +1,5 @@
 import { resolveCellFeedback, type CellFeedbackConfig } from "./feedback.js";
-import { isPrimitiveControlKind } from "./widget-capabilities.js";
+import { isFocusableKind, isPrimitiveControlKind } from "./widget-capabilities.js";
 import type { ReactElement } from "react";
 import { intersectCellRects } from "@chardesk/cell-core";
 import { YogaLayoutEngine, type LayoutEngine } from "./layout.js";
@@ -127,6 +127,7 @@ export class CellUiRuntime {
       confirmation?: FrameSnapshot["confirmation"];
       colors?: FrameSnapshot["colors"];
       animationTimeMs?: number;
+      tooltipTargetId?: string | null;
       resolveFocusedId?: (tree: WidgetTree) => string | null;
     }> = {}
   ): FrameSnapshot {
@@ -152,6 +153,11 @@ export class CellUiRuntime {
     const animationTimeMs = typeof state.animationTimeMs === "number" && Number.isFinite(state.animationTimeMs)
       ? Math.max(0, state.animationTimeMs)
       : 0;
+    const tooltipTarget = state.tooltipTargetId
+      ? reconciliation.tree.nodes.get(state.tooltipTargetId)
+      : undefined;
+    const activeTooltipTargetId = tooltipTarget && isFocusableKind(tooltipTarget.kind) && !tooltipTarget.disabled
+      ? tooltipTarget.id : null;
     const tree: WidgetTree = {
       rootId: reconciliation.tree.rootId,
       nodes: new Map([...reconciliation.tree.nodes].map(([id, node]) => [
@@ -165,7 +171,8 @@ export class CellUiRuntime {
           && node.activationFlash === (id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled)
           && node.confirming === (id === state.activationTargetId && !node.disabled)
           && sameWidgetValue(node.confirmation, id === state.confirmation?.targetId ? state.confirmation : undefined)
-          && node.progressAnimationTimeMs === (node.progress?.value === null ? animationTimeMs : 0)
+          && node.animationTimeMs === (node.kind === "spinner" || node.progress?.value === null ? animationTimeMs : 0)
+          && node.tooltipOpen === (node.kind === "tooltip" && node.tooltipTargetId === activeTooltipTargetId)
           ? node
           : {
               ...node,
@@ -178,7 +185,8 @@ export class CellUiRuntime {
               activationFlash: id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled,
               confirming: id === state.activationTargetId && !node.disabled,
               confirmation: id === state.confirmation?.targetId ? state.confirmation : undefined,
-              progressAnimationTimeMs: node.progress?.value === null ? animationTimeMs : 0,
+              animationTimeMs: node.kind === "spinner" || node.progress?.value === null ? animationTimeMs : 0,
+              tooltipOpen: node.kind === "tooltip" && node.tooltipTargetId === activeTooltipTargetId,
             },
       ])),
     };

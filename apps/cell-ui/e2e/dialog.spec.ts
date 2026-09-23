@@ -32,7 +32,7 @@ test("Dialog uses Canvas input, named semantics and focus restoration", async ({
   await expect(dialog).toHaveCount(0);
 });
 
-test("Dialog config changes its opaque variant, frame, and border shape", async ({ page }) => {
+test("Dialog config changes its opaque variant and border", async ({ page }) => {
   await page.goto("/#/components/dialog");
   const surface = page.locator('[data-cell-probe="component-dialog"]');
   const open = surface.getByRole("button", { name: "Open dialog", exact: true });
@@ -46,8 +46,7 @@ test("Dialog config changes its opaque variant, frame, and border shape", async 
   await expect(surface.getByRole("checkbox", { name: "modal" })).toHaveCount(0);
   await expect(surface.getByRole("checkbox", { name: "closeOnOutsideClick" })).toHaveCount(0);
   await expect(surface.getByRole("button", { name: "variant" })).toBeAttached();
-  await expect(surface.getByRole("button", { name: "frame" })).toBeAttached();
-  await expect(surface.getByRole("button", { name: "border shape" })).toBeAttached();
+  await expect(surface.getByRole("button", { name: "border" })).toBeAttached();
   await open.evaluate((element: HTMLElement) => element.click());
   const dialog = surface.getByRole("dialog", { name: "Continue?", exact: true });
   await expect(dialog).toBeAttached();
@@ -61,8 +60,7 @@ test("Dialog config changes its opaque variant, frame, and border shape", async 
   await expect(dialog).toHaveCount(0);
 
   await select("variant", "ghost");
-  await select("frame", "none");
-  await expect(surface.getByRole("button", { name: "border shape" })).toHaveCount(0);
+  await select("border", "none");
   await open.evaluate((element: HTMLElement) => element.click());
   await expect(dialog).toBeAttached();
   await expect(dialog).toHaveAttribute("aria-modal", "true");
@@ -74,8 +72,7 @@ test("Dialog config changes its opaque variant, frame, and border shape", async 
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
 
-  await select("frame", "bordered");
-  await select("border shape", "rounded");
+  await select("border", "rounded");
   await open.evaluate((element: HTMLElement) => element.click());
   await expect(dialog).toBeAttached();
   expect((await readCellProbe(surface)).overlays.find((overlay) => overlay.rootId === "demo-dialog")?.text)

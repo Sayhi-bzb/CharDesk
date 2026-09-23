@@ -10,7 +10,7 @@ it.each([CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME])(
   "keeps ghost Dialog opaque with the theme's base surface",
   (theme) => {
     const runtime = new CellUiRuntime({ viewport: { width: 48, height: 14 }, theme });
-    const view = (variant: "surface" | "ghost") => <Root><Dialog id="dialog" variant={variant} frame="none">
+    const view = (variant: "surface" | "ghost") => <Root><Dialog id="dialog" variant={variant} border="none">
       <DialogTitle>Details</DialogTitle>
     </Dialog></Root>;
     const elevated = runtime.render(view("surface"));
@@ -25,6 +25,35 @@ it.each([CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME])(
     runtime.dispose();
   },
 );
+
+it.each([CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME])(
+  "keeps Dialog variant and border independent",
+  (theme) => {
+    const runtime = new CellUiRuntime({ viewport: { width: 48, height: 14 }, theme });
+    for (const variant of ["surface", "ghost"] as const) {
+      for (const border of ["square", "rounded", "none"] as const) {
+        const result = runtime.render(<Root><Dialog id="dialog" variant={variant} border={border}>
+          <DialogTitle>Details</DialogTitle>
+        </Dialog></Root>);
+        const bounds = result.scene.entries.get("dialog")!.layoutBounds;
+        expect(result.tree.nodes.get("dialog")?.frame).toBe(border === "none" ? "none" : "bordered");
+        expect(result.buffer.get(bounds.x, bounds.y)?.text).toBe(border === "square" ? "┌" : border === "rounded" ? "╭" : " ");
+        expect(result.buffer.get(bounds.x + 1, bounds.y + 1)?.style.backgroundColor).toBe(
+          (variant === "surface" ? theme.elevatedSurfaceStyle : theme.surfaceStyle).backgroundColor,
+        );
+      }
+    }
+    runtime.dispose();
+  },
+);
+
+it("uses the theme border shape when Dialog border is omitted", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 48, height: 14 }, theme: { borderShape: "rounded" } });
+  const result = runtime.render(<Root><Dialog id="dialog"><DialogTitle>Details</DialogTitle></Dialog></Root>);
+  const bounds = result.scene.entries.get("dialog")!.layoutBounds;
+  expect(result.buffer.get(bounds.x, bounds.y)?.text).toBe("╭");
+  runtime.dispose();
+});
 
 it("opens a named modal, cycles focus and restores its launcher", async () => {
   let open = false;

@@ -80,6 +80,7 @@ export type { CellCursorShape, CellCursorStyle, CellUiTheme } from "./theme.js";
 export { nextCellCheckboxState } from "./checkbox.js";
 export type { ButtonVariant } from "./button.js";
 export type { ProgressVariant } from "./progress.js";
+export type { SpinnerVariant } from "./spinner.js";
 export type { CellBorderShape, CellFrame } from "./border.js";
 export {
   createCellRangeSnapshot,
@@ -112,6 +113,7 @@ export type {
 } from "@chardesk/keyboard";
 export type { CellUiRuntimeOptions } from "./runtime.js";
 export type { BadgeTone } from "./badge.js";
+export type { TabsVariant } from "./tabs.js";
 export {
   Box,
   Button,
@@ -119,6 +121,8 @@ export {
   Checkbox,
   Toggle,
   Progress,
+  Spinner,
+  Tooltip,
   Separator,
   RadioGroup,
   RadioItem,
@@ -156,6 +160,8 @@ export type {
   CheckboxProps,
   ToggleProps,
   ProgressProps,
+  SpinnerProps,
+  TooltipProps,
   SeparatorProps,
   RadioGroupProps,
   RadioItemProps,

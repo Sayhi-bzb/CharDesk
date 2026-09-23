@@ -4,7 +4,7 @@ import { ownerBounds, ownerCells, readCellProbe, readCellMetrics } from "./helpe
 for (const dpr of [1, 2]) {
   test.describe(`Cell decoration at DPR ${dpr}`, () => {
     test.use({ deviceScaleFactor: dpr });
-    test("Tab guards preserve Cell ownership and repaint consistently in both themes", async ({ page }) => {
+    test("Tab guards and underline preserve Cell ownership and repaint in both themes", async ({ page }) => {
       await page.goto("/#/__fixtures/complex");
       await page.evaluate(() => document.fonts.ready);
       const canvas = page.locator('[data-cell-probe="complex"] canvas');
@@ -12,10 +12,12 @@ for (const dpr of [1, 2]) {
       for (const label of ["Code", "Preview", "Code"]) {
         await page.getByRole("tab", { name: label, exact: true }).evaluate((node: HTMLElement) => node.click());
         const probe = await readCellProbe(surface);
-        const guards = ownerCells(probe, `tab-${label.toLowerCase()}`);
+        const cells = ownerCells(probe, `tab-${label.toLowerCase()}`);
+        const firstRow = Math.min(...cells.map(({ y }) => y));
+        const guards = cells.filter(({ y, text }) => y === firstRow && text === " ");
         expect(guards).toHaveLength(2);
-        expect(guards.every(({ text, style }) => text === " " && !!style.backgroundColor)).toBe(true);
-        expect(probe.text).not.toContain("▬");
+        expect(guards.every(({ style }) => style.backgroundColor === undefined)).toBe(true);
+        expect(cells.filter(({ text }) => text === "⎺")).toHaveLength(label.length);
       }
       await page.getByRole("tab", { name: "Preview", exact: true }).evaluate((node: HTMLElement) => node.click());
       for (const colorScheme of ["light", "dark"] as const) {

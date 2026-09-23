@@ -107,8 +107,12 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       pressed: current.pressed,
       radioValue: current.radioValue,
       progress: current.progress,
-      progressAnimationTimeMs: 0,
+      animationTimeMs: 0,
       progressVariant: current.progressVariant,
+      spinnerVariant: current.spinnerVariant,
+      tooltipTargetId: current.tooltipTargetId,
+      tooltipOpen: false,
+      tabsVariant: current.kind === "tab" && parent?.kind === "tabs" ? parent.tabsVariant : current.tabsVariant,
       separatorVariant: current.separatorVariant,
       buttonVariant: current.buttonVariant,
       badgeTone: current.badgeTone,
@@ -227,6 +231,14 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
   };
 
   const rootId = visit(descriptor, null, 0);
+  const tooltipTargets = new Set<WidgetId>();
+  for (const node of nodes.values()) {
+    if (node.kind !== "tooltip" || !node.tooltipTargetId) continue;
+    if (tooltipTargets.has(node.tooltipTargetId)) {
+      throw new TypeError(`Only one Tooltip may target ${node.tooltipTargetId}.`);
+    }
+    tooltipTargets.add(node.tooltipTargetId);
+  }
   return { rootId, nodes };
 };
 

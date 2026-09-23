@@ -89,7 +89,7 @@ const surfaceStyleForNode = (
         ...(backgroundColor !== undefined ? { backgroundColor } : {}),
       };
     }
-    if (current.dialog && current.surfaceVariant === "ghost") {
+    if ((current.dialog || current.kind === "tooltip") && current.surfaceVariant === "ghost") {
       return {
         ...theme.surfaceStyle,
         ...(backgroundColor !== undefined ? { backgroundColor } : {}),
@@ -149,11 +149,12 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   }
   const focused = (focusNode.focused && focusNode.focusVisible) || focusNode.active;
   if (owner?.kind === "tab") {
+    const selectedSolid = owner.selected && owner.tabsVariant === "solid";
     const tabStyle = {
       ...(surface ?? {}),
       ...node.textStyle,
       ...(disabled ? theme.disabledStyle
-        : owner.selected ? theme.selectedStyle : { color: theme.foreground }),
+        : selectedSolid ? theme.selectedStyle : { color: theme.foreground }),
       ...(!disabled && !owner.selected && owner.hovered ? theme.hoveredItemStyle : {}),
       ...(!disabled && !owner.selected && (focused || owner.pressActive) ? { bold: true } : {}),
     };
