@@ -68,6 +68,10 @@ jobs:
           CELL_UI_REGISTRY_ITEM: "@chardesk/cell-ui"
           CELL_UI_REGISTRY_URL: "${{ needs.deploy.outputs.page_url }}{name}.json"
         run: npm run cell-ui:registry:smoke
+      - name: Verify hosted URL installation
+        env:
+          CELL_UI_REGISTRY_ITEM: "${{ needs.deploy.outputs.page_url }}cell-ui.json"
+        run: npm run cell-ui:registry:smoke
       - name: Verify pinned GitHub source installation
         env:
           CELL_UI_REGISTRY_ITEM: Sayhi-bzb/CharDesk/cell-ui#${{ github.sha }}
