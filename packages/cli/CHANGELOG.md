@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.3](https://github.com/Sayhi-bzb/CharDesk/compare/v0.4.2...v0.4.3) (2026-09-23)
+
+
+### Features
+
+* add Tooltip, Spinner, and Tabs Cell primitives ([e5f48c0](https://github.com/Sayhi-bzb/CharDesk/commit/e5f48c0c528f937a9a174996cc6e0b4bbce586a4))
+* **cell-ui:** add underline Tabs variant with solid fallback ([3e731c5](https://github.com/Sayhi-bzb/CharDesk/commit/3e731c5be8ad69898dd36764ecd21a71d85b8676))
+* publish Cell UI Gallery ([ccadf3d](https://github.com/Sayhi-bzb/CharDesk/commit/ccadf3dd92912cf510311cb402a947baa4e8da64))
+
+
+### Bug Fixes
+
+* align public Cell UI verification and tooltip state ([150f3f2](https://github.com/Sayhi-bzb/CharDesk/commit/150f3f2053bc5396bbcd1d65df6a729af0c9e2f0))
+
 ## [0.4.2](https://github.com/Sayhi-bzb/CharDesk/compare/v0.4.1...v0.4.2) (2026-09-23)
 
 

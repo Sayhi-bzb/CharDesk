@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/fonts",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Core CharDesk symbol, Nerd Font, emoji fallbacks, and font profile factory",
   "type": "module",
   "license": "MIT",
