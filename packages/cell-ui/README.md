@@ -22,6 +22,10 @@ The files land under the configured `@lib/cell-ui/` target. Import headless desc
 
 Edit the installed source in your project. A later `shadcn add` may replace local edits if you choose to overwrite files; review its diff before updating. To publish a new Registry snapshot from this repository, run `npm run cell-ui:registry:generate`; CI checks it with `npm run cell-ui:registry:verify`.
 
+## Manual source installation
+
+The [published item JSON](https://sayhi-bzb.github.io/CharDesk/cell-ui.json) is the authoritative file and dependency list. In a React project, install its `dependencies`, then copy each `files[].content` to its `files[].target`, resolving `@lib` through your `components.json` `aliases.lib` (for example, `@/lib`). Keep the declared relative paths, including the keyboard adapter. Import from `@/lib/cell-ui` and `@/lib/cell-ui/browser` when the alias is `@/lib`; do not install the private workspace package.
+
 `createCellBufferSource()` exposes the committed dense buffer through the
 storage-neutral `@chardesk/cell-core` contract. `createCellUiRenderFrame()` maps
 that source to the same Canvas Presenter used by the document Canvas; Widget,

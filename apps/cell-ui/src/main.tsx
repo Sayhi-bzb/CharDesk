@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
+import { StrictMode, useEffect, useRef, useState, useSyncExternalStore, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createRoot } from "react-dom/client";
 import { Check } from "pixelarticons/react/Check";
 import { Close } from "pixelarticons/react/Close";
@@ -35,6 +35,15 @@ const defaultComponentRoute = `/components/${defaultComponentSlug}`;
 const defaultComponentHref = `#${defaultComponentRoute}`;
 const readRoute = () => window.location.hash.slice(1) || defaultComponentRoute;
 const useRoute = () => useSyncExternalStore(subscribeToHash, readRoute, () => defaultComponentRoute);
+const documentationSections = [
+  { id: "installation", label: "Installation" },
+  { id: "usage", label: "Usage" },
+  { id: "source", label: "View source" },
+  { id: "api", label: "API" },
+] as const;
+type DocumentationSection = typeof documentationSections[number]["id"];
+const isDocumentationSection = (value: string | null): value is DocumentationSection =>
+  documentationSections.some((section) => section.id === value);
 
 export function CopyButton({ readText }: Readonly<{ readText: () => string | Promise<string> }>) {
   const [state, setState] = useState<CopyState>("idle");
@@ -81,7 +90,26 @@ export function CodeBlock({ children }: Readonly<{ children: string }>) {
   );
 }
 
-const installCommand = "npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui";
+const installationCommands = {
+  pnpm: "pnpm dlx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
+  npm: "npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
+  yarn: "yarn dlx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
+  bun: "bunx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
+} as const;
+type PackageManager = keyof typeof installationCommands;
+const packageManagers = Object.keys(installationCommands) as PackageManager[];
+const manualInstallationGuide = "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#manual-source-installation";
+const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+  const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  const current = tabs.indexOf(event.target as HTMLButtonElement);
+  if (current < 0) return;
+  const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1
+    : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+  event.preventDefault();
+  tabs[next]?.focus();
+  tabs[next]?.click();
+};
 const publicUsage = (usage: string) => usage
   .replaceAll('"@chardesk/cell-ui/browser"', '"@/lib/cell-ui/browser"')
   .replaceAll('"@chardesk/cell-ui"', '"@/lib/cell-ui"');
@@ -127,6 +155,44 @@ export function Preview({ document }: Readonly<{ document: ComponentDocument }>)
   );
 }
 
+export function Installation() {
+  const [method, setMethod] = useState<"command" | "manual">("command");
+  const [manager, setManager] = useState<PackageManager>("npm");
+  return (
+    <section className="docs-section" aria-labelledby="installation">
+      <h2 id="installation">Installation</h2>
+      <div className="docs-tabs" role="tablist" aria-label="Installation method" onKeyDown={handleTabKeyDown}>
+        <button id="installation-command-tab" type="button" role="tab" aria-selected={method === "command"} aria-controls="installation-command-panel" tabIndex={method === "command" ? 0 : -1} onClick={() => setMethod("command")}>Command</button>
+        <button id="installation-manual-tab" type="button" role="tab" aria-selected={method === "manual"} aria-controls="installation-manual-panel" tabIndex={method === "manual" ? 0 : -1} onClick={() => setMethod("manual")}>Manual</button>
+      </div>
+      <div id="installation-command-panel" role="tabpanel" aria-labelledby="installation-command-tab" hidden={method !== "command"}>
+        <div className="docs-tabs" role="tablist" aria-label="Package manager" onKeyDown={handleTabKeyDown}>
+          {packageManagers.map((name) => (
+            <button key={name} type="button" role="tab" aria-selected={manager === name} aria-controls="installation-command" tabIndex={manager === name ? 0 : -1} onClick={() => setManager(name)}>{name}</button>
+          ))}
+        </div>
+        <div id="installation-command" role="tabpanel" aria-label={`${manager} installation command`}>
+          <CodeBlock>{installationCommands[manager]}</CodeBlock>
+        </div>
+      </div>
+      <div id="installation-manual-panel" role="tabpanel" aria-labelledby="installation-manual-tab" hidden={method !== "manual"}>
+        <p>See the <a href={manualInstallationGuide}>manual installation guide</a>.</p>
+      </div>
+    </section>
+  );
+}
+
+export function OnThisPage({ slug, activeSection }: Readonly<{ slug: string; activeSection: DocumentationSection | null }>) {
+  return (
+    <nav className="gallery-toc" aria-label="On This Page">
+      <span className="gallery-toc__title">On This Page</span>
+      <ul>{documentationSections.map(({ id, label }) => (
+        <li key={id}><a href={`#/components/${slug}?section=${id}`} aria-current={activeSection === id ? "location" : undefined}>{label}</a></li>
+      ))}</ul>
+    </nav>
+  );
+}
+
 export function ComponentPage({ document }: Readonly<{ document: ComponentDocument }>) {
   return (
     <main className="docs-page">
@@ -135,24 +201,13 @@ export function ComponentPage({ document }: Readonly<{ document: ComponentDocume
         <p>{document.description}</p>
       </header>
       <Preview document={document} />
-      <section className="docs-section" aria-labelledby="distribution-title">
-        <h2 id="distribution-title">Distribution</h2>
-        <p>
-          Install the editable source in a React project with a shadcn <code>components.json</code> and
-          a <code>lib</code> alias. See the <a href="https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#source-installation">source installation guide</a> for the setup contract.
-        </p>
-        <CodeBlock>{installCommand}</CodeBlock>
-        <p>
-          With <code>aliases.lib</code> set to <code>@/lib</code>, import Cell descriptors from
-          <code> @/lib/cell-ui</code> and browser adapters from <code> @/lib/cell-ui/browser</code>.
-        </p>
-      </section>
-      <section className="docs-section" aria-labelledby="usage-title">
-        <h2 id="usage-title">Usage</h2>
+      <Installation />
+      <section className="docs-section" aria-labelledby="usage">
+        <h2 id="usage">Usage</h2>
         <CodeBlock>{publicUsage(document.usage)}</CodeBlock>
       </section>
-      <section className="docs-section" aria-labelledby="source-title">
-        <h2 id="source-title">View source</h2>
+      <section className="docs-section" aria-labelledby="source">
+        <h2 id="source">View source</h2>
         <p>Start with the component definition, then open its supporting implementation as needed.</p>
         <ul className="docs-source-links">
           {sourceLinksForComponent(document.slug).map(({ label, href }) =>
@@ -160,8 +215,8 @@ export function ComponentPage({ document }: Readonly<{ document: ComponentDocume
           )}
         </ul>
       </section>
-      <section className="docs-section" aria-labelledby="api-title">
-        <h2 id="api-title">API</h2>
+      <section className="docs-section" aria-labelledby="api">
+        <h2 id="api">API</h2>
         <div className="docs-table-wrap">
           <table>
             <thead><tr><th>Prop</th><th>Type</th><th>Description</th></tr></thead>
@@ -181,11 +236,12 @@ export function ComponentPage({ document }: Readonly<{ document: ComponentDocume
   );
 }
 
-export function DocumentationShell({ document }: Readonly<{ document: ComponentDocument }>) {
+export function DocumentationShell({ document, section }: Readonly<{ document: ComponentDocument; section: DocumentationSection | null }>) {
   useEffect(() => {
     window.document.title = `${document.title} – CharDesk Cell UI`;
-    window.scrollTo(0, 0);
-  }, [document.slug, document.title]);
+    if (section) window.document.getElementById(section)?.scrollIntoView();
+    else window.scrollTo(0, 0);
+  }, [document.slug, document.title, section]);
   return (
     <>
       <header className="gallery-header">
@@ -194,6 +250,7 @@ export function DocumentationShell({ document }: Readonly<{ document: ComponentD
       </header>
       <div className="gallery-layout">
         <GalleryNavigation activeSlug={document.slug} />
+        <OnThisPage slug={document.slug} activeSection={section} />
         <ComponentPage document={document} key={document.slug} />
       </div>
     </>
@@ -216,9 +273,12 @@ export function CellUiApp(): ReactNode {
   }, []);
   const fixture = route.match(/^\/__fixtures\/([^/]+)$/);
   if (fixture) return <FixturePage slug={fixture[1]!} />;
-  const component = route.match(/^\/components\/([^/]+)$/);
+  const [path, query = ""] = route.split("?", 2);
+  const component = path?.match(/^\/components\/([^/]+)$/);
   const document = component ? componentDocumentBySlug.get(component[1]!) : undefined;
-  return document ? <DocumentationShell document={document} /> : <NotFound />;
+  const requestedSection = new URLSearchParams(query).get("section");
+  const section = isDocumentationSection(requestedSection) ? requestedSection : null;
+  return document ? <DocumentationShell document={document} section={section} /> : <NotFound />;
 }
 
 createRoot(document.getElementById("root")!).render(
