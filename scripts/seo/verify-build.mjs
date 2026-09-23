@@ -8,11 +8,13 @@ const repositoryRoot = path.resolve(
 );
 const read = (relative) => readFile(path.join(repositoryRoot, relative), "utf8");
 
-const [html, robots, sitemap, cellUi] = await Promise.all([
+const [html, robots, sitemap, cellUi, cellUiRobots, cellUiSitemap] = await Promise.all([
   read("dist/index.html"),
   read("dist/robots.txt"),
   read("dist/sitemap.xml"),
   read("apps/cell-ui/index.html"),
+  read("apps/cell-ui/public/robots.txt"),
+  read("apps/cell-ui/public/sitemap.xml"),
 ]);
 
 for (const required of [
@@ -31,8 +33,13 @@ if (html.includes('name="keywords"')) {
 if (!robots.includes("Sitemap: https://chardesk.com/sitemap.xml")) {
   throw new Error("robots.txt does not advertise the canonical sitemap");
 }
-if (!cellUi.includes('<meta name="robots" content="noindex, nofollow"')) {
-  throw new Error("Cell UI must remain excluded from search indexes");
+if (!cellUi.includes('<meta name="robots" content="index, follow"')
+  || !cellUi.includes('<link rel="canonical" href="https://ui.chardesk.com/"')) {
+  throw new Error("Cell UI Gallery must advertise its public canonical URL");
+}
+if (!cellUiRobots.includes("Sitemap: https://ui.chardesk.com/sitemap.xml")
+  || !cellUiSitemap.includes("<loc>https://ui.chardesk.com/</loc>")) {
+  throw new Error("Cell UI Gallery must advertise its public sitemap");
 }
 
 const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/gu)].map((match) => match[1]);

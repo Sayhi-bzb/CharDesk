@@ -1,4 +1,4 @@
-export const SPINNER_STEP_MS = 120;
+const SPINNER_STEP_MS = 120;
 
 export type SpinnerVariant = "wheel" | "dots";
 

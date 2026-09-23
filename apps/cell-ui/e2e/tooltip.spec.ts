@@ -21,6 +21,10 @@ test("Tooltip appears after hover delay, remains Cell-owned, and yields pointer 
   const tipPoint = await cellPoint(surface, tipBounds.x + 1, tipBounds.y + 1);
   await page.mouse.move(tipPoint.x, tipPoint.y);
   await expect(tooltip).toHaveCount(0);
+  await page.mouse.move(point.x, point.y);
+  await page.waitForTimeout(250);
+  await expect(tooltip).toHaveCount(0);
+  await expect(tooltip).toBeAttached();
 });
 
 test("Tooltip opens on keyboard focus and Escape dismisses until focus changes", async ({ page }) => {

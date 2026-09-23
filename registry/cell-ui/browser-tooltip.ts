@@ -7,31 +7,35 @@ export const useCellTooltipTarget = (
   focusVisible: boolean,
   pressActiveId: string | null,
 ) => {
-  const [hoverReadyId, setHoverReadyId] = useState<string | null>(null);
+  const [hover, setHover] = useState({
+    hoveredId,
+    pressActiveId,
+    readyId: null as string | null,
+  });
   const [dismissedId, setDismissedId] = useState<string | null>(null);
   const focusTargetId = focusVisible ? focusedId : null;
 
-  useEffect(() => {
-    if (dismissedId && hoveredId !== dismissedId && focusTargetId !== dismissedId) {
-      setDismissedId(null);
-    }
-  }, [dismissedId, focusTargetId, hoveredId]);
+  if (dismissedId && hoveredId !== dismissedId && focusTargetId !== dismissedId) {
+    setDismissedId(null);
+  }
+  if (hover.hoveredId !== hoveredId || hover.pressActiveId !== pressActiveId) {
+    setHover({ hoveredId, pressActiveId, readyId: null });
+  }
 
   useEffect(() => {
-    setHoverReadyId(null);
     if (!hoveredId || pressActiveId || dismissedId === hoveredId) return;
-    const timer = window.setTimeout(() => setHoverReadyId(hoveredId), TOOLTIP_HOVER_DELAY_MS);
+    const timer = window.setTimeout(() => setHover((current) => ({ ...current, readyId: hoveredId })), TOOLTIP_HOVER_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [dismissedId, hoveredId, pressActiveId]);
 
-  const candidateId = focusTargetId ?? (pressActiveId ? null : hoverReadyId);
+  const candidateId = focusTargetId ?? (pressActiveId ? null : hover.readyId);
   const targetId = candidateId === dismissedId ? null : candidateId;
   return {
     targetId,
     dismissedId,
     dismiss: () => {
       setDismissedId(targetId ?? hoveredId ?? focusTargetId);
-      setHoverReadyId(null);
+      setHover((current) => ({ ...current, readyId: null }));
     },
   };
 };
