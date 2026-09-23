@@ -8,6 +8,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const tempRoot = await mkdtemp(path.join(process.env.CELL_UI_REGISTRY_TMP ?? tmpdir(), "cell-ui-registry-"));
 const consumer = path.join(tempRoot, "consumer");
 const builtRegistry = path.join(tempRoot, "registry");
+const registryItem = process.env.CELL_UI_REGISTRY_ITEM ?? path.join(builtRegistry, "cell-ui.json");
 const run = (command, args, cwd) => execFileSync(command, args, { cwd, stdio: "inherit" });
 const shadcn = (args, cwd) => process.env.CELL_UI_SHADCN_CLI
   ? run(process.execPath, [process.env.CELL_UI_SHADCN_CLI, ...args], cwd)
@@ -27,7 +28,7 @@ try {
     style: "new-york",
     rsc: false,
     tsx: true,
-    tailwind: { config: "", css: "src/app.css", baseColor: "neutral", cssVariables: true, prefix: "" },
+    tailwind: { config: "", css: "src/app.css", baseColor: "", cssVariables: true, prefix: "" },
     iconLibrary: "lucide",
     aliases: {
       components: "@/components",
@@ -36,7 +37,9 @@ try {
       lib: "@/lib",
       hooks: "@/hooks",
     },
-    registries: {},
+    registries: process.env.CELL_UI_REGISTRY_URL
+      ? { "@chardesk": process.env.CELL_UI_REGISTRY_URL }
+      : {},
   }, null, 2));
   await writeFile(path.join(consumer, "tsconfig.json"), JSON.stringify({
     compilerOptions: {
@@ -49,6 +52,7 @@ try {
       skipLibCheck: true,
       outDir: "dist",
       rootDir: "src",
+      paths: { "@/*": ["./src/*"] },
       noUncheckedIndexedAccess: true,
       verbatimModuleSyntax: true,
     },
@@ -65,9 +69,11 @@ if (!frame.buffer.toText().includes("Save") || typeof CellSurface !== "function"
 runtime.dispose();
 `);
 
-  shadcn(["build", path.join(repoRoot, "registry.json"), "--output", builtRegistry], repoRoot);
+  if (!process.env.CELL_UI_REGISTRY_ITEM) {
+    shadcn(["build", path.join(repoRoot, "registry.json"), "--output", builtRegistry], repoRoot);
+  }
   run("npm", ["install", "--no-audit", "--no-fund"], consumer);
-  shadcn(["add", path.join(builtRegistry, "cell-ui.json"), "--cwd", consumer, "--yes"], consumer);
+  shadcn(["add", registryItem, "--cwd", consumer, "--yes"], consumer);
   run(path.join(consumer, "node_modules/.bin/tsc"), ["-p", path.join(consumer, "tsconfig.json")], consumer);
   run(process.execPath, [path.join(consumer, "dist/smoke.js")], consumer);
   console.log("Verified Registry installation in a fresh React project.");
