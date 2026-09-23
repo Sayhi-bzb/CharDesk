@@ -143,7 +143,7 @@ export function affectedProjectNames(projects, changedFiles, forceFull = false) 
 }
 
 export const parseArguments = argv => {
-  const options = { mode: 'quick', phase: 'all', base: undefined, shard: undefined, target: undefined, files: [], dryRun: false }
+  const options = { mode: 'quick', phase: 'all', base: undefined, shard: undefined, cellProject: undefined, target: undefined, files: [], dryRun: false }
   for (let index = 0; index < argv.length; index++) {
     const value = argv[index]
     if (value === '--dry-run') { options.dryRun = true; continue }
@@ -152,6 +152,7 @@ export const parseArguments = argv => {
     else if (value === '--phase') options.phase = argv[++index]
     else if (value === '--base') options.base = argv[++index]
     else if (value === '--shard') options.shard = argv[++index]
+    else if (value === '--cell-project') options.cellProject = argv[++index]
     else if (value === '--target') options.target = argv[++index]
     else if (value === '--file') options.files.push(argv[++index])
     else throw new Error(`Unknown verification argument: ${value}`)
@@ -159,6 +160,9 @@ export const parseArguments = argv => {
   if (!['quick', 'pr', 'full'].includes(options.mode)) throw new Error(`Invalid mode: ${options.mode}`)
   if (!['all', 'quality', 'typecheck', 'workspace-tests', 'root-node', 'root-dom', 'build', 'cell-e2e'].includes(options.phase)) {
     throw new Error(`Invalid phase: ${options.phase}`)
+  }
+  if (options.cellProject && (options.phase !== 'cell-e2e' || !['chromium', 'webkit'].includes(options.cellProject))) {
+    throw new Error('--cell-project requires the cell-e2e phase and chromium or webkit.')
   }
   if (options.files.length && options.mode !== 'quick') throw new Error('--file is only allowed in quick mode; PR/full gates cannot be narrowed.')
   options.files = [...new Set(options.files.map(file => {
@@ -369,14 +373,16 @@ export function createVerificationPlan(options, changes, projects = loadWorkspac
     runRootTests('dom', options.mode, changes.files, options.shard, run, cell, cellOnlyQuick)
   }
   if ((phase === 'all' || phase === 'cell-e2e') && cell.active) {
+    const projects = cell.dualBrowser ? ['chromium', 'webkit'] : ['chromium']
+    const browserProjects = options.cellProject ? projects.filter(project => project === options.cellProject) : projects
     // Batch unfiltered suites into one browser launch; filtered suites keep their own selector.
     const unfiltered = cell.browser.filter(suite => suite.grep === null).map(suite => suite.file)
     const suites = cell.browser.filter(suite => suite.grep !== null)
       .map(suite => ({ files: [suite.file], grep: suite.grep }))
     if (unfiltered.length) suites.unshift({ files: unfiltered, grep: null })
-    for (const suite of suites) {
-      run(npmCommand, ['run', 'test:e2e', '-w', '@chardesk/cell-ui-site', '--', ...suite.files, '--project=chromium',
-        ...(cell.dualBrowser ? ['--project=webkit'] : []),
+    for (const suite of browserProjects.length ? suites : []) {
+      run(npmCommand, ['run', 'test:e2e', '-w', '@chardesk/cell-ui-site', '--', ...suite.files,
+        ...browserProjects.map(project => `--project=${project}`),
         ...(suite.grep ? ['--grep', suite.grep] : [])], { label: 'Cell browser tests', reason: cell.reason })
     }
   }

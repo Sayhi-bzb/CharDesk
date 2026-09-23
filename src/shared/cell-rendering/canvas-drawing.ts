@@ -152,21 +152,6 @@ export const setTextRenderStyle = (
   ctx.textAlign = "center";
 };
 
-export const drawTextCell = (
-  ctx: CharDeskCanvasContext,
-  cell: GridCell,
-  x: number,
-  y: number,
-  options?: CanvasCellDrawOptions
-) => {
-  drawCharDeskCanvasCells(ctx, [{
-    cell: toCanvasVisual(cell, options?.palette ?? DEFAULT_ARTIFACT_CANVAS_PALETTE),
-    x,
-    y,
-    options: withProductFont(options),
-  }]);
-};
-
 export const drawCellBackground = (
   ctx: CharDeskCanvasContext,
   cell: GridCell,

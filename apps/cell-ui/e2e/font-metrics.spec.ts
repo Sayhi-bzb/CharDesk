@@ -21,7 +21,7 @@ test("keeps the first visible Surface geometry stable across a cold reload", asy
   });
 
   for (let reload = 0; reload < 3; reload += 1) {
-    if (reload === 0) await page.goto("/#/components/text");
+    if (reload === 0) await page.goto("/#/__fixtures/text");
     else await page.reload();
     const surface = page.locator('[data-cell-probe="component-text"]');
     await expect(surface).toBeVisible();

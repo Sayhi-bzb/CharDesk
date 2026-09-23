@@ -2,7 +2,7 @@ import type { StoreApi } from "zustand";
 import type { EditorState } from "./interfaces";
 import type { CanvasHistoryMode } from "./CanvasDocumentRegistry";
 
-export type CanvasCommandStatePort<State extends object = EditorState> = Pick<
+type CanvasCommandStatePort<State extends object = EditorState> = Pick<
   StoreApi<State>,
   "getState" | "setState"
 >;

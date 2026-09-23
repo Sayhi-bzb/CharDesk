@@ -1,7 +1,7 @@
 export const PLAYGROUND_ROWS = 7;
 export const MIN_SPLIT_COLUMNS = 64;
 
-export type ComponentPlaygroundLayout = Readonly<{
+type ComponentPlaygroundLayout = Readonly<{
   stacked: boolean;
   viewport: Readonly<{ width: number; height: number }>;
   previewColumns: number;

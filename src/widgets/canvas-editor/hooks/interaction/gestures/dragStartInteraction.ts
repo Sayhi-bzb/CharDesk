@@ -11,7 +11,7 @@ export const isShapeTool = (
   return ["box", "circle", "line", "stepline", "bg"].includes(tool);
 };
 
-export const isSelectionTool = (
+const isSelectionTool = (
   tool: ToolType,
   canvasMode: CanvasMode
 ): boolean => {

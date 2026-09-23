@@ -17,9 +17,16 @@ test("Xiaolai requests only the shards needed by rendered graphemes", async ({ p
   );
   await expect.poll(() => [...new Set(shards)]).toEqual(["base.woff2"]);
 
-  await page.getByRole("link", { name: "Text", exact: true }).click();
-  await expect(page.getByText("Render text, Unicode, and Cell-native wrapping."))
-    .toBeVisible();
+  await page.evaluate(() => { window.location.hash = "/__fixtures/text"; });
+  await expect(page.locator('[data-cell-probe="component-text"]')).toBeVisible();
+  await expect.poll(() => [...new Set(shards)].sort()).toEqual([
+    "base.woff2", "cjk-unified.woff2",
+  ]);
+  await page.evaluate(() => {
+    const sample = document.createElement("span");
+    sample.textContent = "\u{1fb95}";
+    document.querySelector("main")!.append(sample);
+  });
   await expect.poll(() => [...new Set(shards)].sort()).toEqual([
     "base.woff2", "cjk-unified.woff2", "supplementary.woff2",
   ]);

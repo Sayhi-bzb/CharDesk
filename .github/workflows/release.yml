@@ -95,6 +95,11 @@ jobs:
           else
             echo "cell_core_published=false" >> "$GITHUB_OUTPUT"
           fi
+          if npm view "@chardesk/rendering@$version" version >/dev/null 2>&1; then
+            echo "rendering_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "rendering_published=false" >> "$GITHUB_OUTPUT"
+          fi
           if npm view "@chardesk/fonts@$version" version >/dev/null 2>&1; then
             echo "fonts_published=true" >> "$GITHUB_OUTPUT"
           else
@@ -119,6 +124,7 @@ jobs:
           mkdir release-assets
           npm pack --workspace @chardesk/protocol --pack-destination release-assets
           npm pack --workspace @chardesk/cell-core --pack-destination release-assets
+          npm pack --workspace @chardesk/rendering --pack-destination release-assets
           npm pack --workspace @chardesk/fonts --pack-destination release-assets
           npm pack --workspace @chardesk/font-maple --pack-destination release-assets
           npm pack --workspace @chardesk/cli --pack-destination release-assets
@@ -127,6 +133,8 @@ jobs:
         run: >-
           node scripts/release/smoke-packed-packages.mjs
           release-assets/chardesk-protocol-${RELEASE_TAG#v}.tgz
+          release-assets/chardesk-cell-core-${RELEASE_TAG#v}.tgz
+          release-assets/chardesk-rendering-${RELEASE_TAG#v}.tgz
           release-assets/chardesk-fonts-${RELEASE_TAG#v}.tgz
           release-assets/chardesk-font-maple-${RELEASE_TAG#v}.tgz
           release-assets/chardesk-cli-${RELEASE_TAG#v}.tgz
@@ -146,6 +154,10 @@ jobs:
       - name: Publish Maple font pack to npm
         if: steps.package-status.outputs.font_maple_published != 'true'
         run: npm publish --workspace @chardesk/font-maple --access public --provenance
+
+      - name: Publish rendering to npm
+        if: steps.package-status.outputs.rendering_published != 'true'
+        run: npm publish --workspace @chardesk/rendering --access public --provenance
 
       - name: Publish CLI to npm
         if: steps.package-status.outputs.cli_published != 'true'

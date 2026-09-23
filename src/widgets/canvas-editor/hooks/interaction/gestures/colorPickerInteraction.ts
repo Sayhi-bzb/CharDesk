@@ -20,12 +20,12 @@ type CanvasColorPickDecision =
   | ({ type: "picked"; color: string } & CanvasColorPickApplication)
   | { type: "choose-source"; choice: CanvasColorSourceChoice };
 
-export const getCanvasCellColorCandidates = (cell: GridCell | undefined) => ({
+const getCanvasCellColorCandidates = (cell: GridCell | undefined) => ({
   foreground: cell?.char.trim() && cell.color ? cell.color : null,
   background: cell?.bgColor || null,
 });
 
-export const resolveCanvasColorPickDecision = ({
+const resolveCanvasColorPickDecision = ({
   cell,
   point,
   target,
@@ -80,7 +80,7 @@ export const chooseCanvasColorSource = (
   applyStaticGridSelection: choice.applyStaticGridSelection,
 });
 
-export type CanvasColorPickExecutor = {
+type CanvasColorPickExecutor = {
   setBrushColor: (color: string) => void;
   setBrushBackgroundColor: (color: string) => void;
   setSelectionForegroundColor: (color: string) => void;
@@ -121,7 +121,7 @@ export const executeCanvasColorPickDecision = (
   return true;
 };
 
-export type ColorPickerDragStartExecutor = CanvasColorPickExecutor & {
+type ColorPickerDragStartExecutor = CanvasColorPickExecutor & {
   preventDefault: () => void;
   markColorPickerClick: () => void;
   resetDragState: () => void;
@@ -168,7 +168,7 @@ export const createColorPickerDragStartExecutor = ({
   setCursor,
 });
 
-export const executeColorPickerDragStart = (
+const executeColorPickerDragStart = (
   decision: CanvasColorPickDecision,
   executor: ColorPickerDragStartExecutor
 ): boolean => {

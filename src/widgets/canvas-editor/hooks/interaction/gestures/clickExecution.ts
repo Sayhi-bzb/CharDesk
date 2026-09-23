@@ -5,14 +5,14 @@ import { resolveCanvasClickDecision, type CanvasClickDecision } from "./clickInt
 
 type RefCell<T> = { current: T };
 
-export type CanvasClickExecutor = {
+type CanvasClickExecutor = {
   preventDefault: () => void;
   clearColorPickerClick: () => void;
   openLink: (href: string) => void;
   setHoveredLink: (hit: CanvasLinkHit) => void;
 };
 
-export const executeCanvasClickDecision = (
+const executeCanvasClickDecision = (
   decision: CanvasClickDecision,
   executor: CanvasClickExecutor
 ): boolean => {

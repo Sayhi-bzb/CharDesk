@@ -16,7 +16,7 @@ export type DragUpdateDecision =
   | { type: "shape-preview"; update: ShapePreviewUpdate }
   | { type: "none" };
 
-export const resolveShapePreviewUpdate = ({
+const resolveShapePreviewUpdate = ({
   tool,
   canvasMode,
   dragStart,

@@ -2,21 +2,18 @@ import { expect, it } from "vitest";
 import { CellUiRuntime, Root, Box, List, ListItem, Menu, MenuItem, Tree, TreeItem, Grid, GridRow, GridCell, Tabs, Tab, Text, FocusManager, commandForInput, createKeyInput, CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME } from "./index.js";
 import { CellInteractionController } from "./interaction-controller.js";
 
-it.each(["list", "menu", "tree", "tabs"])("%s separates selection chrome from transient input appearance", (kind) => {
+it.each(["list", "menu", "tree"])("%s separates selection chrome from transient input appearance", (kind) => {
   for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 2 }, theme });
     const view = (disabled = false) => <Root>{kind === "list"
       ? <List><ListItem id="item" selected disabled={disabled} style={{ width: 8 }}><Text>Open</Text></ListItem></List>
       : kind === "menu"
         ? <Menu><MenuItem id="item" disabled={disabled} style={{ width: 8 }}><Text>Open</Text></MenuItem></Menu>
-        : kind === "tree"
-          ? <Tree><TreeItem id="item" selected level={1} hasChildren expanded disabled={disabled} style={{ width: 8 }}><Text>Open</Text></TreeItem></Tree>
-          : <Tabs><Tab id="item" selected disabled={disabled} style={{ width: 8 }}><Text>Open</Text></Tab></Tabs>}</Root>;
+      : <Tree><TreeItem id="item" selected level={1} hasChildren expanded disabled={disabled} style={{ width: 8 }}><Text>Open</Text></TreeItem></Tree>}</Root>;
     const idle = runtime.render(view());
     const text = idle.buffer.toText();
     if (kind === "tree") expect(text).toContain("▾ ✓ Op");
     if (kind === "list") expect(text).toContain("✓ Open");
-    if (kind === "tabs") expect(text).toContain("▬▬▬▬▬▬▬▬");
     for (let x = 0; x < 8; x++) expect(idle.buffer.get(x, 0)?.style.backgroundColor).toBeUndefined();
     for (const state of [{ hoveredId: "item", focusVisible: false }, { focusedId: "item", focusVisible: true }]) {
       const frame = runtime.render(view(), state);
@@ -30,6 +27,38 @@ it.each(["list", "menu", "tree", "tabs"])("%s separates selection chrome from tr
       expect(disabled.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
     }
     expect(runtime.render(view(), { focusedId: "item", focusVisible: false }).buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
+    runtime.dispose();
+  }
+});
+
+it("Tabs keep one selected surface across hover and focus while available tabs use normal text", () => {
+  for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
+    const runtime = new CellUiRuntime({ viewport: { width: 26, height: 2 }, theme });
+    const view = () => <Root><Tabs id="tabs">
+      <Tab id="selected" selected><Text>Code</Text></Tab>
+      <Tab id="inactive"><Text>Preview</Text></Tab>
+      <Tab id="disabled" disabled><Text>Off</Text></Tab>
+    </Tabs></Root>;
+    const idle = runtime.render(view());
+    const selected = idle.scene.entries.get("selected")!.layoutBounds;
+    const inactive = idle.scene.entries.get("inactive")!.layoutBounds;
+    const disabled = idle.scene.entries.get("disabled")!.layoutBounds;
+    expect(selected).toMatchObject({ width: 6, height: 1 });
+    expect(inactive.x - selected.x - selected.width).toBe(2);
+    expect(idle.buffer.get(selected.x, selected.y)?.style).toMatchObject(theme.selectedStyle);
+    expect(idle.buffer.get(inactive.x + 1, inactive.y)?.style.color).toBe(theme.foreground);
+    expect(idle.buffer.get(disabled.x + 1, disabled.y)?.style.color).toBe(theme.disabledStyle.color);
+    for (const state of [{ hoveredId: "selected" }, { focusedId: "selected", focusVisible: true }]) {
+      expect(runtime.render(view(), state).buffer.get(selected.x, selected.y)?.style)
+        .toMatchObject(theme.selectedStyle);
+    }
+    expect(runtime.render(view(), { hoveredId: "inactive" }).buffer.get(inactive.x, inactive.y)?.style)
+      .toMatchObject(theme.hoveredItemStyle);
+    expect(runtime.render(view(), { focusedId: "inactive", focusVisible: true }).buffer.get(inactive.x + 1, inactive.y)?.style)
+      .toMatchObject({ color: theme.foreground, bold: true });
+    const disabledHover = runtime.render(view(), { hoveredId: "disabled", focusedId: "disabled", focusVisible: true });
+    expect(disabledHover.buffer.get(disabled.x + 1, disabled.y)?.style.color).toBe(theme.disabledStyle.color);
+    expect(disabledHover.buffer.toText()).not.toContain("▬");
     runtime.dispose();
   }
 });

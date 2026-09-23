@@ -28,7 +28,7 @@ export type FreeformCanvasSessionDescriptor = CanvasSessionDescriptorBase & {
   mode: "freeform";
 };
 
-export type SlideCanvasSessionDescriptor = CanvasSessionDescriptorBase & {
+type SlideCanvasSessionDescriptor = CanvasSessionDescriptorBase & {
   mode: "slide";
 };
 
@@ -40,7 +40,7 @@ interface StaticCanvasSessionSnapshotContent {
   grid: [string, GridCell][];
 }
 
-export type FreeformCanvasSessionSnapshot = CanvasSessionDescriptorBase &
+type FreeformCanvasSessionSnapshot = CanvasSessionDescriptorBase &
   StaticCanvasSessionSnapshotContent &
   { mode: "freeform" };
 

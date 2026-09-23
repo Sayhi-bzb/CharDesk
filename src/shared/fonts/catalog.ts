@@ -7,7 +7,7 @@ import xiaolaiStylesheet from "@chardesk/font-xiaolai/fonts.css?url";
 
 export type DisplayFont = "maple" | "fusion-mono" | "xiaolai-mono";
 
-export type DisplayFontOption = Readonly<{
+type DisplayFontOption = Readonly<{
   id: DisplayFont;
   label: string;
   profile: CharDeskFontProfile;

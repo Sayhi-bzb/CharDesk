@@ -21,37 +21,23 @@ import {
   hitTest,
 } from "./index.js";
 
-it("reserves Tab chrome from descendant text and backgrounds", () => {
-  for (const padding of [0, 1]) {
-    for (const height of [1, 2, 5]) {
-      const runtime = new CellUiRuntime({ viewport: { width: 12, height: 6 } });
-      const view = (label: string, selected: boolean) => <Root>
-        <Tab id="tab" selected={selected} focused style={{ width: 12, height, padding }}>
-          <Text id="label">{label}</Text>
-        </Tab>
-      </Root>;
-      for (const label of ["Code", "Preview", "very long tab content"]) {
-        const frame = runtime.render(view(label, true));
-        const entry = frame.scene.entries.get("tab")!;
-        const bottom = entry.decorationBounds.y + entry.decorationBounds.height - 1;
-        expect(entry.contentBounds.y + entry.contentBounds.height).toBeLessThanOrEqual(bottom);
-        if (entry.decorationBounds.height > 1) {
-          for (let x = 0; x < 12; x++) {
-            expect(frame.buffer.get(x, bottom)).toMatchObject({ text: "▬", ownerId: "tab" });
-            expect(hitTest(frame.scene, { x, y: bottom })[0]).toBe("tab");
-          }
-        }
-        const oracle = new CellUiRuntime({ viewport: { width: 12, height: 6 } });
-        const fresh = oracle.render(view(label, true));
-        for (let y = 0; y < 6; y++) {
-          for (let x = 0; x < 12; x++) expect(frame.buffer.get(x, y)).toEqual(fresh.buffer.get(x, y));
-        }
-        oracle.dispose();
-        expect(runtime.render(view(label, false)).buffer.toText()).not.toContain("▬");
-      }
-      runtime.dispose();
+it("renders one-row Tabs with content-width labels and one Cell of selectable guard", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 30, height: 2 } });
+  for (const label of ["Code", "Preview", "Settings"]) {
+    const frame = runtime.render(<Root><Tabs id="tabs"><Tab id="tab" selected>
+      <Text id="label">{label}</Text>
+    </Tab></Tabs></Root>);
+    const entry = frame.scene.entries.get("tab")!;
+    expect(entry.layoutBounds).toMatchObject({ width: label.length + 2, height: 1 });
+    expect(entry.contentBounds.x).toBe(entry.layoutBounds.x + 1);
+    expect(entry.contentBounds.width).toBe(label.length);
+    for (const x of [entry.layoutBounds.x, entry.layoutBounds.x + entry.layoutBounds.width - 1]) {
+      expect(frame.buffer.get(x, entry.layoutBounds.y)).toMatchObject({ text: " ", ownerId: "tab" });
+      expect(hitTest(frame.scene, { x, y: entry.layoutBounds.y })[0]).toBe("tab");
     }
+    expect(frame.buffer.toText()).not.toContain("▬");
   }
+  runtime.dispose();
 });
 
 it("paints owned block thumbs along both scroll axes", () => {
@@ -94,11 +80,11 @@ const renderComplexWidgets = (focusedId = "menu-open") => {
           <Text>index.ts</Text>
         </TreeItem>
       </Tree>
-      <Tabs id="tabs" label="Views" orientation="horizontal" style={{ height: 2 }}>
-        <Tab id="tab-code" controlsId="panel-code" selected style={{ width: 10 }}>
+      <Tabs id="tabs" label="Views" orientation="horizontal">
+        <Tab id="tab-code" controlsId="panel-code" selected>
           <Text>Code</Text>
         </Tab>
-        <Tab id="tab-preview" controlsId="panel-preview" style={{ width: 10 }}>
+        <Tab id="tab-preview" controlsId="panel-preview">
           <Text>Preview</Text>
         </Tab>
       </Tabs>
@@ -199,7 +185,7 @@ describe("complex Cell widgets", () => {
     runtime.dispose();
   });
 
-  it("owns focus, tree disclosure, selection, and tab underline Cells", () => {
+  it("owns focus, tree disclosure, and selected Tab guard Cells", () => {
     const { runtime, frame } = renderComplexWidgets("tree-src");
     const tree = frame.scene.entries.get("tree-src")!.layoutBounds;
     const tab = frame.scene.entries.get("tab-code")!.layoutBounds;
@@ -207,8 +193,10 @@ describe("complex Cell widgets", () => {
     expect(frame.buffer.get(tree.x + 1, tree.y)?.text).toBe("▾");
     expect(frame.buffer.get(tree.x + 5, tree.y)?.text).toBe("s");
     expect(frame.buffer.get(tree.x, tree.y)?.style.backgroundColor).toBe("#000000");
-    expect(frame.buffer.get(tab.x, tab.y)?.style.backgroundColor).toBeUndefined();
-    expect(frame.buffer.get(tab.x, tab.y + 1)?.text).toBe("▬");
+    expect(frame.buffer.get(tab.x, tab.y)).toMatchObject({
+      text: " ",
+      style: { color: "#FFFFFF", backgroundColor: "#000000" },
+    });
     runtime.dispose();
   });
 

@@ -32,11 +32,11 @@ export type CanvasRangeVisualIntent = Readonly<{
   phase: CharDeskCellRangePhase;
 }>;
 
-export type CanvasCellVisualIntent =
+type CanvasCellVisualIntent =
   | CanvasCellIndicator
   | CanvasRangeVisualIntent;
 
-export type CanvasCellPresentation = Readonly<{
+type CanvasCellPresentation = Readonly<{
   visual: CanvasCellVisualIntent | null;
 }>;
 

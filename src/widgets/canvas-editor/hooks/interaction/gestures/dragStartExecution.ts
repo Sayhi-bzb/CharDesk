@@ -26,7 +26,7 @@ export const createPanningDragStartExecutor = ({
   setCursor,
 });
 
-export const executePanningDragStart = (
+const executePanningDragStart = (
   lastScreen: Point,
   executor: PanningDragStartExecutor
 ): void => {
@@ -43,7 +43,7 @@ type SelectionDragStartExecutor = {
   clearTextCursor: () => void;
 };
 
-export const executeSelectionDragStartDecision = (
+const executeSelectionDragStartDecision = (
   decision: SelectionDragStartDecision,
   executor: SelectionDragStartExecutor
 ): boolean => {
@@ -99,7 +99,7 @@ type DrawingShapeDragStartExecutor = {
   erasePoint: (point: Point) => void;
 };
 
-export const executeDrawingShapeDragStartDecision = (
+const executeDrawingShapeDragStartDecision = (
   decision: DrawingShapeDragStartDecision,
   start: Point,
   executor: DrawingShapeDragStartExecutor

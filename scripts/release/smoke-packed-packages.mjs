@@ -3,17 +3,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const [protocolTarball, fontsTarball, mapleTarball, cliTarball] = process.argv.slice(2).map((value) =>
+const [protocolTarball, coreTarball, renderingTarball, fontsTarball, mapleTarball, cliTarball] = process.argv.slice(2).map((value) =>
   value ? path.resolve(value) : value
 );
 
-if (!protocolTarball || !fontsTarball || !mapleTarball || !cliTarball) {
+if (!protocolTarball || !coreTarball || !renderingTarball || !fontsTarball || !mapleTarball || !cliTarball) {
   throw new Error(
-    "Usage: node scripts/release/smoke-packed-packages.mjs <protocol.tgz> <fonts.tgz> <font-maple.tgz> <cli.tgz>"
+    "Usage: node scripts/release/smoke-packed-packages.mjs <protocol.tgz> <cell-core.tgz> <rendering.tgz> <fonts.tgz> <font-maple.tgz> <cli.tgz>"
   );
 }
 
-for (const tarball of [protocolTarball, fontsTarball, mapleTarball, cliTarball]) {
+for (const tarball of [protocolTarball, coreTarball, renderingTarball, fontsTarball, mapleTarball, cliTarball]) {
   if (!fs.existsSync(tarball)) {
     throw new Error(`Missing package tarball: ${tarball}`);
   }
@@ -37,6 +37,8 @@ try {
       "--no-audit",
       "--no-fund",
       protocolTarball,
+      coreTarball,
+      renderingTarball,
       fontsTarball,
       mapleTarball,
       cliTarball,
@@ -49,10 +51,19 @@ try {
     import { CHARDESK_SYSTEM_FONT_PROFILE } from "@chardesk/fonts";
     import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
     import { parseCharDeskText } from "@chardesk/protocol";
+    import { normalizeCellRect } from "@chardesk/cell-core";
+    import { DEFAULT_CHARDESK_CELL_METRICS } from "@chardesk/rendering";
+    import { resolveCharDeskContentTheme } from "@chardesk/rendering/theme";
 
     const parsed = parseCharDeskText("A界");
     if (parsed.width !== 3 || parsed.cells.length !== 2) {
       throw new Error("Protocol package returned an unexpected Unicode cell layout");
+    }
+    if (normalizeCellRect({ x: 1, y: 2, width: 3, height: 4 }).width !== 3) {
+      throw new Error("Cell Core package did not export geometry helpers");
+    }
+    if (!DEFAULT_CHARDESK_CELL_METRICS || typeof resolveCharDeskContentTheme !== "function") {
+      throw new Error("Rendering package did not export its runtime entries");
     }
     if (!CHARDESK_SYSTEM_FONT_PROFILE?.families?.text) {
       throw new Error("Fonts package did not export its renderer profile");

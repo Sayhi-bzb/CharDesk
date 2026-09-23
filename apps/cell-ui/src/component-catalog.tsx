@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
 import {
-  BoxComponentDemo,
   DialogComponentDemo,
   AccordionComponentDemo,
   ButtonComponentDemo,
@@ -12,11 +11,10 @@ import {
   SeparatorComponentDemo,
   RadioComponentDemo,
   InputComponentDemo,
-  ListComponentDemo,
   ScrollAreaComponentDemo,
   SelectComponentDemo,
   SliderComponentDemo,
-  TextComponentDemo,
+  TabsComponentDemo,
 } from "./sections/components";
 
 type ComponentApiRow = Readonly<{
@@ -25,12 +23,9 @@ type ComponentApiRow = Readonly<{
   description: string;
 }>;
 
-export type ComponentGroupId = "components" | "primitives" | "collections";
-
 export type ComponentDocument = Readonly<{
   slug: string;
   title: string;
-  group: ComponentGroupId;
   navigationOrder: number;
   description: string;
   probeId: string;
@@ -46,8 +41,6 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   progress: ["react.tsx", "progress.ts"],
   separator: ["react.tsx", "separator.ts"],
   radio: ["react.tsx", "browser-collections.tsx"],
-  text: ["react.tsx", "text-viewport.ts"],
-  box: ["react.tsx", "layout.ts"],
   button: ["react.tsx", "button.ts"],
   badge: ["react.tsx", "badge.ts", "theme.ts"],
   select: ["react.tsx", "browser-collections.tsx"],
@@ -55,7 +48,7 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   checkbox: ["react.tsx", "primitive-behavior.ts"],
   slider: ["react.tsx", "slider.ts"],
   input: ["react.tsx", "browser-input.tsx"],
-  list: ["react.tsx", "browser-collections.tsx"],
+  tabs: ["react.tsx", "browser-collections.tsx", "interaction.ts"],
   "scroll-area": ["react.tsx", "scroll.ts"],
 };
 
@@ -67,7 +60,7 @@ export const sourceLinksForComponent = (slug: string) =>
 
 export const componentDocuments: readonly ComponentDocument[] = [
   {
-    slug: "dialog", title: "Dialog", group: "components", navigationOrder: 11,
+    slug: "dialog", title: "Dialog", navigationOrder: 11,
     description: "A named Cell dialog with shared overlay placement and focus management.",
     probeId: "component-dialog", Demo: DialogComponentDemo,
     usage: `import { useState } from "react";
@@ -101,7 +94,7 @@ export function DialogExample() {
     ],
   },
   {
-    slug: "accordion", title: "Accordion", group: "components", navigationOrder: 10,
+    slug: "accordion", title: "Accordion", navigationOrder: 10,
     description: "Expand independent sections without losing their content state.",
     probeId: "component-accordion", Demo: AccordionComponentDemo,
     usage: `import { useState } from "react";
@@ -138,7 +131,7 @@ export function AccordionExample() {
     ],
   },
   {
-    slug: "toggle", title: "Toggle", group: "components", navigationOrder: 7,
+    slug: "toggle", title: "Toggle", navigationOrder: 7,
     description: "Show a persistent mode with a status light, separate from interaction feedback.",
     probeId: "component-toggle", Demo: ToggleComponentDemo,
     usage: `import { useState } from "react";
@@ -160,7 +153,7 @@ export function ToggleExample() {
     ],
   },
   {
-    slug: "progress", title: "Progress", group: "components", navigationOrder: 8,
+    slug: "progress", title: "Progress", navigationOrder: 8,
     description: "Display determinate or indeterminate progress as a solid or outlined track, with an optional percentage.",
     probeId: "component-progress", Demo: ProgressComponentDemo,
     usage: `import { Progress, Root } from "@chardesk/cell-ui";
@@ -180,7 +173,7 @@ export function ProgressExample() {
     ],
   },
   {
-    slug: "separator", title: "Separator", group: "primitives", navigationOrder: 2,
+    slug: "separator", title: "Separator", navigationOrder: 14,
     description: "Separate Cell content with one row or column.",
     probeId: "component-separator", Demo: SeparatorComponentDemo,
     usage: `import { Root, Separator, Text } from "@chardesk/cell-ui";
@@ -198,7 +191,7 @@ export function SeparatorExample() {
     ],
   },
   {
-    slug: "radio", title: "Radio", group: "components", navigationOrder: 9,
+    slug: "radio", title: "Radio", navigationOrder: 9,
     description: "Choose one value with a shared group and arrow-key navigation.",
     probeId: "component-radio", Demo: RadioComponentDemo,
     usage: `import { RadioGroup, RadioItem, Root, Text } from "@chardesk/cell-ui";
@@ -226,83 +219,8 @@ export function RadioExample() {
     ],
   },
   {
-    slug: "text",
-    title: "Text",
-    group: "primitives",
-    navigationOrder: 0,
-    description: "Render text, Unicode, and Cell-native wrapping.",
-    probeId: "component-text",
-    Demo: TextComponentDemo,
-    usage: `import { Box, Root, Text } from "@chardesk/cell-ui";
-import { CellSurface } from "@chardesk/cell-ui/browser";
-
-export function TextExample() {
-  return (
-    <CellSurface viewport={{ width: 36, height: 14 }} onCommand={() => {}}>
-      <Root id="root">
-        <Box frame="bordered" style={{ height: 14, padding: 1 }}>
-          <Text textStyle={{ bold: true }}>◆ Plain text · READY</Text>
-          <Text>→ Unicode: 世界 👋</Text>
-          <Text>↔ Move: ← ↑ ↓ →</Text>
-          <Text>✓ Status: PASS · IDLE</Text>
-          <Text>∞ Math: ≠ ≤ ≥ ± × ÷</Text>
-          <Text>▓ Signal: ░▒▓█</Text>
-          <Text>⣿ Cell: {"\ue0b0 \uee03 \uf5ee"}</Text>
-          <Text>Legacy: {"\u{1fb95} \u{1fbb0} \u{1fbc5}"}</Text>
-          <Text textStyle={{ dim: true }}>↳ Wraps on integer Cell boundaries.</Text>
-        </Box>
-      </Root>
-    </CellSurface>
-  );
-}`,
-    api: [
-      { name: "id?", type: "string", description: "Stable widget identity." },
-      { name: "children", type: "string | number", description: "Text rendered into Cells." },
-      { name: "style?", type: "CellLayoutStyle", description: "Integer Cell layout." },
-      { name: "textStyle?", type: "CellTextStyle", description: "Foreground, background, and emphasis." },
-    ],
-  },
-  {
-    slug: "box",
-    title: "Box",
-    group: "primitives",
-    navigationOrder: 1,
-    description: "Compose nested Cell layout, spacing, and block boundaries.",
-    probeId: "component-box",
-    Demo: BoxComponentDemo,
-    usage: `import { Box, Root, Text } from "@chardesk/cell-ui";
-import { CellSurface } from "@chardesk/cell-ui/browser";
-
-export function BoxExample() {
-  return (
-    <CellSurface viewport={{ width: 36, height: 8 }} onCommand={() => {}}>
-      <Root id="root">
-        <Box variant="ghost" style={{ height: 8 }}>
-          <Text>Surface variants and frames</Text>
-          <Box variant="ghost" style={{ direction: "row", gap: 1 }}>
-            <Box variant="ghost" style={{ width: 10 }}><Text>ghost</Text></Box>
-            <Box variant="surface" style={{ width: 10 }}><Text>surface</Text></Box>
-            <Box variant="ghost" frame="bordered" style={{ width: 12 }}><Text>bordered</Text></Box>
-          </Box>
-        </Box>
-      </Root>
-    </CellSurface>
-  );
-}`,
-    api: [
-      { name: "id?", type: "string", description: "Stable widget identity." },
-      { name: "disabled?", type: "boolean", description: "Applies the disabled visual state." },
-      { name: "children?", type: "ReactNode", description: "Nested Cell descriptors." },
-      { name: "variant?", type: '"surface" | "ghost"', description: "Local surface recipe; overrides the global recipe and otherwise defaults to ghost." },
-      { name: "frame?", type: '"none" | "bordered"', description: "Optional one-Cell border, independent of background." },
-      { name: "borderShape?", type: '"square" | "rounded"', description: "Border glyphs when frame is bordered." },
-      { name: "style?", type: "CellLayoutStyle", description: "Cell size, direction, gap, and padding." },
-    ],
-  },
-  {
     slug: "button",
     title: "Button",
-    group: "components",
     navigationOrder: 0,
     description: "Trigger one action through keyboard, pointer, or assistive input.",
     probeId: "component-button",
@@ -345,7 +263,6 @@ export function ButtonExample() {
   {
     slug: "badge",
     title: "Badge",
-    group: "components",
     navigationOrder: 0.5,
     description: "Show a compact state label, optionally acting as a command target.",
     probeId: "component-badge",
@@ -373,7 +290,6 @@ export function BadgeExample() {
   {
     slug: "select",
     title: "Select",
-    group: "components",
     navigationOrder: 1,
     description: "Choose one value from a Cell-anchored listbox.",
     probeId: "component-select",
@@ -447,7 +363,6 @@ export function SelectExample() {
   {
     slug: "combobox",
     title: "Combobox",
-    group: "components",
     navigationOrder: 2,
     description: "Click the input row to open local options, filter, then commit one value.",
     probeId: "component-combobox",
@@ -492,7 +407,6 @@ export function ComboboxExample() {
   {
     slug: "checkbox",
     title: "Checkbox",
-    group: "components",
     navigationOrder: 4,
     description: "Toggle boolean or indeterminate state through one Cell command path.",
     probeId: "component-checkbox",
@@ -543,7 +457,6 @@ export function CheckboxExample() {
   {
     slug: "slider",
     title: "Slider",
-    group: "components",
     navigationOrder: 3,
     description: "Select one stepped value or a bounded interval on a Cell-native track.",
     probeId: "component-slider",
@@ -592,7 +505,6 @@ export function SliderExample() {
   {
     slug: "input",
     title: "Input",
-    group: "components",
     navigationOrder: 5,
     description: "Edit a single line of Unicode text on the Cell grid.",
     probeId: "component-input",
@@ -630,60 +542,52 @@ export function InputExample() {
     ],
   },
   {
-    slug: "list",
-    title: "List",
-    group: "collections",
-    navigationOrder: 0,
-    description: "Move focus and confirm a selection through one command path.",
-    probeId: "component-list",
-    Demo: ListComponentDemo,
-    usage: `import { List, ListItem, Root, Text } from "@chardesk/cell-ui";
-import { CellSurface, useCellListState } from "@chardesk/cell-ui/browser";
+    slug: "tabs",
+    title: "Tabs",
+    navigationOrder: 13,
+    description: "Switch between related Cell panels with one selected tab.",
+    probeId: "component-tabs",
+    Demo: TabsComponentDemo,
+    usage: `import { Root, Tab, TabPanel, Tabs, Text } from "@chardesk/cell-ui";
+import { CellSurface, useCellTabsState } from "@chardesk/cell-ui/browser";
 
 const items = [
-  { id: "alpha", label: "Alpha" },
-  { id: "beta", label: "Beta" },
+  { id: "code", label: "Code", panelId: "code-panel" },
+  { id: "preview", label: "Preview", panelId: "preview-panel" },
 ];
 
-export function ListExample() {
-  const list = useCellListState(items, { defaultFocusedId: "alpha" });
-  return (
-    <CellSurface
-      viewport={{ width: 32, height: 6 }}
-      focusedId={list.focusedId}
-      onCommand={list.dispatch}
-    >
-      <Root id="root">
-        <List label="Greek letters">
-          {list.items.map((item) => (
-            <ListItem
-              id={item.id}
-              key={item.id}
-              focused={list.focusedId === item.id}
-              selected={list.selectedId === item.id}
-            >
-              <Text>{item.label}</Text>
-            </ListItem>
-          ))}
-        </List>
-      </Root>
-    </CellSurface>
-  );
+export function TabsExample() {
+  const tabs = useCellTabsState(items, { defaultSelectedId: "code" });
+  const selected = tabs.items.find((item) => item.id === tabs.selectedId);
+  return <CellSurface viewport={{ width: 28, height: 5 }}
+    focusedId={tabs.focusedId} onCommand={tabs.dispatch}>
+    <Root>
+      <Tabs label="Views" orientation="horizontal">
+        {tabs.items.map((item) => <Tab key={item.id} id={item.id}
+          controlsId={item.panelId}
+          focused={tabs.focusedId === item.id}
+          selected={tabs.selectedId === item.id}><Text>{item.label}</Text></Tab>)}
+      </Tabs>
+      {selected && <TabPanel id={selected.panelId} label={selected.label}
+        labelledById={selected.id}><Text>{selected.label} content</Text></TabPanel>}
+    </Root>
+  </CellSurface>;
 }`,
     api: [
-      { name: "List.label?", type: "string", description: "Accessible collection name." },
-      { name: "List.style?", type: "CellLayoutStyle", description: "Collection layout." },
-      { name: "ListItem.focused?", type: "boolean", description: "Logical focus state." },
-      { name: "ListItem.selected?", type: "boolean", description: "Logical selection state." },
-      { name: "ListItem.disabled?", type: "boolean", description: "Prevents activation and focus." },
-      { name: "ListItem.positionInSet?", type: "number", description: "Logical position for virtual collections." },
-      { name: "ListItem.setSize?", type: "number", description: "Logical collection size." },
+      { name: "Tabs.label?", type: "string", description: "Accessible tab-list name." },
+      { name: "Tabs.orientation?", type: '"horizontal" | "vertical"', description: "Collection orientation; this example uses horizontal navigation." },
+      { name: "Tab.id", type: "string", description: "Stable focus and activation target." },
+      { name: "Tab.controlsId?", type: "string", description: "ID of the associated TabPanel." },
+      { name: "Tab.focused?", type: "boolean", description: "Controlled logical focus state." },
+      { name: "Tab.selected?", type: "boolean", description: "Controlled selected state." },
+      { name: "Tab.disabled?", type: "boolean", description: "Prevents focus and selection." },
+      { name: "TabPanel.labelledById?", type: "string", description: "ID of the tab naming this panel." },
+      { name: "useCellTabsState", type: "items, options", description: "Keeps focus and selection outside the renderer; dispatches Cell commands." },
     ],
   },
   {
     slug: "scroll-area",
     title: "ScrollArea",
-    group: "components",
     navigationOrder: 6,
     description: "Scroll overflowing Cell content with keys, wheel, track, or thumb.",
     probeId: "component-scroll-area",
@@ -727,18 +631,5 @@ export const componentDocumentBySlug = new Map(
 
 export const defaultComponentSlug = "button";
 
-const navigationGroupDefinitions: ReadonlyArray<Readonly<{
-  id: ComponentGroupId;
-  title: string;
-}>> = [
-  { id: "components", title: "Components" },
-  { id: "primitives", title: "Primitives" },
-  { id: "collections", title: "Collections" },
-];
-
-export const componentNavigationGroups = navigationGroupDefinitions.map((group) => ({
-  ...group,
-  documents: componentDocuments
-    .filter((document) => document.group === group.id)
-    .toSorted((left, right) => left.navigationOrder - right.navigationOrder),
-}));
+export const componentNavigationDocuments = componentDocuments
+  .toSorted((left, right) => left.navigationOrder - right.navigationOrder);

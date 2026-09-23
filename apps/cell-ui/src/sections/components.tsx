@@ -28,6 +28,9 @@ import {
   Root,
   ScrollArea,
   Slider,
+  Tab,
+  TabPanel,
+  Tabs,
   Text,
   TextInput,
   type ButtonVariant,
@@ -43,6 +46,7 @@ import {
   useCellComboboxState,
   useCellRadioState,
   useCellSelectState,
+  useCellTabsState,
   useCellTextState,
 } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "../appearance";
@@ -488,6 +492,45 @@ export const BadgeComponentDemo = () => {
           focused={focusedId === "component-badge-retry"}><Text>Retry</Text></Badge>
         <Badge id="component-badge-disabled" tone="neutral" interactive disabled><Text>Disabled</Text></Badge>
       </Box>
+    </Box>}
+  />;
+};
+
+const tabItems = [
+  { id: "component-tabs-code", label: "Code", panelId: "component-tabs-code-panel" },
+  { id: "component-tabs-preview", label: "Preview", panelId: "component-tabs-preview-panel" },
+  { id: "component-tabs-settings", label: "Settings", panelId: "component-tabs-settings-panel", disabled: true },
+];
+
+export const TabsComponentDemo = () => {
+  const tabs = useCellTabsState(tabItems, { defaultSelectedId: "component-tabs-code" });
+  const selectedTab = tabs.items.find((item) => item.id === tabs.selectedId);
+  return <ComponentPlayground
+    id="component-tabs-playground"
+    label="Tabs component"
+    probeId="component-tabs"
+    focusedId={tabs.focusedId}
+    onCommand={tabs.dispatch}
+    previewMinColumns={32}
+    preview={<Box style={{ direction: "column", width: 32 }}>
+      <Tabs id="component-tabs-list" label="Views" orientation="horizontal">
+        {tabs.items.map((item) => <Tab
+          id={item.id}
+          key={item.id}
+          controlsId={item.panelId}
+          disabled={item.disabled}
+          focused={tabs.focusedId === item.id}
+          selected={tabs.selectedId === item.id}
+        ><Text>{item.label}</Text></Tab>)}
+      </Tabs>
+      {selectedTab && <TabPanel
+        id={selectedTab.panelId}
+        label={`${selectedTab.label} panel`}
+        labelledById={selectedTab.id}
+        style={{ height: 2 }}
+      ><Text>{selectedTab.id === "component-tabs-code"
+        ? 'const greeting = "Hello";'
+        : "Hello"}</Text></TabPanel>}
     </Box>}
   />;
 };

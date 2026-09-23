@@ -12,7 +12,7 @@ export const DEFAULT_ARTIFACT_CANVAS_PALETTE: CanvasArtifactPalette =
     grid: GRID_COLOR,
   });
 
-export type ArtifactCellStyle = Readonly<{
+type ArtifactCellStyle = Readonly<{
   color: string;
   bgColor?: string;
 }>;

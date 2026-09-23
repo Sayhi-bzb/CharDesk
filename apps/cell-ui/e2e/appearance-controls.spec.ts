@@ -10,7 +10,7 @@ async function choose(page: Page, label: string, option: string) {
 }
 
 test("Box and ScrollArea keep local surface and frame choices", async ({ page }) => {
-  await page.goto("/#/components/box");
+  await page.goto("/#/__fixtures/box");
   const box = page.getByLabel("Box component");
   await choose(page, "variant", "surface");
   const surface = await readCellProbe(box);

@@ -2,7 +2,7 @@ import type { KeyInput } from "@chardesk/keyboard";
 import type { WidgetCommand } from "./interaction.js";
 import type { WidgetNode, WidgetTree } from "./types.js";
 
-export const comboboxOwner = (tree: WidgetTree, node: WidgetNode): WidgetNode | undefined => {
+const comboboxOwner = (tree: WidgetTree, node: WidgetNode): WidgetNode | undefined => {
   let current: WidgetNode | undefined = node;
   while (current && current.kind !== "combobox") {
     current = current.parentId ? tree.nodes.get(current.parentId) : undefined;
@@ -10,7 +10,7 @@ export const comboboxOwner = (tree: WidgetTree, node: WidgetNode): WidgetNode | 
   return current;
 };
 
-export const comboboxParts = (tree: WidgetTree, input: WidgetNode) => {
+const comboboxParts = (tree: WidgetTree, input: WidgetNode) => {
   const owner = comboboxOwner(tree, input);
   const content = owner?.children.map((id) => tree.nodes.get(id))
     .find((node) => node?.kind === "combobox-content");

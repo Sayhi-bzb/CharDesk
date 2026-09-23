@@ -101,6 +101,3 @@ export const applyFreeformSnapshotToYMaps = (
 ) => canvasCommands.grid.replace(entries);
 export const undoCanvas = () => canvasCommands.history.undo();
 export const redoCanvas = () => canvasCommands.history.redo();
-export const replaceCanvasGrid = (
-  entries: Parameters<CanvasDocumentRegistry["replaceCellPage"]>[1]
-) => canvasCommands.grid.replace(entries);

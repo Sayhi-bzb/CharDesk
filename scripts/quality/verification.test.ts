@@ -70,6 +70,7 @@ describe('verification task graph', () => {
   it.each([
     ['--file'], ['--file', '../outside.ts'], ['--file', 'packages/cell-ui'],
     ['--phase', 'typo'], ['--mode', 'typo'], ['--mode', '--dry-run'],
+    ['--phase', 'cell-e2e', '--cell-project', 'firefox'], ['--phase', 'quality', '--cell-project', 'chromium'],
   ])('rejects invalid arguments: %j', (...args) => {
     expect(() => parseArguments(args)).toThrow()
   })
@@ -127,6 +128,24 @@ describe('verification task graph', () => {
 
   it('does not activate Cell E2E for unrelated application changes', () => {
     expect(planFor(['src/app/App.tsx'], 'pr', 'cell-e2e').tasks).toEqual([])
+  })
+
+  it('splits complete Cell browser coverage by project without narrowing either lane', () => {
+    for (const project of ['chromium', 'webkit']) {
+      const options = parseArguments(['--mode', 'full', '--phase', 'cell-e2e', '--cell-project', project])
+      const plan = createVerificationPlan(options, { base: 'test', files: ['packages/cell-ui/src/index.ts'] }, projects)
+      expect(plan.tasks).toHaveLength(1)
+      expect(plan.tasks[0].args).toContain(`--project=${project}`)
+      expect(plan.tasks[0].args).not.toContain(`--project=${project === 'chromium' ? 'webkit' : 'chromium'}`)
+    }
+  })
+
+  it('skips the WebKit lane when a quick Cell plan requires only Chromium', () => {
+    const changes = { base: 'test', files: ['apps/cell-ui/src/styles.css'] }
+    const webkit = parseArguments(['--mode', 'quick', '--phase', 'cell-e2e', '--cell-project', 'webkit'])
+    const chromium = parseArguments(['--mode', 'quick', '--phase', 'cell-e2e', '--cell-project', 'chromium'])
+    expect(createVerificationPlan(webkit, changes, projects).tasks).toEqual([])
+    expect(createVerificationPlan(chromium, changes, projects).tasks).toHaveLength(1)
   })
 
   it('preserves an explicit app target even without changed files', () => {

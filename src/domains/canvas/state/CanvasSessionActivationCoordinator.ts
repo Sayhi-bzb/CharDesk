@@ -1,4 +1,4 @@
-export type CanvasSessionActivationIntent = Readonly<{
+type CanvasSessionActivationIntent = Readonly<{
   generation: number;
 }>;
 

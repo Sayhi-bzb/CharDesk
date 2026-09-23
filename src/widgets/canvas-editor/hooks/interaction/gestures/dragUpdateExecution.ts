@@ -4,7 +4,7 @@ import type { CanvasMode } from "@/domains/sessions/public";
 import type { Point } from "@/shared/types";
 import { resolveDragUpdateDecision, type DragUpdateDecision } from "./dragUpdateInteraction";
 
-export type DragUpdateExecutor = {
+type DragUpdateExecutor = {
   setInteractionState: (state: CanvasInteractionState) => void;
   setSelectionPreview: (
     selection: Extract<DragUpdateDecision, { type: "selection-preview" }>["preview"]
@@ -19,7 +19,7 @@ export type DragUpdateExecutor = {
   setHoveredGrid: (point: Point) => void;
 };
 
-export const executeDragUpdateDecision = (
+const executeDragUpdateDecision = (
   decision: DragUpdateDecision,
   executor: DragUpdateExecutor,
   context: {

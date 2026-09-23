@@ -93,7 +93,7 @@ export const resolveCanvasContentPalette = (
   palette: CanvasArtifactPalette
 ) => canvasMode === 'slide' ? DEFAULT_ARTIFACT_CANVAS_PALETTE : palette;
 
-export const drawCanvasColorPickerAnchor = (
+const drawCanvasColorPickerAnchor = (
   ctx: CanvasRenderingContext2D,
   point: Point,
   viewport: { offset: Point; zoom: number },

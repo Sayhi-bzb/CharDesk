@@ -55,11 +55,11 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
     });
   });
 
-  const response = await page.goto("/#/components/text");
+  const response = await page.goto("/#/__fixtures/text");
   expect(response?.headers()["content-security-policy"]).toBe(CSP);
-  await expect(page.getByRole("heading", { name: "Text", level: 1 })).toBeVisible();
-  await expect(page.locator(".docs-preview canvas")).toHaveCount(1);
-  await expect(page.locator(".docs-preview canvas")).toHaveAttribute("data-cell-text", /Unicode: 世界 👋/);
+  await expect(page.getByRole("heading", { name: "Cell UI Fixture", level: 1 })).toBeVisible();
+  await expect(page.locator('[data-cell-probe="component-text"] canvas')).toHaveCount(1);
+  await expect(page.locator('[data-cell-probe="component-text"] canvas')).toHaveAttribute("data-cell-text", /Unicode: 世界 👋/);
   const gallery = page.locator(".gallery-page");
   await selectGalleryFont(page, "fusion-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");

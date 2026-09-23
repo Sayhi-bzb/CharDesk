@@ -1,0 +1,331 @@
+import type { CellFeedbackConfig } from "./feedback.js";
+import { isPrimitiveControlKind } from "./widget-capabilities.js";
+import type { ReactElement } from "react";
+import { CellBuffer } from "./buffer.js";
+import { type GestureSignal } from "./gestures.js";
+import { CellInteractionController, sameWidgetIdSet } from "./interaction-controller.js";
+import {
+  commandForInput,
+  type EngineInput,
+  type WidgetCommand,
+} from "./interaction.js";
+import {
+  createKeyInput,
+  type KeyInputInit,
+} from "./keyboard/index.js";
+import type { RootProps } from "./react.js";
+import { captureCellProbe, inspectCell } from "./probe.js";
+import {
+  commandForGestureSignal,
+  gestureCandidatesForFrame,
+  validGestureCandidate,
+} from "./pointer.js";
+import { CellUiRuntime } from "./runtime.js";
+import { textViewportCommands } from "./text-viewport.js";
+import { scrollCommandForOffset, scrollOffsetFor, scrollViewportCommands } from "./scroll.js";
+import { getEventPath, hitTest } from "./scene.js";
+import { type CellUiTheme } from "./theme.js";
+import type { CellUiRecipe } from "./recipe.js";
+import type {
+  CellPoint,
+  CellRect,
+  CellSize,
+  FrameSnapshot,
+  SceneEntry,
+  SceneSnapshot,
+  SemanticAction,
+  SemanticNode,
+  SemanticSnapshot,
+  WidgetId,
+} from "./types.js";
+import type { CellInspection, CellProbeSnapshot } from "./probe.js";
+
+export type SemanticQuery = Readonly<{
+  name?: string | RegExp;
+}>;
+
+export type TestPilotOptions = Readonly<{
+  viewport: CellSize;
+  render: () => ReactElement<RootProps> | null;
+  onCommand?: (command: WidgetCommand) => void;
+  theme?: Partial<CellUiTheme>;
+  recipe?: CellUiRecipe;
+  feedback?: Partial<CellFeedbackConfig>;
+}>;
+
+export type TestKeyOptions = Omit<KeyInputInit, "key" | "phase">;
+
+const matchesName = (label: string, name: string | RegExp | undefined) =>
+  name === undefined || (typeof name === "string" ? label === name : name.test(label));
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
+export class TestPilot {
+  readonly #controller = new CellInteractionController(() => this.#renderFrame(), (command) => this.#onCommand(command));
+  readonly #focus = this.#controller.focus;
+  readonly #gestures = this.#controller.gestures;
+  readonly #press = this.#controller.press;
+  readonly #render: () => ReactElement<RootProps> | null;
+  readonly #onCommand: (command: WidgetCommand) => void;
+  readonly #runtime: CellUiRuntime;
+  #frame: FrameSnapshot;
+  #disposed = false;
+
+  constructor(options: TestPilotOptions) {
+    this.#render = options.render;
+    this.#onCommand = options.onCommand ?? (() => undefined);
+    this.#runtime = new CellUiRuntime({
+      viewport: options.viewport,
+      theme: options.theme,
+      recipe: options.recipe,
+      feedback: options.feedback,
+    });
+    this.#frame = this.#runtime.render(this.#render());
+    this.#focus.sync(this.#frame.tree, this.#frame.semantics.focusedId);
+    if (this.#focus.focusedId !== this.#frame.semantics.focusedId) this.#renderFrame();
+    this.#syncViewports();
+  }
+
+  get frame(): FrameSnapshot {
+    return this.#frame;
+  }
+
+  async press(...keys: string[]): Promise<void> {
+    for (const key of keys) await this.pressKey(key);
+  }
+
+  async keyDown(key: string, options: TestKeyOptions = {}): Promise<void> {
+    await this.input(createKeyInput({ ...options, key, phase: "down" }));
+  }
+
+  async keyUp(key: string, options: TestKeyOptions = {}): Promise<void> {
+    await this.input(createKeyInput({ ...options, key, phase: "up" }));
+  }
+
+  async pressKey(key: string, options: TestKeyOptions = {}): Promise<void> {
+    await this.keyDown(key, options);
+    await this.keyUp(key, options);
+  }
+
+  async click(point: CellPoint): Promise<void> {
+    await this.pointerDown(point);
+    await this.pointerUp(point);
+  }
+
+  async pointerDown(point: CellPoint, pointerId = 1, precisePoint?: CellPoint): Promise<void> {
+    this.#assertActive();
+    const command = commandForInput(
+      { type: "pointer", phase: "down", point, button: 0 },
+      this.#frame,
+      this.#focus
+    );
+    if (this.#controller.interceptPointer(this.#frame, point)) {
+      this.#commit(command);
+      await this.pause();
+      return;
+    }
+    this.#cancelActivationFeedback();
+    this.#commit(command);
+    if (command?.type === "dismiss") {
+      await this.pause();
+      return;
+    }
+    const targetId = hitTest(this.#frame.scene, point)[0];
+    const path = targetId ? getEventPath(this.#frame.scene, targetId) : [];
+    this.#controller.beginPointer(this.#frame, pointerId, point, gestureCandidatesForFrame(this.#frame, path, point, precisePoint), precisePoint);
+    await this.pause();
+  }
+
+  async pointerMove(point: CellPoint, pointerId = 1, precisePoint?: CellPoint): Promise<void> {
+    this.#assertActive();
+    const signals = this.#controller.movePointer(this.#frame, pointerId, point, precisePoint);
+    this.#applyGestureSignals(signals);
+    await this.pause();
+  }
+
+  async pointerUp(point: CellPoint, pointerId = 1, precisePoint?: CellPoint): Promise<void> {
+    this.#assertActive();
+    const signals = this.#controller.endPointer(this.#frame, pointerId, point, precisePoint);
+    this.#applyGestureSignals(signals);
+    await this.pause();
+  }
+
+  async semanticAction(targetId: WidgetId, action: SemanticAction): Promise<void> {
+    await this.input({ type: "semantic", targetId, action });
+  }
+
+  async input(input: EngineInput): Promise<void> {
+    this.#assertActive();
+    if (input.type === "key") this.#controller.key(this.#frame, input, this.#runtime.feedback.activationBlinkCount);
+    else this.#commit(commandForInput(input, this.#frame, this.#focus));
+    await this.pause();
+  }
+
+  async scroll(targetId: WidgetId, delta: CellPoint): Promise<void> {
+    this.#assertActive();
+    const node = this.#frame.tree.nodes.get(targetId);
+    if (node) {
+      const offset = scrollOffsetFor(node);
+      this.#commit(scrollCommandForOffset(this.#frame, targetId, { x: offset.x + delta.x, y: offset.y + delta.y }));
+    }
+    await this.pause();
+  }
+
+  async resize(size: CellSize): Promise<void> {
+    this.#assertActive();
+    this.#runtime.resize(size);
+    this.#renderFrame();
+    await this.pause();
+  }
+
+  async pause(): Promise<void> {
+    await Promise.resolve();
+  }
+
+  cells(region: CellRect = this.#frame.scene.viewport): CellBuffer {
+    const left = clamp(region.x, 0, this.#frame.buffer.width);
+    const top = clamp(region.y, 0, this.#frame.buffer.height);
+    const right = clamp(region.x + region.width, left, this.#frame.buffer.width);
+    const bottom = clamp(region.y + region.height, top, this.#frame.buffer.height);
+    const result = new CellBuffer({ width: right - left, height: bottom - top });
+    for (let y = top; y < bottom; y += 1) {
+      for (let x = left; x < right; x += 1) {
+        const cell = this.#frame.buffer.get(x, y);
+        if (!cell || cell.continuation || cell.ownerId === null) continue;
+        result.writeGrapheme(
+          x - left,
+          y - top,
+          cell.text,
+          cell.ownerId,
+          cell.style,
+          undefined,
+          "replace"
+        );
+      }
+    }
+    return result;
+  }
+
+  text(region?: CellRect): string {
+    return this.probe(region).text;
+  }
+
+  probe(region?: CellRect): CellProbeSnapshot {
+    return captureCellProbe(this.#frame, { region });
+  }
+
+  inspect(point: CellPoint): CellInspection {
+    return inspectCell(this.#frame, point);
+  }
+
+  scene(): SceneSnapshot;
+  scene(id: WidgetId): SceneEntry;
+  scene(id?: WidgetId): SceneSnapshot | SceneEntry {
+    if (id === undefined) return this.#frame.scene;
+    const entry = this.#frame.scene.entries.get(id);
+    if (!entry) throw new Error(`No SceneEntry found for ${JSON.stringify(id)}.`);
+    return entry;
+  }
+
+  semantics(): SemanticSnapshot {
+    return this.#frame.semantics;
+  }
+
+  getByRole(role: SemanticNode["role"], query: SemanticQuery = {}): SemanticNode {
+    const matches = [...this.#frame.semantics.nodes.values()].filter(
+      (node) => !node.hidden && node.role === role && matchesName(node.label, query.name)
+    );
+    if (matches.length !== 1) {
+      const detail = query.name === undefined ? role : `${role} named ${String(query.name)}`;
+      throw new Error(`Expected one semantic ${detail}; found ${matches.length}.`);
+    }
+    return matches[0]!;
+  }
+
+  hit(point: CellPoint): readonly WidgetId[] {
+    return hitTest(this.#frame.scene, point);
+  }
+
+  focus(): WidgetId | null {
+    return this.#frame.semantics.focusedId;
+  }
+
+  dispose(): void {
+    if (this.#disposed) return;
+    this.#cancelActivationFeedback();
+    this.#gestures.sync(() => false);
+    this.#runtime.dispose();
+    this.#disposed = true;
+  }
+
+  #commit(command: WidgetCommand | null): void {
+    this.#controller.commit(command, this.#frame, this.#runtime.feedback.activationBlinkCount);
+  }
+
+  #flushActivationFeedbackCompletion(): void {
+    this.#controller.flush();
+  }
+
+  #cancelActivationFeedback(): boolean {
+    return this.#controller.cancel();
+  }
+
+  #applyGestureSignals(signals: readonly GestureSignal[]): void {
+    for (const signal of signals) {
+      this.#commit(commandForGestureSignal(this.#frame, signal, this.#focus));
+    }
+  }
+
+  #primitiveHover(): WidgetId | null {
+    const id = this.#controller.snapshot.hoveredId;
+    const node = id ? this.#frame.tree.nodes.get(id) : undefined;
+    return node && isPrimitiveControlKind(node.kind) ? id : null;
+  }
+
+  get #renderState() {
+    return {
+      ...this.#controller.renderState,
+      // A headless pilot represents an active host; modality only gates navigation highlights.
+      activeFocusId: this.#focus.focusedId,
+      hoveredId: this.#primitiveHover(),
+    };
+  }
+
+  #renderFrame(): void {
+    this.#frame = this.#runtime.render(this.#render(), {
+      ...this.#renderState,
+      resolveFocusedId: (tree) => {
+        this.#focus.sync(tree);
+        return this.#focus.focusedId;
+      },
+    });
+    let pressChanged = this.#press.sync(this.#frame);
+    const manipulatingBefore = this.#gestures.manipulatingIds;
+    const activationFeedbackChanged = this.#controller.sync(this.#frame);
+    for (const pointerId of this.#gestures.sync((candidate) => validGestureCandidate(this.#frame, candidate))) {
+      pressChanged = this.#press.cancelPointer(pointerId) || pressChanged;
+    }
+    const manipulationChanged = !sameWidgetIdSet(manipulatingBefore, this.#gestures.manipulatingIds);
+    if (pressChanged || activationFeedbackChanged || manipulationChanged) {
+      this.#frame = this.#runtime.render(this.#render(), this.#renderState);
+    }
+    if (activationFeedbackChanged) this.#flushActivationFeedbackCompletion();
+    this.#syncViewports();
+    this.#controller.presented(this.#frame.confirmation);
+  }
+
+  #syncViewports(): void {
+    const commands = [...textViewportCommands(this.#frame), ...scrollViewportCommands(this.#frame)];
+    if (!commands.length) return;
+    for (const command of commands) this.#onCommand(command);
+    this.#frame = this.#runtime.render(this.#render(), this.#renderState);
+  }
+
+  #assertActive(): void {
+    if (this.#disposed) throw new Error("TestPilot has been disposed.");
+  }
+}
+
+export const createTestPilot = (options: TestPilotOptions): TestPilot =>
+  new TestPilot(options);

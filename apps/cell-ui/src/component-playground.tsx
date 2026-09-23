@@ -1,13 +1,15 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Box, Root, ScrollArea, Text, type WidgetCommand } from "@chardesk/cell-ui";
-import { DEFAULT_CELL_UI_METRICS } from "@chardesk/cell-ui/browser";
-import { defaultComponentRecipe, GallerySurface } from "./appearance";
+import { DEFAULT_CELL_UI_METRICS, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
+import { GallerySurface } from "./appearance";
 import {
   MIN_SPLIT_COLUMNS,
   PLAYGROUND_ROWS,
   columnsForPixelWidth,
   resolveComponentPlaygroundLayout,
 } from "./component-playground-layout";
+
+const defaultComponentRecipe: NonNullable<CellSurfaceProps["recipe"]> = {};
 
 export function ComponentPlayground({
   id,

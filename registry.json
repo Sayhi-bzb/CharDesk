@@ -1,0 +1,380 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "cell-ui",
+  "homepage": "https://github.com/Sayhi-bzb/CharDesk",
+  "items": [
+    {
+      "name": "cell-ui",
+      "type": "registry:item",
+      "title": "Cell UI",
+      "description": "Editable headless and browser Cell UI source.",
+      "dependencies": [
+        "@chardesk/cell-core@^0.3.6",
+        "@chardesk/fonts@^0.3.6",
+        "@chardesk/protocol@^0.3.0",
+        "@chardesk/rendering@0.1.0 || ^0.3.7",
+        "@codemirror/state@^6.7.4",
+        "@react-stately/collections@^3.13.1",
+        "@react-stately/list@^3.14.1",
+        "yoga-layout@^3.2.1"
+      ],
+      "files": [
+        {
+          "path": "registry/cell-ui/accordion.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/accordion.ts"
+        },
+        {
+          "path": "registry/cell-ui/activation-feedback-config.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/activation-feedback-config.ts"
+        },
+        {
+          "path": "registry/cell-ui/activation-feedback.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/activation-feedback.ts"
+        },
+        {
+          "path": "registry/cell-ui/anchored-overlay.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/anchored-overlay.ts"
+        },
+        {
+          "path": "registry/cell-ui/badge.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/badge.ts"
+        },
+        {
+          "path": "registry/cell-ui/border.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/border.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-collections.tsx",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-collections.tsx"
+        },
+        {
+          "path": "registry/cell-ui/browser-combobox.tsx",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-combobox.tsx"
+        },
+        {
+          "path": "registry/cell-ui/browser-cursor.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-cursor.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-focus.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-focus.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-font-audit.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-font-audit.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-font-metrics.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-font-metrics.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-font-profile.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-font-profile.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-hover.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-hover.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-input.tsx",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-input.tsx"
+        },
+        {
+          "path": "registry/cell-ui/browser-presentation.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-presentation.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-radio.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-radio.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-range.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-range.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-theme.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-theme.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser.tsx",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser.tsx"
+        },
+        {
+          "path": "registry/cell-ui/buffer.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/buffer.ts"
+        },
+        {
+          "path": "registry/cell-ui/button.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/button.ts"
+        },
+        {
+          "path": "registry/cell-ui/checkbox.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/checkbox.ts"
+        },
+        {
+          "path": "registry/cell-ui/collection-chrome.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/collection-chrome.ts"
+        },
+        {
+          "path": "registry/cell-ui/combobox.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/combobox.ts"
+        },
+        {
+          "path": "registry/cell-ui/confirmation-sequence.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/confirmation-sequence.ts"
+        },
+        {
+          "path": "registry/cell-ui/cursor-appearance.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/cursor-appearance.ts"
+        },
+        {
+          "path": "registry/cell-ui/events.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/events.ts"
+        },
+        {
+          "path": "registry/cell-ui/feedback.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/feedback.ts"
+        },
+        {
+          "path": "registry/cell-ui/frame.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/frame.ts"
+        },
+        {
+          "path": "registry/cell-ui/gestures.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/gestures.ts"
+        },
+        {
+          "path": "registry/cell-ui/grid-navigation.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/grid-navigation.ts"
+        },
+        {
+          "path": "registry/cell-ui/index.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/index.ts"
+        },
+        {
+          "path": "registry/cell-ui/inline-control-chrome.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/inline-control-chrome.ts"
+        },
+        {
+          "path": "registry/cell-ui/inline-outline.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/inline-outline.ts"
+        },
+        {
+          "path": "registry/cell-ui/interaction-controller.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/interaction-controller.ts"
+        },
+        {
+          "path": "registry/cell-ui/interaction.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/interaction.ts"
+        },
+        {
+          "path": "registry/cell-ui/keyboard.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/keyboard.ts"
+        },
+        {
+          "path": "registry/cell-ui/layout.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/layout.ts"
+        },
+        {
+          "path": "registry/cell-ui/paint.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/paint.ts"
+        },
+        {
+          "path": "registry/cell-ui/performance.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/performance.ts"
+        },
+        {
+          "path": "registry/cell-ui/pointer.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/pointer.ts"
+        },
+        {
+          "path": "registry/cell-ui/press.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/press.ts"
+        },
+        {
+          "path": "registry/cell-ui/primitive-appearance.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/primitive-appearance.ts"
+        },
+        {
+          "path": "registry/cell-ui/primitive-behavior.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/primitive-behavior.ts"
+        },
+        {
+          "path": "registry/cell-ui/probe.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/probe.ts"
+        },
+        {
+          "path": "registry/cell-ui/progress.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/progress.ts"
+        },
+        {
+          "path": "registry/cell-ui/range.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/range.ts"
+        },
+        {
+          "path": "registry/cell-ui/react.tsx",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/react.tsx"
+        },
+        {
+          "path": "registry/cell-ui/recipe.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/recipe.ts"
+        },
+        {
+          "path": "registry/cell-ui/runtime.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/runtime.ts"
+        },
+        {
+          "path": "registry/cell-ui/scene.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/scene.ts"
+        },
+        {
+          "path": "registry/cell-ui/scroll.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/scroll.ts"
+        },
+        {
+          "path": "registry/cell-ui/scrollbar.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/scrollbar.ts"
+        },
+        {
+          "path": "registry/cell-ui/semantics.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/semantics.ts"
+        },
+        {
+          "path": "registry/cell-ui/separator.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/separator.ts"
+        },
+        {
+          "path": "registry/cell-ui/slider.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/slider.ts"
+        },
+        {
+          "path": "registry/cell-ui/surface-variant.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/surface-variant.ts"
+        },
+        {
+          "path": "registry/cell-ui/testing.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/testing.ts"
+        },
+        {
+          "path": "registry/cell-ui/text-viewport.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/text-viewport.ts"
+        },
+        {
+          "path": "registry/cell-ui/text.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/text.ts"
+        },
+        {
+          "path": "registry/cell-ui/theme.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/theme.ts"
+        },
+        {
+          "path": "registry/cell-ui/tree.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/tree.ts"
+        },
+        {
+          "path": "registry/cell-ui/types.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/types.ts"
+        },
+        {
+          "path": "registry/cell-ui/virtual.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/virtual.ts"
+        },
+        {
+          "path": "registry/cell-ui/visual-state.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/visual-state.ts"
+        },
+        {
+          "path": "registry/cell-ui/visual.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/visual.ts"
+        },
+        {
+          "path": "registry/cell-ui/widget-capabilities.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/widget-capabilities.ts"
+        },
+        {
+          "path": "registry/cell-ui/widget-change.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/widget-change.ts"
+        },
+        {
+          "path": "registry/cell-ui/keyboard/index.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/keyboard/index.ts"
+        },
+        {
+          "path": "registry/cell-ui/keyboard/browser.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/keyboard/browser.ts"
+        }
+      ]
+    }
+  ]
+}

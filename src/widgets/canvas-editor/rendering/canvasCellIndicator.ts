@@ -27,7 +27,7 @@ type CanvasCellIndicatorViewport = Readonly<{
   zoom: number;
 }>;
 
-export const drawCanvasNavigationFocus = (
+const drawCanvasNavigationFocus = (
   ctx: CharDeskCanvasContext,
   point: Point,
   viewport: CanvasCellIndicatorViewport,

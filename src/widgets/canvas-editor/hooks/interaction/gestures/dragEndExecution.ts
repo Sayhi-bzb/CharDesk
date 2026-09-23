@@ -8,7 +8,7 @@ import { resolveDragEndCommitDecision } from "../commit/commitInteraction";
 import { resolveSelectionCommitDecision } from "../preview/selectionInteraction";
 import type { SelectionPreviewController } from "../preview/selectionPreviewController";
 
-export type PrimaryDragEndExecutor = SelectionCommitExecutor &
+type PrimaryDragEndExecutor = SelectionCommitExecutor &
   DragEndCommitExecutor & {
     flushSelectionPreview: () => void;
     getSelectionPreview: () => SelectionArea | null;
@@ -20,7 +20,7 @@ type PrimaryDragEndContext = {
   tool: ToolType;
 };
 
-export const executePrimaryDragEnd = (
+const executePrimaryDragEnd = (
   context: PrimaryDragEndContext,
   executor: PrimaryDragEndExecutor
 ): boolean => {

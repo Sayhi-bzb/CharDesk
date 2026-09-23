@@ -7,6 +7,18 @@ type Fixture = Readonly<{
 }>;
 
 const fixtures: Record<string, Fixture> = {
+  text: {
+    id: "text",
+    load: () => import("./sections/components").then(({ TextComponentDemo }) => ({ default: TextComponentDemo })),
+  },
+  box: {
+    id: "box",
+    load: () => import("./sections/components").then(({ BoxComponentDemo }) => ({ default: BoxComponentDemo })),
+  },
+  list: {
+    id: "list",
+    load: () => import("./sections/components").then(({ ListComponentDemo }) => ({ default: ListComponentDemo })),
+  },
   core: {
     id: "core",
     load: () => import("./sections/core-controls").then(({ CoreControlsDemo }) => ({ default: CoreControlsDemo })),

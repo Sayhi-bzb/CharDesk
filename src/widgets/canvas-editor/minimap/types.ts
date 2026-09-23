@@ -23,7 +23,7 @@ export type MinimapTransform = {
   scale: number;
 };
 
-export type MinimapColors = {
+type MinimapColors = {
   artifact: CanvasArtifactPalette;
   viewportFill: string;
   viewportStroke: string;

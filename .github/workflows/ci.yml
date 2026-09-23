@@ -39,6 +39,11 @@ jobs:
         name: Install dependencies
         run: npm ci
 
+      - name: Verify Cell UI Registry source
+        run: |
+          npm run cell-ui:registry:verify
+          npm run cell-ui:registry:typecheck
+
       - name: Run quality checks
         run: |
           if [ -n "$VERIFY_BASE" ]; then
@@ -112,9 +117,15 @@ jobs:
           fi
 
   cell-e2e:
-    name: Cell UI browser tests
+    name: Cell UI browser tests (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, webkit]
+    env:
+      CELL_E2E_PROJECT: ${{ matrix.project }}
     steps:
       - *checkout
       - *setup-node
@@ -125,20 +136,20 @@ jobs:
           node --input-type=module <<'NODE'
           import { appendFileSync } from 'node:fs';
           import { parseArguments, collectChangedFiles, createVerificationPlan } from './scripts/quality/verification.mjs';
-          const options = parseArguments(['--mode', process.env.VERIFY_SCRIPT.replace('check:', ''), '--phase', 'cell-e2e']);
+          const options = parseArguments(['--mode', process.env.VERIFY_SCRIPT.replace('check:', ''), '--phase', 'cell-e2e', '--cell-project', process.env.CELL_E2E_PROJECT]);
           const plan = createVerificationPlan(options, collectChangedFiles(process.env.VERIFY_BASE || undefined));
           appendFileSync(process.env.GITHUB_OUTPUT, `required=${plan.tasks.length > 0}\n`);
           NODE
       - name: Install browser runtimes
         if: steps.cell-plan.outputs.required == 'true'
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install --with-deps "$CELL_E2E_PROJECT"
       - name: Verify affected Cell UI browser flows
         if: steps.cell-plan.outputs.required == 'true'
         run: |
           if [ -n "$VERIFY_BASE" ]; then
-            npm run "$VERIFY_SCRIPT" -- --phase cell-e2e --base "$VERIFY_BASE"
+            npm run "$VERIFY_SCRIPT" -- --phase cell-e2e --cell-project "$CELL_E2E_PROJECT" --base "$VERIFY_BASE"
           else
-            npm run "$VERIFY_SCRIPT" -- --phase cell-e2e
+            npm run "$VERIFY_SCRIPT" -- --phase cell-e2e --cell-project "$CELL_E2E_PROJECT"
           fi
 
   verify:

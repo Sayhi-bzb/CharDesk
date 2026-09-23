@@ -110,7 +110,7 @@ export const ComplexWidgetsDemo = () => {
               ><Text>{row.item.label}</Text></TreeItem>
             ))}
           </Tree>
-          <Tabs id="view-tabs" label="Views" orientation="horizontal" style={{ height: 2 }}>
+          <Tabs id="view-tabs" label="Views" orientation="horizontal">
             {tabs.items.map((item) => (
               <Tab
                 id={item.id}
@@ -118,7 +118,6 @@ export const ComplexWidgetsDemo = () => {
                 controlsId={item.panelId}
                 focused={focusedId === item.id}
                 selected={tabs.selectedId === item.id}
-                style={{ width: 12 }}
               ><Text>{item.label}</Text></Tab>
             ))}
           </Tabs>

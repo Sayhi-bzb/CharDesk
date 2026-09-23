@@ -16,6 +16,7 @@ import {
   ScrollAreaComponentDemo,
   SelectComponentDemo,
   SliderComponentDemo,
+  TabsComponentDemo,
 } from "./sections/components";
 
 const context = {
@@ -64,6 +65,7 @@ describe("Component Playground gallery demos", () => {
     { Demo: DialogComponentDemo, label: "Dialog component", content: ["variant", "surface", "frame", "bordered", "border shape", "square"], absent: ["modal", "closeOnOutsideClick", "ghost"] },
     { Demo: ToggleComponentDemo, label: "Toggle component", content: ["○ Bold", "disabled"], absent: ["variant", "pressed", "value"] },
     { Demo: BadgeComponentDemo, label: "Badge component", content: ["Waiting", "Syncing", "Done", "Delayed", "Failed", "Retry", "Disabled"], absent: ["tone", "interactive", "Activated:", "variant"] },
+    { Demo: TabsComponentDemo, label: "Tabs component", content: ["Code", "Preview", "Settings", 'const greeting = "Hello";'], absent: ["variant", "Activated:", "│"] },
     { Demo: ProgressComponentDemo, label: "Progress component", content: ["variant", "solid", "number", "indeterminate"], absent: ["outline", "value"] },
     { Demo: SeparatorComponentDemo, label: "Separator component", content: ["───────", "variant", "direction", "horizontal"], absent: ["slash", "double", "dots", "value"] },
     { Demo: RadioComponentDemo, label: "Radio component", content: ["(●) Light", "( ) Dark", "disabled"], absent: ["variant", "value"] },
@@ -133,6 +135,27 @@ describe("Component Playground gallery demos", () => {
     fireEvent.click(retry);
     await waitFor(() => expect(surface).not.toHaveAttribute("data-cell-confirmation-phase"));
     expect(readCellSurfaceProbe(surface)?.text).not.toContain("Activated:");
+  });
+
+  it("switches Tabs panels while keeping focus, selection, and disabled state distinct", async () => {
+    render(<TabsComponentDemo />);
+    const surface = screen.getByLabelText("Tabs component");
+    const code = screen.getByRole("tab", { name: "Code" });
+    const preview = screen.getByRole("tab", { name: "Preview" });
+    const settings = screen.getByRole("tab", { name: "Settings" });
+    expect(screen.getByRole("tablist", { name: "Views" })).toBeInTheDocument();
+    expect(code).toHaveAttribute("aria-selected", "true");
+    expect(settings).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("tabpanel", { name: "Code" })).toHaveAttribute("id", code.getAttribute("aria-controls"));
+
+    fireEvent.click(preview);
+    await waitFor(() => expect(preview).toHaveAttribute("aria-selected", "true"));
+    expect(code).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tabpanel", { name: "Preview" })).toHaveAttribute("id", preview.getAttribute("aria-controls"));
+    expect(readCellSurfaceProbe(surface)?.text).toContain("Hello");
+    expect(readCellSurfaceProbe(surface)?.text).not.toContain("const greeting");
+    fireEvent.click(settings);
+    expect(preview).toHaveAttribute("aria-selected", "true");
   });
 
   it("keeps Dialog border shape while its frame is temporarily disabled", async () => {

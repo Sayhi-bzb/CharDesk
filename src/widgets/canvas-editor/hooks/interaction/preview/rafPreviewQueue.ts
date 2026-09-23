@@ -1,4 +1,4 @@
-export type RafScheduler = {
+type RafScheduler = {
   requestAnimationFrame: (callback: FrameRequestCallback) => number;
   cancelAnimationFrame: (handle: number) => void;
 };
@@ -8,7 +8,7 @@ const getDefaultRafScheduler = (): RafScheduler => ({
   cancelAnimationFrame: (handle) => window.cancelAnimationFrame(handle),
 });
 
-export type RafPreviewQueue<T> = {
+type RafPreviewQueue<T> = {
   queue: (value: T) => void;
   flush: (options?: { useLast?: boolean }) => T | null;
   clearLast: () => void;

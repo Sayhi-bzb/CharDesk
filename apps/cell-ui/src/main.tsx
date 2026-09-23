@@ -7,7 +7,7 @@ import { formatCellProbe } from "@chardesk/cell-ui";
 import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
 import {
   componentDocumentBySlug,
-  componentNavigationGroups,
+  componentNavigationDocuments,
   defaultComponentSlug,
   sourceLinksForComponent,
   type ComponentDocument,
@@ -90,24 +90,21 @@ const workspaceDependency = `{
 export function GalleryNavigation({ activeSlug }: Readonly<{ activeSlug: string }>) {
   return (
     <nav className="gallery-nav" aria-label="Cell UI">
-      {componentNavigationGroups.map((group) => {
-        const titleId = `gallery-nav-${group.id}`;
-        return <div className="gallery-nav__group" role="group" aria-labelledby={titleId} key={group.id}>
-          <span className="gallery-nav__title" id={titleId}>{group.title}</span>
-          <ul>
-            {group.documents.map((document) => (
-              <li key={document.slug}>
-                <a
-                  href={`#/components/${document.slug}`}
-                  aria-current={activeSlug === document.slug ? "page" : undefined}
-                >
-                  {document.title}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>;
-      })}
+      <div className="gallery-nav__group" role="group" aria-labelledby="gallery-nav-components">
+        <span className="gallery-nav__title" id="gallery-nav-components">Components</span>
+        <ul>
+          {componentNavigationDocuments.map((document) => (
+            <li key={document.slug}>
+              <a
+                href={`#/components/${document.slug}`}
+                aria-current={activeSlug === document.slug ? "page" : undefined}
+              >
+                {document.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     </nav>
   );
 }
@@ -142,10 +139,10 @@ export function ComponentPage({ document }: Readonly<{ document: ComponentDocume
       <section className="docs-section" aria-labelledby="distribution-title">
         <h2 id="distribution-title">Distribution</h2>
         <p>
-          Currently available as a private workspace package. It is not published to npm and
-          does not provide a registry or <code>add</code> command.
+          Editable source is prepared as a <a href="https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#source-installation">GitHub Registry item</a>.
+          Fresh-project installation awaits the public <code>@chardesk</code> dependency release.
         </p>
-        <p>Add the dependency to a workspace package, then run <code>npm install</code> at the repository root.</p>
+        <p>Until then, add the private package to a workspace package and run <code>npm install</code> at the repository root.</p>
         <CodeBlock>{workspaceDependency}</CodeBlock>
         <p>
           Import Cell descriptors from <code>@chardesk/cell-ui</code>. Import the browser Surface

@@ -28,6 +28,8 @@ const packages = [
   { name: "@chardesk/fonts", path: "packages/fonts" },
   { name: "@chardesk/font-maple", path: "packages/font-maple" },
   { name: "@chardesk/protocol", path: "packages/protocol" },
+  // The next Release Please PR moves rendering from 0.1.0 onto the unified version.
+  ...(tag ? [{ name: "@chardesk/rendering", path: "packages/rendering" }] : []),
 ];
 const lockfile = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
 

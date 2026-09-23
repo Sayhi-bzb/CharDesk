@@ -111,7 +111,7 @@ test.describe("display font", () => {
 });
 
 test("a successfully loaded font survives a page reload", async ({ page }) => {
-  await page.goto("/#/components/text");
+  await page.goto("/#/components/button");
   const gallery = page.locator(".gallery-page");
   const fontSelect = galleryFontSelect(page);
 
@@ -131,7 +131,7 @@ test("a successfully loaded font survives a page reload", async ({ page }) => {
 
 test("header font Select uses Cell pointer geometry without moving the header", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
-  await page.goto("/#/components/text");
+  await page.goto("/#/components/button");
   const gallery = page.locator(".gallery-page");
   const header = page.locator(".gallery-header");
   const select = galleryFontSelect(page);
@@ -368,7 +368,7 @@ test("snapshot copy feedback expires and a failed copy can be retried", async ({
       },
     } });
   });
-  await page.goto("/#/components/text");
+  await page.goto("/#/components/button");
   const section = page.locator(".docs-section").filter({ has: page.getByRole("heading", { name: "Preview" }) });
   const button = section.locator("[data-copy-state]");
   await button.evaluate((element: HTMLButtonElement) => { element.click(); element.click(); });

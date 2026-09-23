@@ -262,5 +262,3 @@ export function GallerySurface(props: CellSurfaceProps) {
     fontProfile={fontProfile}
   />;
 }
-
-export const defaultComponentRecipe: NonNullable<CellSurfaceProps["recipe"]> = {};

@@ -1,7 +1,7 @@
 import type { CanvasInteractionState } from "@/domains/editor/public";
 import type { Point } from "@/shared/types";
 
-export const RANGE_MOVE_DRAG_THRESHOLD_PX = 4;
+const RANGE_MOVE_DRAG_THRESHOLD_PX = 4;
 
 type RangeMoveState = Extract<
   CanvasInteractionState,

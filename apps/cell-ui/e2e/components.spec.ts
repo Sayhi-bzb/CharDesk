@@ -2,37 +2,22 @@ import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
 import { galleryFontSelect } from "./helpers/gallery-font-select";
 
-const navigationGroups = [
-  {
-    name: "Components",
-    links: [
-      ["Button", "#/components/button"],
-      ["Badge", "#/components/badge"],
-      ["Select", "#/components/select"],
-      ["Combobox", "#/components/combobox"],
-      ["Slider", "#/components/slider"],
-      ["Checkbox", "#/components/checkbox"],
-      ["Input", "#/components/input"],
-      ["ScrollArea", "#/components/scroll-area"],
-      ["Toggle", "#/components/toggle"],
-      ["Progress", "#/components/progress"],
-      ["Radio", "#/components/radio"],
-      ["Accordion", "#/components/accordion"],
-      ["Dialog", "#/components/dialog"],
-    ],
-  },
-  {
-    name: "Primitives",
-    links: [
-      ["Text", "#/components/text"],
-      ["Box", "#/components/box"],
-      ["Separator", "#/components/separator"],
-    ],
-  },
-  {
-    name: "Collections",
-    links: [["List", "#/components/list"]],
-  },
+const navigationLinks = [
+  ["Button", "#/components/button"],
+  ["Badge", "#/components/badge"],
+  ["Select", "#/components/select"],
+  ["Combobox", "#/components/combobox"],
+  ["Slider", "#/components/slider"],
+  ["Checkbox", "#/components/checkbox"],
+  ["Input", "#/components/input"],
+  ["ScrollArea", "#/components/scroll-area"],
+  ["Toggle", "#/components/toggle"],
+  ["Progress", "#/components/progress"],
+  ["Radio", "#/components/radio"],
+  ["Accordion", "#/components/accordion"],
+  ["Dialog", "#/components/dialog"],
+  ["Tabs", "#/components/tabs"],
+  ["Separator", "#/components/separator"],
 ] as const;
 
 test("component catalog drives concise, addressable documentation", async ({ page }) => {
@@ -40,14 +25,12 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   const nav = page.getByRole("navigation", { name: "Cell UI" });
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
   await expect(page.locator(".gallery-brand")).toHaveAttribute("href", "#/components/button");
-  await expect(nav.getByRole("link")).toHaveCount(17);
-  for (const groupDefinition of navigationGroups) {
-    const group = nav.getByRole("group", { name: groupDefinition.name });
-    await expect(group).toBeVisible();
-    await expect(group.getByRole("link")).toHaveText(groupDefinition.links.map(([name]) => name));
-    for (const [name, href] of groupDefinition.links) {
-      await expect(group.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
-    }
+  const group = nav.getByRole("group", { name: "Components" });
+  await expect(nav.getByRole("group")).toHaveCount(1);
+  await expect(nav.getByRole("link")).toHaveCount(15);
+  await expect(group.getByRole("link")).toHaveText(navigationLinks.map(([name]) => name));
+  for (const [name, href] of navigationLinks) {
+    await expect(group.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
   }
   await expect(nav.getByRole("link", { name: "Button", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("heading", { name: "Preview" })).toBeVisible();
@@ -62,8 +45,10 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("heading", { name: "Distribution" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Usage" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "API" })).toBeVisible();
-  await expect(page.getByText("private workspace package", { exact: false })).toBeVisible();
-  await expect(page.getByText("not published to npm", { exact: false })).toBeVisible();
+  await expect(page.getByRole("link", { name: "GitHub Registry item" })).toHaveAttribute(
+    "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#source-installation",
+  );
+  await expect(page.getByText("Fresh-project installation awaits", { exact: false })).toBeVisible();
   const codeBlocks = page.locator(".docs-code");
   await expect(codeBlocks).toHaveCount(2);
   for (const codeBlock of await codeBlocks.all()) {
@@ -80,12 +65,11 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(galleryFontSelect(page).locator("canvas")).toHaveCount(1);
   await expect(page.locator("#core, #complex, #editor, #overlay, #virtualization")).toHaveCount(0);
 
-  await nav.getByRole("link", { name: "Box", exact: true }).click();
-  await expect(page).toHaveURL(/#\/components\/box$/);
-  await expect(page.getByRole("heading", { name: "Box", level: 1 })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Box", exact: true })).toHaveAttribute("aria-current", "page");
-  await expect(page.locator('[data-cell-probe="component-box"]')).toBeVisible();
-  await expect(page.getByRole("button", { name: "variant", exact: true })).toBeAttached();
+  await nav.getByRole("link", { name: "Tabs", exact: true }).click();
+  await expect(page).toHaveURL(/#\/components\/tabs$/);
+  await expect(page.getByRole("heading", { name: "Tabs", level: 1 })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Tabs", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator('[data-cell-probe="component-tabs"]')).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
 
@@ -157,6 +141,14 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });
 
+test("removed Gallery pages do not leave navigable component routes", async ({ page }) => {
+  for (const slug of ["text", "box", "list"]) {
+    await page.goto(`/#/components/${slug}`);
+    await expect(page.getByRole("heading", { name: "Component not found" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Cell UI" })).toHaveCount(0);
+  }
+});
+
 test("unknown component routes fail honestly", async ({ page }) => {
   await page.goto("/#/components/missing");
   await expect(page.getByRole("heading", { name: "Component not found" })).toBeVisible();
@@ -179,7 +171,7 @@ test("Gallery DOM contours and dividers stay 2px without narrow overflow", async
 });
 
 test("Text and Box expose Cell-native content and local variants", async ({ page }) => {
-  await page.goto("/#/components/text");
+  await page.goto("/#/__fixtures/text");
   const text = await readCellProbe(page.locator('[data-cell-probe="component-text"]'));
   for (const line of [
     "◆ Plain text · READY",
@@ -198,7 +190,7 @@ test("Text and Box expose Cell-native content and local variants", async ({ page
     .map((cell) => cell.y));
   expect(wrappedRows.size).toBeGreaterThan(1);
 
-  await page.goto("/#/components/box");
+  await page.goto("/#/__fixtures/box");
   const boxSurface = page.getByLabel("Box component");
   const initialBox = await readCellProbe(boxSurface);
   expect(initialBox.text).toContain("Block");
@@ -623,7 +615,7 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
 });
 
 test("Cell Range clears when Preview focus moves outside its Surface", async ({ page }) => {
-  await page.goto("/#/components/text");
+  await page.goto("/#/__fixtures/text");
   const surface = page.getByLabel("Text component");
   const canvas = surface.locator("canvas");
   const probe = await readCellProbe(surface);
@@ -642,7 +634,7 @@ test("Cell Range clears when Preview focus moves outside its Surface", async ({ 
   };
 
   await selectRange();
-  await page.getByRole("heading", { name: "Text", level: 1 }).click();
+  await page.getByRole("heading", { name: "Cell UI Fixture", level: 1 }).click();
   await expect(surface).not.toHaveAttribute("data-cell-range");
 
   await selectRange();
@@ -651,7 +643,7 @@ test("Cell Range clears when Preview focus moves outside its Surface", async ({ 
 });
 
 test("List shares focus, selection, disabled state, and semantic actions", async ({ page }) => {
-  await page.goto("/#/components/list");
+  await page.goto("/#/__fixtures/list");
   const surface = page.getByLabel("List component");
   const probe = await readCellProbe(surface);
   const betaCells = probe.cells.filter((cell) => cell.ownerId === "component-list-beta")

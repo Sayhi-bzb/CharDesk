@@ -84,8 +84,12 @@
       "project": ["src/**/*.{ts,tsx}", "*.config.ts"]
     },
     "apps/cell-ui": {
-      "entry": ["src/main.tsx", "src/**/*.test.ts", "src/**/*.dom.test.tsx", "e2e/**/*.ts", "*.config.ts"],
+      "entry": ["src/main.tsx", "src/component-props.typecheck.ts", "src/**/*.test.ts", "src/**/*.dom.test.tsx", "e2e/**/*.ts", "*.config.ts"],
       "project": ["src/**/*.{ts,tsx}", "e2e/**/*.ts", "*.config.ts"]
+    },
+    "packages/cell-ui": {
+      "entry": ["src/index.ts", "src/browser.tsx", "src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.dom.test.ts", "src/**/*.dom.test.tsx", "vitest.config.ts", "vitest.browser.config.ts"],
+      "project": ["src/**/*.{ts,tsx}", "*.config.ts"]
     }
   },
   "include": [

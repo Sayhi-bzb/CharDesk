@@ -1,6 +1,6 @@
 import type { SelectionPreviewController } from "../preview/selectionPreviewController";
 
-export type DragResetExecutor = {
+type DragResetExecutor = {
   clearScratch: () => void;
   clearSelectionPreview: () => void;
   clearStaticRangeMovePreview: () => void;
@@ -10,7 +10,7 @@ type DragResetController = {
   reset: () => void;
 };
 
-export const executeDragReset = (executor: DragResetExecutor): void => {
+const executeDragReset = (executor: DragResetExecutor): void => {
   executor.clearScratch();
   executor.clearSelectionPreview();
   executor.clearStaticRangeMovePreview();

@@ -3,7 +3,7 @@ import type { Point } from "@/shared/types";
 import type { CanvasLinkHit } from "../core/linkHitTesting";
 import { resolveCanvasMoveDecision, type CanvasMoveDecision } from "./moveInteraction";
 
-export type CanvasMoveExecutor = {
+type CanvasMoveExecutor = {
   updateColorPickerHover: (point: Point | null) => void;
   updateLinkHover: (hit: CanvasLinkHit | null) => void;
   setHoveredGrid: (point: Point | null) => void;
@@ -12,7 +12,7 @@ export type CanvasMoveExecutor = {
 
 export const createCanvasMoveExecutor = (executor: CanvasMoveExecutor): CanvasMoveExecutor => executor;
 
-export const executeCanvasMoveDecision = (
+const executeCanvasMoveDecision = (
   decision: CanvasMoveDecision,
   executor: CanvasMoveExecutor
 ): void => {
