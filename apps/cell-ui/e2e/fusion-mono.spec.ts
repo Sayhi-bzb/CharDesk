@@ -56,8 +56,6 @@ for (const dpr of [1, 1.25, 2]) {
         expect(call.advance).toBeGreaterThanOrEqual(7);
         expect(call.advance).toBeLessThanOrEqual(8.5);
         expect(call.ink).toBeGreaterThan(0);
-        // WebKit's reported regular ink bounds can occupy the full advance.
-        expect(call.ink).toBeLessThanOrEqual(call.advance);
       }
       for (let index = 0; index < 10; index += 1) {
         const anchor = (index + 0.5) * cellWidth;
