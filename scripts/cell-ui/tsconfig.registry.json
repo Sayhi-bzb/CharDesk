@@ -1,5 +1,13 @@
 {
   "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@chardesk/cell-core": ["./packages/cell-core/src/index.ts"],
+      "@chardesk/fonts": ["./packages/fonts/src/index.ts"],
+      "@chardesk/protocol": ["./packages/protocol/src/index.ts"],
+      "@chardesk/rendering": ["./packages/rendering/src/index.ts"],
+      "@chardesk/rendering/canvas": ["./packages/rendering/src/canvas.ts"]
+    },
     "target": "ES2022",
     "lib": ["ES2022", "ES2022.Intl", "DOM", "DOM.Iterable"],
     "module": "NodeNext",
