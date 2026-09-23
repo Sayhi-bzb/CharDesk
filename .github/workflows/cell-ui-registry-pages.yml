@@ -1,0 +1,74 @@
+name: Publish Cell UI Registry
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - registry.json
+      - registry/**
+      - scripts/cell-ui/smoke-registry.mjs
+      - scripts/cell-ui/registry-pages-index.html
+      - .github/workflows/cell-ui-registry-pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cell-ui-registry-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Validate and build Registry
+        run: |
+          npx --yes shadcn@4.21.0 registry validate ./registry.json
+          npx --yes shadcn@4.21.0 build registry.json --output site
+          cp -R registry site/registry
+          cp scripts/cell-ui/registry-pages-index.html site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Verify hosted namespace installation
+        env:
+          CELL_UI_REGISTRY_ITEM: "@chardesk/cell-ui"
+          CELL_UI_REGISTRY_URL: "${{ needs.deploy.outputs.page_url }}{name}.json"
+        run: npm run cell-ui:registry:smoke
+      - name: Verify pinned GitHub source installation
+        env:
+          CELL_UI_REGISTRY_ITEM: Sayhi-bzb/CharDesk/cell-ui#${{ github.sha }}
+        run: npm run cell-ui:registry:smoke
