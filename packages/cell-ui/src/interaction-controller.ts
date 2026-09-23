@@ -19,6 +19,9 @@ const defaultClock: InteractionClock = {
   },
 };
 
+export const sameWidgetIdSet = (left: ReadonlySet<WidgetId>, right: ReadonlySet<WidgetId>) =>
+  left.size === right.size && [...left].every((id) => right.has(id));
+
 /** Host-independent ownership of interaction mechanisms and confirmation ordering. */
 export class CellInteractionController {
   readonly focus = new FocusManager();
@@ -46,6 +49,10 @@ export class CellInteractionController {
       focusVisible: this.#inputSource === "keyboard",
       hoveredId: this.#inputSource === "pointer" && !this.feedback.settling ? this.#hoveredId : null,
     });
+  }
+
+  get renderState() {
+    return { ...this.snapshot, manipulatingIds: this.gestures.manipulatingIds };
   }
 
   setInputSource(source: "keyboard" | "pointer"): void {

@@ -91,19 +91,20 @@ export function ComponentPlayground({
       <Root id={`${id}-root`} style={{ direction: layout.stacked ? "column" : "row" }}>
       <Box
         id={`${id}-preview`}
+        variant="ghost"
         style={{ width: layout.previewColumns, height: PLAYGROUND_ROWS }}
       >
-        <Box id={`${id}-preview-top`} style={{ flexGrow: 1 }} />
-        <Box id={`${id}-preview-row`} style={{ direction: "row" }}>
-          <Box id={`${id}-preview-left`} style={{ flexGrow: 1 }} />
+        <Box id={`${id}-preview-top`} variant="ghost" style={{ flexGrow: 1 }} />
+        <Box id={`${id}-preview-row`} variant="ghost" style={{ direction: "row" }}>
+          <Box id={`${id}-preview-left`} variant="ghost" style={{ flexGrow: 1 }} />
           {preview}
-          <Box id={`${id}-preview-right`} style={{ flexGrow: 1 }} />
+          <Box id={`${id}-preview-right`} variant="ghost" style={{ flexGrow: 1 }} />
         </Box>
-        <Box id={`${id}-preview-bottom`} style={{ flexGrow: 1 }} />
+        <Box id={`${id}-preview-bottom`} variant="ghost" style={{ flexGrow: 1 }} />
       </Box>
       {layout.stacked
         ? <Text id={`${id}-divider`} textStyle={{ dim: true }}>{"─".repeat(layout.viewport.width)}</Text>
-        : <Box id={`${id}-divider`} style={{ width: 1, height: PLAYGROUND_ROWS }}>
+        : <Box id={`${id}-divider`} variant="ghost" style={{ width: 1, height: PLAYGROUND_ROWS }}>
             {Array.from({ length: PLAYGROUND_ROWS }, (_, row) => (
               <Text id={`${id}-divider-${row}`} key={row} textStyle={{ dim: true }}>│</Text>
             ))}
@@ -111,20 +112,23 @@ export function ComponentPlayground({
       <ScrollArea
         id={controlsScrollId}
         label={`${label} properties`}
+        variant="ghost"
         scrollX={controlsScroll.x}
         scrollY={controlsScroll.y}
         style={{ width: layout.propsColumns, height: PLAYGROUND_ROWS }}
       >
         <Box
           id={`${id}-controls-alignment`}
+          variant="ghost"
           style={{
             width: layout.controlsExtentColumns,
             minHeight: layout.controlsMinRows,
           }}
         >
-          <Box id={`${id}-controls-before`} style={{ flexGrow: 1 }} />
+          <Box id={`${id}-controls-before`} variant="ghost" style={{ flexGrow: 1 }} />
           <Box
             id={`${id}-controls`}
+            variant="ghost"
             style={{
               width: layout.controlsInset + controlsColumns,
               paddingLeft: layout.controlsInset,
@@ -132,7 +136,7 @@ export function ComponentPlayground({
           >
             {controls}
           </Box>
-          <Box id={`${id}-controls-after`} style={{ flexGrow: 1 }} />
+          <Box id={`${id}-controls-after`} variant="ghost" style={{ flexGrow: 1 }} />
         </Box>
       </ScrollArea>
       </Root>

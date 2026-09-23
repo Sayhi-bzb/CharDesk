@@ -1,6 +1,7 @@
 import type { CellTextStyle } from "./types.js";
 import type { CellBorderShape } from "./border.js";
 import type { SeparatorVariant } from "./separator.js";
+import type { ProgressVariant } from "./progress.js";
 import {
   DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS,
   type CharDeskCellCursorPaintStyle,
@@ -12,6 +13,10 @@ export type CellCursorShape = CharDeskCellCursorShape;
 export type SeparatorGlyphs = Readonly<Record<
   SeparatorVariant,
   Readonly<Record<"horizontal" | "vertical", string>>
+>>;
+export type ProgressGlyphs = Readonly<Record<
+  ProgressVariant,
+  Readonly<Record<"filled" | "empty", string>>
 >>;
 
 export type CellCursorStyle = CharDeskCellCursorPaintStyle & Readonly<{
@@ -25,8 +30,7 @@ export type CellUiTheme = Readonly<{
   foreground: string;
   surfaceStyle: CellTextStyle;
   elevatedSurfaceStyle: CellTextStyle;
-  buttonPrimaryStyle: CellTextStyle;
-  buttonPrimaryHoverStyle: CellTextStyle;
+  buttonSolidStyle: CellTextStyle;
   borderStyle: CellTextStyle;
   borderShape: CellBorderShape;
   cursorStyle: CellCursorStyle;
@@ -39,8 +43,7 @@ export type CellUiTheme = Readonly<{
   toggleOffIndicator: string;
   toggleOnIndicator: string;
   collectionSelectedIndicator: string;
-  progressFilledTrack: string;
-  progressEmptyTrack: string;
+  progressGlyphs: ProgressGlyphs;
   separatorGlyphs: SeparatorGlyphs;
   checkboxIndeterminateIndicator: string;
   sliderFilledTrack: string;
@@ -72,8 +75,10 @@ const CLASSIC_MAC_SHARED_THEME = Object.freeze({
   toggleOffIndicator: "○",
   toggleOnIndicator: "●",
   collectionSelectedIndicator: "✓",
-  progressFilledTrack: "█",
-  progressEmptyTrack: "░",
+  progressGlyphs: Object.freeze({
+    solid: Object.freeze({ filled: "█", empty: "░" }),
+    outline: Object.freeze({ filled: "/", empty: "-" }),
+  }),
   separatorGlyphs: Object.freeze({
     line: Object.freeze({ horizontal: "─", vertical: "│" }),
     slash: Object.freeze({ horizontal: "/", vertical: "/" }),
@@ -98,8 +103,7 @@ export const CLASSIC_MAC_LIGHT_THEME: CellUiTheme = Object.freeze({
   foreground: "#000000",
   surfaceStyle: { backgroundColor: "#FFFFFF" },
   elevatedSurfaceStyle: { backgroundColor: "#E6E6E6" },
-  buttonPrimaryStyle: { color: "#FFFFFF", backgroundColor: "#000000" },
-  buttonPrimaryHoverStyle: { color: "#FFFFFF", backgroundColor: "#1A1A1A" },
+  buttonSolidStyle: { color: "#FFFFFF", backgroundColor: "#000000" },
   borderStyle: { color: "#000000" },
   cursorStyle: Object.freeze({
     colorMode: "inverse",
@@ -130,8 +134,7 @@ export const CLASSIC_MAC_DARK_THEME: CellUiTheme = Object.freeze({
   foreground: "#FFFFFF",
   surfaceStyle: { backgroundColor: "#000000" },
   elevatedSurfaceStyle: { backgroundColor: "#1A1A1A" },
-  buttonPrimaryStyle: { color: "#000000", backgroundColor: "#FFFFFF" },
-  buttonPrimaryHoverStyle: { color: "#000000", backgroundColor: "#E6E6E6" },
+  buttonSolidStyle: { color: "#000000", backgroundColor: "#FFFFFF" },
   borderStyle: { color: "#FFFFFF" },
   cursorStyle: Object.freeze({
     colorMode: "inverse",

@@ -1,18 +1,18 @@
 import { expect, it } from "vitest";
-import { paintBorder, type CellBlockVariant, type CellBorderShape, type CellFrame } from "./border.js";
-import { Box, CellBuffer, CellTextEditor, CellUiRuntime, CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME, Dialog, DialogTitle, Overlay, Root, ScrollArea, Text, TextArea, hitTestCell } from "./index.js";
+import { paintBorder, type CellBorderShape, type CellFrame } from "./border.js";
+import { Box, CellBuffer, CellTextEditor, CellUiRuntime, CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME, Dialog, DialogTitle, Overlay, Root, ScrollArea, Text, TextArea, hitTestCell, type SurfaceVariant } from "./index.js";
 
-it("preserves plain and elevated backgrounds independently of frame geometry", () => {
+it("preserves ghost and surface backgrounds independently of frame geometry", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 12, height: 3 } });
   const frame = runtime.render(<Root style={{ direction: "row" }}>
-    <Box id="plain" variant="plain" style={{ width: 4, height: 3 }}><Text>P</Text></Box>
-    <Box id="elevated" variant="elevated" style={{ width: 4, height: 3 }}><Text>R</Text></Box>
+    <Box id="ghost" variant="ghost" style={{ width: 4, height: 3 }}><Text>P</Text></Box>
+    <Box id="surface" variant="surface" style={{ width: 4, height: 3 }}><Text>R</Text></Box>
     <Box id="bordered" frame="bordered" style={{ width: 4, height: 3 }}><Text>B</Text></Box>
   </Root>);
 
-  expect(frame.layout.entries.get("plain")?.borderInsets)
+  expect(frame.layout.entries.get("ghost")?.borderInsets)
     .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
-  expect(frame.layout.entries.get("elevated")?.borderInsets)
+  expect(frame.layout.entries.get("surface")?.borderInsets)
     .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
   expect(frame.layout.entries.get("bordered")?.borderInsets)
     .toEqual({ top: 1, right: 1, bottom: 1, left: 1 });
@@ -22,14 +22,14 @@ it("preserves plain and elevated backgrounds independently of frame geometry", (
   runtime.dispose();
 });
 
-it("combines each Block background with and without a border", () => {
+it("combines each surface variant with and without a border", () => {
   for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     const runtime = new CellUiRuntime({ viewport: { width: 6, height: 3 }, theme });
-    for (const variant of ["plain", "elevated"] as CellBlockVariant[]) {
+    for (const variant of ["ghost", "surface"] as SurfaceVariant[]) {
       for (const frame of ["none", "bordered"] as CellFrame[]) {
         const result = runtime.render(<Root><Box id="block" variant={variant} frame={frame}
           style={{ width: 6, height: 3 }}><Text>B</Text></Box></Root>);
-        const expectedBackground = variant === "plain" ? undefined
+        const expectedBackground = variant === "ghost" ? undefined
           : theme.elevatedSurfaceStyle.backgroundColor;
         expect(result.layout.entries.get("block")?.borderInsets).toEqual({
           top: frame === "bordered" ? 1 : 0,
@@ -45,12 +45,12 @@ it("combines each Block background with and without a border", () => {
   }
 });
 
-it("uses elevated Overlay and elevated plus bordered Dialog defaults", () => {
+it("uses surface Overlay and surface plus bordered Dialog defaults", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 10, height: 5 } });
   const overlay = runtime.render(<Root>
     <Overlay id="overlay" position={{ x: 0, y: 0 }} style={{ width: 4, height: 3 }}><Text>O</Text></Overlay>
   </Root>);
-  expect(overlay.tree.nodes.get("overlay")?.blockVariant).toBe("elevated");
+  expect(overlay.tree.nodes.get("overlay")?.surfaceVariant).toBe("surface");
   expect(overlay.tree.nodes.get("overlay")?.frame).toBe("none");
   expect(overlay.layout.entries.get("overlay")?.borderInsets)
     .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
@@ -58,7 +58,7 @@ it("uses elevated Overlay and elevated plus bordered Dialog defaults", () => {
   const dialog = runtime.render(<Root>
     <Dialog id="dialog"><DialogTitle>Title</DialogTitle></Dialog>
   </Root>);
-  expect(dialog.tree.nodes.get("dialog")?.blockVariant).toBe("elevated");
+  expect(dialog.tree.nodes.get("dialog")?.surfaceVariant).toBe("surface");
   expect(dialog.tree.nodes.get("dialog")?.frame).toBe("bordered");
   expect(dialog.layout.entries.get("dialog")?.borderInsets)
     .toEqual({ top: 1, right: 1, bottom: 1, left: 1 });
@@ -67,31 +67,31 @@ it("uses elevated Overlay and elevated plus bordered Dialog defaults", () => {
   </Root>);
   expect(frameless.layout.entries.get("dialog")?.borderInsets)
     .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
-  expect(frameless.tree.nodes.get("dialog")?.blockVariant).toBe("elevated");
+  expect(frameless.tree.nodes.get("dialog")?.surfaceVariant).toBe("surface");
   runtime.dispose();
 });
 
-it("supports elevated backgrounds inside framed Overlay, Dialog, ScrollArea, and TextArea", () => {
+it("supports surface backgrounds inside framed Overlay, Dialog, ScrollArea, and TextArea", () => {
   const editor = new CellTextEditor({ value: "Hi", multiline: true });
   for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     for (const kind of ["overlay", "dialog", "scroll", "editor"] as const) {
       const runtime = new CellUiRuntime({ viewport: { width: 16, height: 8 }, theme });
       const element = kind === "overlay"
-        ? <Overlay id={kind} position={{ x: 0, y: 0 }} variant="elevated" frame="bordered"
+        ? <Overlay id={kind} position={{ x: 0, y: 0 }} variant="surface" frame="bordered"
             style={{ width: 8, height: 4 }}><Text>Hi</Text></Overlay>
         : kind === "dialog"
-          ? <Dialog id={kind} variant="elevated" frame="bordered" style={{ width: 8, height: 4 }}>
+          ? <Dialog id={kind} variant="surface" frame="bordered" style={{ width: 8, height: 4 }}>
               <DialogTitle>Hi</DialogTitle>
             </Dialog>
           : kind === "scroll"
-            ? <ScrollArea id={kind} variant="elevated" frame="bordered" style={{ width: 8, height: 4 }}>
+            ? <ScrollArea id={kind} variant="surface" frame="bordered" style={{ width: 8, height: 4 }}>
                 <Text>Hi</Text>
               </ScrollArea>
-            : <TextArea id={kind} variant="elevated" frame="bordered" state={editor.snapshot()}
+            : <TextArea id={kind} variant="surface" frame="bordered" state={editor.snapshot()}
                 style={{ width: 8, height: 4 }} />;
       const result = runtime.render(<Root>{element}</Root>);
       const bounds = result.scene.entries.get(kind)!.layoutBounds;
-      expect(result.tree.nodes.get(kind)).toMatchObject({ blockVariant: "elevated", frame: "bordered" });
+      expect(result.tree.nodes.get(kind)).toMatchObject({ surfaceVariant: "surface", frame: "bordered" });
       expect(result.buffer.get(bounds.x, bounds.y)).toMatchObject({
         text: "┌", style: { backgroundColor: theme.elevatedSurfaceStyle.backgroundColor },
       });
@@ -100,19 +100,19 @@ it("supports elevated backgrounds inside framed Overlay, Dialog, ScrollArea, and
   }
 });
 
-it("invalidates Block geometry and paint at their owning boundaries", () => {
+it("invalidates surface geometry and paint at their owning boundaries", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 6, height: 3 } });
-  const view = (variant: CellBlockVariant, frame: CellFrame = "none", borderShape: CellBorderShape = "square") => (
+  const view = (variant: SurfaceVariant, frame: CellFrame = "none", borderShape: CellBorderShape = "square") => (
     <Root><Box id="block" variant={variant} frame={frame} borderShape={borderShape} style={{ width: 6, height: 3 }} /></Root>
   );
-  runtime.render(view("plain"));
-  const elevated = runtime.render(view("elevated"));
-  expect(elevated.invalidation.work).toMatchObject({ layout: "reused", paint: "computed" });
-  const bordered = runtime.render(view("elevated", "bordered"));
+  runtime.render(view("ghost"));
+  const surface = runtime.render(view("surface"));
+  expect(surface.invalidation.work).toMatchObject({ layout: "reused", paint: "computed" });
+  const bordered = runtime.render(view("surface", "bordered"));
   expect(bordered.invalidation.work).toMatchObject({ layout: "computed", paint: "computed" });
-  const plain = runtime.render(view("plain", "bordered"));
-  expect(plain.invalidation.work).toMatchObject({ layout: "reused", paint: "computed" });
-  const rounded = runtime.render(view("plain", "bordered", "rounded"));
+  const ghost = runtime.render(view("ghost", "bordered"));
+  expect(ghost.invalidation.work).toMatchObject({ layout: "reused", paint: "computed" });
+  const rounded = runtime.render(view("ghost", "bordered", "rounded"));
   expect(rounded.invalidation.work).toMatchObject({ layout: "reused", paint: "computed" });
   expect(rounded.buffer.get(0, 0)?.text).toBe("╭");
   runtime.dispose();

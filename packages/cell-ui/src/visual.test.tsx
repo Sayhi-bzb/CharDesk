@@ -1,24 +1,24 @@
 import { expect, it } from "vitest";
-import { Button, Checkbox, Toggle, RadioGroup, RadioItem, Slider, RangeSlider, RangeSliderThumb, Root, Text, CellUiRuntime, CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME, INSTANT_CELL_FEEDBACK } from "./index.js";
+import { Box, Button, Checkbox, Toggle, RadioGroup, RadioItem, Slider, RangeSlider, RangeSliderThumb, Root, Text, CellUiRuntime, CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME, INSTANT_CELL_FEEDBACK } from "./index.js";
 import { resolvePrimitiveAppearance } from "./primitive-appearance.js";
 
 it("uses the same inverse pair for focus and press across the entire control", () => {
   for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
-    const primary = { color: "#ffeedd", backgroundColor: "#123456" };
+    const solid = { color: "#ffeedd", backgroundColor: "#123456" };
     const runtime = new CellUiRuntime({
       viewport: { width: 10, height: 1 },
-      theme: { ...theme, buttonPrimaryStyle: primary },
+      theme: { ...theme, buttonSolidStyle: solid },
       feedback: INSTANT_CELL_FEEDBACK,
     });
     const view = <Root id="root"><Button id="save"><Text>Save</Text></Button></Root>;
     const focused = runtime.render(view, { focusedId: "save", hoveredId: "save" });
     for (let x = 0; x < 6; x++) {
-      expect(focused.buffer.get(x, 0)?.style).toMatchObject({ color: primary.backgroundColor, backgroundColor: primary.color });
+      expect(focused.buffer.get(x, 0)?.style).toMatchObject({ color: solid.backgroundColor, backgroundColor: solid.color });
     }
     const pressed = runtime.render(view, { focusedId: "save", pressActiveId: "save", activationFlashId: "save" });
     for (let x = 0; x < 6; x++) {
       expect(pressed.buffer.get(x, 0)?.style).toMatchObject({
-        color: primary.backgroundColor, backgroundColor: primary.color,
+        color: solid.backgroundColor, backgroundColor: solid.color,
       });
     }
     expect(runtime.feedback.activationBlinkCount).toBe(0);
@@ -28,7 +28,34 @@ it("uses the same inverse pair for focus and press across the entire control", (
   }
 });
 
-it("disabled primary controls discard emphasis even with stale focus and press", () => {
+it("resolves nested ghost controls against their rendered ancestor surface", () => {
+  for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
+    const runtime = new CellUiRuntime({ viewport: { width: 10, height: 2 }, theme });
+    const view = <Root id="root">
+      <Box variant="surface" style={{ width: 10, height: 2 }}>
+        <Box variant="ghost">
+          <Button id="action" variant="ghost" style={{ width: 8 }}><Text>Run</Text></Button>
+        </Box>
+      </Box>
+    </Root>;
+    const idle = runtime.render(view);
+    expect(idle.buffer.get(0, 0)?.style.backgroundColor)
+      .toBe(theme.elevatedSurfaceStyle.backgroundColor);
+    expect(idle.buffer.get(7, 0)?.style.backgroundColor)
+      .toBe(theme.elevatedSurfaceStyle.backgroundColor);
+
+    const focused = runtime.render(view, { focusedId: "action", focusVisible: true });
+    for (let x = 0; x < 8; x++) {
+      expect(focused.buffer.get(x, 0)?.style).toMatchObject({
+        color: theme.elevatedSurfaceStyle.backgroundColor,
+        backgroundColor: theme.foreground,
+      });
+    }
+    runtime.dispose();
+  }
+});
+
+it("disabled solid controls discard emphasis even with stale focus and press", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 10, height: 1 } });
   const frame = runtime.render(
     <Root id="root"><Button id="save" disabled><Text>Save</Text></Button></Root>,

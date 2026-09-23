@@ -64,7 +64,7 @@ export function DialogExample() {
 }`,
     api: [
       { name: "id", type: "string", description: "Required stable dismiss-command target." },
-      { name: "variant?", type: '"plain" | "elevated"', description: "Background; elevated by default." },
+      { name: "variant?", type: '"surface" | "ghost"', description: "Local surface recipe; overrides the global recipe and otherwise defaults to surface." },
       { name: "frame?", type: '"none" | "bordered"', description: "Independent Cell border; bordered by default." },
       { name: "borderShape?", type: '"square" | "rounded"', description: "Border glyphs when framed." },
       { name: "modal", type: "boolean", description: "Trap focus and exclude background semantics; default true." },
@@ -124,19 +124,20 @@ export function ToggleExample() {
   },
   {
     slug: "progress", title: "Progress", group: "components", navigationOrder: 8,
-    description: "Display determinate progress in copyable block Cells.",
+    description: "Display determinate or indeterminate progress as a solid or outlined track.",
     probeId: "component-progress", Demo: ProgressComponentDemo,
     usage: `import { Progress, Root } from "@chardesk/cell-ui";
 import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function ProgressExample() {
   return <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
-    <Root><Progress label="Upload" value={60} /></Root>
+    <Root><Progress label="Upload" value={60} variant="outline" /></Root>
   </CellSurface>;
 }`,
     api: [
-      { name: "value", type: "number", description: "Clamped to 0…max; non-finite values display 0." },
+      { name: "value", type: "number | null", description: "Numbers are clamped to 0…max; null is indeterminate." },
       { name: "max?", type: "number", description: "Positive finite maximum; defaults to 100." },
+      { name: "variant?", type: '"solid" | "outline"', description: "Solid by default; outline reserves bracket Cells inside the declared width." },
       { name: "label / valueText?", type: "string", description: "Accessible name and optional value description." },
     ],
   },
@@ -238,12 +239,12 @@ export function BoxExample() {
   return (
     <CellSurface viewport={{ width: 36, height: 8 }} onCommand={() => {}}>
       <Root id="root">
-        <Box style={{ height: 8 }}>
-          <Text>Block backgrounds and frames</Text>
-          <Box style={{ direction: "row", gap: 1 }}>
-            <Box variant="plain" style={{ width: 10 }}><Text>plain</Text></Box>
-            <Box variant="elevated" style={{ width: 10 }}><Text>elevated</Text></Box>
-            <Box frame="bordered" style={{ width: 12 }}><Text>bordered</Text></Box>
+        <Box variant="ghost" style={{ height: 8 }}>
+          <Text>Surface variants and frames</Text>
+          <Box variant="ghost" style={{ direction: "row", gap: 1 }}>
+            <Box variant="ghost" style={{ width: 10 }}><Text>ghost</Text></Box>
+            <Box variant="surface" style={{ width: 10 }}><Text>surface</Text></Box>
+            <Box variant="ghost" frame="bordered" style={{ width: 12 }}><Text>bordered</Text></Box>
           </Box>
         </Box>
       </Root>
@@ -255,7 +256,7 @@ export function BoxExample() {
       { name: "label?", type: "string", description: "Accessible name when the Box owns meaning." },
       { name: "disabled?", type: "boolean", description: "Marks the widget disabled." },
       { name: "children?", type: "ReactNode", description: "Nested Cell descriptors." },
-      { name: "variant?", type: '"plain" | "elevated"', description: "Background; plain is transparent by default." },
+      { name: "variant?", type: '"surface" | "ghost"', description: "Local surface recipe; overrides the global recipe and otherwise defaults to ghost." },
       { name: "frame?", type: '"none" | "bordered"', description: "Optional one-Cell border, independent of background." },
       { name: "borderShape?", type: '"square" | "rounded"', description: "Border glyphs when frame is bordered." },
       { name: "style?", type: "CellLayoutStyle", description: "Cell size, direction, gap, and padding." },
@@ -284,7 +285,7 @@ export function ButtonExample() {
         <Button
           id="save"
           label="Save document"
-          variant="default"
+          variant="solid"
           size="default"
           focused={focusedId === "save"}
         >
@@ -297,7 +298,7 @@ export function ButtonExample() {
     api: [
       { name: "id?", type: "string", description: "Stable focus and activate command target." },
       { name: "label?", type: "string", description: "Accessible name; descendant text is the fallback." },
-      { name: "variant?", type: '"default" | "elevated" | "outline" | "ghost"', description: "Semantic surface treatment; defaults to default. Elevated uses the theme's elevated surface." },
+      { name: "variant?", type: '"solid" | "surface" | "outline" | "ghost"', description: "Local visual recipe; overrides the global recipe and otherwise defaults to solid." },
       { name: "size?", type: '"sm" | "default" | "lg"', description: "Horizontal Cell density; defaults to default." },
       { name: "disabled?", type: "boolean", description: "Prevents focus, hover, and activation." },
       { name: "focused?", type: "boolean", description: "Controlled logical focus state." },
@@ -369,7 +370,7 @@ export function SelectExample() {
 }`,
     api: [
       { name: "Select.style", type: "CellLayoutStyle", description: "Sets the shared Trigger and Content width." },
-      { name: "Select.variant?", type: '"plain" | "elevated"', description: "Shared Trigger and Content background; elevated by default." },
+      { name: "Select.variant?", type: '"surface" | "ghost"', description: "Shared surface recipe; the local value overrides the global recipe." },
       { name: "SelectTrigger.expanded", type: "boolean", description: "Controls disclosure state and chrome." },
       { name: "SelectTrigger.controlsId?", type: "string", description: "Relates the open Trigger to its listbox." },
       { name: "SelectContent", type: "Cell primitive", description: "Portaled listbox anchored to the Trigger." },
@@ -419,7 +420,7 @@ export function ComboboxExample() {
       { name: "ComboboxInput.style?", type: "CellSingleLineInputStyle", description: "Width constraints and flex behavior; height, padding, and border belong to the component." },
       { name: "ComboboxInput.activeDescendantId?", type: "string", description: "Relates keyboard navigation to one active option without moving focus." },
       { name: "ComboboxContent", type: "Cell primitive", description: "Portaled listbox anchored to the input." },
-      { name: "Combobox.variant?", type: '"plain" | "elevated"', description: "Shared Input and Content background; elevated by default." },
+      { name: "Combobox.variant?", type: '"surface" | "ghost"', description: "Shared surface recipe; the local value overrides the global recipe." },
       { name: "ComboboxContent.frame?", type: '"none" | "bordered"', description: "Optional one-Cell dropdown frame; none by default." },
       { name: "ComboboxItem.active?", type: "boolean", description: "Provisional keyboard or pointer candidate, separate from committed selection." },
       { name: "useCellComboboxState", type: "CellComboboxState", description: "Owns local filtering, editor state, active candidate, selection, opening, and scroll." },
@@ -560,7 +561,7 @@ export function InputExample() {
       { name: "label?", type: "string", description: "Accessible textbox name." },
       { name: "disabled?", type: "boolean", description: "Prevents focus and editing." },
       { name: "readOnly?", type: "boolean", description: "Allows focus and selection without editing." },
-      { name: "variant?", type: '"plain" | "elevated"', description: "Plain keeps the input background and underlines the active text selection; elevated uses the focused row highlight by default." },
+      { name: "variant?", type: '"surface" | "ghost"', description: "Local surface recipe; overrides the global recipe and otherwise defaults to surface." },
       { name: "style?", type: "CellSingleLineInputStyle", description: "Width constraints and flex behavior; height, padding, and border belong to the component." },
       { name: "textStyle?", type: "CellTextStyle", description: "Foreground, background, and emphasis." },
     ],
@@ -650,7 +651,7 @@ export function ScrollAreaExample() {
       { name: "label?", type: "string", description: "Accessible viewport name." },
       { name: "scrollX?", type: "number", description: "Controlled horizontal Cell offset." },
       { name: "scrollY?", type: "number", description: "Controlled vertical Cell offset." },
-      { name: "variant?", type: '"plain" | "elevated"', description: "Background; plain is transparent by default." },
+      { name: "variant?", type: '"surface" | "ghost"', description: "Local surface recipe; overrides the global recipe and otherwise defaults to ghost." },
       { name: "frame?", type: '"none" | "bordered"', description: "Optional one-Cell border, independent of background." },
       { name: "borderShape?", type: '"square" | "rounded"', description: "Border glyphs when the viewport is bordered." },
       { name: "style?", type: "CellLayoutStyle", description: "Viewport size and padding." },

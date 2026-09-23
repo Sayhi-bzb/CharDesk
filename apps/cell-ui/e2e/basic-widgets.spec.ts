@@ -27,8 +27,9 @@ test("Toggle keeps pressed state after mouse exit and supports keyboard release"
   await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
   const idle = await readCellProbe(surface);
   expect(idle.text).toContain("● Bold");
-  expect(idle.cells.filter((cell) => cell.ownerId === "component-toggle-bold"
-    && cell.style.backgroundColor !== undefined)).toHaveLength(0);
+  const toggleCells = idle.cells.filter((cell) => cell.ownerId === "component-toggle-bold");
+  expect(toggleCells.every((cell) => cell.style.backgroundColor === undefined
+    || cell.style.backgroundColor === "rgb(230, 230, 230)")).toBe(true);
   await toggle.focus();
   await page.keyboard.press("Space");
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
@@ -57,14 +58,56 @@ test("Radio mouse and arrow selection share one semantic group", async ({ page }
   await expect(group.getByRole("radio", { name: "Light", exact: true })).toBeFocused();
 });
 
-test("Progress preview has no redundant value control or empty props panel", async ({ page }) => {
+test("Progress loads continuously and switches to indeterminate animation", async ({ page }) => {
   await page.goto("/#/components/progress");
   const surface = page.locator('[data-cell-probe="component-progress"]');
   const bar = surface.getByRole("progressbar");
-  await expect(bar).toHaveAttribute("aria-valuenow", "60");
+  await expect(bar).toHaveAttribute("aria-valuenow", /\d+/);
+  const initialValue = await bar.getAttribute("aria-valuenow");
+  await expect.poll(() => bar.getAttribute("aria-valuenow")).not.toBe(initialValue);
   await expect(surface.getByRole("slider")).toHaveCount(0);
-  expect(await readCellText(surface)).toContain("█".repeat(12) + "░".repeat(8));
-  expect(await readCellText(surface)).not.toContain("│");
+  const progressCells = async () => (await readCellProbe(surface)).cells
+    .filter((cell) => cell.ownerId === "component-progress-bar")
+    .sort((left, right) => left.x - right.x);
+  const selectVariant = async (variant: "outline") => {
+    await surface.getByRole("button", { name: "variant" })
+      .evaluate((element: HTMLElement) => element.click());
+    await surface.getByRole("option", { name: variant })
+      .evaluate((element: HTMLElement) => element.click());
+    await expect(surface).toHaveAttribute("data-cell-confirmation-phase", /[0-3]/);
+    await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
+  };
+  await expect.poll(async () => (await progressCells()).map((cell) => cell.text).join(""))
+    .toMatch(/^[█░]{20}$/);
+  await selectVariant("outline");
+  await expect.poll(async () => {
+    const cells = await progressCells();
+    return cells.map((cell) => cell.text).join("");
+  }).toMatch(/^\[[/-]{18}\]$/);
+  const indeterminate = surface.getByRole("checkbox", { name: "indeterminate" });
+  await expect(indeterminate).toHaveAttribute("aria-checked", "false");
+  await indeterminate.evaluate((element: HTMLElement) => element.click());
+  await expect(indeterminate).toHaveAttribute("aria-checked", "true");
+  await expect(bar).not.toHaveAttribute("aria-valuenow");
+  await expect(bar).not.toHaveAttribute("aria-valuemin");
+  await expect(bar).not.toHaveAttribute("aria-valuemax");
+  const thumbOffsets = async () => {
+    const cells = (await readCellProbe(surface)).cells
+      .filter((cell) => cell.ownerId === "component-progress-bar");
+    const trackStart = Math.min(...cells.map((cell) => cell.x)) + 1;
+    return cells.filter((cell) => cell.text === "/")
+      .map((cell) => cell.x - trackStart)
+      .sort((left, right) => left - right);
+  };
+  await expect.poll(async () => {
+    const offsets = await thumbOffsets();
+    return offsets.includes(0) && offsets.some((offset) => offset >= 14);
+  }, { intervals: [40], timeout: 3_000 }).toBe(true);
+
+  await indeterminate.evaluate((element: HTMLElement) => element.click());
+  await expect(indeterminate).toHaveAttribute("aria-checked", "false");
+  await expect(bar).toHaveAttribute("aria-valuenow", "0");
+  await expect.poll(() => bar.getAttribute("aria-valuenow")).not.toBe("0");
 });
 
 test("Separator changes orientation through its Cell Select", async ({ page }) => {

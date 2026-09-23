@@ -21,11 +21,12 @@ import {
   type ButtonSize,
   type ButtonVariant,
 } from "./button.js";
+import { resolveSurfaceVariant, type SurfaceVariant } from "./surface-variant.js";
+import type { CellUiRecipe } from "./recipe.js";
 import { resolveSeparatorVariant, type SeparatorVariant } from "./separator.js";
+import { resolveProgressVariant, type ProgressVariant } from "./progress.js";
 import {
-  resolveCellBlockVariant,
   resolveCellFrame,
-  type CellBlockVariant,
   type CellBorderShape,
   type CellFrame,
 } from "./border.js";
@@ -47,19 +48,19 @@ const normalizeSingleLineInputStyle = (
   ...(style?.flexShrink !== undefined ? { flexShrink: style.flexShrink } : {}),
 });
 
-type BlockAppearanceProps = Readonly<{
-  variant?: CellBlockVariant;
+type SurfaceAppearanceProps = Readonly<{
+  variant?: SurfaceVariant;
   frame?: CellFrame;
   borderShape?: CellBorderShape;
 }>;
 
 export type RootProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
-export type BoxProps = CommonProps & BlockAppearanceProps & Readonly<{ style?: CellLayoutStyle }>;
+export type BoxProps = CommonProps & SurfaceAppearanceProps & Readonly<{ style?: CellLayoutStyle }>;
 export type AccordionProps = CommonProps & Readonly<{ style?: CellLayoutStyle }>;
 export type AccordionItemProps = Omit<AccordionProps, "id"> & Readonly<{ id: string; expanded?: boolean }>;
 export type AccordionTriggerProps = CommonProps & Readonly<{ focused?: boolean; style?: CellLayoutStyle; textStyle?: CellTextStyle }>;
 export type AccordionContentProps = AccordionProps;
-export type OverlayProps = CommonProps & BlockAppearanceProps & Readonly<{
+export type OverlayProps = CommonProps & SurfaceAppearanceProps & Readonly<{
   position: CellPoint;
   modal?: boolean;
   closeOnOutsideClick?: boolean;
@@ -111,9 +112,10 @@ export type ToggleProps = CommonProps & Readonly<{
 export type ProgressProps = Readonly<{
   id?: string;
   label: string;
-  value: number;
+  value: number | null;
   max?: number;
   valueText?: string;
+  variant?: ProgressVariant;
   style?: CellLayoutStyle;
 }>;
 export type SeparatorProps = Readonly<{
@@ -151,8 +153,7 @@ export type RangeSliderThumbProps = Readonly<{
   focused?: boolean;
   textStyle?: CellTextStyle;
 }>;
-export type SelectionSurfaceVariant = "plain" | "elevated";
-export type SelectProps = CommonProps & Readonly<{ style?: CellLayoutStyle; variant?: SelectionSurfaceVariant }>;
+export type SelectProps = CommonProps & Readonly<{ style?: CellLayoutStyle; variant?: SurfaceVariant }>;
 export type SelectTriggerProps = CommonProps & Readonly<{
   focused?: boolean;
   expanded?: boolean;
@@ -174,7 +175,7 @@ export type SelectItemProps = CommonProps & Readonly<{
   setSize?: number;
   style?: CellLayoutStyle;
 }>;
-export type ComboboxProps = CommonProps & Readonly<{ style?: CellLayoutStyle; variant?: SelectionSurfaceVariant }>;
+export type ComboboxProps = CommonProps & Readonly<{ style?: CellLayoutStyle; variant?: SurfaceVariant }>;
 export type ComboboxInputProps = Omit<TextInputProps, "variant"> & Readonly<{
   expanded?: boolean;
   controlsId?: string;
@@ -226,7 +227,7 @@ export type GridCellProps = CollectionItemProps & Readonly<{
   rowIndex: number;
   columnIndex: number;
 }>;
-export type ScrollAreaProps = CommonProps & BlockAppearanceProps & Readonly<{
+export type ScrollAreaProps = CommonProps & SurfaceAppearanceProps & Readonly<{
   scrollX?: number;
   scrollY?: number;
   style?: CellLayoutStyle;
@@ -239,10 +240,10 @@ export type TextEditorProps = CommonProps & Readonly<{
   textStyle?: CellTextStyle;
 }>;
 export type TextInputProps = Omit<TextEditorProps, "style"> & Readonly<{
-  variant?: SelectionSurfaceVariant;
+  variant?: SurfaceVariant;
   style?: CellSingleLineInputStyle;
 }>;
-export type TextAreaProps = TextEditorProps & BlockAppearanceProps;
+export type TextAreaProps = TextEditorProps & SurfaceAppearanceProps;
 
 type PrimitiveProps =
   | RootProps
@@ -350,9 +351,8 @@ export type WidgetDescriptor = Readonly<{
   explicitId: string | null;
   key: string | null;
   style: CellLayoutStyle;
-  blockVariant: CellBlockVariant;
+  surfaceVariant: SurfaceVariant | null;
   frame: CellFrame;
-  selectionVariant: SelectionSurfaceVariant | null;
   borderShape: CellBorderShape | null;
   text: string | null;
   textStyle: CellTextStyle;
@@ -365,6 +365,7 @@ export type WidgetDescriptor = Readonly<{
   pressed: boolean;
   radioValue: string | null;
   progress: import("./types.js").WidgetNode["progress"];
+  progressVariant: ProgressVariant;
   separatorVariant: SeparatorVariant;
   buttonVariant: ButtonVariant;
   buttonSize: ButtonSize;
@@ -408,7 +409,7 @@ const flattenChildren = (value: ReactNode, target: ReactNode[]): void => {
   target.push(value);
 };
 
-const describe = (element: ReactElement): WidgetDescriptor[] => {
+const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor[] => {
   if (element.type === Fragment) {
     const fragmentChildren: ReactNode[] = [];
     flattenChildren((element.props as { children?: ReactNode }).children, fragmentChildren);
@@ -416,7 +417,7 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
       if (!isValidElement(child)) {
         throw new TypeError("Cell UI fragments may only contain Cell UI primitives.");
       }
-      return describe(child);
+      return describe(child, recipe);
     });
   }
 
@@ -432,6 +433,9 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
   }
   const progressMax = typeof props.max === "number" && Number.isFinite(props.max) && props.max > 0
     ? props.max : 100;
+  const progressVariant = kind === "progress"
+    ? resolveProgressVariant(props.variant)
+    : "solid";
   if (
     (kind === "range-slider" || kind === "range-slider-thumb")
     && (typeof props.id !== "string" || props.id.length === 0 || typeof props.label !== "string" || props.label.length === 0)
@@ -453,13 +457,15 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
       if (!isValidElement(child)) {
         throw new TypeError(`${kind} children must be Cell UI primitives.`);
       }
-      return describe(child);
+      return describe(child, recipe);
     });
   }
   if (kind === "range-slider-thumb" && children.length > 0) {
     throw new TypeError("RangeSliderThumb cannot contain children.");
   }
-  if (element.type === DialogFooter) children.unshift(...describe(<Box style={{ flexGrow: 1 }} />));
+  if (element.type === DialogFooter) {
+    children.unshift(...describe(<Box style={{ flexGrow: 1 }} />, recipe));
+  }
 
   const position = props.position as CellPoint | undefined;
   const sliderRange = resolveCellSliderRange(
@@ -474,18 +480,26 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
   ) {
     throw new TypeError("Overlay position must use integer Cell coordinates.");
   }
-  const ownsBlockAppearance = element.type === Box
+  const ownsFramedSurface = element.type === Box
     || element.type === Overlay
     || element.type === Dialog
     || element.type === ScrollArea
     || element.type === TextArea;
-  const blockVariant = ownsBlockAppearance
-    ? resolveCellBlockVariant(
-        props.variant,
-        isDialog || kind === "overlay" ? "elevated" : "plain",
-      )
-    : "plain";
-  const frame = ownsBlockAppearance || kind === "select-content" || kind === "combobox-content"
+  const controlSurface = kind === "select"
+    || kind === "combobox"
+    || kind === "text-input";
+  const ownsSurface = ownsFramedSurface || controlSurface;
+  const defaultsToSurface = controlSurface
+    || isDialog
+    || kind === "overlay";
+  const surfaceVariant = ownsSurface
+      ? resolveSurfaceVariant(
+          props.variant,
+          (controlSurface ? recipe.defaultControlVariant : undefined)
+            ?? (defaultsToSurface ? "surface" : "ghost"),
+        )
+      : null;
+  const frame = ownsFramedSurface || kind === "select-content" || kind === "combobox-content"
     ? resolveCellFrame(props.frame, isDialog ? "bordered" : "none")
     : "none";
 
@@ -500,11 +514,8 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
         ? normalizeSingleLineInputStyle(props.style as CellLayoutStyle | undefined)
         : props.style as CellLayoutStyle | undefined),
     },
-    blockVariant,
+    surfaceVariant,
     frame,
-    selectionVariant: kind === "select" || kind === "combobox" || kind === "text-input"
-      ? props.variant === "plain" ? "plain" : "elevated"
-      : null,
     borderShape: frame === "bordered"
       && (props.borderShape === "square" || props.borderShape === "rounded")
       ? props.borderShape
@@ -521,11 +532,16 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
     radioValue: typeof props.value === "string" ? props.value : null,
     progress: kind === "progress" ? {
       max: progressMax,
-      value: Number.isFinite(props.value) ? Math.max(0, Math.min(props.value as number, progressMax)) : 0,
+      value: props.value === null
+        ? null
+        : Number.isFinite(props.value) ? Math.max(0, Math.min(props.value as number, progressMax)) : 0,
       valueText: typeof props.valueText === "string" ? props.valueText : undefined,
     } : null,
+    progressVariant,
     separatorVariant: kind === "separator" ? resolveSeparatorVariant(props.variant) : "line",
-    buttonVariant: kind === "button" ? resolveButtonVariant(props.variant) : "default",
+    buttonVariant: kind === "button"
+      ? resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")
+      : "solid",
     buttonSize: kind === "button" ? resolveButtonSize(props.size) : "default",
     sliderValue: kind === "range-slider-thumb"
       ? typeof props.value === "number" ? props.value : sliderRange.min
@@ -570,10 +586,11 @@ const describe = (element: ReactElement): WidgetDescriptor[] => {
 };
 
 export const createWidgetDescriptor = (
-  value: ReactElement<RootProps> | null
+  value: ReactElement<RootProps> | null,
+  recipe: CellUiRecipe = {},
 ): WidgetDescriptor | null => {
   if (value === null) return null;
-  const descriptors = describe(value);
+  const descriptors = describe(value, recipe);
   const root = descriptors[0];
   if (descriptors.length !== 1 || root?.kind !== "root") {
     throw new TypeError("A Cell UI render must contain exactly one Root descriptor.");

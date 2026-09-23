@@ -2,7 +2,9 @@ export { CellBuffer } from "./buffer.js";
 export { Dialog, DialogTitle, DialogDescription, DialogFooter } from "./react.js";
 export type { DialogProps, DialogTitleProps, DialogDescriptionProps, DialogFooterProps } from "./react.js";
 export { Combobox, ComboboxInput, ComboboxContent, ComboboxItem } from "./react.js";
-export type { ComboboxProps, ComboboxInputProps, ComboboxContentProps, ComboboxItemProps, SelectionSurfaceVariant } from "./react.js";
+export type { ComboboxProps, ComboboxInputProps, ComboboxContentProps, ComboboxItemProps } from "./react.js";
+export type { SurfaceVariant } from "./surface-variant.js";
+export type { CellUiRecipe } from "./recipe.js";
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./react.js";
 export type { AccordionProps, AccordionItemProps, AccordionTriggerProps, AccordionContentProps } from "./react.js";
 export { createCellBufferSource, createCellUiRenderFrame } from "./frame.js";
@@ -77,7 +79,8 @@ export {
 export type { CellCursorShape, CellCursorStyle, CellUiTheme } from "./theme.js";
 export { nextCellCheckboxState } from "./checkbox.js";
 export type { ButtonSize, ButtonVariant } from "./button.js";
-export type { CellBlockVariant, CellBorderShape, CellFrame } from "./border.js";
+export type { ProgressVariant } from "./progress.js";
+export type { CellBorderShape, CellFrame } from "./border.js";
 export {
   createCellRangeSnapshot,
   equalCellRangeSnapshot,

@@ -19,8 +19,13 @@ import { thumbGlyph } from "./scrollbar.js";
 import { paintBorder } from "./border.js";
 import { isActionableKind } from "./widget-capabilities.js";
 import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
-import { checkboxChromeMetrics } from "./checkbox.js";
 import { collectionChromeMetrics } from "./collection-chrome.js";
+import {
+  inlineControlChromeGeometry,
+  inlineControlChromeMetrics,
+} from "./inline-control-chrome.js";
+import { hasInlineOutline, inlineOutlineEdges } from "./inline-outline.js";
+import { indeterminateProgressRanges } from "./progress.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
 
@@ -144,6 +149,23 @@ export const paintScene = (
     if (options.layer === "overlay" && entry.layer === 0) continue;
     const visual = resolveWidgetVisual(tree, node, theme);
     const { style } = visual;
+    const inlineChromeMetrics = inlineControlChromeMetrics(node);
+    const ownerViewport = node.parentId
+      ? scene.entries.get(node.parentId)?.scrollMetrics?.viewport
+      : undefined;
+    const outlined = hasInlineOutline(node);
+    const outlineInset = outlined ? 1 : 0;
+    const chromeRight = node.kind === "select-item" || node.kind === "combobox-item"
+      ? Math.min(
+          entry.decorationBounds.x + entry.decorationBounds.width,
+          ownerViewport ? ownerViewport.x + ownerViewport.width : Number.POSITIVE_INFINITY,
+        )
+      : entry.decorationBounds.x + entry.decorationBounds.width - outlineInset;
+    const inlineChrome = inlineControlChromeGeometry(
+      inlineChromeMetrics,
+      entry.decorationBounds.x + outlineInset,
+      chromeRight,
+    );
     for (const region of regions) {
       const outerClip = intersectSceneRects(entry.outerClip, region);
       if (!nonEmpty(outerClip)) continue;
@@ -176,9 +198,12 @@ export const paintScene = (
           outerClip
         );
       }
-      if (node.kind === "button" && node.buttonVariant === "outline" && entry.layoutBounds.width >= 2) {
+      const outline = outlined
+        ? inlineOutlineEdges(entry.layoutBounds.x, entry.layoutBounds.x + entry.layoutBounds.width)
+        : null;
+      if (outline) {
         buffer.writeGrapheme(
-          entry.layoutBounds.x,
+          outline.left,
           entry.layoutBounds.y,
           "[",
           id,
@@ -187,7 +212,7 @@ export const paintScene = (
           "over"
         );
         buffer.writeGrapheme(
-          entry.layoutBounds.x + entry.layoutBounds.width - 1,
+          outline.right,
           entry.layoutBounds.y,
           "]",
           id,
@@ -238,6 +263,19 @@ export const paintScene = (
       }
 
       // Decoration: interaction affordances and scrollbars remain topmost for this Widget.
+      for (const guardX of [inlineChrome.leadingGuardX, inlineChrome.trailingGuardX]) {
+        if (guardX !== null) {
+          buffer.writeGrapheme(
+            guardX,
+            entry.decorationBounds.y,
+            " ",
+            id,
+            style,
+            decorationClip,
+            "over",
+          );
+        }
+      }
       if ((node.kind === "list-item" || node.kind === "tree-item" || node.kind === "grid-cell") && node.selected) {
         const offset = collectionChromeMetrics(node).selectionOffset;
         buffer.writeGrapheme(entry.decorationBounds.x + offset, entry.decorationBounds.y,
@@ -258,39 +296,72 @@ export const paintScene = (
         );
       }
       if (node.kind === "toggle") {
-        const bounds = entry.decorationBounds;
-        buffer.writeGrapheme(bounds.x, bounds.y,
-          node.pressed ? theme.toggleOnIndicator : theme.toggleOffIndicator,
-          id, style, decorationClip, "over");
+        const indicator = inlineChrome.leadingIndicator;
+        if (indicator) {
+          buffer.writeGrapheme(
+            indicator.x,
+            entry.decorationBounds.y,
+            node.pressed ? theme.toggleOnIndicator : theme.toggleOffIndicator,
+            id,
+            style,
+            decorationClip,
+            "over",
+          );
+        }
       }
       if (node.kind === "progress" || node.kind === "separator") {
         const bounds = entry.decorationBounds;
         const vertical = node.kind === "separator" && node.orientation === "vertical";
-        const length = vertical ? bounds.height : bounds.width;
-        const filled = node.progress ? Math.floor(length * node.progress.value / node.progress.max) : 0;
+        const progressOutlineInset = node.kind === "progress" && outline ? 1 : 0;
+        const trackX = bounds.x + progressOutlineInset;
+        const length = vertical
+          ? bounds.height
+          : Math.max(0, bounds.width - progressOutlineInset * 2);
+        const progressRanges = node.progress?.value === null
+          ? indeterminateProgressRanges(length, node.progressAnimationTimeMs)
+          : null;
+        const filled = node.progress && node.progress.value !== null
+          ? Math.floor(length * node.progress.value / node.progress.max)
+          : 0;
         const separatorGlyph = node.kind === "separator"
           ? theme.separatorGlyphs[node.separatorVariant][vertical ? "vertical" : "horizontal"]
           : null;
+        const progressGlyphs = theme.progressGlyphs[node.progressVariant];
         for (let offset = 0; offset < length; offset += 1) {
-          buffer.writeGrapheme(bounds.x + (vertical ? 0 : offset), bounds.y + (vertical ? offset : 0),
+          buffer.writeGrapheme(trackX + (vertical ? 0 : offset), bounds.y + (vertical ? offset : 0),
             node.kind === "separator" ? separatorGlyph ?? theme.separatorGlyphs.line.horizontal
-              : offset < filled ? theme.progressFilledTrack : theme.progressEmptyTrack,
+              : progressRanges
+                ? progressRanges.some((range) =>
+                    offset >= range.start && offset < range.start + range.length)
+                  ? progressGlyphs.filled
+                  : progressGlyphs.empty
+                : offset < filled ? progressGlyphs.filled : progressGlyphs.empty,
             id, node.kind === "separator" ? { ...style, color: theme.borderStyle.color } : style,
             decorationClip, "over");
         }
       }
       if (node.kind === "checkbox" || node.kind === "radio-item") {
-        const x = entry.decorationBounds.x
-          + checkboxChromeMetrics(node.children.length > 0).indicatorOffset;
+        const geometry = inlineChrome.leadingIndicator;
         const radio = node.kind === "radio-item";
-        const indicator = radio ? node.checked ? theme.radioCheckedIndicator : " " : node.checked === "indeterminate"
+        const mark = radio ? node.checked ? theme.radioCheckedIndicator : " " : node.checked === "indeterminate"
           ? theme.checkboxIndeterminateIndicator
           : node.checked
             ? theme.checkboxCheckedIndicator
             : theme.checkboxUncheckedIndicator;
-        buffer.writeGrapheme(x, entry.decorationBounds.y, radio ? "(" : "[", id, style, decorationClip, "over");
-        buffer.writeGrapheme(x + 1, entry.decorationBounds.y, indicator, id, style, decorationClip, "over");
-        buffer.writeGrapheme(x + 2, entry.decorationBounds.y, radio ? ")" : "]", id, style, decorationClip, "over");
+        const glyphs = [radio ? "(" : "[", mark, radio ? ")" : "]"];
+        if (geometry) {
+          for (let offset = 0; offset < geometry.width; offset += 1) {
+            buffer.writeGrapheme(
+              geometry.x + offset,
+              entry.decorationBounds.y,
+              glyphs[offset]!,
+              id,
+              style,
+              decorationClip,
+              "over",
+            );
+          }
+        }
       }
       if (node.kind === "slider") {
         const track = entry.decorationBounds;
@@ -352,35 +423,32 @@ export const paintScene = (
           id, style, decorationClip, "over");
       }
       if (node.kind === "select-trigger" || node.kind === "combobox-input") {
-        buffer.writeGrapheme(
-          entry.decorationBounds.x + entry.decorationBounds.width - 1,
-          entry.decorationBounds.y,
-          node.expanded ? theme.selectExpandedIndicator : theme.selectCollapsedIndicator,
-          id,
-          style,
-          decorationClip,
-          "over"
-        );
+        const indicator = inlineChrome.trailingIndicator;
+        if (indicator) {
+          buffer.writeGrapheme(
+            indicator.x,
+            entry.decorationBounds.y,
+            node.expanded ? theme.selectExpandedIndicator : theme.selectCollapsedIndicator,
+            id,
+            style,
+            decorationClip,
+            "over"
+          );
+        }
       }
       if ((node.kind === "select-item" || node.kind === "combobox-item") && node.selected) {
-        const ownerViewport = node.parentId
-          ? scene.entries.get(node.parentId)?.scrollMetrics?.viewport
-          : undefined;
-        const visibleRight = Math.min(
-          entry.decorationBounds.x + entry.decorationBounds.width,
-          ownerViewport
-            ? ownerViewport.x + ownerViewport.width
-            : Number.POSITIVE_INFINITY
-        );
-        buffer.writeGrapheme(
-          visibleRight - 1,
-          entry.decorationBounds.y,
-          theme.selectSelectedIndicator,
-          id,
-          style,
-          decorationClip,
-          "over"
-        );
+        const indicator = inlineChrome.trailingIndicator;
+        if (indicator) {
+          buffer.writeGrapheme(
+            indicator.x,
+            entry.decorationBounds.y,
+            theme.selectSelectedIndicator,
+            id,
+            style,
+            decorationClip,
+            "over"
+          );
+        }
       }
       if (node.kind === "tab" && node.selected && entry.decorationBounds.height > 1) {
         const y = entry.decorationBounds.y + entry.decorationBounds.height - 1;

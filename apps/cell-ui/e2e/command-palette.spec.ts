@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 test("Palette text retains its elevated surface background in both themes", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/overlay");
   const surface = page.locator('[data-cell-probe="overlay"]');
   const canvas = surface.locator("canvas").first();
   for (const theme of ["light", "dark"] as const) {
@@ -73,7 +73,7 @@ const clickCell = async (page: Page, canvas: Locator, x: number, y: number) => {
 };
 
 test("blank clicks and external blur cannot retain Palette pointer capture", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/overlay");
   const surface = page.locator('[data-cell-probe="overlay"]');
   const canvas = surface.locator("canvas").first();
   const overlayCanvas = surface.locator('[data-cell-overlay-root="command-palette"]');
@@ -97,7 +97,7 @@ test("blank clicks and external blur cannot retain Palette pointer capture", asy
 test("Command Palette owns its layer, focus scope, dismissal, and semantic actions", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/overlay");
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
 

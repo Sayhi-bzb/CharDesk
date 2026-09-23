@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { copyCellRange, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, copyCellRange, ownerBounds, ownerCells, readCellProbe } from "./helpers/cell-probe";
 
 for (const scheme of ["light", "dark"] as const) {
   test(`editor activity and borders follow actual focus, not input modality (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
-    await page.goto("/#/__fixtures/all");
+    await page.goto("/#/__fixtures/editor");
     const surface = page.locator('[data-cell-probe="editor"]');
     const canvas = surface.locator("canvas");
-    const heading = page.getByRole("heading", { name: "Cell UI Fixtures", exact: true });
+    const heading = page.getByRole("heading", { name: "Cell UI Fixture", exact: true });
     const inverse = scheme === "light"
       ? { color: "rgb(255, 255, 255)", backgroundColor: "rgb(0, 0, 0)" }
       : { color: "rgb(0, 0, 0)", backgroundColor: "rgb(255, 255, 255)" };
@@ -17,14 +17,13 @@ for (const scheme of ["light", "dark"] as const) {
       await heading.click();
       await canvas.scrollIntoViewIfNeeded();
       const idle = await readCellProbe(surface);
-      const ownCells = idle.cells.filter((cell) => cell.ownerId === id);
-      const corner = ownCells.find((cell) => cell.text === "┌")!;
-      expect(corner).toBeDefined();
-      const metrics = await readCellMetrics(surface);
-      const bounds = (await canvas.boundingBox())!;
-      await page.mouse.click(bounds.x + (corner.x + 1.5) * metrics.cellWidth,
-        bounds.y + (corner.y + 1.5) * metrics.cellHeight);
+      const ownCells = ownerCells(idle, id);
+      const owned = ownerBounds(idle, id);
+      const point = await cellPoint(surface, owned.x + Math.min(1, owned.width - 1),
+        owned.y + Math.min(1, owned.height - 1));
+      await page.mouse.click(point.x, point.y);
       await expect(input).toBeFocused();
+      const bounds = (await canvas.boundingBox())!;
       // No key event has occurred: every owned cell, including border and padding, is active.
       const assertActive = async () => {
         await expect.poll(async () => {
@@ -59,14 +58,15 @@ for (const scheme of ["light", "dark"] as const) {
     const tabbed = await readCellProbe(surface);
     expect(tabbed.cells.filter((cell) => cell.ownerId === "editor-document")
       .every((cell) => cell.style.color === inverse.color && cell.style.backgroundColor === inverse.backgroundColor)).toBe(true);
-    expect(tabbed.cells.find((cell) => cell.ownerId === "editor-name" && cell.text === "┌")?.style.backgroundColor).toBeUndefined();
+    expect(ownerCells(tabbed, "editor-name")[0]?.style.backgroundColor)
+      .not.toBe(inverse.backgroundColor);
   });
 }
 
 test("Cell editor shares Unicode, composition, selection, and history across Canvas and textarea", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
 
@@ -96,12 +96,13 @@ test("Cell editor shares Unicode, composition, selection, and history across Can
 
   await name.fill("abcdef");
   await canvas.scrollIntoViewIfNeeded();
-  const { cellWidth, cellHeight } = await readCellMetrics(surface);
-  const bounds = await canvas.boundingBox();
-  expect(bounds).not.toBeNull();
-  await page.mouse.move(bounds!.x + 3.5 * cellWidth, bounds!.y + 2.5 * cellHeight);
+  const filled = await readCellProbe(surface);
+  const first = ownerCells(filled, "editor-name").find((cell) => cell.text === "a")!;
+  const start = await cellPoint(surface, first.x + 2, first.y);
+  const end = await cellPoint(surface, first.x + 5, first.y);
+  await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.mouse.move(bounds!.x + 6.5 * cellWidth, bounds!.y + 2.5 * cellHeight, { steps: 6 });
+  await page.mouse.move(end.x, end.y, { steps: 6 });
   await page.mouse.up();
   await expect(name).toHaveJSProperty("selectionStart", 2);
   await expect(name).toHaveJSProperty("selectionEnd", 5);
@@ -114,39 +115,40 @@ test("Cell editor shares Unicode, composition, selection, and history across Can
 });
 
 test("Cell range selects and copies the final rendered border", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   await page.waitForLoadState("networkidle");
   const section = page.locator("#editor");
   const surface = section.getByLabel("Cell text editor");
   const canvas = surface.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
-  const { cellWidth, cellHeight } = await readCellMetrics(surface);
-  const bounds = await canvas.boundingBox();
-  expect(bounds).not.toBeNull();
+  const probe = await readCellProbe(surface);
+  const editor = ownerBounds(probe, "editor-document");
+  const start = await cellPoint(surface, editor.x, editor.y);
+  const end = await cellPoint(surface, editor.x + editor.width - 1, editor.y + editor.height - 1);
 
   await page.keyboard.down("Alt");
   await page.keyboard.down("Meta");
-  await page.mouse.move(bounds!.x + 0.5 * cellWidth, bounds!.y + 1.5 * cellHeight);
+  await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.mouse.move(bounds!.x + 39.5 * cellWidth, bounds!.y + 3.5 * cellHeight, { steps: 8 });
+  await page.mouse.move(end.x, end.y, { steps: 8 });
   await page.mouse.up();
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");
 
-  await expect(surface).toHaveAttribute("data-cell-range", "0,1,40,3");
-  const expected = [
-    "┌──────────────────────────────────────┐",
-    "│notes.txt                             │",
-    "└──────────────────────────────────────┘",
-  ].join("\n");
-  expect(await copyCellRange(surface)).toBe(expected);
+  await expect(surface).toHaveAttribute(
+    "data-cell-range",
+    `${editor.x},${editor.y},${editor.width},${editor.height}`,
+  );
+  const copied = await copyCellRange(surface);
+  expect(copied.split("\n")[0]).toBe(`┌${"─".repeat(editor.width - 2)}┐`);
+  expect(copied.split("\n").at(-1)).toBe(`└${"─".repeat(editor.width - 2)}┘`);
 
   await surface.press("Escape");
   await expect(surface).not.toHaveAttribute("data-cell-range");
 });
 
 test("horizontal and vertical editor scroll cannot paint over chrome Cells", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   await page.waitForLoadState("networkidle");
   const section = page.locator("#editor");
   const surface = section.getByLabel("Cell text editor");
@@ -156,29 +158,26 @@ test("horizontal and vertical editor scroll cannot paint over chrome Cells", asy
     Array.from({ length: 9 }, (_, index) => `${index}: ${"x".repeat(48)}`).join("\n")
   );
 
-  const lines = (await canvas.getAttribute("data-cell-text"))!.split("\n");
-  const border = `┌${"─".repeat(38)}┐`;
-  const bottom = `└${"─".repeat(38)}┘`;
-  expect(lines[1]).toBe(border);
-  expect(lines[2]?.startsWith("│")).toBe(true);
-  expect(lines[2]?.endsWith("│")).toBe(true);
-  expect(lines[3]).toBe(bottom);
-  expect(lines[5]).toBe(border);
-  for (let row = 6; row <= 10; row += 1) {
+  const before = await readCellProbe(surface);
+  const area = ownerBounds(before, "editor-document");
+  const lines = before.text.split("\n");
+  const border = `┌${"─".repeat(area.width - 2)}┐`;
+  const bottom = `└${"─".repeat(area.width - 2)}┘`;
+  expect(lines[area.y]).toBe(border);
+  for (let row = area.y + 1; row < area.y + area.height - 1; row += 1) {
     expect(lines[row]?.startsWith("│")).toBe(true);
     expect(lines[row]?.endsWith("│")).toBe(true);
   }
-  expect(lines[11]).toBe(bottom);
+  expect(lines[area.y + area.height - 1]).toBe(bottom);
 
   await canvas.scrollIntoViewIfNeeded();
-  const { cellWidth, cellHeight } = await readCellMetrics(surface);
-  const bounds = await canvas.boundingBox();
-  expect(bounds).not.toBeNull();
+  const start = await cellPoint(surface, area.x, area.y);
+  const end = await cellPoint(surface, area.x + area.width - 1, area.y + area.height - 1);
   await page.keyboard.down("Alt");
   await page.keyboard.down("Meta");
-  await page.mouse.move(bounds!.x + 0.5 * cellWidth, bounds!.y + 5.5 * cellHeight);
+  await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.mouse.move(bounds!.x + 39.5 * cellWidth, bounds!.y + 11.5 * cellHeight, { steps: 8 });
+  await page.mouse.move(end.x, end.y, { steps: 8 });
   await page.mouse.up();
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");

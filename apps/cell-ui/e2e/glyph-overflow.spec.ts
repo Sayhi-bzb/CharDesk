@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
 
 test("Nerd glyphs keep their aspect ratio while retaining one Cell", async ({ page }) => {
@@ -76,25 +76,31 @@ test("font ink crosses its Cell boundary without changing allocation", async ({ 
 });
 
 test("Gallery clears old ink after replacement, scrolling and closing an overlay", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
-  await page.evaluate(() => document.fonts.ready);
-  const editor = page.locator('[data-cell-probe="editor"]');
-  const input = page.getByRole("textbox", { name: "Document", exact: true });
-  await input.fill("→W█▀│".repeat(30));
-  await input.press("Home");
-  await input.fill("");
-  const overlay = page.locator('[data-cell-probe="overlay"]');
-  await overlay.focus(); await page.keyboard.press("Enter");
-  await expect(overlay.getByRole("dialog")).toHaveCount(1);
-  await page.keyboard.press("Escape");
-  for (const surface of [editor, overlay]) {
+  const assertStableRepaint = async (surface: Locator) => {
     expect((await readCellProbe(surface)).presentation?.glyphInkOverhang).toBeDefined();
-    const canvas = surface.locator("canvas");
+    const canvas = surface.locator("canvas").first();
     const before = await canvas.evaluate((node) => node.toDataURL());
     await canvas.evaluate(async (node) => {
       node.style.width = `${node.getBoundingClientRect().width + 1}px`;
       await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
     });
     expect(await canvas.evaluate((node) => node.toDataURL())).toBe(before);
-  }
+  };
+
+  await page.goto("/#/__fixtures/editor");
+  await page.evaluate(() => document.fonts.ready);
+  const editor = page.locator('[data-cell-probe="editor"]');
+  const input = page.getByRole("textbox", { name: "Document", exact: true });
+  await input.fill("→W█▀│".repeat(30));
+  await input.press("Home");
+  await input.fill("");
+  await assertStableRepaint(editor);
+
+  await page.evaluate(() => { location.hash = "/__fixtures/overlay"; });
+  const overlay = page.locator('[data-cell-probe="overlay"]');
+  await expect(overlay).toBeVisible();
+  await overlay.focus(); await page.keyboard.press("Enter");
+  await expect(overlay.getByRole("dialog")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await assertStableRepaint(overlay);
 });

@@ -15,6 +15,7 @@ import {
   auditSemanticSnapshot,
   commandForInput,
   createKeyInput,
+  extractCellRange,
 } from "./index.js";
 import { dismissCommandForFocusExit, topDismissableScopeId } from "./interaction.js";
 
@@ -40,27 +41,51 @@ const selectView = (open: boolean, focusedId = open ? "dark" : "theme-trigger") 
 );
 
 describe("Select", () => {
+  it("protects content between leading and trailing guard Cells", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 2 } });
+    const frame = runtime.render(<Root><Select id="theme" style={{ width: 20 }}>
+      <SelectTrigger id="trigger" label="Theme" expanded controlsId="content"><Text>Dark</Text></SelectTrigger>
+      <SelectContent id="content"><SelectItem id="dark" selected><Text>Dark</Text></SelectItem></SelectContent>
+    </Select></Root>);
+    expect(frame.layout.entries.get("trigger")?.paddingInsets)
+      .toEqual({ top: 0, right: 3, bottom: 0, left: 1 });
+    expect(frame.buffer.toText({ region: { x: 0, y: 0, width: 20, height: 1 } }))
+      .toBe(" Dark             ▴ ");
+    expect(frame.buffer.get(0, 0)).toMatchObject({ text: " ", ownerId: "trigger" });
+    expect(frame.buffer.get(18, 0)).toMatchObject({ text: "▴", ownerId: "trigger" });
+    expect(frame.buffer.get(19, 0)).toMatchObject({ text: " ", ownerId: "trigger" });
+    expect(extractCellRange(frame.buffer, { x: 0, y: 0, width: 20, height: 1 }))
+      .toBe(" Dark             ▴ ");
+    expect(frame.tree.nodes.get("content")?.frame).toBe("none");
+    expect(frame.buffer.get(0, 1)?.text).toBe(" ");
+    runtime.dispose();
+  });
+
   it("renders an elevated trigger and borderless listbox by default", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
     const closed = runtime.render(selectView(false), { focusedId: "theme-trigger" });
     expect(closed.buffer.toText({ trimEnd: true }).split("\n")[0])
-      .toBe(" Dark              ▾");
+      .toBe(" Dark             ▾");
     expect(closed.buffer.get(0, 0)).toMatchObject({
       ownerId: "theme-trigger",
       style: { backgroundColor: "#000000" },
     });
+    expect(closed.buffer.get(18, 0)).toMatchObject({ text: "▾", ownerId: "theme-trigger" });
+    expect(closed.buffer.get(19, 0)).toMatchObject({ text: " ", ownerId: "theme-trigger" });
 
     const open = runtime.render(selectView(true), { focusedId: "dark" });
     expect(open.buffer.toText({ trimEnd: true }).trimEnd()).toBe([
-      " Dark              ▴",
+      " Dark             ▴",
       " Light",
-      " Dark              ✓",
+      " Dark             ✓",
       " System",
     ].join("\n"));
+    expect(open.buffer.get(18, 2)).toMatchObject({ text: "✓", ownerId: "dark" });
+    expect(open.buffer.get(19, 2)).toMatchObject({ text: " ", ownerId: "dark" });
     expect(open.scene.entries.get("theme-content")?.layoutBounds)
       .toEqual({ x: 0, y: 1, width: 20, height: 3 });
-    expect(open.tree.nodes.get("theme-content")?.blockVariant).toBe("plain");
-    expect(open.tree.nodes.get("theme")?.selectionVariant).toBe("elevated");
+    expect(open.tree.nodes.get("theme-content")?.surfaceVariant).toBeNull();
+    expect(open.tree.nodes.get("theme")?.surfaceVariant).toBe("surface");
     expect(open.buffer.get(18, 1)?.style.backgroundColor).toBe("#E6E6E6");
     expect(open.buffer.get(18, 2)?.ownerId).toBe("dark");
     expect(open.buffer.get(18, 3)?.style.backgroundColor).toBe("#E6E6E6");
@@ -70,7 +95,7 @@ describe("Select", () => {
   for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     it(`binds Select background and dropdown frame independently (${theme.background})`, () => {
       const runtime = new CellUiRuntime({ viewport: { width: 20, height: 7 }, theme });
-      const view = (variant: "plain" | "elevated", frame: "none" | "bordered", backgroundColor?: string) => (
+      const view = (variant: "ghost" | "surface", frame: "none" | "bordered", backgroundColor?: string) => (
         <Root><Select id="theme" variant={variant} style={{ width: 18 }}>
           <SelectTrigger id="trigger" label="Theme" expanded><Text>Dark</Text></SelectTrigger>
           <SelectContent id="content" frame={frame} textStyle={backgroundColor ? { backgroundColor } : undefined}>
@@ -78,25 +103,25 @@ describe("Select", () => {
           </SelectContent>
         </Select></Root>
       );
-      for (const variant of ["plain", "elevated"] as const) {
+      for (const variant of ["ghost", "surface"] as const) {
         for (const frame of ["none", "bordered"] as const) {
           const result = runtime.render(view(variant, frame));
           const content = result.scene.entries.get("content")!.layoutBounds;
           expect(content.height).toBe(frame === "bordered" ? 3 : 1);
           expect(result.buffer.get(16, 0)?.style.backgroundColor)
-            .toBe(variant === "elevated" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
+            .toBe(variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
           expect(result.buffer.get(16, content.y + (frame === "bordered" ? 1 : 0))?.style.backgroundColor)
-            .toBe(variant === "elevated" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
+            .toBe(variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
         }
       }
-      const custom = runtime.render(view("plain", "none", "#abcdef"));
+      const custom = runtime.render(view("ghost", "none", "#abcdef"));
       expect(custom.buffer.get(16, 1)?.style.backgroundColor).toBe("#abcdef");
       runtime.dispose();
     });
 
     it(`keeps the Select trigger elevated inside a Block (${theme.background})`, () => {
       const runtime = new CellUiRuntime({ viewport: { width: 22, height: 3 }, theme });
-      const view = (disabled = false, backgroundColor?: string, variant: "plain" | "elevated" = "elevated") => <Root>
+      const view = (disabled = false, backgroundColor?: string, variant: "ghost" | "surface" = "surface") => <Root>
         <Box frame="bordered" style={{ width: 22, height: 3 }}>
           <Select id="theme" variant={variant} style={{ width: 20 }}>
             <SelectTrigger id="trigger" disabled={disabled} label="Theme"
@@ -124,11 +149,11 @@ describe("Select", () => {
       });
       const custom = runtime.render(view(false, "#abcdef"));
       expect(custom.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor).toBe("#abcdef");
-      const plain = runtime.render(view(false, undefined, "plain"));
-      expect(plain.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor)
+      const ghost = runtime.render(view(false, undefined, "ghost"));
+      expect(ghost.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor)
         .toBeUndefined();
-      const plainDisabled = runtime.render(view(true, undefined, "plain"));
-      expect(plainDisabled.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor)
+      const ghostDisabled = runtime.render(view(true, undefined, "ghost"));
+      expect(ghostDisabled.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor)
         .toBeUndefined();
       runtime.dispose();
     });
@@ -159,10 +184,10 @@ describe("Select", () => {
     expect(frame.scene.entries.get("theme-content")?.layoutBounds)
       .toEqual({ x: 0, y: 1, width: 20, height: 5 });
     expect(frame.buffer.toText({ trimEnd: true }).trimEnd()).toBe([
-      " Dark              ▴",
+      " Dark             ▴",
       "┌──────────────────┐",
       "│ Light            │",
-      "│ Dark            ✓│",
+      "│ Dark           ✓ │",
       "│ System           │",
       "└──────────────────┘",
     ].join("\n"));
@@ -241,7 +266,7 @@ describe("Select", () => {
 
     const scrolled = runtime.render(view(2), { focusedId: "font-5" });
     expect(scrolled.buffer.toText({ trimEnd: true })).toContain("Font 5");
-    expect(scrolled.buffer.toText({ trimEnd: true })).toContain("✓█");
+    expect(scrolled.buffer.toText({ trimEnd: true })).toContain("✓ █");
     expect(scrolled.buffer.toText({ trimEnd: true })).not.toMatch(/[┌┐└┘│─]/u);
     expect(scrolled.buffer.toText({ trimEnd: true }).split("\n")[2]).toContain("Maple");
     runtime.dispose();
@@ -312,11 +337,43 @@ describe("Select", () => {
     }]);
     expect(frame.scene.entries.get("size-content")?.scrollMetrics?.verticalTrack).toBeNull();
     expect(frame.buffer.toText({ trimEnd: true })).toContain([
-      " default      ✓",
+      " default     ✓",
       " sm",
       " lg",
     ].join("\n"));
     expect(frame.overlayBuffer.toText({ trimEnd: true })).not.toMatch(/[┌┐└┘│─]/u);
+    runtime.dispose();
+  });
+
+  it("adds consumer padding inside protected trailing chrome", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 12, height: 3 } });
+    const frame = runtime.render(<Root>
+      <Select id="theme" style={{ width: 12 }}>
+        <SelectTrigger id="trigger" label="Theme" style={{ paddingRight: 2 }}>
+          <Text>Dark</Text>
+        </SelectTrigger>
+        <SelectContent id="content">
+          <SelectItem id="dark" selected style={{ paddingRight: 2 }}><Text>Dark</Text></SelectItem>
+        </SelectContent>
+      </Select>
+    </Root>);
+
+    expect(frame.layout.entries.get("trigger")?.paddingInsets.right).toBe(5);
+    expect(frame.layout.entries.get("dark")?.paddingInsets.right).toBe(5);
+    runtime.dispose();
+  });
+
+  it("omits trailing indicators when fewer than two Cells are visible", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 1, height: 2 } });
+    const frame = runtime.render(<Root>
+      <Select id="theme" style={{ width: 1 }}>
+        <SelectTrigger id="trigger" label="Theme"><Text>Dark</Text></SelectTrigger>
+        <SelectContent id="content"><SelectItem id="dark" selected><Text>Dark</Text></SelectItem></SelectContent>
+      </Select>
+    </Root>);
+
+    expect(frame.buffer.toText()).not.toMatch(/[▾▴✓]/u);
+    expect(frame.buffer.width).toBe(1);
     runtime.dispose();
   });
 

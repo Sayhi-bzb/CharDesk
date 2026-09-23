@@ -12,8 +12,13 @@ import {
 import { composeScene } from "./scene.js";
 import { createSemanticSnapshot } from "./semantics.js";
 import { reconcileWidgetTree, sameWidgetValue } from "./tree.js";
+import { classifyWidgetChange } from "./widget-change.js";
 import { createCellTextLayout } from "./text.js";
 import { resolveCellUiTheme, type CellUiTheme } from "./theme.js";
+import {
+  resolveCellUiRecipe,
+  type CellUiRecipe,
+} from "./recipe.js";
 import {
   isPortalKind,
   supportsActivationFeedback,
@@ -27,7 +32,6 @@ import type {
   FrameSnapshot,
   SceneSnapshot,
   WidgetId,
-  WidgetNode,
   WidgetTree,
 } from "./types.js";
 
@@ -62,101 +66,13 @@ const expandForWideCells = (
   return { ...region, x: left, width: right - left };
 });
 
-const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
-  before.kind !== after.kind
-  || before.parentId !== after.parentId
-  || before.index !== after.index
-  || before.text !== after.text
-  || before.buttonVariant !== after.buttonVariant
-  || before.buttonSize !== after.buttonSize
-  || before.frame !== after.frame
-  || before.orientation !== after.orientation
-  || (after.kind === "accordion-content" && before.expanded !== after.expanded)
-  || !sameWidgetValue(before.style, after.style)
-  || !sameWidgetValue(before.children, after.children);
-
-const hasGeometryChange = (before: WidgetNode, after: WidgetNode) =>
-  !sameWidgetValue(before.scrollOffset, after.scrollOffset)
-  || (before.kind === "range-slider-thumb" && (
-    before.sliderValue !== after.sliderValue
-    || before.sliderMin !== after.sliderMin
-    || before.sliderMax !== after.sliderMax
-    || before.sliderStep !== after.sliderStep
-  ))
-  || before.textEditor?.value !== after.textEditor?.value
-  || before.textEditor?.scrollX !== after.textEditor?.scrollX
-  || before.textEditor?.scrollY !== after.textEditor?.scrollY
-  || !sameWidgetValue(before.textEditor?.composition, after.textEditor?.composition)
-  || !sameWidgetValue(before.overlayPosition, after.overlayPosition);
-
-const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
-  before.focused !== after.focused
-  || before.focusActive !== after.focusActive
-  || before.focusVisible !== after.focusVisible
-  || before.hovered !== after.hovered
-  || before.manipulating !== after.manipulating
-  || before.pressActive !== after.pressActive
-  || before.activationFlash !== after.activationFlash
-  || before.confirming !== after.confirming
-  || !sameWidgetValue(before.confirmation, after.confirmation)
-  || before.selected !== after.selected
-  || before.active !== after.active
-  || before.checked !== after.checked
-  || before.pressed !== after.pressed
-  || !sameWidgetValue(before.progress, after.progress)
-  || before.separatorVariant !== after.separatorVariant
-  || before.buttonVariant !== after.buttonVariant
-  || before.blockVariant !== after.blockVariant
-  || before.frame !== after.frame
-  || before.selectionVariant !== after.selectionVariant
-  || before.borderShape !== after.borderShape
-  || before.sliderValue !== after.sliderValue
-  || before.sliderMin !== after.sliderMin
-  || before.sliderMax !== after.sliderMax
-  || before.expanded !== after.expanded
-  || before.disabled !== after.disabled
-  || !sameWidgetValue(before.textStyle, after.textStyle)
-  || !sameWidgetValue(before.textEditor, after.textEditor);
-
-const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
-  before.label !== after.label
-  || before.disabled !== after.disabled
-  || before.focused !== after.focused
-  || before.selected !== after.selected
-  || before.checked !== after.checked
-  || before.pressed !== after.pressed
-  || !sameWidgetValue(before.progress, after.progress)
-  || before.sliderValue !== after.sliderValue
-  || before.sliderMin !== after.sliderMin
-  || before.sliderMax !== after.sliderMax
-  || before.sliderValueText !== after.sliderValueText
-  || before.expanded !== after.expanded
-  || before.hasChildren !== after.hasChildren
-  || before.level !== after.level
-  || before.rowIndex !== after.rowIndex
-  || before.columnIndex !== after.columnIndex
-  || before.rowCount !== after.rowCount
-  || before.columnCount !== after.columnCount
-  || before.positionInSet !== after.positionInSet
-  || before.setSize !== after.setSize
-  || before.orientation !== after.orientation
-  || before.controlsId !== after.controlsId
-  || before.activeDescendantId !== after.activeDescendantId
-  || before.labelledById !== after.labelledById
-  || before.describedById !== after.describedById
-  || before.dialogPart !== after.dialogPart
-  || !sameWidgetValue(before.dialog, after.dialog)
-  || before.readOnly !== after.readOnly
-  || before.modal !== after.modal
-  || before.text !== after.text
-  || !sameWidgetValue(before.textEditor, after.textEditor);
-
 export type CellUiRuntimeOptions = Readonly<{
   viewport: CellSize;
   overlayViewport?: CellSize;
   onFrame?: (frame: FrameSnapshot) => void;
   layoutEngine?: LayoutEngine;
   theme?: Partial<CellUiTheme>;
+  recipe?: CellUiRecipe;
   feedback?: Partial<CellFeedbackConfig>;
 }>;
 
@@ -166,6 +82,7 @@ export class CellUiRuntime {
   #overlayViewport: CellSize;
   readonly #onFrame: ((frame: FrameSnapshot) => void) | undefined;
   #theme: CellUiTheme;
+  #recipe: CellUiRecipe;
   #feedback: CellFeedbackConfig;
 
   get feedback(): CellFeedbackConfig { return this.#feedback; }
@@ -192,6 +109,7 @@ export class CellUiRuntime {
     this.#overlayViewport = { ...overlayViewport };
     this.#onFrame = options.onFrame;
     this.#theme = resolveCellUiTheme(options.theme);
+    this.#recipe = resolveCellUiRecipe(options.recipe);
     this.#feedback = resolveCellFeedback(options.feedback);
   }
 
@@ -208,11 +126,12 @@ export class CellUiRuntime {
       activationTargetId?: string | null;
       confirmation?: FrameSnapshot["confirmation"];
       colors?: FrameSnapshot["colors"];
+      animationTimeMs?: number;
       resolveFocusedId?: (tree: WidgetTree) => string | null;
     }> = {}
   ): FrameSnapshot {
     if (this.#disposed) throw new Error("CellUiRuntime has been disposed.");
-    const descriptor = createWidgetDescriptor(element);
+    const descriptor = createWidgetDescriptor(element, this.#recipe);
     const reconciliation = reconcileWidgetTree(this.#tree, descriptor);
     const focusedId = state.resolveFocusedId
       ? state.resolveFocusedId(reconciliation.tree)
@@ -230,6 +149,9 @@ export class CellUiRuntime {
     const hoveredNode = state.hoveredId ? reconciliation.tree.nodes.get(state.hoveredId) : undefined;
     const hoveredId = focusVisible && focusedId !== null && hoveredNode && isPrimitiveControlKind(hoveredNode.kind)
       ? null : state.hoveredId;
+    const animationTimeMs = typeof state.animationTimeMs === "number" && Number.isFinite(state.animationTimeMs)
+      ? Math.max(0, state.animationTimeMs)
+      : 0;
     const tree: WidgetTree = {
       rootId: reconciliation.tree.rootId,
       nodes: new Map([...reconciliation.tree.nodes].map(([id, node]) => [
@@ -243,6 +165,7 @@ export class CellUiRuntime {
           && node.activationFlash === (id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled)
           && node.confirming === (id === state.activationTargetId && !node.disabled)
           && sameWidgetValue(node.confirmation, id === state.confirmation?.targetId ? state.confirmation : undefined)
+          && node.progressAnimationTimeMs === (node.progress?.value === null ? animationTimeMs : 0)
           ? node
           : {
               ...node,
@@ -255,6 +178,7 @@ export class CellUiRuntime {
               activationFlash: id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled,
               confirming: id === state.activationTargetId && !node.disabled,
               confirmation: id === state.confirmation?.targetId ? state.confirmation : undefined,
+              progressAnimationTimeMs: node.progress?.value === null ? animationTimeMs : 0,
             },
       ])),
     };
@@ -280,16 +204,17 @@ export class CellUiRuntime {
         paintIds.add(id);
         continue;
       }
-      if (hasLayoutChange(before, node)) layoutDirty = true;
-      if (hasGeometryChange(before, node)) {
+      const change = classifyWidgetChange(before, node);
+      if (change.layout) layoutDirty = true;
+      if (change.geometry) {
         geometryDirty = true;
         geometryIds.add(id);
       }
-      if (hasPaintChange(before, node)) {
+      if (change.paint) {
         paintDirty = true;
         paintIds.add(id);
       }
-      if (hasSemanticChange(before, node)) semanticsDirty = true;
+      if (change.semantics) semanticsDirty = true;
     }
     if (layoutDirty) {
       geometryDirty = true;
@@ -443,6 +368,11 @@ export class CellUiRuntime {
     if (sameWidgetValue(this.#theme, next)) return;
     this.#theme = next;
     this.#themeDirty = true;
+  }
+
+  setRecipe(recipe?: CellUiRecipe): void {
+    if (this.#disposed) throw new Error("CellUiRuntime has been disposed.");
+    this.#recipe = resolveCellUiRecipe(recipe);
   }
 
   resize(viewport: CellSize, overlayViewport: CellSize = viewport): void {

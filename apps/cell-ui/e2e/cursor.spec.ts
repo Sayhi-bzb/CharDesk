@@ -1,23 +1,24 @@
 import { expect, test } from "@playwright/test";
-import { readCellMetrics, readCellPixel, readCellProbe } from "./helpers/cell-probe";
+import { ownerCells, readCellMetrics, readCellPixel, readCellProbe } from "./helpers/cell-probe";
 
 test("inverse cursor follows committed editor colors, wide glyphs, movement and theme", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   const surface = page.locator('[data-cell-probe="editor"]');
   const input = surface.getByRole("textbox", { name: "File name", exact: true });
   const canvas = surface.locator("canvas");
+  const firstGlyph = ownerCells(await readCellProbe(surface), "editor-name")
+    .find((cell) => cell.text === "n")!;
   await input.fill("");
   await canvas.scrollIntoViewIfNeeded();
   const metrics = await readCellMetrics(surface);
-  const corner = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "editor-name" && cell.text === "┌")!;
-  const x = corner.x + 1;
-  const y = corner.y + 1;
+  const x = firstGlyph.x;
+  const y = firstGlyph.y;
   const pixel = (offset = 0) => readCellPixel(surface, x + offset + 0.1, y + 0.1);
   await expect.poll(() => pixel()).toEqual([255, 255, 255, 255]);
 
   // Actual pointer entry must show the same inverse cursor before any key event.
-  await page.getByRole("heading", { name: "Cell UI Fixtures", exact: true }).click();
+  await page.getByRole("heading", { name: "Cell UI Fixture", exact: true }).click();
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
   await page.mouse.click(bounds.x + (x + 0.5) * metrics.cellWidth, bounds.y + (y + 0.5) * metrics.cellHeight);
@@ -44,11 +45,11 @@ test("inverse cursor follows committed editor colors, wide glyphs, movement and 
   await expect.poll(() => pixel(2)).toEqual([210, 220, 230, 255]);
   expect(await pixel()).toEqual([30, 40, 50, 255]);
   await input.press("Shift+ArrowLeft");
-  await expect.poll(() => pixel()).toEqual([255, 255, 255, 255]);
+  await expect.poll(() => pixel()).toEqual([210, 220, 230, 255]);
   expect((await readCellProbe(surface)).cells.find((cell) => cell.x === x && cell.y === y)?.style)
-    .toMatchObject({ color: "rgb(255, 255, 255)", backgroundColor: "rgb(0, 0, 0)" });
+    .toMatchObject({ color: "rgb(210, 220, 230)", backgroundColor: "rgb(30, 40, 50)", underline: true });
   await input.evaluate((element) => element.blur());
-  await expect.poll(() => pixel(2)).toEqual([255, 255, 255, 255]);
+  await expect.poll(() => pixel(2)).toEqual([230, 230, 230, 255]);
   expect((await readCellProbe(surface)).text).toBe(wideText);
   await input.fill("x".repeat(80));
   await expect.poll(() => pixel(37)).toEqual([210, 220, 230, 255]);
@@ -59,16 +60,18 @@ test("inverse cursor follows committed editor colors, wide glyphs, movement and 
 
 test("cursor blink restores current pixels without changing character snapshots", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   const surface = page.locator('[data-cell-probe="editor"]');
   const input = surface.getByRole("textbox", { name: "File name", exact: true });
+  const firstGlyph = ownerCells(await readCellProbe(surface), "editor-name")
+    .find((cell) => cell.text === "n")!;
   await input.fill("");
   await readCellMetrics(surface);
   await page.waitForLoadState("networkidle");
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await input.evaluate((element) => element.blur());
   await input.focus();
-  const pixel = () => readCellPixel(surface, 1.1, 2.1);
+  const pixel = () => readCellPixel(surface, firstGlyph.x + 0.1, firstGlyph.y + 0.1);
   await expect.poll(pixel, { intervals: [25] }).toEqual([255, 255, 255, 255]);
   const before = await readCellProbe(surface);
   await expect.poll(pixel, { intervals: [25] }).toEqual([0, 0, 0, 255]);
@@ -76,7 +79,7 @@ test("cursor blink restores current pixels without changing character snapshots"
   expect((await readCellProbe(surface)).revision).toBe(before.revision);
   await expect.poll(pixel, { intervals: [25] }).toEqual([255, 255, 255, 255]);
   await input.fill("A");
-  const movedPixel = () => readCellPixel(surface, 2.1, 2.1);
+  const movedPixel = () => readCellPixel(surface, firstGlyph.x + 1.1, firstGlyph.y + 0.1);
   await expect.poll(movedPixel, { intervals: [25] }).toEqual([255, 255, 255, 255]);
   const updated = await readCellProbe(surface);
   await expect.poll(movedPixel, { intervals: [25] }).toEqual([0, 0, 0, 255]);

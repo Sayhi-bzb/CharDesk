@@ -4,7 +4,7 @@ import { readCellProbe } from "./helpers/cell-probe";
 test("100k-row virtual List stays bounded across keyboard, pointer, and scroll", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/virtualization");
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
 
@@ -27,7 +27,8 @@ test("100k-row virtual List stays bounded across keyboard, pointer, and scroll",
     .toBe("virtual-file-9");
   const pageProbe = await readCellProbe(surface);
   expect(pageProbe.cells.some((cell) => cell.text === "▶")).toBe(false);
-  expect(pageProbe.cells.filter((cell) => cell.style.bold).length).toBeGreaterThan(0);
+  expect(pageProbe.cells.some((cell) => cell.ownerId === "virtual-file-9"
+    && !cell.style.bold && !!cell.style.backgroundColor)).toBe(true);
   await expect(section.getByRole("option", { name: /000010\s+src\/file-000010\.ts/ }))
     .toBeFocused();
   await expect(section.getByRole("option", { name: /000010\s+src\/file-000010\.ts/ })).toBeFocused();
@@ -35,7 +36,6 @@ test("100k-row virtual List stays bounded across keyboard, pointer, and scroll",
   await expect.poll(async () => (await readCellProbe(surface)).focusedId)
     .toBe("virtual-file-0");
   await expect(section.getByRole("option", { name: /000001\s+src\/file-000001\.ts/ })).toBeFocused();
-
   for (let index = 0; index < 10; index += 1) {
     await page.keyboard.press("ArrowDown");
   }

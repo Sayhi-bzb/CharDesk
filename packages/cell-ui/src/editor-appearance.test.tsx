@@ -104,12 +104,12 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     runtime.dispose();
   });
 
-  it(`TextInput plain keeps its row background and underlines only an active selection (${theme.background})`, () => {
+  it(`TextInput ghost keeps its inherited background and underlines only an active selection (${theme.background})`, () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 1 }, theme });
     const editor = new CellTextEditor({ value: "Hi" });
     editor.dispatch({ type: "select-all" });
     const view = (disabled = false, readOnly = false, backgroundColor?: string) => <Root>
-      <TextInput id="editor" variant="plain" state={editor.snapshot()} disabled={disabled}
+      <TextInput id="editor" variant="ghost" state={editor.snapshot()} disabled={disabled}
         readOnly={readOnly} textStyle={backgroundColor ? { backgroundColor } : undefined}
         style={{ width: 12 }} />
     </Root>;
@@ -145,6 +145,7 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     expect(disabledComposing.buffer.get(1, 0)?.style.underline).not.toBe(true);
     runtime.dispose();
   });
+
 }
 
 it("TestPilot keeps editing active across pointer, keyboard and viewport commits", async () => {

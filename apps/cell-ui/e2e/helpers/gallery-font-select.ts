@@ -1,15 +1,14 @@
 import type { Page } from "@playwright/test";
-
-const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+import type { GalleryFont } from "../../src/font-options";
 
 export const galleryFontSelect = (page: Page) =>
   page.locator('[data-cell-probe="gallery-font-select"]');
 
-export const selectGalleryFont = async (page: Page, label: string) => {
+export const selectGalleryFont = async (page: Page, font: GalleryFont) => {
   const select = galleryFontSelect(page);
   await select.getByRole("button").evaluate((element: HTMLElement) => element.click());
   const options = select.getByRole("listbox", { name: "Fonts" });
-  await options.getByRole("option", { name: new RegExp(`^${escapePattern(label)}`) })
+  await options.locator(`[data-cell-semantic-id="gallery-font-option-${font}"]`)
     .evaluate((element: HTMLElement) => element.click());
   await options.waitFor({ state: "detached" });
 };

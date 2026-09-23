@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe, readCellPixel } from "./helpers/cell-probe";
+import { ownerCells, readCellProbe, readCellPixel } from "./helpers/cell-probe";
 
 test("Gallery light and dark modes expose the Classic Macintosh token hierarchy", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/core");
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", scheme);
@@ -14,9 +14,9 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
         foreground: read("--cell-foreground"),
         surface: read("--cell-surface"),
         surfaceElevated: read("--cell-surface-elevated"),
-        buttonPrimary: read("--cell-button-primary"),
-        buttonPrimaryForeground: read("--cell-button-primary-foreground"),
-        buttonPrimaryHover: read("--cell-button-primary-hover"),
+        defaultControlVariant: read("--cell-default-control-variant"),
+        buttonSolid: read("--cell-button-solid"),
+        buttonSolidForeground: read("--cell-button-solid-foreground"),
         highlight: read("--cell-highlight"),
         highlightForeground: read("--cell-highlight-foreground"),
         hover: read("--cell-hover"),
@@ -37,9 +37,9 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
       foreground: "#000000",
       surface: "#ffffff",
       surfaceElevated: "#e6e6e6",
-      buttonPrimary: "#000000",
-      buttonPrimaryForeground: "#ffffff",
-      buttonPrimaryHover: "#1a1a1a",
+      defaultControlVariant: "surface",
+      buttonSolid: "#000000",
+      buttonSolidForeground: "#ffffff",
       highlight: "#000000",
       highlightForeground: "#ffffff",
       hover: "#e6e6e6",
@@ -58,9 +58,9 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
       foreground: "#ffffff",
       surface: "#000000",
       surfaceElevated: "#1a1a1a",
-      buttonPrimary: "#ffffff",
-      buttonPrimaryForeground: "#000000",
-      buttonPrimaryHover: "#e6e6e6",
+      defaultControlVariant: "surface",
+      buttonSolid: "#ffffff",
+      buttonSolidForeground: "#000000",
       highlight: "#ffffff",
       highlightForeground: "#000000",
       hover: "#1a1a1a",
@@ -78,7 +78,7 @@ test("Gallery light and dark modes expose the Classic Macintosh token hierarchy"
   }
 });
 
-test("default Button consumes its primary surface in Cell styles and Canvas pixels", async ({ page }) => {
+test("Gallery solid Button consumes its primary surface in Cell styles and Canvas pixels", async ({ page }) => {
   await page.goto("/#/components/button");
   const surface = page.locator('[data-cell-probe="component-button"]');
   for (const scheme of ["light", "dark"] as const) {
@@ -98,7 +98,7 @@ test("default Button consumes its primary surface in Cell styles and Canvas pixe
 });
 
 test("CSS token inheritance, aliases, local overrides and fallback resolve without leaking DOM", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/core");
   const result = await page.evaluate(async () => {
     const path = "/packages/cell-ui/src/browser-theme.ts";
     const { readCellCssTheme } = await import(path);
@@ -145,7 +145,7 @@ test("CSS token inheritance, aliases, local overrides and fallback resolve witho
 
 test("root token updates reach DOM and Canvas on theme revision without losing state", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/overlay");
   const surface = page.locator('[data-cell-probe="overlay"]');
   await surface.focus();
   await page.keyboard.press("Enter");
@@ -180,7 +180,7 @@ test("root token updates reach DOM and Canvas on theme revision without losing s
 
 test("inverse cursor ignores fixed color tokens while rectangle overlay consumes its tokens", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   await page.evaluate(() => {
     document.documentElement.style.setProperty("--cell-cursor", "rgb(255, 0, 0)");
     document.documentElement.style.setProperty("--cell-cursor-foreground", "rgb(0, 0, 0)");
@@ -188,15 +188,20 @@ test("inverse cursor ignores fixed color tokens while rectangle overlay consumes
     document.documentElement.style.setProperty("--cell-range-surface-effect", "tint");
   });
   await page.getByRole("button", { name: "Dark" }).click();
-  await page.getByRole("textbox", { name: "File name", exact: true }).fill("");
   const editor = page.locator('[data-cell-probe="editor"]');
-  const cursor = await readCellPixel(editor, 1.5, 2.5);
-  expect(cursor).toEqual([0, 0, 0, 255]);
+  const firstGlyph = ownerCells(await readCellProbe(editor), "editor-name")
+    .find((cell) => cell.text === "n")!;
   const input = page.getByRole("textbox", { name: "File name", exact: true });
+  await input.fill("");
+  await expect.poll(() => readCellPixel(editor, firstGlyph.x + 0.1, firstGlyph.y + 0.1))
+    .toEqual([0, 0, 0, 255]);
   await input.fill("中A");
   await input.press("Home");
-  expect(await readCellPixel(editor, 2.8, 2.1)).toEqual([0, 0, 0, 255]);
+  await expect.poll(() => readCellPixel(editor, firstGlyph.x + 1.8, firstGlyph.y + 0.1))
+    .toEqual([0, 0, 0, 255]);
+  await page.evaluate(() => { location.hash = "/__fixtures/complex"; });
   const canvas = page.locator('[data-cell-probe="complex"] canvas');
+  await expect(canvas).toBeVisible();
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
   await page.keyboard.down("Alt");
@@ -214,7 +219,7 @@ test("inverse cursor ignores fixed color tokens while rectangle overlay consumes
 
 test("dark Range contrast changes final pixels without changing Cell content", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/complex");
   const surface = page.locator('[data-cell-probe="complex"]');
   const canvas = surface.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();

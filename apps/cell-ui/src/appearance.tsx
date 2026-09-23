@@ -3,7 +3,7 @@ import { Sun } from "pixelarticons/react/Sun";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
 import { loadBrowserFont, resetBrowserFont } from "@chardesk/fonts/browser";
-import { CLASSIC_CELL_FEEDBACK, resolveCellFeedback, type CellFeedbackConfig } from "@chardesk/cell-ui";
+import { CLASSIC_CELL_FEEDBACK, resolveCellFeedback, type CellFeedbackConfig, type CellUiRecipe } from "@chardesk/cell-ui";
 import { CellSurface, DEFAULT_CELL_UI_METRICS, loadCellFontMetrics, useCellCssTheme, useCellSelectState, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
 import { Root, resolveCellUiTheme } from "@chardesk/cell-ui";
 import {
@@ -38,6 +38,7 @@ const AppearanceContext = createContext({
   fontProfile: MAPLE_FONT_PROFILE,
   theme: defaultTheme,
   palette: { color: defaultTheme.foreground, background: defaultTheme.background },
+  recipe: {} as CellUiRecipe,
   toggleTheme: () => {},
   selectFont: (font: GalleryFont) => { void font; },
 });
@@ -250,6 +251,14 @@ export function GalleryFontSelect() {
   </div>;
 }
 export function GallerySurface(props: CellSurfaceProps) {
-  const { theme, palette, fontProfile, feedback } = useGalleryAppearance();
-  return <CellSurface {...props} theme={theme} feedback={feedback} palette={palette} fontProfile={fontProfile} />;
+  const { theme, palette, recipe, fontProfile, feedback } = useGalleryAppearance();
+  return <CellSurface
+    {...props}
+    metrics={props.metrics ?? DEFAULT_CELL_UI_METRICS}
+    theme={theme}
+    recipe={recipe}
+    feedback={feedback}
+    palette={palette}
+    fontProfile={fontProfile}
+  />;
 }

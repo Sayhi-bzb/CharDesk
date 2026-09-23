@@ -103,9 +103,8 @@ export type WidgetNode = Readonly<{
   parentId: WidgetId | null;
   index: number;
   style: CellLayoutStyle;
-  blockVariant: import("./border.js").CellBlockVariant;
+  surfaceVariant: import("./surface-variant.js").SurfaceVariant | null;
   frame: import("./border.js").CellFrame;
-  selectionVariant: import("./react.js").SelectionSurfaceVariant | null;
   borderShape: import("./border.js").CellBorderShape | null;
   text: string | null;
   textStyle: CellTextStyle;
@@ -125,7 +124,9 @@ export type WidgetNode = Readonly<{
   checked: CellCheckboxState;
   pressed: boolean;
   radioValue: string | null;
-  progress: Readonly<{ value: number; max: number; valueText?: string }> | null;
+  progress: Readonly<{ value: number | null; max: number; valueText?: string }> | null;
+  progressAnimationTimeMs: number;
+  progressVariant: import("./progress.js").ProgressVariant;
   separatorVariant: import("./separator.js").SeparatorVariant;
   buttonVariant: import("./button.js").ButtonVariant;
   buttonSize: import("./button.js").ButtonSize;

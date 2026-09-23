@@ -1,21 +1,29 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe, readCellPixel } from "./helpers/cell-probe";
+import { ownerBounds, ownerCells, readCellProbe, readCellPixel } from "./helpers/cell-probe";
 
 test("editor blur clears the full focus surface and caret but preserves logical state", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   const surface = page.locator('[data-cell-probe="editor"]');
   const editor = page.getByRole("textbox", { name: "Document", exact: true });
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");
   await editor.fill("");
   const active = await readCellProbe(surface);
-  expect(active.cells.find((cell) => cell.x === 10 && cell.y === 8)?.style.backgroundColor).toBeTruthy();
+  const area = ownerBounds(active, "editor-document");
+  const blank = ownerCells(active, "editor-document").find((cell) =>
+    cell.x === area.x + 10 && cell.y === area.y + area.height - 2
+    && cell.text === " ")!;
+  expect(blank.style.backgroundColor).toBeTruthy();
   const canvas = surface.locator("canvas");
-  const caretPixel = () => readCellPixel(surface, 1, 6.5);
+  const caretPixel = () => readCellPixel(surface, blank.x + 0.5, blank.y + 0.5);
   const focusedPixel = await caretPixel();
   await editor.evaluate((input) => input.blur());
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");
-  await expect.poll(async () => (await readCellProbe(surface)).cells.find((cell) => cell.x === 10 && cell.y === 8)?.style.backgroundColor).toBeUndefined();
+  await expect.poll(async () => (await readCellProbe(surface)).cells
+    .find((cell) => cell.x === blank.x && cell.y === blank.y)?.style.backgroundColor)
+    .not.toBe(blank.style.backgroundColor);
   const blurred = await readCellProbe(surface);
+  expect(blurred.cells.find((cell) => cell.x === blank.x && cell.y === blank.y)
+    ?.style.backgroundColor).toBeUndefined();
   expect(blurred.focusedId).toBe(active.focusedId);
   expect(blurred.text).toBe(active.text);
   expect(await caretPixel()).not.toEqual(focusedPixel);
@@ -29,25 +37,30 @@ test("editor blur clears the full focus surface and caret but preserves logical 
   expect(await caretPixel()).toEqual(focusedPixel);
   await editor.press("x");
   await expect(editor).toHaveValue("x");
-  await page.getByRole("heading", { name: "Cell UI Fixtures", exact: true }).click();
+  await page.getByRole("heading", { name: "Cell UI Fixture", exact: true }).click();
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");
   expect((await readCellProbe(surface)).focusedId).toBe(active.focusedId);
 });
 
 test("only the active Surface paints focus, while selected state survives", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/core");
   const core = page.locator('[data-cell-probe="core"]');
-  const editor = page.getByRole("textbox", { name: "File name", exact: true });
   await core.focus();
   const active = await readCellProbe(core);
-  expect(active.cells.some((cell) => cell.ownerId === "core-open" && cell.style.bold)).toBe(true);
-  await editor.focus();
+  expect(active.cells.some((cell) => cell.ownerId === "core-open"
+    && !cell.style.bold && !!cell.style.backgroundColor)).toBe(true);
+  const outside = page.getByRole("button", { name: /^(Dark|Light)$/ });
+  await outside.focus();
   await expect(core).not.toHaveAttribute("data-cell-focus-visible");
   const blurred = await readCellProbe(core);
+  const blurredOpenCells = blurred.cells.filter((cell) => cell.ownerId === "core-open");
   expect(blurred.focusedId).toBe(active.focusedId);
-  expect(blurred.cells.some((cell) => cell.ownerId === "core-open" && cell.style.bold)).toBe(false);
-  expect(blurred.cells.some((cell) => cell.ownerId === "core-open" && cell.style.backgroundColor)).toBe(true);
-  await page.getByRole("button", { name: /^(Dark|Light)$/ }).focus();
+  expect(blurredOpenCells.some((cell) => cell.style.bold)).toBe(false);
+  expect(blurredOpenCells.length).toBeGreaterThan(0);
+  expect(blurredOpenCells.every((cell) => cell.style.backgroundColor === undefined)).toBe(true);
+  expect(active.cells.some((cell) => cell.ownerId === "core-open"
+    && cell.style.backgroundColor !== undefined)).toBe(true);
+  expect(blurred.text).toContain("✓ Open file");
   await expect(page.locator('[data-cell-probe][data-cell-focus-visible="true"]')).toHaveCount(0);
   await core.focus();
   expect((await readCellProbe(core)).focusedId).toBe(active.focusedId);
@@ -56,7 +69,7 @@ test("only the active Surface paints focus, while selected state survives", asyn
 });
 
 test("window focus recovery checks current ownership and never steals an external focus", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   const surface = page.locator('[data-cell-probe="editor"]');
   const editor = page.getByRole("textbox", { name: "Document", exact: true });
   await editor.focus();

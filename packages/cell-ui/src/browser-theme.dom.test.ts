@@ -18,30 +18,38 @@ const mountTheme = (tokens: Readonly<Record<string, string>>) => {
 
 describe("readCellCssTheme", () => {
   it("falls back to the Classic Macintosh light theme", () => {
-    const { theme, palette } = readCellCssTheme(mountTheme({}));
+    const { theme, palette, recipe } = readCellCssTheme(mountTheme({}));
 
     expect(palette).toEqual({ color: "#000000", background: "#FFFFFF" });
     expect(theme).toEqual(CLASSIC_MAC_LIGHT_THEME);
+    expect(recipe).toEqual({});
+  });
+
+  it.each(["surface", "ghost"] as const)("reads the %s default control variant recipe", (variant) => {
+    expect(readCellCssTheme(mountTheme({
+      "--cell-default-control-variant": variant,
+    })).recipe).toEqual({ defaultControlVariant: variant });
+  });
+
+  it("ignores an invalid default variant recipe", () => {
+    expect(readCellCssTheme(mountTheme({
+      "--cell-default-control-variant": "solid",
+    })).recipe).toEqual({});
   });
 
   it("keeps button, disabled, and scrollbar tokens independent", () => {
     const { theme } = readCellCssTheme(mountTheme({
-      "--cell-button-primary": "rgb(1, 2, 3)",
-      "--cell-button-primary-foreground": "rgb(4, 5, 6)",
-      "--cell-button-primary-hover": "rgb(7, 8, 9)",
+      "--cell-button-solid": "rgb(1, 2, 3)",
+      "--cell-button-solid-foreground": "rgb(4, 5, 6)",
       "--cell-muted-foreground": "rgb(10, 20, 30)",
       "--cell-disabled-foreground": "rgb(40, 50, 60)",
       "--cell-scrollbar-thumb": "rgb(70, 80, 90)",
       "--cell-scrollbar-track": "rgb(100, 110, 120)",
     }));
 
-    expect(theme.buttonPrimaryStyle).toEqual({
+    expect(theme.buttonSolidStyle).toEqual({
       color: "rgb(4, 5, 6)",
       backgroundColor: "rgb(1, 2, 3)",
-    });
-    expect(theme.buttonPrimaryHoverStyle).toEqual({
-      color: "rgb(4, 5, 6)",
-      backgroundColor: "rgb(7, 8, 9)",
     });
     expect(theme.secondaryStyle.color).toBe("rgb(10, 20, 30)");
     expect(theme.disabledStyle.color).toBe("rgb(40, 50, 60)");
@@ -55,9 +63,8 @@ describe("readCellCssTheme", () => {
       "--cell-foreground": CLASSIC_MAC_DARK_THEME.foreground,
       "--cell-surface": CLASSIC_MAC_DARK_THEME.surfaceStyle.backgroundColor!,
       "--cell-surface-elevated": CLASSIC_MAC_DARK_THEME.elevatedSurfaceStyle.backgroundColor!,
-      "--cell-button-primary": CLASSIC_MAC_DARK_THEME.buttonPrimaryStyle.backgroundColor!,
-      "--cell-button-primary-foreground": CLASSIC_MAC_DARK_THEME.buttonPrimaryStyle.color!,
-      "--cell-button-primary-hover": CLASSIC_MAC_DARK_THEME.buttonPrimaryHoverStyle.backgroundColor!,
+      "--cell-button-solid": CLASSIC_MAC_DARK_THEME.buttonSolidStyle.backgroundColor!,
+      "--cell-button-solid-foreground": CLASSIC_MAC_DARK_THEME.buttonSolidStyle.color!,
       "--cell-highlight": CLASSIC_MAC_DARK_THEME.focusedSurfaceStyle.backgroundColor!,
       "--cell-hover": CLASSIC_MAC_DARK_THEME.hoveredItemStyle.backgroundColor!,
       "--cell-highlight-foreground": CLASSIC_MAC_DARK_THEME.focusedSurfaceStyle.color!,
@@ -81,13 +88,9 @@ describe("readCellCssTheme", () => {
       foreground: "rgb(255, 255, 255)",
       surfaceStyle: { backgroundColor: "rgb(0, 0, 0)" },
       elevatedSurfaceStyle: { backgroundColor: "rgb(26, 26, 26)" },
-      buttonPrimaryStyle: {
+      buttonSolidStyle: {
         color: "rgb(0, 0, 0)",
         backgroundColor: "rgb(255, 255, 255)",
-      },
-      buttonPrimaryHoverStyle: {
-        color: "rgb(0, 0, 0)",
-        backgroundColor: "rgb(230, 230, 230)",
       },
       borderStyle: { color: "rgb(255, 255, 255)" },
       focusedSurfaceStyle: {

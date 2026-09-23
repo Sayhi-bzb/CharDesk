@@ -63,7 +63,7 @@ test("macOS input services drive composition, dead keys, Unicode, clipboard, and
   test.setTimeout(45_000);
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   await page.waitForLoadState("networkidle");
 
   const section = page.locator("#editor");

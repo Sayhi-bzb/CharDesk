@@ -8,6 +8,7 @@ import {
   auditSemanticSnapshot,
   commandForInput,
   createKeyInput,
+  extractCellRange,
   nextCellCheckboxState,
 } from "./index.js";
 import { resolvePointerAppearance } from "./pointer.js";
@@ -27,18 +28,19 @@ describe("Checkbox", () => {
     const frame = runtime.render(checkboxes());
 
     expect(frame.buffer.toText({ trimEnd: true })).toBe([
-      "[ ] Autosave",
-      "[x] Word wrap",
-      "[-] Select all",
-      "[ ] Disabled",
+      " [ ] Autosave",
+      " [x] Word wrap",
+      " [-] Select all",
+      " [ ] Disabled",
     ].join("\n"));
     expect(frame.layout.entries.get("autosave")).toMatchObject({
       rect: { width: 20, height: 1 },
-      paddingInsets: { top: 0, right: 0, bottom: 0, left: 4 },
+      paddingInsets: { top: 0, right: 1, bottom: 0, left: 5 },
     });
-    expect(frame.buffer.get(0, 0)).toMatchObject({ text: "[", ownerId: "autosave" });
-    expect(frame.buffer.get(1, 0)).toMatchObject({ text: " ", ownerId: "autosave" });
-    expect(frame.buffer.get(4, 0)).toMatchObject({ text: "A", ownerId: "autosave/text[0]" });
+    expect(frame.buffer.get(0, 0)).toMatchObject({ text: " ", ownerId: "autosave" });
+    expect(frame.buffer.get(1, 0)).toMatchObject({ text: "[", ownerId: "autosave" });
+    expect(frame.buffer.get(5, 0)).toMatchObject({ text: "A", ownerId: "autosave/text[0]" });
+    expect(frame.buffer.get(19, 0)).toMatchObject({ text: " ", ownerId: "autosave" });
     const updated = runtime.render(checkboxes(true));
     expect(updated.layout).toBe(frame.layout);
     expect(updated.scene).toBe(frame.scene);
@@ -46,7 +48,7 @@ describe("Checkbox", () => {
       phases: ["paint", "semantics", "present"],
       work: { layout: "reused", geometry: "reused", paint: "computed", semantics: "computed" },
     });
-    expect(updated.buffer.toText({ trimEnd: true }).split("\n")[0]).toBe("[x] Autosave");
+    expect(updated.buffer.toText({ trimEnd: true }).split("\n")[0]).toBe(" [x] Autosave");
 
     const intrinsicRuntime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
     const intrinsic = intrinsicRuntime.render(
@@ -54,15 +56,18 @@ describe("Checkbox", () => {
         <Checkbox id="intrinsic"><Text>Autosave</Text></Checkbox>
       </Root>
     );
-    expect(intrinsic.layout.entries.get("intrinsic")?.rect.width).toBe(12);
+    expect(intrinsic.layout.entries.get("intrinsic")?.rect.width).toBe(14);
+    expect(extractCellRange(intrinsic.buffer, { x: 0, y: 0, width: 14, height: 1 }))
+      .toBe(" [ ] Autosave ");
 
     const padded = runtime.render(
       <Root id="root">
-        <Checkbox id="padded" checked style={{ paddingLeft: 2 }}><Text>Label</Text></Checkbox>
+        <Checkbox id="padded" checked style={{ paddingLeft: 2, paddingRight: 2 }}><Text>Label</Text></Checkbox>
       </Root>
     );
-    expect(padded.layout.entries.get("padded")?.paddingInsets.left).toBe(6);
-    expect(padded.buffer.toText({ trimEnd: true }).split("\n")[0]).toBe("[x]   Label");
+    expect(padded.layout.entries.get("padded")?.paddingInsets.left).toBe(7);
+    expect(padded.layout.entries.get("padded")?.paddingInsets.right).toBe(3);
+    expect(padded.buffer.toText({ trimEnd: true }).split("\n")[0]).toBe(" [x]   Label");
 
     const themed = new CellUiRuntime({
       viewport: { width: 20, height: 1 },
@@ -70,7 +75,7 @@ describe("Checkbox", () => {
     });
     expect(themed.render(
       <Root id="root"><Checkbox id="custom" checked><Text>Custom</Text></Checkbox></Root>
-    ).buffer.toText({ trimEnd: true })).toBe("[#] Custom");
+    ).buffer.toText({ trimEnd: true })).toBe(" [#] Custom");
     themed.dispose();
     intrinsicRuntime.dispose();
     runtime.dispose();

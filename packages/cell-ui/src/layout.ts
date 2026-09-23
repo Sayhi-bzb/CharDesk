@@ -25,9 +25,13 @@ import type {
   WidgetNode,
   WidgetTree,
 } from "./types.js";
-import { buttonHorizontalPadding, buttonLayoutDefaults } from "./button.js";
-import { checkboxChromeMetrics } from "./checkbox.js";
+import {
+  fitInlineControlChromeInsets,
+  inlineControlChromeInsets,
+  inlineControlSpacingRecipe,
+} from "./inline-control-chrome.js";
 import { isCollectionItemKind } from "./widget-capabilities.js";
+import { hasInlineOutline, INLINE_OUTLINE_INSET } from "./inline-outline.js";
 
 const integer = (value: number, label: string) => {
   if (!Number.isFinite(value)) throw new RangeError(`${label} must be finite.`);
@@ -127,7 +131,7 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     : node.kind === "radio-group"
       ? { direction: node.orientation === "horizontal" ? "row" : "column", flexShrink: 0 }
     : node.kind === "toggle"
-      ? { direction: "row", minHeight: 1, paddingLeft: 2, paddingRight: 1, flexShrink: 0 }
+      ? { direction: "row", minHeight: 1, flexShrink: 0 }
     : node.kind === "radio-item"
       ? { direction: "row", minHeight: 1, flexShrink: 0 }
     : item
@@ -137,26 +141,27 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
         flexShrink: 0,
         paddingLeft: node.kind === "tree-item" || node.kind === "list-item"
           ? collectionChromeMetrics(node).contentInset
-          : node.kind === "menu-item" || node.kind === "grid-cell" ? 0 : 1,
-        ...(node.kind === "select-item" || node.kind === "combobox-item" ? { paddingRight: 2 } : {}),
+          : 0,
       }
     : node.kind === "slider" || node.kind === "range-slider"
       ? { width: 20, minWidth: 2, minHeight: 1, flexShrink: 0 }
     : node.kind === "range-slider-thumb"
       ? { width: 1, height: 1, flexShrink: 0 }
     : node.kind === "button"
-      ? buttonLayoutDefaults(node.buttonSize)
-    : node.kind === "checkbox" || node.kind === "select-trigger"
+      ? { direction: "row", minHeight: 1, flexShrink: 0 }
+    : node.kind === "checkbox"
       ? {
           direction: "row",
           minHeight: 1,
           flexShrink: 0,
-          paddingLeft: node.kind === "checkbox" ? 0 : 1,
-          paddingRight: node.kind === "select-trigger"
-            ? 2
-            : node.kind === "checkbox"
-              ? 0
-              : 1,
+          paddingLeft: 0,
+          paddingRight: 0,
+        }
+    : node.kind === "select-trigger"
+      ? {
+          direction: "row",
+          minHeight: 1,
+          flexShrink: 0,
         }
     : node.kind === "select-content" || node.kind === "combobox-content"
       ? { direction: "column", width: "100%", flexShrink: 0 }
@@ -165,9 +170,9 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     : column
       ? { direction: "column", flexShrink: 0 }
       : node.kind === "combobox-input"
-        ? { width: "100%", height: 1, paddingLeft: 1, paddingRight: 2, flexShrink: 0 }
+        ? { width: "100%", height: 1, flexShrink: 0 }
       : node.kind === "text-input"
-        ? { height: 1, paddingLeft: 1, paddingRight: 1, flexShrink: 0 }
+        ? { height: 1, flexShrink: 0 }
         : node.kind === "text-area"
           ? { minHeight: 3, flexShrink: 0 }
           : {};
@@ -187,18 +192,6 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     target.setPadding(Edge.Left,
       (node.style.paddingLeft ?? node.style.padding ?? 0) + collectionChromeMetrics(node).contentInset);
   }
-  // Outline chrome owns one Cell on each side; user padding remains inside it.
-  if (node.kind === "button" && node.buttonVariant === "outline") {
-    const recipePadding = buttonHorizontalPadding(node.buttonSize);
-    target.setPadding(
-      Edge.Left,
-      (node.style.paddingLeft ?? node.style.padding ?? recipePadding) + 1
-    );
-    target.setPadding(
-      Edge.Right,
-      (node.style.paddingRight ?? node.style.padding ?? recipePadding) + 1
-    );
-  }
   // The last inner row belongs to Tab chrome, in addition to user padding.
   if (node.kind === "tab") {
     target.setPadding(
@@ -206,16 +199,29 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
       (node.style.paddingBottom ?? node.style.padding ?? 0) + 1
     );
   }
-  // Checkbox chrome owns either `[x] ` before content or a centered ` [x] ` indicator.
-  if (node.kind === "checkbox" || node.kind === "radio-item") {
-    const chrome = checkboxChromeMetrics(node.children.length > 0);
+  const spacing = inlineControlSpacingRecipe(node);
+  const ownedInlineChromeInsets = inlineControlChromeInsets(spacing.chrome);
+  const outlineInset = hasInlineOutline(node) ? INLINE_OUTLINE_INSET : 0;
+  if (
+    spacing.defaultContentInsets.left > 0
+    || spacing.defaultContentInsets.right > 0
+    || ownedInlineChromeInsets.left > 0
+    || ownedInlineChromeInsets.right > 0
+    || outlineInset > 0
+  ) {
+    const inlineChromeInsets = fitInlineControlChromeInsets({
+      left: (node.style.paddingLeft ?? node.style.padding ?? spacing.defaultContentInsets.left)
+        + ownedInlineChromeInsets.left + outlineInset,
+      right: (node.style.paddingRight ?? node.style.padding ?? spacing.defaultContentInsets.right)
+        + ownedInlineChromeInsets.right + outlineInset,
+    }, typeof node.style.width === "number" ? node.style.width : undefined);
     target.setPadding(
       Edge.Left,
-      (node.style.paddingLeft ?? node.style.padding ?? 0) + chrome.paddingLeft
+      inlineChromeInsets.left,
     );
     target.setPadding(
       Edge.Right,
-      (node.style.paddingRight ?? node.style.padding ?? 0) + chrome.paddingRight
+      inlineChromeInsets.right,
     );
   }
   if (node.kind === "overlay" || node.kind === "select-content" || node.kind === "combobox-content" || node.kind === "range-slider-thumb") {

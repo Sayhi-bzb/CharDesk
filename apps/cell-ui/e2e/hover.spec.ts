@@ -55,7 +55,7 @@ test("Select overlay receives hover outside the base canvas and respects DOM occ
 
 test("hover shares hit testing, is paint-only, and never activates a command", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/core");
   const surface = page.locator('[data-cell-probe="core"]');
   const canvas = surface.locator("canvas").first();
   await canvas.scrollIntoViewIfNeeded();
@@ -90,7 +90,7 @@ test("hover shares hit testing, is paint-only, and never activates a command", a
 
 test("palette blocks underlying hover even when the mouse is stationary", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/overlay");
   const surface = page.locator('[data-cell-probe="overlay"]');
   const canvas = surface.locator("canvas").first();
   const metrics = await readCellMetrics(surface);
@@ -109,7 +109,7 @@ test("palette blocks underlying hover even when the mouse is stationary", async 
 
 test("stationary mouse follows scrolled rows and editor content keeps a neutral pointer", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/core");
   const core = page.locator('[data-cell-probe="core"]');
   const canvas = core.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
@@ -119,7 +119,9 @@ test("stationary mouse follows scrolled rows and editor content keeps a neutral 
   await expect(core).toHaveAttribute("data-cell-hovered", "core-file-src/index.ts");
   await page.mouse.wheel(0, 100);
   await expect(core).toHaveAttribute("data-cell-hovered", "core-file-src/app.ts");
+  await page.evaluate(() => { location.hash = "/__fixtures/editor"; });
   const editor = page.locator('[data-cell-probe="editor"] canvas');
+  await expect(editor).toBeVisible();
   await editor.scrollIntoViewIfNeeded();
   const editorBounds = (await editor.boundingBox())!;
   const editorMetrics = await readCellMetrics(page.locator('[data-cell-probe="editor"]'));

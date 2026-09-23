@@ -11,7 +11,7 @@ test("Xiaolai requests only the shards needed by rendered graphemes", async ({ p
   });
 
   await page.goto("/#/components/button");
-  await selectGalleryFont(page, "Xiaolai Mono");
+  await selectGalleryFont(page, "xiaolai-mono");
   await expect(page.locator(".gallery-page")).toHaveAttribute(
     "data-gallery-font", "xiaolai-mono"
   );
@@ -35,8 +35,8 @@ test("local font failure and delayed retry preserve the active font and editing"
     await gate;
     await route.continue();
   });
-  await page.goto("/#/__fixtures/all");
-  await selectGalleryFont(page, "Fusion Pixel 12px Mono");
+  await page.goto("/#/__fixtures/editor");
+  await selectGalleryFont(page, "fusion-mono");
   const gallery = page.locator(".gallery-page");
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
   expect(requests).toBe(0);
@@ -46,10 +46,10 @@ test("local font failure and delayed retry preserve the active font and editing"
   const selection = await input.evaluate((node: HTMLTextAreaElement) => [node.selectionStart, node.selectionEnd]);
   const surface = page.locator('[data-cell-probe="editor"]');
   const before = await readCellProbe(surface);
-  await selectGalleryFont(page, "Xiaolai Mono");
+  await selectGalleryFont(page, "xiaolai-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
-  await selectGalleryFont(page, "Xiaolai Mono");
+  await selectGalleryFont(page, "xiaolai-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font-status", "loading");
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
   release();
@@ -60,6 +60,6 @@ test("local font failure and delayed retry preserve the active font and editing"
   const after = await readCellProbe(surface);
   expect(after.text).toBe(before.text);
   expect(after.viewport).toEqual(before.viewport);
-  await selectGalleryFont(page, "Maple Mono");
+  await selectGalleryFont(page, "maple");
   await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
 });

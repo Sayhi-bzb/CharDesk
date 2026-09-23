@@ -12,7 +12,6 @@ export type CellVisualState = Readonly<{
   selected?: boolean;
   disabled?: boolean;
   collection?: boolean;
-  primary?: boolean;
 }>;
 
 export const resolveCellStateStyle = (
@@ -23,8 +22,8 @@ export const resolveCellStateStyle = (
   const resolved = {
     ...local,
     ...(state.hovered && state.collection && !state.focused && !state.selected && !state.disabled
-      ? state.primary ? theme.buttonPrimaryHoverStyle : theme.hoveredItemStyle : {}),
-    ...(state.focused && !state.selected && !state.primary ? theme.focusedSurfaceStyle : {}),
+      ? theme.hoveredItemStyle : {}),
+    ...(state.focused && !state.selected ? theme.focusedSurfaceStyle : {}),
     ...(state.selected ? theme.selectedStyle : {}),
     ...(state.focused && state.collection ? theme.focusedItemStyle : {}),
     ...(state.disabled ? theme.disabledStyle : {}),
@@ -52,7 +51,7 @@ const usesUnderlinedSelection = (node: WidgetNode): boolean =>
 
 const preservesEditorSurfaceWhenActive = (node: WidgetNode): boolean =>
   node.kind === "combobox-input"
-  || (node.kind === "text-input" && node.selectionVariant === "plain");
+  || (node.kind === "text-input" && node.surfaceVariant !== "surface");
 
 export const resolveEditorGlyphStyle = (
   base: CellTextStyle,
@@ -67,16 +66,18 @@ export const resolveEditorGlyphStyle = (
     }
   : resolveCellTextStyle(base, state, theme);
 
-const blockSurfaceStyleForNode = (
+const surfaceStyleForNode = (
   tree: WidgetTree,
   node: WidgetNode,
   theme: CellUiTheme,
 ): CellTextStyle | null => {
   let current: WidgetNode | undefined = node;
   let backgroundColor: string | undefined;
+  let hasSurfaceOwner = false;
   while (current) {
     backgroundColor ??= current.textStyle.backgroundColor;
-    if (current.blockVariant === "elevated") {
+    hasSurfaceOwner ||= current.surfaceVariant !== null;
+    if (current.surfaceVariant === "surface") {
       return {
         ...theme.elevatedSurfaceStyle,
         ...(backgroundColor !== undefined ? { backgroundColor } : {}),
@@ -84,27 +85,9 @@ const blockSurfaceStyleForNode = (
     }
     current = current.parentId ? tree.nodes.get(current.parentId) : undefined;
   }
-  return null;
-};
-
-const selectionSurfaceStyleForNode = (
-  tree: WidgetTree,
-  node: WidgetNode,
-  theme: CellUiTheme,
-): CellTextStyle | null => {
-  let current: WidgetNode | undefined = node;
-  let backgroundColor: string | undefined;
-  while (current) {
-    backgroundColor ??= current.textStyle.backgroundColor;
-    if (current.selectionVariant) {
-      return {
-        ...(current.selectionVariant === "elevated" ? theme.elevatedSurfaceStyle : {}),
-        ...(backgroundColor !== undefined ? { backgroundColor } : {}),
-      };
-    }
-    current = current.parentId ? tree.nodes.get(current.parentId) : undefined;
-  }
-  return null;
+  return backgroundColor !== undefined
+    ? { backgroundColor }
+    : hasSurfaceOwner ? {} : null;
 };
 
 export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: CellUiTheme) => {
@@ -125,31 +108,25 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   });
   if (isTextEditorKind(node.kind)) {
     const singleLine = node.kind === "text-input" || node.kind === "combobox-input";
-    const blockSurface = blockSurfaceStyleForNode(tree, node, theme);
-    const selectionSurface = node.kind === "combobox-input"
-      ? selectionSurfaceStyleForNode(tree, node, theme)
-      : node.kind === "text-input"
-        ? node.selectionVariant === "plain" ? {} : theme.elevatedSurfaceStyle
-        : null;
+    const surface = surfaceStyleForNode(tree, node, theme);
     return finish(
       {
-        ...(selectionSurface ?? (singleLine ? theme.elevatedSurfaceStyle : blockSurface ?? {})),
+        ...(surface ?? (singleLine ? theme.elevatedSurfaceStyle : {})),
         ...node.textStyle,
         ...(projection.editingActive && !preservesEditorSurfaceWhenActive(node)
           ? theme.focusedSurfaceStyle : {}),
         ...(projection.disabled ? theme.disabledStyle : {}),
       },
       theme.sliderThumb,
-      singleLine || node.blockVariant !== "plain" || node.frame === "bordered" ? "layout" : "content",
+      singleLine || node.surfaceVariant === "surface" || node.frame === "bordered" ? "layout" : "content",
     );
   }
   const { owner } = projection;
   const focusNode = owner ?? node;
   const rule = feedbackRule(owner?.kind ?? node.kind);
-  const primary = owner?.kind === "button" && owner.buttonVariant === "default";
+  const solid = owner?.kind === "button" && owner.buttonVariant === "solid";
   const disabled = node.disabled || owner?.disabled;
-  const blockSurface = blockSurfaceStyleForNode(tree, node, theme);
-  const selectionSurface = selectionSurfaceStyleForNode(tree, node, theme);
+  const surface = surfaceStyleForNode(tree, node, theme);
   const confirmation = owner?.confirmation;
   if (confirmation && !disabled) {
     const { reference, phase } = confirmation;
@@ -159,11 +136,11 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     return finish({ ...node.textStyle, ...colors });
   }
   const focused = (focusNode.focused && focusNode.focusVisible) || focusNode.active;
-  const base = primary
-    ? disabled ? theme.surfaceStyle : theme.buttonPrimaryStyle
-    : owner?.kind === "button" && owner.buttonVariant === "elevated"
+  const base = solid
+    ? disabled ? theme.surfaceStyle : theme.buttonSolidStyle
+    : owner?.kind === "button" && owner.buttonVariant === "surface"
       ? { color: theme.foreground, ...theme.elevatedSurfaceStyle }
-    : selectionSurface ?? blockSurface ?? {};
+    : surface ?? {};
   if (owner && isPrimitiveControlKind(owner.kind)) {
     if (rule.region === "thumb") {
       const appearance = resolveThumbAppearance({ ...base, ...node.textStyle }, projection, theme);
@@ -172,7 +149,6 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     return finish(resolvePrimitiveAppearance({ ...base, ...node.textStyle }, projection, theme));
   }
   const style = resolveCellStateStyle({ ...base, ...node.textStyle }, {
-    primary,
     focused,
     selected: owner?.selected,
     hovered: rule.region === "control" ? owner?.hovered : false,

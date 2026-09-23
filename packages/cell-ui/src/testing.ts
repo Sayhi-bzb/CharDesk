@@ -3,7 +3,7 @@ import { isPrimitiveControlKind } from "./widget-capabilities.js";
 import type { ReactElement } from "react";
 import { CellBuffer } from "./buffer.js";
 import { type GestureSignal } from "./gestures.js";
-import { CellInteractionController } from "./interaction-controller.js";
+import { CellInteractionController, sameWidgetIdSet } from "./interaction-controller.js";
 import {
   commandForInput,
   type EngineInput,
@@ -25,6 +25,7 @@ import { textViewportCommands } from "./text-viewport.js";
 import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
 import { getEventPath, hitTest } from "./scene.js";
 import { type CellUiTheme } from "./theme.js";
+import type { CellUiRecipe } from "./recipe.js";
 import type {
   CellPoint,
   CellRect,
@@ -48,6 +49,7 @@ export type TestPilotOptions = Readonly<{
   render: () => ReactElement<RootProps> | null;
   onCommand?: (command: WidgetCommand) => void;
   theme?: Partial<CellUiTheme>;
+  recipe?: CellUiRecipe;
   feedback?: Partial<CellFeedbackConfig>;
 }>;
 
@@ -58,9 +60,6 @@ const matchesName = (label: string, name: string | RegExp | undefined) =>
 
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
-
-const sameWidgetIdSet = (left: ReadonlySet<WidgetId>, right: ReadonlySet<WidgetId>) =>
-  left.size === right.size && [...left].every((id) => right.has(id));
 
 export class TestPilot {
   readonly #controller = new CellInteractionController(() => this.#renderFrame(), (command) => this.#onCommand(command));
@@ -76,7 +75,12 @@ export class TestPilot {
   constructor(options: TestPilotOptions) {
     this.#render = options.render;
     this.#onCommand = options.onCommand ?? (() => undefined);
-    this.#runtime = new CellUiRuntime({ viewport: options.viewport, theme: options.theme, feedback: options.feedback });
+    this.#runtime = new CellUiRuntime({
+      viewport: options.viewport,
+      theme: options.theme,
+      recipe: options.recipe,
+      feedback: options.feedback,
+    });
     this.#frame = this.#runtime.render(this.#render());
     this.#focus.sync(this.#frame.tree, this.#frame.semantics.focusedId);
     if (this.#focus.focusedId !== this.#frame.semantics.focusedId) this.#renderFrame();
@@ -281,10 +285,9 @@ export class TestPilot {
 
   get #renderState() {
     return {
-      ...this.#controller.snapshot,
+      ...this.#controller.renderState,
       // A headless pilot represents an active host; modality only gates navigation highlights.
       activeFocusId: this.#focus.focusedId,
-      manipulatingIds: this.#gestures.manipulatingIds,
       hoveredId: this.#primitiveHover(),
     };
   }

@@ -6,8 +6,8 @@ for (const dpr of [1, 1.25, 2]) {
   test.describe(`font audit DPR ${dpr}`, () => {
     test.use({ deviceScaleFactor: dpr });
     test("prints native, Profile and Surface metrics with the production Mono font", async ({ page }, testInfo) => {
-      await page.goto("/#/__fixtures/all");
-      await selectGalleryFont(page, "Fusion");
+      await page.goto("/#/__fixtures/editor");
+      await selectGalleryFont(page, "fusion-mono");
       await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font", "fusion-mono");
       const surface = page.locator('[data-cell-probe="editor"]');
       await expect.poll(async () => (await readCellProbe(surface)).presentation?.fontAudit?.status).toBe("ready");
@@ -38,7 +38,7 @@ for (const dpr of [1, 1.25, 2]) {
       }, probe);
       expect(printed).toContain("font-native=7.5×15 baseline=12");
       expect(printed).toContain("font-grid=7.5×15 baseline=12 source=font-bounds");
-      expect(printed).toContain("surface-grid=9×20 baseline=15 source=default");
+      expect(printed).toContain("surface-grid=9×20 baseline=15 source=explicit");
       expect(printed).toContain("font-identity=requested-stack-only");
       await testInfo.attach("font-audit.txt", { body: printed, contentType: "text/plain" });
     });

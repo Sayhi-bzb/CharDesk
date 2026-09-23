@@ -56,7 +56,7 @@ export { DEFAULT_CELL_UI_METRICS, loadCellFontMetrics } from "./browser-font-met
 import {
   type GestureSignal,
 } from "./gestures.js";
-import { CellInteractionController } from "./interaction-controller.js";
+import { CellInteractionController, sameWidgetIdSet } from "./interaction-controller.js";
 import { CellTextInputLayer } from "./browser-input.js";
 import { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
 import { isCellKeyPress } from "./keyboard.js";
@@ -78,12 +78,14 @@ import { textViewportCommands } from "./text-viewport.js";
 import { usePointerAppearance } from "./browser-hover.js";
 import { CellCursorPresenter } from "./browser-cursor.js";
 import { sameWidgetValue } from "./tree.js";
+import { INDETERMINATE_PROGRESS_STEP_MS } from "./progress.js";
 import {
   commandForGestureSignal,
   gestureCandidatesForFrame,
   validGestureCandidate,
 } from "./pointer.js";
 import { resolveCellUiTheme, type CellUiTheme } from "./theme.js";
+import type { CellUiRecipe } from "./recipe.js";
 export { readCellCssTheme, useCellCssTheme } from "./browser-theme.js";
 export type { CellCssTheme } from "./browser-theme.js";
 import { FixedVirtualGrid, type VirtualRange } from "./virtual.js";
@@ -100,9 +102,6 @@ import type {
   SemanticSnapshot,
   WidgetId,
 } from "./types.js";
-
-const sameWidgetIdSet = (left: ReadonlySet<WidgetId>, right: ReadonlySet<WidgetId>) =>
-  left.size === right.size && [...left].every((id) => right.has(id));
 
 export { useCellTextState } from "./browser-input.js";
 export type { CellTextState } from "./browser-input.js";
@@ -509,6 +508,7 @@ export type CellSurfaceProps = Readonly<{
   children: ReactElement<RootProps>;
   focusedId?: WidgetId | null;
   theme?: Partial<CellUiTheme>;
+  recipe?: CellUiRecipe;
   feedback?: Partial<CellFeedbackConfig>;
   metrics?: CharDeskCellMetrics;
   fontSize?: number;
@@ -672,6 +672,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     children,
     focusedId = null,
     theme,
+    recipe,
     feedback,
     metrics: explicitMetrics,
     fontSize,
@@ -762,8 +763,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     pressActiveId: WidgetId | null;
     activationFlashId: WidgetId | null;
     theme: Partial<CellUiTheme> | undefined;
+    recipe: CellUiRecipe | undefined;
     feedback: Partial<CellFeedbackConfig> | undefined;
     interactionRevision: number;
+    animationTimeMs: number;
     activeFocusId: WidgetId | null;
     focusVisible: boolean;
     width: number;
@@ -786,6 +789,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const [activationFlashId, setActivationFlashId] = useState<WidgetId | null>(null);
   const [fontPresentationRevision, setFontPresentationRevision] = useState(0);
   const [frame, setFrame] = useState<FrameSnapshot | null>(null);
+  const [animationTimeMs, setAnimationTimeMs] = useState(0);
+  const hasIndeterminateProgress = frame
+    ? [...frame.tree.nodes.values()].some((node) => node.progress?.value === null)
+    : false;
   const pointerAppearance = usePointerAppearance(canvasRef, frame, metrics);
   const hoveredId = activationFeedbackRef.current.settling
     ? null
@@ -794,6 +801,45 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const current = frameRef.current;
     if (current && inputModality === "pointer") controller.setHovered(current, hoveredId);
   }, [controller, hoveredId, inputModality]);
+  useEffect(() => {
+    if (!hasIndeterminateProgress) {
+      setAnimationTimeMs(0);
+      return;
+    }
+    const reducedMotion = typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
+    let pending: number | null = null;
+    let startedAt: number | null = null;
+    const cancel = () => {
+      if (pending !== null) cancelAnimationFrame(pending);
+      pending = null;
+      startedAt = null;
+    };
+    const tick = (time: number) => {
+      pending = null;
+      if (document.hidden || reducedMotion?.matches) return;
+      startedAt ??= time;
+      const elapsed = time - startedAt;
+      const quantized = Math.floor(elapsed / INDETERMINATE_PROGRESS_STEP_MS)
+        * INDETERMINATE_PROGRESS_STEP_MS;
+      setAnimationTimeMs((current) => current === quantized ? current : quantized);
+      pending = requestAnimationFrame(tick);
+    };
+    const sync = () => {
+      cancel();
+      setAnimationTimeMs(0);
+      if (!document.hidden && !reducedMotion?.matches) pending = requestAnimationFrame(tick);
+    };
+    reducedMotion?.addEventListener("change", sync);
+    document.addEventListener("visibilitychange", sync);
+    sync();
+    return () => {
+      cancel();
+      reducedMotion?.removeEventListener("change", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [hasIndeterminateProgress]);
   const syncManipulatingIds = useCallback(() => {
     const next = gesturesRef.current.manipulatingIds;
     setManipulatingIds((current) => sameWidgetIdSet(current, next) ? current : next);
@@ -862,8 +908,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       && previousProjection.pressActiveId === pressActiveId
       && previousProjection.activationFlashId === activationFlashId
       && previousProjection.theme === theme
+      && previousProjection.recipe === recipe
       && previousProjection.feedback === feedback
       && previousProjection.interactionRevision === interactionRevision
+      && previousProjection.animationTimeMs === animationTimeMs
       && previousProjection.activeFocusId === runtimeActiveFocusId
       && previousProjection.focusVisible === focusVisible
       && previousProjection.width === viewport.width
@@ -874,21 +922,19 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
 
     let runtime = runtimeRef.current;
     if (!runtime) {
-      runtime = new CellUiRuntime({ viewport, overlayViewport, theme, feedback });
+      runtime = new CellUiRuntime({ viewport, overlayViewport, theme, recipe, feedback });
       runtimeRef.current = runtime;
     } else {
       runtime.resize(viewport, overlayViewport);
       runtime.setTheme(theme);
+      runtime.setRecipe(recipe);
       runtime.setFeedback(feedback);
     }
     const focusedChanged = focusedIdRef.current !== focusedId;
     const next = runtime.render(children, {
+      ...controller.renderState,
       hoveredId,
-      manipulatingIds,
-      pressActiveId,
-      activationFlashId,
-      activationTargetId: controller.snapshot.activationTargetId,
-      confirmation: controller.feedback.presentation,
+      animationTimeMs,
       colors: { color: palette.color, backgroundColor: palette.background },
       activeFocusId: runtimeActiveFocusId,
       focusVisible,
@@ -931,8 +977,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       pressActiveId,
       activationFlashId,
       theme,
+      recipe,
       feedback,
       interactionRevision,
+      animationTimeMs,
       activeFocusId: runtimeActiveFocusId,
       focusVisible,
       width: viewport.width,
@@ -942,7 +990,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     };
     // The headless runtime is an external store; publish its committed snapshot.
     setFrame(next);
-  }, [controller, palette.color, palette.background, activationFlashId, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, runtimeActiveFocusId, syncManipulatingIds, theme, feedback, viewport]);
+  }, [controller, palette.color, palette.background, activationFlashId, animationTimeMs, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, recipe, runtimeActiveFocusId, syncManipulatingIds, theme, feedback, viewport]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;

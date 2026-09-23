@@ -13,6 +13,7 @@ import {
   Menu,
   MenuItem,
   Overlay,
+  Progress,
   RangeSlider,
   RangeSliderThumb,
   Root,
@@ -1029,6 +1030,40 @@ describe("CellSurface", () => {
       if (original) Object.defineProperty(window, "matchMedia", original);
       else Reflect.deleteProperty(window, "matchMedia");
       vi.useRealTimers();
+    }
+  });
+
+  it("keeps indeterminate Progress static under reduced motion", async () => {
+    const original = Object.getOwnPropertyDescriptor(window, "matchMedia");
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+    const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
+    try {
+      render(
+        <CellSurface
+          viewport={{ width: 20, height: 1 }}
+          onCommand={() => undefined}
+          label="Progress surface"
+          probeId="reduced-motion-progress"
+        >
+          <Root><Progress id="loading" label="Loading" value={null} width={20} /></Root>
+        </CellSurface>
+      );
+      const surface = screen.getByLabelText("Progress surface");
+      await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toBe("█████░░░░░░░░░░░░░░░"));
+      expect(requestAnimationFrame).not.toHaveBeenCalled();
+      expect(screen.getByRole("progressbar", { name: "Loading" }))
+        .not.toHaveAttribute("aria-valuenow");
+    } finally {
+      requestAnimationFrame.mockRestore();
+      if (original) Object.defineProperty(window, "matchMedia", original);
+      else Reflect.deleteProperty(window, "matchMedia");
     }
   });
 

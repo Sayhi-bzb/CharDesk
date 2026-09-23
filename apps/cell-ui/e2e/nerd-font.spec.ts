@@ -8,7 +8,7 @@ const cases = [
 ] as const;
 
 test("loads one bounded Nerd shard for each representative glyph", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/components/text");
 
   for (const [codePoint, file] of cases) {
     const response = page.waitForResponse((candidate) =>

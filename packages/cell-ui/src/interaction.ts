@@ -1,4 +1,5 @@
 import { hitTest } from "./scene.js";
+import { isDescendantOf } from "./tree.js";
 import { accordionItem, accordionTriggers, accordionFocusCandidates, isAccordionHidden } from "./accordion.js";
 import { gridEntry, gridOwnerId, gridTarget } from "./grid-navigation.js";
 import { commandForComboboxKey } from "./combobox.js";
@@ -30,6 +31,10 @@ import {
   resolveCellSliderRange,
   stepCellSliderValue,
 } from "./slider.js";
+import {
+  inlineControlChromeMetrics,
+  isInlineControlTrailingActionX,
+} from "./inline-control-chrome.js";
 
 export type EngineInput =
   | KeyInput
@@ -62,19 +67,6 @@ export type WidgetCommand =
       scrollY: number;
       page?: Readonly<{ direction: -1 | 1; cellCount: number }>;
     }>;
-
-const isDescendantOf = (
-  tree: WidgetTree,
-  id: WidgetId,
-  ancestorId: WidgetId
-): boolean => {
-  let current: WidgetId | null = id;
-  while (current) {
-    if (current === ancestorId) return true;
-    current = tree.nodes.get(current)?.parentId ?? null;
-  }
-  return false;
-};
 
 const scopeIds = (
   tree: WidgetTree,
@@ -547,9 +539,20 @@ export const commandForInput = (
     const comboboxInput = ancestorOfKind(frame.tree, hit, "combobox-input");
     const comboboxEntry = comboboxInput ? frame.scene.entries.get(comboboxInput.id) : undefined;
     if (input.phase === "down" && comboboxInput && !comboboxInput.disabled && comboboxEntry) {
-      const arrow = input.point.x === comboboxEntry.decorationBounds.x + comboboxEntry.decorationBounds.width - 1;
-      if (arrow || !comboboxInput.expanded) {
-        return { type: "set-expanded", targetId: comboboxInput.id, expanded: arrow ? !comboboxInput.expanded : true };
+      const right = comboboxEntry.decorationBounds.x + comboboxEntry.decorationBounds.width;
+      const disclosure = isInlineControlTrailingActionX(
+        inlineControlChromeMetrics(comboboxInput),
+        input.point.x,
+        comboboxEntry.decorationBounds.x,
+        right,
+        right,
+      );
+      if (disclosure || !comboboxInput.expanded) {
+        return {
+          type: "set-expanded",
+          targetId: comboboxInput.id,
+          expanded: disclosure ? !comboboxInput.expanded : true,
+        };
       }
     }
     const rangeSlider = ancestorOfKind(frame.tree, hit, "range-slider");

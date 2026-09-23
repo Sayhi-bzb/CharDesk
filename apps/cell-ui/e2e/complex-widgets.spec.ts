@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { copyCellRange, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, copyCellRange, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
 
 test("Grid has one remembered Tab entry and range copy never selects a cell", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/complex");
   const surface = page.getByLabel("Complex widget surface");
   await surface.scrollIntoViewIfNeeded();
   await surface.evaluate((element) => {
@@ -54,7 +54,7 @@ test("Grid has one remembered Tab entry and range copy never selects a cell", as
 test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/complex");
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
 
@@ -129,46 +129,33 @@ test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", a
 });
 
 test("CellSurface owns rectangle selection without product wiring", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/complex");
   await page.waitForLoadState("networkidle");
   const surface = page.getByLabel("Complex widget surface");
-  const canvas = surface.locator("canvas");
-  await canvas.scrollIntoViewIfNeeded();
-  const bounds = await canvas.boundingBox();
-  if (!bounds) throw new Error("Complex widget Canvas is not visible.");
-  const cellWidth = bounds.width / 44;
-  const cellHeight = bounds.height / 16;
+  const probe = await readCellProbe(surface);
+  const panelY = probe.text.split("\n").findIndex((line) => line.includes("Code content"));
+  expect(panelY).toBeGreaterThanOrEqual(0);
+  const panel = { x: 0, y: panelY, width: probe.viewport.width, height: 1 };
+  const start = await cellPoint(surface, panel.x, panel.y);
+  const end = await cellPoint(surface, panel.width - 1, panel.y);
 
   await page.keyboard.down("Alt");
   await page.keyboard.down("Meta");
-  await page.mouse.move(bounds.x + 0.5 * cellWidth, bounds.y + 8.5 * cellHeight);
+  await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.mouse.move(
-    bounds.x + 43.5 * cellWidth,
-    bounds.y + 10.5 * cellHeight,
-    { steps: 8 }
-  );
+  await page.mouse.move(end.x, end.y, { steps: 8 });
   await page.mouse.up();
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");
 
-  await expect(surface).toHaveAttribute("data-cell-range", "0,8,44,3");
-  const border = `┌${"─".repeat(42)}┐`;
-  const expected = [
-    border,
-    `│Code content${" ".repeat(30)}│`,
-    `└${"─".repeat(42)}┘`,
-  ].join("\n");
-  const copied = await surface.evaluate((element) => {
-    const clipboard = new DataTransfer();
-    element.dispatchEvent(new ClipboardEvent("copy", {
-      bubbles: true,
-      cancelable: true,
-      clipboardData: clipboard,
-    }));
-    return clipboard.getData("text/plain");
-  });
-  expect(copied).toBe(expected);
+  await expect(surface).toHaveAttribute(
+    "data-cell-range",
+    `${panel.x},${panel.y},${panel.width},${panel.height}`,
+  );
+  const expected = probe.text.split("\n").slice(panel.y, panel.y + panel.height)
+    .map((line) => line.slice(panel.x, panel.x + panel.width).trimEnd())
+    .join("\n");
+  expect(await copyCellRange(surface)).toBe(expected);
 
   await surface.press("Escape");
   await expect(surface).not.toHaveAttribute("data-cell-range");

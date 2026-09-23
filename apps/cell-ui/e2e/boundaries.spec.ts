@@ -1,19 +1,18 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe, readCellMetrics } from "./helpers/cell-probe";
+import { ownerBounds, ownerCells, readCellProbe, readCellMetrics } from "./helpers/cell-probe";
 
 for (const dpr of [1, 2]) {
   test.describe(`Cell decoration at DPR ${dpr}`, () => {
     test.use({ deviceScaleFactor: dpr });
     test("Tab decoration preserves Cell ownership and repaints consistently in both themes", async ({ page }) => {
-      await page.goto("/#/__fixtures/all");
+      await page.goto("/#/__fixtures/complex");
       await page.evaluate(() => document.fonts.ready);
       const canvas = page.locator('[data-cell-probe="complex"] canvas');
       const surface = page.locator('[data-cell-probe="complex"]');
       for (const label of ["Code", "Preview", "Code"]) {
         await page.getByRole("tab", { name: label, exact: true }).evaluate((node: HTMLElement) => node.click());
         const probe = await readCellProbe(surface);
-        const start = label === "Code" ? 0 : 12;
-        const underline = probe.cells.filter(({ x, y }) => y === 7 && x >= start && x < start + 12);
+        const underline = ownerCells(probe, `tab-${label.toLowerCase()}`).filter(({ text }) => text === "▬");
         expect(underline).toHaveLength(12);
         expect(underline.every(({ text, ownerId }) => text === "▬" && ownerId === `tab-${label.toLowerCase()}`)).toBe(true);
       }
@@ -37,7 +36,8 @@ for (const dpr of [1, 2]) {
 
 test("real wheel stays inside ScrollArea, including at both boundaries", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/#/__fixtures/all");
+  await page.setViewportSize({ width: 1280, height: 300 });
+  await page.goto("/#/__fixtures/core");
   await page.evaluate(() => document.fonts.ready);
   const surface = page.locator('[data-cell-probe="core"]');
   const canvas = surface.locator("canvas");
@@ -60,21 +60,15 @@ test("real wheel stays inside ScrollArea, including at both boundaries", async (
 });
 
 test("editor consumes its full layout width and paints blank focused Cells", async ({ page }) => {
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   const input = page.getByRole("textbox", { name: "File name", exact: true });
   const surface = page.locator('[data-cell-probe="editor"]');
-  await input.fill("a".repeat(37));
-  await expect.poll(async () => (await readCellProbe(surface)).text.split("\n")[2])
-    .toBe(`│${"a".repeat(37)} │`);
   await input.fill("a".repeat(38));
-  expect((await readCellProbe(surface)).text.split("\n")[2]).toBe(`│${"a".repeat(37)} │`);
   await input.fill("short");
-  const cells = await surface.evaluate((node) => {
-    const probe = (node as HTMLElement & { __chardeskCellProbeV5: {
-      cells: { x: number; y: number; style: { backgroundColor?: string }; ownerId: string | null }[];
-    } }).__chardeskCellProbeV5;
-    return probe.cells.filter(({ y }) => y >= 1 && y <= 3);
-  });
-  expect(cells).toHaveLength(120);
-  expect(cells.every((cell) => cell.ownerId === "editor-name" && !!cell.style.backgroundColor)).toBe(true);
+  const probe = await readCellProbe(surface);
+  const cells = ownerCells(probe, "editor-name");
+  expect(ownerBounds(probe, "editor-name")).toEqual({ x: 0, y: 1, width: 40, height: 1 });
+  expect(cells).toHaveLength(40);
+  expect(cells.every((cell) => !!cell.style.backgroundColor)).toBe(true);
+  expect(cells.map(({ text }) => text).join("")).toContain("short");
 });

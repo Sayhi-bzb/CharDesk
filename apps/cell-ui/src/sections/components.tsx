@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Dialog,
@@ -30,12 +30,12 @@ import {
   Slider,
   Text,
   TextInput,
-  type CellBlockVariant,
   type CellBorderShape,
   type CellFrame,
-  type SelectionSurfaceVariant,
   type ButtonSize,
   type ButtonVariant,
+  type ProgressVariant,
+  type SurfaceVariant,
   type WidgetCommand,
 } from "@chardesk/cell-ui";
 import {
@@ -70,7 +70,7 @@ export const DialogComponentDemo = () => {
   };
   return <ComponentPlayground id="component-dialog-playground" label="Dialog component" probeId="component-dialog"
     focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={36} controlsColumns={29} overlayRows={5}
-    preview={<Box>
+    preview={<Box variant="ghost">
       <Button id="dialog-open"><Text>Open dialog</Text></Button>
       {open && <Dialog id="demo-dialog" modal={modal} closeOnOutsideClick={outside} initialFocusId="dialog-cancel">
         <DialogTitle>Continue?</DialogTitle>
@@ -150,14 +150,69 @@ export const ToggleComponentDemo = () => {
     ]} />;
 };
 
-export const ProgressComponentDemo = () => (
-  <GallerySurface label="Progress component" probeId="component-progress"
-    viewport={{ width: 20, height: 7 }} onCommand={noCommand}>
-    <Root id="component-progress-root" style={{ paddingTop: 3 }}>
-      <Progress id="component-progress-bar" label="Progress" value={60} />
-    </Root>
-  </GallerySurface>
-);
+const PROGRESS_DEMO_STEPS = [
+  { delayMs: 180, value: 7 },
+  { delayMs: 260, value: 15 },
+  { delayMs: 520, value: 18 },
+  { delayMs: 160, value: 31 },
+  { delayMs: 240, value: 47 },
+  { delayMs: 700, value: 49 },
+  { delayMs: 140, value: 68 },
+  { delayMs: 360, value: 79 },
+  { delayMs: 900, value: 82 },
+  { delayMs: 180, value: 94 },
+  { delayMs: 420, value: 100 },
+  { delayMs: 800, value: 0 },
+] as const;
+const progressVariantItems = ["solid", "outline"]
+  .map((value) => ({ id: value, label: value }));
+
+export const ProgressComponentDemo = () => {
+  const [indeterminate, setIndeterminate] = useState(false);
+  const [value, setValue] = useState(0);
+  const variant = useCellSelectState("component-progress-variant", progressVariantItems, {
+    defaultSelectedId: "solid",
+  });
+  const focus = usePlaygroundFocus("component-progress-indeterminate", [variant]);
+  useEffect(() => {
+    if (indeterminate) return;
+    let stepIndex = 0;
+    let timer: number | undefined;
+    const advance = () => {
+      const step = PROGRESS_DEMO_STEPS[stepIndex]!;
+      timer = window.setTimeout(() => {
+        setValue(step.value);
+        stepIndex = (stepIndex + 1) % PROGRESS_DEMO_STEPS.length;
+        advance();
+      }, step.delayMs);
+    };
+    advance();
+    return () => { if (timer !== undefined) window.clearTimeout(timer); };
+  }, [indeterminate]);
+  const dispatch = (command: WidgetCommand) => {
+    focus.dispatch(command);
+    if (command.type === "activate" && command.targetId === "component-progress-indeterminate") {
+      setValue(0);
+      setIndeterminate((current) => !current);
+    }
+  };
+  return <ComponentPlayground id="component-progress-playground" label="Progress component"
+    probeId="component-progress" focusedId={focus.focusedId} onCommand={dispatch}
+    previewMinColumns={20} controlsColumns={25}
+    overlayRows={focus.activeSelect ? focus.activeSelect.items.length : 0}
+    preview={<Progress id="component-progress-bar" label="Progress"
+      value={indeterminate ? null : value} variant={variant.selectedId as ProgressVariant}
+      style={{ width: 20 }} />}
+    controls={[
+      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+      renderPlaygroundCheckboxControl(
+        "indeterminate",
+        "component-progress-indeterminate",
+        indeterminate,
+        focus.focusedId,
+      ),
+    ]} />;
+};
 
 const orientationItems = ["horizontal", "vertical"].map((value) => ({ id: value, label: value }));
 const separatorVariantItems = [
@@ -237,22 +292,17 @@ export const TextComponentDemo = () => (
   </GallerySurface>
 );
 
-const buttonVariantItems = (["default", "elevated", "outline", "ghost"] as const).map((variant) => ({
-  id: `component-button-variant-${variant}`,
-  label: variant,
-}));
-
 const buttonSizeItems = (["sm", "default", "lg"] as const).map((size) => ({
   id: `component-button-size-${size}`,
   label: size,
 }));
 
-const blockVariantItems = (["plain", "elevated"] as const).map((variant) => ({
-  id: variant,
+const buttonVariantItems = (["solid", "surface", "outline", "ghost"] as const).map((variant) => ({
+  id: `component-button-variant-${variant}`,
   label: variant,
 }));
 
-const selectionVariantItems = (["plain", "elevated"] as const).map((variant) => ({
+const surfaceVariantItems = (["surface", "ghost"] as const).map((variant) => ({
   id: variant,
   label: variant,
 }));
@@ -315,8 +365,8 @@ const renderPlaygroundCheckboxControl = (
 ) => renderGalleryCheckbox({ id, label, checked, focusedId });
 
 export const BoxComponentDemo = () => {
-  const variant = useCellSelectState("component-box-variant", blockVariantItems, {
-    defaultSelectedId: "plain",
+  const variant = useCellSelectState("component-box-variant", surfaceVariantItems, {
+    defaultSelectedId: "ghost",
   });
   const frameSelect = useCellSelectState("component-box-frame", dropdownFrameItems, {
     defaultSelectedId: "none",
@@ -325,7 +375,6 @@ export const BoxComponentDemo = () => {
     defaultSelectedId: "square",
   });
   const focus = usePlaygroundFocus(variant.triggerId, [variant, frameSelect, borderShape]);
-  const blockVariant = variant.selectedId as CellBlockVariant;
   const frame = frameSelect.selectedId as CellFrame;
   const shape = borderShape.selectedId as CellBorderShape;
   return <ComponentPlayground
@@ -340,14 +389,14 @@ export const BoxComponentDemo = () => {
     preview={
       <Box
         id="component-box-preview"
-        variant={blockVariant}
+        variant={variant.selectedId as SurfaceVariant}
         frame={frame}
         borderShape={frame === "bordered" ? shape : undefined}
         style={{ width: 20, height: 3, paddingLeft: 1 }}
       ><Text>Block</Text></Box>
     }
     controls={[
-      renderPlaygroundSelectControl("background", variant, focus.focusedId),
+      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
       renderPlaygroundSelectControl("frame", frameSelect, focus.focusedId),
       ...(frame === "bordered"
         ? [renderPlaygroundSelectControl("border shape", borderShape, focus.focusedId)]
@@ -357,11 +406,11 @@ export const BoxComponentDemo = () => {
 };
 
 export const ButtonComponentDemo = () => {
-  const [variant, setVariant] = useState<ButtonVariant>("default");
+  const [variant, setVariant] = useState<ButtonVariant>("solid");
   const [size, setSize] = useState<ButtonSize>("default");
   const [disabled, setDisabled] = useState(false);
   const variantSelect = useCellSelectState("component-button-variant", buttonVariantItems, {
-    defaultSelectedId: "component-button-variant-default",
+    defaultSelectedId: "component-button-variant-solid",
     onSelectionChange: (id) => setVariant(id.slice("component-button-variant-".length) as ButtonVariant),
   });
   const sizeSelect = useCellSelectState("component-button-size", buttonSizeItems, {
@@ -427,8 +476,8 @@ export const SelectComponentDemo = () => {
       setValue(id.slice("component-select-".length) as SelectDemoValue);
     },
   });
-  const surfaceVariant = useCellSelectState("component-select-surface-variant", selectionVariantItems, {
-    defaultSelectedId: "elevated",
+  const surfaceVariant = useCellSelectState("component-select-surface-variant", surfaceVariantItems, {
+    defaultSelectedId: "surface",
   });
   const contentFrame = useCellSelectState("component-select-content-frame", dropdownFrameItems, {
     defaultSelectedId: "none",
@@ -463,7 +512,7 @@ export const SelectComponentDemo = () => {
       focusedId: focus.focusedId,
       width: 30,
       disabled,
-      variant: surfaceVariant.selectedId as SelectionSurfaceVariant,
+      variant: surfaceVariant.selectedId as SurfaceVariant,
       contentFrame: frame,
       contentBorderShape: frame === "bordered"
         ? contentBorderShape.selectedId as CellBorderShape
@@ -471,7 +520,7 @@ export const SelectComponentDemo = () => {
       emptyLabel: "Select theme",
     })}
     controls={[
-      renderPlaygroundSelectControl("background", surfaceVariant, focus.focusedId),
+      renderPlaygroundSelectControl("variant", surfaceVariant, focus.focusedId),
       renderPlaygroundSelectControl("dropdown frame", contentFrame, focus.focusedId),
       ...(frame === "bordered"
         ? [renderPlaygroundSelectControl("border shape", contentBorderShape, focus.focusedId)]
@@ -499,8 +548,8 @@ export const ComboboxComponentDemo = () => {
     selectedId: value,
     onSelectionChange: setValue,
   });
-  const surfaceVariant = useCellSelectState("component-combobox-surface-variant", selectionVariantItems, {
-    defaultSelectedId: "elevated",
+  const surfaceVariant = useCellSelectState("component-combobox-surface-variant", surfaceVariantItems, {
+    defaultSelectedId: "surface",
   });
   const contentFrame = useCellSelectState("component-combobox-content-frame", dropdownFrameItems, {
     defaultSelectedId: "none",
@@ -523,10 +572,10 @@ export const ComboboxComponentDemo = () => {
     overlayRows={combo.open
       ? Math.min(Math.max(combo.filteredItems.length, 1), 3) + 2
       : focus.activeSelect ? focus.activeSelect.items.length : 0}
-    preview={<Box id="component-combobox-preview" style={{ width: 30 }}>
+    preview={<Box id="component-combobox-preview" variant="ghost" style={{ width: 30 }}>
       <Text>Font</Text>
       <Combobox id={combo.id} label="Font" disabled={disabled} style={{ width: 30 }}
-        variant={surfaceVariant.selectedId as SelectionSurfaceVariant}>
+        variant={surfaceVariant.selectedId as SurfaceVariant}>
         <ComboboxInput id={combo.inputId} label="Font" state={combo.inputSnapshot} expanded={combo.open}
           activeDescendantId={combo.activeId ?? undefined} />
         {combo.open ? <ComboboxContent id={combo.contentId} label="Font options" scrollY={combo.scrollY}
@@ -543,7 +592,7 @@ export const ComboboxComponentDemo = () => {
       </Combobox>
     </Box>}
     controls={[
-      renderPlaygroundSelectControl("background", surfaceVariant, focus.focusedId),
+      renderPlaygroundSelectControl("variant", surfaceVariant, focus.focusedId),
       renderPlaygroundSelectControl("dropdown frame", contentFrame, focus.focusedId),
       ...(frame === "bordered"
         ? [renderPlaygroundSelectControl("border shape", contentBorderShape, focus.focusedId)]
@@ -628,8 +677,8 @@ export const SliderComponentDemo = () => {
     previewMinColumns={26}
     controlsColumns={25}
     preview={
-      <Box id="component-slider-preview" style={{ width: 26 }}>
-        <Box id="component-slider-label" style={{ direction: "row" }}>
+      <Box id="component-slider-preview" variant="ghost" style={{ width: 26 }}>
+        <Box id="component-slider-label" variant="ghost" style={{ direction: "row" }}>
           <Text style={{ width: range ? 20 : 23 }}>Volume</Text>
           <Text>{range ? `${rangeValues[0]}–${rangeValues[1]}` : value}</Text>
         </Box>
@@ -694,8 +743,8 @@ export const InputComponentDemo = () => {
     value: "notes.txt",
   });
   const [disabled, setDisabled] = useState(false);
-  const variant = useCellSelectState("component-input-variant", selectionVariantItems, {
-    defaultSelectedId: "elevated",
+  const variant = useCellSelectState("component-input-variant", surfaceVariantItems, {
+    defaultSelectedId: "surface",
   });
   const focus = usePlaygroundFocus("component-input-field", [variant]);
   const dispatch = (command: WidgetCommand) => {
@@ -715,7 +764,7 @@ export const InputComponentDemo = () => {
     controlsColumns={25}
     overlayRows={focus.activeSelect ? focus.activeSelect.items.length : 0}
     preview={
-      <Box id="component-input-frame" style={{ width: 30 }}>
+      <Box id="component-input-frame" variant="ghost" style={{ width: 30 }}>
         <Text id="component-input-label">File name</Text>
         <TextInput
           id="component-input-field"
@@ -723,13 +772,13 @@ export const InputComponentDemo = () => {
           state={input.snapshot}
           focused={focus.focusedId === "component-input-field"}
           disabled={disabled}
-          variant={variant.selectedId as SelectionSurfaceVariant}
+          variant={variant.selectedId as SurfaceVariant}
           style={{ width: 30 }}
         />
       </Box>
     }
     controls={[
-      renderPlaygroundSelectControl("background", variant, focus.focusedId),
+      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
       renderPlaygroundCheckboxControl(
         "disabled",
         "component-input-disabled",
@@ -787,8 +836,8 @@ const scrollDemoBorderSize = 2;
 
 export const ScrollAreaComponentDemo = () => {
   const [scrollY, setScrollY] = useState(0);
-  const variant = useCellSelectState("component-scroll-variant", blockVariantItems, {
-    defaultSelectedId: "plain",
+  const variant = useCellSelectState("component-scroll-variant", surfaceVariantItems, {
+    defaultSelectedId: "ghost",
   });
   const frameSelect = useCellSelectState("component-scroll-frame", dropdownFrameItems, {
     defaultSelectedId: "none",
@@ -796,7 +845,6 @@ export const ScrollAreaComponentDemo = () => {
   const borderShape = useCellSelectState("component-scroll-border-shape", borderShapeItems, {
     defaultSelectedId: "square",
   });
-  const blockVariant = variant.selectedId as CellBlockVariant;
   const frame = frameSelect.selectedId as CellFrame;
   const borderSize = frame === "bordered" ? scrollDemoBorderSize : 0;
   const list = useCellListState(scrollItems, {
@@ -827,7 +875,7 @@ export const ScrollAreaComponentDemo = () => {
       <ScrollArea
         id="component-scroll-area"
         scrollY={scrollY}
-        variant={blockVariant}
+        variant={variant.selectedId as SurfaceVariant}
         frame={frame}
         borderShape={frame === "bordered"
           ? borderShape.selectedId as CellBorderShape
@@ -850,7 +898,7 @@ export const ScrollAreaComponentDemo = () => {
       </ScrollArea>
     }
     controls={[
-      renderPlaygroundSelectControl("background", variant, focus.focusedId),
+      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
       renderPlaygroundSelectControl("frame", frameSelect, focus.focusedId),
       ...(frame === "bordered"
         ? [renderPlaygroundSelectControl("border shape", borderShape, focus.focusedId)]

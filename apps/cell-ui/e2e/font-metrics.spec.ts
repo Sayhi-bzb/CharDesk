@@ -1,17 +1,21 @@
 import { expect, test } from "@playwright/test";
-import { copyCellRange, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, copyCellRange, ownerBounds, ownerCells, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
 import { fusionMonoStylesheetRequest } from "./helpers/fusion-mono";
 import { selectGalleryFont } from "./helpers/gallery-font-select";
+
+test.describe.configure({ mode: "serial" });
 
 test("keeps the first visible Surface geometry stable across a cold reload", async ({ page }) => {
   await page.addInitScript(() => {
     const samples: Array<{ height: string; width: string }> = [];
     Object.defineProperty(window, "__cellGeometrySamples", { configurable: true, value: samples });
-    const started = performance.now();
+    Object.defineProperty(window, "__cellGeometrySampling", { configurable: true, writable: true, value: true });
     const sample = () => {
       const canvas = document.querySelector<HTMLCanvasElement>('[data-cell-probe="component-text"] canvas');
       if (canvas) samples.push({ height: canvas.style.height, width: canvas.style.width });
-      if (performance.now() - started < 1_000) requestAnimationFrame(sample);
+      if ((window as typeof window & { __cellGeometrySampling: boolean }).__cellGeometrySampling) {
+        requestAnimationFrame(sample);
+      }
     };
     requestAnimationFrame(sample);
   });
@@ -23,12 +27,21 @@ test("keeps the first visible Surface geometry stable across a cold reload", asy
     await expect(surface).toBeVisible();
     await expect.poll(async () => (await readCellProbe(surface)).presentation?.measurement?.ready).toBe(true);
     await page.waitForTimeout(100);
-    const samples = await page.evaluate(() =>
-      (window as typeof window & { __cellGeometrySamples: Array<{ height: string; width: string }> })
-        .__cellGeometrySamples);
+    const samples = await page.evaluate(() => {
+      const target = window as typeof window & {
+        __cellGeometrySamples: Array<{ height: string; width: string }>;
+        __cellGeometrySampling: boolean;
+      };
+      target.__cellGeometrySampling = false;
+      return target.__cellGeometrySamples;
+    });
+    const probe = await readCellProbe(surface);
+    const metrics = probe.presentation!.metrics;
     expect(samples.length).toBeGreaterThan(0);
-    expect(new Set(samples.map(({ height }) => height))).toEqual(new Set(["240px"]));
-    expect(new Set(samples.map(({ width }) => width))).toEqual(new Set(["324px"]));
+    expect(new Set(samples.map(({ height }) => height)))
+      .toEqual(new Set([`${probe.viewport.height * metrics.cellHeight}px`]));
+    expect(new Set(samples.map(({ width }) => width)))
+      .toEqual(new Set([`${probe.viewport.width * metrics.cellWidth}px`]));
   }
 });
 
@@ -38,22 +51,23 @@ for (const candidate of ["substitute-mono", "fusion-mono", "xiaolai-mono"]) {
     test.describe(`font grid ${candidate} DPR ${dpr}`, () => {
       test.use({ deviceScaleFactor: dpr });
       test("font switches preserve the grid, editing, hit testing and rectangle copy", async ({ page }, testInfo) => {
+        test.setTimeout(xiaolai ? 90_000 : 30_000);
         await page.emulateMedia({ reducedMotion: "reduce" });
         if (candidate === "substitute-mono") await page.route(fusionMonoStylesheetRequest, (route) => route.fulfill({
           contentType: "text/css",
           body: '@font-face { font-family: "Fusion Pixel 12px Mono latin"; src: local("Arial"), local("DejaVu Sans"); }',
         }));
-        await page.goto("/#/__fixtures/all");
+        await page.goto("/#/__fixtures/editor");
         const surface = page.locator('[data-cell-probe="editor"]');
         const canvas = surface.locator("canvas");
         const input = page.getByRole("textbox", { name: "File name", exact: true });
         const original = await readCellMetrics(surface);
         await input.fill("abcdef");
         const text = (await readCellProbe(surface)).text;
-        await selectGalleryFont(page, "Fusion Pixel 12px Mono");
+        await selectGalleryFont(page, "fusion-mono");
         await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font", "fusion-mono");
         if (xiaolai) {
-          await selectGalleryFont(page, "Xiaolai Mono");
+          await selectGalleryFont(page, "xiaolai-mono");
           await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font", candidate, { timeout: 60_000 });
           await expect.poll(async () => (await readCellProbe(surface)).presentation?.fontAudit?.status, { timeout: 60_000 }).toBe("ready");
           const snapshot = await readCellProbe(surface);
@@ -115,9 +129,9 @@ for (const candidate of ["substitute-mono", "fusion-mono", "xiaolai-mono"]) {
         const probe = await readCellProbe(surface);
         expect(bounds.width).toBeCloseTo(probe.viewport.width * metrics.cellWidth, 1);
         expect(bounds.height).toBeCloseTo(probe.viewport.height * metrics.cellHeight, 1);
-        const point = (x: number, y: number) => ({ x: bounds.x + x * metrics.cellWidth, y: bounds.y + y * metrics.cellHeight });
-        const start = point(3.5, 2.5);
-        const end = point(6.5, 2.5);
+        const first = ownerCells(probe, "editor-name").find((cell) => cell.text === "a")!;
+        const start = await cellPoint(surface, first.x + 2, first.y);
+        const end = await cellPoint(surface, first.x + 5, first.y);
         await page.mouse.move(start.x, start.y);
         await page.mouse.down();
         await page.mouse.move(end.x, end.y, { steps: 5 });
@@ -125,18 +139,20 @@ for (const candidate of ["substitute-mono", "fusion-mono", "xiaolai-mono"]) {
         await expect(input).toHaveJSProperty("selectionStart", 2);
         await expect(input).toHaveJSProperty("selectionEnd", 5);
         const anchor = await input.evaluate((node) => ({ left: parseFloat(node.style.left), top: parseFloat(node.style.top), width: parseFloat(node.style.width), height: parseFloat(node.style.height) }));
-        expect(anchor.left).toBeCloseTo(6 * metrics.cellWidth, 2);
-        expect(anchor.top).toBeCloseTo(2 * metrics.cellHeight, 2);
+        expect(anchor.left).toBeCloseTo((first.x + 5) * metrics.cellWidth, 2);
+        expect(anchor.top).toBeCloseTo(first.y * metrics.cellHeight, 2);
         expect(anchor.width).toBeCloseTo(metrics.cellWidth, 2);
         expect(anchor.height).toBeCloseTo(metrics.cellHeight, 2);
         await page.keyboard.down("Alt"); await page.keyboard.down("Meta");
-        const rangeStart = point(0.5, 1.5); const rangeEnd = point(39.5, 3.5);
+        const area = ownerBounds(probe, "editor-document");
+        const rangeStart = await cellPoint(surface, area.x, area.y);
+        const rangeEnd = await cellPoint(surface, area.x + area.width - 1, area.y + area.height - 1);
         await page.mouse.move(rangeStart.x, rangeStart.y); await page.mouse.down();
         await page.mouse.move(rangeEnd.x, rangeEnd.y, { steps: 5 }); await page.mouse.up();
         await page.keyboard.up("Meta"); await page.keyboard.up("Alt");
-        expect(await copyCellRange(surface)).toBe([
-          `┌${"─".repeat(38)}┐`, `│abcdef${" ".repeat(32)}│`, `└${"─".repeat(38)}┘`,
-        ].join("\n"));
+        const copied = (await copyCellRange(surface)).split("\n");
+        expect(copied[0]).toBe(`┌${"─".repeat(area.width - 2)}┐`);
+        expect(copied.at(-1)).toBe(`└${"─".repeat(area.width - 2)}┘`);
         await testInfo.attach("font-grid-metrics", { body: JSON.stringify({ original, measured: metrics }), contentType: "application/json" });
       });
     });

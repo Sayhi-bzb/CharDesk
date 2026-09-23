@@ -5,9 +5,9 @@
   --cell-foreground: #000000;
   --cell-surface: #ffffff;
   --cell-surface-elevated: #e6e6e6;
-  --cell-button-primary: #000000;
-  --cell-button-primary-foreground: #ffffff;
-  --cell-button-primary-hover: #1a1a1a;
+  --cell-default-control-variant: surface;
+  --cell-button-solid: #000000;
+  --cell-button-solid-foreground: #ffffff;
   --cell-highlight: #000000;
   --cell-hover: #e6e6e6;
   --cell-highlight-foreground: #ffffff;
@@ -33,9 +33,8 @@
   --cell-foreground: #ffffff;
   --cell-surface: #000000;
   --cell-surface-elevated: #1a1a1a;
-  --cell-button-primary: #ffffff;
-  --cell-button-primary-foreground: #000000;
-  --cell-button-primary-hover: #e6e6e6;
+  --cell-button-solid: #ffffff;
+  --cell-button-solid-foreground: #000000;
   --cell-highlight: #ffffff;
   --cell-hover: #1a1a1a;
   --cell-highlight-foreground: #000000;

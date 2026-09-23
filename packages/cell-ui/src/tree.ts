@@ -6,6 +6,8 @@ import type {
   WidgetTree,
 } from "./types.js";
 import { normalizeCellRangeSliderValues, resolveCellSliderRange } from "./slider.js";
+import { sameNodeContent } from "./widget-change.js";
+export { sameWidgetValue } from "./widget-change.js";
 
 const EMPTY_TREE: WidgetTree = Object.freeze({
   rootId: null,
@@ -20,68 +22,18 @@ const segmentFor = (descriptor: WidgetDescriptor, index: number) => {
   return `${descriptor.kind}[${index}]`;
 };
 
-export const sameWidgetValue = (left: unknown, right: unknown) =>
-  JSON.stringify(left) === JSON.stringify(right);
-
-const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
-  left.kind === right.kind
-  && left.key === right.key
-  && left.blockVariant === right.blockVariant
-  && left.frame === right.frame
-  && left.selectionVariant === right.selectionVariant
-  && left.borderShape === right.borderShape
-  && left.text === right.text
-  && left.label === right.label
-  && left.disabled === right.disabled
-  && left.focused === right.focused
-  && left.focusActive === right.focusActive
-  && left.focusVisible === right.focusVisible
-  && left.hovered === right.hovered
-  && left.manipulating === right.manipulating
-  && left.pressActive === right.pressActive
-  && left.activationFlash === right.activationFlash
-  && left.confirming === right.confirming
-  && sameWidgetValue(left.confirmation, right.confirmation)
-  && left.selected === right.selected
-  && left.active === right.active
-  && left.checked === right.checked
-  && left.pressed === right.pressed
-  && left.radioValue === right.radioValue
-  && sameWidgetValue(left.progress, right.progress)
-  && left.separatorVariant === right.separatorVariant
-  && left.buttonVariant === right.buttonVariant
-  && left.buttonSize === right.buttonSize
-  && left.sliderValue === right.sliderValue
-  && left.sliderMin === right.sliderMin
-  && left.sliderMax === right.sliderMax
-  && left.sliderStep === right.sliderStep
-  && left.sliderValueText === right.sliderValueText
-  && left.expanded === right.expanded
-  && left.hasChildren === right.hasChildren
-  && left.level === right.level
-  && left.parentItemId === right.parentItemId
-  && left.rowIndex === right.rowIndex
-  && left.columnIndex === right.columnIndex
-  && left.rowCount === right.rowCount
-  && left.columnCount === right.columnCount
-  && left.positionInSet === right.positionInSet
-  && left.setSize === right.setSize
-  && left.orientation === right.orientation
-  && left.controlsId === right.controlsId
-  && left.activeDescendantId === right.activeDescendantId
-  && left.labelledById === right.labelledById
-  && sameWidgetValue(left.textEditor, right.textEditor)
-  && left.readOnly === right.readOnly
-  && sameWidgetValue(left.overlayPosition, right.overlayPosition)
-  && left.modal === right.modal
-  && sameWidgetValue(left.dialog, right.dialog)
-  && left.dialogPart === right.dialogPart
-  && left.closeOnOutsideClick === right.closeOnOutsideClick
-  && left.describedById === right.describedById
-  && sameWidgetValue(left.style, right.style)
-  && sameWidgetValue(left.textStyle, right.textStyle)
-  && sameWidgetValue(left.scrollOffset, right.scrollOffset)
-  && sameWidgetValue(left.children, right.children);
+export const isDescendantOf = (
+  tree: WidgetTree,
+  id: WidgetId,
+  ancestorId: WidgetId
+): boolean => {
+  let current: WidgetId | null = id;
+  while (current) {
+    if (current === ancestorId) return true;
+    current = tree.nodes.get(current)?.parentId ?? null;
+  }
+  return false;
+};
 
 const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
   if (!descriptor) return EMPTY_TREE;
@@ -133,9 +85,8 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       parentId,
       index,
       style: current.style,
-      blockVariant: current.blockVariant,
+      surfaceVariant: current.surfaceVariant,
       frame: current.frame,
-      selectionVariant: current.selectionVariant,
       borderShape: current.borderShape,
       text: current.text,
       textStyle: current.textStyle,
@@ -156,6 +107,8 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       pressed: current.pressed,
       radioValue: current.radioValue,
       progress: current.progress,
+      progressAnimationTimeMs: 0,
+      progressVariant: current.progressVariant,
       separatorVariant: current.separatorVariant,
       buttonVariant: current.buttonVariant,
       buttonSize: current.buttonSize,

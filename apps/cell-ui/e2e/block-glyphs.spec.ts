@@ -21,29 +21,34 @@ test("component chrome uses Cell graphics across all display fonts without Julia
       else original.call(this, text, x, y, maxWidth);
     };
   });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/components/box");
+  const surface = page.locator('[data-cell-probe="component-box"]');
+  await page.getByRole("button", { name: "frame", exact: true }).evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "bordered", exact: true }).evaluate((element: HTMLElement) => element.click());
+  await expect(page.getByRole("listbox", { name: "frame options" })).toHaveCount(0);
 
   const glyphCalls = () => page.evaluate(() =>
     (window as Window & { __chardeskGlyphCalls: GlyphCall[] }).__chardeskGlyphCalls);
   await expect.poll(async () => {
-    const probe = await readCellProbe(page.locator('[data-cell-probe="editor"]'));
+    const probe = await readCellProbe(surface);
     const cells = probe.presentation?.cellGraphics?.cells ?? [];
     return {
       border: cells.some(({ text }) => "┌─│".includes(text)),
     };
   }).toEqual({ border: true });
 
-  await page.getByRole("button", { name: "Rounded", exact: true }).click();
-  await expect.poll(async () => (await readCellProbe(page.locator('[data-cell-probe="editor"]')))
+  await page.getByRole("button", { name: "border shape", exact: true }).evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "rounded", exact: true }).evaluate((element: HTMLElement) => element.click());
+  await expect.poll(async () => (await readCellProbe(surface))
     .presentation?.cellGraphics?.cells.some(({ text }) => text === "╭")).toBe(true);
 
-  for (const [label, id, family] of [
-    ["Fusion Pixel 12px Mono", "fusion-mono", "Fusion Pixel"],
-    ["Xiaolai Mono", "xiaolai-mono", "Xiaolai Mono"],
-    ["Maple Mono", "maple", "Maple Mono"],
-  ]) {
+  for (const [id, family] of [
+    ["fusion-mono", "Fusion Pixel"],
+    ["xiaolai-mono", "Xiaolai Mono"],
+    ["maple", "Maple Mono"],
+  ] as const) {
     await page.evaluate(() => { (window as Window & { __chardeskGlyphCalls: GlyphCall[] }).__chardeskGlyphCalls.length = 0; });
-    await selectGalleryFont(page, label);
+    await selectGalleryFont(page, id);
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font", id);
     await expect.poll(async () => (await glyphCalls()).some(({ text, font }) =>
       /^[A-Za-z]$/.test(text) && font.includes(family))).toBe(true);
@@ -52,9 +57,9 @@ test("component chrome uses Cell graphics across all display fonts without Julia
     const expandedGraphics = (await glyphCalls()).filter(({ text }) =>
       ["⣿", "\ue0b0", "\uee03", "\uf5ee", "\u{1fb95}", "\u{1fbb0}", "\u{1fbc5}"].includes(text));
     expect(expandedGraphics).toHaveLength(0);
-    await expect.poll(async () => (await readCellProbe(page.locator('[data-cell-probe="editor"]')))
+    await expect.poll(async () => (await readCellProbe(surface))
       .presentation?.cellGraphics?.source).toBe("cell-graphics");
-    expect((await readCellProbe(page.locator('[data-cell-probe="editor"]')))
+    expect((await readCellProbe(surface))
       .presentation?.requestedFontRoutes["cell-glyph"]).toBeUndefined();
   }
 });

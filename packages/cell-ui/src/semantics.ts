@@ -12,6 +12,7 @@ import {
   isTextEditorKind,
 } from "./widget-capabilities.js";
 import { resolveCellRangeSliderThumbContext } from "./slider.js";
+import { isDescendantOf } from "./tree.js";
 
 export type SemanticAuditIssue = Readonly<{
   nodeId: WidgetId | null;
@@ -101,19 +102,6 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
 
 const selectable = (node: WidgetNode) => isSelectableKind(node.kind);
 
-const isDescendantOf = (
-  tree: WidgetTree,
-  id: WidgetId,
-  ancestorId: WidgetId
-): boolean => {
-  let current: WidgetId | null = id;
-  while (current) {
-    if (current === ancestorId) return true;
-    current = tree.nodes.get(current)?.parentId ?? null;
-  }
-  return false;
-};
-
 export const createSemanticSnapshot = (
   tree: WidgetTree,
   scene: SceneSnapshot,
@@ -162,8 +150,10 @@ export const createSemanticSnapshot = (
       ...(selectable(node) ? { selected: node.selected } : {}),
       ...(node.kind === "toggle" ? { pressed: node.pressed } : {}),
       ...(node.kind === "accordion-trigger" ? { expanded: node.expanded } : {}),
-      ...(node.progress ? { valueNow: node.progress.value, valueMin: 0, valueMax: node.progress.max,
-        valueText: node.progress.valueText } : {}),
+      ...(node.progress && node.progress.value !== null
+        ? { valueNow: node.progress.value, valueMin: 0, valueMax: node.progress.max,
+            valueText: node.progress.valueText }
+        : node.progress?.valueText ? { valueText: node.progress.valueText } : {}),
       ...(node.kind === "separator" || node.kind === "radio-group"
         ? { orientation: node.orientation ?? (node.kind === "separator" ? "horizontal" : "vertical") } : {}),
       ...(node.kind === "checkbox" || node.kind === "radio-item"
@@ -357,13 +347,23 @@ export const auditSemanticSnapshot = (
         || node.valueText !== undefined)
       && node.role !== "slider" && node.role !== "progressbar"
     ) issue(node.id, "invalid-state", `Numeric value is invalid for role ${node.role}.`);
-    if ((node.role === "slider" || node.role === "progressbar") && (
+    if (node.role === "slider" && (
       node.valueNow === undefined
       || node.valueMin === undefined
       || node.valueMax === undefined
       || node.valueNow < node.valueMin
       || node.valueNow > node.valueMax
     )) issue(node.id, "invalid-state", "Slider value must be inside its numeric range.");
+    const hasProgressRange = node.valueNow !== undefined
+      || node.valueMin !== undefined
+      || node.valueMax !== undefined;
+    if (node.role === "progressbar" && hasProgressRange && (
+      node.valueNow === undefined
+      || node.valueMin === undefined
+      || node.valueMax === undefined
+      || node.valueNow < node.valueMin
+      || node.valueNow > node.valueMax
+    )) issue(node.id, "invalid-state", "Progress value must be inside its numeric range.");
     if (
       (node.value !== undefined || node.multiline !== undefined || node.readOnly !== undefined)
       && node.role !== "textbox" && node.role !== "combobox"

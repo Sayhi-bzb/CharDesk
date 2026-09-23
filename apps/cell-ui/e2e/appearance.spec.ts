@@ -19,7 +19,7 @@ test.describe("display font", () => {
       if (requests === 1) await firstRequest;
       await route.continue();
     });
-    await page.goto("/#/__fixtures/all");
+    await page.goto("/#/__fixtures/editor");
     const gallery = page.locator(".gallery-page");
     const editor = page.locator('[data-cell-probe="editor"]');
     const input = page.getByRole("textbox", { name: "File name" });
@@ -43,7 +43,7 @@ test.describe("display font", () => {
     await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
     await expect(fontSelect.getByRole("button", { name: /^Loading Fusion/ }))
       .toHaveAttribute("aria-disabled", "true");
-    expect(requests).toBe(1);
+    await expect.poll(() => requests).toBe(1);
     releaseFirst();
     await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
@@ -73,17 +73,17 @@ test.describe("display font", () => {
       [node.selectionStart, node.selectionEnd])).toEqual(selection);
 
     expect(trialRequests).toBe(0);
-    await selectGalleryFont(page, "Xiaolai");
+    await selectGalleryFont(page, "xiaolai-mono");
     await expect(gallery).toHaveAttribute("data-gallery-font", "xiaolai-mono");
     expect(trialRequests).toBe(1);
     await expect(input).toHaveValue("Wnotes-hello.txt");
     expect(await input.evaluate((node: HTMLTextAreaElement) =>
       [node.selectionStart, node.selectionEnd])).toEqual(selection);
-    await selectGalleryFont(page, "Maple");
+    await selectGalleryFont(page, "maple");
     await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
     await page.reload();
     await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
-    expect(requests).toBe(1);
+    await expect.poll(() => requests).toBe(1);
   });
 
   for (const resource of ["stylesheet", "font"] as const) {
@@ -94,15 +94,15 @@ test.describe("display font", () => {
       if (requests === 1) await route.abort("failed");
       else await route.continue();
     });
-    await page.goto("/#/__fixtures/all");
+    await page.goto("/#/__fixtures/editor");
     const gallery = page.locator(".gallery-page");
-    await selectGalleryFont(page, "Fusion");
+    await selectGalleryFont(page, "fusion-mono");
     await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
     const retry = galleryFontSelect(page).getByRole("button", { name: /^Fusion unavailable/ });
     await expect(retry).toBeEnabled();
     await expect(page.getByRole("status")).toContainText("Display remains Maple");
-    await selectGalleryFont(page, "Fusion");
+    await selectGalleryFont(page, "fusion-mono");
     await expect.poll(() => requests).toBe(2);
     await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
@@ -115,7 +115,7 @@ test("a successfully loaded font survives a page reload", async ({ page }) => {
   const gallery = page.locator(".gallery-page");
   const fontSelect = galleryFontSelect(page);
 
-  await selectGalleryFont(page, "Fusion");
+  await selectGalleryFont(page, "fusion-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
   await expect.poll(() => page.evaluate(() => (
     localStorage.getItem("chardesk-cell-ui-font")
@@ -194,7 +194,7 @@ test("header font Select uses Cell pointer geometry without moving the header", 
 
 test("theme icon toggles, persists, and preserves Cell state", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   const editor = page.locator('[data-cell-probe="editor"]');
   const input = page.getByRole("textbox", { name: "File name" });
   await input.fill("hello世界");
@@ -247,7 +247,7 @@ for (const storage of ["invalid", "unavailable"] as const) {
       else Object.defineProperty(window, "localStorage", { get: () => { throw new DOMException("Unavailable", "SecurityError"); } });
     }, storage);
     await page.emulateMedia({ colorScheme: "dark" });
-    await page.goto("/#/__fixtures/all");
+    await page.goto("/#/__fixtures/core");
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
     await page.getByRole("button", { name: "Light" }).click();
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "light");
@@ -256,7 +256,7 @@ for (const storage of ["invalid", "unavailable"] as const) {
 
 test("system appearance preserves editing and Cell projections", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/#/__fixtures/all");
+  await page.goto("/#/__fixtures/editor");
   const editor = page.locator('[data-cell-probe="editor"]');
   const input = page.getByRole("textbox", { name: "File name" });
   await input.fill("hello世界");
@@ -278,7 +278,9 @@ test("system appearance preserves editing and Cell projections", async ({ page }
   expect(after.cells.map(({ text, ownerId }) => ({ text, ownerId })))
     .toEqual(before.cells.map(({ text, ownerId }) => ({ text, ownerId })));
 
+  await page.evaluate(() => { location.hash = "/__fixtures/virtualization"; });
   const virtual = page.locator('[data-cell-probe="virtualization"]');
+  await expect(virtual).toBeVisible();
   await virtual.focus();
   await page.keyboard.press("PageDown");
   const virtualBefore = await readCellProbe(virtual);
@@ -287,7 +289,9 @@ test("system appearance preserves editing and Cell projections", async ({ page }
   expect((await readCellProbe(virtual)).text).toBe(virtualBefore.text);
   await expect(virtual).toHaveAttribute("data-cell-focused", "virtual-file-9");
 
+  await page.evaluate(() => { location.hash = "/__fixtures/overlay"; });
   const overlay = page.locator('[data-cell-probe="overlay"]');
+  await expect(overlay).toBeVisible();
   await overlay.focus();
   await page.keyboard.press("Enter");
   const overlayBefore = await readCellProbe(overlay);
@@ -298,6 +302,8 @@ test("system appearance preserves editing and Cell projections", async ({ page }
   await expect(page.locator("#overlay").getByRole("menuitem", { name: "Open file" })).toBeFocused();
   await page.keyboard.press("Escape");
 
+  await page.evaluate(() => { location.hash = "/__fixtures/editor"; });
+  await expect(editor).toBeVisible();
   const canvas = editor.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
   const bounds = await canvas.boundingBox();
@@ -328,7 +334,7 @@ test("late fonts repaint Canvas without waiting for an interaction", async ({ pa
     await gate;
     await route.continue();
   });
-  await page.goto("/#/__fixtures/all", { waitUntil: "domcontentloaded" });
+  await page.goto("/#/__fixtures/core", { waitUntil: "domcontentloaded" });
   const canvas = page.locator('[data-cell-probe="core"] canvas');
   await expect(canvas).toBeVisible();
   const fallback = await canvas.evaluate((node: HTMLCanvasElement) => node.toDataURL());

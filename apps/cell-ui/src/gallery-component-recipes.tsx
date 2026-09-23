@@ -8,7 +8,7 @@ import {
   Text,
   type CellBorderShape,
   type CellFrame,
-  type SelectionSurfaceVariant,
+  type SurfaceVariant,
 } from "@chardesk/cell-ui";
 import type { CellSelectState } from "@chardesk/cell-ui/browser";
 
@@ -38,7 +38,7 @@ export const renderGallerySelect = ({
   disabled?: boolean;
   open?: boolean;
   showLabel?: boolean;
-  variant?: SelectionSurfaceVariant;
+  variant?: SurfaceVariant;
   contentFrame?: CellFrame;
   contentBorderShape?: CellBorderShape;
   emptyLabel?: string;
@@ -49,7 +49,7 @@ export const renderGallerySelect = ({
   labelId?: string;
   itemSemanticLabel?: (id: string) => string;
 }>) => (
-  <Box id={fieldId} key={select.id} style={{ width }}>
+  <Box id={fieldId} key={select.id} variant="ghost" style={{ width }}>
     {showLabel ? <Text id={labelId}>{label}</Text> : null}
     <Select id={select.id} label={label} style={{ width }} variant={variant}>
       <SelectTrigger
@@ -103,7 +103,7 @@ export const renderGalleryCheckbox = ({
   focusedId: string | null;
   disabled?: boolean;
 }>) => (
-  <Box id={`${id}-field`} key={id} style={{ direction: "row", height: 1 }}>
+  <Box id={`${id}-field`} key={id} variant="ghost" style={{ direction: "row", height: 1 }}>
     <Checkbox
       id={id}
       label={label}

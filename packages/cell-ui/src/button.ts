@@ -1,30 +1,14 @@
-import type { CellLayoutStyle } from "./types.js";
+import type { SurfaceVariant } from "./surface-variant.js";
 
-export type ButtonVariant = "default" | "elevated" | "outline" | "ghost";
+export type ButtonVariant = "solid" | "outline" | SurfaceVariant;
 export type ButtonSize = "sm" | "default" | "lg";
 
-export const resolveButtonVariant = (value: unknown): ButtonVariant =>
-  value === "elevated" || value === "outline" || value === "ghost" ? value : "default";
+export const resolveButtonVariant = (
+  value: unknown,
+  fallback: ButtonVariant = "solid",
+): ButtonVariant => value === "solid" || value === "surface" || value === "outline" || value === "ghost"
+  ? value
+  : fallback;
 
 export const resolveButtonSize = (value: unknown): ButtonSize =>
   value === "sm" || value === "lg" ? value : "default";
-
-const horizontalPadding: Record<ButtonSize, number> = {
-  sm: 0,
-  default: 1,
-  lg: 2,
-};
-
-export const buttonHorizontalPadding = (size: ButtonSize): number =>
-  horizontalPadding[size];
-
-export const buttonLayoutDefaults = (size: ButtonSize): CellLayoutStyle => {
-  const padding = horizontalPadding[size];
-  return {
-    direction: "row",
-    minHeight: 1,
-    flexShrink: 0,
-    paddingLeft: padding,
-    paddingRight: padding,
-  };
-};

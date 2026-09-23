@@ -105,7 +105,7 @@ describe("pressActive paint", () => {
   });
 
   it("derives inversion from effective colors for every Button variant and theme", () => {
-    for (const variant of ["default", "elevated", "outline", "ghost"] as const) {
+    for (const variant of ["solid", "surface", "outline", "ghost"] as const) {
       const runtime = new CellUiRuntime({
         viewport: { width: 20, height: 1 },
         theme: {

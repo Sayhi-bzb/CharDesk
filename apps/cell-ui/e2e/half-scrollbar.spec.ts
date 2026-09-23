@@ -6,7 +6,7 @@ for (const dpr of [1, 1.25, 2]) {
     test.use({ deviceScaleFactor: dpr });
     test("sub-cell drag produces Unicode half-block snapshots and stable repaint", async ({ page }) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
-      await page.goto("/#/__fixtures/all");
+      await page.goto("/#/__fixtures/core");
       const surface = page.locator('[data-cell-probe="core"]');
       const canvas = surface.locator("canvas");
       await canvas.scrollIntoViewIfNeeded();

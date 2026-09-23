@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
 
-test("Combobox Playground configures its shared background and dropdown frame", async ({ page }) => {
+test("Combobox Playground configures its shared variant and dropdown frame", async ({ page }) => {
   await page.goto("/#/components/combobox");
   const surface = page.getByLabel("Combobox component");
   const input = page.getByRole("combobox", { name: "Font" });
-  const background = page.getByRole("button", { name: "background", exact: true });
+  const variant = page.getByRole("button", { name: "variant", exact: true });
   const dropdownFrame = page.getByRole("button", { name: "dropdown frame", exact: true });
   const borderShape = page.getByRole("button", { name: "border shape", exact: true });
 
@@ -57,21 +57,21 @@ test("Combobox Playground configures its shared background and dropdown frame", 
   expect(roundedOverlay?.text).toContain("╰");
   await input.press("Escape");
 
-  await background.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "plain", exact: true })
+  await variant.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "ghost", exact: true })
     .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "background options" })).toHaveCount(0);
+  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
   await expect(surface).not.toHaveAttribute("data-cell-activation-flash");
-  const plain = await readCellProbe(surface);
-  expect(plain.cells.find((cell) =>
+  const ghost = await readCellProbe(surface);
+  expect(ghost.cells.find((cell) =>
     cell.ownerId === "component-combobox-input" && cell.text === " "
   )?.style.backgroundColor).not.toBe(elevatedBackground);
   await input.click();
   await expect(input).toHaveAttribute("aria-expanded", "true");
-  const plainOverlay = (await readCellProbe(surface)).overlays.find((overlay) =>
+  const ghostOverlay = (await readCellProbe(surface)).overlays.find((overlay) =>
     overlay.rootId === "component-combobox-content"
   );
-  expect(plainOverlay?.cells.find((cell) =>
+  expect(ghostOverlay?.cells.find((cell) =>
     cell.ownerId === "component-combobox-fusion" && cell.text === " "
   )?.style.backgroundColor).not.toBe(elevatedBackground);
   await input.fill("no matching font");
@@ -112,6 +112,8 @@ test("Combobox input row opens on click, keeps editing open, and closes from its
   await expect(input).toHaveAttribute("aria-expanded", "false");
   await input.click();
   await expect(input).toHaveAttribute("aria-expanded", "true");
+  await clickCell(arrow!.x + 1, arrow!.y);
+  await expect(input).toHaveAttribute("aria-expanded", "false");
 });
 
 test("Combobox filters without moving DOM focus and restores uncommitted text", async ({ page }) => {

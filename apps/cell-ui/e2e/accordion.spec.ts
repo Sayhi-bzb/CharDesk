@@ -1,6 +1,29 @@
 import { expect, test } from "@playwright/test";
 import { readCellMetrics, readCellProbe } from "./helpers/cell-probe";
 
+test("Accordion content keeps layout transparent while Select owns its surface", async ({ page }) => {
+  await page.goto("/#/components/accordion");
+  const surface = page.locator('[data-cell-probe="component-accordion"]');
+  const appearance = surface.getByRole("button", { name: "Appearance", exact: true });
+
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", scheme);
+    if (await appearance.getAttribute("aria-expanded") === "false") {
+      await appearance.evaluate((element: HTMLElement) => element.click());
+    }
+    await expect(appearance).toHaveAttribute("aria-expanded", "true");
+    const frame = await readCellProbe(surface);
+    const themeLabel = frame.cells.find((cell) => cell.text === "T");
+    const soundMark = frame.cells.find((cell) => cell.ownerId === "accordion-sound" && cell.text === "[");
+    const selectArrow = frame.cells.find((cell) => cell.ownerId === "accordion-theme-trigger" && cell.text === "▾");
+    expect(themeLabel?.style.backgroundColor).toBeUndefined();
+    expect(soundMark?.style.backgroundColor).toBeUndefined();
+    expect(selectArrow?.style.backgroundColor).toBe(scheme === "light"
+      ? "rgb(230, 230, 230)" : "rgb(26, 26, 26)");
+  }
+});
+
 test("Accordion independently expands, preserves content, and shares keyboard and pointer feedback", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/#/components/accordion");

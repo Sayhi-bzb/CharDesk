@@ -9,20 +9,30 @@ import {
 describe("basic Cell widgets", () => {
   it("clips status-light chrome and consumes global glyphs without shifting the label", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 1 }, theme: { toggleOffIndicator: "·", toggleOnIndicator: "◆" } });
-    const view = (pressed: boolean, width = 7, disabled = false) => <Root>
+    const view = (pressed: boolean, width = 8, disabled = false) => <Root>
       <Toggle id="light" label="Bold" pressed={pressed} disabled={disabled} style={{ width }}><Text>Bold</Text></Toggle>
     </Root>;
-    expect(runtime.render(view(false)).buffer.toText({ trimEnd: true })).toBe("· Bold");
-    expect(runtime.render(view(true)).buffer.toText({ trimEnd: true })).toBe("◆ Bold");
-    for (const width of [1, 2, 3, 4]) {
+    expect(runtime.render(view(false)).buffer.toText({ trimEnd: true })).toBe(" · Bold");
+    expect(runtime.render(view(true)).buffer.toText({ trimEnd: true })).toBe(" ◆ Bold");
+    for (const width of [1, 2, 3, 4, 5]) {
       const frame = runtime.render(view(true, width));
-      expect(frame.buffer.toText({ trimEnd: true })).toBe(width === 4 ? "◆ B" : "◆");
+      expect(frame.buffer.toText({ trimEnd: true })).toBe(
+        width === 1 ? "◆" : width === 5 ? " ◆ B" : " ◆",
+      );
       expect(frame.buffer.get(width, 0)?.ownerId).not.toBe("light");
     }
-    const disabled = runtime.render(view(true, 7, true), { hoveredId: "light", focusedId: "light", pressActiveId: "light", activationFlashId: "light" });
-    expect(disabled.buffer.toText({ trimEnd: true })).toBe("◆ Bold");
-    expect(disabled.buffer.get(0, 0)?.style).toMatchObject(CLASSIC_MAC_LIGHT_THEME.disabledStyle);
-    expect(disabled.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
+    const disabled = runtime.render(view(true, 8, true), { hoveredId: "light", focusedId: "light", pressActiveId: "light", activationFlashId: "light" });
+    expect(disabled.buffer.toText({ trimEnd: true })).toBe(" ◆ Bold");
+    expect(disabled.buffer.get(1, 0)?.style).toMatchObject(CLASSIC_MAC_LIGHT_THEME.disabledStyle);
+    expect(disabled.buffer.get(1, 0)?.style.backgroundColor).toBeUndefined();
+    const padded = runtime.render(<Root><Toggle id="padded" style={{ paddingLeft: 2, paddingRight: 2 }}>
+      <Text>Bold</Text>
+    </Toggle></Root>);
+    expect(padded.layout.entries.get("padded")?.paddingInsets)
+      .toEqual({ top: 0, right: 3, bottom: 0, left: 5 });
+    expect(padded.buffer.get(0, 0)).toMatchObject({ text: " ", ownerId: "padded" });
+    expect(padded.buffer.get(1, 0)).toMatchObject({ text: "·", ownerId: "padded" });
+    expect(padded.buffer.get(11, 0)).toMatchObject({ text: " ", ownerId: "padded" });
     runtime.dispose();
   });
   it("uses one radio Tab stop between neighboring controls", () => {
@@ -65,15 +75,15 @@ describe("basic Cell widgets", () => {
       <Toggle id="bold" label="Bold" pressed={pressed}><Text>B</Text></Toggle>
     </Root>;
     const first = runtime.render(view(false), { hoveredId: "bold" });
-    expect(first.buffer.toText({ trimEnd: true })).toBe("○ B");
-    for (let x = 0; x < 4; x++) expect(first.buffer.get(x, 0)?.style.backgroundColor).toBe("#000000");
+    expect(first.buffer.toText({ trimEnd: true })).toBe(" ○ B");
+    for (let x = 0; x < 5; x++) expect(first.buffer.get(x, 0)?.style.backgroundColor).toBe("#000000");
     const selected = runtime.render(view(true));
     expect(selected.layout).toBe(first.layout);
-    expect(selected.buffer.toText({ trimEnd: true })).toBe("● B");
-    for (let x = 0; x < 4; x++) expect(selected.buffer.get(x, 0)?.style.backgroundColor).toBeUndefined();
+    expect(selected.buffer.toText({ trimEnd: true })).toBe(" ● B");
+    for (let x = 0; x < 5; x++) expect(selected.buffer.get(x, 0)?.style.backgroundColor).toBeUndefined();
     expect(selected.semantics.nodes.get("bold")).toMatchObject({ role: "button", pressed: true });
     const flash = runtime.render(view(true), { activationFlashId: "bold" });
-    expect(flash.buffer.get(2, 0)?.style.backgroundColor).toBe(CLASSIC_MAC_LIGHT_THEME.foreground);
+    expect(flash.buffer.get(3, 0)?.style.backgroundColor).toBe(CLASSIC_MAC_LIGHT_THEME.foreground);
     expect(auditSemanticSnapshot(flash.semantics)).toEqual([]);
     const focus = new FocusManager();
     focus.sync(selected.tree, "bold");
@@ -83,7 +93,7 @@ describe("basic Cell widgets", () => {
 
   it("normalizes progress, redraws value-only commits, and never exposes actions", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 10, height: 1 } });
-    const view = (value: number, max?: number) => <Root id="root">
+    const view = (value: number | null, max?: number) => <Root id="root">
       <Progress id="progress" label="Upload" value={value} max={max} style={{ width: 10 }} />
     </Root>;
     const first = runtime.render(view(60));
@@ -96,6 +106,65 @@ describe("basic Cell widgets", () => {
     expect(runtime.render(view(-5)).buffer.toText()).toBe("░░░░░░░░░░");
     expect(runtime.render(view(1, 2)).buffer.toText()).toBe("█████░░░░░");
     expect(auditSemanticSnapshot(complete.semantics)).toEqual([]);
+    runtime.dispose();
+  });
+
+  it("renders deterministic indeterminate phases without numeric semantics or layout work", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 10, height: 1 } });
+    const view = <Root id="root">
+      <Progress id="progress" label="Upload" value={null} style={{ width: 10 }} />
+    </Root>;
+    const first = runtime.render(view, { animationTimeMs: 0 });
+    expect(first.buffer.toText()).toBe("███░░░░░░░");
+    expect(first.semantics.nodes.get("progress")).toMatchObject({
+      role: "progressbar",
+      label: "Upload",
+      actions: [],
+    });
+    expect(first.semantics.nodes.get("progress")).not.toHaveProperty("valueNow");
+
+    const second = runtime.render(view, { animationTimeMs: 120 });
+    expect(second.buffer.toText()).toBe("░███░░░░░░");
+    expect(second.layout).toBe(first.layout);
+    expect(second.scene).toBe(first.scene);
+    expect(second.semantics.nodes).toBe(first.semantics.nodes);
+    expect(second.invalidation.work).toMatchObject({
+      layout: "reused",
+      geometry: "reused",
+      paint: "computed",
+      semantics: "reused",
+    });
+    expect(auditSemanticSnapshot(second.semantics)).toEqual([]);
+    runtime.dispose();
+  });
+
+  it("renders outline Progress inside its declared width and treats variant as layout", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 10, height: 1 } });
+    const view = (variant: "solid" | "outline", value: number | null, width = 10) => <Root id="root">
+      <Progress id="progress" label="Upload" variant={variant} value={value} style={{ width }} />
+    </Root>;
+    const solid = runtime.render(view("solid", 60));
+    expect(solid.buffer.toText()).toBe("██████░░░░");
+    expect(solid.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
+
+    const outline = runtime.render(view("outline", 60));
+    expect(outline.buffer.toText()).toBe("[////----]");
+    expect(outline.layout.entries.get("progress")?.rect.width).toBe(10);
+    expect(outline.invalidation.work.layout).toBe("computed");
+    expect(outline.semantics.nodes.get("progress")).toMatchObject({
+      role: "progressbar",
+      valueNow: 60,
+      valueMin: 0,
+      valueMax: 100,
+    });
+
+    expect(runtime.render(view("outline", null), { animationTimeMs: 0 }).buffer.toText())
+      .toBe("[//------]");
+    expect(runtime.render(view("outline", null), { animationTimeMs: 840 }).buffer.toText())
+      .toBe("[/------/]");
+    expect(runtime.render(view("outline", 100, 1)).buffer.toText({ trimEnd: true })).toBe("/");
+    expect(runtime.render(view("outline", 100, 2)).buffer.toText({ trimEnd: true })).toBe("[]");
+    expect(runtime.render(view("outline", 100, 3)).buffer.toText({ trimEnd: true })).toBe("[/]");
     runtime.dispose();
   });
 
@@ -150,7 +219,7 @@ describe("basic Cell widgets", () => {
       </RadioGroup>
     </Root>;
     const frame = runtime.render(view("system"));
-    expect(frame.buffer.toText({ trimEnd: true })).toBe("( ) Light\n( ) Dark\n(●) System");
+    expect(frame.buffer.toText({ trimEnd: true })).toBe(" ( ) Light\n ( ) Dark\n (●) System");
     const focus = new FocusManager();
     expect(focus.first(frame.tree)).toBe("system");
     focus.sync(frame.tree, "light");
@@ -163,7 +232,7 @@ describe("basic Cell widgets", () => {
     expect(frame.semantics.nodes.get("system")).toMatchObject({ semanticParentId: "appearance", role: "radio", checked: true });
     expect(auditSemanticSnapshot(frame.semantics)).toEqual([]);
     const changed = runtime.render(view("light"));
-    expect(changed.buffer.toText({ trimEnd: true })).toContain("(●) Light");
+    expect(changed.buffer.toText({ trimEnd: true })).toContain(" (●) Light");
     expect(changed.layout).toBe(frame.layout);
     const disabled = runtime.render(view("light", true));
     expect(focus.first(disabled.tree)).toBeNull();

@@ -56,7 +56,7 @@ describe("Button", () => {
 
   it("resolves semantic variants and sizes without changing the one-row contract", () => {
     const render = (
-      variant: "default" | "elevated" | "outline" | "ghost",
+      variant: "solid" | "surface" | "outline" | "ghost",
       size: "sm" | "default" | "lg",
     ) => {
       const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
@@ -70,12 +70,12 @@ describe("Button", () => {
     };
 
     const expectations = [
-      ["default", "sm", 4, "Save"],
-      ["default", "default", 6, " Save"],
-      ["default", "lg", 8, "  Save"],
-      ["elevated", "sm", 4, "Save"],
-      ["elevated", "default", 6, " Save"],
-      ["elevated", "lg", 8, "  Save"],
+      ["solid", "sm", 4, "Save"],
+      ["solid", "default", 6, " Save"],
+      ["solid", "lg", 8, "  Save"],
+      ["surface", "sm", 4, "Save"],
+      ["surface", "default", 6, " Save"],
+      ["surface", "lg", 8, "  Save"],
       ["outline", "sm", 6, "[Save]"],
       ["outline", "default", 8, "[ Save ]"],
       ["outline", "lg", 10, "[  Save  ]"],
@@ -90,7 +90,7 @@ describe("Button", () => {
       expect(frame.buffer.toText({ trimEnd: true })).toBe(text);
     }
 
-    const filled = render("default", "default");
+    const filled = render("solid", "default");
     const outline = render("outline", "default");
     const ghost = render("ghost", "default");
     expect(filled.buffer.get(0, 0)?.style).toMatchObject({
@@ -112,13 +112,13 @@ describe("Button", () => {
 
   it("invalidates layout when semantic appearance changes geometry", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 20, height: 1 } });
-    const render = (variant: "default" | "outline", size: "default" | "lg") => runtime.render(
+    const render = (variant: "solid" | "outline", size: "default" | "lg") => runtime.render(
       <Root id="root" style={{ direction: "row" }}>
         <Button id="save" variant={variant} size={size}><Text>Save</Text></Button>
       </Root>
     );
 
-    expect(render("default", "default").layout.entries.get("save")?.rect.width).toBe(6);
+    expect(render("solid", "default").layout.entries.get("save")?.rect.width).toBe(6);
     expect(render("outline", "default").layout.entries.get("save")?.rect.width).toBe(8);
     expect(render("outline", "lg").layout.entries.get("save")?.rect.width).toBe(10);
 
@@ -130,7 +130,7 @@ describe("Button", () => {
       const runtime = new CellUiRuntime({ viewport: { width: 16, height: 3 }, theme });
       const view = (disabled = false, textStyle?: { color?: string; backgroundColor?: string }) => (
         <Root><Box frame="bordered" style={{ width: 16, height: 3 }}>
-          <Button id="save" variant="elevated" disabled={disabled} textStyle={textStyle} style={{ width: 6 }}>
+          <Button id="save" variant="surface" disabled={disabled} textStyle={textStyle} style={{ width: 6 }}>
             <Text>Save</Text>
           </Button>
         </Box></Root>
