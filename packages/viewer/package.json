@@ -42,11 +42,11 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@chardesk/cell-core": "^0.3.7",
+    "@chardesk/cell-core": "^0.4.0",
     "@chardesk/chargraph": "^0.1.0",
-    "@chardesk/font-maple": "^0.3.0",
-    "@chardesk/protocol": "^0.3.0",
-    "@chardesk/rendering": "0.1.0 || ^0.3.7"
+    "@chardesk/font-maple": "^0.4.0",
+    "@chardesk/protocol": "^0.4.0",
+    "@chardesk/rendering": "^0.4.0"
   },
   "publishConfig": {
     "access": "public",
