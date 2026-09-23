@@ -7,8 +7,8 @@
   "license": "OFL-1.1",
   "sideEffects": ["./fonts.css"],
   "dependencies": {
-    "@chardesk/font-maple": "^0.3.7",
-    "@chardesk/fonts": "^0.3.7"
+    "@chardesk/font-maple": "^0.4.0",
+    "@chardesk/fonts": "^0.4.0"
   },
   "exports": {
     ".": "./src/index.ts",

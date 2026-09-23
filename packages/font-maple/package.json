@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/font-maple",
-  "version": "0.3.7",
+  "version": "0.4.0",
   "description": "Optional Maple Mono display and CJK font pack for CharDesk",
   "type": "module",
   "license": "MIT",
@@ -10,12 +10,32 @@
     "directory": "packages/font-maple"
   },
   "homepage": "https://github.com/Sayhi-bzb/CharDesk/tree/main/packages/font-maple#readme",
-  "bugs": { "url": "https://github.com/Sayhi-bzb/CharDesk/issues" },
-  "keywords": ["ascii", "canvas", "fonts", "cjk", "maple-mono"],
-  "sideEffects": ["./fonts.css"],
-  "files": ["assets", "dist", "fonts.css", "manifest.json", "README.md", "LICENSE"],
+  "bugs": {
+    "url": "https://github.com/Sayhi-bzb/CharDesk/issues"
+  },
+  "keywords": [
+    "ascii",
+    "canvas",
+    "fonts",
+    "cjk",
+    "maple-mono"
+  ],
+  "sideEffects": [
+    "./fonts.css"
+  ],
+  "files": [
+    "assets",
+    "dist",
+    "fonts.css",
+    "manifest.json",
+    "README.md",
+    "LICENSE"
+  ],
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./fonts.css": "./fonts.css",
     "./manifest.json": "./manifest.json"
   },
@@ -23,7 +43,14 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --config vitest.config.ts"
   },
-  "dependencies": { "@chardesk/fonts": "^0.3.0" },
-  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
-  "engines": { "node": ">=18" }
+  "dependencies": {
+    "@chardesk/fonts": "^0.4.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

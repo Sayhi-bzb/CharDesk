@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/rendering",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Shared CharDesk render models and Canvas 2D presentation",
   "type": "module",
   "license": "MIT",
@@ -44,9 +44,9 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@chardesk/cell-core": "^0.3.6",
-    "@chardesk/fonts": "^0.3.0",
-    "@chardesk/protocol": "^0.3.0"
+    "@chardesk/cell-core": "^0.4.0",
+    "@chardesk/fonts": "^0.4.0",
+    "@chardesk/protocol": "^0.4.0"
   },
   "publishConfig": {
     "access": "public",
