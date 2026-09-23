@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/Sayhi-bzb/CharDesk/compare/v0.4.1...v0.4.2) (2026-09-23)
+
+
+### Features
+
+* host Cell UI registry for shadcn directory ([#11](https://github.com/Sayhi-bzb/CharDesk/issues/11)) ([3b0dd00](https://github.com/Sayhi-bzb/CharDesk/commit/3b0dd008bc73a5838b178cabcf14f9ddc59c4133))
+
 ## [0.4.1](https://github.com/Sayhi-bzb/CharDesk/compare/v0.4.0...v0.4.1) (2026-09-23)
 
 
