@@ -124,7 +124,7 @@ export type WidgetNode = Readonly<{
   checked: CellCheckboxState;
   pressed: boolean;
   radioValue: string | null;
-  progress: Readonly<{ value: number | null; max: number; valueText?: string }> | null;
+  progress: Readonly<{ value: number | null; max: number; valueText?: string; number: boolean }> | null;
   progressAnimationTimeMs: number;
   progressVariant: import("./progress.js").ProgressVariant;
   separatorVariant: import("./separator.js").SeparatorVariant;

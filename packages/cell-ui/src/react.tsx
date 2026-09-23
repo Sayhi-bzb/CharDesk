@@ -121,6 +121,7 @@ export type ProgressProps = Readonly<{
   value: number | null;
   max?: number;
   valueText?: string;
+  number?: boolean;
   variant?: ProgressVariant;
   style?: CellLayoutStyle;
 }>;
@@ -541,6 +542,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
         ? null
         : Number.isFinite(props.value) ? Math.max(0, Math.min(props.value as number, progressMax)) : 0,
       valueText: typeof props.valueText === "string" ? props.valueText : undefined,
+      number: props.number === true,
     } : null,
     progressVariant,
     separatorVariant: kind === "separator" ? resolveSeparatorVariant(props.variant) : "line",

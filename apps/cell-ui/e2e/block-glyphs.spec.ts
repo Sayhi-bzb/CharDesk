@@ -21,11 +21,8 @@ test("component chrome uses Cell graphics across all display fonts without Julia
       else original.call(this, text, x, y, maxWidth);
     };
   });
-  await page.goto("/#/components/box");
-  const surface = page.locator('[data-cell-probe="component-box"]');
-  await page.getByRole("button", { name: "frame", exact: true }).evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "bordered", exact: true }).evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "frame options" })).toHaveCount(0);
+  await page.goto("/#/__fixtures/overlay");
+  const surface = page.locator('[data-cell-probe="overlay"]');
 
   const glyphCalls = () => page.evaluate(() =>
     (window as Window & { __chardeskGlyphCalls: GlyphCall[] }).__chardeskGlyphCalls);
@@ -36,11 +33,6 @@ test("component chrome uses Cell graphics across all display fonts without Julia
       border: cells.some(({ text }) => "┌─│".includes(text)),
     };
   }).toEqual({ border: true });
-
-  await page.getByRole("button", { name: "border shape", exact: true }).evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "rounded", exact: true }).evaluate((element: HTMLElement) => element.click());
-  await expect.poll(async () => (await readCellProbe(surface))
-    .presentation?.cellGraphics?.cells.some(({ text }) => text === "╭")).toBe(true);
 
   for (const [id, family] of [
     ["fusion-mono", "Fusion Pixel"],

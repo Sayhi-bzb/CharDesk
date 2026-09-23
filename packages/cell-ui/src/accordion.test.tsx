@@ -1,5 +1,41 @@
+import type { ReactNode } from "react";
 import { expect, it } from "vitest";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Box, Root, Text, Checkbox, CellUiRuntime, createTestPilot, auditSemanticSnapshot } from "./index.js";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Box, Root, Text, Checkbox, Select, SelectTrigger, Separator, CellUiRuntime, FocusManager, commandForInput, createTestPilot, auditSemanticSnapshot, hitTest } from "./index.js";
+import { resolvePointerAppearance } from "./pointer.js";
+
+it("uses the nested control column for hover and activation bounds", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 30, height: 6 } });
+  const frame = runtime.render(<Root><Accordion style={{ width: 30 }}>
+    <AccordionItem id="appearance" expanded>
+      <AccordionTrigger><Text>Appearance</Text></AccordionTrigger>
+      <AccordionContent style={{ paddingLeft: 4 }}><Box style={{ width: 15 }}>
+        <Select id="theme" style={{ width: 15 }}>
+          <SelectTrigger id="theme-trigger" label="Theme"><Text>Dark</Text></SelectTrigger>
+        </Select>
+        <Checkbox id="sound" checked><Text>Sound</Text></Checkbox>
+      </Box></AccordionContent>
+    </AccordionItem>
+  </Accordion></Root>);
+  const select = frame.scene.entries.get("theme-trigger")!.hitBounds;
+  const checkbox = frame.scene.entries.get("sound")!.hitBounds;
+  expect(checkbox).toMatchObject({ x: select.x, width: select.width, height: 1 });
+  expect(checkbox.width).toBe(15);
+
+  const inside = { x: checkbox.x + checkbox.width - 1, y: checkbox.y };
+  const outside = { x: inside.x + 1, y: inside.y };
+  expect(hitTest(frame.scene, inside)).toContain("sound");
+  expect(hitTest(frame.scene, outside)).not.toContain("sound");
+  expect(resolvePointerAppearance(frame, inside).hoveredId).toBe("sound");
+  expect(resolvePointerAppearance(frame, outside).hoveredId).toBeNull();
+
+  const focus = new FocusManager();
+  focus.sync(frame.tree, "sound");
+  expect(commandForInput({ type: "pointer", phase: "up", point: inside, button: 0 }, frame, focus))
+    .toEqual({ type: "activate", targetId: "sound" });
+  expect(commandForInput({ type: "pointer", phase: "up", point: outside, button: 0 }, frame, focus))
+    .toBeNull();
+  runtime.dispose();
+});
 
 it("independent disclosure shares commands, navigation and preserved content", async () => {
   const expanded = new Set<string>();
@@ -64,6 +100,45 @@ it("validates structure and retains layout parity across collapsed content", () 
   expect(collapsed.buffer).toEqual(fresh.render(view(false)).buffer);
   expect(collapsed.layout).not.toBe(opened.layout);
   runtime.dispose(); fresh.dispose();
+});
+
+it("accepts separators only between items without changing accordion navigation", async () => {
+  const item = (id: string) => <AccordionItem key={id} id={id}>
+    <AccordionTrigger id={`${id}-trigger`}><Text>{id}</Text></AccordionTrigger>
+    <AccordionContent><Text>{id} content</Text></AccordionContent>
+  </AccordionItem>;
+  const renderChildren = (children: ReactNode) => {
+    const runtime = new CellUiRuntime({ viewport: { width: 16, height: 7 } });
+    try { return runtime.render(<Root><Accordion>{children}</Accordion></Root>); }
+    finally { runtime.dispose(); }
+  };
+  for (const children of [
+    [<Separator key="start" />, item("a")],
+    [item("a"), <Separator key="end" />],
+    [item("a"), <Separator key="first" />, <Separator key="second" />, item("b")],
+    [item("a"), <Text key="other">Other</Text>, item("b")],
+  ]) expect(() => renderChildren(children)).toThrow(/Accordion requires AccordionItem/);
+
+  let separated = false;
+  const view = () => <Root><Accordion style={{ width: 16 }}>
+    {item("a")}
+    {separated ? <Separator id="divider" /> : null}
+    {item("b")}
+  </Accordion></Root>;
+  const pilot = createTestPilot({ viewport: { width: 16, height: 7 }, render: view });
+  expect(pilot.semantics().nodes.has("divider")).toBe(false);
+  separated = true;
+  await pilot.resize({ width: 16, height: 7 });
+  expect(pilot.semantics().nodes.get("divider")).toMatchObject({ role: "separator", orientation: "horizontal" });
+  expect(pilot.text()).toContain("▸ a\n────────────────\n▸ b");
+  await pilot.pressKey("Tab");
+  await pilot.pressKey("ArrowDown");
+  expect(pilot.focus()).toBe("b-trigger");
+  separated = false;
+  await pilot.resize({ width: 16, height: 7 });
+  expect(pilot.focus()).toBe("b-trigger");
+  expect(pilot.semantics().nodes.has("divider")).toBe(false);
+  pilot.dispose();
 });
 
 it("restores the outer header when nested content closes and propagates group disablement", async () => {

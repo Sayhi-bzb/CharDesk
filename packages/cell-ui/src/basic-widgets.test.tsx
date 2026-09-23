@@ -138,6 +138,32 @@ describe("basic Cell widgets", () => {
     runtime.dispose();
   });
 
+  it("shows an owned percentage without changing Progress width or numeric semantics", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 10, height: 1 } });
+    const view = (value: number | null, number: boolean, variant: "solid" | "outline" = "solid", width = 10) =>
+      <Root id="root"><Progress id="progress" label="Upload" value={value} max={200}
+        valueText="Files uploaded" number={number} variant={variant} style={{ width }} /></Root>;
+    const plain = runtime.render(view(120, false));
+    expect(plain.buffer.toText()).toBe("██████░░░░");
+    const numbered = runtime.render(view(120, true));
+    expect(numbered.buffer.toText()).toBe("███░░ 60% ");
+    expect(numbered.layout).toBe(plain.layout);
+    expect(numbered.layout.entries.get("progress")?.rect.width).toBe(10);
+    expect(numbered.semantics.nodes.get("progress")).toMatchObject({
+      role: "progressbar", valueNow: 120, valueMax: 200, valueText: "Files uploaded",
+    });
+    for (let x = 0; x < 10; x += 1) {
+      expect(numbered.buffer.get(x, 0)?.ownerId).toBe("progress");
+    }
+    expect(runtime.render(view(200, true, "outline")).buffer.toText()).toBe("[///] 100%");
+    expect(runtime.render(view(120, true, "outline", 7)).buffer.toText({ trimEnd: true }))
+      .toBe("[///--]");
+    const indeterminate = runtime.render(view(null, true), { animationTimeMs: 0 });
+    expect(indeterminate.buffer.toText()).toBe("███░░░░░░░");
+    expect(indeterminate.semantics.nodes.get("progress")).not.toHaveProperty("valueNow");
+    runtime.dispose();
+  });
+
   it("renders outline Progress inside its declared width and treats variant as layout", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 10, height: 1 } });
     const view = (variant: "solid" | "outline", value: number | null, width = 10) => <Root id="root">

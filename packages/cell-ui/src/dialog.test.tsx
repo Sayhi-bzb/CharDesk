@@ -4,6 +4,27 @@ import { dismissCommandForFocusExit } from "./interaction.js";
 import { Select, SelectTrigger, SelectContent, SelectItem } from "./index.js";
 import { Slider, TextInput, CellTextEditor } from "./index.js";
 import { textEditorAtPoint } from "./interaction.js";
+import { CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME } from "./theme.js";
+
+it.each([CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME])(
+  "keeps ghost Dialog opaque with the theme's base surface",
+  (theme) => {
+    const runtime = new CellUiRuntime({ viewport: { width: 48, height: 14 }, theme });
+    const view = (variant: "surface" | "ghost") => <Root><Dialog id="dialog" variant={variant} frame="none">
+      <DialogTitle>Details</DialogTitle>
+    </Dialog></Root>;
+    const elevated = runtime.render(view("surface"));
+    const bounds = elevated.scene.entries.get("dialog")!.layoutBounds;
+    const inside = { x: bounds.x + 1, y: bounds.y + 1 };
+    expect(elevated.buffer.get(inside.x, inside.y)?.style.backgroundColor)
+      .toBe(theme.elevatedSurfaceStyle.backgroundColor);
+    const ghost = runtime.render(view("ghost"));
+    expect(ghost.buffer.get(inside.x, inside.y)?.style.backgroundColor)
+      .toBe(theme.surfaceStyle.backgroundColor);
+    expect(ghost.semantics.nodes.get("dialog")?.modal).toBe(true);
+    runtime.dispose();
+  },
+);
 
 it("opens a named modal, cycles focus and restores its launcher", async () => {
   let open = false;

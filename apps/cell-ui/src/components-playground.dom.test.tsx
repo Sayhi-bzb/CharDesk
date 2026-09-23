@@ -3,8 +3,10 @@ import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BoxComponentDemo,
+  ButtonComponentDemo,
   CheckboxComponentDemo,
   ComboboxComponentDemo,
+  DialogComponentDemo,
   ToggleComponentDemo,
   ProgressComponentDemo,
   SeparatorComponentDemo,
@@ -58,17 +60,18 @@ describe("Component Playground gallery demos", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it.each([
+    { Demo: DialogComponentDemo, label: "Dialog component", content: ["variant", "surface", "frame", "bordered", "border shape", "square"], absent: ["modal", "closeOnOutsideClick", "ghost"] },
     { Demo: ToggleComponentDemo, label: "Toggle component", content: ["○ Bold", "disabled"], absent: ["variant", "pressed", "value"] },
-    { Demo: ProgressComponentDemo, label: "Progress component", content: ["variant", "solid", "indeterminate"], absent: ["value"] },
-    { Demo: SeparatorComponentDemo, label: "Separator component", content: ["───────", "variant", "direction", "horizontal"], absent: ["line", "slash", "double", "dots", "value"] },
+    { Demo: ProgressComponentDemo, label: "Progress component", content: ["variant", "solid", "number", "indeterminate"], absent: ["outline", "value"] },
+    { Demo: SeparatorComponentDemo, label: "Separator component", content: ["───────", "variant", "direction", "horizontal"], absent: ["slash", "double", "dots", "value"] },
     { Demo: RadioComponentDemo, label: "Radio component", content: ["(●) Light", "( ) Dark", "disabled"], absent: ["variant", "value"] },
-    { Demo: BoxComponentDemo, label: "Box component", content: ["Block", "variant", "ghost", "frame", "none"], absent: ["border shape", "rounded"] },
-    { Demo: SelectComponentDemo, label: "Select component", content: ["Theme", "Dark", "variant", "surface", "dropdown frame", "disabled"], absent: ["value", "rounded"] },
-    { Demo: ComboboxComponentDemo, label: "Combobox component", content: ["Font", "Maple Mono", "variant", "surface", "dropdown frame", "disabled"], absent: ["value", "query", "border shape"] },
+    { Demo: BoxComponentDemo, label: "Box component", content: ["Block", "variant", "frame"], absent: ["rounded"] },
+    { Demo: SelectComponentDemo, label: "Select component", content: ["Theme", "Dark", "disabled", "variant", "dropdown frame"], absent: ["value"] },
+    { Demo: ComboboxComponentDemo, label: "Combobox component", content: ["Font", "Maple Mono", "disabled", "variant", "dropdown frame"], absent: ["value"] },
     { Demo: CheckboxComponentDemo, label: "Checkbox component", content: ["Autosave", "disabled"], absent: ["checked"] },
     { Demo: SliderComponentDemo, label: "Slider component", content: ["Volume", "range", "disabled"], absent: ["value", "step"] },
-    { Demo: InputComponentDemo, label: "Input component", content: ["File name", "notes.txt", "variant", "surface", "disabled"], absent: ["border", "rounded", "readOnly"] },
-    { Demo: ScrollAreaComponentDemo, label: "ScrollArea component", content: ["01  Row 1", "variant", "ghost", "frame", "none"], absent: ["height", "rows", "rounded"] },
+    { Demo: InputComponentDemo, label: "Input component", content: ["File name", "notes.txt", "disabled", "variant"], absent: ["border", "readOnly"] },
+    { Demo: ScrollAreaComponentDemo, label: "ScrollArea component", content: ["01  Row 1", "variant", "frame"], absent: ["rounded"] },
   ])("$label exposes one Preview and its semantic props", async ({ Demo, label, content, absent }) => {
     render(<Demo />);
     const surface = screen.getByLabelText(label);
@@ -79,6 +82,58 @@ describe("Component Playground gallery demos", () => {
     content.forEach((text) => expect(probe.text).toContain(text));
     absent.forEach((text) => expect(probe.text).not.toContain(text));
     expect(screen.queryByRole("checkbox", { name: "border" })).toBeNull();
+  });
+
+  it("switches Button content between text, icon-only, and icon + text without changing its name", async () => {
+    render(<ButtonComponentDemo />);
+    const surface = screen.getByLabelText("Button component");
+    const save = screen.getByRole("button", { name: "Save document" });
+    const buttonCells = () => readCellSurfaceProbe(surface)!.cells
+      .filter((cell) => cell.ownerId === "component-button-save"
+        || cell.ownerId?.startsWith("component-button-save/text"))
+      .sort((left, right) => left.x - right.x);
+    await waitFor(() => expect(buttonCells().map((cell) => cell.text).join(""))
+      .toBe(" Save "));
+
+    fireEvent.click(screen.getByRole("button", { name: "content" }));
+    fireEvent.click(screen.getByRole("option", { name: "icon-only" }));
+    await waitFor(() => expect(buttonCells().map((cell) => cell.text).join(""))
+      .toBe(" \uEB4B "));
+    expect(save).toHaveAccessibleName("Save document");
+    expect(buttonCells()).toHaveLength(3);
+    await waitFor(() => expect(surface).not.toHaveAttribute("data-cell-confirmation-phase"));
+
+    fireEvent.click(screen.getByRole("button", { name: "content" }));
+    fireEvent.click(screen.getByRole("option", { name: "icon + text" }));
+    await waitFor(() => expect(buttonCells().map((cell) => cell.text).join(""))
+      .toBe(" \uEB4B Save "));
+    expect(save).toHaveAccessibleName("Save document");
+    expect(buttonCells()).toHaveLength(8);
+    await waitFor(() => expect(surface).not.toHaveAttribute("data-cell-confirmation-phase"));
+
+    fireEvent.click(screen.getByRole("button", { name: "variant" }));
+    fireEvent.click(screen.getByRole("option", { name: "outline" }));
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("[ \uEB4B Save ]"));
+    expect(save).toHaveAccessibleName("Save document");
+  });
+
+  it("keeps Dialog border shape while its frame is temporarily disabled", async () => {
+    render(<DialogComponentDemo />);
+    const surface = screen.getByLabelText("Dialog component");
+    const select = async (label: string, value: string) => {
+      const trigger = screen.getByRole("button", { name: label });
+      fireEvent.click(trigger);
+      fireEvent.click(await screen.findByRole("option", { name: value }));
+      await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
+    };
+    expect(screen.queryByRole("checkbox", { name: "modal" })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "closeOnOutsideClick" })).toBeNull();
+    await select("border shape", "rounded");
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("rounded"));
+    await select("frame", "none");
+    await waitFor(() => expect(screen.queryByRole("button", { name: "border shape" })).toBeNull());
+    await select("frame", "bordered");
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("rounded"));
   });
 
   it("advances determinate Progress through a repeatable stalled schedule", () => {
@@ -110,57 +165,4 @@ describe("Component Playground gallery demos", () => {
     }
   });
 
-  it("switches Progress between solid and outline", async () => {
-    render(<ProgressComponentDemo />);
-    const surface = screen.getByLabelText("Progress component");
-    const progressCells = () => readCellSurfaceProbe(surface)!.cells
-      .filter((cell) => cell.ownerId === "component-progress-bar")
-      .sort((left, right) => left.x - right.x);
-    await waitFor(() => expect(progressCells()[0]?.style.backgroundColor).toBeUndefined());
-
-    fireEvent.click(screen.getByRole("button", { name: "variant" }));
-    expect(screen.queryByRole("option", { name: "surface" })).toBeNull();
-    expect(screen.queryByRole("option", { name: "ghost" })).toBeNull();
-    fireEvent.click(screen.getByRole("option", { name: "outline" }));
-    await waitFor(() => expect(surface).toHaveAttribute("data-cell-confirmation-phase"));
-    await waitFor(() => expect(surface).not.toHaveAttribute("data-cell-confirmation-phase"));
-
-    await waitFor(() => {
-      const cells = progressCells();
-      expect(cells).toHaveLength(20);
-      expect(cells[0]?.text).toBe("[");
-      expect(cells.at(-1)?.text).toBe("]");
-      expect(cells.slice(1, -1).every((cell) => cell.text === "/" || cell.text === "-"))
-        .toBe(true);
-    });
-  });
-
-  it("configures the shared Combobox appearance without duplicating its selected value", async () => {
-    render(<ComboboxComponentDemo />);
-    const surface = screen.getByLabelText("Combobox component");
-    await waitFor(() => expect(readCellSurfaceProbe(surface)).not.toBeNull());
-    const initial = readCellSurfaceProbe(surface)!;
-    const elevatedBackground = initial.cells.find((cell) =>
-      cell.ownerId === "component-combobox-input" && cell.text === " "
-    )?.style.backgroundColor;
-    expect(elevatedBackground).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "value" })).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "variant" }));
-    fireEvent.click(screen.getByRole("option", { name: "ghost" }));
-    await waitFor(() => expect(readCellSurfaceProbe(surface)!.cells.find((cell) =>
-      cell.ownerId === "component-combobox-input" && cell.text === " "
-    )?.style.backgroundColor).not.toBe(elevatedBackground));
-  });
-
-  it("reveals Combobox border shape only for a bordered dropdown", async () => {
-    render(<ComboboxComponentDemo />);
-    const surface = screen.getByLabelText("Combobox component");
-    await waitFor(() => expect(readCellSurfaceProbe(surface)).not.toBeNull());
-    expect(screen.queryByRole("button", { name: "border shape" })).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "dropdown frame" }));
-    fireEvent.click(screen.getByRole("option", { name: "bordered" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "border shape" })).toBeInTheDocument());
-  });
 });

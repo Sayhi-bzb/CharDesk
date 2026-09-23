@@ -50,6 +50,7 @@ type ComponentPropContract = [
   Expect<Lacks<ComboboxInputProps, "children">>,
   Expect<Has<ProgressProps, "variant">>,
   Expect<Same<NonNullable<ProgressProps["variant"]>, "solid" | "outline">>,
+  Expect<Same<NonNullable<ProgressProps["number"]>, boolean>>,
   Expect<Same<NonNullable<SeparatorProps["variant"]>, "line" | "slash" | "double" | "dots">>,
   Expect<Lacks<ProgressProps, "size">>,
 ];

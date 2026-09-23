@@ -41,4 +41,12 @@ describe("Component Playground layout", () => {
       controlsInset: 3,
     });
   });
+
+  it("gives the preview every Cell when there are no controls", () => {
+    expect(resolveComponentPlaygroundLayout(32, 20, 1, false)).toMatchObject({
+      viewport: { width: 32, height: 7 },
+      previewColumns: 32,
+      propsColumns: 0,
+    });
+  });
 });

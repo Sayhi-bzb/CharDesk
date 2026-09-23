@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Box, Root, ScrollArea, Text, type WidgetCommand } from "@chardesk/cell-ui";
 import { DEFAULT_CELL_UI_METRICS } from "@chardesk/cell-ui/browser";
-import { GallerySurface } from "./appearance";
+import { defaultComponentRecipe, GallerySurface } from "./appearance";
 import {
   MIN_SPLIT_COLUMNS,
   PLAYGROUND_ROWS,
@@ -27,9 +27,9 @@ export function ComponentPlayground({
   focusedId: string | null;
   onCommand: (command: WidgetCommand) => void;
   preview: ReactNode;
-  controls: ReactNode;
+  controls?: ReactNode;
   previewMinColumns: number;
-  controlsColumns: number;
+  controlsColumns?: number;
   overlayRows?: number;
 }>) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -39,7 +39,8 @@ export function ComponentPlayground({
   const layout = resolveComponentPlaygroundLayout(
     totalColumns,
     previewMinColumns,
-    controlsColumns,
+    controlsColumns ?? 1,
+    controls !== undefined,
   );
   const controlsScrollId = `${id}-controls-scroll`;
   useLayoutEffect(() => {
@@ -87,6 +88,7 @@ export function ComponentPlayground({
       onCommand={dispatch}
       label={label}
       probeId={probeId}
+      recipe={defaultComponentRecipe}
     >
       <Root id={`${id}-root`} style={{ direction: layout.stacked ? "column" : "row" }}>
       <Box
@@ -102,14 +104,14 @@ export function ComponentPlayground({
         </Box>
         <Box id={`${id}-preview-bottom`} variant="ghost" style={{ flexGrow: 1 }} />
       </Box>
-      {layout.stacked
+      {controls === undefined ? null : layout.stacked
         ? <Text id={`${id}-divider`} textStyle={{ dim: true }}>{"─".repeat(layout.viewport.width)}</Text>
         : <Box id={`${id}-divider`} variant="ghost" style={{ width: 1, height: PLAYGROUND_ROWS }}>
             {Array.from({ length: PLAYGROUND_ROWS }, (_, row) => (
               <Text id={`${id}-divider-${row}`} key={row} textStyle={{ dim: true }}>│</Text>
             ))}
           </Box>}
-      <ScrollArea
+      {controls === undefined ? null : <ScrollArea
         id={controlsScrollId}
         variant="ghost"
         scrollX={controlsScroll.x}
@@ -129,7 +131,7 @@ export function ComponentPlayground({
             id={`${id}-controls`}
             variant="ghost"
             style={{
-              width: layout.controlsInset + controlsColumns,
+              width: layout.controlsInset + (controlsColumns ?? 1),
               paddingLeft: layout.controlsInset,
             }}
           >
@@ -137,7 +139,7 @@ export function ComponentPlayground({
           </Box>
           <Box id={`${id}-controls-after`} variant="ghost" style={{ flexGrow: 1 }} />
         </Box>
-      </ScrollArea>
+      </ScrollArea>}
       </Root>
     </GallerySurface>
   </div>;

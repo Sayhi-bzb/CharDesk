@@ -5,6 +5,22 @@ export type ProgressVariant = "solid" | "outline";
 export const resolveProgressVariant = (value: unknown): ProgressVariant =>
   value === "outline" ? "outline" : "solid";
 
+export const progressNumberLayout = (
+  value: number,
+  max: number,
+  width: number,
+  variant: ProgressVariant,
+): Readonly<{ trackWidth: number; label: string }> | null => {
+  const minimumTrackWidth = variant === "outline" ? 3 : 1;
+  const labelWidth = 4;
+  const gap = 1;
+  if (width < minimumTrackWidth + gap + labelWidth) return null;
+  return {
+    trackWidth: width - gap - labelWidth,
+    label: `${Math.round(value / max * 100)}%`.padEnd(labelWidth, " "),
+  };
+};
+
 export type ProgressRange = Readonly<{ start: number; length: number }>;
 
 export const indeterminateProgressRanges = (

@@ -9,6 +9,7 @@ import {
   componentDocumentBySlug,
   componentNavigationGroups,
   defaultComponentSlug,
+  sourceLinksForComponent,
   type ComponentDocument,
 } from "./component-catalog";
 import { FixturePage } from "./fixtures";
@@ -154,6 +155,15 @@ export function ComponentPage({ document }: Readonly<{ document: ComponentDocume
       <section className="docs-section" aria-labelledby="usage-title">
         <h2 id="usage-title">Usage</h2>
         <CodeBlock>{document.usage}</CodeBlock>
+      </section>
+      <section className="docs-section" aria-labelledby="source-title">
+        <h2 id="source-title">View source</h2>
+        <p>Start with the component definition, then open its supporting implementation as needed.</p>
+        <ul className="docs-source-links">
+          {sourceLinksForComponent(document.slug).map(({ label, href }) =>
+            <li key={href}><a href={href}>{label}</a></li>
+          )}
+        </ul>
       </section>
       <section className="docs-section" aria-labelledby="api-title">
         <h2 id="api-title">API</h2>

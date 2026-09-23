@@ -107,6 +107,19 @@ describe("ComponentPlayground controls layout", () => {
     expect(lines[4]).toContain("│   disabled");
   });
 
+  it("uses one full-width pane when the component has no controls", async () => {
+    render(<ComponentPlayground id="single-playground" label="Single playground"
+      probeId="single-playground" focusedId={null} onCommand={() => undefined}
+      preview={<Text id="single-content">Block</Text>} previewMinColumns={20} />);
+    const surface = screen.getByLabelText("Single playground");
+    await waitFor(() => expect(readCellSurfaceProbe(surface)).not.toBeNull());
+    const probe = readCellSurfaceProbe(surface)!;
+    expect(probe.viewport).toEqual({ width: 64, height: 7 });
+    expect(probe.text).toContain("Block");
+    expect(probe.cells.some((cell) => cell.ownerId?.includes("divider"))).toBe(false);
+    expect(probe.cells.some((cell) => cell.ownerId?.includes("controls-scroll"))).toBe(false);
+  });
+
   it("collapses centering space and scrolls when controls overflow", async () => {
     renderPlayground(Array.from({ length: 10 }, (_, index) => `row-${index}`));
     const surface = screen.getByLabelText("Test playground");

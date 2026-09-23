@@ -38,6 +38,31 @@ export type ComponentDocument = Readonly<{
   api: readonly ComponentApiRow[];
 }>;
 
+const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
+  dialog: ["react.tsx", "interaction.ts"],
+  accordion: ["react.tsx", "interaction.ts"],
+  toggle: ["react.tsx", "press.ts"],
+  progress: ["react.tsx", "progress.ts"],
+  separator: ["react.tsx", "separator.ts"],
+  radio: ["react.tsx", "browser-collections.tsx"],
+  text: ["react.tsx", "text-viewport.ts"],
+  box: ["react.tsx", "layout.ts"],
+  button: ["react.tsx", "button.ts"],
+  select: ["react.tsx", "browser-collections.tsx"],
+  combobox: ["react.tsx", "combobox.ts", "browser-combobox.tsx"],
+  checkbox: ["react.tsx", "primitive-behavior.ts"],
+  slider: ["react.tsx", "slider.ts"],
+  input: ["react.tsx", "browser-input.tsx"],
+  list: ["react.tsx", "browser-collections.tsx"],
+  "scroll-area": ["react.tsx", "scroll.ts"],
+};
+
+export const sourceLinksForComponent = (slug: string) =>
+  (componentSourceFiles[slug] ?? ["react.tsx"]).map((file) => ({
+    label: file,
+    href: `https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/${file}`,
+  }));
+
 export const componentDocuments: readonly ComponentDocument[] = [
   {
     slug: "dialog", title: "Dialog", group: "components", navigationOrder: 11,
@@ -64,7 +89,7 @@ export function DialogExample() {
 }`,
     api: [
       { name: "id", type: "string", description: "Required stable dismiss-command target." },
-      { name: "variant?", type: '"surface" | "ghost"', description: "Local surface recipe; overrides the global recipe and otherwise defaults to surface." },
+      { name: "variant?", type: '"surface" | "ghost"', description: "Both are opaque: surface uses the elevated surface token; ghost uses the base surface token." },
       { name: "frame?", type: '"none" | "bordered"', description: "Independent Cell border; bordered by default." },
       { name: "borderShape?", type: '"square" | "rounded"', description: "Border glyphs when framed." },
       { name: "modal", type: "boolean", description: "Trap focus and exclude background semantics; default true." },
@@ -78,17 +103,27 @@ export function DialogExample() {
     description: "Expand independent sections without losing their content state.",
     probeId: "component-accordion", Demo: AccordionComponentDemo,
     usage: `import { useState } from "react";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Root, Text } from "@chardesk/cell-ui";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Root, Separator, Text } from "@chardesk/cell-ui";
 import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function AccordionExample() {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   return <CellSurface viewport={{ width: 30, height: 6 }} onCommand={(command) => {
-    if (command.type === "set-expanded" && command.targetId === "general") setExpanded(command.expanded);
+    if (command.type === "set-expanded") setExpanded((current) => {
+      const next = new Set(current);
+      if (command.expanded) next.add(command.targetId);
+      else next.delete(command.targetId);
+      return next;
+    });
   }}>
-    <Root><Accordion><AccordionItem id="general" expanded={expanded}>
+    <Root><Accordion><AccordionItem id="general" expanded={expanded.has("general")}>
       <AccordionTrigger><Text>General</Text></AccordionTrigger>
       <AccordionContent><Text>Project settings</Text></AccordionContent>
+    </AccordionItem>
+    <Separator />
+    <AccordionItem id="advanced" expanded={expanded.has("advanced")}>
+      <AccordionTrigger><Text>Advanced</Text></AccordionTrigger>
+      <AccordionContent><Text>Advanced settings</Text></AccordionContent>
     </AccordionItem></Accordion></Root>
   </CellSurface>;
 }`,
@@ -97,7 +132,7 @@ export function AccordionExample() {
       { name: "AccordionItem.id", type: "string", description: "Stable item ID; target of set-expanded commands." },
       { name: "AccordionItem.expanded?", type: "boolean", description: "Controlled expansion; defaults to false. Items expand independently." },
       { name: "AccordionItem.disabled?", type: "boolean", description: "Disables this item and its content controls." },
-      { name: "children", type: "Trigger + Content", description: "One Trigger followed by one Content per Item. Relations are automatic; collapsed content retains state." },
+      { name: "children", type: "AccordionItem | Separator", description: "Each Item has one Trigger then one Content; optional Separators sit only between Items. Collapsed content retains state." },
     ],
   },
   {
@@ -124,19 +159,20 @@ export function ToggleExample() {
   },
   {
     slug: "progress", title: "Progress", group: "components", navigationOrder: 8,
-    description: "Display determinate or indeterminate progress as a solid or outlined track.",
+    description: "Display determinate or indeterminate progress as a solid or outlined track, with an optional percentage.",
     probeId: "component-progress", Demo: ProgressComponentDemo,
     usage: `import { Progress, Root } from "@chardesk/cell-ui";
 import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function ProgressExample() {
   return <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
-    <Root><Progress label="Upload" value={60} variant="outline" /></Root>
+    <Root><Progress label="Upload" value={60} variant="outline" number /></Root>
   </CellSurface>;
 }`,
     api: [
       { name: "value", type: "number | null", description: "Numbers are clamped to 0…max; null is indeterminate." },
       { name: "max?", type: "number", description: "Positive finite maximum; defaults to 100." },
+      { name: "number?", type: "boolean", description: "Show a calculated percentage beside the track within the declared width; hidden for indeterminate progress." },
       { name: "variant?", type: '"solid" | "outline"', description: "Solid by default; outline reserves bracket Cells inside the declared width." },
       { name: "label / valueText?", type: "string", description: "Accessible name and optional value description." },
     ],

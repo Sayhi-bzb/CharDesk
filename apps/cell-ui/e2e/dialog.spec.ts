@@ -32,31 +32,52 @@ test("Dialog uses Canvas input, named semantics and focus restoration", async ({
   await expect(dialog).toHaveCount(0);
 });
 
-test("Dialog outside-click policy and nonmodal focus exit are independent", async ({ page }) => {
+test("Dialog config changes its opaque variant, frame, and border shape", async ({ page }) => {
   await page.goto("/#/components/dialog");
   const surface = page.locator('[data-cell-probe="component-dialog"]');
   const open = surface.getByRole("button", { name: "Open dialog", exact: true });
-  await surface.getByRole("checkbox", { name: "closeOnOutsideClick", exact: true }).evaluate((element: HTMLElement) => element.click());
+  const select = async (label: string, value: string) => {
+    const trigger = surface.getByRole("button", { name: label, exact: true });
+    await trigger.evaluate((element: HTMLElement) => element.click());
+    await surface.getByRole("option", { name: value, exact: true })
+      .evaluate((element: HTMLElement) => element.click());
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  };
+  await expect(surface.getByRole("checkbox", { name: "modal" })).toHaveCount(0);
+  await expect(surface.getByRole("checkbox", { name: "closeOnOutsideClick" })).toHaveCount(0);
+  await expect(surface.getByRole("button", { name: "variant" })).toBeAttached();
+  await expect(surface.getByRole("button", { name: "frame" })).toBeAttached();
+  await expect(surface.getByRole("button", { name: "border shape" })).toBeAttached();
   await open.evaluate((element: HTMLElement) => element.click());
   const dialog = surface.getByRole("dialog", { name: "Continue?", exact: true });
   await expect(dialog).toBeAttached();
+  await expect(dialog).toHaveAttribute("aria-modal", "true");
+  const elevated = (await readCellProbe(surface)).overlays.find((overlay) => overlay.rootId === "demo-dialog");
+  expect(elevated?.text).toContain("┌");
+  const elevatedBackground = elevated?.cells.find((cell) => cell.ownerId === "demo-dialog" && cell.text === " ")?.style.backgroundColor;
+  expect(elevatedBackground).toBeTruthy();
   const bounds = (await surface.locator("canvas").first().boundingBox())!;
   await page.mouse.click(bounds.x + 2, bounds.y + 2);
-  await expect(dialog).toBeAttached();
-  await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await surface.getByRole("checkbox", { name: "modal", exact: true }).evaluate((element: HTMLElement) => element.click());
-  await open.evaluate((element: HTMLElement) => element.click());
-  await expect(dialog).not.toHaveAttribute("aria-modal", "true");
-  await surface.getByRole("button", { name: "Continue", exact: true }).focus();
-  await page.keyboard.press("Tab");
-  await expect(surface.getByRole("checkbox", { name: "modal", exact: true })).toBeFocused();
-  await expect(dialog).toBeAttached();
-  await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
-  await surface.getByRole("checkbox", { name: "closeOnOutsideClick", exact: true }).evaluate((element: HTMLElement) => element.click());
+
+  await select("variant", "ghost");
+  await select("frame", "none");
+  await expect(surface.getByRole("button", { name: "border shape" })).toHaveCount(0);
   await open.evaluate((element: HTMLElement) => element.click());
   await expect(dialog).toBeAttached();
-  await page.mouse.click(bounds.x + 2, bounds.y + 2);
+  await expect(dialog).toHaveAttribute("aria-modal", "true");
+  const borderless = (await readCellProbe(surface)).overlays.find((overlay) => overlay.rootId === "demo-dialog");
+  expect(borderless?.text).not.toMatch(/[┌┐└┘╭╮╰╯]/u);
+  const ghostBackground = borderless?.cells.find((cell) => cell.ownerId === "demo-dialog" && cell.text === " ")?.style.backgroundColor;
+  expect(ghostBackground).toBeTruthy();
+  expect(ghostBackground).not.toBe(elevatedBackground);
+  await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
+
+  await select("frame", "bordered");
+  await select("border shape", "rounded");
+  await open.evaluate((element: HTMLElement) => element.click());
+  await expect(dialog).toBeAttached();
+  expect((await readCellProbe(surface)).overlays.find((overlay) => overlay.rootId === "demo-dialog")?.text)
+    .toContain("╭");
 });

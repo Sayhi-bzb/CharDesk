@@ -256,9 +256,11 @@ export function GallerySurface(props: CellSurfaceProps) {
     {...props}
     metrics={props.metrics ?? DEFAULT_CELL_UI_METRICS}
     theme={theme}
-    recipe={recipe}
+    recipe={props.recipe ?? recipe}
     feedback={feedback}
     palette={palette}
     fontProfile={fontProfile}
   />;
 }
+
+export const defaultComponentRecipe: NonNullable<CellSurfaceProps["recipe"]> = {};

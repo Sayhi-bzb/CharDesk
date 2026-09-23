@@ -25,7 +25,7 @@ import {
   inlineControlChromeMetrics,
 } from "./inline-control-chrome.js";
 import { hasInlineOutline, inlineOutlineEdges } from "./inline-outline.js";
-import { indeterminateProgressRanges } from "./progress.js";
+import { indeterminateProgressRanges, progressNumberLayout } from "./progress.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
 
@@ -198,8 +198,14 @@ export const paintScene = (
           outerClip
         );
       }
+      const progressNumber = node.kind === "progress" && node.progress?.number && node.progress.value !== null
+        ? progressNumberLayout(node.progress.value, node.progress.max, entry.decorationBounds.width, node.progressVariant)
+        : null;
+      const progressTrackWidth = progressNumber?.trackWidth ?? entry.decorationBounds.width;
       const outline = outlined
-        ? inlineOutlineEdges(entry.layoutBounds.x, entry.layoutBounds.x + entry.layoutBounds.width)
+        ? inlineOutlineEdges(entry.layoutBounds.x, entry.layoutBounds.x + (
+            node.kind === "progress" ? progressTrackWidth : entry.layoutBounds.width
+          ))
         : null;
       if (outline) {
         buffer.writeGrapheme(
@@ -326,7 +332,7 @@ export const paintScene = (
         const trackX = bounds.x + progressOutlineInset;
         const length = vertical
           ? bounds.height
-          : Math.max(0, bounds.width - progressOutlineInset * 2);
+          : Math.max(0, (node.kind === "progress" ? progressTrackWidth : bounds.width) - progressOutlineInset * 2);
         const progressRanges = node.progress?.value === null
           ? indeterminateProgressRanges(length, node.progressAnimationTimeMs)
           : null;
@@ -348,6 +354,13 @@ export const paintScene = (
                 : offset < filled ? progressGlyphs.filled : progressGlyphs.empty,
             id, node.kind === "separator" ? { ...style, color: theme.borderStyle.color } : style,
             decorationClip, "over");
+        }
+        if (progressNumber) {
+          const labelX = bounds.x + progressNumber.trackWidth + 1;
+          for (let offset = 0; offset < progressNumber.label.length; offset += 1) {
+            buffer.writeGrapheme(labelX + offset, bounds.y, progressNumber.label[offset]!, id, style, decorationClip, "over");
+          }
+          buffer.writeGrapheme(labelX - 1, bounds.y, " ", id, style, decorationClip, "over");
         }
       }
       if (node.kind === "checkbox" || node.kind === "radio-item") {

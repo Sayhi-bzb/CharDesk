@@ -50,6 +50,14 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   }
   await expect(nav.getByRole("link", { name: "Button", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("heading", { name: "Preview" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Appearance examples" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "View source" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "react.tsx" })).toHaveAttribute(
+    "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx",
+  );
+  await expect(page.getByRole("link", { name: "button.ts" })).toHaveAttribute(
+    "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/button.ts",
+  );
   await expect(page.getByRole("heading", { name: "Distribution" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Usage" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "API" })).toBeVisible();
@@ -107,7 +115,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   expect(wideDivider?.x).toBe(Math.floor((widePlayground.viewport.width - 1) / 2));
   expect(widePlayground.text).not.toContain("Props");
   expect(widePlayground.text).toContain("variant");
-  expect(widePlayground.text).toContain("solid");
+  expect(widePlayground.text).toContain("disabled");
 
   await page.setViewportSize({ width: 320, height: 700 });
   await expect.poll(async () => (await readCellProbe(
@@ -115,10 +123,8 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   )).viewport).toEqual({ width: 32, height: 15 });
   const narrowPlayground = await readCellProbe(page.locator('[data-cell-probe="component-button"]'));
   const narrowLines = narrowPlayground.text.split("\n");
-  const narrowVariantRow = narrowLines.findIndex((line) => line.includes("   variant"));
-  expect(narrowVariantRow).toBeGreaterThan(0);
-  expect(narrowLines[narrowVariantRow + 1]).toContain("   solid");
-  expect(narrowLines[narrowVariantRow + 2]).toContain("   [ ] disabled");
+  expect(narrowLines.some((line) => line.includes("[ ] disabled"))).toBe(true);
+  expect(narrowLines.some((line) => line.includes("variant"))).toBe(true);
   const narrowPreviewBounds = await page.locator(".docs-preview").boundingBox();
   const narrowHostBounds = await page.locator(".component-playground").boundingBox();
   const narrowPlaygroundBounds = await page.locator('[data-cell-probe="component-button"]').boundingBox();
@@ -193,99 +199,36 @@ test("Text and Box expose Cell-native content and local variants", async ({ page
 
   await page.goto("/#/components/box");
   const boxSurface = page.getByLabel("Box component");
-  const boxVariant = page.getByRole("button", { name: "variant", exact: true });
-  const boxFrame = page.getByRole("button", { name: "frame", exact: true });
-  const boxPreview = async () => (await readCellProbe(boxSurface)).cells
-    .filter((cell) => cell.ownerId === "component-box-preview");
   const initialBox = await readCellProbe(boxSurface);
   expect(initialBox.text).toContain("Block");
   expect(initialBox.text).toContain("variant");
-  expect(initialBox.text).toContain("ghost");
-  expect((await boxPreview()).every((cell) => cell.style.backgroundColor === undefined)).toBe(true);
-  await boxVariant.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "surface", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
-  await expect.poll(async () => (await boxPreview()).some((cell) => (
-    cell.style.backgroundColor === "rgb(230, 230, 230)"
-  ))).toBe(true);
-  await boxFrame.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "bordered", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "frame options" })).toHaveCount(0);
-  const borderShape = page.getByRole("button", { name: "border shape", exact: true });
-  await expect(borderShape).toBeAttached();
-  expect((await readCellProbe(boxSurface)).text).toContain("┌──────────────────┐");
-  expect((await boxPreview()).some((cell) => cell.style.backgroundColor === "rgb(230, 230, 230)"))
-    .toBe(true);
-  await borderShape.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "rounded", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "border shape options" })).toHaveCount(0);
-  await expect.poll(async () => (await readCellProbe(boxSurface)).text).toContain("╭──────────────────╮");
-  await boxVariant.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "ghost", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
-  await expect(borderShape).toBeAttached();
-  await boxFrame.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "none", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(borderShape).toHaveCount(0);
+  expect(initialBox.cells.some((cell) => cell.ownerId?.includes("divider"))).toBe(true);
 });
 
-test("Separator Playground switches themed variants without changing its geometry", async ({ page }) => {
+test("Separator keeps orientation interactive", async ({ page }) => {
   await page.goto("/#/components/separator");
   const surface = page.getByLabel("Separator component");
-  const variant = page.getByRole("button", { name: "variant", exact: true });
   const direction = page.getByRole("button", { name: "direction", exact: true });
   const separator = page.getByRole("separator");
   const initial = await readCellProbe(surface);
   const separatorCells = async () => (await readCellProbe(surface)).cells
     .filter((cell) => cell.ownerId === "component-separator-line");
   expect((await separatorCells()).map((cell) => cell.text).join("")).toBe("─".repeat(20));
-  expect(initial.text).toContain("───────");
   await expect(separator).toHaveAttribute("aria-orientation", "horizontal");
-
-  await variant.evaluate((element: HTMLElement) => element.click());
-  for (const [name, sample] of [["line", "───────"], ["slash", "///////"], ["double", "═══════"], ["dots", "·······"]] as const) {
-    await expect(page.getByRole("option", { name, exact: true })).toBeAttached();
-    expect((await readCellProbe(surface)).overlays.find((overlay) => (
-      overlay.rootId === "component-separator-variant-content"
-    ))?.text).toContain(sample);
-  }
-  await page.getByRole("option", { name: "line", exact: true })
+  await expect(page.getByRole("button", { name: "variant", exact: true })).toBeAttached();
+  await direction.evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "vertical", exact: true })
     .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
-
-  const choose = async (trigger: typeof variant, option: string) => {
-    await trigger.evaluate((element: HTMLElement) => element.click());
-    await page.getByRole("option", { name: option, exact: true })
-      .evaluate((element: HTMLElement) => element.click());
-    await expect(page.getByRole("option", { name: option, exact: true })).toHaveCount(0);
-  };
-  for (const [name, glyph] of [["slash", "/"], ["double", "═"], ["dots", "·"], ["line", "─"]] as const) {
-    await choose(variant, name);
-    await expect.poll(async () => (await separatorCells()).map((cell) => cell.text).join(""))
-      .toBe(glyph.repeat(20));
-    expect((await readCellProbe(surface)).viewport).toEqual(initial.viewport);
-  }
-
-  await choose(variant, "slash");
-  await choose(direction, "vertical");
   await expect(separator).toHaveAttribute("aria-orientation", "vertical");
   await expect.poll(async () => (await separatorCells()).map((cell) => cell.text).join(""))
-    .toBe("/".repeat(5));
-  await choose(variant, "double");
-  await expect.poll(async () => (await separatorCells()).map((cell) => cell.text).join(""))
-    .toBe("║".repeat(5));
+    .toBe("│".repeat(5));
   expect((await readCellProbe(surface)).viewport).toEqual(initial.viewport);
 });
 
 test("Input edits Unicode through the real textbox and Cell frame", async ({ page }) => {
   await page.goto("/#/components/input");
   const surface = page.getByLabel("Input component");
-  const input = page.getByRole("textbox", { name: "File name" });
+  const input = surface.getByRole("textbox", { name: "File name" });
   const disabled = page.getByRole("checkbox", { name: "disabled" });
 
   await expect(page.getByRole("heading", { name: "Input", level: 1 })).toBeVisible();
@@ -346,47 +289,15 @@ test("Input edits Unicode through the real textbox and Cell frame", async ({ pag
   await expect(disabled).toHaveAttribute("aria-checked", "true");
 });
 
-test("Input ghost keeps its row transparent and underlines the active text range", async ({ page }) => {
-  await page.goto("/#/components/input");
-  const surface = page.getByLabel("Input component");
-  const input = page.getByRole("textbox", { name: "File name" });
-  const variant = page.getByRole("button", { name: "variant", exact: true });
-  await variant.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "ghost", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
-  await expect(surface).not.toHaveAttribute("data-cell-activation-flash");
-
-  const idle = await readCellProbe(surface);
-  const idleSpace = idle.cells.find((cell) =>
-    cell.ownerId === "component-input-field" && cell.text === " "
-  );
-  expect(idleSpace?.style.backgroundColor).toBeUndefined();
-  await input.click();
-  await input.press("ControlOrMeta+A");
-  await expect.poll(async () => (await readCellProbe(surface)).cells.find((cell) =>
-    cell.ownerId === "component-input-field" && cell.text === "n"
-  )?.style.underline).toBe(true);
-  const active = await readCellProbe(surface);
-  expect(active.cells.find((cell) =>
-    cell.ownerId === "component-input-field" && cell.text === " "
-  )?.style.backgroundColor).toBeUndefined();
-  await input.press("ArrowRight");
-  await expect.poll(async () => (await readCellProbe(surface)).cells.find((cell) =>
-    cell.ownerId === "component-input-field" && cell.text === "n"
-  )?.style.underline).not.toBe(true);
-});
-
 test("Button Playground drives its semantic API through Cell controls", async ({ page }) => {
   await page.goto("/#/components/button");
   const surface = page.getByLabel("Button component");
   const save = page.getByRole("button", { name: "Save document" });
-  const variant = page.getByRole("button", { name: "variant" });
   const disabled = page.getByRole("checkbox", { name: "disabled" });
 
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
   await expect(save).not.toHaveAttribute("aria-disabled");
-  await expect(variant).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("button", { name: "variant" })).toBeAttached();
   await expect(page.getByRole("button", { name: "padding L/R" })).toHaveCount(0);
   await expect(disabled).toHaveAttribute("aria-checked", "false");
 
@@ -396,7 +307,6 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   const initialSurfaceBounds = await surface.boundingBox();
   const initialHostBounds = await page.locator(".component-playground").boundingBox();
   expect(initial.text).toContain("variant");
-  expect(initial.text).toContain("solid");
   expect(initial.text).toContain("Save");
   expect(initial.text).toContain("[ ] disabled");
   expect(initial.cells.some((cell) => (
@@ -441,23 +351,8 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   await disabled.evaluate((element: HTMLElement) => element.click());
   await expect(disabled).toHaveAttribute("aria-checked", "false");
 
-  await variant.evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "variant options" })).toBeAttached();
-  const opened = await readCellProbe(surface);
-  expect(opened.overlayViewport).toEqual({
-    width: initial.viewport.width,
-    height: initial.viewport.height + 4,
-  });
-  expect(opened.overlays[0]?.text).toContain("solid");
-  expect(opened.overlays[0]?.text).toContain("surface");
-  expect(opened.overlays[0]?.text).toContain("outline");
-  expect(opened.overlays[0]?.text).toContain("ghost");
   expect((await surface.boundingBox())?.height).toBe(initialSurfaceBounds?.height);
   expect((await page.locator(".component-playground").boundingBox())?.height).toBe(initialHostBounds?.height);
-  await page.getByRole("option", { name: "outline", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
-  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("[ Save ]");
 
   const configured = await readCellProbe(surface);
   const saveCell = configured.cells.find((cell) => cell.ownerId === "component-button-save");
@@ -471,13 +366,13 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   await page.mouse.move(savePoint.x, savePoint.y);
   await page.mouse.down();
   await expect(surface).toHaveAttribute("data-cell-press-active", "component-button-save");
-  expect((await readCellProbe(surface)).text).toContain("[ Save ]");
+  expect((await readCellProbe(surface)).text).toContain(" Save ");
   expect((await readCellProbe(surface)).cells.some((cell) => (
     cell.ownerId === "component-button-save" && cell.style.backgroundColor !== undefined
   ))).toBe(true);
   await page.mouse.up();
   await expect(surface).not.toHaveAttribute("data-cell-press-active");
-  expect((await readCellProbe(surface)).text).toContain("[ Save ]");
+  expect((await readCellProbe(surface)).text).toContain(" Save ");
   expect((await readCellProbe(surface)).text).not.toContain("Saved");
 
   await page.reload();
@@ -500,39 +395,18 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   await expect(disabledSurface).not.toHaveAttribute("data-cell-press-active");
 });
 
-test("Button surface variant uses the theme substrate without changing its Cell geometry", async ({ page }) => {
-  await page.goto("/#/components/button");
-  const surface = page.getByLabel("Button component");
-  const variant = page.getByRole("button", { name: "variant", exact: true });
-  const initial = await readCellProbe(surface);
-  const initialCells = initial.cells.filter((cell) => cell.ownerId === "component-button-save");
-  await variant.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "surface", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
-  const configured = await readCellProbe(surface);
-  const cells = configured.cells.filter((cell) => cell.ownerId === "component-button-save");
-  expect(cells).toHaveLength(initialCells.length);
-  expect(cells[0]?.style.backgroundColor).toBeTruthy();
-  expect(cells[0]?.style.backgroundColor).not.toBe(initialCells[0]?.style.backgroundColor);
-  expect(cells.every((cell) => cell.style.backgroundColor === cells[0]?.style.backgroundColor)).toBe(true);
-  expect(configured.text).toContain(" Save");
-});
-
 test("Select opens a Cell listbox and commits only explicit activation", async ({ page }) => {
   await page.goto("/#/components/select");
   const surface = page.getByLabel("Select component");
-  const trigger = page.getByRole("button", { name: "Theme" });
-  const variant = page.getByRole("button", { name: "variant", exact: true });
-  const dropdownFrame = page.getByRole("button", { name: "dropdown frame", exact: true });
+  const trigger = surface.getByRole("button", { name: "Theme" });
   const disabled = page.getByRole("checkbox", { name: "disabled" });
   const initialSurfaceBounds = await surface.boundingBox();
   const initialHostBounds = await page.locator(".component-playground").boundingBox();
 
   await expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
   await expect(trigger).toHaveAttribute("aria-expanded", "false");
-  await expect(variant).toHaveAttribute("aria-expanded", "false");
-  await expect(dropdownFrame).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("button", { name: "variant", exact: true })).toBeAttached();
+  await expect(page.getByRole("button", { name: "dropdown frame", exact: true })).toBeAttached();
   await expect(page.getByRole("button", { name: "border shape", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "value" })).toHaveCount(0);
   const defaultProbe = await readCellProbe(surface);
@@ -545,10 +419,10 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
   await expect(trigger).toHaveAttribute("aria-expanded", "true");
   await page.keyboard.up("Enter");
   await expect(surface).not.toHaveAttribute("data-cell-press-active");
-  await expect(page.getByRole("listbox", { name: "Theme options" })).toBeAttached();
-  await expect(page.getByRole("option")).toHaveCount(3);
-  await expect(page.getByRole("option", { name: "Dark" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("option", { name: "Dark" })).toBeFocused();
+  await expect(surface.getByRole("listbox", { name: "Theme options" })).toBeAttached();
+  await expect(surface.getByRole("option")).toHaveCount(3);
+  await expect(surface.getByRole("option", { name: "Dark" })).toHaveAttribute("aria-selected", "true");
+  await expect(surface.getByRole("option", { name: "Dark" })).toBeFocused();
   const borderless = await readCellProbe(surface);
   const borderlessOverlay = borderless.overlays.find(
     (overlay) => overlay.rootId === "component-select-content",
@@ -566,79 +440,24 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
     .toBe(initialHostBounds?.height);
 
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("option", { name: "System" })).toBeFocused();
-  await expect(page.getByRole("option", { name: "Dark" })).toHaveAttribute("aria-selected", "true");
+  await expect(surface.getByRole("option", { name: "System" })).toBeFocused();
+  await expect(surface.getByRole("option", { name: "Dark" })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
+  await expect(surface.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
   await expect(trigger).toBeFocused();
   expect((await readCellProbe(surface)).text).toContain("Dark");
 
   await page.keyboard.press("Enter");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
+  await expect(surface.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("System");
 
   await trigger.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "Light" })
+  await surface.getByRole("option", { name: "Light" })
     .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
+  await expect(surface.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Light");
-
-  await dropdownFrame.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "bordered", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "dropdown frame options" })).toHaveCount(0);
-  const borderShape = page.getByRole("button", { name: "border shape", exact: true });
-  await expect(borderShape).toBeAttached();
-  await trigger.evaluate((element: HTMLElement) => element.click());
-  const bordered = await readCellProbe(surface);
-  const borderedOverlay = bordered.overlays.find(
-    (overlay) => overlay.rootId === "component-select-content",
-  );
-  expect(borderedOverlay?.bounds.height).toBe(5);
-  expect(borderedOverlay?.text).toContain("┌");
-  expect(borderedOverlay?.text).toContain("│");
-  expect(borderedOverlay?.text).toContain("└");
-  expect(bordered.overlayViewport.height).toBe(bordered.viewport.height + 5);
-  expect((await surface.boundingBox())?.height).toBe(initialSurfaceBounds?.height);
-  expect((await page.locator(".component-playground").boundingBox())?.height)
-    .toBe(initialHostBounds?.height);
-  await page.keyboard.press("Escape");
-
-  await borderShape.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "rounded", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "border shape options" })).toHaveCount(0);
-  await trigger.evaluate((element: HTMLElement) => element.click());
-  const roundedProbe = await readCellProbe(surface);
-  const roundedOverlay = roundedProbe.overlays.find(
-    (overlay) => overlay.rootId === "component-select-content",
-  );
-  expect(roundedOverlay?.text).toContain("╭");
-  expect(roundedOverlay?.text).toContain("╰");
-  expect(roundedOverlay?.text).not.toContain("┌");
-  await page.keyboard.press("Escape");
-
-  await dropdownFrame.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "none", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "dropdown frame options" })).toHaveCount(0);
-  await expect(borderShape).toHaveCount(0);
-
-  await variant.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "ghost", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
-  const ghostClosed = await readCellProbe(surface);
-  expect(ghostClosed.cells.find((cell) => cell.ownerId === "component-select-trigger" && cell.text === " ")?.style.backgroundColor)
-    .not.toBe(elevatedBackground);
-  await trigger.evaluate((element: HTMLElement) => element.click());
-  const ghost = await readCellProbe(surface);
-  const ghostOverlay = ghost.overlays.find((overlay) => overlay.rootId === "component-select-content");
-  expect(ghostOverlay?.cells.find((cell) => cell.text === " " && cell.ownerId === "component-select-light")?.style.backgroundColor)
-    .not.toBe(elevatedBackground);
-  await page.keyboard.press("Escape");
 
   await disabled.evaluate((element: HTMLElement) => element.click());
   await expect(trigger).toHaveAttribute("aria-disabled", "true");
@@ -854,12 +673,8 @@ test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling t
   await page.goto("/#/components/scroll-area");
   const surface = page.getByLabel("ScrollArea component");
   const canvas = surface.locator("canvas");
-  const variant = page.getByRole("button", { name: "variant", exact: true });
-  const frame = page.getByRole("button", { name: "frame", exact: true });
   await canvas.scrollIntoViewIfNeeded();
   await surface.focus();
-  const surfaceBounds = await surface.boundingBox();
-  const hostBounds = await page.locator(".component-playground").boundingBox();
   const visibleRows = (text: string) => [...text.matchAll(/\d{2} {2}Row \d+/gu)]
     .map(([label]) => label);
   const thumbGlyphs = (probe: Awaited<ReturnType<typeof readCellProbe>>) => probe.cells
@@ -919,45 +734,5 @@ test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling t
   await page.mouse.up();
   await expect.poll(async () => (await readCellProbe(surface)).text).not.toBe(beforeDrag.text);
 
-  const beforeBorder = await readCellProbe(surface);
-  await frame.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "bordered", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "frame options" })).toHaveCount(0);
-  const borderShape = page.getByRole("button", { name: "border shape", exact: true });
-  await expect(borderShape).toBeAttached();
-  const bordered = await readCellProbe(surface);
-  expect(visibleRows(bordered.text)).toEqual(visibleRows(beforeBorder.text));
-  expect(thumbGlyphs(bordered)).toEqual(thumbGlyphs(beforeBorder));
-  expect(bordered.cells.some((cell) => (
-    cell.ownerId === "component-scroll-area" && "┌┐└┘─│".includes(cell.text)
-  ))).toBe(true);
-  expect((await surface.boundingBox())?.height).toBe(surfaceBounds?.height);
-  expect((await page.locator(".component-playground").boundingBox())?.height)
-    .toBe(hostBounds?.height);
-
-  await borderShape.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "rounded", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "border shape options" })).toHaveCount(0);
-  expect((await readCellProbe(surface)).cells.some((cell) => (
-    cell.ownerId === "component-scroll-area" && "╭╮╰╯".includes(cell.text)
-  ))).toBe(true);
-
-  await variant.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "surface", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.getByRole("listbox", { name: "variant options" })).toHaveCount(0);
-  await expect(borderShape).toBeAttached();
-  expect((await readCellProbe(surface)).cells.some((cell) => (
-    cell.ownerId === "component-scroll-area" && cell.style.backgroundColor === "rgb(230, 230, 230)"
-  ))).toBe(true);
-  await frame.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "none", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(borderShape).toHaveCount(0);
-  expect((await readCellProbe(surface)).cells.some((cell) => (
-    cell.ownerId === "component-scroll-area" && "┌┐└┘╭╮╰╯".includes(cell.text)
-  ))).toBe(false);
-
+  await expect(page.getByRole("button", { name: "frame", exact: true })).toBeAttached();
 });

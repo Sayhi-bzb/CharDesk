@@ -162,6 +162,8 @@ code, pre { font-family: inherit; }
 }
 .component-playground__surface canvas { display: block; }
 .component-playground__surface[data-cell-overlay-count] { z-index: 2; }
+.docs-source-links { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0; list-style: none; }
+.docs-source-links a { color: var(--cell-accent); }
 .docs-code { position: relative; min-width: 0; border: var(--gallery-dom-line-width) solid var(--cell-border); background: transparent; }
 .docs-code .gallery-icon-button { position: absolute; top: 8px; right: 8px; z-index: 1; }
 .docs-code pre { margin: 0; padding: 20px 52px 20px 20px; overflow-x: auto; font-size: 13px; line-height: 1.6; }

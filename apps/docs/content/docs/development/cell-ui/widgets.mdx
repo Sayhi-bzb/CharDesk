@@ -31,12 +31,12 @@ description: State, input, scroll, and editor behavior contracts.
 | --- | --- | --- |
 | Root / Box / Text | Root 只建立画布；Box 用背景 variant 和独立 frame 表达边界；Text 提供字符 | 不产生独立 command；Text 与边框字符可被 Cell Range 复制 |
 | Overlay | root layer、clip，默认 Elevated | Escape/outside down dismiss；modal `dialog` |
-| Dialog / Title / Description / Footer | 复用 Overlay，默认居中、36 Cell 宽、`surface` variant 及边框；Title/Description 保留字符，Footer 只排列按钮 | 条件挂载；modal/outside-click 默认开启；初始焦点、模态 Tab 循环、Escape 与恢复焦点由共享底座拥有 |
+| Dialog / Title / Description / Footer | 复用 Overlay，默认居中、36 Cell 宽、`surface` variant 及边框；`surface` 使用 elevated surface token，`ghost` 使用 base surface token，弹窗均不透明；Title/Description 保留字符，Footer 只排列按钮 | 条件挂载；modal/outside-click 默认开启；初始焦点、模态 Tab 循环、Escape 与恢复焦点由共享底座拥有 |
 | Button | 单行填充矩形；默认左右各 1 Cell，`style.paddingLeft/Right` 可分别覆盖 | 全局 focus traversal；完整 tap、Enter、Space 或 AT 激活 |
 | Accordion / Item / Trigger / Content | `▸` / `▾` 显示展开状态；标题消费共享反色与 press，无确认闪烁 | 多项独立展开；tap、Enter、Space 输出 Item 的 `set-expanded`；上下/Home/End 在同组可用标题间导航，不循环 |
 | Checkbox | ` [ ] Label ` / ` [x] Label ` / ` [-] Label `；两侧 guard、三 Cell 标记及内容间隔由 renderer 拥有 | checked 与 mixed 进入 Semantic DOM；完整行 tap、Enter、Space 或 AT 激活，disabled 跳过 |
 | Toggle | ` ○ Bold ` / ` ● Bold `；两侧 guard、状态灯及内容间隔由 renderer 拥有，状态灯取自全局主题 | button + aria-pressed；整行 tap/Enter/Space 使用统一 press 与确认反馈；状态灯和 guard 保留在字符快照及复制中 |
-| Progress | solid 使用透明的 `█/░`；outline 使用 `[//--]` 且括号包含在声明宽度内；`value={null}` 的 thumb 逐 Cell 环绕 | 只读 progressbar；确定值限制到 0…max，indeterminate 不暴露数值 ARIA 属性；headless host 以显式动画时间驱动投影 |
+| Progress | solid 使用透明的 `█/░`；outline 使用 `[//--]` 且括号包含在声明宽度内；`number` 在声明宽度内为确定进度显示百分比，窄宽度隐藏数字；`value={null}` 的 thumb 逐 Cell 环绕且不显示数字 | 只读 progressbar；确定值限制到 0…max，indeterminate 不暴露数值 ARIA 属性；headless host 以显式动画时间驱动投影 |
 | Separator | `line/slash/double/dots` 由全局 glyph map 投影，横纵方向保持固定 Cell 几何 | 无焦点与动作；separator + orientation；variant 只触发 paint，消费全局 border 颜色 |
 | RadioGroup / RadioItem | `( )/(●)`；Group value 派生直接子项 checked，value 唯一且非空 | radiogroup/radio；组内一个 Tab 入口，方向键循环选择并跳过 disabled；`select-radio` 即时导航，activate 使用统一确认反馈 |
 | Slider | renderer-owned `━/─/┃` 单行轨道；pointer hover、keyboard focus 或 manipulating 只将 thumb Cell 切换为 `█`，轨道不反色、不增加 bold；可见 label/value 由外部 Cell 组合 | pointer down 立即进入 manipulating 并保持至 release/cancel；方向键一步、Page 十步、Home/End 端点；精确 tap/drag 输出 `set-value`，无确认闪烁，Semantic DOM 投影 numeric range |

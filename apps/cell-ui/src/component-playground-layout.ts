@@ -21,8 +21,18 @@ export const resolveComponentPlaygroundLayout = (
   totalColumns: number,
   previewMinColumns: number,
   controlsColumns: number,
+  hasControls = true,
 ): ComponentPlaygroundLayout => {
   const width = wholeColumns(totalColumns);
+  if (!hasControls) return {
+    stacked: false,
+    viewport: { width, height: PLAYGROUND_ROWS },
+    previewColumns: width,
+    propsColumns: 0,
+    controlsInset: 0,
+    controlsExtentColumns: 0,
+    controlsMinRows: 0,
+  };
   const previewMinimum = wholeColumns(previewMinColumns);
   const controlsWidth = wholeColumns(controlsColumns);
   const stacked = width < MIN_SPLIT_COLUMNS;

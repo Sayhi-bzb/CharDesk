@@ -83,6 +83,12 @@ const surfaceStyleForNode = (
         ...(backgroundColor !== undefined ? { backgroundColor } : {}),
       };
     }
+    if (current.dialog && current.surfaceVariant === "ghost") {
+      return {
+        ...theme.surfaceStyle,
+        ...(backgroundColor !== undefined ? { backgroundColor } : {}),
+      };
+    }
     current = current.parentId ? tree.nodes.get(current.parentId) : undefined;
   }
   return backgroundColor !== undefined

@@ -206,8 +206,13 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       }
       nodes.set(id, { ...nodes.get(id)!, label: title.text, labelledById: title.id, describedById: descriptions[0]?.id });
     }
-    if (current.kind === "accordion" && childIds.some((child) => nodes.get(child)?.kind !== "accordion-item")) {
-      throw new TypeError("Accordion requires AccordionItem children.");
+    if (current.kind === "accordion") {
+      const kinds = childIds.map((child) => nodes.get(child)!.kind);
+      if (kinds.some((kind, index) => kind !== "accordion-item"
+        && (kind !== "separator" || index === 0 || index === kinds.length - 1
+          || kinds[index - 1] !== "accordion-item" || kinds[index + 1] !== "accordion-item"))) {
+        throw new TypeError("Accordion requires AccordionItem children with optional Separators between items.");
+      }
     }
     if (current.kind === "accordion-item") {
       const [trigger, content] = childIds.map((child) => nodes.get(child)!);
