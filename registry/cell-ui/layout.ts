@@ -116,11 +116,12 @@ const measureText = (
 
 const configureNode = (node: WidgetNode, target: YogaNode): void => {
   const item = isCollectionItemKind(node.kind);
-  const row = node.kind === "tabs" || node.kind === "grid-row";
+  const row = node.kind === "tabs" || node.kind === "grid-row" || node.kind === "table-header" || node.kind === "table-row";
   const column = node.kind === "list"
     || node.kind === "menu"
     || node.kind === "tree"
     || node.kind === "grid"
+    || node.kind === "table"
     || node.kind === "select"
     || node.kind === "select-content"
     || node.kind === "combobox"

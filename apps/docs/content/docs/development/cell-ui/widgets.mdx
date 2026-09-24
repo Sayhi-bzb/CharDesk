@@ -55,6 +55,7 @@ description: State, input, scroll, and editor behavior contracts.
 | Tree | Item 左右各 1 Cell guard；内侧每层缩进 2 Cell，独立 `▾/▸` 展开列、`✓` 选择列及 label；用户 padding 叠加于 chrome 内侧 | Left/Right 层级导航；branch expand/collapse，leaf activate；无确认闪烁；折叠移除焦点后代时收敛到仍可用祖先 |
 | Tabs | 默认 `underline`：第二行仅在 selected 标签文字宽度内绘制 `⎺`，使用 highlight 色；第二行不参与 pointer hover/命中，临时 hover 仅填充第一行。`solid`：单行反色。两者都保留左右各 1 Cell guard 与标签间 2 Cell 间隔 | Left/Right wrap、Home/End 即时聚焦并切换可用页面，无确认闪烁；`tab` 与 `tabpanel` relations |
 | Grid | GridCell 左右各 1 Cell guard；内侧 2 Cell 选择列使用全局 `collectionSelectedIndicator`；声明宽度不变，用户 padding 叠加于 chrome 内侧；临时强调覆盖整个格子 | 一个 Grid 一个 Tab 入口，优先上次可用焦点、已选可用格子、行列排序首项；方向键沿同一行／列跳过 disabled 与缺格，边界停止；Home/End 定位当前行端点；点击、Enter/Space 即时激活，无确认闪烁；row/column semantics |
+| Table | 只读定宽列；`plain` 用表头分隔线，`outline` 用方角边框与列线，`surface` 用表头及隔行背景、无分隔字符；背景复用 light/dark surface token | `table`／`row`／`columnheader`／`cell` 语义；无焦点、选择或激活命令，长文本截断仅影响画面，不改写语义标签 |
 | TextInput / ComboboxInput | 固定 1 Cell 高、无边框；TextInput 默认 surface，实际焦点驱动整行反色，ghost TextInput 与 ComboboxInput 保留背景；三者都以选区下划线及反色 Cell Cursor 表示编辑，并保留 selection、composition | 真实 textarea；textbox/combobox value/readOnly/disabled；style 仅允许宽度与 flex 约束 |
 | TextArea | 多行 content、Block 背景与边框、terminal Cell Cursor、selection、composition；实际焦点驱动完整矩形及自身边框反色 | 真实 textarea；multiline textbox value/readOnly/disabled |
 | ScrollArea | overflow 时使用内部 rail 和 corner | wheel、page、track、thumb drag；不建立 DOM scrollbar |

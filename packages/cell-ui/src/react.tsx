@@ -28,6 +28,7 @@ import { resolveProgressVariant, type ProgressVariant } from "./progress.js";
 import { resolveSpinnerVariant, type SpinnerVariant } from "./spinner.js";
 import { tooltipText, tooltipTextWidth } from "./tooltip.js";
 import { resolveTabsVariant, type TabsVariant } from "./tabs.js";
+import { fitTableCell, resolveTableVariant, tableWidth, type TableColumn, type TableVariant } from "./table.js";
 import {
   resolveCellFrame,
   type CellBorderShape,
@@ -283,6 +284,10 @@ export type GridCellProps = CollectionItemProps & Readonly<{
   rowIndex: number;
   columnIndex: number;
 }>;
+export type TableProps = IdentityProps & Readonly<{ label: string; columns: readonly TableColumn[]; variant?: TableVariant; children?: ReactNode }>;
+export type TableRowProps = IdentityProps & ChildrenProps;
+export type TableCellProps = IdentityProps & Readonly<{ children: string | number | ReactElement<TextProps> }>;
+type TablePartProps = IdentityProps & NamedProps & ChildrenProps & Readonly<{ style?: CellLayoutStyle; rowIndex?: number; columnIndex?: number; rowCount?: number; columnCount?: number; frame?: CellFrame; borderShape?: CellBorderShape; variant?: SurfaceVariant; textStyle?: CellTextStyle }>;
 export type ScrollAreaProps = ContainerProps & SurfaceAppearanceProps & Readonly<{
   scrollX?: number;
   scrollY?: number;
@@ -340,6 +345,7 @@ type PrimitiveProps =
   | GridProps
   | GridRowProps
   | GridCellProps
+  | TablePartProps
   | ScrollAreaProps
   | TextInputProps
   | TextAreaProps;
@@ -408,6 +414,18 @@ export const TabPanel = primitive<TabPanelProps>("tab-panel");
 export const Grid = primitive<GridProps>("grid");
 export const GridRow = primitive<GridRowProps>("grid-row");
 export const GridCell = primitive<GridCellProps>("grid-cell");
+export const Table = (() => null) as ComponentType<TableProps>;
+export const TableRow = (() => null) as ComponentType<TableRowProps>;
+export const TableCell = (() => null) as ComponentType<TableCellProps>;
+Table.displayName = "CellTable";
+TableRow.displayName = "CellTableRow";
+TableCell.displayName = "CellTableCell";
+const TableHeader = primitive<TablePartProps>("table-header");
+const TableDivider = primitive<TablePartProps>("table-divider");
+const TableDataRow = primitive<TablePartProps>("table-row");
+const TableHead = primitive<TablePartProps>("table-head");
+const TableDataCell = primitive<TablePartProps>("table-cell");
+const TablePart = primitive<TablePartProps>("table");
 export const ScrollArea = primitive<ScrollAreaProps>("scroll-area");
 export const TextInput = primitive<TextInputProps>("text-input");
 export const TextArea = primitive<TextAreaProps>("text-area");
@@ -492,6 +510,57 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
 
   const primitiveKind = kinds.get(element.type);
   const props = element.props as Record<string, unknown>;
+  if (element.type === Table) {
+    const { columns, label } = props as TableProps;
+    const variant = resolveTableVariant(props.variant);
+    if (!Array.isArray(columns) || columns.length === 0 || columns.some((column) =>
+      typeof column.label !== "string" || !Number.isInteger(column.width) || column.width < (variant === "outline" ? 3 : 1)
+    ) || typeof label !== "string" || !label.trim()) {
+      throw new TypeError("Table requires a label and columns with positive integer Cell widths (at least 3 for outline).");
+    }
+    const rows: ReactNode[] = [];
+    flattenChildren(props.children as ReactNode, rows);
+    const gap = variant === "outline" ? 1 : 2;
+    const width = tableWidth(columns, variant);
+    const surfaceInset = variant === "surface" ? { paddingLeft: 1, paddingRight: 1 } : {};
+    const innerWidth = width - (variant === "outline" ? 2 : 0);
+    const rowStyle = { direction: "row" as const, gap, width, height: 1, flexShrink: 0, ...surfaceInset };
+    const header = <TableHeader rowIndex={1} style={rowStyle}>
+      {columns.map((column, index) => <TableHead key={index} label={column.label} columnIndex={index + 1}
+        style={{ width: column.width, height: 1, flexShrink: 0 }} textStyle={{ bold: true }}>{fitTableCell(column.label, { ...column, align: "left" }, variant)}</TableHead>)}
+    </TableHeader>;
+    const dataRows = rows.map((row, rowIndex) => {
+      if (!isValidElement(row) || row.type !== TableRow) throw new TypeError("Table children must be TableRow elements.");
+      const rowProps = row.props as TableRowProps;
+      const cells: ReactNode[] = [];
+      flattenChildren(rowProps.children, cells);
+      if (cells.length !== columns.length) throw new TypeError("Each TableRow needs exactly one TableCell per column.");
+      return <TableDataRow key={row.key ?? rowIndex} id={rowProps.id} rowIndex={rowIndex + 2}
+        style={rowStyle}>
+        {cells.map((cell, index) => {
+          if (!isValidElement(cell) || cell.type !== TableCell) throw new TypeError("TableRow children must be TableCell elements.");
+          const cellProps = cell.props as TableCellProps;
+          const content = isValidElement(cellProps.children)
+            ? cellProps.children.type === Text ? (cellProps.children.props as TextProps).children : null
+            : cellProps.children;
+          if (typeof content !== "string" && typeof content !== "number") throw new TypeError("TableCell content must be text or one Text element.");
+          const raw = String(content);
+          return <TableDataCell key={cell.key ?? index} id={cellProps.id} label={raw} columnIndex={index + 1}
+            style={{ width: columns[index]!.width, height: 1, flexShrink: 0 }}
+            textStyle={isValidElement(cellProps.children) ? (cellProps.children.props as TextProps).textStyle : undefined}>
+            {fitTableCell(raw, columns[index]!, variant)}
+          </TableDataCell>;
+        })}
+      </TableDataRow>;
+    });
+    return describe(<TablePart key={element.key} id={props.id as string | undefined} label={label}
+      rowCount={dataRows.length + 1} columnCount={columns.length}
+      variant={variant === "surface" ? "surface" : undefined}
+      frame={variant === "outline" ? "bordered" : "none"} borderShape="square"
+      style={{ width, direction: "column", flexShrink: 0 }}>
+      {header}{variant === "surface" ? null : <TableDivider style={{ width: innerWidth, height: 1, flexShrink: 0 }} />}{dataRows}
+    </TablePart>, recipe);
+  }
   if (element.type === Slider && Array.isArray(props.value)) {
     const values = props.value as unknown[];
     const thumbs = props.thumbs as unknown;
@@ -579,7 +648,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
   } else if (kind === "tooltip") {
     if (childValues.length > 0) throw new TypeError("Tooltip does not accept children.");
     text = tooltipText(props.text as string);
-  } else if (kind === "text") {
+  } else if (kind === "text" || kind === "table-head" || kind === "table-cell") {
     if (childValues.some((child) => typeof child !== "string" && typeof child !== "number")) {
       throw new TypeError("Text children must be strings or numbers.");
     }
@@ -620,7 +689,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
   const controlSurface = kind === "select"
     || kind === "combobox"
     || kind === "text-input";
-  const ownsSurface = ownsFramedSurface || controlSurface || kind === "tooltip" || kind === "alert";
+  const ownsSurface = ownsFramedSurface || controlSurface || kind === "tooltip" || kind === "alert"
+    || (kind === "table" && props.variant === "surface");
   const defaultsToSurface = controlSurface
     || isDialog
     || kind === "overlay"
@@ -632,7 +702,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
             ?? (defaultsToSurface ? "surface" : "ghost"),
         )
       : null;
-  const frame = kind === "alert"
+  const frame = kind === "table" ? resolveCellFrame(props.frame, "none") : kind === "alert"
     ? props.border === "square" || props.border === "rounded" ? "bordered" : "none"
     : isDialog || kind === "tooltip"
       ? props.border === "none" ? "none" : "bordered"

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, ownerBounds, ownerCells, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, ownerBounds, ownerCells, readCellProbe, readCellProbeWithOwner } from "./helpers/cell-probe";
 
 test("Tooltip appears after hover delay, remains Cell-owned, and yields pointer hit", async ({ page }) => {
   await page.goto("/#/components/tooltip");
@@ -14,7 +14,7 @@ test("Tooltip appears after hover delay, remains Cell-owned, and yields pointer 
   await expect(tooltip).toHaveCount(0);
   await expect(tooltip).toBeAttached();
   await expect(button).toHaveAttribute("aria-describedby", "cell-semantic-component-tooltip-help");
-  const tipBounds = ownerBounds(await readCellProbe(surface), "component-tooltip-help");
+  const tipBounds = ownerBounds(await readCellProbeWithOwner(surface, "component-tooltip-help"), "component-tooltip-help");
   expect(tipBounds.height).toBe(3);
   expect(tipBounds.y === buttonBounds.y + buttonBounds.height
     || tipBounds.y + tipBounds.height === buttonBounds.y).toBe(true);
@@ -47,10 +47,12 @@ test("Tooltip config combines opaque variants with independent border shapes", a
   await page.goto("/#/components/tooltip");
   const surface = page.locator('[data-cell-probe="component-tooltip"]');
   const button = surface.getByRole("button", { name: "Save document" });
+  const tooltip = surface.getByRole("tooltip", { name: "Save current document" });
   const border = surface.getByRole("button", { name: "border" });
   await expect(border).toBeAttached();
   await button.focus();
-  const elevated = await readCellProbe(surface);
+  await expect(tooltip).toBeAttached();
+  const elevated = await readCellProbeWithOwner(surface, "component-tooltip-help");
   expect(ownerBounds(elevated, "component-tooltip-help").height).toBe(3);
   const surfaceBackground = ownerCells(elevated, "component-tooltip-help").find((cell) => cell.text === " ")?.style.backgroundColor;
   expect(surfaceBackground).toBeTruthy();
@@ -59,7 +61,8 @@ test("Tooltip config combines opaque variants with independent border shapes", a
   await surface.getByRole("option", { name: "rounded" }).evaluate((element: HTMLElement) => element.click());
   await expect(border).toHaveAttribute("aria-expanded", "false");
   await button.focus();
-  expect(ownerCells(await readCellProbe(surface), "component-tooltip-help").some((cell) => cell.text === "╭")).toBe(true);
+  await expect(tooltip).toBeAttached();
+  await expect.poll(async () => ownerCells(await readCellProbeWithOwner(surface, "component-tooltip-help"), "component-tooltip-help").some((cell) => cell.text === "╭")).toBe(true);
 
   const variant = surface.getByRole("button", { name: "variant" });
   await variant.evaluate((element: HTMLElement) => element.click());
@@ -69,7 +72,8 @@ test("Tooltip config combines opaque variants with independent border shapes", a
   await surface.getByRole("option", { name: "none" }).evaluate((element: HTMLElement) => element.click());
   await expect(border).toHaveAttribute("aria-expanded", "false");
   await button.focus();
-  const ghost = await readCellProbe(surface);
+  await expect(tooltip).toBeAttached();
+  const ghost = await readCellProbeWithOwner(surface, "component-tooltip-help");
   expect(ownerBounds(ghost, "component-tooltip-help").height).toBe(1);
   expect(ownerCells(ghost, "component-tooltip-help").map((cell) => cell.text).join(""))
     .not.toMatch(/[┌┐└┘╭╮╰╯]/u);

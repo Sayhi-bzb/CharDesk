@@ -5,6 +5,8 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 ## Sections
 
 - [Introduction](https://ui.chardesk.com/guides/introduction.md): Build React interfaces from editable Unicode Cells. Own the source, compose a few good defaults, and let one frame serve people and agents.
+- [Philosophy](https://ui.chardesk.com/guides/philosophy.md): UI as Text is the goal: structure, meaningful state, and available actions should be understandable from text without relying on color or source code. Three Cell-native principles support it.
+- [Classic Macintosh](https://ui.chardesk.com/guides/classic-macintosh.md): A clear visual hierarchy and direct, forgiving interaction—translated into Cell UI rather than copied as a retro skin.
 - [Installation](https://ui.chardesk.com/guides/installation.md): Install the complete editable Cell UI source through the shadcn registry.
 - [Integration](https://ui.chardesk.com/guides/integration.md): Connect Cell descriptors, browser projection, and application-owned state.
 - [Theming](https://ui.chardesk.com/guides/theming.md): Resolve one Cell theme into a browser palette and component recipes.
@@ -15,12 +17,10 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 - [Accordion](https://ui.chardesk.com/components/accordion.md): Expand independent sections without losing their content state.
 - [Alert](https://ui.chardesk.com/components/alert.md): Keep a status or warning visible beside the work it describes.
 - [Badge](https://ui.chardesk.com/components/badge.md): Show a compact state label, optionally acting as a command target.
-- [Box](https://ui.chardesk.com/components/box.md): Lay out Cell content and optionally give it a surface or frame.
 - [Button](https://ui.chardesk.com/components/button.md): Trigger one action through keyboard, pointer, or assistive input.
 - [Checkbox](https://ui.chardesk.com/components/checkbox.md): Toggle boolean or indeterminate state through one Cell command path.
 - [Combobox](https://ui.chardesk.com/components/combobox.md): Click the input row to open local options, filter, then commit one value.
 - [Dialog](https://ui.chardesk.com/components/dialog.md): A named Cell dialog with shared overlay placement and focus management.
-- [Grid](https://ui.chardesk.com/components/grid.md): Navigate a two-dimensional Cell collection without coupling focus to selection.
 - [Input](https://ui.chardesk.com/components/input.md): Edit a single line of Unicode text on the Cell grid.
 - [Progress](https://ui.chardesk.com/components/progress.md): Display determinate or indeterminate progress as a solid or outlined track, with an optional percentage.
 - [Radio](https://ui.chardesk.com/components/radio.md): Choose one value with a shared group and arrow-key navigation.
@@ -29,6 +29,7 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 - [Separator](https://ui.chardesk.com/components/separator.md): Separate Cell content with one row or column.
 - [Slider](https://ui.chardesk.com/components/slider.md): Select one stepped value or a bounded interval on a Cell-native track.
 - [Spinner](https://ui.chardesk.com/components/spinner.md): Show indeterminate activity in a single Unicode Cell, using a wheel or dots.
+- [Table](https://ui.chardesk.com/components/table.md): Display read-only rows on a Cell grid with lines or alternating backgrounds.
 - [Tabs](https://ui.chardesk.com/components/tabs.md): Switch between related Cell panels with one selected tab.
 - [Text](https://ui.chardesk.com/components/text.md): Render Unicode text in the Cell layout without browser text nodes.
 - [TextArea](https://ui.chardesk.com/components/text-area.md): Edit multiline Cell text with retained selection and scrolling.

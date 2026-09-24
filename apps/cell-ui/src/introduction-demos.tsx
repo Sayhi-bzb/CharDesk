@@ -34,6 +34,38 @@ export function SettingsIntroductionDemo() {
   </GallerySurface>;
 }
 
+export function ClassicMacintoshDemo() {
+  const [sound, setSound] = useState(true);
+  const [status, setStatus] = useState<"Ready" | "Saved">("Ready");
+  const [focusedId, setFocusedId] = useState("mac-sound");
+  const dispatch = (command: WidgetCommand) => {
+    if (command.type === "focus") setFocusedId(command.targetId);
+    if (command.type !== "activate") return;
+    if (command.targetId === "mac-sound") {
+      setSound((current) => !current);
+      setStatus("Ready");
+    } else if (command.targetId === "mac-apply") {
+      setStatus("Saved");
+    } else if (command.targetId === "mac-reset") {
+      setSound(true);
+      setStatus("Ready");
+    }
+  };
+  return <GallerySurface viewport={{ width: 34, height: 10 }} focusedId={focusedId}
+    onCommand={dispatch} label="Classic Macintosh example" probeId="classic-macintosh-example">
+    <Root><Box id="mac-window" variant="surface" frame="bordered" borderShape="square"
+      style={{ width: 32, padding: 1, gap: 1 }}>
+      <Text>Preferences</Text>
+      {renderGalleryCheckbox({ id: "mac-sound", label: "Sound", checked: sound, focusedId })}
+      <Box variant="ghost" style={{ direction: "row", gap: 1 }}>
+        <Button id="mac-apply" label="Apply settings" variant="solid" focused={focusedId === "mac-apply"}><Text>Apply</Text></Button>
+        <Button id="mac-reset" label="Reset settings" variant="ghost" focused={focusedId === "mac-reset"}><Text>Reset</Text></Button>
+      </Box>
+      <Text>{`Status: ${status}`}</Text>
+    </Box></Root>
+  </GallerySurface>;
+}
+
 const progressValues = [0, 8, 8, 23, 49, 49, 76, 93, 100] as const;
 const progressDelays = [350, 480, 320, 500, 400, 650, 390, 450] as const;
 

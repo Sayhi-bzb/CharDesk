@@ -6,7 +6,7 @@ Install the complete editable Cell UI source through the shadcn registry.
 
 In your React project's components.json, add or merge these fields:
 
-```tsx
+```json
 {
   "aliases": { "lib": "@/lib" },
   "registries": {
@@ -19,7 +19,7 @@ In your React project's components.json, add or merge these fields:
 
 Install the full cell-ui item. The registry copies source to your lib alias and declares npm dependencies.
 
-```tsx
+```sh
 npx shadcn@latest add @chardesk/cell-ui
 ```
 
@@ -27,7 +27,7 @@ npx shadcn@latest add @chardesk/cell-ui
 
 To install without a registries entry, use the GitHub address:
 
-```tsx
+```sh
 npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui
 ```
 

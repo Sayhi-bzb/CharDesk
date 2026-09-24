@@ -117,6 +117,7 @@ export type {
 export type { CellUiRuntimeOptions } from "./runtime.js";
 export type { BadgeTone } from "./badge.js";
 export type { TabsVariant } from "./tabs.js";
+export type { TableColumn, TableVariant } from "./table.js";
 export {
   Box,
   Button,
@@ -133,6 +134,9 @@ export {
   Grid,
   GridCell,
   GridRow,
+  Table,
+  TableRow,
+  TableCell,
   Root,
   ScrollArea,
   Select,
@@ -163,6 +167,9 @@ export type {
   SliderProps,
   GridCellProps,
   GridProps,
+  TableProps,
+  TableRowProps,
+  TableCellProps,
   GridRowProps,
   RootProps,
   ScrollAreaProps,

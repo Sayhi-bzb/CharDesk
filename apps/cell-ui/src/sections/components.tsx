@@ -32,6 +32,9 @@ import {
   Tab,
   TabPanel,
   Tabs,
+  Table,
+  TableRow,
+  TableCell,
   Text,
   TextInput,
   type ButtonVariant,
@@ -42,6 +45,7 @@ import {
   type SeparatorVariant,
   type SurfaceVariant,
   type TabsVariant,
+  type TableVariant,
   type WidgetCommand,
 } from "@chardesk/cell-ui";
 import {
@@ -71,6 +75,7 @@ const buttonContentItems = [
   { id: "icon-text", label: "icon + text", text: `${buttonSaveIcon} Save` },
 ] as const;
 const surfaceVariantItems = (["surface", "ghost"] as const).map((value) => ({ id: value, label: value }));
+const tableVariantItems = (["plain", "outline", "surface"] as const).map((value) => ({ id: value, label: value }));
 const frameItems = (["none", "bordered"] as const).map((value) => ({ id: value, label: value }));
 const borderShapeItems = (["square", "rounded"] as const).map((value) => ({ id: value, label: value }));
 const progressVariantItems = (["solid", "outline"] as const).map((value) => ({ id: value, label: value }));
@@ -269,6 +274,20 @@ export const SpinnerComponentDemo = () => {
       <Spinner id="component-spinner-indicator" label="Loading" variant={variant.selectedId as SpinnerVariant} />
       <Text>Loading…</Text>
     </Box>}
+    controls={[renderPlaygroundSelectControl("variant", variant, focus.focusedId)]} />;
+};
+
+export const TableComponentDemo = () => {
+  const variant = useCellSelectState("component-table-variant", tableVariantItems, { defaultSelectedId: "plain" });
+  const focus = usePlaygroundFocus(variant.triggerId, [variant]);
+  return <ComponentPlayground id="component-table-playground" label="Table component" probeId="component-table"
+    focusedId={focus.focusedId} onCommand={focus.dispatch} previewMinColumns={36} controlsColumns={22}
+    overlayRows={focus.activeSelect?.items.length ?? 0} rows={9}
+    preview={<Table id="component-table-example" label="Files" variant={variant.selectedId as TableVariant}
+      columns={[{ label: "Name", width: 12 }, { label: "Status", width: 10 }, { label: "Size", width: 7, align: "right" }]}>
+      <TableRow id="component-table-notes"><TableCell>Notes.txt</TableCell><TableCell>Synced</TableCell><TableCell>12 KB</TableCell></TableRow>
+      <TableRow id="component-table-draft"><TableCell>Draft.md</TableCell><TableCell>Editing</TableCell><TableCell>3 KB</TableCell></TableRow>
+    </Table>}
     controls={[renderPlaygroundSelectControl("variant", variant, focus.focusedId)]} />;
 };
 

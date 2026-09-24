@@ -10,7 +10,6 @@ export const installationCommands = {
 
 const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   alert: ["react.tsx", "alert.ts", "semantics.ts"],
-  box: ["react.tsx", "visual.ts"],
   text: ["react.tsx", "layout.ts"],
   overlay: ["react.tsx", "anchored-overlay.ts", "interaction.ts"],
   "range-slider": ["react.tsx", "slider.ts"],
@@ -18,7 +17,7 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   list: ["react.tsx", "browser-collections.tsx"],
   menu: ["react.tsx", "browser-collections.tsx"],
   tree: ["react.tsx", "browser-collections.tsx"],
-  grid: ["react.tsx", "browser-collections.tsx"],
+  table: ["react.tsx", "table.ts", "paint.ts", "semantics.ts"],
   dialog: ["react.tsx", "interaction.ts"],
   accordion: ["react.tsx", "interaction.ts"],
   toggle: ["react.tsx", "press.ts"],
@@ -643,20 +642,6 @@ export function ScrollAreaExample() {
     ],
   },
   {
-    slug: "box", title: "Box", description: "Lay out Cell content and optionally give it a surface or frame.",
-    usage: `import { Box, Root, Text } from "@chardesk/cell-ui";
-
-<Root><Box variant="ghost" frame="bordered" style={{ width: 20, padding: 1 }}>
-  <Text>Content</Text>
-</Box></Root>`,
-    api: [
-      { name: "variant?", type: '"ghost" | "surface"', description: "Transparent by default; surface fills with the elevated surface color." },
-      { name: "frame?", type: '"none" | "bordered"', description: "Bordered reserves one Cell on each edge." },
-      { name: "borderShape?", type: '"square" | "rounded"', description: "Glyph shape for a bordered frame." },
-      { name: "style?", type: "CellLayoutStyle", description: "Cell geometry and layout." },
-    ],
-  },
-  {
     slug: "text", title: "Text", description: "Render Unicode text in the Cell layout without browser text nodes.",
     usage: `import { Root, Text } from "@chardesk/cell-ui";
 
@@ -683,19 +668,21 @@ const editor = useCellTextState("notes", { value: "Hello", multiline: true });
     ],
   },
   {
-    slug: "grid", title: "Grid", description: "Navigate a two-dimensional Cell collection without coupling focus to selection.",
-    usage: `import { Grid, GridCell, GridRow, Root, Text } from "@chardesk/cell-ui";
+    slug: "table", title: "Table", description: "Display read-only rows on a Cell grid with lines or alternating backgrounds.",
+    usage: `import { Root, Table, TableRow, TableCell } from "@chardesk/cell-ui";
 
-<Root><Grid label="Properties" rowCount={1} columnCount={1}>
-  <GridRow id="row" rowIndex={1}><GridCell id="name" rowIndex={1} columnIndex={1}>
-    <Text>Name</Text>
-  </GridCell></GridRow>
-</Grid></Root>`,
+<Root><Table label="Files" variant="outline" columns={[
+  { label: "Name", width: 12 }, { label: "Status", width: 10 },
+  { label: "Size", width: 7, align: "right" },
+]}>
+  <TableRow><TableCell>Notes.txt</TableCell><TableCell>Synced</TableCell><TableCell>12 KB</TableCell></TableRow>
+  <TableRow><TableCell>Draft.md</TableCell><TableCell>Editing</TableCell><TableCell>3 KB</TableCell></TableRow>
+</Table></Root>`,
     api: [
-      { name: "rowCount? / columnCount?", type: "number", description: "Logical grid dimensions." },
-      { name: "GridRow.rowIndex", type: "number", description: "One-based row coordinate." },
-      { name: "GridCell.rowIndex / columnIndex", type: "number", description: "One-based cell coordinate." },
-      { name: "GridCell.focused? / selected?", type: "boolean", description: "Independent focus and selection state." },
+      { name: "label", type: "string", description: "Accessible table name." },
+      { name: "columns", type: "TableColumn[]", description: "Ordered headers and integer Cell widths; optional right alignment." },
+      { name: "variant?", type: '"plain" | "outline" | "surface"', description: "Gap-separated, square boxed, or alternating row backgrounds." },
+      { name: "TableRow / TableCell", type: "children", description: "One read-only text cell per column, in order." },
     ],
   },
 
@@ -704,9 +691,10 @@ const editor = useCellTextState("notes", { value: "Hello", multiline: true });
 type GuideSection = Readonly<{
   id: string;
   title: string;
+  tocLabel?: string;
   body: string;
   code?: string;
-  demo?: "settings" | "progress" | "notes";
+  demo?: "settings" | "progress" | "notes" | "macintosh";
   link?: Readonly<{ label: string; href: string }>;
 }>;
 export type GuideContent = Readonly<{ slug: string; title: string; description: string; sections: readonly GuideSection[] }>;
@@ -716,7 +704,7 @@ export const guideContent: readonly GuideContent[] = [
     slug: "introduction", title: "Introduction",
     description: "Build React interfaces from editable Unicode Cells. Own the source, compose a few good defaults, and let one frame serve people and agents.",
     sections: [
-      { id: "philosophy", title: "Why Cells?", body: "A border, a space, a label, and a cursor all occupy integer Cells. The same committed frame drives the visible Canvas, accessible controls, copyable Unicode, and headless tests. Cell UI ships as source you can change, with fewer built-in knobs to work around. Try Cell Range: hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux. Copy preserves the selected Unicode, including border glyphs." },
+      { id: "philosophy", title: "Why Cells?", body: "A border, a space, a label, and a cursor all occupy integer Cells. The same committed frame drives the visible Canvas, accessible controls, copyable Unicode, and headless tests. Cell UI ships as source you can change, with fewer built-in knobs to work around. Try Cell Range: hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux. Copy preserves the selected Unicode, including border glyphs.", link: { label: "Read the philosophy", href: "#/guides/philosophy" } },
       { id: "settings", title: "Compose a settings panel", body: "Theme and Sound are ordinary app state. Select and Checkbox share the same Cell grid and input model; try the menu and the checkbox with pointer or keyboard.", demo: "settings", code: `const themeItems = [{ id: "light", label: "Light" }, { id: "dark", label: "Dark" }];
 const theme = useCellSelectState("theme", themeItems, { defaultSelectedId: "dark" });
 const [sound, setSound] = useState(true);
@@ -735,6 +723,29 @@ const [sound, setSound] = useState(true);
   <Root><TextArea id="note" label="Notes" state={note.snapshot} /></Root>
 </CellSurface>`, link: { label: "TextArea component", href: "#/components/text-area" } },
       { id: "start", title: "Make it yours", body: "Install the complete library into your project, then edit the source directly. Use the component pages for full wiring and public props; keep product-specific choices in your own code.", link: { label: "Installation", href: "#/guides/installation" } },
+    ],
+  },
+  {
+    slug: "philosophy", title: "Philosophy",
+    description: "UI as Text is the goal: structure, meaningful state, and available actions should be understandable from text without relying on color or source code. Three Cell-native principles support it.",
+    sections: [
+      { id: "everything-is-cell", title: "Everything is Cell", body: "Layout, paint, hit targets, scrolling, selection, and copy use integer Cells. Visible characters remain Unicode in Cell.text, whether painted by a font or Cell graphics; backgrounds are metadata, not characters. Every visible Cell belongs to a Widget or its chrome, so an outlined Table's borders can be copied and traced to their owner.", link: { label: "Cell-native design contract", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/design.mdx" } },
+      { id: "every-input-becomes-a-command", title: "Every Input becomes a Command", tocLabel: "Input Becomes Command", body: "Keyboard, pointer, wheel, native text input, and assistive actions reach Widget commands. Keyboard operation is complete; a pointer acts directly on the visible Cell target. Enter and a complete tap on a Button reach the same action, and hover is never required to finish it.", link: { label: "Explore the visual philosophy", href: "#/guides/classic-macintosh" } },
+      { id: "one-state-many-projections", title: "One State, Many Projections", tocLabel: "State & Projections", body: "Applications own business values. Focus, selection, press, expansion, disabled, and editing state that affect the interface appear in the committed Cell Scene. Canvas, Semantic DOM, Unicode clipboard, and headless tests consume that Widget commit; a Table can truncate a filename visually while its semantic label keeps the full name. Today, ordinary Cell Range copy preserves visible Unicode, not every color-only state or semantic detail. A complete UI-as-text export is a future projection of the same commit, not a change to ordinary copy." },
+    ],
+  },
+  {
+    slug: "classic-macintosh", title: "Classic Macintosh",
+    description: "A clear visual hierarchy and direct, forgiving interaction—translated into Cell UI rather than copied as a retro skin.",
+    sections: [
+      { id: "direct-manipulation", title: "Direct manipulation", body: "The visible Cell is the target. Toggle Sound, then Apply or Reset in this small preferences window; pointer and keyboard act on the same controls.", demo: "macintosh" },
+      { id: "immediate-feedback", title: "Immediate feedback", body: "A checkbox changes its mark when activated. Apply changes the status to Saved. The result appears in the same committed Cell frame as the control." },
+      { id: "perceptual-stability", title: "Perceptual stability", body: "A control keeps its place as state changes. Sound, actions, and status stay in fixed rows, so a changing label never makes the next target jump." },
+      { id: "user-control", title: "Forgiving and in control", body: "Reset restores the initial preference. Actions have visible consequences and a clear way back; no hover-only path is needed." },
+      { id: "few-modes", title: "Few modes", body: "The same window contains the setting and its actions. Avoid hidden editing modes when a direct control can express the state." },
+      { id: "black-and-white", title: "Black-and-white first", body: "Borders, spacing, text, and marks distinguish controls before color does. Solid and ghost Buttons show action hierarchy without depending on hue." },
+      { id: "consistent-grammar", title: "Consistent grammar", body: "Square borders frame the window; a marked checkbox means on, and the primary action remains solid. These meanings should hold across Cell UI components." },
+      { id: "modern-translation", title: "Cell-native, modern host", body: "Light is the canonical Macintosh-inspired palette; Dark inverts the hierarchy without changing layout or behavior. Semantic DOM, keyboard and touch input, Unicode, and accessibility remain modern Cell UI contracts—not claims of historical pixel accuracy.", link: { label: "Macintosh design standard", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/macintosh.mdx" } },
     ],
   },
   {

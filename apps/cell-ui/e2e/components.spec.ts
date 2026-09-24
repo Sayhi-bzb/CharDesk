@@ -1,17 +1,15 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, ownerBounds, readCellPixel, readCellProbe } from "./helpers/cell-probe";
 import { galleryFontSelect } from "./helpers/gallery-font-select";
 
 const navigationLinks = [
   ["Accordion", "#/components/accordion"],
   ["Alert", "#/components/alert"],
   ["Badge", "#/components/badge"],
-  ["Box", "#/components/box"],
   ["Button", "#/components/button"],
   ["Checkbox", "#/components/checkbox"],
   ["Combobox", "#/components/combobox"],
   ["Dialog", "#/components/dialog"],
-  ["Grid", "#/components/grid"],
   ["Input", "#/components/input"],
   ["Progress", "#/components/progress"],
   ["Radio", "#/components/radio"],
@@ -20,6 +18,7 @@ const navigationLinks = [
   ["Separator", "#/components/separator"],
   ["Slider", "#/components/slider"],
   ["Spinner", "#/components/spinner"],
+  ["Table", "#/components/table"],
   ["Tabs", "#/components/tabs"],
   ["Text", "#/components/text"],
   ["TextArea", "#/components/text-area"],
@@ -33,7 +32,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("heading", { name: "Introduction", level: 1 })).toBeVisible();
   await expect(page.locator(".gallery-brand")).toHaveAttribute("href", "#/guides/introduction");
   await expect(nav.getByRole("group", { name: "Sections" }).getByRole("link")).toHaveText([
-    "Introduction", "Installation", "Integration", "Theming", "Testing",
+    "Introduction", "Philosophy", "Classic Macintosh", "Installation", "Integration", "Theming", "Testing",
   ]);
   await page.goto("/#/components/button");
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
@@ -170,7 +169,7 @@ test("desktop navigation scrolls independently and reveals its active link", asy
   await page.mouse.move(700, 200);
   await page.mouse.wheel(0, 160);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(pageY);
-  await expect.poll(() => nav.evaluate((element) => element.getBoundingClientRect().top)).toBe(24);
+  await expect.poll(() => nav.evaluate((element) => element.getBoundingClientRect().top)).toBe(80);
 
   await nav.evaluate((element) => { element.scrollTop = element.scrollHeight; });
   await nav.hover();
@@ -190,6 +189,73 @@ test("desktop navigation scrolls independently and reveals its active link", asy
 
   await page.setViewportSize({ width: 390, height: 640 });
   await expect(nav).toHaveCSS("overflow-y", "visible");
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test("TOC labels stay on one line and navigation ends with the page", async ({ page }) => {
+  for (const width of [1280, 1050, 720, 390, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/#/guides/introduction");
+    const nav = page.getByRole("navigation", { name: "Cell UI" });
+    const toc = page.getByRole("navigation", { name: "On This Page" });
+    expect(await toc.getByRole("link").evaluateAll((links) => links.every((link) => link.getClientRects().length === 1))).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+
+    if (width <= 720) {
+      await expect(nav).toHaveCSS("overflow-y", "visible");
+      continue;
+    }
+
+    await expect(nav).toHaveCSS("scrollbar-width", "none");
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const navBounds = await nav.boundingBox();
+    const mainBounds = await page.locator("main.docs-page").boundingBox();
+    expect(navBounds).not.toBeNull();
+    expect(mainBounds).not.toBeNull();
+    expect(navBounds!.y + navBounds!.height).toBeCloseTo(mainBounds!.y + mainBounds!.height, 0);
+  }
+});
+
+test("header stays above desktop navigation without hiding section targets", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  for (const width of [1280, 1050]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/#/guides/introduction");
+    await expect.poll(() => page.locator(".gallery-header__inner").evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(32);
+    await expect.poll(() => page.getByRole("navigation", { name: "Cell UI" }).evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(112);
+    await page.goto("/#/guides/introduction?section=progress");
+    await page.reload();
+    const header = page.locator(".gallery-header");
+    const nav = page.getByRole("navigation", { name: "Cell UI" });
+    const heading = page.getByRole("heading", { name: "Show progress in text" });
+    await expect(header).toHaveCSS("position", "sticky");
+    await expect.poll(() => header.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(0);
+    await expect.poll(() => page.evaluate(() => [8, window.innerWidth - 8].every((x) =>
+      document.elementFromPoint(x, 8)?.closest(".gallery-header") !== null))).toBe(true);
+    await expect.poll(() => nav.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(80);
+    await expect.poll(() => heading.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBeGreaterThanOrEqual(88);
+    if (width === 1280) {
+      await expect(header).toHaveCSS("background-color", "rgb(255, 255, 255)");
+      await header.getByRole("button", { name: "Dark" }).click();
+    }
+    await expect(header).toHaveCSS("background-color", "rgb(0, 0, 0)");
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect.poll(() => header.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(0);
+    await expect.poll(() => page.evaluate(() => [8, window.innerWidth - 8].every((x) =>
+      document.elementFromPoint(x, 8)?.closest(".gallery-header") !== null))).toBe(true);
+    const navBounds = await nav.boundingBox();
+    const mainBounds = await page.locator("main.docs-page").boundingBox();
+    expect(navBounds!.y + navBounds!.height).toBeCloseTo(mainBounds!.y + mainBounds!.height, 0);
+  }
+
+  await page.setViewportSize({ width: 390, height: 640 });
+  await page.goto("/#/guides/introduction?section=progress");
+  await page.reload();
+  const header = page.locator(".gallery-header");
+  await expect(header).toHaveCSS("position", "static");
+  await expect.poll(() => header.evaluate((element) => element.getBoundingClientRect().bottom)).toBeLessThan(0);
+  await expect.poll(() => page.getByRole("heading", { name: "Show progress in text" }).evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBeGreaterThanOrEqual(16);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
@@ -270,19 +336,23 @@ test("on-page navigation survives direct load, component changes, and browser hi
   await expect(page.locator("#installation")).toBeInViewport();
 });
 
-test("foundational component pages support direct loading", async ({ page }) => {
-  for (const slug of ["text", "box", "text-area", "grid"]) {
+test("remaining foundational component pages support direct loading", async ({ page }) => {
+  for (const slug of ["text", "text-area", "table"]) {
     await page.goto(`/#/components/${slug}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Cell UI" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "API" })).toBeVisible();
   }
+  for (const slug of ["box", "grid"]) {
+    await page.goto(`/#/components/${slug}`);
+    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  }
 });
 
 test("guide sections, direct links, and agent Markdown stay addressable", async ({ page, request }) => {
-  for (const slug of ["introduction", "installation", "integration", "theming", "testing"]) {
+  for (const slug of ["introduction", "philosophy", "classic-macintosh", "installation", "integration", "theming", "testing"]) {
     await page.goto(`/#/guides/${slug}`);
-    await expect(page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: slug === "introduction" ? "Introduction" : slug[0]!.toUpperCase() + slug.slice(1), exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: slug === "classic-macintosh" ? "Classic Macintosh" : slug[0]!.toUpperCase() + slug.slice(1), exact: true })).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     const markdown = await request.get(`/guides/${slug}.md`);
     expect(markdown.ok()).toBe(true);
@@ -293,13 +363,136 @@ test("guide sections, direct links, and agent Markdown stay addressable", async 
   await expect(page.getByRole("navigation", { name: "On This Page" }).getByRole("link", { name: "Manual" })).toHaveAttribute("aria-current", "location");
   const index = await request.get("/llms.txt");
   expect(index.ok()).toBe(true);
-  expect(await index.text()).toContain("/components/grid.md");
+  expect(await index.text()).not.toContain("/components/box.md");
+  expect(await index.text()).not.toContain("/components/grid.md");
+  expect(await index.text()).toContain("/components/table.md");
   expect(await index.text()).toContain("/components/alert.md");
-  for (const slug of ["box", "text", "slider", "text-area", "grid"]) {
+  expect(await index.text()).toContain("/guides/philosophy.md");
+  expect(await index.text()).toContain("/guides/classic-macintosh.md");
+  for (const slug of ["text", "slider", "text-area", "table"]) {
     const response = await request.get(`/components/${slug}.md`);
     expect(response.ok()).toBe(true);
     expect(await response.text()).toContain("## API");
   }
+});
+
+test("Philosophy connects three principles to Introduction and the design authority", async ({ page, request }) => {
+  await page.goto("/#/guides/introduction");
+  await page.getByRole("link", { name: "Read the philosophy" }).click();
+  await expect(page).toHaveURL(/#\/guides\/philosophy$/u);
+  await expect(page.getByRole("heading", { name: "Philosophy", level: 1 })).toBeVisible();
+  await expect(page.locator(".docs-page__header")).toContainText("UI as Text is the goal");
+  const toc = page.getByRole("navigation", { name: "On This Page" });
+  await expect(toc.getByRole("link")).toHaveText([
+    "Everything is Cell", "Input Becomes Command", "State & Projections",
+  ]);
+  await expect(toc.getByRole("link", { name: "Every Input becomes a Command" }))
+    .toHaveAttribute("title", "Every Input becomes a Command");
+  await expect(page.getByRole("link", { name: "Cell-native design contract" })).toHaveAttribute(
+    "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/design.mdx",
+  );
+  await expect(page.getByRole("link", { name: "Explore the visual philosophy" })).toHaveAttribute(
+    "href", "#/guides/classic-macintosh",
+  );
+  await expect(page.locator("#one-state-many-projections").locator("xpath=..")).toContainText(
+    "Applications own business values",
+  );
+  await expect(page.locator("#one-state-many-projections").locator("xpath=..")).toContainText(
+    "ordinary Cell Range copy preserves visible Unicode",
+  );
+  await toc.getByRole("link", { name: "One State, Many Projections" }).click();
+  await expect(page.locator("#one-state-many-projections")).toBeInViewport();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const markdown = await request.get("/guides/philosophy.md");
+  expect(markdown.ok()).toBe(true);
+  const markdownText = await markdown.text();
+  expect(markdownText).toContain("UI as Text is the goal");
+  expect(markdownText).toContain("A complete UI-as-text export is a future projection");
+  expect(markdownText).toContain("## One State, Many Projections");
+  expect(markdownText.match(/^## /gmu)).toHaveLength(3);
+});
+
+test("Philosophy TOC stays within its column and reveals the current section", async ({ page }) => {
+  for (const width of [1280, 1050, 720, 390, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/#/guides/philosophy");
+    const toc = page.getByRole("navigation", { name: "On This Page" });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    expect(await toc.getByRole("link").evaluateAll((links) => links.every((link) => {
+      const parent = link.closest("nav")!.getBoundingClientRect();
+      const bounds = link.getBoundingClientRect();
+      return bounds.left >= parent.left && bounds.right <= parent.right;
+    }))).toBe(true);
+    const first = toc.getByRole("link").first();
+    await first.evaluate((element) => { element.textContent = "A very long table of contents label that must not widen the page"; });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await expect(first).toHaveCSS("text-overflow", "ellipsis");
+  }
+
+  await page.setViewportSize({ width: 1280, height: 320 });
+  await page.goto("/#/guides/philosophy?section=one-state-many-projections");
+  await page.reload();
+  const toc = page.getByRole("navigation", { name: "On This Page" });
+  const links = toc.getByRole("link");
+  const active = toc.getByRole("link", { name: "One State, Many Projections" });
+  await expect(toc).toHaveCSS("overflow-y", "auto");
+  await expect(links).toHaveCount(3);
+  expect(await toc.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
+  await expect(active).toHaveAttribute("aria-current", "location");
+  expect(await links.evaluateAll((elements) => elements.every((element) => {
+    const bounds = element.closest("nav")!.getBoundingClientRect();
+    const link = element.getBoundingClientRect();
+    return link.top >= bounds.top - 1 && link.bottom <= bounds.bottom + 1;
+  }))).toBe(true);
+  await links.first().focus();
+  await active.focus();
+  await expect(active).toBeFocused();
+  await expect.poll(() => active.evaluate((element) => {
+    const bounds = element.closest("nav")!.getBoundingClientRect();
+    const link = element.getBoundingClientRect();
+    return link.top >= bounds.top - 1 && link.bottom <= bounds.bottom + 1;
+  })).toBe(true);
+});
+
+test("Classic Macintosh guide keeps its Cell window stable across input and themes", async ({ page, request }) => {
+  await page.goto("/#/guides/philosophy");
+  await page.getByRole("link", { name: "Explore the visual philosophy" }).click();
+  await expect(page).toHaveURL(/#\/guides\/classic-macintosh$/u);
+  await expect(page.getByRole("heading", { name: "Classic Macintosh", level: 1 })).toBeVisible();
+  const toc = page.getByRole("navigation", { name: "On This Page" });
+  await expect(toc.getByRole("link")).toHaveText([
+    "Direct manipulation", "Immediate feedback", "Perceptual stability", "Forgiving and in control",
+    "Few modes", "Black-and-white first", "Consistent grammar", "Cell-native, modern host",
+  ]);
+  await expect(page.getByRole("link", { name: "Macintosh design standard" })).toHaveAttribute(
+    "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/macintosh.mdx",
+  );
+  const surface = page.getByLabel("Classic Macintosh example");
+  const sound = surface.getByRole("checkbox", { name: "Sound" });
+  await expect(sound).toHaveAttribute("aria-checked", "true");
+  const before = ownerBounds(await readCellProbe(surface), "mac-window");
+  await sound.focus();
+  await page.keyboard.press("Space");
+  await expect(sound).toHaveAttribute("aria-checked", "false");
+  await surface.locator("canvas").first().scrollIntoViewIfNeeded();
+  const apply = ownerBounds(await readCellProbe(surface), "mac-apply");
+  const point = await cellPoint(surface, apply.x + (apply.width - 1) / 2, apply.y + (apply.height - 1) / 2);
+  await page.mouse.click(point.x, point.y);
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Status: Saved");
+  await surface.getByRole("button", { name: "Reset settings" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(sound).toHaveAttribute("aria-checked", "true");
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Status: Ready");
+  expect(ownerBounds(await readCellProbe(surface), "mac-window")).toEqual(before);
+  const light = JSON.stringify(await readCellPixel(surface, 0, 0));
+  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).click();
+  await expect.poll(async () => JSON.stringify(await readCellPixel(surface, 0, 0))).not.toBe(light);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const markdown = await request.get("/guides/classic-macintosh.md");
+  expect(markdown.ok()).toBe(true);
+  expect(await markdown.text()).toContain("## Black-and-white first");
 });
 
 test("Introduction shows interactive Cell examples and matching agent content", async ({ page, request }) => {
@@ -326,7 +519,13 @@ test("Introduction shows interactive Cell examples and matching agent content", 
 
   const progress = page.getByLabel("Progress example");
   await expect.poll(async () => (await readCellProbe(progress)).text).toContain("Uploading files");
-  await progress.getByRole("button", { name: "Start" }).evaluate((element: HTMLElement) => element.click());
+  await progress.locator("canvas").first().scrollIntoViewIfNeeded();
+  const startBounds = ownerBounds(await readCellProbe(progress), "intro-progress-start");
+  const startPoint = await cellPoint(progress,
+    startBounds.x + (startBounds.width - 1) / 2,
+    startBounds.y + (startBounds.height - 1) / 2);
+  await page.mouse.click(startPoint.x, startPoint.y);
+  await expect.poll(async () => (await readCellProbe(progress)).text).toContain("Restart");
   await expect.poll(async () => (await readCellProbe(progress)).text, { timeout: 10000 }).toContain("Upload complete");
 
   const notes = page.getByLabel("Unicode notes example");

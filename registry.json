@@ -325,6 +325,11 @@
           "target": "@lib/cell-ui/surface-variant.ts"
         },
         {
+          "path": "registry/cell-ui/table.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/table.ts"
+        },
+        {
           "path": "registry/cell-ui/tabs.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/tabs.ts"

@@ -53,6 +53,9 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
       || parent.kind === "tabs"
       || parent.kind === "grid"
       || parent.kind === "grid-row"
+      || parent.kind === "table"
+      || parent.kind === "table-header"
+      || parent.kind === "table-row"
       || parent.kind === "select-content"
       || parent.kind === "combobox-content"
       || parent.kind === "overlay"
@@ -102,6 +105,10 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
   if (node.kind === "grid") return "grid";
   if (node.kind === "grid-row") return "row";
   if (node.kind === "grid-cell") return "gridcell";
+  if (node.kind === "table") return "table";
+  if (node.kind === "table-header" || node.kind === "table-row") return "row";
+  if (node.kind === "table-head") return "columnheader";
+  if (node.kind === "table-cell") return "cell";
   if (node.kind === "text-input" || node.kind === "text-area") return "textbox";
   return null;
 };
@@ -347,10 +354,10 @@ export const auditSemanticSnapshot = (
       (node.role !== "row" && node.role !== "gridcell") || !positiveInteger(node.rowIndex)
     )) issue(node.id, "invalid-state", `rowIndex is invalid for role ${node.role}.`);
     if (node.columnIndex !== undefined && (
-      node.role !== "gridcell" || !positiveInteger(node.columnIndex)
+      (node.role !== "gridcell" && node.role !== "cell" && node.role !== "columnheader") || !positiveInteger(node.columnIndex)
     )) issue(node.id, "invalid-state", `columnIndex is invalid for role ${node.role}.`);
     if ((node.rowCount !== undefined || node.columnCount !== undefined) && (
-      node.role !== "grid" || !positiveInteger(node.rowCount) || !positiveInteger(node.columnCount)
+      (node.role !== "grid" && node.role !== "table") || !positiveInteger(node.rowCount) || !positiveInteger(node.columnCount)
     )) issue(node.id, "invalid-state", "Grid counts must be positive integers on a grid.");
     if (node.modal !== undefined && node.role !== "dialog") {
       issue(node.id, "invalid-state", `modal is invalid for role ${node.role}.`);

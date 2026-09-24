@@ -15,7 +15,7 @@ import { guideContent, installationCommands, publicUsage, type GuideContent } fr
 import { FixturePage } from "./fixtures";
 import { GalleryAppearance, GalleryFontSelect, GalleryIconButton, GalleryThemeToggle } from "./appearance";
 import { GitHubStars } from "./github-stars";
-import { NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
+import { ClassicMacintoshDemo, NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
 import highlightedCode from "virtual:gallery-code-tokens";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
@@ -110,14 +110,14 @@ const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
   tabs[next]?.focus();
   tabs[next]?.click();
 };
-export function GalleryNavigation({ activeRoute }: Readonly<{ activeRoute: string }>) {
+function useRevealCurrentLink(currentKey: string) {
   const navRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const nav = navRef.current;
     if (!nav) return;
     const revealActive = () => {
       if (getComputedStyle(nav).overflowY !== "auto" || nav.scrollHeight <= nav.clientHeight) return;
-      const active = nav.querySelector<HTMLAnchorElement>('a[aria-current="page"]');
+      const active = nav.querySelector<HTMLAnchorElement>("a[aria-current]");
       if (!active) return;
       const navBounds = nav.getBoundingClientRect();
       const activeBounds = active.getBoundingClientRect();
@@ -130,7 +130,12 @@ export function GalleryNavigation({ activeRoute }: Readonly<{ activeRoute: strin
     revealActive();
     window.addEventListener("resize", revealActive);
     return () => window.removeEventListener("resize", revealActive);
-  }, [activeRoute]);
+  }, [currentKey]);
+  return navRef;
+}
+
+export function GalleryNavigation({ activeRoute }: Readonly<{ activeRoute: string }>) {
+  const navRef = useRevealCurrentLink(activeRoute);
   return (
     <nav ref={navRef} className="gallery-nav" aria-label="Cell UI">
       <div className="gallery-nav__group" role="group" aria-labelledby="gallery-nav-sections">
@@ -195,12 +200,13 @@ export function Installation() {
   );
 }
 
-export function OnThisPage({ route, sections, activeSection }: Readonly<{ route: string; sections: readonly Readonly<{ id: string; label: string }>[]; activeSection: string | null }>) {
+export function OnThisPage({ route, sections, activeSection }: Readonly<{ route: string; sections: readonly Readonly<{ id: string; label: string; tocLabel?: string }>[]; activeSection: string | null }>) {
+  const tocRef = useRevealCurrentLink(`${route}?section=${activeSection ?? ""}`);
   return (
-    <nav className="gallery-toc" aria-label="On This Page">
+    <nav ref={tocRef} className="gallery-toc" aria-label="On This Page">
       <span className="gallery-toc__title">On This Page</span>
-      <ul>{sections.map(({ id, label }) => (
-        <li key={id}><a href={`#${route}?section=${id}`} aria-current={activeSection === id ? "location" : undefined}>{label}</a></li>
+      <ul>{sections.map(({ id, label, tocLabel }) => (
+        <li key={id}><a href={`#${route}?section=${id}`} aria-label={label} title={label} aria-current={activeSection === id ? "location" : undefined}>{tocLabel ?? label}</a></li>
       ))}</ul>
     </nav>
   );
@@ -253,6 +259,7 @@ const guideDemos = {
   settings: SettingsIntroductionDemo,
   progress: ProgressIntroductionDemo,
   notes: NotesIntroductionDemo,
+  macintosh: ClassicMacintoshDemo,
 } satisfies Record<NonNullable<GuideContent["sections"][number]["demo"]>, ComponentType>;
 
 export function GuidePage({ guide }: Readonly<{ guide: GuideContent }>) {
@@ -273,17 +280,37 @@ export function GuidePage({ guide }: Readonly<{ guide: GuideContent }>) {
 export function DocumentationShell({ document, guide, section }: Readonly<{ document?: ComponentDocument; guide?: GuideContent; section: string | null }>) {
   const title = guide?.title ?? document?.title ?? "Cell UI";
   const route = guide ? `/guides/${guide.slug}` : `/components/${document!.slug}`;
-  const sections = guide ? guide.sections.map(({ id, title: label }) => ({ id, label })) : documentationSections;
+  const sections = guide ? guide.sections.map(({ id, title: label, tocLabel }) => ({ id, label, tocLabel })) : documentationSections;
   useEffect(() => {
     window.document.title = `${title} – CharDesk Cell UI`;
-    if (section) window.document.getElementById(section)?.scrollIntoView();
-    else window.scrollTo(0, 0);
+    if (!section) {
+      window.scrollTo(0, 0);
+      return;
+    }
+    let frame: number | undefined;
+    let cancelled = false;
+    const scroll = () => {
+      if (cancelled) return;
+      frame = requestAnimationFrame(() => {
+        window.document.getElementById(section)?.scrollIntoView();
+      });
+    };
+    const afterLoad = () => { void window.document.fonts.ready.then(scroll); };
+    if (window.document.readyState === "complete") afterLoad();
+    else window.addEventListener("load", afterLoad, { once: true });
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", afterLoad);
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
   }, [route, title, section]);
   return (
     <>
       <header className="gallery-header">
-        <a className="gallery-brand" href={defaultHref}>CharDesk / Cell UI</a>
-        <div className="gallery-appearance-controls"><GitHubStars /><GalleryFontSelect /><GalleryThemeToggle /></div>
+        <div className="gallery-header__inner">
+          <a className="gallery-brand" href={defaultHref}>CharDesk / Cell UI</a>
+          <div className="gallery-appearance-controls"><GitHubStars /><GalleryFontSelect /><GalleryThemeToggle /></div>
+        </div>
       </header>
       <div className="gallery-layout">
         <GalleryNavigation activeRoute={route} />

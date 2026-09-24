@@ -86,6 +86,10 @@ const surfaceStyleForNode = (
         ...(backgroundColor !== undefined ? { backgroundColor } : {}),
       };
     }
+    if (current.kind === "table-row" && current.rowIndex !== null && current.rowIndex % 2 === 0
+      && current.parentId && tree.nodes.get(current.parentId)?.surfaceVariant === "surface") {
+      return { ...theme.surfaceStyle, ...(backgroundColor !== undefined ? { backgroundColor } : {}) };
+    }
     if (current.surfaceVariant === "surface") {
       return {
         ...theme.elevatedSurfaceStyle,

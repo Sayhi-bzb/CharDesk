@@ -19,10 +19,10 @@ import {
   SliderComponentDemo,
   TabsComponentDemo,
   TextComponentDemo,
-  BoxComponentDemo,
+  TableComponentDemo,
 } from "./sections/components";
 
-import { GridComponentDemo, TextAreaComponentDemo } from "./sections/foundations";
+import { TextAreaComponentDemo } from "./sections/foundations";
 import { componentContent, sourceLinksForComponent as contentSourceLinks, type ComponentContent } from "./docs-content";
 
 export type ComponentDocument = ComponentContent & Readonly<{ probeId: string; Demo: ComponentType }>;
@@ -35,8 +35,8 @@ const demos: Readonly<Record<string, ComponentType>> = {
   badge: BadgeComponentDemo, select: SelectComponentDemo, combobox: ComboboxComponentDemo,
   checkbox: CheckboxComponentDemo, slider: SliderComponentDemo, input: InputComponentDemo,
   tabs: TabsComponentDemo, "scroll-area": ScrollAreaComponentDemo,
-  text: TextComponentDemo, box: BoxComponentDemo, "text-area": TextAreaComponentDemo,
-  grid: GridComponentDemo,
+  text: TextComponentDemo, "text-area": TextAreaComponentDemo,
+  table: TableComponentDemo,
 };
 
 export const sourceLinksForComponent = contentSourceLinks;

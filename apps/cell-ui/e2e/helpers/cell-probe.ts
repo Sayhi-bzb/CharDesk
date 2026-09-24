@@ -36,6 +36,15 @@ export const readCellText = async (surface: Locator): Promise<string> =>
 export const ownerCells = (snapshot: BrowserCellProbe, ownerId: string) =>
   snapshot.cells.filter((cell) => cell.ownerId === ownerId);
 
+export const readCellProbeWithOwner = async (surface: Locator, ownerId: string): Promise<BrowserCellProbe> => {
+  let snapshot: BrowserCellProbe | null = null;
+  await expect.poll(async () => {
+    snapshot = await readCellProbe(surface);
+    return ownerCells(snapshot, ownerId).length;
+  }).toBeGreaterThan(0);
+  return snapshot!;
+};
+
 export const ownerBounds = (snapshot: BrowserCellProbe, ownerId: string) => {
   const cells = ownerCells(snapshot, ownerId);
   if (cells.length === 0) throw new Error(`Cell owner ${ownerId} has no visible Cells.`);

@@ -12,8 +12,10 @@ const outputs = new Map();
 const installation = `Install the full editable source in a React project with components.json and aliases.lib: [Installation](${base}/guides/installation.md).`;
 
 for (const guide of guideContent) {
-  const sections = guide.sections.map(({ title, body, code, link }) =>
-    `## ${title}\n\n${body}${code ? `\n\n\`\`\`tsx\n${code}\n\`\`\`` : ""}${link ? `\n\n[${link.label}](${markdownHref(link.href)})` : ""}`);
+  const sections = guide.sections.map(({ id, title, body, code, link }) => {
+    const language = guide.slug === "installation" ? id === "configure" ? "json" : "sh" : "tsx";
+    return `## ${title}\n\n${body}${code ? `\n\n\`\`\`${language}\n${code}\n\`\`\`` : ""}${link ? `\n\n[${link.label}](${markdownHref(link.href)})` : ""}`;
+  });
   outputs.set(`guides/${guide.slug}.md`, `# ${guide.title}\n\n${guide.description}\n\n${sections.join("\n\n")}\n`);
 }
 

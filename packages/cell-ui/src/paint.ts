@@ -206,6 +206,36 @@ export const paintScene = (
           outerClip
         );
       }
+      if (node.kind === "table" && node.surfaceVariant !== "surface") {
+        const header = tree.nodes.get(node.children[0] ?? "");
+        const divider = scene.entries.get(node.children[1] ?? "");
+        const cells = header?.children.map((cellId) => scene.entries.get(cellId)).filter((cell): cell is SceneEntry => cell !== undefined) ?? [];
+        if (divider && cells.length > 0) {
+          const outlined = node.frame === "bordered";
+          const lineStyle = visual.borderStyle;
+          const write = (x: number, y: number, glyph: string) =>
+            buffer.writeGrapheme(x, y, glyph, id, lineStyle, outerClip, "over");
+          const dividerY = divider.layoutBounds.y;
+          if (outlined) {
+            for (let x = entry.layoutBounds.x; x < entry.layoutBounds.x + entry.layoutBounds.width; x += 1) {
+              write(x, dividerY, x === entry.layoutBounds.x ? "├" : x === entry.layoutBounds.x + entry.layoutBounds.width - 1 ? "┤" : "─");
+            }
+          } else {
+            for (const cell of cells) for (let x = cell.layoutBounds.x; x < cell.layoutBounds.x + cell.layoutBounds.width; x += 1) {
+              write(x, dividerY, "─");
+            }
+          }
+          if (outlined) for (let index = 1; index < cells.length; index += 1) {
+            const x = cells[index]!.layoutBounds.x - 1;
+            write(x, entry.layoutBounds.y, "┬");
+            write(x, dividerY, "┼");
+            write(x, entry.layoutBounds.y + entry.layoutBounds.height - 1, "┴");
+            for (let y = entry.layoutBounds.y + 1; y < entry.layoutBounds.y + entry.layoutBounds.height - 1; y += 1) {
+              if (y !== dividerY) write(x, y, "│");
+            }
+          }
+        }
+      }
       if (node.kind === "alert") {
         buffer.writeGrapheme(
           entry.decorationBounds.x + 1,
@@ -248,7 +278,7 @@ export const paintScene = (
       }
 
       // Content: local text and editor glyphs stay within contentClip.
-      if (node.kind === "text") {
+      if (node.kind === "text" || node.kind === "table-head" || node.kind === "table-cell") {
         paintText(
           buffer,
           node.text ?? "",

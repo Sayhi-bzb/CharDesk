@@ -98,6 +98,12 @@ export type WidgetKind =
   | "grid"
   | "grid-row"
   | "grid-cell"
+  | "table"
+  | "table-header"
+  | "table-divider"
+  | "table-row"
+  | "table-head"
+  | "table-cell"
   | "scroll-area"
   | "text-input"
   | "text-area";
@@ -315,7 +321,10 @@ export type SemanticNode = Readonly<{
     | "tabpanel"
     | "grid"
     | "row"
-    | "gridcell";
+    | "gridcell"
+    | "table"
+    | "columnheader"
+    | "cell";
   label: string;
   disabled: boolean;
   hidden: boolean;
