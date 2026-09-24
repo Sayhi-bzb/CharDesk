@@ -42,7 +42,7 @@ description: Current product constraints, dependencies, and architecture ownersh
 | Domain 与依赖方向 | [Domain reference](/development/domains)、[Ownership](/development/architecture/ownership) | 业务职责与跨包依赖方向 |
 | Unicode / Cell width | [`@chardesk/protocol`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/protocol/README.md) | grapheme、1/2 Cell width、continuation 与 offset 映射 |
 | Cell Core | [`@chardesk/cell-core`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-core/README.md) | 逻辑 geometry、dense/sparse source、incremental changes、Frame 与字符快照 |
-| Widget runtime | [`@chardesk/cell-ui`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md) | React descriptors、layout、scene、events、widgets、semantics 与 testing |
+| Widget runtime | [Cell Primitives](/development/cell-ui/primitives) | React descriptors、layout、scene、events、widgets、semantics 与 testing |
 | Geometry / composition | [Compositor 契约](/development/cell-ui/compositor) | root geometry、clips、scroll、paint/hit order 与 invalidation |
 | Visual / interaction standard | [Classic Macintosh → Cell UI](/development/cell-ui/macintosh) | System 6–7 原则到 Cell-native Web UI 的翻译与边界 |
 | Widget behavior | [Widget 规范](/development/cell-ui/widgets) | 状态语言、keyboard/pointer 和 scroll/editor 行为 |
@@ -70,4 +70,4 @@ keyboard / pointer / wheel / AT / textarea
   → next commit
 ```
 
-组件门户由 [`apps/cell-ui`](https://github.com/Sayhi-bzb/CharDesk/tree/main/apps/cell-ui) 持有；当前仅作为内部 workspace 提供。编辑、Overlay、复杂 Widget 与虚拟化 fixture 只服务自动化回归。
+[公开组件门户](https://ui.chardesk.com/)由 [`apps/cell-ui`](https://github.com/Sayhi-bzb/CharDesk/tree/main/apps/cell-ui) 持有；编辑、Overlay、复杂 Widget 与虚拟化 fixture 继续服务自动化回归。

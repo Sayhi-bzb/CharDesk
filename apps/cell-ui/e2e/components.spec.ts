@@ -5,32 +5,44 @@ import { galleryFontSelect } from "./helpers/gallery-font-select";
 const navigationLinks = [
   ["Accordion", "#/components/accordion"],
   ["Badge", "#/components/badge"],
+  ["Box", "#/components/box"],
   ["Button", "#/components/button"],
   ["Checkbox", "#/components/checkbox"],
   ["Combobox", "#/components/combobox"],
   ["Dialog", "#/components/dialog"],
+  ["Grid", "#/components/grid"],
   ["Input", "#/components/input"],
+  ["List", "#/components/list"],
+  ["Menu", "#/components/menu"],
+  ["Overlay", "#/components/overlay"],
   ["Progress", "#/components/progress"],
   ["Radio", "#/components/radio"],
+  ["RangeSlider", "#/components/range-slider"],
   ["ScrollArea", "#/components/scroll-area"],
   ["Select", "#/components/select"],
   ["Separator", "#/components/separator"],
   ["Slider", "#/components/slider"],
   ["Spinner", "#/components/spinner"],
   ["Tabs", "#/components/tabs"],
+  ["Text", "#/components/text"],
+  ["TextArea", "#/components/text-area"],
   ["Toggle", "#/components/toggle"],
   ["Tooltip", "#/components/tooltip"],
+  ["Tree", "#/components/tree"],
 ] as const;
 
 test("component catalog drives concise, addressable documentation", async ({ page }) => {
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Cell UI" });
+  await expect(page.getByRole("heading", { name: "Introduction", level: 1 })).toBeVisible();
+  await expect(page.locator(".gallery-brand")).toHaveAttribute("href", "#/guides/introduction");
+  await expect(nav.getByRole("group", { name: "Sections" }).getByRole("link")).toHaveText([
+    "Introduction", "Installation", "Integration", "Theming", "Testing",
+  ]);
+  await page.goto("/#/components/button");
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
-  await expect(page.locator(".gallery-brand")).toHaveAttribute("href", "#/components/button");
   const group = nav.getByRole("group", { name: "Components" });
-  await expect(nav.getByRole("group")).toHaveCount(1);
-  await expect(nav.getByRole("link")).toHaveCount(17);
-  await expect(group.getByRole("link")).toHaveText(navigationLinks.map(([name]) => name));
+  await expect(nav.getByRole("group")).toHaveCount(2);
   for (const [name, href] of navigationLinks) {
     await expect(group.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
   }
@@ -178,7 +190,7 @@ test("installation tabs expose copyable package-manager commands and the manual 
   await expect(managers.getByRole("tab", { name: "pnpm" })).toHaveAttribute("aria-selected", "true");
   await methods.getByRole("tab", { name: "Manual" }).click();
   await expect(installation.getByRole("link", { name: "manual installation guide" })).toHaveAttribute(
-    "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#manual-source-installation",
+    "href", "#/guides/installation?section=manual",
   );
   await expect(installation.getByRole("tablist", { name: "Package manager" })).toBeHidden();
   await methods.getByRole("tab", { name: "Manual" }).focus();
@@ -208,18 +220,41 @@ test("on-page navigation survives direct load, component changes, and browser hi
   await expect(page.locator("#installation")).toBeInViewport();
 });
 
-test("removed Gallery pages do not leave navigable component routes", async ({ page }) => {
-  for (const slug of ["text", "box", "list"]) {
+test("foundational component pages support direct loading", async ({ page }) => {
+  for (const slug of ["text", "box", "list", "overlay", "range-slider", "text-area", "menu", "tree", "grid"]) {
     await page.goto(`/#/components/${slug}`);
-    await expect(page.getByRole("heading", { name: "Component not found" })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Cell UI" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Cell UI" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "API" })).toBeVisible();
+  }
+});
+
+test("guide sections, direct links, and agent Markdown stay addressable", async ({ page, request }) => {
+  for (const slug of ["introduction", "installation", "integration", "theming", "testing"]) {
+    await page.goto(`/#/guides/${slug}`);
+    await expect(page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: slug === "introduction" ? "Introduction" : slug[0]!.toUpperCase() + slug.slice(1), exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const markdown = await request.get(`/guides/${slug}.md`);
+    expect(markdown.ok()).toBe(true);
+    expect(await markdown.text()).toContain("# ");
+  }
+  await page.goto("/#/guides/installation?section=manual");
+  await expect(page.locator("#manual")).toBeInViewport();
+  await expect(page.getByRole("navigation", { name: "On This Page" }).getByRole("link", { name: "Manual" })).toHaveAttribute("aria-current", "location");
+  const index = await request.get("/llms.txt");
+  expect(index.ok()).toBe(true);
+  expect(await index.text()).toContain("/components/grid.md");
+  for (const slug of ["box", "text", "overlay", "range-slider", "text-area", "list", "menu", "tree", "grid"]) {
+    const response = await request.get(`/components/${slug}.md`);
+    expect(response.ok()).toBe(true);
+    expect(await response.text()).toContain("## API");
   }
 });
 
 test("unknown component routes fail honestly", async ({ page }) => {
   await page.goto("/#/components/missing");
-  await expect(page.getByRole("heading", { name: "Component not found" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open Button" })).toHaveAttribute("href", "#/components/button");
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Introduction" })).toHaveAttribute("href", "#/guides/introduction");
 });
 
 test("Gallery DOM contours and dividers stay 2px without narrow overflow", async ({ page }) => {

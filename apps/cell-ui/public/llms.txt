@@ -1,0 +1,45 @@
+# CharDesk Cell UI
+
+Editable Unicode Cell interfaces for React. The Gallery and these Markdown files share one documentation source. The registry installs the entire library, not individual components.
+
+## Sections
+
+- [Introduction](https://ui.chardesk.com/guides/introduction.md): Editable Unicode Cell interfaces for React, rendered from one headless frame.
+- [Installation](https://ui.chardesk.com/guides/installation.md): Install the complete editable Cell UI source through the shadcn registry.
+- [Integration](https://ui.chardesk.com/guides/integration.md): Connect Cell descriptors, browser projection, and application-owned state.
+- [Theming](https://ui.chardesk.com/guides/theming.md): Resolve one Cell theme into a browser palette and component recipes.
+- [Testing](https://ui.chardesk.com/guides/testing.md): Inspect the committed Cell frame instead of inferring behavior from pixels.
+
+## Components
+
+- [Accordion](https://ui.chardesk.com/components/accordion.md): Expand independent sections without losing their content state.
+- [Badge](https://ui.chardesk.com/components/badge.md): Show a compact state label, optionally acting as a command target.
+- [Box](https://ui.chardesk.com/components/box.md): Lay out Cell content and optionally give it a surface or frame.
+- [Button](https://ui.chardesk.com/components/button.md): Trigger one action through keyboard, pointer, or assistive input.
+- [Checkbox](https://ui.chardesk.com/components/checkbox.md): Toggle boolean or indeterminate state through one Cell command path.
+- [Combobox](https://ui.chardesk.com/components/combobox.md): Click the input row to open local options, filter, then commit one value.
+- [Dialog](https://ui.chardesk.com/components/dialog.md): A named Cell dialog with shared overlay placement and focus management.
+- [Grid](https://ui.chardesk.com/components/grid.md): Navigate a two-dimensional Cell collection without coupling focus to selection.
+- [Input](https://ui.chardesk.com/components/input.md): Edit a single line of Unicode text on the Cell grid.
+- [List](https://ui.chardesk.com/components/list.md): Present a navigable Cell collection with controlled focus and selection.
+- [Menu](https://ui.chardesk.com/components/menu.md): Navigate actions whose activation follows Cell feedback.
+- [Overlay](https://ui.chardesk.com/components/overlay.md): Place a named Cell surface above the base Scene.
+- [Progress](https://ui.chardesk.com/components/progress.md): Display determinate or indeterminate progress as a solid or outlined track, with an optional percentage.
+- [Radio](https://ui.chardesk.com/components/radio.md): Choose one value with a shared group and arrow-key navigation.
+- [RangeSlider](https://ui.chardesk.com/components/range-slider.md): Control two values on one Cell track.
+- [ScrollArea](https://ui.chardesk.com/components/scroll-area.md): Scroll overflowing Cell content with keys, wheel, track, or thumb.
+- [Select](https://ui.chardesk.com/components/select.md): Choose one value from a Cell-anchored listbox.
+- [Separator](https://ui.chardesk.com/components/separator.md): Separate Cell content with one row or column.
+- [Slider](https://ui.chardesk.com/components/slider.md): Select one stepped value or a bounded interval on a Cell-native track.
+- [Spinner](https://ui.chardesk.com/components/spinner.md): Show indeterminate activity in a single Unicode Cell, using a wheel or dots.
+- [Tabs](https://ui.chardesk.com/components/tabs.md): Switch between related Cell panels with one selected tab.
+- [Text](https://ui.chardesk.com/components/text.md): Render Unicode text in the Cell layout without browser text nodes.
+- [TextArea](https://ui.chardesk.com/components/text-area.md): Edit multiline Cell text with retained selection and scrolling.
+- [Toggle](https://ui.chardesk.com/components/toggle.md): Show a persistent mode with a status light, separate from interaction feedback.
+- [Tooltip](https://ui.chardesk.com/components/tooltip.md): Explain a Cell control on delayed hover or keyboard focus without changing its layout.
+- [Tree](https://ui.chardesk.com/components/tree.md): Navigate hierarchical items with controlled expansion.
+
+## Internal development
+
+- [Architecture](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/overview.mdx)
+- [Widget contracts](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/widgets.mdx)

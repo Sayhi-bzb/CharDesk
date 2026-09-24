@@ -14,11 +14,11 @@ description: State, input, scroll, and editor behavior contracts.
 - Button、Checkbox、Select、ComboboxItem、Toggle、RadioItem、List、Menu、Tree、Grid 共用反色高亮：鼠标与 keyboard/AT 采用最近输入来源，逻辑 focus 独立保留；pointer 移出撤销高亮，键盘恢复同一套高亮。Slider/RangeSlider 同样投影输入来源，但仅强调目标 thumb。Tabs 的选中态由 `variant` 独立控制。
 - Checkbox checked/mixed、Select selected、Toggle pressed、Radio checked、List/Tree/Grid selected 使用独立字符标记；Tabs 默认 `underline`，在当前标签文字下方绘制 `⎺`；`solid` 保留单行反色选择背景。
 - TextInput、ComboboxInput 与 TextArea 的编辑活动由 Runtime 比对 `focusedId === activeFocusId` 后投影为 `focusActive`，不依赖输入来源、hover 或正文变化。TextInput 默认 `surface`，活动时整行 highlight；`ghost` 与 ComboboxInput 保留背景。单行输入用下划线表示活动选区，并用反色 Cell Cursor 表示插入点。TextArea 活动时 highlight 覆盖文字、空白与边框。未激活的单行输入不显示预先存在的选区。Surface 空白只接管浏览器焦点并保留导航锚点，不激活编辑器。readOnly 可聚焦，disabled 无活动强调。
-- Cursor 默认反转所在 Cell 的最终颜色，不重新解释编辑状态；形状、fixed 模式、CSS token 与底图恢复契约由[包配置](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#cursor)拥有。
+- Cursor 默认反转所在 Cell 的最终颜色，不重新解释编辑状态；形状、fixed 模式、CSS token 与底图恢复由 [`cursor-appearance.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/cursor-appearance.ts) 和[测试](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/cursor-appearance.test.ts)验证。
 - Surface 失去实际焦点时保留逻辑 focusedId，但撤去焦点外观与 Canvas Cursor；selection 和编辑状态保留。
 - `CellUiTheme` 是颜色与字符主题入口；`CellFeedbackConfig` 是反馈入口，classic 默认闪烁 2 次，instant 为 0 次。两者共享 hover、focus、press 规则。
 - `CellUiRecipe.defaultControlVariant` 只为 Button、Select、Combobox、TextInput 提供省略 `variant` 时的默认值；显式 `variant` 优先。Box、ScrollArea、TextArea、Overlay、Dialog 保留各自内建默认。浏览器 CSS adapter 从 `--cell-default-control-variant` 读取同一配置，headless 不依赖 CSS。
-- [Surface 外观契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#theme-consumption)分别定义 variant 与 frame；后代状态消费最近的实际 surface substrate。背景不进入字符、语义或 Range Copy；边框会进入。
+- [公开主题用法](https://ui.chardesk.com/#/guides/theming)分别定义 variant 与 frame；后代状态消费最近的实际 surface substrate。背景不进入字符、语义或 Range Copy；边框会进入。
 - Select、Combobox 与 TextInput 使用共享的 `surface | ghost` recipe；默认 `surface` 使用 `elevatedSurfaceStyle`，`ghost` 透明。Select/Combobox Content 的 `frame` 独立控制下拉层边框。ComboboxInput 与 ghost TextInput 活动时保留背景；SelectTrigger 的 focus 与 press 沿用反色规则，disabled 保留 recipe 并使用禁用文字色。
 - `widget-capabilities.ts` 拥有能力表；状态投影与外观配方分离，painter 只绘制解析结果。局部 `textStyle` 不重定义状态语言；[底座契约](/development/cell-ui/primitives)拥有模块边界。
 - 统一控件的按压与高亮最多反色一次；确认阶段独占颜色，相对进入时的有效颜色对执行反色／恢复，disabled 拒绝全部临时强调。solid Button 使用 `buttonSolidStyle`，surface 使用 `elevatedSurfaceStyle` 与普通文字色，outline 保留字符边框，ghost 静止时透明。
@@ -84,4 +84,4 @@ AccordionItem 必须有稳定 `id`，直接包含 Trigger、Content（依此顺�
 
 Combobox 必须以一个 Input 开头，后接可选 Content；Content 只接受 Item 或空结果 Text。Input 与 Content 自动建立 controls/label 关系，至多一个 active Item 且必须匹配 `activeDescendantId`。关闭态显示并全选 committed label，使下一次输入替换而非追加；输入、候选 active、选择和浮层开关可分别受控。[Headless 契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/combobox.test.tsx)、[浏览器契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser-combobox.dom.test.tsx)。
 
-[Package contract](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md) · [Widget tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/complex-widgets.test.tsx) · [Browser tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser.dom.test.tsx) · [Editor scroll E2E](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/editor-scroll.spec.ts)
+[Public components](https://ui.chardesk.com/#/components/button) · [Widget tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/complex-widgets.test.tsx) · [Browser tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser.dom.test.tsx) · [Editor scroll E2E](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/editor-scroll.spec.ts)

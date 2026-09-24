@@ -19,16 +19,16 @@ description: Current delivery slices and remaining productization gates.
 | 阶段 / 能力 | 状态 | 当前边界 | 权威入口 |
 | --- | --- | --- | --- |
 | 0 / 上游与架构收敛 | DONE | 采用关系、职责边界与运行链路已有明确登记 | [事实白板](/development/cell-ui/overview) |
-| 1 / Headless Engine 与布局合成 | DONE | React Widget Tree、Yoga 整数布局、Scene、裁剪与增量合成；布局及资源生命周期有验证 | [包契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md)、[Compositor](/development/cell-ui/compositor) |
+| 1 / Headless Engine 与布局合成 | DONE | React Widget Tree、Yoga 整数布局、Scene、裁剪与增量合成；布局及资源生命周期有验证 | [事实白板](/development/cell-ui/overview)、[Compositor](/development/cell-ui/compositor) |
 | 2 / 基础交互组件与 Gallery | DONE | 基础控件、Combobox、Accordion、Dialog 支持鼠标、键盘和语义操作；Gallery 提供用法与 Cell props 面板 | [Widget 规范](/development/cell-ui/widgets)、[Gallery 验证](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/components.spec.ts)、[Dialog 验证](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/dialog.spec.ts) |
-| 3 / Unicode 编辑与浏览器输入 | DONE | 文档、历史、grapheme/Cell/UTF-16 映射及 IME/clipboard 接通；macOS 原生输入矩阵已验证 | [编辑契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md)、[原生输入证据](/development/cell-ui/native-input) |
-| 4 / 集合、浮层与虚拟化 | DONE | Menu/Tree/Tabs/Grid、模态焦点、独立浮层呈现及有界虚拟窗口可用 | [Widget 规范](/development/cell-ui/widgets)、[包契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md) |
-| 4–5 / Cell Range、复制与探针 | DONE | 矩形选择与复制保留边框、空白和 Unicode；TestPilot/Probe 支持字符、样式与几何检查 | [检查契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#cell-inspection)、[Range 验证](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/range.test.ts) |
-| 5 / 统一状态、主题与 Cursor | DONE | 共享输入与交互底座；行为、反馈、外观分离；编辑器完整区域高亮及最终 Cell 颜色驱动 Cursor | [底座](/development/cell-ui/primitives)、[主题与 Cursor](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#theme-consumption) |
+| 3 / Unicode 编辑与浏览器输入 | DONE | 文档、历史、grapheme/Cell/UTF-16 映射及 IME/clipboard 接通；macOS 原生输入矩阵已验证 | [Widget 规范](/development/cell-ui/widgets)、[原生输入证据](/development/cell-ui/native-input) |
+| 4 / 集合、浮层与虚拟化 | DONE | Menu/Tree/Tabs/Grid、模态焦点、独立浮层呈现及有界虚拟窗口可用 | [Widget 规范](/development/cell-ui/widgets)、[公开组件](https://ui.chardesk.com/#/components/list) |
+| 4–5 / Cell Range、复制与探针 | DONE | 矩形选择与复制保留边框、空白和 Unicode；TestPilot/Probe 支持字符、样式与几何检查 | [公开测试用法](https://ui.chardesk.com/#/guides/testing)、[Range 验证](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/range.test.ts) |
+| 5 / 统一状态、主题与 Cursor | DONE | 共享输入与交互底座；行为、反馈、外观分离；编辑器完整区域高亮及最终 Cell 颜色驱动 Cursor | [底座](/development/cell-ui/primitives)、[主题](https://ui.chardesk.com/#/guides/theming)、[Cursor 验证](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/cursor-appearance.test.ts) |
 | 5–6 / 网格、字体与共享渲染 | DONE | 固定网格与字体加载解耦；Cell Core、Frame、Presenter 被 Cell UI 与主 Canvas 共用；字形越界策略见待验证项 | [渲染契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/rendering/README.md)、[字体事实](https://github.com/Sayhi-bzb/CharDesk/blob/main/exp/research/font-stack.md) |
 | 5 / Accessibility 与性能 | DONE | 语义审计、焦点及双浏览器行为有验证；增量更新和大规模场景有自动化预算 | [Accessibility 边界](/development/cell-ui/accessibility)、[性能验证](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/performance.test.tsx) |
 | 6 / 正式组件门户 | DONE | Gallery 是独立 private workspace；组件文档、Playground 与浏览器验证由其拥有 | [组件门户源码](https://github.com/Sayhi-bzb/CharDesk/tree/main/apps/cell-ui) |
-| 6 / 独立产品化 | READY | 共享底座已拆分并接入发布链路；Cell UI 的稳定 API、集成及发布契约尚未完成 | [Cell Core](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-core/README.md)、[Cell UI](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md) |
+| 6 / 独立产品化 | READY | 共享底座已拆分并接入发布链路；Cell UI 的稳定 API、集成及发布契约尚未完成 | [Cell Core](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-core/README.md)、[安装](https://ui.chardesk.com/#/guides/installation) |
 
 ## 待验证与下一步
 

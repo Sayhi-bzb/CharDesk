@@ -1,6 +1,6 @@
 # CharDesk Cell UI Portal
 
-Public [Gallery](https://ui.chardesk.com/) and executable Playground for Cell UI. [Source installation](../../packages/cell-ui/README.md#source-installation) is owned by the package README.
+Public [Gallery](https://ui.chardesk.com/) and executable Playground for Cell UI. [Installation](https://ui.chardesk.com/#/guides/installation) and component usage are owned by the Gallery; its [Markdown index](https://ui.chardesk.com/llms.txt) serves coding agents.
 
 ```sh
 npm run dev:cell-ui

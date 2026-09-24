@@ -8,10 +8,10 @@ import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
 import {
   componentDocumentBySlug,
   componentNavigationDocuments,
-  defaultComponentSlug,
   sourceLinksForComponent,
   type ComponentDocument,
 } from "./component-catalog";
+import { guideContent, installationCommands, publicUsage, type GuideContent } from "./docs-content";
 import { FixturePage } from "./fixtures";
 import { GalleryAppearance, GalleryFontSelect, GalleryIconButton, GalleryThemeToggle } from "./appearance";
 import "./styles.css";
@@ -31,10 +31,10 @@ const subscribeToHash = (callback: () => void) => {
   window.addEventListener("hashchange", callback);
   return () => window.removeEventListener("hashchange", callback);
 };
-const defaultComponentRoute = `/components/${defaultComponentSlug}`;
-const defaultComponentHref = `#${defaultComponentRoute}`;
-const readRoute = () => window.location.hash.slice(1) || defaultComponentRoute;
-const useRoute = () => useSyncExternalStore(subscribeToHash, readRoute, () => defaultComponentRoute);
+const defaultRoute = "/guides/introduction";
+const defaultHref = `#${defaultRoute}`;
+const readRoute = () => window.location.hash.slice(1) || defaultRoute;
+const useRoute = () => useSyncExternalStore(subscribeToHash, readRoute, () => defaultRoute);
 const documentationSections = [
   { id: "installation", label: "Installation" },
   { id: "usage", label: "Usage" },
@@ -90,15 +90,9 @@ export function CodeBlock({ children }: Readonly<{ children: string }>) {
   );
 }
 
-const installationCommands = {
-  pnpm: "pnpm dlx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
-  npm: "npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
-  yarn: "yarn dlx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
-  bun: "bunx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
-} as const;
 type PackageManager = keyof typeof installationCommands;
 const packageManagers = Object.keys(installationCommands) as PackageManager[];
-const manualInstallationGuide = "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md#manual-source-installation";
+const manualInstallationGuide = "#/guides/installation?section=manual";
 const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
   const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
@@ -110,13 +104,15 @@ const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
   tabs[next]?.focus();
   tabs[next]?.click();
 };
-const publicUsage = (usage: string) => usage
-  .replaceAll('"@chardesk/cell-ui/browser"', '"@/lib/cell-ui/browser"')
-  .replaceAll('"@chardesk/cell-ui"', '"@/lib/cell-ui"');
-
-export function GalleryNavigation({ activeSlug }: Readonly<{ activeSlug: string }>) {
+export function GalleryNavigation({ activeRoute }: Readonly<{ activeRoute: string }>) {
   return (
     <nav className="gallery-nav" aria-label="Cell UI">
+      <div className="gallery-nav__group" role="group" aria-labelledby="gallery-nav-sections">
+        <span className="gallery-nav__title" id="gallery-nav-sections">Sections</span>
+        <ul>{guideContent.map((guide) => (
+          <li key={guide.slug}><a href={`#/guides/${guide.slug}`} aria-current={activeRoute === `/guides/${guide.slug}` ? "page" : undefined}>{guide.title}</a></li>
+        ))}</ul>
+      </div>
       <div className="gallery-nav__group" role="group" aria-labelledby="gallery-nav-components">
         <span className="gallery-nav__title" id="gallery-nav-components">Components</span>
         <ul>
@@ -124,7 +120,7 @@ export function GalleryNavigation({ activeSlug }: Readonly<{ activeSlug: string 
             <li key={document.slug}>
               <a
                 href={`#/components/${document.slug}`}
-                aria-current={activeSlug === document.slug ? "page" : undefined}
+                aria-current={activeRoute === `/components/${document.slug}` ? "page" : undefined}
               >
                 {document.title}
               </a>
@@ -182,12 +178,12 @@ export function Installation() {
   );
 }
 
-export function OnThisPage({ slug, activeSection }: Readonly<{ slug: string; activeSection: DocumentationSection | null }>) {
+export function OnThisPage({ route, sections, activeSection }: Readonly<{ route: string; sections: readonly Readonly<{ id: string; label: string }>[]; activeSection: string | null }>) {
   return (
     <nav className="gallery-toc" aria-label="On This Page">
       <span className="gallery-toc__title">On This Page</span>
-      <ul>{documentationSections.map(({ id, label }) => (
-        <li key={id}><a href={`#/components/${slug}?section=${id}`} aria-current={activeSection === id ? "location" : undefined}>{label}</a></li>
+      <ul>{sections.map(({ id, label }) => (
+        <li key={id}><a href={`#${route}?section=${id}`} aria-current={activeSection === id ? "location" : undefined}>{label}</a></li>
       ))}</ul>
     </nav>
   );
@@ -236,22 +232,36 @@ export function ComponentPage({ document }: Readonly<{ document: ComponentDocume
   );
 }
 
-export function DocumentationShell({ document, section }: Readonly<{ document: ComponentDocument; section: DocumentationSection | null }>) {
+export function GuidePage({ guide }: Readonly<{ guide: GuideContent }>) {
+  return <main className="docs-page">
+    <header className="docs-page__header"><h1>{guide.title}</h1><p>{guide.description}</p></header>
+    {guide.sections.map((section) => <section className="docs-section" aria-labelledby={section.id} key={section.id}>
+      <h2 id={section.id}>{section.title}</h2><p>{section.body}</p>
+      {section.code ? <CodeBlock>{section.code}</CodeBlock> : null}
+      {section.link ? <p><a href={section.link.href}>{section.link.label}</a></p> : null}
+    </section>)}
+  </main>;
+}
+
+export function DocumentationShell({ document, guide, section }: Readonly<{ document?: ComponentDocument; guide?: GuideContent; section: string | null }>) {
+  const title = guide?.title ?? document?.title ?? "Cell UI";
+  const route = guide ? `/guides/${guide.slug}` : `/components/${document!.slug}`;
+  const sections = guide ? guide.sections.map(({ id, title: label }) => ({ id, label })) : documentationSections;
   useEffect(() => {
-    window.document.title = `${document.title} – CharDesk Cell UI`;
+    window.document.title = `${title} – CharDesk Cell UI`;
     if (section) window.document.getElementById(section)?.scrollIntoView();
     else window.scrollTo(0, 0);
-  }, [document.slug, document.title, section]);
+  }, [route, title, section]);
   return (
     <>
       <header className="gallery-header">
-        <a className="gallery-brand" href={defaultComponentHref}>CharDesk / Cell UI</a>
+        <a className="gallery-brand" href={defaultHref}>CharDesk / Cell UI</a>
         <div className="gallery-appearance-controls"><GalleryFontSelect /><GalleryThemeToggle /></div>
       </header>
       <div className="gallery-layout">
-        <GalleryNavigation activeSlug={document.slug} />
-        <OnThisPage slug={document.slug} activeSection={section} />
-        <ComponentPage document={document} key={document.slug} />
+        <GalleryNavigation activeRoute={route} />
+        <OnThisPage route={route} sections={sections} activeSection={section} />
+        {guide ? <GuidePage guide={guide} key={guide.slug} /> : <ComponentPage document={document!} key={document!.slug} />}
       </div>
     </>
   );
@@ -260,8 +270,8 @@ export function DocumentationShell({ document, section }: Readonly<{ document: C
 export function NotFound() {
   return (
     <main className="not-found">
-      <h1>Component not found</h1>
-      <p><a href={defaultComponentHref}>Open Button</a></p>
+      <h1>Page not found</h1>
+      <p><a href={defaultHref}>Open Introduction</a></p>
     </main>
   );
 }
@@ -269,16 +279,19 @@ export function NotFound() {
 export function CellUiApp(): ReactNode {
   const route = useRoute();
   useEffect(() => {
-    if (!window.location.hash) window.location.replace(defaultComponentHref);
+    if (!window.location.hash) window.location.replace(defaultHref);
   }, []);
   const fixture = route.match(/^\/__fixtures\/([^/]+)$/);
   if (fixture) return <FixturePage slug={fixture[1]!} />;
   const [path, query = ""] = route.split("?", 2);
   const component = path?.match(/^\/components\/([^/]+)$/);
   const document = component ? componentDocumentBySlug.get(component[1]!) : undefined;
+  const guideMatch = path?.match(/^\/guides\/([^/]+)$/);
+  const guide = guideMatch ? guideContent.find((item) => item.slug === guideMatch[1]) : undefined;
   const requestedSection = new URLSearchParams(query).get("section");
-  const section = isDocumentationSection(requestedSection) ? requestedSection : null;
-  return document ? <DocumentationShell document={document} section={section} /> : <NotFound />;
+  const section = guide ? guide.sections.some(({ id }) => id === requestedSection) ? requestedSection : null
+    : isDocumentationSection(requestedSection) ? requestedSection : null;
+  return document || guide ? <DocumentationShell document={document} guide={guide} section={section} /> : <NotFound />;
 }
 
 createRoot(document.getElementById("root")!).render(
