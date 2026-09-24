@@ -29,6 +29,7 @@ export type CellLayoutStyle = Readonly<{
   flexGrow?: number;
   flexShrink?: number;
   gap?: number;
+  wrap?: boolean;
   padding?: number;
   paddingTop?: number;
   paddingRight?: number;
@@ -60,6 +61,7 @@ export type WidgetKind =
   | "accordion-trigger"
   | "accordion-content"
   | "box"
+  | "alert"
   | "overlay"
   | "text"
   | "button"
@@ -285,6 +287,8 @@ export type SemanticNode = Readonly<{
   traversalOrder: number;
   bounds: CellRect | null;
   role:
+    | "alert"
+    | "status"
     | "dialog"
     | "heading"
     | "paragraph"

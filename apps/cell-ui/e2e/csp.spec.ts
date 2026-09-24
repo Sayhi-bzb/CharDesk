@@ -17,11 +17,13 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
   const pageErrors: string[] = [];
   let refreshPreamble = "";
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  const externalRequests: string[] = [];
+  const unexpectedExternalRequests: string[] = [];
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (!["127.0.0.1", "localhost"].includes(url.hostname)) {
-      externalRequests.push(url.href);
+      if (url.href !== "https://api.github.com/repos/Sayhi-bzb/CharDesk/stargazers/count") {
+        unexpectedExternalRequests.push(url.href);
+      }
       await route.abort();
       return;
     }
@@ -58,16 +60,18 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
   const response = await page.goto("/#/__fixtures/text");
   expect(response?.headers()["content-security-policy"]).toBe(CSP);
   await expect(page.getByRole("heading", { name: "Cell UI Fixture", level: 1 })).toBeVisible();
+  await expect(page.locator(".gallery-github-stars"))
+    .toHaveAttribute("aria-label", "CharDesk on GitHub, star count unavailable");
   await expect(page.locator('[data-cell-probe="component-text"] canvas')).toHaveCount(1);
   await expect(page.locator('[data-cell-probe="component-text"] canvas')).toHaveAttribute("data-cell-text", /Unicode: 世界 👋/);
   const gallery = page.locator(".gallery-page");
   await selectGalleryFont(page, "fusion-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
-  expect(externalRequests).toEqual([]);
+  expect(unexpectedExternalRequests).toEqual([]);
   await selectGalleryFont(page, "xiaolai-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
   await expect(gallery).toHaveAttribute("data-gallery-font", "xiaolai-mono");
-  expect(externalRequests).toEqual([]);
+  expect(unexpectedExternalRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 });

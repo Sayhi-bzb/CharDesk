@@ -14,6 +14,7 @@ import {
 import { guideContent, installationCommands, publicUsage, type GuideContent } from "./docs-content";
 import { FixturePage } from "./fixtures";
 import { GalleryAppearance, GalleryFontSelect, GalleryIconButton, GalleryThemeToggle } from "./appearance";
+import { GitHubStars } from "./github-stars";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
 import "@chardesk/font-maple/fonts.css";
@@ -256,7 +257,7 @@ export function DocumentationShell({ document, guide, section }: Readonly<{ docu
     <>
       <header className="gallery-header">
         <a className="gallery-brand" href={defaultHref}>CharDesk / Cell UI</a>
-        <div className="gallery-appearance-controls"><GalleryFontSelect /><GalleryThemeToggle /></div>
+        <div className="gallery-appearance-controls"><GitHubStars /><GalleryFontSelect /><GalleryThemeToggle /></div>
       </header>
       <div className="gallery-layout">
         <GalleryNavigation activeRoute={route} />

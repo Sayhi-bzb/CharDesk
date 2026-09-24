@@ -12,6 +12,7 @@ import Yoga, {
   MeasureMode,
   Overflow,
   PositionType,
+  Wrap,
   type Config,
   type Node as YogaNode,
 } from "yoga-layout";
@@ -63,6 +64,7 @@ const applyStyle = (
   bordered: boolean,
 ): void => {
   target.setFlexDirection(style.direction === "row" ? FlexDirection.Row : FlexDirection.Column);
+  target.setFlexWrap(style.wrap ? Wrap.Wrap : Wrap.NoWrap);
   target.setWidth(style.width);
   target.setHeight(style.height);
   target.setMinWidth(style.minWidth);

@@ -35,6 +35,11 @@
           "target": "@lib/cell-ui/activation-feedback.ts"
         },
         {
+          "path": "registry/cell-ui/alert.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/alert.ts"
+        },
+        {
           "path": "registry/cell-ui/anchored-overlay.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/anchored-overlay.ts"

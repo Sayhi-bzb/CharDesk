@@ -22,6 +22,7 @@ import {
 import { resolveSurfaceVariant, type SurfaceVariant } from "./surface-variant.js";
 import type { CellUiRecipe } from "./recipe.js";
 import { resolveBadgeTone, type BadgeTone } from "./badge.js";
+import { resolveAlertTone, type AlertTone } from "./alert.js";
 import { resolveSeparatorVariant, type SeparatorVariant } from "./separator.js";
 import { resolveProgressVariant, type ProgressVariant } from "./progress.js";
 import { resolveSpinnerVariant, type SpinnerVariant } from "./spinner.js";
@@ -71,6 +72,13 @@ type FloatingSurfaceAppearanceProps = Readonly<{
 
 export type RootProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
 export type BoxProps = ContainerProps & SurfaceAppearanceProps & Readonly<{ style?: CellLayoutStyle }>;
+export type AlertProps = IdentityProps & ChildrenProps & Readonly<{
+  tone?: AlertTone;
+  border?: "none" | CellBorderShape;
+  style?: CellLayoutStyle;
+}>;
+export type AlertTitleProps = TextProps;
+export type AlertDescriptionProps = TextProps;
 export type AccordionProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
 export type AccordionItemProps = Omit<AccordionProps, "id"> & Readonly<{ id: string; expanded?: boolean }>;
 export type AccordionTriggerProps = NamedContainerProps & Readonly<{ focused?: boolean; style?: CellLayoutStyle; textStyle?: CellTextStyle }>;
@@ -279,6 +287,7 @@ export type TextAreaProps = TextEditorProps & SurfaceAppearanceProps;
 type PrimitiveProps =
   | RootProps
   | BoxProps
+  | AlertProps
   | OverlayProps
   | TextProps
   | ButtonProps
@@ -336,6 +345,9 @@ const primitive = <Props extends PrimitiveProps>(
 
 export const Root = primitive<RootProps>("root");
 export const Box = primitive<BoxProps>("box");
+export const Alert = primitive<AlertProps>("alert");
+export const AlertTitle = primitive<AlertTitleProps>("text");
+export const AlertDescription = primitive<AlertDescriptionProps>("text");
 export const Accordion = primitive<AccordionProps>("accordion");
 export const AccordionItem = primitive<AccordionItemProps>("accordion-item");
 export const AccordionTrigger = primitive<AccordionTriggerProps>("accordion-trigger");
@@ -495,7 +507,32 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
 
   let text: string | null = null;
   let children: WidgetDescriptor[] = [];
-  if (kind === "tooltip") {
+  let alertLabel: string | null = null;
+  if (kind === "alert") {
+    const parts = childValues.map((child) => {
+      if (!isValidElement(child)) throw new TypeError("Alert requires Cell-native children.");
+      return child;
+    });
+    const [title, descriptionOrAction, action] = parts;
+    const description = descriptionOrAction?.type === AlertDescription ? descriptionOrAction : undefined;
+    const button = description ? action : descriptionOrAction;
+    if (parts.length < 1 || parts.length > 3 || title?.type !== AlertTitle
+      || !String((title.props as TextProps).children ?? "").trim()
+      || (!description && parts.length > 2)
+      || (description && action && action.type !== Button)
+      || (button && button.type !== Button)) {
+      throw new TypeError("Alert requires one non-empty AlertTitle, optional AlertDescription, and optional Button in order.");
+    }
+    alertLabel = [(title.props as AlertTitleProps).children,
+      description ? (description.props as AlertDescriptionProps).children : null].filter(Boolean).join(" ");
+    children = describe(<Box style={{ width: "100%", flexShrink: 1 }}>
+      {title}
+      {description || button ? <Box style={{ direction: "row", wrap: true, gap: 1, width: "100%" }}>
+        {description ? <Box style={{ maxWidth: "100%" }}>{description}</Box> : null}
+        {button}
+      </Box> : null}
+    </Box>, recipe);
+  } else if (kind === "tooltip") {
     if (childValues.length > 0) throw new TypeError("Tooltip does not accept children.");
     text = tooltipText(props.text as string);
   } else if (kind === "text") {
@@ -550,12 +587,14 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
             ?? (defaultsToSurface ? "surface" : "ghost"),
         )
       : null;
-  const frame = isDialog || kind === "tooltip"
-    ? props.border === "none" ? "none" : "bordered"
+  const frame = kind === "alert"
+    ? props.border === "square" || props.border === "rounded" ? "bordered" : "none"
+    : isDialog || kind === "tooltip"
+      ? props.border === "none" ? "none" : "bordered"
     : ownsFramedSurface || kind === "select-content" || kind === "combobox-content"
       ? resolveCellFrame(props.frame, "none")
       : "none";
-  const requestedBorderShape = isDialog || kind === "tooltip" ? props.border : props.borderShape;
+  const requestedBorderShape = isDialog || kind === "tooltip" || kind === "alert" ? props.border : props.borderShape;
 
   return [{
     kind,
@@ -563,20 +602,24 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
     key: element.key === null ? null : String(element.key),
     style: {
       ...(isDialog ? { width: 36, padding: 1, gap: 1 } : {}),
+      ...(kind === "alert" ? { width: "100%" as const, maxWidth: 44, paddingLeft: 3, paddingRight: 1,
+        paddingTop: 1, paddingBottom: 1 } : {}),
       ...(kind === "tooltip" ? { width: tooltipTextWidth(text ?? "") + (frame === "bordered" ? 4 : 2),
         height: frame === "bordered" ? 3 : 1, paddingLeft: 1, paddingRight: 1 } : {}),
       ...(element.type === DialogFooter ? { direction: "row" as const, gap: 1 } : {}),
       ...(kind === "text-input" || kind === "combobox-input"
         ? normalizeSingleLineInputStyle(props.style as CellLayoutStyle | undefined)
         : props.style as CellLayoutStyle | undefined),
+      ...(kind === "alert" ? { paddingLeft: 3 + ((props.style as CellLayoutStyle | undefined)?.paddingLeft
+        ?? (props.style as CellLayoutStyle | undefined)?.padding ?? 0) } : {}),
     },
     surfaceVariant,
     frame,
     borderShape: frame === "bordered" && (requestedBorderShape === "square" || requestedBorderShape === "rounded")
       ? requestedBorderShape : null,
     text,
-    textStyle: { ...(element.type === DialogTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
-    label: typeof props.label === "string" ? props.label : null,
+    textStyle: { ...(element.type === DialogTitle || element.type === AlertTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
+    label: alertLabel ?? (typeof props.label === "string" ? props.label : null),
     disabled: props.disabled === true,
     focused: props.focused === true,
     selected: props.selected === true,
@@ -600,8 +643,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
     buttonVariant: kind === "button"
       ? resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")
       : "solid",
-    badgeTone: kind === "badge" || kind === "badge-action"
-      ? resolveBadgeTone(props.tone) : "neutral",
+    badgeTone: kind === "alert" ? resolveAlertTone(props.tone)
+      : kind === "badge" || kind === "badge-action" ? resolveBadgeTone(props.tone) : "neutral",
     sliderValue: kind === "range-slider-thumb"
       ? typeof props.value === "number" ? props.value : sliderRange.min
       : normalizeCellSliderValue(

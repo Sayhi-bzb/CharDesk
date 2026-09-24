@@ -4,6 +4,7 @@ import { galleryFontSelect } from "./helpers/gallery-font-select";
 
 const navigationLinks = [
   ["Accordion", "#/components/accordion"],
+  ["Alert", "#/components/alert"],
   ["Badge", "#/components/badge"],
   ["Box", "#/components/box"],
   ["Button", "#/components/button"],

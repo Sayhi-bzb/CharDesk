@@ -98,6 +98,10 @@ code, pre { font-family: inherit; }
 }
 .gallery-brand { font-weight: 700; text-decoration: none; }
 .gallery-appearance-controls { display: flex; align-items: center; gap: 4px; }
+.gallery-github-stars { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; margin-right: 8px; color: var(--cell-muted-foreground); text-decoration: none; white-space: nowrap; }
+.gallery-github-stars:hover { color: var(--cell-foreground); }
+.gallery-github-stars svg { display: block; flex: none; shape-rendering: crispEdges; }
+.gallery-github-stars__count { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
 .gallery-font-select {
   position: relative;
   display: flex;
@@ -126,7 +130,7 @@ code, pre { font-family: inherit; }
 .gallery-icon-button:hover { color: var(--cell-foreground); }
 .gallery-icon-button:disabled,
 .gallery-icon-button[aria-disabled="true"] { cursor: default; color: var(--cell-muted-foreground); }
-.gallery-icon-button > svg { width: 15px; height: 15px; }
+.gallery-icon-button > svg, .gallery-github-stars > svg { width: 15px; height: 15px; }
 .gallery-control-tooltip {
   display: none;
   position: absolute;

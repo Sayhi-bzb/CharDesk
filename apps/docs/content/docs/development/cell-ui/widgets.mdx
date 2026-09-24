@@ -31,6 +31,7 @@ description: State, input, scroll, and editor behavior contracts.
 | Primitive | Cell 表现 | 输入与语义 |
 | --- | --- | --- |
 | Root / Box / Text | Root 只建立画布；Box 用背景 variant 和独立 frame 表达边界；Text 提供字符 | 不产生独立 command；Text 与边框字符可被 Cell Range 复制 |
+| Alert / Title / Description | 页面内持久提示，`info/success/warning/error` 复用状态色与单 Cell 标记；`border="none" | "square" | "rounded"` 独立控制边框，默认 `none`，有边框时使用对应状态的前景色；窄宽度下可选 Button 换行 | 本体不接收焦点、不自动关闭；info/success 为 `status`，warning/error 为 `alert`；可选 Button 沿用普通 `activate` command |
 | Overlay | root layer、clip，默认 Elevated | Escape/outside down dismiss；modal `dialog` |
 | Dialog / Title / Description / Footer | 复用 Overlay，默认居中、36 Cell 宽；`surface` 使用 elevated surface token，`ghost` 使用 base surface token，弹窗均不透明；`border="none" | "square" | "rounded"` 独立控制边框，省略时沿用主题形状；Title/Description 保留字符，Footer 只排列按钮 | 条件挂载；modal/outside-click 默认开启；初始焦点、模态 Tab 循环、Escape 与恢复焦点由共享底座拥有 |
 | Button | 单行填充矩形；默认左右各 1 Cell，`style.paddingLeft/Right` 可分别覆盖 | 全局 focus traversal；完整 tap、Enter、Space 或 AT 激活 |

@@ -22,6 +22,7 @@ export function ComponentPlayground({
   previewMinColumns,
   controlsColumns,
   overlayRows = 0,
+  rows = PLAYGROUND_ROWS,
 }: Readonly<{
   id: string;
   label: string;
@@ -33,6 +34,7 @@ export function ComponentPlayground({
   previewMinColumns: number;
   controlsColumns?: number;
   overlayRows?: number;
+  rows?: number;
 }>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [totalColumns, setTotalColumns] = useState(MIN_SPLIT_COLUMNS);
@@ -44,6 +46,7 @@ export function ComponentPlayground({
     previewMinColumns,
     controlsColumns ?? 1,
     controls !== undefined,
+    rows,
   );
   const previewScrollId = `${id}-preview-scroll`;
   const controlsScrollId = `${id}-controls-scroll`;
@@ -107,9 +110,9 @@ export function ComponentPlayground({
         variant="ghost"
         scrollX={previewScroll.x}
         scrollY={previewScroll.y}
-        style={{ width: layout.previewColumns, height: PLAYGROUND_ROWS }}
+        style={{ width: layout.previewColumns, height: rows }}
       >
-        <Box id={`${id}-preview`} variant="ghost" style={{ minHeight: PLAYGROUND_ROWS }}>
+        <Box id={`${id}-preview`} variant="ghost" style={{ minHeight: rows }}>
           <Box id={`${id}-preview-top`} variant="ghost" style={{ flexGrow: 1 }} />
           <Box id={`${id}-preview-row`} variant="ghost" style={{ direction: "row" }}>
             <Box id={`${id}-preview-left`} variant="ghost" style={{ flexGrow: 1 }} />
@@ -121,8 +124,8 @@ export function ComponentPlayground({
       </ScrollArea>
       {controls === undefined ? null : layout.stacked
         ? <Text id={`${id}-divider`} textStyle={{ dim: true }}>{"─".repeat(layout.viewport.width)}</Text>
-        : <Box id={`${id}-divider`} variant="ghost" style={{ width: 1, height: PLAYGROUND_ROWS }}>
-            {Array.from({ length: PLAYGROUND_ROWS }, (_, row) => (
+        : <Box id={`${id}-divider`} variant="ghost" style={{ width: 1, height: rows }}>
+            {Array.from({ length: rows }, (_, row) => (
               <Text id={`${id}-divider-${row}`} key={row} textStyle={{ dim: true }}>│</Text>
             ))}
           </Box>}
@@ -131,7 +134,7 @@ export function ComponentPlayground({
         variant="ghost"
         scrollX={controlsScroll.x}
         scrollY={controlsScroll.y}
-        style={{ width: layout.propsColumns, height: PLAYGROUND_ROWS }}
+        style={{ width: layout.propsColumns, height: rows }}
       >
         <Box
           id={`${id}-controls-alignment`}

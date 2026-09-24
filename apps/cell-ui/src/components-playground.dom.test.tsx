@@ -3,6 +3,7 @@ import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BoxComponentDemo,
+  AlertComponentDemo,
   ButtonComponentDemo,
   BadgeComponentDemo,
   CheckboxComponentDemo,
@@ -64,6 +65,7 @@ describe("Component Playground gallery demos", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it.each([
+    { Demo: AlertComponentDemo, label: "Alert component", rows: 27, content: ["New version available", "Changes saved", "Unsaved changes", "Save failed", "border"], absent: ["first tone", "dismiss", "autoClose"] },
     { Demo: DialogComponentDemo, label: "Dialog component", content: ["variant", "surface", "border", "square"], absent: ["modal", "closeOnOutsideClick", "frame", "bordered", "ghost"] },
     { Demo: ToggleComponentDemo, label: "Toggle component", content: ["○ Bold", "disabled"], absent: ["variant", "pressed", "value"] },
     { Demo: BadgeComponentDemo, label: "Badge component", content: ["Waiting", "Syncing", "Done", "Delayed", "Failed", "Retry", "Disabled"], absent: ["tone", "interactive", "Activated:", "variant"] },
@@ -80,13 +82,13 @@ describe("Component Playground gallery demos", () => {
     { Demo: SliderComponentDemo, label: "Slider component", content: ["Volume", "range", "disabled"], absent: ["value", "step"] },
     { Demo: InputComponentDemo, label: "Input component", content: ["File name", "notes.txt", "disabled", "variant"], absent: ["border", "readOnly"] },
     { Demo: ScrollAreaComponentDemo, label: "ScrollArea component", content: ["01  Row 1", "variant", "frame"], absent: ["rounded"] },
-  ])("$label exposes one Preview and its semantic props", async ({ Demo, label, content, absent }) => {
+  ])("$label exposes one Preview and its semantic props", async ({ Demo, label, content, absent, rows }) => {
     render(<Demo />);
     const surface = screen.getByLabelText(label);
     await waitFor(() => expect(readCellSurfaceProbe(surface)).not.toBeNull());
     const probe = readCellSurfaceProbe(surface)!;
 
-    expect(probe.viewport).toEqual({ width: 64, height: 7 });
+    expect(probe.viewport).toEqual({ width: 64, height: rows ?? 7 });
     content.forEach((text) => expect(probe.text).toContain(text));
     absent.forEach((text) => expect(probe.text).not.toContain(text));
     expect(screen.queryByRole("checkbox", { name: "border" })).toBeNull();

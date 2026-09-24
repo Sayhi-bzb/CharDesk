@@ -29,6 +29,7 @@ import { indeterminateProgressRanges, progressNumberLayout } from "./progress.js
 import { spinnerGlyph } from "./spinner.js";
 import { fitTooltipText } from "./tooltip.js";
 import { TAB_UNDERLINE_GLYPH } from "./tabs.js";
+import { alertGlyph } from "./alert.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
 
@@ -203,6 +204,17 @@ export const paintScene = (
           node.borderShape ?? theme.borderShape,
           visual.borderStyle,
           outerClip
+        );
+      }
+      if (node.kind === "alert") {
+        buffer.writeGrapheme(
+          entry.decorationBounds.x + 1,
+          entry.contentBounds.y,
+          alertGlyph(node.badgeTone === "neutral" ? "info" : node.badgeTone),
+          id,
+          style,
+          outerClip,
+          "over",
         );
       }
       const progressNumber = node.kind === "progress" && node.progress?.number && node.progress.value !== null

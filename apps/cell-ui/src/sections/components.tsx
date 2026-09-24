@@ -1,6 +1,9 @@
 import { Fragment, useEffect, useState } from "react";
 import {
   Box,
+  Alert,
+  AlertTitle,
+  AlertDescription,
   Dialog,
   DialogTitle,
   DialogDescription,
@@ -64,6 +67,7 @@ const noCommand = () => undefined;
 
 const dialogVariantItems = (["surface", "ghost"] as const).map((value) => ({ id: value, label: value }));
 const floatingBorderItems = (["square", "rounded", "none"] as const).map((value) => ({ id: value, label: value }));
+const alertBorderItems = (["none", "square", "rounded"] as const).map((value) => ({ id: value, label: value }));
 const buttonVariantItems = (["solid", "surface", "outline", "ghost"] as const).map((value) => ({ id: value, label: value }));
 const buttonSaveIcon = "\uEB4B"; // cod-save in the pinned Nerd Fonts 3.5.1 catalog.
 const buttonContentItems = [
@@ -529,6 +533,38 @@ export const BadgeComponentDemo = () => {
       </Box>
     </Box>}
   />;
+};
+
+export const AlertComponentDemo = () => {
+  const [saved, setSaved] = useState(false);
+  const border = useCellSelectState("component-alert-border", alertBorderItems, { defaultSelectedId: "none" });
+  const focus = usePlaygroundFocus("component-alert-save", [border]);
+  const dispatch = (command: WidgetCommand) => {
+    focus.dispatch(command);
+    if (command.type === "activate" && command.targetId === "component-alert-save") setSaved(true);
+  };
+  const selectedBorder = border.selectedId as "none" | CellBorderShape;
+  return <ComponentPlayground id="component-alert-playground" label="Alert component"
+    probeId="component-alert" focusedId={focus.focusedId} onCommand={dispatch}
+    previewMinColumns={42} controlsColumns={23} rows={27}
+    overlayRows={focus.activeSelect?.items.length ?? 0}
+    preview={<Box style={{ width: 40, gap: 1 }}>
+      <Alert id="component-alert-info" tone="info" border={selectedBorder}>
+        <AlertTitle>New version available</AlertTitle>
+      </Alert>
+      <Alert id="component-alert-success" tone="success" border={selectedBorder}>
+        <AlertTitle>Changes saved</AlertTitle>
+      </Alert>
+      <Alert id="component-alert-warning" tone={saved ? "success" : "warning"} border={selectedBorder}>
+        <AlertTitle>{saved ? "Changes saved" : "Unsaved changes"}</AlertTitle>
+        <AlertDescription>{saved ? "Available offline." : "Changes are stored locally."}</AlertDescription>
+        {!saved && <Button id="component-alert-save"><Text>Save now</Text></Button>}
+      </Alert>
+      <Alert id="component-alert-error" tone="error" border={selectedBorder}>
+        <AlertTitle>Save failed</AlertTitle>
+      </Alert>
+    </Box>}
+    controls={[renderPlaygroundSelectControl("border", border, focus.focusedId)]} />;
 };
 
 const tabItems = [

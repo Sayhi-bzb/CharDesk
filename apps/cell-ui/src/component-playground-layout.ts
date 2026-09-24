@@ -22,11 +22,12 @@ export const resolveComponentPlaygroundLayout = (
   previewMinColumns: number,
   controlsColumns: number,
   hasControls = true,
+  rows = PLAYGROUND_ROWS,
 ): ComponentPlaygroundLayout => {
   const width = wholeColumns(totalColumns);
   if (!hasControls) return {
     stacked: false,
-    viewport: { width, height: PLAYGROUND_ROWS },
+    viewport: { width, height: rows },
     previewColumns: width,
     propsColumns: 0,
     controlsInset: 0,
@@ -57,7 +58,7 @@ export const resolveComponentPlaygroundLayout = (
     stacked,
     viewport: {
       width,
-      height: stacked ? PLAYGROUND_ROWS * 2 + 1 : PLAYGROUND_ROWS,
+      height: stacked ? rows * 2 + 1 : rows,
     },
     previewColumns,
     propsColumns,
@@ -66,6 +67,6 @@ export const resolveComponentPlaygroundLayout = (
       propsContentColumns,
       controlsInset + controlsWidth,
     ),
-    controlsMinRows: PLAYGROUND_ROWS - (horizontalOverflow ? 1 : 0),
+    controlsMinRows: rows - (horizontalOverflow ? 1 : 0),
   };
 };

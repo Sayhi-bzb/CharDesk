@@ -4,6 +4,7 @@ import {
   AccordionComponentDemo,
   ButtonComponentDemo,
   BadgeComponentDemo,
+  AlertComponentDemo,
   CheckboxComponentDemo,
   ComboboxComponentDemo,
   ToggleComponentDemo,
@@ -40,8 +41,33 @@ const demos: Readonly<Record<string, ComponentType>> = {
   menu: MenuComponentDemo, tree: TreeComponentDemo, grid: GridComponentDemo,
 };
 
-export const sourceLinksForComponent = contentSourceLinks;
+const alertDocument: ComponentDocument = {
+    slug: "alert", title: "Alert",
+    description: "Keep a status or warning visible beside the work it describes.",
+    probeId: "component-alert", Demo: AlertComponentDemo,
+    usage: `import { Alert, AlertTitle, AlertDescription, Button, Root, Text } from "@chardesk/cell-ui";
+
+export function AlertExample() {
+  return <Root><Alert tone="warning">
+    <AlertTitle>Unsaved changes</AlertTitle>
+    <AlertDescription>Changes are stored locally.</AlertDescription>
+    <Button id="save"><Text>Save now</Text></Button>
+  </Alert></Root>;
+}`,
+    api: [
+      { name: "tone?", type: '"info" | "success" | "warning" | "error"', description: "Status meaning; info by default. Warning and error announce as alerts." },
+      { name: "border?", type: '"none" | "square" | "rounded"', description: "None by default; framed borders use the tone's foreground color." },
+      { name: "style?", type: "CellLayoutStyle", description: "Width and layout overrides; default maximum width is 44 Cells." },
+      { name: "children", type: "Cell primitives", description: "One AlertTitle, optional AlertDescription, and optional Button in order." },
+    ],
+  };
+
+export const sourceLinksForComponent = (slug: string) => slug === "alert"
+  ? [{ label: "react.tsx", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx" }, { label: "alert.ts", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/alert.ts" }]
+  : contentSourceLinks(slug);
+
 export const componentDocuments: readonly ComponentDocument[] = [
+  alertDocument,
   ...componentContent.map((content) => ({ ...content, probeId: content.slug === "overlay" ? "overlay" : `component-${content.slug}`, Demo: demos[content.slug]! })),
 ];
 export const componentDocumentBySlug = new Map(componentDocuments.map((document) => [document.slug, document] as const));

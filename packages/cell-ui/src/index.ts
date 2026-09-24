@@ -1,4 +1,7 @@
 export { CellBuffer } from "./buffer.js";
+export { Alert, AlertTitle, AlertDescription } from "./react.js";
+export type { AlertProps, AlertTitleProps, AlertDescriptionProps } from "./react.js";
+export type { AlertTone } from "./alert.js";
 export { Dialog, DialogTitle, DialogDescription, DialogFooter } from "./react.js";
 export type { DialogProps, DialogTitleProps, DialogDescriptionProps, DialogFooterProps } from "./react.js";
 export { Combobox, ComboboxInput, ComboboxContent, ComboboxItem } from "./react.js";

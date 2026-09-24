@@ -77,7 +77,7 @@ const surfaceStyleForNode = (
   while (current) {
     backgroundColor ??= current.textStyle.backgroundColor;
     hasSurfaceOwner ||= current.surfaceVariant !== null;
-    if (current.kind === "badge" || current.kind === "badge-action") {
+    if (current.kind === "badge" || current.kind === "badge-action" || current.kind === "alert") {
       return {
         ...theme.badgeStyles[current.badgeTone],
         ...(backgroundColor !== undefined ? { backgroundColor } : {}),
@@ -115,6 +115,9 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     borderStyle: {
       ...style,
       ...theme.borderStyle,
+      ...(node.kind === "alert"
+        ? { color: theme.badgeStyles[node.badgeTone].color ?? theme.borderStyle.color }
+        : {}),
       ...(projection.editingActive ? { color: style.color, backgroundColor: style.backgroundColor } : {}),
     },
   });
