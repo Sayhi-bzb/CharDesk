@@ -129,6 +129,8 @@ const cloneStyle = (style: CellTextStyle): CellTextStyle => ({
   ...(style.color === undefined ? {} : { color: style.color }),
   ...(style.backgroundColor === undefined ? {} : { backgroundColor: style.backgroundColor }),
   ...(style.bold === undefined ? {} : { bold: style.bold }),
+  ...(style.italic === undefined ? {} : { italic: style.italic }),
+  ...(style.strike === undefined ? {} : { strike: style.strike }),
   ...(style.dim === undefined ? {} : { dim: style.dim }),
   ...(style.underline === undefined ? {} : { underline: style.underline }),
 });

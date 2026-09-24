@@ -1,6 +1,6 @@
 # Markdown
 
-Render Markdown files as interactive Cell documents.
+Keep Markdown source visible in Cells, with styling layered onto its content.
 
 ## Installation
 
@@ -14,7 +14,7 @@ Install the editable Cell UI source with the shared registry setup.
 import { Markdown, Root } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
-const source = "# Field Notes\n\nCells make docs readable.";
+const source = "# Field Notes\n\n**Bold** and *italic* remain source text.";
 
 export function MarkdownExample() {
   return (
@@ -34,7 +34,7 @@ export function MarkdownExample() {
 
 ## API
 
-Links emit open-link for the application to handle. Task marks are read-only; images show alt text, and raw HTML stays inert.
+Source markers remain visible. Paragraphs may wrap; code and table spacing stays intact. Safe link labels emit open-link; raw HTML stays inert. Cell Range copies visible Cells, not the original file bytes.
 
 | Prop | Type | Description |
 | --- | --- | --- |

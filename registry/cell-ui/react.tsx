@@ -38,7 +38,7 @@ import { resolveSeparatorVariant, type SeparatorVariant } from "./separator.js";
 import { resolveProgressVariant, type ProgressVariant } from "./progress.js";
 import { resolveSpinnerVariant, type SpinnerVariant } from "./spinner.js";
 import { tooltipText, tooltipTextWidth } from "./tooltip.js";
-import { parseCellMarkdown, type MarkdownBlock as ParsedMarkdownBlock, type MarkdownInline } from "./markdown.js";
+import { parseCellMarkdown, type MarkdownSourceLine, type MarkdownInline } from "./markdown.js";
 import { resolveTabsVariant, type TabsVariant } from "./tabs.js";
 import { fitTableCell, resolveTableVariant, tableWidth, type TableColumn, type TableVariant } from "./table.js";
 import {
@@ -534,50 +534,69 @@ const flattenChildren = (value: ReactNode, target: ReactNode[]): void => {
 };
 
 const markdownInlineNodes = (content: readonly MarkdownInline[]): ReactNode[] => content.flatMap((part, index) => {
-  const style = { bold: part.bold, underline: part.underline };
+  const style = { bold: part.bold, italic: part.italic, strike: part.strike, underline: part.underline };
   if (part.href) return [<MarkdownLink key={`link-${index}`} href={part.href} textStyle={style}>{part.text}</MarkdownLink>];
   return part.text.split(/(\s+)/u).filter(Boolean).map((piece, pieceIndex) =>
     <Text key={`text-${index}-${pieceIndex}`} textStyle={style}>{piece}</Text>);
 });
 
-const markdownBlockNode = (block: ParsedMarkdownBlock, key: string, depth = 0): ReactNode => {
-  const flow = { direction: "row" as const, wrap: true, width: "100%" as const };
-  if (block.kind === "heading") return <MarkdownBlock key={key} role="heading" level={block.level} style={flow}>
-    <Text>{`${"#".repeat(block.level ?? 1)} `}</Text>
-    {markdownInlineNodes(block.content.map((part) => ({ ...part, bold: true })))}
+const markdownLineNode = (line: MarkdownSourceLine, key: string, roleOverride?: MarkdownBlockProps["role"]): ReactNode => {
+  if (!line.text) return <Box key={key} style={{ height: 1 }} />;
+  const fixed = line.kind === "code" || line.kind === "table";
+  const role = line.kind === "quote" ? "blockquote" : line.kind === "list" ? "listitem"
+    : line.kind === "rule" ? "paragraph" : line.kind === "table" ? "row" : line.kind;
+  return <MarkdownBlock key={key} role={roleOverride ?? role} level={line.level}
+    style={{ direction: "row", wrap: !fixed, width: fixed ? Math.max(1, getTextCellWidth(line.text)) : "100%", flexShrink: 0 }}>
+    {markdownInlineNodes(line.content)}
   </MarkdownBlock>;
-  if (block.kind === "paragraph" || block.kind === "quote") return <MarkdownBlock key={key}
-    role={block.kind === "quote" ? "blockquote" : "paragraph"} style={flow}>
-    {block.kind === "quote" ? <Text>│ </Text> : null}{markdownInlineNodes(block.content)}
-  </MarkdownBlock>;
-  if (block.kind === "code") return <MarkdownBlock key={key} role="code" style={{ width: "100%" }}>
-    <Text style={{ width: "100%" }}>{`\`\`\`${block.language ?? ""}\n${block.text}\n\`\`\``}</Text>
-  </MarkdownBlock>;
-  if (block.kind === "rule") return <MarkdownBlock key={key} role="paragraph" style={{ width: "100%" }}><Text>───</Text></MarkdownBlock>;
-  if (block.kind === "list") return <MarkdownBlock key={key} role="list" style={{ width: "100%", paddingLeft: depth > 0 ? 2 : 0 }}>
-    {block.items.map((item, index) => {
-      const [first, ...rest] = item.blocks;
-      return <MarkdownBlock key={index} role="listitem" style={{ width: "100%" }}>
-        <MarkdownBlock role="paragraph" style={flow}>
-          <Text>{`${item.marker} `}</Text>
-          {first?.kind === "paragraph" ? markdownInlineNodes(first.content) : null}
-        </MarkdownBlock>
-        {first && first.kind !== "paragraph" ? markdownBlockNode(first, "first", depth + 1) : null}
-        {rest.map((child, childIndex) => markdownBlockNode(child, `nested-${childIndex}`, depth + 1))}
-      </MarkdownBlock>;
-    })}
-  </MarkdownBlock>;
-  const columnCount = Math.max(0, ...block.rows.map((row) => row.length));
-  const columnWidths = Array.from({ length: columnCount }, (_, index) => Math.min(24, Math.max(3,
-    ...block.rows.map((row) => getTextCellWidth(row[index]?.map((part) => part.text).join("") ?? "")))));
-  return <MarkdownBlock key={key} role="table" style={{ width: "100%" }}>
-    {block.rows.map((row, rowIndex) => <MarkdownBlock key={rowIndex} role="row" style={{ direction: "row", width: "100%" }}>
-      {row.map((cell, cellIndex) => <MarkdownBlock key={cellIndex} role="cell"
-        style={{ direction: "row", wrap: true, width: columnWidths[cellIndex]! + 3, flexShrink: 0 }}>
-        <Text>{cellIndex === 0 ? "│ " : " │ "}</Text>{markdownInlineNodes(cell)}
-      </MarkdownBlock>)}<Text> │</Text>
+};
+
+const markdownContentSlice = (content: readonly MarkdownInline[], start: number, end: number): MarkdownInline[] => {
+  const result: MarkdownInline[] = [];
+  let offset = 0;
+  for (const part of content) {
+    const from = Math.max(0, start - offset);
+    const to = Math.min(part.text.length, end - offset);
+    if (from < to) result.push({ ...part, text: part.text.slice(from, to) });
+    offset += part.text.length;
+  }
+  return result;
+};
+
+const markdownTableRowNode = (line: MarkdownSourceLine, key: string): ReactNode => {
+  const separators = [...line.text.matchAll(/(?<!\\)\|/gu)].map((match) => match.index);
+  const starts = [0, ...separators.filter((position) => position > 0)];
+  const cells = starts.map((start, index) => ({ start, end: starts[index + 1] ?? line.text.length }))
+    .filter(({ start, end }) => line.text.slice(start, end).trim() !== "|");
+  const end = cells.at(-1)?.end ?? 0;
+  return <MarkdownBlock key={key} role="row"
+    style={{ direction: "row", width: Math.max(1, getTextCellWidth(line.text)), flexShrink: 0 }}>
+    {cells.map(({ start, end }, index) => <MarkdownBlock key={index} role="cell"
+      style={{ direction: "row", width: Math.max(1, getTextCellWidth(line.text.slice(start, end))), flexShrink: 0 }}>
+      {markdownInlineNodes(markdownContentSlice(line.content, start, end))}
     </MarkdownBlock>)}
+    {end < line.text.length ? markdownInlineNodes(markdownContentSlice(line.content, end, line.text.length)) : null}
   </MarkdownBlock>;
+};
+
+const markdownNodes = (lines: readonly MarkdownSourceLine[]): ReactNode[] => {
+  const nodes: ReactNode[] = [];
+  for (let index = 0; index < lines.length;) {
+    const kind = lines[index]!.kind;
+    if (kind !== "list" && kind !== "table") {
+      nodes.push(markdownLineNode(lines[index]!, String(index)));
+      index++;
+      continue;
+    }
+    const start = index;
+    while (index < lines.length && lines[index]!.kind === kind) index++;
+    nodes.push(<MarkdownBlock key={start} role={kind} style={{ width: "100%" }}>
+      {lines.slice(start, index).map((line, offset) => kind === "table" && offset !== 1
+        ? markdownTableRowNode(line, `${start + offset}`)
+        : markdownLineNode(line, `${start + offset}`, kind === "table" ? "paragraph" : undefined))}
+    </MarkdownBlock>);
+  }
+  return nodes;
 };
 
 const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: CellUiPresentation): WidgetDescriptor[] => {
@@ -595,8 +614,12 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
 
   if (element.type === Markdown) {
     const props = element.props as MarkdownProps;
-    return describe(<Box id={props.id} style={{ width: "100%", gap: 1, ...props.style }}>
-      {parseCellMarkdown(props.source).map((block, index) => markdownBlockNode(block, String(index)))}
+    const lines = parseCellMarkdown(props.source);
+    const fixedLineWidth = Math.max(0, ...lines.filter((line) => line.kind === "code" || line.kind === "table")
+      .map((line) => getTextCellWidth(line.text)));
+    return describe(<Box id={props.id} style={{ width: "100%", minWidth: fixedLineWidth || undefined,
+      gap: 0, ...props.style }}>
+      {markdownNodes(lines)}
     </Box>, recipe, presentation);
   }
 

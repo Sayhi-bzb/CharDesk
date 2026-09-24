@@ -47,10 +47,12 @@ const toRenderCell = (cell: Cell): CharDeskCellFrameCell => {
     ...(cell.style.backgroundColor
       ? { bgColor: cell.style.backgroundColor }
       : {}),
-    ...((cell.style.bold || cell.style.underline)
+    ...((cell.style.bold || cell.style.italic || cell.style.strike || cell.style.underline)
       ? {
           attrs: {
             ...(cell.style.bold ? { bold: true as const } : {}),
+            ...(cell.style.italic ? { italic: true as const } : {}),
+            ...(cell.style.strike ? { strike: true as const } : {}),
             ...(cell.style.underline ? { underline: true as const } : {}),
           },
         }

@@ -982,7 +982,7 @@ const [sound, setSound] = useState(true);
   },
   {
     slug: "markdown", title: "Markdown",
-    description: "Render Markdown files as interactive Cell documents.",
+    description: "Keep Markdown source visible in Cells, with styling layered onto its content.",
     sections: [
       { id: "preview", title: "Preview", demo: "markdown", probeId: "markdown-example" },
       { id: "installation", title: "Installation", installation: true,
@@ -991,7 +991,7 @@ const [sound, setSound] = useState(true);
       { id: "usage", title: "Usage", code: `import { Markdown, Root } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
-const source = "# Field Notes\\n\\nCells make docs readable.";
+const source = "# Field Notes\\n\\n**Bold** and *italic* remain source text.";
 
 export function MarkdownExample() {
   return (
@@ -1006,7 +1006,7 @@ export function MarkdownExample() {
         { label: "markdown.ts", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts" },
         { label: "react.tsx", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx" },
       ] },
-      { id: "api", title: "API", body: "Links emit open-link for the application to handle. Task marks are read-only; images show alt text, and raw HTML stays inert.", api: [
+      { id: "api", title: "API", body: "Source markers remain visible. Paragraphs may wrap; code and table spacing stays intact. Safe link labels emit open-link; raw HTML stays inert. Cell Range copies visible Cells, not the original file bytes.", api: [
         { name: "source", type: "string", description: "Markdown source to render." },
         { name: "id?", type: "string", description: "Stable identity for the document root." },
         { name: "style?", type: "CellLayoutStyle", description: "Document layout overrides." },

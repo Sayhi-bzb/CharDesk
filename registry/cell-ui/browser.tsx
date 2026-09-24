@@ -601,7 +601,8 @@ const captureCellProbePresentation = (
             continue;
           }
           const bold = !!cell.style.bold;
-          const key = `${bold}:${cell.text}`;
+          const italic = !!cell.style.italic;
+          const key = `${bold}:${italic}:${cell.text}`;
           if (measured.has(key)) continue;
           measured.add(key);
           const route = resolveCharDeskFontRoute(cell.text);
@@ -609,7 +610,7 @@ const captureCellProbePresentation = (
             grapheme: cell.text,
             route,
             bold,
-            italic: false,
+            italic,
             ...(fontProfile ? { fontProfile } : {}),
           });
           context.font = getCharDeskCanvasFont(metrics, 1, {
@@ -624,7 +625,7 @@ const captureCellProbePresentation = (
             : 0;
           const placement = face.capability === "nerd"
             ? measureCharDeskCanvasNerdGlyph(context, { grapheme: cell.text, metrics,
-              bold, ...(fontProfile ? { fontProfile } : {}) })
+              bold, italic, ...(fontProfile ? { fontProfile } : {}) })
             : null;
           const measurement = placement ? null : context.measureText(cell.text);
           const halfAdvance = (measurement?.width ?? 0) / 2;
@@ -1144,16 +1145,17 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   }, [fontProfile]);
   useEffect(() => {
     if (!frame || !document.fonts) return;
-    const samples: { grapheme: string; bold: boolean }[] = [];
+    const samples: { grapheme: string; bold: boolean; italic: boolean }[] = [];
     for (let y = 0; y < frame.buffer.height; y++) {
       for (let x = 0; x < frame.buffer.width; x++) {
         const cell = frame.buffer.get(x, y);
         if (!cell || cell.continuation || !cell.text.trim()) continue;
         const bold = !!cell.style.bold;
-        const key = `${bold}:${cell.text}`;
+        const italic = !!cell.style.italic;
+        const key = `${bold}:${italic}:${cell.text}`;
         if (requestedFontsRef.current.has(key)) continue;
         requestedFontsRef.current.add(key);
-        samples.push({ grapheme: cell.text, bold });
+        samples.push({ grapheme: cell.text, bold, italic });
       }
     }
     if (!samples.length) return;

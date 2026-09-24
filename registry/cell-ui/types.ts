@@ -48,6 +48,8 @@ export type CellTextStyle = Readonly<{
   color?: string;
   backgroundColor?: string;
   bold?: boolean;
+  italic?: boolean;
+  strike?: boolean;
   dim?: boolean;
   underline?: boolean;
 }>;
