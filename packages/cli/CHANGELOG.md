@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.4](https://github.com/Sayhi-bzb/CharDesk/compare/v0.4.3...v0.4.4) (2026-09-24)
+
+
+### Features
+
+* add Alert component to cell-ui ([d60a92c](https://github.com/Sayhi-bzb/CharDesk/commit/d60a92cfe312f653dfb7f58587d0e3917c85bba8))
+* share GitHub star snapshots across sites ([1175e94](https://github.com/Sayhi-bzb/CharDesk/commit/1175e94c1f4337297804904cc61e03f78b995606))
+
+
+### Bug Fixes
+
+* complete Alert source and gallery documentation ([35fd253](https://github.com/Sayhi-bzb/CharDesk/commit/35fd25344217d8ab83ec62252383de9022a85d34))
+
 ## [0.4.3](https://github.com/Sayhi-bzb/CharDesk/compare/v0.4.2...v0.4.3) (2026-09-23)
 
 
