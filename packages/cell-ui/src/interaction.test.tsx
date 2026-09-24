@@ -4,9 +4,6 @@ import {
   Box,
   CellUiRuntime,
   FocusManager,
-  List,
-  ListItem,
-  Overlay,
   Root,
   ScrollArea,
   Text,
@@ -14,6 +11,7 @@ import {
   createKeyInput,
   getScrollRange,
 } from "./index.js";
+import { List, ListItem, Overlay } from "./react.js";
 
 const renderFixture = (scrollY = 0) => {
   const runtime = new CellUiRuntime({ viewport: { width: 20, height: 7 } });

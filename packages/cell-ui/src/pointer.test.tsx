@@ -1,5 +1,10 @@
 import { expect, it } from "vitest";
-import { CellUiRuntime, Root, ListItem, Text } from "./index.js";
+import {
+  CellUiRuntime,
+  Root,
+  Text,
+} from "./index.js";
+import { ListItem } from "./react.js";
 import { resolvePointerAppearance } from "./pointer.js";
 
 it("hover follows the visible owner and rejects disabled, missing and plain content", () => {

@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   Button,
-  List,
-  ListItem,
   Root,
   ScrollArea,
   Select,
@@ -15,6 +13,7 @@ import {
   TextInput,
   type WidgetCommand,
 } from "./index.js";
+import { List, ListItem } from "./react.js";
 
 describe("TestPilot", () => {
   it("keeps Select open for item feedback and closes from the shared completion", async () => {

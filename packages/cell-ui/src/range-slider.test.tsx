@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   CellUiRuntime,
-  RangeSlider,
-  RangeSliderThumb,
   Root,
+  Slider,
   auditSemanticSnapshot,
   createTestPilot,
   type WidgetCommand,
 } from "./index.js";
+import { RangeSlider, RangeSliderThumb } from "./react.js";
 import {
   cellRangeSliderThumbIndexAtCoordinate,
   normalizeCellRangeSliderValues,
@@ -20,30 +20,20 @@ const rangeSlider = (
   disabled = false,
 ) => (
   <Root id="root">
-    <RangeSlider
+    <Slider
       id="volume-range"
       label="Volume"
+      value={values}
+      thumbs={[
+        { id: "volume-start", label: "Minimum volume", valueText: `${values[0]} percent`, focused: focusedId === "volume-start" },
+        { id: "volume-end", label: "Maximum volume", valueText: `${values[1]} percent`, focused: focusedId === "volume-end" },
+      ]}
       min={0}
       max={100}
       step={1}
       disabled={disabled}
       style={{ width: 20 }}
-    >
-      <RangeSliderThumb
-        id="volume-start"
-        label="Minimum volume"
-        value={values[0]}
-        valueText={`${values[0]} percent`}
-        focused={focusedId === "volume-start"}
-      />
-      <RangeSliderThumb
-        id="volume-end"
-        label="Maximum volume"
-        value={values[1]}
-        valueText={`${values[1]} percent`}
-        focused={focusedId === "volume-end"}
-      />
-    </RangeSlider>
+    />
   </Root>
 );
 
@@ -76,10 +66,9 @@ describe("RangeSlider", () => {
 
     const negative = runtime.render(
       <Root id="root">
-        <RangeSlider id="negative" label="Negative" min={-100} max={-10} style={{ width: 20 }}>
-          <RangeSliderThumb id="negative-start" label="Minimum" value={-80} />
-          <RangeSliderThumb id="negative-end" label="Maximum" value={-20} />
-        </RangeSlider>
+        <Slider id="negative" label="Negative" min={-100} max={-10} value={[-80, -20]}
+          thumbs={[{ id: "negative-start", label: "Minimum" }, { id: "negative-end", label: "Maximum" }]}
+          style={{ width: 20 }} />
       </Root>,
     );
     expect(negative.tree.nodes.get("negative-start")?.sliderValue).toBe(-80);

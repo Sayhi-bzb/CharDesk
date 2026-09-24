@@ -22,12 +22,8 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 - [Dialog](https://ui.chardesk.com/components/dialog.md): A named Cell dialog with shared overlay placement and focus management.
 - [Grid](https://ui.chardesk.com/components/grid.md): Navigate a two-dimensional Cell collection without coupling focus to selection.
 - [Input](https://ui.chardesk.com/components/input.md): Edit a single line of Unicode text on the Cell grid.
-- [List](https://ui.chardesk.com/components/list.md): Present a navigable Cell collection with controlled focus and selection.
-- [Menu](https://ui.chardesk.com/components/menu.md): Navigate actions whose activation follows Cell feedback.
-- [Overlay](https://ui.chardesk.com/components/overlay.md): Place a named Cell surface above the base Scene.
 - [Progress](https://ui.chardesk.com/components/progress.md): Display determinate or indeterminate progress as a solid or outlined track, with an optional percentage.
 - [Radio](https://ui.chardesk.com/components/radio.md): Choose one value with a shared group and arrow-key navigation.
-- [RangeSlider](https://ui.chardesk.com/components/range-slider.md): Control two values on one Cell track.
 - [ScrollArea](https://ui.chardesk.com/components/scroll-area.md): Scroll overflowing Cell content with keys, wheel, track, or thumb.
 - [Select](https://ui.chardesk.com/components/select.md): Choose one value from a Cell-anchored listbox.
 - [Separator](https://ui.chardesk.com/components/separator.md): Separate Cell content with one row or column.
@@ -38,7 +34,6 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 - [TextArea](https://ui.chardesk.com/components/text-area.md): Edit multiline Cell text with retained selection and scrolling.
 - [Toggle](https://ui.chardesk.com/components/toggle.md): Show a persistent mode with a status light, separate from interaction feedback.
 - [Tooltip](https://ui.chardesk.com/components/tooltip.md): Explain a Cell control on delayed hover or keyboard focus without changing its layout.
-- [Tree](https://ui.chardesk.com/components/tree.md): Navigate hierarchical items with controlled expansion.
 
 ## Internal development
 

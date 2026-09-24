@@ -2,12 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   CellUiRuntime,
   EventManager,
-  List,
-  ListItem,
   Root,
   Text,
   type CellEventHandlerMap,
 } from "./index.js";
+import { List, ListItem } from "./react.js";
 
 const renderFrame = (showItem = true) => {
   const runtime = new CellUiRuntime({ viewport: { width: 12, height: 3 } });

@@ -2,15 +2,11 @@ import { GallerySurface } from "../appearance";
 import { useState } from "react";
 import {
   Box,
-  List,
-  ListItem,
-  Menu,
-  MenuItem,
-  Overlay,
   Root,
   Text,
   type WidgetCommand,
 } from "@chardesk/cell-ui";
+import { List, ListItem, Menu, MenuItem, Overlay } from "../internal-fixture-primitives";
 import { useCellListState, useCellMenuState } from "@chardesk/cell-ui/browser";
 
 const launcherItems = [

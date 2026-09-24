@@ -65,7 +65,7 @@ describe("Component Playground gallery demos", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it.each([
-    { Demo: AlertComponentDemo, label: "Alert component", rows: 27, content: ["New version available", "Changes saved", "Unsaved changes", "Save failed", "border"], absent: ["first tone", "dismiss", "autoClose"] },
+    { Demo: AlertComponentDemo, label: "Alert component", rows: 27, content: ["New version available", "Changes saved", "Unsaved changes", "Save failed", "variant", "border"], absent: ["first tone", "dismiss", "autoClose"] },
     { Demo: DialogComponentDemo, label: "Dialog component", content: ["variant", "surface", "border", "square"], absent: ["modal", "closeOnOutsideClick", "frame", "bordered", "ghost"] },
     { Demo: ToggleComponentDemo, label: "Toggle component", content: ["○ Bold", "disabled"], absent: ["variant", "pressed", "value"] },
     { Demo: BadgeComponentDemo, label: "Badge component", content: ["Waiting", "Syncing", "Done", "Delayed", "Failed", "Retry", "Disabled"], absent: ["tone", "interactive", "Activated:", "variant"] },
@@ -141,6 +141,26 @@ describe("Component Playground gallery demos", () => {
     fireEvent.click(retry);
     await waitFor(() => expect(surface).not.toHaveAttribute("data-cell-confirmation-phase"));
     expect(readCellSurfaceProbe(surface)?.text).not.toContain("Activated:");
+  });
+
+  it("switches Alert fill without losing tone or border controls", async () => {
+    render(<AlertComponentDemo />);
+    const surface = screen.getByLabelText("Alert component");
+    const marker = () => readCellSurfaceProbe(surface)?.cells.find((cell) =>
+      cell.ownerId === "component-alert-info" && cell.text === "i");
+    await waitFor(() => expect(marker()?.style.backgroundColor).toBe("#DDEEFF"));
+
+    const variant = screen.getByRole("button", { name: "variant" });
+    fireEvent.click(variant);
+    fireEvent.click(await screen.findByRole("option", { name: "ghost" }));
+    await waitFor(() => expect(variant).toHaveAttribute("aria-expanded", "false"));
+    await waitFor(() => expect(marker()?.style).toMatchObject({ color: "#17476B" }));
+    expect(marker()?.style.backgroundColor).toBeUndefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "border" }));
+    fireEvent.click(await screen.findByRole("option", { name: "square" }));
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("┌"));
+    expect(marker()?.style.color).toBe("#17476B");
   });
 
   it("switches Tabs panels while keeping focus, selection, and disabled state distinct", async () => {

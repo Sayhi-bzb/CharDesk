@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   Box,
-  Overlay,
   Root,
   Text,
   YogaLayoutEngine,
   createWidgetDescriptor,
   reconcileWidgetTree,
 } from "./index.js";
+import { Overlay } from "./react.js";
 import type { RootProps } from "./react.js";
 import type { ReactElement } from "react";
 

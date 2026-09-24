@@ -1,6 +1,22 @@
 import { expect, it } from "vitest";
 import { paintBorder, type CellBorderShape, type CellFrame } from "./border.js";
-import { Box, CellBuffer, CellTextEditor, CellUiRuntime, CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME, Dialog, DialogTitle, Overlay, Root, ScrollArea, Text, TextArea, hitTestCell, type SurfaceVariant } from "./index.js";
+import {
+  Box,
+  CellBuffer,
+  CellTextEditor,
+  CellUiRuntime,
+  CLASSIC_MAC_DARK_THEME,
+  CLASSIC_MAC_LIGHT_THEME,
+  Dialog,
+  DialogTitle,
+  Root,
+  ScrollArea,
+  Text,
+  TextArea,
+  hitTestCell,
+  type SurfaceVariant,
+} from "./index.js";
+import { Overlay } from "./react.js";
 
 it("preserves ghost and surface backgrounds independently of frame geometry", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 12, height: 3 } });

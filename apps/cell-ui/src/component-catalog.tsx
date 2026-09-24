@@ -20,11 +20,9 @@ import {
   TabsComponentDemo,
   TextComponentDemo,
   BoxComponentDemo,
-  ListComponentDemo,
 } from "./sections/components";
 
-import { OverlayDemo } from "./sections/overlay";
-import { GridComponentDemo, MenuComponentDemo, RangeSliderComponentDemo, TextAreaComponentDemo, TreeComponentDemo } from "./sections/foundations";
+import { GridComponentDemo, TextAreaComponentDemo } from "./sections/foundations";
 import { componentContent, sourceLinksForComponent as contentSourceLinks, type ComponentContent } from "./docs-content";
 
 export type ComponentDocument = ComponentContent & Readonly<{ probeId: string; Demo: ComponentType }>;
@@ -37,15 +35,14 @@ const demos: Readonly<Record<string, ComponentType>> = {
   badge: BadgeComponentDemo, select: SelectComponentDemo, combobox: ComboboxComponentDemo,
   checkbox: CheckboxComponentDemo, slider: SliderComponentDemo, input: InputComponentDemo,
   tabs: TabsComponentDemo, "scroll-area": ScrollAreaComponentDemo,
-  text: TextComponentDemo, box: BoxComponentDemo, list: ListComponentDemo,
-  overlay: OverlayDemo, "range-slider": RangeSliderComponentDemo, "text-area": TextAreaComponentDemo,
-  menu: MenuComponentDemo, tree: TreeComponentDemo, grid: GridComponentDemo,
+  text: TextComponentDemo, box: BoxComponentDemo, "text-area": TextAreaComponentDemo,
+  grid: GridComponentDemo,
 };
 
 export const sourceLinksForComponent = contentSourceLinks;
 
 export const componentDocuments: readonly ComponentDocument[] = [
-  ...componentContent.map((content) => ({ ...content, probeId: content.slug === "overlay" ? "overlay" : `component-${content.slug}`, Demo: demos[content.slug]! })),
+  ...componentContent.map((content) => ({ ...content, probeId: `component-${content.slug}`, Demo: demos[content.slug]! })),
 ];
 export const componentDocumentBySlug = new Map(componentDocuments.map((document) => [document.slug, document] as const));
 export const componentNavigationDocuments = componentDocuments.toSorted((left, right) => left.title.localeCompare(right.title, "en"));

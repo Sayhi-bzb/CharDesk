@@ -2,14 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   Box,
   CellBuffer,
-  List,
-  ListItem,
   Root,
   Text,
   createTestPilot,
   formatCellBuffer,
   formatCellProbe,
 } from "./index.js";
+import { List, ListItem } from "./react.js";
 
 describe("Cell probe", () => {
   it("formats Unicode for people while retaining exact Cell records", () => {

@@ -12,4 +12,4 @@ The /browser entry exports readCellCssTheme(element) and useCellCssTheme(ref, re
 
 ## Surface and frame
 
-Box, Overlay, ScrollArea, and TextArea separate variant (ghost or surface) from frame (none or bordered). Dialog and Tooltip use their own opaque variant and border recipe. Geometry belongs to CellLayoutStyle, not the theme.
+Box, ScrollArea, and TextArea separate variant (ghost or surface) from frame (none or bordered). Dialog and Tooltip use their own opaque variant and border recipe. Geometry belongs to CellLayoutStyle, not the theme.

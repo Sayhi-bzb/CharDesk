@@ -13,12 +13,8 @@ const navigationLinks = [
   ["Dialog", "#/components/dialog"],
   ["Grid", "#/components/grid"],
   ["Input", "#/components/input"],
-  ["List", "#/components/list"],
-  ["Menu", "#/components/menu"],
-  ["Overlay", "#/components/overlay"],
   ["Progress", "#/components/progress"],
   ["Radio", "#/components/radio"],
-  ["RangeSlider", "#/components/range-slider"],
   ["ScrollArea", "#/components/scroll-area"],
   ["Select", "#/components/select"],
   ["Separator", "#/components/separator"],
@@ -29,7 +25,6 @@ const navigationLinks = [
   ["TextArea", "#/components/text-area"],
   ["Toggle", "#/components/toggle"],
   ["Tooltip", "#/components/tooltip"],
-  ["Tree", "#/components/tree"],
 ] as const;
 
 test("component catalog drives concise, addressable documentation", async ({ page }) => {
@@ -218,7 +213,7 @@ test("on-page navigation survives direct load, component changes, and browser hi
 });
 
 test("foundational component pages support direct loading", async ({ page }) => {
-  for (const slug of ["text", "box", "list", "overlay", "range-slider", "text-area", "menu", "tree", "grid"]) {
+  for (const slug of ["text", "box", "text-area", "grid"]) {
     await page.goto(`/#/components/${slug}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Cell UI" })).toBeVisible();
@@ -242,7 +237,7 @@ test("guide sections, direct links, and agent Markdown stay addressable", async 
   expect(index.ok()).toBe(true);
   expect(await index.text()).toContain("/components/grid.md");
   expect(await index.text()).toContain("/components/alert.md");
-  for (const slug of ["box", "text", "overlay", "range-slider", "text-area", "list", "menu", "tree", "grid"]) {
+  for (const slug of ["box", "text", "slider", "text-area", "grid"]) {
     const response = await request.get(`/components/${slug}.md`);
     expect(response.ok()).toBe(true);
     expect(await response.text()).toContain("## API");
@@ -311,9 +306,11 @@ test("guide prose and code use the same content width", async ({ page }) => {
 });
 
 test("unknown component routes fail honestly", async ({ page }) => {
-  await page.goto("/#/components/missing");
-  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open Introduction" })).toHaveAttribute("href", "#/guides/introduction");
+  for (const slug of ["missing", "list", "menu", "tree", "overlay", "range-slider"]) {
+    await page.goto(`/#/components/${slug}`);
+    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open Introduction" })).toHaveAttribute("href", "#/guides/introduction");
+  }
 });
 
 test("Gallery DOM contours and dividers stay 2px without narrow overflow", async ({ page }) => {
@@ -801,32 +798,6 @@ test("Cell Range clears when Preview focus moves outside its Surface", async ({ 
   await selectRange();
   await page.getByRole("button", { name: /^(Dark|Light)$/ }).click();
   await expect(surface).not.toHaveAttribute("data-cell-range");
-});
-
-test("List shares focus, selection, disabled state, and semantic actions", async ({ page }) => {
-  await page.goto("/#/__fixtures/list");
-  const surface = page.getByLabel("List component");
-  const probe = await readCellProbe(surface);
-  const betaCells = probe.cells.filter((cell) => cell.ownerId === "component-list-beta")
-    .sort((left, right) => left.x - right.x);
-  expect(betaCells[0]?.text).toBe(" ");
-  expect(betaCells[1]?.text).toBe("✓");
-  expect(betaCells.at(-1)?.text).toBe(" ");
-  const beta = page.getByRole("option", { name: "Beta" });
-  const disabled = page.getByRole("option", { name: "Disabled" });
-  await expect(page.getByRole("option")).toHaveCount(4);
-  await expect(beta).toHaveAttribute("aria-selected", "true");
-  await expect(disabled).toHaveAttribute("aria-disabled", "true");
-
-  await surface.focus();
-  await expect(beta).toBeFocused();
-  await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("option", { name: "Gamma" })).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("option", { name: "Gamma" })).toHaveAttribute("aria-selected", "true");
-  await page.getByRole("option", { name: "Alpha" }).evaluate((element: HTMLElement) => element.click());
-  await expect(surface).toHaveAttribute("data-cell-focused", "component-list-alpha");
-  await expect(page.getByRole("option", { name: "Alpha" })).toHaveAttribute("aria-selected", "true");
 });
 
 test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling the page", async ({ page }) => {

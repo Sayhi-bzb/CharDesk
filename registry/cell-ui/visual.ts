@@ -78,8 +78,11 @@ const surfaceStyleForNode = (
     backgroundColor ??= current.textStyle.backgroundColor;
     hasSurfaceOwner ||= current.surfaceVariant !== null;
     if (current.kind === "badge" || current.kind === "badge-action" || current.kind === "alert") {
+      const statusStyle = theme.badgeStyles[current.badgeTone];
       return {
-        ...theme.badgeStyles[current.badgeTone],
+        ...(current.kind === "alert" && current.surfaceVariant === "ghost"
+          ? { color: statusStyle.color }
+          : statusStyle),
         ...(backgroundColor !== undefined ? { backgroundColor } : {}),
       };
     }

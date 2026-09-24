@@ -1,11 +1,10 @@
 import { GallerySurface } from "../appearance";
 import {
-  List,
-  ListItem,
   Root,
   ScrollArea,
   Text,
 } from "@chardesk/cell-ui";
+import { List, ListItem } from "../internal-fixture-primitives";
 import {
   useCellVirtualListState,
 } from "@chardesk/cell-ui/browser";

@@ -26,10 +26,6 @@ import {
   Separator,
   RadioGroup,
   RadioItem,
-  List,
-  ListItem,
-  RangeSlider,
-  RangeSliderThumb,
   Root,
   ScrollArea,
   Slider,
@@ -49,7 +45,6 @@ import {
   type WidgetCommand,
 } from "@chardesk/cell-ui";
 import {
-  useCellListState,
   useCellComboboxState,
   useCellRadioState,
   useCellSelectState,
@@ -537,34 +532,39 @@ export const BadgeComponentDemo = () => {
 
 export const AlertComponentDemo = () => {
   const [saved, setSaved] = useState(false);
+  const variant = useCellSelectState("component-alert-variant", surfaceVariantItems, { defaultSelectedId: "surface" });
   const border = useCellSelectState("component-alert-border", alertBorderItems, { defaultSelectedId: "none" });
-  const focus = usePlaygroundFocus("component-alert-save", [border]);
+  const focus = usePlaygroundFocus("component-alert-save", [variant, border]);
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
     if (command.type === "activate" && command.targetId === "component-alert-save") setSaved(true);
   };
+  const selectedVariant = variant.selectedId as SurfaceVariant;
   const selectedBorder = border.selectedId as "none" | CellBorderShape;
   return <ComponentPlayground id="component-alert-playground" label="Alert component"
     probeId="component-alert" focusedId={focus.focusedId} onCommand={dispatch}
     previewMinColumns={42} controlsColumns={23} rows={27}
     overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={<Box style={{ width: 40, gap: 1 }}>
-      <Alert id="component-alert-info" tone="info" border={selectedBorder}>
+      <Alert id="component-alert-info" tone="info" variant={selectedVariant} border={selectedBorder}>
         <AlertTitle>New version available</AlertTitle>
       </Alert>
-      <Alert id="component-alert-success" tone="success" border={selectedBorder}>
+      <Alert id="component-alert-success" tone="success" variant={selectedVariant} border={selectedBorder}>
         <AlertTitle>Changes saved</AlertTitle>
       </Alert>
-      <Alert id="component-alert-warning" tone={saved ? "success" : "warning"} border={selectedBorder}>
+      <Alert id="component-alert-warning" tone={saved ? "success" : "warning"} variant={selectedVariant} border={selectedBorder}>
         <AlertTitle>{saved ? "Changes saved" : "Unsaved changes"}</AlertTitle>
         <AlertDescription>{saved ? "Available offline." : "Changes are stored locally."}</AlertDescription>
         {!saved && <Button id="component-alert-save"><Text>Save now</Text></Button>}
       </Alert>
-      <Alert id="component-alert-error" tone="error" border={selectedBorder}>
+      <Alert id="component-alert-error" tone="error" variant={selectedVariant} border={selectedBorder}>
         <AlertTitle>Save failed</AlertTitle>
       </Alert>
     </Box>}
-    controls={[renderPlaygroundSelectControl("border", border, focus.focusedId)]} />;
+    controls={[
+      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+      renderPlaygroundSelectControl("border", border, focus.focusedId),
+    ]} />;
 };
 
 const tabItems = [
@@ -837,30 +837,20 @@ export const SliderComponentDemo = () => {
           <Text>{range ? `${rangeValues[0]}–${rangeValues[1]}` : value}</Text>
         </Box>
         {range
-          ? <RangeSlider
+          ? <Slider
               id="component-slider-range-control"
               label="Volume"
+              value={rangeValues}
+              thumbs={[
+                { id: "component-slider-start", label: "Minimum volume", valueText: `${rangeValues[0]} percent`, focused: focus.focusedId === "component-slider-start" },
+                { id: "component-slider-end", label: "Maximum volume", valueText: `${rangeValues[1]} percent`, focused: focus.focusedId === "component-slider-end" },
+              ]}
               min={0}
               max={100}
               step={1}
               disabled={disabled}
               style={{ width: 26 }}
-            >
-              <RangeSliderThumb
-                id="component-slider-start"
-                label="Minimum volume"
-                value={rangeValues[0]}
-                valueText={`${rangeValues[0]} percent`}
-                focused={focus.focusedId === "component-slider-start"}
-              />
-              <RangeSliderThumb
-                id="component-slider-end"
-                label="Maximum volume"
-                value={rangeValues[1]}
-                valueText={`${rangeValues[1]} percent`}
-                focused={focus.focusedId === "component-slider-end"}
-              />
-            </RangeSlider>
+            />
           : <Slider
               id="component-slider-volume"
               label="Volume"
@@ -943,43 +933,6 @@ export const InputComponentDemo = () => {
   />;
 };
 
-const listItems = [
-  { id: "component-list-alpha", label: "Alpha" },
-  { id: "component-list-beta", label: "Beta" },
-  { id: "component-list-disabled", label: "Disabled", disabled: true },
-  { id: "component-list-gamma", label: "Gamma" },
-] as const;
-
-export const ListComponentDemo = () => {
-  const list = useCellListState(listItems, {
-    defaultFocusedId: "component-list-beta",
-    defaultSelectedId: "component-list-beta",
-  });
-  return <GallerySurface
-    viewport={{ width: 32, height: 6 }}
-    focusedId={list.focusedId}
-    onCommand={list.dispatch}
-    label="List component"
-    probeId="component-list"
-  >
-    <Root id="component-list-root">
-      <Box id="component-list-frame" frame="bordered" style={{ height: 6 }}>
-        <List id="component-list-items" label="Greek letters">
-          {list.items.map((item) => (
-            <ListItem
-              id={item.id}
-              key={item.id}
-              disabled={item.disabled}
-              focused={list.focusedId === item.id}
-              selected={list.selectedId === item.id}
-            ><Text>{item.label}</Text></ListItem>
-          ))}
-        </List>
-      </Box>
-    </Root>
-  </GallerySurface>;
-};
-
 const scrollItems = Array.from({ length: 10 }, (_, index) => ({
   id: `component-scroll-row-${index + 1}`,
   label: `${String(index + 1).padStart(2, "0")}  Row ${index + 1}`,
@@ -999,14 +952,9 @@ export const ScrollAreaComponentDemo = () => {
     defaultSelectedId: "square",
   });
   const borderSize = frame.selectedId === "bordered" ? scrollDemoBorderSize : 0;
-  const list = useCellListState(scrollItems, {
-    defaultFocusedId: "component-scroll-row-1",
-    defaultSelectedId: "component-scroll-row-1",
-  });
   const focus = usePlaygroundFocus("component-scroll-row-1", [variant, frame, borderShape]);
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
-    list.dispatch(command);
     if (command.type === "scroll" && command.targetId === "component-scroll-area") {
       setScrollY(command.scrollY);
     }
@@ -1035,16 +983,10 @@ export const ScrollAreaComponentDemo = () => {
           height: scrollDemoViewportHeight + borderSize,
         }}
       >
-        <List id="component-scroll-items" label="Scrollable rows">
-          {list.items.map((item) => (
-            <ListItem
-              id={item.id}
-              key={item.id}
-              focused={focus.focusedId === item.id}
-              selected={list.selectedId === item.id}
-            ><Text>{item.label}</Text></ListItem>
-          ))}
-        </List>
+        <Box id="component-scroll-items">
+          {scrollItems.map((item) => <Button id={item.id} key={item.id} variant="ghost"
+            focused={focus.focusedId === item.id}><Text>{item.label}</Text></Button>)}
+        </Box>
       </ScrollArea>
     }
     controls={[

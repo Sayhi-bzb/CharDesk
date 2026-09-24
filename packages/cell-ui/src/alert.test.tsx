@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Alert, AlertDescription, AlertTitle, Button, CellUiRuntime, Root, Text, createTestPilot, auditSemanticSnapshot } from "./index.js";
+import { Alert, AlertDescription, AlertTitle, Box, Button, CellUiRuntime, Root, Text, createTestPilot, auditSemanticSnapshot } from "./index.js";
 import { CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME } from "./theme.js";
 
 describe("Alert", () => {
@@ -14,16 +14,63 @@ describe("Alert", () => {
           <AlertTitle>Changes saved</AlertTitle><AlertDescription>Available offline.</AlertDescription>
         </Alert></Root>);
         const bounds = frame.scene.entries.get("notice")!.layoutBounds;
+        expect(frame.tree.nodes.get("notice")?.surfaceVariant).toBe("surface");
         const corner = frame.buffer.get(bounds.x, bounds.y);
         expect(corner?.text).toBe(border === "square" ? "┌" : border === "rounded" ? "╭" : " ");
         if (border !== "none") expect(corner?.style.color).toBe(theme.badgeStyles[tone].color);
-        expect(frame.buffer.get(bounds.x + (border === "none" ? 1 : 2), bounds.y + (border === "none" ? 1 : 2))?.text).toBe(glyph);
-        expect(frame.buffer.get(bounds.x + 4, bounds.y + (border === "none" ? 1 : 2))?.style.backgroundColor)
+        expect(frame.buffer.get(bounds.x + (border === "none" ? 1 : 2), bounds.y + 1)?.text).toBe(glyph);
+        expect(frame.buffer.get(bounds.x + 4, bounds.y + 1)?.style.backgroundColor)
           .toBe(theme.badgeStyles[tone].backgroundColor);
         expect(frame.semantics.nodes.get("notice")).toMatchObject({ role, actions: [] });
         expect(auditSemanticSnapshot(frame.semantics)).toEqual([]);
       }
     }
+    runtime.dispose();
+  });
+
+  it.each([CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME])("keeps tone foreground while ghost reveals the parent surface", (theme) => {
+    const runtime = new CellUiRuntime({ viewport: { width: 44, height: 8 }, theme });
+    for (const tone of ["info", "success", "warning", "error"] as const) {
+      for (const border of ["none", "square", "rounded"] as const) {
+        const frame = runtime.render(<Root><Box variant="surface" style={{ width: 44 }}>
+          <Alert id="notice" tone={tone} variant="ghost" border={border}>
+            <AlertTitle>Notice</AlertTitle><AlertDescription>Details</AlertDescription>
+          </Alert>
+        </Box></Root>);
+        const alert = frame.tree.nodes.get("notice")!;
+        const bounds = frame.scene.entries.get("notice")!.layoutBounds;
+        const markerX = bounds.x + (border === "none" ? 1 : 2);
+        const contentY = bounds.y + 1;
+        expect(alert.surfaceVariant).toBe("ghost");
+        expect(frame.buffer.get(markerX, contentY)?.style).toMatchObject({
+          color: theme.badgeStyles[tone].color,
+          backgroundColor: theme.elevatedSurfaceStyle.backgroundColor,
+        });
+        expect(frame.buffer.get(bounds.x + 4, contentY)?.style).toMatchObject({
+          color: theme.badgeStyles[tone].color,
+          backgroundColor: theme.elevatedSurfaceStyle.backgroundColor,
+        });
+        if (border !== "none") {
+          expect(frame.buffer.get(bounds.x, bounds.y)?.style.color).toBe(theme.badgeStyles[tone].color);
+        }
+        expect(frame.semantics.nodes.get("notice")?.role).toBe(tone === "warning" || tone === "error" ? "alert" : "status");
+      }
+    }
+    runtime.dispose();
+  });
+
+  it.each(["surface", "ghost"] as const)("uses three rows for a one-line rounded %s Alert", (variant) => {
+    const runtime = new CellUiRuntime({ viewport: { width: 40, height: 5 } });
+    const frame = runtime.render(<Root><Alert id="notice" tone="success" variant={variant} border="rounded">
+      <AlertTitle>Changes saved</AlertTitle>
+    </Alert></Root>);
+    const bounds = frame.scene.entries.get("notice")!.layoutBounds;
+    expect(bounds.height).toBe(3);
+    expect(frame.buffer.toText({ region: bounds })).toBe([
+      `╭${"─".repeat(bounds.width - 2)}╮`,
+      `${"│ ✓ Changes saved".padEnd(bounds.width - 1)}│`,
+      `╰${"─".repeat(bounds.width - 2)}╯`,
+    ].join("\n"));
     runtime.dispose();
   });
 
@@ -91,7 +138,7 @@ describe("Alert", () => {
   it("keeps the notice static while its optional Button activates", async () => {
     const commands: string[] = [];
     const pilot = createTestPilot({ viewport: { width: 44, height: 8 }, render: () => <Root>
-      <Alert id="notice" tone="warning"><AlertTitle>Unsaved changes</AlertTitle>
+      <Alert id="notice" tone="warning" variant="ghost"><AlertTitle>Unsaved changes</AlertTitle>
         <AlertDescription>Changes are stored locally.</AlertDescription>
         <Button id="save"><Text>Save now</Text></Button>
       </Alert>

@@ -3,17 +3,14 @@ import {
   Grid,
   GridCell,
   GridRow,
-  Menu,
-  MenuItem,
   Root,
   Tab,
   TabPanel,
   Tabs,
   Text,
-  Tree,
-  TreeItem,
   type WidgetCommand,
 } from "@chardesk/cell-ui";
+import { Menu, MenuItem, Tree, TreeItem } from "../internal-fixture-primitives";
 import {
   useCellGridState,
   useCellMenuState,

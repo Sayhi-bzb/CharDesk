@@ -31,6 +31,7 @@ export function AlertExample() {
 | Prop | Type | Description |
 | --- | --- | --- |
 | `tone?` | `"info" \| "success" \| "warning" \| "error"` | Status meaning; info by default. Warning and error announce as alerts. |
+| `variant?` | `"surface" \| "ghost"` | Status-colored surface by default; ghost keeps tone text, icon, and border without a fill. |
 | `border?` | `"none" \| "square" \| "rounded"` | None by default; framed borders use the tone's foreground color. |
 | `style?` | `CellLayoutStyle` | Width and layout overrides; default maximum width is 44 Cells. |
 | `children` | `Cell primitives` | One AlertTitle, optional AlertDescription, and optional Button in order. |

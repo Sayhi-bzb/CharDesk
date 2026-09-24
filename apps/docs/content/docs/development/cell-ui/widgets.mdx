@@ -11,7 +11,7 @@ description: State, input, scroll, and editor behavior contracts.
 
 - `focused` 是逻辑焦点，`selected` 是持久选择；二者可共存。
 - `pressActive` 是共享控制器通过 PressManager 管理的离散瞬时按压；`activationFlash` 是 command 已接受后的离散确认；`manipulating` 是 GestureManager 管理的连续 pointer 操控。三者均不进入业务 state。
-- Button、Checkbox、Select、ComboboxItem、Toggle、RadioItem、List、Menu、Tree、Grid 共用反色高亮：鼠标与 keyboard/AT 采用最近输入来源，逻辑 focus 独立保留；pointer 移出撤销高亮，键盘恢复同一套高亮。Slider/RangeSlider 同样投影输入来源，但仅强调目标 thumb。Tabs 的选中态由 `variant` 独立控制。
+- Button、Checkbox、Select、ComboboxItem、Toggle、RadioItem、List、Menu、Tree、Grid 共用反色高亮：鼠标与 keyboard/AT 采用最近输入来源，逻辑 focus 独立保留；pointer 移出撤销高亮，键盘恢复同一套高亮。Slider 的单值与双端模式同样投影输入来源，但仅强调目标 thumb。Tabs 的选中态由 `variant` 独立控制。
 - Checkbox checked/mixed、Select selected、Toggle pressed、Radio checked、List/Tree/Grid selected 使用独立字符标记；Tabs 默认 `underline`，在当前标签文字下方绘制 `⎺`；`solid` 保留单行反色选择背景。
 - TextInput、ComboboxInput 与 TextArea 的编辑活动由 Runtime 比对 `focusedId === activeFocusId` 后投影为 `focusActive`，不依赖输入来源、hover 或正文变化。TextInput 默认 `surface`，活动时整行 highlight；`ghost` 与 ComboboxInput 保留背景。单行输入用下划线表示活动选区，并用反色 Cell Cursor 表示插入点。TextArea 活动时 highlight 覆盖文字、空白与边框。未激活的单行输入不显示预先存在的选区。Surface 空白只接管浏览器焦点并保留导航锚点，不激活编辑器。readOnly 可聚焦，disabled 无活动强调。
 - Cursor 默认反转所在 Cell 的最终颜色，不重新解释编辑状态；形状、fixed 模式、CSS token 与底图恢复由 [`cursor-appearance.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/cursor-appearance.ts) 和[测试](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/cursor-appearance.test.ts)验证。
@@ -27,6 +27,8 @@ description: State, input, scroll, and editor behavior contracts.
 - Badge 默认是只读状态文字；`interactive` 才加入共享焦点、按压、确认和 `activate` 命令。`tone` 从主题的成对前景／背景色中取值，文字和语义不依赖颜色；不自动作为 live region 播报。
 
 ## Primitive 快照
+
+此表包含内部 Widget 契约，不等同于[公开组件目录](https://ui.chardesk.com/)。List、Menu、Tree、Overlay 和双端 Slider 的底层 descriptor 仍服务内部 fixture 与共享机制，但不再作为独立组件分发。
 
 | Primitive | Cell 表现 | 输入与语义 |
 | --- | --- | --- |
@@ -44,8 +46,8 @@ description: State, input, scroll, and editor behavior contracts.
 | Tooltip | 与 Dialog 共用不透明的 `surface | ghost` variant 和 `border="none" | "square" | "rounded"`；无边框时收为单行；默认紧贴目标上方，不足时翻到下方；横向约束并以 `…` 截断 | `targetId` 指向已有可聚焦控件；鼠标悬停 500 ms 或键盘聚焦后显示，Escape／离开／失焦／按下关闭；自身不接收指针或焦点，通过 `aria-describedby` 关联目标；headless 以 `tooltipTargetId` 显式投影 |
 | Separator | `line/slash/double/dots` 由全局 glyph map 投影，横纵方向保持固定 Cell 几何 | 无焦点与动作；separator + orientation；variant 只触发 paint，消费全局 border 颜色 |
 | RadioGroup / RadioItem | `( )/(●)`；Group value 派生直接子项 checked，value 唯一且非空 | radiogroup/radio；组内一个 Tab 入口，方向键循环选择并跳过 disabled；`select-radio` 即时导航，activate 使用统一确认反馈 |
-| Slider | renderer-owned `━/─/┃` 单行轨道；pointer hover、keyboard focus 或 manipulating 只将 thumb Cell 切换为 `█`，轨道不反色、不增加 bold；可见 label/value 由外部 Cell 组合 | pointer down 立即进入 manipulating 并保持至 release/cancel；方向键一步、Page 十步、Home/End 端点；精确 tap/drag 输出 `set-value`，无确认闪烁，Semantic DOM 投影 numeric range |
-| RangeSlider | `RangeSlider` 拥有共享单行轨道，两个直接 `RangeSliderThumb` 分别拥有 `id/label/value`；外轨 `─`、双 thumb 之间 `━`；thumb 复用 Slider 的统一外观配方 | 两个 thumb 独立 focus 并沿用 `set-value`，无确认闪烁；点击轨道选择最近 thumb，平局优先已 focus thumb再 lower；thumb 不交叉，区间不整体拖动；Semantic DOM 投影 named group 与两个受彼此约束的 numeric slider |
+| Slider | renderer-owned `━/─/┃` 单行轨道；pointer hover、keyboard focus 或 manipulating 只将 thumb Cell 切换为 `█`，轨道不反色、不增加 bold；可见 label/value 由外部 Cell 组合 | 单值 `value: number` 以 Slider ID 接收 `set-value`；双端 `value: [number, number]` 与 `thumbs` 以各端点 ID 接收命令；方向键一步、Page 十步、Home/End 端点；精确 tap/drag，无确认闪烁 |
+| 双端 Slider 内部 descriptor | 共享轨道的外侧 `─`、双 thumb 之间 `━`；两个端点独立 focus | 点击轨道选择最近端点，平局优先已 focus 端点再 lower；端点不交叉，区间不整体拖动；Semantic DOM 投影 named group 与两个受彼此约束的 numeric slider |
 | Select | 填充 Trigger＋`▾/▴`，Content 锚定并按 viewport 上下翻转，selected item 使用 `✓`；共享 inline chrome 固定左右 guard 及右侧间隔/标记 | focus 与 committed selection 分离；Trigger 只展开，item 的 Enter/click 立即提交并确认闪烁，确认结束后 dismiss；Escape/outside/blur 可提前关闭并保留提交值 |
 | Combobox | 单行填充 Input＋`▾/▴`，Content 复用 Select 的浮层、scroll、`✓` 和右侧保护 Cell；active item 临时反色 | 关闭时点击输入行任意位置展开；展开后文字区保留编辑，箭头及其尾部保护 Cell 切换关闭。DOM focus 始终留在 Input，`aria-activedescendant` 指向 active item；本地稳定子串过滤，Enter/click 提交，Escape/Tab/outside 恢复已选 label；IME 只在 composition commit 后过滤 |
 | List | Item 左右各 1 Cell guard；guard 内侧为 2 Cell 选择列，selected 使用全局 `collectionSelectedIndicator`（默认 `✓`）；用户 padding 在 chrome 内侧叠加，整行临时反色 | Up/Down/Home/End 仅定位；完整 tap、Enter/Space 即时激活，无确认闪烁 |

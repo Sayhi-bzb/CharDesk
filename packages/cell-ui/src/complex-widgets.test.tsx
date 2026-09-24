@@ -6,21 +6,18 @@ import {
   Grid,
   GridCell,
   GridRow,
-  Menu,
-  MenuItem,
   Root,
   Tab,
   TabPanel,
   Tabs,
   Text,
-  Tree,
-  TreeItem,
   commandForInput,
   createKeyInput,
   Box,
   ScrollArea,
   hitTest,
 } from "./index.js";
+import { Menu, MenuItem, Tree, TreeItem } from "./react.js";
 
 it("renders one-row Tabs with content-width labels and one Cell of selectable guard", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 30, height: 2 } });

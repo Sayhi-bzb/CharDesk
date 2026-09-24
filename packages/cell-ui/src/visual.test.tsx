@@ -1,5 +1,20 @@
 import { expect, it } from "vitest";
-import { Box, Button, Checkbox, Toggle, RadioGroup, RadioItem, Slider, RangeSlider, RangeSliderThumb, Root, Text, CellUiRuntime, CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME, INSTANT_CELL_FEEDBACK } from "./index.js";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Toggle,
+  RadioGroup,
+  RadioItem,
+  Slider,
+  Root,
+  Text,
+  CellUiRuntime,
+  CLASSIC_MAC_LIGHT_THEME,
+  CLASSIC_MAC_DARK_THEME,
+  INSTANT_CELL_FEEDBACK,
+} from "./index.js";
+import { RangeSlider, RangeSliderThumb } from "./react.js";
 import { resolvePrimitiveAppearance } from "./primitive-appearance.js";
 
 it("uses the same inverse pair for focus and press across the entire control", () => {

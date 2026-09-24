@@ -2,13 +2,12 @@ import { GallerySurface } from "../appearance";
 import { useState } from "react";
 import {
   Box,
-  List,
-  ListItem,
   Root,
   ScrollArea,
   Text,
   type WidgetCommand,
 } from "@chardesk/cell-ui";
+import { List, ListItem } from "../internal-fixture-primitives";
 import { useCellListState } from "@chardesk/cell-ui/browser";
 
 const actionItems = [

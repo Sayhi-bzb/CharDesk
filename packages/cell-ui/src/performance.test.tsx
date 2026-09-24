@@ -4,8 +4,6 @@ import {
   Box,
   CELL_UI_PERFORMANCE_BUDGET,
   CellUiRuntime,
-  List,
-  ListItem,
   Root,
   ScrollArea,
   Text,
@@ -13,6 +11,7 @@ import {
   paintScene,
   percentile,
 } from "./index.js";
+import { List, ListItem } from "./react.js";
 import type { LayoutEngine } from "./layout.js";
 
 describe("Cell UI executable performance budgets", () => {

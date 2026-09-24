@@ -1,5 +1,21 @@
 import { expect, it } from "vitest";
-import { CellUiRuntime, Root, Box, List, ListItem, Menu, MenuItem, Tree, TreeItem, Grid, GridRow, GridCell, Tabs, Tab, Text, FocusManager, commandForInput, createKeyInput, CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME } from "./index.js";
+import {
+  CellUiRuntime,
+  Root,
+  Box,
+  Grid,
+  GridRow,
+  GridCell,
+  Tabs,
+  Tab,
+  Text,
+  FocusManager,
+  commandForInput,
+  createKeyInput,
+  CLASSIC_MAC_LIGHT_THEME,
+  CLASSIC_MAC_DARK_THEME,
+} from "./index.js";
+import { List, ListItem, Menu, MenuItem, Tree, TreeItem } from "./react.js";
 import { CellInteractionController } from "./interaction-controller.js";
 
 it.each(["list", "menu", "tree"])("%s separates selection chrome from transient input appearance", (kind) => {

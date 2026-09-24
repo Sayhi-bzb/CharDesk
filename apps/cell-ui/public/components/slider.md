@@ -38,6 +38,10 @@ export function SliderExample() {
     </CellSurface>
   );
 }
+
+// Two endpoints use the same Slider; handle set-value by thumb id.
+<Slider id="range" label="Volume range" value={[25, 75]}
+  thumbs={[{ id: "start", label: "Minimum" }, { id: "end", label: "Maximum" }]} />
 ```
 
 ## View source
@@ -49,12 +53,12 @@ export function SliderExample() {
 
 | Prop | Type | Description |
 | --- | --- | --- |
-| `value` | `number` | Controlled numeric value projected onto the track. |
+| `value` | `number \| readonly [number, number]` | Controlled single value or bounded interval. |
+| `id / label` | `string` | Required for an interval; names its group and command target. |
 | `min? / max?` | `number` | Allowed range; defaults to 0–100. |
 | `step?` | `number` | Keyboard and pointer increment; defaults to 1. |
-| `valueText?` | `string` | Human-readable aria-valuetext without visible UI. |
+| `valueText?` | `string` | Single-value aria-valuetext without visible UI. |
+| `thumbs` | `readonly [SliderThumb, SliderThumb]` | Required for an interval; each endpoint has an id and label, with optional valueText and focused state. |
 | `disabled?` | `boolean` | Prevents focus, hover, keyboard, tap, and drag. |
-| `focused?` | `boolean` | Controlled logical focus state. |
-| `RangeSlider` | `compound` | Owns one shared track and exactly two direct thumbs. |
-| `RangeSliderThumb` | `id + label + value` | Owns one independently focused interval endpoint. |
-| `WidgetCommand` | `set-value` | Unifies keyboard, track tap, drag, and assistive input. |
+| `focused?` | `boolean` | Single-value logical focus; interval focus belongs to each thumb. |
+| `WidgetCommand` | `set-value` | Targets the Slider id for one value or the endpoint id for an interval. |

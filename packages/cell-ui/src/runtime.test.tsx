@@ -3,9 +3,6 @@ import {
   Box,
   CellTextEditor,
   CellUiRuntime,
-  List,
-  ListItem,
-  Overlay,
   Root,
   ScrollArea,
   Text,
@@ -15,6 +12,7 @@ import {
   hitTest,
   hitTestCell,
 } from "./index.js";
+import { List, ListItem, Overlay } from "./react.js";
 import type { LayoutEngine } from "./layout.js";
 
 const fileList = (order = ["index", "app", "layout", "theme"]) => (

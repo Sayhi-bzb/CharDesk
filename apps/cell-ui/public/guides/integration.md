@@ -17,7 +17,7 @@ import { CellSurface } from "@/lib/cell-ui/browser";
 
 ## State and commands
 
-Application state remains outside the renderer. Pass controlled values and focused IDs into descriptors, then handle CellSurface onCommand or use the matching /browser state adapter. Menu actions complete after Cell feedback; direct adapter dispatch has no presentation lifecycle.
+Application state remains outside the renderer. Pass controlled values and focused IDs into descriptors, then handle CellSurface onCommand or use the matching /browser state adapter. Direct adapter dispatch has no presentation lifecycle.
 
 ## Headless hosts
 

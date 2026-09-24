@@ -74,6 +74,7 @@ export type RootProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
 export type BoxProps = ContainerProps & SurfaceAppearanceProps & Readonly<{ style?: CellLayoutStyle }>;
 export type AlertProps = IdentityProps & ChildrenProps & Readonly<{
   tone?: AlertTone;
+  variant?: SurfaceVariant;
   border?: "none" | CellBorderShape;
   style?: CellLayoutStyle;
 }>;
@@ -121,16 +122,32 @@ export type CheckboxProps = NamedContainerProps & Readonly<{
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
-export type SliderProps = NamedLeafProps & Readonly<{
-  value: number;
+type SliderBaseProps = NamedLeafProps & Readonly<{
   min?: number;
   max?: number;
   step?: number;
-  valueText?: string;
-  focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
+export type SliderThumb = Readonly<{
+  id: string;
+  label: string;
+  valueText?: string;
+  focused?: boolean;
+}>;
+export type SliderProps = SliderBaseProps & (Readonly<{
+  value: number;
+  valueText?: string;
+  focused?: boolean;
+  thumbs?: never;
+}> | Readonly<{
+  id: string;
+  label: string;
+  value: readonly [number, number];
+  thumbs: readonly [SliderThumb, SliderThumb];
+  valueText?: never;
+  focused?: never;
+}>);
 export type ToggleProps = NamedContainerProps & Readonly<{
   pressed?: boolean;
   focused?: boolean;
@@ -475,6 +492,33 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
 
   const primitiveKind = kinds.get(element.type);
   const props = element.props as Record<string, unknown>;
+  if (element.type === Slider && Array.isArray(props.value)) {
+    const values = props.value as unknown[];
+    const thumbs = props.thumbs as unknown;
+    if (values.length !== 2 || values.some((value) => typeof value !== "number")
+      || !Array.isArray(thumbs) || thumbs.length !== 2
+      || props.children !== undefined) {
+      throw new TypeError("Range Slider requires two values and two thumbs, without children.");
+    }
+    const [start, end] = thumbs as [SliderThumb, SliderThumb];
+    return describe(<RangeSlider
+      key={element.key}
+      id={props.id as string}
+      label={props.label as string}
+      min={props.min as number | undefined}
+      max={props.max as number | undefined}
+      step={props.step as number | undefined}
+      disabled={props.disabled === true}
+      style={props.style as CellLayoutStyle | undefined}
+      textStyle={props.textStyle as CellTextStyle | undefined}
+    >
+      <RangeSliderThumb {...start} value={values[0] as number} />
+      <RangeSliderThumb {...end} value={values[1] as number} />
+    </RangeSlider>, recipe);
+  }
+  if (element.type === Slider && props.thumbs !== undefined) {
+    throw new TypeError("Single-value Slider cannot have thumbs.");
+  }
   const kind = element.type === Badge && props.interactive === true
     ? "badge-action" : primitiveKind;
   if (!kind) {
@@ -576,10 +620,11 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
   const controlSurface = kind === "select"
     || kind === "combobox"
     || kind === "text-input";
-  const ownsSurface = ownsFramedSurface || controlSurface || kind === "tooltip";
+  const ownsSurface = ownsFramedSurface || controlSurface || kind === "tooltip" || kind === "alert";
   const defaultsToSurface = controlSurface
     || isDialog
-    || kind === "overlay";
+    || kind === "overlay"
+    || kind === "alert";
   const surfaceVariant = ownsSurface
       ? resolveSurfaceVariant(
           props.variant,

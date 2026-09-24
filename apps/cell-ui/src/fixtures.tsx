@@ -16,10 +16,6 @@ const fixtures: Record<string, Fixture> = {
     id: "box",
     load: () => import("./sections/components").then(({ BoxComponentDemo }) => ({ default: BoxComponentDemo })),
   },
-  list: {
-    id: "list",
-    load: () => import("./sections/components").then(({ ListComponentDemo }) => ({ default: ListComponentDemo })),
-  },
   core: {
     id: "core",
     load: () => import("./sections/core-controls").then(({ CoreControlsDemo }) => ({ default: CoreControlsDemo })),

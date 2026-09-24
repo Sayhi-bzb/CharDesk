@@ -4,22 +4,16 @@ import {
   Grid,
   GridCell,
   GridRow,
-  List,
-  ListItem,
-  Menu,
-  MenuItem,
-  Overlay,
   Root,
   Tab,
   TabPanel,
   Tabs,
   Text,
   TextArea,
-  Tree,
-  TreeItem,
   auditSemanticSnapshot,
   createSemanticSnapshot,
 } from "./index.js";
+import { List, ListItem, Menu, MenuItem, Overlay, Tree, TreeItem } from "./react.js";
 import { CellTextEditor } from "./text.js";
 
 describe("SemanticSnapshot audit", () => {

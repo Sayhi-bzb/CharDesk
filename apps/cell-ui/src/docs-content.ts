@@ -59,6 +59,7 @@ export function AlertExample() {
 }`,
     api: [
       { name: "tone?", type: '"info" | "success" | "warning" | "error"', description: "Status meaning; info by default. Warning and error announce as alerts." },
+      { name: "variant?", type: '"surface" | "ghost"', description: "Status-colored surface by default; ghost keeps tone text, icon, and border without a fill." },
       { name: "border?", type: '"none" | "square" | "rounded"', description: "None by default; framed borders use the tone's foreground color." },
       { name: "style?", type: "CellLayoutStyle", description: "Width and layout overrides; default maximum width is 44 Cells." },
       { name: "children", type: "Cell primitives", description: "One AlertTitle, optional AlertDescription, and optional Button in order." },
@@ -511,17 +512,21 @@ export function SliderExample() {
       </Root>
     </CellSurface>
   );
-}`,
+}
+
+// Two endpoints use the same Slider; handle set-value by thumb id.
+<Slider id="range" label="Volume range" value={[25, 75]}
+  thumbs={[{ id: "start", label: "Minimum" }, { id: "end", label: "Maximum" }]} />`,
     api: [
-      { name: "value", type: "number", description: "Controlled numeric value projected onto the track." },
+      { name: "value", type: "number | readonly [number, number]", description: "Controlled single value or bounded interval." },
+      { name: "id / label", type: "string", description: "Required for an interval; names its group and command target." },
       { name: "min? / max?", type: "number", description: "Allowed range; defaults to 0–100." },
       { name: "step?", type: "number", description: "Keyboard and pointer increment; defaults to 1." },
-      { name: "valueText?", type: "string", description: "Human-readable aria-valuetext without visible UI." },
+      { name: "valueText?", type: "string", description: "Single-value aria-valuetext without visible UI." },
+      { name: "thumbs", type: "readonly [SliderThumb, SliderThumb]", description: "Required for an interval; each endpoint has an id and label, with optional valueText and focused state." },
       { name: "disabled?", type: "boolean", description: "Prevents focus, hover, keyboard, tap, and drag." },
-      { name: "focused?", type: "boolean", description: "Controlled logical focus state." },
-      { name: "RangeSlider", type: "compound", description: "Owns one shared track and exactly two direct thumbs." },
-      { name: "RangeSliderThumb", type: "id + label + value", description: "Owns one independently focused interval endpoint." },
-      { name: "WidgetCommand", type: "set-value", description: "Unifies keyboard, track tap, drag, and assistive input." },
+      { name: "focused?", type: "boolean", description: "Single-value logical focus; interval focus belongs to each thumb." },
+      { name: "WidgetCommand", type: "set-value", description: "Targets the Slider id for one value or the endpoint id for an interval." },
     ],
   },
   {
@@ -663,36 +668,6 @@ export function ScrollAreaExample() {
     ],
   },
   {
-    slug: "overlay", title: "Overlay", description: "Place a named Cell surface above the base Scene.",
-    usage: `import { Overlay, Root, Text } from "@chardesk/cell-ui";
-
-<Root><Overlay id="palette" label="Command palette" position={{ x: 2, y: 1 }}
-  style={{ width: 28, height: 6 }}>
-  <Text>Commands</Text>
-</Overlay></Root>`,
-    api: [
-      { name: "position", type: "CellPoint", description: "Placement in viewport Cells." },
-      { name: "modal?", type: "boolean", description: "Constrain focus and background semantics." },
-      { name: "closeOnOutsideClick?", type: "boolean", description: "Emit dismiss on outside pointer down; true by default." },
-      { name: "variant? / frame?", type: "SurfaceVariant / CellFrame", description: "Surface background and frame are independent." },
-    ],
-  },
-  {
-    slug: "range-slider", title: "RangeSlider", description: "Control two values on one Cell track.",
-    usage: `import { RangeSlider, RangeSliderThumb, Root } from "@chardesk/cell-ui";
-
-<Root><RangeSlider id="range" label="Volume range" min={0} max={100}>
-  <RangeSliderThumb id="start" label="Minimum" value={25} />
-  <RangeSliderThumb id="end" label="Maximum" value={75} />
-</RangeSlider></Root>`,
-    api: [
-      { name: "id / label", type: "string", description: "Stable command target and accessible group name." },
-      { name: "min? / max? / step?", type: "number", description: "Shared value bounds and increment." },
-      { name: "RangeSliderThumb.value", type: "number", description: "Controlled value; handle set-value commands by thumb ID." },
-      { name: "RangeSliderThumb.focused?", type: "boolean", description: "Logical thumb focus." },
-    ],
-  },
-  {
     slug: "text-area", title: "TextArea", description: "Edit multiline Cell text with retained selection and scrolling.",
     usage: `import { Root, TextArea } from "@chardesk/cell-ui";
 import { useCellTextState } from "@chardesk/cell-ui/browser";
@@ -705,49 +680,6 @@ const editor = useCellTextState("notes", { value: "Hello", multiline: true });
       { name: "label?", type: "string", description: "Accessible editor name." },
       { name: "variant? / frame?", type: "SurfaceVariant / CellFrame", description: "Independent background and Cell border." },
       { name: "style?", type: "CellLayoutStyle", description: "Editor viewport dimensions." },
-    ],
-  },
-  {
-    slug: "list", title: "List", description: "Present a navigable Cell collection with controlled focus and selection.",
-    usage: `import { List, ListItem, Root, Text } from "@chardesk/cell-ui";
-import { useCellListState } from "@chardesk/cell-ui/browser";
-
-const list = useCellListState([{ id: "a", label: "Alpha" }]);
-<Root><List label="Letters">{list.items.map((item) =>
-  <ListItem key={item.id} id={item.id} focused={list.focusedId === item.id}
-    selected={list.selectedId === item.id}><Text>{item.label}</Text></ListItem>
-)}</List></Root>`,
-    api: [
-      { name: "label?", type: "string", description: "Accessible collection name." },
-      { name: "ListItem.id", type: "string", description: "Stable focus and command target." },
-      { name: "ListItem.focused? / selected?", type: "boolean", description: "Externally controlled focus and selection." },
-      { name: "positionInSet? / setSize?", type: "number", description: "Logical position for virtualized collections." },
-    ],
-  },
-  {
-    slug: "menu", title: "Menu", description: "Navigate actions whose activation follows Cell feedback.",
-    usage: `import { Menu, MenuItem, Root, Text } from "@chardesk/cell-ui";
-
-<Root><Menu label="Actions"><MenuItem id="save"><Text>Save</Text></MenuItem></Menu></Root>`,
-    api: [
-      { name: "label?", type: "string", description: "Accessible menu name." },
-      { name: "MenuItem.id", type: "string", description: "Stable action target." },
-      { name: "MenuItem.focused?", type: "boolean", description: "Controlled keyboard focus." },
-      { name: "useCellMenuState", type: "items, options", description: "Handles navigation and action dispatch outside the renderer." },
-    ],
-  },
-  {
-    slug: "tree", title: "Tree", description: "Navigate hierarchical items with controlled expansion.",
-    usage: `import { Root, Text, Tree, TreeItem } from "@chardesk/cell-ui";
-
-<Root><Tree label="Files"><TreeItem id="src" level={1} hasChildren expanded>
-  <Text>src</Text>
-</TreeItem></Tree></Root>`,
-    api: [
-      { name: "label?", type: "string", description: "Accessible tree name." },
-      { name: "TreeItem.level", type: "number", description: "One-based depth in the logical tree." },
-      { name: "TreeItem.parentItemId?", type: "string", description: "Logical parent for navigation." },
-      { name: "expanded? / hasChildren?", type: "boolean", description: "Controlled disclosure state and affordance." },
     ],
   },
   {
@@ -824,7 +756,7 @@ import { CellSurface } from "@/lib/cell-ui/browser";
 <CellSurface viewport={{ width: 30, height: 4 }} onCommand={dispatch}>
   <Root><Text>Hello, Cells</Text></Root>
 </CellSurface>` },
-      { id: "state", title: "State and commands", body: "Application state remains outside the renderer. Pass controlled values and focused IDs into descriptors, then handle CellSurface onCommand or use the matching /browser state adapter. Menu actions complete after Cell feedback; direct adapter dispatch has no presentation lifecycle." },
+      { id: "state", title: "State and commands", body: "Application state remains outside the renderer. Pass controlled values and focused IDs into descriptors, then handle CellSurface onCommand or use the matching /browser state adapter. Direct adapter dispatch has no presentation lifecycle." },
       { id: "headless", title: "Headless hosts", body: "CellUiRuntime commits a dense Cell buffer and Scene without a browser. Headless hosts supply viewport, state, focus, and animationTimeMs explicitly. The browser adapter supplies font loading, pointer, input, and semantic focus." },
     ],
   },
@@ -834,7 +766,7 @@ import { CellSurface } from "@/lib/cell-ui/browser";
     sections: [
       { id: "defaults", title: "Defaults", body: "CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. resolveCellUiTheme(partial) applies overrides. Surface backgrounds are visual only and do not alter copied Cell text." },
       { id: "css", title: "CSS tokens", body: "The /browser entry exports readCellCssTheme(element) and useCellCssTheme(ref, revision). Apply CSS changes before the hook's layout effect; bump revision after external stylesheet changes. Use --cell-background, --cell-foreground, --cell-surface, --cell-surface-elevated, --cell-border, and component tokens to override recipes." },
-      { id: "surface", title: "Surface and frame", body: "Box, Overlay, ScrollArea, and TextArea separate variant (ghost or surface) from frame (none or bordered). Dialog and Tooltip use their own opaque variant and border recipe. Geometry belongs to CellLayoutStyle, not the theme." },
+      { id: "surface", title: "Surface and frame", body: "Box, ScrollArea, and TextArea separate variant (ghost or surface) from frame (none or bordered). Dialog and Tooltip use their own opaque variant and border recipe. Geometry belongs to CellLayoutStyle, not the theme." },
     ],
   },
   {

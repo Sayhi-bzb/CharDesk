@@ -15,6 +15,8 @@ import type {
   RootProps,
   ScrollAreaProps,
   SeparatorProps,
+  SliderProps,
+  SliderThumb,
   SelectContentProps,
   SelectProps,
   SelectTriggerProps,
@@ -34,6 +36,7 @@ type ComponentPropContract = [
   Expect<Lacks<RootProps, "label">>,
   Expect<Lacks<BoxProps, "label">>,
   Expect<Same<NonNullable<AlertProps["tone"]>, "info" | "success" | "warning" | "error">>,
+  Expect<Same<NonNullable<AlertProps["variant"]>, "surface" | "ghost">>,
   Expect<Same<NonNullable<AlertProps["border"]>, "none" | "square" | "rounded">>,
   Expect<Has<BoxProps, "variant">>,
   Expect<Has<BoxProps, "frame">>,
@@ -75,6 +78,13 @@ type ComponentPropContract = [
   Expect<Lacks<TooltipProps, "frame">>,
   Expect<Same<NonNullable<SeparatorProps["variant"]>, "line" | "slash" | "double" | "dots">>,
   Expect<Lacks<ProgressProps, "size">>,
+  Expect<Same<Extract<SliderProps, { value: number }>["value"], number>>,
+  Expect<Same<Extract<SliderProps, { value: readonly [number, number] }>["thumbs"], readonly [SliderThumb, SliderThumb]>>,
+  Expect<Lacks<typeof import("@chardesk/cell-ui"), "RangeSlider">>,
+  Expect<Lacks<typeof import("@chardesk/cell-ui"), "List">>,
+  Expect<Lacks<typeof import("@chardesk/cell-ui"), "Menu">>,
+  Expect<Lacks<typeof import("@chardesk/cell-ui"), "Tree">>,
+  Expect<Lacks<typeof import("@chardesk/cell-ui"), "Overlay">>,
 ];
 
 export type { ComponentPropContract };

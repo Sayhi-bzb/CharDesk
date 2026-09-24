@@ -7,7 +7,6 @@ import {
   Combobox,
   ComboboxInput,
   Dialog,
-  Overlay,
   Progress,
   Root,
   ScrollArea,
@@ -20,6 +19,7 @@ import {
   type CellUiRecipe,
   type WidgetDescriptor,
 } from "./index.js";
+import { Overlay } from "./react.js";
 
 const editor = new CellTextEditor({ value: "Text" });
 
