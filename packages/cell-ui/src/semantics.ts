@@ -33,6 +33,7 @@ export type SemanticAuditIssue = Readonly<{
 
 const descendantText = (tree: WidgetTree, node: WidgetNode): string => {
   if (node.text !== null) return node.text;
+  if (node.markdownCenteredText !== null) return node.markdownCenteredText;
   const content = node.children
     .map((id) => tree.nodes.get(id))
     .filter((child): child is WidgetNode => child !== undefined)

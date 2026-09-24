@@ -34,7 +34,7 @@ export function MarkdownExample() {
 
 ## API
 
-Source markers remain visible. Paragraphs may wrap; code and table spacing stays intact. Safe link labels emit open-link; raw HTML stays inert. Cell Range copies visible Cells, not the original file bytes.
+Source markers remain visible. Inline code uses inverse colors; tables align columns and short rules center without changing Cell Range copy. Paragraphs may wrap. Safe links remain interactive; raw HTML stays inert.
 
 | Prop | Type | Description |
 | --- | --- | --- |

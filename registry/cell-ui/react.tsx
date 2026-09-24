@@ -116,6 +116,10 @@ export type TextProps = Readonly<{
   children: string | number;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
+  /** Internal Markdown projection metadata. */
+  markdownCode?: boolean;
+  markdownSource?: boolean;
+  markdownLayoutOnly?: boolean;
 }>;
 export type MarkdownProps = Readonly<{
   id?: string;
@@ -127,11 +131,14 @@ type MarkdownBlockProps = Readonly<{
   role: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell";
   level?: number;
   style?: CellLayoutStyle;
+  markdownCenteredText?: string;
 }>;
 type MarkdownLinkProps = Readonly<{
   children: string;
   href: string;
   textStyle?: CellTextStyle;
+  markdownCode?: boolean;
+  markdownSource?: boolean;
 }>;
 export type ButtonProps = NamedContainerProps & Readonly<{
   variant?: ButtonVariant;
@@ -476,6 +483,10 @@ export type WidgetDescriptor = Readonly<{
   text: string | null;
   href: string | null;
   markdownRole: MarkdownBlockProps["role"] | null;
+  markdownCode: boolean;
+  markdownSource: boolean;
+  markdownLayoutOnly: boolean;
+  markdownCenteredText: string | null;
   textStyle: CellTextStyle;
   label: string | null;
   disabled: boolean;
@@ -533,18 +544,22 @@ const flattenChildren = (value: ReactNode, target: ReactNode[]): void => {
   target.push(value);
 };
 
-const markdownInlineNodes = (content: readonly MarkdownInline[]): ReactNode[] => content.flatMap((part, index) => {
+const markdownInlineNodes = (content: readonly MarkdownInline[], keyPrefix = ""): ReactNode[] => content.flatMap((part, index) => {
   const style = { bold: part.bold, italic: part.italic, strike: part.strike, underline: part.underline };
-  if (part.href) return [<MarkdownLink key={`link-${index}`} href={part.href} textStyle={style}>{part.text}</MarkdownLink>];
+  if (part.href) return [<MarkdownLink key={`${keyPrefix}link-${index}`} href={part.href} textStyle={style}
+    markdownCode={part.code} markdownSource>{part.text}</MarkdownLink>];
   return part.text.split(/(\s+)/u).filter(Boolean).map((piece, pieceIndex) =>
-    <Text key={`text-${index}-${pieceIndex}`} textStyle={style}>{piece}</Text>);
+    <Text key={`${keyPrefix}text-${index}-${pieceIndex}`} textStyle={style} markdownCode={part.code}
+      markdownSource>{piece}</Text>);
 });
 
 const markdownLineNode = (line: MarkdownSourceLine, key: string, roleOverride?: MarkdownBlockProps["role"]): ReactNode => {
   if (!line.text) return <Box key={key} style={{ height: 1 }} />;
+  if (line.kind === "rule") return <MarkdownBlock key={key} role="paragraph" markdownCenteredText={line.text}
+    style={{ width: "100%", height: 1, flexShrink: 0 }} />;
   const fixed = line.kind === "code" || line.kind === "table";
   const role = line.kind === "quote" ? "blockquote" : line.kind === "list" ? "listitem"
-    : line.kind === "rule" ? "paragraph" : line.kind === "table" ? "row" : line.kind;
+    : line.kind === "table" ? "row" : line.kind;
   return <MarkdownBlock key={key} role={roleOverride ?? role} level={line.level}
     style={{ direction: "row", wrap: !fixed, width: fixed ? Math.max(1, getTextCellWidth(line.text)) : "100%", flexShrink: 0 }}>
     {markdownInlineNodes(line.content)}
@@ -563,18 +578,42 @@ const markdownContentSlice = (content: readonly MarkdownInline[], start: number,
   return result;
 };
 
-const markdownTableRowNode = (line: MarkdownSourceLine, key: string): ReactNode => {
+const markdownTableCells = (line: MarkdownSourceLine) => {
   const separators = [...line.text.matchAll(/(?<!\\)\|/gu)].map((match) => match.index);
   const starts = [0, ...separators.filter((position) => position > 0)];
-  const cells = starts.map((start, index) => ({ start, end: starts[index + 1] ?? line.text.length }))
+  return starts.map((start, index) => ({ start, end: starts[index + 1] ?? line.text.length }))
     .filter(({ start, end }) => line.text.slice(start, end).trim() !== "|");
+};
+
+const markdownTableRowNode = (
+  line: MarkdownSourceLine,
+  key: string,
+  widths: readonly number[],
+  alignments: readonly ("left" | "center" | "right")[],
+): ReactNode => {
+  const cells = markdownTableCells(line);
   const end = cells.at(-1)?.end ?? 0;
+  const rowWidth = widths.reduce((sum, width) => sum + width, 0)
+    + getTextCellWidth(line.text.slice(end));
   return <MarkdownBlock key={key} role="row"
-    style={{ direction: "row", width: Math.max(1, getTextCellWidth(line.text)), flexShrink: 0 }}>
-    {cells.map(({ start, end }, index) => <MarkdownBlock key={index} role="cell"
-      style={{ direction: "row", width: Math.max(1, getTextCellWidth(line.text.slice(start, end))), flexShrink: 0 }}>
-      {markdownInlineNodes(markdownContentSlice(line.content, start, end))}
-    </MarkdownBlock>)}
+    style={{ direction: "row", width: Math.max(1, rowWidth), flexShrink: 0 }}>
+    {cells.map(({ start, end }, index) => {
+      const raw = line.text.slice(start, end);
+      const missing = Math.max(0, (widths[index] ?? 0) - getTextCellWidth(raw));
+      const alignment = alignments[index] ?? "left";
+      const before = alignment === "right" ? missing : alignment === "center" ? Math.floor(missing / 2) : 0;
+      const after = missing - before;
+      const pipe = raw.startsWith("|") ? 1 : 0;
+      const layoutSpace = (count: number, name: string) => count > 0
+        ? <Text key={name} markdownLayoutOnly>{" ".repeat(count)}</Text> : null;
+      return <MarkdownBlock key={index} role="cell"
+        style={{ direction: "row", width: Math.max(1, widths[index] ?? getTextCellWidth(raw)), flexShrink: 0 }}>
+        {pipe ? markdownInlineNodes(markdownContentSlice(line.content, start, start + pipe), "pipe-") : null}
+        {layoutSpace(before, "before")}
+        {markdownInlineNodes(markdownContentSlice(line.content, start + pipe, end), "content-")}
+        {layoutSpace(after, "after")}
+      </MarkdownBlock>;
+    })}
     {end < line.text.length ? markdownInlineNodes(markdownContentSlice(line.content, end, line.text.length)) : null}
   </MarkdownBlock>;
 };
@@ -590,10 +629,23 @@ const markdownNodes = (lines: readonly MarkdownSourceLine[]): ReactNode[] => {
     }
     const start = index;
     while (index < lines.length && lines[index]!.kind === kind) index++;
+    const tableLines = kind === "table" ? lines.slice(start, index) : [];
+    const tableCells = tableLines.map(markdownTableCells);
+    const columnCount = Math.max(0, ...tableCells.map((cells) => cells.length));
+    const widths = Array.from({ length: columnCount }, (_, column) => Math.max(1,
+      ...tableCells.map((cells, row) => {
+        const cell = cells[column];
+        return cell ? getTextCellWidth(tableLines[row]!.text.slice(cell.start, cell.end)) : 0;
+      })));
+    const alignments = Array.from({ length: columnCount }, (_, column): "left" | "center" | "right" => {
+      const delimiter = tableCells[1]?.[column];
+      const syntax = delimiter ? tableLines[1]!.text.slice(delimiter.start, delimiter.end).replace(/^\|/u, "").trim() : "";
+      return /^:-+:$/u.test(syntax) ? "center" : /^-+:$/u.test(syntax) ? "right" : "left";
+    });
     nodes.push(<MarkdownBlock key={start} role={kind} style={{ width: "100%" }}>
-      {lines.slice(start, index).map((line, offset) => kind === "table" && offset !== 1
-        ? markdownTableRowNode(line, `${start + offset}`)
-        : markdownLineNode(line, `${start + offset}`, kind === "table" ? "paragraph" : undefined))}
+      {lines.slice(start, index).map((line, offset) => kind === "table"
+        ? markdownTableRowNode(line, `${start + offset}`, widths, alignments)
+        : markdownLineNode(line, `${start + offset}`))}
     </MarkdownBlock>);
   }
   return nodes;
@@ -854,6 +906,11 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
     text,
     href: kind === "markdown-link" ? props.href as string : null,
     markdownRole: kind === "markdown-block" ? props.role as MarkdownBlockProps["role"] : null,
+    markdownCode: props.markdownCode === true,
+    markdownSource: props.markdownSource === true,
+    markdownLayoutOnly: props.markdownLayoutOnly === true,
+    markdownCenteredText: kind === "markdown-block" && typeof props.markdownCenteredText === "string"
+      ? props.markdownCenteredText : null,
     textStyle: { ...(element.type === DialogTitle || element.type === AlertTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
     label: alertLabel ?? (typeof props.label === "string" ? props.label : null),
     disabled: props.disabled === true,

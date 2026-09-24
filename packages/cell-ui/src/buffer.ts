@@ -83,7 +83,8 @@ export class CellBuffer {
     ownerId: WidgetId,
     style: CellTextStyle = EMPTY_STYLE,
     clip?: CellRect,
-    composition: CellComposition = "replace"
+    composition: CellComposition = "replace",
+    copyText?: string
   ): number {
     const width = getGraphemeCellWidth(text);
     if (!this.#contains(x, y, clip) || (width === 2 && !this.#contains(x + 1, y, clip))) return width;
@@ -101,6 +102,7 @@ export class CellBuffer {
       continuation: false,
       ownerId,
       style: styles[0]!,
+      ...(copyText !== undefined ? { copyText } : {}),
     };
     if (width === 2) {
       this.#cells[y * this.width + x + 1] = {
@@ -109,6 +111,7 @@ export class CellBuffer {
         continuation: true,
         ownerId,
         style: styles[1]!,
+        ...(copyText !== undefined ? { copyText: "" } : {}),
       };
     }
     return width;

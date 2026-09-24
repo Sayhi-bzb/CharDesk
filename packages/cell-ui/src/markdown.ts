@@ -5,6 +5,7 @@ export type MarkdownInline = Readonly<{
   bold?: boolean;
   italic?: boolean;
   strike?: boolean;
+  code?: boolean;
   underline?: boolean;
   href?: string;
 }>;
@@ -23,10 +24,10 @@ const safeHref = (href: string): string | undefined => {
   return /^[a-z][a-z\d+.-]*:/iu.test(value) ? undefined : value;
 };
 
-type Decoration = Pick<MarkdownInline, "bold" | "italic" | "strike" | "underline" | "href">;
+type Decoration = Pick<MarkdownInline, "bold" | "italic" | "strike" | "code" | "underline" | "href">;
 type Span = Readonly<{ start: number; end: number; decoration: Decoration }>;
 const sameDecoration = (left: Decoration, right: Decoration) => left.bold === right.bold
-  && left.italic === right.italic && left.strike === right.strike
+  && left.italic === right.italic && left.strike === right.strike && left.code === right.code
   && left.underline === right.underline && left.href === right.href;
 
 const inlineSpans = (source: string): Span[] => {
@@ -48,7 +49,8 @@ const inlineSpans = (source: string): Span[] => {
       } else if (children) visit(children, token.raw, start, decoration);
       else if (token.type === "codespan") {
         const inner = token.raw.indexOf(token.text);
-        if (inner >= 0) spans.push({ start: start + inner, end: start + inner + token.text.length, decoration });
+        if (inner >= 0) spans.push({ start: start + inner, end: start + inner + token.text.length,
+          decoration: { ...decoration, code: true } });
       } else if (token.type === "text" || token.type === "escape" || token.type === "br") {
         spans.push({ start, end: start + token.raw.length, decoration });
       }

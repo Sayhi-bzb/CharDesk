@@ -1006,7 +1006,7 @@ export function MarkdownExample() {
         { label: "markdown.ts", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts" },
         { label: "react.tsx", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx" },
       ] },
-      { id: "api", title: "API", body: "Source markers remain visible. Paragraphs may wrap; code and table spacing stays intact. Safe link labels emit open-link; raw HTML stays inert. Cell Range copies visible Cells, not the original file bytes.", api: [
+      { id: "api", title: "API", body: "Source markers remain visible. Inline code uses inverse colors; tables align columns and short rules center without changing Cell Range copy. Paragraphs may wrap. Safe links remain interactive; raw HTML stays inert.", api: [
         { name: "source", type: "string", description: "Markdown source to render." },
         { name: "id?", type: "string", description: "Stable identity for the document root." },
         { name: "style?", type: "CellLayoutStyle", description: "Document layout overrides." },

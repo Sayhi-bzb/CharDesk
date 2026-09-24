@@ -13,6 +13,10 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.text === right.text
   && left.href === right.href
   && left.markdownRole === right.markdownRole
+  && left.markdownCode === right.markdownCode
+  && left.markdownSource === right.markdownSource
+  && left.markdownLayoutOnly === right.markdownLayoutOnly
+  && left.markdownCenteredText === right.markdownCenteredText
   && left.label === right.label
   && left.disabled === right.disabled
   && left.focused === right.focused
@@ -78,6 +82,7 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.presentation !== after.presentation
   || before.text !== after.text
   || before.markdownRole !== after.markdownRole
+  || before.markdownCenteredText !== after.markdownCenteredText
   || before.buttonVariant !== after.buttonVariant
   || before.progressVariant !== after.progressVariant
   || before.tabsVariant !== after.tabsVariant
@@ -129,6 +134,10 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.surfaceVariant !== after.surfaceVariant
   || before.frame !== after.frame
   || before.borderShape !== after.borderShape
+  || before.markdownCode !== after.markdownCode
+  || before.markdownSource !== after.markdownSource
+  || before.markdownLayoutOnly !== after.markdownLayoutOnly
+  || before.markdownCenteredText !== after.markdownCenteredText
   || before.sliderValue !== after.sliderValue
   || before.sliderMin !== after.sliderMin
   || before.sliderMax !== after.sliderMax
@@ -141,6 +150,7 @@ const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
   before.label !== after.label
   || before.href !== after.href
   || before.markdownRole !== after.markdownRole
+  || before.markdownCenteredText !== after.markdownCenteredText
   || before.disabled !== after.disabled
   || before.focused !== after.focused
   || before.selected !== after.selected

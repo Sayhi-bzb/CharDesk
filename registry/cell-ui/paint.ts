@@ -1,6 +1,7 @@
 import { resolveWidgetVisual, resolveEditorGlyphStyle } from "./visual.js";
 import {
   getGraphemeCellWidth,
+  getTextCellWidth,
   iterateGraphemes,
 } from "@chardesk/protocol";
 import { CellBuffer } from "./buffer.js";
@@ -54,7 +55,8 @@ const paintText = (
   ownerId: string,
   style: CellTextStyle,
   bounds: CellRect,
-  clip: CellRect
+  clip: CellRect,
+  copyMode: "normal" | "source" | "layout" = "normal"
 ): void => {
   if (bounds.width <= 0 || bounds.height <= 0) return;
   let x = bounds.x;
@@ -74,7 +76,8 @@ const paintText = (
       y += 1;
     }
     if (y >= bottom || width > bounds.width) break;
-    buffer.writeGrapheme(x, y, segment, ownerId, style, clip, "over");
+    buffer.writeGrapheme(x, y, segment, ownerId, style, clip, "over",
+      copyMode === "layout" ? "" : copyMode === "source" ? segment : undefined);
     x += width;
   }
 };
@@ -299,6 +302,18 @@ export const paintScene = (
       }
 
       // Content: local text and editor glyphs stay within contentClip.
+      if (node.markdownCenteredText !== null) {
+        const centered = node.markdownCenteredText;
+        const left = entry.contentClip.x;
+        const width = entry.contentClip.width;
+        const offset = Math.max(0, Math.floor((width - getTextCellWidth(centered)) / 2));
+        for (let column = 0; column < width; column += 1) {
+          buffer.writeGrapheme(left + column, entry.contentBounds.y, " ", id, style, contentClip, "over", "");
+        }
+        paintText(buffer, centered, id, style,
+          { x: left + offset, y: entry.contentBounds.y, width: Math.max(0, width - offset), height: 1 },
+          contentClip, "source");
+      }
       if (node.kind === "text" || node.kind === "markdown-link" || node.kind === "table-head" || node.kind === "table-cell") {
         const singleLine = isSingleLineControlText(tree, node);
         paintText(
@@ -309,7 +324,8 @@ export const paintScene = (
           id,
           style,
           singleLine ? { ...entry.contentBounds, height: Math.min(1, entry.contentBounds.height) } : entry.contentBounds,
-          contentClip
+          contentClip,
+          node.markdownLayoutOnly ? "layout" : node.markdownSource ? "source" : "normal"
         );
       }
       if (node.kind === "tooltip") {

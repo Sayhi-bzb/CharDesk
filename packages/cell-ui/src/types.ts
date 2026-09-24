@@ -126,6 +126,10 @@ export type WidgetNode = Readonly<{
   text: string | null;
   href: string | null;
   markdownRole: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell" | null;
+  markdownCode: boolean;
+  markdownSource: boolean;
+  markdownLayoutOnly: boolean;
+  markdownCenteredText: string | null;
   textStyle: CellTextStyle;
   label: string | null;
   disabled: boolean;
@@ -287,6 +291,7 @@ export type FrameInvalidation = Readonly<{
 
 export type Cell = Readonly<{
   text: string;
+  copyText?: string;
   width: 1 | 2;
   continuation: boolean;
   ownerId: WidgetId | null;

@@ -54,8 +54,33 @@ export const normalizeCellRange = (
 export const extractCellRange = (
   buffer: CellBuffer,
   bounds: CellRect,
-  options: Readonly<{ trimEnd?: boolean }> = {}
-): string => buffer.toText({ region: bounds, trimEnd: options.trimEnd });
+  options: Readonly<{ trimEnd?: boolean; sourceAware?: boolean }> = {}
+): string => {
+  if (!options.sourceAware) return buffer.toText({ region: bounds, trimEnd: options.trimEnd });
+  const lines: string[] = [];
+  for (let y = bounds.y; y < bounds.y + bounds.height; y += 1) {
+    let line = "";
+    let trailingLayoutSpaces = 0;
+    for (let x = bounds.x; x < bounds.x + bounds.width; x += 1) {
+      const cell = buffer.get(x, y);
+      if (!cell) continue;
+      if (cell.continuation) {
+        if (x === bounds.x && cell.copyText === undefined) {
+          line += " ";
+          trailingLayoutSpaces++;
+        }
+        continue;
+      }
+      const copied = cell.width === 2 && x + 1 >= bounds.x + bounds.width
+        ? cell.copyText ?? " " : cell.copyText ?? cell.text;
+      line += copied;
+      if (copied && cell.copyText === undefined && /^ +$/u.test(copied)) trailingLayoutSpaces += copied.length;
+      else if (copied) trailingLayoutSpaces = 0;
+    }
+    lines.push(options.trimEnd ? line.slice(0, line.length - trailingLayoutSpaces) : line);
+  }
+  return lines.join("\n");
+};
 
 export const createCellRangeSnapshot = (
   buffer: CellBuffer,
@@ -74,7 +99,7 @@ export const createCellRangeSnapshot = (
       y: clamp(head.y, buffer.height - 1),
     },
     bounds,
-    text: extractCellRange(buffer, bounds, { trimEnd: true }),
+    text: extractCellRange(buffer, bounds, { trimEnd: true, sourceAware: true }),
   };
 };
 

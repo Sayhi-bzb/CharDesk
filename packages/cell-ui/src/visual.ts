@@ -194,7 +194,8 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     }
     return finish(resolvePrimitiveAppearance({ ...base, ...node.textStyle }, projection, theme));
   }
-  const style = resolveCellStateStyle({ ...base, ...node.textStyle }, {
+  const style = resolveCellStateStyle({ ...base, ...node.textStyle,
+    ...(node.markdownCode ? { color: theme.background, backgroundColor: theme.foreground } : {}) }, {
     focused,
     selected: owner?.selected,
     hovered: rule.region === "control" ? owner?.hovered : false,

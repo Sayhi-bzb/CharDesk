@@ -24,6 +24,12 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   expect(probe.text).toContain("[Philosophy](#/guides/philosophy)");
   expect(probe.cells.some((cell) => cell.style.bold && cell.text === "s")).toBe(true);
   expect(probe.cells.some((cell) => cell.style.italic)).toBe(true);
+  const inlineCodeRow = probe.text.split("\n").findIndex((line) => line.includes("`inline code`"));
+  const inlineCodeX = probe.text.split("\n")[inlineCodeRow]!.indexOf("`inline code`");
+  expect(probe.cells.find((cell) => cell.x === inlineCodeX && cell.y === inlineCodeRow)?.style.backgroundColor)
+    .toBeUndefined();
+  expect(probe.cells.find((cell) => cell.x === inlineCodeX + 1 && cell.y === inlineCodeRow)?.style.backgroundColor)
+    .toBe("rgb(0, 0, 0)");
   const link = surface.getByRole("link", { name: /Philosophy/u });
   await expect(link).toHaveAttribute("data-href", "#/guides/philosophy");
   await expect(link).toHaveAttribute("href", "#/guides/philosophy");
@@ -80,6 +86,7 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   await scrollTo("> Source stays yours.");
   await scrollTo("```ts");
   await scrollTo("| Element | Cell output |");
+  await scrollTo("| Link");
   await scrollTo("~~Old wording~~");
   const strikeProbe = await readCellProbe(surface);
   const strikeRow = strikeProbe.text.split("\n").findIndex((line) => line.includes("~~Old wording~~"));

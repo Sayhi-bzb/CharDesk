@@ -97,7 +97,7 @@ const ready = true;
 ## Table
 
 | Element | Cell output |
-| --- | --- |
+| :--- | ---: |
 | Link | Focusable |
 | List | Structured |
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CellUiRuntime, FocusManager, Markdown, Root, ScrollArea, auditSemanticSnapshot, commandForInput, createCellUiRenderFrame, createKeyInput, extractCellRange } from "./index.js";
+import { CellUiRuntime, FocusManager, Markdown, Root, ScrollArea, auditSemanticSnapshot, commandForInput, createCellRangeSnapshot, createCellUiRenderFrame, createKeyInput, extractCellRange, resolveCellUiTheme } from "./index.js";
 import { parseCellMarkdown } from "./markdown.js";
 
 describe("Markdown typography", () => {
@@ -53,18 +53,21 @@ describe("Markdown typography", () => {
     expect(text).toContain("- Parent");
     expect(text).toContain("  - Child");
     expect(text).toContain("| Name | Value |");
-    expect(text).toContain("| --- | --- |");
+    expect(text).toContain("| ---  | ---   |");
+    expect(createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 19, y: 5 })?.text)
+      .toContain("| --- | --- |");
     expect(text).toContain("世界");
     expect([...frame.semantics.nodes.values()].map((node) => node.role)).toEqual(expect.arrayContaining([
       "list", "listitem", "table", "row", "cell",
     ]));
     const rows = [...frame.tree.nodes.values()].filter((node) => node.markdownRole === "row");
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
     const cellXs = (rowId: string) => frame.tree.nodes.get(rowId)!.children
       .filter((id) => frame.tree.nodes.get(id)?.markdownRole === "cell")
       .map((id) => frame.scene.entries.get(id)!.layoutBounds.x);
     expect(cellXs(rows[0]!.id)).toEqual([0, 7]);
-    expect(cellXs(rows[1]!.id)).toEqual([0, 4]);
+    expect(cellXs(rows[1]!.id)).toEqual([0, 7]);
+    expect(cellXs(rows[2]!.id)).toEqual([0, 7]);
     expect(auditSemanticSnapshot(frame.semantics)).toEqual([]);
     runtime.dispose();
   });
@@ -84,6 +87,9 @@ describe("Markdown typography", () => {
     const frame = runtime.render(<Root><Markdown source={source} /></Root>);
     expect(frame.buffer.toText({ trimEnd: true }).split("\n").slice(0, 7)).toEqual(source.split("\n"));
     const styled = (x: number, y: number) => frame.buffer.get(x, y)!.style;
+    expect(styled(0, 0).backgroundColor).toBeUndefined();
+    expect(styled(1, 0)).toMatchObject({ color: "#FFFFFF", backgroundColor: "#000000" });
+    expect(styled(12, 0).backgroundColor).toBeUndefined();
     expect(styled(0, 1).strike).not.toBe(true);
     expect(styled(2, 1).strike).toBe(true);
     expect(styled(13, 1).strike).not.toBe(true);
@@ -106,6 +112,44 @@ describe("Markdown typography", () => {
     expect(first.scene.entries.get("markdown-scroll")?.scrollMetrics?.horizontalTrack).toBeDefined();
     expect(first.buffer.toText({ trimEnd: true })).toContain("Left columns");
     expect(render(15).buffer.toText({ trimEnd: true })).toContain("Right columns");
+    runtime.dispose();
+  });
+
+  it("aligns ragged table columns and centers a short rule without changing Cell Range copy", () => {
+    const source = "| Left | Right |\n| :--- | ---: |\n| x | long |\n\n---";
+    const runtime = new CellUiRuntime({ viewport: { width: 32, height: 6 } });
+    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
+    const visual = frame.buffer.toText({ trimEnd: true }).split("\n");
+    expect(visual[0]).toContain("| Left | Right |");
+    expect(visual[2]).toContain("| x    |  long |");
+    expect(visual[4]).toBe(`${" ".repeat(14)}---`);
+    expect(createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 31, y: 4 })?.text)
+      .toBe(source);
+    runtime.dispose();
+  });
+
+  it("keeps source whitespace in a partial range and inverts inline code in dark mode", () => {
+    const theme = resolveCellUiTheme({ background: "#000000", foreground: "#FFFFFF" });
+    const source = "| 中 | value |\n| :- | --: |\n| x | y |\n\n---  \n`code`";
+    const runtime = new CellUiRuntime({ viewport: { width: 24, height: 6 }, theme });
+    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
+    expect(createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 23, y: 5 })?.text).toBe(source);
+    const partial = createCellRangeSnapshot(frame.buffer, { x: 0, y: 2 }, { x: 11, y: 2 })?.text;
+    expect(partial).toBe("| x | y");
+    expect(frame.buffer.get(0, 5)?.style.backgroundColor).toBeUndefined();
+    expect(frame.buffer.get(1, 5)?.style).toMatchObject({ color: "#000000", backgroundColor: "#FFFFFF" });
+    runtime.dispose();
+  });
+
+  it("centers a rule in the visible viewport beside a horizontally scrolling table", () => {
+    const source = "| A very long heading | Another heading |\n| --- | --- |\n| x | y |\n\n---";
+    const runtime = new CellUiRuntime({ viewport: { width: 16, height: 6 } });
+    const frame = runtime.render(<Root><ScrollArea style={{ width: 16, height: 6 }}>
+      <Markdown source={source} />
+    </ScrollArea></Root>);
+    expect(frame.scene.entries.get([...frame.tree.nodes.values()].find((node) => node.kind === "scroll-area")!.id)
+      ?.scrollMetrics?.horizontalTrack).toBeDefined();
+    expect(frame.buffer.toText({ trimEnd: true }).split("\n")[4]).toBe("      ---");
     runtime.dispose();
   });
 

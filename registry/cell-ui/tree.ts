@@ -92,6 +92,10 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       text: current.text,
       href: current.href,
       markdownRole: current.markdownRole,
+      markdownCode: current.markdownCode,
+      markdownSource: current.markdownSource,
+      markdownLayoutOnly: current.markdownLayoutOnly,
+      markdownCenteredText: current.markdownCenteredText,
       textStyle: current.textStyle,
       label: current.label,
       disabled: current.disabled || inheritedDisabled || (
