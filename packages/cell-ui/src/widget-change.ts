@@ -20,6 +20,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.markdownCenteredText === right.markdownCenteredText
   && left.label === right.label
   && left.disabled === right.disabled
+  && left.invalid === right.invalid
   && left.focused === right.focused
   && left.focusActive === right.focusActive
   && left.focusVisible === right.focusVisible
@@ -43,6 +44,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.tabsVariant === right.tabsVariant
   && left.separatorVariant === right.separatorVariant
   && left.buttonVariant === right.buttonVariant
+  && left.buttonTone === right.buttonTone
   && left.badgeTone === right.badgeTone
   && left.sliderValue === right.sliderValue
   && left.sliderMin === right.sliderMin
@@ -85,6 +87,7 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.markdownRole !== after.markdownRole
   || before.markdownCenteredText !== after.markdownCenteredText
   || before.buttonVariant !== after.buttonVariant
+  || before.buttonTone !== after.buttonTone
   || before.progressVariant !== after.progressVariant
   || before.tabsVariant !== after.tabsVariant
   || before.frame !== after.frame
@@ -131,6 +134,7 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.tabsVariant !== after.tabsVariant
   || before.separatorVariant !== after.separatorVariant
   || before.buttonVariant !== after.buttonVariant
+  || before.buttonTone !== after.buttonTone
   || before.badgeTone !== after.badgeTone
   || before.surfaceVariant !== after.surfaceVariant
   || before.frame !== after.frame
@@ -145,11 +149,13 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.sliderMax !== after.sliderMax
   || before.expanded !== after.expanded
   || before.disabled !== after.disabled
+  || before.invalid !== after.invalid
   || !sameWidgetValue(before.textStyle, after.textStyle)
   || !sameWidgetValue(before.textEditor, after.textEditor);
 
 const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
   before.label !== after.label
+  || before.invalid !== after.invalid
   || before.href !== after.href
   || before.markdownRole !== after.markdownRole
   || before.markdownCenteredText !== after.markdownCenteredText

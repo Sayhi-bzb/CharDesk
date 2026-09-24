@@ -9,23 +9,21 @@ Install the full editable source in a React project with components.json and ali
 ## Usage
 
 ```tsx
-import { Box, Root, Text, TextInput } from "@/lib/cell-ui";
+import { Field, Root, TextInput } from "@/lib/cell-ui";
 import { CellSurface, useCellTextState } from "@/lib/cell-ui/browser";
 
 export function InputExample() {
   const input = useCellTextState("file-name", { value: "notes.txt" });
   return (
-    <CellSurface viewport={{ width: 36, height: 2 }} onCommand={input.dispatch}>
+    <CellSurface viewport={{ width: 36, height: 3 }} onCommand={input.dispatch}>
       <Root id="root">
-        <Box>
-          <Text>File name</Text>
+        <Field id="file-name-field" label="File name" error={input.snapshot.value ? undefined : "Required"}>
           <TextInput
             id="file-name"
-            label="File name"
             state={input.snapshot}
             style={{ width: 36 }}
           />
-        </Box>
+        </Field>
       </Root>
     </CellSurface>
   );
@@ -49,3 +47,4 @@ export function InputExample() {
 | `variant?` | `"surface" \| "ghost"` | Local surface recipe; overrides the global recipe and otherwise defaults to surface. |
 | `style?` | `CellSingleLineInputStyle` | Width constraints and flex behavior; height, padding, and border belong to the component. |
 | `textStyle?` | `CellTextStyle` | Foreground, background, and emphasis. |
+| `Field` | `{ id: string; label: string; error?: string; style?: CellLayoutStyle }` | Optional shared label and validation message for TextInput, TextArea, Select, or Combobox. The focus-bearing control receives aria-invalid and the error description. |

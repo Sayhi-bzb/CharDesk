@@ -145,6 +145,7 @@ type MarkdownLinkProps = Readonly<{
 }>;
 export type ButtonProps = NamedContainerProps & Readonly<{
   variant?: ButtonVariant;
+  tone?: "danger";
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
@@ -343,6 +344,13 @@ export type TextInputProps = Omit<TextEditorProps, "style"> & Readonly<{
   style?: CellSingleLineInputStyle;
 }>;
 export type TextAreaProps = TextEditorProps & SurfaceAppearanceProps;
+export type FieldProps = Readonly<{
+  id: string;
+  label: string;
+  error?: string;
+  style?: CellLayoutStyle;
+  children: ReactElement<TextInputProps | TextAreaProps | SelectProps | ComboboxProps>;
+}>;
 
 type PrimitiveProps =
   | RootProps
@@ -473,6 +481,8 @@ const TablePart = primitive<TablePartProps>("table");
 export const ScrollArea = primitive<ScrollAreaProps>("scroll-area");
 export const TextInput = primitive<TextInputProps>("text-input");
 export const TextArea = primitive<TextAreaProps>("text-area");
+export const Field = (() => null) as ComponentType<FieldProps>;
+Field.displayName = "CellField";
 
 export type WidgetDescriptor = Readonly<{
   kind: WidgetKind;
@@ -507,7 +517,10 @@ export type WidgetDescriptor = Readonly<{
   tabsVariant: TabsVariant;
   separatorVariant: SeparatorVariant;
   buttonVariant: ButtonVariant;
+  buttonTone: "neutral" | "danger";
   badgeTone: BadgeTone;
+  invalid: boolean;
+  describedById?: string;
   sliderValue: number;
   sliderMin: number;
   sliderMax: number;
@@ -691,6 +704,37 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
 
   const primitiveKind = kinds.get(element.type);
   const props = element.props as Record<string, unknown>;
+  if (element.type === Field) {
+    const field = props as FieldProps;
+    if (!field.id?.trim() || !field.label?.trim() || !isValidElement(field.children)) {
+      throw new TypeError("Field requires a non-empty id, label, and one input control.");
+    }
+    const expected = field.children.type === TextInput || field.children.type === TextArea
+      ? field.children.type === TextInput ? "text-input" : "text-area"
+      : field.children.type === Select ? "select-trigger"
+      : field.children.type === Combobox ? "combobox-input" : null;
+    if (!expected) throw new TypeError("Field accepts TextInput, TextArea, Select, or Combobox.");
+    const error = field.error?.trim() ? field.error : "";
+    const errorId = `${field.id}-error`;
+    const input = describe(field.children, recipe, presentation);
+    let matched = 0;
+    const mark = (node: WidgetDescriptor): WidgetDescriptor => {
+      if (node.kind === expected) {
+        matched += 1;
+        return { ...node, label: field.label, invalid: !!error,
+          ...(error ? { describedById: errorId } : {}) };
+      }
+      return { ...node, children: node.children.map(mark) };
+    };
+    const marked = input.map(mark);
+    if (matched !== 1) throw new TypeError(`Field requires exactly one ${expected} control.`);
+    const [box] = describe(<Box id={field.id} style={{ width: "100%", gap: 0, ...field.style }}>
+      <Text>{field.label}</Text>
+    </Box>, recipe, presentation);
+    const errorNode = error ? describe(<Text id={errorId}>{`! ${error}`}</Text>, recipe, presentation)
+      .map((node) => ({ ...node, invalid: true })) : [];
+    return [{ ...box!, children: [...box!.children, ...marked, ...errorNode] }];
+  }
   if (element.type === Table) {
     const { columns, label } = props as TableProps;
     const variant = presentedTableVariant(presentation, resolveTableVariant(props.variant));
@@ -930,6 +974,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
     textStyle: { ...(element.type === DialogTitle || element.type === AlertTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
     label: alertLabel ?? (typeof props.label === "string" ? props.label : null),
     disabled: props.disabled === true,
+    invalid: false,
     focused: props.focused === true,
     selected: props.selected === true,
     active: props.active === true,
@@ -952,6 +997,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
     separatorVariant: kind === "separator" ? resolveSeparatorVariant(props.variant) : "line",
     buttonVariant: kind === "button"
       ? presentedButtonVariant(presentation, resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")) : "solid",
+    buttonTone: kind === "button" && props.tone === "danger" ? "danger" : "neutral",
     badgeTone: kind === "alert" ? resolveAlertTone(props.tone)
       : kind === "badge" || kind === "badge-action" ? resolveBadgeTone(props.tone) : "neutral",
     sliderValue: kind === "range-slider-thumb"

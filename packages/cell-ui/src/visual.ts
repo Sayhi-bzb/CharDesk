@@ -130,6 +130,7 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
       ...(node.kind === "alert"
         ? { color: theme.badgeStyles[node.badgeTone].color ?? theme.borderStyle.color }
         : {}),
+      ...(node.invalid ? { color: theme.semanticColors.danger.text } : {}),
       ...(projection.editingActive && node.kind !== "text-area"
         ? { color: style.color, backgroundColor: style.backgroundColor } : {}),
     },
@@ -139,6 +140,8 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     const surface = surfaceStyleForNode(tree, node, theme);
     const borderBaseStyle = {
       ...(surface ?? (singleLine ? theme.elevatedSurfaceStyle : {})),
+      ...(node.invalid && !node.disabled ? { color: theme.semanticColors.danger.surfaceForeground,
+        backgroundColor: theme.semanticColors.danger.surface } : {}),
       ...node.textStyle,
       ...(projection.disabled ? theme.disabledStyle : {}),
     };
@@ -188,18 +191,30 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
       backgroundColor: theme.markdownColors.codeBackground } : {}),
   };
   const base = solid
-    ? disabled ? theme.surfaceStyle : theme.buttonSolidStyle
+    ? disabled ? theme.surfaceStyle : owner?.buttonTone === "danger"
+      ? { color: theme.background,
+        backgroundColor: theme.semanticColors.danger.text } : theme.buttonSolidStyle
     : owner?.kind === "button" && owner.buttonVariant === "surface"
-      ? { color: theme.foreground, ...theme.elevatedSurfaceStyle }
+      ? owner.buttonTone === "danger"
+        ? { color: theme.semanticColors.danger.surfaceForeground,
+          backgroundColor: theme.semanticColors.danger.surface }
+        : { color: theme.foreground, ...theme.elevatedSurfaceStyle }
     : surface ?? {};
+  const semanticBase = {
+    ...base,
+    ...(!disabled && owner?.kind === "button" && owner.buttonTone === "danger" && !solid
+      && owner.buttonVariant !== "surface" ? { color: theme.semanticColors.danger.text } : {}),
+    ...(!disabled && (node.invalid || owner?.invalid) && owner?.kind !== "button"
+      ? { color: theme.semanticColors.danger.text } : {}),
+  };
   if (owner && isPrimitiveControlKind(owner.kind)) {
     if (rule.region === "thumb") {
-      const appearance = resolveThumbAppearance({ ...base, ...node.textStyle, ...markdownStyle }, projection, theme);
+      const appearance = resolveThumbAppearance({ ...semanticBase, ...node.textStyle, ...markdownStyle }, projection, theme);
       return finish(appearance.style, appearance.thumb);
     }
-    return finish(resolvePrimitiveAppearance({ ...base, ...node.textStyle, ...markdownStyle }, projection, theme));
+    return finish(resolvePrimitiveAppearance({ ...semanticBase, ...node.textStyle, ...markdownStyle }, projection, theme));
   }
-  const style = resolveCellStateStyle({ ...base, ...node.textStyle, ...markdownStyle }, {
+  const style = resolveCellStateStyle({ ...semanticBase, ...node.textStyle, ...markdownStyle }, {
     focused,
     selected: owner?.selected,
     hovered: rule.region === "control" ? owner?.hovered : false,

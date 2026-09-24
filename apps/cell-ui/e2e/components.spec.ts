@@ -105,7 +105,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   const widePlayground = await readCellProbe(page.locator('[data-cell-probe="component-button"]'));
   expect(widePlayground.viewport).toEqual({
     width: Math.floor(wideHostBounds!.width / 9),
-    height: 7,
+    height: 9,
   });
   const wideDivider = widePlayground.cells.find(
     (cell) => cell.ownerId === "component-button-playground-divider-0",
@@ -118,7 +118,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await page.setViewportSize({ width: 320, height: 700 });
   await expect.poll(async () => (await readCellProbe(
     page.locator('[data-cell-probe="component-button"]'),
-  )).viewport).toEqual({ width: 32, height: 15 });
+  )).viewport).toEqual({ width: 32, height: 19 });
   const narrowPlayground = await readCellProbe(page.locator('[data-cell-probe="component-button"]'));
   const narrowLines = narrowPlayground.text.split("\n");
   expect(narrowLines.some((line) => line.includes("[ ] disabled"))).toBe(true);
@@ -738,7 +738,7 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   await expect(disabled).toHaveAttribute("aria-checked", "false");
 
   const initial = await readCellProbe(surface);
-  expect(initial.viewport.height).toBe(7);
+  expect(initial.viewport.height).toBe(9);
   const baseCanvas = surface.locator("canvas:not([data-cell-overlay-root])");
   const initialSurfaceBounds = await surface.boundingBox();
   const initialHostBounds = await page.locator(".component-playground").boundingBox();

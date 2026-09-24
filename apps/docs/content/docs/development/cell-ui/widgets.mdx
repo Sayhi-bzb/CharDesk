@@ -25,6 +25,7 @@ description: State, input, scroll, and editor behavior contracts.
 - 解析后的状态背景覆盖 Widget 完整布局矩形，包括空白 Cell；透明状态不填充。
 - `inline-control-chrome.ts` 统一行内 spacing recipe：Button、Badge 与 TextInput 默认左右各留 1 个 content Cell，Button/Badge 可通过 `style.paddingLeft/Right` 覆盖；Checkbox、RadioItem、Toggle、Select 与 Combobox 提供固定 guard、状态标记和间隔；guard 是 owner-aware 空 Cell。border、collection disclosure、Tab underline 和 scrollbar 保持独立 chrome 职责。
 - Badge 默认是只读状态文字；`interactive` 才加入共享焦点、按压、确认和 `activate` 命令。`tone` 从主题的成对前景／背景色中取值，文字和语义不依赖颜色；不自动作为 live region 播报。
+- `Field` 可选地包裹一个 TextInput、TextArea、Select 或 Combobox，以同一行文契约显示 label 与 `!` 错误文字。非空 `error` 将 `invalid` 传给实际获焦的控件，并以错误节点关联 `aria-describedby`；无错误时不改写输入状态。Button 的 `tone="danger"` 使用共享 danger token，`variant` 仍只控制外观。
 
 ## 双呈现
 

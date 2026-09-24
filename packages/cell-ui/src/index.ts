@@ -1,6 +1,8 @@
 export { CellBuffer } from "./buffer.js";
 export { Alert, AlertTitle, AlertDescription } from "./react.js";
 export { Markdown } from "./react.js";
+export { Field } from "./react.js";
+export type { FieldProps } from "./react.js";
 export type { MarkdownProps } from "./react.js";
 export type { AlertProps, AlertTitleProps, AlertDescriptionProps } from "./react.js";
 export type { AlertTone } from "./alert.js";

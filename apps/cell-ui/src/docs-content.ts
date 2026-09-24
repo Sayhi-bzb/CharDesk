@@ -27,6 +27,7 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   separator: ["react.tsx", "separator.ts"],
   radio: ["react.tsx", "browser-collections.tsx"],
   button: ["react.tsx", "button.ts"],
+  field: ["react.tsx", "semantics.ts", "visual.ts"],
   badge: ["react.tsx", "badge.ts", "theme.ts"],
   select: ["react.tsx", "browser-collections.tsx"],
   combobox: ["react.tsx", "combobox.ts", "browser-combobox.tsx"],
@@ -398,6 +399,7 @@ export function ButtonExample() {
       { name: "id?", type: "string", description: "Stable focus and activate command target." },
       { name: "label?", type: "string", description: "Accessible name; descendant text is the fallback." },
       { name: "variant?", type: '"solid" | "surface" | "outline" | "ghost"', description: "Local visual recipe; overrides the global recipe and otherwise defaults to solid." },
+      { name: "tone?", type: '"danger"', description: "Use the shared danger color for an explicitly destructive action; neutral by default." },
       { name: "disabled?", type: "boolean", description: "Prevents focus, hover, and activation." },
       { name: "focused?", type: "boolean", description: "Controlled logical focus state." },
       { name: "children?", type: "ReactNode", description: "Cell-native button content." },
@@ -703,23 +705,21 @@ export function SliderExample() {
     slug: "input",
     title: "Input",
     description: "Edit a single line of Unicode text on the Cell grid.",
-    usage: `import { Box, Root, Text, TextInput } from "@chardesk/cell-ui";
+    usage: `import { Field, Root, TextInput } from "@chardesk/cell-ui";
 import { CellSurface, useCellTextState } from "@chardesk/cell-ui/browser";
 
 export function InputExample() {
   const input = useCellTextState("file-name", { value: "notes.txt" });
   return (
-    <CellSurface viewport={{ width: 36, height: 2 }} onCommand={input.dispatch}>
+    <CellSurface viewport={{ width: 36, height: 3 }} onCommand={input.dispatch}>
       <Root id="root">
-        <Box>
-          <Text>File name</Text>
+        <Field id="file-name-field" label="File name" error={input.snapshot.value ? undefined : "Required"}>
           <TextInput
             id="file-name"
-            label="File name"
             state={input.snapshot}
             style={{ width: 36 }}
           />
-        </Box>
+        </Field>
       </Root>
     </CellSurface>
   );
@@ -733,6 +733,7 @@ export function InputExample() {
       { name: "variant?", type: '"surface" | "ghost"', description: "Local surface recipe; overrides the global recipe and otherwise defaults to surface." },
       { name: "style?", type: "CellSingleLineInputStyle", description: "Width constraints and flex behavior; height, padding, and border belong to the component." },
       { name: "textStyle?", type: "CellTextStyle", description: "Foreground, background, and emphasis." },
+      { name: "Field", type: "{ id: string; label: string; error?: string; style?: CellLayoutStyle }", description: "Optional shared label and validation message for TextInput, TextArea, Select, or Combobox. The focus-bearing control receives aria-invalid and the error description." },
     ],
   },
   {

@@ -102,6 +102,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       disabled: current.disabled || inheritedDisabled || (
         (current.kind === "range-slider-thumb" || current.kind === "radio-item") && parent?.disabled === true
       ),
+      invalid: current.invalid,
       focused: current.focused,
       focusActive: false,
       focusVisible: false,
@@ -123,6 +124,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       tabsVariant: current.kind === "tab" && parent?.kind === "tabs" ? parent.tabsVariant : current.tabsVariant,
       separatorVariant: current.separatorVariant,
       buttonVariant: current.buttonVariant,
+      buttonTone: current.buttonTone,
       badgeTone: current.badgeTone,
       sliderValue: current.sliderValue,
       sliderMin: current.sliderMin,
@@ -143,6 +145,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       controlsId: current.controlsId,
       activeDescendantId: current.activeDescendantId,
       labelledById: current.labelledById,
+      describedById: current.describedById,
       textEditor: current.textEditor,
       readOnly: current.readOnly,
       overlayPosition: current.overlayPosition,

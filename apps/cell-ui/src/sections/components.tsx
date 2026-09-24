@@ -13,6 +13,7 @@ import {
   AccordionTrigger,
   AccordionContent,
   Button,
+  Field,
   Badge,
   Checkbox,
   Combobox,
@@ -515,6 +516,7 @@ export const BoxComponentDemo = () => {
 
 export const ButtonComponentDemo = () => {
   const [disabled, setDisabled] = useState(false);
+  const [danger, setDanger] = useState(false);
   const variant = useCellSelectState("component-button-variant", buttonVariantItems, {
     defaultSelectedId: "solid",
   });
@@ -528,9 +530,13 @@ export const ButtonComponentDemo = () => {
     if (command.type === "activate" && command.targetId === "component-button-disabled") {
       setDisabled((current) => !current);
     }
+    if (command.type === "activate" && command.targetId === "component-button-danger") {
+      setDanger((current) => !current);
+    }
   };
   return <ComponentPlayground
     id="component-button-playground"
+    rows={9}
     focusedId={focus.focusedId}
     onCommand={dispatch}
     label="Button component"
@@ -543,6 +549,7 @@ export const ButtonComponentDemo = () => {
         id="component-button-save"
         label="Save document"
         variant={variant.selectedId as ButtonVariant}
+        tone={danger ? "danger" : undefined}
         disabled={disabled}
         focused={focus.focusedId === "component-button-save"}
       ><Text>{previewText}</Text></Button>
@@ -550,6 +557,7 @@ export const ButtonComponentDemo = () => {
     controls={[
       renderRichOnlySelectControl("variant", variant, focus.focusedId),
       renderPlaygroundSelectControl("content", content, focus.focusedId),
+      renderPlaygroundCheckboxControl("danger", "component-button-danger", danger, focus.focusedId),
       renderPlaygroundCheckboxControl(
         "disabled",
         "component-button-disabled",
@@ -948,6 +956,7 @@ export const InputComponentDemo = () => {
     value: "notes.txt",
   });
   const [disabled, setDisabled] = useState(false);
+  const [invalid, setInvalid] = useState(false);
   const variant = useCellSelectState("component-input-variant", surfaceVariantItems, {
     defaultSelectedId: "surface",
   });
@@ -957,6 +966,9 @@ export const InputComponentDemo = () => {
     input.dispatch(command);
     if (command.type === "activate" && command.targetId === "component-input-disabled") {
       setDisabled((current) => !current);
+    }
+    if (command.type === "activate" && command.targetId === "component-input-invalid") {
+      setInvalid((current) => !current);
     }
   };
   return <ComponentPlayground
@@ -969,8 +981,8 @@ export const InputComponentDemo = () => {
     controlsColumns={25}
     overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={
-      <Box id="component-input-frame" variant="ghost" style={{ width: 30 }}>
-        <Text id="component-input-label">File name</Text>
+      <Field id="component-input-frame" label="File name"
+        error={invalid ? "File name is required" : undefined} style={{ width: 30 }}>
         <TextInput
           id="component-input-field"
           label="File name"
@@ -980,10 +992,11 @@ export const InputComponentDemo = () => {
           variant={variant.selectedId as SurfaceVariant}
           style={{ width: 30 }}
         />
-      </Box>
+      </Field>
     }
     controls={[
       renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+      renderPlaygroundCheckboxControl("invalid", "component-input-invalid", invalid, focus.focusedId),
       renderPlaygroundCheckboxControl(
         "disabled",
         "component-input-disabled",

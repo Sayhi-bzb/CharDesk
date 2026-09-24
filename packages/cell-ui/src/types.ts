@@ -134,6 +134,7 @@ export type WidgetNode = Readonly<{
   textStyle: CellTextStyle;
   label: string | null;
   disabled: boolean;
+  invalid: boolean;
   focused: boolean;
   focusActive: boolean;
   focusVisible: boolean;
@@ -157,6 +158,7 @@ export type WidgetNode = Readonly<{
   tabsVariant: import("./tabs.js").TabsVariant;
   separatorVariant: import("./separator.js").SeparatorVariant;
   buttonVariant: import("./button.js").ButtonVariant;
+  buttonTone: "neutral" | "danger";
   badgeTone: import("./badge.js").BadgeTone;
   sliderValue: number;
   sliderMin: number;
@@ -347,6 +349,7 @@ export type SemanticNode = Readonly<{
   label: string;
   href?: string;
   disabled: boolean;
+  invalid?: boolean;
   hidden: boolean;
   focused: boolean;
   selected?: boolean;

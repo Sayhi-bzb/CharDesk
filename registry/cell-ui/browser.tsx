@@ -462,6 +462,7 @@ export const SemanticDom = ({
         aria-expanded={node.expanded}
         aria-haspopup={node.hasPopup}
         aria-disabled={node.disabled || undefined}
+        aria-invalid={node.invalid || undefined}
         aria-modal={node.role === "dialog" && node.modal ? true : undefined}
         aria-orientation={node.orientation}
         aria-level={node.level}

@@ -79,6 +79,7 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
   if (node.kind === "accordion-content") return "region";
   if (node.kind === "overlay") return "dialog";
   if (node.kind === "button") return "button";
+  if (node.kind === "text" && node.invalid) return "alert";
   if (node.kind === "badge-action") return "button";
   if (node.kind === "badge") return "paragraph";
   if (node.kind === "alert") return node.badgeTone === "warning" || node.badgeTone === "error" ? "alert" : "status";
@@ -173,6 +174,7 @@ export const createSemanticSnapshot = (
         : descendantText(tree, node)),
       ...(node.href ? { href: node.href } : {}),
       disabled: node.disabled,
+      ...(node.invalid ? { invalid: true } : {}),
       hidden: sceneEntry === undefined,
       focused: node.focused,
       ...(selectable(node) ? { selected: node.selected } : {}),

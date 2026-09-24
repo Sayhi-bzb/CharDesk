@@ -51,6 +51,7 @@ export function ButtonExample() {
 | `id?` | `string` | Stable focus and activate command target. |
 | `label?` | `string` | Accessible name; descendant text is the fallback. |
 | `variant?` | `"solid" \| "surface" \| "outline" \| "ghost"` | Local visual recipe; overrides the global recipe and otherwise defaults to solid. |
+| `tone?` | `"danger"` | Use the shared danger color for an explicitly destructive action; neutral by default. |
 | `disabled?` | `boolean` | Prevents focus, hover, and activation. |
 | `focused?` | `boolean` | Controlled logical focus state. |
 | `children?` | `ReactNode` | Cell-native button content. |

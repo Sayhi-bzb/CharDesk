@@ -233,6 +233,7 @@ const ManagedCellTextarea = ({
       id={node.kind === "combobox-input" ? `cell-semantic-${node.id}` : undefined}
       data-cell-text-editor={node.id}
       aria-label={node.label ?? (multiline ? "Text area" : "Text input")}
+      aria-invalid={node.invalid || undefined}
       aria-describedby={frame.semantics.nodes.get(node.id)?.describedById
         ? `cell-semantic-${frame.semantics.nodes.get(node.id)!.describedById}` : undefined}
       aria-multiline={multiline || undefined}
