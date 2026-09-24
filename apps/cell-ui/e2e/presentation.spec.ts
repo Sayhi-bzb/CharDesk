@@ -159,8 +159,10 @@ test("TextArea drag selection contrasts with its focused surface and hides on bl
   await page.mouse.down();
   await page.mouse.move(end.x, end.y, { steps: 4 });
   await page.mouse.up();
-  await expect.poll(async () => editor.evaluate((element: HTMLTextAreaElement) =>
-    element.selectionEnd - element.selectionStart)).toBeGreaterThan(0);
+  await expect.poll(async () => editor.evaluate((element: HTMLTextAreaElement) => ({
+    start: element.selectionStart,
+    end: element.selectionEnd,
+  }))).toEqual({ start: 0, end: 6 });
   await expect.poll(async () => {
     const probe = await readCellProbe(surface);
     const h = probe.cells.find((cell) => cell.ownerId === "notes" && cell.text === "H");
@@ -188,6 +190,82 @@ test("TextArea drag selection contrasts with its focused surface and hides on bl
     length: element.selectionEnd - element.selectionStart,
     direction: element.selectionDirection,
   }))).toEqual({ length: 1, direction: "backward" });
+});
+
+test("TextArea drag uses Cell offsets even when the pointer starts on its native caret textarea", async ({ page }) => {
+  for (const origin of ["unfocused-caret", "focused-caret", "neighbor", "backward"] as const) {
+    await page.goto("/#/components/text-area");
+    const surface = page.locator('[data-cell-probe="component-text-area"]');
+    const editor = surface.getByRole("textbox", { name: "Notes" });
+    const first = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "notes" && cell.text === "H")!;
+    const start = await cellPoint(surface, first.x, first.y);
+    const end = await cellPoint(surface, first.x + 5, first.y);
+    if (origin !== "unfocused-caret") {
+      await page.mouse.click(start.x, start.y);
+      await page.keyboard.press("Home");
+    }
+    if (origin === "backward") await page.mouse.click(end.x, end.y);
+    const from = origin === "backward" ? end : origin === "neighbor"
+      ? await cellPoint(surface, first.x + 1, first.y) : start;
+    const to = origin === "backward" ? start : end;
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 8 });
+    await page.mouse.up();
+    await expect.poll(async () => editor.evaluate((element: HTMLTextAreaElement) => ({
+      start: element.selectionStart,
+      end: element.selectionEnd,
+      direction: element.selectionDirection,
+    }))).toEqual({
+      start: origin === "neighbor" ? 1 : 0,
+      end: 5,
+      direction: origin === "backward" ? "backward" : "forward",
+    });
+  }
+});
+
+test("TextInput caret-origin drag shares the Cell selection path", async ({ page }) => {
+  await page.goto("/#/components/input");
+  const surface = page.locator('[data-cell-probe="component-input"]');
+  const editor = surface.getByRole("textbox", { name: "File name" });
+  await editor.focus();
+  await page.keyboard.press("Home");
+  const first = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "component-input-field" && cell.text === "n")!;
+  const start = await cellPoint(surface, first.x, first.y);
+  const end = await cellPoint(surface, first.x + 5, first.y);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(end.x, end.y, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => editor.evaluate((element: HTMLTextAreaElement) => ({
+    start: element.selectionStart,
+    end: element.selectionEnd,
+  }))).toEqual({ start: 0, end: 5 });
+});
+
+test("canceling an editor pointer drag freezes its Cell selection", async ({ page }) => {
+  await page.goto("/#/components/text-area");
+  const surface = page.locator('[data-cell-probe="component-text-area"]');
+  const editor = surface.getByRole("textbox", { name: "Notes" });
+  const first = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "notes" && cell.text === "H")!;
+  const start = await cellPoint(surface, first.x, first.y);
+  const end = await cellPoint(surface, first.x + 5, first.y);
+  await surface.evaluate((element) => element.addEventListener("pointerdown", (event) => {
+    element.dataset.dragPointerId = String(event.pointerId);
+  }));
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(end.x, end.y, { steps: 8 });
+  await expect.poll(async () => editor.evaluate((element: HTMLTextAreaElement) =>
+    element.selectionEnd)).toBe(5);
+  const pointerId = Number(await surface.getAttribute("data-drag-pointer-id"));
+  await surface.dispatchEvent("pointercancel", { pointerId });
+  await page.mouse.move((await cellPoint(surface, first.x + 8, first.y)).x, end.y, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(async () => editor.evaluate((element: HTMLTextAreaElement) => ({
+    start: element.selectionStart,
+    end: element.selectionEnd,
+  }))).toEqual({ start: 0, end: 5 });
 });
 
 test("Text hides character-ineffective controls but keeps color and glyph choices", async ({ page }) => {

@@ -1435,6 +1435,12 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (!frame) return;
         const point = textDragPointFor(event);
         if (!point) return;
+        if (!isSurfaceCanvas(event.target)) {
+          const textarea = event.target instanceof HTMLTextAreaElement ? event.target : null;
+          const editorId = textarea?.dataset.cellTextEditor;
+          if (!editorId || editorId !== hitTest(frame.scene, point)[0]) return;
+          event.preventDefault();
+        }
         if (controller.interceptPointer(frame, point)) {
           const command = commandForInput(
             { type: "pointer", phase: "down", point, button: event.button },
@@ -1457,18 +1463,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           return;
         }
         if (cellRange && rangeEditable) dispatchCellRange({ type: "clear" });
-        if (!isSurfaceCanvas(event.target)) {
-          const textarea = event.target instanceof HTMLTextAreaElement ? event.target : null;
-          if (textarea?.dataset.cellTextEditor === hitTest(frame.scene, point)[0]) {
-            const command = commandForInput(
-              { type: "pointer", phase: "down", point, button: event.button },
-              frame,
-              focusRef.current
-            );
-            if (command?.type === "set-expanded" || command?.type === "dismiss") dispatch(command);
-          }
-          return;
-        }
         const immediate = commandForInput(
           { type: "pointer", phase: "down", point, button: event.button },
           frame,

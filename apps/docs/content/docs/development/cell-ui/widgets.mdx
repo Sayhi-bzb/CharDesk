@@ -70,7 +70,7 @@ Button、Badge、Checkbox、Toggle、RadioItem、Select Trigger／Item、Combobo
 
 ## Pointer 与 Scroll
 
-- Surface 的基础 Canvas 与 Overlay Canvas 由同一呈现节点注册表拥有；hover、pointer、wheel 共用归属判断。Canvas 事件只接受当前 Surface 的呈现节点；真实编辑 textarea 的 pointer down 按同一 Scene 命中规则分派，其他 DOM 目标不进入 Cell 指针命令。Widget、clip 与 modal scope 由 Scene 判定。所有层使用基础 Canvas 原点和共享 Cell metrics，浮层可以超出基础 viewport。浮层提交、scroll 与 resize 会重新计算静止鼠标的命中。
+- Surface 的基础 Canvas 与 Overlay Canvas 由同一呈现节点注册表拥有；hover、pointer、wheel 共用归属判断。Canvas 事件只接受当前 Surface 的呈现节点；真实编辑 textarea 的 pointer down 经同一 Scene 命中校验后进入 Canvas 的 Cell 拖选流程，不交给原生指针选区；其他 DOM 目标不进入 Cell 指针命令。textarea 仍负责键盘、输入法、复制粘贴与无障碍焦点，非指针的原生选区变化同步回 Cell 状态。Widget、clip 与 modal scope 由 Scene 判定。所有层使用基础 Canvas 原点和共享 Cell metrics，浮层可以超出基础 viewport。浮层提交、scroll 与 resize 会重新计算静止鼠标的命中。
 
 - pointer down 定位焦点；Button、SelectTrigger、SelectItem、ComboboxItem、Checkbox、Toggle、RadioItem、ListItem、MenuItem、TreeItem、Tab、GridCell 移出时撤去按压、移回时恢复，pointer up 仍命中原目标才激活。drag winner、cancel、capture loss 或 blur 永久取消本轮 press。
 - Button、Checkbox、Toggle、RadioItem 与 SelectItem 接受 activate 后，在物理释放后播放 `activationBlinkCount` 次完整确认；AT 直接激活立即播放，`0` 立即完成。SelectTrigger 展开与 Radio `select-radio` 导航不闪烁。SelectItem 等待释放及播放期间锁定导航、选择和滚动；控制器完成后执行一次 `dismiss`。[反馈会话契约](/development/cell-ui/primitives#生命周期)拥有阶段时长和呈现确认。
