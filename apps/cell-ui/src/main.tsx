@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useRef, useState, useSyncExternalStore, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
+import { StrictMode, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createRoot } from "react-dom/client";
 import { Check } from "pixelarticons/react/Check";
 import { Close } from "pixelarticons/react/Close";
@@ -98,7 +98,7 @@ export function CodeBlock({ children, language = "tsx" }: Readonly<{ children: s
 
 type PackageManager = keyof typeof installationCommands;
 const packageManagers = Object.keys(installationCommands) as PackageManager[];
-const manualInstallationGuide = "#/guides/installation?section=manual";
+const registrySetupGuide = "#/guides/installation?section=configure";
 const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
   const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
@@ -111,8 +111,28 @@ const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
   tabs[next]?.click();
 };
 export function GalleryNavigation({ activeRoute }: Readonly<{ activeRoute: string }>) {
+  const navRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const revealActive = () => {
+      if (getComputedStyle(nav).overflowY !== "auto" || nav.scrollHeight <= nav.clientHeight) return;
+      const active = nav.querySelector<HTMLAnchorElement>('a[aria-current="page"]');
+      if (!active) return;
+      const navBounds = nav.getBoundingClientRect();
+      const activeBounds = active.getBoundingClientRect();
+      const visibleTop = Math.max(navBounds.top, 0);
+      const visibleBottom = Math.min(navBounds.bottom, window.innerHeight);
+      if (visibleBottom <= visibleTop) return;
+      if (activeBounds.top < visibleTop) nav.scrollTop += activeBounds.top - visibleTop;
+      else if (activeBounds.bottom > visibleBottom) nav.scrollTop += activeBounds.bottom - visibleBottom;
+    };
+    revealActive();
+    window.addEventListener("resize", revealActive);
+    return () => window.removeEventListener("resize", revealActive);
+  }, [activeRoute]);
   return (
-    <nav className="gallery-nav" aria-label="Cell UI">
+    <nav ref={navRef} className="gallery-nav" aria-label="Cell UI">
       <div className="gallery-nav__group" role="group" aria-labelledby="gallery-nav-sections">
         <span className="gallery-nav__title" id="gallery-nav-sections">Sections</span>
         <ul>{guideContent.map((guide) => (
@@ -170,7 +190,7 @@ export function Installation() {
       <div id="installation-command" role="tabpanel" aria-label={`${manager} installation command`}>
         <CodeBlock language="text">{installationCommands[manager]}</CodeBlock>
       </div>
-      <p><a href={manualInstallationGuide}>Manual installation</a></p>
+      <p><a href={registrySetupGuide}>Configure the registry</a></p>
     </section>
   );
 }

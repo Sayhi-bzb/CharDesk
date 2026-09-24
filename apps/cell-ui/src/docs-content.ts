@@ -2,10 +2,10 @@ type ComponentApiRow = Readonly<{ name: string; type: string; description: strin
 export type ComponentContent = Readonly<{ slug: string; title: string; description: string; usage: string; api: readonly ComponentApiRow[] }>;
 export const publicUsage = (usage: string) => usage.replaceAll("\"@chardesk/cell-ui/browser\"", "\"@/lib/cell-ui/browser\"").replaceAll("\"@chardesk/cell-ui\"", "\"@/lib/cell-ui\"");
 export const installationCommands = {
-  pnpm: "pnpm dlx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
-  npm: "npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
-  yarn: "yarn dlx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
-  bun: "bunx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui",
+  pnpm: "pnpm dlx shadcn@latest add @chardesk/cell-ui",
+  npm: "npx shadcn@latest add @chardesk/cell-ui",
+  yarn: "yarn dlx shadcn@latest add @chardesk/cell-ui",
+  bun: "bunx shadcn@latest add @chardesk/cell-ui",
 } as const;
 
 const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
@@ -741,7 +741,14 @@ const [sound, setSound] = useState(true);
     slug: "installation", title: "Installation",
     description: "Install the complete editable Cell UI source through the shadcn registry.",
     sections: [
-      { id: "command", title: "Command", body: "In a React project with components.json and an aliases.lib target, add the full cell-ui item. The registry copies source to your configured lib alias and declares npm dependencies.", code: installationCommands.npm },
+      { id: "configure", title: "Configure", body: "In your React project's components.json, add or merge these fields:", code: `{
+  "aliases": { "lib": "@/lib" },
+  "registries": {
+    "@chardesk": "https://sayhi-bzb.github.io/CharDesk/{name}.json"
+  }
+}` },
+      { id: "command", title: "Command", body: "Install the full cell-ui item. The registry copies source to your lib alias and declares npm dependencies.", code: installationCommands.npm },
+      { id: "github", title: "Without configuration", body: "To install without a registries entry, use the GitHub address:", code: "npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui" },
       { id: "manual", title: "Manual", body: "The published item JSON is the authoritative file and dependency list. Install its dependencies; copy each files[].content to files[].target, resolving @lib through components.json aliases.lib. Keep relative paths, including the keyboard adapter. Do not install the private workspace package.", link: { label: "Published item JSON", href: "https://sayhi-bzb.github.io/CharDesk/cell-ui.json" } },
       { id: "update", title: "Update", body: "The installed files are yours to edit. Before a later shadcn add overwrites them, review its diff against your local changes. The repository verifies fresh installation with npm run cell-ui:registry:smoke." },
     ],

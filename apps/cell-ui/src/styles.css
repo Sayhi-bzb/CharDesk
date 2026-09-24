@@ -165,7 +165,8 @@ code, pre { font-family: inherit; }
   max-width: 1240px;
   margin-inline: auto;
 }
-.gallery-nav { grid-area: nav; position: sticky; top: 24px; align-self: start; display: grid; gap: 20px; line-height: 1.8; }
+/* Initial top: 32px page padding + 32px header + 48px gap; leave 24px below. */
+.gallery-nav { grid-area: nav; position: sticky; top: 24px; align-self: start; display: grid; gap: 20px; max-height: calc(100dvh - 136px); overflow-y: auto; line-height: 1.8; }
 .gallery-nav__title { font-weight: 700; }
 .gallery-nav ul { list-style: none; margin: 8px 0 0; padding: 0; }
 .gallery-nav a { color: var(--cell-muted-foreground); text-decoration: none; }
@@ -241,7 +242,7 @@ td:first-child, td:nth-child(2) { white-space: nowrap; }
   .gallery-header { flex-wrap: wrap; margin-bottom: 28px; }
   .gallery-appearance-controls { margin-left: auto; }
   .gallery-layout { grid-template-areas: "nav" "toc" "page"; grid-template-columns: minmax(0, 1fr); gap: 32px; }
-  .gallery-nav { position: static; }
+  .gallery-nav { position: static; max-height: none; overflow-y: visible; }
   .gallery-nav ul { display: flex; flex-wrap: wrap; gap: 4px 20px; }
   .docs-page { gap: 36px; }
   .docs-preview, .docs-code pre { padding-left: 12px; }

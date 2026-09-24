@@ -59,8 +59,8 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(toc.getByRole("link")).toHaveText(["Installation", "Usage", "View source", "API"]);
   await expect(toc.getByRole("link", { name: "Installation" })).toHaveAttribute("href", "#/components/button?section=installation");
   await expect(page.getByRole("tablist", { name: "Installation method" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Manual installation" })).toBeVisible();
-  await expect(page.getByText("npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Configure the registry" })).toBeVisible();
+  await expect(page.getByText("npx shadcn@latest add @chardesk/cell-ui")).toBeVisible();
   await expect(page.locator("#usage + .docs-code")).toContainText("@/lib/cell-ui/browser");
   await expect(page.locator("#usage + .docs-code")).not.toContainText("@chardesk/cell-ui");
   const codeBlocks = page.locator(".docs-code");
@@ -155,7 +155,61 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });
 
-test("installation shows copyable package-manager commands and the manual guide", async ({ page }) => {
+test("desktop navigation scrolls independently and reveals its active link", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 320 });
+  await page.goto("/#/guides/introduction");
+  const nav = page.getByRole("navigation", { name: "Cell UI" });
+  expect(await nav.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+
+  await nav.hover();
+  const pageY = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, 160);
+  await expect.poll(() => nav.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(pageY);
+
+  await page.mouse.move(700, 200);
+  await page.mouse.wheel(0, 160);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(pageY);
+  await expect.poll(() => nav.evaluate((element) => element.getBoundingClientRect().top)).toBe(24);
+
+  await nav.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await nav.hover();
+  const edgeY = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, 160);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(edgeY);
+
+  await page.goto("/#/components/tooltip");
+  const active = nav.getByRole("link", { name: "Tooltip", exact: true });
+  await expect(active).toHaveAttribute("aria-current", "page");
+  await expect.poll(() => active.evaluate((element) => {
+    const navBounds = element.closest("nav")!.getBoundingClientRect();
+    const linkBounds = element.getBoundingClientRect();
+    return linkBounds.top >= Math.max(navBounds.top, 0) - 1
+      && linkBounds.bottom <= Math.min(navBounds.bottom, window.innerHeight) + 1;
+  })).toBe(true);
+
+  await page.setViewportSize({ width: 390, height: 640 });
+  await expect(nav).toHaveCSS("overflow-y", "visible");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test("keyboard focus reveals navigation links in a short viewport", async ({ page, browserName }) => {
+  await page.setViewportSize({ width: 1280, height: 320 });
+  await page.goto("/#/guides/introduction");
+  const nav = page.getByRole("navigation", { name: "Cell UI" });
+  const links = nav.getByRole("link");
+  if (browserName === "webkit") {
+    // WebKit's default Tab policy skips links; explicit focus still exercises reveal.
+    await links.last().focus();
+  } else {
+    await links.first().focus();
+    for (let index = 1; index < await links.count(); index += 1) await page.keyboard.press("Tab");
+  }
+  await expect(links.last()).toBeFocused();
+  expect(await nav.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+});
+
+test("installation shows copyable package-manager commands and registry setup", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -167,8 +221,8 @@ test("installation shows copyable package-manager commands and the manual guide"
   const managers = installation.getByRole("tablist", { name: "Package manager" });
   await expect(installation.getByRole("tablist")).toHaveCount(1);
   await expect(managers.getByRole("tab", { name: "npm", exact: true })).toHaveAttribute("aria-selected", "true");
-  await expect(installation.getByRole("link", { name: "Manual installation" })).toHaveAttribute(
-    "href", "#/guides/installation?section=manual",
+  await expect(installation.getByRole("link", { name: "Configure the registry" })).toHaveAttribute(
+    "href", "#/guides/installation?section=configure",
   );
   const commands = {
     pnpm: "pnpm dlx",
@@ -178,7 +232,7 @@ test("installation shows copyable package-manager commands and the manual guide"
   } as const;
   for (const [manager, prefix] of Object.entries(commands)) {
     await managers.getByRole("tab", { name: manager, exact: true }).click();
-    const command = `${prefix} shadcn@latest add Sayhi-bzb/CharDesk/cell-ui`;
+    const command = `${prefix} shadcn@latest add @chardesk/cell-ui`;
     const panel = installation.getByRole("tabpanel", { name: `${manager} installation command` });
     await expect(panel).toContainText(command);
     await panel.getByRole("button").click();
@@ -187,7 +241,11 @@ test("installation shows copyable package-manager commands and the manual guide"
   await managers.getByRole("tab", { name: "bun" }).focus();
   await page.keyboard.press("Home");
   await expect(managers.getByRole("tab", { name: "pnpm" })).toHaveAttribute("aria-selected", "true");
-  await expect(installation.getByRole("link", { name: "Manual installation" })).toBeVisible();
+  await expect(installation.getByRole("link", { name: "Configure the registry" })).toBeVisible();
+  await installation.getByRole("link", { name: "Configure the registry" }).click();
+  await expect(page.getByRole("heading", { name: "Configure" })).toBeVisible();
+  await expect(page.locator("#configure + p + .docs-code")).toContainText("https://sayhi-bzb.github.io/CharDesk/{name}.json");
+  await expect(page.getByText("npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui")).toBeVisible();
 });
 
 test("on-page navigation survives direct load, component changes, and browser history", async ({ page }) => {
