@@ -245,6 +245,7 @@ test("guide sections, direct links, and agent Markdown stay addressable", async 
   const index = await request.get("/llms.txt");
   expect(index.ok()).toBe(true);
   expect(await index.text()).toContain("/components/grid.md");
+  expect(await index.text()).toContain("/components/alert.md");
   for (const slug of ["box", "text", "overlay", "range-slider", "text-area", "list", "menu", "tree", "grid"]) {
     const response = await request.get(`/components/${slug}.md`);
     expect(response.ok()).toBe(true);

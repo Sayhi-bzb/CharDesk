@@ -13,6 +13,7 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 ## Components
 
 - [Accordion](https://ui.chardesk.com/components/accordion.md): Expand independent sections without losing their content state.
+- [Alert](https://ui.chardesk.com/components/alert.md): Keep a status or warning visible beside the work it describes.
 - [Badge](https://ui.chardesk.com/components/badge.md): Show a compact state label, optionally acting as a command target.
 - [Box](https://ui.chardesk.com/components/box.md): Lay out Cell content and optionally give it a surface or frame.
 - [Button](https://ui.chardesk.com/components/button.md): Trigger one action through keyboard, pointer, or assistive input.

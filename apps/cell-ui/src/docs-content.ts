@@ -9,6 +9,7 @@ export const installationCommands = {
 } as const;
 
 const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
+  alert: ["react.tsx", "alert.ts", "semantics.ts"],
   box: ["react.tsx", "visual.ts"],
   text: ["react.tsx", "layout.ts"],
   overlay: ["react.tsx", "anchored-overlay.ts", "interaction.ts"],
@@ -44,6 +45,25 @@ export const sourceLinksForComponent = (slug: string) =>
   }));
 
 export const componentContent: readonly ComponentContent[] = [
+  {
+    slug: "alert", title: "Alert",
+    description: "Keep a status or warning visible beside the work it describes.",
+    usage: `import { Alert, AlertTitle, AlertDescription, Button, Root, Text } from "@chardesk/cell-ui";
+
+export function AlertExample() {
+  return <Root><Alert tone="warning">
+    <AlertTitle>Unsaved changes</AlertTitle>
+    <AlertDescription>Changes are stored locally.</AlertDescription>
+    <Button id="save"><Text>Save now</Text></Button>
+  </Alert></Root>;
+}`,
+    api: [
+      { name: "tone?", type: '"info" | "success" | "warning" | "error"', description: "Status meaning; info by default. Warning and error announce as alerts." },
+      { name: "border?", type: '"none" | "square" | "rounded"', description: "None by default; framed borders use the tone's foreground color." },
+      { name: "style?", type: "CellLayoutStyle", description: "Width and layout overrides; default maximum width is 44 Cells." },
+      { name: "children", type: "Cell primitives", description: "One AlertTitle, optional AlertDescription, and optional Button in order." },
+    ],
+  },
   {
     slug: "dialog", title: "Dialog",
     description: "A named Cell dialog with shared overlay placement and focus management.",
