@@ -19,10 +19,9 @@ import {
   SliderComponentDemo,
   TabsComponentDemo,
   TextComponentDemo,
+  TextAreaComponentDemo,
   TableComponentDemo,
 } from "./sections/components";
-
-import { TextAreaComponentDemo } from "./sections/foundations";
 import { componentContent, sourceLinksForComponent as contentSourceLinks, type ComponentContent } from "./docs-content";
 
 export type ComponentDocument = ComponentContent & Readonly<{ probeId: string; Demo: ComponentType }>;

@@ -38,8 +38,11 @@ test("Badge lays out every status with only presentation configuration in both t
       const expected = await page.locator(".gallery-page").evaluate((element, tone) => {
         const style = getComputedStyle(element);
         const probe = document.createElement("span");
-        probe.style.color = style.getPropertyValue(`--cell-badge-${tone}-foreground`).trim();
-        probe.style.backgroundColor = style.getPropertyValue(`--cell-badge-${tone}`).trim();
+        const role = tone === "error" ? "danger" : tone;
+        const foreground = tone === "neutral" ? "--cell-badge-neutral-foreground" : `--cell-tone-${role}-surface-foreground`;
+        const background = tone === "neutral" ? "--cell-badge-neutral" : `--cell-tone-${role}-surface`;
+        probe.style.color = style.getPropertyValue(foreground).trim();
+        probe.style.backgroundColor = style.getPropertyValue(background).trim();
         element.append(probe);
         const colors = { color: getComputedStyle(probe).color, backgroundColor: getComputedStyle(probe).backgroundColor };
         probe.remove();

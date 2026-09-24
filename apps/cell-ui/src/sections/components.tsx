@@ -35,6 +35,7 @@ import {
   TableRow,
   TableCell,
   Text,
+  TextArea,
   TextInput,
   cellTextWidth,
   type ButtonVariant,
@@ -437,6 +438,39 @@ const renderPlaygroundCheckboxControl = (
   checked: boolean,
   focusedId: string,
 ) => renderGalleryCheckbox({ id, label, checked, focusedId });
+
+export const TextAreaComponentDemo = () => {
+  const editor = useCellTextState("notes", { value: "Hello, 世界\nEdit these Cells.", multiline: true });
+  const variant = useCellSelectState("component-text-area-variant", surfaceVariantItems, {
+    defaultSelectedId: "surface",
+  });
+  const frame = useCellSelectState("component-text-area-frame", frameItems, {
+    defaultSelectedId: "none",
+  });
+  const borderShape = useCellSelectState("component-text-area-border-shape", borderShapeItems, {
+    defaultSelectedId: "square",
+  });
+  const focus = usePlaygroundFocus(variant.triggerId, [variant, frame, borderShape]);
+  const dispatch = (command: WidgetCommand) => {
+    editor.dispatch(command);
+    focus.dispatch(command);
+  };
+  return <ComponentPlayground id="component-text-area-playground" label="Text area" probeId="component-text-area"
+    focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={32} rows={8}
+    overlayRows={focus.activeSelect?.items.length ?? 0}
+    preview={<TextArea id="notes" label="Notes" state={editor.snapshot}
+      variant={variant.selectedId as SurfaceVariant}
+      frame={frame.selectedId as CellFrame}
+      borderShape={borderShape.selectedId as CellBorderShape}
+      style={{ width: 30, height: 7 }} />}
+    controls={[
+      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+      renderRichOnlySelectControl("frame", frame, focus.focusedId),
+      ...(frame.selectedId === "bordered"
+        ? [renderRichOnlySelectControl("border shape", borderShape, focus.focusedId)]
+        : []),
+    ]} />;
+};
 
 export const BoxComponentDemo = () => {
   const variant = useCellSelectState("component-box-variant", surfaceVariantItems, {

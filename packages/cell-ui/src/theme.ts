@@ -37,13 +37,24 @@ export type CellMarkdownColors = Readonly<{
   codeBackground: string;
 }>;
 
-export type CellUiThemeInput = Omit<Partial<CellUiTheme>, "markdownColors"> & Readonly<{
+export type CellSemanticTone = "info" | "success" | "warning" | "danger";
+export type CellSemanticToneColors = Readonly<{
+  text: string;
+  surface: string;
+  surfaceForeground: string;
+}>;
+export type CellSemanticColors = Readonly<Record<CellSemanticTone, CellSemanticToneColors>>;
+
+export type CellUiThemeInput = Omit<Partial<CellUiTheme>, "markdownColors" | "semanticColors" | "badgeStyles"> & Readonly<{
   markdownColors?: Partial<CellMarkdownColors>;
+  semanticColors?: Partial<Record<CellSemanticTone, Partial<CellSemanticToneColors>>>;
+  badgeStyles?: Partial<Record<BadgeTone, CellTextStyle>>;
 }>;
 
 export type CellUiTheme = Readonly<{
   background: string;
   foreground: string;
+  semanticColors: CellSemanticColors;
   markdownColors: CellMarkdownColors;
   surfaceStyle: CellTextStyle;
   elevatedSurfaceStyle: CellTextStyle;
@@ -82,6 +93,43 @@ export type CellUiTheme = Readonly<{
   scrollThumbStyle: CellTextStyle;
   scrollTrackStyle: CellTextStyle;
 }>;
+
+const LIGHT_SEMANTIC_COLORS: CellSemanticColors = Object.freeze({
+  info: { text: CHARDESK_LIGHT_CONTENT_THEME.info, surface: "#DDEEFF", surfaceForeground: "#17476B" },
+  success: { text: CHARDESK_LIGHT_CONTENT_THEME.success, surface: "#DFF2E2", surfaceForeground: "#174E2B" },
+  warning: { text: CHARDESK_LIGHT_CONTENT_THEME.warning, surface: "#FFF0CC", surfaceForeground: "#664600" },
+  danger: { text: CHARDESK_LIGHT_CONTENT_THEME.danger, surface: "#FBE0DF", surfaceForeground: "#8C2522" },
+});
+
+const DARK_SEMANTIC_COLORS: CellSemanticColors = Object.freeze({
+  info: { text: CHARDESK_DARK_CONTENT_THEME.info, surface: "#12344B", surfaceForeground: "#B8E4FF" },
+  success: { text: CHARDESK_DARK_CONTENT_THEME.success, surface: "#143821", surfaceForeground: "#B7EAC4" },
+  warning: { text: CHARDESK_DARK_CONTENT_THEME.warning, surface: "#47340B", surfaceForeground: "#FFE3A1" },
+  danger: { text: CHARDESK_DARK_CONTENT_THEME.danger, surface: "#4B1B1B", surfaceForeground: "#FFC6C4" },
+});
+
+const badgeStylesFromSemanticColors = (
+  semanticColors: CellSemanticColors,
+  neutral: CellTextStyle,
+): CellUiTheme["badgeStyles"] => ({
+  neutral,
+  info: { color: semanticColors.info.surfaceForeground, backgroundColor: semanticColors.info.surface },
+  success: { color: semanticColors.success.surfaceForeground, backgroundColor: semanticColors.success.surface },
+  warning: { color: semanticColors.warning.surfaceForeground, backgroundColor: semanticColors.warning.surface },
+  error: { color: semanticColors.danger.surfaceForeground, backgroundColor: semanticColors.danger.surface },
+});
+
+const markdownColorsFromSemanticColors = (
+  semanticColors: CellSemanticColors,
+  content: typeof CHARDESK_LIGHT_CONTENT_THEME,
+): CellMarkdownColors => ({
+  accent: content.accent,
+  link: semanticColors.info.text,
+  quote: semanticColors.success.text,
+  muted: content["muted-foreground"],
+  codeForeground: semanticColors.info.text,
+  codeBackground: content.surface,
+});
 
 const CLASSIC_MAC_SHARED_THEME = Object.freeze({
   borderShape: "square",
@@ -122,24 +170,12 @@ export const CLASSIC_MAC_LIGHT_THEME: CellUiTheme = Object.freeze({
   ...CLASSIC_MAC_SHARED_THEME,
   background: "#FFFFFF",
   foreground: "#000000",
-  markdownColors: Object.freeze({
-    accent: CHARDESK_LIGHT_CONTENT_THEME.accent,
-    link: CHARDESK_LIGHT_CONTENT_THEME.info,
-    quote: CHARDESK_LIGHT_CONTENT_THEME.success,
-    muted: CHARDESK_LIGHT_CONTENT_THEME["muted-foreground"],
-    codeForeground: CHARDESK_LIGHT_CONTENT_THEME.info,
-    codeBackground: CHARDESK_LIGHT_CONTENT_THEME.surface,
-  }),
+  semanticColors: LIGHT_SEMANTIC_COLORS,
+  markdownColors: markdownColorsFromSemanticColors(LIGHT_SEMANTIC_COLORS, CHARDESK_LIGHT_CONTENT_THEME),
   surfaceStyle: { backgroundColor: "#FFFFFF" },
   elevatedSurfaceStyle: { backgroundColor: "#E6E6E6" },
   buttonSolidStyle: { color: "#FFFFFF", backgroundColor: "#000000" },
-  badgeStyles: {
-    neutral: { color: "#000000", backgroundColor: "#E6E6E6" },
-    info: { color: "#17476B", backgroundColor: "#DDEEFF" },
-    success: { color: "#174E2B", backgroundColor: "#DFF2E2" },
-    warning: { color: "#664600", backgroundColor: "#FFF0CC" },
-    error: { color: "#8C2522", backgroundColor: "#FBE0DF" },
-  },
+  badgeStyles: badgeStylesFromSemanticColors(LIGHT_SEMANTIC_COLORS, { color: "#000000", backgroundColor: "#E6E6E6" }),
   borderStyle: { color: "#000000" },
   cursorStyle: Object.freeze({
     colorMode: "inverse",
@@ -168,24 +204,12 @@ export const CLASSIC_MAC_DARK_THEME: CellUiTheme = Object.freeze({
   ...CLASSIC_MAC_SHARED_THEME,
   background: "#000000",
   foreground: "#FFFFFF",
-  markdownColors: Object.freeze({
-    accent: CHARDESK_DARK_CONTENT_THEME.accent,
-    link: CHARDESK_DARK_CONTENT_THEME.info,
-    quote: CHARDESK_DARK_CONTENT_THEME.success,
-    muted: CHARDESK_DARK_CONTENT_THEME["muted-foreground"],
-    codeForeground: CHARDESK_DARK_CONTENT_THEME.info,
-    codeBackground: CHARDESK_DARK_CONTENT_THEME.surface,
-  }),
+  semanticColors: DARK_SEMANTIC_COLORS,
+  markdownColors: markdownColorsFromSemanticColors(DARK_SEMANTIC_COLORS, CHARDESK_DARK_CONTENT_THEME),
   surfaceStyle: { backgroundColor: "#000000" },
   elevatedSurfaceStyle: { backgroundColor: "#1A1A1A" },
   buttonSolidStyle: { color: "#000000", backgroundColor: "#FFFFFF" },
-  badgeStyles: {
-    neutral: { color: "#FFFFFF", backgroundColor: "#303030" },
-    info: { color: "#B8E4FF", backgroundColor: "#12344B" },
-    success: { color: "#B7EAC4", backgroundColor: "#143821" },
-    warning: { color: "#FFE3A1", backgroundColor: "#47340B" },
-    error: { color: "#FFC6C4", backgroundColor: "#4B1B1B" },
-  },
+  badgeStyles: badgeStylesFromSemanticColors(DARK_SEMANTIC_COLORS, { color: "#FFFFFF", backgroundColor: "#303030" }),
   borderStyle: { color: "#FFFFFF" },
   cursorStyle: Object.freeze({
     colorMode: "inverse",
@@ -226,11 +250,26 @@ const isDarkBackground = (color: string): boolean => {
 export const resolveCellUiTheme = (
   theme: CellUiThemeInput | undefined
 ): CellUiTheme => {
-  const markdownDefaults = isDarkBackground(theme?.background ?? DEFAULT_CELL_UI_THEME.background)
-    ? CLASSIC_MAC_DARK_THEME.markdownColors : CLASSIC_MAC_LIGHT_THEME.markdownColors;
+  const defaults = isDarkBackground(theme?.background ?? DEFAULT_CELL_UI_THEME.background)
+    ? CLASSIC_MAC_DARK_THEME : CLASSIC_MAC_LIGHT_THEME;
+  const semanticColors = Object.fromEntries(
+    (Object.keys(defaults.semanticColors) as CellSemanticTone[]).map((tone) => [
+      tone, { ...defaults.semanticColors[tone], ...theme?.semanticColors?.[tone] },
+    ]),
+  ) as CellSemanticColors;
+  const markdownDefaults = markdownColorsFromSemanticColors(
+    semanticColors,
+    defaults === CLASSIC_MAC_DARK_THEME ? CHARDESK_DARK_CONTENT_THEME : CHARDESK_LIGHT_CONTENT_THEME,
+  );
+  const badgeDefaults = badgeStylesFromSemanticColors(semanticColors, defaults.badgeStyles.neutral);
   return {
     ...DEFAULT_CELL_UI_THEME,
     ...theme,
+    semanticColors,
     markdownColors: { ...markdownDefaults, ...theme?.markdownColors },
+    badgeStyles: {
+      ...badgeDefaults,
+      ...theme?.badgeStyles,
+    },
   };
 };

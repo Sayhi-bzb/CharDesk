@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState, type RefObject } from "react";
-import { DEFAULT_CELL_UI_THEME, resolveCellUiTheme, type CellUiTheme } from "./theme.js";
+import { DEFAULT_CELL_UI_THEME, resolveCellUiTheme, type CellSemanticColors, type CellSemanticTone, type CellUiTheme } from "./theme.js";
 import type { CellUiRecipe } from "./recipe.js";
 
 export type CellCssTheme = Readonly<{
@@ -9,6 +9,7 @@ export type CellCssTheme = Readonly<{
 }>;
 
 const fallback = DEFAULT_CELL_UI_THEME;
+const semanticTones: readonly CellSemanticTone[] = ["info", "success", "warning", "danger"];
 const defaults = {
   background: fallback.background,
   foreground: fallback.foreground,
@@ -40,6 +41,18 @@ const defaults = {
   "cursor-foreground": fallback.cursorStyle.textColor,
   "scrollbar-thumb": fallback.scrollThumbStyle.color!,
   "scrollbar-track": fallback.scrollTrackStyle.color!,
+  "tone-info": fallback.semanticColors.info.text,
+  "tone-info-surface": fallback.semanticColors.info.surface,
+  "tone-info-surface-foreground": fallback.semanticColors.info.surfaceForeground,
+  "tone-success": fallback.semanticColors.success.text,
+  "tone-success-surface": fallback.semanticColors.success.surface,
+  "tone-success-surface-foreground": fallback.semanticColors.success.surfaceForeground,
+  "tone-warning": fallback.semanticColors.warning.text,
+  "tone-warning-surface": fallback.semanticColors.warning.surface,
+  "tone-warning-surface-foreground": fallback.semanticColors.warning.surfaceForeground,
+  "tone-danger": fallback.semanticColors.danger.text,
+  "tone-danger-surface": fallback.semanticColors.danger.surface,
+  "tone-danger-surface-foreground": fallback.semanticColors.danger.surfaceForeground,
   "markdown-accent": fallback.markdownColors.accent,
   "markdown-link": fallback.markdownColors.link,
   "markdown-quote": fallback.markdownColors.quote,
@@ -94,8 +107,20 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
     probe.remove();
   }
   const highlight = { color: colors["highlight-foreground"], backgroundColor: colors.highlight };
-  const markdownDefaults = resolveCellUiTheme({ background: colors.background }).markdownColors;
-  const markdownColor = (key: keyof typeof colors, fallbackColor: string) =>
+  const semanticDefaults = resolveCellUiTheme({ background: colors.background }).semanticColors;
+  const semanticColors = Object.fromEntries(semanticTones.map((tone) => {
+    const key = `tone-${tone}` as keyof typeof colors;
+    const surfaceKey = `tone-${tone}-surface` as keyof typeof colors;
+    const foregroundKey = `tone-${tone}-surface-foreground` as keyof typeof colors;
+    return [tone, {
+      text: supplied.has(key) ? colors[key] : semanticDefaults[tone].text,
+      surface: supplied.has(surfaceKey) ? colors[surfaceKey] : semanticDefaults[tone].surface,
+      surfaceForeground: supplied.has(foregroundKey)
+        ? colors[foregroundKey] : semanticDefaults[tone].surfaceForeground,
+    }];
+  })) as CellSemanticColors;
+  const roleDefaults = resolveCellUiTheme({ background: colors.background, semanticColors });
+  const roleColor = (key: keyof typeof colors, fallbackColor: string) =>
     supplied.has(key) ? colors[key] : fallbackColor;
   return {
     palette: { color: colors.foreground, background: colors.background },
@@ -104,13 +129,14 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
       ...fallback,
       background: colors.background,
       foreground: colors.foreground,
+      semanticColors,
       markdownColors: {
-        accent: markdownColor("markdown-accent", markdownDefaults.accent),
-        link: markdownColor("markdown-link", markdownDefaults.link),
-        quote: markdownColor("markdown-quote", markdownDefaults.quote),
-        muted: markdownColor("markdown-muted", markdownDefaults.muted),
-        codeForeground: markdownColor("markdown-code-foreground", markdownDefaults.codeForeground),
-        codeBackground: markdownColor("markdown-code-background", markdownDefaults.codeBackground),
+        accent: roleColor("markdown-accent", roleDefaults.markdownColors.accent),
+        link: roleColor("markdown-link", roleDefaults.markdownColors.link),
+        quote: roleColor("markdown-quote", roleDefaults.markdownColors.quote),
+        muted: roleColor("markdown-muted", roleDefaults.markdownColors.muted),
+        codeForeground: roleColor("markdown-code-foreground", roleDefaults.markdownColors.codeForeground),
+        codeBackground: roleColor("markdown-code-background", roleDefaults.markdownColors.codeBackground),
       },
       surfaceStyle: { backgroundColor: colors.surface },
       elevatedSurfaceStyle: { backgroundColor: colors["surface-elevated"] },
@@ -120,10 +146,14 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
       },
       badgeStyles: {
         neutral: { color: colors["badge-neutral-foreground"], backgroundColor: colors["badge-neutral"] },
-        info: { color: colors["badge-info-foreground"], backgroundColor: colors["badge-info"] },
-        success: { color: colors["badge-success-foreground"], backgroundColor: colors["badge-success"] },
-        warning: { color: colors["badge-warning-foreground"], backgroundColor: colors["badge-warning"] },
-        error: { color: colors["badge-error-foreground"], backgroundColor: colors["badge-error"] },
+        info: { color: roleColor("badge-info-foreground", roleDefaults.badgeStyles.info.color!),
+          backgroundColor: roleColor("badge-info", roleDefaults.badgeStyles.info.backgroundColor!) },
+        success: { color: roleColor("badge-success-foreground", roleDefaults.badgeStyles.success.color!),
+          backgroundColor: roleColor("badge-success", roleDefaults.badgeStyles.success.backgroundColor!) },
+        warning: { color: roleColor("badge-warning-foreground", roleDefaults.badgeStyles.warning.color!),
+          backgroundColor: roleColor("badge-warning", roleDefaults.badgeStyles.warning.backgroundColor!) },
+        error: { color: roleColor("badge-error-foreground", roleDefaults.badgeStyles.error.color!),
+          backgroundColor: roleColor("badge-error", roleDefaults.badgeStyles.error.backgroundColor!) },
       },
       borderStyle: { color: colors.border },
       focusedSurfaceStyle: highlight,

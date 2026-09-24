@@ -1,6 +1,27 @@
 import { expect, test } from "@playwright/test";
 import { cellPoint, copyCellRange, readCellProbe } from "./helpers/cell-probe";
 
+test("shared tone CSS tokens reach both Markdown and Badge through the Gallery theme", async ({ page }) => {
+  await page.goto("/#/guides/markdown");
+  await page.addStyleTag({ content: `.gallery-page {
+    --cell-tone-info: #123456 !important;
+    --cell-tone-info-surface: #ddeeff !important;
+    --cell-tone-info-surface-foreground: #234567 !important;
+  }` });
+  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).click();
+  const markdown = page.getByLabel("Markdown example");
+  await expect.poll(async () => (await readCellProbe(markdown)).cells
+    .find((cell) => cell.ownerId?.includes("markdown-link"))?.style.color).toBe("rgb(18, 52, 86)");
+
+  await page.evaluate(() => { window.location.hash = "#/components/badge"; });
+  const badge = page.locator('[data-cell-probe="component-badge"]');
+  await expect(badge).toBeVisible();
+  await expect.poll(async () => (await readCellProbe(badge)).cells
+    .find((cell) => cell.ownerId === "component-badge-info")?.style).toMatchObject({
+    color: "rgb(35, 69, 103)", backgroundColor: "rgb(221, 238, 255)",
+  });
+});
+
 test("Markdown guide renders Cell typography and activates a link through the shared input path", async ({ page, request }) => {
   await page.goto("/#/guides/markdown");
   await expect(page.getByRole("heading", { name: "Markdown", level: 1 })).toBeVisible();

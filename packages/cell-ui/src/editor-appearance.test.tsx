@@ -42,7 +42,7 @@ for (const [name, Editor] of [["TextArea", TextArea]] as const) {
         const disabled = runtime.render(view(true), { focusedId: "editor", activeFocusId: "editor", focusVisible: true });
         expect(disabled.buffer.get(layout.x + 1, layout.y + 1)?.style).toMatchObject(theme.disabledStyle);
         expect(disabled.buffer.get(layout.x + 1, layout.y + 1)?.style.backgroundColor)
-          .toBeUndefined();
+          .toBe(theme.elevatedSurfaceStyle.backgroundColor);
         runtime.dispose();
       });
     }

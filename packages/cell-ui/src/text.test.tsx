@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CellTextEditor,
   CellUiRuntime,
+  CLASSIC_MAC_LIGHT_THEME,
   Root,
   TextArea,
   createCellTextLayout,
@@ -22,13 +23,15 @@ describe("CellTextEditor", () => {
       for (let x = 0; x < 12; x++) {
         const inside = x >= bounds.x && x < bounds.x + bounds.width
           && y >= bounds.y && y < bounds.y + bounds.height;
-        expect(focused.buffer.get(x, y)?.style.backgroundColor).toBe(inside ? "#000000" : undefined);
+        expect(focused.buffer.get(x, y)?.style.backgroundColor).toBe(inside
+          ? CLASSIC_MAC_LIGHT_THEME.focusedSurfaceStyle.backgroundColor
+          : CLASSIC_MAC_LIGHT_THEME.elevatedSurfaceStyle.backgroundColor);
         expect(focused.buffer.get(x, y)?.ownerId).toBe("editor");
       }
     }
     const blurred = runtime.render(view(false));
     expect(blurred.buffer.get(5, 2)?.style.backgroundColor)
-      .toBeUndefined();
+      .toBe(CLASSIC_MAC_LIGHT_THEME.elevatedSurfaceStyle.backgroundColor);
     const fresh = new CellUiRuntime({ viewport: { width: 12, height: 5 } });
     const oracle = fresh.render(view(false));
     for (let y = 0; y < 5; y++) {

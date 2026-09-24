@@ -52,7 +52,7 @@ test("Alert border uses each status foreground in light and dark themes", async 
     for (const tone of ["info", "success", "warning", "error"] as const) {
       const expected = await page.evaluate((name) => {
         const token = getComputedStyle(document.documentElement)
-          .getPropertyValue(`--cell-badge-${name}-foreground`).trim();
+          .getPropertyValue(`--cell-tone-${name === "error" ? "danger" : name}-surface-foreground`).trim();
         const sample = document.createElement("span");
         sample.style.color = token;
         document.body.append(sample);

@@ -69,6 +69,23 @@ describe("readCellCssTheme", () => {
     expect(theme.badgeStyles.error).toEqual(CLASSIC_MAC_LIGHT_THEME.badgeStyles.error);
   });
 
+  it("shares semantic CSS tokens across Markdown and status styles, with role tokens taking priority", () => {
+    const { theme } = readCellCssTheme(mountTheme({
+      "--cell-tone-info": "#123456",
+      "--cell-tone-info-surface": "#ddeeff",
+      "--cell-tone-info-surface-foreground": "#234567",
+      "--cell-tone-danger-surface-foreground": "#654321",
+      "--cell-markdown-code-foreground": "#abcdef",
+      "--cell-badge-info-foreground": "#fedcba",
+    }));
+    expect(theme.markdownColors.link).toBe("rgb(18, 52, 86)");
+    expect(theme.markdownColors.codeForeground).toBe("rgb(171, 205, 239)");
+    expect(theme.badgeStyles.info).toEqual({
+      color: "rgb(254, 220, 186)", backgroundColor: "rgb(221, 238, 255)",
+    });
+    expect(theme.badgeStyles.error.color).toBe("rgb(101, 67, 33)");
+  });
+
   it("reads Markdown CSS tokens independently and infers dark defaults", () => {
     const light = readCellCssTheme(mountTheme({
       "--cell-markdown-link": "#123456",
@@ -78,6 +95,8 @@ describe("readCellCssTheme", () => {
       quote: CLASSIC_MAC_LIGHT_THEME.markdownColors.quote });
     const dark = readCellCssTheme(mountTheme({ "--cell-background": "#000000" })).theme.markdownColors;
     expect(dark).toEqual(CLASSIC_MAC_DARK_THEME.markdownColors);
+    const darkBadges = readCellCssTheme(mountTheme({ "--cell-background": "#000000" })).theme.badgeStyles;
+    expect(darkBadges.info).toEqual(CLASSIC_MAC_DARK_THEME.badgeStyles.info);
   });
 
   it("can consume the complete dark inverse through CSS tokens", () => {

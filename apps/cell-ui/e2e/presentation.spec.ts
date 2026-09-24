@@ -118,6 +118,35 @@ test("Text and Badge expose the same local presentation selector", async ({ page
   }
 });
 
+test("TextArea keeps variant and Rich frame choices across presentations", async ({ page }) => {
+  await page.goto("/#/components/text-area");
+  const surface = page.locator('[data-cell-probe="component-text-area"]');
+  const editor = surface.getByRole("textbox", { name: "Notes" });
+  const initial = await readCellProbe(surface);
+  expect(initial.cells.some((cell) => cell.ownerId === "notes" && cell.text === "┌")).toBe(false);
+  const bounds = ownerBounds(initial, "notes");
+  const first = initial.cells.find((cell) => cell.ownerId === "notes" && cell.text === "H")!;
+  expect({ x: first.x, y: first.y }).toEqual({ x: bounds.x + 1, y: bounds.y });
+  await expect(surface.getByRole("button", { name: "variant", exact: true })).toBeAttached();
+  await expect(surface.getByRole("button", { name: "frame", exact: true })).toBeAttached();
+  await expect(surface.getByRole("button", { name: "border shape", exact: true })).toHaveCount(0);
+  await chooseConfig(page, "frame", "bordered");
+  await chooseConfig(page, "border shape", "rounded");
+  expect((await readCellProbe(surface)).cells.some((cell) => cell.ownerId === "notes" && cell.text === "╭")).toBe(true);
+  await editor.fill("Persisted");
+  await choosePresentation(page, "Text");
+  await expect(surface.getByRole("button", { name: "variant", exact: true })).toBeAttached();
+  await expect(surface.getByRole("button", { name: "frame", exact: true })).toHaveCount(0);
+  await expect(surface.getByRole("button", { name: "border shape", exact: true })).toHaveCount(0);
+  expect((await readCellProbe(surface)).cells.some((cell) => cell.ownerId === "notes" && cell.text === "┌")).toBe(true);
+  await chooseConfig(page, "variant", "ghost");
+  await choosePresentation(page, "Rich");
+  await expect(editor).toHaveValue("Persisted");
+  const rich = await readCellProbe(surface);
+  expect(rich.text).toContain("ghost");
+  expect(rich.cells.some((cell) => cell.ownerId === "notes" && cell.text === "╭")).toBe(true);
+});
+
 test("TextArea drag selection contrasts with its focused surface and hides on blur", async ({ page }) => {
   await page.goto("/#/components/text-area");
   const surface = page.locator('[data-cell-probe="component-text-area"]');

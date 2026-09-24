@@ -5,7 +5,33 @@ import {
   CLASSIC_MAC_DARK_THEME,
   CLASSIC_MAC_LIGHT_THEME,
   DEFAULT_CELL_UI_THEME as theme,
+  resolveCellUiTheme,
 } from "./theme.js";
+
+it("maps shared semantic colors to Markdown and status components without losing role overrides", () => {
+  const resolved = resolveCellUiTheme({
+    semanticColors: {
+      info: { text: "#123456", surface: "#ddeeff", surfaceForeground: "#234567" },
+      danger: { surfaceForeground: "#654321" },
+    },
+    markdownColors: { codeForeground: "#abcdef" },
+    badgeStyles: { info: { color: "#fedcba" } },
+  });
+  expect(resolved.markdownColors.link).toBe("#123456");
+  expect(resolved.markdownColors.codeForeground).toBe("#abcdef");
+  expect(resolved.badgeStyles.info).toEqual({ color: "#fedcba" });
+  expect(resolved.badgeStyles.error).toEqual({
+    color: "#654321",
+    backgroundColor: CLASSIC_MAC_LIGHT_THEME.badgeStyles.error.backgroundColor,
+  });
+});
+
+it("uses dark semantic defaults when only a dark background is supplied", () => {
+  const resolved = resolveCellUiTheme({ background: "#000000" });
+  expect(resolved.semanticColors).toEqual(CLASSIC_MAC_DARK_THEME.semanticColors);
+  expect(resolved.markdownColors).toEqual(CLASSIC_MAC_DARK_THEME.markdownColors);
+  expect(resolved.badgeStyles).toEqual(CLASSIC_MAC_DARK_THEME.badgeStyles);
+});
 
 it("resolves state priority without coupling collection focus to editor styling", () => {
   const custom = { ...theme, focusedSurfaceStyle: { backgroundColor: "gray" }, selectedStyle: { backgroundColor: "blue" }, disabledStyle: { color: "muted" } };

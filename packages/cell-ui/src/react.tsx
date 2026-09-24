@@ -878,7 +878,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
   const defaultsToSurface = controlSurface
     || isDialog
     || kind === "overlay"
-    || kind === "alert";
+    || kind === "alert"
+    || kind === "text-area";
   const surfaceVariant = ownsSurface
     ? resolveSurfaceVariant(
           props.variant,

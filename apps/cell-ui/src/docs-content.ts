@@ -851,19 +851,14 @@ import { useCellTextState } from "@chardesk/cell-ui/browser";
 
 const editor = useCellTextState("notes", { value: "Hello", multiline: true });
 <Root>
-  <TextArea
-    id="notes"
-    label="Notes"
-    state={editor.snapshot}
-    frame="bordered"
-    style={{ height: 6 }}
-  />
+  <TextArea id="notes" label="Notes" state={editor.snapshot} style={{ height: 6 }} />
 </Root>;`,
     api: [
       { name: "state", type: "CellTextSnapshot", description: "Controlled text, caret, selection, and scroll state." },
       { name: "label?", type: "string", description: "Accessible editor name." },
-      { name: "variant? / frame?", type: "SurfaceVariant / CellFrame", description: "Independent background and Cell border." },
-      { name: "style?", type: "CellLayoutStyle", description: "Editor viewport dimensions." },
+      { name: "variant? / frame?", type: "SurfaceVariant / CellFrame", description: "Independent background and Cell border; defaults to a frameless surface in Rich and a square border in Text." },
+      { name: "borderShape?", type: "CellBorderShape", description: "Rich bordered frame shape; Text always uses a square character border." },
+      { name: "style?", type: "CellLayoutStyle", description: "Editor viewport dimensions and padding; Rich frameless surface defaults to one content Cell on each horizontal side." },
     ],
   },
   {
@@ -1053,8 +1048,8 @@ import { CellSurface } from "@/lib/cell-ui/browser";
     slug: "theming", title: "Theming",
     description: "Resolve one Cell theme into a browser palette and component recipes.",
     sections: [
-      { id: "defaults", title: "Defaults", body: "CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. Markdown uses the shared CharDesk reading palette within each theme. resolveCellUiTheme(partial) merges Markdown color overrides. Surface backgrounds do not alter copied Cell text." },
-      { id: "css", title: "CSS tokens", body: "The /browser entry exports readCellCssTheme(element) and useCellCssTheme(ref, revision). Markdown uses --cell-markdown-accent, --cell-markdown-link, --cell-markdown-quote, --cell-markdown-muted, --cell-markdown-code-foreground, and --cell-markdown-code-background. These affect Markdown only; other --cell-* tokens control components. Apply CSS changes before the hook's layout effect; bump revision after external stylesheet changes." },
+      { id: "defaults", title: "Defaults", body: "CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. semanticColors gives info, success, warning, and danger each a text color, surface, and surface foreground. Markdown and Badge/Alert derive their defaults from it; Badge/Alert error maps to danger. resolveCellUiTheme(partial) accepts semanticColors, markdownColors, and badgeStyles overrides. Surface backgrounds do not alter copied Cell text." },
+      { id: "css", title: "CSS tokens", body: "The /browser entry exports readCellCssTheme(element) and useCellCssTheme(ref, revision). Shared --cell-tone-{info,success,warning,danger} tokens have optional -surface and -surface-foreground partners. Markdown's --cell-markdown-* and Badge's --cell-badge-* tokens override the matching shared role; otherwise the shared token, then the light or dark default, wins. Apply CSS changes before the hook's layout effect; bump revision after external stylesheet changes." },
       { id: "surface", title: "Surface and frame", body: "Box, ScrollArea, and TextArea separate variant (ghost or surface) from frame (none or bordered). Dialog and Tooltip use their own opaque variant and border recipe. Geometry belongs to CellLayoutStyle, not the theme." },
     ],
   },

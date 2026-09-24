@@ -42,6 +42,53 @@ it("uses text geometry for status, progress, table, and surface controls", () =>
   runtime.dispose();
 });
 
+it("keeps TextArea surface fill while presentation changes its default frame", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 30, height: 8 } });
+  const state = { value: "Notes", selection: { anchor: 5, head: 5 }, composition: null,
+    scrollX: 0, scrollY: 0, revision: 0 };
+  const view = <Root><TextArea id="editor" state={state} style={{ width: 20, height: 4 }} /></Root>;
+  const rich = runtime.render(view);
+  expect(rich.tree.nodes.get("editor")).toMatchObject({ surfaceVariant: "surface", frame: "none" });
+  expect(rich.layout.entries.get("editor")?.paddingInsets).toEqual({ top: 0, right: 1, bottom: 0, left: 1 });
+  expect(rich.scene.entries.get("editor")?.contentBounds.x).toBe(1);
+  expect(rich.buffer.get(1, 0)?.text).toBe("N");
+  runtime.setPresentation("text");
+  const text = runtime.render(view);
+  expect(text.tree.nodes.get("editor")).toMatchObject({ surfaceVariant: "surface", frame: "bordered", borderShape: "square" });
+  expect(text.layout.entries.get("editor")?.paddingInsets).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  expect(text.buffer.toText()).toContain("┌");
+  runtime.setPresentation("rich");
+  const framed = runtime.render(<Root><TextArea id="editor" state={state} variant="ghost"
+    frame="bordered" borderShape="rounded" style={{ width: 20, height: 4 }} /></Root>);
+  expect(framed.tree.nodes.get("editor")).toMatchObject({ surfaceVariant: "ghost", frame: "bordered", borderShape: "rounded" });
+  runtime.dispose();
+});
+
+it("lets explicit TextArea padding override Rich surface defaults and preserves a narrow content Cell", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 24, height: 4 } });
+  const state = { value: "A", selection: { anchor: 0, head: 0 }, composition: null,
+    scrollX: 0, scrollY: 0, revision: 0 };
+  const render = (style: { width: number; padding?: number; paddingLeft?: number; paddingRight?: number },
+    variant?: "surface" | "ghost", frame?: "none" | "bordered") => runtime.render(
+    <Root><TextArea id="editor" state={state} variant={variant} frame={frame} style={style} /></Root>,
+  ).layout.entries.get("editor")!;
+  expect(render({ width: 12, padding: 0 }).paddingInsets).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  expect(render({ width: 12, paddingLeft: 2 }).paddingInsets).toEqual({ top: 0, right: 1, bottom: 0, left: 2 });
+  expect(render({ width: 2, paddingRight: 1 }).paddingInsets).toEqual({ top: 0, right: 1, bottom: 0, left: 0 });
+  expect(render({ width: 12 }, "ghost").paddingInsets).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  expect(render({ width: 12 }, "surface", "bordered").paddingInsets).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  expect(render({ width: 2 }).contentRect.width).toBe(1);
+  expect(render({ width: 1 }).contentRect.width).toBe(1);
+  runtime.dispose();
+  const narrow = new CellUiRuntime({ viewport: { width: 1, height: 4 } });
+  expect(narrow.render(<Root><TextArea id="editor" state={state} /></Root>)
+    .layout.entries.get("editor")).toMatchObject({ rect: { width: 1 }, paddingInsets: { left: 0, right: 0 }, contentRect: { width: 1 } });
+  narrow.resize({ width: 12, height: 4 });
+  expect(narrow.render(<Root><TextArea id="editor" state={state} /></Root>)
+    .layout.entries.get("editor")?.paddingInsets).toEqual({ top: 0, right: 1, bottom: 0, left: 1 });
+  narrow.dispose();
+});
+
 it("separates current navigation from committed selection without losing Cell ownership", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 20, height: 10 }, presentation: "text" });
   const frame = runtime.render(<Root>

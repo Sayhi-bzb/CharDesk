@@ -65,7 +65,7 @@ const controlIds = ["select", "combobox", "text-input"] as const;
 const containerIds = ["box", "text-area", "scroll-area", "overlay", "dialog"] as const;
 const containerDefaults = {
   box: "ghost",
-  "text-area": "ghost",
+  "text-area": "surface",
   "scroll-area": "ghost",
   overlay: "surface",
   dialog: "surface",
@@ -83,7 +83,7 @@ describe("CellUiRecipe", () => {
         select: "surface",
         combobox: "surface",
         "text-input": "surface",
-        "text-area": "ghost",
+        "text-area": "surface",
         "scroll-area": "ghost",
         overlay: "surface",
         dialog: "surface",

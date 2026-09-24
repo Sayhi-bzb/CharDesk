@@ -14,13 +14,7 @@ import { useCellTextState } from "@/lib/cell-ui/browser";
 
 const editor = useCellTextState("notes", { value: "Hello", multiline: true });
 <Root>
-  <TextArea
-    id="notes"
-    label="Notes"
-    state={editor.snapshot}
-    frame="bordered"
-    style={{ height: 6 }}
-  />
+  <TextArea id="notes" label="Notes" state={editor.snapshot} style={{ height: 6 }} />
 </Root>;
 ```
 
@@ -35,5 +29,6 @@ const editor = useCellTextState("notes", { value: "Hello", multiline: true });
 | --- | --- | --- |
 | `state` | `CellTextSnapshot` | Controlled text, caret, selection, and scroll state. |
 | `label?` | `string` | Accessible editor name. |
-| `variant? / frame?` | `SurfaceVariant / CellFrame` | Independent background and Cell border. |
-| `style?` | `CellLayoutStyle` | Editor viewport dimensions. |
+| `variant? / frame?` | `SurfaceVariant / CellFrame` | Independent background and Cell border; defaults to a frameless surface in Rich and a square border in Text. |
+| `borderShape?` | `CellBorderShape` | Rich bordered frame shape; Text always uses a square character border. |
+| `style?` | `CellLayoutStyle` | Editor viewport dimensions and padding; Rich frameless surface defaults to one content Cell on each horizontal side. |

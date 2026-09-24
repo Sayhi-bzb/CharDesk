@@ -120,6 +120,19 @@ const measureText = (
   };
 };
 
+const textAreaSurfaceInsets = (node: WidgetNode, width?: number) => {
+  if (node.kind !== "text-area" || node.presentation !== "rich"
+    || node.surfaceVariant !== "surface" || node.frame !== "none") return null;
+  const explicitLeft = node.style.paddingLeft ?? node.style.padding;
+  const explicitRight = node.style.paddingRight ?? node.style.padding;
+  const defaultBudget = width === undefined
+    ? Number.POSITIVE_INFINITY
+    : Math.max(0, width - 1 - (explicitLeft ?? 0) - (explicitRight ?? 0));
+  const left = explicitLeft ?? Math.min(1, defaultBudget);
+  const right = explicitRight ?? Math.min(1, Math.max(0, defaultBudget - (explicitLeft === undefined ? left : 0)));
+  return { left, right };
+};
+
 const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): void => {
   const item = isCollectionItemKind(node.kind);
   const row = node.kind === "tabs" || node.kind === "grid-row" || node.kind === "table-header" || node.kind === "table-row";
@@ -191,6 +204,11 @@ const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): vo
     ...defaults,
     ...node.style,
   }, node.frame === "bordered");
+  const textAreaInsets = textAreaSurfaceInsets(node, typeof node.style.width === "number" ? node.style.width : undefined);
+  if (textAreaInsets) {
+    target.setPadding(Edge.Left, textAreaInsets.left);
+    target.setPadding(Edge.Right, textAreaInsets.right);
+  }
   if (node.kind === "badge" || node.kind === "badge-action") target.setAlignSelf(Align.FlexStart);
   target.setDisplay(node.kind === "accordion-content" && !node.expanded ? Display.None : Display.Flex);
   if (node.kind === "accordion-trigger") {
@@ -325,7 +343,23 @@ export class YogaLayoutEngine implements LayoutEngine {
     if (!root) throw new Error(`Missing Yoga root: ${tree.rootId}`);
     root.setWidth(viewport.width);
     root.setHeight(viewport.height);
-    root.calculateLayout(viewport.width, viewport.height, Direction.LTR);
+    let adjustedTextAreaInsets = false;
+    // Auto widths can shrink again as each default inset collapses.
+    for (let pass = 0; pass < 4; pass++) {
+      root.calculateLayout(viewport.width, viewport.height, Direction.LTR);
+      adjustedTextAreaInsets = false;
+      for (const [id, widget] of tree.nodes) {
+        const yogaNode = this.#nodes.get(id)!;
+        const insets = textAreaSurfaceInsets(widget, yogaNode.getComputedLayout().width);
+        if (!insets || (yogaNode.getComputedPadding(Edge.Left) === insets.left
+          && yogaNode.getComputedPadding(Edge.Right) === insets.right)) continue;
+        yogaNode.setPadding(Edge.Left, insets.left);
+        yogaNode.setPadding(Edge.Right, insets.right);
+        adjustedTextAreaInsets = true;
+      }
+      if (!adjustedTextAreaInsets) break;
+    }
+    if (adjustedTextAreaInsets) throw new Error("TextArea surface insets did not converge.");
     const entries = new Map<string, LayoutEntry>();
     for (const [id, widget] of tree.nodes) {
       const yogaNode = this.#nodes.get(id);
