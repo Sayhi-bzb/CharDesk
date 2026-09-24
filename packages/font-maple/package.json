@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/font-maple",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Optional Maple Mono display and CJK font pack for CharDesk",
   "type": "module",
   "license": "MIT",
