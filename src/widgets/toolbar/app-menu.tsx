@@ -71,7 +71,7 @@ export function AppMenu({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileGuideOpen, setMobileGuideOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const githubStars = useGitHubStars(APP_SOURCE_URL, menuOpen);
+  const githubStars = useGitHubStars(menuOpen);
   const formattedGitHubStars = useMemo(
     () =>
       githubStars === null ? null : new Intl.NumberFormat().format(githubStars),

@@ -7,6 +7,23 @@ test.describe('App menu', () => {
     });
   });
 
+  test('shows the same-origin GitHub Star snapshot when the menu opens', async ({ page }) => {
+    let requests = 0;
+    await page.route('**/api/github-stars', async (route) => {
+      requests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ count: 1234, updatedAt: '2026-09-23T12:00:00.000Z' }),
+      });
+    });
+    await page.goto('/');
+    expect(requests).toBe(0);
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    await expect(page.getByRole('menuitem', { name: /GitHub.*1,234/ })).toBeVisible();
+    expect(requests).toBe(1);
+  });
+
   test('round-trips a native CharDesk project file', async ({ page }) => {
     await page.goto('/');
 

@@ -76,6 +76,7 @@ jobs:
       - *install
       - name: Run Node tests
         run: |
+          node --test scripts/github-stars/publish.test.mjs
           if [ -n "$VERIFY_BASE" ]; then
             npm run "$VERIFY_SCRIPT" -- --phase root-node --base "$VERIFY_BASE"
           else

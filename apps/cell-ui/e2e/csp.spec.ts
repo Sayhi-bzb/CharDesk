@@ -17,13 +17,11 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
   const pageErrors: string[] = [];
   let refreshPreamble = "";
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  const unexpectedExternalRequests: string[] = [];
+  const externalRequests: string[] = [];
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (!["127.0.0.1", "localhost"].includes(url.hostname)) {
-      if (url.href !== "https://api.github.com/repos/Sayhi-bzb/CharDesk/stargazers/count") {
-        unexpectedExternalRequests.push(url.href);
-      }
+      externalRequests.push(url.href);
       await route.abort();
       return;
     }
@@ -68,10 +66,10 @@ test("Gallery initializes Yoga under the production-equivalent WASM CSP", async 
   await selectGalleryFont(page, "fusion-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
-  expect(unexpectedExternalRequests).toEqual([]);
+  expect(externalRequests).toEqual([]);
   await selectGalleryFont(page, "xiaolai-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font-status", "idle");
   await expect(gallery).toHaveAttribute("data-gallery-font", "xiaolai-mono");
-  expect(unexpectedExternalRequests).toEqual([]);
+  expect(externalRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 });

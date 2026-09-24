@@ -22,11 +22,10 @@ describe('AppMenu document interchange', () => {
     }) as File;
 
   beforeEach(() => {
-    window.localStorage.removeItem('chardesk-github-stars-v1');
     window.localStorage.removeItem('chardesk-canvas-split-enabled');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ stargazers_count: 1234 }),
+      json: () => Promise.resolve({ count: 1234, updatedAt: '2026-09-23T00:00:00.000Z' }),
     }));
   });
 
