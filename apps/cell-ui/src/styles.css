@@ -22,6 +22,7 @@
   --cell-hover: #e6e6e6;
   --cell-highlight-foreground: #ffffff;
   --cell-muted-foreground: #555555;
+  --gallery-code-comment: #666666;
   --cell-disabled-foreground: #777777;
   --cell-border: #000000;
   --cell-accent: #000000;
@@ -59,6 +60,7 @@
   --cell-hover: #1a1a1a;
   --cell-highlight-foreground: #000000;
   --cell-muted-foreground: #aaaaaa;
+  --gallery-code-comment: #999999;
   --cell-disabled-foreground: #888888;
   --cell-border: #ffffff;
   --cell-accent: #ffffff;
@@ -199,9 +201,23 @@ code, pre { font-family: inherit; }
 .component-playground__surface[data-cell-overlay-count] { z-index: 2; }
 .docs-source-links { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0; list-style: none; }
 .docs-source-links a { color: var(--cell-accent); }
-.docs-code { position: relative; min-width: 0; border: var(--gallery-dom-line-width) solid var(--cell-border); background: transparent; }
+.docs-code {
+  position: relative;
+  min-width: 0;
+  border: var(--gallery-dom-line-width) solid var(--cell-border);
+  background: transparent;
+  --gallery-code-foreground: var(--cell-foreground);
+  --gallery-code-token-constant: var(--cell-foreground);
+  --gallery-code-token-function: var(--cell-foreground);
+  --gallery-code-token-keyword: var(--cell-foreground);
+  --gallery-code-token-string: var(--cell-muted-foreground);
+  --gallery-code-token-string-expression: var(--cell-muted-foreground);
+  --gallery-code-token-comment: var(--gallery-code-comment);
+  --gallery-code-token-punctuation: var(--cell-foreground);
+}
 .docs-code .gallery-icon-button { position: absolute; top: 8px; right: 8px; z-index: 1; }
 .docs-code pre { margin: 0; padding: 20px 52px 20px 20px; overflow-x: auto; font-size: 13px; line-height: 1.6; }
+.docs-code__emphasis { font-weight: 700; }
 .docs-table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 10px 12px; border-bottom: var(--gallery-dom-line-width) solid var(--cell-border); text-align: left; vertical-align: top; }

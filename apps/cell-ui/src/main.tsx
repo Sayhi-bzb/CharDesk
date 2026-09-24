@@ -15,6 +15,8 @@ import { guideContent, installationCommands, publicUsage, type GuideContent } fr
 import { FixturePage } from "./fixtures";
 import { GalleryAppearance, GalleryFontSelect, GalleryIconButton, GalleryThemeToggle } from "./appearance";
 import { GitHubStars } from "./github-stars";
+import { NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
+import highlightedCode from "virtual:gallery-code-tokens";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
 import "@chardesk/font-maple/fonts.css";
@@ -82,11 +84,14 @@ export function CopyButton({ readText }: Readonly<{ readText: () => string | Pro
   );
 }
 
-export function CodeBlock({ children }: Readonly<{ children: string }>) {
+export function CodeBlock({ children, language = "tsx" }: Readonly<{ children: string; language?: "tsx" | "text" }>) {
+  const tokens = language === "tsx" ? highlightedCode[children] : undefined;
   return (
     <div className="docs-code">
       <CopyButton readText={() => children} />
-      <pre><code>{children}</code></pre>
+      <pre><code data-code-language={language}>{tokens
+        ? tokens.map((token, index) => <span key={index} className={token.bold ? "docs-code__emphasis" : undefined} style={{ color: token.color }}>{token.content}</span>)
+        : children}</code></pre>
     </div>
   );
 }
@@ -163,7 +168,7 @@ export function Installation() {
         ))}
       </div>
       <div id="installation-command" role="tabpanel" aria-label={`${manager} installation command`}>
-        <CodeBlock>{installationCommands[manager]}</CodeBlock>
+        <CodeBlock language="text">{installationCommands[manager]}</CodeBlock>
       </div>
       <p><a href={manualInstallationGuide}>Manual installation</a></p>
     </section>
@@ -224,14 +229,24 @@ export function ComponentPage({ document }: Readonly<{ document: ComponentDocume
   );
 }
 
+const guideDemos = {
+  settings: SettingsIntroductionDemo,
+  progress: ProgressIntroductionDemo,
+  notes: NotesIntroductionDemo,
+} satisfies Record<NonNullable<GuideContent["sections"][number]["demo"]>, ComponentType>;
+
 export function GuidePage({ guide }: Readonly<{ guide: GuideContent }>) {
   return <main className="docs-page">
     <header className="docs-page__header"><h1>{guide.title}</h1><p>{guide.description}</p></header>
-    {guide.sections.map((section) => <section className="docs-section" aria-labelledby={section.id} key={section.id}>
-      <h2 id={section.id}>{section.title}</h2><p>{section.body}</p>
-      {section.code ? <CodeBlock>{section.code}</CodeBlock> : null}
-      {section.link ? <p><a href={section.link.href}>{section.link.label}</a></p> : null}
-    </section>)}
+    {guide.sections.map((section) => {
+      const Demo = section.demo ? guideDemos[section.demo] : null;
+      return <section className="docs-section" aria-labelledby={section.id} key={section.id}>
+        <h2 id={section.id}>{section.title}</h2><p>{section.body}</p>
+        {Demo ? <div className="docs-preview"><Demo /></div> : null}
+        {section.code ? <CodeBlock language={guide.slug === "installation" ? "text" : "tsx"}>{section.code}</CodeBlock> : null}
+        {section.link ? <p><a href={section.link.href}>{section.link.label}</a></p> : null}
+      </section>;
+    })}
   </main>;
 }
 

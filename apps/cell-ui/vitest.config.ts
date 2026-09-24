@@ -1,9 +1,10 @@
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vitest/config";
 import { workspaceAliases } from "../../scripts/testing/workspace-aliases.js";
+import { galleryCodeHighlighting } from "./code-highlighting.ts";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [galleryCodeHighlighting(), react()],
   resolve: { alias: [...workspaceAliases] },
   test: {
     projects: [

@@ -249,6 +249,48 @@ test("guide sections, direct links, and agent Markdown stay addressable", async 
   }
 });
 
+test("Introduction shows interactive Cell examples and matching agent content", async ({ page, request }) => {
+  await page.goto("/#/guides/introduction");
+  const toc = page.getByRole("navigation", { name: "On This Page" });
+  await expect(toc.getByRole("link")).toHaveText([
+    "Why Cells?", "Compose a settings panel", "Show progress in text", "Edit Unicode in place", "Make it yours",
+  ]);
+  await expect(page.locator("#philosophy").locator("xpath=..")).toContainText(
+    "Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux",
+  );
+
+  const settings = page.getByLabel("Settings example");
+  const theme = settings.getByRole("button", { name: "Theme" });
+  await theme.evaluate((element: HTMLElement) => element.click());
+  await settings.getByRole("option", { name: "Light" }).evaluate((element: HTMLElement) => element.click());
+  await expect(settings.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
+  await expect.poll(async () => (await readCellProbe(settings)).text).toContain("Light");
+  const sound = settings.getByRole("checkbox", { name: "Sound" });
+  await expect(sound).toHaveAttribute("aria-checked", "true");
+  await sound.focus();
+  await page.keyboard.press("Space");
+  await expect(sound).toHaveAttribute("aria-checked", "false");
+
+  const progress = page.getByLabel("Progress example");
+  await expect.poll(async () => (await readCellProbe(progress)).text).toContain("Uploading files");
+  await progress.getByRole("button", { name: "Start" }).evaluate((element: HTMLElement) => element.click());
+  await expect.poll(async () => (await readCellProbe(progress)).text, { timeout: 10000 }).toContain("Upload complete");
+
+  const notes = page.getByLabel("Unicode notes example");
+  const editor = notes.getByRole("textbox", { name: "Notes" });
+  await editor.fill("世界 👋 and Cells");
+  await expect.poll(async () => (await readCellProbe(notes)).text).toContain("世界 👋 and Cells");
+
+  await page.setViewportSize({ width: 320, height: 700 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  const markdown = await request.get("/guides/introduction.md");
+  expect(markdown.ok()).toBe(true);
+  expect(await markdown.text()).toContain("## Compose a settings panel");
+  expect(await markdown.text()).toContain("useCellTextState");
+  expect(await markdown.text()).toContain("Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux");
+  expect(await markdown.text()).toContain("[Installation](https://ui.chardesk.com/#/guides/installation)");
+});
+
 test("guide prose and code use the same content width", async ({ page }) => {
   await page.goto("/#/guides/integration");
   const section = page.locator("#surface").locator("xpath=..");

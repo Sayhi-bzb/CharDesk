@@ -769,17 +769,40 @@ const list = useCellListState([{ id: "a", label: "Alpha" }]);
 
 ];
 
-type GuideSection = Readonly<{ id: string; title: string; body: string; code?: string; link?: Readonly<{ label: string; href: string }> }>;
+type GuideSection = Readonly<{
+  id: string;
+  title: string;
+  body: string;
+  code?: string;
+  demo?: "settings" | "progress" | "notes";
+  link?: Readonly<{ label: string; href: string }>;
+}>;
 export type GuideContent = Readonly<{ slug: string; title: string; description: string; sections: readonly GuideSection[] }>;
 
 export const guideContent: readonly GuideContent[] = [
   {
     slug: "introduction", title: "Introduction",
-    description: "Editable Unicode Cell interfaces for React, rendered from one headless frame.",
+    description: "Build React interfaces from editable Unicode Cells. Own the source, compose a few good defaults, and let one frame serve people and agents.",
     sections: [
-      { id: "model", title: "Model", body: "React descriptors compose a Cell tree. The headless runtime commits integer layout, text, Scene, and semantics. The browser entry projects that same frame to Canvas2D and Semantic DOM." },
-      { id: "start", title: "Start here", body: "Install the complete editable source, then use Components for runnable examples and their public props. Root is the structural container; CellSurface owns the browser viewport and command bridge." },
-      { id: "ownership", title: "Ownership", body: "The Gallery owns public installation and usage. Internal interaction, compositor, and testing contracts live in the development docs and source tests." },
+      { id: "philosophy", title: "Why Cells?", body: "A border, a space, a label, and a cursor all occupy integer Cells. The same committed frame drives the visible Canvas, accessible controls, copyable Unicode, and headless tests. Cell UI ships as source you can change, with fewer built-in knobs to work around. Try Cell Range: hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux. Copy preserves the selected Unicode, including border glyphs." },
+      { id: "settings", title: "Compose a settings panel", body: "Theme and Sound are ordinary app state. Select and Checkbox share the same Cell grid and input model; try the menu and the checkbox with pointer or keyboard.", demo: "settings", code: `const themeItems = [{ id: "light", label: "Light" }, { id: "dark", label: "Dark" }];
+const theme = useCellSelectState("theme", themeItems, { defaultSelectedId: "dark" });
+const [sound, setSound] = useState(true);
+
+// Pass app-owned state into Select and Checkbox inside one Root.`, link: { label: "Select component", href: "#/components/select" } },
+      { id: "progress", title: "Show progress in text", body: "The outline, fill, and empty track are Unicode Cells, not a painted approximation. Start an upload and watch it advance in uneven steps.", demo: "progress", code: `const [progress, setProgress] = useState(0); // Your task updates this value.
+
+<Root>
+  <Text>Uploading files</Text>
+  <Progress id="upload" label="Upload" value={progress} variant="outline" style={{ width: 26 }} />
+  <Button id="start"><Text>Start</Text></Button>
+</Root>`, link: { label: "Progress component", href: "#/components/progress" } },
+      { id: "notes", title: "Edit Unicode in place", body: "Type into the note. Text editing uses the browser's native input path while the committed frame keeps the same Cell geometry and Unicode source.", demo: "notes", code: `const note = useCellTextState("note", { value: "Hello, 世界 👋", multiline: true });
+
+<CellSurface viewport={{ width: 32, height: 7 }} onCommand={note.dispatch}>
+  <Root><TextArea id="note" label="Notes" state={note.snapshot} /></Root>
+</CellSurface>`, link: { label: "TextArea component", href: "#/components/text-area" } },
+      { id: "start", title: "Make it yours", body: "Install the complete library into your project, then edit the source directly. Use the component pages for full wiring and public props; keep product-specific choices in your own code.", link: { label: "Installation", href: "#/guides/installation" } },
     ],
   },
   {

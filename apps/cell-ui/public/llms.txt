@@ -4,7 +4,7 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 
 ## Sections
 
-- [Introduction](https://ui.chardesk.com/guides/introduction.md): Editable Unicode Cell interfaces for React, rendered from one headless frame.
+- [Introduction](https://ui.chardesk.com/guides/introduction.md): Build React interfaces from editable Unicode Cells. Own the source, compose a few good defaults, and let one frame serve people and agents.
 - [Installation](https://ui.chardesk.com/guides/installation.md): Install the complete editable Cell UI source through the shadcn registry.
 - [Integration](https://ui.chardesk.com/guides/integration.md): Connect Cell descriptors, browser projection, and application-owned state.
 - [Theming](https://ui.chardesk.com/guides/theming.md): Resolve one Cell theme into a browser palette and component recipes.
