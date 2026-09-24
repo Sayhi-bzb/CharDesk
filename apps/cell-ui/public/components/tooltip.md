@@ -13,12 +13,16 @@ import { Button, Root, Text, Tooltip } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
 export function TooltipExample() {
-  return <CellSurface viewport={{ width: 28, height: 7 }} onCommand={() => {}}>
-    <Root>
-      <Button id="save" label="Save document"><Text>Save</Text></Button>
-      <Tooltip targetId="save" text="Save current document" />
-    </Root>
-  </CellSurface>;
+  return (
+    <CellSurface viewport={{ width: 28, height: 7 }} onCommand={() => {}}>
+      <Root>
+        <Button id="save" label="Save document">
+          <Text>Save</Text>
+        </Button>
+        <Tooltip targetId="save" text="Save current document" />
+      </Root>
+    </CellSurface>
+  );
 }
 ```
 

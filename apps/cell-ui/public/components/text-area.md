@@ -13,8 +13,15 @@ import { Root, TextArea } from "@/lib/cell-ui";
 import { useCellTextState } from "@/lib/cell-ui/browser";
 
 const editor = useCellTextState("notes", { value: "Hello", multiline: true });
-<Root><TextArea id="notes" label="Notes" state={editor.snapshot}
-  frame="bordered" style={{ height: 6 }} /></Root>
+<Root>
+  <TextArea
+    id="notes"
+    label="Notes"
+    state={editor.snapshot}
+    frame="bordered"
+    style={{ height: 6 }}
+  />
+</Root>;
 ```
 
 ## View source

@@ -20,19 +20,38 @@ const items = [
 export function TabsExample() {
   const tabs = useCellTabsState(items, { defaultSelectedId: "code" });
   const selected = tabs.items.find((item) => item.id === tabs.selectedId);
-  return <CellSurface viewport={{ width: 28, height: 5 }}
-    focusedId={tabs.focusedId} onCommand={tabs.dispatch}>
-    <Root>
-      <Tabs label="Views" orientation="horizontal">
-        {tabs.items.map((item) => <Tab key={item.id} id={item.id}
-          controlsId={item.panelId}
-          focused={tabs.focusedId === item.id}
-          selected={tabs.selectedId === item.id}><Text>{item.label}</Text></Tab>)}
-      </Tabs>
-      {selected && <TabPanel id={selected.panelId} label={selected.label}
-        labelledById={selected.id}><Text>{selected.label} content</Text></TabPanel>}
-    </Root>
-  </CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 28, height: 5 }}
+      focusedId={tabs.focusedId}
+      onCommand={tabs.dispatch}
+    >
+      <Root>
+        <Tabs label="Views" orientation="horizontal">
+          {tabs.items.map((item) => (
+            <Tab
+              key={item.id}
+              id={item.id}
+              controlsId={item.panelId}
+              focused={tabs.focusedId === item.id}
+              selected={tabs.selectedId === item.id}
+            >
+              <Text>{item.label}</Text>
+            </Tab>
+          ))}
+        </Tabs>
+        {selected && (
+          <TabPanel
+            id={selected.panelId}
+            label={selected.label}
+            labelledById={selected.id}
+          >
+            <Text>{selected.label} content</Text>
+          </TabPanel>
+        )}
+      </Root>
+    </CellSurface>
+  );
 }
 ```
 

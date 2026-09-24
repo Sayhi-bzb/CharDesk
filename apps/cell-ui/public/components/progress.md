@@ -13,9 +13,13 @@ import { Progress, Root } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
 export function ProgressExample() {
-  return <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
-    <Root><Progress label="Upload" value={60} variant="outline" number /></Root>
-  </CellSurface>;
+  return (
+    <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
+      <Root>
+        <Progress label="Upload" value={60} variant="outline" number />
+      </Root>
+    </CellSurface>
+  );
 }
 ```
 

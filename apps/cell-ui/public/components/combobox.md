@@ -9,7 +9,14 @@ Install the full editable source in a React project with components.json and ali
 ## Usage
 
 ```tsx
-import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, Root, Text } from "@/lib/cell-ui";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  Root,
+  Text,
+} from "@/lib/cell-ui";
 import { CellSurface, useCellComboboxState } from "@/lib/cell-ui/browser";
 
 const fonts = [
@@ -19,20 +26,45 @@ const fonts = [
 
 export function ComboboxExample() {
   const combo = useCellComboboxState("font", fonts, { defaultSelectedId: "maple" });
-  return <CellSurface viewport={{ width: 32, height: 8 }} focusedId={combo.focusedId}
-    onCommand={combo.dispatch}><Root>
-    <Combobox id={combo.id} style={{ width: 30 }}>
-      <ComboboxInput id={combo.inputId} label="Font" state={combo.inputSnapshot}
-        expanded={combo.open} activeDescendantId={combo.activeId ?? undefined} />
-      {combo.open && <ComboboxContent id={combo.contentId} label="Font options" scrollY={combo.scrollY}>
-        {combo.filteredItems.map((item, index) => <ComboboxItem id={item.id} key={item.id}
-          active={combo.activeId === item.id} selected={combo.selectedId === item.id}
-          positionInSet={index + 1} setSize={combo.filteredItems.length}>
-          <Text>{item.label}</Text>
-        </ComboboxItem>)}
-      </ComboboxContent>}
-    </Combobox>
-  </Root></CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 32, height: 8 }}
+      focusedId={combo.focusedId}
+      onCommand={combo.dispatch}
+    >
+      <Root>
+        <Combobox id={combo.id} style={{ width: 30 }}>
+          <ComboboxInput
+            id={combo.inputId}
+            label="Font"
+            state={combo.inputSnapshot}
+            expanded={combo.open}
+            activeDescendantId={combo.activeId ?? undefined}
+          />
+          {combo.open && (
+            <ComboboxContent
+              id={combo.contentId}
+              label="Font options"
+              scrollY={combo.scrollY}
+            >
+              {combo.filteredItems.map((item, index) => (
+                <ComboboxItem
+                  id={item.id}
+                  key={item.id}
+                  active={combo.activeId === item.id}
+                  selected={combo.selectedId === item.id}
+                  positionInSet={index + 1}
+                  setSize={combo.filteredItems.length}
+                >
+                  <Text>{item.label}</Text>
+                </ComboboxItem>
+              ))}
+            </ComboboxContent>
+          )}
+        </Combobox>
+      </Root>
+    </CellSurface>
+  );
 }
 ```
 

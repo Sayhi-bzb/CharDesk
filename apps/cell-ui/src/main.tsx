@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
+import { StrictMode, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createRoot } from "react-dom/client";
 import { Check } from "pixelarticons/react/Check";
 import { Close } from "pixelarticons/react/Close";
@@ -17,6 +17,7 @@ import { GalleryAppearance, GalleryFontSelect, GalleryIconButton, GalleryThemeTo
 import { GitHubStars } from "./github-stars";
 import { ClassicMacintoshDemo, NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
 import highlightedCode from "virtual:gallery-code-tokens";
+import { shouldCollapseCode } from "./code-block-lines";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
 import "@chardesk/font-maple/fonts.css";
@@ -85,13 +86,17 @@ export function CopyButton({ readText }: Readonly<{ readText: () => string | Pro
 }
 
 export function CodeBlock({ children, language = "tsx" }: Readonly<{ children: string; language?: "tsx" | "text" }>) {
+  const [expanded, setExpanded] = useState(false);
+  const codeId = useId();
+  const collapsible = shouldCollapseCode(children);
   const tokens = language === "tsx" ? highlightedCode[children] : undefined;
   return (
-    <div className="docs-code">
+    <div className="docs-code" data-collapsed={collapsible && !expanded ? "" : undefined}>
       <CopyButton readText={() => children} />
-      <pre><code data-code-language={language}>{tokens
+      <pre id={codeId}><code data-code-language={language}>{tokens
         ? tokens.map((token, index) => <span key={index} className={token.bold ? "docs-code__emphasis" : undefined} style={{ color: token.color }}>{token.content}</span>)
         : children}</code></pre>
+      {collapsible ? <button className="docs-code__toggle" type="button" aria-controls={codeId} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>{expanded ? "Show less" : "Show more"}</button> : null}
     </div>
   );
 }

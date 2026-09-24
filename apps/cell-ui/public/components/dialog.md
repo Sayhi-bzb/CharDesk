@@ -10,23 +10,49 @@ Install the full editable source in a React project with components.json and ali
 
 ```tsx
 import { useState } from "react";
-import { Root, Button, Text, Dialog, DialogTitle, DialogDescription, DialogFooter } from "@/lib/cell-ui";
+import {
+  Root,
+  Button,
+  Text,
+  Dialog,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
 export function DialogExample() {
   const [open, setOpen] = useState(false);
-  return <CellSurface viewport={{ width: 48, height: 14 }} onCommand={(command) => {
-    if (command.type === "activate" && command.targetId === "open") setOpen(true);
-    if ((command.type === "dismiss" && command.targetId === "dialog")
-      || (command.type === "activate" && command.targetId === "close")) setOpen(false);
-  }}><Root>
-    <Button id="open"><Text>Open dialog</Text></Button>
-    {open && <Dialog id="dialog">
-      <DialogTitle>Continue?</DialogTitle>
-      <DialogDescription>This is a preview confirmation.</DialogDescription>
-      <DialogFooter><Button id="close"><Text>Close</Text></Button></DialogFooter>
-    </Dialog>}
-  </Root></CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 48, height: 14 }}
+      onCommand={(command) => {
+        if (command.type === "activate" && command.targetId === "open") setOpen(true);
+        if (
+          (command.type === "dismiss" && command.targetId === "dialog") ||
+          (command.type === "activate" && command.targetId === "close")
+        )
+          setOpen(false);
+      }}
+    >
+      <Root>
+        <Button id="open">
+          <Text>Open dialog</Text>
+        </Button>
+        {open && (
+          <Dialog id="dialog">
+            <DialogTitle>Continue?</DialogTitle>
+            <DialogDescription>This is a preview confirmation.</DialogDescription>
+            <DialogFooter>
+              <Button id="close">
+                <Text>Close</Text>
+              </Button>
+            </DialogFooter>
+          </Dialog>
+        )}
+      </Root>
+    </CellSurface>
+  );
 }
 ```
 

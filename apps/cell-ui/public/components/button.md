@@ -19,7 +19,11 @@ export function ButtonExample() {
     if (command.type === "focus") setFocusedId(command.targetId);
   };
   return (
-    <CellSurface viewport={{ width: 24, height: 3 }} focusedId={focusedId} onCommand={dispatch}>
+    <CellSurface
+      viewport={{ width: 24, height: 3 }}
+      focusedId={focusedId}
+      onCommand={dispatch}
+    >
       <Root id="root">
         <Button
           id="save"

@@ -11,7 +11,9 @@ Install the full editable source in a React project with components.json and ali
 ```tsx
 import { Root, Text } from "@/lib/cell-ui";
 
-<Root><Text textStyle={{ bold: true }}>Hello, 世界</Text></Root>
+<Root>
+  <Text textStyle={{ bold: true }}>Hello, 世界</Text>
+</Root>;
 ```
 
 ## View source

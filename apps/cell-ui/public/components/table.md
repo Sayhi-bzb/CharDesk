@@ -11,13 +11,28 @@ Install the full editable source in a React project with components.json and ali
 ```tsx
 import { Root, Table, TableRow, TableCell } from "@/lib/cell-ui";
 
-<Root><Table label="Files" variant="outline" columns={[
-  { label: "Name", width: 12 }, { label: "Status", width: 10 },
-  { label: "Size", width: 7, align: "right" },
-]}>
-  <TableRow><TableCell>Notes.txt</TableCell><TableCell>Synced</TableCell><TableCell>12 KB</TableCell></TableRow>
-  <TableRow><TableCell>Draft.md</TableCell><TableCell>Editing</TableCell><TableCell>3 KB</TableCell></TableRow>
-</Table></Root>
+<Root>
+  <Table
+    label="Files"
+    variant="outline"
+    columns={[
+      { label: "Name", width: 12 },
+      { label: "Status", width: 10 },
+      { label: "Size", width: 7, align: "right" },
+    ]}
+  >
+    <TableRow>
+      <TableCell>Notes.txt</TableCell>
+      <TableCell>Synced</TableCell>
+      <TableCell>12 KB</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Draft.md</TableCell>
+      <TableCell>Editing</TableCell>
+      <TableCell>3 KB</TableCell>
+    </TableRow>
+  </Table>
+</Root>;
 ```
 
 ## View source

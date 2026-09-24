@@ -11,8 +11,10 @@ import { Root, Text } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
 <CellSurface viewport={{ width: 30, height: 4 }} onCommand={dispatch}>
-  <Root><Text>Hello, Cells</Text></Root>
-</CellSurface>
+  <Root>
+    <Text>Hello, Cells</Text>
+  </Root>
+</CellSurface>;
 ```
 
 ## State and commands

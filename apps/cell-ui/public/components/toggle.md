@@ -15,11 +15,21 @@ import { CellSurface } from "@/lib/cell-ui/browser";
 
 export function ToggleExample() {
   const [pressed, setPressed] = useState(false);
-  return <CellSurface viewport={{ width: 12, height: 1 }} onCommand={(command) => {
-    if (command.type === "activate" && command.targetId === "bold") setPressed((value) => !value);
-  }}>
-    <Root><Toggle id="bold" label="Bold" pressed={pressed}><Text>Bold</Text></Toggle></Root>
-  </CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 12, height: 1 }}
+      onCommand={(command) => {
+        if (command.type === "activate" && command.targetId === "bold")
+          setPressed((value) => !value);
+      }}
+    >
+      <Root>
+        <Toggle id="bold" label="Bold" pressed={pressed}>
+          <Text>Bold</Text>
+        </Toggle>
+      </Root>
+    </CellSurface>
+  );
 }
 ```
 

@@ -30,14 +30,20 @@ export function CheckboxExample() {
     }
   };
   return (
-    <CellSurface focusedId={focusedId} onCommand={dispatch} viewport={{ width: 24, height: 1 }}>
+    <CellSurface
+      focusedId={focusedId}
+      onCommand={dispatch}
+      viewport={{ width: 24, height: 1 }}
+    >
       <Root id="root">
         <Checkbox
           id="autosave"
           label="Autosave"
           checked={checked}
           focused={focusedId === "autosave"}
-        ><Text>Autosave</Text></Checkbox>
+        >
+          <Text>Autosave</Text>
+        </Checkbox>
       </Root>
     </CellSurface>
   );

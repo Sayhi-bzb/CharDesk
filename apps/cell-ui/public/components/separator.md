@@ -13,9 +13,15 @@ import { Root, Separator, Text } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
 export function SeparatorExample() {
-  return <CellSurface viewport={{ width: 20, height: 3 }} onCommand={() => {}}>
-    <Root><Text>Files</Text><Separator /><Text>Settings</Text></Root>
-  </CellSurface>;
+  return (
+    <CellSurface viewport={{ width: 20, height: 3 }} onCommand={() => {}}>
+      <Root>
+        <Text>Files</Text>
+        <Separator />
+        <Text>Settings</Text>
+      </Root>
+    </CellSurface>
+  );
 }
 ```
 

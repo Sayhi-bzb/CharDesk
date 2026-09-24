@@ -13,12 +13,18 @@ import { Badge, Root, Text } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
 export function BadgeExample() {
-  return <CellSurface viewport={{ width: 22, height: 1 }} onCommand={() => {}}>
-    <Root style={{ direction: "row", gap: 1 }}>
-      <Badge tone="success"><Text>Done</Text></Badge>
-      <Badge id="retry" tone="error" interactive><Text>Retry</Text></Badge>
-    </Root>
-  </CellSurface>;
+  return (
+    <CellSurface viewport={{ width: 22, height: 1 }} onCommand={() => {}}>
+      <Root style={{ direction: "row", gap: 1 }}>
+        <Badge tone="success">
+          <Text>Done</Text>
+        </Badge>
+        <Badge id="retry" tone="error" interactive>
+          <Text>Retry</Text>
+        </Badge>
+      </Root>
+    </CellSurface>
+  );
 }
 ```
 

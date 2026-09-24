@@ -237,6 +237,9 @@ code, pre { font-family: inherit; }
 }
 .docs-code .gallery-icon-button { position: absolute; top: 8px; right: 8px; z-index: 1; }
 .docs-code pre { margin: 0; padding: 20px 52px 20px 20px; overflow-x: auto; font-size: 13px; line-height: 1.6; }
+.docs-code[data-collapsed] pre { box-sizing: border-box; max-height: calc(20 * 1.6em + 40px); overflow-y: hidden; }
+.docs-code__toggle { display: block; width: 100%; padding: 8px 12px; border: 0; border-top: var(--gallery-dom-line-width) solid var(--cell-border); background: transparent; color: var(--cell-foreground); font: inherit; font-size: 13px; cursor: pointer; }
+.docs-code__toggle:hover { background: var(--cell-hover); }
 .docs-code__emphasis { font-weight: 700; }
 .docs-table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }

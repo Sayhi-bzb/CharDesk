@@ -9,14 +9,27 @@ Install the full editable source in a React project with components.json and ali
 ## Usage
 
 ```tsx
-import { Alert, AlertTitle, AlertDescription, Button, Root, Text } from "@/lib/cell-ui";
+import {
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  Button,
+  Root,
+  Text,
+} from "@/lib/cell-ui";
 
 export function AlertExample() {
-  return <Root><Alert tone="warning">
-    <AlertTitle>Unsaved changes</AlertTitle>
-    <AlertDescription>Changes are stored locally.</AlertDescription>
-    <Button id="save"><Text>Save now</Text></Button>
-  </Alert></Root>;
+  return (
+    <Root>
+      <Alert tone="warning">
+        <AlertTitle>Unsaved changes</AlertTitle>
+        <AlertDescription>Changes are stored locally.</AlertDescription>
+        <Button id="save">
+          <Text>Save now</Text>
+        </Button>
+      </Alert>
+    </Root>
+  );
 }
 ```
 

@@ -21,7 +21,11 @@ export function SliderExample() {
     }
   };
   return (
-    <CellSurface focusedId="volume" onCommand={dispatch} viewport={{ width: 26, height: 1 }}>
+    <CellSurface
+      focusedId="volume"
+      onCommand={dispatch}
+      viewport={{ width: 26, height: 1 }}
+    >
       <Root id="root" style={{ direction: "row" }}>
         <Slider
           id="volume"
@@ -40,8 +44,15 @@ export function SliderExample() {
 }
 
 // Two endpoints use the same Slider; handle set-value by thumb id.
-<Slider id="range" label="Volume range" value={[25, 75]}
-  thumbs={[{ id: "start", label: "Minimum" }, { id: "end", label: "Maximum" }]} />
+<Slider
+  id="range"
+  label="Volume range"
+  value={[25, 75]}
+  thumbs={[
+    { id: "start", label: "Minimum" },
+    { id: "end", label: "Maximum" },
+  ]}
+/>;
 ```
 
 ## View source

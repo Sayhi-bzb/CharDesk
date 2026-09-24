@@ -19,13 +19,23 @@ const items = [
 
 export function RadioExample() {
   const radio = useCellRadioState(items, { defaultValue: "light" });
-  return <CellSurface viewport={{ width: 16, height: 2 }} focusedId={radio.focusedId} onCommand={radio.dispatch}>
-    <Root><RadioGroup label="Appearance" value={radio.value}>
-      {radio.items.map((item) => <RadioItem key={item.id} id={item.id} value={item.value}>
-        <Text>{item.label}</Text>
-      </RadioItem>)}
-    </RadioGroup></Root>
-  </CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 16, height: 2 }}
+      focusedId={radio.focusedId}
+      onCommand={radio.dispatch}
+    >
+      <Root>
+        <RadioGroup label="Appearance" value={radio.value}>
+          {radio.items.map((item) => (
+            <RadioItem key={item.id} id={item.id} value={item.value}>
+              <Text>{item.label}</Text>
+            </RadioItem>
+          ))}
+        </RadioGroup>
+      </Root>
+    </CellSurface>
+  );
 }
 ```
 

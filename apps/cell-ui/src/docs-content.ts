@@ -47,14 +47,27 @@ export const componentContent: readonly ComponentContent[] = [
   {
     slug: "alert", title: "Alert",
     description: "Keep a status or warning visible beside the work it describes.",
-    usage: `import { Alert, AlertTitle, AlertDescription, Button, Root, Text } from "@chardesk/cell-ui";
+    usage: `import {
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  Button,
+  Root,
+  Text,
+} from "@chardesk/cell-ui";
 
 export function AlertExample() {
-  return <Root><Alert tone="warning">
-    <AlertTitle>Unsaved changes</AlertTitle>
-    <AlertDescription>Changes are stored locally.</AlertDescription>
-    <Button id="save"><Text>Save now</Text></Button>
-  </Alert></Root>;
+  return (
+    <Root>
+      <Alert tone="warning">
+        <AlertTitle>Unsaved changes</AlertTitle>
+        <AlertDescription>Changes are stored locally.</AlertDescription>
+        <Button id="save">
+          <Text>Save now</Text>
+        </Button>
+      </Alert>
+    </Root>
+  );
 }`,
     api: [
       { name: "tone?", type: '"info" | "success" | "warning" | "error"', description: "Status meaning; info by default. Warning and error announce as alerts." },
@@ -68,23 +81,49 @@ export function AlertExample() {
     slug: "dialog", title: "Dialog",
     description: "A named Cell dialog with shared overlay placement and focus management.",
     usage: `import { useState } from "react";
-import { Root, Button, Text, Dialog, DialogTitle, DialogDescription, DialogFooter } from "@chardesk/cell-ui";
+import {
+  Root,
+  Button,
+  Text,
+  Dialog,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@chardesk/cell-ui";
 import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function DialogExample() {
   const [open, setOpen] = useState(false);
-  return <CellSurface viewport={{ width: 48, height: 14 }} onCommand={(command) => {
-    if (command.type === "activate" && command.targetId === "open") setOpen(true);
-    if ((command.type === "dismiss" && command.targetId === "dialog")
-      || (command.type === "activate" && command.targetId === "close")) setOpen(false);
-  }}><Root>
-    <Button id="open"><Text>Open dialog</Text></Button>
-    {open && <Dialog id="dialog">
-      <DialogTitle>Continue?</DialogTitle>
-      <DialogDescription>This is a preview confirmation.</DialogDescription>
-      <DialogFooter><Button id="close"><Text>Close</Text></Button></DialogFooter>
-    </Dialog>}
-  </Root></CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 48, height: 14 }}
+      onCommand={(command) => {
+        if (command.type === "activate" && command.targetId === "open") setOpen(true);
+        if (
+          (command.type === "dismiss" && command.targetId === "dialog") ||
+          (command.type === "activate" && command.targetId === "close")
+        )
+          setOpen(false);
+      }}
+    >
+      <Root>
+        <Button id="open">
+          <Text>Open dialog</Text>
+        </Button>
+        {open && (
+          <Dialog id="dialog">
+            <DialogTitle>Continue?</DialogTitle>
+            <DialogDescription>This is a preview confirmation.</DialogDescription>
+            <DialogFooter>
+              <Button id="close">
+                <Text>Close</Text>
+              </Button>
+            </DialogFooter>
+          </Dialog>
+        )}
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "id", type: "string", description: "Required stable dismiss-command target." },
@@ -100,29 +139,55 @@ export function DialogExample() {
     slug: "accordion", title: "Accordion",
     description: "Expand independent sections without losing their content state.",
     usage: `import { useState } from "react";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Root, Separator, Text } from "@chardesk/cell-ui";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+  Root,
+  Separator,
+  Text,
+} from "@chardesk/cell-ui";
 import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function AccordionExample() {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
-  return <CellSurface viewport={{ width: 30, height: 6 }} onCommand={(command) => {
-    if (command.type === "set-expanded") setExpanded((current) => {
-      const next = new Set(current);
-      if (command.expanded) next.add(command.targetId);
-      else next.delete(command.targetId);
-      return next;
-    });
-  }}>
-    <Root><Accordion><AccordionItem id="general" expanded={expanded.has("general")}>
-      <AccordionTrigger><Text>General</Text></AccordionTrigger>
-      <AccordionContent><Text>Project settings</Text></AccordionContent>
-    </AccordionItem>
-    <Separator />
-    <AccordionItem id="advanced" expanded={expanded.has("advanced")}>
-      <AccordionTrigger><Text>Advanced</Text></AccordionTrigger>
-      <AccordionContent><Text>Advanced settings</Text></AccordionContent>
-    </AccordionItem></Accordion></Root>
-  </CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 30, height: 6 }}
+      onCommand={(command) => {
+        if (command.type === "set-expanded")
+          setExpanded((current) => {
+            const next = new Set(current);
+            if (command.expanded) next.add(command.targetId);
+            else next.delete(command.targetId);
+            return next;
+          });
+      }}
+    >
+      <Root>
+        <Accordion>
+          <AccordionItem id="general" expanded={expanded.has("general")}>
+            <AccordionTrigger>
+              <Text>General</Text>
+            </AccordionTrigger>
+            <AccordionContent>
+              <Text>Project settings</Text>
+            </AccordionContent>
+          </AccordionItem>
+          <Separator />
+          <AccordionItem id="advanced" expanded={expanded.has("advanced")}>
+            <AccordionTrigger>
+              <Text>Advanced</Text>
+            </AccordionTrigger>
+            <AccordionContent>
+              <Text>Advanced settings</Text>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "Accordion.disabled?", type: "boolean", description: "Disables all items and content controls." },
@@ -141,11 +206,21 @@ import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function ToggleExample() {
   const [pressed, setPressed] = useState(false);
-  return <CellSurface viewport={{ width: 12, height: 1 }} onCommand={(command) => {
-    if (command.type === "activate" && command.targetId === "bold") setPressed((value) => !value);
-  }}>
-    <Root><Toggle id="bold" label="Bold" pressed={pressed}><Text>Bold</Text></Toggle></Root>
-  </CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 12, height: 1 }}
+      onCommand={(command) => {
+        if (command.type === "activate" && command.targetId === "bold")
+          setPressed((value) => !value);
+      }}
+    >
+      <Root>
+        <Toggle id="bold" label="Bold" pressed={pressed}>
+          <Text>Bold</Text>
+        </Toggle>
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "pressed?", type: "boolean", description: "Persistent pressed state; defaults to false." },
@@ -160,9 +235,13 @@ export function ToggleExample() {
 import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function ProgressExample() {
-  return <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
-    <Root><Progress label="Upload" value={60} variant="outline" number /></Root>
-  </CellSurface>;
+  return (
+    <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
+      <Root>
+        <Progress label="Upload" value={60} variant="outline" number />
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "value", type: "number | null", description: "Numbers are clamped to 0…max; null is indeterminate." },
@@ -179,11 +258,16 @@ export function ProgressExample() {
 import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function SpinnerExample() {
-  return <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
-    <Root><Box style={{ direction: "row", gap: 1 }}>
-      <Spinner label="Loading" variant="wheel" /><Text>Loading…</Text>
-    </Box></Root>
-  </CellSurface>;
+  return (
+    <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
+      <Root>
+        <Box style={{ direction: "row", gap: 1 }}>
+          <Spinner label="Loading" variant="wheel" />
+          <Text>Loading…</Text>
+        </Box>
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "label", type: "string", description: "Required accessible name; visible text is composed separately." },
@@ -198,12 +282,16 @@ export function SpinnerExample() {
 import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function TooltipExample() {
-  return <CellSurface viewport={{ width: 28, height: 7 }} onCommand={() => {}}>
-    <Root>
-      <Button id="save" label="Save document"><Text>Save</Text></Button>
-      <Tooltip targetId="save" text="Save current document" />
-    </Root>
-  </CellSurface>;
+  return (
+    <CellSurface viewport={{ width: 28, height: 7 }} onCommand={() => {}}>
+      <Root>
+        <Button id="save" label="Save document">
+          <Text>Save</Text>
+        </Button>
+        <Tooltip targetId="save" text="Save current document" />
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "targetId", type: "string", description: "Stable id of an existing focusable Cell control." },
@@ -220,9 +308,15 @@ export function TooltipExample() {
 import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function SeparatorExample() {
-  return <CellSurface viewport={{ width: 20, height: 3 }} onCommand={() => {}}>
-    <Root><Text>Files</Text><Separator /><Text>Settings</Text></Root>
-  </CellSurface>;
+  return (
+    <CellSurface viewport={{ width: 20, height: 3 }} onCommand={() => {}}>
+      <Root>
+        <Text>Files</Text>
+        <Separator />
+        <Text>Settings</Text>
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "variant?", type: '"line" | "slash" | "double" | "dots"', description: "Line by default; glyphs come from the global Cell UI theme." },
@@ -243,13 +337,23 @@ const items = [
 
 export function RadioExample() {
   const radio = useCellRadioState(items, { defaultValue: "light" });
-  return <CellSurface viewport={{ width: 16, height: 2 }} focusedId={radio.focusedId} onCommand={radio.dispatch}>
-    <Root><RadioGroup label="Appearance" value={radio.value}>
-      {radio.items.map((item) => <RadioItem key={item.id} id={item.id} value={item.value}>
-        <Text>{item.label}</Text>
-      </RadioItem>)}
-    </RadioGroup></Root>
-  </CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 16, height: 2 }}
+      focusedId={radio.focusedId}
+      onCommand={radio.dispatch}
+    >
+      <Root>
+        <RadioGroup label="Appearance" value={radio.value}>
+          {radio.items.map((item) => (
+            <RadioItem key={item.id} id={item.id} value={item.value}>
+              <Text>{item.label}</Text>
+            </RadioItem>
+          ))}
+        </RadioGroup>
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "RadioGroup.value?", type: "string | null", description: "Controlled selection; items have unique non-empty values." },
@@ -272,7 +376,11 @@ export function ButtonExample() {
     if (command.type === "focus") setFocusedId(command.targetId);
   };
   return (
-    <CellSurface viewport={{ width: 24, height: 3 }} focusedId={focusedId} onCommand={dispatch}>
+    <CellSurface
+      viewport={{ width: 24, height: 3 }}
+      focusedId={focusedId}
+      onCommand={dispatch}
+    >
       <Root id="root">
         <Button
           id="save"
@@ -305,12 +413,18 @@ export function ButtonExample() {
 import { CellSurface } from "@chardesk/cell-ui/browser";
 
 export function BadgeExample() {
-  return <CellSurface viewport={{ width: 22, height: 1 }} onCommand={() => {}}>
-    <Root style={{ direction: "row", gap: 1 }}>
-      <Badge tone="success"><Text>Done</Text></Badge>
-      <Badge id="retry" tone="error" interactive><Text>Retry</Text></Badge>
-    </Root>
-  </CellSurface>;
+  return (
+    <CellSurface viewport={{ width: 22, height: 1 }} onCommand={() => {}}>
+      <Root style={{ direction: "row", gap: 1 }}>
+        <Badge tone="success">
+          <Text>Done</Text>
+        </Badge>
+        <Badge id="retry" tone="error" interactive>
+          <Text>Retry</Text>
+        </Badge>
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "tone?", type: '"neutral" | "info" | "success" | "warning" | "error"', description: "Semantic color pair; neutral by default." },
@@ -346,7 +460,11 @@ export function SelectExample() {
     defaultSelectedId: "dark",
   });
   return (
-    <CellSurface focusedId={select.focusedId} onCommand={select.dispatch} viewport={{ width: 32, height: 7 }}>
+    <CellSurface
+      focusedId={select.focusedId}
+      onCommand={select.dispatch}
+      viewport={{ width: 32, height: 7 }}
+    >
       <Root id="root">
         <Select id={select.id} style={{ width: 30 }}>
           <SelectTrigger
@@ -354,7 +472,9 @@ export function SelectExample() {
             label="Theme"
             expanded={select.open}
             controlsId={select.open ? select.contentId : undefined}
-          ><Text>{select.selectedItem?.label ?? "Select theme"}</Text></SelectTrigger>
+          >
+            <Text>{select.selectedItem?.label ?? "Select theme"}</Text>
+          </SelectTrigger>
           {select.open ? (
             <SelectContent
               id={select.contentId}
@@ -369,7 +489,9 @@ export function SelectExample() {
                   selected={select.selectedId === item.id}
                   positionInSet={index + 1}
                   setSize={select.items.length}
-                ><Text>{item.label}</Text></SelectItem>
+                >
+                  <Text>{item.label}</Text>
+                </SelectItem>
               ))}
             </SelectContent>
           ) : null}
@@ -395,7 +517,14 @@ export function SelectExample() {
     slug: "combobox",
     title: "Combobox",
     description: "Click the input row to open local options, filter, then commit one value.",
-    usage: `import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, Root, Text } from "@chardesk/cell-ui";
+    usage: `import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  Root,
+  Text,
+} from "@chardesk/cell-ui";
 import { CellSurface, useCellComboboxState } from "@chardesk/cell-ui/browser";
 
 const fonts = [
@@ -405,20 +534,45 @@ const fonts = [
 
 export function ComboboxExample() {
   const combo = useCellComboboxState("font", fonts, { defaultSelectedId: "maple" });
-  return <CellSurface viewport={{ width: 32, height: 8 }} focusedId={combo.focusedId}
-    onCommand={combo.dispatch}><Root>
-    <Combobox id={combo.id} style={{ width: 30 }}>
-      <ComboboxInput id={combo.inputId} label="Font" state={combo.inputSnapshot}
-        expanded={combo.open} activeDescendantId={combo.activeId ?? undefined} />
-      {combo.open && <ComboboxContent id={combo.contentId} label="Font options" scrollY={combo.scrollY}>
-        {combo.filteredItems.map((item, index) => <ComboboxItem id={item.id} key={item.id}
-          active={combo.activeId === item.id} selected={combo.selectedId === item.id}
-          positionInSet={index + 1} setSize={combo.filteredItems.length}>
-          <Text>{item.label}</Text>
-        </ComboboxItem>)}
-      </ComboboxContent>}
-    </Combobox>
-  </Root></CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 32, height: 8 }}
+      focusedId={combo.focusedId}
+      onCommand={combo.dispatch}
+    >
+      <Root>
+        <Combobox id={combo.id} style={{ width: 30 }}>
+          <ComboboxInput
+            id={combo.inputId}
+            label="Font"
+            state={combo.inputSnapshot}
+            expanded={combo.open}
+            activeDescendantId={combo.activeId ?? undefined}
+          />
+          {combo.open && (
+            <ComboboxContent
+              id={combo.contentId}
+              label="Font options"
+              scrollY={combo.scrollY}
+            >
+              {combo.filteredItems.map((item, index) => (
+                <ComboboxItem
+                  id={item.id}
+                  key={item.id}
+                  active={combo.activeId === item.id}
+                  selected={combo.selectedId === item.id}
+                  positionInSet={index + 1}
+                  setSize={combo.filteredItems.length}
+                >
+                  <Text>{item.label}</Text>
+                </ComboboxItem>
+              ))}
+            </ComboboxContent>
+          )}
+        </Combobox>
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "Combobox.disabled?", type: "boolean", description: "Disables the input and every candidate." },
@@ -457,14 +611,20 @@ export function CheckboxExample() {
     }
   };
   return (
-    <CellSurface focusedId={focusedId} onCommand={dispatch} viewport={{ width: 24, height: 1 }}>
+    <CellSurface
+      focusedId={focusedId}
+      onCommand={dispatch}
+      viewport={{ width: 24, height: 1 }}
+    >
       <Root id="root">
         <Checkbox
           id="autosave"
           label="Autosave"
           checked={checked}
           focused={focusedId === "autosave"}
-        ><Text>Autosave</Text></Checkbox>
+        >
+          <Text>Autosave</Text>
+        </Checkbox>
       </Root>
     </CellSurface>
   );
@@ -495,7 +655,11 @@ export function SliderExample() {
     }
   };
   return (
-    <CellSurface focusedId="volume" onCommand={dispatch} viewport={{ width: 26, height: 1 }}>
+    <CellSurface
+      focusedId="volume"
+      onCommand={dispatch}
+      viewport={{ width: 26, height: 1 }}
+    >
       <Root id="root" style={{ direction: "row" }}>
         <Slider
           id="volume"
@@ -514,8 +678,15 @@ export function SliderExample() {
 }
 
 // Two endpoints use the same Slider; handle set-value by thumb id.
-<Slider id="range" label="Volume range" value={[25, 75]}
-  thumbs={[{ id: "start", label: "Minimum" }, { id: "end", label: "Maximum" }]} />`,
+<Slider
+  id="range"
+  label="Volume range"
+  value={[25, 75]}
+  thumbs={[
+    { id: "start", label: "Minimum" },
+    { id: "end", label: "Maximum" },
+  ]}
+/>;`,
     api: [
       { name: "value", type: "number | readonly [number, number]", description: "Controlled single value or bounded interval." },
       { name: "id / label", type: "string", description: "Required for an interval; names its group and command target." },
@@ -579,19 +750,38 @@ const items = [
 export function TabsExample() {
   const tabs = useCellTabsState(items, { defaultSelectedId: "code" });
   const selected = tabs.items.find((item) => item.id === tabs.selectedId);
-  return <CellSurface viewport={{ width: 28, height: 5 }}
-    focusedId={tabs.focusedId} onCommand={tabs.dispatch}>
-    <Root>
-      <Tabs label="Views" orientation="horizontal">
-        {tabs.items.map((item) => <Tab key={item.id} id={item.id}
-          controlsId={item.panelId}
-          focused={tabs.focusedId === item.id}
-          selected={tabs.selectedId === item.id}><Text>{item.label}</Text></Tab>)}
-      </Tabs>
-      {selected && <TabPanel id={selected.panelId} label={selected.label}
-        labelledById={selected.id}><Text>{selected.label} content</Text></TabPanel>}
-    </Root>
-  </CellSurface>;
+  return (
+    <CellSurface
+      viewport={{ width: 28, height: 5 }}
+      focusedId={tabs.focusedId}
+      onCommand={tabs.dispatch}
+    >
+      <Root>
+        <Tabs label="Views" orientation="horizontal">
+          {tabs.items.map((item) => (
+            <Tab
+              key={item.id}
+              id={item.id}
+              controlsId={item.panelId}
+              focused={tabs.focusedId === item.id}
+              selected={tabs.selectedId === item.id}
+            >
+              <Text>{item.label}</Text>
+            </Tab>
+          ))}
+        </Tabs>
+        {selected && (
+          <TabPanel
+            id={selected.panelId}
+            label={selected.label}
+            labelledById={selected.id}
+          >
+            <Text>{selected.label} content</Text>
+          </TabPanel>
+        )}
+      </Root>
+    </CellSurface>
+  );
 }`,
     api: [
       { name: "Tabs.label?", type: "string", description: "Accessible tab-list name." },
@@ -645,7 +835,9 @@ export function ScrollAreaExample() {
     slug: "text", title: "Text", description: "Render Unicode text in the Cell layout without browser text nodes.",
     usage: `import { Root, Text } from "@chardesk/cell-ui";
 
-<Root><Text textStyle={{ bold: true }}>Hello, 世界</Text></Root>`,
+<Root>
+  <Text textStyle={{ bold: true }}>Hello, 世界</Text>
+</Root>;`,
     api: [
       { name: "children", type: "string | number", description: "Text to lay out on integer Cells." },
       { name: "textStyle?", type: "CellTextStyle", description: "Cell foreground and text emphasis." },
@@ -658,8 +850,15 @@ export function ScrollAreaExample() {
 import { useCellTextState } from "@chardesk/cell-ui/browser";
 
 const editor = useCellTextState("notes", { value: "Hello", multiline: true });
-<Root><TextArea id="notes" label="Notes" state={editor.snapshot}
-  frame="bordered" style={{ height: 6 }} /></Root>`,
+<Root>
+  <TextArea
+    id="notes"
+    label="Notes"
+    state={editor.snapshot}
+    frame="bordered"
+    style={{ height: 6 }}
+  />
+</Root>;`,
     api: [
       { name: "state", type: "CellTextSnapshot", description: "Controlled text, caret, selection, and scroll state." },
       { name: "label?", type: "string", description: "Accessible editor name." },
@@ -671,13 +870,28 @@ const editor = useCellTextState("notes", { value: "Hello", multiline: true });
     slug: "table", title: "Table", description: "Display read-only rows on a Cell grid with lines or alternating backgrounds.",
     usage: `import { Root, Table, TableRow, TableCell } from "@chardesk/cell-ui";
 
-<Root><Table label="Files" variant="outline" columns={[
-  { label: "Name", width: 12 }, { label: "Status", width: 10 },
-  { label: "Size", width: 7, align: "right" },
-]}>
-  <TableRow><TableCell>Notes.txt</TableCell><TableCell>Synced</TableCell><TableCell>12 KB</TableCell></TableRow>
-  <TableRow><TableCell>Draft.md</TableCell><TableCell>Editing</TableCell><TableCell>3 KB</TableCell></TableRow>
-</Table></Root>`,
+<Root>
+  <Table
+    label="Files"
+    variant="outline"
+    columns={[
+      { label: "Name", width: 12 },
+      { label: "Status", width: 10 },
+      { label: "Size", width: 7, align: "right" },
+    ]}
+  >
+    <TableRow>
+      <TableCell>Notes.txt</TableCell>
+      <TableCell>Synced</TableCell>
+      <TableCell>12 KB</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Draft.md</TableCell>
+      <TableCell>Editing</TableCell>
+      <TableCell>3 KB</TableCell>
+    </TableRow>
+  </Table>
+</Root>;`,
     api: [
       { name: "label", type: "string", description: "Accessible table name." },
       { name: "columns", type: "TableColumn[]", description: "Ordered headers and integer Cell widths; optional right alignment." },
@@ -705,7 +919,10 @@ export const guideContent: readonly GuideContent[] = [
     description: "Build React interfaces from editable Unicode Cells. Own the source, compose a few good defaults, and let one frame serve people and agents.",
     sections: [
       { id: "philosophy", title: "Why Cells?", body: "A border, a space, a label, and a cursor all occupy integer Cells. The same committed frame drives the visible Canvas, accessible controls, copyable Unicode, and headless tests. Cell UI ships as source you can change, with fewer built-in knobs to work around. Try Cell Range: hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux. Copy preserves the selected Unicode, including border glyphs.", link: { label: "Read the philosophy", href: "#/guides/philosophy" } },
-      { id: "settings", title: "Compose a settings panel", body: "Theme and Sound are ordinary app state. Select and Checkbox share the same Cell grid and input model; try the menu and the checkbox with pointer or keyboard.", demo: "settings", code: `const themeItems = [{ id: "light", label: "Light" }, { id: "dark", label: "Dark" }];
+      { id: "settings", title: "Compose a settings panel", body: "Theme and Sound are ordinary app state. Select and Checkbox share the same Cell grid and input model; try the menu and the checkbox with pointer or keyboard.", demo: "settings", code: `const themeItems = [
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+];
 const theme = useCellSelectState("theme", themeItems, { defaultSelectedId: "dark" });
 const [sound, setSound] = useState(true);
 
@@ -714,14 +931,24 @@ const [sound, setSound] = useState(true);
 
 <Root>
   <Text>Uploading files</Text>
-  <Progress id="upload" label="Upload" value={progress} variant="outline" style={{ width: 26 }} />
-  <Button id="start"><Text>Start</Text></Button>
-</Root>`, link: { label: "Progress component", href: "#/components/progress" } },
+  <Progress
+    id="upload"
+    label="Upload"
+    value={progress}
+    variant="outline"
+    style={{ width: 26 }}
+  />
+  <Button id="start">
+    <Text>Start</Text>
+  </Button>
+</Root>;`, link: { label: "Progress component", href: "#/components/progress" } },
       { id: "notes", title: "Edit Unicode in place", body: "Type into the note. Text editing uses the browser's native input path while the committed frame keeps the same Cell geometry and Unicode source.", demo: "notes", code: `const note = useCellTextState("note", { value: "Hello, 世界 👋", multiline: true });
 
 <CellSurface viewport={{ width: 32, height: 7 }} onCommand={note.dispatch}>
-  <Root><TextArea id="note" label="Notes" state={note.snapshot} /></Root>
-</CellSurface>`, link: { label: "TextArea component", href: "#/components/text-area" } },
+  <Root>
+    <TextArea id="note" label="Notes" state={note.snapshot} />
+  </Root>
+</CellSurface>;`, link: { label: "TextArea component", href: "#/components/text-area" } },
       { id: "start", title: "Make it yours", body: "Install the complete library into your project, then edit the source directly. Use the component pages for full wiring and public props; keep product-specific choices in your own code.", link: { label: "Installation", href: "#/guides/installation" } },
     ],
   },
@@ -772,8 +999,10 @@ const [sound, setSound] = useState(true);
 import { CellSurface } from "@/lib/cell-ui/browser";
 
 <CellSurface viewport={{ width: 30, height: 4 }} onCommand={dispatch}>
-  <Root><Text>Hello, Cells</Text></Root>
-</CellSurface>` },
+  <Root>
+    <Text>Hello, Cells</Text>
+  </Root>
+</CellSurface>;` },
       { id: "state", title: "State and commands", body: "Application state remains outside the renderer. Pass controlled values and focused IDs into descriptors, then handle CellSurface onCommand or use the matching /browser state adapter. Direct adapter dispatch has no presentation lifecycle." },
       { id: "headless", title: "Headless hosts", body: "CellUiRuntime commits a dense Cell buffer and Scene without a browser. Headless hosts supply viewport, state, focus, and animationTimeMs explicitly. The browser adapter supplies font loading, pointer, input, and semantic focus." },
     ],
@@ -792,7 +1021,7 @@ import { CellSurface } from "@/lib/cell-ui/browser";
     description: "Inspect the committed Cell frame instead of inferring behavior from pixels.",
     sections: [
       { id: "probe", title: "Cell probe", body: "Set probeId only on development or test surfaces. readCellSurfaceProbe(element) returns the latest structured frame, including exact glyphs, styles, owners, geometry, and overlays. Without probeId no structured snapshot is created; data-cell-text remains the lightweight projection.", code: `const snapshot = readCellSurfaceProbe(
-  document.querySelector('[data-cell-probe="example"]')!
+  document.querySelector('[data-cell-probe="example"]')!,
 );
 console.log(snapshot?.text);` },
       { id: "audit", title: "Font audit", body: "Set fontAudit explicitly to verify font measurements against Cell metrics. A ready font is measurable, not necessarily fitting every Cell. Use screenshots for rasterization, color, and DPR; use probes for text, borders, clipping, scrollbars, and interaction results." },

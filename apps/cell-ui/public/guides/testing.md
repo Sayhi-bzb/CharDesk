@@ -8,7 +8,7 @@ Set probeId only on development or test surfaces. readCellSurfaceProbe(element) 
 
 ```tsx
 const snapshot = readCellSurfaceProbe(
-  document.querySelector('[data-cell-probe="example"]')!
+  document.querySelector('[data-cell-probe="example"]')!,
 );
 console.log(snapshot?.text);
 ```

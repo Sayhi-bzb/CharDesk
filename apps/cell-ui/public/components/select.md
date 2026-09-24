@@ -30,7 +30,11 @@ export function SelectExample() {
     defaultSelectedId: "dark",
   });
   return (
-    <CellSurface focusedId={select.focusedId} onCommand={select.dispatch} viewport={{ width: 32, height: 7 }}>
+    <CellSurface
+      focusedId={select.focusedId}
+      onCommand={select.dispatch}
+      viewport={{ width: 32, height: 7 }}
+    >
       <Root id="root">
         <Select id={select.id} style={{ width: 30 }}>
           <SelectTrigger
@@ -38,7 +42,9 @@ export function SelectExample() {
             label="Theme"
             expanded={select.open}
             controlsId={select.open ? select.contentId : undefined}
-          ><Text>{select.selectedItem?.label ?? "Select theme"}</Text></SelectTrigger>
+          >
+            <Text>{select.selectedItem?.label ?? "Select theme"}</Text>
+          </SelectTrigger>
           {select.open ? (
             <SelectContent
               id={select.contentId}
@@ -53,7 +59,9 @@ export function SelectExample() {
                   selected={select.selectedId === item.id}
                   positionInSet={index + 1}
                   setSize={select.items.length}
-                ><Text>{item.label}</Text></SelectItem>
+                >
+                  <Text>{item.label}</Text>
+                </SelectItem>
               ))}
             </SelectContent>
           ) : null}

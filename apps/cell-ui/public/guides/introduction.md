@@ -13,7 +13,10 @@ A border, a space, a label, and a cursor all occupy integer Cells. The same comm
 Theme and Sound are ordinary app state. Select and Checkbox share the same Cell grid and input model; try the menu and the checkbox with pointer or keyboard.
 
 ```tsx
-const themeItems = [{ id: "light", label: "Light" }, { id: "dark", label: "Dark" }];
+const themeItems = [
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+];
 const theme = useCellSelectState("theme", themeItems, { defaultSelectedId: "dark" });
 const [sound, setSound] = useState(true);
 
@@ -31,9 +34,17 @@ const [progress, setProgress] = useState(0); // Your task updates this value.
 
 <Root>
   <Text>Uploading files</Text>
-  <Progress id="upload" label="Upload" value={progress} variant="outline" style={{ width: 26 }} />
-  <Button id="start"><Text>Start</Text></Button>
-</Root>
+  <Progress
+    id="upload"
+    label="Upload"
+    value={progress}
+    variant="outline"
+    style={{ width: 26 }}
+  />
+  <Button id="start">
+    <Text>Start</Text>
+  </Button>
+</Root>;
 ```
 
 [Progress component](https://ui.chardesk.com/#/components/progress)
@@ -46,8 +57,10 @@ Type into the note. Text editing uses the browser's native input path while the 
 const note = useCellTextState("note", { value: "Hello, 世界 👋", multiline: true });
 
 <CellSurface viewport={{ width: 32, height: 7 }} onCommand={note.dispatch}>
-  <Root><TextArea id="note" label="Notes" state={note.snapshot} /></Root>
-</CellSurface>
+  <Root>
+    <TextArea id="note" label="Notes" state={note.snapshot} />
+  </Root>
+</CellSurface>;
 ```
 
 [TextArea component](https://ui.chardesk.com/#/components/text-area)

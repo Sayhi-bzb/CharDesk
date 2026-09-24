@@ -13,11 +13,16 @@ import { Box, Root, Spinner, Text } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
 export function SpinnerExample() {
-  return <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
-    <Root><Box style={{ direction: "row", gap: 1 }}>
-      <Spinner label="Loading" variant="wheel" /><Text>Loading…</Text>
-    </Box></Root>
-  </CellSurface>;
+  return (
+    <CellSurface viewport={{ width: 20, height: 1 }} onCommand={() => {}}>
+      <Root>
+        <Box style={{ direction: "row", gap: 1 }}>
+          <Spinner label="Loading" variant="wheel" />
+          <Text>Loading…</Text>
+        </Box>
+      </Root>
+    </CellSurface>
+  );
 }
 ```
 
