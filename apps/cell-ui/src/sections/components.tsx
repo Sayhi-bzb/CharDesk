@@ -26,7 +26,6 @@ import {
   Separator,
   RadioGroup,
   RadioItem,
-  Root,
   ScrollArea,
   Slider,
   Tab,
@@ -37,6 +36,7 @@ import {
   TableCell,
   Text,
   TextInput,
+  cellTextWidth,
   type ButtonVariant,
   type CellBorderShape,
   type CellFrame,
@@ -55,14 +55,12 @@ import {
   useCellTabsState,
   useCellTextState,
 } from "@chardesk/cell-ui/browser";
-import { GallerySurface } from "../appearance";
-import { ComponentPlayground } from "../component-playground";
+import { ComponentPlayground, richOnly } from "../component-playground";
+import { PLAYGROUND_CONTROL_COLUMNS } from "../component-playground-layout";
 import {
   renderGalleryCheckbox,
   renderGallerySelect,
 } from "../gallery-component-recipes";
-
-const noCommand = () => undefined;
 
 const dialogVariantItems = (["surface", "ghost"] as const).map((value) => ({ id: value, label: value }));
 const floatingBorderItems = (["square", "rounded", "none"] as const).map((value) => ({ id: value, label: value }));
@@ -121,7 +119,7 @@ export const DialogComponentDemo = () => {
     </Box>}
     controls={[
       renderPlaygroundSelectControl("variant", variant, focus.focusedId),
-      renderPlaygroundSelectControl("border", border, focus.focusedId),
+      renderRichOnlySelectControl("border", border, focus.focusedId),
     ]} />;
 };
 
@@ -246,7 +244,7 @@ export const ProgressComponentDemo = () => {
       value={indeterminate ? null : value} number={number} variant={variant.selectedId as ProgressVariant}
       style={{ width: 20 }} />}
     controls={[
-      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+      renderRichOnlySelectControl("variant", variant, focus.focusedId),
       renderPlaygroundCheckboxControl(
         "number",
         "component-progress-number",
@@ -288,7 +286,7 @@ export const TableComponentDemo = () => {
       <TableRow id="component-table-notes"><TableCell>Notes.txt</TableCell><TableCell>Synced</TableCell><TableCell>12 KB</TableCell></TableRow>
       <TableRow id="component-table-draft"><TableCell>Draft.md</TableCell><TableCell>Editing</TableCell><TableCell>3 KB</TableCell></TableRow>
     </Table>}
-    controls={[renderPlaygroundSelectControl("variant", variant, focus.focusedId)]} />;
+    controls={[renderRichOnlySelectControl("variant", variant, focus.focusedId)]} />;
 };
 
 export const TooltipComponentDemo = () => {
@@ -309,7 +307,7 @@ export const TooltipComponentDemo = () => {
     </Box>}
     controls={[
       renderPlaygroundSelectControl("variant", variant, focus.focusedId),
-      renderPlaygroundSelectControl("border", border, focus.focusedId),
+      renderRichOnlySelectControl("border", border, focus.focusedId),
     ]} />;
 };
 
@@ -363,14 +361,15 @@ export const RadioComponentDemo = () => {
 };
 
 export const TextComponentDemo = () => (
-  <GallerySurface
-    viewport={{ width: 36, height: 14 }}
-    onCommand={noCommand}
+  <ComponentPlayground
+    id="component-text-playground"
+    focusedId={null}
+    onCommand={() => undefined}
     label="Text component"
     probeId="component-text"
-  >
-    <Root id="component-text-root">
-      <Box id="component-text-frame" frame="bordered" style={{ height: 14, padding: 1 }}>
+    previewMinColumns={36}
+    rows={14}
+    preview={<Box id="component-text-frame" frame="bordered" style={{ width: 36, height: 14, padding: 1 }}>
         <Text id="component-text-plain" textStyle={{ bold: true }}>◆ Plain text · READY</Text>
         <Text id="component-text-unicode">→ Unicode: 世界 👋</Text>
         <Text id="component-text-move">↔ Move: ← ↑ ↓ →</Text>
@@ -380,9 +379,8 @@ export const TextComponentDemo = () => (
         <Text id="component-text-cell-graphics">{`⣿ Cell: \ue0b0 \uee03 \uf5ee`}</Text>
         <Text id="component-text-legacy">{`Legacy: \u{1fb95} \u{1fbb0} \u{1fbc5}`}</Text>
         <Text id="component-text-wrap" textStyle={{ dim: true }}>↳ Wraps on integer Cell boundaries.</Text>
-      </Box>
-    </Root>
-  </GallerySurface>
+    </Box>}
+  />
 );
 
 type PlaygroundSelectState = ReturnType<typeof useCellSelectState>;
@@ -422,9 +420,16 @@ const renderPlaygroundSelectControl = (
   label,
   select,
   focusedId,
-  width: playgroundControlWidth,
+  width: Math.min(PLAYGROUND_CONTROL_COLUMNS, Math.max(playgroundControlWidth,
+    ...select.items.map((item) => cellTextWidth(item.label) + 6))),
   itemSemanticLabel,
 });
+
+const renderRichOnlySelectControl = (
+  label: string,
+  select: PlaygroundSelectState,
+  focusedId: string,
+) => richOnly(renderPlaygroundSelectControl(label, select, focusedId), select);
 
 const renderPlaygroundCheckboxControl = (
   label: string,
@@ -464,9 +469,11 @@ export const BoxComponentDemo = () => {
     }
     controls={[
       renderPlaygroundSelectControl("variant", variant, focus.focusedId),
-      renderPlaygroundSelectControl("frame", frame, focus.focusedId),
+      variant.selectedId === "surface"
+        ? renderRichOnlySelectControl("frame", frame, focus.focusedId)
+        : renderPlaygroundSelectControl("frame", frame, focus.focusedId),
       ...(frame.selectedId === "bordered"
-        ? [renderPlaygroundSelectControl("border shape", borderShape, focus.focusedId)]
+        ? [renderRichOnlySelectControl("border shape", borderShape, focus.focusedId)]
         : []),
     ]}
   />;
@@ -507,7 +514,7 @@ export const ButtonComponentDemo = () => {
       ><Text>{previewText}</Text></Button>
     }
     controls={[
-      renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+      renderRichOnlySelectControl("variant", variant, focus.focusedId),
       renderPlaygroundSelectControl("content", content, focus.focusedId),
       renderPlaygroundCheckboxControl(
         "disabled",
@@ -582,7 +589,7 @@ export const AlertComponentDemo = () => {
     </Box>}
     controls={[
       renderPlaygroundSelectControl("variant", variant, focus.focusedId),
-      renderPlaygroundSelectControl("border", border, focus.focusedId),
+      renderRichOnlySelectControl("border", border, focus.focusedId),
     ]} />;
 };
 
@@ -634,7 +641,7 @@ export const TabsComponentDemo = () => {
         ? 'const greeting = "Hello";'
         : "Hello"}</Text></TabPanel>}
     </Box>}
-    controls={[renderPlaygroundSelectControl("variant", variant, focus.focusedId)]}
+    controls={[renderRichOnlySelectControl("variant", variant, focus.focusedId)]}
   />;
 };
 
@@ -679,8 +686,9 @@ export const SelectComponentDemo = () => {
     probeId="component-select"
     previewMinColumns={30}
     controlsColumns={25}
-    overlayRows={focus.activeSelect
-      ? focus.activeSelect.items.length + (focus.activeSelect === select && frame.selectedId === "bordered" ? 2 : 0)
+    overlayRows={(presentation) => focus.activeSelect
+      ? focus.activeSelect.items.length + (focus.activeSelect === select
+        && (presentation === "text" || frame.selectedId === "bordered") ? 2 : 0)
       : 0}
     preview={renderGallerySelect({
       fieldId: "component-select-preview",
@@ -697,9 +705,9 @@ export const SelectComponentDemo = () => {
     })}
     controls={[
       renderPlaygroundSelectControl("variant", variant, focus.focusedId),
-      renderPlaygroundSelectControl("dropdown frame", frame, focus.focusedId),
+      renderRichOnlySelectControl("dropdown frame", frame, focus.focusedId),
       ...(frame.selectedId === "bordered"
-        ? [renderPlaygroundSelectControl("border shape", borderShape, focus.focusedId)]
+        ? [renderRichOnlySelectControl("border shape", borderShape, focus.focusedId)]
         : []),
       renderPlaygroundCheckboxControl(
         "disabled",
@@ -766,9 +774,9 @@ export const ComboboxComponentDemo = () => {
     </Box>}
     controls={[
       renderPlaygroundSelectControl("variant", variant, focus.focusedId),
-      renderPlaygroundSelectControl("dropdown frame", frame, focus.focusedId),
+      renderRichOnlySelectControl("dropdown frame", frame, focus.focusedId),
       ...(frame.selectedId === "bordered"
-        ? [renderPlaygroundSelectControl("border shape", borderShape, focus.focusedId)]
+        ? [renderRichOnlySelectControl("border shape", borderShape, focus.focusedId)]
         : []),
       renderPlaygroundCheckboxControl("disabled", "component-combobox-disabled", disabled, focus.focusedId),
     ]} />;
@@ -970,7 +978,6 @@ export const ScrollAreaComponentDemo = () => {
   const borderShape = useCellSelectState("component-scroll-border-shape", borderShapeItems, {
     defaultSelectedId: "square",
   });
-  const borderSize = frame.selectedId === "bordered" ? scrollDemoBorderSize : 0;
   const focus = usePlaygroundFocus("component-scroll-row-1", [variant, frame, borderShape]);
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
@@ -990,29 +997,36 @@ export const ScrollAreaComponentDemo = () => {
     previewMinColumns={28}
     controlsColumns={25}
     overlayRows={focus.activeSelect?.items.length ?? 0}
-    preview={
-      <ScrollArea
-        id="component-scroll-area"
-        scrollY={scrollY}
-        variant={variant.selectedId as SurfaceVariant}
-        frame={frame.selectedId as CellFrame}
-        borderShape={frame.selectedId === "bordered" ? borderShape.selectedId as CellBorderShape : undefined}
-        style={{
-          width: scrollDemoViewportWidth + borderSize,
-          height: scrollDemoViewportHeight + borderSize,
-        }}
-      >
-        <Box id="component-scroll-items">
-          {scrollItems.map((item) => <Button id={item.id} key={item.id} variant="ghost"
-            focused={focus.focusedId === item.id}><Text>{item.label}</Text></Button>)}
-        </Box>
-      </ScrollArea>
-    }
+    preview={(presentation) => {
+      const hasBorder = frame.selectedId === "bordered"
+        || (presentation === "text" && variant.selectedId === "surface");
+      const borderSize = hasBorder ? scrollDemoBorderSize : 0;
+      return (
+        <ScrollArea
+          id="component-scroll-area"
+          scrollY={scrollY}
+          variant={variant.selectedId as SurfaceVariant}
+          frame={frame.selectedId as CellFrame}
+          borderShape={frame.selectedId === "bordered" ? borderShape.selectedId as CellBorderShape : undefined}
+          style={{
+            width: scrollDemoViewportWidth + borderSize,
+            height: scrollDemoViewportHeight + borderSize,
+          }}
+        >
+          <Box id="component-scroll-items">
+            {scrollItems.map((item) => <Button id={item.id} key={item.id} variant="ghost"
+              focused={focus.focusedId === item.id}><Text>{item.label}</Text></Button>)}
+          </Box>
+        </ScrollArea>
+      );
+    }}
     controls={[
       renderPlaygroundSelectControl("variant", variant, focus.focusedId),
-      renderPlaygroundSelectControl("frame", frame, focus.focusedId),
+      variant.selectedId === "surface"
+        ? renderRichOnlySelectControl("frame", frame, focus.focusedId)
+        : renderPlaygroundSelectControl("frame", frame, focus.focusedId),
       ...(frame.selectedId === "bordered"
-        ? [renderPlaygroundSelectControl("border shape", borderShape, focus.focusedId)]
+        ? [renderRichOnlySelectControl("border shape", borderShape, focus.focusedId)]
         : []),
     ]}
   />;

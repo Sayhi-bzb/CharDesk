@@ -1,5 +1,7 @@
 export { CellBuffer } from "./buffer.js";
 export { Alert, AlertTitle, AlertDescription } from "./react.js";
+export { Markdown } from "./react.js";
+export type { MarkdownProps } from "./react.js";
 export type { AlertProps, AlertTitleProps, AlertDescriptionProps } from "./react.js";
 export type { AlertTone } from "./alert.js";
 export { Dialog, DialogTitle, DialogDescription, DialogFooter } from "./react.js";
@@ -8,6 +10,7 @@ export { Combobox, ComboboxInput, ComboboxContent, ComboboxItem } from "./react.
 export type { ComboboxProps, ComboboxInputProps, ComboboxContentProps, ComboboxItemProps } from "./react.js";
 export type { SurfaceVariant } from "./surface-variant.js";
 export type { CellUiRecipe } from "./recipe.js";
+export type { CellUiPresentation } from "./presentation.js";
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./react.js";
 export type { AccordionProps, AccordionItemProps, AccordionTriggerProps, AccordionContentProps } from "./react.js";
 export { createCellBufferSource, createCellUiRenderFrame } from "./frame.js";
@@ -203,6 +206,7 @@ export type {
   CellTextSnapshot,
 } from "./text.js";
 export { reconcileWidgetTree } from "./tree.js";
+export { cellTextWidth } from "./single-line-text.js";
 export type {
   Cell,
   CellCheckboxState,

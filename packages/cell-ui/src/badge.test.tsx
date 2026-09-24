@@ -63,7 +63,7 @@ describe("Badge", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 2 } });
     const frame = runtime.render(<Root><Badge id="status" style={{ width: 5, height: 1 }}><Text>Long label</Text></Badge></Root>);
     expect(frame.layout.entries.get("status")?.rect).toMatchObject({ width: 5, height: 1 });
-    expect(frame.buffer.toText({ trimEnd: true }).split("\n")[0]).toBe(" Lon");
+    expect(frame.buffer.toText({ trimEnd: true }).split("\n")[0]).toBe(" Lo…");
     expect(frame.semantics.nodes.get("status")?.label).toBe("Long label");
     runtime.dispose();
   });

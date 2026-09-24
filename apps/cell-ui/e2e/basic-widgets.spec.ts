@@ -53,7 +53,11 @@ test("Radio mouse and arrow selection share one semantic group", async ({ page }
   await expect(group.getByRole("radio", { name: "Light", exact: true })).toHaveAttribute("aria-checked", "true");
   expect(await readCellText(surface)).toContain("(●) Light");
   await page.keyboard.press("Tab");
+  await expect(surface.getByRole("button", { name: "presentation" })).toBeFocused();
+  await page.keyboard.press("Tab");
   await expect(surface.getByRole("checkbox", { name: "disabled", exact: true })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(surface.getByRole("button", { name: "presentation" })).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect(group.getByRole("radio", { name: "Light", exact: true })).toBeFocused();
 });

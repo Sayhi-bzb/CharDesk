@@ -34,6 +34,8 @@ test("Tooltip opens on keyboard focus and Escape dismisses until focus changes",
   const tooltip = surface.getByRole("tooltip", { name: "Save current document" });
   await button.focus();
   await expect(tooltip).toBeAttached();
+  await page.evaluate(() => window.dispatchEvent(new Event("scroll")));
+  await expect(tooltip).toBeAttached();
   await page.keyboard.press("Escape");
   await expect(tooltip).toHaveCount(0);
   await page.waitForTimeout(600);

@@ -184,10 +184,12 @@ export const composeScene = (
       width: Math.max(
         0,
         bounds.width - layoutEntry.contentRect.x - contentRightInset
+          + (layoutEntry.railInsets?.right ?? 0)
       ),
       height: Math.max(
         0,
         bounds.height - layoutEntry.contentRect.y - contentBottomInset
+          + (layoutEntry.railInsets?.bottom ?? 0)
       ),
     };
     const decorationBounds: CellRect = {

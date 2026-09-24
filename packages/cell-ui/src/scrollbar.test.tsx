@@ -1,6 +1,10 @@
 import { expect, it } from "vitest";
-import { thumbAxis, thumbCellSpan, thumbGlyph } from "./scrollbar.js";
-import { Button, CellUiRuntime, Root, Box, ScrollArea, Text, createTestPilot } from "./index.js";
+import { TEXT_VERTICAL_TRACK_GLYPH, textVerticalThumbGlyph, thumbAxis, thumbCellSpan, thumbGlyph } from "./scrollbar.js";
+import {
+  Box, Button, CLASSIC_MAC_LIGHT_THEME, CellTextEditor, CellUiRuntime, Combobox, ComboboxContent,
+  ComboboxInput, ComboboxItem, Root, ScrollArea, Select, SelectContent, SelectItem, SelectTrigger,
+  Text, createTestPilot,
+} from "./index.js";
 import { gestureCandidatesForFrame } from "./pointer.js";
 import { getEventPath } from "./scene.js";
 import { scrollViewportCommands } from "./scroll.js";
@@ -24,6 +28,144 @@ it("half-Cell geometry is monotonic, aligned at endpoints, and retains exact cov
   const thumb = { start: 1, length: 4 };
   expect([0, 1, 2].map((cell) => thumbGlyph(thumb, cell, false))).toEqual(["▄", "█", "▀"]);
   expect([0, 1, 2].map((cell) => thumbGlyph(thumb, cell, true))).toEqual(["▐", "█", "▌"]);
+});
+
+it("uses one continuous Unicode texture for the Text vertical rail without changing other rails", () => {
+  const half = { start: 1, length: 4 };
+  expect([0, 1, 2].map((cell) => textVerticalThumbGlyph(half, cell)))
+    .toEqual(["\u{1FB92}", "█", "\u{1FB91}"]);
+  expect(TEXT_VERTICAL_TRACK_GLYPH).toBe("\u{1FB90}");
+  expect([0, 1, 2].map((cell) => thumbGlyph(half, cell, true))).toEqual(["▐", "█", "▌"]);
+
+  const view = (scrollY: number) => <Root><ScrollArea id="scroll" scrollY={scrollY}
+    style={{ width: 12, height: 8 }}><Box style={{ width: 24, height: 20 }} /></ScrollArea></Root>;
+  const rich = new CellUiRuntime({ viewport: { width: 12, height: 8 } });
+  const text = new CellUiRuntime({ viewport: { width: 12, height: 8 }, presentation: "text" });
+  let sawHalf = false;
+  for (const offset of [0, 1, 2, 4, 8, 12]) {
+    const richFrame = rich.render(view(offset));
+    const textFrame = text.render(view(offset));
+    const metrics = textFrame.scene.entries.get("scroll")!.scrollMetrics!;
+    expect(metrics).toEqual(richFrame.scene.entries.get("scroll")!.scrollMetrics);
+    const track = metrics.verticalTrack!;
+    const axis = metrics.verticalThumbAxis!;
+    for (let y = track.y; y < track.y + track.height; y += 1) {
+      const raw = thumbGlyph(axis, y - track.y, false);
+      const expected = raw === " " ? TEXT_VERTICAL_TRACK_GLYPH
+        : raw === "▀" ? "\u{1FB91}" : raw === "▄" ? "\u{1FB92}" : raw;
+      const cell = textFrame.buffer.get(track.x, y)!;
+      expect(cell).toMatchObject({ text: expected, ownerId: "scroll" });
+      expect(cell.style.color).toBe(CLASSIC_MAC_LIGHT_THEME.scrollThumbStyle.color);
+      expect(richFrame.buffer.get(track.x, y)?.text).toBe(raw);
+      if (raw === "▀" || raw === "▄") sawHalf = true;
+    }
+    const horizontal = metrics.horizontalTrack!;
+    for (let x = horizontal.x; x < horizontal.x + horizontal.width; x += 1) {
+      const raw = thumbGlyph(metrics.horizontalThumbAxis!, x - horizontal.x, true);
+      expect(textFrame.buffer.get(x, horizontal.y)?.text).toBe(raw === " " ? "░" : raw);
+    }
+  }
+  expect(sawHalf).toBe(true);
+  rich.dispose();
+  text.dispose();
+});
+
+it("reserves a rail Cell before laying out auto-width outline buttons", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 12, height: 5 }, presentation: "text" });
+  const view = (count: number, scrollY = 0) => <Root><ScrollArea id="scroll" scrollY={scrollY}
+    style={{ width: 12, height: 5 }}><Box id="items">
+      {Array.from({ length: count }, (_, index) => <Button id={`row-${index}`} key={index} variant="ghost">
+        <Text>{`Row ${index + 1}`}</Text>
+      </Button>)}
+    </Box></ScrollArea></Root>;
+
+  const overflowing = runtime.render(view(8));
+  const track = overflowing.scene.entries.get("scroll")!.scrollMetrics!.verticalTrack!;
+  const button = overflowing.scene.entries.get("row-0")!.layoutBounds;
+  expect(overflowing.layout.entries.get("scroll")?.railInsets).toEqual({ right: 1, bottom: 0 });
+  expect(button.width).toBe(11);
+  expect(overflowing.buffer.get(track.x - 1, button.y)).toMatchObject({ ownerId: "row-0", text: "]" });
+  expect(overflowing.buffer.get(track.x, button.y)?.ownerId).toBe("scroll");
+
+  const scrolled = runtime.render(view(8, 2));
+  expect(scrolled.layout).toBe(overflowing.layout);
+  expect(scrolled.buffer.get(track.x - 1, button.y)).toMatchObject({ ownerId: "row-2", text: "]" });
+
+  const fitting = runtime.render(view(1));
+  expect(fitting.scene.entries.get("scroll")?.scrollMetrics?.verticalTrack).toBeNull();
+  expect(fitting.layout.entries.get("scroll")?.railInsets).toBeUndefined();
+  expect(fitting.scene.entries.get("row-0")?.layoutBounds.width).toBe(12);
+  expect(fitting.buffer.get(11, 0)).toMatchObject({ ownerId: "row-0", text: "]" });
+  runtime.dispose();
+});
+
+it("reserves distinct rail Cells through nested scroll containers", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 12, height: 5 }, presentation: "text" });
+  const frame = runtime.render(<Root><ScrollArea id="outer" style={{ width: 12, height: 5 }}>
+    <ScrollArea id="inner" style={{ height: 4 }}><Box>
+      {Array.from({ length: 8 }, (_, index) => <Button id={`row-${index}`} key={index}>
+        <Text>{`Row ${index}`}</Text>
+      </Button>)}
+    </Box></ScrollArea>
+    <Box style={{ height: 10 }} />
+  </ScrollArea></Root>);
+  const outerTrack = frame.scene.entries.get("outer")!.scrollMetrics!.verticalTrack!;
+  const innerTrack = frame.scene.entries.get("inner")!.scrollMetrics!.verticalTrack!;
+  const row = frame.scene.entries.get("row-0")!.layoutBounds;
+  expect(frame.layout.entries.get("outer")?.railInsets?.right).toBe(1);
+  expect(frame.layout.entries.get("inner")?.railInsets?.right).toBe(1);
+  expect(innerTrack.x + 1).toBe(outerTrack.x);
+  expect(row.x + row.width).toBe(innerTrack.x);
+  expect(frame.buffer.get(innerTrack.x - 1, row.y)).toMatchObject({ ownerId: "row-0", text: "]" });
+  runtime.dispose();
+});
+
+it("keeps user padding and border separate from the conditional rail inset", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 14, height: 6 }, presentation: "text" });
+  const frame = runtime.render(<Root><ScrollArea id="scroll" frame="bordered"
+    style={{ width: 14, height: 6, paddingLeft: 1, paddingRight: 2 }}>
+      <Box>{Array.from({ length: 8 }, (_, index) => <Button id={`row-${index}`} key={index}>
+        <Text>{`Row ${index}`}</Text>
+      </Button>)}</Box>
+    </ScrollArea></Root>);
+  const layout = frame.layout.entries.get("scroll")!;
+  const metrics = frame.scene.entries.get("scroll")!.scrollMetrics!;
+  const first = frame.scene.entries.get("row-0")!.layoutBounds;
+  expect(layout.paddingInsets).toMatchObject({ left: 1, right: 3 });
+  expect(layout.railInsets).toEqual({ right: 1, bottom: 0 });
+  expect(metrics.viewport.width).toBe(layout.contentRect.width);
+  expect(first.x + first.width).toBe(metrics.verticalTrack!.x);
+  expect(frame.buffer.get(metrics.verticalTrack!.x - 1, first.y)).toMatchObject({ ownerId: "row-0", text: "]" });
+  expect(frame.buffer.get(13, 0)?.text).toBe("┐");
+  runtime.dispose();
+});
+
+it.each(["select", "combobox"] as const)("reserves the %s popup rail before item layout", (kind) => {
+  const runtime = new CellUiRuntime({ viewport: { width: 16, height: 7 }, presentation: "text" });
+  const items = Array.from({ length: 8 }, (_, index) => ({ id: `item-${index}`, text: `Option ${index}` }));
+  const content = kind === "select"
+    ? <SelectContent id="content" style={{ width: 12, height: 4 }}>
+        {items.map((item) => <SelectItem id={item.id} key={item.id}><Text>{item.text}</Text></SelectItem>)}
+      </SelectContent>
+    : <ComboboxContent id="content" style={{ width: 12, height: 4 }}>
+        {items.map((item) => <ComboboxItem id={item.id} key={item.id}><Text>{item.text}</Text></ComboboxItem>)}
+      </ComboboxContent>;
+  const frame = runtime.render(kind === "select"
+    ? <Root><Select id="control" style={{ width: 12 }}>
+        <SelectTrigger id="trigger" label="Options" expanded controlsId="content"><Text>Option</Text></SelectTrigger>
+        {content}
+      </Select></Root>
+    : <Root><Combobox id="control" style={{ width: 12 }}>
+        <ComboboxInput id="input" label="Options" state={new CellTextEditor({ value: "" }).snapshot()} expanded />
+        {content}
+      </Combobox></Root>);
+  const metrics = frame.scene.entries.get("content")!.scrollMetrics!;
+  const track = metrics.verticalTrack!;
+  const first = frame.scene.entries.get("item-0")!.layoutBounds;
+  expect(frame.layout.entries.get("content")?.railInsets).toEqual({ right: 1, bottom: 0 });
+  expect(first.x + first.width).toBe(track.x);
+  expect(frame.buffer.get(track.x, first.y)?.ownerId).toBe("content");
+  runtime.dispose();
 });
 
 it("half-Cell thumb movement repaints exactly like a fresh frame", () => {

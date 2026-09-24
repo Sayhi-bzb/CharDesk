@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Box, Button, Progress, Root, Text, TextArea, type WidgetCommand } from "@chardesk/cell-ui";
+import { Box, Button, Markdown, Progress, Root, Text, TextArea, type WidgetCommand } from "@chardesk/cell-ui";
 import { useCellSelectState, useCellTextState } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "./appearance";
 import { renderGalleryCheckbox, renderGallerySelect } from "./gallery-component-recipes";
@@ -63,6 +63,32 @@ export function ClassicMacintoshDemo() {
       </Box>
       <Text>{`Status: ${status}`}</Text>
     </Box></Root>
+  </GallerySurface>;
+}
+
+const markdownExample = `# Field Notes
+
+Cells make docs readable.
+
+- [x] Build UI
+- [ ] Share it
+
+> Source stays yours.
+
+Read [Philosophy](#/guides/philosophy).`;
+
+export function MarkdownIntroductionDemo() {
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [opened, setOpened] = useState<{ href: string; count: number } | null>(null);
+  const dispatch = (command: WidgetCommand) => {
+    if (command.type === "focus") setFocusedId(command.targetId);
+    if (command.type === "open-link") setOpened((current) => ({ href: command.href, count: (current?.count ?? 0) + 1 }));
+  };
+  return <GallerySurface viewport={{ width: 40, height: 14 }} focusedId={focusedId}
+    onCommand={dispatch} label="Markdown example" probeId="markdown-example">
+    <Root><Markdown id="markdown-example-content" source={markdownExample} />
+      {opened ? <Text>{`Opened ${opened.count}: ${opened.href}`}</Text> : null}
+    </Root>
   </GallerySurface>;
 }
 

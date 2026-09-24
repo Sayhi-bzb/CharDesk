@@ -15,7 +15,7 @@ import type {
 import type { CellTextLayoutSnapshot } from "./text.js";
 import { DEFAULT_CELL_UI_THEME, type CellUiTheme } from "./theme.js";
 import { intersectSceneRects } from "./scene.js";
-import { thumbGlyph } from "./scrollbar.js";
+import { TEXT_VERTICAL_TRACK_GLYPH, textVerticalThumbGlyph, thumbGlyph } from "./scrollbar.js";
 import { paintBorder } from "./border.js";
 import { isActionableKind } from "./widget-capabilities.js";
 import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
@@ -30,6 +30,7 @@ import { spinnerGlyph } from "./spinner.js";
 import { fitTooltipText } from "./tooltip.js";
 import { TAB_UNDERLINE_GLYPH } from "./tabs.js";
 import { alertGlyph } from "./alert.js";
+import { fitSingleLineText, isSingleLineControlText, singleLineText } from "./single-line-text.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
 
@@ -87,8 +88,15 @@ const paintScrollbars = (
 ) => {
   const metrics = entry.scrollMetrics;
   if (!metrics) return;
-  for (const track of [metrics.horizontalTrack, metrics.verticalTrack]) {
-    if (track) fill(buffer, track, node.id, theme.scrollTrackStyle, clip);
+  for (const [track, vertical] of [[metrics.horizontalTrack, false], [metrics.verticalTrack, true]] as const) {
+    if (!track) continue;
+    if (node.presentation === "rich") fill(buffer, track, node.id, theme.scrollTrackStyle, clip);
+    else for (let y = track.y; y < track.y + track.height; y += 1) {
+      for (let x = track.x; x < track.x + track.width; x += 1) {
+        buffer.writeGrapheme(x, y, vertical ? TEXT_VERTICAL_TRACK_GLYPH : "░", node.id,
+          vertical ? theme.scrollThumbStyle : theme.scrollTrackStyle, clip, "over");
+      }
+    }
   }
   if (metrics.horizontalThumb && metrics.horizontalThumbAxis && metrics.horizontalTrack) {
     for (let offset = 0; offset < metrics.horizontalThumb.width; offset += 1) {
@@ -110,7 +118,9 @@ const paintScrollbars = (
       buffer.writeGrapheme(
         metrics.verticalThumb.x,
         metrics.verticalThumb.y + offset,
-        thumbGlyph(metrics.verticalThumbAxis, cell, false),
+        node.presentation === "text"
+          ? textVerticalThumbGlyph(metrics.verticalThumbAxis, cell)
+          : thumbGlyph(metrics.verticalThumbAxis, cell, false),
         node.id,
         theme.scrollThumbStyle,
         clip,
@@ -247,6 +257,10 @@ export const paintScene = (
           "over",
         );
       }
+      if (node.presentation === "text" && (node.kind === "badge" || node.kind === "badge-action") && node.badgeTone !== "neutral") {
+        buffer.writeGrapheme(entry.decorationBounds.x + 1, entry.decorationBounds.y,
+          alertGlyph(node.badgeTone), id, style, decorationClip, "over");
+      }
       const progressNumber = node.kind === "progress" && node.progress?.number && node.progress.value !== null
         ? progressNumberLayout(node.progress.value, node.progress.max, entry.decorationBounds.width, node.progressVariant)
         : null;
@@ -278,13 +292,16 @@ export const paintScene = (
       }
 
       // Content: local text and editor glyphs stay within contentClip.
-      if (node.kind === "text" || node.kind === "table-head" || node.kind === "table-cell") {
+      if (node.kind === "text" || node.kind === "markdown-link" || node.kind === "table-head" || node.kind === "table-cell") {
+        const singleLine = isSingleLineControlText(tree, node);
         paintText(
           buffer,
-          node.text ?? "",
+          singleLine
+            ? fitSingleLineText(singleLineText(node.text ?? ""), entry.contentBounds.width)
+            : node.text ?? "",
           id,
           style,
-          entry.contentBounds,
+          singleLine ? { ...entry.contentBounds, height: Math.min(1, entry.contentBounds.height) } : entry.contentBounds,
           contentClip
         );
       }
@@ -347,7 +364,11 @@ export const paintScene = (
           buffer.writeGrapheme(
             guardX,
             entry.decorationBounds.y,
-            guardX === promptGuardX ? ">" : " ",
+            guardX === promptGuardX ? ">"
+              : node.presentation === "text" && node.kind === "select-trigger"
+                ? guardX === inlineChrome.leadingGuardX ? "[" : "]"
+                : node.presentation === "text" && (node.kind === "select-item" || node.kind === "combobox-item")
+                  && guardX === inlineChrome.leadingGuardX && !node.disabled && (node.focused || node.hovered || node.active) ? ">" : " ",
             id,
             style,
             decorationClip,
@@ -374,7 +395,8 @@ export const paintScene = (
         for (const offset of [chrome.leadingGuardOffset, chrome.trailingGuardOffset]) {
           if (offset !== null) buffer.writeGrapheme(
             entry.decorationBounds.x + offset, entry.decorationBounds.y,
-            " ", id, style, decorationClip, "over"
+            node.presentation === "text" && offset === chrome.leadingGuardOffset
+              && !node.disabled && (node.focused || node.hovered) ? ">" : " ", id, style, decorationClip, "over"
           );
         }
         if (node.selected) buffer.writeGrapheme(
@@ -388,6 +410,9 @@ export const paintScene = (
             : " ",
           id, style, decorationClip, "over"
         );
+      }
+      if (node.kind === "menu-item" && node.presentation === "text" && !node.disabled && (node.focused || node.hovered)) {
+        buffer.writeGrapheme(entry.decorationBounds.x, entry.decorationBounds.y, ">", id, style, decorationClip, "over");
       }
       if (node.kind === "toggle") {
         const indicator = inlineChrome.leadingIndicator;
@@ -538,7 +563,7 @@ export const paintScene = (
         }
       }
       if ((node.kind === "select-item" || node.kind === "combobox-item") && node.selected) {
-        const indicator = inlineChrome.trailingIndicator;
+        const indicator = node.presentation === "text" ? inlineChrome.leadingIndicator : inlineChrome.trailingIndicator;
         if (indicator) {
           buffer.writeGrapheme(
             indicator.x,
@@ -549,6 +574,14 @@ export const paintScene = (
             decorationClip,
             "over"
           );
+        }
+      }
+      if (node.kind === "badge-action" && node.presentation === "text") {
+        const left = entry.layoutBounds.x;
+        const right = left + entry.layoutBounds.width - 1;
+        if (right > left) {
+          buffer.writeGrapheme(left, entry.layoutBounds.y, "[", id, style, outerClip, "over");
+          buffer.writeGrapheme(right, entry.layoutBounds.y, "]", id, style, outerClip, "over");
         }
       }
       if (entry.scrollMetrics) paintScrollbars(buffer, node, entry, theme, outerClip);

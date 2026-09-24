@@ -81,14 +81,20 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     });
     expect(active.buffer.get(0, 0)?.text).toBe(">");
     for (let x = 0; x < layout.rect.width; x++) {
-      expect(active.buffer.get(x, 0)?.style).toMatchObject(theme.focusedSurfaceStyle);
+      expect(active.buffer.get(x, 0)?.style).toMatchObject(
+        x === 2 || x === 3
+          ? { color: theme.focusedSurfaceStyle.backgroundColor, backgroundColor: theme.focusedSurfaceStyle.color }
+          : theme.focusedSurfaceStyle,
+      );
     }
-    expect(active.buffer.get(2, 0)?.style.underline).toBe(true);
-    expect(active.buffer.get(3, 0)?.style.underline).toBe(true);
-    expect(active.buffer.get(1, 0)?.style.underline).not.toBe(true);
-    expect(active.buffer.get(5, 0)?.style.underline).not.toBe(true);
+    expect(active.buffer.get(2, 0)?.style.underline).not.toBe(true);
+    expect(active.buffer.get(3, 0)?.style.underline).not.toBe(true);
     const blurred = runtime.render(view(), { focusedId: "editor", activeFocusId: null });
-    expect(blurred.buffer.get(1, 0)?.style.underline).not.toBe(true);
+    expect(blurred.buffer.get(2, 0)?.style).toMatchObject(theme.elevatedSurfaceStyle);
+    expect(blurred.buffer.get(2, 0)?.style.backgroundColor)
+      .not.toBe(active.buffer.get(2, 0)?.style.backgroundColor);
+    const refocused = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor" });
+    expect(refocused.buffer.get(2, 0)?.style).toEqual(active.buffer.get(2, 0)?.style);
     const disabled = runtime.render(view(true), {
       focusedId: "editor",
       activeFocusId: "editor",
@@ -110,7 +116,7 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     runtime.dispose();
   });
 
-  it(`TextInput ghost keeps its inherited background and underlines only an active selection (${theme.background})`, () => {
+  it(`TextInput ghost keeps its inherited background and highlights only an active selection (${theme.background})`, () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 1 }, theme });
     const editor = new CellTextEditor({ value: "Hi" });
     editor.dispatch({ type: "select-all" });
@@ -126,16 +132,16 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     expect(idle.buffer.get(1, 0)?.style.underline).not.toBe(true);
 
     const active = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor" });
-    expect(active.buffer.get(2, 0)?.style).toMatchObject({ underline: true });
-    expect(active.buffer.get(2, 0)?.style.backgroundColor).toBeUndefined();
+    expect(active.buffer.get(2, 0)?.style).toMatchObject(theme.textSelectionStyle);
+    expect(active.buffer.get(2, 0)?.style.underline).not.toBe(true);
     expect(active.buffer.get(1, 0)?.style.underline).not.toBe(true);
     expect(active.buffer.get(5, 0)?.style.backgroundColor).toBeUndefined();
     expect(active.buffer.get(5, 0)?.style.underline).not.toBe(true);
 
     const blurred = runtime.render(view(), { focusedId: "editor", activeFocusId: null });
-    expect(blurred.buffer.get(1, 0)?.style.underline).not.toBe(true);
+    expect(blurred.buffer.get(2, 0)?.style.backgroundColor).toBeUndefined();
     const readonly = runtime.render(view(false, true), { focusedId: "editor", activeFocusId: "editor" });
-    expect(readonly.buffer.get(2, 0)?.style.underline).toBe(true);
+    expect(readonly.buffer.get(2, 0)?.style).toMatchObject(theme.textSelectionStyle);
     const disabled = runtime.render(view(true), { focusedId: "editor", activeFocusId: "editor" });
     expect(disabled.buffer.get(2, 0)?.style).toMatchObject(theme.disabledStyle);
     expect(disabled.buffer.get(2, 0)?.style.underline).not.toBe(true);
@@ -232,6 +238,11 @@ it("resolves editor border tokens before activity and retains selection/composit
   const selected = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor", focusVisible: false });
   expect(selected.buffer.get(0, 0)?.style).toMatchObject(theme.focusedSurfaceStyle);
   expect(selected.buffer.get(1, 1)?.style).toMatchObject(theme.textSelectionStyle);
+  expect(selected.buffer.get(1, 1)?.style.underline).not.toBe(true);
+  const blurred = runtime.render(view(), { focusedId: "editor", activeFocusId: null });
+  expect(blurred.buffer.get(1, 1)?.style.backgroundColor)
+    .not.toBe(theme.textSelectionStyle.backgroundColor);
+  expect(blurred.textLayouts.get("editor")?.selection).toEqual({ anchor: 0, head: 1 });
   editor.dispatch({ type: "composition-start" });
   editor.dispatch({ type: "composition-update", text: "中" });
   const composing = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor", focusVisible: false });
@@ -239,3 +250,24 @@ it("resolves editor border tokens before activity and retains selection/composit
   expect(composing.buffer.get(0, 0)?.style).toMatchObject(theme.focusedSurfaceStyle);
   runtime.dispose();
 });
+
+it.each([CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME])(
+  "TextArea selection stays visible when its theme token matches the focused surface (%s)", (theme) => {
+    const runtime = new CellUiRuntime({ viewport: { width: 12, height: 4 }, theme });
+    const editor = new CellTextEditor({ value: "Hi", multiline: true });
+    editor.dispatch({ type: "set-selection", anchor: 0, head: 1 });
+    const frame = runtime.render(<Root><TextArea id="editor" state={editor.snapshot()}
+      frame="bordered" style={{ width: 12, height: 4 }} /></Root>, {
+      focusedId: "editor", activeFocusId: "editor",
+    });
+    const selected = frame.buffer.get(1, 1)!.style;
+    const plain = frame.buffer.get(2, 1)!.style;
+    expect(selected).toMatchObject({
+      color: theme.focusedSurfaceStyle.backgroundColor,
+      backgroundColor: theme.focusedSurfaceStyle.color,
+    });
+    expect(selected.backgroundColor).not.toBe(plain.backgroundColor);
+    expect(selected.underline).not.toBe(true);
+    runtime.dispose();
+  },
+);

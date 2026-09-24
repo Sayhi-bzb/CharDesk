@@ -5,6 +5,7 @@ Editable React Cell UI source. Its root entry is headless; `/browser` projects t
 - [Introduction](https://ui.chardesk.com/#/guides/introduction)
 - [Installation](https://ui.chardesk.com/#/guides/installation)
 - [Integration](https://ui.chardesk.com/#/guides/integration)
+- [Markdown](https://ui.chardesk.com/#/guides/markdown)
 - [Theming](https://ui.chardesk.com/#/guides/theming)
 - [Testing](https://ui.chardesk.com/#/guides/testing)
 - [Components](https://ui.chardesk.com/#/components/button)

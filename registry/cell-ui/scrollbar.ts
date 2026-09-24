@@ -22,4 +22,11 @@ export const thumbGlyph = (thumb: HalfCellThumb, cell: number, horizontal: boole
   return start === cell * 2 ? (horizontal ? "▌" : "▀") : (horizontal ? "▐" : "▄");
 };
 
+export const TEXT_VERTICAL_TRACK_GLYPH = "\u{1FB90}";
+
+export const textVerticalThumbGlyph = (thumb: HalfCellThumb, cell: number): string => {
+  const glyph = thumbGlyph(thumb, cell, false);
+  return glyph === "▀" ? "\u{1FB91}" : glyph === "▄" ? "\u{1FB92}" : glyph;
+};
+
 export const cellCenter = (point: { x: number; y: number }) => ({ x: point.x + 0.5, y: point.y + 0.5 });

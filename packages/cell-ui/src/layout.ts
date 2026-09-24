@@ -34,6 +34,7 @@ import {
 } from "./inline-control-chrome.js";
 import { isCollectionItemKind } from "./widget-capabilities.js";
 import { hasInlineOutline, INLINE_OUTLINE_INSET } from "./inline-outline.js";
+import { cellTextWidth, isSingleLineControlText, singleLineText } from "./single-line-text.js";
 
 const integer = (value: number, label: string) => {
   if (!Number.isFinite(value)) throw new RangeError(`${label} must be finite.`);
@@ -85,10 +86,15 @@ const applyStyle = (
 const measureText = (
   text: string,
   availableWidth: number,
-  widthMode: MeasureMode
+  widthMode: MeasureMode,
+  singleLine: boolean,
 ) => {
   const constrained = widthMode !== MeasureMode.Undefined;
   const widthLimit = constrained ? Math.max(1, Math.floor(availableWidth)) : Number.POSITIVE_INFINITY;
+  if (singleLine) return {
+    width: Math.min(widthLimit, cellTextWidth(singleLineText(text))),
+    height: 1,
+  };
   let rowWidth = 0;
   let measuredWidth = 0;
   let rows = 1;
@@ -114,7 +120,7 @@ const measureText = (
   };
 };
 
-const configureNode = (node: WidgetNode, target: YogaNode): void => {
+const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): void => {
   const item = isCollectionItemKind(node.kind);
   const row = node.kind === "tabs" || node.kind === "grid-row" || node.kind === "table-header" || node.kind === "table-row";
   const column = node.kind === "list"
@@ -203,6 +209,9 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     target.setPadding(Edge.Left, left);
     target.setPadding(Edge.Right, right);
   }
+  if (node.kind === "menu-item") {
+    target.setPadding(Edge.Left, (node.style.paddingLeft ?? node.style.padding ?? 0) + 2);
+  }
   if (node.kind === "tab" && node.tabsVariant === "underline") {
     target.setMinHeight(2);
     target.setPadding(Edge.Bottom, (node.style.paddingBottom ?? node.style.padding ?? 0) + 1);
@@ -238,8 +247,9 @@ const configureNode = (node: WidgetNode, target: YogaNode): void => {
     target.setPosition(Edge.Top, node.kind === "overlay" ? node.overlayPosition?.y ?? 0 : 0);
   }
   if (node.kind === "scroll-area") target.setOverflow(Overflow.Hidden);
-  if (node.kind === "text") {
-    target.setMeasureFunc((width, widthMode) => measureText(node.text ?? "", width, widthMode));
+  if (node.kind === "text" || node.kind === "markdown-link") {
+    const singleLine = isSingleLineControlText(tree, node);
+    target.setMeasureFunc((width, widthMode) => measureText(node.text ?? "", width, widthMode, singleLine));
   }
 };
 
@@ -295,7 +305,7 @@ export class YogaLayoutEngine implements LayoutEngine {
         this.#nodes.set(id, node);
         liveYogaResources.nodes += 1;
       }
-      configureNode(widget, node);
+      configureNode(widget, node, tree);
       if (widget.dialog) {
         const max = widget.style.maxWidth;
         const limit = typeof max === "string" ? viewport.width * parseFloat(max) / 100 : max ?? viewport.width;

@@ -26,6 +26,7 @@ test("Box and ScrollArea keep local surface and frame choices", async ({ page })
   await choose(page, "frame", "none");
   await expect(page.getByRole("button", { name: "border shape", exact: true })).toHaveCount(0);
   await choose(page, "frame", "bordered");
+  await page.getByRole("button", { name: "border shape", exact: true }).focus();
   await expect.poll(async () => (await readCellProbe(box)).text).toContain("rounded");
 
   await page.goto("/#/components/scroll-area");

@@ -15,9 +15,9 @@ import { guideContent, installationCommands, publicUsage, type GuideContent } fr
 import { FixturePage } from "./fixtures";
 import { GalleryAppearance, GalleryFontSelect, GalleryIconButton, GalleryThemeToggle } from "./appearance";
 import { GitHubStars } from "./github-stars";
-import { ClassicMacintoshDemo, NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
+import { ClassicMacintoshDemo, MarkdownIntroductionDemo, NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
 import highlightedCode from "virtual:gallery-code-tokens";
-import { shouldCollapseCode } from "./code-block-lines";
+import { codeLineCount, shouldCollapseCode } from "./code-block-lines";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
 import "@chardesk/font-maple/fonts.css";
@@ -88,14 +88,20 @@ export function CopyButton({ readText }: Readonly<{ readText: () => string | Pro
 export function CodeBlock({ children, language = "tsx" }: Readonly<{ children: string; language?: "tsx" | "text" }>) {
   const [expanded, setExpanded] = useState(false);
   const codeId = useId();
+  const lineCount = codeLineCount(children);
   const collapsible = shouldCollapseCode(children);
   const tokens = language === "tsx" ? highlightedCode[children] : undefined;
   return (
     <div className="docs-code" data-collapsed={collapsible && !expanded ? "" : undefined}>
       <CopyButton readText={() => children} />
-      <pre id={codeId}><code data-code-language={language}>{tokens
-        ? tokens.map((token, index) => <span key={index} className={token.bold ? "docs-code__emphasis" : undefined} style={{ color: token.color }}>{token.content}</span>)
-        : children}</code></pre>
+      <div className="docs-code__body" data-numbered={lineCount > 1 ? "" : undefined}>
+        {lineCount > 1 ? <div className="docs-code__line-numbers" aria-hidden="true">
+          {Array.from({ length: lineCount }, (_, index) => <span key={index}>{index + 1}</span>)}
+        </div> : null}
+        <pre id={codeId}><code data-code-language={language}>{tokens
+          ? tokens.map((token, index) => <span key={index} className={token.bold ? "docs-code__emphasis" : undefined} style={{ color: token.color }}>{token.content}</span>)
+          : children}</code></pre>
+      </div>
       {collapsible ? <button className="docs-code__toggle" type="button" aria-controls={codeId} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>{expanded ? "Show less" : "Show more"}</button> : null}
     </div>
   );
@@ -265,6 +271,7 @@ const guideDemos = {
   progress: ProgressIntroductionDemo,
   notes: NotesIntroductionDemo,
   macintosh: ClassicMacintoshDemo,
+  markdown: MarkdownIntroductionDemo,
 } satisfies Record<NonNullable<GuideContent["sections"][number]["demo"]>, ComponentType>;
 
 export function GuidePage({ guide }: Readonly<{ guide: GuideContent }>) {
@@ -275,7 +282,7 @@ export function GuidePage({ guide }: Readonly<{ guide: GuideContent }>) {
       return <section className="docs-section" aria-labelledby={section.id} key={section.id}>
         <h2 id={section.id}>{section.title}</h2><p>{section.body}</p>
         {Demo ? <div className="docs-preview"><Demo /></div> : null}
-        {section.code ? <CodeBlock language={guide.slug === "installation" ? "text" : "tsx"}>{section.code}</CodeBlock> : null}
+        {section.code ? <CodeBlock language={section.codeLanguage ?? (guide.slug === "installation" ? "text" : "tsx")}>{section.code}</CodeBlock> : null}
         {section.link ? <p><a href={section.link.href}>{section.link.label}</a></p> : null}
       </section>;
     })}
@@ -300,11 +307,20 @@ export function DocumentationShell({ document, guide, section }: Readonly<{ docu
         window.document.getElementById(section)?.scrollIntoView();
       });
     };
-    const afterLoad = () => { void window.document.fonts.ready.then(scroll); };
+    const afterLoad = () => {
+      if (window.document.documentElement.dataset.galleryFontStatus === "loading") return;
+      void window.document.fonts.ready.then(scroll);
+    };
+    const fontObserver = new MutationObserver(afterLoad);
+    fontObserver.observe(window.document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-gallery-font-status"],
+    });
     if (window.document.readyState === "complete") afterLoad();
     else window.addEventListener("load", afterLoad, { once: true });
     return () => {
       cancelled = true;
+      fontObserver.disconnect();
       window.removeEventListener("load", afterLoad);
       if (frame !== undefined) cancelAnimationFrame(frame);
     };
@@ -312,12 +328,12 @@ export function DocumentationShell({ document, guide, section }: Readonly<{ docu
   return (
     <>
       <header className="gallery-header">
-        <div className="gallery-header__inner">
+        <div className="gallery-shell gallery-header__inner">
           <a className="gallery-brand" href={defaultHref}>CharDesk / Cell UI</a>
           <div className="gallery-appearance-controls"><GitHubStars /><GalleryFontSelect /><GalleryThemeToggle /></div>
         </div>
       </header>
-      <div className="gallery-layout">
+      <div className="gallery-shell gallery-layout">
         <GalleryNavigation activeRoute={route} />
         <OnThisPage route={route} sections={sections} activeSection={section} />
         {guide ? <GuidePage guide={guide} key={guide.slug} /> : <ComponentPage document={document!} key={document!.slug} />}

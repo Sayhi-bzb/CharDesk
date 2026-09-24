@@ -157,12 +157,13 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
       expect(idle.buffer.get(1, 0)?.style.backgroundColor).toBe(background);
       expect(idle.buffer.get(9, 0)?.style.backgroundColor).toBe(background);
       const active = runtime.render(view, { focusedId: "input", activeFocusId: "input" });
-      expect(active.buffer.get(2, 0)?.style).toMatchObject({ underline: true });
-      expect(active.buffer.get(2, 0)?.style.backgroundColor).toBe(background);
+      expect(active.buffer.get(2, 0)?.style).toMatchObject(theme.textSelectionStyle);
+      expect(active.buffer.get(2, 0)?.style.underline).not.toBe(true);
       expect(active.buffer.get(1, 0)?.style.underline).not.toBe(true);
       expect(active.buffer.get(9, 0)?.style.backgroundColor).toBe(background);
       const blurred = runtime.render(view, { focusedId: "input", activeFocusId: null });
       expect(blurred.buffer.get(1, 0)?.style.underline).not.toBe(true);
+      expect(blurred.buffer.get(2, 0)?.style.backgroundColor).toBe(background);
     }
     runtime.dispose();
   });

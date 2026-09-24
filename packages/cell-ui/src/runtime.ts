@@ -15,6 +15,7 @@ import { reconcileWidgetTree, sameWidgetValue } from "./tree.js";
 import { classifyWidgetChange } from "./widget-change.js";
 import { createCellTextLayout } from "./text.js";
 import { resolveCellUiTheme, type CellUiTheme } from "./theme.js";
+import { resolveCellUiPresentation, type CellUiPresentation } from "./presentation.js";
 import {
   resolveCellUiRecipe,
   type CellUiRecipe,
@@ -30,8 +31,10 @@ import type {
   CellSize,
   FramePhase,
   FrameSnapshot,
+  LayoutSnapshot,
   SceneSnapshot,
   WidgetId,
+  WidgetKind,
   WidgetTree,
 } from "./types.js";
 
@@ -66,6 +69,61 @@ const expandForWideCells = (
   return { ...region, x: left, width: right - left };
 });
 
+type RailInsets = Readonly<{ right: number; bottom: number }>;
+
+const ownsFlowingScrollContent = (kind: WidgetKind): boolean =>
+  kind === "scroll-area" || kind === "select-content" || kind === "combobox-content";
+
+const layoutWithRailInsets = (
+  tree: WidgetTree,
+  viewport: CellSize,
+  overlayViewport: CellRect,
+  engine: LayoutEngine,
+): Readonly<{ layout: LayoutSnapshot; scene: SceneSnapshot }> => {
+  const owners = [...tree.nodes.values()].filter((node) => ownsFlowingScrollContent(node.kind));
+  const reserved = new Map<WidgetId, RailInsets>();
+  for (let pass = 0; pass <= owners.length * 2; pass += 1) {
+    const layoutTree: WidgetTree = reserved.size === 0 ? tree : {
+      ...tree,
+      nodes: new Map([...tree.nodes].map(([id, node]) => {
+        const rail = reserved.get(id);
+        return [id, !rail ? node : {
+          ...node,
+          style: {
+            ...node.style,
+            paddingRight: (node.style.paddingRight ?? node.style.padding ?? 0) + rail.right,
+            paddingBottom: (node.style.paddingBottom ?? node.style.padding ?? 0) + rail.bottom,
+          },
+        }];
+      })),
+    };
+    const rawLayout = engine.compute(layoutTree, viewport);
+    let layout: LayoutSnapshot = rawLayout;
+    if (reserved.size > 0) {
+      const entries = new Map(rawLayout.entries);
+      for (const [id, railInsets] of reserved) {
+        const entry = entries.get(id);
+        if (entry) entries.set(id, { ...entry, railInsets });
+      }
+      layout = { ...rawLayout, entries };
+    }
+    const scene = composeScene(tree, layout, overlayViewport);
+    let changed = false;
+    for (const owner of owners) {
+      const metrics = scene.entries.get(owner.id)?.scrollMetrics;
+      const previous = reserved.get(owner.id);
+      const right = metrics?.verticalTrack ? 1 : 0;
+      const bottom = metrics?.horizontalTrack ? 1 : 0;
+      if (right === (previous?.right ?? 0) && bottom === (previous?.bottom ?? 0)) continue;
+      if (right || bottom) reserved.set(owner.id, { right, bottom });
+      else reserved.delete(owner.id);
+      changed = true;
+    }
+    if (!changed) return { layout, scene };
+  }
+  throw new Error("Scroll rail layout did not converge.");
+};
+
 export type CellUiRuntimeOptions = Readonly<{
   viewport: CellSize;
   overlayViewport?: CellSize;
@@ -73,6 +131,7 @@ export type CellUiRuntimeOptions = Readonly<{
   layoutEngine?: LayoutEngine;
   theme?: Partial<CellUiTheme>;
   recipe?: CellUiRecipe;
+  presentation?: CellUiPresentation;
   feedback?: Partial<CellFeedbackConfig>;
 }>;
 
@@ -83,6 +142,7 @@ export class CellUiRuntime {
   readonly #onFrame: ((frame: FrameSnapshot) => void) | undefined;
   #theme: CellUiTheme;
   #recipe: CellUiRecipe;
+  #presentation: CellUiPresentation;
   #feedback: CellFeedbackConfig;
 
   get feedback(): CellFeedbackConfig { return this.#feedback; }
@@ -90,7 +150,7 @@ export class CellUiRuntime {
   setFeedback(feedback?: Partial<CellFeedbackConfig>): void {
     this.#feedback = resolveCellFeedback(feedback);
   }
-  #themeDirty = false;
+  #appearanceDirty = false;
   #tree: WidgetTree | undefined;
   #frame: FrameSnapshot | undefined;
   #revision = 0;
@@ -110,6 +170,7 @@ export class CellUiRuntime {
     this.#onFrame = options.onFrame;
     this.#theme = resolveCellUiTheme(options.theme);
     this.#recipe = resolveCellUiRecipe(options.recipe);
+    this.#presentation = resolveCellUiPresentation(options.presentation);
     this.#feedback = resolveCellFeedback(options.feedback);
   }
 
@@ -132,7 +193,7 @@ export class CellUiRuntime {
     }> = {}
   ): FrameSnapshot {
     if (this.#disposed) throw new Error("CellUiRuntime has been disposed.");
-    const descriptor = createWidgetDescriptor(element, this.#recipe);
+    const descriptor = createWidgetDescriptor(element, this.#recipe, this.#presentation);
     const reconciliation = reconcileWidgetTree(this.#tree, descriptor);
     const focusedId = state.resolveFocusedId
       ? state.resolveFocusedId(reconciliation.tree)
@@ -202,7 +263,7 @@ export class CellUiRuntime {
     );
     let layoutDirty = structuralDirty || viewportDirty;
     let geometryDirty = structuralDirty;
-    let paintDirty = structuralDirty || this.#themeDirty;
+    let paintDirty = structuralDirty || this.#appearanceDirty;
     let semanticsDirty = structuralDirty;
     const paintIds = new Set<WidgetId>();
     const geometryIds = new Set<WidgetId>();
@@ -232,17 +293,19 @@ export class CellUiRuntime {
       paintDirty = true;
       semanticsDirty = true;
     }
-    const layout = layoutDirty || !previous
-      ? this.#layout.compute(tree, this.#viewport)
-      : previous.layout;
-    const scene = geometryDirty || !previous
-      ? composeScene(tree, layout, {
-          x: 0,
-          y: 0,
-          width: this.#overlayViewport.width,
-          height: this.#overlayViewport.height,
-        })
-      : previous.scene;
+    const overlayRect = {
+      x: 0,
+      y: 0,
+      width: this.#overlayViewport.width,
+      height: this.#overlayViewport.height,
+    };
+    const computed = layoutDirty || !previous
+      ? layoutWithRailInsets(tree, this.#viewport, overlayRect, this.#layout)
+      : null;
+    const layout = computed?.layout ?? previous!.layout;
+    const scene = computed?.scene ?? (geometryDirty
+      ? composeScene(tree, layout, overlayRect)
+      : previous!.scene);
     const textLayouts = paintDirty || !previous
       ? new Map([...tree.nodes.values()].flatMap((node) => {
           if (!node.textEditor) return [];
@@ -262,7 +325,7 @@ export class CellUiRuntime {
     const semantics = semanticsDirty || !previous
       ? createSemanticSnapshot(tree, scene, revision, focusedId)
       : { ...previous.semantics, revision };
-    const rawDirtyRegions = !previous || layoutDirty || this.#themeDirty
+    const rawDirtyRegions = !previous || layoutDirty || this.#appearanceDirty
       ? [scene.overlayViewport]
       : geometryDirty
         ? regionsFor(geometryIds, previous.scene, scene)
@@ -363,7 +426,7 @@ export class CellUiRuntime {
       },
     };
     this.#revision = frame.revision;
-    this.#themeDirty = false;
+    this.#appearanceDirty = false;
     this.#tree = reconciliation.tree;
     this.#frame = frame;
     this.#onFrame?.(frame);
@@ -375,12 +438,20 @@ export class CellUiRuntime {
     const next = resolveCellUiTheme(theme);
     if (sameWidgetValue(this.#theme, next)) return;
     this.#theme = next;
-    this.#themeDirty = true;
+    this.#appearanceDirty = true;
   }
 
   setRecipe(recipe?: CellUiRecipe): void {
     if (this.#disposed) throw new Error("CellUiRuntime has been disposed.");
     this.#recipe = resolveCellUiRecipe(recipe);
+  }
+
+  setPresentation(presentation?: CellUiPresentation): void {
+    if (this.#disposed) throw new Error("CellUiRuntime has been disposed.");
+    const next = resolveCellUiPresentation(presentation);
+    if (next === this.#presentation) return;
+    this.#presentation = next;
+    this.#appearanceDirty = true;
   }
 
   resize(viewport: CellSize, overlayViewport: CellSize = viewport): void {

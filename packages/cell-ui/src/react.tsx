@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Cell UI descriptors are inert component factories. */
 import {
   Fragment,
   isValidElement,
@@ -14,12 +15,22 @@ import type {
   WidgetKind,
 } from "./types.js";
 import type { CellTextSnapshot } from "./text.js";
+import { getTextCellWidth } from "@chardesk/protocol";
 import { normalizeCellSliderValue, resolveCellSliderRange } from "./slider.js";
 import {
   resolveButtonVariant,
   type ButtonVariant,
 } from "./button.js";
 import { resolveSurfaceVariant, type SurfaceVariant } from "./surface-variant.js";
+import {
+  presentedBorderShape,
+  presentedButtonVariant,
+  presentedFrame,
+  presentedProgressVariant,
+  presentedTableVariant,
+  presentedTabsVariant,
+  type CellUiPresentation,
+} from "./presentation.js";
 import type { CellUiRecipe } from "./recipe.js";
 import { resolveBadgeTone, type BadgeTone } from "./badge.js";
 import { resolveAlertTone, type AlertTone } from "./alert.js";
@@ -27,6 +38,7 @@ import { resolveSeparatorVariant, type SeparatorVariant } from "./separator.js";
 import { resolveProgressVariant, type ProgressVariant } from "./progress.js";
 import { resolveSpinnerVariant, type SpinnerVariant } from "./spinner.js";
 import { tooltipText, tooltipTextWidth } from "./tooltip.js";
+import { parseCellMarkdown, type MarkdownBlock as ParsedMarkdownBlock, type MarkdownInline } from "./markdown.js";
 import { resolveTabsVariant, type TabsVariant } from "./tabs.js";
 import { fitTableCell, resolveTableVariant, tableWidth, type TableColumn, type TableVariant } from "./table.js";
 import {
@@ -103,6 +115,22 @@ export type TextProps = Readonly<{
   id?: string;
   children: string | number;
   style?: CellLayoutStyle;
+  textStyle?: CellTextStyle;
+}>;
+export type MarkdownProps = Readonly<{
+  id?: string;
+  source: string;
+  style?: CellLayoutStyle;
+}>;
+type MarkdownBlockProps = Readonly<{
+  children?: ReactNode;
+  role: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell";
+  level?: number;
+  style?: CellLayoutStyle;
+}>;
+type MarkdownLinkProps = Readonly<{
+  children: string;
+  href: string;
   textStyle?: CellTextStyle;
 }>;
 export type ButtonProps = NamedContainerProps & Readonly<{
@@ -312,6 +340,8 @@ type PrimitiveProps =
   | AlertProps
   | OverlayProps
   | TextProps
+  | MarkdownBlockProps
+  | MarkdownLinkProps
   | ButtonProps
   | BadgeProps
   | CheckboxProps
@@ -381,6 +411,10 @@ export const DialogTitle = primitive<DialogTitleProps>("text");
 export const DialogDescription = primitive<DialogDescriptionProps>("text");
 export const DialogFooter = primitive<DialogFooterProps>("box");
 export const Text = primitive<TextProps>("text");
+export const Markdown = (() => null) as ComponentType<MarkdownProps>;
+Markdown.displayName = "CellMarkdown";
+const MarkdownBlock = primitive<MarkdownBlockProps>("markdown-block");
+const MarkdownLink = primitive<MarkdownLinkProps>("markdown-link");
 export const Button = primitive<ButtonProps>("button");
 export const Badge = primitive<BadgeProps>("badge");
 export const Checkbox = primitive<CheckboxProps>("checkbox");
@@ -435,10 +469,13 @@ export type WidgetDescriptor = Readonly<{
   explicitId: string | null;
   key: string | null;
   style: CellLayoutStyle;
+  presentation: CellUiPresentation;
   surfaceVariant: SurfaceVariant | null;
   frame: CellFrame;
   borderShape: CellBorderShape | null;
   text: string | null;
+  href: string | null;
+  markdownRole: MarkdownBlockProps["role"] | null;
   textStyle: CellTextStyle;
   label: string | null;
   disabled: boolean;
@@ -496,7 +533,55 @@ const flattenChildren = (value: ReactNode, target: ReactNode[]): void => {
   target.push(value);
 };
 
-const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor[] => {
+const markdownInlineNodes = (content: readonly MarkdownInline[]): ReactNode[] => content.flatMap((part, index) => {
+  const style = { bold: part.bold, underline: part.underline };
+  if (part.href) return [<MarkdownLink key={`link-${index}`} href={part.href} textStyle={style}>{part.text}</MarkdownLink>];
+  return part.text.split(/(\s+)/u).filter(Boolean).map((piece, pieceIndex) =>
+    <Text key={`text-${index}-${pieceIndex}`} textStyle={style}>{piece}</Text>);
+});
+
+const markdownBlockNode = (block: ParsedMarkdownBlock, key: string, depth = 0): ReactNode => {
+  const flow = { direction: "row" as const, wrap: true, width: "100%" as const };
+  if (block.kind === "heading") return <MarkdownBlock key={key} role="heading" level={block.level} style={flow}>
+    <Text>{`${"#".repeat(block.level ?? 1)} `}</Text>
+    {markdownInlineNodes(block.content.map((part) => ({ ...part, bold: true })))}
+  </MarkdownBlock>;
+  if (block.kind === "paragraph" || block.kind === "quote") return <MarkdownBlock key={key}
+    role={block.kind === "quote" ? "blockquote" : "paragraph"} style={flow}>
+    {block.kind === "quote" ? <Text>│ </Text> : null}{markdownInlineNodes(block.content)}
+  </MarkdownBlock>;
+  if (block.kind === "code") return <MarkdownBlock key={key} role="code" style={{ width: "100%" }}>
+    <Text style={{ width: "100%" }}>{`\`\`\`${block.language ?? ""}\n${block.text}\n\`\`\``}</Text>
+  </MarkdownBlock>;
+  if (block.kind === "rule") return <MarkdownBlock key={key} role="paragraph" style={{ width: "100%" }}><Text>───</Text></MarkdownBlock>;
+  if (block.kind === "list") return <MarkdownBlock key={key} role="list" style={{ width: "100%", paddingLeft: depth > 0 ? 2 : 0 }}>
+    {block.items.map((item, index) => {
+      const [first, ...rest] = item.blocks;
+      return <MarkdownBlock key={index} role="listitem" style={{ width: "100%" }}>
+        <MarkdownBlock role="paragraph" style={flow}>
+          <Text>{`${item.marker} `}</Text>
+          {first?.kind === "paragraph" ? markdownInlineNodes(first.content) : null}
+        </MarkdownBlock>
+        {first && first.kind !== "paragraph" ? markdownBlockNode(first, "first", depth + 1) : null}
+        {rest.map((child, childIndex) => markdownBlockNode(child, `nested-${childIndex}`, depth + 1))}
+      </MarkdownBlock>;
+    })}
+  </MarkdownBlock>;
+  const columnCount = Math.max(0, ...block.rows.map((row) => row.length));
+  const columnWidths = Array.from({ length: columnCount }, (_, index) => Math.min(24, Math.max(3,
+    ...block.rows.map((row) => getTextCellWidth(row[index]?.map((part) => part.text).join("") ?? "")))));
+  return <MarkdownBlock key={key} role="table" style={{ width: "100%" }}>
+    {block.rows.map((row, rowIndex) => <MarkdownBlock key={rowIndex} role="row" style={{ direction: "row", width: "100%" }}>
+      {row.map((cell, cellIndex) => <MarkdownBlock key={cellIndex} role="cell"
+        style={{ direction: "row", wrap: true, width: columnWidths[cellIndex]! + 3, flexShrink: 0 }}>
+        <Text>{cellIndex === 0 ? "│ " : " │ "}</Text>{markdownInlineNodes(cell)}
+      </MarkdownBlock>)}<Text> │</Text>
+    </MarkdownBlock>)}
+  </MarkdownBlock>;
+};
+
+const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: CellUiPresentation): WidgetDescriptor[] => {
+  const textMode = presentation === "text";
   if (element.type === Fragment) {
     const fragmentChildren: ReactNode[] = [];
     flattenChildren((element.props as { children?: ReactNode }).children, fragmentChildren);
@@ -504,29 +589,40 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
       if (!isValidElement(child)) {
         throw new TypeError("Cell UI fragments may only contain Cell UI primitives.");
       }
-      return describe(child, recipe);
+      return describe(child, recipe, presentation);
     });
+  }
+
+  if (element.type === Markdown) {
+    const props = element.props as MarkdownProps;
+    return describe(<Box id={props.id} style={{ width: "100%", gap: 1, ...props.style }}>
+      {parseCellMarkdown(props.source).map((block, index) => markdownBlockNode(block, String(index)))}
+    </Box>, recipe, presentation);
   }
 
   const primitiveKind = kinds.get(element.type);
   const props = element.props as Record<string, unknown>;
   if (element.type === Table) {
     const { columns, label } = props as TableProps;
-    const variant = resolveTableVariant(props.variant);
+    const variant = presentedTableVariant(presentation, resolveTableVariant(props.variant));
+    const minimumColumnWidth = textMode || variant !== "outline" ? 1 : 3;
     if (!Array.isArray(columns) || columns.length === 0 || columns.some((column) =>
-      typeof column.label !== "string" || !Number.isInteger(column.width) || column.width < (variant === "outline" ? 3 : 1)
+      typeof column.label !== "string" || !Number.isInteger(column.width) || column.width < minimumColumnWidth
     ) || typeof label !== "string" || !label.trim()) {
       throw new TypeError("Table requires a label and columns with positive integer Cell widths (at least 3 for outline).");
     }
+    const displayColumns = textMode
+      ? columns.map((column) => ({ ...column, width: Math.max(3, column.width) }))
+      : columns;
     const rows: ReactNode[] = [];
     flattenChildren(props.children as ReactNode, rows);
     const gap = variant === "outline" ? 1 : 2;
-    const width = tableWidth(columns, variant);
+    const width = tableWidth(displayColumns, variant);
     const surfaceInset = variant === "surface" ? { paddingLeft: 1, paddingRight: 1 } : {};
     const innerWidth = width - (variant === "outline" ? 2 : 0);
     const rowStyle = { direction: "row" as const, gap, width, height: 1, flexShrink: 0, ...surfaceInset };
     const header = <TableHeader rowIndex={1} style={rowStyle}>
-      {columns.map((column, index) => <TableHead key={index} label={column.label} columnIndex={index + 1}
+      {displayColumns.map((column, index) => <TableHead key={index} label={column.label} columnIndex={index + 1}
         style={{ width: column.width, height: 1, flexShrink: 0 }} textStyle={{ bold: true }}>{fitTableCell(column.label, { ...column, align: "left" }, variant)}</TableHead>)}
     </TableHeader>;
     const dataRows = rows.map((row, rowIndex) => {
@@ -534,7 +630,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
       const rowProps = row.props as TableRowProps;
       const cells: ReactNode[] = [];
       flattenChildren(rowProps.children, cells);
-      if (cells.length !== columns.length) throw new TypeError("Each TableRow needs exactly one TableCell per column.");
+      if (cells.length !== displayColumns.length) throw new TypeError("Each TableRow needs exactly one TableCell per column.");
       return <TableDataRow key={row.key ?? rowIndex} id={rowProps.id} rowIndex={rowIndex + 2}
         style={rowStyle}>
         {cells.map((cell, index) => {
@@ -546,20 +642,20 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
           if (typeof content !== "string" && typeof content !== "number") throw new TypeError("TableCell content must be text or one Text element.");
           const raw = String(content);
           return <TableDataCell key={cell.key ?? index} id={cellProps.id} label={raw} columnIndex={index + 1}
-            style={{ width: columns[index]!.width, height: 1, flexShrink: 0 }}
+            style={{ width: displayColumns[index]!.width, height: 1, flexShrink: 0 }}
             textStyle={isValidElement(cellProps.children) ? (cellProps.children.props as TextProps).textStyle : undefined}>
-            {fitTableCell(raw, columns[index]!, variant)}
+            {fitTableCell(raw, displayColumns[index]!, variant)}
           </TableDataCell>;
         })}
       </TableDataRow>;
     });
     return describe(<TablePart key={element.key} id={props.id as string | undefined} label={label}
-      rowCount={dataRows.length + 1} columnCount={columns.length}
+      rowCount={dataRows.length + 1} columnCount={displayColumns.length}
       variant={variant === "surface" ? "surface" : undefined}
       frame={variant === "outline" ? "bordered" : "none"} borderShape="square"
       style={{ width, direction: "column", flexShrink: 0 }}>
       {header}{variant === "surface" ? null : <TableDivider style={{ width: innerWidth, height: 1, flexShrink: 0 }} />}{dataRows}
-    </TablePart>, recipe);
+    </TablePart>, recipe, presentation);
   }
   if (element.type === Slider && Array.isArray(props.value)) {
     const values = props.value as unknown[];
@@ -583,7 +679,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
     >
       <RangeSliderThumb {...start} value={values[0] as number} />
       <RangeSliderThumb {...end} value={values[1] as number} />
-    </RangeSlider>, recipe);
+    </RangeSlider>, recipe, presentation);
   }
   if (element.type === Slider && props.thumbs !== undefined) {
     throw new TypeError("Single-value Slider cannot have thumbs.");
@@ -607,8 +703,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
   const progressMax = typeof props.max === "number" && Number.isFinite(props.max) && props.max > 0
     ? props.max : 100;
   const progressVariant = kind === "progress"
-    ? resolveProgressVariant(props.variant)
-    : "solid";
+    ? presentedProgressVariant(presentation, resolveProgressVariant(props.variant)) : "solid";
   if (
     (kind === "range-slider" || kind === "range-slider-thumb")
     && (typeof props.id !== "string" || props.id.length === 0 || typeof props.label !== "string" || props.label.length === 0)
@@ -644,11 +739,11 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
         {description ? <Box style={{ maxWidth: "100%" }}>{description}</Box> : null}
         {button}
       </Box> : null}
-    </Box>, recipe);
+    </Box>, recipe, presentation);
   } else if (kind === "tooltip") {
     if (childValues.length > 0) throw new TypeError("Tooltip does not accept children.");
     text = tooltipText(props.text as string);
-  } else if (kind === "text" || kind === "table-head" || kind === "table-cell") {
+  } else if (kind === "text" || kind === "markdown-link" || kind === "table-head" || kind === "table-cell") {
     if (childValues.some((child) => typeof child !== "string" && typeof child !== "number")) {
       throw new TypeError("Text children must be strings or numbers.");
     }
@@ -658,14 +753,14 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
       if (!isValidElement(child)) {
         throw new TypeError(`${kind} children must be Cell UI primitives.`);
       }
-      return describe(child, recipe);
+      return describe(child, recipe, presentation);
     });
   }
   if (kind === "range-slider-thumb" && children.length > 0) {
     throw new TypeError("RangeSliderThumb cannot contain children.");
   }
   if (element.type === DialogFooter) {
-    children.unshift(...describe(<Box style={{ flexGrow: 1 }} />, recipe));
+    children.unshift(...describe(<Box style={{ flexGrow: 1 }} />, recipe, presentation));
   }
 
   const position = props.position as CellPoint | undefined;
@@ -696,19 +791,20 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
     || kind === "overlay"
     || kind === "alert";
   const surfaceVariant = ownsSurface
-      ? resolveSurfaceVariant(
+    ? resolveSurfaceVariant(
           props.variant,
           (controlSurface ? recipe.defaultControlVariant : undefined)
             ?? (defaultsToSurface ? "surface" : "ghost"),
         )
       : null;
-  const frame = kind === "table" ? resolveCellFrame(props.frame, "none") : kind === "alert"
+  const requestedFrame = kind === "table" ? resolveCellFrame(props.frame, "none") : kind === "alert"
     ? props.border === "square" || props.border === "rounded" ? "bordered" : "none"
     : isDialog || kind === "tooltip"
       ? props.border === "none" ? "none" : "bordered"
     : ownsFramedSurface || kind === "select-content" || kind === "combobox-content"
       ? resolveCellFrame(props.frame, "none")
       : "none";
+  const frame = presentedFrame(presentation, kind, surfaceVariant, requestedFrame, isDialog);
   const requestedBorderShape = isDialog || kind === "tooltip" || kind === "alert" ? props.border : props.borderShape;
 
   return [{
@@ -728,11 +824,13 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
       ...(kind === "alert" ? { paddingLeft: 3 + ((props.style as CellLayoutStyle | undefined)?.paddingLeft
         ?? (props.style as CellLayoutStyle | undefined)?.padding ?? 0) } : {}),
     },
+    presentation,
     surfaceVariant,
     frame,
-    borderShape: frame === "bordered" && (requestedBorderShape === "square" || requestedBorderShape === "rounded")
-      ? requestedBorderShape : null,
+    borderShape: presentedBorderShape(presentation, frame, requestedBorderShape),
     text,
+    href: kind === "markdown-link" ? props.href as string : null,
+    markdownRole: kind === "markdown-block" ? props.role as MarkdownBlockProps["role"] : null,
     textStyle: { ...(element.type === DialogTitle || element.type === AlertTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
     label: alertLabel ?? (typeof props.label === "string" ? props.label : null),
     disabled: props.disabled === true,
@@ -753,11 +851,11 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
     progressVariant,
     spinnerVariant: kind === "spinner" ? resolveSpinnerVariant(props.variant) : "wheel",
     tooltipTargetId: kind === "tooltip" ? props.targetId as string : null,
-    tabsVariant: kind === "tabs" ? resolveTabsVariant(props.variant) : "underline",
+    tabsVariant: kind === "tabs"
+      ? presentedTabsVariant(presentation, resolveTabsVariant(props.variant)) : "underline",
     separatorVariant: kind === "separator" ? resolveSeparatorVariant(props.variant) : "line",
     buttonVariant: kind === "button"
-      ? resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")
-      : "solid",
+      ? presentedButtonVariant(presentation, resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")) : "solid",
     badgeTone: kind === "alert" ? resolveAlertTone(props.tone)
       : kind === "badge" || kind === "badge-action" ? resolveBadgeTone(props.tone) : "neutral",
     sliderValue: kind === "range-slider-thumb"
@@ -805,9 +903,10 @@ const describe = (element: ReactElement, recipe: CellUiRecipe): WidgetDescriptor
 export const createWidgetDescriptor = (
   value: ReactElement<RootProps> | null,
   recipe: CellUiRecipe = {},
+  presentation: CellUiPresentation = "rich",
 ): WidgetDescriptor | null => {
   if (value === null) return null;
-  const descriptors = describe(value, recipe);
+  const descriptors = describe(value, recipe, presentation);
   const root = descriptors[0];
   if (descriptors.length !== 1 || root?.kind !== "root") {
     throw new TypeError("A Cell UI render must contain exactly one Root descriptor.");

@@ -2,7 +2,7 @@ import type { WidgetKind, WidgetNode } from "./types.js";
 
 export const isPrimitiveControlKind = (kind: WidgetKind): boolean =>
   kind === "accordion-trigger" ||
-  kind === "button" || kind === "badge-action" || kind === "checkbox" || kind === "select-trigger" || kind === "select-item" || kind === "combobox-item"
+  kind === "button" || kind === "markdown-link" || kind === "badge-action" || kind === "checkbox" || kind === "select-trigger" || kind === "select-item" || kind === "combobox-item"
   || kind === "toggle" || kind === "radio-item" || kind === "slider" || kind === "range-slider-thumb"
   || kind === "list-item" || kind === "menu-item" || kind === "tree-item" || kind === "tab" || kind === "grid-cell";
 
@@ -37,6 +37,7 @@ export const isTextEditorKind = (kind: WidgetKind): boolean =>
 export const isActionableKind = (kind: WidgetKind): boolean =>
   kind === "accordion-trigger" ||
   kind === "button"
+  || kind === "markdown-link"
   || kind === "badge-action"
   || kind === "checkbox"
   || kind === "toggle"

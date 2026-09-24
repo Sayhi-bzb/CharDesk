@@ -127,7 +127,7 @@ describe("Component Playground gallery demos", () => {
     expect(save).toHaveAccessibleName("Save document");
   });
 
-  it("shows every Badge tone without a config pane or persistent activation feedback", async () => {
+  it("shows every Badge tone with only presentation configuration and no persistent activation feedback", async () => {
     render(<BadgeComponentDemo />);
     const surface = screen.getByLabelText("Badge component");
     const statuses = screen.getAllByRole("paragraph");
@@ -137,7 +137,8 @@ describe("Component Playground gallery demos", () => {
     const retry = screen.getByRole("button", { name: "Retry" });
     expect(screen.getByRole("button", { name: "Disabled" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByRole("button", { name: "tone" })).toBeNull();
-    expect(readCellSurfaceProbe(surface)?.text).not.toContain("│");
+    expect(screen.getByRole("button", { name: "presentation" })).toBeTruthy();
+    expect(readCellSurfaceProbe(surface)?.text).toContain("│");
     fireEvent.click(retry);
     await waitFor(() => expect(surface).not.toHaveAttribute("data-cell-confirmation-phase"));
     expect(readCellSurfaceProbe(surface)?.text).not.toContain("Activated:");

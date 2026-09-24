@@ -46,25 +46,29 @@ export const resolveCellTextStyle = (
   ...(state.composing ? { underline: true } : {}),
 });
 
-const usesUnderlinedSelection = (node: WidgetNode): boolean =>
-  node.kind === "text-input" || node.kind === "combobox-input";
-
 const preservesEditorSurfaceWhenActive = (node: WidgetNode): boolean =>
   node.kind === "combobox-input"
   || (node.kind === "text-input" && node.surfaceVariant !== "surface");
+
+const editorSelectionStyle = (base: CellTextStyle, theme: CellUiTheme): CellTextStyle => {
+  const background = base.backgroundColor ?? theme.background;
+  const foreground = base.color ?? theme.foreground;
+  const selectedBackground = theme.textSelectionStyle.backgroundColor ?? background;
+  return selectedBackground.trim().toLowerCase() === background.trim().toLowerCase()
+    ? { color: background, backgroundColor: foreground }
+    : theme.textSelectionStyle;
+};
 
 export const resolveEditorGlyphStyle = (
   base: CellTextStyle,
   state: Readonly<{ selected?: boolean; composing?: boolean }>,
   theme: CellUiTheme,
   node: WidgetNode,
-): CellTextStyle => usesUnderlinedSelection(node)
-  ? {
-      ...base,
-      ...(!node.disabled && ((state.selected && node.focusActive) || state.composing)
-        ? { underline: true } : {}),
-    }
-  : resolveCellTextStyle(base, state, theme);
+): CellTextStyle => ({
+  ...base,
+  ...(!node.disabled && node.focusActive && state.selected ? editorSelectionStyle(base, theme) : {}),
+  ...(!node.disabled && state.composing ? { underline: true } : {}),
+});
 
 const surfaceStyleForNode = (
   tree: WidgetTree,

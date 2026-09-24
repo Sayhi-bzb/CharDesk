@@ -45,9 +45,11 @@ test("inverse cursor follows committed editor colors, wide glyphs, movement and 
   await expect.poll(() => pixel(2)).toEqual([210, 220, 230, 255]);
   expect(await pixel()).toEqual([30, 40, 50, 255]);
   await input.press("Shift+ArrowLeft");
-  await expect.poll(() => pixel()).toEqual([210, 220, 230, 255]);
+  await expect.poll(() => pixel()).toEqual([255, 255, 255, 255]);
   expect((await readCellProbe(surface)).cells.find((cell) => cell.x === x && cell.y === y)?.style)
-    .toMatchObject({ color: "rgb(210, 220, 230)", backgroundColor: "rgb(30, 40, 50)", underline: true });
+    .toMatchObject({ color: "rgb(255, 255, 255)", backgroundColor: "rgb(0, 0, 0)" });
+  expect((await readCellProbe(surface)).cells.find((cell) => cell.x === x && cell.y === y)?.style.underline)
+    .not.toBe(true);
   await input.evaluate((element) => element.blur());
   await expect.poll(() => pixel(2)).toEqual([230, 230, 230, 255]);
   expect((await readCellProbe(surface)).text).toBe(wideText);

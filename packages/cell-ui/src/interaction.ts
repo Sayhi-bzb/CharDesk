@@ -56,6 +56,7 @@ export type WidgetCommand =
       reveals?: readonly Readonly<{ targetId: WidgetId; scrollX: number; scrollY: number }>[];
     }>
   | Readonly<{ type: "activate"; targetId: WidgetId }>
+  | Readonly<{ type: "open-link"; targetId: WidgetId; href: string }>
   | Readonly<{ type: "select-radio"; targetId: WidgetId }>
   | Readonly<{ type: "set-active"; targetId: WidgetId }>
   | Readonly<{ type: "dismiss"; targetId: WidgetId }>
@@ -207,7 +208,9 @@ const commandForSemanticAction = (
       : null;
   }
   return action === "activate"
-    ? { type: "activate", targetId }
+    ? node.kind === "markdown-link" && node.href
+      ? { type: "open-link", targetId, href: node.href }
+      : { type: "activate", targetId }
     : focusCommand(frame, targetId);
 };
 

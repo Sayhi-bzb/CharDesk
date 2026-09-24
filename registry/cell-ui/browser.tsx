@@ -89,6 +89,7 @@ import {
 } from "./pointer.js";
 import { resolveCellUiTheme, type CellUiTheme } from "./theme.js";
 import type { CellUiRecipe } from "./recipe.js";
+import type { CellUiPresentation } from "./presentation.js";
 export { readCellCssTheme, useCellCssTheme } from "./browser-theme.js";
 export type { CellCssTheme } from "./browser-theme.js";
 import { FixedVirtualGrid, type VirtualRange } from "./virtual.js";
@@ -440,8 +441,9 @@ export const SemanticDom = ({
     const children = childrenOf(node.id);
     const focusable = node.actions.includes("focus");
     const primaryAction = primarySemanticAction(node);
+    const Element = node.role === "link" ? "a" : "div";
     return (
-      <div
+      <Element
         id={`cell-semantic-${node.id}`}
         key={node.id}
         role={node.role}
@@ -477,6 +479,8 @@ export const SemanticDom = ({
         aria-valuetext={node.valueText}
         data-focused={snapshot.focusedId === node.id || undefined}
         data-cell-semantic-id={node.id}
+        data-href={node.href}
+        href={node.role === "link" ? node.href : undefined}
         tabIndex={focusable ? -1 : undefined}
         onFocus={focusable
           ? (event) => {
@@ -488,11 +492,14 @@ export const SemanticDom = ({
             }
           : undefined}
         onClick={primaryAction
-          ? () => onAction(node.id, primaryAction)
+          ? (event) => {
+              if (node.role === "link") event.preventDefault();
+              onAction(node.id, primaryAction);
+            }
           : undefined}
       >
         {children.length > 0 ? children.map(renderNode) : node.label}
-      </div>
+      </Element>
     );
   };
   const roots = snapshot.roots
@@ -512,6 +519,7 @@ export type CellSurfaceProps = Readonly<{
   focusedId?: WidgetId | null;
   theme?: Partial<CellUiTheme>;
   recipe?: CellUiRecipe;
+  presentation?: CellUiPresentation;
   feedback?: Partial<CellFeedbackConfig>;
   metrics?: CharDeskCellMetrics;
   fontSize?: number;
@@ -683,6 +691,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     focusedId = null,
     theme,
     recipe,
+    presentation,
     feedback,
     metrics: explicitMetrics,
     fontSize,
@@ -775,6 +784,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     activationFlashId: WidgetId | null;
     theme: Partial<CellUiTheme> | undefined;
     recipe: CellUiRecipe | undefined;
+    presentation: CellUiPresentation | undefined;
     feedback: Partial<CellFeedbackConfig> | undefined;
     interactionRevision: number;
     animationTimeMs: number;
@@ -821,16 +831,17 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     pressActiveId,
   );
   const tooltipTargetId = tooltip.targetId;
+  const focusOwnsTooltip = focusVisible && logicalFocusedId === tooltipTargetId;
   useEffect(() => {
     if (!tooltipTargetId) return;
     const dismiss = () => tooltip.dismiss();
-    window.addEventListener("scroll", dismiss, true);
+    if (!focusOwnsTooltip) window.addEventListener("scroll", dismiss, true);
     window.addEventListener("blur", dismiss);
     return () => {
-      window.removeEventListener("scroll", dismiss, true);
+      if (!focusOwnsTooltip) window.removeEventListener("scroll", dismiss, true);
       window.removeEventListener("blur", dismiss);
     };
-  }, [tooltipTargetId]);
+  }, [focusOwnsTooltip, tooltipTargetId]);
   useLayoutEffect(() => {
     const current = frameRef.current;
     if (current && inputModality === "pointer") controller.setHovered(current, hoveredId);
@@ -944,6 +955,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       && previousProjection.activationFlashId === activationFlashId
       && previousProjection.theme === theme
       && previousProjection.recipe === recipe
+      && previousProjection.presentation === presentation
       && previousProjection.feedback === feedback
       && previousProjection.interactionRevision === interactionRevision
       && previousProjection.animationTimeMs === animationTimeMs
@@ -957,12 +969,13 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
 
     let runtime = runtimeRef.current;
     if (!runtime) {
-      runtime = new CellUiRuntime({ viewport, overlayViewport, theme, recipe, feedback });
+      runtime = new CellUiRuntime({ viewport, overlayViewport, theme, recipe, presentation, feedback });
       runtimeRef.current = runtime;
     } else {
       runtime.resize(viewport, overlayViewport);
       runtime.setTheme(theme);
       runtime.setRecipe(recipe);
+      runtime.setPresentation(presentation);
       runtime.setFeedback(feedback);
     }
     const focusedChanged = focusedIdRef.current !== focusedId;
@@ -1015,6 +1028,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       activationFlashId,
       theme,
       recipe,
+      presentation,
       feedback,
       interactionRevision,
       animationTimeMs,
@@ -1027,7 +1041,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     };
     // The headless runtime is an external store; publish its committed snapshot.
     setFrame(next);
-  }, [controller, palette.color, palette.background, activationFlashId, animationTimeMs, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, tooltipTargetId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, recipe, runtimeActiveFocusId, syncManipulatingIds, theme, feedback, viewport]);
+  }, [controller, palette.color, palette.background, activationFlashId, animationTimeMs, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, tooltipTargetId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, recipe, presentation, runtimeActiveFocusId, syncManipulatingIds, theme, feedback, viewport]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;

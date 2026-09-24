@@ -16,6 +16,7 @@
         "@codemirror/state@^6.7.4",
         "@react-stately/collections@^3.13.1",
         "@react-stately/list@^3.14.1",
+        "marked@^16.4.1",
         "yoga-layout@^3.2.1"
       ],
       "files": [
@@ -225,6 +226,11 @@
           "target": "@lib/cell-ui/layout.ts"
         },
         {
+          "path": "registry/cell-ui/markdown.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/markdown.ts"
+        },
+        {
           "path": "registry/cell-ui/paint.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/paint.ts"
@@ -238,6 +244,11 @@
           "path": "registry/cell-ui/pointer.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/pointer.ts"
+        },
+        {
+          "path": "registry/cell-ui/presentation.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/presentation.ts"
         },
         {
           "path": "registry/cell-ui/press.ts",
@@ -308,6 +319,11 @@
           "path": "registry/cell-ui/separator.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/separator.ts"
+        },
+        {
+          "path": "registry/cell-ui/single-line-text.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/single-line-text.ts"
         },
         {
           "path": "registry/cell-ui/slider.ts",

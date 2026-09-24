@@ -4,13 +4,17 @@ Connect Cell descriptors, browser projection, and application-owned state.
 
 ## Surface
 
-Import descriptors and CellUiRuntime from @/lib/cell-ui; import CellSurface and state adapters from @/lib/cell-ui/browser. Root is the top-level structural descriptor. CellSurface retains the runtime across viewport and theme changes.
+Import descriptors and CellUiRuntime from @/lib/cell-ui; import CellSurface and state adapters from @/lib/cell-ui/browser. Root is the top-level structural descriptor. CellSurface retains the runtime across viewport, theme, and presentation changes. Presentation defaults to rich; text is an equally interactive Unicode rendering of the same state and commands.
 
 ```tsx
 import { Root, Text } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
-<CellSurface viewport={{ width: 30, height: 4 }} onCommand={dispatch}>
+<CellSurface
+  viewport={{ width: 30, height: 4 }}
+  presentation="text"
+  onCommand={dispatch}
+>
   <Root>
     <Text>Hello, Cells</Text>
   </Root>

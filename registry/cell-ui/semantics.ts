@@ -33,12 +33,12 @@ export type SemanticAuditIssue = Readonly<{
 
 const descendantText = (tree: WidgetTree, node: WidgetNode): string => {
   if (node.text !== null) return node.text;
-  return node.children
+  const content = node.children
     .map((id) => tree.nodes.get(id))
     .filter((child): child is WidgetNode => child !== undefined)
     .map((child) => descendantText(tree, child))
-    .join(" ")
-    .trim();
+    .join(node.kind === "markdown-block" && node.markdownRole !== "list" && node.markdownRole !== "listitem" ? "" : " ");
+  return content.replace(/\s+/gu, " ").trim();
 };
 
 const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => {
@@ -62,6 +62,7 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
       || parent.kind === "alert"
       || parent.kind === "range-slider"
       || parent.kind === "radio-group"
+      || parent.kind === "markdown-block"
     ) return parent.id;
     parentId = parent.parentId;
   }
@@ -69,6 +70,8 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
 };
 
 const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
+  if (node.kind === "markdown-link") return "link";
+  if (node.kind === "markdown-block") return node.markdownRole;
   if (node.dialogPart === "title") return "heading";
   if (node.dialogPart === "description") return "paragraph";
   if (node.kind === "accordion-trigger") return "button";
@@ -167,6 +170,7 @@ export const createSemanticSnapshot = (
       label: node.label ?? (node.kind === "accordion-content" && node.labelledById
         ? tree.nodes.get(node.labelledById)!.label ?? descendantText(tree, tree.nodes.get(node.labelledById)!)
         : descendantText(tree, node)),
+      ...(node.href ? { href: node.href } : {}),
       disabled: node.disabled,
       hidden: sceneEntry === undefined,
       focused: node.focused,
@@ -215,7 +219,8 @@ export const createSemanticSnapshot = (
       ...(visibleTooltips.get(node.id) || node.describedById
         ? { describedById: visibleTooltips.get(node.id) ?? node.describedById }
         : {}),
-      ...(node.dialogPart === "title" ? { level: 2 } : {}),
+      ...(node.dialogPart === "title" ? { level: 2 } : node.markdownRole === "heading" && node.level
+        ? { level: node.level } : {}),
       ...(isTextEditor
         ? {
             value: node.textEditor?.value ?? "",
@@ -267,10 +272,10 @@ export const createSemanticSnapshot = (
 };
 
 const focusRoles = new Set<SemanticNode["role"]>([
-  "button", "checkbox", "radio", "slider", "option", "textbox", "combobox", "menuitem", "treeitem", "tab", "gridcell",
+  "button", "link", "checkbox", "radio", "slider", "option", "textbox", "combobox", "menuitem", "treeitem", "tab", "gridcell",
 ]);
 const activateRoles = new Set<SemanticNode["role"]>([
-  "button", "checkbox", "radio", "option", "menuitem", "treeitem", "tab", "gridcell",
+  "button", "link", "checkbox", "radio", "option", "menuitem", "treeitem", "tab", "gridcell",
 ]);
 const selectedRoles = new Set<SemanticNode["role"]>([
   "option", "treeitem", "tab", "gridcell",
@@ -306,6 +311,9 @@ export const auditSemanticSnapshot = (
     }
   }
   for (const node of snapshot.nodes.values()) {
+    if ((node.role === "link") !== (node.href !== undefined)) {
+      issue(node.id, "invalid-state", "Only links may expose href, and links require href.");
+    }
     if (node.role !== "separator" && node.label.trim().length === 0) issue(node.id, "missing-name", "Semantic name is empty.");
     if (orders.has(node.traversalOrder) || !Number.isInteger(node.traversalOrder)) {
       issue(node.id, "invalid-order", "Traversal order must be a unique integer.");

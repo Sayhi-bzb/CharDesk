@@ -54,7 +54,7 @@ const ComboProduct = () => {
   </CellSurface>;
 };
 
-it("renders the selected closed value normally and underlines it only while editing", async () => {
+it("renders the selected closed value normally and highlights it only while editing", async () => {
   vi.spyOn(document, "hasFocus").mockReturnValue(true);
   render(<><ComboProduct /><button>Outside</button></>);
   const surface = screen.getByLabelText("Combobox surface");
@@ -67,10 +67,10 @@ it("renders the selected closed value normally and underlines it only while edit
   expect(selectedGlyph().style.underline).not.toBe(true);
 
   input.focus();
-  await waitFor(() => expect(selectedGlyph().style.underline).toBe(true));
-  expect(selectedGlyph().style.backgroundColor).toBe("#E6E6E6");
+  await waitFor(() => expect(selectedGlyph().style.backgroundColor).toBe("#000000"));
+  expect(selectedGlyph().style.underline).not.toBe(true);
   screen.getByRole("button", { name: "Outside" }).focus();
-  await waitFor(() => expect(selectedGlyph().style.underline).not.toBe(true));
+  await waitFor(() => expect(selectedGlyph().style.backgroundColor).toBe("#E6E6E6"));
 });
 
 it("opens from Canvas and the real textarea, while only the arrow closes an open input", () => {

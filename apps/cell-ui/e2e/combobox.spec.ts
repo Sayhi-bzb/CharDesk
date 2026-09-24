@@ -75,10 +75,10 @@ test("Combobox filters without moving DOM focus and restores uncommitted text", 
   await expect(page.getByRole("listbox", { name: "Font" })).toHaveCount(0);
   await expect.poll(async () => (await readCellProbe(surface)).cells.find((cell) => (
     cell.ownerId === "component-combobox-input" && cell.text === "M"
-  ))?.style.underline).toBe(true);
+  ))?.style.backgroundColor).not.toBe(closedBlank?.style.backgroundColor);
   const active = await readCellProbe(surface);
-  expect(active.cells.find((cell) => cell.ownerId === "component-combobox-input" && cell.text === "M")?.style.backgroundColor)
-    .toBe(closedBlank?.style.backgroundColor);
+  expect(active.cells.find((cell) => cell.ownerId === "component-combobox-input" && cell.text === "M")?.style.underline)
+    .not.toBe(true);
 
   await input.fill("xiao");
   await expect(page.getByRole("option", { name: "Xiaolai Mono" })).toBeVisible();

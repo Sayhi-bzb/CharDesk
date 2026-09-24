@@ -17,3 +17,5 @@ Keyboard, pointer, wheel, native text input, and assistive actions reach Widget 
 ## One State, Many Projections
 
 Applications own business values. Focus, selection, press, expansion, disabled, and editing state that affect the interface appear in the committed Cell Scene. Canvas, Semantic DOM, Unicode clipboard, and headless tests consume that Widget commit; a Table can truncate a filename visually while its semantic label keeps the full name. Today, ordinary Cell Range copy preserves visible Unicode, not every color-only state or semantic detail. A complete UI-as-text export is a future projection of the same commit, not a change to ordinary copy.
+
+[See Markdown](https://ui.chardesk.com/#/guides/markdown)

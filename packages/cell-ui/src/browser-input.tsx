@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -132,7 +133,9 @@ const ManagedCellTextarea = ({
     const textarea = ref.current;
     if (!textarea || composing.current) return;
     if (textarea.value !== snapshot.value) textarea.value = snapshot.value;
-    textarea.setSelectionRange(snapshot.selection.anchor, snapshot.selection.head);
+    const { anchor, head } = snapshot.selection;
+    textarea.setSelectionRange(Math.min(anchor, head), Math.max(anchor, head),
+      anchor > head ? "backward" : "forward");
   }, [snapshot]);
 
   const send = (command: CellTextCommand) => {
@@ -160,6 +163,26 @@ const ManagedCellTextarea = ({
     const command = diffCommand(snapshot.value, event.currentTarget.value);
     if (command) send(command);
   };
+
+  const syncSelection = useCallback((textarea: HTMLTextAreaElement) => {
+    if (composing.current || node.disabled) return;
+    const { selectionStart, selectionEnd, selectionDirection } = textarea;
+    const anchor = selectionDirection === "backward" ? selectionEnd : selectionStart;
+    const head = selectionDirection === "backward" ? selectionStart : selectionEnd;
+    if (anchor !== snapshot.selection.anchor || head !== snapshot.selection.head) {
+      dispatch({ type: "text", targetId: node.id, command: { type: "set-selection", anchor, head } });
+    }
+  }, [dispatch, node.disabled, node.id, snapshot.selection.anchor, snapshot.selection.head]);
+
+  useEffect(() => {
+    const textarea = ref.current;
+    if (!textarea) return;
+    const onSelectionChange = () => {
+      if (textarea.ownerDocument.activeElement === textarea) syncSelection(textarea);
+    };
+    textarea.ownerDocument.addEventListener("selectionchange", onSelectionChange);
+    return () => textarea.ownerDocument.removeEventListener("selectionchange", onSelectionChange);
+  }, [syncSelection]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.defaultPrevented || composing.current) return;

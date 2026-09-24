@@ -46,12 +46,14 @@ describe("Cell UI executable performance budgets", () => {
       </Root>
     );
     runtime.render(view(0));
+    const initialLayoutPasses = compute.mock.calls.length;
+    expect(initialLayoutPasses).toBe(2);
     for (let index = 0; index < CELL_UI_PERFORMANCE_BUDGET.steadyScrollCommits; index += 1) {
       const next = runtime.render(view(index % 2));
       expect(next.invalidation.work.layout).toBe("reused");
       expect(next.invalidation.dirtyRegions.length).toBeLessThanOrEqual(1);
     }
-    expect(compute).toHaveBeenCalledTimes(1);
+    expect(compute).toHaveBeenCalledTimes(initialLayoutPasses);
     runtime.dispose();
   }, 15_000);
 

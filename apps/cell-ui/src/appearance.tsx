@@ -44,6 +44,7 @@ const AppearanceContext = createContext({
 });
 const themePreferenceKey = "chardesk-cell-ui-theme";
 const fontPreferenceKey = "chardesk-cell-ui-font";
+const defaultGalleryFont: GalleryFont = "fusion-mono";
 const readPreference = (): "light" | "dark" | null => {
   try {
     const value = localStorage.getItem(themePreferenceKey);
@@ -57,9 +58,9 @@ const readFontPreference = (): GalleryFont => {
     const value = localStorage.getItem(fontPreferenceKey);
     return value && Object.prototype.hasOwnProperty.call(galleryFontOptions, value)
       ? value as GalleryFont
-      : "maple";
+      : defaultGalleryFont;
   } catch {
-    return "maple";
+    return defaultGalleryFont;
   }
 };
 const writeFontPreference = (font: GalleryFont) => {

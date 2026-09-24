@@ -85,10 +85,13 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       parentId,
       index,
       style: current.style,
+      presentation: current.presentation,
       surfaceVariant: current.surfaceVariant,
       frame: current.frame,
       borderShape: current.borderShape,
       text: current.text,
+      href: current.href,
+      markdownRole: current.markdownRole,
       textStyle: current.textStyle,
       label: current.label,
       disabled: current.disabled || inheritedDisabled || (

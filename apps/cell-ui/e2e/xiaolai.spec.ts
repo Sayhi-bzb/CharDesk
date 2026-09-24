@@ -43,7 +43,6 @@ test("local font failure and delayed retry preserve the active font and editing"
     await route.continue();
   });
   await page.goto("/#/__fixtures/editor");
-  await selectGalleryFont(page, "fusion-mono");
   const gallery = page.locator(".gallery-page");
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
   expect(requests).toBe(0);

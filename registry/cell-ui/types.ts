@@ -64,6 +64,8 @@ export type WidgetKind =
   | "alert"
   | "overlay"
   | "text"
+  | "markdown-block"
+  | "markdown-link"
   | "button"
   | "badge"
   | "badge-action"
@@ -115,10 +117,13 @@ export type WidgetNode = Readonly<{
   parentId: WidgetId | null;
   index: number;
   style: CellLayoutStyle;
+  presentation: import("./presentation.js").CellUiPresentation;
   surfaceVariant: import("./surface-variant.js").SurfaceVariant | null;
   frame: import("./border.js").CellFrame;
   borderShape: import("./border.js").CellBorderShape | null;
   text: string | null;
+  href: string | null;
+  markdownRole: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell" | null;
   textStyle: CellTextStyle;
   label: string | null;
   disabled: boolean;
@@ -202,6 +207,7 @@ export type LayoutEntry = Readonly<{
   borderInsets: CellInsets;
   paddingInsets: CellInsets;
   contentRect: CellRect;
+  railInsets?: Readonly<{ right: number; bottom: number }>;
 }>;
 
 export type LayoutSnapshot = Readonly<{
@@ -298,6 +304,11 @@ export type SemanticNode = Readonly<{
     | "dialog"
     | "heading"
     | "paragraph"
+    | "blockquote"
+    | "list"
+    | "listitem"
+    | "code"
+    | "link"
     | "region"
     | "button"
     | "checkbox"
@@ -326,6 +337,7 @@ export type SemanticNode = Readonly<{
     | "columnheader"
     | "cell";
   label: string;
+  href?: string;
   disabled: boolean;
   hidden: boolean;
   focused: boolean;

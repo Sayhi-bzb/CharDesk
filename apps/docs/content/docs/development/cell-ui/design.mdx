@@ -16,7 +16,9 @@ description: Product principles for Cell UI.
    - 键盘操作完整，指针直接作用于可见 Cell；Widget command 不依赖 hover/drag。共享 `KeyInput` 保留 phase、逻辑 key、物理 code、location、modifiers、repeat 与 composition；pointer down 定位，完整 tap 才执行。Host 拥有快捷键 scope、chord 与用户 keymap，Cell UI 只解释 Widget 行为。
 3. **One State, Many Projections**：业务值由应用持有；影响可见交互的 focused、pressActive、activationFlash、manipulating、selected、expanded、disabled 和 editing 投影到 Cell Scene。Canvas、Semantic DOM、clipboard 与 tests 消费同一次 Widget commit；画面截断不丢失完整语义标签。
 
-当前 Cell Range 复制只导出选区的可见 Unicode，不承诺覆盖颜色承载的全部状态或完整语义信息。完整的 LLM 可读文本是后续投影目标，不是现有 clipboard API。
+`CellSurface` 的 `presentation="rich" | "text"` 是同一可交互 Widget Tree 的两种呈现，默认 `rich`。`text` 以 Unicode 字符表达结构和关键状态，同时保留颜色、hover、focus、press、blink 与 Cell Cursor；它不是静态导出。两种呈现共享命令与语义，组件不局部覆盖。组件字符规则由[Widget 规范](/development/cell-ui/widgets#双呈现)拥有。
+
+Cell Range 复制当前呈现中选区的可见 Unicode，不承诺包含颜色或瞬时交互反馈；它不是另一套角色／状态注释格式。
 
 视觉与交互判断以 [Classic Macintosh → Cell UI](/development/cell-ui/macintosh) 为标准；OpenTUI 只提供终端构图与工程参考。
 

@@ -6,6 +6,7 @@ import { xiaolaiStylesheetRequest } from "./helpers/xiaolai";
 
 test.describe("display font", () => {
   test("loads the local font on demand and preserves Cell state", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("chardesk-cell-ui-font", "maple"));
     let trialRequests = 0;
     await page.route(xiaolaiStylesheetRequest, (route) => {
       trialRequests += 1;
@@ -96,7 +97,6 @@ test.describe("display font", () => {
     });
     await page.goto("/#/__fixtures/editor");
     const gallery = page.locator(".gallery-page");
-    await selectGalleryFont(page, "fusion-mono");
     await expect(gallery).toHaveAttribute("data-gallery-font", "maple");
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
     const retry = galleryFontSelect(page).getByRole("button", { name: /^Fusion unavailable/ });
@@ -110,12 +110,11 @@ test.describe("display font", () => {
   }
 });
 
-test("a successfully loaded font survives a page reload", async ({ page }) => {
+test("the default Fusion font loads and survives a page reload", async ({ page }) => {
   await page.goto("/#/components/button");
   const gallery = page.locator(".gallery-page");
   const fontSelect = galleryFontSelect(page);
 
-  await selectGalleryFont(page, "fusion-mono");
   await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
   await expect.poll(() => page.evaluate(() => (
     localStorage.getItem("chardesk-cell-ui-font")
@@ -130,6 +129,7 @@ test("a successfully loaded font survives a page reload", async ({ page }) => {
 });
 
 test("header font Select uses Cell pointer geometry without moving the header", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("chardesk-cell-ui-font", "maple"));
   await page.setViewportSize({ width: 320, height: 700 });
   await page.goto("/#/components/button");
   const gallery = page.locator(".gallery-page");

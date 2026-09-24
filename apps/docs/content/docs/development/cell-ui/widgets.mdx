@@ -13,7 +13,7 @@ description: State, input, scroll, and editor behavior contracts.
 - `pressActive` 是共享控制器通过 PressManager 管理的离散瞬时按压；`activationFlash` 是 command 已接受后的离散确认；`manipulating` 是 GestureManager 管理的连续 pointer 操控。三者均不进入业务 state。
 - Button、Checkbox、Select、ComboboxItem、Toggle、RadioItem、List、Menu、Tree、Grid 共用反色高亮：鼠标与 keyboard/AT 采用最近输入来源，逻辑 focus 独立保留；pointer 移出撤销高亮，键盘恢复同一套高亮。Slider 的单值与双端模式同样投影输入来源，但仅强调目标 thumb。Tabs 的选中态由 `variant` 独立控制。
 - Checkbox checked/mixed、Select selected、Toggle pressed、Radio checked、List/Tree/Grid selected 使用独立字符标记；Tabs 默认 `underline`，在当前标签文字下方绘制 `⎺`；`solid` 保留单行反色选择背景。
-- TextInput、ComboboxInput 与 TextArea 的编辑活动由 Runtime 比对 `focusedId === activeFocusId` 后投影为 `focusActive`，不依赖输入来源、hover 或正文变化。TextInput 默认 `surface`，活动时整行 highlight；`ghost` 与 ComboboxInput 保留背景。单行输入用下划线表示活动选区，并用反色 Cell Cursor 表示插入点。TextArea 活动时 highlight 覆盖文字、空白与边框。未激活的单行输入不显示预先存在的选区。Surface 空白只接管浏览器焦点并保留导航锚点，不激活编辑器。readOnly 可聚焦，disabled 无活动强调。
+- TextInput、ComboboxInput 与 TextArea 的编辑活动由 Runtime 比对 `focusedId === activeFocusId` 后投影为 `focusActive`，不依赖输入来源、hover 或正文变化。TextInput 默认 `surface`，活动时整行 highlight；`ghost` 与 ComboboxInput 保留背景。三者仅在活动时以相对底色反差显示文字选区；选区 token 与底色撞色时反转当前前景／背景。原生 textarea 的 `selectionchange` 经 `set-selection` 同步到 Cell 状态，并保留反向选区。输入法组合文字保留下划线，插入点使用反色 Cell Cursor。TextArea 活动时 highlight 覆盖文字、空白与边框；失焦撤去选区外观但保留 selection。Surface 空白只接管浏览器焦点并保留导航锚点，不激活编辑器。readOnly 可聚焦，disabled 无活动强调。
 - Cursor 默认反转所在 Cell 的最终颜色，不重新解释编辑状态；形状、fixed 模式、CSS token 与底图恢复由 [`cursor-appearance.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/cursor-appearance.ts) 和[测试](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/cursor-appearance.test.ts)验证。
 - Surface 失去实际焦点时保留逻辑 focusedId，但撤去焦点外观与 Canvas Cursor；selection 和编辑状态保留。
 - `CellUiTheme` 是颜色与字符主题入口；`CellFeedbackConfig` 是反馈入口，classic 默认闪烁 2 次，instant 为 0 次。两者共享 hover、focus、press 规则。
@@ -25,6 +25,12 @@ description: State, input, scroll, and editor behavior contracts.
 - 解析后的状态背景覆盖 Widget 完整布局矩形，包括空白 Cell；透明状态不填充。
 - `inline-control-chrome.ts` 统一行内 spacing recipe：Button、Badge 与 TextInput 默认左右各留 1 个 content Cell，Button/Badge 可通过 `style.paddingLeft/Right` 覆盖；Checkbox、RadioItem、Toggle、Select 与 Combobox 提供固定 guard、状态标记和间隔；guard 是 owner-aware 空 Cell。border、collection disclosure、Tab underline 和 scrollbar 保持独立 chrome 职责。
 - Badge 默认是只读状态文字；`interactive` 才加入共享焦点、按压、确认和 `activate` 命令。`tone` 从主题的成对前景／背景色中取值，文字和语义不依赖颜色；不自动作为 live region 播报。
+
+## 双呈现
+
+`presentation` 在 CellSurface／Runtime 级别选择，默认 `rich`；切换不改变值、焦点、命令或语义。`text` 仍消费共享 hover、focus、press、blink 和编辑光标，不等于无样式快照。Button 使用 `[ Label ]`；Alert、Dialog、Tooltip、TextArea、Select 弹层、Table 和 `surface` Box／ScrollArea 用方角字符边框；Progress 使用 `[//--]`；Tabs 使用 `⎺`。Select／Combobox、List／Menu／Tree／Grid 的 `>` 表示当前导航项，`✓` 表示已提交或持久选中。其余字符原生组件沿用现有 glyph。显式边框不叠加第二层；`ghost` Box／ScrollArea 保持纯布局。公开 `variant` 保持兼容，text 字符配方优先于纯视觉 variant；旧 Button `outline` 在 rich 中继续可用。
+
+组件 Playground 独立切换呈现。Config 在 `text` 下隐藏被固定字符配方覆盖的外观项，保留仍影响颜色或字符的选项（包括 `surface/ghost`）；隐藏项的 Rich 选择不丢失，切回 Rich 后恢复。配置弹层若在切换时失效会关闭，焦点回到 presentation 控件。
 
 ## Primitive 快照
 
@@ -56,9 +62,11 @@ description: State, input, scroll, and editor behavior contracts.
 | Tabs | 默认 `underline`：第二行仅在 selected 标签文字宽度内绘制 `⎺`，使用 highlight 色；第二行不参与 pointer hover/命中，临时 hover 仅填充第一行。`solid`：单行反色。两者都保留左右各 1 Cell guard 与标签间 2 Cell 间隔 | Left/Right wrap、Home/End 即时聚焦并切换可用页面，无确认闪烁；`tab` 与 `tabpanel` relations |
 | Grid | GridCell 左右各 1 Cell guard；内侧 2 Cell 选择列使用全局 `collectionSelectedIndicator`；声明宽度不变，用户 padding 叠加于 chrome 内侧；临时强调覆盖整个格子 | 一个 Grid 一个 Tab 入口，优先上次可用焦点、已选可用格子、行列排序首项；方向键沿同一行／列跳过 disabled 与缺格，边界停止；Home/End 定位当前行端点；点击、Enter/Space 即时激活，无确认闪烁；row/column semantics |
 | Table | 只读定宽列；`plain` 用表头分隔线，`outline` 用方角边框与列线，`surface` 用表头及隔行背景、无分隔字符；背景复用 light/dark surface token | `table`／`row`／`columnheader`／`cell` 语义；无焦点、选择或激活命令，长文本截断仅影响画面，不改写语义标签 |
-| TextInput / ComboboxInput | 固定 1 Cell 高、无边框；TextInput 默认 surface，实际焦点驱动整行反色，ghost TextInput 与 ComboboxInput 保留背景；三者都以选区下划线及反色 Cell Cursor 表示编辑，并保留 selection、composition | 真实 textarea；textbox/combobox value/readOnly/disabled；style 仅允许宽度与 flex 约束 |
+| TextInput / ComboboxInput | 固定 1 Cell 高、无边框；TextInput 默认 surface，实际焦点驱动整行反色，ghost TextInput 与 ComboboxInput 保留背景；选区用反差色、输入法组合用下划线，插入点用反色 Cell Cursor，并保留 selection、composition | 真实 textarea；textbox/combobox value/readOnly/disabled；style 仅允许宽度与 flex 约束 |
 | TextArea | 多行 content、Block 背景与边框、terminal Cell Cursor、selection、composition；实际焦点驱动完整矩形及自身边框反色 | 真实 textarea；multiline textbox value/readOnly/disabled |
 | ScrollArea | overflow 时使用内部 rail 和 corner | wheel、page、track、thumb drag；不建立 DOM scrollbar |
+
+Button、Badge、Checkbox、Toggle、RadioItem、Select Trigger／Item、Combobox Item 和 Tab 的标签共用单行文本规则：可用 Cell 不足时在内容区以 `…` 截断，先保护组件 chrome；原文与语义标签不变。普通 Text 仍按 Cell 换行。
 
 ## Pointer 与 Scroll
 
@@ -71,6 +79,7 @@ description: State, input, scroll, and editor behavior contracts.
 - Grid 导航与入口选择由 `grid-navigation.ts` 拥有，FocusManager 仅保存每个 Grid 的目标 ID，卸载清理。禁用／删除焦点按入口规则收敛，不改写业务选择；全部 disabled 时跳过。Semantic DOM 保留 Surface 管理的程序化焦点，不维护另一套 Tab 顺序。Cell Range 与 Grid selection 独立，范围拖动不激活格子，复制包含可见 `✓` 和边框。
 - 嵌套 ScrollArea 的 wheel 从内向外寻找可滚动的 viewport；最外层到边界后仍消费 wheel。区域外页面可滚动，Ctrl+wheel 留给浏览器。父级只把内层 ScrollArea 的 viewport 计入自身内容尺寸；内容收缩后钳制 offset 并发出 `scroll` 命令同步受控状态。焦点命令的 `reveal` 保留最近一层，跨层时 `reveals` 按内到外列出全部目标和 offset。
 - 横纵 scrollbar 可相互缩小 viewport；可见性在一次 geometry 计算中收敛。thumb 使用半 Cell 精度，drag 以按下时 offset/range/track 为锚。
+- `text` 的竖向 rail 使用 Unicode `🮐` 轨道、`🮑/🮒` 半格 thumb 边缘，三者使用同一颜色；`rich` 与横向 rail 保持原字符配方。轨道、thumb 与边缘均保留为可复制的 `Cell.text`。
 - scrolling 不改变 selection；Virtual List 只在 focused row 离开 viewport 时把 focus 收敛到可见可用项。
 
 ## 编辑视口与 Canvas 边界

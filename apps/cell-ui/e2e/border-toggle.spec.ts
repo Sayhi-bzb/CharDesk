@@ -1,11 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
 
-test("Gallery headers expose font and theme without a global border toggle", async ({ page }) => {
+test("Gallery headers expose font and theme without per-component controls", async ({ page }) => {
   for (const route of ["/#/components/input", "/#/__fixtures/all"]) {
     await page.goto(route);
     const controls = page.locator(".gallery-appearance-controls");
-    await expect(controls.getByRole("button")).toHaveCount(2);
+    await expect(controls.getByRole("button", { name: "Rich" })).toHaveCount(0);
+    await expect(controls.getByRole("button", { name: "Font: Fusion" })).toBeAttached();
+    await expect(controls.getByRole("button", { name: "Dark" })).toBeAttached();
     await expect(controls.getByRole("button", { name: /^(Rounded|Square)$/ })).toHaveCount(0);
     await expect(controls.locator('[data-gallery-icon="rounded"], [data-gallery-icon="square"]')).toHaveCount(0);
   }

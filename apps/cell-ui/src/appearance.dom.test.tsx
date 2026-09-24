@@ -14,7 +14,18 @@ describe("Cell UI gallery font loading", () => {
     Reflect.deleteProperty(document, "fonts");
   });
 
+  it("loads Fusion by default before committing it", async () => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    const { container } = render(<GalleryAppearance><GalleryFontSelect /></GalleryAppearance>);
+
+    expect(container.firstElementChild).toHaveAttribute("data-gallery-font", "maple");
+    expect(container.firstElementChild).toHaveAttribute("data-gallery-font-status", "loading");
+    expect(screen.getByRole("button", { name: /Loading Fusion/ })).toHaveAttribute("aria-disabled", "true");
+    expect(document.querySelector('link[data-display-font-source="fusion-mono"]')).not.toBeNull();
+  });
+
   it("selects and commits Fusion only after both Latin and CJK samples load at the Canvas size", async () => {
+    localStorage.setItem("chardesk-cell-ui-font", "maple");
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
       font: "", textBaseline: "alphabetic", textAlign: "", fillStyle: "", strokeStyle: "", lineWidth: 1,
       save: vi.fn(), restore: vi.fn(), setTransform: vi.fn(), clearRect: vi.fn(), fillRect: vi.fn(),
@@ -86,6 +97,7 @@ describe("Cell UI gallery font loading", () => {
   });
 
   it("keeps Maple committed and leaves the preference unchanged when loading fails", async () => {
+    localStorage.setItem("chardesk-cell-ui-font", "maple");
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     const load = vi.fn().mockResolvedValue([{}]);
     Object.defineProperty(document, "fonts", {
@@ -113,7 +125,7 @@ describe("Cell UI gallery font loading", () => {
       "data-gallery-font-status", "error"
     ));
     expect(container.firstElementChild).toHaveAttribute("data-gallery-font", "maple");
-    expect(localStorage.getItem("chardesk-cell-ui-font")).toBeNull();
+    expect(localStorage.getItem("chardesk-cell-ui-font")).toBe("maple");
     expect(screen.getByRole("button", { name: /Fusion unavailable/ })).toBeEnabled();
     expect(screen.getByRole("status")).toHaveTextContent("Display remains Maple");
     expect(load.mock.calls.some(([font]) => String(font).includes("Fusion"))).toBe(false);
@@ -127,11 +139,11 @@ describe("Cell UI gallery font loading", () => {
     );
 
     expect(container.firstElementChild).toHaveAttribute("data-gallery-font", "maple");
-    expect(container.firstElementChild).toHaveAttribute("data-gallery-font-status", "idle");
-    expect(screen.getByRole("button", { name: "Font: Maple" })).toBeInTheDocument();
+    expect(container.firstElementChild).toHaveAttribute("data-gallery-font-status", "loading");
+    expect(screen.getByRole("button", { name: /Loading Fusion/ })).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("keeps the in-memory Maple default when preferences are unavailable", () => {
+  it("loads the in-memory Fusion default when preferences are unavailable", () => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new DOMException("Storage unavailable");
@@ -141,6 +153,6 @@ describe("Cell UI gallery font loading", () => {
     );
 
     expect(container.firstElementChild).toHaveAttribute("data-gallery-font", "maple");
-    expect(container.firstElementChild).toHaveAttribute("data-gallery-font-status", "idle");
+    expect(container.firstElementChild).toHaveAttribute("data-gallery-font-status", "loading");
   });
 });

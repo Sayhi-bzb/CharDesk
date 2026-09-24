@@ -191,13 +191,15 @@ describe("CellUiRuntime", () => {
     );
 
     const initial = runtime.render(view("a"));
+    const initialLayoutPasses = compute.mock.calls.length;
     const paintOnly = runtime.render(view("b"));
     const geometryOnly = runtime.render(view("b", 1));
     const unchanged = runtime.render(view("b", 1));
     const oracle = new CellUiRuntime({ viewport: { width: 12, height: 4 } });
     const oracleFrame = oracle.render(view("b", 1));
 
-    expect(compute).toHaveBeenCalledTimes(1);
+    expect(initialLayoutPasses).toBe(2);
+    expect(compute).toHaveBeenCalledTimes(initialLayoutPasses);
     expect(initial.invalidation.phases).toEqual([
       "tree", "layout", "geometry", "paint", "semantics", "present",
     ]);
@@ -345,7 +347,7 @@ describe("CellUiRuntime", () => {
     expect(frame.buffer.toText({ trimEnd: true })).toBe([
       "┌──────────┐",
       "│   beta  ▄│",
-      "│   charli▀│",
+      "│   charl ▀│",
       "└──────────┘",
     ].join("\n"));
     expect(hitTest(frame.scene, { x: 4, y: 1 })[0]).toBe("b-label");
@@ -362,6 +364,7 @@ describe("CellUiRuntime", () => {
       </Root>
     );
     const metrics = frame.scene.entries.get("scroll")?.scrollMetrics;
+    expect(frame.layout.entries.get("scroll")?.railInsets).toEqual({ right: 1, bottom: 1 });
     expect(metrics?.horizontalTrack).not.toBeNull();
     expect(metrics?.verticalTrack).not.toBeNull();
     expect(metrics?.corner).toEqual({ x: 6, y: 2, width: 1, height: 1 });

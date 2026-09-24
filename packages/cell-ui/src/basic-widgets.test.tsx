@@ -45,7 +45,7 @@ describe("basic Cell widgets", () => {
     for (const width of [1, 2, 3, 4, 5]) {
       const frame = runtime.render(view(true, width));
       expect(frame.buffer.toText({ trimEnd: true })).toBe(
-        width === 1 ? "◆" : width === 5 ? " ◆ B" : " ◆",
+        width === 1 ? "◆" : width === 5 ? " ◆ …" : " ◆",
       );
       expect(frame.buffer.get(width, 0)?.ownerId).not.toBe("light");
     }

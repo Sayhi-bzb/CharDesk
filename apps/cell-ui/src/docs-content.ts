@@ -908,7 +908,8 @@ type GuideSection = Readonly<{
   tocLabel?: string;
   body: string;
   code?: string;
-  demo?: "settings" | "progress" | "notes" | "macintosh";
+  demo?: "settings" | "progress" | "notes" | "macintosh" | "markdown";
+  codeLanguage?: "tsx" | "text";
   link?: Readonly<{ label: string; href: string }>;
 }>;
 export type GuideContent = Readonly<{ slug: string; title: string; description: string; sections: readonly GuideSection[] }>;
@@ -958,7 +959,7 @@ const [sound, setSound] = useState(true);
     sections: [
       { id: "everything-is-cell", title: "Everything is Cell", body: "Layout, paint, hit targets, scrolling, selection, and copy use integer Cells. Visible characters remain Unicode in Cell.text, whether painted by a font or Cell graphics; backgrounds are metadata, not characters. Every visible Cell belongs to a Widget or its chrome, so an outlined Table's borders can be copied and traced to their owner.", link: { label: "Cell-native design contract", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/design.mdx" } },
       { id: "every-input-becomes-a-command", title: "Every Input becomes a Command", tocLabel: "Input Becomes Command", body: "Keyboard, pointer, wheel, native text input, and assistive actions reach Widget commands. Keyboard operation is complete; a pointer acts directly on the visible Cell target. Enter and a complete tap on a Button reach the same action, and hover is never required to finish it.", link: { label: "Explore the visual philosophy", href: "#/guides/classic-macintosh" } },
-      { id: "one-state-many-projections", title: "One State, Many Projections", tocLabel: "State & Projections", body: "Applications own business values. Focus, selection, press, expansion, disabled, and editing state that affect the interface appear in the committed Cell Scene. Canvas, Semantic DOM, Unicode clipboard, and headless tests consume that Widget commit; a Table can truncate a filename visually while its semantic label keeps the full name. Today, ordinary Cell Range copy preserves visible Unicode, not every color-only state or semantic detail. A complete UI-as-text export is a future projection of the same commit, not a change to ordinary copy." },
+      { id: "one-state-many-projections", title: "One State, Many Projections", tocLabel: "State & Projections", body: "Applications own business values. Focus, selection, press, expansion, disabled, and editing state that affect the interface appear in the committed Cell Scene. Canvas, Semantic DOM, Unicode clipboard, and headless tests consume that Widget commit; a Table can truncate a filename visually while its semantic label keeps the full name. Today, ordinary Cell Range copy preserves visible Unicode, not every color-only state or semantic detail. A complete UI-as-text export is a future projection of the same commit, not a change to ordinary copy.", link: { label: "See Markdown", href: "#/guides/markdown" } },
     ],
   },
   {
@@ -973,6 +974,29 @@ const [sound, setSound] = useState(true);
       { id: "black-and-white", title: "Black-and-white first", body: "Borders, spacing, text, and marks distinguish controls before color does. Solid and ghost Buttons show action hierarchy without depending on hue." },
       { id: "consistent-grammar", title: "Consistent grammar", body: "Square borders frame the window; a marked checkbox means on, and the primary action remains solid. These meanings should hold across Cell UI components." },
       { id: "modern-translation", title: "Cell-native, modern host", body: "Light is the canonical Macintosh-inspired palette; Dark inverts the hierarchy without changing layout or behavior. Semantic DOM, keyboard and touch input, Unicode, and accessibility remain modern Cell UI contracts—not claims of historical pixel accuracy.", link: { label: "Macintosh design standard", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/macintosh.mdx" } },
+    ],
+  },
+  {
+    slug: "markdown", title: "Markdown",
+    description: "Render Markdown files as readable, interactive Cell documents—not browser HTML.",
+    sections: [
+      { id: "render", title: "Render a file", body: "Load a Markdown file in your application and pass its contents to Markdown. The Cell viewport controls wrapping; the source stays with your application.", code: `import { Markdown, Root } from "@chardesk/cell-ui";
+
+<Root>
+  <Markdown id="readme" source={markdownSource} />
+</Root>;`, link: { label: "Markdown implementation", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts" } },
+      { id: "grammar", title: "Character grammar", body: "Headings keep their # level; lists, task marks, quotes, fences, and tables remain legible as Unicode. Color and emphasis reinforce structure but are not required to read it.", demo: "markdown", codeLanguage: "text", code: `# Field Notes
+
+Cells make docs readable.
+
+- [x] Build UI
+- [ ] Share it
+
+> Source stays yours.
+
+Read [Philosophy](#/guides/philosophy).` },
+      { id: "links", title: "Links and source", body: "A link is a focusable Cell target. Pointer, Enter, and assistive activation emit open-link with targetId and href; the application decides how to navigate. Cell Range copies visible Unicode, not the original Markdown source." },
+      { id: "syntax", title: "Supported syntax", body: "Common Markdown and GFM: headings, paragraphs, emphasis, links, lists and task marks, quotes, fenced code, rules, and tables. Images display alt text; raw HTML remains inert text. Task marks are read-only." },
     ],
   },
   {
@@ -995,10 +1019,14 @@ const [sound, setSound] = useState(true);
     slug: "integration", title: "Integration",
     description: "Connect Cell descriptors, browser projection, and application-owned state.",
     sections: [
-      { id: "surface", title: "Surface", body: "Import descriptors and CellUiRuntime from @/lib/cell-ui; import CellSurface and state adapters from @/lib/cell-ui/browser. Root is the top-level structural descriptor. CellSurface retains the runtime across viewport and theme changes.", code: `import { Root, Text } from "@/lib/cell-ui";
+      { id: "surface", title: "Surface", body: "Import descriptors and CellUiRuntime from @/lib/cell-ui; import CellSurface and state adapters from @/lib/cell-ui/browser. Root is the top-level structural descriptor. CellSurface retains the runtime across viewport, theme, and presentation changes. Presentation defaults to rich; text is an equally interactive Unicode rendering of the same state and commands.", code: `import { Root, Text } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 
-<CellSurface viewport={{ width: 30, height: 4 }} onCommand={dispatch}>
+<CellSurface
+  viewport={{ width: 30, height: 4 }}
+  presentation="text"
+  onCommand={dispatch}
+>
   <Root>
     <Text>Hello, Cells</Text>
   </Root>

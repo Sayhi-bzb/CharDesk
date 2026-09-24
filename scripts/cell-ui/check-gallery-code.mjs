@@ -6,10 +6,10 @@ const snippets = [
   ...componentContent.map(({ slug, usage }) => ({ name: `components/${slug}`, code: usage, parser: "typescript" })),
   ...guideContent.flatMap(({ slug, sections }) => sections
     .filter(({ code }) => code)
-    .map(({ id, code }) => ({
+    .map(({ id, code, codeLanguage }) => ({
       name: `guides/${slug}#${id}`,
       code,
-      parser: slug === "installation" ? id === "configure" ? "json" : null : "typescript",
+      parser: slug === "installation" ? id === "configure" ? "json" : null : codeLanguage === "text" ? "markdown" : "typescript",
     }))),
 ];
 

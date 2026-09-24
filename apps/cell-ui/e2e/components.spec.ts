@@ -32,7 +32,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("heading", { name: "Introduction", level: 1 })).toBeVisible();
   await expect(page.locator(".gallery-brand")).toHaveAttribute("href", "#/guides/introduction");
   await expect(nav.getByRole("group", { name: "Sections" }).getByRole("link")).toHaveText([
-    "Introduction", "Philosophy", "Classic Macintosh", "Installation", "Integration", "Theming", "Testing",
+    "Introduction", "Philosophy", "Classic Macintosh", "Markdown", "Installation", "Integration", "Theming", "Testing",
   ]);
   await page.goto("/#/components/button");
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
@@ -169,7 +169,7 @@ test("desktop navigation scrolls independently and reveals its active link", asy
   await page.mouse.move(700, 200);
   await page.mouse.wheel(0, 160);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(pageY);
-  await expect.poll(() => nav.evaluate((element) => element.getBoundingClientRect().top)).toBe(80);
+  await expect.poll(() => nav.evaluate((element) => element.getBoundingClientRect().top)).toBe(64);
 
   await nav.evaluate((element) => { element.scrollTop = element.scrollHeight; });
   await nav.hover();
@@ -216,13 +216,20 @@ test("TOC labels stay on one line and navigation ends with the page", async ({ p
   }
 });
 
-test("header stays above desktop navigation without hiding section targets", async ({ page }) => {
+test("header and navigation share a shell and meet without hiding section targets", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   for (const width of [1280, 1050]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/#/guides/introduction");
     await expect.poll(() => page.locator(".gallery-header__inner").evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(32);
-    await expect.poll(() => page.getByRole("navigation", { name: "Cell UI" }).evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(112);
+    await expect.poll(() => page.getByRole("navigation", { name: "Cell UI" }).evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(80);
+    await expect.poll(() => page.evaluate(() => {
+      const header = document.querySelector(".gallery-header")!.getBoundingClientRect();
+      const inner = document.querySelector(".gallery-header__inner")!.getBoundingClientRect();
+      const nav = document.querySelector(".gallery-nav")!.getBoundingClientRect();
+      const toc = document.querySelector(".gallery-toc")!.getBoundingClientRect();
+      return [nav.left - inner.left, nav.top - header.bottom, toc.top - header.bottom].map(Math.round);
+    })).toEqual([0, 0, 0]);
     await page.goto("/#/guides/introduction?section=progress");
     await page.reload();
     const header = page.locator(".gallery-header");
@@ -232,8 +239,14 @@ test("header stays above desktop navigation without hiding section targets", asy
     await expect.poll(() => header.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(0);
     await expect.poll(() => page.evaluate(() => [8, window.innerWidth - 8].every((x) =>
       document.elementFromPoint(x, 8)?.closest(".gallery-header") !== null))).toBe(true);
-    await expect.poll(() => nav.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(80);
-    await expect.poll(() => heading.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBeGreaterThanOrEqual(88);
+    await expect.poll(() => nav.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(64);
+    await expect.poll(() => heading.evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBeGreaterThanOrEqual(72);
+    await expect.poll(() => page.evaluate(() => {
+      const header = document.querySelector(".gallery-header")!.getBoundingClientRect();
+      const inner = document.querySelector(".gallery-header__inner")!.getBoundingClientRect();
+      const nav = document.querySelector(".gallery-nav")!.getBoundingClientRect();
+      return [nav.left - inner.left, nav.top - header.bottom].map(Math.round);
+    })).toEqual([0, 0]);
     if (width === 1280) {
       await expect(header).toHaveCSS("background-color", "rgb(255, 255, 255)");
       await header.getByRole("button", { name: "Dark" }).click();
@@ -247,6 +260,19 @@ test("header stays above desktop navigation without hiding section targets", asy
     const navBounds = await nav.boundingBox();
     const mainBounds = await page.locator("main.docs-page").boundingBox();
     expect(navBounds!.y + navBounds!.height).toBeCloseTo(mainBounds!.y + mainBounds!.height, 0);
+  }
+
+  for (const width of [720, 390, 320]) {
+    await page.setViewportSize({ width, height: 640 });
+    await page.goto("/#/guides/introduction");
+    await expect(page.locator(".gallery-header")).toBeAttached();
+    await expect.poll(() => page.evaluate(() => {
+      const header = document.querySelector(".gallery-header")!.getBoundingClientRect();
+      const inner = document.querySelector(".gallery-header__inner")!.getBoundingClientRect();
+      const nav = document.querySelector(".gallery-nav")!.getBoundingClientRect();
+      return [nav.left - inner.left, nav.top - header.bottom].map(Math.round);
+    })).toEqual([0, 0]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   }
 
   await page.setViewportSize({ width: 390, height: 640 });
@@ -339,7 +365,7 @@ test("on-page navigation survives direct load, component changes, and browser hi
 test("remaining foundational component pages support direct loading", async ({ page }) => {
   for (const slug of ["text", "text-area", "table"]) {
     await page.goto(`/#/components/${slug}`);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator(".docs-page__header").getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Cell UI" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "API" })).toBeVisible();
   }
@@ -350,10 +376,10 @@ test("remaining foundational component pages support direct loading", async ({ p
 });
 
 test("guide sections, direct links, and agent Markdown stay addressable", async ({ page, request }) => {
-  for (const slug of ["introduction", "philosophy", "classic-macintosh", "installation", "integration", "theming", "testing"]) {
+  for (const slug of ["introduction", "philosophy", "classic-macintosh", "markdown", "installation", "integration", "theming", "testing"]) {
     await page.goto(`/#/guides/${slug}`);
     await expect(page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: slug === "classic-macintosh" ? "Classic Macintosh" : slug[0]!.toUpperCase() + slug.slice(1), exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator(".docs-page__header").getByRole("heading", { level: 1 })).toBeVisible();
     const markdown = await request.get(`/guides/${slug}.md`);
     expect(markdown.ok()).toBe(true);
     expect(await markdown.text()).toContain("# ");
@@ -599,7 +625,9 @@ test("Text and Box expose Cell-native content and local variants", async ({ page
     "Legacy: \u{1fb95} \u{1fbb0} \u{1fbc5}",
     "↳ Wraps on integer Cell",
   ]) expect(text.text).toContain(line);
-  expect(text.viewport).toEqual({ width: 36, height: 14 });
+  const frameCells = text.cells.filter((cell) => cell.ownerId === "component-text-frame");
+  expect(new Set(frameCells.map((cell) => cell.x)).size).toBe(36);
+  expect(new Set(frameCells.map((cell) => cell.y)).size).toBe(14);
   const wrappedRows = new Set(text.cells
     .filter((cell) => cell.ownerId === "component-text-wrap" && cell.text !== " ")
     .map((cell) => cell.y));
@@ -659,7 +687,7 @@ test("Input edits Unicode through the real textbox and Cell frame", async ({ pag
   await input.press("ControlOrMeta+A");
   await expect.poll(async () => (await readCellProbe(surface)).cells.find((cell) =>
     cell.ownerId === "component-input-field" && cell.text === "n"
-  )?.style.underline).toBe(true);
+  )?.style.backgroundColor).not.toBe(idleBackground);
   await input.fill("世界 👋");
   await expect(input).toHaveValue("世界 👋");
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("> 世界 👋");

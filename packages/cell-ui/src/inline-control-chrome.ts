@@ -64,6 +64,26 @@ const chromeMetrics = (node: WidgetNode): InlineControlChromeMetrics => {
     || node.kind === "select-item"
     || node.kind === "combobox-item"
   ) {
+    if (node.presentation === "text" && node.kind === "select-trigger") {
+      return {
+        leadingGuard: 1,
+        leadingIndicator: 0,
+        leadingGap: 1,
+        trailingGap: 1,
+        trailingIndicator: 1,
+        trailingGuard: 2,
+      };
+    }
+    if (node.presentation === "text" && (node.kind === "select-item" || node.kind === "combobox-item")) {
+      return {
+        leadingGuard: 1,
+        leadingIndicator: 1,
+        leadingGap: 1,
+        trailingGap: 0,
+        trailingIndicator: 0,
+        trailingGuard: 1,
+      };
+    }
     return {
       leadingGuard: 1,
       leadingIndicator: 0,
@@ -79,10 +99,14 @@ const chromeMetrics = (node: WidgetNode): InlineControlChromeMetrics => {
 export const inlineControlSpacingRecipe = (
   node: WidgetNode,
 ): InlineControlSpacingRecipe => {
+  const statusBadge = node.presentation === "text"
+    && (node.kind === "badge" || node.kind === "badge-action")
+    && node.badgeTone !== "neutral";
+  const controlInset = statusBadge ? { left: 3, right: 1 } : { left: 1, right: 1 };
   return {
     chrome: chromeMetrics(node),
     defaultContentInsets: node.kind === "button" || node.kind === "badge" || node.kind === "badge-action" || node.kind === "tab"
-      ? { left: 1, right: 1 }
+      ? controlInset
       : node.kind === "text-input"
         ? { left: 0, right: 1 }
         : NO_CONTENT_INSETS,

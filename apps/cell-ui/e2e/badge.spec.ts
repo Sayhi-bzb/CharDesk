@@ -15,7 +15,7 @@ const badgeCells = async (surface: Locator, id: string) => (await readCellProbe(
   .filter((cell) => cell.ownerId === id || cell.ownerId?.startsWith(`${id}/text`))
   .sort((left, right) => left.x - right.x);
 
-test("Badge lays out every status without a config pane in both themes and narrow viewports", async ({ page }) => {
+test("Badge lays out every status with only presentation configuration in both themes and narrow viewports", async ({ page }) => {
   await page.goto("/#/components/badge");
   const surface = page.locator('[data-cell-probe="component-badge"]');
   for (const { tone, label } of examples) {
@@ -25,6 +25,7 @@ test("Badge lays out every status without a config pane in both themes and narro
       .toHaveAttribute("role", "paragraph");
   }
   await expect(surface.getByRole("button", { name: "tone" })).toHaveCount(0);
+  await expect(surface.getByRole("button", { name: "presentation" })).toBeAttached();
   await expect(surface.getByRole("checkbox")).toHaveCount(0);
   expect((await readCellProbe(surface)).text).not.toContain("Activated:");
 
@@ -50,13 +51,15 @@ test("Badge lays out every status without a config pane in both themes and narro
   }
 
   await page.setViewportSize({ width: 320, height: 640 });
+  await expect.poll(async () => (await readCellProbe(surface)).viewport.width).toBeLessThan(64);
   const frame = await readCellProbe(surface);
   for (const { tone, label } of examples) {
     const cells = await badgeCells(surface, `component-badge-${tone}`);
     expect(cells.map((cell) => cell.text).join("")).toBe(` ${label} `);
     expect(cells.at(-1)!.x).toBeLessThan(frame.viewport.width);
   }
-  expect(frame.text).not.toContain("│");
+  expect(frame.text).toContain("presentation");
+  expect(frame.text).toContain("─");
 });
 
 test("interactive Badge uses transient feedback without a counter; disabled stays inert", async ({ page }) => {

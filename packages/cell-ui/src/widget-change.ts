@@ -6,10 +6,13 @@ export const sameWidgetValue = (left: unknown, right: unknown) =>
 export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   left.kind === right.kind
   && left.key === right.key
+  && left.presentation === right.presentation
   && left.surfaceVariant === right.surfaceVariant
   && left.frame === right.frame
   && left.borderShape === right.borderShape
   && left.text === right.text
+  && left.href === right.href
+  && left.markdownRole === right.markdownRole
   && left.label === right.label
   && left.disabled === right.disabled
   && left.focused === right.focused
@@ -72,7 +75,9 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   before.kind !== after.kind
   || before.parentId !== after.parentId
   || before.index !== after.index
+  || before.presentation !== after.presentation
   || before.text !== after.text
+  || before.markdownRole !== after.markdownRole
   || before.buttonVariant !== after.buttonVariant
   || before.progressVariant !== after.progressVariant
   || before.tabsVariant !== after.tabsVariant
@@ -134,6 +139,8 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
 
 const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
   before.label !== after.label
+  || before.href !== after.href
+  || before.markdownRole !== after.markdownRole
   || before.disabled !== after.disabled
   || before.focused !== after.focused
   || before.selected !== after.selected

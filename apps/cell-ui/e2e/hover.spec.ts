@@ -6,6 +6,7 @@ test("Select overlay receives hover outside the base canvas and respects DOM occ
   await page.goto("/#/components/button");
   const surface = page.locator('[data-cell-probe="gallery-font-select"]');
   const base = surface.locator("canvas:not([data-cell-overlay-root])");
+  await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font-status", /^(idle|error)$/);
   await surface.getByRole("button").evaluate((element: HTMLElement) => element.click());
   await expect(surface.getByRole("listbox")).toBeAttached();
   const frame = await readCellProbe(surface);

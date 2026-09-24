@@ -1,15 +1,32 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Box, Root, ScrollArea, Text, type WidgetCommand } from "@chardesk/cell-ui";
-import { DEFAULT_CELL_UI_METRICS, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Box, Root, ScrollArea, Text, type CellUiPresentation, type WidgetCommand } from "@chardesk/cell-ui";
+import { DEFAULT_CELL_UI_METRICS, useCellSelectState, type CellSelectState, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "./appearance";
+import { renderGallerySelect } from "./gallery-component-recipes";
 import {
   MIN_SPLIT_COLUMNS,
+  PLAYGROUND_CONTROL_COLUMNS,
   PLAYGROUND_ROWS,
   columnsForPixelWidth,
   resolveComponentPlaygroundLayout,
 } from "./component-playground-layout";
 
 const defaultComponentRecipe: NonNullable<CellSurfaceProps["recipe"]> = {};
+const presentationSelectWidth = 15;
+
+type ScopedControl = Readonly<{
+  presentation: CellUiPresentation;
+  node: ReactNode;
+  select?: CellSelectState;
+}>;
+type PlaygroundControl = ReactNode | ScopedControl;
+type PresentationValue<T> = T | ((presentation: CellUiPresentation) => T);
+const isScopedControl = (control: PlaygroundControl): control is ScopedControl =>
+  typeof control === "object" && control !== null && "presentation" in control && "node" in control;
+
+export const richOnly = (node: ReactNode, select?: CellSelectState): ScopedControl => ({
+  presentation: "rich", node, select,
+});
 
 export function ComponentPlayground({
   id,
@@ -29,11 +46,11 @@ export function ComponentPlayground({
   probeId: string;
   focusedId: string | null;
   onCommand: (command: WidgetCommand) => void;
-  preview: ReactNode;
-  controls?: ReactNode;
+  preview: PresentationValue<ReactNode>;
+  controls?: readonly PlaygroundControl[];
   previewMinColumns: number;
   controlsColumns?: number;
-  overlayRows?: number;
+  overlayRows?: PresentationValue<number>;
   rows?: number;
 }>) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -41,11 +58,32 @@ export function ComponentPlayground({
   const measuredColumnsRef = useRef(MIN_SPLIT_COLUMNS);
   const [previewScroll, setPreviewScroll] = useState({ x: 0, y: 0 });
   const [controlsScroll, setControlsScroll] = useState({ x: 0, y: 0 });
+  const [presentation, setPresentation] = useState<CellUiPresentation>("rich");
+  const pendingPresentationRef = useRef<CellUiPresentation | null>(null);
+  const [localFocusedId, setLocalFocusedId] = useState<string | null>(null);
+  const presentationRichId = `${id}-presentation-rich`;
+  const presentationTextId = `${id}-presentation-text`;
+  const presentationItems = useMemo(() => [
+    { id: presentationRichId, label: "Rich" },
+    { id: presentationTextId, label: "Text" },
+  ], [id]);
+  const presentationSelect = useCellSelectState(`${id}-presentation`, presentationItems, {
+    defaultSelectedId: presentationRichId,
+    onSelectionChange: (itemId) => {
+      pendingPresentationRef.current = itemId === presentationTextId ? "text" : "rich";
+    },
+  });
+  const effectiveFocusedId = presentationSelect.open
+    ? presentationSelect.focusedId
+    : localFocusedId ?? focusedId;
+  const controlColumns = Math.max(controlsColumns ?? 1, PLAYGROUND_CONTROL_COLUMNS);
+  const resolvedOverlayRows = typeof overlayRows === "function" ? overlayRows(presentation) : overlayRows;
+  const resolvedPreview = typeof preview === "function" ? preview(presentation) : preview;
   const layout = resolveComponentPlaygroundLayout(
     totalColumns,
     previewMinColumns,
-    controlsColumns ?? 1,
-    controls !== undefined,
+    controlColumns,
+    true,
     rows,
   );
   const previewScrollId = `${id}-preview-scroll`;
@@ -75,6 +113,28 @@ export function ComponentPlayground({
     return () => observer.disconnect();
   }, []);
   const dispatch = (command: WidgetCommand) => {
+    presentationSelect.dispatch(command);
+    if (command.type === "focus") {
+      const isPresentationFocus = command.targetId === presentationSelect.triggerId
+        || presentationSelect.items.some(({ id: itemId }) => itemId === command.targetId);
+      setLocalFocusedId(isPresentationFocus ? command.targetId : null);
+    }
+    if (command.type === "activate" && presentationSelect.items.some(({ id: itemId }) => itemId === command.targetId)) {
+      setLocalFocusedId(presentationSelect.triggerId);
+    }
+    if (command.type === "dismiss" && command.targetId === presentationSelect.contentId) {
+      setLocalFocusedId(presentationSelect.triggerId);
+      if (pendingPresentationRef.current) {
+        const next = pendingPresentationRef.current;
+        controls?.forEach((control) => {
+          if (isScopedControl(control) && control.presentation !== next && control.select?.open) {
+            control.select.dispatch({ type: "dismiss", targetId: control.select.contentId });
+          }
+        });
+        setPresentation(next);
+        pendingPresentationRef.current = null;
+      }
+    }
     if (command.type === "scroll" && command.targetId === previewScrollId) {
       setPreviewScroll({ x: command.scrollX, y: command.scrollY });
     }
@@ -96,13 +156,14 @@ export function ComponentPlayground({
       viewport={layout.viewport}
       overlayViewport={{
         width: layout.viewport.width,
-        height: layout.viewport.height + overlayRows,
+        height: layout.viewport.height + Math.max(resolvedOverlayRows, presentationSelect.open ? 4 : 0),
       }}
-      focusedId={focusedId}
+      focusedId={effectiveFocusedId}
       onCommand={dispatch}
       label={label}
       probeId={probeId}
       recipe={defaultComponentRecipe}
+      presentation={presentation}
     >
       <Root id={`${id}-root`} style={{ direction: layout.stacked ? "column" : "row" }}>
       <ScrollArea
@@ -116,20 +177,20 @@ export function ComponentPlayground({
           <Box id={`${id}-preview-top`} variant="ghost" style={{ flexGrow: 1 }} />
           <Box id={`${id}-preview-row`} variant="ghost" style={{ direction: "row" }}>
             <Box id={`${id}-preview-left`} variant="ghost" style={{ flexGrow: 1 }} />
-            {preview}
+            {resolvedPreview}
             <Box id={`${id}-preview-right`} variant="ghost" style={{ flexGrow: 1 }} />
           </Box>
           <Box id={`${id}-preview-bottom`} variant="ghost" style={{ flexGrow: 1 }} />
         </Box>
       </ScrollArea>
-      {controls === undefined ? null : layout.stacked
+      {layout.stacked
         ? <Text id={`${id}-divider`} textStyle={{ dim: true }}>{"─".repeat(layout.viewport.width)}</Text>
         : <Box id={`${id}-divider`} variant="ghost" style={{ width: 1, height: rows }}>
             {Array.from({ length: rows }, (_, row) => (
               <Text id={`${id}-divider-${row}`} key={row} textStyle={{ dim: true }}>│</Text>
             ))}
           </Box>}
-      {controls === undefined ? null : <ScrollArea
+      <ScrollArea
         id={controlsScrollId}
         variant="ghost"
         scrollX={controlsScroll.x}
@@ -149,15 +210,27 @@ export function ComponentPlayground({
             id={`${id}-controls`}
             variant="ghost"
             style={{
-              width: layout.controlsInset + (controlsColumns ?? 1),
+              width: layout.controlsInset + controlColumns,
               paddingLeft: layout.controlsInset,
             }}
           >
-            {controls}
+            <Box id={`${id}-presentation-control`} variant="ghost">
+              <Text id={`${id}-presentation-label`}>presentation</Text>
+              {renderGallerySelect({
+                label: "presentation",
+                select: presentationSelect,
+                focusedId: effectiveFocusedId,
+                width: presentationSelectWidth,
+                showLabel: false,
+              })}
+            </Box>
+            {controls?.map((control) => isScopedControl(control)
+              ? control.presentation === presentation ? control.node : null
+              : control)}
           </Box>
           <Box id={`${id}-controls-after`} variant="ghost" style={{ flexGrow: 1 }} />
         </Box>
-      </ScrollArea>}
+      </ScrollArea>
       </Root>
     </GallerySurface>
   </div>;

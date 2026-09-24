@@ -109,13 +109,17 @@ describe("ComponentPlayground controls layout", () => {
     await waitFor(() => expect(readCellSurfaceProbe(surface)).not.toBeNull());
 
     const lines = readCellSurfaceProbe(surface)!.text.split("\n");
-    expect(lines[2]).toContain("│   variant");
-    expect(lines[3]).toContain("Save");
-    expect(lines[3]).toContain("│   size");
-    expect(lines[4]).toContain("│   disabled");
+    expect(lines.some((line) => line.includes("│") && line.includes("presentation"))).toBe(true);
+    const labelRow = lines.findIndex((line) => line.includes("presentation"));
+    expect(lines[labelRow + 1]).toContain("Rich");
+    expect(lines[labelRow]).not.toContain("Rich");
+    expect(lines.some((line) => line.includes("Save"))).toBe(true);
+    for (const label of ["variant", "size", "disabled"]) {
+      expect(lines.some((line) => line.includes("│") && line.includes(label))).toBe(true);
+    }
   });
 
-  it("uses one full-width pane when the component has no controls", async () => {
+  it("adds only the presentation control when the component has no own controls", async () => {
     render(<ComponentPlayground id="single-playground" label="Single playground"
       probeId="single-playground" focusedId={null} onCommand={() => undefined}
       preview={<Text id="single-content">Block</Text>} previewMinColumns={20} />);
@@ -124,8 +128,9 @@ describe("ComponentPlayground controls layout", () => {
     const probe = readCellSurfaceProbe(surface)!;
     expect(probe.viewport).toEqual({ width: 64, height: 7 });
     expect(probe.text).toContain("Block");
-    expect(probe.cells.some((cell) => cell.ownerId?.includes("divider"))).toBe(false);
-    expect(probe.cells.some((cell) => cell.ownerId?.includes("controls-scroll"))).toBe(false);
+    expect(probe.cells.some((cell) => cell.ownerId?.includes("divider"))).toBe(true);
+    expect(probe.text).toContain("presentation");
+    expect(probe.text).toContain("Rich");
   });
 
   it("collapses centering space and scrolls when controls overflow", async () => {
@@ -134,12 +139,12 @@ describe("ComponentPlayground controls layout", () => {
     await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("row-0"));
 
     const initial = readCellSurfaceProbe(surface)!;
-    expect(initial.text.split("\n")[0]).toContain("│   row-0");
+    expect(initial.text).toContain("row-0");
     expect(initial.cells.some((cell) => (
       cell.ownerId === "test-playground-controls-scroll" && "█▀▄".includes(cell.text)
     ))).toBe(true);
 
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index < 12; index += 1) {
       fireEvent.wheel(surface.querySelector("canvas")!, {
         clientX: 40 * DEFAULT_CELL_UI_METRICS.cellWidth,
         clientY: 3 * DEFAULT_CELL_UI_METRICS.cellHeight,
