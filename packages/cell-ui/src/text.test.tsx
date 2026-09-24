@@ -10,16 +10,19 @@ import {
 } from "./index.js";
 
 describe("CellTextEditor", () => {
-  it("fills empty focused editor rectangles and clears them on blur", () => {
+  it("fills empty focused TextArea interiors without changing their borders", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 5 } });
     const editor = new CellTextEditor({ multiline: true });
     const view = (focused: boolean) => <Root>
       <TextArea id="editor" frame="bordered" focused={focused} state={editor.snapshot()} style={{ height: 5 }} />
     </Root>;
     const focused = runtime.render(view(true));
+    const bounds = focused.scene.entries.get("editor")!.decorationBounds;
     for (let y = 0; y < 5; y++) {
       for (let x = 0; x < 12; x++) {
-        expect(focused.buffer.get(x, y)?.style.backgroundColor).toBe("#000000");
+        const inside = x >= bounds.x && x < bounds.x + bounds.width
+          && y >= bounds.y && y < bounds.y + bounds.height;
+        expect(focused.buffer.get(x, y)?.style.backgroundColor).toBe(inside ? "#000000" : undefined);
         expect(focused.buffer.get(x, y)?.ownerId).toBe("editor");
       }
     }

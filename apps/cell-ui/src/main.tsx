@@ -174,7 +174,7 @@ export function GalleryNavigation({ activeRoute }: Readonly<{ activeRoute: strin
   );
 }
 
-export function Preview({ document }: Readonly<{ document: ComponentDocument }>) {
+export function Preview({ document }: Readonly<{ document: Pick<ComponentDocument, "Demo" | "probeId"> }>) {
   const { Demo } = document;
   const readSnapshot = () => {
     const surface = window.document.querySelector(`[data-cell-probe="${document.probeId}"]`);
@@ -223,6 +223,19 @@ export function OnThisPage({ route, sections, activeSection }: Readonly<{ route:
   );
 }
 
+function ApiTable({ rows }: Readonly<{ rows: ComponentDocument["api"] }>) {
+  return <div className="docs-table-wrap">
+    <table>
+      <thead><tr><th>Prop</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>{rows.map((row) => <tr key={row.name}>
+        <td><code>{row.name}</code></td>
+        <td><code>{row.type}</code></td>
+        <td>{row.description}</td>
+      </tr>)}</tbody>
+    </table>
+  </div>;
+}
+
 export function ComponentPage({ document }: Readonly<{ document: ComponentDocument }>) {
   return (
     <main className="docs-page">
@@ -247,20 +260,7 @@ export function ComponentPage({ document }: Readonly<{ document: ComponentDocume
       </section>
       <section className="docs-section" aria-labelledby="api">
         <h2 id="api">API</h2>
-        <div className="docs-table-wrap">
-          <table>
-            <thead><tr><th>Prop</th><th>Type</th><th>Description</th></tr></thead>
-            <tbody>
-              {document.api.map((row) => (
-                <tr key={row.name}>
-                  <td><code>{row.name}</code></td>
-                  <td><code>{row.type}</code></td>
-                  <td>{row.description}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ApiTable rows={document.api} />
       </section>
     </main>
   );
@@ -279,11 +279,17 @@ export function GuidePage({ guide }: Readonly<{ guide: GuideContent }>) {
     <header className="docs-page__header"><h1>{guide.title}</h1><p>{guide.description}</p></header>
     {guide.sections.map((section) => {
       const Demo = section.demo ? guideDemos[section.demo] : null;
+      if (section.installation) return <Installation key={section.id} />;
+      if (Demo && section.probeId) return <Preview key={section.id} document={{ Demo, probeId: section.probeId }} />;
       return <section className="docs-section" aria-labelledby={section.id} key={section.id}>
-        <h2 id={section.id}>{section.title}</h2><p>{section.body}</p>
+        <h2 id={section.id}>{section.title}</h2>
+        {section.body ? <p>{section.body}</p> : null}
         {Demo ? <div className="docs-preview"><Demo /></div> : null}
         {section.code ? <CodeBlock language={section.codeLanguage ?? (guide.slug === "installation" ? "text" : "tsx")}>{section.code}</CodeBlock> : null}
         {section.link ? <p><a href={section.link.href}>{section.link.label}</a></p> : null}
+        {section.links ? <ul className="docs-source-links">{section.links.map(({ label, href }) =>
+          <li key={href}><a href={href}>{label}</a></li>)}</ul> : null}
+        {section.api ? <ApiTable rows={section.api} /> : null}
       </section>;
     })}
   </main>;

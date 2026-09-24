@@ -118,33 +118,41 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
   const finish = (
     style: CellTextStyle,
     thumb = theme.sliderThumb,
-    surfaceRegion: "layout" | "content" = "layout",
+    surfaceRegion: "layout" | "decoration" | "content" = "layout",
+    borderBaseStyle: CellTextStyle = style,
   ) => ({
     style,
     thumb,
     surfaceRegion,
     borderStyle: {
-      ...style,
+      ...borderBaseStyle,
       ...theme.borderStyle,
       ...(node.kind === "alert"
         ? { color: theme.badgeStyles[node.badgeTone].color ?? theme.borderStyle.color }
         : {}),
-      ...(projection.editingActive ? { color: style.color, backgroundColor: style.backgroundColor } : {}),
+      ...(projection.editingActive && node.kind !== "text-area"
+        ? { color: style.color, backgroundColor: style.backgroundColor } : {}),
     },
   });
   if (isTextEditorKind(node.kind)) {
     const singleLine = node.kind === "text-input" || node.kind === "combobox-input";
     const surface = surfaceStyleForNode(tree, node, theme);
+    const borderBaseStyle = {
+      ...(surface ?? (singleLine ? theme.elevatedSurfaceStyle : {})),
+      ...node.textStyle,
+      ...(projection.disabled ? theme.disabledStyle : {}),
+    };
     return finish(
       {
-        ...(surface ?? (singleLine ? theme.elevatedSurfaceStyle : {})),
-        ...node.textStyle,
+        ...borderBaseStyle,
         ...(projection.editingActive && !preservesEditorSurfaceWhenActive(node)
           ? theme.focusedSurfaceStyle : {}),
-        ...(projection.disabled ? theme.disabledStyle : {}),
       },
       theme.sliderThumb,
-      singleLine || node.surfaceVariant === "surface" || node.frame === "bordered" ? "layout" : "content",
+      node.kind === "text-area" && node.frame === "bordered"
+        ? "decoration"
+        : singleLine || node.surfaceVariant === "surface" ? "layout" : "content",
+      node.kind === "text-area" ? borderBaseStyle : undefined,
     );
   }
   const { owner } = projection;

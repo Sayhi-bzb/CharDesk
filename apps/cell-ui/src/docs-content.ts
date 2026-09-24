@@ -906,11 +906,15 @@ type GuideSection = Readonly<{
   id: string;
   title: string;
   tocLabel?: string;
-  body: string;
+  body?: string;
   code?: string;
   demo?: "settings" | "progress" | "notes" | "macintosh" | "markdown";
+  probeId?: string;
+  installation?: boolean;
+  api?: readonly ComponentApiRow[];
   codeLanguage?: "tsx" | "text";
   link?: Readonly<{ label: string; href: string }>;
+  links?: readonly Readonly<{ label: string; href: string }>[];
 }>;
 export type GuideContent = Readonly<{ slug: string; title: string; description: string; sections: readonly GuideSection[] }>;
 
@@ -978,25 +982,35 @@ const [sound, setSound] = useState(true);
   },
   {
     slug: "markdown", title: "Markdown",
-    description: "Render Markdown files as readable, interactive Cell documents—not browser HTML.",
+    description: "Render Markdown files as interactive Cell documents.",
     sections: [
-      { id: "render", title: "Render a file", body: "Load a Markdown file in your application and pass its contents to Markdown. The Cell viewport controls wrapping; the source stays with your application.", code: `import { Markdown, Root } from "@chardesk/cell-ui";
+      { id: "preview", title: "Preview", demo: "markdown", probeId: "markdown-example" },
+      { id: "installation", title: "Installation", installation: true,
+        body: "Install the editable Cell UI source with the shared registry setup.",
+        link: { label: "Installation guide", href: "#/guides/installation" } },
+      { id: "usage", title: "Usage", code: `import { Markdown, Root } from "@/lib/cell-ui";
+import { CellSurface } from "@/lib/cell-ui/browser";
 
-<Root>
-  <Markdown id="readme" source={markdownSource} />
-</Root>;`, link: { label: "Markdown implementation", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts" } },
-      { id: "grammar", title: "Character grammar", body: "Headings keep their # level; lists, task marks, quotes, fences, and tables remain legible as Unicode. Color and emphasis reinforce structure but are not required to read it.", demo: "markdown", codeLanguage: "text", code: `# Field Notes
+const source = "# Field Notes\\n\\nCells make docs readable.";
 
-Cells make docs readable.
-
-- [x] Build UI
-- [ ] Share it
-
-> Source stays yours.
-
-Read [Philosophy](#/guides/philosophy).` },
-      { id: "links", title: "Links and source", body: "A link is a focusable Cell target. Pointer, Enter, and assistive activation emit open-link with targetId and href; the application decides how to navigate. Cell Range copies visible Unicode, not the original Markdown source." },
-      { id: "syntax", title: "Supported syntax", body: "Common Markdown and GFM: headings, paragraphs, emphasis, links, lists and task marks, quotes, fenced code, rules, and tables. Images display alt text; raw HTML remains inert text. Task marks are read-only." },
+export function MarkdownExample() {
+  return (
+    <CellSurface viewport={{ width: 40, height: 12 }}>
+      <Root>
+        <Markdown source={source} />
+      </Root>
+    </CellSurface>
+  );
+}` },
+      { id: "source", title: "View source", links: [
+        { label: "markdown.ts", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts" },
+        { label: "react.tsx", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx" },
+      ] },
+      { id: "api", title: "API", body: "Links emit open-link for the application to handle. Task marks are read-only; images show alt text, and raw HTML stays inert.", api: [
+        { name: "source", type: "string", description: "Markdown source to render." },
+        { name: "id?", type: "string", description: "Stable identity for the document root." },
+        { name: "style?", type: "CellLayoutStyle", description: "Document layout overrides." },
+      ] },
     ],
   },
   {

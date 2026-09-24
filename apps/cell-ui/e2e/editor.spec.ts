@@ -24,12 +24,21 @@ for (const scheme of ["light", "dark"] as const) {
       await page.mouse.click(point.x, point.y);
       await expect(input).toBeFocused();
       const bounds = (await canvas.boundingBox())!;
-      // No key event has occurred: every owned cell, including border and padding, is active.
+      // No key event has occurred: TextArea keeps its border idle while its inner Cells activate.
       const assertActive = async () => {
         await expect.poll(async () => {
           const cells = (await readCellProbe(surface)).cells.filter((cell) => cell.ownerId === id);
-          return cells.length >= ownCells.length && cells.every((cell) =>
-            cell.style.color === inverse.color && cell.style.backgroundColor === inverse.backgroundColor);
+          return cells.length >= ownCells.length && cells.every((cell) => {
+            const border = id === "editor-document" && (
+              cell.x === owned.x || cell.x === owned.x + owned.width - 1
+              || cell.y === owned.y || cell.y === owned.y + owned.height - 1
+            );
+            if (!border) return cell.style.color === inverse.color
+              && cell.style.backgroundColor === inverse.backgroundColor;
+            const idleCell = ownCells.find((item) => item.x === cell.x && item.y === cell.y);
+            return cell.style.color === idleCell?.style.color
+              && cell.style.backgroundColor === idleCell?.style.backgroundColor;
+          });
         }).toBe(true);
       };
       await assertActive();
@@ -56,8 +65,14 @@ for (const scheme of ["light", "dark"] as const) {
     await page.keyboard.press("Tab");
     await expect(surface.getByRole("textbox", { name: "Document", exact: true })).toBeFocused();
     const tabbed = await readCellProbe(surface);
-    expect(tabbed.cells.filter((cell) => cell.ownerId === "editor-document")
-      .every((cell) => cell.style.color === inverse.color && cell.style.backgroundColor === inverse.backgroundColor)).toBe(true);
+    const documentBounds = ownerBounds(tabbed, "editor-document");
+    expect(ownerCells(tabbed, "editor-document").every((cell) => {
+      const border = cell.x === documentBounds.x || cell.x === documentBounds.x + documentBounds.width - 1
+        || cell.y === documentBounds.y || cell.y === documentBounds.y + documentBounds.height - 1;
+      return border
+        ? cell.style.color !== inverse.color && cell.style.backgroundColor !== inverse.backgroundColor
+        : cell.style.color === inverse.color && cell.style.backgroundColor === inverse.backgroundColor;
+    })).toBe(true);
     expect(ownerCells(tabbed, "editor-name")[0]?.style.backgroundColor)
       .not.toBe(inverse.backgroundColor);
   });

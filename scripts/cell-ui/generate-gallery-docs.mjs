@@ -12,9 +12,13 @@ const outputs = new Map();
 const installation = `Install the full editable source in a React project with components.json and aliases.lib: [Installation](${base}/guides/installation.md).`;
 
 for (const guide of guideContent) {
-  const sections = guide.sections.map(({ id, title, body, code, codeLanguage, link }) => {
+  const sections = guide.sections.filter((section) => !section.probeId).map(({ id, title, body, code, codeLanguage, link, links, api }) => {
     const language = guide.slug === "installation" ? id === "configure" ? "json" : "sh" : codeLanguage === "text" ? "md" : "tsx";
-    return `## ${title}\n\n${body}${code ? `\n\n\`\`\`${language}\n${code}\n\`\`\`` : ""}${link ? `\n\n[${link.label}](${markdownHref(link.href)})` : ""}`;
+    const sourceLinks = links?.map(({ label, href }) => `- [${label}](${markdownHref(href)})`).join("\n");
+    const apiTable = api ? `| Prop | Type | Description |\n| --- | --- | --- |\n${api.map(({ name, type, description }) =>
+      `| \`${name}\` | \`${type.replaceAll("|", "\\|")}\` | ${description.replaceAll("|", "\\|")} |`).join("\n")}` : null;
+    return `## ${title}\n\n${[body, code ? `\`\`\`${language}\n${code}\n\`\`\`` : null,
+      link ? `[${link.label}](${markdownHref(link.href)})` : null, sourceLinks, apiTable].filter(Boolean).join("\n\n")}`;
   });
   outputs.set(`guides/${guide.slug}.md`, `# ${guide.title}\n\n${guide.description}\n\n${sections.join("\n\n")}\n`);
 }

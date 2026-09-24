@@ -191,9 +191,16 @@ export const paintScene = (
         isActionableKind(node.kind)
         && (node.pressActive || node.activationFlash || node.selected || (node.focused && node.focusVisible))
       )) {
-        const contentSurface = visual.surfaceRegion === "content";
-        let surfaceBounds = contentSurface ? entry.contentBounds : entry.layoutBounds;
-        if (node.kind === "tab" && node.tabsVariant === "underline" && !contentSurface) {
+        let surfaceBounds = entry.layoutBounds;
+        let surfaceClip = outerClip;
+        if (visual.surfaceRegion === "content") {
+          surfaceBounds = entry.contentBounds;
+          surfaceClip = contentClip;
+        } else if (visual.surfaceRegion === "decoration") {
+          surfaceBounds = entry.decorationBounds;
+          surfaceClip = decorationClip;
+        }
+        if (node.kind === "tab" && node.tabsVariant === "underline" && visual.surfaceRegion === "layout") {
           surfaceBounds = entry.hitBounds;
         }
         fill(
@@ -201,7 +208,7 @@ export const paintScene = (
           surfaceBounds,
           id,
           style,
-          contentSurface ? contentClip : outerClip,
+          surfaceClip,
         );
       }
 

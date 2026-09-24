@@ -8,7 +8,7 @@ import type { CellSingleLineInputStyle } from "./types.js";
 for (const [name, Editor] of [["TextArea", TextArea]] as const) {
   for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     for (const borderShape of ["square", "rounded"] as const) {
-      it(`${name} projects actual focus across its rectangle (${theme.background}, ${borderShape})`, () => {
+      it(`${name} projects actual focus inside its stable border (${theme.background}, ${borderShape})`, () => {
         const runtime = new CellUiRuntime({ viewport: { width: 16, height: 7 }, theme });
         const editor = new CellTextEditor({ value: "Hi", multiline: Editor === TextArea });
         const view = (disabled = false, readOnly = false) => <Root>
@@ -19,10 +19,15 @@ for (const [name, Editor] of [["TextArea", TextArea]] as const) {
         </Root>;
         const idle = runtime.render(view());
         const pointer = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor", focusVisible: false });
-        const layout = pointer.scene.entries.get("editor")!.layoutBounds;
+        const entry = pointer.scene.entries.get("editor")!;
+        const layout = entry.layoutBounds;
+        const inside = entry.decorationBounds;
         for (let y = layout.y; y < layout.y + layout.height; y++) {
           for (let x = layout.x; x < layout.x + layout.width; x++) {
-            expect(pointer.buffer.get(x, y)?.style).toMatchObject(theme.focusedSurfaceStyle);
+            const withinInner = x >= inside.x && x < inside.x + inside.width
+              && y >= inside.y && y < inside.y + inside.height;
+            if (withinInner) expect(pointer.buffer.get(x, y)?.style).toMatchObject(theme.focusedSurfaceStyle);
+            else expect(pointer.buffer.get(x, y)).toEqual(idle.buffer.get(x, y));
           }
         }
         expect(pointer.buffer.get(0, 0)).toEqual(idle.buffer.get(0, 0));
@@ -188,6 +193,24 @@ it("TestPilot keeps editing active across pointer, keyboard and viewport commits
   pilot.dispose();
 });
 
+it("TextArea focus includes padding but not border Cells", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 12, height: 5 } });
+  const editor = new CellTextEditor({ value: "Hi", multiline: true });
+  const view = () => <Root><TextArea id="editor" frame="bordered" state={editor.snapshot()}
+    style={{ width: 12, height: 5, padding: 1 }} /></Root>;
+  const idle = runtime.render(view());
+  const active = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor" });
+  const entry = active.scene.entries.get("editor")!;
+  expect(entry.decorationBounds).toEqual({ x: 1, y: 1, width: 10, height: 3 });
+  expect(entry.contentBounds).toEqual({ x: 2, y: 2, width: 8, height: 1 });
+  expect(active.buffer.get(1, 1)?.style).toMatchObject(CLASSIC_MAC_LIGHT_THEME.focusedSurfaceStyle);
+  expect(active.buffer.get(2, 2)?.text).toBe("H");
+  expect(active.buffer.get(9, 3)?.style).toMatchObject(CLASSIC_MAC_LIGHT_THEME.focusedSurfaceStyle);
+  expect(active.buffer.get(0, 0)).toEqual(idle.buffer.get(0, 0));
+  expect(active.buffer.get(11, 4)).toEqual(idle.buffer.get(11, 4));
+  runtime.dispose();
+});
+
 it("gives TextInput a stable one-row content viewport", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 12, height: 1 } });
   const editor = new CellTextEditor({ value: "Hi" });
@@ -236,7 +259,7 @@ it("resolves editor border tokens before activity and retains selection/composit
   expect(runtime.render(view()).buffer.get(0, 0)?.style).toMatchObject(theme.borderStyle);
   editor.dispatch({ type: "set-selection", anchor: 0, head: 1 });
   const selected = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor", focusVisible: false });
-  expect(selected.buffer.get(0, 0)?.style).toMatchObject(theme.focusedSurfaceStyle);
+  expect(selected.buffer.get(0, 0)?.style).toMatchObject(theme.borderStyle);
   expect(selected.buffer.get(1, 1)?.style).toMatchObject(theme.textSelectionStyle);
   expect(selected.buffer.get(1, 1)?.style.underline).not.toBe(true);
   const blurred = runtime.render(view(), { focusedId: "editor", activeFocusId: null });
@@ -247,7 +270,7 @@ it("resolves editor border tokens before activity and retains selection/composit
   editor.dispatch({ type: "composition-update", text: "中" });
   const composing = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor", focusVisible: false });
   expect(composing.buffer.get(1, 1)?.style.underline).toBe(true);
-  expect(composing.buffer.get(0, 0)?.style).toMatchObject(theme.focusedSurfaceStyle);
+  expect(composing.buffer.get(0, 0)?.style).toMatchObject(theme.borderStyle);
   runtime.dispose();
 });
 

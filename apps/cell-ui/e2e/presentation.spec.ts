@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { cellPoint, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, ownerBounds, readCellProbe } from "./helpers/cell-probe";
 
 const choosePresentation = async (page: Page, value: "Rich" | "Text") => {
   const trigger = page.getByRole("button", { name: "presentation" });
@@ -97,6 +97,19 @@ test("Text and Badge expose the same local presentation selector", async ({ page
       const editor = surface.getByRole("textbox", { name: "Notes" });
       await expect(editor).toBeAttached();
       await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Hello, 世界");
+      const idle = await readCellProbe(surface);
+      const bounds = ownerBounds(idle, "notes");
+      const border = idle.cells.find((cell) => cell.x === bounds.x && cell.y === bounds.y)!;
+      const inside = idle.cells.find((cell) => cell.x === bounds.x + 1 && cell.y === bounds.y + 1)!;
+      await editor.focus();
+      await expect.poll(async () => {
+        const cells = (await readCellProbe(surface)).cells;
+        const activeBorder = cells.find((cell) => cell.x === border.x && cell.y === border.y);
+        const activeInside = cells.find((cell) => cell.x === inside.x && cell.y === inside.y);
+        return activeBorder?.style.color === border.style.color
+          && activeBorder?.style.backgroundColor === border.style.backgroundColor
+          && activeInside?.style.backgroundColor !== inside.style.backgroundColor;
+      }).toBe(true);
       await editor.fill("Edited 世界");
       await choosePresentation(page, "Rich");
       await expect(editor).toHaveValue("Edited 世界");

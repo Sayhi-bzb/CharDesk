@@ -1,42 +1,43 @@
 # Markdown
 
-Render Markdown files as readable, interactive Cell documents—not browser HTML.
+Render Markdown files as interactive Cell documents.
 
-## Render a file
+## Installation
 
-Load a Markdown file in your application and pass its contents to Markdown. The Cell viewport controls wrapping; the source stays with your application.
+Install the editable Cell UI source with the shared registry setup.
+
+[Installation guide](https://ui.chardesk.com/#/guides/installation)
+
+## Usage
 
 ```tsx
-import { Markdown, Root } from "@chardesk/cell-ui";
+import { Markdown, Root } from "@/lib/cell-ui";
+import { CellSurface } from "@/lib/cell-ui/browser";
 
-<Root>
-  <Markdown id="readme" source={markdownSource} />
-</Root>;
+const source = "# Field Notes\n\nCells make docs readable.";
+
+export function MarkdownExample() {
+  return (
+    <CellSurface viewport={{ width: 40, height: 12 }}>
+      <Root>
+        <Markdown source={source} />
+      </Root>
+    </CellSurface>
+  );
+}
 ```
 
-[Markdown implementation](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts)
+## View source
 
-## Character grammar
+- [markdown.ts](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts)
+- [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)
 
-Headings keep their # level; lists, task marks, quotes, fences, and tables remain legible as Unicode. Color and emphasis reinforce structure but are not required to read it.
+## API
 
-```md
-# Field Notes
+Links emit open-link for the application to handle. Task marks are read-only; images show alt text, and raw HTML stays inert.
 
-Cells make docs readable.
-
-- [x] Build UI
-- [ ] Share it
-
-> Source stays yours.
-
-Read [Philosophy](#/guides/philosophy).
-```
-
-## Links and source
-
-A link is a focusable Cell target. Pointer, Enter, and assistive activation emit open-link with targetId and href; the application decides how to navigate. Cell Range copies visible Unicode, not the original Markdown source.
-
-## Supported syntax
-
-Common Markdown and GFM: headings, paragraphs, emphasis, links, lists and task marks, quotes, fenced code, rules, and tables. Images display alt text; raw HTML remains inert text. Task marks are read-only.
+| Prop | Type | Description |
+| --- | --- | --- |
+| `source` | `string` | Markdown source to render. |
+| `id?` | `string` | Stable identity for the document root. |
+| `style?` | `CellLayoutStyle` | Document layout overrides. |
