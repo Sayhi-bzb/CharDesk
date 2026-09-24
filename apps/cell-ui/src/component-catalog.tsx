@@ -48,5 +48,4 @@ export const componentDocuments: readonly ComponentDocument[] = [
   ...componentContent.map((content) => ({ ...content, probeId: content.slug === "overlay" ? "overlay" : `component-${content.slug}`, Demo: demos[content.slug]! })),
 ];
 export const componentDocumentBySlug = new Map(componentDocuments.map((document) => [document.slug, document] as const));
-export const defaultComponentSlug = "button";
 export const componentNavigationDocuments = componentDocuments.toSorted((left, right) => left.title.localeCompare(right.title, "en"));

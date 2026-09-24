@@ -10,7 +10,7 @@ export const RangeSliderComponentDemo = () => {
   const [values, setValues] = useState<[number, number]>([25, 75]);
   const dispatch = (command: WidgetCommand) => {
     if (command.type !== "set-value") return;
-    if (command.targetId === "range-start") setValues(([_, end]) => [command.value, end]);
+    if (command.targetId === "range-start") setValues(([, end]) => [command.value, end]);
     if (command.targetId === "range-end") setValues(([start]) => [start, command.value]);
   };
   return <GallerySurface viewport={{ width: 32, height: 3 }} onCommand={dispatch} label="Range slider" probeId="component-range-slider">

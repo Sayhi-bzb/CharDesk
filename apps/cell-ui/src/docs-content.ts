@@ -1,4 +1,4 @@
-export type ComponentApiRow = Readonly<{ name: string; type: string; description: string }>;
+type ComponentApiRow = Readonly<{ name: string; type: string; description: string }>;
 export type ComponentContent = Readonly<{ slug: string; title: string; description: string; usage: string; api: readonly ComponentApiRow[] }>;
 export const publicUsage = (usage: string) => usage.replaceAll("\"@chardesk/cell-ui/browser\"", "\"@/lib/cell-ui/browser\"").replaceAll("\"@chardesk/cell-ui\"", "\"@/lib/cell-ui\"");
 export const installationCommands = {
@@ -769,7 +769,7 @@ const list = useCellListState([{ id: "a", label: "Alpha" }]);
 
 ];
 
-export type GuideSection = Readonly<{ id: string; title: string; body: string; code?: string; link?: Readonly<{ label: string; href: string }> }>;
+type GuideSection = Readonly<{ id: string; title: string; body: string; code?: string; link?: Readonly<{ label: string; href: string }> }>;
 export type GuideContent = Readonly<{ slug: string; title: string; description: string; sections: readonly GuideSection[] }>;
 
 export const guideContent: readonly GuideContent[] = [
