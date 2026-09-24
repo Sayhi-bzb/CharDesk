@@ -69,6 +69,17 @@ describe("readCellCssTheme", () => {
     expect(theme.badgeStyles.error).toEqual(CLASSIC_MAC_LIGHT_THEME.badgeStyles.error);
   });
 
+  it("reads Markdown CSS tokens independently and infers dark defaults", () => {
+    const light = readCellCssTheme(mountTheme({
+      "--cell-markdown-link": "#123456",
+      "--cell-markdown-code-background": "#eeeeee",
+    })).theme.markdownColors;
+    expect(light).toMatchObject({ link: "rgb(18, 52, 86)", codeBackground: "rgb(238, 238, 238)",
+      quote: CLASSIC_MAC_LIGHT_THEME.markdownColors.quote });
+    const dark = readCellCssTheme(mountTheme({ "--cell-background": "#000000" })).theme.markdownColors;
+    expect(dark).toEqual(CLASSIC_MAC_DARK_THEME.markdownColors);
+  });
+
   it("can consume the complete dark inverse through CSS tokens", () => {
     const { theme } = readCellCssTheme(mountTheme({
       "--cell-background": CLASSIC_MAC_DARK_THEME.background,

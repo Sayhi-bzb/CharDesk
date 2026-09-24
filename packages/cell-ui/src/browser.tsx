@@ -87,7 +87,7 @@ import {
   gestureCandidatesForFrame,
   validGestureCandidate,
 } from "./pointer.js";
-import { resolveCellUiTheme, type CellUiTheme } from "./theme.js";
+import { resolveCellUiTheme, type CellUiTheme, type CellUiThemeInput } from "./theme.js";
 import type { CellUiRecipe } from "./recipe.js";
 import type { CellUiPresentation } from "./presentation.js";
 export { readCellCssTheme, useCellCssTheme } from "./browser-theme.js";
@@ -517,7 +517,7 @@ export type CellSurfaceProps = Readonly<{
   overlayViewport?: CellSize;
   children: ReactElement<RootProps>;
   focusedId?: WidgetId | null;
-  theme?: Partial<CellUiTheme>;
+  theme?: CellUiThemeInput;
   recipe?: CellUiRecipe;
   presentation?: CellUiPresentation;
   feedback?: Partial<CellFeedbackConfig>;
@@ -783,7 +783,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     manipulatingIds: ReadonlySet<WidgetId>;
     pressActiveId: WidgetId | null;
     activationFlashId: WidgetId | null;
-    theme: Partial<CellUiTheme> | undefined;
+    theme: CellUiThemeInput | undefined;
     recipe: CellUiRecipe | undefined;
     presentation: CellUiPresentation | undefined;
     feedback: Partial<CellFeedbackConfig> | undefined;

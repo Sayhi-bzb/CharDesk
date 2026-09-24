@@ -10,6 +10,7 @@ import {
   type CharDeskCellRangePaintStyle,
   type CharDeskCellCursorShape,
 } from "@chardesk/rendering";
+import { CHARDESK_DARK_CONTENT_THEME, CHARDESK_LIGHT_CONTENT_THEME } from "@chardesk/rendering/theme";
 
 export type CellCursorShape = CharDeskCellCursorShape;
 type SeparatorGlyphs = Readonly<Record<
@@ -27,9 +28,23 @@ export type CellCursorStyle = CharDeskCellCursorPaintStyle & Readonly<{
   blinkIntervalMs: number;
 }>;
 
+export type CellMarkdownColors = Readonly<{
+  accent: string;
+  link: string;
+  quote: string;
+  muted: string;
+  codeForeground: string;
+  codeBackground: string;
+}>;
+
+export type CellUiThemeInput = Omit<Partial<CellUiTheme>, "markdownColors"> & Readonly<{
+  markdownColors?: Partial<CellMarkdownColors>;
+}>;
+
 export type CellUiTheme = Readonly<{
   background: string;
   foreground: string;
+  markdownColors: CellMarkdownColors;
   surfaceStyle: CellTextStyle;
   elevatedSurfaceStyle: CellTextStyle;
   buttonSolidStyle: CellTextStyle;
@@ -107,6 +122,14 @@ export const CLASSIC_MAC_LIGHT_THEME: CellUiTheme = Object.freeze({
   ...CLASSIC_MAC_SHARED_THEME,
   background: "#FFFFFF",
   foreground: "#000000",
+  markdownColors: Object.freeze({
+    accent: CHARDESK_LIGHT_CONTENT_THEME.accent,
+    link: CHARDESK_LIGHT_CONTENT_THEME.info,
+    quote: CHARDESK_LIGHT_CONTENT_THEME.success,
+    muted: CHARDESK_LIGHT_CONTENT_THEME["muted-foreground"],
+    codeForeground: CHARDESK_LIGHT_CONTENT_THEME.info,
+    codeBackground: CHARDESK_LIGHT_CONTENT_THEME.surface,
+  }),
   surfaceStyle: { backgroundColor: "#FFFFFF" },
   elevatedSurfaceStyle: { backgroundColor: "#E6E6E6" },
   buttonSolidStyle: { color: "#FFFFFF", backgroundColor: "#000000" },
@@ -145,6 +168,14 @@ export const CLASSIC_MAC_DARK_THEME: CellUiTheme = Object.freeze({
   ...CLASSIC_MAC_SHARED_THEME,
   background: "#000000",
   foreground: "#FFFFFF",
+  markdownColors: Object.freeze({
+    accent: CHARDESK_DARK_CONTENT_THEME.accent,
+    link: CHARDESK_DARK_CONTENT_THEME.info,
+    quote: CHARDESK_DARK_CONTENT_THEME.success,
+    muted: CHARDESK_DARK_CONTENT_THEME["muted-foreground"],
+    codeForeground: CHARDESK_DARK_CONTENT_THEME.info,
+    codeBackground: CHARDESK_DARK_CONTENT_THEME.surface,
+  }),
   surfaceStyle: { backgroundColor: "#000000" },
   elevatedSurfaceStyle: { backgroundColor: "#1A1A1A" },
   buttonSolidStyle: { color: "#000000", backgroundColor: "#FFFFFF" },
@@ -182,9 +213,24 @@ export const CLASSIC_MAC_DARK_THEME: CellUiTheme = Object.freeze({
 /** @alias */
 export const DEFAULT_CELL_UI_THEME: CellUiTheme = CLASSIC_MAC_LIGHT_THEME;
 
+const isDarkBackground = (color: string): boolean => {
+  const hex = /^#([\da-f]{3}|[\da-f]{6})$/iu.exec(color.trim());
+  const channels = hex
+    ? hex[1]!.length === 3
+      ? [...hex[1]!].map((part) => Number.parseInt(part + part, 16))
+      : [0, 2, 4].map((offset) => Number.parseInt(hex[1]!.slice(offset, offset + 2), 16))
+    : /^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/iu.exec(color.trim())?.slice(1, 4).map(Number);
+  return channels ? (channels[0]! * 299 + channels[1]! * 587 + channels[2]! * 114) / 1000 < 128 : false;
+};
+
 export const resolveCellUiTheme = (
-  theme: Partial<CellUiTheme> | undefined
-): CellUiTheme => ({
-  ...DEFAULT_CELL_UI_THEME,
-  ...theme,
-});
+  theme: CellUiThemeInput | undefined
+): CellUiTheme => {
+  const markdownDefaults = isDarkBackground(theme?.background ?? DEFAULT_CELL_UI_THEME.background)
+    ? CLASSIC_MAC_DARK_THEME.markdownColors : CLASSIC_MAC_LIGHT_THEME.markdownColors;
+  return {
+    ...DEFAULT_CELL_UI_THEME,
+    ...theme,
+    markdownColors: { ...markdownDefaults, ...theme?.markdownColors },
+  };
+};

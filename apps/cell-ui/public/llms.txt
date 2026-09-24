@@ -7,7 +7,7 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 - [Introduction](https://ui.chardesk.com/guides/introduction.md): Build React interfaces from editable Unicode Cells. Own the source, compose a few good defaults, and let one frame serve people and agents.
 - [Philosophy](https://ui.chardesk.com/guides/philosophy.md): UI as Text is the goal: structure, meaningful state, and available actions should be understandable from text without relying on color or source code. Three Cell-native principles support it.
 - [Classic Macintosh](https://ui.chardesk.com/guides/classic-macintosh.md): A clear visual hierarchy and direct, forgiving interaction—translated into Cell UI rather than copied as a retro skin.
-- [Markdown](https://ui.chardesk.com/guides/markdown.md): Keep Markdown source visible in Cells, with styling layered onto its content.
+- [Markdown](https://ui.chardesk.com/guides/markdown.md): One source for people and LLMs: Markdown syntax stays visible, with color and alignment added for reading.
 - [Installation](https://ui.chardesk.com/guides/installation.md): Install the complete editable Cell UI source through the shadcn registry.
 - [Integration](https://ui.chardesk.com/guides/integration.md): Connect Cell descriptors, browser projection, and application-owned state.
 - [Theming](https://ui.chardesk.com/guides/theming.md): Resolve one Cell theme into a browser palette and component recipes.

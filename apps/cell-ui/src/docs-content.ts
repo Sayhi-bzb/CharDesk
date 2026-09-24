@@ -982,7 +982,7 @@ const [sound, setSound] = useState(true);
   },
   {
     slug: "markdown", title: "Markdown",
-    description: "Keep Markdown source visible in Cells, with styling layered onto its content.",
+    description: "One source for people and LLMs: Markdown syntax stays visible, with color and alignment added for reading.",
     sections: [
       { id: "preview", title: "Preview", demo: "markdown", probeId: "markdown-example" },
       { id: "installation", title: "Installation", installation: true,
@@ -1006,7 +1006,7 @@ export function MarkdownExample() {
         { label: "markdown.ts", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts" },
         { label: "react.tsx", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx" },
       ] },
-      { id: "api", title: "API", body: "Source markers remain visible. Inline code uses inverse colors; tables align columns and short rules center without changing Cell Range copy. Paragraphs may wrap. Safe links remain interactive; raw HTML stays inert.", api: [
+      { id: "api", title: "API", body: "Source markers remain visible. Markdown colors come from the Cell theme; tables align and short rules center without changing Cell Range copy. Paragraphs may wrap. Safe links remain interactive; raw HTML stays inert.", link: { label: "Theming", href: "#/guides/theming" }, api: [
         { name: "source", type: "string", description: "Markdown source to render." },
         { name: "id?", type: "string", description: "Stable identity for the document root." },
         { name: "style?", type: "CellLayoutStyle", description: "Document layout overrides." },
@@ -1053,8 +1053,8 @@ import { CellSurface } from "@/lib/cell-ui/browser";
     slug: "theming", title: "Theming",
     description: "Resolve one Cell theme into a browser palette and component recipes.",
     sections: [
-      { id: "defaults", title: "Defaults", body: "CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. resolveCellUiTheme(partial) applies overrides. Surface backgrounds are visual only and do not alter copied Cell text." },
-      { id: "css", title: "CSS tokens", body: "The /browser entry exports readCellCssTheme(element) and useCellCssTheme(ref, revision). Apply CSS changes before the hook's layout effect; bump revision after external stylesheet changes. Use --cell-background, --cell-foreground, --cell-surface, --cell-surface-elevated, --cell-border, and component tokens to override recipes." },
+      { id: "defaults", title: "Defaults", body: "CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. Markdown uses the shared CharDesk reading palette within each theme. resolveCellUiTheme(partial) merges Markdown color overrides. Surface backgrounds do not alter copied Cell text." },
+      { id: "css", title: "CSS tokens", body: "The /browser entry exports readCellCssTheme(element) and useCellCssTheme(ref, revision). Markdown uses --cell-markdown-accent, --cell-markdown-link, --cell-markdown-quote, --cell-markdown-muted, --cell-markdown-code-foreground, and --cell-markdown-code-background. These affect Markdown only; other --cell-* tokens control components. Apply CSS changes before the hook's layout effect; bump revision after external stylesheet changes." },
       { id: "surface", title: "Surface and frame", body: "Box, ScrollArea, and TextArea separate variant (ghost or surface) from frame (none or bordered). Dialog and Tooltip use their own opaque variant and border recipe. Geometry belongs to CellLayoutStyle, not the theme." },
     ],
   },

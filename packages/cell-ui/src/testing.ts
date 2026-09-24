@@ -24,7 +24,7 @@ import { CellUiRuntime } from "./runtime.js";
 import { textViewportCommands } from "./text-viewport.js";
 import { scrollCommandForOffset, scrollOffsetFor, scrollViewportCommands } from "./scroll.js";
 import { getEventPath, hitTest } from "./scene.js";
-import { type CellUiTheme } from "./theme.js";
+import { type CellUiThemeInput } from "./theme.js";
 import type { CellUiRecipe } from "./recipe.js";
 import type {
   CellPoint,
@@ -48,7 +48,7 @@ export type TestPilotOptions = Readonly<{
   viewport: CellSize;
   render: () => ReactElement<RootProps> | null;
   onCommand?: (command: WidgetCommand) => void;
-  theme?: Partial<CellUiTheme>;
+  theme?: CellUiThemeInput;
   recipe?: CellUiRecipe;
   feedback?: Partial<CellFeedbackConfig>;
 }>;

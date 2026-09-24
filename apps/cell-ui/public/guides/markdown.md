@@ -1,6 +1,6 @@
 # Markdown
 
-Keep Markdown source visible in Cells, with styling layered onto its content.
+One source for people and LLMs: Markdown syntax stays visible, with color and alignment added for reading.
 
 ## Installation
 
@@ -34,7 +34,9 @@ export function MarkdownExample() {
 
 ## API
 
-Source markers remain visible. Inline code uses inverse colors; tables align columns and short rules center without changing Cell Range copy. Paragraphs may wrap. Safe links remain interactive; raw HTML stays inert.
+Source markers remain visible. Markdown colors come from the Cell theme; tables align and short rules center without changing Cell Range copy. Paragraphs may wrap. Safe links remain interactive; raw HTML stays inert.
+
+[Theming](https://ui.chardesk.com/#/guides/theming)
 
 | Prop | Type | Description |
 | --- | --- | --- |

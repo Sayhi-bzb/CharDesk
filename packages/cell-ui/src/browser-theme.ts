@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState, type RefObject } from "react";
-import { DEFAULT_CELL_UI_THEME, type CellUiTheme } from "./theme.js";
+import { DEFAULT_CELL_UI_THEME, resolveCellUiTheme, type CellUiTheme } from "./theme.js";
 import type { CellUiRecipe } from "./recipe.js";
 
 export type CellCssTheme = Readonly<{
@@ -40,6 +40,12 @@ const defaults = {
   "cursor-foreground": fallback.cursorStyle.textColor,
   "scrollbar-thumb": fallback.scrollThumbStyle.color!,
   "scrollbar-track": fallback.scrollTrackStyle.color!,
+  "markdown-accent": fallback.markdownColors.accent,
+  "markdown-link": fallback.markdownColors.link,
+  "markdown-quote": fallback.markdownColors.quote,
+  "markdown-muted": fallback.markdownColors.muted,
+  "markdown-code-foreground": fallback.markdownColors.codeForeground,
+  "markdown-code-background": fallback.markdownColors.codeBackground,
 };
 
 const readRangeSurfaceEffect = (
@@ -69,6 +75,7 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
   probe.setAttribute("aria-hidden", "true");
   element.append(probe);
   const colors = { ...defaults };
+  const supplied = new Set<string>();
   try {
     for (const key of Object.keys(defaults) as (keyof typeof defaults)[]) {
       const token = `--cell-${key}`;
@@ -81,11 +88,15 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
         continue;
       }
       colors[key] = view.getComputedStyle(probe).color;
+      supplied.add(key);
     }
   } finally {
     probe.remove();
   }
   const highlight = { color: colors["highlight-foreground"], backgroundColor: colors.highlight };
+  const markdownDefaults = resolveCellUiTheme({ background: colors.background }).markdownColors;
+  const markdownColor = (key: keyof typeof colors, fallbackColor: string) =>
+    supplied.has(key) ? colors[key] : fallbackColor;
   return {
     palette: { color: colors.foreground, background: colors.background },
     recipe: readRecipe(source),
@@ -93,6 +104,14 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
       ...fallback,
       background: colors.background,
       foreground: colors.foreground,
+      markdownColors: {
+        accent: markdownColor("markdown-accent", markdownDefaults.accent),
+        link: markdownColor("markdown-link", markdownDefaults.link),
+        quote: markdownColor("markdown-quote", markdownDefaults.quote),
+        muted: markdownColor("markdown-muted", markdownDefaults.muted),
+        codeForeground: markdownColor("markdown-code-foreground", markdownDefaults.codeForeground),
+        codeBackground: markdownColor("markdown-code-background", markdownDefaults.codeBackground),
+      },
       surfaceStyle: { backgroundColor: colors.surface },
       elevatedSurfaceStyle: { backgroundColor: colors["surface-elevated"] },
       buttonSolidStyle: {

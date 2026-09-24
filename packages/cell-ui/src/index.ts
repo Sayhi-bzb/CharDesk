@@ -82,7 +82,7 @@ export {
   DEFAULT_CELL_UI_THEME,
   resolveCellUiTheme,
 } from "./theme.js";
-export type { CellCursorShape, CellCursorStyle, CellUiTheme } from "./theme.js";
+export type { CellCursorShape, CellCursorStyle, CellMarkdownColors, CellUiTheme, CellUiThemeInput } from "./theme.js";
 export { nextCellCheckboxState } from "./checkbox.js";
 export type { ButtonVariant } from "./button.js";
 export type { ProgressVariant } from "./progress.js";

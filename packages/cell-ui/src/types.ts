@@ -127,6 +127,7 @@ export type WidgetNode = Readonly<{
   href: string | null;
   markdownRole: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell" | null;
   markdownCode: boolean;
+  markdownTone: "accent" | "link" | "quote" | "muted" | null;
   markdownSource: boolean;
   markdownLayoutOnly: boolean;
   markdownCenteredText: string | null;

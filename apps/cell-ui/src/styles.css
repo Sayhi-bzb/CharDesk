@@ -35,6 +35,12 @@
   --cell-cursor-foreground: var(--cell-background);
   --cell-scrollbar-thumb: #000000;
   --cell-scrollbar-track: #777777;
+  --cell-markdown-accent: #0969da;
+  --cell-markdown-link: #0969da;
+  --cell-markdown-quote: #1a7f37;
+  --cell-markdown-muted: #59636e;
+  --cell-markdown-code-foreground: #0969da;
+  --cell-markdown-code-background: #f6f8fa;
   --gallery-dom-line-width: 2px;
 }
 :root[data-gallery-theme="light"] { color-scheme: light; }
@@ -71,6 +77,12 @@
   --cell-range-surface-effect: contrast;
   --cell-scrollbar-thumb: #ffffff;
   --cell-scrollbar-track: #888888;
+  --cell-markdown-accent: #58a6ff;
+  --cell-markdown-link: #58a6ff;
+  --cell-markdown-quote: #3fb950;
+  --cell-markdown-muted: #8b949e;
+  --cell-markdown-code-foreground: #58a6ff;
+  --cell-markdown-code-background: #161b22;
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }

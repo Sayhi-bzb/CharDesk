@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CellUiRuntime, FocusManager, Markdown, Root, ScrollArea, auditSemanticSnapshot, commandForInput, createCellRangeSnapshot, createCellUiRenderFrame, createKeyInput, extractCellRange, resolveCellUiTheme } from "./index.js";
 import { parseCellMarkdown } from "./markdown.js";
+import { CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME } from "./theme.js";
 
 describe("Markdown typography", () => {
   it("parses common GFM without executing HTML or unsafe links", () => {
@@ -88,7 +89,8 @@ describe("Markdown typography", () => {
     expect(frame.buffer.toText({ trimEnd: true }).split("\n").slice(0, 7)).toEqual(source.split("\n"));
     const styled = (x: number, y: number) => frame.buffer.get(x, y)!.style;
     expect(styled(0, 0).backgroundColor).toBeUndefined();
-    expect(styled(1, 0)).toMatchObject({ color: "#FFFFFF", backgroundColor: "#000000" });
+    expect(styled(1, 0)).toMatchObject({ color: CLASSIC_MAC_LIGHT_THEME.markdownColors.codeForeground,
+      backgroundColor: CLASSIC_MAC_LIGHT_THEME.markdownColors.codeBackground });
     expect(styled(12, 0).backgroundColor).toBeUndefined();
     expect(styled(0, 1).strike).not.toBe(true);
     expect(styled(2, 1).strike).toBe(true);
@@ -123,12 +125,13 @@ describe("Markdown typography", () => {
     expect(visual[0]).toContain("| Left | Right |");
     expect(visual[2]).toContain("| x    |  long |");
     expect(visual[4]).toBe(`${" ".repeat(14)}---`);
+    expect(frame.buffer.get(14, 4)?.style.color).toBe(CLASSIC_MAC_LIGHT_THEME.markdownColors.muted);
     expect(createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 31, y: 4 })?.text)
       .toBe(source);
     runtime.dispose();
   });
 
-  it("keeps source whitespace in a partial range and inverts inline code in dark mode", () => {
+  it("keeps source whitespace in a partial range and themes inline code in dark mode", () => {
     const theme = resolveCellUiTheme({ background: "#000000", foreground: "#FFFFFF" });
     const source = "| 中 | value |\n| :- | --: |\n| x | y |\n\n---  \n`code`";
     const runtime = new CellUiRuntime({ viewport: { width: 24, height: 6 }, theme });
@@ -137,7 +140,34 @@ describe("Markdown typography", () => {
     const partial = createCellRangeSnapshot(frame.buffer, { x: 0, y: 2 }, { x: 11, y: 2 })?.text;
     expect(partial).toBe("| x | y");
     expect(frame.buffer.get(0, 5)?.style.backgroundColor).toBeUndefined();
-    expect(frame.buffer.get(1, 5)?.style).toMatchObject({ color: "#000000", backgroundColor: "#FFFFFF" });
+    expect(frame.buffer.get(1, 5)?.style).toMatchObject({
+      color: CLASSIC_MAC_DARK_THEME.markdownColors.codeForeground,
+      backgroundColor: CLASSIC_MAC_DARK_THEME.markdownColors.codeBackground,
+    });
+    runtime.dispose();
+  });
+
+  it("colors Markdown roles without coloring prose or changing copied source", () => {
+    const source = "# Heading\n> Quote\n- Item\n[Guide](https://example.com)\n\n| Name | Value |\n| --- | --- |\n| A | B |";
+    const runtime = new CellUiRuntime({ viewport: { width: 48, height: 8 } });
+    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
+    const cell = (x: number, y: number) => frame.buffer.get(x, y)!;
+    const colors = CLASSIC_MAC_LIGHT_THEME.markdownColors;
+    expect(cell(0, 0).style.color).toBe(colors.accent);
+    expect(cell(2, 0).style.color).toBeUndefined();
+    expect(cell(0, 1).style.color).toBe(colors.quote);
+    expect(cell(2, 1).style.color).toBeUndefined();
+    expect(cell(0, 2).style.color).toBe(colors.muted);
+    expect(cell(1, 3).style.color).toBe(colors.link);
+    expect(cell(0, 5).style.color).toBe(colors.muted);
+    expect(cell(2, 5).style.bold).toBe(true);
+    expect(cell(2, 5).style.color).toBeUndefined();
+    expect(cell(2, 6).style.color).toBe(colors.muted);
+    expect(createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 47, y: 7 })?.text).toBe(source);
+    runtime.setTheme({ markdownColors: { link: "#123456", codeBackground: "#eeeeee" } });
+    const rethemed = runtime.render(<Root><Markdown source={source} /></Root>);
+    expect(rethemed.buffer.get(1, 3)?.style.color).toBe("#123456");
+    expect(rethemed.buffer.get(0, 0)?.style.color).toBe(colors.accent);
     runtime.dispose();
   });
 
@@ -165,6 +195,8 @@ describe("Markdown typography", () => {
     expect(cell(0, 1).style.bold).not.toBe(true);
     expect(cell(3, 1).style).toMatchObject({ bold: true, italic: true });
     expect(cell(0, 3).style.italic).not.toBe(true);
+    expect(cell(0, 2).style.color).toBe(CLASSIC_MAC_LIGHT_THEME.markdownColors.muted);
+    expect(cell(0, 3).style.color).toBeUndefined();
     expect(frame.buffer.toText({ trimEnd: true }).split("\n").slice(0, 5)).toEqual(source.split("\n"));
     runtime.dispose();
   });

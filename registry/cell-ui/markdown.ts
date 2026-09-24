@@ -2,6 +2,7 @@ import { Lexer, marked, type Token } from "marked";
 
 export type MarkdownInline = Readonly<{
   text: string;
+  tone?: "accent" | "link" | "quote" | "muted";
   bold?: boolean;
   italic?: boolean;
   strike?: boolean;
@@ -24,11 +25,11 @@ const safeHref = (href: string): string | undefined => {
   return /^[a-z][a-z\d+.-]*:/iu.test(value) ? undefined : value;
 };
 
-type Decoration = Pick<MarkdownInline, "bold" | "italic" | "strike" | "code" | "underline" | "href">;
+type Decoration = Pick<MarkdownInline, "bold" | "italic" | "strike" | "code" | "tone" | "underline" | "href">;
 type Span = Readonly<{ start: number; end: number; decoration: Decoration }>;
 const sameDecoration = (left: Decoration, right: Decoration) => left.bold === right.bold
   && left.italic === right.italic && left.strike === right.strike && left.code === right.code
-  && left.underline === right.underline && left.href === right.href;
+  && left.tone === right.tone && left.underline === right.underline && left.href === right.href;
 
 const inlineSpans = (source: string): Span[] => {
   const spans: Span[] = [];
@@ -45,7 +46,7 @@ const inlineSpans = (source: string): Span[] => {
       else if (token.type === "del" && children) visit(children, token.raw, start, { ...decoration, strike: true });
       else if (token.type === "link" && children) {
         const href = safeHref(token.href);
-        visit(children, token.raw, start, href ? { ...decoration, underline: true, href } : decoration);
+        visit(children, token.raw, start, href ? { ...decoration, tone: "link", underline: true, href } : decoration);
       } else if (children) visit(children, token.raw, start, decoration);
       else if (token.type === "codespan") {
         const inner = token.raw.indexOf(token.text);
@@ -62,7 +63,8 @@ const inlineSpans = (source: string): Span[] => {
 
 const styledLine = (text: string, kind: MarkdownSourceLine["kind"]): readonly MarkdownInline[] => {
   if (!text) return [{ text: " " }];
-  if (kind === "code" || kind === "rule") return [{ text }];
+  if (kind === "code" || kind === "rule") return [{ text,
+    ...(/^(?: {0,3})(?:`{3,}|~{3,})/u.test(text) || kind === "rule" ? { tone: "muted" as const } : {}) }];
   const headingEnd = kind === "heading" ? /^(?: {0,3}#{1,6}\s+)/u.exec(text)?.[0].length ?? 0 : 0;
   const headingClose = headingEnd ? /\s+#+\s*$/u.exec(text) : null;
   const headingContentEnd = headingClose?.index ?? text.length;
@@ -73,6 +75,24 @@ const styledLine = (text: string, kind: MarkdownSourceLine["kind"]): readonly Ma
       styles[index] = { ...styles[index], ...decoration,
         ...(headingEnd && index < headingContentEnd ? { bold: true } : {}) };
     }
+  }
+  const mark = (start: number, end: number, tone: NonNullable<MarkdownInline["tone"]>) => {
+    for (let index = start; index < end; index++) styles[index] = { ...styles[index], tone };
+  };
+  if (kind === "heading") {
+    const marker = /^ {0,3}(#{1,6})(?=\s)/u.exec(text);
+    if (marker) mark(marker[0].length - marker[1]!.length, marker[0].length, "accent");
+  }
+  if (kind === "quote") {
+    const prefix = /^(?: {0,3}> ?)+/u.exec(text)?.[0] ?? "";
+    for (let index = 0; index < prefix.length; index++) if (prefix[index] === ">") mark(index, index + 1, "quote");
+  }
+  if (kind === "list") {
+    const marker = /^\s*(?:[-+*]|\d+[.)])(?=\s)/u.exec(text);
+    if (marker) mark(marker[0].length - marker[0].trimStart().length, marker[0].length, "muted");
+  }
+  if (kind === "table") {
+    for (const match of text.matchAll(/(?<!\\)\|/gu)) mark(match.index, match.index + 1, "muted");
   }
   const content: MarkdownInline[] = [];
   for (let start = 0; start < text.length;) {

@@ -29,7 +29,9 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   expect(probe.cells.find((cell) => cell.x === inlineCodeX && cell.y === inlineCodeRow)?.style.backgroundColor)
     .toBeUndefined();
   expect(probe.cells.find((cell) => cell.x === inlineCodeX + 1 && cell.y === inlineCodeRow)?.style.backgroundColor)
-    .toBe("rgb(0, 0, 0)");
+    .toBe("rgb(246, 248, 250)");
+  expect(probe.cells.find((cell) => cell.x === 0 && cell.y === 0)?.style.color)
+    .toBe("rgb(9, 105, 218)");
   const link = surface.getByRole("link", { name: /Philosophy/u });
   await expect(link).toHaveAttribute("data-href", "#/guides/philosophy");
   await expect(link).toHaveAttribute("href", "#/guides/philosophy");
@@ -53,6 +55,9 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   await expect(page).toHaveURL(/#\/guides\/markdown$/u);
   await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).click();
   expect((await readCellProbe(surface)).text).toContain("[Philosophy](#/guides/philosophy)");
+  const darkProbe = await readCellProbe(surface);
+  expect(darkProbe.cells.find((cell) => cell.x === inlineCodeX + 1 && cell.y === inlineCodeRow)?.style.backgroundColor)
+    .toBe("rgb(22, 27, 34)");
   const selectionStart = await cellPoint(surface, 0, 0);
   const selectionEnd = await cellPoint(surface, 25, linkCell!.y);
   await page.keyboard.down("Alt");

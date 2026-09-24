@@ -14,6 +14,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.href === right.href
   && left.markdownRole === right.markdownRole
   && left.markdownCode === right.markdownCode
+  && left.markdownTone === right.markdownTone
   && left.markdownSource === right.markdownSource
   && left.markdownLayoutOnly === right.markdownLayoutOnly
   && left.markdownCenteredText === right.markdownCenteredText
@@ -135,6 +136,7 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.frame !== after.frame
   || before.borderShape !== after.borderShape
   || before.markdownCode !== after.markdownCode
+  || before.markdownTone !== after.markdownTone
   || before.markdownSource !== after.markdownSource
   || before.markdownLayoutOnly !== after.markdownLayoutOnly
   || before.markdownCenteredText !== after.markdownCenteredText

@@ -182,6 +182,11 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     };
     return finish(tabStyle);
   }
+  const markdownStyle: CellTextStyle = {
+    ...(node.markdownTone ? { color: theme.markdownColors[node.markdownTone] } : {}),
+    ...(node.markdownCode ? { color: theme.markdownColors.codeForeground,
+      backgroundColor: theme.markdownColors.codeBackground } : {}),
+  };
   const base = solid
     ? disabled ? theme.surfaceStyle : theme.buttonSolidStyle
     : owner?.kind === "button" && owner.buttonVariant === "surface"
@@ -189,13 +194,12 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     : surface ?? {};
   if (owner && isPrimitiveControlKind(owner.kind)) {
     if (rule.region === "thumb") {
-      const appearance = resolveThumbAppearance({ ...base, ...node.textStyle }, projection, theme);
+      const appearance = resolveThumbAppearance({ ...base, ...node.textStyle, ...markdownStyle }, projection, theme);
       return finish(appearance.style, appearance.thumb);
     }
-    return finish(resolvePrimitiveAppearance({ ...base, ...node.textStyle }, projection, theme));
+    return finish(resolvePrimitiveAppearance({ ...base, ...node.textStyle, ...markdownStyle }, projection, theme));
   }
-  const style = resolveCellStateStyle({ ...base, ...node.textStyle,
-    ...(node.markdownCode ? { color: theme.background, backgroundColor: theme.foreground } : {}) }, {
+  const style = resolveCellStateStyle({ ...base, ...node.textStyle, ...markdownStyle }, {
     focused,
     selected: owner?.selected,
     hovered: rule.region === "control" ? owner?.hovered : false,

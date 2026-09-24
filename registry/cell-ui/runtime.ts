@@ -14,7 +14,7 @@ import { createSemanticSnapshot } from "./semantics.js";
 import { reconcileWidgetTree, sameWidgetValue } from "./tree.js";
 import { classifyWidgetChange } from "./widget-change.js";
 import { createCellTextLayout } from "./text.js";
-import { resolveCellUiTheme, type CellUiTheme } from "./theme.js";
+import { resolveCellUiTheme, type CellUiTheme, type CellUiThemeInput } from "./theme.js";
 import { resolveCellUiPresentation, type CellUiPresentation } from "./presentation.js";
 import {
   resolveCellUiRecipe,
@@ -129,7 +129,7 @@ export type CellUiRuntimeOptions = Readonly<{
   overlayViewport?: CellSize;
   onFrame?: (frame: FrameSnapshot) => void;
   layoutEngine?: LayoutEngine;
-  theme?: Partial<CellUiTheme>;
+  theme?: CellUiThemeInput;
   recipe?: CellUiRecipe;
   presentation?: CellUiPresentation;
   feedback?: Partial<CellFeedbackConfig>;
@@ -433,7 +433,7 @@ export class CellUiRuntime {
     return frame;
   }
 
-  setTheme(theme?: Partial<CellUiTheme>): void {
+  setTheme(theme?: CellUiThemeInput): void {
     if (this.#disposed) throw new Error("CellUiRuntime has been disposed.");
     const next = resolveCellUiTheme(theme);
     if (sameWidgetValue(this.#theme, next)) return;
