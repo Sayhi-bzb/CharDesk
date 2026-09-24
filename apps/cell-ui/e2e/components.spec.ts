@@ -63,7 +63,8 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   const toc = page.getByRole("navigation", { name: "On This Page" });
   await expect(toc.getByRole("link")).toHaveText(["Installation", "Usage", "View source", "API"]);
   await expect(toc.getByRole("link", { name: "Installation" })).toHaveAttribute("href", "#/components/button?section=installation");
-  await expect(page.locator("#installation-command-panel > p")).toHaveCount(0);
+  await expect(page.getByRole("tablist", { name: "Installation method" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Manual installation" })).toBeVisible();
   await expect(page.getByText("npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui")).toBeVisible();
   await expect(page.locator("#usage + .docs-code")).toContainText("@/lib/cell-ui/browser");
   await expect(page.locator("#usage + .docs-code")).not.toContainText("@chardesk/cell-ui");
@@ -159,7 +160,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });
 
-test("installation tabs expose copyable package-manager commands and the manual guide", async ({ page }) => {
+test("installation shows copyable package-manager commands and the manual guide", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -168,10 +169,12 @@ test("installation tabs expose copyable package-manager commands and the manual 
   });
   await page.goto("/#/components/button");
   const installation = page.locator("#installation").locator("xpath=..");
-  const methods = installation.getByRole("tablist", { name: "Installation method" });
   const managers = installation.getByRole("tablist", { name: "Package manager" });
-  await expect(methods.getByRole("tab", { name: "Command" })).toHaveAttribute("aria-selected", "true");
+  await expect(installation.getByRole("tablist")).toHaveCount(1);
   await expect(managers.getByRole("tab", { name: "npm", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(installation.getByRole("link", { name: "Manual installation" })).toHaveAttribute(
+    "href", "#/guides/installation?section=manual",
+  );
   const commands = {
     pnpm: "pnpm dlx",
     npm: "npx",
@@ -189,14 +192,7 @@ test("installation tabs expose copyable package-manager commands and the manual 
   await managers.getByRole("tab", { name: "bun" }).focus();
   await page.keyboard.press("Home");
   await expect(managers.getByRole("tab", { name: "pnpm" })).toHaveAttribute("aria-selected", "true");
-  await methods.getByRole("tab", { name: "Manual" }).click();
-  await expect(installation.getByRole("link", { name: "manual installation guide" })).toHaveAttribute(
-    "href", "#/guides/installation?section=manual",
-  );
-  await expect(installation.getByRole("tablist", { name: "Package manager" })).toBeHidden();
-  await methods.getByRole("tab", { name: "Manual" }).focus();
-  await page.keyboard.press("ArrowLeft");
-  await expect(methods.getByRole("tab", { name: "Command" })).toHaveAttribute("aria-selected", "true");
+  await expect(installation.getByRole("link", { name: "Manual installation" })).toBeVisible();
 });
 
 test("on-page navigation survives direct load, component changes, and browser history", async ({ page }) => {
@@ -250,6 +246,25 @@ test("guide sections, direct links, and agent Markdown stay addressable", async 
     const response = await request.get(`/components/${slug}.md`);
     expect(response.ok()).toBe(true);
     expect(await response.text()).toContain("## API");
+  }
+});
+
+test("guide prose and code use the same content width", async ({ page }) => {
+  await page.goto("/#/guides/integration");
+  const section = page.locator("#surface").locator("xpath=..");
+  const prose = section.locator(":scope > p");
+  const code = section.locator(":scope > .docs-code");
+  await expect(prose).toContainText("CellSurface retains the runtime");
+  for (const width of [1280, 390, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    const proseBounds = await prose.boundingBox();
+    const codeBounds = await code.boundingBox();
+    expect(proseBounds).not.toBeNull();
+    expect(codeBounds).not.toBeNull();
+    expect(proseBounds!.x).toBeCloseTo(codeBounds!.x, 4);
+    expect(proseBounds!.width).toBeCloseTo(codeBounds!.width, 4);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await expect(code.locator("pre")).toHaveCSS("overflow-x", "auto");
   }
 });
 

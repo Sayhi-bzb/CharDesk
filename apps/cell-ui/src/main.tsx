@@ -153,28 +153,19 @@ export function Preview({ document }: Readonly<{ document: ComponentDocument }>)
 }
 
 export function Installation() {
-  const [method, setMethod] = useState<"command" | "manual">("command");
   const [manager, setManager] = useState<PackageManager>("npm");
   return (
     <section className="docs-section" aria-labelledby="installation">
       <h2 id="installation">Installation</h2>
-      <div className="docs-tabs" role="tablist" aria-label="Installation method" onKeyDown={handleTabKeyDown}>
-        <button id="installation-command-tab" type="button" role="tab" aria-selected={method === "command"} aria-controls="installation-command-panel" tabIndex={method === "command" ? 0 : -1} onClick={() => setMethod("command")}>Command</button>
-        <button id="installation-manual-tab" type="button" role="tab" aria-selected={method === "manual"} aria-controls="installation-manual-panel" tabIndex={method === "manual" ? 0 : -1} onClick={() => setMethod("manual")}>Manual</button>
+      <div className="docs-tabs" role="tablist" aria-label="Package manager" onKeyDown={handleTabKeyDown}>
+        {packageManagers.map((name) => (
+          <button key={name} type="button" role="tab" aria-selected={manager === name} aria-controls="installation-command" tabIndex={manager === name ? 0 : -1} onClick={() => setManager(name)}>{name}</button>
+        ))}
       </div>
-      <div id="installation-command-panel" role="tabpanel" aria-labelledby="installation-command-tab" hidden={method !== "command"}>
-        <div className="docs-tabs" role="tablist" aria-label="Package manager" onKeyDown={handleTabKeyDown}>
-          {packageManagers.map((name) => (
-            <button key={name} type="button" role="tab" aria-selected={manager === name} aria-controls="installation-command" tabIndex={manager === name ? 0 : -1} onClick={() => setManager(name)}>{name}</button>
-          ))}
-        </div>
-        <div id="installation-command" role="tabpanel" aria-label={`${manager} installation command`}>
-          <CodeBlock>{installationCommands[manager]}</CodeBlock>
-        </div>
+      <div id="installation-command" role="tabpanel" aria-label={`${manager} installation command`}>
+        <CodeBlock>{installationCommands[manager]}</CodeBlock>
       </div>
-      <div id="installation-manual-panel" role="tabpanel" aria-labelledby="installation-manual-tab" hidden={method !== "manual"}>
-        <p>See the <a href={manualInstallationGuide}>manual installation guide</a>.</p>
-      </div>
+      <p><a href={manualInstallationGuide}>Manual installation</a></p>
     </section>
   );
 }
