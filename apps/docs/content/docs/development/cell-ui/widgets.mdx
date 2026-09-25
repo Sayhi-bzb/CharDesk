@@ -79,7 +79,7 @@ Button、Badge、Checkbox、Toggle、RadioItem、Select Trigger／Item、Combobo
 - Tab/Shift+Tab 在当前焦点 scope 内遍历可用控件；RadioGroup 折叠为已选可用项或首个可用项一个入口，到 Surface 边界交还浏览器。
 - Grid 导航与入口选择由 `grid-navigation.ts` 拥有，FocusManager 仅保存每个 Grid 的目标 ID，卸载清理。禁用／删除焦点按入口规则收敛，不改写业务选择；全部 disabled 时跳过。Semantic DOM 保留 Surface 管理的程序化焦点，不维护另一套 Tab 顺序。Cell Range 与 Grid selection 独立，范围拖动不激活格子，复制包含可见 `✓` 和边框。
 - 嵌套 ScrollArea 的 wheel 从内向外寻找可滚动的 viewport；最外层到边界后仍消费 wheel。区域外页面可滚动，Ctrl+wheel 留给浏览器。父级只把内层 ScrollArea 的 viewport 计入自身内容尺寸；内容收缩后钳制 offset 并发出 `scroll` 命令同步受控状态。焦点命令的 `reveal` 保留最近一层，跨层时 `reveals` 按内到外列出全部目标和 offset。
-- 横纵 scrollbar 可相互缩小 viewport；可见性在一次 geometry 计算中收敛。thumb 使用半 Cell 精度，drag 以按下时 offset/range/track 为锚。
+- 横纵 scrollbar 可相互缩小 viewport；可见性在一次 geometry 计算中收敛。内容 viewport 保留 padding，rail 独立延伸到边框内侧（无框时为表面边缘），端点 thumb 不留空 Cell；双轴交角由 rail 共享。thumb 使用半 Cell 精度，drag 以按下时 offset/range/track 为锚。
 - `text` 的竖向 rail 使用 Unicode `🮐` 轨道、`🮑/🮒` 半格 thumb 边缘；`rich` 与横向 rail 保持原字符配方。共享 painter 按实际 Cell 背景解析轨道和 thumb 的可见颜色：token 对比足够时保留，焦点 TextArea 的 thumb 跟随反色文字。字符与交互几何不变，轨道、thumb 与边缘均保留为可复制的 `Cell.text`。
 - scrolling 不改变 selection；Virtual List 只在 focused row 离开 viewport 时把 focus 收敛到可见可用项。
 

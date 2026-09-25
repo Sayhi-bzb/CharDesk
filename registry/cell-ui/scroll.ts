@@ -44,8 +44,9 @@ export const computeScrollMetrics = (
   extent: CellSize,
   offset: CellPoint,
   rails: Readonly<{ x: boolean; y: boolean }>,
-  fitWidth = false
+  options: Readonly<{ fitWidth?: boolean; railBounds?: CellRect }> = {},
 ): ScrollMetrics => {
+  const { fitWidth = false, railBounds = contentBounds } = options;
   let horizontal = false;
   let vertical = false;
   for (let pass = 0; pass < 3; pass += 1) {
@@ -68,10 +69,12 @@ export const computeScrollMetrics = (
     y: Math.max(0, Math.min(maxOffset.y, offset.y)),
   };
   const horizontalTrack = horizontal
-    ? { x: viewport.x, y: viewport.y + viewport.height, width: viewport.width, height: 1 }
+    ? { x: railBounds.x, y: railBounds.y + railBounds.height - 1,
+        width: Math.max(0, railBounds.width - (vertical ? 1 : 0)), height: 1 }
     : null;
   const verticalTrack = vertical
-    ? { x: viewport.x + viewport.width, y: viewport.y, width: 1, height: viewport.height }
+    ? { x: railBounds.x + railBounds.width - 1, y: railBounds.y,
+        width: 1, height: Math.max(0, railBounds.height - (horizontal ? 1 : 0)) }
     : null;
   const horizontalThumbAxis = horizontalTrack
     ? thumbAxis(horizontalTrack.width, viewport.width, extent.width, effectiveOffset.x)
@@ -94,7 +97,8 @@ export const computeScrollMetrics = (
       ? { ...verticalTrack, y: verticalTrack.y + thumbCellSpan(verticalThumbAxis).start, height: thumbCellSpan(verticalThumbAxis).length }
       : null,
     corner: horizontal && vertical
-      ? { x: viewport.x + viewport.width, y: viewport.y + viewport.height, width: 1, height: 1 }
+      ? { x: railBounds.x + railBounds.width - 1,
+          y: railBounds.y + railBounds.height - 1, width: 1, height: 1 }
       : null,
   };
 };

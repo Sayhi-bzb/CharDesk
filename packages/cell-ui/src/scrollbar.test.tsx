@@ -198,9 +198,77 @@ it("keeps user padding and border separate from the conditional rail inset", () 
   expect(layout.paddingInsets).toMatchObject({ left: 1, right: 3 });
   expect(layout.railInsets).toEqual({ right: 1, bottom: 0 });
   expect(metrics.viewport.width).toBe(layout.contentRect.width);
-  expect(first.x + first.width).toBe(metrics.verticalTrack!.x);
-  expect(frame.buffer.get(metrics.verticalTrack!.x - 1, first.y)).toMatchObject({ ownerId: "row-0", text: "]" });
+  expect(metrics.verticalTrack!.x - (first.x + first.width)).toBe(2);
+  expect(metrics.verticalTrack!.x).toBe(12);
+  expect(frame.buffer.get(metrics.verticalTrack!.x, first.y)?.ownerId).toBe("scroll");
   expect(frame.buffer.get(13, 0)?.text).toBe("┐");
+  runtime.dispose();
+});
+
+it.each(["rich", "text"] as const)("TextArea rails touch the inner edge without removing content insets (%s)", (presentation) => {
+  const runtime = new CellUiRuntime({ viewport: { width: 14, height: 7 }, presentation });
+  const editor = new CellTextEditor({ value: Array.from({ length: 12 }, () => "x".repeat(30)).join("\n"), multiline: true });
+  const view = (scrollX = 0, scrollY = 0) => <Root><TextArea id="area" frame="bordered"
+    state={{ ...editor.snapshot(), scrollX, scrollY }}
+    style={{ width: 14, height: 7, paddingLeft: 1, paddingRight: 2 }} /></Root>;
+  const start = runtime.render(view(), { focusedId: "area", activeFocusId: "area" });
+  const entry = start.scene.entries.get("area")!;
+  const { viewport, horizontalTrack, verticalTrack, horizontalThumb, verticalThumb, corner, maxOffset } = entry.scrollMetrics!;
+  expect(viewport.x).toBeGreaterThan(entry.decorationBounds.x);
+  expect(horizontalTrack).toMatchObject({ x: entry.decorationBounds.x,
+    y: entry.decorationBounds.y + entry.decorationBounds.height - 1 });
+  expect(verticalTrack).toMatchObject({ x: entry.decorationBounds.x + entry.decorationBounds.width - 1,
+    y: entry.decorationBounds.y });
+  expect(horizontalThumb!.x).toBe(horizontalTrack!.x);
+  expect(verticalThumb!.y).toBe(verticalTrack!.y);
+  expect(corner).toMatchObject({ x: verticalTrack!.x, y: horizontalTrack!.y });
+  expect(start.buffer.get(horizontalTrack!.x - 1, horizontalTrack!.y)?.text).toBe("│");
+  expect(start.buffer.get(horizontalTrack!.x, horizontalTrack!.y)?.text).toBe("█");
+  expect(start.buffer.get(verticalTrack!.x, verticalTrack!.y - 1)?.text).toBe("─");
+  expect(start.buffer.get(verticalTrack!.x, verticalTrack!.y)?.text).toBe("█");
+  const end = runtime.render(view(maxOffset.x, maxOffset.y),
+    { focusedId: "area", activeFocusId: "area" }).scene.entries.get("area")!.scrollMetrics!;
+  expect(end.horizontalThumb!.x + end.horizontalThumb!.width).toBe(end.horizontalTrack!.x + end.horizontalTrack!.width);
+  expect(end.verticalThumb!.y + end.verticalThumb!.height).toBe(end.verticalTrack!.y + end.verticalTrack!.height);
+  runtime.dispose();
+});
+
+it("surface TextArea rails reach the surface edge while text keeps its inset", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 14, height: 7 } });
+  const editor = new CellTextEditor({ value: Array.from({ length: 12 }, () => "x".repeat(30)).join("\n"), multiline: true });
+  const frame = runtime.render(<Root><TextArea id="area" variant="surface" state={editor.snapshot()}
+    style={{ width: 14, height: 7 }} /></Root>, { focusedId: "area", activeFocusId: "area" });
+  const entry = frame.scene.entries.get("area")!;
+  const metrics = entry.scrollMetrics!;
+  expect(entry.contentBounds.x).toBe(entry.decorationBounds.x + 1);
+  expect(metrics.horizontalTrack!.x).toBe(entry.decorationBounds.x);
+  expect(metrics.verticalTrack!.x).toBe(entry.decorationBounds.x + entry.decorationBounds.width - 1);
+  expect(frame.buffer.get(metrics.horizontalTrack!.x, metrics.horizontalTrack!.y)?.text).toBe("█");
+  runtime.dispose();
+});
+
+it("padded ScrollArea uses the inner frame edge for both rails and their corner", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 14, height: 8 } });
+  const view = (scrollX = 0, scrollY = 0) => <Root><ScrollArea id="scroll" frame="bordered"
+    scrollX={scrollX} scrollY={scrollY}
+    style={{ width: 14, height: 8, paddingLeft: 1, paddingRight: 2, paddingTop: 1, paddingBottom: 1 }}>
+    <Box style={{ width: 30, height: 20 }} />
+  </ScrollArea></Root>;
+  const start = runtime.render(view());
+  const entry = start.scene.entries.get("scroll")!;
+  const metrics = entry.scrollMetrics!;
+  expect(metrics.viewport.x).toBeGreaterThan(entry.decorationBounds.x);
+  expect(metrics.viewport.y).toBeGreaterThan(entry.decorationBounds.y);
+  expect(metrics.horizontalTrack).toMatchObject({ x: entry.decorationBounds.x,
+    y: entry.decorationBounds.y + entry.decorationBounds.height - 1 });
+  expect(metrics.verticalTrack).toMatchObject({ x: entry.decorationBounds.x + entry.decorationBounds.width - 1,
+    y: entry.decorationBounds.y });
+  expect(metrics.corner).toMatchObject({ x: metrics.verticalTrack!.x, y: metrics.horizontalTrack!.y });
+  expect(metrics.horizontalThumb!.x).toBe(metrics.horizontalTrack!.x);
+  expect(metrics.verticalThumb!.y).toBe(metrics.verticalTrack!.y);
+  const end = runtime.render(view(metrics.maxOffset.x, metrics.maxOffset.y)).scene.entries.get("scroll")!.scrollMetrics!;
+  expect(end.horizontalThumb!.x + end.horizontalThumb!.width).toBe(end.horizontalTrack!.x + end.horizontalTrack!.width);
+  expect(end.verticalThumb!.y + end.verticalThumb!.height).toBe(end.verticalTrack!.y + end.verticalTrack!.height);
   runtime.dispose();
 });
 
@@ -208,10 +276,10 @@ it.each(["select", "combobox"] as const)("reserves the %s popup rail before item
   const runtime = new CellUiRuntime({ viewport: { width: 16, height: 7 }, presentation: "text" });
   const items = Array.from({ length: 8 }, (_, index) => ({ id: `item-${index}`, text: `Option ${index}` }));
   const content = kind === "select"
-    ? <SelectContent id="content" style={{ width: 12, height: 4 }}>
+    ? <SelectContent id="content" style={{ width: 12, height: 4, paddingRight: 1 }}>
         {items.map((item) => <SelectItem id={item.id} key={item.id}><Text>{item.text}</Text></SelectItem>)}
       </SelectContent>
-    : <ComboboxContent id="content" style={{ width: 12, height: 4 }}>
+    : <ComboboxContent id="content" style={{ width: 12, height: 4, paddingRight: 1 }}>
         {items.map((item) => <ComboboxItem id={item.id} key={item.id}><Text>{item.text}</Text></ComboboxItem>)}
       </ComboboxContent>;
   const frame = runtime.render(kind === "select"
@@ -227,7 +295,9 @@ it.each(["select", "combobox"] as const)("reserves the %s popup rail before item
   const track = metrics.verticalTrack!;
   const first = frame.scene.entries.get("item-0")!.layoutBounds;
   expect(frame.layout.entries.get("content")?.railInsets).toEqual({ right: 1, bottom: 0 });
-  expect(first.x + first.width).toBe(track.x);
+  expect(track.x - (first.x + first.width)).toBe(1);
+  const decoration = frame.scene.entries.get("content")!.decorationBounds;
+  expect(track.x).toBe(decoration.x + decoration.width - 1);
   expect(frame.buffer.get(track.x, first.y)?.ownerId).toBe("content");
   runtime.dispose();
 });

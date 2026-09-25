@@ -212,6 +212,24 @@ for (const scheme of ["light", "dark"] as const) {
   });
 }
 
+test("surface TextArea thumb reaches the left edge while content remains inset", async ({ page }) => {
+  await page.goto("/#/components/text-area");
+  const surface = page.locator('[data-cell-probe="component-text-area"]');
+  const editor = surface.getByRole("textbox", { name: "Notes" });
+  await editor.fill(Array.from({ length: 12 }, () => "x".repeat(40)).join("\n"));
+  await editor.press("Home");
+  await expect.poll(async () => {
+    const probe = await readCellProbe(surface);
+    const bounds = ownerBounds(probe, "notes");
+    const thumbY = bounds.y + bounds.height - 1;
+    return {
+      edge: probe.cells.find((cell) => cell.ownerId === "notes" && cell.x === bounds.x && cell.y === thumbY)?.text,
+      contentInset: probe.cells.some((cell) => cell.ownerId === "notes" && cell.text === "x"
+        && cell.x > bounds.x && cell.y < thumbY),
+    };
+  }).toEqual({ edge: "█", contentInset: true });
+});
+
 test("TextArea drag selection contrasts with its focused surface and hides on blur", async ({ page }) => {
   await page.goto("/#/components/text-area");
   const surface = page.locator('[data-cell-probe="component-text-area"]');

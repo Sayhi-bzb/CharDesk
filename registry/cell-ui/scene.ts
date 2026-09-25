@@ -33,14 +33,16 @@ const scrollMetricsFor = (
   tree: WidgetTree,
   layout: LayoutSnapshot,
   id: string,
-  contentBounds: CellRect
+  contentBounds: CellRect,
+  railBounds: CellRect,
 ): ScrollMetrics | null => {
   const node = tree.nodes.get(id);
   const entry = layout.entries.get(id);
   if (!node || !entry) return null;
   if (node.textEditor) {
     const visible = node.kind === "text-area";
-    return computeScrollMetrics(contentBounds, measureCellText(node.textEditor), scrollOffsetFor(node), { x: visible, y: visible });
+    return computeScrollMetrics(contentBounds, measureCellText(node.textEditor), scrollOffsetFor(node),
+      { x: visible, y: visible }, { railBounds });
   }
   if (node.kind !== "scroll-area" && node.kind !== "select-content" && node.kind !== "combobox-content") return null;
   let explicitHorizontalExtent = false;
@@ -79,7 +81,7 @@ const scrollMetricsFor = (
     },
     node.scrollOffset,
     { x: !selectContent && explicitHorizontalExtent, y: true },
-    selectContent || !explicitHorizontalExtent,
+    { fitWidth: selectContent || !explicitHorizontalExtent, railBounds },
   );
 };
 
@@ -205,7 +207,7 @@ export const composeScene = (
       ),
     };
     const outerClip = intersectSceneRects(clip, bounds);
-    const scrollMetrics = scrollMetricsFor(tree, layout, id, contentBounds);
+    const scrollMetrics = scrollMetricsFor(tree, layout, id, contentBounds, decorationBounds);
     const contentClip = intersectSceneRects(outerClip, scrollMetrics?.viewport ?? contentBounds);
     const entry: SceneEntry = {
       id,
