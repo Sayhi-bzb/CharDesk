@@ -55,6 +55,7 @@ test("Button content choices keep Cell geometry, semantics, and input behavior",
   await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
   await surface.getByRole("checkbox", { name: "disabled" }).evaluate((element: HTMLElement) => element.click());
   await expect(save).toHaveAttribute("aria-disabled", "true");
+  await expect.poll(async () => (await buttonCells()).some((cell) => cell.text === saveGlyph)).toBe(true);
   const outlinedIcon = (await buttonCells()).find((cell) => cell.text === saveGlyph)!;
   const outlinedPoint = await cellPoint(surface, outlinedIcon.x, outlinedIcon.y);
   await page.mouse.move(outlinedPoint.x, outlinedPoint.y);
