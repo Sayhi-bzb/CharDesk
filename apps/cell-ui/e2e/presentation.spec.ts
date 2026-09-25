@@ -147,6 +147,71 @@ test("TextArea keeps variant and Rich frame choices across presentations", async
   expect(rich.cells.some((cell) => cell.ownerId === "notes" && cell.text === "╭")).toBe(true);
 });
 
+test("TextArea previews its beginning on blur and restores editing context by focus method", async ({ page }) => {
+  for (const presentation of ["Rich", "Text"] as const) {
+    await page.goto("/#/components/text-area");
+    if (presentation === "Text") await choosePresentation(page, "Text");
+    const surface = page.locator('[data-cell-probe="component-text-area"]');
+    const editor = surface.getByRole("textbox", { name: "Notes" });
+    const value = Array.from({ length: 15 }, (_, index) => `Line-${String(index).padStart(2, "0")}`).join("\n");
+    await editor.fill(value);
+    await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Line-14");
+    await surface.getByRole("button", { name: "variant", exact: true }).focus();
+    await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Line-00");
+    expect((await readCellProbe(surface)).text).not.toContain("Line-14");
+    await editor.focus();
+    await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Line-14");
+    await surface.getByRole("button", { name: "variant", exact: true }).focus();
+    const idleFirst = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "notes" && cell.text === "L")!;
+    const idlePoint = await cellPoint(surface, idleFirst.x, idleFirst.y);
+    await page.mouse.move(idlePoint.x, idlePoint.y);
+    await page.mouse.wheel(0, 100);
+    await expect.poll(async () => (await readCellProbe(surface)).cells
+      .filter((cell) => cell.ownerId === "notes" && cell.y === idleFirst.y && cell.x >= idleFirst.x)
+      .sort((left, right) => left.x - right.x)
+      .map((cell) => cell.text).join("")).toContain("Line-01");
+    await editor.focus();
+    await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Line-14");
+    await surface.getByRole("button", { name: "variant", exact: true }).focus();
+    const first = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "notes" && cell.text === "L")!;
+    const point = await cellPoint(surface, first.x, first.y);
+    await page.mouse.click(point.x, point.y);
+    await expect(editor).toBeFocused();
+    await expect.poll(async () => editor.evaluate((element: HTMLTextAreaElement) => element.selectionStart)).toBe(0);
+    await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Line-00");
+  }
+});
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`TextArea scrollbar stays visible against its inverse surface (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    const activeColor = scheme === "light" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)";
+    const activeBackground = scheme === "light" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
+    const thumbGlyphs = new Set(["█", "▀", "▄", "▐", "▌", "\u{1FB91}", "\u{1FB92}"]);
+    for (const presentation of ["Rich", "Text"] as const) {
+      await page.goto("/#/components/text-area");
+      if (presentation === "Text") await choosePresentation(page, "Text");
+      const surface = page.locator('[data-cell-probe="component-text-area"]');
+      const editor = surface.getByRole("textbox", { name: "Notes" });
+      await editor.fill(Array.from({ length: 12 }, () => "x".repeat(40)).join("\n"));
+      await expect.poll(async () => (await readCellProbe(surface)).cells
+        .filter((cell) => cell.ownerId === "notes" && thumbGlyphs.has(cell.text))
+        .length).toBeGreaterThan(1);
+      const probe = await readCellProbe(surface);
+      const bounds = ownerBounds(probe, "notes");
+      const thumbs = probe.cells.filter((cell) => cell.ownerId === "notes" && thumbGlyphs.has(cell.text));
+      expect(thumbs.some((cell) => cell.x === bounds.x + bounds.width - (presentation === "Text" ? 2 : 1))).toBe(true);
+      expect(thumbs.some((cell) => cell.y === bounds.y + bounds.height - (presentation === "Text" ? 2 : 1))).toBe(true);
+      expect(thumbs.every((cell) => cell.style.color === activeColor
+        && cell.style.backgroundColor === activeBackground)).toBe(true);
+      await surface.getByRole("button", { name: "variant", exact: true }).focus();
+      await expect.poll(async () => (await readCellProbe(surface)).cells
+        .filter((cell) => cell.ownerId === "notes" && thumbGlyphs.has(cell.text))
+        .some((cell) => cell.style.color !== activeColor)).toBe(true);
+    }
+  });
+}
+
 test("TextArea drag selection contrasts with its focused surface and hides on blur", async ({ page }) => {
   await page.goto("/#/components/text-area");
   const surface = page.locator('[data-cell-probe="component-text-area"]');

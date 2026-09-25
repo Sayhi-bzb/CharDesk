@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Button, CellTextEditor, CellUiRuntime, Combobox, ComboboxInput, Field, Root, Select, SelectTrigger,
-  Text, TextArea, TextInput } from "./index.js";
+  Text, TextArea, TextInput, Tooltip, auditSemanticSnapshot } from "./index.js";
 import { CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME } from "./theme.js";
 
 const input = (kind: "text-input" | "text-area" | "select" | "combobox") => {
@@ -14,6 +14,27 @@ const input = (kind: "text-input" | "text-area" | "select" | "combobox") => {
 };
 
 describe("Field", () => {
+  it.each(["text-input", "text-area", "select", "combobox"] as const)(
+    "keeps the %s error description when a Tooltip opens and closes", (kind) => {
+      const runtime = new CellUiRuntime({ viewport: { width: 36, height: 10 } });
+      const view = (error?: string) => <Root><Field id="field" label="Theme" error={error}>
+        {input(kind)}
+      </Field><Tooltip id="control-tip" targetId="control" text="Choose a theme" /></Root>;
+      const errorOnly = runtime.render(view("Required"));
+      expect(errorOnly.semantics.nodes.get("control")?.describedByIds).toEqual(["field-error"]);
+      const together = runtime.render(view("Required"), { tooltipTargetId: "control" });
+      expect(together.semantics.nodes.get("control")?.describedById).toBe("field-error");
+      expect(together.semantics.nodes.get("control")?.describedByIds)
+        .toEqual(["field-error", "control-tip"]);
+      expect(auditSemanticSnapshot(together.semantics)).toEqual([]);
+      const tipOnly = runtime.render(view(), { tooltipTargetId: "control" });
+      expect(tipOnly.semantics.nodes.get("control")?.describedByIds).toEqual(["control-tip"]);
+      const neither = runtime.render(view());
+      expect(neither.semantics.nodes.get("control")?.describedByIds).toBeUndefined();
+      runtime.dispose();
+    },
+  );
+
   it.each(["text-input", "text-area", "select", "combobox"] as const)(
     "associates %s with a visible error and clears it without changing identity", (kind) => {
       const runtime = new CellUiRuntime({ viewport: { width: 36, height: 8 } });

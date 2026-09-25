@@ -376,6 +376,7 @@ export type SemanticNode = Readonly<{
   readOnly?: boolean;
   modal?: boolean;
   describedById?: WidgetId;
+  describedByIds?: readonly WidgetId[];
   actions: readonly SemanticAction[];
   activeDescendantId?: WidgetId;
 }>;

@@ -559,7 +559,8 @@ describe("CellUiRuntime", () => {
           frame="bordered"
           style={{ height: 5 }}
         />
-      </Root>
+      </Root>,
+      { focusedId: "editor", activeFocusId: "editor" }
     );
     expect(frame.buffer.toText({ trimEnd: true })).toBe([
       "┌────────┐",

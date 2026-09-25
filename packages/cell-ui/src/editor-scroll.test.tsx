@@ -2,6 +2,8 @@ import { expect, it } from "vitest";
 import { CellTextEditor, CellUiRuntime, Root, TextArea, TextInput, createTestPilot, resolveWheelInput } from "./index.js";
 import { computeScrollMetrics } from "./scroll.js";
 import { measureCellText } from "./text.js";
+import { offsetAtCellPoint } from "./text.js";
+import { scrollCommandForOffset } from "./scroll.js";
 
 it("shared geometry converges both axes, hides rails independently of range, and protects tiny viewports", () => {
   const bounds = { x: 1, y: 1, width: 8, height: 4 };
@@ -51,6 +53,7 @@ it("editor rails page and drag without changing selection, cancel on geometry ch
     render: () => <Root><TextArea id="area" frame="bordered" state={editor.snapshot()} style={{ width: 12, height }} /></Root>,
     onCommand: (command) => { if (command.type === "text") editor.dispatch(command.command); },
   });
+  await pilot.pressKey("Tab");
   const selection = editor.snapshot().selection;
   const metrics = pilot.frame.scene.entries.get("area")!.scrollMetrics!;
   expect(editor.snapshot().viewport).toEqual({ columns: 9, rows: 4 });
@@ -84,8 +87,46 @@ it("editor wheel consumption is independent of movement and respects disabled st
   const view = (disabled: boolean) => <Root><TextArea id="area" frame="bordered" disabled={disabled} readOnly state={editor.snapshot()} style={{ height: 5 }} /></Root>;
   const wheel = { type: "wheel" as const, point: { x: 2, y: 2 }, deltaX: -1, deltaY: 0 };
   expect(resolveWheelInput(runtime.render(view(false)), wheel)).toEqual({ consumed: true, command: null });
-  expect(resolveWheelInput(runtime.render(view(false)), { ...wheel, deltaX: 1 }).command).toEqual({ type: "text", targetId: "area", command: { type: "set-scroll", x: 1, y: 0 } });
+  expect(resolveWheelInput(runtime.render(view(false)), { ...wheel, deltaX: 1 }).command).toEqual({ type: "text-preview-scroll", targetId: "area", scrollX: 1, scrollY: 0 });
   expect(resolveWheelInput(runtime.render(view(true)), wheel).consumed).toBe(false);
+  runtime.dispose();
+});
+
+it("TextArea separates idle preview scrolling from the retained editing viewport", () => {
+  const editor = new CellTextEditor({
+    value: Array.from({ length: 20 }, (_, index) => `${String(index).padStart(2, "0")}-${"x".repeat(20)}`).join("\n"),
+    multiline: true,
+    viewport: { columns: 8, rows: 3 },
+  });
+  editor.dispatch({ type: "set-scroll", x: 4, y: 8 });
+  const original = editor.snapshot();
+  const runtime = new CellUiRuntime({ viewport: { width: 10, height: 5 } });
+  const view = () => <Root><TextArea id="area" frame="bordered" state={editor.snapshot()} style={{ width: 10, height: 5 }} /></Root>;
+  const active = runtime.render(view(), { focusedId: "area", activeFocusId: "area" });
+  expect(active.textLayouts.get("area")).toMatchObject({ scrollX: 4, scrollY: 8 });
+
+  const idle = runtime.render(view(), { focusedId: "area", activeFocusId: null });
+  expect(idle.textLayouts.get("area")).toMatchObject({ scrollX: 0, scrollY: 0 });
+  expect(editor.snapshot()).toEqual(original);
+  expect(scrollCommandForOffset(idle, "area", { x: 2, y: 3 })).toEqual({
+    type: "text-preview-scroll", targetId: "area", scrollX: 2, scrollY: 3,
+  });
+  runtime.setTextAreaPreviewScroll("area", { x: 2, y: 3 });
+  const preview = runtime.render(view(), { focusedId: "area", activeFocusId: null });
+  expect(preview.textLayouts.get("area")).toMatchObject({ scrollX: 2, scrollY: 3 });
+  expect(editor.snapshot()).toEqual(original);
+
+  const resumed = runtime.render(view(), { focusedId: "area", activeFocusId: "area" });
+  expect(resumed.textLayouts.get("area")).toMatchObject({ scrollX: 4, scrollY: 8 });
+  runtime.render(view(), { focusedId: "area", activeFocusId: null });
+  const clicked = runtime.render(view(), { focusedId: "area", activeFocusId: null });
+  const layout = clicked.textLayouts.get("area")!;
+  const caret = offsetAtCellPoint(layout, { x: layout.contentBounds.x + 2, y: layout.contentBounds.y });
+  editor.dispatch({ type: "set-scroll", x: layout.scrollX, y: layout.scrollY });
+  editor.dispatch({ type: "set-selection", anchor: caret });
+  const pointerFocused = runtime.render(view(), { focusedId: "area", activeFocusId: "area" });
+  expect(pointerFocused.textLayouts.get("area")!.scrollY).toBe(0);
+  expect(editor.snapshot().selection.head).toBe(caret);
   runtime.dispose();
 });
 

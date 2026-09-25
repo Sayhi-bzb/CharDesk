@@ -56,6 +56,11 @@
           "target": "@lib/cell-ui/border.ts"
         },
         {
+          "path": "registry/cell-ui/browser-aria.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-aria.ts"
+        },
+        {
           "path": "registry/cell-ui/browser-collections.tsx",
           "type": "registry:file",
           "target": "@lib/cell-ui/browser-collections.tsx"
@@ -304,6 +309,11 @@
           "path": "registry/cell-ui/scroll.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/scroll.ts"
+        },
+        {
+          "path": "registry/cell-ui/scrollbar-appearance.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/scrollbar-appearance.ts"
         },
         {
           "path": "registry/cell-ui/scrollbar.ts",

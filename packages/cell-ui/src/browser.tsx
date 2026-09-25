@@ -59,6 +59,7 @@ import {
 } from "./gestures.js";
 import { CellInteractionController, sameWidgetIdSet } from "./interaction-controller.js";
 import { CellTextInputLayer } from "./browser-input.js";
+import { ariaDescribedBy } from "./browser-aria.js";
 import { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
 import { isCellKeyPress } from "./keyboard.js";
 import { useCellRangeState } from "./browser-range.js";
@@ -454,7 +455,7 @@ export const SemanticDom = ({
         aria-controls={node.controlsId
           ? `cell-semantic-${node.controlsId}`
           : undefined}
-        aria-describedby={node.describedById ? `cell-semantic-${node.describedById}` : undefined}
+        aria-describedby={ariaDescribedBy(node)}
         aria-activedescendant={node.activeDescendantId
           ? `cell-semantic-${node.activeDescendantId}`
           : undefined}
@@ -753,7 +754,15 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       setManipulatingIds((current) => sameWidgetIdSet(current, controller.gestures.manipulatingIds) ? current : controller.gestures.manipulatingIds);
       setInteractionRevision((value) => value + 1);
     },
-    (command) => onCommandRef.current(command),
+    (command) => {
+      if (command.type === "text-preview-scroll") {
+        runtimeRef.current?.setTextAreaPreviewScroll(command.targetId, {
+          x: command.scrollX,
+          y: command.scrollY,
+        });
+        setInteractionRevision((value) => value + 1);
+      } else onCommandRef.current(command);
+    },
   ));
   const focusRef = useRef(controller.focus);
   const eventsRef = useRef(new EventManager());
@@ -1329,6 +1338,16 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       ?.focus({ preventScroll: true });
   };
 
+  const adoptTextAreaPreviewScroll = (current: FrameSnapshot, targetId: WidgetId) => {
+    const node = current.tree.nodes.get(targetId);
+    if (node?.kind !== "text-area" || node.focusActive || !node.textEditor) return;
+    dispatch({
+      type: "text",
+      targetId,
+      command: { type: "set-scroll", x: node.textEditor.scrollX, y: node.textEditor.scrollY },
+    });
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.defaultPrevented) return;
     setInputModality("keyboard");
@@ -1482,6 +1501,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         const onScrollbar = hitPart === "scrollbar-x" || hitPart === "scrollbar-y" || hitPart === "scrollbar-corner";
         if (editor && textLayout && !editor.disabled && !onScrollbar) {
           event.preventDefault();
+          adoptTextAreaPreviewScroll(frame, editor.id);
           const contentClip = frame.scene.entries.get(editor.id)?.contentClip;
           if (contentClip && cellRectContainsPoint(contentClip, point)) {
             const offset = offsetAtCellPoint(textLayout, point);
@@ -1518,6 +1538,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           event.currentTarget.setPointerCapture(event.pointerId);
         }
         if (editor && !editor.disabled && onScrollbar) {
+          adoptTextAreaPreviewScroll(frame, editor.id);
           dispatch({ type: "focus", targetId: editor.id });
           focusTextarea(editor.id);
         } else {

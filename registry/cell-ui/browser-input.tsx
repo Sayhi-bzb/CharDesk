@@ -24,6 +24,7 @@ import {
 } from "./text.js";
 import type { FrameSnapshot, WidgetId, WidgetNode } from "./types.js";
 import { commandForComboboxKey } from "./combobox.js";
+import { ariaDescribedBy } from "./browser-aria.js";
 
 export type CellTextState = Readonly<{
   snapshot: CellTextSnapshot;
@@ -128,15 +129,17 @@ const ManagedCellTextarea = ({
   const inputBounds = frame.scene.entries.get(node.id)!.contentClip;
   const multiline = node.kind === "text-area";
   const shown = getCellTextPresentation(snapshot);
+  const selectionAnchor = snapshot.selection.anchor;
+  const selectionHead = snapshot.selection.head;
+  const value = snapshot.value;
 
   useLayoutEffect(() => {
     const textarea = ref.current;
     if (!textarea || composing.current) return;
-    if (textarea.value !== snapshot.value) textarea.value = snapshot.value;
-    const { anchor, head } = snapshot.selection;
-    textarea.setSelectionRange(Math.min(anchor, head), Math.max(anchor, head),
-      anchor > head ? "backward" : "forward");
-  }, [snapshot]);
+    if (textarea.value !== value) textarea.value = value;
+    textarea.setSelectionRange(Math.min(selectionAnchor, selectionHead), Math.max(selectionAnchor, selectionHead),
+      selectionAnchor > selectionHead ? "backward" : "forward");
+  }, [value, selectionAnchor, selectionHead]);
 
   const send = (command: CellTextCommand) => {
     if (node.disabled || (node.readOnly && changesDocument(command))) return;
@@ -234,8 +237,7 @@ const ManagedCellTextarea = ({
       data-cell-text-editor={node.id}
       aria-label={node.label ?? (multiline ? "Text area" : "Text input")}
       aria-invalid={node.invalid || undefined}
-      aria-describedby={frame.semantics.nodes.get(node.id)?.describedById
-        ? `cell-semantic-${frame.semantics.nodes.get(node.id)!.describedById}` : undefined}
+      aria-describedby={ariaDescribedBy(frame.semantics.nodes.get(node.id))}
       aria-multiline={multiline || undefined}
       role={node.kind === "combobox-input" ? "combobox" : undefined}
       aria-expanded={node.kind === "combobox-input" ? node.expanded : undefined}

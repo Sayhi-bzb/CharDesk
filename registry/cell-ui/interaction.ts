@@ -63,6 +63,7 @@ export type WidgetCommand =
   | Readonly<{ type: "set-expanded"; targetId: WidgetId; expanded: boolean }>
   | Readonly<{ type: "set-value"; targetId: WidgetId; value: number }>
   | Readonly<{ type: "text"; targetId: WidgetId; command: CellTextCommand }>
+  | Readonly<{ type: "text-preview-scroll"; targetId: WidgetId; scrollX: number; scrollY: number }>
   | Readonly<{
       type: "scroll";
       targetId: WidgetId;

@@ -62,7 +62,11 @@ const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
 
 export class TestPilot {
-  readonly #controller = new CellInteractionController(() => this.#renderFrame(), (command) => this.#onCommand(command));
+  readonly #controller = new CellInteractionController(() => this.#renderFrame(), (command) => {
+    if (command.type === "text-preview-scroll") {
+      this.#runtime.setTextAreaPreviewScroll(command.targetId, { x: command.scrollX, y: command.scrollY });
+    } else this.#onCommand(command);
+  });
   readonly #focus = this.#controller.focus;
   readonly #gestures = this.#controller.gestures;
   readonly #press = this.#controller.press;

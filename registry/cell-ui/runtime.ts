@@ -13,7 +13,7 @@ import { composeScene } from "./scene.js";
 import { createSemanticSnapshot } from "./semantics.js";
 import { reconcileWidgetTree, sameWidgetValue } from "./tree.js";
 import { classifyWidgetChange } from "./widget-change.js";
-import { createCellTextLayout } from "./text.js";
+import { createCellTextLayout, measureCellText } from "./text.js";
 import { resolveCellUiTheme, type CellUiTheme, type CellUiThemeInput } from "./theme.js";
 import { resolveCellUiPresentation, type CellUiPresentation } from "./presentation.js";
 import {
@@ -153,6 +153,7 @@ export class CellUiRuntime {
   #appearanceDirty = false;
   #tree: WidgetTree | undefined;
   #frame: FrameSnapshot | undefined;
+  readonly #textAreaPreviewOffsets = new Map<WidgetId, { x: number; y: number }>();
   #revision = 0;
   #disposed = false;
 
@@ -172,6 +173,16 @@ export class CellUiRuntime {
     this.#recipe = resolveCellUiRecipe(options.recipe);
     this.#presentation = resolveCellUiPresentation(options.presentation);
     this.#feedback = resolveCellFeedback(options.feedback);
+  }
+
+  setTextAreaPreviewScroll(id: WidgetId, offset: { x: number; y: number }): void {
+    const node = this.#frame?.tree.nodes.get(id);
+    const metrics = this.#frame?.scene.entries.get(id)?.scrollMetrics;
+    if (node?.kind !== "text-area" || node.focusActive || !metrics) return;
+    this.#textAreaPreviewOffsets.set(id, {
+      x: Math.max(0, Math.min(metrics.maxOffset.x, Math.trunc(offset.x))),
+      y: Math.max(0, Math.min(metrics.maxOffset.y, Math.trunc(offset.y))),
+    });
   }
 
   render(
@@ -219,7 +230,19 @@ export class CellUiRuntime {
       : undefined;
     const activeTooltipTargetId = tooltipTarget && isFocusableKind(tooltipTarget.kind) && !tooltipTarget.disabled
       ? tooltipTarget.id : null;
-    const tree: WidgetTree = {
+    const previous = this.#frame;
+    for (const [id, node] of reconciliation.tree.nodes) {
+      if (node.kind !== "text-area") continue;
+      const wasActive = previous?.tree.nodes.get(id)?.focusActive ?? false;
+      const isActive = id === focusedId && focusActive;
+      if ((wasActive && !isActive) || !this.#textAreaPreviewOffsets.has(id)) {
+        this.#textAreaPreviewOffsets.set(id, { x: 0, y: 0 });
+      }
+    }
+    for (const id of this.#textAreaPreviewOffsets.keys()) {
+      if (reconciliation.tree.nodes.get(id)?.kind !== "text-area") this.#textAreaPreviewOffsets.delete(id);
+    }
+    let tree: WidgetTree = {
       rootId: reconciliation.tree.rootId,
       nodes: new Map([...reconciliation.tree.nodes].map(([id, node]) => [
         id,
@@ -251,7 +274,18 @@ export class CellUiRuntime {
             },
       ])),
     };
-    const previous = this.#frame;
+    tree = {
+      ...tree,
+      nodes: new Map([...tree.nodes].map(([id, node]) => {
+        if (node.kind !== "text-area" || node.focusActive || !node.textEditor) return [id, node];
+        const offset = this.#textAreaPreviewOffsets.get(id) ?? { x: 0, y: 0 };
+        const extent = offset.x || offset.y ? measureCellText(node.textEditor) : null;
+        const x = extent ? Math.max(0, Math.min(offset.x, extent.width - (node.textEditor.viewport?.columns ?? 20))) : 0;
+        const y = extent ? Math.max(0, Math.min(offset.y, extent.height - (node.textEditor.viewport?.rows ?? 1))) : 0;
+        if (x === node.textEditor.scrollX && y === node.textEditor.scrollY) return [id, node];
+        return [id, { ...node, textEditor: { ...node.textEditor, scrollX: x, scrollY: y } }];
+      })),
+    };
     const viewportDirty = !!previous && (
       previous.layout.viewport.width !== this.#viewport.width
       || previous.layout.viewport.height !== this.#viewport.height

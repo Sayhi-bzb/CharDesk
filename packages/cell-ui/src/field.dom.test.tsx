@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CellTextEditor, Combobox, ComboboxInput, Field, Root, Select, SelectTrigger,
-  Text, TextArea, TextInput } from "./index.js";
+  Text, TextArea, TextInput, Tooltip } from "./index.js";
 import { CellSurface } from "./browser.js";
 
 const context = {
@@ -38,5 +38,33 @@ it.each(["text-input", "text-area", "select", "combobox"] as const)(
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAttribute("aria-describedby", "cell-semantic-field-error");
     expect(screen.getByRole("alert")).toHaveTextContent("! Required");
+  },
+);
+
+it.each(["text-input", "text-area", "select", "combobox"] as const)(
+  "keeps both %s descriptions through Tooltip focus and validation changes", async (kind) => {
+    vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    const state = new CellTextEditor({ value: "" }).snapshot();
+    const control = kind === "text-input" ? <TextInput id="control" state={state} />
+      : kind === "text-area" ? <TextArea id="control" state={state} />
+      : kind === "select" ? <Select><SelectTrigger id="control"><Text>Choose</Text></SelectTrigger></Select>
+      : <Combobox><ComboboxInput id="control" state={state} /></Combobox>;
+    const view = (error?: string) => <><CellSurface viewport={{ width: 32, height: 8 }}
+      focusedId="control" onCommand={() => {}}>
+      <Root><Field id="field" label="Theme" error={error}>{control}</Field>
+        <Tooltip id="control-tip" targetId="control" text="Choose a theme" />
+      </Root>
+    </CellSurface><button>Outside</button></>;
+    const mounted = render(view("Required"));
+    const role = kind === "select" ? "button" : kind === "combobox" ? "combobox" : "textbox";
+    const input = screen.getByRole(role, { name: "Theme" });
+    expect(input).toHaveAttribute("aria-describedby", "cell-semantic-field-error");
+    input.focus();
+    await waitFor(() => expect(input).toHaveAttribute("aria-describedby",
+      "cell-semantic-field-error cell-semantic-control-tip"));
+    mounted.rerender(view());
+    await waitFor(() => expect(input).toHaveAttribute("aria-describedby", "cell-semantic-control-tip"));
+    screen.getByRole("button", { name: "Outside" }).focus();
+    await waitFor(() => expect(input).not.toHaveAttribute("aria-describedby"));
   },
 );

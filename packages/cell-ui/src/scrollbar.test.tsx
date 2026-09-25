@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
 import { TEXT_VERTICAL_TRACK_GLYPH, textVerticalThumbGlyph, thumbAxis, thumbCellSpan, thumbGlyph } from "./scrollbar.js";
 import {
-  Box, Button, CLASSIC_MAC_LIGHT_THEME, CellTextEditor, CellUiRuntime, Combobox, ComboboxContent,
+  Box, Button, CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME, CellTextEditor, CellUiRuntime, Combobox, ComboboxContent,
   ComboboxInput, ComboboxItem, Root, ScrollArea, Select, SelectContent, SelectItem, SelectTrigger,
-  Text, createTestPilot,
+  Text, TextArea, createTestPilot,
 } from "./index.js";
 import { gestureCandidatesForFrame } from "./pointer.js";
 import { getEventPath } from "./scene.js";
@@ -55,7 +55,9 @@ it("uses one continuous Unicode texture for the Text vertical rail without chang
         : raw === "▀" ? "\u{1FB91}" : raw === "▄" ? "\u{1FB92}" : raw;
       const cell = textFrame.buffer.get(track.x, y)!;
       expect(cell).toMatchObject({ text: expected, ownerId: "scroll" });
-      expect(cell.style.color).toBe(CLASSIC_MAC_LIGHT_THEME.scrollThumbStyle.color);
+      expect(cell.style.color).toBe(raw === " "
+        ? CLASSIC_MAC_LIGHT_THEME.scrollTrackStyle.color
+        : CLASSIC_MAC_LIGHT_THEME.scrollThumbStyle.color);
       expect(richFrame.buffer.get(track.x, y)?.text).toBe(raw);
       if (raw === "▀" || raw === "▄") sawHalf = true;
     }
@@ -69,6 +71,68 @@ it("uses one continuous Unicode texture for the Text vertical rail without chang
   rich.dispose();
   text.dispose();
 });
+
+it.each([CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME])(
+  "TextArea thumb follows the active foreground in both presentations (%s)", (theme) => {
+    for (const presentation of ["rich", "text"] as const) {
+      const runtime = new CellUiRuntime({ viewport: { width: 12, height: 6 }, theme, presentation });
+      const editor = new CellTextEditor({ value: Array.from({ length: 12 }, () => "x".repeat(30)).join("\n"), multiline: true });
+      const view = () => <Root><TextArea id="area" frame="bordered" state={editor.snapshot()}
+        style={{ width: 12, height: 6 }} /></Root>;
+      const idle = runtime.render(view());
+      const active = runtime.render(view(), { focusedId: "area", activeFocusId: "area" });
+      const metrics = active.scene.entries.get("area")!.scrollMetrics!;
+      for (const thumb of [metrics.horizontalThumb!, metrics.verticalThumb!]) {
+        const idleCell = idle.buffer.get(thumb.x, thumb.y)!;
+        const activeCell = active.buffer.get(thumb.x, thumb.y)!;
+        expect(idleCell.style.color).toBe(theme.scrollThumbStyle.color);
+        expect(activeCell.style).toMatchObject({
+          color: theme.focusedSurfaceStyle.color,
+          backgroundColor: theme.focusedSurfaceStyle.backgroundColor,
+        });
+      }
+      expect(active.buffer.get(0, 0)).toEqual(idle.buffer.get(0, 0));
+      runtime.dispose();
+    }
+  },
+);
+
+it.each(["scroll-area", "select-content", "combobox-content"] as const)(
+  "%s rail resolves colliding custom surface and token colors", (kind) => {
+    const theme = {
+      ...CLASSIC_MAC_LIGHT_THEME,
+      elevatedSurfaceStyle: { backgroundColor: "#111111" },
+      scrollThumbStyle: { color: "rgb(17, 17, 17)" },
+      scrollTrackStyle: { color: "#111111" },
+    };
+    const runtime = new CellUiRuntime({ viewport: { width: 16, height: 7 }, theme, presentation: "text" });
+    const items = Array.from({ length: 8 }, (_, index) => ({ id: `item-${index}`, text: `Option ${index}` }));
+    const content = kind === "select-content"
+      ? <SelectContent id="content" textStyle={{ backgroundColor: "#111111" }} style={{ width: 12, height: 4 }}>
+          {items.map((item) => <SelectItem id={item.id} key={item.id}><Text>{item.text}</Text></SelectItem>)}
+        </SelectContent>
+      : <ComboboxContent id="content" textStyle={{ backgroundColor: "#111111" }} style={{ width: 12, height: 4 }}>
+          {items.map((item) => <ComboboxItem id={item.id} key={item.id}><Text>{item.text}</Text></ComboboxItem>)}
+        </ComboboxContent>;
+    const frame = runtime.render(kind === "scroll-area"
+      ? <Root><ScrollArea id="content" variant="surface" style={{ width: 12, height: 4 }}>
+          <Box style={{ height: 12 }} />
+        </ScrollArea></Root>
+      : kind === "select-content"
+        ? <Root><Select id="control"><SelectTrigger id="trigger" label="Options" expanded controlsId="content"><Text>Option</Text></SelectTrigger>{content}</Select></Root>
+        : <Root><Combobox id="control"><ComboboxInput id="input" label="Options" state={new CellTextEditor().snapshot()} expanded />{content}</Combobox></Root>);
+    const metrics = frame.scene.entries.get("content")!.scrollMetrics!;
+    const thumb = metrics.verticalThumb!;
+    const track = metrics.verticalTrack!;
+    expect(frame.buffer.get(thumb.x, thumb.y)?.style).toMatchObject({
+      color: "#FFFFFF", backgroundColor: "#111111",
+    });
+    const freeY = Array.from({ length: track.height }, (_, index) => track.y + index)
+      .find((y) => y < thumb.y || y >= thumb.y + thumb.height)!;
+    expect(frame.buffer.get(track.x, freeY)?.style.color).not.toBe("#111111");
+    runtime.dispose();
+  },
+);
 
 it("reserves a rail Cell before laying out auto-width outline buttons", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 12, height: 5 }, presentation: "text" });

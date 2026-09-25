@@ -32,6 +32,7 @@ import { fitTooltipText } from "./tooltip.js";
 import { TAB_UNDERLINE_GLYPH } from "./tabs.js";
 import { alertGlyph } from "./alert.js";
 import { fitSingleLineText, isSingleLineControlText, singleLineText } from "./single-line-text.js";
+import { resolveScrollbarAppearance } from "./scrollbar-appearance.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
 
@@ -87,17 +88,29 @@ const paintScrollbars = (
   node: WidgetNode,
   entry: SceneEntry,
   theme: CellUiTheme,
+  ownerStyle: CellTextStyle,
   clip: CellRect
 ) => {
   const metrics = entry.scrollMetrics;
   if (!metrics) return;
+  const appearances = new Map<string, ReturnType<typeof resolveScrollbarAppearance>>();
+  const appearanceAt = (x: number, y: number) => {
+    const background = buffer.get(x, y)?.style.backgroundColor;
+    const key = background ?? "";
+    let appearance = appearances.get(key);
+    if (!appearance) {
+      appearance = resolveScrollbarAppearance(node, ownerStyle, theme, background);
+      appearances.set(key, appearance);
+    }
+    return appearance;
+  };
   for (const [track, vertical] of [[metrics.horizontalTrack, false], [metrics.verticalTrack, true]] as const) {
     if (!track) continue;
     if (node.presentation === "rich") fill(buffer, track, node.id, theme.scrollTrackStyle, clip);
     else for (let y = track.y; y < track.y + track.height; y += 1) {
       for (let x = track.x; x < track.x + track.width; x += 1) {
         buffer.writeGrapheme(x, y, vertical ? TEXT_VERTICAL_TRACK_GLYPH : "░", node.id,
-          vertical ? theme.scrollThumbStyle : theme.scrollTrackStyle, clip, "over");
+          appearanceAt(x, y).track, clip, "over");
       }
     }
   }
@@ -109,7 +122,7 @@ const paintScrollbars = (
         metrics.horizontalThumb.y,
         thumbGlyph(metrics.horizontalThumbAxis, cell, true),
         node.id,
-        theme.scrollThumbStyle,
+        appearanceAt(metrics.horizontalThumb.x + offset, metrics.horizontalThumb.y).thumb,
         clip,
         "over"
       );
@@ -125,7 +138,7 @@ const paintScrollbars = (
           ? textVerticalThumbGlyph(metrics.verticalThumbAxis, cell)
           : thumbGlyph(metrics.verticalThumbAxis, cell, false),
         node.id,
-        theme.scrollThumbStyle,
+        appearanceAt(metrics.verticalThumb.x, metrics.verticalThumb.y + offset).thumb,
         clip,
         "over"
       );
@@ -607,7 +620,7 @@ export const paintScene = (
           buffer.writeGrapheme(right, entry.layoutBounds.y, "]", id, style, outerClip, "over");
         }
       }
-      if (entry.scrollMetrics) paintScrollbars(buffer, node, entry, theme, outerClip);
+      if (entry.scrollMetrics) paintScrollbars(buffer, node, entry, theme, style, outerClip);
     }
   }
   return buffer;

@@ -6,12 +6,15 @@ test("editor blur clears the full focus surface and caret but preserves logical 
   const surface = page.locator('[data-cell-probe="editor"]');
   const editor = page.getByRole("textbox", { name: "Document", exact: true });
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");
+  const idle = await readCellProbe(surface);
   await editor.fill("");
   const active = await readCellProbe(surface);
   const area = ownerBounds(active, "editor-document");
   const blank = ownerCells(active, "editor-document").find((cell) =>
     cell.x === area.x + 10 && cell.y === area.y + area.height - 2
     && cell.text === " ")!;
+  const idleBackground = idle.cells.find((cell) => cell.x === blank.x && cell.y === blank.y)
+    ?.style.backgroundColor;
   expect(blank.style.backgroundColor).toBeTruthy();
   const canvas = surface.locator("canvas");
   const caretPixel = () => readCellPixel(surface, blank.x + 0.5, blank.y + 0.5);
@@ -23,7 +26,7 @@ test("editor blur clears the full focus surface and caret but preserves logical 
     .not.toBe(blank.style.backgroundColor);
   const blurred = await readCellProbe(surface);
   expect(blurred.cells.find((cell) => cell.x === blank.x && cell.y === blank.y)
-    ?.style.backgroundColor).toBeUndefined();
+    ?.style.backgroundColor).toBe(idleBackground);
   expect(blurred.focusedId).toBe(active.focusedId);
   expect(blurred.text).toBe(active.text);
   expect(await caretPixel()).not.toEqual(focusedPixel);

@@ -155,6 +155,8 @@ export const createSemanticSnapshot = (
     const isTextEditor = isTextEditorKind(node.kind);
     const role = semanticRole(node);
     if (!role) continue;
+    const describedByIds = [...new Set([node.describedById, visibleTooltips.get(node.id)]
+      .filter((id): id is WidgetId => !!id))];
     const tooltipTargetInModal = modalId && node.kind === "tooltip" && node.tooltipTargetId
       && isDescendantOf(tree, node.tooltipTargetId, modalId);
     if (modalId && !isDescendantOf(tree, node.id, modalId) && !tooltipTargetInModal) continue;
@@ -219,8 +221,8 @@ export const createSemanticSnapshot = (
       ...(node.orientation ? { orientation: node.orientation } : {}),
       ...(node.controlsId ? { controlsId: node.controlsId } : {}),
       ...(node.labelledById ? { labelledById: node.labelledById } : {}),
-      ...(visibleTooltips.get(node.id) || node.describedById
-        ? { describedById: visibleTooltips.get(node.id) ?? node.describedById }
+      ...(describedByIds.length
+        ? { describedById: describedByIds[0], describedByIds }
         : {}),
       ...(node.dialogPart === "title" ? { level: 2 } : node.markdownRole === "heading" && node.level
         ? { level: node.level } : {}),
@@ -419,7 +421,16 @@ export const auditSemanticSnapshot = (
     } else if (!snapshot.roots.includes(node.id)) {
       issue(node.id, "invalid-root", "Parentless semantic node is missing from roots.");
     }
-    for (const relatedId of [node.controlsId, node.labelledById, node.describedById]) {
+    if (node.describedByIds) {
+      if (node.describedById !== node.describedByIds[0]) {
+        issue(node.id, "invalid-relation", "Primary description must be the first description.");
+      }
+      if (new Set(node.describedByIds).size !== node.describedByIds.length) {
+        issue(node.id, "invalid-relation", "Description targets must be unique.");
+      }
+    }
+    for (const relatedId of [node.controlsId, node.labelledById,
+      ...(node.describedByIds ?? (node.describedById ? [node.describedById] : []))]) {
       if (relatedId && !snapshot.nodes.has(relatedId)) {
         issue(node.id, "invalid-relation", `Related semantic node ${relatedId} does not exist.`);
       }

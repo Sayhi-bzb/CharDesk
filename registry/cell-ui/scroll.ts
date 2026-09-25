@@ -9,6 +9,9 @@ export const scrollCommandForOffset = (frame: FrameSnapshot, targetId: WidgetId,
   const { x, y } = clampScrollOffset(offset, metrics);
   const current = scrollOffsetFor(node);
   if (x === current.x && y === current.y) return null;
+  if (node.kind === "text-area" && !node.focusActive) {
+    return { type: "text-preview-scroll", targetId, scrollX: x, scrollY: y };
+  }
   return node.textEditor
     ? { type: "text", targetId, command: { type: "set-scroll", x, y } }
     : { type: "scroll", targetId, scrollX: x, scrollY: y };

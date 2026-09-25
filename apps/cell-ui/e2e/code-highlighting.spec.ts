@@ -72,14 +72,15 @@ test("long examples fold to 20 lines while copy and navigation retain the full s
     });
   });
   await page.setViewportSize({ width: 320, height: 700 });
-  await page.goto("/#/components/input");
+  await page.goto("/#/components/button");
 
   const block = page.locator("#usage + .docs-code");
   const code = block.locator("code");
   const fullSource = await code.textContent();
-  expect(fullSource?.split("\n")).toHaveLength(21);
+  const lineCount = fullSource!.split("\n").length;
+  expect(lineCount).toBeGreaterThan(20);
   const numbers = block.locator(".docs-code__line-numbers");
-  await expect(numbers.locator("span")).toHaveCount(21);
+  await expect(numbers.locator("span")).toHaveCount(lineCount);
   const toggle = block.getByRole("button", { name: "Show more" });
   await expect(block).toHaveAttribute("data-collapsed", "");
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -113,7 +114,7 @@ test("long examples fold to 20 lines while copy and navigation retain the full s
 
   await toggle.click();
   await page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: "Select", exact: true }).click();
-  await page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: "Input", exact: true }).click();
+  await page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: "Button", exact: true }).click();
   await expect(page.locator("#usage + .docs-code")).toHaveAttribute("data-collapsed", "");
 
   await page.goto("/#/components/badge");
