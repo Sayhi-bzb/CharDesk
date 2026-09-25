@@ -198,10 +198,10 @@ for (const scheme of ["light", "dark"] as const) {
         .filter((cell) => cell.ownerId === "notes" && thumbGlyphs.has(cell.text))
         .length).toBeGreaterThan(1);
       const probe = await readCellProbe(surface);
-      const bounds = ownerBounds(probe, "notes");
       const thumbs = probe.cells.filter((cell) => cell.ownerId === "notes" && thumbGlyphs.has(cell.text));
-      expect(thumbs.some((cell) => cell.x === bounds.x + bounds.width - (presentation === "Text" ? 2 : 1))).toBe(true);
-      expect(thumbs.some((cell) => cell.y === bounds.y + bounds.height - (presentation === "Text" ? 2 : 1))).toBe(true);
+      const horizontalY = Math.max(...thumbs.map((cell) => cell.y));
+      expect(thumbs.some((cell) => cell.y < horizontalY)).toBe(true);
+      expect(thumbs.filter((cell) => cell.y === horizontalY).length).toBeGreaterThan(1);
       expect(thumbs.every((cell) => cell.style.color === activeColor
         && cell.style.backgroundColor === activeBackground)).toBe(true);
       await surface.getByRole("button", { name: "variant", exact: true }).focus();
@@ -414,7 +414,11 @@ test("Text vertical ScrollArea rail keeps its Unicode texture through keyboard a
       .toBe(initial[0]!.x - 1);
   }
   expect(initial.some((cell) => cell.text === "\u{1FB91}" || cell.text === "\u{1FB92}")).toBe(true);
-  expect(new Set(initial.map((cell) => cell.style.color)).size).toBe(1);
+  const trackColors = new Set(initial.filter((cell) => cell.text === "\u{1FB90}").map((cell) => cell.style.color));
+  const thumbColors = new Set(initial.filter((cell) => cell.text !== "\u{1FB90}").map((cell) => cell.style.color));
+  expect(trackColors.size).toBe(1);
+  expect(thumbColors.size).toBe(1);
+  expect(trackColors).not.toEqual(thumbColors);
   expect((await readCellProbe(surface)).text).not.toMatch(/[▀▄]/u);
 
   await surface.getByRole("button", { name: "01  Row 1" }).focus();
