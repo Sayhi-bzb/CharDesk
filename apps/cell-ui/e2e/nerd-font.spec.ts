@@ -8,21 +8,25 @@ const cases = [
 ] as const;
 
 test("loads one bounded Nerd shard for each representative glyph", async ({ page }) => {
+  const responses = new Map<string, boolean[]>();
+  page.on("response", (response) => {
+    const file = new URL(response.url()).pathname.split("/").at(-1);
+    if (!file || !response.url().includes("/assets/symbols-nerd-font-mono/")) return;
+    responses.set(file, [...responses.get(file) ?? [], response.ok()]);
+  });
+  await page.route("**/assets/symbols-nerd-font-mono/*.woff2", (route) => route.continue());
   await page.goto("/#/__fixtures/text");
+  await expect(page.locator('[data-cell-probe="component-text"]')).toBeAttached();
 
   for (const [codePoint, file] of cases) {
-    const response = page.waitForResponse((candidate) =>
-      new URL(candidate.url()).pathname.endsWith(
-        `/assets/symbols-nerd-font-mono/${file}`
-      ));
-    const loaded = page.evaluate(async (value) => {
+    const loaded = await page.evaluate(async (value) => {
       const glyph = String.fromCodePoint(value);
       return (await document.fonts.load(
         '15px "Symbols Nerd Font Mono"',
         glyph
       )).map(({ family }) => family);
     }, codePoint);
-    await expect((await response).ok()).toBe(true);
-    await expect(loaded).resolves.toEqual(["Symbols Nerd Font Mono"]);
+    expect(loaded).toEqual(["Symbols Nerd Font Mono"]);
+    await expect.poll(() => responses.get(file)).toEqual([true]);
   }
 });
