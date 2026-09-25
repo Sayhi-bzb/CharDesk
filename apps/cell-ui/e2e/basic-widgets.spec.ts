@@ -1,16 +1,14 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { readCellMetrics, readCellProbe, readCellText } from "./helpers/cell-probe";
+import { cellPoint, readCellProbe, readCellText } from "./helpers/cell-probe";
 
 async function clickCellOwner(page: Page, surface: Locator, id: string) {
   const canvas = surface.locator("canvas").first();
   await canvas.scrollIntoViewIfNeeded();
-  const metrics = await readCellMetrics(surface);
   const frame = await readCellProbe(surface);
   const cell = frame.cells.find((cell) => cell.ownerId === id);
   expect(cell).toBeDefined();
-  const bounds = (await canvas.boundingBox())!;
-  await page.mouse.click(bounds.x + (cell!.x + 0.5) * metrics.cellWidth,
-    bounds.y + (cell!.y + 0.5) * metrics.cellHeight);
+  const point = await cellPoint(surface, cell!.x, cell!.y);
+  await page.mouse.click(point.x, point.y);
 }
 
 test("Toggle keeps pressed state after mouse exit and supports keyboard release", async ({ page }) => {
@@ -22,7 +20,7 @@ test("Toggle keeps pressed state after mouse exit and supports keyboard release"
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await page.mouse.move(0, 0);
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
-  await page.getByRole("heading", { name: "Toggle", exact: true }).click();
+  await page.locator('[data-cell-probe="article-toggle-0"] canvas').click({ position: { x: 5, y: 5 } });
   await expect(surface).not.toHaveAttribute("data-cell-activation-flash");
   await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
   const idle = await readCellProbe(surface);
@@ -44,7 +42,7 @@ test("Radio mouse and arrow selection share one semantic group", async ({ page }
   await clickCellOwner(page, surface, "component-radio-dark");
   await expect(group.getByRole("radio", { name: "Dark", exact: true })).toHaveAttribute("aria-checked", "true");
   // Focus exit cancels any optional confirmation before keyboard navigation.
-  await page.getByRole("heading", { name: "Radio", exact: true }).click();
+  await page.locator('[data-cell-probe="article-radio-0"] canvas').click({ position: { x: 5, y: 5 } });
   await group.getByRole("radio", { name: "Dark", exact: true }).focus();
   await page.keyboard.press("ArrowDown");
   await expect(group.getByRole("radio", { name: "System" })).toHaveAttribute("aria-checked", "true");
@@ -63,6 +61,7 @@ test("Radio mouse and arrow selection share one semantic group", async ({ page }
 });
 
 test("Progress loads continuously, shows its number, and switches to indeterminate animation", async ({ page }) => {
+  await page.clock.install();
   await page.goto("/#/components/progress");
   const surface = page.locator('[data-cell-probe="component-progress"]');
   const bar = surface.getByRole("progressbar");
@@ -87,6 +86,7 @@ test("Progress loads continuously, shows its number, and switches to indetermina
     .not.toBe(initialNumber);
   await expect(surface.getByRole("button", { name: "variant" })).toBeAttached();
   await expect(number).toHaveAttribute("aria-checked", "true");
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
   const indeterminate = surface.getByRole("checkbox", { name: "indeterminate" });
   await expect(indeterminate).toHaveAttribute("aria-checked", "false");
   await indeterminate.evaluate((element: HTMLElement) => element.click());
@@ -103,14 +103,15 @@ test("Progress loads continuously, shows its number, and switches to indetermina
       .map((cell) => cell.x - trackStart)
       .sort((left, right) => left - right);
   };
-  await expect.poll(async () => (await thumbOffsets()).some((offset) => offset >= 16),
-    { intervals: [40], timeout: 3_000 }).toBe(true);
-  await expect.poll(async () => (await thumbOffsets()).includes(0),
-    { intervals: [40], timeout: 3_000 }).toBe(true);
+  await page.clock.runFor(2_000);
+  await expect.poll(async () => (await thumbOffsets()).some((offset) => offset >= 16)).toBe(true);
+  await page.clock.runFor(500);
+  await expect.poll(async () => (await thumbOffsets()).includes(0)).toBe(true);
 
   await indeterminate.evaluate((element: HTMLElement) => element.click());
   await expect(indeterminate).toHaveAttribute("aria-checked", "false");
   await expect(bar).toHaveAttribute("aria-valuenow", "0");
+  await page.clock.resume();
   await expect.poll(() => bar.getAttribute("aria-valuenow")).not.toBe("0");
   await expect.poll(numberedText).toMatch(/^[█░]{15} \d{1,3}% *$/);
 });

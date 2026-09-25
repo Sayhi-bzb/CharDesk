@@ -39,9 +39,9 @@ test("keeps the first visible Surface geometry stable across a cold reload", asy
     const metrics = probe.presentation!.metrics;
     expect(samples.length).toBeGreaterThan(0);
     expect(new Set(samples.map(({ height }) => height)))
-      .toEqual(new Set([`${probe.viewport.height * metrics.cellHeight}px`]));
+      .toEqual(new Set([`${(probe.viewport.height + 2) * metrics.cellHeight}px`]));
     expect(new Set(samples.map(({ width }) => width)))
-      .toEqual(new Set([`${probe.viewport.width * metrics.cellWidth}px`]));
+      .toEqual(new Set([`${(probe.viewport.width + 2) * metrics.cellWidth}px`]));
   }
 });
 
@@ -127,8 +127,8 @@ for (const candidate of ["substitute-mono", "fusion-mono", "xiaolai-mono"]) {
         await canvas.scrollIntoViewIfNeeded();
         const bounds = (await canvas.boundingBox())!;
         const probe = await readCellProbe(surface);
-        expect(bounds.width).toBeCloseTo(probe.viewport.width * metrics.cellWidth, 1);
-        expect(bounds.height).toBeCloseTo(probe.viewport.height * metrics.cellHeight, 1);
+        expect(bounds.width).toBeCloseTo((probe.viewport.width + 2) * metrics.cellWidth, 1);
+        expect(bounds.height).toBeCloseTo((probe.viewport.height + 2) * metrics.cellHeight, 1);
         const first = ownerCells(probe, "editor-name").find((cell) => cell.text === "a")!;
         const start = await cellPoint(surface, first.x + 2, first.y);
         const end = await cellPoint(surface, first.x + 5, first.y);
@@ -139,8 +139,8 @@ for (const candidate of ["substitute-mono", "fusion-mono", "xiaolai-mono"]) {
         await expect(input).toHaveJSProperty("selectionStart", 2);
         await expect(input).toHaveJSProperty("selectionEnd", 5);
         const anchor = await input.evaluate((node) => ({ left: parseFloat(node.style.left), top: parseFloat(node.style.top), width: parseFloat(node.style.width), height: parseFloat(node.style.height) }));
-        expect(anchor.left).toBeCloseTo((first.x + 5) * metrics.cellWidth, 2);
-        expect(anchor.top).toBeCloseTo(first.y * metrics.cellHeight, 2);
+        expect(anchor.left).toBeCloseTo((first.x + 6) * metrics.cellWidth, 2);
+        expect(anchor.top).toBeCloseTo((first.y + 1) * metrics.cellHeight, 2);
         expect(anchor.width).toBeCloseTo(metrics.cellWidth, 2);
         expect(anchor.height).toBeCloseTo(metrics.cellHeight, 2);
         await page.keyboard.down("Alt"); await page.keyboard.down("Meta");

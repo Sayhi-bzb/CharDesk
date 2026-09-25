@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent as rawFireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -50,6 +50,25 @@ import {
 import type { CellRangeCommand } from "./range.js";
 import type { SemanticAction } from "./types.js";
 import type { CharDeskFontProfile } from "@chardesk/rendering/canvas";
+
+// Test pointer coordinates are content-relative; the browser canvas includes
+// one physical guard Cell before the logical viewport.
+const withSurfaceGuard = (options?: Record<string, unknown>) => ({
+  ...options,
+  ...(typeof options?.clientX === "number" ? { clientX: options.clientX + 10 } : {}),
+  ...(typeof options?.clientY === "number" ? { clientY: options.clientY + 20 } : {}),
+});
+const fireEvent = Object.assign((...args: Parameters<typeof rawFireEvent>) => rawFireEvent(...args),
+  rawFireEvent, {
+    pointerDown: (target: Parameters<typeof rawFireEvent.pointerDown>[0], options?: Record<string, unknown>) =>
+      rawFireEvent.pointerDown(target, withSurfaceGuard(options)),
+    pointerMove: (target: Parameters<typeof rawFireEvent.pointerMove>[0], options?: Record<string, unknown>) =>
+      rawFireEvent.pointerMove(target, withSurfaceGuard(options)),
+    pointerUp: (target: Parameters<typeof rawFireEvent.pointerUp>[0], options?: Record<string, unknown>) =>
+      rawFireEvent.pointerUp(target, withSurfaceGuard(options)),
+    wheel: (target: Parameters<typeof rawFireEvent.wheel>[0], options?: Record<string, unknown>) =>
+      rawFireEvent.wheel(target, withSurfaceGuard(options)),
+  });
 
 const context = {
   setTransform: vi.fn(),
@@ -870,8 +889,8 @@ describe("CellSurface", () => {
       }),
     ]);
     expect(probe.overlays[0]!.cells.some((cell) => "█▀▄".includes(cell.text))).toBe(false);
-    expect(baseCanvas.style.height).toBe("100px");
-    expect(overlayCanvas.style.height).toBe("240px");
+    expect(baseCanvas.style.height).toBe("140px");
+    expect(overlayCanvas.style.height).toBe("280px");
   });
 
   it("dismisses the active Select after confirmed external focus exit without stealing focus", async () => {
@@ -942,7 +961,7 @@ describe("CellSurface", () => {
       fireEvent.focus(input);
       expect(input).toHaveStyle({ cursor: "default" });
       expect(canvas).toHaveStyle({ cursor: "default" });
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [20, 0, 20, 20] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [30, 20, 20, 20] });
       expect(glyphs).toContainEqual({ color: "rgb(0, 255, 255)", text: "中" });
 
       fills.length = 0;
@@ -954,7 +973,7 @@ describe("CellSurface", () => {
         clientY: 10,
       });
       expect(screen.getByLabelText("Cursor surface")).not.toHaveAttribute("data-cell-focus-visible");
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [20, 0, 20, 20] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [30, 20, 20, 20] });
       fireEvent.pointerUp(screen.getByLabelText("Cursor surface"), {
         pointerId: 30,
         pointerType: "mouse",
@@ -965,11 +984,11 @@ describe("CellSurface", () => {
 
       fills.length = 0;
       mounted.rerender(<CursorProduct shape="bar" />);
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [20, 0, 1, 20] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [30, 20, 1, 20] });
 
       fills.length = 0;
       mounted.rerender(<CursorProduct shape="underline" />);
-      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [20, 19, 20, 1] });
+      expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [30, 39, 20, 1] });
     } finally {
       context.fillRect.mockReset();
       context.fillText.mockReset();
@@ -992,7 +1011,7 @@ describe("CellSurface", () => {
 
       context.fillRect.mockClear();
       vi.advanceTimersByTime(100);
-      expect(context.fillRect).toHaveBeenCalledWith(20, 0, 20, 20);
+      expect(context.fillRect).toHaveBeenCalledWith(30, 20, 20, 20);
       expect(readCellSurfaceProbe(surface)!.revision).toBe(revision);
       mounted.unmount();
     } finally {
@@ -1100,7 +1119,7 @@ describe("CellSurface", () => {
     context.fillRect.mockClear();
     mounted.rerender(view("blue"));
     expect(context.clip).not.toHaveBeenCalled();
-    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 80, 40);
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 100, 80);
     const after = readCellSurfaceProbe(surface)!;
     expect(after.cells).toEqual(before.cells);
     expect(after.revision).toBe(before.revision);
@@ -1130,7 +1149,7 @@ describe("CellSurface", () => {
     expect(after.text).toBe(before.text);
     expect(after.revision).toBe(before.revision);
     expect(after.presentation?.metrics.cellWidth).toBe(12.5);
-    expect(canvas.width).toBe(100);
+    expect(canvas.width).toBe(125);
   });
 
   it("releases Yoga resources across a React StrictMode mount cycle", async () => {
@@ -1164,8 +1183,8 @@ describe("CellSurface", () => {
     context.fillRect.mockClear();
     mounted.rerender(view("b"));
 
-    expect(context.clearRect).toHaveBeenCalledWith(0, 0, 100, 60);
-    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 100, 60);
+    expect(context.clearRect).toHaveBeenCalledWith(0, 0, 120, 100);
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 120, 100);
   });
 
   it("uses one font profile for loading and presentation, then reloads on profile change", async () => {
@@ -1298,6 +1317,18 @@ describe("CellSurface", () => {
       { left: 9, top: 1 },
       { cellWidth: 10, cellHeight: 20 }
     )).toEqual({ x: 2, y: 2 });
+    expect(pxToCellPoint(
+      { clientX: 15, clientY: 30 },
+      { left: 0, top: 0 },
+      { cellWidth: 10, cellHeight: 20 },
+      1
+    )).toEqual({ x: 0, y: 0 });
+    expect(pxToCellPoint(
+      { clientX: 5, clientY: 10 },
+      { left: 0, top: 0 },
+      { cellWidth: 10, cellHeight: 20 },
+      1
+    )).toEqual({ x: -1, y: -1 });
   });
 
   it("fully repaints a palette change during a paint-only commit and preserves revision on resize", () => {
@@ -1313,7 +1344,7 @@ describe("CellSurface", () => {
     const initial = readCellSurfaceProbe(surface)!;
     context.clearRect.mockClear();
     mounted.rerender(view(true, "#111111"));
-    expect(context.clearRect).toHaveBeenCalledWith(0, 0, 100, 60);
+    expect(context.clearRect).toHaveBeenCalledWith(0, 0, 120, 100);
     const changed = readCellSurfaceProbe(surface)!;
     expect(changed.revision).toBeGreaterThan(initial.revision);
     mounted.rerender(view(true, "#111111", 12));

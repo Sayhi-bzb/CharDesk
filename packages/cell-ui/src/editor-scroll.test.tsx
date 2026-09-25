@@ -41,7 +41,7 @@ it("TextInput retains hidden horizontal scrolling and TextArea gains owned rails
   expect(frame.textLayouts.get("input")!.contentBounds.height).toBe(1);
   const rail = frame.scene.entries.get("area")!.scrollMetrics!.horizontalTrack!;
   expect(rail).not.toBeNull();
-  expect(frame.buffer.get(rail.x, rail.y)).toMatchObject({ ownerId: "area", text: "█" });
+  expect(frame.buffer.get(rail.x, rail.y)).toMatchObject({ ownerId: "area", text: "━" });
   runtime.dispose();
 });
 

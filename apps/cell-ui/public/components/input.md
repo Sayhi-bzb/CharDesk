@@ -17,12 +17,12 @@ export function InputExample() {
   return (
     <CellSurface viewport={{ width: 36, height: 3 }} onCommand={input.dispatch}>
       <Root id="root">
-        <Field id="file-name-field" label="File name" error={input.snapshot.value ? undefined : "Required"}>
-          <TextInput
-            id="file-name"
-            state={input.snapshot}
-            style={{ width: 36 }}
-          />
+        <Field
+          id="file-name-field"
+          label="File name"
+          error={input.snapshot.value ? undefined : "Required"}
+        >
+          <TextInput id="file-name" state={input.snapshot} style={{ width: 36 }} />
         </Field>
       </Root>
     </CellSurface>

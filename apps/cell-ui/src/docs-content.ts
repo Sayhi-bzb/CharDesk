@@ -713,12 +713,12 @@ export function InputExample() {
   return (
     <CellSurface viewport={{ width: 36, height: 3 }} onCommand={input.dispatch}>
       <Root id="root">
-        <Field id="file-name-field" label="File name" error={input.snapshot.value ? undefined : "Required"}>
-          <TextInput
-            id="file-name"
-            state={input.snapshot}
-            style={{ width: 36 }}
-          />
+        <Field
+          id="file-name-field"
+          label="File name"
+          error={input.snapshot.value ? undefined : "Required"}
+        >
+          <TextInput id="file-name" state={input.snapshot} style={{ width: 36 }} />
         </Field>
       </Root>
     </CellSurface>
@@ -914,6 +914,49 @@ type GuideSection = Readonly<{
 }>;
 export type GuideContent = Readonly<{ slug: string; title: string; description: string; sections: readonly GuideSection[] }>;
 
+export const markdownPreviewSource = `# Field Notes
+
+Cells make **structure** readable. Try *emphasis* and \`inline code\`.
+
+Read [Philosophy](#/guides/philosophy).
+
+## Checklist
+
+- [x] Build UI
+- [ ] Share it
+- Keep notes
+  - Include the details
+
+## Steps
+
+1. Write Markdown
+2. Render Cells
+
+> Source stays yours.
+
+---
+
+## Code
+
+\`\`\`ts
+const ready = true;
+\`\`\`
+
+## Table
+
+| Element | Cell output |
+| :--- | ---: |
+| Link | Focusable |
+| List | Structured |
+
+Read [Installation](#/guides/installation).
+
+## Fallbacks
+
+~~Old wording~~ stays visible.
+
+![Flow diagram](flow.png)`;
+
 export const guideContent: readonly GuideContent[] = [
   {
     slug: "introduction", title: "Introduction",
@@ -978,7 +1021,7 @@ const [sound, setSound] = useState(true);
   },
   {
     slug: "markdown", title: "Markdown",
-    description: "One source for people and LLMs: Markdown syntax stays visible, with color and alignment added for reading.",
+    description: "Read Markdown as a Cell-native document. This Gallery publishes its source .md pages through llms.txt.",
     sections: [
       { id: "preview", title: "Preview", demo: "markdown", probeId: "markdown-example" },
       { id: "installation", title: "Installation", installation: true,
@@ -1002,10 +1045,12 @@ export function MarkdownExample() {
         { label: "markdown.ts", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts" },
         { label: "react.tsx", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx" },
       ] },
-      { id: "api", title: "API", body: "Source markers remain visible. Markdown colors come from the Cell theme; tables align and short rules center without changing Cell Range copy. Paragraphs may wrap. Safe links remain interactive; raw HTML stays inert.", link: { label: "Theming", href: "#/guides/theming" }, api: [
+      { id: "api", title: "API", body: "Markdown renders for reading; Cell Range copies the visible text. Code fences and table syntax are hidden. Safe links stay interactive; raw HTML stays inert.", link: { label: "Theming", href: "#/guides/theming" }, api: [
         { name: "source", type: "string", description: "Markdown source to render." },
         { name: "id?", type: "string", description: "Stable identity for the document root." },
         { name: "style?", type: "CellLayoutStyle", description: "Document layout overrides." },
+        { name: "renderCodeBlock?", type: "(block: MarkdownCodeBlock) => ReactElement", description: "Replace a code block with Cell descriptors. The block includes raw source, code, language, and line bounds." },
+        { name: "highlightCodeLine?", type: "(line: string, lineIndex: number) => MarkdownCodeToken[]", description: "Color code tokens without changing their text. Invalid token coverage falls back to the original line." },
       ] },
     ],
   },

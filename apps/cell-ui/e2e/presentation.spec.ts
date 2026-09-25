@@ -187,7 +187,7 @@ for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     const activeColor = scheme === "light" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)";
     const activeBackground = scheme === "light" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
-    const thumbGlyphs = new Set(["█", "▀", "▄", "▐", "▌", "\u{1FB91}", "\u{1FB92}"]);
+    const thumbGlyphs = new Set(["█", "▀", "▄", "━", "╺", "╸", "\u{1FB91}", "\u{1FB92}"]);
     for (const presentation of ["Rich", "Text"] as const) {
       await page.goto("/#/components/text-area");
       if (presentation === "Text") await choosePresentation(page, "Text");
@@ -227,7 +227,34 @@ test("surface TextArea thumb reaches the left edge while content remains inset",
       contentInset: probe.cells.some((cell) => cell.ownerId === "notes" && cell.text === "x"
         && cell.x > bounds.x && cell.y < thumbY),
     };
-  }).toEqual({ edge: "█", contentInset: true });
+  }).toEqual({ edge: "━", contentInset: true });
+});
+
+test("blank horizontal TextArea track still pages without changing the selection", async ({ page }) => {
+  for (const presentation of ["Rich", "Text"] as const) {
+    await page.goto("/#/components/text-area");
+    if (presentation === "Text") await choosePresentation(page, "Text");
+    const surface = page.locator('[data-cell-probe="component-text-area"]');
+    const editor = surface.getByRole("textbox", { name: "Notes" });
+    await editor.fill(Array.from({ length: 12 }, () => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef").join("\n"));
+    await editor.press("Home");
+    const before = await readCellProbe(surface);
+    const bounds = ownerBounds(before, "notes");
+    const railY = Math.max(...before.cells.filter((cell) => cell.ownerId === "notes"
+      && "━╺╸".includes(cell.text)).map((cell) => cell.y));
+    const rail = before.cells.filter((cell) => cell.ownerId === "notes" && cell.y === railY);
+    const thumbEnd = Math.max(...rail.filter((cell) => "━╺╸".includes(cell.text)).map((cell) => cell.x));
+    const blank = rail.find((cell) => cell.text === " " && cell.x > thumbEnd
+      && cell.x < bounds.x + bounds.width - 1);
+    expect(blank).toBeDefined();
+    const selection = await editor.evaluate((element: HTMLTextAreaElement) =>
+      [element.selectionStart, element.selectionEnd]);
+    const point = await cellPoint(surface, blank!.x, blank!.y);
+    await page.mouse.click(point.x, point.y);
+    await expect.poll(async () => (await readCellProbe(surface)).text).not.toBe(before.text);
+    expect(await editor.evaluate((element: HTMLTextAreaElement) =>
+      [element.selectionStart, element.selectionEnd])).toEqual(selection);
+  }
 });
 
 test("TextArea drag selection contrasts with its focused surface and hides on blur", async ({ page }) => {
@@ -257,7 +284,7 @@ test("TextArea drag selection contrasts with its focused surface and hides on bl
   expect(glyph("H").style.backgroundColor).not.toBe(glyph("世").style.backgroundColor);
   expect(glyph("H").style.underline).not.toBe(true);
 
-  await page.getByRole("heading", { name: "TextArea", level: 1 }).click();
+  await page.locator('[data-cell-probe="article-text-area-0"] canvas').click({ position: { x: 5, y: 5 } });
   await expect.poll(async () => {
     const probe = await readCellProbe(surface);
     return probe.cells.find((cell) => cell.ownerId === "notes" && cell.text === "H")?.style.backgroundColor;
@@ -436,7 +463,7 @@ test("Text vertical ScrollArea rail keeps its Unicode texture through keyboard a
   const thumbColors = new Set(initial.filter((cell) => cell.text !== "\u{1FB90}").map((cell) => cell.style.color));
   expect(trackColors.size).toBe(1);
   expect(thumbColors.size).toBe(1);
-  expect(trackColors).not.toEqual(thumbColors);
+  expect(trackColors).toEqual(thumbColors);
   expect((await readCellProbe(surface)).text).not.toMatch(/[▀▄]/u);
 
   await surface.getByRole("button", { name: "01  Row 1" }).focus();

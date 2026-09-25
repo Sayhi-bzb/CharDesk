@@ -1,8 +1,8 @@
-import { CellPresentationRegistry } from "./browser-presentation.js";
+import { CELL_SURFACE_GUARD_CELLS, CellPresentationRegistry } from "./browser-presentation.js";
+export { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
 import { resolveCellFeedback, type CellFeedbackConfig } from "./feedback.js";
 /* eslint-disable react-refresh/only-export-components */
 import {
-  alignCharDeskCanvasRect,
   CELL_GRAPHICS_VERSION,
   drawCharDeskCanvasRange,
   resolveCharDeskCanvasGlyphSource,
@@ -296,19 +296,21 @@ export const useCellVirtualListState = <Item extends CellListItem>(
 export const pxToCellPoint = (
   point: Readonly<{ clientX: number; clientY: number }>,
   bounds: Pick<DOMRect, "left" | "top">,
-  metrics: Pick<CharDeskCellMetrics, "cellWidth" | "cellHeight">
+  metrics: Pick<CharDeskCellMetrics, "cellWidth" | "cellHeight">,
+  guardCells = 0
 ): CellPoint => ({
-  x: Math.floor((point.clientX - bounds.left) / metrics.cellWidth),
-  y: Math.floor((point.clientY - bounds.top) / metrics.cellHeight),
+  x: Math.floor((point.clientX - bounds.left) / metrics.cellWidth) - guardCells,
+  y: Math.floor((point.clientY - bounds.top) / metrics.cellHeight) - guardCells,
 });
 
 export const pxToCellPosition = (
   point: Readonly<{ clientX: number; clientY: number }>,
   bounds: Pick<DOMRect, "left" | "top">,
-  metrics: Pick<CharDeskCellMetrics, "cellWidth" | "cellHeight">
+  metrics: Pick<CharDeskCellMetrics, "cellWidth" | "cellHeight">,
+  guardCells = 0
 ): CellPoint => ({
-  x: (point.clientX - bounds.left) / metrics.cellWidth,
-  y: (point.clientY - bounds.top) / metrics.cellHeight,
+  x: (point.clientX - bounds.left) / metrics.cellWidth - guardCells,
+  y: (point.clientY - bounds.top) / metrics.cellHeight - guardCells,
 });
 
 const presentFrame = (
@@ -330,25 +332,20 @@ const presentFrame = (
   if (!context) return;
   const buffer = plane.buffer ?? frame.buffer;
   const viewport = plane.viewport ?? frame.scene.viewport;
-  const width = buffer.width * metrics.cellWidth;
-  const height = buffer.height * metrics.cellHeight;
+  const guardX = CELL_SURFACE_GUARD_CELLS * metrics.cellWidth;
+  const guardY = CELL_SURFACE_GUARD_CELLS * metrics.cellHeight;
+  const width = (buffer.width + 2 * CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth;
+  const height = (buffer.height + 2 * CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight;
   const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
   const regions = [viewport];
   // Font ink may cross Cell boundaries, so presentation repaints the complete
   // Surface while the headless frame keeps its precise invalidation data.
   prepareCharDeskCanvasSurface(canvas, context, width, height, dpr);
-  for (const region of regions) {
-    const bounds = alignCharDeskCanvasRect({
-      x: region.x * metrics.cellWidth, y: region.y * metrics.cellHeight,
-      width: region.width * metrics.cellWidth, height: region.height * metrics.cellHeight,
-    }, context.getTransform());
-    if (plane.transparent) {
-      context.clearRect(bounds.x, bounds.y, bounds.width, bounds.height);
-    } else {
-      context.fillStyle = palette.background;
-      context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-    }
+  if (!plane.transparent) {
+    context.fillStyle = palette.background;
+    context.fillRect(0, 0, width, height);
   }
+  context.translate(guardX, guardY);
   presentCharDeskCellFrame(
     context,
     createCellUiRenderFrame(frame, regions, { buffer, viewport }),
@@ -593,6 +590,7 @@ const captureCellProbePresentation = (
     const measured = new Set<string>();
     context.save();
     try {
+      context.textAlign = "center";
       for (let row = 0; row < frame.buffer.height; row += 1) {
         for (let col = 0; col < frame.buffer.width; col += 1) {
           const cell = frame.buffer.get(col, row);
@@ -1283,7 +1281,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       }
       const result = resolveWheelInput(current, {
         type: "wheel",
-        point: pxToCellPoint(event, canvas.getBoundingClientRect(), metrics),
+        point: pxToCellPoint(event, canvas.getBoundingClientRect(), metrics, CELL_SURFACE_GUARD_CELLS),
         deltaX: event.deltaX,
         deltaY: event.deltaY,
       });
@@ -1297,7 +1295,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
 
   const textDragPointFor = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = canvasRef.current?.getBoundingClientRect();
-    return bounds ? pxToCellPoint(event, bounds, metrics) : null;
+    return bounds ? pxToCellPoint(event, bounds, metrics, CELL_SURFACE_GUARD_CELLS) : null;
   };
 
   const isSurfaceCanvas = (target: EventTarget | null) =>
@@ -1521,7 +1519,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (immediate?.type === "focus") dispatch(immediate);
         const targetId = eventsRef.current.resolveTarget(frame, point, event.pointerId);
         const bounds = canvasRef.current!.getBoundingClientRect();
-        const precisePoint = pxToCellPosition(event, bounds, metrics);
+        const precisePoint = pxToCellPosition(event, bounds, metrics, CELL_SURFACE_GUARD_CELLS);
         const candidates = gestureCandidatesForFrame(frame, targetId ? getEventPath(frame.scene, targetId) : [], point, precisePoint);
         const handlers: CellEventHandlerMap = targetId && candidates.length > 0
           ? new Map([[targetId, { bubble: (cellEvent) => cellEvent.capturePointer() }]])
@@ -1577,7 +1575,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           point,
         });
         const bounds = canvasRef.current!.getBoundingClientRect();
-        const signals = controller.movePointer(frame, event.pointerId, point, pxToCellPosition(event, bounds, metrics));
+        const signals = controller.movePointer(frame, event.pointerId, point,
+          pxToCellPosition(event, bounds, metrics, CELL_SURFACE_GUARD_CELLS));
         applyGestureSignals(frame, signals);
       }}
       onPointerUp={(event: PointerEvent<HTMLDivElement>) => {
@@ -1591,7 +1590,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
               point,
             });
             const bounds = canvasRef.current!.getBoundingClientRect();
-            const signals = controller.endPointer(frame, event.pointerId, point, pxToCellPosition(event, bounds, metrics));
+            const signals = controller.endPointer(frame, event.pointerId, point,
+              pxToCellPosition(event, bounds, metrics, CELL_SURFACE_GUARD_CELLS));
             applyGestureSignals(frame, signals);
           }
         } finally {
@@ -1712,6 +1712,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         <CellTextInputLayer
           frame={frame}
           metrics={metrics}
+          guardCells={CELL_SURFACE_GUARD_CELLS}
           dispatch={dispatch}
           focusTarget={(targetId) => {
             if (focusRef.current.focusedId !== targetId) {

@@ -18,8 +18,8 @@ export const thumbGlyph = (thumb: HalfCellThumb, cell: number, horizontal: boole
   const start = Math.max(cell * 2, thumb.start);
   const end = Math.min(cell * 2 + 2, thumb.start + thumb.length);
   if (end <= start) return " ";
-  if (end - start === 2) return "█";
-  return start === cell * 2 ? (horizontal ? "▌" : "▀") : (horizontal ? "▐" : "▄");
+  if (end - start === 2) return horizontal ? "━" : "█";
+  return start === cell * 2 ? (horizontal ? "╸" : "▀") : (horizontal ? "╺" : "▄");
 };
 
 export const TEXT_VERTICAL_TRACK_GLYPH = "\u{1FB90}";

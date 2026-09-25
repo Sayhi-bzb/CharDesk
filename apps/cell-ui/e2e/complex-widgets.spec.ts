@@ -34,13 +34,14 @@ test("Grid has one remembered Tab entry and range copy never selects a cell", as
   const probe = await readCellProbe(surface);
   const row = probe.cells.find((cell) => cell.ownerId === "property-value" && cell.text === "✓")!;
   expect(row).toBeDefined();
-  const metrics = await readCellMetrics(surface);
-  const bounds = (await surface.locator("canvas").boundingBox())!;
+  await readCellMetrics(surface);
+  const start = await cellPoint(surface, 0, row.y);
+  const end = await cellPoint(surface, 35, row.y + 1);
   await page.keyboard.down("Alt");
   await page.keyboard.down("Meta");
-  await page.mouse.move(bounds.x + 0.5 * metrics.cellWidth, bounds.y + (row.y + 0.5) * metrics.cellHeight);
+  await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.mouse.move(bounds.x + 35.5 * metrics.cellWidth, bounds.y + (row.y + 1.5) * metrics.cellHeight, { steps: 5 });
+  await page.mouse.move(end.x, end.y, { steps: 5 });
   await page.mouse.up();
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");
@@ -112,8 +113,8 @@ test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", a
   if (!bounds) throw new Error("Complex widget Canvas is not visible.");
   await canvas.click({
     position: {
-      x: 5.5 * bounds.width / 44,
-      y: 0.5 * bounds.height / 16,
+      x: 6.5 * bounds.width / 46,
+      y: 1.5 * bounds.height / 18,
     },
   });
   await expect(surface).toHaveAttribute("data-cell-focused", "menu-new");

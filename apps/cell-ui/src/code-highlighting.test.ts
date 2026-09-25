@@ -1,8 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { tokenizeCode } from "../code-highlighting.ts";
+import { tokenizeCode, tokenizeInstallationCode } from "../code-highlighting.ts";
 import { componentContent, guideContent, publicUsage } from "./docs-content";
 
 describe("Gallery build-time code highlighting", () => {
+  it("classifies Installation JSON and commands without changing source characters", async () => {
+    const codes = [
+      { id: "configure", code: '{\n  "key": "value"\n}', language: "json" as const },
+      { id: "command", code: "npx shadcn@latest add @chardesk/cell-ui", language: "bash" as const },
+    ];
+    const tokens = await tokenizeInstallationCode(codes);
+    for (const { id, code } of codes) {
+      expect(tokens[id]!.map((line) => line.map(({ content }) => content).join("")).join("\n")).toBe(code);
+    }
+    expect(tokens.configure?.[1]).toEqual(expect.arrayContaining([
+      { content: '"key"', role: "key" },
+      { content: '"value"', role: "value" },
+    ]));
+    expect(tokens.command?.[0]).toEqual(expect.arrayContaining([
+      { content: "npx", role: "command" },
+      { content: "@chardesk/cell-ui", role: "value" },
+    ]));
+  });
   it("preserves every TSX example exactly", async () => {
     const examples = [
       ...componentContent.map(({ usage }) => publicUsage(usage)),

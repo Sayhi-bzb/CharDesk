@@ -12,11 +12,11 @@ for (const dpr of [1, 1.25, 2]) {
       await canvas.scrollIntoViewIfNeeded();
       const { cellWidth, cellHeight } = await readCellMetrics(surface);
       const bounds = (await canvas.boundingBox())!;
-      await page.mouse.move(bounds.x + 30.5 * cellWidth, bounds.y + 5.1 * cellHeight);
+      await page.mouse.move(bounds.x + 31.5 * cellWidth, bounds.y + 6.1 * cellHeight);
       await page.mouse.down();
-      await page.mouse.move(bounds.x + 30.5 * cellWidth, bounds.y + 5.4 * cellHeight);
+      await page.mouse.move(bounds.x + 31.5 * cellWidth, bounds.y + 6.4 * cellHeight);
       expect((await readCellProbe(surface)).text).toContain("offset: 0 / 3");
-      await page.mouse.move(bounds.x + 30.5 * cellWidth, bounds.y + 5.7 * cellHeight);
+      await page.mouse.move(bounds.x + 31.5 * cellWidth, bounds.y + 6.7 * cellHeight);
       await page.mouse.up();
       await expect.poll(async () => (await readCellProbe(surface)).text).toContain("offset: 1 / 3");
       const probe = await readCellProbe(surface);

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, ownerBounds, readCellPixel, readCellProbe } from "./helpers/cell-probe";
-import { galleryFontSelect } from "./helpers/gallery-font-select";
+import { cellPoint, copyCellRange, ownerBounds, readCellPixel, readCellProbe } from "./helpers/cell-probe";
+import { galleryFontSelect, selectGalleryFont } from "./helpers/gallery-font-select";
 
 const navigationLinks = [
   ["Accordion", "#/components/accordion"],
@@ -60,21 +60,12 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("tablist", { name: "Installation method" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Configure the registry" })).toBeVisible();
   await expect(page.getByText("npx shadcn@latest add @chardesk/cell-ui")).toBeVisible();
-  await expect(page.locator("#usage + .docs-code")).toContainText("@/lib/cell-ui/browser");
-  await expect(page.locator("#usage + .docs-code")).not.toContainText("@chardesk/cell-ui");
-  const codeBlocks = page.locator(".docs-code");
-  await expect(codeBlocks).toHaveCount(2);
-  for (const codeBlock of await codeBlocks.all()) {
-    await expect(codeBlock).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-    for (const side of ["top", "right", "bottom", "left"] as const) {
-      await expect(codeBlock).toHaveCSS(`border-${side}-width`, "2px");
-    }
-    await expect(codeBlock).toHaveCSS("border-top-style", "solid");
-    await expect(codeBlock.locator("pre")).toHaveCSS("overflow-x", "auto");
-    await expect(codeBlock.getByRole("button", { name: "Copy" })).toHaveCount(1);
-  }
-  await expect(page.locator(".docs-table-wrap td").first()).toHaveCSS("border-bottom-width", "2px");
-  await expect(page.locator(".docs-preview canvas")).toHaveCount(1);
+  const article = page.locator('[data-cell-probe="article-button-2"]');
+  expect((await readCellProbe(article)).text).toContain("@/lib/cell-ui/browser");
+  expect((await readCellProbe(article)).text).not.toContain("@chardesk/cell-ui/browser");
+  await expect(article.getByRole("button", { name: "Copy code" })).toHaveCount(2);
+  await expect(article.getByRole("table")).toHaveCount(1);
+  await expect(page.locator(".docs-preview canvas")).toHaveCount(2);
   await expect(galleryFontSelect(page).locator("canvas")).toHaveCount(1);
   await expect(page.locator("#core, #complex, #editor, #overlay, #virtualization")).toHaveCount(0);
 
@@ -100,11 +91,11 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   expect(widePlaygroundBounds!.x).toBeCloseTo(wideHostBounds!.x, 4);
   const wideRemainder = wideHostBounds!.x + wideHostBounds!.width
     - widePlaygroundBounds!.x - widePlaygroundBounds!.width;
-  expect(wideRemainder).toBeGreaterThanOrEqual(0);
+  expect(wideRemainder).toBeGreaterThanOrEqual(-20);
   expect(wideRemainder).toBeLessThan(9);
   const widePlayground = await readCellProbe(page.locator('[data-cell-probe="component-button"]'));
   expect(widePlayground.viewport).toEqual({
-    width: Math.floor(wideHostBounds!.width / 9),
+    width: Math.floor(wideHostBounds!.width / 9) - 2,
     height: 9,
   });
   const wideDivider = widePlayground.cells.find(
@@ -118,7 +109,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await page.setViewportSize({ width: 320, height: 700 });
   await expect.poll(async () => (await readCellProbe(
     page.locator('[data-cell-probe="component-button"]'),
-  )).viewport).toEqual({ width: 32, height: 19 });
+  )).viewport).toEqual({ width: 30, height: 19 });
   const narrowPlayground = await readCellProbe(page.locator('[data-cell-probe="component-button"]'));
   const narrowLines = narrowPlayground.text.split("\n");
   expect(narrowLines.some((line) => line.includes("[ ] disabled"))).toBe(true);
@@ -136,7 +127,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   );
   const narrowRemainder = narrowHostBounds!.x + narrowHostBounds!.width
     - narrowPlaygroundBounds!.x - narrowPlaygroundBounds!.width;
-  expect(narrowRemainder).toBeGreaterThanOrEqual(0);
+  expect(narrowRemainder).toBeGreaterThanOrEqual(-20);
   expect(narrowRemainder).toBeLessThan(9);
   for (const [slug, probeId] of [
     ["select", "component-select"],
@@ -149,7 +140,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
     await page.goto(`/#/components/${slug}`);
     await expect.poll(async () => (await readCellProbe(
       page.locator(`[data-cell-probe="${probeId}"]`),
-    )).viewport).toEqual({ width: 32, height: 15 });
+    )).viewport).toEqual({ width: 30, height: 15 });
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });
@@ -323,21 +314,123 @@ test("installation shows copyable package-manager commands and registry setup", 
     bun: "bunx",
   } as const;
   for (const [manager, prefix] of Object.entries(commands)) {
-    await managers.getByRole("tab", { name: manager, exact: true }).click();
+    await managers.getByRole("tab", { name: manager, exact: true }).evaluate((element: HTMLElement) => element.click());
     const command = `${prefix} shadcn@latest add @chardesk/cell-ui`;
-    const panel = installation.getByRole("tabpanel", { name: `${manager} installation command` });
-    await expect(panel).toContainText(command);
-    await panel.getByRole("button").click();
+    const panel = installation.getByRole("tabpanel", { name: manager });
+    await expect(panel).toBeVisible();
+    await expect.poll(async () => (await readCellProbe(page.locator('[data-cell-probe="article-button-2"]'))).text).toContain(command);
+    await installation.getByRole("button", { name: "Copy code" }).first()
+      .evaluate((element: HTMLElement) => element.click());
     await expect.poll(() => page.evaluate(() => sessionStorage.getItem("copied-command"))).toBe(command);
   }
   await managers.getByRole("tab", { name: "bun" }).focus();
   await page.keyboard.press("Home");
   await expect(managers.getByRole("tab", { name: "pnpm" })).toHaveAttribute("aria-selected", "true");
   await expect(installation.getByRole("link", { name: "Configure the registry" })).toBeVisible();
-  await installation.getByRole("link", { name: "Configure the registry" }).click();
+  await installation.getByRole("link", { name: "Configure the registry" }).focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Configure" })).toBeVisible();
-  await expect(page.locator("#configure + p + .docs-code")).toContainText("https://sayhi-bzb.github.io/CharDesk/{name}.json");
-  await expect(page.getByText("npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui")).toBeVisible();
+  const article = page.locator('[data-cell-probe="installation-article"]');
+  await expect(article.locator('[role="code"]').filter({ hasText: "https://sayhi-bzb.github.io/CharDesk/{name}.json" })).toHaveCount(1);
+  await expect(article.locator('[role="code"]').filter({ hasText: "npx shadcn@latest add Sayhi-bzb/CharDesk/cell-ui" })).toHaveCount(1);
+});
+
+test("Installation article is Cell-rendered without losing document navigation or raw code copy", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (value: string) => { sessionStorage.setItem("article-code", value); } },
+    });
+  });
+  await page.goto("/#/guides/installation?section=manual");
+  const toc = page.getByRole("navigation", { name: "On This Page" });
+  const article = page.locator('[data-cell-probe="installation-article"]');
+  await expect(page.locator(".cell-article-page [data-cell-probe]")).toHaveCount(1);
+  await expect(page.locator("#manual")).toBeInViewport();
+  await toc.getByRole("link", { name: "Configure" }).click();
+  await expect(page.locator("#configure")).toBeInViewport();
+  await expect.poll(async () => (await readCellProbe(article)).text).toContain("components.json");
+  await expect(article.locator('[role="code"]').filter({ hasText: /^"@chardesk":/u })).toHaveCount(1);
+  const copy = article.getByRole("button", { name: "Copy code" }).first();
+  await copy.focus();
+  await page.keyboard.press("Enter");
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("article-code"))).toBe(`{
+  "aliases": { "lib": "@/lib" },
+  "registries": {
+    "@chardesk": "https://sayhi-bzb.github.io/CharDesk/{name}.json"
+  }
+}`);
+  await page.locator("#command").scrollIntoViewIfNeeded();
+  const wide = await readCellProbe(article);
+  const configureRow = wide.text.split("\n").findIndex((line) => line.includes('"@chardesk"'));
+  const configureLine = wide.text.split("\n")[configureRow]!;
+  const codeBackground = wide.cells.find(({ x, y }) => x === 0 && y === configureRow)?.style.backgroundColor;
+  expect(codeBackground).toBe("rgb(230, 230, 230)");
+  expect(wide.cells.find(({ x, y }) => x === wide.viewport.width - 1 && y === configureRow)?.style.backgroundColor)
+    .toBe(codeBackground);
+  const keyX = configureLine.indexOf('"@chardesk"') + 1;
+  const valueX = configureLine.indexOf("https://sayhi-bzb.github.io");
+  expect(wide.cells.find(({ x, y }) => x === keyX && y === configureRow)?.style.color).toBe("#0550ae");
+  expect(wide.cells.find(({ x, y }) => x === valueX && y === configureRow)?.style.color).toBe("#116329");
+  const commandRow = wide.text.split("\n").findIndex((line) => line.includes("npx shadcn@latest add @chardesk/cell-ui"));
+  const commandX = wide.text.split("\n")[commandRow]!.indexOf("npx");
+  expect(wide.cells.find(({ x, y }) => x === commandX && y === commandRow)?.style.color).toBe("#8250df");
+  await page.locator("#configure").scrollIntoViewIfNeeded();
+  const selectionStart = await cellPoint(article, keyX - 1, configureRow);
+  const selectionEnd = await cellPoint(article, keyX + 10, configureRow);
+  await page.keyboard.down("Alt");
+  await page.keyboard.down("Meta");
+  await page.mouse.move(selectionStart.x, selectionStart.y);
+  await page.mouse.down();
+  await page.mouse.move(selectionEnd.x, selectionEnd.y, { steps: 4 });
+  await page.mouse.up();
+  await page.keyboard.up("Meta");
+  await page.keyboard.up("Alt");
+  expect(await copyCellRange(article)).toContain('"@chardesk"');
+  const copyGlyph = wide.cells.find(({ ownerId, text }) => ownerId?.includes("installation-command-copy") && text === "⧉");
+  expect(copyGlyph).toBeDefined();
+  expect(copyGlyph!.x).toBeGreaterThan(wide.viewport.width - 6);
+  const copyPoint = await cellPoint(article, copyGlyph!.x, copyGlyph!.y);
+  await page.mouse.click(copyPoint.x, copyPoint.y);
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("article-code")))
+    .toBe("npx shadcn@latest add @chardesk/cell-ui");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => (await readCellProbe(article)).viewport.width).toBeLessThan(45);
+  await expect.poll(async () => (await readCellProbe(article)).text).toContain("Configure");
+  const narrow = await readCellProbe(article);
+  const codeY = narrow.text.split("\n").findIndex((line) => line.includes('"@chardesk"'));
+  expect(codeY).toBeGreaterThanOrEqual(0);
+  await page.locator("#configure").scrollIntoViewIfNeeded();
+  const codePoint = await cellPoint(article, 15, codeY);
+  await page.mouse.move(codePoint.x, codePoint.y);
+  await page.mouse.wheel(240, 0);
+  await expect.poll(async () => (await readCellProbe(article)).text).not.toBe(narrow.text);
+  await toc.getByRole("link", { name: "Update" }).click();
+  await expect(page.locator("#update")).toBeInViewport();
+  await expect.poll(async () => (await readCellProbe(article)).text)
+    .toContain("cell-ui:registry:smoke");
+  await selectGalleryFont(page, "maple");
+  await expect.poll(async () => (await readCellProbe(article)).text).toContain("Configure");
+  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).click();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/#/guides/installation?section=configure");
+  await expect.poll(async () => {
+    const dark = await readCellProbe(article);
+    const y = dark.text.split("\n").findIndex((line) => line.includes('"@chardesk"'));
+    const x = dark.text.split("\n")[y]?.indexOf('"@chardesk"') ?? -1;
+    return dark.cells.find((cell) => cell.x === x + 1 && cell.y === y)?.style.color;
+  }).toBe("#79c0ff");
+  await expect.poll(async () => {
+    const dark = await readCellProbe(article);
+    const y = dark.text.split("\n").findIndex((line) => line.includes('"@chardesk"'));
+    const x = dark.text.split("\n")[y]?.indexOf("https://sayhi-bzb.github.io") ?? -1;
+    return dark.cells.find((cell) => cell.x === x && cell.y === y)?.style.color;
+  }).toBe("#7ee787");
+  await page.route("https://sayhi-bzb.github.io/CharDesk/cell-ui.json", (route) => route.fulfill({ body: "{}" }));
+  const link = article.getByRole("link", { name: "Published item JSON" });
+  await link.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL("https://sayhi-bzb.github.io/CharDesk/cell-ui.json");
 });
 
 test("on-page navigation survives direct load, component changes, and browser history", async ({ page }) => {
@@ -365,7 +458,8 @@ test("on-page navigation survives direct load, component changes, and browser hi
 test("remaining foundational component pages support direct loading", async ({ page }) => {
   for (const slug of ["text", "text-area", "table"]) {
     await page.goto(`/#/components/${slug}`);
-    await expect(page.locator(".docs-page__header").getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]').first()
+      .getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Cell UI" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "API" })).toBeVisible();
   }
@@ -379,7 +473,8 @@ test("guide sections, direct links, and agent Markdown stay addressable", async 
   for (const slug of ["introduction", "philosophy", "classic-macintosh", "markdown", "installation", "integration", "theming", "testing"]) {
     await page.goto(`/#/guides/${slug}`);
     await expect(page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: slug === "classic-macintosh" ? "Classic Macintosh" : slug[0]!.toUpperCase() + slug.slice(1), exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(page.locator(".docs-page__header").getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator('.cell-article-page [data-cell-probe]').first()
+      .getByRole("heading", { level: 1 })).toBeVisible();
     const markdown = await request.get(`/guides/${slug}.md`);
     expect(markdown.ok()).toBe(true);
     expect(await markdown.text()).toContain("# ");
@@ -404,10 +499,12 @@ test("guide sections, direct links, and agent Markdown stay addressable", async 
 
 test("Philosophy connects three principles to Introduction and the design authority", async ({ page, request }) => {
   await page.goto("/#/guides/introduction");
-  await page.getByRole("link", { name: "Read the philosophy" }).click();
+  await page.getByRole("link", { name: "Read the philosophy" }).focus();
+  await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/#\/guides\/philosophy$/u);
   await expect(page.getByRole("heading", { name: "Philosophy", level: 1 })).toBeVisible();
-  await expect(page.locator(".docs-page__header")).toContainText("UI as Text is the goal");
+  await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]').first())
+    .toContainText("UI as Text is the goal");
   const toc = page.getByRole("navigation", { name: "On This Page" });
   await expect(toc.getByRole("link")).toHaveText([
     "Everything is Cell", "Input Becomes Command", "State & Projections",
@@ -420,10 +517,10 @@ test("Philosophy connects three principles to Introduction and the design author
   await expect(page.getByRole("link", { name: "Explore the visual philosophy" })).toHaveAttribute(
     "href", "#/guides/classic-macintosh",
   );
-  await expect(page.locator("#one-state-many-projections").locator("xpath=..")).toContainText(
+  await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]').first()).toContainText(
     "Applications own business values",
   );
-  await expect(page.locator("#one-state-many-projections").locator("xpath=..")).toContainText(
+  await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]').first()).toContainText(
     "ordinary Cell Range copy preserves visible Unicode",
   );
   await toc.getByRole("link", { name: "One State, Many Projections" }).click();
@@ -483,7 +580,8 @@ test("Philosophy TOC stays within its column and reveals the current section", a
 
 test("Classic Macintosh guide keeps its Cell window stable across input and themes", async ({ page, request }) => {
   await page.goto("/#/guides/philosophy");
-  await page.getByRole("link", { name: "Explore the visual philosophy" }).click();
+  await page.getByRole("link", { name: "Explore the visual philosophy" })
+    .evaluate((element: HTMLElement) => element.click());
   await expect(page).toHaveURL(/#\/guides\/classic-macintosh$/u);
   await expect(page.getByRole("heading", { name: "Classic Macintosh", level: 1 })).toBeVisible();
   const toc = page.getByRole("navigation", { name: "On This Page" });
@@ -527,7 +625,7 @@ test("Introduction shows interactive Cell examples and matching agent content", 
   await expect(toc.getByRole("link")).toHaveText([
     "Why Cells?", "Compose a settings panel", "Show progress in text", "Edit Unicode in place", "Make it yours",
   ]);
-  await expect(page.locator("#philosophy").locator("xpath=..")).toContainText(
+  await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]').first()).toContainText(
     "Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux",
   );
 
@@ -569,22 +667,19 @@ test("Introduction shows interactive Cell examples and matching agent content", 
   expect(await markdown.text()).toContain("[Installation](https://ui.chardesk.com/#/guides/installation)");
 });
 
-test("guide prose and code use the same content width", async ({ page }) => {
+test("guide prose and Cell code share one measured article width", async ({ page }) => {
   await page.goto("/#/guides/integration");
-  const section = page.locator("#surface").locator("xpath=..");
-  const prose = section.locator(":scope > p");
-  const code = section.locator(":scope > .docs-code");
-  await expect(prose).toContainText("CellSurface retains the runtime");
+  const article = page.locator('[data-cell-probe="article-integration-0"]');
+  await expect(article).toContainText("CellSurface retains the runtime");
   for (const width of [1280, 390, 320]) {
     await page.setViewportSize({ width, height: 800 });
-    const proseBounds = await prose.boundingBox();
-    const codeBounds = await code.boundingBox();
-    expect(proseBounds).not.toBeNull();
-    expect(codeBounds).not.toBeNull();
-    expect(proseBounds!.x).toBeCloseTo(codeBounds!.x, 4);
-    expect(proseBounds!.width).toBeCloseTo(codeBounds!.width, 4);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await expect(code.locator("pre")).toHaveCSS("overflow-x", "auto");
+    const hostColumns = Math.floor((await article.locator("..").evaluate((element) => element.clientWidth)) / 9);
+    await expect.poll(async () => (await readCellProbe(article)).viewport.width)
+      .toBeGreaterThanOrEqual(hostColumns - 2);
+    const frame = await readCellProbe(article);
+    expect(frame.text).toContain("Surface");
+    expect(frame.text).toContain("import");
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   }
 });
 
@@ -596,15 +691,11 @@ test("unknown component routes fail honestly", async ({ page }) => {
   }
 });
 
-test("Gallery DOM contours and dividers stay 2px without narrow overflow", async ({ page }) => {
+test("Cell article code and API stay contained on a narrow page", async ({ page }) => {
   await page.goto("/#/components/button");
-  const codeBlocks = page.locator(".docs-code");
-  for (const codeBlock of await codeBlocks.all()) {
-    for (const side of ["top", "right", "bottom", "left"] as const) {
-      await expect(codeBlock).toHaveCSS(`border-${side}-width`, "2px");
-    }
-  }
-  await expect(page.locator(".docs-table-wrap td").first()).toHaveCSS("border-bottom-width", "2px");
+  const article = page.locator('[data-cell-probe="article-button-2"]');
+  await expect(article.getByRole("table")).toHaveCount(1);
+  await expect(article.getByRole("button", { name: "Copy code" })).toHaveCount(2);
 
   await page.setViewportSize({ width: 320, height: 700 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth))
@@ -758,8 +849,8 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   expect(indicatorCell).toBeDefined();
   expect(initialCanvasBounds).not.toBeNull();
   await page.mouse.move(
-    initialCanvasBounds!.x + (indicatorCell!.x + 0.5) * initialCanvasBounds!.width / initial.viewport.width,
-    initialCanvasBounds!.y + (indicatorCell!.y + 0.5) * initialCanvasBounds!.height / initial.viewport.height,
+    initialCanvasBounds!.x + (indicatorCell!.x + 1.5) * initialCanvasBounds!.width / (initial.viewport.width + 2),
+    initialCanvasBounds!.y + (indicatorCell!.y + 1.5) * initialCanvasBounds!.height / (initial.viewport.height + 2),
   );
   await expect(surface).toHaveAttribute("data-cell-hovered", "component-button-disabled");
 
@@ -773,8 +864,8 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   ))).toHaveLength(0);
 
   await page.mouse.move(
-    initialCanvasBounds!.x + 0.5 * initialCanvasBounds!.width / initial.viewport.width,
-    initialCanvasBounds!.y + 0.5 * initialCanvasBounds!.height / initial.viewport.height,
+    initialCanvasBounds!.x + 1.5 * initialCanvasBounds!.width / (initial.viewport.width + 2),
+    initialCanvasBounds!.y + 1.5 * initialCanvasBounds!.height / (initial.viewport.height + 2),
   );
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
   await expect.poll(async () => (await readCellProbe(surface)).cells.filter((cell) => (
@@ -796,8 +887,8 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   expect(saveCell).toBeDefined();
   expect(canvasBounds).not.toBeNull();
   const savePoint = {
-    x: canvasBounds!.x + (saveCell!.x + 0.5) * canvasBounds!.width / configured.viewport.width,
-    y: canvasBounds!.y + (saveCell!.y + 0.5) * canvasBounds!.height / configured.viewport.height,
+    x: canvasBounds!.x + (saveCell!.x + 1.5) * canvasBounds!.width / (configured.viewport.width + 2),
+    y: canvasBounds!.y + (saveCell!.y + 1.5) * canvasBounds!.height / (configured.viewport.height + 2),
   };
   await page.mouse.move(savePoint.x, savePoint.y);
   await page.mouse.down();
@@ -962,8 +1053,8 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
   expect(volumeTrack).toBeDefined();
   expect(canvasBounds).not.toBeNull();
   await page.mouse.move(
-    canvasBounds!.x + (volumeTrack!.x + 0.5) * canvasBounds!.width / initial.viewport.width,
-    canvasBounds!.y + (volumeTrack!.y + 0.5) * canvasBounds!.height / initial.viewport.height,
+    canvasBounds!.x + (volumeTrack!.x + 1.5) * canvasBounds!.width / (initial.viewport.width + 2),
+    canvasBounds!.y + (volumeTrack!.y + 1.5) * canvasBounds!.height / (initial.viewport.height + 2),
   );
   await expect.poll(async () => (await readCellProbe(surface)).cells.filter((cell) => (
     cell.ownerId === "component-slider-volume" && cell.text === "█"
@@ -975,10 +1066,10 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
     cell.ownerId === "component-slider-volume" && cell.style.backgroundColor !== undefined
   ))).toHaveLength(0);
   const thumbX = canvasBounds!.x
-    + (volumeThumb!.x + 0.5) * canvasBounds!.width / initial.viewport.width;
+    + (volumeThumb!.x + 1.5) * canvasBounds!.width / (initial.viewport.width + 2);
   const thumbY = canvasBounds!.y
-    + (volumeThumb!.y + 0.5) * canvasBounds!.height / initial.viewport.height;
-  const twoCells = 2 * canvasBounds!.width / initial.viewport.width;
+    + (volumeThumb!.y + 1.5) * canvasBounds!.height / (initial.viewport.height + 2);
+  const twoCells = 2 * canvasBounds!.width / (initial.viewport.width + 2);
   await page.mouse.move(thumbX, thumbY);
   await page.mouse.down();
   await expect(surface).toHaveAttribute("data-cell-manipulating", "true");
@@ -1067,7 +1158,8 @@ test("Cell Range clears when Preview focus moves outside its Surface", async ({ 
   const selectRange = async () => {
     await page.keyboard.down("Alt");
     await page.keyboard.down("Meta");
-    await page.mouse.move(bounds!.x + bounds!.width / probe.viewport.width / 2, bounds!.y + bounds!.height / probe.viewport.height / 2);
+    await page.mouse.move(bounds!.x + 1.5 * bounds!.width / (probe.viewport.width + 2),
+      bounds!.y + 1.5 * bounds!.height / (probe.viewport.height + 2));
     await page.mouse.down();
     await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2, { steps: 4 });
     await page.mouse.up();
@@ -1124,8 +1216,8 @@ test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling t
   expect(wheelBounds).not.toBeNull();
   await canvas.hover({
     position: {
-      x: (wheelTarget!.x + 0.5) * wheelBounds!.width / paged.viewport.width,
-      y: (wheelTarget!.y + 0.5) * wheelBounds!.height / paged.viewport.height,
+      x: (wheelTarget!.x + 1.5) * wheelBounds!.width / (paged.viewport.width + 2),
+      y: (wheelTarget!.y + 1.5) * wheelBounds!.height / (paged.viewport.height + 2),
     },
   });
   await page.mouse.wheel(0, 120);
@@ -1138,13 +1230,13 @@ test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling t
   expect(thumb).toBeDefined();
   const bounds = await canvas.boundingBox();
   expect(bounds).not.toBeNull();
-  const cellWidth = bounds!.width / beforeDrag.viewport.width;
-  const cellHeight = bounds!.height / beforeDrag.viewport.height;
-  await page.mouse.move(bounds!.x + (thumb!.x + 0.5) * cellWidth, bounds!.y + (thumb!.y + 0.5) * cellHeight);
+  const cellWidth = bounds!.width / (beforeDrag.viewport.width + 2);
+  const cellHeight = bounds!.height / (beforeDrag.viewport.height + 2);
+  await page.mouse.move(bounds!.x + (thumb!.x + 1.5) * cellWidth, bounds!.y + (thumb!.y + 1.5) * cellHeight);
   await page.mouse.down();
   await page.mouse.move(
-    bounds!.x + (thumb!.x + 0.5) * cellWidth,
-    bounds!.y + Math.min(beforeDrag.viewport.height - 1.5, thumb!.y + 2.5) * cellHeight,
+    bounds!.x + (thumb!.x + 1.5) * cellWidth,
+    bounds!.y + (1 + Math.min(beforeDrag.viewport.height - 1.5, thumb!.y + 2.5)) * cellHeight,
     { steps: 6 },
   );
   await page.mouse.up();

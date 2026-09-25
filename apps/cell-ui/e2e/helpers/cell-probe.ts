@@ -1,5 +1,6 @@
 import { expect, type Locator } from "@playwright/test";
 import type { CellProbeSnapshot } from "@chardesk/cell-ui";
+import { CELL_SURFACE_GUARD_CELLS } from "@chardesk/cell-ui/browser";
 
 export type BrowserCellProbe = CellProbeSnapshot;
 
@@ -12,11 +13,11 @@ export const readCellMetrics = async (surface: Locator) => {
 
 export const readCellPixel = async (surface: Locator, x: number, y: number) => {
   const metrics = await readCellMetrics(surface);
-  return surface.locator("canvas").first().evaluate((canvas, { metrics, x, y }) =>
+  return surface.locator("canvas").first().evaluate((canvas, { metrics, x, y, guardCells }) =>
     Array.from(canvas.getContext("2d")!.getImageData(
-      Math.round(x * metrics.cellWidth * devicePixelRatio),
-      Math.round(y * metrics.cellHeight * devicePixelRatio), 1, 1
-    ).data), { metrics, x, y });
+      Math.round((x + guardCells) * metrics.cellWidth * devicePixelRatio),
+      Math.round((y + guardCells) * metrics.cellHeight * devicePixelRatio), 1, 1
+    ).data), { metrics, x, y, guardCells: CELL_SURFACE_GUARD_CELLS });
 };
 
 export const readCellProbe = async (surface: Locator): Promise<BrowserCellProbe> => {
@@ -65,8 +66,8 @@ export const cellPoint = async (surface: Locator, x: number, y: number) => {
   const bounds = await surface.locator("canvas").first().boundingBox();
   if (!bounds) throw new Error("CellSurface Canvas is not visible.");
   return {
-    x: bounds.x + (x + 0.5) * metrics.cellWidth,
-    y: bounds.y + (y + 0.5) * metrics.cellHeight,
+    x: bounds.x + (x + CELL_SURFACE_GUARD_CELLS + 0.5) * metrics.cellWidth,
+    y: bounds.y + (y + CELL_SURFACE_GUARD_CELLS + 0.5) * metrics.cellHeight,
   };
 };
 

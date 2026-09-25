@@ -15,8 +15,8 @@ test("Select overlay receives hover outside the base canvas and respects DOM occ
   expect(row).toBeGreaterThanOrEqual(0);
   const metrics = await readCellMetrics(surface);
   const bounds = (await base.boundingBox())!;
-  const x = bounds.x + (plane.bounds.x + 2.5) * metrics.cellWidth;
-  const y = bounds.y + (plane.bounds.y + row + 0.5) * metrics.cellHeight;
+  const x = bounds.x + (plane.bounds.x + 3.5) * metrics.cellWidth;
+  const y = bounds.y + (plane.bounds.y + row + 1.5) * metrics.cellHeight;
   expect(y).toBeGreaterThan(bounds.y + bounds.height);
   await page.mouse.move(x, y);
   await expect(surface).toHaveAttribute("data-cell-hovered", "gallery-font-option-fusion-mono");
@@ -31,7 +31,7 @@ test("Select overlay receives hover outside the base canvas and respects DOM occ
       Math.floor((x - bounds.x) * canvas.width / bounds.width),
       Math.floor((y - bounds.y) * canvas.height / bounds.height), 1, 1,
     ).data);
-  }, { x: bounds.x + (plane.bounds.x + 9.5) * metrics.cellWidth, y });
+  }, { x: bounds.x + (plane.bounds.x + 10.5) * metrics.cellWidth, y });
   expect(pixel).toEqual([0, 0, 0, 255]);
 
   await page.evaluate(({ x, y }) => {
@@ -61,30 +61,36 @@ test("hover shares hit testing, is paint-only, and never activates a command", a
   const canvas = surface.locator("canvas").first();
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
+  const metrics = await readCellMetrics(surface);
+  const cellX = bounds.x + metrics.cellWidth;
+  const cellY = bounds.y + metrics.cellHeight;
   const before = await readCellProbe(surface);
-  await page.mouse.move(bounds.x + 15, bounds.y + 9);
+  await page.mouse.move(cellX + 15, cellY + 9);
   await expect(surface).toHaveAttribute("data-cell-hovered", "core-new");
   await expect(canvas).toHaveCSS("cursor", "pointer");
   const hovered = await readCellProbe(surface);
   expect(hovered.focusedId).toBe(before.focusedId);
   expect(hovered.text).toBe(before.text);
   expect(hovered.cells.find((cell) => cell.x === 20 && cell.y === 0)?.style.backgroundColor).toBe("rgb(0, 0, 0)");
-  await page.mouse.move(bounds.x + 24, bounds.y + 9);
-  expect((await readCellProbe(surface)).revision).toBe(hovered.revision);
+  await page.mouse.move(cellX + 24, cellY + 9);
+  const movedWithinTarget = await readCellProbe(surface);
+  expect(movedWithinTarget.focusedId).toBe(before.focusedId);
+  expect(movedWithinTarget.text).toBe(before.text);
+  await expect(surface).toHaveAttribute("data-cell-hovered", "core-new");
   await page.mouse.move(0, 0);
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
   await expect(canvas).toHaveCSS("cursor", "default");
-  await canvas.dispatchEvent("pointermove", { pointerType: "touch", buttons: 0, clientX: bounds.x + 15, clientY: bounds.y + 9 });
+  await canvas.dispatchEvent("pointermove", { pointerType: "touch", buttons: 0, clientX: cellX + 15, clientY: cellY + 9 });
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
-  await page.mouse.move(bounds.x + 15, bounds.y + 9);
+  await page.mouse.move(cellX + 15, cellY + 9);
   await expect(surface).toHaveAttribute("data-cell-hovered", "core-new");
   await canvas.dispatchEvent("pointercancel", { pointerId: 1, pointerType: "mouse" });
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
-  await page.mouse.move(bounds.x + 24, bounds.y + 9);
+  await page.mouse.move(cellX + 24, cellY + 9);
   await expect(surface).toHaveAttribute("data-cell-hovered", "core-new");
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
-  await page.mouse.click(bounds.x + 15, bounds.y + 9);
+  await page.mouse.click(cellX + 15, cellY + 9);
   await expect(surface).toHaveAttribute("data-cell-hovered", "core-new");
   await expect(surface).toHaveAttribute("data-cell-focused", "core-new");
 });
@@ -97,7 +103,7 @@ test("palette blocks underlying hover even when the mouse is stationary", async 
   const metrics = await readCellMetrics(surface);
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
-  await page.mouse.move(bounds.x + 1.5 * metrics.cellWidth, bounds.y + 0.5 * metrics.cellHeight);
+  await page.mouse.move(bounds.x + 2.5 * metrics.cellWidth, bounds.y + 1.5 * metrics.cellHeight);
   await expect(surface).toHaveAttribute("data-cell-hovered", "show-palette");
   await surface.focus();
   await page.keyboard.press("Enter");
@@ -116,7 +122,7 @@ test("stationary mouse follows scrolled rows and editor content keeps a neutral 
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
   const metrics = await readCellMetrics(core);
-  await page.mouse.move(bounds.x + 4 * metrics.cellWidth, bounds.y + 5.5 * metrics.cellHeight);
+  await page.mouse.move(bounds.x + 5 * metrics.cellWidth, bounds.y + 6.5 * metrics.cellHeight);
   await expect(core).toHaveAttribute("data-cell-hovered", "core-file-src/index.ts");
   await page.mouse.wheel(0, 100);
   await expect(core).toHaveAttribute("data-cell-hovered", "core-file-src/app.ts");

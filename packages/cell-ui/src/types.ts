@@ -30,6 +30,11 @@ export type CellLayoutStyle = Readonly<{
   flexShrink?: number;
   gap?: number;
   wrap?: boolean;
+  position?: "absolute";
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
   padding?: number;
   paddingTop?: number;
   paddingRight?: number;

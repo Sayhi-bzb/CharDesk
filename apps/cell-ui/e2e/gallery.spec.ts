@@ -39,7 +39,7 @@ test("Cell UI shares keyboard, pointer, scroll, and semantic state", async ({ pa
     viewport: { width: 32, height: 10 },
     focusedId: "core-open",
   });
-  await canvas.click({ position: { x: 40, y: 45 } });
+  await canvas.click({ position: { x: 49, y: 63 } });
   await expect(surface).toHaveAttribute("data-cell-focused", "core-save");
 
   await page.keyboard.press("ArrowDown");
@@ -57,8 +57,8 @@ test("Cell UI shares keyboard, pointer, scroll, and semantic state", async ({ pa
   const bounds = await canvas.boundingBox();
   expect(bounds).not.toBeNull();
   await canvas.dispatchEvent("wheel", {
-    clientX: bounds!.x + 40,
-    clientY: bounds!.y + 100,
+    clientX: bounds!.x + 49,
+    clientY: bounds!.y + 118,
     deltaX: 0,
     deltaY: 100,
   });

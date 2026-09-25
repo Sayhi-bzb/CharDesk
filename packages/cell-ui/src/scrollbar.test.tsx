@@ -27,15 +27,15 @@ it("half-Cell geometry is monotonic, aligned at endpoints, and retains exact cov
   }
   const thumb = { start: 1, length: 4 };
   expect([0, 1, 2].map((cell) => thumbGlyph(thumb, cell, false))).toEqual(["▄", "█", "▀"]);
-  expect([0, 1, 2].map((cell) => thumbGlyph(thumb, cell, true))).toEqual(["▐", "█", "▌"]);
+  expect([0, 1, 2].map((cell) => thumbGlyph(thumb, cell, true))).toEqual(["╺", "━", "╸"]);
 });
 
-it("uses one continuous Unicode texture for the Text vertical rail without changing other rails", () => {
+it("keeps the Text vertical texture and makes both horizontal rails thumb-only", () => {
   const half = { start: 1, length: 4 };
   expect([0, 1, 2].map((cell) => textVerticalThumbGlyph(half, cell)))
     .toEqual(["\u{1FB92}", "█", "\u{1FB91}"]);
   expect(TEXT_VERTICAL_TRACK_GLYPH).toBe("\u{1FB90}");
-  expect([0, 1, 2].map((cell) => thumbGlyph(half, cell, true))).toEqual(["▐", "█", "▌"]);
+  expect([0, 1, 2].map((cell) => thumbGlyph(half, cell, true))).toEqual(["╺", "━", "╸"]);
 
   const view = (scrollY: number) => <Root><ScrollArea id="scroll" scrollY={scrollY}
     style={{ width: 12, height: 8 }}><Box style={{ width: 24, height: 20 }} /></ScrollArea></Root>;
@@ -55,16 +55,15 @@ it("uses one continuous Unicode texture for the Text vertical rail without chang
         : raw === "▀" ? "\u{1FB91}" : raw === "▄" ? "\u{1FB92}" : raw;
       const cell = textFrame.buffer.get(track.x, y)!;
       expect(cell).toMatchObject({ text: expected, ownerId: "scroll" });
-      expect(cell.style.color).toBe(raw === " "
-        ? CLASSIC_MAC_LIGHT_THEME.scrollTrackStyle.color
-        : CLASSIC_MAC_LIGHT_THEME.scrollThumbStyle.color);
+      expect(cell.style.color).toBe(CLASSIC_MAC_LIGHT_THEME.scrollThumbStyle.color);
       expect(richFrame.buffer.get(track.x, y)?.text).toBe(raw);
       if (raw === "▀" || raw === "▄") sawHalf = true;
     }
     const horizontal = metrics.horizontalTrack!;
     for (let x = horizontal.x; x < horizontal.x + horizontal.width; x += 1) {
       const raw = thumbGlyph(metrics.horizontalThumbAxis!, x - horizontal.x, true);
-      expect(textFrame.buffer.get(x, horizontal.y)?.text).toBe(raw === " " ? "░" : raw);
+      expect(textFrame.buffer.get(x, horizontal.y)).toMatchObject({ text: raw, ownerId: "scroll" });
+      expect(richFrame.buffer.get(x, horizontal.y)).toMatchObject({ text: raw, ownerId: "scroll" });
     }
   }
   expect(sawHalf).toBe(true);
@@ -87,6 +86,17 @@ it.each([CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME])(
         const activeCell = active.buffer.get(thumb.x, thumb.y)!;
         expect(idleCell.style.color).toBe(theme.scrollThumbStyle.color);
         expect(activeCell.style).toMatchObject({
+          color: theme.focusedSurfaceStyle.color,
+          backgroundColor: theme.focusedSurfaceStyle.backgroundColor,
+        });
+      }
+      if (presentation === "text") {
+        const track = metrics.verticalTrack!;
+        const freeY = Array.from({ length: track.height }, (_, index) => track.y + index)
+          .find((y) => y < metrics.verticalThumb!.y
+            || y >= metrics.verticalThumb!.y + metrics.verticalThumb!.height)!;
+        expect(idle.buffer.get(track.x, freeY)?.style.color).toBe(theme.scrollThumbStyle.color);
+        expect(active.buffer.get(track.x, freeY)?.style).toMatchObject({
           color: theme.focusedSurfaceStyle.color,
           backgroundColor: theme.focusedSurfaceStyle.backgroundColor,
         });
@@ -129,7 +139,9 @@ it.each(["scroll-area", "select-content", "combobox-content"] as const)(
     });
     const freeY = Array.from({ length: track.height }, (_, index) => track.y + index)
       .find((y) => y < thumb.y || y >= thumb.y + thumb.height)!;
-    expect(frame.buffer.get(track.x, freeY)?.style.color).not.toBe("#111111");
+    expect(frame.buffer.get(track.x, freeY)?.style).toMatchObject({
+      color: "#FFFFFF", backgroundColor: "#111111",
+    });
     runtime.dispose();
   },
 );
@@ -223,7 +235,7 @@ it.each(["rich", "text"] as const)("TextArea rails touch the inner edge without 
   expect(verticalThumb!.y).toBe(verticalTrack!.y);
   expect(corner).toMatchObject({ x: verticalTrack!.x, y: horizontalTrack!.y });
   expect(start.buffer.get(horizontalTrack!.x - 1, horizontalTrack!.y)?.text).toBe("│");
-  expect(start.buffer.get(horizontalTrack!.x, horizontalTrack!.y)?.text).toBe("█");
+  expect(start.buffer.get(horizontalTrack!.x, horizontalTrack!.y)?.text).toBe("━");
   expect(start.buffer.get(verticalTrack!.x, verticalTrack!.y - 1)?.text).toBe("─");
   expect(start.buffer.get(verticalTrack!.x, verticalTrack!.y)?.text).toBe("█");
   const end = runtime.render(view(maxOffset.x, maxOffset.y),
@@ -243,7 +255,7 @@ it("surface TextArea rails reach the surface edge while text keeps its inset", (
   expect(entry.contentBounds.x).toBe(entry.decorationBounds.x + 1);
   expect(metrics.horizontalTrack!.x).toBe(entry.decorationBounds.x);
   expect(metrics.verticalTrack!.x).toBe(entry.decorationBounds.x + entry.decorationBounds.width - 1);
-  expect(frame.buffer.get(metrics.horizontalTrack!.x, metrics.horizontalTrack!.y)?.text).toBe("█");
+  expect(frame.buffer.get(metrics.horizontalTrack!.x, metrics.horizontalTrack!.y)?.text).toBe("━");
   runtime.dispose();
 });
 

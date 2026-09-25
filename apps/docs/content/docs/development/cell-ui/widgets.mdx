@@ -80,11 +80,12 @@ Button、Badge、Checkbox、Toggle、RadioItem、Select Trigger／Item、Combobo
 - Grid 导航与入口选择由 `grid-navigation.ts` 拥有，FocusManager 仅保存每个 Grid 的目标 ID，卸载清理。禁用／删除焦点按入口规则收敛，不改写业务选择；全部 disabled 时跳过。Semantic DOM 保留 Surface 管理的程序化焦点，不维护另一套 Tab 顺序。Cell Range 与 Grid selection 独立，范围拖动不激活格子，复制包含可见 `✓` 和边框。
 - 嵌套 ScrollArea 的 wheel 从内向外寻找可滚动的 viewport；最外层到边界后仍消费 wheel。区域外页面可滚动，Ctrl+wheel 留给浏览器。父级只把内层 ScrollArea 的 viewport 计入自身内容尺寸；内容收缩后钳制 offset 并发出 `scroll` 命令同步受控状态。焦点命令的 `reveal` 保留最近一层，跨层时 `reveals` 按内到外列出全部目标和 offset。
 - 横纵 scrollbar 可相互缩小 viewport；可见性在一次 geometry 计算中收敛。内容 viewport 保留 padding，rail 独立延伸到边框内侧（无框时为表面边缘），端点 thumb 不留空 Cell；双轴交角由 rail 共享。thumb 使用半 Cell 精度，drag 以按下时 offset/range/track 为锚。
-- `text` 的竖向 rail 使用 Unicode `🮐` 轨道、`🮑/🮒` 半格 thumb 边缘；`rich` 与横向 rail 保持原字符配方。共享 painter 按实际 Cell 背景解析轨道和 thumb 的可见颜色：token 对比足够时保留，焦点 TextArea 的 thumb 跟随反色文字。字符与交互几何不变，轨道、thumb 与边缘均保留为可复制的 `Cell.text`。
+- `text` 的竖向 rail 使用 Unicode `🮐` 轨道、`🮑/🮒` 半格 thumb 边缘，轨道复用 thumb 解析后的前景色；横向 rail 在 `rich`／`text` 均为空白 owner Cell，仅以 `━` 和半格 `╺/╸` 绘制 thumb，空白轨道仍可点击翻页。共享 painter 按实际 Cell 背景解析颜色，焦点 TextArea 的竖向轨道和 thumb 同随反色文字。字符与交互几何不变，thumb 与边缘均保留为可复制的 `Cell.text`。
 - scrolling 不改变 selection；Virtual List 只在 focused row 离开 viewport 时把 focus 收敛到可见可用项。
 
 ## 编辑视口与 Canvas 边界
 
+- `CellSurface.viewport` 始终表示逻辑内容区；浏览器 Canvas 四周额外保留 1 Cell 绘制 guard。guard 不进入 Cell buffer、Probe 文本或复制结果；基础层、浮层、光标、隐藏 textarea 和 pointer 坐标共用同一 guard 偏移。字形仍可跨 Cell 绘制，物理画布边界不裁掉内容区首尾 Cell 的墨迹。
 - TextArea 可显示双轴 rail；TextInput 与 ComboboxInput 固定为 1 Cell 高且隐藏 rail，但保留横向 offset。编辑器和 ScrollArea 共用 scroll geometry，不复制 offset state。
 - 文本 layout、clip、Cursor、selection、hit 与隐藏 textarea 定位消费同一个 Scene viewport；手动 scroll 不修改 document/history。
 - Cell Range 修饰键优先于文本 selection gesture；只读编辑器可滚动，disabled 不新增交互。

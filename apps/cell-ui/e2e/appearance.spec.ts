@@ -177,10 +177,10 @@ test("header font Select uses Cell pointer geometry without moving the header", 
   expect(fusionColumn).toBeGreaterThanOrEqual(0);
   await page.mouse.click(
     reopenedCanvas!.x + (
-      fontOverlay.bounds.x + fusionColumn + 0.5
+      fontOverlay.bounds.x + fusionColumn + 1.5
     ) * reopenedProbe.presentation!.metrics.cellWidth,
     reopenedCanvas!.y + (
-      fontOverlay.bounds.y + fusionRow + 0.5
+      fontOverlay.bounds.y + fusionRow + 1.5
     ) * reopenedProbe.presentation!.metrics.cellHeight,
   );
   await expect(select).toHaveAttribute(
@@ -226,18 +226,21 @@ test("theme icon toggles, persists, and preserves Cell state", async ({ page }) 
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
 });
 
-test("Gallery DOM lines share the 2px token across themes", async ({ page }) => {
+test("Cell article code surface and API remain readable across themes", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/#/components/button");
-  const codeBlock = page.locator(".docs-code").first();
-  const tableCell = page.locator(".docs-table-wrap td").first();
-
-  await expect(codeBlock).toHaveCSS("border-top", "2px solid rgb(0, 0, 0)");
-  await expect(tableCell).toHaveCSS("border-bottom", "2px solid rgb(0, 0, 0)");
+  const article = page.locator('[data-cell-probe="article-button-2"]');
+  await expect(article.getByRole("table")).toHaveCount(1);
+  const light = await readCellProbe(article);
+  const row = light.text.split("\n").findIndex((line) => line.includes("npx shadcn"));
+  expect(light.cells.find(({ x, y }) => x === 4 && y === row)?.style.backgroundColor)
+    .toBe("rgb(230, 230, 230)");
 
   await page.getByRole("button", { name: "Dark" }).click();
-  await expect(codeBlock).toHaveCSS("border-top", "2px solid rgb(255, 255, 255)");
-  await expect(tableCell).toHaveCSS("border-bottom", "2px solid rgb(255, 255, 255)");
+  const dark = await readCellProbe(article);
+  expect(dark.cells.find(({ x, y }) => x === 4 && y === row)?.style.backgroundColor)
+    .toBe("rgb(26, 26, 26)");
+  await expect(article.getByRole("table")).toHaveCount(1);
 });
 
 for (const storage of ["invalid", "unavailable"] as const) {
@@ -369,24 +372,14 @@ test("snapshot copy feedback expires and a failed copy can be retried", async ({
     } });
   });
   await page.goto("/#/components/button");
-  const section = page.locator(".docs-section").filter({ has: page.getByRole("heading", { name: "Preview" }) });
-  const button = section.locator("[data-copy-state]");
-  await button.evaluate((element: HTMLButtonElement) => { element.click(); element.click(); });
-  await expect(button).toHaveAttribute("data-copy-state", "error");
-  await expect(button).toHaveAttribute("aria-label", "Copy failed");
-  await button.hover();
-  await expect(button.locator(".gallery-control-tooltip")).toHaveText("Copy");
-  await expect(button.locator(".gallery-control-tooltip")).toBeVisible();
-  await expect(button.locator('[data-gallery-icon="error"]')).toHaveCount(1);
+  const preview = page.locator('[data-cell-probe="component-button-copy"]');
+  const button = preview.getByRole("button", { name: "Copy preview" });
+  await button.evaluate((element: HTMLElement) => { element.click(); element.click(); });
+  await expect(preview.getByRole("button", { name: "Copy failed" })).toBeVisible();
   await expect(page.locator("body")).toHaveAttribute("data-copy-attempts", "1");
-  await button.click();
-  await expect(button).toHaveAttribute("data-copy-state", "success");
-  await expect(button).toHaveAttribute("aria-label", "Copied");
-  await expect(button.locator('[data-gallery-icon="check"]')).toHaveCount(1);
-  await expect(button).toBeEnabled();
-  await expect(button).toHaveAttribute("data-copy-state", "idle", { timeout: 5000 });
-  await expect(button).toHaveAttribute("aria-label", "Copy");
-  await expect(section.getByLabel("Copy feedback")).toHaveCount(0);
+  await preview.getByRole("button", { name: "Copy failed" }).evaluate((element: HTMLElement) => element.click());
+  await expect(preview.getByRole("button", { name: "Copied" })).toBeVisible();
+  await expect(preview.getByRole("button", { name: "Copy preview" })).toBeVisible({ timeout: 5000 });
 });
 
 test("gallery fits desktop and narrow screens in both appearances", async ({ page }, testInfo) => {

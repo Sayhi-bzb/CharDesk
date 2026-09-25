@@ -134,6 +134,8 @@ const textAreaSurfaceInsets = (node: WidgetNode, width?: number) => {
 };
 
 const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): void => {
+  target.setPositionType(PositionType.Relative);
+  for (const edge of [Edge.Top, Edge.Right, Edge.Bottom, Edge.Left]) target.setPosition(edge, undefined);
   const item = isCollectionItemKind(node.kind);
   const row = node.kind === "tabs" || node.kind === "grid-row" || node.kind === "table-header" || node.kind === "table-row";
   const column = node.kind === "list"
@@ -263,6 +265,16 @@ const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): vo
     target.setPositionType(PositionType.Absolute);
     target.setPosition(Edge.Left, node.kind === "overlay" ? node.overlayPosition?.x ?? 0 : 0);
     target.setPosition(Edge.Top, node.kind === "overlay" ? node.overlayPosition?.y ?? 0 : 0);
+  } else if (node.style.position === "absolute") {
+    target.setPositionType(PositionType.Absolute);
+    for (const [edge, value] of [
+      [Edge.Top, node.style.top],
+      [Edge.Right, node.style.right],
+      [Edge.Bottom, node.style.bottom],
+      [Edge.Left, node.style.left],
+    ] as const) {
+      if (value !== undefined) target.setPosition(edge, value);
+    }
   }
   if (node.kind === "scroll-area") target.setOverflow(Overflow.Hidden);
   if (node.kind === "text" || node.kind === "markdown-link") {

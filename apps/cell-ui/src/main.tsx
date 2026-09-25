@@ -1,35 +1,19 @@
-import { StrictMode, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
+import { StrictMode, useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { Check } from "pixelarticons/react/Check";
-import { Close } from "pixelarticons/react/Close";
-import { Copy } from "pixelarticons/react/Copy";
-import { formatCellProbe } from "@chardesk/cell-ui";
-import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
 import {
   componentDocumentBySlug,
   componentNavigationDocuments,
-  sourceLinksForComponent,
   type ComponentDocument,
 } from "./component-catalog";
-import { guideContent, installationCommands, publicUsage, type GuideContent } from "./docs-content";
+import { guideContent, type GuideContent } from "./docs-content";
 import { FixturePage } from "./fixtures";
-import { GalleryAppearance, GalleryFontSelect, GalleryIconButton, GalleryThemeToggle } from "./appearance";
+import { GalleryAppearance, GalleryFontSelect, GalleryThemeToggle } from "./appearance";
 import { GitHubStars } from "./github-stars";
-import { ClassicMacintoshDemo, MarkdownIntroductionDemo, NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
-import highlightedCode from "virtual:gallery-code-tokens";
-import { codeLineCount, shouldCollapseCode } from "./code-block-lines";
+import { InstallationCellPage } from "./installation-cell-page";
+import { CellDocumentPage } from "./cell-document-page";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
 import "@chardesk/font-maple/fonts.css";
-
-type CopyState = "idle" | "pending" | "success" | "error";
-type GalleryIcon = ComponentType<SVGProps<SVGSVGElement>>;
-const copyPresentation: Record<CopyState, Readonly<{ label: string; icon: GalleryIcon; iconName: string }>> = {
-  idle: { label: "Copy", icon: Copy, iconName: "copy" },
-  pending: { label: "Copy", icon: Copy, iconName: "copy" },
-  success: { label: "Copied", icon: Check, iconName: "check" },
-  error: { label: "Copy failed", icon: Close, iconName: "error" },
-};
 
 const subscribeToHash = (callback: () => void) => {
   window.addEventListener("hashchange", callback);
@@ -49,78 +33,6 @@ type DocumentationSection = typeof documentationSections[number]["id"];
 const isDocumentationSection = (value: string | null): value is DocumentationSection =>
   documentationSections.some((section) => section.id === value);
 
-export function CopyButton({ readText }: Readonly<{ readText: () => string | Promise<string> }>) {
-  const [state, setState] = useState<CopyState>("idle");
-  const pending = useRef(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const copy = async () => {
-    if (pending.current) return;
-    pending.current = true;
-    clearTimeout(timer.current);
-    setState("pending");
-    try {
-      await navigator.clipboard.writeText(await readText());
-      setState("success");
-    } catch {
-      setState("error");
-    } finally {
-      pending.current = false;
-      timer.current = setTimeout(() => setState("idle"), 2000);
-    }
-  };
-  const presentation = copyPresentation[state];
-  const Icon = presentation.icon;
-  return (
-    <GalleryIconButton
-      label={presentation.label}
-      tooltip="Copy"
-      aria-live="polite"
-      data-copy-state={state}
-      disabled={state === "pending"}
-      onClick={copy}
-    >
-      <Icon aria-hidden="true" data-gallery-icon={presentation.iconName} />
-    </GalleryIconButton>
-  );
-}
-
-export function CodeBlock({ children, language = "tsx" }: Readonly<{ children: string; language?: "tsx" | "text" }>) {
-  const [expanded, setExpanded] = useState(false);
-  const codeId = useId();
-  const lineCount = codeLineCount(children);
-  const collapsible = shouldCollapseCode(children);
-  const tokens = language === "tsx" ? highlightedCode[children] : undefined;
-  return (
-    <div className="docs-code" data-collapsed={collapsible && !expanded ? "" : undefined}>
-      <CopyButton readText={() => children} />
-      <div className="docs-code__body" data-numbered={lineCount > 1 ? "" : undefined}>
-        {lineCount > 1 ? <div className="docs-code__line-numbers" aria-hidden="true">
-          {Array.from({ length: lineCount }, (_, index) => <span key={index}>{index + 1}</span>)}
-        </div> : null}
-        <pre id={codeId}><code data-code-language={language}>{tokens
-          ? tokens.map((token, index) => <span key={index} className={token.bold ? "docs-code__emphasis" : undefined} style={{ color: token.color }}>{token.content}</span>)
-          : children}</code></pre>
-      </div>
-      {collapsible ? <button className="docs-code__toggle" type="button" aria-controls={codeId} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>{expanded ? "Show less" : "Show more"}</button> : null}
-    </div>
-  );
-}
-
-type PackageManager = keyof typeof installationCommands;
-const packageManagers = Object.keys(installationCommands) as PackageManager[];
-const registrySetupGuide = "#/guides/installation?section=configure";
-const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-  const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-  const current = tabs.indexOf(event.target as HTMLButtonElement);
-  if (current < 0) return;
-  const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1
-    : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
-  event.preventDefault();
-  tabs[next]?.focus();
-  tabs[next]?.click();
-};
 function useRevealCurrentLink(currentKey: string) {
   const navRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -174,43 +86,6 @@ export function GalleryNavigation({ activeRoute }: Readonly<{ activeRoute: strin
   );
 }
 
-export function Preview({ document }: Readonly<{ document: Pick<ComponentDocument, "Demo" | "probeId"> }>) {
-  const { Demo } = document;
-  const readSnapshot = () => {
-    const surface = window.document.querySelector(`[data-cell-probe="${document.probeId}"]`);
-    const snapshot = surface ? readCellSurfaceProbe(surface) : null;
-    if (!snapshot) throw new Error("Snapshot is unavailable.");
-    return formatCellProbe(snapshot, { header: true });
-  };
-  return (
-    <section className="docs-section" aria-labelledby="preview-title">
-      <div className="docs-section__heading">
-        <h2 id="preview-title">Preview</h2>
-        <CopyButton readText={readSnapshot} />
-      </div>
-      <div className="docs-preview"><Demo /></div>
-    </section>
-  );
-}
-
-export function Installation() {
-  const [manager, setManager] = useState<PackageManager>("npm");
-  return (
-    <section className="docs-section" aria-labelledby="installation">
-      <h2 id="installation">Installation</h2>
-      <div className="docs-tabs" role="tablist" aria-label="Package manager" onKeyDown={handleTabKeyDown}>
-        {packageManagers.map((name) => (
-          <button key={name} type="button" role="tab" aria-selected={manager === name} aria-controls="installation-command" tabIndex={manager === name ? 0 : -1} onClick={() => setManager(name)}>{name}</button>
-        ))}
-      </div>
-      <div id="installation-command" role="tabpanel" aria-label={`${manager} installation command`}>
-        <CodeBlock language="text">{installationCommands[manager]}</CodeBlock>
-      </div>
-      <p><a href={registrySetupGuide}>Configure the registry</a></p>
-    </section>
-  );
-}
-
 export function OnThisPage({ route, sections, activeSection }: Readonly<{ route: string; sections: readonly Readonly<{ id: string; label: string; tocLabel?: string }>[]; activeSection: string | null }>) {
   const tocRef = useRevealCurrentLink(`${route}?section=${activeSection ?? ""}`);
   return (
@@ -221,78 +96,6 @@ export function OnThisPage({ route, sections, activeSection }: Readonly<{ route:
       ))}</ul>
     </nav>
   );
-}
-
-function ApiTable({ rows }: Readonly<{ rows: ComponentDocument["api"] }>) {
-  return <div className="docs-table-wrap">
-    <table>
-      <thead><tr><th>Prop</th><th>Type</th><th>Description</th></tr></thead>
-      <tbody>{rows.map((row) => <tr key={row.name}>
-        <td><code>{row.name}</code></td>
-        <td><code>{row.type}</code></td>
-        <td>{row.description}</td>
-      </tr>)}</tbody>
-    </table>
-  </div>;
-}
-
-export function ComponentPage({ document }: Readonly<{ document: ComponentDocument }>) {
-  return (
-    <main className="docs-page">
-      <header className="docs-page__header">
-        <h1>{document.title}</h1>
-        <p>{document.description}</p>
-      </header>
-      <Preview document={document} />
-      <Installation />
-      <section className="docs-section" aria-labelledby="usage">
-        <h2 id="usage">Usage</h2>
-        <CodeBlock>{publicUsage(document.usage)}</CodeBlock>
-      </section>
-      <section className="docs-section" aria-labelledby="source">
-        <h2 id="source">View source</h2>
-        <p>Start with the component definition, then open its supporting implementation as needed.</p>
-        <ul className="docs-source-links">
-          {sourceLinksForComponent(document.slug).map(({ label, href }) =>
-            <li key={href}><a href={href}>{label}</a></li>
-          )}
-        </ul>
-      </section>
-      <section className="docs-section" aria-labelledby="api">
-        <h2 id="api">API</h2>
-        <ApiTable rows={document.api} />
-      </section>
-    </main>
-  );
-}
-
-const guideDemos = {
-  settings: SettingsIntroductionDemo,
-  progress: ProgressIntroductionDemo,
-  notes: NotesIntroductionDemo,
-  macintosh: ClassicMacintoshDemo,
-  markdown: MarkdownIntroductionDemo,
-} satisfies Record<NonNullable<GuideContent["sections"][number]["demo"]>, ComponentType>;
-
-export function GuidePage({ guide }: Readonly<{ guide: GuideContent }>) {
-  return <main className="docs-page">
-    <header className="docs-page__header"><h1>{guide.title}</h1><p>{guide.description}</p></header>
-    {guide.sections.map((section) => {
-      const Demo = section.demo ? guideDemos[section.demo] : null;
-      if (section.installation) return <Installation key={section.id} />;
-      if (Demo && section.probeId) return <Preview key={section.id} document={{ Demo, probeId: section.probeId }} />;
-      return <section className="docs-section" aria-labelledby={section.id} key={section.id}>
-        <h2 id={section.id}>{section.title}</h2>
-        {section.body ? <p>{section.body}</p> : null}
-        {Demo ? <div className="docs-preview"><Demo /></div> : null}
-        {section.code ? <CodeBlock language={section.codeLanguage ?? (guide.slug === "installation" ? "text" : "tsx")}>{section.code}</CodeBlock> : null}
-        {section.link ? <p><a href={section.link.href}>{section.link.label}</a></p> : null}
-        {section.links ? <ul className="docs-source-links">{section.links.map(({ label, href }) =>
-          <li key={href}><a href={href}>{label}</a></li>)}</ul> : null}
-        {section.api ? <ApiTable rows={section.api} /> : null}
-      </section>;
-    })}
-  </main>;
 }
 
 export function DocumentationShell({ document, guide, section }: Readonly<{ document?: ComponentDocument; guide?: GuideContent; section: string | null }>) {
@@ -342,7 +145,10 @@ export function DocumentationShell({ document, guide, section }: Readonly<{ docu
       <div className="gallery-shell gallery-layout">
         <GalleryNavigation activeRoute={route} />
         <OnThisPage route={route} sections={sections} activeSection={section} />
-        {guide ? <GuidePage guide={guide} key={guide.slug} /> : <ComponentPage document={document!} key={document!.slug} />}
+        {guide ? guide.slug === "installation"
+          ? <InstallationCellPage guide={guide} key={guide.slug} />
+          : <CellDocumentPage guide={guide} key={guide.slug} />
+          : <CellDocumentPage document={document!} key={document!.slug} />}
       </div>
     </>
   );

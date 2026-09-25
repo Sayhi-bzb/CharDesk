@@ -1,207 +1,123 @@
 import { describe, expect, it } from "vitest";
-import { CellUiRuntime, FocusManager, Markdown, Root, ScrollArea, auditSemanticSnapshot, commandForInput, createCellRangeSnapshot, createCellUiRenderFrame, createKeyInput, extractCellRange, resolveCellUiTheme } from "./index.js";
-import { parseCellMarkdown } from "./markdown.js";
+import {
+  Box, CellUiRuntime, FocusManager, Markdown, Root, ScrollArea, Text,
+  auditSemanticSnapshot, commandForInput, createCellRangeSnapshot, createKeyInput,
+  resolveCellUiTheme, type MarkdownCodeBlock,
+} from "./index.js";
 import { CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME } from "./theme.js";
 
-describe("Markdown typography", () => {
-  it("parses common GFM without executing HTML or unsafe links", () => {
-    const source = `# Notes\n\n- [x] Done\n- [ ] Next\n\n> Quote\n\n[Safe](https://example.com) [Unsafe](javascript:alert(1))\n\n<img src=x onerror=alert(1)>`;
-    const lines = parseCellMarkdown(source);
-    expect(lines.map((line) => line.text).join("\n")).toBe(source);
-    expect(lines.map((line) => line.kind)).toContain("quote");
-    expect(lines.filter((line) => line.kind === "list").map((line) => line.text)).toEqual(["- [x] Done", "- [ ] Next"]);
-    expect(lines.flatMap((line) => line.content)).toEqual(expect.arrayContaining([expect.objectContaining({ href: "https://example.com" })]));
-    expect(JSON.stringify(lines)).not.toContain('href":"javascript:');
+describe("Markdown reading projection", () => {
+  it("renders prose and inline styles without source delimiters, then copies what is visible", () => {
+    const source = "# Notes\n\n**Bold** *italic* ~~old~~ and `code`.";
+    const runtime = new CellUiRuntime({ viewport: { width: 40, height: 6 } });
+    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
+    const text = frame.buffer.toText({ trimEnd: true });
+    expect(text).toContain("Notes\n\nBold italic old and code.");
+    expect(text).not.toContain("**");
+    expect(text).not.toContain("~~");
+    expect(frame.buffer.get(0, 0)?.style).toMatchObject({ bold: true, color: CLASSIC_MAC_LIGHT_THEME.markdownColors.accent });
+    expect(frame.buffer.get(0, 2)?.style.bold).toBe(true);
+    expect(frame.buffer.get(5, 2)?.style.italic).toBe(true);
+    expect(frame.buffer.get(12, 2)?.style.strike).toBe(true);
+    expect(frame.buffer.get(20, 2)?.style.backgroundColor).toBe(CLASSIC_MAC_LIGHT_THEME.markdownColors.codeBackground);
+    expect(createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 39, y: 2 })?.text)
+      .toBe("Notes\n\nBold italic old and code.");
+    runtime.dispose();
   });
 
-  it("commits readable Cells, document roles, and one link command", () => {
-    const runtime = new CellUiRuntime({ viewport: { width: 64, height: 16 }, presentation: "text" });
-    const frame = runtime.render(<Root><Markdown id="readme" source={`# Notes\n\nRead [Guide](https://example.com).\n\n- One\n- Two\n\n> Quote\n\n\`\`\`ts\nconst x = 1\n\`\`\``} /></Root>);
-    const text = frame.buffer.toText({ trimEnd: true });
-    expect(text).toContain("# Notes");
-    expect(frame.buffer.get(0, 0)).toMatchObject({ text: "#" });
-    expect(frame.buffer.get(0, 0)?.style.bold).not.toBe(true);
-    expect(frame.buffer.get(2, 0)).toMatchObject({ text: "N", style: { bold: true } });
-    expect(text).toContain("[Guide](https://example.com)");
-    expect(text).toContain("- One\n- Two");
-    expect(text).toContain("> Quote");
-    expect(text).toContain("```ts");
-    const semantics = [...frame.semantics.nodes.values()];
-    expect(semantics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ role: "heading", level: 1 }),
-      expect.objectContaining({ role: "list" }),
-      expect.objectContaining({ role: "blockquote" }),
-    ]));
-    const link = semantics.find((node) => node.role === "link")!;
-    expect(link).toMatchObject({ href: "https://example.com", actions: ["focus", "activate"] });
+  it("keeps safe links actionable and leaves unsafe URLs and raw HTML inert", () => {
+    const source = "[Guide](https://example.com) [Bad](javascript:alert(1))\n\n![Flow](flow.png)\n\n<img src=x onerror=alert(1)>";
+    const runtime = new CellUiRuntime({ viewport: { width: 45, height: 10 } });
+    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
+    expect(frame.buffer.toText({ trimEnd: true })).toContain("Guide Bad\n\n[Image: Flow]\n\n[HTML omitted]");
+    const links = [...frame.semantics.nodes.values()].filter((node) => node.role === "link");
+    expect(links.map(({ href }) => href)).toEqual(["https://example.com", "flow.png"]);
     expect(auditSemanticSnapshot(frame.semantics)).toEqual([]);
-    expect(extractCellRange(frame.buffer, { x: 0, y: 0, width: 64, height: 16 }, { trimEnd: true }))
-      .toContain("[Guide](https://example.com)");
     const focus = new FocusManager();
-    expect(commandForInput({ type: "semantic", targetId: link.id, action: "activate" }, frame, focus))
-      .toEqual({ type: "open-link", targetId: link.id, href: "https://example.com" });
-    focus.sync(frame.tree, link.id);
+    expect(commandForInput({ type: "semantic", targetId: links[0]!.id, action: "activate" }, frame, focus))
+      .toEqual({ type: "open-link", targetId: links[0]!.id, href: "https://example.com" });
+    focus.sync(frame.tree, links[0]!.id);
     expect(commandForInput(createKeyInput({ key: "Enter", phase: "down" }), frame, focus))
-      .toEqual({ type: "open-link", targetId: link.id, href: "https://example.com" });
+      .toEqual({ type: "open-link", targetId: links[0]!.id, href: "https://example.com" });
     runtime.dispose();
   });
 
-  it("keeps nested lists and tables structured within a narrow Cell viewport", () => {
-    const source = `- Parent\n  - Child\n\n| Name | Value |\n| --- | --- |\n| A | 世界 |`;
-    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 12 } });
+  it("renders nested lists, tasks, quotes, rules, and table values as readable Cells", () => {
+    const source = "- [x] Parent\n  - Child\n\n> Quote\n\n---\n\n| Name | Value |\n| :--- | ---: |\n| A | 世界 |";
+    const runtime = new CellUiRuntime({ viewport: { width: 32, height: 14 } });
     const frame = runtime.render(<Root><Markdown source={source} /></Root>);
     const text = frame.buffer.toText({ trimEnd: true });
-    expect(text).toContain("- Parent");
-    expect(text).toContain("  - Child");
-    expect(text).toContain("| Name | Value |");
-    expect(text).toContain("| ---  | ---   |");
-    expect(createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 19, y: 5 })?.text)
-      .toContain("| --- | --- |");
-    expect(text).toContain("世界");
-    expect([...frame.semantics.nodes.values()].map((node) => node.role)).toEqual(expect.arrayContaining([
-      "list", "listitem", "table", "row", "cell",
+    expect(text).toContain("☑ Parent");
+    expect(text).toContain("• Child");
+    expect(text).toContain("│ Quote");
+    expect(text).toContain("───");
+    expect(text).toContain("Name  Value");
+    expect(text).toMatch(/A\s+世界/u);
+    expect(text).not.toContain("| :---");
+    expect([...frame.semantics.nodes.values()].map(({ role }) => role)).toEqual(expect.arrayContaining([
+      "list", "listitem", "blockquote", "table", "row", "cell",
     ]));
-    const rows = [...frame.tree.nodes.values()].filter((node) => node.markdownRole === "row");
-    expect(rows).toHaveLength(3);
-    const cellXs = (rowId: string) => frame.tree.nodes.get(rowId)!.children
-      .filter((id) => frame.tree.nodes.get(id)?.markdownRole === "cell")
-      .map((id) => frame.scene.entries.get(id)!.layoutBounds.x);
-    expect(cellXs(rows[0]!.id)).toEqual([0, 7]);
-    expect(cellXs(rows[1]!.id)).toEqual([0, 7]);
-    expect(cellXs(rows[2]!.id)).toEqual([0, 7]);
     expect(auditSemanticSnapshot(frame.semantics)).toEqual([]);
     runtime.dispose();
   });
 
-  it("keeps Markdown source visible while styling only the enclosed text", () => {
-    const source = [
-      "`inline code`",
-      "~~Old wording~~",
-      "*This text will be italic*",
-      "**This text will be bold**",
-      "| Left columns  | Right columns |",
-      "| ------------- |:-------------:|",
-      "| left foo      | right foo     |",
-    ].join("\n");
-    expect(parseCellMarkdown(source).map((line) => line.text).join("\n")).toBe(source);
-    const runtime = new CellUiRuntime({ viewport: { width: 80, height: 10 }, presentation: "text" });
-    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
-    expect(frame.buffer.toText({ trimEnd: true }).split("\n").slice(0, 7)).toEqual(source.split("\n"));
-    const styled = (x: number, y: number) => frame.buffer.get(x, y)!.style;
-    expect(styled(0, 0).backgroundColor).toBeUndefined();
-    expect(styled(1, 0)).toMatchObject({ color: CLASSIC_MAC_LIGHT_THEME.markdownColors.codeForeground,
-      backgroundColor: CLASSIC_MAC_LIGHT_THEME.markdownColors.codeBackground });
-    expect(styled(12, 0).backgroundColor).toBeUndefined();
-    expect(styled(0, 1).strike).not.toBe(true);
-    expect(styled(2, 1).strike).toBe(true);
-    expect(styled(13, 1).strike).not.toBe(true);
-    expect(styled(0, 2).italic).not.toBe(true);
-    expect(styled(1, 2).italic).toBe(true);
-    expect(styled(0, 3).bold).not.toBe(true);
-    expect(styled(2, 3).bold).toBe(true);
-    const renderFrame = createCellUiRenderFrame(frame);
-    expect(renderFrame.source.get({ x: 2, y: 1 })?.visual.attrs?.strike).toBe(true);
-    expect(renderFrame.source.get({ x: 1, y: 2 })?.visual.attrs?.italic).toBe(true);
-    runtime.dispose();
-  });
-
-  it("keeps wide table rows intact for horizontal Cell scrolling", () => {
-    const source = "| Left columns  | Right columns |\n| ------------- |:-------------:|\n| left foo      | right foo     |";
-    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 4 } });
+  it("keeps wide rendered tables and code horizontally scrollable", () => {
+    const source = "| A very long heading | Another heading |\n| --- | --- |\n| x | y |\n\n```ts\nconst longValue = 12345678901234567890;\n```";
+    const runtime = new CellUiRuntime({ viewport: { width: 16, height: 8 } });
     const render = (scrollX: number) => runtime.render(<Root><ScrollArea id="markdown-scroll" scrollX={scrollX}
-      style={{ width: 20, height: 4 }}><Markdown source={source} /></ScrollArea></Root>);
+      style={{ width: 16, height: 8 }}><Markdown source={source} /></ScrollArea></Root>);
     const first = render(0);
     expect(first.scene.entries.get("markdown-scroll")?.scrollMetrics?.horizontalTrack).toBeDefined();
-    expect(first.buffer.toText({ trimEnd: true })).toContain("Left columns");
-    expect(render(15).buffer.toText({ trimEnd: true })).toContain("Right columns");
+    expect(first.buffer.toText({ trimEnd: true })).toContain("A very long");
+    expect(render(20).buffer.toText({ trimEnd: true })).toContain("heading");
     runtime.dispose();
   });
 
-  it("aligns ragged table columns and centers a short rule without changing Cell Range copy", () => {
-    const source = "| Left | Right |\n| :--- | ---: |\n| x | long |\n\n---";
-    const runtime = new CellUiRuntime({ viewport: { width: 32, height: 6 } });
-    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
-    const visual = frame.buffer.toText({ trimEnd: true }).split("\n");
-    expect(visual[0]).toContain("| Left | Right |");
-    expect(visual[2]).toContain("| x    |  long |");
-    expect(visual[4]).toBe(`${" ".repeat(14)}---`);
-    expect(frame.buffer.get(14, 4)?.style.color).toBe(CLASSIC_MAC_LIGHT_THEME.markdownColors.muted);
-    expect(createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 31, y: 4 })?.text)
-      .toBe(source);
+  it("hides code fences but preserves code bytes and optional highlighted spans", () => {
+    const source = "```ts\nconst ready = true;\n```";
+    const runtime = new CellUiRuntime({ viewport: { width: 30, height: 5 } });
+    const frame = runtime.render(<Root><Markdown source={source} highlightCodeLine={(line) => [
+      { content: line.slice(0, 5), color: "#123456" }, { content: line.slice(5) },
+    ]} /></Root>);
+    const text = frame.buffer.toText({ trimEnd: true });
+    expect(text).toContain("const ready = true;");
+    expect(text).not.toContain("```");
+    const codeCell = frame.buffer.get(1, 1);
+    expect(codeCell?.style.color).toBe("#123456");
     runtime.dispose();
   });
 
-  it("keeps source whitespace in a partial range and themes inline code in dark mode", () => {
+  it("retains raw code metadata for a Cell descriptor slot", () => {
+    const source = "Before\n\n```js\none\n```\n\nBetween\n\n```ts\ntwo\n```\n\nAfter";
+    const seen: MarkdownCodeBlock[] = [];
+    const runtime = new CellUiRuntime({ viewport: { width: 24, height: 16 } });
+    const frame = runtime.render(<Root><Markdown source={source} renderCodeBlock={(block) => {
+      seen.push(block);
+      return <Box id={"slot-" + block.index}><Text>{"slot " + block.index}</Text></Box>;
+    }} /></Root>);
+    expect(seen).toMatchObject([
+      { index: 0, startLine: 2, endLine: 5, language: "js", code: "one", raw: "```js\none\n```" },
+      { index: 1, startLine: 8, endLine: 11, language: "ts", code: "two", raw: "```ts\ntwo\n```" },
+    ]);
+    expect(frame.buffer.toText({ trimEnd: true })).toContain("Before\n\nslot 0\n\nBetween\n\nslot 1\n\nAfter");
+    runtime.dispose();
+  });
+
+  it("resolves code and link colors from the current theme", () => {
     const theme = resolveCellUiTheme({ background: "#000000", foreground: "#FFFFFF" });
-    const source = "| 中 | value |\n| :- | --: |\n| x | y |\n\n---  \n`code`";
-    const runtime = new CellUiRuntime({ viewport: { width: 24, height: 6 }, theme });
-    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
-    expect(createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 23, y: 5 })?.text).toBe(source);
-    const partial = createCellRangeSnapshot(frame.buffer, { x: 0, y: 2 }, { x: 11, y: 2 })?.text;
-    expect(partial).toBe("| x | y");
-    expect(frame.buffer.get(0, 5)?.style.backgroundColor).toBeUndefined();
-    expect(frame.buffer.get(1, 5)?.style).toMatchObject({
+    const runtime = new CellUiRuntime({ viewport: { width: 24, height: 3 }, theme });
+    const frame = runtime.render(<Root><Markdown source="`code` [Guide](https://example.com)" /></Root>);
+    expect(frame.buffer.get(0, 0)?.style).toMatchObject({
       color: CLASSIC_MAC_DARK_THEME.markdownColors.codeForeground,
       backgroundColor: CLASSIC_MAC_DARK_THEME.markdownColors.codeBackground,
     });
-    runtime.dispose();
-  });
-
-  it("colors Markdown roles without coloring prose or changing copied source", () => {
-    const source = "# Heading\n> Quote\n- Item\n[Guide](https://example.com)\n\n| Name | Value |\n| --- | --- |\n| A | B |";
-    const runtime = new CellUiRuntime({ viewport: { width: 48, height: 8 } });
-    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
-    const cell = (x: number, y: number) => frame.buffer.get(x, y)!;
-    const colors = CLASSIC_MAC_LIGHT_THEME.markdownColors;
-    expect(cell(0, 0).style.color).toBe(colors.accent);
-    expect(cell(2, 0).style.color).toBeUndefined();
-    expect(cell(0, 1).style.color).toBe(colors.quote);
-    expect(cell(2, 1).style.color).toBeUndefined();
-    expect(cell(0, 2).style.color).toBe(colors.muted);
-    expect(cell(1, 3).style.color).toBe(colors.link);
-    expect(cell(0, 5).style.color).toBe(colors.muted);
-    expect(cell(2, 5).style.bold).toBe(true);
-    expect(cell(2, 5).style.color).toBeUndefined();
-    expect(cell(2, 6).style.color).toBe(colors.muted);
-    expect(createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 47, y: 7 })?.text).toBe(source);
     runtime.setTheme({ markdownColors: { link: "#123456", codeBackground: "#eeeeee" } });
-    const rethemed = runtime.render(<Root><Markdown source={source} /></Root>);
-    expect(rethemed.buffer.get(1, 3)?.style.color).toBe("#123456");
-    expect(rethemed.buffer.get(0, 0)?.style.color).toBe(colors.accent);
+    const rethemed = runtime.render(<Root><Markdown source="`code` [Guide](https://example.com)" /></Root>);
+    expect(rethemed.buffer.get(5, 0)?.style.color).toBe("#123456");
     runtime.dispose();
   });
 
-  it("centers a rule in the visible viewport beside a horizontally scrolling table", () => {
-    const source = "| A very long heading | Another heading |\n| --- | --- |\n| x | y |\n\n---";
-    const runtime = new CellUiRuntime({ viewport: { width: 16, height: 6 } });
-    const frame = runtime.render(<Root><ScrollArea style={{ width: 16, height: 6 }}>
-      <Markdown source={source} />
-    </ScrollArea></Root>);
-    expect(frame.scene.entries.get([...frame.tree.nodes.values()].find((node) => node.kind === "scroll-area")!.id)
-      ?.scrollMetrics?.horizontalTrack).toBeDefined();
-    expect(frame.buffer.toText({ trimEnd: true }).split("\n")[4]).toBe("      ---");
-    runtime.dispose();
-  });
-
-  it("styles nested emphasis without styling source delimiters or fenced code", () => {
-    const source = "# **Bold** heading ##\n***mix*** and \\*literal\\*\n```md\n*code*\n```";
-    const runtime = new CellUiRuntime({ viewport: { width: 40, height: 5 } });
-    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
-    const cell = (x: number, y: number) => frame.buffer.get(x, y)!;
-    expect(cell(0, 0).style.bold).not.toBe(true);
-    expect(cell(2, 0).style.bold).not.toBe(true);
-    expect(cell(4, 0).style.bold).toBe(true);
-    expect(cell(20, 0).style.bold).not.toBe(true);
-    expect(cell(0, 1).style.bold).not.toBe(true);
-    expect(cell(3, 1).style).toMatchObject({ bold: true, italic: true });
-    expect(cell(0, 3).style.italic).not.toBe(true);
-    expect(cell(0, 2).style.color).toBe(CLASSIC_MAC_LIGHT_THEME.markdownColors.muted);
-    expect(cell(0, 3).style.color).toBeUndefined();
-    expect(frame.buffer.toText({ trimEnd: true }).split("\n").slice(0, 5)).toEqual(source.split("\n"));
-    runtime.dispose();
-  });
-
-  it("accepts an empty file", () => {
+  it("accepts an empty source", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 3 } });
     expect(() => runtime.render(<Root><Markdown source="" /></Root>)).not.toThrow();
     runtime.dispose();

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, readCellProbe } from "./helpers/cell-probe";
 
 for (const colorScheme of ["light", "dark"] as const) {
 for (const control of [
@@ -22,17 +22,16 @@ test(`${control.name} presents two complete inverse/restore cycles after release
   const cell = probe.cells.find((cell) => cell.ownerId === control.id && cell.text.trim() === control.marker)!;
   expect(cell).toBeDefined();
   const canvas = surface.locator("canvas").first();
-  const bounds = (await canvas.boundingBox())!;
-  await page.mouse.move(bounds.x + (cell.x + 0.5) * bounds.width / probe.viewport.width,
-    bounds.y + (cell.y + 0.5) * bounds.height / probe.viewport.height);
+  const point = await cellPoint(surface, cell.x, cell.y);
+  await page.mouse.move(point.x, point.y);
   await page.mouse.down();
   await expect(surface).toHaveAttribute("data-cell-press-active", control.id);
   const reference = await surface.evaluate((element, point) => {
     const surface = element as HTMLElement;
     const canvas = surface.querySelector("canvas")!;
     const pixel = () => Array.from(canvas.getContext("2d")!.getImageData(
-      Math.floor((point.x + 0.5) * canvas.width / point.width),
-      Math.floor((point.y + 0.5) * canvas.height / point.height), 1, 1,
+      Math.floor((point.x + 1.5) * canvas.width / (point.width + 2)),
+      Math.floor((point.y + 1.5) * canvas.height / (point.height + 2)), 1, 1,
     ).data);
     const samples: { phase: number | null; time: number; pixel: number[] }[] = [];
     const observer = new MutationObserver(() => {
@@ -66,13 +65,10 @@ test("discrete Cell controls share press and activation-flash feedback", async (
   const initial = await readCellProbe(buttonSurface);
   const saveCell = initial.cells.find((cell) => cell.ownerId === "component-button-save");
   const canvas = buttonSurface.locator("canvas").first();
-  const bounds = await canvas.boundingBox();
   expect(saveCell).toBeDefined();
+  const point = await cellPoint(buttonSurface, saveCell!.x, saveCell!.y);
+  const bounds = await canvas.boundingBox();
   expect(bounds).not.toBeNull();
-  const point = {
-    x: bounds!.x + (saveCell!.x + 0.5) * bounds!.width / initial.viewport.width,
-    y: bounds!.y + (saveCell!.y + 0.5) * bounds!.height / initial.viewport.height,
-  };
 
   await page.mouse.move(point.x, point.y);
   await page.mouse.down();

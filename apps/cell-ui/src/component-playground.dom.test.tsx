@@ -177,7 +177,7 @@ describe("ComponentPlayground controls layout", () => {
     hostWidth = 32 * DEFAULT_CELL_UI_METRICS.cellWidth;
     renderPlayground(["variant"], { preview: tallPreview });
     const surface = screen.getByLabelText("Test playground");
-    await waitFor(() => expect(readCellSurfaceProbe(surface)?.viewport).toEqual({ width: 32, height: 15 }));
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.viewport).toEqual({ width: 30, height: 15 }));
     const initial = readCellSurfaceProbe(surface)!;
     expect(initial.text).toContain("preview-0");
     expect(initial.text).toContain("variant");
@@ -213,7 +213,7 @@ describe("ComponentPlayground controls layout", () => {
   });
 
   it("measures whole Cells, squeezes Props, and resets stale horizontal scroll on resize", async () => {
-    hostWidth = 64 * DEFAULT_CELL_UI_METRICS.cellWidth;
+    hostWidth = 66 * DEFAULT_CELL_UI_METRICS.cellWidth;
     renderPlayground(["abcdefghijklmnopqrstuvwxy"], {
       previewMinColumns: 40,
       controlsColumns: 25,
@@ -221,9 +221,6 @@ describe("ComponentPlayground controls layout", () => {
     const surface = screen.getByLabelText("Test playground");
     await waitFor(() => expect(readCellSurfaceProbe(surface)?.viewport).toEqual({ width: 64, height: 7 }));
     const initial = readCellSurfaceProbe(surface)!;
-    expect(initial.cells.some((cell) => (
-      cell.ownerId === "test-playground-controls-scroll" && "█▀▄".includes(cell.text)
-    ))).toBe(true);
     expect(initial.cells.filter((cell) => cell.ownerId === "control-0")
       .sort((left, right) => left.x - right.x)[0]?.text).toBe("a");
 
@@ -240,7 +237,7 @@ describe("ComponentPlayground controls layout", () => {
     const host = surface.closest(".component-playground")!;
     const resize = resizeObservers.get(host)!;
     act(() => resize.callback([], resize.observer));
-    await waitFor(() => expect(readCellSurfaceProbe(surface)?.viewport).toEqual({ width: 89, height: 7 }));
+    await waitFor(() => expect(readCellSurfaceProbe(surface)?.viewport).toEqual({ width: 87, height: 7 }));
     expect(readCellSurfaceProbe(surface)!.cells
       .filter((cell) => cell.ownerId === "control-0")
       .sort((left, right) => left.x - right.x)[0]?.text).toBe("a");

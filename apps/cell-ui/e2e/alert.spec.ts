@@ -13,6 +13,8 @@ test("Alert keeps four tones visible and its optional action uses the normal com
   expect(ownerCells(initial, "component-alert-info").some((cell) => cell.text === "╭" || cell.text === "┌")).toBe(false);
   const action = ownerBounds(initial, "component-alert-save");
   const point = await cellPoint(surface, action.x + 1, action.y);
+  await page.mouse.move(point.x, point.y);
+  await expect(surface).toHaveAttribute("data-cell-hovered", "component-alert-save");
   await page.mouse.click(point.x, point.y);
   await expect(surface.getByRole("button", { name: "Save now" })).toHaveCount(0);
   await expect(surface.getByRole("status", { name: /Changes saved/ })).toHaveCount(2);

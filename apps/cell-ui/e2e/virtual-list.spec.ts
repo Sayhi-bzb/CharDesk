@@ -49,16 +49,16 @@ test("100k-row virtual List stays bounded across keyboard, pointer, and scroll",
   await canvas.scrollIntoViewIfNeeded();
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Virtual list Canvas is not visible.");
-  const cellWidth = bounds.width / 38;
-  const cellHeight = bounds.height / 12;
+  const cellWidth = bounds.width / 40;
+  const cellHeight = bounds.height / 14;
   await canvas.click({
-    position: { x: 5.5 * cellWidth, y: 5.5 * cellHeight },
+    position: { x: 6.5 * cellWidth, y: 6.5 * cellHeight },
   });
   await expect(surface).toHaveAttribute("data-cell-focused", "virtual-file-5");
 
-  await canvas.hover({ position: { x: 5.5 * cellWidth, y: 8.5 * cellHeight } });
+  await canvas.hover({ position: { x: 6.5 * cellWidth, y: 9.5 * cellHeight } });
   await page.mouse.down();
-  await page.mouse.move(bounds.x + 5.5 * cellWidth, bounds.y + 5.5 * cellHeight);
+  await page.mouse.move(bounds.x + 6.5 * cellWidth, bounds.y + 6.5 * cellHeight);
   await page.mouse.up();
   const dragged = await readCellProbe(surface);
   expect(dragged.text).not.toBe(pageProbe.text);

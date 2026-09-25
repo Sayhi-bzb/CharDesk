@@ -2,6 +2,46 @@ import { expect, test, type Locator } from "@playwright/test";
 import { readCellProbe } from "./helpers/cell-probe";
 
 for (const dpr of [1, 1.25, 2]) {
+  test.describe(`Surface guard at DPR ${dpr}`, () => {
+    test.use({ deviceScaleFactor: dpr });
+    test("shows both leading Markdown task glyphs without changing Cells", async ({ page }) => {
+      await page.goto("/#/guides/markdown");
+      const surface = page.getByLabel("Markdown example");
+      const probe = await readCellProbe(surface);
+      expect(probe.text).toContain("☑ Build UI");
+      expect(probe.text).toContain("☐ Share it");
+      const metrics = probe.presentation!.metrics;
+      const canvas = surface.locator("canvas").first();
+      await expect(canvas).toHaveCSS("width", `${(probe.viewport.width + 2) * metrics.cellWidth}px`);
+      await page.evaluate(() => document.fonts.ready);
+      for (const glyph of ["☑", "☐"]) {
+        const marker = probe.cells.find((cell) => cell.text === glyph);
+        expect(marker).toMatchObject({ x: 0 });
+        const readInk = () => canvas.evaluate((element, { row, metrics }) => {
+          const context = element.getContext("2d")!;
+          const dpr = devicePixelRatio;
+          const width = Math.round(metrics.cellWidth * dpr);
+          const height = Math.round(metrics.cellHeight * dpr);
+          const left = context.getImageData(0, Math.round((row + 1) * metrics.cellHeight * dpr),
+            width, height).data;
+          let pixels = 0;
+          let firstX = width;
+          for (let index = 0; index < left.length; index += 4) {
+            if (left[index]! >= 128 || left[index + 1]! >= 128 || left[index + 2]! >= 128) continue;
+            pixels += 1;
+            firstX = Math.min(firstX, (index / 4) % width);
+          }
+          return { pixels, firstX };
+        }, { row: marker!.y, metrics });
+        await expect.poll(async () => (await readInk()).pixels).toBeGreaterThan(0);
+        const ink = await readInk();
+        expect(ink.firstX).toBeGreaterThan(0);
+      }
+    });
+  });
+}
+
+for (const dpr of [1, 1.25, 2]) {
   test.describe(`NF icon ink at DPR ${dpr}`, () => {
     test.use({ deviceScaleFactor: dpr });
     test("keeps full-size ink and aligns with display capitals across icon families", async ({ page }) => {

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Box, Root, ScrollArea, Text, type CellUiPresentation, type WidgetCommand } from "@chardesk/cell-ui";
-import { DEFAULT_CELL_UI_METRICS, useCellSelectState, type CellSelectState, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
+import { CELL_SURFACE_GUARD_CELLS, DEFAULT_CELL_UI_METRICS, useCellSelectState, type CellSelectState, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "./appearance";
 import { renderGallerySelect } from "./gallery-component-recipes";
 import {
@@ -93,10 +93,10 @@ export function ComponentPlayground({
     if (!host) return;
     const measure = () => {
       if (host.clientWidth <= 0) return;
-      const next = columnsForPixelWidth(
+      const next = Math.max(1, columnsForPixelWidth(
         host.clientWidth,
         DEFAULT_CELL_UI_METRICS.cellWidth,
-      );
+      ) - 2 * CELL_SURFACE_GUARD_CELLS);
       if (measuredColumnsRef.current === next) return;
       measuredColumnsRef.current = next;
       setTotalColumns(next);

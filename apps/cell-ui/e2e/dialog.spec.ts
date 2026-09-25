@@ -1,16 +1,15 @@
 import { expect, test } from "@playwright/test";
-import { readCellMetrics, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, readCellProbe } from "./helpers/cell-probe";
 
 test("Dialog uses Canvas input, named semantics and focus restoration", async ({ page }) => {
   await page.goto("/#/components/dialog");
   const surface = page.locator('[data-cell-probe="component-dialog"]');
   const canvas = surface.locator("canvas").first();
   await canvas.scrollIntoViewIfNeeded();
-  const metrics = await readCellMetrics(surface);
   const probe = await readCellProbe(surface);
   const cell = probe.cells.find((cell) => cell.ownerId === "dialog-open")!;
-  const bounds = (await canvas.boundingBox())!;
-  await page.mouse.click(bounds.x + (cell.x + 0.5) * metrics.cellWidth, bounds.y + (cell.y + 0.5) * metrics.cellHeight);
+  const point = await cellPoint(surface, cell.x, cell.y);
+  await page.mouse.click(point.x, point.y);
   const dialog = surface.getByRole("dialog", { name: "Continue?", exact: true });
   await expect(dialog).toBeAttached();
   await expect(dialog).toHaveAttribute("aria-modal", "true");

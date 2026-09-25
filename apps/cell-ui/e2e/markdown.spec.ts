@@ -25,31 +25,31 @@ test("shared tone CSS tokens reach both Markdown and Badge through the Gallery t
 test("Markdown guide renders Cell typography and activates a link through the shared input path", async ({ page, request }) => {
   await page.goto("/#/guides/markdown");
   await expect(page.getByRole("heading", { name: "Markdown", level: 1 })).toBeVisible();
-  await expect(page.locator("main.docs-page > section.docs-section > h2, main.docs-page > section.docs-section > .docs-section__heading > h2"))
+  const article = page.locator('.cell-article-page [data-cell-probe^="article-markdown-"]');
+  await expect(article.getByRole("heading", { level: 2 }))
     .toHaveText(["Preview", "Installation", "Usage", "View source", "API"]);
   await expect(page.getByRole("navigation", { name: "On This Page" }).getByRole("link"))
     .toHaveText(["Preview", "Installation", "Usage", "View source", "API"]);
-  await expect(page.getByRole("tabpanel", { name: "npm installation command" })).toContainText("shadcn@latest add @chardesk/cell-ui");
-  await expect(page.locator("#usage + .docs-code")).toContainText("<Markdown source={source} />");
-  await expect(page.locator("#api ~ .docs-table-wrap")).toContainText("source");
+  expect((await readCellProbe(article.last())).text).toContain("shadcn@latest add @chardesk/cell-ui");
+  expect((await readCellProbe(article.last())).text).toContain("<Markdown source={source} />");
+  await expect(article.getByRole("table")).toContainText("source");
   const surface = page.getByLabel("Markdown example");
   const probe = await readCellProbe(surface);
   expect(probe.viewport).toEqual({ width: 44, height: 28 });
   expect(probe.text).not.toContain("Follow a link to inspect its command.");
-  expect(probe.text).toContain("# Field Notes");
-  expect(probe.text).toContain("- [x] Build UI");
-  expect(probe.text).toContain("**structure**");
-  expect(probe.text).toContain("`inline code`");
+  expect(probe.text).toContain("Field Notes");
+  expect(probe.text).toContain("☑ Build UI");
+  expect(probe.text).toContain("structure");
+  expect(probe.text).toContain("inline code");
+  expect(probe.text).not.toContain("**structure**");
   expect(probe.text).toContain("1. Write Markdown");
-  expect(probe.text).toContain("> Source stays yours.");
-  expect(probe.text).toContain("[Philosophy](#/guides/philosophy)");
+  expect(probe.text).toContain("│ Source stays yours.");
+  expect(probe.text).toContain("Read Philosophy.");
   expect(probe.cells.some((cell) => cell.style.bold && cell.text === "s")).toBe(true);
   expect(probe.cells.some((cell) => cell.style.italic)).toBe(true);
-  const inlineCodeRow = probe.text.split("\n").findIndex((line) => line.includes("`inline code`"));
-  const inlineCodeX = probe.text.split("\n")[inlineCodeRow]!.indexOf("`inline code`");
+  const inlineCodeRow = probe.text.split("\n").findIndex((line) => line.includes("inline code"));
+  const inlineCodeX = probe.text.split("\n")[inlineCodeRow]!.indexOf("inline code");
   expect(probe.cells.find((cell) => cell.x === inlineCodeX && cell.y === inlineCodeRow)?.style.backgroundColor)
-    .toBeUndefined();
-  expect(probe.cells.find((cell) => cell.x === inlineCodeX + 1 && cell.y === inlineCodeRow)?.style.backgroundColor)
     .toBe("rgb(246, 248, 250)");
   expect(probe.cells.find((cell) => cell.x === 0 && cell.y === 0)?.style.color)
     .toBe("rgb(9, 105, 218)");
@@ -75,9 +75,9 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Opened 3: #/guides/philosophy");
   await expect(page).toHaveURL(/#\/guides\/markdown$/u);
   await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).click();
-  expect((await readCellProbe(surface)).text).toContain("[Philosophy](#/guides/philosophy)");
+  expect((await readCellProbe(surface)).text).toContain("Philosophy");
   const darkProbe = await readCellProbe(surface);
-  expect(darkProbe.cells.find((cell) => cell.x === inlineCodeX + 1 && cell.y === inlineCodeRow)?.style.backgroundColor)
+  expect(darkProbe.cells.find((cell) => cell.x === inlineCodeX && cell.y === inlineCodeRow)?.style.backgroundColor)
     .toBe("rgb(22, 27, 34)");
   const selectionStart = await cellPoint(surface, 0, 0);
   const selectionEnd = await cellPoint(surface, 25, linkCell!.y);
@@ -90,14 +90,14 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");
   const copied = await copyCellRange(surface);
-  expect(copied).toContain("# Field Notes");
+  expect(copied).toContain("Field Notes");
   expect(copied).toContain("Philosophy");
-  expect(copied).toContain("[Philosophy]");
+  expect(copied).not.toContain("[Philosophy]");
   const installationLink = surface.getByRole("link", { name: /Installation/u });
   await installationLink.focus();
-  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("[Installation](#/guides/installation)");
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Installation");
   await link.focus();
-  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("[Philosophy](#/guides/philosophy)");
+  await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Philosophy");
   const scrollPoint = await cellPoint(surface, 10, 10);
   await page.mouse.move(scrollPoint.x, scrollPoint.y);
   const scrollTo = async (content: string) => {
@@ -109,16 +109,15 @@ test("Markdown guide renders Cell typography and activates a link through the sh
     }
     expect((await readCellProbe(surface)).text).toContain(content);
   };
-  await scrollTo("> Source stays yours.");
-  await scrollTo("```ts");
-  await scrollTo("| Element | Cell output |");
-  await scrollTo("| Link");
-  await scrollTo("~~Old wording~~");
+  await scrollTo("│ Source stays yours.");
+  await scrollTo("const ready = true;");
+  await scrollTo("Element  Cell output");
+  await scrollTo("Link");
+  await scrollTo("Old wording");
   const strikeProbe = await readCellProbe(surface);
-  const strikeRow = strikeProbe.text.split("\n").findIndex((line) => line.includes("~~Old wording~~"));
-  expect(strikeProbe.cells.find((cell) => cell.x === 0 && cell.y === strikeRow)?.style.strike).not.toBe(true);
-  expect(strikeProbe.cells.find((cell) => cell.x === 2 && cell.y === strikeRow)?.style.strike).toBe(true);
-  await scrollTo("![Flow diagram](flow.png)");
+  const strikeRow = strikeProbe.text.split("\n").findIndex((line) => line.includes("Old wording"));
+  expect(strikeProbe.cells.find((cell) => cell.x === 0 && cell.y === strikeRow)?.style.strike).toBe(true);
+  await scrollTo("[Image: Flow diagram]");
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
@@ -126,5 +125,6 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   expect(markdown.ok()).toBe(true);
   expect(await markdown.text()).toContain("## Installation\n");
   expect(await markdown.text()).toContain("## API\n");
-  expect(await markdown.text()).not.toContain("## Preview\n");
+  expect(await markdown.text()).toContain("## Preview source\n");
+  expect(await markdown.text()).toContain("# Field Notes");
 });

@@ -36,10 +36,10 @@ test("Palette text retains its elevated surface background in both themes", asyn
       const background = scheme === "light" ? "rgb(240, 240, 240)" : "rgb(35, 35, 35)";
       let holes = 0;
       for (const cell of cells) {
-        const x = Math.round(cell.x * target.width / 36);
-        const y = Math.round(cell.y * target.height / 12);
-        const right = Math.round((cell.x + 1) * target.width / 36);
-        const bottom = Math.round((cell.y + 1) * target.height / 12);
+        const x = Math.round((cell.x + 1) * target.width / 38);
+        const y = Math.round((cell.y + 1) * target.height / 14);
+        const right = Math.round((cell.x + 2) * target.width / 38);
+        const bottom = Math.round((cell.y + 2) * target.height / 14);
         const pixels = ctx.getImageData(x, y, right - x, bottom - y).data;
         for (let i = 0; i < pixels.length; i += 4) {
           if (pixels[i + 3] === 0) holes++;
@@ -67,8 +67,8 @@ const clickCell = async (page: Page, canvas: Locator, x: number, y: number) => {
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Canvas is not visible.");
   await page.mouse.click(
-    bounds.x + (x + 0.5) * bounds.width / 36,
-    bounds.y + (y + 0.5) * bounds.height / 12,
+    bounds.x + (x + 1.5) * bounds.width / 38,
+    bounds.y + (y + 1.5) * bounds.height / 14,
   );
 };
 

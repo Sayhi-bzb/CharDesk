@@ -1,6 +1,53 @@
 # Markdown
 
-One source for people and LLMs: Markdown syntax stays visible, with color and alignment added for reading.
+Read Markdown as a Cell-native document. This Gallery publishes its source .md pages through llms.txt.
+
+## Preview source
+
+````md
+# Field Notes
+
+Cells make **structure** readable. Try *emphasis* and `inline code`.
+
+Read [Philosophy](#/guides/philosophy).
+
+## Checklist
+
+- [x] Build UI
+- [ ] Share it
+- Keep notes
+  - Include the details
+
+## Steps
+
+1. Write Markdown
+2. Render Cells
+
+> Source stays yours.
+
+---
+
+## Code
+
+```ts
+const ready = true;
+```
+
+## Table
+
+| Element | Cell output |
+| :--- | ---: |
+| Link | Focusable |
+| List | Structured |
+
+Read [Installation](#/guides/installation).
+
+## Fallbacks
+
+~~Old wording~~ stays visible.
+
+![Flow diagram](flow.png)
+````
 
 ## Installation
 
@@ -34,7 +81,7 @@ export function MarkdownExample() {
 
 ## API
 
-Source markers remain visible. Markdown colors come from the Cell theme; tables align and short rules center without changing Cell Range copy. Paragraphs may wrap. Safe links remain interactive; raw HTML stays inert.
+Markdown renders for reading; Cell Range copies the visible text. Code fences and table syntax are hidden. Safe links stay interactive; raw HTML stays inert.
 
 [Theming](https://ui.chardesk.com/#/guides/theming)
 
@@ -43,3 +90,5 @@ Source markers remain visible. Markdown colors come from the Cell theme; tables 
 | `source` | `string` | Markdown source to render. |
 | `id?` | `string` | Stable identity for the document root. |
 | `style?` | `CellLayoutStyle` | Document layout overrides. |
+| `renderCodeBlock?` | `(block: MarkdownCodeBlock) => ReactElement` | Replace a code block with Cell descriptors. The block includes raw source, code, language, and line bounds. |
+| `highlightCodeLine?` | `(line: string, lineIndex: number) => MarkdownCodeToken[]` | Color code tokens without changing their text. Invalid token coverage falls back to the original line. |

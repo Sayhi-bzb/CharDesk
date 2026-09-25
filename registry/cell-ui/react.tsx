@@ -16,6 +16,7 @@ import type {
 } from "./types.js";
 import type { CellTextSnapshot } from "./text.js";
 import { getTextCellWidth } from "@chardesk/protocol";
+import { marked, type Token, type Tokens } from "marked";
 import { normalizeCellSliderValue, resolveCellSliderRange } from "./slider.js";
 import {
   resolveButtonVariant,
@@ -38,7 +39,7 @@ import { resolveSeparatorVariant, type SeparatorVariant } from "./separator.js";
 import { resolveProgressVariant, type ProgressVariant } from "./progress.js";
 import { resolveSpinnerVariant, type SpinnerVariant } from "./spinner.js";
 import { tooltipText, tooltipTextWidth } from "./tooltip.js";
-import { parseCellMarkdown, type MarkdownSourceLine, type MarkdownInline } from "./markdown.js";
+import { parseCellMarkdownCodeBlocks, safeMarkdownHref, type MarkdownCodeBlock } from "./markdown.js";
 import { resolveTabsVariant, type TabsVariant } from "./tabs.js";
 import { fitTableCell, resolveTableVariant, tableWidth, type TableColumn, type TableVariant } from "./table.js";
 import {
@@ -118,7 +119,7 @@ export type TextProps = Readonly<{
   textStyle?: CellTextStyle;
   /** Internal Markdown projection metadata. */
   markdownCode?: boolean;
-  markdownTone?: MarkdownInline["tone"];
+  markdownTone?: MarkdownTone;
   markdownSource?: boolean;
   markdownLayoutOnly?: boolean;
 }>;
@@ -126,21 +127,25 @@ export type MarkdownProps = Readonly<{
   id?: string;
   source: string;
   style?: CellLayoutStyle;
+  renderCodeBlock?: (block: MarkdownCodeBlock) => ReactElement;
+  highlightCodeLine?: (line: string, lineIndex: number) => readonly MarkdownCodeToken[] | undefined;
 }>;
+export type MarkdownCodeToken = Readonly<{ content: string; color?: string }>;
+type MarkdownTone = "accent" | "link" | "quote" | "muted";
 type MarkdownBlockProps = Readonly<{
   children?: ReactNode;
   role: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell";
   level?: number;
   style?: CellLayoutStyle;
   markdownCenteredText?: string;
-  markdownTone?: MarkdownInline["tone"];
+  markdownTone?: MarkdownTone;
 }>;
 type MarkdownLinkProps = Readonly<{
   children: string;
   href: string;
   textStyle?: CellTextStyle;
   markdownCode?: boolean;
-  markdownTone?: MarkdownInline["tone"];
+  markdownTone?: MarkdownTone;
   markdownSource?: boolean;
 }>;
 export type ButtonProps = NamedContainerProps & Readonly<{
@@ -497,7 +502,7 @@ export type WidgetDescriptor = Readonly<{
   href: string | null;
   markdownRole: MarkdownBlockProps["role"] | null;
   markdownCode: boolean;
-  markdownTone: NonNullable<MarkdownInline["tone"]> | null;
+  markdownTone: MarkdownTone | null;
   markdownSource: boolean;
   markdownLayoutOnly: boolean;
   markdownCenteredText: string | null;
@@ -561,123 +566,153 @@ const flattenChildren = (value: ReactNode, target: ReactNode[]): void => {
   target.push(value);
 };
 
+type MarkdownInlineStyle = Readonly<{
+  bold?: boolean;
+  italic?: boolean;
+  strike?: boolean;
+  code?: boolean;
+  tone?: MarkdownTone;
+}>;
+
+const markdownInlineText = (tokens: readonly Token[]): string => tokens.map((token) => {
+  if (token.type === "image") return "[Image: " + (token.text || "untitled") + "]";
+  if (token.type === "br") return " ";
+  if (token.type === "html") return "[HTML omitted]";
+  if ("tokens" in token && Array.isArray(token.tokens)) return markdownInlineText(token.tokens);
+  return "text" in token && typeof token.text === "string" ? token.text : "";
+}).join("");
+
 const markdownInlineNodes = (
-  content: readonly MarkdownInline[],
+  tokens: readonly Token[],
+  style: MarkdownInlineStyle = {},
   keyPrefix = "",
-  options: Readonly<{ header?: boolean; delimiter?: boolean }> = {},
-): ReactNode[] => content.flatMap((part, index) => {
-  const style = { bold: options.header || part.bold, italic: part.italic, strike: part.strike, underline: part.underline };
-  const tone = options.delimiter ? "muted" : part.tone;
-  if (part.href) return [<MarkdownLink key={`${keyPrefix}link-${index}`} href={part.href} textStyle={style}
-    markdownCode={part.code} markdownTone={tone} markdownSource>{part.text}</MarkdownLink>];
-  return part.text.split(/(\s+)/u).filter(Boolean).map((piece, pieceIndex) =>
-    <Text key={`${keyPrefix}text-${index}-${pieceIndex}`} textStyle={style} markdownCode={part.code}
-      markdownTone={tone} markdownSource>{piece}</Text>);
+): ReactNode[] => tokens.flatMap((token, index) => {
+  const key = keyPrefix + index;
+  if (token.type === "strong" || token.type === "em" || token.type === "del") {
+    return markdownInlineNodes(token.tokens ?? [], {
+      ...style,
+      ...(token.type === "strong" ? { bold: true } : token.type === "em" ? { italic: true } : { strike: true }),
+    }, key + "-");
+  }
+  if (token.type === "link" || token.type === "image") {
+    const label = token.type === "image" ? "[Image: " + (token.text || "untitled") + "]" : token.text;
+    const href = safeMarkdownHref(token.href);
+    if (href) return [<MarkdownLink key={key} href={href}
+      textStyle={{ bold: style.bold, italic: style.italic, strike: style.strike, underline: true }}
+      markdownTone="link">{label}</MarkdownLink>];
+    return [<Text key={key} textStyle={{ bold: style.bold, italic: style.italic, strike: style.strike }}>{label}</Text>];
+  }
+  if (token.type === "codespan") {
+    return [<Text key={key} markdownCode markdownTone={style.tone}
+      textStyle={{ bold: style.bold, italic: style.italic, strike: style.strike }}>{token.text}</Text>];
+  }
+  if (token.type === "text" && token.tokens?.length) return markdownInlineNodes(token.tokens, style, key + "-");
+  const text = token.type === "br" ? " " : token.type === "html" ? "[HTML omitted]"
+    : "text" in token && typeof token.text === "string" ? token.text.replace(/\n/gu, " ") : "";
+  if (!text) return [];
+  return text.split(/(\s+)/u).filter(Boolean).map((piece, pieceIndex) =>
+    <Text key={key + "-" + pieceIndex} markdownTone={style.tone}
+      textStyle={{ bold: style.bold, italic: style.italic, strike: style.strike }}>{piece}</Text>);
 });
 
-const markdownLineNode = (line: MarkdownSourceLine, key: string, roleOverride?: MarkdownBlockProps["role"]): ReactNode => {
-  if (!line.text) return <Box key={key} style={{ height: 1 }} />;
-  if (line.kind === "rule") return <MarkdownBlock key={key} role="paragraph" markdownCenteredText={line.text}
-    markdownTone="muted"
-    style={{ width: "100%", height: 1, flexShrink: 0 }} />;
-  const fixed = line.kind === "code" || line.kind === "table";
-  const role = line.kind === "quote" ? "blockquote" : line.kind === "list" ? "listitem"
-    : line.kind === "table" ? "row" : line.kind;
-  return <MarkdownBlock key={key} role={roleOverride ?? role} level={line.level}
-    style={{ direction: "row", wrap: !fixed, width: fixed ? Math.max(1, getTextCellWidth(line.text)) : "100%", flexShrink: 0 }}>
-    {markdownInlineNodes(line.content)}
+const markdownColumnWidths = (table: Tokens.Table): number[] =>
+  table.header.map((_, index) => Math.max(1, ...[table.header, ...table.rows].map((row) =>
+    getTextCellWidth(markdownInlineText(row[index]?.tokens ?? [])))));
+
+const markdownTableWidth = (table: Tokens.Table): number =>
+  markdownColumnWidths(table).reduce((sum, width) => sum + width, 0)
+  + Math.max(0, table.header.length - 1) * 2;
+
+const markdownTable = (table: Tokens.Table, key: string): ReactNode => {
+  const rows = [table.header, ...table.rows];
+  const widths = markdownColumnWidths(table);
+  const total = widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.length - 1) * 2;
+  return <MarkdownBlock key={key} role="table" style={{ width: "100%", minWidth: total }}>
+    {rows.map((row, rowIndex) => <MarkdownBlock key={rowIndex} role="row"
+      style={{ direction: "row", gap: 2, width: total, flexShrink: 0 }}>
+      {row.map((cell, column) => {
+        const width = widths[column]!;
+        const missing = Math.max(0, width - getTextCellWidth(markdownInlineText(cell.tokens)));
+        const align = table.align[column];
+        const before = align === "right" ? missing : align === "center" ? Math.floor(missing / 2) : 0;
+        return <MarkdownBlock key={column} role="cell"
+          style={{ direction: "row", width, flexShrink: 0 }}>
+          {before ? <Text>{" ".repeat(before)}</Text> : null}
+          {markdownInlineNodes(cell.tokens, rowIndex === 0 ? { bold: true } : {})}
+        </MarkdownBlock>;
+      })}
+    </MarkdownBlock>)}
   </MarkdownBlock>;
 };
 
-const markdownContentSlice = (content: readonly MarkdownInline[], start: number, end: number): MarkdownInline[] => {
-  const result: MarkdownInline[] = [];
-  let offset = 0;
-  for (const part of content) {
-    const from = Math.max(0, start - offset);
-    const to = Math.min(part.text.length, end - offset);
-    if (from < to) result.push({ ...part, text: part.text.slice(from, to) });
-    offset += part.text.length;
-  }
-  return result;
-};
-
-const markdownTableCells = (line: MarkdownSourceLine) => {
-  const separators = [...line.text.matchAll(/(?<!\\)\|/gu)].map((match) => match.index);
-  const starts = [0, ...separators.filter((position) => position > 0)];
-  return starts.map((start, index) => ({ start, end: starts[index + 1] ?? line.text.length }))
-    .filter(({ start, end }) => line.text.slice(start, end).trim() !== "|");
-};
-
-const markdownTableRowNode = (
-  line: MarkdownSourceLine,
-  key: string,
-  widths: readonly number[],
-  alignments: readonly ("left" | "center" | "right")[],
-  rowIndex: number,
-): ReactNode => {
-  const cells = markdownTableCells(line);
-  const end = cells.at(-1)?.end ?? 0;
-  const rowWidth = widths.reduce((sum, width) => sum + width, 0)
-    + getTextCellWidth(line.text.slice(end));
-  return <MarkdownBlock key={key} role="row"
-    style={{ direction: "row", width: Math.max(1, rowWidth), flexShrink: 0 }}>
-    {cells.map(({ start, end }, index) => {
-      const raw = line.text.slice(start, end);
-      const missing = Math.max(0, (widths[index] ?? 0) - getTextCellWidth(raw));
-      const alignment = alignments[index] ?? "left";
-      const before = alignment === "right" ? missing : alignment === "center" ? Math.floor(missing / 2) : 0;
-      const after = missing - before;
-      const pipe = raw.startsWith("|") ? 1 : 0;
-      const layoutSpace = (count: number, name: string) => count > 0
-        ? <Text key={name} markdownLayoutOnly>{" ".repeat(count)}</Text> : null;
-      return <MarkdownBlock key={index} role="cell"
-        style={{ direction: "row", width: Math.max(1, widths[index] ?? getTextCellWidth(raw)), flexShrink: 0 }}>
-        {pipe ? markdownInlineNodes(markdownContentSlice(line.content, start, start + pipe), "pipe-",
-          { delimiter: rowIndex === 1 }) : null}
-        {layoutSpace(before, "before")}
-        {markdownInlineNodes(markdownContentSlice(line.content, start + pipe, end), "content-",
-          { header: rowIndex === 0, delimiter: rowIndex === 1 })}
-        {layoutSpace(after, "after")}
-      </MarkdownBlock>;
-    })}
-    {end < line.text.length ? markdownInlineNodes(markdownContentSlice(line.content, end, line.text.length),
-      "trailing-", { delimiter: rowIndex === 1 }) : null}
-  </MarkdownBlock>;
-};
-
-const markdownNodes = (lines: readonly MarkdownSourceLine[]): ReactNode[] => {
-  const nodes: ReactNode[] = [];
-  for (let index = 0; index < lines.length;) {
-    const kind = lines[index]!.kind;
-    if (kind !== "list" && kind !== "table") {
-      nodes.push(markdownLineNode(lines[index]!, String(index)));
-      index++;
-      continue;
+const markdownBlocks = (
+  tokens: readonly Token[],
+  codeBlocks: readonly MarkdownCodeBlock[] = [],
+  renderCodeBlock?: MarkdownProps["renderCodeBlock"],
+  highlightCodeLine?: MarkdownProps["highlightCodeLine"],
+): ReactNode[] => {
+  let codeIndex = 0;
+  return tokens.flatMap((token, index): ReactNode[] => {
+    const key = String(index);
+    if (token.type === "space" || token.type === "def") return [];
+    if (token.type === "heading") return [<MarkdownBlock key={key} role="heading" level={token.depth}
+      style={{ direction: "row", wrap: true, width: "100%", flexShrink: 0 }}>
+      {markdownInlineNodes(token.tokens ?? [], { bold: true, tone: "accent" })}
+    </MarkdownBlock>];
+    if (token.type === "paragraph" || token.type === "text") return [<MarkdownBlock key={key} role="paragraph"
+      style={{ direction: "row", wrap: true, width: "100%", flexShrink: 0 }}>
+      {markdownInlineNodes(token.tokens ?? marked.Lexer.lexInline(token.text, { gfm: true }), {})}
+    </MarkdownBlock>];
+    if (token.type === "code") {
+      const code = token as Tokens.Code;
+      const slot = codeBlocks[codeIndex++];
+      if (slot && renderCodeBlock) return [renderCodeBlock(slot)];
+      const lines = code.text.split("\n");
+      const width = Math.max(1, ...lines.map(getTextCellWidth));
+      return [<Box key={key} variant="surface" frame="none" style={{ width: "100%", padding: 1 }}>
+        {lines.map((line, lineIndex) => {
+          const highlighted = highlightCodeLine?.(line, lineIndex);
+          const parts = highlighted?.map(({ content }) => content).join("") === line ? highlighted : undefined;
+          return <MarkdownBlock key={lineIndex} role="code"
+            style={{ direction: "row", width, flexShrink: 0 }}>
+            {parts?.length ? parts.map(({ content, color }, partIndex) =>
+              <Text key={partIndex} textStyle={color ? { color } : undefined}>{content}</Text>)
+              : <Text>{line || " "}</Text>}
+          </MarkdownBlock>;
+        })}
+      </Box>];
     }
-    const start = index;
-    while (index < lines.length && lines[index]!.kind === kind) index++;
-    const tableLines = kind === "table" ? lines.slice(start, index) : [];
-    const tableCells = tableLines.map(markdownTableCells);
-    const columnCount = Math.max(0, ...tableCells.map((cells) => cells.length));
-    const widths = Array.from({ length: columnCount }, (_, column) => Math.max(1,
-      ...tableCells.map((cells, row) => {
-        const cell = cells[column];
-        return cell ? getTextCellWidth(tableLines[row]!.text.slice(cell.start, cell.end)) : 0;
-      })));
-    const alignments = Array.from({ length: columnCount }, (_, column): "left" | "center" | "right" => {
-      const delimiter = tableCells[1]?.[column];
-      const syntax = delimiter ? tableLines[1]!.text.slice(delimiter.start, delimiter.end).replace(/^\|/u, "").trim() : "";
-      return /^:-+:$/u.test(syntax) ? "center" : /^-+:$/u.test(syntax) ? "right" : "left";
-    });
-    nodes.push(<MarkdownBlock key={start} role={kind} style={{ width: "100%" }}>
-      {lines.slice(start, index).map((line, offset) => kind === "table"
-        ? markdownTableRowNode(line, `${start + offset}`, widths, alignments, offset)
-        : markdownLineNode(line, `${start + offset}`))}
-    </MarkdownBlock>);
-  }
-  return nodes;
+    if (token.type === "hr") return [<MarkdownBlock key={key} role="paragraph"
+      markdownCenteredText="───" markdownTone="muted"
+      style={{ width: "100%", height: 1, flexShrink: 0 }} />];
+    if (token.type === "blockquote") return [<MarkdownBlock key={key} role="blockquote"
+      style={{ direction: "row", width: "100%", flexShrink: 0 }}>
+      <Text markdownTone="quote">{"│ "}</Text>
+      <Box style={{ flexGrow: 1, flexShrink: 1, gap: 1 }}>{markdownBlocks(token.tokens ?? [])}</Box>
+    </MarkdownBlock>];
+    if (token.type === "list") {
+      const list = token as Tokens.List;
+      return [<MarkdownBlock key={key} role="list" style={{ width: "100%" }}>
+      {list.items.map((item, itemIndex) => {
+        const marker = item.task ? item.checked ? "☑ " : "☐ "
+          : list.ordered ? String((Number(list.start) || 1) + itemIndex) + ". " : "• ";
+        return <MarkdownBlock key={itemIndex} role="listitem" style={{ direction: "row", width: "100%" }}>
+          <Text markdownTone="muted">{marker}</Text>
+          <Box style={{ flexGrow: 1, flexShrink: 1 }}>{markdownBlocks(item.tokens)}</Box>
+        </MarkdownBlock>;
+      })}
+    </MarkdownBlock>];
+    }
+    if (token.type === "table") return [markdownTable(token as Tokens.Table, key)];
+    if (token.type === "html") return [<MarkdownBlock key={key} role="paragraph"
+      style={{ width: "100%" }}><Text markdownTone="muted">[HTML omitted]</Text></MarkdownBlock>];
+    return [];
+  });
 };
 
+const markdownFixedWidth = (tokens: readonly Token[], skipCodeBlocks: boolean): number => Math.max(0, ...tokens.map((token) =>
+  token.type === "code" && !skipCodeBlocks ? Math.max(1, ...(token as Tokens.Code).text.split("\n").map(getTextCellWidth)) + 2
+    : token.type === "table" ? markdownTableWidth(token as Tokens.Table) : 0));
 const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: CellUiPresentation): WidgetDescriptor[] => {
   const textMode = presentation === "text";
   if (element.type === Fragment) {
@@ -693,12 +728,12 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
 
   if (element.type === Markdown) {
     const props = element.props as MarkdownProps;
-    const lines = parseCellMarkdown(props.source);
-    const fixedLineWidth = Math.max(0, ...lines.filter((line) => line.kind === "code" || line.kind === "table")
-      .map((line) => getTextCellWidth(line.text)));
-    return describe(<Box id={props.id} style={{ width: "100%", minWidth: fixedLineWidth || undefined,
-      gap: 0, ...props.style }}>
-      {markdownNodes(lines)}
+    const tokens = marked.lexer(props.source, { gfm: true });
+    const codeBlocks = props.renderCodeBlock ? parseCellMarkdownCodeBlocks(props.source) : [];
+    const fixedWidth = markdownFixedWidth(tokens, !!props.renderCodeBlock);
+    return describe(<Box id={props.id} style={{ width: "100%", minWidth: fixedWidth || undefined,
+      gap: 1, ...props.style }}>
+      {markdownBlocks(tokens, codeBlocks, props.renderCodeBlock, props.highlightCodeLine)}
     </Box>, recipe, presentation);
   }
 
@@ -966,7 +1001,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
     href: kind === "markdown-link" ? props.href as string : null,
     markdownRole: kind === "markdown-block" ? props.role as MarkdownBlockProps["role"] : null,
     markdownCode: props.markdownCode === true,
-    markdownTone: typeof props.markdownTone === "string" ? props.markdownTone as NonNullable<MarkdownInline["tone"]> : null,
+    markdownTone: typeof props.markdownTone === "string" ? props.markdownTone as MarkdownTone : null,
     markdownSource: props.markdownSource === true,
     markdownLayoutOnly: props.markdownLayoutOnly === true,
     markdownCenteredText: kind === "markdown-block" && typeof props.markdownCenteredText === "string"

@@ -3,6 +3,7 @@ import { Box, Button, Markdown, Progress, Root, ScrollArea, Text, TextArea, type
 import { useCellSelectState, useCellTextState } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "./appearance";
 import { renderGalleryCheckbox, renderGallerySelect } from "./gallery-component-recipes";
+import { markdownPreviewSource } from "./docs-content";
 
 const themeItems = [
   { id: "intro-theme-light", label: "Light" },
@@ -66,49 +67,6 @@ export function ClassicMacintoshDemo() {
   </GallerySurface>;
 }
 
-const markdownExample = `# Field Notes
-
-Cells make **structure** readable. Try *emphasis* and \`inline code\`.
-
-Read [Philosophy](#/guides/philosophy).
-
-## Checklist
-
-- [x] Build UI
-- [ ] Share it
-- Keep notes
-  - Include the details
-
-## Steps
-
-1. Write Markdown
-2. Render Cells
-
-> Source stays yours.
-
----
-
-## Code
-
-\`\`\`ts
-const ready = true;
-\`\`\`
-
-## Table
-
-| Element | Cell output |
-| :--- | ---: |
-| Link | Focusable |
-| List | Structured |
-
-Read [Installation](#/guides/installation).
-
-## Fallbacks
-
-~~Old wording~~ stays visible.
-
-![Flow diagram](flow.png)`;
-
 export function MarkdownIntroductionDemo() {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [opened, setOpened] = useState<{ href: string; count: number } | null>(null);
@@ -129,7 +87,7 @@ export function MarkdownIntroductionDemo() {
     onCommand={dispatch} label="Markdown example" probeId="markdown-example">
     <Root><ScrollArea id="markdown-example-scroll" scrollX={scroll.x} scrollY={scroll.y}
       style={{ width: 44, height: 27 }}>
-      <Markdown id="markdown-example-content" source={markdownExample} />
+      <Markdown id="markdown-example-content" source={markdownPreviewSource} />
     </ScrollArea>
       {opened ? <Text>{`Opened ${opened.count}: ${opened.href}`}</Text> : null}
     </Root>

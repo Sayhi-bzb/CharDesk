@@ -78,17 +78,17 @@ it("opens from Canvas and the real textarea, while only the arrow closes an open
   const surface = screen.getByLabelText("Combobox surface");
   const canvas = surface.querySelector("canvas")!;
   vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
-    left: 0, top: 0, right: 240, bottom: 160, width: 240, height: 160,
+    left: 0, top: 0, right: 260, bottom: 200, width: 260, height: 200,
     x: 0, y: 0, toJSON: () => ({}),
   });
   const input = screen.getByRole("combobox", { name: "Font" });
-  fireEvent.pointerDown(input, { button: 0, pointerId: 1, clientX: 5, clientY: 10 });
+  fireEvent.pointerDown(input, { button: 0, pointerId: 1, clientX: 15, clientY: 30 });
   expect(input).toHaveAttribute("aria-expanded", "true");
-  fireEvent.pointerDown(input, { button: 0, pointerId: 2, clientX: 5, clientY: 10 });
+  fireEvent.pointerDown(input, { button: 0, pointerId: 2, clientX: 15, clientY: 30 });
   expect(input).toHaveAttribute("aria-expanded", "true");
-  fireEvent.pointerDown(canvas, { button: 0, pointerId: 3, clientX: 215, clientY: 10 });
+  fireEvent.pointerDown(canvas, { button: 0, pointerId: 3, clientX: 225, clientY: 30 });
   expect(input).toHaveAttribute("aria-expanded", "false");
-  fireEvent.pointerDown(canvas, { button: 0, pointerId: 4, clientX: 45, clientY: 10 });
+  fireEvent.pointerDown(canvas, { button: 0, pointerId: 4, clientX: 55, clientY: 30 });
   expect(input).toHaveAttribute("aria-expanded", "true");
 });
 

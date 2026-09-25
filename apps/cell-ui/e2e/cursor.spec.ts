@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ownerBounds, ownerCells, readCellMetrics, readCellPixel, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, ownerBounds, ownerCells, readCellMetrics, readCellPixel, readCellProbe } from "./helpers/cell-probe";
 
 test("inverse cursor follows committed editor colors, wide glyphs, movement and theme", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
@@ -11,7 +11,7 @@ test("inverse cursor follows committed editor colors, wide glyphs, movement and 
     .find((cell) => cell.text === "n")!;
   await input.fill("");
   await canvas.scrollIntoViewIfNeeded();
-  const metrics = await readCellMetrics(surface);
+  await readCellMetrics(surface);
   const x = firstGlyph.x;
   const y = firstGlyph.y;
   const pixel = (offset = 0) => readCellPixel(surface, x + offset + 0.1, y + 0.1);
@@ -20,8 +20,8 @@ test("inverse cursor follows committed editor colors, wide glyphs, movement and 
   // Actual pointer entry must show the same inverse cursor before any key event.
   await page.getByRole("heading", { name: "Cell UI Fixture", exact: true }).click();
   await canvas.scrollIntoViewIfNeeded();
-  const bounds = (await canvas.boundingBox())!;
-  await page.mouse.click(bounds.x + (x + 0.5) * metrics.cellWidth, bounds.y + (y + 0.5) * metrics.cellHeight);
+  const point = await cellPoint(surface, x, y);
+  await page.mouse.click(point.x, point.y);
   await expect(input).toBeFocused();
   await expect.poll(() => pixel()).toEqual([255, 255, 255, 255]);
   await input.fill("中A");

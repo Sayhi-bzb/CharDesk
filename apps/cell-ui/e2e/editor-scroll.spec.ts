@@ -17,13 +17,13 @@ test("TextArea shares draggable rails without stealing selection or scrolling th
   const railY = area.y + area.height - 2;
   const railX = area.x + area.width - 2;
   const rail = before.cells.filter((cell) => cell.y === railY && cell.ownerId === "editor-document");
-  expect(rail.some((cell) => cell.text === "█")).toBe(true);
+  expect(rail.some((cell) => cell.text === "━")).toBe(true);
   expect(before.cells.some((cell) => cell.x === railX && cell.y > area.y && cell.y < railY && ["█", "▀", "▄"].includes(cell.text))).toBe(true);
   const selection = await editor.evaluate((input) => [input.selectionStart, input.selectionEnd]);
-  const thumb = rail.find((cell) => cell.text === "█")!;
-  await page.mouse.move(bounds.x + (thumb.x + 0.5) * cellWidth, bounds.y + (railY + 0.5) * cellHeight);
+  const thumb = rail.find((cell) => cell.text === "━")!;
+  await page.mouse.move(bounds.x + (thumb.x + 1.5) * cellWidth, bounds.y + (railY + 1.5) * cellHeight);
   await page.mouse.down();
-  await page.mouse.move(bounds.x + (thumb.x - 2) * cellWidth, bounds.y + (railY + 0.5) * cellHeight, { steps: 8 });
+  await page.mouse.move(bounds.x + (thumb.x - 1) * cellWidth, bounds.y + (railY + 1.5) * cellHeight, { steps: 8 });
   await page.mouse.up();
   const after = await readCellProbe(surface);
   expect(after.text.split("\n")[railY]).not.toBe(before.text.split("\n")[railY]);
@@ -32,7 +32,7 @@ test("TextArea shares draggable rails without stealing selection or scrolling th
   await expect(editor).toHaveValue(value);
   // Scroll away from the caret; neither the hidden input nor a browser wheel may move the page.
   const pageY = await page.evaluate(() => scrollY);
-  await page.mouse.move(bounds.x + 10 * cellWidth, bounds.y + (area.y + 2) * cellHeight);
+  await page.mouse.move(bounds.x + 11 * cellWidth, bounds.y + (area.y + 3) * cellHeight);
   const revision = after.revision;
   await page.mouse.wheel(0, -100);
   await expect.poll(async () => (await readCellProbe(surface)).revision).toBeGreaterThan(revision);
@@ -43,5 +43,5 @@ test("TextArea shares draggable rails without stealing selection or scrolling th
   await expect(editor).toHaveValue(value.slice(0, -1) + "zx");
   await editor.fill("ok");
   const cleared = await readCellProbe(surface);
-  expect(cleared.cells.filter((cell) => cell.ownerId === "editor-document").some((cell) => ["█", "▀", "▄", "▐", "▌"].includes(cell.text))).toBe(false);
+  expect(cleared.cells.filter((cell) => cell.ownerId === "editor-document").some((cell) => ["█", "▀", "▄", "━", "╺", "╸"].includes(cell.text))).toBe(false);
 });

@@ -109,7 +109,7 @@ const paintScrollbars = (
     if (node.presentation === "rich") fill(buffer, track, node.id, theme.scrollTrackStyle, clip);
     else for (let y = track.y; y < track.y + track.height; y += 1) {
       for (let x = track.x; x < track.x + track.width; x += 1) {
-        buffer.writeGrapheme(x, y, vertical ? TEXT_VERTICAL_TRACK_GLYPH : "░", node.id,
+        buffer.writeGrapheme(x, y, vertical ? TEXT_VERTICAL_TRACK_GLYPH : " ", node.id,
           appearanceAt(x, y).track, clip, "over");
       }
     }

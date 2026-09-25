@@ -11,6 +11,7 @@ import { createCellUiRenderFrame } from "./frame.js";
 import { resolveCellCursorStyle } from "./cursor-appearance.js";
 import type { CellCursorStyle } from "./theme.js";
 import type { CellRect, FrameSnapshot } from "./types.js";
+import { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
 
 type CursorInput = Readonly<{
   frame: FrameSnapshot;
@@ -57,10 +58,10 @@ const physicalBounds = (
   metrics: CharDeskCellMetrics
 ) => {
   const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
-  const left = Math.max(0, Math.round(bounds.x * metrics.cellWidth * dpr));
-  const top = Math.max(0, Math.round(bounds.y * metrics.cellHeight * dpr));
-  const right = Math.min(canvas.width, Math.round((bounds.x + bounds.width) * metrics.cellWidth * dpr));
-  const bottom = Math.min(canvas.height, Math.round((bounds.y + bounds.height) * metrics.cellHeight * dpr));
+  const left = Math.max(0, Math.round((bounds.x + CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth * dpr));
+  const top = Math.max(0, Math.round((bounds.y + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight * dpr));
+  const right = Math.min(canvas.width, Math.round((bounds.x + bounds.width + CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth * dpr));
+  const bottom = Math.min(canvas.height, Math.round((bounds.y + bounds.height + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight * dpr));
   return { x: left, y: top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
 };
 
@@ -78,8 +79,8 @@ const drawCursor = (
   const style = resolveCellCursorStyle(frame.buffer.get(bounds.x, bounds.y)?.style, palette, presentation.input.style);
   drawCharDeskCanvasCursor(context, {
     cell: cell?.visual ?? { text: " ", width: 1, fontRoute: resolveCharDeskFontRoute(" ") },
-    x: bounds.x * metrics.cellWidth,
-    y: bounds.y * metrics.cellHeight,
+    x: (bounds.x + CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth,
+    y: (bounds.y + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight,
     style,
     options: {
       metrics,

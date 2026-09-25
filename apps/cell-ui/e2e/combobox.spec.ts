@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, readCellProbe } from "./helpers/cell-probe";
 
 test("Combobox shows its default interaction", async ({ page }) => {
   await page.goto("/#/components/combobox");
@@ -37,12 +37,10 @@ test("Combobox input row opens on click, keeps editing open, and closes from its
   expect(probe.cells.find((cell) => cell.ownerId === "component-combobox-input"
     && cell.x === firstInputCell!.x + 1 && cell.y === firstInputCell!.y)?.text).toBe(" ");
   const canvas = surface.locator("canvas").first();
-  const bounds = await canvas.boundingBox();
-  const metrics = probe.presentation!.metrics;
-  const clickCell = (x: number, y: number) => page.mouse.click(
-    bounds!.x + (x + 0.5) * metrics.cellWidth,
-    bounds!.y + (y + 0.5) * metrics.cellHeight,
-  );
+  const clickCell = async (x: number, y: number) => {
+    const point = await cellPoint(surface, x, y);
+    await page.mouse.click(point.x, point.y);
+  };
 
   await clickCell(arrow!.x - 3, arrow!.y);
   await expect(input).toHaveAttribute("aria-expanded", "true");

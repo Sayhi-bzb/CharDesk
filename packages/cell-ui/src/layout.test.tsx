@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   Box,
+  Button,
+  CellUiRuntime,
   Root,
   Text,
   YogaLayoutEngine,
   createWidgetDescriptor,
   reconcileWidgetTree,
+  hitTest,
 } from "./index.js";
 import { Overlay } from "./react.js";
 import type { RootProps } from "./react.js";
@@ -18,6 +21,23 @@ const entriesOf = (layout: ReturnType<YogaLayoutEngine["compute"]>) =>
   [...layout.entries].map(([id, entry]) => [id, entry] as const);
 
 describe("YogaLayoutEngine qualification", () => {
+  it("anchors an absolute Cell button to its parent without consuming document flow", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 5 } });
+    const frame = runtime.render(<Root><Box id="code" style={{ width: 20, height: 4 }}>
+      <Text id="line">const value = 1</Text>
+      <Button id="copy" label="Copy code" style={{ position: "absolute", top: 1, right: 1 }}><Text>⧉</Text></Button>
+    </Box></Root>);
+    expect(frame.layout.entries.get("line")?.rect.y).toBe(0);
+    expect(frame.layout.entries.get("copy")?.rect).toMatchObject({ y: 1, width: 3 });
+    expect(frame.layout.entries.get("copy")!.rect.x + frame.layout.entries.get("copy")!.rect.width).toBe(19);
+    expect(hitTest(frame.scene, { x: 17, y: 1 })).toContain("copy");
+    const inFlow = runtime.render(<Root><Box id="code" style={{ width: 20, height: 4 }}>
+      <Text id="line">const value = 1</Text>
+      <Button id="copy" label="Copy code"><Text>⧉</Text></Button>
+    </Box></Root>);
+    expect(inFlow.layout.entries.get("copy")?.rect).toMatchObject({ x: 0, y: 1 });
+    runtime.dispose();
+  });
   it.each([7, 8, 10, 31])("rounds percentage flex geometry to integer Cells at %i columns", (width) => {
     const engine = new YogaLayoutEngine();
     const layout = engine.compute(treeFor(

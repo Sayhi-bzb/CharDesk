@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import type { CellPresentationRegistry } from "./browser-presentation.js";
+import { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
 import { resolvePointerAppearance } from "./pointer.js";
 import type { FrameSnapshot } from "./types.js";
 
@@ -25,8 +26,8 @@ export const usePointerAppearance = (
     if (canvas && frame && point && !suspended.current) {
       const bounds = canvas.getBoundingClientRect();
       if (canvasRef.acceptsPoint(point.clientX, point.clientY)) next = resolvePointerAppearance(frame, {
-        x: Math.floor((point.clientX - bounds.left) / metrics.cellWidth),
-        y: Math.floor((point.clientY - bounds.top) / metrics.cellHeight),
+        x: Math.floor((point.clientX - bounds.left) / metrics.cellWidth) - CELL_SURFACE_GUARD_CELLS,
+        y: Math.floor((point.clientY - bounds.top) / metrics.cellHeight) - CELL_SURFACE_GUARD_CELLS,
       });
     }
     setAppearance((value) => value.hoveredId === next.hoveredId && value.cursor === next.cursor ? value : next);

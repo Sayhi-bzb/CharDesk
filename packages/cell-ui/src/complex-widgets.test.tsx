@@ -85,7 +85,7 @@ it("underlines only the selected Tab's label and moves its panel below the secon
   runtime.dispose();
 });
 
-it("paints owned block thumbs along both scroll axes", () => {
+it("paints owned thumbs along both scroll axes", () => {
   for (const offset of [0, 4, 20]) {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 8 } });
     const frame = runtime.render(<Root>
@@ -94,12 +94,15 @@ it("paints owned block thumbs along both scroll axes", () => {
       </ScrollArea>
     </Root>);
     const metrics = frame.scene.entries.get("scroll")!.scrollMetrics!;
-    for (const thumb of [metrics.horizontalThumb, metrics.verticalThumb]) {
+    for (const [thumb, glyphs] of [
+      [metrics.horizontalThumb, ["━", "╺", "╸"]],
+      [metrics.verticalThumb, ["█", "▀", "▄"]],
+    ] as const) {
       expect(thumb).not.toBeNull();
       for (let y = thumb!.y; y < thumb!.y + thumb!.height; y++) {
         for (let x = thumb!.x; x < thumb!.x + thumb!.width; x++) {
           expect(frame.buffer.get(x, y)?.ownerId).toBe("scroll");
-          expect(["█", "▀", "▄", "▌", "▐"]).toContain(frame.buffer.get(x, y)?.text);
+          expect(glyphs).toContain(frame.buffer.get(x, y)?.text);
           expect(hitTest(frame.scene, { x, y })[0]).toBe("scroll");
         }
       }

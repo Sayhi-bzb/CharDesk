@@ -1,7 +1,7 @@
 import { readFile, mkdir, writeFile, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { componentContent, guideContent, publicUsage, sourceLinksForComponent } from "../../apps/cell-ui/src/docs-content.ts";
+import { componentContent, guideContent, markdownPreviewSource, publicUsage, sourceLinksForComponent } from "../../apps/cell-ui/src/docs-content.ts";
 
 const root = fileURLToPath(new URL("../../apps/cell-ui/public/", import.meta.url));
 const verify = process.argv.includes("--verify");
@@ -12,7 +12,9 @@ const outputs = new Map();
 const installation = `Install the full editable source in a React project with components.json and aliases.lib: [Installation](${base}/guides/installation.md).`;
 
 for (const guide of guideContent) {
-  const sections = guide.sections.filter((section) => !section.probeId).map(({ id, title, body, code, codeLanguage, link, links, api }) => {
+  const sections = guide.sections.filter((section) => !section.probeId || guide.slug === "markdown" && section.id === "preview")
+    .map(({ id, title, body, code, codeLanguage, link, links, api }) => {
+    if (guide.slug === "markdown" && id === "preview") return `## Preview source\n\n\`\`\`\`md\n${markdownPreviewSource}\n\`\`\`\``;
     const language = guide.slug === "installation" ? id === "configure" ? "json" : "sh" : codeLanguage === "text" ? "md" : "tsx";
     const sourceLinks = links?.map(({ label, href }) => `- [${label}](${markdownHref(href)})`).join("\n");
     const apiTable = api ? `| Prop | Type | Description |\n| --- | --- | --- |\n${api.map(({ name, type, description }) =>

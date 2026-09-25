@@ -1,4 +1,6 @@
 /** DOM presentation ownership; widget targets are resolved by the Scene. */
+export const CELL_SURFACE_GUARD_CELLS = 1;
+
 export class CellPresentationRegistry {
   current: HTMLCanvasElement | null = null;
   readonly #overlays = new Map<string, HTMLCanvasElement>();

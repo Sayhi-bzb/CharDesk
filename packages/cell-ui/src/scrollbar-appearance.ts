@@ -67,15 +67,17 @@ export const resolveScrollbarAppearance = (
     : thumbBase.color ?? theme.foreground;
   const thumbBackground = thumbBase.backgroundColor ?? background;
   const trackBackground = trackBase.backgroundColor ?? background;
+  const thumbColor = readableColor(preferredThumb, thumbBackground, 3, [ownerStyle.color, theme.foreground]);
   return {
     thumb: {
       ...thumbBase,
-      color: readableColor(preferredThumb, thumbBackground, 3, [ownerStyle.color, theme.foreground]),
+      color: thumbColor,
     },
     track: {
       ...trackBase,
-      color: readableColor(trackBase.color ?? theme.secondaryStyle.color ?? theme.foreground,
-        trackBackground, 1.5, [theme.secondaryStyle.color, ownerStyle.color, theme.foreground]),
+      color: node.presentation === "text" ? thumbColor
+        : readableColor(trackBase.color ?? theme.secondaryStyle.color ?? theme.foreground,
+          trackBackground, 1.5, [theme.secondaryStyle.color, ownerStyle.color, theme.foreground]),
     },
   };
 };

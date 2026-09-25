@@ -206,9 +206,9 @@ test("inverse cursor ignores fixed color tokens while rectangle overlay consumes
   const bounds = (await canvas.boundingBox())!;
   await page.keyboard.down("Alt");
   await page.keyboard.down("Meta");
-  await page.mouse.move(bounds.x + bounds.width / 44 / 2, bounds.y + 8.5 * bounds.height / 16);
+  await page.mouse.move(bounds.x + 1.5 * bounds.width / 46, bounds.y + 9.5 * bounds.height / 18);
   await page.mouse.down();
-  await page.mouse.move(bounds.x + 3.5 * bounds.width / 44, bounds.y + 9.5 * bounds.height / 16);
+  await page.mouse.move(bounds.x + 4.5 * bounds.width / 46, bounds.y + 10.5 * bounds.height / 18);
   await page.mouse.up();
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");
@@ -229,9 +229,9 @@ test("dark Range contrast changes final pixels without changing Cell content", a
 
   await page.keyboard.down("Alt");
   await page.keyboard.down("Meta");
-  await page.mouse.move(bounds.x + bounds.width / 44 / 2, bounds.y + 8.5 * bounds.height / 16);
+  await page.mouse.move(bounds.x + 1.5 * bounds.width / 46, bounds.y + 9.5 * bounds.height / 18);
   await page.mouse.down();
-  await page.mouse.move(bounds.x + 3.5 * bounds.width / 44, bounds.y + 9.5 * bounds.height / 16);
+  await page.mouse.move(bounds.x + 4.5 * bounds.width / 46, bounds.y + 10.5 * bounds.height / 18);
   await page.mouse.up();
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");
