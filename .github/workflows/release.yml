@@ -75,11 +75,11 @@ jobs:
       - name: Set up current npm 11
         run: npm install --global npm@11
 
+      - name: Verify release metadata before installing dependencies
+        run: node scripts/release/verify-release-version.mjs "$RELEASE_TAG"
+
       - name: Install dependencies
         run: npm ci
-
-      - name: Verify unified release version
-        run: node scripts/release/verify-release-version.mjs "$RELEASE_TAG"
 
       - name: Check package publication status
         id: package-status

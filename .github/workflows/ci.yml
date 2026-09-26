@@ -18,8 +18,23 @@ env:
   VERIFY_BASE: ${{ github.event.pull_request.base.sha || '' }}
 
 jobs:
+  release-metadata:
+    name: Release metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Verify release metadata before installing dependencies
+        run: |
+          npm run release:verify
+          node --test scripts/release/*.test.mjs
+
   quality:
     name: Quality
+    needs: release-metadata
     runs-on: ubuntu-latest
     steps:
       - &checkout
@@ -54,6 +69,7 @@ jobs:
 
   workspace-tests:
     name: Workspace tests
+    needs: release-metadata
     runs-on: ubuntu-latest
     steps:
       - *checkout
@@ -69,6 +85,7 @@ jobs:
 
   node-tests:
     name: Node tests
+    needs: release-metadata
     runs-on: ubuntu-latest
     steps:
       - *checkout
@@ -85,6 +102,7 @@ jobs:
 
   dom-tests:
     name: DOM tests (${{ matrix.shard }})
+    needs: release-metadata
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -104,6 +122,7 @@ jobs:
 
   build:
     name: Build
+    needs: release-metadata
     runs-on: ubuntu-latest
     steps:
       - *checkout
@@ -119,6 +138,7 @@ jobs:
 
   cell-e2e:
     name: Cell UI browser tests (${{ matrix.project }})
+    needs: release-metadata
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -156,11 +176,12 @@ jobs:
   verify:
     name: Verify
     if: ${{ always() }}
-    needs: [quality, workspace-tests, node-tests, dom-tests, build, cell-e2e]
+    needs: [release-metadata, quality, workspace-tests, node-tests, dom-tests, build, cell-e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Require every verification lane
         run: |
+          test "${{ needs.release-metadata.result }}" = "success"
           test "${{ needs.quality.result }}" = "success"
           test "${{ needs.workspace-tests.result }}" = "success"
           test "${{ needs.node-tests.result }}" = "success"

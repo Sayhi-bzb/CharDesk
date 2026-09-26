@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { compatibleRange, dependencyFields, releasedPackages } from "./workspace-packages.mjs";
 
 const tag = process.argv[2];
 const releaseVersion = fs.readFileSync("version.txt", "utf8").trim();
@@ -22,19 +23,11 @@ if (releaseManifest["."] !== version) {
     `Release manifest version ${releaseManifest["."] ?? "<missing>"} does not match ${version}`
   );
 }
-const packages = [
-  { name: "@chardesk/cli", path: "packages/cli" },
-  { name: "@chardesk/cell-core", path: "packages/cell-core" },
-  { name: "@chardesk/fonts", path: "packages/fonts" },
-  { name: "@chardesk/font-maple", path: "packages/font-maple" },
-  { name: "@chardesk/protocol", path: "packages/protocol" },
-  { name: "@chardesk/rendering", path: "packages/rendering" },
-];
 const lockfile = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
-const releasedNames = new Set(packages.map(({ name }) => name));
-const compatibleRange = `^${version.split(".").slice(0, 2).join(".")}.0`;
+const releasedNames = new Set(releasedPackages.map(({ name }) => name));
+const expectedRange = compatibleRange(version);
 
-for (const descriptor of packages) {
+for (const descriptor of releasedPackages) {
   const manifest = JSON.parse(
     fs.readFileSync(`${descriptor.path}/package.json`, "utf8")
   );
@@ -62,9 +55,11 @@ for (const directory of fs.readdirSync("packages", { withFileTypes: true })) {
   const manifestPath = `packages/${directory.name}/package.json`;
   if (!fs.existsSync(manifestPath)) continue;
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-  for (const [dependency, range] of Object.entries(manifest.dependencies ?? {})) {
-    if (releasedNames.has(dependency) && range !== `^${version}` && range !== compatibleRange) {
-      throw new Error(`${manifest.name} requires ${dependency}@${range}; expected ^${version} or ${compatibleRange}`);
+  for (const field of dependencyFields) {
+    for (const [dependency, range] of Object.entries(manifest[field] ?? {})) {
+      if (releasedNames.has(dependency) && range !== `^${version}` && range !== expectedRange && range !== "*") {
+        throw new Error(`${manifest.name} requires ${dependency}@${range}; expected ^${version}, ${expectedRange}, or *`);
+      }
     }
   }
 }
