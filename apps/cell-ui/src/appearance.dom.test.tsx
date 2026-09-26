@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GalleryAppearance, GalleryFontSelect } from "./appearance";
+import { GalleryAppearance } from "./appearance";
+import { GalleryHeader } from "./gallery-header";
 
 // Vitest disables CSS processing; exercise the link lifecycle with a local URL.
 vi.mock("@chardesk/font-fusion/fonts.css?url", () => ({ default: "/packages/font-fusion/fonts.css" }));
@@ -16,7 +17,7 @@ describe("Cell UI gallery font loading", () => {
 
   it("loads Fusion by default before committing it", async () => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
-    const { container } = render(<GalleryAppearance><GalleryFontSelect /></GalleryAppearance>);
+    const { container } = render(<GalleryAppearance><GalleryHeader /></GalleryAppearance>);
 
     expect(container.firstElementChild).toHaveAttribute("data-gallery-font", "maple");
     expect(container.firstElementChild).toHaveAttribute("data-gallery-font-status", "loading");
@@ -45,20 +46,20 @@ describe("Cell UI gallery font loading", () => {
       },
     });
     const first = render(
-      <GalleryAppearance><GalleryFontSelect /></GalleryAppearance>
+      <GalleryAppearance><GalleryHeader /></GalleryAppearance>
     );
     const { container } = first;
 
     fireEvent.click(screen.getByRole("button", { name: "Font: Maple" }));
     expect(screen.getByRole("listbox", { name: "Fonts" })).toBeInTheDocument();
-    expect(container.querySelector("canvas")).toHaveAttribute("width", "126");
+    expect(container.querySelector("canvas")).toHaveAttribute("width", "27");
     expect(container.querySelector("canvas")).toHaveAttribute("height", "60");
     expect(container.querySelector('[data-cell-overlay-root="gallery-font-content"]'))
       .toHaveAttribute("height", "120");
     expect(screen.getAllByRole("option").map((option) => option.getAttribute("aria-label")))
       .toEqual(["Maple", "Fusion", "Xiaolai"]);
     fireEvent.click(screen.getByRole("option", { name: "Fusion" }));
-    const surface = container.querySelector('[data-cell-probe="gallery-font-select"]');
+    const surface = container.querySelector('[data-cell-probe="gallery-header"]');
     expect(surface).toHaveAttribute(
       "data-cell-activation-flash", "gallery-font-option-fusion-mono"
     );
@@ -85,7 +86,7 @@ describe("Cell UI gallery font loading", () => {
 
     first.unmount();
     const restored = render(
-      <GalleryAppearance><GalleryFontSelect /></GalleryAppearance>
+      <GalleryAppearance><GalleryHeader /></GalleryAppearance>
     );
     expect(restored.container.firstElementChild).toHaveAttribute(
       "data-gallery-font-status", "loading"
@@ -110,7 +111,7 @@ describe("Cell UI gallery font loading", () => {
       },
     });
     const { container } = render(
-      <GalleryAppearance><GalleryFontSelect /></GalleryAppearance>
+      <GalleryAppearance><GalleryHeader /></GalleryAppearance>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Font: Maple" }));
@@ -127,7 +128,7 @@ describe("Cell UI gallery font loading", () => {
     expect(container.firstElementChild).toHaveAttribute("data-gallery-font", "maple");
     expect(localStorage.getItem("chardesk-cell-ui-font")).toBe("maple");
     expect(screen.getByRole("button", { name: /Fusion unavailable/ })).toBeEnabled();
-    expect(screen.getByRole("status")).toHaveTextContent("Display remains Maple");
+    expect(screen.getAllByRole("status").some((status) => status.textContent?.includes("Display remains Maple"))).toBe(true);
     expect(load.mock.calls.some(([font]) => String(font).includes("Fusion"))).toBe(false);
   });
 
@@ -135,7 +136,7 @@ describe("Cell UI gallery font loading", () => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     localStorage.setItem("chardesk-cell-ui-font", "unknown");
     const { container } = render(
-      <GalleryAppearance><GalleryFontSelect /></GalleryAppearance>
+      <GalleryAppearance><GalleryHeader /></GalleryAppearance>
     );
 
     expect(container.firstElementChild).toHaveAttribute("data-gallery-font", "maple");
@@ -149,7 +150,7 @@ describe("Cell UI gallery font loading", () => {
       throw new DOMException("Storage unavailable");
     });
     const { container } = render(
-      <GalleryAppearance><GalleryFontSelect /></GalleryAppearance>
+      <GalleryAppearance><GalleryHeader /></GalleryAppearance>
     );
 
     expect(container.firstElementChild).toHaveAttribute("data-gallery-font", "maple");

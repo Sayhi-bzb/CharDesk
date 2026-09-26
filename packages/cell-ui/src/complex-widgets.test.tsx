@@ -92,7 +92,7 @@ it("paints owned thumbs along both scroll axes", () => {
       <ScrollArea id="scroll" frame="bordered" scrollX={offset} scrollY={offset} style={{ width: 12, height: 8 }}>
         <Box style={{ width: 24, height: 16 }}><Text>content</Text></Box>
       </ScrollArea>
-    </Root>);
+    </Root>, { visibleScrollbarIds: new Set(["scroll"]) });
     const metrics = frame.scene.entries.get("scroll")!.scrollMetrics!;
     for (const [thumb, glyphs] of [
       [metrics.horizontalThumb, ["━", "╺", "╸"]],

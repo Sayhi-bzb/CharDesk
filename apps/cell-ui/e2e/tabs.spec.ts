@@ -39,7 +39,7 @@ test("Tabs default to a selected-label underline and retain the solid variant", 
   await chooseVariant(page, "underline");
   expect((await readCellProbe(surface)).cells.filter((cell) =>
     cell.ownerId === "component-tabs-preview" && cell.text === "⎺")).toHaveLength(7);
-  await page.getByRole("button", { name: "Dark" }).click();
+  await page.getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
   const highlight = await page.locator(".gallery-page").evaluate((element) => {
     const sample = document.createElement("span");
     sample.style.color = getComputedStyle(element).getPropertyValue("--cell-highlight");
@@ -130,7 +130,7 @@ test("Tabs remain complete in light and dark themes and a narrow viewport", asyn
   const surface = page.locator('[data-cell-probe="component-tabs"]');
   for (const scheme of ["light", "dark"] as const) {
     if (await page.locator(".gallery-page").getAttribute("data-gallery-theme") !== scheme) {
-      await page.getByRole("button", { name: scheme === "dark" ? "Dark" : "Light" }).click();
+      await page.getByRole("button", { name: scheme === "dark" ? "Dark" : "Light" }).evaluate((element: HTMLElement) => element.click());
     }
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", scheme);
     const frame = await readCellProbe(surface);
@@ -181,7 +181,7 @@ test("Tabs remain complete in light and dark themes and a narrow viewport", asyn
     root.style.setProperty("--cell-muted-foreground", "rgb(90, 91, 92)");
     root.style.setProperty("--cell-disabled-foreground", "rgb(70, 71, 72)");
   });
-  await page.getByRole("button", { name: "Light" }).click();
+  await page.getByRole("button", { name: "Light" }).evaluate((element: HTMLElement) => element.click());
   await expect.poll(async () => {
     const cells = (await readCellProbe(surface)).cells;
     return {

@@ -26,7 +26,7 @@ test("Cell TSX examples keep highlighted source and exact copy across themes", a
   expect(copied).toContain("</CellSurface>");
   const published = await request.get("/components/button.md");
   expect(await published.text()).toContain(copied!);
-  await page.getByRole("button", { name: "Dark" }).click();
+  await page.getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
   const dark = await readCellProbe(article);
   expect(dark.text).toContain('import { useState }');
   expect(dark.cells.some(({ y, style }) => y === usageRow && style.color === "#aaaaaa")).toBe(true);

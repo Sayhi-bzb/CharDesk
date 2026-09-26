@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, copyCellRange, ownerBounds, readCellPixel, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, copyCellRange, ownerBounds, ownerCells, readCellPixel, readCellProbe } from "./helpers/cell-probe";
 import { galleryFontSelect, selectGalleryFont } from "./helpers/gallery-font-select";
 
 const navigationLinks = [
@@ -30,7 +30,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Cell UI" });
   await expect(page.getByRole("heading", { name: "Introduction", level: 1 })).toBeVisible();
-  await expect(page.locator(".gallery-brand")).toHaveAttribute("href", "#/guides/introduction");
+  await expect(page.locator('[data-cell-semantic-id="gallery-header-brand"]')).toHaveAttribute("href", "#/guides/introduction");
   await expect(nav.getByRole("group", { name: "Sections" }).getByRole("link")).toHaveText([
     "Introduction", "Philosophy", "Classic Macintosh", "Markdown", "Installation", "Integration", "Theming", "Testing",
   ]);
@@ -69,7 +69,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(galleryFontSelect(page).locator("canvas")).toHaveCount(1);
   await expect(page.locator("#core, #complex, #editor, #overlay, #virtualization")).toHaveCount(0);
 
-  await nav.getByRole("link", { name: "Tabs", exact: true }).click();
+  await nav.getByRole("link", { name: "Tabs", exact: true }).evaluate((element: HTMLElement) => element.click());
   await expect(page).toHaveURL(/#\/components\/tabs$/);
   await expect(page.getByRole("heading", { name: "Tabs", level: 1 })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Tabs", exact: true })).toHaveAttribute("aria-current", "page");
@@ -171,16 +171,77 @@ test("desktop navigation scrolls independently and reveals its active link", asy
   await page.goto("/#/components/tooltip");
   const active = nav.getByRole("link", { name: "Tooltip", exact: true });
   await expect(active).toHaveAttribute("aria-current", "page");
-  await expect.poll(() => active.evaluate((element) => {
-    const navBounds = element.closest("nav")!.getBoundingClientRect();
-    const linkBounds = element.getBoundingClientRect();
-    return linkBounds.top >= Math.max(navBounds.top, 0) - 1
-      && linkBounds.bottom <= Math.min(navBounds.bottom, window.innerHeight) + 1;
-  })).toBe(true);
+  await expect.poll(async () => {
+    const surface = page.locator('[data-cell-probe="gallery-nav-components"]');
+    const bounds = ownerBounds(await readCellProbe(surface), "gallery-nav-components-tooltip");
+    const point = await cellPoint(surface, bounds.x, bounds.y);
+    const navBounds = await nav.boundingBox();
+    return !!navBounds && point.y >= navBounds.y && point.y <= navBounds.y + navBounds.height;
+  }).toBe(true);
 
   await page.setViewportSize({ width: 390, height: 640 });
   await expect(nav).toHaveCSS("overflow-y", "visible");
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test("Cell navigation activates visible Navi and TOC links", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/#/guides/introduction");
+  const sections = page.locator('[data-cell-probe="gallery-nav-sections"]');
+  const markdown = ownerBounds(await readCellProbe(sections), "gallery-nav-sections-markdown");
+  const markdownPoint = await cellPoint(sections, markdown.x, markdown.y);
+  await page.mouse.click(markdownPoint.x, markdownPoint.y);
+  await expect(page).toHaveURL(/#\/guides\/markdown$/);
+  await expect(page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: "Markdown" }))
+    .toHaveAttribute("aria-current", "page");
+
+  const toc = page.locator('[data-cell-probe="gallery-toc"]');
+  const usage = ownerBounds(await readCellProbe(toc), "gallery-toc-usage");
+  const point = await cellPoint(toc, usage.x, usage.y);
+  await page.mouse.click(point.x, point.y);
+  await expect(page).toHaveURL(/#\/guides\/markdown\?section=usage$/);
+  await expect(page.getByRole("navigation", { name: "On This Page" }).getByRole("link", { name: "Usage" }))
+    .toHaveAttribute("aria-current", "location");
+
+  await page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: "Philosophy" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#\/guides\/philosophy$/);
+});
+
+test("Navi current page uses an inverse Cell row while TOC stays quiet", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/#/guides/markdown?section=usage");
+  const nav = page.locator('[data-cell-probe="gallery-nav-sections"]');
+  const currentId = "gallery-nav-sections-markdown";
+  const currentCells = async () => ownerCells(await readCellProbe(nav), currentId);
+  await expect.poll(async () => (await currentCells()).at(-1)?.style.backgroundColor).toBe("rgb(0, 0, 0)");
+  const light = await readCellProbe(nav);
+  const lightCells = ownerCells(light, currentId);
+  expect(Math.min(...lightCells.map(({ x }) => x))).toBe(0);
+  expect(Math.max(...lightCells.map(({ x }) => x))).toBe(light.viewport.width - 1);
+  expect(lightCells.every(({ style }) => style.color === "rgb(255, 255, 255)"
+    && style.backgroundColor === "rgb(0, 0, 0)")).toBe(true);
+
+  const bounds = ownerBounds(light, currentId);
+  const point = await cellPoint(nav, bounds.x, bounds.y);
+  await page.mouse.move(point.x, point.y);
+  await expect.poll(async () => (await currentCells())[0]?.style.backgroundColor).toBe("rgb(0, 0, 0)");
+
+  const toc = page.locator('[data-cell-probe="gallery-toc"]');
+  await expect(page.getByRole("navigation", { name: "On This Page" }).getByRole("link", { name: "Usage" }))
+    .toHaveAttribute("aria-current", "location");
+  expect(ownerCells(await readCellProbe(toc), "gallery-toc-usage")[0]?.style.backgroundColor).not.toBe("rgb(0, 0, 0)");
+
+  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
+  await expect.poll(async () => (await currentCells())[0]?.style.backgroundColor).toBe("rgb(255, 255, 255)");
+  expect((await currentCells())[0]?.style.color).toBe("rgb(0, 0, 0)");
+
+  await page.setViewportSize({ width: 390, height: 640 });
+  await expect.poll(async () => {
+    const snapshot = await readCellProbe(nav);
+    const cells = ownerCells(snapshot, currentId);
+    return Math.max(...cells.map(({ x }) => x)) - Math.min(...cells.map(({ x }) => x)) + 1 < snapshot.viewport.width;
+  }).toBe(true);
 });
 
 test("TOC labels stay on one line and navigation ends with the page", async ({ page }) => {
@@ -190,13 +251,16 @@ test("TOC labels stay on one line and navigation ends with the page", async ({ p
     const nav = page.getByRole("navigation", { name: "Cell UI" });
     const toc = page.getByRole("navigation", { name: "On This Page" });
     expect(await toc.getByRole("link").evaluateAll((links) => links.every((link) => link.getClientRects().length === 1))).toBe(true);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
 
     if (width <= 720) {
       await expect(nav).toHaveCSS("overflow-y", "visible");
       continue;
     }
 
+    const sections = page.locator('[data-cell-probe="gallery-nav-sections"]');
+    await expect.poll(async () => ownerBounds(await readCellProbe(sections),
+      "gallery-nav-sections-classic-macintosh").height).toBe(1);
     await expect(nav).toHaveCSS("scrollbar-width", "none");
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     const navBounds = await nav.boundingBox();
@@ -212,7 +276,7 @@ test("header and navigation share a shell and meet without hiding section target
   for (const width of [1280, 1050]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/#/guides/introduction");
-    await expect.poll(() => page.locator(".gallery-header__inner").evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(32);
+    await expect.poll(() => page.locator(".gallery-header__inner").evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(18);
     await expect.poll(() => page.getByRole("navigation", { name: "Cell UI" }).evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(80);
     await expect.poll(() => page.evaluate(() => {
       const header = document.querySelector(".gallery-header")!.getBoundingClientRect();
@@ -240,7 +304,7 @@ test("header and navigation share a shell and meet without hiding section target
     })).toEqual([0, 0]);
     if (width === 1280) {
       await expect(header).toHaveCSS("background-color", "rgb(255, 255, 255)");
-      await header.getByRole("button", { name: "Dark" }).click();
+      await header.getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
     }
     await expect(header).toHaveCSS("background-color", "rgb(0, 0, 0)");
 
@@ -263,7 +327,7 @@ test("header and navigation share a shell and meet without hiding section target
       const nav = document.querySelector(".gallery-nav")!.getBoundingClientRect();
       return [nav.left - inner.left, nav.top - header.bottom].map(Math.round);
     })).toEqual([0, 0]);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   }
 
   await page.setViewportSize({ width: 390, height: 640 });
@@ -273,7 +337,7 @@ test("header and navigation share a shell and meet without hiding section target
   await expect(header).toHaveCSS("position", "static");
   await expect.poll(() => header.evaluate((element) => element.getBoundingClientRect().bottom)).toBeLessThan(0);
   await expect.poll(() => page.getByRole("heading", { name: "Show progress in text" }).evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBeGreaterThanOrEqual(16);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
 test("keyboard focus reveals navigation links in a short viewport", async ({ page, browserName }) => {
@@ -347,7 +411,7 @@ test("Installation article is Cell-rendered without losing document navigation o
   const article = page.locator('[data-cell-probe="installation-article"]');
   await expect(page.locator(".cell-article-page [data-cell-probe]")).toHaveCount(1);
   await expect(page.locator("#manual")).toBeInViewport();
-  await toc.getByRole("link", { name: "Configure" }).click();
+  await toc.getByRole("link", { name: "Configure" }).evaluate((element: HTMLElement) => element.click());
   await expect(page.locator("#configure")).toBeInViewport();
   await expect.poll(async () => (await readCellProbe(article)).text).toContain("components.json");
   await expect(article.locator('[role="code"]').filter({ hasText: /^"@chardesk":/u })).toHaveCount(1);
@@ -405,13 +469,13 @@ test("Installation article is Cell-rendered without losing document navigation o
   await page.mouse.move(codePoint.x, codePoint.y);
   await page.mouse.wheel(240, 0);
   await expect.poll(async () => (await readCellProbe(article)).text).not.toBe(narrow.text);
-  await toc.getByRole("link", { name: "Update" }).click();
+  await toc.getByRole("link", { name: "Update" }).evaluate((element: HTMLElement) => element.click());
   await expect(page.locator("#update")).toBeInViewport();
   await expect.poll(async () => (await readCellProbe(article)).text)
     .toContain("cell-ui:registry:smoke");
   await selectGalleryFont(page, "maple");
   await expect.poll(async () => (await readCellProbe(article)).text).toContain("Configure");
-  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).click();
+  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/#/guides/installation?section=configure");
   await expect.poll(async () => {
@@ -439,19 +503,20 @@ test("on-page navigation survives direct load, component changes, and browser hi
   const toc = page.getByRole("navigation", { name: "On This Page" });
   await expect(toc.getByRole("link", { name: "Usage" })).toHaveAttribute("aria-current", "location");
   await expect(page.locator("#usage")).toBeInViewport();
-  await toc.getByRole("link", { name: "API" }).click();
+  await toc.getByRole("link", { name: "API" }).evaluate((element: HTMLElement) => element.click());
   await expect(page).toHaveURL(/#\/components\/button\?section=api$/);
   await expect(page.locator("#api")).toBeInViewport();
   await page.reload();
   await expect(page.locator("#api")).toBeInViewport();
   await page.goBack();
   await expect(toc.getByRole("link", { name: "Usage" })).toHaveAttribute("aria-current", "location");
-  await page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: "Tabs", exact: true }).click();
+  await page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: "Tabs", exact: true })
+    .evaluate((element: HTMLElement) => element.click());
   await expect(page).toHaveURL(/#\/components\/tabs$/);
   await expect(page.getByRole("heading", { name: "Tabs", level: 1 })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(toc.getByRole("link", { name: "Installation" })).toBeVisible();
-  await toc.getByRole("link", { name: "Installation" }).click();
+  await toc.getByRole("link", { name: "Installation" }).evaluate((element: HTMLElement) => element.click());
   await expect(page.locator("#installation")).toBeInViewport();
 });
 
@@ -507,10 +572,10 @@ test("Philosophy connects three principles to Introduction and the design author
     .toContainText("UI as Text is the goal");
   const toc = page.getByRole("navigation", { name: "On This Page" });
   await expect(toc.getByRole("link")).toHaveText([
-    "Everything is Cell", "Input Becomes Command", "State & Projections",
+    "Everything is Cell", "Every Input becomes a Command", "One State, Many Projections",
   ]);
-  await expect(toc.getByRole("link", { name: "Every Input becomes a Command" }))
-    .toHaveAttribute("title", "Every Input becomes a Command");
+  expect((await readCellProbe(page.locator('[data-cell-probe="gallery-toc"]'))).text)
+    .toContain("Input Becomes");
   await expect(page.getByRole("link", { name: "Cell-native design contract" })).toHaveAttribute(
     "href", "https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/design.mdx",
   );
@@ -523,10 +588,11 @@ test("Philosophy connects three principles to Introduction and the design author
   await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]').first()).toContainText(
     "ordinary Cell Range copy preserves visible Unicode",
   );
-  await toc.getByRole("link", { name: "One State, Many Projections" }).click();
+  await toc.getByRole("link", { name: "One State, Many Projections" })
+    .evaluate((element: HTMLElement) => element.click());
   await expect(page.locator("#one-state-many-projections")).toBeInViewport();
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   const markdown = await request.get("/guides/philosophy.md");
   expect(markdown.ok()).toBe(true);
   const markdownText = await markdown.text();
@@ -541,16 +607,19 @@ test("Philosophy TOC stays within its column and reveals the current section", a
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/#/guides/philosophy");
     const toc = page.getByRole("navigation", { name: "On This Page" });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    expect(await toc.getByRole("link").evaluateAll((links) => links.every((link) => {
-      const parent = link.closest("nav")!.getBoundingClientRect();
-      const bounds = link.getBoundingClientRect();
-      return bounds.left >= parent.left && bounds.right <= parent.right;
-    }))).toBe(true);
-    const first = toc.getByRole("link").first();
-    await first.evaluate((element) => { element.textContent = "A very long table of contents label that must not widen the page"; });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await expect(first).toHaveCSS("text-overflow", "ellipsis");
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    const surface = page.locator('[data-cell-probe="gallery-toc"]');
+    await expect.poll(async () => {
+      const snapshot = await readCellProbe(surface);
+      const navBounds = await toc.boundingBox();
+      if (!navBounds) return false;
+      for (const id of ["everything-is-cell", "every-input-becomes-a-command", "one-state-many-projections"]) {
+        const bounds = ownerBounds(snapshot, `gallery-toc-${id}`);
+        const point = await cellPoint(surface, bounds.x, bounds.y);
+        if (point.x < navBounds.x || point.x > navBounds.x + navBounds.width) return false;
+      }
+      return true;
+    }).toBe(true);
   }
 
   await page.setViewportSize({ width: 1280, height: 320 });
@@ -563,19 +632,18 @@ test("Philosophy TOC stays within its column and reveals the current section", a
   await expect(links).toHaveCount(3);
   expect(await toc.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
   await expect(active).toHaveAttribute("aria-current", "location");
-  expect(await links.evaluateAll((elements) => elements.every((element) => {
-    const bounds = element.closest("nav")!.getBoundingClientRect();
-    const link = element.getBoundingClientRect();
-    return link.top >= bounds.top - 1 && link.bottom <= bounds.bottom + 1;
-  }))).toBe(true);
+  const surface = page.locator('[data-cell-probe="gallery-toc"]');
+  const activeVisible = async () => {
+    const bounds = ownerBounds(await readCellProbe(surface), "gallery-toc-one-state-many-projections");
+    const point = await cellPoint(surface, bounds.x, bounds.y);
+    const navBounds = await toc.boundingBox();
+    return !!navBounds && point.y >= navBounds.y - 1 && point.y <= navBounds.y + navBounds.height + 1;
+  };
+  expect(await activeVisible()).toBe(true);
   await links.first().focus();
   await active.focus();
   await expect(active).toBeFocused();
-  await expect.poll(() => active.evaluate((element) => {
-    const bounds = element.closest("nav")!.getBoundingClientRect();
-    const link = element.getBoundingClientRect();
-    return link.top >= bounds.top - 1 && link.bottom <= bounds.bottom + 1;
-  })).toBe(true);
+  await expect.poll(activeVisible).toBe(true);
 });
 
 test("Classic Macintosh guide keeps its Cell window stable across input and themes", async ({ page, request }) => {
@@ -610,10 +678,10 @@ test("Classic Macintosh guide keeps its Cell window stable across input and them
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Status: Ready");
   expect(ownerBounds(await readCellProbe(surface), "mac-window")).toEqual(before);
   const light = JSON.stringify(await readCellPixel(surface, 0, 0));
-  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).click();
+  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
   await expect.poll(async () => JSON.stringify(await readCellPixel(surface, 0, 0))).not.toBe(light);
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   const markdown = await request.get("/guides/classic-macintosh.md");
   expect(markdown.ok()).toBe(true);
   expect(await markdown.text()).toContain("## Black-and-white first");
@@ -658,7 +726,7 @@ test("Introduction shows interactive Cell examples and matching agent content", 
   await expect.poll(async () => (await readCellProbe(notes)).text).toContain("世界 👋 and Cells");
 
   await page.setViewportSize({ width: 320, height: 700 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   const markdown = await request.get("/guides/introduction.md");
   expect(markdown.ok()).toBe(true);
   expect(await markdown.text()).toContain("## Compose a settings panel");
@@ -1173,7 +1241,7 @@ test("Cell Range clears when Preview focus moves outside its Surface", async ({ 
   await expect(surface).not.toHaveAttribute("data-cell-range");
 
   await selectRange();
-  await page.getByRole("button", { name: /^(Dark|Light)$/ }).click();
+  await page.getByRole("button", { name: /^(Dark|Light)$/ }).focus();
   await expect(surface).not.toHaveAttribute("data-cell-range");
 });
 

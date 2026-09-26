@@ -338,7 +338,8 @@ describe("CellUiRuntime", () => {
             <ListItem id="c"><Text id="c-label">charlie</Text></ListItem>
           </List>
         </ScrollArea>
-      </Root>
+      </Root>,
+      { visibleScrollbarIds: new Set(["scroll"]) }
     );
 
     expect(frame.layout.entries.get("a-label")?.rect.y).toBe(0);

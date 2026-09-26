@@ -115,6 +115,8 @@ export type { CellComboboxItem, CellComboboxState } from "./browser-combobox.js"
 export { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
 export { useCellRangeState } from "./browser-range.js";
 export type { CellRangeState } from "./browser-range.js";
+export { useCellScrollState } from "./browser-scroll.js";
+export type { CellScrollState } from "./browser-scroll.js";
 export {
   useCellGridState,
   useCellListState,
@@ -457,6 +459,7 @@ export const SemanticDom = ({
           ? `cell-semantic-${node.activeDescendantId}`
           : undefined}
         aria-selected={node.selected}
+        aria-current={node.current}
         aria-expanded={node.expanded}
         aria-haspopup={node.hasPopup}
         aria-disabled={node.disabled || undefined}
@@ -480,6 +483,8 @@ export const SemanticDom = ({
         data-cell-semantic-id={node.id}
         data-href={node.href}
         href={node.role === "link" ? node.href : undefined}
+        target={node.role === "link" ? node.target : undefined}
+        rel={node.role === "link" && node.target === "_blank" ? "noopener noreferrer" : undefined}
         tabIndex={focusable ? -1 : undefined}
         onFocus={focusable
           ? (event) => {
@@ -787,6 +792,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     children: ReactElement<RootProps>;
     focusedId: WidgetId | null;
     hoveredId: WidgetId | null;
+    scrollbarHoverId: WidgetId | null;
+    recentScrollId: WidgetId | null;
     tooltipTargetId: WidgetId | null;
     manipulatingIds: ReadonlySet<WidgetId>;
     pressActiveId: WidgetId | null;
@@ -814,6 +821,28 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     pointerId: number;
   }> | null>(null);
   const [interactionRevision, setInteractionRevision] = useState(0);
+  const [recentScrollId, setRecentScrollId] = useState<WidgetId | null>(null);
+  const scrollHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearRecentScroll = useCallback(() => {
+    if (scrollHideTimerRef.current !== null) clearTimeout(scrollHideTimerRef.current);
+    scrollHideTimerRef.current = null;
+    setRecentScrollId(null);
+  }, []);
+  const revealRecentScroll = useCallback((id: WidgetId) => {
+    if (scrollHideTimerRef.current !== null) clearTimeout(scrollHideTimerRef.current);
+    setRecentScrollId(id);
+    scrollHideTimerRef.current = setTimeout(() => {
+      scrollHideTimerRef.current = null;
+      setRecentScrollId(null);
+    }, 1200);
+  }, []);
+  useEffect(() => {
+    window.addEventListener("blur", clearRecentScroll);
+    return () => {
+      window.removeEventListener("blur", clearRecentScroll);
+      if (scrollHideTimerRef.current !== null) clearTimeout(scrollHideTimerRef.current);
+    };
+  }, [clearRecentScroll]);
   const [manipulatingIds, setManipulatingIds] = useState<ReadonlySet<WidgetId>>(() => new Set());
   const [pressActiveId, setPressActiveId] = useState<WidgetId | null>(null);
   const [activationFlashId, setActivationFlashId] = useState<WidgetId | null>(null);
@@ -958,6 +987,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       previousProjection?.children === children
       && previousProjection.focusedId === focusedId
       && previousProjection.hoveredId === hoveredId
+      && previousProjection.scrollbarHoverId === pointerAppearance.scrollbarHoverId
+      && previousProjection.recentScrollId === recentScrollId
       && previousProjection.tooltipTargetId === tooltipTargetId
       && previousProjection.manipulatingIds === manipulatingIds
       && previousProjection.pressActiveId === pressActiveId
@@ -991,6 +1022,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const next = runtime.render(children, {
       ...controller.renderState,
       hoveredId,
+      visibleScrollbarIds: new Set([pointerAppearance.scrollbarHoverId, recentScrollId].filter(
+        (id): id is WidgetId => id !== null)),
       tooltipTargetId,
       animationTimeMs,
       colors: { color: palette.color, backgroundColor: palette.background },
@@ -1031,6 +1064,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       children,
       focusedId,
       hoveredId,
+      scrollbarHoverId: pointerAppearance.scrollbarHoverId,
+      recentScrollId,
       tooltipTargetId,
       manipulatingIds,
       pressActiveId,
@@ -1050,7 +1085,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     };
     // The headless runtime is an external store; publish its committed snapshot.
     setFrame(next);
-  }, [controller, palette.color, palette.background, activationFlashId, animationTimeMs, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, tooltipTargetId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, recipe, presentation, runtimeActiveFocusId, syncManipulatingIds, theme, feedback, viewport]);
+  }, [controller, palette.color, palette.background, activationFlashId, animationTimeMs, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, pointerAppearance.scrollbarHoverId, recentScrollId, tooltipTargetId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, recipe, presentation, runtimeActiveFocusId, syncManipulatingIds, theme, feedback, viewport]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -1266,8 +1301,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
 
   const dispatch = useCallback((command: WidgetCommand | null) => {
     const current = frameRef.current;
+    if (command?.type === "scroll" || command?.type === "text-preview-scroll") {
+      revealRecentScroll(command.targetId);
+    }
     if (current) controller.commit(command, current, resolvedFeedback.activationBlinkCount);
-  }, [controller, resolvedFeedback.activationBlinkCount]);
+  }, [controller, resolvedFeedback.activationBlinkCount, revealRecentScroll]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

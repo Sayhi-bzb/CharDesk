@@ -35,7 +35,7 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   slider: ["react.tsx", "slider.ts"],
   input: ["react.tsx", "browser-input.tsx"],
   tabs: ["react.tsx", "browser-collections.tsx", "interaction.ts"],
-  "scroll-area": ["react.tsx", "scroll.ts"],
+  "scroll-area": ["react.tsx", "scroll.ts", "scroll-layout.ts", "browser-scroll.ts"],
 };
 
 export const sourceLinksForComponent = (slug: string) =>
@@ -801,19 +801,22 @@ export function TabsExample() {
     slug: "scroll-area",
     title: "ScrollArea",
     description: "Scroll overflowing Cell content with keys, wheel, track, or thumb.",
-    usage: `import { useState } from "react";
-import { Root, ScrollArea, Text, type WidgetCommand } from "@chardesk/cell-ui";
-import { CellSurface } from "@chardesk/cell-ui/browser";
+    usage: `import { Root, ScrollArea, Text } from "@chardesk/cell-ui";
+import { CellSurface, useCellScrollState } from "@chardesk/cell-ui/browser";
 
 export function ScrollAreaExample() {
-  const [scrollY, setScrollY] = useState(0);
-  const dispatch = (command: WidgetCommand) => {
-    if (command.type === "scroll") setScrollY(command.scrollY);
-  };
+  const scroll = useCellScrollState();
+  const offset = scroll.offset("rows");
   return (
-    <CellSurface viewport={{ width: 32, height: 6 }} onCommand={dispatch}>
+    <CellSurface viewport={{ width: 32, height: 6 }} onCommand={scroll.dispatch}>
       <Root id="root">
-        <ScrollArea frame="bordered" scrollY={scrollY} style={{ height: 6 }}>
+        <ScrollArea
+          id="rows"
+          frame="bordered"
+          scrollX={offset.x}
+          scrollY={offset.y}
+          style={{ height: 6 }}
+        >
           {Array.from({ length: 10 }, (_, index) => (
             <Text key={index}>Row {index + 1}</Text>
           ))}
@@ -826,6 +829,7 @@ export function ScrollAreaExample() {
       { name: "id?", type: "string", description: "Stable scroll target identity." },
       { name: "scrollX?", type: "number", description: "Controlled horizontal Cell offset." },
       { name: "scrollY?", type: "number", description: "Controlled vertical Cell offset." },
+      { name: "useCellScrollState", type: "CellScrollState", description: "Keeps both offsets and focus reveals by scroll target ID." },
       { name: "variant?", type: '"surface" | "ghost"', description: "Local surface recipe; overrides the global recipe and otherwise defaults to ghost." },
       { name: "frame?", type: '"none" | "bordered"', description: "Optional one-Cell border, independent of background." },
       { name: "borderShape?", type: '"square" | "rounded"', description: "Border glyphs when the viewport is bordered." },
@@ -1045,7 +1049,7 @@ export function MarkdownExample() {
         { label: "markdown.ts", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts" },
         { label: "react.tsx", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx" },
       ] },
-      { id: "api", title: "API", body: "Markdown renders for reading; Cell Range copies the visible text. Code fences and table syntax are hidden. Safe links stay interactive; raw HTML stays inert.", link: { label: "Theming", href: "#/guides/theming" }, api: [
+      { id: "api", title: "API", body: "Markdown renders for reading. Headings keep plain hashes; tables use aligned columns, │ separators, and a header rule; thematic breaks render as /////. Cell Range copies visible text. Code fences stay hidden; safe links stay interactive; raw HTML stays inert.", link: { label: "Theming", href: "#/guides/theming" }, api: [
         { name: "source", type: "string", description: "Markdown source to render." },
         { name: "id?", type: "string", description: "Stable identity for the document root." },
         { name: "style?", type: "CellLayoutStyle", description: "Document layout overrides." },

@@ -15,10 +15,12 @@ test("Accordion preview scrolls overflow and reveals keyboard-focused items", as
   }
 
   const before = await readCellProbe(surface);
-  expect(before.cells.some((cell) => cell.ownerId === "component-accordion-playground-preview-scroll" && "█▀▄".includes(cell.text))).toBe(true);
+  expect(before.cells.some((cell) => cell.ownerId === "component-accordion-playground-preview-scroll" && "█▀▄".includes(cell.text))).toBe(false);
   expect(before.cells.some((cell) => cell.ownerId === "accordion-advanced-trigger")).toBe(false);
   const previewPoint = await cellPoint(surface, 8, 3);
   await page.mouse.move(previewPoint.x, previewPoint.y);
+  await expect.poll(async () => (await readCellProbe(surface)).cells
+    .some((cell) => cell.ownerId === "component-accordion-playground-preview-scroll" && "█▀▄".includes(cell.text))).toBe(true);
   for (let index = 0; index < 3; index += 1) await page.mouse.wheel(0, 120);
   await expect.poll(async () => (await readCellProbe(surface)).cells
     .some((cell) => cell.ownerId === "accordion-advanced-trigger")).toBe(true);

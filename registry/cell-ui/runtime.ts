@@ -10,8 +10,9 @@ import {
   type RootProps,
 } from "./react.js";
 import { composeScene } from "./scene.js";
+import { resolveCellUiScrollLayout } from "./scroll-layout.js";
 import { createSemanticSnapshot } from "./semantics.js";
-import { reconcileWidgetTree, sameWidgetValue } from "./tree.js";
+import { isDescendantOf, reconcileWidgetTree, sameWidgetValue } from "./tree.js";
 import { classifyWidgetChange } from "./widget-change.js";
 import { createCellTextLayout, measureCellText } from "./text.js";
 import { resolveCellUiTheme, type CellUiTheme, type CellUiThemeInput } from "./theme.js";
@@ -31,10 +32,8 @@ import type {
   CellSize,
   FramePhase,
   FrameSnapshot,
-  LayoutSnapshot,
   SceneSnapshot,
   WidgetId,
-  WidgetKind,
   WidgetTree,
 } from "./types.js";
 
@@ -68,61 +67,6 @@ const expandForWideCells = (
   const right = Math.min(viewport.x + viewport.width, region.x + region.width + 1);
   return { ...region, x: left, width: right - left };
 });
-
-type RailInsets = Readonly<{ right: number; bottom: number }>;
-
-const ownsFlowingScrollContent = (kind: WidgetKind): boolean =>
-  kind === "scroll-area" || kind === "select-content" || kind === "combobox-content";
-
-const layoutWithRailInsets = (
-  tree: WidgetTree,
-  viewport: CellSize,
-  overlayViewport: CellRect,
-  engine: LayoutEngine,
-): Readonly<{ layout: LayoutSnapshot; scene: SceneSnapshot }> => {
-  const owners = [...tree.nodes.values()].filter((node) => ownsFlowingScrollContent(node.kind));
-  const reserved = new Map<WidgetId, RailInsets>();
-  for (let pass = 0; pass <= owners.length * 2; pass += 1) {
-    const layoutTree: WidgetTree = reserved.size === 0 ? tree : {
-      ...tree,
-      nodes: new Map([...tree.nodes].map(([id, node]) => {
-        const rail = reserved.get(id);
-        return [id, !rail ? node : {
-          ...node,
-          style: {
-            ...node.style,
-            paddingRight: (node.style.paddingRight ?? node.style.padding ?? 0) + rail.right,
-            paddingBottom: (node.style.paddingBottom ?? node.style.padding ?? 0) + rail.bottom,
-          },
-        }];
-      })),
-    };
-    const rawLayout = engine.compute(layoutTree, viewport);
-    let layout: LayoutSnapshot = rawLayout;
-    if (reserved.size > 0) {
-      const entries = new Map(rawLayout.entries);
-      for (const [id, railInsets] of reserved) {
-        const entry = entries.get(id);
-        if (entry) entries.set(id, { ...entry, railInsets });
-      }
-      layout = { ...rawLayout, entries };
-    }
-    const scene = composeScene(tree, layout, overlayViewport);
-    let changed = false;
-    for (const owner of owners) {
-      const metrics = scene.entries.get(owner.id)?.scrollMetrics;
-      const previous = reserved.get(owner.id);
-      const right = metrics?.verticalTrack ? 1 : 0;
-      const bottom = metrics?.horizontalTrack ? 1 : 0;
-      if (right === (previous?.right ?? 0) && bottom === (previous?.bottom ?? 0)) continue;
-      if (right || bottom) reserved.set(owner.id, { right, bottom });
-      else reserved.delete(owner.id);
-      changed = true;
-    }
-    if (!changed) return { layout, scene };
-  }
-  throw new Error("Scroll rail layout did not converge.");
-};
 
 export type CellUiRuntimeOptions = Readonly<{
   viewport: CellSize;
@@ -192,6 +136,7 @@ export class CellUiRuntime {
       activeFocusId?: string | null;
       focusVisible?: boolean;
       hoveredId?: string | null;
+      visibleScrollbarIds?: ReadonlySet<string>;
       manipulatingIds?: ReadonlySet<string>;
       pressActiveId?: string | null;
       activationFlashId?: string | null;
@@ -231,6 +176,16 @@ export class CellUiRuntime {
     const activeTooltipTargetId = tooltipTarget && isFocusableKind(tooltipTarget.kind) && !tooltipTarget.disabled
       ? tooltipTarget.id : null;
     const previous = this.#frame;
+    const visibleScrollbarIds = state.visibleScrollbarIds;
+    const scrollbarVisible = (id: WidgetId): boolean => {
+      const kind = reconciliation.tree.nodes.get(id)?.kind;
+      if (kind !== "text-area" && kind !== "scroll-area"
+        && kind !== "select-content" && kind !== "combobox-content") return false;
+      return visibleScrollbarIds?.has(id) === true
+        || !!(focusVisible && focusedId && isDescendantOf(reconciliation.tree, focusedId, id))
+        || [...(state.manipulatingIds ?? [])].some((targetId) =>
+          isDescendantOf(reconciliation.tree, targetId, id));
+    };
     for (const [id, node] of reconciliation.tree.nodes) {
       if (node.kind !== "text-area") continue;
       const wasActive = previous?.tree.nodes.get(id)?.focusActive ?? false;
@@ -250,6 +205,7 @@ export class CellUiRuntime {
           && node.focusActive === (id === focusedId && focusActive)
           && node.focusVisible === (id === focusedId && focusVisible)
           && node.hovered === (id === hoveredId && !node.disabled)
+          && node.scrollbarVisible === scrollbarVisible(id)
           && node.manipulating === (state.manipulatingIds?.has(id) === true && supportsManipulationFeedback(node.kind) && !node.disabled)
           && node.pressActive === (id === state.pressActiveId && supportsPressFeedback(node.kind) && !node.disabled)
           && node.activationFlash === (id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled)
@@ -264,6 +220,7 @@ export class CellUiRuntime {
               focusActive: id === focusedId && focusActive,
               focusVisible: id === focusedId && focusVisible,
               hovered: id === hoveredId && !node.disabled,
+              scrollbarVisible: scrollbarVisible(id),
               manipulating: state.manipulatingIds?.has(id) === true && supportsManipulationFeedback(node.kind) && !node.disabled,
               pressActive: id === state.pressActiveId && supportsPressFeedback(node.kind) && !node.disabled,
               activationFlash: id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled,
@@ -334,7 +291,7 @@ export class CellUiRuntime {
       height: this.#overlayViewport.height,
     };
     const computed = layoutDirty || !previous
-      ? layoutWithRailInsets(tree, this.#viewport, overlayRect, this.#layout)
+      ? resolveCellUiScrollLayout(tree, this.#viewport, overlayRect, this.#layout)
       : null;
     const layout = computed?.layout ?? previous!.layout;
     const scene = computed?.scene ?? (geometryDirty

@@ -130,6 +130,8 @@ export type WidgetNode = Readonly<{
   borderShape: import("./border.js").CellBorderShape | null;
   text: string | null;
   href: string | null;
+  current?: "page" | "location";
+  target?: "_blank";
   markdownRole: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell" | null;
   markdownCode: boolean;
   markdownTone: "accent" | "link" | "quote" | "muted" | null;
@@ -144,6 +146,7 @@ export type WidgetNode = Readonly<{
   focusActive: boolean;
   focusVisible: boolean;
   hovered: boolean;
+  scrollbarVisible: boolean;
   manipulating: boolean;
   pressActive: boolean;
   activationFlash: boolean;
@@ -353,6 +356,8 @@ export type SemanticNode = Readonly<{
     | "cell";
   label: string;
   href?: string;
+  current?: "page" | "location";
+  target?: "_blank";
   disabled: boolean;
   invalid?: boolean;
   hidden: boolean;

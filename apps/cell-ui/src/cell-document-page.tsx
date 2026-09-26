@@ -1,10 +1,10 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactElement } from "react";
 import {
   Box, Button, Markdown, Root, ScrollArea, Tab, TabPanel, Tabs, Text,
-  type MarkdownCodeToken, type RootProps, type WidgetCommand,
+  type CellPoint, type MarkdownCodeToken, type RootProps, type WidgetCommand,
 } from "@chardesk/cell-ui";
 import { formatCellProbe } from "@chardesk/cell-ui";
-import { readCellSurfaceProbe } from "@chardesk/cell-ui/browser";
+import { readCellSurfaceProbe, useCellScrollState, type CellScrollState } from "@chardesk/cell-ui/browser";
 import { GallerySurface, useGalleryAppearance } from "./appearance";
 import { CellArticleSurface } from "./cell-article-surface";
 import { sourceLinksForComponent, type ComponentDocument } from "./component-catalog";
@@ -29,7 +29,6 @@ type ArticleItem = Readonly<{ type: "part"; part: ArticlePart }> | Readonly<{
 type ArticleSegment = Readonly<{ id: string; parts: readonly ArticlePart[] }>;
 type ArticleGroup = ArticleSegment | Extract<ArticleItem, { type: "preview" }>;
 type CopyState = "Copy" | "Copied" | "Copy failed";
-type ScrollOffsets = Readonly<Record<string, number>>;
 
 const guideDemos = {
   settings: SettingsIntroductionDemo,
@@ -115,25 +114,27 @@ const syntaxLines = (source: string, mode: "light" | "dark"): readonly (readonly
 };
 
 const codeBlock = (
-  id: string, code: string, language: string, scrollX: number, copyState: CopyState,
+  id: string, code: string, language: string, scroll: CellPoint, copyState: CopyState,
   expanded: boolean, mode: "light" | "dark",
 ) => {
   const collapsible = shouldCollapseCode(code);
   const visible = collapsible && !expanded ? code.split("\n").slice(0, CODE_BLOCK_PREVIEW_LINES).join("\n") : code;
   const rows = visible.split("\n").length;
+  const source = fence(visible, language);
   const gutterWidth = String(code.split("\n").length).length + 2;
   const tokens = language === "tsx" ? syntaxLines(code, mode) : undefined;
   const icon = copyState === "Copied" ? "✓" : copyState === "Copy failed" ? "!" : "⧉";
   return <Box id={`${id}-code`} style={{ width: "100%", gap: 1 }}>
-    <Box variant="surface" style={{ direction: "row", width: "100%", height: rows + 2 }}>
-      {rows > 1 ? <Box id={`${id}-numbers`} style={{ width: gutterWidth, height: "100%", paddingTop: 1, flexShrink: 0 }}>
+    <Box variant="surface" style={{ direction: "row", width: "100%" }}>
+      {rows > 1 ? <Box id={`${id}-numbers`} style={{ width: gutterWidth, paddingTop: 1, flexShrink: 0 }}>
         {Array.from({ length: rows }, (_, index) => <Text key={index}
           textStyle={{ color: mode === "light" ? "#555555" : "#aaaaaa" }}>
           {String(index + 1).padStart(gutterWidth - 1)}
         </Text>)}
       </Box> : null}
-      <ScrollArea id={`${id}-scroll`} scrollX={scrollX} style={{ flexGrow: 1, flexShrink: 1, height: "100%" }}>
-        <Markdown source={fence(visible, language)} highlightCodeLine={(line, index) => tokens?.[index]} />
+      <ScrollArea id={`${id}-scroll`} scrollX={scroll.x} scrollY={scroll.y}
+        style={{ flexGrow: 1, flexShrink: 1 }}>
+        <Markdown source={source} highlightCodeLine={(line, index) => tokens?.[index]} />
       </ScrollArea>
       <Button id={`${id}-copy`} label={copyState === "Copy" ? "Copy code" : copyState}
         variant="surface" style={{ position: "absolute", top: 0, right: 1 }}><Text>{icon}</Text></Button>
@@ -147,7 +148,7 @@ const codeBlock = (
 const packageManagers = Object.keys(installationCommands) as (keyof typeof installationCommands)[];
 const renderPart = (
   part: ArticlePart, prefix: string, manager: keyof typeof installationCommands,
-  scroll: ScrollOffsets, copies: Readonly<Record<string, CopyState>>,
+  scroll: CellScrollState, copies: Readonly<Record<string, CopyState>>,
   expanded: Readonly<Record<string, boolean>>, mode: "light" | "dark",
 ) => {
   const code = part.installation
@@ -155,6 +156,8 @@ const renderPart = (
     : part.code;
   const codeId = code ? `${prefix}-${code.id}` : "";
   const tableId = `${prefix}-api-table`;
+  const tableSource = part.api ? apiSource(part.api) : null;
+  const tableOffset = scroll.offset(`${tableId}-scroll`);
   return <Box key={part.id ?? part.code?.id ?? part.source} id={part.id ? `${prefix}-${part.id}` : undefined}
     style={{ width: "100%", gap: 1 }}>
     {part.source ? <Markdown source={part.source} /> : null}
@@ -165,15 +168,16 @@ const renderPart = (
     {code ? part.installation
       ? <TabPanel id={`${prefix}-package-panel`} label={`${manager} installation command`}
         labelledById={`${prefix}-package-${manager}`} style={{ width: "100%" }}>
-        {codeBlock(codeId, code.source, code.language, scroll[codeId] ?? 0,
+        {codeBlock(codeId, code.source, code.language, scroll.offset(`${codeId}-scroll`),
           copies[codeId] ?? "Copy", expanded[codeId] ?? false, mode)}
       </TabPanel>
-      : codeBlock(codeId, code.source, code.language, scroll[codeId] ?? 0,
+      : codeBlock(codeId, code.source, code.language, scroll.offset(`${codeId}-scroll`),
         copies[codeId] ?? "Copy", expanded[codeId] ?? false, mode) : null}
     {part.installation ? <Markdown source="[Configure the registry](#/guides/installation?section=configure)" /> : null}
-    {part.api ? <ScrollArea id={`${tableId}-scroll`} scrollX={scroll[tableId] ?? 0}
-      style={{ width: "100%", height: part.api.length + 2 }}>
-      <Markdown source={apiSource(part.api)} />
+    {tableSource ? <ScrollArea id={`${tableId}-scroll`}
+      scrollX={tableOffset.x} scrollY={tableOffset.y}
+      style={{ width: "100%" }}>
+      <Markdown source={tableSource} />
     </ScrollArea> : null}
   </Box>;
 };
@@ -181,7 +185,7 @@ const renderPart = (
 function ArticleSegmentSurface({ segment, manager, scroll, copies, expanded, mode, focusedId, onCommand }: Readonly<{
   segment: ArticleSegment;
   manager: keyof typeof installationCommands;
-  scroll: ScrollOffsets;
+  scroll: CellScrollState;
   copies: Readonly<Record<string, CopyState>>;
   expanded: Readonly<Record<string, boolean>>;
   mode: "light" | "dark";
@@ -217,7 +221,7 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
   const prefix = `article-${guide?.slug ?? document!.slug}`;
   const groups = useMemo(() => groupItems(guide ? guideItems(guide) : componentItems(document!), prefix), [guide, document, prefix]);
   const [manager, setManager] = useState<keyof typeof installationCommands>("npm");
-  const [scroll, setScroll] = useState<ScrollOffsets>({});
+  const scroll = useCellScrollState();
   const [copies, setCopies] = useState<Readonly<Record<string, CopyState>>>({});
   const [expanded, setExpanded] = useState<Readonly<Record<string, boolean>>>({});
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -255,12 +259,10 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
       .finally(() => pendingCopies.current.delete(id));
   };
   const onCommand = (command: WidgetCommand) => {
+    scroll.dispatch(command);
     if (command.type === "focus") setFocusedId(command.targetId);
     else if (command.type === "open-link") window.location.assign(command.href);
-    else if (command.type === "scroll") {
-      const id = command.targetId.replace(/-scroll$/u, "");
-      setScroll((current) => ({ ...current, [id]: command.scrollX }));
-    } else if (command.type === "set-active") {
+    else if (command.type === "set-active") {
       const selected = packageManagers.find((name) => command.targetId.endsWith(`-package-${name}`));
       if (selected) selectManager(selected);
     } else if (command.type === "activate") {

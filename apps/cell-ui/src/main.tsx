@@ -1,16 +1,16 @@
-import { StrictMode, useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { StrictMode, useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import {
   componentDocumentBySlug,
-  componentNavigationDocuments,
   type ComponentDocument,
 } from "./component-catalog";
 import { guideContent, type GuideContent } from "./docs-content";
 import { FixturePage } from "./fixtures";
-import { GalleryAppearance, GalleryFontSelect, GalleryThemeToggle } from "./appearance";
-import { GitHubStars } from "./github-stars";
+import { GalleryAppearance } from "./appearance";
+import { GalleryHeader } from "./gallery-header";
 import { InstallationCellPage } from "./installation-cell-page";
 import { CellDocumentPage } from "./cell-document-page";
+import { GalleryNavigation, OnThisPage } from "./cell-navigation";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
 import "@chardesk/font-maple/fonts.css";
@@ -32,71 +32,6 @@ const documentationSections = [
 type DocumentationSection = typeof documentationSections[number]["id"];
 const isDocumentationSection = (value: string | null): value is DocumentationSection =>
   documentationSections.some((section) => section.id === value);
-
-function useRevealCurrentLink(currentKey: string) {
-  const navRef = useRef<HTMLElement>(null);
-  useLayoutEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return;
-    const revealActive = () => {
-      if (getComputedStyle(nav).overflowY !== "auto" || nav.scrollHeight <= nav.clientHeight) return;
-      const active = nav.querySelector<HTMLAnchorElement>("a[aria-current]");
-      if (!active) return;
-      const navBounds = nav.getBoundingClientRect();
-      const activeBounds = active.getBoundingClientRect();
-      const visibleTop = Math.max(navBounds.top, 0);
-      const visibleBottom = Math.min(navBounds.bottom, window.innerHeight);
-      if (visibleBottom <= visibleTop) return;
-      if (activeBounds.top < visibleTop) nav.scrollTop += activeBounds.top - visibleTop;
-      else if (activeBounds.bottom > visibleBottom) nav.scrollTop += activeBounds.bottom - visibleBottom;
-    };
-    revealActive();
-    window.addEventListener("resize", revealActive);
-    return () => window.removeEventListener("resize", revealActive);
-  }, [currentKey]);
-  return navRef;
-}
-
-export function GalleryNavigation({ activeRoute }: Readonly<{ activeRoute: string }>) {
-  const navRef = useRevealCurrentLink(activeRoute);
-  return (
-    <nav ref={navRef} className="gallery-nav" aria-label="Cell UI">
-      <div className="gallery-nav__group" role="group" aria-labelledby="gallery-nav-sections">
-        <span className="gallery-nav__title" id="gallery-nav-sections">Sections</span>
-        <ul>{guideContent.map((guide) => (
-          <li key={guide.slug}><a href={`#/guides/${guide.slug}`} aria-current={activeRoute === `/guides/${guide.slug}` ? "page" : undefined}>{guide.title}</a></li>
-        ))}</ul>
-      </div>
-      <div className="gallery-nav__group" role="group" aria-labelledby="gallery-nav-components">
-        <span className="gallery-nav__title" id="gallery-nav-components">Components</span>
-        <ul>
-          {componentNavigationDocuments.map((document) => (
-            <li key={document.slug}>
-              <a
-                href={`#/components/${document.slug}`}
-                aria-current={activeRoute === `/components/${document.slug}` ? "page" : undefined}
-              >
-                {document.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </nav>
-  );
-}
-
-export function OnThisPage({ route, sections, activeSection }: Readonly<{ route: string; sections: readonly Readonly<{ id: string; label: string; tocLabel?: string }>[]; activeSection: string | null }>) {
-  const tocRef = useRevealCurrentLink(`${route}?section=${activeSection ?? ""}`);
-  return (
-    <nav ref={tocRef} className="gallery-toc" aria-label="On This Page">
-      <span className="gallery-toc__title">On This Page</span>
-      <ul>{sections.map(({ id, label, tocLabel }) => (
-        <li key={id}><a href={`#${route}?section=${id}`} aria-label={label} title={label} aria-current={activeSection === id ? "location" : undefined}>{tocLabel ?? label}</a></li>
-      ))}</ul>
-    </nav>
-  );
-}
 
 export function DocumentationShell({ document, guide, section }: Readonly<{ document?: ComponentDocument; guide?: GuideContent; section: string | null }>) {
   const title = guide?.title ?? document?.title ?? "Cell UI";
@@ -136,12 +71,7 @@ export function DocumentationShell({ document, guide, section }: Readonly<{ docu
   }, [route, title, section]);
   return (
     <>
-      <header className="gallery-header">
-        <div className="gallery-shell gallery-header__inner">
-          <a className="gallery-brand" href={defaultHref}>CharDesk / Cell UI</a>
-          <div className="gallery-appearance-controls"><GitHubStars /><GalleryFontSelect /><GalleryThemeToggle /></div>
-        </div>
-      </header>
+      <GalleryHeader />
       <div className="gallery-shell gallery-layout">
         <GalleryNavigation activeRoute={route} />
         <OnThisPage route={route} sections={sections} activeSection={section} />

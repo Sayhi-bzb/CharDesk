@@ -187,7 +187,7 @@ test("inverse cursor ignores fixed color tokens while rectangle overlay consumes
     document.documentElement.style.setProperty("--cell-range-surface", "rgb(0, 255, 0)");
     document.documentElement.style.setProperty("--cell-range-surface-effect", "tint");
   });
-  await page.getByRole("button", { name: "Dark" }).click();
+  await page.getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
   const editor = page.locator('[data-cell-probe="editor"]');
   const firstGlyph = ownerCells(await readCellProbe(editor), "editor-name")
     .find((cell) => cell.text === "n")!;

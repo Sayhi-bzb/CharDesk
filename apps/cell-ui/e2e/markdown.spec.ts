@@ -8,7 +8,7 @@ test("shared tone CSS tokens reach both Markdown and Badge through the Gallery t
     --cell-tone-info-surface: #ddeeff !important;
     --cell-tone-info-surface-foreground: #234567 !important;
   }` });
-  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).click();
+  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
   const markdown = page.getByLabel("Markdown example");
   await expect.poll(async () => (await readCellProbe(markdown)).cells
     .find((cell) => cell.ownerId?.includes("markdown-link"))?.style.color).toBe("rgb(18, 52, 86)");
@@ -34,16 +34,20 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   expect((await readCellProbe(article.last())).text).toContain("<Markdown source={source} />");
   await expect(article.getByRole("table")).toContainText("source");
   const surface = page.getByLabel("Markdown example");
+  await expect(surface.getByRole("heading", { name: "Field Notes", level: 1 })).toBeVisible();
+  await expect(surface.getByRole("heading", { name: "Checklist", level: 2 })).toBeVisible();
   const probe = await readCellProbe(surface);
   expect(probe.viewport).toEqual({ width: 44, height: 28 });
   expect(probe.text).not.toContain("Follow a link to inspect its command.");
-  expect(probe.text).toContain("Field Notes");
+  expect(probe.text).toContain("# Field Notes");
+  expect(probe.text).toContain("## Checklist");
   expect(probe.text).toContain("☑ Build UI");
   expect(probe.text).toContain("structure");
   expect(probe.text).toContain("inline code");
   expect(probe.text).not.toContain("**structure**");
   expect(probe.text).toContain("1. Write Markdown");
   expect(probe.text).toContain("│ Source stays yours.");
+  expect(probe.text).toContain("/////");
   expect(probe.text).toContain("Read Philosophy.");
   expect(probe.cells.some((cell) => cell.style.bold && cell.text === "s")).toBe(true);
   expect(probe.cells.some((cell) => cell.style.italic)).toBe(true);
@@ -74,7 +78,7 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   await link.evaluate((element: HTMLElement) => element.click());
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Opened 3: #/guides/philosophy");
   await expect(page).toHaveURL(/#\/guides\/markdown$/u);
-  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).click();
+  await page.locator(".gallery-header").getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
   expect((await readCellProbe(surface)).text).toContain("Philosophy");
   const darkProbe = await readCellProbe(surface);
   expect(darkProbe.cells.find((cell) => cell.x === inlineCodeX && cell.y === inlineCodeRow)?.style.backgroundColor)
@@ -90,7 +94,7 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");
   const copied = await copyCellRange(surface);
-  expect(copied).toContain("Field Notes");
+  expect(copied).toContain("# Field Notes");
   expect(copied).toContain("Philosophy");
   expect(copied).not.toContain("[Philosophy]");
   const installationLink = surface.getByRole("link", { name: /Installation/u });
@@ -111,7 +115,8 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   };
   await scrollTo("│ Source stays yours.");
   await scrollTo("const ready = true;");
-  await scrollTo("Element  Cell output");
+  await scrollTo("Element │ Cell output");
+  await scrollTo("┼");
   await scrollTo("Link");
   await scrollTo("Old wording");
   const strikeProbe = await readCellProbe(surface);
@@ -119,7 +124,7 @@ test("Markdown guide renders Cell typography and activates a link through the sh
   expect(strikeProbe.cells.find((cell) => cell.x === 0 && cell.y === strikeRow)?.style.strike).toBe(true);
   await scrollTo("[Image: Flow diagram]");
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
   const markdown = await request.get("/guides/markdown.md");
   expect(markdown.ok()).toBe(true);

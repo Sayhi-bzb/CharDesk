@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactElement } from "react";
-import { YogaLayoutEngine, createWidgetDescriptor, reconcileWidgetTree, type RootProps, type WidgetCommand } from "@chardesk/cell-ui";
+import { YogaLayoutEngine, createWidgetDescriptor, reconcileWidgetTree, resolveCellUiScrollLayout,
+  type RootProps, type WidgetCommand } from "@chardesk/cell-ui";
 import { CELL_SURFACE_GUARD_CELLS, DEFAULT_CELL_UI_METRICS } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "./appearance";
 
@@ -29,7 +30,9 @@ export function CellArticleSurface({ label, probeId, content, anchorIds, focused
     const { tree } = reconcileWidgetTree(undefined, createWidgetDescriptor(content));
     const layout = new YogaLayoutEngine();
     try {
-      const entries = layout.compute(tree, { width, height: 4096 }).entries;
+      const viewport = { width, height: 4096 };
+      const entries = resolveCellUiScrollLayout(tree, viewport,
+        { x: 0, y: 0, ...viewport }, layout).layout.entries;
       const rootId = probeId + "-content";
       return {
         height: Math.max(1, entries.get(rootId)?.rect.height ?? 1),

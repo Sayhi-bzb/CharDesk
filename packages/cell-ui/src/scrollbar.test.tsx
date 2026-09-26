@@ -3,10 +3,10 @@ import { TEXT_VERTICAL_TRACK_GLYPH, textVerticalThumbGlyph, thumbAxis, thumbCell
 import {
   Box, Button, CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME, CellTextEditor, CellUiRuntime, Combobox, ComboboxContent,
   ComboboxInput, ComboboxItem, Root, ScrollArea, Select, SelectContent, SelectItem, SelectTrigger,
-  Text, TextArea, createTestPilot,
+  Markdown, Text, TextArea, createTestPilot,
 } from "./index.js";
 import { gestureCandidatesForFrame } from "./pointer.js";
-import { getEventPath } from "./scene.js";
+import { getEventPath, hitTestCell } from "./scene.js";
 import { scrollViewportCommands } from "./scroll.js";
 
 it("half-Cell geometry is monotonic, aligned at endpoints, and retains exact coverage", () => {
@@ -30,6 +30,74 @@ it("half-Cell geometry is monotonic, aligned at endpoints, and retains exact cov
   expect([0, 1, 2].map((cell) => thumbGlyph(thumb, cell, true))).toEqual(["╺", "━", "╸"]);
 });
 
+it("hides idle rails without changing their geometry or hit testing", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 8, height: 5 } });
+  const view = <Root><ScrollArea id="scroll" style={{ width: 8, height: 5 }}>
+    <Box style={{ height: 12 }} />
+  </ScrollArea></Root>;
+  const idle = runtime.render(view);
+  const track = idle.scene.entries.get("scroll")!.scrollMetrics!.verticalTrack!;
+  expect(idle.buffer.get(track.x, track.y)?.text).toBe(" ");
+  expect(hitTestCell(idle.scene, { x: track.x, y: track.y })).toMatchObject({
+    ownerId: "scroll", part: "scrollbar-y",
+  });
+  const shown = runtime.render(view, { visibleScrollbarIds: new Set(["scroll"]) });
+  expect(shown.layout.entries.get("scroll")).toEqual(idle.layout.entries.get("scroll"));
+  expect(shown.scene.entries.get("scroll")?.scrollMetrics).toEqual(idle.scene.entries.get("scroll")?.scrollMetrics);
+  expect(shown.buffer.get(track.x, track.y)?.text).not.toBe(" ");
+  expect(shown.invalidation.dirtyRegions.length).toBeGreaterThan(0);
+  expect(shown.scene.entries.get("scroll")?.scrollMetrics?.verticalTrack).toEqual(track);
+  const keyboardFocused = runtime.render(view, { focusedId: "scroll", focusVisible: true });
+  expect(keyboardFocused.buffer.get(track.x, track.y)?.text).not.toBe(" ");
+  const hidden = runtime.render(view);
+  expect(hidden.buffer.get(track.x, track.y)?.text).toBe(" ");
+  expect(hidden.invalidation.dirtyRegions.length).toBeGreaterThan(0);
+  runtime.dispose();
+});
+
+it("grows an auto-height ScrollArea only when a horizontal rail needs a row", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 25, height: 12 } });
+  const view = (width: number) => <Root><ScrollArea id="scroll" style={{ width }}>
+    <Box style={{ width: 20, height: 4 }} />
+  </ScrollArea></Root>;
+  const narrow = runtime.render(view(10));
+  expect(narrow.layout.entries.get("scroll")?.rect.height).toBe(5);
+  expect(narrow.scene.entries.get("scroll")?.scrollMetrics).toMatchObject({
+    maxOffset: { x: 10, y: 0 },
+    verticalTrack: null,
+  });
+  expect(narrow.scene.entries.get("scroll")?.scrollMetrics?.horizontalTrack).not.toBeNull();
+  const wide = runtime.render(view(25));
+  expect(wide.layout.entries.get("scroll")?.rect.height).toBe(4);
+  expect(wide.scene.entries.get("scroll")?.scrollMetrics?.horizontalTrack).toBeNull();
+  expect(wide.scene.entries.get("scroll")?.scrollMetrics?.verticalTrack).toBeNull();
+  runtime.dispose();
+});
+
+it("keeps fixed-height cross-axis overflow scrollable", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 10, height: 4 } });
+  const frame = runtime.render(<Root><ScrollArea id="scroll" style={{ width: 10, height: 4 }}>
+    <Box style={{ width: 20, height: 4 }} />
+  </ScrollArea></Root>);
+  expect(frame.layout.entries.get("scroll")?.rect.height).toBe(4);
+  const metrics = frame.scene.entries.get("scroll")!.scrollMetrics!;
+  expect(metrics.horizontalTrack).not.toBeNull();
+  expect(metrics.verticalTrack).not.toBeNull();
+  expect(metrics.maxOffset.y).toBe(1);
+  runtime.dispose();
+});
+
+it("naturally sizes a Markdown table inside ScrollArea", () => {
+  const source = "| Prop | Type | Description |\n| --- | --- | --- |\n| label | string | Accessible name |\n| columns | TableColumn[] | Ordered headers |\n| variant | plain or outline | Display style |\n| children | rows | Table content |";
+  const runtime = new CellUiRuntime({ viewport: { width: 37, height: 100 } });
+  const frame = runtime.render(<Root><ScrollArea id="scroll" style={{ width: 37 }}>
+    <Markdown source={source} />
+  </ScrollArea></Root>);
+  expect(frame.layout.entries.get("scroll")?.rect.height).toBe(7);
+  expect(frame.scene.entries.get("scroll")?.scrollMetrics?.verticalTrack).toBeNull();
+  runtime.dispose();
+});
+
 it("keeps the Text vertical texture and makes both horizontal rails thumb-only", () => {
   const half = { start: 1, length: 4 };
   expect([0, 1, 2].map((cell) => textVerticalThumbGlyph(half, cell)))
@@ -43,8 +111,8 @@ it("keeps the Text vertical texture and makes both horizontal rails thumb-only",
   const text = new CellUiRuntime({ viewport: { width: 12, height: 8 }, presentation: "text" });
   let sawHalf = false;
   for (const offset of [0, 1, 2, 4, 8, 12]) {
-    const richFrame = rich.render(view(offset));
-    const textFrame = text.render(view(offset));
+    const richFrame = rich.render(view(offset), { visibleScrollbarIds: new Set(["scroll"]) });
+    const textFrame = text.render(view(offset), { visibleScrollbarIds: new Set(["scroll"]) });
     const metrics = textFrame.scene.entries.get("scroll")!.scrollMetrics!;
     expect(metrics).toEqual(richFrame.scene.entries.get("scroll")!.scrollMetrics);
     const track = metrics.verticalTrack!;
@@ -78,7 +146,7 @@ it.each([CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME])(
       const editor = new CellTextEditor({ value: Array.from({ length: 12 }, () => "x".repeat(30)).join("\n"), multiline: true });
       const view = () => <Root><TextArea id="area" frame="bordered" state={editor.snapshot()}
         style={{ width: 12, height: 6 }} /></Root>;
-      const idle = runtime.render(view());
+      const idle = runtime.render(view(), { visibleScrollbarIds: new Set(["area"]) });
       const active = runtime.render(view(), { focusedId: "area", activeFocusId: "area" });
       const metrics = active.scene.entries.get("area")!.scrollMetrics!;
       for (const thumb of [metrics.horizontalThumb!, metrics.verticalThumb!]) {
@@ -130,7 +198,8 @@ it.each(["scroll-area", "select-content", "combobox-content"] as const)(
         </ScrollArea></Root>
       : kind === "select-content"
         ? <Root><Select id="control"><SelectTrigger id="trigger" label="Options" expanded controlsId="content"><Text>Option</Text></SelectTrigger>{content}</Select></Root>
-        : <Root><Combobox id="control"><ComboboxInput id="input" label="Options" state={new CellTextEditor().snapshot()} expanded />{content}</Combobox></Root>);
+        : <Root><Combobox id="control"><ComboboxInput id="input" label="Options" state={new CellTextEditor().snapshot()} expanded />{content}</Combobox></Root>,
+      { visibleScrollbarIds: new Set(["content"]) });
     const metrics = frame.scene.entries.get("content")!.scrollMetrics!;
     const thumb = metrics.verticalThumb!;
     const track = metrics.verticalTrack!;

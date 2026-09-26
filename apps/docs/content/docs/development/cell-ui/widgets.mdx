@@ -78,9 +78,9 @@ Button、Badge、Checkbox、Toggle、RadioItem、Select Trigger／Item、Combobo
 - SelectItem/MenuItem pointer hover 同步临时焦点；ComboboxItem hover 同步 active descendant；均不提交选择或执行动作。随后 Enter 确认临时目标。其他组件的 hover 不派发业务命令。
 - Tab/Shift+Tab 在当前焦点 scope 内遍历可用控件；RadioGroup 折叠为已选可用项或首个可用项一个入口，到 Surface 边界交还浏览器。
 - Grid 导航与入口选择由 `grid-navigation.ts` 拥有，FocusManager 仅保存每个 Grid 的目标 ID，卸载清理。禁用／删除焦点按入口规则收敛，不改写业务选择；全部 disabled 时跳过。Semantic DOM 保留 Surface 管理的程序化焦点，不维护另一套 Tab 顺序。Cell Range 与 Grid selection 独立，范围拖动不激活格子，复制包含可见 `✓` 和边框。
-- 嵌套 ScrollArea 的 wheel 从内向外寻找可滚动的 viewport；最外层到边界后仍消费 wheel。区域外页面可滚动，Ctrl+wheel 留给浏览器。父级只把内层 ScrollArea 的 viewport 计入自身内容尺寸；内容收缩后钳制 offset 并发出 `scroll` 命令同步受控状态。焦点命令的 `reveal` 保留最近一层，跨层时 `reveals` 按内到外列出全部目标和 offset。
-- 横纵 scrollbar 可相互缩小 viewport；可见性在一次 geometry 计算中收敛。内容 viewport 保留 padding，rail 独立延伸到边框内侧（无框时为表面边缘），端点 thumb 不留空 Cell；双轴交角由 rail 共享。thumb 使用半 Cell 精度，drag 以按下时 offset/range/track 为锚。
-- `text` 的竖向 rail 使用 Unicode `🮐` 轨道、`🮑/🮒` 半格 thumb 边缘，轨道复用 thumb 解析后的前景色；横向 rail 在 `rich`／`text` 均为空白 owner Cell，仅以 `━` 和半格 `╺/╸` 绘制 thumb，空白轨道仍可点击翻页。共享 painter 按实际 Cell 背景解析颜色，焦点 TextArea 的竖向轨道和 thumb 同随反色文字。字符与交互几何不变，thumb 与边缘均保留为可复制的 `Cell.text`。
+- 嵌套 ScrollArea 的 wheel 从内向外寻找可滚动的 viewport；最外层到边界后仍消费 wheel。区域外页面可滚动，Ctrl+wheel 留给浏览器。父级只把内层 ScrollArea 的 viewport 计入自身内容尺寸；内容收缩后钳制 offset 并发出 `scroll` 命令同步受控状态。焦点命令的 `reveal` 保留最近一层，跨层时 `reveals` 按内到外列出全部目标和 offset。`useCellScrollState` 按 ID 保存双轴 offset 与全部焦点 reveal；固定高度区域仍须处理真实溢出。
+- 横纵 scrollbar 可相互缩小 viewport；轨道占位随布局重算，自然高度 ScrollArea 只在需要横向轨道时增高。测量和 Runtime 共用此布局结果。rail 始终保留 Cell 与命中区域，默认不绘制；悬停最近滚动容器、键盘焦点、滚动或拖拽时显现，滚动结束 1.2 秒后隐藏。内容 viewport 保留 padding，rail 独立延伸到边框内侧（无框时为表面边缘），端点 thumb 不留空 Cell；双轴交角由 rail 共享。thumb 使用半 Cell 精度，drag 以按下时 offset/range/track 为锚。
+- `text` 的竖向 rail 显现时使用 Unicode `🮐` 轨道、`🮑/🮒` 半格 thumb 边缘，轨道复用 thumb 解析后的前景色；横向 rail 在 `rich`／`text` 均为空白 owner Cell，仅以 `━` 和半格 `╺/╸` 绘制 thumb，空白轨道仍可点击翻页。共享 painter 按实际 Cell 背景解析颜色，焦点 TextArea 的竖向轨道和 thumb 同随反色文字。显现时 thumb 与边缘保留为可复制的 `Cell.text`。
 - scrolling 不改变 selection；Virtual List 只在 focused row 离开 viewport 时把 focus 收敛到可见可用项。
 
 ## 编辑视口与 Canvas 边界

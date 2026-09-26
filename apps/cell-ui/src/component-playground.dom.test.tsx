@@ -142,7 +142,7 @@ describe("ComponentPlayground controls layout", () => {
     expect(initial.text).toContain("row-0");
     expect(initial.cells.some((cell) => (
       cell.ownerId === "test-playground-controls-scroll" && "█▀▄".includes(cell.text)
-    ))).toBe(true);
+    ))).toBe(false);
 
     for (let index = 0; index < 12; index += 1) {
       fireEvent.wheel(surface.querySelector("canvas")!, {
@@ -159,7 +159,7 @@ describe("ComponentPlayground controls layout", () => {
     const surface = screen.getByLabelText("Test playground");
     await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("preview-0"));
     const initial = readCellSurfaceProbe(surface)!;
-    expect(initial.cells.some((cell) => cell.ownerId === "test-playground-preview-scroll" && "█▀▄".includes(cell.text))).toBe(true);
+    expect(initial.cells.some((cell) => cell.ownerId === "test-playground-preview-scroll" && "█▀▄".includes(cell.text))).toBe(false);
     expect(initial.text).toContain("variant");
 
     for (let index = 0; index < 4; index += 1) {
@@ -199,7 +199,7 @@ describe("ComponentPlayground controls layout", () => {
     const surface = screen.getByLabelText("Test playground");
     await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("abcdefghijkl"));
     const initial = readCellSurfaceProbe(surface)!;
-    expect(initial.cells.some((cell) => cell.ownerId === "test-playground-preview-scroll" && "█▀▄".includes(cell.text))).toBe(true);
+    expect(initial.cells.some((cell) => cell.ownerId === "test-playground-preview-scroll" && "█▀▄".includes(cell.text))).toBe(false);
 
     fireEvent.wheel(surface.querySelector("canvas")!, {
       clientX: 10 * DEFAULT_CELL_UI_METRICS.cellWidth,

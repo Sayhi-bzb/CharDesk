@@ -36,7 +36,7 @@ it("TextInput retains hidden horizontal scrolling and TextArea gains owned rails
   const frame = runtime.render(<Root>
     <TextInput id="input" state={editor.snapshot()} />
     <TextArea id="area" frame="bordered" state={editor.snapshot()} style={{ height: 5 }} />
-  </Root>);
+  </Root>, { visibleScrollbarIds: new Set(["area"]) });
   expect(frame.scene.entries.get("input")!.scrollMetrics?.horizontalTrack).toBeNull();
   expect(frame.textLayouts.get("input")!.contentBounds.height).toBe(1);
   const rail = frame.scene.entries.get("area")!.scrollMetrics!.horizontalTrack!;

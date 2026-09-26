@@ -12,6 +12,8 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.borderShape === right.borderShape
   && left.text === right.text
   && left.href === right.href
+  && left.current === right.current
+  && left.target === right.target
   && left.markdownRole === right.markdownRole
   && left.markdownCode === right.markdownCode
   && left.markdownTone === right.markdownTone
@@ -25,6 +27,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.focusActive === right.focusActive
   && left.focusVisible === right.focusVisible
   && left.hovered === right.hovered
+  && left.scrollbarVisible === right.scrollbarVisible
   && left.manipulating === right.manipulating
   && left.pressActive === right.pressActive
   && left.activationFlash === right.activationFlash
@@ -117,6 +120,7 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.focusActive !== after.focusActive
   || before.focusVisible !== after.focusVisible
   || before.hovered !== after.hovered
+  || before.scrollbarVisible !== after.scrollbarVisible
   || before.manipulating !== after.manipulating
   || before.pressActive !== after.pressActive
   || before.activationFlash !== after.activationFlash
@@ -157,6 +161,8 @@ const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
   before.label !== after.label
   || before.invalid !== after.invalid
   || before.href !== after.href
+  || before.current !== after.current
+  || before.target !== after.target
   || before.markdownRole !== after.markdownRole
   || before.markdownCenteredText !== after.markdownCenteredText
   || before.disabled !== after.disabled

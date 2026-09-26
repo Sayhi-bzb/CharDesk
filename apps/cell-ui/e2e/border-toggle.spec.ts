@@ -4,7 +4,7 @@ import { readCellProbe } from "./helpers/cell-probe";
 test("Gallery headers expose font and theme without per-component controls", async ({ page }) => {
   for (const route of ["/#/components/input", "/#/__fixtures/all"]) {
     await page.goto(route);
-    const controls = page.locator(".gallery-appearance-controls");
+    const controls = page.locator('[data-cell-probe="gallery-header"]');
     await expect(controls.getByRole("button", { name: "Rich" })).toHaveCount(0);
     await expect(controls.getByRole("button", { name: "Font: Fusion" })).toBeAttached();
     await expect(controls.getByRole("button", { name: "Dark" })).toBeAttached();

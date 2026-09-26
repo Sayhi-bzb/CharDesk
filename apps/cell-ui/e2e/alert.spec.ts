@@ -48,7 +48,7 @@ test("Alert border uses each status foreground in light and dark themes", async 
 
   for (const mode of ["light", "dark"] as const) {
     if (mode === "dark") {
-      await page.getByRole("button", { name: "Dark" }).click();
+      await page.getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
       await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
     }
     for (const tone of ["info", "success", "warning", "error"] as const) {
@@ -94,7 +94,7 @@ test("Alert ghost removes its fill while retaining tone text and border", async 
     .find((cell) => cell.text === "┌");
   expect(border?.style.color).toBe("rgb(23, 71, 107)");
 
-  await page.getByRole("button", { name: "Dark" }).click();
+  await page.getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
   await expect.poll(async () => (await marker())?.style.color).toBe("rgb(184, 228, 255)");
   expect((await marker())?.style.backgroundColor).toBeUndefined();
 });

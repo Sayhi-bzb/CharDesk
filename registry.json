@@ -121,6 +121,11 @@
           "target": "@lib/cell-ui/browser-range.ts"
         },
         {
+          "path": "registry/cell-ui/browser-scroll.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-scroll.ts"
+        },
+        {
           "path": "registry/cell-ui/browser-theme.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/browser-theme.ts"
@@ -304,6 +309,11 @@
           "path": "registry/cell-ui/scene.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/scene.ts"
+        },
+        {
+          "path": "registry/cell-ui/scroll-layout.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/scroll-layout.ts"
         },
         {
           "path": "registry/cell-ui/scroll.ts",

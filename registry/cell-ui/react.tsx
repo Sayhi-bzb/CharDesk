@@ -135,6 +135,7 @@ type MarkdownTone = "accent" | "link" | "quote" | "muted";
 type MarkdownBlockProps = Readonly<{
   children?: ReactNode;
   role: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell";
+  label?: string;
   level?: number;
   style?: CellLayoutStyle;
   markdownCenteredText?: string;
@@ -147,6 +148,16 @@ type MarkdownLinkProps = Readonly<{
   markdownCode?: boolean;
   markdownTone?: MarkdownTone;
   markdownSource?: boolean;
+}>;
+export type LinkProps = Readonly<{
+  id?: string;
+  children: string;
+  href: string;
+  label?: string;
+  current?: "page" | "location";
+  target?: "_blank";
+  style?: CellLayoutStyle;
+  textStyle?: CellTextStyle;
 }>;
 export type ButtonProps = NamedContainerProps & Readonly<{
   variant?: ButtonVariant;
@@ -365,6 +376,7 @@ type PrimitiveProps =
   | TextProps
   | MarkdownBlockProps
   | MarkdownLinkProps
+  | LinkProps
   | ButtonProps
   | BadgeProps
   | CheckboxProps
@@ -438,6 +450,7 @@ export const Markdown = (() => null) as ComponentType<MarkdownProps>;
 Markdown.displayName = "CellMarkdown";
 const MarkdownBlock = primitive<MarkdownBlockProps>("markdown-block");
 const MarkdownLink = primitive<MarkdownLinkProps>("markdown-link");
+export const Link = primitive<LinkProps>("markdown-link");
 export const Button = primitive<ButtonProps>("button");
 export const Badge = primitive<BadgeProps>("badge");
 export const Checkbox = primitive<CheckboxProps>("checkbox");
@@ -500,6 +513,8 @@ export type WidgetDescriptor = Readonly<{
   borderShape: CellBorderShape | null;
   text: string | null;
   href: string | null;
+  current?: "page" | "location";
+  target?: "_blank";
   markdownRole: MarkdownBlockProps["role"] | null;
   markdownCode: boolean;
   markdownTone: MarkdownTone | null;
@@ -621,27 +636,32 @@ const markdownColumnWidths = (table: Tokens.Table): number[] =>
 
 const markdownTableWidth = (table: Tokens.Table): number =>
   markdownColumnWidths(table).reduce((sum, width) => sum + width, 0)
-  + Math.max(0, table.header.length - 1) * 2;
+  + Math.max(0, table.header.length - 1) * 3;
 
 const markdownTable = (table: Tokens.Table, key: string): ReactNode => {
   const rows = [table.header, ...table.rows];
   const widths = markdownColumnWidths(table);
-  const total = widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.length - 1) * 2;
+  const total = markdownTableWidth(table);
   return <MarkdownBlock key={key} role="table" style={{ width: "100%", minWidth: total }}>
-    {rows.map((row, rowIndex) => <MarkdownBlock key={rowIndex} role="row"
-      style={{ direction: "row", gap: 2, width: total, flexShrink: 0 }}>
-      {row.map((cell, column) => {
+    {rows.map((row, rowIndex) => <Fragment key={rowIndex}>
+      <MarkdownBlock role="row" style={{ direction: "row", width: total, flexShrink: 0 }}>
+      {row.flatMap((cell, column) => {
         const width = widths[column]!;
         const missing = Math.max(0, width - getTextCellWidth(markdownInlineText(cell.tokens)));
         const align = table.align[column];
         const before = align === "right" ? missing : align === "center" ? Math.floor(missing / 2) : 0;
-        return <MarkdownBlock key={column} role="cell"
+        return [column ? <Text key={`divider-${column}`} markdownTone="muted">{" │ "}</Text> : null,
+          <MarkdownBlock key={column} role="cell"
           style={{ direction: "row", width, flexShrink: 0 }}>
           {before ? <Text>{" ".repeat(before)}</Text> : null}
           {markdownInlineNodes(cell.tokens, rowIndex === 0 ? { bold: true } : {})}
-        </MarkdownBlock>;
+        </MarkdownBlock>];
       })}
-    </MarkdownBlock>)}
+      </MarkdownBlock>
+      {rowIndex === 0 ? <Box style={{ direction: "row", width: total, height: 1, flexShrink: 0 }}>
+        <Text markdownTone="muted">{widths.map((width) => "─".repeat(width)).join("─┼─")}</Text>
+      </Box> : null}
+    </Fragment>)}
   </MarkdownBlock>;
 };
 
@@ -656,7 +676,9 @@ const markdownBlocks = (
     const key = String(index);
     if (token.type === "space" || token.type === "def") return [];
     if (token.type === "heading") return [<MarkdownBlock key={key} role="heading" level={token.depth}
+      label={markdownInlineText(token.tokens ?? []).replace(/\s+/gu, " ").trim()}
       style={{ direction: "row", wrap: true, width: "100%", flexShrink: 0 }}>
+      <Text markdownTone="accent">{"#".repeat(token.depth) + " "}</Text>
       {markdownInlineNodes(token.tokens ?? [], { bold: true, tone: "accent" })}
     </MarkdownBlock>];
     if (token.type === "paragraph" || token.type === "text") return [<MarkdownBlock key={key} role="paragraph"
@@ -683,7 +705,7 @@ const markdownBlocks = (
       </Box>];
     }
     if (token.type === "hr") return [<MarkdownBlock key={key} role="paragraph"
-      markdownCenteredText="───" markdownTone="muted"
+      markdownCenteredText="/////" markdownTone="muted"
       style={{ width: "100%", height: 1, flexShrink: 0 }} />];
     if (token.type === "blockquote") return [<MarkdownBlock key={key} role="blockquote"
       style={{ direction: "row", width: "100%", flexShrink: 0 }}>
@@ -930,6 +952,9 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
   if (element.type === DialogFooter) {
     children.unshift(...describe(<Box style={{ flexGrow: 1 }} />, recipe, presentation));
   }
+  if (element.type === Link && (typeof props.href !== "string" || !safeMarkdownHref(props.href))) {
+    throw new TypeError("Link requires a safe non-empty href.");
+  }
 
   const position = props.position as CellPoint | undefined;
   const sliderRange = resolveCellSliderRange(
@@ -999,6 +1024,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
     borderShape: presentedBorderShape(presentation, frame, requestedBorderShape),
     text,
     href: kind === "markdown-link" ? props.href as string : null,
+    ...(element.type === Link && props.current ? { current: props.current as LinkProps["current"] } : {}),
+    ...(element.type === Link && props.target ? { target: props.target as LinkProps["target"] } : {}),
     markdownRole: kind === "markdown-block" ? props.role as MarkdownBlockProps["role"] : null,
     markdownCode: props.markdownCode === true,
     markdownTone: typeof props.markdownTone === "string" ? props.markdownTone as MarkdownTone : null,

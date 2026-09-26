@@ -64,7 +64,8 @@ test("only the active Surface paints focus, while selected state survives", asyn
   expect(active.cells.some((cell) => cell.ownerId === "core-open"
     && cell.style.backgroundColor !== undefined)).toBe(true);
   expect(blurred.text).toContain("✓ Open file");
-  await expect(page.locator('[data-cell-probe][data-cell-focus-visible="true"]')).toHaveCount(0);
+  await expect(page.locator('[data-cell-probe][data-cell-focus-visible="true"]')).toHaveCount(1);
+  await expect(page.locator('[data-cell-probe="gallery-header"]')).toHaveAttribute("data-cell-focus-visible", "true");
   await core.focus();
   expect((await readCellProbe(core)).focusedId).toBe(active.focusedId);
   await page.keyboard.press("Enter");

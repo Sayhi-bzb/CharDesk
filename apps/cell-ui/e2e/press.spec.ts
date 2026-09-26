@@ -12,7 +12,7 @@ test(`${control.name} presents two complete inverse/restore cycles after release
   await page.emulateMedia({ colorScheme });
   await page.goto(control.slug === "complex" ? "/#/__fixtures/all" : `/#/components/${control.slug}`);
   if (await page.locator(".gallery-page").getAttribute("data-gallery-theme") !== colorScheme) {
-    await page.getByRole("button", { name: colorScheme === "dark" ? "Dark" : "Light", exact: true }).click();
+    await page.getByRole("button", { name: colorScheme === "dark" ? "Dark" : "Light", exact: true }).evaluate((element: HTMLElement) => element.click());
   }
   const probeId = control.slug === "complex" ? "complex" : `component-${control.slug}`;
   const surface = page.locator(`[data-cell-probe="${probeId}"]`);

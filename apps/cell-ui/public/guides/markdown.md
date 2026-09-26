@@ -81,7 +81,7 @@ export function MarkdownExample() {
 
 ## API
 
-Markdown renders for reading; Cell Range copies the visible text. Code fences and table syntax are hidden. Safe links stay interactive; raw HTML stays inert.
+Markdown renders for reading. Headings keep plain hashes; tables use aligned columns, │ separators, and a header rule; thematic breaks render as /////. Cell Range copies visible text. Code fences stay hidden; safe links stay interactive; raw HTML stays inert.
 
 [Theming](https://ui.chardesk.com/#/guides/theming)
 

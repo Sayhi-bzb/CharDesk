@@ -7,14 +7,14 @@ test("Palette text retains its elevated surface background in both themes", asyn
   const canvas = surface.locator("canvas").first();
   for (const theme of ["light", "dark"] as const) {
     if (await page.locator(".gallery-page").getAttribute("data-gallery-theme") !== theme) {
-      await page.getByRole("button", { name: theme === "light" ? "Light" : "Dark" }).click();
+      await page.getByRole("button", { name: theme === "light" ? "Light" : "Dark" }).evaluate((element: HTMLElement) => element.click());
     }
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", theme);
     await page.evaluate((surfaceColor) => {
       document.documentElement.style.setProperty("--cell-surface-elevated", surfaceColor);
     }, theme === "light" ? "rgb(240, 240, 240)" : "rgb(35, 35, 35)");
-    await page.getByRole("button", { name: theme === "light" ? "Dark" : "Light" }).click();
-    await page.getByRole("button", { name: theme === "light" ? "Light" : "Dark" }).click();
+    await page.getByRole("button", { name: theme === "light" ? "Dark" : "Light" }).evaluate((element: HTMLElement) => element.click());
+    await page.getByRole("button", { name: theme === "light" ? "Light" : "Dark" }).evaluate((element: HTMLElement) => element.click());
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", theme);
     await surface.focus();
     const closed = await canvas.getAttribute("data-cell-text");

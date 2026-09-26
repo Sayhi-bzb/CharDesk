@@ -1,16 +1,13 @@
-import { Moon } from "pixelarticons/react/Moon";
-import { Sun } from "pixelarticons/react/Sun";
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { MAPLE_FONT_PROFILE } from "@chardesk/font-maple";
 import { loadBrowserFont, resetBrowserFont } from "@chardesk/fonts/browser";
 import { CLASSIC_CELL_FEEDBACK, resolveCellFeedback, type CellFeedbackConfig, type CellUiRecipe } from "@chardesk/cell-ui";
 import { CellSurface, DEFAULT_CELL_UI_METRICS, loadCellFontMetrics, useCellCssTheme, useCellSelectState, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
-import { Root, resolveCellUiTheme } from "@chardesk/cell-ui";
+import { resolveCellUiTheme } from "@chardesk/cell-ui";
 import {
   galleryFontOptions,
   type GalleryFont,
 } from "./font-options";
-import { renderGallerySelect } from "./gallery-component-recipes";
 
 const defaultTheme = resolveCellUiTheme(undefined);
 type GalleryFontStatus = "idle" | "loading" | "error";
@@ -168,25 +165,6 @@ export function GalleryAppearance({ children, feedback }: { children: ReactNode;
 // Shares the resolved CSS theme and appearance controls across the Gallery.
 // eslint-disable-next-line react-refresh/only-export-components -- This hook reads the same live context as GallerySurface.
 export const useGalleryAppearance = () => useContext(AppearanceContext);
-export function GalleryIconButton({ label, tooltip = label, children, className = "", ...props }: Readonly<{
-  label: string;
-  tooltip?: string;
-  children: ReactNode;
-}> & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label" | "children">) {
-  return <button {...props} className={`gallery-icon-button ${className}`.trim()} type="button" aria-label={label}>
-    {children}
-    <span className="gallery-control-tooltip" role="tooltip">{tooltip}</span>
-  </button>;
-}
-export function GalleryThemeToggle() {
-  const { mode, toggleTheme } = useGalleryAppearance();
-  const label = mode === "light" ? "Dark" : "Light";
-  return <GalleryIconButton label={label} onClick={toggleTheme}>
-    {mode === "light"
-      ? <Moon aria-hidden="true" data-gallery-icon="moon" />
-      : <Sun aria-hidden="true" data-gallery-icon="sun" />}
-  </GalleryIconButton>;
-}
 const galleryFontItems = (Object.keys(galleryFontOptions) as GalleryFont[]).map((font) => ({
   id: `gallery-font-option-${font}`,
   label: galleryFontLabels[font],
@@ -194,7 +172,7 @@ const galleryFontItems = (Object.keys(galleryFontOptions) as GalleryFont[]).map(
 }));
 const fontItemId = (font: GalleryFont) => `gallery-font-option-${font}`;
 
-export function GalleryFontSelect() {
+export function useGalleryFontControl() {
   const { font, pendingFont, errorFont, fontStatus, fontMessage, selectFont } = useGalleryAppearance();
   const [open, setOpen] = useState(false);
   const select = useCellSelectState("gallery-font", galleryFontItems, {
@@ -218,39 +196,13 @@ export function GalleryFontSelect() {
     : fontStatus === "error"
       ? `${galleryFontLabels[target]} unavailable. Current font: ${galleryFontLabels[font]}`
       : `Font: ${galleryFontLabels[font]}`;
-  return <div className="gallery-font-select" data-state={fontStatus} data-open={open || undefined}>
-    <GallerySurface
-      className="gallery-font-select__surface"
-      viewport={{ width: 12, height: 1 }}
-      overlayViewport={{ width: 12, height: open ? 4 : 1 }}
-      focusedId={select.focusedId}
-      onCommand={select.dispatch}
-      label="Font"
-      probeId="gallery-font-select"
-    >
-      <Root id="gallery-font-root" style={{ direction: "row" }}>
-        {renderGallerySelect({
-          label: "Font",
-          select,
-          focusedId: select.focusedId,
-          width: 12,
-          open,
-          showLabel: false,
-          disabled: fontStatus === "loading",
-          triggerText,
-          triggerLabel,
-          contentLabel: "Fonts",
-          itemSemanticLabel: (itemId) => {
-            const item = galleryFontItems.find(({ id }) => id === itemId);
-            return fontStatus === "error" && errorFont === item?.font
-              ? `${item.label} unavailable; retry`
-              : item?.label ?? itemId;
-          },
-        })}
-      </Root>
-    </GallerySurface>
-    {fontMessage ? <span className="gallery-visually-hidden" role="status" aria-live="polite">{fontMessage}</span> : null}
-  </div>;
+  const itemSemanticLabel = (itemId: string) => {
+    const item = galleryFontItems.find(({ id }) => id === itemId);
+    return fontStatus === "error" && errorFont === item?.font
+      ? `${item.label} unavailable; retry`
+      : item?.label ?? itemId;
+  };
+  return { select, open, triggerText, triggerLabel, fontStatus, fontMessage, itemSemanticLabel };
 }
 export function GallerySurface(props: CellSurfaceProps) {
   const { theme, palette, recipe, fontProfile, feedback } = useGalleryAppearance();

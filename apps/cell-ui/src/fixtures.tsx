@@ -1,6 +1,5 @@
 import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
-import { GalleryFontSelect, GalleryThemeToggle } from "./appearance";
-import { GitHubStars } from "./github-stars";
+import { GalleryHeader } from "./gallery-header";
 
 type Fixture = Readonly<{
   id: string;
@@ -55,10 +54,7 @@ const resolveFixture = (slug: string) => {
 function FixtureShell({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   return (
     <>
-      <header className="gallery-header">
-        <span className="gallery-brand">CharDesk / Cell UI</span>
-        <div className="gallery-appearance-controls"><GitHubStars /><GalleryFontSelect /><GalleryThemeToggle /></div>
-      </header>
+      <GalleryHeader brandHref={null} />
       <main className="fixture-page">
         <h1>{title}</h1>
         {children}

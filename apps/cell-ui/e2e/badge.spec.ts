@@ -31,7 +31,7 @@ test("Badge lays out every status with only presentation configuration in both t
 
   for (const scheme of ["light", "dark"] as const) {
     if (await page.locator(".gallery-page").getAttribute("data-gallery-theme") !== scheme) {
-      await page.getByRole("button", { name: scheme === "dark" ? "Dark" : "Light" }).click();
+      await page.getByRole("button", { name: scheme === "dark" ? "Dark" : "Light" }).evaluate((element: HTMLElement) => element.click());
     }
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", scheme);
     for (const { tone } of examples) {

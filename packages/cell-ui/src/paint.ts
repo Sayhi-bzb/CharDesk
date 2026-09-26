@@ -93,6 +93,12 @@ const paintScrollbars = (
 ) => {
   const metrics = entry.scrollMetrics;
   if (!metrics) return;
+  if (!node.scrollbarVisible) {
+    for (const rail of [metrics.horizontalTrack, metrics.verticalTrack, metrics.corner]) {
+      if (rail) fill(buffer, rail, node.id, ownerStyle, clip);
+    }
+    return;
+  }
   const appearances = new Map<string, ReturnType<typeof resolveScrollbarAppearance>>();
   const appearanceAt = (x: number, y: number) => {
     const background = buffer.get(x, y)?.style.backgroundColor;

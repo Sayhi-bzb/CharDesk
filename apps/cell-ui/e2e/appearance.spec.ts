@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { copyCellRange, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, copyCellRange, readCellProbe } from "./helpers/cell-probe";
 import { fusionMonoFontRequest, fusionMonoStylesheetRequest } from "./helpers/fusion-mono";
 import { galleryFontSelect, selectGalleryFont } from "./helpers/gallery-font-select";
 import { xiaolaiStylesheetRequest } from "./helpers/xiaolai";
@@ -101,7 +101,7 @@ test.describe("display font", () => {
     await expect(gallery).toHaveAttribute("data-gallery-font-status", "error");
     const retry = galleryFontSelect(page).getByRole("button", { name: /^Fusion unavailable/ });
     await expect(retry).toBeEnabled();
-    await expect(page.getByRole("status")).toContainText("Display remains Maple");
+    await expect(page.getByRole("status").filter({ hasText: "Display remains Maple" })).toHaveCount(1);
     await selectGalleryFont(page, "fusion-mono");
     await expect.poll(() => requests).toBe(2);
     await expect(gallery).toHaveAttribute("data-gallery-font", "fusion-mono");
@@ -146,8 +146,8 @@ test("header font Select uses Cell pointer geometry without moving the header", 
   );
   await expect(select.getByRole("listbox", { name: "Fonts" })).toBeAttached();
   const openProbe = await readCellProbe(select);
-  expect(openProbe.viewport).toEqual({ width: 12, height: 1 });
-  expect(openProbe.overlayViewport).toEqual({ width: 12, height: 4 });
+  expect(openProbe.viewport).toEqual({ width: 30, height: 2 });
+  expect(openProbe.overlayViewport).toEqual({ width: 30, height: 5 });
   expect(openProbe.overlays).toHaveLength(1);
   expect(openProbe.overlays[0]!.rootId).toBe("gallery-font-content");
   expect(openProbe.overlays[0]!.text).toContain("Fusion");
@@ -199,15 +199,17 @@ test("theme icon toggles, persists, and preserves Cell state", async ({ page }) 
   const input = page.getByRole("textbox", { name: "File name" });
   await input.fill("hello世界");
   const before = await readCellProbe(editor);
-  const darkToggle = page.getByRole("button", { name: "Dark" });
-  const moon = darkToggle.locator('[data-gallery-icon="moon"]');
-  await expect(moon).toHaveCount(1);
-  await expect(moon).toHaveCSS("width", "15px");
-  await expect(moon).toHaveCSS("height", "15px");
-  await darkToggle.click();
+  await expect(page.getByRole("button", { name: "Dark" })).toBeAttached();
+  const header = page.locator('[data-cell-probe="gallery-header"]');
+  const lightHeader = await readCellProbe(header);
+  expect(lightHeader.text).toContain("");
+  const themeCell = lightHeader.cells.find((cell) => cell.text === "");
+  expect(themeCell).toBeDefined();
+  const point = await cellPoint(header, themeCell!.x, themeCell!.y);
+  await page.mouse.click(point.x, point.y);
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
-  await expect(page.getByRole("button", { name: "Light" }).locator('[data-gallery-icon="sun"]')).toHaveCount(1);
+  expect((await readCellProbe(header)).text).toContain("");
   const after = await readCellProbe(editor);
   expect(after.text).toBe(before.text);
   expect(after.revision).toBeGreaterThan(before.revision);
@@ -236,7 +238,7 @@ test("Cell article code surface and API remain readable across themes", async ({
   expect(light.cells.find(({ x, y }) => x === 4 && y === row)?.style.backgroundColor)
     .toBe("rgb(230, 230, 230)");
 
-  await page.getByRole("button", { name: "Dark" }).click();
+  await page.getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
   const dark = await readCellProbe(article);
   expect(dark.cells.find(({ x, y }) => x === 4 && y === row)?.style.backgroundColor)
     .toBe("rgb(26, 26, 26)");
@@ -252,7 +254,7 @@ for (const storage of ["invalid", "unavailable"] as const) {
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/#/__fixtures/core");
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
-    await page.getByRole("button", { name: "Light" }).click();
+    await page.getByRole("button", { name: "Light" }).evaluate((element: HTMLElement) => element.click());
     await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "light");
   });
 }

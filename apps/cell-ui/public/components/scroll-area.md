@@ -9,19 +9,22 @@ Install the full editable source in a React project with components.json and ali
 ## Usage
 
 ```tsx
-import { useState } from "react";
-import { Root, ScrollArea, Text, type WidgetCommand } from "@/lib/cell-ui";
-import { CellSurface } from "@/lib/cell-ui/browser";
+import { Root, ScrollArea, Text } from "@/lib/cell-ui";
+import { CellSurface, useCellScrollState } from "@/lib/cell-ui/browser";
 
 export function ScrollAreaExample() {
-  const [scrollY, setScrollY] = useState(0);
-  const dispatch = (command: WidgetCommand) => {
-    if (command.type === "scroll") setScrollY(command.scrollY);
-  };
+  const scroll = useCellScrollState();
+  const offset = scroll.offset("rows");
   return (
-    <CellSurface viewport={{ width: 32, height: 6 }} onCommand={dispatch}>
+    <CellSurface viewport={{ width: 32, height: 6 }} onCommand={scroll.dispatch}>
       <Root id="root">
-        <ScrollArea frame="bordered" scrollY={scrollY} style={{ height: 6 }}>
+        <ScrollArea
+          id="rows"
+          frame="bordered"
+          scrollX={offset.x}
+          scrollY={offset.y}
+          style={{ height: 6 }}
+        >
           {Array.from({ length: 10 }, (_, index) => (
             <Text key={index}>Row {index + 1}</Text>
           ))}
@@ -36,6 +39,8 @@ export function ScrollAreaExample() {
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)
 - [scroll.ts](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/scroll.ts)
+- [scroll-layout.ts](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/scroll-layout.ts)
+- [browser-scroll.ts](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser-scroll.ts)
 
 ## API
 
@@ -44,6 +49,7 @@ export function ScrollAreaExample() {
 | `id?` | `string` | Stable scroll target identity. |
 | `scrollX?` | `number` | Controlled horizontal Cell offset. |
 | `scrollY?` | `number` | Controlled vertical Cell offset. |
+| `useCellScrollState` | `CellScrollState` | Keeps both offsets and focus reveals by scroll target ID. |
 | `variant?` | `"surface" \| "ghost"` | Local surface recipe; overrides the global recipe and otherwise defaults to ghost. |
 | `frame?` | `"none" \| "bordered"` | Optional one-Cell border, independent of background. |
 | `borderShape?` | `"square" \| "rounded"` | Border glyphs when the viewport is bordered. |

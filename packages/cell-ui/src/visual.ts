@@ -212,6 +212,11 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
       const appearance = resolveThumbAppearance({ ...semanticBase, ...node.textStyle, ...markdownStyle }, projection, theme);
       return finish(appearance.style, appearance.thumb);
     }
+    if (owner.kind === "markdown-link" && owner.current && owner.textStyle.backgroundColor) {
+      return finish({ ...semanticBase, ...node.textStyle, ...markdownStyle,
+        ...(!disabled && owner.focused && owner.focusVisible ? theme.focusedItemStyle : {}),
+        ...(disabled ? theme.disabledStyle : {}) });
+    }
     return finish(resolvePrimitiveAppearance({ ...semanticBase, ...node.textStyle, ...markdownStyle }, projection, theme));
   }
   const style = resolveCellStateStyle({ ...semanticBase, ...node.textStyle, ...markdownStyle }, {

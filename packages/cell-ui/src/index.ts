@@ -1,9 +1,11 @@
 export { CellBuffer } from "./buffer.js";
 export { Alert, AlertTitle, AlertDescription } from "./react.js";
 export { Markdown } from "./react.js";
+export { Link } from "./react.js";
 export { Field } from "./react.js";
 export type { FieldProps } from "./react.js";
 export type { MarkdownProps, MarkdownCodeToken } from "./react.js";
+export type { LinkProps } from "./react.js";
 export type { MarkdownCodeBlock } from "./markdown.js";
 export type { AlertProps, AlertTitleProps, AlertDescriptionProps } from "./react.js";
 export type { AlertTone } from "./alert.js";
@@ -68,6 +70,7 @@ export {
 } from "./activation-feedback-config.js";
 export type { ActivationBlinkCount } from "./activation-feedback-config.js";
 export { YogaLayoutEngine } from "./layout.js";
+export { resolveCellUiScrollLayout } from "./scroll-layout.js";
 export type { LayoutEngine, YogaResourceCounts } from "./layout.js";
 export { FixedVirtualGrid } from "./virtual.js";
 export type {

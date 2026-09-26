@@ -1,15 +1,15 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Box, Button, Markdown, Root, ScrollArea, Text,
-  type MarkdownCodeBlock, type WidgetCommand,
+  type CellPoint, type MarkdownCodeBlock, type WidgetCommand,
 } from "@chardesk/cell-ui";
+import { useCellScrollState, type CellScrollState } from "@chardesk/cell-ui/browser";
 import { useGalleryAppearance } from "./appearance";
 import { CellArticleSurface } from "./cell-article-surface";
 import type { GuideContent } from "./docs-content";
 import installationTokens from "virtual:gallery-installation-code-tokens";
 
 type InstallationSection = GuideContent["sections"][number];
-type ScrollOffsets = Readonly<Record<string, number>>;
 type CopyLabels = Readonly<Record<string, string>>;
 type CodeColors = Readonly<Record<"key" | "value" | "command", string>>;
 const codeColors: Readonly<Record<"light" | "dark", CodeColors>> = {
@@ -27,19 +27,18 @@ const sectionSource = (section: InstallationSection) => [
 const codeBlock = (
   section: InstallationSection,
   block: MarkdownCodeBlock,
-  scrollX: number,
+  scroll: CellPoint,
   copyLabel: string,
   colors: CodeColors,
 ) => {
   const id = `installation-${section.id}`;
-  const rows = block.code.split("\n").length;
+  const source = block.raw.trimEnd();
   const icon = copyLabel === "Copied" ? "✓" : copyLabel === "Copy failed" ? "!" : "⧉";
   const syntax = block.code === section.code ? installationTokens[section.id] : undefined;
-  return <Box id={`${id}-code-frame`}
-    style={{ width: "100%", height: rows + 2 }}>
-    <ScrollArea id={`${id}-code-scroll`} scrollX={scrollX}
-      style={{ width: "100%", height: "100%" }}>
-      <Markdown source={block.raw.trimEnd()}
+  return <Box id={`${id}-code-frame`} style={{ width: "100%" }}>
+    <ScrollArea id={`${id}-code-scroll`} scrollX={scroll.x} scrollY={scroll.y}
+      style={{ width: "100%" }}>
+      <Markdown source={source}
         highlightCodeLine={(line, index) => {
           const tokens = syntax?.[index];
           return tokens?.map(({ content, role }) => ({ content, color: role ? colors[role] : undefined }));
@@ -52,19 +51,20 @@ const codeBlock = (
   </Box>;
 };
 
-const articleContent = (guide: GuideContent, scroll: ScrollOffsets, copy: CopyLabels, colors: CodeColors) =>
+const articleContent = (guide: GuideContent, scroll: CellScrollState, copy: CopyLabels, colors: CodeColors) =>
   <Root><Box id="installation-article-content" style={{ width: "100%", gap: 3 }}>
     <Markdown source={`# ${guide.title}\n\n${guide.description}`} />
     {guide.sections.map((section) => <Box id={`installation-${section.id}`} key={section.id} style={{ width: "100%" }}>
       <Markdown source={sectionSource(section)}
-        renderCodeBlock={(block) => codeBlock(section, block, scroll[section.id] ?? 0, copy[section.id] ?? "Copy", colors)} />
+        renderCodeBlock={(block) => codeBlock(section, block,
+          scroll.offset(`installation-${section.id}-code-scroll`), copy[section.id] ?? "Copy", colors)} />
     </Box>)}
   </Box></Root>;
 
 export function InstallationCellPage({ guide }: Readonly<{ guide: GuideContent }>) {
   const { mode } = useGalleryAppearance();
   const resetTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-  const [scroll, setScroll] = useState<ScrollOffsets>({});
+  const scroll = useCellScrollState();
   const [copy, setCopy] = useState<CopyLabels>({});
   const [focusedId, setFocusedId] = useState<string | null>(null);
   useLayoutEffect(() => () => {
@@ -73,11 +73,9 @@ export function InstallationCellPage({ guide }: Readonly<{ guide: GuideContent }
   }, []);
   const content = useMemo(() => articleContent(guide, scroll, copy, codeColors[mode]), [guide, scroll, copy, mode]);
   const onCommand = (command: WidgetCommand) => {
+    scroll.dispatch(command);
     if (command.type === "focus") {
       setFocusedId(command.targetId);
-    } else if (command.type === "scroll") {
-      const section = guide.sections.find(({ id }) => command.targetId === `installation-${id}-code-scroll`);
-      if (section) setScroll((current) => ({ ...current, [section.id]: command.scrollX }));
     } else if (command.type === "activate") {
       const section = guide.sections.find(({ id }) => command.targetId === `installation-${id}-copy`);
       if (section?.code) {

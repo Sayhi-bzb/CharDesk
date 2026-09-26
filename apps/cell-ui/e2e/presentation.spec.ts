@@ -26,7 +26,7 @@ test("Button switches locally between interactive Rich and Text presentations", 
   await page.goto("/#/components/button");
   const surface = page.locator('[data-cell-probe="component-button"]');
   const save = surface.getByRole("button", { name: "Save document" });
-  await expect(page.locator(".gallery-appearance-controls").getByRole("button", { name: "presentation" })).toHaveCount(0);
+  await expect(page.locator('[data-cell-probe="gallery-header"]').getByRole("button", { name: "presentation" })).toHaveCount(0);
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Rich");
   await choosePresentation(page, "Text");
   await expect.poll(async () => (await readCellProbe(surface)).cells.some((cell) =>
@@ -204,7 +204,12 @@ for (const scheme of ["light", "dark"] as const) {
       expect(thumbs.filter((cell) => cell.y === horizontalY).length).toBeGreaterThan(1);
       expect(thumbs.every((cell) => cell.style.color === activeColor
         && cell.style.backgroundColor === activeBackground)).toBe(true);
+      await page.mouse.move(0, 0);
       await surface.getByRole("button", { name: "variant", exact: true }).focus();
+      await expect.poll(async () => (await readCellProbe(surface)).cells
+        .filter((cell) => cell.ownerId === "notes" && thumbGlyphs.has(cell.text)).length).toBe(0);
+      const railPoint = await cellPoint(surface, thumbs[0]!.x, thumbs[0]!.y);
+      await page.mouse.move(railPoint.x, railPoint.y);
       await expect.poll(async () => (await readCellProbe(surface)).cells
         .filter((cell) => cell.ownerId === "notes" && thumbGlyphs.has(cell.text))
         .some((cell) => cell.style.color !== activeColor)).toBe(true);
@@ -451,6 +456,10 @@ test("Text vertical ScrollArea rail keeps its Unicode texture through keyboard a
   const railCells = async () => (await readCellProbe(surface)).cells
     .filter((cell) => cell.ownerId === "component-scroll-area"
       && "\u{1FB90}\u{1FB91}\u{1FB92}█".includes(cell.text));
+  expect(await railCells()).toEqual([]);
+  const firstRow = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "component-scroll-row-1")!;
+  const hoverPoint = await cellPoint(surface, firstRow.x, firstRow.y);
+  await page.mouse.move(hoverPoint.x, hoverPoint.y);
   await expect.poll(async () => (await railCells()).map((cell) => cell.text)).toContain("\u{1FB90}");
   const initial = await railCells();
   const initialProbe = await readCellProbe(surface);

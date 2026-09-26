@@ -4,10 +4,10 @@ import { readCellProbe, readCellMetrics } from "./helpers/cell-probe";
 test("Select overlay receives hover outside the base canvas and respects DOM occlusion", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
   await page.goto("/#/components/button");
-  const surface = page.locator('[data-cell-probe="gallery-font-select"]');
+  const surface = page.locator('[data-cell-probe="gallery-header"]');
   const base = surface.locator("canvas:not([data-cell-overlay-root])");
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-font-status", /^(idle|error)$/);
-  await surface.getByRole("button").evaluate((element: HTMLElement) => element.click());
+  await surface.locator('[data-cell-semantic-id="gallery-font-trigger"]').evaluate((element: HTMLElement) => element.click());
   await expect(surface.getByRole("listbox")).toBeAttached();
   const frame = await readCellProbe(surface);
   const plane = frame.overlays[0]!;

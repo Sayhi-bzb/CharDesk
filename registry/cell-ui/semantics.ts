@@ -175,6 +175,8 @@ export const createSemanticSnapshot = (
         ? tree.nodes.get(node.labelledById)!.label ?? descendantText(tree, tree.nodes.get(node.labelledById)!)
         : descendantText(tree, node)),
       ...(node.href ? { href: node.href } : {}),
+      ...(node.current ? { current: node.current } : {}),
+      ...(node.target ? { target: node.target } : {}),
       disabled: node.disabled,
       ...(node.invalid ? { invalid: true } : {}),
       hidden: sceneEntry === undefined,
@@ -319,6 +321,7 @@ export const auditSemanticSnapshot = (
     if ((node.role === "link") !== (node.href !== undefined)) {
       issue(node.id, "invalid-state", "Only links may expose href, and links require href.");
     }
+    if (node.current && node.role !== "link") issue(node.id, "invalid-state", "Only links may be current.");
     if (node.role !== "separator" && node.label.trim().length === 0) issue(node.id, "missing-name", "Semantic name is empty.");
     if (orders.has(node.traversalOrder) || !Number.isInteger(node.traversalOrder)) {
       issue(node.id, "invalid-order", "Traversal order must be a unique integer.");
