@@ -31,11 +31,17 @@ function main() {
     console.log(`Updated ${manifestPath}`);
   }
   const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-  const result = spawnSync(npm, ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"], {
-    stdio: "inherit",
-  });
-  if (result.error) throw result.error;
-  if (result.status !== 0) process.exitCode = result.status ?? 1;
+  for (const [command, args] of [
+    [npm, ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"]],
+    [process.execPath, ["scripts/cell-ui/generate-registry.mjs"]],
+  ]) {
+    const result = spawnSync(command, args, { stdio: "inherit" });
+    if (result.error) throw result.error;
+    if (result.status !== 0) {
+      process.exitCode = result.status ?? 1;
+      return;
+    }
+  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
