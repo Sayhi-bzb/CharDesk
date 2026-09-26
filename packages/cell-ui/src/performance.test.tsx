@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
   Box,
   CELL_UI_PERFORMANCE_BUDGET,
+  CellTextEditor,
   CellUiRuntime,
   Root,
   ScrollArea,
   Text,
+  TextArea,
   YogaLayoutEngine,
   paintScene,
   percentile,
@@ -89,4 +91,31 @@ describe("Cell UI executable performance budgets", () => {
     expect(rowP95).toBeLessThan(fullP95);
     runtime.dispose();
   });
+
+  it("scrolls a 10k-line TextArea without materializing the document", () => {
+    const editor = new CellTextEditor({
+      value: Array.from({ length: 10_000 }, (_, index) => `line ${index} 世界 ok`).join("\n"),
+      multiline: true,
+      viewport: { columns: 80, rows: 20 },
+    });
+    const runtime = new CellUiRuntime({ viewport: { width: 80, height: 20 } });
+    const view = () => <Root id="root"><TextArea id="editor" label="Document"
+      state={editor.snapshot()} frame="bordered" style={{ height: 20 }} /></Root>;
+    const focus = { focusedId: "editor", activeFocusId: "editor" };
+    runtime.render(view(), focus);
+    const samples: number[] = [];
+    for (let index = 0; index < 12; index += 1) {
+      const start = performance.now();
+      editor.dispatch({ type: "set-scroll", y: 5_000 + index % 2 });
+      const frame = runtime.render(view(), focus);
+      samples.push(performance.now() - start);
+      expect(frame.textLayouts.get("editor")?.scrollY).toBe(5_000 + index % 2);
+      expect(frame.textLayouts.get("editor")?.glyphs.length).toBeLessThan(400);
+      expect(frame.invalidation.work.layout).toBe("reused");
+    }
+    expect(percentile(samples.slice(2), 0.95)).toBeLessThan(
+      CELL_UI_PERFORMANCE_BUDGET.portableLongEditorScrollCeilingMs,
+    );
+    runtime.dispose();
+  }, 15_000);
 });

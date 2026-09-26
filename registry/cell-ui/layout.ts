@@ -30,6 +30,7 @@ import type {
 import {
   fitInlineControlChromeInsets,
   inlineControlChromeInsets,
+  inlineControlChromeMetrics,
   inlineControlSpacingRecipe,
 } from "./inline-control-chrome.js";
 import { isCollectionItemKind } from "./widget-capabilities.js";
@@ -133,6 +134,38 @@ const textAreaSurfaceInsets = (node: WidgetNode, width?: number) => {
   return { left, right };
 };
 
+const dropdownNaturalWidth = (tree: WidgetTree, owner: WidgetNode): number | null => {
+  if (owner.kind !== "select" && owner.kind !== "combobox") return null;
+  const [controlId, contentId] = owner.children;
+  const control = controlId ? tree.nodes.get(controlId) : undefined;
+  const content = contentId ? tree.nodes.get(contentId) : undefined;
+  if (!control) return null;
+  const textWidth = (node: WidgetNode): number => node.kind === "text"
+    ? cellTextWidth(singleLineText(node.text ?? ""))
+    : node.children.reduce((width, id) => width + textWidth(tree.nodes.get(id)!), 0);
+  const chromeWidth = (node: WidgetNode): number => {
+    const rich = inlineControlChromeInsets(inlineControlChromeMetrics({ ...node, presentation: "rich" }));
+    const plain = inlineControlChromeInsets(inlineControlChromeMetrics({ ...node, presentation: "text" }));
+    return Math.max(rich.left + rich.right, plain.left + plain.right);
+  };
+  const hasItems = content?.children.some((id) => {
+    const kind = tree.nodes.get(id)?.kind;
+    return kind === "select-item" || kind === "combobox-item";
+  }) ?? false;
+  const controlText = control.kind === "combobox-input"
+    ? hasItems ? 0 : cellTextWidth(singleLineText(control.textEditor?.value ?? ""))
+    : Math.max(textWidth(control), cellTextWidth(singleLineText(control.placeholder ?? "")));
+  let width = Math.max(controlText + chromeWidth(control),
+    typeof control.style.width === "number" ? control.style.width : 0,
+    content && typeof content.style.width === "number" ? content.style.width : 0);
+  for (const id of content?.children ?? []) {
+    const item = tree.nodes.get(id)!;
+    const itemWidth = textWidth(item) + chromeWidth(item) + 2;
+    width = Math.max(width, itemWidth, typeof item.style.width === "number" ? item.style.width + 2 : 0);
+  }
+  return Math.max(1, width);
+};
+
 const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): void => {
   target.setPositionType(PositionType.Relative);
   for (const edge of [Edge.Top, Edge.Right, Edge.Bottom, Edge.Left]) target.setPosition(edge, undefined);
@@ -212,7 +245,8 @@ const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): vo
     target.setPadding(Edge.Right, textAreaInsets.right);
   }
   if (node.kind === "badge" || node.kind === "badge-action") target.setAlignSelf(Align.FlexStart);
-  target.setDisplay(node.kind === "accordion-content" && !node.expanded ? Display.None : Display.Flex);
+  target.setDisplay((node.kind === "accordion-content" && !node.expanded) || node.hidden
+    ? Display.None : Display.Flex);
   if (node.kind === "accordion-trigger") {
     target.setFlexDirection(FlexDirection.Row);
     target.setMinHeight(1);
@@ -231,6 +265,7 @@ const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): vo
   }
   if (node.kind === "menu-item") {
     target.setPadding(Edge.Left, (node.style.paddingLeft ?? node.style.padding ?? 0) + 2);
+    target.setPadding(Edge.Right, (node.style.paddingRight ?? node.style.padding ?? 0) + 1);
   }
   if (node.kind === "tab" && node.tabsVariant === "underline") {
     target.setMinHeight(2);
@@ -336,6 +371,10 @@ export class YogaLayoutEngine implements LayoutEngine {
         liveYogaResources.nodes += 1;
       }
       configureNode(widget, node, tree);
+      if ((widget.kind === "select" || widget.kind === "combobox") && widget.style.width === undefined) {
+        const naturalWidth = dropdownNaturalWidth(tree, widget);
+        if (naturalWidth !== null) node.setWidth(naturalWidth);
+      }
       if (widget.dialog) {
         const max = widget.style.maxWidth;
         const limit = typeof max === "string" ? viewport.width * parseFloat(max) / 100 : max ?? viewport.width;

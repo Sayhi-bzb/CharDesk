@@ -35,6 +35,14 @@ import { Root, Table, TableRow, TableCell } from "@/lib/cell-ui";
 </Root>;
 ```
 
+## Composition
+
+```text
+Table
+└── TableRow (repeatable)
+    └── TableCell (one per column)
+```
+
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)

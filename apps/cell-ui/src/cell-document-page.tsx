@@ -62,6 +62,9 @@ const componentItems = (document: ComponentDocument): ArticleItem[] => [
   { type: "preview", Demo: document.Demo, probeId: document.probeId },
   { type: "part", part: { id: "installation", source: heading("Installation"), installation: true } },
   { type: "part", part: { id: "usage", source: heading("Usage"), code: { id: "usage", source: publicUsage(document.usage), language: "tsx" } } },
+  ...(document.composition ? [{ type: "part" as const, part: {
+    id: "composition", source: `${heading("Composition")}\n\n${fence(document.composition, "text")}`,
+  } }] : []),
   { type: "part", part: { id: "source", source: [heading("View source", "Start with the component definition, then open its supporting implementation as needed."),
     ...sourceLinksForComponent(document.slug).map((source) => `- ${link(source)}`)].join("\n\n") } },
   { type: "part", part: { id: "api", source: heading("API"), api: document.api } },

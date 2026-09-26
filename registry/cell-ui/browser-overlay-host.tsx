@@ -3,9 +3,12 @@ import {
   useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import {
+  resolveCellAnchorRect, resolveCellOverlayContentRect, resolveCellSurfaceContentRect,
+} from "./browser-surface-geometry.js";
 
 export type CellOverlayDismissReason = "escape" | "outside";
-export type CellOverlayPlacement = "bottom-start" | "top-start" | "right-start" | "center" | "right";
+export type CellOverlayPlacement = "bottom-start" | "top-start" | "right-start" | "right-item" | "center" | "right";
 
 type OverlayEntry = Readonly<{
   id: string;
@@ -83,7 +86,12 @@ export function CellOverlayHost({ children }: Readonly<{ children: ReactNode }>)
     const pointerdown = (event: PointerEvent) => {
       const target = event.target;
       for (const entry of [...entries.current].reverse()) {
-        if (target instanceof Node && (entry.element.contains(target) || entry.anchor?.contains(target))) break;
+        const content = resolveCellOverlayContentRect(entry.element);
+        const insideContent = content
+          ? event.clientX >= content.left && event.clientX < content.right
+            && event.clientY >= content.top && event.clientY < content.bottom
+          : target instanceof Node && entry.element.contains(target);
+        if (insideContent || target instanceof Node && entry.anchor?.contains(target)) break;
         if (entry.modal) {
           event.preventDefault();
           event.stopPropagation();
@@ -110,8 +118,9 @@ export const positionCellOverlay = (
   size: Readonly<{ width: number; height: number }>,
   viewport: Readonly<{ width: number; height: number }>,
   placement: CellOverlayPlacement,
+  itemOffset = 0,
 ): Readonly<{ left: number; top: number }> => {
-  const gap = 4;
+  const gap = 0;
   const maxX = Math.max(0, viewport.width - size.width);
   const maxY = Math.max(0, viewport.height - size.height);
   if (placement === "center" || !anchor && placement !== "right") {
@@ -120,10 +129,10 @@ export const positionCellOverlay = (
   }
   if (placement === "right") return { left: maxX, top: 0 };
   if (!anchor) return { left: 0, top: 0 };
-  if (placement === "right-start") {
+  if (placement === "right-start" || placement === "right-item") {
     const left = anchor.right + gap + size.width <= viewport.width
       ? anchor.right + gap : anchor.left - size.width - gap;
-    return { left: clamp(left, maxX), top: clamp(anchor.top, maxY) };
+    return { left: clamp(left, maxX), top: clamp(anchor.top - (placement === "right-item" ? itemOffset : 0), maxY) };
   }
   const below = anchor.bottom + gap;
   const above = anchor.top - size.height - gap;
@@ -165,13 +174,32 @@ export function CellOverlayPortal({ open, anchor, placement = "bottom-start", mo
     dismissReason.current = null;
     const anchorElement = anchor instanceof Element ? anchor : null;
     const update = () => {
-      const size = element.getBoundingClientRect();
-      const anchorBounds = anchorElement?.getBoundingClientRect()
+      const physical = element.getBoundingClientRect();
+      const content = resolveCellOverlayContentRect(element) ?? physical;
+      const anchorBounds = (anchorElement && (resolveCellAnchorRect(anchorElement)
+        ?? anchorElement.getBoundingClientRect()))
         ?? (anchor && "left" in anchor ? anchor : null);
-      const position = positionCellOverlay(anchorBounds, size,
-        { width: window.innerWidth, height: window.innerHeight }, placement);
-      element.style.left = `${position.left}px`;
-      element.style.top = `${position.top}px`;
+      const anchorSurface = placement === "right-item" && anchorElement
+        ? resolveCellSurfaceContentRect(anchorElement) : null;
+      const placementAnchor = anchorBounds && anchorSurface
+        ? new DOMRect(anchorSurface.left, anchorBounds.top, anchorSurface.width, anchorBounds.height)
+        : anchorBounds;
+      const firstItem = placement === "right-item"
+        ? element.querySelector<HTMLElement>('[role="menuitem"]') : null;
+      const itemOffset = firstItem
+        ? Math.max(0, (resolveCellAnchorRect(firstItem)
+          ?? firstItem.getBoundingClientRect()).top - content.top) : 0;
+      const position = positionCellOverlay(placementAnchor, content,
+        { width: window.innerWidth, height: window.innerHeight }, placement, itemOffset);
+      const left = `${position.left - (content.left - physical.left)}px`;
+      const top = `${position.top - (content.top - physical.top)}px`;
+      const moved = element.style.left !== left || element.style.top !== top;
+      element.style.left = left;
+      element.style.top = top;
+      // A hosted CellSurface owns a logical hit region; its physical guard
+      // remains visible without making the surrounding portal interactive.
+      element.style.pointerEvents = content === physical ? "auto" : "none";
+      if (moved) element.ownerDocument.dispatchEvent(new Event("cell-overlay-position-change"));
     };
     update();
     const observer = new ResizeObserver(update);
@@ -179,6 +207,7 @@ export function CellOverlayPortal({ open, anchor, placement = "bottom-start", mo
     if (anchorElement) observer.observe(anchorElement);
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
+    document.addEventListener("cell-surface-geometry-change", update);
     const unregister = host.register({ id, element, anchor: anchorElement, modal,
       closeOnOutsideClick, onDismiss: dismiss });
     const trapFocus = (event: KeyboardEvent) => {
@@ -219,6 +248,7 @@ export function CellOverlayPortal({ open, anchor, placement = "bottom-start", mo
       observer.disconnect();
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
+      document.removeEventListener("cell-surface-geometry-change", update);
       if (dismissReason.current !== "outside") {
         const target = anchorElement instanceof HTMLElement && anchorElement.isConnected
           && (anchorElement.hasAttribute("tabindex") || anchorElement.matches("button,[href],input,select,textarea"))
@@ -241,11 +271,6 @@ export function CellPopover(props: Omit<Parameters<typeof CellOverlayPortal>[0],
 export function CellContextMenu(props: Omit<Parameters<typeof CellOverlayPortal>[0], "anchor" | "modal" | "placement"> &
   Readonly<{ anchor: DOMRect | null }>) {
   return <CellOverlayPortal {...props} placement="bottom-start" />;
-}
-
-export function CellSheet(props: Omit<Parameters<typeof CellOverlayPortal>[0], "anchor" | "modal" | "placement" | "role"> &
-  Readonly<{ label: string }>) {
-  return <CellOverlayPortal {...props} role="dialog" modal placement="right" />;
 }
 
 export function CellAlertDialog(props: Omit<Parameters<typeof CellOverlayPortal>[0],

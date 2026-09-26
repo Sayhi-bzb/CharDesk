@@ -101,6 +101,10 @@ export type AlertProps = IdentityProps & ChildrenProps & Readonly<{
 }>;
 export type AlertTitleProps = TextProps;
 export type AlertDescriptionProps = TextProps;
+export type ToastProps = IdentityProps & ChildrenProps & SurfaceAppearanceProps & Readonly<{
+  tone?: BadgeTone;
+  style?: CellLayoutStyle;
+}>;
 export type AccordionProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
 export type AccordionItemProps = Omit<AccordionProps, "id"> & Readonly<{ id: string; expanded?: boolean }>;
 export type AccordionTriggerProps = NamedContainerProps & Readonly<{ focused?: boolean; style?: CellLayoutStyle; textStyle?: CellTextStyle }>;
@@ -277,6 +281,7 @@ export type RangeSliderThumbProps = Readonly<{
 }>;
 export type SelectProps = ContainerProps & Readonly<{ style?: CellLayoutStyle; variant?: SurfaceVariant }>;
 export type SelectTriggerProps = NamedContainerProps & Readonly<{
+  placeholder?: string;
   focused?: boolean;
   expanded?: boolean;
   controlsId?: string;
@@ -284,6 +289,7 @@ export type SelectTriggerProps = NamedContainerProps & Readonly<{
   textStyle?: CellTextStyle;
 }>;
 export type SelectContentProps = NamedContainerProps & Readonly<{
+  open?: boolean;
   frame?: CellFrame;
   borderShape?: CellBorderShape;
   scrollY?: number;
@@ -304,7 +310,7 @@ export type ComboboxInputProps = Omit<TextInputProps, "variant"> & Readonly<{
   activeDescendantId?: string;
 }>;
 export type ComboboxContentProps = SelectContentProps;
-export type ComboboxItemProps = Omit<SelectItemProps, "focused"> & Readonly<{ active?: boolean }>;
+export type ComboboxItemProps = Omit<SelectItemProps, "focused"> & Readonly<{ active?: boolean; hidden?: boolean }>;
 export type ListProps = NamedContainerProps & Readonly<{ style?: CellLayoutStyle; reorderable?: boolean }>;
 export type ListItemProps = NamedContainerProps & Readonly<{
   focused?: boolean;
@@ -382,6 +388,7 @@ type PrimitiveProps =
   | RootProps
   | BoxProps
   | AlertProps
+  | ToastProps
   | OverlayProps
   | TextProps
   | MarkdownBlockProps
@@ -444,6 +451,7 @@ const primitive = <Props extends PrimitiveProps>(
 export const Root = primitive<RootProps>("root");
 export const Box = primitive<BoxProps>("box");
 export const Alert = primitive<AlertProps>("alert");
+export const Toast = primitive<ToastProps>("toast");
 export const AlertTitle = primitive<AlertTitleProps>("text");
 export const AlertDescription = primitive<AlertDescriptionProps>("text");
 export const Accordion = primitive<AccordionProps>("accordion");
@@ -525,6 +533,7 @@ export type WidgetDescriptor = Readonly<{
   frame: CellFrame;
   borderShape: CellBorderShape | null;
   text: string | null;
+  placeholder: string | null;
   href: string | null;
   current?: "page" | "location";
   target?: "_blank";
@@ -563,6 +572,7 @@ export type WidgetDescriptor = Readonly<{
   sliderStep: number;
   sliderValueText: string | null;
   expanded: boolean;
+  hidden: boolean;
   hasChildren: boolean;
   level: number | null;
   parentItemId: string | null;
@@ -1001,6 +1011,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     throw new TypeError("Overlay position must use integer Cell coordinates.");
   }
   const ownsFramedSurface = element.type === Box
+    || element.type === Toast
     || element.type === Overlay
     || element.type === Dialog
     || element.type === ScrollArea
@@ -1014,6 +1025,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     || isDialog
     || kind === "overlay"
     || kind === "alert"
+    || kind === "toast"
     || kind === "text-area";
   const surfaceVariant = ownsSurface
     ? resolveSurfaceVariant(
@@ -1027,7 +1039,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     : isDialog || kind === "tooltip"
       ? props.border === "none" ? "none" : "bordered"
     : ownsFramedSurface || kind === "select-content" || kind === "combobox-content"
-      ? resolveCellFrame(props.frame, "none")
+      ? resolveCellFrame(props.frame, kind === "toast" ? "bordered" : "none")
       : "none";
   const frame = presentedFrame(presentation, kind, surfaceVariant, requestedFrame, isDialog);
   const requestedBorderShape = isDialog || kind === "tooltip" || kind === "alert" ? props.border : props.borderShape;
@@ -1040,6 +1052,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
       ...(isDialog ? { width: 36, padding: 1, gap: 1 } : {}),
       ...(kind === "alert" ? { width: "100%" as const, maxWidth: 44, paddingLeft: 3, paddingRight: 1,
         paddingTop: frame === "bordered" ? 0 : 1, paddingBottom: frame === "bordered" ? 0 : 1 } : {}),
+      ...(kind === "toast" ? { width: "100%" as const, paddingLeft: resolveBadgeTone(props.tone) === "neutral" ? 1 : 3,
+        paddingRight: 1 } : {}),
       ...(kind === "tooltip" ? { width: tooltipTextWidth(text ?? "") + (frame === "bordered" ? 4 : 2),
         height: frame === "bordered" ? 3 : 1, paddingLeft: 1, paddingRight: 1 } : {}),
       ...(element.type === DialogFooter ? { direction: "row" as const, gap: 1 } : {}),
@@ -1048,6 +1062,9 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
         : props.style as CellLayoutStyle | undefined),
       ...(kind === "alert" ? { paddingLeft: 3 + ((props.style as CellLayoutStyle | undefined)?.paddingLeft
         ?? (props.style as CellLayoutStyle | undefined)?.padding ?? 0) } : {}),
+      ...(kind === "toast" ? { paddingLeft: (resolveBadgeTone(props.tone) === "neutral" ? 1 : 3)
+        + ((props.style as CellLayoutStyle | undefined)?.paddingLeft
+          ?? (props.style as CellLayoutStyle | undefined)?.padding ?? 0) } : {}),
     },
     presentation,
     overlayScope: element.type === Box && props.overlayScope === true,
@@ -1056,6 +1073,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     frame,
     borderShape: presentedBorderShape(presentation, frame, requestedBorderShape),
     text,
+    placeholder: kind === "select-trigger" && typeof props.placeholder === "string" ? props.placeholder : null,
     href: kind === "markdown-link" ? props.href as string : null,
     ...(element.type === Link && props.current ? { current: props.current as LinkProps["current"] } : {}),
     ...(element.type === Link && props.target ? { target: props.target as LinkProps["target"] } : {}),
@@ -1097,7 +1115,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
       ? presentedButtonVariant(presentation, resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")) : "solid",
     buttonTone: kind === "button" && props.tone === "danger" ? "danger" : "neutral",
     badgeTone: kind === "alert" ? resolveAlertTone(props.tone)
-      : kind === "badge" || kind === "badge-action" ? resolveBadgeTone(props.tone) : "neutral",
+      : kind === "badge" || kind === "badge-action" || kind === "toast" ? resolveBadgeTone(props.tone) : "neutral",
     sliderValue: kind === "range-slider-thumb"
       ? typeof props.value === "number" ? props.value : sliderRange.min
       : normalizeCellSliderValue(
@@ -1108,7 +1126,9 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     sliderMax: sliderRange.max,
     sliderStep: sliderRange.step,
     sliderValueText: typeof props.valueText === "string" ? props.valueText : null,
-    expanded: props.expanded === true,
+    expanded: kind === "select-content" || kind === "combobox-content"
+      ? props.open !== false : props.expanded === true,
+    hidden: kind === "combobox-item" && props.hidden === true,
     hasChildren: props.hasChildren === true,
     level: Number.isInteger(props.level) ? props.level as number : null,
     parentItemId: typeof props.parentItemId === "string" ? props.parentItemId : null,

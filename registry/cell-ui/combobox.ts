@@ -15,7 +15,7 @@ const comboboxParts = (tree: WidgetTree, input: WidgetNode) => {
   const content = owner?.children.map((id) => tree.nodes.get(id))
     .find((node) => node?.kind === "combobox-content");
   const items = content?.children.map((id) => tree.nodes.get(id)!)
-    .filter((node) => node.kind === "combobox-item" && !node.disabled) ?? [];
+    .filter((node) => node.kind === "combobox-item" && !node.disabled && !node.hidden) ?? [];
   return { owner, content, items };
 };
 

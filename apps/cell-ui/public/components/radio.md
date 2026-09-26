@@ -39,6 +39,13 @@ export function RadioExample() {
 }
 ```
 
+## Composition
+
+```text
+RadioGroup
+└── RadioItem (repeatable)
+```
+
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)

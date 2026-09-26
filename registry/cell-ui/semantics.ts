@@ -61,6 +61,7 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
       || parent.kind === "combobox-content"
       || parent.kind === "overlay"
       || parent.kind === "alert"
+      || parent.kind === "toast"
       || parent.kind === "range-slider"
       || parent.kind === "radio-group"
       || parent.kind === "markdown-block"
@@ -85,6 +86,7 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
   if (node.kind === "badge-action") return "button";
   if (node.kind === "badge") return "paragraph";
   if (node.kind === "alert") return node.badgeTone === "warning" || node.badgeTone === "error" ? "alert" : "status";
+  if (node.kind === "toast") return "group";
   if (node.kind === "checkbox") return "checkbox";
   if (node.kind === "toggle") return "button";
   if (node.kind === "radio-group") return "radiogroup";

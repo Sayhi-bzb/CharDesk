@@ -1,6 +1,7 @@
 import { hitTest } from "./scene.js";
 import { isDescendantOf } from "./tree.js";
-import { accordionItem, accordionTriggers, accordionFocusCandidates, isAccordionHidden } from "./accordion.js";
+import { accordionItem, accordionTriggers, accordionFocusCandidates } from "./accordion.js";
+import { isWidgetHidden } from "./widget-visibility.js";
 import { gridEntry, gridOwnerId, gridTarget } from "./grid-navigation.js";
 import { commandForComboboxKey } from "./combobox.js";
 import { clampScrollOffset, scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
@@ -78,7 +79,7 @@ const scopeIds = (
   includes: (node: WidgetNode) => boolean
 ): readonly WidgetId[] =>
   [...tree.nodes.values()]
-    .filter((node) => includes(node) && !isAccordionHidden(tree, node))
+    .filter((node) => includes(node) && !isWidgetHidden(tree, node))
     .map(({ id }) => id);
 
 const focusScopeIds = (tree: WidgetTree): readonly WidgetId[] =>
@@ -107,7 +108,7 @@ const focusableWidgets = (
   scopeId: WidgetId | null = null
 ): readonly WidgetNode[] => {
   const available = [...tree.nodes.values()].filter((node) => !node.disabled
-    && !isAccordionHidden(tree, node) && (!scopeId || isDescendantOf(tree, node.id, scopeId)));
+    && !isWidgetHidden(tree, node) && (!scopeId || isDescendantOf(tree, node.id, scopeId)));
   const controls = available.filter((node) => isFocusableKind(node.kind));
   return available.filter((node) => isFocusableKind(node.kind)
     || (!!node.dialog && !controls.some((child) => isDescendantOf(tree, child.id, node.id)))
@@ -638,7 +639,7 @@ export const commandForInput = (
   if (focused?.kind === "accordion-trigger" && ["ArrowUp", "ArrowDown", "Home", "End"].includes(input.key)) {
     const item = accordionItem(frame.tree, focused.id);
     const headers = item?.parentId ? accordionTriggers(frame.tree, item.parentId)
-      .filter((node) => !node.disabled && !isAccordionHidden(frame.tree, node)) : [];
+      .filter((node) => !node.disabled && !isWidgetHidden(frame.tree, node)) : [];
     const target = input.key === "Home" ? headers[0]?.id : input.key === "End" ? headers.at(-1)?.id
       : moveInCollection(headers, focused.id, input.key === "ArrowUp" ? -1 : 1);
     return target ? focusCommand(frame, target) : null;

@@ -286,6 +286,10 @@ export const paintScene = (
           "over",
         );
       }
+      if (node.kind === "toast" && node.badgeTone !== "neutral") {
+        buffer.writeGrapheme(entry.decorationBounds.x + 1, entry.contentBounds.y,
+          alertGlyph(node.badgeTone), id, style, outerClip, "over");
+      }
       if (node.presentation === "text" && (node.kind === "badge" || node.kind === "badge-action") && node.badgeTone !== "neutral") {
         buffer.writeGrapheme(entry.decorationBounds.x + 1, entry.decorationBounds.y,
           alertGlyph(node.badgeTone), id, style, decorationClip, "over");

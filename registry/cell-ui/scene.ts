@@ -118,7 +118,9 @@ export const composeScene = (
     const widget = tree.nodes.get(id);
     const layoutEntry = layout.entries.get(id);
     if (!widget || !layoutEntry) throw new Error(`Scene input is missing ${id}.`);
-    if (widget.kind === "accordion-content" && !widget.expanded) return;
+    if ((widget.kind === "accordion-content" || widget.kind === "select-content"
+      || widget.kind === "combobox-content") && !widget.expanded) return;
+    if (widget.hidden) return;
     if (widget.kind === "tooltip" && !deferred) {
       deferredTooltips.push(id);
       return;

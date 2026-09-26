@@ -30,6 +30,13 @@ export function InputExample() {
 }
 ```
 
+## Composition
+
+```text
+Field (optional)
+└── TextInput | TextArea | Select | Combobox (exactly one)
+```
+
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)

@@ -34,6 +34,8 @@ description: State, input, scroll, and editor behavior contracts.
 
 组件 Playground 独立切换呈现。Config 在 `text` 下隐藏被固定字符配方覆盖的外观项，保留仍影响颜色或字符的选项（包括 `surface/ghost`）；隐藏项的 Rich 选择不丢失，切回 Rich 后恢复。配置弹层若在切换时失效会关闭，焦点回到 presentation 控件。
 
+Toast 内容由 `Toast` descriptor 持有 `tone`、`variant` 和 Rich 的 `frame`／`borderShape`；通知队列与位置仍由 browser host 持有。`tone` 复用 Badge 语义色，非 neutral 显示对应字符；Text 固定方角字符框。Toast 本身不创建第二个 live region，外层通知容器以 `status` 播报。
+
 ## Primitive 快照
 
 此表包含内部 Widget 契约，不等同于[公开组件目录](https://ui.chardesk.com/)。List、Menu、Tree、Overlay 和双端 Slider 的底层 descriptor 仍服务内部 fixture 与共享机制，但不再作为独立组件分发。

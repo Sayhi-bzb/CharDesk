@@ -33,6 +33,15 @@ export function AlertExample() {
 }
 ```
 
+## Composition
+
+```text
+Alert
+├── AlertTitle
+├── AlertDescription (optional)
+└── Button (optional)
+```
+
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)

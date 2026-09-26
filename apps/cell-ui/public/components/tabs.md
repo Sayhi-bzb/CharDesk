@@ -55,6 +55,15 @@ export function TabsExample() {
 }
 ```
 
+## Composition
+
+```text
+Tabs
+└── Tab (repeatable)
+
+TabPanel (sibling of Tabs; linked to Tab by ID)
+```
+
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)

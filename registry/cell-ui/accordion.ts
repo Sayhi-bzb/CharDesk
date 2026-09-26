@@ -6,15 +6,6 @@ export const accordionItem = (tree: WidgetTree, id: string | null): WidgetNode |
   return node;
 };
 
-export const isAccordionHidden = (tree: WidgetTree, node: WidgetNode): boolean => {
-  let current: WidgetNode | undefined = node;
-  while (current) {
-    if (current.kind === "accordion-content" && !current.expanded) return true;
-    current = current.parentId ? tree.nodes.get(current.parentId) : undefined;
-  }
-  return false;
-};
-
 export const accordionTriggers = (tree: WidgetTree, groupId: string): WidgetNode[] =>
   (tree.nodes.get(groupId)?.children ?? []).flatMap((id) => {
     const item = tree.nodes.get(id);

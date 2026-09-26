@@ -9,8 +9,77 @@ import {
   normalizeGraphemeOffset,
   offsetAtCellPoint,
 } from "./index.js";
+import { getGraphemeCellWidth, iterateGraphemes } from "@chardesk/protocol";
+import { createVisibleCellTextLayout, measureCellText } from "./text.js";
 
 describe("CellTextEditor", () => {
+  it("keeps indexed extent correct through edits, history, and composition", () => {
+    const editor = new CellTextEditor({ value: "a\t中\nwide🙂\nend", multiline: true });
+    const expected = (value: string) => {
+      const widths = value.split("\n").map((line) => {
+        let column = 0;
+        for (const { segment } of iterateGraphemes(line)) {
+          column += segment === "\t" ? 4 - (column % 4) : getGraphemeCellWidth(segment);
+        }
+        return column;
+      });
+      return { width: Math.max(...widths) + 1, height: widths.length };
+    };
+    const check = () => {
+      const snapshot = editor.snapshot();
+      const { composition, value } = snapshot;
+      const shown = composition
+        ? value.slice(0, composition.from) + composition.text + value.slice(composition.to)
+        : value;
+      expect(measureCellText(snapshot)).toEqual(expected(shown));
+    };
+    check();
+    editor.dispatch({ type: "replace-range", from: 2, to: 3, text: "\nxyz\t" }); check();
+    editor.dispatch({ type: "undo" }); check();
+    editor.dispatch({ type: "redo" }); check();
+    editor.dispatch({ type: "composition-start" });
+    editor.dispatch({ type: "composition-update", text: "中\n🙂" }); check();
+    editor.dispatch({ type: "composition-cancel" }); check();
+    editor.dispatch({ type: "replace-document", value: "x\ny\n" }); check();
+  });
+
+  it("keeps line widths indexed across many replacements and undos", () => {
+    const editor = new CellTextEditor({ value: "first\n中\tlast\n", multiline: true });
+    let seed = 17;
+    const random = (limit: number) => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed % limit;
+    };
+    const inserts = ["x", "\n", "中", "\t", "🙂", ""];
+    for (let index = 0; index < 100; index += 1) {
+      const before = editor.snapshot().value;
+      const from = random(before.length + 1);
+      const to = Math.min(before.length, from + random(4));
+      editor.dispatch({ type: "replace-range", from, to, text: inserts[random(inserts.length)]! });
+      if (index % 9 === 0) editor.dispatch({ type: "undo" });
+      const value = editor.snapshot().value;
+      const widths = value.split("\n").map((line) => {
+        let width = 0;
+        for (const { segment } of iterateGraphemes(line)) {
+          width += segment === "\t" ? 4 - width % 4 : getGraphemeCellWidth(segment);
+        }
+        return width;
+      });
+      expect(measureCellText(editor.snapshot())).toEqual({
+        width: Math.max(...widths) + 1,
+        height: widths.length,
+      });
+    }
+  });
+
+  it("moves and deletes across newline and emoji boundaries", () => {
+    const editor = new CellTextEditor({ value: "A🙂\n中B", multiline: true });
+    editor.dispatch({ type: "set-selection", anchor: 3 });
+    expect(editor.dispatch({ type: "move", direction: "right" }).selection.head).toBe(4);
+    expect(editor.dispatch({ type: "move", direction: "right" }).selection.head).toBe(5);
+    expect(editor.dispatch({ type: "move", direction: "left" }).selection.head).toBe(4);
+    expect(editor.dispatch({ type: "delete", direction: "backward" }).value).toBe("A🙂中B");
+  });
   it("fills empty focused TextArea interiors without changing their borders", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 5 } });
     const editor = new CellTextEditor({ multiline: true });
@@ -103,6 +172,25 @@ describe("CellTextEditor", () => {
 });
 
 describe("Cell text projection", () => {
+  it("materializes visible Cells while preserving the complete public projection", () => {
+    const editor = new CellTextEditor({
+      value: Array.from({ length: 40 }, (_, index) => `${index}\t中🙂end`).join("\n"),
+      multiline: true,
+      viewport: { columns: 6, rows: 4 },
+    });
+    editor.dispatch({ type: "set-scroll", x: 3, y: 12 });
+    const bounds = { x: 0, y: 0, width: 6, height: 4 };
+    const full = createCellTextLayout("area", bounds, bounds, editor.snapshot());
+    const visible = createVisibleCellTextLayout("area", bounds, bounds, editor.snapshot());
+    expect(visible.glyphs).toEqual(full.glyphs.filter((glyph) =>
+      glyph.point.y >= bounds.y && glyph.point.y < bounds.y + bounds.height
+      && glyph.point.x + glyph.width > bounds.x && glyph.point.x < bounds.x + bounds.width));
+    expect(visible.glyphs.length).toBeLessThan(full.glyphs.length / 4);
+    expect(visible.caret).toEqual(full.caret);
+    for (let y = 0; y < 4; y += 1) for (let x = 0; x < 6; x += 1) {
+      expect(offsetAtCellPoint(visible, { x, y })).toBe(offsetAtCellPoint(full, { x, y }));
+    }
+  });
   it("maps wide grapheme lead and continuation Cells to opposite boundaries", () => {
     const editor = new CellTextEditor({ value: "A中B" });
     const layout = createCellTextLayout(

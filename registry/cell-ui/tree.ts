@@ -71,6 +71,12 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
     if (current.kind === "range-slider-thumb" && parent?.kind !== "range-slider") {
       throw new TypeError("RangeSliderThumb must be a direct child of RangeSlider.");
     }
+    if ((current.kind === "select-trigger" || current.kind === "select-content") && parent?.kind !== "select") {
+      throw new TypeError("SelectTrigger and SelectContent must be direct children of Select.");
+    }
+    if (current.kind === "select-item" && parent?.kind !== "select-content") {
+      throw new TypeError("SelectItem must be a direct child of SelectContent.");
+    }
     if ((current.kind === "combobox-input" || current.kind === "combobox-content") && parent?.kind !== "combobox") {
       throw new TypeError("ComboboxInput and ComboboxContent must be direct children of Combobox.");
     }
@@ -86,6 +92,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       id,
       key: current.key,
       kind: current.kind,
+      hidden: current.hidden,
       parentId,
       index,
       style: current.style,
@@ -96,6 +103,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       frame: current.frame,
       borderShape: current.borderShape,
       text: current.text,
+      placeholder: current.placeholder,
       href: current.href,
       current: current.current,
       target: current.target,
@@ -204,6 +212,16 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       });
     }
     nodes.set(id, { ...nodes.get(id)!, children: childIds });
+    if (current.kind === "select") {
+      const [trigger, content] = childIds.map((child) => nodes.get(child)!);
+      if (trigger?.kind !== "select-trigger" || childIds.length > 2 || (content && content.kind !== "select-content")) {
+        throw new TypeError("Select requires one Trigger followed by optional Content.");
+      }
+    }
+    if (current.kind === "select-content" && childIds.some((child) => {
+      const kind = nodes.get(child)?.kind;
+      return kind !== "select-item" && kind !== "text";
+    })) throw new TypeError("SelectContent accepts SelectItem or Text children.");
     if (current.kind === "combobox") {
       const [input, content] = childIds.map((child) => nodes.get(child)!);
       if (input?.kind !== "combobox-input" || childIds.length > 2 || (content && content.kind !== "combobox-content")) {
@@ -211,11 +229,11 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       }
       if (content) {
         const activeItems = content.children.map((child) => nodes.get(child)!)
-          .filter((child) => child.kind === "combobox-item" && child.active);
+          .filter((child) => child.kind === "combobox-item" && child.active && !child.hidden);
         if (activeItems.length > 1 || (activeItems[0]?.id ?? null) !== input.activeDescendantId) {
           throw new TypeError("Combobox must have at most one active Item matching Input.activeDescendantId.");
         }
-        nodes.set(input.id, { ...input, controlsId: content.id });
+        nodes.set(input.id, { ...input, controlsId: content.expanded ? content.id : null });
         nodes.set(content.id, { ...content, labelledById: input.id });
       }
     }

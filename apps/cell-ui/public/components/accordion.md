@@ -62,6 +62,16 @@ export function AccordionExample() {
 }
 ```
 
+## Composition
+
+```text
+Accordion
+├── AccordionItem (repeatable)
+│   ├── AccordionTrigger
+│   └── AccordionContent
+└── Separator (optional, between items)
+```
+
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)

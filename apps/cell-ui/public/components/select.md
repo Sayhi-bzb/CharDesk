@@ -72,6 +72,15 @@ export function SelectExample() {
 }
 ```
 
+## Composition
+
+```text
+Select
+├── SelectTrigger
+└── SelectContent (optional)
+    └── SelectItem (repeatable)
+```
+
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)
@@ -82,6 +91,7 @@ export function SelectExample() {
 | Prop | Type | Description |
 | --- | --- | --- |
 | `Select.style` | `CellLayoutStyle` | Overrides the natural width shared by Trigger and Content. |
+| `children` | `SelectTrigger, SelectContent?` | One direct Trigger followed by optional direct Content; Items belong directly to Content. |
 | `Select.variant?` | `"surface" \| "ghost"` | Shared surface recipe; the local value overrides the global recipe. |
 | `SelectTrigger.expanded` | `boolean` | Controls disclosure state and chrome. |
 | `SelectTrigger.placeholder?` | `string` | Reserves a stable natural width when the empty label is wider than every Item. |

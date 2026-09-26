@@ -31,7 +31,7 @@ export const presentedFrame = (
   requested: CellFrame,
   isDialog: boolean,
 ): CellFrame => presentation === "text" && (
-  kind === "alert" || isDialog || kind === "tooltip" || kind === "text-area"
+  kind === "alert" || kind === "toast" || isDialog || kind === "tooltip" || kind === "text-area"
   || ((kind === "box" || kind === "overlay" || kind === "scroll-area") && variant === "surface")
   || kind === "select-content" || kind === "combobox-content"
 ) ? "bordered" : requested;

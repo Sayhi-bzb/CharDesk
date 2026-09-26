@@ -41,6 +41,27 @@ const selectView = (open: boolean, focusedId = open ? "dark" : "theme-trigger") 
 );
 
 describe("Select", () => {
+  it("accepts a Trigger without Content while closed", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 2 } });
+    const frame = runtime.render(<Root><Select><SelectTrigger id="trigger"><Text>Dark</Text></SelectTrigger></Select></Root>);
+    expect(frame.tree.nodes.get("trigger")?.kind).toBe("select-trigger");
+    runtime.dispose();
+  });
+
+  it.each([
+    ["missing Trigger", <Select><SelectContent><SelectItem id="item"><Text>Item</Text></SelectItem></SelectContent></Select>, /Select requires one Trigger/],
+    ["reversed order", <Select><SelectContent /><SelectTrigger id="trigger"><Text>Dark</Text></SelectTrigger></Select>, /Select requires one Trigger/],
+    ["duplicate Content", <Select><SelectTrigger id="trigger"><Text>Dark</Text></SelectTrigger><SelectContent /><SelectContent /></Select>, /Select requires one Trigger/],
+    ["nested Trigger", <Select><Box><SelectTrigger id="trigger"><Text>Dark</Text></SelectTrigger></Box></Select>, /direct children of Select/],
+    ["orphan Item", <SelectItem id="item"><Text>Item</Text></SelectItem>, /direct child of SelectContent/],
+    ["Item outside Content", <Select><SelectTrigger id="trigger"><Text>Dark</Text></SelectTrigger><SelectItem id="item"><Text>Item</Text></SelectItem></Select>, /direct child of SelectContent/],
+    ["invalid Content child", <Select><SelectTrigger id="trigger"><Text>Dark</Text></SelectTrigger><SelectContent><Box /></SelectContent></Select>, /SelectContent accepts SelectItem or Text/],
+  ] as const)("rejects %s", (_case, children, error) => {
+    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 3 } });
+    expect(() => runtime.render(<Root>{children}</Root>)).toThrow(error);
+    runtime.dispose();
+  });
+
   it("keeps a natural width from mounted Items while Content is closed", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 32, height: 6 } });
     const view = (open: boolean, value: string, frame: "none" | "bordered") => <Root>

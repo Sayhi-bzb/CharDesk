@@ -69,6 +69,7 @@ export type WidgetKind =
   | "accordion-content"
   | "box"
   | "alert"
+  | "toast"
   | "overlay"
   | "text"
   | "markdown-block"
@@ -131,6 +132,7 @@ export type WidgetNode = Readonly<{
   frame: import("./border.js").CellFrame;
   borderShape: import("./border.js").CellBorderShape | null;
   text: string | null;
+  placeholder: string | null;
   href: string | null;
   current?: "page" | "location";
   target?: "_blank";
@@ -178,6 +180,7 @@ export type WidgetNode = Readonly<{
   sliderStep: number;
   sliderValueText: string | null;
   expanded: boolean;
+  hidden: boolean;
   hasChildren: boolean;
   level: number | null;
   parentItemId: WidgetId | null;

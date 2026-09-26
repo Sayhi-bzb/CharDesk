@@ -65,10 +65,9 @@ function Layers() {
 
 ## Overlay host
 
-Mount one CellOverlayHost around participating surfaces. It owns stacking, viewport placement, outside/Escape dismissal, modal background inertness, and focus return. Outside input closes nonmodal layers above its target; Escape closes only the top layer. App state controls visibility. Menu uses CellPopover or CellContextMenu; Sheet and CellAlertDialog are modal; Toast shares the host layer without taking focus.
+Mount one CellOverlayHost around participating surfaces. It owns stacking, viewport placement, outside/Escape dismissal, modal background inertness, and focus return. Outside input closes nonmodal layers above its target; Escape closes only the top layer. App state controls visibility. Menu uses CellPopover or CellContextMenu; CellAlertDialog is modal; Toast shares the host layer without taking focus.
 
 - [Menu](https://ui.chardesk.com/#/components/menu)
-- [Sheet](https://ui.chardesk.com/#/components/sheet)
 - [Toast](https://ui.chardesk.com/#/components/toast)
 - [Browser host source](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser-overlay-host.tsx)
 

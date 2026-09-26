@@ -3,7 +3,12 @@ export const CELL_SURFACE_GUARD_CELLS = 1;
 
 export class CellPresentationRegistry {
   current: HTMLCanvasElement | null = null;
+  hitRegion: HTMLElement | null = null;
   readonly #overlays = new Map<string, HTMLCanvasElement>();
+
+  setHitRegion(element: HTMLElement | null): void {
+    this.hitRegion = element;
+  }
 
   setOverlay(id: string, canvas: HTMLCanvasElement | null): void {
     if (canvas) this.#overlays.set(id, canvas);
@@ -19,7 +24,7 @@ export class CellPresentationRegistry {
   }
 
   owns(target: EventTarget | null): boolean {
-    return target !== null && this.canvases().some((canvas) => canvas === target);
+    return target !== null && (target === this.hitRegion || this.canvases().some((canvas) => canvas === target));
   }
 
   acceptsPoint(x: number, y: number): boolean {

@@ -56,6 +56,16 @@ export function DialogExample() {
 }
 ```
 
+## Composition
+
+```text
+Dialog
+├── DialogTitle
+├── DialogDescription (optional)
+├── Cell content (optional)
+└── DialogFooter (optional)
+```
+
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)

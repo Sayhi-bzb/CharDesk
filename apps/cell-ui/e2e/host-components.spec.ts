@@ -285,17 +285,52 @@ test("Menu disabled configuration closes open menus and prevents activation", as
 });
 
 test("Toast page shows a timed notice without moving focus", async ({ page }) => {
+  const clockStart = new Date();
+  await page.clock.install({ time: clockStart });
   await page.goto("/#/components/toast");
+  await page.clock.pauseAt(new Date(clockStart.getTime() + 60_000));
   const trigger = page.getByRole("button", { name: "Show toast" });
   await trigger.focus();
   await page.keyboard.press("Enter");
+  await page.clock.runFor(100);
   const toast = page.locator('[data-cell-toast="component-toast-saved"]');
   await expect(toast).toBeVisible();
   await expect.poll(async () => (await readCellProbe(
     page.locator('[data-cell-probe="component-toast-notice"]'),
   )).text).toContain("Saved to workspace");
   await expect(trigger).toBeFocused();
-  await expect(toast).toHaveCount(0, { timeout: 5000 });
+  await page.clock.runFor(3000);
+  await expect(toast).toHaveCount(0);
+});
+
+test("Toast config styles future notices in Rich and Text presentations", async ({ page }) => {
+  await page.goto("/#/components/toast");
+  const choose = async (control: string, option: string) => {
+    const trigger = page.getByRole("button", { name: control, exact: true });
+    await trigger.evaluate((element: HTMLElement) => element.click());
+    await page.getByRole("option", { name: option, exact: true })
+      .evaluate((element: HTMLElement) => element.click());
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  };
+  const trigger = page.getByRole("button", { name: "Show toast" });
+  const notice = page.locator('[data-cell-toast="component-toast-saved"]');
+  const probe = page.locator('[data-cell-probe="component-toast-notice"]');
+  await choose("tone", "success");
+  await choose("variant", "ghost");
+  await choose("border shape", "rounded");
+  await trigger.evaluate((element: HTMLElement) => element.click());
+  await expect(notice).toHaveAttribute("role", "status");
+  await expect(notice.getByRole("group")).toHaveCount(1);
+  await expect.poll(async () => (await readCellProbe(probe)).text).toContain("╭");
+  await expect.poll(async () => (await readCellProbe(probe)).text).toContain("✓ Saved to workspace");
+
+  await choose("presentation", "Text");
+  await expect(page.getByRole("button", { name: "frame", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "border shape", exact: true })).toHaveCount(0);
+  await trigger.evaluate((element: HTMLElement) => element.click());
+  await expect.poll(async () => (await readCellProbe(probe)).text).toContain("┌");
+  await expect.poll(async () => (await readCellProbe(probe)).text).toContain("✓ Saved to workspace");
+  await expect(notice).toHaveCount(0, { timeout: 5000 });
 });
 
 test("hosted component previews fit a narrow viewport", async ({ page }) => {

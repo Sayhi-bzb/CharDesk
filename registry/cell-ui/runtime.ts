@@ -14,7 +14,7 @@ import { resolveCellUiScrollLayout } from "./scroll-layout.js";
 import { createSemanticSnapshot } from "./semantics.js";
 import { isDescendantOf, reconcileWidgetTree, sameWidgetValue } from "./tree.js";
 import { classifyWidgetChange } from "./widget-change.js";
-import { createCellTextLayout, measureCellText } from "./text.js";
+import { createVisibleCellTextLayout, measureCellText, withCellTextScroll } from "./text.js";
 import { resolveCellUiTheme, type CellUiTheme, type CellUiThemeInput } from "./theme.js";
 import { resolveCellUiPresentation, type CellUiPresentation } from "./presentation.js";
 import {
@@ -240,7 +240,7 @@ export class CellUiRuntime {
         const x = extent ? Math.max(0, Math.min(offset.x, extent.width - (node.textEditor.viewport?.columns ?? 20))) : 0;
         const y = extent ? Math.max(0, Math.min(offset.y, extent.height - (node.textEditor.viewport?.rows ?? 1))) : 0;
         if (x === node.textEditor.scrollX && y === node.textEditor.scrollY) return [id, node];
-        return [id, { ...node, textEditor: { ...node.textEditor, scrollX: x, scrollY: y } }];
+        return [id, { ...node, textEditor: withCellTextScroll(node.textEditor, x, y) }];
       })),
     };
     const viewportDirty = !!previous && (
@@ -303,7 +303,7 @@ export class CellUiRuntime {
           const sceneEntry = scene.entries.get(node.id);
           const layoutEntry = layout.entries.get(node.id);
           return sceneEntry && layoutEntry
-            ? [[node.id, createCellTextLayout(
+            ? [[node.id, createVisibleCellTextLayout(
                 node.id,
                 sceneEntry.layoutBounds,
                 sceneEntry.scrollMetrics?.viewport ?? sceneEntry.contentBounds,

@@ -1,5 +1,5 @@
 type ComponentApiRow = Readonly<{ name: string; type: string; description: string }>;
-export type ComponentContent = Readonly<{ slug: string; title: string; description: string; usage: string; api: readonly ComponentApiRow[] }>;
+export type ComponentContent = Readonly<{ slug: string; title: string; description: string; composition?: string; usage: string; api: readonly ComponentApiRow[] }>;
 export const publicUsage = (usage: string) => usage.replaceAll("\"@chardesk/cell-ui/browser\"", "\"@/lib/cell-ui/browser\"").replaceAll("\"@chardesk/cell-ui\"", "\"@/lib/cell-ui\"");
 export const installationCommands = {
   pnpm: "pnpm dlx shadcn@latest add @chardesk/cell-ui",
@@ -16,7 +16,7 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   "text-area": ["react.tsx", "browser-input.tsx"],
   list: ["react.tsx", "browser-collections.tsx"],
   menu: ["react.tsx", "browser-collections.tsx", "browser-overlay-host.tsx"],
-  toast: ["browser-toast.tsx", "browser-overlay-host.tsx"],
+  toast: ["react.tsx", "browser-toast.tsx", "browser-overlay-host.tsx"],
   tree: ["react.tsx", "browser-collections.tsx"],
   table: ["react.tsx", "table.ts", "paint.ts", "semantics.ts"],
   dialog: ["react.tsx", "interaction.ts", "browser-overlay-host.tsx"],
@@ -147,7 +147,15 @@ export function MenuExample() {
   {
     slug: "toast", title: "Toast",
     description: "Show timed Cell notices above the workspace without moving focus.",
-    usage: `import { Button, Root, Text } from "@chardesk/cell-ui";
+    composition: `CellOverlayHost
+├── CellSurface (application)
+└── CellToastViewport (state from useCellToastState)
+
+toast.push({ content })
+└── CellSurface (notice)
+    └── Toast
+        └── Cell content`,
+    usage: `import { Button, Root, Text, Toast } from "@chardesk/cell-ui";
 import {
   CellOverlayHost,
   CellSurface,
@@ -167,9 +175,11 @@ export function ToastExample() {
               id: "saved",
               durationMs: 3000,
               content: (
-                <CellSurface viewport={{ width: 20, height: 2 }} onCommand={() => {}}>
+                <CellSurface viewport={{ width: 24, height: 3 }} onCommand={() => {}}>
                   <Root>
-                    <Text>Saved to workspace</Text>
+                    <Toast tone="success">
+                      <Text>Saved to workspace</Text>
+                    </Toast>
                   </Root>
                 </CellSurface>
               ),
@@ -188,6 +198,11 @@ export function ToastExample() {
   );
 }`,
     api: [
+      { name: "CellSurface.presentation", type: '"rich" | "text"', description: "Select one rendering mode for each notice surface." },
+      { name: "Toast.tone?", type: '"neutral" | "info" | "success" | "warning" | "error"', description: "Shared semantic palette; neutral by default." },
+      { name: "Toast.variant?", type: '"surface" | "ghost"', description: "Shared surface treatment; surface by default." },
+      { name: "Toast.frame?", type: '"none" | "bordered"', description: "Rich border, bordered by default; Text always uses a square character frame." },
+      { name: "Toast.borderShape?", type: '"square" | "rounded"', description: "Rich frame shape when bordered." },
       { name: "useCellToastState", type: "hook", description: "Owns the notice queue; push replaces a matching id and dismiss removes it." },
       { name: "CellToastViewport.state", type: "CellToastState", description: "Portals notices through CellOverlayHost without stealing focus." },
       { name: "push({ id, content, durationMs? })", type: "CellToastEntry", description: "Render CellSurface content; positive durationMs dismisses it automatically." },
@@ -196,6 +211,10 @@ export function ToastExample() {
   {
     slug: "alert", title: "Alert",
     description: "Keep a status or warning visible beside the work it describes.",
+    composition: `Alert
+├── AlertTitle
+├── AlertDescription (optional)
+└── Button (optional)`,
     usage: `import {
   Alert,
   AlertTitle,
@@ -229,6 +248,11 @@ export function AlertExample() {
   {
     slug: "dialog", title: "Dialog",
     description: "A named Cell dialog with shared overlay placement and focus management.",
+    composition: `Dialog
+├── DialogTitle
+├── DialogDescription (optional)
+├── Cell content (optional)
+└── DialogFooter (optional)`,
     usage: `import { useState } from "react";
 import {
   Root,
@@ -288,6 +312,11 @@ export function DialogExample() {
   {
     slug: "accordion", title: "Accordion",
     description: "Expand independent sections without losing their content state.",
+    composition: `Accordion
+├── AccordionItem (repeatable)
+│   ├── AccordionTrigger
+│   └── AccordionContent
+└── Separator (optional, between items)`,
     usage: `import { useState } from "react";
 import {
   Accordion,
@@ -477,6 +506,8 @@ export function SeparatorExample() {
   {
     slug: "radio", title: "Radio",
     description: "Choose one value with a shared group and arrow-key navigation.",
+    composition: `RadioGroup
+└── RadioItem (repeatable)`,
     usage: `import { RadioGroup, RadioItem, Root, Text } from "@chardesk/cell-ui";
 import { CellSurface, useCellRadioState } from "@chardesk/cell-ui/browser";
 
@@ -590,6 +621,10 @@ export function BadgeExample() {
     slug: "select",
     title: "Select",
     description: "Choose one value from a Cell-anchored listbox.",
+    composition: `Select
+├── SelectTrigger
+└── SelectContent (optional)
+    └── SelectItem (repeatable)`,
     usage: `import {
   Root,
   Select,
@@ -653,6 +688,7 @@ export function SelectExample() {
 }`,
     api: [
       { name: "Select.style", type: "CellLayoutStyle", description: "Overrides the natural width shared by Trigger and Content." },
+      { name: "children", type: "SelectTrigger, SelectContent?", description: "One direct Trigger followed by optional direct Content; Items belong directly to Content." },
       { name: "Select.variant?", type: '"surface" | "ghost"', description: "Shared surface recipe; the local value overrides the global recipe." },
       { name: "SelectTrigger.expanded", type: "boolean", description: "Controls disclosure state and chrome." },
       { name: "SelectTrigger.placeholder?", type: "string", description: "Reserves a stable natural width when the empty label is wider than every Item." },
@@ -670,6 +706,10 @@ export function SelectExample() {
     slug: "combobox",
     title: "Combobox",
     description: "Click the input row to open local options, filter, then commit one value.",
+    composition: `Combobox
+├── ComboboxInput
+└── ComboboxContent (optional)
+    └── ComboboxItem (repeatable)`,
     usage: `import {
   Combobox,
   ComboboxContent,
@@ -858,6 +898,8 @@ export function SliderExample() {
     slug: "input",
     title: "Input",
     description: "Edit a single line of Unicode text on the Cell grid.",
+    composition: `Field (optional)
+└── TextInput | TextArea | Select | Combobox (exactly one)`,
     usage: `import { Field, Root, TextInput } from "@chardesk/cell-ui";
 import { CellSurface, useCellTextState } from "@chardesk/cell-ui/browser";
 
@@ -893,6 +935,10 @@ export function InputExample() {
     slug: "tabs",
     title: "Tabs",
     description: "Switch between related Cell panels with one selected tab.",
+    composition: `Tabs
+└── Tab (repeatable)
+
+TabPanel (sibling of Tabs; linked to Tab by ID)`,
     usage: `import { Root, Tab, TabPanel, Tabs, Text } from "@chardesk/cell-ui";
 import { CellSurface, useCellTabsState } from "@chardesk/cell-ui/browser";
 
@@ -1021,6 +1067,9 @@ const editor = useCellTextState("notes", { value: "Hello", multiline: true });
   },
   {
     slug: "table", title: "Table", description: "Display read-only rows on a Cell grid with lines or alternating backgrounds.",
+    composition: `Table
+└── TableRow (repeatable)
+    └── TableCell (one per column)`,
     usage: `import { Root, Table, TableRow, TableCell } from "@chardesk/cell-ui";
 
 <Root>

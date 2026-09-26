@@ -30,7 +30,8 @@ for (const component of componentContent) {
     .map(({ label, href }) => `- [${label}](${href})`).join("\n");
   const api = component.api.map(({ name, type, description }) =>
     `| \`${name}\` | \`${type.replaceAll("|", "\\|")}\` | ${description.replaceAll("|", "\\|")} |`).join("\n");
-  outputs.set(`components/${component.slug}.md`, `# ${component.title}\n\n${component.description}\n\n## Installation\n\n${installation}\n\n## Usage\n\n\`\`\`tsx\n${publicUsage(component.usage)}\n\`\`\`\n\n## View source\n\n${source}\n\n## API\n\n| Prop | Type | Description |\n| --- | --- | --- |\n${api}\n`);
+  const composition = component.composition ? `## Composition\n\n\`\`\`text\n${component.composition}\n\`\`\`\n\n` : "";
+  outputs.set(`components/${component.slug}.md`, `# ${component.title}\n\n${component.description}\n\n## Installation\n\n${installation}\n\n## Usage\n\n\`\`\`tsx\n${publicUsage(component.usage)}\n\`\`\`\n\n${composition}## View source\n\n${source}\n\n## API\n\n| Prop | Type | Description |\n| --- | --- | --- |\n${api}\n`);
 }
 
 outputs.set("llms.txt", `# CharDesk Cell UI\n\nEditable Unicode Cell interfaces for React. The Gallery and these Markdown files share one documentation source. The registry installs the entire library, not individual components.\n\n## Sections\n\n${guideContent.map(({ title, slug, description }) => `- [${title}](${base}/guides/${slug}.md): ${description}`).join("\n")}\n\n## Components\n\n${componentContent.toSorted((a, b) => a.title.localeCompare(b.title, "en")).map(({ title, slug, description }) => `- [${title}](${base}/components/${slug}.md): ${description}`).join("\n")}\n\n## Internal development\n\n- [Architecture](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/overview.mdx)\n- [Widget contracts](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/widgets.mdx)\n`);

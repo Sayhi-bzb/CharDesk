@@ -68,6 +68,15 @@ export function ComboboxExample() {
 }
 ```
 
+## Composition
+
+```text
+Combobox
+├── ComboboxInput
+└── ComboboxContent (optional)
+    └── ComboboxItem (repeatable)
+```
+
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)

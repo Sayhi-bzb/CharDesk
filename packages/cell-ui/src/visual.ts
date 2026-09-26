@@ -83,9 +83,9 @@ const surfaceStyleForNode = (
     backgroundColor ??= current.textStyle.backgroundColor;
     hasSurfaceOwner ||= current.surfaceVariant !== null
       || (current.kind === "button" && current.buttonVariant === "ghost");
-    if (current.kind === "badge" || current.kind === "badge-action" || current.kind === "alert") {
+    if (current.kind === "badge" || current.kind === "badge-action" || current.kind === "alert" || current.kind === "toast") {
       const statusStyle = theme.badgeStyles[current.badgeTone];
-      if (current.kind === "alert" && current.surfaceVariant === "ghost") {
+      if ((current.kind === "alert" || current.kind === "toast") && current.surfaceVariant === "ghost") {
         toneColor ??= statusStyle.color;
       } else {
         return { ...statusStyle, ...(backgroundColor !== undefined ? { backgroundColor } : {}) };
@@ -125,7 +125,7 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     borderStyle: {
       ...borderBaseStyle,
       ...theme.borderStyle,
-      ...(node.kind === "alert"
+      ...(node.kind === "alert" || node.kind === "toast"
         ? { color: theme.badgeStyles[node.badgeTone].color ?? theme.borderStyle.color }
         : {}),
       ...(node.invalid ? { color: theme.semanticColors.danger.text } : {}),

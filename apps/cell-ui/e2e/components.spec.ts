@@ -39,6 +39,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await page.goto("/#/components/button");
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
   const group = nav.getByRole("group", { name: "Components" });
+  await expect(group.getByRole("link", { name: "Sheet", exact: true })).toHaveCount(0);
   await expect(nav.getByRole("group")).toHaveCount(2);
   for (const [name, href] of navigationLinks) {
     await expect(group.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
@@ -116,6 +117,11 @@ test("component catalog drives concise, addressable documentation", async ({ pag
     )).viewport).toEqual({ width: 30, height: 15 });
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+});
+
+test("retired Sheet route does not serve a component page", async ({ page }) => {
+  await page.goto("/#/components/sheet");
+  await expect(page.getByRole("heading", { name: "Page not found", level: 1 })).toBeVisible();
 });
 
 test("desktop navigation scrolls independently and reveals its active link", async ({ page }) => {

@@ -69,6 +69,7 @@ export type WidgetKind =
   | "accordion-content"
   | "box"
   | "alert"
+  | "toast"
   | "overlay"
   | "text"
   | "markdown-block"

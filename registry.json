@@ -134,6 +134,11 @@
           "target": "@lib/cell-ui/browser-scroll.ts"
         },
         {
+          "path": "registry/cell-ui/browser-surface-geometry.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-surface-geometry.ts"
+        },
+        {
           "path": "registry/cell-ui/browser-theme.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/browser-theme.ts"
@@ -457,6 +462,11 @@
           "path": "registry/cell-ui/widget-change.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/widget-change.ts"
+        },
+        {
+          "path": "registry/cell-ui/widget-visibility.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/widget-visibility.ts"
         },
         {
           "path": "registry/cell-ui/keyboard/index.ts",

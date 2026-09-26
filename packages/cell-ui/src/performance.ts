@@ -7,6 +7,7 @@ export const CELL_UI_PERFORMANCE_BUDGET = Object.freeze({
   singleRowPaintP95Ms: 2,
   portableFullPaintCeilingMs: 80,
   portableSingleRowPaintCeilingMs: 20,
+  portableLongEditorScrollCeilingMs: 100,
 });
 
 export const percentile = (samples: readonly number[], value: number): number => {

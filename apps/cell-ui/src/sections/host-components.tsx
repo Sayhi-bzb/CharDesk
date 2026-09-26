@@ -1,13 +1,13 @@
 import { useState } from "react";
 import {
-  Box, Button, Menu, MenuItem, Root, Text, cellTextWidth,
-  type CellBorderShape, type CellFrame, type CellUiPresentation, type SurfaceVariant, type WidgetCommand,
+  Box, Button, Menu, MenuItem, Root, Text, Toast, cellTextWidth,
+  type BadgeTone, type CellBorderShape, type CellFrame, type CellUiPresentation, type SurfaceVariant, type WidgetCommand,
 } from "@chardesk/cell-ui";
 import {
   CellOverlayHost, CellPopover, CellSurface, CellToastViewport,
   DEFAULT_CELL_UI_METRICS, useCellSelectState, useCellToastState, type CellSurfaceProps,
 } from "@chardesk/cell-ui/browser";
-import { GallerySurface, useGalleryAppearance } from "../appearance";
+import { useGalleryAppearance } from "../appearance";
 import { ComponentPlayground } from "../component-playground";
 import {
   renderPlaygroundCheckboxControl, renderPlaygroundSelectControl,
@@ -170,22 +170,40 @@ export function MenuComponentDemo() {
 }
 
 export function ToastComponentDemo() {
+  const [presentation, setPresentation] = useState<CellUiPresentation>("rich");
+  const tone = useCellSelectState("component-toast-tone", (["neutral", "info", "success", "warning", "error"] as const)
+    .map((value) => ({ id: value, label: value })), { defaultSelectedId: "neutral" });
+  const variant = useCellSelectState("component-toast-variant", surfaceVariantItems, { defaultSelectedId: "surface" });
+  const frame = useCellSelectState("component-toast-frame", frameItems, { defaultSelectedId: "bordered" });
+  const borderShape = useCellSelectState("component-toast-border-shape", borderShapeItems, { defaultSelectedId: "square" });
+  const focus = usePlaygroundFocus("component-toast-trigger", [tone, variant, frame, borderShape]);
   const toast = useCellToastState();
   const onCommand = (command: WidgetCommand) => {
+    focus.dispatch(command);
     if (command.type !== "activate" || command.targetId !== "component-toast-trigger") return;
+    const toastRows = presentation === "text" || frame.selectedId === "bordered" ? 3 : 1;
     toast.push({ id: "component-toast-saved", durationMs: 3000,
       content: <HostedSurface label="Save notice" probeId="component-toast-notice"
-        viewport={{ width: 22, height: 2 }} onCommand={() => {}}>
-        <Root><Box variant="surface" frame="bordered" style={{ width: "100%" }}>
+        presentation={presentation} viewport={{ width: 24, height: toastRows }} onCommand={() => {}}>
+        <Root><Toast id="component-toast-content" tone={tone.selectedId as BadgeTone}
+          variant={variant.selectedId as SurfaceVariant} frame={frame.selectedId as CellFrame}
+          borderShape={borderShape.selectedId as CellBorderShape}>
           <Text>Saved to workspace</Text>
-        </Box></Root>
+        </Toast></Root>
       </HostedSurface> });
   };
   return <CellOverlayHost>
-    <GallerySurface label="Toast component" probeId="component-toast" viewport={{ width: 36, height: 4 }}
-      focusedId="component-toast-trigger" onCommand={onCommand}>
-      <Root><Button id="component-toast-trigger" label="Show toast"><Text>Save workspace</Text></Button></Root>
-    </GallerySurface>
+    <ComponentPlayground id="component-toast-playground" label="Toast component" probeId="component-toast"
+      focusedId={focus.focusedId} onCommand={onCommand} previewMinColumns={30} controlsColumns={28} rows={9}
+      presentation={presentation} onPresentationChange={setPresentation}
+      preview={<Button id="component-toast-trigger" label="Show toast"><Text>Save workspace</Text></Button>}
+      controls={[
+        renderPlaygroundSelectControl("tone", tone, focus.focusedId),
+        renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+        renderRichOnlySelectControl("frame", frame, focus.focusedId),
+        ...(frame.selectedId === "bordered"
+          ? [renderRichOnlySelectControl("border shape", borderShape, focus.focusedId)] : []),
+      ]} />
     <CellToastViewport state={toast} />
   </CellOverlayHost>;
 }

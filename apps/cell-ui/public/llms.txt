@@ -29,7 +29,6 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 - [ScrollArea](https://ui.chardesk.com/components/scroll-area.md): Scroll overflowing Cell content with keys, wheel, track, or thumb.
 - [Select](https://ui.chardesk.com/components/select.md): Choose one value from a Cell-anchored listbox.
 - [Separator](https://ui.chardesk.com/components/separator.md): Separate Cell content with one row or column.
-- [Sheet](https://ui.chardesk.com/components/sheet.md): Open a modal Cell panel from the viewport edge without replacing the work surface.
 - [Slider](https://ui.chardesk.com/components/slider.md): Select one stepped value or a bounded interval on a Cell-native track.
 - [Spinner](https://ui.chardesk.com/components/spinner.md): Show indeterminate activity in a single Unicode Cell, using a wheel or dots.
 - [Table](https://ui.chardesk.com/components/table.md): Display read-only rows on a Cell grid with lines or alternating backgrounds.
