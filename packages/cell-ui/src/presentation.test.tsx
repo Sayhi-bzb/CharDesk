@@ -21,6 +21,22 @@ it("switches the same runtime between interactive rich and Unicode text presenta
   runtime.dispose();
 });
 
+it("projects one command menu into rich and text without changing its semantic commands", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 20, height: 4 } });
+  const view = <Root><Box variant="surface" frame="bordered" style={{ width: 20 }}>
+    <Menu id="file" label="File"><MenuItem id="open" label="Open"><Text>Open</Text></MenuItem></Menu>
+  </Box></Root>;
+  const rich = runtime.render(view, { focusedId: "open" });
+  expect(rich.buffer.toText()).toContain("Open");
+  expect(rich.buffer.toText()).not.toContain("> Open");
+  runtime.setPresentation("text");
+  const text = runtime.render(view, { focusedId: "open" });
+  expect(text.buffer.toText()).toContain("> Open");
+  expect(text.buffer.get(0, 0)?.text).toBe("┌");
+  expect(text.semantics.nodes.get("open")).toEqual(rich.semantics.nodes.get("open"));
+  runtime.dispose();
+});
+
 it("uses text geometry for status, progress, table, and surface controls", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 30, height: 18 }, presentation: "text" });
   const frame = runtime.render(<Root>

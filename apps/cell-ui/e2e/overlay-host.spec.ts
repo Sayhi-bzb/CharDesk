@@ -24,7 +24,11 @@ test("browser overlay host coordinates separate Cell surfaces", async ({ page })
   await trigger.focus();
   await page.keyboard.press("Enter");
   await expect(popup.getByRole("menuitem", { name: "Choose menu item" })).toBeVisible();
-  expect((await popup.boundingBox())!.y).toBeGreaterThan((await trigger.boundingBox())!.y);
+  const popupMetrics = await readCellMetrics(page.locator('[data-cell-probe="host-menu-surface"]'));
+  const popupCanvas = popup.locator("canvas").first();
+  const topSurface = (await page.getByTestId("host-top-surface").boundingBox())!;
+  expect((await popupCanvas.boundingBox())!.y + popupMetrics.cellHeight)
+    .toBeCloseTo(topSurface.y + topSurface.height, 0);
   await page.keyboard.press("Escape");
   await expect(popup).toHaveCount(0);
   await expect(trigger).toBeFocused();
@@ -37,8 +41,8 @@ test("browser overlay host coordinates separate Cell surfaces", async ({ page })
   await page.setViewportSize({ width: 390, height: 700 });
   await trigger.press("Enter");
   await expect(popup).toBeVisible();
-  const narrow = (await popup.boundingBox())!;
-  expect(narrow.x + narrow.width).toBeLessThanOrEqual(390);
+  const narrow = (await popupCanvas.boundingBox())!;
+  expect(narrow.x + narrow.width - popupMetrics.cellWidth).toBeLessThanOrEqual(390);
 });
 
 test("context menu opens at a pointer anchor outside the top surface", async ({ page }) => {
@@ -68,6 +72,34 @@ test("nested menus dismiss from the top and return focus to their parent", async
   await page.keyboard.press("Escape");
   await expect(parent).toHaveCount(0);
   await expect(trigger).toBeFocused();
+});
+
+test("one outside click dismisses the full menu chain", async ({ page }) => {
+  await page.goto("/#/__fixtures/overlay-host");
+  const trigger = page.getByRole("button", { name: "Open host menu" });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("menuitem", { name: "Nested action" })).toBeVisible();
+  const viewport = page.viewportSize()!;
+  await page.mouse.click(viewport.width - 8, viewport.height - 8);
+  await expect(page.locator('[data-cell-overlay-portal=""]')).toHaveCount(0);
+});
+
+test("rapid submenu activation reaches the child item", async ({ page }) => {
+  await page.goto("/#/__fixtures/overlay-host");
+  const trigger = page.getByRole("button", { name: "Open host menu" });
+  const popup = page.locator('[data-cell-overlay-portal=""]');
+  for (let attempt = 0; attempt < 8; attempt++) {
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Enter");
+    await expect(popup).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  }
 });
 
 test("sheet and confirmation stay modal across separate surfaces", async ({ page }) => {
@@ -201,8 +233,8 @@ test("reorder preview cancels outside the list without changing item order", asy
   await expect(surface).not.toHaveAttribute("data-cell-manipulating", "true");
 });
 
-test("host guide is direct-loadable", async ({ page }) => {
+test("former host guide redirects to the integration contract", async ({ page }) => {
   await page.goto("/#/guides/host-overlays");
-  await expect(page.getByRole("heading", { name: "Host overlays", level: 1 })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Open host menu" })).toBeVisible();
+  await expect(page).toHaveURL(/#\/guides\/integration\?section=overlays$/);
+  await expect(page.getByRole("heading", { name: "Overlay host", level: 2 })).toBeVisible();
 });

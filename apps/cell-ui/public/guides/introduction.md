@@ -1,10 +1,10 @@
 # Introduction
 
-Build React interfaces from editable Unicode Cells. Own the source, compose a few good defaults, and let one frame serve people and agents.
+Build Cell-native React interfaces for people and agents. People use the visible UI; agents inspect its editable source and committed frame to revise and verify it.
 
 ## Why Cells?
 
-A border, a space, a label, and a cursor all occupy integer Cells. The same committed frame drives the visible Canvas, accessible controls, copyable Unicode, and headless tests. Cell UI ships as source you can change, with fewer built-in knobs to work around. Drag to select text; hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux, for a rectangular Cell Range. Copy preserves the selected Unicode, including border glyphs.
+Try Theme and Sound below. Their labels, controls, and pointer targets share integer Cell geometry, so the interface a person uses can also be inspected in a committed frame. Cell UI ships as source you can change, with fewer built-in knobs to work around. Drag to select visible Unicode; hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux, for a rectangular Cell Range.
 
 [Read the philosophy](https://ui.chardesk.com/#/guides/philosophy)
 

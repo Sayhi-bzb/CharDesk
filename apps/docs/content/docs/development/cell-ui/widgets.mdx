@@ -19,9 +19,9 @@ description: State, input, scroll, and editor behavior contracts.
 - `CellUiTheme` 是颜色与字符主题入口；`CellFeedbackConfig` 是反馈入口，classic 默认闪烁 2 次，instant 为 0 次。两者共享 hover、focus、press 规则。
 - `CellUiRecipe.defaultControlVariant` 只为 Button、Select、Combobox、TextInput 提供省略 `variant` 时的默认值；显式 `variant` 优先。Box、ScrollArea、TextArea、Overlay、Dialog 保留各自内建默认。浏览器 CSS adapter 从 `--cell-default-control-variant` 读取同一配置，headless 不依赖 CSS。
 - [公开主题用法](https://ui.chardesk.com/#/guides/theming)分别定义 variant 与 frame；后代状态消费最近的实际 surface substrate。背景不进入字符、语义或 Range Copy；边框会进入。
-- Select、Combobox 与 TextInput 使用共享的 `surface | ghost` recipe；默认 `surface` 使用 `elevatedSurfaceStyle`，`ghost` 透明。Select/Combobox Content 的 `frame` 独立控制下拉层边框。ComboboxInput 与 ghost TextInput 活动时保留背景；SelectTrigger 的 focus 与 press 沿用反色规则，disabled 保留 recipe 并使用禁用文字色。
+- Select、Combobox 与 TextInput 使用共享的 `surface | ghost` recipe；默认 `surface` 使用 `elevatedSurfaceStyle`，`ghost` 沿用最近父层底色，无父层时使用 `theme.background`。Select/Combobox Content 的 `frame` 独立控制下拉层边框。ComboboxInput 与 ghost TextInput 活动时保留背景；SelectTrigger 的 focus 与 press 沿用反色规则，disabled 保留 recipe 并使用禁用文字色。
 - `widget-capabilities.ts` 拥有能力表；状态投影与外观配方分离，painter 只绘制解析结果。局部 `textStyle` 不重定义状态语言；[底座契约](/development/cell-ui/primitives)拥有模块边界。
-- 统一控件的按压与高亮最多反色一次；确认阶段独占颜色，相对进入时的有效颜色对执行反色／恢复，disabled 拒绝全部临时强调。solid Button 使用 `buttonSolidStyle`，surface 使用 `elevatedSurfaceStyle` 与普通文字色，outline 保留字符边框，ghost 静止时透明。
+- 统一控件的按压与高亮最多反色一次；确认阶段独占颜色，相对进入时的有效颜色对执行反色／恢复，disabled 拒绝全部临时强调。solid Button 使用 `buttonSolidStyle`，surface 使用 `elevatedSurfaceStyle` 与普通文字色，outline 保留字符边框，ghost 静止时填充当前层底色。
 - 解析后的状态背景覆盖 Widget 完整布局矩形，包括空白 Cell；透明状态不填充。
 - `inline-control-chrome.ts` 统一行内 spacing recipe：Button、Badge 与 TextInput 默认左右各留 1 个 content Cell，Button/Badge 可通过 `style.paddingLeft/Right` 覆盖；Checkbox、RadioItem、Toggle、Select 与 Combobox 提供固定 guard、状态标记和间隔；guard 是 owner-aware 空 Cell。border、collection disclosure、Tab underline 和 scrollbar 保持独立 chrome 职责。
 - Badge 默认是只读状态文字；`interactive` 才加入共享焦点、按压、确认和 `activate` 命令。`tone` 从主题的成对前景／背景色中取值，文字和语义不依赖颜色；不自动作为 live region 播报。
@@ -29,7 +29,7 @@ description: State, input, scroll, and editor behavior contracts.
 
 ## 双呈现
 
-`presentation` 在 CellSurface／Runtime 级别选择，默认 `rich`；切换不改变值、焦点、命令或语义。`text` 仍消费共享 hover、focus、press、blink 和编辑光标，不等于无样式快照。Button 使用 `[ Label ]`；Alert、Dialog、Tooltip、TextArea、Select 弹层、Table 和 `surface` Box／ScrollArea 用方角字符边框；Progress 使用 `[//--]`；Tabs 使用 `⎺`。TextArea 省略 `variant`／`frame` 时，Rich 为无框 surface，Text 保留同一底色并使用方角字符边框；显式 `variant` 仍决定底色，Rich 的显式 `frame`／`borderShape` 决定边框，Text 始终使用方角字符框。Select／Combobox、List／Menu／Tree／Grid 的 `>` 表示当前导航项，`✓` 表示已提交或持久选中。其余字符原生组件沿用现有 glyph。显式边框不叠加第二层；`ghost` Box／ScrollArea 保持纯布局。公开 `variant` 保持兼容，text 字符配方优先于纯视觉 variant；旧 Button `outline` 在 rich 中继续可用。
+`presentation` 在 CellSurface／Runtime 级别选择，默认 `rich`；切换不改变值、焦点、命令或语义。`text` 仍消费共享 hover、focus、press、blink 和编辑光标，不等于无样式快照。Button 使用 `[ Label ]`；Alert、Dialog、Tooltip、TextArea、Select 弹层、Table 和 `surface` Box／ScrollArea 用方角字符边框；Progress 使用 `[//--]`；Tabs 使用 `⎺`。TextArea 省略 `variant`／`frame` 时，Rich 为无框 surface，Text 保留同一底色并使用方角字符边框；显式 `variant` 仍决定底色，Rich 的显式 `frame`／`borderShape` 决定边框，Text 始终使用方角字符框。Select／Combobox、List／Menu／Tree／Grid 的 `>` 表示当前导航项，`✓` 表示已提交或持久选中。其余字符原生组件沿用现有 glyph。显式边框不叠加第二层；`ghost` Box／ScrollArea 填充当前层底色。公开 `variant` 保持兼容，text 字符配方优先于纯视觉 variant；旧 Button `outline` 在 rich 中继续可用。
 
 组件 Playground 独立切换呈现。Config 在 `text` 下隐藏被固定字符配方覆盖的外观项，保留仍影响颜色或字符的选项（包括 `surface/ghost`）；隐藏项的 Rich 选择不丢失，切回 Rich 后恢复。配置弹层若在切换时失效会关闭，焦点回到 presentation 控件。
 
@@ -42,7 +42,7 @@ description: State, input, scroll, and editor behavior contracts.
 | Root / Box / Text | Root 只建立画布；Box 用背景 variant 和独立 frame 表达边界；Text 提供字符 | 不产生独立 command；Text 与边框字符可被 Cell Range 复制 |
 | Alert / Title / Description | 页面内持久提示，`info/success/warning/error` 复用状态色与单 Cell 标记；`border="none" | "square" | "rounded"` 独立控制边框，默认 `none`，有边框时使用对应状态的前景色；窄宽度下可选 Button 换行 | 本体不接收焦点、不自动关闭；info/success 为 `status`，warning/error 为 `alert`；可选 Button 沿用普通 `activate` command |
 | Overlay | root layer、clip，默认 Elevated | Escape/outside down dismiss；modal `dialog` |
-| Dialog / Title / Description / Footer | 复用 Overlay，默认居中、36 Cell 宽；`surface` 使用 elevated surface token，`ghost` 使用 base surface token，弹窗均不透明；`border="none" | "square" | "rounded"` 独立控制边框，省略时沿用主题形状；Title/Description 保留字符，Footer 只排列按钮 | 条件挂载；modal/outside-click 默认开启；初始焦点、模态 Tab 循环、Escape 与恢复焦点由共享底座拥有 |
+| Dialog / Title / Description / Footer | 复用 Overlay，默认居中、36 Cell 宽；`surface` 使用 elevated surface token，`ghost` 使用当前层底色，弹窗均不透明；`border="none" | "square" | "rounded"` 独立控制边框，省略时沿用主题形状；Title/Description 保留字符，Footer 只排列按钮 | 条件挂载；modal/outside-click 默认开启；初始焦点、模态 Tab 循环、Escape 与恢复焦点由共享底座拥有 |
 | Button | 单行填充矩形；默认左右各 1 Cell，`style.paddingLeft/Right` 可分别覆盖 | 全局 focus traversal；完整 tap、Enter、Space 或 AT 激活 |
 | Badge | 单行内容宽度，文字左右各 1 Cell；`neutral/info/success/warning/error` 由主题着色，无边框字符 | 默认只读、无焦点和动作；`interactive` 要求稳定 `id`，成为 button 并沿用完整 tap、Enter、Space、AT 激活；disabled 不激活 |
 | Accordion / Item / Trigger / Content | `▸` / `▾` 显示展开状态；标题消费共享反色与 press，无确认闪烁 | 多项独立展开；tap、Enter、Space 输出 Item 的 `set-expanded`；上下/Home/End 在同组可用标题间导航，不循环 |
@@ -85,7 +85,7 @@ Button、Badge、Checkbox、Toggle、RadioItem、Select Trigger／Item、Combobo
 
 ## 编辑视口与 Canvas 边界
 
-- `CellSurface.viewport` 始终表示逻辑内容区；浏览器 Canvas 四周额外保留 1 Cell 绘制 guard。guard 不进入 Cell buffer、Probe 文本或复制结果；基础层、浮层、光标、隐藏 textarea 和 pointer 坐标共用同一 guard 偏移。字形仍可跨 Cell 绘制，物理画布边界不裁掉内容区首尾 Cell 的墨迹。
+- `CellSurface.viewport` 始终表示逻辑内容区；浏览器 Canvas 四周额外保留 1 Cell 绘制 guard。guard 不进入 Cell buffer、Probe 文本或复制结果；基础层、浮层、光标、隐藏 textarea 和 pointer 坐标共用同一 guard 偏移。hosted Surface 的 guard 透明，浮层以可见 Cell 边界定位、贴合和判断外部点击；字形仍可跨 Cell 绘制，物理画布边界不裁掉内容区首尾 Cell 的墨迹。
 - TextArea 可显示双轴 rail；TextInput 与 ComboboxInput 固定为 1 Cell 高且隐藏 rail，但保留横向 offset。编辑器和 ScrollArea 共用 scroll geometry，不复制 offset state。
 - 文本 layout、clip、Cursor、selection、hit 与隐藏 textarea 定位消费同一个 Scene viewport；手动 scroll 不修改 document/history。
 - Cell Range 修饰键优先于文本 selection gesture；只读编辑器可滚动，disabled 不新增交互。

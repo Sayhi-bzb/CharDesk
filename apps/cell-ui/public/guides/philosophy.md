@@ -1,6 +1,6 @@
 # Philosophy
 
-UI as Text is the goal: structure, meaningful state, and available actions should be understandable from text without relying on color or source code. Three Cell-native principles support it.
+UI as Text is the goal: people should understand and use the visible Cells, while agents inspect source, frame, and semantics to revise the interface. No single projection carries every detail. Three Cell-native principles support this shared medium.
 
 ## Everything is Cell
 

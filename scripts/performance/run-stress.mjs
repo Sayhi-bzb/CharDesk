@@ -44,6 +44,7 @@ const preview = spawn(
   [
     "./node_modules/vite/bin/vite.js",
     "preview",
+    "--config", "apps/canvas/vite.config.ts",
     "--host",
     HOST,
     "--port",
@@ -73,7 +74,7 @@ try {
     "./node_modules/@playwright/test/cli.js",
     "test",
     "-c",
-    "e2e/playwright.stress.config.ts",
+    "apps/canvas/e2e/playwright.stress.config.ts",
     ...(process.env.CANVAS_STRESS_GREP
       ? ["--grep", process.env.CANVAS_STRESS_GREP]
       : []),

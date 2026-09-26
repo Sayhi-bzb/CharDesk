@@ -2,7 +2,12 @@
   color-scheme: light;
   font-family: "Fusion Mono", ui-monospace, monospace;
   background: #fff;
-  color: #111;
+  color: #000;
+}
+:root[data-site-theme="dark"] {
+  color-scheme: dark;
+  background: #000;
+  color: #fff;
 }
 
 * { box-sizing: border-box; }
@@ -19,14 +24,26 @@ body { margin: 0; min-width: 320px; }
 
 .site-surface { max-width: 100%; }
 
-.site-fallback {
-  width: 100%;
-  padding: 48px 0;
-  line-height: 1.5;
+.site-startup-window {
+  width: min(100%, 360px);
+  background: inherit;
 }
-.site-fallback h1 { font-size: clamp(28px, 6vw, 48px); line-height: 1.15; }
-.site-fallback nav { display: flex; flex-wrap: wrap; gap: 24px; margin: 32px 0; }
-.site-fallback a { color: inherit; }
+.site-startup-title {
+  padding: 7px 12px;
+  text-align: center;
+  font-weight: 700;
+}
+.site-startup-body { padding: 20px; text-align: center; }
+.site-startup-body img { display: block; margin: 0 auto 16px; image-rendering: pixelated; }
+.site-startup-body p { margin: 0; }
+.site-startup-body h1 { margin: 0 0 20px; font-size: 16px; line-height: 1.5; }
+.site-startup-links { display: grid; gap: 8px; margin-top: 20px; text-align: left; }
+.site-startup-links a { color: inherit; }
+.site-loading { display: none; }
+.site-loading-links { display: none; }
+.site-js .site-loading { display: block; }
+.site-js .site-fallback { display: none; }
+.site-js.site-slow .site-loading-links { display: grid; }
 
 @media (max-width: 600px) {
   .site-shell { align-content: start; padding-top: 48px; }

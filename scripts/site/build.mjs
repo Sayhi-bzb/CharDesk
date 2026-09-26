@@ -4,30 +4,30 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const canvas = path.join(root, "dist");
-const site = path.join(root, "dist-site");
+const canvas = path.join(root, "apps/canvas/dist");
+const site = path.join(root, "apps/site/dist");
 const source = path.join(root, "apps/site");
 const builtHome = path.join(root, ".tmp/site");
 
 await access(path.join(canvas, "index.html"));
-await access(path.join(canvas, "docs/index.html"));
-await access(path.join(canvas, "chargraph/index.html"));
+await access(path.join(root, "apps/docs/build/client/docs/index.html"));
+await access(path.join(root, "apps/chargraph/dist/index.html"));
 execFileSync(process.execPath, [path.join(root, "node_modules/vite/bin/vite.js"), "build", "--config", path.join(source, "vite.config.ts")], {
   cwd: root,
   stdio: "inherit",
 });
 await rm(site, { recursive: true, force: true });
 await mkdir(site, { recursive: true });
-for (const name of ["docs", "chargraph", "assets", "fonts", "showcase", "data", "startup.css", "_headers", "_routes.json"]) {
+for (const name of ["assets", "fonts", "data", "startup.css", "_headers"]) {
   await cp(path.join(canvas, name), path.join(site, name), { recursive: true, force: true }).catch((error) => {
     if (error.code !== "ENOENT") throw error;
   });
 }
-for (const name of ["icon.svg", "robots.txt", "sitemap.xml"]) {
-  await cp(path.join(root, "public", name), path.join(site, name));
-}
-for (const name of ["index.html", "assets"]) {
-  await cp(path.join(builtHome, name), path.join(site, name), { recursive: true });
+await cp(builtHome, site, { recursive: true });
+for (const name of ["docs", "chargraph"]) {
+  execFileSync(process.execPath, [path.join(root, `scripts/${name}/merge-build.mjs`)], {
+    cwd: root, stdio: "inherit",
+  });
 }
 for (const name of ["site.js", "_redirects"]) {
   await cp(path.join(source, name), path.join(site, name));

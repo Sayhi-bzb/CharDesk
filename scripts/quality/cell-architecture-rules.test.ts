@@ -38,7 +38,7 @@ describe("Cell architecture rules", () => {
     expect(messages('import type { X } from "@chardesk/rendering/canvas";',
       "packages/cell-ui/src/frame.ts")[0]).toContain("rendering root");
     expect(messages('import { x } from "@chardesk/cell-ui";',
-      "src/widgets/canvas-editor/rendering/canvasCellFrame.ts")[0]).toContain(
+      "apps/canvas/src/widgets/canvas-editor/rendering/canvasCellFrame.ts")[0]).toContain(
       "must not depend"
     );
   });
@@ -50,9 +50,9 @@ describe("Cell architecture rules", () => {
 
   it("routes metrics, built-in Profiles, and range geometry to one owner", () => {
     expect(messages('import { x } from "@/shared/metrics";',
-      "src/widgets/example.ts")[0]).toContain("Cell primitives");
+      "apps/canvas/src/widgets/example.ts")[0]).toContain("Cell primitives");
     expect(messages('import { x } from "../shared/metrics/gridGeometry";',
-      "src/example.ts")[0]).toContain("Cell primitives");
+      "apps/canvas/src/example.ts")[0]).toContain("Cell primitives");
     expect(messages("createCharDeskFontProfile({});",
       "apps/cell-ui/src/font-options.ts")[0]).toContain("font Profiles");
     expect(messages("export const range = {};",
@@ -66,77 +66,77 @@ describe("Cell architecture rules", () => {
   it("keeps the input session independent from Cell content", () => {
     expect(messages(
       'import type { GridCellSource } from "@/shared/types";',
-      "src/domains/selection/model/static-grid-input-session.ts"
+      "apps/canvas/src/domains/selection/model/static-grid-input-session.ts"
     )[0]).toContain("must not infer");
     expect(messages(
       "export const getLineOriginX = () => 0;",
-      "src/shared/example.ts"
+      "apps/canvas/src/shared/example.ts"
     )[0]).toContain("Retired inferred input-flow");
   });
 
   it("keeps Cell deletion behind one directional contract", () => {
     expect(messages(
       "export const deleteTextForward = () => undefined;",
-      "src/example.ts"
+      "apps/canvas/src/example.ts"
     )[0]).toContain("Retired split deletion contract");
   });
 
   it("keeps static-grid interaction in one discriminated state", () => {
     expect(messages(
       "export const cursor = interaction.textCursor;",
-      "src/example.ts"
+      "apps/canvas/src/example.ts"
     )[0]).toContain("Retired split static-grid state contract");
     expect(messages(
       "export const setTextCursor = () => undefined;",
-      "src/example.ts"
+      "apps/canvas/src/example.ts"
     )[0]).toContain("Retired split static-grid state contract");
   });
 
   it("keeps text mutations out of the Store command surface", () => {
     expect(messages(
       "export const createTextSlice = () => undefined;",
-      "src/example.ts"
+      "apps/canvas/src/example.ts"
     )[0]).toContain("Retired text Store command contract");
     expect(messages(
       "store.getState().writeTextString(value);",
-      "src/example.ts"
+      "apps/canvas/src/example.ts"
     )[0]).toContain("Text mutations must enter through CanvasCommands");
   });
 
   it("keeps Canvas mutation commands behind the coordinated state port", () => {
     expect(messages(
       'import type { StoreApi } from "zustand";',
-      "src/domains/canvas/state/canvasTextCommands.ts"
+      "apps/canvas/src/domains/canvas/state/canvasTextCommands.ts"
     )[0]).toContain("coordinated state port");
     expect(messages(
       'import { CanvasStateCommitCoordinator } from "./CanvasStateCommitCoordinator";',
-      "src/domains/canvas/state/canvasDocumentCommands.ts"
+      "apps/canvas/src/domains/canvas/state/canvasDocumentCommands.ts"
     )).toEqual([]);
     expect(messages(
       'import type { StoreApi } from "zustand";',
-      "src/domains/canvas/state/canvasSessionCommands.ts"
+      "apps/canvas/src/domains/canvas/state/canvasSessionCommands.ts"
     )[0]).toContain("coordinated state port");
   });
 
   it("keeps session and slide lifecycle commands out of Store slices", () => {
     expect(messages(
       "export const createSessionSlice = () => undefined;",
-      "src/example.ts"
+      "apps/canvas/src/example.ts"
     )[0]).toContain("Retired lifecycle Store command contract");
     expect(messages(
       "export interface SlideSlice {}",
-      "src/example.ts"
+      "apps/canvas/src/example.ts"
     )[0]).toContain("Retired lifecycle Store command contract");
   });
 
   it("keeps Canvas clearing out of the Store command surface", () => {
     expect(messages(
       "export const createDrawingSlice = () => undefined;",
-      "src/example.ts"
+      "apps/canvas/src/example.ts"
     )[0]).toContain("Retired drawing Store command contract");
     expect(messages(
       "store.getState().clearCanvas();",
-      "src/example.ts"
+      "apps/canvas/src/example.ts"
     )[0]).toContain("Canvas clearing must enter through CanvasCommands");
   });
 

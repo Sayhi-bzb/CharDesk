@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-const SRC_ROOT = path.resolve("src");
+const SRC_ROOT = path.resolve("apps/canvas/src");
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx"]);
 const SKIPPED_DIRECTORIES = new Set(["__tests__", "test"]);
 const FORBIDDEN_SHARED_DOMAIN_NAME = /^Structured/;

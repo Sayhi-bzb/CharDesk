@@ -216,12 +216,12 @@ export function GallerySurface(props: CellSurfaceProps) {
       label: props.label ?? id,
       root: props.children,
       viewport: props.viewport,
-      overlayViewport: props.overlayViewport ?? props.viewport,
       presentation: props.presentation ?? "rich",
       focusedId: props.focusedId ?? null,
       onCommand: props.onCommand,
+      onHoverChange: props.onHoverChange,
     });
-  }, [register, props.children, props.focusedId, props.label, props.onCommand, props.overlayViewport, props.presentation,
+  }, [register, props.children, props.focusedId, props.label, props.onCommand, props.onHoverChange, props.presentation,
     props.probeId, props.viewport]);
   useLayoutEffect(() => {
     if (!register || !props.probeId) return;

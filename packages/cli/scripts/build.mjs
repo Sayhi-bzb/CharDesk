@@ -12,21 +12,25 @@ execFileSync("tsc", ["-p", "tsconfig.json"], {
 const repositoryRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const runtimeRoot = fileURLToPath(new URL("../dist/runtime", import.meta.url));
 await build({
-  configFile: fileURLToPath(new URL("../../../vite.config.ts", import.meta.url)),
-  root: repositoryRoot,
+  configFile: fileURLToPath(new URL("../../../apps/canvas/vite.config.ts", import.meta.url)),
+  root: fileURLToPath(new URL("../../../apps/canvas", import.meta.url)),
   publicDir: false,
   base: "./",
   build: {
     outDir: runtimeRoot,
     emptyOutDir: true,
     rollupOptions: {
-      input: fileURLToPath(new URL("../../../index.html", import.meta.url)),
+    input: fileURLToPath(new URL("../../../apps/canvas/index.html", import.meta.url)),
     },
   },
 });
 await copyFile(
-  new URL("../../../public/icon.svg", import.meta.url),
+  new URL("../../../apps/canvas/public/icon.svg", import.meta.url),
   new URL("../dist/runtime/icon.svg", import.meta.url),
+);
+await copyFile(
+  new URL("../../../apps/canvas/public/startup.css", import.meta.url),
+  new URL("../dist/runtime/startup.css", import.meta.url),
 );
 
 const external = [

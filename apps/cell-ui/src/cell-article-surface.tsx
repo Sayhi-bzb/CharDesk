@@ -15,10 +15,11 @@ type ArticleSurfaceProps = Readonly<{
   onWidthChange?: (width: number) => void;
   focusedId: string | null;
   onCommand: (command: WidgetCommand) => void;
+  onHoverChange?: (targetId: string | null) => void;
 }>;
 
 export function CellArticleSurface({ label, probeId, content, anchorIds, anchorTargets, regionIds = [],
-  regionsRef, onWidthChange, focusedId, onCommand }: ArticleSurfaceProps) {
+  regionsRef, onWidthChange, focusedId, onCommand, onHoverChange }: ArticleSurfaceProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(72);
   useLayoutEffect(() => {
@@ -59,7 +60,8 @@ export function CellArticleSurface({ label, probeId, content, anchorIds, anchorT
     {anchorIds.map((id) => <span key={id} id={id} className="cell-article-anchor" aria-hidden="true"
       style={{ top: (measured.anchors[id]! + CELL_SURFACE_GUARD_CELLS) * DEFAULT_CELL_UI_METRICS.cellHeight }} />)}
     <GallerySurface label={label} probeId={probeId} linearSelection
-      viewport={{ width, height: measured.height }} focusedId={focusedId} onCommand={onCommand}>
+      viewport={{ width, height: measured.height }} focusedId={focusedId}
+      onCommand={onCommand} onHoverChange={onHoverChange}>
       {content}
     </GallerySurface>
   </div>;

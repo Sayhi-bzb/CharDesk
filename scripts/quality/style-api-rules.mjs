@@ -21,16 +21,19 @@ const literalAttribute = (node, name) => {
     : undefined;
 };
 const isHiddenFileInput = (node, relFile) =>
-  relFile === "src/widgets/session-tabs/CanvasBreadcrumb.tsx" &&
+  relFile === "apps/canvas/src/widgets/session-tabs/CanvasBreadcrumb.tsx" &&
   literalAttribute(node, "type") === "file" &&
   literalAttribute(node, "className")?.split(/\s+/).includes("sr-only") &&
   literalAttribute(node, "aria-hidden") === "true";
 const isManagedCanvasTextarea = (node, relFile) =>
-  relFile === "src/widgets/canvas-editor/CanvasSurface.tsx" &&
+  relFile === "apps/canvas/src/widgets/canvas-editor/CanvasSurface.tsx" &&
   literalAttribute(node, "data-canvas-managed-input") === "true";
+const isModuleLoadFailureButton = (node, relFile) =>
+  relFile === "apps/canvas/src/app/StartupScreens.tsx" &&
+  literalAttribute(node, "className") === "startup-action";
 
 export function checkHostArchitecture(content, relFile) {
-  if (!/^src\/(?:app|widgets|shared|domains)\//.test(relFile)) return [];
+  if (!/^apps\/canvas\/src\/(?:app|widgets|shared|domains)\//.test(relFile)) return [];
   if (/\.(?:test|spec)\.[^.]+$/.test(relFile)) return [];
 
   const sourceFile = ts.createSourceFile(
@@ -48,7 +51,7 @@ export function checkHostArchitecture(content, relFile) {
     if (forbidden) report(`Host must consume ${forbidden.owner} through @chardesk/ui`, node);
     if (
       (specifier === "driver.js" || specifier.startsWith("driver.js/")) &&
-      relFile !== "src/widgets/onboarding/driver-adapter.ts"
+      relFile !== "apps/canvas/src/widgets/onboarding/driver-adapter.ts"
     ) {
       report("Driver.js is confined to the onboarding adapter", node);
     }
@@ -78,7 +81,7 @@ export function checkHostArchitecture(content, relFile) {
     }
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
-      if (tagName === "button") {
+      if (tagName === "button" && !isModuleLoadFailureButton(node, relFile)) {
         report("Host must use shared interactive primitives instead of raw buttons", node);
       }
       if (tagName === "input" && !isHiddenFileInput(node, relFile)) {

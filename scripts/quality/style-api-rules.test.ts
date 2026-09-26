@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error JavaScript rule module intentionally runs in Node.
 import { checkHostArchitecture } from "./style-api-rules.mjs";
 
-const checks = (source: string, file = "src/widgets/example.tsx") =>
+const checks = (source: string, file = "apps/canvas/src/widgets/example.tsx") =>
   checkHostArchitecture(source, file).map((violation: { check: string }) => violation.check);
 
 describe("Host style architecture rules", () => {
@@ -17,7 +17,7 @@ describe("Host style architecture rules", () => {
     expect(checks('const driver = import("driver.js");')[0]).toContain("onboarding adapter");
     expect(checks(
       'const driver = import("driver.js");',
-      "src/widgets/onboarding/driver-adapter.ts"
+      "apps/canvas/src/widgets/onboarding/driver-adapter.ts"
     )).toEqual([]);
   });
 
@@ -31,11 +31,11 @@ describe("Host style architecture rules", () => {
     expect(checks('export const X = () => <input type="checkbox" />')).toHaveLength(1);
     expect(checks(
       'export const X = () => <input type="file" className="sr-only" aria-hidden="true" />',
-      "src/widgets/session-tabs/CanvasBreadcrumb.tsx"
+      "apps/canvas/src/widgets/session-tabs/CanvasBreadcrumb.tsx"
     )).toEqual([]);
     expect(checks(
       'export const X = () => <textarea data-canvas-managed-input="true" />',
-      "src/widgets/canvas-editor/CanvasSurface.tsx"
+      "apps/canvas/src/widgets/canvas-editor/CanvasSurface.tsx"
     )).toEqual([]);
   });
 });

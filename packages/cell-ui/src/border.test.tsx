@@ -32,7 +32,7 @@ it("preserves ghost and surface backgrounds independently of frame geometry", ()
     .toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
   expect(frame.layout.entries.get("bordered")?.borderInsets)
     .toEqual({ top: 1, right: 1, bottom: 1, left: 1 });
-  expect(frame.buffer.get(1, 1)?.style.backgroundColor).toBeUndefined();
+  expect(frame.buffer.get(1, 1)?.style.backgroundColor).toBe("#FFFFFF");
   expect(frame.buffer.get(5, 1)?.style.backgroundColor).toBe("#E6E6E6");
   expect(frame.buffer.toText({ trimEnd: true })).toBe("P   R   ┌──┐\n        │B │\n        └──┘");
   runtime.dispose();
@@ -45,7 +45,7 @@ it("combines each surface variant with and without a border", () => {
       for (const frame of ["none", "bordered"] as CellFrame[]) {
         const result = runtime.render(<Root><Box id="block" variant={variant} frame={frame}
           style={{ width: 6, height: 3 }}><Text>B</Text></Box></Root>);
-        const expectedBackground = variant === "ghost" ? undefined
+        const expectedBackground = variant === "ghost" ? theme.background
           : theme.elevatedSurfaceStyle.backgroundColor;
         expect(result.layout.entries.get("block")?.borderInsets).toEqual({
           top: frame === "bordered" ? 1 : 0,
@@ -59,6 +59,17 @@ it("combines each surface variant with and without a border", () => {
     }
     runtime.dispose();
   }
+});
+
+it("fills the entire ghost TextArea viewport, including empty Cells", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 12, height: 4 } });
+  const editor = new CellTextEditor({ value: "Note" });
+  const result = runtime.render(<Root><TextArea id="notes" variant="ghost"
+    state={editor.snapshot()} style={{ width: 12, height: 4 }} /></Root>);
+  const bounds = result.scene.entries.get("notes")!.layoutBounds;
+  expect(result.buffer.get(bounds.x + bounds.width - 1, bounds.y + bounds.height - 1)?.style.backgroundColor)
+    .toBe(CLASSIC_MAC_LIGHT_THEME.background);
+  runtime.dispose();
 });
 
 it("uses surface Overlay and surface plus bordered Dialog defaults", () => {

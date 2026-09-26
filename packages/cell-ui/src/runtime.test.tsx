@@ -88,7 +88,7 @@ describe("CellUiRuntime", () => {
       activeFocusId: "new",
       focusVisible: false,
     });
-    expect(movedAway.buffer.get(29, 0)?.style.backgroundColor).toBeUndefined();
+    expect(movedAway.buffer.get(29, 0)?.style.backgroundColor).toBe("#FFFFFF");
     expect(movedAway.semantics.focusedId).toBe("new");
     runtime.dispose();
   });
@@ -103,7 +103,7 @@ describe("CellUiRuntime", () => {
     expect(hovered.buffer.get(29, 0)?.style.backgroundColor).toBe("#000000");
     expect(hovered.buffer.get(0, 0)?.style.bold).not.toBe(true);
     const cleared = runtime.render(fileList());
-    expect(cleared.buffer.get(29, 0)?.style.backgroundColor).toBeUndefined();
+    expect(cleared.buffer.get(29, 0)?.style.backgroundColor).toBe("#FFFFFF");
     runtime.dispose();
   });
   it("composes nested surface backgrounds without inheriting foreground or leaving Overlay residue", () => {
@@ -473,7 +473,8 @@ describe("CellUiRuntime", () => {
       contentClip: { x: 3, y: 2, width: 7, height: 1 },
     });
     expect(frame.buffer.get(3, 2)?.text).toBe("A");
-    expect(frame.buffer.get(1, 1)).toMatchObject({ text: " ", ownerId: null });
+    expect(frame.buffer.get(1, 1)).toMatchObject({ text: " ", ownerId: "padded",
+      style: { backgroundColor: "#FFFFFF" } });
     runtime.dispose();
   });
 

@@ -1,4 +1,5 @@
 import { CELL_SURFACE_GUARD_CELLS, CellPresentationRegistry } from "./browser-presentation.js";
+import { registerCellSurfaceGeometry } from "./browser-surface-geometry.js";
 export { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
 export { CellOverlayHost, CellOverlayPortal, CellPopover, CellContextMenu, CellSheet, CellAlertDialog, positionCellOverlay } from "./browser-overlay-host.js";
 export type { CellOverlayDismissReason, CellOverlayPlacement } from "./browser-overlay-host.js";
@@ -85,6 +86,7 @@ import { paintReorderPreview, type ReorderDrag } from "./reorder-preview.js";
 import { textViewportCommands } from "./text-viewport.js";
 import { scrollViewportCommands } from "./scroll.js";
 import { usePointerAppearance } from "./browser-hover.js";
+import { pressTargetAtPoint } from "./press.js";
 import { CellCursorPresenter } from "./browser-cursor.js";
 import { isDescendantOf, sameWidgetValue } from "./tree.js";
 import { INDETERMINATE_PROGRESS_STEP_MS } from "./progress.js";
@@ -334,6 +336,7 @@ const presentFrame = (
     buffer?: CellBuffer;
     viewport?: CellRect;
     transparent?: boolean;
+    transparentGuard?: boolean;
   }> = {}
 ): void => {
   const context = canvas.getContext("2d");
@@ -351,7 +354,9 @@ const presentFrame = (
   prepareCharDeskCanvasSurface(canvas, context, width, height, dpr);
   if (!plane.transparent) {
     context.fillStyle = palette.background;
-    context.fillRect(0, 0, width, height);
+    if (plane.transparentGuard) context.fillRect(guardX, guardY,
+      buffer.width * metrics.cellWidth, buffer.height * metrics.cellHeight);
+    else context.fillRect(0, 0, width, height);
   }
   context.translate(guardX, guardY);
   presentCharDeskCellFrame(
@@ -387,6 +392,7 @@ const presentFrameWithCursor = (
   theme: CellUiTheme,
   fontProfile?: CharDeskFontProfile,
   reorderDrag?: ReorderDrag | null,
+  transparentGuard = false,
 ) => {
   const reorderBuffer = reorderDrag ? paintReorderPreview(frame, reorderDrag, theme) : null;
   cursor.beforeBasePresent();
@@ -399,7 +405,7 @@ const presentFrameWithCursor = (
     rangePhase,
     theme,
     fontProfile,
-    { buffer: reorderBuffer ?? frame.baseBuffer, viewport: frame.scene.viewport }
+    { buffer: reorderBuffer ?? frame.baseBuffer, viewport: frame.scene.viewport, transparentGuard }
   );
   if (!cellRange) {
     cursor.afterBasePresent({
@@ -565,6 +571,7 @@ export type CellSurfaceProps = Readonly<{
   probeId?: string;
   fontAudit?: boolean;
   onCommand: (command: WidgetCommand) => void;
+  onHoverChange?: (targetId: WidgetId | null) => void;
   linearSelection?: boolean;
   cellRange?: CellRangeSnapshot | null;
   onCellRangeCommand?: (command: CellRangeCommand) => void;
@@ -747,6 +754,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     probeId,
     fontAudit: auditFonts = false,
     onCommand,
+    onHoverChange,
     linearSelection = false,
     cellRange: controlledCellRange,
     onCellRangeCommand,
@@ -777,6 +785,9 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     onCellRangeCommand?.(command);
   }, [dispatchInternalCellRange, onCellRangeCommand, rangeControlled]);
   const [canvasRef] = useState(() => new CellPresentationRegistry());
+  const registerHitRegion = useCallback((element: HTMLDivElement | null) => {
+    canvasRef.setHitRegion(element);
+  }, [canvasRef]);
   const cursorPresenterRef = useRef<CellCursorPresenter | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const pointerFocusRequestRef = useRef(false);
@@ -789,6 +800,29 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   };
   const runtimeRef = useRef<CellUiRuntime | null>(null);
   const frameRef = useRef<FrameSnapshot | null>(null);
+  useLayoutEffect(() => {
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const rectFor = (bounds: CellRect): DOMRect | null => {
+      const canvas = canvasRef.current;
+      if (!canvas) return null;
+      const origin = canvas.getBoundingClientRect();
+      return new DOMRect(
+        origin.left + (bounds.x + CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth,
+        origin.top + (bounds.y + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight,
+        bounds.width * metrics.cellWidth,
+        bounds.height * metrics.cellHeight,
+      );
+    };
+    return registerCellSurfaceGeometry(surface, {
+      contentRect: () => rectFor({ x: 0, y: 0, ...viewport }),
+      targetRect: (id) => {
+        const entry = frameRef.current?.scene.entries.get(id);
+        return entry?.paintVisible ? rectFor(entry.layoutBounds) : null;
+      },
+    });
+  }, [canvasRef, metrics, viewport]);
+  const hostedSurface = () => !!surfaceRef.current?.closest("[data-cell-overlay-portal],[data-cell-toast]");
   const presentationMetricsRef = useRef(metrics);
   const [controller] = useState(() => new CellInteractionController(
     () => {
@@ -928,6 +962,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const hoveredId = activationFeedbackRef.current.settling
     ? null
     : pointerAppearance.hoveredId;
+  const onHoverChangeRef = useRef(onHoverChange);
+  onHoverChangeRef.current = onHoverChange;
+  useEffect(() => {
+    if (inputModality === "pointer") onHoverChangeRef.current?.(hoveredId);
+  }, [hoveredId, inputModality]);
   const availableTooltipTargets = new Set(
     [...(frame?.tree.nodes.values() ?? [])].flatMap((node) =>
       node.kind === "tooltip" && node.tooltipTargetId ? [node.tooltipTargetId] : []),
@@ -1190,6 +1229,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       resolvedTheme,
       fontProfile,
       reorderDrag,
+      hostedSurface(),
     );
     let allPlanesPresented = true;
     for (const plane of frame.overlayPlanes) {
@@ -1212,6 +1252,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       );
     }
     presentationMetricsRef.current = metrics;
+    surfaceRef.current?.dispatchEvent(new Event("cell-surface-geometry-change", { bubbles: true }));
     if (allPlanesPresented) controller.presented(frame.confirmation);
   }, [controller, canvasRef, cellRange, fontProfile, frame, metrics, palette, reorderDrag, resolvedTheme, stopLinearScroll, syncManipulatingIds]);
 
@@ -1235,6 +1276,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           resolvedTheme,
           fontProfile,
           reorderDragRef.current,
+          hostedSurface(),
         );
         for (const plane of current.overlayPlanes) {
           const overlayCanvas = canvasRef.overlay(plane.rootId);
@@ -1385,7 +1427,9 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         resolvedTheme,
         fontProfile,
         reorderDragRef.current,
+        hostedSurface(),
       );
+      surfaceRef.current?.dispatchEvent(new Event("cell-surface-geometry-change", { bubbles: true }));
     });
     observer.observe(canvas);
     return () => observer.disconnect();
@@ -1439,8 +1483,13 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       dispatch(result.command);
     };
     const canvases = canvasRef.canvases();
+    const hitRegion = canvasRef.hitRegion;
     canvases.forEach((target) => target.addEventListener("wheel", wheel, { passive: false }));
-    return () => canvases.forEach((target) => target.removeEventListener("wheel", wheel));
+    hitRegion?.addEventListener("wheel", wheel, { passive: false });
+    return () => {
+      canvases.forEach((target) => target.removeEventListener("wheel", wheel));
+      hitRegion?.removeEventListener("wheel", wheel);
+    };
   }, [canvasRef, dispatch, frame, metrics]);
 
   const textDragPointFor = (event: PointerEvent<HTMLDivElement>) => {
@@ -1625,6 +1674,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     <div
       ref={surfaceRef}
       className={className}
+      data-cell-surface=""
       tabIndex={0}
       aria-label={label}
       data-cell-probe={probeId}
@@ -1725,7 +1775,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         const precisePoint = pxToCellPosition(event, bounds, metrics, CELL_SURFACE_GUARD_CELLS);
         const candidates = gestureCandidatesForFrame(frame, targetId ? getEventPath(frame.scene, targetId) : [], point, precisePoint);
         const canSelect = linearSelection && rangeEditable && event.pointerType === "mouse"
-          && !candidates.some((candidate) => candidate.kind === "drag") && !onScrollbar;
+          && !candidates.some((candidate) => candidate.kind === "drag") && !onScrollbar
+          && pressTargetAtPoint(frame, point) === null;
         linearDragRef.current = canSelect
           ? { anchor: point, head: point, pointerId: event.pointerId, active: false,
             clientX: event.clientX, clientY: event.clientY }
@@ -1887,7 +1938,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (event.defaultPrevented || !frame || (event.target instanceof HTMLTextAreaElement && event.key !== "Escape")) return;
         if (controller.key(frame, input, resolvedFeedback.activationBlinkCount)) event.preventDefault();
       }}
-      style={{ position: "relative", width: "fit-content", outline: "none" }}
+      style={{ position: "relative", width: "fit-content", outline: "none",
+        pointerEvents: hostedSurface() ? "none" : undefined }}
     >
       <canvas
         ref={canvasRef}
@@ -1925,6 +1977,16 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           }}
         />
       ))}
+      {hostedSurface() && <div ref={registerHitRegion}
+        data-cell-hit-region="" aria-hidden="true" style={{
+        position: "absolute",
+        left: CELL_SURFACE_GUARD_CELLS * metrics.cellWidth,
+        top: CELL_SURFACE_GUARD_CELLS * metrics.cellHeight,
+        width: viewport.width * metrics.cellWidth,
+        height: viewport.height * metrics.cellHeight,
+        pointerEvents: "auto",
+        cursor: pointerAppearance.cursor,
+      }} />}
       {frame ? (
         <SemanticDom
           snapshot={frame.semantics}

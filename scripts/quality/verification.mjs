@@ -21,16 +21,12 @@ const globalInputs = new Set([
   'knip.json',
   'package-lock.json',
   'package.json',
-  'tsconfig.app.json',
   'tsconfig.json',
-  'tsconfig.node.json',
   'vitest.config.ts',
-  'vite.config.ts',
   'scripts/quality/verification.mjs',
   'scripts/quality/verification-cell.mjs',
   'scripts/testing/workspace-aliases.ts',
   'scripts/testing/workspace-aliases.js',
-  'playwright.config.ts',
 ])
 
 const isGlobalInput = file =>
@@ -118,8 +114,7 @@ export function affectedProjectNames(projects, changedFiles, forceFull = false) 
       file === candidate.root || file.startsWith(`${candidate.root}/`),
     )
     if (project) affected.add(project.name)
-    else if (file.startsWith('src/') || file.startsWith('scripts/')
-      || file.startsWith('e2e/')) affected.add('root')
+    else if (file.startsWith('scripts/')) affected.add('root')
   }
 
   const reverse = new Map(projects.map(project => [project.name, new Set()]))
@@ -233,7 +228,6 @@ const runTypechecks = (projects, selected, buildRunner, run) => {
     if (project.manifest.scripts?.typecheck) runWorkspaceScript(project, 'typecheck', run)
     else if (project.manifest.scripts?.build) buildRunner.build([project.name])
   }
-  if (selected.has('root')) run(npxCommand, ['tsc', '-b', '--pretty', 'false'], { label: 'typecheck app' })
   for (const project of projects.filter(project =>
     selected.has(project.name) && project.kind === 'app' && project.manifest.scripts?.typecheck,
   )) {
@@ -255,7 +249,7 @@ const runQuality = (mode, projects, selected, changedFiles, buildRunner, run, ce
   if (shouldRunKnip) run(npxCommand, ['knip'], { label: 'knip' })
 
   const productionChange = full || mode === 'pr' || changedFiles.some(file =>
-    /^(?:src|packages)\/.*\.(?:ts|tsx)$/u.test(file),
+    /^(?:apps\/canvas|packages)\/.*\.(?:ts|tsx)$/u.test(file),
   )
   if (productionChange) run(npmCommand, ['run', 'check:architecture'], { label: 'architecture guards' })
 }
@@ -302,29 +296,26 @@ const runBuild = (mode, projects, selected, buildRunner, target, run) => {
   buildRunner.build(names)
   if (target && target !== 'app') return
 
-  if (mode === 'full' || selected.has('root') || target === 'app') {
-    run(npmCommand, ['run', 'sitemap:verify'], { label: 'verify sitemap' })
+  const canvas = projects.find(project => project.name === '@chardesk/canvas')
+  const docs = projects.find(project => project.name === '@chardesk/docs')
+  const chargraph = projects.find(project => project.name === '@chardesk/chargraph-site')
+  const site = projects.find(project => project.name === '@chardesk/site')
+  const siteNeeded = mode === 'full' || selected.has('root') || [docs, chargraph, site]
+    .some(project => project && selected.has(project.name))
+  if (canvas && (mode === 'full' || selected.has(canvas.name) || target === 'app' || siteNeeded)) {
     run('node', ['scripts/data/generate-welcome-canvas.mjs', '--verify'], { label: 'verify welcome canvas' })
-    run(npxCommand, ['tsc', '-b'], { label: 'compile app' })
-    run(npxCommand, ['vite', 'build'], { label: 'build app' })
+    buildRunner.build([canvas.name])
     run('node', ['scripts/seo/prepare-canvas.mjs'], { label: 'prepare Canvas sitemap' })
     run('node', ['scripts/seo/verify-build.mjs'], { label: 'verify app SEO' })
   }
   if (target === 'app') return
-  const docs = projects.find(project => project.name === '@chardesk/docs')
-  if (docs && (mode === 'full' || selected.has('root') || selected.has(docs.name))) {
-    runWorkspaceScript(docs, 'build', run)
-    run('node', ['scripts/docs/merge-build.mjs'], { label: 'merge docs build' })
+  if (siteNeeded) {
+    run(npmCommand, ['run', 'sitemap:verify'], { label: 'verify sitemap' })
+    if (docs) buildRunner.build([docs.name])
+    if (chargraph) buildRunner.build([chargraph.name])
+    if (site) buildRunner.build([site.name])
     run('node', ['scripts/docs/verify-build.mjs'], { label: 'verify docs build' })
-  }
-  const site = projects.find(project => project.name === '@chardesk/chargraph-site')
-  if (site && (mode === 'full' || selected.has('root') || selected.has(site.name))) {
-    runWorkspaceScript(site, 'build', run)
-    run('node', ['scripts/chargraph/merge-build.mjs'], { label: 'merge CharGraph build' })
     run('node', ['scripts/chargraph/verify-build.mjs'], { label: 'verify CharGraph build' })
-  }
-  if (mode === 'full' || selected.has('root')) {
-    run('node', ['scripts/site/build.mjs'], { label: 'build product navigation' })
     run('node', ['scripts/site/verify-build.mjs'], { label: 'verify product navigation' })
   }
 }
@@ -346,7 +337,7 @@ export function createVerificationPlan(options, changes, projects = loadWorkspac
     ? new Set(['root', ...projects.map(project => project.name)])
     : affectedProjectNames(projects, changes.files)
   if (options.target && options.target !== 'app') selected.add(options.target)
-  if (options.target === 'app') selected.add('root')
+  if (options.target === 'app') selected.add('@chardesk/canvas')
   const cell = cellVerificationScope(changes.files, {
     mode: options.mode, selected, root: repositoryRoot, global: changes.files.some(isGlobalInput),
   })

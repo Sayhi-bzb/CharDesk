@@ -5,10 +5,10 @@ export type DocumentSceneFragment = Readonly<{
   label: string;
   root: ReactElement<RootProps>;
   viewport: CellSize;
-  overlayViewport: CellSize;
   presentation: CellUiPresentation;
   focusedId: string | null;
   onCommand: (command: WidgetCommand) => void;
+  onHoverChange?: (targetId: string | null) => void;
 }>;
 
 export type DocumentSceneContextValue = Readonly<{

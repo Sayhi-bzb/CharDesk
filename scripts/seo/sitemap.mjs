@@ -7,7 +7,7 @@ const repositoryRoot = path.resolve(
   "../..",
 );
 const docsRoot = path.join(repositoryRoot, "apps/docs/content/docs");
-const outputPath = path.join(repositoryRoot, "public/sitemap.xml");
+const outputPath = path.join(repositoryRoot, "apps/site/public/sitemap.xml");
 const verify = process.argv.slice(2).includes("--verify");
 
 const docsUrl = (entry) => {
@@ -39,7 +39,7 @@ const sitemap = [
 if (verify) {
   const current = await readFile(outputPath, "utf8").catch(() => "");
   if (current !== sitemap) {
-    throw new Error("public/sitemap.xml is stale; run npm run sitemap:generate");
+    throw new Error("apps/site/public/sitemap.xml is stale; run npm run sitemap:generate");
   }
   console.log(`Sitemap verified: ${urls.size} canonical URLs`);
 } else {

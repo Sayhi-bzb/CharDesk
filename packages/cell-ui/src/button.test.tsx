@@ -99,7 +99,7 @@ describe("Button", () => {
     });
     expect(outline.buffer.get(0, 0)).toMatchObject({ text: "[", ownerId: "save" });
     expect(outline.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
-    expect(ghost.buffer.get(0, 0)?.style.backgroundColor).toBeUndefined();
+    expect(ghost.buffer.get(0, 0)?.style.backgroundColor).toBe("#FFFFFF");
 
     const focus = new FocusManager();
     focus.sync(outline.tree, "save");

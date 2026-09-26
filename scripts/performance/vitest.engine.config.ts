@@ -11,7 +11,7 @@ export default defineConfig({
   resolve: {
     alias: [
       ...workspaceAliases,
-      { find: "@", replacement: path.resolve(root, "src") },
+      { find: "@", replacement: path.resolve(root, "apps/canvas/src") },
     ],
   },
   test: {

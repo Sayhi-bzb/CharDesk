@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" shape-rendering="crispEdges">
-  <style>
-    :root { color: #171717; }
-    @media (prefers-color-scheme: dark) { :root { color: #f5f5f5; } }
-  </style>
-  <path fill="currentColor" fill-rule="evenodd" d="M2 2h20v20H2V2Zm2 5v13h16V7H4ZM5 4h2v2H5V4ZM9 4h10v1H9V4Z"/>
-  <path fill="currentColor" d="M6 9h7v2H6zM6 13h4v2H6zM13 13h4v6h-4z"/>
-</svg>

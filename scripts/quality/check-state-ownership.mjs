@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-const SRC_ROOT = path.resolve("src");
+const SRC_ROOT = path.resolve("apps/canvas/src");
 const IMPLICIT_DOCUMENT_MUTATIONS = new Set([
   "mutateGrid",
   "runTransaction",

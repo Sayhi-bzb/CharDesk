@@ -13,7 +13,7 @@ literal inputs and never enter structural recognition. Canvas paste, document
 import, Slides `chargraph` fences, CLI, Viewer, and Blackboard share this
 contract. Rendering consumes compiled documents and does not select syntax.
 
-[`document/public.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/domains/document/public.ts)
+[`document/public.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/document/public.ts)
 owns the plugin registry, active profile, persistence, and conversion result. `actions`
 only snapshots clipboard data and passes the result to Canvas. The compact boundary groups
 adjacent graphemes with one style; legacy callers may explicitly materialize cells. Renderer
@@ -125,5 +125,5 @@ v1 rules and global color keys migrate to feature-local profile v2 settings on f
 setting, style changes affect future paste only because Canvas stores materialized cells.
 
 Verification lives in
-[`runtime.test.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/src/domains/document/rendering/runtime.test.ts)
+[`runtime.test.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/document/rendering/runtime.test.ts)
 and `packages/chargraph/src/markdown.test.ts`, plus the clipboard integration tests.

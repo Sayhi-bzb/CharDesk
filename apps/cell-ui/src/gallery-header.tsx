@@ -48,7 +48,7 @@ export function GalleryHeader({ brandHref = "#/guides/introduction" }: Readonly<
     }
   };
   const brand = brandHref
-    ? <Link id="gallery-header-brand" href={brandHref} textStyle={{ bold: true }}>CharDesk / Cell UI</Link>
+    ? <Link id="gallery-header-brand" href={brandHref} textStyle={{ color: theme.foreground, bold: true }}>CharDesk / Cell UI</Link>
     : <Text id="gallery-header-brand" textStyle={{ bold: true }}>CharDesk / Cell UI</Text>;
   const controls = <Box id="gallery-header-controls" style={{ direction: "row", width: narrow ? "100%" : undefined, gap: 1 }}>
     <Link id="gallery-header-github" href={repositoryUrl} target="_blank" label={stars.label}

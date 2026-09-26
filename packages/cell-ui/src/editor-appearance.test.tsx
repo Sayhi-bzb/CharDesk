@@ -133,18 +133,18 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     const idle = runtime.render(view());
     expect(idle.buffer.get(0, 0)?.text).toBe(">");
     expect(idle.buffer.get(1, 0)).toMatchObject({ text: " ", ownerId: "editor" });
-    expect(idle.buffer.get(1, 0)?.style.backgroundColor).toBeUndefined();
+    expect(idle.buffer.get(1, 0)?.style.backgroundColor).toBe(theme.background);
     expect(idle.buffer.get(1, 0)?.style.underline).not.toBe(true);
 
     const active = runtime.render(view(), { focusedId: "editor", activeFocusId: "editor" });
     expect(active.buffer.get(2, 0)?.style).toMatchObject(theme.textSelectionStyle);
     expect(active.buffer.get(2, 0)?.style.underline).not.toBe(true);
     expect(active.buffer.get(1, 0)?.style.underline).not.toBe(true);
-    expect(active.buffer.get(5, 0)?.style.backgroundColor).toBeUndefined();
+    expect(active.buffer.get(5, 0)?.style.backgroundColor).toBe(theme.background);
     expect(active.buffer.get(5, 0)?.style.underline).not.toBe(true);
 
     const blurred = runtime.render(view(), { focusedId: "editor", activeFocusId: null });
-    expect(blurred.buffer.get(2, 0)?.style.backgroundColor).toBeUndefined();
+    expect(blurred.buffer.get(2, 0)?.style.backgroundColor).toBe(theme.background);
     const readonly = runtime.render(view(false, true), { focusedId: "editor", activeFocusId: "editor" });
     expect(readonly.buffer.get(2, 0)?.style).toMatchObject(theme.textSelectionStyle);
     const disabled = runtime.render(view(true), { focusedId: "editor", activeFocusId: "editor" });

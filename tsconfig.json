@@ -2,16 +2,16 @@
   "files": [],
   "references": [
     {
-      "path": "./tsconfig.app.json"
+      "path": "./apps/canvas/tsconfig.app.json"
     },
     {
-      "path": "./tsconfig.node.json"
+      "path": "./apps/canvas/tsconfig.node.json"
     }
   ],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./apps/canvas/src/*"]
     }
   }
 }

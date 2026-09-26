@@ -109,9 +109,9 @@ describe("Select", () => {
           const content = result.scene.entries.get("content")!.layoutBounds;
           expect(content.height).toBe(frame === "bordered" ? 3 : 1);
           expect(result.buffer.get(16, 0)?.style.backgroundColor)
-            .toBe(variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
+            .toBe(variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : theme.background);
           expect(result.buffer.get(16, content.y + (frame === "bordered" ? 1 : 0))?.style.backgroundColor)
-            .toBe(variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
+            .toBe(variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : theme.background);
         }
       }
       const custom = runtime.render(view("ghost", "none", "#abcdef"));
@@ -151,10 +151,10 @@ describe("Select", () => {
       expect(custom.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor).toBe("#abcdef");
       const ghost = runtime.render(view(false, undefined, "ghost"));
       expect(ghost.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor)
-        .toBeUndefined();
+        .toBe(theme.background);
       const ghostDisabled = runtime.render(view(true, undefined, "ghost"));
       expect(ghostDisabled.buffer.get(bounds.x + 1, bounds.y)?.style.backgroundColor)
-        .toBeUndefined();
+        .toBe(theme.background);
       runtime.dispose();
     });
   }

@@ -2,9 +2,9 @@
 
 # CharDesk
 
-> **A shared visual medium for humans and language models.**
+> **A shared visual medium for people and agents.**
 
-CharDesk turns Unicode text into a shared workspace: a canvas for people, editable tokens for agents.
+CharDesk gives people and LLM-powered agents a common artifact: visual Unicode text. People read and use the scene; agents inspect its source, revise it, and verify the result. Canvas applies this medium to visual work; Cell UI applies it to interactive interfaces.
 
 [Open Canvas](https://canvas.chardesk.com/) · [Explore Cell UI](https://ui.chardesk.com/)
 
@@ -36,41 +36,41 @@ The agent creates the source, checks it, and opens the canvas. You do not need t
 - Map architectures, workflows, timelines, and relationships.
 - Keep a Blackboard that people and agents can inspect and revise together.
 
-[![CharDesk as a shared visual medium](public/showcase/01-shared-medium.png)](demo/readme-showcase/01-shared-medium.md)
+[![CharDesk as a shared visual medium](apps/site/public/showcase/01-shared-medium.png)](demo/readme-showcase/01-shared-medium.md)
 
 **Shared medium** · [Source](demo/readme-showcase/01-shared-medium.md)
 
-[![A visual explanation of how a GPU works](public/showcase/02-gpu-blackboard.zh-CN.png)](demo/readme-showcase/02-gpu-blackboard.zh-CN.md)
+[![A visual explanation of how a GPU works](apps/site/public/showcase/02-gpu-blackboard.zh-CN.png)](demo/readme-showcase/02-gpu-blackboard.zh-CN.md)
 
 **Visual explanation** · [Source](demo/readme-showcase/02-gpu-blackboard.zh-CN.md)
 
-[![An El Niño scientific figure](public/showcase/03-el-nino-observatory.png)](demo/readme-showcase/03-el-nino-observatory.md)
+[![An El Niño scientific figure](apps/site/public/showcase/03-el-nino-observatory.png)](demo/readme-showcase/03-el-nino-observatory.md)
 
 **Scientific figure** · [Source](demo/readme-showcase/03-el-nino-observatory.md)
 
-[![A character-based slide story](public/showcase/04-story-slides.ja.png)](demo/readme-showcase/04-story-slides.ja.md)
+[![A character-based slide story](apps/site/public/showcase/04-story-slides.ja.png)](demo/readme-showcase/04-story-slides.ja.md)
 
 **Character slides** · [Source](demo/readme-showcase/04-story-slides.ja.md)
 
-[![An ANSI and Nerd Font product interface](public/showcase/05-interface-console.png)](demo/readme-showcase/05-interface-console.md)
+[![An ANSI and Nerd Font product interface](apps/site/public/showcase/05-interface-console.png)](demo/readme-showcase/05-interface-console.md)
 
 **Interface design** · [Source](demo/readme-showcase/05-interface-console.md)
 
-[![A shared human and agent Blackboard](public/showcase/06-agent-blackboard.png)](demo/readme-showcase/06-agent-blackboard.md)
+[![A shared human and agent Blackboard](apps/site/public/showcase/06-agent-blackboard.png)](demo/readme-showcase/06-agent-blackboard.md)
 
 **Agent Blackboard** · [Source](demo/readme-showcase/06-agent-blackboard.md)
 
 ### ANSI interface studies
 
-[![A context control room](public/showcase/07-context-control-room.png)](demo/readme-showcase/07-context-control-room.md)
+[![A context control room](apps/site/public/showcase/07-context-control-room.png)](demo/readme-showcase/07-context-control-room.md)
 
 **Context Control Room** · [Source](demo/readme-showcase/07-context-control-room.md)
 
-[![An idea signal player](public/showcase/08-idea-signal-player.png)](demo/readme-showcase/08-idea-signal-player.md)
+[![An idea signal player](apps/site/public/showcase/08-idea-signal-player.png)](demo/readme-showcase/08-idea-signal-player.md)
 
 **Idea Signal Player** · [Source](demo/readme-showcase/08-idea-signal-player.md)
 
-[![A pocket Blackboard](public/showcase/09-pocket-blackboard.png)](demo/readme-showcase/09-pocket-blackboard.md)
+[![A pocket Blackboard](apps/site/public/showcase/09-pocket-blackboard.png)](demo/readme-showcase/09-pocket-blackboard.md)
 
 **Pocket Blackboard** · [Source](demo/readme-showcase/09-pocket-blackboard.md)
 
@@ -81,11 +81,11 @@ People scan a two-dimensional surface. Language models generate and edit token s
 CharDesk keeps both. A fixed Unicode grid carries position, box drawing carries structure, and ANSI carries emphasis. The result remains selectable, searchable, diffable, and directly editable by an agent.
 
 ```text
-   Human reads a scene
+   Person reads and uses
            ⇅
-   Unicode grid + ANSI
+   Shared Unicode scene
            ⇅
-   Agent edits tokens
+   Agent reads and edits
 ```
 
 ## The medium

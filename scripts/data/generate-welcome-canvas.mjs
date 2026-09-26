@@ -15,7 +15,7 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "../..");
 const outputPath = path.join(
   repositoryRoot,
-  "src/domains/canvas/state/helpers/default-demo-cases.generated.md"
+  "apps/canvas/src/domains/canvas/state/helpers/default-demo-cases.generated.md"
 );
 
 const COLORS = {

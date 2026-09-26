@@ -3,7 +3,7 @@ import { extname, join, relative } from "node:path";
 import { checkCellArchitecture } from "./cell-architecture-rules.mjs";
 
 const root = process.cwd();
-const sourceRoots = [join(root, "packages"), join(root, "src")];
+const sourceRoots = [join(root, "packages"), join(root, "apps", "canvas", "src")];
 
 function collect(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

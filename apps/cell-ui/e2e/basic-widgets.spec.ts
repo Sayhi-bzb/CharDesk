@@ -26,7 +26,7 @@ test("Toggle keeps pressed state after mouse exit and supports keyboard release"
   const idle = await readCellProbe(surface);
   expect(idle.text).toContain("● Bold");
   const toggleCells = idle.cells.filter((cell) => cell.ownerId === "component-toggle-bold");
-  expect(toggleCells.every((cell) => cell.style.backgroundColor === undefined
+  expect(toggleCells.every((cell) => cell.style.backgroundColor === "rgb(255, 255, 255)"
     || cell.style.backgroundColor === "rgb(230, 230, 230)")).toBe(true);
   await toggle.focus();
   await page.keyboard.press("Space");

@@ -60,11 +60,11 @@ describe('verification task graph', () => {
     const options = parseArguments(['--file', './packages/cell-ui/src/checkbox.ts', '--file', 'packages/cell-ui/src/checkbox.ts', '--dry-run'])
     expect(options.files).toEqual(['packages/cell-ui/src/checkbox.ts'])
     expect(options.dryRun).toBe(true)
-    expect(planFor(options.files).selected).toEqual(['@chardesk/cell-ui', '@chardesk/cell-ui-site'])
+    expect(planFor(options.files).selected).toEqual(['@chardesk/cell-ui', '@chardesk/cell-ui-site', '@chardesk/site'])
   })
 
   it.each(['pr', 'full'])('rejects narrowed %s gates', mode => {
-    expect(() => parseArguments(['--mode', mode, '--file', 'src/app/App.tsx'])).toThrow('only allowed in quick')
+    expect(() => parseArguments(['--mode', mode, '--file', 'apps/canvas/src/app/App.tsx'])).toThrow('only allowed in quick')
   })
 
   it.each([
@@ -127,7 +127,7 @@ describe('verification task graph', () => {
   )
 
   it('does not activate Cell E2E for unrelated application changes', () => {
-    expect(planFor(['src/app/App.tsx'], 'pr', 'cell-e2e').tasks).toEqual([])
+    expect(planFor(['apps/canvas/src/app/App.tsx'], 'pr', 'cell-e2e').tasks).toEqual([])
   })
 
   it('splits complete Cell browser coverage by project without narrowing either lane', () => {
@@ -149,10 +149,10 @@ describe('verification task graph', () => {
   })
 
   it('preserves an explicit app target even without changed files', () => {
-    const options = parseArguments(['--target', 'app', '--phase', 'root-node'])
+    const options = parseArguments(['--target', 'app', '--phase', 'build'])
     const plan = createVerificationPlan(options, { base: 'test', files: [] }, projects)
-    expect(plan.tasks).toHaveLength(1)
-    expect(plan.tasks[0].args).toEqual(['vitest', 'run', '--project', 'node', '--passWithNoTests'])
+    expect(plan.selected).toContain('@chardesk/canvas')
+    expect(plan.tasks.some(task => task.args.includes('@chardesk/canvas'))).toBe(true)
   })
 
   it('keeps selected package DOM tests out of the node lane', () => {
@@ -162,10 +162,9 @@ describe('verification task graph', () => {
     expect(plan.cell.browser).toEqual([])
   })
 
-  it('falls back to complete root tests for a mixed deleted source instead of ignoring it', () => {
-    const plan = planFor(['src/deleted-file.ts', 'src/app/App.tsx'], 'pr', 'root-node')
-    expect(plan.tasks[0].args).toContain('run')
-    expect(plan.tasks[0].args).not.toContain('related')
+  it('keeps deleted Canvas sources inside the Canvas workspace test lane', () => {
+    const plan = planFor(['apps/canvas/src/deleted-file.ts', 'apps/canvas/src/app/App.tsx'], 'pr', 'workspace-tests')
+    expect(plan.tasks.some(task => task.label === 'test @chardesk/canvas')).toBe(true)
   })
 
   it.each(['pr', 'full'])('retains complete quality/build gates in %s and adds Cell E2E', mode => {

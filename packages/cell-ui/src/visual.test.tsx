@@ -1,6 +1,8 @@
 import { expect, it } from "vitest";
 import {
   Box,
+  Alert,
+  AlertTitle,
   Button,
   Checkbox,
   Toggle,
@@ -13,8 +15,11 @@ import {
   CLASSIC_MAC_LIGHT_THEME,
   CLASSIC_MAC_DARK_THEME,
   INSTANT_CELL_FEEDBACK,
+  Dialog,
+  DialogTitle,
+  Tooltip,
 } from "./index.js";
-import { RangeSlider, RangeSliderThumb } from "./react.js";
+import { Overlay, RangeSlider, RangeSliderThumb } from "./react.js";
 import { resolvePrimitiveAppearance } from "./primitive-appearance.js";
 
 it("uses the same inverse pair for focus and press across the entire control", () => {
@@ -68,6 +73,58 @@ it("resolves nested ghost controls against their rendered ancestor surface", () 
     }
     runtime.dispose();
   }
+});
+
+it("resolves a ghost against the nearest explicit parent background", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 12, height: 2 } });
+  const frame = runtime.render(<Root>
+    <Box variant="ghost" textStyle={{ backgroundColor: "#123456" }} style={{ width: 12, height: 2 }}>
+      <Button id="action" variant="ghost" style={{ width: 8 }}><Text>Run</Text></Button>
+    </Box>
+  </Root>);
+  expect(frame.buffer.get(7, 0)?.style.backgroundColor).toBe("#123456");
+  expect(frame.buffer.get(10, 1)?.style.backgroundColor).toBe("#123456");
+  runtime.dispose();
+});
+
+it("uses the page background for every root-level ghost, including floating surfaces", () => {
+  const theme = { ...CLASSIC_MAC_LIGHT_THEME,
+    background: "#f8f8f8", surfaceStyle: { backgroundColor: "#dddddd" } };
+  const runtime = new CellUiRuntime({ viewport: { width: 48, height: 14 }, theme });
+  const base = runtime.render(<Root><Box variant="ghost" style={{ width: 12, height: 2 }}>
+    <Button id="save" variant="ghost" style={{ width: 8 }}><Text>Save</Text></Button>
+  </Box></Root>);
+  expect(base.buffer.get(7, 0)?.style.backgroundColor).toBe(theme.background);
+  expect(base.buffer.get(10, 1)?.style.backgroundColor).toBe(theme.background);
+
+  const overlay = runtime.render(<Root>
+    <Text>{"X".repeat(12)}</Text>
+    <Overlay id="floating" variant="ghost" position={{ x: 0, y: 0 }}
+      style={{ width: 12, height: 2 }}><Text>Open</Text></Overlay>
+  </Root>);
+  expect(overlay.buffer.get(10, 0)).toMatchObject({ text: " ",
+    style: { backgroundColor: theme.background } });
+
+  const alert = runtime.render(<Root><Alert id="notice" variant="ghost" tone="warning">
+    <AlertTitle>Careful</AlertTitle>
+  </Alert></Root>);
+  expect(alert.buffer.get(10, 0)?.style.backgroundColor).toBe(theme.background);
+  expect(alert.buffer.get(2, 0)?.style.color).toBe(theme.badgeStyles.warning.color);
+
+  const dialog = runtime.render(<Root><Dialog id="dialog" variant="ghost" border="none">
+    <DialogTitle>Details</DialogTitle>
+  </Dialog></Root>);
+  const dialogBounds = dialog.scene.entries.get("dialog")!.layoutBounds;
+  expect(dialog.buffer.get(dialogBounds.x + 1, dialogBounds.y + 1)?.style.backgroundColor)
+    .toBe(theme.background);
+
+  const tooltip = runtime.render(<Root><Button id="target"><Text>Target</Text></Button>
+    <Tooltip id="tip" targetId="target" text="Help" variant="ghost" border="none" />
+  </Root>, { tooltipTargetId: "target" });
+  const tooltipBounds = tooltip.scene.entries.get("tip")!.layoutBounds;
+  expect(tooltip.buffer.get(tooltipBounds.x + 1, tooltipBounds.y)?.style.backgroundColor)
+    .toBe(theme.background);
+  runtime.dispose();
 });
 
 it("disabled solid controls discard emphasis even with stale focus and press", () => {

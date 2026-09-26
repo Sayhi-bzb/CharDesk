@@ -7,7 +7,7 @@ const repositoryRoot = path.resolve(
   "../.."
 );
 const siteBuild = path.join(repositoryRoot, "apps/chargraph/dist");
-const siteOutput = path.join(repositoryRoot, "dist/chargraph");
+const siteOutput = path.join(repositoryRoot, "apps/site/dist/chargraph");
 
 await access(path.join(siteBuild, "index.html"));
 await rm(siteOutput, { recursive: true, force: true });

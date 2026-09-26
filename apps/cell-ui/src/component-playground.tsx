@@ -35,32 +35,40 @@ export function ComponentPlayground({
   probeId,
   focusedId,
   onCommand,
+  onHoverChange,
   preview,
   controls,
   previewMinColumns,
   controlsColumns,
-  overlayRows = 0,
+  modalScope = false,
   rows = PLAYGROUND_ROWS,
+  presentation: controlledPresentation,
+  onPresentationChange,
 }: Readonly<{
   id: string;
   label: string;
   probeId: string;
   focusedId: string | null;
   onCommand: (command: WidgetCommand) => void;
+  onHoverChange?: (targetId: string | null) => void;
   preview: PresentationValue<ReactNode>;
   controls?: readonly PlaygroundControl[];
   previewMinColumns: number;
   controlsColumns?: number;
-  overlayRows?: PresentationValue<number>;
+  modalScope?: boolean;
   rows?: number;
+  presentation?: CellUiPresentation;
+  onPresentationChange?: (presentation: CellUiPresentation) => void;
 }>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const documentScene = useDocumentScene();
   const [totalColumns, setTotalColumns] = useState(MIN_SPLIT_COLUMNS);
+  const [visibleOverlayRows, setVisibleOverlayRows] = useState(PLAYGROUND_ROWS);
   const measuredColumnsRef = useRef(MIN_SPLIT_COLUMNS);
   const [previewScroll, setPreviewScroll] = useState({ x: 0, y: 0 });
   const [controlsScroll, setControlsScroll] = useState({ x: 0, y: 0 });
-  const [presentation, setPresentation] = useState<CellUiPresentation>("rich");
+  const [localPresentation, setLocalPresentation] = useState<CellUiPresentation>("rich");
+  const presentation = controlledPresentation ?? localPresentation;
   const [localFocusedId, setLocalFocusedId] = useState<string | null>(null);
   const presentationRichId = `${id}-presentation-rich`;
   const presentationTextId = `${id}-presentation-text`;
@@ -77,14 +85,14 @@ export function ComponentPlayground({
           control.select.dispatch({ type: "dismiss", targetId: control.select.contentId });
         }
       });
-      setPresentation(next);
+      setLocalPresentation(next);
+      onPresentationChange?.(next);
     },
   });
   const effectiveFocusedId = presentationSelect.open
     ? presentationSelect.focusedId
     : localFocusedId ?? focusedId;
   const controlColumns = Math.max(controlsColumns ?? 1, PLAYGROUND_CONTROL_COLUMNS);
-  const resolvedOverlayRows = typeof overlayRows === "function" ? overlayRows(presentation) : overlayRows;
   const resolvedPreview = typeof preview === "function" ? preview(presentation) : preview;
   const layout = resolveComponentPlaygroundLayout(
     documentScene?.width ?? totalColumns,
@@ -100,6 +108,10 @@ export function ComponentPlayground({
     const host = hostRef.current;
     if (!host) return;
     const measure = () => {
+      const viewportRows = Math.ceil(window.innerHeight / DEFAULT_CELL_UI_METRICS.cellHeight);
+      const visibleRows = Math.ceil((window.innerHeight - host.getBoundingClientRect().top)
+        / DEFAULT_CELL_UI_METRICS.cellHeight);
+      setVisibleOverlayRows(Math.max(rows, Math.min(rows + viewportRows, visibleRows)));
       if (host.clientWidth <= 0) return;
       const next = Math.max(1, columnsForPixelWidth(
         host.clientWidth,
@@ -112,14 +124,16 @@ export function ComponentPlayground({
       setControlsScroll({ x: 0, y: 0 });
     };
     measure();
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", measure);
-      return () => window.removeEventListener("resize", measure);
-    }
-    const observer = new ResizeObserver(measure);
-    observer.observe(host);
-    return () => observer.disconnect();
-  }, [documentScene]);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(host);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+      observer?.disconnect();
+    };
+  }, [documentScene, rows]);
   const dispatch = (command: WidgetCommand) => {
     presentationSelect.dispatch(command);
     if (command.type === "focus") {
@@ -148,21 +162,7 @@ export function ComponentPlayground({
     onCommand(command);
   };
 
-  const surface = <GallerySurface
-      className="component-playground__surface"
-      viewport={layout.viewport}
-      overlayViewport={{
-        width: layout.viewport.width,
-        height: layout.viewport.height + Math.max(resolvedOverlayRows, presentationSelect.open ? 4 : 0),
-      }}
-      focusedId={effectiveFocusedId}
-      onCommand={dispatch}
-      label={label}
-      probeId={probeId}
-      recipe={defaultComponentRecipe}
-      presentation={presentation}
-    >
-      <Root id={`${id}-root`} style={{ direction: layout.stacked ? "column" : "row" }}>
+  const playgroundContent = <>
       <ScrollArea
         id={previewScrollId}
         variant="ghost"
@@ -228,6 +228,28 @@ export function ComponentPlayground({
           <Box id={`${id}-controls-after`} variant="ghost" style={{ flexGrow: 1 }} />
         </Box>
       </ScrollArea>
+      </>;
+  const surface = <GallerySurface
+      className="component-playground__surface"
+      viewport={layout.viewport}
+      overlayViewport={{
+        width: layout.viewport.width,
+        height: documentScene ? layout.viewport.height : Math.max(layout.viewport.height, visibleOverlayRows),
+      }}
+      focusedId={effectiveFocusedId}
+      onCommand={dispatch}
+      onHoverChange={onHoverChange}
+      label={label}
+      probeId={probeId}
+      recipe={defaultComponentRecipe}
+      presentation={presentation}
+    >
+      <Root id={`${id}-root`} style={{ direction: layout.stacked ? "column" : "row" }}>
+        {modalScope
+          ? <Box id={`${id}-layout`} variant="ghost" overlayScope
+              style={{ direction: layout.stacked ? "column" : "row", width: layout.viewport.width,
+                height: layout.viewport.height }}>{playgroundContent}</Box>
+          : playgroundContent}
       </Root>
     </GallerySurface>;
   return documentScene ? surface : <div ref={hostRef} className="component-playground">{surface}</div>;

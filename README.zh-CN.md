@@ -2,9 +2,9 @@
 
 # CharDesk
 
-> **人类与语言模型共享的视觉媒介。**
+> **人与 Agent 共享的视觉媒介。**
 
-CharDesk 把 Unicode 文本变成共享工作区：人看到画布，Agent 编辑 token。
+CharDesk 让人和由语言模型驱动的 Agent 共用一份视觉化的 Unicode 文本。人阅读并使用场景；Agent 检视源码、修改并验证结果。Canvas 用这种媒介创作视觉作品，Cell UI 用它构建交互界面。
 
 [打开 Canvas](https://canvas.chardesk.com/) · [探索 Cell UI](https://ui.chardesk.com/)
 
@@ -36,41 +36,41 @@ Agent 会创建源码、检查结果并打开画布。你不需要先学习文�
 - 描绘架构、流程、时间线与关系。
 - 保留一块人和 Agent 都能检查、继续修改的 Blackboard。
 
-[![CharDesk 作为人与 Agent 共享的视觉媒介](public/showcase/01-shared-medium.png)](demo/readme-showcase/01-shared-medium.md)
+[![CharDesk 作为人与 Agent 共享的视觉媒介](apps/site/public/showcase/01-shared-medium.png)](demo/readme-showcase/01-shared-medium.md)
 
 **共享视觉媒介** · [源码](demo/readme-showcase/01-shared-medium.md)
 
-[![显卡工作原理的可视化讲解](public/showcase/02-gpu-blackboard.zh-CN.png)](demo/readme-showcase/02-gpu-blackboard.zh-CN.md)
+[![显卡工作原理的可视化讲解](apps/site/public/showcase/02-gpu-blackboard.zh-CN.png)](demo/readme-showcase/02-gpu-blackboard.zh-CN.md)
 
 **可视化讲解** · [源码](demo/readme-showcase/02-gpu-blackboard.zh-CN.md)
 
-[![厄尔尼诺科研图](public/showcase/03-el-nino-observatory.png)](demo/readme-showcase/03-el-nino-observatory.md)
+[![厄尔尼诺科研图](apps/site/public/showcase/03-el-nino-observatory.png)](demo/readme-showcase/03-el-nino-observatory.md)
 
 **科研图** · [源码](demo/readme-showcase/03-el-nino-observatory.md)
 
-[![字符幻灯片叙事](public/showcase/04-story-slides.ja.png)](demo/readme-showcase/04-story-slides.ja.md)
+[![字符幻灯片叙事](apps/site/public/showcase/04-story-slides.ja.png)](demo/readme-showcase/04-story-slides.ja.md)
 
 **字符 Slides** · [源码](demo/readme-showcase/04-story-slides.ja.md)
 
-[![ANSI 与 Nerd Font 产品界面](public/showcase/05-interface-console.png)](demo/readme-showcase/05-interface-console.md)
+[![ANSI 与 Nerd Font 产品界面](apps/site/public/showcase/05-interface-console.png)](demo/readme-showcase/05-interface-console.md)
 
 **界面设计** · [源码](demo/readme-showcase/05-interface-console.md)
 
-[![人与 Agent 共享的 Blackboard](public/showcase/06-agent-blackboard.png)](demo/readme-showcase/06-agent-blackboard.md)
+[![人与 Agent 共享的 Blackboard](apps/site/public/showcase/06-agent-blackboard.png)](demo/readme-showcase/06-agent-blackboard.md)
 
 **Agent Blackboard** · [源码](demo/readme-showcase/06-agent-blackboard.md)
 
 ### ANSI 界面实验
 
-[![上下文控制室](public/showcase/07-context-control-room.png)](demo/readme-showcase/07-context-control-room.md)
+[![上下文控制室](apps/site/public/showcase/07-context-control-room.png)](demo/readme-showcase/07-context-control-room.md)
 
 **上下文控制室** · [源码](demo/readme-showcase/07-context-control-room.md)
 
-[![灵感信号播放器](public/showcase/08-idea-signal-player.png)](demo/readme-showcase/08-idea-signal-player.md)
+[![灵感信号播放器](apps/site/public/showcase/08-idea-signal-player.png)](demo/readme-showcase/08-idea-signal-player.md)
 
 **灵感信号播放器** · [源码](demo/readme-showcase/08-idea-signal-player.md)
 
-[![口袋 Blackboard](public/showcase/09-pocket-blackboard.png)](demo/readme-showcase/09-pocket-blackboard.md)
+[![口袋 Blackboard](apps/site/public/showcase/09-pocket-blackboard.png)](demo/readme-showcase/09-pocket-blackboard.md)
 
 **口袋 Blackboard** · [源码](demo/readme-showcase/09-pocket-blackboard.md)
 
@@ -81,11 +81,11 @@ Agent 会创建源码、检查结果并打开画布。你不需要先学习文�
 CharDesk 同时保留两者。固定 Unicode 网格承载位置，Box Drawing 承载结构，ANSI 承载强调。作品仍然可以被选择、搜索、比较版本，并由 Agent 直接修改。
 
 ```text
-   人阅读一个场景
+   人阅读并使用
           ⇅
-   Unicode 网格 + ANSI
+   共享的 Unicode 场景
           ⇅
-   Agent 编辑 token
+   Agent 阅读并修改
 ```
 
 ## 表达媒介

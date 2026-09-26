@@ -95,7 +95,7 @@ test("Accordion nested controls share a column without extending Checkbox hit ar
   await expect(sound).toHaveAttribute("aria-checked", "false");
 });
 
-test("Accordion content keeps layout transparent while Select owns its surface", async ({ page }) => {
+test("Accordion content inherits the page background while Select owns its elevated surface", async ({ page }) => {
   await page.goto("/#/components/accordion");
   const surface = page.locator('[data-cell-probe="component-accordion"]');
   const appearance = surface.getByRole("button", { name: "Appearance", exact: true });
@@ -111,8 +111,9 @@ test("Accordion content keeps layout transparent while Select owns its surface",
     const themeLabel = frame.cells.find((cell) => cell.text === "T");
     const soundMark = frame.cells.find((cell) => cell.ownerId === "accordion-sound" && cell.text === "[");
     const selectArrow = frame.cells.find((cell) => cell.ownerId === "accordion-theme-trigger" && cell.text === "▾");
-    expect(themeLabel?.style.backgroundColor).toBeUndefined();
-    expect(soundMark?.style.backgroundColor).toBeUndefined();
+    const pageBackground = scheme === "light" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)";
+    expect(themeLabel?.style.backgroundColor).toBe(pageBackground);
+    expect(soundMark?.style.backgroundColor).toBe(pageBackground);
     expect(selectArrow?.style.backgroundColor).toBe(scheme === "light"
       ? "rgb(230, 230, 230)" : "rgb(26, 26, 26)");
   }

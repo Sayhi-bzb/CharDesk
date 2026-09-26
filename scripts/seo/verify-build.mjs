@@ -8,14 +8,18 @@ const repositoryRoot = path.resolve(
 );
 const read = (relative) => readFile(path.join(repositoryRoot, relative), "utf8");
 
-const [html, robots, sitemap, cellUi, cellUiRobots, cellUiSitemap] = await Promise.all([
-  read("dist/index.html"),
-  read("dist/robots.txt"),
-  read("dist/sitemap.xml"),
+const [html, robots, sitemap, routes, cellUi, cellUiRobots, cellUiSitemap] = await Promise.all([
+  read("apps/canvas/dist/index.html"),
+  read("apps/canvas/dist/robots.txt"),
+  read("apps/canvas/dist/sitemap.xml"),
+  read("apps/canvas/dist/_routes.json"),
   read("apps/cell-ui/index.html"),
   read("apps/cell-ui/public/robots.txt"),
   read("apps/cell-ui/public/sitemap.xml"),
 ]);
+if (!JSON.parse(routes).include.includes("/api/github-stars")) {
+  throw new Error("Canvas Pages Functions route is missing");
+}
 
 for (const required of [
   '<link rel="canonical" href="https://canvas.chardesk.com/"',

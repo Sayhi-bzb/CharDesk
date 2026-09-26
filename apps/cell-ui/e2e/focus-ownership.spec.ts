@@ -60,7 +60,9 @@ test("only the active Surface paints focus, while selected state survives", asyn
   expect(blurred.focusedId).toBe(active.focusedId);
   expect(blurredOpenCells.some((cell) => cell.style.bold)).toBe(false);
   expect(blurredOpenCells.length).toBeGreaterThan(0);
-  expect(blurredOpenCells.every((cell) => cell.style.backgroundColor === undefined)).toBe(true);
+  const idleBackground = blurredOpenCells[0]?.style.backgroundColor;
+  expect(idleBackground).toBeTruthy();
+  expect(blurredOpenCells.every((cell) => cell.style.backgroundColor === idleBackground)).toBe(true);
   expect(active.cells.some((cell) => cell.ownerId === "core-open"
     && cell.style.backgroundColor !== undefined)).toBe(true);
   expect(blurred.text).toContain("✓ Open file");

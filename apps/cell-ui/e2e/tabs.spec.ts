@@ -23,7 +23,7 @@ test("Tabs default to a selected-label underline and retain the solid variant", 
   expect(new Set(codeUnderline.map((cell) => cell.y)).size).toBe(1);
   expect(initial.cells.some((cell) => cell.ownerId === "component-tabs-preview" && cell.text === "⎺")).toBe(false);
   expect(initial.cells.find((cell) => cell.ownerId?.startsWith("component-tabs-code/text"))?.style.backgroundColor)
-    .toBeUndefined();
+    .toBe("rgb(255, 255, 255)");
 
   await surface.getByRole("tab", { name: "Preview" }).evaluate((element: HTMLElement) => element.click());
   const switched = await readCellProbe(surface);
@@ -50,7 +50,7 @@ test("Tabs default to a selected-label underline and retain the solid variant", 
   });
   expect((await readCellProbe(surface)).cells.filter((cell) =>
     cell.ownerId === "component-tabs-preview" && cell.text === "⎺")
-    .every((cell) => cell.style.color === highlight && cell.style.backgroundColor === undefined)).toBe(true);
+    .every((cell) => cell.style.color === highlight && cell.style.backgroundColor === "rgb(0, 0, 0)")).toBe(true);
 });
 
 test("underline hover belongs to the first Tab row, not the marker row", async ({ page }) => {
@@ -73,7 +73,7 @@ test("underline hover belongs to the first Tab row, not the marker row", async (
   await expect(surface).not.toHaveAttribute("data-cell-hovered", "component-tabs-preview");
   const markerRow = (await readCellProbe(surface)).cells.filter((cell) =>
     cell.ownerId === "component-tabs-preview" && cell.y === previewLetter.y + 1);
-  expect(markerRow.every((cell) => cell.style.backgroundColor === undefined)).toBe(true);
+  expect(markerRow.every((cell) => cell.style.backgroundColor === "rgb(255, 255, 255)")).toBe(true);
   expect((await readCellProbe(surface)).cells.filter((cell) =>
     cell.ownerId === "component-tabs-code" && cell.text === "⎺")).toHaveLength(4);
 });
@@ -103,7 +103,7 @@ test("Tabs switch one panel through pointer and keyboard without selecting a dis
   expect(switchedCells.find((cell) => cell.ownerId?.startsWith("component-tabs-preview/text"))?.style.backgroundColor)
     .toBeDefined();
   expect(switchedCells.find((cell) => cell.ownerId?.startsWith("component-tabs-code/text"))?.style.backgroundColor)
-    .toBeUndefined();
+    .toBe("rgb(255, 255, 255)");
   await expect(surface.getByRole("tabpanel", { name: "Preview" }))
     .toHaveAttribute("id", await preview.getAttribute("aria-controls") ?? "");
   await expect(surface.getByRole("tabpanel", { name: "Code" })).toHaveCount(0);

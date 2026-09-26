@@ -33,6 +33,7 @@ const run = (command, args, options = {}) => new Promise((resolve, reject) => {
 const preview = spawn(process.execPath, [
   "./node_modules/vite/bin/vite.js",
   "preview",
+  "--config", "apps/canvas/vite.config.ts",
   "--host", HOST,
   "--port", String(PORT),
   "--strictPort",
@@ -47,7 +48,7 @@ try {
   await waitForServer(URL);
   await run(process.execPath, [
     "./node_modules/@playwright/test/cli.js",
-    "test", "-c", "e2e/playwright.memory.config.ts",
+    "test", "-c", "apps/canvas/e2e/playwright.memory.config.ts",
   ], { env: { ...process.env, CANVAS_MEMORY_REPORT_DIR: REPORT_DIR } });
 } catch (error) {
   failure = error;

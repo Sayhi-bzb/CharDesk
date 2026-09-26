@@ -39,5 +39,5 @@ export function TooltipExample() {
 | `targetId` | `string` | Stable id of an existing focusable Cell control. |
 | `text` | `string` | Non-empty, single-line supplementary text; clipped to the viewport. |
 | `id?` | `string` | Optional stable tooltip owner and semantic identifier. |
-| `variant?` | `"surface" \| "ghost"` | Opaque elevated or base surface; surface by default. |
+| `variant?` | `"surface" \| "ghost"` | Opaque elevated or current background; surface by default. |
 | `border?` | `"none" \| "square" \| "rounded"` | Independent Cell border; omitted uses the theme border shape. |

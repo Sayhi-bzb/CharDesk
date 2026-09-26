@@ -77,40 +77,38 @@ const surfaceStyleForNode = (
 ): CellTextStyle | null => {
   let current: WidgetNode | undefined = node;
   let backgroundColor: string | undefined;
+  let toneColor: string | undefined;
   let hasSurfaceOwner = false;
   while (current) {
     backgroundColor ??= current.textStyle.backgroundColor;
-    hasSurfaceOwner ||= current.surfaceVariant !== null;
+    hasSurfaceOwner ||= current.surfaceVariant !== null
+      || (current.kind === "button" && current.buttonVariant === "ghost");
     if (current.kind === "badge" || current.kind === "badge-action" || current.kind === "alert") {
       const statusStyle = theme.badgeStyles[current.badgeTone];
-      return {
-        ...(current.kind === "alert" && current.surfaceVariant === "ghost"
-          ? { color: statusStyle.color }
-          : statusStyle),
-        ...(backgroundColor !== undefined ? { backgroundColor } : {}),
-      };
+      if (current.kind === "alert" && current.surfaceVariant === "ghost") {
+        toneColor ??= statusStyle.color;
+      } else {
+        return { ...statusStyle, ...(backgroundColor !== undefined ? { backgroundColor } : {}) };
+      }
     }
     if (current.kind === "table-row" && current.rowIndex !== null && current.rowIndex % 2 === 0
       && current.parentId && tree.nodes.get(current.parentId)?.surfaceVariant === "surface") {
-      return { ...theme.surfaceStyle, ...(backgroundColor !== undefined ? { backgroundColor } : {}) };
+      return { ...theme.surfaceStyle, ...(toneColor !== undefined ? { color: toneColor } : {}),
+        ...(backgroundColor !== undefined ? { backgroundColor } : {}) };
     }
     if (current.surfaceVariant === "surface") {
       return {
         ...theme.elevatedSurfaceStyle,
-        ...(backgroundColor !== undefined ? { backgroundColor } : {}),
-      };
-    }
-    if ((current.dialog || current.kind === "tooltip") && current.surfaceVariant === "ghost") {
-      return {
-        ...theme.surfaceStyle,
+        ...(toneColor !== undefined ? { color: toneColor } : {}),
         ...(backgroundColor !== undefined ? { backgroundColor } : {}),
       };
     }
     current = current.parentId ? tree.nodes.get(current.parentId) : undefined;
   }
-  return backgroundColor !== undefined
-    ? { backgroundColor }
-    : hasSurfaceOwner ? {} : null;
+  return hasSurfaceOwner || backgroundColor !== undefined
+    ? { ...(toneColor !== undefined ? { color: toneColor } : {}),
+        backgroundColor: backgroundColor ?? theme.background }
+    : null;
 };
 
 export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: CellUiTheme) => {
@@ -154,7 +152,7 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
       theme.sliderThumb,
       node.kind === "text-area" && node.frame === "bordered"
         ? "decoration"
-        : singleLine || node.surfaceVariant === "surface" ? "layout" : "content",
+        : "layout",
       node.kind === "text-area" ? borderBaseStyle : undefined,
     );
   }
@@ -202,6 +200,8 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
     : surface ?? {};
   const semanticBase = {
     ...base,
+    ...(node.kind === "markdown-link" && !node.markdownTone
+      ? { color: theme.semanticColors.info.text } : {}),
     ...(!disabled && owner?.kind === "button" && owner.buttonTone === "danger" && !solid
       && owner.buttonVariant !== "surface" ? { color: theme.semanticColors.danger.text } : {}),
     ...(!disabled && (node.invalid || owner?.invalid) && owner?.kind !== "button"

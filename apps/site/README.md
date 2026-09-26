@@ -1,8 +1,15 @@
 # Public site deployment
 
-The root app build in `dist/` is Canvas. `npm run build` compiles the Cell UI product entrance from `apps/site` and assembles it with docs, CharGraph, and the old-origin migration bridge in `dist-site/`. The HTML entrance retains plain links when its module cannot load.
+`npm run build` assembles the public site in `apps/site/dist/` from the site entrance, Canvas assets, docs, CharGraph, and the old-origin migration bridge. Canvas builds separately in `apps/canvas/dist/`. The HTML entrance retains plain links when its module cannot load.
 
-Deploy `dist-site/` to `chardesk.com` with `npm run build` and `dist/` to `canvas.chardesk.com` with `npm run build:app` as separate Cloudflare Pages projects. Keep `ui.chardesk.com` on its existing project. Add the Canvas custom domain in Pages before changing the root deployment. Do not publish the new Canvas origin without `/migration/bridge.html` on the root origin: first-load local workspace transfer depends on both.
+Deploy the two Cloudflare Pages projects with these settings:
+
+| Domain | Project root | Build command | Output directory |
+| --- | --- | --- | --- |
+| `chardesk.com` | `apps/site` | `npm --prefix ../.. run build` | `dist` |
+| `canvas.chardesk.com` | `apps/canvas` | `npm --prefix ../.. run build:app` | `dist` |
+
+Keep `ui.chardesk.com` on its existing project. Add the Canvas custom domain in Pages before changing the root deployment. Do not publish the new Canvas origin without `/migration/bridge.html` on the root origin: first-load local workspace transfer depends on both.
 
 The root origin retains `/blackboard`, `/s/*`, and root-level collaboration links long enough to route old shares to Canvas. Do not remove the bridge while old browser-local work may still exist.
 

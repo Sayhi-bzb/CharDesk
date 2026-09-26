@@ -33,7 +33,7 @@ const browserUserAgent =
 
 const targets = {
   "app-ui": {
-    outputRoot: path.join(repoRoot, "public", "fonts"),
+    outputRoot: path.join(repoRoot, "apps", "canvas", "public", "fonts"),
     assetPrefix: "",
   },
   "canvas-core": {

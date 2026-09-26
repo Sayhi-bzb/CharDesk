@@ -7,7 +7,7 @@ const repositoryRoot = path.resolve(
   "../.."
 );
 const docsContent = path.join(repositoryRoot, "apps/docs/content/docs");
-const docsOutput = path.join(repositoryRoot, "dist/docs");
+const docsOutput = path.join(repositoryRoot, "apps/site/dist/docs");
 const docsHeadMetadata = JSON.parse(
   await readFile(
     path.join(repositoryRoot, "apps/docs/content/docs-head.json"),

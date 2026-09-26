@@ -60,15 +60,17 @@ export function DialogExample() {
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)
 - [interaction.ts](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/interaction.ts)
+- [browser-overlay-host.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser-overlay-host.tsx)
 
 ## API
 
 | Prop | Type | Description |
 | --- | --- | --- |
 | `id` | `string` | Required stable dismiss-command target. |
-| `variant?` | `"surface" \| "ghost"` | Both are opaque: surface uses the elevated surface token; ghost uses the base surface token. |
+| `variant?` | `"surface" \| "ghost"` | Both are opaque: surface uses the elevated surface token; ghost uses the current background. |
 | `border?` | `"none" \| "square" \| "rounded"` | Independent Cell border; omitted uses the theme border shape. |
 | `modal` | `boolean` | Trap focus and exclude background semantics; default true. |
 | `closeOnOutsideClick` | `boolean` | Request dismissal on outside pointer down; default true. |
 | `initialFocusId` | `string` | Preferred available content control on opening. |
 | `children` | `Cell primitives` | One direct Title, optional direct Description, and composable content/Footer. |
+| `CellAlertDialog` | `browser component` | Host-managed cross-surface confirmation; unlike Dialog, outside input cannot dismiss it. |

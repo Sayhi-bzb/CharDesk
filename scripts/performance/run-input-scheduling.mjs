@@ -9,7 +9,7 @@ const reportDir = path.resolve(
     'test-results/canvas-input-scheduling'
 );
 const preview = spawn(process.execPath, [
-  './node_modules/vite/bin/vite.js', 'preview', '--host', host,
+  './node_modules/vite/bin/vite.js', 'preview', '--config', 'apps/canvas/vite.config.ts', '--host', host,
   '--port', String(port), '--strictPort',
 ], { stdio: 'inherit' });
 const stop = () => { if (!preview.killed) preview.kill(); };
@@ -40,7 +40,7 @@ try {
   await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [
       './node_modules/@playwright/test/cli.js', 'test',
-      '-c', 'e2e/playwright.input-scheduling.config.ts',
+      '-c', 'apps/canvas/e2e/playwright.input-scheduling.config.ts',
     ], {
       stdio: 'inherit',
       env: { ...process.env, CANVAS_INPUT_SCHEDULING_REPORT_DIR: reportDir },

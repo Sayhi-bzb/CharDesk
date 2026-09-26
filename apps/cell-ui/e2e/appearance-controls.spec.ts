@@ -58,7 +58,7 @@ test("Button and Input variant controls change Cell backgrounds and chrome", asy
   expect(background).toBeTruthy();
   await choose(page, "variant", "ghost");
   expect((await readCellProbe(input)).cells.find((cell) =>
-    cell.ownerId === "component-input-field" && cell.text === " ")?.style.backgroundColor).toBeUndefined();
+    cell.ownerId === "component-input-field" && cell.text === " ")?.style.backgroundColor).toBe("rgb(255, 255, 255)");
 });
 
 test("Select and Combobox apply dropdown frames and ghost surfaces", async ({ page }) => {
@@ -66,7 +66,7 @@ test("Select and Combobox apply dropdown frames and ghost surfaces", async ({ pa
   const select = page.getByLabel("Select component");
   await choose(page, "variant", "ghost");
   expect((await readCellProbe(select)).cells.find((cell) =>
-    cell.ownerId === "component-select-trigger" && cell.text === " ")?.style.backgroundColor).toBeUndefined();
+    cell.ownerId === "component-select-trigger" && cell.text === " ")?.style.backgroundColor).toBe("rgb(255, 255, 255)");
   await choose(page, "dropdown frame", "bordered");
   await choose(page, "border shape", "rounded");
   await select.getByRole("button", { name: "Theme" }).evaluate((element: HTMLElement) => element.click());
@@ -77,7 +77,7 @@ test("Select and Combobox apply dropdown frames and ghost surfaces", async ({ pa
   const combo = page.getByLabel("Combobox component");
   await choose(page, "variant", "ghost");
   expect((await readCellProbe(combo)).cells.find((cell) =>
-    cell.ownerId === "component-combobox-input" && cell.text === " ")?.style.backgroundColor).toBeUndefined();
+    cell.ownerId === "component-combobox-input" && cell.text === " ")?.style.backgroundColor).toBe("rgb(255, 255, 255)");
   await choose(page, "dropdown frame", "bordered");
   await choose(page, "border shape", "rounded");
   await page.getByRole("combobox", { name: "Font" }).click();

@@ -3,8 +3,8 @@ import path from "node:path";
 import { readConfigFile } from "typescript";
 import { describe, expect, it } from "vitest";
 
-import config from "../vite.config";
-import testConfig from "../vitest.config";
+import config from "../apps/canvas/vite.config";
+import testConfig from "../apps/canvas/vitest.config";
 
 const findAlias = (
   aliases: readonly unknown[],
@@ -70,14 +70,14 @@ describe("Vite workspace aliases", () => {
     sourcePath
   ) => {
     const expected = path.resolve(import.meta.dirname, "..", sourcePath);
-    const tsconfigPath = path.resolve(import.meta.dirname, "../tsconfig.app.json");
+    const tsconfigPath = path.resolve(import.meta.dirname, "../apps/canvas/tsconfig.app.json");
     const { config: tsconfig, error } = readConfigFile(
       tsconfigPath,
       (file) => readFileSync(file, "utf8")
     );
     expect(error).toBeUndefined();
     expect(tsconfig.compilerOptions.paths[specifier]).toEqual([
-      `./${sourcePath}`,
+      `../../${sourcePath}`,
     ]);
 
     for (const candidate of [config, testConfig]) {

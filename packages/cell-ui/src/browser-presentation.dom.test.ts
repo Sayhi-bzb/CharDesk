@@ -5,15 +5,21 @@ it("accepts only registered layers and rejects detached, foreign, and outside ta
   const registry = new CellPresentationRegistry();
   const base = document.createElement("canvas");
   const overlay = document.createElement("canvas");
+  const hitRegion = document.createElement("div");
   const foreign = document.createElement("canvas");
   registry.current = base;
   registry.setOverlay("menu", overlay);
+  registry.setHitRegion(hitRegion);
   const hit = vi.fn().mockReturnValue(overlay);
   const previous = Object.getOwnPropertyDescriptor(document, "elementFromPoint");
   Object.defineProperty(document, "elementFromPoint", { configurable: true, value: hit });
   try {
     expect(registry.acceptsPoint(12, 50)).toBe(true);
     expect(registry.canvases()).toEqual([base, overlay]);
+    hit.mockReturnValue(hitRegion);
+    expect(registry.acceptsPoint(12, 50)).toBe(true);
+    registry.setHitRegion(null);
+    expect(registry.acceptsPoint(12, 50)).toBe(false);
     hit.mockReturnValue(foreign);
     expect(registry.acceptsPoint(12, 50)).toBe(false);
     hit.mockReturnValue(document.createElement("div"));

@@ -15,10 +15,12 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   "range-slider": ["react.tsx", "slider.ts"],
   "text-area": ["react.tsx", "browser-input.tsx"],
   list: ["react.tsx", "browser-collections.tsx"],
-  menu: ["react.tsx", "browser-collections.tsx"],
+  menu: ["react.tsx", "browser-collections.tsx", "browser-overlay-host.tsx"],
+  sheet: ["browser-overlay-host.tsx"],
+  toast: ["browser-toast.tsx", "browser-overlay-host.tsx"],
   tree: ["react.tsx", "browser-collections.tsx"],
   table: ["react.tsx", "table.ts", "paint.ts", "semantics.ts"],
-  dialog: ["react.tsx", "interaction.ts"],
+  dialog: ["react.tsx", "interaction.ts", "browser-overlay-host.tsx"],
   accordion: ["react.tsx", "interaction.ts"],
   toggle: ["react.tsx", "press.ts"],
   progress: ["react.tsx", "progress.ts"],
@@ -46,6 +48,197 @@ export const sourceLinksForComponent = (slug: string) =>
 
 export const componentContent: readonly ComponentContent[] = [
   {
+    slug: "menu", title: "Menu",
+    description: "Compose a Cell menubar with host-managed command menus across surfaces.",
+    usage: `import { useState } from "react";
+import { Box, Button, Menu, MenuItem, Root, Text } from "@chardesk/cell-ui";
+import { CellOverlayHost, CellPopover, CellSurface } from "@chardesk/cell-ui/browser";
+
+const titles = ["File", "Edit", "View"] as const;
+type Title = (typeof titles)[number];
+const action: Record<Title, string> = { File: "Open", Edit: "Undo", View: "Zoom In" };
+
+export function MenuExample() {
+  const [menu, setMenu] = useState<{ title: Title; anchor: Element } | null>(null);
+  const open = (title: Title) => {
+    const anchor = document.querySelector(
+      '[data-cell-semantic-id="menu-' + title + '"]',
+    );
+    if (anchor) setMenu({ title, anchor });
+  };
+  return (
+    <CellOverlayHost>
+      <CellSurface
+        viewport={{ width: 28, height: 1 }}
+        onCommand={(command) => {
+          const title = titles.find((item) => command.targetId === "menu-" + item);
+          if (command.type === "activate" && title) open(title);
+        }}
+        onHoverChange={(id) => {
+          const title = menu && titles.find((item) => id === "menu-" + item);
+          if (title && title !== menu.title) open(title);
+        }}
+      >
+        <Root>
+          <Box style={{ direction: "row", gap: 2, width: 28 }}>
+            {titles.map((title) => (
+              <Button
+                key={title}
+                id={"menu-" + title}
+                label={title + " menu"}
+                variant={menu?.title === title ? "solid" : "ghost"}
+                style={{ paddingLeft: 1, paddingRight: 1 }}
+              >
+                <Text>{title}</Text>
+              </Button>
+            ))}
+          </Box>
+        </Root>
+      </CellSurface>
+      <CellPopover
+        open={menu !== null}
+        anchor={menu?.anchor}
+        onDismiss={() => setMenu(null)}
+      >
+        <CellSurface
+          viewport={{ width: 20, height: 1 }}
+          focusedId="menu-action"
+          onCommand={(command) => {
+            if (command.type === "activate" && command.targetId === "menu-action")
+              setMenu(null);
+          }}
+        >
+          <Root>
+            <Box variant="surface" frame="none" style={{ width: 20 }}>
+              <Menu id="command-menu" label={menu?.title ?? "File"}>
+                <MenuItem id="menu-action" label={action[menu?.title ?? "File"]}>
+                  <Text>{action[menu?.title ?? "File"]}</Text>
+                </MenuItem>
+              </Menu>
+            </Box>
+          </Root>
+        </CellSurface>
+      </CellPopover>
+    </CellOverlayHost>
+  );
+}`,
+    api: [
+      { name: "Menu / MenuItem", type: "Cell descriptors", description: "Accessible command collection and its items; app state handles activate commands." },
+      { name: "Box.variant?", type: '"surface" | "ghost"', description: "Popup surface recipe; applies independently of the menubar Button's active state." },
+      { name: "Box.frame?", type: '"none" | "bordered"', description: "Optional dropdown border; the Menu preview defaults to none in Rich and uses a square character frame in Text." },
+      { name: "Box.borderShape?", type: '"square" | "rounded"', description: "Rich border shape when frame is bordered; Text uses square characters." },
+      { name: "Button.disabled?", type: "boolean", description: "Disable menubar triggers; the caller also dismisses any open menu." },
+      { name: "CellSurface.presentation", type: '"rich" | "text"', description: "Pass one mode to the menubar and every hosted menu surface." },
+      { name: "CellSurface.onHoverChange", type: "(id: string | null) => void", description: "Pointer hover target; use it to switch an already-open menubar." },
+      { name: "CellPopover.open", type: "boolean", description: "Controlled popup visibility; mount inside CellOverlayHost." },
+      { name: "CellPopover.anchor", type: "Element | DOMRect | null", description: "Element or pointer rectangle used for placement and focus return." },
+      { name: "CellPopover.onDismiss", type: '(reason: "escape" | "outside") => void', description: "Close the controlled popup; Escape returns focus to its anchor." },
+      { name: "CellContextMenu", type: "browser component", description: "Same host-managed menu surface, anchored to a pointer rectangle." },
+    ],
+  },
+  {
+    slug: "sheet", title: "Sheet",
+    description: "Open a modal Cell panel from the viewport edge without replacing the work surface.",
+    usage: `import { useState } from "react";
+import { Button, Root, Text } from "@chardesk/cell-ui";
+import { CellOverlayHost, CellSheet, CellSurface } from "@chardesk/cell-ui/browser";
+
+export function SheetExample() {
+  const [open, setOpen] = useState(false);
+  return (
+    <CellOverlayHost>
+      <CellSurface
+        viewport={{ width: 24, height: 2 }}
+        onCommand={(command) => {
+          if (command.type === "activate" && command.targetId === "sheet-trigger") {
+            setOpen(true);
+          }
+        }}
+      >
+        <Root>
+          <Button id="sheet-trigger" label="Open sheet">
+            <Text>Settings</Text>
+          </Button>
+        </Root>
+      </CellSurface>
+      <CellSheet open={open} label="Settings" onDismiss={() => setOpen(false)}>
+        <CellSurface
+          viewport={{ width: 24, height: 10 }}
+          focusedId="sheet-close"
+          onCommand={(command) => {
+            if (command.type === "activate" && command.targetId === "sheet-close") {
+              setOpen(false);
+            }
+          }}
+        >
+          <Root>
+            <Text>Workspace settings</Text>
+            <Button id="sheet-close" label="Close sheet">
+              <Text>Close</Text>
+            </Button>
+          </Root>
+        </CellSurface>
+      </CellSheet>
+    </CellOverlayHost>
+  );
+}`,
+    api: [
+      { name: "CellSheet.open", type: "boolean", description: "Controlled visibility of the modal side panel." },
+      { name: "CellSheet.label", type: "string", description: "Accessible dialog name." },
+      { name: "CellSheet.onDismiss", type: '(reason: "escape" | "outside") => void', description: "Close the panel on Escape or outside input." },
+      { name: "children", type: "ReactNode", description: "Render an independent CellSurface inside the sheet." },
+    ],
+  },
+  {
+    slug: "toast", title: "Toast",
+    description: "Show timed Cell notices above the workspace without moving focus.",
+    usage: `import { Button, Root, Text } from "@chardesk/cell-ui";
+import {
+  CellOverlayHost,
+  CellSurface,
+  CellToastViewport,
+  useCellToastState,
+} from "@chardesk/cell-ui/browser";
+
+export function ToastExample() {
+  const toast = useCellToastState();
+  return (
+    <CellOverlayHost>
+      <CellSurface
+        viewport={{ width: 24, height: 2 }}
+        onCommand={(command) => {
+          if (command.type === "activate" && command.targetId === "toast-trigger") {
+            toast.push({
+              id: "saved",
+              durationMs: 3000,
+              content: (
+                <CellSurface viewport={{ width: 20, height: 2 }} onCommand={() => {}}>
+                  <Root>
+                    <Text>Saved to workspace</Text>
+                  </Root>
+                </CellSurface>
+              ),
+            });
+          }
+        }}
+      >
+        <Root>
+          <Button id="toast-trigger" label="Show toast">
+            <Text>Save</Text>
+          </Button>
+        </Root>
+      </CellSurface>
+      <CellToastViewport state={toast} />
+    </CellOverlayHost>
+  );
+}`,
+    api: [
+      { name: "useCellToastState", type: "hook", description: "Owns the notice queue; push replaces a matching id and dismiss removes it." },
+      { name: "CellToastViewport.state", type: "CellToastState", description: "Portals notices through CellOverlayHost without stealing focus." },
+      { name: "push({ id, content, durationMs? })", type: "CellToastEntry", description: "Render CellSurface content; positive durationMs dismisses it automatically." },
+    ],
+  },
+  {
     slug: "alert", title: "Alert",
     description: "Keep a status or warning visible beside the work it describes.",
     usage: `import {
@@ -72,7 +265,7 @@ export function AlertExample() {
 }`,
     api: [
       { name: "tone?", type: '"info" | "success" | "warning" | "error"', description: "Status meaning; info by default. Warning and error announce as alerts." },
-      { name: "variant?", type: '"surface" | "ghost"', description: "Status-colored surface by default; ghost keeps tone text, icon, and border without a fill." },
+      { name: "variant?", type: '"surface" | "ghost"', description: "Status-colored surface by default; ghost keeps tone text, icon, and border on the current background." },
       { name: "border?", type: '"none" | "square" | "rounded"', description: "None by default; framed borders use the tone's foreground color." },
       { name: "style?", type: "CellLayoutStyle", description: "Width and layout overrides; default maximum width is 44 Cells." },
       { name: "children", type: "Cell primitives", description: "One AlertTitle, optional AlertDescription, and optional Button in order." },
@@ -128,12 +321,13 @@ export function DialogExample() {
 }`,
     api: [
       { name: "id", type: "string", description: "Required stable dismiss-command target." },
-      { name: "variant?", type: '"surface" | "ghost"', description: "Both are opaque: surface uses the elevated surface token; ghost uses the base surface token." },
+      { name: "variant?", type: '"surface" | "ghost"', description: "Both are opaque: surface uses the elevated surface token; ghost uses the current background." },
       { name: "border?", type: '"none" | "square" | "rounded"', description: "Independent Cell border; omitted uses the theme border shape." },
       { name: "modal", type: "boolean", description: "Trap focus and exclude background semantics; default true." },
       { name: "closeOnOutsideClick", type: "boolean", description: "Request dismissal on outside pointer down; default true." },
       { name: "initialFocusId", type: "string", description: "Preferred available content control on opening." },
       { name: "children", type: "Cell primitives", description: "One direct Title, optional direct Description, and composable content/Footer." },
+      { name: "CellAlertDialog", type: "browser component", description: "Host-managed cross-surface confirmation; unlike Dialog, outside input cannot dismiss it." },
     ],
   },
   {
@@ -298,7 +492,7 @@ export function TooltipExample() {
       { name: "targetId", type: "string", description: "Stable id of an existing focusable Cell control." },
       { name: "text", type: "string", description: "Non-empty, single-line supplementary text; clipped to the viewport." },
       { name: "id?", type: "string", description: "Optional stable tooltip owner and semantic identifier." },
-      { name: "variant?", type: '"surface" | "ghost"', description: "Opaque elevated or base surface; surface by default." },
+      { name: "variant?", type: '"surface" | "ghost"', description: "Opaque elevated or current background; surface by default." },
       { name: "border?", type: '"none" | "square" | "rounded"', description: "Independent Cell border; omitted uses the theme border shape." },
     ],
   },
@@ -908,7 +1102,7 @@ type GuideSection = Readonly<{
   tocLabel?: string;
   body?: string;
   code?: string;
-  demo?: "settings" | "progress" | "notes" | "macintosh" | "markdown" | "host-overlays";
+  demo?: "settings" | "progress" | "notes" | "macintosh" | "markdown";
   probeId?: string;
   installation?: boolean;
   api?: readonly ComponentApiRow[];
@@ -964,9 +1158,9 @@ Read [Installation](#/guides/installation).
 export const guideContent: readonly GuideContent[] = [
   {
     slug: "introduction", title: "Introduction",
-    description: "Build React interfaces from editable Unicode Cells. Own the source, compose a few good defaults, and let one frame serve people and agents.",
+    description: "Build Cell-native React interfaces for people and agents. People use the visible UI; agents inspect its editable source and committed frame to revise and verify it.",
     sections: [
-      { id: "philosophy", title: "Why Cells?", body: "A border, a space, a label, and a cursor all occupy integer Cells. The same committed frame drives the visible Canvas, accessible controls, copyable Unicode, and headless tests. Cell UI ships as source you can change, with fewer built-in knobs to work around. Drag to select text; hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux, for a rectangular Cell Range. Copy preserves the selected Unicode, including border glyphs.", link: { label: "Read the philosophy", href: "#/guides/philosophy" } },
+      { id: "philosophy", title: "Why Cells?", body: "Try Theme and Sound below. Their labels, controls, and pointer targets share integer Cell geometry, so the interface a person uses can also be inspected in a committed frame. Cell UI ships as source you can change, with fewer built-in knobs to work around. Drag to select visible Unicode; hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux, for a rectangular Cell Range.", link: { label: "Read the philosophy", href: "#/guides/philosophy" } },
       { id: "settings", title: "Compose a settings panel", body: "Theme and Sound are ordinary app state. Select and Checkbox share the same Cell grid and input model; try the menu and the checkbox with pointer or keyboard.", demo: "settings", code: `const themeItems = [
   { id: "light", label: "Light" },
   { id: "dark", label: "Dark" },
@@ -1002,7 +1196,7 @@ const [sound, setSound] = useState(true);
   },
   {
     slug: "philosophy", title: "Philosophy",
-    description: "UI as Text is the goal: structure, meaningful state, and available actions should be understandable from text without relying on color or source code. Three Cell-native principles support it.",
+    description: "UI as Text is the goal: people should understand and use the visible Cells, while agents inspect source, frame, and semantics to revise the interface. No single projection carries every detail. Three Cell-native principles support this shared medium.",
     sections: [
       { id: "everything-is-cell", title: "Everything is Cell", body: "Layout, paint, hit targets, scrolling, selection, and copy use integer Cells. Visible characters remain Unicode in Cell.text, whether painted by a font or Cell graphics; backgrounds are metadata, not characters. Every visible Cell belongs to a Widget or its chrome, so an outlined Table's borders can be copied and traced to their owner.", link: { label: "Cell-native design contract", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/cell-ui/design.mdx" } },
       { id: "every-input-becomes-a-command", title: "Every Input becomes a Command", tocLabel: "Input Becomes Command", body: "Keyboard, pointer, wheel, native text input, and assistive actions reach Widget commands. Keyboard operation is complete; a pointer acts directly on the visible Cell target. Enter and a complete tap on a Button reach the same action, and hover is never required to finish it.", link: { label: "Explore the visual philosophy", href: "#/guides/classic-macintosh" } },
@@ -1123,47 +1317,22 @@ function Layers() {
     </CellSurface>
   );
 }` },
-      { id: "headless", title: "Headless hosts", body: "CellUiRuntime commits a dense Cell buffer and Scene without a browser. Headless hosts supply viewport, state, focus, and animationTimeMs explicitly. The browser adapter supplies font loading, pointer, input, and semantic focus." },
-    ],
-  },
-  {
-    slug: "host-overlays", title: "Host overlays",
-    description: "One overlay host coordinates menus, modal panels, and notices across independent CellSurfaces.",
-    sections: [
-      { id: "preview", title: "Preview", demo: "host-overlays", probeId: "host-top-surface" },
-      { id: "installation", title: "Installation", installation: true },
-      { id: "usage", title: "Usage", body: "Mount CellOverlayHost above every participating surface. CellPopover and CellContextMenu use an element or pointer rectangle as their anchor; CellSheet and CellAlertDialog are modal. Render CellSurface content inside each portal. CellToastViewport shares the layer without taking focus.", code: `import { CellOverlayHost, CellPopover, CellSurface } from "@chardesk/cell-ui/browser";
-import { Root, Menu, MenuItem, Text } from "@chardesk/cell-ui";
-
-<CellOverlayHost>
-  <CellSurface viewport={{ width: 40, height: 10 }}>
-    <Root />
-  </CellSurface>
-  <CellPopover open={open} anchor={trigger} onDismiss={() => setOpen(false)}>
-    <CellSurface viewport={{ width: 20, height: 3 }}>
-      <Root>
-        <Menu id="actions" label="Actions">
-          <MenuItem id="open" label="Open">
-            <Text>Open</Text>
-          </MenuItem>
-        </Menu>
-      </Root>
-    </CellSurface>
-  </CellPopover>
-</CellOverlayHost>;` },
-      { id: "contract", title: "Contract", body: "The host owns stacking, viewport placement, outside/Escape dismissal, modal background inertness, and focus return. Menu content stays a Cell descriptor; app state decides when to open or close it.", links: [
+      { id: "overlays", title: "Overlay host", body: "Mount one CellOverlayHost around participating surfaces. It owns stacking, viewport placement, outside/Escape dismissal, modal background inertness, and focus return. Outside input closes nonmodal layers above its target; Escape closes only the top layer. App state controls visibility. Menu uses CellPopover or CellContextMenu; Sheet and CellAlertDialog are modal; Toast shares the host layer without taking focus.", links: [
+        { label: "Menu", href: "#/components/menu" },
+        { label: "Sheet", href: "#/components/sheet" },
+        { label: "Toast", href: "#/components/toast" },
         { label: "Browser host source", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser-overlay-host.tsx" },
-        { label: "Gallery acceptance", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/overlay-host.spec.ts" },
       ] },
+      { id: "headless", title: "Headless hosts", body: "CellUiRuntime commits a dense Cell buffer and Scene without a browser. Headless hosts supply viewport, state, focus, and animationTimeMs explicitly. The browser adapter supplies font loading, pointer, input, and semantic focus." },
     ],
   },
   {
     slug: "theming", title: "Theming",
     description: "Resolve one Cell theme into a browser palette and component recipes.",
     sections: [
-      { id: "defaults", title: "Defaults", body: "CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. semanticColors gives info, success, warning, and danger each a text color, surface, and surface foreground. Markdown prose and Badge/Alert derive defaults from it; Markdown syntax uses codeKey, codeValue, codeCommand, and codeComment colors. Badge/Alert error maps to danger. resolveCellUiTheme(partial) accepts semanticColors, markdownColors, and badgeStyles overrides. Surface backgrounds do not alter copied Cell text." },
+      { id: "defaults", title: "Defaults", body: "CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. semanticColors gives info, success, warning, and danger each a text color, surface, and surface foreground. Link uses info text by default; Markdown prose and Badge/Alert also derive defaults from semanticColors. Explicit Link textStyle.color overrides that default. Markdown syntax uses codeKey, codeValue, codeCommand, and codeComment colors. Badge/Alert error maps to danger. resolveCellUiTheme(partial) accepts semanticColors, markdownColors, and badgeStyles overrides. Surface backgrounds do not alter copied Cell text." },
       { id: "css", title: "CSS tokens", body: "The /browser entry exports readCellCssTheme(element) and useCellCssTheme(ref, revision). Shared --cell-tone-{info,success,warning,danger} tokens have optional -surface and -surface-foreground partners. Markdown's --cell-markdown-* and Badge's --cell-badge-* tokens override their roles; syntax uses --cell-markdown-code-{key,value,command,comment}. Apply CSS changes before the hook's layout effect; bump revision after external stylesheet changes." },
-      { id: "surface", title: "Surface and frame", body: "Box, ScrollArea, and TextArea separate variant (ghost or surface) from frame (none or bordered). Dialog and Tooltip use their own opaque variant and border recipe. Geometry belongs to CellLayoutStyle, not the theme." },
+      { id: "surface", title: "Surface and frame", body: "Every ghost surface fills with the nearest parent background, falling back to the page background; surface uses the elevated background. Box, ScrollArea, TextArea, Dialog, and Tooltip share this rule. Frame and border remain independent. Geometry belongs to CellLayoutStyle, not the theme." },
     ],
   },
   {

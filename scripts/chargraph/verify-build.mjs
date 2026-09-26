@@ -6,7 +6,7 @@ const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../.."
 );
-const siteOutput = path.join(repositoryRoot, "dist/chargraph");
+const siteOutput = path.join(repositoryRoot, "apps/site/dist/chargraph");
 const html = await readFile(path.join(siteOutput, "index.html"), "utf8");
 
 if (!html.includes("https://chardesk.com/chargraph/")) {

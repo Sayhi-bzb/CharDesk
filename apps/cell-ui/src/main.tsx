@@ -150,12 +150,20 @@ export function NotFound() {
 
 export function CellUiApp(): ReactNode {
   const route = useRoute();
+  const legacyHostRoute = route.split("?", 1)[0] === "/guides/host-overlays";
   useEffect(() => {
     if (!window.location.hash) window.location.replace(defaultHref);
   }, []);
-  const fixture = route.match(/^\/__fixtures\/([^/]+)$/);
+  useEffect(() => {
+    if (legacyHostRoute) {
+      window.location.replace("#/guides/integration?section=overlays");
+    }
+  }, [legacyHostRoute]);
+  const resolvedRoute = legacyHostRoute
+    ? "/guides/integration?section=overlays" : route;
+  const fixture = resolvedRoute.match(/^\/__fixtures\/([^/]+)$/);
   if (fixture) return <FixturePage slug={fixture[1]!} />;
-  const [path, query = ""] = route.split("?", 2);
+  const [path, query = ""] = resolvedRoute.split("?", 2);
   const component = path?.match(/^\/components\/([^/]+)$/);
   const document = component ? componentDocumentBySlug.get(component[1]!) : undefined;
   const guideMatch = path?.match(/^\/guides\/([^/]+)$/);

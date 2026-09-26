@@ -48,10 +48,12 @@ export const usePointerAppearance = (
     window.addEventListener("scroll", refresh, true);
     window.addEventListener("resize", refresh);
     window.addEventListener("blur", clear);
+    document.addEventListener("cell-overlay-position-change", refresh);
     return () => {
       window.removeEventListener("scroll", refresh, true);
       window.removeEventListener("resize", refresh);
       window.removeEventListener("blur", clear);
+      document.removeEventListener("cell-overlay-position-change", refresh);
     };
   }, [refresh, clear]);
   const move = (event: PointerEvent) => {

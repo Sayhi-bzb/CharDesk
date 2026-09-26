@@ -3,8 +3,8 @@ import { formatCharDeskCellFrame } from "@chardesk/rendering";
 import { CellBuffer } from "../../packages/cell-ui/src/buffer.js";
 import { createCellUiRenderFrame } from "../../packages/cell-ui/src/frame.js";
 import type { FrameSnapshot } from "../../packages/cell-ui/src/types.js";
-import { createGridSurfaceReader } from "../../src/domains/canvas/public.js";
-import { createCanvasCellFrame } from "../../src/widgets/canvas-editor/rendering/canvasCellFrame.js";
+import { createGridSurfaceReader } from "../../apps/canvas/src/domains/canvas/public.js";
+import { createCanvasCellFrame } from "../../apps/canvas/src/widgets/canvas-editor/rendering/canvasCellFrame.js";
 
 describe("Cell frame adapter parity", () => {
   it("matches dense Cell UI and sparse Canvas Unicode snapshots", () => {

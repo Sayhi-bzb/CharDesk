@@ -78,10 +78,10 @@ export function checkCellArchitecture(content, file) {
   const moduleImports = imports(content);
   if (
     ([
-      "src/domains/canvas/state/canvasTextCommands.ts",
-      "src/domains/canvas/state/canvasDocumentCommands.ts",
-      "src/domains/canvas/state/canvasSessionCommands.ts",
-      "src/domains/canvas/state/canvasSlideCommands.ts",
+      "apps/canvas/src/domains/canvas/state/canvasTextCommands.ts",
+      "apps/canvas/src/domains/canvas/state/canvasDocumentCommands.ts",
+      "apps/canvas/src/domains/canvas/state/canvasSessionCommands.ts",
+      "apps/canvas/src/domains/canvas/state/canvasSlideCommands.ts",
     ].includes(file))
     && (
       moduleImports.includes("zustand")
@@ -94,7 +94,7 @@ export function checkCellArchitecture(content, file) {
     report("Consumers must import Cell primitives from their Core, protocol, rendering, font, or app owner");
   }
   if (
-    (file === "src/shared/fonts/catalog.ts"
+    (file === "apps/canvas/src/shared/fonts/catalog.ts"
       || file === "apps/cell-ui/src/font-options.ts")
     && content.includes("createCharDeskFontProfile")
   ) {
@@ -103,7 +103,7 @@ export function checkCellArchitecture(content, file) {
   const rangeAdapters = new Map([
     ["packages/cell-ui/src/range.ts", "resolveCellRangeBounds"],
     ["packages/viewer/src/grid-interaction.ts", "resolveCellRangeBounds"],
-    ["src/domains/selection/model/grid-selection-geometry.ts", "resolveCellRangeSpans"],
+    ["apps/canvas/src/domains/selection/model/grid-selection-geometry.ts", "resolveCellRangeSpans"],
   ]);
   const rangeOwner = rangeAdapters.get(file);
   if (rangeOwner && (
@@ -156,7 +156,7 @@ export function checkCellArchitecture(content, file) {
     report("The headless Cell UI frame adapter must consume the rendering root contract");
   }
   if (
-    file === "src/widgets/canvas-editor/rendering/canvasCellFrame.ts"
+    file === "apps/canvas/src/widgets/canvas-editor/rendering/canvasCellFrame.ts"
     && moduleImports.some((dependency) => dependency === "@chardesk/cell-ui"
       || dependency.startsWith("@chardesk/cell-ui/"))
   ) {
@@ -170,7 +170,7 @@ export function checkCellArchitecture(content, file) {
     report("The rendering root must not depend on the Canvas presenter");
   }
   if (
-    file === "src/domains/selection/model/static-grid-input-session.ts"
+    file === "apps/canvas/src/domains/selection/model/static-grid-input-session.ts"
     && (content.includes("GridCellSource") || moduleImports.includes("@/shared/types"))
   ) {
     report("The input session must not infer its origin from Cell content");

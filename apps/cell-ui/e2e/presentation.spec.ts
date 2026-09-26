@@ -86,7 +86,12 @@ test("text Select exposes navigation and selection as distinct glyphs", async ({
   const dropdown = probe.overlays.find((overlay) => overlay.rootId === "component-select-content");
   expect(dropdown).toBeDefined();
   expect(dropdown!.text).toContain("✓");
-  expect(dropdown!.bounds.y + dropdown!.bounds.height).toBeLessThanOrEqual(probe.overlayViewport.height);
+  expect(dropdown!.bounds.y + dropdown!.bounds.height).toBeGreaterThan(probe.viewport.height);
+  const article = await readCellProbe(page.locator('[data-cell-probe="article-select"]'));
+  const articleDropdown = article.overlays.find((overlay) => overlay.rootId === "component-select-content");
+  expect(articleDropdown).toBeDefined();
+  expect(articleDropdown!.bounds.y + articleDropdown!.bounds.height)
+    .toBeLessThanOrEqual(article.overlayViewport.height);
   await page.keyboard.press("Escape");
   await expect(trigger).toHaveAttribute("aria-expanded", "false");
 });

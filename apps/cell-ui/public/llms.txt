@@ -4,13 +4,12 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 
 ## Sections
 
-- [Introduction](https://ui.chardesk.com/guides/introduction.md): Build React interfaces from editable Unicode Cells. Own the source, compose a few good defaults, and let one frame serve people and agents.
-- [Philosophy](https://ui.chardesk.com/guides/philosophy.md): UI as Text is the goal: structure, meaningful state, and available actions should be understandable from text without relying on color or source code. Three Cell-native principles support it.
+- [Introduction](https://ui.chardesk.com/guides/introduction.md): Build Cell-native React interfaces for people and agents. People use the visible UI; agents inspect its editable source and committed frame to revise and verify it.
+- [Philosophy](https://ui.chardesk.com/guides/philosophy.md): UI as Text is the goal: people should understand and use the visible Cells, while agents inspect source, frame, and semantics to revise the interface. No single projection carries every detail. Three Cell-native principles support this shared medium.
 - [Classic Macintosh](https://ui.chardesk.com/guides/classic-macintosh.md): A clear visual hierarchy and direct, forgiving interaction—translated into Cell UI rather than copied as a retro skin.
 - [Markdown](https://ui.chardesk.com/guides/markdown.md): Read Markdown as a Cell-native document. This Gallery publishes its source .md pages through llms.txt.
 - [Installation](https://ui.chardesk.com/guides/installation.md): Install the complete editable Cell UI source through the shadcn registry.
 - [Integration](https://ui.chardesk.com/guides/integration.md): Connect Cell descriptors, browser projection, and application-owned state.
-- [Host overlays](https://ui.chardesk.com/guides/host-overlays.md): One overlay host coordinates menus, modal panels, and notices across independent CellSurfaces.
 - [Theming](https://ui.chardesk.com/guides/theming.md): Resolve one Cell theme into a browser palette and component recipes.
 - [Testing](https://ui.chardesk.com/guides/testing.md): Inspect the committed Cell frame instead of inferring behavior from pixels.
 
@@ -24,17 +23,20 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 - [Combobox](https://ui.chardesk.com/components/combobox.md): Click the input row to open local options, filter, then commit one value.
 - [Dialog](https://ui.chardesk.com/components/dialog.md): A named Cell dialog with shared overlay placement and focus management.
 - [Input](https://ui.chardesk.com/components/input.md): Edit a single line of Unicode text on the Cell grid.
+- [Menu](https://ui.chardesk.com/components/menu.md): Compose a Cell menubar with host-managed command menus across surfaces.
 - [Progress](https://ui.chardesk.com/components/progress.md): Display determinate or indeterminate progress as a solid or outlined track, with an optional percentage.
 - [Radio](https://ui.chardesk.com/components/radio.md): Choose one value with a shared group and arrow-key navigation.
 - [ScrollArea](https://ui.chardesk.com/components/scroll-area.md): Scroll overflowing Cell content with keys, wheel, track, or thumb.
 - [Select](https://ui.chardesk.com/components/select.md): Choose one value from a Cell-anchored listbox.
 - [Separator](https://ui.chardesk.com/components/separator.md): Separate Cell content with one row or column.
+- [Sheet](https://ui.chardesk.com/components/sheet.md): Open a modal Cell panel from the viewport edge without replacing the work surface.
 - [Slider](https://ui.chardesk.com/components/slider.md): Select one stepped value or a bounded interval on a Cell-native track.
 - [Spinner](https://ui.chardesk.com/components/spinner.md): Show indeterminate activity in a single Unicode Cell, using a wheel or dots.
 - [Table](https://ui.chardesk.com/components/table.md): Display read-only rows on a Cell grid with lines or alternating backgrounds.
 - [Tabs](https://ui.chardesk.com/components/tabs.md): Switch between related Cell panels with one selected tab.
 - [Text](https://ui.chardesk.com/components/text.md): Render Unicode text in the Cell layout without browser text nodes.
 - [TextArea](https://ui.chardesk.com/components/text-area.md): Edit multiline Cell text with retained selection and scrolling.
+- [Toast](https://ui.chardesk.com/components/toast.md): Show timed Cell notices above the workspace without moving focus.
 - [Toggle](https://ui.chardesk.com/components/toggle.md): Show a persistent mode with a status light, separate from interaction feedback.
 - [Tooltip](https://ui.chardesk.com/components/tooltip.md): Explain a Cell control on delayed hover or keyboard focus without changing its layout.
 

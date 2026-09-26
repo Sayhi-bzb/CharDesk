@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { githubStarsResponse, type StarEnvironment } from "../../cloudflare/github-stars";
+import { githubStarsResponse, type StarEnvironment } from "../../packages/github-stars/src/index";
 
 const environment = (value: string | null): StarEnvironment => ({
   GITHUB_STARS: { get: async () => value },

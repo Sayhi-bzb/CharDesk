@@ -18,6 +18,7 @@
     "@chardesk/font-maple": "*",
     "@chardesk/font-xiaolai": "*",
     "@chardesk/fonts": "*",
+    "@chardesk/github-stars": "*",
     "@chardesk/rendering": "*",
     "pixelarticons": "^2.4.1",
     "react": "^19.2.0",

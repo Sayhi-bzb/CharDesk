@@ -72,7 +72,7 @@ test("Alert border uses each status foreground in light and dark themes", async 
   }
 });
 
-test("Alert ghost removes its fill while retaining tone text and border", async ({ page }) => {
+test("Alert ghost inherits the page fill while retaining tone text and border", async ({ page }) => {
   await page.goto("/#/components/alert");
   const surface = page.locator('[data-cell-probe="component-alert"]');
   const marker = async () => ownerCells(await readCellProbe(surface), "component-alert-info")
@@ -86,7 +86,7 @@ test("Alert ghost removes its fill while retaining tone text and border", async 
 
   await expect.poll(async () => (await marker())?.style.backgroundColor).toBe("rgb(221, 238, 255)");
   await select("variant", "ghost");
-  await expect.poll(async () => (await marker())?.style.backgroundColor ?? null).toBeNull();
+  await expect.poll(async () => (await marker())?.style.backgroundColor).toBe("rgb(255, 255, 255)");
   expect((await marker())?.style.color).toBe("rgb(23, 71, 107)");
 
   await select("border", "square");
@@ -96,5 +96,5 @@ test("Alert ghost removes its fill while retaining tone text and border", async 
 
   await page.getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
   await expect.poll(async () => (await marker())?.style.color).toBe("rgb(184, 228, 255)");
-  expect((await marker())?.style.backgroundColor).toBeUndefined();
+  expect((await marker())?.style.backgroundColor).toBe("rgb(0, 0, 0)");
 });

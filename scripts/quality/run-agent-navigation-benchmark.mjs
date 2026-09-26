@@ -11,7 +11,7 @@ const rankImplementationCandidates = (result) => {
   return [...(result.definitions ?? []), ...(result.process_symbols ?? [])]
     .filter(
       (symbol) =>
-        symbol.filePath?.startsWith("src/") &&
+        symbol.filePath?.startsWith("apps/canvas/src/") &&
         !/\.(?:test|spec)\.[tj]sx?$/.test(symbol.filePath)
     )
     .filter((symbol) => {

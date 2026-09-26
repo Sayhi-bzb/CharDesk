@@ -38,7 +38,6 @@ import {
   Text,
   TextArea,
   TextInput,
-  cellTextWidth,
   type ButtonVariant,
   type CellBorderShape,
   type CellFrame,
@@ -57,12 +56,21 @@ import {
   useCellTabsState,
   useCellTextState,
 } from "@chardesk/cell-ui/browser";
-import { ComponentPlayground, richOnly } from "../component-playground";
-import { PLAYGROUND_CONTROL_COLUMNS } from "../component-playground-layout";
+import { ComponentPlayground } from "../component-playground";
 import {
   renderGalleryCheckbox,
   renderGallerySelect,
 } from "../gallery-component-recipes";
+import {
+  renderPlaygroundCheckboxControl,
+  renderPlaygroundSelectControl,
+  renderRichOnlySelectControl,
+  usePlaygroundFocus,
+  playgroundControlWidth,
+  surfaceVariantItems,
+  frameItems,
+  borderShapeItems,
+} from "../playground-controls";
 
 const dialogVariantItems = (["surface", "ghost"] as const).map((value) => ({ id: value, label: value }));
 const floatingBorderItems = (["square", "rounded", "none"] as const).map((value) => ({ id: value, label: value }));
@@ -74,10 +82,7 @@ const buttonContentItems = [
   { id: "icon-only", label: "icon-only", text: buttonSaveIcon },
   { id: "icon-text", label: "icon + text", text: `${buttonSaveIcon} Save` },
 ] as const;
-const surfaceVariantItems = (["surface", "ghost"] as const).map((value) => ({ id: value, label: value }));
 const tableVariantItems = (["plain", "outline", "surface"] as const).map((value) => ({ id: value, label: value }));
-const frameItems = (["none", "bordered"] as const).map((value) => ({ id: value, label: value }));
-const borderShapeItems = (["square", "rounded"] as const).map((value) => ({ id: value, label: value }));
 const progressVariantItems = (["solid", "outline"] as const).map((value) => ({ id: value, label: value }));
 const spinnerVariantItems = (["wheel", "dots"] as const).map((value) => ({ id: value, label: value }));
 const tabsVariantItems = (["underline", "solid"] as const).map((value) => ({ id: value, label: value }));
@@ -105,7 +110,7 @@ export const DialogComponentDemo = () => {
     if (command.targetId === "dialog-cancel" || command.targetId === "dialog-confirm") setOpen(false);
   };
   return <ComponentPlayground id="component-dialog-playground" label="Dialog component" probeId="component-dialog"
-    focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={36} controlsColumns={29} overlayRows={5}
+    focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={36} controlsColumns={29} rows={12} modalScope
     preview={<Box variant="ghost">
       <Button id="dialog-open"><Text>Open dialog</Text></Button>
       {open && <Dialog id="demo-dialog" initialFocusId="dialog-cancel"
@@ -149,7 +154,6 @@ export const AccordionComponentDemo = () => {
   };
   return <ComponentPlayground id="component-accordion-playground" label="Accordion component" probeId="component-accordion"
     focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={30} controlsColumns={25}
-    overlayRows={theme.open ? theme.items.length : 0}
     preview={<Accordion id="accordion-settings" disabled={disabled} style={{ width: 30 }}>
       {["general", "appearance", "advanced"].map((name, index) => <Fragment key={name}>
         {separated && index > 0 ? <Separator id={`accordion-${name}-separator`} /> : null}
@@ -241,7 +245,6 @@ export const ProgressComponentDemo = () => {
   return <ComponentPlayground id="component-progress-playground" label="Progress component"
     probeId="component-progress" focusedId={focus.focusedId} onCommand={dispatch}
     previewMinColumns={20} controlsColumns={25}
-    overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={<Progress id="component-progress-bar" label="Progress"
       value={indeterminate ? null : value} number={number} variant={variant.selectedId as ProgressVariant}
       style={{ width: 20 }} />}
@@ -269,7 +272,7 @@ export const SpinnerComponentDemo = () => {
   const focus = usePlaygroundFocus(variant.triggerId, [variant]);
   return <ComponentPlayground id="component-spinner-playground" label="Spinner component"
     probeId="component-spinner" focusedId={focus.focusedId} onCommand={focus.dispatch}
-    previewMinColumns={20} controlsColumns={22} overlayRows={focus.activeSelect?.items.length ?? 0}
+    previewMinColumns={20} controlsColumns={22}
     preview={<Box style={{ direction: "row", gap: 1 }}>
       <Spinner id="component-spinner-indicator" label="Loading" variant={variant.selectedId as SpinnerVariant} />
       <Text>Loading…</Text>
@@ -282,7 +285,7 @@ export const TableComponentDemo = () => {
   const focus = usePlaygroundFocus(variant.triggerId, [variant]);
   return <ComponentPlayground id="component-table-playground" label="Table component" probeId="component-table"
     focusedId={focus.focusedId} onCommand={focus.dispatch} previewMinColumns={36} controlsColumns={22}
-    overlayRows={focus.activeSelect?.items.length ?? 0} rows={9}
+    rows={9}
     preview={<Table id="component-table-example" label="Files" variant={variant.selectedId as TableVariant}
       columns={[{ label: "Name", width: 12 }, { label: "Status", width: 10 }, { label: "Size", width: 7, align: "right" }]}>
       <TableRow id="component-table-notes"><TableCell>Notes.txt</TableCell><TableCell>Synced</TableCell><TableCell>12 KB</TableCell></TableRow>
@@ -301,7 +304,7 @@ export const TooltipComponentDemo = () => {
   const focus = usePlaygroundFocus("component-tooltip-save", [variant, border]);
   return <ComponentPlayground id="component-tooltip-playground" label="Tooltip component"
     probeId="component-tooltip" focusedId={focus.focusedId} onCommand={focus.dispatch}
-    previewMinColumns={28} controlsColumns={25} overlayRows={focus.activeSelect?.items.length ?? 4}
+    previewMinColumns={28} controlsColumns={25}
     preview={<Box>
       <Button id="component-tooltip-save" label="Save document"><Text>Save</Text></Button>
       <Tooltip id="component-tooltip-help" targetId="component-tooltip-save" text="Save current document"
@@ -325,7 +328,6 @@ export const SeparatorComponentDemo = () => {
   const vertical = orientation.selectedId === "vertical";
   return <ComponentPlayground id="component-separator-playground" label="Separator component" probeId="component-separator"
     focusedId={focus.focusedId} onCommand={focus.dispatch} previewMinColumns={20} controlsColumns={25}
-    overlayRows={focus.activeSelect ? focus.activeSelect.items.length : 0}
     preview={<Separator id="component-separator-line" orientation={vertical ? "vertical" : "horizontal"}
       variant={variant.selectedId as SeparatorVariant}
       style={vertical ? { height: 5 } : { width: 20 }} />}
@@ -385,61 +387,6 @@ export const TextComponentDemo = () => (
   />
 );
 
-type PlaygroundSelectState = ReturnType<typeof useCellSelectState>;
-const playgroundControlWidth = 15;
-
-const usePlaygroundFocus = (
-  initialFocusedId: string,
-  selects: readonly PlaygroundSelectState[],
-) => {
-  const [focusedId, setFocusedId] = useState(initialFocusedId);
-  const activeSelect = selects.find(({ open }) => open) ?? null;
-  const dispatch = (command: WidgetCommand) => {
-    if (command.type === "focus") setFocusedId(command.targetId);
-    selects.forEach((select) => {
-      select.dispatch(command);
-      if (command.type === "dismiss" && command.targetId === select.contentId) {
-        setFocusedId(select.triggerId);
-      }
-      if (command.type === "activate" && select.items.some(({ id }) => id === command.targetId)) {
-        setFocusedId(select.triggerId);
-      }
-    });
-  };
-  return {
-    activeSelect,
-    dispatch,
-    focusedId: activeSelect?.focusedId ?? focusedId,
-  };
-};
-
-const renderPlaygroundSelectControl = (
-  label: string,
-  select: PlaygroundSelectState,
-  focusedId: string,
-  itemSemanticLabel?: (id: string) => string,
-) => renderGallerySelect({
-  label,
-  select,
-  focusedId,
-  width: Math.min(PLAYGROUND_CONTROL_COLUMNS, Math.max(playgroundControlWidth,
-    ...select.items.map((item) => cellTextWidth(item.label) + 6))),
-  itemSemanticLabel,
-});
-
-const renderRichOnlySelectControl = (
-  label: string,
-  select: PlaygroundSelectState,
-  focusedId: string,
-) => richOnly(renderPlaygroundSelectControl(label, select, focusedId), select);
-
-const renderPlaygroundCheckboxControl = (
-  label: string,
-  id: string,
-  checked: boolean,
-  focusedId: string,
-) => renderGalleryCheckbox({ id, label, checked, focusedId });
-
 export const TextAreaComponentDemo = () => {
   const editor = useCellTextState("notes", { value: "Hello, 世界\nEdit these Cells.", multiline: true });
   const variant = useCellSelectState("component-text-area-variant", surfaceVariantItems, {
@@ -458,7 +405,6 @@ export const TextAreaComponentDemo = () => {
   };
   return <ComponentPlayground id="component-text-area-playground" label="Text area" probeId="component-text-area"
     focusedId={focus.focusedId} onCommand={dispatch} previewMinColumns={32} rows={8}
-    overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={<TextArea id="notes" label="Notes" state={editor.snapshot}
       variant={variant.selectedId as SurfaceVariant}
       frame={frame.selectedId as CellFrame}
@@ -492,7 +438,6 @@ export const BoxComponentDemo = () => {
     probeId="component-box"
     previewMinColumns={20}
     controlsColumns={25}
-    overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={
       <Box
         id="component-box-preview"
@@ -543,7 +488,6 @@ export const ButtonComponentDemo = () => {
     probeId="component-button"
     previewMinColumns={10}
     controlsColumns={25}
-    overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={
       <Button
         id="component-button-save"
@@ -612,7 +556,6 @@ export const AlertComponentDemo = () => {
   return <ComponentPlayground id="component-alert-playground" label="Alert component"
     probeId="component-alert" focusedId={focus.focusedId} onCommand={dispatch}
     previewMinColumns={42} controlsColumns={23} rows={27}
-    overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={<Box style={{ width: 40, gap: 1 }}>
       <Alert id="component-alert-info" tone="info" variant={selectedVariant} border={selectedBorder}>
         <AlertTitle>New version available</AlertTitle>
@@ -661,7 +604,6 @@ export const TabsComponentDemo = () => {
     onCommand={dispatch}
     previewMinColumns={32}
     controlsColumns={25}
-    overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={<Box style={{ direction: "column", width: 32 }}>
       <Tabs id="component-tabs-list" label="Views" orientation="horizontal"
         variant={variant.selectedId as TabsVariant}>
@@ -728,10 +670,6 @@ export const SelectComponentDemo = () => {
     probeId="component-select"
     previewMinColumns={30}
     controlsColumns={25}
-    overlayRows={(presentation) => focus.activeSelect
-      ? focus.activeSelect.items.length + (focus.activeSelect === select
-        && (presentation === "text" || frame.selectedId === "bordered") ? 2 : 0)
-      : 0}
     preview={renderGallerySelect({
       fieldId: "component-select-preview",
       labelId: "component-select-label",
@@ -794,9 +732,6 @@ export const ComboboxComponentDemo = () => {
   return <ComponentPlayground id="component-combobox-playground" label="Combobox component"
     probeId="component-combobox" focusedId={focus.focusedId} onCommand={dispatch}
     previewMinColumns={30} controlsColumns={25}
-    overlayRows={combo.open
-      ? Math.min(Math.max(combo.filteredItems.length, 1), 3) + 2
-      : focus.activeSelect?.items.length ?? 0}
     preview={<Box id="component-combobox-preview" variant="ghost" style={{ width: 30 }}>
       <Text>Font</Text>
       <Combobox id={combo.id} disabled={disabled} variant={variant.selectedId as SurfaceVariant} style={{ width: 30 }}>
@@ -979,7 +914,6 @@ export const InputComponentDemo = () => {
     probeId="component-input"
     previewMinColumns={30}
     controlsColumns={25}
-    overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={
       <Field id="component-input-frame" label="File name"
         error={invalid ? "File name is required" : undefined} style={{ width: 30 }}>
@@ -1043,7 +977,6 @@ export const ScrollAreaComponentDemo = () => {
     probeId="component-scroll-area"
     previewMinColumns={28}
     controlsColumns={25}
-    overlayRows={focus.activeSelect?.items.length ?? 0}
     preview={(presentation) => {
       const hasBorder = frame.selectedId === "bordered"
         || (presentation === "text" && variant.selectedId === "surface");

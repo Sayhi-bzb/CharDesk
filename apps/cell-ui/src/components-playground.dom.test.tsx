@@ -21,6 +21,7 @@ import {
   SliderComponentDemo,
   TabsComponentDemo,
 } from "./sections/components";
+import { MenuComponentDemo } from "./sections/host-components";
 
 const context = {
   setTransform: vi.fn(),
@@ -66,7 +67,7 @@ describe("Component Playground gallery demos", () => {
 
   it.each([
     { Demo: AlertComponentDemo, label: "Alert component", rows: 27, content: ["New version available", "Changes saved", "Unsaved changes", "Save failed", "variant", "border"], absent: ["first tone", "dismiss", "autoClose"] },
-    { Demo: DialogComponentDemo, label: "Dialog component", content: ["variant", "surface", "border", "square"], absent: ["modal", "closeOnOutsideClick", "frame", "bordered", "ghost"] },
+    { Demo: DialogComponentDemo, label: "Dialog component", rows: 12, content: ["variant", "surface", "border", "square"], absent: ["modal", "closeOnOutsideClick", "frame", "bordered", "ghost"] },
     { Demo: ToggleComponentDemo, label: "Toggle component", content: ["○ Bold", "disabled"], absent: ["variant", "pressed", "value"] },
     { Demo: BadgeComponentDemo, label: "Badge component", content: ["Waiting", "Syncing", "Done", "Delayed", "Failed", "Retry", "Disabled"], absent: ["tone", "interactive", "Activated:", "variant"] },
     { Demo: TabsComponentDemo, label: "Tabs component", content: ["Code", "Preview", "Settings", "⎺⎺⎺⎺", "variant", "underline", 'const greeting = "Hello";'], absent: ["Activated:"] },
@@ -77,6 +78,7 @@ describe("Component Playground gallery demos", () => {
     { Demo: RadioComponentDemo, label: "Radio component", content: ["(●) Light", "( ) Dark", "disabled"], absent: ["variant", "value"] },
     { Demo: BoxComponentDemo, label: "Box component", content: ["Block", "variant", "frame"], absent: ["rounded"] },
     { Demo: SelectComponentDemo, label: "Select component", content: ["Theme", "Dark", "disabled", "variant", "dropdown frame"], absent: ["value"] },
+    { Demo: MenuComponentDemo, label: "Menu component", rows: 9, content: ["File", "Edit", "View", "variant", "surface", "dropdown frame", "none", "disabled"], absent: ["border shape"] },
     { Demo: ComboboxComponentDemo, label: "Combobox component", content: ["Font", "Maple Mono", "disabled", "variant", "dropdown frame"], absent: ["value"] },
     { Demo: CheckboxComponentDemo, label: "Checkbox component", content: ["Autosave", "disabled"], absent: ["checked"] },
     { Demo: SliderComponentDemo, label: "Slider component", content: ["Volume", "range", "disabled"], absent: ["value", "step"] },
@@ -156,7 +158,7 @@ describe("Component Playground gallery demos", () => {
     fireEvent.click(await screen.findByRole("option", { name: "ghost" }));
     await waitFor(() => expect(variant).toHaveAttribute("aria-expanded", "false"));
     await waitFor(() => expect(marker()?.style).toMatchObject({ color: "#17476B" }));
-    expect(marker()?.style.backgroundColor).toBeUndefined();
+    expect(marker()?.style.backgroundColor).toBe("#FFFFFF");
 
     fireEvent.click(screen.getByRole("button", { name: "border" }));
     fireEvent.click(await screen.findByRole("option", { name: "square" }));

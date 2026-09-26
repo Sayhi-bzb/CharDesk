@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { CLASSIC_MAC_LIGHT_THEME, CellUiRuntime, FocusManager, Link, Root, auditSemanticSnapshot, commandForInput } from "./index.js";
+import { CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME, CellUiRuntime, FocusManager, Link, Root, auditSemanticSnapshot, commandForInput } from "./index.js";
 
 it("renders a navigation link with a full name, current state, and the normal open-link command", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 24, height: 2 } });
@@ -36,6 +36,30 @@ it("preserves new-tab intent through the link command and semantics", () => {
   expect(commandForInput({ type: "semantic", targetId: "github", action: "activate" }, frame, new FocusManager()))
     .toEqual({ type: "open-link", targetId: "github", href: "https://github.com", target: "_blank" });
   runtime.dispose();
+});
+
+it("uses the shared info text color by default while respecting explicit link colors", () => {
+  for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
+    const runtime = new CellUiRuntime({ viewport: { width: 16, height: 2 }, theme });
+    const content = <Root>
+      <Link id="default" href="/docs/">Docs</Link>
+      <Link id="custom" href="/" textStyle={{ color: theme.foreground }}>Brand</Link>
+    </Root>;
+    const idle = runtime.render(content);
+    expect(idle.buffer.get(0, 0)?.style.color).toBe(theme.semanticColors.info.text);
+    expect(idle.buffer.get(0, 1)?.style.color).toBe(theme.foreground);
+    const hovered = runtime.render(content, { hoveredId: "default" });
+    expect(hovered.buffer.get(0, 0)?.style).toMatchObject({
+      color: theme.background,
+      backgroundColor: theme.semanticColors.info.text,
+    });
+    const focused = runtime.render(content, { focusedId: "default", focusVisible: true });
+    expect(focused.buffer.get(0, 0)?.style).toMatchObject({
+      color: theme.background,
+      backgroundColor: theme.semanticColors.info.text,
+    });
+    runtime.dispose();
+  }
 });
 
 it("keeps an explicitly inverted current link inverted on hover", () => {

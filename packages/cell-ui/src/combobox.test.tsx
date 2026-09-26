@@ -104,15 +104,15 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
         const content = result.scene.entries.get("content")!.layoutBounds;
         expect(content.height).toBe(frame === "bordered" ? 3 : 1);
         expect(result.buffer.get(14, 0)?.style.backgroundColor)
-          .toBe(variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
+          .toBe(variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : theme.background);
         expect(result.buffer.get(14, content.y + (frame === "bordered" ? 1 : 0))?.style.backgroundColor)
-          .toBe(variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : undefined);
+          .toBe(variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : theme.background);
       }
     }
     const ghostDisabled = runtime.render(view("ghost", "none", true), {
       focusedId: "input", activeFocusId: "input",
     });
-    expect(ghostDisabled.buffer.get(14, 0)?.style.backgroundColor).toBeUndefined();
+    expect(ghostDisabled.buffer.get(14, 0)?.style.backgroundColor).toBe(theme.background);
     runtime.dispose();
   });
 
@@ -151,7 +151,7 @@ for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
       const view = <Root><Combobox variant={variant} style={{ width: 12 }}>
         <ComboboxInput id="input" label="Font" state={editor.snapshot()} />
       </Combobox></Root>;
-      const background = variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : undefined;
+      const background = variant === "surface" ? theme.elevatedSurfaceStyle.backgroundColor : theme.background;
       const idle = runtime.render(view);
       expect(idle.buffer.get(1, 0)?.style.underline).not.toBe(true);
       expect(idle.buffer.get(1, 0)?.style.backgroundColor).toBe(background);

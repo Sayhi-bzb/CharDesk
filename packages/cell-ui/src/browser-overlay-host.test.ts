@@ -8,9 +8,9 @@ const viewport = { width: 100, height: 100 };
 describe("Cell overlay placement", () => {
   it("flips and clamps anchored content within the viewport", () => {
     expect(positionCellOverlay(anchor, size, viewport, "bottom-start"))
-      .toEqual({ left: 68, top: 44 });
+      .toEqual({ left: 68, top: 48 });
     expect(positionCellOverlay(anchor, size, viewport, "right-start"))
-      .toEqual({ left: 46, top: 72 });
+      .toEqual({ left: 50, top: 72 });
   });
 
   it("places modal content centrally or at the right edge", () => {

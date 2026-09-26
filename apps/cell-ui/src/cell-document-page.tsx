@@ -12,7 +12,6 @@ import { sourceLinksForComponent, type ComponentDocument } from "./component-cat
 import { installationCommands, publicUsage, type GuideContent } from "./docs-content";
 import { CODE_BLOCK_PREVIEW_LINES, shouldCollapseCode } from "./code-block-lines";
 import { ClassicMacintoshDemo, MarkdownIntroductionDemo, NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
-import { OverlayHostDemo } from "./sections/overlay-host";
 
 type ApiRow = Readonly<{ name: string; type: string; description: string }>;
 type ArticlePart = Readonly<{
@@ -37,12 +36,10 @@ const guideDemos = {
   notes: NotesIntroductionDemo,
   macintosh: ClassicMacintoshDemo,
   markdown: MarkdownIntroductionDemo,
-  "host-overlays": OverlayHostDemo,
 } satisfies Record<NonNullable<GuideContent["sections"][number]["demo"]>, ComponentType>;
 const guideDemoProbeIds = {
   settings: "intro-settings", progress: "intro-progress", notes: "intro-notes",
   macintosh: "classic-macintosh-example", markdown: "markdown-example",
-  "host-overlays": "host-top-surface",
 } satisfies Record<keyof typeof guideDemos, string>;
 const MountedDemo = memo(function MountedDemo({ Demo }: Readonly<{ Demo: ComponentType }>) {
   return <Demo />;
@@ -188,8 +185,7 @@ function previewScene(probeId: string, fragment: DocumentSceneFragment | undefin
   scroll: CellScrollState, layout: "center" | "fill") {
   const previewId = `article-preview-${probeId}`;
   const icon = copyState === "Copied" ? "✓" : copyState === "Copy failed" ? "!" : "󰆏";
-  const previewHeight = fragment
-    ? Math.max(fragment.viewport.height, fragment.overlayViewport.height) : 1;
+  const previewHeight = fragment?.viewport.height ?? 1;
   return <Box id={previewId} key={previewId} style={{ width: "100%", paddingTop: 1, paddingBottom: 1 }}>
     {fragment ? <ScrollArea id={`${previewId}-scroll`} variant="ghost"
       scrollX={scroll.offset(`${previewId}-scroll`).x}
@@ -198,14 +194,11 @@ function previewScene(probeId: string, fragment: DocumentSceneFragment | undefin
       <Box style={{ direction: "row", width: layout === "center" ? "100%" : Math.max(fragment.viewport.width, 1),
         minWidth: layout === "center" ? fragment.viewport.width : undefined }}>
         {layout === "center" ? <Box style={{ flexGrow: 1 }} /> : null}
-        <Box id={`${previewId}-scope`} overlayScope
-          style={{ width: fragment.viewport.width, height: previewHeight, flexShrink: 0 }}>
-          <Box id={`${previewId}-content`} probeId={probeId} probeLabel={fragment.label}
-            presentation={fragment.presentation}
-            style={{ ...fragment.root.props.style, width: fragment.viewport.width,
-              height: fragment.viewport.height }}>
-            {fragment.root.props.children}
-          </Box>
+        <Box id={`${previewId}-content`} probeId={probeId} probeLabel={fragment.label}
+          presentation={fragment.presentation}
+          style={{ ...fragment.root.props.style, width: fragment.viewport.width,
+            height: fragment.viewport.height, flexShrink: 0 }}>
+          {fragment.root.props.children}
         </Box>
         {layout === "center" ? <Box style={{ flexGrow: 1 }} /> : null}
       </Box>
@@ -248,6 +241,7 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
   const [expanded, setExpanded] = useState<Readonly<Record<string, boolean>>>({});
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [activeFragmentId, setActiveFragmentId] = useState<string | null>(null);
+  const hoveredFragmentId = useRef<string | null>(null);
   const resetTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const pendingCopies = useRef(new Set<string>());
   useLayoutEffect(() => () => {
@@ -281,17 +275,28 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
     }).catch(() => setCopies((current) => ({ ...current, [id]: "Copy failed" })))
       .finally(() => pendingCopies.current.delete(id));
   };
+  const fragmentOwnerFor = (targetId: string) => {
+    let owner = [...previews].reverse().find(({ probeId }) =>
+      targetId === probeId || targetId.startsWith(`${probeId}-`))?.probeId
+      ?? fragmentOwners.get(targetId);
+    let ancestorEnd = targetId.lastIndexOf("/");
+    while (!owner && ancestorEnd > 0) {
+      owner = fragmentOwners.get(targetId.slice(0, ancestorEnd));
+      ancestorEnd = targetId.lastIndexOf("/", ancestorEnd - 1);
+    }
+    return owner ?? null;
+  };
+  const onHoverChange = (targetId: string | null) => {
+    const owner = targetId ? fragmentOwnerFor(targetId) : null;
+    const previous = hoveredFragmentId.current;
+    if (previous && previous !== owner) fragments[previous]?.onHoverChange?.(null);
+    hoveredFragmentId.current = owner;
+    if (owner) fragments[owner]?.onHoverChange?.(targetId);
+  };
   const onCommand = (command: WidgetCommand) => {
     scroll.dispatch(command);
     if (command.type === "focus") setFocusedId(command.targetId);
-    let owner = [...previews].reverse().find(({ probeId }) =>
-      command.targetId === probeId || command.targetId.startsWith(`${probeId}-`))?.probeId
-      ?? fragmentOwners.get(command.targetId);
-    let ancestorEnd = command.targetId.lastIndexOf("/");
-    while (!owner && ancestorEnd > 0) {
-      owner = fragmentOwners.get(command.targetId.slice(0, ancestorEnd));
-      ancestorEnd = command.targetId.lastIndexOf("/", ancestorEnd - 1);
-    }
+    const owner = fragmentOwnerFor(command.targetId);
     if (owner) {
       setActiveFragmentId(owner);
       fragments[owner]?.onCommand(command);
@@ -337,7 +342,7 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
         anchorIds={anchorIds} anchorTargets={anchorTargets} regionIds={previewRegionIds}
         regionsRef={regionsRef} onWidthChange={setSceneWidth}
         focusedId={activeFragmentId ? fragments[activeFragmentId]?.focusedId ?? null : focusedId}
-        onCommand={onCommand} />
+        onCommand={onCommand} onHoverChange={onHoverChange} />
     </main>
     <DocumentSceneContext.Provider value={sceneContext}>
       {previews.map(({ probeId, Demo }) => <MountedDemo key={probeId} Demo={Demo} />)}

@@ -1,16 +1,17 @@
 import { access, readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const site = path.join(root, "dist-site");
+const site = path.join(root, "apps/site/dist");
 const read = (name) => readFile(path.join(site, name), "utf8");
 
 const [html, redirects, sitemap, robots] = await Promise.all([
   read("index.html"), read("_redirects"), read("sitemap.xml"), read("robots.txt"),
 ]);
 const legacy = await read("legacy/index.html");
-if (await read("icon.svg") !== await readFile(path.join(root, "public/icon.svg"), "utf8")) {
+if (await read("icon.svg") !== await readFile(path.join(root, "apps/site/public/icon.svg"), "utf8")) {
   throw new Error("Product-home icon differs from the shared source icon");
 }
 const homeScript = html.match(/<script[^>]+type="module"[^>]+src="([^"]+)"/);
@@ -39,6 +40,9 @@ if (!sitemap.includes("https://chardesk.com/docs/") || !sitemap.includes("https:
 if (!robots.includes("Sitemap: https://chardesk.com/sitemap.xml")) {
   throw new Error("Product-home robots.txt points to the wrong origin");
 }
+if (existsSync(path.join(site, "_routes.json"))) {
+  throw new Error("The public site must not inherit Canvas Functions routing");
+}
 await Promise.all([
   "docs/index.html",
   "chargraph/index.html",
@@ -46,5 +50,7 @@ await Promise.all([
   "migration/bridge.html",
   "migration/bridge.js",
   "legacy/index.html",
+  "showcase/01-shared-medium.png",
+  "data/characters/manifest.json",
 ].map((name) => access(path.join(site, name))));
 console.log("Product home, legacy routes, and migration bridge verified");

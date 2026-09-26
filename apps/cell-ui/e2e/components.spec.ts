@@ -11,11 +11,13 @@ const navigationLinks = [
   ["Combobox", "#/components/combobox"],
   ["Dialog", "#/components/dialog"],
   ["Input", "#/components/input"],
+  ["Menu", "#/components/menu"],
   ["Progress", "#/components/progress"],
   ["Radio", "#/components/radio"],
   ["ScrollArea", "#/components/scroll-area"],
   ["Select", "#/components/select"],
   ["Separator", "#/components/separator"],
+  ["Sheet", "#/components/sheet"],
   ["Slider", "#/components/slider"],
   ["Spinner", "#/components/spinner"],
   ["Table", "#/components/table"],
@@ -23,6 +25,7 @@ const navigationLinks = [
   ["Text", "#/components/text"],
   ["TextArea", "#/components/text-area"],
   ["Toggle", "#/components/toggle"],
+  ["Toast", "#/components/toast"],
   ["Tooltip", "#/components/tooltip"],
 ] as const;
 
@@ -32,7 +35,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("heading", { name: "Introduction", level: 1 })).toBeVisible();
   await expect(page.locator('[data-cell-semantic-id="gallery-header-brand"]')).toHaveAttribute("href", "#/guides/introduction");
   await expect(nav.getByRole("group", { name: "Sections" }).getByRole("link")).toHaveText([
-    "Introduction", "Philosophy", "Classic Macintosh", "Markdown", "Installation", "Integration", "Host overlays", "Theming", "Testing",
+    "Introduction", "Philosophy", "Classic Macintosh", "Markdown", "Installation", "Integration", "Theming", "Testing",
   ]);
   await page.goto("/#/components/button");
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
@@ -553,6 +556,8 @@ test("Philosophy connects three principles to Introduction and the design author
   await expect(page.getByRole("heading", { name: "Philosophy", level: 1 })).toBeVisible();
   await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]').first())
     .toContainText("UI as Text is the goal");
+  await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]').first())
+    .toContainText("No single projection carries every detail");
   const toc = page.getByRole("navigation", { name: "On This Page" });
   await expect(toc.getByRole("link")).toHaveText([
     "Everything is Cell", "Every Input becomes a Command", "One State, Many Projections",
@@ -580,6 +585,7 @@ test("Philosophy connects three principles to Introduction and the design author
   expect(markdown.ok()).toBe(true);
   const markdownText = await markdown.text();
   expect(markdownText).toContain("UI as Text is the goal");
+  expect(markdownText).toContain("No single projection carries every detail");
   expect(markdownText).toContain("A complete UI-as-text export is a future projection");
   expect(markdownText).toContain("## One State, Many Projections");
   expect(markdownText.match(/^## /gmu)).toHaveLength(3);
@@ -687,6 +693,8 @@ test("Classic Macintosh guide keeps its Cell window stable across input and them
 
 test("Introduction shows interactive Cell examples and matching agent content", async ({ page, request }) => {
   await page.goto("/#/guides/introduction");
+  await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]').first())
+    .toContainText("Build Cell-native React interfaces for people and agents");
   const toc = page.getByRole("navigation", { name: "On This Page" });
   await expect(toc.getByRole("link")).toHaveText([
     "Why Cells?", "Compose a settings panel", "Show progress in text", "Edit Unicode in place", "Make it yours",
@@ -727,6 +735,7 @@ test("Introduction shows interactive Cell examples and matching agent content", 
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   const markdown = await request.get("/guides/introduction.md");
   expect(markdown.ok()).toBe(true);
+  expect(await markdown.text()).toContain("Build Cell-native React interfaces for people and agents");
   expect(await markdown.text()).toContain("## Compose a settings panel");
   expect(await markdown.text()).toContain("useCellTextState");
   expect(await markdown.text()).toContain("Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux");
@@ -750,7 +759,7 @@ test("guide prose and Cell code share one measured article width", async ({ page
 });
 
 test("unknown component routes fail honestly", async ({ page }) => {
-  for (const slug of ["missing", "list", "menu", "tree", "overlay", "range-slider"]) {
+  for (const slug of ["missing", "list", "tree", "overlay", "range-slider"]) {
     await page.goto(`/#/components/${slug}`);
     await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Open Introduction" })).toHaveAttribute("href", "#/guides/introduction");
@@ -910,7 +919,9 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   const disabledCells = initial.cells.filter((cell) => (
     cell.ownerId?.startsWith("component-button-disabled")
   ));
-  expect(disabledCells.filter((cell) => cell.style.backgroundColor !== undefined)).toHaveLength(0);
+  const disabledBackground = disabledCells[0]?.style.backgroundColor;
+  expect(disabledBackground).toBeTruthy();
+  expect(disabledCells.every((cell) => cell.style.backgroundColor === disabledBackground)).toBe(true);
   expect(indicatorCell).toBeDefined();
   const indicatorPoint = await cellPoint(surface, indicatorCell!.x, indicatorCell!.y);
   await page.mouse.move(indicatorPoint.x, indicatorPoint.y);
@@ -930,7 +941,7 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
   await expect.poll(async () => (await readCellProbe(surface)).cells.filter((cell) => (
     cell.ownerId?.startsWith("component-button-disabled")
-      && cell.style.backgroundColor !== undefined
+      && cell.style.backgroundColor !== disabledBackground
   )).length).toBe(0);
   await expect(surface).toHaveAttribute("data-cell-focused", "component-button-disabled");
   await expect(surface).not.toHaveAttribute("data-cell-focus-visible");
@@ -1016,10 +1027,10 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
   expect(borderlessOverlay?.text).not.toMatch(/[┌┐└┘│─]/u);
   expect(borderlessOverlay?.cells.find((cell) => cell.text === " " && cell.ownerId === "component-select-light")?.style.backgroundColor)
     .toBe(elevatedBackground);
-  expect(borderless.overlayViewport.height).toBe(borderless.viewport.height + 3);
-  expect((await canvasFor(surface).boundingBox())!.height).toBeGreaterThanOrEqual(initialSurfaceBounds!.height);
-  expect((await page.locator(".docs-page .cell-article-block").boundingBox())!.height)
-    .toBeGreaterThanOrEqual(initialHostBounds!.height);
+  expect(borderless.overlayViewport.height).toBe(borderless.viewport.height);
+  expect((await canvasFor(surface).boundingBox())?.height).toBe(initialSurfaceBounds?.height);
+  expect((await page.locator(".docs-page .cell-article-block").boundingBox())?.height)
+    .toBe(initialHostBounds?.height);
 
   await page.keyboard.press("ArrowDown");
   await expect(surface.getByRole("option", { name: "System" })).toBeFocused();
@@ -1045,6 +1056,50 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
   await expect(trigger).toHaveAttribute("aria-disabled", "true");
   await trigger.evaluate((element: HTMLElement) => element.click());
   await expect(page.getByRole("listbox", { name: "Theme options" })).toHaveCount(0);
+});
+
+test("Playground config menus overlay the article without moving following content", async ({ page }) => {
+  await page.goto("/#/components/select");
+  const surface = page.getByLabel("Select component");
+  const article = page.locator(".docs-page .cell-article-block");
+  const nextSection = page.locator("#installation.cell-article-anchor");
+  const trigger = surface.getByRole("button", { name: "variant", exact: true });
+  await trigger.scrollIntoViewIfNeeded();
+  const before = {
+    articleHeight: (await article.boundingBox())!.height,
+    sectionY: (await nextSection.boundingBox())!.y,
+    scrollY: await page.evaluate(() => window.scrollY),
+  };
+
+  await trigger.evaluate((element: HTMLElement) => element.click());
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expect(surface.getByRole("listbox", { name: "variant options" })).toBeAttached();
+  expect((await article.boundingBox())!.height).toBe(before.articleHeight);
+  expect((await nextSection.boundingBox())!.y).toBe(before.sectionY);
+  expect(await page.evaluate(() => window.scrollY)).toBe(before.scrollY);
+
+  await surface.getByRole("option", { name: "ghost" })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+});
+
+test("Playground config menus keep the stacked article stable", async ({ page }) => {
+  await page.setViewportSize({ width: 760, height: 800 });
+  await page.goto("/#/components/select");
+  const surface = page.getByLabel("Select component");
+  const article = page.locator(".docs-page .cell-article-block");
+  const nextSection = page.locator("#installation.cell-article-anchor");
+  const trigger = surface.getByRole("button", { name: "variant", exact: true });
+  await trigger.scrollIntoViewIfNeeded();
+  const height = (await article.boundingBox())!.height;
+  const sectionY = (await nextSection.boundingBox())!.y;
+  const scrollY = await page.evaluate(() => window.scrollY);
+
+  await trigger.evaluate((element: HTMLElement) => element.click());
+  await expect(surface.getByRole("option", { name: "ghost" })).toBeAttached();
+  expect((await article.boundingBox())!.height).toBe(height);
+  expect((await nextSection.boundingBox())!.y).toBe(sectionY);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
 });
 
 test("Checkbox Playground keeps direct checked interaction and its disabled prop", async ({ page }) => {
@@ -1105,6 +1160,8 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
   ));
   expect(volumeThumb).toBeDefined();
   expect(volumeTrack).toBeDefined();
+  const trackBackground = volumeTrack!.style.backgroundColor;
+  expect(trackBackground).toBeTruthy();
   const trackPoint = await cellPoint(surface, volumeTrack!.x, volumeTrack!.y);
   await page.mouse.move(trackPoint.x, trackPoint.y);
   await expect.poll(async () => (await readCellProbe(surface)).cells.filter((cell) => (
@@ -1114,7 +1171,7 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
   expect(hovered.cells.find((cell) => cell.text === "█" && cell.ownerId === "component-slider-volume"))
     .toMatchObject({ x: volumeThumb!.x, y: volumeThumb!.y });
   expect(hovered.cells.filter((cell) => (
-    cell.ownerId === "component-slider-volume" && cell.style.backgroundColor !== undefined
+    cell.ownerId === "component-slider-volume" && cell.style.backgroundColor !== trackBackground
   ))).toHaveLength(0);
   const { x: thumbX, y: thumbY } = await cellPoint(surface, volumeThumb!.x, volumeThumb!.y);
   const twoCells = (await cellPoint(surface, volumeThumb!.x + 2, volumeThumb!.y)).x - thumbX;
@@ -1146,7 +1203,7 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
   const keyboardFrame = await readCellProbe(surface);
   expect(keyboardFrame.cells.filter((cell) => cell.ownerId === "component-slider-volume" && cell.text === "█")).toHaveLength(1);
   expect(keyboardFrame.cells.filter((cell) => cell.ownerId === "component-slider-volume"
-    && (cell.style.backgroundColor !== undefined || cell.style.bold))).toHaveLength(0);
+    && (cell.style.backgroundColor !== trackBackground || cell.style.bold))).toHaveLength(0);
   await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
 
   await disabled.evaluate((element: HTMLElement) => element.click());

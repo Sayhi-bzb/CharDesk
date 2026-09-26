@@ -4,7 +4,7 @@ import ts from "typescript";
 import { checkHostArchitecture } from "./style-api-rules.mjs";
 
 const ROOT = process.cwd();
-const SRC_DIR = join(ROOT, "src");
+const SRC_DIR = join(ROOT, "apps", "canvas", "src");
 const CHARGRAPH_SRC_DIR = join(ROOT, "apps", "chargraph", "src");
 const DOCS_APP_DIR = join(ROOT, "apps", "docs", "app");
 const UI_SRC_DIR = join(ROOT, "packages", "ui", "src");
@@ -82,14 +82,14 @@ const checks = [
     name: "Host must compose semantic surfaces through Surface",
     pattern:
       /\b(?:bg-(?:host|overlay|dialog)-surface|shadow-(?:host|overlay|dialog)|rx\.surface)\b/g,
-    file: /^src\/(?:app|widgets)\/.*\.tsx$/,
+    file: /^apps\/canvas\/src\/(?:app|widgets)\/.*\.tsx$/,
     productionOnly: true,
     allow: [],
   },
   {
     name: "Widgets must consume shared primitives instead of rx recipes",
     pattern: /["']@\/shared\/styles\/recipes["']/g,
-    file: /^src\/widgets\/.*\.tsx$/,
+    file: /^apps\/canvas\/src\/widgets\/.*\.tsx$/,
     productionOnly: true,
     allow: [],
   },
@@ -112,17 +112,17 @@ const boundaryChecks = [
   },
   {
     name: "shared must not import domains",
-    file: /^src\/shared\//,
+    file: /^apps\/canvas\/src\/shared\//,
     forbiddenImport: /^@\/domains\//,
   },
   {
     name: "domain code must not import legacy feature/store/component paths",
-    file: /^src\/domains\//,
+    file: /^apps\/canvas\/src\/domains\//,
     forbiddenImport: /^@\/(?:features|store|components|lib|utils|services|types|styles)(?:\/|$)/,
   },
   {
     name: "domain state must not import UI components",
-    file: /^src\/domains\/[^/]+\/(?:state|model|logic)\//,
+    file: /^apps\/canvas\/src\/domains\/[^/]+\/(?:state|model|logic)\//,
     forbiddenImport: /^@\/(?:domains\/[^/]+\/components|shared\/ui)\//,
   },
 ];
@@ -205,7 +205,7 @@ const hasPresentationEscape = (node) => {
 };
 
 const checkWidgetBehaviorOwnership = (content, relFile) => {
-  if (!/^src\/widgets\/.*\.tsx$/.test(relFile)) return;
+  if (!/^apps\/canvas\/src\/widgets\/.*\.tsx$/.test(relFile)) return;
   if (/\.(?:test|spec)\.tsx$/.test(relFile)) return;
 
   const sourceFile = ts.createSourceFile(
@@ -269,7 +269,7 @@ const checkWidgetBehaviorOwnership = (content, relFile) => {
           });
         }
 
-        if (presentationEscape && relFile !== "src/widgets/toolbar/slide-playback.tsx") {
+        if (presentationEscape && relFile !== "apps/canvas/src/widgets/toolbar/slide-playback.tsx") {
           violations.push({
             check: "Presentation visual override is confined to slide playback",
             file: relFile,

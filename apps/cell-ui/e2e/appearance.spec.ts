@@ -192,6 +192,20 @@ test("header font Select uses Cell pointer geometry without moving the header", 
   await expect(select.getByRole("button", { name: "Font: Fusion" })).toBeAttached();
 });
 
+test("brand link stays neutral in both themes", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/#/guides/introduction");
+  const header = page.locator('[data-cell-probe="gallery-header"]');
+  const brandColor = async () => (await readCellProbe(header)).cells
+    .find((cell) => cell.ownerId === "gallery-header-brand")?.style.color;
+  await expect.poll(brandColor).toBe("rgb(0, 0, 0)");
+  const icon = (await readCellProbe(header)).cells.find((cell) => cell.text === "")!;
+  const point = await cellPoint(header, icon.x, icon.y);
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
+  await expect.poll(brandColor).toBe("rgb(255, 255, 255)");
+});
+
 test("theme icon toggles, persists, and preserves Cell state", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/#/__fixtures/editor");

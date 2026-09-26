@@ -81,15 +81,16 @@ export function CellOverlayHost({ children }: Readonly<{ children: ReactNode }>)
       top.onDismiss("escape");
     };
     const pointerdown = (event: PointerEvent) => {
-      const top = entries.current.at(-1);
-      if (!top) return;
       const target = event.target;
-      if (target instanceof Node && (top.element.contains(target) || top.anchor?.contains(target))) return;
-      if (top.modal) {
-        event.preventDefault();
-        event.stopPropagation();
+      for (const entry of [...entries.current].reverse()) {
+        if (target instanceof Node && (entry.element.contains(target) || entry.anchor?.contains(target))) break;
+        if (entry.modal) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        if (entry.closeOnOutsideClick) entry.onDismiss("outside");
+        if (entry.modal || !entry.closeOnOutsideClick) break;
       }
-      if (top.closeOnOutsideClick) top.onDismiss("outside");
     };
     document.addEventListener("keydown", keydown, true);
     document.addEventListener("pointerdown", pointerdown, true);
@@ -199,12 +200,20 @@ export function CellOverlayPortal({ open, anchor, placement = "bottom-start", mo
       }
     };
     element.addEventListener("keydown", trapFocus);
-    const focus = requestAnimationFrame(() => {
-      element.querySelector<HTMLElement>('[data-focused="true"],[role="menuitem"],button,[tabindex="0"]')
-        ?.focus({ preventScroll: true });
+    const focusFirst = () => {
+      const target = element.querySelector<HTMLElement>(
+        '[data-focused="true"],[role="menuitem"],button,[tabindex="0"]',
+      );
+      if (!target) return false;
+      target.focus({ preventScroll: true });
+      return true;
+    };
+    const focusObserver = new MutationObserver(() => {
+      if (focusFirst()) focusObserver.disconnect();
     });
+    if (!focusFirst()) focusObserver.observe(element, { childList: true, subtree: true });
     return () => {
-      cancelAnimationFrame(focus);
+      focusObserver.disconnect();
       unregister();
       element.removeEventListener("keydown", trapFocus);
       observer.disconnect();

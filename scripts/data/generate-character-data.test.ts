@@ -7,7 +7,7 @@ import {
   WIDE_EAST_ASIAN_RANGES,
 } from "../../packages/protocol/src/generated/eastAsianWidth";
 
-const root = path.resolve("public/data/characters");
+const root = path.resolve("apps/canvas/public/data/characters");
 const manifest = JSON.parse(
   readFileSync(path.join(root, "manifest.json"), "utf8")
 );

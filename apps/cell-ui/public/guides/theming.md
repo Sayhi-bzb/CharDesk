@@ -4,7 +4,7 @@ Resolve one Cell theme into a browser palette and component recipes.
 
 ## Defaults
 
-CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. semanticColors gives info, success, warning, and danger each a text color, surface, and surface foreground. Markdown prose and Badge/Alert derive defaults from it; Markdown syntax uses codeKey, codeValue, codeCommand, and codeComment colors. Badge/Alert error maps to danger. resolveCellUiTheme(partial) accepts semanticColors, markdownColors, and badgeStyles overrides. Surface backgrounds do not alter copied Cell text.
+CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. semanticColors gives info, success, warning, and danger each a text color, surface, and surface foreground. Link uses info text by default; Markdown prose and Badge/Alert also derive defaults from semanticColors. Explicit Link textStyle.color overrides that default. Markdown syntax uses codeKey, codeValue, codeCommand, and codeComment colors. Badge/Alert error maps to danger. resolveCellUiTheme(partial) accepts semanticColors, markdownColors, and badgeStyles overrides. Surface backgrounds do not alter copied Cell text.
 
 ## CSS tokens
 
@@ -12,4 +12,4 @@ The /browser entry exports readCellCssTheme(element) and useCellCssTheme(ref, re
 
 ## Surface and frame
 
-Box, ScrollArea, and TextArea separate variant (ghost or surface) from frame (none or bordered). Dialog and Tooltip use their own opaque variant and border recipe. Geometry belongs to CellLayoutStyle, not the theme.
+Every ghost surface fills with the nearest parent background, falling back to the page background; surface uses the elevated background. Box, ScrollArea, TextArea, Dialog, and Tooltip share this rule. Frame and border remain independent. Geometry belongs to CellLayoutStyle, not the theme.

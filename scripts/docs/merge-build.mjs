@@ -9,8 +9,8 @@ const repositoryRoot = path.resolve(
 const docsBuild = path.join(repositoryRoot, "apps/docs/build/client");
 const docsPages = path.join(docsBuild, "docs");
 const docsAssets = path.join(docsBuild, "assets");
-const docsOutput = path.join(repositoryRoot, "dist/docs");
-const appAssets = path.join(repositoryRoot, "dist/assets");
+const docsOutput = path.join(repositoryRoot, "apps/site/dist/docs");
+const appAssets = path.join(repositoryRoot, "apps/site/dist/assets");
 
 await access(path.join(docsPages, "index.html"));
 await access(docsAssets);
