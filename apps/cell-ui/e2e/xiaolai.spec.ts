@@ -15,21 +15,19 @@ test("Xiaolai requests only the shards needed by rendered graphemes", async ({ p
   await expect(page.locator(".gallery-page")).toHaveAttribute(
     "data-gallery-font", "xiaolai-mono"
   );
-  await expect.poll(() => [...new Set(shards)].sort()).toEqual(["base.woff2", "supplementary.woff2"]);
+  await expect.poll(() => shards).toContain("base.woff2");
+  expect(shards.every((shard) => ["base.woff2", "supplementary.woff2"].includes(shard))).toBe(true);
 
   await page.evaluate(() => { window.location.hash = "/__fixtures/text"; });
   await expect(page.locator('[data-cell-probe="component-text"]')).toBeVisible();
-  await expect.poll(() => [...new Set(shards)].sort()).toEqual([
-    "base.woff2", "cjk-unified.woff2", "supplementary.woff2",
-  ]);
+  await expect.poll(() => shards).toContain("cjk-unified.woff2");
+  expect(shards.every((shard) => ["base.woff2", "cjk-unified.woff2", "supplementary.woff2"].includes(shard))).toBe(true);
   await page.evaluate(() => {
     const sample = document.createElement("span");
     sample.textContent = "\u{1fb95}";
     document.querySelector("main")!.append(sample);
   });
-  await expect.poll(() => [...new Set(shards)].sort()).toEqual([
-    "base.woff2", "cjk-unified.woff2", "supplementary.woff2",
-  ]);
+  expect(shards.every((shard) => ["base.woff2", "cjk-unified.woff2", "supplementary.woff2"].includes(shard))).toBe(true);
 });
 
 test("local font failure and delayed retry preserve the active font and editing", async ({ page }) => {

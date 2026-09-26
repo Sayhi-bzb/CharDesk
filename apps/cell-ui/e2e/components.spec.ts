@@ -258,6 +258,7 @@ test("header and navigation share a shell and meet without hiding section target
   for (const width of [1280, 1050]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/#/guides/introduction");
+    await page.evaluate(() => window.scrollTo(0, 0));
     await expect.poll(() => page.locator(".gallery-header__inner").evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(18);
     await expect.poll(() => page.getByRole("navigation", { name: "Cell UI" }).evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(80);
     await expect.poll(() => page.evaluate(() => {
@@ -298,7 +299,9 @@ test("header and navigation share a shell and meet without hiding section target
     const mainBounds = await page.locator("main.docs-page").boundingBox();
     expect(navBounds!.y + navBounds!.height).toBeCloseTo(mainBounds!.y + mainBounds!.height, 0);
   }
+});
 
+test("navigation and section targets stay aligned on narrow screens", async ({ page }) => {
   for (const width of [720, 390, 320]) {
     await page.setViewportSize({ width, height: 640 });
     await page.goto("/#/guides/introduction");

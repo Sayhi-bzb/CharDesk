@@ -488,12 +488,19 @@ test("Text vertical ScrollArea rail keeps its Unicode texture through keyboard a
   await surface.getByRole("button", { name: "01  Row 1" }).focus();
   await page.keyboard.press("PageDown");
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("05  Row 5");
+  const visibleRow = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "component-scroll-row-5")!;
+  const visiblePoint = await cellPoint(surface, visibleRow.x, visibleRow.y);
+  await page.mouse.move(0, 0);
+  await page.mouse.move(visiblePoint.x, visiblePoint.y);
+  await expect.poll(async () => (await railCells()).some((cell) => cell.text !== "\u{1FB90}")).toBe(true);
   const afterKey = await railCells();
   expect(afterKey.map((cell) => cell.text)).not.toEqual(initial.map((cell) => cell.text));
 
   const canvas = canvasFor(surface).first();
   const probe = await readCellProbe(surface);
-  const thumb = afterKey.find((cell) => cell.text === "█")!;
+  const thumbCells = afterKey.filter((cell) => cell.text !== "\u{1FB90}");
+  expect(thumbCells.length).toBeGreaterThan(0);
+  const thumb = thumbCells[Math.floor(thumbCells.length / 2)]!;
   const bounds = (await canvas.boundingBox())!;
   const cellWidth = bounds.width / probe.viewport.width;
   const cellHeight = bounds.height / probe.viewport.height;
