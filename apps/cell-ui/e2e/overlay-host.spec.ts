@@ -197,13 +197,11 @@ test("dragging a Cell row reorders the same app-owned layer list", async ({ page
   expect((await readCellPixel(surface, ghostCell.x, ghostCell.y)).slice(0, 3)).toEqual([0, 0, 0]);
   expect(restingPixel.slice(0, 3)).not.toEqual([0, 0, 0]);
   expect(await rowRaster(canvas, source.x, source.y, neighbor.width, metrics)).toBe(neighborBefore);
-  const canvasWidth = await canvas.evaluate((element) => {
-    const original = element.style.width;
-    element.style.width = `${element.getBoundingClientRect().width + 1}px`;
-    return original;
-  });
-  await expect(canvas).toHaveCSS("width", canvasWidth);
+  const viewport = page.viewportSize()!;
+  await page.setViewportSize({ ...viewport, width: viewport.width - 1 });
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   expect((await readCellPixel(surface, ghostCell.x, ghostCell.y)).slice(0, 3)).toEqual([0, 0, 0]);
+  await page.setViewportSize(viewport);
   await page.evaluate(() => document.fonts.dispatchEvent(new Event("loadingdone")));
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   expect((await readCellPixel(surface, ghostCell.x, ghostCell.y)).slice(0, 3)).toEqual([0, 0, 0]);

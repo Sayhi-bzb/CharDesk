@@ -2,14 +2,14 @@
 
 `npm run build` assembles the public site in `apps/site/dist/` from the site entrance, Canvas assets, docs, CharGraph, and the old-origin migration bridge. Canvas builds separately in `apps/canvas/dist/`. The HTML entrance retains plain links when its module cannot load.
 
-Deploy the two Cloudflare Pages projects with these settings:
+The Cloudflare Pages projects use these build contracts:
 
-| Domain | Project root | Build command | Output directory |
+| Project / domain | Build source | Build command | Output directory |
 | --- | --- | --- | --- |
-| `chardesk.com` | `apps/site` | `npm --prefix ../.. run build` | `dist` |
-| `canvas.chardesk.com` | `apps/canvas` | `npm --prefix ../.. run build:app` | `dist` |
+| `ascii-canvas` / `chardesk.com` | Git, repository root | `npm run build` | `apps/site/dist` |
+| `chardesk-canvas` / `canvas.chardesk.com` | Direct upload, repository root | `npm run build:app` | `apps/canvas/dist` |
 
-Keep `ui.chardesk.com` on its existing project. Add the Canvas custom domain in Pages before changing the root deployment. Do not publish the new Canvas origin without `/migration/bridge.html` on the root origin: first-load local workspace transfer depends on both.
+Keep `ui.chardesk.com` on its existing project. The root deployment must retain `/migration/bridge.html`; first-load local workspace transfer depends on both origins.
 
 The root origin retains `/blackboard`, `/s/*`, and root-level collaboration links long enough to route old shares to Canvas. Do not remove the bridge while old browser-local work may still exist.
 
