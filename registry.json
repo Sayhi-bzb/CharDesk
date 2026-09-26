@@ -114,6 +114,11 @@
           "target": "@lib/cell-ui/browser-overlay-host.tsx"
         },
         {
+          "path": "registry/cell-ui/browser-presentation-window.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-presentation-window.ts"
+        },
+        {
           "path": "registry/cell-ui/browser-presentation.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/browser-presentation.ts"

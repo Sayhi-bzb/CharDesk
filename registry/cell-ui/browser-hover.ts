@@ -28,7 +28,7 @@ export const usePointerAppearance = (
     const point = position.current;
     let next: ReturnType<typeof resolvePointerAppearance> & { scrollbarHoverId: string | null } = empty;
     if (canvas && frame && point && !suspended.current) {
-      const bounds = canvas.getBoundingClientRect();
+      const bounds = (canvasRef.origin ?? canvas).getBoundingClientRect();
       if (canvasRef.acceptsPoint(point.clientX, point.clientY)) {
         const cell = {
           x: Math.floor((point.clientX - bounds.left) / metrics.cellWidth) - CELL_SURFACE_GUARD_CELLS,

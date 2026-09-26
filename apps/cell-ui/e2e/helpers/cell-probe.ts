@@ -75,15 +75,17 @@ export const cellPoint = async (surface: Locator, x: number, y: number,
   const metrics = await readCellMetrics(surface);
   const origin = await probeOrigin(surface);
   if (scrollIntoView) await canvasFor(surface).evaluate((canvas, { y, metrics, origin, guardCells }) => {
-    const bounds = canvas.getBoundingClientRect();
+    const bounds = canvas.parentElement!.getBoundingClientRect();
     const targetY = bounds.top + (y + origin.y + guardCells + 0.5) * metrics.cellHeight;
     const top = 80;
     const bottom = Math.max(top + 1, innerHeight - 40);
     if (targetY < top) window.scrollBy(0, targetY - top);
     else if (targetY > bottom) window.scrollBy(0, targetY - bottom);
   }, { y, metrics, origin, guardCells: CELL_SURFACE_GUARD_CELLS });
-  const bounds = await canvasFor(surface).boundingBox();
-  if (!bounds) throw new Error("CellSurface Canvas is not visible.");
+  const bounds = await canvasFor(surface).evaluate((canvas) => {
+    const { x, y } = canvas.parentElement!.getBoundingClientRect();
+    return { x, y };
+  });
   return {
     x: bounds.x + (x + origin.x + CELL_SURFACE_GUARD_CELLS + 0.5) * metrics.cellWidth,
     y: bounds.y + (y + origin.y + CELL_SURFACE_GUARD_CELLS + 0.5) * metrics.cellHeight,

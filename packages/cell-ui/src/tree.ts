@@ -1,4 +1,4 @@
-import { isPreparedMarkdownDescriptor, type WidgetDescriptor } from "./react.js";
+import { isReusableDescriptor, type WidgetDescriptor } from "./react.js";
 import type {
   WidgetId,
   WidgetMutation,
@@ -122,7 +122,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
     if (nodes.has(id)) throw new TypeError(`Duplicate WidgetId: ${id}`);
 
     const oldNode = previous?.nodes.get(id);
-    if (oldDescriptor === current && isPreparedMarkdownDescriptor(current)
+    if (oldDescriptor === current && isReusableDescriptor(current)
       && oldNode?.parentId === parentId && oldNode.index === index
       && inheritedDisabled === inheritedDisabledFor(previous!, parentId)
       && sameChildContext(parent, parentId ? previous?.nodes.get(parentId) : undefined)) {

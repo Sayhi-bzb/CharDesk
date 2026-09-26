@@ -19,6 +19,7 @@ type CursorInput = Readonly<{
   palette: CharDeskCanvasPalette;
   style: CellCursorStyle;
   fontProfile?: CharDeskFontProfile;
+  originRow?: number;
 }>;
 
 type CellCursorPresentation = Readonly<{
@@ -55,13 +56,14 @@ const resolveCellCursorPresentation = (
 const physicalBounds = (
   canvas: HTMLCanvasElement,
   bounds: CellRect,
-  metrics: CharDeskCellMetrics
+  metrics: CharDeskCellMetrics,
+  originRow = 0,
 ) => {
   const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
   const left = Math.max(0, Math.round((bounds.x + CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth * dpr));
-  const top = Math.max(0, Math.round((bounds.y + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight * dpr));
+  const top = Math.max(0, Math.round((bounds.y - originRow + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight * dpr));
   const right = Math.min(canvas.width, Math.round((bounds.x + bounds.width + CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth * dpr));
-  const bottom = Math.min(canvas.height, Math.round((bounds.y + bounds.height + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight * dpr));
+  const bottom = Math.min(canvas.height, Math.round((bounds.y - originRow + bounds.height + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight * dpr));
   return { x: left, y: top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
 };
 
@@ -80,7 +82,7 @@ const drawCursor = (
   drawCharDeskCanvasCursor(context, {
     cell: cell?.visual ?? { text: " ", width: 1, fontRoute: resolveCharDeskFontRoute(" ") },
     x: (bounds.x + CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth,
-    y: (bounds.y + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight,
+    y: (bounds.y - (presentation.input.originRow ?? 0) + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight,
     style,
     options: {
       metrics,
@@ -139,7 +141,9 @@ export class CellCursorPresenter {
     const presentation = this.#presentation;
     const context = this.#canvas.getContext("2d");
     if (!presentation || !context || typeof context.getImageData !== "function") return;
-    const bounds = physicalBounds(this.#canvas, presentation.bounds, presentation.input.metrics);
+    const bounds = physicalBounds(
+      this.#canvas, presentation.bounds, presentation.input.metrics, presentation.input.originRow,
+    );
     if (bounds.width === 0 || bounds.height === 0) return;
     this.#saved = {
       data: context.getImageData(bounds.x, bounds.y, bounds.width, bounds.height),

@@ -29,15 +29,14 @@ function useRevealCurrentCellLink(currentKey: string) {
     const reveal = () => {
       const active = nav.querySelector<HTMLAnchorElement>('a[aria-current]');
       const surface = active?.closest<HTMLElement>("[data-cell-probe]");
-      const canvas = surface?.querySelector("canvas");
       const snapshot = surface ? readCellSurfaceProbe(surface) : null;
       const cells = snapshot?.cells.filter(({ ownerId }) => ownerId === active?.dataset.cellSemanticId) ?? [];
-      if (!canvas || !snapshot?.presentation || !cells.length) return false;
+      if (!surface || !snapshot?.presentation || !cells.length) return false;
       if (getComputedStyle(nav).overflowY !== "auto" || nav.scrollHeight <= nav.clientHeight) return true;
       const metrics = snapshot.presentation.metrics;
-      const canvasTop = canvas.getBoundingClientRect().top;
-      const top = canvasTop + (Math.min(...cells.map(({ y }) => y)) + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight;
-      const bottom = canvasTop + (Math.max(...cells.map(({ y }) => y)) + CELL_SURFACE_GUARD_CELLS + 1) * metrics.cellHeight;
+      const surfaceTop = surface.getBoundingClientRect().top;
+      const top = surfaceTop + (Math.min(...cells.map(({ y }) => y)) + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight;
+      const bottom = surfaceTop + (Math.max(...cells.map(({ y }) => y)) + CELL_SURFACE_GUARD_CELLS + 1) * metrics.cellHeight;
       const bounds = nav.getBoundingClientRect();
       const visibleTop = Math.max(bounds.top, 0);
       const visibleBottom = Math.min(bounds.bottom, window.innerHeight);

@@ -29,19 +29,27 @@ const rows = (prefix) => Array.from({ length: 400 }, (_, index) => {
 });
 const leftRows = rows("left");
 const rightRows = rows("right");
-const view = (leftScroll, rightScroll, checked = false, showOverlay = false) => el(Root, { id: "root" },
+const view = (leftScroll, rightScroll, checked = false, showOverlay = false, stableRows = true) => el(Root, { id: "root" },
   el(Box, { id: "columns", style: { direction: "row", width: 80 } },
     el(ScrollArea, { id: "left", scrollY: leftScroll, style: { width: 40, height: 24 } },
-      el(Checkbox, { id: "local-state", checked }, el(Text, null, "Local state")), leftRows),
-    el(ScrollArea, { id: "right", scrollY: rightScroll, style: { width: 40, height: 24 } }, rightRows)),
+      el(Checkbox, { id: "local-state", checked }, el(Text, null, "Local state")), stableRows ? leftRows : rows("left")),
+    el(ScrollArea, { id: "right", scrollY: rightScroll, style: { width: 40, height: 24 } },
+      stableRows ? rightRows : rows("right"))),
   showOverlay ? el(Overlay, { id: "overlay", position: { x: 1, y: 1 } }, el(Text, null, "Overlay")) : null);
 
 const runtime = new CellUiRuntime({ viewport });
 let previous = runtime.render(view(0, 0));
-const results = { runtime: [], fullScene: [], partialScene: [], fullSemantics: [], partialSemantics: [] };
+const results = { runtime: [], freshElementRuntime: [], fullScene: [], partialScene: [],
+  fullSemantics: [], partialSemantics: [] };
+const freshRuntime = new CellUiRuntime({ viewport });
+freshRuntime.render(view(0, 0, false, false, false));
 for (let index = 1; index <= 12; index += 1) {
-  const rendered = timed(() => runtime.render(view(index, 0)));
+  const stableView = view(index, 0);
+  const freshView = view(index, 0, false, false, false);
+  const rendered = timed(() => runtime.render(stableView));
+  const freshRendered = timed(() => freshRuntime.render(freshView));
   const frame = rendered.value;
+  assert.equal(frame.buffer.toText(), freshRendered.value.buffer.toText());
   const fullScene = timed(() => composeScene(frame.tree, frame.layout, overlay));
   const partialScene = timed(() => composeSceneForScroll(frame.tree, frame.layout, overlay,
     previous.scene, new Set(["left"])));
@@ -54,6 +62,7 @@ for (let index = 1; index <= 12; index += 1) {
   assert.deepEqual(partialScene.value, fullScene.value);
   assert.deepEqual(partialSemantics.value, fullSemantics.value);
   results.runtime.push(rendered.ms);
+  results.freshElementRuntime.push(freshRendered.ms);
   results.fullScene.push(fullScene.ms);
   results.partialScene.push(partialScene.ms);
   results.fullSemantics.push(fullSemantics.ms);
@@ -72,6 +81,7 @@ for (let index = 0; index < 8; index += 1) {
   fallbackSamples.resize.push(timed(() => runtime.render(view(12, 0, true))).ms);
 }
 runtime.dispose();
+freshRuntime.dispose();
 console.log(JSON.stringify({ workload: "two-independent-mixed-scroll-areas", nodes: previous.tree.nodes.size,
   medianMs: Object.fromEntries(Object.entries(results).map(([key, samples]) => [key, median(samples.slice(2))])),
   fallbackMedianMs: Object.fromEntries(Object.entries(fallbackSamples).map(([key, samples]) =>

@@ -778,9 +778,11 @@ type PreparedMarkdownEntry = Readonly<{
   descriptor: WidgetDescriptor;
   nodes: number;
 }>;
-const preparedMarkdownDescriptors = new WeakSet<WidgetDescriptor>();
-export const isPreparedMarkdownDescriptor = (descriptor: WidgetDescriptor): boolean =>
-  preparedMarkdownDescriptors.has(descriptor);
+const reusableDescriptors = new WeakSet<WidgetDescriptor>();
+const identityCacheableDescriptors = new WeakSet<WidgetDescriptor>();
+const callbackDescriptors = new WeakSet<WidgetDescriptor>();
+export const isReusableDescriptor = (descriptor: WidgetDescriptor): boolean =>
+  reusableDescriptors.has(descriptor);
 const sameMarkdownStyle = (left: CellLayoutStyle | undefined, right: CellLayoutStyle | undefined): boolean => {
   const leftKeys = Object.keys(left ?? {});
   const rightKeys = Object.keys(right ?? {});
@@ -790,7 +792,10 @@ const sameMarkdownStyle = (left: CellLayoutStyle | undefined, right: CellLayoutS
 const descriptorNodes = (descriptor: WidgetDescriptor): number =>
   1 + descriptor.children.reduce((count, child) => count + descriptorNodes(child), 0);
 
-/** Runtime-owned, bounded cache; never used by the standalone descriptor helper. */
+const elementContext = (recipe: CellUiRecipe, presentation: CellUiPresentation, inScrollArea: boolean): string =>
+  `${recipe.defaultControlVariant ?? ""}:${presentation}:${inScrollArea ? 1 : 0}`;
+
+/** Runtime-owned caches; element identity is retained for only the adjacent render. */
 export class MarkdownDescriptorCache {
   static readonly MAX_NODES = 25_000;
   static readonly MAX_ENTRIES = 128;
@@ -798,6 +803,35 @@ export class MarkdownDescriptorCache {
   #entries: PreparedMarkdownEntry[] = [];
   #nodes = 0;
   #sourceLength = 0;
+  #previousElements = new WeakMap<ReactElement, Map<string, WidgetDescriptor>>();
+  #currentElements = new WeakMap<ReactElement, Map<string, WidgetDescriptor>>();
+
+  beginFrame(): void {
+    this.#previousElements = this.#currentElements;
+    this.#currentElements = new WeakMap();
+  }
+
+  getElement(element: ReactElement, recipe: CellUiRecipe, presentation: CellUiPresentation,
+    inScrollArea: boolean): WidgetDescriptor | null {
+    const descriptor = this.#previousElements.get(element)?.get(elementContext(recipe, presentation, inScrollArea));
+    if (!descriptor) return null;
+    this.putElement(element, recipe, presentation, inScrollArea, descriptor);
+    reusableDescriptors.add(descriptor);
+    return descriptor;
+  }
+
+  putElement(element: ReactElement, recipe: CellUiRecipe, presentation: CellUiPresentation,
+    inScrollArea: boolean, descriptor: WidgetDescriptor): void {
+    if (!descriptor.children.every((child) => !callbackDescriptors.has(child)
+      && (identityCacheableDescriptors.has(child) || reusableDescriptors.has(child)))) return;
+    let contexts = this.#currentElements.get(element);
+    if (!contexts) {
+      contexts = new Map();
+      this.#currentElements.set(element, contexts);
+    }
+    contexts.set(elementContext(recipe, presentation, inScrollArea), descriptor);
+    identityCacheableDescriptors.add(descriptor);
+  }
 
   get(props: MarkdownProps, recipe: CellUiRecipe, presentation: CellUiPresentation,
     inScrollArea: boolean): WidgetDescriptor | null {
@@ -825,18 +859,29 @@ export class MarkdownDescriptorCache {
     }
     this.#entries.push({ source: props.source, id: props.id, style: props.style ? { ...props.style } : undefined,
       recipeVariant: recipe.defaultControlVariant, presentation, inScrollArea, descriptor, nodes });
-    preparedMarkdownDescriptors.add(descriptor);
+    reusableDescriptors.add(descriptor);
     this.#nodes += nodes;
     this.#sourceLength += props.source.length;
   }
 
-  clear(): void { this.#entries = []; this.#nodes = 0; this.#sourceLength = 0; }
+  clear(): void {
+    this.#entries = [];
+    this.#nodes = 0;
+    this.#sourceLength = 0;
+    this.#previousElements = new WeakMap();
+    this.#currentElements = new WeakMap();
+  }
 }
 const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresentation: CellUiPresentation,
   inScrollArea = false, cache: MarkdownDescriptorCache | null = null): WidgetDescriptor[] => {
   const presentation = element.type === Box
     ? (element.props as BoxProps).presentation ?? inheritedPresentation : inheritedPresentation;
   const textMode = presentation === "text";
+  const primitiveKind = kinds.get(element.type);
+  if (primitiveKind) {
+    const cached = cache?.getElement(element, recipe, presentation, inScrollArea);
+    if (cached) return [cached];
+  }
   if (element.type === Fragment) {
     const fragmentChildren: ReactNode[] = [];
     flattenChildren((element.props as { children?: ReactNode }).children, fragmentChildren);
@@ -865,10 +910,10 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     </Box>, recipe, presentation, inScrollArea, cache);
     const result = sharedScrollGuard ? descriptors.map((node) => ({ ...node, sharedScrollGuard })) : descriptors;
     if (cacheable && result.length === 1) cache.put(props, recipe, presentation, inScrollArea, result[0]!);
+    else if (!cacheable) result.forEach((node) => callbackDescriptors.add(node));
     return result;
   }
 
-  const primitiveKind = kinds.get(element.type);
   const props = element.props as Record<string, unknown>;
   if (element.type === Field) {
     const field = props as FieldProps;
@@ -1113,7 +1158,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
   const frame = presentedFrame(presentation, kind, surfaceVariant, requestedFrame, isDialog);
   const requestedBorderShape = isDialog || kind === "tooltip" || kind === "alert" ? props.border : props.borderShape;
 
-  return [{
+  const descriptor: WidgetDescriptor = {
     kind,
     explicitId: typeof props.id === "string" ? props.id : null,
     key: element.key === null ? null : String(element.key),
@@ -1229,7 +1274,9 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     scrollX: Number.isFinite(props.scrollX) ? Math.max(0, Math.trunc(props.scrollX as number)) : 0,
     scrollY: Number.isFinite(props.scrollY) ? Math.max(0, Math.trunc(props.scrollY as number)) : 0,
     children,
-  }];
+  };
+  cache?.putElement(element, recipe, presentation, inScrollArea, descriptor);
+  return [descriptor];
 };
 
 const createDescriptorRoot = (
@@ -1259,4 +1306,7 @@ export const createRuntimeWidgetDescriptor = (
   recipe: CellUiRecipe,
   presentation: CellUiPresentation,
   cache: MarkdownDescriptorCache,
-): WidgetDescriptor | null => createDescriptorRoot(value, recipe, presentation, cache);
+): WidgetDescriptor | null => {
+  cache.beginFrame();
+  return createDescriptorRoot(value, recipe, presentation, cache);
+};
