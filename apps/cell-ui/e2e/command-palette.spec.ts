@@ -1,10 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { canvasFor } from "./helpers/cell-probe";
 
 test("Palette text retains its elevated surface background in both themes", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/#/__fixtures/overlay");
   const surface = page.locator('[data-cell-probe="overlay"]');
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface).first();
   for (const theme of ["light", "dark"] as const) {
     if (await page.locator(".gallery-page").getAttribute("data-gallery-theme") !== theme) {
       await page.getByRole("button", { name: theme === "light" ? "Light" : "Dark" }).evaluate((element: HTMLElement) => element.click());
@@ -75,7 +76,7 @@ const clickCell = async (page: Page, canvas: Locator, x: number, y: number) => {
 test("blank clicks and external blur cannot retain Palette pointer capture", async ({ page }) => {
   await page.goto("/#/__fixtures/overlay");
   const surface = page.locator('[data-cell-probe="overlay"]');
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface).first();
   const overlayCanvas = surface.locator('[data-cell-overlay-root="command-palette"]');
   const dialog = surface.getByRole("dialog", { name: "Command palette" });
   for (let cycle = 0; cycle < 3; cycle++) {
@@ -103,7 +104,7 @@ test("Command Palette owns its layer, focus scope, dismissal, and semantic actio
 
   const section = page.locator("#overlay");
   const surface = section.getByLabel("Command palette workspace");
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface).first();
   const overlayCanvas = surface.locator('[data-cell-overlay-root="command-palette"]');
   await surface.focus();
   await page.keyboard.press("Enter");

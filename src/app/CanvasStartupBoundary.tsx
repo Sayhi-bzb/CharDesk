@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { AlertTriangle, RefreshCcw } from "lucide-react";
 import {
   Alert,
@@ -6,10 +6,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  Skeleton,
   Spinner,
-  StatusText,
-  Surface,
 } from "@chardesk/ui";
 import {
   useCanvasPersistence,
@@ -17,53 +14,11 @@ import {
   type CanvasRestoreFailureReason,
 } from "@/domains/canvas/public";
 import { useUiI18n } from "@/shared/i18n";
-import { EditorChromeLayout } from "@/widgets/editor-chrome/public";
-
-const LOADING_FEEDBACK_DELAY = 150;
-
-function useDelayedLoadingFeedback() {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setVisible(true), LOADING_FEEDBACK_DELAY);
-    return () => window.clearTimeout(timer);
-  }, []);
-  return visible;
-}
+import { StartupScreen } from "./StartupScreens";
 
 function RestoringWorkspaceShell() {
   const { t } = useUiI18n();
-  const showFeedback = useDelayedLoadingFeedback();
-  return (
-    <EditorChromeLayout
-      sidebarOpen={false}
-      topStart={(
-        <div
-          data-canvas-ui="true"
-          data-testid="startup-chrome"
-          className="flex min-w-0 items-center gap-1"
-        >
-          <Skeleton aria-hidden="true" className="size-8 flex-none" />
-          <Skeleton aria-hidden="true" className="h-6 w-28" />
-        </div>
-      )}
-      canvas={(
-        <Surface
-          kind="embedded"
-          data-testid="canvas-restore-surface"
-          aria-busy="true"
-          aria-label={t("startup.restoring")}
-          className="flex size-full items-center justify-center"
-        >
-          {showFeedback ? (
-            <div role="status" aria-live="polite" className="flex items-center gap-2">
-              <Spinner aria-hidden="true" />
-              <StatusText tone="neutral">{t("startup.restoring")}</StatusText>
-            </div>
-          ) : null}
-        </Surface>
-      )}
-    />
-  );
+  return <StartupScreen phase="restoring" heading={t("startup.restoring")} />;
 }
 
 function TemporaryWorkspaceAlert({

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, ownerBounds, ownerCells, readCellProbe, readCellMetrics } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, ownerBounds, ownerCells, readCellProbe, readCellMetrics } from "./helpers/cell-probe";
 
 for (const dpr of [1, 2]) {
   test.describe(`Cell decoration at DPR ${dpr}`, () => {
@@ -43,7 +43,7 @@ test("real wheel scrolls a Cell viewport first, then continues through the page 
   await page.goto("/#/__fixtures/core");
   await page.evaluate(() => document.fonts.ready);
   const surface = page.locator('[data-cell-probe="core"]');
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
   const metrics = await readCellMetrics(surface);
@@ -63,7 +63,7 @@ test("vertical wheel over a code block without vertical overflow scrolls the doc
   await page.setViewportSize({ width: 1280, height: 480 });
   await page.goto("/#/components/button");
   await page.locator("#usage").evaluate((element) => element.scrollIntoView({ block: "start" }));
-  const article = page.locator('[data-cell-probe="article-button-2"]');
+  const article = page.locator('[data-cell-probe="article-button"]');
   const lines = (await readCellProbe(article)).text.split("\n");
   const codeY = lines.findIndex((line) => /\b1\s+import\b/u.test(line));
   expect(codeY).toBeGreaterThanOrEqual(0);
@@ -78,7 +78,7 @@ test("button confirmation does not freeze document scrolling over Cell content",
   await page.setViewportSize({ width: 1280, height: 480 });
   await page.goto("/#/components/button");
   await page.locator("#usage").evaluate((element) => element.scrollIntoView({ block: "start" }));
-  const article = page.locator('[data-cell-probe="article-button-2"]');
+  const article = page.locator('[data-cell-probe="article-button"]');
   const codeY = (await readCellProbe(article)).text.split("\n")
     .findIndex((line) => /\b1\s+import\b/u.test(line));
   expect(codeY).toBeGreaterThanOrEqual(0);

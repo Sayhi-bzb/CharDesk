@@ -125,6 +125,8 @@ export type WidgetNode = Readonly<{
   index: number;
   style: CellLayoutStyle;
   presentation: import("./presentation.js").CellUiPresentation;
+  overlayScope: boolean;
+  probeId: string | null;
   surfaceVariant: import("./surface-variant.js").SurfaceVariant | null;
   frame: import("./border.js").CellFrame;
   borderShape: import("./border.js").CellBorderShape | null;
@@ -154,6 +156,7 @@ export type WidgetNode = Readonly<{
   confirming?: boolean;
   confirmation?: ConfirmationPresentation;
   selected: boolean;
+  reorderable: boolean;
   active: boolean;
   checked: CellCheckboxState;
   pressed: boolean;
@@ -192,7 +195,7 @@ export type WidgetNode = Readonly<{
   readOnly: boolean;
   overlayPosition: CellPoint | null;
   modal: boolean;
-  dialog?: Readonly<{ initialFocusId?: string }>;
+  dialog?: Readonly<{ initialFocusId?: string; role?: "alertdialog" }>;
   dialogPart?: "title" | "description";
   closeOnOutsideClick?: boolean;
   describedById?: WidgetId;
@@ -314,6 +317,7 @@ export type SemanticAction = "activate" | "focus" | "expand" | "collapse";
 
 export type SemanticNode = Readonly<{
   id: WidgetId;
+  probeId?: string;
   semanticParentId: WidgetId | null;
   traversalOrder: number;
   bounds: CellRect | null;
@@ -321,6 +325,7 @@ export type SemanticNode = Readonly<{
     | "alert"
     | "status"
     | "dialog"
+    | "alertdialog"
     | "heading"
     | "paragraph"
     | "blockquote"

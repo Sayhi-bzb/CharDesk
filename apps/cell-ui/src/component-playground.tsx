@@ -61,7 +61,6 @@ export function ComponentPlayground({
   const [previewScroll, setPreviewScroll] = useState({ x: 0, y: 0 });
   const [controlsScroll, setControlsScroll] = useState({ x: 0, y: 0 });
   const [presentation, setPresentation] = useState<CellUiPresentation>("rich");
-  const pendingPresentationRef = useRef<CellUiPresentation | null>(null);
   const [localFocusedId, setLocalFocusedId] = useState<string | null>(null);
   const presentationRichId = `${id}-presentation-rich`;
   const presentationTextId = `${id}-presentation-text`;
@@ -72,7 +71,13 @@ export function ComponentPlayground({
   const presentationSelect = useCellSelectState(`${id}-presentation`, presentationItems, {
     defaultSelectedId: presentationRichId,
     onSelectionChange: (itemId) => {
-      pendingPresentationRef.current = itemId === presentationTextId ? "text" : "rich";
+      const next = itemId === presentationTextId ? "text" : "rich";
+      controls?.forEach((control) => {
+        if (isScopedControl(control) && control.presentation !== next && control.select?.open) {
+          control.select.dispatch({ type: "dismiss", targetId: control.select.contentId });
+        }
+      });
+      setPresentation(next);
     },
   });
   const effectiveFocusedId = presentationSelect.open
@@ -127,16 +132,6 @@ export function ComponentPlayground({
     }
     if (command.type === "dismiss" && command.targetId === presentationSelect.contentId) {
       setLocalFocusedId(presentationSelect.triggerId);
-      if (pendingPresentationRef.current) {
-        const next = pendingPresentationRef.current;
-        controls?.forEach((control) => {
-          if (isScopedControl(control) && control.presentation !== next && control.select?.open) {
-            control.select.dispatch({ type: "dismiss", targetId: control.select.contentId });
-          }
-        });
-        setPresentation(next);
-        pendingPresentationRef.current = null;
-      }
     }
     if (command.type === "scroll" && command.targetId === previewScrollId) {
       setPreviewScroll({ x: command.scrollX, y: command.scrollY });

@@ -307,20 +307,25 @@ const runBuild = (mode, projects, selected, buildRunner, target, run) => {
     run('node', ['scripts/data/generate-welcome-canvas.mjs', '--verify'], { label: 'verify welcome canvas' })
     run(npxCommand, ['tsc', '-b'], { label: 'compile app' })
     run(npxCommand, ['vite', 'build'], { label: 'build app' })
+    run('node', ['scripts/seo/prepare-canvas.mjs'], { label: 'prepare Canvas sitemap' })
     run('node', ['scripts/seo/verify-build.mjs'], { label: 'verify app SEO' })
   }
   if (target === 'app') return
   const docs = projects.find(project => project.name === '@chardesk/docs')
-  if (docs && (mode === 'full' || selected.has(docs.name))) {
+  if (docs && (mode === 'full' || selected.has('root') || selected.has(docs.name))) {
     runWorkspaceScript(docs, 'build', run)
     run('node', ['scripts/docs/merge-build.mjs'], { label: 'merge docs build' })
     run('node', ['scripts/docs/verify-build.mjs'], { label: 'verify docs build' })
   }
   const site = projects.find(project => project.name === '@chardesk/chargraph-site')
-  if (site && (mode === 'full' || selected.has(site.name))) {
+  if (site && (mode === 'full' || selected.has('root') || selected.has(site.name))) {
     runWorkspaceScript(site, 'build', run)
     run('node', ['scripts/chargraph/merge-build.mjs'], { label: 'merge CharGraph build' })
     run('node', ['scripts/chargraph/verify-build.mjs'], { label: 'verify CharGraph build' })
+  }
+  if (mode === 'full' || selected.has('root')) {
+    run('node', ['scripts/site/build.mjs'], { label: 'build product navigation' })
+    run('node', ['scripts/site/verify-build.mjs'], { label: 'verify product navigation' })
   }
 }
 

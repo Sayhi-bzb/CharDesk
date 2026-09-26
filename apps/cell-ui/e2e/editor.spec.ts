@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, copyCellRange, ownerBounds, ownerCells, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, copyCellRange, ownerBounds, ownerCells, readCellProbe } from "./helpers/cell-probe";
 
 for (const scheme of ["light", "dark"] as const) {
   test(`editor activity and borders follow actual focus, not input modality (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto("/#/__fixtures/editor");
     const surface = page.locator('[data-cell-probe="editor"]');
-    const canvas = surface.locator("canvas");
+    const canvas = canvasFor(surface);
     const heading = page.getByRole("heading", { name: "Cell UI Fixture", exact: true });
     const inverse = scheme === "light"
       ? { color: "rgb(255, 255, 255)", backgroundColor: "rgb(0, 0, 0)" }
@@ -87,7 +87,7 @@ test("Cell editor shares Unicode, composition, selection, and history across Can
 
   const section = page.locator("#editor");
   const surface = section.getByLabel("Cell text editor");
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   const name = section.getByRole("textbox", { name: "File name" });
   const document = section.getByRole("textbox", { name: "Document" });
   await expect(name).toHaveValue("notes.txt");
@@ -134,7 +134,7 @@ test("Cell range selects and copies the final rendered border", async ({ page })
   await page.waitForLoadState("networkidle");
   const section = page.locator("#editor");
   const surface = section.getByLabel("Cell text editor");
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   await canvas.scrollIntoViewIfNeeded();
   const probe = await readCellProbe(surface);
   const editor = ownerBounds(probe, "editor-document");
@@ -167,7 +167,7 @@ test("horizontal and vertical editor scroll cannot paint over chrome Cells", asy
   await page.waitForLoadState("networkidle");
   const section = page.locator("#editor");
   const surface = section.getByLabel("Cell text editor");
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   await section.getByRole("textbox", { name: "File name" }).fill("0123456789".repeat(5));
   await section.getByRole("textbox", { name: "Document" }).fill(
     Array.from({ length: 9 }, (_, index) => `${index}: ${"x".repeat(48)}`).join("\n")

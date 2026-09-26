@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, readCellProbe } from "./helpers/cell-probe";
 
 test("Gallery has no DOM focus outline and retains keyboard and editor focus", async ({ page }) => {
   await page.goto("/#/__fixtures/core");
@@ -12,7 +12,7 @@ test("Gallery has no DOM focus outline and retains keyboard and editor focus", a
     && !cell.style.bold && cell.style.backgroundColor)).toBe(true);
   await page.keyboard.press("Enter");
   await expect(core).toHaveAttribute("data-cell-focused", "core-save");
-  await core.locator("canvas").click({ position: { x: 40, y: 26 } });
+  await canvasFor(core).click({ position: { x: 40, y: 26 } });
   await expect(core).toHaveCSS("outline-style", "none");
   await page.getByRole("button", { name: "Dark" }).focus();
   await page.keyboard.press("Tab");

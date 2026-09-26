@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, readCellProbe } from "./helpers/cell-probe";
 
 for (const dpr of [1, 1.25, 2]) {
   test.describe(`Surface guard at DPR ${dpr}`, () => {
@@ -11,18 +11,21 @@ for (const dpr of [1, 1.25, 2]) {
       expect(probe.text).toContain("☑ Build UI");
       expect(probe.text).toContain("☐ Share it");
       const metrics = probe.presentation!.metrics;
-      const canvas = surface.locator("canvas").first();
-      await expect(canvas).toHaveCSS("width", `${(probe.viewport.width + 2) * metrics.cellWidth}px`);
+      const canvas = canvasFor(surface).first();
+      const article = await readCellProbe(page.locator('[data-cell-probe="article-markdown"]'));
+      await expect(canvas).toHaveCSS("width", `${(article.viewport.width + 2) * metrics.cellWidth}px`);
+      const [originX, originY] = (await surface.getAttribute("data-cell-probe-origin"))!.split(",").map(Number);
       await page.evaluate(() => document.fonts.ready);
       for (const glyph of ["☑", "☐"]) {
         const marker = probe.cells.find((cell) => cell.text === glyph);
         expect(marker).toMatchObject({ x: 0 });
-        const readInk = () => canvas.evaluate((element, { row, metrics }) => {
+        const readInk = () => canvas.evaluate((element, { row, metrics, originX, originY }) => {
           const context = element.getContext("2d")!;
           const dpr = devicePixelRatio;
           const width = Math.round(metrics.cellWidth * dpr);
           const height = Math.round(metrics.cellHeight * dpr);
-          const left = context.getImageData(0, Math.round((row + 1) * metrics.cellHeight * dpr),
+          const left = context.getImageData(Math.round(originX * metrics.cellWidth * dpr),
+            Math.round((originY + row + 1) * metrics.cellHeight * dpr),
             width, height).data;
           let pixels = 0;
           let firstX = width;
@@ -32,7 +35,7 @@ for (const dpr of [1, 1.25, 2]) {
             firstX = Math.min(firstX, (index / 4) % width);
           }
           return { pixels, firstX };
-        }, { row: marker!.y, metrics });
+        }, { row: marker!.y, metrics, originX: originX!, originY: originY! });
         await expect.poll(async () => (await readInk()).pixels).toBeGreaterThan(0);
         const ink = await readInk();
         expect(ink.firstX).toBeGreaterThan(0);
@@ -130,7 +133,7 @@ test("font ink crosses its Cell boundary without changing allocation", async ({ 
 test("Gallery clears old ink after replacement, scrolling and closing an overlay", async ({ page }) => {
   const assertStableRepaint = async (surface: Locator) => {
     expect((await readCellProbe(surface)).presentation?.glyphInkOverhang).toBeDefined();
-    const canvas = surface.locator("canvas").first();
+    const canvas = canvasFor(surface).first();
     const before = await canvas.evaluate((node) => node.toDataURL());
     await canvas.evaluate(async (node) => {
       node.style.width = `${node.getBoundingClientRect().width + 1}px`;

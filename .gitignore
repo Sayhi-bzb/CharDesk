@@ -11,6 +11,7 @@ lerna-debug.log*
 node_modules
 .pnpm-store/
 dist
+dist-site
 dist-ssr
 apps/docs/build
 apps/docs/.react-router

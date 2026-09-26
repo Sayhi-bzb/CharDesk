@@ -908,7 +908,7 @@ type GuideSection = Readonly<{
   tocLabel?: string;
   body?: string;
   code?: string;
-  demo?: "settings" | "progress" | "notes" | "macintosh" | "markdown";
+  demo?: "settings" | "progress" | "notes" | "macintosh" | "markdown" | "host-overlays";
   probeId?: string;
   installation?: boolean;
   api?: readonly ComponentApiRow[];
@@ -966,7 +966,7 @@ export const guideContent: readonly GuideContent[] = [
     slug: "introduction", title: "Introduction",
     description: "Build React interfaces from editable Unicode Cells. Own the source, compose a few good defaults, and let one frame serve people and agents.",
     sections: [
-      { id: "philosophy", title: "Why Cells?", body: "A border, a space, a label, and a cursor all occupy integer Cells. The same committed frame drives the visible Canvas, accessible controls, copyable Unicode, and headless tests. Cell UI ships as source you can change, with fewer built-in knobs to work around. Try Cell Range: hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux. Copy preserves the selected Unicode, including border glyphs.", link: { label: "Read the philosophy", href: "#/guides/philosophy" } },
+      { id: "philosophy", title: "Why Cells?", body: "A border, a space, a label, and a cursor all occupy integer Cells. The same committed frame drives the visible Canvas, accessible controls, copyable Unicode, and headless tests. Cell UI ships as source you can change, with fewer built-in knobs to work around. Drag to select text; hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux, for a rectangular Cell Range. Copy preserves the selected Unicode, including border glyphs.", link: { label: "Read the philosophy", href: "#/guides/philosophy" } },
       { id: "settings", title: "Compose a settings panel", body: "Theme and Sound are ordinary app state. Select and Checkbox share the same Cell grid and input model; try the menu and the checkbox with pointer or keyboard.", demo: "settings", code: `const themeItems = [
   { id: "light", label: "Light" },
   { id: "dark", label: "Dark" },
@@ -1092,7 +1092,69 @@ import { CellSurface } from "@/lib/cell-ui/browser";
   </Root>
 </CellSurface>;` },
       { id: "state", title: "State and commands", body: "Application state remains outside the renderer. Pass controlled values and focused IDs into descriptors, then handle CellSurface onCommand or use the matching /browser state adapter. Direct adapter dispatch has no presentation lifecycle." },
+      { id: "reordering", title: "Reordering", body: "Use List's reorderable capability with stable List and ListItem IDs. Pointer drag previews the row and insertion point; release or Alt+↑/↓ emits a reorder command. Application state owns the final order.", code: `import { useState } from "react";
+import { List, ListItem, Root, Text, reorderCellItems } from "@/lib/cell-ui";
+import { CellSurface } from "@/lib/cell-ui/browser";
+
+function Layers() {
+  const [items, setItems] = useState([
+    { id: "title", label: "Title" },
+    { id: "chart", label: "Chart" },
+  ]);
+  return (
+    <CellSurface
+      viewport={{ width: 24, height: 4 }}
+      onCommand={(command) => {
+        if (command.type === "reorder")
+          setItems((current) => [
+            ...reorderCellItems(current, command.targetId, command.toIndex),
+          ]);
+      }}
+    >
+      <Root>
+        <List id="layers" label="Layers" reorderable>
+          {items.map((item) => (
+            <ListItem key={item.id} id={item.id} label={item.label}>
+              <Text>{item.label}</Text>
+            </ListItem>
+          ))}
+        </List>
+      </Root>
+    </CellSurface>
+  );
+}` },
       { id: "headless", title: "Headless hosts", body: "CellUiRuntime commits a dense Cell buffer and Scene without a browser. Headless hosts supply viewport, state, focus, and animationTimeMs explicitly. The browser adapter supplies font loading, pointer, input, and semantic focus." },
+    ],
+  },
+  {
+    slug: "host-overlays", title: "Host overlays",
+    description: "One overlay host coordinates menus, modal panels, and notices across independent CellSurfaces.",
+    sections: [
+      { id: "preview", title: "Preview", demo: "host-overlays", probeId: "host-top-surface" },
+      { id: "installation", title: "Installation", installation: true },
+      { id: "usage", title: "Usage", body: "Mount CellOverlayHost above every participating surface. CellPopover and CellContextMenu use an element or pointer rectangle as their anchor; CellSheet and CellAlertDialog are modal. Render CellSurface content inside each portal. CellToastViewport shares the layer without taking focus.", code: `import { CellOverlayHost, CellPopover, CellSurface } from "@chardesk/cell-ui/browser";
+import { Root, Menu, MenuItem, Text } from "@chardesk/cell-ui";
+
+<CellOverlayHost>
+  <CellSurface viewport={{ width: 40, height: 10 }}>
+    <Root />
+  </CellSurface>
+  <CellPopover open={open} anchor={trigger} onDismiss={() => setOpen(false)}>
+    <CellSurface viewport={{ width: 20, height: 3 }}>
+      <Root>
+        <Menu id="actions" label="Actions">
+          <MenuItem id="open" label="Open">
+            <Text>Open</Text>
+          </MenuItem>
+        </Menu>
+      </Root>
+    </CellSurface>
+  </CellPopover>
+</CellOverlayHost>;` },
+      { id: "contract", title: "Contract", body: "The host owns stacking, viewport placement, outside/Escape dismissal, modal background inertness, and focus return. Menu content stays a Cell descriptor; app state decides when to open or close it.", links: [
+        { label: "Browser host source", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser-overlay-host.tsx" },
+        { label: "Gallery acceptance", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/overlay-host.spec.ts" },
+      ] },
     ],
   },
   {

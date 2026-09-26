@@ -13,7 +13,7 @@ test("Cell TSX examples keep highlighted source and exact copy across themes", a
     await page.getByRole("button", { name: "Light" }).focus();
     await page.keyboard.press("Enter");
   }
-  const article = page.locator('[data-cell-probe="article-button-2"]');
+  const article = page.locator('[data-cell-probe="article-button"]');
   const light = await readCellProbe(article);
   const usageRow = light.text.split("\n").findIndex((line) => line.includes('import { useState }'));
   expect(usageRow).toBeGreaterThan(0);
@@ -49,14 +49,14 @@ test("long Cell examples fold to 20 lines, but copy preserves full source", asyn
     });
   });
   await page.goto("/#/components/button");
-  const article = page.locator('[data-cell-probe="article-button-2"]');
+  const article = page.locator('[data-cell-probe="article-button"]');
   const collapsed = await readCellProbe(article);
   expect(collapsed.text).toContain("Show more");
   expect(collapsed.text).not.toContain("</CellSurface>");
   await article.getByRole("button", { name: "Copy code" }).last().evaluate((element: HTMLElement) => element.click());
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("copied-code"))).toContain("</CellSurface>");
   await article.getByRole("button", { name: "Show more" }).evaluate((element: HTMLElement) => element.click());
-  expect((await readCellProbe(article)).text).toContain("</CellSurface>");
+  await expect.poll(async () => (await readCellProbe(article)).text).toContain("</CellSurface>");
   await article.getByRole("button", { name: "Show less" }).focus();
   await page.keyboard.press("Enter");
   await expect(article.getByRole("button", { name: "Show more" })).toBeVisible();
@@ -67,13 +67,13 @@ test("long Cell examples fold to 20 lines, but copy preserves full source", asyn
 test("Cell line-number gutter stays fixed while narrow code scrolls horizontally", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
   await page.goto("/#/components/select");
-  const article = page.locator('[data-cell-probe="article-select-2"]');
+  const article = page.locator('[data-cell-probe="article-select"]');
   const before = await readCellProbe(article);
   const codeRow = before.text.split("\n").findIndex((line) => line.includes("import"));
   const gutter = before.cells.find(({ x, y, text }) => x < 4 && y === codeRow && text === "1");
   expect(gutter).toBeDefined();
   await page.locator("#usage").scrollIntoViewIfNeeded();
-  const point = await cellPoint(article, 15, codeRow);
+  const point = await cellPoint(article, 15, codeRow, { scrollIntoView: true });
   await page.mouse.move(point.x, point.y);
   await page.mouse.wheel(160, 0);
   await expect.poll(async () => (await readCellProbe(article)).text).not.toBe(before.text);

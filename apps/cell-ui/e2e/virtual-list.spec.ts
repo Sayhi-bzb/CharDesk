@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, readCellProbe } from "./helpers/cell-probe";
 
 test("100k-row virtual List stays bounded across keyboard, pointer, and scroll", async ({ page }) => {
   const pageErrors: string[] = [];
@@ -10,7 +10,7 @@ test("100k-row virtual List stays bounded across keyboard, pointer, and scroll",
 
   const section = page.locator("#virtualization");
   const surface = section.getByLabel("Virtual file list");
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   await expect(section.getByRole("listbox", { name: "Virtual files" })).toBeAttached();
   await expect(section.getByRole("option")).toHaveCount(11);
   await expect(section.getByRole("option")).toHaveCount(11);

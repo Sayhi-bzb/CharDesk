@@ -40,7 +40,7 @@ test("Tooltip opens on keyboard focus and Escape dismisses until focus changes",
   await expect(tooltip).toHaveCount(0);
   await page.waitForTimeout(600);
   await expect(tooltip).toHaveCount(0);
-  await page.locator('[data-cell-probe="article-tooltip-0"] canvas').click({ position: { x: 5, y: 5 } });
+  await page.locator('[data-cell-probe="article-tooltip"] canvas').click({ position: { x: 5, y: 5 } });
   await button.focus();
   await expect(tooltip).toBeAttached();
 });

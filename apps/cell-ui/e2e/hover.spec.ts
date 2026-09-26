@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe, readCellMetrics } from "./helpers/cell-probe";
+import { canvasFor, readCellProbe, readCellMetrics } from "./helpers/cell-probe";
 
 test("Select overlay receives hover outside the base canvas and respects DOM occlusion", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
@@ -58,7 +58,7 @@ test("hover shares hit testing, is paint-only, and never activates a command", a
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
   await page.goto("/#/__fixtures/core");
   const surface = page.locator('[data-cell-probe="core"]');
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface).first();
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
   const metrics = await readCellMetrics(surface);
@@ -99,7 +99,7 @@ test("palette blocks underlying hover even when the mouse is stationary", async 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/#/__fixtures/overlay");
   const surface = page.locator('[data-cell-probe="overlay"]');
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface).first();
   const metrics = await readCellMetrics(surface);
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
@@ -118,7 +118,7 @@ test("stationary mouse follows scrolled rows and editor content keeps a neutral 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/#/__fixtures/core");
   const core = page.locator('[data-cell-probe="core"]');
-  const canvas = core.locator("canvas");
+  const canvas = canvasFor(core);
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
   const metrics = await readCellMetrics(core);

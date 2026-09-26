@@ -4,7 +4,7 @@ Build React interfaces from editable Unicode Cells. Own the source, compose a fe
 
 ## Why Cells?
 
-A border, a space, a label, and a cursor all occupy integer Cells. The same committed frame drives the visible Canvas, accessible controls, copyable Unicode, and headless tests. Cell UI ships as source you can change, with fewer built-in knobs to work around. Try Cell Range: hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux. Copy preserves the selected Unicode, including border glyphs.
+A border, a space, a label, and a cursor all occupy integer Cells. The same committed frame drives the visible Canvas, accessible controls, copyable Unicode, and headless tests. Cell UI ships as source you can change, with fewer built-in knobs to work around. Drag to select text; hold Option (⌥) + Command (⌘) and drag on macOS, or Alt and drag on Windows/Linux, for a rectangular Cell Range. Copy preserves the selected Unicode, including border glyphs.
 
 [Read the philosophy](https://ui.chardesk.com/#/guides/philosophy)
 

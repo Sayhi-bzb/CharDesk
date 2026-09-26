@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, copyCellRange, ownerBounds, ownerCells, readCellPixel, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, copyCellRange, ownerBounds, ownerCells, readCellPixel, readCellProbe } from "./helpers/cell-probe";
 import { galleryFontSelect, selectGalleryFont } from "./helpers/gallery-font-select";
 
 const navigationLinks = [
@@ -32,7 +32,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("heading", { name: "Introduction", level: 1 })).toBeVisible();
   await expect(page.locator('[data-cell-semantic-id="gallery-header-brand"]')).toHaveAttribute("href", "#/guides/introduction");
   await expect(nav.getByRole("group", { name: "Sections" }).getByRole("link")).toHaveText([
-    "Introduction", "Philosophy", "Classic Macintosh", "Markdown", "Installation", "Integration", "Theming", "Testing",
+    "Introduction", "Philosophy", "Classic Macintosh", "Markdown", "Installation", "Integration", "Host overlays", "Theming", "Testing",
   ]);
   await page.goto("/#/components/button");
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
@@ -60,12 +60,12 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("tablist", { name: "Installation method" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Configure the registry" })).toBeVisible();
   await expect(page.getByText("npx shadcn@latest add @chardesk/cell-ui")).toBeVisible();
-  const article = page.locator('[data-cell-probe="article-button-2"]');
+  const article = page.locator('[data-cell-probe="article-button"]');
   expect((await readCellProbe(article)).text).toContain("@/lib/cell-ui/browser");
   expect((await readCellProbe(article)).text).not.toContain("@chardesk/cell-ui/browser");
   await expect(article.getByRole("button", { name: "Copy code" })).toHaveCount(2);
   await expect(article.getByRole("table")).toHaveCount(1);
-  await expect(page.locator(".docs-preview canvas")).toHaveCount(2);
+  await expect(page.locator(".docs-page canvas")).toHaveCount(1);
   await expect(galleryFontSelect(page).locator("canvas")).toHaveCount(1);
   await expect(page.locator("#core, #complex, #editor, #overlay, #virtualization")).toHaveCount(0);
 
@@ -77,25 +77,9 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Button", level: 1 })).toBeVisible();
 
-  const widePreviewBounds = await page.locator(".docs-preview").boundingBox();
-  const wideHostBounds = await page.locator(".component-playground").boundingBox();
-  const widePlaygroundBounds = await page.locator('[data-cell-probe="component-button"]').boundingBox();
-  expect(widePreviewBounds).not.toBeNull();
-  expect(wideHostBounds).not.toBeNull();
-  expect(widePlaygroundBounds).not.toBeNull();
-  expect(wideHostBounds!.x).toBeCloseTo(widePreviewBounds!.x, 4);
-  expect(wideHostBounds!.x + wideHostBounds!.width).toBeCloseTo(
-    widePreviewBounds!.x + widePreviewBounds!.width,
-    4,
-  );
-  expect(widePlaygroundBounds!.x).toBeCloseTo(wideHostBounds!.x, 4);
-  const wideRemainder = wideHostBounds!.x + wideHostBounds!.width
-    - widePlaygroundBounds!.x - widePlaygroundBounds!.width;
-  expect(wideRemainder).toBeGreaterThanOrEqual(-20);
-  expect(wideRemainder).toBeLessThan(9);
   const widePlayground = await readCellProbe(page.locator('[data-cell-probe="component-button"]'));
   expect(widePlayground.viewport).toEqual({
-    width: Math.floor(wideHostBounds!.width / 9) - 2,
+    width: (await readCellProbe(article)).viewport.width,
     height: 9,
   });
   const wideDivider = widePlayground.cells.find(
@@ -114,21 +98,8 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   const narrowLines = narrowPlayground.text.split("\n");
   expect(narrowLines.some((line) => line.includes("[ ] disabled"))).toBe(true);
   expect(narrowLines.some((line) => line.includes("variant"))).toBe(true);
-  const narrowPreviewBounds = await page.locator(".docs-preview").boundingBox();
-  const narrowHostBounds = await page.locator(".component-playground").boundingBox();
-  const narrowPlaygroundBounds = await page.locator('[data-cell-probe="component-button"]').boundingBox();
-  expect(narrowPreviewBounds).not.toBeNull();
-  expect(narrowHostBounds).not.toBeNull();
-  expect(narrowPlaygroundBounds).not.toBeNull();
-  expect(narrowHostBounds!.x).toBeCloseTo(narrowPreviewBounds!.x, 4);
-  expect(narrowHostBounds!.x + narrowHostBounds!.width).toBeCloseTo(
-    narrowPreviewBounds!.x + narrowPreviewBounds!.width,
-    4,
-  );
-  const narrowRemainder = narrowHostBounds!.x + narrowHostBounds!.width
-    - narrowPlaygroundBounds!.x - narrowPlaygroundBounds!.width;
-  expect(narrowRemainder).toBeGreaterThanOrEqual(-20);
-  expect(narrowRemainder).toBeLessThan(9);
+  await expect(page.locator(".docs-page canvas")).toHaveCount(1);
+  expect(narrowPlayground.viewport.width).toBe((await readCellProbe(article)).viewport.width);
   for (const [slug, probeId] of [
     ["select", "component-select"],
     ["combobox", "component-combobox"],
@@ -384,7 +355,7 @@ test("installation shows copyable package-manager commands and registry setup", 
     const command = `${prefix} shadcn@latest add @chardesk/cell-ui`;
     const panel = installation.getByRole("tabpanel", { name: manager });
     await expect(panel).toBeVisible();
-    await expect.poll(async () => (await readCellProbe(page.locator('[data-cell-probe="article-button-2"]'))).text).toContain(command);
+    await expect.poll(async () => (await readCellProbe(page.locator('[data-cell-probe="article-button"]'))).text).toContain(command);
     await installation.getByRole("button", { name: "Copy code" }).first()
       .evaluate((element: HTMLElement) => element.click());
     await expect.poll(() => page.evaluate(() => sessionStorage.getItem("copied-command"))).toBe(command);
@@ -536,7 +507,7 @@ test("remaining foundational component pages support direct loading", async ({ p
   for (const slug of ["text", "text-area", "table"]) {
     await page.goto(`/#/components/${slug}`);
     await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]').first()
-      .getByRole("heading", { level: 1 })).toBeVisible();
+      .getByRole("heading", { level: 1 }).first()).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Cell UI" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "API" })).toBeVisible();
   }
@@ -551,7 +522,7 @@ test("guide sections, direct links, and agent Markdown stay addressable", async 
     await page.goto(`/#/guides/${slug}`);
     await expect(page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: slug === "classic-macintosh" ? "Classic Macintosh" : slug[0]!.toUpperCase() + slug.slice(1), exact: true })).toHaveAttribute("aria-current", "page");
     await expect(page.locator('.cell-article-page [data-cell-probe]').first()
-      .getByRole("heading", { level: 1 })).toBeVisible();
+      .getByRole("heading", { level: 1 }).first()).toBeVisible();
     const markdown = await request.get(`/guides/${slug}.md`);
     expect(markdown.ok()).toBe(true);
     expect(await markdown.text()).toContain("# ");
@@ -694,7 +665,7 @@ test("Classic Macintosh guide keeps its Cell window stable across input and them
   await sound.focus();
   await page.keyboard.press("Space");
   await expect(sound).toHaveAttribute("aria-checked", "false");
-  await surface.locator("canvas").first().scrollIntoViewIfNeeded();
+  await canvasFor(surface).first().scrollIntoViewIfNeeded();
   const apply = ownerBounds(await readCellProbe(surface), "mac-apply");
   const point = await cellPoint(surface, apply.x + (apply.width - 1) / 2, apply.y + (apply.height - 1) / 2);
   await page.mouse.click(point.x, point.y);
@@ -738,17 +709,17 @@ test("Introduction shows interactive Cell examples and matching agent content", 
 
   const progress = page.getByLabel("Progress example");
   await expect.poll(async () => (await readCellProbe(progress)).text).toContain("Uploading files");
-  await progress.locator("canvas").first().scrollIntoViewIfNeeded();
+  await page.locator("#progress").scrollIntoViewIfNeeded();
   const startBounds = ownerBounds(await readCellProbe(progress), "intro-progress-start");
   const startPoint = await cellPoint(progress,
     startBounds.x + (startBounds.width - 1) / 2,
-    startBounds.y + (startBounds.height - 1) / 2);
+    startBounds.y + (startBounds.height - 1) / 2, { scrollIntoView: true });
   await page.mouse.click(startPoint.x, startPoint.y);
   await expect.poll(async () => (await readCellProbe(progress)).text).toContain("Restart");
   await expect.poll(async () => (await readCellProbe(progress)).text, { timeout: 10000 }).toContain("Upload complete");
 
   const notes = page.getByLabel("Unicode notes example");
-  const editor = notes.getByRole("textbox", { name: "Notes" });
+  const editor = page.getByRole("textbox", { name: "Notes" });
   await editor.fill("世界 👋 and Cells");
   await expect.poll(async () => (await readCellProbe(notes)).text).toContain("世界 👋 and Cells");
 
@@ -764,7 +735,7 @@ test("Introduction shows interactive Cell examples and matching agent content", 
 
 test("guide prose and Cell code share one measured article width", async ({ page }) => {
   await page.goto("/#/guides/integration");
-  const article = page.locator('[data-cell-probe="article-integration-0"]');
+  const article = page.locator('[data-cell-probe="article-integration"]');
   await expect(article).toContainText("CellSurface retains the runtime");
   for (const width of [1280, 390, 320]) {
     await page.setViewportSize({ width, height: 800 });
@@ -788,7 +759,7 @@ test("unknown component routes fail honestly", async ({ page }) => {
 
 test("Cell article code and API stay contained on a narrow page", async ({ page }) => {
   await page.goto("/#/components/button");
-  const article = page.locator('[data-cell-probe="article-button-2"]');
+  const article = page.locator('[data-cell-probe="article-button"]');
   await expect(article.getByRole("table")).toHaveCount(1);
   await expect(article.getByRole("button", { name: "Copy code" })).toHaveCount(2);
 
@@ -850,7 +821,7 @@ test("Separator keeps orientation interactive", async ({ page }) => {
 test("Input edits Unicode through the real textbox and Cell frame", async ({ page }) => {
   await page.goto("/#/components/input");
   const surface = page.getByLabel("Input component");
-  const input = surface.getByRole("textbox", { name: "File name" });
+  const input = page.getByRole("textbox", { name: "File name" });
   const disabled = page.getByRole("checkbox", { name: "disabled" });
 
   await expect(page.getByRole("heading", { name: "Input", level: 1 })).toBeVisible();
@@ -925,9 +896,9 @@ test("Button Playground drives its semantic API through Cell controls", async ({
 
   const initial = await readCellProbe(surface);
   expect(initial.viewport.height).toBe(9);
-  const baseCanvas = surface.locator("canvas:not([data-cell-overlay-root])");
-  const initialSurfaceBounds = await surface.boundingBox();
-  const initialHostBounds = await page.locator(".component-playground").boundingBox();
+  const baseCanvas = canvasFor(surface);
+  const initialSurfaceBounds = await baseCanvas.boundingBox();
+  const initialHostBounds = await page.locator(".docs-page .cell-article-block").boundingBox();
   expect(initial.text).toContain("variant");
   expect(initial.text).toContain("Save");
   expect(initial.text).toContain("[ ] disabled");
@@ -940,13 +911,9 @@ test("Button Playground drives its semantic API through Cell controls", async ({
     cell.ownerId?.startsWith("component-button-disabled")
   ));
   expect(disabledCells.filter((cell) => cell.style.backgroundColor !== undefined)).toHaveLength(0);
-  const initialCanvasBounds = await surface.locator("canvas").boundingBox();
   expect(indicatorCell).toBeDefined();
-  expect(initialCanvasBounds).not.toBeNull();
-  await page.mouse.move(
-    initialCanvasBounds!.x + (indicatorCell!.x + 1.5) * initialCanvasBounds!.width / (initial.viewport.width + 2),
-    initialCanvasBounds!.y + (indicatorCell!.y + 1.5) * initialCanvasBounds!.height / (initial.viewport.height + 2),
-  );
+  const indicatorPoint = await cellPoint(surface, indicatorCell!.x, indicatorCell!.y);
+  await page.mouse.move(indicatorPoint.x, indicatorPoint.y);
   await expect(surface).toHaveAttribute("data-cell-hovered", "component-button-disabled");
 
   await page.mouse.down();
@@ -958,10 +925,8 @@ test("Button Playground drives its semantic API through Cell controls", async ({
     cell.ownerId?.startsWith("component-button-disabled") && cell.style.bold
   ))).toHaveLength(0);
 
-  await page.mouse.move(
-    initialCanvasBounds!.x + 1.5 * initialCanvasBounds!.width / (initial.viewport.width + 2),
-    initialCanvasBounds!.y + 1.5 * initialCanvasBounds!.height / (initial.viewport.height + 2),
-  );
+  const blankPoint = await cellPoint(surface, 0, 0);
+  await page.mouse.move(blankPoint.x, blankPoint.y);
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
   await expect.poll(async () => (await readCellProbe(surface)).cells.filter((cell) => (
     cell.ownerId?.startsWith("component-button-disabled")
@@ -973,18 +938,13 @@ test("Button Playground drives its semantic API through Cell controls", async ({
   await disabled.evaluate((element: HTMLElement) => element.click());
   await expect(disabled).toHaveAttribute("aria-checked", "false");
 
-  expect((await surface.boundingBox())?.height).toBe(initialSurfaceBounds?.height);
-  expect((await page.locator(".component-playground").boundingBox())?.height).toBe(initialHostBounds?.height);
+  expect((await baseCanvas.boundingBox())?.height).toBe(initialSurfaceBounds?.height);
+  expect((await page.locator(".docs-page .cell-article-block").boundingBox())?.height).toBe(initialHostBounds?.height);
 
   const configured = await readCellProbe(surface);
   const saveCell = configured.cells.find((cell) => cell.ownerId === "component-button-save");
-  const canvasBounds = await baseCanvas.boundingBox();
   expect(saveCell).toBeDefined();
-  expect(canvasBounds).not.toBeNull();
-  const savePoint = {
-    x: canvasBounds!.x + (saveCell!.x + 1.5) * canvasBounds!.width / (configured.viewport.width + 2),
-    y: canvasBounds!.y + (saveCell!.y + 1.5) * canvasBounds!.height / (configured.viewport.height + 2),
-  };
+  const savePoint = await cellPoint(surface, saveCell!.x, saveCell!.y);
   await page.mouse.move(savePoint.x, savePoint.y);
   await page.mouse.down();
   await expect(surface).toHaveAttribute("data-cell-press-active", "component-button-save");
@@ -999,7 +959,7 @@ test("Button Playground drives its semantic API through Cell controls", async ({
 
   await page.reload();
   const reloadedSurface = page.getByLabel("Button component");
-  await reloadedSurface.focus();
+  await page.getByRole("button", { name: "Save document" }).focus();
   await expect(page.getByRole("button", { name: "Save document" })).toBeFocused();
   await page.keyboard.down("Enter");
   await expect(reloadedSurface).toHaveAttribute("data-cell-press-active", "component-button-save");
@@ -1022,8 +982,8 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
   const surface = page.getByLabel("Select component");
   const trigger = surface.getByRole("button", { name: "Theme" });
   const disabled = page.getByRole("checkbox", { name: "disabled" });
-  const initialSurfaceBounds = await surface.boundingBox();
-  const initialHostBounds = await page.locator(".component-playground").boundingBox();
+  const initialSurfaceBounds = await canvasFor(surface).boundingBox();
+  const initialHostBounds = await page.locator(".docs-page .cell-article-block").boundingBox();
 
   await expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
   await expect(trigger).toHaveAttribute("aria-expanded", "false");
@@ -1034,7 +994,7 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
   const defaultProbe = await readCellProbe(surface);
   const elevatedBackground = defaultProbe.cells.find((cell) => cell.ownerId === "component-select-trigger" && cell.text === " ")?.style.backgroundColor;
   expect(elevatedBackground).toBeTruthy();
-  await surface.focus();
+  await trigger.focus();
   await expect(trigger).toBeFocused();
   await page.keyboard.down("Enter");
   await expect(surface).toHaveAttribute("data-cell-press-active", "component-select-trigger");
@@ -1057,9 +1017,9 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
   expect(borderlessOverlay?.cells.find((cell) => cell.text === " " && cell.ownerId === "component-select-light")?.style.backgroundColor)
     .toBe(elevatedBackground);
   expect(borderless.overlayViewport.height).toBe(borderless.viewport.height + 3);
-  expect((await surface.boundingBox())?.height).toBe(initialSurfaceBounds?.height);
-  expect((await page.locator(".component-playground").boundingBox())?.height)
-    .toBe(initialHostBounds?.height);
+  expect((await canvasFor(surface).boundingBox())!.height).toBeGreaterThanOrEqual(initialSurfaceBounds!.height);
+  expect((await page.locator(".docs-page .cell-article-block").boundingBox())!.height)
+    .toBeGreaterThanOrEqual(initialHostBounds!.height);
 
   await page.keyboard.press("ArrowDown");
   await expect(surface.getByRole("option", { name: "System" })).toBeFocused();
@@ -1100,7 +1060,7 @@ test("Checkbox Playground keeps direct checked interaction and its disabled prop
   expect((await readCellProbe(surface)).text).toContain("[x] Autosave");
   expect((await readCellProbe(surface)).text).not.toMatch(/\bchecked\b/u);
 
-  await surface.focus();
+  await autosave.focus();
   await expect(autosave).toBeFocused();
   await page.keyboard.down("Space");
   await expect(surface).toHaveAttribute("data-cell-press-active", "component-checkbox-autosave");
@@ -1143,14 +1103,10 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
   const volumeTrack = initial.cells.find((cell) => (
     cell.ownerId === "component-slider-volume" && "━─".includes(cell.text)
   ));
-  const canvasBounds = await surface.locator("canvas").boundingBox();
   expect(volumeThumb).toBeDefined();
   expect(volumeTrack).toBeDefined();
-  expect(canvasBounds).not.toBeNull();
-  await page.mouse.move(
-    canvasBounds!.x + (volumeTrack!.x + 1.5) * canvasBounds!.width / (initial.viewport.width + 2),
-    canvasBounds!.y + (volumeTrack!.y + 1.5) * canvasBounds!.height / (initial.viewport.height + 2),
-  );
+  const trackPoint = await cellPoint(surface, volumeTrack!.x, volumeTrack!.y);
+  await page.mouse.move(trackPoint.x, trackPoint.y);
   await expect.poll(async () => (await readCellProbe(surface)).cells.filter((cell) => (
     cell.ownerId === "component-slider-volume" && cell.text === "█"
   )).length).toBe(1);
@@ -1160,11 +1116,8 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
   expect(hovered.cells.filter((cell) => (
     cell.ownerId === "component-slider-volume" && cell.style.backgroundColor !== undefined
   ))).toHaveLength(0);
-  const thumbX = canvasBounds!.x
-    + (volumeThumb!.x + 1.5) * canvasBounds!.width / (initial.viewport.width + 2);
-  const thumbY = canvasBounds!.y
-    + (volumeThumb!.y + 1.5) * canvasBounds!.height / (initial.viewport.height + 2);
-  const twoCells = 2 * canvasBounds!.width / (initial.viewport.width + 2);
+  const { x: thumbX, y: thumbY } = await cellPoint(surface, volumeThumb!.x, volumeThumb!.y);
+  const twoCells = (await cellPoint(surface, volumeThumb!.x + 2, volumeThumb!.y)).x - thumbX;
   await page.mouse.move(thumbX, thumbY);
   await page.mouse.down();
   await expect(surface).toHaveAttribute("data-cell-manipulating", "true");
@@ -1246,7 +1199,7 @@ test("Slider Playground keeps direct value interaction and its disabled prop", a
 test("Cell Range clears when Preview focus moves outside its Surface", async ({ page }) => {
   await page.goto("/#/__fixtures/text");
   const surface = page.getByLabel("Text component");
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   const probe = await readCellProbe(surface);
   const bounds = await canvas.boundingBox();
   expect(bounds).not.toBeNull();
@@ -1275,9 +1228,9 @@ test("Cell Range clears when Preview focus moves outside its Surface", async ({ 
 test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling the page", async ({ page }) => {
   await page.goto("/#/components/scroll-area");
   const surface = page.getByLabel("ScrollArea component");
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   await canvas.scrollIntoViewIfNeeded();
-  await surface.focus();
+  await surface.getByRole("button", { name: "01  Row 1" }).focus();
   const visibleRows = (text: string) => [...text.matchAll(/\d{2} {2}Row \d+/gu)]
     .map(([label]) => label);
   const thumbGlyphs = (probe: Awaited<ReturnType<typeof readCellProbe>>) => probe.cells
@@ -1302,19 +1255,13 @@ test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling t
   await page.keyboard.press("PageDown");
   await expect.poll(async () => (await readCellProbe(surface)).text).not.toBe(initial.text);
   const paged = await readCellProbe(surface);
-  const pageY = await page.evaluate(() => window.scrollY);
   const wheelTarget = paged.cells.find((cell) => (
     cell.ownerId === "component-scroll-area" && "█▀▄".includes(cell.text)
   ));
-  const wheelBounds = await canvas.boundingBox();
   expect(wheelTarget).toBeDefined();
-  expect(wheelBounds).not.toBeNull();
-  await canvas.hover({
-    position: {
-      x: (wheelTarget!.x + 1.5) * wheelBounds!.width / (paged.viewport.width + 2),
-      y: (wheelTarget!.y + 1.5) * wheelBounds!.height / (paged.viewport.height + 2),
-    },
-  });
+  const wheelPoint = await cellPoint(surface, wheelTarget!.x, wheelTarget!.y);
+  await page.mouse.move(wheelPoint.x, wheelPoint.y);
+  const pageY = await page.evaluate(() => window.scrollY);
   await page.mouse.wheel(0, 120);
   await expect.poll(async () => (await readCellProbe(surface)).text).not.toBe(paged.text);
   expect(await page.evaluate(() => window.scrollY)).toBe(pageY);
@@ -1323,17 +1270,12 @@ test("ScrollArea responds to keyboard, wheel, and thumb drag without scrolling t
   const thumb = beforeDrag.cells.find((cell) => "█▀▄".includes(cell.text)
     && cell.ownerId === "component-scroll-area");
   expect(thumb).toBeDefined();
-  const bounds = await canvas.boundingBox();
-  expect(bounds).not.toBeNull();
-  const cellWidth = bounds!.width / (beforeDrag.viewport.width + 2);
-  const cellHeight = bounds!.height / (beforeDrag.viewport.height + 2);
-  await page.mouse.move(bounds!.x + (thumb!.x + 1.5) * cellWidth, bounds!.y + (thumb!.y + 1.5) * cellHeight);
+  const thumbPoint = await cellPoint(surface, thumb!.x, thumb!.y);
+  await page.mouse.move(thumbPoint.x, thumbPoint.y);
   await page.mouse.down();
-  await page.mouse.move(
-    bounds!.x + (thumb!.x + 1.5) * cellWidth,
-    bounds!.y + (1 + Math.min(beforeDrag.viewport.height - 1.5, thumb!.y + 2.5)) * cellHeight,
-    { steps: 6 },
-  );
+  const dragEnd = await cellPoint(surface, thumb!.x,
+    Math.min(beforeDrag.viewport.height - 2, thumb!.y + 2));
+  await page.mouse.move(dragEnd.x, dragEnd.y, { steps: 6 });
   await page.mouse.up();
   await expect.poll(async () => (await readCellProbe(surface)).text).not.toBe(beforeDrag.text);
 

@@ -41,6 +41,10 @@ describe("Blackboard workspace target", () => {
       (session) => session.sourceBinding?.provider === "browser-workspace" &&
         session.sourceBinding.id === "gpu",
     )).toBeDefined();
+
+    window.history.replaceState(null, "", "/legacy/?webmcp=polyfill");
+    await target.activateWorkspace("gpu");
+    expect(window.location.pathname).toBe("/legacy/blackboard");
   });
 
   it("switches to an existing Canvas session instead of duplicating it", async () => {

@@ -31,7 +31,7 @@ test("docs code blocks share Markdown syntax colors in light and dark themes", a
     expect(colorAt(lightInstallation, "npx shadcn@latest", 0)).toBe(asRgb("#8250df"));
 
     await page.goto("/#/components/button");
-    const usage = page.locator('[data-cell-probe="article-button-2"]');
+    const usage = page.locator('[data-cell-probe="article-button"]');
     const lightUsage = await readCellProbe(usage);
     expect(colorAt(lightUsage, "import ", 0)).toBe(asRgb("#0550ae"));
     expect(colorAt(lightUsage, "npx shadcn@latest", 0)).toBe(asRgb("#8250df"));

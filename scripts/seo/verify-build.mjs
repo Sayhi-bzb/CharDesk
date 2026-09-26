@@ -18,7 +18,7 @@ const [html, robots, sitemap, cellUi, cellUiRobots, cellUiSitemap] = await Promi
 ]);
 
 for (const required of [
-  '<link rel="canonical" href="https://chardesk.com/"',
+  '<link rel="canonical" href="https://canvas.chardesk.com/"',
   '<meta name="robots" content="index, follow"',
   'property="og:image:alt"',
   'name="twitter:image:alt"',
@@ -30,7 +30,7 @@ for (const required of [
 if (html.includes('name="keywords"')) {
   throw new Error("App HTML retains obsolete keyword metadata");
 }
-if (!robots.includes("Sitemap: https://chardesk.com/sitemap.xml")) {
+if (!robots.includes("Sitemap: https://canvas.chardesk.com/sitemap.xml")) {
   throw new Error("robots.txt does not advertise the canonical sitemap");
 }
 if (!cellUi.includes('<meta name="robots" content="index, follow"')
@@ -47,16 +47,11 @@ if (urls.length === 0 || new Set(urls).size !== urls.length) {
   throw new Error("Sitemap must contain unique canonical URLs");
 }
 for (const required of [
-  "https://chardesk.com/",
-  "https://chardesk.com/docs/",
-  "https://chardesk.com/chargraph/",
+  "https://canvas.chardesk.com/",
 ]) {
   if (!urls.includes(required)) throw new Error(`Sitemap is missing ${required}`);
 }
-if (urls.some((url) =>
-  !url.startsWith("https://chardesk.com/")
-  || url.startsWith("https://chardesk.com/cell-ui/"),
-)) {
+if (urls.some((url) => !url.startsWith("https://canvas.chardesk.com/"))) {
   throw new Error("Sitemap contains a non-canonical or excluded URL");
 }
 

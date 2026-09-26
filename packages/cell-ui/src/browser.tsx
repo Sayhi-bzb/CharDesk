@@ -1,5 +1,9 @@
 import { CELL_SURFACE_GUARD_CELLS, CellPresentationRegistry } from "./browser-presentation.js";
 export { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
+export { CellOverlayHost, CellOverlayPortal, CellPopover, CellContextMenu, CellSheet, CellAlertDialog, positionCellOverlay } from "./browser-overlay-host.js";
+export type { CellOverlayDismissReason, CellOverlayPlacement } from "./browser-overlay-host.js";
+export { CellToastViewport, useCellToastState } from "./browser-toast.js";
+export type { CellToastEntry, CellToastState } from "./browser-toast.js";
 import { resolveCellFeedback, type CellFeedbackConfig } from "./feedback.js";
 /* eslint-disable react-refresh/only-export-components */
 import {
@@ -66,6 +70,7 @@ import { useCellRangeState } from "./browser-range.js";
 import { offsetAtCellPoint } from "./text.js";
 import {
   createCellRangeSnapshot,
+  createCellLinearRangeSnapshot,
   equalCellRangeSnapshot,
   type CellRangeCommand,
   type CellRangeSnapshot,
@@ -76,11 +81,12 @@ import type { CellProbePresentation, CellProbeSnapshot } from "./probe.js";
 import { CellUiRuntime } from "./runtime.js";
 import { createCellUiRenderFrame } from "./frame.js";
 import type { CellBuffer } from "./buffer.js";
+import { paintReorderPreview, type ReorderDrag } from "./reorder-preview.js";
 import { textViewportCommands } from "./text-viewport.js";
 import { scrollViewportCommands } from "./scroll.js";
 import { usePointerAppearance } from "./browser-hover.js";
 import { CellCursorPresenter } from "./browser-cursor.js";
-import { sameWidgetValue } from "./tree.js";
+import { isDescendantOf, sameWidgetValue } from "./tree.js";
 import { INDETERMINATE_PROGRESS_STEP_MS } from "./progress.js";
 import { useCellTooltipTarget } from "./browser-tooltip.js";
 import {
@@ -358,8 +364,11 @@ const presentFrame = (
     }
   );
   if (cellRange) {
+    const geometry = cellRange.shape === "linear"
+      ? { polygons: cellRange.spans.flatMap((span) => createCharDeskRectRangeGeometry(span).polygons) }
+      : createCharDeskRectRangeGeometry(cellRange.bounds);
     drawCharDeskCanvasRange(context, {
-      geometry: createCharDeskRectRangeGeometry(cellRange.bounds),
+      geometry,
       phase: rangePhase,
       style: theme.rangeStyle,
       options: { metrics, clipRegions: regions },
@@ -376,8 +385,10 @@ const presentFrameWithCursor = (
   cellRange: CellRangeSnapshot | null,
   rangePhase: CharDeskCellRangePhase,
   theme: CellUiTheme,
-  fontProfile?: CharDeskFontProfile
+  fontProfile?: CharDeskFontProfile,
+  reorderDrag?: ReorderDrag | null,
 ) => {
+  const reorderBuffer = reorderDrag ? paintReorderPreview(frame, reorderDrag, theme) : null;
   cursor.beforeBasePresent();
   presentFrame(
     canvas,
@@ -388,7 +399,7 @@ const presentFrameWithCursor = (
     rangePhase,
     theme,
     fontProfile,
-    { buffer: frame.baseBuffer, viewport: frame.scene.viewport }
+    { buffer: reorderBuffer ?? frame.baseBuffer, viewport: frame.scene.viewport }
   );
   if (!cellRange) {
     cursor.afterBasePresent({
@@ -417,10 +428,21 @@ export const SemanticDom = ({
   snapshot,
   onAction,
   showFocus,
+  probeState,
 }: Readonly<{
   snapshot: SemanticSnapshot;
   onAction: (targetId: WidgetId, action: SemanticAction) => void;
   showFocus?: () => void;
+  probeState?: Readonly<{
+    hoveredId: WidgetId | null;
+    focusedId: WidgetId | null;
+    activeFocusId: WidgetId | null;
+    pressActiveId: WidgetId | null;
+    activationFlashId: WidgetId | null;
+    confirmationPhase: number | null;
+    focusVisible: boolean;
+    manipulating: boolean;
+  }>;
 }>) => {
   const childrenByParent = useMemo(() => {
     const index = new Map<WidgetId, SemanticNode[]>();
@@ -482,6 +504,14 @@ export const SemanticDom = ({
         data-focused={snapshot.focusedId === node.id || undefined}
         data-cell-semantic-id={node.id}
         data-cell-probe={node.probeId}
+        data-cell-hovered={node.probeId ? probeState?.hoveredId ?? undefined : undefined}
+        data-cell-focused={node.probeId ? probeState?.focusedId ?? undefined : undefined}
+        data-cell-active-focus={node.probeId ? probeState?.activeFocusId ?? undefined : undefined}
+        data-cell-press-active={node.probeId ? probeState?.pressActiveId ?? undefined : undefined}
+        data-cell-activation-flash={node.probeId ? probeState?.activationFlashId ?? undefined : undefined}
+        data-cell-confirmation-phase={node.probeId ? probeState?.confirmationPhase ?? undefined : undefined}
+        data-cell-focus-visible={node.probeId && probeState?.focusVisible ? true : undefined}
+        data-cell-manipulating={node.probeId && probeState?.manipulating ? true : undefined}
         data-href={node.href}
         href={node.role === "link" ? node.href : undefined}
         target={node.role === "link" ? node.target : undefined}
@@ -535,6 +565,7 @@ export type CellSurfaceProps = Readonly<{
   probeId?: string;
   fontAudit?: boolean;
   onCommand: (command: WidgetCommand) => void;
+  linearSelection?: boolean;
   cellRange?: CellRangeSnapshot | null;
   onCellRangeCommand?: (command: CellRangeCommand) => void;
 }>;
@@ -692,6 +723,11 @@ const isCellRangePointerChord = (event: Pick<PointerEvent, "altKey" | "metaKey">
   return event.altKey && (!applePlatform || event.metaKey);
 };
 
+const refreshCellRange = (buffer: CellBuffer, range: CellRangeSnapshot) =>
+  range.shape === "linear"
+    ? createCellLinearRangeSnapshot(buffer, range.anchor, range.head)
+    : createCellRangeSnapshot(buffer, range.anchor, range.head);
+
 export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const {
     viewport,
@@ -711,6 +747,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     probeId,
     fontAudit: auditFonts = false,
     onCommand,
+    linearSelection = false,
     cellRange: controlledCellRange,
     onCellRangeCommand,
   } = props;
@@ -823,6 +860,37 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     anchor: CellPoint;
     pointerId: number;
   }> | null>(null);
+  const linearDragRef = useRef<Readonly<{
+    anchor: CellPoint;
+    head: CellPoint;
+    pointerId: number;
+    active: boolean;
+    clientX: number;
+    clientY: number;
+  }> | null>(null);
+  const linearScrollFrameRef = useRef<number | null>(null);
+  const stopLinearScroll = useCallback(() => {
+    if (linearScrollFrameRef.current !== null) cancelAnimationFrame(linearScrollFrameRef.current);
+    linearScrollFrameRef.current = null;
+  }, []);
+  useEffect(() => {
+    const view = surfaceRef.current?.ownerDocument.defaultView;
+    const cancel = () => {
+      linearDragRef.current = null;
+      stopLinearScroll();
+    };
+    view?.addEventListener("blur", cancel);
+    return () => {
+      view?.removeEventListener("blur", cancel);
+      cancel();
+    };
+  }, [metrics, stopLinearScroll]);
+  const cellRangePhase = (): CharDeskCellRangePhase =>
+    rangeDragRef.current || linearDragRef.current?.active ? "selecting" : "resting";
+  const reorderCandidateRef = useRef<Readonly<{ pointerId: number; sourceId: WidgetId }> | null>(null);
+  const [reorderDrag, setReorderDrag] = useState<ReorderDrag | null>(null);
+  const reorderDragRef = useRef(reorderDrag);
+  useLayoutEffect(() => { reorderDragRef.current = reorderDrag; }, [reorderDrag]);
   const [interactionRevision, setInteractionRevision] = useState(0);
   const [recentScrollId, setRecentScrollId] = useState<WidgetId | null>(null);
   const scrollHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1096,8 +1164,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     if (!sameWidgetValue(presentationMetricsRef.current, metrics)) {
       const pointerIds = new Set(gesturesRef.current.sync(() => false));
       if (rangeDragRef.current) pointerIds.add(rangeDragRef.current.pointerId);
+      if (linearDragRef.current) pointerIds.add(linearDragRef.current.pointerId);
       if (textDragRef.current) pointerIds.add(textDragRef.current.pointerId);
       rangeDragRef.current = null;
+      linearDragRef.current = null;
+      stopLinearScroll();
       textDragRef.current = null;
       for (const id of pointerIds) {
         eventsRef.current.cancel(id);
@@ -1115,9 +1186,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       metrics,
       palette,
       cellRange,
-      rangeDragRef.current ? "selecting" : "resting",
+      cellRangePhase(),
       resolvedTheme,
-      fontProfile
+      fontProfile,
+      reorderDrag,
     );
     let allPlanesPresented = true;
     for (const plane of frame.overlayPlanes) {
@@ -1129,7 +1201,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         metrics,
         palette,
         cellRange,
-        rangeDragRef.current ? "selecting" : "resting",
+        cellRangePhase(),
         resolvedTheme,
         fontProfile,
         {
@@ -1141,7 +1213,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     }
     presentationMetricsRef.current = metrics;
     if (allPlanesPresented) controller.presented(frame.confirmation);
-  }, [controller, canvasRef, cellRange, fontProfile, frame, metrics, palette, resolvedTheme, syncManipulatingIds]);
+  }, [controller, canvasRef, cellRange, fontProfile, frame, metrics, palette, reorderDrag, resolvedTheme, stopLinearScroll, syncManipulatingIds]);
 
   const fontPresentRef = useRef<() => void>(() => undefined);
   const scheduleFontPresentRef = useRef<() => void>(() => undefined);
@@ -1159,9 +1231,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           metrics,
           palette,
           cellRange,
-          rangeDragRef.current ? "selecting" : "resting",
+          cellRangePhase(),
           resolvedTheme,
-          fontProfile
+          fontProfile,
+          reorderDragRef.current,
         );
         for (const plane of current.overlayPlanes) {
           const overlayCanvas = canvasRef.overlay(plane.rootId);
@@ -1172,7 +1245,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
             metrics,
             palette,
             cellRange,
-            rangeDragRef.current ? "selecting" : "resting",
+            cellRangePhase(),
             resolvedTheme,
             fontProfile,
             {
@@ -1258,11 +1331,22 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         .find((element) => element.dataset.cellSemanticId === semantic.id);
       if (!region || !target) continue;
       const captured = captureCellProbe(frame, { region, probeId: semantic.probeId });
+      let scopeId = frame.tree.nodes.get(semantic.id)?.parentId ?? null;
+      while (scopeId && !frame.tree.nodes.get(scopeId)?.overlayScope) {
+        scopeId = frame.tree.nodes.get(scopeId)?.parentId ?? null;
+      }
+      const scope = scopeId ? frame.scene.entries.get(scopeId)?.contentBounds : null;
       target[CELL_SURFACE_PROBE_PROPERTY] = {
         ...captured,
         region: { x: 0, y: 0, width: region.width, height: region.height },
         viewport: { width: region.width, height: region.height },
+        overlayViewport: { width: scope?.width ?? region.width, height: scope?.height ?? region.height },
         cells: captured.cells.map((cell) => ({ ...cell, x: cell.x - region.x, y: cell.y - region.y })),
+        overlays: captured.overlays.filter((overlay) => isDescendantOf(frame.tree, overlay.rootId, semantic.id))
+          .map((overlay) => ({ ...overlay,
+            bounds: { ...overlay.bounds, x: overlay.bounds.x - region.x, y: overlay.bounds.y - region.y },
+            cells: overlay.cells.map((cell) => ({ ...cell, x: cell.x - region.x, y: cell.y - region.y })),
+          })),
         presentation: snapshot.presentation,
       };
       target.dataset.cellProbeOrigin = `${region.x},${region.y}`;
@@ -1297,9 +1381,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         metrics,
         palette,
         cellRange,
-        rangeDragRef.current ? "selecting" : "resting",
+        cellRangePhase(),
         resolvedTheme,
-        fontProfile
+        fontProfile,
+        reorderDragRef.current,
       );
     });
     observer.observe(canvas);
@@ -1308,7 +1393,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
 
   useEffect(() => {
     if (!frame || !cellRange || !rangeEditable) return;
-    const next = createCellRangeSnapshot(frame.buffer, cellRange.anchor, cellRange.head);
+    const next = refreshCellRange(frame.buffer, cellRange);
     if (!equalCellRangeSnapshot(cellRange, next)) {
       dispatchCellRange(next ? { type: "set", snapshot: next } : { type: "clear" });
     }
@@ -1366,10 +1451,43 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const isSurfaceCanvas = (target: EventTarget | null) =>
     canvasRef.owns(target);
 
-  const setCellRange = (anchor: CellPoint, head: CellPoint) => {
+  const setCellRange = (anchor: CellPoint, head: CellPoint, shape: "rectangle" | "linear" = "rectangle") => {
     if (!frame || !rangeEditable) return;
-    const snapshot = createCellRangeSnapshot(frame.buffer, anchor, head);
+    const snapshot = shape === "linear"
+      ? createCellLinearRangeSnapshot(frame.buffer, anchor, head)
+      : createCellRangeSnapshot(frame.buffer, anchor, head);
     dispatchCellRange(snapshot ? { type: "set", snapshot } : { type: "clear" });
+  };
+
+  const scheduleLinearScroll = () => {
+    if (linearScrollFrameRef.current !== null) return;
+    const tick = () => {
+      linearScrollFrameRef.current = null;
+      const drag = linearDragRef.current;
+      const canvas = canvasRef.current;
+      const current = frameRef.current;
+      if (!drag?.active || !canvas || !current || !canvas.ownerDocument.hasFocus()) return;
+      const bounds = canvas.getBoundingClientRect();
+      const view = canvas.ownerDocument.defaultView;
+      if (!view || drag.clientX < bounds.left || drag.clientX >= bounds.right) return;
+      const edge = 48;
+      const atTop = drag.clientY < edge && bounds.top < edge;
+      const atBottom = drag.clientY > view.innerHeight - edge && bounds.bottom > view.innerHeight - edge;
+      if (!atTop && !atBottom) return;
+      const proximity = atTop ? edge - drag.clientY : drag.clientY - (view.innerHeight - edge);
+      const speed = Math.ceil(2 + 18 * Math.min(1, proximity / edge) ** 2);
+      const before = view.scrollY;
+      view.scrollBy({ top: (atTop ? -1 : 1) * speed, behavior: "instant" });
+      if (view.scrollY === before) return;
+      const point = pxToCellPoint(drag, canvas.getBoundingClientRect(), metrics, CELL_SURFACE_GUARD_CELLS);
+      if (point.x !== drag.head.x || point.y !== drag.head.y) {
+        linearDragRef.current = { ...drag, head: point };
+        const snapshot = createCellLinearRangeSnapshot(current.buffer, drag.anchor, point);
+        if (snapshot) dispatchCellRange({ type: "set", snapshot });
+      }
+      linearScrollFrameRef.current = requestAnimationFrame(tick);
+    };
+    linearScrollFrameRef.current = requestAnimationFrame(tick);
   };
 
   const applyGestureSignals = (
@@ -1377,6 +1495,16 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     signals: readonly GestureSignal[]
   ) => {
     for (const signal of signals) {
+      if (signal.kind === "drag" && current.tree.nodes.get(signal.targetId)?.kind === "list-item"
+        && current.tree.nodes.get(signal.targetId)?.reorderable) {
+        if (signal.phase === "start" || signal.phase === "update") {
+          const candidate = reorderCandidateRef.current;
+          if (candidate?.pointerId === signal.pointerId && candidate.sourceId === signal.targetId) {
+            setReorderDrag({ pointerId: signal.pointerId, sourceId: signal.targetId,
+              point: signal.precisePoint ?? signal.point });
+          }
+        } else setReorderDrag(null);
+      }
       dispatch(commandForGestureSignal(current, signal, focusRef.current));
     }
   };
@@ -1385,9 +1513,13 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const { pointerId, currentTarget } = event;
     eventsRef.current.cancel(pointerId);
     gesturesRef.current.cancel(pointerId);
+    if (reorderCandidateRef.current?.pointerId === pointerId) reorderCandidateRef.current = null;
+    setReorderDrag((current) => current?.pointerId === pointerId ? null : current);
     syncManipulatingIds();
     if (pressRef.current.cancelPointer(pointerId)) setPressActiveId(pressRef.current.activeId);
     if (rangeDragRef.current?.pointerId === pointerId) rangeDragRef.current = null;
+    if (linearDragRef.current?.pointerId === pointerId) linearDragRef.current = null;
+    stopLinearScroll();
     if (textDragRef.current?.pointerId === pointerId) textDragRef.current = null;
     if (currentTarget.hasPointerCapture(pointerId)) currentTarget.releasePointerCapture(pointerId);
   };
@@ -1452,7 +1584,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (surface.hasPointerCapture(pointerId)) surface.releasePointerCapture(pointerId);
       }
       rangeDragRef.current = null;
+      linearDragRef.current = null;
+      stopLinearScroll();
       textDragRef.current = null;
+      reorderCandidateRef.current = null;
+      setReorderDrag(null);
       syncManipulatingIds();
       if (pressRef.current.cancel()) setPressActiveId(null);
       cancelActivationFeedback();
@@ -1539,6 +1675,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (isCellRangePointerChord(event) && rangeEditable) {
           event.preventDefault();
           rangeDragRef.current = { anchor: point, pointerId: event.pointerId };
+          linearDragRef.current = null;
+          stopLinearScroll();
           textDragRef.current = null;
           event.currentTarget.setPointerCapture(event.pointerId);
           setCellRange(point, point);
@@ -1586,6 +1724,18 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         const bounds = canvasRef.current!.getBoundingClientRect();
         const precisePoint = pxToCellPosition(event, bounds, metrics, CELL_SURFACE_GUARD_CELLS);
         const candidates = gestureCandidatesForFrame(frame, targetId ? getEventPath(frame.scene, targetId) : [], point, precisePoint);
+        const canSelect = linearSelection && rangeEditable && event.pointerType === "mouse"
+          && !candidates.some((candidate) => candidate.kind === "drag") && !onScrollbar;
+        linearDragRef.current = canSelect
+          ? { anchor: point, head: point, pointerId: event.pointerId, active: false,
+            clientX: event.clientX, clientY: event.clientY }
+          : null;
+        const reorderCandidate = candidates.find((candidate) => candidate.kind === "drag"
+          && frame.tree.nodes.get(candidate.targetId)?.kind === "list-item"
+          && frame.tree.nodes.get(candidate.targetId)?.reorderable);
+        reorderCandidateRef.current = reorderCandidate
+          ? { pointerId: event.pointerId, sourceId: reorderCandidate.targetId }
+          : null;
         const handlers: CellEventHandlerMap = targetId && candidates.length > 0
           ? new Map([[targetId, { bubble: (cellEvent) => cellEvent.capturePointer() }]])
           : new Map();
@@ -1599,7 +1749,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           event.preventDefault();
           controller.beginPointer(frame, event.pointerId, point, candidates, precisePoint);
           event.currentTarget.setPointerCapture(event.pointerId);
-        }
+        } else if (canSelect) event.currentTarget.setPointerCapture(event.pointerId);
         if (editor && !editor.disabled && onScrollbar) {
           adoptTextAreaPreviewScroll(frame, editor.id);
           dispatch({ type: "focus", targetId: editor.id });
@@ -1615,6 +1765,22 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         const point = textDragPointFor(event);
         if (rangeDrag && rangeDrag.pointerId === event.pointerId && point) {
           setCellRange(rangeDrag.anchor, point);
+          return;
+        }
+        const linearDrag = linearDragRef.current;
+        if (linearDrag && linearDrag.pointerId === event.pointerId && point) {
+          if (!linearDrag.active && point.x === linearDrag.anchor.x && point.y === linearDrag.anchor.y) return;
+          if (!linearDrag.active) {
+            eventsRef.current.cancel(event.pointerId);
+            gesturesRef.current.cancel(event.pointerId);
+            if (pressRef.current.cancelPointer(event.pointerId)) setPressActiveId(pressRef.current.activeId);
+            syncManipulatingIds();
+          }
+          linearDragRef.current = { ...linearDrag, head: point, active: true,
+            clientX: event.clientX, clientY: event.clientY };
+          setCellRange(linearDrag.anchor, point, "linear");
+          stopLinearScroll();
+          scheduleLinearScroll();
           return;
         }
         const drag = textDragRef.current;
@@ -1684,13 +1850,14 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         const interrupted = eventsRef.current.capturedTarget(event.pointerId) !== null
           || gesturesRef.current.has(event.pointerId)
           || textDragRef.current?.pointerId === event.pointerId
-          || rangeDragRef.current?.pointerId === event.pointerId;
+          || rangeDragRef.current?.pointerId === event.pointerId
+          || linearDragRef.current?.pointerId === event.pointerId;
         finishPointer(event);
         if (interrupted) pointerAppearance.clear();
       }}
       onCopy={(event: ClipboardEvent<HTMLDivElement>) => {
         if (event.defaultPrevented || !frame || !cellRange) return;
-        const current = createCellRangeSnapshot(frame.buffer, cellRange.anchor, cellRange.head);
+        const current = refreshCellRange(frame.buffer, cellRange);
         if (!current) return;
         event.preventDefault();
         event.clipboardData.setData("text/plain", current.text);
@@ -1761,6 +1928,17 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       {frame ? (
         <SemanticDom
           snapshot={frame.semantics}
+          probeState={{
+            hoveredId,
+            focusedId: frame.semantics.focusedId,
+            activeFocusId: [...frame.tree.nodes.values()].find((node) => node.focusActive)?.id ?? null,
+            pressActiveId,
+            activationFlashId,
+            confirmationPhase: frame.confirmation?.phase ?? null,
+            focusVisible: !!(frame.semantics.focusedId
+              && frame.tree.nodes.get(frame.semantics.focusedId)?.focusVisible),
+            manipulating: manipulatingIds.size > 0,
+          }}
           onAction={(targetId, action) => {
             dispatch(commandForInput(
               { type: "semantic", targetId, action },

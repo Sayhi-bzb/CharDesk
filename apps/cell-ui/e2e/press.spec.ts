@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, readCellProbe } from "./helpers/cell-probe";
+import { CELL_SURFACE_GUARD_CELLS } from "@chardesk/cell-ui/browser";
 
 for (const colorScheme of ["light", "dark"] as const) {
 for (const control of [
@@ -21,17 +22,17 @@ test(`${control.name} presents two complete inverse/restore cycles after release
   const probe = await readCellProbe(surface);
   const cell = probe.cells.find((cell) => cell.ownerId === control.id && cell.text.trim() === control.marker)!;
   expect(cell).toBeDefined();
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface).first();
   const point = await cellPoint(surface, cell.x, cell.y);
   await page.mouse.move(point.x, point.y);
   await page.mouse.down();
   await expect(surface).toHaveAttribute("data-cell-press-active", control.id);
-  const reference = await surface.evaluate((element, point) => {
-    const surface = element as HTMLElement;
-    const canvas = surface.querySelector("canvas")!;
+  const origin = (await surface.getAttribute("data-cell-probe-origin"))?.split(",").map(Number) ?? [0, 0];
+  const reference = await canvas.evaluate((canvas, sample) => {
+    const surface = document.querySelector<HTMLElement>(`[data-cell-probe="${sample.probeId}"]`)!;
     const pixel = () => Array.from(canvas.getContext("2d")!.getImageData(
-      Math.floor((point.x + 1.5) * canvas.width / (point.width + 2)),
-      Math.floor((point.y + 1.5) * canvas.height / (point.height + 2)), 1, 1,
+      Math.floor((sample.x + sample.originX + sample.guard + 0.5) * sample.cellWidth * devicePixelRatio),
+      Math.floor((sample.y + sample.originY + sample.guard + 0.5) * sample.cellHeight * devicePixelRatio), 1, 1,
     ).data);
     const samples: { phase: number | null; time: number; pixel: number[] }[] = [];
     const observer = new MutationObserver(() => {
@@ -45,7 +46,9 @@ test(`${control.name} presents two complete inverse/restore cycles after release
     observer.observe(surface, { attributes: true, attributeFilter: ["data-cell-confirmation-phase"] });
     return pixel();
   // Sample stable chrome spacing: the value marker itself changes on activation.
-  }, { x: cell.x + control.sampleOffset, y: cell.y, width: probe.viewport.width, height: probe.viewport.height });
+  }, { probeId, x: cell.x + control.sampleOffset, y: cell.y, originX: origin[0]!, originY: origin[1]!,
+    guard: CELL_SURFACE_GUARD_CELLS, cellWidth: probe.presentation!.metrics.cellWidth,
+    cellHeight: probe.presentation!.metrics.cellHeight });
   await page.mouse.up();
   await expect.poll(async () => JSON.parse(await surface.getAttribute("data-confirmation-samples") ?? "[]").length).toBe(5);
   const samples = JSON.parse(await surface.getAttribute("data-confirmation-samples") ?? "[]") as { phase: number | null; time: number; pixel: number[] }[];
@@ -64,7 +67,7 @@ test("discrete Cell controls share press and activation-flash feedback", async (
   const buttonSurface = page.getByLabel("Button component");
   const initial = await readCellProbe(buttonSurface);
   const saveCell = initial.cells.find((cell) => cell.ownerId === "component-button-save");
-  const canvas = buttonSurface.locator("canvas").first();
+  const canvas = canvasFor(buttonSurface).first();
   expect(saveCell).toBeDefined();
   const point = await cellPoint(buttonSurface, saveCell!.x, saveCell!.y);
   const bounds = await canvas.boundingBox();
@@ -117,7 +120,7 @@ test("discrete Cell controls share press and activation-flash feedback", async (
 
   await page.goto("/#/components/select");
   const selectSurface = page.getByLabel("Select component");
-  await selectSurface.focus();
+  await selectSurface.getByRole("button", { name: "Theme" }).focus();
   await page.keyboard.down("Enter");
   await expect(selectSurface).toHaveAttribute("data-cell-press-active", "component-select-trigger");
   await expect(page.getByRole("button", { name: "Theme" })).toHaveAttribute("aria-expanded", "true");
@@ -162,7 +165,7 @@ test("discrete Cell controls share press and activation-flash feedback", async (
   await page.goto("/#/components/checkbox");
   const checkboxSurface = page.getByLabel("Checkbox component");
   const autosave = page.getByRole("checkbox", { name: "Autosave" });
-  await checkboxSurface.focus();
+  await autosave.focus();
   await page.keyboard.down("Space");
   await expect(checkboxSurface).toHaveAttribute("data-cell-press-active", "component-checkbox-autosave");
   await expect(autosave).toHaveAttribute("aria-checked", "false");

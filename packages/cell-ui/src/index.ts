@@ -1,4 +1,7 @@
 export { CellBuffer } from "./buffer.js";
+export { reorderCellItems } from "./reorder.js";
+export { List, ListItem } from "./react.js";
+export type { ListProps, ListItemProps } from "./react.js";
 export { Alert, AlertTitle, AlertDescription } from "./react.js";
 export { Markdown } from "./react.js";
 export { Link } from "./react.js";
@@ -9,8 +12,8 @@ export type { LinkProps } from "./react.js";
 export type { MarkdownCodeBlock } from "./markdown.js";
 export type { AlertProps, AlertTitleProps, AlertDescriptionProps } from "./react.js";
 export type { AlertTone } from "./alert.js";
-export { Dialog, DialogTitle, DialogDescription, DialogFooter } from "./react.js";
-export type { DialogProps, DialogTitleProps, DialogDescriptionProps, DialogFooterProps } from "./react.js";
+export { Dialog, AlertDialog, DialogTitle, DialogDescription, DialogFooter } from "./react.js";
+export type { DialogProps, AlertDialogProps, DialogTitleProps, DialogDescriptionProps, DialogFooterProps } from "./react.js";
 export { Combobox, ComboboxInput, ComboboxContent, ComboboxItem } from "./react.js";
 export type { ComboboxProps, ComboboxInputProps, ComboboxContentProps, ComboboxItemProps } from "./react.js";
 export type { SurfaceVariant } from "./surface-variant.js";
@@ -99,6 +102,7 @@ export type { SpinnerVariant } from "./spinner.js";
 export type { CellBorderShape, CellFrame } from "./border.js";
 export {
   createCellRangeSnapshot,
+  createCellLinearRangeSnapshot,
   equalCellRangeSnapshot,
   extractCellRange,
   normalizeCellRange,
@@ -151,6 +155,8 @@ export {
   TableCell,
   Root,
   ScrollArea,
+  Menu,
+  MenuItem,
   Select,
   SelectContent,
   SelectItem,
@@ -185,6 +191,8 @@ export type {
   GridRowProps,
   RootProps,
   ScrollAreaProps,
+  MenuProps,
+  MenuItemProps,
   SelectContentProps,
   SelectItemProps,
   SelectProps,

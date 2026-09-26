@@ -62,6 +62,7 @@ export type WidgetCommand =
   | Readonly<{ type: "dismiss"; targetId: WidgetId }>
   | Readonly<{ type: "set-expanded"; targetId: WidgetId; expanded: boolean }>
   | Readonly<{ type: "set-value"; targetId: WidgetId; value: number }>
+  | Readonly<{ type: "reorder"; targetId: WidgetId; toIndex: number }>
   | Readonly<{ type: "text"; targetId: WidgetId; command: CellTextCommand }>
   | Readonly<{ type: "text-preview-scroll"; targetId: WidgetId; scrollX: number; scrollY: number }>
   | Readonly<{
@@ -609,15 +610,27 @@ export const commandForInput = (
     return resolveWheelInput(frame, input).command;
   }
 
-  if (!acceptsWidgetKeyInput(input)) return null;
-
-  if (input.key === "Escape" && dismissableScopeId) {
-    return { type: "dismiss", targetId: dismissableScopeId };
-  }
   const focused = focus.focusedId
     ? frame.tree.nodes.get(focus.focusedId)
     : undefined;
   const owner = collectionOwner(frame.tree, focused?.id ?? null);
+  const reorderOwner = focused?.parentId ? frame.tree.nodes.get(focused.parentId) : undefined;
+  const reorderKey = focused?.kind === "list-item" && focused.reorderable
+    && reorderOwner?.kind === "list" && reorderOwner.reorderable
+    && input.phase === "down" && !input.composing && input.modifiers.alt
+    && !input.modifiers.ctrl && !input.modifiers.meta && !input.modifiers.altGraph
+    && (input.key === "ArrowUp" || input.key === "ArrowDown");
+  if (!acceptsWidgetKeyInput(input) && !reorderKey) return null;
+  if (reorderKey && focused && reorderOwner) {
+    const index = reorderOwner.children.indexOf(focused.id);
+    const toIndex = Math.max(0, Math.min(reorderOwner.children.length - 1,
+      index + (input.key === "ArrowUp" ? -1 : 1)));
+    return index >= 0 && toIndex !== index
+      ? { type: "reorder", targetId: focused.id, toIndex } : null;
+  }
+  if (input.key === "Escape" && dismissableScopeId) {
+    return { type: "dismiss", targetId: dismissableScopeId };
+  }
   if (focused?.kind === "combobox-input") {
     const command = commandForComboboxKey(frame.tree, focused, input);
     if (command) return command;

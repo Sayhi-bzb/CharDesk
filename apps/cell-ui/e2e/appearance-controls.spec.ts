@@ -80,7 +80,7 @@ test("Select and Combobox apply dropdown frames and ghost surfaces", async ({ pa
     cell.ownerId === "component-combobox-input" && cell.text === " ")?.style.backgroundColor).toBeUndefined();
   await choose(page, "dropdown frame", "bordered");
   await choose(page, "border shape", "rounded");
-  await combo.getByRole("combobox", { name: "Font" }).click();
+  await page.getByRole("combobox", { name: "Font" }).click();
   await expect.poll(async () => (await readCellProbe(combo)).overlays
     .find((overlay) => overlay.rootId === "component-combobox-content")?.text).toContain("╭");
 });

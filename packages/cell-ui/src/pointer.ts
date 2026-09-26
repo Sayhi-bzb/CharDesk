@@ -146,25 +146,28 @@ export const gestureCandidatesForFrame = (
     trackLength: horizontal ? track.width : track.height,
     thumbLength: thumb.length,
   } : undefined;
-  const sliderNode = item ? frame.tree.nodes.get(item) : undefined;
-  const sliderBounds = sliderNode?.kind === "slider"
-    ? frame.scene.entries.get(sliderNode.id)?.decorationBounds
-    : sliderNode?.kind === "range-slider-thumb"
-      ? frame.scene.entries.get(sliderNode.parentId ?? "")?.decorationBounds
+  const itemNode = item ? frame.tree.nodes.get(item) : undefined;
+  const sliderBounds = itemNode?.kind === "slider"
+    ? frame.scene.entries.get(itemNode.id)?.decorationBounds
+    : itemNode?.kind === "range-slider-thumb"
+      ? frame.scene.entries.get(itemNode.parentId ?? "")?.decorationBounds
       : undefined;
   const slider = sliderBounds
     ? { trackStart: sliderBounds.x, trackLength: sliderBounds.width }
     : undefined;
   return [
-    ...(item && !frame.tree.nodes.get(item)?.disabled
+    ...(item && itemNode && !itemNode.disabled
       ? [{
           targetId: item,
           kind: "tap" as const,
-          ...(supportsPressFeedback(frame.tree.nodes.get(item)!.kind) ? { rearmable: true } : {}),
+          ...(supportsPressFeedback(itemNode.kind) ? { rearmable: true } : {}),
         }]
       : []),
     ...(item && slider
       ? [{ targetId: item, kind: "drag" as const, axis: "x" as const, slider }]
+      : []),
+    ...(item && itemNode?.kind === "list-item" && itemNode.reorderable
+      ? [{ targetId: item, kind: "drag" as const, axis: "y" as const }]
       : []),
     ...(scrollbarPart && scroll
       ? [
@@ -190,6 +193,29 @@ export const gestureCandidatesForFrame = (
           }]
         : []),
   ];
+};
+
+export const reorderDropForPoint = (
+  frame: FrameSnapshot,
+  sourceId: WidgetId,
+  point: CellPoint,
+): Readonly<{ slot: number; toIndex: number }> | null => {
+  const source = frame.tree.nodes.get(sourceId);
+  const list = source?.parentId ? frame.tree.nodes.get(source.parentId) : undefined;
+  const bounds = list ? frame.scene.entries.get(list.id)?.contentBounds : undefined;
+  if (source?.kind !== "list-item" || !source.reorderable || list?.kind !== "list"
+    || !list.reorderable || !bounds || !cellRectContainsPoint(bounds, point)) return null;
+  const fromIndex = list.children.indexOf(sourceId);
+  if (fromIndex < 0) return null;
+  const slot = list.children.findIndex((id) => {
+    const row = frame.scene.entries.get(id)?.layoutBounds;
+    // A row's visual center should land after it even with fractional browser
+    // Cell metrics; keep a smaller leading zone for explicit before placement.
+    return row && point.y < row.y + row.height * 0.4;
+  });
+  const resolvedSlot = slot < 0 ? list.children.length : slot;
+  return { slot: resolvedSlot, toIndex: Math.max(0,
+    Math.min(list.children.length - 1, resolvedSlot > fromIndex ? resolvedSlot - 1 : resolvedSlot)) };
 };
 
 export const commandForGestureSignal = (
@@ -251,6 +277,19 @@ export const commandForGestureSignal = (
     );
     const commandTarget = node?.kind === "accordion-trigger" ? node.parentId : signal.targetId;
     return command?.targetId === commandTarget ? command : null;
+  }
+  if (
+    signal.kind === "drag"
+    && signal.phase === "end"
+    && !signal.slider && !signal.scrollbar
+  ) {
+    const source = frame.tree.nodes.get(signal.targetId);
+    const list = source?.parentId ? frame.tree.nodes.get(source.parentId) : undefined;
+    if (source?.kind !== "list-item" || !source.reorderable || list?.kind !== "list"
+      || !list.reorderable) return null;
+    const drop = reorderDropForPoint(frame, source.id, signal.precisePoint ?? cellCenter(signal.point));
+    return !drop || drop.toIndex === list.children.indexOf(source.id)
+      ? null : { type: "reorder", targetId: source.id, toIndex: drop.toIndex };
   }
   if (
     signal.kind === "drag"

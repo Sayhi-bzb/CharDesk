@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ownerCells, readCellProbe, readCellPixel } from "./helpers/cell-probe";
+import { canvasFor, ownerCells, readCellProbe, readCellPixel } from "./helpers/cell-probe";
 
 test("Gallery light and dark modes expose the Classic Macintosh token hierarchy", async ({ page }) => {
   await page.goto("/#/__fixtures/core");
@@ -221,7 +221,7 @@ test("dark Range contrast changes final pixels without changing Cell content", a
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
   await page.goto("/#/__fixtures/complex");
   const surface = page.locator('[data-cell-probe="complex"]');
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   await canvas.scrollIntoViewIfNeeded();
   const bounds = (await canvas.boundingBox())!;
   const beforeProbe = await readCellProbe(surface);

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, copyCellRange, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, copyCellRange, readCellProbe } from "./helpers/cell-probe";
 import { fusionMonoFontRequest, fusionMonoStylesheetRequest } from "./helpers/fusion-mono";
 import { galleryFontSelect, selectGalleryFont } from "./helpers/gallery-font-select";
 import { xiaolaiStylesheetRequest } from "./helpers/xiaolai";
@@ -136,7 +136,7 @@ test("header font Select uses Cell pointer geometry without moving the header", 
   const header = page.locator(".gallery-header");
   const select = galleryFontSelect(page);
   const closedHeader = await header.boundingBox();
-  const closedCanvas = await select.locator("canvas").boundingBox();
+  const closedCanvas = await canvasFor(select).boundingBox();
   expect(closedHeader).not.toBeNull();
   expect(closedCanvas).not.toBeNull();
 
@@ -231,7 +231,7 @@ test("theme icon toggles, persists, and preserves Cell state", async ({ page }) 
 test("Cell article code surface and API remain readable across themes", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/#/components/button");
-  const article = page.locator('[data-cell-probe="article-button-2"]');
+  const article = page.locator('[data-cell-probe="article-button"]');
   await expect(article.getByRole("table")).toHaveCount(1);
   const light = await readCellProbe(article);
   const row = light.text.split("\n").findIndex((line) => line.includes("npx shadcn"));
@@ -309,7 +309,7 @@ test("system appearance preserves editing and Cell projections", async ({ page }
 
   await page.evaluate(() => { location.hash = "/__fixtures/editor"; });
   await expect(editor).toBeVisible();
-  const canvas = editor.locator("canvas");
+  const canvas = canvasFor(editor);
   await canvas.scrollIntoViewIfNeeded();
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Editor Canvas is not visible.");
@@ -374,7 +374,7 @@ test("snapshot copy feedback expires and a failed copy can be retried", async ({
     } });
   });
   await page.goto("/#/components/button");
-  const preview = page.locator('[data-cell-probe="component-button-copy"]');
+  const preview = page.locator('[data-cell-probe="article-button"]');
   const button = preview.getByRole("button", { name: "Copy preview" });
   await button.evaluate((element: HTMLElement) => { element.click(); element.click(); });
   await expect(preview.getByRole("button", { name: "Copy failed" })).toBeVisible();

@@ -12,6 +12,7 @@ import { sourceLinksForComponent, type ComponentDocument } from "./component-cat
 import { installationCommands, publicUsage, type GuideContent } from "./docs-content";
 import { CODE_BLOCK_PREVIEW_LINES, shouldCollapseCode } from "./code-block-lines";
 import { ClassicMacintoshDemo, MarkdownIntroductionDemo, NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
+import { OverlayHostDemo } from "./sections/overlay-host";
 
 type ApiRow = Readonly<{ name: string; type: string; description: string }>;
 type ArticlePart = Readonly<{
@@ -36,10 +37,12 @@ const guideDemos = {
   notes: NotesIntroductionDemo,
   macintosh: ClassicMacintoshDemo,
   markdown: MarkdownIntroductionDemo,
+  "host-overlays": OverlayHostDemo,
 } satisfies Record<NonNullable<GuideContent["sections"][number]["demo"]>, ComponentType>;
 const guideDemoProbeIds = {
   settings: "intro-settings", progress: "intro-progress", notes: "intro-notes",
   macintosh: "classic-macintosh-example", markdown: "markdown-example",
+  "host-overlays": "host-top-surface",
 } satisfies Record<keyof typeof guideDemos, string>;
 const MountedDemo = memo(function MountedDemo({ Demo }: Readonly<{ Demo: ComponentType }>) {
   return <Demo />;
@@ -182,28 +185,33 @@ const explicitIds = (node: WidgetDescriptor): string[] => [
 ];
 
 function previewScene(probeId: string, fragment: DocumentSceneFragment | undefined, copyState: CopyState,
-  scroll: CellScrollState) {
+  scroll: CellScrollState, layout: "center" | "fill") {
   const previewId = `article-preview-${probeId}`;
   const icon = copyState === "Copied" ? "✓" : copyState === "Copy failed" ? "!" : "󰆏";
-  const playground = probeId.startsWith("component-");
+  const previewHeight = fragment
+    ? Math.max(fragment.viewport.height, fragment.overlayViewport.height) : 1;
   return <Box id={previewId} key={previewId} style={{ width: "100%", paddingTop: 1, paddingBottom: 1 }}>
     {fragment ? <ScrollArea id={`${previewId}-scroll`} variant="ghost"
       scrollX={scroll.offset(`${previewId}-scroll`).x}
       scrollY={scroll.offset(`${previewId}-scroll`).y}
-      style={{ width: "100%", height: fragment.viewport.height }}>
-      <Box style={{ direction: "row", width: Math.max(fragment.viewport.width, 1) }}>
-        {!playground ? <Box style={{ flexGrow: 1 }} /> : null}
-        <Box id={`${previewId}-content`} probeId={probeId} probeLabel={fragment.label}
-          presentation={fragment.presentation} overlayScope
-          style={{ ...fragment.root.props.style, width: fragment.viewport.width,
-            height: fragment.viewport.height, flexShrink: 0 }}>
-          {fragment.root.props.children}
+      style={{ width: "100%", height: previewHeight }}>
+      <Box style={{ direction: "row", width: layout === "center" ? "100%" : Math.max(fragment.viewport.width, 1),
+        minWidth: layout === "center" ? fragment.viewport.width : undefined }}>
+        {layout === "center" ? <Box style={{ flexGrow: 1 }} /> : null}
+        <Box id={`${previewId}-scope`} overlayScope
+          style={{ width: fragment.viewport.width, height: previewHeight, flexShrink: 0 }}>
+          <Box id={`${previewId}-content`} probeId={probeId} probeLabel={fragment.label}
+            presentation={fragment.presentation}
+            style={{ ...fragment.root.props.style, width: fragment.viewport.width,
+              height: fragment.viewport.height }}>
+            {fragment.root.props.children}
+          </Box>
         </Box>
-        {!playground ? <Box style={{ flexGrow: 1 }} /> : null}
+        {layout === "center" ? <Box style={{ flexGrow: 1 }} /> : null}
       </Box>
     </ScrollArea> : <Box style={{ width: "100%", height: 1 }} />}
     <Button id={`preview-copy-${probeId}`} label={copyState === "Copy" ? "Copy preview" : copyState}
-      variant="surface" style={{ position: "absolute", top: 0, right: 1 }}><Text>{icon}</Text></Button>
+      variant="surface" style={{ position: "absolute", top: 1, right: 1 }}><Text>{icon}</Text></Button>
   </Box>;
 }
 
@@ -239,6 +247,7 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
   const [copies, setCopies] = useState<Readonly<Record<string, CopyState>>>({});
   const [expanded, setExpanded] = useState<Readonly<Record<string, boolean>>>({});
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [activeFragmentId, setActiveFragmentId] = useState<string | null>(null);
   const resetTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const pendingCopies = useRef(new Set<string>());
   useLayoutEffect(() => () => {
@@ -275,11 +284,20 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
   const onCommand = (command: WidgetCommand) => {
     scroll.dispatch(command);
     if (command.type === "focus") setFocusedId(command.targetId);
-    const owner = fragmentOwners.get(command.targetId);
+    let owner = [...previews].reverse().find(({ probeId }) =>
+      command.targetId === probeId || command.targetId.startsWith(`${probeId}-`))?.probeId
+      ?? fragmentOwners.get(command.targetId);
+    let ancestorEnd = command.targetId.lastIndexOf("/");
+    while (!owner && ancestorEnd > 0) {
+      owner = fragmentOwners.get(command.targetId.slice(0, ancestorEnd));
+      ancestorEnd = command.targetId.lastIndexOf("/", ancestorEnd - 1);
+    }
     if (owner) {
+      setActiveFragmentId(owner);
       fragments[owner]?.onCommand(command);
       return;
     }
+    if (command.type === "focus") setActiveFragmentId(null);
     if (command.type === "open-link") window.location.assign(command.href);
     else if (command.type === "set-active") {
       const selected = packageManagers.find((name) => command.targetId.endsWith(`-package-${name}`));
@@ -311,13 +329,15 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
         {group.parts.map((part) => renderPart(part, group.id, manager, scroll, copies, expanded, mode))}
       </Box>
       : previewScene(group.probeId!, fragments[group.probeId!],
-        copies[`preview-copy-${group.probeId}`] ?? "Copy", scroll))}
+        copies[`preview-copy-${group.probeId}`] ?? "Copy", scroll, guide ? "center" : "fill"))}
   </Box></Root>;
   return <>
     <main className="docs-page cell-article-page">
       <CellArticleSurface label="Documentation article" probeId={prefix} content={content}
         anchorIds={anchorIds} anchorTargets={anchorTargets} regionIds={previewRegionIds}
-        regionsRef={regionsRef} onWidthChange={setSceneWidth} focusedId={focusedId} onCommand={onCommand} />
+        regionsRef={regionsRef} onWidthChange={setSceneWidth}
+        focusedId={activeFragmentId ? fragments[activeFragmentId]?.focusedId ?? null : focusedId}
+        onCommand={onCommand} />
     </main>
     <DocumentSceneContext.Provider value={sceneContext}>
       {previews.map(({ probeId, Demo }) => <MountedDemo key={probeId} Demo={Demo} />)}

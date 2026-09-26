@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe, readCellText } from "./helpers/cell-probe";
+import { canvasFor, readCellProbe, readCellText } from "./helpers/cell-probe";
 
 test("aggregate fixtures mount every scenario with unique semantics", async ({ page }) => {
   const pageErrors: string[] = [];
@@ -30,7 +30,7 @@ test("Cell UI shares keyboard, pointer, scroll, and semantic state", async ({ pa
   await page.keyboard.press("Enter");
   await expect(surface).toHaveAttribute("data-cell-focused", "core-open");
 
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   await expect.poll(() => readCellText(surface)).toContain("Open file");
   const initialProbe = await readCellProbe(surface);
   expect(initialProbe).toMatchObject({

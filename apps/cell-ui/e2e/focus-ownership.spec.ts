@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ownerBounds, ownerCells, readCellProbe, readCellPixel } from "./helpers/cell-probe";
+import { canvasFor, ownerBounds, ownerCells, readCellProbe, readCellPixel } from "./helpers/cell-probe";
 
 test("editor blur clears the full focus surface and caret but preserves logical state", async ({ page }) => {
   await page.goto("/#/__fixtures/editor");
@@ -16,7 +16,7 @@ test("editor blur clears the full focus surface and caret but preserves logical 
   const idleBackground = idle.cells.find((cell) => cell.x === blank.x && cell.y === blank.y)
     ?.style.backgroundColor;
   expect(blank.style.backgroundColor).toBeTruthy();
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   const caretPixel = () => readCellPixel(surface, blank.x + 0.5, blank.y + 0.5);
   const focusedPixel = await caretPixel();
   await editor.evaluate((input) => input.blur());

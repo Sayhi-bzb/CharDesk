@@ -54,7 +54,8 @@ export const createBlackboardWorkspaceTarget = ({
 
     const params = new URLSearchParams(location.search);
     params.set("workspace", workspaceId);
-    history.replaceState(null, "", `/blackboard?${params.toString()}`);
+    const base = location.pathname.startsWith("/legacy/") ? "/legacy" : "";
+    history.replaceState(null, "", `${base}/blackboard?${params.toString()}`);
   };
 
   return { getActiveWorkspaceId, activateWorkspace };

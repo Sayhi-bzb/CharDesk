@@ -1,0 +1,70 @@
+:root {
+  --startup-background: oklch(0.975 0.002 286);
+  --startup-foreground: oklch(0.141 0.005 286);
+  --startup-muted: oklch(0.48 0.012 286);
+  --startup-border: oklch(0.141 0.005 286 / 0.18);
+}
+
+.dark {
+  --startup-background: oklch(0.135 0.006 286);
+  --startup-foreground: oklch(0.965 0.002 286);
+  --startup-muted: oklch(0.68 0.011 286);
+  --startup-border: oklch(1 0 0 / 0.24);
+}
+
+html, body { margin: 0; min-height: 100%; }
+
+.startup-shell {
+  min-height: 100svh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  background: var(--background, var(--startup-background));
+  color: var(--foreground, var(--startup-foreground));
+  font: 14px/1.5 Inter, 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif;
+}
+
+.startup-content { width: min(100%, 440px); }
+.startup-brand { font-weight: 650; letter-spacing: -0.03em; }
+.startup-title { margin: 32px 0 0; font-size: 18px; font-weight: 600; line-height: 1.4; }
+.startup-detail { margin: 8px 0 0; color: var(--muted-foreground, var(--startup-muted)); }
+.startup-progress {
+  width: 96px;
+  height: 2px;
+  margin-top: 20px;
+  overflow: hidden;
+  background: var(--border, var(--startup-border));
+}
+.startup-progress::after {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 100%;
+  background: currentColor;
+  animation: startup-progress 1.25s ease-in-out infinite;
+}
+@keyframes startup-progress {
+  from { transform: translateX(-32px); }
+  to { transform: translateX(96px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .startup-progress::after { animation: none; width: 64px; }
+}
+
+.startup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.startup-action {
+  border: 1px solid var(--border, var(--startup-border));
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.startup-action:hover { background: var(--muted, color-mix(in oklab, currentColor 7%, transparent)); }
+.startup-action:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.startup-action:disabled { opacity: 0.5; cursor: wait; }

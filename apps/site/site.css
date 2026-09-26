@@ -1,0 +1,33 @@
+:root {
+  color-scheme: light;
+  font-family: "Fusion Mono", ui-monospace, monospace;
+  background: #fff;
+  color: #111;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+
+.site-shell {
+  width: min(100% - 32px, 920px);
+  min-height: 100svh;
+  margin: 0 auto;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+}
+
+.site-surface { max-width: 100%; }
+
+.site-fallback {
+  width: 100%;
+  padding: 48px 0;
+  line-height: 1.5;
+}
+.site-fallback h1 { font-size: clamp(28px, 6vw, 48px); line-height: 1.15; }
+.site-fallback nav { display: flex; flex-wrap: wrap; gap: 24px; margin: 32px 0; }
+.site-fallback a { color: inherit; }
+
+@media (max-width: 600px) {
+  .site-shell { align-content: start; padding-top: 48px; }
+}

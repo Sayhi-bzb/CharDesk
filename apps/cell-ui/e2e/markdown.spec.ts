@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, copyCellRange, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, copyCellRange, readCellProbe } from "./helpers/cell-probe";
 
 test("shared tone CSS tokens reach both Markdown and Badge through the Gallery theme", async ({ page }) => {
   await page.goto("/#/guides/markdown");
@@ -25,14 +25,15 @@ test("shared tone CSS tokens reach both Markdown and Badge through the Gallery t
 test("Markdown guide renders Cell typography and activates a link through the shared input path", async ({ page, request }) => {
   await page.goto("/#/guides/markdown");
   await expect(page.getByRole("heading", { name: "Markdown", level: 1 })).toBeVisible();
-  const article = page.locator('.cell-article-page [data-cell-probe^="article-markdown-"]');
-  await expect(article.getByRole("heading", { level: 2 }))
-    .toHaveText(["Preview", "Installation", "Usage", "View source", "API"]);
+  const article = page.locator('[data-cell-probe="article-markdown"]');
+  for (const heading of ["Preview", "Installation", "Usage", "View source", "API"]) {
+    await expect(article.getByRole("heading", { name: heading, level: 2, exact: true })).toBeAttached();
+  }
   await expect(page.getByRole("navigation", { name: "On This Page" }).getByRole("link"))
     .toHaveText(["Preview", "Installation", "Usage", "View source", "API"]);
   expect((await readCellProbe(article.last())).text).toContain("shadcn@latest add @chardesk/cell-ui");
   expect((await readCellProbe(article.last())).text).toContain("<Markdown source={source} />");
-  await expect(article.getByRole("table")).toContainText("source");
+  await expect(article.getByRole("table").last()).toContainText("source");
   const surface = page.getByLabel("Markdown example");
   await expect(surface.getByRole("heading", { name: "Field Notes", level: 1 })).toBeVisible();
   await expect(surface.getByRole("heading", { name: "Checklist", level: 2 })).toBeVisible();
@@ -63,11 +64,11 @@ test("Markdown guide renders Cell typography and activates a link through the sh
 
   const linkCell = [...probe.cells].find((cell) => cell.ownerId?.includes("markdown-link"));
   expect(linkCell).toBeDefined();
-  await surface.locator("canvas").first().scrollIntoViewIfNeeded();
+  await canvasFor(surface).first().scrollIntoViewIfNeeded();
   const point = await cellPoint(surface, linkCell!.x, linkCell!.y);
   expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.outerHTML, point)).toContain("canvas");
   await page.mouse.move(point.x, point.y);
-  await expect(surface.locator("canvas").first()).toHaveCSS("cursor", "pointer");
+  await expect(canvasFor(surface).first()).toHaveCSS("cursor", "pointer");
   await page.mouse.click(point.x, point.y);
   await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Opened 1: #/guides/philosophy");
 

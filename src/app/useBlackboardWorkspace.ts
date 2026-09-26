@@ -87,7 +87,8 @@ export const useBlackboardWorkspace = ({ enabled = true }: { enabled?: boolean }
       const params = new URLSearchParams(window.location.search);
       params.delete("workspace");
       const search = params.size > 0 ? `?${params.toString()}` : "";
-      window.history.replaceState(null, "", `/${search}`);
+      const base = window.location.pathname.startsWith("/legacy/") ? "/legacy/" : "/";
+      window.history.replaceState(null, "", `${base}${search}`);
     }
   }, [activeSessionId, enabled]);
 

@@ -86,7 +86,13 @@ type FloatingSurfaceAppearanceProps = Readonly<{
 }>;
 
 export type RootProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
-export type BoxProps = ContainerProps & SurfaceAppearanceProps & Readonly<{ style?: CellLayoutStyle }>;
+export type BoxProps = ContainerProps & SurfaceAppearanceProps & Readonly<{
+  probeId?: string;
+  probeLabel?: string;
+  style?: CellLayoutStyle;
+  presentation?: CellUiPresentation;
+  overlayScope?: boolean;
+}>;
 export type AlertProps = IdentityProps & ChildrenProps & Readonly<{
   tone?: AlertTone;
   variant?: SurfaceVariant;
@@ -109,6 +115,9 @@ export type OverlayProps = NamedContainerProps & SurfaceAppearanceProps & Readon
 export type DialogProps = Omit<OverlayProps, "id" | "position" | "variant" | "frame" | "borderShape"> & FloatingSurfaceAppearanceProps & Readonly<{
   id: string;
   initialFocusId?: string;
+}>;
+export type AlertDialogProps = Omit<DialogProps, "modal" | "closeOnOutsideClick" | "initialFocusId"> & Readonly<{
+  initialFocusId: string;
 }>;
 export type DialogTitleProps = TextProps;
 export type DialogDescriptionProps = TextProps;
@@ -296,7 +305,7 @@ export type ComboboxInputProps = Omit<TextInputProps, "variant"> & Readonly<{
 }>;
 export type ComboboxContentProps = SelectContentProps;
 export type ComboboxItemProps = Omit<SelectItemProps, "focused"> & Readonly<{ active?: boolean }>;
-export type ListProps = NamedContainerProps & Readonly<{ style?: CellLayoutStyle }>;
+export type ListProps = NamedContainerProps & Readonly<{ style?: CellLayoutStyle; reorderable?: boolean }>;
 export type ListItemProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   selected?: boolean;
@@ -443,6 +452,7 @@ export const AccordionTrigger = primitive<AccordionTriggerProps>("accordion-trig
 export const AccordionContent = primitive<AccordionContentProps>("accordion-content");
 export const Overlay = primitive<OverlayProps>("overlay");
 export const Dialog = primitive<DialogProps>("overlay");
+export const AlertDialog = primitive<AlertDialogProps>("overlay");
 export const DialogTitle = primitive<DialogTitleProps>("text");
 export const DialogDescription = primitive<DialogDescriptionProps>("text");
 export const DialogFooter = primitive<DialogFooterProps>("box");
@@ -509,6 +519,8 @@ export type WidgetDescriptor = Readonly<{
   key: string | null;
   style: CellLayoutStyle;
   presentation: CellUiPresentation;
+  overlayScope: boolean;
+  probeId: string | null;
   surfaceVariant: SurfaceVariant | null;
   frame: CellFrame;
   borderShape: CellBorderShape | null;
@@ -529,6 +541,7 @@ export type WidgetDescriptor = Readonly<{
   disabled: boolean;
   focused: boolean;
   selected: boolean;
+  reorderable: boolean;
   active: boolean;
   checked: CellCheckboxState;
   pressed: boolean;
@@ -567,7 +580,7 @@ export type WidgetDescriptor = Readonly<{
   readOnly: boolean;
   overlayPosition: CellPoint | null;
   modal: boolean;
-  dialog?: Readonly<{ initialFocusId?: string }>;
+  dialog?: Readonly<{ initialFocusId?: string; role?: "alertdialog" }>;
   dialogPart?: "title" | "description";
   closeOnOutsideClick?: boolean;
   scrollX: number;
@@ -745,8 +758,10 @@ const markdownFixedWidth = (tokens: readonly Token[], skipCodeBlocks: boolean, s
     : token.type === "table" ? markdownTableWidth(token as Tokens.Table) : 0));
 const hasSharedScrollGuard = (node: WidgetDescriptor): boolean => node.kind !== "scroll-area"
   && (node.sharedScrollGuard || node.children.some(hasSharedScrollGuard));
-const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: CellUiPresentation,
+const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresentation: CellUiPresentation,
   inScrollArea = false): WidgetDescriptor[] => {
+  const presentation = element.type === Box
+    ? (element.props as BoxProps).presentation ?? inheritedPresentation : inheritedPresentation;
   const textMode = presentation === "text";
   if (element.type === Fragment) {
     const fragmentChildren: ReactNode[] = [];
@@ -901,7 +916,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
     typeof props.targetId !== "string" || !props.targetId.trim()
     || typeof props.text !== "string" || !tooltipText(props.text)
   )) throw new TypeError("Tooltip requires non-empty targetId and text props.");
-  const isDialog = element.type === Dialog;
+  const isAlertDialog = element.type === AlertDialog;
+  const isDialog = element.type === Dialog || isAlertDialog;
   if (isDialog && (typeof props.id !== "string" || !props.id.trim())) {
     throw new TypeError("Dialog requires a non-empty id.");
   }
@@ -1034,6 +1050,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
         ?? (props.style as CellLayoutStyle | undefined)?.padding ?? 0) } : {}),
     },
     presentation,
+    overlayScope: element.type === Box && props.overlayScope === true,
+    probeId: element.type === Box && typeof props.probeId === "string" ? props.probeId : null,
     surfaceVariant,
     frame,
     borderShape: presentedBorderShape(presentation, frame, requestedBorderShape),
@@ -1050,11 +1068,13 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
       ? props.markdownCenteredText : null,
     sharedScrollGuard: kind === "scroll-area" && children.some(hasSharedScrollGuard),
     textStyle: { ...(element.type === DialogTitle || element.type === AlertTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
-    label: alertLabel ?? (typeof props.label === "string" ? props.label : null),
+    label: alertLabel ?? (typeof props.label === "string" ? props.label
+      : element.type === Box && typeof props.probeLabel === "string" ? props.probeLabel : null),
     disabled: props.disabled === true,
     invalid: false,
     focused: props.focused === true,
     selected: props.selected === true,
+    reorderable: kind === "list" && props.reorderable === true,
     active: props.active === true,
     checked: props.checked === "indeterminate" ? "indeterminate" : props.checked === true,
     pressed: props.pressed === true,
@@ -1109,11 +1129,14 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
       : null,
     readOnly: props.readOnly === true,
     overlayPosition: kind === "overlay" ? position! : null,
-    modal: kind === "overlay" && props.modal !== false,
-    ...(isDialog ? { dialog: { initialFocusId: typeof props.initialFocusId === "string" ? props.initialFocusId : undefined } } : {}),
+    modal: kind === "overlay" && (isAlertDialog || props.modal !== false),
+    ...(isDialog ? { dialog: {
+      initialFocusId: typeof props.initialFocusId === "string" ? props.initialFocusId : undefined,
+      ...(isAlertDialog ? { role: "alertdialog" as const } : {}),
+    } } : {}),
     ...(element.type === DialogTitle ? { dialogPart: "title" as const } : {}),
     ...(element.type === DialogDescription ? { dialogPart: "description" as const } : {}),
-    closeOnOutsideClick: props.closeOnOutsideClick !== false,
+    closeOnOutsideClick: !isAlertDialog && props.closeOnOutsideClick !== false,
     scrollX: Number.isFinite(props.scrollX) ? Math.max(0, Math.trunc(props.scrollX as number)) : 0,
     scrollY: Number.isFinite(props.scrollY) ? Math.max(0, Math.trunc(props.scrollY as number)) : 0,
     children,

@@ -10,11 +10,13 @@
   "scripts": {
     "dev": "concurrently --kill-others --success first --names app,docs,chargraph,cell-ui --prefix-colors cyan,magenta,yellow,blue \"npm:dev:app\" \"npm:dev:docs\" \"npm:dev:chargraph\" \"npm:dev:cell-ui\"",
     "dev:app": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "dev:site": "vite --config apps/site/vite.config.ts --host 127.0.0.1 --port 5199 --strictPort",
     "dev:sync": "npm run dev -w @chardesk/sync-server",
     "dev:docs": "npm run dev -w @chardesk/docs",
     "dev:chargraph": "npm run dev -w @chardesk/chargraph-site",
     "dev:cell-ui": "npm run dev -w @chardesk/cell-ui-site",
     "build:app": "node scripts/quality/verification.mjs --mode full --phase build --target app",
+    "build:site": "node scripts/site/build.mjs && node scripts/site/verify-build.mjs",
     "build": "node scripts/quality/verification.mjs --mode full --phase build",
     "build:cli": "node scripts/quality/verification.mjs --mode full --phase build --target @chardesk/cli",
     "build:docs": "npm run build -w @chardesk/docs && node scripts/docs/merge-build.mjs && node scripts/docs/verify-build.mjs",

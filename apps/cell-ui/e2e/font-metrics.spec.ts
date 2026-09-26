@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, copyCellRange, ownerBounds, ownerCells, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, copyCellRange, ownerBounds, ownerCells, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
 import { fusionMonoStylesheetRequest } from "./helpers/fusion-mono";
 import { selectGalleryFont } from "./helpers/gallery-font-select";
 
@@ -59,7 +59,7 @@ for (const candidate of ["substitute-mono", "fusion-mono", "xiaolai-mono"]) {
         }));
         await page.goto("/#/__fixtures/editor");
         const surface = page.locator('[data-cell-probe="editor"]');
-        const canvas = surface.locator("canvas");
+        const canvas = canvasFor(surface);
         const input = page.getByRole("textbox", { name: "File name", exact: true });
         const original = await readCellMetrics(surface);
         await input.fill("abcdef");

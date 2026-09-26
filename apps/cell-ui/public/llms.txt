@@ -10,6 +10,7 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 - [Markdown](https://ui.chardesk.com/guides/markdown.md): Read Markdown as a Cell-native document. This Gallery publishes its source .md pages through llms.txt.
 - [Installation](https://ui.chardesk.com/guides/installation.md): Install the complete editable Cell UI source through the shadcn registry.
 - [Integration](https://ui.chardesk.com/guides/integration.md): Connect Cell descriptors, browser projection, and application-owned state.
+- [Host overlays](https://ui.chardesk.com/guides/host-overlays.md): One overlay host coordinates menus, modal panels, and notices across independent CellSurfaces.
 - [Theming](https://ui.chardesk.com/guides/theming.md): Resolve one Cell theme into a browser palette and component recipes.
 - [Testing](https://ui.chardesk.com/guides/testing.md): Inspect the committed Cell frame instead of inferring behavior from pixels.
 

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ownerBounds, readCellProbe, readCellMetrics } from "./helpers/cell-probe";
+import { canvasFor, ownerBounds, readCellProbe, readCellMetrics } from "./helpers/cell-probe";
 
 test("TextArea shares draggable rails without stealing selection or scrolling the page", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -8,7 +8,7 @@ test("TextArea shares draggable rails without stealing selection or scrolling th
   const editor = page.getByRole("textbox", { name: "Document", exact: true });
   const value = Array.from({ length: 20 }, (_, index) => `${index}: ${"x".repeat(80)}`).join("\n");
   await editor.fill(value);
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   await canvas.scrollIntoViewIfNeeded();
   const { cellWidth, cellHeight } = await readCellMetrics(surface);
   const bounds = (await canvas.boundingBox())!;

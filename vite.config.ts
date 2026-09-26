@@ -52,8 +52,8 @@ function webMcpOriginTrial(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  // Use relative asset paths by default to avoid blank pages on subpath deploys.
-  base: process.env.VITE_BASE_PATH || "./",
+  // Canvas owns its hostname; absolute assets keep /blackboard and /s/* links bootable.
+  base: process.env.VITE_BASE_PATH || "/",
   plugins: [staticSiteDevRedirect(), webMcpOriginTrial(), react(), tailwindcss()],
   optimizeDeps: {
     include: ["@tanstack/react-table"],

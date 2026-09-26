@@ -58,7 +58,7 @@ export function CellArticleSurface({ label, probeId, content, anchorIds, anchorT
   return <div ref={hostRef} className="cell-article-block">
     {anchorIds.map((id) => <span key={id} id={id} className="cell-article-anchor" aria-hidden="true"
       style={{ top: (measured.anchors[id]! + CELL_SURFACE_GUARD_CELLS) * DEFAULT_CELL_UI_METRICS.cellHeight }} />)}
-    <GallerySurface label={label} probeId={probeId}
+    <GallerySurface label={label} probeId={probeId} linearSelection
       viewport={{ width, height: measured.height }} focusedId={focusedId} onCommand={onCommand}>
       {content}
     </GallerySurface>

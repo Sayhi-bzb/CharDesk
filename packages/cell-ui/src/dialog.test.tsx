@@ -1,10 +1,23 @@
 import { expect, it } from "vitest";
-import { Button, Dialog, DialogTitle, DialogDescription, DialogFooter, Root, Text, CellUiRuntime, createTestPilot, auditSemanticSnapshot } from "./index.js";
+import { AlertDialog, Button, Dialog, DialogTitle, DialogDescription, DialogFooter, Root, Text, CellUiRuntime, createTestPilot, auditSemanticSnapshot } from "./index.js";
 import { dismissCommandForFocusExit } from "./interaction.js";
 import { Select, SelectTrigger, SelectContent, SelectItem } from "./index.js";
 import { Slider, TextInput, CellTextEditor } from "./index.js";
 import { textEditorAtPoint } from "./interaction.js";
 import { CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME } from "./theme.js";
+
+it("gives destructive confirmation alertdialog semantics and a non-dismissable backdrop", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 48, height: 14 } });
+  const frame = runtime.render(<Root><AlertDialog id="confirm" initialFocusId="cancel">
+    <DialogTitle>Delete page?</DialogTitle>
+    <DialogFooter><Button id="delete"><Text>Delete</Text></Button>
+      <Button id="cancel"><Text>Cancel</Text></Button></DialogFooter>
+  </AlertDialog></Root>);
+  expect(frame.semantics.nodes.get("confirm")).toMatchObject({ role: "alertdialog", modal: true });
+  expect(frame.tree.nodes.get("confirm")?.closeOnOutsideClick).toBe(false);
+  expect(auditSemanticSnapshot(frame.semantics)).toEqual([]);
+  runtime.dispose();
+});
 
 it.each([CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME])(
   "keeps ghost Dialog opaque with the theme's base surface",

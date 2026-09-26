@@ -234,6 +234,33 @@ it("Select commits before confirmation, locks selection, and completes once in b
   }
 });
 
+it("finishes Select confirmation before an action outside its scope", () => {
+  const time = manualClock();
+  const runtime = new CellUiRuntime({ viewport: { width: 20, height: 5 } });
+  let open = true;
+  const commands: WidgetCommand[] = [];
+  const view = () => <Root id="root"><Select id="fruit">
+    <SelectTrigger id="trigger" expanded={open}><Text>Fruit</Text></SelectTrigger>
+    {open && <SelectContent id="options"><SelectItem id="apple"><Text>Apple</Text></SelectItem></SelectContent>}
+  </Select><Button id="copy"><Text>Copy</Text></Button></Root>;
+  let frame = runtime.render(view());
+  const controller = new CellInteractionController(() => {
+    frame = runtime.render(view(), controller.snapshot);
+    controller.presented(frame.confirmation);
+  }, (command) => {
+    commands.push(command);
+    if (command.type === "dismiss") open = false;
+  }, time.clock);
+  controller.commit({ type: "activate", targetId: "apple" }, frame, 2);
+  expect(open).toBe(true);
+  controller.commit({ type: "activate", targetId: "copy" }, frame, 2);
+  expect(open).toBe(false);
+  expect(commands.map((command) => `${command.type}:${command.targetId}`)).toEqual([
+    "activate:apple", "dismiss:options", "activate:copy",
+  ]);
+  runtime.dispose();
+});
+
 it("does not deliver dismissal into an unmounted scope", () => {
   const time = manualClock();
   const runtime = new CellUiRuntime({ viewport: { width: 20, height: 5 } });

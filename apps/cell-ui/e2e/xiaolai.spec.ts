@@ -15,12 +15,12 @@ test("Xiaolai requests only the shards needed by rendered graphemes", async ({ p
   await expect(page.locator(".gallery-page")).toHaveAttribute(
     "data-gallery-font", "xiaolai-mono"
   );
-  await expect.poll(() => [...new Set(shards)]).toEqual(["base.woff2"]);
+  await expect.poll(() => [...new Set(shards)].sort()).toEqual(["base.woff2", "supplementary.woff2"]);
 
   await page.evaluate(() => { window.location.hash = "/__fixtures/text"; });
   await expect(page.locator('[data-cell-probe="component-text"]')).toBeVisible();
   await expect.poll(() => [...new Set(shards)].sort()).toEqual([
-    "base.woff2", "cjk-unified.woff2",
+    "base.woff2", "cjk-unified.woff2", "supplementary.woff2",
   ]);
   await page.evaluate(() => {
     const sample = document.createElement("span");

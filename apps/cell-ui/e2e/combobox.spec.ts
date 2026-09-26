@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, readCellProbe } from "./helpers/cell-probe";
 
 test("Combobox shows its default interaction", async ({ page }) => {
   await page.goto("/#/components/combobox");
   const surface = page.getByLabel("Combobox component");
-  const input = surface.getByRole("combobox", { name: "Font" });
+  const input = page.getByRole("combobox", { name: "Font" });
   await expect(page.getByRole("button", { name: "value", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "variant", exact: true })).toBeAttached();
   await expect(page.getByRole("button", { name: "dropdown frame", exact: true })).toBeAttached();
@@ -27,7 +27,7 @@ test("Combobox shows its default interaction", async ({ page }) => {
 test("Combobox input row opens on click, keeps editing open, and closes from its arrow", async ({ page }) => {
   await page.goto("/#/components/combobox");
   const surface = page.getByLabel("Combobox component");
-  const input = surface.getByRole("combobox", { name: "Font" });
+  const input = page.getByRole("combobox", { name: "Font" });
   const probe = await readCellProbe(surface);
   const arrow = probe.cells.find((cell) => cell.ownerId === "component-combobox-input" && cell.text === "▾");
   const firstInputCell = probe.cells.find((cell) => cell.ownerId === "component-combobox-input" && cell.y === arrow?.y);
@@ -36,7 +36,7 @@ test("Combobox input row opens on click, keeps editing open, and closes from its
   expect(firstInputCell?.text).toBe(">");
   expect(probe.cells.find((cell) => cell.ownerId === "component-combobox-input"
     && cell.x === firstInputCell!.x + 1 && cell.y === firstInputCell!.y)?.text).toBe(" ");
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface).first();
   const clickCell = async (x: number, y: number) => {
     const point = await cellPoint(surface, x, y);
     await page.mouse.click(point.x, point.y);
@@ -61,7 +61,7 @@ test("Combobox input row opens on click, keeps editing open, and closes from its
 test("Combobox filters without moving DOM focus and restores uncommitted text", async ({ page }) => {
   await page.goto("/#/components/combobox");
   const surface = page.getByLabel("Combobox component");
-  const input = surface.getByRole("combobox", { name: "Font" });
+  const input = page.getByRole("combobox", { name: "Font" });
 
   await expect(input).toHaveValue("Maple Mono");
   const closed = await readCellProbe(surface);
@@ -102,7 +102,7 @@ test("Combobox filters without moving DOM focus and restores uncommitted text", 
 test("Preview blank space ends Combobox editing without losing its navigation anchor", async ({ page }) => {
   await page.goto("/#/components/combobox");
   const surface = page.getByLabel("Combobox component");
-  const input = surface.getByRole("combobox", { name: "Font" });
+  const input = page.getByRole("combobox", { name: "Font" });
 
   await input.click();
   await expect(surface).toHaveAttribute("data-cell-active-focus", "component-combobox-input");

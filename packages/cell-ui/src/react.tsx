@@ -116,6 +116,9 @@ export type DialogProps = Omit<OverlayProps, "id" | "position" | "variant" | "fr
   id: string;
   initialFocusId?: string;
 }>;
+export type AlertDialogProps = Omit<DialogProps, "modal" | "closeOnOutsideClick" | "initialFocusId"> & Readonly<{
+  initialFocusId: string;
+}>;
 export type DialogTitleProps = TextProps;
 export type DialogDescriptionProps = TextProps;
 export type DialogFooterProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
@@ -302,7 +305,7 @@ export type ComboboxInputProps = Omit<TextInputProps, "variant"> & Readonly<{
 }>;
 export type ComboboxContentProps = SelectContentProps;
 export type ComboboxItemProps = Omit<SelectItemProps, "focused"> & Readonly<{ active?: boolean }>;
-export type ListProps = NamedContainerProps & Readonly<{ style?: CellLayoutStyle }>;
+export type ListProps = NamedContainerProps & Readonly<{ style?: CellLayoutStyle; reorderable?: boolean }>;
 export type ListItemProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   selected?: boolean;
@@ -449,6 +452,7 @@ export const AccordionTrigger = primitive<AccordionTriggerProps>("accordion-trig
 export const AccordionContent = primitive<AccordionContentProps>("accordion-content");
 export const Overlay = primitive<OverlayProps>("overlay");
 export const Dialog = primitive<DialogProps>("overlay");
+export const AlertDialog = primitive<AlertDialogProps>("overlay");
 export const DialogTitle = primitive<DialogTitleProps>("text");
 export const DialogDescription = primitive<DialogDescriptionProps>("text");
 export const DialogFooter = primitive<DialogFooterProps>("box");
@@ -537,6 +541,7 @@ export type WidgetDescriptor = Readonly<{
   disabled: boolean;
   focused: boolean;
   selected: boolean;
+  reorderable: boolean;
   active: boolean;
   checked: CellCheckboxState;
   pressed: boolean;
@@ -575,7 +580,7 @@ export type WidgetDescriptor = Readonly<{
   readOnly: boolean;
   overlayPosition: CellPoint | null;
   modal: boolean;
-  dialog?: Readonly<{ initialFocusId?: string }>;
+  dialog?: Readonly<{ initialFocusId?: string; role?: "alertdialog" }>;
   dialogPart?: "title" | "description";
   closeOnOutsideClick?: boolean;
   scrollX: number;
@@ -911,7 +916,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     typeof props.targetId !== "string" || !props.targetId.trim()
     || typeof props.text !== "string" || !tooltipText(props.text)
   )) throw new TypeError("Tooltip requires non-empty targetId and text props.");
-  const isDialog = element.type === Dialog;
+  const isAlertDialog = element.type === AlertDialog;
+  const isDialog = element.type === Dialog || isAlertDialog;
   if (isDialog && (typeof props.id !== "string" || !props.id.trim())) {
     throw new TypeError("Dialog requires a non-empty id.");
   }
@@ -1068,6 +1074,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     invalid: false,
     focused: props.focused === true,
     selected: props.selected === true,
+    reorderable: kind === "list" && props.reorderable === true,
     active: props.active === true,
     checked: props.checked === "indeterminate" ? "indeterminate" : props.checked === true,
     pressed: props.pressed === true,
@@ -1122,11 +1129,14 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
       : null,
     readOnly: props.readOnly === true,
     overlayPosition: kind === "overlay" ? position! : null,
-    modal: kind === "overlay" && props.modal !== false,
-    ...(isDialog ? { dialog: { initialFocusId: typeof props.initialFocusId === "string" ? props.initialFocusId : undefined } } : {}),
+    modal: kind === "overlay" && (isAlertDialog || props.modal !== false),
+    ...(isDialog ? { dialog: {
+      initialFocusId: typeof props.initialFocusId === "string" ? props.initialFocusId : undefined,
+      ...(isAlertDialog ? { role: "alertdialog" as const } : {}),
+    } } : {}),
     ...(element.type === DialogTitle ? { dialogPart: "title" as const } : {}),
     ...(element.type === DialogDescription ? { dialogPart: "description" as const } : {}),
-    closeOnOutsideClick: props.closeOnOutsideClick !== false,
+    closeOnOutsideClick: !isAlertDialog && props.closeOnOutsideClick !== false,
     scrollX: Number.isFinite(props.scrollX) ? Math.max(0, Math.trunc(props.scrollX as number)) : 0,
     scrollY: Number.isFinite(props.scrollY) ? Math.max(0, Math.trunc(props.scrollY as number)) : 0,
     children,

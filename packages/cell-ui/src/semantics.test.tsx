@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CellUiRuntime,
+  Box,
   Grid,
   GridCell,
   GridRow,
@@ -101,6 +102,20 @@ describe("SemanticSnapshot audit", () => {
     expect([...frame.semantics.nodes.keys()]).toEqual(["dialog", "commands", "run"]);
     expect(frame.scene.paintList.indexOf("dialog"))
       .toBeGreaterThan(frame.scene.paintList.indexOf("underlay"));
+    expect(auditSemanticSnapshot(frame.semantics)).toEqual([]);
+    runtime.dispose();
+  });
+
+  it("retains a modal's preview group while hiding other background semantics", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 30, height: 12 } });
+    const frame = runtime.render(<Root id="root"><Box id="preview" probeId="preview-probe" probeLabel="Preview">
+      <Overlay id="dialog" label="Commands" modal position={{ x: 2, y: 2 }}>
+        <List id="commands" label="Commands"><ListItem id="run"><Text>Run</Text></ListItem></List>
+      </Overlay>
+    </Box></Root>);
+    expect(frame.semantics.roots).toEqual(["preview"]);
+    expect(frame.semantics.nodes.get("dialog")?.semanticParentId).toBe("preview");
+    expect(frame.semantics.nodes.get("preview")?.probeId).toBe("preview-probe");
     expect(auditSemanticSnapshot(frame.semantics)).toEqual([]);
     runtime.dispose();
   });

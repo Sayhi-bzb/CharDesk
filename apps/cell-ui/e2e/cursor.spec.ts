@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, ownerBounds, ownerCells, readCellMetrics, readCellPixel, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, ownerBounds, ownerCells, readCellMetrics, readCellPixel, readCellProbe } from "./helpers/cell-probe";
 
 test("inverse cursor follows committed editor colors, wide glyphs, movement and theme", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
   await page.goto("/#/__fixtures/editor");
   const surface = page.locator('[data-cell-probe="editor"]');
   const input = surface.getByRole("textbox", { name: "File name", exact: true });
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   const firstGlyph = ownerCells(await readCellProbe(surface), "editor-name")
     .find((cell) => cell.text === "n")!;
   await input.fill("");

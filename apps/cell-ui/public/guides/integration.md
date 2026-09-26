@@ -25,6 +25,44 @@ import { CellSurface } from "@/lib/cell-ui/browser";
 
 Application state remains outside the renderer. Pass controlled values and focused IDs into descriptors, then handle CellSurface onCommand or use the matching /browser state adapter. Direct adapter dispatch has no presentation lifecycle.
 
+## Reordering
+
+Use List's reorderable capability with stable List and ListItem IDs. Pointer drag previews the row and insertion point; release or Alt+↑/↓ emits a reorder command. Application state owns the final order.
+
+```tsx
+import { useState } from "react";
+import { List, ListItem, Root, Text, reorderCellItems } from "@/lib/cell-ui";
+import { CellSurface } from "@/lib/cell-ui/browser";
+
+function Layers() {
+  const [items, setItems] = useState([
+    { id: "title", label: "Title" },
+    { id: "chart", label: "Chart" },
+  ]);
+  return (
+    <CellSurface
+      viewport={{ width: 24, height: 4 }}
+      onCommand={(command) => {
+        if (command.type === "reorder")
+          setItems((current) => [
+            ...reorderCellItems(current, command.targetId, command.toIndex),
+          ]);
+      }}
+    >
+      <Root>
+        <List id="layers" label="Layers" reorderable>
+          {items.map((item) => (
+            <ListItem key={item.id} id={item.id} label={item.label}>
+              <Text>{item.label}</Text>
+            </ListItem>
+          ))}
+        </List>
+      </Root>
+    </CellSurface>
+  );
+}
+```
+
 ## Headless hosts
 
 CellUiRuntime commits a dense Cell buffer and Scene without a browser. Headless hosts supply viewport, state, focus, and animationTimeMs explicitly. The browser adapter supplies font loading, pointer, input, and semantic focus.

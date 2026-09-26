@@ -208,10 +208,11 @@ export function useGalleryFontControl() {
 export function GallerySurface(props: CellSurfaceProps) {
   const { theme, palette, recipe, fontProfile, feedback } = useGalleryAppearance();
   const documentScene = useDocumentScene();
+  const register = documentScene?.register;
   useLayoutEffect(() => {
-    if (!documentScene || !props.probeId) return;
+    if (!register || !props.probeId) return;
     const id = props.probeId;
-    documentScene.register(id, {
+    register(id, {
       label: props.label ?? id,
       root: props.children,
       viewport: props.viewport,
@@ -220,9 +221,13 @@ export function GallerySurface(props: CellSurfaceProps) {
       focusedId: props.focusedId ?? null,
       onCommand: props.onCommand,
     });
-    return () => documentScene.register(id, null);
-  }, [documentScene, props.children, props.focusedId, props.label, props.onCommand, props.overlayViewport, props.presentation,
+  }, [register, props.children, props.focusedId, props.label, props.onCommand, props.overlayViewport, props.presentation,
     props.probeId, props.viewport]);
+  useLayoutEffect(() => {
+    if (!register || !props.probeId) return;
+    const id = props.probeId;
+    return () => register(id, null);
+  }, [register, props.probeId]);
   if (documentScene) return null;
   return <CellSurface
     {...props}

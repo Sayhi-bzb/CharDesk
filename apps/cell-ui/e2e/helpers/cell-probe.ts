@@ -5,6 +5,14 @@ import { CELL_SURFACE_GUARD_CELLS } from "@chardesk/cell-ui/browser";
 export type BrowserCellProbe = CellProbeSnapshot;
 
 const PROBE_PROPERTY = "__chardeskCellProbeV5";
+export const canvasFor = (surface: Locator) => surface
+  .locator("xpath=ancestor-or-self::*[@data-cell-probe and .//canvas][1]")
+  .locator("canvas")
+  .first();
+const probeOrigin = async (surface: Locator) => surface.evaluate((element) => {
+  const [x, y] = (element as HTMLElement).dataset.cellProbeOrigin?.split(",").map(Number) ?? [0, 0];
+  return { x, y };
+});
 
 export const readCellMetrics = async (surface: Locator) => {
   await expect.poll(async () => (await readCellProbe(surface)).presentation?.measurement?.ready).toBe(true);
@@ -13,11 +21,12 @@ export const readCellMetrics = async (surface: Locator) => {
 
 export const readCellPixel = async (surface: Locator, x: number, y: number) => {
   const metrics = await readCellMetrics(surface);
-  return surface.locator("canvas").first().evaluate((canvas, { metrics, x, y, guardCells }) =>
+  const origin = await probeOrigin(surface);
+  return canvasFor(surface).evaluate((canvas, { metrics, x, y, guardCells, origin }) =>
     Array.from(canvas.getContext("2d")!.getImageData(
-      Math.round((x + guardCells) * metrics.cellWidth * devicePixelRatio),
-      Math.round((y + guardCells) * metrics.cellHeight * devicePixelRatio), 1, 1
-    ).data), { metrics, x, y, guardCells: CELL_SURFACE_GUARD_CELLS });
+      Math.round((x + origin.x + guardCells) * metrics.cellWidth * devicePixelRatio),
+      Math.round((y + origin.y + guardCells) * metrics.cellHeight * devicePixelRatio), 1, 1
+    ).data), { metrics, x, y, origin, guardCells: CELL_SURFACE_GUARD_CELLS });
 };
 
 export const readCellProbe = async (surface: Locator): Promise<BrowserCellProbe> => {
@@ -61,13 +70,23 @@ export const ownerBounds = (snapshot: BrowserCellProbe, ownerId: string) => {
   };
 };
 
-export const cellPoint = async (surface: Locator, x: number, y: number) => {
+export const cellPoint = async (surface: Locator, x: number, y: number,
+  { scrollIntoView = true }: Readonly<{ scrollIntoView?: boolean }> = {}) => {
   const metrics = await readCellMetrics(surface);
-  const bounds = await surface.locator("canvas").first().boundingBox();
+  const origin = await probeOrigin(surface);
+  if (scrollIntoView) await canvasFor(surface).evaluate((canvas, { x, y, metrics, origin, guardCells }) => {
+    const bounds = canvas.getBoundingClientRect();
+    const targetY = bounds.top + (y + origin.y + guardCells + 0.5) * metrics.cellHeight;
+    const top = 80;
+    const bottom = Math.max(top + 1, innerHeight - 40);
+    if (targetY < top) window.scrollBy(0, targetY - top);
+    else if (targetY > bottom) window.scrollBy(0, targetY - bottom);
+  }, { x, y, metrics, origin, guardCells: CELL_SURFACE_GUARD_CELLS });
+  const bounds = await canvasFor(surface).boundingBox();
   if (!bounds) throw new Error("CellSurface Canvas is not visible.");
   return {
-    x: bounds.x + (x + CELL_SURFACE_GUARD_CELLS + 0.5) * metrics.cellWidth,
-    y: bounds.y + (y + CELL_SURFACE_GUARD_CELLS + 0.5) * metrics.cellHeight,
+    x: bounds.x + (x + origin.x + CELL_SURFACE_GUARD_CELLS + 0.5) * metrics.cellWidth,
+    y: bounds.y + (y + origin.y + CELL_SURFACE_GUARD_CELLS + 0.5) * metrics.cellHeight,
   };
 };
 

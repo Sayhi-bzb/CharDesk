@@ -156,6 +156,7 @@ export type WidgetNode = Readonly<{
   confirming?: boolean;
   confirmation?: ConfirmationPresentation;
   selected: boolean;
+  reorderable: boolean;
   active: boolean;
   checked: CellCheckboxState;
   pressed: boolean;
@@ -194,7 +195,7 @@ export type WidgetNode = Readonly<{
   readOnly: boolean;
   overlayPosition: CellPoint | null;
   modal: boolean;
-  dialog?: Readonly<{ initialFocusId?: string }>;
+  dialog?: Readonly<{ initialFocusId?: string; role?: "alertdialog" }>;
   dialogPart?: "title" | "description";
   closeOnOutsideClick?: boolean;
   describedById?: WidgetId;
@@ -324,6 +325,7 @@ export type SemanticNode = Readonly<{
     | "alert"
     | "status"
     | "dialog"
+    | "alertdialog"
     | "heading"
     | "paragraph"
     | "blockquote"

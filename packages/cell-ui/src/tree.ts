@@ -64,6 +64,10 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
     if (current.kind === "radio-item" && parent?.kind !== "radio-group") {
       throw new TypeError("RadioItem must be a direct child of RadioGroup.");
     }
+    if (current.reorderable && current.kind === "list"
+      && (!current.explicitId || current.children.some((child) => child.kind !== "list-item" || !child.explicitId))) {
+      throw new TypeError("A reorderable List requires an id and direct ListItem children with ids.");
+    }
     if (current.kind === "range-slider-thumb" && parent?.kind !== "range-slider") {
       throw new TypeError("RangeSliderThumb must be a direct child of RangeSlider.");
     }
@@ -117,6 +121,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       pressActive: false,
       activationFlash: false,
       selected: current.selected,
+      reorderable: current.reorderable || (current.kind === "list-item" && parent?.kind === "list" && parent.reorderable),
       active: current.active,
       checked: current.kind === "radio-item" ? current.radioValue === parent?.radioValue : current.checked,
       pressed: current.pressed,

@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
 
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="stylesheet" href="/startup.css" />
+    <script>
+      try {
+        const theme = localStorage.getItem('chardesk-host-theme');
+        if (theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch { /* Use the light startup palette. */ }
+    </script>
 
     <meta
       name="viewport"
@@ -16,10 +25,10 @@
     <meta name="description" content="Draw diagrams, interfaces, slides, and Unicode art on an editable text canvas built for humans to see and AI to understand." />
     <meta name="robots" content="index, follow" />
 
-    <link rel="canonical" href="https://chardesk.com/" />
+    <link rel="canonical" href="https://canvas.chardesk.com/" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://chardesk.com/" />
+    <meta property="og:url" content="https://canvas.chardesk.com/" />
     <meta property="og:title" content="CharDesk — Unicode Canvas for Humans and AI" />
     <meta property="og:description" content="Draw diagrams, interfaces, slides, and Unicode art on an editable text canvas built for humans to see and AI to understand." />
     <meta property="og:image" content="https://chardesk.com/showcase/01-shared-medium.png" />
@@ -28,7 +37,7 @@
     <meta property="og:locale" content="en_US" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://chardesk.com/" />
+    <meta name="twitter:url" content="https://canvas.chardesk.com/" />
     <meta name="twitter:title" content="CharDesk — Unicode Canvas for Humans and AI" />
     <meta name="twitter:description" content="Draw diagrams, interfaces, slides, and Unicode art on an editable text canvas built for humans to see and AI to understand." />
     <meta name="twitter:image" content="https://chardesk.com/showcase/01-shared-medium.png" />
@@ -39,7 +48,7 @@
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "CharDesk",
-        "url": "https://chardesk.com/",
+        "url": "https://canvas.chardesk.com/",
         "description": "Draw diagrams, interfaces, slides, and Unicode art on an editable text canvas built for humans to see and AI to understand.",
         "applicationCategory": "DesignApplication",
         "operatingSystem": "Web",
@@ -49,10 +58,29 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="startup-shell" data-startup-phase="opening" aria-busy="true">
+        <div class="startup-content">
+          <div class="startup-brand">CharDesk</div>
+          <h1 class="startup-title" role="status" aria-live="polite">Opening Canvas</h1>
+          <div class="startup-progress" aria-hidden="true"></div>
+          <noscript><p class="startup-detail">Enable JavaScript to use Canvas.</p></noscript>
+        </div>
+      </main>
+    </div>
+    <script>
+      try {
+        const saved = localStorage.getItem('chardesk-ui-language')
+          || localStorage.getItem('ascii-canvas-ui-language');
+        const preferred = saved || navigator.languages?.[0] || navigator.language;
+        if (/^zh(?:-|$)/i.test(preferred || '')) {
+          document.documentElement.lang = 'zh-CN';
+          document.querySelector('.startup-title').textContent = '正在打开 Canvas';
+        }
+      } catch { /* Keep the English first-frame copy. */ }
+    </script>
 
     <script type="module" src="./src/app/main.tsx"></script>
 
-    <noscript>You need to enable JavaScript to run this app.</noscript>
   </body>
 </html>

@@ -9,6 +9,15 @@ import type { CellPoint, ConfirmationColors, ConfirmationPresentation, FrameSnap
 import { resolvePointerAppearance } from "./pointer.js";
 import { menuScopeId } from "./primitive-behavior.js";
 
+const confirmationScopeId = (frame: FrameSnapshot, targetId: WidgetId): WidgetId | null => {
+  let node = frame.tree.nodes.get(targetId);
+  while (node) {
+    if (node.kind === "select-content" || node.kind === "combobox-content" || node.kind === "menu") return node.id;
+    node = node.parentId ? frame.tree.nodes.get(node.parentId) : undefined;
+  }
+  return null;
+};
+
 export type InteractionClock = Readonly<{
   schedule: (callback: () => void, delay: number) => () => void;
 }>;
@@ -124,7 +133,13 @@ export class CellInteractionController {
   /** A deferred menu locks its own rectangle; outside input cancels, then proceeds. */
   interceptPointer(frame: FrameSnapshot, point: CellPoint): boolean {
     if (!this.feedback.settling) return false;
-    if (!this.feedback.defersActivation) return true;
+    if (!this.feedback.defersActivation) {
+      const targetScope = confirmationScopeId(frame, this.feedback.targetId ?? "");
+      const hoveredScope = confirmationScopeId(frame, resolvePointerAppearance(frame, point).hoveredId ?? "");
+      if (targetScope && targetScope === hoveredScope) return true;
+      this.settle();
+      return false;
+    }
     const scope = menuScopeId(frame, this.feedback.targetId ?? "");
     const entry = scope ? frame.scene.entries.get(scope) : undefined;
     const contains = (rect: { x: number; y: number; width: number; height: number }) =>
@@ -163,8 +178,11 @@ export class CellInteractionController {
       }
       const outsideMenu = this.feedback.defersActivation
         && menuScopeId(frame, command.targetId) !== menuScopeId(frame, this.feedback.targetId ?? "");
-      if (command.type !== "dismiss" && !outsideMenu) return;
-      this.cancel();
+      const outsideSelection = !this.feedback.defersActivation
+        && confirmationScopeId(frame, command.targetId) !== confirmationScopeId(frame, this.feedback.targetId ?? "");
+      if (command.type !== "dismiss" && !outsideMenu && !outsideSelection) return;
+      if (outsideSelection) this.settle();
+      else this.cancel();
     }
     this.stopClock();
     const reference = this.reference(frame, command.targetId);

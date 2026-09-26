@@ -6,7 +6,9 @@
 
 CharDesk turns Unicode text into a shared workspace: a canvas for people, editable tokens for agents.
 
-[Open CharDesk](https://chardesk.com/) · [Explore CharGraph](https://chardesk.com/chargraph/) · [Cell UI Gallery](https://ui.chardesk.com/) · [CLI reference](packages/cli/README.md)
+[Open Canvas](https://canvas.chardesk.com/) · [Explore Cell UI](https://ui.chardesk.com/)
+
+[Product home](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/) · [CLI reference](packages/cli/README.md)
 
 ## Start with your agent
 
@@ -103,7 +105,7 @@ Arrange content on Freeform canvases, start from reusable Cell templates, compos
 ### Agent access
 
 - **Local files and CLI:** the stable default. Agents use normal file tools; `chardesk` checks, previews, opens, and renders the result. See the [CLI reference](packages/cli/README.md).
-- **Chrome WebMCP:** experimental. Enable `chrome://flags/#enable-webmcp-testing`, relaunch Chrome, and keep [CharDesk](https://chardesk.com/) open for a compatible agent.
+- **Chrome WebMCP:** experimental. Enable `chrome://flags/#enable-webmcp-testing`, relaunch Chrome, and keep [Canvas](https://canvas.chardesk.com/) open for a compatible agent.
 - **ChatGPT Site Tools:** experimental. Enable **Site tools** under **Settings → Browser → Permissions**, then open CharDesk in ChatGPT's built-in browser. See the [official Site Tools guide](https://learn.chatgpt.com/docs/webmcp).
 
 Browser agents can call `chardesk_read_materials` to enter the same visual language and worked examples as the skill. Blackboard tools operate on the Canvas visible in that browser page; creating or opening a workspace activates it automatically.

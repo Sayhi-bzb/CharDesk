@@ -4,7 +4,7 @@ import { readCellProbe } from "./helpers/cell-probe";
 test("Input validation stays legible and accessible in both themes", async ({ page }) => {
   await page.goto("/#/components/input");
   const surface = page.locator('[data-cell-probe="component-input"]');
-  const input = surface.getByRole("textbox", { name: "File name" });
+  const input = page.getByRole("textbox", { name: "File name" });
   const toggle = surface.getByRole("checkbox", { name: "invalid" });
   await expect(input).not.toHaveAttribute("aria-invalid");
   for (const scheme of ["light", "dark"] as const) {

@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, readCellProbe } from "./helpers/cell-probe";
 
 test("Dialog uses Canvas input, named semantics and focus restoration", async ({ page }) => {
   await page.goto("/#/components/dialog");
   const surface = page.locator('[data-cell-probe="component-dialog"]');
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface).first();
   await canvas.scrollIntoViewIfNeeded();
   const probe = await readCellProbe(surface);
   const cell = probe.cells.find((cell) => cell.ownerId === "dialog-open")!;
@@ -21,7 +21,9 @@ test("Dialog uses Canvas input, named semantics and focus restoration", async ({
   await page.keyboard.press("Tab");
   await expect(cancel).toBeFocused();
   expect((await readCellProbe(surface)).text).toContain("Continue?");
-  expect((await readCellProbe(surface)).text).toContain("└──────────────────────────────────┘");
+  expect((await readCellProbe(page.locator('[data-cell-probe="article-dialog"]'))).overlays
+    .find(({ rootId }) => rootId === "demo-dialog")?.text)
+    .toContain("└──────────────────────────────────┘");
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(surface.getByRole("button", { name: "Open dialog", exact: true })).toBeFocused();
@@ -54,7 +56,7 @@ test("Dialog config changes its opaque variant and border", async ({ page }) => 
   expect(elevated?.text).toContain("┌");
   const elevatedBackground = elevated?.cells.find((cell) => cell.ownerId === "demo-dialog" && cell.text === " ")?.style.backgroundColor;
   expect(elevatedBackground).toBeTruthy();
-  const bounds = (await surface.locator("canvas").first().boundingBox())!;
+  const bounds = (await canvasFor(surface).first().boundingBox())!;
   await page.mouse.click(bounds.x + 2, bounds.y + 2);
   await expect(dialog).toHaveCount(0);
 

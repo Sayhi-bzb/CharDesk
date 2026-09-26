@@ -1,12 +1,54 @@
 import { describe, expect, it } from "vitest";
 import { CellBuffer } from "./buffer.js";
 import {
+  createCellLinearRangeSnapshot,
   createCellRangeSnapshot,
+  equalCellRangeSnapshot,
   extractCellRange,
   normalizeCellRange,
 } from "./range.js";
 
 describe("Cell Range", () => {
+  it("copies linear rows in reading order without rectangular padding", () => {
+    const buffer = new CellBuffer({ width: 8, height: 3 });
+    buffer.writeText(0, 0, "alpha", "text");
+    buffer.writeText(0, 1, "middle", "text");
+    buffer.writeText(0, 2, "omega", "text");
+    const forward = createCellLinearRangeSnapshot(buffer, { x: 2, y: 0 }, { x: 2, y: 2 });
+    const backward = createCellLinearRangeSnapshot(buffer, { x: 2, y: 2 }, { x: 2, y: 0 });
+    expect(forward).toMatchObject({ shape: "linear", text: "pha\nmiddle\nome", spans: [
+      { x: 2, y: 0, width: 6, height: 1 },
+      { x: 0, y: 1, width: 8, height: 1 },
+      { x: 0, y: 2, width: 3, height: 1 },
+    ] });
+    expect(backward?.text).toBe(forward?.text);
+    expect(createCellRangeSnapshot(buffer, { x: 2, y: 0 }, { x: 2, y: 2 })?.text)
+      .toBe("p\nd\ne");
+  });
+
+  it("keeps wide graphemes whole at linear endpoints", () => {
+    const buffer = new CellBuffer({ width: 6, height: 1 });
+    buffer.writeText(0, 0, "A中B", "text");
+    const snapshot = createCellLinearRangeSnapshot(buffer, { x: 2, y: 0 }, { x: 3, y: 0 });
+    expect(snapshot).toMatchObject({ text: "中B", spans: [{ x: 1, y: 0, width: 3, height: 1 }] });
+  });
+
+  it("uses source-aware Cell copy text in a linear selection", () => {
+    const buffer = new CellBuffer({ width: 4, height: 1 });
+    buffer.writeGrapheme(0, 0, "•", "markdown", {}, undefined, "replace", "-");
+    buffer.writeGrapheme(1, 0, " ", "markdown");
+    buffer.writeGrapheme(2, 0, "A", "markdown");
+    expect(createCellLinearRangeSnapshot(buffer, { x: 0, y: 0 }, { x: 2, y: 0 })?.text).toBe("- A");
+  });
+
+  it("distinguishes linear and rectangular selections with the same endpoints", () => {
+    const buffer = new CellBuffer({ width: 1, height: 1 });
+    buffer.writeText(0, 0, "A", "text");
+    expect(equalCellRangeSnapshot(
+      createCellRangeSnapshot(buffer, { x: 0, y: 0 }, { x: 0, y: 0 }),
+      createCellLinearRangeSnapshot(buffer, { x: 0, y: 0 }, { x: 0, y: 0 }),
+    )).toBe(false);
+  });
   it("extracts rendered borders and removes only trailing spaces per row", () => {
     const buffer = new CellBuffer({ width: 6, height: 3 });
     buffer.writeText(0, 0, "┌──┐  ", "panel");

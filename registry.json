@@ -109,6 +109,11 @@
           "target": "@lib/cell-ui/browser-input.tsx"
         },
         {
+          "path": "registry/cell-ui/browser-overlay-host.tsx",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-overlay-host.tsx"
+        },
+        {
           "path": "registry/cell-ui/browser-presentation.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/browser-presentation.ts"
@@ -132,6 +137,11 @@
           "path": "registry/cell-ui/browser-theme.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/browser-theme.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-toast.tsx",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-toast.tsx"
         },
         {
           "path": "registry/cell-ui/browser-tooltip.ts",
@@ -307,6 +317,16 @@
           "path": "registry/cell-ui/recipe.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/recipe.ts"
+        },
+        {
+          "path": "registry/cell-ui/reorder-preview.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/reorder-preview.ts"
+        },
+        {
+          "path": "registry/cell-ui/reorder.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/reorder.ts"
         },
         {
           "path": "registry/cell-ui/runtime.ts",

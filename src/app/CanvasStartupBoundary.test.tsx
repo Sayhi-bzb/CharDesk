@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import {
   CanvasRuntimeProvider,
@@ -58,15 +58,10 @@ function renderBoundary(
 
 describe("CanvasStartupBoundary", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     setUiLanguage("en");
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("renders chrome immediately but delays progress feedback during restore", async () => {
+  it("keeps the shared startup screen during restore", () => {
     const harness = createPersistenceHarness({
       ...readyStatus,
       phase: "restoring",
@@ -79,15 +74,12 @@ describe("CanvasStartupBoundary", () => {
     });
     renderBoundary(harness.runtime);
 
-    expect(screen.getByTestId("startup-chrome")).toBeInTheDocument();
-    expect(screen.getByTestId("canvas-restore-surface")).toHaveAttribute(
+    expect(screen.getByRole("main")).toHaveAttribute(
       "aria-busy",
       "true"
     );
+    expect(screen.getByRole("main")).toHaveAttribute("data-startup-phase", "restoring");
     expect(screen.queryByTestId("workspace")).not.toBeInTheDocument();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
-
-    await act(async () => vi.advanceTimersByTimeAsync(150));
     expect(screen.getByRole("status")).toHaveTextContent("Restoring workspace");
 
     harness.host.canvas.dispose();
@@ -108,7 +100,7 @@ describe("CanvasStartupBoundary", () => {
 
     act(() => harness.setStatus(readyStatus));
     expect(screen.getByTestId("workspace")).toBeInTheDocument();
-    expect(screen.queryByTestId("canvas-restore-surface")).not.toBeInTheDocument();
+    expect(screen.queryByRole("main")).not.toBeInTheDocument();
 
     harness.host.canvas.dispose();
   });

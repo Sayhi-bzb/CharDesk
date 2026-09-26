@@ -1,0 +1,3 @@
+/blackboard https://canvas.chardesk.com/blackboard 302
+/blackboard/* https://canvas.chardesk.com/blackboard/:splat 302
+/s/* https://canvas.chardesk.com/s/:splat 302

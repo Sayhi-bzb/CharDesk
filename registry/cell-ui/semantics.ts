@@ -64,6 +64,7 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
       || parent.kind === "range-slider"
       || parent.kind === "radio-group"
       || parent.kind === "markdown-block"
+      || parent.probeId !== null
     ) return parent.id;
     parentId = parent.parentId;
   }
@@ -71,13 +72,14 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
 };
 
 const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
+  if (node.kind === "box" && node.probeId) return "group";
   if (node.kind === "markdown-link") return "link";
   if (node.kind === "markdown-block") return node.markdownRole;
   if (node.dialogPart === "title") return "heading";
   if (node.dialogPart === "description") return "paragraph";
   if (node.kind === "accordion-trigger") return "button";
   if (node.kind === "accordion-content") return "region";
-  if (node.kind === "overlay") return "dialog";
+  if (node.kind === "overlay") return node.dialog?.role ?? "dialog";
   if (node.kind === "button") return "button";
   if (node.kind === "text" && node.invalid) return "alert";
   if (node.kind === "badge-action") return "button";
@@ -159,14 +161,20 @@ export const createSemanticSnapshot = (
       .filter((id): id is WidgetId => !!id))];
     const tooltipTargetInModal = modalId && node.kind === "tooltip" && node.tooltipTargetId
       && isDescendantOf(tree, node.tooltipTargetId, modalId);
-    if (modalId && !isDescendantOf(tree, node.id, modalId) && !tooltipTargetInModal) continue;
-    const parentId = tooltipTargetInModal ? modalId : semanticParent(tree, node);
+    const modalProbeAncestor = modalId && node.probeId && isDescendantOf(tree, modalId, node.id);
+    if (modalId && !isDescendantOf(tree, node.id, modalId)
+      && !tooltipTargetInModal && !modalProbeAncestor) continue;
+    const candidateParentId = tooltipTargetInModal ? modalId : semanticParent(tree, node);
+    const parentId = modalId && candidateParentId && !isDescendantOf(tree, candidateParentId, modalId)
+      && !(tree.nodes.get(candidateParentId)?.probeId && isDescendantOf(tree, modalId, candidateParentId))
+      ? null : candidateParentId;
     const sceneEntry = scene.entries.get(node.id);
     const rangeThumb = node.kind === "range-slider-thumb"
       ? resolveCellRangeSliderThumbContext(tree, node.id)
       : null;
     const semantic: SemanticNode = {
       id: node.id,
+      ...(node.probeId ? { probeId: node.probeId } : {}),
       semanticParentId: parentId,
       traversalOrder,
       bounds: sceneEntry?.layoutBounds ?? null,
@@ -375,7 +383,7 @@ export const auditSemanticSnapshot = (
     if ((node.rowCount !== undefined || node.columnCount !== undefined) && (
       (node.role !== "grid" && node.role !== "table") || !positiveInteger(node.rowCount) || !positiveInteger(node.columnCount)
     )) issue(node.id, "invalid-state", "Grid counts must be positive integers on a grid.");
-    if (node.modal !== undefined && node.role !== "dialog") {
+    if (node.modal !== undefined && node.role !== "dialog" && node.role !== "alertdialog") {
       issue(node.id, "invalid-state", `modal is invalid for role ${node.role}.`);
     }
     if (node.orientation !== undefined && !compositeRoles.has(node.role) && node.role !== "slider" && node.role !== "separator") {
@@ -409,7 +417,7 @@ export const auditSemanticSnapshot = (
       (node.value !== undefined || node.multiline !== undefined || node.readOnly !== undefined)
       && node.role !== "textbox" && node.role !== "combobox"
     ) issue(node.id, "invalid-state", `Text state is invalid for role ${node.role}.`);
-    if (node.focused && !focusRoles.has(node.role) && node.role !== "dialog") {
+    if (node.focused && !focusRoles.has(node.role) && node.role !== "dialog" && node.role !== "alertdialog") {
       issue(node.id, "invalid-focus", `Role ${node.role} cannot own focus.`);
     }
     if (node.activeDescendantId !== undefined && !compositeRoles.has(node.role) && node.role !== "combobox") {
@@ -448,7 +456,7 @@ export const auditSemanticSnapshot = (
     }
     for (const action of node.actions) {
       const valid = action === "focus"
-        ? focusRoles.has(node.role) || node.role === "dialog"
+        ? focusRoles.has(node.role) || node.role === "dialog" || node.role === "alertdialog"
         : action === "activate"
           ? activateRoles.has(node.role)
             && !(node.role === "treeitem" && node.expanded !== undefined)

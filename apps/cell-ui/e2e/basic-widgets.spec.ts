@@ -1,8 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { cellPoint, readCellProbe, readCellText } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, readCellProbe, readCellText } from "./helpers/cell-probe";
 
 async function clickCellOwner(page: Page, surface: Locator, id: string) {
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface).first();
   await canvas.scrollIntoViewIfNeeded();
   const frame = await readCellProbe(surface);
   const cell = frame.cells.find((cell) => cell.ownerId === id);
@@ -20,7 +20,7 @@ test("Toggle keeps pressed state after mouse exit and supports keyboard release"
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await page.mouse.move(0, 0);
   await expect(surface).not.toHaveAttribute("data-cell-hovered");
-  await page.locator('[data-cell-probe="article-toggle-0"] canvas').click({ position: { x: 5, y: 5 } });
+  await page.mouse.click(1, 100);
   await expect(surface).not.toHaveAttribute("data-cell-activation-flash");
   await expect(surface).not.toHaveAttribute("data-cell-confirmation-phase");
   const idle = await readCellProbe(surface);
@@ -42,7 +42,7 @@ test("Radio mouse and arrow selection share one semantic group", async ({ page }
   await clickCellOwner(page, surface, "component-radio-dark");
   await expect(group.getByRole("radio", { name: "Dark", exact: true })).toHaveAttribute("aria-checked", "true");
   // Focus exit cancels any optional confirmation before keyboard navigation.
-  await page.locator('[data-cell-probe="article-radio-0"] canvas').click({ position: { x: 5, y: 5 } });
+  await page.mouse.click(1, 100);
   await group.getByRole("radio", { name: "Dark", exact: true }).focus();
   await page.keyboard.press("ArrowDown");
   await expect(group.getByRole("radio", { name: "System" })).toHaveAttribute("aria-checked", "true");

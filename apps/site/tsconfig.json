@@ -1,0 +1,4 @@
+{
+  "extends": "../cell-ui/tsconfig.json",
+  "include": ["src", "vite.config.ts"]
+}

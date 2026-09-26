@@ -2,12 +2,17 @@ import type { CellBuffer } from "./buffer.js";
 import type { CellPoint, CellRect } from "./types.js";
 import { resolveCellRangeBounds } from "@chardesk/cell-core";
 
-export type CellRangeSnapshot = Readonly<{
+type CellRangeBase = Readonly<{
   anchor: CellPoint;
   head: CellPoint;
   bounds: CellRect;
   text: string;
 }>;
+
+export type CellRangeSnapshot = CellRangeBase & (
+  | Readonly<{ shape?: "rectangle"; spans?: never }>
+  | Readonly<{ shape: "linear"; spans: readonly CellRect[] }>
+);
 
 export type CellRangeCommand =
   | Readonly<{ type: "set"; snapshot: CellRangeSnapshot }>
@@ -103,12 +108,52 @@ export const createCellRangeSnapshot = (
   };
 };
 
+export const createCellLinearRangeSnapshot = (
+  buffer: CellBuffer,
+  anchor: CellPoint,
+  head: CellPoint,
+): CellRangeSnapshot | null => {
+  if (buffer.width === 0 || buffer.height === 0) return null;
+  const clampPoint = (point: CellPoint): CellPoint => ({
+    x: clamp(point.x, buffer.width - 1), y: clamp(point.y, buffer.height - 1),
+  });
+  const selectedAnchor = clampPoint(anchor);
+  const selectedHead = clampPoint(head);
+  const forward = selectedAnchor.y < selectedHead.y
+    || (selectedAnchor.y === selectedHead.y && selectedAnchor.x <= selectedHead.x);
+  const start = forward ? selectedAnchor : selectedHead;
+  const end = forward ? selectedHead : selectedAnchor;
+  const spans: CellRect[] = [];
+  let left = buffer.width;
+  let right = 0;
+  for (let y = start.y; y <= end.y; y += 1) {
+    const first = y === start.y ? start.x : 0;
+    const last = y === end.y ? end.x : buffer.width - 1;
+    const firstCell = getFootprint(buffer, { x: first, y });
+    const lastCell = getFootprint(buffer, { x: last, y });
+    const x = firstCell?.x ?? first;
+    const spanRight = lastCell ? lastCell.x + lastCell.width : last + 1;
+    spans.push({ x, y, width: spanRight - x, height: 1 });
+    left = Math.min(left, x);
+    right = Math.max(right, spanRight);
+  }
+  return {
+    shape: "linear",
+    anchor: selectedAnchor,
+    head: selectedHead,
+    spans,
+    bounds: { x: left, y: start.y, width: right - left, height: end.y - start.y + 1 },
+    text: spans.map((span) => extractCellRange(buffer, span, { trimEnd: true, sourceAware: true })).join("\n"),
+  };
+};
+
 export const equalCellRangeSnapshot = (
   left: CellRangeSnapshot | null,
   right: CellRangeSnapshot | null
 ): boolean => {
   if (left === right) return true;
   if (!left || !right) return false;
+  if ((left.shape ?? "rectangle") !== (right.shape ?? "rectangle")) return false;
   return left.anchor.x === right.anchor.x
     && left.anchor.y === right.anchor.y
     && left.head.x === right.head.x

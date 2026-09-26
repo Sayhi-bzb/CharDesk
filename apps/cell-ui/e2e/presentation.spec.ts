@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { cellPoint, ownerBounds, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, ownerBounds, readCellProbe } from "./helpers/cell-probe";
 
 const choosePresentation = async (page: Page, value: "Rich" | "Text") => {
   const trigger = page.getByRole("button", { name: "presentation" });
@@ -8,6 +8,10 @@ const choosePresentation = async (page: Page, value: "Rich" | "Text") => {
   const option = page.getByRole("option", { name: value });
   await expect(option).toBeAttached();
   await option.focus();
+  await expect(option).toBeFocused();
+  const article = page.locator('.docs-page [data-cell-probe^="article-"]').first();
+  if (await article.count()) await expect(article)
+    .toHaveAttribute("data-cell-focused", (await option.getAttribute("data-cell-semantic-id"))!);
   await page.keyboard.press("Enter");
   await expect(trigger).toHaveAttribute("aria-expanded", "false");
 };
@@ -79,9 +83,9 @@ test("text Select exposes navigation and selection as distinct glyphs", async ({
   await expect(trigger).toHaveAttribute("aria-expanded", "true");
   const probe = await readCellProbe(surface);
   expect(probe.text).toContain("┌");
-  expect(probe.text).toContain("✓");
   const dropdown = probe.overlays.find((overlay) => overlay.rootId === "component-select-content");
   expect(dropdown).toBeDefined();
+  expect(dropdown!.text).toContain("✓");
   expect(dropdown!.bounds.y + dropdown!.bounds.height).toBeLessThanOrEqual(probe.overlayViewport.height);
   await page.keyboard.press("Escape");
   await expect(trigger).toHaveAttribute("aria-expanded", "false");
@@ -94,7 +98,7 @@ test("Text and Badge expose the same local presentation selector", async ({ page
     const surface = page.locator(`[data-cell-probe="component-${component}"]`);
     await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Text");
     if (component === "text-area") {
-      const editor = surface.getByRole("textbox", { name: "Notes" });
+      const editor = page.getByRole("textbox", { name: "Notes" });
       await expect(editor).toBeAttached();
       await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Hello, 世界");
       const idle = await readCellProbe(surface);
@@ -121,7 +125,7 @@ test("Text and Badge expose the same local presentation selector", async ({ page
 test("TextArea keeps variant and Rich frame choices across presentations", async ({ page }) => {
   await page.goto("/#/components/text-area");
   const surface = page.locator('[data-cell-probe="component-text-area"]');
-  const editor = surface.getByRole("textbox", { name: "Notes" });
+  const editor = page.getByRole("textbox", { name: "Notes" });
   const initial = await readCellProbe(surface);
   expect(initial.cells.some((cell) => cell.ownerId === "notes" && cell.text === "┌")).toBe(false);
   const bounds = ownerBounds(initial, "notes");
@@ -152,7 +156,7 @@ test("TextArea previews its beginning on blur and restores editing context by fo
     await page.goto("/#/components/text-area");
     if (presentation === "Text") await choosePresentation(page, "Text");
     const surface = page.locator('[data-cell-probe="component-text-area"]');
-    const editor = surface.getByRole("textbox", { name: "Notes" });
+    const editor = page.getByRole("textbox", { name: "Notes" });
     const value = Array.from({ length: 15 }, (_, index) => `Line-${String(index).padStart(2, "0")}`).join("\n");
     await editor.fill(value);
     await expect.poll(async () => (await readCellProbe(surface)).text).toContain("Line-14");
@@ -192,7 +196,7 @@ for (const scheme of ["light", "dark"] as const) {
       await page.goto("/#/components/text-area");
       if (presentation === "Text") await choosePresentation(page, "Text");
       const surface = page.locator('[data-cell-probe="component-text-area"]');
-      const editor = surface.getByRole("textbox", { name: "Notes" });
+      const editor = page.getByRole("textbox", { name: "Notes" });
       await editor.fill(Array.from({ length: 12 }, () => "x".repeat(40)).join("\n"));
       await expect.poll(async () => (await readCellProbe(surface)).cells
         .filter((cell) => cell.ownerId === "notes" && thumbGlyphs.has(cell.text))
@@ -220,7 +224,7 @@ for (const scheme of ["light", "dark"] as const) {
 test("surface TextArea thumb reaches the left edge while content remains inset", async ({ page }) => {
   await page.goto("/#/components/text-area");
   const surface = page.locator('[data-cell-probe="component-text-area"]');
-  const editor = surface.getByRole("textbox", { name: "Notes" });
+  const editor = page.getByRole("textbox", { name: "Notes" });
   await editor.fill(Array.from({ length: 12 }, () => "x".repeat(40)).join("\n"));
   await editor.press("Home");
   await expect.poll(async () => {
@@ -240,7 +244,7 @@ test("blank horizontal TextArea track still pages without changing the selection
     await page.goto("/#/components/text-area");
     if (presentation === "Text") await choosePresentation(page, "Text");
     const surface = page.locator('[data-cell-probe="component-text-area"]');
-    const editor = surface.getByRole("textbox", { name: "Notes" });
+    const editor = page.getByRole("textbox", { name: "Notes" });
     await editor.fill(Array.from({ length: 12 }, () => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef").join("\n"));
     await editor.press("Home");
     const before = await readCellProbe(surface);
@@ -265,7 +269,7 @@ test("blank horizontal TextArea track still pages without changing the selection
 test("TextArea drag selection contrasts with its focused surface and hides on blur", async ({ page }) => {
   await page.goto("/#/components/text-area");
   const surface = page.locator('[data-cell-probe="component-text-area"]');
-  const editor = surface.getByRole("textbox", { name: "Notes" });
+  const editor = page.getByRole("textbox", { name: "Notes" });
   const initial = await readCellProbe(surface);
   const first = initial.cells.find((cell) => cell.ownerId === "notes" && cell.text === "H")!;
   const start = await cellPoint(surface, first.x, first.y);
@@ -289,7 +293,7 @@ test("TextArea drag selection contrasts with its focused surface and hides on bl
   expect(glyph("H").style.backgroundColor).not.toBe(glyph("世").style.backgroundColor);
   expect(glyph("H").style.underline).not.toBe(true);
 
-  await page.locator('[data-cell-probe="article-text-area-0"] canvas').click({ position: { x: 5, y: 5 } });
+  await page.locator('[data-cell-probe="article-text-area"] canvas').click({ position: { x: 5, y: 5 } });
   await expect.poll(async () => {
     const probe = await readCellProbe(surface);
     return probe.cells.find((cell) => cell.ownerId === "notes" && cell.text === "H")?.style.backgroundColor;
@@ -311,7 +315,7 @@ test("TextArea drag uses Cell offsets even when the pointer starts on its native
   for (const origin of ["unfocused-caret", "focused-caret", "neighbor", "backward"] as const) {
     await page.goto("/#/components/text-area");
     const surface = page.locator('[data-cell-probe="component-text-area"]');
-    const editor = surface.getByRole("textbox", { name: "Notes" });
+    const editor = page.getByRole("textbox", { name: "Notes" });
     const first = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "notes" && cell.text === "H")!;
     const start = await cellPoint(surface, first.x, first.y);
     const end = await cellPoint(surface, first.x + 5, first.y);
@@ -342,7 +346,7 @@ test("TextArea drag uses Cell offsets even when the pointer starts on its native
 test("TextInput caret-origin drag shares the Cell selection path", async ({ page }) => {
   await page.goto("/#/components/input");
   const surface = page.locator('[data-cell-probe="component-input"]');
-  const editor = surface.getByRole("textbox", { name: "File name" });
+  const editor = page.getByRole("textbox", { name: "File name" });
   await editor.focus();
   await page.keyboard.press("Home");
   const first = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "component-input-field" && cell.text === "n")!;
@@ -361,11 +365,12 @@ test("TextInput caret-origin drag shares the Cell selection path", async ({ page
 test("canceling an editor pointer drag freezes its Cell selection", async ({ page }) => {
   await page.goto("/#/components/text-area");
   const surface = page.locator('[data-cell-probe="component-text-area"]');
-  const editor = surface.getByRole("textbox", { name: "Notes" });
+  const article = page.locator('[data-cell-probe="article-text-area"]');
+  const editor = page.getByRole("textbox", { name: "Notes" });
   const first = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "notes" && cell.text === "H")!;
   const start = await cellPoint(surface, first.x, first.y);
   const end = await cellPoint(surface, first.x + 5, first.y);
-  await surface.evaluate((element) => element.addEventListener("pointerdown", (event) => {
+  await article.evaluate((element) => element.addEventListener("pointerdown", (event) => {
     element.dataset.dragPointerId = String(event.pointerId);
   }));
   await page.mouse.move(start.x, start.y);
@@ -373,8 +378,8 @@ test("canceling an editor pointer drag freezes its Cell selection", async ({ pag
   await page.mouse.move(end.x, end.y, { steps: 8 });
   await expect.poll(async () => editor.evaluate((element: HTMLTextAreaElement) =>
     element.selectionEnd)).toBe(5);
-  const pointerId = Number(await surface.getAttribute("data-drag-pointer-id"));
-  await surface.dispatchEvent("pointercancel", { pointerId });
+  const pointerId = Number(await article.getAttribute("data-drag-pointer-id"));
+  await article.dispatchEvent("pointercancel", { pointerId });
   await page.mouse.move((await cellPoint(surface, first.x + 8, first.y)).x, end.y, { steps: 4 });
   await page.mouse.up();
   await expect.poll(async () => editor.evaluate((element: HTMLTextAreaElement) => ({
@@ -383,8 +388,7 @@ test("canceling an editor pointer drag freezes its Cell selection", async ({ pag
   }))).toEqual({ start: 0, end: 5 });
 });
 
-test("Text hides character-ineffective controls but keeps color and glyph choices", async ({ page }) => {
-  const cases: readonly { route: string; hidden: readonly string[]; visible: readonly string[]; checks?: readonly string[] }[] = [
+const presentationControlCases: readonly { route: string; hidden: readonly string[]; visible: readonly string[]; checks?: readonly string[] }[] = [
     { route: "button", hidden: ["variant"], visible: ["content"], checks: ["disabled"] },
     { route: "progress", hidden: ["variant"], visible: [], checks: ["number", "indeterminate"] },
     { route: "table", hidden: ["variant"], visible: [] },
@@ -397,8 +401,9 @@ test("Text hides character-ineffective controls but keeps color and glyph choice
     { route: "input", hidden: [], visible: ["variant"] },
     { route: "spinner", hidden: [], visible: ["variant"] },
     { route: "separator", hidden: [], visible: ["variant"] },
-  ];
-  for (const { route, hidden, visible, checks } of cases) {
+];
+for (const { route, hidden, visible, checks } of presentationControlCases) {
+  test(`${route} Text hides character-ineffective controls`, async ({ page }) => {
     await page.goto(`/#/components/${route}`);
     await choosePresentation(page, "Text");
     const surface = page.locator(`[data-cell-probe="component-${route}"]`);
@@ -407,8 +412,8 @@ test("Text hides character-ineffective controls but keeps color and glyph choice
     for (const label of checks ?? []) {
       await expect(surface.getByRole("checkbox", { name: label, exact: true })).toBeAttached();
     }
-  }
-});
+  });
+}
 
 test("Rich choices survive Text and Box exposes only effective frame controls", async ({ page }) => {
   await page.goto("/#/components/button");
@@ -481,7 +486,7 @@ test("Text vertical ScrollArea rail keeps its Unicode texture through keyboard a
   const afterKey = await railCells();
   expect(afterKey.map((cell) => cell.text)).not.toEqual(initial.map((cell) => cell.text));
 
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface).first();
   const probe = await readCellProbe(surface);
   const thumb = afterKey.find((cell) => cell.text === "█")!;
   const bounds = (await canvas.boundingBox())!;

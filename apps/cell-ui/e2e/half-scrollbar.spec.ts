@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readCellProbe, readCellMetrics } from "./helpers/cell-probe";
+import { canvasFor, readCellProbe, readCellMetrics } from "./helpers/cell-probe";
 
 for (const dpr of [1, 1.25, 2]) {
   test.describe(`half-cell scrollbar DPR ${dpr}`, () => {
@@ -8,7 +8,7 @@ for (const dpr of [1, 1.25, 2]) {
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.goto("/#/__fixtures/core");
       const surface = page.locator('[data-cell-probe="core"]');
-      const canvas = surface.locator("canvas");
+      const canvas = canvasFor(surface);
       await canvas.scrollIntoViewIfNeeded();
       const { cellWidth, cellHeight } = await readCellMetrics(surface);
       const bounds = (await canvas.boundingBox())!;

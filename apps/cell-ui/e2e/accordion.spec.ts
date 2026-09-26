@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, readCellProbe } from "./helpers/cell-probe";
 
 test("Accordion preview scrolls overflow and reveals keyboard-focused items", async ({ page }) => {
   await page.goto("/#/components/accordion");
@@ -127,7 +127,7 @@ test("Accordion independently expands, preserves content, and shares keyboard an
   await expect(general).toHaveAttribute("aria-expanded", "false");
   await expect(appearance).toHaveAttribute("aria-expanded", "false");
   await expect(surface.getByRole("checkbox", { name: "Sound" })).toHaveCount(0);
-  const canvas = surface.locator("canvas").first();
+  const canvas = canvasFor(surface);
   await canvas.scrollIntoViewIfNeeded();
   const trigger = (await readCellProbe(surface)).cells.find((cell) => cell.ownerId === "accordion-appearance-trigger" && cell.text === "▸")!;
   const point = await cellPoint(surface, trigger.x, trigger.y);

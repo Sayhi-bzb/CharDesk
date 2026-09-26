@@ -31,6 +31,10 @@ const fixtures: Record<string, Fixture> = {
     id: "overlay",
     load: () => import("./sections/overlay").then(({ OverlayDemo }) => ({ default: OverlayDemo })),
   },
+  "overlay-host": {
+    id: "overlay-host",
+    load: () => import("./sections/overlay-host").then(({ OverlayHostDemo }) => ({ default: OverlayHostDemo })),
+  },
   virtualization: {
     id: "virtualization",
     load: () => import("./sections/virtualization").then(({ VirtualizationDemo }) => ({ default: VirtualizationDemo })),

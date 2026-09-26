@@ -6,7 +6,9 @@
 
 CharDesk 把 Unicode 文本变成共享工作区：人看到画布，Agent 编辑 token。
 
-[打开 CharDesk](https://chardesk.com/) · [探索 CharGraph](https://chardesk.com/chargraph/) · [Cell UI Gallery](https://ui.chardesk.com/) · [CLI 文档](packages/cli/README.md)
+[打开 Canvas](https://canvas.chardesk.com/) · [探索 Cell UI](https://ui.chardesk.com/)
+
+[产品首页](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/) · [CLI 文档](packages/cli/README.md)
 
 ## 从 Agent 开始
 
@@ -103,7 +105,7 @@ Unicode、Box Drawing、中日韩字符、技术符号、单色 Emoji 与 Nerd F
 ### Agent 接入
 
 - **本地文件与 CLI：**稳定的默认路径。Agent 使用原生文件工具，`chardesk` 负责检查、预览、打开和渲染。详见 [CLI 文档](packages/cli/README.md)。
-- **Chrome WebMCP：**实验性能力。开启 `chrome://flags/#enable-webmcp-testing`，重启 Chrome，并为兼容的 Agent 保持 [CharDesk](https://chardesk.com/) 页面打开。
+- **Chrome WebMCP：**实验性能力。开启 `chrome://flags/#enable-webmcp-testing`，重启 Chrome，并为兼容的 Agent 保持 [Canvas](https://canvas.chardesk.com/) 页面打开。
 - **ChatGPT Site Tools：**实验性能力。在 **Settings → Browser → Permissions** 中开启 **Site tools**，再用 ChatGPT 内置浏览器打开 CharDesk。参见 [OpenAI 官方 Site Tools 文档](https://learn.chatgpt.com/docs/webmcp)。
 
 浏览器 Agent 可以调用 `chardesk_read_materials`，进入与 skill 相同的视觉语言和案例环境。Blackboard 工具默认操作当前页面可见的画布；创建或打开工作区时会自动激活它。

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, copyCellRange, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, copyCellRange, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
 
 test("Grid has one remembered Tab entry and range copy never selects a cell", async ({ page }) => {
   await page.goto("/#/__fixtures/complex");
@@ -108,7 +108,7 @@ test("Menu, Tree, Tabs, and Grid share keyboard, pointer, and semantic state", a
   await expect(surface).toHaveAttribute("data-cell-focused", "property-dark");
   await expect(section.getByRole("gridcell", { name: "Dark" })).toBeFocused();
 
-  const canvas = surface.locator("canvas");
+  const canvas = canvasFor(surface);
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Complex widget Canvas is not visible.");
   await canvas.click({
