@@ -6,7 +6,8 @@ import { YogaLayoutEngine, type LayoutEngine } from "./layout.js";
 import { CellBuffer } from "./buffer.js";
 import { paintScene } from "./paint.js";
 import {
-  createWidgetDescriptor,
+  createRuntimeWidgetDescriptor,
+  MarkdownDescriptorCache,
   type RootProps,
 } from "./react.js";
 import { composeScene } from "./scene.js";
@@ -100,6 +101,7 @@ export class CellUiRuntime {
   readonly #textAreaPreviewOffsets = new Map<WidgetId, { x: number; y: number }>();
   #revision = 0;
   #disposed = false;
+  readonly #markdownCache = new MarkdownDescriptorCache();
 
   constructor(options: CellUiRuntimeOptions) {
     const overlayViewport = options.overlayViewport ?? options.viewport;
@@ -149,7 +151,7 @@ export class CellUiRuntime {
     }> = {}
   ): FrameSnapshot {
     if (this.#disposed) throw new Error("CellUiRuntime has been disposed.");
-    const descriptor = createWidgetDescriptor(element, this.#recipe, this.#presentation);
+    const descriptor = createRuntimeWidgetDescriptor(element, this.#recipe, this.#presentation, this.#markdownCache);
     const reconciliation = reconcileWidgetTree(this.#tree, descriptor);
     const focusedId = state.resolveFocusedId
       ? state.resolveFocusedId(reconciliation.tree)
@@ -264,6 +266,7 @@ export class CellUiRuntime {
         paintIds.add(id);
         continue;
       }
+      if (before === node) continue;
       const change = classifyWidgetChange(before, node);
       if (change.layout) layoutDirty = true;
       if (change.geometry) {
@@ -466,6 +469,7 @@ export class CellUiRuntime {
   dispose(): void {
     if (this.#disposed) return;
     this.#layout.dispose();
+    this.#markdownCache.clear();
     this.#disposed = true;
   }
 }

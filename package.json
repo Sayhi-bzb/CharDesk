@@ -50,6 +50,7 @@
     "test:cell-core": "npm test -w @chardesk/cell-core",
     "test:cell-ui": "npm test -w @chardesk/cell-ui",
     "test:cell-ui-site": "npm test -w @chardesk/cell-ui-site",
+    "bench:cell-ui-markdown": "npm run build -w @chardesk/cell-ui && node scripts/performance/cell-ui-markdown.mjs",
     "cell-ui:registry:generate": "node scripts/cell-ui/generate-registry.mjs",
     "cell-ui:registry:verify": "node scripts/cell-ui/generate-registry.mjs --verify",
     "cell-ui:registry:typecheck": "tsc -p scripts/cell-ui/tsconfig.registry.json",

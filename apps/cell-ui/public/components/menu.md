@@ -92,6 +92,17 @@ export function MenuExample() {
 }
 ```
 
+## Composition
+
+```text
+CellOverlayHost
+├── CellSurface (trigger Buttons)
+└── CellPopover | CellContextMenu (opened by app state)
+    └── CellSurface
+        └── Menu
+            └── MenuItem (repeatable)
+```
+
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)

@@ -768,8 +768,72 @@ const markdownFixedWidth = (tokens: readonly Token[], skipCodeBlocks: boolean, s
     : token.type === "table" ? markdownTableWidth(token as Tokens.Table) : 0));
 const hasSharedScrollGuard = (node: WidgetDescriptor): boolean => node.kind !== "scroll-area"
   && (node.sharedScrollGuard || node.children.some(hasSharedScrollGuard));
+type PreparedMarkdownEntry = Readonly<{
+  source: string;
+  id: string | undefined;
+  style: CellLayoutStyle | undefined;
+  recipeVariant: CellUiRecipe["defaultControlVariant"];
+  presentation: CellUiPresentation;
+  inScrollArea: boolean;
+  descriptor: WidgetDescriptor;
+  nodes: number;
+}>;
+const preparedMarkdownDescriptors = new WeakSet<WidgetDescriptor>();
+export const isPreparedMarkdownDescriptor = (descriptor: WidgetDescriptor): boolean =>
+  preparedMarkdownDescriptors.has(descriptor);
+const sameMarkdownStyle = (left: CellLayoutStyle | undefined, right: CellLayoutStyle | undefined): boolean => {
+  const leftKeys = Object.keys(left ?? {});
+  const rightKeys = Object.keys(right ?? {});
+  return leftKeys.length === rightKeys.length && leftKeys.every((key) =>
+    (left as Record<string, unknown> | undefined)?.[key] === (right as Record<string, unknown> | undefined)?.[key]);
+};
+const descriptorNodes = (descriptor: WidgetDescriptor): number =>
+  1 + descriptor.children.reduce((count, child) => count + descriptorNodes(child), 0);
+
+/** Runtime-owned, bounded cache; never used by the standalone descriptor helper. */
+export class MarkdownDescriptorCache {
+  static readonly MAX_NODES = 25_000;
+  static readonly MAX_ENTRIES = 128;
+  static readonly MAX_SOURCE_LENGTH = 1_000_000;
+  #entries: PreparedMarkdownEntry[] = [];
+  #nodes = 0;
+  #sourceLength = 0;
+
+  get(props: MarkdownProps, recipe: CellUiRecipe, presentation: CellUiPresentation,
+    inScrollArea: boolean): WidgetDescriptor | null {
+    const index = this.#entries.findIndex((entry) => entry.source === props.source
+      && entry.id === props.id && sameMarkdownStyle(entry.style, props.style)
+      && entry.recipeVariant === recipe.defaultControlVariant
+      && entry.presentation === presentation && entry.inScrollArea === inScrollArea);
+    if (index < 0) return null;
+    const [entry] = this.#entries.splice(index, 1);
+    this.#entries.push(entry!);
+    return entry!.descriptor;
+  }
+
+  put(props: MarkdownProps, recipe: CellUiRecipe, presentation: CellUiPresentation,
+    inScrollArea: boolean, descriptor: WidgetDescriptor): void {
+    const nodes = descriptorNodes(descriptor);
+    if (nodes > MarkdownDescriptorCache.MAX_NODES
+      || props.source.length > MarkdownDescriptorCache.MAX_SOURCE_LENGTH) return;
+    while (this.#entries.length >= MarkdownDescriptorCache.MAX_ENTRIES
+      || this.#nodes + nodes > MarkdownDescriptorCache.MAX_NODES
+      || this.#sourceLength + props.source.length > MarkdownDescriptorCache.MAX_SOURCE_LENGTH) {
+      const evicted = this.#entries.shift()!;
+      this.#nodes -= evicted.nodes;
+      this.#sourceLength -= evicted.source.length;
+    }
+    this.#entries.push({ source: props.source, id: props.id, style: props.style ? { ...props.style } : undefined,
+      recipeVariant: recipe.defaultControlVariant, presentation, inScrollArea, descriptor, nodes });
+    preparedMarkdownDescriptors.add(descriptor);
+    this.#nodes += nodes;
+    this.#sourceLength += props.source.length;
+  }
+
+  clear(): void { this.#entries = []; this.#nodes = 0; this.#sourceLength = 0; }
+}
 const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresentation: CellUiPresentation,
-  inScrollArea = false): WidgetDescriptor[] => {
+  inScrollArea = false, cache: MarkdownDescriptorCache | null = null): WidgetDescriptor[] => {
   const presentation = element.type === Box
     ? (element.props as BoxProps).presentation ?? inheritedPresentation : inheritedPresentation;
   const textMode = presentation === "text";
@@ -780,12 +844,15 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
       if (!isValidElement(child)) {
         throw new TypeError("Cell UI fragments may only contain Cell UI primitives.");
       }
-      return describe(child, recipe, presentation, inScrollArea);
+      return describe(child, recipe, presentation, inScrollArea, cache);
     });
   }
 
   if (element.type === Markdown) {
     const props = element.props as MarkdownProps;
+    const cacheable = cache && !props.renderCodeBlock && !props.highlightCodeLine;
+    const cached = cacheable && cache.get(props, recipe, presentation, inScrollArea);
+    if (cached) return [cached];
     const tokens = marked.lexer(props.source, { gfm: true });
     const codeBlocks = props.renderCodeBlock ? parseCellMarkdownCodeBlocks(props.source) : [];
     const sharedScrollGuard = inScrollArea && !props.renderCodeBlock
@@ -795,8 +862,10 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     const descriptors = describe(<Box id={props.id} style={{ width: "100%", minWidth: fixedWidth || undefined,
       gap: 1, ...props.style }}>
       {markdownBlocks(tokens, codeBlocks, props.renderCodeBlock, props.highlightCodeLine, sharedScrollGuard)}
-    </Box>, recipe, presentation, inScrollArea);
-    return sharedScrollGuard ? descriptors.map((node) => ({ ...node, sharedScrollGuard })) : descriptors;
+    </Box>, recipe, presentation, inScrollArea, cache);
+    const result = sharedScrollGuard ? descriptors.map((node) => ({ ...node, sharedScrollGuard })) : descriptors;
+    if (cacheable && result.length === 1) cache.put(props, recipe, presentation, inScrollArea, result[0]!);
+    return result;
   }
 
   const primitiveKind = kinds.get(element.type);
@@ -813,7 +882,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     if (!expected) throw new TypeError("Field accepts TextInput, TextArea, Select, or Combobox.");
     const error = field.error?.trim() ? field.error : "";
     const errorId = `${field.id}-error`;
-    const input = describe(field.children, recipe, presentation);
+    const input = describe(field.children, recipe, presentation, false, cache);
     let matched = 0;
     const mark = (node: WidgetDescriptor): WidgetDescriptor => {
       if (node.kind === expected) {
@@ -827,8 +896,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     if (matched !== 1) throw new TypeError(`Field requires exactly one ${expected} control.`);
     const [box] = describe(<Box id={field.id} style={{ width: "100%", gap: 0, ...field.style }}>
       <Text>{field.label}</Text>
-    </Box>, recipe, presentation);
-    const errorNode = error ? describe(<Text id={errorId}>{`! ${error}`}</Text>, recipe, presentation)
+    </Box>, recipe, presentation, false, cache);
+    const errorNode = error ? describe(<Text id={errorId}>{`! ${error}`}</Text>, recipe, presentation, false, cache)
       .map((node) => ({ ...node, invalid: true })) : [];
     return [{ ...box!, children: [...box!.children, ...marked, ...errorNode] }];
   }
@@ -885,7 +954,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
       frame={variant === "outline" ? "bordered" : "none"} borderShape="square"
       style={{ width, direction: "column", flexShrink: 0 }}>
       {header}{variant === "surface" ? null : <TableDivider style={{ width: innerWidth, height: 1, flexShrink: 0 }} />}{dataRows}
-    </TablePart>, recipe, presentation);
+    </TablePart>, recipe, presentation, false, cache);
   }
   if (element.type === Slider && Array.isArray(props.value)) {
     const values = props.value as unknown[];
@@ -909,7 +978,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     >
       <RangeSliderThumb {...start} value={values[0] as number} />
       <RangeSliderThumb {...end} value={values[1] as number} />
-    </RangeSlider>, recipe, presentation);
+    </RangeSlider>, recipe, presentation, false, cache);
   }
   if (element.type === Slider && props.thumbs !== undefined) {
     throw new TypeError("Single-value Slider cannot have thumbs.");
@@ -970,7 +1039,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
         {description ? <Box style={{ maxWidth: "100%" }}>{description}</Box> : null}
         {button}
       </Box> : null}
-    </Box>, recipe, presentation);
+    </Box>, recipe, presentation, false, cache);
   } else if (kind === "tooltip") {
     if (childValues.length > 0) throw new TypeError("Tooltip does not accept children.");
     text = tooltipText(props.text as string);
@@ -984,14 +1053,14 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
       if (!isValidElement(child)) {
         throw new TypeError(`${kind} children must be Cell UI primitives.`);
       }
-      return describe(child, recipe, presentation, inScrollArea || kind === "scroll-area");
+      return describe(child, recipe, presentation, inScrollArea || kind === "scroll-area", cache);
     });
   }
   if (kind === "range-slider-thumb" && children.length > 0) {
     throw new TypeError("RangeSliderThumb cannot contain children.");
   }
   if (element.type === DialogFooter) {
-    children.unshift(...describe(<Box style={{ flexGrow: 1 }} />, recipe, presentation));
+    children.unshift(...describe(<Box style={{ flexGrow: 1 }} />, recipe, presentation, false, cache));
   }
   if (element.type === Link && (typeof props.href !== "string" || !safeMarkdownHref(props.href))) {
     throw new TypeError("Link requires a safe non-empty href.");
@@ -1163,16 +1232,31 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
   }];
 };
 
-export const createWidgetDescriptor = (
+const createDescriptorRoot = (
   value: ReactElement<RootProps> | null,
-  recipe: CellUiRecipe = {},
-  presentation: CellUiPresentation = "rich",
+  recipe: CellUiRecipe,
+  presentation: CellUiPresentation,
+  cache: MarkdownDescriptorCache | null,
 ): WidgetDescriptor | null => {
   if (value === null) return null;
-  const descriptors = describe(value, recipe, presentation);
+  const descriptors = describe(value, recipe, presentation, false, cache);
   const root = descriptors[0];
   if (descriptors.length !== 1 || root?.kind !== "root") {
     throw new TypeError("A Cell UI render must contain exactly one Root descriptor.");
   }
   return root;
 };
+
+export const createWidgetDescriptor = (
+  value: ReactElement<RootProps> | null,
+  recipe: CellUiRecipe = {},
+  presentation: CellUiPresentation = "rich",
+): WidgetDescriptor | null => createDescriptorRoot(value, recipe, presentation, null);
+
+/** Internal runtime entrypoint; standalone descriptor calls remain uncached. */
+export const createRuntimeWidgetDescriptor = (
+  value: ReactElement<RootProps> | null,
+  recipe: CellUiRecipe,
+  presentation: CellUiPresentation,
+  cache: MarkdownDescriptorCache,
+): WidgetDescriptor | null => createDescriptorRoot(value, recipe, presentation, cache);

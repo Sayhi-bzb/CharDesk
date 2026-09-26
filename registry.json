@@ -409,6 +409,11 @@
           "target": "@lib/cell-ui/testing.ts"
         },
         {
+          "path": "registry/cell-ui/text-lines.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/text-lines.ts"
+        },
+        {
           "path": "registry/cell-ui/text-viewport.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/text-viewport.ts"

@@ -1,4 +1,4 @@
-import type { WidgetDescriptor } from "./react.js";
+import { isPreparedMarkdownDescriptor, type WidgetDescriptor } from "./react.js";
 import type {
   WidgetId,
   WidgetMutation,
@@ -6,7 +6,7 @@ import type {
   WidgetTree,
 } from "./types.js";
 import { normalizeCellRangeSliderValues, resolveCellSliderRange } from "./slider.js";
-import { sameNodeContent } from "./widget-change.js";
+import { sameNodeContent, sameWidgetValue } from "./widget-change.js";
 export { sameWidgetValue } from "./widget-change.js";
 
 const EMPTY_TREE: WidgetTree = Object.freeze({
@@ -35,14 +35,47 @@ export const isDescendantOf = (
   return false;
 };
 
-const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
+const treeDescriptors = new WeakMap<WidgetTree, WidgetDescriptor>();
+
+const sameChildContext = (left: WidgetNode | undefined, right: WidgetNode | undefined): boolean =>
+  left === right || !!left && !!right
+    && left.kind === right.kind
+    && left.disabled === right.disabled
+    && left.reorderable === right.reorderable
+    && left.radioValue === right.radioValue
+    && left.tabsVariant === right.tabsVariant
+    && left.presentation === right.presentation
+    && sameWidgetValue(left.dialog, right.dialog);
+
+const inheritedDisabledFor = (tree: WidgetTree, parentId: WidgetId | null): boolean => {
+  let id = parentId;
+  while (id) {
+    const node = tree.nodes.get(id);
+    if (!node) break;
+    if ((node.kind === "accordion" || node.kind === "accordion-item" || node.kind === "combobox")
+      && node.disabled) return true;
+    id = node.parentId;
+  }
+  return false;
+};
+
+const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetTree): WidgetTree => {
   if (!descriptor) return EMPTY_TREE;
   const nodes = new Map<WidgetId, WidgetNode>();
+  const previousDescriptor = previous ? treeDescriptors.get(previous) : undefined;
+
+  const copyPreviousSubtree = (id: WidgetId): void => {
+    const node = previous!.nodes.get(id)!;
+    if (nodes.has(id)) throw new TypeError(`Duplicate WidgetId: ${id}`);
+    nodes.set(id, node);
+    for (const childId of node.children) copyPreviousSubtree(childId);
+  };
 
   const visit = (
     current: WidgetDescriptor,
     parentId: WidgetId | null,
-    index: number
+    index: number,
+    oldDescriptor?: WidgetDescriptor,
   ): WidgetId => {
     const parent = parentId ? nodes.get(parentId) : undefined;
     if (current.dialogPart && !parent?.dialog) {
@@ -87,6 +120,15 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
     const id = parentId && !current.explicitId ? `${parentId}/${segment}` : segment;
     if (!id) throw new TypeError("Widget ids must not be empty.");
     if (nodes.has(id)) throw new TypeError(`Duplicate WidgetId: ${id}`);
+
+    const oldNode = previous?.nodes.get(id);
+    if (oldDescriptor === current && isPreparedMarkdownDescriptor(current)
+      && oldNode?.parentId === parentId && oldNode.index === index
+      && inheritedDisabled === inheritedDisabledFor(previous!, parentId)
+      && sameChildContext(parent, parentId ? previous?.nodes.get(parentId) : undefined)) {
+      copyPreviousSubtree(id);
+      return id;
+    }
 
     nodes.set(id, {
       id,
@@ -176,7 +218,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       children: [],
     });
     const childIds = current.children.map((child, childIndex) =>
-      visit(child, id, childIndex)
+      visit(child, id, childIndex, oldDescriptor?.children[childIndex])
     );
     if (current.kind === "radio-group") {
       const items = childIds.map((childId) => nodes.get(childId)!);
@@ -270,7 +312,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
     return id;
   };
 
-  const rootId = visit(descriptor, null, 0);
+  const rootId = visit(descriptor, null, 0, previousDescriptor);
   const tooltipTargets = new Set<WidgetId>();
   for (const node of nodes.values()) {
     if (node.kind !== "tooltip" || !node.tooltipTargetId) continue;
@@ -279,7 +321,9 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
     }
     tooltipTargets.add(node.tooltipTargetId);
   }
-  return { rootId, nodes };
+  const tree = { rootId, nodes };
+  treeDescriptors.set(tree, descriptor);
+  return tree;
 };
 
 export const reconcileWidgetTree = (
@@ -287,7 +331,7 @@ export const reconcileWidgetTree = (
   descriptor: WidgetDescriptor | null
 ): Readonly<{ tree: WidgetTree; mutations: readonly WidgetMutation[] }> => {
   const before = previous ?? EMPTY_TREE;
-  const tree = materializeTree(descriptor);
+  const tree = materializeTree(descriptor, previous);
   const mutations: WidgetMutation[] = [];
 
   for (const [id, node] of tree.nodes) {
@@ -311,7 +355,7 @@ export const reconcileWidgetTree = (
         toIndex: node.index,
       });
     }
-    if (!sameNodeContent(old, node)) mutations.push({ type: "update", id });
+    if (old !== node && !sameNodeContent(old, node)) mutations.push({ type: "update", id });
   }
 
   const removed = [...before.nodes.values()]

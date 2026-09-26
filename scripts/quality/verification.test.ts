@@ -134,9 +134,11 @@ describe('verification task graph', () => {
     for (const project of ['chromium', 'webkit']) {
       const options = parseArguments(['--mode', 'full', '--phase', 'cell-e2e', '--cell-project', project])
       const plan = createVerificationPlan(options, { base: 'test', files: ['packages/cell-ui/src/index.ts'] }, projects)
-      expect(plan.tasks).toHaveLength(1)
-      expect(plan.tasks[0].args).toContain(`--project=${project}`)
-      expect(plan.tasks[0].args).not.toContain(`--project=${project === 'chromium' ? 'webkit' : 'chromium'}`)
+      const browserTask = plan.tasks.find(task => task.label === 'Cell browser tests')!
+      expect(plan.tasks.some(task => task.label === 'build @chardesk/rendering')).toBe(true)
+      expect(plan.tasks.indexOf(browserTask)).toBeGreaterThan(plan.tasks.findIndex(task => task.label === 'build @chardesk/rendering'))
+      expect(browserTask.args).toContain(`--project=${project}`)
+      expect(browserTask.args).not.toContain(`--project=${project === 'chromium' ? 'webkit' : 'chromium'}`)
     }
   })
 
@@ -145,7 +147,9 @@ describe('verification task graph', () => {
     const webkit = parseArguments(['--mode', 'quick', '--phase', 'cell-e2e', '--cell-project', 'webkit'])
     const chromium = parseArguments(['--mode', 'quick', '--phase', 'cell-e2e', '--cell-project', 'chromium'])
     expect(createVerificationPlan(webkit, changes, projects).tasks).toEqual([])
-    expect(createVerificationPlan(chromium, changes, projects).tasks).toHaveLength(1)
+    const tasks = createVerificationPlan(chromium, changes, projects).tasks
+    expect(tasks.filter(task => task.label === 'Cell browser tests')).toHaveLength(1)
+    expect(tasks.some(task => task.label === 'build @chardesk/rendering')).toBe(true)
   })
 
   it('preserves an explicit app target even without changed files', () => {

@@ -376,6 +376,7 @@ export function createVerificationPlan(options, changes, projects = loadWorkspac
     const suites = cell.browser.filter(suite => suite.grep !== null)
       .map(suite => ({ files: [suite.file], grep: suite.grep }))
     if (unfiltered.length) suites.unshift({ files: unfiltered, grep: null })
+    if (browserProjects.length && suites.length) buildRunner.build(['@chardesk/rendering'])
     for (const suite of browserProjects.length ? suites : []) {
       run(npmCommand, ['run', 'test:e2e', '-w', '@chardesk/cell-ui-site', '--', ...suite.files,
         ...browserProjects.map(project => `--project=${project}`),

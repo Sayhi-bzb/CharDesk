@@ -1,7 +1,3 @@
-import {
-  getGraphemeCellWidth,
-  iterateGraphemes,
-} from "@chardesk/protocol";
 import Yoga, {
   Align,
   Direction,
@@ -36,6 +32,7 @@ import {
 import { isCollectionItemKind } from "./widget-capabilities.js";
 import { hasInlineOutline, INLINE_OUTLINE_INSET } from "./inline-outline.js";
 import { cellTextWidth, isSingleLineControlText, singleLineText } from "./single-line-text.js";
+import { walkCellTextRows } from "./text-lines.js";
 
 const integer = (value: number, label: string) => {
   if (!Number.isFinite(value)) throw new RangeError(`${label} must be finite.`);
@@ -96,28 +93,10 @@ const measureText = (
     width: Math.min(widthLimit, cellTextWidth(singleLineText(text))),
     height: 1,
   };
-  let rowWidth = 0;
-  let measuredWidth = 0;
-  let rows = 1;
-  for (const { segment } of iterateGraphemes(text)) {
-    if (segment === "\n") {
-      measuredWidth = Math.max(measuredWidth, rowWidth);
-      rowWidth = 0;
-      rows += 1;
-      continue;
-    }
-    const cellWidth = getGraphemeCellWidth(segment);
-    if (rowWidth > 0 && rowWidth + cellWidth > widthLimit) {
-      measuredWidth = Math.max(measuredWidth, rowWidth);
-      rowWidth = 0;
-      rows += 1;
-    }
-    rowWidth += cellWidth;
-  }
-  measuredWidth = Math.max(measuredWidth, rowWidth);
+  const measured = walkCellTextRows(text, widthLimit);
   return {
-    width: constrained ? Math.min(widthLimit, measuredWidth) : measuredWidth,
-    height: rows,
+    width: constrained ? Math.min(widthLimit, measured.width) : measured.width,
+    height: measured.height,
   };
 };
 

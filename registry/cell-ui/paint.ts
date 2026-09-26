@@ -1,9 +1,5 @@
 import { resolveWidgetVisual, resolveEditorGlyphStyle } from "./visual.js";
-import {
-  getGraphemeCellWidth,
-  getTextCellWidth,
-  iterateGraphemes,
-} from "@chardesk/protocol";
+import { getTextCellWidth } from "@chardesk/protocol";
 import { CellBuffer } from "./buffer.js";
 import type {
   CellRect,
@@ -14,6 +10,7 @@ import type {
   WidgetTree,
 } from "./types.js";
 import type { CellTextLayoutSnapshot } from "./text.js";
+import { walkCellTextRows } from "./text-lines.js";
 import { DEFAULT_CELL_UI_THEME, type CellUiTheme } from "./theme.js";
 import { intersectSceneRects } from "./scene.js";
 import { TEXT_VERTICAL_TRACK_GLYPH, textVerticalThumbGlyph, thumbGlyph } from "./scrollbar.js";
@@ -43,8 +40,9 @@ const fill = (
   style: CellTextStyle,
   clip: CellRect
 ) => {
-  for (let y = bounds.y; y < bounds.y + bounds.height; y += 1) {
-    for (let x = bounds.x; x < bounds.x + bounds.width; x += 1) {
+  const visible = intersectSceneRects(bounds, clip);
+  for (let y = visible.y; y < visible.y + visible.height; y += 1) {
+    for (let x = visible.x; x < visible.x + visible.width; x += 1) {
       buffer.writeGrapheme(x, y, " ", ownerId, style, clip, "over");
     }
   }
@@ -60,27 +58,11 @@ const paintText = (
   copyMode: "normal" | "source" | "layout" = "normal"
 ): void => {
   if (bounds.width <= 0 || bounds.height <= 0) return;
-  let x = bounds.x;
-  let y = bounds.y;
-  const right = bounds.x + bounds.width;
-  const bottom = bounds.y + bounds.height;
-  for (const { segment } of iterateGraphemes(text)) {
-    if (segment === "\n") {
-      x = bounds.x;
-      y += 1;
-      if (y >= bottom) break;
-      continue;
-    }
-    const width = getGraphemeCellWidth(segment);
-    if (x > bounds.x && x + width > right) {
-      x = bounds.x;
-      y += 1;
-    }
-    if (y >= bottom || width > bounds.width) break;
-    buffer.writeGrapheme(x, y, segment, ownerId, style, clip, "over",
+  walkCellTextRows(text, bounds.width, ({ segment, column, row, width }) => {
+    if (row >= bounds.height || width > bounds.width) return false;
+    buffer.writeGrapheme(bounds.x + column, bounds.y + row, segment, ownerId, style, clip, "over",
       copyMode === "layout" ? "" : copyMode === "source" ? segment : undefined);
-    x += width;
-  }
+  });
 };
 
 const paintScrollbars = (

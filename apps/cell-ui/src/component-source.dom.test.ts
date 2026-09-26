@@ -16,7 +16,7 @@ describe("Gallery component source links", () => {
   });
 
   it("keeps compound component trees in the agent-readable Markdown", () => {
-    const compound = new Set(["accordion", "alert", "combobox", "dialog", "input", "radio", "select", "table", "tabs", "toast"]);
+    const compound = new Set(["accordion", "alert", "combobox", "dialog", "input", "menu", "radio", "select", "table", "tabs", "toast"]);
     for (const document of componentDocuments) {
       expect(Boolean(document.composition)).toBe(compound.has(document.slug));
       if (!document.composition) continue;

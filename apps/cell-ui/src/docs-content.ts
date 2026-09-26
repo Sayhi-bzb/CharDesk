@@ -49,6 +49,12 @@ export const componentContent: readonly ComponentContent[] = [
   {
     slug: "menu", title: "Menu",
     description: "Compose a Cell menubar with host-managed command menus across surfaces.",
+    composition: `CellOverlayHost
+├── CellSurface (trigger Buttons)
+└── CellPopover | CellContextMenu (opened by app state)
+    └── CellSurface
+        └── Menu
+            └── MenuItem (repeatable)`,
     usage: `import { useState } from "react";
 import {
   Box,
