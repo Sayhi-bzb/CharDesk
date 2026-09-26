@@ -34,7 +34,7 @@ export const renderGallerySelect = ({
   label: string;
   select: CellSelectState;
   focusedId: string | null;
-  width: number;
+  width?: number;
   disabled?: boolean;
   open?: boolean;
   showLabel?: boolean;
@@ -49,43 +49,41 @@ export const renderGallerySelect = ({
   labelId?: string;
   itemSemanticLabel?: (id: string) => string;
 }>) => (
-  <Box id={fieldId} key={select.id} variant="ghost" style={{ width }}>
+  <Box id={fieldId} key={select.id} variant="ghost" style={width === undefined ? undefined : { width }}>
     {showLabel ? <Text id={labelId}>{label}</Text> : null}
-    <Select id={select.id} style={{ width }} variant={variant}>
+    <Select id={select.id} style={width === undefined ? undefined : { width }} variant={variant}>
       <SelectTrigger
         id={select.triggerId}
         label={triggerLabel}
+        placeholder={emptyLabel}
         expanded={open}
         controlsId={open ? select.contentId : undefined}
         disabled={disabled}
         focused={focusedId === select.triggerId}
-        style={{ width }}
+        style={width === undefined ? undefined : { width }}
       ><Text>{triggerText}</Text></SelectTrigger>
-      {open ? (
-        <SelectContent
-          id={select.contentId}
-          label={contentLabel}
-          scrollY={select.scrollY}
-          frame={contentFrame}
-          borderShape={contentBorderShape}
-          style={{
-            width,
-          }}
-        >
-          {select.items.map((item, index) => (
-            <SelectItem
-              id={item.id}
-              key={item.id}
-              label={itemSemanticLabel?.(item.id)}
-              disabled={item.disabled}
-              focused={focusedId === item.id}
-              selected={select.selectedId === item.id}
-              positionInSet={index + 1}
-              setSize={select.items.length}
-            ><Text>{item.label}</Text></SelectItem>
-          ))}
-        </SelectContent>
-      ) : null}
+      <SelectContent
+        id={select.contentId}
+        open={open}
+        label={contentLabel}
+        scrollY={select.scrollY}
+        frame={contentFrame}
+        borderShape={contentBorderShape}
+        style={width === undefined ? undefined : { width }}
+      >
+        {select.items.map((item, index) => (
+          <SelectItem
+            id={item.id}
+            key={item.id}
+            label={itemSemanticLabel?.(item.id)}
+            disabled={item.disabled}
+            focused={focusedId === item.id}
+            selected={select.selectedId === item.id}
+            positionInSet={index + 1}
+            setSize={select.items.length}
+          ><Text>{item.label}</Text></SelectItem>
+        ))}
+      </SelectContent>
     </Select>
   </Box>
 );

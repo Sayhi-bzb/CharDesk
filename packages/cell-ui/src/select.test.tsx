@@ -41,6 +41,31 @@ const selectView = (open: boolean, focusedId = open ? "dark" : "theme-trigger") 
 );
 
 describe("Select", () => {
+  it("keeps a natural width from mounted Items while Content is closed", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 32, height: 6 } });
+    const view = (open: boolean, value: string, frame: "none" | "bordered") => <Root>
+      <Select id="theme">
+        <SelectTrigger id="trigger" expanded={open} placeholder="Choose a wide theme"><Text>{value}</Text></SelectTrigger>
+        <SelectContent id="content" open={open} frame={frame}>
+          <SelectItem id="dark"><Text>Dark</Text></SelectItem>
+          <SelectItem id="wide"><Text>宽字符 Theme</Text></SelectItem>
+        </SelectContent>
+      </Select>
+    </Root>;
+    const closed = runtime.render(view(false, "Dark", "none"));
+    const natural = closed.layout.entries.get("theme")!.rect.width;
+    expect(natural).toBeLessThan(30);
+    expect(closed.scene.entries.has("content")).toBe(false);
+    expect(topDismissableScopeId(closed.tree)).toBeNull();
+    expect(closed.semantics.nodes.get("wide")?.hidden).toBe(true);
+    const open = runtime.render(view(true, "宽字符 Theme", "bordered"));
+    expect(open.layout.entries.get("theme")!.rect.width).toBe(natural);
+    expect(open.scene.entries.get("content")?.layoutBounds.width).toBe(natural);
+    expect(open.scene.entries.get("trigger")?.layoutBounds.width).toBe(natural);
+    expect(topDismissableScopeId(open.tree)).toBe("content");
+    runtime.dispose();
+  });
+
   it("protects content between leading and trailing guard Cells", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 20, height: 2 } });
     const frame = runtime.render(<Root><Select id="theme" style={{ width: 20 }}>

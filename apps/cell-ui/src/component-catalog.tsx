@@ -23,12 +23,12 @@ import {
   TableComponentDemo,
 } from "./sections/components";
 import { componentContent, sourceLinksForComponent as contentSourceLinks, type ComponentContent } from "./docs-content";
-import { MenuComponentDemo, SheetComponentDemo, ToastComponentDemo } from "./sections/host-components";
+import { MenuComponentDemo, ToastComponentDemo } from "./sections/host-components";
 
 export type ComponentDocument = ComponentContent & Readonly<{ probeId: string; Demo: ComponentType }>;
 
 const demos: Readonly<Record<string, ComponentType>> = {
-  menu: MenuComponentDemo, sheet: SheetComponentDemo, toast: ToastComponentDemo,
+  menu: MenuComponentDemo, toast: ToastComponentDemo,
   alert: AlertComponentDemo,
   dialog: DialogComponentDemo, accordion: AccordionComponentDemo, toggle: ToggleComponentDemo,
   progress: ProgressComponentDemo, spinner: SpinnerComponentDemo, tooltip: TooltipComponentDemo,

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { canvasFor, cellPoint, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, ownerBounds, readCellProbe } from "./helpers/cell-probe";
 
 test("Combobox shows its default interaction", async ({ page }) => {
   await page.goto("/#/components/combobox");
@@ -9,6 +9,8 @@ test("Combobox shows its default interaction", async ({ page }) => {
   await expect(page.getByRole("button", { name: "variant", exact: true })).toBeAttached();
   await expect(page.getByRole("button", { name: "dropdown frame", exact: true })).toBeAttached();
   const initial = await readCellProbe(surface);
+  const inputWidth = ownerBounds(initial, "component-combobox-input").width;
+  expect(inputWidth).toBeLessThan(30);
   const elevatedBackground = initial.cells.find((cell) =>
     cell.ownerId === "component-combobox-input" && cell.text === " "
   )?.style.backgroundColor;
@@ -18,6 +20,7 @@ test("Combobox shows its default interaction", async ({ page }) => {
   const elevatedOverlay = (await readCellProbe(surface)).overlays.find((overlay) =>
     overlay.rootId === "component-combobox-content"
   );
+  expect(elevatedOverlay?.bounds.width).toBe(inputWidth);
   expect(elevatedOverlay?.cells.find((cell) =>
     cell.ownerId === "component-combobox-fusion" && cell.text === " "
   )?.style.backgroundColor).toBe(elevatedBackground);
@@ -82,6 +85,8 @@ test("Combobox filters without moving DOM focus and restores uncommitted text", 
   await expect(page.getByRole("option", { name: "Xiaolai Mono" })).toBeVisible();
   await expect(page.getByRole("option")).toHaveCount(1);
   const filtered = await readCellProbe(surface);
+  expect(ownerBounds(filtered, "component-combobox-input").width)
+    .toBe(ownerBounds(closed, "component-combobox-input").width);
   expect(filtered.overlays.find(({ rootId }) => rootId === "component-combobox-content")?.text)
     .toContain("Xiaolai Mono");
   await input.press("Escape");

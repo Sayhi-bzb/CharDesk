@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { CELL_SURFACE_GUARD_CELLS } from "@chardesk/cell-ui/browser";
 import { canvasFor, cellPoint, ownerBounds, ownerCells, readCellMetrics, readCellProbe } from "./helpers/cell-probe";
 
 test("Menu page switches menubar categories, opens a submenu, and returns focus", async ({ page }) => {
@@ -18,6 +19,14 @@ test("Menu page switches menubar categories, opens a submenu, and returns focus"
   await trigger.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("menu", { name: "File" })).toBeVisible();
+  const popup = page.locator('[data-cell-probe="component-menu-popup"]');
+  const filePopup = await readCellProbe(popup);
+  const fileWidth = filePopup.viewport.width;
+  expect(fileWidth).toBeLessThan(26);
+  const exportRow = ownerBounds(filePopup, "component-menu-export");
+  const submenuArrow = ownerCells(filePopup, "component-menu-export/text[0]")
+    .find((cell) => cell.text === "▸");
+  expect(submenuArrow?.x).toBe(exportRow.x + exportRow.width - 2);
   const active = await readCellProbe(preview);
   expect(ownerCells(active, "component-menu-file-trigger").length).toBe(2);
   expect(ownerCells(active, "component-menu-file-trigger/text[0]")
@@ -27,6 +36,7 @@ test("Menu page switches menubar categories, opens a submenu, and returns focus"
   const editPoint = await cellPoint(preview, edit.x + 1, edit.y);
   await page.mouse.click(editPoint.x, editPoint.y);
   await expect(page.getByRole("menu", { name: "Edit" })).toBeVisible();
+  expect((await readCellProbe(popup)).viewport.width).toBeLessThan(fileWidth);
   await page.getByRole("menuitem", { name: "Undo" }).focus();
   await page.keyboard.press("ArrowLeft");
   await expect(page.getByRole("menu", { name: "File" })).toBeVisible();
@@ -37,6 +47,8 @@ test("Menu page switches menubar categories, opens a submenu, and returns focus"
   await page.getByRole("menuitem", { name: "Export" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("menu", { name: "Export" })).toBeVisible();
+  expect((await readCellProbe(page.locator('[data-cell-probe="component-menu-submenu-popup"]'))).viewport.width)
+    .toBeLessThanOrEqual(fileWidth);
   await expect(page.getByRole("menuitem", { name: "As Text" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator('[data-cell-overlay-portal=""]')).toHaveCount(0);
@@ -107,6 +119,28 @@ test("Menu hover highlights items and switches an open menubar", async ({ page }
   await expect(page.getByRole("menu", { name: "File" })).toHaveCount(0);
 });
 
+test("Menu hover opens its submenu and aligns the first item with the parent row", async ({ page }) => {
+  await page.goto("/#/components/menu");
+  const file = page.getByRole("button", { name: "File menu" });
+  await file.focus();
+  await page.keyboard.press("Enter");
+  const popup = page.locator('[data-cell-probe="component-menu-popup"]');
+  const submenu = page.locator('[data-cell-probe="component-menu-submenu-popup"]');
+  const exportRow = ownerBounds(await readCellProbe(popup), "component-menu-export");
+  const exportPoint = await cellPoint(popup, exportRow.x + 1, exportRow.y);
+  await page.mouse.move(exportPoint.x, exportPoint.y);
+  await expect(submenu).toBeVisible();
+  const childRow = ownerBounds(await readCellProbe(submenu), "component-menu-export-text");
+  const childPoint = await cellPoint(submenu, childRow.x + 1, childRow.y);
+  await page.mouse.move(childPoint.x, childPoint.y);
+  await expect(submenu).toBeVisible();
+  await expect(submenu).toHaveAttribute("data-cell-hovered", "component-menu-export-text");
+  const openRow = ownerBounds(await readCellProbe(popup), "component-menu-open");
+  const openPoint = await cellPoint(popup, openRow.x + 1, openRow.y);
+  await page.mouse.move(openPoint.x, openPoint.y);
+  await expect(submenu).toHaveCount(0);
+});
+
 test("Menu item hover remains visible in dark Text presentation", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/#/components/menu");
@@ -174,7 +208,9 @@ test("Menu config applies one surface and frame recipe to both popup levels", as
   await file.focus();
   await page.keyboard.press("Enter");
   const popup = page.locator('[data-cell-probe="component-menu-popup"]');
-  const surfaceColor = ownerCells(await readCellProbe(popup), "component-menu-open")[0]?.style.backgroundColor;
+  const initialPopup = await readCellProbe(popup);
+  const naturalWidth = initialPopup.viewport.width;
+  const surfaceColor = ownerCells(initialPopup, "component-menu-open")[0]?.style.backgroundColor;
   expect((await readCellProbe(popup)).text).not.toContain("┌");
   expect((await readCellProbe(popup)).viewport.height).toBe(3);
   await page.getByRole("menuitem", { name: "Export" }).focus();
@@ -192,6 +228,7 @@ test("Menu config applies one surface and frame recipe to both popup levels", as
   await page.keyboard.press("Enter");
   await expect(popup).toBeVisible();
   const framed = await readCellProbe(popup);
+  expect(framed.viewport.width).toBe(naturalWidth);
   expect(framed.viewport.height).toBe(5);
   expect(framed.text).toContain("┌");
   expect(ownerCells(framed, "component-menu-open")[0]?.style.backgroundColor).not.toBe(surfaceColor);
@@ -201,6 +238,16 @@ test("Menu config applies one surface and frame recipe to both popup levels", as
   const framedSubmenu = await readCellProbe(submenu);
   expect(framedSubmenu.viewport.height).toBe(4);
   expect(framedSubmenu.text).toContain("┌");
+  const exportRow = ownerBounds(framed, "component-menu-export");
+  const firstChild = ownerBounds(framedSubmenu, "component-menu-export-text");
+  const parentCanvas = (await canvasFor(popup).boundingBox())!;
+  const childCanvas = (await canvasFor(submenu).boundingBox())!;
+  const parentMetrics = await readCellMetrics(popup);
+  const childMetrics = await readCellMetrics(submenu);
+  expect(childCanvas.y + (CELL_SURFACE_GUARD_CELLS + firstChild.y) * childMetrics.cellHeight)
+    .toBeCloseTo(parentCanvas.y + (CELL_SURFACE_GUARD_CELLS + exportRow.y) * parentMetrics.cellHeight, 0);
+  expect(childCanvas.x + CELL_SURFACE_GUARD_CELLS * childMetrics.cellWidth)
+    .toBeCloseTo(parentCanvas.x + (CELL_SURFACE_GUARD_CELLS + framed.viewport.width) * parentMetrics.cellWidth, 0);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
   await choose("dropdown frame", "none");
@@ -210,6 +257,7 @@ test("Menu config applies one surface and frame recipe to both popup levels", as
   await page.keyboard.press("Enter");
   await expect(popup).toBeVisible();
   const textPopup = await readCellProbe(popup);
+  expect(textPopup.viewport.width).toBe(naturalWidth);
   expect(textPopup.viewport.height).toBe(5);
   expect(textPopup.text).toContain("┌");
 });
@@ -234,20 +282,6 @@ test("Menu disabled configuration closes open menus and prevents activation", as
   await file.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("menu", { name: "File" })).toBeVisible();
-});
-
-test("Sheet page opens a modal side panel and restores trigger focus", async ({ page }) => {
-  await page.goto("/#/components/sheet");
-  const trigger = page.getByRole("button", { name: "Open sheet" });
-  await trigger.focus();
-  await page.keyboard.press("Enter");
-  const sheet = page.getByRole("dialog", { name: "Workspace settings" });
-  await expect(sheet).toBeVisible();
-  await expect(page.locator("#root")).toHaveAttribute("inert", "");
-  await expect(sheet.getByRole("button", { name: "Close sheet" })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(sheet).toHaveCount(0);
-  await expect(trigger).toBeFocused();
 });
 
 test("Toast page shows a timed notice without moving focus", async ({ page }) => {
@@ -280,14 +314,4 @@ test("hosted component previews fit a narrow viewport", async ({ page }) => {
     expect(rect.x + metrics.cellWidth).toBeGreaterThanOrEqual(0);
     expect(rect.x + rect.width - metrics.cellWidth).toBeLessThanOrEqual(390);
   }
-  await page.goto("/#/components/sheet");
-  await page.getByRole("button", { name: "Open sheet" }).focus();
-  await page.keyboard.press("Enter");
-  const sheet = page.getByRole("dialog", { name: "Workspace settings" });
-  await expect(sheet).toBeVisible();
-  const sheetSurface = sheet.locator('[data-cell-surface]');
-  const sheetMetrics = await readCellMetrics(page.locator('[data-cell-probe="component-sheet"]'));
-  const rect = (await sheetSurface.locator("canvas").first().boundingBox())!;
-  expect(rect.x + sheetMetrics.cellWidth).toBeGreaterThanOrEqual(0);
-  expect(rect.x + rect.width - sheetMetrics.cellWidth).toBeLessThanOrEqual(390);
 });

@@ -74,6 +74,27 @@ test("nested menus dismiss from the top and return focus to their parent", async
   await expect(trigger).toBeFocused();
 });
 
+test("host submenu opens on hover and closes when another parent item is hovered", async ({ page }) => {
+  await page.goto("/#/__fixtures/overlay-host");
+  const trigger = page.getByRole("button", { name: "Open host menu" });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const parent = page.locator('[data-cell-probe="host-menu-surface"]');
+  const more = ownerBounds(await readCellProbe(parent), "host-menu-more");
+  const morePoint = await cellPoint(parent, more.x + 1, more.y);
+  await page.mouse.move(morePoint.x, morePoint.y);
+  const child = page.locator('[data-cell-probe="host-submenu"]');
+  await expect(child).toBeVisible();
+  const nested = ownerBounds(await readCellProbe(child), "host-submenu-item");
+  const nestedPoint = await cellPoint(child, nested.x + 1, nested.y);
+  await page.mouse.move(nestedPoint.x, nestedPoint.y);
+  await expect(child).toBeVisible();
+  const choose = ownerBounds(await readCellProbe(parent), "host-menu-item");
+  const choosePoint = await cellPoint(parent, choose.x + 1, choose.y);
+  await page.mouse.move(choosePoint.x, choosePoint.y);
+  await expect(child).toHaveCount(0);
+});
+
 test("one outside click dismisses the full menu chain", async ({ page }) => {
   await page.goto("/#/__fixtures/overlay-host");
   const trigger = page.getByRole("button", { name: "Open host menu" });
@@ -102,24 +123,15 @@ test("rapid submenu activation reaches the child item", async ({ page }) => {
   }
 });
 
-test("sheet and confirmation stay modal across separate surfaces", async ({ page }) => {
+test("confirmation stays modal across separate surfaces", async ({ page }) => {
   await page.goto("/#/__fixtures/overlay-host");
   const canvas = page.locator('[data-testid="host-canvas-surface"]');
-  const sheetTrigger = page.getByRole("button", { name: "Open sheet" });
-  await sheetTrigger.focus();
-  await page.keyboard.press("Enter");
-  const sheet = page.getByRole("dialog", { name: "Workspace sheet" });
-  await expect(sheet).toBeVisible();
-  await expect(page.locator("#root")).toHaveAttribute("inert", "");
-  await page.keyboard.press("Escape");
-  await expect(sheet).toHaveCount(0);
-  await expect(sheetTrigger).toBeFocused();
-
   const alertTrigger = page.getByRole("button", { name: "Open alert dialog" });
   await alertTrigger.focus();
   await page.keyboard.press("Enter");
   const alert = page.getByRole("alertdialog", { name: "Delete item?" });
   await expect(alert).toBeVisible();
+  await expect(page.locator("#root")).toHaveAttribute("inert", "");
   await expect(alert.getByRole("button", { name: "Cancel delete" })).toBeFocused();
   const bounds = (await canvas.boundingBox())!;
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height - 10, { force: true });

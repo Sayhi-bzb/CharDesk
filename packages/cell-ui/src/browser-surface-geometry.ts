@@ -17,6 +17,11 @@ export const resolveCellAnchorRect = (anchor: Element): DOMRect | null => {
   return id && surface ? geometries.get(surface)?.targetRect(id) ?? null : null;
 };
 
+export const resolveCellSurfaceContentRect = (target: Element): DOMRect | null => {
+  const surface = target.closest("[data-cell-surface]");
+  return surface ? geometries.get(surface)?.contentRect() ?? null : null;
+};
+
 export const resolveCellOverlayContentRect = (portal: Element): DOMRect | null => {
   const surface = portal.querySelector("[data-cell-surface]");
   return surface ? geometries.get(surface)?.contentRect() ?? null : null;

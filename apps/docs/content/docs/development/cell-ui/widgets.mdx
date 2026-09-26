@@ -20,6 +20,7 @@ description: State, input, scroll, and editor behavior contracts.
 - `CellUiRecipe.defaultControlVariant` 只为 Button、Select、Combobox、TextInput 提供省略 `variant` 时的默认值；显式 `variant` 优先。Box、ScrollArea、TextArea、Overlay、Dialog 保留各自内建默认。浏览器 CSS adapter 从 `--cell-default-control-variant` 读取同一配置，headless 不依赖 CSS。
 - [公开主题用法](https://ui.chardesk.com/#/guides/theming)分别定义 variant 与 frame；后代状态消费最近的实际 surface substrate。背景不进入字符、语义或 Range Copy；边框会进入。
 - Select、Combobox 与 TextInput 使用共享的 `surface | ghost` recipe；默认 `surface` 使用 `elevatedSurfaceStyle`，`ghost` 沿用最近父层底色，无父层时使用 `theme.background`。Select/Combobox Content 的 `frame` 独立控制下拉层边框。ComboboxInput 与 ghost TextInput 活动时保留背景；SelectTrigger 的 focus 与 press 沿用反色规则，disabled 保留 recipe 并使用禁用文字色。
+- Select／Combobox 未指定宽度时从完整 Item 列表测量稳定的自然宽度，Trigger／Input 与 Content 共用该宽度；显式宽度优先。Content 的 `open` 只控制可见性，ComboboxItem 的 `hidden` 只控制过滤结果，两者都不移除 Item 的测量信息；SelectTrigger 的 `placeholder` 可为更长的空值文案预留宽度。
 - `widget-capabilities.ts` 拥有能力表；状态投影与外观配方分离，painter 只绘制解析结果。局部 `textStyle` 不重定义状态语言；[底座契约](/development/cell-ui/primitives)拥有模块边界。
 - 统一控件的按压与高亮最多反色一次；确认阶段独占颜色，相对进入时的有效颜色对执行反色／恢复，disabled 拒绝全部临时强调。solid Button 使用 `buttonSolidStyle`，surface 使用 `elevatedSurfaceStyle` 与普通文字色，outline 保留字符边框，ghost 静止时填充当前层底色。
 - 解析后的状态背景覆盖 Widget 完整布局矩形，包括空白 Cell；透明状态不填充。

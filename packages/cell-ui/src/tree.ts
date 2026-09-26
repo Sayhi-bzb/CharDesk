@@ -86,6 +86,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       id,
       key: current.key,
       kind: current.kind,
+      hidden: current.hidden,
       parentId,
       index,
       style: current.style,
@@ -96,6 +97,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       frame: current.frame,
       borderShape: current.borderShape,
       text: current.text,
+      placeholder: current.placeholder,
       href: current.href,
       current: current.current,
       target: current.target,
@@ -211,11 +213,11 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       }
       if (content) {
         const activeItems = content.children.map((child) => nodes.get(child)!)
-          .filter((child) => child.kind === "combobox-item" && child.active);
+          .filter((child) => child.kind === "combobox-item" && child.active && !child.hidden);
         if (activeItems.length > 1 || (activeItems[0]?.id ?? null) !== input.activeDescendantId) {
           throw new TypeError("Combobox must have at most one active Item matching Input.activeDescendantId.");
         }
-        nodes.set(input.id, { ...input, controlsId: content.id });
+        nodes.set(input.id, { ...input, controlsId: content.expanded ? content.id : null });
         nodes.set(content.id, { ...content, labelledById: input.id });
       }
     }

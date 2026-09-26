@@ -1,7 +1,7 @@
 import { CELL_SURFACE_GUARD_CELLS, CellPresentationRegistry } from "./browser-presentation.js";
 import { registerCellSurfaceGeometry } from "./browser-surface-geometry.js";
 export { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
-export { CellOverlayHost, CellOverlayPortal, CellPopover, CellContextMenu, CellSheet, CellAlertDialog, positionCellOverlay } from "./browser-overlay-host.js";
+export { CellOverlayHost, CellOverlayPortal, CellPopover, CellContextMenu, CellAlertDialog, positionCellOverlay } from "./browser-overlay-host.js";
 export type { CellOverlayDismissReason, CellOverlayPlacement } from "./browser-overlay-host.js";
 export { CellToastViewport, useCellToastState } from "./browser-toast.js";
 export type { CellToastEntry, CellToastState } from "./browser-toast.js";

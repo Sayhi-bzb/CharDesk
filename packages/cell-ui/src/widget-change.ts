@@ -11,6 +11,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.frame === right.frame
   && left.borderShape === right.borderShape
   && left.text === right.text
+  && left.placeholder === right.placeholder
   && left.href === right.href
   && left.current === right.current
   && left.target === right.target
@@ -57,6 +58,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.sliderStep === right.sliderStep
   && left.sliderValueText === right.sliderValueText
   && left.expanded === right.expanded
+  && left.hidden === right.hidden
   && left.hasChildren === right.hasChildren
   && left.level === right.level
   && left.parentItemId === right.parentItemId
@@ -89,6 +91,7 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.index !== after.index
   || before.presentation !== after.presentation
   || before.text !== after.text
+  || before.placeholder !== after.placeholder
   || before.markdownRole !== after.markdownRole
   || before.markdownCenteredText !== after.markdownCenteredText
   || before.sharedScrollGuard !== after.sharedScrollGuard
@@ -99,11 +102,15 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.frame !== after.frame
   || before.orientation !== after.orientation
   || (after.kind === "accordion-content" && before.expanded !== after.expanded)
+  || before.hidden !== after.hidden
+  || (after.kind === "combobox-input" && before.textEditor?.value !== after.textEditor?.value)
   || !sameWidgetValue(before.style, after.style)
   || !sameWidgetValue(before.children, after.children);
 
 const hasGeometryChange = (before: WidgetNode, after: WidgetNode) =>
   before.tooltipOpen !== after.tooltipOpen
+  || ((after.kind === "select-content" || after.kind === "combobox-content")
+    && before.expanded !== after.expanded)
   || before.tooltipTargetId !== after.tooltipTargetId
   || !sameWidgetValue(before.scrollOffset, after.scrollOffset)
   || (before.kind === "range-slider-thumb" && (

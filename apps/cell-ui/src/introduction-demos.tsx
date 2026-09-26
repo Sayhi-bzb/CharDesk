@@ -29,7 +29,7 @@ export function SettingsIntroductionDemo() {
     focusedId={currentFocus} onCommand={dispatch} label="Settings example" probeId="intro-settings">
     <Root><Box variant="ghost" style={{ width: 30 }}>
       <Text>Preferences</Text>
-      {renderGallerySelect({ label: "Theme", select: theme, focusedId: currentFocus, width: 30 })}
+      {renderGallerySelect({ label: "Theme", select: theme, focusedId: currentFocus })}
       {renderGalleryCheckbox({ id: "intro-sound", label: "Sound", checked: sound, focusedId: currentFocus })}
     </Box></Root>
   </GallerySurface>;

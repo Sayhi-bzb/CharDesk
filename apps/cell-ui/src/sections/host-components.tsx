@@ -1,10 +1,10 @@
 import { useState } from "react";
 import {
-  Box, Button, Menu, MenuItem, Root, Text,
+  Box, Button, Menu, MenuItem, Root, Text, cellTextWidth,
   type CellBorderShape, type CellFrame, type CellUiPresentation, type SurfaceVariant, type WidgetCommand,
 } from "@chardesk/cell-ui";
 import {
-  CellOverlayHost, CellPopover, CellSheet, CellSurface, CellToastViewport,
+  CellOverlayHost, CellPopover, CellSurface, CellToastViewport,
   DEFAULT_CELL_UI_METRICS, useCellSelectState, useCellToastState, type CellSurfaceProps,
 } from "@chardesk/cell-ui/browser";
 import { GallerySurface, useGalleryAppearance } from "../appearance";
@@ -33,6 +33,11 @@ const menuEntries: Readonly<Record<MenuTitle, readonly MenuEntry[]>> = {
   View: [{ id: "zoom-in", label: "Zoom In" }, { id: "zoom-out", label: "Zoom Out" }],
 };
 const submenuEntries = [{ id: "export-text", label: "As Text" }, { id: "export-image", label: "As Image" }] as const;
+const menuNaturalWidth = (entries: readonly MenuEntry[]) => Math.max(1,
+  ...entries.map((entry) => 2 + cellTextWidth(entry.label) + (entry.submenu ? 3 : 0) + 1 + 2));
+const menuItemText = (entry: MenuEntry, innerWidth: number) => entry.submenu
+  ? `${entry.label}${" ".repeat(Math.max(1, innerWidth - 2 - 1 - 1 - cellTextWidth(entry.label)))}▸`
+  : entry.label;
 const menuTriggerId = (title: MenuTitle) => `component-menu-${title.toLowerCase()}-trigger`;
 const menuItemId = (id: string) => `component-menu-${id}`;
 const menuAnchor = (id: string) => document.querySelector(`[data-cell-semantic-id="${id}"]`);
@@ -49,6 +54,9 @@ export function MenuComponentDemo() {
   const popupFrame: CellFrame = presentation === "text" ? "bordered" : frame.selectedId as CellFrame;
   const popupBorderShape = presentation === "text" ? "square" : borderShape.selectedId as CellBorderShape;
   const popupInset = popupFrame === "bordered" ? 2 : 0;
+  const mainEntries = menuEntries[activeMenu?.title ?? "File"];
+  const mainWidth = menuNaturalWidth(mainEntries);
+  const submenuWidth = menuNaturalWidth(submenuEntries);
   const dismiss = () => { setSubmenuAnchor(null); setActiveMenu(null); };
   const openMenu = (title: MenuTitle) => {
     if (disabled) return;
@@ -66,6 +74,14 @@ export function MenuComponentDemo() {
     if (disabled || !activeMenu) return;
     const title = menuTitles.find((item) => menuTriggerId(item) === targetId);
     if (title && title !== activeMenu.title) openMenu(title);
+  };
+  const onPopupHoverChange = (targetId: string | null) => {
+    if (disabled || !activeMenu || !targetId) return;
+    if (targetId === menuItemId("export")) {
+      setSubmenuAnchor(menuAnchor(targetId));
+    } else if (mainEntries.some((entry) => menuItemId(entry.id) === targetId)) {
+      setSubmenuAnchor(null);
+    }
   };
   const onCommand = (command: WidgetCommand) => {
     focus.dispatch(command);
@@ -119,61 +135,37 @@ export function MenuComponentDemo() {
       }}>
       <HostedSurface label={`${activeMenu?.title ?? "File"} menu`} probeId="component-menu-popup"
         presentation={presentation}
-        viewport={{ width: 26, height: (activeMenu ? menuEntries[activeMenu.title].length : 0) + popupInset }}
+        viewport={{ width: mainWidth, height: (activeMenu ? menuEntries[activeMenu.title].length : 0) + popupInset }}
         focusedId={menuItemId(menuEntries[activeMenu?.title ?? "File"][0]!.id)}
-        onCommand={onCommand}>
+        onCommand={onCommand} onHoverChange={onPopupHoverChange}>
         <Root><Box variant={variant.selectedId as SurfaceVariant} frame={popupFrame}
-          borderShape={popupBorderShape} style={{ width: 26 }}>
+          borderShape={popupBorderShape} style={{ width: mainWidth }}>
           <Menu id="component-menu-list" label={activeMenu?.title ?? "File"}>
-            {menuEntries[activeMenu?.title ?? "File"].map((entry, index) =>
+            {mainEntries.map((entry, index) =>
               <MenuItem key={entry.id} id={menuItemId(entry.id)} focused={index === 0}
-                  label={entry.label} style={{ width: 26 - popupInset }}>
-                  <Text>{entry.submenu ? `${entry.label.padEnd(20)}▸` : entry.label}</Text>
+                  label={entry.label} style={{ width: mainWidth - popupInset }}>
+                  <Text>{menuItemText(entry, mainWidth - popupInset)}</Text>
                 </MenuItem>)}
           </Menu>
         </Box></Root>
       </HostedSurface>
     </CellPopover>
-    <CellPopover open={submenuAnchor !== null} anchor={submenuAnchor} placement="right-start"
+    <CellPopover open={submenuAnchor !== null} anchor={submenuAnchor} placement="right-item"
       onDismiss={() => setSubmenuAnchor(null)} onKeyDown={(event) => {
         if (event.key === "ArrowLeft") { event.preventDefault(); setSubmenuAnchor(null); }
       }}>
       <HostedSurface label="Export" probeId="component-menu-submenu-popup"
-        presentation={presentation} viewport={{ width: 20, height: submenuEntries.length + popupInset }}
+        presentation={presentation} viewport={{ width: submenuWidth, height: submenuEntries.length + popupInset }}
         focusedId={menuItemId("export-text")} onCommand={onCommand}>
         <Root><Box variant={variant.selectedId as SurfaceVariant} frame={popupFrame}
-          borderShape={popupBorderShape} style={{ width: 20 }}>
+          borderShape={popupBorderShape} style={{ width: submenuWidth }}>
           <Menu id="component-menu-submenu" label="Export">
             {submenuEntries.map((entry, index) => <MenuItem key={entry.id} id={menuItemId(entry.id)}
-              focused={index === 0} label={entry.label} style={{ width: 20 - popupInset }}><Text>{entry.label}</Text></MenuItem>)}
+              focused={index === 0} label={entry.label} style={{ width: submenuWidth - popupInset }}><Text>{entry.label}</Text></MenuItem>)}
           </Menu>
         </Box></Root>
       </HostedSurface>
     </CellPopover>
-  </CellOverlayHost>;
-}
-
-export function SheetComponentDemo() {
-  const [open, setOpen] = useState(false);
-  const onCommand = (command: WidgetCommand) => {
-    if (command.type !== "activate") return;
-    if (command.targetId === "component-sheet-trigger") setOpen(true);
-    if (command.targetId === "component-sheet-close") setOpen(false);
-  };
-  return <CellOverlayHost>
-    <GallerySurface label="Sheet component" probeId="component-sheet" viewport={{ width: 36, height: 4 }}
-      focusedId="component-sheet-trigger" onCommand={onCommand}>
-      <Root><Button id="component-sheet-trigger" label="Open sheet"><Text>Open settings</Text></Button></Root>
-    </GallerySurface>
-    <CellSheet open={open} label="Workspace settings" onDismiss={() => setOpen(false)}>
-      <HostedSurface label="Workspace settings" viewport={{ width: 28, height: 12 }}
-        focusedId="component-sheet-close" onCommand={onCommand}>
-        <Root><Box variant="surface" frame="bordered" style={{ width: "100%", height: "100%" }}>
-          <Text>Workspace settings</Text>
-          <Button id="component-sheet-close" focused label="Close sheet"><Text>Close</Text></Button>
-        </Box></Root>
-      </HostedSurface>
-    </CellSheet>
   </CellOverlayHost>;
 }
 

@@ -676,7 +676,6 @@ export const SelectComponentDemo = () => {
       label: "Theme",
       select,
       focusedId: focus.focusedId,
-      width: 30,
       disabled,
       emptyLabel: "Select theme",
       variant: variant.selectedId as SurfaceVariant,
@@ -722,6 +721,7 @@ export const ComboboxComponentDemo = () => {
     defaultSelectedId: "square",
   });
   const focus = usePlaygroundFocus(combo.inputId, [variant, frame, borderShape]);
+  const visiblePosition = new Map(combo.filteredItems.map((item, index) => [item.id, index + 1] as const));
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
     combo.dispatch(command);
@@ -732,21 +732,24 @@ export const ComboboxComponentDemo = () => {
   return <ComponentPlayground id="component-combobox-playground" label="Combobox component"
     probeId="component-combobox" focusedId={focus.focusedId} onCommand={dispatch}
     previewMinColumns={30} controlsColumns={25}
-    preview={<Box id="component-combobox-preview" variant="ghost" style={{ width: 30 }}>
+    preview={<Box id="component-combobox-preview" variant="ghost">
       <Text>Font</Text>
-      <Combobox id={combo.id} disabled={disabled} variant={variant.selectedId as SurfaceVariant} style={{ width: 30 }}>
+      <Combobox id={combo.id} disabled={disabled} variant={variant.selectedId as SurfaceVariant}>
         <ComboboxInput id={combo.inputId} label="Font" state={combo.inputSnapshot} expanded={combo.open}
           activeDescendantId={combo.activeId ?? undefined} />
-        {combo.open ? <ComboboxContent id={combo.contentId} label="Font options" scrollY={combo.scrollY}
+        <ComboboxContent id={combo.contentId} label="Font options" open={combo.open} scrollY={combo.scrollY}
           frame={frame.selectedId as CellFrame}
           borderShape={frame.selectedId === "bordered" ? borderShape.selectedId as CellBorderShape : undefined}
           style={{ maxHeight: 5 }}>
-          {combo.filteredItems.length ? combo.filteredItems.map((item, index) => <ComboboxItem
+          {combo.items.map((item) => <ComboboxItem
             id={item.id} key={item.id} active={combo.activeId === item.id} selected={combo.selectedId === item.id}
-            disabled={item.disabled} positionInSet={index + 1} setSize={combo.filteredItems.length}>
+            hidden={!visiblePosition.has(item.id)}
+            disabled={item.disabled} positionInSet={visiblePosition.get(item.id)}
+            setSize={combo.filteredItems.length}>
             <Text>{item.label}</Text>
-          </ComboboxItem>) : <Text>No matches</Text>}
-        </ComboboxContent> : null}
+          </ComboboxItem>)}
+          {combo.filteredItems.length === 0 ? <Text>No matches</Text> : null}
+        </ComboboxContent>
       </Combobox>
     </Box>}
     controls={[

@@ -10,7 +10,15 @@ Install the full editable source in a React project with components.json and ali
 
 ```tsx
 import { useState } from "react";
-import { Box, Button, Menu, MenuItem, Root, Text } from "@/lib/cell-ui";
+import {
+  Box,
+  Button,
+  Menu,
+  MenuItem,
+  Root,
+  Text,
+  cellTextWidth,
+} from "@/lib/cell-ui";
 import { CellOverlayHost, CellPopover, CellSurface } from "@/lib/cell-ui/browser";
 
 const titles = ["File", "Edit", "View"] as const;
@@ -19,6 +27,7 @@ const action: Record<Title, string> = { File: "Open", Edit: "Undo", View: "Zoom 
 
 export function MenuExample() {
   const [menu, setMenu] = useState<{ title: Title; anchor: Element } | null>(null);
+  const popupWidth = cellTextWidth(action[menu?.title ?? "File"]) + 5;
   const open = (title: Title) => {
     const anchor = document.querySelector(
       '[data-cell-semantic-id="menu-' + title + '"]',
@@ -60,7 +69,7 @@ export function MenuExample() {
         onDismiss={() => setMenu(null)}
       >
         <CellSurface
-          viewport={{ width: 20, height: 1 }}
+          viewport={{ width: popupWidth, height: 1 }}
           focusedId="menu-action"
           onCommand={(command) => {
             if (command.type === "activate" && command.targetId === "menu-action")
@@ -68,7 +77,7 @@ export function MenuExample() {
           }}
         >
           <Root>
-            <Box variant="surface" frame="none" style={{ width: 20 }}>
+            <Box variant="surface" frame="none" style={{ width: popupWidth }}>
               <Menu id="command-menu" label={menu?.title ?? "File"}>
                 <MenuItem id="menu-action" label={action[menu?.title ?? "File"]}>
                   <Text>{action[menu?.title ?? "File"]}</Text>

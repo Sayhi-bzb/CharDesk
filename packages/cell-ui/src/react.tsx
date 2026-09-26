@@ -277,6 +277,7 @@ export type RangeSliderThumbProps = Readonly<{
 }>;
 export type SelectProps = ContainerProps & Readonly<{ style?: CellLayoutStyle; variant?: SurfaceVariant }>;
 export type SelectTriggerProps = NamedContainerProps & Readonly<{
+  placeholder?: string;
   focused?: boolean;
   expanded?: boolean;
   controlsId?: string;
@@ -284,6 +285,7 @@ export type SelectTriggerProps = NamedContainerProps & Readonly<{
   textStyle?: CellTextStyle;
 }>;
 export type SelectContentProps = NamedContainerProps & Readonly<{
+  open?: boolean;
   frame?: CellFrame;
   borderShape?: CellBorderShape;
   scrollY?: number;
@@ -304,7 +306,7 @@ export type ComboboxInputProps = Omit<TextInputProps, "variant"> & Readonly<{
   activeDescendantId?: string;
 }>;
 export type ComboboxContentProps = SelectContentProps;
-export type ComboboxItemProps = Omit<SelectItemProps, "focused"> & Readonly<{ active?: boolean }>;
+export type ComboboxItemProps = Omit<SelectItemProps, "focused"> & Readonly<{ active?: boolean; hidden?: boolean }>;
 export type ListProps = NamedContainerProps & Readonly<{ style?: CellLayoutStyle; reorderable?: boolean }>;
 export type ListItemProps = NamedContainerProps & Readonly<{
   focused?: boolean;
@@ -525,6 +527,7 @@ export type WidgetDescriptor = Readonly<{
   frame: CellFrame;
   borderShape: CellBorderShape | null;
   text: string | null;
+  placeholder: string | null;
   href: string | null;
   current?: "page" | "location";
   target?: "_blank";
@@ -563,6 +566,7 @@ export type WidgetDescriptor = Readonly<{
   sliderStep: number;
   sliderValueText: string | null;
   expanded: boolean;
+  hidden: boolean;
   hasChildren: boolean;
   level: number | null;
   parentItemId: string | null;
@@ -1056,6 +1060,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     frame,
     borderShape: presentedBorderShape(presentation, frame, requestedBorderShape),
     text,
+    placeholder: kind === "select-trigger" && typeof props.placeholder === "string" ? props.placeholder : null,
     href: kind === "markdown-link" ? props.href as string : null,
     ...(element.type === Link && props.current ? { current: props.current as LinkProps["current"] } : {}),
     ...(element.type === Link && props.target ? { target: props.target as LinkProps["target"] } : {}),
@@ -1108,7 +1113,9 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     sliderMax: sliderRange.max,
     sliderStep: sliderRange.step,
     sliderValueText: typeof props.valueText === "string" ? props.valueText : null,
-    expanded: props.expanded === true,
+    expanded: kind === "select-content" || kind === "combobox-content"
+      ? props.open !== false : props.expanded === true,
+    hidden: kind === "combobox-item" && props.hidden === true,
     hasChildren: props.hasChildren === true,
     level: Number.isInteger(props.level) ? props.level as number : null,
     parentItemId: typeof props.parentItemId === "string" ? props.parentItemId : null,

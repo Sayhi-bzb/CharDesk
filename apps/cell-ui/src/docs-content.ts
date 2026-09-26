@@ -16,7 +16,6 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   "text-area": ["react.tsx", "browser-input.tsx"],
   list: ["react.tsx", "browser-collections.tsx"],
   menu: ["react.tsx", "browser-collections.tsx", "browser-overlay-host.tsx"],
-  sheet: ["browser-overlay-host.tsx"],
   toast: ["browser-toast.tsx", "browser-overlay-host.tsx"],
   tree: ["react.tsx", "browser-collections.tsx"],
   table: ["react.tsx", "table.ts", "paint.ts", "semantics.ts"],
@@ -51,7 +50,15 @@ export const componentContent: readonly ComponentContent[] = [
     slug: "menu", title: "Menu",
     description: "Compose a Cell menubar with host-managed command menus across surfaces.",
     usage: `import { useState } from "react";
-import { Box, Button, Menu, MenuItem, Root, Text } from "@chardesk/cell-ui";
+import {
+  Box,
+  Button,
+  Menu,
+  MenuItem,
+  Root,
+  Text,
+  cellTextWidth,
+} from "@chardesk/cell-ui";
 import { CellOverlayHost, CellPopover, CellSurface } from "@chardesk/cell-ui/browser";
 
 const titles = ["File", "Edit", "View"] as const;
@@ -60,6 +67,7 @@ const action: Record<Title, string> = { File: "Open", Edit: "Undo", View: "Zoom 
 
 export function MenuExample() {
   const [menu, setMenu] = useState<{ title: Title; anchor: Element } | null>(null);
+  const popupWidth = cellTextWidth(action[menu?.title ?? "File"]) + 5;
   const open = (title: Title) => {
     const anchor = document.querySelector(
       '[data-cell-semantic-id="menu-' + title + '"]',
@@ -101,7 +109,7 @@ export function MenuExample() {
         onDismiss={() => setMenu(null)}
       >
         <CellSurface
-          viewport={{ width: 20, height: 1 }}
+          viewport={{ width: popupWidth, height: 1 }}
           focusedId="menu-action"
           onCommand={(command) => {
             if (command.type === "activate" && command.targetId === "menu-action")
@@ -109,7 +117,7 @@ export function MenuExample() {
           }}
         >
           <Root>
-            <Box variant="surface" frame="none" style={{ width: 20 }}>
+            <Box variant="surface" frame="none" style={{ width: popupWidth }}>
               <Menu id="command-menu" label={menu?.title ?? "File"}>
                 <MenuItem id="menu-action" label={action[menu?.title ?? "File"]}>
                   <Text>{action[menu?.title ?? "File"]}</Text>
@@ -134,59 +142,6 @@ export function MenuExample() {
       { name: "CellPopover.anchor", type: "Element | DOMRect | null", description: "Element or pointer rectangle used for placement and focus return." },
       { name: "CellPopover.onDismiss", type: '(reason: "escape" | "outside") => void', description: "Close the controlled popup; Escape returns focus to its anchor." },
       { name: "CellContextMenu", type: "browser component", description: "Same host-managed menu surface, anchored to a pointer rectangle." },
-    ],
-  },
-  {
-    slug: "sheet", title: "Sheet",
-    description: "Open a modal Cell panel from the viewport edge without replacing the work surface.",
-    usage: `import { useState } from "react";
-import { Button, Root, Text } from "@chardesk/cell-ui";
-import { CellOverlayHost, CellSheet, CellSurface } from "@chardesk/cell-ui/browser";
-
-export function SheetExample() {
-  const [open, setOpen] = useState(false);
-  return (
-    <CellOverlayHost>
-      <CellSurface
-        viewport={{ width: 24, height: 2 }}
-        onCommand={(command) => {
-          if (command.type === "activate" && command.targetId === "sheet-trigger") {
-            setOpen(true);
-          }
-        }}
-      >
-        <Root>
-          <Button id="sheet-trigger" label="Open sheet">
-            <Text>Settings</Text>
-          </Button>
-        </Root>
-      </CellSurface>
-      <CellSheet open={open} label="Settings" onDismiss={() => setOpen(false)}>
-        <CellSurface
-          viewport={{ width: 24, height: 10 }}
-          focusedId="sheet-close"
-          onCommand={(command) => {
-            if (command.type === "activate" && command.targetId === "sheet-close") {
-              setOpen(false);
-            }
-          }}
-        >
-          <Root>
-            <Text>Workspace settings</Text>
-            <Button id="sheet-close" label="Close sheet">
-              <Text>Close</Text>
-            </Button>
-          </Root>
-        </CellSurface>
-      </CellSheet>
-    </CellOverlayHost>
-  );
-}`,
-    api: [
-      { name: "CellSheet.open", type: "boolean", description: "Controlled visibility of the modal side panel." },
-      { name: "CellSheet.label", type: "string", description: "Accessible dialog name." },
-      { name: "CellSheet.onDismiss", type: '(reason: "escape" | "outside") => void', description: "Close the panel on Escape or outside input." },
-      { name: "children", type: "ReactNode", description: "Render an independent CellSurface inside the sheet." },
     ],
   },
   {
@@ -662,46 +617,48 @@ export function SelectExample() {
       viewport={{ width: 32, height: 7 }}
     >
       <Root id="root">
-        <Select id={select.id} style={{ width: 30 }}>
+        <Select id={select.id}>
           <SelectTrigger
             id={select.triggerId}
             label="Theme"
+            placeholder="Select theme"
             expanded={select.open}
             controlsId={select.open ? select.contentId : undefined}
           >
             <Text>{select.selectedItem?.label ?? "Select theme"}</Text>
           </SelectTrigger>
-          {select.open ? (
-            <SelectContent
-              id={select.contentId}
-              label="Theme options"
-              scrollY={select.scrollY}
-            >
-              {select.items.map((item, index) => (
-                <SelectItem
-                  id={item.id}
-                  key={item.id}
-                  disabled={item.disabled}
-                  selected={select.selectedId === item.id}
-                  positionInSet={index + 1}
-                  setSize={select.items.length}
-                >
-                  <Text>{item.label}</Text>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          ) : null}
+          <SelectContent
+            id={select.contentId}
+            open={select.open}
+            label="Theme options"
+            scrollY={select.scrollY}
+          >
+            {select.items.map((item, index) => (
+              <SelectItem
+                id={item.id}
+                key={item.id}
+                disabled={item.disabled}
+                selected={select.selectedId === item.id}
+                positionInSet={index + 1}
+                setSize={select.items.length}
+              >
+                <Text>{item.label}</Text>
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </Root>
     </CellSurface>
   );
 }`,
     api: [
-      { name: "Select.style", type: "CellLayoutStyle", description: "Sets the shared Trigger and Content width." },
+      { name: "Select.style", type: "CellLayoutStyle", description: "Overrides the natural width shared by Trigger and Content." },
       { name: "Select.variant?", type: '"surface" | "ghost"', description: "Shared surface recipe; the local value overrides the global recipe." },
       { name: "SelectTrigger.expanded", type: "boolean", description: "Controls disclosure state and chrome." },
+      { name: "SelectTrigger.placeholder?", type: "string", description: "Reserves a stable natural width when the empty label is wider than every Item." },
       { name: "SelectTrigger.controlsId?", type: "string", description: "Relates the open Trigger to its listbox." },
       { name: "SelectContent", type: "Cell primitive", description: "Portaled listbox anchored to the Trigger." },
+      { name: "SelectContent.open?", type: "boolean", description: "Hides the listbox while keeping Items available for stable width measurement." },
       { name: "SelectContent.frame?", type: '"none" | "bordered"', description: "Optional one-Cell dropdown frame; none by default." },
       { name: "SelectContent.borderShape?", type: '"square" | "rounded"', description: "Border glyphs when Content is bordered." },
       { name: "SelectContent.scrollY?", type: "number", description: "Controlled offset for a constrained listbox." },
@@ -737,7 +694,7 @@ export function ComboboxExample() {
       onCommand={combo.dispatch}
     >
       <Root>
-        <Combobox id={combo.id} style={{ width: 30 }}>
+        <Combobox id={combo.id}>
           <ComboboxInput
             id={combo.inputId}
             label="Font"
@@ -745,26 +702,26 @@ export function ComboboxExample() {
             expanded={combo.open}
             activeDescendantId={combo.activeId ?? undefined}
           />
-          {combo.open && (
-            <ComboboxContent
-              id={combo.contentId}
-              label="Font options"
-              scrollY={combo.scrollY}
-            >
-              {combo.filteredItems.map((item, index) => (
-                <ComboboxItem
-                  id={item.id}
-                  key={item.id}
-                  active={combo.activeId === item.id}
-                  selected={combo.selectedId === item.id}
-                  positionInSet={index + 1}
-                  setSize={combo.filteredItems.length}
-                >
-                  <Text>{item.label}</Text>
-                </ComboboxItem>
-              ))}
-            </ComboboxContent>
-          )}
+          <ComboboxContent
+            id={combo.contentId}
+            open={combo.open}
+            label="Font options"
+            scrollY={combo.scrollY}
+          >
+            {combo.items.map((item) => (
+              <ComboboxItem
+                id={item.id}
+                key={item.id}
+                hidden={
+                  !combo.filteredItems.some((candidate) => candidate.id === item.id)
+                }
+                active={combo.activeId === item.id}
+                selected={combo.selectedId === item.id}
+              >
+                <Text>{item.label}</Text>
+              </ComboboxItem>
+            ))}
+          </ComboboxContent>
         </Combobox>
       </Root>
     </CellSurface>
@@ -776,9 +733,11 @@ export function ComboboxExample() {
       { name: "ComboboxInput.style?", type: "CellSingleLineInputStyle", description: "Width constraints and flex behavior; height, padding, and border belong to the component." },
       { name: "ComboboxInput.activeDescendantId?", type: "string", description: "Relates keyboard navigation to one active option without moving focus." },
       { name: "ComboboxContent", type: "Cell primitive", description: "Portaled listbox anchored to the input." },
+      { name: "ComboboxContent.open?", type: "boolean", description: "Hides the listbox while keeping all Items available for stable width measurement." },
       { name: "Combobox.variant?", type: '"surface" | "ghost"', description: "Shared surface recipe; the local value overrides the global recipe." },
       { name: "ComboboxContent.frame?", type: '"none" | "bordered"', description: "Optional one-Cell dropdown frame; none by default." },
       { name: "ComboboxItem.active?", type: "boolean", description: "Provisional keyboard or pointer candidate, separate from committed selection." },
+      { name: "ComboboxItem.hidden?", type: "boolean", description: "Excludes a filtered candidate from layout, semantics, and interaction without changing the natural width." },
       { name: "useCellComboboxState", type: "CellComboboxState", description: "Owns local filtering, editor state, active candidate, selection, opening, and scroll." },
     ],
   },
@@ -1317,9 +1276,8 @@ function Layers() {
     </CellSurface>
   );
 }` },
-      { id: "overlays", title: "Overlay host", body: "Mount one CellOverlayHost around participating surfaces. It owns stacking, viewport placement, outside/Escape dismissal, modal background inertness, and focus return. Outside input closes nonmodal layers above its target; Escape closes only the top layer. App state controls visibility. Menu uses CellPopover or CellContextMenu; Sheet and CellAlertDialog are modal; Toast shares the host layer without taking focus.", links: [
+      { id: "overlays", title: "Overlay host", body: "Mount one CellOverlayHost around participating surfaces. It owns stacking, viewport placement, outside/Escape dismissal, modal background inertness, and focus return. Outside input closes nonmodal layers above its target; Escape closes only the top layer. App state controls visibility. Menu uses CellPopover or CellContextMenu; CellAlertDialog is modal; Toast shares the host layer without taking focus.", links: [
         { label: "Menu", href: "#/components/menu" },
-        { label: "Sheet", href: "#/components/sheet" },
         { label: "Toast", href: "#/components/toast" },
         { label: "Browser host source", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser-overlay-host.tsx" },
       ] },

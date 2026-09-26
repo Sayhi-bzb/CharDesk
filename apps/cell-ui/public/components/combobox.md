@@ -33,7 +33,7 @@ export function ComboboxExample() {
       onCommand={combo.dispatch}
     >
       <Root>
-        <Combobox id={combo.id} style={{ width: 30 }}>
+        <Combobox id={combo.id}>
           <ComboboxInput
             id={combo.inputId}
             label="Font"
@@ -41,26 +41,26 @@ export function ComboboxExample() {
             expanded={combo.open}
             activeDescendantId={combo.activeId ?? undefined}
           />
-          {combo.open && (
-            <ComboboxContent
-              id={combo.contentId}
-              label="Font options"
-              scrollY={combo.scrollY}
-            >
-              {combo.filteredItems.map((item, index) => (
-                <ComboboxItem
-                  id={item.id}
-                  key={item.id}
-                  active={combo.activeId === item.id}
-                  selected={combo.selectedId === item.id}
-                  positionInSet={index + 1}
-                  setSize={combo.filteredItems.length}
-                >
-                  <Text>{item.label}</Text>
-                </ComboboxItem>
-              ))}
-            </ComboboxContent>
-          )}
+          <ComboboxContent
+            id={combo.contentId}
+            open={combo.open}
+            label="Font options"
+            scrollY={combo.scrollY}
+          >
+            {combo.items.map((item) => (
+              <ComboboxItem
+                id={item.id}
+                key={item.id}
+                hidden={
+                  !combo.filteredItems.some((candidate) => candidate.id === item.id)
+                }
+                active={combo.activeId === item.id}
+                selected={combo.selectedId === item.id}
+              >
+                <Text>{item.label}</Text>
+              </ComboboxItem>
+            ))}
+          </ComboboxContent>
         </Combobox>
       </Root>
     </CellSurface>
@@ -83,7 +83,9 @@ export function ComboboxExample() {
 | `ComboboxInput.style?` | `CellSingleLineInputStyle` | Width constraints and flex behavior; height, padding, and border belong to the component. |
 | `ComboboxInput.activeDescendantId?` | `string` | Relates keyboard navigation to one active option without moving focus. |
 | `ComboboxContent` | `Cell primitive` | Portaled listbox anchored to the input. |
+| `ComboboxContent.open?` | `boolean` | Hides the listbox while keeping all Items available for stable width measurement. |
 | `Combobox.variant?` | `"surface" \| "ghost"` | Shared surface recipe; the local value overrides the global recipe. |
 | `ComboboxContent.frame?` | `"none" \| "bordered"` | Optional one-Cell dropdown frame; none by default. |
 | `ComboboxItem.active?` | `boolean` | Provisional keyboard or pointer candidate, separate from committed selection. |
+| `ComboboxItem.hidden?` | `boolean` | Excludes a filtered candidate from layout, semantics, and interaction without changing the natural width. |
 | `useCellComboboxState` | `CellComboboxState` | Owns local filtering, editor state, active candidate, selection, opening, and scroll. |

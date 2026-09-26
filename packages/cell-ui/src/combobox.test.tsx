@@ -25,6 +25,36 @@ const items = [
   { id: "fusion", label: "融合像素字体" },
 ] as const;
 
+it("keeps a compact default width while filtered Items are hidden", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 32, height: 8 } });
+  const editor = new CellTextEditor({ value: "Maple" });
+  const view = (open: boolean, filtered: boolean) => <Root><Combobox id="font">
+    <ComboboxInput id="input" label="Font" state={editor.snapshot()} expanded={open} />
+    <ComboboxContent id="content" open={open} frame="bordered">
+      <ComboboxItem id="maple"><Text>Maple Mono</Text></ComboboxItem>
+      <ComboboxItem id="fusion" hidden={filtered}><Text>Fusion Pixel 12px Mono</Text></ComboboxItem>
+    </ComboboxContent>
+  </Combobox></Root>;
+  const closed = runtime.render(view(false, false));
+  const natural = closed.layout.entries.get("font")!.rect.width;
+  expect(natural).toBeLessThan(32);
+  expect(closed.scene.entries.has("content")).toBe(false);
+  const open = runtime.render(view(true, true));
+  expect(open.tree.nodes.get("content")?.expanded).toBe(true);
+  expect(open.tree.nodes.get("content")?.hidden).toBe(false);
+  expect(open.tree.nodes.get("font")?.hidden).toBe(false);
+  expect(open.scene.entries.has("font")).toBe(true);
+  expect(open.scene.entries.has("input")).toBe(true);
+  expect(open.tree.nodes.get("font")?.children).toEqual(["input", "content"]);
+  expect(open.layout.entries.get("content")?.rect.width).toBe(natural);
+  expect(open.layout.entries.get("font")!.rect.width).toBe(natural);
+  expect([...open.scene.entries.keys()]).toContain("content");
+  expect(open.scene.entries.get("content")?.layoutBounds.width).toBe(natural);
+  expect(open.scene.entries.has("fusion")).toBe(false);
+  expect(open.semantics.nodes.get("fusion")?.hidden).toBe(true);
+  runtime.dispose();
+});
+
 it("opens from the whole input row, keeps editing open, and toggles from the arrow", () => {
   const runtime = new CellUiRuntime({ viewport: { width: 24, height: 8 } });
   const editor = new CellTextEditor({ value: "Maple" });

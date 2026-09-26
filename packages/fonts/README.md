@@ -42,7 +42,7 @@ Nerd glyphs remain one protocol Cell and use `fontSizeScale: 0.8`. Font profiles
 cannot stretch one axis independently; the [Canvas paint contract](../rendering/README.md#font-ink-and-cell-boundaries)
 owns ink alignment and allows ink to cross Cell boundaries.
 
-The current optional compatibility display is [`@chardesk/font-maple`](../font-maple/README.md). Source versions and checksums are authoritative in `manifest.json`; candidate evaluation lives in the [font capability research card](../../exp/research/font-stack.md).
+The current optional compatibility display is [`@chardesk/font-maple`](../font-maple/README.md). Source versions and checksums are authoritative in `manifest.json`.
 
 `@chardesk/fonts/browser` owns browser stylesheet and `document.fonts` loading. Consumers provide a `BrowserFontLoadTarget`; `loadBrowserFont` commits only after every requested sample resolves, and `resetBrowserFont` clears a failed stylesheet request.
 

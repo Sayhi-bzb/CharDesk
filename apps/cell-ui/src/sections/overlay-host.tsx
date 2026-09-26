@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box, Button, List, ListItem, Menu, MenuItem, Root, Text,
   reorderCellItems, type WidgetCommand } from "@chardesk/cell-ui";
 import { CellAlertDialog, CellContextMenu, CellOverlayHost, CellPopover,
-  CellSheet, CellToastViewport, useCellToastState } from "@chardesk/cell-ui/browser";
+  CellToastViewport, useCellToastState } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "../appearance";
 
 export function OverlayHostDemo() {
@@ -10,7 +10,6 @@ export function OverlayHostDemo() {
   const [open, setOpen] = useState(false);
   const [contextAnchor, setContextAnchor] = useState<DOMRect | null>(null);
   const [submenuAnchor, setSubmenuAnchor] = useState<Element | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [layers, setLayers] = useState<readonly { id: string; label: string }[]>([
     { id: "layer-title", label: "Title" },
@@ -29,8 +28,6 @@ export function OverlayHostDemo() {
       setOpen(false);
     }
     if (event.type === "activate" && event.targetId === "host-context-item") setContextAnchor(null);
-    if (event.type === "activate" && event.targetId === "host-sheet-trigger") setSheetOpen(true);
-    if (event.type === "activate" && event.targetId === "host-sheet-close") setSheetOpen(false);
     if (event.type === "activate" && event.targetId === "host-alert-trigger") setAlertOpen(true);
     if (event.type === "activate" && event.targetId === "host-alert-cancel") setAlertOpen(false);
     if (event.type === "activate" && event.targetId === "host-toast-trigger") {
@@ -47,7 +44,6 @@ export function OverlayHostDemo() {
         viewport={{ width: 52, height: 2 }} onCommand={command}>
         <Root style={{ direction: "row", gap: 1 }}>
           <Button id="host-menu-trigger" label="Open host menu"><Text>Menu ▾</Text></Button>
-          <Button id="host-sheet-trigger" label="Open sheet"><Text>Sheet</Text></Button>
           <Button id="host-alert-trigger" label="Open alert dialog"><Text>Confirm</Text></Button>
           <Button id="host-toast-trigger" label="Show toast"><Text>Notify</Text></Button>
         </Root>
@@ -78,7 +74,14 @@ export function OverlayHostDemo() {
       setSubmenuAnchor(null); setOpen(false);
     }}>
       <GallerySurface label="Host menu" probeId="host-menu-surface"
-        viewport={{ width: 20, height: 4 }} focusedId="host-menu-item" onCommand={command}>
+        viewport={{ width: 20, height: 4 }} focusedId="host-menu-item" onCommand={command}
+        onHoverChange={(targetId) => {
+          if (targetId === "host-menu-more") {
+            setSubmenuAnchor(document.querySelector('[data-cell-semantic-id="host-menu-more"]'));
+          } else if (targetId === "host-menu-item") {
+            setSubmenuAnchor(null);
+          }
+        }}>
         <Root><Box variant="surface" frame="bordered" style={{ width: "100%" }}>
           <Menu id="host-menu" label="Host menu"><MenuItem id="host-menu-item" focused label="Choose menu item">
             <Text>Choose</Text>
@@ -86,7 +89,7 @@ export function OverlayHostDemo() {
         </Box></Root>
       </GallerySurface>
     </CellPopover>
-    <CellPopover open={submenuAnchor !== null} anchor={submenuAnchor} placement="right-start"
+    <CellPopover open={submenuAnchor !== null} anchor={submenuAnchor} placement="right-item"
       onKeyDown={(event) => {
         if (event.key === "ArrowLeft") { event.preventDefault(); setSubmenuAnchor(null); }
       }}
@@ -110,15 +113,6 @@ export function OverlayHostDemo() {
         </Box></Root>
       </GallerySurface>
     </CellContextMenu>
-    <CellSheet open={sheetOpen} label="Workspace sheet" onDismiss={() => setSheetOpen(false)}>
-      <GallerySurface label="Workspace sheet" probeId="host-sheet" focusedId="host-sheet-close"
-        viewport={{ width: 24, height: 12 }} onCommand={command}>
-        <Root><Box variant="surface" frame="bordered" style={{ width: "100%", height: "100%" }}>
-          <Text>Workspace settings</Text>
-          <Button id="host-sheet-close" focused label="Close sheet"><Text>Close</Text></Button>
-        </Box></Root>
-      </GallerySurface>
-    </CellSheet>
     <CellAlertDialog open={alertOpen} label="Delete item?" onDismiss={() => setAlertOpen(false)}>
       <GallerySurface label="Delete confirmation" probeId="host-alert" focusedId="host-alert-cancel"
         viewport={{ width: 28, height: 5 }} onCommand={command}>

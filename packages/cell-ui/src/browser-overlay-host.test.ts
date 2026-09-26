@@ -11,6 +11,10 @@ describe("Cell overlay placement", () => {
       .toEqual({ left: 68, top: 48 });
     expect(positionCellOverlay(anchor, size, viewport, "right-start"))
       .toEqual({ left: 50, top: 72 });
+    expect(positionCellOverlay(anchor, size, viewport, "right-item", 8))
+      .toEqual({ left: 50, top: 64 });
+    expect(positionCellOverlay(anchor, size, viewport, "right-item", 80))
+      .toEqual({ left: 50, top: 0 });
   });
 
   it("places modal content centrally or at the right edge", () => {

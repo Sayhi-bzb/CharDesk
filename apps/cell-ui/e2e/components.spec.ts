@@ -17,7 +17,6 @@ const navigationLinks = [
   ["ScrollArea", "#/components/scroll-area"],
   ["Select", "#/components/select"],
   ["Separator", "#/components/separator"],
-  ["Sheet", "#/components/sheet"],
   ["Slider", "#/components/slider"],
   ["Spinner", "#/components/spinner"],
   ["Table", "#/components/table"],
@@ -1003,6 +1002,8 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
   await expect(page.getByRole("button", { name: "border shape", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "value" })).toHaveCount(0);
   const defaultProbe = await readCellProbe(surface);
+  const triggerWidth = ownerBounds(defaultProbe, "component-select-trigger").width;
+  expect(triggerWidth).toBeLessThan(30);
   const elevatedBackground = defaultProbe.cells.find((cell) => cell.ownerId === "component-select-trigger" && cell.text === " ")?.style.backgroundColor;
   expect(elevatedBackground).toBeTruthy();
   await trigger.focus();
@@ -1021,6 +1022,7 @@ test("Select opens a Cell listbox and commits only explicit activation", async (
     (overlay) => overlay.rootId === "component-select-content",
   );
   expect(borderlessOverlay?.bounds.height).toBe(3);
+  expect(borderlessOverlay?.bounds.width).toBe(triggerWidth);
   expect(borderlessOverlay?.text).toContain("Light");
   expect(borderlessOverlay?.text).toContain("Dark");
   expect(borderlessOverlay?.text).toContain("System");
