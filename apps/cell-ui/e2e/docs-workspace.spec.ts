@@ -1,5 +1,83 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, ownerBounds, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, copyCellRange, ownerBounds, readCellProbe } from "./helpers/cell-probe";
+
+test("document range crosses the interactive preview in one Cell Scene", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/#/components/button");
+  const article = page.locator('.docs-page [data-cell-probe="article-button"]');
+  await expect(page.locator(".docs-page [data-cell-probe]")).toHaveCount(1);
+  const snapshot = await readCellProbe(article);
+  const lines = snapshot.text.split("\n");
+  const startRow = lines.findIndex((line) => line.includes("## Preview"));
+  const endRow = lines.findIndex((line) => line.includes("## Installation"));
+  expect(startRow).toBeGreaterThanOrEqual(0);
+  expect(endRow).toBeGreaterThan(startRow);
+  expect(lines.slice(startRow, endRow).join("\n")).toContain("presentation");
+  const start = await cellPoint(article, 0, startRow);
+  const end = await cellPoint(article, 28, endRow);
+  await page.keyboard.down("Alt");
+  await page.keyboard.down("Meta");
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(end.x, end.y, { steps: 8 });
+  await page.mouse.up();
+  await page.keyboard.up("Meta");
+  await page.keyboard.up("Alt");
+  await expect(article).toHaveAttribute("data-cell-range", /,\d+,29,\d+$/);
+  const copied = await copyCellRange(article);
+  expect(copied).toContain("## Preview");
+  expect(copied).toContain("Save");
+  expect(copied).toContain("## Installation");
+});
+
+test("embedded playground keeps local presentation and preview copy", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (value: string) => { sessionStorage.setItem("preview-copy", value); } },
+    });
+  });
+  await page.goto("/#/components/button");
+  const article = page.locator('[data-cell-probe="article-button"]');
+  await expect(article.getByRole("button", { name: "Save document" })).toBeAttached();
+  const presentation = article.getByRole("button", { name: "presentation" });
+  await presentation.focus();
+  await page.keyboard.press("Enter");
+  await article.getByRole("option", { name: "Text" }).focus();
+  await page.keyboard.press("Enter");
+  await expect.poll(async () => (await readCellProbe(article)).cells.some((cell) =>
+    cell.ownerId === "component-button-save" && cell.text === "[")).toBe(true);
+  await expect(article.getByRole("heading", { name: "Installation" })).toBeAttached();
+  await article.getByRole("button", { name: "Copy preview" }).evaluate((element: HTMLElement) => element.click());
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("preview-copy")))
+    .toContain("cell-ui/probe@5  component-button");
+});
+
+test("multi-demo guide keeps independent interactions in one document Scene", async ({ page }) => {
+  await page.goto("/#/guides/introduction");
+  const article = page.locator('.docs-page [data-cell-probe="article-introduction"]');
+  await expect(page.locator(".docs-page [data-cell-probe]")).toHaveCount(1);
+  await expect(article.getByRole("button", { name: "Start" })).toBeAttached();
+  await article.getByRole("button", { name: "Start" }).evaluate((element: HTMLElement) => element.click());
+  await expect.poll(async () => (await readCellProbe(article)).text).toContain("Uploading files");
+  await expect(article.getByRole("textbox", { name: "Notes" })).toBeAttached();
+  await expect(article.getByRole("heading", { name: "Edit Unicode in place" })).toBeAttached();
+});
+
+test("embedded dialog stays inside its preview scope", async ({ page }) => {
+  await page.goto("/#/components/dialog");
+  const article = page.locator('[data-cell-probe="article-dialog"]');
+  await article.getByRole("button", { name: "Open dialog" }).evaluate((element: HTMLElement) => element.click());
+  await expect(article.getByRole("dialog", { name: "Continue?" })).toBeAttached();
+  const probe = await readCellProbe(article);
+  const rows = probe.text.split("\n");
+  const previewRow = rows.findIndex((line) => line.includes("## Preview"));
+  const installationRow = rows.findIndex((line) => line.includes("## Installation"));
+  const overlay = probe.overlays.find(({ rootId }) => rootId === "demo-dialog");
+  expect(overlay).toBeDefined();
+  expect(overlay!.bounds.y).toBeGreaterThan(previewRow);
+  expect(overlay!.bounds.y + overlay!.bounds.height).toBeLessThan(installationRow);
+});
 
 test("mobile docs start with the work and disclose one Cell navigation", async ({ page }) => {
   for (const [width, height] of [[390, 844], [320, 700]] as const) {
@@ -10,7 +88,7 @@ test("mobile docs start with the work and disclose one Cell navigation", async (
     await expect(trigger).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByRole("navigation", { name: "On This Page" })).toHaveCount(0);
     await expect(nav.getByRole("link")).toHaveCount(0);
-    await expect.poll(() => page.locator(".docs-preview").evaluate((element) =>
+    await expect.poll(() => page.locator("#preview").evaluate((element) =>
       element.getBoundingClientRect().top)).toBeLessThan(height);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
 

@@ -86,6 +86,8 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       index,
       style: current.style,
       presentation: current.presentation,
+      overlayScope: current.overlayScope,
+      probeId: current.probeId,
       surfaceVariant: current.surfaceVariant,
       frame: current.frame,
       borderShape: current.borderShape,

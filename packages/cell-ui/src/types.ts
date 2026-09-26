@@ -125,6 +125,8 @@ export type WidgetNode = Readonly<{
   index: number;
   style: CellLayoutStyle;
   presentation: import("./presentation.js").CellUiPresentation;
+  overlayScope: boolean;
+  probeId: string | null;
   surfaceVariant: import("./surface-variant.js").SurfaceVariant | null;
   frame: import("./border.js").CellFrame;
   borderShape: import("./border.js").CellBorderShape | null;
@@ -314,6 +316,7 @@ export type SemanticAction = "activate" | "focus" | "expand" | "collapse";
 
 export type SemanticNode = Readonly<{
   id: WidgetId;
+  probeId?: string;
   semanticParentId: WidgetId | null;
   traversalOrder: number;
   bounds: CellRect | null;

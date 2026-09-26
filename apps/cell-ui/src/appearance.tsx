@@ -8,6 +8,7 @@ import {
   galleryFontOptions,
   type GalleryFont,
 } from "./font-options";
+import { useDocumentScene } from "./document-scene";
 
 const defaultTheme = resolveCellUiTheme(undefined);
 type GalleryFontStatus = "idle" | "loading" | "error";
@@ -206,6 +207,23 @@ export function useGalleryFontControl() {
 }
 export function GallerySurface(props: CellSurfaceProps) {
   const { theme, palette, recipe, fontProfile, feedback } = useGalleryAppearance();
+  const documentScene = useDocumentScene();
+  useLayoutEffect(() => {
+    if (!documentScene || !props.probeId) return;
+    const id = props.probeId;
+    documentScene.register(id, {
+      label: props.label ?? id,
+      root: props.children,
+      viewport: props.viewport,
+      overlayViewport: props.overlayViewport ?? props.viewport,
+      presentation: props.presentation ?? "rich",
+      focusedId: props.focusedId ?? null,
+      onCommand: props.onCommand,
+    });
+    return () => documentScene.register(id, null);
+  }, [documentScene, props.children, props.focusedId, props.label, props.onCommand, props.overlayViewport, props.presentation,
+    props.probeId, props.viewport]);
+  if (documentScene) return null;
   return <CellSurface
     {...props}
     metrics={props.metrics ?? DEFAULT_CELL_UI_METRICS}

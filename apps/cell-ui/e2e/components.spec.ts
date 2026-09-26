@@ -417,6 +417,8 @@ test("Installation article is Cell-rendered without losing document navigation o
   await expect(page.locator("#configure")).toBeInViewport();
   await expect.poll(async () => (await readCellProbe(article)).text).toContain("components.json");
   await expect(article.locator('[role="code"]').filter({ hasText: /^"@chardesk":/u })).toHaveCount(1);
+  expect((await readCellProbe(article)).cells.some(({ ownerId, text }) =>
+    ownerId?.includes("installation-configure-copy") && text === "󰆏")).toBe(true);
   const copy = article.getByRole("button", { name: "Copy code" }).first();
   await copy.focus();
   await page.keyboard.press("Enter");
@@ -453,7 +455,7 @@ test("Installation article is Cell-rendered without losing document navigation o
   await page.keyboard.up("Meta");
   await page.keyboard.up("Alt");
   expect(await copyCellRange(article)).toContain('"@chardesk"');
-  const copyGlyph = wide.cells.find(({ ownerId, text }) => ownerId?.includes("installation-command-copy") && text === "⧉");
+  const copyGlyph = wide.cells.find(({ ownerId, text }) => ownerId?.includes("installation-command-copy") && text === "󰆏");
   expect(copyGlyph).toBeDefined();
   expect(copyGlyph!.x).toBeGreaterThan(wide.viewport.width - 6);
   const copyPoint = await cellPoint(article, copyGlyph!.x, copyGlyph!.y);

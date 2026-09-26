@@ -86,7 +86,13 @@ type FloatingSurfaceAppearanceProps = Readonly<{
 }>;
 
 export type RootProps = ContainerProps & Readonly<{ style?: CellLayoutStyle }>;
-export type BoxProps = ContainerProps & SurfaceAppearanceProps & Readonly<{ style?: CellLayoutStyle }>;
+export type BoxProps = ContainerProps & SurfaceAppearanceProps & Readonly<{
+  probeId?: string;
+  probeLabel?: string;
+  style?: CellLayoutStyle;
+  presentation?: CellUiPresentation;
+  overlayScope?: boolean;
+}>;
 export type AlertProps = IdentityProps & ChildrenProps & Readonly<{
   tone?: AlertTone;
   variant?: SurfaceVariant;
@@ -509,6 +515,8 @@ export type WidgetDescriptor = Readonly<{
   key: string | null;
   style: CellLayoutStyle;
   presentation: CellUiPresentation;
+  overlayScope: boolean;
+  probeId: string | null;
   surfaceVariant: SurfaceVariant | null;
   frame: CellFrame;
   borderShape: CellBorderShape | null;
@@ -745,8 +753,10 @@ const markdownFixedWidth = (tokens: readonly Token[], skipCodeBlocks: boolean, s
     : token.type === "table" ? markdownTableWidth(token as Tokens.Table) : 0));
 const hasSharedScrollGuard = (node: WidgetDescriptor): boolean => node.kind !== "scroll-area"
   && (node.sharedScrollGuard || node.children.some(hasSharedScrollGuard));
-const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: CellUiPresentation,
+const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresentation: CellUiPresentation,
   inScrollArea = false): WidgetDescriptor[] => {
+  const presentation = element.type === Box
+    ? (element.props as BoxProps).presentation ?? inheritedPresentation : inheritedPresentation;
   const textMode = presentation === "text";
   if (element.type === Fragment) {
     const fragmentChildren: ReactNode[] = [];
@@ -1034,6 +1044,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
         ?? (props.style as CellLayoutStyle | undefined)?.padding ?? 0) } : {}),
     },
     presentation,
+    overlayScope: element.type === Box && props.overlayScope === true,
+    probeId: element.type === Box && typeof props.probeId === "string" ? props.probeId : null,
     surfaceVariant,
     frame,
     borderShape: presentedBorderShape(presentation, frame, requestedBorderShape),
@@ -1050,7 +1062,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
       ? props.markdownCenteredText : null,
     sharedScrollGuard: kind === "scroll-area" && children.some(hasSharedScrollGuard),
     textStyle: { ...(element.type === DialogTitle || element.type === AlertTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
-    label: alertLabel ?? (typeof props.label === "string" ? props.label : null),
+    label: alertLabel ?? (typeof props.label === "string" ? props.label
+      : element.type === Box && typeof props.probeLabel === "string" ? props.probeLabel : null),
     disabled: props.disabled === true,
     invalid: false,
     focused: props.focused === true,

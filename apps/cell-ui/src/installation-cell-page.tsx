@@ -25,7 +25,7 @@ const codeBlock = (
 ) => {
   const id = `installation-${section.id}`;
   const source = block.raw.trimEnd();
-  const icon = copyLabel === "Copied" ? "✓" : copyLabel === "Copy failed" ? "!" : "⧉";
+  const icon = copyLabel === "Copied" ? "✓" : copyLabel === "Copy failed" ? "!" : "󰆏";
   return <Box id={`${id}-code-frame`} style={{ width: "100%" }}>
     <ScrollArea id={`${id}-code-scroll`} variant="surface" scrollX={scroll.x} scrollY={scroll.y}
       style={{ width: "100%" }}>

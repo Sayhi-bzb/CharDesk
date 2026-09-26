@@ -98,6 +98,16 @@ export const composeScene = (
   let traversalOrder = 0;
   const orders = new Map<string, number>();
   const deferredTooltips: string[] = [];
+  const scopedOverlayViewport = (id: string): CellRect => {
+    let parentId = tree.nodes.get(id)?.parentId;
+    while (parentId) {
+      const parent = tree.nodes.get(parentId);
+      const entry = entries.get(parentId);
+      if (parent?.overlayScope && entry) return entry.contentBounds;
+      parentId = parent?.parentId ?? null;
+    }
+    return overlayViewport;
+  };
   const visit = (
     id: string,
     parentOrigin: CellPoint,
@@ -115,8 +125,9 @@ export const composeScene = (
     }
     if (widget.kind === "tooltip" && !widget.tooltipOpen) return;
     const portal = isPortalKind(widget.kind);
+    const portalViewport = portal ? scopedOverlayViewport(id) : overlayViewport;
     const origin = portal ? { x: 0, y: 0 } : parentOrigin;
-    const clip = portal ? overlayViewport : inheritedClip;
+    const clip = portal ? portalViewport : inheritedClip;
     const layer = portal ? inheritedLayer + 1 : inheritedLayer;
     const dropdownContent = widget.kind === "select-content" || widget.kind === "combobox-content";
     const anchorKind = widget.kind === "combobox-content" ? "combobox-input" : "select-trigger";
@@ -132,14 +143,14 @@ export const composeScene = (
       throw new TypeError("Dropdown content must follow its input or trigger.");
     }
     const selectPlacement = anchorBounds
-      ? placeAnchoredOverlay(anchorBounds, layoutEntry.rect, overlayViewport)
+      ? placeAnchoredOverlay(anchorBounds, layoutEntry.rect, portalViewport)
       : undefined;
     const tooltipAnchor = widget.kind === "tooltip" && widget.tooltipTargetId
       ? entries.get(widget.tooltipTargetId)
       : undefined;
     if (widget.kind === "tooltip" && (!tooltipAnchor || !tooltipAnchor.paintVisible)) return;
     const tooltipPlacement = tooltipAnchor
-      ? placeAnchoredOverlay(tooltipAnchor.layoutBounds, layoutEntry.rect, overlayViewport,
+      ? placeAnchoredOverlay(tooltipAnchor.layoutBounds, layoutEntry.rect, portalViewport,
           { preferredSide: "above", gap: 0 })
       : undefined;
     if (tooltipPlacement && tooltipPlacement.bounds.height < (widget.frame === "bordered" ? 3 : 1)) return;
@@ -163,12 +174,16 @@ export const composeScene = (
       : undefined;
     const bounds: CellRect = {
       x: rangeThumbX ?? (widget.kind === "overlay"
-        ? widget.overlayPosition?.x ?? Math.max(0, Math.floor((layout.viewport.width - layoutEntry.rect.width) / 2))
+        ? widget.overlayPosition?.x !== undefined
+          ? portalViewport.x + widget.overlayPosition.x
+          : portalViewport.x + Math.max(0, Math.floor((portalViewport.width - layoutEntry.rect.width) / 2))
         : placement
           ? placement.bounds.x
           : origin.x + layoutEntry.rect.x),
       y: rangeSliderParentEntry?.decorationBounds.y ?? (widget.kind === "overlay"
-        ? widget.overlayPosition?.y ?? Math.max(0, Math.floor((layout.viewport.height - layoutEntry.rect.height) / 2))
+        ? widget.overlayPosition?.y !== undefined
+          ? portalViewport.y + widget.overlayPosition.y
+          : portalViewport.y + Math.max(0, Math.floor((portalViewport.height - layoutEntry.rect.height) / 2))
         : placement
           ? placement.bounds.y
           : origin.y + layoutEntry.rect.y),

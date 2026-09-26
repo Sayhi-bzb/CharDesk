@@ -5,7 +5,7 @@ test("docs keep related controls together and one Cell row between sections", as
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/#/components/button");
-    const article = page.locator('[data-cell-probe="article-button-2"]');
+    const article = page.locator('[data-cell-probe="article-button"]');
     const heading = article.getByRole("heading", { name: "Installation", level: 2 });
     const tabs = article.getByRole("tablist", { name: "Package manager" });
     const panel = article.getByRole("tabpanel", { name: "npm" });

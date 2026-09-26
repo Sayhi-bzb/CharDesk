@@ -3,6 +3,7 @@ import { Box, Root, ScrollArea, Text, type CellUiPresentation, type WidgetComman
 import { CELL_SURFACE_GUARD_CELLS, DEFAULT_CELL_UI_METRICS, useCellSelectState, type CellSelectState, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "./appearance";
 import { renderGallerySelect } from "./gallery-component-recipes";
+import { useDocumentScene } from "./document-scene";
 import {
   MIN_SPLIT_COLUMNS,
   PLAYGROUND_CONTROL_COLUMNS,
@@ -54,6 +55,7 @@ export function ComponentPlayground({
   rows?: number;
 }>) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const documentScene = useDocumentScene();
   const [totalColumns, setTotalColumns] = useState(MIN_SPLIT_COLUMNS);
   const measuredColumnsRef = useRef(MIN_SPLIT_COLUMNS);
   const [previewScroll, setPreviewScroll] = useState({ x: 0, y: 0 });
@@ -80,7 +82,7 @@ export function ComponentPlayground({
   const resolvedOverlayRows = typeof overlayRows === "function" ? overlayRows(presentation) : overlayRows;
   const resolvedPreview = typeof preview === "function" ? preview(presentation) : preview;
   const layout = resolveComponentPlaygroundLayout(
-    totalColumns,
+    documentScene?.width ?? totalColumns,
     previewMinColumns,
     controlColumns,
     true,
@@ -89,6 +91,7 @@ export function ComponentPlayground({
   const previewScrollId = `${id}-preview-scroll`;
   const controlsScrollId = `${id}-controls-scroll`;
   useLayoutEffect(() => {
+    if (documentScene) return;
     const host = hostRef.current;
     if (!host) return;
     const measure = () => {
@@ -111,7 +114,7 @@ export function ComponentPlayground({
     const observer = new ResizeObserver(measure);
     observer.observe(host);
     return () => observer.disconnect();
-  }, []);
+  }, [documentScene]);
   const dispatch = (command: WidgetCommand) => {
     presentationSelect.dispatch(command);
     if (command.type === "focus") {
@@ -150,8 +153,7 @@ export function ComponentPlayground({
     onCommand(command);
   };
 
-  return <div ref={hostRef} className="component-playground">
-    <GallerySurface
+  const surface = <GallerySurface
       className="component-playground__surface"
       viewport={layout.viewport}
       overlayViewport={{
@@ -232,6 +234,6 @@ export function ComponentPlayground({
         </Box>
       </ScrollArea>
       </Root>
-    </GallerySurface>
-  </div>;
+    </GallerySurface>;
+  return documentScene ? surface : <div ref={hostRef} className="component-playground">{surface}</div>;
 }

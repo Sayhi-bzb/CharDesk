@@ -71,7 +71,7 @@ import {
   type CellRangeSnapshot,
 } from "./range.js";
 import type { RootProps } from "./react.js";
-import { captureCellProbe, formatCellBuffer } from "./probe.js";
+import { captureCellProbe, formatCellBuffer, type CellProbeOptions } from "./probe.js";
 import type { CellProbePresentation, CellProbeSnapshot } from "./probe.js";
 import { CellUiRuntime } from "./runtime.js";
 import { createCellUiRenderFrame } from "./frame.js";
@@ -481,6 +481,7 @@ export const SemanticDom = ({
         aria-valuetext={node.valueText}
         data-focused={snapshot.focusedId === node.id || undefined}
         data-cell-semantic-id={node.id}
+        data-cell-probe={node.probeId}
         data-href={node.href}
         href={node.role === "link" ? node.href : undefined}
         target={node.role === "link" ? node.target : undefined}
@@ -542,15 +543,17 @@ export const CELL_SURFACE_PROBE_PROPERTY = "__chardeskCellProbeV5" as const;
 
 type CellProbeHost = HTMLElement & {
   [CELL_SURFACE_PROBE_PROPERTY]?: CellProbeSnapshot;
+  __chardeskCaptureCellProbeV5?: (options: CellProbeOptions) => CellProbeSnapshot;
 };
 
-export const readCellSurfaceProbe = (element: Element): CellProbeSnapshot | null => {
+export const readCellSurfaceProbe = (element: Element, options?: CellProbeOptions): CellProbeSnapshot | null => {
   const surface = element.matches("[data-cell-probe]")
     ? element
     : element.closest("[data-cell-probe]");
-  return surface
-    ? (surface as CellProbeHost)[CELL_SURFACE_PROBE_PROPERTY] ?? null
-    : null;
+  if (!surface) return null;
+  const host = surface as CellProbeHost;
+  return options ? host.__chardeskCaptureCellProbeV5?.(options) ?? null
+    : host[CELL_SURFACE_PROBE_PROPERTY] ?? null;
 };
 
 const CELL_PROBE_FONT_SAMPLES = {
@@ -1247,9 +1250,37 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       },
     };
     surface[CELL_SURFACE_PROBE_PROPERTY] = snapshot;
+    const subprobes: CellProbeHost[] = [];
+    for (const semantic of frame.semantics.nodes.values()) {
+      if (!semantic.probeId) continue;
+      const region = frame.scene.entries.get(semantic.id)?.layoutBounds;
+      const target = [...surface.querySelectorAll<CellProbeHost>("[data-cell-semantic-id]")]
+        .find((element) => element.dataset.cellSemanticId === semantic.id);
+      if (!region || !target) continue;
+      const captured = captureCellProbe(frame, { region, probeId: semantic.probeId });
+      target[CELL_SURFACE_PROBE_PROPERTY] = {
+        ...captured,
+        region: { x: 0, y: 0, width: region.width, height: region.height },
+        viewport: { width: region.width, height: region.height },
+        cells: captured.cells.map((cell) => ({ ...cell, x: cell.x - region.x, y: cell.y - region.y })),
+        presentation: snapshot.presentation,
+      };
+      target.dataset.cellProbeOrigin = `${region.x},${region.y}`;
+      subprobes.push(target);
+    }
+    const capture = (options: CellProbeOptions): CellProbeSnapshot => ({
+      ...captureCellProbe(frame, { ...options, probeId: options.probeId ?? probeId }),
+      presentation: snapshot.presentation,
+    });
+    surface.__chardeskCaptureCellProbeV5 = capture;
     return () => {
       if (surface[CELL_SURFACE_PROBE_PROPERTY] === snapshot) {
         delete surface[CELL_SURFACE_PROBE_PROPERTY];
+      }
+      if (surface.__chardeskCaptureCellProbeV5 === capture) delete surface.__chardeskCaptureCellProbeV5;
+      for (const target of subprobes) {
+        delete target[CELL_SURFACE_PROBE_PROPERTY];
+        delete target.dataset.cellProbeOrigin;
       }
     };
   }, [canvasRef, auditFonts, fontPresentationRevision, fontProfile, frame, metrics, probeId, fontMetrics, fontAudit]);

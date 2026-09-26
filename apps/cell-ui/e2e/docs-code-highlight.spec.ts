@@ -34,7 +34,14 @@ test("docs code blocks share Markdown syntax colors in light and dark themes", a
     const usage = page.locator('[data-cell-probe="article-button-2"]');
     const lightUsage = await readCellProbe(usage);
     expect(colorAt(lightUsage, "import ", 0)).toBe(asRgb("#0550ae"));
+    expect(colorAt(lightUsage, "npx shadcn@latest", 0)).toBe(asRgb("#8250df"));
     if (width > 720) expect(colorAt(lightUsage, "@/lib", 0)).toBe(asRgb("#116329"));
+    await usage.getByRole("tab", { name: "pnpm", exact: true })
+      .evaluate((element: HTMLElement) => element.click());
+    await expect.poll(async () => colorAt(await readCellProbe(usage), "pnpm dlx shadcn@latest", 0))
+      .toBe(asRgb("#8250df"));
+    await usage.getByRole("tab", { name: "npm", exact: true })
+      .evaluate((element: HTMLElement) => element.click());
 
     await themeButton.getByRole("button", { name: "Dark" }).focus();
     await page.keyboard.press("Enter");
@@ -43,6 +50,7 @@ test("docs code blocks share Markdown syntax colors in light and dark themes", a
       .toBe(asRgb("#79c0ff"));
     const darkUsage = await readCellProbe(usage);
     expect(colorAt(darkUsage, "import ", 0)).toBe(asRgb("#79c0ff"));
+    expect(colorAt(darkUsage, "npx shadcn@latest", 0)).toBe(asRgb("#d2a8ff"));
     if (width > 720) expect(colorAt(darkUsage, "@/lib", 0)).toBe(asRgb("#7ee787"));
     await page.goto("/#/guides/installation");
     const darkInstallation = await readCellProbe(page.locator('[data-cell-probe="installation-article"]'));

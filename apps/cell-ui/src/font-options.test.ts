@@ -57,6 +57,7 @@ describe("Cell UI gallery font profiles", () => {
     }
     expect(resolve("xiaolai-mono", "👋").family).toMatch(/^'Noto Emoji'/);
     expect(resolve("xiaolai-mono", "\ue0b0").family).toMatch(/^'Symbols Nerd Font Mono'/);
+    expect(resolve("xiaolai-mono", "󰆏").family).toMatch(/^'Symbols Nerd Font Mono'/);
   });
   for (const id of ["fusion-mono"] as const) {
     it(`routes Latin and CJK through ${id} without Canvas-only calibration`, () => {
@@ -74,6 +75,7 @@ describe("Cell UI gallery font profiles", () => {
       expect(option.stylesheet).not.toMatch(/^https?:/);
       expect(option.profile.sources).toContainEqual(expect.objectContaining({ id: "fusion-mono", version: "2026.09.01" }));
       expect(resolve(id, "\ue0b0").family).toMatch(/^'Symbols Nerd Font Mono'/);
+      expect(resolve(id, "󰆏").family).toMatch(/^'Symbols Nerd Font Mono'/);
       expect(resolve(id, "∞").family).toMatch(/^'Fusion Pixel 12px/);
       expect(resolve(id, "∞").family.indexOf("Fusion Pixel 12px"))
         .toBeLessThan(resolve(id, "∞").family.indexOf("JuliaMono"));

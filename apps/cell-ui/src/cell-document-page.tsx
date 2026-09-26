@@ -1,12 +1,13 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactElement } from "react";
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactElement } from "react";
 import {
-  Box, Button, Markdown, Root, ScrollArea, Tab, TabPanel, Tabs, Text,
-  type CellPoint, type RootProps, type WidgetCommand,
+  Box, Button, Markdown, Root, ScrollArea, Tab, TabPanel, Tabs, Text, createWidgetDescriptor,
+  type CellPoint, type CellRect, type RootProps, type WidgetCommand, type WidgetDescriptor,
 } from "@chardesk/cell-ui";
 import { formatCellProbe } from "@chardesk/cell-ui";
 import { readCellSurfaceProbe, useCellScrollState, type CellScrollState } from "@chardesk/cell-ui/browser";
-import { GallerySurface, useGalleryAppearance } from "./appearance";
+import { useGalleryAppearance } from "./appearance";
 import { CellArticleSurface } from "./cell-article-surface";
+import { DocumentSceneContext, type DocumentSceneFragment } from "./document-scene";
 import { sourceLinksForComponent, type ComponentDocument } from "./component-catalog";
 import { installationCommands, publicUsage, type GuideContent } from "./docs-content";
 import { CODE_BLOCK_PREVIEW_LINES, shouldCollapseCode } from "./code-block-lines";
@@ -16,7 +17,7 @@ type ApiRow = Readonly<{ name: string; type: string; description: string }>;
 type ArticlePart = Readonly<{
   id?: string;
   source?: string;
-  code?: Readonly<{ id: string; source: string; language: "tsx" | "text" }>;
+  code?: Readonly<{ id: string; source: string; language: "tsx" | "bash" | "text" }>;
   api?: readonly ApiRow[];
   installation?: boolean;
 }>;
@@ -36,6 +37,13 @@ const guideDemos = {
   macintosh: ClassicMacintoshDemo,
   markdown: MarkdownIntroductionDemo,
 } satisfies Record<NonNullable<GuideContent["sections"][number]["demo"]>, ComponentType>;
+const guideDemoProbeIds = {
+  settings: "intro-settings", progress: "intro-progress", notes: "intro-notes",
+  macintosh: "classic-macintosh-example", markdown: "markdown-example",
+} satisfies Record<keyof typeof guideDemos, string>;
+const MountedDemo = memo(function MountedDemo({ Demo }: Readonly<{ Demo: ComponentType }>) {
+  return <Demo />;
+});
 
 const fence = (code: string, language: string) => `\`\`\`${language}\n${code}\n\`\`\``;
 const heading = (title: string, body?: string) => [`## ${title}`, body].filter(Boolean).join("\n\n");
@@ -68,7 +76,8 @@ const guideItems = (guide: GuideContent): ArticleItem[] => {
       source: heading(section.title, section.body),
       installation: section.installation,
     } });
-    if (Demo) items.push({ type: "preview", Demo, probeId: section.probeId });
+    if (Demo) items.push({ type: "preview", Demo,
+      probeId: section.probeId ?? guideDemoProbeIds[section.demo!] });
     if (section.code) items.push({ type: "part", part: {
       code: section.code ? { id: section.id, source: section.code, language: section.codeLanguage ?? "tsx" } : undefined,
     } });
@@ -105,7 +114,7 @@ const codeBlock = (
   const rows = visible.split("\n").length;
   const source = fence(visible, language);
   const gutterWidth = String(code.split("\n").length).length + 2;
-  const icon = copyState === "Copied" ? "✓" : copyState === "Copy failed" ? "!" : "⧉";
+  const icon = copyState === "Copied" ? "✓" : copyState === "Copy failed" ? "!" : "󰆏";
   return <Box id={`${id}-code`} variant="surface" style={{ width: "100%", gap: 0 }}>
     <Box style={{ direction: "row", width: "100%" }}>
       {rows > 1 ? <Box id={`${id}-numbers`} style={{ width: gutterWidth, paddingTop: 1, flexShrink: 0 }}>
@@ -138,7 +147,7 @@ const renderPart = (
   expanded: Readonly<Record<string, boolean>>, mode: "light" | "dark",
 ) => {
   const code = part.installation
-    ? { id: "installation-command", source: installationCommands[manager], language: "text" as const }
+    ? { id: "installation-command", source: installationCommands[manager], language: "bash" as const }
     : part.code;
   const codeId = code ? `${prefix}-${code.id}` : "";
   const tableId = `${prefix}-api-table`;
@@ -168,44 +177,63 @@ const renderPart = (
   </Box>;
 };
 
-function ArticleSegmentSurface({ segment, manager, scroll, copies, expanded, mode, focusedId, onCommand }: Readonly<{
-  segment: ArticleSegment;
-  manager: keyof typeof installationCommands;
-  scroll: CellScrollState;
-  copies: Readonly<Record<string, CopyState>>;
-  expanded: Readonly<Record<string, boolean>>;
-  mode: "light" | "dark";
-  focusedId: string | null;
-  onCommand: (command: WidgetCommand) => void;
-}>) {
-  const content = useMemo(() => <Root><Box id={`${segment.id}-content`} style={{ width: "100%", gap: 1 }}>
-    {segment.parts.map((part) => renderPart(part, segment.id, manager, scroll, copies, expanded, mode))}
-  </Box></Root>, [segment, manager, scroll, copies, expanded, mode]);
-  const anchorIds = useMemo(() => segment.parts.flatMap((part) => part.id ? [part.id] : []), [segment]);
-  return <CellArticleSurface label="Documentation article" probeId={segment.id} content={content}
-    anchorIds={anchorIds} focusedId={focusedId} onCommand={onCommand} />;
-}
+const explicitIds = (node: WidgetDescriptor): string[] => [
+  ...(node.explicitId ? [node.explicitId] : []), ...node.children.flatMap(explicitIds),
+];
 
-function PreviewCopy({ probeId, state, focusedId, onCommand }: Readonly<{
-  probeId: string;
-  state: CopyState;
-  focusedId: string | null;
-  onCommand: (command: WidgetCommand) => void;
-}>) {
-  const id = `preview-copy-${probeId}`;
-  const label = state === "Copy" ? "Copy preview" : state;
-  const icon = state === "Copied" ? "✓" : state === "Copy failed" ? "!" : "⧉";
-  return <div className="docs-preview__copy"><GallerySurface label="Preview actions"
-    probeId={`${probeId}-copy`} viewport={{ width: 3, height: 1 }}
-    focusedId={focusedId} onCommand={onCommand}>
-    <Root><Button id={id} label={label} variant="surface"><Text>{icon}</Text></Button></Root>
-  </GallerySurface></div>;
+function previewScene(probeId: string, fragment: DocumentSceneFragment | undefined, copyState: CopyState,
+  scroll: CellScrollState) {
+  const previewId = `article-preview-${probeId}`;
+  const icon = copyState === "Copied" ? "✓" : copyState === "Copy failed" ? "!" : "󰆏";
+  const playground = probeId.startsWith("component-");
+  return <Box id={previewId} key={previewId} style={{ width: "100%", paddingTop: 1, paddingBottom: 1 }}>
+    {fragment ? <ScrollArea id={`${previewId}-scroll`} variant="ghost"
+      scrollX={scroll.offset(`${previewId}-scroll`).x}
+      scrollY={scroll.offset(`${previewId}-scroll`).y}
+      style={{ width: "100%", height: fragment.viewport.height }}>
+      <Box style={{ direction: "row", width: Math.max(fragment.viewport.width, 1) }}>
+        {!playground ? <Box style={{ flexGrow: 1 }} /> : null}
+        <Box id={`${previewId}-content`} probeId={probeId} probeLabel={fragment.label}
+          presentation={fragment.presentation} overlayScope
+          style={{ ...fragment.root.props.style, width: fragment.viewport.width,
+            height: fragment.viewport.height, flexShrink: 0 }}>
+          {fragment.root.props.children}
+        </Box>
+        {!playground ? <Box style={{ flexGrow: 1 }} /> : null}
+      </Box>
+    </ScrollArea> : <Box style={{ width: "100%", height: 1 }} />}
+    <Button id={`preview-copy-${probeId}`} label={copyState === "Copy" ? "Copy preview" : copyState}
+      variant="surface" style={{ position: "absolute", top: 0, right: 1 }}><Text>{icon}</Text></Button>
+  </Box>;
 }
 
 export function CellDocumentPage({ document, guide }: Readonly<{ document?: ComponentDocument; guide?: GuideContent }>) {
   const { mode } = useGalleryAppearance();
   const prefix = `article-${guide?.slug ?? document!.slug}`;
   const groups = useMemo(() => groupItems(guide ? guideItems(guide) : componentItems(document!), prefix), [guide, document, prefix]);
+  const [sceneWidth, setSceneWidth] = useState(72);
+  const [fragments, setFragments] = useState<Readonly<Record<string, DocumentSceneFragment>>>({});
+  const regionsRef = useRef<Readonly<Record<string, CellRect>>>({});
+  const register = useCallback((id: string, fragment: DocumentSceneFragment | null) => {
+    setFragments((current) => {
+      if (!fragment && !current[id]) return current;
+      if (!fragment) {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      }
+      return { ...current, [id]: fragment };
+    });
+  }, []);
+  const sceneContext = useMemo(() => ({ width: sceneWidth, register }), [sceneWidth, register]);
+  const previews = useMemo(() => groups.filter((group): group is Extract<ArticleItem, { type: "preview" }> =>
+    "Demo" in group), [groups]);
+  const previewRegionIds = useMemo(() => previews.map(({ probeId }) => `article-preview-${probeId}-content`), [previews]);
+  const anchorTargets = useMemo(() => Object.fromEntries(groups.flatMap((group) => "parts" in group
+    ? group.parts.flatMap((part) => part.id ? [[part.id, `${group.id}-${part.id}`]] : []) : [])), [groups]);
+  const anchorIds = useMemo(() => Object.keys(anchorTargets), [anchorTargets]);
+  const fragmentOwners = useMemo(() => new Map(Object.entries(fragments).flatMap(([probeId, fragment]) =>
+    explicitIds(createWidgetDescriptor(fragment.root, {}, fragment.presentation)!).map((id) => [id, probeId] as const))), [fragments]);
   const [manager, setManager] = useState<keyof typeof installationCommands>("npm");
   const scroll = useCellScrollState();
   const [copies, setCopies] = useState<Readonly<Record<string, CopyState>>>({});
@@ -247,7 +275,12 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
   const onCommand = (command: WidgetCommand) => {
     scroll.dispatch(command);
     if (command.type === "focus") setFocusedId(command.targetId);
-    else if (command.type === "open-link") window.location.assign(command.href);
+    const owner = fragmentOwners.get(command.targetId);
+    if (owner) {
+      fragments[owner]?.onCommand(command);
+      return;
+    }
+    if (command.type === "open-link") window.location.assign(command.href);
     else if (command.type === "set-active") {
       const selected = packageManagers.find((name) => command.targetId.endsWith(`-package-${name}`));
       if (selected) selectManager(selected);
@@ -263,29 +296,31 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
         copyText(codeId, source);
       } else if (command.targetId.startsWith("preview-copy-")) {
         const probeId = command.targetId.slice("preview-copy-".length);
-        const surface = window.document.querySelector(`[data-cell-probe="${probeId}"]`);
-        const snapshot = surface ? readCellSurfaceProbe(surface) : null;
+        const surface = window.document.querySelector(`[data-cell-probe="${prefix}"]`);
+        const region = regionsRef.current[`article-preview-${probeId}-content`];
+        const snapshot = surface && region ? readCellSurfaceProbe(surface, { region, probeId }) : null;
         const id = command.targetId;
         if (snapshot) copyText(id, formatCellProbe(snapshot, { header: true }));
         else setCopies((current) => ({ ...current, [id]: "Copy failed" }));
       }
     }
   };
-  const renderGroup = (group: ArticleGroup, index: number) => "parts" in group
-    ? <ArticleSegmentSurface key={group.id} segment={group} manager={manager} scroll={scroll}
-      copies={copies} expanded={expanded} mode={mode} focusedId={focusedId} onCommand={onCommand} />
-    : <div key={`preview-${group.probeId ?? index}`} className="docs-preview">
-        <group.Demo />
-        {group.probeId ? <PreviewCopy probeId={group.probeId}
-          state={copies[`preview-copy-${group.probeId}`] ?? "Copy"}
-          focusedId={focusedId} onCommand={onCommand} /> : null}
-      </div>;
-  const hasLead = !!document && groups.length > 1 && "parts" in groups[0]! && "Demo" in groups[1]!;
-  return <main className={`docs-page cell-article-page${hasLead ? " docs-page--component" : ""}`}>
-    {hasLead ? <section className="docs-lead" aria-label={`${document!.title} preview`}>
-      {renderGroup(groups[0]!, 0)}
-      {renderGroup(groups[1]!, 1)}
-    </section> : null}
-    {groups.slice(hasLead ? 2 : 0).map((group, index) => renderGroup(group, index + (hasLead ? 2 : 0)))}
-  </main>;
+  const content = <Root><Box id={`${prefix}-content`} style={{ width: "100%", gap: 1 }}>
+    {groups.map((group) => "parts" in group
+      ? <Box key={group.id} style={{ width: "100%", gap: 1 }}>
+        {group.parts.map((part) => renderPart(part, group.id, manager, scroll, copies, expanded, mode))}
+      </Box>
+      : previewScene(group.probeId!, fragments[group.probeId!],
+        copies[`preview-copy-${group.probeId}`] ?? "Copy", scroll))}
+  </Box></Root>;
+  return <>
+    <main className="docs-page cell-article-page">
+      <CellArticleSurface label="Documentation article" probeId={prefix} content={content}
+        anchorIds={anchorIds} anchorTargets={anchorTargets} regionIds={previewRegionIds}
+        regionsRef={regionsRef} onWidthChange={setSceneWidth} focusedId={focusedId} onCommand={onCommand} />
+    </main>
+    <DocumentSceneContext.Provider value={sceneContext}>
+      {previews.map(({ probeId, Demo }) => <MountedDemo key={probeId} Demo={Demo} />)}
+    </DocumentSceneContext.Provider>
+  </>;
 }

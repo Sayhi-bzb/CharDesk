@@ -64,6 +64,7 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
       || parent.kind === "range-slider"
       || parent.kind === "radio-group"
       || parent.kind === "markdown-block"
+      || parent.probeId !== null
     ) return parent.id;
     parentId = parent.parentId;
   }
@@ -71,6 +72,7 @@ const semanticParent = (tree: WidgetTree, node: WidgetNode): WidgetId | null => 
 };
 
 const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
+  if (node.kind === "box" && node.probeId) return "group";
   if (node.kind === "markdown-link") return "link";
   if (node.kind === "markdown-block") return node.markdownRole;
   if (node.dialogPart === "title") return "heading";
@@ -167,6 +169,7 @@ export const createSemanticSnapshot = (
       : null;
     const semantic: SemanticNode = {
       id: node.id,
+      ...(node.probeId ? { probeId: node.probeId } : {}),
       semanticParentId: parentId,
       traversalOrder,
       bounds: sceneEntry?.layoutBounds ?? null,
