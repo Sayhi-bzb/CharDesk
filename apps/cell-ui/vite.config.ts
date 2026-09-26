@@ -2,7 +2,6 @@ import path from "node:path";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig, type Plugin } from "vite";
 import { workspaceAliases } from "../../scripts/testing/workspace-aliases.js";
-import { galleryCodeHighlighting } from "./code-highlighting.ts";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const packagesRoot = path.join(repositoryRoot, "packages");
@@ -25,7 +24,7 @@ function repositorySourceModules(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [repositorySourceModules(), galleryCodeHighlighting(), react()],
+  plugins: [repositorySourceModules(), react()],
   publicDir: path.join(import.meta.dirname, "public"),
   server: {
     fs: { allow: [repositoryRoot] },

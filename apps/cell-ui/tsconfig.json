@@ -26,5 +26,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts", "code-highlighting.ts"]
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
 }

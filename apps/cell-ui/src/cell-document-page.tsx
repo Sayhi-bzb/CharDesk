@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactElement } from "react";
 import {
   Box, Button, Markdown, Root, ScrollArea, Tab, TabPanel, Tabs, Text,
-  type CellPoint, type MarkdownCodeToken, type RootProps, type WidgetCommand,
+  type CellPoint, type RootProps, type WidgetCommand,
 } from "@chardesk/cell-ui";
 import { formatCellProbe } from "@chardesk/cell-ui";
 import { readCellSurfaceProbe, useCellScrollState, type CellScrollState } from "@chardesk/cell-ui/browser";
@@ -11,7 +11,6 @@ import { sourceLinksForComponent, type ComponentDocument } from "./component-cat
 import { installationCommands, publicUsage, type GuideContent } from "./docs-content";
 import { CODE_BLOCK_PREVIEW_LINES, shouldCollapseCode } from "./code-block-lines";
 import { ClassicMacintoshDemo, MarkdownIntroductionDemo, NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
-import highlightedCode from "virtual:gallery-code-tokens";
 
 type ApiRow = Readonly<{ name: string; type: string; description: string }>;
 type ArticlePart = Readonly<{
@@ -97,22 +96,6 @@ const groupItems = (items: readonly ArticleItem[], prefix: string): ArticleGroup
   return groups;
 };
 
-const syntaxLines = (source: string, mode: "light" | "dark"): readonly (readonly MarkdownCodeToken[])[] | undefined => {
-  const tokens = highlightedCode[source];
-  if (!tokens) return undefined;
-  const lines: MarkdownCodeToken[][] = [[]];
-  for (const token of tokens) {
-    for (const [index, content] of token.content.split("\n").entries()) {
-      if (index) lines.push([]);
-      if (!content) continue;
-      const muted = token.color?.includes("string") || token.color?.includes("comment");
-      const color = muted ? mode === "light" ? "#555555" : "#aaaaaa" : undefined;
-      lines.at(-1)!.push({ content, color });
-    }
-  }
-  return lines;
-};
-
 const codeBlock = (
   id: string, code: string, language: string, scroll: CellPoint, copyState: CopyState,
   expanded: boolean, mode: "light" | "dark",
@@ -122,10 +105,9 @@ const codeBlock = (
   const rows = visible.split("\n").length;
   const source = fence(visible, language);
   const gutterWidth = String(code.split("\n").length).length + 2;
-  const tokens = language === "tsx" ? syntaxLines(code, mode) : undefined;
   const icon = copyState === "Copied" ? "✓" : copyState === "Copy failed" ? "!" : "⧉";
-  return <Box id={`${id}-code`} style={{ width: "100%", gap: 1 }}>
-    <Box variant="surface" style={{ direction: "row", width: "100%" }}>
+  return <Box id={`${id}-code`} variant="surface" style={{ width: "100%", gap: 0 }}>
+    <Box style={{ direction: "row", width: "100%" }}>
       {rows > 1 ? <Box id={`${id}-numbers`} style={{ width: gutterWidth, paddingTop: 1, flexShrink: 0 }}>
         {Array.from({ length: rows }, (_, index) => <Text key={index}
           textStyle={{ color: mode === "light" ? "#555555" : "#aaaaaa" }}>
@@ -134,14 +116,18 @@ const codeBlock = (
       </Box> : null}
       <ScrollArea id={`${id}-scroll`} scrollX={scroll.x} scrollY={scroll.y}
         style={{ flexGrow: 1, flexShrink: 1 }}>
-        <Markdown source={source} highlightCodeLine={(line, index) => tokens?.[index]} />
+        <Markdown source={source} />
       </ScrollArea>
       <Button id={`${id}-copy`} label={copyState === "Copy" ? "Copy code" : copyState}
         variant="surface" style={{ position: "absolute", top: 0, right: 1 }}><Text>{icon}</Text></Button>
     </Box>
-    {collapsible ? <Button id={`${id}-toggle`} variant="ghost">
-      <Text>{expanded ? "Show less" : "Show more"}</Text>
-    </Button> : null}
+    {collapsible ? <Box id={`${id}-footer`} style={{ direction: "row", width: "100%" }}>
+      <Box style={{ flexGrow: 1 }} />
+      <Button id={`${id}-toggle`} variant="ghost">
+        <Text>{expanded ? "Show less" : "Show more"}</Text>
+      </Button>
+      <Box style={{ flexGrow: 1 }} />
+    </Box> : null}
   </Box>;
 };
 
@@ -159,7 +145,7 @@ const renderPart = (
   const tableSource = part.api ? apiSource(part.api) : null;
   const tableOffset = scroll.offset(`${tableId}-scroll`);
   return <Box key={part.id ?? part.code?.id ?? part.source} id={part.id ? `${prefix}-${part.id}` : undefined}
-    style={{ width: "100%", gap: 1 }}>
+    style={{ width: "100%", gap: 0 }}>
     {part.source ? <Markdown source={part.source} /> : null}
     {part.installation ? <Tabs id={`${prefix}-package-tabs`} label="Package manager" orientation="horizontal">
       {packageManagers.map((name) => <Tab id={`${prefix}-package-${name}`} key={name}
@@ -192,7 +178,7 @@ function ArticleSegmentSurface({ segment, manager, scroll, copies, expanded, mod
   focusedId: string | null;
   onCommand: (command: WidgetCommand) => void;
 }>) {
-  const content = useMemo(() => <Root><Box id={`${segment.id}-content`} style={{ width: "100%", gap: 3 }}>
+  const content = useMemo(() => <Root><Box id={`${segment.id}-content`} style={{ width: "100%", gap: 1 }}>
     {segment.parts.map((part) => renderPart(part, segment.id, manager, scroll, copies, expanded, mode))}
   </Box></Root>, [segment, manager, scroll, copies, expanded, mode]);
   const anchorIds = useMemo(() => segment.parts.flatMap((part) => part.id ? [part.id] : []), [segment]);
@@ -285,15 +271,21 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
       }
     }
   };
-  return <main className="docs-page cell-article-page">
-    {groups.map((group) => "parts" in group
-      ? <ArticleSegmentSurface key={group.id} segment={group} manager={manager} scroll={scroll}
-        copies={copies} expanded={expanded} mode={mode} focusedId={focusedId} onCommand={onCommand} />
-      : <div key={`preview-${group.probeId ?? groups.indexOf(group)}`} className="docs-preview">
+  const renderGroup = (group: ArticleGroup, index: number) => "parts" in group
+    ? <ArticleSegmentSurface key={group.id} segment={group} manager={manager} scroll={scroll}
+      copies={copies} expanded={expanded} mode={mode} focusedId={focusedId} onCommand={onCommand} />
+    : <div key={`preview-${group.probeId ?? index}`} className="docs-preview">
         <group.Demo />
         {group.probeId ? <PreviewCopy probeId={group.probeId}
           state={copies[`preview-copy-${group.probeId}`] ?? "Copy"}
           focusedId={focusedId} onCommand={onCommand} /> : null}
-      </div>)}
+      </div>;
+  const hasLead = !!document && groups.length > 1 && "parts" in groups[0]! && "Demo" in groups[1]!;
+  return <main className={`docs-page cell-article-page${hasLead ? " docs-page--component" : ""}`}>
+    {hasLead ? <section className="docs-lead" aria-label={`${document!.title} preview`}>
+      {renderGroup(groups[0]!, 0)}
+      {renderGroup(groups[1]!, 1)}
+    </section> : null}
+    {groups.slice(hasLead ? 2 : 0).map((group, index) => renderGroup(group, index + (hasLead ? 2 : 0)))}
   </main>;
 }

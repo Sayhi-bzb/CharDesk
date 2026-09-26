@@ -36,6 +36,9 @@
     "@codemirror/state": "^6.7.4",
     "@react-stately/collections": "^3.13.1",
     "@react-stately/list": "^3.14.1",
+    "@shikijs/core": "3.23.0",
+    "@shikijs/engine-javascript": "3.23.0",
+    "@shikijs/langs": "3.23.0",
     "marked": "^16.4.1",
     "yoga-layout": "^3.2.1"
   },

@@ -156,6 +156,11 @@ export class CellInteractionController {
     this.#frame = frame;
     if (!command) return;
     if (this.feedback.settling) {
+      if (command.type === "scroll" || command.type === "text-preview-scroll"
+        || (command.type === "text" && command.command.type === "set-scroll")) {
+        this.emit(command);
+        return;
+      }
       const outsideMenu = this.feedback.defersActivation
         && menuScopeId(frame, command.targetId) !== menuScopeId(frame, this.feedback.targetId ?? "");
       if (command.type !== "dismiss" && !outsideMenu) return;

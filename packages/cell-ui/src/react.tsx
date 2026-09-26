@@ -40,6 +40,7 @@ import { resolveProgressVariant, type ProgressVariant } from "./progress.js";
 import { resolveSpinnerVariant, type SpinnerVariant } from "./spinner.js";
 import { tooltipText, tooltipTextWidth } from "./tooltip.js";
 import { parseCellMarkdownCodeBlocks, safeMarkdownHref, type MarkdownCodeBlock } from "./markdown.js";
+import { highlightMarkdownCode, type MarkdownCodeRole } from "./markdown-code.js";
 import { resolveTabsVariant, type TabsVariant } from "./tabs.js";
 import { fitTableCell, resolveTableVariant, tableWidth, type TableColumn, type TableVariant } from "./table.js";
 import {
@@ -131,7 +132,7 @@ export type MarkdownProps = Readonly<{
   highlightCodeLine?: (line: string, lineIndex: number) => readonly MarkdownCodeToken[] | undefined;
 }>;
 export type MarkdownCodeToken = Readonly<{ content: string; color?: string }>;
-type MarkdownTone = "accent" | "link" | "quote" | "muted";
+type MarkdownTone = "accent" | "link" | "quote" | "muted" | MarkdownCodeRole;
 type MarkdownBlockProps = Readonly<{
   children?: ReactNode;
   role: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell";
@@ -521,6 +522,8 @@ export type WidgetDescriptor = Readonly<{
   markdownSource: boolean;
   markdownLayoutOnly: boolean;
   markdownCenteredText: string | null;
+  /** Built-in trailing content guard that a ScrollArea rail may occupy. */
+  sharedScrollGuard: boolean;
   textStyle: CellTextStyle;
   label: string | null;
   disabled: boolean;
@@ -670,6 +673,7 @@ const markdownBlocks = (
   codeBlocks: readonly MarkdownCodeBlock[] = [],
   renderCodeBlock?: MarkdownProps["renderCodeBlock"],
   highlightCodeLine?: MarkdownProps["highlightCodeLine"],
+  sharedScrollGuard = false,
 ): ReactNode[] => {
   let codeIndex = 0;
   return tokens.flatMap((token, index): ReactNode[] => {
@@ -691,7 +695,9 @@ const markdownBlocks = (
       if (slot && renderCodeBlock) return [renderCodeBlock(slot)];
       const lines = code.text.split("\n");
       const width = Math.max(1, ...lines.map(getTextCellWidth));
-      return [<Box key={key} variant="surface" frame="none" style={{ width: "100%", padding: 1 }}>
+      const syntax = highlightMarkdownCode(code.text, code.lang);
+      return [<Box key={key} variant="surface" frame="none" style={{ width: "100%", padding: 1,
+        ...(sharedScrollGuard ? { paddingRight: 0, paddingBottom: 0 } : {}) }}>
         {lines.map((line, lineIndex) => {
           const highlighted = highlightCodeLine?.(line, lineIndex);
           const parts = highlighted?.map(({ content }) => content).join("") === line ? highlighted : undefined;
@@ -699,6 +705,8 @@ const markdownBlocks = (
             style={{ direction: "row", width, flexShrink: 0 }}>
             {parts?.length ? parts.map(({ content, color }, partIndex) =>
               <Text key={partIndex} textStyle={color ? { color } : undefined}>{content}</Text>)
+              : syntax?.[lineIndex]?.length ? syntax[lineIndex]!.map(({ content, role }, partIndex) =>
+                <Text key={partIndex} markdownTone={role}>{content}</Text>)
               : <Text>{line || " "}</Text>}
           </MarkdownBlock>;
         })}
@@ -732,10 +740,13 @@ const markdownBlocks = (
   });
 };
 
-const markdownFixedWidth = (tokens: readonly Token[], skipCodeBlocks: boolean): number => Math.max(0, ...tokens.map((token) =>
-  token.type === "code" && !skipCodeBlocks ? Math.max(1, ...(token as Tokens.Code).text.split("\n").map(getTextCellWidth)) + 2
+const markdownFixedWidth = (tokens: readonly Token[], skipCodeBlocks: boolean, sharedScrollGuard = false): number => Math.max(0, ...tokens.map((token) =>
+  token.type === "code" && !skipCodeBlocks ? Math.max(1, ...(token as Tokens.Code).text.split("\n").map(getTextCellWidth)) + (sharedScrollGuard ? 1 : 2)
     : token.type === "table" ? markdownTableWidth(token as Tokens.Table) : 0));
-const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: CellUiPresentation): WidgetDescriptor[] => {
+const hasSharedScrollGuard = (node: WidgetDescriptor): boolean => node.kind !== "scroll-area"
+  && (node.sharedScrollGuard || node.children.some(hasSharedScrollGuard));
+const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: CellUiPresentation,
+  inScrollArea = false): WidgetDescriptor[] => {
   const textMode = presentation === "text";
   if (element.type === Fragment) {
     const fragmentChildren: ReactNode[] = [];
@@ -744,7 +755,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
       if (!isValidElement(child)) {
         throw new TypeError("Cell UI fragments may only contain Cell UI primitives.");
       }
-      return describe(child, recipe, presentation);
+      return describe(child, recipe, presentation, inScrollArea);
     });
   }
 
@@ -752,11 +763,15 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
     const props = element.props as MarkdownProps;
     const tokens = marked.lexer(props.source, { gfm: true });
     const codeBlocks = props.renderCodeBlock ? parseCellMarkdownCodeBlocks(props.source) : [];
-    const fixedWidth = markdownFixedWidth(tokens, !!props.renderCodeBlock);
-    return describe(<Box id={props.id} style={{ width: "100%", minWidth: fixedWidth || undefined,
+    const sharedScrollGuard = inScrollArea && !props.renderCodeBlock
+      && tokens.filter((token) => token.type !== "space").length === 1
+      && tokens.some((token) => token.type === "code");
+    const fixedWidth = markdownFixedWidth(tokens, !!props.renderCodeBlock, sharedScrollGuard);
+    const descriptors = describe(<Box id={props.id} style={{ width: "100%", minWidth: fixedWidth || undefined,
       gap: 1, ...props.style }}>
-      {markdownBlocks(tokens, codeBlocks, props.renderCodeBlock, props.highlightCodeLine)}
-    </Box>, recipe, presentation);
+      {markdownBlocks(tokens, codeBlocks, props.renderCodeBlock, props.highlightCodeLine, sharedScrollGuard)}
+    </Box>, recipe, presentation, inScrollArea);
+    return sharedScrollGuard ? descriptors.map((node) => ({ ...node, sharedScrollGuard })) : descriptors;
   }
 
   const primitiveKind = kinds.get(element.type);
@@ -943,7 +958,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
       if (!isValidElement(child)) {
         throw new TypeError(`${kind} children must be Cell UI primitives.`);
       }
-      return describe(child, recipe, presentation);
+      return describe(child, recipe, presentation, inScrollArea || kind === "scroll-area");
     });
   }
   if (kind === "range-slider-thumb" && children.length > 0) {
@@ -1033,6 +1048,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, presentation: Cel
     markdownLayoutOnly: props.markdownLayoutOnly === true,
     markdownCenteredText: kind === "markdown-block" && typeof props.markdownCenteredText === "string"
       ? props.markdownCenteredText : null,
+    sharedScrollGuard: kind === "scroll-area" && children.some(hasSharedScrollGuard),
     textStyle: { ...(element.type === DialogTitle || element.type === AlertTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
     label: alertLabel ?? (typeof props.label === "string" ? props.label : null),
     disabled: props.disabled === true,

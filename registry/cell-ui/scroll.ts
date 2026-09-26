@@ -44,21 +44,21 @@ export const computeScrollMetrics = (
   extent: CellSize,
   offset: CellPoint,
   rails: Readonly<{ x: boolean; y: boolean }>,
-  options: Readonly<{ fitWidth?: boolean; railBounds?: CellRect }> = {},
+  options: Readonly<{ fitWidth?: boolean; railBounds?: CellRect; guard?: number }> = {},
 ): ScrollMetrics => {
-  const { fitWidth = false, railBounds = contentBounds } = options;
+  const { fitWidth = false, railBounds = contentBounds, guard = 0 } = options;
   let horizontal = false;
   let vertical = false;
   for (let pass = 0; pass < 3; pass += 1) {
     horizontal = rails.x && contentBounds.height > 1
-      && extent.width > Math.max(0, contentBounds.width - (vertical ? 1 : 0));
+      && extent.width > Math.max(0, contentBounds.width - Math.max(guard, vertical ? 1 : 0));
     vertical = rails.y && contentBounds.width > 1
-      && extent.height > Math.max(0, contentBounds.height - (horizontal ? 1 : 0));
+      && extent.height > Math.max(0, contentBounds.height - Math.max(guard, horizontal ? 1 : 0));
   }
   const viewport: CellRect = {
     ...contentBounds,
-    width: Math.max(0, contentBounds.width - (vertical ? 1 : 0)),
-    height: Math.max(0, contentBounds.height - (horizontal ? 1 : 0)),
+    width: Math.max(0, contentBounds.width - Math.max(guard, vertical ? 1 : 0)),
+    height: Math.max(0, contentBounds.height - Math.max(guard, horizontal ? 1 : 0)),
   };
   const maxOffset = {
     x: Math.max(0, (fitWidth ? viewport.width : extent.width) - viewport.width),

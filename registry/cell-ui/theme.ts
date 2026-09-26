@@ -35,6 +35,10 @@ export type CellMarkdownColors = Readonly<{
   muted: string;
   codeForeground: string;
   codeBackground: string;
+  codeKey: string;
+  codeValue: string;
+  codeCommand: string;
+  codeComment: string;
 }>;
 
 export type CellSemanticTone = "info" | "success" | "warning" | "danger";
@@ -129,6 +133,9 @@ const markdownColorsFromSemanticColors = (
   muted: content["muted-foreground"],
   codeForeground: semanticColors.info.text,
   codeBackground: content.surface,
+  ...(content === CHARDESK_DARK_CONTENT_THEME
+    ? { codeKey: "#79c0ff", codeValue: "#7ee787", codeCommand: "#d2a8ff", codeComment: "#999999" }
+    : { codeKey: "#0550ae", codeValue: "#116329", codeCommand: "#8250df", codeComment: "#666666" }),
 });
 
 const CLASSIC_MAC_SHARED_THEME = Object.freeze({

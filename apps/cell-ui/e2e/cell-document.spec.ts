@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cellPoint, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, readCellProbe, type BrowserCellProbe } from "./helpers/cell-probe";
 
 test("guide and component articles use Cell surfaces around independent previews", async ({ page, request }) => {
   for (const slug of ["introduction", "philosophy", "classic-macintosh", "markdown", "integration", "theming", "testing"]) {
@@ -51,17 +51,52 @@ test("narrow article tables and code reserve horizontal rails without phantom ve
   await expect(article.getByRole("table")).toBeAttached();
   await expect.poll(async () => (await readCellProbe(article)).text).toContain("TableRow / TableCell");
   for (const id of ["article-table-2-api-table-scroll", "article-table-2-usage-scroll"]) {
-    const railRows = [...new Set((await readCellProbe(article)).cells
-      .filter((cell) => cell.ownerId === id).map((cell) => cell.y))];
-    expect(railRows).toHaveLength(1);
+    const ownedCells = (await readCellProbe(article)).cells.filter((cell) => cell.ownerId === id);
+    const railRows = [...new Set(ownedCells.map((cell) => cell.y))]
+      .filter((y) => ownedCells.filter((cell) => cell.y === y).length > 1);
+    expect(railRows, id).toHaveLength(1);
   }
   await page.goto("/#/guides/installation?section=configure");
   const installation = page.locator('[data-cell-probe="installation-article"]');
   await expect(installation.getByRole("heading", { name: "Installation", level: 1 })).toBeAttached();
-  const installRailRows = [...new Set((await readCellProbe(installation)).cells
-    .filter((cell) => cell.ownerId === "installation-configure-code-scroll")
-    .map((cell) => cell.y))];
+  const ownedInstallCells = (await readCellProbe(installation)).cells
+    .filter((cell) => cell.ownerId === "installation-configure-code-scroll");
+  const installRailRows = [...new Set(ownedInstallCells.map((cell) => cell.y))]
+    .filter((y) => ownedInstallCells.filter((cell) => cell.y === y).length > 1);
   expect(installRailRows.length).toBeLessThanOrEqual(1);
+});
+
+test("code footer stays inside its surface and centered around the horizontal rail", async ({ page }) => {
+  const centeredFooter = (frame: BrowserCellProbe) => {
+    const toggle = frame.cells.filter((cell) => cell.ownerId === "article-combobox-2-usage-toggle");
+    expect(toggle.length).toBeGreaterThan(0);
+    const footer = frame.cells.filter((cell) => cell.y === toggle[0]!.y);
+    expect(footer[0]?.ownerId).toContain("article-combobox-2-usage-footer/");
+    expect(footer.at(-1)?.ownerId).toContain("article-combobox-2-usage-footer/");
+    const surfaceCenter = (footer[0]!.x + footer.at(-1)!.x) / 2;
+    const toggleCenter = (toggle[0]!.x + toggle.at(-1)!.x) / 2;
+    expect(Math.abs(toggleCenter - surfaceCenter)).toBeLessThanOrEqual(1);
+    return footer[0]!.y;
+  };
+  await page.goto("/#/components/combobox");
+  const article = page.locator('[data-cell-probe="article-combobox-2"]');
+  const snapshot = await readCellProbe(article);
+  const codeLine = snapshot.text.split("\n").findIndex((line) => /20\s+viewport=\{\{/u.test(line));
+  expect(codeLine).toBeGreaterThanOrEqual(0);
+  const railCells = snapshot.cells.filter((cell) => cell.ownerId === "article-combobox-2-usage-scroll");
+  const railRows = [...new Set(railCells.map((cell) => cell.y))]
+    .filter((y) => railCells.filter((cell) => cell.y === y).length > 1);
+  expect(railRows).toEqual([codeLine + 1]);
+  const footerY = centeredFooter(snapshot);
+  expect(footerY).toBe(railRows[0]! + 1);
+  expect(snapshot.cells.find((cell) => cell.x === 0 && cell.y === footerY)?.style.backgroundColor)
+    .toBe(snapshot.cells.find((cell) => cell.x === 0 && cell.y === codeLine)?.style.backgroundColor);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  centeredFooter(await readCellProbe(article));
+  await article.getByRole("button", { name: "Show more" }).evaluate((element: HTMLElement) => element.click());
+  await expect(article.getByRole("button", { name: "Show less" })).toBeVisible();
+  centeredFooter(await readCellProbe(article));
 });
 
 test("Preview copy floats over the demo without changing its interactions", async ({ page }) => {

@@ -81,7 +81,8 @@ const scrollMetricsFor = (
     },
     node.scrollOffset,
     { x: !selectContent && explicitHorizontalExtent, y: true },
-    { fitWidth: selectContent || !explicitHorizontalExtent, railBounds },
+    { fitWidth: selectContent || !explicitHorizontalExtent, railBounds,
+      guard: node.sharedScrollGuard ? 1 : 0 },
   );
 };
 
@@ -186,12 +187,12 @@ export const composeScene = (
       width: Math.max(
         0,
         bounds.width - layoutEntry.contentRect.x - contentRightInset
-          + (layoutEntry.railInsets?.right ?? 0)
+          + Math.max(layoutEntry.railInsets?.right ?? 0, widget.sharedScrollGuard ? 1 : 0)
       ),
       height: Math.max(
         0,
         bounds.height - layoutEntry.contentRect.y - contentBottomInset
-          + (layoutEntry.railInsets?.bottom ?? 0)
+          + Math.max(layoutEntry.railInsets?.bottom ?? 0, widget.sharedScrollGuard ? 1 : 0)
       ),
     };
     const decorationBounds: CellRect = {

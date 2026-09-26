@@ -1047,14 +1047,15 @@ export function MarkdownExample() {
 }` },
       { id: "source", title: "View source", links: [
         { label: "markdown.ts", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts" },
+        { label: "markdown-code.ts", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown-code.ts" },
         { label: "react.tsx", href: "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx" },
       ] },
-      { id: "api", title: "API", body: "Markdown renders for reading. Headings keep plain hashes; tables use aligned columns, │ separators, and a header rule; thematic breaks render as /////. Cell Range copies visible text. Code fences stay hidden; safe links stay interactive; raw HTML stays inert.", link: { label: "Theming", href: "#/guides/theming" }, api: [
+      { id: "api", title: "API", body: "Markdown renders for reading. Headings keep plain hashes; tables align columns; thematic breaks render as /////. TSX/TS/JS, JSON, and shell code fences use syntax colors; other languages stay plain. Cell Range copies visible text. Fence markers stay hidden; safe links stay interactive; raw HTML stays inert.", link: { label: "Theming", href: "#/guides/theming" }, api: [
         { name: "source", type: "string", description: "Markdown source to render." },
         { name: "id?", type: "string", description: "Stable identity for the document root." },
         { name: "style?", type: "CellLayoutStyle", description: "Document layout overrides." },
         { name: "renderCodeBlock?", type: "(block: MarkdownCodeBlock) => ReactElement", description: "Replace a code block with Cell descriptors. The block includes raw source, code, language, and line bounds." },
-        { name: "highlightCodeLine?", type: "(line: string, lineIndex: number) => MarkdownCodeToken[]", description: "Color code tokens without changing their text. Invalid token coverage falls back to the original line." },
+        { name: "highlightCodeLine?", type: "(line: string, lineIndex: number) => MarkdownCodeToken[]", description: "Override default code colors without changing the text. Invalid token coverage falls back to built-in highlighting." },
       ] },
     ],
   },
@@ -1098,8 +1099,8 @@ import { CellSurface } from "@/lib/cell-ui/browser";
     slug: "theming", title: "Theming",
     description: "Resolve one Cell theme into a browser palette and component recipes.",
     sections: [
-      { id: "defaults", title: "Defaults", body: "CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. semanticColors gives info, success, warning, and danger each a text color, surface, and surface foreground. Markdown and Badge/Alert derive their defaults from it; Badge/Alert error maps to danger. resolveCellUiTheme(partial) accepts semanticColors, markdownColors, and badgeStyles overrides. Surface backgrounds do not alter copied Cell text." },
-      { id: "css", title: "CSS tokens", body: "The /browser entry exports readCellCssTheme(element) and useCellCssTheme(ref, revision). Shared --cell-tone-{info,success,warning,danger} tokens have optional -surface and -surface-foreground partners. Markdown's --cell-markdown-* and Badge's --cell-badge-* tokens override the matching shared role; otherwise the shared token, then the light or dark default, wins. Apply CSS changes before the hook's layout effect; bump revision after external stylesheet changes." },
+      { id: "defaults", title: "Defaults", body: "CLASSIC_MAC_LIGHT_THEME is the package default; CLASSIC_MAC_DARK_THEME inverts its hierarchy. semanticColors gives info, success, warning, and danger each a text color, surface, and surface foreground. Markdown prose and Badge/Alert derive defaults from it; Markdown syntax uses codeKey, codeValue, codeCommand, and codeComment colors. Badge/Alert error maps to danger. resolveCellUiTheme(partial) accepts semanticColors, markdownColors, and badgeStyles overrides. Surface backgrounds do not alter copied Cell text." },
+      { id: "css", title: "CSS tokens", body: "The /browser entry exports readCellCssTheme(element) and useCellCssTheme(ref, revision). Shared --cell-tone-{info,success,warning,danger} tokens have optional -surface and -surface-foreground partners. Markdown's --cell-markdown-* and Badge's --cell-badge-* tokens override their roles; syntax uses --cell-markdown-code-{key,value,command,comment}. Apply CSS changes before the hook's layout effect; bump revision after external stylesheet changes." },
       { id: "surface", title: "Surface and frame", body: "Box, ScrollArea, and TextArea separate variant (ghost or surface) from frame (none or bordered). Dialog and Tooltip use their own opaque variant and border recipe. Geometry belongs to CellLayoutStyle, not the theme." },
     ],
   },

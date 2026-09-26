@@ -77,11 +77,12 @@ export function MarkdownExample() {
 ## View source
 
 - [markdown.ts](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown.ts)
+- [markdown-code.ts](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/markdown-code.ts)
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)
 
 ## API
 
-Markdown renders for reading. Headings keep plain hashes; tables use aligned columns, │ separators, and a header rule; thematic breaks render as /////. Cell Range copies visible text. Code fences stay hidden; safe links stay interactive; raw HTML stays inert.
+Markdown renders for reading. Headings keep plain hashes; tables align columns; thematic breaks render as /////. TSX/TS/JS, JSON, and shell code fences use syntax colors; other languages stay plain. Cell Range copies visible text. Fence markers stay hidden; safe links stay interactive; raw HTML stays inert.
 
 [Theming](https://ui.chardesk.com/#/guides/theming)
 
@@ -91,4 +92,4 @@ Markdown renders for reading. Headings keep plain hashes; tables use aligned col
 | `id?` | `string` | Stable identity for the document root. |
 | `style?` | `CellLayoutStyle` | Document layout overrides. |
 | `renderCodeBlock?` | `(block: MarkdownCodeBlock) => ReactElement` | Replace a code block with Cell descriptors. The block includes raw source, code, language, and line bounds. |
-| `highlightCodeLine?` | `(line: string, lineIndex: number) => MarkdownCodeToken[]` | Color code tokens without changing their text. Invalid token coverage falls back to the original line. |
+| `highlightCodeLine?` | `(line: string, lineIndex: number) => MarkdownCodeToken[]` | Override default code colors without changing the text. Invalid token coverage falls back to built-in highlighting. |

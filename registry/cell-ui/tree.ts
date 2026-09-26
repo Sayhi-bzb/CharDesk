@@ -99,6 +99,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null): WidgetTree => {
       markdownSource: current.markdownSource,
       markdownLayoutOnly: current.markdownLayoutOnly,
       markdownCenteredText: current.markdownCenteredText,
+      sharedScrollGuard: current.kind === "scroll-area" && current.sharedScrollGuard,
       textStyle: current.textStyle,
       label: current.label,
       disabled: current.disabled || inheritedDisabled || (

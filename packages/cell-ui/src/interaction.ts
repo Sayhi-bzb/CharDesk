@@ -3,7 +3,7 @@ import { isDescendantOf } from "./tree.js";
 import { accordionItem, accordionTriggers, accordionFocusCandidates, isAccordionHidden } from "./accordion.js";
 import { gridEntry, gridOwnerId, gridTarget } from "./grid-navigation.js";
 import { commandForComboboxKey } from "./combobox.js";
-import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
+import { clampScrollOffset, scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
 import type {
   CellPoint,
   FrameSnapshot,
@@ -421,28 +421,31 @@ export const resolveWheelInput = (
   input: Extract<EngineInput, { type: "wheel" }>
 ): Readonly<{ consumed: boolean; command: WidgetCommand | null }> => {
   const hit = hitTest(frame.scene, input.point)[0];
-  const scopeId = topFocusScopeId(frame.tree);
+  const scopes = focusScopeIds(frame.tree);
+  const scopeId = scopes.at(-1);
+  const modalScope = scopes.some((id) => frame.tree.nodes.get(id)?.modal === true);
   if (scopeId && (!hit || !isDescendantOf(frame.tree, hit, scopeId))) {
-    return { consumed: false, command: null };
+    return { consumed: modalScope, command: null };
   }
   let scroll = hit ? frame.tree.nodes.get(hit) : undefined;
-  let consumed = false;
   while (scroll) {
     if (scopeId && !isDescendantOf(frame.tree, scroll.id, scopeId)) break;
-    const range = getScrollRange(frame, scroll.id);
-    if (!scroll.disabled && (range.x.max > range.x.min || range.y.max > range.y.min)) {
-      consumed = true;
-      const offset = scrollOffsetFor(scroll);
-      const command = scrollCommandForOffset(frame, scroll.id, {
+    const metrics = frame.scene.entries.get(scroll.id)?.scrollMetrics;
+    if (!scroll.disabled && metrics) {
+      const offset = clampScrollOffset(scrollOffsetFor(scroll), metrics);
+      const next = clampScrollOffset({
         x: offset.x + Math.sign(input.deltaX),
         y: offset.y + Math.sign(input.deltaY),
-      });
-      if (command) return { consumed, command };
+      }, metrics);
+      if (next.x !== offset.x || next.y !== offset.y) {
+        const command = scrollCommandForOffset(frame, scroll.id, next);
+        if (command) return { consumed: true, command };
+      }
     }
     if (isPortalKind(scroll.kind)) break;
     scroll = scroll.parentId ? frame.tree.nodes.get(scroll.parentId) : undefined;
   }
-  return { consumed, command: null };
+  return { consumed: modalScope, command: null };
 };
 
 const scrollCommand = (

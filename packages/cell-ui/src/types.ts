@@ -134,10 +134,11 @@ export type WidgetNode = Readonly<{
   target?: "_blank";
   markdownRole: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell" | null;
   markdownCode: boolean;
-  markdownTone: "accent" | "link" | "quote" | "muted" | null;
+  markdownTone: "accent" | "link" | "quote" | "muted" | "codeKey" | "codeValue" | "codeCommand" | "codeComment" | null;
   markdownSource: boolean;
   markdownLayoutOnly: boolean;
   markdownCenteredText: string | null;
+  sharedScrollGuard: boolean;
   textStyle: CellTextStyle;
   label: string | null;
   disabled: boolean;

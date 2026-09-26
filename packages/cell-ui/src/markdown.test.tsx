@@ -113,6 +113,57 @@ describe("Markdown reading projection", () => {
     runtime.dispose();
   });
 
+  it("shares a standalone code block's trailing guard with scrollbar rails", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 12, height: 6 } });
+    const source = "```ts\nabcdefghijklmnop\nsecond long line\nthird long line\n```";
+    const render = (width: number, height?: number, scrollX = 0, scrollY = 0) => runtime.render(<Root>
+      <ScrollArea id="code-scroll" scrollX={scrollX} scrollY={scrollY}
+        style={{ width, height, paddingRight: 2 }}>
+        <Markdown source={source} />
+      </ScrollArea>
+    </Root>);
+    const fitting = render(24);
+    expect(fitting.scene.entries.get("code-scroll")?.scrollMetrics?.horizontalTrack).toBeNull();
+    expect(fitting.layout.entries.get("code-scroll")?.paddingInsets).toMatchObject({ right: 3, bottom: 1 });
+    expect(fitting.tree.nodes.get("code-scroll/box[0]")?.sharedScrollGuard).toBe(false);
+    expect(fitting.layout.entries.get("code-scroll/box[0]")?.paddingInsets).toMatchObject({ right: 0, bottom: 0 });
+
+    const autoHeight = render(12);
+    const lastCodeRow = Math.max(...[...autoHeight.tree.nodes.values()]
+      .filter((node) => node.markdownRole === "code")
+      .map((node) => {
+        const bounds = autoHeight.scene.entries.get(node.id)!.layoutBounds;
+        return bounds.y + bounds.height;
+      }));
+    expect(autoHeight.scene.entries.get("code-scroll")?.scrollMetrics?.horizontalTrack?.y).toBe(lastCodeRow);
+
+    const overflowing = render(12, 4);
+    const metrics = overflowing.scene.entries.get("code-scroll")!.scrollMetrics!;
+    expect(metrics.horizontalTrack).not.toBeNull();
+    expect(metrics.verticalTrack).not.toBeNull();
+    expect(overflowing.layout.entries.get("code-scroll")?.railInsets).toEqual({ right: 1, bottom: 1 });
+    expect(overflowing.layout.entries.get("code-scroll")?.paddingInsets).toMatchObject({ right: 3, bottom: 1 });
+    expect(overflowing.layout.entries.get("code-scroll/box[0]")?.paddingInsets).toMatchObject({ right: 0, bottom: 0 });
+    expect(overflowing.buffer.toText({ trimEnd: true })).toContain("abcdefg");
+    const end = render(12, 4, metrics.maxOffset.x, metrics.maxOffset.y);
+    expect(end.buffer.toText({ trimEnd: true })).toContain("ng line");
+    runtime.dispose();
+  });
+
+  it("keeps a code guard with its nearest ScrollArea", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 7 } });
+    const frame = runtime.render(<Root><ScrollArea id="outer" style={{ width: 20, height: 7 }}>
+      <Box><ScrollArea id="inner" style={{ width: 16 }}>
+        <Markdown source={"```text\ninside\n```"} />
+      </ScrollArea></Box>
+    </ScrollArea></Root>);
+    expect(frame.tree.nodes.get("outer")?.sharedScrollGuard).toBe(false);
+    expect(frame.tree.nodes.get("inner")?.sharedScrollGuard).toBe(true);
+    expect(frame.layout.entries.get("outer")?.paddingInsets).toMatchObject({ right: 0, bottom: 0 });
+    expect(frame.layout.entries.get("inner")?.paddingInsets).toMatchObject({ right: 1, bottom: 1 });
+    runtime.dispose();
+  });
+
   it("keeps Markdown table columns aligned and cell semantics free of dividers", () => {
     const source = "| Left | Center | Right |\n| :--- | :----: | ----: |\n| a | b | c |";
     const runtime = new CellUiRuntime({ viewport: { width: 28, height: 4 } });

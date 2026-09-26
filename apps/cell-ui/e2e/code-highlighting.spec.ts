@@ -9,6 +9,10 @@ test("Cell TSX examples keep highlighted source and exact copy across themes", a
     });
   });
   await page.goto("/#/components/button");
+  if (await page.getByRole("button", { name: "Light" }).count()) {
+    await page.getByRole("button", { name: "Light" }).focus();
+    await page.keyboard.press("Enter");
+  }
   const article = page.locator('[data-cell-probe="article-button-2"]');
   const light = await readCellProbe(article);
   const usageRow = light.text.split("\n").findIndex((line) => line.includes('import { useState }'));
@@ -19,17 +23,19 @@ test("Cell TSX examples keep highlighted source and exact copy across themes", a
   const code = light.cells.find(({ y, text }) => y === usageRow && text === "i");
   expect(number?.style.backgroundColor).toBeDefined();
   expect(number?.style.backgroundColor).toBe(code?.style.backgroundColor);
-  expect(light.cells.some(({ y, style }) => y === usageRow && style.color === "#555555")).toBe(true);
+  expect(light.cells.some(({ y, style }) => y === usageRow && style.color === "rgb(5, 80, 174)")).toBe(true);
   await article.getByRole("button", { name: "Copy code" }).last().evaluate((element: HTMLElement) => element.click());
   const copied = await page.evaluate(() => sessionStorage.getItem("copied-code"));
   expect(copied).toContain('import { useState } from "react";');
   expect(copied).toContain("</CellSurface>");
   const published = await request.get("/components/button.md");
   expect(await published.text()).toContain(copied!);
-  await page.getByRole("button", { name: "Dark" }).evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("button", { name: "Dark" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "Light" })).toBeVisible();
   const dark = await readCellProbe(article);
   expect(dark.text).toContain('import { useState }');
-  expect(dark.cells.some(({ y, style }) => y === usageRow && style.color === "#aaaaaa")).toBe(true);
+  expect(dark.cells.some(({ y, style }) => y === usageRow && style.color === "rgb(121, 192, 255)")).toBe(true);
   const darkNumber = dark.cells.find(({ ownerId, text }) => ownerId?.includes("usage-numbers") && text === "1");
   const darkCode = dark.cells.find(({ y, text }) => y === usageRow && text === "i");
   expect(darkNumber?.style.backgroundColor).toBe(darkCode?.style.backgroundColor);

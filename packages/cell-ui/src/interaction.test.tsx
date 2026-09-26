@@ -11,7 +11,7 @@ import {
   createKeyInput,
   getScrollRange,
 } from "./index.js";
-import { List, ListItem, Overlay } from "./react.js";
+import { List, ListItem, Overlay, Select, SelectContent, SelectItem, SelectTrigger } from "./react.js";
 
 const renderFixture = (scrollY = 0) => {
   const runtime = new CellUiRuntime({ viewport: { width: 20, height: 7 } });
@@ -34,10 +34,10 @@ const renderFixture = (scrollY = 0) => {
   return { runtime, frame };
 };
 
-it("consumes wheel at ScrollArea boundaries independently of movement", () => {
+it("hands boundary wheels to the browser when no Cell viewport can move", () => {
   const { runtime, frame } = renderFixture(0);
   const input = { type: "wheel" as const, point: { x: 2, y: 4 }, deltaX: 0, deltaY: -100 };
-  expect(resolveWheelInput(frame, input)).toEqual({ consumed: true, command: null });
+  expect(resolveWheelInput(frame, input)).toEqual({ consumed: false, command: null });
   expect(resolveWheelInput(frame, { ...input, deltaY: 100 })).toMatchObject({
     consumed: true, command: { type: "scroll", targetId: "files", scrollY: 1 },
   });
@@ -59,12 +59,58 @@ it("measures nested viewports and passes boundary wheels to the outer scroll are
   const input = { type: "wheel" as const, point: { x: 1, y: 0 }, deltaX: 0, deltaY: -100 };
   const nested = runtime.render(view(6));
   expect(getScrollRange(nested, "outer").y.max).toBe(7);
-  expect(resolveWheelInput(nested, input)).toEqual({ consumed: true, command: null });
+  expect(resolveWheelInput(nested, input)).toEqual({ consumed: false, command: null });
   expect(resolveWheelInput(nested, { ...input, deltaY: 100 }).command?.targetId).toBe("inner");
   const innerAtEnd = runtime.render(view(6, 4));
   expect(resolveWheelInput(innerAtEnd, { ...input, deltaY: 100 }).command?.targetId).toBe("outer");
   const fits = runtime.render(view(1));
   expect(resolveWheelInput(fits, { ...input, deltaY: 100 }).command?.targetId).toBe("outer");
+  const bothAtEnd = runtime.render(<Root><ScrollArea id="outer" scrollY={7} style={{ height: 5 }}>
+    <ScrollArea id="inner" scrollY={4} style={{ height: 2 }}>
+      <Box style={{ height: 6 }}><Text>inner</Text></Box>
+    </ScrollArea>
+    <Box style={{ height: 10 }}><Text>outer</Text></Box>
+  </ScrollArea></Root>);
+  expect(resolveWheelInput(bothAtEnd, { ...input, deltaY: 100 }))
+    .toEqual({ consumed: false, command: null });
+  runtime.dispose();
+});
+
+it("only captures wheel axes that can move inside a Cell viewport", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 20, height: 8 } });
+  const horizontal = runtime.render(<Root><ScrollArea id="horizontal" style={{ width: 10, height: 3 }}>
+    <Box style={{ width: 20, height: 1 }}><Text>wide</Text></Box>
+  </ScrollArea></Root>);
+  const point = { x: 1, y: 1 };
+  expect(horizontal.scene.entries.get("horizontal")?.scrollMetrics?.maxOffset).toMatchObject({ y: 0 });
+  expect(resolveWheelInput(horizontal, { type: "wheel", point, deltaX: 0, deltaY: 100 }))
+    .toEqual({ consumed: false, command: null });
+  expect(resolveWheelInput(horizontal, { type: "wheel", point, deltaX: 100, deltaY: 0 }).command)
+    .toMatchObject({ type: "scroll", targetId: "horizontal", scrollX: 1 });
+  const stale = runtime.render(<Root><ScrollArea id="stale" scrollY={100}
+    style={{ width: 10, height: 3 }}><Text>fits</Text></ScrollArea></Root>);
+  expect(resolveWheelInput(stale, { type: "wheel", point, deltaX: 0, deltaY: 100 }))
+    .toEqual({ consumed: false, command: null });
+  runtime.dispose();
+});
+
+it("keeps the page still under a modal focus scope", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 20, height: 8 } });
+  const frame = runtime.render(<Root><Overlay id="dialog" label="Dialog" modal
+    position={{ x: 2, y: 1 }} style={{ width: 10, height: 4 }}><Text>Content</Text></Overlay></Root>);
+  const wheel = { type: "wheel" as const, deltaX: 0, deltaY: 100 };
+  expect(resolveWheelInput(frame, { ...wheel, point: { x: 3, y: 2 } }))
+    .toEqual({ consumed: true, command: null });
+  expect(resolveWheelInput(frame, { ...wheel, point: { x: 19, y: 7 } }))
+    .toEqual({ consumed: true, command: null });
+  const nested = runtime.render(<Root><Overlay id="dialog" label="Dialog" modal
+    position={{ x: 2, y: 1 }} style={{ width: 10, height: 4 }}>
+    <Select><SelectTrigger id="trigger" label="Theme" expanded><Text>Theme</Text></SelectTrigger>
+      <SelectContent id="options"><SelectItem id="dark"><Text>Dark</Text></SelectItem></SelectContent>
+    </Select>
+  </Overlay></Root>);
+  expect(resolveWheelInput(nested, { ...wheel, point: { x: 19, y: 7 } }))
+    .toEqual({ consumed: true, command: null });
   runtime.dispose();
 });
 

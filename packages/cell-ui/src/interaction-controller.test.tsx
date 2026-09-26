@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { CellInteractionController, type InteractionClock } from "./interaction-controller.js";
 import { CellUiRuntime } from "./runtime.js";
-import { Button, Root, Select, SelectContent, SelectItem, SelectTrigger, Text, Toggle, RadioGroup, RadioItem, Menu, MenuItem } from "./react.js";
+import { Button, Root, ScrollArea, Select, SelectContent, SelectItem, SelectTrigger, Text, Toggle, RadioGroup, RadioItem, Menu, MenuItem } from "./react.js";
 import type { WidgetCommand } from "./interaction.js";
 import { createKeyInput } from "@chardesk/keyboard";
 
@@ -71,6 +71,29 @@ it.each(["complete", "instant", "escape", "blur", "outside", "external-focus", "
   expect(commands.filter((c) => c.type === "activate")).toEqual(
     outcome === "complete" || outcome === "instant" ? [{ type: "activate", targetId: "action" }] : []);
   expect(time.callbacks.size).toBe(0);
+  controller.cancel();
+  runtime.dispose();
+});
+
+it("routes scrolling during deferred activation without dropping the pending action", () => {
+  const time = manualClock();
+  const runtime = new CellUiRuntime({ viewport: { width: 20, height: 5 } });
+  const view = <Root><Menu id="menu"><MenuItem id="action"><Text>Open</Text></MenuItem></Menu>
+    <ScrollArea id="scroll" style={{ height: 2 }}><Text>One\nTwo\nThree</Text></ScrollArea>
+  </Root>;
+  let frame = runtime.render(view);
+  const commands: WidgetCommand[] = [];
+  const controller = new CellInteractionController(() => {
+    frame = runtime.render(view, controller.snapshot);
+    controller.presented(frame.confirmation);
+  }, (command) => commands.push(command), time.clock);
+  controller.commit({ type: "activate", targetId: "action" }, frame, 2);
+  expect(controller.feedback.settling).toBe(true);
+  controller.commit({ type: "scroll", targetId: "scroll", scrollX: 0, scrollY: 1 }, frame, 2);
+  expect(commands).toEqual([{ type: "scroll", targetId: "scroll", scrollX: 0, scrollY: 1 }]);
+  expect(controller.feedback.settling).toBe(true);
+  for (let phase = 0; phase < 4; phase += 1) time.tick();
+  expect(commands.at(-1)).toEqual({ type: "activate", targetId: "action" });
   controller.cancel();
   runtime.dispose();
 });

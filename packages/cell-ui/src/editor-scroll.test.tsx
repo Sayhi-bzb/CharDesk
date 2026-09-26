@@ -86,7 +86,7 @@ it("editor wheel consumption is independent of movement and respects disabled st
   const runtime = new CellUiRuntime({ viewport: { width: 10, height: 5 } });
   const view = (disabled: boolean) => <Root><TextArea id="area" frame="bordered" disabled={disabled} readOnly state={editor.snapshot()} style={{ height: 5 }} /></Root>;
   const wheel = { type: "wheel" as const, point: { x: 2, y: 2 }, deltaX: -1, deltaY: 0 };
-  expect(resolveWheelInput(runtime.render(view(false)), wheel)).toEqual({ consumed: true, command: null });
+  expect(resolveWheelInput(runtime.render(view(false)), wheel)).toEqual({ consumed: false, command: null });
   expect(resolveWheelInput(runtime.render(view(false)), { ...wheel, deltaX: 1 }).command).toEqual({ type: "text-preview-scroll", targetId: "area", scrollX: 1, scrollY: 0 });
   expect(resolveWheelInput(runtime.render(view(true)), wheel).consumed).toBe(false);
   runtime.dispose();

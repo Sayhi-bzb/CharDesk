@@ -59,6 +59,10 @@ const defaults = {
   "markdown-muted": fallback.markdownColors.muted,
   "markdown-code-foreground": fallback.markdownColors.codeForeground,
   "markdown-code-background": fallback.markdownColors.codeBackground,
+  "markdown-code-key": fallback.markdownColors.codeKey,
+  "markdown-code-value": fallback.markdownColors.codeValue,
+  "markdown-code-command": fallback.markdownColors.codeCommand,
+  "markdown-code-comment": fallback.markdownColors.codeComment,
 };
 
 const readRangeSurfaceEffect = (
@@ -137,6 +141,10 @@ export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
         muted: roleColor("markdown-muted", roleDefaults.markdownColors.muted),
         codeForeground: roleColor("markdown-code-foreground", roleDefaults.markdownColors.codeForeground),
         codeBackground: roleColor("markdown-code-background", roleDefaults.markdownColors.codeBackground),
+        codeKey: roleColor("markdown-code-key", roleDefaults.markdownColors.codeKey),
+        codeValue: roleColor("markdown-code-value", roleDefaults.markdownColors.codeValue),
+        codeCommand: roleColor("markdown-code-command", roleDefaults.markdownColors.codeCommand),
+        codeComment: roleColor("markdown-code-comment", roleDefaults.markdownColors.codeComment),
       },
       surfaceStyle: { backgroundColor: colors.surface },
       elevatedSurfaceStyle: { backgroundColor: colors["surface-elevated"] },

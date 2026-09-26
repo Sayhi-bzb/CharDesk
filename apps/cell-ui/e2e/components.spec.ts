@@ -237,11 +237,11 @@ test("Navi current page uses an inverse Cell row while TOC stays quiet", async (
   expect((await currentCells())[0]?.style.color).toBe("rgb(0, 0, 0)");
 
   await page.setViewportSize({ width: 390, height: 640 });
-  await expect.poll(async () => {
-    const snapshot = await readCellProbe(nav);
-    const cells = ownerCells(snapshot, currentId);
-    return Math.max(...cells.map(({ x }) => x)) - Math.min(...cells.map(({ x }) => x)) + 1 < snapshot.viewport.width;
-  }).toBe(true);
+  const mobileNav = page.getByRole("navigation", { name: "Cell UI" });
+  await mobileNav.getByRole("button", { name: /Browse documentation/ })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(mobileNav.getByRole("link", { name: "Markdown", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator('[data-cell-probe="gallery-nav-sections"]')).toHaveCount(0);
 });
 
 test("TOC labels stay on one line and navigation ends with the page", async ({ page }) => {
@@ -250,14 +250,16 @@ test("TOC labels stay on one line and navigation ends with the page", async ({ p
     await page.goto("/#/guides/introduction");
     const nav = page.getByRole("navigation", { name: "Cell UI" });
     const toc = page.getByRole("navigation", { name: "On This Page" });
-    expect(await toc.getByRole("link").evaluateAll((links) => links.every((link) => link.getClientRects().length === 1))).toBe(true);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
 
     if (width <= 720) {
+      await expect(toc).toHaveCount(0);
+      await expect(nav.getByRole("button", { name: /Browse documentation/ })).toHaveAttribute("aria-expanded", "false");
       await expect(nav).toHaveCSS("overflow-y", "visible");
       continue;
     }
 
+    expect(await toc.getByRole("link").evaluateAll((links) => links.every((link) => link.getClientRects().length === 1))).toBe(true);
     const sections = page.locator('[data-cell-probe="gallery-nav-sections"]');
     await expect.poll(async () => ownerBounds(await readCellProbe(sections),
       "gallery-nav-sections-classic-macintosh").height).toBe(1);
@@ -434,11 +436,11 @@ test("Installation article is Cell-rendered without losing document navigation o
     .toBe(codeBackground);
   const keyX = configureLine.indexOf('"@chardesk"') + 1;
   const valueX = configureLine.indexOf("https://sayhi-bzb.github.io");
-  expect(wide.cells.find(({ x, y }) => x === keyX && y === configureRow)?.style.color).toBe("#0550ae");
-  expect(wide.cells.find(({ x, y }) => x === valueX && y === configureRow)?.style.color).toBe("#116329");
+  expect(wide.cells.find(({ x, y }) => x === keyX && y === configureRow)?.style.color).toBe("rgb(5, 80, 174)");
+  expect(wide.cells.find(({ x, y }) => x === valueX && y === configureRow)?.style.color).toBe("rgb(17, 99, 41)");
   const commandRow = wide.text.split("\n").findIndex((line) => line.includes("npx shadcn@latest add @chardesk/cell-ui"));
   const commandX = wide.text.split("\n")[commandRow]!.indexOf("npx");
-  expect(wide.cells.find(({ x, y }) => x === commandX && y === commandRow)?.style.color).toBe("#8250df");
+  expect(wide.cells.find(({ x, y }) => x === commandX && y === commandRow)?.style.color).toBe("rgb(130, 80, 223)");
   await page.locator("#configure").scrollIntoViewIfNeeded();
   const selectionStart = await cellPoint(article, keyX - 1, configureRow);
   const selectionEnd = await cellPoint(article, keyX + 10, configureRow);
@@ -469,7 +471,11 @@ test("Installation article is Cell-rendered without losing document navigation o
   await page.mouse.move(codePoint.x, codePoint.y);
   await page.mouse.wheel(240, 0);
   await expect.poll(async () => (await readCellProbe(article)).text).not.toBe(narrow.text);
-  await toc.getByRole("link", { name: "Update" }).evaluate((element: HTMLElement) => element.click());
+  const mobileNav = page.getByRole("navigation", { name: "Cell UI" });
+  await mobileNav.getByRole("button", { name: /Browse documentation/u })
+    .evaluate((element: HTMLElement) => element.click());
+  await mobileNav.getByRole("link", { name: "Update" })
+    .evaluate((element: HTMLElement) => element.click());
   await expect(page.locator("#update")).toBeInViewport();
   await expect.poll(async () => (await readCellProbe(article)).text)
     .toContain("cell-ui:registry:smoke");
@@ -483,13 +489,13 @@ test("Installation article is Cell-rendered without losing document navigation o
     const y = dark.text.split("\n").findIndex((line) => line.includes('"@chardesk"'));
     const x = dark.text.split("\n")[y]?.indexOf('"@chardesk"') ?? -1;
     return dark.cells.find((cell) => cell.x === x + 1 && cell.y === y)?.style.color;
-  }).toBe("#79c0ff");
+  }).toBe("rgb(121, 192, 255)");
   await expect.poll(async () => {
     const dark = await readCellProbe(article);
     const y = dark.text.split("\n").findIndex((line) => line.includes('"@chardesk"'));
     const x = dark.text.split("\n")[y]?.indexOf("https://sayhi-bzb.github.io") ?? -1;
     return dark.cells.find((cell) => cell.x === x && cell.y === y)?.style.color;
-  }).toBe("#7ee787");
+  }).toBe("rgb(126, 231, 135)");
   await page.route("https://sayhi-bzb.github.io/CharDesk/cell-ui.json", (route) => route.fulfill({ body: "{}" }));
   const link = article.getByRole("link", { name: "Published item JSON" });
   await link.focus();
@@ -515,8 +521,12 @@ test("on-page navigation survives direct load, component changes, and browser hi
   await expect(page).toHaveURL(/#\/components\/tabs$/);
   await expect(page.getByRole("heading", { name: "Tabs", level: 1 })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(toc.getByRole("link", { name: "Installation" })).toBeVisible();
-  await toc.getByRole("link", { name: "Installation" }).evaluate((element: HTMLElement) => element.click());
+  const mobileNav = page.getByRole("navigation", { name: "Cell UI" });
+  await mobileNav.getByRole("button", { name: /Browse documentation/ })
+    .evaluate((element: HTMLElement) => element.click());
+  await expect(mobileNav.getByRole("link", { name: "Installation", exact: true })).toHaveCount(2);
+  await mobileNav.locator('[data-cell-semantic-id="gallery-mobile-toc-installation"]')
+    .evaluate((element: HTMLElement) => element.click());
   await expect(page.locator("#installation")).toBeInViewport();
 });
 
@@ -608,6 +618,21 @@ test("Philosophy TOC stays within its column and reveals the current section", a
     await page.goto("/#/guides/philosophy");
     const toc = page.getByRole("navigation", { name: "On This Page" });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    if (width <= 720) {
+      await expect(toc).toHaveCount(0);
+      const nav = page.getByRole("navigation", { name: "Cell UI" });
+      const trigger = nav.getByRole("button", { name: /Browse documentation/ });
+      if (await trigger.getAttribute("aria-expanded") === "false") {
+        await trigger.evaluate((element: HTMLElement) => element.click());
+      }
+      await expect(trigger).toHaveAttribute("aria-expanded", "true");
+      const surface = page.locator('[data-cell-probe="gallery-mobile-nav"]');
+      for (const id of ["everything-is-cell", "every-input-becomes-a-command", "one-state-many-projections"]) {
+        await expect(nav.locator(`[data-cell-semantic-id="gallery-mobile-toc-${id}"]`)).toBeAttached();
+        expect(ownerBounds(await readCellProbe(surface), `gallery-mobile-toc-${id}`).width).toBeGreaterThan(0);
+      }
+      continue;
+    }
     const surface = page.locator('[data-cell-probe="gallery-toc"]');
     await expect.poll(async () => {
       const snapshot = await readCellProbe(surface);

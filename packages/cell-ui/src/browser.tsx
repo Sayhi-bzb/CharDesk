@@ -1313,10 +1313,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const wheel = (event: WheelEvent) => {
       const current = frameRef.current;
       if (!current || event.ctrlKey) return;
-      if (activationFeedbackRef.current.settling) {
-        event.preventDefault();
-        return;
-      }
       const result = resolveWheelInput(current, {
         type: "wheel",
         point: pxToCellPoint(event, canvas.getBoundingClientRect(), metrics, CELL_SURFACE_GUARD_CELLS),

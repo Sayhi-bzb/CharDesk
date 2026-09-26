@@ -1,5 +1,6 @@
-import { StrictMode, useEffect, useSyncExternalStore, type ReactNode } from "react";
+import { StrictMode, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { Box, Markdown, Root, type WidgetCommand } from "@chardesk/cell-ui";
 import {
   componentDocumentBySlug,
   type ComponentDocument,
@@ -11,6 +12,7 @@ import { GalleryHeader } from "./gallery-header";
 import { InstallationCellPage } from "./installation-cell-page";
 import { CellDocumentPage } from "./cell-document-page";
 import { GalleryNavigation, OnThisPage } from "./cell-navigation";
+import { CellArticleSurface } from "./cell-article-surface";
 import "./styles.css";
 import "@chardesk/fonts/fonts.css";
 import "@chardesk/font-maple/fonts.css";
@@ -33,10 +35,50 @@ type DocumentationSection = typeof documentationSections[number]["id"];
 const isDocumentationSection = (value: string | null): value is DocumentationSection =>
   documentationSections.some((section) => section.id === value);
 
+function useVisibleSection(route: string, section: string | null, sectionIds: string) {
+  const [visibleSection, setVisibleSection] = useState<string | null>(section);
+  useEffect(() => { setVisibleSection(section); }, [route, section]);
+  useEffect(() => {
+    let frame = 0;
+    let active = true;
+    const update = () => {
+      frame = 0;
+      const threshold = window.matchMedia("(max-width: 720px)").matches
+        ? 24 : (document.querySelector(".gallery-header")?.getBoundingClientRect().height ?? 64) + 8;
+      const ids = sectionIds.split("\0").filter(Boolean);
+      const requested = section ? document.getElementById(section)?.getBoundingClientRect() : null;
+      const requestedVisible = !!requested && requested.top < window.innerHeight - 16
+        && requested.bottom >= threshold;
+      const atBottom = window.scrollY > 0
+        && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+      const current = requestedVisible ? section : atBottom ? ids.at(-1) ?? null : ids.filter((id) =>
+        (document.getElementById(id)?.getBoundingClientRect().top ?? Infinity) <= threshold).at(-1) ?? null;
+      setVisibleSection(current);
+    };
+    const schedule = () => { if (active && !frame) frame = requestAnimationFrame(update); };
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    const page = document.querySelector(".docs-page");
+    const observer = page && typeof ResizeObserver !== "undefined" ? new ResizeObserver(schedule) : null;
+    if (page) observer?.observe(page);
+    void document.fonts.ready.then(schedule);
+    return () => {
+      active = false;
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [route, section, sectionIds]);
+  return visibleSection;
+}
+
 export function DocumentationShell({ document, guide, section }: Readonly<{ document?: ComponentDocument; guide?: GuideContent; section: string | null }>) {
   const title = guide?.title ?? document?.title ?? "Cell UI";
   const route = guide ? `/guides/${guide.slug}` : `/components/${document!.slug}`;
   const sections = guide ? guide.sections.map(({ id, title: label, tocLabel }) => ({ id, label, tocLabel })) : documentationSections;
+  const visibleSection = useVisibleSection(route, section, sections.map(({ id }) => id).join("\0"));
   useEffect(() => {
     window.document.title = `${title} – CharDesk Cell UI`;
     if (!section) {
@@ -73,8 +115,9 @@ export function DocumentationShell({ document, guide, section }: Readonly<{ docu
     <>
       <GalleryHeader />
       <div className="gallery-shell gallery-layout">
-        <GalleryNavigation activeRoute={route} />
-        <OnThisPage route={route} sections={sections} activeSection={section} />
+        <GalleryNavigation activeRoute={route} pageTitle={title} pageSections={sections}
+          activeSection={visibleSection} requestedSection={section} />
+        <OnThisPage route={route} sections={sections} activeSection={visibleSection} />
         {guide ? guide.slug === "installation"
           ? <InstallationCellPage guide={guide} key={guide.slug} />
           : <CellDocumentPage guide={guide} key={guide.slug} />
@@ -85,11 +128,23 @@ export function DocumentationShell({ document, guide, section }: Readonly<{ docu
 }
 
 export function NotFound() {
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  useEffect(() => { window.document.title = "Page not found – CharDesk Cell UI"; }, []);
+  const onCommand = (command: WidgetCommand) => {
+    if (command.type === "focus") setFocusedId(command.targetId);
+    if (command.type === "open-link") window.location.assign(command.href);
+  };
   return (
-    <main className="not-found">
-      <h1>Page not found</h1>
-      <p><a href={defaultHref}>Open Introduction</a></p>
-    </main>
+    <>
+      <GalleryHeader />
+      <main className="not-found cell-article-page gallery-shell">
+        <CellArticleSurface label="Page not found" probeId="gallery-not-found" anchorIds={[]}
+          focusedId={focusedId} onCommand={onCommand}
+          content={<Root><Box id="gallery-not-found-content" style={{ width: "100%", gap: 1 }}>
+            <Markdown source={`# Page not found\n\n[Open Introduction](${defaultHref})`} />
+          </Box></Root>} />
+      </main>
+    </>
   );
 }
 

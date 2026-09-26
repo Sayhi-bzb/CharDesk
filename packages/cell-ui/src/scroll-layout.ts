@@ -16,18 +16,20 @@ export const resolveCellUiScrollLayout = (
   engine: LayoutEngine,
 ): Readonly<{ layout: LayoutSnapshot; scene: SceneSnapshot }> => {
   const owners = [...tree.nodes.values()].filter((node) => ownsFlowingScrollContent(node.kind));
+  const guarded = owners.some((node) => node.sharedScrollGuard);
   const reserved = new Map<WidgetId, RailInsets>();
   for (let pass = 0; pass <= owners.length * 2; pass += 1) {
-    const layoutTree: WidgetTree = reserved.size === 0 ? tree : {
+    const layoutTree: WidgetTree = reserved.size === 0 && !guarded ? tree : {
       ...tree,
       nodes: new Map([...tree.nodes].map(([id, node]) => {
         const rail = reserved.get(id);
-        return [id, !rail ? node : {
+        const guard = ownsFlowingScrollContent(node.kind) && node.sharedScrollGuard ? 1 : 0;
+        return [id, !rail && !guard ? node : {
           ...node,
           style: {
             ...node.style,
-            paddingRight: (node.style.paddingRight ?? node.style.padding ?? 0) + rail.right,
-            paddingBottom: (node.style.paddingBottom ?? node.style.padding ?? 0) + rail.bottom,
+            paddingRight: (node.style.paddingRight ?? node.style.padding ?? 0) + Math.max(guard, rail?.right ?? 0),
+            paddingBottom: (node.style.paddingBottom ?? node.style.padding ?? 0) + Math.max(guard, rail?.bottom ?? 0),
           },
         }];
       })),
