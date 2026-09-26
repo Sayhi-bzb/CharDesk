@@ -1,5 +1,53 @@
 # Changelog
 
+## [0.5.0](https://github.com/Sayhi-bzb/CharDesk/compare/v0.4.4...v0.5.0) (2026-09-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* retire CellSheet and rework overlay geometry
+* `CellSheet` and `isAccordionHidden` are removed; `SelectTrigger` gains `placeholder`.
+* overhaul Gallery navigation, headers, and ScrollArea
+
+### `feat
+
+* overhaul Gallery navigation, headers, and ScrollArea ([aa0f4f9](https://github.com/Sayhi-bzb/CharDesk/commit/aa0f4f967db86569055183a41ac5205126ca2415))
+
+
+### Features
+
+* add Field validation and danger button tone ([02e048e](https://github.com/Sayhi-bzb/CharDesk/commit/02e048e7c56dc59ff88f53138689715eaf7f4feb))
+* add Markdown reading colors to Cell UI themes ([6c63e37](https://github.com/Sayhi-bzb/CharDesk/commit/6c63e37fa7b55d81a92b9bd5a688d7e6104b8b12))
+* add product home, overlay host, and linear selection ([377da7f](https://github.com/Sayhi-bzb/CharDesk/commit/377da7f94bcdf5d0c35540b86313f7e58ac13bb1))
+* add text presentation mode and Markdown rendering ([df05cc4](https://github.com/Sayhi-bzb/CharDesk/commit/df05cc4e46bbd345321d4523ef975acdec839a36))
+* extend scrollbar rails to frame edges ([b594575](https://github.com/Sayhi-bzb/CharDesk/commit/b594575a41ef7a7d6e93a4bfb97938f826342dcf))
+* highlight Markdown code in Cell UI ([3c9cc7f](https://github.com/Sayhi-bzb/CharDesk/commit/3c9cc7f420b1cb029bf6c9f7b6e33de2f19360ed))
+* improve Markdown inline code and table copy ([a1646f4](https://github.com/Sayhi-bzb/CharDesk/commit/a1646f45c4c8dce95e7b0f1ae1bbcfc12b356b67))
+* integrate Cell UI menu and harden verification ([4253d14](https://github.com/Sayhi-bzb/CharDesk/commit/4253d140439fbf9b7e7062f668d5f7e8dd899fe1))
+* keep Markdown source visible in Cells ([9874d70](https://github.com/Sayhi-bzb/CharDesk/commit/9874d70d04eb0565a9d54040339cbafff25d484a))
+* remove Sheet and unify overlay visibility ([62f6c91](https://github.com/Sayhi-bzb/CharDesk/commit/62f6c91c7662615612c33036f8c2bb122f7fe7ec))
+* render Gallery docs as Cell articles ([bdcdf41](https://github.com/Sayhi-bzb/CharDesk/commit/bdcdf417e8b09cbfe17be3c31ddf5458ccb3c61b))
+* retire CellSheet and rework overlay geometry ([1a31a21](https://github.com/Sayhi-bzb/CharDesk/commit/1a31a21c924c4b9b8a41d4cd4db822079271cc47))
+* share semantic tones between Markdown and status surfaces ([7f495cf](https://github.com/Sayhi-bzb/CharDesk/commit/7f495cfbce7d9a466e259b5d1d4df1eb974cfc20))
+* unify docs cell scenes ([37050a9](https://github.com/Sayhi-bzb/CharDesk/commit/37050a92a5f96ae7347d247ff7412dc7f799baa0))
+
+
+### Bug Fixes
+
+* align Cell UI E2E with browser behavior ([106ca35](https://github.com/Sayhi-bzb/CharDesk/commit/106ca35e8bad85c73d574f0aeb2db90e1c0f64bd))
+* align scrollbar verification with resolved role colors ([89ca726](https://github.com/Sayhi-bzb/CharDesk/commit/89ca726f426d1e9a9a3572bee35509eb4b14dbd3))
+* keep Cell UI editor and semantic projections consistent ([a4906a2](https://github.com/Sayhi-bzb/CharDesk/commit/a4906a23a206d821a392065367eea6fb91174d47))
+* keep TextArea borders stable on focus ([2c6013f](https://github.com/Sayhi-bzb/CharDesk/commit/2c6013fe0fcd997fd90567b8c46feeda45e3c4d1))
+* make Nerd font e2e wait for shard responses ([ad0e04c](https://github.com/Sayhi-bzb/CharDesk/commit/ad0e04cbad03975e693e348d316d17df5a5b49be))
+* restore Canvas Host App Menu while migration is isolated ([eee5521](https://github.com/Sayhi-bzb/CharDesk/commit/eee5521e7ee37df72a40847445abeeca0bbdac87))
+* route editor pointer drags through Cell selection ([793ac93](https://github.com/Sayhi-bzb/CharDesk/commit/793ac93740e984232541f6f5f3cb6fa3200bbb00))
+* wait for disabled Button icon projection in E2E ([09cfaf8](https://github.com/Sayhi-bzb/CharDesk/commit/09cfaf8090edcd344e27c738365c28be745867a3))
+
+
+### Performance Improvements
+
+* **cell-ui:** cache prepared Markdown descriptors across scroll commits ([5c02260](https://github.com/Sayhi-bzb/CharDesk/commit/5c02260c46e657fbf8d456b6819ddad6f28684dc))
+
 ## [0.4.4](https://github.com/Sayhi-bzb/CharDesk/compare/v0.4.3...v0.4.4) (2026-09-24)
 
 
