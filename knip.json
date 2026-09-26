@@ -110,6 +110,7 @@
     "duplicates"
   ],
   "tags": ["-internal"],
+  "ignoreExportsUsedInFile": { "type": true },
   "ignore": [
     "packages/chargraph/src/vendor/**",
     "packages/document/document/**"

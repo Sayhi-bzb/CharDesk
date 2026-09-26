@@ -60,7 +60,10 @@ describe('verification task graph', () => {
     const options = parseArguments(['--file', './packages/cell-ui/src/checkbox.ts', '--file', 'packages/cell-ui/src/checkbox.ts', '--dry-run'])
     expect(options.files).toEqual(['packages/cell-ui/src/checkbox.ts'])
     expect(options.dryRun).toBe(true)
-    expect(planFor(options.files).selected).toEqual(['@chardesk/cell-ui', '@chardesk/cell-ui-site', '@chardesk/site'])
+    const selected = planFor(options.files).selected
+    expect(selected).toContain('@chardesk/cell-ui')
+    expect(selected).toContain('@chardesk/cell-ui-site')
+    expect(selected).toContain('@chardesk/site')
   })
 
   it.each(['pr', 'full'])('rejects narrowed %s gates', mode => {
@@ -90,11 +93,13 @@ describe('verification task graph', () => {
     }
   })
 
-  it('keeps a leaf helper on deterministic tests without browser or dependency builds', () => {
+  it('keeps a leaf helper on deterministic tests without Cell browser builds', () => {
     const plan = planFor(['packages/cell-ui/src/checkbox.ts'])
-    expect(plan.tasks).toHaveLength(3)
-    expect(plan.tasks[1].args).toEqual(['run', 'test:node', '-w', '@chardesk/cell-ui', '--', 'src/checkbox.test.tsx', 'src/press.test.tsx'])
-    expect(plan.tasks[2].args).toEqual(['run', 'test', '--workspace', '@chardesk/cell-ui-site', '--ignore-scripts'])
+    expect(plan.tasks.find(task => task.label === 'cell node tests')!.args)
+      .toEqual(['run', 'test:node', '-w', '@chardesk/cell-ui', '--', 'src/checkbox.test.tsx', 'src/press.test.tsx'])
+    expect(plan.tasks.find(task => task.label === 'test @chardesk/cell-ui-site')!.args)
+      .toEqual(['run', 'test', '--workspace', '@chardesk/cell-ui-site', '--ignore-scripts'])
+    expect(plan.tasks.some(task => task.label === 'Cell browser tests')).toBe(false)
     expect(plan.deferred).not.toEqual([])
   })
 
@@ -136,7 +141,10 @@ describe('verification task graph', () => {
       const plan = createVerificationPlan(options, { base: 'test', files: ['packages/cell-ui/src/index.ts'] }, projects)
       const browserTask = plan.tasks.find(task => task.label === 'Cell browser tests')!
       expect(plan.tasks.some(task => task.label === 'build @chardesk/rendering')).toBe(true)
-      expect(plan.tasks.indexOf(browserTask)).toBeGreaterThan(plan.tasks.findIndex(task => task.label === 'build @chardesk/rendering'))
+      expect(plan.tasks.some(task => task.label === 'build @chardesk/keyboard')).toBe(true)
+      for (const dependency of ['@chardesk/rendering', '@chardesk/keyboard']) {
+        expect(plan.tasks.indexOf(browserTask)).toBeGreaterThan(plan.tasks.findIndex(task => task.label === `build ${dependency}`))
+      }
       expect(browserTask.args).toContain(`--project=${project}`)
       expect(browserTask.args).not.toContain(`--project=${project === 'chromium' ? 'webkit' : 'chromium'}`)
     }

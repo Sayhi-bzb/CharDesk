@@ -1,4 +1,5 @@
 import type {
+  CellRect,
   SceneSnapshot,
   SemanticNode,
   SemanticSnapshot,
@@ -194,6 +195,8 @@ export const createSemanticSnapshot = (
       ...(selectable(node) ? { selected: node.selected } : {}),
       ...(node.kind === "toggle" ? { pressed: node.pressed } : {}),
       ...(node.kind === "accordion-trigger" ? { expanded: node.expanded } : {}),
+      ...(node.kind === "button" && node.popup === "menu"
+        ? { expanded: node.expanded, hasPopup: "menu" as const } : {}),
       ...(node.progress && node.progress.value !== null
         ? { valueNow: node.progress.value, valueMin: 0, valueMax: node.progress.max,
             valueText: node.progress.valueText }
@@ -288,6 +291,27 @@ export const createSemanticSnapshot = (
   return { roots, nodes, focusedId, revision };
 };
 
+/** Scroll-only frames preserve semantic content and order; only scene bounds can move. */
+export const updateSemanticSnapshotForScroll = (
+  previous: SemanticSnapshot,
+  scene: SceneSnapshot,
+  revision: number,
+  affectedIds: ReadonlySet<WidgetId>,
+): SemanticSnapshot => {
+  const nodes = new Map(previous.nodes);
+  for (const id of affectedIds) {
+    const semantic = nodes.get(id);
+    if (!semantic) continue;
+    const bounds = scene.entries.get(id)?.layoutBounds ?? null;
+    if (!sameSemanticBounds(semantic.bounds, bounds)) nodes.set(id, { ...semantic, bounds });
+  }
+  return { roots: previous.roots, nodes, focusedId: previous.focusedId, revision };
+};
+
+const sameSemanticBounds = (left: CellRect | null, right: CellRect | null): boolean =>
+  left === right || !!left && !!right && left.x === right.x && left.y === right.y
+    && left.width === right.width && left.height === right.height;
+
 const focusRoles = new Set<SemanticNode["role"]>([
   "button", "link", "checkbox", "radio", "slider", "option", "textbox", "combobox", "menuitem", "treeitem", "tab", "gridcell",
 ]);
@@ -366,7 +390,7 @@ export const auditSemanticSnapshot = (
       node.expanded !== undefined
       && node.role !== "treeitem"
       && node.role !== "combobox"
-      && !(node.role === "button" && (node.hasPopup === "listbox" || node.controlsId))
+      && !(node.role === "button" && (node.hasPopup === "listbox" || node.hasPopup === "menu" || node.controlsId))
     ) {
       issue(node.id, "invalid-state", `expanded is invalid for role ${node.role}.`);
     }

@@ -193,6 +193,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
       sliderStep: current.sliderStep,
       sliderValueText: current.sliderValueText,
       expanded: current.expanded,
+      popup: current.popup,
       hasChildren: current.hasChildren,
       level: current.level,
       parentItemId: current.parentItemId,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 // @ts-expect-error JavaScript rule module intentionally runs in Node.
-import { checkHostArchitecture } from "./style-api-rules.mjs";
+import { checkHostArchitecture, checkLegacyButtonProps } from "./style-api-rules.mjs";
 
 const checks = (source: string, file = "apps/canvas/src/widgets/example.tsx") =>
   checkHostArchitecture(source, file).map((violation: { check: string }) => violation.check);
@@ -37,5 +37,17 @@ describe("Host style architecture rules", () => {
       'export const X = () => <textarea data-canvas-managed-input="true" />',
       "apps/canvas/src/widgets/canvas-editor/CanvasSurface.tsx"
     )).toEqual([]);
+  });
+
+  it("checks legacy host Button props without rejecting Cell UI Button props", () => {
+    const buttonChecks = (source: string, file = "apps/canvas/src/widgets/example.tsx") =>
+      checkLegacyButtonProps(source, file).map((violation: { check: string }) => violation.check);
+    expect(buttonChecks('const View = () => <Button variant="ghost" size="icon" />')).toEqual([
+      "No legacy <Button variant=...> usage",
+      "No legacy icon Button sizes",
+    ]);
+    expect(buttonChecks('import { Button } from "@chardesk/cell-ui"; const View = () => <Button variant="ghost" />')).toEqual([]);
+    expect(buttonChecks('const View = () => <><Button /><div variant="ghost" /></>')).toEqual([]);
+    expect(buttonChecks('const View = () => <Button variant="ghost" />', "apps/chargraph/src/example.tsx")).toHaveLength(1);
   });
 });

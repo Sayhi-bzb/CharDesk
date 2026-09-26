@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { canvasFor, cellPoint, ownerBounds, readCellProbe } from "./helpers/cell-probe";
+import { cellPoint, ownerBounds, readCellProbe } from "./helpers/cell-probe";
 
 test("Combobox shows its default interaction", async ({ page }) => {
   await page.goto("/#/components/combobox");
@@ -39,7 +39,6 @@ test("Combobox input row opens on click, keeps editing open, and closes from its
   expect(firstInputCell?.text).toBe(">");
   expect(probe.cells.find((cell) => cell.ownerId === "component-combobox-input"
     && cell.x === firstInputCell!.x + 1 && cell.y === firstInputCell!.y)?.text).toBe(" ");
-  const canvas = canvasFor(surface).first();
   const clickCell = async (x: number, y: number) => {
     const point = await cellPoint(surface, x, y);
     await page.mouse.click(point.x, point.y);

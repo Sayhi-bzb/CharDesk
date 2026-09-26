@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import ts from "typescript";
-import { checkHostArchitecture } from "./style-api-rules.mjs";
+import { checkHostArchitecture, checkLegacyButtonProps } from "./style-api-rules.mjs";
 
 const ROOT = process.cwd();
 const SRC_DIR = join(ROOT, "apps", "canvas", "src");
@@ -18,18 +18,8 @@ const checks = [
     allow: [],
   },
   {
-    name: "No legacy <Button variant=...> usage",
-    pattern: /<Button(?=[\s>])[\s\S]{0,400}?\bvariant\s*=/g,
-    allow: [],
-  },
-  {
     name: "No legacy buttonVariants({ variant: ... }) usage",
     pattern: /buttonVariants\s*\(\s*\{[\s\S]{0,200}?\bvariant\s*:/g,
-    allow: [],
-  },
-  {
-    name: "No legacy icon Button sizes",
-    pattern: /<Button(?=[\s>])[\s\S]{0,400}?\bsize\s*=\s*"(icon|icon-sm|icon-lg)"/g,
     allow: [],
   },
   {
@@ -403,6 +393,7 @@ for (const filePath of files) {
   }
 
   checkWidgetBehaviorOwnership(content, relFile);
+  violations.push(...checkLegacyButtonProps(content, relFile));
   violations.push(...checkHostArchitecture(content, relFile));
 
   for (const match of content.matchAll(/--layer-[a-z-]+/g)) {

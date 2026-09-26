@@ -1,5 +1,11 @@
 @import '@chardesk/ui/theme.css';
 
+:root {
+  --cell-overlay-layer: var(--layer-popover);
+}
+
+.canvas-cell-app-menu-surface canvas { display: block; }
+
 @property --chardesk-sidebar-height {
   syntax: '<length-percentage>';
   inherits: false;

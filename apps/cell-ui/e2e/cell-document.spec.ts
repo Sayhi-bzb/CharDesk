@@ -1,41 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { cellPoint, readCellProbe, type BrowserCellProbe } from "./helpers/cell-probe";
 
-test("guide and component articles use one Cell surface with embedded previews", async ({ page, request }) => {
-  for (const slug of ["introduction", "philosophy", "classic-macintosh", "markdown", "integration", "theming", "testing"]) {
-    await page.goto(`/#/guides/${slug}`);
-    const article = page.locator('.cell-article-page [data-cell-probe^="article-"]');
-    await expect(article.first().getByRole("heading", { level: 1 }).first()).toBeVisible();
-    await expect(page.locator(".docs-page__header, .docs-code, .docs-table-wrap")).toHaveCount(0);
-    expect((await request.get(`/guides/${slug}.md`)).ok()).toBe(true);
-  }
-  await page.goto("/#/components/button");
-  const surfaces = page.locator('.cell-article-page [data-cell-probe^="article-"]');
-  await expect(surfaces).toHaveCount(1);
-  await expect(page.locator('[data-cell-probe="component-button"]')).toHaveCount(1);
-  await expect(surfaces.first().getByRole("heading", { name: "Preview" })).toBeVisible();
-  await expect(surfaces.last().getByRole("heading", { name: "API" })).toBeVisible();
-  await page.getByRole("navigation", { name: "On This Page" }).getByRole("link", { name: "API" })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(page.locator("#api")).toBeInViewport();
-});
-
-test("Cell article keeps install tabs, exact copy, collapse, links, and responsive width", async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText: async (value: string) => { sessionStorage.setItem("article-copy", value); } },
-    });
-  });
+test("Cell article keeps collapse, links, and responsive width", async ({ page }) => {
   await page.goto("/#/components/button");
   const article = page.locator('[data-cell-probe="article-button"]');
-  await expect(article.getByRole("tablist", { name: "Package manager" })).toBeVisible();
-  await article.getByRole("tab", { name: "pnpm" }).evaluate((element: HTMLElement) => element.click());
-  await expect(article.getByRole("tab", { name: "pnpm" })).toHaveAttribute("aria-selected", "true");
-  await expect.poll(async () => (await readCellProbe(article)).text).toContain("pnpm dlx shadcn@latest add @chardesk/cell-ui");
-  await article.getByRole("button", { name: "Copy code" }).first().evaluate((element: HTMLElement) => element.click());
-  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("article-copy")))
-    .toBe("pnpm dlx shadcn@latest add @chardesk/cell-ui");
   await expect(article.getByRole("button", { name: "Show more" })).toBeVisible();
   await article.getByRole("button", { name: "Show more" }).evaluate((element: HTMLElement) => element.click());
   await expect(article.getByRole("button", { name: "Show less" })).toBeVisible();

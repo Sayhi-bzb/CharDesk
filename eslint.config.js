@@ -18,12 +18,23 @@ export default defineConfig([
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
     ],
+    plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
+    rules: {
+      // React Compiler is not enabled; enforce the runtime Hook contract without compiler-only diagnostics.
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+    },
+  },
+  {
+    files: ['apps/*/src/**/*.{ts,tsx}'],
+    rules: {
+      // Mixed component/helper modules can still run; Fast Refresh falls back to a remount.
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
   {

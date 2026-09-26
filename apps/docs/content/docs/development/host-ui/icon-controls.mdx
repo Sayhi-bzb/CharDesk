@@ -12,6 +12,9 @@ description: Icon, geometry, state, and association contract.
 - Core controls are borderless, shadowless, padding-free, and use the 6px
   control radius
   unless compound geometry joins controls.
+- The Cell-native App Menu is the scoped exception: its glyph comes from
+  `HOST_CELL_GLYPHS`, and Editor Chrome reserves its logical Cell plus rendering
+  guard rather than forcing the 32px DOM control geometry.
 - A subordinate control uses the shared `subordinate` behavior and never owns
   local opacity state classes.
 - Pair icon-only controls with an accessible name and the shared `Tooltip`.

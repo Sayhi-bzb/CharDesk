@@ -1,7 +1,7 @@
-import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactElement } from "react";
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import {
   Box, Button, Markdown, Root, ScrollArea, Tab, TabPanel, Tabs, Text, createWidgetDescriptor,
-  type CellPoint, type CellRect, type RootProps, type WidgetCommand, type WidgetDescriptor,
+  type CellPoint, type CellRect, type WidgetCommand, type WidgetDescriptor,
 } from "@chardesk/cell-ui";
 import { formatCellProbe } from "@chardesk/cell-ui";
 import { readCellSurfaceProbe, useCellScrollState, type CellScrollState } from "@chardesk/cell-ui/browser";

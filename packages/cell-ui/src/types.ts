@@ -180,6 +180,7 @@ export type WidgetNode = Readonly<{
   sliderStep: number;
   sliderValueText: string | null;
   expanded: boolean;
+  popup: "menu" | null;
   hidden: boolean;
   hasChildren: boolean;
   level: number | null;
@@ -387,7 +388,7 @@ export type SemanticNode = Readonly<{
   positionInSet?: number;
   setSize?: number;
   orientation?: "horizontal" | "vertical";
-  hasPopup?: "listbox";
+  hasPopup?: "listbox" | "menu";
   controlsId?: WidgetId;
   labelledById?: WidgetId;
   value?: string;

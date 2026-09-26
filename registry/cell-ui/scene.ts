@@ -86,10 +86,13 @@ const scrollMetricsFor = (
   );
 };
 
-export const composeScene = (
+type ScrollSceneReuse = Readonly<{ previous: SceneSnapshot; roots: ReadonlySet<string> }>;
+
+const composeSceneInternal = (
   tree: WidgetTree,
   layout: LayoutSnapshot,
-  overlayViewport: CellRect = layout.viewport
+  overlayViewport: CellRect,
+  reuse?: ScrollSceneReuse,
 ): SceneSnapshot => {
   const entries = new Map<string, SceneEntry>();
   const paintList: string[] = [];
@@ -98,6 +101,22 @@ export const composeScene = (
   let traversalOrder = 0;
   const orders = new Map<string, number>();
   const deferredTooltips: string[] = [];
+  const affectedAncestors = new Set<string>();
+  if (reuse) for (const rootId of reuse.roots) {
+    let id: string | null = rootId;
+    while (id) {
+      affectedAncestors.add(id);
+      id = tree.nodes.get(id)?.parentId ?? null;
+    }
+  }
+  const reuseSubtree = (id: string): void => {
+    const previousEntry = reuse?.previous.entries.get(id);
+    if (!previousEntry) return;
+    entries.set(id, previousEntry);
+    orders.set(id, traversalOrder++);
+    if (previousEntry.paintVisible) paintList.push(id);
+    for (const childId of tree.nodes.get(id)?.children ?? []) reuseSubtree(childId);
+  };
   const scopedOverlayViewport = (id: string): CellRect => {
     let parentId = tree.nodes.get(id)?.parentId;
     while (parentId) {
@@ -114,7 +133,12 @@ export const composeScene = (
     inheritedClip: CellRect,
     inheritedLayer: number,
     deferred = false,
+    dirtySubtree = false,
   ): void => {
+    if (reuse && !dirtySubtree && !affectedAncestors.has(id)) {
+      reuseSubtree(id);
+      return;
+    }
     const widget = tree.nodes.get(id);
     const layoutEntry = layout.entries.get(id);
     if (!widget || !layoutEntry) throw new Error(`Scene input is missing ${id}.`);
@@ -260,7 +284,9 @@ export const composeScene = (
           y: bounds.y - offset.y,
         }
       : { x: bounds.x, y: bounds.y };
-    for (const childId of widget.children) visit(childId, childOrigin, childClip, layer);
+    for (const childId of widget.children) {
+      visit(childId, childOrigin, childClip, layer, false, dirtySubtree || !!reuse?.roots.has(id));
+    }
   };
 
   visit(tree.rootId, { x: 0, y: 0 }, layout.viewport, 0);
@@ -276,10 +302,26 @@ export const composeScene = (
       || orders.get(left)! - orders.get(right)!;
   });
   paintList.forEach((id, paintOrder) => {
-    entries.set(id, { ...entries.get(id)!, paintOrder });
+    const entry = entries.get(id)!;
+    if (entry.paintOrder !== paintOrder) entries.set(id, { ...entry, paintOrder });
   });
   return { viewport: layout.viewport, overlayViewport, entries, paintList };
 };
+
+export const composeScene = (
+  tree: WidgetTree,
+  layout: LayoutSnapshot,
+  overlayViewport: CellRect = layout.viewport,
+): SceneSnapshot => composeSceneInternal(tree, layout, overlayViewport);
+
+/** Reuses scene entries outside scroll subtrees; callers must prove the frame is scroll-only. */
+export const composeSceneForScroll = (
+  tree: WidgetTree,
+  layout: LayoutSnapshot,
+  overlayViewport: CellRect,
+  previous: SceneSnapshot,
+  roots: ReadonlySet<string>,
+): SceneSnapshot => composeSceneInternal(tree, layout, overlayViewport, { previous, roots });
 
 export const getEventPath = (
   scene: SceneSnapshot,

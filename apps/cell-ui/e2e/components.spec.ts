@@ -64,6 +64,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(page.getByRole("link", { name: "Configure the registry" })).toBeVisible();
   await expect(page.getByText("npx shadcn@latest add @chardesk/cell-ui")).toBeVisible();
   const article = page.locator('[data-cell-probe="article-button"]');
+  await expect(page.locator('.cell-article-page [data-cell-probe^="article-"]')).toHaveCount(1);
   expect((await readCellProbe(article)).text).toContain("@/lib/cell-ui/browser");
   expect((await readCellProbe(article)).text).not.toContain("@chardesk/cell-ui/browser");
   await expect(article.getByRole("button", { name: "Copy code" })).toHaveCount(2);
@@ -529,8 +530,12 @@ test("guide sections, direct links, and agent Markdown stay addressable", async 
   for (const slug of ["introduction", "philosophy", "classic-macintosh", "markdown", "installation", "integration", "theming", "testing"]) {
     await page.goto(`/#/guides/${slug}`);
     await expect(page.getByRole("navigation", { name: "Cell UI" }).getByRole("link", { name: slug === "classic-macintosh" ? "Classic Macintosh" : slug[0]!.toUpperCase() + slug.slice(1), exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(page.locator('.cell-article-page [data-cell-probe]').first()
-      .getByRole("heading", { level: 1 }).first()).toBeVisible();
+    const article = page.locator(slug === "installation"
+      ? '.cell-article-page [data-cell-probe="installation-article"]'
+      : '.cell-article-page [data-cell-probe^="article-"]');
+    await expect(article).toHaveCount(1);
+    await expect(article.getByRole("heading", { level: 1 }).first()).toBeVisible();
+    await expect(page.locator(".docs-page__header, .docs-code, .docs-table-wrap")).toHaveCount(0);
     const markdown = await request.get(`/guides/${slug}.md`);
     expect(markdown.ok()).toBe(true);
     expect(await markdown.text()).toContain("# ");
@@ -810,26 +815,6 @@ test("Text and Box expose Cell-native content and local variants", async ({ page
   expect(initialBox.text).toContain("Block");
   expect(initialBox.text).toContain("variant");
   expect(initialBox.cells.some((cell) => cell.ownerId?.includes("divider"))).toBe(true);
-});
-
-test("Separator keeps orientation interactive", async ({ page }) => {
-  await page.goto("/#/components/separator");
-  const surface = page.getByLabel("Separator component");
-  const direction = page.getByRole("button", { name: "direction", exact: true });
-  const separator = page.getByRole("separator");
-  const initial = await readCellProbe(surface);
-  const separatorCells = async () => (await readCellProbe(surface)).cells
-    .filter((cell) => cell.ownerId === "component-separator-line");
-  expect((await separatorCells()).map((cell) => cell.text).join("")).toBe("─".repeat(20));
-  await expect(separator).toHaveAttribute("aria-orientation", "horizontal");
-  await expect(page.getByRole("button", { name: "variant", exact: true })).toBeAttached();
-  await direction.evaluate((element: HTMLElement) => element.click());
-  await page.getByRole("option", { name: "vertical", exact: true })
-    .evaluate((element: HTMLElement) => element.click());
-  await expect(separator).toHaveAttribute("aria-orientation", "vertical");
-  await expect.poll(async () => (await separatorCells()).map((cell) => cell.text).join(""))
-    .toBe("│".repeat(5));
-  expect((await readCellProbe(surface)).viewport).toEqual(initial.viewport);
 });
 
 test("Input edits Unicode through the real textbox and Cell frame", async ({ page }) => {

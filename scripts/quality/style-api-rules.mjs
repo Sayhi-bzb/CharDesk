@@ -32,6 +32,48 @@ const isModuleLoadFailureButton = (node, relFile) =>
   relFile === "apps/canvas/src/app/StartupScreens.tsx" &&
   literalAttribute(node, "className") === "startup-action";
 
+export function checkLegacyButtonProps(content, relFile) {
+  if (!content.includes("<Button")) return [];
+  const sourceFile = ts.createSourceFile(
+    relFile,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    relFile.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  );
+  const cellUiButton = sourceFile.statements.some(
+    (statement) =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "@chardesk/cell-ui" &&
+      statement.importClause?.namedBindings &&
+      ts.isNamedImports(statement.importClause.namedBindings) &&
+      statement.importClause.namedBindings.elements.some(
+        (element) =>
+          element.name.text === "Button" && (element.propertyName?.text ?? element.name.text) === "Button"
+      )
+  );
+  if (cellUiButton) return [];
+  const violations = [];
+  const visit = (node) => {
+    if (
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
+      node.tagName.getText(sourceFile) === "Button"
+    ) {
+      const line = lineOf(sourceFile, node);
+      if (attribute(node, "variant")) {
+        violations.push({ check: "No legacy <Button variant=...> usage", file: relFile, line });
+      }
+      if (["icon", "icon-sm", "icon-lg"].includes(literalAttribute(node, "size"))) {
+        violations.push({ check: "No legacy icon Button sizes", file: relFile, line });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return violations;
+}
+
 export function checkHostArchitecture(content, relFile) {
   if (!/^apps\/canvas\/src\/(?:app|widgets|shared|domains)\//.test(relFile)) return [];
   if (/\.(?:test|spec)\.[^.]+$/.test(relFile)) return [];

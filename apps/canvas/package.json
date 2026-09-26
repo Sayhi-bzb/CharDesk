@@ -15,6 +15,7 @@
   "dependencies": {
     "@chardesk/blackboard": "*",
     "@chardesk/cell-core": "*",
+    "@chardesk/cell-ui": "*",
     "@chardesk/collaboration-protocol": "*",
     "@chardesk/chargraph": "*",
     "@chardesk/document": "*",

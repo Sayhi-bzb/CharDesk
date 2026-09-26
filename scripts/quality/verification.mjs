@@ -369,14 +369,18 @@ export function createVerificationPlan(options, changes, projects = loadWorkspac
     runRootTests('dom', options.mode, changes.files, options.shard, run, cell, cellOnlyQuick)
   }
   if ((phase === 'all' || phase === 'cell-e2e') && cell.active) {
-    const projects = cell.dualBrowser ? ['chromium', 'webkit'] : ['chromium']
-    const browserProjects = options.cellProject ? projects.filter(project => project === options.cellProject) : projects
+    const browserNames = cell.dualBrowser ? ['chromium', 'webkit'] : ['chromium']
+    const browserProjects = options.cellProject ? browserNames.filter(project => project === options.cellProject) : browserNames
     // Batch unfiltered suites into one browser launch; filtered suites keep their own selector.
     const unfiltered = cell.browser.filter(suite => suite.grep === null).map(suite => suite.file)
     const suites = cell.browser.filter(suite => suite.grep !== null)
       .map(suite => ({ files: [suite.file], grep: suite.grep }))
     if (unfiltered.length) suites.unshift({ files: unfiltered, grep: null })
-    if (browserProjects.length && suites.length) buildRunner.build(['@chardesk/rendering'])
+    if (browserProjects.length && suites.length) {
+      const gallery = projects.find(project => project.name === '@chardesk/cell-ui-site')
+      if (!gallery) throw new Error('Cell UI Gallery workspace is missing from the verification graph')
+      buildRunner.build(gallery.dependencies)
+    }
     for (const suite of browserProjects.length ? suites : []) {
       run(npmCommand, ['run', 'test:e2e', '-w', '@chardesk/cell-ui-site', '--', ...suite.files,
         ...browserProjects.map(project => `--project=${project}`),

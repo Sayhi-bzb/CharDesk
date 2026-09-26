@@ -10,9 +10,9 @@ import {
   MarkdownDescriptorCache,
   type RootProps,
 } from "./react.js";
-import { composeScene } from "./scene.js";
+import { composeScene, composeSceneForScroll } from "./scene.js";
 import { resolveCellUiScrollLayout } from "./scroll-layout.js";
-import { createSemanticSnapshot } from "./semantics.js";
+import { createSemanticSnapshot, updateSemanticSnapshotForScroll } from "./semantics.js";
 import { isDescendantOf, reconcileWidgetTree, sameWidgetValue } from "./tree.js";
 import { classifyWidgetChange } from "./widget-change.js";
 import { createVisibleCellTextLayout, measureCellText, withCellTextScroll } from "./text.js";
@@ -68,6 +68,24 @@ const expandForWideCells = (
   const right = Math.min(viewport.x + viewport.width, region.x + region.width + 1);
   return { ...region, x: left, width: right - left };
 });
+
+const scrollSubtreeIds = (tree: WidgetTree, roots: ReadonlySet<WidgetId>, limit: number): Set<WidgetId> | null => {
+  const ids = new Set<WidgetId>();
+  const pending = [...roots];
+  while (pending.length > 0) {
+    const id = pending.pop()!;
+    if (ids.has(id)) continue;
+    ids.add(id);
+    if (ids.size > limit) return null;
+    pending.push(...(tree.nodes.get(id)?.children ?? []));
+  }
+  return ids;
+};
+
+const hasPortalNodes = (tree: WidgetTree): boolean => {
+  for (const node of tree.nodes.values()) if (isPortalKind(node.kind)) return true;
+  return false;
+};
 
 export type CellUiRuntimeOptions = Readonly<{
   viewport: CellSize;
@@ -260,6 +278,8 @@ export class CellUiRuntime {
     let semanticsDirty = structuralDirty;
     const paintIds = new Set<WidgetId>();
     const geometryIds = new Set<WidgetId>();
+    const scrollRoots = new Set<WidgetId>();
+    let scrollOnlyGeometry = true;
     for (const [id, node] of tree.nodes) {
       const before = previous?.tree.nodes.get(id);
       if (!before) {
@@ -272,6 +292,13 @@ export class CellUiRuntime {
       if (change.geometry) {
         geometryDirty = true;
         geometryIds.add(id);
+        if (node.kind === "scroll-area" && before.kind === node.kind
+          && !sameWidgetValue(before.scrollOffset, node.scrollOffset)
+          && before.tooltipOpen === node.tooltipOpen
+          && before.tooltipTargetId === node.tooltipTargetId
+          && sameWidgetValue(before.textEditor, node.textEditor)
+          && sameWidgetValue(before.overlayPosition, node.overlayPosition)) scrollRoots.add(id);
+        else scrollOnlyGeometry = false;
       }
       if (change.paint) {
         paintDirty = true;
@@ -279,6 +306,12 @@ export class CellUiRuntime {
       }
       if (change.semantics) semanticsDirty = true;
     }
+    const scrollCandidate = !!previous && !structuralDirty && !viewportDirty && !layoutDirty
+      && !semanticsDirty && geometryDirty && scrollOnlyGeometry && scrollRoots.size === geometryIds.size;
+    // Reusing siblings only pays when a meaningful part of the scene stays untouched.
+    const scrollAffectedIds = scrollCandidate
+      ? scrollSubtreeIds(tree, scrollRoots, Math.floor(tree.nodes.size * 0.7)) : null;
+    const incrementalScroll = !!scrollAffectedIds && !hasPortalNodes(tree);
     if (layoutDirty) {
       geometryDirty = true;
       paintDirty = true;
@@ -298,7 +331,9 @@ export class CellUiRuntime {
       : null;
     const layout = computed?.layout ?? previous!.layout;
     const scene = computed?.scene ?? (geometryDirty
-      ? composeScene(tree, layout, overlayRect)
+      ? incrementalScroll
+        ? composeSceneForScroll(tree, layout, overlayRect, previous!.scene, scrollRoots)
+        : composeScene(tree, layout, overlayRect)
       : previous!.scene);
     const textLayouts = paintDirty || !previous
       ? new Map([...tree.nodes.values()].flatMap((node) => {
@@ -317,12 +352,15 @@ export class CellUiRuntime {
       : previous.textLayouts;
     const revision = this.#revision + 1;
     const semantics = semanticsDirty || !previous
-      ? createSemanticSnapshot(tree, scene, revision, focusedId)
+      ? incrementalScroll
+        ? updateSemanticSnapshotForScroll(previous!.semantics, scene, revision,
+            scrollAffectedIds!)
+        : createSemanticSnapshot(tree, scene, revision, focusedId)
       : { ...previous.semantics, revision };
     const rawDirtyRegions = !previous || layoutDirty || this.#appearanceDirty
       ? [scene.overlayViewport]
       : geometryDirty
-        ? regionsFor(geometryIds, previous.scene, scene)
+        ? regionsFor(new Set([...geometryIds, ...paintIds]), previous.scene, scene)
         : paintDirty
           ? regionsFor(paintIds, previous.scene, scene)
           : [];

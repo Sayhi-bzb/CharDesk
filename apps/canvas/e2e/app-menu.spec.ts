@@ -1,4 +1,17 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+const openAppMenu = async (page: Page) => {
+  const trigger = page.getByRole('button', { name: 'Open menu' });
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menu', { name: 'Open menu' })).toBeVisible();
+};
+
+const activateAppMenuItem = async (page: Page, name: string) => {
+  const item = page.getByRole('menu', { name: 'Open menu' }).getByRole('menuitem', { name, exact: true });
+  await item.focus();
+  await page.keyboard.press('Enter');
+};
 
 test.describe('App menu', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,9 +32,23 @@ test.describe('App menu', () => {
     });
     await page.goto('/');
     expect(requests).toBe(0);
-    await page.getByRole('button', { name: 'Open menu' }).click();
+    await openAppMenu(page);
     await expect(page.getByRole('menuitem', { name: /GitHub.*1,234/ })).toBeVisible();
     expect(requests).toBe(1);
+  });
+
+  test('opens from the rendered cell and navigates the Help submenu by keyboard', async ({ page }) => {
+    await page.goto('/');
+    const surface = page.getByTestId('app-menu-host').locator('canvas');
+    await surface.click({ position: { x: 22, y: 30 } });
+    const menu = page.getByRole('menu', { name: 'Open menu' });
+    await expect(menu).toBeVisible();
+
+    await menu.getByRole('menuitem', { name: 'Help' }).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('menu', { name: 'Help' })).toBeVisible();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.getByRole('menu', { name: 'Help' })).toHaveCount(0);
   });
 
   test('round-trips a native CharDesk project file', async ({ page }) => {
@@ -41,8 +68,9 @@ test.describe('App menu', () => {
     expect(downloadPath).not.toBeNull();
     if (!downloadPath) return;
 
+    const initialSessionCount = await page.locator('[data-canvas-session-row]').count();
     await page.locator('input[type="file"]').first().setInputFiles(downloadPath);
-    await expect(page.locator('[data-canvas-session-row]')).toHaveCount(3);
+    await expect(page.locator('[data-canvas-session-row]')).toHaveCount(initialSessionCount + 1);
   });
 
   test('keeps inline actions open and closes when focus leaves', async ({ page }) => {
@@ -51,7 +79,7 @@ test.describe('App menu', () => {
     await page.goto('/');
 
     const trigger = page.getByRole('button', { name: 'Open menu' });
-    const menuContent = page.locator('[data-slot="dropdown-menu-content"]');
+    const menuContent = page.locator('[data-cell-overlay-portal]');
     const canvasBreadcrumb = page.getByRole('button', { name: 'Select canvas' });
     await expect(trigger).toBeVisible();
     await expect(page.locator('[data-slot="sidebar-footer"]')).toHaveCount(0);
@@ -70,28 +98,26 @@ test.describe('App menu', () => {
     expect(minimapControlBox).not.toBeNull();
     expect(minimapBox!.y + minimapBox!.height).toBeLessThan(minimapControlBox!.y);
 
-    const triggerBox = await trigger.boundingBox();
+    const triggerBox = await page.getByTestId('app-menu-host').locator('canvas').boundingBox();
     const breadcrumbBox = await canvasBreadcrumb.boundingBox();
     expect(triggerBox).not.toBeNull();
     expect(breadcrumbBox).not.toBeNull();
     expect(triggerBox!.x + triggerBox!.width).toBeLessThanOrEqual(breadcrumbBox!.x);
 
-    await trigger.click();
+    await openAppMenu(page);
     const menu = page.getByRole('menu', { name: 'Open menu' });
     await expect(menu).toBeVisible();
     for (const name of ['Split', 'Zen', 'Clear canvas', 'Settings', 'Help', 'GitHub']) {
       await expect(menu.getByRole('menuitem', { name: new RegExp(`^${name}`) })).toBeVisible();
     }
 
-    const separator = menu.locator('[data-slot="dropdown-menu-separator"]');
+    const separator = menu.getByRole('separator');
     await expect(separator).toHaveCount(1);
-    await expect(separator).toHaveCSS('height', '2px');
-    await expect(separator).toHaveClass(/rounded-full/, /bg-separator/);
 
     await page.mouse.click(700, 500);
     await expect(menuContent).toHaveCount(0);
 
-    await trigger.click();
+    await openAppMenu(page);
     await page.evaluate(() => window.dispatchEvent(new Event('blur')));
     await expect(menuContent).toHaveCount(0);
 
@@ -106,11 +132,8 @@ test.describe('App menu', () => {
     await expect(page.getByRole('dialog')).toContainText('Data security');
     await page.keyboard.press('Escape');
 
-    await trigger.click();
-    await page
-      .getByRole('menu', { name: 'Open menu' })
-      .getByRole('menuitem', { name: 'Clear canvas' })
-      .click();
+    await openAppMenu(page);
+    await activateAppMenuItem(page, 'Clear canvas');
     await expect(page.getByRole('alertdialog')).toBeVisible();
     await expect(menuContent).toHaveCount(0);
     await page.getByRole('button', { name: 'Cancel' }).click();
@@ -143,8 +166,8 @@ test.describe('App menu', () => {
     const primarySessionId = await primaryView.getAttribute('data-session-id');
     const secondarySessionId = await secondaryView.getAttribute('data-session-id');
 
-    await trigger.click();
-    await page.getByRole('menuitem', { name: 'Zen' }).click();
+    await openAppMenu(page);
+    await activateAppMenuItem(page, 'Zen');
 
     await expect(trigger).toBeVisible();
     await expect(primarySelector).toHaveCount(0);
@@ -160,9 +183,9 @@ test.describe('App menu', () => {
     await expect(page.getByTestId('app-top-bar')).toHaveAttribute('data-zen-mode', 'true');
 
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    await trigger.click();
+    await openAppMenu(page);
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    await page.getByRole('menuitem', { name: 'Exit Zen' }).click();
+    await activateAppMenuItem(page, 'Exit Zen');
 
     await expect(primarySelector).toBeVisible();
     await expect(secondarySelector).toBeVisible();
@@ -197,10 +220,10 @@ test.describe('App menu', () => {
     await selector.click();
     await expect(page.getByRole('dialog', { name: 'Select canvas' })).toBeHidden();
 
-    await trigger.click();
+    await openAppMenu(page);
     const menu = page.getByRole('menu', { name: 'Open menu' });
     await expect(menu).toBeVisible();
-    await menu.getByRole('menuitem', { name: 'Settings' }).click();
+    await activateAppMenuItem(page, 'Settings');
 
     const settings = page.getByRole('dialog', { name: 'Settings' });
     await expect(settings).toBeVisible();
@@ -268,11 +291,8 @@ test.describe('App menu', () => {
     await page.setViewportSize({ width: 600, height: 800 });
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Open menu' }).click();
-    await page
-      .getByRole('menu', { name: 'Open menu' })
-      .getByRole('menuitem', { name: 'Settings' })
-      .click();
+    await openAppMenu(page);
+    await activateAppMenuItem(page, 'Settings');
 
     const settings = page.getByRole('dialog', { name: 'Settings' });
     const sectionSelect = settings.getByRole('combobox', { name: 'Settings sections' });
@@ -287,11 +307,8 @@ test.describe('App menu', () => {
     await page.setViewportSize({ width: 320, height: 720 });
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Open menu' }).click();
-    await page
-      .getByRole('menu', { name: 'Open menu' })
-      .getByRole('menuitem', { name: 'Settings' })
-      .click();
+    await openAppMenu(page);
+    await activateAppMenuItem(page, 'Settings');
 
     const settings = page.getByRole('dialog', { name: 'Settings' });
     const content = settings.locator('[data-slot="settings-content"]');
@@ -338,11 +355,8 @@ test.describe('App menu', () => {
     await page.setViewportSize({ width: 767, height: 720 });
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Open menu' }).click();
-    await page
-      .getByRole('menu', { name: 'Open menu' })
-      .getByRole('menuitem', { name: 'Settings' })
-      .click();
+    await openAppMenu(page);
+    await activateAppMenuItem(page, 'Settings');
 
     const settings = page.getByRole('dialog', { name: 'Settings' });
     const compactNavigation = settings.locator('[data-slot="settings-navigation-mobile"]');

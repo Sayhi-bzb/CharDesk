@@ -151,9 +151,16 @@ test("Spinner freezes on its first glyph with reduced motion", async ({ page }) 
 test("Separator changes orientation through its Cell Select", async ({ page }) => {
   await page.goto("/#/components/separator");
   const surface = page.locator('[data-cell-probe="component-separator"]');
+  const initial = await readCellProbe(surface);
+  const separatorCells = async () => (await readCellProbe(surface)).cells
+    .filter((cell) => cell.ownerId === "component-separator-line");
+  expect((await separatorCells()).map((cell) => cell.text).join("")).toBe("─".repeat(20));
   await expect(surface.getByRole("separator")).toHaveAttribute("aria-orientation", "horizontal");
+  await expect(page.getByRole("button", { name: "variant", exact: true })).toBeAttached();
   await surface.getByRole("button", { name: "direction" }).evaluate((element: HTMLElement) => element.click());
   await surface.getByRole("option", { name: "vertical" }).evaluate((element: HTMLElement) => element.click());
   await expect(surface.getByRole("separator")).toHaveAttribute("aria-orientation", "vertical");
-  expect((await readCellText(surface)).split("\n").filter((line) => line.includes("│")).length).toBeGreaterThanOrEqual(5);
+  await expect.poll(async () => (await separatorCells()).map((cell) => cell.text).join(""))
+    .toBe("│".repeat(5));
+  expect((await readCellProbe(surface)).viewport).toEqual(initial.viewport);
 });

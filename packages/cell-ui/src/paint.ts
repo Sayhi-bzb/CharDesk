@@ -10,7 +10,7 @@ import type {
   WidgetTree,
 } from "./types.js";
 import type { CellTextLayoutSnapshot } from "./text.js";
-import { walkCellTextRows } from "./text-lines.js";
+import { walkCellTextRows, walkCellTextRowsInRange, type CellTextGlyphPlacement } from "./text-lines.js";
 import { DEFAULT_CELL_UI_THEME, type CellUiTheme } from "./theme.js";
 import { intersectSceneRects } from "./scene.js";
 import { TEXT_VERTICAL_TRACK_GLYPH, textVerticalThumbGlyph, thumbGlyph } from "./scrollbar.js";
@@ -58,11 +58,16 @@ const paintText = (
   copyMode: "normal" | "source" | "layout" = "normal"
 ): void => {
   if (bounds.width <= 0 || bounds.height <= 0) return;
-  walkCellTextRows(text, bounds.width, ({ segment, column, row, width }) => {
+  const visible = intersectSceneRects(bounds, clip);
+  if (!nonEmpty(visible)) return;
+  const paintGlyph = ({ segment, column, row, width }: CellTextGlyphPlacement) => {
     if (row >= bounds.height || width > bounds.width) return false;
     buffer.writeGrapheme(bounds.x + column, bounds.y + row, segment, ownerId, style, clip, "over",
       copyMode === "layout" ? "" : copyMode === "source" ? segment : undefined);
-  });
+  };
+  if (bounds.width < 2) walkCellTextRows(text, bounds.width, paintGlyph);
+  else walkCellTextRowsInRange(text, bounds.width, visible.y - bounds.y,
+    visible.y + visible.height - bounds.y, paintGlyph);
 };
 
 const paintScrollbars = (
