@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/protocol",
-  "version": "0.4.4",
+  "version": "0.5.0",
   "description": "CharDesk text parser and Unicode cell-width rules",
   "type": "module",
   "license": "MIT",
