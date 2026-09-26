@@ -166,7 +166,7 @@ describe('AppMenu document interchange', () => {
     render(<AppMenu />);
     const trigger = screen.getByRole('button', { name: 'Open menu' });
 
-    fireEvent.click(trigger);
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
     fireEvent.click(
       await screen.findByRole('menuitem', { name: 'Settings' })
     );
@@ -174,7 +174,7 @@ describe('AppMenu document interchange', () => {
     expect(
       await screen.findByRole('heading', { name: 'Settings' })
     ).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(trigger).toHaveFocus());
@@ -185,14 +185,17 @@ describe('AppMenu document interchange', () => {
     act(() => setUiLanguage('en'));
     render(<AppMenu />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }), {
+      button: 0,
+      ctrlKey: false,
+    });
 
     expect(await screen.findByRole('menuitem', { name: 'Clear canvas' })).toBeInTheDocument();
     expect(screen.queryByRole('menuitem', { name: 'File' })).not.toBeInTheDocument();
     expect(screen.queryByRole('menuitem', { name: 'Export' })).not.toBeInTheDocument();
   });
 
-  it('toggles split view from the app menu', async () => {
+  it('toggles split view from the app menu with the horizontal split icon', async () => {
     act(() => setUiLanguage('en'));
     render(
       <CanvasWorkspaceProvider>
@@ -201,13 +204,14 @@ describe('AppMenu document interchange', () => {
     );
 
     const trigger = screen.getByRole('button', { name: 'Open menu' });
-    fireEvent.click(trigger);
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
 
     const splitItem = await screen.findByRole('menuitem', { name: 'Split' });
+    expect(splitItem.querySelector('.lucide-square-split-horizontal')).toBeInTheDocument();
     fireEvent.click(splitItem);
 
     await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
-    fireEvent.click(trigger);
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
     expect(await screen.findByRole('menuitem', { name: 'Close split' })).toBeInTheDocument();
   });
 
@@ -224,11 +228,12 @@ describe('AppMenu document interchange', () => {
     );
 
     const trigger = screen.getByRole('button', { name: 'Open menu' });
-    fireEvent.click(trigger);
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
     expect(screen.queryByRole('menuitem', { name: 'Split' })).not.toBeInTheDocument();
 
     const helpItem = await screen.findByRole('menuitem', { name: 'Help' });
-    fireEvent.click(helpItem);
+    fireEvent.pointerMove(helpItem, { pointerType: 'mouse' });
+    await waitFor(() => expect(helpItem).toHaveAttribute('data-state', 'open'));
     const guideItem = await screen.findByRole('menuitem', { name: 'Guide' });
     expect(guideItem).not.toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(guideItem);
@@ -242,9 +247,10 @@ describe('AppMenu document interchange', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
 
     act(() => setUiLanguage('zh'));
-    fireEvent.click(trigger);
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
     const chineseHelpItem = await screen.findByRole('menuitem', { name: '帮助' });
-    fireEvent.click(chineseHelpItem);
+    fireEvent.pointerMove(chineseHelpItem, { pointerType: 'mouse' });
+    await waitFor(() => expect(chineseHelpItem).toHaveAttribute('data-state', 'open'));
     fireEvent.click(await screen.findByRole('menuitem', { name: '引导' }));
     expect(await screen.findByRole('heading', { name: '在触屏上使用画布' })).toBeInTheDocument();
   });
@@ -262,35 +268,43 @@ describe('AppMenu document interchange', () => {
     );
 
     const trigger = screen.getByRole('button', { name: 'Open menu' });
-    fireEvent.click(trigger);
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
 
     const helpItem = await screen.findByRole('menuitem', { name: 'Help' });
-    fireEvent.click(helpItem);
+    fireEvent.pointerMove(helpItem, { pointerType: 'mouse' });
+    await waitFor(() => expect(helpItem).toHaveAttribute('data-state', 'open'));
     const guideItem = await screen.findByRole('menuitem', { name: 'Guide' });
+    expect(guideItem.querySelector('.lucide-compass')).toBeInTheDocument();
     fireEvent.click(guideItem);
 
-    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     await waitFor(() => expect(requestStart).toHaveBeenCalledOnce());
 
-    fireEvent.click(trigger);
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
     const reopenedHelpItem = await screen.findByRole('menuitem', { name: 'Help' });
-    fireEvent.click(reopenedHelpItem);
+    fireEvent.pointerMove(reopenedHelpItem, { pointerType: 'mouse' });
+    await waitFor(() => expect(reopenedHelpItem).toHaveAttribute('data-state', 'open'));
     const documentationItem = await screen.findByRole('menuitem', {
       name: 'Documentation',
     });
+    expect(documentationItem.querySelector('.lucide-book-open')).toBeInTheDocument();
     fireEvent.click(documentationItem);
 
-    await waitFor(() => expect(openExternal).toHaveBeenCalledWith('/docs'));
+    expect(openExternal).toHaveBeenCalledWith('/docs');
   });
 
   it('disables the guide when onboarding is unavailable', async () => {
     act(() => setUiLanguage('en'));
     render(<AppMenu />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }), {
+      button: 0,
+      ctrlKey: false,
+    });
 
     const helpItem = await screen.findByRole('menuitem', { name: 'Help' });
-    fireEvent.click(helpItem);
+    fireEvent.pointerMove(helpItem, { pointerType: 'mouse' });
+    await waitFor(() => expect(helpItem).toHaveAttribute('data-state', 'open'));
     expect(await screen.findByRole('menuitem', { name: 'Guide' })).toHaveAttribute(
       'aria-disabled',
       'true'
@@ -301,13 +315,17 @@ describe('AppMenu document interchange', () => {
     act(() => setUiLanguage('zh'));
     render(<AppMenu />);
 
-    fireEvent.click(screen.getByRole('button', { name: '打开菜单' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: '打开菜单' }), {
+      button: 0,
+      ctrlKey: false,
+    });
 
     expect(
       await screen.findByRole('menuitem', { name: '设置' })
     ).toBeInTheDocument();
     const helpItem = screen.getByRole('menuitem', { name: '帮助' });
-    fireEvent.click(helpItem);
+    fireEvent.pointerMove(helpItem, { pointerType: 'mouse' });
+    await waitFor(() => expect(helpItem).toHaveAttribute('data-state', 'open'));
     expect(await screen.findByRole('menuitem', { name: '引导' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: '文档' })).toBeInTheDocument();
   });
@@ -320,16 +338,26 @@ describe('AppMenu document interchange', () => {
       </EditorPresentationProvider>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }), {
+      button: 0,
+      ctrlKey: false,
+    });
     const enterItem = await screen.findByRole('menuitem', { name: 'Zen' });
+    expect(enterItem.querySelector('.lucide-focus')).toBeInTheDocument();
     fireEvent.click(enterItem);
 
     await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }), {
+      button: 0,
+      ctrlKey: false,
+    });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Exit Zen' }));
 
     await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }), {
+      button: 0,
+      ctrlKey: false,
+    });
     expect(await screen.findByRole('menuitem', { name: 'Zen' })).toBeInTheDocument();
   });
 
@@ -346,13 +374,20 @@ describe('AppMenu document interchange', () => {
       </EditorPresentationProvider>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }), {
+      button: 0,
+      ctrlKey: false,
+    });
     const helpItem = await screen.findByRole('menuitem', { name: 'Help' });
-    fireEvent.click(helpItem);
+    fireEvent.pointerMove(helpItem, { pointerType: 'mouse' });
+    await waitFor(() => expect(helpItem).toHaveAttribute('data-state', 'open'));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Guide' }));
 
     await waitFor(() => expect(requestStart).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }), {
+      button: 0,
+      ctrlKey: false,
+    });
     expect(await screen.findByRole('menuitem', { name: 'Zen' })).toBeInTheDocument();
   });
 });

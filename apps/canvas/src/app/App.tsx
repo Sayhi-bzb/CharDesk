@@ -26,7 +26,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { CanvasSessionSelector } from '@/widgets/session-tabs/CanvasBreadcrumb';
 
 import { AppMenu } from '@/widgets/toolbar/app-menu';
-import { APP_MENU_TRIGGER_GEOMETRY } from '@/widgets/toolbar/app-menu-geometry';
 import { getStaticGridViewState } from '@/domains/selection/public';
 import {
   isSourceBackedCanvasSession,
@@ -476,8 +475,7 @@ function AppContent() {
             data-zen-mode={zenMode ? 'true' : 'false'}
             className="flex min-w-0 items-center gap-1 pointer-events-none"
           >
-            <div data-testid="app-primary-control-stack" className="relative flex-none"
-              style={{ width: APP_MENU_TRIGGER_GEOMETRY.width, height: APP_MENU_TRIGGER_GEOMETRY.height }}>
+            <div data-testid="app-primary-control-stack" className="relative size-8 flex-none">
               <div inert={!capabilities.manageSessions || undefined}>
                 <EditorWidget role="essential">
                   <AppMenu
@@ -489,9 +487,7 @@ function AppContent() {
               <EditorWidget role="host">
                 <div
                   data-testid="canvas-properties-control-position"
-                  className="pointer-events-auto absolute"
-                  style={{ left: APP_MENU_TRIGGER_GEOMETRY.contentLeft,
-                    top: APP_MENU_TRIGGER_GEOMETRY.height }}
+                  className="pointer-events-auto absolute left-0 top-9"
                 >
                   <CanvasInspectorControl
                     available={!!surfaces.inspector}

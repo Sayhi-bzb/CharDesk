@@ -66,11 +66,6 @@ import {
 
 type IconMap<Key extends string> = Record<Key, LucideIcon>;
 
-/** Text glyphs used by Cell-native Host controls. */
-export const HOST_CELL_GLYPHS = {
-  appMenuTrigger: "≡",
-} as const;
-
 export const HOST_ICONOLOGY = {
   canvasMode: {
     freeform: Pencil,

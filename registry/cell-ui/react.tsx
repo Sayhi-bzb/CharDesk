@@ -176,8 +176,6 @@ export type LinkProps = Readonly<{
 export type ButtonProps = NamedContainerProps & Readonly<{
   variant?: ButtonVariant;
   tone?: "danger";
-  popup?: "menu";
-  expanded?: boolean;
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
@@ -574,7 +572,6 @@ export type WidgetDescriptor = Readonly<{
   sliderStep: number;
   sliderValueText: string | null;
   expanded: boolean;
-  popup: "menu" | null;
   hidden: boolean;
   hasChildren: boolean;
   level: number | null;
@@ -1200,7 +1197,6 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     sliderValueText: typeof props.valueText === "string" ? props.valueText : null,
     expanded: kind === "select-content" || kind === "combobox-content"
       ? props.open !== false : props.expanded === true,
-    popup: kind === "button" && props.popup === "menu" ? "menu" : null,
     hidden: kind === "combobox-item" && props.hidden === true,
     hasChildren: props.hasChildren === true,
     level: Number.isInteger(props.level) ? props.level as number : null,

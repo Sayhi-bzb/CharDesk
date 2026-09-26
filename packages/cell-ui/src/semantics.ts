@@ -195,8 +195,6 @@ export const createSemanticSnapshot = (
       ...(selectable(node) ? { selected: node.selected } : {}),
       ...(node.kind === "toggle" ? { pressed: node.pressed } : {}),
       ...(node.kind === "accordion-trigger" ? { expanded: node.expanded } : {}),
-      ...(node.kind === "button" && node.popup === "menu"
-        ? { expanded: node.expanded, hasPopup: "menu" as const } : {}),
       ...(node.progress && node.progress.value !== null
         ? { valueNow: node.progress.value, valueMin: 0, valueMax: node.progress.max,
             valueText: node.progress.valueText }
@@ -390,7 +388,7 @@ export const auditSemanticSnapshot = (
       node.expanded !== undefined
       && node.role !== "treeitem"
       && node.role !== "combobox"
-      && !(node.role === "button" && (node.hasPopup === "listbox" || node.hasPopup === "menu" || node.controlsId))
+      && !(node.role === "button" && (node.hasPopup === "listbox" || node.controlsId))
     ) {
       issue(node.id, "invalid-state", `expanded is invalid for role ${node.role}.`);
     }
