@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.2](https://github.com/Sayhi-bzb/CharDesk/compare/v0.5.1...v0.5.2) (2026-09-27)
+
+
+### Features
+
+* split gallery header brand into product and Cell UI links ([bcd0ac8](https://github.com/Sayhi-bzb/CharDesk/commit/bcd0ac864bf27d25a0fc4aab7ba1bc5e75bfd4af))
+
+
+### Bug Fixes
+
+* keep table outlines intact over ghost surfaces ([9bea6f0](https://github.com/Sayhi-bzb/CharDesk/commit/9bea6f030e2614ebcf0d0e7a4bac72b1fdbe59f0))
+* monitor Cell UI Stars on Pages host ([ec25b16](https://github.com/Sayhi-bzb/CharDesk/commit/ec25b16bd76317980d1471cf77cde22055fc7174))
+* verify live Cell UI GitHub star endpoint ([3371d57](https://github.com/Sayhi-bzb/CharDesk/commit/3371d57c7b0e4dbca0df2a8042f128695b7db10e))
+
 ## [0.5.1](https://github.com/Sayhi-bzb/CharDesk/compare/v0.5.0...v0.5.1) (2026-09-27)
 
 
