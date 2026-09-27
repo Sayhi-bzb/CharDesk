@@ -489,6 +489,10 @@ const drawDecoration = (
   ctx.stroke();
 };
 
+// drawDecoration pixel-aligns this coordinate; keep its stroke inside the Cell row.
+const underlineY = (rowY: number, cellHeight: number, lineWidth: number) =>
+  rowY + cellHeight - Math.ceil(lineWidth / 2);
+
 const drawCellBackground = (
   ctx: CharDeskCanvasContext,
   entry: CharDeskCanvasCellDrawEntry,
@@ -632,7 +636,7 @@ const drawCellText = (
     drawDecoration(
       ctx,
       entry.x,
-      entry.y + cellHeight * 0.82,
+      underlineY(entry.y, cellHeight, lineWidth),
       cellWidth,
       decorationColor,
       lineWidth

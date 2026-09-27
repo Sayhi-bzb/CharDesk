@@ -381,6 +381,27 @@ describe("CharDesk Canvas 2D renderer", () => {
     expect(context.scale).not.toHaveBeenCalled();
     expect(context.clip).not.toHaveBeenCalled();
     expect(context.stroke).toHaveBeenCalledOnce();
+    expect(context.lineTo).toHaveBeenCalledWith(18, 39);
+  });
+
+  it("keeps one continuous underline inside the row beneath mixed-width text", () => {
+    const { context } = createContext();
+    drawCharDeskCanvasCells(context, [
+      { text: "中", x: 0 },
+      { text: "文", x: 18 },
+      { text: "A", x: 36 },
+    ].map(({ text, x }) => ({
+      cell: resolveCharDeskCellVisual({ text, attrs: { underline: true } }),
+      x, y: 20,
+    })));
+
+    expect(vi.mocked(context.moveTo).mock.calls).toEqual([
+      [0, 39.5], [18, 39.5], [36, 39.5],
+    ]);
+    expect(vi.mocked(context.lineTo).mock.calls).toEqual([
+      [18, 39.5], [36, 39.5], [45, 39.5],
+    ]);
+    expect(context.lineWidth).toBe(1);
   });
 
   it("preserves inverse colors and decorations on block glyphs", () => {
@@ -560,7 +581,7 @@ describe("CharDesk Canvas 2D renderer", () => {
     expect(context.font).not.toContain("700");
     expect(context.scale).not.toHaveBeenCalled();
     expect(context.fillText).toHaveBeenCalledWith("\ue0d6", 4.5, 16.2);
-    expect(context.lineTo).toHaveBeenCalledWith(9, 16.5);
+    expect(context.lineTo).toHaveBeenCalledWith(9, 19.5);
   });
 
   it("renders Nerd glyphs as one uniformly scaled Cell without horizontal transforms", () => {
