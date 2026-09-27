@@ -6,6 +6,7 @@ import {
 } from "./index.js";
 import { CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME } from "./theme.js";
 import { hitTest } from "./scene.js";
+import { revealCommandForTarget } from "./interaction.js";
 
 describe("Markdown reading projection", () => {
   it("flows mixed Chinese and Latin prose across inline token boundaries", () => {
@@ -127,6 +128,37 @@ describe("Markdown reading projection", () => {
     runtime.dispose();
   });
 
+  it("paints a continuous quote rail across wraps and paragraph gaps without copying it", () => {
+    const source = "> First paragraph wraps across several Cell rows.\n>\n> Second paragraph also wraps.";
+    const runtime = new CellUiRuntime({ viewport: { width: 18, height: 10 } });
+    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
+    const lines = frame.buffer.toText({ trimEnd: true }).split("\n");
+    const railRows = lines.flatMap((line, row) => line.startsWith("│") ? [row] : []);
+    expect(railRows.length).toBeGreaterThan(3);
+    expect(railRows).toEqual(Array.from({ length: railRows.length }, (_, index) => index));
+    const copied = createCellRangeSnapshot(frame.buffer, { x: 0, y: 0 }, { x: 17, y: railRows.at(-1)! })?.text;
+    expect(copied).toContain("First paragraph");
+    expect(copied).toContain("Second paragraph");
+    expect(copied).not.toContain("│");
+    runtime.dispose();
+  });
+
+  it("constrains wrapped and two-digit Markdown list items to the viewport", () => {
+    const source = "9. First item wraps after these words\n10. Second item wraps after these words\n11. Third item wraps after these words";
+    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 12 } });
+    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
+    const text = frame.buffer.toText({ trimEnd: true });
+    expect(text).toContain("9. First item");
+    expect(text).toContain("10. Second item");
+    expect(text).toContain("11. Third item");
+    for (const node of frame.tree.nodes.values()) {
+      if (node.kind !== "markdown-inline") continue;
+      const bounds = frame.scene.entries.get(node.id)?.contentBounds;
+      if (bounds) expect(bounds.x + bounds.width).toBeLessThanOrEqual(20);
+    }
+    runtime.dispose();
+  });
+
   it("keeps wide rendered tables and code horizontally scrollable", () => {
     const source = "| A very long heading | Another heading |\n| --- | --- |\n| x | y |\n\n```ts\nconst longValue = 12345678901234567890;\n```";
     const runtime = new CellUiRuntime({ viewport: { width: 16, height: 8 } });
@@ -138,6 +170,35 @@ describe("Markdown reading projection", () => {
     expect(render(20).buffer.toText({ trimEnd: true })).toContain("Another");
     runtime.dispose();
   });
+
+  it("includes links after nested blocks in the scrollable Markdown extent", () => {
+    const source = "# Field Notes\n\nCells make **structure** readable.\n\nRead [Philosophy](#/guides/philosophy).\n\n## Checklist\n\n- [x] Build UI\n- [ ] Share it\n- Keep notes\n  - Include the details\n\n## Steps\n\n1. Write Markdown\n2. Render Cells\n\n> Source stays yours.\n\n---\n\n## Code\n\n```ts\nconst ready = true;\n```\n\n## Table\n\n| Element | Cell output |\n| :--- | ---: |\n| Link | Focusable |\n| List | Structured |\n\nRead [Installation](#/guides/installation).\n\n## Fallbacks\n\n~~Old wording~~ stays visible.";
+    const runtime = new CellUiRuntime({ viewport: { width: 44, height: 28 } });
+    const frame = runtime.render(<Root><ScrollArea id="document-scroll" style={{ width: 44, height: 27 }}>
+      <Markdown source={source} />
+    </ScrollArea></Root>);
+    const link = [...frame.semantics.nodes.values()].find((node) => node.role === "link" && node.label === "Installation")!;
+    const linkBounds = frame.scene.entries.get(link.id)!.layoutBounds;
+    const metrics = frame.scene.entries.get("document-scroll")!.scrollMetrics!;
+    expect(linkBounds.y + linkBounds.height).toBeLessThanOrEqual(metrics.viewport.y + metrics.viewport.height + metrics.maxOffset.y);
+    runtime.dispose();
+  });
+
+  it("reveals offscreen Markdown links by their text Cells, not a layout placeholder", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 20, height: 3 } });
+    const source = "First paragraph.\n\nSecond paragraph.\n\nRead [Installation](https://example.com).";
+    const render = (scrollY: number) => runtime.render(<Root><ScrollArea id="document-scroll"
+      scrollY={scrollY} style={{ width: 20, height: 3 }}><Markdown source={source} /></ScrollArea></Root>);
+    const first = render(0);
+    const link = [...first.semantics.nodes.values()].find((node) => node.role === "link")!;
+    expect(first.scene.entries.get(link.id)?.layoutBounds.height).toBeGreaterThan(0);
+    const command = revealCommandForTarget(first, link.id);
+    expect(command).toMatchObject({ type: "focus", reveal: { targetId: "document-scroll" } });
+    const scrollY = command?.type === "focus" ? command.reveal?.scrollY ?? 0 : 0;
+    expect(render(scrollY).buffer.toText({ trimEnd: true })).toContain("Installation");
+    runtime.dispose();
+  });
+
 
   it("shares a standalone code block's trailing guard with scrollbar rails", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 6 } });

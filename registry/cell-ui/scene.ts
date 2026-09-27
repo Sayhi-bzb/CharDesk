@@ -228,18 +228,19 @@ const composeSceneInternal = (
           const child = tree.nodes.get(childId);
           return child?.kind === "markdown-link" && child.markdownLayoutOnly;
         }).indexOf(widget.id);
-        inlineLinkRegions = layoutMarkdownInlineFlow(inline.markdownInlineRuns ?? [],
+        const linkRegions = layoutMarkdownInlineFlow(inline.markdownInlineRuns ?? [],
           inlineEntry.contentBounds.width).glyphs
           .filter((glyph) => glyph.linkIndex === linkIndex)
-          .map((glyph) => intersectSceneRects({ x: inlineEntry.contentBounds.x + glyph.x,
-            y: inlineEntry.contentBounds.y + glyph.y, width: glyph.width, height: 1 }, clip))
+          .map((glyph) => ({ x: inlineEntry.contentBounds.x + glyph.x,
+            y: inlineEntry.contentBounds.y + glyph.y, width: glyph.width, height: 1 }));
+        inlineLinkRegions = linkRegions.map((region) => intersectSceneRects(region, clip))
           .filter((region) => !isEmpty(region));
-        if (inlineLinkRegions.length) {
-          const left = Math.min(...inlineLinkRegions.map((region) => region.x));
-          const top = Math.min(...inlineLinkRegions.map((region) => region.y));
+        if (linkRegions.length) {
+          const left = Math.min(...linkRegions.map((region) => region.x));
+          const top = Math.min(...linkRegions.map((region) => region.y));
           bounds = { x: left, y: top,
-            width: Math.max(...inlineLinkRegions.map((region) => region.x + region.width)) - left,
-            height: Math.max(...inlineLinkRegions.map((region) => region.y + region.height)) - top };
+            width: Math.max(...linkRegions.map((region) => region.x + region.width)) - left,
+            height: Math.max(...linkRegions.map((region) => region.y + region.height)) - top };
         }
       }
     }

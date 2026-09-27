@@ -148,6 +148,7 @@ export type MarkdownProps = Readonly<{
 export type MarkdownCodeToken = Readonly<{ content: string; color?: string }>;
 type MarkdownTone = "accent" | "link" | "quote" | "muted" | MarkdownCodeRole;
 type MarkdownBlockProps = Readonly<{
+  id?: string;
   children?: ReactNode;
   role: "heading" | "paragraph" | "blockquote" | "list" | "listitem" | "code" | "table" | "row" | "cell";
   label?: string;
@@ -788,10 +789,9 @@ const markdownBlocks = (
     if (token.type === "hr") return [<MarkdownBlock key={key} role="paragraph"
       markdownCenteredText="/////" markdownTone="muted"
       style={{ width: "100%", height: 1, flexShrink: 0 }} />];
-    if (token.type === "blockquote") return [<MarkdownBlock key={key} role="blockquote"
-      style={{ direction: "row", width: "100%", flexShrink: 0 }}>
-      <Text markdownTone="quote">{"│ "}</Text>
-      <Box style={{ flexGrow: 1, flexShrink: 1, gap: 1 }}>{markdownBlocks(token.tokens ?? [])}</Box>
+    if (token.type === "blockquote") return [<MarkdownBlock key={key} role="blockquote" markdownTone="quote"
+      style={{ width: "100%", paddingLeft: 2, gap: 1, flexShrink: 0 }}>
+      {markdownBlocks(token.tokens ?? [])}
     </MarkdownBlock>];
     if (token.type === "list") {
       const list = token as Tokens.List;
@@ -799,9 +799,9 @@ const markdownBlocks = (
       {list.items.map((item, itemIndex) => {
         const marker = item.task ? item.checked ? "☑ " : "☐ "
           : list.ordered ? String((Number(list.start) || 1) + itemIndex) + ". " : "• ";
-        return <MarkdownBlock key={itemIndex} role="listitem" style={{ direction: "row", width: "100%" }}>
+        return <MarkdownBlock key={itemIndex} role="listitem" style={{ direction: "row", width: "100%", minWidth: 0 }}>
           <Text markdownTone="muted">{marker}</Text>
-          <Box style={{ flexGrow: 1, flexShrink: 1 }}>{markdownBlocks(item.tokens)}</Box>
+          <Box style={{ width: "100%", minWidth: 0, flexShrink: 1 }}>{markdownBlocks(item.tokens)}</Box>
         </MarkdownBlock>;
       })}
     </MarkdownBlock>];

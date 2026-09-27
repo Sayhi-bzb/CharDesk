@@ -280,6 +280,11 @@ export const paintScene = (
       }
 
       // Chrome: glyphs are painted after surfaces so state fills cannot erase them.
+      if (node.kind === "markdown-block" && node.markdownRole === "blockquote") {
+        for (let y = entry.layoutBounds.y; y < entry.layoutBounds.y + entry.layoutBounds.height; y += 1) {
+          buffer.writeGrapheme(entry.layoutBounds.x, y, "│", id, style, outerClip, "over", "");
+        }
+      }
       if (node.frame === "bordered") {
         paintBorder(
           buffer,

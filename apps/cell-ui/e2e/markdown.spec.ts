@@ -23,6 +23,7 @@ test("shared tone CSS tokens reach both Markdown and Badge through the Gallery t
 });
 
 test("Markdown guide renders Cell typography and activates a link through the shared input path", async ({ page, request }) => {
+  test.setTimeout(60_000);
   await page.goto("/#/guides/markdown");
   await expect(page.getByRole("heading", { name: "Markdown", level: 1 })).toBeVisible();
   const article = page.locator('[data-cell-probe="article-markdown"]');

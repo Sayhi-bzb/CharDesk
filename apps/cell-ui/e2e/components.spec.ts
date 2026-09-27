@@ -481,7 +481,7 @@ test("Installation article is Cell-rendered without losing document navigation o
   await mobileNav.getByRole("link", { name: "Update" })
     .evaluate((element: HTMLElement) => element.click());
   await expect(page.locator("#update")).toBeInViewport();
-  await expect.poll(async () => (await readCellProbe(article)).text)
+  await expect.poll(async () => (await readCellProbe(article)).text.replaceAll(/\s+/gu, ""))
     .toContain("cell-ui:registry:smoke");
   await selectGalleryFont(page, "maple");
   await expect.poll(async () => (await readCellProbe(article)).text).toContain("Configure");
