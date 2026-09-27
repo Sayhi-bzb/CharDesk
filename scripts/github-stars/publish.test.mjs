@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { publishGitHubStars } from "./publish.mjs";
+import { publishGitHubStars, verifyCellUiStarsEndpoint } from "./publish.mjs";
 
 const credentials = {
   githubToken: "github-test",
@@ -50,4 +50,33 @@ test("fails when Cloudflare does not acknowledge a write", async () => {
       : { ok: true, json: async () => ({ success: false }) };
   };
   await assert.rejects(publishGitHubStars({ ...credentials, fetcher }), /not acknowledged/);
+});
+
+test("verifies a JSON snapshot served by the Cell UI deployment", async () => {
+  let request;
+  const fetcher = async (url, options) => {
+    request = { url, options };
+    return Response.json({ count: 1234, updatedAt: "2026-09-23T12:00:00.000Z" });
+  };
+  assert.equal(await verifyCellUiStarsEndpoint({ fetcher }), 1234);
+  assert.equal(request.url, "https://ui.chardesk.com/api/github-stars");
+  assert.equal(request.options.headers.Accept, "application/json");
+});
+
+test("rejects a Pages HTML fallback and malformed JSON", async () => {
+  const html = async () => new Response("<!doctype html>", {
+    headers: { "Content-Type": "text/html" },
+  });
+  await assert.rejects(verifyCellUiStarsEndpoint({ fetcher: html }), /did not return JSON/);
+  const malformed = async () => new Response("{", {
+    headers: { "Content-Type": "application/json" },
+  });
+  await assert.rejects(verifyCellUiStarsEndpoint({ fetcher: malformed }), /invalid JSON/);
+});
+
+test("rejects an unavailable endpoint or invalid count", async () => {
+  const unavailable = async () => Response.json({ error: "unavailable" }, { status: 503 });
+  await assert.rejects(verifyCellUiStarsEndpoint({ fetcher: unavailable }), /failed: 503/);
+  const invalid = async () => Response.json({ count: -1 });
+  await assert.rejects(verifyCellUiStarsEndpoint({ fetcher: invalid }), /invalid count/);
 });

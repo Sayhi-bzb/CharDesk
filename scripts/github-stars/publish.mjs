@@ -1,5 +1,28 @@
 const githubUrl = "https://api.github.com/repos/Sayhi-bzb/CharDesk/stargazers/count";
+const cellUiStarsUrl = "https://ui.chardesk.com/api/github-stars";
 const starKey = "github-stars";
+
+export async function verifyCellUiStarsEndpoint({ fetcher = fetch } = {}) {
+  const response = await fetcher(cellUiStarsUrl, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`Cell UI Star endpoint failed: ${response.status}`);
+  if (!response.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+    throw new Error("Cell UI Star endpoint did not return JSON.");
+  }
+  let snapshot;
+  try {
+    snapshot = await response.json();
+  } catch {
+    throw new Error("Cell UI Star endpoint returned invalid JSON.");
+  }
+  const count = snapshot?.count;
+  if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0) {
+    throw new Error("Cell UI Star endpoint returned an invalid count.");
+  }
+  return count;
+}
 
 export async function publishGitHubStars({
   githubToken,
@@ -51,8 +74,10 @@ if (process.argv[1] && import.meta.url === new URL(process.argv[1], "file:").hre
     cloudflareToken: process.env.CLOUDFLARE_API_TOKEN,
     accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
     namespaceId: process.env.CLOUDFLARE_KV_NAMESPACE_ID,
-  }).then(({ count }) => {
+  }).then(async ({ count }) => {
     process.stdout.write(`Published GitHub Star count: ${count}\n`);
+    const servedCount = await verifyCellUiStarsEndpoint();
+    process.stdout.write(`Cell UI Star endpoint count: ${servedCount}\n`);
   }).catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
