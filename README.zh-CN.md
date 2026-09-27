@@ -36,43 +36,43 @@ Agent 会创建源码、检查结果并打开画布。你不需要先学习文�
 - 描绘架构、流程、时间线与关系。
 - 保留一块人和 Agent 都能检查、继续修改的 Blackboard。
 
-[![CharDesk 作为人与 Agent 共享的视觉媒介](apps/site/public/showcase/01-shared-medium.png)](demo/readme-showcase/01-shared-medium.md)
+[![CharDesk 作为人与 Agent 共享的视觉媒介](apps/site/public/showcase/01-shared-medium.png)](apps/site/showcase-sources/01-shared-medium.md)
 
-**共享视觉媒介** · [源码](demo/readme-showcase/01-shared-medium.md)
+**共享视觉媒介** · [源码](apps/site/showcase-sources/01-shared-medium.md)
 
-[![显卡工作原理的可视化讲解](apps/site/public/showcase/02-gpu-blackboard.zh-CN.png)](demo/readme-showcase/02-gpu-blackboard.zh-CN.md)
+[![显卡工作原理的可视化讲解](apps/site/public/showcase/02-gpu-blackboard.zh-CN.png)](apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md)
 
-**可视化讲解** · [源码](demo/readme-showcase/02-gpu-blackboard.zh-CN.md)
+**可视化讲解** · [源码](apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md)
 
-[![厄尔尼诺科研图](apps/site/public/showcase/03-el-nino-observatory.png)](demo/readme-showcase/03-el-nino-observatory.md)
+[![厄尔尼诺科研图](apps/site/public/showcase/03-el-nino-observatory.png)](apps/site/showcase-sources/03-el-nino-observatory.md)
 
-**科研图** · [源码](demo/readme-showcase/03-el-nino-observatory.md)
+**科研图** · [源码](apps/site/showcase-sources/03-el-nino-observatory.md)
 
-[![字符幻灯片叙事](apps/site/public/showcase/04-story-slides.ja.png)](demo/readme-showcase/04-story-slides.ja.md)
+[![字符幻灯片叙事](apps/site/public/showcase/04-story-slides.ja.png)](apps/site/showcase-sources/04-story-slides.ja.md)
 
-**字符 Slides** · [源码](demo/readme-showcase/04-story-slides.ja.md)
+**字符 Slides** · [源码](apps/site/showcase-sources/04-story-slides.ja.md)
 
-[![ANSI 与 Nerd Font 产品界面](apps/site/public/showcase/05-interface-console.png)](demo/readme-showcase/05-interface-console.md)
+[![ANSI 与 Nerd Font 产品界面](apps/site/public/showcase/05-interface-console.png)](apps/site/showcase-sources/05-interface-console.md)
 
-**界面设计** · [源码](demo/readme-showcase/05-interface-console.md)
+**界面设计** · [源码](apps/site/showcase-sources/05-interface-console.md)
 
-[![人与 Agent 共享的 Blackboard](apps/site/public/showcase/06-agent-blackboard.png)](demo/readme-showcase/06-agent-blackboard.md)
+[![人与 Agent 共享的 Blackboard](apps/site/public/showcase/06-agent-blackboard.png)](apps/site/showcase-sources/06-agent-blackboard.md)
 
-**Agent Blackboard** · [源码](demo/readme-showcase/06-agent-blackboard.md)
+**Agent Blackboard** · [源码](apps/site/showcase-sources/06-agent-blackboard.md)
 
 ### ANSI 界面实验
 
-[![上下文控制室](apps/site/public/showcase/07-context-control-room.png)](demo/readme-showcase/07-context-control-room.md)
+[![上下文控制室](apps/site/public/showcase/07-context-control-room.png)](apps/site/showcase-sources/07-context-control-room.md)
 
-**上下文控制室** · [源码](demo/readme-showcase/07-context-control-room.md)
+**上下文控制室** · [源码](apps/site/showcase-sources/07-context-control-room.md)
 
-[![灵感信号播放器](apps/site/public/showcase/08-idea-signal-player.png)](demo/readme-showcase/08-idea-signal-player.md)
+[![灵感信号播放器](apps/site/public/showcase/08-idea-signal-player.png)](apps/site/showcase-sources/08-idea-signal-player.md)
 
-**灵感信号播放器** · [源码](demo/readme-showcase/08-idea-signal-player.md)
+**灵感信号播放器** · [源码](apps/site/showcase-sources/08-idea-signal-player.md)
 
-[![口袋 Blackboard](apps/site/public/showcase/09-pocket-blackboard.png)](demo/readme-showcase/09-pocket-blackboard.md)
+[![口袋 Blackboard](apps/site/public/showcase/09-pocket-blackboard.png)](apps/site/showcase-sources/09-pocket-blackboard.md)
 
-**口袋 Blackboard** · [源码](demo/readme-showcase/09-pocket-blackboard.md)
+**口袋 Blackboard** · [源码](apps/site/showcase-sources/09-pocket-blackboard.md)
 
 ## 为什么文本也可以是视觉媒介
 

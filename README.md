@@ -36,43 +36,43 @@ The agent creates the source, checks it, and opens the canvas. You do not need t
 - Map architectures, workflows, timelines, and relationships.
 - Keep a Blackboard that people and agents can inspect and revise together.
 
-[![CharDesk as a shared visual medium](apps/site/public/showcase/01-shared-medium.png)](demo/readme-showcase/01-shared-medium.md)
+[![CharDesk as a shared visual medium](apps/site/public/showcase/01-shared-medium.png)](apps/site/showcase-sources/01-shared-medium.md)
 
-**Shared medium** · [Source](demo/readme-showcase/01-shared-medium.md)
+**Shared medium** · [Source](apps/site/showcase-sources/01-shared-medium.md)
 
-[![A visual explanation of how a GPU works](apps/site/public/showcase/02-gpu-blackboard.zh-CN.png)](demo/readme-showcase/02-gpu-blackboard.zh-CN.md)
+[![A visual explanation of how a GPU works](apps/site/public/showcase/02-gpu-blackboard.zh-CN.png)](apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md)
 
-**Visual explanation** · [Source](demo/readme-showcase/02-gpu-blackboard.zh-CN.md)
+**Visual explanation** · [Source](apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md)
 
-[![An El Niño scientific figure](apps/site/public/showcase/03-el-nino-observatory.png)](demo/readme-showcase/03-el-nino-observatory.md)
+[![An El Niño scientific figure](apps/site/public/showcase/03-el-nino-observatory.png)](apps/site/showcase-sources/03-el-nino-observatory.md)
 
-**Scientific figure** · [Source](demo/readme-showcase/03-el-nino-observatory.md)
+**Scientific figure** · [Source](apps/site/showcase-sources/03-el-nino-observatory.md)
 
-[![A character-based slide story](apps/site/public/showcase/04-story-slides.ja.png)](demo/readme-showcase/04-story-slides.ja.md)
+[![A character-based slide story](apps/site/public/showcase/04-story-slides.ja.png)](apps/site/showcase-sources/04-story-slides.ja.md)
 
-**Character slides** · [Source](demo/readme-showcase/04-story-slides.ja.md)
+**Character slides** · [Source](apps/site/showcase-sources/04-story-slides.ja.md)
 
-[![An ANSI and Nerd Font product interface](apps/site/public/showcase/05-interface-console.png)](demo/readme-showcase/05-interface-console.md)
+[![An ANSI and Nerd Font product interface](apps/site/public/showcase/05-interface-console.png)](apps/site/showcase-sources/05-interface-console.md)
 
-**Interface design** · [Source](demo/readme-showcase/05-interface-console.md)
+**Interface design** · [Source](apps/site/showcase-sources/05-interface-console.md)
 
-[![A shared human and agent Blackboard](apps/site/public/showcase/06-agent-blackboard.png)](demo/readme-showcase/06-agent-blackboard.md)
+[![A shared human and agent Blackboard](apps/site/public/showcase/06-agent-blackboard.png)](apps/site/showcase-sources/06-agent-blackboard.md)
 
-**Agent Blackboard** · [Source](demo/readme-showcase/06-agent-blackboard.md)
+**Agent Blackboard** · [Source](apps/site/showcase-sources/06-agent-blackboard.md)
 
 ### ANSI interface studies
 
-[![A context control room](apps/site/public/showcase/07-context-control-room.png)](demo/readme-showcase/07-context-control-room.md)
+[![A context control room](apps/site/public/showcase/07-context-control-room.png)](apps/site/showcase-sources/07-context-control-room.md)
 
-**Context Control Room** · [Source](demo/readme-showcase/07-context-control-room.md)
+**Context Control Room** · [Source](apps/site/showcase-sources/07-context-control-room.md)
 
-[![An idea signal player](apps/site/public/showcase/08-idea-signal-player.png)](demo/readme-showcase/08-idea-signal-player.md)
+[![An idea signal player](apps/site/public/showcase/08-idea-signal-player.png)](apps/site/showcase-sources/08-idea-signal-player.md)
 
-**Idea Signal Player** · [Source](demo/readme-showcase/08-idea-signal-player.md)
+**Idea Signal Player** · [Source](apps/site/showcase-sources/08-idea-signal-player.md)
 
-[![A pocket Blackboard](apps/site/public/showcase/09-pocket-blackboard.png)](demo/readme-showcase/09-pocket-blackboard.md)
+[![A pocket Blackboard](apps/site/public/showcase/09-pocket-blackboard.png)](apps/site/showcase-sources/09-pocket-blackboard.md)
 
-**Pocket Blackboard** · [Source](demo/readme-showcase/09-pocket-blackboard.md)
+**Pocket Blackboard** · [Source](apps/site/showcase-sources/09-pocket-blackboard.md)
 
 ## Why text can be visual
 

@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import process from "node:process";
 
 const root = resolve(import.meta.dirname, "../..");
-const sourceDirectory = join(root, "demo/readme-showcase");
+const sourceDirectory = join(root, "apps/site/showcase-sources");
 const outputDirectory = join(root, "apps/site/public/showcase");
 const cli = join(root, "packages/cli/dist/cli.js");
 const verify = process.argv.includes("--verify");

@@ -3,7 +3,7 @@ name: chardesk-sync
 services:
   sync-server:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: apps/sync-server/Dockerfile
     image: chardesk-sync-server:${CHARDESK_SYNC_IMAGE_TAG:-local}
     restart: unless-stopped

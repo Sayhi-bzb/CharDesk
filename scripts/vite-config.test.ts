@@ -19,9 +19,9 @@ const findAlias = (
 );
 
 describe("Vite development server", () => {
-  it("ignores experiment documentation without ignoring gallery sources", () => {
+  it("ignores research documentation without ignoring gallery sources", () => {
     expect(config).not.toBeTypeOf("function");
-    expect(config.server?.watch?.ignored).toEqual(["**/exp/**/*.md"]);
+    expect(config.server?.watch?.ignored).toEqual(["**/apps/docs/research/**/*.md"]);
   });
 });
 

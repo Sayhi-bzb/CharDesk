@@ -22,7 +22,7 @@ VITE_COLLABORATION_ENDPOINT=wss://sync.chardesk.com npm run build:app
 
 Run the relay locally with `npm run dev:sync`; application development defaults
 to `ws://127.0.0.1:1234`. The production container is owned by
-`apps/sync-server/Dockerfile`. `deploy/sync/compose.yaml` keeps the relay on a
+`apps/sync-server/Dockerfile`. `apps/sync-server/deploy/compose.yaml` keeps the relay on a
 private Docker network and publishes it through a remotely managed Cloudflare
 Tunnel. Configure `ALLOWED_ORIGINS` with the deployed CharDesk origins and keep
 the tunnel token outside the repository.

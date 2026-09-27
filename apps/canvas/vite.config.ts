@@ -62,7 +62,7 @@ export default defineConfig({
   server: {
     headers: { "Origin-Agent-Cluster": "?1" },
     watch: {
-      ignored: ["**/exp/**/*.md"],
+      ignored: ["**/apps/docs/research/**/*.md"],
     },
     proxy: {
       "/docs": {
