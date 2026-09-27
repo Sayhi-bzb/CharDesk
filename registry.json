@@ -249,6 +249,11 @@
           "target": "@lib/cell-ui/interaction.ts"
         },
         {
+          "path": "registry/cell-ui/invalidation.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/invalidation.ts"
+        },
+        {
           "path": "registry/cell-ui/keyboard.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/keyboard.ts"

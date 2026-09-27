@@ -126,7 +126,13 @@ const hasGeometryChange = (before: WidgetNode, after: WidgetNode) =>
   || !sameWidgetValue(before.overlayPosition, after.overlayPosition);
 
 const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
-  before.focused !== after.focused
+  before.text !== after.text
+  || before.placeholder !== after.placeholder
+  || before.presentation !== after.presentation
+  || before.markdownRole !== after.markdownRole
+  || before.hidden !== after.hidden
+  || before.orientation !== after.orientation
+  || before.focused !== after.focused
   || before.focusActive !== after.focusActive
   || before.focusVisible !== after.focusVisible
   || before.hovered !== after.hovered
@@ -169,6 +175,7 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
 
 const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
   before.label !== after.label
+  || before.badgeTone !== after.badgeTone
   || before.invalid !== after.invalid
   || before.href !== after.href
   || before.current !== after.current

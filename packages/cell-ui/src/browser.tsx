@@ -1216,7 +1216,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       && window.y === previous.y && window.height === previous.height
       && window.width === previous.width))) return;
     presentationWindowRef.current = window;
-    canvas.style.top = `${(window?.y ?? 0) * metrics.cellHeight}px`;
     if (!sameWidgetValue(presentationMetricsRef.current, metrics)) {
       const pointerIds = new Set(gesturesRef.current.sync(() => false));
       if (rangeDragRef.current) pointerIds.add(rangeDragRef.current.pointerId);
@@ -1249,6 +1248,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       hostedSurface(),
       window ?? undefined,
     );
+    canvas.style.top = `${(window?.y ?? 0) * metrics.cellHeight}px`;
     let allPlanesPresented = true;
     for (const plane of current.overlayPlanes) {
       const overlayCanvas = canvasRef.overlay(plane.rootId);
@@ -1264,7 +1264,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         continue;
       }
       overlayCanvas.style.display = "block";
-      overlayCanvas.style.top = `${(window?.y ?? 0) * metrics.cellHeight}px`;
       const windowHeight = window?.height ?? current.overlayBuffer.height;
       overlayCanvas.style.clipPath = `inset(${Math.max(0, plane.bounds.y - (window?.y ?? 0)) * metrics.cellHeight}px ${Math.max(0,
         current.overlayBuffer.width - plane.bounds.x - plane.bounds.width) * metrics.cellWidth}px ${Math.max(0,
@@ -1285,6 +1284,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           transparent: true,
         }
       );
+      overlayCanvas.style.top = `${(window?.y ?? 0) * metrics.cellHeight}px`;
     }
     presentationMetricsRef.current = metrics;
     surfaceRef.current?.dispatchEvent(new Event("cell-surface-geometry-change", { bubbles: true }));
@@ -1310,7 +1310,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (current) presentCurrentRef.current(current, false);
       });
     };
-    surface.ownerDocument.addEventListener("scroll", schedule, true);
+    const coverScrolledRows = () => {
+      const current = frameRef.current;
+      if (current) presentCurrentRef.current(current, false);
+    };
+    surface.ownerDocument.addEventListener("scroll", coverScrolledRows, true);
     view.addEventListener("resize", schedule);
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
     observer?.observe(surface);
@@ -1322,7 +1326,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     }
     return () => {
       if (pending) view.cancelAnimationFrame(pending);
-      surface.ownerDocument.removeEventListener("scroll", schedule, true);
+      surface.ownerDocument.removeEventListener("scroll", coverScrolledRows, true);
       view.removeEventListener("resize", schedule);
       observer?.disconnect();
     };

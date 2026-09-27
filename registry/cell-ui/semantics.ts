@@ -125,11 +125,41 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
 
 const selectable = (node: WidgetNode) => isSelectableKind(node.kind);
 
-export const createSemanticSnapshot = (
+/** Resolve semantic dependencies without making the renderer know widget-specific relations. */
+export const affectedSemanticIds = (tree: WidgetTree, ids: ReadonlySet<WidgetId>): Set<WidgetId> => {
+  const affected = new Set(ids);
+  const queue = [...ids];
+  const labelledBy = new Map<WidgetId, WidgetId[]>();
+  for (const node of tree.nodes.values()) {
+    if (node.labelledById) {
+      const dependents = labelledBy.get(node.labelledById) ?? [];
+      dependents.push(node.id);
+      labelledBy.set(node.labelledById, dependents);
+    }
+  }
+  const add = (id: WidgetId | null | undefined) => {
+    if (!id || affected.has(id)) return;
+    affected.add(id);
+    queue.push(id);
+  };
+  while (queue.length > 0) {
+    const id = queue.pop()!;
+    const node = tree.nodes.get(id);
+    const parent = node?.parentId ? tree.nodes.get(node.parentId) : undefined;
+    add(node?.parentId);
+    add(node?.tooltipTargetId);
+    for (const dependent of labelledBy.get(id) ?? []) add(dependent);
+    if (parent?.kind === "range-slider") parent.children.forEach(add);
+  }
+  return affected;
+};
+
+const buildSemanticSnapshot = (
   tree: WidgetTree,
   scene: SceneSnapshot,
   revision: number,
-  focusedId: WidgetId | null
+  focusedId: WidgetId | null,
+  reuse?: Readonly<{ previous: SemanticSnapshot; affectedIds: ReadonlySet<WidgetId> }>,
 ): SemanticSnapshot => {
   const nodes = new Map<WidgetId, SemanticNode>();
   const roots: WidgetId[] = [];
@@ -172,6 +202,15 @@ export const createSemanticSnapshot = (
       && !(tree.nodes.get(candidateParentId)?.probeId && isDescendantOf(tree, modalId, candidateParentId))
       ? null : candidateParentId;
     const sceneEntry = scene.entries.get(node.id);
+    const oldSemantic = reuse?.previous.nodes.get(node.id);
+    if (reuse && oldSemantic && !reuse.affectedIds.has(node.id) && oldSemantic.role === role
+      && oldSemantic.semanticParentId === parentId && oldSemantic.traversalOrder === traversalOrder
+      && sameSemanticBounds(oldSemantic.bounds, sceneEntry?.layoutBounds ?? null)) {
+      nodes.set(node.id, oldSemantic);
+      if (parentId === null) roots.push(node.id);
+      traversalOrder += 1;
+      continue;
+    }
     const rangeThumb = node.kind === "range-slider-thumb"
       ? resolveCellRangeSliderThumbContext(tree, node.id)
       : null;
@@ -288,6 +327,23 @@ export const createSemanticSnapshot = (
 
   return { roots, nodes, focusedId, revision };
 };
+
+export const createSemanticSnapshot = (
+  tree: WidgetTree,
+  scene: SceneSnapshot,
+  revision: number,
+  focusedId: WidgetId | null,
+): SemanticSnapshot => buildSemanticSnapshot(tree, scene, revision, focusedId);
+
+/** Preserve unaffected semantic nodes while rebuilding changed labels, bounds, and actions. */
+export const updateSemanticSnapshotForChanges = (
+  previous: SemanticSnapshot,
+  tree: WidgetTree,
+  scene: SceneSnapshot,
+  revision: number,
+  focusedId: WidgetId | null,
+  affectedIds: ReadonlySet<WidgetId>,
+): SemanticSnapshot => buildSemanticSnapshot(tree, scene, revision, focusedId, { previous, affectedIds });
 
 /** Scroll-only frames preserve semantic content and order; only scene bounds can move. */
 export const updateSemanticSnapshotForScroll = (

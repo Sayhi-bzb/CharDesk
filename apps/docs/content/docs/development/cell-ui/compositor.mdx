@@ -46,7 +46,7 @@ Cell UI 的 bounded CellBuffer 与文档 Canvas 的 sparse reader 分别适配�
 
 ## 帧与检查
 
-同一 commit 的失效按 `TREE → LAYOUT → GEOMETRY → PAINT → SEMANTICS → PRESENT` 合并。Geometry 改变同时污染旧、新 paint bounds；paint-only 不运行 layout 或 scene arrangement。
+同一 commit 的失效按 `TREE → LAYOUT → GEOMETRY → PAINT → SEMANTICS → PRESENT` 合并。Yoga 节点及未变的父子连接跨帧保留；布局输入变化不等于几何结果变化，也不自动触发全视口重绘。Scene 差分确定新旧 paint bounds 的损伤区；viewport、主题或过大的损伤区回退全量绘制。paint-only 不运行 layout 或 scene arrangement。[局部失效验证](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/invalidation-boundaries.test.tsx)
 
 [`TestPilot`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/testing.ts) 从提交后的 frame 执行逻辑输入和查询；[`CellProbeSnapshot`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/probe.ts) 是 Headless 与 Browser 共用的字符、owner、style、hit、clip、focus 和 invalidation 快照；v4 额外分离 base/overlay viewport 与每个可见 portal 的字符快照。截图只负责字体、颜色、DPR 与像素 presentation。
 

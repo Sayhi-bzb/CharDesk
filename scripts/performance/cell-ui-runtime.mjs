@@ -2,7 +2,7 @@ import { performance } from "node:perf_hooks";
 import assert from "node:assert/strict";
 import React from "react";
 import { Badge, Box, Button, CellUiRuntime, Checkbox, Root, ScrollArea, Text,
-  composeScene, createSemanticSnapshot } from "../../packages/cell-ui/dist/index.js";
+  YogaLayoutEngine, composeScene, createSemanticSnapshot } from "../../packages/cell-ui/dist/index.js";
 import { Overlay } from "../../packages/cell-ui/dist/react.js";
 import { composeSceneForScroll } from "../../packages/cell-ui/dist/scene.js";
 import { updateSemanticSnapshotForScroll } from "../../packages/cell-ui/dist/semantics.js";
@@ -86,3 +86,58 @@ console.log(JSON.stringify({ workload: "two-independent-mixed-scroll-areas", nod
   medianMs: Object.fromEntries(Object.entries(results).map(([key, samples]) => [key, median(samples.slice(2))])),
   fallbackMedianMs: Object.fromEntries(Object.entries(fallbackSamples).map(([key, samples]) =>
     [key, median(samples.slice(2))])) }));
+
+for (const perSide of [100, 400, 1_000]) {
+  const stable = (prefix) => Array.from({ length: perSide }, (_, index) =>
+    el(Text, { id: `${prefix}-${index}`, key: index, style: { height: 1 } }, `${prefix} ${index}`));
+  const left = stable("left");
+  const right = stable("right");
+  const yoga = new YogaLayoutEngine();
+  let layoutCalls = 0;
+  let layoutMs = 0;
+  const localRuntime = new CellUiRuntime({ viewport, layoutEngine: {
+    compute: (tree, size) => {
+      layoutCalls += 1;
+      const measured = timed(() => yoga.compute(tree, size));
+      layoutMs += measured.ms;
+      return measured.value;
+    },
+    dispose: () => yoga.dispose(),
+  } });
+  const localView = (label) => el(Root, { id: "root" },
+    el(Box, { style: { direction: "row" } },
+      el(Box, { style: { width: 40 } }, el(Text, { id: "changed", style: { height: 1 } }, label), ...left),
+      el(Box, { style: { width: 40 } }, ...right)));
+  let label = "A";
+  let frame = localRuntime.render(localView(label));
+  const localSamples = { unchanged: [], changed: [] };
+  for (let index = 0; index < 18; index += 1) {
+    for (const variant of ["unchanged", "changed"]) {
+      if (variant === "changed") label = label === "A" ? "B" : "A";
+      const beforeCalls = layoutCalls;
+      const beforeLayout = layoutMs;
+      const measured = timed(() => localRuntime.render(localView(label)));
+      frame = measured.value;
+      localSamples[variant].push({
+        total: measured.ms,
+        layout: layoutMs - beforeLayout,
+        calls: layoutCalls - beforeCalls,
+        damage: frame.invalidation.dirtyRegions.reduce((area, region) => area + region.width * region.height, 0),
+      });
+    }
+  }
+  const oracle = new CellUiRuntime({ viewport });
+  assert.equal(frame.buffer.toText(), oracle.render(localView(label)).buffer.toText());
+  oracle.dispose();
+  localRuntime.dispose();
+  console.log(JSON.stringify({ workload: "single-label-in-two-subtrees", nodes: frame.tree.nodes.size,
+    median: Object.fromEntries(Object.entries(localSamples).map(([variant, samples]) => {
+      const settled = samples.slice(3);
+      return [variant, {
+        totalMs: median(settled.map((sample) => sample.total)),
+        layoutMs: median(settled.map((sample) => sample.layout)),
+        layoutCalls: median(settled.map((sample) => sample.calls)),
+        dirtyCellArea: median(settled.map((sample) => sample.damage)),
+      }];
+    })) }));
+}

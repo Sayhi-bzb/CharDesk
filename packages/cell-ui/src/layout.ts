@@ -33,6 +33,7 @@ import { isCollectionItemKind } from "./widget-capabilities.js";
 import { hasInlineOutline, INLINE_OUTLINE_INSET } from "./inline-outline.js";
 import { cellTextWidth, isSingleLineControlText, singleLineText } from "./single-line-text.js";
 import { walkCellTextRows } from "./text-lines.js";
+import { sameWidgetValue } from "./widget-change.js";
 
 const integer = (value: number, label: string) => {
   if (!Number.isFinite(value)) throw new RangeError(`${label} must be finite.`);
@@ -297,6 +298,30 @@ const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): vo
   }
 };
 
+const sameChildren = (left: readonly string[], right: readonly string[]): boolean =>
+  left.length === right.length && left.every((id, index) => id === right[index]);
+
+/** Only fields consumed by configureNode; tree topology and dropdown width are handled separately. */
+const sameLayoutInput = (before: WidgetNode, after: WidgetNode, oldTree: WidgetTree, tree: WidgetTree): boolean =>
+  before.kind === after.kind
+  && before.frame === after.frame
+  && before.presentation === after.presentation
+  && before.surfaceVariant === after.surfaceVariant
+  && before.orientation === after.orientation
+  && before.expanded === after.expanded
+  && before.hidden === after.hidden
+  && before.tabsVariant === after.tabsVariant
+  && before.buttonVariant === after.buttonVariant
+  && before.progressVariant === after.progressVariant
+  && before.badgeTone === after.badgeTone
+  && before.level === after.level
+  && before.text === after.text
+  && before.children.length === after.children.length
+  && sameWidgetValue(before.style, after.style)
+  && sameWidgetValue(before.overlayPosition, after.overlayPosition)
+  && !!before.dialog === !!after.dialog
+  && isSingleLineControlText(oldTree, before) === isSingleLineControlText(tree, after);
+
 export interface LayoutEngine {
   compute(tree: WidgetTree, viewport: CellSize): LayoutSnapshot;
   dispose(): void;
@@ -331,11 +356,25 @@ export class YogaLayoutEngine implements LayoutEngine {
       return { viewport: viewportRect, entries: new Map() };
     }
 
-    for (const node of this.#nodes.values()) {
-      while (node.getChildCount() > 0) node.removeChild(node.getChild(0));
+    const oldTree = this.#tree;
+    const replaced = new Set<string>();
+    for (const [id, before] of oldTree?.nodes ?? []) {
+      const after = tree.nodes.get(id);
+      if (!after || before.kind !== after.kind) replaced.add(id);
+    }
+    const changedParents = new Set<string>();
+    for (const [id, before] of oldTree?.nodes ?? []) {
+      const after = tree.nodes.get(id);
+      if (!after || before.kind !== after.kind || !sameChildren(before.children, after.children)
+        || before.children.some((childId) => replaced.has(childId))) changedParents.add(id);
+    }
+    for (const id of changedParents) {
+      const parent = this.#nodes.get(id);
+      if (!parent) continue;
+      while (parent.getChildCount() > 0) parent.removeChild(parent.getChild(0));
     }
     for (const [id, node] of [...this.#nodes]) {
-      const before = this.#tree?.nodes.get(id);
+      const before = oldTree?.nodes.get(id);
       const after = tree.nodes.get(id);
       if (after && before?.kind === after.kind) continue;
       node.free();
@@ -349,7 +388,11 @@ export class YogaLayoutEngine implements LayoutEngine {
         this.#nodes.set(id, node);
         liveYogaResources.nodes += 1;
       }
-      configureNode(widget, node, tree);
+      const before = oldTree?.nodes.get(id);
+      if (!before || !sameLayoutInput(before, widget, oldTree!, tree)) {
+        configureNode(widget, node, tree);
+        if (before?.text !== widget.text && (widget.kind === "text" || widget.kind === "markdown-link")) node.markDirty();
+      }
       if ((widget.kind === "select" || widget.kind === "combobox") && widget.style.width === undefined) {
         const naturalWidth = dropdownNaturalWidth(tree, widget);
         if (naturalWidth !== null) node.setWidth(naturalWidth);
@@ -361,6 +404,7 @@ export class YogaLayoutEngine implements LayoutEngine {
       }
     }
     for (const [id, widget] of tree.nodes) {
+      if (oldTree?.nodes.has(id) && !changedParents.has(id)) continue;
       const parent = this.#nodes.get(id)!;
       widget.children.forEach((childId, index) => {
         const child = this.#nodes.get(childId);
