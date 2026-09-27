@@ -7,10 +7,13 @@ for (const dpr of [1, 2]) {
     test("keeps the underline below the glyph and inside its Cell row", async ({ page }) => {
       await page.goto("/");
       const rows = await page.evaluate(async () => {
+        const rendererPath = "/packages/rendering/src/canvas.ts";
+        const modelPath = "/packages/rendering/src/index.ts";
+        const profilesPath = "/src/font-options.ts";
         const { drawCharDeskCanvasCells, loadCharDeskCanvasFonts, prepareCharDeskCanvasSurface } =
-          await import("/packages/rendering/src/canvas.ts");
-        const { resolveCharDeskCellVisual } = await import("/packages/rendering/src/index.ts");
-        const { galleryFontOptions } = await import("/src/font-options.ts");
+          await import(rendererPath);
+        const { resolveCharDeskCellVisual } = await import(modelPath);
+        const { galleryFontOptions } = await import(profilesPath);
         const fontProfile = galleryFontOptions["fusion-mono"].profile;
         await loadCharDeskCanvasFonts(["中"], { fontProfile });
         const metrics = { cellWidth: 9, cellHeight: 20, baseline: 15, fontSize: 15, fontFamily: "monospace" };
