@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { CellUiRuntime, CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME, Root, Table, TableCell, TableRow, Text, auditSemanticSnapshot, type CellUiTheme, type TableVariant } from "./index.js";
+import { Box, CellUiRuntime, CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME, Root, Table, TableCell, TableRow, Text, auditSemanticSnapshot, type CellUiTheme, type TableVariant } from "./index.js";
 
 const columns = [
   { label: "Name", width: 12 },
@@ -27,6 +27,47 @@ it("renders plain and outlined tables on the Cell grid", () => {
     "│ Draft.md   │ Editing  │  3 KB │",
     "└────────────┴──────────┴───────┘",
   ].join("\n"));
+});
+
+it("keeps table lines above an inherited ghost background across Rich–Text–Rich", () => {
+  const expected = [
+    "┌────────────┬──────────┬───────┐",
+    "│ Name       │ Status   │ Size  │",
+    "├────────────┼──────────┼───────┤",
+    "│ Notes.txt  │ Synced   │ 12 KB │",
+    "│ Draft.md   │ Editing  │  3 KB │",
+    "└────────────┴──────────┴───────┘",
+  ].join("\n");
+  for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
+    const runtime = new CellUiRuntime({ viewport: { width: 34, height: 6 }, theme });
+    const view = <Root><Box variant="ghost"><Table id="files" label="Files" columns={columns} variant="outline">
+      <TableRow><TableCell>Notes.txt</TableCell><TableCell>Synced</TableCell><TableCell>12 KB</TableCell></TableRow>
+      <TableRow><TableCell>Draft.md</TableCell><TableCell>Editing</TableCell><TableCell>3 KB</TableCell></TableRow>
+    </Table></Box></Root>;
+    for (const presentation of ["rich", "text", "rich"] as const) {
+      runtime.setPresentation(presentation);
+      const frame = runtime.render(view);
+      expect(frame.buffer.toText({ trimEnd: true })).toContain(expected);
+      expect(frame.buffer.get(13, 1)?.ownerId).toBe("files");
+      expect(frame.buffer.get(13, 2)?.ownerId).toBe("files");
+    }
+    runtime.dispose();
+  }
+});
+
+it("preserves plain dividers and surface rows beneath an inherited ghost background", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 36, height: 4 } });
+  const view = (variant: TableVariant) => <Root><Box variant="ghost"><Table label="Files" columns={columns} variant={variant}>
+    <TableRow><TableCell>Notes.txt</TableCell><TableCell>Synced</TableCell><TableCell>12 KB</TableCell></TableRow>
+  </Table></Box></Root>;
+  const plain = runtime.render(view("plain"));
+  expect(plain.buffer.toText({ trimEnd: true })).toContain("────────────  ──────────  ───────");
+  const surface = runtime.render(view("surface"));
+  expect(surface.buffer.toText({ trimEnd: true })).not.toMatch(/[┌┬┐├┼┤└┴┘│─]/u);
+  runtime.setPresentation("text");
+  const text = runtime.render(view("surface"));
+  expect(text.buffer.toText({ trimEnd: true })).toContain("├────────────┼──────────┼───────┤");
+  runtime.dispose();
 });
 
 it("fills the surface header and alternating rows without line glyphs", () => {

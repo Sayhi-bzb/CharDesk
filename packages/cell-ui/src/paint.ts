@@ -147,6 +147,62 @@ export type PaintSceneOptions = Readonly<{
   layer?: "all" | "base" | "overlay";
 }>;
 
+const paintTableChrome = (
+  buffer: CellBuffer,
+  tree: WidgetTree,
+  scene: SceneSnapshot,
+  node: WidgetNode,
+  entry: SceneEntry,
+  region: CellRect,
+  theme: CellUiTheme,
+): void => {
+  if (node.kind !== "table" && node.kind !== "table-header"
+    && node.kind !== "table-divider" && node.kind !== "table-row") return;
+  const table = node.kind === "table" ? node : tree.nodes.get(node.parentId ?? "");
+  if (table?.kind !== "table" || table.surfaceVariant === "surface") return;
+  const tableEntry = scene.entries.get(table.id);
+  if (!tableEntry) return;
+  const clip = intersectSceneRects(tableEntry.outerClip, region);
+  if (!nonEmpty(clip)) return;
+  const style = resolveWidgetVisual(tree, table, theme).borderStyle;
+  const write = (x: number, y: number, glyph: string) =>
+    buffer.writeGrapheme(x, y, glyph, table.id, style, clip, "over");
+  const cellsFor = (row: WidgetNode | undefined) => row?.children
+    .map((cellId) => scene.entries.get(cellId))
+    .filter((cell): cell is SceneEntry => cell !== undefined) ?? [];
+  const outlined = table.frame === "bordered";
+  if (node.kind === "table" || node.kind === "table-divider") {
+    const cells = cellsFor(tree.nodes.get(table.children[0] ?? ""));
+    if (!scene.entries.has(table.children[1] ?? "") || cells.length === 0) return;
+    const separators = cells.slice(1).map((cell) => cell.layoutBounds.x - 1);
+    if (node.kind === "table") {
+      if (outlined) for (const x of separators) {
+        write(x, tableEntry.layoutBounds.y, "┬");
+        write(x, tableEntry.layoutBounds.y + tableEntry.layoutBounds.height - 1, "┴");
+      }
+    } else if (outlined) {
+      const left = tableEntry.layoutBounds.x;
+      const right = left + tableEntry.layoutBounds.width - 1;
+      const junctions = new Set(separators);
+      for (let x = left; x <= right; x += 1) {
+        write(x, entry.layoutBounds.y, x === left ? "├" : x === right ? "┤" : junctions.has(x) ? "┼" : "─");
+      }
+    } else {
+      for (const cell of cells) for (let x = cell.layoutBounds.x; x < cell.layoutBounds.x + cell.layoutBounds.width; x += 1) {
+        write(x, entry.layoutBounds.y, "─");
+      }
+    }
+  } else if (outlined) {
+    // Row backgrounds own the gaps. Paint their separators after the fill, before cell text.
+    for (const cell of cellsFor(node).slice(1)) {
+      const x = cell.layoutBounds.x - 1;
+      for (let y = entry.layoutBounds.y; y < entry.layoutBounds.y + entry.layoutBounds.height; y += 1) {
+        write(x, y, "│");
+      }
+    }
+  }
+};
+
 export const paintScene = (
   tree: WidgetTree,
   scene: SceneSnapshot,
@@ -232,36 +288,7 @@ export const paintScene = (
           outerClip
         );
       }
-      if (node.kind === "table" && node.surfaceVariant !== "surface") {
-        const header = tree.nodes.get(node.children[0] ?? "");
-        const divider = scene.entries.get(node.children[1] ?? "");
-        const cells = header?.children.map((cellId) => scene.entries.get(cellId)).filter((cell): cell is SceneEntry => cell !== undefined) ?? [];
-        if (divider && cells.length > 0) {
-          const outlined = node.frame === "bordered";
-          const lineStyle = visual.borderStyle;
-          const write = (x: number, y: number, glyph: string) =>
-            buffer.writeGrapheme(x, y, glyph, id, lineStyle, outerClip, "over");
-          const dividerY = divider.layoutBounds.y;
-          if (outlined) {
-            for (let x = entry.layoutBounds.x; x < entry.layoutBounds.x + entry.layoutBounds.width; x += 1) {
-              write(x, dividerY, x === entry.layoutBounds.x ? "├" : x === entry.layoutBounds.x + entry.layoutBounds.width - 1 ? "┤" : "─");
-            }
-          } else {
-            for (const cell of cells) for (let x = cell.layoutBounds.x; x < cell.layoutBounds.x + cell.layoutBounds.width; x += 1) {
-              write(x, dividerY, "─");
-            }
-          }
-          if (outlined) for (let index = 1; index < cells.length; index += 1) {
-            const x = cells[index]!.layoutBounds.x - 1;
-            write(x, entry.layoutBounds.y, "┬");
-            write(x, dividerY, "┼");
-            write(x, entry.layoutBounds.y + entry.layoutBounds.height - 1, "┴");
-            for (let y = entry.layoutBounds.y + 1; y < entry.layoutBounds.y + entry.layoutBounds.height - 1; y += 1) {
-              if (y !== dividerY) write(x, y, "│");
-            }
-          }
-        }
-      }
+      paintTableChrome(buffer, tree, scene, node, entry, region, theme);
       if (node.kind === "alert") {
         buffer.writeGrapheme(
           entry.decorationBounds.x + 1,
