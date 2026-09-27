@@ -59,7 +59,7 @@ test("verifies a JSON snapshot served by the Cell UI deployment", async () => {
     return Response.json({ count: 1234, updatedAt: "2026-09-23T12:00:00.000Z" });
   };
   assert.equal(await verifyCellUiStarsEndpoint({ fetcher }), 1234);
-  assert.equal(request.url, "https://ui.chardesk.com/api/github-stars");
+  assert.equal(request.url, "https://chardesk-cell-ui.pages.dev/api/github-stars");
   assert.equal(request.options.headers.Accept, "application/json");
 });
 
