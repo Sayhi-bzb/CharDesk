@@ -28,11 +28,30 @@ const navigationLinks = [
   ["Tooltip", "#/components/tooltip"],
 ] as const;
 
+test("header links route to the product home and Cell UI introduction", async ({ page }) => {
+  await page.goto("/#/components/button");
+  const header = page.locator('[data-cell-probe="gallery-header"]');
+  const clickHeaderLink = async (id: string) => {
+    const bounds = ownerBounds(await readCellProbe(header), id);
+    const point = await cellPoint(header, bounds.x + Math.floor(bounds.width / 2), bounds.y);
+    await page.mouse.click(point.x, point.y);
+  };
+  await clickHeaderLink("gallery-header-cell-ui");
+  await expect(page).toHaveURL(/#\/guides\/introduction$/);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => (await readCellProbe(header)).text).toContain("CharDesk / Cell UI");
+  await page.route("https://chardesk.com/", (route) => route.fulfill({ contentType: "text/html", body: "Product home" }));
+  await clickHeaderLink("gallery-header-brand");
+  await expect(page).toHaveURL("https://chardesk.com/");
+});
+
 test("component catalog drives concise, addressable documentation", async ({ page }) => {
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Cell UI" });
   await expect(page.getByRole("heading", { name: "Introduction", level: 1 })).toBeVisible();
-  await expect(page.locator('[data-cell-semantic-id="gallery-header-brand"]')).toHaveAttribute("href", "#/guides/introduction");
+  await expect(page.locator('[data-cell-semantic-id="gallery-header-brand"]')).toHaveAttribute("href", "https://chardesk.com/");
+  await expect(page.locator('[data-cell-semantic-id="gallery-header-cell-ui"]')).toHaveAttribute("href", "#/guides/introduction");
   await expect(nav.getByRole("group", { name: "Sections" }).getByRole("link")).toHaveText([
     "Introduction", "Philosophy", "Classic Macintosh", "Markdown", "Installation", "Integration", "Theming", "Testing",
   ]);

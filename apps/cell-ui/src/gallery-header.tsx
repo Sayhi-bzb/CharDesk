@@ -47,9 +47,13 @@ export function GalleryHeader({ brandHref = "#/guides/introduction" }: Readonly<
       else window.location.assign(command.href);
     }
   };
-  const brand = brandHref
-    ? <Link id="gallery-header-brand" href={brandHref} textStyle={{ color: theme.foreground, bold: true }}>CharDesk / Cell UI</Link>
-    : <Text id="gallery-header-brand" textStyle={{ bold: true }}>CharDesk / Cell UI</Text>;
+  const brand = <Box id="gallery-header-brand-links" style={{ direction: "row", gap: 0 }}>
+    <Link id="gallery-header-brand" href="https://chardesk.com/" textStyle={{ color: theme.foreground, bold: true }}>CharDesk</Link>
+    <Text id="gallery-header-brand-separator" textStyle={{ bold: true }}> / </Text>
+    {brandHref
+      ? <Link id="gallery-header-cell-ui" href={brandHref} textStyle={{ color: theme.foreground, bold: true }}>Cell UI</Link>
+      : <Text id="gallery-header-cell-ui" textStyle={{ bold: true }}>Cell UI</Text>}
+  </Box>;
   const controls = <Box id="gallery-header-controls" style={{ direction: "row", width: narrow ? "100%" : undefined, gap: 1 }}>
     <Link id="gallery-header-github" href={repositoryUrl} target="_blank" label={stars.label}
       textStyle={theme.secondaryStyle}>{` ${stars.count}`}</Link>
