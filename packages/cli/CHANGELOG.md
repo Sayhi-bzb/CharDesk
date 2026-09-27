@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.3](https://github.com/Sayhi-bzb/CharDesk/compare/v0.5.2...v0.5.3) (2026-09-27)
+
+
+### Features
+
+* add inline SVG icon layer and markdown inline flow ([28595fc](https://github.com/Sayhi-bzb/CharDesk/commit/28595fc35c316da354da798cc80bb6844d6c8978))
+
+
+### Bug Fixes
+
+* keep canvas text underline below CJK glyph ink ([24eb1de](https://github.com/Sayhi-bzb/CharDesk/commit/24eb1de9777e8a163b2758c1394e9b9e55a0aa97))
+* keep underline raster test compatible with dependency scan ([e3fc0de](https://github.com/Sayhi-bzb/CharDesk/commit/e3fc0de90948e981b38011078a5e798750e62569))
+* preserve Markdown rails and offscreen link geometry ([d9425ca](https://github.com/Sayhi-bzb/CharDesk/commit/d9425ca0dc7633d1312a46df06987ed3299a299b))
+
 ## [0.5.2](https://github.com/Sayhi-bzb/CharDesk/compare/v0.5.1...v0.5.2) (2026-09-27)
 
 
