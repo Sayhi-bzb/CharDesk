@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/Sayhi-bzb/CharDesk/compare/v0.5.0...v0.5.1) (2026-09-27)
+
+
+### Bug Fixes
+
+* keep Cell UI Registry aligned with release dependencies ([5b79aca](https://github.com/Sayhi-bzb/CharDesk/commit/5b79aca9c9f3ce2a49df11e6d0e6fe96b913d5ec))
+* synchronize 0.5.0 workspace release dependencies ([3fce22f](https://github.com/Sayhi-bzb/CharDesk/commit/3fce22f37224b129b136f68a0ceb7fb5ab0b1293))
+
 ## [0.5.0](https://github.com/Sayhi-bzb/CharDesk/compare/v0.4.4...v0.5.0) (2026-09-26)
 
 
