@@ -45,7 +45,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
-        run: gh workflow run release.yml --ref "$RELEASE_TAG" -f tag="$RELEASE_TAG"
+        # release_please has no checkout, so gh cannot infer the repository from cwd.
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$RELEASE_TAG" -f tag="$RELEASE_TAG"
 
   publish:
     if: >-
