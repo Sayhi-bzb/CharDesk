@@ -29,12 +29,9 @@ jobs:
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: write
       pull-requests: write
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-
     steps:
       - name: Prepare release pull request or release
         id: release
@@ -43,20 +40,25 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      - name: Dispatch publish on the release tag
+        if: steps.release.outputs.release_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
+        run: gh workflow run release.yml --ref "$RELEASE_TAG" -f tag="$RELEASE_TAG"
+
   publish:
     if: >-
-      always() &&
-      ((needs.release_please.result == 'success' && needs.release_please.outputs.release_created == 'true') ||
-      github.event_name == 'workflow_dispatch')
-    needs:
-      - release_please
+      github.event_name == 'workflow_dispatch' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      inputs.tag == github.ref_name
     runs-on: ubuntu-latest
     environment: npm-production
     permissions:
       contents: write
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release_please.outputs.tag_name }}
+      RELEASE_TAG: ${{ inputs.tag }}
 
     steps:
       - name: Check out release tag
