@@ -155,6 +155,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
       markdownSource: current.markdownSource,
       markdownLayoutOnly: current.markdownLayoutOnly,
       markdownCenteredText: current.markdownCenteredText,
+      markdownInlineRuns: current.markdownInlineRuns,
       sharedScrollGuard: current.kind === "scroll-area" && current.sharedScrollGuard,
       textStyle: current.textStyle,
       label: current.label,

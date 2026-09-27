@@ -104,6 +104,7 @@ describe("Component Playground gallery demos", () => {
       .filter((cell) => cell.ownerId === "component-button-save"
         || cell.ownerId?.startsWith("component-button-save/text"))
       .sort((left, right) => left.x - right.x);
+    expect(screen.queryByRole("button", { name: "icon source" })).toBeNull();
     await waitFor(() => expect(buttonCells().map((cell) => cell.text).join(""))
       .toBe(" Save "));
 
@@ -111,6 +112,7 @@ describe("Component Playground gallery demos", () => {
     fireEvent.click(screen.getByRole("option", { name: "icon-only" }));
     await waitFor(() => expect(buttonCells().map((cell) => cell.text).join(""))
       .toBe(" \uEB4B "));
+    expect(screen.getByRole("button", { name: "icon source" })).toBeInTheDocument();
     expect(save).toHaveAccessibleName("Save document");
     expect(buttonCells()).toHaveLength(3);
     await waitFor(() => expect(surface).not.toHaveAttribute("data-cell-confirmation-phase"));
@@ -119,6 +121,7 @@ describe("Component Playground gallery demos", () => {
     fireEvent.click(screen.getByRole("option", { name: "icon + text" }));
     await waitFor(() => expect(buttonCells().map((cell) => cell.text).join(""))
       .toBe(" \uEB4B Save "));
+    expect(screen.getByRole("button", { name: "icon source" })).toBeInTheDocument();
     expect(save).toHaveAccessibleName("Save document");
     expect(buttonCells()).toHaveLength(8);
     await waitFor(() => expect(surface).not.toHaveAttribute("data-cell-confirmation-phase"));
@@ -127,6 +130,71 @@ describe("Component Playground gallery demos", () => {
     fireEvent.click(screen.getByRole("option", { name: "outline" }));
     await waitFor(() => expect(readCellSurfaceProbe(surface)?.text).toContain("[ \uEB4B Save ]"));
     expect(save).toHaveAccessibleName("Save document");
+  });
+
+  it("renders Button SVG as decoration without adding a glyph to the Cell buffer", async () => {
+    render(<ButtonComponentDemo />);
+    const surface = screen.getByLabelText("Button component");
+    fireEvent.click(screen.getByRole("button", { name: "content" }));
+    fireEvent.click(screen.getByRole("option", { name: "icon-only" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "content" }))
+      .toHaveAttribute("aria-expanded", "false"));
+    fireEvent.click(screen.getByRole("button", { name: "icon source" }));
+    fireEvent.click(screen.getByRole("option", { name: "SVG" }));
+
+    await waitFor(() => expect(surface.querySelector('[data-cell-svg-icon="component-button-save-icon"] svg'))
+      .not.toBeNull());
+    expect(screen.getByRole("button", { name: "Save document" })).toHaveAccessibleName("Save document");
+    expect(readCellSurfaceProbe(surface)?.text).not.toContain("\uEB4B");
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "icon source" }))
+      .toHaveAttribute("aria-expanded", "false"));
+    fireEvent.click(screen.getByRole("button", { name: "content" }));
+    fireEvent.click(screen.getByRole("option", { name: "text" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "icon source" })).toBeNull());
+    expect(surface.querySelector("[data-cell-svg-icon]")).toBeNull();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "content" }))
+      .toHaveAttribute("aria-expanded", "false"));
+    fireEvent.click(screen.getByRole("button", { name: "content" }));
+    fireEvent.click(screen.getByRole("option", { name: "icon + text" }));
+    await waitFor(() => expect(surface.querySelector('[data-cell-svg-icon="component-button-save-icon"] svg'))
+      .not.toBeNull());
+    expect(screen.getByRole("button", { name: "icon source" })).toBeInTheDocument();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "content" }))
+      .toHaveAttribute("aria-expanded", "false"));
+    fireEvent.click(screen.getByRole("button", { name: "presentation" }));
+    fireEvent.click(screen.getByRole("option", { name: "Text" }));
+    await waitFor(() => expect(surface.querySelector("[data-cell-svg-icon]")).toBeNull());
+    expect(screen.queryByRole("button", { name: "icon source" })).toBeNull();
+    expect(readCellSurfaceProbe(surface)?.text).toContain("\uEB4B");
+  });
+
+  it("keeps the Button icon source menu closed after switching through text content", async () => {
+    render(<ButtonComponentDemo />);
+    const surface = screen.getByLabelText("Button component");
+    fireEvent.click(screen.getByRole("button", { name: "content" }));
+    fireEvent.click(screen.getByRole("option", { name: "icon-only" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "content" }))
+      .toHaveAttribute("aria-expanded", "false"));
+    fireEvent.click(screen.getByRole("button", { name: "icon source" }));
+    expect(screen.getByRole("listbox", { name: "icon source options" })).toBeInTheDocument();
+
+    fireEvent.keyDown(surface, { key: "Escape" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "icon source" }))
+      .toHaveAttribute("aria-expanded", "false"));
+    fireEvent.click(screen.getByRole("button", { name: "content" }));
+    fireEvent.click(screen.getByRole("option", { name: "text" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "icon source" })).toBeNull());
+    expect(screen.queryByRole("listbox", { name: "icon source options" })).toBeNull();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "content" }))
+      .toHaveAttribute("aria-expanded", "false"));
+    fireEvent.click(screen.getByRole("button", { name: "content" }));
+    fireEvent.click(screen.getByRole("option", { name: "icon-only" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "icon source" }))
+      .toHaveAttribute("aria-expanded", "false"));
   });
 
   it("shows every Badge tone with only presentation configuration and no persistent activation feedback", async () => {

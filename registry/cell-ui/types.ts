@@ -73,6 +73,7 @@ export type WidgetKind =
   | "overlay"
   | "text"
   | "markdown-block"
+  | "markdown-inline"
   | "markdown-link"
   | "button"
   | "badge"
@@ -142,6 +143,7 @@ export type WidgetNode = Readonly<{
   markdownSource: boolean;
   markdownLayoutOnly: boolean;
   markdownCenteredText: string | null;
+  markdownInlineRuns: readonly import("./markdown-inline-flow.js").MarkdownInlineRun[] | null;
   sharedScrollGuard: boolean;
   textStyle: CellTextStyle;
   label: string | null;
@@ -248,6 +250,7 @@ export type SceneEntry = Readonly<{
   contentBounds: CellRect;
   paintBounds: CellRect;
   hitBounds: CellRect;
+  hitRegions?: readonly CellRect[];
   outerClip: CellRect;
   contentClip: CellRect;
   scrollMetrics: ScrollMetrics | null;

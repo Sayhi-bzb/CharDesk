@@ -13,6 +13,7 @@ import type {
 } from "./types.js";
 import { isPortalKind } from "./widget-capabilities.js";
 import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
+import { layoutMarkdownInlineFlow } from "./markdown-inline-flow.js";
 
 export const intersectSceneRects = (left: CellRect, right: CellRect): CellRect => {
   const x = Math.max(left.x, right.x);
@@ -198,7 +199,7 @@ const composeSceneInternal = (
           ),
         )
       : undefined;
-    const bounds: CellRect = {
+    let bounds: CellRect = {
       x: rangeThumbX ?? (widget.kind === "overlay"
         ? widget.overlayPosition?.x !== undefined
           ? portalViewport.x + widget.overlayPosition.x
@@ -216,6 +217,32 @@ const composeSceneInternal = (
       width: placement?.bounds.width ?? layoutEntry.rect.width,
       height: placement?.bounds.height ?? layoutEntry.rect.height,
     };
+    let inlineLinkRegions: CellRect[] | undefined;
+    if (widget.kind === "markdown-link" && widget.markdownLayoutOnly && widget.parentId) {
+      const parent = tree.nodes.get(widget.parentId);
+      const inline = parent?.children.map((childId) => tree.nodes.get(childId))
+        .find((child) => child?.kind === "markdown-inline");
+      const inlineEntry = inline ? entries.get(inline.id) : undefined;
+      if (inline && inlineEntry) {
+        const linkIndex = parent!.children.filter((childId) => {
+          const child = tree.nodes.get(childId);
+          return child?.kind === "markdown-link" && child.markdownLayoutOnly;
+        }).indexOf(widget.id);
+        inlineLinkRegions = layoutMarkdownInlineFlow(inline.markdownInlineRuns ?? [],
+          inlineEntry.contentBounds.width).glyphs
+          .filter((glyph) => glyph.linkIndex === linkIndex)
+          .map((glyph) => intersectSceneRects({ x: inlineEntry.contentBounds.x + glyph.x,
+            y: inlineEntry.contentBounds.y + glyph.y, width: glyph.width, height: 1 }, clip))
+          .filter((region) => !isEmpty(region));
+        if (inlineLinkRegions.length) {
+          const left = Math.min(...inlineLinkRegions.map((region) => region.x));
+          const top = Math.min(...inlineLinkRegions.map((region) => region.y));
+          bounds = { x: left, y: top,
+            width: Math.max(...inlineLinkRegions.map((region) => region.x + region.width)) - left,
+            height: Math.max(...inlineLinkRegions.map((region) => region.y + region.height)) - top };
+        }
+      }
+    }
     const contentRightInset = layoutEntry.rect.width
       - layoutEntry.contentRect.x
       - layoutEntry.contentRect.width;
@@ -264,6 +291,7 @@ const composeSceneInternal = (
         : widget.kind === "tab" && widget.tabsVariant === "underline"
         ? { ...bounds, height: Math.min(1, bounds.height) }
         : bounds,
+      ...(inlineLinkRegions ? { hitRegions: inlineLinkRegions } : {}),
       outerClip,
       contentClip,
       scrollMetrics,
@@ -347,7 +375,8 @@ export const hitTest = (
   .filter((id) => {
     const entry = scene.entries.get(id);
     return entry
-      ? cellRectContainsPoint(entry.hitBounds, point)
+      ? (entry.hitRegions ? entry.hitRegions.some((region) => cellRectContainsPoint(region, point))
+        : cellRectContainsPoint(entry.hitBounds, point))
         && cellRectContainsPoint(entry.outerClip, point)
       : false;
   });

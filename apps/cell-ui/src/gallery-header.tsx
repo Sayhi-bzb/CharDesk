@@ -3,6 +3,7 @@ import { Box, Button, Link, Root, Text, Tooltip, type WidgetCommand } from "@cha
 import { CELL_SURFACE_GUARD_CELLS, DEFAULT_CELL_UI_METRICS } from "@chardesk/cell-ui/browser";
 import { GallerySurface, useGalleryAppearance, useGalleryFontControl } from "./appearance";
 import { renderGallerySelect } from "./gallery-component-recipes";
+import { galleryHeaderPixelIcons } from "./gallery-pixel-icons";
 import { repositoryUrl, useGitHubStars } from "./github-stars";
 
 const narrowQuery = window.matchMedia("(max-width: 720px)");
@@ -56,20 +57,21 @@ export function GalleryHeader({ brandHref = "#/guides/introduction" }: Readonly<
   </Box>;
   const controls = <Box id="gallery-header-controls" style={{ direction: "row", width: narrow ? "100%" : undefined, gap: 1 }}>
     <Link id="gallery-header-github" href={repositoryUrl} target="_blank" label={stars.label}
-      textStyle={theme.secondaryStyle}>{` ${stars.count}`}</Link>
+      textStyle={theme.secondaryStyle}>{`   ${stars.count}`}</Link>
     {narrow ? <Box style={{ flexGrow: 1 }} /> : null}
     {renderGallerySelect({ label: "Font", select: font.select, focusedId: effectiveFocusedId,
       width: 12, open: font.open, showLabel: false, disabled: font.fontStatus === "loading",
       triggerText: font.triggerText, triggerLabel: font.triggerLabel, contentLabel: "Fonts",
       itemSemanticLabel: font.itemSemanticLabel })}
-    <Button id="gallery-header-theme" label={themeLabel} variant="ghost" style={{ width: 3 }}>
-      <Text>{mode === "light" ? "" : ""}</Text>
+    <Button id="gallery-header-theme" label={themeLabel} variant="ghost" style={{ width: 4 }}>
+      <Box id="gallery-header-theme-icon" style={{ width: 2, height: 1 }} />
     </Button>
   </Box>;
 
   return <header className="gallery-header">
     <div className="gallery-shell gallery-header__inner" ref={hostRef}>
       <GallerySurface className="gallery-header__surface" label="Cell UI header" probeId="gallery-header"
+        svgIcons={galleryHeaderPixelIcons(mode)}
         viewport={{ width, height: rows }}
         overlayViewport={{ width, height: rows + (font.open ? 3 : 1) }}
         focusedId={effectiveFocusedId} onCommand={onCommand}>

@@ -5,8 +5,34 @@ import {
   resolveCellUiTheme, type MarkdownCodeBlock,
 } from "./index.js";
 import { CLASSIC_MAC_DARK_THEME, CLASSIC_MAC_LIGHT_THEME } from "./theme.js";
+import { hitTest } from "./scene.js";
 
 describe("Markdown reading projection", () => {
+  it("flows mixed Chinese and Latin prose across inline token boundaries", () => {
+    const source = "19 世纪中后期麦克斯韦和玻尔兹曼共同提出玻尔兹曼分布。\n\n1985 年 Hinton 引入统计力学的玻尔兹曼分布。";
+    const runtime = new CellUiRuntime({ viewport: { width: 42, height: 8 } });
+    const frame = runtime.render(<Root><Markdown source={source} /></Root>);
+    const lines = frame.buffer.toText({ trimEnd: true }).split("\n");
+    expect(lines[0]).toMatch(/^19 世纪/u);
+    expect(lines[3]).toMatch(/^1985 年 Hinton 引入/u);
+    runtime.dispose();
+  });
+
+  it("keeps styles and one actionable link across wrapped inline lines", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 14, height: 8 } });
+    const frame = runtime.render(<Root><Markdown source="19 **世纪** [阅读一份很长的指南](https://example.com) 结尾" /></Root>);
+    const lines = frame.buffer.toText({ trimEnd: true }).split("\n");
+    expect(lines[0]).toMatch(/^19 世纪/u);
+    expect(frame.buffer.get(3, 0)?.style.bold).toBe(true);
+    const links = [...frame.semantics.nodes.values()].filter((node) => node.role === "link");
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({ label: "阅读一份很长的指南", href: "https://example.com" });
+    const regions = frame.scene.entries.get(links[0]!.id)?.hitRegions ?? [];
+    expect(new Set(regions.map((region) => region.y)).size).toBeGreaterThan(1);
+    for (const region of regions) expect(hitTest(frame.scene, { x: region.x, y: region.y })[0]).toBe(links[0]!.id);
+    expect(auditSemanticSnapshot(frame.semantics)).toEqual([]);
+    runtime.dispose();
+  });
   it("renders prose and inline styles without source delimiters, then copies what is visible", () => {
     const source = "# Notes\n\n**Bold** *italic* ~~old~~ and `code`.";
     const runtime = new CellUiRuntime({ viewport: { width: 40, height: 6 } });

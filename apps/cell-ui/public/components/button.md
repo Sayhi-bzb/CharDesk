@@ -10,8 +10,23 @@ Install the full editable source in a React project with components.json and ali
 
 ```tsx
 import { useState } from "react";
-import { Button, Root, Text, type WidgetCommand } from "@/lib/cell-ui";
+import { Box, Button, Root, Text, type WidgetCommand } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
+
+const svgIcons = {
+  saveIcon: (
+    <svg
+      width={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+      <path d="M17 21v-8H7v8M7 3v5h8" />
+    </svg>
+  ),
+};
 
 export function ButtonExample() {
   const [focusedId, setFocusedId] = useState("save");
@@ -21,6 +36,7 @@ export function ButtonExample() {
   return (
     <CellSurface
       viewport={{ width: 24, height: 3 }}
+      svgIcons={svgIcons}
       focusedId={focusedId}
       onCommand={dispatch}
     >
@@ -31,6 +47,7 @@ export function ButtonExample() {
           variant="solid"
           focused={focusedId === "save"}
         >
+          <Box id="saveIcon" style={{ width: 2, height: 1 }} />
           <Text>Save</Text>
         </Button>
       </Root>
@@ -55,5 +72,6 @@ export function ButtonExample() {
 | `disabled?` | `boolean` | Prevents focus, hover, and activation. |
 | `focused?` | `boolean` | Controlled logical focus state. |
 | `children?` | `ReactNode` | Cell-native button content. |
+| `CellSurface.svgIcons?` | `Record<WidgetId, ReactElement<SVGProps<SVGSVGElement>>>` | Trusted browser-only SVGs keyed by Cell node ID. Decorative: absent from copied text and headless output. |
 | `style?` | `CellLayoutStyle` | Layout and horizontal padding; defaults to one content Cell per side. |
 | `textStyle?` | `CellTextStyle` | Base foreground, background, and emphasis. |

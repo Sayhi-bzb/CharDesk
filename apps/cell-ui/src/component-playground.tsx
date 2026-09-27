@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Box, Root, ScrollArea, Text, type CellUiPresentation, type WidgetCommand } from "@chardesk/cell-ui";
-import { CELL_SURFACE_GUARD_CELLS, DEFAULT_CELL_UI_METRICS, useCellSelectState, type CellSelectState, type CellSurfaceProps } from "@chardesk/cell-ui/browser";
+import { CELL_SURFACE_GUARD_CELLS, DEFAULT_CELL_UI_METRICS, useCellSelectState, type CellSelectState, type CellSurfaceProps, type CellSvgIcons } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "./appearance";
 import { renderGallerySelect } from "./gallery-component-recipes";
 import { useDocumentScene } from "./document-scene";
@@ -37,6 +37,7 @@ export function ComponentPlayground({
   onCommand,
   onHoverChange,
   preview,
+  svgIcons,
   controls,
   previewMinColumns,
   controlsColumns,
@@ -52,6 +53,7 @@ export function ComponentPlayground({
   onCommand: (command: WidgetCommand) => void;
   onHoverChange?: (targetId: string | null) => void;
   preview: PresentationValue<ReactNode>;
+  svgIcons?: CellSvgIcons;
   controls?: readonly PlaygroundControl[];
   previewMinColumns: number;
   controlsColumns?: number;
@@ -241,6 +243,7 @@ export function ComponentPlayground({
       onHoverChange={onHoverChange}
       label={label}
       probeId={probeId}
+      svgIcons={svgIcons}
       recipe={defaultComponentRecipe}
       presentation={presentation}
     >

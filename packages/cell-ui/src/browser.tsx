@@ -1,4 +1,6 @@
 import { CELL_SURFACE_GUARD_CELLS, CellPresentationRegistry } from "./browser-presentation.js";
+import { CellSvgIconLayer, type CellSvgIcons } from "./browser-svg-icons.js";
+export type { CellSvgIcons } from "./browser-svg-icons.js";
 import { registerCellSurfaceGeometry } from "./browser-surface-geometry.js";
 export { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
 export { CellOverlayHost, CellOverlayPortal, CellPopover, CellContextMenu, CellAlertDialog, positionCellOverlay } from "./browser-overlay-host.js";
@@ -562,6 +564,7 @@ export const SemanticDom = ({
 export type CellSurfaceProps = Readonly<{
   viewport: CellSize;
   overlayViewport?: CellSize;
+  svgIcons?: CellSvgIcons;
   children: ReactElement<RootProps>;
   focusedId?: WidgetId | null;
   theme?: CellUiThemeInput;
@@ -745,6 +748,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const {
     viewport,
     overlayViewport: requestedOverlayViewport,
+    svgIcons,
     children,
     focusedId = null,
     theme,
@@ -2012,6 +2016,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           }}
         />
       ))}
+      {frame && svgIcons && <CellSvgIconLayer frame={frame} metrics={metrics}
+        icons={svgIcons} foreground={resolvedTheme.foreground} />}
       {hostedSurface() && <div ref={registerHitRegion}
         data-cell-hit-region="" aria-hidden="true" style={{
         position: "absolute",

@@ -21,6 +21,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.markdownSource === right.markdownSource
   && left.markdownLayoutOnly === right.markdownLayoutOnly
   && left.markdownCenteredText === right.markdownCenteredText
+  && sameWidgetValue(left.markdownInlineRuns, right.markdownInlineRuns)
   && left.sharedScrollGuard === right.sharedScrollGuard
   && left.label === right.label
   && left.disabled === right.disabled
@@ -94,6 +95,7 @@ const hasLayoutChange = (before: WidgetNode, after: WidgetNode) =>
   || before.placeholder !== after.placeholder
   || before.markdownRole !== after.markdownRole
   || before.markdownCenteredText !== after.markdownCenteredText
+  || !sameWidgetValue(before.markdownInlineRuns, after.markdownInlineRuns)
   || before.sharedScrollGuard !== after.sharedScrollGuard
   || before.buttonVariant !== after.buttonVariant
   || before.buttonTone !== after.buttonTone
@@ -164,6 +166,7 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.markdownSource !== after.markdownSource
   || before.markdownLayoutOnly !== after.markdownLayoutOnly
   || before.markdownCenteredText !== after.markdownCenteredText
+  || !sameWidgetValue(before.markdownInlineRuns, after.markdownInlineRuns)
   || before.sliderValue !== after.sliderValue
   || before.sliderMin !== after.sliderMin
   || before.sliderMax !== after.sliderMax

@@ -554,8 +554,23 @@ export function RadioExample() {
     title: "Button",
     description: "Trigger one action through keyboard, pointer, or assistive input.",
     usage: `import { useState } from "react";
-import { Button, Root, Text, type WidgetCommand } from "@chardesk/cell-ui";
+import { Box, Button, Root, Text, type WidgetCommand } from "@chardesk/cell-ui";
 import { CellSurface } from "@chardesk/cell-ui/browser";
+
+const svgIcons = {
+  saveIcon: (
+    <svg
+      width={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+      <path d="M17 21v-8H7v8M7 3v5h8" />
+    </svg>
+  ),
+};
 
 export function ButtonExample() {
   const [focusedId, setFocusedId] = useState("save");
@@ -565,6 +580,7 @@ export function ButtonExample() {
   return (
     <CellSurface
       viewport={{ width: 24, height: 3 }}
+      svgIcons={svgIcons}
       focusedId={focusedId}
       onCommand={dispatch}
     >
@@ -575,6 +591,7 @@ export function ButtonExample() {
           variant="solid"
           focused={focusedId === "save"}
         >
+          <Box id="saveIcon" style={{ width: 2, height: 1 }} />
           <Text>Save</Text>
         </Button>
       </Root>
@@ -589,6 +606,7 @@ export function ButtonExample() {
       { name: "disabled?", type: "boolean", description: "Prevents focus, hover, and activation." },
       { name: "focused?", type: "boolean", description: "Controlled logical focus state." },
       { name: "children?", type: "ReactNode", description: "Cell-native button content." },
+      { name: "CellSurface.svgIcons?", type: "Record<WidgetId, ReactElement<SVGProps<SVGSVGElement>>>", description: "Trusted browser-only SVGs keyed by Cell node ID. Decorative: absent from copied text and headless output." },
       { name: "style?", type: "CellLayoutStyle", description: "Layout and horizontal padding; defaults to one content Cell per side." },
       { name: "textStyle?", type: "CellTextStyle", description: "Base foreground, background, and emphasis." },
     ],

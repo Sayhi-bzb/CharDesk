@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { YogaLayoutEngine, createWidgetDescriptor, reconcileWidgetTree, resolveCellUiScrollLayout,
   type CellRect, type RootProps, type WidgetCommand } from "@chardesk/cell-ui";
-import { CELL_SURFACE_GUARD_CELLS, DEFAULT_CELL_UI_METRICS } from "@chardesk/cell-ui/browser";
+import { CELL_SURFACE_GUARD_CELLS, DEFAULT_CELL_UI_METRICS, type CellSvgIcons } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "./appearance";
 
 type ArticleSurfaceProps = Readonly<{
@@ -16,10 +16,11 @@ type ArticleSurfaceProps = Readonly<{
   focusedId: string | null;
   onCommand: (command: WidgetCommand) => void;
   onHoverChange?: (targetId: string | null) => void;
+  svgIcons?: CellSvgIcons;
 }>;
 
 export function CellArticleSurface({ label, probeId, content, anchorIds, anchorTargets, regionIds = [],
-  regionsRef, onWidthChange, focusedId, onCommand, onHoverChange }: ArticleSurfaceProps) {
+  regionsRef, onWidthChange, focusedId, onCommand, onHoverChange, svgIcons }: ArticleSurfaceProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(72);
   useLayoutEffect(() => {
@@ -59,7 +60,7 @@ export function CellArticleSurface({ label, probeId, content, anchorIds, anchorT
   return <div ref={hostRef} className="cell-article-block">
     {anchorIds.map((id) => <span key={id} id={id} className="cell-article-anchor" aria-hidden="true"
       style={{ top: (measured.anchors[id]! + CELL_SURFACE_GUARD_CELLS) * DEFAULT_CELL_UI_METRICS.cellHeight }} />)}
-    <GallerySurface label={label} probeId={probeId} linearSelection
+    <GallerySurface label={label} probeId={probeId} linearSelection svgIcons={svgIcons}
       viewport={{ width, height: measured.height }} focusedId={focusedId}
       onCommand={onCommand} onHoverChange={onHoverChange}>
       {content}

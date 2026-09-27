@@ -238,6 +238,8 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
   const anchorIds = useMemo(() => Object.keys(anchorTargets), [anchorTargets]);
   const fragmentOwners = useMemo(() => new Map(Object.entries(fragments).flatMap(([probeId, fragment]) =>
     explicitIds(createWidgetDescriptor(fragment.root, {}, fragment.presentation)!).map((id) => [id, probeId] as const))), [fragments]);
+  const svgIcons = useMemo(() => Object.assign({}, ...Object.values(fragments)
+    .map((fragment) => fragment.svgIcons ?? {})), [fragments]);
   const [manager, setManager] = useState<keyof typeof installationCommands>("npm");
   const scroll = useCellScrollState();
   const [copies, setCopies] = useState<Readonly<Record<string, CopyState>>>({});
@@ -342,6 +344,7 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
   return <>
     <main className="docs-page cell-article-page">
       <CellArticleSurface label="Documentation article" probeId={prefix} content={content}
+        svgIcons={svgIcons}
         anchorIds={anchorIds} anchorTargets={anchorTargets} regionIds={previewRegionIds}
         regionsRef={regionsRef} onWidthChange={setSceneWidth}
         focusedId={activeFragmentId ? fragments[activeFragmentId]?.focusedId ?? null : focusedId}

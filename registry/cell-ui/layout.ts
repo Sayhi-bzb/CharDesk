@@ -33,6 +33,7 @@ import { isCollectionItemKind } from "./widget-capabilities.js";
 import { hasInlineOutline, INLINE_OUTLINE_INSET } from "./inline-outline.js";
 import { cellTextWidth, isSingleLineControlText, singleLineText } from "./single-line-text.js";
 import { walkCellTextRows } from "./text-lines.js";
+import { layoutMarkdownInlineFlow } from "./markdown-inline-flow.js";
 import { sameWidgetValue } from "./widget-change.js";
 
 const integer = (value: number, label: string) => {
@@ -292,7 +293,14 @@ const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): vo
     }
   }
   if (node.kind === "scroll-area") target.setOverflow(Overflow.Hidden);
-  if (node.kind === "text" || node.kind === "markdown-link") {
+  if (node.kind === "markdown-inline") {
+    target.setMeasureFunc((width, widthMode) => {
+      const limit = widthMode === MeasureMode.Undefined ? Number.POSITIVE_INFINITY : width;
+      const measured = layoutMarkdownInlineFlow(node.markdownInlineRuns ?? [], limit);
+      return { width: widthMode === MeasureMode.Undefined ? measured.width : Math.min(width, measured.width),
+        height: measured.height };
+    });
+  } else if (node.kind === "text" || node.kind === "markdown-link") {
     const singleLine = isSingleLineControlText(tree, node);
     target.setMeasureFunc((width, widthMode) => measureText(node.text ?? "", width, widthMode, singleLine));
   }
@@ -316,6 +324,7 @@ const sameLayoutInput = (before: WidgetNode, after: WidgetNode, oldTree: WidgetT
   && before.badgeTone === after.badgeTone
   && before.level === after.level
   && before.text === after.text
+  && sameWidgetValue(before.markdownInlineRuns, after.markdownInlineRuns)
   && before.children.length === after.children.length
   && sameWidgetValue(before.style, after.style)
   && sameWidgetValue(before.overlayPosition, after.overlayPosition)
@@ -391,7 +400,8 @@ export class YogaLayoutEngine implements LayoutEngine {
       const before = oldTree?.nodes.get(id);
       if (!before || !sameLayoutInput(before, widget, oldTree!, tree)) {
         configureNode(widget, node, tree);
-        if (before?.text !== widget.text && (widget.kind === "text" || widget.kind === "markdown-link")) node.markDirty();
+        if ((before?.text !== widget.text || !sameWidgetValue(before?.markdownInlineRuns, widget.markdownInlineRuns))
+          && (widget.kind === "text" || widget.kind === "markdown-link" || widget.kind === "markdown-inline")) node.markDirty();
       }
       if ((widget.kind === "select" || widget.kind === "combobox") && widget.style.width === undefined) {
         const naturalWidth = dropdownNaturalWidth(tree, widget);

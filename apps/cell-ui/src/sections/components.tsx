@@ -39,6 +39,7 @@ import {
   TextArea,
   TextInput,
   type ButtonVariant,
+  type CellUiPresentation,
   type CellBorderShape,
   type CellFrame,
   type ProgressVariant,
@@ -82,6 +83,17 @@ const buttonContentItems = [
   { id: "icon-only", label: "icon-only", text: buttonSaveIcon },
   { id: "icon-text", label: "icon + text", text: `${buttonSaveIcon} Save` },
 ] as const;
+const buttonIconSourceItems = [
+  { id: "unicode", label: "Unicode" },
+  { id: "svg", label: "SVG" },
+] as const;
+const buttonSvgIcons = {
+  "component-button-save-icon": <svg width={16} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+    <path d="M17 21v-8H7v8M7 3v5h8" />
+  </svg>,
+};
 const tableVariantItems = (["plain", "outline", "surface"] as const).map((value) => ({ id: value, label: value }));
 const progressVariantItems = (["solid", "outline"] as const).map((value) => ({ id: value, label: value }));
 const spinnerVariantItems = (["wheel", "dots"] as const).map((value) => ({ id: value, label: value }));
@@ -462,16 +474,26 @@ export const BoxComponentDemo = () => {
 export const ButtonComponentDemo = () => {
   const [disabled, setDisabled] = useState(false);
   const [danger, setDanger] = useState(false);
+  const [presentation, setPresentation] = useState<CellUiPresentation>("rich");
   const variant = useCellSelectState("component-button-variant", buttonVariantItems, {
     defaultSelectedId: "solid",
   });
   const content = useCellSelectState("component-button-content", buttonContentItems, {
     defaultSelectedId: "text",
   });
+  const iconSource = useCellSelectState("component-button-icon-source", buttonIconSourceItems, {
+    defaultSelectedId: "unicode",
+  });
+  const hasIcon = content.selectedId !== "text";
+  const showSvg = presentation === "rich" && iconSource.selectedId === "svg"
+    && hasIcon;
   const previewText = buttonContentItems.find((item) => item.id === content.selectedId)?.text ?? "Save";
-  const focus = usePlaygroundFocus("component-button-save", [variant, content]);
+  const focus = usePlaygroundFocus("component-button-save", [variant, content, iconSource]);
   const dispatch = (command: WidgetCommand) => {
     focus.dispatch(command);
+    if (command.type === "activate" && command.targetId === "text" && iconSource.open) {
+      iconSource.dispatch({ type: "dismiss", targetId: iconSource.contentId });
+    }
     if (command.type === "activate" && command.targetId === "component-button-disabled") {
       setDisabled((current) => !current);
     }
@@ -486,6 +508,9 @@ export const ButtonComponentDemo = () => {
     onCommand={dispatch}
     label="Button component"
     probeId="component-button"
+    presentation={presentation}
+    onPresentationChange={setPresentation}
+    svgIcons={showSvg ? buttonSvgIcons : undefined}
     previewMinColumns={10}
     controlsColumns={25}
     preview={
@@ -496,11 +521,15 @@ export const ButtonComponentDemo = () => {
         tone={danger ? "danger" : undefined}
         disabled={disabled}
         focused={focus.focusedId === "component-button-save"}
-      ><Text>{previewText}</Text></Button>
+      >{showSvg ? <>
+        <Box id="component-button-save-icon" style={{ width: 2, height: 1 }} />
+        {content.selectedId === "icon-text" ? <Text> Save</Text> : null}
+      </> : <Text>{previewText}</Text>}</Button>
     }
     controls={[
       renderRichOnlySelectControl("variant", variant, focus.focusedId),
       renderPlaygroundSelectControl("content", content, focus.focusedId),
+      ...(hasIcon ? [renderRichOnlySelectControl("icon source", iconSource, focus.focusedId)] : []),
       renderPlaygroundCheckboxControl("danger", "component-button-danger", danger, focus.focusedId),
       renderPlaygroundCheckboxControl(
         "disabled",

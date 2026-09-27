@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { canvasFor, cellPoint, copyCellRange, readCellProbe } from "./helpers/cell-probe";
+import { canvasFor, cellPoint, copyCellRange, ownerBounds, readCellProbe } from "./helpers/cell-probe";
 import { fusionMonoFontRequest, fusionMonoStylesheetRequest } from "./helpers/fusion-mono";
 import { galleryFontSelect, selectGalleryFont } from "./helpers/gallery-font-select";
 import { xiaolaiStylesheetRequest } from "./helpers/xiaolai";
@@ -199,8 +199,9 @@ test("brand link stays neutral in both themes", async ({ page }) => {
   const brandColor = async () => (await readCellProbe(header)).cells
     .find((cell) => cell.ownerId === "gallery-header-brand")?.style.color;
   await expect.poll(brandColor).toBe("rgb(0, 0, 0)");
-  const icon = (await readCellProbe(header)).cells.find((cell) => cell.text === "")!;
-  const point = await cellPoint(header, icon.x, icon.y);
+  await expect(header.locator('[data-cell-svg-icon="gallery-header-theme-icon"] svg')).toHaveAttribute("viewBox", "0 0 24 24");
+  const theme = ownerBounds(await readCellProbe(header), "gallery-header-theme");
+  const point = await cellPoint(header, theme.x + 1, theme.y);
   await page.mouse.click(point.x, point.y);
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
   await expect.poll(brandColor).toBe("rgb(255, 255, 255)");
@@ -216,14 +217,19 @@ test("theme icon toggles, persists, and preserves Cell state", async ({ page }) 
   await expect(page.getByRole("button", { name: "Dark" })).toBeAttached();
   const header = page.locator('[data-cell-probe="gallery-header"]');
   const lightHeader = await readCellProbe(header);
-  expect(lightHeader.text).toContain("");
-  const themeCell = lightHeader.cells.find((cell) => cell.text === "");
-  expect(themeCell).toBeDefined();
-  const point = await cellPoint(header, themeCell!.x, themeCell!.y);
+  expect(lightHeader.text).not.toContain("");
+  const themeIcon = header.locator('[data-cell-svg-icon="gallery-header-theme-icon"] svg');
+  await expect(themeIcon).toBeVisible();
+  await expect(themeIcon).toHaveAttribute("shape-rendering", "crispEdges");
+  const moonPath = await themeIcon.locator("path").getAttribute("d");
+  const themeCell = ownerBounds(lightHeader, "gallery-header-theme");
+  const point = await cellPoint(header, themeCell.x + 1, themeCell.y);
   await page.mouse.click(point.x, point.y);
   await expect(page.locator(".gallery-page")).toHaveAttribute("data-gallery-theme", "dark");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
-  expect((await readCellProbe(header)).text).toContain("");
+  expect((await readCellProbe(header)).text).not.toContain("");
+  await expect(themeIcon).toBeVisible();
+  expect(await themeIcon.locator("path").getAttribute("d")).not.toBe(moonPath);
   const after = await readCellProbe(editor);
   expect(after.text).toBe(before.text);
   expect(after.revision).toBeGreaterThan(before.revision);

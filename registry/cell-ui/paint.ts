@@ -29,6 +29,7 @@ import { fitTooltipText } from "./tooltip.js";
 import { TAB_UNDERLINE_GLYPH } from "./tabs.js";
 import { alertGlyph } from "./alert.js";
 import { fitSingleLineText, isSingleLineControlText, singleLineText } from "./single-line-text.js";
+import { layoutMarkdownInlineFlow } from "./markdown-inline-flow.js";
 import { resolveScrollbarAppearance } from "./scrollbar-appearance.js";
 
 const nonEmpty = (rect: CellRect) => rect.width > 0 && rect.height > 0;
@@ -224,6 +225,7 @@ export const paintScene = (
     const node = tree.nodes.get(id);
     const entry = scene.entries.get(id);
     if (!node || !entry) continue;
+    if (node.kind === "markdown-link" && node.markdownLayoutOnly) continue;
     if (options.layer === "base" && entry.layer !== 0) continue;
     if (options.layer === "overlay" && entry.layer === 0) continue;
     const visual = resolveWidgetVisual(tree, node, theme);
@@ -350,6 +352,21 @@ export const paintScene = (
         paintText(buffer, centered, id, style,
           { x: left + offset, y: entry.contentBounds.y, width: Math.max(0, width - offset), height: 1 },
           contentClip, "source");
+      }
+      if (node.kind === "markdown-inline" && node.markdownInlineRuns) {
+        const parent = node.parentId ? tree.nodes.get(node.parentId) : undefined;
+        const links = parent?.children.map((childId) => tree.nodes.get(childId))
+          .filter((child): child is WidgetNode => child?.kind === "markdown-link" && child.markdownLayoutOnly) ?? [];
+        const flow = layoutMarkdownInlineFlow(node.markdownInlineRuns, entry.contentBounds.width);
+        for (const glyph of flow.glyphs) {
+          const run = node.markdownInlineRuns[glyph.runIndex]!;
+          const owner = glyph.linkIndex === undefined ? node : links[glyph.linkIndex] ?? node;
+          const visualNode: WidgetNode = { ...owner, markdownTone: run.tone ?? null,
+            markdownCode: run.code === true, textStyle: run.style };
+          buffer.writeGrapheme(entry.contentBounds.x + glyph.x, entry.contentBounds.y + glyph.y,
+            glyph.text, owner.id, resolveWidgetVisual(tree, visualNode, theme).style,
+            contentClip, "over", glyph.text);
+        }
       }
       if (node.kind === "text" || node.kind === "markdown-link" || node.kind === "table-head" || node.kind === "table-cell") {
         const singleLine = isSingleLineControlText(tree, node);

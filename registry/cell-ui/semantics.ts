@@ -37,7 +37,8 @@ const descendantText = (tree: WidgetTree, node: WidgetNode): string => {
   if (node.markdownCenteredText !== null) return node.markdownCenteredText;
   const content = node.children
     .map((id) => tree.nodes.get(id))
-    .filter((child): child is WidgetNode => child !== undefined)
+    .filter((child): child is WidgetNode => child !== undefined
+      && !(child.kind === "markdown-link" && child.markdownLayoutOnly))
     .map((child) => descendantText(tree, child))
     .join(node.kind === "markdown-block" && node.markdownRole !== "list" && node.markdownRole !== "listitem" ? "" : " ");
   return content.replace(/\s+/gu, " ").trim();

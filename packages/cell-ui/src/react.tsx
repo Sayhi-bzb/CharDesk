@@ -40,6 +40,7 @@ import { resolveProgressVariant, type ProgressVariant } from "./progress.js";
 import { resolveSpinnerVariant, type SpinnerVariant } from "./spinner.js";
 import { tooltipText, tooltipTextWidth } from "./tooltip.js";
 import { parseCellMarkdownCodeBlocks, safeMarkdownHref, type MarkdownCodeBlock } from "./markdown.js";
+import type { MarkdownInlineRun } from "./markdown-inline-flow.js";
 import { highlightMarkdownCode, type MarkdownCodeRole } from "./markdown-code.js";
 import { resolveTabsVariant, type TabsVariant } from "./tabs.js";
 import { fitTableCell, resolveTableVariant, tableWidth, type TableColumn, type TableVariant } from "./table.js";
@@ -162,7 +163,10 @@ type MarkdownLinkProps = Readonly<{
   markdownCode?: boolean;
   markdownTone?: MarkdownTone;
   markdownSource?: boolean;
+  markdownLayoutOnly?: boolean;
+  style?: CellLayoutStyle;
 }>;
+type MarkdownInlineProps = Readonly<{ runs: readonly MarkdownInlineRun[]; style?: CellLayoutStyle }>;
 export type LinkProps = Readonly<{
   id?: string;
   children: string;
@@ -468,6 +472,7 @@ export const Text = primitive<TextProps>("text");
 export const Markdown = (() => null) as ComponentType<MarkdownProps>;
 Markdown.displayName = "CellMarkdown";
 const MarkdownBlock = primitive<MarkdownBlockProps>("markdown-block");
+const MarkdownInline = primitive<MarkdownInlineProps>("markdown-inline");
 const MarkdownLink = primitive<MarkdownLinkProps>("markdown-link");
 export const Link = primitive<LinkProps>("markdown-link");
 export const Button = primitive<ButtonProps>("button");
@@ -543,6 +548,7 @@ export type WidgetDescriptor = Readonly<{
   markdownSource: boolean;
   markdownLayoutOnly: boolean;
   markdownCenteredText: string | null;
+  markdownInlineRuns: readonly MarkdownInlineRun[] | null;
   /** Built-in trailing content guard that a ScrollArea rail may occupy. */
   sharedScrollGuard: boolean;
   textStyle: CellTextStyle;
@@ -656,6 +662,51 @@ const markdownInlineNodes = (
       textStyle={{ bold: style.bold, italic: style.italic, strike: style.strike }}>{piece}</Text>);
 });
 
+const markdownFlowNodes = (
+  tokens: readonly Token[],
+  initialStyle: MarkdownInlineStyle = {},
+  marker = "",
+): ReactNode[] => {
+  const runs: MarkdownInlineRun[] = marker
+    ? [{ text: marker, style: {}, tone: "accent" }] : [];
+  const links: ReactNode[] = [];
+  const append = (text: string, style: MarkdownInlineStyle, linkIndex?: number) => {
+    if (!text) return;
+    runs.push({ text, style: { bold: style.bold, italic: style.italic, strike: style.strike,
+      ...(linkIndex === undefined ? {} : { underline: true }) },
+      ...(style.tone ? { tone: style.tone } : {}),
+      ...(style.code ? { code: true } : {}),
+      ...(linkIndex === undefined ? {} : { linkIndex }) });
+  };
+  const visit = (items: readonly Token[], style: MarkdownInlineStyle) => {
+    for (const token of items) {
+      if (token.type === "strong" || token.type === "em" || token.type === "del") {
+        visit(token.tokens ?? [], { ...style,
+          ...(token.type === "strong" ? { bold: true } : token.type === "em" ? { italic: true } : { strike: true }) });
+        continue;
+      }
+      if (token.type === "link" || token.type === "image") {
+        const label = token.type === "image" ? "[Image: " + (token.text || "untitled") + "]" : token.text;
+        const href = safeMarkdownHref(token.href);
+        if (!href) { append(label, style); continue; }
+        const linkIndex = links.length;
+        links.push(<MarkdownLink key={`link-${linkIndex}`} href={href} markdownLayoutOnly
+          style={{ position: "absolute", width: 0, height: 0 }}
+          textStyle={{ bold: style.bold, italic: style.italic, strike: style.strike, underline: true }}
+          markdownTone="link">{label}</MarkdownLink>);
+        append(label, { ...style, tone: "link" }, linkIndex);
+        continue;
+      }
+      if (token.type === "codespan") { append(token.text, { ...style, code: true }); continue; }
+      if (token.type === "text" && token.tokens?.length) { visit(token.tokens, style); continue; }
+      append(token.type === "br" ? " " : token.type === "html" ? "[HTML omitted]"
+        : "text" in token && typeof token.text === "string" ? token.text.replace(/\n/gu, " ") : "", style);
+    }
+  };
+  visit(tokens, initialStyle);
+  return [<MarkdownInline key="inline" runs={runs} style={{ width: "100%", flexShrink: 0 }} />, ...links];
+};
+
 const markdownColumnWidths = (table: Tokens.Table): number[] =>
   table.header.map((_, index) => Math.max(1, ...[table.header, ...table.rows].map((row) =>
     getTextCellWidth(markdownInlineText(row[index]?.tokens ?? [])))));
@@ -704,13 +755,12 @@ const markdownBlocks = (
     if (token.type === "space" || token.type === "def") return [];
     if (token.type === "heading") return [<MarkdownBlock key={key} role="heading" level={token.depth}
       label={markdownInlineText(token.tokens ?? []).replace(/\s+/gu, " ").trim()}
-      style={{ direction: "row", wrap: true, width: "100%", flexShrink: 0 }}>
-      <Text markdownTone="accent">{"#".repeat(token.depth) + " "}</Text>
-      {markdownInlineNodes(token.tokens ?? [], { bold: true, tone: "accent" })}
+      style={{ width: "100%", flexShrink: 0 }}>
+      {markdownFlowNodes(token.tokens ?? [], { bold: true, tone: "accent" }, "#".repeat(token.depth) + " ")}
     </MarkdownBlock>];
     if (token.type === "paragraph" || token.type === "text") return [<MarkdownBlock key={key} role="paragraph"
-      style={{ direction: "row", wrap: true, width: "100%", flexShrink: 0 }}>
-      {markdownInlineNodes(token.tokens ?? marked.Lexer.lexInline(token.text, { gfm: true }), {})}
+      style={{ width: "100%", flexShrink: 0 }}>
+      {markdownFlowNodes(token.tokens ?? marked.Lexer.lexInline(token.text, { gfm: true }), {})}
     </MarkdownBlock>];
     if (token.type === "code") {
       const code = token as Tokens.Code;
@@ -1088,6 +1138,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
   } else if (kind === "tooltip") {
     if (childValues.length > 0) throw new TypeError("Tooltip does not accept children.");
     text = tooltipText(props.text as string);
+  } else if (kind === "markdown-inline") {
+    text = (props.runs as readonly MarkdownInlineRun[]).map((run) => run.text).join("");
   } else if (kind === "text" || kind === "markdown-link" || kind === "table-head" || kind === "table-cell") {
     if (childValues.some((child) => typeof child !== "string" && typeof child !== "number")) {
       throw new TypeError("Text children must be strings or numbers.");
@@ -1198,6 +1250,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     markdownLayoutOnly: props.markdownLayoutOnly === true,
     markdownCenteredText: kind === "markdown-block" && typeof props.markdownCenteredText === "string"
       ? props.markdownCenteredText : null,
+    markdownInlineRuns: kind === "markdown-inline" ? props.runs as readonly MarkdownInlineRun[] : null,
     sharedScrollGuard: kind === "scroll-area" && children.some(hasSharedScrollGuard),
     textStyle: { ...(element.type === DialogTitle || element.type === AlertTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
     label: alertLabel ?? (typeof props.label === "string" ? props.label
