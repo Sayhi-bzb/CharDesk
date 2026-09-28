@@ -17,7 +17,7 @@ export interface SessionCommands {
   createCanvasSession: (
     mode?: CanvasMode,
     options?: CreateCanvasSessionOptions
-  ) => void;
+  ) => CanvasSessionDescriptor;
   openSourceSession: (
     sourceBinding: CanvasSourceBinding,
     options?: { name?: string; initialMode?: "freeform" | "slide" }

@@ -31,6 +31,8 @@ function ViewHarness({ viewId }: { viewId: CanvasViewId }) {
       </output>
       <output data-testid={`${viewId}-active`}>{String(view.isActive)}</output>
       <output data-testid={`${viewId}-session`}>{view.sessionId}</output>
+      <output data-testid={`${viewId}-load-state`}>{view.loadState}</output>
+      <output data-testid={`${viewId}-selected-session`}>{view.selectedSessionId}</output>
       <button type="button" onClick={view.activate}>{`activate-${viewId}`}</button>
       <button type="button" onClick={() => view.selectSession('canvas-a')}>
         {`select-${viewId}-a`}
@@ -77,6 +79,7 @@ describe('CanvasWorkspace', () => {
   const initialState = useEditorStore.getState();
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
     cleanup();
     localStorage.clear();
@@ -105,6 +108,31 @@ describe('CanvasWorkspace', () => {
       ],
     });
   };
+
+  it('keeps a failed session selected so the view can retry loading it', async () => {
+    setTwoSessions();
+    const switchToSession = testingCanvasRuntime.commands.sessions.switch;
+    const switchSession = vi.spyOn(testingCanvasRuntime.commands.sessions, 'switch')
+      .mockResolvedValueOnce(false)
+      .mockImplementationOnce(switchToSession);
+    render(<CanvasWorkspaceProvider><WorkspaceHarness /></CanvasWorkspaceProvider>);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'select-primary-b' }));
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('primary-load-state')).toHaveTextContent('error');
+    expect(screen.getByTestId('primary-selected-session')).toHaveTextContent('canvas-b');
+    expect(screen.getByTestId('primary-session')).toHaveTextContent('canvas-a');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'select-primary-b' }));
+      await Promise.resolve();
+    });
+    expect(switchSession).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('primary-load-state')).toHaveTextContent('idle');
+    expect(screen.getByTestId('primary-session')).toHaveTextContent('canvas-b');
+  });
 
   it('keeps pane cameras independent and mirrors only the active pane to the session', () => {
     setCanvasTestState({ offset: { x: 10, y: 15 }, zoom: 1 });

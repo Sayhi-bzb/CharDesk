@@ -751,31 +751,106 @@ test.describe('Canvas', () => {
 
   test('should create new session', async ({ page }) => {
     await page.getByRole('button', { name: 'Select canvas' }).click();
-    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByRole('button', { name: 'New' }).click();
     await page.getByRole('menuitem', { name: 'New Freeform' }).click();
+    const nameInput = page.getByRole('textbox', { name: 'Canvas name' });
+    await expect(nameInput).toBeFocused();
+    await page.waitForTimeout(1000);
+    await expect(nameInput).toBeFocused();
+    await nameInput.fill('Sketch');
+    await nameInput.press('Enter');
+    await expect(page.getByRole('button', { name: 'Select canvas' })).toContainText('Sketch');
 
     await expect.poll(async () => {
-      const state = await readPersistedState(page);
-      return state?.canvasSessions?.length ?? 0;
+      const state = await readLiveCanvasState(page);
+      return state.sessions.length;
     }).toBeGreaterThan(1);
   });
 
-  test('restores a newly created session after an immediate reload', async ({ page }) => {
-    const before = await readLiveCanvasState(page);
+  test('keeps manual session rename focused after its action menu closes', async ({ page }) => {
     await page.getByRole('button', { name: 'Select canvas' }).click();
-    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByRole('button', { name: 'Manage Welcome' }).click();
+    await page.getByRole('menuitem', { name: 'Rename' }).click();
+    const nameInput = page.getByRole('textbox', { name: 'Canvas name' });
+    await expect(nameInput).toBeFocused();
+    await page.waitForTimeout(1000);
+    await expect(nameInput).toBeFocused();
+    await nameInput.fill('Start');
+    await nameInput.press('Enter');
+    await expect(page.getByRole('button', { name: 'Select canvas' })).toContainText('Start');
+  });
+
+  test('focuses the name after a custom Slides dialog closes', async ({ page }) => {
+    await page.getByRole('button', { name: 'Select canvas' }).click();
+    await page.getByRole('button', { name: 'New' }).click();
+    await page.getByRole('menuitem', { name: 'New Slides' }).hover();
+    await page.getByRole('menuitem', { name: 'Custom size…' }).click();
+    await page.getByRole('button', { name: 'Create slides' }).click();
+    const nameInput = page.getByRole('textbox', { name: 'Canvas name' });
+    await expect(nameInput).toBeFocused();
+    await page.waitForTimeout(1000);
+    await expect(nameInput).toBeFocused();
+  });
+
+  test('keeps preset Slides naming focused after its submenu closes', async ({ page }) => {
+    await page.getByRole('button', { name: 'Select canvas' }).click();
+    await page.getByRole('button', { name: 'New' }).click();
+    await page.getByRole('menuitem', { name: 'New Slides' }).hover();
+    await page.getByRole('menuitem', { name: /Widescreen/ }).click();
+    const nameInput = page.getByRole('textbox', { name: 'Canvas name' });
+    await expect(nameInput).toBeFocused();
+    await page.waitForTimeout(1000);
+    await expect(nameInput).toBeFocused();
+  });
+
+  test('allows keyboard creation and commits the name on click-away', async ({ page }) => {
+    await page.getByRole('button', { name: 'Select canvas' }).click();
+    await page.getByRole('button', { name: 'New' }).click();
+    await page.getByRole('menuitem', { name: 'New Freeform' }).press('Enter');
+    const nameInput = page.getByRole('textbox', { name: 'Canvas name' });
+    await expect(nameInput).toBeFocused();
+    await page.waitForTimeout(1000);
+    await expect(nameInput).toBeFocused();
+    await nameInput.fill('Keyboard Canvas');
+    await page.mouse.click(900, 500);
+    await expect(page.getByRole('button', { name: 'Select canvas' })).toContainText('Keyboard Canvas');
+    await expect(page.getByRole('dialog', { name: 'Select canvas' })).toBeHidden();
+  });
+
+  test('names a new Canvas in the owning split pane', async ({ page }) => {
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    await page.getByRole('menuitem', { name: 'Split', exact: true }).click();
+    const primarySelector = page.getByTestId('canvas-session-selector-primary')
+      .getByRole('button', { name: 'Select canvas' });
+    const secondarySelector = page.getByTestId('canvas-view-secondary')
+      .getByRole('button', { name: 'Select canvas' });
+    await secondarySelector.click();
+    await page.getByRole('button', { name: 'New' }).click();
     await page.getByRole('menuitem', { name: 'New Freeform' }).click();
-    const created = await readLiveCanvasState(page);
-    expect(created.sessions).toHaveLength(before.sessions.length + 1);
-    expect(created.activeCanvasId).not.toBe(before.activeCanvasId);
+    const nameInput = page.getByRole('textbox', { name: 'Canvas name' });
+    await expect(nameInput).toBeFocused();
+    await page.waitForTimeout(1000);
+    await expect(nameInput).toBeFocused();
+    await nameInput.fill('Second Pane');
+    await nameInput.press('Enter');
+    await expect(secondarySelector).toContainText('Second Pane');
+    await expect(primarySelector).toContainText('Welcome');
+  });
+
+  test('restores a newly created session after an immediate reload', async ({ page }) => {
+    await page.getByRole('button', { name: 'Select canvas' }).click();
+    await page.getByRole('button', { name: 'New' }).click();
+    await page.getByRole('menuitem', { name: 'New Freeform' }).click();
+    const nameInput = page.getByRole('textbox', { name: 'Canvas name' });
+    await expect(nameInput).toBeFocused();
+    const createdName = await nameInput.inputValue();
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
-    const restored = await readLiveCanvasState(page);
-    expect(restored.activeCanvasId).toBe(created.activeCanvasId);
-    expect(restored.sessions).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: created.activeCanvasId }),
-    ]));
+    await expect(page.getByRole('button', { name: 'Select canvas' })).toContainText(createdName);
+    await page.getByRole('button', { name: 'Select canvas' }).click();
+    await expect(page.getByRole('button', { name: 'Welcome', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: createdName, exact: true })).toBeVisible();
   });
 
   test('binds different canvas sessions to split panes and restores them after reopening', async ({
@@ -854,8 +929,9 @@ test.describe('Canvas', () => {
     await expect(primarySelectorTrigger).not.toHaveAttribute('data-pane-active');
     await expect(secondarySelectorTrigger).toHaveAttribute('data-pane-active', 'true');
     await expect(secondarySelectorTrigger).toHaveAttribute('aria-current', 'true');
-    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByRole('button', { name: 'New' }).click();
     await page.getByRole('menuitem', { name: 'New Freeform' }).click();
+    await page.getByRole('textbox', { name: 'Canvas name' }).press('Enter');
     await expect(page.getByRole('dialog', { name: 'Select canvas' })).toBeHidden();
 
     await expect(secondary).not.toHaveAttribute('data-session-id', primarySessionId ?? '');

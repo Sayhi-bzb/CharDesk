@@ -60,6 +60,15 @@ describe("Canvas session lifecycle", () => {
     expect("setState" in runtime.store).toBe(false);
   });
 
+  it("returns the created session as the identity for follow-up UI work", () => {
+    const runtime = createRuntime(new Map());
+    const created = runtime.commands.sessions.create("freeform");
+
+    expect(created).toMatchObject({ id: expect.any(String), mode: "freeform" });
+    expect(runtime.getState().activeCanvasId).toBe(created.id);
+    expect(runtime.getState().canvasSessions).toContainEqual(expect.objectContaining(created));
+  });
+
   it("imports a stale result without replacing the user's later navigation", async () => {
     const parse = deferred<CanvasImportSnapshot>();
     const runtime = createRuntime(new Map([["slow", parse.promise]]));

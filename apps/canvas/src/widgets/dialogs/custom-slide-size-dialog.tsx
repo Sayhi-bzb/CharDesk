@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type RefObject } from "react";
+import { useState, type ComponentProps, type RefObject } from "react";
 import {
   isValidSlideDimension,
   isValidSlideSize,
@@ -37,6 +37,7 @@ type CustomSlideSizeDialogProps = {
   onOpenChange: (open: boolean) => void;
   onConfirm: (size: SlideSize) => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
+  onCloseAutoFocus?: ComponentProps<typeof DialogContent>["onCloseAutoFocus"];
   mode?: "create" | "resize";
   initialSize?: SlideSize;
 };
@@ -46,6 +47,7 @@ export function CustomSlideSizeDialog({
   onOpenChange,
   onConfirm,
   returnFocusRef,
+  onCloseAutoFocus,
   mode = "create",
   initialSize,
 }: CustomSlideSizeDialogProps) {
@@ -71,6 +73,8 @@ export function CustomSlideSizeDialog({
       <DialogContent
         className="sm:max-w-[360px]"
         onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          if (event.defaultPrevented) return;
           event.preventDefault();
           returnFocusRef.current?.focus();
         }}

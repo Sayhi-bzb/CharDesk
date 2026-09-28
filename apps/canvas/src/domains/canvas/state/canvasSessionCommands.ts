@@ -196,6 +196,7 @@ export const createCanvasSessionCommands = (
       );
       viewportRuntime.resetFallback(normalizeCanvasViewport(newSession.viewport));
       residency?.touch(newSession.id);
+      return newSession;
     }),
     openSourceSession: (sourceBinding, options) => commits.run(() => {
       activation.begin();

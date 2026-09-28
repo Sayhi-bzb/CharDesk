@@ -12,6 +12,7 @@ import {
   useSidebar,
   TooltipProvider,
   Toaster,
+  Button,
   Surface,
   StatusText,
   type StatusTone,
@@ -256,21 +257,45 @@ function CanvasPaneContent({
         onContainerSizeChange={view.setContainerSize}
       />
       {view.loadState === 'loading' ? (
-        <div
-          data-testid={`canvas-view-loading-${view.viewId}`}
-          className="pointer-events-auto absolute inset-0 z-(--layer-canvas-interaction) cursor-progress bg-transparent"
-        />
+        <>
+          <div
+            data-testid={`canvas-view-loading-${view.viewId}`}
+            className="pointer-events-auto absolute inset-0 z-(--layer-canvas-interaction) cursor-progress bg-transparent"
+          />
+          <Surface
+            kind="overlay"
+            data-canvas-ui="true"
+            role="status"
+            aria-live="polite"
+            className="pointer-events-none absolute left-1/2 top-(--editor-safe-top) z-(--layer-contextual) -translate-x-1/2 px-2 py-1"
+          >
+            <StatusText tone="neutral" className="whitespace-nowrap text-xs">
+              {t('canvasView.loading')}
+            </StatusText>
+          </Surface>
+        </>
       ) : null}
-      {view.loadState === 'error' && view.loadError ? (
+      {view.loadState === 'error' ? (
         <Surface
           kind="overlay"
           data-canvas-ui="true"
-          role="status"
-          className="pointer-events-none absolute left-1/2 top-(--editor-safe-top) z-(--layer-contextual) -translate-x-1/2 px-2 py-1"
+          role="alert"
+          className="pointer-events-auto absolute left-1/2 top-(--editor-safe-top) z-(--layer-contextual) flex -translate-x-1/2 items-center gap-2 px-2 py-1"
         >
           <StatusText tone="error" className="whitespace-nowrap text-xs">
-            {view.loadError}
+            {t('canvasView.loadFailed')}
           </StatusText>
+          <Button
+            type="button"
+            tone="subtle"
+            size="sm"
+            disabled={!view.selectedSessionId}
+            onClick={() => {
+              if (view.selectedSessionId) view.selectSession(view.selectedSessionId);
+            }}
+          >
+            {t('canvasView.retry')}
+          </Button>
         </Surface>
       ) : null}
       {split && view.viewId === 'secondary' ? (

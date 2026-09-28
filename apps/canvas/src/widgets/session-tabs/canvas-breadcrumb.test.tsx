@@ -6,9 +6,11 @@ import {
 } from "@/widgets/session-tabs/CanvasBreadcrumb";
 import {
   defaultCanvasDocuments,
+  testingCanvasRuntime,
   useEditorStore,
 } from "@/domains/canvas/testing";
 import { setUiLanguage } from "@/shared/i18n";
+import { OnboardingTourContext } from "@/widgets/onboarding/onboarding-context";
 
 describe("CanvasBreadcrumb", () => {
   const initialState = useEditorStore.getState();
@@ -32,6 +34,7 @@ describe("CanvasBreadcrumb", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     setUiLanguage("en");
     useEditorStore.setState(initialState, true);
   });
@@ -202,6 +205,60 @@ describe("CanvasBreadcrumb", () => {
     );
   });
 
+  it("names a newly created Freeform Canvas inline before returning to the selector", async () => {
+    setTwoSessions();
+    render(<CanvasBreadcrumb />);
+
+    openPanel();
+    await openDropdown("New");
+    fireEvent.click(screen.getByRole("menuitem", { name: "New Freeform" }));
+
+    const nameInput = await screen.findByRole("textbox", { name: "Canvas name" });
+    expect(nameInput).toHaveFocus();
+    expect(nameInput).toHaveValue("Canvas 1");
+    expect(screen.getByRole("dialog", { name: "Select canvas" })).toBeInTheDocument();
+    fireEvent.change(nameInput, { target: { value: "Sketch" } });
+    fireEvent.keyDown(nameInput, { key: "Enter" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Select canvas" })).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Select canvas" })).toHaveTextContent("Sketch");
+    expect(useEditorStore.getState().canvasSessions.find(
+      (session) => session.id === useEditorStore.getState().activeCanvasId
+    )?.name).toBe("Sketch");
+  });
+
+  it("keeps the default name when creation-time rename is cancelled", async () => {
+    setTwoSessions();
+    render(<CanvasBreadcrumb />);
+    openPanel();
+    await openDropdown("New");
+    fireEvent.click(screen.getByRole("menuitem", { name: "New Freeform" }));
+    const nameInput = await screen.findByRole("textbox", { name: "Canvas name" });
+    fireEvent.keyDown(nameInput, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Select canvas" })).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Select canvas" })).toHaveTextContent("Canvas 1");
+  });
+
+  it("lets onboarding advance after creation without opening rename", async () => {
+    setTwoSessions();
+    render(
+      <OnboardingTourContext.Provider value={{
+        phase: "canvas-create",
+        canStart: false,
+        requestStart: () => undefined,
+      }}>
+        <CanvasBreadcrumb />
+      </OnboardingTourContext.Provider>
+    );
+
+    openPanel();
+    fireEvent.click(await screen.findByRole("menuitem", { name: "New Freeform" }));
+
+    expect(screen.queryByRole("textbox", { name: "Canvas name" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Select canvas" })).not.toBeInTheDocument();
+    expect(useEditorStore.getState().canvasSessions).toHaveLength(3);
+  });
+
   it("activates the owning pane before opening an import picker", async () => {
     const onActivate = vi.fn();
     const { container } = render(
@@ -221,6 +278,27 @@ describe("CanvasBreadcrumb", () => {
     expect(onActivate).toHaveBeenCalledTimes(2);
     expect(clickPicker).toHaveBeenCalledOnce();
     expect(screen.queryByRole("dialog", { name: "Select canvas" })).not.toBeInTheDocument();
+  });
+
+  it("shows import progress at the session selector after its menu closes", async () => {
+    setTwoSessions();
+    let finishImport!: (session: { id: string; name: string; mode: "freeform" }) => void;
+    vi.spyOn(testingCanvasRuntime.commands.sessions, "import")
+      .mockImplementation(() => new Promise((resolve) => { finishImport = resolve; }));
+    const { container } = render(<CanvasBreadcrumb />);
+    const fileInput = container.querySelector('input[type="file"]')!;
+    const trigger = screen.getByRole("button", { name: "Select canvas" });
+
+    fireEvent.change(fileInput, {
+      target: { files: [{ name: "slow.chardesk", text: async () => "content" }] },
+    });
+    await waitFor(() => expect(trigger).toHaveTextContent("Importing..."));
+    expect(trigger).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Importing...");
+
+    await act(async () => { finishImport({ id: "imported", name: "slow", mode: "freeform" }); });
+    expect(trigger).toHaveTextContent("Alpha");
+    expect(trigger).toHaveAttribute("aria-busy", "false");
   });
 
   it("uses the slide icon and creates a slide deck with a custom size", async () => {
@@ -257,7 +335,10 @@ describe("CanvasBreadcrumb", () => {
       expect(useEditorStore.getState().slideDeck?.slides[0].size).toEqual({ columns: 120, rows: 32 })
     );
     expect(useEditorStore.getState().canvasMode).toBe("slide");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const nameInput = await screen.findByRole("textbox", { name: "Canvas name" });
+    expect(nameInput).toHaveFocus();
+    fireEvent.keyDown(nameInput, { key: "Enter" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(selector).toHaveFocus();
   });
 
@@ -331,13 +412,37 @@ describe("CanvasBreadcrumb", () => {
     ).toBe("Delta");
 
     await openDropdown("Manage Delta");
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Close" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Delete canvas" }));
     expect(await screen.findByRole("heading", { name: "Delete canvas?" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(
       useEditorStore.getState().canvasSessions.some((session) => session.id === "canvas-b")
     ).toBe(false);
+  });
+
+  it("keeps the delete confirmation open until the command succeeds and exposes failure", async () => {
+    setTwoSessions();
+    let resolveDelete!: (deleted: boolean) => void;
+    const remove = vi.spyOn(testingCanvasRuntime.commands.sessions, "remove")
+      .mockImplementation(() => new Promise<boolean>((resolve) => { resolveDelete = resolve; }));
+    render(<CanvasBreadcrumb />);
+
+    openPanel();
+    await openDropdown("Manage Beta");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete canvas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(screen.getByRole("button", { name: "Deleting…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(screen.getByRole("heading", { name: "Delete canvas?" })).toBeInTheDocument();
+
+    await act(async () => { resolveDelete(false); });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not delete this canvas. Try again.");
+    expect(screen.getByRole("button", { name: "Delete" })).toBeEnabled();
+
+    remove.mockResolvedValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Delete canvas?" })).not.toBeInTheDocument());
   });
 
   it("treats a source-backed Canvas as a closeable view with snapshot and source exports", async () => {
@@ -393,7 +498,7 @@ describe("CanvasBreadcrumb", () => {
     expect(await screen.findByRole("button", { name: /^Beta$/ })).toBeInTheDocument();
     await openDropdown("管理 Beta");
     expect(await screen.findByRole("menuitem", { name: "重命名" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "关闭" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "删除画布" })).toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.keyDown(document, { key: "Escape" });

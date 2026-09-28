@@ -75,6 +75,13 @@ type ExportFeedbackTarget = {
   errorCode?: CanvasSessionExportErrorCode;
 };
 
+type RenameOrigin = 'create-menu' | 'actions-menu' | 'custom-slide-dialog';
+type RenameFlow = {
+  phase: 'handoff' | 'editing';
+  sessionId: string;
+  origin: RenameOrigin;
+};
+
 const createOptionMeta = [
   {
     kind: 'freeform' as const,
@@ -118,6 +125,9 @@ export function CanvasSessionSelector({
   const panelContentRef = useRef<HTMLDivElement>(null);
   const activeSessionButtonRef = useRef<HTMLButtonElement>(null);
   const suppressSelectorFocusRef = useRef(false);
+  const deletingRef = useRef(false);
+  // Radix close-autofocus may run before React commits the selection update.
+  const renameFlowRef = useRef<RenameFlow | null>(null);
   const selectorTooltipHandle = useMemo(() => TooltipCreateHandle<string>(), []);
   const sessionActionTooltipHandle = useMemo(() => TooltipCreateHandle<string>(), []);
   const { canvasSessions, activeCanvasId } = useCanvasState(
@@ -135,9 +145,11 @@ export function CanvasSessionSelector({
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [importMenuOpen, setImportMenuOpen] = useState(false);
   const [actionsOpenId, setActionsOpenId] = useState<string | null>(null);
-  const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
+  const [renameFlow, setRenameFlow] = useState<RenameFlow | null>(null);
   const [renamePanelWidth, setRenamePanelWidth] = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
   const [customSlideSizeOpen, setCustomSlideSizeOpen] = useState(false);
   const {
     directoryInputRef,
@@ -169,6 +181,7 @@ export function CanvasSessionSelector({
     ? HOST_ICONOLOGY.sourceKind.blackboard
     : HOST_ICONOLOGY.canvasMode[activeSession?.mode ?? 'freeform'];
   const canRemove = canvasSessions.length > 1;
+  const renameTargetId = renameFlow?.phase === 'editing' ? renameFlow.sessionId : null;
 
   if (!manageSessions) {
     return (
@@ -197,6 +210,36 @@ export function CanvasSessionSelector({
     closeSelector();
   };
 
+  const updateRenameFlow = (next: RenameFlow | null) => {
+    renameFlowRef.current = next;
+    setRenameFlow(next);
+  };
+
+  const requestRename = (sessionId: string, origin: RenameOrigin) => {
+    setRenamePanelWidth(panelContentRef.current?.getBoundingClientRect().width ?? null);
+    updateRenameFlow({ phase: 'handoff', sessionId, origin });
+    if (origin === 'create-menu') setCreateMenuOpen(false);
+    if (origin === 'actions-menu') setActionsOpenId(null);
+  };
+
+  const finishRename = () => {
+    const origin = renameFlowRef.current?.origin;
+    updateRenameFlow(null);
+    setRenamePanelWidth(null);
+    if (origin && origin !== 'actions-menu') closeSelector();
+  };
+
+  const completeRenameHandoff = (origin: RenameOrigin, event: Event) => {
+    const pending = renameFlowRef.current;
+    if (pending?.phase !== 'handoff' || pending.origin !== origin) return;
+    event.preventDefault();
+    updateRenameFlow({ ...pending, phase: 'editing' });
+    if (origin === 'custom-slide-dialog') {
+      suppressSelectorFocusRef.current = false;
+      setSelectorOpen(true);
+    }
+  };
+
   const createSession = async (kind: 'freeform' | 'blackboard') => {
     onActivate?.();
     if (kind === 'blackboard') {
@@ -210,21 +253,22 @@ export function CanvasSessionSelector({
         name: source.workspace.title,
       });
     } else {
-      createCanvasSession(kind);
+      const created = createCanvasSession(kind);
+      if (onboardingPhase === 'idle') requestRename(created.id, 'create-menu');
+      else closeSelector();
+      return;
     }
     closeSelector();
   };
 
   const createSlideSession = (size: SlideSize) => {
     onActivate?.();
-    createCanvasSession('slide', { slideSize: size });
-    closeSelector();
-  };
-
-  const openRename = (id: string) => {
-    setRenamePanelWidth(panelContentRef.current?.getBoundingClientRect().width ?? null);
-    setActionsOpenId(null);
-    setRenameTargetId(id);
+    const created = createCanvasSession('slide', { slideSize: size });
+    if (onboardingPhase !== 'idle') {
+      closeSelector();
+      return;
+    }
+    requestRename(created.id, customSlideSizeOpen ? 'custom-slide-dialog' : 'create-menu');
   };
 
   const exportBlackboard = async (workspaceId: string, name: string) => {
@@ -239,15 +283,30 @@ export function CanvasSessionSelector({
   };
 
   const commitRename = (name: string) => {
-    if (!renameTargetId) return;
-    renameCanvasSession(renameTargetId, name);
-    setRenameTargetId(null);
-    setRenamePanelWidth(null);
+    const editing = renameFlowRef.current;
+    if (editing?.phase !== 'editing') return;
+    renameCanvasSession(editing.sessionId, name);
+    finishRename();
   };
 
-  const cancelRename = () => {
-    setRenameTargetId(null);
-    setRenamePanelWidth(null);
+  const confirmDelete = async () => {
+    if (!pendingDeleteSession || deletingRef.current) return;
+    deletingRef.current = true;
+    setDeletePending(true);
+    setDeleteError(false);
+    try {
+      if (!await removeCanvasSession(pendingDeleteSession.id)) {
+        setDeleteError(true);
+        return;
+      }
+      setPendingDeleteId(null);
+      restoreSelectorFocus();
+    } catch {
+      setDeleteError(true);
+    } finally {
+      deletingRef.current = false;
+      setDeletePending(false);
+    }
   };
 
   const openModalFromSelector = (openModal: () => void) => {
@@ -294,6 +353,10 @@ export function CanvasSessionSelector({
           if (open) onActivate?.();
           setSelectorOpen(keepCreateMenuOpen ? true : open);
           if (!open) {
+            if (renameFlowRef.current?.phase === 'handoff' &&
+              renameFlowRef.current.origin !== 'custom-slide-dialog') {
+              updateRenameFlow(null);
+            }
             setCreateMenuOpen(false);
             setImportMenuOpen(false);
             setActionsOpenId(null);
@@ -305,7 +368,7 @@ export function CanvasSessionSelector({
         <PopoverTrigger asChild>
           <TooltipTrigger
             handle={selectorTooltipHandle}
-            payload={activeSession?.name ?? t('session.fallbackName')}
+            payload={isImporting ? t('import.importing') : activeSession?.name ?? t('session.fallbackName')}
             render={
               <Button
                 ref={selectorTriggerRef}
@@ -317,11 +380,14 @@ export function CanvasSessionSelector({
                 className={cn('max-w-[min(14rem,calc(100vw-5.5rem))] justify-start gap-1.5 px-2')}
                 aria-label={t('session.select')}
                 aria-current={paneActive ? 'true' : undefined}
+                aria-busy={isImporting}
               />
             }
           >
             <ActiveModeIcon />
-            <span className="truncate">{activeSession?.name ?? t('session.fallbackName')}</span>
+            <span className="truncate" role={isImporting ? 'status' : undefined}>
+              {isImporting ? t('import.importing') : activeSession?.name ?? t('session.fallbackName')}
+            </span>
             <SessionExpandIcon className="opacity-60" />
           </TooltipTrigger>
         </PopoverTrigger>
@@ -334,7 +400,9 @@ export function CanvasSessionSelector({
           aria-label={t('session.select')}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
-            activeSessionButtonRef.current?.focus();
+            if (renameFlowRef.current?.phase !== 'editing') {
+              activeSessionButtonRef.current?.focus();
+            }
           }}
           onCloseAutoFocus={(event) => {
             if (suppressSelectorFocusRef.current) event.preventDefault();
@@ -350,7 +418,7 @@ export function CanvasSessionSelector({
           onEscapeKeyDown={(event) => {
             if (!renameTargetId) return;
             event.preventDefault();
-            cancelRename();
+            finishRename();
           }}
         >
           <div className="flex flex-col gap-0.5">
@@ -378,7 +446,7 @@ export function CanvasSessionSelector({
                         <InlineRenameInput
                           value={session.name}
                           onCommit={commitRename}
-                          onCancel={cancelRename}
+                          onCancel={finishRename}
                           onPointerDown={(event) => event.stopPropagation()}
                           onClick={(event) => event.stopPropagation()}
                           className="flex-1 px-1.5"
@@ -433,10 +501,13 @@ export function CanvasSessionSelector({
                             align="start"
                             className="w-36"
                             aria-label={manageLabel}
+                            onCloseAutoFocus={(event) => {
+                              completeRenameHandoff('actions-menu', event);
+                            }}
                           >
                             <DropdownMenuGroup>
                               {!isSourceBackedCanvasSession(session) && (
-                                <DropdownMenuItem onSelect={() => openRename(session.id)}>
+                                <DropdownMenuItem onSelect={() => requestRename(session.id, 'actions-menu')}>
                                   <SessionRenameIcon />
                                   {t('session.rename')}
                                 </DropdownMenuItem>
@@ -538,12 +609,15 @@ export function CanvasSessionSelector({
                               <DropdownMenuItem
                                 variant="destructive"
                                 disabled={!canRemove}
-                                onSelect={() =>
-                                  openModalFromSelector(() => setPendingDeleteId(session.id))
-                                }
+                                onSelect={() => openModalFromSelector(() => {
+                                  setDeleteError(false);
+                                  setPendingDeleteId(session.id);
+                                })}
                               >
                                 <SessionCloseIcon />
-                                {t('session.closeAction')}
+                                {t(isSourceBackedCanvasSession(session)
+                                  ? 'session.closeAction'
+                                  : 'session.deleteAction')}
                               </DropdownMenuItem>
                             </DropdownMenuGroup>
                           </DropdownMenuContent>
@@ -582,6 +656,9 @@ export function CanvasSessionSelector({
               collisionPadding={12}
               className="w-[calc(50vw-1.5rem)] max-w-44"
               aria-label={t('session.new')}
+              onCloseAutoFocus={(event) => {
+                completeRenameHandoff('create-menu', event);
+              }}
             >
               <DropdownMenuGroup>
                 {createOptionMeta.map((option) => {
@@ -689,17 +766,21 @@ export function CanvasSessionSelector({
           onConfirm={(size) => {
             createSlideSession(size);
             setCustomSlideSizeOpen(false);
-            suppressSelectorFocusRef.current = false;
+            if (onboardingPhase !== 'idle') suppressSelectorFocusRef.current = false;
           }}
           returnFocusRef={selectorTriggerRef}
+          onCloseAutoFocus={(event) => {
+            completeRenameHandoff('custom-slide-dialog', event);
+          }}
         />
       ) : null}
 
       <AlertDialog
         open={!!pendingDeleteSession}
         onOpenChange={(open) => {
-          if (open) return;
+          if (open || deletingRef.current) return;
           setPendingDeleteId(null);
+          setDeleteError(false);
           restoreSelectorFocus();
         }}
       >
@@ -718,20 +799,23 @@ export function CanvasSessionSelector({
                 : t('session.delete.fallbackDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteError ? (
+            <StatusText tone="error" role="alert" className="text-xs">
+              {t(isSourceBackedCanvasSession(pendingDeleteSession)
+                ? 'session.closeSource.failed'
+                : 'session.delete.failed')}
+            </StatusText>
+          ) : null}
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('dialog.cancel')}</AlertDialogCancel>
+            <AlertDialogCancel disabled={deletePending}>{t('dialog.cancel')}</AlertDialogCancel>
             <AlertDialogAction
+              disabled={deletePending}
               tone={isSourceBackedCanvasSession(pendingDeleteSession) ? 'primary' : 'danger'}
-              onClick={() => {
-                if (!pendingDeleteSession) return;
-                void removeCanvasSession(pendingDeleteSession.id);
-                setPendingDeleteId(null);
-                restoreSelectorFocus();
-              }}
+              onClick={() => { void confirmDelete(); }}
             >
               {t(isSourceBackedCanvasSession(pendingDeleteSession)
-                ? 'session.closeSource.action'
-                : 'session.delete.action')}
+                ? deletePending ? 'session.closeSource.pending' : 'session.closeSource.action'
+                : deletePending ? 'session.delete.pending' : 'session.delete.action')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
