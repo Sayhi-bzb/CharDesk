@@ -36,6 +36,8 @@ const textRendering = createTextRenderingRuntime();
 initializeCanvasTesting({
   selectionCommands: createSelectionCommandFactory({
     renderClipboardText: textRendering.renderCompact,
+    getMarkdownAutoAnchorsEnabled: () =>
+      textRendering.getProfile().markdownAutoAnchorsEnabled,
   }),
   parseSessionSource: parseDocumentSessionSource,
 });

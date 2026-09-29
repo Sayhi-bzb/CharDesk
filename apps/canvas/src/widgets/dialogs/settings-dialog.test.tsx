@@ -185,6 +185,14 @@ describe('SettingsDialog', () => {
     expect(displayGrid?.querySelectorAll('col')).toHaveLength(3);
 
     const wrap = screen.getByRole('checkbox', { name: 'Wrap pasted Markdown' });
+    const autoAnchors = screen.getByRole('checkbox', {
+      name: 'Create TOC anchors on Markdown paste',
+    });
+    expect(autoAnchors).toBeChecked();
+    fireEvent.click(autoAnchors);
+    expect(runtime.getProfile().markdownAutoAnchorsEnabled).toBe(false);
+    fireEvent.click(autoAnchors);
+    expect(runtime.getProfile().markdownAutoAnchorsEnabled).toBe(true);
     const width = screen.getByRole('spinbutton', { name: 'Markdown wrap width (cells)' });
     expect(wrap).toBeChecked();
     expect(width).toHaveValue(80);

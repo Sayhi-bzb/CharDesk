@@ -9,7 +9,7 @@ import {
   type ParsedCharDeskText,
 } from "@chardesk/protocol";
 import { createCharGraphFragment } from "./fragments.js";
-import type { CharGraphDiagnostic, CharGraphFragment } from "./model.js";
+import type { CharGraphDiagnostic, CharGraphFragment, CharGraphHeading } from "./model.js";
 import {
   renderCharGraphText,
   type CharGraphTextRenderOptions,
@@ -41,6 +41,7 @@ export type CompiledCharDeskText = {
   renderer: CharDeskTextCompilerId;
   pipeline: readonly CharDeskTextCompilerId[];
   fragments: CharGraphFragment[];
+  headings: CharGraphHeading[];
   rows: CharDeskTextRow[];
   plainText: string;
   width: number;
@@ -142,6 +143,7 @@ export const compileCharDeskText = async (
     renderer: rendered.renderer,
     pipeline: rendered.pipeline,
     fragments: rendered.fragments.map((fragment) => ({ ...fragment })),
+    headings: "headings" in rendered ? rendered.headings ?? [] : [],
     rows: document.rows,
     plainText: document.plainText,
     width: document.width,

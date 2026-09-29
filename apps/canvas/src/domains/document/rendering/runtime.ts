@@ -38,6 +38,7 @@ export const DEFAULT_TEXT_RENDER_PROFILE: TextRenderProfile = {
   mode: "auto",
   markdownWrapEnabled: true,
   markdownWrapWidth: DEFAULT_MARKDOWN_WRAP_WIDTH,
+  markdownAutoAnchorsEnabled: true,
   renderThemes: createTextRenderThemeMap(() => ({})),
   features: createDefaultFeatureSettings(),
 };
@@ -97,6 +98,7 @@ const decodeProfile = (
     mode: mode as TextRenderProfile["mode"],
     markdownWrapEnabled: candidate.markdownWrapEnabled !== false,
     markdownWrapWidth: decodeMarkdownWrapWidth(candidate.markdownWrapWidth),
+    markdownAutoAnchorsEnabled: candidate.markdownAutoAnchorsEnabled !== false,
     renderThemes: createTextRenderThemeMap((themeMode) =>
       decodeThemeOverrides(
         sourceThemes[themeMode] ?? (themeMode === "light" ? (
@@ -135,7 +137,8 @@ const readProfile = (
       const saved = JSON.parse(stored) as unknown;
       const profile = decodeProfile(saved);
       if (!saved || typeof saved !== "object" ||
-        !("markdownWrapEnabled" in saved) || !("markdownWrapWidth" in saved)) {
+        !("markdownWrapEnabled" in saved) || !("markdownWrapWidth" in saved) ||
+        !("markdownAutoAnchorsEnabled" in saved)) {
         try {
           storage.setItem(TEXT_RENDER_PROFILE_STORAGE_KEY, JSON.stringify(profile));
         } catch {
@@ -256,6 +259,7 @@ export class TextRenderingRuntime {
         ...(cell.href ? { href: cell.href } : {}),
       })),
       diagnostics: rendered.diagnostics,
+      headings: rendered.renderer === "markdown" ? rendered.headings : [],
     };
   };
 
@@ -278,6 +282,7 @@ export class TextRenderingRuntime {
       width: rendered.width,
       height: rendered.height,
       diagnostics: rendered.diagnostics,
+      headings: renderer === "markdown" ? rendered.headings : [],
     };
   });
 

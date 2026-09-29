@@ -389,6 +389,7 @@ test.describe('Canvas', () => {
       await route.continue();
     });
     await page.goto('/');
+    await page.getByRole('tab', { name: 'Essentials', exact: true }).click();
     await expect(page.getByRole('searchbox', { name: 'Search characters' })).toBeVisible();
 
     await expect.poll(() => requested).toEqual(expect.arrayContaining([
@@ -421,6 +422,47 @@ test.describe('Canvas', () => {
     await expect.poll(() => requested).toEqual(expect.arrayContaining([
       expect.stringContaining('/data/characters/unicode/name-index.'),
     ]));
+  });
+
+  test('keeps Unicode category tabs and facet selection compact', async ({ page }) => {
+    await page.getByRole('tab', { name: 'Unicode', exact: true }).click();
+    const panel = page.getByRole('tabpanel', { name: 'Unicode characters' });
+    const categories = panel.locator('[data-slot="tabs-list"]');
+    const facet = panel.getByRole('combobox', { name: 'Unicode facet' });
+    await expect(categories).toHaveAttribute('data-variant', 'line');
+    await expect(categories).toHaveCSS('height', '28px');
+    await expect(facet).toBeVisible();
+    const [tabsBox, facetBox, panelBox] = await Promise.all([
+      categories.boundingBox(), facet.boundingBox(), panel.boundingBox(),
+    ]);
+    expect(tabsBox && facetBox && panelBox).toBeTruthy();
+    expect(facetBox!.y - (tabsBox!.y + tabsBox!.height)).toBeLessThanOrEqual(12);
+    expect(facetBox!.x + facetBox!.width).toBeLessThanOrEqual(panelBox!.x + panelBox!.width);
+
+    await panel.getByRole('tab', { name: 'Block' }).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(panel.getByRole('tab', { name: 'Script' })).toHaveAttribute('data-state', 'active');
+    await page.getByRole('tab', { name: 'Emoji', exact: true }).click();
+    await page.getByRole('tab', { name: 'Unicode', exact: true }).click();
+    await expect(panel.getByRole('tab', { name: 'Script' })).toHaveAttribute('data-state', 'active');
+  });
+
+  test('fits Unicode navigation inside the mobile sheet', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'Toggle Sidebar' }).click();
+    const sheet = page.locator('[data-slot="sidebar"][data-mobile="true"]');
+    await sheet.getByRole('tab', { name: 'Unicode', exact: true }).click();
+    const panel = sheet.getByRole('tabpanel', { name: 'Unicode characters' });
+    const categories = panel.locator('[data-slot="tabs-list"]');
+    const facet = panel.getByRole('combobox', { name: 'Unicode facet' });
+    await expect(categories).toHaveAttribute('data-variant', 'line');
+    await expect(facet).toBeVisible();
+    const [tabsBox, facetBox, sheetBox] = await Promise.all([
+      categories.boundingBox(), facet.boundingBox(), sheet.boundingBox(),
+    ]);
+    expect(tabsBox && facetBox && sheetBox).toBeTruthy();
+    expect(tabsBox!.x + tabsBox!.width).toBeLessThanOrEqual(sheetBox!.x + sheetBox!.width);
+    expect(facetBox!.x + facetBox!.width).toBeLessThanOrEqual(sheetBox!.x + sheetBox!.width);
   });
 
   test('localizes curated character directories without translating view names', async ({ page }) => {
@@ -585,6 +627,24 @@ test.describe('Canvas', () => {
     await expect(
       mobileSidebar.getByTestId('structured-view-rail-horizontal').getByRole('tab')
     ).toHaveCount(2);
+  });
+
+  test('keeps the mobile sheet width unchanged', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'Toggle Sidebar' }).click();
+    await expect(page.locator('[data-slot="sidebar"][data-mobile="true"]')).toHaveCSS('width', '288px');
+  });
+
+  test('keeps the wider desktop sidebar and canvas reservation aligned', async ({ page }) => {
+    const region = page.locator('[data-editor-chrome-region="side-end"]');
+    const rail = page.getByTestId('sidebar-view-rail-column');
+    const content = page.getByTestId('sidebar-view-content');
+    await expect(region).toHaveCSS('width', '288px');
+    await expect(rail).toHaveCSS('width', '40px');
+    await expect(content).toHaveCSS('width', '248px');
+
+    await page.getByRole('button', { name: 'Toggle Sidebar' }).click();
+    await expect(region).toHaveCSS('width', '40px');
   });
 
   test('keeps the top bar anchored while the sidebar collapses', async ({ page }) => {

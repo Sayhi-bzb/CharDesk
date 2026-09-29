@@ -24,6 +24,7 @@ import {
   defineCharGraphRenderer,
   type CharGraphDiagnostic,
   type CharGraphFragment,
+  type CharGraphHeading,
   type CharGraphInlineAlignment,
   type CharGraphRenderResult,
   type CharGraphSourceRange,
@@ -659,7 +660,8 @@ const renderBlocks = async (
   scope: CharGraphSourceRange,
   context: RenderContext,
   separate: boolean | "source",
-  visualGroups?: CharGraphVisualGroup[]
+  visualGroups?: CharGraphVisualGroup[],
+  headings?: CharGraphHeading[]
 ) => {
   const output: CharGraphFragment[] = [];
   let cursor = scope.from;
@@ -686,6 +688,13 @@ const renderBlocks = async (
       }
     }
     const fromRow = outputRow;
+    if (token.type === "heading") {
+      headings?.push({
+        row: fromRow,
+        level: (token as Tokens.Heading).depth,
+        label: textOf(rendered.fragments).split("\n").map((line) => line.trim()).join(" "),
+      });
+    }
     output.push(...rendered.fragments);
     outputRow += rendered.fragments.reduce(
       (total, item) => total + (item.text.match(/\n/g)?.length ?? 0),
@@ -760,12 +769,14 @@ export const renderMarkdownWithExtensions = async (
     await Promise.all(parser.walkTokens(tokens, parser.defaults.walkTokens));
   }
   const visualGroups: CharGraphVisualGroup[] = [];
+  const headings: CharGraphHeading[] = [];
   const fragments = await renderBlocks(
     tokens,
     { from: 0, to: normalized.text.length },
     context,
     true,
-    visualGroups
+    visualGroups,
+    headings
   );
   return restoreCharGraphSourceRanges(normalized, {
     fragments,
@@ -775,6 +786,7 @@ export const renderMarkdownWithExtensions = async (
     ),
     diagnostics: context.diagnostics,
     visualGroups,
+    headings,
   });
 };
 

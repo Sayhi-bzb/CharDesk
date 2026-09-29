@@ -6,6 +6,7 @@ import type {
 } from "@chardesk/rendering/theme";
 import type { I18nKey } from "@/shared/i18n";
 import type { GridCell } from "@/shared/types";
+import type { CharGraphHeading } from "@chardesk/chargraph";
 
 export type BuiltInTextRendererId = "raw" | "ansi" | "markdown";
 export type TextRendererId = BuiltInTextRendererId | "block-layout";
@@ -50,6 +51,7 @@ export type TextRenderProfile = {
   mode: TextRendererMode;
   markdownWrapEnabled: boolean;
   markdownWrapWidth: number;
+  markdownAutoAnchorsEnabled: boolean;
   renderThemes: TextRenderThemeMap<TextRenderThemeOverrides>;
   features: TextRenderFeatureSettings;
 };
@@ -80,6 +82,7 @@ export type TextRenderResult =
       pipeline: readonly TextRendererId[];
       text: string;
       diagnostics: TextRenderDiagnostic[];
+      headings?: readonly CharGraphHeading[];
     }
   | {
       kind: "styled";
@@ -87,6 +90,7 @@ export type TextRenderResult =
       pipeline: readonly TextRendererId[];
       cells: RenderedTextCell[];
       diagnostics: TextRenderDiagnostic[];
+      headings?: readonly CharGraphHeading[];
     };
 
 export type CompactTextRenderResult =
@@ -99,6 +103,7 @@ export type CompactTextRenderResult =
       width: number;
       height: number;
       diagnostics: TextRenderDiagnostic[];
+      headings?: readonly CharGraphHeading[];
     };
 
 export type TextRenderingStorage = Pick<Storage, "getItem" | "setItem">;

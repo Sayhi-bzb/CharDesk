@@ -61,6 +61,7 @@ export const useCanvasGestureAdapter = ({
   canvasWheelRouteHandler,
   capabilities,
   canStartStaticRangeMove,
+  shouldIgnoreClick,
 }: {
   cancelInteraction: () => void;
   stopEdgeScroll: () => void;
@@ -83,6 +84,7 @@ export const useCanvasGestureAdapter = ({
   canvasWheelRouteHandler: CanvasWheelRouteHandler;
   capabilities: CanvasEditorCapabilities;
   canStartStaticRangeMove: (point: { x: number; y: number }) => boolean;
+  shouldIgnoreClick?: (event: Event) => boolean;
 }) => {
   const pinchStartRef = useRef<CanvasPinchStart | null>(null);
 
@@ -226,6 +228,7 @@ export const useCanvasGestureAdapter = ({
         cancelInteraction();
       },
       onClick: ({ event }) => {
+        if (shouldIgnoreClick?.(event)) return;
         if (!capabilities.select && !capabilities.navigate) return;
         if (shouldIgnoreCanvasSurfaceGesture(event)) return;
         const mouseEvent = event as MouseEvent;

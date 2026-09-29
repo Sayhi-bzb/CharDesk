@@ -298,10 +298,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <SettingsContentSection key="display" heading={t('settings.display')}>
                 <DisplaySettingsPanel
                   revealSettingId={
-                    revealTarget?.type === 'text-renderer'
+                    revealTarget?.type === 'text-renderer' ||
+                    revealTarget?.type === 'markdown-wrap' ||
+                    revealTarget?.type === 'markdown-auto-anchors'
                       ? revealTarget.type
-                      : revealTarget?.type === 'markdown-wrap'
-                        ? revealTarget.type
                       : revealTarget?.type === 'render-feature'
                         ? revealTarget.featureId
                         : null

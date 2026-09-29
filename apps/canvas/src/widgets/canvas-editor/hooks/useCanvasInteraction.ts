@@ -1,5 +1,5 @@
 import { useCreation } from "ahooks";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   createStaticGridRangeMovePlan,
   isPointInStaticGridRange,
@@ -65,6 +65,7 @@ import {
 } from "./interaction/core/gestureGuards";
 export { shouldOpenCanvasLink, shouldUseCanvasLinkPointer } from "./interaction/core/hitTesting";
 import { useCanvasGestureAdapter } from "./interaction/gestures/gestureAdapter";
+import { createTouchDoubleTapRecognizer } from "./interaction/gestures/touchDoubleTap";
 import { useInteractionControllers } from "./interaction/use-interaction-controllers";
 import type { CanvasEngineRuntime } from "../engine/CanvasEngineRuntime";
 import type { useCanvasEditorModels } from "./useCanvasEditorModels";
@@ -85,7 +86,8 @@ export const useCanvasInteraction = (
   setHoveredLink: (hit: CanvasLinkHit | null) => void,
   runtime?: CanvasEngineRuntime,
   capabilities: CanvasEditorCapabilities = DEFAULT_CANVAS_EDITOR_CAPABILITIES,
-  interactionOwnerId = "single"
+  interactionOwnerId = "single",
+  focusTextInput?: () => void
 ) => {
   if (!runtime) {
     throw new Error('useCanvasInteraction requires a canvas engine runtime');
@@ -484,6 +486,46 @@ export const useCanvasInteraction = (
       },
     });
   };
+  const touchDoubleTap = useRef(createTouchDoubleTapRecognizer());
+  const lastTouchEditAtRef = useRef(0);
+  const touchPoint = (event: ReactPointerEvent<HTMLDivElement>) => ({
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    time: event.timeStamp,
+    cell: pointerContext.resolveGridPoint(event.clientX, event.clientY),
+  });
+  const handleTouchPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'touch') return;
+    if (
+      shouldIgnoreCanvasSurfaceGesture(event.nativeEvent) ||
+      !capabilities.mutateContent || tool !== 'select'
+    ) {
+      touchDoubleTap.current.cancel(event.pointerId);
+      return;
+    }
+    touchDoubleTap.current.down(touchPoint(event));
+  };
+  const handleTouchPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'touch') touchDoubleTap.current.move(touchPoint(event));
+  };
+  const handleTouchPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'touch') return;
+    if (shouldIgnoreCanvasSurfaceGesture(event.nativeEvent)) {
+      touchDoubleTap.current.cancel(event.pointerId);
+      return;
+    }
+    const point = touchDoubleTap.current.up(touchPoint(event));
+    if (!point || !capabilities.mutateContent || tool !== 'select') return;
+    event.preventDefault();
+    lastTouchEditAtRef.current = event.timeStamp;
+    enterStaticGridTextEdit(point);
+    focusTextInput?.();
+  };
+  const handleTouchPointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'touch') touchDoubleTap.current.cancel(event.pointerId);
+  };
+
   const bind = useCanvasGestureAdapter({
     cancelInteraction,
     stopEdgeScroll: () => edgeScroll?.stop(),
@@ -506,9 +548,12 @@ export const useCanvasInteraction = (
     canvasWheelRouteHandler,
     capabilities,
     canStartStaticRangeMove,
+    shouldIgnoreClick: (event) =>
+      lastTouchEditAtRef.current > 0 && event.timeStamp - lastTouchEditAtRef.current < 500,
   });
 
   const handleDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (lastTouchEditAtRef.current > 0 && event.timeStamp - lastTouchEditAtRef.current < 500) return;
     if (!capabilities.mutateContent) return;
     if (tool !== "select" || shouldIgnoreCanvasSurfaceGesture(event.nativeEvent)) {
       return;
@@ -530,6 +575,10 @@ export const useCanvasInteraction = (
     draggingSelection,
     staticRangeMovePreview,
     handleDoubleClick,
+    handleTouchPointerDown,
+    handleTouchPointerMove,
+    handleTouchPointerUp,
+    handleTouchPointerCancel,
     colorSourceChoice,
     selectColorSource,
     cancelColorSourceChoice: clearColorSourceChoice,

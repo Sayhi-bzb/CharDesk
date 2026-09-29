@@ -63,6 +63,75 @@ describe("useManagedCanvasInput", () => {
     applyFreeformSnapshotToYMaps([]);
   });
 
+  it('keeps touch navigation off the editable textarea and restores the surface focus', () => {
+    const surface = document.createElement('div');
+    surface.dataset.testid = 'canvas-editor-surface';
+    surface.tabIndex = 0;
+    const textarea = document.createElement('textarea');
+    surface.append(textarea);
+    document.body.append(surface);
+    try {
+      const { result } = renderHook(
+        () => useManagedCanvasInput({
+          model: getEditorModel(),
+          size: { width: 800, height: 600 },
+        }),
+        { wrapper: ShortcutProvider }
+      );
+      result.current.textareaRef.current = textarea;
+      const preventDefault = vi.fn();
+      act(() => {
+        result.current.onCanvasPointerDown({
+          pointerType: 'touch', nativeEvent: new Event('pointerdown'), preventDefault,
+        } as never);
+      });
+      expect(preventDefault).toHaveBeenCalledOnce();
+      expect(document.activeElement).toBe(surface);
+      expect(result.current.canvasOwnsInputFocus).toBe(true);
+
+      act(() => result.current.restoreManagedInputFocus());
+      expect(document.activeElement).toBe(surface);
+
+      act(() => result.current.focusManagedTextarea());
+      expect(document.activeElement).toBe(textarea);
+      act(() => {
+        result.current.onCanvasPointerDown({
+          pointerType: 'touch', nativeEvent: new Event('pointerdown'), preventDefault,
+        } as never);
+      });
+      expect(document.activeElement).toBe(surface);
+    } finally {
+      surface.remove();
+    }
+  });
+
+  it('preserves desktop pointer focus on the managed textarea', () => {
+    const surface = document.createElement('div');
+    surface.dataset.testid = 'canvas-editor-surface';
+    surface.tabIndex = 0;
+    const textarea = document.createElement('textarea');
+    surface.append(textarea);
+    document.body.append(surface);
+    try {
+      const { result } = renderHook(
+        () => useManagedCanvasInput({
+          model: getEditorModel(),
+          size: { width: 800, height: 600 },
+        }),
+        { wrapper: ShortcutProvider }
+      );
+      result.current.textareaRef.current = textarea;
+      act(() => {
+        result.current.onCanvasPointerDown({
+          pointerType: 'mouse', nativeEvent: new Event('pointerdown'), preventDefault: vi.fn(),
+        } as never);
+      });
+      expect(document.activeElement).toBe(textarea);
+    } finally {
+      surface.remove();
+    }
+  });
+
   it("suppresses native copy when copy capability is unavailable", () => {
     const model = { ...getEditorModel() };
     const { result } = renderHook(

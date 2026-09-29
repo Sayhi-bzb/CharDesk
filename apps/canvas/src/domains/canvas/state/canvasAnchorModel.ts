@@ -15,6 +15,12 @@ export type CanvasAnchorChange = Readonly<{
   value: CanvasAnchor | null;
 }>;
 
+export type CanvasAnchorSeed = Readonly<{
+  point: Point;
+  label: string;
+  level: number;
+}>;
+
 export const readCanvasAnchor = (value: unknown): CanvasAnchor | null => {
   if (!value || typeof value !== "object") return null;
   const record = value as Partial<CanvasAnchor>;

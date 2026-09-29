@@ -44,7 +44,11 @@ describe("TextRenderingRuntime", () => {
   it("wraps only newly rendered Markdown prose in both render paths", async () => {
     const runtime = new TextRenderingRuntime();
     const source = `# ${"word ".repeat(18)}tail`;
-    expect(runtime.getProfile()).toMatchObject({ markdownWrapEnabled: true, markdownWrapWidth: 80 });
+    expect(runtime.getProfile()).toMatchObject({
+      markdownWrapEnabled: true,
+      markdownWrapWidth: 80,
+      markdownAutoAnchorsEnabled: true,
+    });
     const full = await runtime.render(source, "#fff");
     const compact = await runtime.renderCompact(source, "#fff");
     expect(full.renderer).toBe("markdown");
@@ -52,6 +56,8 @@ describe("TextRenderingRuntime", () => {
     expect(rowText(full, 1).startsWith("  ")).toBe(true);
     if (compact.kind !== "spans") throw new Error("Expected compact spans");
     expect(compact.height).toBe(2);
+    expect(compact.headings).toEqual([{ row: 0, level: 1,
+      label: `# ${"word ".repeat(18).trim()} tail` }]);
     expect(compact.rows.map((row) => row.spans.map((span) => span.text).join("")))
       .toEqual([rowText(full, 0), rowText(full, 1)]);
 
@@ -837,6 +843,7 @@ describe("TextRenderingRuntime", () => {
       mode: "markdown",
       markdownWrapEnabled: false,
       markdownWrapWidth: 100,
+      markdownAutoAnchorsEnabled: false,
       renderThemes: {
         light: {
           accent: "#AABBCC",
@@ -857,6 +864,7 @@ describe("TextRenderingRuntime", () => {
       mode: "markdown",
       markdownWrapEnabled: false,
       markdownWrapWidth: 100,
+      markdownAutoAnchorsEnabled: false,
       renderThemes: { light: { accent: "#aabbcc" }, dark: {} },
       features: {
         "markdown.strong": {
@@ -883,10 +891,12 @@ describe("TextRenderingRuntime", () => {
     expect(new TextRenderingRuntime({ storage }).getProfile()).toMatchObject({
       markdownWrapEnabled: true,
       markdownWrapWidth: 80,
+      markdownAutoAnchorsEnabled: true,
     });
     expect(JSON.parse(values.get(TEXT_RENDER_PROFILE_STORAGE_KEY) ?? "{}")).toMatchObject({
       markdownWrapEnabled: true,
       markdownWrapWidth: 80,
+      markdownAutoAnchorsEnabled: true,
     });
     for (const [width, expected] of [[59, 60], [201, 200], [100.5, 80], ["100", 80]] as const) {
       const candidate = { ...saved, markdownWrapEnabled: false, markdownWrapWidth: width };

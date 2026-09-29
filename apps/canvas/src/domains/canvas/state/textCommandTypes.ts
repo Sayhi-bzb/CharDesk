@@ -1,4 +1,5 @@
 import type { TextAttributes } from "@/shared/types";
+import type { CanvasAnchorSeed } from "./canvasAnchorModel";
 
 export interface RichTextCell {
   x: number;
@@ -27,4 +28,5 @@ export type TextWriteOptions = Readonly<{
 
 export type TextPasteOptions = Readonly<{
   selectResult?: boolean;
+  anchorSeeds?: readonly CanvasAnchorSeed[];
 }>;

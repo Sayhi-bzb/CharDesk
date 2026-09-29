@@ -1,6 +1,28 @@
 import { expect, test } from '@playwright/test';
 import { DEFAULT_CANVAS_CELL_METRICS } from '../src/shared/fonts/canvas-profile';
 
+test('pasting Markdown headings creates navigable Contents anchors by default', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
+
+  await page.evaluate(async () => {
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
+    const host = getApplicationEditorHost();
+    await host.canvas.ready;
+    host.canvas.commands.grid.replace([]);
+    host.canvas.commands.staticGrid.setActiveCell({ x: 8, y: 6 });
+    const clipboardData = new DataTransfer();
+    clipboardData.setData('text/plain', '# Intro\n\n## Details');
+    await host.canvas.commands.selection.paste({ eventDataTransfer: clipboardData });
+  });
+
+  const contents = page.getByRole('tabpanel', { name: 'Contents' });
+  await expect(contents.getByRole('button', { name: '# Intro' })).toBeVisible();
+  await expect(contents.getByRole('button', { name: '## Details' })).toBeVisible();
+  await expect(page.getByTestId('canvas-anchor-marker')).toHaveCount(2);
+});
+
 test('navigates to a Canvas anchor and restores it after reload', async ({ page }) => {
   const marker = page.getByTestId('canvas-anchor-marker');
   const markerColor = () => marker.evaluate((element) => getComputedStyle(element).color);
@@ -137,7 +159,7 @@ test('creates a fixed literal anchor from a right-clicked Chinese range', async 
   await expect(contents.getByRole('button', { name: /# 什么是哲学/ })).toBeVisible();
 });
 
-test('shows text-only Contents, reorders mixed-height rows, and removes through the context menu', async ({
+test('shows a compact, aligned Contents tree, reorders rows, and removes through the context menu', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -165,7 +187,13 @@ test('shows text-only Contents, reorders mixed-height rows, and removes through 
   const rows = contents.locator('[data-reorder-item]');
   const firstHeight = await rows.nth(0).evaluate((row) => row.getBoundingClientRect().height);
   const secondHeight = await rows.nth(1).evaluate((row) => row.getBoundingClientRect().height);
-  expect(firstHeight).toBeGreaterThan(secondHeight);
+  expect(Math.abs(firstHeight - secondHeight)).toBeLessThan(1);
+  const firstLabel = rows.nth(0).locator('button span');
+  await expect(firstLabel).toHaveCSS('font-size', '12px');
+  await expect(firstLabel).toHaveCSS('white-space', 'nowrap');
+  await expect(firstLabel).toHaveCSS('text-overflow', 'ellipsis');
+  await rows.nth(0).locator('button').hover();
+  await expect(page.getByRole('tooltip')).toHaveText(longTitle);
   await rows.nth(1).dragTo(rows.nth(0), { targetPosition: { x: 24, y: 2 } });
   await expect(rows.nth(0)).toContainText('B');
   await expect(rows.nth(1)).toContainText(longTitle);

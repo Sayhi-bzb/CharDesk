@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type DragEvent } from 'react';
 import { Check, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useCanvasRuntime, useCanvasState } from '@/domains/canvas/public';
@@ -65,7 +65,6 @@ const SessionRenameIcon = HOST_ICONOLOGY.sessionAction.rename;
 const SessionCreateIcon = HOST_ICONOLOGY.sessionAction.create;
 const SessionImportIcon = HOST_ICONOLOGY.sessionAction.import;
 const SessionExportIcon = HOST_ICONOLOGY.sessionAction.export;
-const BlackboardImportIcon = HOST_ICONOLOGY.sessionAction.importBlackboard;
 const SessionCloseIcon = HOST_ICONOLOGY.sessionAction.close;
 const SlideModeIcon = HOST_ICONOLOGY.canvasMode.slide;
 
@@ -143,7 +142,7 @@ export function CanvasSessionSelector({
   const renameCanvasSession = canvas.commands.sessions.rename;
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
-  const [importMenuOpen, setImportMenuOpen] = useState(false);
+  const [importDropTarget, setImportDropTarget] = useState(false);
   const [actionsOpenId, setActionsOpenId] = useState<string | null>(null);
   const [renameFlow, setRenameFlow] = useState<RenameFlow | null>(null);
   const [renamePanelWidth, setRenamePanelWidth] = useState<number | null>(null);
@@ -152,12 +151,10 @@ export function CanvasSessionSelector({
   const [deleteError, setDeleteError] = useState(false);
   const [customSlideSizeOpen, setCustomSlideSizeOpen] = useState(false);
   const {
-    directoryInputRef,
     fileInputRef,
-    handleBlackboardDirectoryChange,
+    handleDrop,
     handleFileChange,
     isImporting,
-    openBlackboardPicker,
     openFilePicker,
   } = useCanvasImport();
   const exportActions = useCanvasSessionExport();
@@ -199,7 +196,6 @@ export function CanvasSessionSelector({
   const closeSelector = () => {
     setSelectorOpen(false);
     setCreateMenuOpen(false);
-    setImportMenuOpen(false);
     setActionsOpenId(null);
     clearExportFeedback();
   };
@@ -208,6 +204,25 @@ export function CanvasSessionSelector({
     onActivate?.();
     openPicker();
     closeSelector();
+  };
+
+  const acceptImportDrag = (event: DragEvent<HTMLElement>) => {
+    if (isImporting || !event.dataTransfer.types.includes('Files')) return false;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setImportDropTarget(true);
+    return true;
+  };
+
+  const dropImport = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setImportDropTarget(false);
+    const items = Array.from(event.dataTransfer.items);
+    const files = Array.from(event.dataTransfer.files);
+    onActivate?.();
+    closeSelector();
+    void handleDrop(items, files);
   };
 
   const updateRenameFlow = (next: RenameFlow | null) => {
@@ -335,18 +350,6 @@ export function CanvasSessionSelector({
         aria-hidden="true"
         onChange={handleFileChange}
       />
-      <input
-        ref={(input) => {
-          directoryInputRef.current = input;
-          if (input) input.webkitdirectory = true;
-        }}
-        type="file"
-        multiple
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden="true"
-        onChange={handleBlackboardDirectoryChange}
-      />
       <Popover
         open={selectorOpen}
         onOpenChange={(open) => {
@@ -358,7 +361,6 @@ export function CanvasSessionSelector({
               updateRenameFlow(null);
             }
             setCreateMenuOpen(false);
-            setImportMenuOpen(false);
             setActionsOpenId(null);
             setRenamePanelWidth(null);
             clearExportFeedback();
@@ -377,10 +379,19 @@ export function CanvasSessionSelector({
                 tone="subtle"
                 size="md"
                 active={paneActive}
-                className={cn('max-w-[min(14rem,calc(100vw-5.5rem))] justify-start gap-1.5 px-2')}
+                className={cn(
+                  'max-w-[min(14rem,calc(100vw-5.5rem))] justify-start gap-1.5 px-2',
+                  importDropTarget && 'bg-accent',
+                )}
                 aria-label={t('session.select')}
                 aria-current={paneActive ? 'true' : undefined}
                 aria-busy={isImporting}
+                onDragEnter={(event) => {
+                  if (acceptImportDrag(event)) setSelectorOpen(true);
+                }}
+                onDragOver={acceptImportDrag}
+                onDragLeave={() => setImportDropTarget(false)}
+                onDrop={dropImport}
               />
             }
           >
@@ -708,44 +719,20 @@ export function CanvasSessionSelector({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu modal={false} open={importMenuOpen} onOpenChange={setImportMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                tone="subtle"
-                size="sm"
-                className="w-full justify-start bg-transparent px-2"
-              >
-                <SessionImportIcon />
-                {t('session.import')}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side={isMobile ? 'bottom' : 'right'}
-              align="start"
-              avoidCollisions
-              collisionPadding={12}
-              className="w-[calc(50vw-1.5rem)] max-w-44"
-              aria-label={t('session.import')}
-            >
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  disabled={isImporting}
-                  onSelect={() => openImportPicker(openFilePicker)}
-                >
-                  <SessionImportIcon />
-                  {isImporting ? t('import.importing') : t('session.importFile')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={isImporting}
-                  onSelect={() => openImportPicker(openBlackboardPicker)}
-                >
-                  <BlackboardImportIcon />
-                  {t('session.importBlackboard')}
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            type="button"
+            tone="subtle"
+            size="sm"
+            className={cn('w-full justify-start bg-transparent px-2', importDropTarget && 'bg-accent')}
+            disabled={isImporting}
+            onClick={() => openImportPicker(openFilePicker)}
+            onDragOver={acceptImportDrag}
+            onDragLeave={() => setImportDropTarget(false)}
+            onDrop={dropImport}
+          >
+            <SessionImportIcon />
+            {isImporting ? t('import.importing') : t('session.import')}
+          </Button>
         </PopoverContent>
       </Popover>
 

@@ -28,6 +28,7 @@ export type {
   CharGraphAwaitable,
   CharGraphDiagnostic,
   CharGraphFragment,
+  CharGraphHeading,
   CharGraphInlineAlignment,
   CharGraphRenderer,
   CharGraphRenderResult,

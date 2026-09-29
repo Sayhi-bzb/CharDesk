@@ -61,6 +61,9 @@ export const CanvasSurface = forwardRef<HTMLDivElement, CanvasSurfaceProps>(func
       data-slot="canvas-surface"
       data-testid="canvas-editor-surface"
       data-onboarding-target="canvas"
+      tabIndex={0}
+      role="region"
+      aria-label="Canvas"
       style={{ touchAction: 'none', ...style }}
       className={
         className ??

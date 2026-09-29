@@ -108,7 +108,7 @@ export function CanvasAnchorTreeList({
               data-drop-intent={item.isUnorderedDragTarget() ? 'nest' : undefined}
               aria-label={getItemLabel(anchor, meta.level, meta.posInSet, meta.setSize)}
               className={cn(
-                'min-w-0 focus-visible:outline-2 focus-visible:outline-ring',
+                'min-h-7 min-w-0 focus-visible:outline-2 focus-visible:outline-ring',
                 item.isUnorderedDragTarget() && 'rounded-md bg-accent/40'
               )}
               style={{ paddingLeft: meta.level * INDENT }}

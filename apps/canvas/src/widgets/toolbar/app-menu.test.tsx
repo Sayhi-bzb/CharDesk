@@ -37,7 +37,7 @@ describe('AppMenu document interchange', () => {
     vi.unstubAllGlobals();
   });
 
-  it('offers file and Blackboard imports while a Slide Deck is active', async () => {
+  it('opens the file picker directly while a Slide Deck is active', async () => {
     const slideDeck = createSlideDeck({ initialSlideId: 'slide-1' });
     useEditorStore.setState({
       canvasMode: 'slide',
@@ -55,22 +55,17 @@ describe('AppMenu document interchange', () => {
     act(() => setUiLanguage('en'));
 
     const { container } = render(<CanvasBreadcrumb />);
-    const inputs = container.querySelectorAll('input[type="file"]');
-    expect(inputs).toHaveLength(2);
-    expect(inputs[0]).toHaveAttribute(
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input).toHaveAttribute(
       'accept',
       '.chardesk,.slides.md,.ans,.txt'
     );
-    expect((inputs[1] as HTMLInputElement).webkitdirectory).toBe(true);
-    expect(inputs[1]).toHaveAttribute('multiple');
+    const clickPicker = vi.spyOn(input, 'click').mockImplementation(() => undefined);
 
     fireEvent.click(screen.getByRole('button', { name: 'Select canvas' }));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Import' }), {
-      button: 0,
-      ctrlKey: false,
-    });
-    await screen.findByRole('menuitem', { name: 'File' });
-    await screen.findByRole('menuitem', { name: 'Blackboard' });
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }));
+    expect(clickPicker).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('menu', { name: 'Import' })).not.toBeInTheDocument();
   });
 
   it('imports a Blackboard directory into a detached editable canvas', async () => {
@@ -78,33 +73,47 @@ describe('AppMenu document interchange', () => {
     const before = useEditorStore.getState();
     const previousSessionId = before.activeCanvasId;
     const previousSessionCount = before.canvasSessions.length;
-    const { container } = render(<CanvasBreadcrumb />);
-    const directoryInput = container.querySelectorAll('input[type="file"]')[1];
-
-    fireEvent.change(directoryInput, {
-      target: {
-        files: [
-          blackboardFile(
-            'gpu/blackboard.yaml',
-            [
-              'chardesk: blackboard/v1',
-              'title: Imported GPU',
-              'panels:',
-              '  overview: { source: panels/overview.panel }',
-              'layout:',
-              '  areas: [[overview]]',
-            ].join('\n')
-          ),
-          blackboardFile(
-            'gpu/panels/overview.panel',
-            [
-              '```mermaid',
-              'flowchart LR',
-              '  A[GPU] --> B[Pixels]',
-              '```',
-            ].join('\n')
-          ),
-        ],
+    render(<CanvasBreadcrumb />);
+    fireEvent.click(screen.getByRole('button', { name: 'Select canvas' }));
+    const importButton = screen.getByRole('button', { name: 'Import' });
+    const droppedFiles = [
+      blackboardFile(
+        'gpu/blackboard.yaml',
+        [
+          'chardesk: blackboard/v1',
+          'title: Imported GPU',
+          'panels:',
+          '  overview: { source: panels/overview.panel }',
+          'layout:',
+          '  areas: [[overview]]',
+        ].join('\n')
+      ),
+      blackboardFile(
+        'gpu/panels/overview.panel',
+        [
+          '```mermaid',
+          'flowchart LR',
+          '  A[GPU] --> B[Pixels]',
+          '```',
+        ].join('\n')
+      ),
+    ];
+    const root = {
+      isDirectory: true,
+      createReader: () => ({
+        readEntries: (resolve: (entries: unknown[]) => void) => {
+          resolve(droppedFiles.splice(0).map((file) => ({
+            isDirectory: false,
+            fullPath: `/${file.webkitRelativePath}`,
+            file: (resolveFile: (file: File) => void) => resolveFile(file),
+          })));
+        },
+      }),
+    };
+    fireEvent.drop(importButton, {
+      dataTransfer: {
+        items: [{ webkitGetAsEntry: () => root }],
+        files: [],
       },
     });
 

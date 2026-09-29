@@ -9,6 +9,8 @@ describe("React startup presentation", () => {
     expect(screen.getByRole("main")).toHaveClass("startup-shell");
     expect(screen.getByRole("main")).toHaveAttribute("data-startup-phase", "loading");
     expect(screen.getByRole("status")).toHaveTextContent("Loading Canvas");
+    expect(screen.getByText("Welcome to CharDesk")).toBeInTheDocument();
+    expect(document.querySelector(".startup-body img")).toHaveAttribute("src", "/icon.svg");
   });
 
   it("shows a usable module failure", () => {

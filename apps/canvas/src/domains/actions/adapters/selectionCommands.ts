@@ -83,11 +83,13 @@ export const createSelectionCommandFactory = ({
   getFontProfile,
   getArtifactPalette,
   getResolvedTheme,
+  getMarkdownAutoAnchorsEnabled,
 }: {
   renderClipboardText: RenderClipboardText;
   getFontProfile?: () => import("@chardesk/fonts").CharDeskFontProfile;
   getArtifactPalette?: () => CanvasArtifactPalette;
   getResolvedTheme?: () => ResolvedCanvasTheme;
+  getMarkdownAutoAnchorsEnabled?: () => boolean;
 }): SelectionCommandFactory => ({ getState: get, mutations }) => ({
   canCopyOrCut: () => {
     const state = get();
@@ -171,8 +173,16 @@ export const createSelectionCommandFactory = ({
         return applied(true);
       };
       const selectResult = state.canvasMode === "freeform";
+      const anchorSeeds = selectResult && (getMarkdownAutoAnchorsEnabled?.() ?? true) &&
+        "headings" in payload
+        ? payload.headings.filter((heading) => heading.level <= 3).map((heading) => ({
+            point: { x: 0, y: heading.row },
+            label: heading.label,
+            level: heading.level,
+          }))
+        : [];
       if ("richRows" in payload && payload.richRows) {
-        mutations.pasteRichRows(payload.richRows, undefined, { selectResult });
+        mutations.pasteRichRows(payload.richRows, undefined, { selectResult, anchorSeeds });
         return completePaste();
       }
       if (payload.richCells) {

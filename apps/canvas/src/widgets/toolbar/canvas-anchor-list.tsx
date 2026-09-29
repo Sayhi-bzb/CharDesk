@@ -91,14 +91,14 @@ export function CanvasAnchorList({
         render={
           <SelectableItem
             type="button"
-            className="min-h-0 w-full px-1.5 py-1 text-left"
+            className="h-7 w-full px-1.5 py-0 text-left"
             muted={anchor.detached}
             aria-label={title}
             onClick={() => navigate(anchor)}
           />
         }
       >
-        <span className="min-w-0 line-clamp-2 break-words text-[13px] leading-[18px]">
+        <span className="min-w-0 truncate">
           {anchor.label}
         </span>
       </TooltipTrigger>

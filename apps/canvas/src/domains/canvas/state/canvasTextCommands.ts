@@ -291,7 +291,12 @@ export const createCanvasTextCommands = (
             })),
           })),
         },
-        commits.getDocumentHistoryMode()
+        commits.getDocumentHistoryMode(),
+        undefined,
+        state.canvasMode === "freeform" ? options?.anchorSeeds?.map((seed) => ({
+          ...seed,
+          point: { x: basePos.x + seed.point.x, y: basePos.y + seed.point.y },
+        })) : undefined
       );
       const writtenBounds: WrittenBounds | null = operation
         ? {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compileBlackboardDirectory } from "./blackboard-directory";
+import { collectDroppedBlackboardDirectory, compileBlackboardDirectory } from "./blackboard-directory";
 
 const file = (webkitRelativePath: string, source: string) => ({
   webkitRelativePath,
@@ -55,5 +55,35 @@ describe("compileBlackboardDirectory", () => {
     ],
   ])("rejects %s", async (_name, files, message) => {
     await expect(compileBlackboardDirectory(files)).rejects.toThrow(message);
+  });
+});
+
+describe("collectDroppedBlackboardDirectory", () => {
+  it("reads nested directories and every readEntries batch", async () => {
+    const entry = (path: string, source: string) => ({
+      isDirectory: false,
+      fullPath: path,
+      file: (resolve: (file: Pick<File, "text">) => void) => resolve({ text: async () => source }),
+    }) as FileSystemFileEntry;
+    const directory = (batches: FileSystemEntry[][]) => ({
+      isDirectory: true,
+      createReader: () => ({
+        readEntries: (resolve: (entries: FileSystemEntry[]) => void) => resolve(batches.shift() ?? []),
+      }),
+    }) as FileSystemDirectoryEntry;
+    const panels = directory([[entry("/gpu/panels/left.panel", "L")], []]);
+    const root = directory([
+      [entry("/gpu/blackboard.yaml", manifest()), panels],
+      [entry("/gpu/panels/right.panel", "R")],
+      [],
+    ]);
+
+    const files = await collectDroppedBlackboardDirectory(root);
+    expect(files.map((item) => item.webkitRelativePath)).toEqual([
+      "gpu/blackboard.yaml",
+      "gpu/panels/left.panel",
+      "gpu/panels/right.panel",
+    ]);
+    expect(await compileBlackboardDirectory(files)).toMatchObject({ source: "L R" });
   });
 });

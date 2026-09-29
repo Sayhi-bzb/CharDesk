@@ -4,6 +4,31 @@ import { getCharGraphText } from "./index.js";
 import { detectMarkdownText, renderMarkdown } from "./markdown-default.js";
 
 describe("renderMarkdown", () => {
+  it("reports only top-level rendered headings with their output rows", async () => {
+    const rendered = await renderMarkdown([
+      "# Intro", "", "> # Quoted", "", "```md", "# Code", "```", "", "## Details", "", "### End",
+    ].join("\n"));
+    const lines = getCharGraphText(rendered).split("\n");
+
+    expect(rendered.headings?.map(({ level, label, row }) => ({
+      level, label, text: lines[row],
+    }))).toEqual([
+      { level: 1, label: "# Intro", text: "# Intro" },
+      { level: 2, label: "## Details", text: "## Details" },
+      { level: 3, label: "### End", text: "### End" },
+    ]);
+  });
+
+  it("keeps heading rows aligned after wrapped headings", async () => {
+    const rendered = await renderMarkdown("# " + "long heading ".repeat(8) + "\n\n## Next", {
+      proseWrapWidth: 20,
+    });
+    const lines = getCharGraphText(rendered).split("\n");
+
+    expect(rendered.headings).toHaveLength(2);
+    expect(rendered.headings?.[1]?.row).toBeGreaterThan(2);
+    expect(lines[rendered.headings![1]!.row]).toBe("## Next");
+  });
   it("wraps pasted prose by display cells without splitting words, graphemes, or links", async () => {
     const source = `# ${"word ".repeat(18)}尾巴\n\n> ${"汉字".repeat(41)}\n\n- ${"hello ".repeat(14)}end\n\n${"alpha ".repeat(13)}[linked](https://example.com) 👩‍💻`;
     const rendered = await renderMarkdown(source, { proseWrapWidth: 80 });

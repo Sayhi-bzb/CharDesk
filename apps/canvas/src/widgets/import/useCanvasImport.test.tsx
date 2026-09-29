@@ -4,9 +4,11 @@ import { feedback } from "@/shared/services/effects";
 import { useCanvasImport } from "./useCanvasImport";
 
 const {
+  collectDroppedBlackboardDirectory,
   compileBlackboardDirectory,
   importCanvasSession,
 } = vi.hoisted(() => ({
+  collectDroppedBlackboardDirectory: vi.fn(),
   compileBlackboardDirectory: vi.fn(),
   importCanvasSession: vi.fn(),
 }));
@@ -18,7 +20,7 @@ vi.mock("@/domains/canvas/public", async (importOriginal) => ({
   }),
 }));
 
-vi.mock("./blackboard-directory", () => ({ compileBlackboardDirectory }));
+vi.mock("./blackboard-directory", () => ({ collectDroppedBlackboardDirectory, compileBlackboardDirectory }));
 
 const createFileEvent = (text: () => Promise<string>) =>
   ({
@@ -28,40 +30,16 @@ const createFileEvent = (text: () => Promise<string>) =>
     },
   }) as unknown as React.ChangeEvent<HTMLInputElement>;
 
-const createDirectoryEvent = () => {
-  const selectedFile = {
-    webkitRelativePath: "gpu/blackboard.yaml",
-  } as File;
-  let value = "/gpu";
-  const files = {
-    get length() {
-      return value ? 1 : 0;
-    },
-    item(index: number) {
-      return value && index === 0 ? selectedFile : null;
-    },
-    *[Symbol.iterator]() {
-      if (value) yield selectedFile;
-    },
-  } as FileList;
-  const target = {
-    get files() {
-      return files;
-    },
-    get value() {
-      return value;
-    },
-    set value(next: string) {
-      value = next;
-    },
-  } as HTMLInputElement;
-
-  return { target } as React.ChangeEvent<HTMLInputElement>;
-};
+const directoryEntry = { isDirectory: true } as FileSystemDirectoryEntry;
+const directoryItems = [{ webkitGetAsEntry: () => directoryEntry }] as unknown as DataTransferItem[];
 
 describe("useCanvasImport", () => {
   beforeEach(() => {
     importCanvasSession.mockReset();
+    collectDroppedBlackboardDirectory.mockReset();
+    collectDroppedBlackboardDirectory.mockResolvedValue([
+      { webkitRelativePath: "gpu/blackboard.yaml", text: async () => "manifest" },
+    ]);
     compileBlackboardDirectory.mockReset();
     vi.spyOn(feedback, "success").mockImplementation(() => undefined);
     vi.spyOn(feedback, "error").mockImplementation(() => undefined);
@@ -107,7 +85,7 @@ describe("useCanvasImport", () => {
     const { result } = renderHook(() => useCanvasImport());
 
     await act(async () => {
-      await result.current.handleBlackboardDirectoryChange(createDirectoryEvent());
+      await result.current.handleDrop(directoryItems, []);
     });
 
     expect(compileBlackboardDirectory).toHaveBeenCalledWith([
@@ -136,7 +114,7 @@ describe("useCanvasImport", () => {
     const { result } = renderHook(() => useCanvasImport());
 
     await act(async () => {
-      await result.current.handleBlackboardDirectoryChange(createDirectoryEvent());
+      await result.current.handleDrop(directoryItems, []);
     });
 
     expect(importCanvasSession).toHaveBeenCalledWith(
@@ -150,11 +128,24 @@ describe("useCanvasImport", () => {
     const { result } = renderHook(() => useCanvasImport());
 
     await act(async () => {
-      await result.current.handleBlackboardDirectoryChange(createDirectoryEvent());
+      await result.current.handleDrop(directoryItems, []);
     });
 
     expect(feedback.error).toHaveBeenCalledWith("Import failed", {
       description: "Missing blackboard.yaml",
+    });
+    expect(importCanvasSession).not.toHaveBeenCalled();
+  });
+
+  it("rejects ambiguous drops without importing anything", async () => {
+    const { result } = renderHook(() => useCanvasImport());
+
+    await act(async () => {
+      await result.current.handleDrop([], []);
+    });
+
+    expect(feedback.error).toHaveBeenCalledWith("Import failed", {
+      description: "Drop one document or one Blackboard folder.",
     });
     expect(importCanvasSession).not.toHaveBeenCalled();
   });

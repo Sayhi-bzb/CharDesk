@@ -252,17 +252,27 @@ test.describe('App menu', () => {
     expect(newMenuBox).not.toBeNull();
     expect(newMenuBox!.x).toBeGreaterThanOrEqual(newTriggerBox!.x + newTriggerBox!.width - 1);
 
+    await page.keyboard.press('Escape');
+    await selector.evaluate((element) => {
+      const transfer = new DataTransfer();
+      transfer.items.add(new File(['document'], 'document.chardesk'));
+      element.dispatchEvent(new DragEvent('dragenter', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: transfer,
+      }));
+    });
+    await expect(page.getByRole('dialog', { name: 'Select canvas' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Import' })).toBeVisible();
+
     await page.setViewportSize({ width: 320, height: 720 });
     await page.reload();
     await selector.click();
+    const fileChooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Import' }).click();
-    const importMenu = page.getByRole('menu', { name: 'Import' });
-    await expect(importMenu).toHaveAttribute('data-side', 'bottom');
-    const importMenuBox = await importMenu.boundingBox();
-    expect(importMenuBox).not.toBeNull();
-    expect(importMenuBox!.width).toBeLessThanOrEqual(176);
-    expect(importMenuBox!.x).toBeGreaterThanOrEqual(0);
-    expect(importMenuBox!.x + importMenuBox!.width).toBeLessThanOrEqual(320);
+    expect(await (await fileChooser).element().getAttribute('accept'))
+      .toBe('.chardesk,.slides.md,.ans,.txt');
+    await expect(page.getByRole('menu', { name: 'Import' })).toHaveCount(0);
   });
 
   test('switches Settings sections through the phone Select navigation', async ({ page }) => {

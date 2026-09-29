@@ -18,6 +18,38 @@ import {
 const cell = (char: string) => ({ char, color: "#000000" });
 
 describe("Canvas coordinate anchors", () => {
+  it("commits pasted heading anchors and cells as one undoable operation", () => {
+    const documents = new CanvasDocumentRegistry("markdown-paste-anchors");
+    const address = documents.getActiveAddress();
+    const headings = [
+      { point: { x: 5, y: 6 }, label: "# Root", level: 1 },
+      { point: { x: 5, y: 8 }, label: "## Child", level: 2 },
+      { point: { x: 5, y: 10 }, label: "### Leaf", level: 3 },
+    ];
+    documents.applyCellPlanePatchAt(address, {
+      rows: headings.map(({ point, label }) => ({
+        y: point.y,
+        erase: [],
+        spans: [{ x: point.x, text: label, color: "#ffffff" }],
+      })),
+    }, "save", undefined, headings);
+
+    const anchors = documents.getAnchorsAt(address);
+    expect(anchors.map(({ label, parentId }) => [label, parentId])).toEqual([
+      ["# Root", null],
+      ["## Child", anchors[0]?.id],
+      ["### Leaf", anchors[1]?.id],
+    ]);
+    expect(documents.getContentReader().getCell({ x: 5, y: 6 })?.char).toBe("#");
+
+    expect(documents.undo()).toBe(true);
+    expect(documents.getAnchorsAt(address)).toHaveLength(0);
+    expect(documents.getContentReader().getCell({ x: 5, y: 6 })).toBeUndefined();
+    expect(documents.redo()).toBe(true);
+    expect(documents.getAnchorsAt(address).map(({ label }) => label))
+      .toEqual(["# Root", "## Child", "### Leaf"]);
+    documents.dispose();
+  });
   it("reads old flat anchors and deterministically promotes invalid parents", () => {
     const base = { point: { x: 0, y: 0 }, label: "A", detached: false };
     const legacy = readCanvasAnchor({ ...base, id: "old", order: 0 })!;

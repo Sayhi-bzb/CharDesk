@@ -525,13 +525,14 @@ describe('CharLibrary', () => {
       loadUnicodePage,
     });
 
-    render(
+    const view = render(
       <SidebarProvider>
         <CharLibrary view="unicode" />
       </SidebarProvider>
     );
 
     const trigger = screen.getByRole('combobox', { name: 'Unicode facet' });
+    expect(screen.getByRole('tablist')).toHaveAttribute('data-variant', 'line');
     expect(document.querySelector('[data-slot="character-group-header"]')).not.toBeInTheDocument();
     expect(trigger).toHaveTextContent('Basic Latin (95)');
 
@@ -565,9 +566,19 @@ describe('CharLibrary', () => {
     });
     await waitFor(() => expect(loadUnicodePage).toHaveBeenCalledWith('script', 'latin'));
     expect(trigger).toHaveTextContent('Latin (1374)');
+    expect(screen.getByRole('tab', { name: 'Script' })).toHaveAttribute('data-state', 'active');
+
+    view.unmount();
+    render(
+      <SidebarProvider>
+        <CharLibrary view="unicode" />
+      </SidebarProvider>
+    );
+    expect(screen.getByRole('tab', { name: 'Script' })).toHaveAttribute('data-state', 'active');
+    expect(screen.getByRole('combobox', { name: 'Unicode facet' })).toHaveTextContent('Latin (1374)');
 
     act(() => setUiLanguage('zh'));
-    expect(screen.getByRole('combobox', { name: 'Unicode 分类' })).toBe(trigger);
+    expect(screen.getByRole('combobox', { name: 'Unicode 分类' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '区块' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '文字系统' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '类别' })).toBeInTheDocument();

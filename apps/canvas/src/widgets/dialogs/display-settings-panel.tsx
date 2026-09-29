@@ -62,6 +62,7 @@ type ColorSegment = {
 type DisplaySetting =
   | { id: 'text-renderer'; kind: 'renderer'; label: 'settings.textRenderer' }
   | { id: 'markdown-wrap'; kind: 'markdown-wrap'; label: 'settings.markdownWrap' }
+  | { id: 'markdown-auto-anchors'; kind: 'markdown-auto-anchors'; label: 'settings.markdownAutoAnchors' }
   | {
       id: `theme:${TextRenderThemeTokenId}`;
       kind: 'theme-token';
@@ -106,6 +107,12 @@ const markdownWrapSetting: DisplaySetting = {
   id: 'markdown-wrap',
   kind: 'markdown-wrap',
   label: 'settings.markdownWrap',
+};
+
+const markdownAutoAnchorsSetting: DisplaySetting = {
+  id: 'markdown-auto-anchors',
+  kind: 'markdown-auto-anchors',
+  label: 'settings.markdownAutoAnchors',
 };
 
 const themeSettings: readonly DisplaySetting[] = [
@@ -408,7 +415,9 @@ export function DisplaySettingsPanel({
   );
   const groups = useMemo<SettingsDataTableGroup<DisplaySetting>[]>(
     () => [
-      { id: 'rendering', label: t('settings.rendering'), items: [rendererSetting, markdownWrapSetting] },
+      { id: 'rendering', label: t('settings.rendering'), items: [
+        rendererSetting, markdownWrapSetting, markdownAutoAnchorsSetting,
+      ] },
       {
         id: 'theme',
         label: `${t('settings.renderTheme')} · ${t(`settings.theme.${themeMode}`)}`,
@@ -474,6 +483,17 @@ export function DisplaySettingsPanel({
               })}
             />;
           }
+          if (setting.kind === 'markdown-auto-anchors') {
+            return <Checkbox
+              data-settings-control=""
+              aria-label={t('settings.markdownAutoAnchors')}
+              checked={textRenderProfile.markdownAutoAnchorsEnabled}
+              onCheckedChange={(checked) => textRendering.setProfile({
+                ...textRenderProfile,
+                markdownAutoAnchorsEnabled: checked === true,
+              })}
+            />;
+          }
           return setting.kind === 'renderer' ? (
             <Select
               value={textRenderProfile.mode}
@@ -526,7 +546,8 @@ export function DisplaySettingsPanel({
         }
         return (
           <>
-            {setting.kind === 'renderer' || setting.kind === 'markdown-wrap' ? (
+            {setting.kind === 'renderer' || setting.kind === 'markdown-wrap' ||
+              setting.kind === 'markdown-auto-anchors' ? (
               <span className="text-muted-foreground" aria-hidden="true">
                 —
               </span>

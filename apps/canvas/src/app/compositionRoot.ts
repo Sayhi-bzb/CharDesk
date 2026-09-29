@@ -98,6 +98,8 @@ export class ApplicationEditorHost {
         getFontProfile: () => this.canvasFont.getSnapshot().profile,
         getArtifactPalette: () => this.canvasAppearance.getSnapshot().palette,
         getResolvedTheme: () => this.canvasAppearance.getSnapshot().resolvedTheme,
+        getMarkdownAutoAnchorsEnabled: () =>
+          this.textRendering.getProfile().markdownAutoAnchorsEnabled,
       }),
       parseSessionSource: parseDocumentSessionSource,
       reportIntegrityIssues: (issues) =>

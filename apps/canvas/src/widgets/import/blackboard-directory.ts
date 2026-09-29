@@ -8,6 +8,33 @@ const ROOT_MANIFEST = "blackboard.yaml";
 
 type DirectoryFile = Pick<File, "text" | "webkitRelativePath">;
 
+export const collectDroppedBlackboardDirectory = async (
+  root: FileSystemDirectoryEntry,
+): Promise<DirectoryFile[]> => {
+  const files: DirectoryFile[] = [];
+  const visit = async (directory: FileSystemDirectoryEntry): Promise<void> => {
+    const reader = directory.createReader();
+    for (;;) {
+      const entries = await new Promise<FileSystemEntry[]>((resolve, reject) => {
+        reader.readEntries(resolve, reject);
+      });
+      if (entries.length === 0) break;
+      await Promise.all(entries.map(async (entry) => {
+        if (entry.isDirectory) {
+          await visit(entry as FileSystemDirectoryEntry);
+          return;
+        }
+        const file = await new Promise<File>((resolve, reject) => {
+          (entry as FileSystemFileEntry).file(resolve, reject);
+        });
+        files.push({ text: () => file.text(), webkitRelativePath: entry.fullPath.replace(/^\//, "") });
+      }));
+    }
+  };
+  await visit(root);
+  return files;
+};
+
 export const compileBlackboardDirectory = async (
   selected: Iterable<DirectoryFile>,
 ): Promise<CompiledBlackboard> => (await readBlackboardDirectory(selected)).compiled;

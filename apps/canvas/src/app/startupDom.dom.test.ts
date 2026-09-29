@@ -6,9 +6,9 @@ import { showStartupFatalFailure, showStartupMigrationFailure, showStartupPhase 
 beforeEach(() => {
   localStorage.clear();
   document.body.innerHTML = `<div id="root"><main class="startup-shell" data-startup-phase="opening" aria-busy="true">
-    <div class="startup-content"><div class="startup-brand">CharDesk</div>
-    <h1 class="startup-title" role="status" aria-live="polite">Opening Canvas</h1>
-    <div class="startup-progress" aria-hidden="true"></div></div></main></div>`;
+    <div class="startup-content"><div class="startup-brand">Welcome to CharDesk</div>
+    <div class="startup-body"><img src="/icon.svg" width="24" height="24" alt="" />
+    <h1 class="startup-title" role="status" aria-live="polite">Opening Canvas</h1></div></div></main></div>`;
 });
 
 describe("pre-React startup presentation", () => {

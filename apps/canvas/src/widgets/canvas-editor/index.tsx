@@ -217,6 +217,7 @@ export const CanvasEditor = ({
     restoreManagedInputFocus,
     canvasOwnsInputFocus,
     onCanvasPointerDown,
+    onCanvasKeyDown,
     textareaStyle,
     textareaProps,
   } = useManagedCanvasInput({
@@ -260,6 +261,10 @@ export const CanvasEditor = ({
     draggingSelection,
     staticRangeMovePreview,
     handleDoubleClick,
+    handleTouchPointerDown,
+    handleTouchPointerMove,
+    handleTouchPointerUp,
+    handleTouchPointerCancel,
     colorSourceChoice,
     selectColorSource,
     cancelColorSourceChoice,
@@ -269,7 +274,8 @@ export const CanvasEditor = ({
     setHoveredLink,
     runtime,
     effectiveCapabilities,
-    canvasView?.viewId ?? 'single'
+    canvasView?.viewId ?? 'single',
+    focusManagedTextarea
   );
 
   const activateCanvas = useCallback(() => {
@@ -400,7 +406,14 @@ export const CanvasEditor = ({
           style={{ cursor: cursor || undefined }}
           {...canvasTemplateDrop.surfaceProps}
           onDoubleClick={handleDoubleClick}
-          onPointerDown={onCanvasPointerDown}
+          onKeyDown={onCanvasKeyDown}
+          onPointerDown={(event) => {
+            onCanvasPointerDown(event);
+            handleTouchPointerDown(event);
+          }}
+          onPointerMove={handleTouchPointerMove}
+          onPointerUp={handleTouchPointerUp}
+          onPointerCancel={handleTouchPointerCancel}
           textareaRef={textareaRef}
           textareaKey={activeCanvasId}
           textareaStyle={textareaStyle}

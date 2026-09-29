@@ -11,6 +11,7 @@ import {
   readCanvasAnchorLabel,
   type CanvasAnchor,
   type CanvasAnchorChange,
+  type CanvasAnchorSeed,
 } from "./canvasAnchorModel";
 import {
   CellPlaneIndex,
@@ -1110,7 +1111,8 @@ export class CanvasDocumentRegistry {
       ids: readonly string[];
       overwrittenIds?: readonly string[];
       delta: Point;
-    }>
+    }>,
+    createdAnchors: readonly CanvasAnchorSeed[] = []
   ) => {
     const document = this.#documents.get(address.documentId);
     const page = document?.pages.get(address.pageId);
@@ -1127,7 +1129,7 @@ export class CanvasDocumentRegistry {
     const inverse = this.#createInverseCellPlaneOperation(document, page, operation);
     const anchorBefore = new Map(this.getAnchorsAt(address).map((anchor) => [anchor.id, anchor]));
     let anchorChanges: CanvasAnchorChange[] = [];
-    const projected = page.anchors.size > 0
+    const projected = page.anchors.size > 0 || createdAnchors.length > 0
       ? this.#projectOperationCells(document, page, operation)
       : null;
     try {
@@ -1139,6 +1141,12 @@ export class CanvasDocumentRegistry {
         ]);
         if (projected) {
           anchorChanges = this.#refreshAnchorsAfterContent(page, projected.getCell, movedAnchors);
+          anchorChanges.push(...this.#createAnchorsAfterContent(
+            document,
+            page,
+            projected.getCell,
+            createdAnchors
+          ));
         }
       }, history);
     } finally {
@@ -1604,6 +1612,54 @@ export class CanvasDocumentRegistry {
       if (change.value) page.anchors.set(change.id, change.value);
       else page.anchors.delete(change.id);
     }
+  }
+
+  #createAnchorsAfterContent(
+    document: CanvasYDocument,
+    page: CanvasPageRuntime,
+    getCell: (point: Point) => GridCell | undefined,
+    seeds: readonly CanvasAnchorSeed[]
+  ): CanvasAnchorChange[] {
+    if (seeds.length === 0) return [];
+    const existing = Array.from(page.anchors.values()).flatMap((value) => {
+      const anchor = readCanvasAnchor(value);
+      return anchor ? [anchor] : [];
+    });
+    const byPoint = new Map(existing.filter((anchor) => !anchor.detached).map((anchor) => [
+      GridManager.toKey(anchor.point.x, anchor.point.y), anchor,
+    ]));
+    let order = existing.reduce((next, anchor) => Math.max(next, anchor.order + 1), 0);
+    const parents = new Map<number, string>();
+    const additions: CanvasAnchorChange[] = [];
+    for (const seed of seeds) {
+      if (!Number.isInteger(seed.level) || seed.level < 1 || seed.level > 3 ||
+        !seed.label.trim() || !getCell(seed.point)?.char.trim()) continue;
+      const key = GridManager.toKey(seed.point.x, seed.point.y);
+      const previous = byPoint.get(key);
+      let parentId: string | null = null;
+      for (let level = seed.level - 1; level >= 1; level -= 1) {
+        if (parents.has(level)) {
+          parentId = parents.get(level)!;
+          break;
+        }
+      }
+      const anchor: CanvasAnchor = previous ?? {
+        id: `${document.doc.clientID}:${this.#operationSequence++}`,
+        point: { ...seed.point },
+        label: seed.label.trim(),
+        order: order++,
+        parentId,
+        detached: false,
+      };
+      if (!previous) {
+        additions.push({ id: anchor.id, value: anchor });
+        byPoint.set(key, anchor);
+      }
+      parents.set(seed.level, anchor.id);
+      for (let level = seed.level + 1; level <= 3; level += 1) parents.delete(level);
+    }
+    this.#applyAnchorChanges(page, additions);
+    return additions;
   }
 
   #inverseAnchorChanges(

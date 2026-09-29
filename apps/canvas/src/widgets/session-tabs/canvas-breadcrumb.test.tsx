@@ -268,16 +268,23 @@ describe("CanvasBreadcrumb", () => {
     const clickPicker = vi.spyOn(fileInput, "click").mockImplementation(() => undefined);
 
     openPanel();
-    await openDropdown("Import");
-    expect(screen.getByRole("menu", { name: "Import" })).toHaveClass(
-      "w-[calc(50vw-1.5rem)]",
-      "max-w-44"
-    );
-    fireEvent.click(screen.getByRole("menuitem", { name: "File" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
 
     expect(onActivate).toHaveBeenCalledTimes(2);
     expect(clickPicker).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("menu", { name: "Import" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Select canvas" })).not.toBeInTheDocument();
+  });
+
+  it("reveals Import when a folder is dragged over the visible canvas selector", async () => {
+    render(<CanvasBreadcrumb />);
+    const trigger = screen.getByRole("button", { name: "Select canvas" });
+    const dataTransfer = { types: ["Files"], dropEffect: "none" };
+
+    fireEvent.dragEnter(trigger, { dataTransfer });
+
+    expect(await screen.findByRole("dialog", { name: "Select canvas" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import" })).toBeInTheDocument();
   });
 
   it("shows import progress at the session selector after its menu closes", async () => {

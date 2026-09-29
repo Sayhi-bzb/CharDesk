@@ -21,7 +21,7 @@ import {
   ResizablePanelGroup,
   UiProvider,
 } from '@chardesk/ui';
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { feedback } from '@/shared/services/effects';
 import { useShallow } from 'zustand/react/shallow';
 import { CanvasSessionSelector } from '@/widgets/session-tabs/CanvasBreadcrumb';
@@ -487,6 +487,7 @@ function AppContent() {
       presentation={sidebarPresentation}
       open={isRightPanelOpen}
       onOpenChange={setIsRightPanelOpen}
+      style={{ '--sidebar-width': '18rem' } as CSSProperties}
       className="size-full overflow-hidden"
     >
       {surfaces.sidebar && <SidebarShortcutRegistration />}

@@ -18,6 +18,7 @@ export type SettingsTarget = {
     | { type: 'host-theme' }
     | { type: 'text-renderer' }
     | { type: 'markdown-wrap' }
+    | { type: 'markdown-auto-anchors' }
     | { type: 'canvas-font' }
     | { type: 'canvas-cursor' }
     | { type: 'canvas-cursor-blink' }
@@ -202,6 +203,14 @@ export const getSettingsSearchResults = (
       title: t('settings.markdownWrap'),
       target: { section: 'display', focus: { type: 'markdown-wrap' } },
       searchText: searchable([t('settings.markdownWrap'), t('settings.markdownWrapWidth'), '自动换行']),
+    },
+    {
+      id: 'setting:markdown-auto-anchors',
+      group: 'display',
+      groupTitle: displayTitle,
+      title: t('settings.markdownAutoAnchors'),
+      target: { section: 'display', focus: { type: 'markdown-auto-anchors' } },
+      searchText: searchable([t('settings.markdownAutoAnchors'), 'TOC', 'anchor', '目录', '锚点']),
     },
     {
       id: 'section:shortcuts',

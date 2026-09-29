@@ -11,15 +11,20 @@ export function showStartupPhase(phase: StartupPhase) {
     const content = shell.querySelector<HTMLElement>(".startup-content")!;
     const brand = document.createElement("div");
     brand.className = "startup-brand";
-    brand.textContent = "CharDesk";
+    brand.textContent = "Welcome to CharDesk";
+    const body = document.createElement("div");
+    body.className = "startup-body";
+    const icon = document.createElement("img");
+    icon.src = "/icon.svg";
+    icon.width = 24;
+    icon.height = 24;
+    icon.alt = "";
     const title = document.createElement("h1");
     title.className = "startup-title";
     title.setAttribute("role", "status");
     title.setAttribute("aria-live", "polite");
-    const progress = document.createElement("div");
-    progress.className = "startup-progress";
-    progress.setAttribute("aria-hidden", "true");
-    content.replaceChildren(brand, title, progress);
+    body.append(icon, title);
+    content.replaceChildren(brand, body);
   }
   const title = shell?.querySelector<HTMLElement>(".startup-title");
   if (shell) shell.dataset.startupPhase = phase;
@@ -41,9 +46,8 @@ export function showStartupMigrationFailure(error: unknown, actions: MigrationAc
   const copy = startupCopy[language];
   shell.dataset.startupPhase = "transfer-failed";
   shell.removeAttribute("aria-busy");
-  shell.querySelector(".startup-progress")?.remove();
-  const content = shell.querySelector<HTMLElement>(".startup-content")!;
-  const title = content.querySelector<HTMLElement>(".startup-title")!;
+  const body = shell.querySelector<HTMLElement>(".startup-body")!;
+  const title = body.querySelector<HTMLElement>(".startup-title")!;
   title.removeAttribute("role");
   title.removeAttribute("aria-live");
   title.textContent = copy.transferFailed;
@@ -78,7 +82,7 @@ export function showStartupMigrationFailure(error: unknown, actions: MigrationAc
   recovery.rel = "noopener noreferrer";
   recovery.textContent = copy.recover;
   controls.append(recovery);
-  content.append(detail, controls);
+  body.append(detail, controls);
 }
 
 export function showStartupFatalFailure(error: unknown): void {
@@ -87,9 +91,8 @@ export function showStartupFatalFailure(error: unknown): void {
   const copy = startupCopy[readStartupLanguage()];
   shell.dataset.startupPhase = "load-failed";
   shell.removeAttribute("aria-busy");
-  shell.querySelector(".startup-progress")?.remove();
-  const content = shell.querySelector<HTMLElement>(".startup-content")!;
-  content.querySelector<HTMLElement>(".startup-title")!.textContent = copy.loadFailed;
+  const body = shell.querySelector<HTMLElement>(".startup-body")!;
+  body.querySelector<HTMLElement>(".startup-title")!.textContent = copy.loadFailed;
   const detail = document.createElement("p");
   detail.className = "startup-detail";
   detail.setAttribute("role", "alert");
@@ -102,5 +105,5 @@ export function showStartupFatalFailure(error: unknown): void {
   reload.textContent = copy.reload;
   reload.onclick = () => window.location.reload();
   actions.append(reload);
-  content.append(detail, actions);
+  body.append(detail, actions);
 }

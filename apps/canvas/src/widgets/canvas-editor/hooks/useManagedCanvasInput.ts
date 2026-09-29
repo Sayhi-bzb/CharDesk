@@ -228,6 +228,7 @@ export const useManagedCanvasInput = ({
   const hasActiveSelection = activeSelections.length > 0;
   const [canvasOwnsInputFocus, setCanvasOwnsInputFocus] = useState(false);
   const canvasOwnsInputFocusRef = useRef(false);
+  const inputFocusTargetRef = useRef<"surface" | "textarea" | null>(null);
   const windowHasFocusRef = useRef(true);
   const managedTextareaPoint =
     activeTextCursor ??
@@ -245,6 +246,7 @@ export const useManagedCanvasInput = ({
   const focusManagedTextarea = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
+    inputFocusTargetRef.current = "textarea";
     canvasOwnsInputFocusRef.current = true;
     setCanvasOwnsInputFocus(true);
     if (document.activeElement !== textarea) {
@@ -254,20 +256,36 @@ export const useManagedCanvasInput = ({
     // target. Keep a selected sentinel so the native clipboard event fires.
     primeManagedTextarea();
   }, [primeManagedTextarea]);
+  const focusCanvasSurface = useCallback(() => {
+    const surface = textareaRef.current?.closest<HTMLElement>(
+      '[data-testid="canvas-editor-surface"]'
+    );
+    if (!surface) return;
+    inputFocusTargetRef.current = "surface";
+    canvasOwnsInputFocusRef.current = true;
+    setCanvasOwnsInputFocus(true);
+    if (document.activeElement !== surface) surface.focus({ preventScroll: true });
+  }, []);
   const restoreManagedInputFocus = useCallback(() => {
     if (!canvasOwnsInputFocusRef.current) return;
-    textareaRef.current?.focus({ preventScroll: true });
-    primeManagedTextarea();
-  }, [primeManagedTextarea]);
+    if (inputFocusTargetRef.current === "surface") {
+      focusCanvasSurface();
+    } else if (inputFocusTargetRef.current === "textarea") {
+      textareaRef.current?.focus({ preventScroll: true });
+      primeManagedTextarea();
+    }
+  }, [focusCanvasSurface, primeManagedTextarea]);
   const releaseManagedTextarea = useCallback(() => {
     canvasOwnsInputFocusRef.current = false;
+    inputFocusTargetRef.current = null;
     setCanvasOwnsInputFocus(false);
+    if (document.activeElement === textareaRef.current) textareaRef.current?.blur();
   }, []);
   const reconcileManagedTextareaBlur = useCallback(() => {
     const textarea = textareaRef.current;
     if (
       !textarea ||
-      !canvasOwnsInputFocusRef.current ||
+      inputFocusTargetRef.current !== "textarea" ||
       !windowHasFocusRef.current
     ) return;
     const activeElement = document.activeElement;
@@ -298,10 +316,14 @@ export const useManagedCanvasInput = ({
       return;
     }
     event.preventDefault();
-    focusManagedTextarea();
+    if (event.pointerType === "touch") {
+      focusCanvasSurface();
+    } else {
+      focusManagedTextarea();
+    }
   };
   useLayoutEffect(() => {
-    if (!canvasOwnsInputFocus) return;
+    if (!canvasOwnsInputFocus || inputFocusTargetRef.current !== "textarea") return;
     const textarea = textareaRef.current;
     if (!textarea) return;
     if (document.activeElement !== textarea) {
@@ -555,11 +577,8 @@ export const useManagedCanvasInput = ({
   ]);
 
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (!isComposing.current) finalizedCompositionRef.current = null;
-    if (e.defaultPrevented) return;
-    if (isComposing.current) return;
-    const input = keyInputFromKeyboardEvent(e.nativeEvent);
+  const resolveKeyIntent = (event: globalThis.KeyboardEvent) => {
+    const input = keyInputFromKeyboardEvent(event);
     const pageRows = Math.max(
       1,
       Math.floor(
@@ -567,16 +586,45 @@ export const useManagedCanvasInput = ({
           (DEFAULT_CANVAS_CELL_METRICS.cellHeight * zoom)
       ) - 1
     );
-    const decision = resolveManagedCanvasKeyIntent(input, {
+    return resolveManagedCanvasKeyIntent(input, {
       mutateEnabled,
       staticGridInteraction: staticGridInteraction.kind,
       hasActiveSelection,
       colorPickerOpen: !!canvasColorPickerTarget,
       pageRows,
     });
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!isComposing.current) finalizedCompositionRef.current = null;
+    if (e.defaultPrevented || isComposing.current) return;
+    const decision = resolveKeyIntent(e.nativeEvent);
     if (decision.flushPendingText) flushPendingManagedText();
     if (decision.preventDefault) e.preventDefault();
     if (decision.intent) executeManagedCanvasKeyIntent(decision.intent);
+  };
+
+  const handleSurfaceKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (
+      e.target !== e.currentTarget || e.defaultPrevented || e.nativeEvent.isComposing ||
+      !canvasOwnsInputFocusRef.current
+    ) return;
+    const input = keyInputFromKeyboardEvent(e.nativeEvent);
+    const decision = resolveKeyIntent(e.nativeEvent);
+    if (decision.flushPendingText) flushPendingManagedText();
+    if (decision.preventDefault) e.preventDefault();
+    if (decision.intent) {
+      executeManagedCanvasKeyIntent(decision.intent);
+      if (decision.intent.type === "enter-grid-text-edit") focusManagedTextarea();
+    } else if (
+      mutateEnabled && input.phase === "down" && input.key.length === 1 &&
+      !input.modifiers.ctrl && !input.modifiers.meta && !input.modifiers.alt &&
+      !input.modifiers.altGraph
+    ) {
+      e.preventDefault();
+      focusManagedTextarea();
+      enqueueManagedText(input.key);
+    }
   };
 
   function executeManagedCanvasKeyIntent(intent: ManagedCanvasKeyIntent) {
@@ -638,6 +686,7 @@ export const useManagedCanvasInput = ({
     restoreManagedInputFocus,
     canvasOwnsInputFocus,
     onCanvasPointerDown: handleCanvasPointerDown,
+    onCanvasKeyDown: handleSurfaceKeyDown,
     textareaStyle: textareaStyle as CSSProperties,
     textareaProps: {
       onCompositionStart: () => {

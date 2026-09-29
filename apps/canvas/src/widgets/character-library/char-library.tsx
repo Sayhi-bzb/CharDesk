@@ -505,7 +505,7 @@ function UnicodePane({
     loadUnicodeManifest,
     loadUnicodePage,
   } = useLibraryStore();
-  const [facetType, setFacetType] = useState<UnicodeFacetType>('block');
+  const [facetType, setFacetType] = useState<UnicodeFacetType>(unicodeFacetType);
 
   useEffect(() => {
     void loadUnicodeManifest();
@@ -548,19 +548,18 @@ function UnicodePane({
           }}
           className="gap-2"
         >
-          <TabsList className="w-full">
+          <TabsList variant="line" className="w-full p-0 group-data-[orientation=horizontal]/tabs:h-7">
             {(['block', 'script', 'category'] as const).map((type) => (
               <TabsTrigger
                 key={type}
                 value={type}
-                active={facetType === type}
-                className="flex-1 px-1 text-[10px] capitalize"
+                className="min-w-0 px-1 py-0 text-xs"
               >
                 {t(UNICODE_FACET_LABEL_KEYS[type])}
               </TabsTrigger>
             ))}
           </TabsList>
-          <TabsContent value={facetType} className="flex flex-col gap-2">
+          <TabsContent value={facetType} className="flex flex-col gap-1">
             <Select
               value={selectedFacetId}
               onValueChange={(value) => void loadUnicodePage(facetType, value)}
@@ -569,7 +568,7 @@ function UnicodePane({
                 aria-label={t('character.unicodeFacet')}
                 size="sm"
                 appearance="search"
-                className="w-full text-[11px]"
+                className="w-full"
               >
                 <SelectValue />
               </SelectTrigger>

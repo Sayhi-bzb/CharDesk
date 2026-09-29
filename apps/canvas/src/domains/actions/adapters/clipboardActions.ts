@@ -68,6 +68,7 @@ const toRenderedClipboardPayload = async (
       richCells: null,
       plainText: source,
       diagnostics: rendered.diagnostics,
+      headings: rendered.renderer === "markdown" ? rendered.headings ?? [] : [],
     };
   }
   return rendered.kind === "styled"
@@ -75,11 +76,13 @@ const toRenderedClipboardPayload = async (
         richCells: rendered.cells,
         plainText: source,
         diagnostics: rendered.diagnostics,
+        headings: rendered.renderer === "markdown" ? rendered.headings ?? [] : [],
       }
     : {
         richCells: null,
         plainText: rendered.text,
         diagnostics: rendered.diagnostics,
+        headings: [],
       };
 };
 

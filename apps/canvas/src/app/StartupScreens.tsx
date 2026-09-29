@@ -16,13 +16,15 @@ export function StartupScreen({
   return (
     <main className="startup-shell" data-startup-phase={phase} aria-busy={loading || undefined}>
       <div className="startup-content">
-        <div className="startup-brand">CharDesk</div>
-        <h1 className="startup-title" role={loading ? "status" : undefined} aria-live={loading ? "polite" : undefined}>
-          {heading}
-        </h1>
-        {detail ? <p className="startup-detail" role={loading ? undefined : "alert"}>{detail}</p> : null}
-        {loading ? <div className="startup-progress" aria-hidden="true" /> : null}
-        {actions ? <div className="startup-actions">{actions}</div> : null}
+        <div className="startup-brand">Welcome to CharDesk</div>
+        <div className="startup-body">
+          <img src="/icon.svg" width="24" height="24" alt="" />
+          <h1 className="startup-title" role={loading ? "status" : undefined} aria-live={loading ? "polite" : undefined}>
+            {heading}
+          </h1>
+          {detail ? <p className="startup-detail" role={loading ? undefined : "alert"}>{detail}</p> : null}
+          {actions ? <div className="startup-actions">{actions}</div> : null}
+        </div>
       </div>
     </main>
   );

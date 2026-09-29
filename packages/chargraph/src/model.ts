@@ -15,6 +15,12 @@ export type CharGraphVisualGroup = {
   inlineAlignment: CharGraphInlineAlignment;
 };
 
+export type CharGraphHeading = {
+  row: number;
+  level: number;
+  label: string;
+};
+
 export type CharGraphFragment = CharDeskTextRun & {
   origin?: CharGraphSourceRange;
 };
@@ -34,6 +40,7 @@ export type CharGraphRenderResult = {
   preferredInlineAlignment?: CharGraphInlineAlignment;
   /** Top-level visual units with explicit placement intent. */
   visualGroups?: CharGraphVisualGroup[];
+  headings?: CharGraphHeading[];
 };
 
 export interface CharGraphRenderer<TOptions = undefined> {
