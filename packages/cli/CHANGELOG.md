@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.4](https://github.com/Sayhi-bzb/CharDesk/compare/v0.5.3...v0.5.4) (2026-09-29)
+
+
+### Features
+
+* add coordinate anchors to Canvas Contents ([481e251](https://github.com/Sayhi-bzb/CharDesk/commit/481e2513b2c4809102d5841144b91d5dac527fdc))
+
 ## [0.5.3](https://github.com/Sayhi-bzb/CharDesk/compare/v0.5.2...v0.5.3) (2026-09-27)
 
 
