@@ -4,7 +4,7 @@
 
 > **人与 Agent 共享的视觉媒介。**
 
-CharDesk 让人和由语言模型驱动的 Agent 共用一份视觉化的 Unicode 文本。人阅读并使用场景；Agent 检视源码、修改并验证结果。Canvas 用这种媒介创作视觉作品，Cell UI 用它构建交互界面。
+CharDesk 让人和由语言模型驱动的 Agent 共用一份视觉化的 Unicode 文本。人在无限 Canvas 上绘制图解和界面；Agent 检视源码、修改并验证结果。Cell UI 用同一种媒介构建交互界面。
 
 [打开 Canvas](https://canvas.chardesk.com/) · [探索 Cell UI](https://ui.chardesk.com/)
 

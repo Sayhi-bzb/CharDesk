@@ -60,7 +60,7 @@ export function Site() {
   useLayoutEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const update = () => setWidth(Math.max(26, Math.min(72,
+    const update = () => setWidth(Math.max(22, Math.min(72,
       Math.floor(host.clientWidth / DEFAULT_CELL_UI_METRICS.cellWidth) - 2 * CELL_SURFACE_GUARD_CELLS)));
     update();
     const observer = new ResizeObserver(update);

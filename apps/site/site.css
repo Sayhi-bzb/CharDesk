@@ -18,11 +18,30 @@ body { margin: 0; min-width: 320px; }
   min-height: 100svh;
   margin: 0 auto;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: center;
   justify-items: center;
 }
 
 .site-surface { max-width: 100%; }
+
+.site-discover {
+  width: min(100% - 32px, 920px);
+  margin: 0 auto;
+  padding: 0 0 72px;
+  line-height: 1.5;
+}
+.site-discover h1 { font-size: clamp(20px, 3vw, 28px); line-height: 1.3; margin: 0 0 10px; }
+.site-discover p { margin: 0; max-width: 66ch; }
+.site-discover a { color: inherit; text-underline-offset: 3px; }
+.site-discover-action { display: inline-block; margin-top: 16px; }
+.site-examples { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 40px; }
+.site-examples article { min-width: 0; }
+.site-examples img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; object-position: center; background: #f3f4f6; }
+:root[data-site-theme="dark"] .site-examples img { background: #161616; }
+.site-examples h2 { font-size: 16px; margin: 14px 0 6px; }
+.site-examples p { margin-bottom: 8px; }
+.site-discover p.site-discover-footer { margin-top: 40px; }
 
 .site-startup-window {
   width: min(100%, 360px);
@@ -46,5 +65,6 @@ body { margin: 0; min-width: 320px; }
 .site-js.site-slow .site-loading-links { display: grid; }
 
 @media (max-width: 600px) {
-  .site-shell { align-content: start; padding-top: 48px; }
+  .site-shell { min-height: auto; align-content: start; padding: 48px 0; }
+  .site-examples { grid-template-columns: 1fr; gap: 32px; }
 }

@@ -4,7 +4,7 @@
 
 > **A shared visual medium for people and agents.**
 
-CharDesk gives people and LLM-powered agents a common artifact: visual Unicode text. People read and use the scene; agents inspect its source, revise it, and verify the result. Canvas applies this medium to visual work; Cell UI applies it to interactive interfaces.
+CharDesk gives people and LLM-powered agents a common artifact: visual Unicode text. Its infinite Canvas lets people draw diagrams and interfaces while agents inspect the source, revise it, and verify the result. Cell UI applies the same medium to interactive interfaces.
 
 [Open Canvas](https://canvas.chardesk.com/) · [Explore Cell UI](https://ui.chardesk.com/)
 

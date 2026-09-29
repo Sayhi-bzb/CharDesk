@@ -19,17 +19,17 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/site.css" />
     <link rel="canonical" href="https://chardesk.com/" />
-    <title>CharDesk — A visual medium for people and agents</title>
-    <meta name="description" content="A shared visual medium for people and agents. Create visual work with Canvas or interactive interfaces with Cell UI." />
+    <title>CharDesk — Unicode canvas for people and AI agents</title>
+    <meta name="description" content="Create diagrams, visual explanations, and interface sketches on an infinite Unicode canvas. People see the scene; AI agents can read and edit its text source." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://chardesk.com/" />
-    <meta property="og:title" content="CharDesk — A visual medium for people and agents" />
-    <meta property="og:description" content="A shared visual medium for people and agents. Create visual work with Canvas or interactive interfaces with Cell UI." />
+    <meta property="og:title" content="CharDesk — Unicode canvas for people and AI agents" />
+    <meta property="og:description" content="Create diagrams, visual explanations, and interface sketches on an infinite Unicode canvas. People see the scene; AI agents can read and edit its text source." />
     <meta property="og:image" content="https://chardesk.com/showcase/01-shared-medium.png" />
     <script defer src="/site.js"></script>
   </head>
   <body>
-    <main id="root" class="site-shell">
+    <div id="root" class="site-shell">
       <div class="site-loading site-startup-window" role="status" aria-live="polite">
         <div class="site-startup-title">Welcome to CharDesk</div>
         <div class="site-startup-body">
@@ -56,6 +56,32 @@
           </nav>
         </div>
       </div>
+    </div>
+    <main class="site-discover" aria-labelledby="site-discover-title">
+      <h1 id="site-discover-title">An infinite Unicode canvas for people and AI agents</h1>
+      <p>Draw diagrams, explain ideas, and sketch interfaces as editable text. People see the spatial scene; agents can inspect its source and revise it precisely.</p>
+      <a class="site-discover-action" href="https://canvas.chardesk.com/">Open Canvas →</a>
+      <div class="site-examples" aria-label="Made with CharDesk">
+        <article>
+          <a href="https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md"><img src="/showcase/02-gpu-blackboard.zh-CN.png" alt="Unicode diagram explaining how a GPU renders a frame" loading="lazy" /></a>
+          <h2>Explain a concept</h2>
+          <p>A GPU explanation with diagrams and a text source an agent can revise.</p>
+          <a href="https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md">Read the source →</a>
+        </article>
+        <article>
+          <a href="https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/site/showcase-sources/03-el-nino-observatory.md"><img src="/showcase/03-el-nino-observatory.png" alt="Unicode scientific figure comparing normal and El Niño conditions" loading="lazy" /></a>
+          <h2>Build a technical figure</h2>
+          <p>Spatial text brings a comparison, a chart, and a formula into one scene.</p>
+          <a href="https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/site/showcase-sources/03-el-nino-observatory.md">Read the source →</a>
+        </article>
+        <article>
+          <a href="https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/site/showcase-sources/05-interface-console.md"><img src="/showcase/05-interface-console.png" alt="Unicode interface sketch of a status and workflow dashboard" loading="lazy" /></a>
+          <h2>Sketch an interface</h2>
+          <p>A dashboard layout that stays selectable, copyable, and editable as text.</p>
+          <a href="https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/site/showcase-sources/05-interface-console.md">Read the source →</a>
+        </article>
+      </div>
+      <p class="site-discover-footer">Need interactive interfaces? <a href="https://ui.chardesk.com/">Explore Cell UI →</a></p>
     </main>
     <script type="module" src="/src/main.tsx"></script>
   </body>

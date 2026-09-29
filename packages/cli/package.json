@@ -2,7 +2,7 @@
   "name": "@chardesk/cli",
   "version": "0.5.3",
   "private": false,
-  "description": "Create, inspect, live-preview, and render CharDesk workspaces",
+  "description": "Create, inspect, live-preview, and render work on the CharDesk Unicode canvas",
   "type": "module",
   "bin": {
     "chardesk": "dist/cli.js"

@@ -43,4 +43,7 @@ const index = await readFile(path.join(site, "index.html"), "utf8");
 if (!index.includes('https://canvas.chardesk.com/') || !index.includes('https://ui.chardesk.com/')) {
   throw new Error("Site navigation is missing a product entry");
 }
+if (!index.includes('id="site-discover-title"') || !index.includes('class="site-examples"')) {
+  throw new Error("Site HTML is missing its crawlable product explanation");
+}
 await writeFile(path.join(site, "404.html"), index);

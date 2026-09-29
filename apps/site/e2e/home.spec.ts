@@ -27,7 +27,7 @@ for (const width of [320, 375, 720, 1440]) {
     const surface = page.locator('[data-cell-probe="site-home"]');
     await expect(surface).toBeVisible();
     await expect(page.locator(".site-loading, .site-fallback")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Open Canvas" })).toHaveAttribute("href", "https://canvas.chardesk.com/");
+    await expect(page.getByRole("link", { name: "Open Canvas", exact: true })).toHaveAttribute("href", "https://canvas.chardesk.com/");
     await expect(page.getByRole("link", { name: "Open Cell UI" })).toHaveAttribute("href", "https://ui.chardesk.com/");
     await expect.poll(() => surface.evaluate((element) => {
       const probe = (element as HTMLElement & { __chardeskCellProbeV5?: { text: string } }).__chardeskCellProbeV5;
@@ -52,6 +52,12 @@ for (const width of [320, 375, 720, 1440]) {
       }
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    if (width <= 375) {
+      expect(await page.evaluate(() =>
+        document.querySelector(".site-discover")!.getBoundingClientRect().top
+        - document.querySelector(".site-shell")!.getBoundingClientRect().bottom
+      )).toBeLessThanOrEqual(1);
+    }
   });
 }
 
@@ -197,12 +203,26 @@ test("static product links remain when JavaScript is unavailable", async ({ brow
   await expect(page.locator(".site-loading")).toBeHidden();
   await expect(page.locator(".site-startup-title:visible")).toHaveText("Welcome to CharDesk");
   await expect(page.locator(".site-fallback h1")).toHaveText("Visual text for people and agents.");
+  await expect(page.getByRole("heading", { name: "An infinite Unicode canvas for people and AI agents" })).toBeVisible();
+  await expect(page.locator(".site-examples article")).toHaveCount(3);
+  await expect(page.locator(".site-examples a", { hasText: "Read the source" })).toHaveCount(3);
   expect(await page.evaluate(() => ({
     bodyMargin: getComputedStyle(document.body).margin,
     shellDisplay: getComputedStyle(document.querySelector(".site-shell")!).display,
     startupBorder: getComputedStyle(document.querySelector(".site-fallback")!).borderTopWidth,
   }))).toEqual({ bodyMargin: "0px", shellDisplay: "grid", startupBorder: "0px" });
   await context.close();
+});
+
+test("product explanation survives Cell UI hydration", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator('[data-cell-probe="site-home"]')).toBeVisible();
+  await expect(page.getByRole("heading", { name: "An infinite Unicode canvas for people and AI agents" })).toBeVisible();
+  await expect(page.locator(".site-examples article")).toHaveCount(3);
+  await expect(page.locator(".site-discover-action")).toHaveAttribute("href", "https://canvas.chardesk.com/");
+  for (const image of await page.locator(".site-examples img").all()) {
+    await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBeGreaterThan(0);
+  }
 });
 
 test("loading state replaces the HTML fallback until Cell UI is ready", async ({ page }) => {
