@@ -17,7 +17,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Surface,
 } from '@chardesk/ui';
 
 
@@ -217,26 +216,24 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           data-slot="settings-layout"
           className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_2.25rem] overflow-hidden md:grid-cols-[11rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)_2.25rem] md:gap-x-4"
         >
-          <Surface asChild kind="embedded">
-            <aside className="min-h-0 min-w-0 md:row-span-2">
-              <SettingsNavigation
-                label={t('settings.navigation')}
-                items={navigationItems}
-                value={section}
-                onValueChange={changeSection}
-                search={{
-                  label: t('settings.search'),
-                  placeholder: t('settings.searchPlaceholder'),
-                  resultsLabel: t('settings.searchResults'),
-                  noResultsLabel: t('settings.noSearchResults'),
-                  query: searchQuery,
-                  results: searchResults,
-                  onQueryChange: setSearchQuery,
-                  onResultSelect: selectSearchResult,
-                }}
-              />
-            </aside>
-          </Surface>
+          <aside className="min-h-0 min-w-0 md:row-span-2">
+            <SettingsNavigation
+              label={t('settings.navigation')}
+              items={navigationItems}
+              value={section}
+              onValueChange={changeSection}
+              search={{
+                label: t('settings.search'),
+                placeholder: t('settings.searchPlaceholder'),
+                resultsLabel: t('settings.searchResults'),
+                noResultsLabel: t('settings.noSearchResults'),
+                query: searchQuery,
+                results: searchResults,
+                onQueryChange: setSearchQuery,
+                onResultSelect: selectSearchResult,
+              }}
+            />
+          </aside>
           <div
             data-slot="settings-content"
             className="flex min-h-0 min-w-0 overflow-hidden px-1 pt-3 md:col-start-2 md:row-start-1 md:pt-1"
@@ -303,6 +300,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   revealSettingId={
                     revealTarget?.type === 'text-renderer'
                       ? revealTarget.type
+                      : revealTarget?.type === 'markdown-wrap'
+                        ? revealTarget.type
                       : revealTarget?.type === 'render-feature'
                         ? revealTarget.featureId
                         : null

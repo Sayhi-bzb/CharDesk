@@ -56,6 +56,7 @@ type CollaborationErrorKind =
 export type CollaborationIntegrityIssue = {
   channel:
     | "cell-plane-operations"
+    | "canvas-anchors"
     | "presence";
   key: string;
   pageId?: string;

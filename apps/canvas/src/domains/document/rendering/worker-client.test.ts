@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createTextRenderingRuntime } from "./runtime";
+import { createTextRenderingRuntime, DEFAULT_TEXT_RENDER_PROFILE } from "./runtime";
 import { TextRenderingWorkerClient } from "./worker-client";
 
 class FakeWorker {
@@ -80,6 +80,20 @@ describe("TextRenderingWorkerClient", () => {
 
     expect(FakeWorker.latest?.lastMessage).toMatchObject({
       context: { themeMode: "dark" },
+    });
+    client.dispose();
+    await expect(result).rejects.toThrow("disposed");
+  });
+
+  it("sends the Markdown wrap preference to the worker", async () => {
+    globalThis.Worker = FakeWorker as unknown as typeof Worker;
+    const runtime = createTextRenderingRuntime({ storage: false });
+    runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, markdownWrapWidth: 100 });
+    const client = new TextRenderingWorkerClient(runtime);
+    const result = client.render("# " + "word ".repeat(10_000), "#fff");
+
+    expect(FakeWorker.latest?.lastMessage).toMatchObject({
+      profile: { markdownWrapEnabled: true, markdownWrapWidth: 100 },
     });
     client.dispose();
     await expect(result).rejects.toThrow("disposed");

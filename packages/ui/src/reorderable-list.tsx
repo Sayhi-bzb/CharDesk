@@ -56,7 +56,8 @@ type DragData = {
   startY: number;
   lastY: number;
   active: boolean;
-  slot: number;
+  positions: { top: number; bottom: number; center: number }[];
+  extent: number;
   to: number;
   rows: HTMLLIElement[];
   scrollParent: HTMLElement | null;
@@ -239,28 +240,37 @@ export function ReorderableList<Item>({
         ? drag.scrollParent.scrollTop - drag.startScrollTop
         : 0;
       const deltaY = drag.lastY - drag.startY + scrollDelta;
-      const min = -drag.index * drag.slot;
-      const max = (items.length - 1 - drag.index) * drag.slot;
+      const origin = drag.positions[drag.index];
+      if (!origin) return;
+      const min = drag.positions[0]!.top - origin.top;
+      const max = drag.positions.at(-1)!.bottom - origin.bottom;
       const visualOffset = Math.max(min, Math.min(max, deltaY));
       yFor(drag.row.dataset.id ?? "")?.jump(visualOffset);
-      const targetIndex = Math.max(
-        0,
-        Math.min(
-          items.length - 1,
-          Math.round((drag.index * drag.slot + visualOffset) / drag.slot)
-        )
-      );
+      let targetIndex = drag.index;
+      if (visualOffset > 0) {
+        const leadingEdge = origin.bottom + visualOffset;
+        for (let index = drag.index + 1; index < drag.positions.length; index += 1) {
+          if (leadingEdge < drag.positions[index]!.center) break;
+          targetIndex = index;
+        }
+      } else if (visualOffset < 0) {
+        const leadingEdge = origin.top + visualOffset;
+        for (let index = drag.index - 1; index >= 0; index -= 1) {
+          if (leadingEdge > drag.positions[index]!.center) break;
+          targetIndex = index;
+        }
+      }
       if (targetIndex === drag.to) return;
       drag.to = targetIndex;
       drag.rows.forEach((row, index) => {
         if (row === drag.row) return;
         let shift = 0;
-        if (drag.index < index && index <= targetIndex) shift = -drag.slot;
-        if (targetIndex <= index && index < drag.index) shift = drag.slot;
+        if (drag.index < index && index <= targetIndex) shift = -drag.extent;
+        if (targetIndex <= index && index < drag.index) shift = drag.extent;
         glide(yFor(row.dataset.id ?? ""), shift);
       });
     },
-    [glide, items.length, yFor]
+    [glide, yFor]
   );
 
   const startAutoScroll = useCallback(
@@ -310,11 +320,18 @@ export function ReorderableList<Item>({
       clearHoldTimer(drag);
       const rows = rowNodes();
       drag.rows = rows;
-      drag.slot =
-        rows.length > 1
-          ? rows[1]!.getBoundingClientRect().top -
-            rows[0]!.getBoundingClientRect().top
-          : rows[0]?.offsetHeight || 1;
+      drag.positions = rows.map((row) => {
+        const { top, bottom } = row.getBoundingClientRect();
+        return { top, bottom, center: (top + bottom) / 2 };
+      });
+      const origin = drag.positions[drag.index];
+      if (!origin) return;
+      const next = drag.positions[drag.index + 1];
+      const previous = drag.positions[drag.index - 1];
+      const gap = next
+        ? next.top - origin.bottom
+        : previous ? origin.top - previous.bottom : 0;
+      drag.extent = origin.bottom - origin.top + gap;
       drag.active = true;
       drag.row.setPointerCapture(drag.pointerId);
       setDragging({ id: drag.row.dataset.id ?? "", from: drag.index });
@@ -392,7 +409,8 @@ export function ReorderableList<Item>({
       startY: event.clientY,
       lastY: event.clientY,
       active: false,
-      slot: 0,
+      positions: [],
+      extent: 0,
       to: index,
       rows: [],
       scrollParent,

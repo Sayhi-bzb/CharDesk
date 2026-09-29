@@ -81,6 +81,22 @@ const selectionCommands = selectionCommandFactory({
   },
 });
 const commands = {
+  anchors: {
+    add: (point: Point, name?: string) => commits.run(() => {
+      if (commits.getState().canvasMode !== "freeform") return null;
+      return documents.addAnchorAt(resolveAddress(), point, name);
+    }),
+    remove: (id: string) => commits.run(() => documents.removeAnchorAt(resolveAddress(), id)),
+    rename: (id: string, name: string) => commits.run(() =>
+      documents.renameAnchorAt(resolveAddress(), id, name)
+    ),
+    reattach: (id: string, point: Point) => commits.run(() =>
+      documents.reattachAnchorAt(resolveAddress(), id, point)
+    ),
+    move: (id: string, parentId: string | null, siblingIndex: number) => commits.run(() =>
+      documents.moveAnchorAt(resolveAddress(), id, parentId, siblingIndex)
+    ),
+  },
   history: {
     undo: () => commits.run(() => {
       resolveAddress();

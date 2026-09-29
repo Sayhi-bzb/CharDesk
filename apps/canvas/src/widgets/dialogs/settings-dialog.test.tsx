@@ -88,6 +88,9 @@ describe('SettingsDialog', () => {
       'md:grid-cols-[11rem_minmax(0,1fr)]',
       'md:grid-rows-[minmax(0,1fr)_2.25rem]'
     );
+    expect(dialog.querySelector('[data-slot="settings-layout"] > aside')).not.toHaveClass(
+      'bg-secondary/70'
+    );
     expect(dialog.querySelector('[data-slot="settings-content"]')).toHaveClass('min-w-0');
     expect(dialog.querySelector('[data-slot="settings-content"]')).not.toHaveClass('w-full');
     expect(dialog.querySelector('[data-slot="dialog-footer"]')).toHaveClass(
@@ -180,6 +183,29 @@ describe('SettingsDialog', () => {
       'min-w-[520px]'
     );
     expect(displayGrid?.querySelectorAll('col')).toHaveLength(3);
+
+    const wrap = screen.getByRole('checkbox', { name: 'Wrap pasted Markdown' });
+    const width = screen.getByRole('spinbutton', { name: 'Markdown wrap width (cells)' });
+    expect(wrap).toBeChecked();
+    expect(width).toHaveValue(80);
+    fireEvent.change(width, { target: { value: '100' } });
+    fireEvent.blur(width);
+    expect(runtime.getProfile().markdownWrapWidth).toBe(100);
+    fireEvent.change(width, { target: { value: '250' } });
+    fireEvent.blur(width);
+    expect(runtime.getProfile().markdownWrapWidth).toBe(200);
+    fireEvent.change(width, { target: { value: '40' } });
+    fireEvent.keyDown(width, { key: 'Enter' });
+    fireEvent.blur(width);
+    expect(runtime.getProfile().markdownWrapWidth).toBe(60);
+    fireEvent.change(width, { target: { value: '' } });
+    fireEvent.blur(width);
+    expect(width).toHaveValue(60);
+    fireEvent.click(wrap);
+    expect(runtime.getProfile()).toMatchObject({ markdownWrapEnabled: false, markdownWrapWidth: 60 });
+    expect(width).toBeDisabled();
+    fireEvent.click(wrap);
+    expect(runtime.getProfile()).toMatchObject({ markdownWrapEnabled: true, markdownWrapWidth: 60 });
 
     const trigger = screen.getByLabelText('Pasted text rendering');
     trigger.focus();

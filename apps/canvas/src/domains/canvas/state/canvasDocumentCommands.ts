@@ -1,4 +1,4 @@
-import { createStaticGridRangeMovePlan } from "../cell-plane/rangeMove";
+import { createStaticGridRangeMovePlan, isPointInStaticGridRange } from "../cell-plane/rangeMove";
 import {
   collapseGridSelectionTo,
   createStaticGridInputSession,
@@ -384,10 +384,23 @@ export const createCanvasDocumentCommands = (
     if (!plan) return false;
 
     const address = resolveEditorDocumentAddress(documents, state);
+    const movedAnchorIds = documents.getAnchorsAt(address)
+      .filter((anchor) => !anchor.detached && isPointInStaticGridRange(
+        state.contentSurface.reader,
+        plan.sourceRange,
+        anchor.point
+      ))
+      .map((anchor) => anchor.id);
+    const movedAnchorSet = new Set(movedAnchorIds);
+    const overwrittenAnchorIds = documents.getAnchorsAt(address)
+      .filter((anchor) => !anchor.detached && !movedAnchorSet.has(anchor.id) &&
+        isPointInStaticGridRange(state.contentSurface.reader, plan.targetRange, anchor.point))
+      .map((anchor) => anchor.id);
     const operation = documents.applyCellPlanePatchAt(
       address,
       plan.patch,
-      commits.getDocumentHistoryMode()
+      commits.getDocumentHistoryMode(),
+      { ids: movedAnchorIds, overwrittenIds: overwrittenAnchorIds, delta: plan.delta }
     );
     if (!operation) return false;
 

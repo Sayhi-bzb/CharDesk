@@ -4,6 +4,8 @@ export {
 export {
   createTextRenderingRuntime,
   DEFAULT_TEXT_RENDER_PROFILE,
+  MARKDOWN_WRAP_WIDTH_MIN,
+  MARKDOWN_WRAP_WIDTH_MAX,
   renderTextSource,
   TEXT_RENDER_PROFILE_STORAGE_KEY,
   TextRenderingRuntime,

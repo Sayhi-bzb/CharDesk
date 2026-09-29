@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { MapPin } from "lucide-react";
 import {
   ContextMenuContent,
   ContextMenuItem,
@@ -16,6 +17,7 @@ import type { ContextMenuEntry } from "@/domains/actions/public";
 import { useEditor, useEditorKeymapSnapshot } from "@/domains/editor/public";
 import { useUiI18n, type I18nKey } from "@/shared/i18n";
 import { EditorWidget } from "@/widgets/editor-chrome/public";
+import type { CanvasAnchorTarget } from "./canvasAnchorTarget";
 
 const LABEL_KEY_BY_ID: Record<string, I18nKey> = {
   copy: "context.copyText",
@@ -31,11 +33,16 @@ const LABEL_KEY_BY_ID: Record<string, I18nKey> = {
 type CanvasContextMenuContentProps = {
   entries: readonly ContextMenuEntry[];
   managedTextareaRef: RefObject<HTMLTextAreaElement | null>;
+  anchorAction?: {
+    target: CanvasAnchorTarget | null;
+    onSelect: (target: CanvasAnchorTarget) => void;
+  };
 };
 
 export const CanvasContextMenuContent = ({
   entries,
   managedTextareaRef,
+  anchorAction,
 }: CanvasContextMenuContentProps) => {
   const { t } = useUiI18n();
   const editor = useEditor();
@@ -100,6 +107,20 @@ export const CanvasContextMenuContent = ({
   return (
     <EditorWidget role="contextual">
       <ContextMenuContent className="w-56">
+        {anchorAction && (
+          <>
+            <ContextMenuItem
+              disabled={!anchorAction.target}
+              onClick={() => {
+                if (anchorAction.target) anchorAction.onSelect(anchorAction.target);
+              }}
+            >
+              <MapPin />
+              <span>{t("anchors.add")}</span>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        )}
         {entries.map(renderEntry)}
       </ContextMenuContent>
     </EditorWidget>

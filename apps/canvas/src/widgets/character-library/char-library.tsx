@@ -34,7 +34,6 @@ import {
   Button,
   IconButton,
   SelectableItem,
-  Surface,
   StatusText,
   Tabs,
   TabsContent,
@@ -391,11 +390,7 @@ function GroupSection({
 
   return (
     <Collapsible defaultOpen={defaultOpen} className="group/character-group">
-      <Surface
-        data-slot="character-group-header"
-        kind="embedded"
-        className="sticky top-0 z-10"
-      >
+      <div data-slot="character-group-header">
         <CollapsibleTrigger asChild>
           <SelectableItem type="button" muted className="w-full justify-start">
             <span className="truncate">{label}</span>
@@ -403,7 +398,7 @@ function GroupSection({
             <ChevronRight className="shrink-0 transition-transform group-data-[state=open]/character-group:rotate-90" />
           </SelectableItem>
         </CollapsibleTrigger>
-      </Surface>
+      </div>
       <CollapsibleContent className="px-1">
         <CharacterGrid entries={group.entries} copyFeedback={copyFeedback} onSelect={onSelect} />
       </CollapsibleContent>

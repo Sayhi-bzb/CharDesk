@@ -22,8 +22,10 @@ export const subscribeCanvasDocumentProjection = (
     reportIntegrityIssues(documents.getIntegrityIssues());
 
   const unsubscribe = documents.observeActiveTransactions((transaction) => {
-    if (!transaction.contentChanged) return;
-    commits.setState(projectObservedSurface(rebuildContentSurface(documents)));
+    if (!transaction.contentChanged && !transaction.anchorsChanged) return;
+    if (transaction.contentChanged) {
+      commits.setState(projectObservedSurface(rebuildContentSurface(documents)));
+    }
     commits.deferUntilCommitted(reportCurrentIntegrityIssues);
   });
 

@@ -5,6 +5,7 @@ import {
   type StructuredNode,
 } from "@/domains/legacy-structured/public";
 import type { CanvasMode } from "@/domains/sessions/public";
+import { orderCanvasAnchors, readCanvasAnchor, type CanvasAnchor } from "./canvasAnchorModel";
 import {
   decodeCellPlaneOperationRows,
   encodeCellPlaneOperation,
@@ -37,6 +38,7 @@ type SnapshotPage = {
       kind: "cell-plane";
       descriptor: CanvasPageDescriptor;
       operations: SnapshotOperation[];
+      anchors?: CanvasAnchor[];
     };
 
 type LegacySnapshotPage = {
@@ -57,6 +59,7 @@ type CapturedPage = {
       kind: "cell-plane";
       descriptor: CanvasPageDescriptor;
       operations: readonly CellPlaneOperation[];
+      anchors: readonly CanvasAnchor[];
     };
 
 type EncodedCanvasCheckpointSnapshot = {
@@ -82,6 +85,10 @@ export const encodeCanvasCheckpointSnapshot = async (
       kind: "cell-plane",
       descriptor: page.descriptor,
       operations: page.operations.toArray(),
+      anchors: orderCanvasAnchors(Array.from(page.anchors.values()).flatMap((raw) => {
+        const anchor = readCanvasAnchor(raw);
+        return anchor ? [anchor] : [];
+      })),
     }];
   });
   const storedMode = root.meta.get("mode");
@@ -120,7 +127,7 @@ export const encodeCanvasCheckpointSnapshot = async (
       });
       await yieldWhenNeeded();
     }
-    pages.push({ kind: "cell-plane", descriptor: page.descriptor, operations });
+    pages.push({ kind: "cell-plane", descriptor: page.descriptor, operations, anchors: [...page.anchors] });
   }
   if (pages.length === 0) {
     throw new Error(`Canvas checkpoint snapshot has no pages: ${documentId}`);
@@ -189,10 +196,15 @@ export const decodeCanvasCheckpointSnapshot = (
         return {
           descriptor: { ...page.descriptor, kind: "cell-plane" },
           operations: operation ? [operation] : [],
+          anchors: [],
         };
       }
       return {
           descriptor: { ...page.descriptor, kind: "cell-plane" },
+          anchors: (page.anchors ?? []).flatMap((raw) => {
+            const anchor = readCanvasAnchor(raw);
+            return anchor ? [anchor] : [];
+          }),
           operations: page.operations.map((operation): EncodedCellPlaneOperation => ({
             id: operation.id,
             bounds: operation.bounds,

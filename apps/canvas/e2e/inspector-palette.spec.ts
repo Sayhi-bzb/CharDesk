@@ -12,8 +12,20 @@ test("Inspector consumes the dark preset palette without remapping ANSI colors",
   await expect(inspector).toBeVisible()
   await inspector.getByRole("tab", { name: "Presets" }).click()
 
+  const presetSwatches = inspector.locator(
+    '[data-testid="color-palette-grid"] [data-slot="swatch-button"]'
+  )
+  await expect(presetSwatches).toHaveCount(40)
+  await expect(presetSwatches.first()).toHaveAttribute(
+    "aria-label",
+    "Pick preset color #000000"
+  )
+  await expect(presetSwatches.last()).toHaveAttribute(
+    "aria-label",
+    "Pick preset color #ffffff"
+  )
   const darkPreset = inspector.getByRole("button", {
-    name: "Pick preset color #fca5a5",
+    name: "Pick preset color #450a0a",
   })
   await expect(darkPreset).toBeVisible()
   await expect(

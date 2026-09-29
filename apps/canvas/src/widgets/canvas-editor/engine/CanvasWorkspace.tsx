@@ -32,6 +32,7 @@ type CanvasViewSnapshot = {
   loadState: 'idle' | 'loading' | 'error';
   loadError: string | null;
   viewport: CanvasViewportState;
+  highlightedAnchorId: string | null;
   size?: CanvasViewSize;
 };
 
@@ -41,6 +42,7 @@ const DEFAULT_VIEW_SNAPSHOT: CanvasViewSnapshot = {
   loadState: 'idle',
   loadError: null,
   viewport: DEFAULT_VIEWPORT,
+  highlightedAnchorId: null,
 };
 const EMPTY_SUBSCRIBE = () => () => undefined;
 const GET_PRIMARY_VIEW_ID = () => 'primary' as const;
@@ -81,6 +83,7 @@ class CanvasViewRuntime {
   private liveViewport: CanvasViewportState;
   private readonly sessionViewports = new Map<string, CanvasViewportState>();
   private pendingWorldCenter: { x: number; y: number } | null = null;
+  private anchorHighlightTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly listeners = new Set<() => void>();
   private readonly viewportListeners = new Set<() => void>();
   private readonly publish: (viewport: CanvasViewportState) => void;
@@ -98,6 +101,7 @@ class CanvasViewRuntime {
       loadState: 'idle',
       loadError: null,
       viewport: cloneViewport(viewport),
+      highlightedAnchorId: null,
     };
     this.liveViewport = cloneViewport(viewport);
     this.publish = publish;
@@ -129,7 +133,26 @@ class CanvasViewRuntime {
     );
   };
 
+  flashAnchor = (id: string) => {
+    if (this.anchorHighlightTimer !== null) clearTimeout(this.anchorHighlightTimer);
+    this.snapshot = {
+      ...this.snapshot,
+      highlightedAnchorId: id,
+    };
+    this.listeners.forEach((listener) => listener());
+    this.anchorHighlightTimer = setTimeout(this.clearAnchorFlash, 2_000);
+  };
+
+  clearAnchorFlash = () => {
+    if (this.anchorHighlightTimer !== null) clearTimeout(this.anchorHighlightTimer);
+    this.anchorHighlightTimer = null;
+    if (this.snapshot.highlightedAnchorId === null) return;
+    this.snapshot = { ...this.snapshot, highlightedAnchorId: null };
+    this.listeners.forEach((listener) => listener());
+  };
+
   requestSession(sessionId: string, fallbackViewport: CanvasViewportState) {
+    if (sessionId !== this.getRequestedSessionId()) this.clearAnchorFlash();
     if (!this.sessionViewports.has(sessionId)) {
       this.sessionViewports.set(sessionId, cloneViewport(fallbackViewport));
     }
@@ -213,6 +236,7 @@ class CanvasViewRuntime {
 
   bindSession(sessionId: string, fallbackViewport: CanvasViewportState) {
     const currentSessionId = this.snapshot.sessionId;
+    if (sessionId !== currentSessionId) this.clearAnchorFlash();
     if (
       currentSessionId === sessionId &&
       this.snapshot.pendingSessionId === null &&
@@ -246,6 +270,10 @@ class CanvasViewRuntime {
     this.viewportListeners.add(listener);
     return () => this.viewportListeners.delete(listener);
   };
+
+  dispose() {
+    this.clearAnchorFlash();
+  }
 
 }
 
@@ -441,6 +469,8 @@ class CanvasWorkspaceRuntime {
     this.disposed = true;
     this.ownerCount = 0;
     this.releaseGeneration += 1;
+    this.views.secondary.dispose();
+    this.views.primary.dispose();
     this.views.secondary.engine.dispose();
     this.views.primary.engine.dispose();
     this.frameScheduler.dispose();
@@ -621,6 +651,7 @@ export const useCanvasViewOptional = () => {
     loadState: snapshot.loadState,
     loadError: snapshot.loadError,
     viewport: snapshot.viewport,
+    highlightedAnchorId: snapshot.highlightedAnchorId,
     isActive: activeViewId === selectedViewId,
     activate: () => { void workspace.runtime.activate(selectedViewId); },
     selectSession: (sessionId: string) =>
@@ -637,6 +668,8 @@ export const useCanvasViewOptional = () => {
     getViewport: selectedRuntime.getViewport,
     containerSize: snapshot.size,
     setContainerSize: selectedRuntime.setContainerSize,
+    flashAnchor: selectedRuntime.flashAnchor,
+    clearAnchorFlash: selectedRuntime.clearAnchorFlash,
   };
 };
 

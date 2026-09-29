@@ -166,7 +166,15 @@ disappears from runtime state, then runtime resources are released. Recovery dat
 available but tombstoned Sessions are never restored. Reopening an evicted Canvas restores content
 but not its undo stack.
 
-Canvas pages contain only ordered `cell-plane-operations`. Canvas rendering queries
+Canvas pages own ordered `cell-plane-operations` and optional coordinate anchors.
+Anchors are page metadata, not Cells or ranges. Their literal labels are captured when
+created; a selection supplies text and a starting point but does not persist a range.
+`parentId` and preorder `order` own the Contents hierarchy; legacy anchors without a
+parent are roots. A branch move or deletion is one undoable anchor transaction.
+Explicit range moves translate selected anchor points with Cells in one transaction and
+history action. The Canvas Yjs document and
+checkpoint retain them; plain-text `.chardesk`, ANSI, and image exports do not.
+Canvas rendering queries
 occupied spans inside the viewport, and Minimap caches its reader projection by document
 revision; camera movement never materializes a grid snapshot. A legacy local `main-grid`
 is converted once into a bootstrap operation and then cleared. `CanvasSurfaceReader` is the read

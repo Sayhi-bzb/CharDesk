@@ -64,7 +64,9 @@ describe('ColorPickerPanel', () => {
       name: 'Color palettes',
     });
     expect(paletteTabs).toHaveAttribute('data-orientation', 'horizontal');
-    expect(paletteTabs).toHaveClass('w-fit', 'flex-row', 'gap-0.5', 'p-px');
+    expect(paletteTabs).not.toHaveAttribute('data-surface-kind');
+    expect(paletteTabs).toHaveClass('w-fit', 'flex-row', 'gap-0.5', 'p-px', 'bg-transparent', 'ring-0');
+    expect(paletteTabs).not.toHaveClass('bg-secondary/70', 'ring-1');
     const ansiTab = screen.getByRole('tab', { name: 'ANSI 16' });
     expect(ansiTab).toHaveAttribute('data-size', 'icon');
     expect(ansiTab).toHaveAttribute('data-active', 'true');

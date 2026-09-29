@@ -1,6 +1,17 @@
 import * as Y from "yjs";
 import type { CollaborationIntegrityIssue } from "@/domains/collaboration/public";
 import type { GridCell } from "@/shared/types";
+import type { Point } from "@/shared/types";
+import {
+  getCanvasAnchorBranchIds,
+  moveCanvasAnchor,
+  orderCanvasAnchors,
+  removeCanvasAnchorsPromotingChildren,
+  readCanvasAnchor,
+  readCanvasAnchorLabel,
+  type CanvasAnchor,
+  type CanvasAnchorChange,
+} from "./canvasAnchorModel";
 import {
   CellPlaneIndex,
   CanvasProjectionCacheBudget,
@@ -96,6 +107,7 @@ type CanvasDocumentTransaction = {
   address: CanvasDocumentAddress;
   contentChanged: boolean;
   pagesChanged: boolean;
+  anchorsChanged: boolean;
 };
 
 type CanvasGridWriter = {
@@ -177,6 +189,108 @@ export class CanvasDocumentRegistry {
     pageId: this.#active.activePageId,
   });
   getActivePageId = () => this.#active.activePageId;
+  getAnchorsAt = (address: CanvasDocumentAddress): CanvasAnchor[] => {
+    const document = this.#documents.get(address.documentId);
+    const page = document?.pages.get(address.pageId);
+    if (!document || !page) return [];
+    const anchors: CanvasAnchor[] = [];
+    const known = new Set<string>();
+    page.anchors.forEach((value, id) => {
+      const issueKey = `${address.pageId}:canvas-anchors:${id}`;
+      const anchor = readCanvasAnchor(value);
+      if (!anchor || anchor.id !== id) {
+        document.integrityIssues.set(issueKey, {
+          channel: "canvas-anchors", key: id, pageId: address.pageId,
+          reason: "Invalid Canvas anchor",
+        });
+      } else {
+        document.integrityIssues.delete(issueKey);
+        anchors.push(anchor);
+      }
+      known.add(issueKey);
+    });
+    for (const key of document.integrityIssues.keys()) {
+      if (key.startsWith(`${address.pageId}:canvas-anchors:`) && !known.has(key)) {
+        document.integrityIssues.delete(key);
+      }
+    }
+    return orderCanvasAnchors(anchors);
+  };
+
+  addAnchorAt = (address: CanvasDocumentAddress, point: Point, name?: string) => {
+    const document = this.#documents.get(address.documentId);
+    const page = document?.pages.get(address.pageId);
+    if (!document || !page) return null;
+    const reader = this.#ensurePageIndex(document, page);
+    const label = name === undefined
+      ? readCanvasAnchorLabel({ get: (at) => reader.getCell(at) }, point)
+      : name.trim();
+    if (!label || !reader.getCell(point)?.char.trim()) return null;
+    const anchors = this.getAnchorsAt(address);
+    const existing = anchors.find((anchor) =>
+      !anchor.detached && anchor.point.x === point.x && anchor.point.y === point.y
+    );
+    if (existing) return existing;
+    const anchor: CanvasAnchor = {
+      id: `${document.doc.clientID}:${this.#operationSequence++}`,
+      point: { ...point },
+      label,
+      order: (anchors.at(-1)?.order ?? -1) + 1,
+      parentId: null,
+      detached: false,
+    };
+    this.#commitAnchorChanges(address, [{ id: anchor.id, value: anchor }]);
+    return anchor;
+  };
+
+  removeAnchorAt = (address: CanvasDocumentAddress, id: string) => {
+    const ids = getCanvasAnchorBranchIds(this.getAnchorsAt(address), id);
+    if (ids.length === 0) return false;
+    this.#commitAnchorChanges(address, ids.map((anchorId) => ({ id: anchorId, value: null })));
+    return true;
+  };
+
+  renameAnchorAt = (address: CanvasDocumentAddress, id: string, name: string) => {
+    const anchor = this.getAnchorsAt(address).find((item) => item.id === id);
+    const label = name.trim();
+    if (!anchor || !label) return false;
+    if (anchor.label === label) return true;
+    this.#commitAnchorChanges(address, [{ id, value: { ...anchor, label } }]);
+    return true;
+  };
+
+  reattachAnchorAt = (address: CanvasDocumentAddress, id: string, point: Point) => {
+    const anchor = this.getAnchorsAt(address).find((item) => item.id === id);
+    const document = this.#documents.get(address.documentId);
+    const page = document?.pages.get(address.pageId);
+    if (!anchor || !document || !page) return false;
+    const reader = this.#ensurePageIndex(document, page);
+    if (!reader.getCell(point)?.char.trim()) return false;
+    this.#commitAnchorChanges(address, [{
+      id,
+      value: { ...anchor, point: { ...point }, detached: false },
+    }]);
+    return true;
+  };
+
+  moveAnchorAt = (
+    address: CanvasDocumentAddress,
+    id: string,
+    parentId: string | null,
+    siblingIndex: number
+  ) => {
+    const current = this.getAnchorsAt(address);
+    const moved = moveCanvasAnchor(current, id, parentId, siblingIndex);
+    if (!moved) return false;
+    const byId = new Map(current.map((anchor) => [anchor.id, anchor]));
+    const changes = moved.flatMap((anchor) => {
+      const previous = byId.get(anchor.id)!;
+      return previous.order === anchor.order && previous.parentId === anchor.parentId
+        ? [] : [{ id: anchor.id, value: anchor }];
+    });
+    if (changes.length > 0) this.#commitAnchorChanges(address, changes);
+    return true;
+  };
   getDocumentAddress = (
     documentId: string,
     pageId?: string
@@ -359,6 +473,7 @@ export class CanvasDocumentRegistry {
         return [{
           ...page.descriptor,
           grid: Array.from(this.#ensurePageIndex(document, page).materialize()),
+          anchors: this.getAnchorsAt({ documentId, pageId }),
         }];
       }),
     };
@@ -415,10 +530,16 @@ export class CanvasDocumentRegistry {
     if (!document) return null;
     const page = document.pages.get(pageId ?? document.activePageId);
     if (!page) return null;
+    const grid = Array.from(this.#ensurePageIndex(document, page).materialize().entries());
     return {
-      grid: Array.from(this.#ensurePageIndex(document, page).materialize().entries()),
+      grid,
       mode,
       activePageId: page.descriptor.id,
+      pages: [{
+        ...page.descriptor,
+        grid,
+        anchors: this.getAnchorsAt({ documentId: id, pageId: page.descriptor.id }),
+      }],
     };
   };
 
@@ -503,6 +624,7 @@ export class CanvasDocumentRegistry {
     }
     const previousOrder = readCanvasPageOrder(document.root);
     document.doc.transact(() => {
+      readCanvasYPage(document.root, pageId)?.anchors.clear();
       document.root.pages.delete(pageId);
       const index = document.root.pageOrder.toArray().indexOf(pageId);
       if (index >= 0) document.root.pageOrder.delete(index, 1);
@@ -607,6 +729,7 @@ export class CanvasDocumentRegistry {
             grid: Array.from(
               this.#ensurePageIndex(document, activePage).materialize()
             ),
+            anchors: this.getAnchorsAt({ documentId: id, pageId: activePage.descriptor.id }),
           };
 
     document.doc.transact(() => {
@@ -614,6 +737,9 @@ export class CanvasDocumentRegistry {
         activePage?.descriptor.id !== sharedPageId ||
         readCanvasPageOrder(document.root).length !== 1
       ) {
+        for (const pageId of readCanvasPageOrder(document.root)) {
+          readCanvasYPage(document.root, pageId)?.anchors.clear();
+        }
         document.root.pages.clear();
         document.root.pageOrder.delete(0, document.root.pageOrder.length);
         createCanvasYPage(
@@ -689,7 +815,8 @@ export class CanvasDocumentRegistry {
       const change = this.#readTransaction(observed, transaction);
       if (
         change.contentChanged ||
-        change.pagesChanged
+        change.pagesChanged ||
+        change.anchorsChanged
       ) listener(change);
     };
     observed.doc.on("afterTransaction", handle);
@@ -815,6 +942,7 @@ export class CanvasDocumentRegistry {
       );
     }
     let emittedOperation: CellPlaneOperation | null = null;
+    let emittedAnchorChanges: CanvasAnchorChange[] = [];
     let inverseOperation: CellPlaneOperation | null = null;
     const profiling = this.#mutationPerformance.isEnabled();
     const totalStartedAt = profiling ? performance.now() : 0;
@@ -878,6 +1006,10 @@ export class CanvasDocumentRegistry {
         `${document.doc.clientID}:${this.#operationSequence++}`,
         changes
       );
+      const anchorBefore = operation
+        ? new Map(this.getAnchorsAt(address).map((anchor) => [anchor.id, anchor]))
+        : new Map<string, CanvasAnchor>();
+      let anchorChanges: CanvasAnchorChange[] = [];
       if (timings) timings.forwardEncodeMs = performance.now() - forwardStartedAt;
       if (operation) {
         const pushStartedAt = profiling ? performance.now() : 0;
@@ -887,6 +1019,15 @@ export class CanvasDocumentRegistry {
             : operation,
         ]);
         if (timings) timings.yjsPushMs = performance.now() - pushStartedAt;
+        if (page.anchors.size > 0) {
+          const changedRows = new Set(Array.from(changes.keys(), (key) => GridManager.fromKey(key).y));
+          anchorChanges = this.#refreshAnchorsAfterContent(page, (point) => {
+            const key = GridManager.toKey(point.x, point.y);
+            const change = changes.get(key);
+            return change ? change.after : reader.getCell(point);
+          }, undefined, changedRows);
+        }
+        emittedAnchorChanges = anchorChanges;
       }
       emittedOperation = operation;
       if (operation) {
@@ -902,12 +1043,17 @@ export class CanvasDocumentRegistry {
         if (timings) timings.inverseEncodeMs = performance.now() - inverseStartedAt;
         if (inverse) {
           const historyStartedAt = profiling ? performance.now() : 0;
-          this.#captureHistory(
-            address,
-            operation,
-            inverse,
-            normalizeHistoryMode(history)
-          );
+          const mode = normalizeHistoryMode(history);
+          if (anchorChanges.length > 0) {
+            this.#captureAnchorHistory(
+              address,
+              anchorChanges,
+              anchorChanges.map(({ id }) => ({ id, value: anchorBefore.get(id) ?? null })),
+              mode,
+              operation,
+              inverse
+            );
+          } else this.#captureHistory(address, operation, inverse, mode);
           if (timings) {
             timings.historyCaptureMs = performance.now() - historyStartedAt;
           }
@@ -929,11 +1075,9 @@ export class CanvasDocumentRegistry {
     }
     if (emittedOperation) {
       const notifyStartedAt = profiling ? performance.now() : 0;
-      this.#emitMutation({
-        kind: "cell-plane",
-        ...address,
-        operation: emittedOperation,
-      });
+      this.#emitMutation(emittedAnchorChanges.length > 0
+        ? { kind: "anchors", ...address, changes: emittedAnchorChanges, operation: emittedOperation }
+        : { kind: "cell-plane", ...address, operation: emittedOperation });
       if (timings) timings.notifyMs = performance.now() - notifyStartedAt;
     }
     if (timings) {
@@ -961,7 +1105,12 @@ export class CanvasDocumentRegistry {
   applyCellPlanePatchAt = (
     address: CanvasDocumentAddress,
     patch: CellPlanePatch,
-    history: CanvasHistoryMode | boolean = "save"
+    history: CanvasHistoryMode | boolean = "save",
+    movedAnchors?: Readonly<{
+      ids: readonly string[];
+      overwrittenIds?: readonly string[];
+      delta: Point;
+    }>
   ) => {
     const document = this.#documents.get(address.documentId);
     const page = document?.pages.get(address.pageId);
@@ -976,20 +1125,40 @@ export class CanvasDocumentRegistry {
     );
     if (!operation) return null;
     const inverse = this.#createInverseCellPlaneOperation(document, page, operation);
-    this.runTransactionAt(address, () => {
-      page.operations.push([
-        document.operationFormat === "legacy"
-          ? toLegacyCellPlaneOperation(operation)
-          : operation,
-      ]);
-    }, history);
-    if (inverse) this.#captureHistory(
-      address,
-      operation,
-      inverse,
-      normalizeHistoryMode(history)
-    );
-    this.#emitMutation({ kind: "cell-plane", ...address, operation });
+    const anchorBefore = new Map(this.getAnchorsAt(address).map((anchor) => [anchor.id, anchor]));
+    let anchorChanges: CanvasAnchorChange[] = [];
+    const projected = page.anchors.size > 0
+      ? this.#projectOperationCells(document, page, operation)
+      : null;
+    try {
+      this.runTransactionAt(address, () => {
+        page.operations.push([
+          document.operationFormat === "legacy"
+            ? toLegacyCellPlaneOperation(operation)
+            : operation,
+        ]);
+        if (projected) {
+          anchorChanges = this.#refreshAnchorsAfterContent(page, projected.getCell, movedAnchors);
+        }
+      }, history);
+    } finally {
+      projected?.dispose();
+    }
+    if (inverse) {
+      const mode = normalizeHistoryMode(history);
+      if (anchorChanges.length > 0) this.#captureAnchorHistory(
+        address,
+        anchorChanges,
+        anchorChanges.map(({ id }) => ({ id, value: anchorBefore.get(id) ?? null })),
+        mode,
+        operation,
+        inverse
+      );
+      else this.#captureHistory(address, operation, inverse, mode);
+    }
+    this.#emitMutation(anchorChanges.length > 0
+      ? { kind: "anchors", ...address, changes: anchorChanges, operation }
+      : { kind: "cell-plane", ...address, operation });
     return operation;
   };
 
@@ -1002,6 +1171,7 @@ export class CanvasDocumentRegistry {
     if (!document || !page || page.descriptor.kind !== "cell-plane") return false;
     this.runTransactionAt(address, () => {
       page.operations.delete(0, page.operations.length);
+      page.anchors.clear();
       const bootstrap = gridEntriesToCellPlaneOperation(
         `bootstrap:${address.documentId}:${address.pageId}:${this.#operationSequence++}`,
         entries
@@ -1015,7 +1185,7 @@ export class CanvasDocumentRegistry {
     this.#emitMutation({
       kind: "page-upsert",
       documentId: address.documentId,
-      page: { ...page.descriptor, grid: entries },
+      page: { ...page.descriptor, grid: entries, anchors: [] },
     });
     return true;
   };
@@ -1115,6 +1285,7 @@ export class CanvasDocumentRegistry {
       repairingCollaborationPage: false,
     };
     this.#syncDocumentPages(document);
+    this.#pruneLegacyEmptyAnchors(document);
     if (seed?.activePageId && document.pages.has(seed.activePageId)) {
       this.#setActivePage(document, seed.activePageId);
     }
@@ -1346,6 +1517,9 @@ export class CanvasDocumentRegistry {
     document.pages.forEach((page) => page.dispose());
     document.pages.clear();
     document.doc.transact(() => {
+      for (const pageId of readCanvasPageOrder(document.root)) {
+        readCanvasYPage(document.root, pageId)?.anchors.clear();
+      }
       document.root.pages.clear();
       document.root.pageOrder.delete(0, document.root.pageOrder.length);
       pages.forEach((page) =>
@@ -1362,6 +1536,30 @@ export class CanvasDocumentRegistry {
       writeCanvasDocumentMetadata(document.root, document.id, mode, activePageId);
     }, HISTORY_IGNORED_ORIGIN);
     this.#syncDocumentPages(document);
+    this.#pruneLegacyEmptyAnchors(document);
+  }
+
+  #pruneLegacyEmptyAnchors(document: CanvasYDocument) {
+    for (const page of document.pages.values()) {
+      if (page.anchors.size === 0 || page.descriptor.kind !== "cell-plane") continue;
+      const reader = this.#ensurePageIndex(document, page);
+      const anchors = orderCanvasAnchors(Array.from(page.anchors.values()).flatMap((raw) => {
+        const anchor = readCanvasAnchor(raw);
+        return anchor ? [anchor] : [];
+      }));
+      const removedIds = new Set(anchors.filter((anchor) =>
+        anchor.detached && !reader.getCell(anchor.point)?.char.trim()
+      ).map((anchor) => anchor.id));
+      const changes = removeCanvasAnchorsPromotingChildren(anchors, removedIds);
+      if (changes.length === 0) continue;
+      document.doc.transact(() => this.#applyAnchorChanges(page, changes), HISTORY_IGNORED_ORIGIN);
+      this.#emitMutation({
+        kind: "anchors",
+        documentId: document.id,
+        pageId: page.descriptor.id,
+        changes,
+      });
+    }
   }
 
   #readTransaction(document: CanvasYDocument, transaction: Y.Transaction) {
@@ -1372,15 +1570,18 @@ export class CanvasDocumentRegistry {
       },
       contentChanged: false,
       pagesChanged: false,
+      anchorsChanged: false,
     };
     const activePage = document.pages.get(document.activePageId);
     for (const [type] of transaction.changed) {
       if (Object.is(type, activePage?.operations)) change.contentChanged = true;
+      else if (Object.is(type, activePage?.anchors)) change.anchorsChanged = true;
       else if (
         Object.is(type, document.root.pages) ||
         Object.is(type, document.root.pageOrder)
       ) change.pagesChanged = true;
     }
+    if (change.anchorsChanged) this.getAnchorsAt(change.address);
     return change;
   }
 
@@ -1396,6 +1597,97 @@ export class CanvasDocumentRegistry {
       inverse: { kind: "cell-plane", ...address, operation: inverse },
     }, mode);
     if (address.documentId === this.#active.id) this.#emitHistory();
+  }
+
+  #applyAnchorChanges(page: CanvasPageRuntime, changes: readonly CanvasAnchorChange[]) {
+    for (const change of changes) {
+      if (change.value) page.anchors.set(change.id, change.value);
+      else page.anchors.delete(change.id);
+    }
+  }
+
+  #inverseAnchorChanges(
+    page: CanvasPageRuntime,
+    changes: readonly CanvasAnchorChange[]
+  ): CanvasAnchorChange[] {
+    return changes.map(({ id }) => ({
+      id,
+      value: readCanvasAnchor(page.anchors.get(id)),
+    }));
+  }
+
+  #captureAnchorHistory(
+    address: CanvasDocumentAddress,
+    forward: readonly CanvasAnchorChange[],
+    inverse: readonly CanvasAnchorChange[],
+    mode: CanvasHistoryMode,
+    operation?: CellPlaneOperation,
+    inverseOperation?: CellPlaneOperation | null
+  ) {
+    if (mode !== "save" && mode !== "merge") return;
+    this.#historyJournal.capture(this.#historyKey(address), {
+      forward: { kind: "anchors", ...address, changes: forward, ...(operation ? { operation } : {}) },
+      inverse: {
+        kind: "anchors", ...address, changes: inverse,
+        ...(inverseOperation ? { operation: inverseOperation } : {}),
+      },
+    }, mode);
+    if (address.documentId === this.#active.id) this.#emitHistory();
+  }
+
+  #commitAnchorChanges(address: CanvasDocumentAddress, changes: readonly CanvasAnchorChange[]) {
+    const page = this.#documents.get(address.documentId)?.pages.get(address.pageId);
+    if (!page || changes.length === 0) return;
+    const inverse = this.#inverseAnchorChanges(page, changes);
+    this.runTransactionAt(address, () => {
+      this.#applyAnchorChanges(page, changes);
+    });
+    this.#captureAnchorHistory(address, changes, inverse, "save");
+    this.#emitMutation({ kind: "anchors", ...address, changes });
+  }
+
+  #refreshAnchorsAfterContent(
+    page: CanvasPageRuntime,
+    getCell: (point: Point) => GridCell | undefined,
+    moved?: Readonly<{
+      ids: readonly string[];
+      overwrittenIds?: readonly string[];
+      delta: Point;
+    }>,
+    changedRows?: ReadonlySet<number>
+  ): CanvasAnchorChange[] {
+    const movedIds = new Set(moved?.ids);
+    const overwrittenIds = new Set(moved?.overwrittenIds);
+    const anchors: CanvasAnchor[] = [];
+    const updates = new Map<string, CanvasAnchorChange>();
+    const removedIds = new Set<string>();
+    page.anchors.forEach((raw, id) => {
+      const anchor = readCanvasAnchor(raw);
+      if (!anchor) return;
+      anchors.push(anchor);
+      if (anchor.detached) return;
+      if (changedRows && !changedRows.has(anchor.point.y)) return;
+      const point = movedIds.has(id) && moved
+        ? { x: anchor.point.x + moved.delta.x, y: anchor.point.y + moved.delta.y }
+        : anchor.point;
+      if (!getCell(point)?.char.trim()) {
+        removedIds.add(id);
+        return;
+      }
+      const next = overwrittenIds.has(id)
+        ? { ...anchor, point, detached: true }
+        : { ...anchor, point };
+      if (!areJsonValuesEqual(anchor, next)) {
+        updates.set(id, { id, value: next });
+      }
+    });
+    const candidates = anchors.map((anchor) => updates.get(anchor.id)?.value ?? anchor);
+    for (const change of removeCanvasAnchorsPromotingChildren(candidates, removedIds)) {
+      updates.set(change.id, change);
+    }
+    const changes = [...updates.values()];
+    this.#applyAnchorChanges(page, changes);
+    return changes;
   }
 
   #createInverseCellPlaneOperation(
@@ -1435,6 +1727,37 @@ export class CanvasDocumentRegistry {
     );
   }
 
+  #projectOperationCells(
+    document: CanvasYDocument,
+    page: CanvasPageRuntime,
+    operation: CellPlaneOperation
+  ) {
+    const bounds = {
+      x: operation.bounds.x - 1,
+      y: operation.bounds.y,
+      width: operation.bounds.width + 2,
+      height: operation.bounds.height,
+    };
+    const reader = this.#ensurePageIndex(document, page);
+    const before = reader.materialize(bounds);
+    const bootstrap = gridEntriesToCellPlaneOperation(
+      `anchor-projection:${document.doc.clientID}:${this.#operationSequence++}`,
+      Array.from(before)
+    );
+    const projection = new CellPlaneIndex([
+      ...(bootstrap ? [bootstrap] : []),
+      operation,
+    ]);
+    return {
+      getCell: (point: Point) =>
+        point.x >= bounds.x && point.x < bounds.x + bounds.width &&
+        point.y >= bounds.y && point.y < bounds.y + bounds.height
+          ? projection.getCell(point)
+          : reader.getCell(point),
+      dispose: () => projection.dispose(),
+    };
+  }
+
   #applyMutationEnvelope(envelope: CanvasMutationEnvelope) {
     const document = this.#documents.get(envelope.documentId);
     if (!document) return;
@@ -1446,6 +1769,20 @@ export class CanvasDocumentRegistry {
           ? toLegacyCellPlaneOperation(envelope.operation)
           : envelope.operation,
       ]), HISTORY_IGNORED_ORIGIN);
+      this.#emitMutation(envelope);
+      return;
+    }
+    if (envelope.kind === "anchors") {
+      const page = document.pages.get(envelope.pageId);
+      if (!page) return;
+      document.doc.transact(() => {
+        if (envelope.operation) page.operations.push([
+          document.operationFormat === "legacy"
+            ? toLegacyCellPlaneOperation(envelope.operation)
+            : envelope.operation,
+        ]);
+        this.#applyAnchorChanges(page, envelope.changes);
+      }, HISTORY_IGNORED_ORIGIN);
       this.#emitMutation(envelope);
       return;
     }
@@ -1475,6 +1812,7 @@ export class CanvasDocumentRegistry {
     }
     if (envelope.kind === "page-delete") {
       document.doc.transact(() => {
+        readCanvasYPage(document.root, envelope.pageId)?.anchors.clear();
         document.root.pages.delete(envelope.pageId);
         const index = document.root.pageOrder.toArray().indexOf(envelope.pageId);
         if (index >= 0) document.root.pageOrder.delete(index, 1);

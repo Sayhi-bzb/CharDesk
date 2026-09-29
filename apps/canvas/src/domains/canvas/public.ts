@@ -6,11 +6,19 @@ export {
   CanvasRuntimeProvider,
   useCanvasPersistence,
   useCanvasPersistenceSelector,
+  useCanvasAnchors,
   useCanvasRuntime,
   useCanvasState,
   useCanvasViewport,
 } from "./react";
 export type { CanvasState, CanvasStateStore } from "./state/interfaces";
+export type { CanvasAnchor } from "./state/canvasAnchorModel";
+export {
+  getCanvasAnchorBranchIds,
+  getCanvasAnchorDepth,
+  moveCanvasAnchor,
+  readCanvasAnchorLabel,
+} from "./state/canvasAnchorModel";
 export { createEmptyCanvasInteraction } from "./state/canvasInteractionState";
 export type {
   CanvasColorPickerTarget,

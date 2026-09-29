@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { type LucideIcon, X } from "lucide-react";
+import { type LucideIcon, MapPin, X } from "lucide-react";
 import {
   SidebarHeader,
   SidebarStandard,
@@ -13,7 +13,6 @@ import {
   SurfaceContent,
   IconButton,
   Input,
-  Surface,
   Tooltip,
   TooltipCreateHandle,
   TooltipPopup,
@@ -26,11 +25,13 @@ import {
   type CharacterViewId,
 } from "@/domains/character-library/public";
 import { CanvasTemplateLibrary } from "./canvas-template-library";
+import { CanvasAnchorList } from "./canvas-anchor-list";
 import { SlideAddButton, SlideNavigator } from "./slide-navigator";
 import {
   CANVAS_COMPONENT_TEMPLATES,
   CANVAS_PAGE_TEMPLATES,
 } from "@/domains/canvas-templates/public";
+import { useCanvasAnchors, useCanvasState } from "@/domains/canvas/public";
 
 
 
@@ -81,7 +82,7 @@ const CHARACTER_VIEWS = [
   { id: "unicode", labelKey: "character.view.unicode", icon: HOST_ICONOLOGY.characterView.unicode },
 ] as const;
 
-type FreeformSidebarView = CharacterViewId | TemplateSidebarTab;
+type FreeformSidebarView = CharacterViewId | TemplateSidebarTab | "anchors";
 
 const isCharacterView = (view: FreeformSidebarView): view is CharacterViewId =>
   CHARACTER_VIEWS.some(({ id }) => id === view);
@@ -107,22 +108,21 @@ function SidebarViewRail<ViewId extends string>({
   );
 
   return (
-    <Surface kind="embedded" asChild>
-      <nav
-        role="tablist"
-        aria-label={ariaLabel}
-        aria-orientation={orientation}
-        data-onboarding-target={
-          testIdPrefix === "character" ? "character-library" : undefined
-        }
-        data-testid={`${testIdPrefix}-view-rail-${orientation}`}
-        className={cn(
-          "flex p-1",
-          orientation === "vertical"
-            ? "w-full flex-col items-center gap-1"
-            : "w-full items-center justify-center gap-1"
-        )}
-      >
+    <nav
+      role="tablist"
+      aria-label={ariaLabel}
+      aria-orientation={orientation}
+      data-onboarding-target={
+        testIdPrefix === "character" ? "character-library" : undefined
+      }
+      data-testid={`${testIdPrefix}-view-rail-${orientation}`}
+      className={cn(
+        "flex p-1",
+        orientation === "vertical"
+          ? "w-full flex-col items-center gap-1"
+          : "w-full items-center justify-center gap-1"
+      )}
+    >
       {views.map((view) => {
         const Icon = view.icon;
         const isActive = activeView === view.id;
@@ -164,8 +164,7 @@ function SidebarViewRail<ViewId extends string>({
           </TooltipPopup>
         )}
       </Tooltip>
-      </nav>
-    </Surface>
+    </nav>
   );
 }
 
@@ -192,8 +191,22 @@ export function SidebarRight({
   const isCollapsed = state === "collapsed" && !isMobile;
   const { t } = useUiI18n();
   const { phase: onboardingPhase } = useOnboardingTour();
-  const [activeFreeformView, setActiveFreeformView] =
-    useState<FreeformSidebarView>("components");
+  const activeCanvasId = useCanvasState((canvas) => canvas.activeCanvasId);
+  const anchors = useCanvasAnchors();
+  const [selectionCanvasId, setSelectionCanvasId] = useState(activeCanvasId);
+  const [selectedFreeformView, setSelectedFreeformView] =
+    useState<{ canvasId: string; view: FreeformSidebarView } | null>(null);
+  if (selectionCanvasId !== activeCanvasId) {
+    setSelectionCanvasId(activeCanvasId);
+    setSelectedFreeformView(null);
+  }
+  const defaultFreeformView: FreeformSidebarView = !readOnly && anchors.length > 0
+    ? "anchors"
+    : "components";
+  const activeFreeformView = selectedFreeformView?.canvasId === activeCanvasId &&
+    (!readOnly || selectedFreeformView.view !== "anchors")
+    ? selectedFreeformView.view
+    : defaultFreeformView;
   const [templateQuery, setTemplateQuery] = useState("");
   const [activeSlideView, setActiveSlideView] =
     useState<SlideSidebarView>("slides");
@@ -216,6 +229,7 @@ export function SidebarRight({
     icon: view.icon,
   }));
   const freeformViews: ReadonlyArray<SidebarView<FreeformSidebarView>> = [
+    ...(!readOnly ? [{ id: "anchors" as const, label: t("anchors.title"), icon: MapPin }] : []),
     ...templateViews,
     ...characterViews,
   ];
@@ -247,15 +261,15 @@ export function SidebarRight({
   useEffect(() => {
     if (onboardingPhase !== "preparing-template") return;
     const timeoutId = window.setTimeout(() => {
-    setActiveFreeformView("components");
-    setTemplateQuery("");
+      setSelectedFreeformView({ canvasId: activeCanvasId, view: "components" });
+      setTemplateQuery("");
       setOpen(true);
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [onboardingPhase, setOpen]);
+  }, [activeCanvasId, onboardingPhase, setOpen]);
 
   const selectFreeformView = (view: FreeformSidebarView) => {
-    setActiveFreeformView(view);
+    setSelectedFreeformView({ canvasId: activeCanvasId, view });
     if (isCollapsed) setOpen(true);
   };
 
@@ -309,7 +323,12 @@ export function SidebarRight({
           testIdPrefix="freeform"
         />
       );
-      if (isCharacterView(activeFreeformView)) {
+      if (activeFreeformView === "anchors") {
+        viewContent = <CanvasAnchorList anchors={anchors} readOnly={readOnly} />;
+        headerContent = (
+          <span className="truncate text-sm font-medium">{t("anchors.title")}</span>
+        );
+      } else if (isCharacterView(activeFreeformView)) {
         viewContent = renderCharacterPanel(
           activeFreeformView,
           activeFreeformViewMeta.label

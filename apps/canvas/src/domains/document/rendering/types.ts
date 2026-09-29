@@ -48,6 +48,8 @@ export type TextRenderFeatureSettings = Record<
 
 export type TextRenderProfile = {
   mode: TextRendererMode;
+  markdownWrapEnabled: boolean;
+  markdownWrapWidth: number;
   renderThemes: TextRenderThemeMap<TextRenderThemeOverrides>;
   features: TextRenderFeatureSettings;
 };

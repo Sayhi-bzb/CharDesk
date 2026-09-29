@@ -27,6 +27,8 @@
     "@chardesk/protocol": "*",
     "@chardesk/rendering": "*",
     "@chardesk/ui": "*",
+    "@headless-tree/core": "^1.7.0",
+    "@headless-tree/react": "^1.7.0",
     "@mcp-b/webmcp-polyfill": "5.1.0",
     "@tanstack/hotkeys": "0.8.0",
     "@tanstack/react-table": "^9.1.2",

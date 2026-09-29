@@ -3,6 +3,8 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -10,6 +12,7 @@ import { useStore } from "zustand";
 import type { CanvasState } from "./state/interfaces";
 import type { CanvasPersistenceStatus } from "./state/browserPersistence";
 import type { CanvasRuntime } from "./runtime";
+import type { CanvasAnchor } from "./state/canvasAnchorModel";
 
 type CanvasRuntimeContextValue = Pick<
   CanvasRuntime,
@@ -64,7 +67,17 @@ export const useCanvasRuntime = () => {
 
 export const useCanvasState = <Selected,>(
   selector: (state: CanvasState) => Selected
-) => useStore(useCanvasRuntime().store, selector);
+  ) => useStore(useCanvasRuntime().store, selector);
+
+export const useCanvasAnchors = (): readonly CanvasAnchor[] => {
+  const runtime = useCanvasRuntime();
+  useCanvasState((state) => state.activeCanvasId);
+  const [, setRevision] = useState(0);
+  useEffect(() => runtime.documents.observeActiveTransactions(() => {
+    setRevision((current) => current + 1);
+  }), [runtime.documents]);
+  return runtime.documents.getAnchorsAt(runtime.documents.getActiveAddress());
+};
 
 export const useCanvasViewport = () => {
   const viewport = useCanvasRuntime().viewport;

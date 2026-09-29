@@ -34,6 +34,7 @@ import {
   normalizeCharGraphSource,
   restoreCharGraphSourceRanges,
 } from "./source-map.js";
+import { wrapMarkdownProse } from "./markdown-wrap.js";
 
 export type MarkdownTextRuleId =
   | "strong"
@@ -76,6 +77,7 @@ export type MarkdownTextStyles = Partial<
 
 export type MarkdownRenderOptions = {
   forced?: boolean;
+  proseWrapWidth?: number;
   rules?: Partial<MarkdownTextRules>;
   extensionRules?: Readonly<Record<string, boolean>>;
   styles?: MarkdownTextStyles;
@@ -130,6 +132,7 @@ const NON_SYNTAX_TOKEN_TYPES = new Set([
 
 type RenderContext = {
   source: string;
+  proseWrapWidth?: number;
   rules: MarkdownTextRules;
   styles: MarkdownTextStyles;
   diagnostics: CharGraphDiagnostic[];
@@ -500,7 +503,13 @@ const renderList = async (
       : token.ordered ? "ordered-list-marker" : "list-marker";
     const nested = item.tokens.filter((child) => child.type === "list") as Tokens.List[];
     const contentTokens = item.tokens.filter((child) => child.type !== "list");
-    const content = await renderBlocks(contentTokens, itemRange, context, false);
+    const markerWidth = getTextCellWidth(markerText) + depth * 4;
+    const content = await renderBlocks(contentTokens, itemRange, {
+      ...context,
+      ...(context.proseWrapWidth ? {
+        proseWrapWidth: Math.max(1, context.proseWrapWidth - markerWidth),
+      } : {}),
+    }, false);
     const contentLines = splitLines(content);
     const indent = " ".repeat(depth * 4);
     contentLines.forEach((line, lineIndex) => {
@@ -556,12 +565,18 @@ const renderBlock = async (
         {},
         context
       );
-      return renderedBlock(rendered.fragments);
+      return renderedBlock(context.proseWrapWidth
+        ? wrapMarkdownProse(rendered.fragments, context.proseWrapWidth)
+        : rendered.fragments);
     }
-    case "text":
-      return renderedBlock(token.tokens?.length
+    case "text": {
+      const fragments = token.tokens?.length
         ? (await renderInline(token.tokens, range, {}, context)).fragments
-        : textFragments(token.text, {}, range));
+        : textFragments(token.text, {}, range);
+      return renderedBlock(context.proseWrapWidth
+        ? wrapMarkdownProse(fragments, context.proseWrapWidth)
+        : fragments);
+    }
     case "heading": {
       const heading = token as Tokens.Heading;
       if (!context.rules.heading) {
@@ -574,17 +589,35 @@ const renderBlock = async (
         : range;
       const depth = Math.min(6, Math.max(1, heading.depth));
       const role = `heading-${Math.min(depth, 4)}` as MarkdownTextStyleRole;
-      return renderedBlock([
-        fragment(`${"#".repeat(depth)} `, context.styles["heading-marker"], markerRange),
-        ...withStyle(body.fragments, context.styles[role]),
-      ]);
+      const marker = `${"#".repeat(depth)} `;
+      const styledBody = withStyle(body.fragments, context.styles[role]);
+      if (!context.proseWrapWidth) {
+        return renderedBlock([
+          fragment(marker, context.styles["heading-marker"], markerRange),
+          ...styledBody,
+        ]);
+      }
+      const bodyLines = splitLines(wrapMarkdownProse(
+        styledBody,
+        Math.max(1, context.proseWrapWidth - getTextCellWidth(marker))
+      ));
+      return renderedBlock(joinLines(bodyLines.map((line, index) => [
+        fragment(index === 0 ? marker : " ".repeat(getTextCellWidth(marker)),
+          index === 0 ? context.styles["heading-marker"] : {}, markerRange),
+        ...line,
+      ]), range));
     }
     case "blockquote": {
       const blockquote = token as Tokens.Blockquote;
       if (!context.rules.blockquote) {
         return renderedBlock(rawFragment(token.raw, range));
       }
-      const content = await renderBlocks(blockquote.tokens, range, context, "source");
+      const content = await renderBlocks(blockquote.tokens, range, {
+        ...context,
+        ...(context.proseWrapWidth ? {
+          proseWrapWidth: Math.max(1, context.proseWrapWidth - 2),
+        } : {}),
+      }, "source");
       const markerRanges = [...token.raw.matchAll(/^ {0,3}>[ \t]?/gm)].map((match) => ({
         from: range.from + (match.index ?? 0),
         to: range.from + (match.index ?? 0) + match[0].length,
@@ -713,6 +746,7 @@ export const renderMarkdownWithExtensions = async (
   const parser = createParser(extensions);
   const context: RenderContext = {
     source: normalized.text,
+    ...(options.proseWrapWidth ? { proseWrapWidth: options.proseWrapWidth } : {}),
     rules: { ...DEFAULT_RULES, ...(options.rules ?? {}) },
     styles: options.styles ?? {},
     diagnostics: [],

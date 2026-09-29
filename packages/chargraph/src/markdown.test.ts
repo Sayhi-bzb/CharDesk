@@ -4,6 +4,41 @@ import { getCharGraphText } from "./index.js";
 import { detectMarkdownText, renderMarkdown } from "./markdown-default.js";
 
 describe("renderMarkdown", () => {
+  it("wraps pasted prose by display cells without splitting words, graphemes, or links", async () => {
+    const source = `# ${"word ".repeat(18)}尾巴\n\n> ${"汉字".repeat(41)}\n\n- ${"hello ".repeat(14)}end\n\n${"alpha ".repeat(13)}[linked](https://example.com) 👩‍💻`;
+    const rendered = await renderMarkdown(source, { proseWrapWidth: 80 });
+    const lines = getCharGraphText(rendered).split("\n");
+
+    expect(lines.every((line) => layoutCharDeskTextRuns([{ text: line }]).width <= 80)).toBe(true);
+    expect(lines[0]?.startsWith("# ")).toBe(true);
+    expect(lines[1]?.startsWith("  ")).toBe(true);
+    expect(lines.some((line) => line.startsWith("│ "))).toBe(true);
+    expect(lines.some((line) => line.startsWith("- "))).toBe(true);
+    expect(lines.some((line) => line.startsWith("  hello"))).toBe(true);
+    expect(rendered.fragments.find((part) => part.text.includes("linked"))?.href)
+      .toBe("https://example.com");
+    expect(getCharGraphText(rendered)).toContain("👩‍💻");
+  });
+
+  it("leaves code and tables untouched when prose wrapping is enabled", async () => {
+    const source = [
+      "```text", "x".repeat(90), "```", "", "| Heading | Value |", "| --- | --- |", `| ${"x".repeat(90)} | item |`,
+    ].join("\n");
+    const plain = await renderMarkdown(source);
+    const wrapped = await renderMarkdown(source, { proseWrapWidth: 80 });
+    expect(getCharGraphText(wrapped)).toBe(getCharGraphText(plain));
+  });
+
+  it("splits an overlong Latin word only at a cell boundary", async () => {
+    const rendered = await renderMarkdown(`# ${"a".repeat(79)}👩‍💻尾`, {
+      proseWrapWidth: 80,
+    });
+    const lines = getCharGraphText(rendered).split("\n");
+    expect(lines.every((line) => layoutCharDeskTextRuns([{ text: line }]).width <= 80)).toBe(true);
+    expect(lines.map((line) => line.slice(2)).join("")).toBe(`${"a".repeat(79)}👩‍💻尾`);
+    expect(lines.some((line) => line.includes("👩‍💻"))).toBe(true);
+  });
+
   it("detects syntax without claiming plain prose", () => {
     expect(detectMarkdownText("plain prose")).toBe(false);
     expect(detectMarkdownText("**strong**")).toBe(true);

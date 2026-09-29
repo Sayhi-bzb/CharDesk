@@ -33,6 +33,9 @@ function ViewHarness({ viewId }: { viewId: CanvasViewId }) {
       <output data-testid={`${viewId}-session`}>{view.sessionId}</output>
       <output data-testid={`${viewId}-load-state`}>{view.loadState}</output>
       <output data-testid={`${viewId}-selected-session`}>{view.selectedSessionId}</output>
+      <output data-testid={`${viewId}-anchor-flash`}>{view.highlightedAnchorId ?? "none"}</output>
+      <button type="button" onClick={() => view.flashAnchor("anchor")}>{`flash-${viewId}`}</button>
+      <button type="button" onClick={() => view.flashAnchor("other")}>{`flash-other-${viewId}`}</button>
       <button type="button" onClick={view.activate}>{`activate-${viewId}`}</button>
       <button type="button" onClick={() => view.selectSession('canvas-a')}>
         {`select-${viewId}-a`}
@@ -132,6 +135,18 @@ describe('CanvasWorkspace', () => {
     expect(switchSession).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId('primary-load-state')).toHaveTextContent('idle');
     expect(screen.getByTestId('primary-session')).toHaveTextContent('canvas-b');
+  });
+
+  it('clears a view-scoped anchor flash when its session changes', () => {
+    setTwoSessions();
+    render(<CanvasWorkspaceProvider><WorkspaceHarness /></CanvasWorkspaceProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'flash-primary' }));
+    expect(screen.getByTestId('primary-anchor-flash')).toHaveTextContent('anchor');
+    expect(screen.getByTestId('secondary-anchor-flash')).toHaveTextContent('none');
+    fireEvent.click(screen.getByRole('button', { name: 'flash-other-primary' }));
+    expect(screen.getByTestId('primary-anchor-flash')).toHaveTextContent('other');
+    fireEvent.click(screen.getByRole('button', { name: 'select-primary-b' }));
+    expect(screen.getByTestId('primary-anchor-flash')).toHaveTextContent('none');
   });
 
   it('keeps pane cameras independent and mirrors only the active pane to the session', () => {

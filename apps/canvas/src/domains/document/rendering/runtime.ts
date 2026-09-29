@@ -30,9 +30,14 @@ import {
 export const TEXT_RENDER_PROFILE_STORAGE_KEY = "chardesk-text-render-profile-v3";
 const LEGACY_V2_TEXT_RENDER_PROFILE_STORAGE_KEY = "chardesk-text-render-profile-v2";
 const LEGACY_TEXT_RENDER_PROFILE_STORAGE_KEY = "chardesk-text-render-profile-v1";
+const DEFAULT_MARKDOWN_WRAP_WIDTH = 80;
+export const MARKDOWN_WRAP_WIDTH_MIN = 60;
+export const MARKDOWN_WRAP_WIDTH_MAX = 200;
 
 export const DEFAULT_TEXT_RENDER_PROFILE: TextRenderProfile = {
   mode: "auto",
+  markdownWrapEnabled: true,
+  markdownWrapWidth: DEFAULT_MARKDOWN_WRAP_WIDTH,
   renderThemes: createTextRenderThemeMap(() => ({})),
   features: createDefaultFeatureSettings(),
 };
@@ -52,6 +57,11 @@ const normalizeColor = (value: unknown) =>
   typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)
     ? value.toLowerCase()
     : null;
+
+const decodeMarkdownWrapWidth = (value: unknown) =>
+  typeof value === "number" && Number.isInteger(value)
+    ? Math.min(MARKDOWN_WRAP_WIDTH_MAX, Math.max(MARKDOWN_WRAP_WIDTH_MIN, value))
+    : DEFAULT_MARKDOWN_WRAP_WIDTH;
 
 const decodeThemeOverrides = (value: unknown) => {
   const sourceTheme = value && typeof value === "object" && !Array.isArray(value)
@@ -85,6 +95,8 @@ const decodeProfile = (
     : {};
   return {
     mode: mode as TextRenderProfile["mode"],
+    markdownWrapEnabled: candidate.markdownWrapEnabled !== false,
+    markdownWrapWidth: decodeMarkdownWrapWidth(candidate.markdownWrapWidth),
     renderThemes: createTextRenderThemeMap((themeMode) =>
       decodeThemeOverrides(
         sourceThemes[themeMode] ?? (themeMode === "light" ? (
@@ -119,7 +131,19 @@ const readProfile = (
   if (!storage) return DEFAULT_TEXT_RENDER_PROFILE;
   try {
     const stored = storage.getItem(TEXT_RENDER_PROFILE_STORAGE_KEY);
-    if (stored) return decodeProfile(JSON.parse(stored));
+    if (stored) {
+      const saved = JSON.parse(stored) as unknown;
+      const profile = decodeProfile(saved);
+      if (!saved || typeof saved !== "object" ||
+        !("markdownWrapEnabled" in saved) || !("markdownWrapWidth" in saved)) {
+        try {
+          storage.setItem(TEXT_RENDER_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+        } catch {
+          // Keep the migrated preference in memory when storage is read-only.
+        }
+      }
+      return profile;
+    }
     const v2Stored = storage.getItem(LEGACY_V2_TEXT_RENDER_PROFILE_STORAGE_KEY);
     if (v2Stored) {
       const migrated = decodeProfile(JSON.parse(v2Stored));
@@ -273,12 +297,15 @@ export class TextRenderingRuntime {
       pipelineDefaultStyles: {
         markdown: { color: theme.foreground },
       },
-      markdown: createRegisteredMarkdownOptions(
-        profile.features,
-        theme,
-        profile.mode === "markdown",
-        themeMode
-      ),
+      markdown: {
+        ...createRegisteredMarkdownOptions(
+          profile.features,
+          theme,
+          profile.mode === "markdown",
+          themeMode
+        ),
+        ...(profile.markdownWrapEnabled ? { proseWrapWidth: profile.markdownWrapWidth } : {}),
+      },
     });
   }
 

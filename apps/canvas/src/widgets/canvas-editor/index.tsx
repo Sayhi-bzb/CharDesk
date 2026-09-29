@@ -5,6 +5,7 @@ import { useCanvasRenderer } from './hooks/useCanvasRenderer';
 import { useCanvasEditorModels } from './hooks/useCanvasEditorModels';
 import { CanvasContextMenuContent } from './CanvasContextMenuContent';
 import { CanvasSurface } from './CanvasSurface';
+import { CanvasAnchorOverlay } from './CanvasAnchorOverlay';
 import { CanvasColorSourceChooser } from './CanvasColorSourceChooser';
 import { CanvasTemplatePreviewOverlay } from './CanvasTemplatePreviewOverlay';
 import { useCanvasTemplateDrop } from './hooks/useCanvasTemplateDrop';
@@ -28,6 +29,10 @@ import {
   type CanvasEditorCapabilities,
 } from './canvasEditorCapabilities';
 import { getStaticGridCursor } from '@/domains/selection/public';
+import { getStaticGridSelection } from '@/domains/selection/public';
+import { useCanvasAnchors, useCanvasRuntime } from '@/domains/canvas/public';
+import { resolveSnappedGridPointFromScreen } from './hooks/interaction/core/coordinates';
+import { resolveCanvasAnchorTarget, type CanvasAnchorTarget } from './canvasAnchorTarget';
 
 interface CanvasEditorProps {
   onUndo: () => void;
@@ -51,6 +56,7 @@ export const CanvasEditor = ({
   onActivate,
 }: CanvasEditorProps) => {
   const canvasView = useCanvasViewOptional();
+  const canvas = useCanvasRuntime();
   const subscribeViewport = canvasView?.subscribeViewport;
   const runtime = useCanvasEngineRuntime();
   const effectiveCapabilities = capabilities;
@@ -64,6 +70,7 @@ export const CanvasEditor = ({
   const canvasAppearance = useCanvasAppearance();
   const cursorPreference = useCanvasCursor();
   const [hoveredLink, setHoveredLink] = useState<CanvasLinkHit | null>(null);
+  const [anchorContextTarget, setAnchorContextTarget] = useState<CanvasAnchorTarget | null>(null);
   const requestCanvasRenderRef = useRef<(() => void) | null>(null);
   const restoringManagedInputFocusRef = useRef(false);
   const size = useSize(containerRef);
@@ -80,6 +87,15 @@ export const CanvasEditor = ({
     editor: editorStore,
   } = useCanvasEditorModels();
   const { canvasMode } = interactionStore;
+  const anchors = useCanvasAnchors();
+  const highlightedAnchorId = canvasView?.highlightedAnchorId;
+  const clearAnchorFlash = canvasView?.clearAnchorFlash;
+  useEffect(() => {
+    if (highlightedAnchorId &&
+      !anchors.some((anchor) => anchor.id === highlightedAnchorId && !anchor.detached)) {
+      clearAnchorFlash?.();
+    }
+  }, [anchors, highlightedAnchorId, clearAnchorFlash]);
   const {
     offset,
     zoom,
@@ -350,6 +366,21 @@ export const CanvasEditor = ({
   const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
     if (availableContextMenu.length === 0) {
       event.preventDefault();
+      return;
+    }
+    if (canvasMode === 'freeform' && effectiveCapabilities.mutateContent) {
+      const point = resolveSnappedGridPointFromScreen({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        rect: event.currentTarget.getBoundingClientRect(),
+        viewport: runtime.camera.getViewport(),
+        source: editorStore.contentReader,
+      });
+      setAnchorContextTarget(resolveCanvasAnchorTarget(
+        editorStore.contentReader,
+        getStaticGridSelection(editorStore.interaction.staticGrid),
+        point,
+      ));
     }
   };
 
@@ -375,6 +406,9 @@ export const CanvasEditor = ({
           textareaStyle={textareaStyle}
           textareaProps={textareaProps}
         >
+          {canvasMode === 'freeform' && active && anchors.some((anchor) => !anchor.detached) && (
+            <CanvasAnchorOverlay anchors={anchors.filter((anchor) => !anchor.detached)} />
+          )}
           <CanvasTemplatePreviewOverlay preview={canvasTemplateDrop.preview} zoom={zoom} />
           {colorSourceChoice && (
             <CanvasColorSourceChooser
@@ -392,6 +426,12 @@ export const CanvasEditor = ({
         <CanvasContextMenuContent
           entries={availableContextMenu}
           managedTextareaRef={textareaRef}
+          anchorAction={canvasMode === 'freeform' && effectiveCapabilities.mutateContent
+            ? {
+                target: anchorContextTarget,
+                onSelect: (target) => canvas.commands.anchors.add(target.point, target.label),
+              }
+            : undefined}
         />
       )}
     </ContextMenu>

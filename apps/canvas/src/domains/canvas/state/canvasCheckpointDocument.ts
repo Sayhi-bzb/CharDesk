@@ -1,6 +1,7 @@
 import * as Y from "yjs";
 import type { CanvasMode } from "@/domains/sessions/public";
 import type { GridCell } from "@/shared/types";
+import { orderCanvasAnchors, readCanvasAnchor, type CanvasAnchor } from "./canvasAnchorModel";
 import {
   CellPlaneIndex,
   type CellPlaneOperation,
@@ -20,6 +21,7 @@ import {
 type CanvasCheckpointSourcePage = {
       descriptor: CanvasPageDescriptor & { kind: "cell-plane" };
       operations: readonly CellPlaneOperation[];
+      anchors: readonly CanvasAnchor[];
     };
 
 export type CanvasCheckpointSource = {
@@ -75,6 +77,10 @@ const captureCanvasCheckpointSource = (
     return [{
       descriptor: { ...page.descriptor, kind: "cell-plane" },
       operations: page.operations.toArray(),
+      anchors: orderCanvasAnchors(Array.from(page.anchors.values()).flatMap((raw) => {
+        const anchor = readCanvasAnchor(raw);
+        return anchor ? [anchor] : [];
+      })),
     }];
   });
   if (pages.length === 0) {
@@ -106,7 +112,7 @@ export const materializeCanvasCheckpointSource = (
     const index = new CellPlaneIndex(page.operations);
     const grid = Array.from(index.materialize()) as [string, GridCell][];
     index.dispose();
-    return { ...page.descriptor, grid };
+    return { ...page.descriptor, grid, anchors: [...page.anchors] };
   }),
   grid: [],
 });

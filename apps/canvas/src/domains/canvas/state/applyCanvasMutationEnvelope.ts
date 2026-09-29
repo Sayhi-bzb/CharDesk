@@ -12,6 +12,16 @@ export const applyCanvasMutationEnvelopeToDocument = (
       readCanvasYPage(root, envelope.pageId)?.operations.push([envelope.operation]);
       return;
     }
+    if (envelope.kind === "anchors") {
+      const page = readCanvasYPage(root, envelope.pageId);
+      if (!page) return;
+      if (envelope.operation) page.operations.push([envelope.operation]);
+      for (const change of envelope.changes) {
+        if (change.value) page.anchors.set(change.id, change.value);
+        else page.anchors.delete(change.id);
+      }
+      return;
+    }
     if (envelope.kind === "page-metadata") {
       root.pages.set(envelope.page.id, envelope.page);
       return;
@@ -25,6 +35,7 @@ export const applyCanvasMutationEnvelopeToDocument = (
       return;
     }
     if (envelope.kind === "page-delete") {
+      readCanvasYPage(root, envelope.pageId)?.anchors.clear();
       root.pages.delete(envelope.pageId);
       const index = root.pageOrder.toArray().indexOf(envelope.pageId);
       if (index >= 0) root.pageOrder.delete(index, 1);

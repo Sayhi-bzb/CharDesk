@@ -64,26 +64,30 @@ function Harness({
   );
 }
 
-function setRowGeometry() {
+function setRowGeometry(heights = [42, 42, 42]) {
   const rows = Array.from(
     document.querySelectorAll<HTMLLIElement>("[data-reorder-item]")
   );
+  let top = 0;
   rows.forEach((row, index) => {
+    const rowTop = top;
+    const height = heights[index]!;
+    top += height + 8;
     Object.defineProperty(row, "offsetHeight", {
       configurable: true,
-      value: 42,
+      value: height,
     });
     vi.spyOn(row, "getBoundingClientRect").mockImplementation(
       () =>
         ({
           x: 0,
-          y: index * 50,
-          top: index * 50,
-          bottom: index * 50 + 42,
+          y: rowTop,
+          top: rowTop,
+          bottom: rowTop + height,
           left: 0,
           right: 200,
           width: 200,
-          height: 42,
+          height,
           toJSON: () => ({}),
         }) as DOMRect
     );
@@ -210,6 +214,42 @@ describe("ReorderableList", () => {
       expect(cards.every((card) => card.style.transform === "none")).toBe(true)
     );
     expect(onMove).not.toHaveBeenCalled();
+  });
+
+  it("uses each row's measured center when dragging across mixed heights", () => {
+    const onMove = vi.fn();
+    render(<Harness onMove={onMove} />);
+    setRowGeometry([26, 44, 26]);
+    const first = screen.getAllByRole("listitem")[0];
+
+    fireEvent.pointerDown(first, {
+      button: 0, pointerId: 8, pointerType: "mouse", clientY: 10,
+    });
+    fireEvent.pointerMove(first, { pointerId: 8, clientY: 80 });
+    fireEvent.pointerUp(first, { pointerId: 8, clientY: 80 });
+
+    expect(onMove).toHaveBeenCalledWith("one", 1);
+    expect(screen.getAllByText(/^Open /).map((item) => item.textContent)).toEqual([
+      "Open Two", "Open One", "Open Three",
+    ]);
+  });
+
+  it("opens the correct slot when a short row moves above a taller row", () => {
+    const onMove = vi.fn();
+    render(<Harness onMove={onMove} />);
+    setRowGeometry([26, 44, 26]);
+    const third = screen.getAllByRole("listitem")[2];
+
+    fireEvent.pointerDown(third, {
+      button: 0, pointerId: 9, pointerType: "mouse", clientY: 99,
+    });
+    fireEvent.pointerMove(third, { pointerId: 9, clientY: 19 });
+    fireEvent.pointerUp(third, { pointerId: 9, clientY: 19 });
+
+    expect(onMove).toHaveBeenCalledWith("three", 0);
+    expect(screen.getAllByText(/^Open /).map((item) => item.textContent)).toEqual([
+      "Open Three", "Open One", "Open Two",
+    ]);
   });
 
   it("supports keyboard moves and restores the original order on Escape", () => {

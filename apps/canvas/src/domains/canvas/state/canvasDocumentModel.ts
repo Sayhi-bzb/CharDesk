@@ -1,6 +1,7 @@
 import * as Y from "yjs";
 import type { CanvasMode } from "@/domains/sessions/public";
 import type { GridCell } from "@/shared/types";
+import type { CanvasAnchor } from "./canvasAnchorModel";
 import {
   gridEntriesToCellPlaneOperation,
   type CellPlaneOperation,
@@ -24,6 +25,7 @@ export type CanvasPageDescriptor = {
 
 export type CanvasPageDraft = CanvasPageDescriptor & {
   grid?: [string, GridCell][];
+  anchors?: CanvasAnchor[];
 };
 
 export type CanvasDocumentDraft = {
@@ -36,6 +38,7 @@ export type CanvasDocumentDraft = {
 export type CanvasYPage = {
   descriptor: CanvasPageDescriptor;
   operations: Y.Array<CellPlaneOperation>;
+  anchors: Y.Map<CanvasAnchor>;
 };
 
 export type CanvasYDocumentRoot = {
@@ -46,6 +49,7 @@ export type CanvasYDocumentRoot = {
 };
 
 const PAGE_OPERATIONS = "cell-plane-operations";
+const PAGE_ANCHORS = "anchors";
 
 export const getDefaultCanvasPageId = (documentId: string) =>
   `${documentId}:page:main`;
@@ -104,6 +108,7 @@ export const readCanvasYPage = (
   return {
     descriptor,
     operations: root.doc.getArray<CellPlaneOperation>(prefix + PAGE_OPERATIONS),
+    anchors: root.doc.getMap<CanvasAnchor>(prefix + PAGE_ANCHORS),
   };
 };
 
@@ -125,6 +130,10 @@ export const createCanvasYPage = (
     draft.grid ?? []
   );
   if (bootstrap) page.operations.push([bootstrap]);
+  if (draft.anchors) {
+    page.anchors.clear();
+    draft.anchors.forEach((anchor) => page.anchors.set(anchor.id, anchor));
+  }
   if (!root.pageOrder.toArray().includes(draft.id)) {
     root.pageOrder.push([draft.id]);
   }

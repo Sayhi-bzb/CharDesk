@@ -15,7 +15,6 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Surface,
   SwatchButton,
   Tabs,
   TabsContent,
@@ -204,33 +203,31 @@ export function ColorPickerPanel({
       className={cn('w-40 gap-2 px-1 py-1.5', className)}
     >
       <div data-testid="color-picker-header" className="flex items-center justify-between gap-0.5">
-        <Surface kind="embedded" asChild>
-          <TabsList
-            aria-label={t('color.paletteTabs')}
-            className="h-fit w-fit shrink-0 flex-row gap-0.5 p-px"
-          >
-            {paletteTabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <TooltipTrigger
-                  key={tab.id}
-                  handle={tooltipHandle}
-                  payload={tab.label}
-                  render={
-                    <TabsTrigger
-                      value={tab.id}
-                      size="icon"
-                      active={activePaletteTab === tab.id}
-                      aria-label={tab.label}
-                    />
-                  }
-                >
-                  <Icon />
-                </TooltipTrigger>
-              );
-            })}
-          </TabsList>
-        </Surface>
+        <TabsList
+          aria-label={t('color.paletteTabs')}
+          className="h-fit w-fit shrink-0 flex-row gap-0.5 bg-transparent p-px ring-0"
+        >
+          {paletteTabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <TooltipTrigger
+                key={tab.id}
+                handle={tooltipHandle}
+                payload={tab.label}
+                render={
+                  <TabsTrigger
+                    value={tab.id}
+                    size="icon"
+                    active={activePaletteTab === tab.id}
+                    aria-label={tab.label}
+                  />
+                }
+              >
+                <Icon />
+              </TooltipTrigger>
+            );
+          })}
+        </TabsList>
 
         {showCustomInput && (
           <div data-testid="color-picker-header-actions" className="flex items-center gap-0.5">

@@ -41,6 +41,43 @@ const rowText = (result: TextRenderResult, y: number) =>
     : result.text.split("\n")[y] ?? "";
 
 describe("TextRenderingRuntime", () => {
+  it("wraps only newly rendered Markdown prose in both render paths", async () => {
+    const runtime = new TextRenderingRuntime();
+    const source = `# ${"word ".repeat(18)}tail`;
+    expect(runtime.getProfile()).toMatchObject({ markdownWrapEnabled: true, markdownWrapWidth: 80 });
+    const full = await runtime.render(source, "#fff");
+    const compact = await runtime.renderCompact(source, "#fff");
+    expect(full.renderer).toBe("markdown");
+    expect(rowText(full, 0).startsWith("# ")).toBe(true);
+    expect(rowText(full, 1).startsWith("  ")).toBe(true);
+    if (compact.kind !== "spans") throw new Error("Expected compact spans");
+    expect(compact.height).toBe(2);
+    expect(compact.rows.map((row) => row.spans.map((span) => span.text).join("")))
+      .toEqual([rowText(full, 0), rowText(full, 1)]);
+
+    runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "raw" });
+    expect((await runtime.render(source, "#fff")).kind).toBe("plain");
+  });
+
+  it("uses configured widths and remembers the width while wrapping is disabled", async () => {
+    const runtime = new TextRenderingRuntime();
+    const source = `# ${"word ".repeat(50)}tail`;
+    for (const width of [60, 100, 200]) {
+      runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, markdownWrapWidth: width });
+      const result = await runtime.renderCompact(source, "#fff");
+      if (result.kind !== "spans") throw new Error("Expected compact spans");
+      expect(result.width).toBeLessThanOrEqual(width);
+      expect(result.height).toBeGreaterThan(1);
+    }
+    runtime.setProfile({ ...runtime.getProfile(), markdownWrapEnabled: false });
+    const unwrapped = await runtime.renderCompact(source, "#fff");
+    expect(unwrapped.kind === "spans" && unwrapped.width).toBeGreaterThan(200);
+    expect(runtime.getProfile().markdownWrapWidth).toBe(200);
+    runtime.setProfile({ ...runtime.getProfile(), markdownWrapEnabled: true });
+    expect((await runtime.renderCompact(source, "#fff")).kind).toBe("spans");
+    expect(runtime.getProfile().markdownWrapWidth).toBe(200);
+  });
+
   it("renders large raw input as compact row spans", async () => {
     const runtime = new TextRenderingRuntime();
     runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "raw" });
@@ -798,6 +835,8 @@ describe("TextRenderingRuntime", () => {
     const runtime = new TextRenderingRuntime({ storage });
     runtime.setProfile(profileWithMarkdown({
       mode: "markdown",
+      markdownWrapEnabled: false,
+      markdownWrapWidth: 100,
       renderThemes: {
         light: {
           accent: "#AABBCC",
@@ -816,6 +855,8 @@ describe("TextRenderingRuntime", () => {
 
     expect(new TextRenderingRuntime({ storage }).getProfile()).toMatchObject({
       mode: "markdown",
+      markdownWrapEnabled: false,
+      markdownWrapWidth: 100,
       renderThemes: { light: { accent: "#aabbcc" }, dark: {} },
       features: {
         "markdown.strong": {
@@ -830,6 +871,33 @@ describe("TextRenderingRuntime", () => {
       },
     });
     expect(values.has(TEXT_RENDER_PROFILE_STORAGE_KEY)).toBe(true);
+  });
+
+  it("enables wrapping for old saved profiles and validates saved widths", () => {
+    const saved = { mode: "markdown", wrapMarkdownProseAt80: false };
+    const values = new Map([[TEXT_RENDER_PROFILE_STORAGE_KEY, JSON.stringify(saved)]]);
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    };
+    expect(new TextRenderingRuntime({ storage }).getProfile()).toMatchObject({
+      markdownWrapEnabled: true,
+      markdownWrapWidth: 80,
+    });
+    expect(JSON.parse(values.get(TEXT_RENDER_PROFILE_STORAGE_KEY) ?? "{}")).toMatchObject({
+      markdownWrapEnabled: true,
+      markdownWrapWidth: 80,
+    });
+    for (const [width, expected] of [[59, 60], [201, 200], [100.5, 80], ["100", 80]] as const) {
+      const candidate = { ...saved, markdownWrapEnabled: false, markdownWrapWidth: width };
+      const candidateStorage = {
+        getItem: (key: string) => key === TEXT_RENDER_PROFILE_STORAGE_KEY
+          ? JSON.stringify(candidate) : null,
+        setItem: () => undefined,
+      };
+      expect(new TextRenderingRuntime({ storage: candidateStorage }).getProfile())
+        .toMatchObject({ markdownWrapEnabled: false, markdownWrapWidth: expected });
+    }
   });
 
   it("migrates the v2 theme and feature colors into the light scheme", () => {

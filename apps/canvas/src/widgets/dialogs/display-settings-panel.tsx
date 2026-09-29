@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_TEXT_RENDER_THEMES,
+  MARKDOWN_WRAP_WIDTH_MIN,
+  MARKDOWN_WRAP_WIDTH_MAX,
   createTextRenderThemeMap,
   TEXT_RENDER_FEATURES,
   useTextRenderingRuntime,
@@ -18,6 +20,7 @@ import { useUiI18n, type I18nKey } from '@/shared/i18n';
 import {
   Checkbox,
   cn,
+  Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -58,6 +61,7 @@ type ColorSegment = {
 
 type DisplaySetting =
   | { id: 'text-renderer'; kind: 'renderer'; label: 'settings.textRenderer' }
+  | { id: 'markdown-wrap'; kind: 'markdown-wrap'; label: 'settings.markdownWrap' }
   | {
       id: `theme:${TextRenderThemeTokenId}`;
       kind: 'theme-token';
@@ -96,6 +100,12 @@ const rendererSetting: DisplaySetting = {
   id: 'text-renderer',
   kind: 'renderer',
   label: 'settings.textRenderer',
+};
+
+const markdownWrapSetting: DisplaySetting = {
+  id: 'markdown-wrap',
+  kind: 'markdown-wrap',
+  label: 'settings.markdownWrap',
 };
 
 const themeSettings: readonly DisplaySetting[] = [
@@ -306,6 +316,60 @@ function FeatureColorControls({
   );
 }
 
+function MarkdownWrapControl({
+  enabled,
+  width,
+  onEnabledChange,
+  onWidthChange,
+}: {
+  enabled: boolean;
+  width: number;
+  onEnabledChange: (enabled: boolean) => void;
+  onWidthChange: (width: number) => void;
+}) {
+  const { t } = useUiI18n();
+  const [draft, setDraft] = useState(String(width));
+  useEffect(() => setDraft(String(width)), [width]);
+  const parsed = /^\d+$/.test(draft) ? Number(draft) : NaN;
+  const invalid = !Number.isInteger(parsed) ||
+    parsed < MARKDOWN_WRAP_WIDTH_MIN || parsed > MARKDOWN_WRAP_WIDTH_MAX;
+  const commit = () => {
+    if (!Number.isInteger(parsed)) {
+      setDraft(String(width));
+      return;
+    }
+    const nextWidth = Math.min(MARKDOWN_WRAP_WIDTH_MAX, Math.max(MARKDOWN_WRAP_WIDTH_MIN, parsed));
+    setDraft(String(nextWidth));
+    if (nextWidth !== width) onWidthChange(nextWidth);
+  };
+
+  return <div className="ml-auto flex items-center justify-end gap-2">
+    <Checkbox
+      data-settings-control=""
+      aria-label={t('settings.markdownWrap')}
+      checked={enabled}
+      onCheckedChange={(checked) => onEnabledChange(checked === true)}
+    />
+    <Input
+      type="number"
+      inputMode="numeric"
+      min={MARKDOWN_WRAP_WIDTH_MIN}
+      max={MARKDOWN_WRAP_WIDTH_MAX}
+      step={1}
+      value={draft}
+      aria-label={t('settings.markdownWrapWidth')}
+      aria-invalid={invalid}
+      disabled={!enabled}
+      className="h-7 w-16 text-right"
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+    />
+  </div>;
+}
+
 export function DisplaySettingsPanel({
   revealSettingId,
   onRevealComplete,
@@ -344,7 +408,7 @@ export function DisplaySettingsPanel({
   );
   const groups = useMemo<SettingsDataTableGroup<DisplaySetting>[]>(
     () => [
-      { id: 'rendering', label: t('settings.rendering'), items: [rendererSetting] },
+      { id: 'rendering', label: t('settings.rendering'), items: [rendererSetting, markdownWrapSetting] },
       {
         id: 'theme',
         label: `${t('settings.renderTheme')} · ${t(`settings.theme.${themeMode}`)}`,
@@ -395,6 +459,20 @@ export function DisplaySettingsPanel({
         if (columnId === 'value') {
           if (setting.kind === 'theme-token') {
             return <span className="text-muted-foreground">—</span>;
+          }
+          if (setting.kind === 'markdown-wrap') {
+            return <MarkdownWrapControl
+              enabled={textRenderProfile.markdownWrapEnabled}
+              width={textRenderProfile.markdownWrapWidth}
+              onEnabledChange={(markdownWrapEnabled) => textRendering.setProfile({
+                ...textRenderProfile,
+                markdownWrapEnabled,
+              })}
+              onWidthChange={(markdownWrapWidth) => textRendering.setProfile({
+                ...textRenderProfile,
+                markdownWrapWidth,
+              })}
+            />;
           }
           return setting.kind === 'renderer' ? (
             <Select
@@ -448,7 +526,7 @@ export function DisplaySettingsPanel({
         }
         return (
           <>
-            {setting.kind === 'renderer' ? (
+            {setting.kind === 'renderer' || setting.kind === 'markdown-wrap' ? (
               <span className="text-muted-foreground" aria-hidden="true">
                 —
               </span>

@@ -1,5 +1,6 @@
 import type { CanvasMode } from "@/domains/sessions/public";
 import type { CellPlaneOperation } from "../cell-plane/model";
+import type { CanvasAnchorChange } from "./canvasAnchorModel";
 import type {
   CanvasPageDescriptor,
   CanvasPageDraft,
@@ -7,6 +8,13 @@ import type {
 
 /** Semantic mutation data; it deliberately contains no Yjs item identifiers. */
 export type CanvasMutationEnvelope =
+  | {
+      kind: "anchors";
+      documentId: string;
+      pageId: string;
+      changes: readonly CanvasAnchorChange[];
+      operation?: CellPlaneOperation;
+    }
   | {
       kind: "cell-plane";
       documentId: string;
