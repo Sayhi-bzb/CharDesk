@@ -35,6 +35,9 @@ export class BlackboardRevisionConflictError extends Error {
 export interface BlackboardWorkspaceRepository {
   listWorkspaces(): Promise<readonly BlackboardWorkspace[]>;
   createWorkspace(input?: { id?: string; title?: string }): Promise<BlackboardWorkspaceSnapshot>;
+  importWorkspace(title: string, files: readonly BlackboardFile[]): Promise<BlackboardWorkspaceSnapshot>;
+  replaceWorkspace(id: string, files: readonly BlackboardFile[], baseRevision: number): Promise<BlackboardWorkspaceSnapshot>;
+  renameWorkspace(id: string, title: string): Promise<BlackboardWorkspaceSnapshot>;
   deleteWorkspace(id: string): Promise<void>;
   readWorkspace(id: string): Promise<BlackboardWorkspaceSnapshot | null>;
   apply(

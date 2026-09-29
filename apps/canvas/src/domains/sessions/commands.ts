@@ -43,6 +43,7 @@ export interface SessionCommands {
     viewport: { offset: Point; zoom: number }
   ) => void;
   renameCanvasSession: (canvasId: string, nextName: string) => void;
+  syncBlackboardTitle: (workspaceId: string, title: string) => void;
   setCanvasSessionCollaboration: (
     canvasId: string,
     collaboration: CollaborationDescriptor | null,

@@ -66,5 +66,6 @@ export default defineConfig({
     command: `npm run dev -w @chardesk/canvas -- --port ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
+    env: { VITE_ACCOUNT_API_ENDPOINT: 'http://127.0.0.1:1234' },
   },
 });

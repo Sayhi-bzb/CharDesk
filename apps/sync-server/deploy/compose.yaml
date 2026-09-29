@@ -10,11 +10,18 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 1234
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://chardesk.com,https://www.chardesk.com,https://ascii-canvas.pages.dev}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://canvas.chardesk.com,https://chardesk.com,https://www.chardesk.com,https://ascii-canvas.pages.dev}
       MAX_CONNECTIONS_PER_ROOM: ${MAX_CONNECTIONS_PER_ROOM:-30}
       MAX_CONNECTIONS_PER_IP: ${MAX_CONNECTIONS_PER_IP:-20}
       MAX_CONNECTION_ATTEMPTS_PER_MINUTE: ${MAX_CONNECTION_ATTEMPTS_PER_MINUTE:-120}
       TRUST_PROXY: 1
+      ACCOUNT_DATABASE: /data/accounts.sqlite
+      ACCOUNT_PUBLIC_ORIGIN: ${ACCOUNT_PUBLIC_ORIGIN:-https://sync.chardesk.com}
+      ACCOUNT_APP_ORIGIN: ${ACCOUNT_APP_ORIGIN:-https://canvas.chardesk.com}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+    volumes:
+      - accounts:/data
     healthcheck:
       test:
         - CMD
@@ -62,3 +69,6 @@ services:
       options:
         max-size: 10m
         max-file: "3"
+
+volumes:
+  accounts:

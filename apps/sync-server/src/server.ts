@@ -5,6 +5,7 @@ import {
   inspectCollaborationRelayFrame,
 } from "@chardesk/collaboration-protocol";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
+import type { createAccountApi } from "./account-api.js";
 
 const ROOM_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
 
@@ -18,6 +19,7 @@ type SyncServerOptions = {
   trustProxy?: boolean;
   heartbeatIntervalMs?: number;
   logger?: (entry: Record<string, unknown>) => void;
+  accountApi?: ReturnType<typeof createAccountApi>;
 };
 
 type Client = WebSocket & { alive?: boolean; remoteAddress?: string };
@@ -46,6 +48,17 @@ export const createSyncServer = (options: SyncServerOptions = {}) => {
   const log = options.logger ?? ((entry) => console.log(JSON.stringify(entry)));
   const sockets = new WebSocketServer({ noServer: true, maxPayload: COLLABORATION_RELAY_MAX_FRAME_BYTES });
   const server = createServer((request, response) => {
+    if (request.url?.startsWith("/v1/account/")) {
+      if (!options.accountApi) {
+        response.writeHead(404).end();
+        return;
+      }
+      void options.accountApi.handle(request, response).catch(() => {
+        if (!response.headersSent) response.writeHead(500).end();
+        else response.destroy();
+      });
+      return;
+    }
     if (request.url === "/healthz" || request.url === "/readyz") {
       response.writeHead(200, {
         "cache-control": "no-store",

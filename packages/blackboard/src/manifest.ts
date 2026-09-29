@@ -57,6 +57,13 @@ export class BlackboardManifestError extends Error {
   }
 }
 
+export const renameBlackboardManifest = (source: string, title: string): string => {
+  parseBlackboardManifest(source);
+  const document = parseDocument(source);
+  document.set("title", title);
+  return document.toString();
+};
+
 const fail = (message: string): never => {
   throw new BlackboardManifestError("invalid-manifest", message);
 };

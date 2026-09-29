@@ -79,6 +79,10 @@ import { RecoverableLazyBoundary } from '@/shared/components/RecoverableLazyBoun
 import { requireLoadedModule } from '@/shared/lib/moduleLoadRecovery';
 import { CanvasStartupBoundary } from './CanvasStartupBoundary';
 import { CanvasAppearanceBridge } from '@/shared/canvas-appearance/react';
+import { useWorkspaceRoute } from '@/shared/navigation/workspace-route';
+import { LocalWorkspacePage } from './LocalWorkspacePage';
+import { startCloudSync, startBlackboardCloudSync } from '@/domains/account/public';
+import { useBlackboardRuntime } from '@/domains/blackboard/public';
 
 
 const SidebarRight = lazy(() =>
@@ -611,6 +615,22 @@ function AppContent() {
   );
 }
 
+function AppScreen() {
+  const canvas = useCanvasRuntime();
+  const blackboard = useBlackboardRuntime();
+  useEffect(() => startCloudSync(canvas), [canvas]);
+  useEffect(() => startBlackboardCloudSync(blackboard.repository), [blackboard]);
+  const workspaceRoute = useWorkspaceRoute();
+  if (workspaceRoute) return <LocalWorkspacePage />;
+  return (
+    <OnboardingTourProvider autoStart={!isLocalBlackboardReaderRoute(window.location)}>
+      <CanvasWorkspaceProvider>
+        <AppContent />
+      </CanvasWorkspaceProvider>
+    </OnboardingTourProvider>
+  );
+}
+
 export default function App() {
   const { t } = useUiI18n();
   const uiMessages = useMemo(
@@ -632,13 +652,7 @@ export default function App() {
           <EditorPresentationProvider>
             <EditorChromeProvider>
               <CanvasStartupBoundary>
-                <OnboardingTourProvider
-                  autoStart={!isLocalBlackboardReaderRoute(window.location)}
-                >
-                  <CanvasWorkspaceProvider>
-                    <AppContent />
-                  </CanvasWorkspaceProvider>
-                </OnboardingTourProvider>
+                <AppScreen />
               </CanvasStartupBoundary>
             </EditorChromeProvider>
           </EditorPresentationProvider>

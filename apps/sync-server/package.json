@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "node --watch --experimental-strip-types src/main.ts",
+    "dev": "npm run build && node --env-file-if-exists=.env.local dist/main.js",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.ts"
@@ -22,6 +22,6 @@
     "vitest": "^4.1.2"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   }
 }

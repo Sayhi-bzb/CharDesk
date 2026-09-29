@@ -27,8 +27,10 @@ import {
 } from "@/widgets/editor-chrome/public";
 import { RecoverableLazyBoundary } from "@/shared/components/RecoverableLazyBoundary";
 import { requireLoadedModule } from "@/shared/lib/moduleLoadRecovery";
+import { navigateApp } from "@/shared/navigation/workspace-route";
 
 const AppMenuTriggerIcon = HOST_ICONOLOGY.appMenu.trigger;
+const AccountIcon = HOST_ICONOLOGY.appMenu.account;
 const SplitViewIcon = HOST_ICONOLOGY.appMenu.splitView;
 const ZenModeIcon = HOST_ICONOLOGY.appMenu.zenMode;
 const HelpIcon = HOST_ICONOLOGY.appMenu.help;
@@ -119,6 +121,10 @@ export function AppMenu({
                 aria-label={t("appMenu.open")}
               >
                 <DropdownMenuGroup>
+                  <DropdownMenuItem onSelect={() => navigateApp('/workspace?view=account')}>
+                    <AccountIcon />
+                    {t('workspace.account')}
+                  </DropdownMenuItem>
                   {workspace && splitAvailable && (
                     <DropdownMenuItem
                       onSelect={() => {

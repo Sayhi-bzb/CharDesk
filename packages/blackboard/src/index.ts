@@ -13,6 +13,7 @@ export {
   BLACKBOARD_PACKAGE_SIGNATURE,
   BlackboardManifestError,
   parseBlackboardManifest,
+  renameBlackboardManifest,
 } from "./manifest.js";
 export {
   analyzeBlackboardSourceTree,

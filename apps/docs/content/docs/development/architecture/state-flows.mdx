@@ -12,6 +12,29 @@ description: Authority, projection, history, persistence, and synchronization di
 | `derived` | Rendering, minimap, preview projections | No | No |
 | `blackboard` | Versioned source files in the browser repository or local Reader | Repository revisions | No |
 
+The local `/workspace` page is a projection of Canvas session descriptors and the
+Blackboard browser repository, not a second catalog. Source-backed session views
+deduplicate against their Blackboard workspace ID. Renaming a Blackboard updates
+its repository title and `blackboard.yaml` in one revision; deleting one removes
+its local source after closing bound views. The page distinguishes manual cloud
+backups from opt-in background sync: the first explicit backup binds local
+Canvas/Slides sessions or a Blackboard source workspace to one cloud work, and later edits replace it conditionally
+by revision. Stale revisions fork a separate conflict copy. Further explicit
+backups remain independent recovery copies. Restoring a cloud snapshot binds
+the new local session to that work at the downloaded revision. The account list
+discovers remote works without downloading every snapshot. Opening an unbound
+cloud work downloads it once; a bound work pulls a newer revision only while its
+local snapshot or source tree still matches the last acknowledged digest. Blackboard
+pulls replace the entire file tree in one revision-checked IndexedDB transaction. Divergent edits fork
+a cloud work linked to its conflict parent, preserving both versions.
+Canvas site tools are unregistered while this page hides the editor.
+When configured, the account service adds a separate GitHub-owned identity and
+VPS SQLite catalog projection. Canvas/Slides backups store a `.chardesk`
+snapshot; Blackboard backups store a versioned `blackboard/source-v1` source tree,
+not its compiled Canvas projection. Legacy catalog-only entries
+remain unavailable to open. Local sessions and Blackboard source remain
+browser-owned; the account database is not the encrypted collaboration relay.
+
 Workspace writes enter through `CanvasCommands`; `EditorState` contains data only and
 Zustand is its read projection, not an alternate command surface. `CanvasRuntime.store`
 exposes only `getState`, `getInitialState`, and `subscribe`; its mutable Store is test-internal.

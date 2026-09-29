@@ -15,6 +15,7 @@ dist-ssr
 apps/docs/build
 apps/docs/.react-router
 *.local
+apps/sync-server/.data/
 
 # Test and analysis output
 coverage

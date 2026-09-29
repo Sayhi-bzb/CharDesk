@@ -35,11 +35,12 @@ import {
   type WebMcpProvider,
 } from "./site-tools/environment";
 import { isBlackboardRoute, isLocalBlackboardReaderRoute } from "./blackboardRoute";
+import { APP_ROUTE_EVENT, isWorkspaceRoute } from "@/shared/navigation/workspace-route";
 import { createBlackboardWorkspaceTarget } from "./blackboardWorkspaceTarget";
 
 const profile = EDITOR_HOST_PROFILE;
 const host = getApplicationEditorHost(profile);
-const chardeskAgentTools = isLocalBlackboardReaderRoute(window.location)
+const createRouteAgentTools = () => isLocalBlackboardReaderRoute(window.location)
   ? [createChardeskMaterialsTool()]
   : createChardeskAgentTools({
       blackboard: host.blackboard,
@@ -51,7 +52,16 @@ const chardeskAgentTools = isLocalBlackboardReaderRoute(window.location)
       }),
     });
 
-const startChardeskSiteTools = async () => {
+let siteTools: ReturnType<typeof startDocumentSiteTools> | null = null;
+let siteToolsGeneration = 0;
+const syncChardeskSiteTools = async () => {
+  const generation = ++siteToolsGeneration;
+  siteTools?.dispose();
+  siteTools = null;
+  if (isWorkspaceRoute(window.location)) {
+    updateWebMcpDiagnostics(document, "unavailable", { status: "disposed", adapterId: null });
+    return;
+  }
   let provider: WebMcpProvider = "unavailable";
   updateWebMcpDiagnostics(document, provider, {
     status: "waiting",
@@ -68,9 +78,11 @@ const startChardeskSiteTools = async () => {
     console.warn("Unable to initialize the WebMCP development polyfill.", error);
   }
 
-  startDocumentSiteTools({
+  if (generation !== siteToolsGeneration) return;
+
+  siteTools = startDocumentSiteTools({
     target: document,
-    tools: chardeskAgentTools,
+    tools: createRouteAgentTools(),
     onStatusChange: (snapshot) => {
       if (snapshot.adapterId !== null && provider !== "polyfill") {
         provider = "native";
@@ -86,7 +98,9 @@ const startChardeskSiteTools = async () => {
   }
 };
 
-void startChardeskSiteTools();
+void syncChardeskSiteTools();
+window.addEventListener('popstate', () => { void syncChardeskSiteTools(); });
+window.addEventListener(APP_ROUTE_EVENT, () => { void syncChardeskSiteTools(); });
 const canvasStressParams = new URLSearchParams(window.location.search);
 if (canvasStressParams.has("canvas-stress")) {
   host.canvas.queries.setMutationPerformanceEnabled(
@@ -252,7 +266,7 @@ if (canvasStressParams.has("canvas-stress")) {
     },
   });
 }
-if (!isBlackboardRoute(window.location)) {
+if (!isBlackboardRoute(window.location) && !isWorkspaceRoute(window.location)) {
   captureOnboardingEntryState();
 }
 installModuleLoadRecovery();

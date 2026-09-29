@@ -26,5 +26,6 @@ describe("host iconology", () => {
     ]);
     expect(HOST_ICONOLOGY.appMenu.shortcuts).toBeDefined();
     expect(HOST_ICONOLOGY.appMenu.settings).toBeDefined();
+    expect(HOST_ICONOLOGY.appMenu.account).toBeDefined();
   });
 });

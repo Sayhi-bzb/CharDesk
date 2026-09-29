@@ -9,6 +9,7 @@ export {
   normalizeWorkspaceOperations,
 } from "./repository";
 export { createBlackboardArchive } from "./archive";
+export { parseBlackboardSource, serializeBlackboardSource } from "./cloud-source";
 export type {
   BlackboardFile,
   BlackboardWorkspace,

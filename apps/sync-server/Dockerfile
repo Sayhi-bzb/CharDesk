@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages ./packages
@@ -8,7 +8,7 @@ RUN npm ci --ignore-scripts --include-workspace-root=false \
   --workspace @chardesk/sync-server
 RUN npm run build --workspace @chardesk/collaboration-protocol && npm run build --workspace @chardesk/sync-server
 
-FROM node:22-alpine
+FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/apps/sync-server/dist ./dist

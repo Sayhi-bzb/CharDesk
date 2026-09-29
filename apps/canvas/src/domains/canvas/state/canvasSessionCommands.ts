@@ -566,6 +566,17 @@ export const createCanvasSessionCommands = (
         ),
       }));
     }),
+    syncBlackboardTitle: (workspaceId, title) => commits.run(() => {
+      set((state) => ({
+        canvasSessions: state.canvasSessions.map((session) =>
+          isSourceBackedCanvasSession(session) &&
+          session.sourceBinding.provider === 'browser-workspace' &&
+          session.sourceBinding.id === workspaceId
+            ? { ...session, name: title }
+            : session
+        ),
+      }));
+    }),
     setCanvasSessionCollaboration: (canvasId, collaboration, role = "host") => commits.run(() => {
       const state = get();
       const session = state.canvasSessions.find((item) => item.id === canvasId);

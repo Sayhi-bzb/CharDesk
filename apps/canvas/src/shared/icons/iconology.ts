@@ -60,6 +60,7 @@ import {
   Upload,
   Undo2,
   Users,
+  UserRound,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -170,6 +171,7 @@ export const HOST_ICONOLOGY = {
   } satisfies IconMap<'box' | 'splitBox' | 'circle' | 'line' | 'arrowLine' | 'stepline'>,
   appMenu: {
     trigger: Menu,
+    account: UserRound,
     splitView: SquareSplitHorizontal,
     zenMode: Focus,
     help: CircleHelp,
@@ -185,6 +187,7 @@ export const HOST_ICONOLOGY = {
     clear: Trash2,
   } satisfies IconMap<
     | 'trigger'
+    | 'account'
     | 'splitView'
     | 'zenMode'
     | 'help'
