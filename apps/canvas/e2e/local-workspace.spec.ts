@@ -69,7 +69,7 @@ test('opens a Blackboard from the local workspace, then renames and deletes its 
   await name.press('Enter');
   await expect(board.getByRole('button', { name: 'Open Research board' })).toBeVisible();
   await expect.poll(async () => page.evaluate(async (id) => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const source = await getApplicationEditorHost().blackboard.repository.readWorkspace(id!);
     return source?.files.find((file) => file.path === 'blackboard.yaml')?.content;
   }, boardId)).toContain('title: Research board');
@@ -84,7 +84,7 @@ test('opens a Blackboard from the local workspace, then renames and deletes its 
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
   await expect(page.locator(`[data-work-id="${boardId}"]`)).toHaveCount(0);
   await expect.poll(async () => page.evaluate(async (id) => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     return getApplicationEditorHost().blackboard.repository.readWorkspace(id!);
   }, boardId)).toBeNull();
 });

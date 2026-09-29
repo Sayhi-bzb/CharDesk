@@ -504,7 +504,7 @@ export function LocalWorkspacePage() {
             <DialogTitle>{t('workspace.conflictTitle')}</DialogTitle>
             <DialogDescription>{t('workspace.conflictDescription')}</DialogDescription>
           </DialogHeader>
-          <DialogBody className="space-y-1 text-sm">
+          <DialogBody className="flex flex-col gap-1 text-sm">
             <p>{t('workspace.currentCopy')}: {conflictCloudWork?.title ?? conflictLocalWork?.name}</p>
             <p>{t('workspace.otherCopy')}: {otherVersion?.title ?? t('workspace.otherCopyUnavailable')}</p>
           </DialogBody>

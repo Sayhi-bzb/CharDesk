@@ -1,8 +1,6 @@
 import { normalizeBlackboardPath } from '@chardesk/blackboard';
 import type { BlackboardFile, BlackboardWorkspaceSnapshot } from './repository';
 
-export type BlackboardCloudSource = { chardesk: 'blackboard/source-v1'; files: BlackboardFile[] };
-
 export const serializeBlackboardSource = (snapshot: BlackboardWorkspaceSnapshot): string =>
   JSON.stringify({ chardesk: 'blackboard/source-v1', files: [...snapshot.files]
     .sort((left, right) => left.path.localeCompare(right.path)) });

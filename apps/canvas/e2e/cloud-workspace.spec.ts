@@ -15,8 +15,8 @@ async function openWorkspace(page: Page) {
 
 async function currentSource(page: Page): Promise<string | null> {
   return page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
-    const { prepareTextExport } = await import('/src/domains/export/public.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
+    const { prepareTextExport } = await import('../src/domains/export/public.ts');
     const canvas = getApplicationEditorHost().canvas;
     const session = canvas.getState().canvasSessions.find((item) => item.id === canvas.getState().activeCanvasId);
     if (!session) return null;
@@ -101,7 +101,7 @@ test('discovers, pulls, and preserves offline conflicts across two browsers', as
     await expect(pageB.getByTestId('canvas-editor-surface')).toBeVisible();
     await pageB.evaluate(async () => {
       Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
-      const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+      const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
       const canvas = getApplicationEditorHost().canvas;
       canvas.commands.sessions.replaceSnapshot(canvas.getState().activeCanvasId,
         { mode: 'freeform', grid: [['0,0', { char: 'L', color: '#000000' }]] },
@@ -187,7 +187,7 @@ test('syncs Blackboard source files and preserves concurrent edits as copies', a
         .toContainText('This browser + cloud');
     }
     const readPanel = (page: Page) => page.evaluate(async () => {
-      const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+      const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
       const repository = getApplicationEditorHost().blackboard.repository;
       const [item] = await repository.listWorkspaces();
       return (await repository.readWorkspace(item.id))?.files.find((file) => file.path === 'panels/welcome.panel')?.content;
@@ -199,7 +199,7 @@ test('syncs Blackboard source files and preserves concurrent edits as copies', a
     await expect.poll(() => readPanel(second)).toBe('Remote');
     await second.evaluate(async () => {
       Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
-      const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+      const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
       const repository = getApplicationEditorHost().blackboard.repository;
       const [item] = await repository.listWorkspaces();
       await repository.apply(item.id, [{ op: 'write', path: 'panels/welcome.panel', content: 'Local' }]);

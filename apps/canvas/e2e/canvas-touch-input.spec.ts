@@ -50,7 +50,7 @@ test('touch navigation stays non-editable until a same-cell double tap', async (
   await page.keyboard.type('Z');
   await expect.poll(() => activeInput()).toBe(true);
   await expect.poll(async () => page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     return [...getApplicationEditorHost().canvas.getState().contentSurface.reader.materialize().values()]
       .some((cell) => cell.char === 'Z');
   })).toBe(true);

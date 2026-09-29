@@ -17,7 +17,6 @@ import { getAvailableExportFormats, type ExportFormat } from '@/domains/export/p
 import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
 import { useUiI18n, type I18nKey } from '@/shared/i18n';
 import {
-  cn,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -376,13 +375,11 @@ export function CanvasSessionSelector({
                 ref={selectorTriggerRef}
                 data-onboarding-target={onboardingTarget ? 'canvas-selector' : undefined}
                 data-pane-active={paneActive || undefined}
+                data-drop-target={importDropTarget || undefined}
                 tone="subtle"
                 size="md"
                 active={paneActive}
-                className={cn(
-                  'max-w-[min(14rem,calc(100vw-5.5rem))] justify-start gap-1.5 px-2',
-                  importDropTarget && 'bg-accent',
-                )}
+                className="max-w-[min(14rem,calc(100vw-5.5rem))] justify-start gap-1.5 px-2"
                 aria-label={t('session.select')}
                 aria-current={paneActive ? 'true' : undefined}
                 aria-busy={isImporting}
@@ -723,7 +720,8 @@ export function CanvasSessionSelector({
             type="button"
             tone="subtle"
             size="sm"
-            className={cn('w-full justify-start bg-transparent px-2', importDropTarget && 'bg-accent')}
+            data-drop-target={importDropTarget || undefined}
+            className="w-full justify-start px-2"
             disabled={isImporting}
             onClick={() => openImportPicker(openFilePicker)}
             onDragOver={acceptImportDrag}
