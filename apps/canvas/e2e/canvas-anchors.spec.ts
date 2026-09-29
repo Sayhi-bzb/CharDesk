@@ -9,7 +9,7 @@ test('navigates to a Canvas anchor and restores it after reload', async ({ page 
   await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
 
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const canvas = getApplicationEditorHost().canvas;
     await canvas.ready;
     canvas.commands.grid.replace([
@@ -36,7 +36,7 @@ test('navigates to a Canvas anchor and restores it after reload', async ({ page 
   const defaultMarkerColor = await markerColor();
 
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     getApplicationEditorHost().canvas.commands.viewport.setOffset(() => ({ x: -400, y: -300 }));
   });
   const beforeNavigation = await marker.evaluate((element) => element.getBoundingClientRect().x);
@@ -99,7 +99,7 @@ test('creates a fixed literal anchor from a right-clicked Chinese range', async 
   await page.goto('/');
   await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const canvas = getApplicationEditorHost().canvas;
     await canvas.ready;
     canvas.commands.grid.replace([
@@ -129,7 +129,7 @@ test('creates a fixed literal anchor from a right-clicked Chinese range', async 
   await expect(contents.getByRole('button', { name: /# 什么是哲学/ })).toBeVisible();
 
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     getApplicationEditorHost().canvas.documents.mutateGrid((grid) => {
       grid.set('47,17', { char: '如', color: '#000000' });
     });
@@ -145,7 +145,7 @@ test('shows text-only Contents, reorders mixed-height rows, and removes through 
   await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
   const longTitle = 'A long anchor heading that takes more than one line in the Contents sidebar';
   await page.evaluate(async (label) => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const canvas = getApplicationEditorHost().canvas;
     await canvas.ready;
     canvas.commands.grid.replace([
@@ -185,7 +185,7 @@ test('removes an empty anchor from Contents and promotes its child', async ({ pa
   await page.goto('/');
   await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const canvas = getApplicationEditorHost().canvas;
     await canvas.ready;
     canvas.commands.grid.replace([
@@ -204,13 +204,13 @@ test('removes an empty anchor from Contents and promotes its child', async ({ pa
   await expect(contents.getByRole('button', { name: 'Child' })).toBeVisible();
   await expect(page.getByTestId('canvas-anchor-marker')).toHaveCount(1);
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     getApplicationEditorHost().canvas.documents.undo();
   });
   await expect(contents.getByRole('button', { name: 'Parent' })).toBeVisible();
   await expect(page.getByTestId('canvas-anchor-marker')).toHaveCount(2);
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     getApplicationEditorHost().canvas.documents.redo();
   });
   await expect(contents.getByRole('button', { name: 'Parent' })).toHaveCount(0);
@@ -222,7 +222,7 @@ test('removes an empty anchor from Contents and promotes its child', async ({ pa
   await restoredChild.click();
   await expect(page.getByTestId('canvas-anchor-marker')).toHaveAttribute('data-highlighted', 'true');
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const canvas = getApplicationEditorHost().canvas;
     await canvas.ready;
     const documents = canvas.documents;
@@ -233,7 +233,7 @@ test('removes an empty anchor from Contents and promotes its child', async ({ pa
   });
   await expect(page.getByTestId('canvas-anchor-marker')).toHaveCount(0);
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     getApplicationEditorHost().canvas.documents.undo();
   });
   await expect(page.getByTestId('canvas-anchor-marker')).toHaveCount(1);
@@ -244,7 +244,7 @@ test('nests a branch with Headless Tree and restores it with undo', async ({ pag
   await page.goto('/');
   await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const canvas = getApplicationEditorHost().canvas;
     await canvas.ready;
     canvas.commands.grid.replace(
@@ -283,7 +283,7 @@ test('shows only rename and delete in the Contents context menu and cancels rena
   await page.goto('/');
   await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const canvas = getApplicationEditorHost().canvas;
     await canvas.ready;
     canvas.commands.grid.replace([
@@ -317,7 +317,7 @@ test('highlights a child target without changing the source before drop', async 
   await page.goto('/');
   await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const canvas = getApplicationEditorHost().canvas;
     await canvas.ready;
     canvas.commands.grid.replace([
@@ -347,7 +347,7 @@ test('keeps keyboard sibling moves available', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const canvas = getApplicationEditorHost().canvas;
     await canvas.ready;
     canvas.commands.grid.replace([

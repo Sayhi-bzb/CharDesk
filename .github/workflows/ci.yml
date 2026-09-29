@@ -135,6 +135,14 @@ jobs:
           else
             npm run "$VERIFY_SCRIPT" -- --phase build
           fi
+      - name: Preserve the Canvas build for deployment
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvas-dist
+          path: apps/canvas/dist
+          if-no-files-found: error
+          retention-days: 1
 
   cell-e2e:
     name: Cell UI browser tests (${{ matrix.project }})
@@ -188,3 +196,47 @@ jobs:
           test "${{ needs.dom-tests.result }}" = "success"
           test "${{ needs.build.result }}" = "success"
           test "${{ needs.cell-e2e.result }}" = "success"
+
+  deploy-canvas:
+    name: Deploy Canvas
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Require Cloudflare Pages credentials
+        env:
+          CLOUDFLARE_PAGES_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_PAGES_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Configure CLOUDFLARE_PAGES_API_TOKEN and CLOUDFLARE_ACCOUNT_ID for Canvas deployment"
+            exit 1
+          fi
+      - *checkout
+      - *setup-node
+      - *install
+      - name: Restore the verified Canvas build
+        uses: actions/download-artifact@v4
+        with:
+          name: canvas-dist
+          path: apps/canvas/dist
+      - name: Deploy Canvas to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/canvas
+          command: pages deploy dist --project-name=chardesk-canvas --branch=main
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+      - name: Require a production deployment
+        env:
+          PAGES_ENVIRONMENT: ${{ steps.deploy.outputs.pages-environment }}
+        run: |
+          if [ "$PAGES_ENVIRONMENT" != production ]; then
+            echo "::error::chardesk-canvas must use main as its production branch"
+            exit 1
+          fi

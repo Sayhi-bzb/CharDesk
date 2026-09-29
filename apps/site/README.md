@@ -7,7 +7,9 @@ The Cloudflare Pages projects use these build contracts:
 | Project / domain | Build source | Build command | Output directory |
 | --- | --- | --- | --- |
 | `ascii-canvas` / `chardesk.com` | Git, repository root | `npm run build` | `apps/site/dist` |
-| `chardesk-canvas` / `canvas.chardesk.com` | Direct upload, repository root | `npm run build:app` | `apps/canvas/dist` |
+| `chardesk-canvas` / `canvas.chardesk.com` | Direct upload from [`Verify`](../../.github/workflows/ci.yml) on `main` | `npm run build:app` | `apps/canvas/dist` |
+
+The Canvas deployment publishes the artifact from the verified build only after `Verify` succeeds. Wrangler runs in `apps/canvas` so `functions/` ships with the static assets. It uses the repository variable `CLOUDFLARE_ACCOUNT_ID` and a repository secret `CLOUDFLARE_PAGES_API_TOKEN` with Cloudflare Pages Edit permission for the account.
 
 Keep `ui.chardesk.com` on its existing project. The root deployment must retain `/migration/bridge.html`; first-load local workspace transfer depends on both origins.
 

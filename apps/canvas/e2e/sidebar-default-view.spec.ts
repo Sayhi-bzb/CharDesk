@@ -11,7 +11,7 @@ test('defaults to Contents only for a Canvas with anchors without overriding man
   await expect(components).toHaveAttribute('aria-selected', 'true');
 
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     const canvas = getApplicationEditorHost().canvas;
     await canvas.ready;
     canvas.commands.grid.replace([
@@ -24,7 +24,7 @@ test('defaults to Contents only for a Canvas with anchors without overriding man
 
   await components.click();
   await page.evaluate(async () => {
-    const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
+    const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
     getApplicationEditorHost().canvas.commands.anchors.add({ x: 0, y: 1 }, 'Second');
   });
   await expect(components).toHaveAttribute('aria-selected', 'true');
