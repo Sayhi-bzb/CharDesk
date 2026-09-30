@@ -172,6 +172,7 @@ function Sidebar({
   collapsedAppearance?: "rail" | "trigger";
 }) {
   const { state, openMobile, setOpenMobile, presentation } = useSidebar();
+  const mobileContentRef = React.useRef<HTMLDivElement>(null);
   const messages = useUiMessages();
   const callerOnTransitionEnd = props.onTransitionEnd;
   const reducedMotion =
@@ -241,6 +242,12 @@ function Sidebar({
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
+          ref={mobileContentRef}
+          tabIndex={-1}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            mobileContentRef.current?.focus({ preventScroll: true });
+          }}
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"

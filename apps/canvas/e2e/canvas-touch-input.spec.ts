@@ -26,6 +26,7 @@ test('touch navigation stays non-editable until a same-cell double tap', async (
   await page.reload();
   const surface = page.getByTestId('canvas-editor-surface');
   await expect(surface).toBeVisible();
+  await page.locator('[data-toolbar-item="select"] button').tap();
   const box = await surface.boundingBox();
   expect(box).not.toBeNull();
   const cell = {

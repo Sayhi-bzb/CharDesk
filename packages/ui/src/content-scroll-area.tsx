@@ -11,6 +11,8 @@ type ContentScrollAreaProps = Omit<
 
 function ContentScrollArea({
   className,
+  viewportClassName,
+  contentClassName,
   ...props
 }: ContentScrollAreaProps) {
   return (
@@ -18,6 +20,8 @@ function ContentScrollArea({
       {...props}
       type="always"
       className={cn(rx.contentScrollArea, className)}
+      viewportClassName={cn('[&>div]:!block', viewportClassName)}
+      contentClassName={cn('min-w-0 w-full', contentClassName)}
     />
   );
 }

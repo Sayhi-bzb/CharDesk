@@ -6,6 +6,7 @@ import {
   useEditorStore,
 } from '@/domains/canvas/testing';
 import { ZoomControl } from './zoom-control';
+import { MinimapControl } from './minimap-control';
 import { CanvasWorkspaceProvider } from '@/widgets/canvas-editor/engine/CanvasWorkspace';
 
 let isMobile = false;
@@ -216,5 +217,19 @@ describe('ZoomControl', () => {
     );
 
     expect(screen.queryByTestId('zoom-control')).not.toBeInTheDocument();
+  });
+
+  it('opens a standalone minimap without zoom controls on a phone', async () => {
+    setCanvasTestState({ canvasMode: 'freeform' });
+    render(<MinimapControl containerSize={{ width: 390, height: 844 }} />);
+    const toggle = screen.getByRole('button', { name: 'Minimap' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('zoom-minimap')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('zoom-in')).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(await screen.findByTestId('mock-minimap')).toHaveTextContent('390x844');
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId('zoom-minimap')).not.toBeInTheDocument();
   });
 });

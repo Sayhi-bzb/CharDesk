@@ -447,8 +447,7 @@ export function SidebarRight({
         data-testid="sidebar-view-content"
         aria-hidden={isCollapsed || undefined}
         inert={isCollapsed || undefined}
-        viewportClassName={!isMobile ? "[&>div]:!block" : undefined}
-        contentClassName={!isMobile ? "min-w-0 pr-1" : undefined}
+        contentClassName={!isMobile ? "pr-1" : undefined}
         className={cn(
           "min-h-0 min-w-0 flex-1 transition-opacity duration-[var(--motion-standard)] motion-reduce:transition-none",
           !isMobile && !navigationOnly && "col-start-2 row-start-1",

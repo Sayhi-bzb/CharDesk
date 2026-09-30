@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   SidebarProvider,
   SidebarStandard,
+  SidebarTrigger,
 } from "./sidebar.js";
 
 describe("SidebarStandard scrolling", () => {
@@ -46,6 +47,28 @@ describe("SidebarStandard scrolling", () => {
     expect(
       content?.querySelector('[data-slot="sidebar-scroll-content"]')
     ).toHaveClass("px-2", "py-2");
+  });
+
+  it("focuses the mobile panel rather than its search input on every open", async () => {
+    render(
+      <SidebarProvider presentation="sheet">
+        <SidebarTrigger />
+        <SidebarStandard><input type="search" aria-label="Search content" /></SidebarStandard>
+      </SidebarProvider>
+    );
+    const trigger = screen.getByRole("button", { name: /toggle sidebar/i });
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(dialog).toHaveFocus());
+    const search = screen.getByRole("searchbox", { name: "Search content" });
+    expect(search).not.toHaveFocus();
+    search.focus();
+    expect(search).toHaveFocus();
+    fireEvent.keyDown(search, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    fireEvent.click(trigger);
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
+    expect(screen.getByRole("searchbox", { name: "Search content" })).not.toHaveFocus();
   });
 
   it("provides the compact desktop sidebar dimensions", () => {

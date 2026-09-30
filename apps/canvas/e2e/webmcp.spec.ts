@@ -119,6 +119,7 @@ test.describe("WebMCP", () => {
       "chardesk_blackboard_open_workspace",
       "chardesk_blackboard_read_file",
       "chardesk_blackboard_write_file",
+      "chardesk_canvas_read",
       "chardesk_read_materials",
     ]);
     expect(result.output).toMatchObject({
@@ -126,6 +127,42 @@ test.describe("WebMCP", () => {
       revision: 1,
       files: ["blackboard.yaml", "panels/welcome.panel"],
     });
+  });
+
+  test("reads and pans a Canvas through automatically scaled viewports", async ({ page }) => {
+    await page.goto("/blackboard?webmcp=polyfill");
+    await expect(page).toHaveURL(/workspace=/);
+    await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
+    const surface = page.getByTestId("canvas-editor-surface");
+    await expect(surface).toBeVisible();
+    const zoomBefore = await page.getByTestId("zoom-reset").textContent();
+    const results = await page.evaluate(async () => {
+      const context = (document as Document & { modelContext?: {
+        getTools(): Promise<Array<{ name: string }>>;
+        executeTool(tool: { name: string }, input: string): Promise<unknown>;
+      } }).modelContext!;
+      const tool = (await context.getTools()).find(({ name }) => name === "chardesk_canvas_read")!;
+      const read = async (input: Record<string, unknown>) => {
+        const output = await context.executeTool(tool, JSON.stringify(input));
+        return (typeof output === "string" ? JSON.parse(output) : output) as {
+          canvasId: string; viewport: number[]; mode: string; step: number; content: string;
+        };
+      };
+      const overview = await read({});
+      const [x, y] = overview.viewport;
+      return [overview, await read({ viewport: [x, y, 80, 24] }),
+        await read({ viewport: [x + 30, y, 80, 24] }),
+        await read({ viewport: [x, y, 160, 48] }),
+        await read({ viewport: [x, y, 800, 240] })];
+    });
+    expect(results[0].viewport).toHaveLength(4);
+    expect(results[1]).toMatchObject({ mode: "text", step: 1 });
+    expect(results[1].content).toContain("Blackboard");
+    expect(results[2].viewport[0]).toBe(results[1].viewport[0] + 30);
+    expect(results[3]).toMatchObject({ mode: "projection", step: 2 });
+    expect(results[4]).toMatchObject({ mode: "density", step: 10 });
+    expect(new Set(results.map(({ canvasId }) => canvasId)).size).toBe(1);
+    await expect(page.getByTestId("zoom-reset")).toHaveText(zoomBefore!);
   });
 
   test("creates, opens, and visibly edits a Blackboard from the site root", async ({
@@ -168,6 +205,7 @@ test.describe("WebMCP", () => {
           path: "panels/welcome.panel",
         }),
         checked: await execute("chardesk_blackboard_check", {}),
+        canvasRead: await execute("chardesk_canvas_read", {}),
       };
     });
 
@@ -185,6 +223,7 @@ test.describe("WebMCP", () => {
       content: "Visible from chardesk.com/",
     });
     expect(result.checked).toMatchObject({ ok: true, workspaceId: result.created.workspaceId });
+    expect(result.canvasRead.content).toContain("Visible from chardesk.com/");
 
     const surface = page.getByTestId("canvas-editor-surface");
     await expect.poll(async () => {
@@ -206,7 +245,7 @@ test.describe("WebMCP", () => {
         modelContext?: { getTools(): Promise<unknown[]> };
       }).modelContext;
       return modelContext ? (await modelContext.getTools()).length : -1;
-    })).toBe(10);
+    })).toBe(11);
 
     const blackboard = await context.newPage();
     await blackboard.goto("/blackboard?webmcp=polyfill");
@@ -216,7 +255,7 @@ test.describe("WebMCP", () => {
         modelContext?: { getTools(): Promise<unknown[]> };
       }).modelContext;
       return modelContext ? (await modelContext.getTools()).length : -1;
-    })).toBe(10);
+    })).toBe(11);
 
     await page.close();
     await expect(blackboard.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
@@ -225,7 +264,7 @@ test.describe("WebMCP", () => {
         modelContext?: { getTools(): Promise<unknown[]> };
       }).modelContext;
       return modelContext ? (await modelContext.getTools()).length : -1;
-    })).toBe(10);
+    })).toBe(11);
   });
 
   test("keeps browser-persistent CRUD out of local CLI reader pages", async ({ page }) => {
@@ -235,7 +274,7 @@ test.describe("WebMCP", () => {
       const modelContext = (document as Document & {
         modelContext?: { getTools(): Promise<Array<{ name: string }>> };
       }).modelContext;
-      return modelContext ? (await modelContext.getTools()).map(({ name }) => name) : [];
-    })).toEqual(["chardesk_read_materials"]);
+      return modelContext ? (await modelContext.getTools()).map(({ name }) => name).sort() : [];
+    })).toEqual(["chardesk_canvas_read", "chardesk_read_materials"]);
   });
 });

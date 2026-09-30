@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { cn } from "@chardesk/ui";
 import type { CellRect } from "@chardesk/cell-core";
 import { resolveCellFrameViewportLayout } from "@chardesk/rendering";
 import {
@@ -35,6 +36,7 @@ export function CellFrameCanvas({
 }: CellFrameCanvasProps) {
   const { profile: fontProfile } = useCanvasFont();
   const appearance = useCanvasAppearance();
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nativeWidth =
     viewport.width * DEFAULT_CANVAS_CELL_METRICS.cellWidth * zoom;
@@ -52,8 +54,9 @@ export function CellFrameCanvas({
       if (!ctx) return;
       const surface =
         fit === "contain"
-          ? canvas.getBoundingClientRect()
+          ? hostRef.current?.getBoundingClientRect()
           : { width: nativeWidth, height: nativeHeight };
+      if (!surface || surface.width <= 0 || surface.height <= 0) return;
       prepareCharDeskCanvasSurface(
         canvas,
         ctx,
@@ -61,10 +64,6 @@ export function CellFrameCanvas({
         surface.height,
         window.devicePixelRatio || 1
       );
-      if (fit === "contain") {
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
-      }
       const layout =
         fit === "contain"
           ? resolveCellFrameViewportLayout({
@@ -113,7 +112,7 @@ export function CellFrameCanvas({
       fit !== "contain" || typeof ResizeObserver === "undefined"
         ? null
         : new ResizeObserver(render);
-    observer?.observe(canvas);
+    if (hostRef.current) observer?.observe(hostRef.current);
     document.fonts?.addEventListener("loadingdone", render);
     const samples: string[] = [];
     source.visit(viewport, (_x, _y, cell) => samples.push(cell.char));
@@ -140,12 +139,12 @@ export function CellFrameCanvas({
   ]);
 
   if (viewport.width === 0 || viewport.height === 0) return null;
-  return (
+  const canvas = (
     <canvas
       ref={canvasRef}
       data-testid="cell-frame-canvas"
       data-fit={fit}
-      className={className ? `block ${className}` : "block"}
+      className={cn("block", fit === "contain" ? "absolute inset-0" : className)}
       style={
         fit === "contain"
           ? { width: "100%", height: "100%" }
@@ -154,4 +153,13 @@ export function CellFrameCanvas({
       aria-hidden="true"
     />
   );
+  return fit === "contain" ? (
+    <div
+      ref={hostRef}
+      data-testid="cell-frame-host"
+      className={cn("relative size-full overflow-hidden", className)}
+    >
+      {canvas}
+    </div>
+  ) : canvas;
 }

@@ -21,7 +21,7 @@ import {
   ResizablePanelGroup,
   UiProvider,
 } from '@chardesk/ui';
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { feedback } from '@/shared/services/effects';
 import { useShallow } from 'zustand/react/shallow';
 import { CanvasSessionSelector } from '@/widgets/session-tabs/CanvasBreadcrumb';
@@ -33,7 +33,9 @@ import {
 } from '@/domains/sessions/public';
 import { useGlobalShortcutCommands } from './useGlobalShortcutCommands';
 import { ZoomControl } from '@/widgets/toolbar/zoom-control';
+import { MinimapControl } from '@/widgets/toolbar/minimap-control';
 import { SecurityControl } from '@/widgets/toolbar/security-control';
+import { UndoControl } from '@/widgets/toolbar/undo-control';
 import { ShortcutProvider } from '@/shared/shortcuts/dispatcher';
 import { useActiveCollaboration } from './useActiveCollaboration';
 import { useHorizontalWheelNavigationGuard } from './useHorizontalWheelNavigationGuard';
@@ -432,6 +434,12 @@ function AppContent() {
   );
   const editor = useEditor();
   const canvas = useCanvasRuntime();
+  const initialToolApplied = useRef(false);
+  useEffect(() => {
+    if (initialToolApplied.current || viewportFrame.width <= 0) return;
+    initialToolApplied.current = true;
+    if (formFactor === 'phone') editor.setCurrentTool('pan');
+  }, [editor, formFactor, viewportFrame.width]);
   const setTool = useCallback(
     (nextTool: typeof tool) => {
       editor.setCurrentTool(nextTool);
@@ -561,9 +569,9 @@ function AppContent() {
             : null
         }
         bottomStart={
-          !showHostWidgets || formFactor === 'phone' ? null : (
-            <ZoomControl viewportFrame={viewportFrame} formFactor={formFactor} />
-          )
+          !showHostWidgets ? null : formFactor === 'phone'
+            ? <MinimapControl containerSize={{ width: viewportFrame.width, height: viewportFrame.height }} />
+            : <ZoomControl viewportFrame={viewportFrame} formFactor={formFactor} />
         }
         bottomCenter={!showHostWidgets ? null : (
           <div>
@@ -579,7 +587,15 @@ function AppContent() {
             />
           </div>
         )}
-        bottomEnd={!showHostWidgets ? null : <SecurityControl />}
+        bottomEnd={!showHostWidgets ? null : formFactor === 'phone' ? (
+          <UndoControl
+            enabled={capabilities.mutateContent}
+            onUndo={() => {
+              exitCanvasTextEditing();
+              handleUndo();
+            }}
+          />
+        ) : <SecurityControl />}
         sidebar={!showHostWidgets || !surfaces.sidebar ? null : (
           <RecoverableLazyBoundary
             resetKey={isRightPanelOpen}

@@ -6,9 +6,12 @@ import {
   createBlackboardAgentTools,
 } from "./blackboardTools";
 import type { AgentToolDefinition } from "./contracts";
+import type { CanvasRuntime } from "@/domains/canvas/public";
+import { CANVAS_READ_TOOL_NAME, createCanvasReadTool } from "./canvasTools";
 
 export const CHARDESK_AGENT_TOOL_NAMES = {
   readMaterials: "chardesk_read_materials",
+  readCanvas: CANVAS_READ_TOOL_NAME,
   ...BLACKBOARD_AGENT_TOOL_NAMES,
 } as const;
 
@@ -35,8 +38,10 @@ export const createChardeskAgentTools = (
   dependencies: Readonly<{
     blackboard: BlackboardRuntime;
     workspaceTarget: BlackboardWorkspaceTarget;
+    canvas: CanvasRuntime;
   }>,
 ): readonly AgentToolDefinition[] => [
   createChardeskMaterialsTool(),
+  createCanvasReadTool(dependencies.canvas),
   ...createBlackboardAgentTools(dependencies),
 ];

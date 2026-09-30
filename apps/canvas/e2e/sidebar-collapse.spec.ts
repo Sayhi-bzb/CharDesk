@@ -222,10 +222,19 @@ test.describe("Sidebar collapse", () => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+    const panel = page.getByRole("dialog");
+    await expect(panel).toBeFocused();
+    const search = panel.locator('input[type="search"]');
+    await expect(search).not.toBeFocused();
+    await search.click();
+    await expect(search).toBeFocused();
     await expect(page.getByRole("tab", { name: "Essentials" })).toBeVisible();
     await expect(page.locator('[data-slot="sidebar-footer"]')).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("tab", { name: "Essentials" })).not.toBeVisible();
+    await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+    await expect(panel).toBeFocused();
+    await expect(search).not.toBeFocused();
   });
 
   test("respects reduced motion", async ({ page }) => {

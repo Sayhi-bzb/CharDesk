@@ -23,7 +23,10 @@ describe("ContentScrollArea", () => {
     );
     expect(
       container.querySelector('[data-slot="scroll-area-viewport"]')
-    ).toBeInTheDocument();
+    ).toHaveClass('[&>div]:!block');
+    expect(
+      container.querySelector('[data-slot="scroll-area-content"]')
+    ).toHaveClass('min-w-0', 'w-full');
     expect(
       container.querySelector('[data-slot="scroll-area-scrollbar"]')
     ).toBeInTheDocument();

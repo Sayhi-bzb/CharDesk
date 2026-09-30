@@ -1,8 +1,6 @@
 'use client';
 
 import {
-  lazy,
-  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -44,8 +42,7 @@ import type {
   EditorViewportFrame,
 } from '@/widgets/editor-chrome/public';
 import { resolvePaneViewportFrame } from '@/widgets/editor-chrome/public';
-import { RecoverableLazyBoundary } from '@/shared/components/RecoverableLazyBoundary';
-import { requireLoadedModule } from '@/shared/lib/moduleLoadRecovery';
+import { MinimapControl } from './minimap-control';
 
 const ZOOM_STEP = 1.2;
 const ZOOM_EPSILON = 0.000001;
@@ -53,13 +50,7 @@ const ZOOM_ANIMATION_DURATION_MS = 280;
 const ZoomOutIcon = HOST_ICONOLOGY.zoomAction.out;
 const ZoomInIcon = HOST_ICONOLOGY.zoomAction.in;
 const GridIcon = HOST_ICONOLOGY.viewportAction.grid;
-const MinimapIcon = HOST_ICONOLOGY.viewportAction.minimap;
 const PlayIcon = HOST_ICONOLOGY.slideAction.play;
-const Minimap = lazy(() =>
-  import('@/widgets/canvas-editor/Minimap').then((loaded) => ({
-    default: requireLoadedModule(loaded).Minimap,
-  }))
-);
 
 type ZoomControlProps = {
   containerSize?: { width: number; height: number };
@@ -128,7 +119,6 @@ export function ZoomControl({
     [activeCanvasId, canvas.documents, contentSurface, slideDeck]
   );
   const setShowGrid = canvas.commands.preferences.setShowGrid;
-  const [minimapOpen, setMinimapOpen] = useState(false);
   const [playbackSlideId, setPlaybackSlideId] = useState<string | null>(null);
   const playbackSlideIdRef = useRef<string | null>(null);
   const {
@@ -248,7 +238,6 @@ export function ZoomControl({
   const isMaxZoom = zoom >= MAX_ZOOM - ZOOM_EPSILON;
   const actionsDisabled = !viewportSize;
   const gridLabel = showGrid ? t('sidebar.grid.hide') : t('action.toggleGrid');
-  const minimapLabel = t('sidebar.minimap');
   const playbackLabel = t('slide.playback.start');
 
   if (formFactor === 'phone') return null;
@@ -260,22 +249,6 @@ export function ZoomControl({
       variant="control-bar"
       aria-label={zoomLabel}
     >
-      {canvasMode !== 'slide' && minimapOpen && (
-        <FloatingSurface
-          data-testid="zoom-minimap"
-          variant="panel"
-          className="absolute bottom-full left-0 z-(--layer-popover) mb-2 w-auto"
-        >
-          <RecoverableLazyBoundary
-            resetKey={minimapOpen}
-            onError={() => setMinimapOpen(false)}
-          >
-            <Suspense fallback={<div className="h-[140px] w-[220px] bg-muted" />}>
-              <Minimap containerSize={viewportSize} />
-            </Suspense>
-          </RecoverableLazyBoundary>
-        </FloatingSurface>
-      )}
       <ZoomAction
         tooltip={t('zoom.out')}
         tooltipHandle={tooltipHandle}
@@ -348,21 +321,11 @@ export function ZoomControl({
           <PlayIcon />
         </ZoomAction>
       ) : (
-        <ZoomAction
-          tooltip={minimapLabel}
+        <MinimapControl
           tooltipHandle={tooltipHandle}
-          tone="subtle"
-          size="md"
-          shape="square"
-          pressed={minimapOpen}
           joined="end"
-          aria-label={minimapLabel}
-          data-testid="zoom-minimap-toggle"
-          disabled={actionsDisabled}
-          onClick={() => setMinimapOpen((open) => !open)}
-        >
-          <MinimapIcon />
-        </ZoomAction>
+          containerSize={viewportSize}
+        />
       )}
       <Tooltip handle={tooltipHandle}>
         {({ payload }) => <TooltipPopup side="top">{payload}</TooltipPopup>}

@@ -1,0 +1,52 @@
+---
+title: Canvas Reading
+description: Read a Canvas through a bounded, automatically scaled text viewport.
+---
+
+`chardesk_canvas_read` exposes the active Canvas through WebMCP and Site Tools.
+It reads the Cell surface without changing the user's camera, selection, or document.
+Freeform and Blackboard use their current projection; Slides use the current page.
+
+## Viewport
+
+```json
+{ "viewport": [100, 200, 800, 240] }
+```
+
+The optional tuple is `[x, y, width, height]` in original Cell coordinates.
+Coordinates are signed safe integers; sizes are positive safe integers, and endpoints
+must remain safe integers. Bounds are half-open. `{}` fits all occupied content;
+an empty Canvas returns `viewport: null` and empty content.
+
+Read nearby content by moving the rectangle, retaining overlap for orientation.
+Resize it around a target to zoom. Reading does not require titles, groups, or objects.
+
+## Projection
+
+The content grid is at most 80 columns by 24 rows. Coordinate decoration is outside
+that budget. Uniform sampling uses
+`step = max(1, ceil(width / 80), ceil(height / 24))`; partial edge buckets cover only
+the requested rectangle.
+
+| Step | Mode | Content |
+| --- | --- | --- |
+| 1 | `text` | Original Unicode, with incomplete boundary graphemes left blank |
+| 2–4 | `projection` | Four quadrant occupancy encoded as block characters |
+| 5+ | `density` | `·░▒▓█`: empty, then occupancy thresholds 1/16, 1/4, 1/2 |
+
+Non-whitespace characters and explicit backgrounds count as occupied; wide
+graphemes occupy their Cell width. Any nonzero density remains visible. Projection
+symbols and coordinate rulers are navigation aids, not source characters. Text
+output preserves characters and spacing, not styles or complete interaction state.
+
+The response contains `canvasId`, actual `viewport`, `step`, `mode`, and `content`.
+Rulers use original coordinates; output column `c` and row `r` cover the region
+starting at `(x + c * step, y + r * step)`. Invalid input, missing active Canvas,
+and unavailable content return explicit errors.
+
+## Authorities
+
+- [Tool definition](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/canvasTools.ts)
+- [Projection and sampling](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/canvas/readViewport.ts)
+- [Projection verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/canvas/readViewport.test.ts)
+- [Headless host verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/webmcp.spec.ts)

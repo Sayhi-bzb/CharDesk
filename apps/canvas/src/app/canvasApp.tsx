@@ -37,13 +37,15 @@ import {
 import { isBlackboardRoute, isLocalBlackboardReaderRoute } from "./blackboardRoute";
 import { APP_ROUTE_EVENT, isWorkspaceRoute } from "@/shared/navigation/workspace-route";
 import { createBlackboardWorkspaceTarget } from "./blackboardWorkspaceTarget";
+import { createCanvasReadTool } from "./site-tools/canvasTools";
 
 const profile = EDITOR_HOST_PROFILE;
 const host = getApplicationEditorHost(profile);
 const createRouteAgentTools = () => isLocalBlackboardReaderRoute(window.location)
-  ? [createChardeskMaterialsTool()]
+  ? [createChardeskMaterialsTool(), createCanvasReadTool(host.canvas)]
   : createChardeskAgentTools({
       blackboard: host.blackboard,
+      canvas: host.canvas,
       workspaceTarget: createBlackboardWorkspaceTarget({
         blackboard: host.blackboard,
         canvas: host.canvas,

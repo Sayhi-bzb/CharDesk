@@ -28,6 +28,11 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'webkit-sidebar-preview',
+      testMatch: /sidebar-preview\.spec\.ts/,
+      use: { ...devices['iPhone 13'] },
+    },
+    {
       name: 'webkit-canvas-font',
       testMatch: /canvas-font-settings\.spec\.ts/,
       use: { ...devices['Desktop Safari'] },

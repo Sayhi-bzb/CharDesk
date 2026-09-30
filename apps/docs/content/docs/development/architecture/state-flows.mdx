@@ -120,7 +120,8 @@ use Registry focus as an implicit write target.
 - Blackboard site tool: active page workspace -> protocol-neutral namespaced command -> source
   repository. Explicit workspace IDs remain a compatibility override. Creation and opening bind
   the page URL, Canvas session, and IndexedDB workspace before later file calls omit identity.
-  Each hosted top-level document owns its selection; local CLI reader pages expose materials but
+  [Canvas reading](./canvas-reading) exposes the active Cell surface as an automatically
+  scaled viewport. Local CLI reader pages expose this read-only tool and materials but
   not browser-persistent CRUD. Workspace reads expose the `blackboard.yaml` source graph;
   mutations report whether the compiled Canvas projection updated, stayed unchanged, or became
   invalid. A global read-only tool embeds the canonical skill materials

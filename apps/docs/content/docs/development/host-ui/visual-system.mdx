@@ -109,6 +109,12 @@ product owns only its frame width, content, and responsive layout. Docs maps
 Fumadocs colors through its shadcn adapter and keeps navigation, search,
 sidebar, and table-of-contents behavior in Fumadocs.
 
+`ContentScrollArea` owns viewport-width block flow for vertically scrolling
+content on every form factor; generic `ScrollArea` retains intrinsic sizing.
+[`CellFrameCanvas`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/shared/components/CellFrameCanvas.tsx)
+in `contain` mode measures and observes its layout host, not the Canvas bitmap.
+Its absolutely positioned Canvas cannot contribute intrinsic size to that host.
+
 Shared compositions own repeated shell geometry and content density. Widget
 `className` owns product-specific position, size, scrolling, responsive
 visibility, and typography. Shared primitives and recipes own background,

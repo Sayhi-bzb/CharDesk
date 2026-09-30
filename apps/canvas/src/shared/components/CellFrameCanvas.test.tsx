@@ -29,6 +29,7 @@ describe("CellFrameCanvas", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("presents a GridCellSource through the canonical Canvas CellFrame path", () => {
@@ -75,5 +76,43 @@ describe("CellFrameCanvas", () => {
       offset: { x: 0, y: 0 },
       zoom: 1,
     });
+  });
+
+  it("sizes contain rendering from its host and observes only that host", () => {
+    let size = { width: 248, height: 139.5 };
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
+      return {
+        ...size, x: 0, y: 0, top: 0, left: 0, right: size.width, bottom: size.height,
+        toJSON: () => size,
+      } as DOMRect;
+    });
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    let resize: ResizeObserverCallback;
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: ResizeObserverCallback) { resize = callback; }
+      observe = observe;
+      disconnect = disconnect;
+    });
+    const source = createGridMapSource(new Map<string, GridCell>([
+      ["0,0", { char: "A", color: "#123456" }],
+    ]));
+    const { unmount } = render(
+      <CellFrameCanvas source={source} viewport={{ x: 0, y: 0, width: 3, height: 1 }} fit="contain" />
+    );
+    const host = screen.getByTestId("cell-frame-host");
+    const canvas = screen.getByTestId("cell-frame-canvas");
+    expect(canvas).toHaveClass("absolute", "inset-0");
+    expect(observe).toHaveBeenCalledExactlyOnceWith(host);
+    expect(rendering.prepare).toHaveBeenLastCalledWith(canvas, expect.anything(), 248, 139.5, expect.any(Number));
+    size = { width: 204, height: 114.75 };
+    resize!([], {} as ResizeObserver);
+    expect(rendering.prepare).toHaveBeenLastCalledWith(canvas, expect.anything(), 204, 114.75, expect.any(Number));
+    const renderCount = rendering.present.mock.calls.length;
+    size = { width: 0, height: 0 };
+    resize!([], {} as ResizeObserver);
+    expect(rendering.present).toHaveBeenCalledTimes(renderCount);
+    unmount();
+    expect(disconnect).toHaveBeenCalledOnce();
   });
 });

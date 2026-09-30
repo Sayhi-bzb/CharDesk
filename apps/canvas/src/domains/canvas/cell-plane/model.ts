@@ -1162,21 +1162,19 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
     const maxChunkX = floorDiv(bounds.x + bounds.width - 1, CELL_PLANE_CHUNK_WIDTH);
     const minChunkY = floorDiv(bounds.y, CELL_PLANE_CHUNK_HEIGHT);
     const maxChunkY = floorDiv(bounds.y + bounds.height - 1, CELL_PLANE_CHUNK_HEIGHT);
-    for (let chunkY = minChunkY; chunkY <= maxChunkY; chunkY += 1) {
-      for (let chunkX = minChunkX; chunkX <= maxChunkX; chunkX += 1) {
-        this.#resolveChunk(chunkX, chunkY).forEach((cell, key) => {
-          const point = GridManager.fromKey(key);
-          if (
-            point.x < chunkX * CELL_PLANE_CHUNK_WIDTH ||
-            point.x >= (chunkX + 1) * CELL_PLANE_CHUNK_WIDTH ||
-            point.x < bounds.x || point.x >= bounds.x + bounds.width ||
-            point.y < bounds.y || point.y >= bounds.y + bounds.height
-          ) return;
-          const row = cellsByRow.get(point.y) ?? [];
-          row.push({ x: point.x, cell });
-          cellsByRow.set(point.y, row);
-        });
-      }
+    for (const { x: chunkX, y: chunkY } of this.#queryChunks(minChunkX, maxChunkX, minChunkY, maxChunkY)) {
+      this.#resolveChunk(chunkX, chunkY).forEach((cell, key) => {
+        const point = GridManager.fromKey(key);
+        if (
+          point.x < chunkX * CELL_PLANE_CHUNK_WIDTH ||
+          point.x >= (chunkX + 1) * CELL_PLANE_CHUNK_WIDTH ||
+          point.x < bounds.x || point.x >= bounds.x + bounds.width ||
+          point.y < bounds.y || point.y >= bounds.y + bounds.height
+        ) return;
+        const row = cellsByRow.get(point.y) ?? [];
+        row.push({ x: point.x, cell });
+        cellsByRow.set(point.y, row);
+      });
     }
     const sortedRows = [...cellsByRow.entries()].sort(([left], [right]) => left - right);
     for (const [y, entries] of sortedRows) {
@@ -1367,6 +1365,21 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
 
   #resolveChunk(chunkX: number, chunkY: number) {
     return this.#resolveChunkEntry(chunkX, chunkY).cells;
+  }
+
+  *#queryChunks(minX: number, maxX: number, minY: number, maxY: number) {
+    // Small reads probe their rectangle; large overviews scan the sparse directory.
+    const area = (maxX - minX + 1) * (maxY - minY + 1);
+    if (area <= this.#referencesByChunk.size) {
+      for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
+        if (this.#referencesByChunk.has(chunkKey(x, y))) yield { x, y };
+      }
+    } else {
+      for (const key of this.#referencesByChunk.keys()) {
+        const point = GridManager.fromKey(key);
+        if (point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY) yield point;
+      }
+    }
   }
 
   #resolveChunkEntry(chunkX: number, chunkY: number) {
