@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.6.0](https://github.com/Sayhi-bzb/CharDesk/compare/v0.5.4...v0.6.0) (2026-09-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Blackboard packages, file tools, and Blackboard cloud backups are no longer supported. Existing works are migrated on first open.
+
+### Features
+
+* add cloud workspace and account sync ([ebfb2b6](https://github.com/Sayhi-bzb/CharDesk/commit/ebfb2b6e85f9e12bb5b7c1413b6af50912aa8357))
+* add exact cell clipping for text regions ([0a67287](https://github.com/Sayhi-bzb/CharDesk/commit/0a6728768cf096ac05a77c93168da62dec2bb13d))
+* add mobile canvas controls and canvas reading tool ([8e19325](https://github.com/Sayhi-bzb/CharDesk/commit/8e19325d29e16ca871813fcab8d078f2e50eb15a))
+* add mobile template placement and Canvas write tool ([74de26a](https://github.com/Sayhi-bzb/CharDesk/commit/74de26a88dd906caa72a9aac176623aae94f55ea))
+* **canvas:** add Google sign-in and explicit account linking ([b35e577](https://github.com/Sayhi-bzb/CharDesk/commit/b35e57746cfc0a687d8618399bf69f9a6c79b035))
+* **canvas:** move account settings into workspace footer dialog ([1fef4cc](https://github.com/Sayhi-bzb/CharDesk/commit/1fef4cc97966b0ec1b891277735510a092dc1df0))
+* connect local agents to Canvas read/write ([f69521a](https://github.com/Sayhi-bzb/CharDesk/commit/f69521a9be5d7bb03c99298b34bbf881bdbcec7e))
+* expose search match previews as Cell windows ([e13d382](https://github.com/Sayhi-bzb/CharDesk/commit/e13d3828a7438c720561a64707e77367fb8b85d1))
+* retire Blackboard authoring for native Canvas and Slides ([d605bd4](https://github.com/Sayhi-bzb/CharDesk/commit/d605bd436cefbef89adab8e1b0aecb53aaca67aa))
+
+
+### Bug Fixes
+
+* align workspace checks with shared UI contracts ([528d5b1](https://github.com/Sayhi-bzb/CharDesk/commit/528d5b1cbd25d96c55da400601bf1691dfb9b779))
+
 ## [0.5.4](https://github.com/Sayhi-bzb/CharDesk/compare/v0.5.3...v0.5.4) (2026-09-29)
 
 
