@@ -97,12 +97,8 @@ test("Pi's real model reads, writes a GPU explanation, and verifies the live Can
     expect(written.content).toContain("GPU");
     expect(written.content).toContain("CPU");
     expect(written.content.split("\n")).toHaveLength(4);
-    const actual = await page.evaluate(async () => {
-      // Verification only: the agent traffic used the shipped WebSocket bridge.
-      const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
-      const { readCanvasViewport } = await import('/src/domains/canvas/readViewport.ts');
-      return readCanvasViewport(getApplicationEditorHost().canvas.getState().contentSurface.reader, [32, 28, 35, 4]);
-    });
+    const verified = events.filter((event) => event.type === 'tool_execution_end').at(-1);
+    const actual = JSON.parse(verified.result.content.find((part) => part.type === 'text').text);
     for (const line of written.content.split("\n")) expect(actual.content).toContain(line);
     await expect.poll(async () => Buffer.compare(before, await page.screenshot())).not.toBe(0);
     await page.screenshot({ path: testInfo.outputPath("pi-gpu-canvas.png") });

@@ -18,3 +18,4 @@ export {
   type EditorFormFactor,
   type EditorViewportFrame,
 } from "./types";
+export { resolveEditorHostPolicy, isHostSettingVisible, type EditorHostPolicy } from './host-policy';

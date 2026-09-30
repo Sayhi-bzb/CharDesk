@@ -44,8 +44,13 @@ font rasterization or complete interaction state.
 
 ## Coordinates and style notes
 
-Text mode has absolute column labels, a per-Cell modulo-10 digit ruler, and absolute
-row labels. Wide graphemes occupy two columns. Non-empty style notes follow the grid:
+At text precision, the top border has ticks every 5 Cells and centred coordinate
+labels every 10; rows are labelled every 5 Cells. Negative coordinates use signed
+labels. Ticks align with absolute coordinates, not the viewport origin. Large labels
+and sampled maps use wider intervals to avoid overlap. In sampled maps a tick marks
+the bucket containing that coordinate; `viewport` and `step` still define each
+bucket's exact bounds. Wide graphemes occupy two columns. Non-empty style notes
+follow the grid:
 
 ```text
 styles:

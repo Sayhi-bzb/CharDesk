@@ -32,7 +32,8 @@ for (const width of [320, 390]) {
     const controlBox = await toggle.boundingBox();
     const dockBox = await page.getByTestId('tool-dock').boundingBox();
     expect(controlBox && dockBox).toBeTruthy();
-    expect(controlBox!.x + controlBox!.width).toBeLessThanOrEqual(dockBox!.x);
+    expect(controlBox!.x).toBeGreaterThanOrEqual(dockBox!.x);
+    expect(controlBox!.x + controlBox!.width).toBeLessThanOrEqual(dockBox!.x + dockBox!.width);
 
     await toggle.tap();
     const minimap = page.getByTestId('minimap-canvas');

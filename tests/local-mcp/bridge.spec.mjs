@@ -1,4 +1,7 @@
 import { randomBytes } from "node:crypto";
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -25,6 +28,9 @@ test("local stdio MCP reads and edits the connected Canvas, rejects other pages,
     const call = (name, args) => client.callTool({ name, arguments: args });
     const read = "chardesk_canvas_read";
     const write = "chardesk_canvas_write";
+    const { tools } = await client.listTools();
+    expect(tools.map((tool) => tool.name).sort()).toEqual([read, write]);
+    expect(tools.find((tool) => tool.name === write).inputSchema.required).toEqual(["at", "content"]);
     expect((await call(read, {})).isError).toBe(true);
 
     const refused = async (url, origin, status) => {
@@ -52,8 +58,10 @@ test("local stdio MCP reads and edits the connected Canvas, rejects other pages,
       await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
       await expect(dialog.getByRole('status')).toContainText('Paste the local pairing URL');
       await dialog.getByLabel('Pairing URL').fill(bridgeUrl);
+      await dialog.getByRole('checkbox', { name: 'Remember for 30 days' }).check();
       await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
       await expect(dialog.getByRole('status')).toContainText('Connected · Canvas read/write enabled');
+      await expect(dialog.getByText('Remembered on this browser.', { exact: false })).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath('local-agent-dialog.png') });
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(dialog.getByRole('status')).toContainText('Connected · Canvas read/write enabled');
@@ -67,10 +75,10 @@ test("local stdio MCP reads and edits the connected Canvas, rejects other pages,
     await expect(page.getByTestId("canvas-editor-surface")).toBeVisible();
     expect(await page.evaluate(() => Boolean(document.modelContext))).toBe(false);
     await pair();
+    await page.reload();
+    await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
+    await expect.poll(async () => (await call(read, {})).isError).toBe(false);
     await refused(bridgeUrl, baseURL, 409);
-    const { tools } = await client.listTools();
-    expect(tools.map((tool) => tool.name).sort()).toEqual([read, write]);
-    expect(tools.find((tool) => tool.name === write).inputSchema.required).toEqual(["at", "content"]);
 
     const before = await page.screenshot();
     const explanation = "GPU\nMany cores work in parallel\nCPU: one complex task\nGPU: many similar tasks";
@@ -88,14 +96,9 @@ test("local stdio MCP reads and edits the connected Canvas, rejects other pages,
     expect(invalid.isError).toBe(true);
     expect(invalid.structuredContent.code).toBe("invalid_input");
 
-    const changed = await page.evaluate(async () => {
-      const { getApplicationEditorHost } = await import('/src/app/compositionRoot.ts');
-      const canvas = getApplicationEditorHost().canvas;
-      const before = canvas.getState().activeCanvasId;
-      canvas.commands.sessions.create('freeform');
-      return { before, after: canvas.getState().activeCanvasId };
-    });
-    expect(changed.after).not.toBe(changed.before);
+    await page.getByRole('button', { name: 'Select canvas', exact: true }).click();
+    await page.getByRole('button', { name: 'New', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'New Freeform', exact: true }).click();
     await expect.poll(async () => (await call(read, {})).isError).toBe(true);
 
     await page.goto("/blackboard");
@@ -107,5 +110,73 @@ test("local stdio MCP reads and edits the connected Canvas, rejects other pages,
   } finally {
     await client.close();
     await transport.close();
+  }
+});
+
+test('remembered pairing survives MCP restart and can be revoked or forgotten', async ({ page, baseURL }, testInfo) => {
+  test.setTimeout(45_000);
+  const directory = await mkdtemp(join(tmpdir(), 'chardesk-mcp-restart-'));
+  let transport;
+  let client;
+  let bridgeUrl;
+  const start = async (port = '0') => {
+    transport = new StdioClientTransport({
+      command: process.execPath,
+      args: [fileURLToPath(new URL('./server.mjs', import.meta.url))],
+      env: { CHARDESK_BRIDGE_PORT: port, CHARDESK_BRIDGE_ORIGIN: baseURL,
+        CHARDESK_BRIDGE_PAIRING_FILE: join(directory, 'pairing.json') }, stderr: 'pipe',
+    });
+    let stderr = '';
+    const ready = new Promise((resolve) => transport.stderr.on('data', (data) => {
+      stderr += data.toString();
+      const line = stderr.split('\n').find((entry) => entry.startsWith('{"bridgeUrl"'));
+      if (line) resolve(JSON.parse(line).bridgeUrl);
+    }));
+    client = new Client({ name: 'pairing-regression', version: '0.0.0' });
+    await client.connect(transport);
+    bridgeUrl = await ready;
+  };
+  const read = () => client.callTool({ name: 'chardesk_canvas_read', arguments: {} });
+  const openDialog = async () => {
+    await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Connect local agent', exact: true }).click();
+    return page.getByRole('dialog', { name: 'Connect local agent' });
+  };
+  try {
+    await start();
+    const originalUrl = bridgeUrl;
+    await page.goto('/');
+    await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
+    const dialog = await openDialog();
+    await dialog.getByLabel('Pairing URL').fill(bridgeUrl);
+    await dialog.getByRole('checkbox', { name: 'Remember for 30 days' }).check();
+    await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
+    await expect(dialog.getByRole('button', { name: 'Forget pairing' })).toBeVisible();
+    await client.close();
+    await transport.close();
+    await start(new URL(originalUrl).port);
+    expect(bridgeUrl).toBe(originalUrl);
+    await expect.poll(async () => (await read()).isError, { timeout: 15_000 }).toBe(false);
+    await expect(dialog.getByRole('status')).toContainText('Connected');
+    await page.screenshot({ path: testInfo.outputPath('remembered-agent.png') });
+
+    const url = new URL(bridgeUrl);
+    const denied = await fetch(`http://127.0.0.1:${url.port}/revoke`, { method: 'POST' });
+    expect(denied.status).toBe(403);
+    const revoked = await fetch(`http://127.0.0.1:${url.port}/revoke`, {
+      method: 'POST', headers: { authorization: `Bearer ${url.searchParams.get('token')}` },
+    });
+    expect(revoked.status).toBe(204);
+    await expect(dialog.getByRole('status')).toContainText('Connection lost');
+    expect((await read()).isError).toBe(true);
+    await dialog.getByRole('button', { name: 'Forget pairing' }).click();
+    await expect(dialog.getByRole('button', { name: 'Forget pairing' })).not.toBeVisible();
+    await page.reload();
+    await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
+    expect((await read()).isError).toBe(true);
+  } finally {
+    await client?.close();
+    await transport?.close();
+    await rm(directory, { recursive: true, force: true });
   }
 });

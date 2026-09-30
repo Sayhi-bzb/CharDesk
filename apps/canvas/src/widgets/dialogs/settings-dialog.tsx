@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditorKeymapSnapshot } from '@/domains/editor/public';
 import { useUiI18n } from '@/shared/i18n';
 import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
+import { resolveEditorHostPolicy, isHostSettingVisible, type EditorFormFactor } from '@/widgets/editor-chrome/public';
 import {
   Button,
   Dialog,
@@ -42,6 +43,7 @@ import {
 } from './settings-search';
 
 type SettingsDialogProps = {
+  formFactor?: EditorFormFactor;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -50,11 +52,15 @@ const GeneralIcon = HOST_ICONOLOGY.appMenu.language;
 const DisplayIcon = HOST_ICONOLOGY.appMenu.display;
 const ShortcutsIcon = HOST_ICONOLOGY.appMenu.shortcuts;
 
-export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+export function SettingsDialog({ open, onOpenChange, formFactor = 'desktop' }: SettingsDialogProps) {
+  const policy = useMemo(() => resolveEditorHostPolicy(formFactor), [formFactor]);
   const { language, setLanguage, t } = useUiI18n();
   const keymapSnapshot = useEditorKeymapSnapshot();
-  const [section, setSection] = useState<SettingsSection>('general');
+  const [selectedSection, setSection] = useState<SettingsSection>('general');
   const [shortcutDirty, setShortcutDirty] = useState(false);
+  // Preserve an unsaved desktop shortcut draft until it is saved or discarded.
+  const section = isHostSettingVisible(policy, selectedSection) || shortcutDirty
+    ? selectedSection : 'general';
   const [shortcutRecording, setShortcutRecording] = useState(false);
   const [shortcutResettable, setShortcutResettable] = useState(false);
   const [dirtyAttentionRevision, setDirtyAttentionRevision] = useState(0);
@@ -63,15 +69,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     null
   );
   const searchResults = useMemo(
-    () => getSettingsSearchResults(searchQuery, keymapSnapshot.entries, t),
-    [keymapSnapshot.entries, searchQuery, t]
+    () => getSettingsSearchResults(searchQuery, keymapSnapshot.entries, t, policy),
+    [keymapSnapshot.entries, searchQuery, t, policy]
   );
   const shortcutPanelRef = useRef<KeyboardShortcutsPanelHandle>(null);
   const shortcutFooterActionsRef = useRef<HTMLDivElement>(null);
   const saveShortcutButtonRef = useRef<HTMLButtonElement>(null);
   const dirtyAttentionFrameRef = useRef<number | null>(null);
   const dirtyAttentionAnimationRef = useRef<Animation | null>(null);
-  const navigationItems = [
+  const navigationItems = ([
     {
       value: 'general',
       title: t('settings.general'),
@@ -87,7 +93,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       title: t('appMenu.shortcuts'),
       icon: ShortcutsIcon,
     },
-  ] as const;
+  ] satisfies Array<{
+    value: SettingsSection; title: string; icon: typeof GeneralIcon;
+  }>).filter((item) => isHostSettingVisible(policy, item.value));
 
   useEffect(() => {
     if (
@@ -279,24 +287,25 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </div>
                 </div>
                 <CanvasFontStatus />
-                <div className="flex min-w-0 items-center justify-between gap-4 py-2">
+                {policy.advancedSettings && <div className="flex min-w-0 items-center justify-between gap-4 py-2">
                   <Label htmlFor="settings-canvas-cursor" className="min-w-0 truncate">
                     {t('settings.canvasCursor')}
                   </Label>
                   <div className="w-2/5 min-w-24 max-w-40 shrink-0">
                     <CanvasCursorShapeSelect />
                   </div>
-                </div>
-                <div className="flex min-w-0 items-center justify-between gap-4 py-2">
+                </div>}
+                {policy.advancedSettings && <div className="flex min-w-0 items-center justify-between gap-4 py-2">
                   <Label htmlFor="settings-canvas-cursor-blink" className="min-w-0 truncate">
                     {t('settings.canvasCursorBlink')}
                   </Label>
                   <CanvasCursorBlinkCheckbox />
-                </div>
+                </div>}
               </SettingsContentSection>
             ) : section === 'display' ? (
               <SettingsContentSection key="display" heading={t('settings.display')}>
                 <DisplaySettingsPanel
+                  advanced={policy.advancedSettings}
                   revealSettingId={
                     revealTarget?.type === 'text-renderer' ||
                     revealTarget?.type === 'markdown-wrap' ||

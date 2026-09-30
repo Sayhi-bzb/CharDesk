@@ -34,7 +34,7 @@ import {
 import { isBlackboardRoute, isLocalBlackboardReaderRoute } from "./blackboardRoute";
 import { APP_ROUTE_EVENT, isWorkspaceRoute } from "@/shared/navigation/workspace-route";
 import { createBlackboardWorkspaceTarget } from "./blackboardWorkspaceTarget";
-import { configureLocalAgent, disconnectLocalAgent } from "@/shared/services/local-agent";
+import { configureLocalAgent, disconnectLocalAgent, restoreLocalAgent } from "@/shared/services/local-agent";
 
 const profile = EDITOR_HOST_PROFILE;
 const host = getApplicationEditorHost(profile);
@@ -70,7 +70,12 @@ configureLocalAgent({
 let localAgentCanvasId = host.canvas.getState().activeCanvasId;
 host.canvas.subscribe((state) => {
   const next = state.activeCanvasId;
-  if (next !== localAgentCanvasId) { localAgentCanvasId = next; disconnectLocalAgent(); }
+  if (next !== localAgentCanvasId) {
+    const initializing = localAgentCanvasId == null;
+    localAgentCanvasId = next;
+    disconnectLocalAgent();
+    if (initializing) restoreLocalAgent();
+  }
 });
 let siteToolsGeneration = 0;
 const syncChardeskSiteTools = async () => {

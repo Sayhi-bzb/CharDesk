@@ -1,4 +1,4 @@
-import { lazy, Suspense, useId, useMemo, useState } from 'react';
+import { lazy, Suspense, useId, useMemo, useState, type ReactNode } from 'react';
 import {
   FloatingSurface,
   IconButton,
@@ -26,10 +26,12 @@ export function MinimapControl({
   containerSize,
   joined,
   tooltipHandle,
+  embedded = false,
 }: {
   containerSize?: { width: number; height: number };
   joined?: 'end';
-  tooltipHandle?: TooltipHandle<string>;
+  tooltipHandle?: TooltipHandle<ReactNode>;
+  embedded?: boolean;
 }) {
   const { t } = useUiI18n();
   const canvasMode = useCanvasState((state) => state.canvasMode);
@@ -37,7 +39,7 @@ export function MinimapControl({
   const viewportSize = view?.containerSize ?? containerSize;
   const [open, setOpen] = useState(false);
   const panelId = useId();
-  const ownTooltipHandle = useMemo(() => TooltipCreateHandle<string>(), []);
+  const ownTooltipHandle = useMemo(() => TooltipCreateHandle<ReactNode>(), []);
   const label = t('sidebar.minimap');
 
   if (canvasMode === 'slide') return null;
@@ -86,6 +88,7 @@ export function MinimapControl({
     </>
   );
 
+  if (embedded) return <div data-testid="minimap-control" className="relative flex items-center">{control}</div>;
   return joined ? control : (
     <FloatingSurface data-canvas-ui="true" data-testid="minimap-control" variant="control-bar">
       {control}

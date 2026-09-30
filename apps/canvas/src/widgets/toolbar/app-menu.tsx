@@ -23,6 +23,7 @@ import { useCanvasWorkspaceOptional } from "@/widgets/canvas-editor/engine/Canva
 import { useOnboardingTour } from "@/widgets/onboarding/onboarding-context";
 import {
   useEditorPresentation,
+  resolveEditorHostPolicy,
   type EditorFormFactor,
 } from "@/widgets/editor-chrome/public";
 import { RecoverableLazyBoundary } from "@/shared/components/RecoverableLazyBoundary";
@@ -65,6 +66,7 @@ export function AppMenu({
   formFactor = "desktop",
   splitAvailable = true,
 }: AppMenuProps = {}) {
+  const policy = resolveEditorHostPolicy(formFactor);
   const canvas = useCanvasRuntime();
   const workspace = useCanvasWorkspaceOptional();
   const { mode, setMode } = useEditorPresentation();
@@ -78,7 +80,7 @@ export function AppMenu({
   const [agentOpen, setAgentOpen] = useState(false);
   const [mobileGuideOpen, setMobileGuideOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const githubStars = useGitHubStars(menuOpen);
+  const githubStars = useGitHubStars(menuOpen && policy.sourceLink);
   const formattedGitHubStars = useMemo(
     () =>
       githubStars === null ? null : new Intl.NumberFormat().format(githubStars),
@@ -134,7 +136,7 @@ export function AppMenu({
                     <AgentIcon />
                     {t('localAgent.title')}
                   </DropdownMenuItem>
-                  {workspace && splitAvailable && (
+                  {workspace && splitAvailable && policy.splitView && (
                     <DropdownMenuItem
                       onSelect={() => {
                         setMenuOpen(false);
@@ -214,7 +216,7 @@ export function AppMenu({
                       </DropdownMenuGroup>
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
-                  <DropdownMenuItem
+                  {policy.sourceLink && <DropdownMenuItem
                     onSelect={() => browser.openExternal(APP_SOURCE_URL)}
                   >
                     <GitHubIcon />
@@ -225,7 +227,7 @@ export function AppMenu({
                         {formattedGitHubStars}
                       </span>
                     )}
-                  </DropdownMenuItem>
+                  </DropdownMenuItem>}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -258,6 +260,7 @@ export function AppMenu({
           )}
           {settingsOpen && (
             <SettingsDialog
+              formFactor={formFactor}
               open={settingsOpen}
               onOpenChange={(open) => {
                 setSettingsOpen(open);

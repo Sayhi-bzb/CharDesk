@@ -20,7 +20,9 @@ for (const width of [320, 390]) {
     const initialContent = await readContent();
     const undoBox = await undo.boundingBox();
     const dockBox = await page.getByTestId('tool-dock').boundingBox();
-    expect(undoBox!.x).toBeGreaterThanOrEqual(dockBox!.x + dockBox!.width);
+    expect(undoBox!.x).toBeGreaterThanOrEqual(dockBox!.x);
+    expect(undoBox!.x + undoBox!.width).toBeLessThanOrEqual(dockBox!.x + dockBox!.width);
+    expect(dockBox!.x + dockBox!.width / 2).toBeCloseTo(width / 2, 0);
     expect(undoBox!.x + undoBox!.width).toBeLessThanOrEqual(width);
 
     const box = await surface.boundingBox();

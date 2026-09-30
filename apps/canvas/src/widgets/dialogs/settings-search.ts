@@ -2,6 +2,7 @@ import { formatShortcutLabel } from '@/domains/actions/public';
 import { TEXT_RENDER_FEATURES } from '@/domains/document/public';
 import type { KeymapBindingSnapshot } from '@/domains/editor/public';
 import type { I18nKey } from '@/shared/i18n';
+import { isHostSettingVisible, resolveEditorHostPolicy, type EditorHostPolicy } from '@/widgets/editor-chrome/public';
 import {
   getShortcutCategory,
   getShortcutCategoryLabel,
@@ -42,7 +43,8 @@ const searchable = (values: readonly string[]) => values.join(' ').toLocaleLower
 export const getSettingsSearchResults = (
   query: string,
   entries: readonly KeymapBindingSnapshot[],
-  t: Translate
+  t: Translate,
+  policy: EditorHostPolicy = resolveEditorHostPolicy('desktop'),
 ) => {
   const generalTitle = t('settings.general');
   const shortcutsTitle = t('appMenu.shortcuts');
@@ -160,14 +162,14 @@ export const getSettingsSearchResults = (
       groupTitle: displayTitle,
       title: displayTitle,
       target: { section: 'display' },
-      searchText: searchable([
+      searchText: searchable(policy.advancedSettings ? [
         displayTitle,
         t('settings.textRenderer'),
         t('settings.column.color'),
         'ANSI',
         'Markdown',
         'Raw',
-      ]),
+      ] : [displayTitle, t('settings.textRenderer'), 'ANSI', 'Markdown', 'Raw']),
     },
     {
       id: 'setting:text-renderer',
@@ -175,7 +177,7 @@ export const getSettingsSearchResults = (
       groupTitle: displayTitle,
       title: t('settings.textRenderer'),
       target: { section: 'display', focus: { type: 'text-renderer' } },
-      searchText: searchable([
+      searchText: searchable(policy.advancedSettings ? [
         t('settings.textRenderer'),
         t('settings.renderTheme'),
         t('settings.renderTheme.accent'),
@@ -194,7 +196,7 @@ export const getSettingsSearchResults = (
         'ANSI',
         'Markdown',
         'Raw',
-      ]),
+      ] : [t('settings.textRenderer'), 'ANSI', 'Markdown', 'Raw']),
     },
     {
       id: 'setting:markdown-wrap',
@@ -240,6 +242,6 @@ export const getSettingsSearchResults = (
   ];
   const normalizedQuery = query.trim().toLocaleLowerCase();
   return normalizedQuery
-    ? results.filter((result) => result.searchText.includes(normalizedQuery))
+    ? results.filter((result) => isHostSettingVisible(policy, result.target.section, result.target.focus?.type) && result.searchText.includes(normalizedQuery))
     : [];
 };

@@ -25,9 +25,20 @@ In another terminal, run `npm run mcp:pair`. In Canvas, choose
 **Open menu → Connect local agent**, paste that private pairing URL, and connect.
 Tell Pi to explain GPU on the connected Canvas.
 
+Choose **Remember for 30 days** to reconnect automatically on this browser to
+the same Canvas after a page reload or Pi restart. The local credential keeps
+its original expiry across restarts; reconnecting does not extend it. Pi must
+still be running. Switching Canvas or choosing Disconnect stops automatic
+reconnection for the current page.
+
+**Forget pairing** clears this browser's saved credential. `npm run mcp:revoke`
+revokes the local credential for every browser and disconnects the paired page;
+use `npm run mcp:pair` to obtain a new URL. After expiry, restart Pi and pair again.
+
 Only one Pi bridge can occupy port 9494, and one page can connect at a time.
 Closing Pi, switching Canvas, or choosing Disconnect ends the connection.
-Closing the dialog does not. No document or pairing token is stored in the browser.
+Closing the dialog does not. Documents are not stored by the bridge. Remembering
+stores the credential and Canvas ID in this browser's local storage, not the account.
 Source-backed Canvas content remains read-only through Canvas write.
 
 ## Contract
@@ -42,10 +53,10 @@ The service binds only to `127.0.0.1`, checks Host/Origin plus a random
 connection token, bounds payloads and pending calls, and does not replay writes.
 A timeout/disconnect means a write's outcome may be unknown; read before retrying.
 
-The pairing file is private, ignored by Git, and replaced on server startup.
+The pairing file and persistent credential file are private and ignored by Git.
 Do not share the URL. Request IDs are deduplicated within the current page
 connection's last 128 completed calls, not across reconnections. Reconnect manually
-with a fresh URL after restarting Pi; writes are never automatically replayed.
+after expiry or revocation; writes are never automatically replayed.
 Nothing is sent to the VPS. Hosted-page HTTPS-to-loopback permissions remain
 browser-dependent and are not covered by the local HTTP test.
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { configureLocalAgent, connectLocalAgent, disconnectLocalAgent,
-  getLocalAgentStatus } from './local-agent';
+  getLocalAgentStatus, getRememberedLocalAgent, restoreLocalAgent, forgetLocalAgent } from './local-agent';
 
 class Socket {
   static OPEN = 1;
@@ -22,6 +22,7 @@ describe('local agent page connection', () => {
   let scope: string | null;
   const execute = vi.fn(async () => ({ canvasId: 'canvas-a', bounds: [0, 0, 1, 1] }));
   beforeEach(() => {
+    localStorage.clear();
     scope = 'canvas-a';
     execute.mockClear();
     Socket.instances = [];
@@ -83,5 +84,52 @@ describe('local agent page connection', () => {
     expect(getLocalAgentStatus()).toBe('error');
     disconnectLocalAgent();
     expect(getLocalAgentStatus()).toBe('idle');
+  });
+
+  it('remembers only after successful pairing and restores only the authorized Canvas', () => {
+    connectLocalAgent(url, true);
+    expect(getRememberedLocalAgent()).toBeNull();
+    const connection = Socket.instances[0];
+    connection.open();
+    const expiresAt = Date.now() + 60_000;
+    connection.receive({ method: 'paired', expiresAt });
+    expect(getRememberedLocalAgent()).toEqual({ url, scope, expiresAt });
+    disconnectLocalAgent();
+    scope = 'canvas-b';
+    restoreLocalAgent();
+    expect(Socket.instances).toHaveLength(1);
+    scope = 'canvas-a';
+    restoreLocalAgent();
+    expect(Socket.instances).toHaveLength(2);
+    forgetLocalAgent();
+    restoreLocalAgent();
+    expect(getRememberedLocalAgent()).toBeNull();
+    expect(Socket.instances).toHaveLength(2);
+  });
+
+  it('does not store temporary pairings and removes expired credentials', () => {
+    connectLocalAgent(url);
+    Socket.instances[0].open();
+    Socket.instances[0].receive({ method: 'paired', expiresAt: Date.now() + 60_000 });
+    expect(getRememberedLocalAgent()).toBeNull();
+    localStorage.setItem('chardesk.local-agent.pairing', JSON.stringify({ url, scope, expiresAt: Date.now() - 1 }));
+    restoreLocalAgent();
+    expect(getRememberedLocalAgent()).toBeNull();
+    expect(localStorage.getItem('chardesk.local-agent.pairing')).toBeNull();
+  });
+
+  it('retries a remembered connection after server loss but not after manual disconnect', async () => {
+    vi.useFakeTimers();
+    try {
+      connectLocalAgent(url, true);
+      Socket.instances[0].open();
+      Socket.instances[0].receive({ method: 'paired', expiresAt: Date.now() + 60_000 });
+      Socket.instances[0].close();
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(Socket.instances).toHaveLength(2);
+      disconnectLocalAgent();
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(Socket.instances).toHaveLength(2);
+    } finally { vi.useRealTimers(); }
   });
 });

@@ -28,6 +28,7 @@ export function CanvasAnchorTreeList({
   ariaLabel,
   getItemLabel,
   getMoveAnnouncement,
+  editable = true,
 }: {
   anchors: readonly CanvasAnchor[];
   onMove: (id: string, parentId: string | null, siblingIndex: number) => void;
@@ -35,6 +36,7 @@ export function CanvasAnchorTreeList({
   ariaLabel: string;
   getItemLabel: (anchor: CanvasAnchor, depth: number, index: number, total: number) => string;
   getMoveAnnouncement: (anchor: CanvasAnchor) => string;
+  editable?: boolean;
 }) {
   const [announcement, setAnnouncement] = useState('');
   const renderedAnchors = useRef<readonly CanvasAnchor[] | null>(null);
@@ -64,7 +66,7 @@ export function CanvasAnchorTreeList({
   const tree = useTree<CanvasAnchor>({
     rootItemId: ROOT_ID,
     indent: INDENT,
-    canReorder: true,
+    canReorder: editable,
     state: { expandedItems },
     getItemName: (item) => byId.get(item.getId())?.label ?? '',
     isItemFolder: (item) => (children.get(item.getId())?.length ?? 0) > 0,
@@ -73,18 +75,20 @@ export function CanvasAnchorTreeList({
       getChildren: (id) => children.get(id) ?? [],
     },
     canDrop: (items, target) => {
+      if (!editable) return false;
       if (items.length !== 1) return false;
       const { parentId, siblingIndex } = destination(items[0].getId(), target);
       return moveCanvasAnchor(anchors, items[0].getId(), parentId, siblingIndex) !== null;
     },
     onDrop: (items, target) => {
+      if (!editable) return;
       const anchor = byId.get(items[0]?.getId());
       if (!anchor) return;
       const { parentId, siblingIndex } = destination(anchor.id, target);
       onMove(anchor.id, parentId, siblingIndex);
       setAnnouncement(getMoveAnnouncement(anchor));
     },
-    features: [syncDataLoaderFeature, hotkeysCoreFeature, dragAndDropFeature],
+    features: [syncDataLoaderFeature, hotkeysCoreFeature, ...(editable ? [dragAndDropFeature] : [])],
   });
   if (renderedAnchors.current !== anchors) {
     tree.scheduleRebuildTree();
@@ -105,16 +109,16 @@ export function CanvasAnchorTreeList({
               key={item.getId()}
               data-anchor-row={anchor.id}
               data-reorder-item={anchor.id}
-              data-drop-intent={item.isUnorderedDragTarget() ? 'nest' : undefined}
+              data-drop-intent={editable && item.isUnorderedDragTarget() ? 'nest' : undefined}
               aria-label={getItemLabel(anchor, meta.level, meta.posInSet, meta.setSize)}
               className={cn(
                 'min-h-7 min-w-0 focus-visible:outline-2 focus-visible:outline-ring',
-                item.isUnorderedDragTarget() && 'rounded-md bg-accent/40'
+                editable && item.isUnorderedDragTarget() && 'rounded-md bg-accent/40'
               )}
               style={{ paddingLeft: meta.level * INDENT }}
               onFocus={() => item.setFocused()}
               onKeyDown={(event) => {
-                if (!event.altKey || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+                if (!editable || !event.altKey || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
                 event.preventDefault();
                 event.stopPropagation();
                 const next = meta.posInSet + (event.key === 'ArrowUp' ? -1 : 1);
@@ -127,12 +131,12 @@ export function CanvasAnchorTreeList({
             </div>
           );
         })}
-        <div
+        {editable && <div
           aria-hidden="true"
           data-drag-line=""
           className="z-10 h-0.5 bg-primary"
           style={tree.getDragLineStyle()}
-        />
+        />}
       </div>
       <span className="sr-only" aria-live="polite">{announcement}</span>
     </>

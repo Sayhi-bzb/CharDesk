@@ -28,6 +28,11 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'webkit-mobile-host',
+      testMatch: /mobile-host-policy\.spec\.ts/,
+      use: { ...devices['iPhone 13'] },
+    },
+    {
       name: 'webkit-template-placement',
       testMatch: /template-placement-mobile\.spec\.ts/,
       use: { ...devices['iPhone 13'] },

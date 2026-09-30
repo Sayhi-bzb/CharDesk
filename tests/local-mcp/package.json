@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "playwright test --config playwright.config.mjs",
+    "test": "node --test credentials.test.mjs && playwright test --config playwright.config.mjs",
     "test:pi": "CHARDESK_TEST_PI=1 playwright test --config playwright.config.mjs pi.spec.mjs",
     "start": "node server.mjs"
   },

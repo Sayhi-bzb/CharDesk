@@ -33,9 +33,7 @@ import {
 } from '@/domains/sessions/public';
 import { useGlobalShortcutCommands } from './useGlobalShortcutCommands';
 import { ZoomControl } from '@/widgets/toolbar/zoom-control';
-import { MinimapControl } from '@/widgets/toolbar/minimap-control';
 import { SecurityControl } from '@/widgets/toolbar/security-control';
-import { UndoControl } from '@/widgets/toolbar/undo-control';
 import { ShortcutProvider } from '@/shared/shortcuts/dispatcher';
 import { useActiveCollaboration } from './useActiveCollaboration';
 import { useHorizontalWheelNavigationGuard } from './useHorizontalWheelNavigationGuard';
@@ -65,6 +63,7 @@ import {
   EditorPresentationProvider,
   EditorWidget,
   resolvePaneViewportFrame,
+  resolveEditorHostPolicy,
   useEditorChromeLayout,
   useEditorPresentation,
 } from '@/widgets/editor-chrome/public';
@@ -147,8 +146,9 @@ function PhoneSidebarTrigger() {
 function SplitViewCommandRegistration() {
   const editor = useEditor();
   const { splitEnabled, setSplitEnabled } = useCanvasWorkspace();
-  const { viewportFrame } = useEditorChromeLayout();
-  const splitAvailable = viewportFrame.width === 0 || viewportFrame.width >= 640;
+  const { viewportFrame, formFactor } = useEditorChromeLayout();
+  const splitAvailable = resolveEditorHostPolicy(formFactor).splitView &&
+    (viewportFrame.width === 0 || viewportFrame.width >= 640);
   useEffect(() => editor.commands.register('app.chrome', {
     id: 'ui.toggle-split-view',
     execute: () => {
@@ -423,7 +423,8 @@ function AppContent() {
   const showHostWidgets = isWidgetVisible('host');
   const workspace = useCanvasWorkspace();
   const activeView = useActiveCanvasView();
-  const splitAvailable = viewportFrame.width === 0 || viewportFrame.width >= 640;
+  const splitAvailable = resolveEditorHostPolicy(formFactor).splitView &&
+    (viewportFrame.width === 0 || viewportFrame.width >= 640);
   const renderSplit = workspace.splitEnabled && splitAvailable;
   const hostedSelectorViewId: CanvasViewId = renderSplit ? 'primary' : activeView.viewId;
   const { tool, staticGrid, contentSurface } = useCanvasState(
@@ -570,8 +571,7 @@ function AppContent() {
             : null
         }
         bottomStart={
-          !showHostWidgets ? null : formFactor === 'phone'
-            ? <MinimapControl containerSize={{ width: viewportFrame.width, height: viewportFrame.height }} />
+          !showHostWidgets || formFactor === 'phone' ? null
             : <ZoomControl viewportFrame={viewportFrame} formFactor={formFactor} />
         }
         bottomCenter={!showHostWidgets ? null : (
@@ -585,18 +585,11 @@ function AppContent() {
               enabled={capabilities.navigate || capabilities.select}
               mutateContent={capabilities.mutateContent}
               formFactor={formFactor}
+              viewportSize={{ width: viewportFrame.width, height: viewportFrame.height }}
             />
           </div>
         )}
-        bottomEnd={!showHostWidgets ? null : formFactor === 'phone' ? (
-          <UndoControl
-            enabled={capabilities.mutateContent}
-            onUndo={() => {
-              exitCanvasTextEditing();
-              handleUndo();
-            }}
-          />
-        ) : <SecurityControl />}
+        bottomEnd={!showHostWidgets || formFactor === 'phone' ? null : <SecurityControl />}
         sidebar={!showHostWidgets || !surfaces.sidebar ? null : (
           <RecoverableLazyBoundary
             resetKey={isRightPanelOpen}

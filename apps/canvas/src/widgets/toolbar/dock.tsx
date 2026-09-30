@@ -26,6 +26,8 @@ import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
 
 import { BrushSubmenu, ShapeSubmenu } from './dock/submenus';
 import { MATERIAL_PRESETS, SHAPE_TOOLS } from './dock/constants';
+import { MinimapControl } from './minimap-control';
+import { UndoControl } from './undo-control';
 import { useShallow } from 'zustand/react/shallow';
 import { useUiI18n } from '@/shared/i18n';
 import { useEditor } from '@/domains/editor/public';
@@ -34,7 +36,7 @@ import {
   getDockShortcutAriaLabel,
   getDockShortcutLabel,
 } from './dock/shortcuts';
-import type { EditorFormFactor } from '@/widgets/editor-chrome/public';
+import { resolveEditorHostPolicy, type EditorFormFactor } from '@/widgets/editor-chrome/public';
 
 const ToolbarSubmenuIcon = HOST_ICONOLOGY.chrome['toolbar-submenu'];
 
@@ -47,6 +49,7 @@ interface ToolbarProps {
   enabled?: boolean;
   mutateContent?: boolean;
   formFactor?: EditorFormFactor;
+  viewportSize?: { width: number; height: number };
 }
 
 const FREEFORM_ACTION_ORDER: ToolbarActionId[] = ['pan', 'select', 'shape-group', 'bg', 'fill'];
@@ -70,7 +73,9 @@ export function Toolbar({
   enabled = true,
   mutateContent = true,
   formFactor = 'desktop',
+  viewportSize,
 }: ToolbarProps) {
+  const policy = resolveEditorHostPolicy(formFactor);
   const canvas = useCanvasRuntime();
   const { t } = useUiI18n();
   const { brushChar, canvasMode } = useCanvasState(
@@ -112,6 +117,10 @@ export function Toolbar({
   );
 
   useEffect(() => {
+    if (!policy.advancedTools && tool !== 'pan' && tool !== 'select' && tool !== 'text') {
+      setTool('pan');
+      return;
+    }
     if (tool === 'arrowLine') {
       setTool('select');
       return;
@@ -119,15 +128,16 @@ export function Toolbar({
     if (canvasMode === 'freeform' && (tool === 'brush' || tool === 'eraser')) {
       setTool('select');
     }
-  }, [canvasMode, setTool, tool]);
+  }, [canvasMode, setTool, tool, policy.advancedTools]);
 
   const visibleActionOrder = useMemo<ToolbarActionId[]>(() => {
     return FREEFORM_ACTION_ORDER.filter((actionId) => {
+      if (!policy.advancedTools && actionId !== 'pan' && actionId !== 'select') return false;
       if (!mutateContent && actionId !== 'pan' && actionId !== 'select') return false;
       const directTool = DIRECT_TOOL_BY_ACTION[actionId];
       return !directTool || isToolAllowedForMode(directTool, canvasMode);
     });
-  }, [canvasMode, mutateContent]);
+  }, [canvasMode, mutateContent, policy.advancedTools]);
 
   const availableShapeTools = useMemo<ToolType[]>(() => {
     return SHAPE_TOOLS.filter((shapeTool) => isToolAllowedForMode(shapeTool, canvasMode));
@@ -230,6 +240,7 @@ export function Toolbar({
   return (
     <FloatingSurface
       data-testid="tool-dock"
+      data-canvas-ui="true"
       data-density={formFactor === 'desktop' ? 'default' : 'compact'}
       variant="control-bar"
     >
@@ -238,6 +249,7 @@ export function Toolbar({
         aria-label={t('toolbar.group')}
         className="relative flex items-center justify-center gap-1"
       >
+        {formFactor === 'phone' && <MinimapControl embedded containerSize={viewportSize} tooltipHandle={tooltipHandle} />}
         {navItems.map((item, index) => {
           const isActive = index === activeIndex;
           const Icon = item.icon;
@@ -325,6 +337,14 @@ export function Toolbar({
             </div>
           );
         })}
+        {formFactor === 'phone' && <UndoControl
+          enabled={mutateContent}
+          tooltipHandle={tooltipHandle}
+          onUndo={() => {
+            onExitCanvasTextEditing();
+            onUndo();
+          }}
+        />}
         <Tooltip handle={tooltipHandle}>
           {({ payload }) => (
             <TooltipPopup side="top" className="flex items-center gap-2">

@@ -26,7 +26,7 @@ describe("Editor Host contract", () => {
     },
   );
 
-  it("keeps inspection but removes insertion surfaces without write authority", () => {
+  it("keeps inspection and navigation without write authority", () => {
     expect(resolveEditorHostContract(EDITOR_HOST_PROFILE, {
       mode: "freeform",
       canEdit: false,
@@ -37,7 +37,7 @@ describe("Editor Host contract", () => {
           ...EDITOR_HOST_PROFILE.capabilities,
           mutateContent: false,
         },
-        surfaces: { inspector: "freeform", sidebar: null },
+        surfaces: { inspector: "freeform", sidebar: "freeform" },
       });
   });
 
@@ -57,7 +57,7 @@ describe("Editor Host contract", () => {
       });
   });
 
-  it("makes source-backed Freeform observation-only without editor surfaces", () => {
+  it("keeps source-backed Freeform navigation without an inspector", () => {
     expect(resolveEditorHostContract(EDITOR_HOST_PROFILE, {
       mode: "freeform",
       canEdit: false,
@@ -69,7 +69,7 @@ describe("Editor Host contract", () => {
           mutateContent: false,
           collaborate: false,
         },
-        surfaces: { inspector: null, sidebar: null },
+        surfaces: { inspector: null, sidebar: "freeform" },
       });
   });
 

@@ -56,6 +56,21 @@ const renderSettings = (onOpenChange = vi.fn()) =>
   );
 
 describe('SettingsDialog', () => {
+  it('phone exposes everyday settings and filters hidden search targets', () => {
+    render(
+      <TextRenderingProvider runtime={createTextRenderingRuntime()}>
+        <SettingsDialog open formFactor="phone" onOpenChange={vi.fn()} />
+      </TextRenderingProvider>
+    );
+    expect(screen.getByRole('combobox', { name: 'Canvas font' })).toBeInTheDocument();
+    expect(document.getElementById('settings-canvas-cursor')).toBeNull();
+    expect(document.getElementById('settings-canvas-cursor-blink')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Shortcuts' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search settings' }), { target: { value: 'cursor' } });
+    expect(document.querySelectorAll('[data-settings-search-result]')).toHaveLength(0);
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search settings' }), { target: { value: 'wrap' } });
+    expect(document.querySelectorAll('[data-settings-search-result]').length).toBeGreaterThan(0);
+  });
   afterEach(() => {
     cleanup();
     act(() => setUiLanguage('en'));

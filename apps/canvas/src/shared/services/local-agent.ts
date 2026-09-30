@@ -7,9 +7,24 @@ type LocalAgentPort = Readonly<{
 let port: LocalAgentPort | undefined;
 let socket: WebSocket | undefined;
 let status: LocalAgentStatus = 'idle';
+let revision = 0;
+const pairingKey = 'chardesk.local-agent.pairing';
+type Pairing = { url: string; scope: string; expiresAt: number };
+let retry: ReturnType<typeof setTimeout> | undefined;
+let automatic = false;
+export function getRememberedLocalAgent(): Pairing | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(pairingKey) ?? 'null') as Pairing | null;
+    if (saved && typeof saved.url === 'string' && typeof saved.scope === 'string'
+      && Number.isFinite(saved.expiresAt) && saved.expiresAt > Date.now()) return saved;
+    localStorage.removeItem(pairingKey);
+  } catch { /* Storage may be unavailable; explicit pairing still works. */ }
+  return null;
+}
 const listeners = new Set<() => void>();
 const publish = (next: LocalAgentStatus) => {
   status = next;
+  revision++;
   for (const listener of listeners) listener();
 };
 
@@ -18,16 +33,31 @@ export const subscribeLocalAgent = (listener: () => void) => {
   return () => { listeners.delete(listener); };
 };
 export const getLocalAgentStatus = () => status;
-export const configureLocalAgent = (next: LocalAgentPort) => { port = next; };
+export const getLocalAgentRevision = () => revision;
+export const configureLocalAgent = (next: LocalAgentPort) => { port = next; restoreLocalAgent(); };
+
+export function restoreLocalAgent() {
+  const saved = getRememberedLocalAgent();
+  if (saved && saved.scope === port?.scope() && !socket) {
+    try { connectLocalAgent(saved.url, true); } catch { forgetLocalAgent(); }
+  }
+}
+
+export function forgetLocalAgent() {
+  try { localStorage.removeItem(pairingKey); } catch { /* No stored pairing to remove. */ }
+  disconnectLocalAgent();
+}
 
 export const disconnectLocalAgent = () => {
+  automatic = false;
+  clearTimeout(retry);
   const previous = socket;
   socket = undefined;
   previous?.close(1000, 'Disconnected by page');
   publish('idle');
 };
 
-export function connectLocalAgent(value: string): void {
+export function connectLocalAgent(value: string, remember = false): void {
   const url = new URL(value.trim());
   if (url.protocol !== 'ws:' || url.hostname !== '127.0.0.1' || !url.port
     || url.pathname !== '/bridge' || url.username || url.password || url.hash
@@ -39,6 +69,7 @@ export function connectLocalAgent(value: string): void {
   const scope = activePort?.scope();
   if (!activePort || !scope) throw new Error('Open a Canvas first');
   disconnectLocalAgent();
+  automatic = remember;
   const connection = new WebSocket(url.href);
   socket = connection;
   publish('connecting');
@@ -57,7 +88,14 @@ export function connectLocalAgent(value: string): void {
   };
   connection.onclose = () => {
     window.clearTimeout(timeout);
-    if (socket === connection) { socket = undefined; publish('error'); }
+    if (socket === connection) {
+      socket = undefined;
+      publish('error');
+      const saved = getRememberedLocalAgent();
+      if (automatic && saved?.scope === activePort.scope()) {
+        retry = setTimeout(restoreLocalAgent, 5_000);
+      }
+    }
   };
   let queue = Promise.resolve();
   const completed = new Map<string, { request: string; response: string }>();
@@ -65,6 +103,21 @@ export function connectLocalAgent(value: string): void {
     if (typeof data !== 'string' || new TextEncoder().encode(data).byteLength > 1024 * 1024) {
       connection.close(1009, 'Invalid request size');
       return;
+    }
+    try {
+      const message = JSON.parse(data) as { method?: string; expiresAt?: number };
+      if (message.method === 'paired') {
+        if (socket !== connection) return;
+        if (remember && Number.isFinite(message.expiresAt) && message.expiresAt! > Date.now()) {
+          localStorage.setItem(pairingKey, JSON.stringify({ url: url.href, scope,
+            expiresAt: Math.min(message.expiresAt!, Date.now() + 30 * 24 * 60 * 60 * 1000) }));
+          publish(status);
+        }
+        return;
+      }
+    } catch {
+      // A requested persistent pairing must not silently become temporary.
+      if (remember) { automatic = false; connection.close(); publish('error'); return; }
     }
     queue = queue.then(async () => {
       if (socket !== connection || connection.readyState !== WebSocket.OPEN) return;

@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
@@ -7,14 +7,31 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { WebSocket, WebSocketServer } from "ws";
 import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL } from "../../apps/canvas/src/app/site-tools/canvasToolDefinitions.ts";
+import { loadCredentials } from './credentials.mjs';
 
 // Experiment only: one explicitly paired browser page, no document storage.
 const allowedTools = new Set(["chardesk_canvas_read", "chardesk_canvas_write"]);
-const token = process.env.CHARDESK_BRIDGE_TOKEN || randomBytes(32).toString("hex");
 const origins = new Set((process.env.CHARDESK_BRIDGE_ORIGIN || "http://127.0.0.1:5173").split(","));
 const pairingFile = process.env.CHARDESK_BRIDGE_PAIRING_FILE;
+const credentialsFile = pairingFile && `${pairingFile}.credentials`;
+let credentials = await loadCredentials(credentialsFile);
+if (process.env.CHARDESK_BRIDGE_TOKEN) credentials.token = process.env.CHARDESK_BRIDGE_TOKEN;
 const timeoutMs = Number(process.env.CHARDESK_BRIDGE_TIMEOUT_MS || 10_000);
-const http = createServer((_request, response) => response.writeHead(404).end());
+const http = createServer(async (request, response) => {
+  if (request.method !== 'POST' || request.url !== '/revoke'
+    || request.headers.host !== `127.0.0.1:${http.address().port}`
+    || request.headers.origin || request.headers.authorization !== `Bearer ${credentials.token}`) {
+    response.writeHead(403).end();
+    return;
+  }
+  try {
+    if (credentialsFile) await unlink(credentialsFile);
+    credentials = await loadCredentials(credentialsFile);
+    page?.close(1000, 'Pairing revoked');
+    await publishPairing();
+    response.writeHead(204).end();
+  } catch { response.writeHead(500).end(); }
+});
 const sockets = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
 let page;
 const pending = new Map();
@@ -23,7 +40,8 @@ http.on("upgrade", (request, socket, head) => {
   const url = new URL(request.url, "http://127.0.0.1");
   const expectedHost = `127.0.0.1:${http.address().port}`;
   if (request.headers.host !== expectedHost || !origins.has(request.headers.origin)
-    || url.pathname !== "/bridge" || url.searchParams.get("token") !== token) {
+    || url.pathname !== "/bridge" || url.searchParams.get("token") !== credentials.token
+    || Date.now() >= credentials.expiresAt) {
     socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
     return;
   }
@@ -36,6 +54,11 @@ http.on("upgrade", (request, socket, head) => {
 
 sockets.on("connection", (client) => {
   page = client;
+  client.send(JSON.stringify({ method: 'paired', expiresAt: credentials.expiresAt }));
+  const expiry = setInterval(() => {
+    if (Date.now() >= credentials.expiresAt) client.close(1000, 'Pairing expired');
+  }, 60_000);
+  expiry.unref();
   client.on("error", () => client.terminate());
   client.on("message", (data) => {
     try {
@@ -51,6 +74,7 @@ sockets.on("connection", (client) => {
     }
   });
   client.on("close", () => {
+    clearInterval(expiry);
     page = undefined;
     for (const request of pending.values()) {
       clearTimeout(request.timer);
@@ -61,6 +85,7 @@ sockets.on("connection", (client) => {
 });
 
 function forward(method, params = {}) {
+  if (Date.now() >= credentials.expiresAt) return Promise.reject(new Error('Pairing expired. Generate a new pairing URL.'));
   if (!page || page.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Canvas page is not connected."));
   if (pending.size >= 32 || page.bufferedAmount > 1024 * 1024) return Promise.reject(new Error("Bridge is busy."));
   const id = randomUUID();
@@ -100,11 +125,15 @@ mcp.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
 });
 
 await new Promise((resolve) => http.listen(Number(process.env.CHARDESK_BRIDGE_PORT || 0), "127.0.0.1", resolve));
-const bridgeUrl = `ws://127.0.0.1:${http.address().port}/bridge?token=${token}`;
-if (pairingFile) {
-  await mkdir(dirname(pairingFile), { recursive: true });
-  await writeFile(pairingFile, JSON.stringify({ bridgeUrl, pid: process.pid }), { mode: 0o600 });
+async function publishPairing() {
+  const bridgeUrl = `ws://127.0.0.1:${http.address().port}/bridge?token=${credentials.token}`;
+  if (pairingFile) {
+    await mkdir(dirname(pairingFile), { recursive: true });
+    await writeFile(pairingFile, JSON.stringify({ bridgeUrl, pid: process.pid, expiresAt: credentials.expiresAt }), { mode: 0o600 });
+  }
+  return bridgeUrl;
 }
+const bridgeUrl = await publishPairing();
 // stdout belongs exclusively to the MCP stdio protocol.
 console.error(JSON.stringify({ bridgeUrl }));
 await mcp.connect(new StdioServerTransport());

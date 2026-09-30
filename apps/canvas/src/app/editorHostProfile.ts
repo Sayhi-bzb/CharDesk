@@ -86,7 +86,7 @@ export const resolveEditorHostContract = (
         profile.surfaces.inspector && !sourceBacked ? mode : null,
       sidebar:
         profile.surfaces.sidebar &&
-          (mutateContent || (mode === "slide" && navigate))
+          (mutateContent || navigate)
           ? mode
           : null,
     },

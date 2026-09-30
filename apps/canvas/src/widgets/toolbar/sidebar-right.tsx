@@ -48,6 +48,7 @@ import {
   type CanvasMode,
 } from "@/domains/sessions/public";
 import { useOnboardingTour } from "@/widgets/onboarding/onboarding-context";
+import { resolveEditorHostPolicy } from "@/widgets/editor-chrome/public";
 
 type TemplateSidebarTab = "template" | "components";
 type SlideSidebarView = "slides" | CharacterViewId;
@@ -188,6 +189,7 @@ export function SidebarRight({
       }))
     );
   const { state, isMobile, setOpen, setOpenMobile } = useSidebar();
+  const policy = resolveEditorHostPolicy(isMobile ? 'phone' : 'desktop');
   const isCollapsed = state === "collapsed" && !isMobile;
   const { t } = useUiI18n();
   const { phase: onboardingPhase } = useOnboardingTour();
@@ -200,21 +202,23 @@ export function SidebarRight({
     setSelectionCanvasId(activeCanvasId);
     setSelectedFreeformView(null);
   }
-  const defaultFreeformView: FreeformSidebarView = !readOnly && anchors.length > 0
+  const defaultFreeformView: FreeformSidebarView = anchors.length > 0
     ? "anchors"
     : "components";
   const activeFreeformView = selectedFreeformView?.canvasId === activeCanvasId &&
-    (!readOnly || selectedFreeformView.view !== "anchors")
+    (policy.advancedCharacters || !['nerd', 'unicode'].includes(selectedFreeformView.view))
     ? selectedFreeformView.view
     : defaultFreeformView;
   const [templateQuery, setTemplateQuery] = useState("");
-  const [activeSlideView, setActiveSlideView] =
+  const [selectedSlideView, setActiveSlideView] =
     useState<SlideSidebarView>("slides");
+  const activeSlideView = !policy.advancedCharacters && ['nerd', 'unicode'].includes(selectedSlideView)
+    ? 'slides' : selectedSlideView;
   const [unicodeQuery, setUnicodeQuery] = useState("");
-  const navigationOnly = canvasMode === "slide" && readOnly;
+  const navigationOnly = readOnly;
   const templateSearchRef = useRef<HTMLInputElement>(null);
   const characterViews: ReadonlyArray<SidebarView<CharacterViewId>> =
-    CHARACTER_VIEWS.map((view) => ({
+    CHARACTER_VIEWS.filter((view) => policy.advancedCharacters || view.id === 'essentials' || view.id === 'emoji').map((view) => ({
       id: view.id,
       label: t(view.labelKey),
       icon: view.icon,
@@ -229,7 +233,7 @@ export function SidebarRight({
     icon: view.icon,
   }));
   const freeformViews: ReadonlyArray<SidebarView<FreeformSidebarView>> = [
-    ...(!readOnly ? [{ id: "anchors" as const, label: t("anchors.title"), icon: MapPin }] : []),
+    { id: "anchors", label: t("anchors.title"), icon: MapPin },
     ...templateViews,
     ...characterViews,
   ];
@@ -313,6 +317,12 @@ export function SidebarRight({
 
   switch (canvasMode) {
     case "freeform":
+      if (navigationOnly) {
+        viewRail = null;
+        viewContent = <CanvasAnchorList anchors={anchors} readOnly />;
+        headerContent = <span className="truncate text-sm font-medium">{t("anchors.title")}</span>;
+        break;
+      }
       viewRail = (
         <SidebarViewRail
           views={freeformViews}
@@ -324,7 +334,7 @@ export function SidebarRight({
         />
       );
       if (activeFreeformView === "anchors") {
-        viewContent = <CanvasAnchorList anchors={anchors} readOnly={readOnly} />;
+        viewContent = <CanvasAnchorList anchors={anchors} readOnly={readOnly} editable={policy.manageAnchors} />;
         headerContent = (
           <span className="truncate text-sm font-medium">{t("anchors.title")}</span>
         );

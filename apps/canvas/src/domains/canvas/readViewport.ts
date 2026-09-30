@@ -14,6 +14,19 @@ const occupied = (cell: GridCell) => /\S/u.test(cell.char) || cell.bgColor !== u
   || cell.attrs?.inverse === true || cell.attrs?.underline === true || cell.attrs?.strike === true;
 const quadrants = [" ", "▘", "▝", "▀", "▖", "▌", "▞", "▛", "▗", "▚", "▐", "▜", "▄", "▙", "▟", "█"];
 
+const niceTickInterval = (minimum: number) => {
+  const magnitude = 10 ** Math.floor(Math.log10(minimum));
+  for (const factor of [1, 2, 5]) if (factor * magnitude >= minimum) return factor * magnitude;
+  return 10 * magnitude;
+};
+
+/** A sampled bucket can contain a tick without starting on that coordinate. */
+const tickInBucket = (start: number, size: number, interval: number): number | null => {
+  const remainder = start % interval;
+  const offset = remainder <= 0 ? -remainder : interval - remainder;
+  return offset < size ? start + offset : null;
+};
+
 export const isCanvasReadViewport = (value: unknown): value is CanvasReadViewport =>
   Array.isArray(value) && value.length === 4 && value.every(Number.isSafeInteger)
   && value[2] > 0 && value[3] > 0
@@ -92,24 +105,38 @@ export const readCanvasViewport = (
     text[row][column] = mode === "projection" ? quadrants[masks[index]]
       : density === 0 ? "·" : density <= 1 / 16 ? "░" : density <= 1 / 4 ? "▒" : density <= 1 / 2 ? "▓" : "█";
   }
-  const labelWidth = Math.max(String(y).length, String(y + height - 1).length);
-  const tickEvery = Math.max(1, Math.ceil(12 / step));
-  const ruler = Array<string>(columns).fill(" ");
+  const xLabelWidth = Math.max(String(x).length, String(x + width - 1).length);
+  const labelWidth = Math.max(String(y).length, String(y + height - 1).length, Math.floor(xLabelWidth / 2));
+  const xMinor = niceTickInterval(step * Math.max(5, Math.ceil((xLabelWidth + 2) / 2)));
+  const yInterval = niceTickInterval(5 * step);
+  const prefix = labelWidth + 2;
+  const ruler = Array<string>(prefix + columns + Math.ceil(xLabelWidth / 2)).fill(" ");
+  const border = Array<string>(columns).fill("─");
   let previousEnd = -1;
-  for (let column = 0; column < columns; column += tickEvery) {
-    const label = String(x + column * step);
-    if (column > previousEnd && column + label.length <= columns) {
-      [...label].forEach((char, offset) => { ruler[column + offset] = char; });
-      previousEnd = column + label.length;
+  for (let column = 0; column < columns; column++) {
+    const start = x + column * step;
+    const tick = tickInBucket(start, Math.min(step, width - column * step), xMinor);
+    if (tick === null) continue;
+    border[column] = "┬";
+    if (tick % (2 * xMinor) !== 0) continue;
+    const label = String(tick);
+    const offset = prefix + column - Math.floor(label.length / 2);
+    if (offset > previousEnd) {
+      [...label].forEach((char, index) => { ruler[offset + index] = char; });
+      previousEnd = offset + label.length;
     }
   }
   const notes = mode === "text" ? formatCharDeskStyleNotes(styledCells, { coordinates: "explicit" }) : "styles:none";
   const content = [
     `viewport=[${x},${y},${width},${height}] step=${step} mode=${mode}`,
-    `${" ".repeat(labelWidth + 3)}${ruler.join("").trimEnd()}`,
-    ...(mode === "text" ? [`${" ".repeat(labelWidth + 3)}${Array.from({ length: columns }, (_, column) => String(((x + column) % 10 + 10) % 10)).join("")}`] : []),
-    `${" ".repeat(labelWidth + 1)}┌${"─".repeat(columns)}┐`,
-    ...text.map((line, row) => `${String(y + row * step).padStart(labelWidth)} │${line.join("")}│`),
+    ...(ruler.some((char) => char !== " ") ? [ruler.join("").trimEnd()] : []),
+    `${" ".repeat(labelWidth + 1)}┌${border.join("")}┐`,
+    ...text.map((line, row) => {
+      const start = y + row * step;
+      const tick = tickInBucket(start, Math.min(step, height - row * step), yInterval);
+      const label = tick === null ? " ".repeat(labelWidth) : String(tick).padStart(labelWidth);
+      return `${label} ${tick === null ? "│" : "┤"}${line.join("")}│`;
+    }),
     `${" ".repeat(labelWidth + 1)}└${"─".repeat(columns)}┘`,
     ...(notes === "styles:none" ? [] : ["", notes]),
     ...(mode !== "text" ? ["Styles omitted: navigation symbols only; read a smaller viewport for text and styles."] : []),

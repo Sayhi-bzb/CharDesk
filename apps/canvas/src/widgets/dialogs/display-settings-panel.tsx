@@ -48,6 +48,7 @@ import {
 } from './settings-data-table';
 
 type DisplaySettingsPanelProps = {
+  advanced?: boolean;
   revealSettingId?: string | null;
   onRevealComplete?: () => void;
 };
@@ -378,6 +379,7 @@ function MarkdownWrapControl({
 }
 
 export function DisplaySettingsPanel({
+  advanced = true,
   revealSettingId,
   onRevealComplete,
 }: DisplaySettingsPanelProps) {
@@ -389,17 +391,17 @@ export function DisplaySettingsPanel({
   const activeRenderTheme = textRenderProfile.renderThemes[themeMode];
   const resolvedRenderTheme = textRendering.getResolvedTheme(themeMode);
   const columns = useMemo<SettingsDataTableColumn<DisplaySettingsColumnId>[]>(
-    () => [
+    () => ([
       {
         id: 'setting',
         header: t('settings.column.setting'),
-        widthClassName: 'w-[38%]',
+        widthClassName: advanced ? 'w-[38%]' : 'w-1/2',
         cellClassName: 'truncate ps-8 text-muted-foreground',
       },
       {
         id: 'value',
         header: t('settings.column.value'),
-        widthClassName: 'w-[30%]',
+        widthClassName: advanced ? 'w-[30%]' : 'w-1/2',
         headerClassName: 'text-right',
         cellClassName: 'text-right',
       },
@@ -410,8 +412,8 @@ export function DisplaySettingsPanel({
         headerClassName: 'text-right',
         cellClassName: 'text-right',
       },
-    ],
-    [t]
+    ] satisfies SettingsDataTableColumn<DisplaySettingsColumnId>[]).filter((column) => advanced || column.id !== 'color'),
+    [t, advanced]
   );
   const groups = useMemo<SettingsDataTableGroup<DisplaySetting>[]>(
     () => [
@@ -426,8 +428,8 @@ export function DisplaySettingsPanel({
       { id: 'inline', label: t('settings.markdownRules.inline'), items: inlineSettings },
       { id: 'math', label: t('settings.markdownRules.math'), items: mathSettings },
       { id: 'blocks', label: t('settings.markdownRules.block'), items: blockSettings },
-    ],
-    [t, themeMode]
+    ].filter((group) => advanced || group.id === 'rendering'),
+    [t, themeMode, advanced]
   );
   const revealSetting = useCallback((row: HTMLTableRowElement) => {
     if (typeof row.scrollIntoView === 'function') {

@@ -25,9 +25,11 @@ import { CanvasAnchorTreeList } from "./canvas-anchor-tree-list";
 export function CanvasAnchorList({
   anchors,
   readOnly,
+  editable = true,
 }: {
   anchors: readonly CanvasAnchor[];
   readOnly: boolean;
+  editable?: boolean;
 }) {
   const { t } = useUiI18n();
   const runtime = useCanvasRuntime();
@@ -103,7 +105,7 @@ export function CanvasAnchorList({
         </span>
       </TooltipTrigger>
     );
-    if (readOnly) return button;
+    if (readOnly || !editable) return button;
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>{button}</ContextMenuTrigger>
@@ -135,12 +137,10 @@ export function CanvasAnchorList({
     <SurfaceContent className="min-w-0 p-1" role="tabpanel" aria-label={t("anchors.title")}>
       {anchors.length === 0 ? (
         <p className="px-1.5 py-3 text-xs text-muted-foreground">{t("anchors.empty")}</p>
-      ) : readOnly ? (
-        <ol aria-label={t("anchors.title")} className="min-w-0">
-          {anchors.map((anchor) => <li key={anchor.id}>{item(anchor)}</li>)}
-        </ol>
       ) : (
         <CanvasAnchorTreeList
+          key={String(!readOnly && editable)}
+          editable={!readOnly && editable}
           anchors={anchors}
           ariaLabel={t("anchors.tree.list")}
           onMove={move}
