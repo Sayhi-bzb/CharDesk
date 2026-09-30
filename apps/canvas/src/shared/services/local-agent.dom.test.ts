@@ -72,6 +72,20 @@ describe('local agent page connection', () => {
     expect(getLocalAgentStatus()).toBe('idle');
   });
 
+  it('keeps an application-scoped pairing across Canvas changes and enforces grants', async () => {
+    scope = 'application';
+    connectLocalAgent(url, false, { inspect: true, read: true, search: true, write: false });
+    const socket = Socket.instances[0];
+    socket.open();
+    scope = 'application';
+    socket.receive({ id: 'read', method: 'call', params: { name: 'chardesk_canvas_read', input: {} } });
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1));
+    socket.receive({ id: 'write', method: 'call', params: { name: 'chardesk_canvas_write', input: { at: [0, 0], content: 'A' } } });
+    await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(socket.send.mock.calls[1][0]).error).toContain('Permission denied: canvas.write');
+    expect(socket.close).not.toHaveBeenCalled();
+  });
+
   it('forwards search through the same Canvas port', async () => {
     connectLocalAgent(url);
     const socket = Socket.instances[0];
@@ -104,7 +118,7 @@ describe('local agent page connection', () => {
     connection.open();
     const expiresAt = Date.now() + 60_000;
     connection.receive({ method: 'paired', expiresAt });
-    expect(getRememberedLocalAgent()).toEqual({ url, scope, expiresAt });
+    expect(getRememberedLocalAgent()).toEqual({ url, scope, expiresAt, permissions: { inspect: true, read: true, search: true, write: true } });
     disconnectLocalAgent();
     scope = 'canvas-b';
     restoreLocalAgent();

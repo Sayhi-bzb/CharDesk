@@ -1,27 +1,33 @@
 # The visual workshop
 
-A rendering assistant works beside the Blackboard. The compositor reads
+A rendering assistant works beside the Canvas. The compositor reads
 Markdown; the drafting table reads Mermaid; the plotter reads Vega-Lite; the
 formula bench reads mathematics; the source lightbox reads JSON, YAML, code,
 and diffs. `|||` and `---` move frames across the surface; ANSI, Unicode, emoji,
 and Nerd Font fill the lettering drawers. Every instrument leaves compatible
-marks on the same board.
+marks on the same Canvas.
+
+These examples are composition materials, not a required document structure.
+`chardesk` blocks contain spatial text and ANSI; `chargraph` blocks use the
+[CLI](backstage/cli.md) for block composition, diagrams, and charts.
+For live writes, follow the renderer settings reported by
+[Canvas read](backstage/live-canvas.md); do not assume CharGraph separators or
+fenced renderers are enabled there.
 
 ## A shared medium
 
 ````chargraph
 # [1;38;2;9;105;218mCHAR DESK[0m · A SHARED VISUAL MEDIUM
-[38;2;88;96;105mHumans read a scene. Language models edit its tokens.[0m
+[38;2;88;96;105mHumans and agents read and shape the same scene.[0m
 
 ---
 
 ```mermaid
 flowchart LR
-  H[Human intent] ==>|sees| C[[Character Canvas]]
-  A[Language model] ==>|edits| S[(Text source)]
-  S --> C
-  C -.->|feedback| H
-  H -.->|direction| A
+  H[Human] ==>|sees and edits| C[[Character Canvas]]
+  A[Agent] ==>|reads Cells| C
+  A -->|writes text| R[Renderer]
+  R -->|places Cells| C
 ```
 
 ---
@@ -30,14 +36,14 @@ flowchart LR
 layout · rhythm · emphasis
 |||
 [1;38;2;255;255;255;48;2;130;80;223m EDIT [0m
-tokens · files · diffs
+regions · characters · styles
 |||
 [1;38;2;255;255;255;48;2;31;136;61m SHARE [0m
 one artifact · two readers
 
 ---
 
-> [1mText for the model. A canvas for you.[22m
+> [1mOne spatial medium. Two ways to read it.[22m
 ````
 
 ## A frame through the GPU
@@ -105,7 +111,9 @@ $$\Delta T = T_{observed} - T_{normal}$$
 > [1;38;2;245;158;11mAHA[0m · coupled ocean + atmosphere
 ````
 
-## Three slides, one story
+## A three-frame storyboard
+
+This is one composed scene. Use [native Slides](slides.md) for separate pages.
 
 ````chargraph
 # [1;38;2;130;80;223m三枚のスライド、一つの物語[0m
@@ -164,8 +172,8 @@ progress [38;2;9;105;218m━━━━━━━━━━━━━━━━━━�
 ## The release room
 
 ````chargraph
-# [1;38;2;130;80;223mRELEASE ROOM[0m · HUMAN + AGENT BLACKBOARD
-[38;2;88;96;105mThe source changes. The room remembers why.[0m
+# [1;38;2;130;80;223mRELEASE ROOM[0m · HUMAN + AGENT CANVAS
+[38;2;88;96;105mThe work changes. The room remembers why.[0m
 
 ---
 
@@ -185,11 +193,11 @@ progress [38;2;9;105;218m━━━━━━━━━━━━━━━━━━�
 ```mermaid
 sequenceDiagram
   participant H as Human
-  participant B as Blackboard
+  participant C as Canvas
   participant A as Agent
-  H->>B: define the outcome
-  A->>B: attach evidence
-  B-->>H: expose the gap
+  H->>C: define the outcome
+  A->>C: attach evidence
+  C-->>H: expose the gap
   H->>A: choose the next move
 ```
 
@@ -199,5 +207,5 @@ sequenceDiagram
 
 ---
 
-> [1mThe Blackboard is not a status report. It is shared working memory.[22m
+> [1mThe Canvas is not a status report. It is shared working memory.[22m
 ````

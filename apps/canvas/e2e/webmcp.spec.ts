@@ -21,7 +21,7 @@ const names = (page: Page) => page.evaluate(async () => {
 const ready = async (page: Page) => {
   await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
 };
-const editableNames = ["chardesk_canvas_read", "chardesk_canvas_search", "chardesk_canvas_write", "chardesk_read_materials"];
+const editableNames = ["chardesk_canvas_list", "chardesk_canvas_read", "chardesk_canvas_search", "chardesk_canvas_write", "chardesk_read_materials"];
 const readOnlyNames = editableNames.filter((name) => name !== "chardesk_canvas_write");
 
 test.describe("WebMCP native Canvas", () => {

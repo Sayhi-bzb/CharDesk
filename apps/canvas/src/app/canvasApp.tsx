@@ -49,24 +49,15 @@ const createRouteAgentTools = () => createChardeskAgentTools({
 let siteTools: ReturnType<typeof startDocumentSiteTools> | null = null;
 configureLocalAgent({
   scope: () => isWorkspaceRoute(window.location) || isRetiredBlackboardRoute(window.location)
-    ? null : host.canvas.getState().activeCanvasId,
+    ? null : 'application',
   execute: async (name, input) => {
     if (isWorkspaceRoute(window.location) || isRetiredBlackboardRoute(window.location)) throw new Error('Open a Canvas first');
     const tool = createRouteAgentTools().find((tool) => tool.name === name);
-    if (!tool) throw new Error('Canvas tool is unavailable on this page');
+      if (!tool) throw new Error('Canvas tool is unavailable on this page');
     return tool.execute(input);
   },
 });
-let localAgentCanvasId = host.canvas.getState().activeCanvasId;
-host.canvas.subscribe((state) => {
-  const next = state.activeCanvasId;
-  if (next !== localAgentCanvasId) {
-    const initializing = localAgentCanvasId == null;
-    localAgentCanvasId = next;
-    disconnectLocalAgent();
-    if (initializing) restoreLocalAgent();
-  }
-});
+restoreLocalAgent();
 let siteToolsGeneration = 0;
 const syncChardeskSiteTools = async () => {
   const generation = ++siteToolsGeneration;

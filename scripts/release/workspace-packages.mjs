@@ -1,5 +1,6 @@
 export const releasedPackages = [
   { name: "@chardesk/cli", path: "packages/cli" },
+  { name: "@chardesk/mcp", path: "packages/mcp" },
   { name: "@chardesk/cell-core", path: "packages/cell-core" },
   { name: "@chardesk/fonts", path: "packages/fonts" },
   { name: "@chardesk/font-maple", path: "packages/font-maple" },

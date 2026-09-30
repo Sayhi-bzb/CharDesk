@@ -8,7 +8,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import WebSocket from "ws";
 
-test("local stdio MCP reads and edits the connected Canvas, rejects other pages, and detects disconnect", async ({ page, baseURL }, testInfo) => {
+test("local stdio MCP reads and edits multiple Canvases after one application pairing", async ({ page, baseURL }, testInfo) => {
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [fileURLToPath(new URL("./server.mjs", import.meta.url))],
@@ -30,7 +30,7 @@ test("local stdio MCP reads and edits the connected Canvas, rejects other pages,
     const write = "chardesk_canvas_write";
     const search = "chardesk_canvas_search";
     const { tools } = await client.listTools();
-    expect(tools.map((tool) => tool.name).sort()).toEqual([read, search, write]);
+    expect(tools.map((tool) => tool.name).sort()).toEqual(["chardesk_canvas_list", read, search, write]);
     expect(tools.find((tool) => tool.name === search).annotations.readOnlyHint).toBe(true);
     expect(tools.find((tool) => tool.name === write).inputSchema.required).toEqual(["at", "content"]);
     expect((await call(read, {})).isError).toBe(true);
@@ -117,10 +117,17 @@ test("local stdio MCP reads and edits the connected Canvas, rejects other pages,
     expect(invalid.isError).toBe(true);
     expect(invalid.structuredContent.code).toBe("invalid_input");
 
+    const originalCanvasId = written.structuredContent.canvasId;
+
     await page.getByRole('button', { name: 'Select canvas', exact: true }).click();
     await page.getByRole('button', { name: 'New', exact: true }).click();
     await page.getByRole('menuitem', { name: 'New Freeform', exact: true }).click();
-    await expect.poll(async () => (await call(read, {})).isError).toBe(true);
+    await expect.poll(async () => (await call(read, {})).isError).toBe(false);
+    const canvases = await call("chardesk_canvas_list", {});
+    expect(canvases.structuredContent.canvases.length).toBeGreaterThanOrEqual(2);
+    const secondWrite = await call(write, { canvasId: originalCanvasId, at: [32, 28], content: "updated from another Canvas" });
+    expect(secondWrite, JSON.stringify(secondWrite)).toMatchObject({ isError: false, structuredContent: { canvasId: originalCanvasId } });
+    expect((await call(read, { canvasId: originalCanvasId, viewport: [32, 28, 28, 1] })).structuredContent.content).toContain("updated from another Canvas");
 
     await page.goto("/blackboard");
     await expect(page).toHaveURL(/workspace$/);

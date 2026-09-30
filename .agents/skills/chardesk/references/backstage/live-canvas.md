@@ -9,15 +9,22 @@ the current surface, not a file path. Tool definitions own parameter schemas.
 When the text is known but its location is not, use `chardesk_canvas_search` with
 `query`, optionally restricted by `viewport`. It searches rendered text at full
 Cell precision, including on read-only projections; it does not search source
-syntax, read rulers, styles, or density symbols. Matching is literal, case-sensitive,
-single-row, and uses complete graphemes.
+syntax, read rulers, styles, or density symbols. Matching is literal and
+case-sensitive by default; `regex: true` uses RE2 patterns (no lookaround or
+backreferences), and `ignoreCase: true` enables case folding in either mode.
+Actual LF separates a spatial template: rows start at the same Cell column on
+consecutive Canvas rows, not sequential string offsets. Each row must contain
+non-whitespace text; matches consume non-empty complete graphemes.
+The whole template must fit the input viewport. Regex anchors refer to the finite
+stored row envelope within that viewport, not the template's origin.
+For `search_limit`, narrow the viewport and retry; no partial results were returned.
 
 Each match returns `viewport` and `content`: a plain 32×5 Cell window with
 preserved spaces and newlines, no border or ruler. Words may be cropped; partial
 wide glyphs become blanks. Read its viewport for styles, or enlarge it for more
 context. The preview is not a whole-region replacement payload.
 For more matches, pass non-null `next` as
-`after` with the same query and viewport and confirm `canvasId` is unchanged.
+`after` with identical query, regex, ignoreCase, and viewport and confirm `canvasId` is unchanged.
 `next` tracks the match position, not the preview origin.
 Results are live rather than a cross-call snapshot; restart after edits when needed.
 
@@ -57,14 +64,16 @@ leaves the camera, cursor, and selection unchanged.
 
 ## Source-backed and read-only surfaces
 
-For a local CLI reader, edit the
-existing files through the [CLI workflow](cli.md); the open projection updates
+For a local CLI reader, edit the existing file through the
+[CLI workflow](cli.md); the open projection updates
 automatically. Canvas read can verify either result when available.
 
 A `source_backed_canvas` result routes the edit to its source, not to another
 Canvas. A Slide overflow requires an in-bounds placement; the rejected write
 has changed nothing. If write is absent, do not bypass the read-only surface.
 When the intended source cannot be reached, report the missing capability.
+If `canvas_not_ready` reports migration in progress, wait for conversion rather
+than trying to edit the retained legacy source.
 
 Contracts: [Canvas reading](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/architecture/canvas-reading.mdx),
 [Canvas searching](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/architecture/canvas-searching.mdx),

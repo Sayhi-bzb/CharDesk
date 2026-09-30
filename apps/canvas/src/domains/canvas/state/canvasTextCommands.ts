@@ -123,9 +123,30 @@ export const createCanvasTextCommands = (
     }
     return bounds;
   };
+  const writePreparedAt = (sessionId: string, prepare: () => ReturnType<typeof prepareCanvasTextWrite>) => {
+    const state = get();
+    const session = state.canvasSessions.find(({ id }) => id === sessionId);
+    if (!session) throw new CanvasWriteError("canvas_not_active", "Canvas not found.");
+    if (session.mode === "slide") throw new CanvasWriteError("out_of_bounds", "Direct writes to a non-active Slide are not supported.");
+    if (isSourceBackedCanvasSession(session) || session.migrationPending) {
+      throw new CanvasWriteError("source_backed_canvas", session.migrationPending
+        ? "Wait for this Canvas migration to finish before writing."
+        : "Edit the source file of this Canvas instead of its projection.");
+    }
+    const address = documents.getDocumentAddress(sessionId);
+    if (!address) throw new CanvasWriteError("canvas_not_active", "Canvas content is not ready.");
+    const { patch, bounds } = prepare();
+    if (!bounds) return null;
+    documents.finishHistoryCapture();
+    try { documents.applyCellPlanePatchAt(address, patch, commits.getDocumentHistoryMode()); }
+    finally { documents.finishHistoryCapture(); }
+    return bounds;
+  };
   return coordinateCanvasCommands(commits, {
     writeAt: (content: string, at: Point) => writePrepared(() => prepareCanvasTextWrite(at, content, get().brushColor)),
     writeRowsAt: (rows: readonly RichTextRow[], at: Point) => writePrepared(() => prepareCanvasRowsWrite(at, rows)),
+    writeAtSession: (sessionId: string, content: string, at: Point, color = get().brushColor) => writePreparedAt(sessionId, () => prepareCanvasTextWrite(at, content, color)),
+    writeRowsAtSession: (sessionId: string, rows: readonly RichTextRow[], at: Point) => writePreparedAt(sessionId, () => prepareCanvasRowsWrite(at, rows)),
     write: (str: string, startPos?: Point, options?: TextWriteOptions) => {
       const current = get();
       const staticGrid = current.interaction.staticGrid;

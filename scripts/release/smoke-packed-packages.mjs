@@ -3,17 +3,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const [protocolTarball, coreTarball, renderingTarball, fontsTarball, mapleTarball, cliTarball] = process.argv.slice(2).map((value) =>
+const [protocolTarball, coreTarball, renderingTarball, fontsTarball, mapleTarball, cliTarball, mcpTarball] = process.argv.slice(2).map((value) =>
   value ? path.resolve(value) : value
 );
 
-if (!protocolTarball || !coreTarball || !renderingTarball || !fontsTarball || !mapleTarball || !cliTarball) {
+if (!protocolTarball || !coreTarball || !renderingTarball || !fontsTarball || !mapleTarball || !cliTarball || !mcpTarball) {
   throw new Error(
-    "Usage: node scripts/release/smoke-packed-packages.mjs <protocol.tgz> <cell-core.tgz> <rendering.tgz> <fonts.tgz> <font-maple.tgz> <cli.tgz>"
+    "Usage: node scripts/release/smoke-packed-packages.mjs <protocol.tgz> <cell-core.tgz> <rendering.tgz> <fonts.tgz> <font-maple.tgz> <cli.tgz> <mcp.tgz>"
   );
 }
 
-for (const tarball of [protocolTarball, coreTarball, renderingTarball, fontsTarball, mapleTarball, cliTarball]) {
+for (const tarball of [protocolTarball, coreTarball, renderingTarball, fontsTarball, mapleTarball, cliTarball, mcpTarball]) {
   if (!fs.existsSync(tarball)) {
     throw new Error(`Missing package tarball: ${tarball}`);
   }
@@ -42,6 +42,7 @@ try {
       fontsTarball,
       mapleTarball,
       cliTarball,
+      mcpTarball,
     ],
     { cwd: temporaryDirectory, stdio: "inherit" }
   );
@@ -131,6 +132,16 @@ try {
   }
   if (!fs.existsSync(path.join(path.dirname(cliRuntime), "icon.svg"))) {
     throw new Error("Packed CLI did not include the CharDesk application icon");
+  }
+  const mcpManifest = JSON.parse(fs.readFileSync(path.join(
+    temporaryDirectory,
+    "node_modules",
+    "@chardesk",
+    "mcp",
+    "package.json",
+  ), "utf8"));
+  if (mcpManifest.bin?.["chardesk-mcp"] !== "bin/chardesk-mcp.mjs") {
+    throw new Error("Packed MCP package did not install its executable");
   }
   execFileSync(cli, ["init", "demo", "--title", "Packed CLI"], {
     cwd: temporaryDirectory,

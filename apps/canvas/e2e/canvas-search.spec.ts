@@ -40,6 +40,17 @@ test("WebMCP renders, searches, and reads precise Unicode positions without movi
   expect(second.matches).toHaveLength(5);
   expect(second.next).toBeNull();
   expect(second.matches[0].viewport).toEqual([-108, -82, 32, 5]);
+
+  await execute(page, "chardesk_canvas_write", { at: [-200, -200], content: "Hello Alice\nWelcome" });
+  const area = { viewport: [-200, -200, 30, 2] };
+  expect(await execute(page, "chardesk_canvas_search", { ...area, query: "Hello\nWelcome" }))
+    .toMatchObject({ matches: [{ viewport: [-208, -202, 32, 5], content: expect.stringContaining("Welcome") }] });
+  expect(await execute(page, "chardesk_canvas_search", { ...area, query: "hello \\w+\nwelcome", regex: true, ignoreCase: true }))
+    .toMatchObject({ matches: [{ viewport: [-208, -202, 32, 5] }] });
+  expect(await execute(page, "chardesk_canvas_search", { ...area, query: "Hello\nWelcome", viewport: [-200, -200, 30, 1] }))
+    .toMatchObject({ matches: [] });
+  expect(await execute(page, "chardesk_canvas_search", { query: "[", regex: true })).toMatchObject({ code: "invalid_input" });
+  await expect(page.getByTestId("zoom-reset")).toHaveText(zoom!);
 });
 
 test("read-only CLI pages expose Canvas search without write", async ({ page }) => {
@@ -49,5 +60,5 @@ test("read-only CLI pages expose Canvas search without write", async ({ page }) 
     const context = (document as Document & { modelContext?: { getTools(): Promise<Array<{ name: string }>> } }).modelContext!;
     return (await context.getTools()).map(({ name }) => name).sort();
   });
-  expect(names).toEqual(["chardesk_canvas_read", "chardesk_canvas_search", "chardesk_read_materials"]);
+  expect(names).toEqual(["chardesk_canvas_list", "chardesk_canvas_read", "chardesk_canvas_search", "chardesk_read_materials"]);
 });

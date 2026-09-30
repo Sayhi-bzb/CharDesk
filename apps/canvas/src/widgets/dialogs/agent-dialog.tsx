@@ -6,7 +6,8 @@ import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
 import { clipboard } from '@/shared/services/effects';
 import { useUiI18n } from '@/shared/i18n';
 import { connectLocalAgent, disconnectLocalAgent, forgetLocalAgent, getLocalAgentRevision,
-  getLocalAgentStatus, getRememberedLocalAgent, subscribeLocalAgent } from '@/shared/services/local-agent';
+  getLocalAgentStatus, getRememberedLocalAgent, subscribeLocalAgent,
+  type LocalAgentPermissions } from '@/shared/services/local-agent';
 import { getWebMcpStatus, subscribeWebMcpStatus } from '@/shared/services/webmcp-status';
 
 const CopyIcon = HOST_ICONOLOGY.appMenu.copy;
@@ -22,6 +23,7 @@ export function AgentDialog({ open, onOpenChange }: {
   const [value, setValue] = useState('');
   const [invalid, setInvalid] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [permissions, setPermissions] = useState<LocalAgentPermissions>({ inspect: true, read: true, search: true, write: true });
   const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const tooltip = useMemo(() => TooltipCreateHandle<string>(), []);
   const copyLabel = t(copyStatus === 'success' ? 'localAgent.copied' : copyStatus === 'error' ? 'localAgent.copyError' : 'localAgent.copy');
@@ -32,7 +34,7 @@ export function AgentDialog({ open, onOpenChange }: {
   const localTone = status === 'connected' ? 'success' : status === 'error' ? 'error' : 'neutral';
   const connect = () => {
     try {
-      connectLocalAgent(value || saved?.url || '', remember || (!value && !!saved));
+      connectLocalAgent(value || saved?.url || '', remember || (!value && !!saved), permissions);
       setInvalid(false);
       setValue('');
     } catch { setInvalid(true); }
@@ -65,6 +67,15 @@ export function AgentDialog({ open, onOpenChange }: {
           </div>
           {pairing && <div id="local-agent-pairing-form" className="flex flex-col gap-3">
             <DialogDescription>{t('localAgent.permission')}</DialogDescription>
+            <div className="flex flex-col gap-2" role="group" aria-label="Local MCP permissions">
+              <p className="text-xs text-muted-foreground">{t('localAgent.scope')}</p>
+              {([['inspect', 'localAgent.inspect'], ['read', 'localAgent.read'], ['search', 'localAgent.search'], ['write', 'localAgent.write']] as const).map(([permission, label]) => (
+                <Label key={permission} className="flex items-center gap-2">
+                  <Checkbox checked={permissions[permission]} onCheckedChange={(checked) => setPermissions((current) => ({ ...current, [permission]: checked === true }))} />
+                  {t(label)}
+                </Label>
+              ))}
+            </div>
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col gap-1">
                 <p className="text-xs text-muted-foreground">{t('localAgent.setup')}</p>

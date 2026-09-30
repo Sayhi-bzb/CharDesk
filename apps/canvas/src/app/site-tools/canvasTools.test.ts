@@ -15,6 +15,17 @@ const host = (id: string | null = "canvas-a") => ({
 });
 
 describe("Canvas searching tool", () => {
+  it("forwards regex, case folding, and spatial templates with actionable errors", async () => {
+    const canvas = host();
+    const tool = createCanvasSearchTool(canvas);
+    expect(await tool.execute({ query: "a", ignoreCase: true })).toMatchObject({ matches: [{ content: expect.stringContaining("A") }] });
+    expect(await tool.execute({ query: "[a-z]", regex: true, ignoreCase: true })).toMatchObject({ matches: [{ content: expect.stringContaining("A") }] });
+    expect(await tool.execute({ query: "A\nB" })).toMatchObject({ matches: [] });
+    expect(await tool.execute({ query: "[", regex: true })).toMatchObject({ code: "invalid_input" });
+    canvas.materializeSession.mockResolvedValue({ id: "canvas-a", name: "Example", mode: "freeform", slideDeck: null,
+      surface: createGridSurfaceReader(new Map([["0,0", { char: "A", color: "#000" }], ["1000000,0", { char: "B", color: "#000" }]])) });
+    expect(await tool.execute({ query: "A.*B", regex: true })).toMatchObject({ code: "search_limit", message: expect.stringContaining("Narrow viewport") });
+  });
   it("captures the session, returns Cell bounds, and is read-only", async () => {
     const canvas = host();
     const tool = createCanvasSearchTool(canvas);
@@ -28,7 +39,7 @@ describe("Canvas searching tool", () => {
   it("validates arguments before reading and handles unavailable content", async () => {
     const canvas = host();
     const tool = createCanvasSearchTool(canvas);
-    for (const input of [{}, { query: " " }, { query: "A\nB" }, { query: "A", regex: true },
+    for (const input of [{}, { query: " " }, { query: "A\n\nB" }, { query: "A", regex: "true" }, { query: "A", ignoreCase: 1 },
       { query: "A", after: [0] }, { query: "A", viewport: [0, 0, 0, 1] }]) {
       expect(await tool.execute(input)).toMatchObject({ code: "invalid_input" });
     }

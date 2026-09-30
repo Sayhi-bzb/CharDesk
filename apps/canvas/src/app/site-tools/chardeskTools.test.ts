@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createGridSurfaceReader, type CanvasRuntime } from "@/domains/canvas/public";
 import materials from "../../../../../.agents/skills/chardesk/references/materials.md?raw";
 import { createChardeskMaterialsTool, MATERIALS_READ_TOOL_NAME } from "./materialsTools";
-import { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME } from "./canvasTools";
+import { CANVAS_LIST_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME } from "./canvasTools";
 import { createChardeskAgentToolGroups, createChardeskAgentTools } from "./chardeskTools";
 import { createTextRenderingRuntime } from "@/domains/document/public";
 const runtime = createTextRenderingRuntime();
@@ -24,19 +24,19 @@ describe("CharDesk agent tools", () => {
     const dependencies = { canvas, rendering };
     const groups = createChardeskAgentToolGroups(dependencies);
     expect(groups.materials.map(({ name }) => name)).toEqual([MATERIALS_READ_TOOL_NAME]);
-    expect(groups.canvas.map(({ name }) => name)).toEqual([CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_WRITE_TOOL_NAME]);
+    expect(groups.canvas.map(({ name }) => name)).toEqual([CANVAS_LIST_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_WRITE_TOOL_NAME]);
     const names = createChardeskAgentTools(dependencies).map(({ name }) => name);
-    expect(names).toEqual([MATERIALS_READ_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_WRITE_TOOL_NAME]);
-    expect(new Set(names).size).toBe(4);
+    expect(names).toEqual([MATERIALS_READ_TOOL_NAME, CANVAS_LIST_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_WRITE_TOOL_NAME]);
+    expect(new Set(names).size).toBe(5);
   });
 
   it("composes read-only pages without a Blackboard runtime", async () => {
     const groups = createChardeskAgentToolGroups({ canvas, rendering, readOnly: true });
     const tools = createChardeskAgentTools({ canvas, rendering, readOnly: true });
-    expect(tools.map(({ name }) => name)).toEqual([MATERIALS_READ_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME]);
+    expect(tools.map(({ name }) => name)).toEqual([MATERIALS_READ_TOOL_NAME, CANVAS_LIST_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME]);
     expect(tools.every(({ readOnly }) => readOnly)).toBe(true);
-    expect(await groups.canvas[0].execute({})).toMatchObject({ canvasId: "canvas-a", viewport: null });
-    expect(await groups.canvas[1].execute({ query: "Hello" })).toMatchObject({ canvasId: "canvas-a", matches: [], next: null });
+    expect(await groups.canvas[1].execute({})).toMatchObject({ canvasId: "canvas-a", viewport: null });
+    expect(await groups.canvas[2].execute({ query: "Hello" })).toMatchObject({ canvasId: "canvas-a", matches: [], next: null });
   });
 
   it("exposes the canonical visual materials as read-only Markdown", async () => {

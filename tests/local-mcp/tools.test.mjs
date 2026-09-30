@@ -30,7 +30,9 @@ test("stdio MCP publishes search and forwards its unchanged input and output", {
     assert.equal((await client.callTool({ name: search.name, arguments: { query: "Hello" } })).isError, true);
     page = new WebSocket(await ready, { origin });
     await once(page, "open");
-    const input = { query: "Hello", viewport: [-20, -10, 80, 24], after: [-10, -5] };
+    assert.equal(search.inputSchema.properties.regex.type, "boolean");
+    assert.equal(search.inputSchema.properties.ignoreCase.type, "boolean");
+    const input = { query: "hello \\w+\nwelcome", regex: true, ignoreCase: true, viewport: [-20, -10, 80, 24], after: [-10, -5] };
     const result = { canvasId: "example", matches: [{ viewport: [-13, -7, 32, 5], content: [" ".repeat(32), " ".repeat(32), `        Hello there${" ".repeat(13)}`, " ".repeat(32), " ".repeat(32)].join("\n") }], next: null };
     const requests = [];
     page.on("message", (data) => {

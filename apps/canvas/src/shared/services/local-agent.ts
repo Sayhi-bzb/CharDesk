@@ -1,4 +1,8 @@
 type LocalAgentStatus = 'idle' | 'connecting' | 'connected' | 'error';
+export type LocalAgentPermission = 'inspect' | 'read' | 'search' | 'write';
+export type LocalAgentPermissions = Readonly<Record<LocalAgentPermission, boolean>>;
+export const DEFAULT_LOCAL_AGENT_PERMISSIONS: LocalAgentPermissions = Object.freeze({ inspect: true, read: true, search: true, write: true });
+
 type LocalAgentPort = Readonly<{
   scope: () => string | null;
   execute: (name: string, input: Record<string, unknown>) => Promise<unknown>;
@@ -9,14 +13,15 @@ let socket: WebSocket | undefined;
 let status: LocalAgentStatus = 'idle';
 let revision = 0;
 const pairingKey = 'chardesk.local-agent.pairing';
-type Pairing = { url: string; scope: string; expiresAt: number };
+type Pairing = { url: string; scope: string; expiresAt: number; permissions: LocalAgentPermissions };
 let retry: ReturnType<typeof setTimeout> | undefined;
 let automatic = false;
 export function getRememberedLocalAgent(): Pairing | null {
   try {
     const saved = JSON.parse(localStorage.getItem(pairingKey) ?? 'null') as Pairing | null;
     if (saved && typeof saved.url === 'string' && typeof saved.scope === 'string'
-      && Number.isFinite(saved.expiresAt) && saved.expiresAt > Date.now()) return saved;
+      && Number.isFinite(saved.expiresAt) && saved.expiresAt > Date.now()
+      && saved.permissions && Object.keys(DEFAULT_LOCAL_AGENT_PERMISSIONS).every((key) => typeof saved.permissions[key as LocalAgentPermission] === 'boolean')) return saved;
     localStorage.removeItem(pairingKey);
   } catch { /* Storage may be unavailable; explicit pairing still works. */ }
   return null;
@@ -39,7 +44,7 @@ export const configureLocalAgent = (next: LocalAgentPort) => { port = next; rest
 export function restoreLocalAgent() {
   const saved = getRememberedLocalAgent();
   if (saved && saved.scope === port?.scope() && !socket) {
-    try { connectLocalAgent(saved.url, true); } catch { forgetLocalAgent(); }
+    try { connectLocalAgent(saved.url, true, saved.permissions); } catch { forgetLocalAgent(); }
   }
 }
 
@@ -57,7 +62,10 @@ export const disconnectLocalAgent = () => {
   publish('idle');
 };
 
-export function connectLocalAgent(value: string, remember = false): void {
+let permissions: LocalAgentPermissions = DEFAULT_LOCAL_AGENT_PERMISSIONS;
+export const getLocalAgentPermissions = () => permissions;
+
+export function connectLocalAgent(value: string, remember = false, grant = DEFAULT_LOCAL_AGENT_PERMISSIONS): void {
   const url = new URL(value.trim());
   if (url.protocol !== 'ws:' || url.hostname !== '127.0.0.1' || !url.port
     || url.pathname !== '/bridge' || url.username || url.password || url.hash
@@ -70,6 +78,7 @@ export function connectLocalAgent(value: string, remember = false): void {
   if (!activePort || !scope) throw new Error('Open a Canvas first');
   disconnectLocalAgent();
   automatic = remember;
+  permissions = { ...DEFAULT_LOCAL_AGENT_PERMISSIONS, ...grant };
   const connection = new WebSocket(url.href);
   socket = connection;
   publish('connecting');
@@ -109,7 +118,7 @@ export function connectLocalAgent(value: string, remember = false): void {
       if (message.method === 'paired') {
         if (socket !== connection) return;
         if (remember && Number.isFinite(message.expiresAt) && message.expiresAt! > Date.now()) {
-          localStorage.setItem(pairingKey, JSON.stringify({ url: url.href, scope,
+          localStorage.setItem(pairingKey, JSON.stringify({ url: url.href, scope, permissions,
             expiresAt: Math.min(message.expiresAt!, Date.now() + 30 * 24 * 60 * 60 * 1000) }));
           publish(status);
         }
@@ -136,8 +145,10 @@ export function connectLocalAgent(value: string, remember = false): void {
         }
         const name = request.params?.name;
         const input = request.params?.input;
-        if (request.method !== 'call' || !['chardesk_canvas_read', 'chardesk_canvas_search', 'chardesk_canvas_write'].includes(String(name))
+        if (request.method !== 'call' || !['chardesk_canvas_list', 'chardesk_canvas_read', 'chardesk_canvas_search', 'chardesk_canvas_write'].includes(String(name))
           || !input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid Canvas request');
+        const permission = String(name).endsWith('_list') ? 'inspect' : String(name).endsWith('_read') ? 'read' : String(name).endsWith('_search') ? 'search' : 'write';
+        if (!permissions[permission]) throw new Error(`Permission denied: canvas.${permission}`);
         const result = await activePort.execute(String(name), input as Record<string, unknown>);
         response = JSON.stringify({ id, result });
       } catch (error) {

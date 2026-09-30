@@ -12,6 +12,9 @@ existing document establish the scene.
 Editable Freeform and native Slide pages own rendered Cell content. A local CLI
 preview is read-only; its file remains authoritative.
 
+On an editable Canvas, read observes Cells; write renders text into Cells.
+Markdown and ANSI are input materials, not retained source documents.
+
 ## Routing
 
 - Create or style content with [materials](references/materials.md).
@@ -21,7 +24,7 @@ preview is read-only; its file remains authoritative.
   [CLI](references/backstage/cli.md).
 - Sequence native Slide pages with [Slides](references/slides.md).
 - Missing live capabilities use [connection guidance](references/backstage/experimental-live.md).
-- An existing Blackboard uses [legacy migration](references/blackboard.md) only.
+- An existing Blackboard uses [legacy migration](references/legacy-migration.md) only.
 
 Stay on the requested target. New local documents default to one Freeform
 `.chardesk` file. Do not create Blackboard packages or substitute a new Canvas

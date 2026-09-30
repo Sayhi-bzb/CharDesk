@@ -6,11 +6,11 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { WebSocket, WebSocketServer } from "ws";
-import { CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL } from "../../apps/canvas/src/app/site-tools/canvasToolDefinitions.ts";
+import { CANVAS_LIST_TOOL, CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL } from "../../apps/canvas/src/app/site-tools/canvasToolDefinitions.ts";
 import { loadCredentials } from './credentials.mjs';
 
 // Experiment only: one explicitly paired browser page, no document storage.
-const canvasTools = [CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL];
+const canvasTools = [CANVAS_LIST_TOOL, CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL];
 const allowedTools = new Set(canvasTools.map((tool) => tool.name));
 const origins = new Set((process.env.CHARDESK_BRIDGE_ORIGIN || "http://127.0.0.1:5173").split(","));
 const pairingFile = process.env.CHARDESK_BRIDGE_PAIRING_FILE;

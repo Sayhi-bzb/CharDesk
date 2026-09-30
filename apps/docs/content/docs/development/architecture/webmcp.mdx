@@ -14,7 +14,7 @@ WebMCP
 
 | Group | Tools | Contract |
 | --- | --- | --- |
-| Canvas | `chardesk_canvas_read`, `chardesk_canvas_search`, `chardesk_canvas_write` | [Reading](/development/architecture/canvas-reading), [searching](/development/architecture/canvas-searching), and [writing](/development/architecture/canvas-writing) in original Cell coordinates. |
+| Canvas | `chardesk_canvas_list`, `chardesk_canvas_read`, `chardesk_canvas_search`, `chardesk_canvas_write` | List and operate on Canvases in original Cell coordinates. `canvasId` is optional and defaults to the active Canvas. |
 | Materials | `chardesk_read_materials` | Read-only Markdown shared by both workflows. |
 
 New spatial operations belong to Canvas; source-file editing remains outside these tools.
@@ -24,7 +24,7 @@ Groups reuse existing runtimes and never own separate copies of application stat
 
 The [composition entry point](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/chardeskTools.ts)
 builds the groups and flattens them for the host connector. Normal Canvas pages
-register all 4 tools. Local CLI reader pages register Canvas reading, searching,
+register all 5 tools. Local CLI reader pages register Canvas listing, reading, searching,
 and Materials only. Workspace management pages register none.
 Grouping does not add a browser-visible category field or change registration order.
 

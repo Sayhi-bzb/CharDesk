@@ -1,4 +1,4 @@
 interface:
   display_name: "CharDesk"
-  short_description: "Shape visual workspaces as real working scenes"
-  default_prompt: "Use $chardesk to shape this content as a real working scene."
+  short_description: "Create and edit shared Canvas scenes and Slides"
+  default_prompt: "Use $chardesk to create or edit this Canvas scene or Slide document."

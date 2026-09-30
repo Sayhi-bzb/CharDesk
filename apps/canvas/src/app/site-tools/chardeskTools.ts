@@ -1,6 +1,6 @@
 import type { AgentToolDefinition } from "./contracts";
 import type { CanvasRuntime } from "@/domains/canvas/public";
-import { createCanvasReadTool, createCanvasWriteTool, createCanvasSearchTool } from "./canvasTools";
+import { createCanvasReadTool, createCanvasWriteTool, createCanvasSearchTool, createCanvasListTool } from "./canvasTools";
 import { createChardeskMaterialsTool } from "./materialsTools";
 import type { CanvasToolRendering } from "./canvasRendering";
 
@@ -14,7 +14,7 @@ export const createChardeskAgentToolGroups = (
   dependencies: ChardeskAgentToolDependencies,
 ): Readonly<Record<"materials" | "canvas", readonly AgentToolDefinition[]>> => ({
   materials: [createChardeskMaterialsTool()],
-  canvas: [createCanvasReadTool(dependencies.canvas, dependencies.rendering), createCanvasSearchTool(dependencies.canvas), ...(dependencies.readOnly ? [] : [createCanvasWriteTool(dependencies.canvas, dependencies.rendering)])],
+  canvas: [createCanvasListTool(dependencies.canvas), createCanvasReadTool(dependencies.canvas, dependencies.rendering), createCanvasSearchTool(dependencies.canvas), ...(dependencies.readOnly ? [] : [createCanvasWriteTool(dependencies.canvas, dependencies.rendering)])],
 });
 
 export const createChardeskAgentTools = (

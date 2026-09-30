@@ -18,4 +18,4 @@ Native Slide decks open in the browser; CLI inspect/render do not render decks.
 returns its URL. `render` produces PNG, `.chardesk`, ANSI, or text.
 Stdin works for inspect/render, not open. No checkout or dev server is required.
 
-Legacy files use [explicit migration](../blackboard.md), never normal authoring.
+Legacy files use [explicit migration](../legacy-migration.md), never normal authoring.

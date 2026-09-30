@@ -14,14 +14,42 @@ maps are not search content.
 { "query": "Hello", "viewport": [0, 0, 100, 50] }
 ```
 
-`query` is a case-sensitive literal, not a regular expression. It must contain a
-non-whitespace character and no line breaks or control characters. Matches stay
-within one row and use complete grapheme boundaries. Short gaps between stored
-characters behave as spaces; large empty envelopes are never materialized.
+在 full-access local MCP 中可增加 `canvasId` 指定目标 Canvas；省略时使用
+当前 active Canvas。先调用 `chardesk_canvas_list` 获取可用 ID。
+
+`query` is literal and case-sensitive by default. Set `ignoreCase: true` for
+Unicode case folding; set `regex: true` for [RE2 syntax](https://github.com/google/re2/wiki/Syntax).
+Lookaround and backreferences are unsupported. Each match must consume non-empty
+text at complete grapheme boundaries; zero-length regex matches are skipped.
+
+Actual LF separates a two-dimensional template. Rows match at the same Cell `x`
+on consecutive Canvas rows; widths may differ. Spaces are literal, and content
+after each row's match is unconstrained. Every template row must contain a
+non-whitespace character; empty/blank rows and other control characters are rejected.
+
+```json
+{ "query": "Hello \\w+\nWelcome", "regex": true, "ignoreCase": true }
+```
+
+This finds `Hello Alice` above `Welcome`, not merely two nearby strings.
+Queries are limited to 4096 UTF-16 units and 64 rows.
 
 Omit `viewport` to search all content. A supplied rectangle uses the same Cell
 coordinates as [reading](/development/architecture/canvas-reading), but search always uses original
-precision regardless of read's sampling `step`. Boundary-clipped glyphs do not match.
+precision regardless of read's sampling `step`. The complete template must fit
+inside it. Boundary-clipped glyphs do not match.
+
+## Sparse rows and limits
+
+Literal matching joins only gaps shorter than the longest template row.
+Regex matching uses each finite stored row envelope, clipped by the input
+viewport: missing internal Cells are spaces, and `^`/`$` refer to that envelope's
+edges, not storage spans or the template's origin. Unstored exterior space is
+not searchable. Envelopes over 16384 Cells are rejected, never split silently.
+
+A shared scan/time budget returns `search_limit` with no partial results. Narrow
+`viewport` and retry. [RE2JS](https://github.com/le0pard/re2js) avoids backtracking;
+the budget also bounds sparse expansion and repeated template checks.
 
 ## Results and continuation
 
@@ -44,7 +72,8 @@ Read the returned viewport for styles, or enlarge it for more context. The
 preview is not a whole-region replacement payload for [writing](/development/architecture/canvas-writing).
 
 Each call returns at most 20 matches. Non-null `next` is the last returned match's
-starting `[x,y]`, not the preview origin; pass it as `after` with the same query and viewport to continue
+starting `[x,y]`, not the preview origin; pass it as `after` with identical
+query, regex, ignoreCase, and viewport to continue
 strictly after that position. Confirm `canvasId` has not changed. Calls observe
 current content, not a shared snapshot; restart after an edit if consistency matters.
 Empty results have `matches: []` and `next: null`.

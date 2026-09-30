@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CellPlaneIndex, cellPlanePatchToOperation, createGridSurfaceReader } from "./cell-plane/model";
-import { searchCanvasSurface } from "./searchSurface";
+import { searchCanvasSurface, CanvasSearchError } from "./searchSurface";
 import { getTextCellWidth } from "@chardesk/protocol";
 import { readCanvasViewport, isCanvasReadViewport } from "./readViewport";
 
@@ -11,6 +11,85 @@ const surface = (rows: Array<{ x: number; y: number; text: string; color?: strin
 ]);
 
 describe("Canvas surface search", () => {
+  it("matches literal and regex templates at the same Cell column on consecutive rows", () => {
+    const reader = surface([
+      { x: -10, y: -5, text: "Hello Alice" }, { x: -10, y: -4, text: "Welcome!" },
+      { x: 20, y: -5, text: "Hello Bob" }, { x: 20, y: -4, text: "Goodbye" },
+      { x: -9, y: 0, text: "Hello Alice" }, { x: -10, y: 1, text: "Welcome" },
+      { x: -10, y: 5, text: "Hello Alice" }, { x: -10, y: 7, text: "Welcome" },
+    ]);
+    expect(searchCanvasSurface(reader, "Hello\nWelcome").matches.map(({ viewport }) => viewport)).toEqual([windowAt(-10, -5)]);
+    expect(searchCanvasSurface(reader, "Hello \\w+\nWelcome", { regex: true }).matches.map(({ viewport }) => viewport)).toEqual([windowAt(-10, -5)]);
+    expect(searchCanvasSurface(reader, "Hello\\s+(Alice|Bob)", { regex: true }).matches).toHaveLength(4);
+    expect(searchCanvasSurface(reader, "Hello\nWelcome", { viewport: [-10, -5, 20, 1] }).matches).toEqual([]);
+    expect(searchCanvasSurface(reader, "Hello\nWelcome", { viewport: [-10, -5, 5, 2] }).matches).toEqual([]);
+  });
+
+  it("uses Cell coordinates rather than string offsets for aligned Unicode templates", () => {
+    const reader = surface([{ x: -5, y: -2, text: "你é😀Hello" }, { x: 0, y: -1, text: "Welcome" }]);
+    expect(searchCanvasSurface(reader, "Hello\nWelcome").matches[0].viewport).toEqual(windowAt(0, -2));
+    expect(searchCanvasSurface(reader, "Hello\nWel.*", { regex: true }).matches[0].viewport).toEqual(windowAt(0, -2));
+    expect(searchCanvasSurface(reader, "e\nWelcome", { regex: true }).matches).toEqual([]);
+    expect(searchCanvasSurface(reader, ".", { regex: true, viewport: [-5, -2, 5, 1] }).matches).toHaveLength(2);
+  });
+
+  it("supports Unicode case folding while keeping literal punctuation literal", () => {
+    const reader = surface([{ x: 0, y: 0, text: "[HI]. Σ" }, { x: 0, y: 1, text: "Welcome" }]);
+    expect(searchCanvasSurface(reader, "[hi].\nwelcome", { ignoreCase: true }).matches).toHaveLength(1);
+    expect(searchCanvasSurface(reader, "\\[hi\\]\\.\nwel.*", { regex: true, ignoreCase: true }).matches).toHaveLength(1);
+    expect(searchCanvasSurface(reader, "σ", { ignoreCase: true }).matches[0].viewport).toEqual(windowAt(6, 0));
+    expect(searchCanvasSurface(reader, "[hi].").matches).toEqual([]);
+  });
+
+  it("does not skip valid overlapping first-row candidates when a template fails", () => {
+    const reader = surface([{ x: 0, y: 0, text: "aaaa" }, { x: 1, y: 1, text: "B" }]);
+    expect(searchCanvasSurface(reader, "aa\nB").matches[0].viewport).toEqual(windowAt(1, 0));
+    expect(searchCanvasSurface(reader, "aa\nB", { regex: true }).matches[0].viewport).toEqual(windowAt(1, 0));
+  });
+
+  it("anchors regex to the stored row envelope, not styles, gaps, or template origin", () => {
+    const reader = surface([{ x: 0, y: 0, text: "Hello", color: "#f00" }, { x: 8, y: 0, text: "World" },
+      { x: 0, y: 1, text: "prefix World" }]);
+    expect(searchCanvasSurface(reader, "^Hello\\s+World$", { regex: true }).matches).toHaveLength(1);
+    expect(searchCanvasSurface(reader, "^World", { regex: true }).matches).toEqual([]);
+    expect(searchCanvasSurface(reader, "^World$", { regex: true, viewport: [8, 0, 5, 1] }).matches).toHaveLength(1);
+    expect(searchCanvasSurface(reader, "World\n^World", { regex: true }).matches).toEqual([]);
+  });
+
+  it("skips zero-length matches and rejects unsupported patterns without backtracking", () => {
+    const reader = surface([{ x: 0, y: 0, text: "aaaX" }]);
+    expect(searchCanvasSurface(reader, "a*", { regex: true }).matches).toHaveLength(1);
+    expect(searchCanvasSurface(reader, "^|$", { regex: true }).matches).toEqual([]);
+    expect(searchCanvasSurface(reader, "(a+)+$", { regex: true }).matches).toEqual([]);
+    for (const query of ["[", "(?=a)", "(a)\\1"]) {
+      expect(() => searchCanvasSurface(reader, query, { regex: true })).toThrow(CanvasSearchError);
+    }
+    expect(() => searchCanvasSurface(reader, "X".repeat(4097))).toThrow(CanvasSearchError);
+    expect(() => searchCanvasSurface(reader, Array(65).fill("X").join("\n"))).toThrow(CanvasSearchError);
+  });
+
+  it("returns explicit limits rather than truncating huge regex envelopes or timed-out scans", () => {
+    const reader = surface([{ x: 0, y: 0, text: "Hello" }, { x: 1000000, y: 0, text: "World" }]);
+    expect(() => searchCanvasSurface(reader, "Hello.*World", { regex: true })).toThrow(/Narrow viewport/);
+    expect(searchCanvasSurface(reader, "^World$", { regex: true, viewport: [1000000, 0, 5, 1] }).matches).toHaveLength(1);
+    const clock = vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValue(251);
+    try { expect(() => searchCanvasSurface(reader, "Hello")).toThrow(/budget exceeded/); }
+    finally { clock.mockRestore(); }
+  });
+
+  it("paginates aligned regex origins with unchanged options", () => {
+    const reader = surface(Array.from({ length: 25 }, (_, index) => [
+      { x: -20, y: index * 3, text: `Hello ${index}` }, { x: -20, y: index * 3 + 1, text: "Welcome" },
+    ]).flat());
+    const options = { regex: true, ignoreCase: true };
+    const first = searchCanvasSurface(reader, "hello \\d+\nwelcome", options);
+    expect(first.matches).toHaveLength(20);
+    expect(first.next).toEqual([-20, 57]);
+    const second = searchCanvasSurface(reader, "hello \\d+\nwelcome", { ...options, after: first.next! });
+    expect(second.matches).toHaveLength(5);
+    expect(second.matches[0].viewport).toEqual(windowAt(-20, 60));
+    expect(second.next).toBeNull();
+  });
   it("finds case-sensitive literal, non-overlapping matches in y/x order", () => {
     const reader = surface([{ x: 5, y: 2, text: "[hi]* hi" }, { x: -10, y: -2, text: "HI hi hi" }, { x: 0, y: 5, text: "aaaaa" }]);
     expect(searchCanvasSurface(reader, "hi").matches.map(({ viewport }) => viewport)).toEqual([
@@ -96,9 +175,9 @@ describe("Canvas surface search", () => {
     expect(result.matches[1].viewport).toEqual([Number.MAX_SAFE_INTEGER - 32, Number.MAX_SAFE_INTEGER - 5, 32, 5]);
   });
 
-  it("rejects blank, multiline, control, and malformed coordinate inputs", () => {
+  it("rejects blank template rows, control, and malformed coordinate inputs", () => {
     const reader = surface([{ x: 0, y: 0, text: "A" }]);
-    for (const query of ["", "  ", "A\nB", "A\tB", "A\u2028B", "A\u2029B", "\x1b[31mA"]) expect(() => searchCanvasSurface(reader, query)).toThrow();
+    for (const query of ["", "  ", "A\n\nB", "A\n", "A\tB", "A\u2028B", "A\u2029B", "\x1b[31mA"]) expect(() => searchCanvasSurface(reader, query)).toThrow();
     expect(() => searchCanvasSurface(reader, "A", { viewport: [0, 0, 0, 1] })).toThrow();
     expect(() => searchCanvasSurface(reader, "A", { after: [0.5, 0] })).toThrow();
     expect(searchCanvasSurface(new CellPlaneIndex(), "A")).toEqual({ matches: [], next: null });

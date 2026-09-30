@@ -118,6 +118,11 @@ jobs:
           else
             echo "cli_published=false" >> "$GITHUB_OUTPUT"
           fi
+          if npm view "@chardesk/mcp@$version" version >/dev/null 2>&1; then
+            echo "mcp_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "mcp_published=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install browser runtimes for release verification
         run: npx playwright install --with-deps chromium webkit
@@ -134,6 +139,7 @@ jobs:
           npm pack --workspace @chardesk/fonts --pack-destination release-assets
           npm pack --workspace @chardesk/font-maple --pack-destination release-assets
           npm pack --workspace @chardesk/cli --pack-destination release-assets
+          npm pack --workspace @chardesk/mcp --pack-destination release-assets
 
       - name: Smoke test packed packages
         run: >-
@@ -144,6 +150,7 @@ jobs:
           release-assets/chardesk-fonts-${RELEASE_TAG#v}.tgz
           release-assets/chardesk-font-maple-${RELEASE_TAG#v}.tgz
           release-assets/chardesk-cli-${RELEASE_TAG#v}.tgz
+          release-assets/chardesk-mcp-${RELEASE_TAG#v}.tgz
 
       - name: Publish protocol to npm
         if: steps.package-status.outputs.protocol_published != 'true'
@@ -168,6 +175,10 @@ jobs:
       - name: Publish CLI to npm
         if: steps.package-status.outputs.cli_published != 'true'
         run: npm publish --workspace @chardesk/cli --access public --provenance
+
+      - name: Publish MCP server to npm
+        if: steps.package-status.outputs.mcp_published != 'true'
+        run: npm publish --workspace @chardesk/mcp --access public --provenance
 
       - name: Upload package artifacts to the GitHub release
         env:
