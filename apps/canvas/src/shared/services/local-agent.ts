@@ -5,6 +5,7 @@ export const DEFAULT_LOCAL_AGENT_PERMISSIONS: LocalAgentPermissions = Object.fre
 
 type LocalAgentPort = Readonly<{
   scope: () => string | null;
+  canvasId?: () => string | null;
   execute: (name: string, input: Record<string, unknown>) => Promise<unknown>;
 }>;
 
@@ -13,6 +14,7 @@ let socket: WebSocket | undefined;
 let status: LocalAgentStatus = 'idle';
 let revision = 0;
 const pairingKey = 'chardesk.local-agent.pairing';
+export const DEFAULT_LOCAL_AGENT_URL = 'ws://127.0.0.1:9494/bridge';
 type Pairing = { url: string; scope: string; expiresAt: number; permissions: LocalAgentPermissions };
 let retry: ReturnType<typeof setTimeout> | undefined;
 let automatic = false;
@@ -20,8 +22,14 @@ export function getRememberedLocalAgent(): Pairing | null {
   try {
     const saved = JSON.parse(localStorage.getItem(pairingKey) ?? 'null') as Pairing | null;
     if (saved && typeof saved.url === 'string' && typeof saved.scope === 'string'
-      && Number.isFinite(saved.expiresAt) && saved.expiresAt > Date.now()
-      && saved.permissions && Object.keys(DEFAULT_LOCAL_AGENT_PERMISSIONS).every((key) => typeof saved.permissions[key as LocalAgentPermission] === 'boolean')) return saved;
+      && Number.isFinite(saved.expiresAt) && saved.expiresAt > Date.now()) {
+      // Pairings created before permission grants were persisted remain scoped to
+      // their original Canvas. They are never widened to application scope.
+      const legacyPermissions = saved.permissions ?? DEFAULT_LOCAL_AGENT_PERMISSIONS;
+      if (Object.keys(DEFAULT_LOCAL_AGENT_PERMISSIONS).every((key) => typeof legacyPermissions[key as LocalAgentPermission] === 'boolean')) {
+        return { ...saved, permissions: legacyPermissions };
+      }
+    }
     localStorage.removeItem(pairingKey);
   } catch { /* Storage may be unavailable; explicit pairing still works. */ }
   return null;
@@ -43,13 +51,19 @@ export const configureLocalAgent = (next: LocalAgentPort) => { port = next; rest
 
 export function restoreLocalAgent() {
   const saved = getRememberedLocalAgent();
-  if (saved && saved.scope === port?.scope() && !socket) {
-    try { connectLocalAgent(saved.url, true, saved.permissions); } catch { forgetLocalAgent(); }
+  const currentScope = port?.scope();
+  const currentCanvas = port?.canvasId?.() ?? currentScope;
+  const matches = saved && (saved.scope === 'application' ? saved.scope === currentScope : saved.scope === currentCanvas);
+  if (saved && matches && !socket) {
+    try { connectLocalAgent(saved.url, true, saved.permissions, saved.scope); } catch { forgetLocalAgent(); }
   }
 }
 
 export function forgetLocalAgent() {
   try { localStorage.removeItem(pairingKey); } catch { /* No stored pairing to remove. */ }
+  if (socket?.readyState === WebSocket.OPEN) {
+    try { socket.send(JSON.stringify({ method: 'revoke' })); } catch { /* The bridge may already be closing. */ }
+  }
   disconnectLocalAgent();
 }
 
@@ -65,17 +79,19 @@ export const disconnectLocalAgent = () => {
 let permissions: LocalAgentPermissions = DEFAULT_LOCAL_AGENT_PERMISSIONS;
 export const getLocalAgentPermissions = () => permissions;
 
-export function connectLocalAgent(value: string, remember = false, grant = DEFAULT_LOCAL_AGENT_PERMISSIONS): void {
-  const url = new URL(value.trim());
+export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = false, grant = DEFAULT_LOCAL_AGENT_PERMISSIONS, requestedScope?: string): void {
+  const url = new URL(value.trim() || DEFAULT_LOCAL_AGENT_URL);
   if (url.protocol !== 'ws:' || url.hostname !== '127.0.0.1' || !url.port
     || url.pathname !== '/bridge' || url.username || url.password || url.hash
     || [...url.searchParams.keys()].some((key) => key !== 'token')
-    || !/^[a-f0-9]{64}$/.test(url.searchParams.get('token') ?? '')) {
+    || (url.searchParams.has('token') && !/^[a-f0-9]{64}$/.test(url.searchParams.get('token') ?? ''))) {
     throw new Error('Invalid local pairing URL');
   }
   const activePort = port;
-  const scope = activePort?.scope();
-  if (!activePort || !scope) throw new Error('Open a Canvas first');
+  const applicationScope = activePort?.scope();
+  const scope = requestedScope ?? applicationScope;
+  const currentCanvas = activePort?.canvasId?.() ?? applicationScope;
+  if (!activePort || !applicationScope || !scope || (scope !== 'application' && currentCanvas !== scope)) throw new Error('Open a Canvas first');
   disconnectLocalAgent();
   automatic = remember;
   permissions = { ...DEFAULT_LOCAL_AGENT_PERMISSIONS, ...grant };
@@ -101,7 +117,8 @@ export function connectLocalAgent(value: string, remember = false, grant = DEFAU
       socket = undefined;
       publish('error');
       const saved = getRememberedLocalAgent();
-      if (automatic && saved?.scope === activePort.scope()) {
+      const currentScope = saved?.scope === 'application' ? activePort.scope() : (activePort.canvasId?.() ?? activePort.scope());
+      if (automatic && saved?.scope === currentScope) {
         retry = setTimeout(restoreLocalAgent, 5_000);
       }
     }
@@ -117,11 +134,24 @@ export function connectLocalAgent(value: string, remember = false, grant = DEFAU
       const message = JSON.parse(data) as { method?: string; expiresAt?: number };
       if (message.method === 'paired') {
         if (socket !== connection) return;
+        connection.send(JSON.stringify({ method: 'authorize', grant: {
+          scope: scope === 'application' ? 'application' : 'canvas',
+          ...(scope === 'application' ? {} : { canvasId: scope }),
+          permissions,
+        } }));
         if (remember && Number.isFinite(message.expiresAt) && message.expiresAt! > Date.now()) {
           localStorage.setItem(pairingKey, JSON.stringify({ url: url.href, scope, permissions,
             expiresAt: Math.min(message.expiresAt!, Date.now() + 30 * 24 * 60 * 60 * 1000) }));
           publish(status);
         }
+        return;
+      }
+      if (message.method === 'authorized') {
+        if (socket === connection) publish('connected');
+        return;
+      }
+      if (message.method === 'authorization_denied') {
+        if (socket === connection) { automatic = false; connection.close(1008, 'Authorization denied'); publish('error'); }
         return;
       }
     } catch {
@@ -130,7 +160,8 @@ export function connectLocalAgent(value: string, remember = false, grant = DEFAU
     }
     queue = queue.then(async () => {
       if (socket !== connection || connection.readyState !== WebSocket.OPEN) return;
-      if (activePort.scope() !== scope) { disconnectLocalAgent(); return; }
+      const currentScope = scope === 'application' ? activePort.scope() : (activePort.canvasId?.() ?? activePort.scope());
+      if (currentScope !== scope) { disconnectLocalAgent(); return; }
       let id: string | undefined;
       let response: string;
       try {
@@ -150,7 +181,12 @@ export function connectLocalAgent(value: string, remember = false, grant = DEFAU
         const permission = String(name).endsWith('_list') ? 'inspect' : String(name).endsWith('_read') ? 'read' : String(name).endsWith('_search') ? 'search' : 'write';
         if (!permissions[permission]) throw new Error(`Permission denied: canvas.${permission}`);
         const result = await activePort.execute(String(name), input as Record<string, unknown>);
-        response = JSON.stringify({ id, result });
+        const scopedResult = scope === 'application' || !String(name).endsWith('_list') || !result || typeof result !== 'object'
+          ? result
+          : { ...(result as Record<string, unknown>), canvases: Array.isArray((result as Record<string, unknown>).canvases)
+            ? (result as { canvases: unknown[] }).canvases.filter((canvas) => (canvas as { canvasId?: unknown })?.canvasId === scope)
+            : [] };
+        response = JSON.stringify({ id, result: scopedResult });
       } catch (error) {
         response = JSON.stringify({ id, error: error instanceof Error ? error.message : 'Canvas request failed' });
       }

@@ -3,6 +3,7 @@ import { CanvasWriteError, isCanvasReadViewport, readCanvasViewport, isCanvasSea
 import type { AgentToolDefinition } from "./contracts";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
 import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvasRendering";
+import { CHARDESK_CONTENT_THEMES } from "@chardesk/rendering/theme";
 
 import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL, CANVAS_SEARCH_TOOL, CANVAS_LIST_TOOL } from "./canvasToolDefinitions";
 export { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_LIST_TOOL_NAME } from "./canvasToolDefinitions";
@@ -102,6 +103,11 @@ export const createCanvasWriteTool = (
       }
       const rendered = await rendering.render(input.content, state.brushColor, rendering.getContext());
       const current = canvas.getState();
+      const currentSession = current.canvasSessions.find(({ id }) => id === canvasId);
+      if (!currentSession || currentSession.migrationPending || isSourceBackedCanvasSession(currentSession)) {
+        return { ok: false, code: currentSession?.migrationPending ? "canvas_not_ready" : "write_failed",
+          message: currentSession?.migrationPending ? "The target Canvas migration changed during rendering; nothing was written." : "The target Canvas changed during rendering; nothing was written." };
+      }
       if (canvasId === state.activeCanvasId && (current.activeCanvasId !== canvasId || current.slideDeck?.activeSlideId !== state.slideDeck?.activeSlideId)) {
         return { ok: false, code: "write_failed", message: "The active Canvas or Slide changed during rendering; nothing was written. Read the current target again." };
       }
@@ -142,7 +148,9 @@ export const createCanvasReadTool = (
       const canvasId = target.id;
       const snapshot = await canvas.materializeSession(canvasId);
       if (!snapshot) return { ok: false, code: "canvas_not_ready", message: "The Canvas content is not ready." };
-      const result = readCanvasViewport(snapshot.surface, input.viewport);
+      const result = readCanvasViewport(snapshot.surface, input.viewport, {
+        defaultForeground: CHARDESK_CONTENT_THEMES[rendering.getContext().themeMode].foreground,
+      });
       return { canvasId, ...result, content: `${result.content}\n\n${describeCanvasWriteRendering(rendering)}` };
     } catch {
       return { ok: false, code: "canvas_not_ready", message: "Unable to read the Canvas content." };

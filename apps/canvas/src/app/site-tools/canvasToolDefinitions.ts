@@ -33,7 +33,7 @@ export const CANVAS_SEARCH_TOOL = {
         }, required: ["viewport", "content"], additionalProperties: false } },
         next: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 }, { type: "null" }] },
       }, required: ["canvasId", "matches", "next"], additionalProperties: false },
-      { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "canvas_not_ready", "search_failed", "search_limit"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
+      { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "canvas_not_ready", "permission_denied", "search_failed", "search_limit"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
     ],
   },
 } satisfies Omit<AgentToolDefinition, "execute">;
@@ -48,7 +48,7 @@ export const CANVAS_LIST_TOOL = {
     { type: "object", properties: { canvases: { type: "array", items: { type: "object", properties: {
       canvasId: { type: "string" }, name: { type: "string" }, mode: { enum: ["freeform", "slide"] }, active: { type: "boolean" }, editable: { type: "boolean" },
     }, required: ["canvasId", "name", "mode", "active", "editable"], additionalProperties: false } } }, required: ["canvases"], additionalProperties: false },
-    { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_ready"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
+    { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_ready", "permission_denied"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
   ] },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
@@ -75,7 +75,7 @@ export const CANVAS_READ_TOOL = {
         mode: { enum: ["text", "projection", "density"] },
         content: { type: "string" },
       }, required: ["canvasId", "viewport", "step", "mode", "content"], additionalProperties: false },
-      { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "canvas_not_ready"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
+      { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "canvas_not_ready", "permission_denied"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
     ],
   },
 } satisfies Omit<AgentToolDefinition, "execute">;
@@ -104,7 +104,7 @@ export const CANVAS_WRITE_TOOL = {
       }, required: ["canvasId", "bounds"], additionalProperties: false },
       { type: "object", properties: {
         ok: { const: false },
-        code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "canvas_not_ready", "source_backed_canvas", "out_of_bounds", "write_failed"] },
+        code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "canvas_not_ready", "permission_denied", "source_backed_canvas", "out_of_bounds", "write_failed"] },
         message: { type: "string" },
       }, required: ["ok", "code", "message"], additionalProperties: false },
     ],

@@ -6,6 +6,9 @@ description: Read a Canvas through a bounded, automatically scaled text viewport
 `chardesk_canvas_read` exposes a Canvas through WebMCP and Site Tools. `canvasId`
 is optional: full-access local MCP can target an ID returned by
 `chardesk_canvas_list`; omitted input reads the active Canvas.
+The local bridge must be authorized in Agent → Local MCP; inspect, read, search,
+and write are independent grants, and a legacy Canvas-scoped pairing remains
+restricted to its original Canvas.
 It belongs to the spatial Canvas group in the [WebMCP contract](/development/architecture/webmcp).
 It reads the Cell surface without changing the user's camera, selection, or document.
 Freeform and local document previews use their current projection; Slides use the current page.
@@ -41,18 +44,24 @@ Non-whitespace characters, explicit backgrounds, and inverse/underlined/struck s
 count as occupied; wide
 graphemes occupy their Cell width. Any nonzero density remains visible. Projection
 symbols and coordinate rulers are navigation aids, not source characters. Text
-output preserves characters and spacing; style notes describe attributed Cells, not
+output preserves characters and interior spacing; style notes describe attributed Cells, not
 font rasterization or complete interaction state.
 
 ## Coordinates and style notes
 
-At text precision, the top border has ticks every 5 Cells and centred coordinate
+At text precision, the open top ruler has ticks every 5 Cells and centred coordinate
 labels every 10; rows are labelled every 5 Cells. Negative coordinates use signed
 labels. Ticks align with absolute coordinates, not the viewport origin. Large labels
 and sampled maps use wider intervals to avoid overlap. In sampled maps a tick marks
 the bucket containing that coordinate; `viewport` and `step` still define each
 bucket's exact bounds. Wide graphemes occupy two columns. Non-empty style notes
 follow the grid:
+
+The grid has no right or bottom border. Trailing ASCII spaces are omitted;
+`viewport` declares the full width and height. Leading and interior spaces and
+empty row positions remain unchanged. Style notes retain attributed trailing spaces.
+The active theme foreground is the default: light `#1f2328` and dark `#f0f6fc`
+are omitted from style notes; non-default colors and attributes remain.
 
 ```text
 styles:
@@ -71,9 +80,11 @@ their symbols are navigation aids, not styled source content. Inputs and respons
 are unchanged: notes are part of `content`. Reading source files or exporting ANSI is
 not part of this tool.
 
-Every read also includes current [write rendering](/development/architecture/canvas-writing) settings:
-mode, theme, Markdown wrap width, and feature toggles. These describe how the next
-write is rendered, not the historical source or rendering profile of existing Cells.
+Every read also includes a compact [write rendering](/development/architecture/canvas-writing)
+note: mode, theme, Markdown wrap width, and feature state. `markdown=all` means every
+registered Markdown feature is enabled; otherwise the note reports the enabled count
+and disabled feature IDs. These describe how the next write is rendered, not the
+historical source or rendering profile of existing Cells.
 
 The response contains `canvasId`, actual `viewport`, `step`, `mode`, and `content`.
 Rulers use original coordinates; output column `c` and row `r` cover the region

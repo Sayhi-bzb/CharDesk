@@ -9,10 +9,11 @@ export type CanvasToolRendering = Readonly<{
 
 export const describeCanvasWriteRendering = (rendering: CanvasToolRendering): string => {
   const profile = rendering.getProfile();
-  return `Write rendering (current settings, not content provenance): ${JSON.stringify({
-    mode: profile.mode,
-    theme: rendering.getContext().themeMode,
-    markdownWrapWidth: profile.markdownWrapEnabled ? profile.markdownWrapWidth : null,
-    features: Object.fromEntries(Object.entries(profile.features).map(([id, feature]) => [id, feature.enabled])),
-  })}\nWrite accepts text using these settings; only rendered Cells are stored, not the input source. Source-backed Canvases require source-file editing.`;
+  const features = Object.entries(profile.features);
+  const disabled = features.filter(([, feature]) => !feature.enabled).map(([id]) => id);
+  const featureSummary = disabled.length === 0
+    ? "markdown=all"
+    : `markdown=${features.length - disabled.length}/${features.length};disabled=${disabled.join(",")}`;
+  const wrap = profile.markdownWrapEnabled ? `wrap=${profile.markdownWrapWidth}` : "wrap=off";
+  return `Write rendering (current settings, not content provenance): mode=${profile.mode} theme=${rendering.getContext().themeMode} ${wrap} ${featureSummary}\nWrite accepts text using these settings; only rendered Cells are stored, not the input source. Source-backed Canvases require source-file editing.`;
 };

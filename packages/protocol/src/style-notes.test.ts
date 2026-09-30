@@ -34,4 +34,13 @@ describe("Cell style notes", () => {
     expect(notes).toContain("styles:256/300 regions · narrow the viewport");
     expect(notes).not.toContain("x=256");
   });
+
+  it("omits the theme default foreground while retaining other attributes", () => {
+    const notes = formatCharDeskStyleNotes([
+      { x: 0, y: 0, width: 1, color: "#1F2328" },
+      { x: 1, y: 0, width: 1, color: "#1f2328", attrs: { bold: true } },
+      { x: 2, y: 0, width: 1, color: "#ff0000" },
+    ], { coordinates: "explicit", defaultForeground: "#1f2328" });
+    expect(notes).toBe("styles:\n  y=0 x=1{bold}\n  y=0 x=2{fg:#ff0000}");
+  });
 });

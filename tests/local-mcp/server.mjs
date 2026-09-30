@@ -19,6 +19,16 @@ let credentials = await loadCredentials(credentialsFile);
 if (process.env.CHARDESK_BRIDGE_TOKEN) credentials.token = process.env.CHARDESK_BRIDGE_TOKEN;
 const timeoutMs = Number(process.env.CHARDESK_BRIDGE_TIMEOUT_MS || 10_000);
 const http = createServer(async (request, response) => {
+  if (request.method === "GET" && request.url === "/discover"
+    && request.headers.host === `127.0.0.1:${http.address().port}`
+    && origins.has(request.headers.origin)) {
+    response.writeHead(200, {
+      "content-type": "application/json",
+      "access-control-allow-origin": request.headers.origin,
+      "cache-control": "no-store",
+    }).end(JSON.stringify({ bridgeUrl: `ws://127.0.0.1:${http.address().port}/bridge` }));
+    return;
+  }
   if (request.method !== 'POST' || request.url !== '/revoke'
     || request.headers.host !== `127.0.0.1:${http.address().port}`
     || request.headers.origin || request.headers.authorization !== `Bearer ${credentials.token}`) {
@@ -28,6 +38,7 @@ const http = createServer(async (request, response) => {
   try {
     if (credentialsFile) await unlink(credentialsFile);
     credentials = await loadCredentials(credentialsFile);
+    pageGrant = undefined;
     page?.close(1000, 'Pairing revoked');
     await publishPairing();
     response.writeHead(204).end();
@@ -35,13 +46,15 @@ const http = createServer(async (request, response) => {
 });
 const sockets = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
 let page;
+let pageGrant;
 const pending = new Map();
 
 http.on("upgrade", (request, socket, head) => {
   const url = new URL(request.url, "http://127.0.0.1");
   const expectedHost = `127.0.0.1:${http.address().port}`;
+  const token = url.searchParams.get("token");
   if (request.headers.host !== expectedHost || !origins.has(request.headers.origin)
-    || url.pathname !== "/bridge" || url.searchParams.get("token") !== credentials.token
+    || url.pathname !== "/bridge" || (token !== null && token !== credentials.token)
     || Date.now() >= credentials.expiresAt) {
     socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
     return;
@@ -55,6 +68,7 @@ http.on("upgrade", (request, socket, head) => {
 
 sockets.on("connection", (client) => {
   page = client;
+  pageGrant = undefined;
   client.send(JSON.stringify({ method: 'paired', expiresAt: credentials.expiresAt }));
   const expiry = setInterval(() => {
     if (Date.now() >= credentials.expiresAt) client.close(1000, 'Pairing expired');
@@ -64,6 +78,30 @@ sockets.on("connection", (client) => {
   client.on("message", (data) => {
     try {
       const response = JSON.parse(data.toString());
+      if (response.method === "revoke") {
+        void (async () => {
+          if (credentialsFile) await unlink(credentialsFile);
+          credentials = await loadCredentials(credentialsFile);
+          pageGrant = undefined;
+          await publishPairing();
+          client.close(1000, "Pairing revoked");
+        })().catch(() => client.close(1011, "Unable to revoke pairing"));
+        return;
+      }
+      if (response.method === "authorize") {
+        const grant = response.grant;
+        const permissions = grant?.permissions;
+        const validPermissions = permissions && ["inspect", "read", "search", "write"].every((key) => typeof permissions[key] === "boolean");
+        if (!validPermissions || !["application", "canvas"].includes(grant.scope)
+          || (grant.scope === "canvas" && (typeof grant.canvasId !== "string" || !grant.canvasId))) {
+          client.send(JSON.stringify({ method: "authorization_denied" }));
+          client.close(1008, "Invalid authorization grant");
+          return;
+        }
+        pageGrant = { scope: grant.scope, canvasId: grant.canvasId, permissions: { ...permissions } };
+        client.send(JSON.stringify({ method: "authorized" }));
+        return;
+      }
       const request = pending.get(response.id);
       if (!request) return;
       pending.delete(response.id);
@@ -88,6 +126,13 @@ sockets.on("connection", (client) => {
 function forward(method, params = {}) {
   if (Date.now() >= credentials.expiresAt) return Promise.reject(new Error('Pairing expired. Generate a new pairing URL.'));
   if (!page || page.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Canvas page is not connected."));
+  if (!pageGrant) return Promise.reject(new Error("Canvas authorization is required."));
+  const permission = method.endsWith("_list") ? "inspect" : method.endsWith("_read") ? "read" : method.endsWith("_search") ? "search" : "write";
+  const input = params.input || {};
+  if (!pageGrant.permissions[permission]) return Promise.reject(new Error(`Permission denied: canvas.${permission}`));
+  if (pageGrant.scope === "canvas" && input.canvasId !== undefined && input.canvasId !== pageGrant.canvasId) {
+    return Promise.reject(new Error("Canvas authorization is limited to the paired Canvas."));
+  }
   if (pending.size >= 32 || page.bufferedAmount > 1024 * 1024) return Promise.reject(new Error("Bridge is busy."));
   const id = randomUUID();
   const message = JSON.stringify({ id, method, params });

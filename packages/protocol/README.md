@@ -58,6 +58,8 @@ See [`fixtures/v1.json`](./fixtures/v1.json) for portable conformance cases. Par
 `formatCharDeskStyleNotes` merges adjacent attributed Cells into bounded style notes.
 Coordinates are inclusive in the input coordinate space; default `y:x` notation preserves
 CLI inspection output, while `{ coordinates: "explicit" }` uses `y=… x=…`.
+Pass `defaultForeground` when the active light/dark theme is known to omit that
+theme baseline; non-default colors and attributes remain visible.
 At most 256 regions are shown; a truncation notice asks callers to narrow the viewport.
 
 For CharDesk-compatible glyph coverage, renderers may use the optional [`@chardesk/fonts`](https://www.npmjs.com/package/@chardesk/fonts) profile.

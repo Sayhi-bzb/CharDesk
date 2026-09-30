@@ -13,8 +13,8 @@ type StyleRegion = {
   tokens: string[];
 };
 
-const styleTokens = (cell: CharDeskStyleNoteCell) => [
-  ...(cell.color ? [`fg:${cell.color}`] : []),
+const styleTokens = (cell: CharDeskStyleNoteCell, defaultForeground?: string) => [
+  ...(cell.color && cell.color.toLowerCase() !== defaultForeground?.toLowerCase() ? [`fg:${cell.color}`] : []),
   ...(cell.bgColor ? [`bg:${cell.bgColor}`] : []),
   ...(cell.attrs?.bold ? ["bold"] : []),
   ...(cell.attrs?.italic ? ["italic"] : []),
@@ -53,9 +53,12 @@ const styleRegions = (cells: readonly CharDeskStyleNoteCell[]) => {
 /** Coordinates are inclusive Cell ranges in the caller's coordinate space. */
 export const formatCharDeskStyleNotes = (
   cells: readonly CharDeskStyleNoteCell[],
-  options: { coordinates?: "compact" | "explicit"; truncationHint?: string } = {},
+  options: { coordinates?: "compact" | "explicit"; truncationHint?: string; defaultForeground?: string } = {},
 ): string => {
-  const regions = styleRegions(cells);
+  const regions = styleRegions(cells.map((cell) => ({
+    ...cell,
+    color: cell.color?.toLowerCase() === options.defaultForeground?.toLowerCase() ? undefined : cell.color,
+  })));
   if (regions.length === 0) return "styles:none";
   const shown = regions.slice(0, 256);
   const rules = new Map<string, { tokens: string[]; selectors: string[] }>();

@@ -1,7 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setUiLanguage } from '@/shared/i18n';
-import { clipboard } from '@/shared/services/effects';
 import { publishWebMcpStatus } from '@/shared/services/webmcp-status';
 import { AgentDialog } from './agent-dialog';
 
@@ -59,28 +58,16 @@ describe('Agent connection dialog', () => {
     expect(local.disconnect).not.toHaveBeenCalled();
   });
 
-  it('expands only local pairing, copies inline, reports invalid input, and folds after connection', async () => {
-    vi.spyOn(clipboard, 'writeText').mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+  it('expands local pairing without requiring a URL and folds after connection', async () => {
     render(<AgentDialog open onOpenChange={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Pair' }));
-    expect(screen.getByText('Read/write this Canvas locally. Switching Canvas disconnects.')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Copy command' }));
-    expect(await screen.findByRole('button', { name: 'Copied' })).toBeVisible();
-    expect(clipboard.writeText).toHaveBeenCalledWith('npm run mcp:pair');
-    fireEvent.click(screen.getByRole('button', { name: 'Copied' }));
-    expect(await screen.findByRole('button', { name: 'Copy failed' })).toBeVisible();
-    const input = screen.getByLabelText('Pairing URL');
-    fireEvent.change(input, { target: { value: 'bad' } });
-    local.connect.mockImplementationOnce(() => { throw new Error('Invalid URL'); });
+    expect(screen.getByText('Pi is discovered on this computer. No pairing URL is required.')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
-    expect(screen.getByRole('alert')).toHaveTextContent('Invalid pairing URL');
-    expect(input).toHaveAttribute('aria-invalid', 'true');
-    fireEvent.change(input, { target: { value: 'ws://127.0.0.1:9494/bridge?token=test' } });
-    fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.keyDown(input, { key: 'Enter' });
-    expect(local.connect).toHaveBeenLastCalledWith('ws://127.0.0.1:9494/bridge?token=test', true);
+    expect(local.connect).toHaveBeenCalledOnce();
+    expect(local.connect.mock.calls[0][0]).toBe('');
+    expect(local.connect.mock.calls[0][1]).toBe(true);
     setLocalStatus('connected');
-    expect(screen.queryByLabelText('Pairing URL')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pi is discovered on this computer. No pairing URL is required.')).not.toBeInTheDocument();
     const localRow = within(screen.getByRole('group', { name: 'Local MCP' }));
     expect(localRow.getByRole('status')).toHaveTextContent('Connected');
     fireEvent.click(localRow.getByRole('button', { name: 'Disconnect' }));

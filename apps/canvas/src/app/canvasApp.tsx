@@ -50,6 +50,8 @@ let siteTools: ReturnType<typeof startDocumentSiteTools> | null = null;
 configureLocalAgent({
   scope: () => isWorkspaceRoute(window.location) || isRetiredBlackboardRoute(window.location)
     ? null : 'application',
+  canvasId: () => isWorkspaceRoute(window.location) || isRetiredBlackboardRoute(window.location)
+    ? null : host.canvas.getState().activeCanvasId,
   execute: async (name, input) => {
     if (isWorkspaceRoute(window.location) || isRetiredBlackboardRoute(window.location)) throw new Error('Open a Canvas first');
     const tool = createRouteAgentTools().find((tool) => tool.name === name);

@@ -30,6 +30,12 @@ test("stdio MCP publishes search and forwards its unchanged input and output", {
     assert.equal((await client.callTool({ name: search.name, arguments: { query: "Hello" } })).isError, true);
     page = new WebSocket(await ready, { origin });
     await once(page, "open");
+    await once(page, "message");
+    page.send(JSON.stringify({ method: "authorize", grant: {
+      scope: "application",
+      permissions: { inspect: true, read: true, search: true, write: true },
+    } }));
+    await once(page, "message");
     assert.equal(search.inputSchema.properties.regex.type, "boolean");
     assert.equal(search.inputSchema.properties.ignoreCase.type, "boolean");
     const input = { query: "hello \\w+\nwelcome", regex: true, ignoreCase: true, viewport: [-20, -10, 80, 24], after: [-10, -5] };

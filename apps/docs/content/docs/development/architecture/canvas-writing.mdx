@@ -29,7 +29,9 @@ unless the renderer supplies one. Slide overflow rejects the complete rendered
 footprint before mutation.
 
 Only rendered Cells persist; input text and its rendering profile are not retained
-as editable source. This is not a source-document write API.
+as editable source. This is not a source-document write API. Read reports the
+current profile as a compact note: `mode`, `theme`, `wrap`, and Markdown feature
+state; it does not expand every enabled feature unless a feature is disabled.
 
 ## Result and verification
 

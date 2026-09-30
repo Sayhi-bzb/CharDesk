@@ -10,6 +10,7 @@ export type CanvasReadProjection = Readonly<{
   mode: "text" | "projection" | "density";
   content: string;
 }>;
+export type CanvasReadOptions = Readonly<{ defaultForeground?: string }>;
 
 const quadrants = [" ", "▘", "▝", "▀", "▖", "▌", "▞", "▛", "▗", "▚", "▐", "▜", "▄", "▙", "▟", "█"];
 
@@ -34,6 +35,7 @@ export const isCanvasReadViewport = (value: unknown): value is CanvasReadViewpor
 export const readCanvasViewport = (
   surface: CanvasSurfaceReader,
   requested?: CanvasReadViewport,
+  options: CanvasReadOptions = {},
 ): CanvasReadProjection => {
   if (requested !== undefined && !isCanvasReadViewport(requested)) throw new Error("Invalid viewport: expected [x,y,width,height] with safe integer coordinates and positive sizes.");
   const storedBounds = surface.getContentBounds();
@@ -101,13 +103,13 @@ export const readCanvasViewport = (
   const yInterval = niceTickInterval(5 * step);
   const prefix = labelWidth + 2;
   const ruler = Array<string>(prefix + columns + Math.ceil(xLabelWidth / 2)).fill(" ");
-  const border = Array<string>(columns).fill("─");
+  const rulerMarks = Array<string>(columns).fill("─");
   let previousEnd = -1;
   for (let column = 0; column < columns; column++) {
     const start = x + column * step;
     const tick = tickInBucket(start, Math.min(step, width - column * step), xMinor);
     if (tick === null) continue;
-    border[column] = "┬";
+    rulerMarks[column] = "┬";
     if (tick % (2 * xMinor) !== 0) continue;
     const label = String(tick);
     const offset = prefix + column - Math.floor(label.length / 2);
@@ -116,18 +118,17 @@ export const readCanvasViewport = (
       previousEnd = offset + label.length;
     }
   }
-  const notes = exact ? formatCharDeskStyleNotes(exact.cells, { coordinates: "explicit" }) : "styles:none";
+  const notes = exact ? formatCharDeskStyleNotes(exact.cells, { coordinates: "explicit", defaultForeground: options.defaultForeground }) : "styles:none";
   const content = [
     `viewport=[${x},${y},${width},${height}] step=${step} mode=${mode}`,
     ...(ruler.some((char) => char !== " ") ? [ruler.join("").trimEnd()] : []),
-    `${" ".repeat(labelWidth + 1)}┌${border.join("")}┐`,
+    `${" ".repeat(prefix)}${rulerMarks.join("")}`,
     ...text.map((line, row) => {
       const start = y + row * step;
       const tick = tickInBucket(start, Math.min(step, height - row * step), yInterval);
       const label = tick === null ? " ".repeat(labelWidth) : String(tick).padStart(labelWidth);
-      return `${label} ${tick === null ? "│" : "┤"}${line.join("")}│`;
+      return `${label} ${tick === null ? "│" : "┤"}${line.join("").replace(/ +$/u, "")}`;
     }),
-    `${" ".repeat(labelWidth + 1)}└${"─".repeat(columns)}┘`,
     ...(notes === "styles:none" ? [] : ["", notes]),
     ...(mode !== "text" ? ["Styles omitted: navigation symbols only; read a smaller viewport for text and styles."] : []),
   ].join("\n");

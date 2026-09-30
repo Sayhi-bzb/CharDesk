@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
 test("Pi's real model reads, writes a GPU explanation, and verifies the live Canvas", async ({ page }, testInfo) => {
@@ -56,21 +56,20 @@ test("Pi's real model reads, writes a GPU explanation, and verifies the live Can
   // Observe a premature startup failure without an unhandled rejection.
   void settled.catch(() => undefined);
   try {
-    let bridgeUrl;
     await expect.poll(async () => {
       if (pi.exitCode !== null) throw new Error(`Pi startup failed: ${diagnostics.slice(-2000)}`);
-      try {
-        const pairing = JSON.parse(await readFile(new URL('../../.pi/chardesk-bridge.local.json', import.meta.url), 'utf8'));
-        process.kill(pairing.pid, 0);
-        bridgeUrl = pairing.bridgeUrl;
-        return true;
-      } catch { return false; }
-    }, { timeout: 15_000, message: 'Start Pi interactively and approve the chardesk project server before this RPC test.' }).toBe(true);
+      return await new Promise((resolve) => {
+        const socket = createServer();
+        socket.once('error', () => resolve(false));
+        socket.once('listening', () => socket.close(() => resolve(true)));
+        socket.listen(9494, '127.0.0.1');
+      });
+    }, { timeout: 15_000, message: 'Pi did not start the Chardesk MCP bridge on 127.0.0.1:9494.' }).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
     await page.getByRole('button', { name: 'Open menu', exact: true }).click();
     await page.getByRole('menuitem', { name: /^Agent/ }).click();
     const dialog = page.getByRole('dialog', { name: 'Agent', exact: true });
     await dialog.getByRole('button', { name: 'Pair', exact: true }).click();
-    await dialog.getByLabel('Pairing URL').fill(bridgeUrl);
     await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
     await expect(dialog.getByRole('group', { name: 'Local MCP', exact: true }).getByRole('status')).toHaveText('Connected');
     await page.keyboard.press('Escape');
@@ -89,8 +88,9 @@ test("Pi's real model reads, writes a GPU explanation, and verifies the live Can
     await writeFile(testInfo.outputPath('pi-events.json'), JSON.stringify(events, null, 2));
     expect(events.filter((event) => event.type === 'tool_execution_end' && event.isError)
       .map((event) => event.result)).toEqual([]);
-    expect(calls.map((event) => event.toolName)).toEqual([
-      "chardesk_canvas_read", "chardesk_canvas_write", "chardesk_canvas_read",
+    expect(calls.map((event) => event.toolName).filter((name) => name !== "mcp__chardesk__chardesk_canvas_list")).toEqual([
+      "mcp__chardesk__chardesk_canvas_read", "mcp__chardesk__chardesk_canvas_write",
+      "mcp__chardesk__chardesk_canvas_read",
     ]);
     expect(events.filter((event) => event.type === "tool_execution_end").every((event) => !event.isError)).toBe(true);
     const written = calls[1].args;

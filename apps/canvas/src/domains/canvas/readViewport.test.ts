@@ -8,7 +8,7 @@ const surface = (entries: Array<[number, number, string, string?]>) => createGri
   entries.map(([x, y, char, bgColor]) => [`${x},${y}`, { char, color: "#000", ...(bgColor ? { bgColor } : {}) }]),
 ));
 const lines = (content: string) => content.split("\n").flatMap((line) => {
-  const match = /[│┤](.*)│$/u.exec(line);
+  const match = /[│┤](.*)$/u.exec(line);
   return match ? [match[1]] : [];
 });
 
@@ -16,8 +16,8 @@ describe("Canvas viewport reading", () => {
   it("preserves coordinates, whitespace, CJK, and graphemes in exact text", () => {
     const view = readCanvasViewport(surface([[-2, -1, "A"], [-1, -1, "你"], [1, -1, "é"]]), [-3, -2, 7, 3]);
     expect(view).toMatchObject({ viewport: [-3, -2, 7, 3], step: 1, mode: "text" });
-    expect(lines(view.content)).toEqual(["       ", " A你é  ", "       "]);
-    expect(lines(view.content).every((line) => getTextCellWidth(line) === 7)).toBe(true);
+    expect(lines(view.content)).toEqual(["", " A你é", ""]);
+    expect(lines(view.content).every((line) => getTextCellWidth(line) <= 7)).toBe(true);
     expect(view.content).toContain("0 ┤");
     expect(view.content).not.toContain("7890123");
   });
@@ -32,9 +32,9 @@ describe("Canvas viewport reading", () => {
       ["14,21", { char: "L", color: "#00f", attrs: { underline: true }, href: "https://example.com" }],
     ]);
     const view = readCanvasViewport(createGridSurfaceReader(grid), [10, 20, 8, 2]);
-    expect(view.content).toContain("┌┬────┬──┐");
+    expect(view.content).toContain("┬────┬──");
     expect(view.content).not.toContain("01234567");
-    expect(lines(view.content)).toEqual(["你A     ", "你B L   "]);
+    expect(lines(view.content)).toEqual(["你A", "你B L"]);
     expect(view.content).toContain("y=20..21 x=10..12{fg:#f00;bold}");
     expect(view.content).toContain("y=20 x=13{fg:#000;bg:#fff;inverse}");
     expect(view.content).toContain('y=21 x=14{fg:#00f;underline;link:"https://example.com"}');
@@ -65,7 +65,7 @@ describe("Canvas viewport reading", () => {
   it("leaves clipped wide characters blank without changing the viewport", () => {
     const reader = surface([[0, 0, "你"], [2, 0, "B"]]);
     expect(lines(readCanvasViewport(reader, [1, 0, 2, 1]).content)).toEqual([" B"]);
-    expect(lines(readCanvasViewport(reader, [0, 0, 1, 1]).content)).toEqual([" "]);
+    expect(lines(readCanvasViewport(reader, [0, 0, 1, 1]).content)).toEqual([""]);
   });
 
   it("samples quadrant positions without interpreting content", () => {
@@ -95,7 +95,7 @@ describe("Canvas viewport reading", () => {
     const reader = surface([[0, 0, " "]]);
     expect(readCanvasViewport(reader)).toEqual({ viewport: null, step: 1, mode: "text", content: "" });
     expect(readCanvasViewport(reader, [-10, 2, 4, 1]).viewport).toEqual([-10, 2, 4, 1]);
-    expect(lines(readCanvasViewport(reader, [-10, 2, 4, 1]).content)).toEqual(["    "]);
+    expect(lines(readCanvasViewport(reader, [-10, 2, 4, 1]).content)).toEqual([""]);
   });
 
   it("reads sparse content millions of Cells apart after an erase invalidates bounds", () => {
@@ -120,23 +120,23 @@ describe("Canvas viewport reading", () => {
   it("centres signed labels on absolute ticks across zero and leaves other rows unlabelled", () => {
     const view = readCanvasViewport(surface([]), [-12, -7, 28, 14]);
     const output = view.content.split("\n");
-    const border = output.find((line) => line.includes("┌"))!;
-    const origin = border.indexOf("┌") + 1;
+    const bodyOrigin = output.find((line) => line.includes("┤"))!.indexOf("┤") + 1;
     const labels = output[1];
     for (const coordinate of [-10, 0, 10]) {
       const label = String(coordinate);
-      expect(labels.slice(origin + coordinate + 12 - Math.floor(label.length / 2), origin + coordinate + 12 - Math.floor(label.length / 2) + label.length)).toBe(label);
+      expect(labels.slice(bodyOrigin + coordinate + 12 - Math.floor(label.length / 2), bodyOrigin + coordinate + 12 - Math.floor(label.length / 2) + label.length)).toBe(label);
     }
-    for (const coordinate of [-10, -5, 0, 5, 10, 15]) expect(border[origin + coordinate + 12]).toBe("┬");
-    const body = output.filter((line) => /[│┤].*│$/u.test(line));
-    expect(body.map((line) => line.slice(0, origin - 1).trim()).filter(Boolean)).toEqual(["-5", "0", "5"]);
+    const ruler = output.find((line) => line.includes("┬"))!;
+    for (const coordinate of [-10, -5, 0, 5, 10, 15]) expect(ruler[bodyOrigin + coordinate + 12]).toBe("┬");
+    const body = output.filter((line) => /[│┤]/u.test(line));
+    expect(body.map((line) => line.slice(0, bodyOrigin - 1).trim()).filter(Boolean)).toEqual(["-5", "0", "5"]);
     expect(lines(view.content)).toHaveLength(14);
   });
 
   it("aligns narrow edge labels without clipping negative coordinates or the content", () => {
     const view = readCanvasViewport(surface([[-1000, 0, "你"]]), [-1000, 0, 2, 1]);
     const output = view.content.split("\n");
-    const origin = output.find((line) => line.includes("┌"))!.indexOf("┌") + 1;
+    const origin = output.find((line) => line.includes("┤"))!.indexOf("┤") + 1;
     expect(output[1].indexOf("-1000") + 2).toBe(origin);
     expect(lines(view.content)).toEqual(["你"]);
     expect(view.content).toContain("y=0 x=-1000..-999{fg:#000}");
@@ -146,19 +146,19 @@ describe("Canvas viewport reading", () => {
     const view = readCanvasViewport(surface([]), [-13, -7, 240, 60]);
     expect(view.step).toBe(3);
     const output = view.content.split("\n");
-    const border = output.find((line) => line.includes("┌"))!;
-    const origin = border.indexOf("┌") + 1;
+    const origin = output.find((line) => line.includes("┤"))!.indexOf("┤") + 1;
+    const ruler = output.find((line) => line.includes("┬"))!;
     expect(output[1][origin + 4]).toBe("0"); // [-1,2) contains the zero tick.
-    expect(border[origin + 4]).toBe("┬");
-    expect(border[origin + 11]).toBe("┬"); // [20,23) contains the minor tick at 20.
+    expect(ruler[origin + 4]).toBe("┬");
+    expect(ruler[origin + 11]).toBe("┬"); // [20,23) contains the minor tick at 20.
     expect(lines(view.content)).toHaveLength(20);
-    expect(output.filter((line) => /[│┤].*│$/u.test(line)).map((line) => line.slice(0, origin - 1).trim()).filter(Boolean)).toEqual(["0", "20", "40"]);
+    expect(output.filter((line) => /[│┤]/u.test(line)).map((line) => line.slice(0, origin - 1).trim()).filter(Boolean)).toEqual(["0", "20", "40"]);
   });
 
   it("keeps very large coordinate labels separated and endpoints safe", () => {
     const start = Number.MAX_SAFE_INTEGER - 80;
     const view = readCanvasViewport(surface([]), [start, -Number.MAX_SAFE_INTEGER, 80, 24]);
-    expect(lines(view.content).every((line) => getTextCellWidth(line) === 80)).toBe(true);
+    expect(lines(view.content).every((line) => getTextCellWidth(line) <= 80)).toBe(true);
     const labels = view.content.split("\n")[1].trim().split(/\s+/u);
     expect(labels.length).toBeGreaterThan(1);
     expect(labels.every((label) => /^\d{16}$/u.test(label))).toBe(true);

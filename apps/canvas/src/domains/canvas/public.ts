@@ -3,7 +3,7 @@ export { readCanvasViewport, isCanvasReadViewport } from "./readViewport";
 export { searchCanvasSurface, isCanvasSearchQuery, isCanvasSearchPosition, CanvasSearchError } from "./searchSurface";
 export type { CanvasSearchPosition, CanvasSearchMatch, CanvasSearchResult, CanvasSearchOptions } from "./searchSurface";
 export { CanvasWriteError } from "./writeText";
-export type { CanvasReadViewport, CanvasReadProjection } from "./readViewport";
+export type { CanvasReadViewport, CanvasReadProjection, CanvasReadOptions } from "./readViewport";
 export type { CanvasSessionMaterialization } from "./runtime";
 export { CanvasViewportRuntime, normalizeCanvasViewport } from "./viewportRuntime";
 export type { CanvasViewportPort } from "./viewportRuntime";

@@ -127,7 +127,6 @@ export const createCanvasTextCommands = (
     const state = get();
     const session = state.canvasSessions.find(({ id }) => id === sessionId);
     if (!session) throw new CanvasWriteError("canvas_not_active", "Canvas not found.");
-    if (session.mode === "slide") throw new CanvasWriteError("out_of_bounds", "Direct writes to a non-active Slide are not supported.");
     if (isSourceBackedCanvasSession(session) || session.migrationPending) {
       throw new CanvasWriteError("source_backed_canvas", session.migrationPending
         ? "Wait for this Canvas migration to finish before writing."
@@ -137,6 +136,14 @@ export const createCanvasTextCommands = (
     if (!address) throw new CanvasWriteError("canvas_not_active", "Canvas content is not ready.");
     const { patch, bounds } = prepare();
     if (!bounds) return null;
+    const page = session.mode === "slide"
+      ? documents.getPageDescriptors(sessionId).find(({ id }) => id === address.pageId)
+      : undefined;
+    const size = page?.size;
+    if (size && (bounds[0] < 0 || bounds[1] < 0
+      || bounds[0] + bounds[2] > size.columns || bounds[1] + bounds[3] > size.rows)) {
+      throw new CanvasWriteError("out_of_bounds", "Content does not fit the target Slide; nothing was written.");
+    }
     documents.finishHistoryCapture();
     try { documents.applyCellPlanePatchAt(address, patch, commits.getDocumentHistoryMode()); }
     finally { documents.finishHistoryCapture(); }

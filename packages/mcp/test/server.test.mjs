@@ -14,7 +14,7 @@ test('published server exposes the Canvas bridge over stdio', { timeout: 15000 }
   const origin = 'http://127.0.0.1:5173';
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: [fileURLToPath(new URL('../src/server.mjs', import.meta.url))],
+    args: [fileURLToPath(new URL('../bin/chardesk-mcp.mjs', import.meta.url)), 'server'],
     env: {
       ...process.env,
       CHARDESK_MCP_PORT: '0',
@@ -42,13 +42,21 @@ test('published server exposes the Canvas bridge over stdio', { timeout: 15000 }
     await client.connect(transport);
     const listed = await client.listTools();
     assert.deepEqual(listed.tools.map(({ name }) => name), [
+      'chardesk_canvas_list',
       'chardesk_canvas_read',
       'chardesk_canvas_search',
       'chardesk_canvas_write',
     ]);
     const bridgeUrl = await ready;
-    page = new WebSocket(bridgeUrl, { origin });
+    // Browser-first pairing does not expose the credential in the UI; the
+    // loopback bridge accepts the fixed local endpoint and authorizes via grant.
+    page = new WebSocket(bridgeUrl.replace(/\?token=.*$/, ''), { origin });
     await once(page, 'open');
+    await once(page, 'message');
+    page.send(JSON.stringify({ method: 'authorize', grant: {
+      scope: 'application',
+      permissions: { inspect: true, read: true, search: true, write: true },
+    } }));
     await once(page, 'message');
     page.on('message', (data) => {
       const request = JSON.parse(data.toString());
