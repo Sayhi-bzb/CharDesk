@@ -14,10 +14,15 @@ const allowedOrigins = new Set(
     .filter(Boolean)
 );
 
-const accountEnabled = Boolean(process.env.GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_SECRET);
-if (accountEnabled && (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET ||
-  !process.env.ACCOUNT_DATABASE || !process.env.ACCOUNT_PUBLIC_ORIGIN || !process.env.ACCOUNT_APP_ORIGIN)) {
-  throw new Error("Account API requires GitHub OAuth credentials, database path, and public/app origins.");
+const githubConfigured = Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET);
+const googleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+if (Boolean(process.env.GITHUB_CLIENT_ID) !== Boolean(process.env.GITHUB_CLIENT_SECRET) ||
+  Boolean(process.env.GOOGLE_CLIENT_ID) !== Boolean(process.env.GOOGLE_CLIENT_SECRET)) {
+  throw new Error("Each OAuth provider requires both client ID and secret.");
+}
+const accountEnabled = githubConfigured || googleConfigured;
+if (accountEnabled && (!process.env.ACCOUNT_DATABASE || !process.env.ACCOUNT_PUBLIC_ORIGIN || !process.env.ACCOUNT_APP_ORIGIN)) {
+  throw new Error("Account API requires a database path and public/app origins.");
 }
 if (accountEnabled && !allowedOrigins.has(process.env.ACCOUNT_APP_ORIGIN!)) {
   throw new Error("ACCOUNT_APP_ORIGIN must be included in ALLOWED_ORIGINS.");
@@ -25,8 +30,8 @@ if (accountEnabled && !allowedOrigins.has(process.env.ACCOUNT_APP_ORIGIN!)) {
 const accountStore = accountEnabled ? new AccountStore(process.env.ACCOUNT_DATABASE!) : null;
 const accountApi = accountStore ? createAccountApi({
   store: accountStore,
-  clientId: process.env.GITHUB_CLIENT_ID!,
-  clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+  github: githubConfigured ? { clientId: process.env.GITHUB_CLIENT_ID!, clientSecret: process.env.GITHUB_CLIENT_SECRET! } : undefined,
+  google: googleConfigured ? { clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET! } : undefined,
   publicOrigin: process.env.ACCOUNT_PUBLIC_ORIGIN!,
   appOrigin: process.env.ACCOUNT_APP_ORIGIN!,
   allowedOrigins,

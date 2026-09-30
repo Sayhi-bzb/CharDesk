@@ -4,6 +4,9 @@ import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 export type AccountUser = { id: string; login: string; avatarUrl: string | null };
+export type AuthProvider = "github" | "google";
+export type OAuthFlow = { provider: AuthProvider; intent: "login" | "link";
+  userId: string | null; nonceHash: string | null };
 export type CloudWork = {
   id: string;
   kind: "canvas" | "slides" | "blackboard";
@@ -48,6 +51,17 @@ export class AccountStore {
         token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         expires_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS identities (
+        provider TEXT NOT NULL CHECK (provider IN ('github', 'google')),
+        subject TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        PRIMARY KEY (provider, subject), UNIQUE (user_id, provider)
+      );
+      CREATE TABLE IF NOT EXISTS oauth_flows (
+        state_hash TEXT PRIMARY KEY, provider TEXT NOT NULL,
+        intent TEXT NOT NULL CHECK (intent IN ('login', 'link')),
+        user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+        session_hash TEXT, nonce_hash TEXT, expires_at INTEGER NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS works (
         id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         kind TEXT NOT NULL CHECK (kind IN ('canvas', 'slides', 'blackboard')),
@@ -70,12 +84,68 @@ export class AccountStore {
     if (!columns.some(({ name }) => name === "revision")) {
       this.#db.exec("ALTER TABLE work_content ADD COLUMN revision INTEGER NOT NULL DEFAULT 1");
     }
+    this.#db.exec(`INSERT OR IGNORE INTO identities(provider, subject, user_id)
+      SELECT 'github', substr(id, 8), id FROM users WHERE id LIKE 'github:%' AND length(id) > 7`);
   }
 
   upsertUser(user: AccountUser) {
     this.#db.prepare(`INSERT INTO users(id, login, avatar_url) VALUES (?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET login=excluded.login, avatar_url=excluded.avatar_url`)
       .run(user.id, user.login, user.avatarUrl);
+  }
+
+  userForIdentity(provider: AuthProvider, subject: string, profile: { login: string; avatarUrl: string | null }): AccountUser {
+    const existing = this.#db.prepare(`SELECT users.id, users.login, users.avatar_url AS avatarUrl
+      FROM identities JOIN users ON users.id = identities.user_id
+      WHERE identities.provider = ? AND identities.subject = ?`)
+      .get(provider, subject) as AccountUser | undefined;
+    if (existing) {
+      const user = { id: existing.id, login: profile.login, avatarUrl: profile.avatarUrl };
+      this.upsertUser(user);
+      return user;
+    }
+    const user: AccountUser = { id: provider === "github" ? `github:${subject}` : `account:${randomUUID()}`,
+      login: profile.login, avatarUrl: profile.avatarUrl };
+    this.upsertUser(user);
+    this.#db.prepare("INSERT INTO identities(provider, subject, user_id) VALUES (?, ?, ?)")
+      .run(provider, subject, user.id);
+    return user;
+  }
+
+  linkedProviders(userId: string): AuthProvider[] {
+    return (this.#db.prepare("SELECT provider FROM identities WHERE user_id = ? ORDER BY provider")
+      .all(userId) as { provider: AuthProvider }[]).map(({ provider }) => provider);
+  }
+
+  linkIdentity(userId: string, provider: AuthProvider, subject: string): "linked" | "already-linked" | "conflict" {
+    const existing = this.#db.prepare("SELECT user_id AS userId FROM identities WHERE provider = ? AND subject = ?")
+      .get(provider, subject) as { userId: string } | undefined;
+    if (existing) return existing.userId === userId ? "already-linked" : "conflict";
+    if (this.linkedProviders(userId).includes(provider)) return "conflict";
+    this.#db.prepare("INSERT INTO identities(provider, subject, user_id) VALUES (?, ?, ?)")
+      .run(provider, subject, userId);
+    return "linked";
+  }
+
+  createOAuthFlow(state: string, provider: AuthProvider, intent: OAuthFlow["intent"],
+    nonce: string | null, userId: string | null = null, sessionToken: string | null = null) {
+    this.#db.prepare("DELETE FROM oauth_flows WHERE expires_at <= ?").run(Date.now());
+    this.#db.prepare(`INSERT INTO oauth_flows
+      (state_hash, provider, intent, user_id, session_hash, nonce_hash, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .run(hashToken(state), provider, intent, userId,
+        sessionToken ? hashToken(sessionToken) : null, nonce ? hashToken(nonce) : null,
+        Date.now() + 10 * 60_000);
+  }
+
+  consumeOAuthFlow(state: string, provider: AuthProvider, sessionToken: string | null): OAuthFlow | null {
+    const flow = this.#db.prepare(`DELETE FROM oauth_flows
+      WHERE state_hash = ? AND provider = ? AND expires_at > ?
+      RETURNING provider, intent, user_id AS userId, session_hash AS sessionHash, nonce_hash AS nonceHash`)
+      .get(hashToken(state), provider, Date.now()) as
+      (OAuthFlow & { sessionHash: string | null }) | undefined;
+    if (!flow || (flow.intent === "link" && (!sessionToken || flow.sessionHash !== hashToken(sessionToken)))) return null;
+    return { provider: flow.provider, intent: flow.intent, userId: flow.userId, nonceHash: flow.nonceHash };
   }
 
   createSession(userId: string, token: string, expiresAt: number) {

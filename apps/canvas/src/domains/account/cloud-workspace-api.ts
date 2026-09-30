@@ -1,4 +1,7 @@
 export type CloudUser = { id: string; login: string; avatarUrl: string | null };
+export type CloudAuthProvider = 'github' | 'google';
+export type CloudAccount = { user: CloudUser | null; availableProviders?: CloudAuthProvider[];
+  linkedProviders?: CloudAuthProvider[] };
 export type CloudWork = {
   id: string;
   kind: 'canvas' | 'slides' | 'blackboard';
@@ -16,6 +19,7 @@ const endpoint = import.meta.env.VITE_ACCOUNT_API_ENDPOINT?.trim().replace(/\/$/
 
 export const cloudWorkspaceConfigured = Boolean(endpoint);
 export const cloudSignInUrl = endpoint ? `${endpoint}/v1/account/login` : '';
+export const cloudGoogleSignInUrl = endpoint ? `${endpoint}/v1/account/google/login` : '';
 
 export class CloudWorkspaceRequestError extends Error {
   readonly status: number;
@@ -37,7 +41,10 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
 };
 
 export const cloudWorkspaceApi = {
-  me: () => request<{ user: CloudUser | null }>('/me'),
+  me: () => request<CloudAccount>('/me'),
+  linkProvider: (provider: CloudAuthProvider) => request<{ authorizeUrl: string }>(`/identities/${provider}/link`, {
+    method: 'POST',
+  }),
   list: () => request<{ works: CloudWork[]; limits: CloudStorageLimits }>('/works'),
   create: (kind: CloudWork['kind'], title: string) => request<{ work: CloudWork }>('/works', {
     method: 'POST', body: JSON.stringify({ kind, title }),

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@chardesk/collaboration-protocol": "*",
+    "google-auth-library": "^11.1.0",
     "ws": "^8.21.1"
   },
   "devDependencies": {

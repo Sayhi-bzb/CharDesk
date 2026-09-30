@@ -4,9 +4,20 @@ The existing `/v1/rooms/:id` relay holds encrypted collaboration frames only in
 memory. The optional account API owns a SQLite catalog and explicit Canvas/Slides
 snapshots or Blackboard source-tree backups on a persistent volume. Collaboration rooms are not backed up.
 
-Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` together to enable the account
-API. Register `https://sync.chardesk.com/v1/account/callback` as the GitHub OAuth
-App callback. `ACCOUNT_PUBLIC_ORIGIN` is the API origin; `ACCOUNT_APP_ORIGIN`
+Set either provider's client ID and secret together to enable the account API:
+
+| Provider | Environment | Registered callback |
+| --- | --- | --- |
+| GitHub | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | `https://sync.chardesk.com/v1/account/callback` |
+| Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `https://sync.chardesk.com/v1/account/google/callback` |
+
+Use a Google OAuth web application with the callback above and an appropriate
+consent-screen audience. Sign-in identifies Google users by their stable `sub`,
+not their email. An existing GitHub account links Google only through the
+authenticated Account card; matching email addresses never merge accounts.
+The old `/v1/account/login` GitHub entry remains available.
+
+`ACCOUNT_PUBLIC_ORIGIN` is the API origin; `ACCOUNT_APP_ORIGIN`
 defaults to `https://canvas.chardesk.com` and must appear in
 `ALLOWED_ORIGINS`. `ACCOUNT_DATABASE` points to the SQLite file. The deployment
 compose mounts the `accounts` volume at `/data`; back it up with SQLite's online
@@ -16,10 +27,12 @@ Build Canvas with `VITE_ACCOUNT_API_ENDPOINT=https://sync.chardesk.com` only
 after the account API is deployed. Local development can use
 `http://127.0.0.1:1234` for the API endpoint and
 `http://127.0.0.1:5173` for `ACCOUNT_APP_ORIGIN`; configure a separate GitHub
-OAuth App with callback `http://127.0.0.1:1234/v1/account/callback`.
+OAuth App with callback `http://127.0.0.1:1234/v1/account/callback` and, for
+Google, a separate OAuth web client with callback
+`http://127.0.0.1:1234/v1/account/google/callback`.
 The server's `dev` script loads its ignored `.env.local`; Canvas uses Vite's
 ignored `.env.local`. Copy the corresponding `.env.example` files, set the
-local GitHub Client ID and Secret only in `apps/sync-server/.env.local`, and
+local provider credentials only in `apps/sync-server/.env.local`, and
 restart both development servers after changing them. The local account
 database is ignored at `apps/sync-server/.data/accounts.sqlite`.
 

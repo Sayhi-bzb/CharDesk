@@ -3,11 +3,13 @@ import {
   cloudWorkspaceApi, cloudWorkspaceConfigured, CloudWorkspaceRequestError,
   bindCloudSession, subscribeCloudCatalog,
   unbindCloudWork,
-  type CloudUser, type CloudWork, type CloudStorageLimits,
+  type CloudUser, type CloudWork, type CloudStorageLimits, type CloudAuthProvider,
 } from '@/domains/account/public';
 
 export function useCloudWorkspace() {
   const [user, setUser] = useState<CloudUser | null>(null);
+  const [availableProviders, setAvailableProviders] = useState<CloudAuthProvider[]>(['github']);
+  const [linkedProviders, setLinkedProviders] = useState<CloudAuthProvider[]>([]);
   const [works, setWorks] = useState<CloudWork[]>([]);
   const [limits, setLimits] = useState<CloudStorageLimits | null>(null);
   const [loading, setLoading] = useState(cloudWorkspaceConfigured);
@@ -18,9 +20,12 @@ export function useCloudWorkspace() {
   useEffect(() => {
     if (!cloudWorkspaceConfigured) return;
     let current = true;
-    void cloudWorkspaceApi.me().then(async ({ user: account }) => {
+    void cloudWorkspaceApi.me().then(async ({ user: account, availableProviders: available,
+      linkedProviders: linked }) => {
       if (!current) return;
       setUser(account);
+      setAvailableProviders(available ?? ['github']);
+      setLinkedProviders(linked ?? (account ? ['github'] : []));
       if (account) {
         const result = await cloudWorkspaceApi.list();
         if (current) {
@@ -56,7 +61,11 @@ export function useCloudWorkspace() {
 
   return {
     configured: cloudWorkspaceConfigured,
-    user, works, limits, loading, error, limitExceeded, busy,
+    user, works, limits, loading, error, limitExceeded, busy, availableProviders, linkedProviders,
+    linkProvider: (provider: CloudAuthProvider) => run(async () => {
+      const { authorizeUrl } = await cloudWorkspaceApi.linkProvider(provider);
+      window.location.href = authorizeUrl;
+    }),
     backup: (kind: 'canvas' | 'slides' | 'blackboard', title: string, content: string, sessionId?: string) => run(async () => {
       const { work } = await cloudWorkspaceApi.createBackup(kind, title, content);
       setWorks((current) => [work, ...current]);
@@ -79,6 +88,7 @@ export function useCloudWorkspace() {
     signOut: () => run(async () => {
       await cloudWorkspaceApi.logout();
       setUser(null);
+      setLinkedProviders([]);
       setWorks([]);
       setLimits(null);
     }),

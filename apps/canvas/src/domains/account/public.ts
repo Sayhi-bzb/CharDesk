@@ -1,9 +1,11 @@
 export {
   cloudSignInUrl,
+  cloudGoogleSignInUrl,
   cloudWorkspaceApi,
   cloudWorkspaceConfigured,
   CloudWorkspaceRequestError,
   type CloudUser,
+  type CloudAuthProvider,
   type CloudWork,
   type CloudStorageLimits,
 } from './cloud-workspace-api';

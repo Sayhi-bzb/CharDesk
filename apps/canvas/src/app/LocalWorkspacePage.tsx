@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type Ref } 
 import { ChevronLeft, Files, MoreHorizontal, PanelLeft, Plus } from 'lucide-react';
 import { useBlackboardRuntime, parseBlackboardSource, serializeBlackboardSource, type BlackboardWorkspace } from '@/domains/blackboard/public';
 import { useCanvasRuntime, useCanvasState } from '@/domains/canvas/public';
-import { bindCloudSession, blackboardSyncKey, cloudSignInUrl, cloudWorkspaceApi, getBoundCloudWorkId,
+import { bindCloudSession, blackboardSyncKey, cloudSignInUrl, cloudGoogleSignInUrl,
+  cloudWorkspaceApi, getBoundCloudWorkId,
   getCloudConflict, getCloudSyncState, resolveCloudConflict,
-  subscribeCloudSync, unbindCloudWork, type CloudWork } from '@/domains/account/public';
+  subscribeCloudSync, unbindCloudWork, type CloudAuthProvider, type CloudWork } from '@/domains/account/public';
 import { prepareTextExport } from '@/domains/export/public';
 import { isSourceBackedCanvasSession } from '@/domains/sessions/public';
 import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
@@ -35,7 +36,8 @@ const icons = {
 const mib = (bytes: number) => (bytes / (1024 * 1024)).toLocaleString(undefined, { maximumFractionDigits: 2 });
 const syncKey = (work: WorkItem) => work.kind === 'blackboard' ? blackboardSyncKey(work.id) : work.sessionId;
 
-const accountDialogOpen = () => new URLSearchParams(window.location.search).get('view') === 'account';
+const accountRoute = () => window.location.search;
+const providerName = (provider: CloudAuthProvider) => provider === 'github' ? 'GitHub' : 'Google';
 
 const subscribeRoute = (listener: () => void) => {
   window.addEventListener('popstate', listener);
@@ -81,7 +83,10 @@ export function LocalWorkspacePage() {
   const canvas = useCanvasRuntime();
   const blackboard = useBlackboardRuntime();
   const cloud = useCloudWorkspace();
-  const accountOpen = useSyncExternalStore(subscribeRoute, accountDialogOpen, () => false);
+  const accountQuery = useSyncExternalStore(subscribeRoute, accountRoute, () => '');
+  const accountParams = new URLSearchParams(accountQuery);
+  const accountOpen = accountParams.get('view') === 'account';
+  const authStatus = accountParams.get('auth');
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const desktopAccountRef = useRef<HTMLButtonElement>(null);
   const mobileNavigationRef = useRef<HTMLButtonElement>(null);
@@ -133,7 +138,7 @@ export function LocalWorkspacePage() {
     if (!accountOpen) navigateApp('/workspace?view=account');
   };
   const accountLabel = cloud.loading ? t('workspace.cloudLoading') : cloud.user?.login ??
-    t(cloud.configured ? 'workspace.signInGitHub' : 'workspace.account');
+    t(cloud.configured ? 'workspace.signIn' : 'workspace.account');
 
   const openWork = async (work: WorkItem) => {
     setError(false);
@@ -497,12 +502,34 @@ export function LocalWorkspacePage() {
                   })}
                 </p>}
                 <p className="text-sm text-muted-foreground">{t('workspace.cloudCatalogOnly')}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t('workspace.connectedProviders')}: {cloud.linkedProviders.map(providerName).join(' · ')}
+                </p>
+                {cloud.availableProviders.filter((provider) => !cloud.linkedProviders.includes(provider))
+                  .map((provider) => <Button key={provider} type="button" tone="neutral"
+                    disabled={cloud.busy} onClick={() => void cloud.linkProvider(provider)}>
+                    {t(provider === 'github' ? 'workspace.connectGitHub' : 'workspace.connectGoogle')}
+                  </Button>)}
               </>
             ) : (
-              <Button type="button" className="w-full" onClick={() => { window.location.href = cloudSignInUrl; }}>
-                {t('workspace.signInGitHub')}
-              </Button>
+              <div className="flex flex-col gap-2">
+                {cloud.availableProviders.includes('github') &&
+                  <Button type="button" className="w-full" onClick={() => { window.location.href = cloudSignInUrl; }}>
+                    {t('workspace.signInGitHub')}
+                  </Button>}
+                {cloud.availableProviders.includes('google') &&
+                  <Button type="button" tone="neutral" className="w-full"
+                    onClick={() => { window.location.href = cloudGoogleSignInUrl; }}>
+                    {t('workspace.signInGoogle')}
+                  </Button>}
+              </div>
             )}
+            {authStatus && <p role={authStatus === 'linked' || authStatus === 'cancelled' ? 'status' : 'alert'}
+              className="text-sm text-muted-foreground">
+              {t(authStatus === 'linked' ? 'workspace.authLinked' : authStatus === 'identity-in-use'
+                ? 'workspace.authIdentityInUse' : authStatus === 'cancelled'
+                  ? 'workspace.authCancelled' : 'workspace.authFailed')}
+            </p>}
             {cloud.error && <p role="alert" className="text-sm text-destructive">
               {t(cloud.limitExceeded ? 'workspace.cloudLimit' : 'workspace.cloudError')}
             </p>}

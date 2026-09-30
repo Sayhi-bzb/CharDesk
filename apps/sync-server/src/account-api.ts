@@ -1,9 +1,10 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   AccountStore, BackupLimitError, MAX_ACCOUNT_BACKUP_BYTES, MAX_BACKUP_BYTES,
-  type AccountUser, type CloudWork,
+  type AuthProvider, type CloudWork,
 } from "./account-store.js";
+import { verifyGoogleIdToken, type GoogleIdentity } from "./google-identity.js";
 
 const SESSION_COOKIE = "chardesk_session";
 const STATE_COOKIE = "chardesk_oauth_state";
@@ -11,12 +12,13 @@ const SESSION_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 export type AccountApiOptions = {
   store: AccountStore;
-  clientId: string;
-  clientSecret: string;
+  github?: { clientId: string; clientSecret: string };
+  google?: { clientId: string; clientSecret: string };
   publicOrigin: string;
   appOrigin: string;
   allowedOrigins: ReadonlySet<string>;
   fetchImpl?: typeof fetch;
+  verifyGoogleToken?: (idToken: string, clientId: string) => Promise<GoogleIdentity>;
 };
 
 const cookies = (request: IncomingMessage) => Object.fromEntries(
@@ -78,18 +80,75 @@ const sameState = (left: string | undefined, right: string | null) => {
   if (!left || !right || left.length !== right.length) return false;
   return timingSafeEqual(Buffer.from(left), Buffer.from(right));
 };
+const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
 export const createAccountApi = ({
-  store, clientId, clientSecret, publicOrigin, appOrigin, allowedOrigins,
-  fetchImpl = fetch,
+  store, github, google, publicOrigin, appOrigin, allowedOrigins,
+  fetchImpl = fetch, verifyGoogleToken = verifyGoogleIdToken,
 }: AccountApiOptions) => {
+  if (!github && !google) throw new Error("At least one account provider is required.");
   for (const origin of [publicOrigin, appOrigin]) {
     const url = new URL(origin);
     if (url.origin !== origin || (url.protocol !== "https:" && url.hostname !== "127.0.0.1" && url.hostname !== "localhost")) {
       throw new Error("Account origins must be HTTPS origins or loopback development origins.");
     }
   }
-  const callback = `${publicOrigin}/v1/account/callback`;
+  const availableProviders: AuthProvider[] = [github && "github", google && "google"]
+    .filter((provider): provider is AuthProvider => Boolean(provider));
+  const callback = (provider: AuthProvider) =>
+    `${publicOrigin}/v1/account/${provider === "github" ? "callback" : "google/callback"}`;
+  const returnToAccount = (status?: string) =>
+    `${appOrigin}/workspace?view=account${status ? `&auth=${encodeURIComponent(status)}` : ""}`;
+  const beginOAuth = (provider: AuthProvider, intent: "login" | "link",
+    userId: string | null = null, sessionToken: string | null = null) => {
+    const credentials = provider === "github" ? github : google;
+    if (!credentials) return null;
+    const state = randomBytes(32).toString("base64url");
+    const nonce = provider === "google" ? randomBytes(32).toString("base64url") : null;
+    store.createOAuthFlow(state, provider, intent, nonce, userId, sessionToken);
+    const authorize = new URL(provider === "github"
+      ? "https://github.com/login/oauth/authorize" : "https://accounts.google.com/o/oauth2/v2/auth");
+    authorize.searchParams.set("client_id", credentials.clientId);
+    authorize.searchParams.set("redirect_uri", callback(provider));
+    authorize.searchParams.set("state", state);
+    if (provider === "github") authorize.searchParams.set("scope", "");
+    else {
+      authorize.searchParams.set("response_type", "code");
+      authorize.searchParams.set("scope", "openid profile");
+      authorize.searchParams.set("nonce", nonce!);
+    }
+    return { url: authorize.href, state };
+  };
+  const readIdentity = async (provider: AuthProvider, code: string) => {
+    if (provider === "github") {
+      const tokenResponse = await fetchImpl("https://github.com/login/oauth/access_token", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: github!.clientId, client_secret: github!.clientSecret,
+          code, redirect_uri: callback(provider) }),
+      });
+      if (!tokenResponse.ok) throw new Error("OAuth exchange failed");
+      const tokenBody = await tokenResponse.json() as { access_token?: string };
+      if (!tokenBody.access_token) throw new Error("Missing access token");
+      const userResponse = await fetchImpl("https://api.github.com/user", {
+        headers: { Authorization: `Bearer ${tokenBody.access_token}`,
+          Accept: "application/vnd.github+json", "User-Agent": "CharDesk" },
+      });
+      if (!userResponse.ok) throw new Error("GitHub identity failed");
+      const user = await userResponse.json() as { id?: number; login?: string; avatar_url?: string };
+      if (!Number.isSafeInteger(user.id) || !user.login) throw new Error("Invalid GitHub identity");
+      return { subject: String(user.id), login: user.login, avatarUrl: user.avatar_url ?? null, nonce: null };
+    }
+    const tokenResponse = await fetchImpl("https://oauth2.googleapis.com/token", {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ code, client_id: google!.clientId, client_secret: google!.clientSecret,
+        redirect_uri: callback(provider), grant_type: "authorization_code" }),
+    });
+    if (!tokenResponse.ok) throw new Error("Google OAuth exchange failed");
+    const tokenBody = await tokenResponse.json() as { id_token?: string };
+    if (!tokenBody.id_token) throw new Error("Missing Google ID token");
+    return verifyGoogleToken(tokenBody.id_token, google!.clientId);
+  };
   const handle = async (request: IncomingMessage, response: ServerResponse): Promise<boolean> => {
     const url = new URL(request.url ?? "/", publicOrigin);
     if (!url.pathname.startsWith("/v1/account/")) return false;
@@ -111,54 +170,63 @@ export const createAccountApi = ({
       return true;
     }
 
-    if (url.pathname === "/v1/account/login" && request.method === "GET") {
-      const state = randomBytes(32).toString("base64url");
-      const authorize = new URL("https://github.com/login/oauth/authorize");
-      authorize.searchParams.set("client_id", clientId);
-      authorize.searchParams.set("redirect_uri", callback);
-      authorize.searchParams.set("state", state);
-      authorize.searchParams.set("scope", "");
-      response.setHeader("Set-Cookie", cookie(STATE_COOKIE, state, 600, publicOrigin));
-      response.writeHead(302, { Location: authorize.href, "cache-control": "no-store" }).end();
+    const loginProvider = url.pathname === "/v1/account/login" || url.pathname === "/v1/account/github/login"
+      ? "github" : url.pathname === "/v1/account/google/login" ? "google" : null;
+    if (loginProvider && request.method === "GET") {
+      const flow = beginOAuth(loginProvider, "login");
+      if (!flow) json(response, 404, { error: "Provider unavailable" });
+      else {
+        response.setHeader("Set-Cookie", cookie(STATE_COOKIE, flow.state, 600, publicOrigin));
+        response.writeHead(302, { Location: flow.url, "cache-control": "no-store" }).end();
+      }
       return true;
     }
 
-    if (url.pathname === "/v1/account/callback" && request.method === "GET") {
+    const callbackProvider = url.pathname === "/v1/account/callback" ? "github"
+      : url.pathname === "/v1/account/google/callback" ? "google" : null;
+    if (callbackProvider && request.method === "GET") {
+      if (!availableProviders.includes(callbackProvider)) {
+        json(response, 404, { error: "Provider unavailable" });
+        return true;
+      }
       const state = cookies(request)[STATE_COOKIE];
       response.setHeader("Set-Cookie", cookie(STATE_COOKIE, "", 0, publicOrigin));
-      if (!sameState(state, url.searchParams.get("state")) || !url.searchParams.get("code")) {
+      if (!state || !sameState(state, url.searchParams.get("state"))) {
         json(response, 400, { error: "Invalid OAuth state" });
         return true;
       }
+      const session = cookies(request)[SESSION_COOKIE] ?? null;
+      const flow = store.consumeOAuthFlow(state, callbackProvider, session);
+      if (!flow || (flow.intent === "link" && store.getUser(session!)?.id !== flow.userId)) {
+        json(response, 400, { error: "Invalid OAuth flow" });
+        return true;
+      }
+      const code = url.searchParams.get("code");
+      if (!code) {
+        response.writeHead(302, { Location: returnToAccount(url.searchParams.get("error") === "access_denied"
+          ? "cancelled" : "failed"), "cache-control": "no-store" }).end();
+        return true;
+      }
       try {
-        const tokenResponse = await fetchImpl("https://github.com/login/oauth/access_token", {
-          method: "POST",
-          headers: { Accept: "application/json", "Content-Type": "application/json" },
-          body: JSON.stringify({ client_id: clientId, client_secret: clientSecret,
-            code: url.searchParams.get("code"), redirect_uri: callback }),
-        });
-        if (!tokenResponse.ok) throw new Error("OAuth exchange failed");
-        const tokenBody = await tokenResponse.json() as { access_token?: string };
-        if (!tokenBody.access_token) throw new Error("Missing access token");
-        const userResponse = await fetchImpl("https://api.github.com/user", {
-          headers: { Authorization: `Bearer ${tokenBody.access_token}`,
-            Accept: "application/vnd.github+json", "User-Agent": "CharDesk" },
-        });
-        if (!userResponse.ok) throw new Error("GitHub identity failed");
-        const github = await userResponse.json() as { id?: number; login?: string; avatar_url?: string };
-        if (!Number.isSafeInteger(github.id) || !github.login) throw new Error("Invalid GitHub identity");
-        const user: AccountUser = { id: `github:${github.id}`, login: github.login,
-          avatarUrl: github.avatar_url ?? null };
-        store.upsertUser(user);
-        const session = randomBytes(32).toString("base64url");
-        store.createSession(user.id, session, Date.now() + SESSION_AGE_SECONDS * 1000);
-        response.setHeader("Set-Cookie", [
-          cookie(STATE_COOKIE, "", 0, publicOrigin),
-          cookie(SESSION_COOKIE, session, SESSION_AGE_SECONDS, publicOrigin),
-        ]);
-      response.writeHead(302, { Location: `${appOrigin}/workspace?view=account`, "cache-control": "no-store" }).end();
+        const identity = await readIdentity(callbackProvider, code);
+        if (callbackProvider === "google" && (!identity.nonce || !flow.nonceHash ||
+          !timingSafeEqual(Buffer.from(hash(identity.nonce)), Buffer.from(flow.nonceHash)))) {
+          throw new Error("Invalid Google nonce");
+        }
+        if (flow.intent === "link") {
+          const result = store.linkIdentity(flow.userId!, callbackProvider, identity.subject);
+          response.writeHead(302, { Location: returnToAccount(result === "conflict" ? "identity-in-use" : "linked"),
+            "cache-control": "no-store" }).end();
+        } else {
+          const user = store.userForIdentity(callbackProvider, identity.subject, identity);
+          const nextSession = randomBytes(32).toString("base64url");
+          store.createSession(user.id, nextSession, Date.now() + SESSION_AGE_SECONDS * 1000);
+          response.setHeader("Set-Cookie", [cookie(STATE_COOKIE, "", 0, publicOrigin),
+            cookie(SESSION_COOKIE, nextSession, SESSION_AGE_SECONDS, publicOrigin)]);
+          response.writeHead(302, { Location: returnToAccount(), "cache-control": "no-store" }).end();
+        }
       } catch {
-        json(response, 502, { error: "GitHub sign-in failed" });
+        response.writeHead(302, { Location: returnToAccount("failed"), "cache-control": "no-store" }).end();
       }
       return true;
     }
@@ -166,7 +234,8 @@ export const createAccountApi = ({
     const session = cookies(request)[SESSION_COOKIE];
     const user = session ? store.getUser(session) : null;
     if (url.pathname === "/v1/account/me" && request.method === "GET") {
-      json(response, 200, { user });
+      json(response, 200, { user, availableProviders,
+        linkedProviders: user ? store.linkedProviders(user.id) : [] });
       return true;
     }
     if (!user) {
@@ -175,6 +244,21 @@ export const createAccountApi = ({
     }
     if (request.method !== "GET" && (!origin || !allowedOrigins.has(origin))) {
       json(response, 403, { error: "Invalid request origin" });
+      return true;
+    }
+    const linkProvider = /^\/v1\/account\/identities\/(github|google)\/link$/.exec(url.pathname)?.[1] as
+      AuthProvider | undefined;
+    if (linkProvider && request.method === "POST") {
+      if (store.linkedProviders(user.id).includes(linkProvider)) {
+        json(response, 409, { error: "Provider already linked" });
+      } else {
+        const flow = beginOAuth(linkProvider, "link", user.id, session);
+        if (!flow) json(response, 404, { error: "Provider unavailable" });
+        else {
+          response.setHeader("Set-Cookie", cookie(STATE_COOKIE, flow.state, 600, publicOrigin));
+          json(response, 200, { authorizeUrl: flow.url });
+        }
+      }
       return true;
     }
     if (url.pathname === "/v1/account/logout" && request.method === "POST") {

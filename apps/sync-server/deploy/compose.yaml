@@ -20,6 +20,8 @@ services:
       ACCOUNT_APP_ORIGIN: ${ACCOUNT_APP_ORIGIN:-https://canvas.chardesk.com}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     volumes:
       - accounts:/data
     healthcheck:

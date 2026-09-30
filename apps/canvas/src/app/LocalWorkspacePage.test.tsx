@@ -15,7 +15,8 @@ const fixtures = vi.hoisted(() => ({
     { id: string; login: string; avatarUrl: null } | null,
   loading: false,
   error: false,
-  signOut: vi.fn(),
+    signOut: vi.fn(),
+    linkProvider: vi.fn(),
 }));
 
 vi.mock('@/domains/canvas/public', () => ({
@@ -52,6 +53,8 @@ vi.mock('@/domains/export/public', () => ({
 vi.mock('./useCloudWorkspace', () => ({
   useCloudWorkspace: () => ({
     configured: fixtures.configured, user: fixtures.user,
+    availableProviders: ['github', 'google'],
+    linkedProviders: fixtures.user ? ['github'] : [],
     works: [
       { id: 'cloud-id', title: 'Cloud draft', kind: 'canvas', contentStatus: 'uploaded', contentBytes: 17 },
       ...(fixtures.conflictWith ? [{ id: 'parent-id', title: 'Original draft', kind: 'canvas',
@@ -61,6 +64,7 @@ vi.mock('./useCloudWorkspace', () => ({
     limits: { maxWorkBytes: 10 * 1024 * 1024, maxAccountBytes: 100 * 1024 * 1024, usedBytes: 0 },
     backup: fixtures.backup,
     signOut: fixtures.signOut,
+    linkProvider: fixtures.linkProvider,
   }),
 }));
 
@@ -81,6 +85,7 @@ describe('LocalWorkspacePage backups', () => {
     fixtures.loading = false;
     fixtures.error = false;
     fixtures.signOut.mockResolvedValue(true);
+    fixtures.linkProvider.mockResolvedValue(true);
   });
   afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
@@ -121,17 +126,20 @@ describe('LocalWorkspacePage backups', () => {
     expect(window.location.search).toBe('?view=account');
     expect(screen.getByRole('dialog', { name: 'Account' })).toBeVisible();
     expect(screen.getByText('0 of 100 MiB used · 10 MiB per backup')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Google' }));
+    expect(fixtures.linkProvider).toHaveBeenCalledWith('google');
     expect(document.querySelector('table')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(fixtures.signOut).toHaveBeenCalledOnce();
   });
 
-  it('shows a GitHub-only sign-in card and an honest unavailable state', () => {
+  it('shows provider sign-in choices and an honest unavailable state', () => {
     fixtures.user = null;
     const { rerender } = render(<LocalWorkspacePage />);
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in with GitHub' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     const dialog = screen.getByRole('dialog', { name: 'Sign in to CharDesk' });
     expect(within(dialog).getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
     expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument();
     fixtures.configured = false;
     rerender(<LocalWorkspacePage />);
