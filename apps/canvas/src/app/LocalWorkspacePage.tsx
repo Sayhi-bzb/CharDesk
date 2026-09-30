@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { ChevronLeft, Files, MoreHorizontal, PanelLeft, Plus, Settings2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type Ref } from 'react';
+import { ChevronLeft, Files, MoreHorizontal, PanelLeft, Plus } from 'lucide-react';
 import { useBlackboardRuntime, parseBlackboardSource, serializeBlackboardSource, type BlackboardWorkspace } from '@/domains/blackboard/public';
 import { useCanvasRuntime, useCanvasState } from '@/domains/canvas/public';
 import { bindCloudSession, blackboardSyncKey, cloudSignInUrl, cloudWorkspaceApi, getBoundCloudWorkId,
@@ -35,12 +35,9 @@ const icons = {
 const mib = (bytes: number) => (bytes / (1024 * 1024)).toLocaleString(undefined, { maximumFractionDigits: 2 });
 const syncKey = (work: WorkItem) => work.kind === 'blackboard' ? blackboardSyncKey(work.id) : work.sessionId;
 
-type WorkspaceSection = 'works' | 'account';
+const accountDialogOpen = () => new URLSearchParams(window.location.search).get('view') === 'account';
 
-const getSection = (): WorkspaceSection =>
-  new URLSearchParams(window.location.search).get('view') === 'account' ? 'account' : 'works';
-
-const subscribeSection = (listener: () => void) => {
+const subscribeRoute = (listener: () => void) => {
   window.addEventListener('popstate', listener);
   window.addEventListener(APP_ROUTE_EVENT, listener);
   return () => {
@@ -49,22 +46,33 @@ const subscribeSection = (listener: () => void) => {
   };
 };
 
-function WorkspaceNavigation({ section, onSelect }: {
-  section: WorkspaceSection;
-  onSelect: (section: WorkspaceSection) => void;
-}) {
+function WorkspaceNavigation({ onSelect }: { onSelect: () => void }) {
   const { t } = useUiI18n();
   return (
     <nav aria-label={t('workspace.navigation')} className="flex flex-col gap-1 p-2">
-      <SelectableItem type="button" selected={section === 'works'} aria-current={section === 'works' ? 'page' : undefined}
-        className="w-full justify-start gap-2" onClick={() => onSelect('works')}>
+      <SelectableItem type="button" selected aria-current="page"
+        className="w-full justify-start gap-2" onClick={onSelect}>
         <Files aria-hidden="true" className="size-4" />{t('workspace.works')}
       </SelectableItem>
-      <SelectableItem type="button" selected={section === 'account'} aria-current={section === 'account' ? 'page' : undefined}
-        className="w-full justify-start gap-2" onClick={() => onSelect('account')}>
-        <Settings2 aria-hidden="true" className="size-4" />{t('workspace.accountSettings')}
-      </SelectableItem>
     </nav>
+  );
+}
+
+function WorkspaceAccountFooter({ label, open, onSelect, buttonRef }: {
+  label: string;
+  open: boolean;
+  onSelect: () => void;
+  buttonRef?: Ref<HTMLButtonElement>;
+}) {
+  const AccountIcon = HOST_ICONOLOGY.appMenu.account;
+  return (
+    <footer className="mt-auto border-t border-separator p-2">
+      <Button ref={buttonRef} type="button" tone="subtle" open={open} aria-haspopup="dialog"
+        className="w-full min-w-0 justify-start" onClick={onSelect}>
+        <AccountIcon aria-hidden="true" />
+        <span className="truncate">{label}</span>
+      </Button>
+    </footer>
   );
 }
 
@@ -73,8 +81,10 @@ export function LocalWorkspacePage() {
   const canvas = useCanvasRuntime();
   const blackboard = useBlackboardRuntime();
   const cloud = useCloudWorkspace();
-  const section = useSyncExternalStore(subscribeSection, getSection, (): WorkspaceSection => 'works');
+  const accountOpen = useSyncExternalStore(subscribeRoute, accountDialogOpen, () => false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const desktopAccountRef = useRef<HTMLButtonElement>(null);
+  const mobileNavigationRef = useRef<HTMLButtonElement>(null);
   const sessions = useCanvasState((state) => state.canvasSessions);
   const [blackboards, setBlackboards] = useState<readonly BlackboardWorkspace[]>([]);
   const [loadingBlackboards, setLoadingBlackboards] = useState(true);
@@ -115,10 +125,15 @@ export function LocalWorkspacePage() {
     activeSession.sourceBinding.provider === 'browser-workspace'
     ? `/blackboard?workspace=${encodeURIComponent(activeSession.sourceBinding.id)}`
     : '/';
-  const selectSection = (next: WorkspaceSection) => {
-    setMobileNavigationOpen(false);
-    if (next !== section) navigateApp(next === 'account' ? '/workspace?view=account' : '/workspace');
+  const closeAccount = () => {
+    if (accountOpen) navigateApp('/workspace');
   };
+  const openAccount = () => {
+    setMobileNavigationOpen(false);
+    if (!accountOpen) navigateApp('/workspace?view=account');
+  };
+  const accountLabel = cloud.loading ? t('workspace.cloudLoading') : cloud.user?.login ??
+    t(cloud.configured ? 'workspace.signInGitHub' : 'workspace.account');
 
   const openWork = async (work: WorkItem) => {
     setError(false);
@@ -318,21 +333,25 @@ export function LocalWorkspacePage() {
             <SheetTitle>{t('workspace.title')}</SheetTitle>
             <SheetDescription className="sr-only">{t('workspace.navigation')}</SheetDescription>
           </SheetHeader>
-          <WorkspaceNavigation section={section} onSelect={selectSection} />
+          <WorkspaceNavigation onSelect={() => setMobileNavigationOpen(false)} />
+          <WorkspaceAccountFooter label={accountLabel} open={accountOpen} onSelect={openAccount} />
         </SheetContent>
       </Sheet>
       <aside className="hidden w-56 shrink-0 flex-col border-r border-separator md:flex">
         <div className="border-b border-separator px-4 py-3 text-sm font-semibold">{t('workspace.title')}</div>
-        <WorkspaceNavigation section={section} onSelect={selectSection} />
+        <WorkspaceNavigation onSelect={closeAccount} />
+        <WorkspaceAccountFooter label={accountLabel} open={accountOpen} onSelect={openAccount}
+          buttonRef={desktopAccountRef} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-separator px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <Button type="button" tone="subtle" shape="square" size="sm" className="md:hidden"
-            aria-label={t('workspace.openNavigation')} onClick={() => setMobileNavigationOpen(true)}>
+            ref={mobileNavigationRef} aria-label={t('workspace.openNavigation')}
+            onClick={() => setMobileNavigationOpen(true)}>
             <PanelLeft aria-hidden="true" />
           </Button>
-          <h1 className="truncate text-lg font-semibold">{t(section === 'works' ? 'workspace.works' : 'workspace.accountSettings')}</h1>
+          <h1 className="truncate text-lg font-semibold">{t('workspace.works')}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button type="button" tone="subtle" size="sm" onClick={() => navigateApp(editorPath)}>
@@ -341,7 +360,6 @@ export function LocalWorkspacePage() {
         </div>
       </header>
       <main className="min-w-0 flex-1">
-        {section === 'works' ? <>
         <div className="flex flex-wrap items-center gap-2 border-b border-separator px-3 py-2">
           <Input type="search" appearance="search" aria-label={t('workspace.search')}
             placeholder={t('workspace.search')} value={query} onChange={(event) => setQuery(event.target.value)}
@@ -450,35 +468,51 @@ export function LocalWorkspacePage() {
         ) : visibleRows.length === 0 ? (
           <Empty><EmptyTitle>{t('workspace.empty')}</EmptyTitle></Empty>
         ) : null}
-        </> : <section aria-label={t('workspace.accountSettings')} className="max-w-xl px-4 py-5">
-          <h2 className="text-sm font-medium">GitHub</h2>
-          {!cloud.configured ? (
-            <p className="mt-2 text-sm text-muted-foreground">{t('workspace.cloudUnavailable')}</p>
-          ) : cloud.loading ? (
-            <p role="status" className="mt-2 text-sm text-muted-foreground">{t('workspace.cloudLoading')}</p>
-          ) : (
-            <>
-              <p className="mt-2 text-sm">{cloud.user?.login ?? t('workspace.notSignedIn')}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t('workspace.cloudCatalogOnly')}</p>
-              {cloud.user && cloud.limits && <p className="mt-2 text-sm text-muted-foreground">
-                {t('workspace.storageUsage', {
-                  used: mib(cloud.limits.usedBytes), total: mib(cloud.limits.maxAccountBytes),
-                  work: mib(cloud.limits.maxWorkBytes),
-                })}
-              </p>}
-              {cloud.error && <p role="alert" className="mt-2 text-sm text-destructive">{t(cloud.limitExceeded ? 'workspace.cloudLimit' : 'workspace.cloudError')}</p>}
-              {cloud.user ? (
-                <Button type="button" tone="subtle" size="sm" className="mt-4" disabled={cloud.busy}
-                  onClick={() => void cloud.signOut()}>{t('workspace.signOut')}</Button>
-              ) : (
-                <Button type="button" size="sm" className="mt-4"
-                  onClick={() => { window.location.href = cloudSignInUrl; }}>{t('workspace.signInGitHub')}</Button>
-              )}
-            </>
-          )}
-        </section>}
       </main>
       </div>
+      <Dialog open={accountOpen} onOpenChange={(open) => { if (!open) closeAccount(); }}>
+        <DialogContent className="sm:max-w-sm" onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          const target = window.matchMedia?.('(min-width: 768px)').matches
+            ? desktopAccountRef.current : mobileNavigationRef.current;
+          target?.focus();
+        }}>
+          <DialogHeader>
+            <DialogTitle>{t(cloud.user ? 'workspace.account' : 'workspace.signInTitle')}</DialogTitle>
+            {!cloud.user && cloud.configured && !cloud.loading &&
+              <DialogDescription>{t('workspace.signInDescription')}</DialogDescription>}
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-3">
+            {!cloud.configured ? (
+              <p className="text-sm text-muted-foreground">{t('workspace.cloudUnavailable')}</p>
+            ) : cloud.loading ? (
+              <p role="status" className="text-sm text-muted-foreground">{t('workspace.cloudLoading')}</p>
+            ) : cloud.user ? (
+              <>
+                <p className="text-sm font-medium">{cloud.user.login}</p>
+                {cloud.limits && <p className="text-sm text-muted-foreground">
+                  {t('workspace.storageUsage', {
+                    used: mib(cloud.limits.usedBytes), total: mib(cloud.limits.maxAccountBytes),
+                    work: mib(cloud.limits.maxWorkBytes),
+                  })}
+                </p>}
+                <p className="text-sm text-muted-foreground">{t('workspace.cloudCatalogOnly')}</p>
+              </>
+            ) : (
+              <Button type="button" className="w-full" onClick={() => { window.location.href = cloudSignInUrl; }}>
+                {t('workspace.signInGitHub')}
+              </Button>
+            )}
+            {cloud.error && <p role="alert" className="text-sm text-destructive">
+              {t(cloud.limitExceeded ? 'workspace.cloudLimit' : 'workspace.cloudError')}
+            </p>}
+          </DialogBody>
+          {cloud.user && <DialogFooter>
+            <Button type="button" tone="subtle" disabled={cloud.busy}
+              onClick={() => void cloud.signOut()}>{t('workspace.signOut')}</Button>
+          </DialogFooter>}
+        </DialogContent>
+      </Dialog>
       <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => { if (!open && !busy && !cloud.busy) setPendingDelete(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -9,8 +9,9 @@ const documentSource = (body: string) =>
 async function openWorkspace(page: Page) {
   await page.getByRole('button', { name: 'Open menu' }).click();
   await page.getByRole('menuitem', { name: 'Account' }).click();
-  await page.getByRole('navigation', { name: 'Workspace navigation' })
-    .getByRole('button', { name: 'Works' }).click();
+  await expect(page.getByRole('dialog', { name: 'Account' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('table', { name: 'My workspace' })).toBeVisible();
 }
 
 async function currentSource(page: Page): Promise<string | null> {

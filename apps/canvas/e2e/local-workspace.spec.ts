@@ -6,10 +6,9 @@ async function openWorksFromEditor(page: Page) {
   await expect(page.getByRole('menuitem', { name: 'Account' }).locator('svg')).toBeVisible();
   await page.getByRole('menuitem', { name: 'Account' }).click();
   await expect(page).toHaveURL(/\/workspace\?view=account$/);
-  const mobileNavigation = page.getByRole('button', { name: 'Open workspace navigation' });
-  if (await mobileNavigation.isVisible()) await mobileNavigation.click();
-  await page.getByRole('navigation', { name: 'Workspace navigation' })
-    .getByRole('button', { name: 'Works' }).click();
+  await expect(page.getByRole('dialog', { name: 'Sign in to CharDesk' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/workspace$/);
 }
 
 test('opens the local workspace from the editor and manages Canvas works', async ({ page }) => {
@@ -95,8 +94,10 @@ test('searches table rows on a narrow direct workspace route', async ({ page }) 
   await expect(page.getByTestId('local-workspace')).toBeVisible();
   await page.getByRole('button', { name: 'Open workspace navigation' }).click();
   await expect(page.getByRole('dialog').getByRole('navigation', { name: 'Workspace navigation' })).toBeVisible();
-  await page.getByRole('dialog').getByRole('button', { name: 'Account settings' }).click();
-  await expect(page.getByRole('heading', { name: 'GitHub' })).toBeVisible();
+  await page.getByRole('dialog', { name: 'My workspace' }).getByRole('button', { name: 'Sign in with GitHub' }).click();
+  await expect(page.getByRole('dialog', { name: 'Sign in to CharDesk' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Open workspace navigation' })).toBeFocused();
   await page.getByRole('button', { name: 'Open workspace navigation' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Works' }).click();
   await page.getByRole('button', { name: 'New work' }).click();
@@ -120,14 +121,65 @@ test('keeps local works available on a legacy cloud-scoped route', async ({ page
   await expect(page.locator('[data-work-kind="canvas"]')).toHaveCount(1);
 });
 
-test('uses the sidebar for account settings without changing the works table', async ({ page }) => {
+test('opens account from the sidebar footer without replacing the works table', async ({ page }) => {
   await page.goto('/workspace');
   const navigation = page.getByRole('navigation', { name: 'Workspace navigation' });
-  await navigation.getByRole('button', { name: 'Account settings' }).click();
+  await expect(navigation.getByRole('button', { name: 'Works' })).toHaveAttribute('aria-current', 'page');
+  await page.locator('aside footer').getByRole('button', { name: 'Sign in with GitHub' }).click();
   await expect(page).toHaveURL(/\/workspace\?view=account$/);
-  await expect(page.getByRole('heading', { name: 'GitHub' })).toBeVisible();
-  await expect(page.getByRole('table', { name: 'My workspace' })).toHaveCount(0);
-  await navigation.getByRole('button', { name: 'Works' }).click();
+  await expect(page.getByRole('dialog', { name: 'Sign in to CharDesk' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('dialog', { name: 'Sign in to CharDesk' })).toHaveCount(0);
+  await page.goForward();
+  await expect(page.getByRole('dialog', { name: 'Sign in to CharDesk' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/workspace$/);
+  await expect(page.locator('aside footer').getByRole('button', { name: 'Sign in with GitHub' })).toBeFocused();
   await expect(page.getByRole('table', { name: 'My workspace' })).toBeVisible();
   await expect(page.locator('[data-work-kind="canvas"]')).toHaveCount(1);
+});
+
+test('starts GitHub OAuth only from the account dialog', async ({ page, baseURL }) => {
+  const apiOrigin = 'http://127.0.0.1:1234';
+  await page.route(`${apiOrigin}/v1/account/me`, (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    headers: { 'Access-Control-Allow-Origin': baseURL!, 'Access-Control-Allow-Credentials': 'true' },
+    body: JSON.stringify({ user: null }),
+  }));
+  await page.route(`${apiOrigin}/v1/account/login`, (route) => route.fulfill({
+    status: 200, contentType: 'text/html', body: 'OAuth entry',
+  }));
+  await page.goto('/workspace');
+  const footer = page.locator('aside footer');
+  await footer.getByRole('button', { name: 'Sign in with GitHub' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sign in to CharDesk' });
+  await expect(dialog.getByRole('textbox')).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Sign in with GitHub' }).click();
+  await expect(page).toHaveURL(`${apiOrigin}/v1/account/login`);
+});
+
+test('shows account details on OAuth return and signs out in place', async ({ page, baseURL }) => {
+  const apiOrigin = 'http://127.0.0.1:1234';
+  const headers = { 'Access-Control-Allow-Origin': baseURL!, 'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
+  await page.route(`${apiOrigin}/v1/account/me`, (route) => route.fulfill({
+    status: 200, contentType: 'application/json', headers,
+    body: JSON.stringify({ user: { id: 'github:17', login: 'maker', avatarUrl: null } }),
+  }));
+  await page.route(`${apiOrigin}/v1/account/works`, (route) => route.fulfill({
+    status: 200, contentType: 'application/json', headers,
+    body: JSON.stringify({ works: [], limits: { maxWorkBytes: 10485760, maxAccountBytes: 104857600, usedBytes: 0 } }),
+  }));
+  await page.route(`${apiOrigin}/v1/account/logout`, (route) => route.fulfill({
+    status: route.request().method() === 'OPTIONS' ? 204 : 200,
+    contentType: 'application/json', headers, body: JSON.stringify({ ok: true }),
+  }));
+  await page.goto('/workspace?view=account');
+  const dialog = page.getByRole('dialog', { name: 'Account' });
+  await expect(dialog.getByText('maker')).toBeVisible();
+  await expect(dialog.getByText('0 of 100 MiB used · 10 MiB per backup')).toBeVisible();
+  await expect(page.locator('aside footer button')).toContainText('maker');
+  await dialog.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('dialog', { name: 'Sign in to CharDesk' })).toBeVisible();
+  await expect(page.locator('aside footer button')).toContainText('Sign in with GitHub');
 });
