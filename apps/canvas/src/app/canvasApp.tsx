@@ -16,7 +16,6 @@ import { TextRenderingProvider } from "@/domains/document/public";
 import { CanvasFontProvider } from "@/shared/fonts/react";
 import { CanvasCursorProvider } from "@/shared/canvas-cursor/react";
 import { CanvasAppearanceProvider } from "@/shared/canvas-appearance/react";
-import { BlackboardRuntimeProvider } from "@/domains/blackboard/public";
 import { EDITOR_HOST_PROFILE } from "./editorHostProfile";
 import { EditorHostProfileProvider } from "./editorHostProfileContext";
 import {
@@ -31,9 +30,8 @@ import {
   updateWebMcpDiagnostics,
   type WebMcpProvider,
 } from "./site-tools/environment";
-import { isBlackboardRoute, isLocalBlackboardReaderRoute } from "./blackboardRoute";
+import { isRetiredBlackboardRoute, isLocalDocumentReaderRoute } from "./documentRoute";
 import { APP_ROUTE_EVENT, isWorkspaceRoute } from "@/shared/navigation/workspace-route";
-import { createBlackboardWorkspaceTarget } from "./blackboardWorkspaceTarget";
 import { configureLocalAgent, disconnectLocalAgent, restoreLocalAgent } from "@/shared/services/local-agent";
 
 const profile = EDITOR_HOST_PROFILE;
@@ -45,23 +43,15 @@ const createRouteAgentTools = () => createChardeskAgentTools({
     getProfile: host.textRendering.getProfile,
     getContext: () => ({ themeMode: host.canvasAppearance.getSnapshot().resolvedTheme }),
   },
-  readOnly: isLocalBlackboardReaderRoute(window.location),
-  blackboard: isLocalBlackboardReaderRoute(window.location) ? undefined : {
-    blackboard: host.blackboard,
-    workspaceTarget: createBlackboardWorkspaceTarget({
-      blackboard: host.blackboard,
-      canvas: host.canvas,
-      location: window.location,
-      history: window.history,
-    }),
-  },
+  readOnly: isLocalDocumentReaderRoute(window.location),
 });
 
 let siteTools: ReturnType<typeof startDocumentSiteTools> | null = null;
 configureLocalAgent({
-  scope: () => isWorkspaceRoute(window.location) ? null : host.canvas.getState().activeCanvasId,
+  scope: () => isWorkspaceRoute(window.location) || isRetiredBlackboardRoute(window.location)
+    ? null : host.canvas.getState().activeCanvasId,
   execute: async (name, input) => {
-    if (isWorkspaceRoute(window.location)) throw new Error('Open a Canvas first');
+    if (isWorkspaceRoute(window.location) || isRetiredBlackboardRoute(window.location)) throw new Error('Open a Canvas first');
     const tool = createRouteAgentTools().find((tool) => tool.name === name);
     if (!tool) throw new Error('Canvas tool is unavailable on this page');
     return tool.execute(input);
@@ -82,7 +72,7 @@ const syncChardeskSiteTools = async () => {
   const generation = ++siteToolsGeneration;
   siteTools?.dispose();
   siteTools = null;
-  if (isWorkspaceRoute(window.location)) {
+  if (isWorkspaceRoute(window.location) || isRetiredBlackboardRoute(window.location)) {
     disconnectLocalAgent();
     updateWebMcpDiagnostics(document, "unavailable", { status: "disposed", adapterId: null });
     return;
@@ -291,7 +281,7 @@ if (canvasStressParams.has("canvas-stress")) {
     },
   });
 }
-if (!isBlackboardRoute(window.location) && !isWorkspaceRoute(window.location)) {
+if (!isRetiredBlackboardRoute(window.location) && !isLocalDocumentReaderRoute(window.location) && !isWorkspaceRoute(window.location)) {
   captureOnboardingEntryState();
 }
 installModuleLoadRecovery();
@@ -309,7 +299,6 @@ void import("./App").then((module) => {
   root.render(
     <React.StrictMode>
       <EditorHostProfileProvider profile={host.profile}>
-        <BlackboardRuntimeProvider runtime={host.blackboard}>
           <TextRenderingProvider runtime={host.textRendering}>
             <CanvasFontProvider runtime={host.canvasFont}>
               <CanvasAppearanceProvider runtime={host.canvasAppearance}>
@@ -325,7 +314,6 @@ void import("./App").then((module) => {
               </CanvasAppearanceProvider>
             </CanvasFontProvider>
           </TextRenderingProvider>
-        </BlackboardRuntimeProvider>
       </EditorHostProfileProvider>
     </React.StrictMode>
   );

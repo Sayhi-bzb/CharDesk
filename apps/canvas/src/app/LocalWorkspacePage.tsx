@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type Ref } from 'react';
 import { ChevronLeft, Files, MoreHorizontal, PanelLeft, Plus } from 'lucide-react';
-import { useBlackboardRuntime, parseBlackboardSource, serializeBlackboardSource, type BlackboardWorkspace } from '@/domains/blackboard/public';
+import { legacyBlackboards, parseBlackboardSource, createBlackboardArchive, type BlackboardWorkspace } from '@/domains/legacy-blackboard/public';
+import { migrateBlackboard } from './migrateBlackboard';
+import { migrateCloudBlackboard } from './migrateCloudBlackboard';
 import { useCanvasRuntime, useCanvasState } from '@/domains/canvas/public';
-import { bindCloudSession, blackboardSyncKey, cloudSignInUrl, cloudGoogleSignInUrl,
+import { bindCloudSession, cloudSignInUrl, cloudGoogleSignInUrl,
   cloudWorkspaceApi, getBoundCloudWorkId,
   getCloudConflict, getCloudSyncState, resolveCloudConflict,
-  subscribeCloudSync, unbindCloudWork, type CloudAuthProvider, type CloudWork } from '@/domains/account/public';
+  subscribeCloudSync, type CloudAuthProvider, type CloudWork } from '@/domains/account/public';
 import { prepareTextExport } from '@/domains/export/public';
-import { isSourceBackedCanvasSession } from '@/domains/sessions/public';
 import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
 import { GoogleMarkIcon } from '@/shared/icons/google-mark-icon';
 import { useUiI18n } from '@/shared/i18n';
@@ -31,17 +32,17 @@ type WorkspaceRow =
 const icons = {
   canvas: HOST_ICONOLOGY.canvasMode.freeform,
   slides: HOST_ICONOLOGY.canvasMode.slide,
-  blackboard: HOST_ICONOLOGY.sourceKind.blackboard,
+  retired: HOST_ICONOLOGY.canvasMode.freeform,
 };
 
 const mib = (bytes: number) => (bytes / (1024 * 1024)).toLocaleString(undefined, { maximumFractionDigits: 2 });
-const syncKey = (work: WorkItem) => work.kind === 'blackboard' ? blackboardSyncKey(work.id) : work.sessionId;
+const syncKey = (work: WorkItem) => work.sessionId;
 
 const accountRoute = () => window.location.search;
 const providerName = (provider: CloudAuthProvider) => provider === 'github' ? 'GitHub' : 'Google';
 const GitHubMark = HOST_ICONOLOGY.appMenu.github;
 const ProviderMark = ({ provider }: { provider: CloudAuthProvider }) => (
-  <span className={`flex size-5 shrink-0 items-center justify-center rounded-sm ${provider === 'google' ? 'bg-white' : ''}`}>
+  <span className={`flex size-5 shrink-0 items-center justify-center rounded-sm ${provider === 'google' ? 'bg-background' : ''}`}>
     {provider === 'github' ? <GitHubMark className="size-4" /> : <GoogleMarkIcon />}
   </span>
 );
@@ -88,7 +89,7 @@ function WorkspaceAccountFooter({ label, open, onSelect, buttonRef }: {
 export function LocalWorkspacePage() {
   const { t } = useUiI18n();
   const canvas = useCanvasRuntime();
-  const blackboard = useBlackboardRuntime();
+
   const cloud = useCloudWorkspace();
   const accountQuery = useSyncExternalStore(subscribeRoute, accountRoute, () => '');
   const accountParams = new URLSearchParams(accountQuery);
@@ -100,6 +101,7 @@ export function LocalWorkspacePage() {
   const sessions = useCanvasState((state) => state.canvasSessions);
   const [blackboards, setBlackboards] = useState<readonly BlackboardWorkspace[]>([]);
   const [loadingBlackboards, setLoadingBlackboards] = useState(true);
+  const [sourceBackups, setSourceBackups] = useState<Array<{ workspaceId: string; sessionId: string; state: string }>>([]);
   const [query, setQuery] = useState('');
   const [renameKey, setRenameKey] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<WorkspaceRow | null>(null);
@@ -107,36 +109,36 @@ export function LocalWorkspacePage() {
   const [conflictCloudWorkId, setConflictCloudWorkId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
-  const [, refreshSync] = useState(0);
+  const [syncRevision, refreshSync] = useState(0);
   useEffect(() => subscribeCloudSync(() => refreshSync((value) => value + 1)), []);
 
-  useEffect(() => {
-    let current = true;
-    const refresh = () => {
-      void blackboard.repository.listWorkspaces().then((items) => {
-        if (current) { setBlackboards(items); setLoadingBlackboards(false); }
-      }).catch(() => { if (current) { setError(true); setLoadingBlackboards(false); } });
-    };
-    refresh();
-    const unsubscribe = blackboard.repository.subscribe(refresh);
-    return () => { current = false; unsubscribe(); };
-  }, [blackboard]);
+  const refreshLegacy = async () => {
+    setBlackboards(await legacyBlackboards.listWorkspaces(true));
+    setSourceBackups(await legacyBlackboards.listMigrations());
+    setLoadingBlackboards(false);
+  };
+  useEffect(() => { void refreshLegacy().catch(() => { setError(true); setLoadingBlackboards(false); }); }, []);
 
-  const localWorks = useMemo(() => collectLocalWorks(sessions, blackboards), [sessions, blackboards]);
+  const localWorks = useMemo(() => collectLocalWorks(
+    sessions.filter((session) => !sourceBackups.some((record) => record.state === 'pending' && record.sessionId === session.id)),
+    blackboards.filter((workspace) => !sourceBackups.some((record) => record.workspaceId === workspace.id && record.state === 'complete' && sessions.some((session) => session.id === record.sessionId))),
+  ).map((work) => {
+    const archive = sourceBackups.find((record) => record.state === 'complete' && record.sessionId === work.sessionId);
+    if (archive) return { ...work, sourceBackupId: archive.workspaceId };
+    const cloudId = cloud.user && work.sessionId && getBoundCloudWorkId(cloud.user.id, work.sessionId);
+    return cloudId && cloud.works.some((item) => item.id === cloudId && item.hasSourceBackup)
+      ? { ...work, cloudSourceBackupId: cloudId } : work;
+  }), [sessions, blackboards, sourceBackups, cloud.user, cloud.works, syncRevision]);
   const rows = useMemo<WorkspaceRow[]>(() => [
     ...localWorks.map((work) => ({ source: 'local' as const, key: `local:${work.id}`, work, name: work.name, kind: work.kind })),
     ...cloud.works.filter((work) => !cloud.user ||
       !localWorks.some((local) => syncKey(local) &&
         getBoundCloudWorkId(cloud.user!.id, syncKey(local)!) === work.id)).map((work) =>
-      ({ source: 'cloud' as const, key: `cloud:${work.id}`, work, name: work.title, kind: work.kind })),
-  ], [localWorks, cloud.works, cloud.user]);
+      ({ source: 'cloud' as const, key: `cloud:${work.id}`, work, name: work.title, kind: work.kind === 'blackboard' ? 'retired' as const : work.kind })),
+  ], [localWorks, cloud.works, cloud.user, syncRevision]);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleRows = rows.filter((row) => row.name.toLocaleLowerCase().includes(normalizedQuery));
-  const activeSession = sessions.find((session) => session.id === canvas.getState().activeCanvasId);
-  const editorPath = activeSession && isSourceBackedCanvasSession(activeSession) &&
-    activeSession.sourceBinding.provider === 'browser-workspace'
-    ? `/blackboard?workspace=${encodeURIComponent(activeSession.sourceBinding.id)}`
-    : '/';
+  const editorPath = '/';
   const closeAccount = () => {
     if (accountOpen) navigateApp('/workspace');
   };
@@ -150,20 +152,10 @@ export function LocalWorkspacePage() {
   const openWork = async (work: WorkItem) => {
     setError(false);
     try {
-      if (work.kind === 'blackboard') {
-        const existing = canvas.getState().canvasSessions.find((session) =>
-          isSourceBackedCanvasSession(session) &&
-          session.sourceBinding.provider === 'browser-workspace' &&
-          session.sourceBinding.id === work.id
-        );
-        if (existing) {
-          if (!await canvas.commands.sessions.switch(existing.id)) throw new Error('Session unavailable');
-        } else {
-          canvas.commands.sessions.openSource({
-            kind: 'blackboard', provider: 'browser-workspace', id: work.id,
-          }, { name: work.name });
-        }
-        navigateApp(`/blackboard?workspace=${encodeURIComponent(work.id)}`);
+      if (work.kind === 'retired') {
+        await migrateBlackboard(canvas, work.id);
+        await refreshLegacy();
+        navigateApp('/');
       } else if (work.sessionId && await canvas.commands.sessions.switch(work.sessionId)) {
         navigateApp('/');
       } else {
@@ -175,16 +167,9 @@ export function LocalWorkspacePage() {
   const createWork = async (kind: WorkKind) => {
     setError(false);
     try {
-      if (kind === 'blackboard') {
-        const { workspace } = await blackboard.repository.createWorkspace();
-        canvas.commands.sessions.openSource({
-          kind: 'blackboard', provider: 'browser-workspace', id: workspace.id,
-        }, { name: workspace.title });
-        navigateApp(`/blackboard?workspace=${encodeURIComponent(workspace.id)}`);
-      } else {
-        canvas.commands.sessions.create(kind === 'slides' ? 'slide' : 'freeform');
-        navigateApp('/');
-      }
+      if (kind === 'retired') throw new Error('Retired work cannot be created.');
+      canvas.commands.sessions.create(kind === 'slides' ? 'slide' : 'freeform');
+      navigateApp('/');
     } catch { setError(true); }
   };
 
@@ -197,12 +182,8 @@ export function LocalWorkspacePage() {
     }
     setError(false);
     try {
-      if (row.work.kind === 'blackboard') {
-        const renamed = await blackboard.repository.renameWorkspace(row.work.id, name);
-        canvas.commands.sessions.syncBlackboardTitle(row.work.id, renamed.workspace.title);
-      } else if (row.work.sessionId) {
-        canvas.commands.sessions.rename(row.work.sessionId, name);
-      }
+      if (row.work.kind === 'retired') throw new Error('Original source is read-only.');
+      if (row.work.sessionId) canvas.commands.sessions.rename(row.work.sessionId, name);
     } catch { setError(true); }
   };
 
@@ -221,21 +202,8 @@ export function LocalWorkspacePage() {
     setBusy(true);
     setError(false);
     try {
-      if (row.work.kind === 'blackboard') {
-        const boundIds = canvas.getState().canvasSessions.filter((session) =>
-          isSourceBackedCanvasSession(session) &&
-          session.sourceBinding.provider === 'browser-workspace' &&
-          session.sourceBinding.id === row.work.id
-        ).map((session) => session.id);
-        for (const id of boundIds) await removeSession(id);
-        await blackboard.repository.deleteWorkspace(row.work.id);
-        if (cloud.user) {
-          const cloudId = getBoundCloudWorkId(cloud.user.id, blackboardSyncKey(row.work.id));
-          if (cloudId) unbindCloudWork(cloud.user.id, cloudId);
-        }
-      } else if (row.work.sessionId) {
-        await removeSession(row.work.sessionId);
-      }
+      if (row.work.kind === 'retired') throw new Error('Original source is retained.');
+      if (row.work.sessionId) await removeSession(row.work.sessionId);
       setPendingDelete(null);
     } catch { setError(true); }
     finally { setBusy(false); }
@@ -246,12 +214,7 @@ export function LocalWorkspacePage() {
     setBusy(true);
     setError(false);
     try {
-      if (work.kind === 'blackboard') {
-        const source = await blackboard.repository.readWorkspace(work.id);
-        if (!source) throw new Error('Blackboard unavailable');
-        await cloud.backup('blackboard', source.workspace.title, serializeBlackboardSource(source), blackboardSyncKey(work.id));
-        return;
-      }
+      if (work.kind === 'retired') throw new Error('Convert this work before backing it up.');
       if (!work.sessionId) throw new Error('Session unavailable');
       const session = await canvas.materializeSession(work.sessionId);
       if (!session) throw new Error('Session unavailable');
@@ -275,21 +238,8 @@ export function LocalWorkspacePage() {
     setError(false);
     try {
       if (work.kind === 'blackboard') {
-        const existing = cloud.user && blackboards.find((item) =>
-          getBoundCloudWorkId(cloud.user!.id, blackboardSyncKey(item.id)) === work.id);
-        if (existing) {
-          await openWork({ id: existing.id, name: existing.title, kind: 'blackboard', shared: false });
-          return;
-        }
-        const { title, content, revision } = await cloudWorkspaceApi.readBackup(work.id);
-        const imported = await blackboard.repository.importWorkspace(title, parseBlackboardSource(content));
-        if (cloud.user) {
-          try { await bindCloudSession(cloud.user.id, blackboardSyncKey(imported.workspace.id), work.id,
-            revision, imported.workspace.title, serializeBlackboardSource(imported), work.conflictWith); }
-          catch { /* The imported local source remains available. */ }
-        }
-        await openWork({ id: imported.workspace.id, name: imported.workspace.title, kind: 'blackboard', shared: false });
-        return;
+        await migrateCloudBlackboard(work.id);
+        await cloud.refresh();
       }
       const boundId = cloud.user && canvas.getState().canvasSessions.find((session) =>
         getBoundCloudWorkId(cloud.user!.id, session.id) === work.id)?.id;
@@ -315,6 +265,29 @@ export function LocalWorkspacePage() {
       navigateApp('/');
     } catch { setError(true); }
     finally { setBusy(false); }
+  };
+
+  const downloadSource = async (row: WorkspaceRow) => {
+    setError(false);
+    try {
+      let source;
+      if (row.source === 'local') {
+        if (row.work.cloudSourceBackupId) {
+          const backup = await cloudWorkspaceApi.sourceBackup(row.work.cloudSourceBackupId);
+          source = { workspace: { id: row.work.id, title: row.work.name, revision: backup.revision, createdAt: 0, updatedAt: 0 }, files: parseBlackboardSource(backup.content) };
+        } else source = await legacyBlackboards.readWorkspace(row.work.sourceBackupId ?? row.work.id);
+      } else {
+        const backup = row.work.kind === 'blackboard'
+          ? await cloudWorkspaceApi.readBackup(row.work.id)
+          : await cloudWorkspaceApi.sourceBackup(row.work.id);
+        source = { workspace: { id: row.work.id, title: row.name, revision: backup.revision, createdAt: 0, updatedAt: 0 }, files: parseBlackboardSource(backup.content) };
+      }
+      if (!source) throw new Error('Source backup unavailable.');
+      const url = URL.createObjectURL(createBlackboardArchive(source));
+      const link = document.createElement('a');
+      link.href = url; link.download = 'source-backup.zip'; link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch { setError(true); }
   };
 
   const conflictCloudWork = cloud.works.find((work) => work.id === conflictCloudWorkId);
@@ -381,7 +354,7 @@ export function LocalWorkspacePage() {
               <Button type="button" size="sm"><Plus aria-hidden="true" />{t('workspace.new')}</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {(['canvas', 'slides', 'blackboard'] as const).map((kind) => (
+              {(['canvas', 'slides'] as const).map((kind) => (
                 <DropdownMenuItem key={kind} onSelect={() => void createWork(kind)}>{t(`workspace.${kind}`)}</DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -447,7 +420,7 @@ export function LocalWorkspacePage() {
                           aria-label={t('workspace.actions', { name: row.name })}><MoreHorizontal aria-hidden="true" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {row.source === 'local' && cloud.user && !row.work.shared && (
+                        {row.source === 'local' && row.kind !== 'retired' && cloud.user && !row.work.shared && (
                           <DropdownMenuItem onSelect={() => void backupWork(row.work)}>{t('workspace.backup')}</DropdownMenuItem>
                         )}
                         {row.source === 'cloud' && row.work.contentStatus === 'uploaded' && (
@@ -464,9 +437,11 @@ export function LocalWorkspacePage() {
                               {t('workspace.reviewConflict')}
                             </DropdownMenuItem>
                           )}
-                        {(row.source === 'local' || row.work.contentStatus === 'not-uploaded') &&
+                        {row.kind !== 'retired' && (row.source === 'local' || row.work.contentStatus === 'not-uploaded') &&
                           <DropdownMenuItem onSelect={() => setRenameKey(row.key)}>{t('workspace.rename')}</DropdownMenuItem>}
-                        <DropdownMenuItem variant="destructive" onSelect={() => setPendingDelete(row)}>{t('workspace.delete')}</DropdownMenuItem>
+                        {(row.kind === 'retired' || (row.source === 'local' ? row.work.sourceBackupId || row.work.cloudSourceBackupId : row.work.hasSourceBackup)) &&
+                          <DropdownMenuItem onSelect={() => void downloadSource(row)}>{t('workspace.sourceBackup')}</DropdownMenuItem>}
+                        {row.kind !== 'retired' && <DropdownMenuItem variant="destructive" onSelect={() => setPendingDelete(row)}>{t('workspace.delete')}</DropdownMenuItem>}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -557,7 +532,9 @@ export function LocalWorkspacePage() {
             <AlertDialogTitle>{t('workspace.deleteTitle', { name: pendingDelete?.name ?? '' })}</AlertDialogTitle>
             <AlertDialogDescription>
               {t(pendingDelete?.source === 'cloud'
-                ? pendingDelete.work.contentStatus === 'uploaded'
+                ? pendingDelete.work.hasSourceBackup
+                  ? 'workspace.deleteArchivedDescription'
+                  : pendingDelete.work.contentStatus === 'uploaded'
                   ? 'workspace.deleteBackupDescription' : 'workspace.deleteCloudDescription'
                 : pendingDelete?.source === 'local' && pendingDelete.work.shared
                   ? 'workspace.removeSharedDescription' : 'workspace.deleteDescription')}

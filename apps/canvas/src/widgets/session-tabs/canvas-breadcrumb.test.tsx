@@ -452,7 +452,7 @@ describe("CanvasBreadcrumb", () => {
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Delete canvas?" })).not.toBeInTheDocument());
   });
 
-  it("treats a source-backed Canvas as a closeable view with snapshot and source exports", async () => {
+  it("treats a local document preview as a closeable view with snapshot export", async () => {
     setTwoSessions();
     act(() => {
       useEditorStore.setState((state) => ({
@@ -462,8 +462,8 @@ describe("CanvasBreadcrumb", () => {
                 ...session,
                 name: "Board",
                 sourceBinding: {
-                  kind: "blackboard" as const,
-                  provider: "browser-workspace" as const,
+                  kind: "document" as const,
+                  provider: "local-reader" as const,
                   id: "workspace-1",
                 },
               }
@@ -478,7 +478,7 @@ describe("CanvasBreadcrumb", () => {
     expect(screen.queryByRole("menuitem", { name: "Rename" })).not.toBeInTheDocument();
     await openSubmenu("Export");
     expect(screen.getByRole("menuitem", { name: "CharDesk" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Source package" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Source package" })).not.toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.keyDown(document, { key: "Escape" });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BlackboardWorkspace } from '@/domains/blackboard/public';
+import type { BlackboardWorkspace } from '@/domains/legacy-blackboard/public';
 import type { CanvasSessionDescriptor } from '@/domains/sessions/public';
 import { collectLocalWorks } from './local-workspace-items';
 
@@ -22,7 +22,7 @@ describe('collectLocalWorks', () => {
       { id: 'canvas', name: 'Canvas', kind: 'canvas', shared: false, sessionId: 'canvas' },
       { id: 'slides', name: 'Deck', kind: 'slides', shared: false, sessionId: 'slides' },
       { id: 'shared-canvas', name: 'Shared canvas', kind: 'canvas', shared: true, sessionId: 'shared-canvas' },
-      { id: 'board', name: 'Board', kind: 'blackboard', shared: false },
+      { id: 'board', name: 'Board', kind: 'retired', shared: false },
     ]);
   });
 });

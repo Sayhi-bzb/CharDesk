@@ -4,7 +4,7 @@ import canvas from "../../apps/canvas/playwright.config.ts";
 export default defineConfig({
   ...canvas,
   testDir: ".",
-  testMatch: ["bridge.spec.mjs", "pi.spec.mjs"],
+  testMatch: ["agent-dialog.spec.mjs", "bridge.spec.mjs", "pi.spec.mjs"],
   projects: [{ name: "local-mcp-chromium", use: { browserName: "chromium", headless: true } }],
   workers: 1,
   retries: 0,

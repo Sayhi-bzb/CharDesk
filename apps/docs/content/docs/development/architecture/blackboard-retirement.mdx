@@ -1,0 +1,45 @@
+---
+title: Blackboard retirement
+description: Conversion and retention of legacy source-backed works.
+---
+
+Blackboard authoring and file tools are retired. Freeform and native Slides own
+editable Cell content; local CLI previews remain file-backed and read-only.
+
+```text
+retained source ── migration compiler ── native .chardesk
+        │                                    │
+        └─ downloadable backup               └─ editable Cells
+```
+
+## Browser migration
+
+Workspace converts a legacy work on first open. A local journal records a stable
+target session: pending → durably saved document → complete → editable.
+Retries reuse the target; completed native edits are never regenerated.
+Failure retains the source and journal. Source backups are not automatically deleted.
+`/blackboard?workspace=…` is migration-only; no workspace ID routes to Workspace.
+
+Cloud migration uses `POST /v1/account/works/:id/migrate` with
+`expectedRevision`, native `kind`, and converted `content`. One transaction
+archives the source, preserves work ID, replaces content, and increments revision.
+Stale versions conflict; repeated conversion returns the current native work.
+Archives count toward account quota and remain available from
+`GET /v1/account/works/:id/source-backup`.
+Deleting a cloud work explicitly deletes its archive as well.
+
+Deploy the account migration endpoint before the browser that consumes it.
+
+## Local files
+
+[CLI migration](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cli/README.md#retired-blackboard-input)
+converts explicitly and refuses existing output. Normal init creates a native file;
+normal inspect/open/render do not compile packages.
+
+## Authorities
+
+- [Private compiler](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/legacy-blackboard/README.md)
+- [Local journal](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/legacy-blackboard/repository.ts)
+- [Migration coordinator](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/migrateBlackboard.ts)
+- [Cloud transaction](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/sync-server/src/account-store.ts)
+- [Account verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/sync-server/src/account-api.test.ts)

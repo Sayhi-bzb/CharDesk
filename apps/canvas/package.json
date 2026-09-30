@@ -13,7 +13,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@chardesk/blackboard": "*",
+    "@chardesk/legacy-blackboard": "*",
     "@chardesk/cell-core": "*",
     "@chardesk/collaboration-protocol": "*",
     "@chardesk/chargraph": "*",

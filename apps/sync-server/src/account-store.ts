@@ -17,6 +17,7 @@ export type CloudWork = {
   contentBytes: number | null;
   revision: number | null;
   conflictWith: string | null;
+  hasSourceBackup?: boolean;
 };
 
 export const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
@@ -74,6 +75,10 @@ export class AccountStore {
         content TEXT NOT NULL,
         bytes INTEGER NOT NULL CHECK (bytes > 0),
         revision INTEGER NOT NULL DEFAULT 1
+      );
+      CREATE TABLE IF NOT EXISTS retired_work_sources (
+        work_id TEXT PRIMARY KEY REFERENCES works(id) ON DELETE CASCADE,
+        content TEXT NOT NULL, bytes INTEGER NOT NULL, revision INTEGER NOT NULL
       );
     `);
     const workColumns = this.#db.prepare("PRAGMA table_info(works)").all() as { name: string }[];
@@ -171,16 +176,62 @@ export class AccountStore {
         works.created_at AS createdAt, works.updated_at AS updatedAt,
         CASE WHEN work_content.work_id IS NULL THEN 'not-uploaded' ELSE 'uploaded' END AS contentStatus,
         work_content.bytes AS contentBytes, work_content.revision,
-        works.conflict_with AS conflictWith
+        works.conflict_with AS conflictWith,
+        EXISTS (SELECT 1 FROM retired_work_sources WHERE retired_work_sources.work_id = works.id) AS hasSourceBackup
       FROM works LEFT JOIN work_content ON work_content.work_id = works.id
-      WHERE works.user_id = ? ORDER BY works.updated_at DESC`).all(userId) as CloudWork[];
+      WHERE works.user_id = ? ORDER BY works.updated_at DESC`).all(userId).map((row) => {
+        const { hasSourceBackup, ...work } = row;
+        return { ...work, ...(hasSourceBackup ? { hasSourceBackup: true } : {}) } as CloudWork;
+      });
   }
 
   backupUsage(userId: string): number {
     const row = this.#db.prepare(`SELECT COALESCE(SUM(work_content.bytes), 0) AS bytes
       FROM work_content JOIN works ON works.id = work_content.work_id
       WHERE works.user_id = ?`).get(userId) as { bytes: number };
-    return row.bytes;
+    const archive = this.#db.prepare(`SELECT COALESCE(SUM(retired_work_sources.bytes), 0) AS bytes
+      FROM retired_work_sources JOIN works ON works.id = retired_work_sources.work_id
+      WHERE works.user_id = ?`).get(userId) as { bytes: number };
+    return row.bytes + archive.bytes;
+  }
+
+  readRetiredSource(userId: string, workId: string) {
+    return this.#db.prepare(`SELECT retired_work_sources.content, retired_work_sources.revision
+      FROM retired_work_sources JOIN works ON works.id = retired_work_sources.work_id
+      WHERE works.id = ? AND works.user_id = ?`).get(workId, userId) as
+      { content: string; revision: number } | undefined;
+  }
+
+  migrateBlackboard(userId: string, workId: string, expectedRevision: number,
+    kind: "canvas" | "slides", content: string):
+    { status: "migrated"; work: CloudWork } | { status: "conflict" | "not-found" } {
+    this.#db.exec("BEGIN IMMEDIATE");
+    try {
+      const work = this.listWorks(userId).find(({ id }) => id === workId);
+      const previous = this.readBackup(userId, workId);
+      if (!work || !previous) { this.#db.exec("ROLLBACK"); return { status: "not-found" }; }
+      if (work.kind !== "blackboard") {
+        const converted = this.readRetiredSource(userId, workId);
+        this.#db.exec("ROLLBACK");
+        return converted ? { status: "migrated", work } : { status: "conflict" };
+      }
+      if (previous.revision !== expectedRevision) { this.#db.exec("ROLLBACK"); return { status: "conflict" }; }
+      const bytes = Buffer.byteLength(content, "utf8");
+      // The existing source remains stored, so conversion adds the full native snapshot.
+      assertBackupWithinLimits(bytes, this.backupUsage(userId));
+      this.#db.prepare("INSERT INTO retired_work_sources(work_id, content, bytes, revision) VALUES (?, ?, ?, ?)")
+        .run(workId, previous.content, Buffer.byteLength(previous.content, "utf8"), previous.revision);
+      this.#db.prepare("UPDATE works SET kind = ?, updated_at = ? WHERE id = ?")
+        .run(kind, new Date().toISOString(), workId);
+      this.#db.prepare("UPDATE work_content SET content = ?, bytes = ?, revision = revision + 1 WHERE work_id = ?")
+        .run(content, bytes, workId);
+      const converted = this.listWorks(userId).find(({ id }) => id === workId)!;
+      this.#db.exec("COMMIT");
+      return { status: "migrated", work: converted };
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   createWork(userId: string, kind: CloudWork["kind"], title: string): CloudWork {

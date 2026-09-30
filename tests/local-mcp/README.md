@@ -3,7 +3,7 @@
 Does a local coding agent edit the Canvas visible in a browser?
 
 ```text
-MCP client → stdio server ⇄ loopback WebSocket ⇄ Canvas read/write → rendering
+MCP client → stdio server ⇄ loopback WebSocket ⇄ Canvas read/search/write
 ```
 
 ## Use with Pi
@@ -22,10 +22,13 @@ MCP server when asked. [The project configuration](../../.pi/mcp-adapter.json)
 is discovered automatically; restart an already-running Pi after adding it.
 
 In another terminal, run `npm run mcp:pair`. In Canvas, choose
-**Open menu → Connect local agent**, paste that private pairing URL, and connect.
+**Open menu → Agent → Local MCP → Pair**, paste that private pairing URL, and connect.
 Tell Pi to explain GPU on the connected Canvas.
 
-Choose **Remember for 30 days** to reconnect automatically on this browser to
+The WebMCP row reports browser tool registration, not an agent connection.
+It requires no pairing URL and operates independently of Local MCP.
+
+Choose **Remember on this browser · 30 days** to reconnect automatically to
 the same Canvas after a page reload or Pi restart. The local credential keeps
 its original expiry across restarts; reconnecting does not extend it. Pi must
 still be running. Switching Canvas or choosing Disconnect stops automatic
@@ -44,6 +47,8 @@ Source-backed Canvas content remains read-only through Canvas write.
 ## Contract
 
 Both MCP and WebMCP consume [one tool definition](../../apps/canvas/src/app/site-tools/canvasToolDefinitions.ts).
+Canvas [search](../../apps/docs/content/docs/development/architecture/canvas-searching.mdx)
+locates rendered text; use read around returned bounds before editing.
 The [page connection](../../apps/canvas/src/shared/services/local-agent.ts) calls
 the existing Canvas command boundary directly; WebMCP browser support is not required.
 The server does not store or render documents. It publishes tools before pairing;
@@ -67,6 +72,8 @@ npm test --prefix tests/local-mcp
 npm run test:pi --prefix tests/local-mcp
 ```
 
+The [Agent UI test](agent-dialog.spec.mjs) isolates the real dialog for keyboard,
+localization, and responsive checks; it does not validate Canvas execution.
 The [bridge test](bridge.spec.mjs) uses the real menu without a polyfill or script
 injection. [The Pi test](pi.spec.mjs) starts Pi without `--mcp-config`, uses the
 project server approved during interactive setup, and invokes its real model

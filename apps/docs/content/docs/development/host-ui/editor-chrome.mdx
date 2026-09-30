@@ -21,10 +21,10 @@ exist.
   collapse. Chrome regions do not clip surface shadows.
 - `phone` presents the sidebar as a modal Sheet.
 - An omitted Sidebar has no shell, viewport reservation, phone trigger, shortcut
-  registration, or lazy content load. Blackboard omits both Sidebar and Inspector.
+  registration, or lazy content load. Read-only document previews omits both Sidebar and Inspector.
 - Canvas shortcuts, managed clipboard events, and Context Menus consume the same
   action policy. `copy` exposes text, ANSI, and PNG actions independently from
-  `mutateContent`; Blackboard never exposes cut, paste, delete, or formatting.
+  `mutateContent`; Read-only document previews never exposes cut, paste, delete, or formatting.
 - `EditorPresentationProvider` owns transient presentation mode. Widgets declare
   one role at their local render boundary: `essential`, `host`, `pane`, or
   `contextual`. Zen Mode keeps essential widgets, suppresses the other roles,

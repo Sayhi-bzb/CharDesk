@@ -49,7 +49,7 @@
       "entry": ["src/index.ts", "src/styles.ts"],
       "project": ["src/**/*.{ts,tsx}"]
     },
-    "packages/blackboard": {
+    "packages/legacy-blackboard": {
       "entry": [
         "src/node.ts",
         "src/**/*.test.ts",

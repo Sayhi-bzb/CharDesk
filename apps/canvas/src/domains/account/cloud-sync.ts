@@ -36,7 +36,6 @@ const writeBinding = (binding: Binding) => {
   window.dispatchEvent(new Event(CHANGE_EVENT));
 };
 
-export const blackboardSyncKey = (workspaceId: string) => `blackboard:${workspaceId}`;
 export const getCloudBinding = (userId: string, key: string) =>
   readBindings().find((item) => item.userId === userId && item.sessionId === key) ?? null;
 export const updateCloudBinding = writeBinding;

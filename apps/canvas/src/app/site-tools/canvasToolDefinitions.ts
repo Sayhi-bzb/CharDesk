@@ -2,6 +2,37 @@ import type { AgentToolDefinition } from "./contracts.ts";
 
 export const CANVAS_READ_TOOL_NAME = "chardesk_canvas_read";
 export const CANVAS_WRITE_TOOL_NAME = "chardesk_canvas_write";
+export const CANVAS_SEARCH_TOOL_NAME = "chardesk_canvas_search";
+
+export const CANVAS_SEARCH_TOOL = {
+  name: CANVAS_SEARCH_TOOL_NAME,
+  title: "Search Canvas text",
+  description: "Search the current Canvas's rendered text at original Cell precision, not source files, rulers, styles, or sampled maps. Case-sensitive literal search on a single row, with whole grapheme boundaries and non-overlapping matches. Optional viewport [x,y,width,height] limits the search. Returns up to 20 matches ordered by y then x, with exact Cell bounds and short context. Pass non-null next as after [x,y] to continue strictly after that position using the same query and viewport; confirm canvasId is unchanged. Each call reads current content, not a cross-page snapshot. Use canvas_read around a match for layout and styles. Does not edit content or move the user's camera.",
+  readOnly: true,
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: { type: "string", minLength: 1, description: "Literal Unicode text, including a non-whitespace character; no line breaks or control characters." },
+      viewport: { type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4, description: "Optional [x,y,width,height] in original Cells; positive sizes." },
+      after: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2, description: "Previous response's next [x,y]. Reuse the query and viewport on the same Canvas." },
+    },
+    required: ["query"], additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    oneOf: [
+      { type: "object", properties: {
+        canvasId: { type: "string" },
+        matches: { type: "array", maxItems: 20, items: { type: "object", properties: {
+          bounds: { type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 },
+          text: { type: "string" },
+        }, required: ["bounds", "text"], additionalProperties: false } },
+        next: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 }, { type: "null" }] },
+      }, required: ["canvasId", "matches", "next"], additionalProperties: false },
+      { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_ready", "search_failed"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
+    ],
+  },
+} satisfies Omit<AgentToolDefinition, "execute">;
 
 export const CANVAS_READ_TOOL = {
   name: CANVAS_READ_TOOL_NAME,

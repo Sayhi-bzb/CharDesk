@@ -61,10 +61,10 @@ const isStoredCanvasMode = (value: unknown) =>
   isCanvasMode(value) || value === "structured";
 
 const decodeSourceBinding = (value: unknown): CanvasSourceBinding | undefined => {
-  if (!isRecord(value) || value.kind !== "blackboard" ||
+  if (!isRecord(value) || (value.kind !== "blackboard" && value.kind !== "document") ||
       (value.provider !== "browser-workspace" && value.provider !== "local-reader") ||
       typeof value.id !== "string" || !value.id.trim()) return undefined;
-  return { kind: "blackboard", provider: value.provider, id: value.id };
+  return { kind: value.kind, provider: value.provider, id: value.id };
 };
 
 const decodeLegacySourceBinding = (value: Record<string, unknown>) => {

@@ -3,6 +3,7 @@ import {
   hasRegisterTool,
 } from "./modelContext";
 import type { SiteToolConnectorSnapshot } from "./connector";
+import { publishWebMcpStatus } from '@/shared/services/webmcp-status';
 
 export type WebMcpProvider = "native" | "polyfill" | "unavailable";
 type WebMcpCapability = "standard" | "imperative" | "unavailable";
@@ -61,6 +62,14 @@ export const updateWebMcpDiagnostics = (
   provider: WebMcpProvider,
   snapshot: SiteToolConnectorSnapshot,
 ) => {
+  const statuses = {
+    ready: 'ready',
+    registering: 'preparing',
+    waiting: provider === 'unavailable' ? 'unavailable' : 'preparing',
+    failed: 'error',
+    disposed: 'unavailable',
+  } as const;
+  publishWebMcpStatus(statuses[snapshot.status]);
   target.documentElement.dataset.webmcpProvider = provider;
   target.documentElement.dataset.webmcpStatus = snapshot.status;
   target.documentElement.dataset.webmcpCapability = getWebMcpCapability(snapshot);

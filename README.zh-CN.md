@@ -34,7 +34,7 @@ Agent 会创建源码、检查结果并打开画布。你不需要先学习文�
 - 用曲线、公式、数据和标注制作科研图。
 - 设计界面、终端、仪表盘和产品状态。
 - 描绘架构、流程、时间线与关系。
-- 保留一块人和 Agent 都能检查、继续修改的 Blackboard。
+- 保留一块人和 Agent 都能检查、继续修改的 Canvas。
 
 [![CharDesk 作为人与 Agent 共享的视觉媒介](apps/site/public/showcase/01-shared-medium.png)](apps/site/showcase-sources/01-shared-medium.md)
 
@@ -56,9 +56,9 @@ Agent 会创建源码、检查结果并打开画布。你不需要先学习文�
 
 **界面设计** · [源码](apps/site/showcase-sources/05-interface-console.md)
 
-[![人与 Agent 共享的 Blackboard](apps/site/public/showcase/06-agent-blackboard.png)](apps/site/showcase-sources/06-agent-blackboard.md)
+[![人与 Agent 共享的 Canvas](apps/site/public/showcase/06-agent-blackboard.png)](apps/site/showcase-sources/06-agent-blackboard.md)
 
-**Agent Blackboard** · [源码](apps/site/showcase-sources/06-agent-blackboard.md)
+**Agent Canvas** · [源码](apps/site/showcase-sources/06-agent-blackboard.md)
 
 ### ANSI 界面实验
 
@@ -70,9 +70,9 @@ Agent 会创建源码、检查结果并打开画布。你不需要先学习文�
 
 **灵感信号播放器** · [源码](apps/site/showcase-sources/08-idea-signal-player.md)
 
-[![口袋 Blackboard](apps/site/public/showcase/09-pocket-blackboard.png)](apps/site/showcase-sources/09-pocket-blackboard.md)
+[![口袋 Canvas](apps/site/public/showcase/09-pocket-blackboard.png)](apps/site/showcase-sources/09-pocket-blackboard.md)
 
-**口袋 Blackboard** · [源码](apps/site/showcase-sources/09-pocket-blackboard.md)
+**口袋 Canvas** · [源码](apps/site/showcase-sources/09-pocket-blackboard.md)
 
 ## 为什么文本也可以是视觉媒介
 
@@ -100,7 +100,7 @@ Unicode、Box Drawing、中日韩字符、技术符号、单色 Emoji 与 Nerd F
 
 ### 空间组织
 
-在自由画布中排列内容、从可复用 Cell 模板开始，用 `|||` 与 `---` 组合多行区域，把完整场景收进 Blackboard，或用 Slides 讲述故事。所有形态最终进入同一条字符网格渲染管线。
+在自由画布中排列内容、从可复用 Cell 模板开始，用 `|||` 与 `---` 组合多行区域，或用 Slides 讲述故事。所有形态最终进入同一条字符网格渲染管线。
 
 ### Agent 接入
 
@@ -108,7 +108,7 @@ Unicode、Box Drawing、中日韩字符、技术符号、单色 Emoji 与 Nerd F
 - **Chrome WebMCP：**实验性能力。开启 `chrome://flags/#enable-webmcp-testing`，重启 Chrome，并为兼容的 Agent 保持 [Canvas](https://canvas.chardesk.com/) 页面打开。
 - **ChatGPT Site Tools：**实验性能力。在 **Settings → Browser → Permissions** 中开启 **Site tools**，再用 ChatGPT 内置浏览器打开 CharDesk。参见 [OpenAI 官方 Site Tools 文档](https://learn.chatgpt.com/docs/webmcp)。
 
-浏览器 Agent 可以调用 `chardesk_read_materials`，进入与 skill 相同的视觉语言和案例环境。Blackboard 工具默认操作当前页面可见的画布；创建或打开工作区时会自动激活它。
+浏览器 Agent 可以调用 `chardesk_read_materials`，进入与 skill 相同的视觉语言和案例环境。Canvas 工具可以直接读取、搜索和写入当前二维 Cell 画布。
 
 ## 面向开发者
 

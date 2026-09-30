@@ -4,11 +4,8 @@ import { createRequire } from "node:module";
 import { mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import {
-  compileBlackboardPackage,
-  startBlackboardServer,
-  type BlackboardServerSession,
-} from "@chardesk/blackboard/node";
+import { startDocumentPreview, type DocumentPreviewSession } from "./preview-server.js";
+import { parseCharDeskDocumentEnvelope } from "@chardesk/document";
 import launchBrowser from "open";
 import {
   CharDeskCliCommandError,
@@ -69,18 +66,9 @@ const runtimeRoot = () => new URL("./runtime/", import.meta.url).pathname;
 
 const resolveOpenInput = async (cwd: string, input: string) => {
   const requested = resolve(cwd, input);
-  let candidate = requested;
-  try {
-    if ((await stat(requested)).isDirectory()) candidate = join(requested, "blackboard.yaml");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
-  const checked = await realpath(candidate);
-  if (basename(checked) !== "blackboard.yaml" && !checked.endsWith(".chardesk")) {
-    throw new CharDeskCliCommandError(
-      "invalid-live-input",
-      "open requires a .chardesk file, blackboard.yaml, or a Blackboard directory.",
-    );
+  const checked = await realpath(requested);
+  if ((await stat(checked)).isDirectory() || !checked.endsWith(".chardesk")) {
+    throw new CharDeskCliCommandError("invalid-live-input", "open requires a .chardesk file. Convert legacy works with chardesk migrate first.");
   }
   return checked;
 };
@@ -251,11 +239,10 @@ const removeOwnedSession = async (path: string, sessionId: string) => {
 
 const validateSource = async (options: OpenSessionOptions) => {
   const readable = await resolveOpenInput(options.cwd, options.request.input);
-  if (basename(readable) === "blackboard.yaml") {
-    await compileBlackboardPackage(readable);
-    return;
-  }
+  const document = parseCharDeskDocumentEnvelope(await readFile(readable, "utf8"));
+  if (document?.mode === "slide") return;
   const input = await resolveCharDeskInput({ request: options.request, cwd: options.cwd });
+  if (document && !input.source.trim()) return;
   const compiled = await compileSource({ source: input.source, inputMode: input.inputMode });
   if (compiled.diagnostics.length > 0) {
     throw new CharDeskCliCommandError(
@@ -280,14 +267,14 @@ const renderFallback = async (options: OpenSessionOptions, input: string) => {
 
 export const startCharDeskOpenSession = async (
   options: OpenSessionOptions,
-): Promise<BlackboardServerSession> => {
+): Promise<DocumentPreviewSession> => {
   if (options.request.input === "-") {
     throw new CharDeskCliCommandError("invalid-live-input", "open requires a file or directory path.");
   }
   await validateSource(options);
   const input = await resolveOpenInput(options.cwd, options.request.input);
   const token = randomBytes(16).toString("base64url");
-  return startBlackboardServer({
+  return startDocumentPreview({
     board: { root: dirname(input), path: input },
     port: options.port ?? 0,
     appRoot: options.runtimeRoot ?? runtimeRoot(),
@@ -297,11 +284,11 @@ export const startCharDeskOpenSession = async (
   });
 };
 
-export const launchCharDeskOpenSession = async (session: BlackboardServerSession) => {
+export const launchCharDeskOpenSession = async (session: DocumentPreviewSession) => {
   await launchBrowser(session.url);
 };
 
-export const waitForOpenSession = async (session: BlackboardServerSession) => {
+export const waitForOpenSession = async (session: DocumentPreviewSession) => {
   await new Promise<void>((resolveWait) => {
     const close = () => void session.close().finally(resolveWait);
     process.once("SIGINT", close);

@@ -21,7 +21,7 @@ describe("chardesk local Canvas", () => {
   it("reports a detached server failure without waiting for the startup deadline", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "chardesk-managed-startup-"));
     directories.push(cwd);
-    const board = await initializeCharDeskWorkspace({ cwd, directory: "board", title: "Startup" });
+    const board = await initializeCharDeskWorkspace({ cwd, directory: "board.chardesk", title: "Startup" });
 
     const error = await openManagedSession({
       options: { request: { input: board, inputMode: "auto" }, cwd },
@@ -39,7 +39,7 @@ describe("chardesk local Canvas", () => {
     const runtimeRoot = join(cwd, "runtime");
     await mkdir(runtimeRoot);
     await writeFile(join(runtimeRoot, "index.html"), "<!doctype html><title>Local Canvas</title>");
-    const board = await initializeCharDeskWorkspace({ cwd, directory: "board", title: "Lease" });
+    const board = await initializeCharDeskWorkspace({ cwd, directory: "board.chardesk", title: "Lease" });
     const sessionFile = join(cwd, "session.json");
 
     await expect(serveManagedOpenSession({
@@ -64,7 +64,7 @@ describe("chardesk local Canvas", () => {
       '<!doctype html><title>Local Canvas</title><script src="./assets/app.js"></script>',
     );
     await writeFile(join(runtimeRoot, "assets/app.js"), "export const ready = true;");
-    const board = await initializeCharDeskWorkspace({ cwd, directory: "board", title: "Live" });
+    const board = await initializeCharDeskWorkspace({ cwd, directory: "board.chardesk", title: "Live" });
     const session = await startCharDeskOpenSession({
       request: { input: board, inputMode: "auto" },
       cwd,
@@ -80,7 +80,7 @@ describe("chardesk local Canvas", () => {
       .toContain("ready = true");
     expect((await fetch(new URL("/board", session.url))).status).toBe(404);
 
-    const projection = await fetch(new URL("board", session.url));
+    const projection = await fetch(new URL("document", session.url));
     expect(projection.status).toBe(200);
     expect(await projection.text()).toContain("Live");
 
@@ -91,7 +91,7 @@ describe("chardesk local Canvas", () => {
     const after = await (await fetch(new URL("health", session.url))).json();
     expect(after).toEqual({ status: "ready", runtimeReady: true });
 
-    await writeFile(join(board, "main.panel"), "# Revised\n");
-    expect(await (await fetch(new URL("board", session.url))).text()).toContain("Revised");
+    await writeFile(board, "Revised\n");
+    expect(await (await fetch(new URL("document", session.url))).text()).toContain("Revised");
   });
 });

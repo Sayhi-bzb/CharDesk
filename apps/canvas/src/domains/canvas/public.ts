@@ -1,5 +1,7 @@
 export { CanvasRuntime, createCanvasRuntime } from "./runtime";
 export { readCanvasViewport, isCanvasReadViewport } from "./readViewport";
+export { searchCanvasSurface, isCanvasSearchQuery, isCanvasSearchPosition } from "./searchSurface";
+export type { CanvasSearchPosition, CanvasSearchMatch, CanvasSearchResult, CanvasSearchOptions } from "./searchSurface";
 export { CanvasWriteError } from "./writeText";
 export type { CanvasReadViewport, CanvasReadProjection } from "./readViewport";
 export type { CanvasSessionMaterialization } from "./runtime";

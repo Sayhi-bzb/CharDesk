@@ -14,12 +14,13 @@ interface CanvasSessionDescriptorBase {
   name: string;
   viewport?: CanvasViewport;
   sourceBinding?: CanvasSourceBinding;
+  migrationPending?: true;
   collaboration?: CollaborationDescriptor;
   collaborationRole?: "host" | "guest";
 }
 
 export type CanvasSourceBinding = Readonly<{
-  kind: "blackboard";
+  kind: "document" | "blackboard";
   provider: "browser-workspace" | "local-reader";
   id: string;
 }>;
@@ -73,6 +74,7 @@ export const getCanvasSessionDescriptor = (
   const metadata = {
     id: session.id,
     name: session.name,
+    ...(session.migrationPending ? { migrationPending: true as const } : {}),
     ...(session.viewport ? { viewport: session.viewport } : {}),
     ...(session.collaboration ? { collaboration: session.collaboration } : {}),
     ...(session.collaborationRole

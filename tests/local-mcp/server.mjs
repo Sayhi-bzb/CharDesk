@@ -6,11 +6,12 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { WebSocket, WebSocketServer } from "ws";
-import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL } from "../../apps/canvas/src/app/site-tools/canvasToolDefinitions.ts";
+import { CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL } from "../../apps/canvas/src/app/site-tools/canvasToolDefinitions.ts";
 import { loadCredentials } from './credentials.mjs';
 
 // Experiment only: one explicitly paired browser page, no document storage.
-const allowedTools = new Set(["chardesk_canvas_read", "chardesk_canvas_write"]);
+const canvasTools = [CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL];
+const allowedTools = new Set(canvasTools.map((tool) => tool.name));
 const origins = new Set((process.env.CHARDESK_BRIDGE_ORIGIN || "http://127.0.0.1:5173").split(","));
 const pairingFile = process.env.CHARDESK_BRIDGE_PAIRING_FILE;
 const credentialsFile = pairingFile && `${pairingFile}.credentials`;
@@ -107,7 +108,7 @@ function forward(method, params = {}) {
 
 const mcp = new Server({ name: "chardesk-local-canvas-experiment", version: "0.0.0" }, { capabilities: { tools: {} } });
 mcp.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools: [CANVAS_READ_TOOL, CANVAS_WRITE_TOOL].map(({ readOnly, ...tool }) =>
+  return { tools: canvasTools.map(({ readOnly, ...tool }) =>
     ({ ...tool, annotations: { readOnlyHint: readOnly } })) };
 });
 mcp.setRequestHandler(CallToolRequestSchema, async ({ params }) => {

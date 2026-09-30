@@ -815,6 +815,7 @@ const sessionsFromCatalog = (catalog: CanvasCatalogSnapshot): CanvasSessionSnaps
     const base = {
       id: session.id,
       name: session.name,
+      ...(session.migrationPending ? { migrationPending: true as const } : {}),
       viewport: session.viewport,
     };
     if (session.mode === "slide") {
@@ -1023,6 +1024,7 @@ const createCatalogSnapshot = (
     id: session.id,
     order,
     name: session.name,
+    ...(session.migrationPending ? { migrationPending: true as const } : {}),
     mode: session.mode,
     ...(session.sourceBinding ? { sourceBinding: session.sourceBinding } : {}),
     viewport: session.viewport,
@@ -1738,6 +1740,19 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     if (this.#coordinationRetryTimer) clearTimeout(this.#coordinationRetryTimer);
     this.#coordinationRetryTimer = null;
   }
+
+  flushDocument = async (id: string) => {
+    if (!this.#catalog || !this.#store || !this.#registry) throw new Error("Canvas persistence is unavailable.");
+    const session = this.#store.getState().canvasSessions.find((item) => item.id === id);
+    const doc = this.#registry.getDocument(id)?.doc;
+    if (!session || isSourceBackedCanvasSession(session) || !doc) throw new Error("Native Canvas document is not resident.");
+    this.#attachDocument(id, doc);
+    const persisted = this.#documents.get(id);
+    if (!persisted || persisted.doc !== doc) throw new Error("Native Canvas persistence is not attached.");
+    await persisted.provider.whenSynced;
+    await persistProviderState(persisted.provider, true);
+    await this.#saveCatalog();
+  };
 
   retry = async () => {
     if (!this.#catalog || !this.#store) return;

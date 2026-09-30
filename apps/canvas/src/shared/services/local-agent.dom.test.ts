@@ -72,6 +72,17 @@ describe('local agent page connection', () => {
     expect(getLocalAgentStatus()).toBe('idle');
   });
 
+  it('forwards search through the same Canvas port', async () => {
+    connectLocalAgent(url);
+    const socket = Socket.instances[0];
+    socket.open();
+    const input = { query: 'Hello', after: [10, 20] };
+    socket.receive({ id: 'search-1', method: 'call', params: { name: 'chardesk_canvas_search', input } });
+    await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(1));
+    expect(execute).toHaveBeenCalledWith('chardesk_canvas_search', input);
+    expect(JSON.parse(socket.send.mock.calls[0][0]).error).toBeUndefined();
+  });
+
   it('ignores callbacks from a replaced connection and shows unexpected disconnects', () => {
     connectLocalAgent(url);
     const old = Socket.instances[0];

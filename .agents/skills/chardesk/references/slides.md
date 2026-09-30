@@ -1,36 +1,32 @@
 # Slide documents
 
-A Slide is one visual moment in a sequence. Each page advances the thought while
-remaining inside the document's established scene.
+A Slide is one visual moment in a sequence. Each page advances the thought
+inside the document's established scene.
 
-```text
-product-overview/
-├── blackboard.yaml
-└── panels/
-    ├── opening.panel
-    └── closing.panel
-```
+Create one native `.chardesk` document:
 
-```yaml
-chardesk: blackboard/v2
+````text
+---
+chardesk: document/v1
 mode: slide
 title: Product overview
-panels:
-  opening:
-    source: panels/opening.panel
-    title: Opening
-  closing:
-    source: panels/closing.panel
-    title: Closing
-layout:
-  pages: [opening, closing]
+---
+## Opening
+
+```chargraph
+# Product overview
 ```
 
-- One `.panel` owns one page; `layout.pages` owns sequence.
-- Panel content draws freely from the available [materials](materials.md).
-- Page size follows compiled content automatically. Leave `size` absent.
-- A user-requested fixed frame sets `size: <columns>x<rows>` on that Panel.
-- Page titles are unique; an omitted `title` uses the Panel ID.
-- Registered Panels outside `layout.pages` remain drafts.
-- Standalone `.chardesk` Slide documents and legacy `.slides.md` remain
-  compatibility inputs.
+## Closing
+
+```text
+Thank you.
+```
+````
+
+Each level-two heading
+names a page; source order defines sequence. A page fence selects its rendering
+language. Omitted size uses 100×27 Cells; `size=auto` fits content and
+`size=80x24` requests a fixed frame.
+Page content uses [materials](materials.md). Live Canvas tools edit the current
+native Slide page, not its original file.

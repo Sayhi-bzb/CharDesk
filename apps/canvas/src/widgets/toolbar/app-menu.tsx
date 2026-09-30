@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCanvasRuntime } from "@/domains/canvas/public";
 import {
   Button,
@@ -13,7 +13,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  StatusDot,
 } from "@chardesk/ui";
+import { subscribeLocalAgent, getLocalAgentStatus } from '@/shared/services/local-agent';
 import { useUiI18n } from "@/shared/i18n";
 import { HOST_ICONOLOGY } from "@/shared/icons/iconology";
 import { browser } from "@/shared/services/effects";
@@ -53,8 +55,8 @@ const SettingsDialog = lazy(() =>
   }))
 );
 const MobileGuideDialog = lazy(() => import("@/widgets/dialogs/mobile-guide-dialog"));
-const LocalAgentDialog = lazy(() => import("@/widgets/dialogs/local-agent-dialog").then((loaded) => ({
-  default: requireLoadedModule(loaded).LocalAgentDialog,
+const AgentDialog = lazy(() => import("@/widgets/dialogs/agent-dialog").then((loaded) => ({
+  default: requireLoadedModule(loaded).AgentDialog,
 })));
 
 type AppMenuProps = {
@@ -78,6 +80,7 @@ export function AppMenu({
   const [clearOpen, setClearOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
+  const agentStatus = useSyncExternalStore(subscribeLocalAgent, getLocalAgentStatus, getLocalAgentStatus);
   const [mobileGuideOpen, setMobileGuideOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const githubStars = useGitHubStars(menuOpen && policy.sourceLink);
@@ -134,7 +137,11 @@ export function AppMenu({
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => setAgentOpen(true)}>
                     <AgentIcon />
-                    {t('localAgent.title')}
+                    {t('appMenu.agent')}
+                    {agentStatus !== 'idle' && <span className="ml-auto">
+                      <StatusDot tone={agentStatus === 'connected' ? 'success' : agentStatus === 'error' ? 'error' : 'neutral'} />
+                      <span className="sr-only">{t(agentStatus === 'error' ? 'localAgent.offline' : `localAgent.${agentStatus}`)}</span>
+                    </span>}
                   </DropdownMenuItem>
                   {workspace && splitAvailable && policy.splitView && (
                     <DropdownMenuItem
@@ -243,7 +250,7 @@ export function AppMenu({
         }}
       >
         <Suspense fallback={null}>
-          {agentOpen && <LocalAgentDialog open={agentOpen} onOpenChange={(open) => {
+          {agentOpen && <AgentDialog open={agentOpen} onOpenChange={(open) => {
             setAgentOpen(open);
             if (!open) window.setTimeout(() => menuTriggerRef.current?.focus(), 0);
           }} />}

@@ -1,48 +1,33 @@
 ---
 name: chardesk
-description: Shape CharDesk Canvas, Blackboards, and Slides as real working scenes; create, edit, inspect, or render them through local or live tools.
+description: Shape CharDesk Canvas and Slides as real working scenes; create, edit, inspect, or render them through local or live tools.
 ---
 
 # CharDesk
 
-Every visual workspace belongs to a real working situation. Let the subject
-reveal whose surface this is, what is happening, and which traces matter.
-Compose from inside that situation and keep it implicit. User direction and the
-existing document establish the scene when present.
+Compose from a real working situation: whose surface this is, what is happening,
+and which traces matter. Keep that context implicit. User direction and the
+existing document establish the scene.
 
-For source-backed documents, canonical source is authoritative and Canvas is its
-projection. For an editable Freeform Canvas or native Slide page, Cell content
-is authoritative.
+Editable Freeform and native Slide pages own rendered Cell content. A local CLI
+preview is read-only; its file remains authoritative.
 
-## Surfaces
+## Routing
 
-- A `blackboard.yaml` or Blackboard package uses
-  [`references/blackboard.md`](references/blackboard.md).
-- A Slide source or deliverable uses
-  [`references/slides.md`](references/slides.md).
-- Creating, editing, or visually restructuring content uses the available
-  [`materials`](references/materials.md).
+- Create or style content with [materials](references/materials.md).
+- Read, search, or edit the current live surface with
+  [Canvas tools](references/backstage/live-canvas.md).
+- Create local artifacts or edit existing files with the
+  [CLI](references/backstage/cli.md).
+- Sequence native Slide pages with [Slides](references/slides.md).
+- Missing live capabilities use [connection guidance](references/backstage/experimental-live.md).
+- An existing Blackboard uses [legacy migration](references/blackboard.md) only.
 
-Keep the requested target and its document contract. New unspecified documents
-default to a Blackboard package; do not create one to replace an existing Canvas.
-A standalone `.chardesk` remains a supported Freeform Canvas input.
-
-## Backstage
-
-- Local paths, Slide source packages, and artifacts use
-  [`references/backstage/cli.md`](references/backstage/cli.md).
-- Reading or editing an existing live Canvas or current Slide page uses
-  [`references/backstage/live-canvas.md`](references/backstage/live-canvas.md)
-  when `chardesk_canvas_read` or `chardesk_canvas_write` is available.
-- A Blackboard workspace ID or URL uses
-  [`references/backstage/live-workspace.md`](references/backstage/live-workspace.md)
-  when `chardesk_blackboard_*` tools are available.
-- With no explicit target for an edit, stay on the current live surface. For a
-  new unspecified document, prefer available Blackboard tools; otherwise use the CLI.
-- If a requested live operation has no suitable tools, read
-  [`references/backstage/experimental-live.md`](references/backstage/experimental-live.md).
+Stay on the requested target. New local documents default to one Freeform
+`.chardesk` file. Do not create Blackboard packages or substitute a new Canvas
+for a requested edit.
 
 ## Delivery
 
-Complete the required Agent actions. Hand off the result and only UI permission
-or restart actions that require the human.
+Perform available Agent actions. Hand off the result and only permission or
+restart actions that require the human.

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createSelectionCommandFactory } from "@/domains/actions/public";
 import { createCanvasRuntime, type CanvasRuntime } from "@/domains/canvas/public";
-import { createCanvasReadTool, createCanvasWriteTool } from "./canvasTools";
+import { createCanvasReadTool, createCanvasWriteTool, createCanvasSearchTool } from "./canvasTools";
 import { createTextRenderingRuntime, DEFAULT_TEXT_RENDER_PROFILE } from "@/domains/document/public";
 const runtime = createTextRenderingRuntime();
 runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "raw" });
@@ -20,6 +20,28 @@ describe("Canvas writing tool", () => {
     runtimes.push(canvas);
     return canvas;
   };
+
+  it("renders Markdown, searches exact glyph positions, and reads styles without changing editor state", async () => {
+    const canvas = host();
+    const runtime = createTextRenderingRuntime();
+    const rendering = { render: runtime.renderCompact, getProfile: runtime.getProfile, getContext: () => ({ themeMode: "light" as const }) };
+    const write = createCanvasWriteTool(canvas, rendering);
+    const search = createCanvasSearchTool(canvas);
+    await write.execute({ at: [-100, -50], content: "**Needle** 你é" });
+    const state = canvas.getState();
+    const camera = canvas.viewport.getSnapshot();
+    const found = await search.execute({ query: "Needle", viewport: [-100, -50, 800, 240] });
+    expect(found).toEqual({ canvasId: "canvas-a", matches: [{ bounds: [-100, -50, 6, 1], text: "Needle 你é" }], next: null });
+    const read = await createCanvasReadTool(canvas, rendering).execute({ viewport: [-100, -50, 6, 1] });
+    expect(read).toMatchObject({ content: expect.stringContaining("bold") });
+    expect(await search.execute({ query: "**Needle**" })).toMatchObject({ matches: [] });
+    expect(await search.execute({ query: "你é" })).toMatchObject({ matches: [{ bounds: [-93, -50, 3, 1] }] });
+    expect(canvas.getState().interaction).toEqual(state.interaction);
+    expect(canvas.getState().canUndo).toBe(state.canUndo);
+    expect(canvas.viewport.getSnapshot()).toEqual(camera);
+    canvas.commands.history.undo();
+    expect(await search.execute({ query: "Needle" })).toMatchObject({ matches: [] });
+  });
 
   it("writes graphemes at signed coordinates without changing interaction and undoes each call separately", async () => {
     const canvas = host();

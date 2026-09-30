@@ -4,6 +4,19 @@ Use `chardesk_canvas_read` to observe the active Canvas and
 `chardesk_canvas_write` to edit its Cell content when available. These operate on
 the current surface, not a file path. Tool definitions own parameter schemas.
 
+## Search and locate
+
+When the text is known but its location is not, use `chardesk_canvas_search` with
+`query`, optionally restricted by `viewport`. It searches rendered text at full
+Cell precision, including on read-only projections; it does not search source
+syntax, read rulers, styles, or density symbols. Matching is literal, case-sensitive,
+single-row, and uses complete graphemes.
+
+Read around a match's `bounds` for layout and styles. The short `text` context is
+not a whole-region replacement payload. For more matches, pass non-null `next` as
+`after` with the same query and viewport and confirm `canvasId` is unchanged.
+Results are live rather than a cross-call snapshot; restart after edits when needed.
+
 ## Read
 
 Start with `{}` for orientation unless the target region is already known.
@@ -40,8 +53,7 @@ leaves the camera, cursor, and selection unchanged.
 
 ## Source-backed and read-only surfaces
 
-For a Blackboard projection, edit source through the
-[live workspace tools](live-workspace.md). For a local CLI reader, edit the
+For a local CLI reader, edit the
 existing files through the [CLI workflow](cli.md); the open projection updates
 automatically. Canvas read can verify either result when available.
 
@@ -50,5 +62,6 @@ Canvas. A Slide overflow requires an in-bounds placement; the rejected write
 has changed nothing. If write is absent, do not bypass the read-only surface.
 When the intended source cannot be reached, report the missing capability.
 
-Contracts: [Canvas reading](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/architecture/canvas-reading.mdx)
+Contracts: [Canvas reading](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/architecture/canvas-reading.mdx),
+[Canvas searching](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/architecture/canvas-searching.mdx),
 and [Canvas writing](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs/development/architecture/canvas-writing.mdx).

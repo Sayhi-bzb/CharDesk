@@ -8,10 +8,6 @@ import {
   isSourceBackedCanvasSession,
   type CanvasMode,
 } from '@/domains/sessions/public';
-import {
-  createBlackboardArchive,
-  useBlackboardRuntimeOptional,
-} from '@/domains/blackboard/public';
 import { SLIDE_SIZE_PRESETS, type SlideSize } from '@/domains/slides/public';
 import { getAvailableExportFormats, type ExportFormat } from '@/domains/export/public';
 import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
@@ -86,13 +82,8 @@ const createOptionMeta = [
     labelKey: 'session.newFreeform',
     icon: HOST_ICONOLOGY.canvasMode.freeform,
   },
-  {
-    kind: 'blackboard' as const,
-    labelKey: 'session.newBlackboard',
-    icon: HOST_ICONOLOGY.sourceKind.blackboard,
-  },
 ] satisfies Array<{
-  kind: CanvasMode | 'blackboard';
+  kind: CanvasMode;
   labelKey: I18nKey;
   icon: (typeof HOST_ICONOLOGY.canvasMode)[keyof typeof HOST_ICONOLOGY.canvasMode];
 }>;
@@ -115,7 +106,6 @@ export function CanvasSessionSelector({
   paneActive = false,
 }: CanvasSessionSelectorProps) {
   const canvas = useCanvasRuntime();
-  const blackboard = useBlackboardRuntimeOptional();
   const { t } = useUiI18n();
   const isMobile = useIsMobile();
   const { phase: onboardingPhase } = useOnboardingTour();
@@ -135,7 +125,6 @@ export function CanvasSessionSelector({
     }))
   );
   const createCanvasSession = canvas.commands.sessions.create;
-  const openSourceSession = canvas.commands.sessions.openSource;
   const switchCanvasSession = canvas.commands.sessions.switch;
   const removeCanvasSession = canvas.commands.sessions.remove;
   const renameCanvasSession = canvas.commands.sessions.rename;
@@ -174,7 +163,7 @@ export function CanvasSessionSelector({
     ? (canvasSessions.find((session) => session.id === pendingDeleteId) ?? null)
     : null;
   const ActiveModeIcon = isSourceBackedCanvasSession(activeSession)
-    ? HOST_ICONOLOGY.sourceKind.blackboard
+    ? HOST_ICONOLOGY.sourceKind.document
     : HOST_ICONOLOGY.canvasMode[activeSession?.mode ?? 'freeform'];
   const canRemove = canvasSessions.length > 1;
   const renameTargetId = renameFlow?.phase === 'editing' ? renameFlow.sessionId : null;
@@ -254,25 +243,11 @@ export function CanvasSessionSelector({
     }
   };
 
-  const createSession = async (kind: 'freeform' | 'blackboard') => {
+  const createSession = (kind: 'freeform') => {
     onActivate?.();
-    if (kind === 'blackboard') {
-      if (!blackboard) throw new Error('Blackboard runtime is unavailable.');
-      const source = await blackboard.repository.createWorkspace();
-      openSourceSession({
-        kind: 'blackboard',
-        provider: 'browser-workspace',
-        id: source.workspace.id,
-      }, {
-        name: source.workspace.title,
-      });
-    } else {
-      const created = createCanvasSession(kind);
-      if (onboardingPhase === 'idle') requestRename(created.id, 'create-menu');
-      else closeSelector();
-      return;
-    }
-    closeSelector();
+    const created = createCanvasSession(kind);
+    if (onboardingPhase === 'idle') requestRename(created.id, 'create-menu');
+    else closeSelector();
   };
 
   const createSlideSession = (size: SlideSize) => {
@@ -283,17 +258,6 @@ export function CanvasSessionSelector({
       return;
     }
     requestRename(created.id, customSlideSizeOpen ? 'custom-slide-dialog' : 'create-menu');
-  };
-
-  const exportBlackboard = async (workspaceId: string, name: string) => {
-    const source = await blackboard?.repository.readWorkspace(workspaceId);
-    if (!source) return;
-    const url = URL.createObjectURL(createBlackboardArchive(source));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${name.replace(/[^a-z0-9._-]+/giu, '-') || 'blackboard'}.zip`;
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const commitRename = (name: string) => {
@@ -432,7 +396,7 @@ export function CanvasSessionSelector({
           <div className="flex flex-col gap-0.5">
             {canvasSessions.map((session) => {
               const ModeIcon = isSourceBackedCanvasSession(session)
-                ? HOST_ICONOLOGY.sourceKind.blackboard
+                ? HOST_ICONOLOGY.sourceKind.document
                 : HOST_ICONOLOGY.canvasMode[session.mode];
               const manageLabel = t('session.manage', { name: session.name });
               const isActive = session.id === selectedId;
@@ -574,17 +538,7 @@ export function CanvasSessionSelector({
                                         </DropdownMenuItem>
                                       );
                                     })}
-                                    {isSourceBackedCanvasSession(session) &&
-                                    session.sourceBinding.provider === 'browser-workspace' ? (
-                                      <DropdownMenuItem onSelect={() => {
-                                        void exportBlackboard(
-                                          session.sourceBinding.id,
-                                          session.name,
-                                        );
-                                      }}>
-                                        {t('session.exportSource')}
-                                      </DropdownMenuItem>
-                                    ) : null}
+
                                   </DropdownMenuGroup>
                                   {exportFeedback?.status === 'error' &&
                                   exportFeedback.target.sessionId === session.id ? (

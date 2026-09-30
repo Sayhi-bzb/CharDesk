@@ -1,134 +1,73 @@
 # @chardesk/cli
 
-Agent-first CharDesk workspace CLI. It creates and inspects source packages, opens the bundled
-Canvas locally, and renders portable artifacts. It consumes the same Blackboard, CharGraph,
-Protocol, Rendering, and font contracts as the CharDesk application.
+Create native CharDesk files, inspect visual text, open a read-only live Canvas,
+and render artifacts. No checkout or dev server is required.
 
-Run it without cloning CharDesk or installing a global command:
-
-```sh
-npx -y @chardesk/cli --help
-```
-
-The examples below use this no-install form. To use the shorter `chardesk`
-command instead, install it globally first:
+## Native files
 
 ```sh
-npm install -g @chardesk/cli
-chardesk --help
+npx -y @chardesk/cli init diagram.chardesk --title "Diagram"
+npx -y @chardesk/cli init deck.chardesk --mode slide
+npx -y @chardesk/cli inspect diagram.chardesk --styles --json
+npx -y @chardesk/cli open diagram.chardesk
 ```
 
-## Workspace workflow
+`init` creates one [document/v1 file](../document/README.md), defaulting to
+Freeform, and refuses existing paths. Edit that file with normal filesystem tools.
+Native Slide decks open in the browser; headless inspect/render do not render decks.
 
-Create a canonical multi-file Blackboard package:
-
-```sh
-npx -y @chardesk/cli init .chardesk/gpu --title "GPU"
-```
-
-Create a Panel-based Slide deck with automatic page sizing:
-
-```sh
-npx -y @chardesk/cli init .chardesk/gpu-deck --mode slide --title "GPU"
-```
-
-Agents use normal filesystem tools to read and patch `blackboard.yaml` and `.panel` files. The
-files are the source of truth; the CLI does not introduce a proprietary CRUD layer.
-
-Inspect the compiled grid before showing it:
-
-```sh
-npx -y @chardesk/cli inspect .chardesk/gpu --json
-npx -y @chardesk/cli inspect .chardesk/gpu --panel architecture --styles --json
-npx -y @chardesk/cli inspect .chardesk/gpu --region 0,0,96,32
-```
-
-`inspect` reports materialized Protocol text without a browser. Its default view is bounded to
-96×32 cells. When CharGraph source uses `|||` or `---`, the default inspection
-projection renders each non-empty block independently and stacks their plain text in source order;
-the Canvas keeps its spatial layout. Use `--canvas` for that final spatial projection. `--region`
-selects an absolute Canvas grid region and implies `--canvas`. `--styles` adds compact,
-Agent-readable style regions. `--panel` isolates one package panel by manifest ID.
-
-Open the workspace when a human wants to see it:
-
-```sh
-npx -y @chardesk/cli open .chardesk/gpu
-```
-
-`open` starts a managed background session, launches the default browser, and returns. The CLI
-ships the same CharDesk application runtime as the hosted product and opens a live source
-projection at a short `/s/<token>/` loopback URL. Human editing is disabled; source changes made by
-filesystem tools appear in the existing Canvas automatically. A normal launch prints
-`Opened CharDesk. Source updates are live.` or `Reused CharDesk. Source updates are live.` It does
-not require CharDesk source code, a dev server, a cloud host, or an MCP server. Local files are
-never uploaded or modified by Canvas.
+`open` serves the bundled Canvas at a tokenized loopback `/s/<token>/` URL.
+The preview cannot edit or upload the file. File changes update the same preview.
+Canonical paths and symlinks reuse a healthy session. `--no-browser` prints its URL;
+`--port` selects a port; `--foreground` attaches server lifetime to the command.
 
 ```sh
 npx -y @chardesk/cli status
-npx -y @chardesk/cli close .chardesk/gpu
+npx -y @chardesk/cli close diagram.chardesk
 npx -y @chardesk/cli close --all
 ```
 
-Opening a directory, its manifest, or a symlink to the same workspace reuses one compatible healthy
-session across CLI patch upgrades. Source edits do not change its URL. Use `--no-browser` to return
-the URL without launching a browser, `--port` for a fixed loopback port, or `--foreground` to attach the
-server lifecycle to the current process. An open Canvas keeps its session leased; after the page and
-all local clients stop accessing it for 30 minutes, the background process exits automatically. A
-later `open` transparently starts a new session without changing the source workspace. If a launched
-browser cannot report Canvas readiness,
-`open` returns a PNG fallback path instead. `open --json` exposes the public session fields
-`status`, `input`, `url`, `runtimeReady`, and `watching`; process and registry metadata remain internal.
+Idle sessions expire after 30 minutes without clients. A browser readiness failure
+returns a PNG fallback when the input supports rendering. `open --json` exposes
+`status`, `input`, `url`, `runtimeReady`, and `watching`.
 
-## Render
+## Inspect and render
 
 ```sh
-npx -y @chardesk/cli render input.md -o output.png
+npx -y @chardesk/cli inspect input.md --json
+npx -y @chardesk/cli inspect diagram.chardesk --region 0,0,96,32 --styles
+npx -y @chardesk/cli render input.md -o output.png --strict --json
 ```
 
-The output suffix selects the artifact:
+Inspect defaults to bounded materialized text. Block-layout source is stacked in
+source order; `--canvas` requests its spatial projection. `--region x,y,w,h`
+implies Canvas inspection; `--no-ruler` hides coordinates; `--styles` adds evidence.
 
-| Suffix | Format | Artifact |
-| --- | --- | --- |
-| `.png` | `png` | Raster image |
-| `.chardesk` | `chardesk` | Canonical Freeform document |
-| `.ans` | `ansi` | Terminal ANSI text |
-| `.txt` | `text` | Plain Unicode text |
+Auto input treats `.chardesk` as Protocol and other files or stdin as CharGraph.
+Overrides are `--input chargraph|chardesk`. Stdin works for inspect/render, not open.
 
-Use `--format` to override suffix inference. Plain text on stdout requires an explicit format:
+| Output | Format |
+| --- | --- |
+| `.png` | Raster image |
+| `.chardesk` | Native Freeform document |
+| `.ans` | Terminal ANSI |
+| `.txt` | Plain Unicode |
+
+`--format png|chardesk|ansi|text` overrides suffix inference. Stdout requires an
+explicit non-PNG format. PNG accepts `--scale 1..4` (default 2) and
+`--padding 0..256` (default 16). Render replaces its explicit output atomically;
+`--strict` rejects diagnostics before replacement.
+
+## Retired Blackboard input
 
 ```sh
-printf '# Status\n\n**Ready**' | npx -y @chardesk/cli render - -o - --format text
+npx -y @chardesk/cli migrate <blackboard.yaml|directory> --output converted.chardesk
 ```
 
-PNG uses an isolated native raster process. `--strict` rejects compiler diagnostics without
-replacing an existing artifact.
+Migration preserves source files, retains Slide order and rendering, and refuses
+existing outputs. Normal commands do not compile Blackboard directories.
+`--input blackboard` and `--panel` are removed.
 
-## Inputs and options
-
-`auto` recognizes a Freeform `.chardesk` document, `blackboard.yaml`, or a directory containing
-that manifest. `open` validates both Blackboard and Slide packages; use `--panel` to inspect an
-individual Slide Panel. Other files and stdin default to CharGraph source. Override detection with
-`--input chargraph`, `--input chardesk`, or `--input blackboard`. Structured and Slide documents
-passed as standalone document inputs remain outside the headless renderer.
-
-```text
---title <title>                    init only
---mode <blackboard|slide>          init only; default blackboard
---port <0..65535>                  open only; default random
---no-browser                       open only
---foreground                       open only
---panel <id>                       inspect one Blackboard panel
---region <x,y,columns,rows>         inspect only
---canvas                            inspect final spatial Canvas projection
---no-ruler                         inspect only
---styles                           inspect only
---format <png|chardesk|ansi|text>  render only
---scale <1..4>                     PNG only; default 2
---padding <0..256>                 PNG only; default 16
---strict                           reject render diagnostics
---json                             emit one machine-readable result
-```
-
-Successful writes replace the explicit path atomically. Exit codes are 0 for success, 1 for
-content/runtime/write failure, and 2 for invalid arguments.
+Exit codes: 0 success, 1 content/runtime/write failure, 2 invalid arguments.
+Implementation and verification: [commands](src/command.ts), [migration](src/migrate.ts),
+[preview server](src/preview-server.ts), and [contract tests](src/command.test.ts).

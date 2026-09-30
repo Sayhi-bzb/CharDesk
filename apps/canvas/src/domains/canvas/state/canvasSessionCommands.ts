@@ -154,6 +154,36 @@ export const createCanvasSessionCommands = (
   const activation = new CanvasSessionActivationCoordinator();
   const pendingDeletionIds = new Set<string>();
   const commands: SessionCommands = {
+    completeMigration: (sessionId) => commits.run(() => {
+      set({ canvasSessions: get().canvasSessions.map((session) => {
+        if (session.id !== sessionId) return session;
+        const native = { ...session };
+        delete native.migrationPending;
+        return native;
+      }) });
+    }),
+    importMigratedSession: (sessionId, workspaceId, name, snapshot) => commits.run(() => {
+      const state = get();
+      const target = state.canvasSessions.find(({ id }) => id === sessionId);
+      if (target && (target.sourceBinding?.provider !== "browser-workspace" || target.sourceBinding.id !== workspaceId)) {
+        throw new Error("Refusing to overwrite native Canvas content during migration.");
+      }
+      const viewport = target?.id === state.activeCanvasId ? viewportRuntime.getSnapshot() : target?.viewport;
+      const replacement: CanvasSessionDescriptor = { id: sessionId, name, mode: snapshot.mode, migrationPending: true, ...(viewport ? { viewport } : {}) };
+      documents.clearDerivedSurface(sessionId);
+      const seed = createDocumentSeed(snapshot);
+      if (!documents.resetDocument(sessionId, seed)) documents.registerDocument(sessionId, seed);
+      set({ canvasSessions: target
+        ? state.canvasSessions.map((session) => session.id === sessionId ? replacement : session)
+        : [...state.canvasSessions, replacement] });
+      // Rebuild the active projection if this was the currently visible legacy shell.
+      if (state.activeCanvasId === sessionId) {
+        const runtime = activateSessionRuntime(documents, replacement, state.tool);
+        set(createSessionActivationPatch(get().canvasSessions, sessionId, runtime,
+          rebuildContentSurface(documents).reader, documents.getActiveAddress()));
+      }
+      residency?.touch(sessionId);
+    }),
     createCanvasSession: (mode = "freeform", options) => commits.run(() => {
       activation.begin();
       const state = get();
@@ -562,17 +592,6 @@ export const createCanvasSessionCommands = (
         canvasSessions: state.canvasSessions.map((session) =>
           session.id === canvasId && !isSourceBackedCanvasSession(session)
             ? { ...session, name }
-            : session
-        ),
-      }));
-    }),
-    syncBlackboardTitle: (workspaceId, title) => commits.run(() => {
-      set((state) => ({
-        canvasSessions: state.canvasSessions.map((session) =>
-          isSourceBackedCanvasSession(session) &&
-          session.sourceBinding.provider === 'browser-workspace' &&
-          session.sourceBinding.id === workspaceId
-            ? { ...session, name: title }
             : session
         ),
       }));

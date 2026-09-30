@@ -45,35 +45,24 @@ const streams = (input: Uint8Array | string = "") => {
 };
 
 describe("chardesk render command", () => {
-  it("initializes a minimal workspace without replacing existing content", async () => {
+  it("initializes one native document without overwriting it", async () => {
     const cwd = await temporaryDirectory();
-    const io = streams();
-    expect(await runCli([
-      "init", "boards/demo", "--title", "GPU Notes",
-    ], io.value, cwd)).toBe(0);
-    expect(await readFile(join(cwd, "boards/demo/blackboard.yaml"), "utf8"))
-      .toContain('title: "GPU Notes"');
-    expect(await readFile(join(cwd, "boards/demo/main.panel"), "utf8"))
-      .toBe("# GPU Notes\n");
+    expect(await runCli(["init", "demo.chardesk", "--title", "GPU Notes"], streams().value, cwd)).toBe(0);
+    const source = await readFile(join(cwd, "demo.chardesk"), "utf8");
+    expect(source).toContain("chardesk: document/v1");
+    expect(source).toContain("mode: freeform");
     const conflict = streams();
-    expect(await runCli(["init", "boards/demo"], conflict.value, cwd)).toBe(1);
+    expect(await runCli(["init", "demo.chardesk"], conflict.value, cwd)).toBe(1);
     expect(conflict.stderr()).toContain("init-conflict");
-    expect(() => parseCliArguments(["init", "demo", "--force"]))
-      .toThrow("Unknown option");
+    expect(await readFile(join(cwd, "demo.chardesk"), "utf8")).toBe(source);
   });
 
-  it("initializes a Panel-backed Slide package with implicit auto size", async () => {
+  it("initializes a native slide deck", async () => {
     const cwd = await temporaryDirectory();
-    const io = streams();
-    expect(await runCli([
-      "init", "deck", "--mode", "slide", "--title", "GPU Deck",
-    ], io.value, cwd)).toBe(0);
-    const manifest = await readFile(join(cwd, "deck/blackboard.yaml"), "utf8");
-    expect(manifest).toContain("chardesk: blackboard/v2\nmode: slide");
-    expect(manifest).toContain("pages:\n    - main");
-    expect(manifest).not.toContain("size:");
-    expect(await readFile(join(cwd, "deck/panels/main.panel"), "utf8"))
-      .toBe("# GPU Deck\n");
+    expect(await runCli(["init", "deck.chardesk", "--mode", "slide"], streams().value, cwd)).toBe(0);
+    const source = await readFile(join(cwd, "deck.chardesk"), "utf8");
+    expect(source).toContain("mode: slide");
+    expect(source).toContain("## Opening");
   });
 
   it("parses the open command without accepting stdin or unrelated options", () => {
@@ -149,13 +138,7 @@ describe("chardesk render command", () => {
         styles: false,
       },
     });
-    expect(parseCliArguments([
-      "inspect", "boards/demo", "--panel", "details", "--styles", "--json",
-    ])).toMatchObject({
-      command: {
-        kind: "inspect", panel: "details", canvas: false, styles: true, json: true,
-      },
-    });
+    expect(() => parseCliArguments(["inspect", "demo.chardesk", "--panel", "details"])).toThrow("Unknown option");
     expect(parseCliArguments([
       "inspect", "input.md", "--canvas",
     ])).toMatchObject({ command: { kind: "inspect", canvas: true } });
@@ -221,22 +204,6 @@ describe("chardesk render command", () => {
     });
   });
 
-  it("inspects one Blackboard panel with structured output", async () => {
-    const cwd = await temporaryDirectory();
-    await runCli(["init", "boards/demo", "--title", "GPU"], streams().value, cwd);
-    const io = streams();
-    expect(await runCli([
-      "inspect", "boards/demo", "--panel", "main", "--styles", "--json",
-    ], io.value, cwd)).toBe(0);
-    expect(JSON.parse(io.stdout())).toMatchObject({
-      status: "valid",
-      panel: "main",
-      inputMode: "chargraph",
-      text: expect.stringContaining("GPU"),
-      diagnostics: [],
-    });
-  });
-
   it("adds style evidence only when explicitly requested", async () => {
     const plain = streams("[31;1mStyled[0m plain");
     expect(await runCli([
@@ -266,7 +233,7 @@ describe("chardesk render command", () => {
     expect(invalid.stderr()).toContain("warning");
   });
 
-  it("auto-detects Blackboard manifests and directories", async () => {
+  it("migrates legacy source explicitly and retains the original", async () => {
     const cwd = await temporaryDirectory();
     const board = join(cwd, "gpu");
     await mkdir(join(board, "panels"), { recursive: true });
@@ -284,16 +251,19 @@ describe("chardesk render command", () => {
 
     for (const input of ["gpu", "gpu/blackboard.yaml"]) {
       const io = streams();
-      expect(await runCli(["inspect", input, "--no-ruler"], io.value, cwd)).toBe(0);
-      expect(io.stdout()).toContain("GPU  显卡");
-      expect(io.stdout()).not.toContain("[31m");
+      expect(await runCli(["inspect", input, "--no-ruler"], io.value, cwd)).toBe(1);
+      expect(io.stderr()).toContain("retired-format");
     }
 
+    expect(await runCli(["migrate", "gpu", "--output", "gpu.chardesk"], streams().value, cwd)).toBe(0);
     const styled = streams();
-    expect(await runCli([
-      "inspect", "gpu", "--no-ruler", "--styles",
-    ], styled.value, cwd)).toBe(0);
+    expect(await runCli(["inspect", "gpu.chardesk", "--no-ruler", "--styles"], styled.value, cwd)).toBe(0);
+    expect(styled.stdout()).toContain("GPU  显卡");
     expect(styled.stdout()).toContain("0:0-2{fg:#800000}");
+    const conflict = streams();
+    expect(await runCli(["migrate", "gpu", "--output", "gpu.chardesk"], conflict.value, cwd)).toBe(1);
+    expect(conflict.stderr()).toContain("migration-conflict");
+    expect(await readFile(join(board, "panels/left.panel"), "utf8")).toBe("[31mGPU[0m");
 
   });
 

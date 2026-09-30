@@ -15,12 +15,6 @@ import { CanvasBreadcrumb } from '@/widgets/session-tabs/CanvasBreadcrumb';
 describe('AppMenu document interchange', () => {
   const initialState = useEditorStore.getState();
 
-  const blackboardFile = (webkitRelativePath: string, source: string) =>
-    ({
-      webkitRelativePath,
-      text: async () => source,
-    }) as File;
-
   beforeEach(() => {
     window.localStorage.removeItem('chardesk-canvas-split-enabled');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -68,82 +62,19 @@ describe('AppMenu document interchange', () => {
     expect(screen.queryByRole('menu', { name: 'Import' })).not.toBeInTheDocument();
   });
 
-  it('imports a Blackboard directory into a detached editable canvas', async () => {
+  it('rejects retired directory imports without creating a Canvas', async () => {
     vi.spyOn(feedback, 'error').mockImplementation(() => undefined);
-    const before = useEditorStore.getState();
-    const previousSessionId = before.activeCanvasId;
-    const previousSessionCount = before.canvasSessions.length;
+    const count = useEditorStore.getState().canvasSessions.length;
     render(<CanvasBreadcrumb />);
     fireEvent.click(screen.getByRole('button', { name: 'Select canvas' }));
-    const importButton = screen.getByRole('button', { name: 'Import' });
-    const droppedFiles = [
-      blackboardFile(
-        'gpu/blackboard.yaml',
-        [
-          'chardesk: blackboard/v1',
-          'title: Imported GPU',
-          'panels:',
-          '  overview: { source: panels/overview.panel }',
-          'layout:',
-          '  areas: [[overview]]',
-        ].join('\n')
-      ),
-      blackboardFile(
-        'gpu/panels/overview.panel',
-        [
-          '```mermaid',
-          'flowchart LR',
-          '  A[GPU] --> B[Pixels]',
-          '```',
-        ].join('\n')
-      ),
-    ];
-    const root = {
-      isDirectory: true,
-      createReader: () => ({
-        readEntries: (resolve: (entries: unknown[]) => void) => {
-          resolve(droppedFiles.splice(0).map((file) => ({
-            isDirectory: false,
-            fullPath: `/${file.webkitRelativePath}`,
-            file: (resolveFile: (file: File) => void) => resolveFile(file),
-          })));
-        },
-      }),
-    };
-    fireEvent.drop(importButton, {
-      dataTransfer: {
-        items: [{ webkitGetAsEntry: () => root }],
-        files: [],
-      },
+    fireEvent.drop(screen.getByRole('button', { name: 'Import' }), {
+      dataTransfer: { items: [{ webkitGetAsEntry: () => ({ isDirectory: true }) }], files: [] },
     });
-
-    await waitFor(() => {
-      expect(feedback.error).not.toHaveBeenCalled();
-      const state = useEditorStore.getState();
-      expect(state.canvasSessions).toHaveLength(previousSessionCount + 1);
-      expect(state.activeCanvasId).not.toBe(previousSessionId);
-      expect(state.canvasSessions).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ id: previousSessionId }),
-          expect.objectContaining({
-            id: state.activeCanvasId,
-            name: 'Imported GPU',
-            mode: 'freeform',
-          }),
-        ])
-      );
-    });
-
-    const imported = useEditorStore.getState().canvasSessions.find(
-      (session) => session.id === useEditorStore.getState().activeCanvasId,
-    );
-    if (!imported || imported.mode !== 'freeform') {
-      throw new Error('Expected an editable Freeform session.');
-    }
-    expect('workspaceId' in imported).toBe(false);
-    expect(useEditorStore.getState().contentSurface.reader.materialize().size).toBeGreaterThan(0);
+    await waitFor(() => expect(feedback.error).toHaveBeenCalledWith('Import failed', {
+      description: 'Drop one document.',
+    }));
+    expect(useEditorStore.getState().canvasSessions).toHaveLength(count);
   });
-
   it('keeps ANSI out of static canvas exports', async () => {
     useEditorStore.setState({
       canvasMode: 'freeform',

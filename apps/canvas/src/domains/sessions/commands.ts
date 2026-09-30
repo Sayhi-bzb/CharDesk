@@ -14,6 +14,8 @@ type CreateCanvasSessionOptions = {
 };
 
 export interface SessionCommands {
+  importMigratedSession: (sessionId: string, workspaceId: string, name: string, snapshot: CanvasImportSnapshot) => void;
+  completeMigration: (sessionId: string) => void;
   createCanvasSession: (
     mode?: CanvasMode,
     options?: CreateCanvasSessionOptions
@@ -43,7 +45,6 @@ export interface SessionCommands {
     viewport: { offset: Point; zoom: number }
   ) => void;
   renameCanvasSession: (canvasId: string, nextName: string) => void;
-  syncBlackboardTitle: (workspaceId: string, title: string) => void;
   setCanvasSessionCollaboration: (
     canvasId: string,
     collaboration: CollaborationDescriptor | null,

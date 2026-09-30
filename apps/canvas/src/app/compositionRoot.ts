@@ -31,11 +31,6 @@ import {
   EDITOR_HOST_PROFILE,
   type EditorHostProfile,
 } from "./editorHostProfile";
-import {
-  BlackboardRuntime,
-  IndexedDbBlackboardRepository,
-  type BlackboardWorkspaceRepository,
-} from "@/domains/blackboard/public";
 import { createCanvasFontRuntime, type CanvasFontRuntime, type CanvasFontStorage } from "@/shared/fonts/runtime";
 import {
   createCanvasCursorRuntime,
@@ -57,7 +52,6 @@ type ApplicationEditorHostOptions = {
   canvasCursorStorage?: CanvasCursorStorage | false;
   profile?: EditorHostProfile;
   initialSessions?: readonly CanvasSessionSnapshot[];
-  blackboardRepository?: BlackboardWorkspaceRepository;
 };
 
 export class ApplicationEditorHost {
@@ -69,7 +63,6 @@ export class ApplicationEditorHost {
   readonly canvasCursor: CanvasCursorRuntime;
   readonly canvasAppearance: CanvasAppearanceRuntime;
   readonly textRenderingWorker: TextRenderingWorkerClient;
-  readonly blackboard: BlackboardRuntime;
   readonly profile: EditorHostProfile;
   #disposed = false;
 
@@ -81,7 +74,6 @@ export class ApplicationEditorHost {
     canvasCursorStorage = false,
     profile = EDITOR_HOST_PROFILE,
     initialSessions,
-    blackboardRepository = new IndexedDbBlackboardRepository(),
   }: ApplicationEditorHostOptions = {}) {
     this.profile = profile;
     this.canvasFont = createCanvasFontRuntime({ storage: canvasFontStorage });
@@ -90,7 +82,6 @@ export class ApplicationEditorHost {
     this.collaboration = createCollaborationRuntime();
     this.textRendering = createTextRenderingRuntime({ storage: textRenderingStorage });
     this.textRenderingWorker = new TextRenderingWorkerClient(this.textRendering);
-    this.blackboard = new BlackboardRuntime(blackboardRepository);
     this.canvas = createCanvasRuntime({
       persistence: canvasPersistence,
       selectionCommands: createSelectionCommandFactory({

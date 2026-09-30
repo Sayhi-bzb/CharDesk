@@ -1,0 +1,37 @@
+{
+  "name": "@chardesk/legacy-blackboard",
+  "version": "0.0.0",
+  "description": "Private retired Blackboard migration compiler",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./path": { "types": "./dist/source-path.d.ts", "import": "./dist/source-path.js" },
+    "./errors": { "types": "./dist/errors.d.ts", "import": "./dist/errors.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@chardesk/chargraph": "*",
+    "@chardesk/document": "*",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.4",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

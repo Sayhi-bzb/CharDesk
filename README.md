@@ -22,7 +22,7 @@ npm install -g @chardesk/cli
 Then tell your agent what you want to see:
 
 ```text
-$chardesk Explain how a GPU works as a visual blackboard.
+$chardesk Explain how a GPU works as a visual Canvas.
 ```
 
 The agent creates the source, checks it, and opens the canvas. You do not need to learn a file format or configure an AI provider first.
@@ -34,7 +34,7 @@ The agent creates the source, checks it, and opens the canvas. You do not need t
 - Build scientific figures with plots, formulas, data, and annotations.
 - Sketch interfaces, terminals, dashboards, and product states.
 - Map architectures, workflows, timelines, and relationships.
-- Keep a Blackboard that people and agents can inspect and revise together.
+- Keep a Canvas that people and agents can inspect and revise together.
 
 [![CharDesk as a shared visual medium](apps/site/public/showcase/01-shared-medium.png)](apps/site/showcase-sources/01-shared-medium.md)
 
@@ -56,9 +56,9 @@ The agent creates the source, checks it, and opens the canvas. You do not need t
 
 **Interface design** · [Source](apps/site/showcase-sources/05-interface-console.md)
 
-[![A shared human and agent Blackboard](apps/site/public/showcase/06-agent-blackboard.png)](apps/site/showcase-sources/06-agent-blackboard.md)
+[![A shared human and agent Canvas](apps/site/public/showcase/06-agent-blackboard.png)](apps/site/showcase-sources/06-agent-blackboard.md)
 
-**Agent Blackboard** · [Source](apps/site/showcase-sources/06-agent-blackboard.md)
+**Agent Canvas** · [Source](apps/site/showcase-sources/06-agent-blackboard.md)
 
 ### ANSI interface studies
 
@@ -70,9 +70,9 @@ The agent creates the source, checks it, and opens the canvas. You do not need t
 
 **Idea Signal Player** · [Source](apps/site/showcase-sources/08-idea-signal-player.md)
 
-[![A pocket Blackboard](apps/site/public/showcase/09-pocket-blackboard.png)](apps/site/showcase-sources/09-pocket-blackboard.md)
+[![A pocket Canvas](apps/site/public/showcase/09-pocket-blackboard.png)](apps/site/showcase-sources/09-pocket-blackboard.md)
 
-**Pocket Blackboard** · [Source](apps/site/showcase-sources/09-pocket-blackboard.md)
+**Pocket Canvas** · [Source](apps/site/showcase-sources/09-pocket-blackboard.md)
 
 ## Why text can be visual
 
@@ -100,7 +100,7 @@ Write Markdown, Mermaid, math, GFM tables, fenced code, JSON, YAML, Vega-Lite, a
 
 ### Spatial composition
 
-Arrange content on Freeform canvases, start from reusable Cell templates, compose multiline fields with `|||` and `---`, collect complete scenes in a Blackboard, or tell a story with Slides. Every form resolves to the same character-grid rendering pipeline.
+Arrange content on Freeform canvases, start from reusable Cell templates, compose multiline fields with `|||` and `---`, or tell a story with Slides. Every form resolves to the same character-grid rendering pipeline.
 
 ### Agent access
 
@@ -108,7 +108,7 @@ Arrange content on Freeform canvases, start from reusable Cell templates, compos
 - **Chrome WebMCP:** experimental. Enable `chrome://flags/#enable-webmcp-testing`, relaunch Chrome, and keep [Canvas](https://canvas.chardesk.com/) open for a compatible agent.
 - **ChatGPT Site Tools:** experimental. Enable **Site tools** under **Settings → Browser → Permissions**, then open CharDesk in ChatGPT's built-in browser. See the [official Site Tools guide](https://learn.chatgpt.com/docs/webmcp).
 
-Browser agents can call `chardesk_read_materials` to enter the same visual language and worked examples as the skill. Blackboard tools operate on the Canvas visible in that browser page; creating or opening a workspace activates it automatically.
+Browser agents can call `chardesk_read_materials` to enter the same visual language and worked examples as the skill. Canvas tools read, search, and write the active two-dimensional Cell surface.
 
 ## For builders
 

@@ -16,7 +16,7 @@ describe("host iconology", () => {
       "slide",
       "ai",
     ]);
-    expect(HOST_ICONOLOGY.sourceKind.blackboard).toBeDefined();
+    expect(HOST_ICONOLOGY.sourceKind.document).toBeDefined();
     expect(Object.keys(HOST_ICONOLOGY.slideAction)).toEqual([
       "play",
       "previous",

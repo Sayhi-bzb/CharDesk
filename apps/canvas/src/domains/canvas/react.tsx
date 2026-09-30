@@ -28,6 +28,7 @@ type CanvasRuntimeContextValue = Pick<
   | "getPersistenceSnapshot"
   | "subscribePersistence"
   | "retryPersistence"
+  | "flushPersistence"
   | "retryRestore"
   | "setRetainedCanvasIds"
   | "materializeSession"

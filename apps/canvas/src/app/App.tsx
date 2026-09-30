@@ -69,9 +69,9 @@ import {
 } from '@/widgets/editor-chrome/public';
 import { resolveEditorHostContract } from './editorHostProfile';
 import { useEditorHostProfile } from './useEditorHostProfile';
-import { useBlackboardSource } from './useBlackboardSource';
-import { isLocalBlackboardReaderRoute } from './blackboardRoute';
-import { useBlackboardWorkspace } from './useBlackboardWorkspace';
+import { useDocumentSource } from './useDocumentSource';
+import { isLocalDocumentReaderRoute, isRetiredBlackboardRoute } from './documentRoute';
+import { useRetiredBlackboard } from './useRetiredBlackboard';
 import { getAppActionShortcuts } from '@/domains/actions/public';
 
 import type { CanvasEditorCapabilities } from '@/widgets/canvas-editor/canvasEditorCapabilities';
@@ -83,8 +83,7 @@ import { CanvasStartupBoundary } from './CanvasStartupBoundary';
 import { CanvasAppearanceBridge } from '@/shared/canvas-appearance/react';
 import { useWorkspaceRoute } from '@/shared/navigation/workspace-route';
 import { LocalWorkspacePage } from './LocalWorkspacePage';
-import { startCloudSync, startBlackboardCloudSync } from '@/domains/account/public';
-import { useBlackboardRuntime } from '@/domains/blackboard/public';
+import { startCloudSync } from '@/domains/account/public';
 
 
 const SidebarRight = lazy(() =>
@@ -93,9 +92,9 @@ const SidebarRight = lazy(() =>
   }))
 );
 
-const getBlackboardStatusTone = (
-  state: ReturnType<typeof useBlackboardSource>['status']['state'] |
-    ReturnType<typeof useBlackboardWorkspace>['status']['state']
+const getDocumentStatusTone = (
+  state: ReturnType<typeof useDocumentSource>['status']['state'] |
+    ReturnType<typeof useRetiredBlackboard>['status']['state']
 ): StatusTone => {
   switch (state) {
     case 'warning':
@@ -394,7 +393,7 @@ function AppContent() {
     state.canvasSessions.find((session) => session.id === state.activeCanvasId)
   );
   const activeCollaboration = activeSession?.collaboration;
-  const sourceBacked = isSourceBackedCanvasSession(activeSession);
+  const sourceBacked = isSourceBackedCanvasSession(activeSession) || !!activeSession?.migrationPending || isRetiredBlackboardRoute(window.location);
   const isCollaborationReadOnly =
     !!activeCollaboration &&
     (!collaborationSnapshot.canEdit ||
@@ -411,12 +410,12 @@ function AppContent() {
     }
   );
   const { capabilities, surfaces } = hostContract;
-  const localReaderEnabled = isLocalBlackboardReaderRoute(window.location);
-  const blackboardSource = useBlackboardSource({
+  const localReaderEnabled = isLocalDocumentReaderRoute(window.location);
+  const documentSource = useDocumentSource({
     enabled: localReaderEnabled,
   });
-  const blackboardWorkspace = useBlackboardWorkspace({ enabled: !localReaderEnabled });
-  const blackboardStatus = localReaderEnabled ? blackboardSource : blackboardWorkspace;
+  const retiredWorkspace = useRetiredBlackboard({ enabled: !localReaderEnabled });
+  const documentStatus = localReaderEnabled ? documentSource : retiredWorkspace;
   const { formFactor, sidebarPresentation, viewportFrame } = useEditorChromeLayout();
   const { mode, isWidgetVisible } = useEditorPresentation();
   const zenMode = mode === 'zen';
@@ -546,15 +545,15 @@ function AppContent() {
             </EditorWidget>
             {showHostWidgets &&
               sourceBacked &&
-              blackboardStatus.status.state !== 'current' &&
-              blackboardStatus.status.state !== 'idle' && (
-                <StatusText tone={getBlackboardStatusTone(blackboardStatus.status.state)} asChild>
+              documentStatus.status.state !== 'current' &&
+              documentStatus.status.state !== 'idle' && (
+                <StatusText tone={getDocumentStatusTone(documentStatus.status.state)} asChild>
                   <span
-                    data-testid="blackboard-source-status"
-                    data-state={blackboardStatus.status.state}
+                    data-testid="document-source-status"
+                    data-state={documentStatus.status.state}
                     className="pointer-events-auto truncate px-2 text-xs"
                   >
-                    {blackboardStatus.status.message}
+                    {documentStatus.status.message}
                   </span>
                 </StatusText>
               )}
@@ -611,7 +610,7 @@ function AppContent() {
             onRedo={handleRedo}
             capabilities={capabilities}
             fitContentRevision={
-              blackboardSource.firstFitRevision + blackboardWorkspace.firstFitRevision
+              documentSource.firstFitRevision + retiredWorkspace.firstFitRevision
             }
             viewportFrame={viewportFrame}
             collaborate={capabilities.collaborate}
@@ -627,13 +626,11 @@ function AppContent() {
 
 function AppScreen() {
   const canvas = useCanvasRuntime();
-  const blackboard = useBlackboardRuntime();
   useEffect(() => startCloudSync(canvas), [canvas]);
-  useEffect(() => startBlackboardCloudSync(blackboard.repository), [blackboard]);
   const workspaceRoute = useWorkspaceRoute();
   if (workspaceRoute) return <LocalWorkspacePage />;
   return (
-    <OnboardingTourProvider autoStart={!isLocalBlackboardReaderRoute(window.location)}>
+    <OnboardingTourProvider autoStart={!isLocalDocumentReaderRoute(window.location)}>
       <CanvasWorkspaceProvider>
         <CanvasTemplatePlacementProvider>
           <AppContent />

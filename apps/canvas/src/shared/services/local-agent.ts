@@ -136,7 +136,7 @@ export function connectLocalAgent(value: string, remember = false): void {
         }
         const name = request.params?.name;
         const input = request.params?.input;
-        if (request.method !== 'call' || !['chardesk_canvas_read', 'chardesk_canvas_write'].includes(String(name))
+        if (request.method !== 'call' || !['chardesk_canvas_read', 'chardesk_canvas_search', 'chardesk_canvas_write'].includes(String(name))
           || !input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid Canvas request');
         const result = await activePort.execute(String(name), input as Record<string, unknown>);
         response = JSON.stringify({ id, result });

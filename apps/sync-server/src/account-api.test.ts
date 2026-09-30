@@ -127,14 +127,23 @@ describe("account catalog", () => {
     const board = await fetch(`${base}/v1/account/works/backups`, {
       method: "POST", headers, body: JSON.stringify({ kind: "blackboard", title: "Source board", content: blackboardSource }),
     });
-    expect(board.status).toBe(201);
-    const boardId = (await board.json() as { work: { id: string } }).work.id;
+    expect(board.status).toBe(400);
+    const boardId = store.createBackup("github:17", "blackboard", "Source board", blackboardSource).id;
     expect((await fetch(`${base}/v1/account/works/${boardId}/content`, { method: "PUT", headers,
       body: JSON.stringify({ title: "Board 2", content: blackboardSource, expectedRevision: 1 }),
-    })).status).toBe(200);
+    })).status).toBe(400);
     expect((await fetch(`${base}/v1/account/works/${boardId}/content`, { method: "PUT", headers,
       body: JSON.stringify({ title: "Stale", content: blackboardSource, expectedRevision: 1 }),
-    })).status).toBe(409);
+    })).status).toBe(400);
+    const migrationUrl = `${base}/v1/account/works/${boardId}/migrate`;
+    expect((await fetch(migrationUrl, { method: "POST", headers, body: JSON.stringify({ expectedRevision: 2, kind: "canvas", content }) })).status).toBe(409);
+    const migrated = await fetch(migrationUrl, { method: "POST", headers, body: JSON.stringify({ expectedRevision: 1, kind: "canvas", content }) });
+    expect(migrated.status).toBe(200);
+    expect((await migrated.json()).work).toMatchObject({ id: boardId, kind: "canvas", revision: 2, hasSourceBackup: true });
+    expect(await (await fetch(`${base}/v1/account/works/${boardId}/source-backup`, { headers })).json()).toEqual({ content: blackboardSource, revision: 1 });
+    expect((await (await fetch(`${base}/v1/account/works`, { headers })).json()).limits.usedBytes).toBe(Buffer.byteLength(content) + Buffer.byteLength(blackboardSource));
+    expect((await fetch(migrationUrl, { method: "POST", headers, body: JSON.stringify({ expectedRevision: 1, kind: "slides", content: content.replace("freeform", "slide") }) })).status).toBe(200);
+    expect(store.readBackup("github:17", boardId)).toMatchObject({ content, revision: 2 });
     expect((await fetch(`${base}/v1/account/works/backups`, { method: "POST", headers,
       body: JSON.stringify({ kind: "blackboard", title: "Traversal", content: JSON.stringify({
         chardesk: "blackboard/source-v1", files: [

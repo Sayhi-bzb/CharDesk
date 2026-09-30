@@ -48,44 +48,63 @@ test('opens the local workspace from the editor and manages Canvas works', async
   await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
 });
 
-test('opens a Blackboard from the local workspace, then renames and deletes its source', async ({ page }) => {
-  await page.goto('/workspace');
-  await expect(page.getByTestId('local-workspace')).toBeVisible();
-  await expect(page.getByRole('table', { name: 'My workspace' })).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('data-webmcp-status', 'disposed');
-  await page.getByRole('button', { name: 'New work' }).click();
-  await page.getByRole('menuitem', { name: 'Blackboard' }).click();
-  await expect(page).toHaveURL(/\/blackboard\?workspace=/);
+test('converts legacy works once, keeps source backups, and preserves native edits', async ({ page }) => {
+  await page.goto('/');
   await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
-  await openWorksFromEditor(page);
-
-  const board = page.locator('[data-work-kind="blackboard"]').first();
-  const boardId = await board.getAttribute('data-work-id');
-  await board.getByRole('button', { name: /Actions for/ }).click();
-  await page.getByRole('menuitem', { name: 'Rename' }).click();
-  const name = page.getByRole('textbox', { name: 'Work name' });
-  await name.fill('Research board');
-  await name.press('Enter');
-  await expect(board.getByRole('button', { name: 'Open Research board' })).toBeVisible();
-  await expect.poll(async () => page.evaluate(async (id) => {
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('chardesk-blackboard-workspaces', 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('workspaces', { keyPath: 'id' });
+        request.result.createObjectStore('files', { keyPath: ['workspaceId', 'path'] })
+          .createIndex('by-workspace', 'workspaceId');
+      };
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction(['workspaces', 'files'], 'readwrite');
+        transaction.objectStore('workspaces').put({ id: 'retired-board', title: 'Research board', revision: 1, createdAt: 1, updatedAt: 1 });
+        transaction.objectStore('files').put({ workspaceId: 'retired-board', path: 'blackboard.yaml',
+          content: 'chardesk: blackboard/v1\npanels:\n  main: { source: main.panel }\nlayout:\n  areas: [[main]]' });
+        transaction.objectStore('files').put({ workspaceId: 'retired-board', path: 'main.panel', content: 'Original' });
+        transaction.oncomplete = () => { database.close(); resolve(); };
+        transaction.onerror = () => reject(transaction.error);
+      };
+    });
+  });
+  await page.goto('/workspace');
+  await page.getByRole('button', { name: 'New work' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Blackboard' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  const legacy = page.locator('[data-work-kind="retired"]');
+  await expect(legacy).toHaveCount(1);
+  await legacy.getByRole('button', { name: 'Open Research board' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
+  const sessionId = await page.evaluate(async () => {
     const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
-    const source = await getApplicationEditorHost().blackboard.repository.readWorkspace(id!);
-    return source?.files.find((file) => file.path === 'blackboard.yaml')?.content;
-  }, boardId)).toContain('title: Research board');
-
-  await page.getByRole('button', { name: 'Back to editor' }).click();
-  await expect(page).toHaveURL(/\/blackboard\?workspace=/);
-  await expect(page.getByTestId('canvas-session-selector-primary')).toContainText('Research board');
-  await openWorksFromEditor(page);
-
-  await board.getByRole('button', { name: /Actions for/ }).click();
-  await page.getByRole('menuitem', { name: 'Delete' }).click();
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
-  await expect(page.locator(`[data-work-id="${boardId}"]`)).toHaveCount(0);
-  await expect.poll(async () => page.evaluate(async (id) => {
+    const canvas = getApplicationEditorHost().canvas;
+    await canvas.ready;
+    const id = canvas.getState().activeCanvasId;
+    canvas.commands.text.writeAt('Edited', { x: 0, y: 0 });
+    await canvas.flushPersistence(id);
+    return id;
+  });
+  await page.goto('/blackboard?workspace=retired-board');
+  await expect(page).toHaveURL(/\/$/);
+  await expect.poll(() => page.evaluate(async (id) => {
     const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
-    return getApplicationEditorHost().blackboard.repository.readWorkspace(id!);
-  }, boardId)).toBeNull();
+    const canvas = getApplicationEditorHost().canvas;
+    return (await canvas.materializeSession(id))?.surface.getCell({ x: 0, y: 0 })?.char;
+  }, sessionId)).toBe('E');
+  await openWorksFromEditor(page);
+  await expect(page.locator('[data-work-kind="retired"]')).toHaveCount(0);
+  const native = page.locator('[data-work-source="local"]', { hasText: 'Research board' });
+  await expect(native).toHaveCount(1);
+  await native.getByRole('button', { name: /Actions for/ }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: 'Download original source' }).click();
+  expect((await download).suggestedFilename()).toBe('source-backup.zip');
 });
 
 test('searches table rows on a narrow direct workspace route', async ({ page }) => {

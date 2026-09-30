@@ -1,30 +1,21 @@
 # Local backstage
 
-Use `@chardesk/cli` for local paths, Slides, and file artifacts. Edit persistent
-source with native filesystem tools.
-
-The default new workspace location is `.chardesk/<slug>/`.
+Use `@chardesk/cli` for native files and artifacts. Edit files with filesystem tools.
 
 ```sh
-npx -y @chardesk/cli init .chardesk/<slug> --title "<title>"
-npx -y @chardesk/cli init .chardesk/<slug> --mode slide --title "<title>"
-npx -y @chardesk/cli inspect <path> --json
-npx -y @chardesk/cli open <path>
+npx -y @chardesk/cli init <name>.chardesk --title "<title>"
+npx -y @chardesk/cli init <name>.chardesk --mode slide --title "<title>"
+npx -y @chardesk/cli inspect <file> --json
+npx -y @chardesk/cli open <file.chardesk>
 npx -y @chardesk/cli render <input> -o <output> --strict --json
 ```
 
-- After writing content, use `inspect` to check its materialized plain text.
-  `|||` and `---` fields appear as a source-ordered vertical block stream so
-  spatial layout and ANSI do not obscure the content. Use `--canvas` or
-  `--region x,y,w,h` only when the final spatial projection matters;
-  `--panel <id>` and `--styles` provide bounded evidence.
-- `open` ensures a managed live source projection. Human editing is disabled;
-  filesystem edits appear automatically. It is idempotent: invoke it whenever
-  an interactive Canvas is requested, and let the CLI reuse, recreate, and
-  retire sessions. `--no-browser` returns the URL.
-- `render` produces PNG, `.chardesk`, ANSI, or text artifacts.
-- Stdin is available for temporary `inspect` and `render` input; `open` uses a
-  persistent path.
-- If Canvas opening fails, deliver the fallback artifact or error directly.
+`init` refuses existing files. `inspect` returns materialized text; use
+`--canvas`, `--region x,y,w,h`, or `--styles` for spatial or style evidence.
+Native Slide decks open in the browser; CLI inspect/render do not render decks.
 
-The published package requires neither a CharDesk checkout nor a dev server.
+`open` reuses a managed read-only preview and watches its file. `--no-browser`
+returns its URL. `render` produces PNG, `.chardesk`, ANSI, or text.
+Stdin works for inspect/render, not open. No checkout or dev server is required.
+
+Legacy files use [explicit migration](../blackboard.md), never normal authoring.

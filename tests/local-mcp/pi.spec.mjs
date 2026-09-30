@@ -67,11 +67,12 @@ test("Pi's real model reads, writes a GPU explanation, and verifies the live Can
       } catch { return false; }
     }, { timeout: 15_000, message: 'Start Pi interactively and approve the chardesk project server before this RPC test.' }).toBe(true);
     await page.getByRole('button', { name: 'Open menu', exact: true }).click();
-    await page.getByRole('menuitem', { name: 'Connect local agent', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Connect local agent' });
+    await page.getByRole('menuitem', { name: /^Agent/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Agent', exact: true });
+    await dialog.getByRole('button', { name: 'Pair', exact: true }).click();
     await dialog.getByLabel('Pairing URL').fill(bridgeUrl);
     await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
-    await expect(dialog.getByRole('status')).toContainText('Connected · Canvas read/write enabled');
+    await expect(dialog.getByRole('group', { name: 'Local MCP', exact: true }).getByRole('status')).toHaveText('Connected');
     await page.keyboard.press('Escape');
     const before = await page.screenshot();
     pi.stdin.write(`${JSON.stringify({ type: "prompt", id: "gpu", message:

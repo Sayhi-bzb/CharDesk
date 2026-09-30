@@ -24,6 +24,7 @@ export type CanvasCatalogSession = {
   name: string;
   mode: CanvasMode;
   sourceBinding?: CanvasSourceBinding;
+  migrationPending?: true;
   viewport?: { offset: Point; zoom: number };
   collaboration?: CollaborationDescriptor;
   collaborationRole?: "host" | "guest";
@@ -115,7 +116,7 @@ const decodeSourceBinding = (
 ): CanvasSourceBinding | undefined => {
   if (value && typeof value === "object") {
     const binding = value as Partial<CanvasSourceBinding>;
-    if (binding.kind === "blackboard" &&
+    if ((binding.kind === "blackboard" || binding.kind === "document") &&
         (binding.provider === "browser-workspace" || binding.provider === "local-reader") &&
         typeof binding.id === "string" && binding.id.trim()) {
       return { kind: binding.kind, provider: binding.provider, id: binding.id };
@@ -146,6 +147,7 @@ const normalizeCatalogSession = (value: CanvasCatalogSession): CanvasCatalogSess
     id: value.id,
     ...(value.order === undefined ? {} : { order: value.order }),
     name: value.name,
+    ...(value.migrationPending === true ? { migrationPending: true as const } : {}),
     mode,
     ...(sourceBinding ? { sourceBinding } : {}),
     ...(value.viewport ? { viewport: value.viewport } : {}),

@@ -61,12 +61,16 @@ export function useCloudWorkspace() {
 
   return {
     configured: cloudWorkspaceConfigured,
+    refresh: async () => {
+      const result = await cloudWorkspaceApi.list();
+      setWorks(result.works); setLimits(result.limits);
+    },
     user, works, limits, loading, error, limitExceeded, busy, availableProviders, linkedProviders,
     linkProvider: (provider: CloudAuthProvider) => run(async () => {
       const { authorizeUrl } = await cloudWorkspaceApi.linkProvider(provider);
       window.location.href = authorizeUrl;
     }),
-    backup: (kind: 'canvas' | 'slides' | 'blackboard', title: string, content: string, sessionId?: string) => run(async () => {
+    backup: (kind: 'canvas' | 'slides', title: string, content: string, sessionId?: string) => run(async () => {
       const { work } = await cloudWorkspaceApi.createBackup(kind, title, content);
       setWorks((current) => [work, ...current]);
       setLimits((current) => current && { ...current, usedBytes: current.usedBytes + (work.contentBytes ?? 0) });

@@ -40,10 +40,10 @@ describe("chardesk executable", () => {
     const cwd = await mkdtemp(join(tmpdir(), "chardesk-cli-concurrent-open-"));
     temporaryDirectories.push(cwd);
     const env = { ...process.env, TMPDIR: cwd };
-    expect((await runBinary(cwd, ["init", "board", "--title", "Concurrent"], "", env)).code).toBe(0);
-    const manifest = join(cwd, "board", "blackboard.yaml");
+    expect((await runBinary(cwd, ["init", "board.chardesk", "--title", "Concurrent"], "", env)).code).toBe(0);
+    const manifest = join(cwd, "board.chardesk");
     const opened = await Promise.all([
-      runBinary(cwd, ["open", "board", "--no-browser", "--json"], "", env),
+      runBinary(cwd, ["open", "board.chardesk", "--no-browser", "--json"], "", env),
       runBinary(cwd, ["open", manifest, "--no-browser", "--json"], "", env),
     ]);
     const sessions = opened.map((result) => JSON.parse(result.stdout) as { status: string; url: string });
@@ -99,22 +99,22 @@ describe("chardesk executable", () => {
     const cwd = await mkdtemp(join(tmpdir(), "chardesk-cli-open-"));
     temporaryDirectories.push(cwd);
     const env = { ...process.env, TMPDIR: cwd };
-    expect((await runBinary(cwd, ["init", "board", "--title", "Live"], "", env)).code).toBe(0);
+    expect((await runBinary(cwd, ["init", "board.chardesk", "--title", "Live"], "", env)).code).toBe(0);
 
     const first = JSON.parse((await runBinary(
       cwd,
-      ["open", "board", "--no-browser", "--json"],
+      ["open", "board.chardesk", "--no-browser", "--json"],
       "",
       env,
     )).stdout) as { status: string; url: string; watching: boolean };
     expect(first).toMatchObject({ status: "opened", watching: true });
 
-    const manifest = join(cwd, "board", "blackboard.yaml");
+    const manifest = join(cwd, "board.chardesk");
     const canonical = await realpath(manifest);
     const recordName = `${createHash("sha256").update(canonical).digest("hex").slice(0, 24)}.json`;
     const recordPath = join(cwd, "chardesk-sessions-v2", recordName);
     const originalRecord = JSON.parse(await readFile(recordPath, "utf8")) as Record<string, unknown>;
-    await writeFile(join(cwd, "board", "main.panel"), "# Revised\n");
+    await writeFile(manifest, "Revised\n");
     await writeFile(recordPath, JSON.stringify({ ...originalRecord, cliVersion: "0.3.0" }));
 
     const second = JSON.parse((await runBinary(
@@ -135,7 +135,7 @@ describe("chardesk executable", () => {
     expect(second).toMatchObject({ status: "reused", url: first.url });
     expect(third).toMatchObject({ status: "reused", url: first.url });
     expect(currentRecord.pid).toBe(originalRecord.pid);
-    expect(await (await fetch(new URL("board", first.url))).text()).toContain("Revised");
+    expect(await (await fetch(new URL("document", first.url))).text()).toContain("Revised");
 
     const legacyRoot = join(cwd, "chardesk-sessions-v1", "legacy-patch");
     const legacyRecord = join(legacyRoot, "session.json");
@@ -143,7 +143,7 @@ describe("chardesk executable", () => {
     await writeFile(legacyRecord, JSON.stringify({ ...currentRecord, version: 2 }));
     const migrated = JSON.parse((await runBinary(
       cwd,
-      ["open", "board", "--no-browser", "--json"],
+      ["open", "board.chardesk", "--no-browser", "--json"],
       "",
       env,
     )).stdout) as { status: string; url: string };
@@ -155,7 +155,7 @@ describe("chardesk executable", () => {
     await writeFile(recordPath, JSON.stringify({ ...replacementRecord, runtimeVersion: 99 }));
     const incompatible = JSON.parse((await runBinary(
       cwd,
-      ["open", "board", "--no-browser", "--json"],
+      ["open", "board.chardesk", "--no-browser", "--json"],
       "",
       env,
     )).stdout) as { status: string; url: string };
@@ -165,7 +165,7 @@ describe("chardesk executable", () => {
     await new Promise((resolveWait) => setTimeout(resolveWait, 160));
     const status = JSON.parse((await runBinary(
       cwd,
-      ["status", "board", "--json"],
+      ["status", "board.chardesk", "--json"],
       "",
       env,
     )).stdout) as { sessions: Array<{ url: string; idleExpiresAt: number }> };
@@ -173,6 +173,6 @@ describe("chardesk executable", () => {
     expect(status.sessions[0]?.url).toBe(incompatible.url);
     expect(status.sessions[0]?.idleExpiresAt).toBeGreaterThan(Date.now());
 
-    expect((await runBinary(cwd, ["close", "board"], "", env)).code).toBe(0);
+    expect((await runBinary(cwd, ["close", "board.chardesk"], "", env)).code).toBe(0);
   }, 40_000);
 });

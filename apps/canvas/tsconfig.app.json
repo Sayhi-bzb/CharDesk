@@ -3,7 +3,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@chardesk/blackboard": ["../../packages/blackboard/src/index.ts"],
+      "@chardesk/legacy-blackboard": ["../../packages/legacy-blackboard/src/index.ts"],
+      "@chardesk/legacy-blackboard/path": ["../../packages/legacy-blackboard/src/source-path.ts"],
       "@chardesk/cell-core": ["../../packages/cell-core/src/index.ts"],
       "@chardesk/collaboration-protocol": ["../../packages/collaboration-protocol/src/index.ts"],
       "@chardesk/fonts": ["../../packages/fonts/src/index.ts"],

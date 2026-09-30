@@ -10,7 +10,6 @@ export {
   type CloudStorageLimits,
 } from './cloud-workspace-api';
 export { bindCloudSession, getBoundCloudWorkId, getCloudConflict,
-  getCloudSyncState, resolveCloudConflict, startCloudSync, blackboardSyncKey,
+  getCloudSyncState, resolveCloudConflict, startCloudSync,
   getCloudBinding, updateCloudBinding, notifyCloudSync, notifyCloudCatalog,
   subscribeCloudCatalog, subscribeCloudSync, unbindCloudWork } from './cloud-sync';
-export { startBlackboardCloudSync } from './blackboard-cloud-sync';

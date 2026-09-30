@@ -166,6 +166,14 @@ export class CanvasRuntime {
 
   retryPersistence = () => this.persistence?.retry() ?? Promise.resolve();
 
+  flushPersistence = async (sessionId?: string) => {
+    if (!this.persistence) throw new Error("Canvas persistence is unavailable.");
+    if (sessionId) await this.persistence.flushDocument(sessionId);
+    await this.persistence.retry();
+    const status = this.persistence.getSnapshot();
+    if (status.phase !== "ready" || status.save !== "saved") throw new Error(status.error ?? "Canvas has not been durably saved.");
+  };
+
   retryRestore = () => this.persistence?.retryRestore() ?? Promise.resolve(false);
 
   setRetainedCanvasIds = (ids: readonly string[]) =>

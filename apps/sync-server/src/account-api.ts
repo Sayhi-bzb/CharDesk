@@ -272,7 +272,7 @@ export const createAccountApi = ({
         const body = await readBody(request, 2 * MAX_BACKUP_BYTES + 4096) as {
           kind?: string; title?: string; content?: string; conflictWith?: string;
         };
-        if ((body.kind !== "canvas" && body.kind !== "slides" && body.kind !== "blackboard") ||
+        if ((body.kind !== "canvas" && body.kind !== "slides") ||
           !validTitle(body.title) || !validContent(body.kind, body.content) ||
           (body.conflictWith !== undefined && !/^[0-9a-f-]{36}$/.test(body.conflictWith))) {
           json(response, 400, { error: "Invalid backup" });
@@ -296,11 +296,35 @@ export const createAccountApi = ({
       else if (request.method === "POST") {
         try {
           const body = await readBody(request) as { kind?: CloudWork["kind"]; title?: string };
-          if (!["canvas", "slides", "blackboard"].includes(body.kind ?? "") || !validTitle(body.title)) {
+          if (!["canvas", "slides"].includes(body.kind ?? "") || !validTitle(body.title)) {
             json(response, 400, { error: "Invalid work" });
           } else json(response, 201, { work: store.createWork(user.id, body.kind!, body.title!.trim()) });
         } catch { json(response, 400, { error: "Invalid request body" }); }
       } else json(response, 405, { error: "Method not allowed" });
+      return true;
+    }
+    const migrationId = /^\/v1\/account\/works\/([0-9a-f-]{36})\/migrate$/.exec(url.pathname)?.[1];
+    if (migrationId && request.method === "POST") {
+      try {
+        const body = await readBody(request) as { expectedRevision?: number; kind?: "canvas" | "slides"; content?: string };
+        if ((body.kind !== "canvas" && body.kind !== "slides") || !validContent(body.kind, body.content)
+          || !Number.isSafeInteger(body.expectedRevision) || body.expectedRevision! < 1) {
+          json(response, 400, { error: "Invalid migration" });
+        } else {
+          const result = store.migrateBlackboard(user.id, migrationId, body.expectedRevision!, body.kind, body.content!);
+          json(response, result.status === "migrated" ? 200 : result.status === "conflict" ? 409 : 404,
+            result.status === "migrated" ? { work: result.work } : { error: result.status });
+        }
+      } catch (error) {
+        json(response, error instanceof RequestTooLargeError || error instanceof BackupLimitError ? 413 : 400,
+          { error: error instanceof Error ? error.message : "Migration failed" });
+      }
+      return true;
+    }
+    const archiveId = /^\/v1\/account\/works\/([0-9a-f-]{36})\/source-backup$/.exec(url.pathname)?.[1];
+    if (archiveId && request.method === "GET") {
+      const archived = store.readRetiredSource(user.id, archiveId);
+      json(response, archived ? 200 : 404, archived ?? { error: "Source backup not found" });
       return true;
     }
     const workId = /^\/v1\/account\/works\/([0-9a-f-]{36})$/.exec(url.pathname)?.[1];
@@ -319,7 +343,7 @@ export const createAccountApi = ({
         const work = store.listWorks(user.id).find(({ id }) => id === contentWorkId);
         if (!work || work.contentStatus !== "uploaded") {
           json(response, 404, { error: "Backup not found" });
-        } else if (!validTitle(body.title) || !validContent(work.kind, body.content) ||
+        } else if (work.kind === "blackboard" || !validTitle(body.title) || !validContent(work.kind, body.content) ||
           !Number.isSafeInteger(body.expectedRevision) || (body.expectedRevision ?? 0) < 1) {
           json(response, 400, { error: "Invalid backup update" });
         } else {

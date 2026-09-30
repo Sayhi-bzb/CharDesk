@@ -3,15 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { feedback } from "@/shared/services/effects";
 import { useCanvasImport } from "./useCanvasImport";
 
-const {
-  collectDroppedBlackboardDirectory,
-  compileBlackboardDirectory,
-  importCanvasSession,
-} = vi.hoisted(() => ({
-  collectDroppedBlackboardDirectory: vi.fn(),
-  compileBlackboardDirectory: vi.fn(),
-  importCanvasSession: vi.fn(),
-}));
+const { importCanvasSession } = vi.hoisted(() => ({ importCanvasSession: vi.fn() }));
 
 vi.mock("@/domains/canvas/public", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/domains/canvas/public")>()),
@@ -20,7 +12,6 @@ vi.mock("@/domains/canvas/public", async (importOriginal) => ({
   }),
 }));
 
-vi.mock("./blackboard-directory", () => ({ collectDroppedBlackboardDirectory, compileBlackboardDirectory }));
 
 const createFileEvent = (text: () => Promise<string>) =>
   ({
@@ -36,11 +27,6 @@ const directoryItems = [{ webkitGetAsEntry: () => directoryEntry }] as unknown a
 describe("useCanvasImport", () => {
   beforeEach(() => {
     importCanvasSession.mockReset();
-    collectDroppedBlackboardDirectory.mockReset();
-    collectDroppedBlackboardDirectory.mockResolvedValue([
-      { webkitRelativePath: "gpu/blackboard.yaml", text: async () => "manifest" },
-    ]);
-    compileBlackboardDirectory.mockReset();
     vi.spyOn(feedback, "success").mockImplementation(() => undefined);
     vi.spyOn(feedback, "error").mockImplementation(() => undefined);
   });
@@ -75,66 +61,13 @@ describe("useCanvasImport", () => {
     });
   });
 
-  it("imports a Blackboard directory as a detached editable snapshot", async () => {
-    compileBlackboardDirectory.mockResolvedValue({
-      mode: "freeform",
-      title: "GPU",
-      source: "L R",
-      warnings: [],
-    });
+  it("rejects legacy directories instead of compiling source", async () => {
     const { result } = renderHook(() => useCanvasImport());
-
-    await act(async () => {
-      await result.current.handleDrop(directoryItems, []);
-    });
-
-    expect(compileBlackboardDirectory).toHaveBeenCalledWith([
-      expect.objectContaining({ webkitRelativePath: "gpu/blackboard.yaml" }),
-    ]);
-    expect(importCanvasSession).toHaveBeenCalledWith([
-      "---",
-      "chardesk: document/v1",
-      "mode: freeform",
-      "title: GPU",
-      "---",
-      "L R",
-    ].join("\n"), {
-      name: "GPU",
-      sourceName: "blackboard.chardesk",
-    });
-  });
-
-  it("keeps an imported Blackboard Slide package editable and detached", async () => {
-    compileBlackboardDirectory.mockResolvedValue({
-      mode: "slide",
-      title: "GPU deck",
-      source: "## Intro\n\n```chargraph size=auto\nGPU\n```",
-      warnings: [],
-    });
-    const { result } = renderHook(() => useCanvasImport());
-
-    await act(async () => {
-      await result.current.handleDrop(directoryItems, []);
-    });
-
-    expect(importCanvasSession).toHaveBeenCalledWith(
-      expect.stringContaining("mode: slide\ntitle: GPU deck"),
-      { name: "GPU deck", sourceName: "blackboard.chardesk" },
-    );
-  });
-
-  it("reports Blackboard directory failures through existing import feedback", async () => {
-    compileBlackboardDirectory.mockRejectedValue(new Error("Missing blackboard.yaml"));
-    const { result } = renderHook(() => useCanvasImport());
-
-    await act(async () => {
-      await result.current.handleDrop(directoryItems, []);
-    });
-
-    expect(feedback.error).toHaveBeenCalledWith("Import failed", {
-      description: "Missing blackboard.yaml",
-    });
+    await act(async () => { await result.current.handleDrop(directoryItems, []); });
     expect(importCanvasSession).not.toHaveBeenCalled();
+    expect(feedback.error).toHaveBeenCalledWith("Import failed", {
+      description: "Drop one document.",
+    });
   });
 
   it("rejects ambiguous drops without importing anything", async () => {
@@ -145,7 +78,7 @@ describe("useCanvasImport", () => {
     });
 
     expect(feedback.error).toHaveBeenCalledWith("Import failed", {
-      description: "Drop one document or one Blackboard folder.",
+      description: "Drop one document.",
     });
     expect(importCanvasSession).not.toHaveBeenCalled();
   });

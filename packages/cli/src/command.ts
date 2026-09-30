@@ -3,8 +3,9 @@ import { rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, resolve } from "node:path";
 import type { Writable } from "node:stream";
 import { parseArgs } from "node:util";
-import { BlackboardPackageError } from "@chardesk/blackboard/node";
+import { BlackboardPackageError } from "@chardesk/legacy-blackboard/errors";
 import { serializeCharDeskDocumentEnvelope } from "@chardesk/document";
+import { migrateBlackboardFile } from "./migrate.js";
 import { initializeCharDeskWorkspace } from "./init.js";
 import {
   CharDeskCliCommandError,
@@ -48,7 +49,7 @@ type InitCommand = {
   kind: "init";
   directory: string;
   title?: string;
-  mode: "blackboard" | "slide";
+  mode: "freeform" | "slide";
 };
 
 type OpenCommand = CommonCommand & {
@@ -86,10 +87,10 @@ type InspectCommand = CommonCommand & {
   region?: CharDeskInspectRegion;
   ruler: boolean;
   styles: boolean;
-  panel?: string;
 };
 
 type CliCommand =
+  | { kind: "migrate"; input: string; output: string }
   | InitCommand
   | OpenCommand
   | ServeCommand
@@ -114,7 +115,8 @@ class CliUsageError extends Error {
 
 const CLI_USAGE = [
   "Usage:",
-  "  chardesk init <directory> [--mode <blackboard|slide>] [--title <title>]",
+  "  chardesk init <file.chardesk> [--mode <freeform|slide>] [--title <title>]",
+  "  chardesk migrate <blackboard.yaml|directory> --output <file.chardesk>",
   "  chardesk inspect <input|-> [options]",
   "  chardesk open <input> [options]",
   "  chardesk status [input] [--json]",
@@ -123,16 +125,15 @@ const CLI_USAGE = [
   "",
   "Options:",
   "      --title <title>                 Workspace title for init",
-  "      --mode <blackboard|slide>       Workspace mode for init",
+  "      --mode <freeform|slide>       Workspace mode for init",
   "      --port <0..65535>               Local open port (default: random)",
   "      --no-browser                    Print the open URL without launching it",
   "      --foreground                    Keep the local Canvas attached to this process",
   "  -o, --output <path|->              Render output (required)",
   "      --format <png|chardesk|ansi|text>",
-  "      --input <auto|chargraph|chardesk|blackboard>",
+  "      --input <auto|chargraph|chardesk>",
   "      --region <x,y,columns,rows>      Inspect Canvas region (implies --canvas)",
   "      --canvas                        Inspect the spatial Canvas projection",
-  "      --panel <id>                     Inspect one Blackboard panel",
   "      --no-ruler                      Hide inspect coordinates",
   "      --styles                        Include materialized style evidence",
   "      --scale <1..4>                  PNG raster scale (default: 2)",
@@ -165,7 +166,6 @@ const parseRawArguments = (args: readonly string[]) => parseArgs({
     "no-browser": { type: "boolean", default: false },
     foreground: { type: "boolean", default: false },
     "session-file": { type: "string" },
-    panel: { type: "string" },
     all: { type: "boolean", default: false },
   },
 });
@@ -188,10 +188,10 @@ const integerOption = (
 
 const parseInputMode = (value: string | undefined): CharDeskInputModeOption => {
   const inputMode = value ?? "auto";
-  if (!("auto,chargraph,chardesk,blackboard".split(",") as CharDeskInputModeOption[]).includes(
+  if (!("auto,chargraph,chardesk".split(",") as CharDeskInputModeOption[]).includes(
     inputMode as CharDeskInputModeOption
   )) {
-    throw new CliUsageError("--input must be auto, chargraph, chardesk, or blackboard.");
+    throw new CliUsageError("--input must be auto, chargraph, or chardesk.");
   }
   return inputMode as CharDeskInputModeOption;
 };
@@ -266,7 +266,7 @@ export const parseCliArguments = (
   if (parsed.values.help) return { help: true };
   const [kind, input, ...extra] = parsed.positionals;
   const kinds = [
-    "init", "inspect", "open", "status", "close", "render", "__serve",
+    "init", "migrate", "inspect", "open", "status", "close", "render", "__serve",
   ] as const;
   if (!kinds.includes(kind as typeof kinds[number])) {
     throw new CliUsageError("The first argument must be init, inspect, open, status, close, or render.");
@@ -294,11 +294,16 @@ export const parseCliArguments = (
     };
   }
   if (!input || extra.length > 0) throw new CliUsageError(`${kind} requires exactly one input.`);
+  if (kind === "migrate") {
+    allow("output");
+    if (!parsed.values.output) throw new CliUsageError("migrate requires --output <file.chardesk>.");
+    return { help: false, command: { kind, input, output: parsed.values.output } };
+  }
   if (kind === "init") {
     allow("title", "mode");
-    const mode = parsed.values.mode ?? "blackboard";
-    if (mode !== "blackboard" && mode !== "slide") {
-      throw new CliUsageError("--mode must be blackboard or slide.");
+    const mode = parsed.values.mode ?? "freeform";
+    if (mode !== "freeform" && mode !== "slide") {
+      throw new CliUsageError("--mode must be freeform or slide.");
     }
     return {
       help: false,
@@ -345,10 +350,7 @@ export const parseCliArguments = (
     };
   }
   if (kind === "inspect") {
-    allow("input", "region", "canvas", "no-ruler", "styles", "panel", "json");
-    if (input === "-" && (common.inputMode === "blackboard" || parsed.values.panel)) {
-      throw new CliUsageError("Blackboard panel inspection requires a file or directory path.");
-    }
+    allow("input", "region", "canvas", "no-ruler", "styles", "json");
     return {
       help: false,
       command: {
@@ -358,7 +360,6 @@ export const parseCliArguments = (
         region: parseRegion(parsed.values.region),
         ruler: !(parsed.values["no-ruler"] ?? false),
         styles: parsed.values.styles ?? false,
-        ...(parsed.values.panel ? { panel: parsed.values.panel } : {}),
       },
     };
   }
@@ -542,7 +543,6 @@ const runInspect = async (
     text: projection.text,
     ...(projection.styleText ? { styles: projection.styleText } : {}),
     diagnostics: compiled.diagnostics,
-    ...(command.panel ? { panel: command.panel } : {}),
   };
   if (command.json) {
     streams.stdout.write(`${JSON.stringify(result)}\n`);
@@ -588,6 +588,11 @@ export const runCli = async (
 
   const command = parsed.command;
   try {
+    if (command.kind === "migrate") {
+      const path = await migrateBlackboardFile(cwd, command.input, command.output);
+      streams.stdout.write(`${path}\n`);
+      return 0;
+    }
     if (command.kind === "init") {
       const root = await initializeCharDeskWorkspace({
         cwd,

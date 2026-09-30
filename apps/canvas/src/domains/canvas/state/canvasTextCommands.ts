@@ -102,8 +102,10 @@ export const createCanvasTextCommands = (
     const state = get();
     const session = state.canvasSessions.find(({ id }) => id === state.activeCanvasId);
     if (!session) throw new CanvasWriteError("canvas_not_active", "Open a Canvas first.");
-    if (isSourceBackedCanvasSession(session)) {
-      throw new CanvasWriteError("source_backed_canvas", "Edit the source files of this Canvas instead of its projection.");
+    if (isSourceBackedCanvasSession(session) || session.migrationPending) {
+      throw new CanvasWriteError("source_backed_canvas", session.migrationPending
+        ? "Wait for this Canvas migration to finish before writing."
+        : "Edit the source file of this Canvas instead of its projection.");
     }
     const { patch, bounds } = prepare();
     if (!bounds) return null;

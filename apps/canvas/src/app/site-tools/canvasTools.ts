@@ -1,10 +1,41 @@
-import { CanvasWriteError, isCanvasReadViewport, readCanvasViewport, type CanvasRuntime } from "@/domains/canvas/public";
+import { CanvasWriteError, isCanvasReadViewport, readCanvasViewport, isCanvasSearchQuery,
+  isCanvasSearchPosition, searchCanvasSurface, type CanvasRuntime } from "@/domains/canvas/public";
 import type { AgentToolDefinition } from "./contracts";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
 import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvasRendering";
 
-import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL } from "./canvasToolDefinitions";
-export { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME } from "./canvasToolDefinitions";
+import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL, CANVAS_SEARCH_TOOL } from "./canvasToolDefinitions";
+export { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME } from "./canvasToolDefinitions";
+
+export const createCanvasSearchTool = (
+  canvas: Pick<CanvasRuntime, "ready" | "getState" | "materializeSession">,
+): AgentToolDefinition => ({
+  ...CANVAS_SEARCH_TOOL,
+  execute: async (input) => {
+    if (Object.keys(input).some((key) => !["query", "viewport", "after"].includes(key))
+      || !isCanvasSearchQuery(input.query)
+      || (input.viewport !== undefined && !isCanvasReadViewport(input.viewport))
+      || (input.after !== undefined && !isCanvasSearchPosition(input.after))) {
+      return { ok: false, code: "invalid_input", message: "Expected non-blank single-line query, optional viewport [x,y,width,height], and after [x,y]." };
+    }
+    let canvasId: string;
+    let snapshot: Awaited<ReturnType<CanvasRuntime["materializeSession"]>>;
+    try {
+      await canvas.ready;
+      canvasId = canvas.getState().activeCanvasId;
+      if (!canvasId) return { ok: false, code: "canvas_not_active", message: "Open a Canvas first." };
+      snapshot = await canvas.materializeSession(canvasId);
+      if (!snapshot) return { ok: false, code: "canvas_not_ready", message: "The Canvas content is not ready." };
+    } catch {
+      return { ok: false, code: "canvas_not_ready", message: "Unable to read the Canvas content." };
+    }
+    try {
+      return { canvasId, ...searchCanvasSurface(snapshot.surface, input.query, { viewport: input.viewport, after: input.after }) };
+    } catch {
+      return { ok: false, code: "search_failed", message: "Unable to search Canvas content." };
+    }
+  },
+});
 
 export const createCanvasWriteTool = (
   canvas: Pick<CanvasRuntime, "ready" | "getState"> & {
@@ -29,6 +60,9 @@ export const createCanvasWriteTool = (
     if (!canvasId) return { ok: false, code: "canvas_not_active", message: "Open a Canvas first." };
     try {
       const session = state.canvasSessions.find(({ id }) => id === canvasId);
+      if (session?.migrationPending) {
+        return { ok: false, code: "canvas_not_ready", message: "Wait for this Canvas migration to finish before writing." };
+      }
       if (session && isSourceBackedCanvasSession(session)) {
         throw new CanvasWriteError("source_backed_canvas", "Edit the source files of this Canvas instead of its projection.");
       }

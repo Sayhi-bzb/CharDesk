@@ -1,318 +1,97 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-test.describe("WebMCP", () => {
-  test.describe.configure({ mode: "serial" });
+const execute = (page: Page, name: string, input: Record<string, unknown>) =>
+  page.evaluate(async ({ name, input }) => {
+    const context = (document as Document & { modelContext?: {
+      getTools(): Promise<Array<{ name: string }>>;
+      executeTool(tool: { name: string }, input: string): Promise<unknown>;
+    } }).modelContext!;
+    const tool = (await context.getTools()).find((item) => item.name === name);
+    if (!tool) throw new Error("Tool unavailable: " + name);
+    const output = await context.executeTool(tool, JSON.stringify(input));
+    return typeof output === "string" ? JSON.parse(output) : output;
+  }, { name, input });
 
-  test("copies a Blackboard range through read-only host controls", async ({ context, page }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await page.goto("/blackboard?webmcp=polyfill");
-    await expect(page).toHaveURL(/workspace=/);
-    const surface = page.getByTestId("canvas-editor-surface");
+const names = (page: Page) => page.evaluate(async () => {
+  const context = (document as Document & { modelContext?: {
+    getTools(): Promise<Array<{ name: string }>>;
+  } }).modelContext;
+  return context ? (await context.getTools()).map((tool) => tool.name).sort() : [];
+});
+const ready = async (page: Page) => {
+  await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
+};
+const editableNames = ["chardesk_canvas_read", "chardesk_canvas_search", "chardesk_canvas_write", "chardesk_read_materials"];
+const readOnlyNames = editableNames.filter((name) => name !== "chardesk_canvas_write");
 
-    await expect.poll(async () => {
-      await surface.click({ position: { x: 320, y: 240 } });
-      await page.keyboard.press("Meta+a");
-      await surface.click({ button: "right", position: { x: 320, y: 240 } });
-      const snapshot = page.getByRole("menuitem", { name: /Snapshot \(PNG\)/ });
-      const ready = await snapshot.isEnabled().catch(() => false);
-      await page.keyboard.press("Escape");
-      return ready;
-    }).toBe(true);
-
-    await surface.click({ position: { x: 320, y: 240 } });
-    await page.keyboard.press("Meta+a");
-    await page.evaluate(() => navigator.clipboard.writeText("marker"));
-    await page.keyboard.press("Meta+c");
-    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
-      .toContain("Blackboard");
-
-    await surface.click({ button: "right", position: { x: 320, y: 240 } });
-    await expect(page.getByRole("menuitem", { name: "Copy as Text" })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: "Copy as ANSI" })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: /Snapshot \(PNG\)/ })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: /Paste/ })).toHaveCount(0);
-    await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(0);
-  });
-
-  test("mounts only Blackboard host surfaces on desktop and phone", async ({ page }) => {
-    const assertBlackboardChrome = async () => {
-      await expect.poll(() => page.locator("html").getAttribute("data-webmcp-status"))
-        .toBe("ready");
-      await expect(page.getByRole("button", { name: "Toggle inspector" })).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Toggle sidebar" })).toHaveCount(0);
-      await expect(page.locator('[data-slot="sidebar-container"]')).toHaveCount(0);
-      await expect(page.locator('[data-toolbar-item="shape-group"]')).toHaveCount(0);
-      await expect(page.locator('[data-toolbar-item="bg"]')).toHaveCount(0);
-      await expect(page.locator('[data-toolbar-item="fill"]')).toHaveCount(0);
-      await expect(page.locator('[data-toolbar-item="pan"]')).toHaveCount(1);
-      await expect(page.locator('[data-toolbar-item="select"]')).toHaveCount(1);
-    };
-
-    await page.goto("/blackboard?webmcp=polyfill");
-    await assertBlackboardChrome();
-
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.reload();
-    await assertBlackboardChrome();
-  });
-
-  test("discovers and executes CharDesk tools through the development polyfill", async ({ page }) => {
-    await page.goto("/blackboard?webmcp=polyfill");
-    await expect(page).toHaveURL(/workspace=/);
-
-    await expect.poll(() => page.locator("html").getAttribute("data-webmcp-status"))
-      .toBe("ready");
-    await expect(page.locator("html")).toHaveAttribute("data-webmcp-provider", "polyfill");
-    await expect.poll(async () => page.evaluate(async () => {
-      const context = (document as Document & {
-        modelContext?: {
-          getTools(): Promise<Array<{ name: string }>>;
-          executeTool?: (tool: { name: string }, input: string) => Promise<unknown>;
-        };
-      }).modelContext;
-      if (!context?.executeTool) return false;
-      const tools = await context.getTools();
-      const readMaterials = tools.find(
-        ({ name }) => name === "chardesk_read_materials",
-      );
-      const listFiles = tools.find(({ name }) => name === "chardesk_blackboard_list_files");
-      if (!readMaterials || !listFiles) return false;
-      const materialOutput = await context.executeTool(readMaterials, "{}");
-      const materialResult = typeof materialOutput === "string"
-        ? JSON.parse(materialOutput)
-        : materialOutput;
-      if (
-        materialResult?.format !== "text/markdown" ||
-        typeof materialResult?.content !== "string" ||
-        materialResult.content.length === 0
-      ) return false;
-      const output = await context.executeTool(listFiles, "{}");
-      const files = typeof output === "string" ? JSON.parse(output) : output;
-      return Array.isArray(files?.files);
-    })).toBe(true);
-
-    const result = await page.evaluate(async () => {
-      const context = (document as Document & {
-        modelContext?: {
-          getTools(): Promise<Array<{ name: string }>>;
-          executeTool?: (tool: { name: string }, input: string) => Promise<unknown>;
-        };
-      }).modelContext;
-      if (!context?.executeTool) throw new Error("WebMCP executeTool is unavailable.");
-      const tools = await context.getTools();
-      const listFiles = tools.find(({ name }) => name === "chardesk_blackboard_list_files");
-      if (!listFiles) throw new Error("Blackboard tools were not registered.");
-      const output = await context.executeTool(listFiles, "{}");
-      return {
-        names: tools.map(({ name }) => name).sort(),
-        output: typeof output === "string" ? JSON.parse(output) : output,
-      };
-    });
-
-    expect(result.names).toEqual([
-      "chardesk_blackboard_apply_patch",
-      "chardesk_blackboard_check",
-      "chardesk_blackboard_create_workspace",
-      "chardesk_blackboard_delete_file",
-      "chardesk_blackboard_list_files",
-      "chardesk_blackboard_list_workspaces",
-      "chardesk_blackboard_open_workspace",
-      "chardesk_blackboard_read_file",
-      "chardesk_blackboard_write_file",
-      "chardesk_canvas_read",
-      "chardesk_canvas_write",
-      "chardesk_read_materials",
-    ]);
-    expect(result.output).toMatchObject({
-      workspaceId: expect.any(String),
-      revision: 1,
-      files: ["blackboard.yaml", "panels/welcome.panel"],
-    });
-  });
-
-  test("reads and pans a Canvas through automatically scaled viewports", async ({ page }) => {
-    await page.goto("/blackboard?webmcp=polyfill");
-    await expect(page).toHaveURL(/workspace=/);
-    await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
-    const surface = page.getByTestId("canvas-editor-surface");
-    await expect(surface).toBeVisible();
-    const zoomBefore = await page.getByTestId("zoom-reset").textContent();
-    const results = await page.evaluate(async () => {
-      const context = (document as Document & { modelContext?: {
-        getTools(): Promise<Array<{ name: string }>>;
-        executeTool(tool: { name: string }, input: string): Promise<unknown>;
-      } }).modelContext!;
-      const tool = (await context.getTools()).find(({ name }) => name === "chardesk_canvas_read")!;
-      const read = async (input: Record<string, unknown>) => {
-        const output = await context.executeTool(tool, JSON.stringify(input));
-        return (typeof output === "string" ? JSON.parse(output) : output) as {
-          canvasId: string; viewport: number[]; mode: string; step: number; content: string;
-        };
-      };
-      const overview = await read({});
-      const [x, y] = overview.viewport;
-      return [overview, await read({ viewport: [x, y, 80, 24] }),
-        await read({ viewport: [x + 30, y, 80, 24] }),
-        await read({ viewport: [x, y, 160, 48] }),
-        await read({ viewport: [x, y, 800, 240] })];
-    });
-    expect(results[0].viewport).toHaveLength(4);
-    expect(results[1]).toMatchObject({ mode: "text", step: 1 });
-    expect(results[1].content).toContain("Blackboard");
-    expect(results[1].content).toMatch(/styles:[\s\S]*y=.+ x=.+\{fg:/);
-    expect(results[2].viewport[0]).toBe(results[1].viewport[0] + 30);
-    expect(results[3]).toMatchObject({ mode: "projection", step: 2 });
-    expect(results[4]).toMatchObject({ mode: "density", step: 10 });
-    for (const result of results.slice(3)) {
-      expect(result.content).not.toContain("styles:");
-      expect(result.content).toContain("Styles omitted:");
-    }
-    expect(new Set(results.map(({ canvasId }) => canvasId)).size).toBe(1);
-    await expect(page.getByTestId("zoom-reset")).toHaveText(zoomBefore!);
-  });
-
-  test("writes Unicode through WebMCP and rejects writes to source projections", async ({ page }) => {
-    const execute = (name: string, input: Record<string, unknown>) => page.evaluate(async ({ name, input }) => {
-      const context = (document as Document & { modelContext?: {
-        getTools(): Promise<Array<{ name: string }>>;
-        executeTool(tool: { name: string }, input: string): Promise<unknown>;
-      } }).modelContext!;
-      const tool = (await context.getTools()).find((tool) => tool.name === name)!;
-      const output = await context.executeTool(tool, JSON.stringify(input));
-      return typeof output === "string" ? JSON.parse(output) : output;
-    }, { name, input });
+test.describe("WebMCP native Canvas", () => {
+  test("discovers only Canvas and Materials capabilities", async ({ page }) => {
     await page.goto("/?webmcp=polyfill");
-    await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
-    const written = await execute("chardesk_canvas_write", { at: [-20, -10], content: "Hello, 世界\nABCD" });
-    expect(written).toMatchObject({ canvasId: expect.any(String), bounds: [-20, -10, 11, 2] });
-    const view = await execute("chardesk_canvas_read", { viewport: written.bounds });
-    expect(view.content).toContain("Hello, 世界");
-    await execute("chardesk_canvas_write", { at: [-20, -9], content: "X " });
-    expect((await execute("chardesk_canvas_read", { viewport: [-20, -9, 4, 1] })).content).toContain("X CD");
-    const markdown = await execute("chardesk_canvas_write", { at: [100, 50], content: "**Rendered** [link](https://example.com)" });
-    expect(markdown).toMatchObject({ bounds: expect.any(Array) });
-    const rendered = await execute("chardesk_canvas_read", { viewport: markdown.bounds });
+    await ready(page);
+    await expect.poll(() => names(page)).toEqual(editableNames);
+    const reference = await execute(page, "chardesk_read_materials", {});
+    expect(reference).toMatchObject({ format: "text/markdown", content: expect.any(String) });
+    expect(reference.content.length).toBeGreaterThan(100);
+  });
+
+  test("reads and pans without changing the human camera", async ({ page }) => {
+    await page.goto("/?webmcp=polyfill");
+    await ready(page);
+    await execute(page, "chardesk_canvas_write", { at: [-20, -10], content: "**Sample**" });
+    const zoom = await page.getByTestId("zoom-reset").textContent();
+    const text = await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 80, 24] });
+    expect(text).toMatchObject({ mode: "text", step: 1 });
+    expect(text.content).toContain("Sample");
+    expect(text.content).toContain("styles:");
+    const moved = await execute(page, "chardesk_canvas_read", { viewport: [10, -10, 80, 24] });
+    expect(moved.viewport[0]).toBe(text.viewport[0] + 30);
+    expect(await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 160, 48] }))
+      .toMatchObject({ mode: "projection", step: 2 });
+    const density = await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 800, 240] });
+    expect(density).toMatchObject({ mode: "density", step: 10 });
+    expect(density.content).toContain("Styles omitted:");
+    await expect(page.getByTestId("zoom-reset")).toHaveText(zoom!);
+  });
+
+  test("writes rendered Unicode and searches the resulting Cells", async ({ page }) => {
+    await page.goto("/?webmcp=polyfill");
+    await ready(page);
+    const written = await execute(page, "chardesk_canvas_write", { at: [-20, -10], content: "Hello, 世界\nABCD" });
+    expect(written).toMatchObject({ bounds: [-20, -10, 11, 2] });
+    expect((await execute(page, "chardesk_canvas_read", { viewport: written.bounds })).content).toContain("Hello, 世界");
+    await execute(page, "chardesk_canvas_write", { at: [-20, -9], content: "X " });
+    expect((await execute(page, "chardesk_canvas_read", { viewport: [-20, -9, 4, 1] })).content).toContain("X CD");
+    const markdown = await execute(page, "chardesk_canvas_write", { at: [100, 50], content: "**Rendered** [link](https://example.com)" });
+    const rendered = await execute(page, "chardesk_canvas_read", { viewport: markdown.bounds });
     expect(rendered.content).toContain("Rendered");
     expect(rendered.content).not.toContain("**Rendered**");
     expect(rendered.content).toContain("bold");
     expect(rendered.content).toContain('link:"https://example.com"');
-    expect(rendered.content).toContain("Write rendering (current settings, not content provenance)");
-    await page.goto("/blackboard?webmcp=polyfill");
-    await expect(page).toHaveURL(/workspace=/);
-    await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
-    expect(await execute("chardesk_canvas_write", { at: [0, 0], content: "A" })).toMatchObject({ code: "source_backed_canvas" });
+    expect((await execute(page, "chardesk_canvas_search", { query: "Rendered" })).matches).toHaveLength(1);
   });
 
-  test("creates, opens, and visibly edits a Blackboard from the site root", async ({
-    context,
-    page,
-  }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  test("registers independently in top-level pages", async ({ context, page }) => {
     await page.goto("/?webmcp=polyfill");
-
-    await expect.poll(() => page.locator("html").getAttribute("data-webmcp-status"))
-      .toBe("ready");
-
-    const result = await page.evaluate(async () => {
-      const context = (document as Document & {
-        modelContext?: {
-          getTools(): Promise<Array<{ name: string }>>;
-          executeTool?: (tool: { name: string }, input: string) => Promise<unknown>;
-        };
-      }).modelContext;
-      if (!context?.executeTool) throw new Error("WebMCP executeTool is unavailable.");
-      const tools = new Map((await context.getTools()).map((tool) => [tool.name, tool]));
-      const execute = async (name: string, input: Record<string, unknown>) => {
-        const tool = tools.get(name);
-        if (!tool) throw new Error(`${name} was not registered.`);
-        const output = await context.executeTool!(tool, JSON.stringify(input));
-        return typeof output === "string" ? JSON.parse(output) : output;
-      };
-
-      const created = await execute("chardesk_blackboard_create_workspace", {
-        title: "Root Agent",
-      });
-      await execute("chardesk_blackboard_write_file", {
-        path: "panels/welcome.panel",
-        content: "Visible from chardesk.com/",
-      });
-      return {
-        created,
-        listed: await execute("chardesk_blackboard_list_workspaces", {}),
-        read: await execute("chardesk_blackboard_read_file", {
-          path: "panels/welcome.panel",
-        }),
-        checked: await execute("chardesk_blackboard_check", {}),
-        canvasRead: await execute("chardesk_canvas_read", {}),
-      };
-    });
-
-    expect(result.created).toMatchObject({ title: "Root Agent", revision: 1, active: true });
-    await expect(page).toHaveURL(new RegExp(`workspace=${result.created.workspaceId}`));
-    expect(result.listed.workspaces).toContainEqual(
-      expect.objectContaining({
-        id: result.created.workspaceId,
-        title: "Root Agent",
-        active: true,
-      }),
-    );
-    expect(result.read).toMatchObject({
-      workspaceId: result.created.workspaceId,
-      content: "Visible from chardesk.com/",
-    });
-    expect(result.checked).toMatchObject({ ok: true, workspaceId: result.created.workspaceId });
-    expect(result.canvasRead.content).toContain("Visible from chardesk.com/");
-
-    const surface = page.getByTestId("canvas-editor-surface");
-    await expect.poll(async () => {
-      await surface.click({ position: { x: 320, y: 240 } });
-      await page.keyboard.press("Meta+a");
-      await page.keyboard.press("Meta+c");
-      return page.evaluate(() => navigator.clipboard.readText());
-    }).toContain("Visible from chardesk.com/");
-  });
-
-  test("registers tools independently in every top-level page", async ({
-    context,
-    page,
-  }) => {
-    await page.goto("/?webmcp=polyfill");
-    await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
-    await expect.poll(() => page.evaluate(async () => {
-      const modelContext = (document as Document & {
-        modelContext?: { getTools(): Promise<unknown[]> };
-      }).modelContext;
-      return modelContext ? (await modelContext.getTools()).length : -1;
-    })).toBe(12);
-
-    const blackboard = await context.newPage();
-    await blackboard.goto("/blackboard?webmcp=polyfill");
-    await expect(blackboard.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
-    await expect.poll(() => blackboard.evaluate(async () => {
-      const modelContext = (document as Document & {
-        modelContext?: { getTools(): Promise<unknown[]> };
-      }).modelContext;
-      return modelContext ? (await modelContext.getTools()).length : -1;
-    })).toBe(12);
-
+    await ready(page);
+    const second = await context.newPage();
+    await second.goto("/?webmcp=polyfill");
+    await ready(second);
+    await expect.poll(() => names(second)).toEqual(editableNames);
     await page.close();
-    await expect(blackboard.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
-    await expect.poll(() => blackboard.evaluate(async () => {
-      const modelContext = (document as Document & {
-        modelContext?: { getTools(): Promise<unknown[]> };
-      }).modelContext;
-      return modelContext ? (await modelContext.getTools()).length : -1;
-    })).toBe(12);
+    await expect.poll(() => names(second)).toEqual(editableNames);
   });
 
-  test("keeps browser-persistent CRUD out of local CLI reader pages", async ({ page }) => {
+  test("local document previews expose no write or legacy file tools", async ({ page }) => {
     await page.goto("/s/0123456789abcdefABCDEF/?webmcp=polyfill");
-    await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
-    await expect.poll(() => page.evaluate(async () => {
-      const modelContext = (document as Document & {
-        modelContext?: { getTools(): Promise<Array<{ name: string }>> };
-      }).modelContext;
-      return modelContext ? (await modelContext.getTools()).map(({ name }) => name).sort() : [];
-    })).toEqual(["chardesk_canvas_read", "chardesk_read_materials"]);
+    await ready(page);
+    await expect.poll(() => names(page)).toEqual(readOnlyNames);
+  });
+
+  test("retired routes without identity return to Workspace and create nothing", async ({ page }) => {
+    await page.goto("/blackboard?webmcp=polyfill");
+    await expect(page).toHaveURL(/workspace$/);
+    await expect(page.getByRole("table", { name: "My workspace" })).toBeVisible();
+    await expect(page.locator('[data-work-kind="retired"]')).toHaveCount(0);
+    await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "disposed");
   });
 });

@@ -5,6 +5,7 @@ import {
   prepareDocumentWebMcp,
   updateWebMcpDiagnostics,
 } from "./environment";
+import { getWebMcpStatus, subscribeWebMcpStatus } from '@/shared/services/webmcp-status';
 
 const createDocument = () => document.implementation.createHTMLDocument();
 
@@ -91,5 +92,29 @@ describe("WebMCP environment", () => {
     expect(target.documentElement.dataset.webmcpProvider).toBe("native");
     expect(target.documentElement.dataset.webmcpStatus).toBe("ready");
     expect(target.documentElement.dataset.webmcpCapability).toBe("imperative");
+    expect(getWebMcpStatus()).toBe('ready');
+  });
+
+  it('publishes registration changes without treating readiness as an agent connection', () => {
+    const target = createDocument();
+    const changed = vi.fn();
+    updateWebMcpDiagnostics(target, 'native', { status: 'ready', adapterId: null });
+    const unsubscribe = subscribeWebMcpStatus(changed);
+    const transitions = [
+      ['registering', 'native', 'preparing'],
+      ['ready', 'native', 'ready'],
+      ['waiting', 'unavailable', 'unavailable'],
+      ['failed', 'polyfill', 'error'],
+      ['disposed', 'native', 'unavailable'],
+    ] as const;
+    for (const [status, provider, expected] of transitions) {
+      updateWebMcpDiagnostics(target, provider, { status, adapterId: null });
+      expect(getWebMcpStatus()).toBe(expected);
+      expect(target.documentElement.dataset.webmcpStatus).toBe(status);
+    }
+    expect(changed).toHaveBeenCalledTimes(5);
+    unsubscribe();
+    updateWebMcpDiagnostics(target, 'native', { status: 'registering', adapterId: null });
+    expect(changed).toHaveBeenCalledTimes(5);
   });
 });

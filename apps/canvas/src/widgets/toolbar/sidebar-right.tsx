@@ -169,7 +169,7 @@ function SidebarViewRail<ViewId extends string>({
   );
 }
 
-type SidebarCanvasMode = Exclude<CanvasMode, "blackboard">;
+type SidebarCanvasMode = CanvasMode;
 
 /** @public Loaded by the dynamic import in App.tsx. */
 export function SidebarRight({

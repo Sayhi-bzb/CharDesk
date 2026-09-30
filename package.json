@@ -48,7 +48,7 @@
     "test:root:node": "vitest run --project node",
     "test:root:dom": "vitest run --project dom",
     "test:fonts": "npm test -w @chardesk/fonts",
-    "test:blackboard": "npm test -w @chardesk/blackboard",
+    "test:legacy-migration": "npm test -w @chardesk/legacy-blackboard",
     "test:cell-core": "npm test -w @chardesk/cell-core",
     "test:cell-ui": "npm test -w @chardesk/cell-ui",
     "test:cell-ui-site": "npm test -w @chardesk/cell-ui-site",

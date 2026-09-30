@@ -135,85 +135,56 @@ test('discovers, pulls, and preserves offline conflicts across two browsers', as
   }
 });
 
-test('syncs Blackboard source files and preserves concurrent edits as copies', async ({ browser, baseURL }) => {
-  const boardId = '33333333-3333-4333-8333-333333333333';
-  const forkId = '44444444-4444-4444-8444-444444444444';
-  const manifest = 'chardesk: blackboard/v1\ntitle: Board\npanels:\n  welcome:\n    source: panels/welcome.panel\nlayout:\n  areas:\n    - [welcome]\n';
-  const source = (panel: string) => JSON.stringify({ chardesk: 'blackboard/source-v1', files: [
-    { path: 'blackboard.yaml', content: manifest }, { path: 'panels/welcome.panel', content: panel },
+test('converts a cloud Blackboard under its existing identity and exposes its source archive', async ({ page, baseURL }) => {
+  const id = '33333333-3333-4333-8333-333333333333';
+  const source = JSON.stringify({ chardesk: 'blackboard/source-v1', files: [
+    { path: 'blackboard.yaml', content: 'chardesk: blackboard/v1\npanels:\n  main: { source: main.panel }\nlayout:\n  areas: [[main]]' },
+    { path: 'main.panel', content: 'Cloud original' },
   ] });
-  const cloudWorks = new Map([[boardId, { id: boardId, kind: 'blackboard', title: 'Board',
-    content: source('First'), revision: 1, conflictWith: null as string | null }]]);
-  const installApi = async (context: BrowserContext) => context.route(`${apiOrigin}/v1/account/**`, async (route) => {
+  let content = source;
+  let kind = 'blackboard';
+  let revision = 1;
+  let migrations = 0;
+  const work = () => ({ id, title: 'Cloud board', kind, revision, createdAt: '2026-01-01', updatedAt: '2026-01-01',
+    contentStatus: 'uploaded', contentBytes: content.length, conflictWith: null, hasSourceBackup: migrations > 0 });
+  await page.route(`${apiOrigin}/v1/account/**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     const headers = { 'Access-Control-Allow-Origin': baseURL!, 'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-      'Content-Type': 'application/json' };
-    const fulfill = (status: number, body: unknown) => route.fulfill({ status, headers, body: JSON.stringify(body) });
+      'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS' };
+    const respond = (status: number, body: unknown) => route.fulfill({ status, headers, contentType: 'application/json', body: JSON.stringify(body) });
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
-    if (path === '/v1/account/me') return fulfill(200, { user: { id: 'github:17', login: 'maker', avatarUrl: null } });
-    if (path === '/v1/account/works') return fulfill(200, { works: [...cloudWorks.values()].map((work) => ({
-      ...work, content: undefined, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
-      contentStatus: 'uploaded', contentBytes: work.content.length,
-    })), limits: { maxWorkBytes: 10_485_760, maxAccountBytes: 104_857_600, usedBytes: 0 } });
-    if (path === '/v1/account/works/backups' && request.method() === 'POST') {
-      const body = request.postDataJSON() as { title: string; content: string; conflictWith: string };
-      cloudWorks.set(forkId, { id: forkId, kind: 'blackboard', title: body.title,
-        content: body.content, revision: 1, conflictWith: body.conflictWith });
-      return fulfill(201, { work: { ...cloudWorks.get(forkId), content: undefined, contentStatus: 'uploaded' } });
+    if (path.endsWith('/me')) return respond(200, { user: { id: 'github:17', login: 'maker', avatarUrl: null } });
+    if (path.endsWith('/works')) return respond(200, { works: [work()], limits: { maxWorkBytes: 10485760, maxAccountBytes: 104857600, usedBytes: content.length + (migrations ? source.length : 0) } });
+    if (path.endsWith('/source-backup')) return respond(200, { content: source, revision: 1 });
+    if (path.endsWith('/migrate')) {
+      const input = request.postDataJSON();
+      expect(input.expectedRevision).toBe(1);
+      expect(input.kind).toBe('canvas');
+      expect(input.content).toContain('Cloud original');
+      content = input.content;
+      kind = 'canvas';
+      revision = 2;
+      migrations += 1;
+      return respond(200, { work: work() });
     }
-    const id = /^\/v1\/account\/works\/([\da-f-]+)\/content$/.exec(path)?.[1];
-    const target = id && cloudWorks.get(id);
-    if (target && request.method() === 'GET') return fulfill(200, target);
-    if (target && request.method() === 'PUT') {
-      const body = request.postDataJSON() as { expectedRevision: number; content: string };
-      if (body.expectedRevision !== target.revision) return fulfill(409, { error: 'conflict' });
-      target.content = body.content;
-      target.revision += 1;
-      return fulfill(200, { work: { id: target.id, revision: target.revision } });
-    }
-    return fulfill(404, { error: 'Not found' });
+    if (path.endsWith('/content') && request.method() === 'GET') return respond(200, { title: 'Cloud board', content, revision });
+    return respond(404, {});
   });
-  const contexts = await Promise.all([browser.newContext({ baseURL }), browser.newContext({ baseURL })]);
-  try {
-    await Promise.all(contexts.map(installApi));
-    const pages = await Promise.all(contexts.map((context) => context.newPage()));
-    for (const page of pages) {
-      await page.goto('/workspace');
-      await expect(page.locator('[data-work-source="cloud"][data-work-kind="blackboard"]')).toHaveCount(1);
-      await page.getByRole('button', { name: 'Open Board' }).click();
-      await openWorkspace(page);
-      await expect(page.locator('[data-work-source="local"][data-work-kind="blackboard"]'))
-        .toContainText('This browser + cloud');
-    }
-    const readPanel = (page: Page) => page.evaluate(async () => {
-      const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
-      const repository = getApplicationEditorHost().blackboard.repository;
-      const [item] = await repository.listWorkspaces();
-      return (await repository.readWorkspace(item.id))?.files.find((file) => file.path === 'panels/welcome.panel')?.content;
-    });
-    const second = pages[1];
-    cloudWorks.get(boardId)!.content = source('Remote');
-    cloudWorks.get(boardId)!.revision += 1;
-    await second.evaluate(() => window.dispatchEvent(new Event('online')));
-    await expect.poll(() => readPanel(second)).toBe('Remote');
-    await second.evaluate(async () => {
-      Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
-      const { getApplicationEditorHost } = await import('../src/app/compositionRoot.ts');
-      const repository = getApplicationEditorHost().blackboard.repository;
-      const [item] = await repository.listWorkspaces();
-      await repository.apply(item.id, [{ op: 'write', path: 'panels/welcome.panel', content: 'Local' }]);
-    });
-    cloudWorks.get(boardId)!.content = source('Other device');
-    cloudWorks.get(boardId)!.revision += 1;
-    await second.evaluate(() => {
-      Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
-      window.dispatchEvent(new Event('online'));
-    });
-    await expect.poll(() => cloudWorks.get(forkId)?.conflictWith).toBe(boardId);
-    expect(await readPanel(second)).toBe('Local');
-  } finally {
-    await Promise.all(contexts.map((context) => context.close()));
-  }
+  await page.goto('/workspace');
+  await expect(page.locator('[data-work-source="cloud"][data-work-kind="retired"]')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Open Cloud board' }).click();
+  await expect(page.getByTestId('canvas-editor-surface')).toBeVisible();
+  expect(migrations).toBe(1);
+  await openWorkspace(page);
+  const local = page.locator('[data-work-source="local"]', { hasText: 'Cloud board' });
+  await expect(local).toHaveCount(1);
+  await expect(local).toContainText('This browser + cloud');
+  await local.getByRole('button', { name: 'Open Cloud board' }).click();
+  await openWorkspace(page);
+  expect(migrations).toBe(1);
+  await local.getByRole('button', { name: /Actions for/ }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: 'Download original source' }).click();
+  expect((await download).suggestedFilename()).toBe('source-backup.zip');
 });

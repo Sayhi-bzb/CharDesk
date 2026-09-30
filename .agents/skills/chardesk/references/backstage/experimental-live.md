@@ -4,18 +4,15 @@ Discover capabilities on the requested page before choosing a workflow:
 
 - `chardesk_canvas_*` provides spatial reading and, where editable, writing;
   use [live Canvas](live-canvas.md).
-- `chardesk_blackboard_*` provides workspace source-file operations;
-  use [live workspace](live-workspace.md).
-- Both groups can coexist. Missing Blackboard tools does not mean Canvas tools
-  are unavailable; a read-only page may offer Canvas read without write.
+- A read-only preview offers read/search without write.
 
 When the required capability is missing, inspect setup without replacing the
-requested page or active workspace with a new Blackboard.
+requested page or active Canvas.
 
 ## ChatGPT Site Tools
 
 In the ChatGPT app, open the requested URL in the built-in browser. For a new
-Blackboard, use [`https://chardesk.com/blackboard`](https://chardesk.com/blackboard).
+Canvas, use [`https://canvas.chardesk.com`](https://canvas.chardesk.com).
 When Site Tools are disabled, open the settings surface when
 available; the user enables `Enable site tools` under
 `Settings > Browser > Permissions`. Site Tools belong to the open top-level

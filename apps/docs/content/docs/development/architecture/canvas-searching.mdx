@@ -1,0 +1,51 @@
+---
+title: Canvas Searching
+description: Locate rendered text in original Cell coordinates.
+---
+
+`chardesk_canvas_search` searches the active Canvas or current Slide page's rendered
+Cells. It is read-only, works on source-backed projections, and does not move the
+camera or change interaction. Source files, read rulers, style notes, and sampled
+maps are not search content.
+
+## Query and position
+
+```json
+{ "query": "Hello", "viewport": [0, 0, 100, 50] }
+```
+
+`query` is a case-sensitive literal, not a regular expression. It must contain a
+non-whitespace character and no line breaks or control characters. Matches stay
+within one row and use complete grapheme boundaries. Short gaps between stored
+characters behave as spaces; large empty envelopes are never materialized.
+
+Omit `viewport` to search all content. A supplied rectangle uses the same Cell
+coordinates as [reading](./canvas-reading), but search always uses original
+precision regardless of read's sampling `step`. Boundary-clipped glyphs do not match.
+
+## Results and continuation
+
+```json
+{
+  "canvasId": "example",
+  "matches": [{ "bounds": [10, 20, 5, 1], "text": "Say Hello to the world" }],
+  "next": null
+}
+```
+
+Results are ordered by `y`, then `x`, with non-overlapping matches. Each `bounds`
+locates the matched characters; `text` includes up to 20 Cells of context on each
+side without cutting graphemes. Use read around the bounds to inspect layout and
+styles; the context is not a whole-region replacement payload for [writing](./canvas-writing).
+
+Each call returns at most 20 matches. Non-null `next` is the last returned match's
+starting `[x,y]`; pass it as `after` with the same query and viewport to continue
+strictly after that position. Confirm `canvasId` has not changed. Calls observe
+current content, not a shared snapshot; restart after an edit if consistency matters.
+Empty results have `matches: []` and `next: null`.
+
+## Authorities
+
+- [Shared MCP/WebMCP definition](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/canvasToolDefinitions.ts)
+- [Sparse search and verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/canvas/searchSurface.test.ts)
+- [Headless search → read verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/canvas-search.spec.ts)

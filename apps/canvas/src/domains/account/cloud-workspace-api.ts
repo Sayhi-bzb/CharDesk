@@ -12,6 +12,7 @@ export type CloudWork = {
   contentBytes: number | null;
   revision: number | null;
   conflictWith: string | null;
+  hasSourceBackup?: boolean;
 };
 export type CloudStorageLimits = { maxWorkBytes: number; maxAccountBytes: number; usedBytes: number };
 
@@ -46,14 +47,19 @@ export const cloudWorkspaceApi = {
     method: 'POST',
   }),
   list: () => request<{ works: CloudWork[]; limits: CloudStorageLimits }>('/works'),
-  create: (kind: CloudWork['kind'], title: string) => request<{ work: CloudWork }>('/works', {
+  create: (kind: 'canvas' | 'slides', title: string) => request<{ work: CloudWork }>('/works', {
     method: 'POST', body: JSON.stringify({ kind, title }),
   }),
-  createBackup: (kind: CloudWork['kind'], title: string, content: string, conflictWith?: string) =>
+  createBackup: (kind: 'canvas' | 'slides', title: string, content: string, conflictWith?: string) =>
     request<{ work: CloudWork }>('/works/backups', {
       method: 'POST', body: JSON.stringify({ kind, title, content, conflictWith }),
     }),
   readBackup: (id: string) => request<{ title: string; content: string; revision: number }>(`/works/${encodeURIComponent(id)}/content`),
+  migrate: (id: string, expectedRevision: number, kind: "canvas" | "slides", content: string) =>
+    request<{ work: CloudWork }>(`/works/${encodeURIComponent(id)}/migrate`, {
+      method: "POST", body: JSON.stringify({ expectedRevision, kind, content }),
+    }),
+  sourceBackup: (id: string) => request<{ content: string; revision: number }>(`/works/${encodeURIComponent(id)}/source-backup`),
   updateBackup: (id: string, expectedRevision: number, title: string, content: string) =>
     request<{ work: CloudWork }>(`/works/${encodeURIComponent(id)}/content`, {
       method: 'PUT', body: JSON.stringify({ expectedRevision, title, content }),

@@ -1,8 +1,8 @@
 import { isSourceBackedCanvasSession, type CanvasSessionDescriptor } from '@/domains/sessions/public';
-import type { BlackboardWorkspace } from '@/domains/blackboard/public';
+import type { BlackboardWorkspace } from '@/domains/legacy-blackboard/public';
 
-export type WorkKind = 'canvas' | 'slides' | 'blackboard';
-export type WorkItem = { id: string; name: string; kind: WorkKind; shared: boolean; sessionId?: string };
+export type WorkKind = 'canvas' | 'slides' | 'retired';
+export type WorkItem = { id: string; name: string; kind: WorkKind; shared: boolean; sessionId?: string; sourceBackupId?: string; cloudSourceBackupId?: string };
 
 export const collectLocalWorks = (
   sessions: readonly CanvasSessionDescriptor[],
@@ -18,7 +18,7 @@ export const collectLocalWorks = (
   ...blackboards.map((workspace) => ({
     id: workspace.id,
     name: workspace.title,
-    kind: 'blackboard' as const,
+    kind: 'retired' as const,
     shared: false,
   })),
 ];

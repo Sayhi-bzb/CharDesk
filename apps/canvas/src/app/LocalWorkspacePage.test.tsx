@@ -29,10 +29,8 @@ vi.mock('@/domains/canvas/public', () => ({
     select({ canvasSessions: [{ id: 'local', name: 'Draft', mode: 'freeform' }] }),
 }));
 
-vi.mock('@/domains/blackboard/public', () => ({
-  useBlackboardRuntime: () => ({ repository: {
-    listWorkspaces: () => Promise.resolve([]), subscribe: () => () => undefined,
-  } }),
+vi.mock('@/domains/legacy-blackboard/public', () => ({
+  legacyBlackboards: { listWorkspaces: async () => [], listMigrations: async () => [] },
 }));
 
 vi.mock('@/domains/account/public', () => ({

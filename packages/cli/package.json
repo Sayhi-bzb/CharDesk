@@ -38,7 +38,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@chardesk/blackboard": "*",
+    "@chardesk/legacy-blackboard": "*",
     "@chardesk/chargraph": "*",
     "@chardesk/document": "*",
     "@chardesk/protocol": "*",

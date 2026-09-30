@@ -19,7 +19,6 @@ import {
   Eraser,
   CircleHelp,
   Focus,
-  FolderOpen,
   Grid2X2,
   Italic,
   Hand,
@@ -74,8 +73,8 @@ export const HOST_ICONOLOGY = {
     ai: Sparkles,
   } satisfies IconMap<'freeform' | 'slide' | 'ai'>,
   sourceKind: {
-    blackboard: BookOpen,
-  } satisfies IconMap<'blackboard'>,
+    document: BookOpen,
+  } satisfies IconMap<'document'>,
   characterView: {
     essentials: CaseSensitive,
     nerd: Terminal,
@@ -217,7 +216,6 @@ export const HOST_ICONOLOGY = {
     rename: Pencil,
     create: Plus,
     import: Upload,
-    importBlackboard: FolderOpen,
     export: Download,
     close: Trash2,
     collaboration: Users,
@@ -227,7 +225,6 @@ export const HOST_ICONOLOGY = {
     | 'rename'
     | 'create'
     | 'import'
-    | 'importBlackboard'
     | 'export'
     | 'close'
     | 'collaboration'

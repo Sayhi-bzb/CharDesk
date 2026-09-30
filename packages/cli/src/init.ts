@@ -1,66 +1,24 @@
-import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
+import { serializeCharDeskDocumentEnvelope } from "@chardesk/document";
 import { CharDeskCliCommandError } from "./input.js";
 
-const manifest = (title: string, mode: "blackboard" | "slide") => mode === "slide"
-  ? `chardesk: blackboard/v2
-mode: slide
-title: ${JSON.stringify(title)}
-panels:
-  main:
-    source: panels/main.panel
-    title: Opening
-layout:
-  pages:
-    - main
-`
-  : `chardesk: blackboard/v1
-title: ${JSON.stringify(title)}
-panels:
-  main:
-    source: main.panel
-layout:
-  areas:
-    - [main]
-  gap:
-    column: 2
-    row: 1
-`;
-
-export const initializeCharDeskWorkspace = async ({
-  cwd,
-  directory,
-  title,
-  mode = "blackboard",
-}: {
+export const initializeCharDeskWorkspace = async ({ cwd, directory, title, mode = "freeform" }: {
   cwd: string;
   directory: string;
   title?: string;
-  mode?: "blackboard" | "slide";
+  mode?: "freeform" | "slide";
 }) => {
-  const root = resolve(cwd, directory);
+  const path = resolve(cwd, directory);
+  if (!path.endsWith(".chardesk")) throw new CharDeskCliCommandError("invalid-output", "init requires a .chardesk file.");
+  const name = title?.trim() || basename(path, ".chardesk");
+  const content = serializeCharDeskDocumentEnvelope({ mode, title: name,
+    body: mode === "slide" ? "## Opening\n\n```text\n\n```\n" : "" });
   try {
-    const existing = await stat(root);
-    if (!existing.isDirectory() || (await readdir(root)).length > 0) {
-      throw new CharDeskCliCommandError(
-        "init-conflict",
-        `Refusing to replace non-empty path: ${root}`,
-      );
-    }
+    await writeFile(path, content, { flag: "wx" });
   } catch (error) {
-    if (error instanceof CharDeskCliCommandError) throw error;
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    await mkdir(root, { recursive: true });
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new CharDeskCliCommandError("init-conflict", `Refusing to replace existing path: ${path}`);
+    throw error;
   }
-  const workspaceTitle = title?.trim() || basename(root) || "CharDesk";
-  if (mode === "slide") await mkdir(resolve(root, "panels"), { recursive: true });
-  await Promise.all([
-    writeFile(resolve(root, "blackboard.yaml"), manifest(workspaceTitle, mode), { flag: "wx" }),
-    writeFile(
-      resolve(root, mode === "slide" ? "panels/main.panel" : "main.panel"),
-      `# ${workspaceTitle}\n`,
-      { flag: "wx" },
-    ),
-  ]);
-  return root;
+  return path;
 };
