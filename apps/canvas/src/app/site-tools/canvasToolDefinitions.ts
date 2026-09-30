@@ -7,7 +7,7 @@ export const CANVAS_SEARCH_TOOL_NAME = "chardesk_canvas_search";
 export const CANVAS_SEARCH_TOOL = {
   name: CANVAS_SEARCH_TOOL_NAME,
   title: "Search Canvas text",
-  description: "Search the current Canvas's rendered text at original Cell precision, not source files, rulers, styles, or sampled maps. Case-sensitive literal search on a single row, with whole grapheme boundaries and non-overlapping matches. Optional viewport [x,y,width,height] limits the search. Returns up to 20 matches ordered by y then x, with exact Cell bounds and short context. Pass non-null next as after [x,y] to continue strictly after that position using the same query and viewport; confirm canvasId is unchanged. Each call reads current content, not a cross-page snapshot. Use canvas_read around a match for layout and styles. Does not edit content or move the user's camera.",
+  description: "Search the current Canvas's rendered text at original Cell precision. Case-sensitive literal search on a single row, with whole grapheme boundaries and non-overlapping matches. Optional input viewport limits matching, not the surrounding previews. Returns up to 20 results ordered by matched y then x. Each result has a 32x5 Cell viewport and its plain rectangular content, preserving spaces and newlines without borders, rulers, style notes, or word-aware cropping. Normally the match starts 8 Cells from the left and 2 rows from the top; near safe coordinate limits the window shifts. Long words or queries can be cropped; clipped wide glyphs are left blank. Pass non-null next as after [x,y] with the same query and viewport to continue; next is a matched position, not a preview origin. Confirm canvasId is unchanged. Calls observe current content, not a shared snapshot. Use canvas_read on a result viewport for styles or expand it for more context. Does not edit content or move the user's camera.",
   readOnly: true,
   inputSchema: {
     type: "object",
@@ -24,9 +24,9 @@ export const CANVAS_SEARCH_TOOL = {
       { type: "object", properties: {
         canvasId: { type: "string" },
         matches: { type: "array", maxItems: 20, items: { type: "object", properties: {
-          bounds: { type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 },
-          text: { type: "string" },
-        }, required: ["bounds", "text"], additionalProperties: false } },
+          viewport: { type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 },
+          content: { type: "string" },
+        }, required: ["viewport", "content"], additionalProperties: false } },
         next: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 }, { type: "null" }] },
       }, required: ["canvasId", "matches", "next"], additionalProperties: false },
       { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_ready", "search_failed"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },

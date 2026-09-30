@@ -20,7 +20,7 @@ within one row and use complete grapheme boundaries. Short gaps between stored
 characters behave as spaces; large empty envelopes are never materialized.
 
 Omit `viewport` to search all content. A supplied rectangle uses the same Cell
-coordinates as [reading](./canvas-reading), but search always uses original
+coordinates as [reading](/development/architecture/canvas-reading), but search always uses original
 precision regardless of read's sampling `step`. Boundary-clipped glyphs do not match.
 
 ## Results and continuation
@@ -28,18 +28,23 @@ precision regardless of read's sampling `step`. Boundary-clipped glyphs do not m
 ```json
 {
   "canvasId": "example",
-  "matches": [{ "bounds": [10, 20, 5, 1], "text": "Say Hello to the world" }],
+  "matches": [{ "viewport": [2, 18, 32, 5], "content": "…five space-padded rows…" }],
   "next": null
 }
 ```
 
-Results are ordered by `y`, then `x`, with non-overlapping matches. Each `bounds`
-locates the matched characters; `text` includes up to 20 Cells of context on each
-side without cutting graphemes. Use read around the bounds to inspect layout and
-styles; the context is not a whole-region replacement payload for [writing](./canvas-writing).
+Results are ordered by the match's `y`, then `x`, with non-overlapping matches.
+Each item contains only `viewport` and `content`: a 32×5 Cell window starting
+8 Cells left and 2 rows above the match, shifted at safe coordinate limits.
+`content` preserves spaces and newlines without borders, rulers, or style notes.
+Words may be cropped; partially visible wide glyphs become blank Cells.
+The input viewport limits matches, not their surrounding windows.
+
+Read the returned viewport for styles, or enlarge it for more context. The
+preview is not a whole-region replacement payload for [writing](/development/architecture/canvas-writing).
 
 Each call returns at most 20 matches. Non-null `next` is the last returned match's
-starting `[x,y]`; pass it as `after` with the same query and viewport to continue
+starting `[x,y]`, not the preview origin; pass it as `after` with the same query and viewport to continue
 strictly after that position. Confirm `canvasId` has not changed. Calls observe
 current content, not a shared snapshot; restart after an edit if consistency matters.
 Empty results have `matches: []` and `next: null`.

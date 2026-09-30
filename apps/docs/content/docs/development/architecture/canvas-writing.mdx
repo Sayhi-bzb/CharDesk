@@ -3,7 +3,7 @@ title: Canvas Writing
 description: Render text into editable Canvas content at an original Cell coordinate.
 ---
 
-`chardesk_canvas_write` belongs to the Canvas group in the [WebMCP contract](./webmcp).
+`chardesk_canvas_write` belongs to the Canvas group in the [WebMCP contract](/development/architecture/webmcp).
 It writes to the active editable Freeform Canvas or current Slide page through
 Canvas commands. Source-backed surfaces return `source_backed_canvas`; edit their
 source with filesystem tools.
@@ -20,7 +20,7 @@ there is no input width, height, or scale.
 
 The tool uses the same text renderer and current profile as Canvas text paste:
 `auto`, `raw`, `ansi`, or `markdown`, including enabled features, Markdown wrapping,
-theme colors, and tab expansion. [Canvas reading](./canvas-reading) discloses those
+theme colors, and tab expansion. [Canvas reading](/development/architecture/canvas-reading) discloses those
 current settings. Rendered spans replace characters and styles at their translated
 Cell positions; unwritten positions stay unchanged. Existing backgrounds remain
 unless the renderer supplies one. Slide overflow rejects the complete rendered
@@ -37,7 +37,7 @@ without creating history. Writes commit as one independently undoable operation 
 do not change the user's camera, cursor, or selection. A Canvas or Slide switch
 during rendering cancels the write; renderer failures never partially write.
 
-Use returned bounds as the viewport of [Canvas reading](./canvas-reading). Its
+Use returned bounds as the viewport of [Canvas reading](/development/architecture/canvas-reading). Its
 coordinate rulers and sampled symbols are generated output, not write payloads.
 Invalid input, missing Canvas, unavailable runtime, source-backed content, Slide
 overflow, and execution failures return explicit error codes. Local CLI reader pages

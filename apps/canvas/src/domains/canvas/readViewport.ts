@@ -1,6 +1,7 @@
-import { formatCharDeskStyleNotes, getGraphemeCellWidth, type CharDeskStyleNoteCell } from "@chardesk/protocol";
-import type { GridCell, NodeBounds } from "@/shared/types";
+import { formatCharDeskStyleNotes, getGraphemeCellWidth } from "@chardesk/protocol";
+import type { NodeBounds } from "@/shared/types";
 import type { CanvasSurfaceReader } from "./cell-plane/model";
+import { isCanvasCellOccupied as occupied, readCanvasTextRegion } from "./textRegion";
 
 export type CanvasReadViewport = readonly [x: number, y: number, width: number, height: number];
 export type CanvasReadProjection = Readonly<{
@@ -10,8 +11,6 @@ export type CanvasReadProjection = Readonly<{
   content: string;
 }>;
 
-const occupied = (cell: GridCell) => /\S/u.test(cell.char) || cell.bgColor !== undefined
-  || cell.attrs?.inverse === true || cell.attrs?.underline === true || cell.attrs?.strike === true;
 const quadrants = [" ", "▘", "▝", "▀", "▖", "▌", "▞", "▛", "▗", "▚", "▐", "▜", "▄", "▙", "▟", "█"];
 
 const niceTickInterval = (minimum: number) => {
@@ -63,27 +62,18 @@ export const readCanvasViewport = (
   const columns = Math.ceil(width / step);
   const rows = Math.ceil(height / step);
   const mode = step === 1 ? "text" : step <= 4 ? "projection" : "density";
-  const text = Array.from({ length: rows }, () => Array<string>(columns).fill(" "));
+  const exact = mode === "text" ? readCanvasTextRegion(surface, bounds) : null;
+  const text = exact?.text ?? Array.from({ length: rows }, () => Array<string>(columns).fill(" "));
   const counts = new Float64Array(rows * columns);
   const masks = new Uint8Array(rows * columns);
-  const styledCells: CharDeskStyleNoteCell[] = [];
   const query = { x: x - 1, y, width: width + 1, height };
-  if (storedBounds) for (const row of surface.rows(query)) for (const span of row.spans) {
+  if (storedBounds && mode !== "text") for (const row of surface.rows(query)) for (const span of row.spans) {
     let cellX = span.x;
     for (const cell of span.cells) {
       const cellWidth = getGraphemeCellWidth(cell.char);
       const localY = row.y - y;
-      if (mode === "text" && cellWidth > 0 && localY >= 0 && localY < height
-        && cellX >= x && cellX + cellWidth <= x + width) {
-        styledCells.push({ ...cell, x: cellX, y: row.y, width: cellWidth });
-      }
       if (occupied(cell) && localY >= 0 && localY < height) {
-        if (mode === "text") {
-          if (cellX >= x && cellX + cellWidth <= x + width) {
-            text[localY][cellX - x] = cell.char;
-            for (let offset = 1; offset < cellWidth; offset++) text[localY][cellX - x + offset] = "";
-          }
-        } else for (let offset = 0; offset < cellWidth; offset++) {
+        for (let offset = 0; offset < cellWidth; offset++) {
           const localX = cellX + offset - x;
           if (localX < 0 || localX >= width) continue;
           const column = Math.floor(localX / step);
@@ -126,7 +116,7 @@ export const readCanvasViewport = (
       previousEnd = offset + label.length;
     }
   }
-  const notes = mode === "text" ? formatCharDeskStyleNotes(styledCells, { coordinates: "explicit" }) : "styles:none";
+  const notes = exact ? formatCharDeskStyleNotes(exact.cells, { coordinates: "explicit" }) : "styles:none";
   const content = [
     `viewport=[${x},${y},${width},${height}] step=${step} mode=${mode}`,
     ...(ruler.some((char) => char !== " ") ? [ruler.join("").trimEnd()] : []),

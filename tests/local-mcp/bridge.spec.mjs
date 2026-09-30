@@ -107,8 +107,8 @@ test("local stdio MCP reads and edits the connected Canvas, rejects other pages,
     expect(result.structuredContent.content).toContain("Many cores work in parallel");
     const found = await call(search, { query: "Many cores", viewport: written.structuredContent.bounds });
     expect(found.structuredContent).toMatchObject({ canvasId: written.structuredContent.canvasId,
-      matches: [{ bounds: [32, 29, 10, 1], text: "Many cores work in parallel" }], next: null });
-    expect((await call(read, { viewport: found.structuredContent.matches[0].bounds })).structuredContent.content).toContain("Many cores");
+      matches: [{ viewport: [24, 27, 32, 5], content: expect.stringContaining("Many cores") }], next: null });
+    expect((await call(read, { viewport: found.structuredContent.matches[0].viewport })).structuredContent.content).toContain("Many cores");
     await expect.poll(async () => Buffer.compare(before, await page.screenshot())).not.toBe(0);
     await page.screenshot({ path: testInfo.outputPath("gpu-canvas.png") });
     await call(write, { at, content: "你é" });

@@ -19,7 +19,7 @@ describe("Canvas searching tool", () => {
     const canvas = host();
     const tool = createCanvasSearchTool(canvas);
     expect(tool.readOnly).toBe(true);
-    expect(await tool.execute({ query: "A" })).toEqual({ canvasId: "canvas-a", matches: [{ bounds: [0, 0, 1, 1], text: "A" }], next: null });
+    expect(await tool.execute({ query: "A" })).toMatchObject({ canvasId: "canvas-a", matches: [{ viewport: [-8, -2, 32, 5], content: expect.stringContaining("A") }], next: null });
     expect(canvas.materializeSession).toHaveBeenCalledWith("canvas-a");
     expect(await tool.execute({ query: "A", viewport: [1, 0, 10, 1] })).toMatchObject({ matches: [] });
     expect(await tool.execute({ query: "A", after: [0, 0] })).toMatchObject({ matches: [] });
@@ -44,7 +44,7 @@ describe("Canvas searching tool", () => {
       vi.spyOn(canvas, "getState").mockReturnValue({ ...canvas.getState(), activeCanvasId: "canvas-b" });
       return { id, name: "Example", mode: "freeform", surface: createGridSurfaceReader(new Map([["0,0", { char: "A", color: "#000" }]])), slideDeck: null };
     });
-    expect(await createCanvasSearchTool(canvas).execute({ query: "A" })).toMatchObject({ canvasId: "canvas-a", matches: [{ bounds: [0, 0, 1, 1] }] });
+    expect(await createCanvasSearchTool(canvas).execute({ query: "A" })).toMatchObject({ canvasId: "canvas-a", matches: [{ viewport: [-8, -2, 32, 5] }] });
   });
 });
 

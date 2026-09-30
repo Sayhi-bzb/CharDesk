@@ -12,9 +12,13 @@ Cell precision, including on read-only projections; it does not search source
 syntax, read rulers, styles, or density symbols. Matching is literal, case-sensitive,
 single-row, and uses complete graphemes.
 
-Read around a match's `bounds` for layout and styles. The short `text` context is
-not a whole-region replacement payload. For more matches, pass non-null `next` as
+Each match returns `viewport` and `content`: a plain 32×5 Cell window with
+preserved spaces and newlines, no border or ruler. Words may be cropped; partial
+wide glyphs become blanks. Read its viewport for styles, or enlarge it for more
+context. The preview is not a whole-region replacement payload.
+For more matches, pass non-null `next` as
 `after` with the same query and viewport and confirm `canvasId` is unchanged.
+`next` tracks the match position, not the preview origin.
 Results are live rather than a cross-call snapshot; restart after edits when needed.
 
 ## Read

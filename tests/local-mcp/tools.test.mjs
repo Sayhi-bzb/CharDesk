@@ -31,7 +31,7 @@ test("stdio MCP publishes search and forwards its unchanged input and output", {
     page = new WebSocket(await ready, { origin });
     await once(page, "open");
     const input = { query: "Hello", viewport: [-20, -10, 80, 24], after: [-10, -5] };
-    const result = { canvasId: "example", matches: [{ bounds: [-5, -5, 5, 1], text: "Hello there" }], next: null };
+    const result = { canvasId: "example", matches: [{ viewport: [-13, -7, 32, 5], content: [" ".repeat(32), " ".repeat(32), `        Hello there${" ".repeat(13)}`, " ".repeat(32), " ".repeat(32)].join("\n") }], next: null };
     const requests = [];
     page.on("message", (data) => {
       const request = JSON.parse(data.toString());

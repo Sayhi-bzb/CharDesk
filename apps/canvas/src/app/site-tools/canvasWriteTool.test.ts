@@ -31,11 +31,11 @@ describe("Canvas writing tool", () => {
     const state = canvas.getState();
     const camera = canvas.viewport.getSnapshot();
     const found = await search.execute({ query: "Needle", viewport: [-100, -50, 800, 240] });
-    expect(found).toEqual({ canvasId: "canvas-a", matches: [{ bounds: [-100, -50, 6, 1], text: "Needle 你é" }], next: null });
+    expect(found).toMatchObject({ canvasId: "canvas-a", matches: [{ viewport: [-108, -52, 32, 5], content: expect.stringContaining("Needle 你é") }], next: null });
     const read = await createCanvasReadTool(canvas, rendering).execute({ viewport: [-100, -50, 6, 1] });
     expect(read).toMatchObject({ content: expect.stringContaining("bold") });
     expect(await search.execute({ query: "**Needle**" })).toMatchObject({ matches: [] });
-    expect(await search.execute({ query: "你é" })).toMatchObject({ matches: [{ bounds: [-93, -50, 3, 1] }] });
+    expect(await search.execute({ query: "你é" })).toMatchObject({ matches: [{ viewport: [-101, -52, 32, 5], content: expect.stringContaining("你é") }] });
     expect(canvas.getState().interaction).toEqual(state.interaction);
     expect(canvas.getState().canUndo).toBe(state.canUndo);
     expect(canvas.viewport.getSnapshot()).toEqual(camera);

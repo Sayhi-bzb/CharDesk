@@ -19,14 +19,16 @@ test("WebMCP renders, searches, and reads precise Unicode positions without movi
   const written = await execute(page, "chardesk_canvas_write", { at: [-100, -50], content: "**Needle** 你é" });
   expect(written).toMatchObject({ bounds: expect.any(Array) });
   const result = await execute(page, "chardesk_canvas_search", { query: "Needle", viewport: [-100, -50, 40, 5] });
-  expect(result).toMatchObject({ canvasId: written.canvasId, matches: [{ bounds: [-100, -50, 6, 1] }], next: null });
-  const view = await execute(page, "chardesk_canvas_read", { viewport: result.matches[0].bounds });
+  expect(result).toMatchObject({ canvasId: written.canvasId, matches: [{ viewport: [-108, -52, 32, 5], content: expect.stringContaining("Needle") }], next: null });
+  expect(result.matches[0].content.split("\n")).toHaveLength(5);
+  expect(result.matches[0].content).not.toMatch(/[┌┐└┘│┤┬]/u);
+  const view = await execute(page, "chardesk_canvas_read", { viewport: result.matches[0].viewport });
   expect(view.content).toContain("Needle");
   expect(view.content).toContain("bold");
   expect((await execute(page, "chardesk_canvas_search", { query: "**Needle**", viewport: [-100, -50, 40, 5] })).matches).toEqual([]);
-  expect((await execute(page, "chardesk_canvas_search", { query: "你é", viewport: [-100, -50, 40, 5] })).matches[0].bounds[2]).toBe(3);
+  expect((await execute(page, "chardesk_canvas_search", { query: "你é", viewport: [-100, -50, 40, 5] })).matches[0].content).toContain("你é");
   expect((await execute(page, "chardesk_canvas_read", { viewport: [-100, -50, 800, 240] })).mode).toBe("density");
-  expect((await execute(page, "chardesk_canvas_search", { query: "Needle", viewport: [-100, -50, 800, 240] })).matches[0].bounds).toEqual([-100, -50, 6, 1]);
+  expect((await execute(page, "chardesk_canvas_search", { query: "Needle", viewport: [-100, -50, 800, 240] })).matches[0].viewport).toEqual([-108, -52, 32, 5]);
   await expect(page.getByTestId("zoom-reset")).toHaveText(zoom!);
 
   const many = Array.from({ length: 25 }, () => "PageNeedle").join("\n");
@@ -37,7 +39,7 @@ test("WebMCP renders, searches, and reads precise Unicode positions without movi
   expect(first.matches).toHaveLength(20);
   expect(second.matches).toHaveLength(5);
   expect(second.next).toBeNull();
-  expect(second.matches[0].bounds).toEqual([-100, -80, 10, 1]);
+  expect(second.matches[0].viewport).toEqual([-108, -82, 32, 5]);
 });
 
 test("read-only CLI pages expose Canvas search without write", async ({ page }) => {

@@ -4,7 +4,7 @@ description: Read a Canvas through a bounded, automatically scaled text viewport
 ---
 
 `chardesk_canvas_read` exposes the active Canvas through WebMCP and Site Tools.
-It belongs to the spatial Canvas group in the [WebMCP contract](./webmcp).
+It belongs to the spatial Canvas group in the [WebMCP contract](/development/architecture/webmcp).
 It reads the Cell surface without changing the user's camera, selection, or document.
 Freeform and local document previews use their current projection; Slides use the current page.
 
@@ -69,7 +69,7 @@ their symbols are navigation aids, not styled source content. Inputs and respons
 are unchanged: notes are part of `content`. Reading source files or exporting ANSI is
 not part of this tool.
 
-Every read also includes current [write rendering](./canvas-writing) settings:
+Every read also includes current [write rendering](/development/architecture/canvas-writing) settings:
 mode, theme, Markdown wrap width, and feature toggles. These describe how the next
 write is rendered, not the historical source or rendering profile of existing Cells.
 

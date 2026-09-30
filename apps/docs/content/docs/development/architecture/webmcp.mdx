@@ -14,7 +14,7 @@ WebMCP
 
 | Group | Tools | Contract |
 | --- | --- | --- |
-| Canvas | `chardesk_canvas_read`, `chardesk_canvas_search`, `chardesk_canvas_write` | [Reading](./canvas-reading), [searching](./canvas-searching), and [writing](./canvas-writing) in original Cell coordinates. |
+| Canvas | `chardesk_canvas_read`, `chardesk_canvas_search`, `chardesk_canvas_write` | [Reading](/development/architecture/canvas-reading), [searching](/development/architecture/canvas-searching), and [writing](/development/architecture/canvas-writing) in original Cell coordinates. |
 | Materials | `chardesk_read_materials` | Read-only Markdown shared by both workflows. |
 
 New spatial operations belong to Canvas; source-file editing remains outside these tools.
@@ -31,5 +31,5 @@ Grouping does not add a browser-visible category field or change registration or
 ## Authorities
 
 - Definitions: [Canvas](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/canvasToolDefinitions.ts), [Materials](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/materialsTools.ts).
-- Host registration and diagnostics: [state flows](./state-flows).
+- Host registration and diagnostics: [state flows](/development/architecture/state-flows).
 - Verification: [group composition](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/chardeskTools.test.ts), [headless browser discovery and calls](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/webmcp.spec.ts).

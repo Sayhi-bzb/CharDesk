@@ -42,7 +42,7 @@ export const updateCloudBinding = writeBinding;
 export const notifyCloudSync = (key: string, next: SyncState) => notify(key, next);
 export const notifyCloudCatalog = () => window.dispatchEvent(new Event(CATALOG_EVENT));
 
-export const digestSnapshot = async (title: string, content: string): Promise<string> => {
+const digestSnapshot = async (title: string, content: string): Promise<string> => {
   const bytes = new TextEncoder().encode(`${title}\0${content}`);
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');

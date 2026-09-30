@@ -12,7 +12,7 @@ description: Authority, projection, history, persistence, and synchronization di
 | `derived` | Rendering, minimap, preview projections | No | No |
 
 The local `/workspace` page projects native session descriptors and retained
-legacy works; it is not another catalog. [Blackboard retirement](./blackboard-retirement)
+legacy works; it is not another catalog. [Blackboard retirement](/development/architecture/blackboard-retirement)
 owns conversion and source archives. New cloud backups store native `.chardesk`
 snapshots. First backup binds opt-in revision-checked sync; independent recovery
 copies remain independent. Divergent edits fork a conflict copy. Restoring a
@@ -95,8 +95,8 @@ use Registry focus as an implicit write target.
   composed CellPlane rows. A lone `---` remains a Markdown thematic break in auto mode.
 - Local document preview: file → native document parser → read-only projection.
   Human commands cannot write back to the file.
-- [WebMCP](./webmcp) composes Canvas read/search/write and shared Materials tools.
-  [Canvas reading](./canvas-reading) exposes an automatically scaled Cell viewport.
+- [WebMCP](/development/architecture/webmcp) composes Canvas read/search/write and shared Materials tools.
+  [Canvas reading](/development/architecture/canvas-reading) exposes an automatically scaled Cell viewport.
   A global read-only tool embeds canonical skill materials
   at build time so web-only agents can load the same authoring context. The document connector
   selects one host adapter, preferring the complete

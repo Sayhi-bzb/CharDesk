@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@chardesk/chargraph": "*",
-    "@chardesk/document": "*",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
