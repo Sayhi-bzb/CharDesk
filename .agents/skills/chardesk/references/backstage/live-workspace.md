@@ -20,5 +20,8 @@ A revision conflict refreshes the source and recomputes one patch. A repeated
 conflict ends the mutation attempt. A missing workspace may be resolved through
 one workspace listing.
 
-Edit canonical source files rather than rendered cells. Runtime tool definitions
-own operation names and schemas.
+Edit canonical source files rather than rendered cells. When available, use
+[Canvas read](live-canvas.md) to inspect the final projection before choosing a
+change and after checking the workspace. It complements file reads; it does not
+recover source or replace `check`. Runtime tool definitions own operation names
+and schemas.

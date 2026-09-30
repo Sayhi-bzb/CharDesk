@@ -14,7 +14,7 @@ import {
 import { placeCharInYMap, placeStyledCellInYMap } from "./utils";
 import type { Point } from "@/shared/types";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
-import { CanvasWriteError, prepareCanvasTextWrite } from "../writeText";
+import { CanvasWriteError, prepareCanvasTextWrite, prepareCanvasRowsWrite } from "../writeText";
 import { getGraphemeCellWidth as getCellOccupancy, splitGraphemes } from "@chardesk/protocol";
 import { clampPointToActiveSlide, getActiveSlideGridBounds } from "./slideBounds";
 import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
@@ -98,30 +98,32 @@ export const createCanvasTextCommands = (
 ) => {
   const get = commits.getState;
   const set = commits.setState;
-  return coordinateCanvasCommands(commits, {
-    writeAt: (content: string, at: Point) => {
-      const state = get();
-      const session = state.canvasSessions.find(({ id }) => id === state.activeCanvasId);
-      if (!session) throw new CanvasWriteError("canvas_not_active", "Open a Canvas first.");
-      if (isSourceBackedCanvasSession(session)) {
-        throw new CanvasWriteError("source_backed_canvas", "Edit the source files of this Canvas instead of its projection.");
-      }
-      const { patch, bounds } = prepareCanvasTextWrite(at, content, state.brushColor);
-      if (!bounds) return null;
-      const slideBounds = getActiveSlideGridBounds(state);
-      if (slideBounds && (bounds[0] < slideBounds.start.x || bounds[1] < slideBounds.start.y
-        || bounds[0] + bounds[2] - 1 > slideBounds.end.x || bounds[1] + bounds[3] - 1 > slideBounds.end.y)) {
-        throw new CanvasWriteError("out_of_bounds", "Content does not fit the current Slide; nothing was written.");
-      }
-      const address = resolveEditorDocumentAddress(documents, state);
+  const writePrepared = (prepare: () => ReturnType<typeof prepareCanvasTextWrite>) => {
+    const state = get();
+    const session = state.canvasSessions.find(({ id }) => id === state.activeCanvasId);
+    if (!session) throw new CanvasWriteError("canvas_not_active", "Open a Canvas first.");
+    if (isSourceBackedCanvasSession(session)) {
+      throw new CanvasWriteError("source_backed_canvas", "Edit the source files of this Canvas instead of its projection.");
+    }
+    const { patch, bounds } = prepare();
+    if (!bounds) return null;
+    const slideBounds = getActiveSlideGridBounds(state);
+    if (slideBounds && (bounds[0] < slideBounds.start.x || bounds[1] < slideBounds.start.y
+      || bounds[0] + bounds[2] - 1 > slideBounds.end.x || bounds[1] + bounds[3] - 1 > slideBounds.end.y)) {
+      throw new CanvasWriteError("out_of_bounds", "Content does not fit the current Slide; nothing was written.");
+    }
+    const address = resolveEditorDocumentAddress(documents, state);
+    documents.finishHistoryCapture();
+    try {
+      documents.applyCellPlanePatchAt(address, patch, commits.getDocumentHistoryMode());
+    } finally {
       documents.finishHistoryCapture();
-      try {
-        documents.applyCellPlanePatchAt(address, patch, commits.getDocumentHistoryMode());
-      } finally {
-        documents.finishHistoryCapture();
-      }
-      return bounds;
-    },
+    }
+    return bounds;
+  };
+  return coordinateCanvasCommands(commits, {
+    writeAt: (content: string, at: Point) => writePrepared(() => prepareCanvasTextWrite(at, content, get().brushColor)),
+    writeRowsAt: (rows: readonly RichTextRow[], at: Point) => writePrepared(() => prepareCanvasRowsWrite(at, rows)),
     write: (str: string, startPos?: Point, options?: TextWriteOptions) => {
       const current = get();
       const staticGrid = current.interaction.staticGrid;

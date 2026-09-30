@@ -1,7 +1,4 @@
-import type {
-  CharDeskTextCell,
-  ParsedCharDeskText,
-} from "@chardesk/protocol";
+import { formatCharDeskStyleNotes, type ParsedCharDeskText } from "@chardesk/protocol";
 
 export type CharDeskInspectRegion = {
   x: number;
@@ -24,103 +21,6 @@ type CharDeskInspectProjection = {
 
 const DEFAULT_COLUMNS = 96;
 const DEFAULT_ROWS = 32;
-const MAX_STYLE_REGIONS = 256;
-
-type StyleRun = {
-  x: number;
-  y: number;
-  width: number;
-  key: string;
-  tokens: string[];
-};
-
-type StyleRegion = StyleRun & {
-  endY: number;
-};
-
-const styleTokens = (cell: CharDeskTextCell) => [
-  ...(cell.color ? [`fg:${cell.color}`] : []),
-  ...(cell.bgColor ? [`bg:${cell.bgColor}`] : []),
-  ...(cell.attrs?.bold ? ["bold"] : []),
-  ...(cell.attrs?.italic ? ["italic"] : []),
-  ...(cell.attrs?.underline ? ["underline"] : []),
-  ...(cell.attrs?.strike ? ["strike"] : []),
-  ...(cell.attrs?.inverse ? ["inverse"] : []),
-  ...(cell.href ? [`link:${JSON.stringify(cell.href)}`] : []),
-];
-
-const styleRuns = (cells: CharDeskTextCell[]) => {
-  const runs: StyleRun[] = [];
-  for (const cell of cells) {
-    const tokens = styleTokens(cell);
-    if (tokens.length === 0) continue;
-    const key = tokens.join("\u0000");
-    const previous = runs[runs.length - 1];
-    if (
-      previous
-      && previous.y === cell.y
-      && previous.x + previous.width === cell.x
-      && previous.key === key
-    ) {
-      previous.width += cell.width;
-      continue;
-    }
-    runs.push({ x: cell.x, y: cell.y, width: cell.width, key, tokens });
-  }
-  return runs;
-};
-
-const styleRegions = (runs: StyleRun[]) => {
-  const grouped = new Map<string, StyleRegion[]>();
-  for (const run of runs) {
-    const geometryKey = `${run.key}\u0001${run.x}\u0001${run.width}`;
-    const regions = grouped.get(geometryKey) ?? [];
-    const previous = regions[regions.length - 1];
-    if (previous && previous.endY + 1 === run.y) {
-      previous.endY = run.y;
-    } else {
-      regions.push({ ...run, endY: run.y });
-    }
-    grouped.set(geometryKey, regions);
-  }
-  return [...grouped.values()]
-    .flat()
-    .sort((left, right) => (
-      left.y - right.y
-      || left.x - right.x
-      || left.endY - right.endY
-      || left.width - right.width
-    ));
-};
-
-const regionSelector = (region: StyleRegion) => {
-  const y = region.y === region.endY ? String(region.y) : `${region.y}-${region.endY}`;
-  const endX = region.x + region.width - 1;
-  const x = region.x === endX ? String(region.x) : `${region.x}-${endX}`;
-  return `${y}:${x}`;
-};
-
-const projectStyles = (cells: CharDeskTextCell[]) => {
-  const regions = styleRegions(styleRuns(cells));
-  if (regions.length === 0) return "styles:none";
-
-  const shown = regions.slice(0, MAX_STYLE_REGIONS);
-  const rules = new Map<string, { tokens: string[]; selectors: string[] }>();
-  for (const region of shown) {
-    const rule = rules.get(region.key) ?? { tokens: region.tokens, selectors: [] };
-    rule.selectors.push(regionSelector(region));
-    rules.set(region.key, rule);
-  }
-  const header = regions.length > shown.length
-    ? `styles:${shown.length}/${regions.length} regions · narrow --region`
-    : "styles:";
-  return [
-    header,
-    ...[...rules.values()].map(({ tokens, selectors }) =>
-      `  ${selectors.join(",")}{${tokens.join(";")}}`
-    ),
-  ].join("\n");
-};
 
 const snapHorizontalBounds = (
   document: ParsedCharDeskText,
@@ -215,8 +115,7 @@ export const projectCharDeskInspect = (
       && cell.y < endY
       && cell.x >= view.x
       && cell.x + cell.width <= endX
-    ))
-    .sort((left, right) => left.y - right.y || left.x - right.x);
+    ));
 
   if (options.ruler !== false) {
     const horizontal = ruler(view.x, view.columns);
@@ -232,7 +131,7 @@ export const projectCharDeskInspect = (
 
   return {
     text: lines.join("\n"),
-    ...(options.styles ? { styleText: projectStyles(visibleCells) } : {}),
+    ...(options.styles ? { styleText: formatCharDeskStyleNotes(visibleCells, { truncationHint: "narrow --region" }) } : {}),
     view,
     omitted: {
       left: view.x,

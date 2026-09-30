@@ -10,7 +10,9 @@ reveal whose surface this is, what is happening, and which traces matter.
 Compose from inside that situation and keep it implicit. User direction and the
 existing document establish the scene when present.
 
-Canonical source is authoritative; Canvas is its projection.
+For source-backed documents, canonical source is authoritative and Canvas is its
+projection. For an editable Freeform Canvas or native Slide page, Cell content
+is authoritative.
 
 ## Surfaces
 
@@ -21,19 +23,23 @@ Canonical source is authoritative; Canvas is its projection.
 - Creating, editing, or visually restructuring content uses the available
   [`materials`](references/materials.md).
 
-New unspecified documents default to a Blackboard package. Existing source
-determines its document contract. A standalone `.chardesk` remains a supported
-Freeform Canvas input.
+Keep the requested target and its document contract. New unspecified documents
+default to a Blackboard package; do not create one to replace an existing Canvas.
+A standalone `.chardesk` remains a supported Freeform Canvas input.
 
 ## Backstage
 
-- Local paths, Slides, and artifacts use
+- Local paths, Slide source packages, and artifacts use
   [`references/backstage/cli.md`](references/backstage/cli.md).
+- Reading or editing an existing live Canvas or current Slide page uses
+  [`references/backstage/live-canvas.md`](references/backstage/live-canvas.md)
+  when `chardesk_canvas_read` or `chardesk_canvas_write` is available.
 - A Blackboard workspace ID or URL uses
   [`references/backstage/live-workspace.md`](references/backstage/live-workspace.md)
   when `chardesk_blackboard_*` tools are available.
-- With no target, prefer available live workspace tools; otherwise use the CLI.
-- If a requested live Canvas has no tools, read
+- With no explicit target for an edit, stay on the current live surface. For a
+  new unspecified document, prefer available Blackboard tools; otherwise use the CLI.
+- If a requested live operation has no suitable tools, read
   [`references/backstage/experimental-live.md`](references/backstage/experimental-live.md).
 
 ## Delivery

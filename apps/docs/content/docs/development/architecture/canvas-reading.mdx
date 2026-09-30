@@ -35,10 +35,38 @@ the requested rectangle.
 | 2–4 | `projection` | Four quadrant occupancy encoded as block characters |
 | 5+ | `density` | `·░▒▓█`: empty, then occupancy thresholds 1/16, 1/4, 1/2 |
 
-Non-whitespace characters and explicit backgrounds count as occupied; wide
+Non-whitespace characters, explicit backgrounds, and inverse/underlined/struck spaces
+count as occupied; wide
 graphemes occupy their Cell width. Any nonzero density remains visible. Projection
 symbols and coordinate rulers are navigation aids, not source characters. Text
-output preserves characters and spacing, not styles or complete interaction state.
+output preserves characters and spacing; style notes describe attributed Cells, not
+font rasterization or complete interaction state.
+
+## Coordinates and style notes
+
+Text mode has absolute column labels, a per-Cell modulo-10 digit ruler, and absolute
+row labels. Wide graphemes occupy two columns. Non-empty style notes follow the grid:
+
+```text
+styles:
+  y=20..21 x=10..12{fg:#ff0000;bold}
+  y=21 x=14{underline;link:"https://example.com"}
+```
+
+Ranges are inclusive original Canvas coordinates, not output offsets. Notes include
+foreground, background, bold, italic, underline, strike, inverse, and links. Adjacent
+equal styles merge into horizontal runs and matching runs on consecutive rows merge
+vertically. Styled spaces are included; boundary-clipped graphemes are excluded with
+their text. At most 256 style regions are shown, with an explicit truncation notice.
+
+Projection and density modes omit styles and ask the caller to read a smaller viewport;
+their symbols are navigation aids, not styled source content. Inputs and response fields
+are unchanged: notes are part of `content`. Reading source files or exporting ANSI is
+not part of this tool.
+
+Every read also includes current [write rendering](./canvas-writing) settings:
+mode, theme, Markdown wrap width, and feature toggles. These describe how the next
+write is rendered, not the historical source or rendering profile of existing Cells.
 
 The response contains `canvasId`, actual `viewport`, `step`, `mode`, and `content`.
 Rulers use original coordinates; output column `c` and row `r` cover the region
@@ -50,4 +78,5 @@ and unavailable content return explicit errors.
 - [Tool definition](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/canvasTools.ts)
 - [Projection and sampling](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/canvas/readViewport.ts)
 - [Projection verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/canvas/readViewport.test.ts)
+- [Shared CLI and WebMCP style-note contract](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/protocol/README.md)
 - [Headless host verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/webmcp.spec.ts)

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getTextCellWidth } from "@chardesk/protocol";
 import { CellPlaneIndex, cellPlanePatchToOperation, createGridSurfaceReader } from "./cell-plane/model";
 import { isCanvasReadViewport, readCanvasViewport } from "./readViewport";
+import type { GridCell } from "@/shared/types";
 
 const surface = (entries: Array<[number, number, string, string?]>) => createGridSurfaceReader(new Map(
   entries.map(([x, y, char, bgColor]) => [`${x},${y}`, { char, color: "#000", ...(bgColor ? { bgColor } : {}) }]),
@@ -15,6 +16,46 @@ describe("Canvas viewport reading", () => {
     expect(lines(view.content)).toEqual(["       ", " A你é  ", "       "]);
     expect(lines(view.content).every((line) => getTextCellWidth(line) === 7)).toBe(true);
     expect(view.content).toContain("-1 │");
+    expect(view.content.split("\n")[2].trim()).toBe("7890123");
+  });
+
+  it("adds absolute style notes for visible glyphs and styled spaces, with a per-Cell column ruler", () => {
+    const grid = new Map<string, GridCell>([
+      ["10,20", { char: "你", color: "#f00", attrs: { bold: true } }],
+      ["12,20", { char: "A", color: "#f00", attrs: { bold: true } }],
+      ["13,20", { char: " ", color: "#000", bgColor: "#fff", attrs: { inverse: true } }],
+      ["10,21", { char: "你", color: "#f00", attrs: { bold: true } }],
+      ["12,21", { char: "B", color: "#f00", attrs: { bold: true } }],
+      ["14,21", { char: "L", color: "#00f", attrs: { underline: true }, href: "https://example.com" }],
+    ]);
+    const view = readCanvasViewport(createGridSurfaceReader(grid), [10, 20, 8, 2]);
+    expect(view.content.split("\n")[2].trim()).toBe("01234567");
+    expect(lines(view.content)).toEqual(["你A     ", "你B L   "]);
+    expect(view.content).toContain("y=20..21 x=10..12{fg:#f00;bold}");
+    expect(view.content).toContain("y=20 x=13{fg:#000;bg:#fff;inverse}");
+    expect(view.content).toContain('y=21 x=14{fg:#00f;underline;link:"https://example.com"}');
+    expect(readCanvasViewport(createGridSurfaceReader(grid), [11, 20, 2, 1]).content).not.toContain("x=10");
+    expect(readCanvasViewport(createGridSurfaceReader(grid), [10, 20, 1, 1]).content).not.toContain("styles:");
+  });
+
+  it("does not attach source styles to navigation symbols or empty regions", () => {
+    const reader = surface([[10, 20, "A"]]);
+    for (const viewport of [[0, 0, 160, 48], [0, 0, 800, 240]] as const) {
+      const view = readCanvasViewport(reader, viewport);
+      expect(view.content).not.toContain("styles:");
+      expect(view.content).toContain("Styles omitted:");
+      expect(view.content).not.toContain("0123456789");
+    }
+    expect(readCanvasViewport(reader, [0, 0, 2, 1]).content).not.toContain("styles:");
+  });
+
+  it("retains visually styled whitespace in automatic bounds and style notes", () => {
+    const reader = createGridSurfaceReader(new Map([
+      ["-10,-20", { char: " ", color: "#fff", attrs: { inverse: true as const } }],
+    ]));
+    const view = readCanvasViewport(reader);
+    expect(view.viewport).toEqual([-10, -20, 1, 1]);
+    expect(view.content).toContain("y=-20 x=-10{fg:#fff;inverse}");
   });
 
   it("leaves clipped wide characters blank without changing the viewport", () => {

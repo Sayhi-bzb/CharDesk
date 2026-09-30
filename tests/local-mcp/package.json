@@ -1,0 +1,14 @@
+{
+  "name": "chardesk-local-mcp-experiment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test --config playwright.config.mjs",
+    "test:pi": "CHARDESK_TEST_PI=1 playwright test --config playwright.config.mjs pi.spec.mjs",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "ws": "^8.21.1"
+  }
+}

@@ -1,6 +1,6 @@
 ---
 title: Canvas Writing
-description: Write Unicode into editable Canvas content at an original Cell coordinate.
+description: Render text into editable Canvas content at an original Cell coordinate.
 ---
 
 `chardesk_canvas_write` belongs to the Canvas group in the [WebMCP contract](./webmcp).
@@ -16,20 +16,26 @@ source with Blackboard file tools or the local filesystem.
 
 `at` is the required starting `[x,y]` in original Cell coordinates. Both coordinates
 and the resulting endpoints must be safe integers. Content determines the footprint;
-there is no input width, height, scale, wrapping, or Markdown interpretation.
+there is no input width, height, or scale.
 
-Each newline returns to the starting column on the next row. CRLF and CR normalize
-to newline. Graphemes use protocol Cell widths. Written characters replace the
-characters they occupy; explicit spaces clear characters while preserving backgrounds.
-Short and empty lines leave unwritten positions unchanged. Tabs and other control
-characters are rejected. Slide overflow rejects the complete write before mutation.
+The tool uses the same text renderer and current profile as Canvas text paste:
+`auto`, `raw`, `ansi`, or `markdown`, including enabled features, Markdown wrapping,
+theme colors, and tab expansion. [Canvas reading](./canvas-reading) discloses those
+current settings. Rendered spans replace characters and styles at their translated
+Cell positions; unwritten positions stay unchanged. Existing backgrounds remain
+unless the renderer supplies one. Slide overflow rejects the complete rendered
+footprint before mutation.
+
+Only rendered Cells persist; input text and its rendering profile are not retained
+as editable source. This is not a source-document write API.
 
 ## Result and verification
 
 The response contains `canvasId` and `bounds: [x,y,width,height]`, the envelope of
 written spans. Content with no occupied character positions returns `bounds: null`
 without creating history. Writes commit as one independently undoable operation and
-do not change the user's camera, cursor, or selection.
+do not change the user's camera, cursor, or selection. A Canvas or Slide switch
+during rendering cancels the write; renderer failures never partially write.
 
 Use returned bounds as the viewport of [Canvas reading](./canvas-reading). Its
 coordinate rulers and sampled symbols are generated output, not write payloads.

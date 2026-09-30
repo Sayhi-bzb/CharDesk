@@ -159,9 +159,14 @@ test.describe("WebMCP", () => {
     expect(results[0].viewport).toHaveLength(4);
     expect(results[1]).toMatchObject({ mode: "text", step: 1 });
     expect(results[1].content).toContain("Blackboard");
+    expect(results[1].content).toMatch(/styles:[\s\S]*y=.+ x=.+\{fg:/);
     expect(results[2].viewport[0]).toBe(results[1].viewport[0] + 30);
     expect(results[3]).toMatchObject({ mode: "projection", step: 2 });
     expect(results[4]).toMatchObject({ mode: "density", step: 10 });
+    for (const result of results.slice(3)) {
+      expect(result.content).not.toContain("styles:");
+      expect(result.content).toContain("Styles omitted:");
+    }
     expect(new Set(results.map(({ canvasId }) => canvasId)).size).toBe(1);
     await expect(page.getByTestId("zoom-reset")).toHaveText(zoomBefore!);
   });
@@ -184,6 +189,14 @@ test.describe("WebMCP", () => {
     expect(view.content).toContain("Hello, 世界");
     await execute("chardesk_canvas_write", { at: [-20, -9], content: "X " });
     expect((await execute("chardesk_canvas_read", { viewport: [-20, -9, 4, 1] })).content).toContain("X CD");
+    const markdown = await execute("chardesk_canvas_write", { at: [100, 50], content: "**Rendered** [link](https://example.com)" });
+    expect(markdown).toMatchObject({ bounds: expect.any(Array) });
+    const rendered = await execute("chardesk_canvas_read", { viewport: markdown.bounds });
+    expect(rendered.content).toContain("Rendered");
+    expect(rendered.content).not.toContain("**Rendered**");
+    expect(rendered.content).toContain("bold");
+    expect(rendered.content).toContain('link:"https://example.com"');
+    expect(rendered.content).toContain("Write rendering (current settings, not content provenance)");
     await page.goto("/blackboard?webmcp=polyfill");
     await expect(page).toHaveURL(/workspace=/);
     await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");

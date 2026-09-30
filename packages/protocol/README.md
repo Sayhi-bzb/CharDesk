@@ -47,11 +47,17 @@ visible text, grapheme boundaries, or cell positions.
 - `getTextCellWidth(text)`
 - `createCharDeskGeometrySnapshot(source, options?)`
 - `compareCharDeskGeometry(plainText, ansiText, options?)`
+- `formatCharDeskStyleNotes(cells, options?)`
 - `CHARDESK_TEXT_PROTOCOL_VERSION`
 - `UNICODE_DATA_VERSION`
 
 The default syntax mode is `auto`; use `plain` to disable control parsing or `ansi` to force ESC-less numeric SGR parsing. The default tab size is four cells.
 
 See [`fixtures/v1.json`](./fixtures/v1.json) for portable conformance cases. Parsed links are untrusted and must be sanitized by the renderer.
+
+`formatCharDeskStyleNotes` merges adjacent attributed Cells into bounded style notes.
+Coordinates are inclusive in the input coordinate space; default `y:x` notation preserves
+CLI inspection output, while `{ coordinates: "explicit" }` uses `y=… x=…`.
+At most 256 regions are shown; a truncation notice asks callers to narrow the viewport.
 
 For CharDesk-compatible glyph coverage, renderers may use the optional [`@chardesk/fonts`](https://www.npmjs.com/package/@chardesk/fonts) profile.

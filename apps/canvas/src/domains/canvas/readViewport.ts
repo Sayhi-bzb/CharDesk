@@ -1,4 +1,4 @@
-import { getGraphemeCellWidth } from "@chardesk/protocol";
+import { formatCharDeskStyleNotes, getGraphemeCellWidth, type CharDeskStyleNoteCell } from "@chardesk/protocol";
 import type { GridCell, NodeBounds } from "@/shared/types";
 import type { CanvasSurfaceReader } from "./cell-plane/model";
 
@@ -10,7 +10,8 @@ export type CanvasReadProjection = Readonly<{
   content: string;
 }>;
 
-const occupied = (cell: GridCell) => /\S/u.test(cell.char) || cell.bgColor !== undefined;
+const occupied = (cell: GridCell) => /\S/u.test(cell.char) || cell.bgColor !== undefined
+  || cell.attrs?.inverse === true || cell.attrs?.underline === true || cell.attrs?.strike === true;
 const quadrants = [" ", "▘", "▝", "▀", "▖", "▌", "▞", "▛", "▗", "▚", "▐", "▜", "▄", "▙", "▟", "█"];
 
 export const isCanvasReadViewport = (value: unknown): value is CanvasReadViewport =>
@@ -52,12 +53,17 @@ export const readCanvasViewport = (
   const text = Array.from({ length: rows }, () => Array<string>(columns).fill(" "));
   const counts = new Float64Array(rows * columns);
   const masks = new Uint8Array(rows * columns);
+  const styledCells: CharDeskStyleNoteCell[] = [];
   const query = { x: x - 1, y, width: width + 1, height };
   if (storedBounds) for (const row of surface.rows(query)) for (const span of row.spans) {
     let cellX = span.x;
     for (const cell of span.cells) {
       const cellWidth = getGraphemeCellWidth(cell.char);
       const localY = row.y - y;
+      if (mode === "text" && cellWidth > 0 && localY >= 0 && localY < height
+        && cellX >= x && cellX + cellWidth <= x + width) {
+        styledCells.push({ ...cell, x: cellX, y: row.y, width: cellWidth });
+      }
       if (occupied(cell) && localY >= 0 && localY < height) {
         if (mode === "text") {
           if (cellX >= x && cellX + cellWidth <= x + width) {
@@ -97,12 +103,16 @@ export const readCanvasViewport = (
       previousEnd = column + label.length;
     }
   }
+  const notes = mode === "text" ? formatCharDeskStyleNotes(styledCells, { coordinates: "explicit" }) : "styles:none";
   const content = [
     `viewport=[${x},${y},${width},${height}] step=${step} mode=${mode}`,
     `${" ".repeat(labelWidth + 3)}${ruler.join("").trimEnd()}`,
+    ...(mode === "text" ? [`${" ".repeat(labelWidth + 3)}${Array.from({ length: columns }, (_, column) => String(((x + column) % 10 + 10) % 10)).join("")}`] : []),
     `${" ".repeat(labelWidth + 1)}┌${"─".repeat(columns)}┐`,
     ...text.map((line, row) => `${String(y + row * step).padStart(labelWidth)} │${line.join("")}│`),
     `${" ".repeat(labelWidth + 1)}└${"─".repeat(columns)}┘`,
+    ...(notes === "styles:none" ? [] : ["", notes]),
+    ...(mode !== "text" ? ["Styles omitted: navigation symbols only; read a smaller viewport for text and styles."] : []),
   ].join("\n");
   return { viewport: [x, y, width, height], step, mode, content };
 };

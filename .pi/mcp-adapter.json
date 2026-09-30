@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "chardesk": {
+      "command": "node",
+      "args": ["tests/local-mcp/server.mjs"],
+      "inheritEnv": false,
+      "env": {
+        "CHARDESK_BRIDGE_PORT": "9494",
+        "CHARDESK_BRIDGE_ORIGIN": "http://127.0.0.1:5173,http://localhost:5173,https://canvas.chardesk.com",
+        "CHARDESK_BRIDGE_PAIRING_FILE": ".pi/chardesk-bridge.local.json"
+      },
+      "lifecycle": "eager",
+      "directTools": true,
+      "toolPrefix": "none"
+    }
+  }
+}

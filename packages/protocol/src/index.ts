@@ -7,6 +7,8 @@ export {
 export { layoutCharDeskTextRuns, layoutCharDeskTextRunsToRows } from "./runs.js";
 export { materializeCharDeskTextRows } from "./row-spans.js";
 export { decodeCharDeskTextRuns } from "./decode.js";
+export { formatCharDeskStyleNotes } from "./style-notes.js";
+export type { CharDeskStyleNoteCell } from "./style-notes.js";
 export {
   getGraphemeCellWidth,
   getTextCellWidth,

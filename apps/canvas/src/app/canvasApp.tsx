@@ -34,11 +34,17 @@ import {
 import { isBlackboardRoute, isLocalBlackboardReaderRoute } from "./blackboardRoute";
 import { APP_ROUTE_EVENT, isWorkspaceRoute } from "@/shared/navigation/workspace-route";
 import { createBlackboardWorkspaceTarget } from "./blackboardWorkspaceTarget";
+import { configureLocalAgent, disconnectLocalAgent } from "@/shared/services/local-agent";
 
 const profile = EDITOR_HOST_PROFILE;
 const host = getApplicationEditorHost(profile);
 const createRouteAgentTools = () => createChardeskAgentTools({
   canvas: host.canvas,
+  rendering: {
+    render: host.textRenderingWorker.render,
+    getProfile: host.textRendering.getProfile,
+    getContext: () => ({ themeMode: host.canvasAppearance.getSnapshot().resolvedTheme }),
+  },
   readOnly: isLocalBlackboardReaderRoute(window.location),
   blackboard: isLocalBlackboardReaderRoute(window.location) ? undefined : {
     blackboard: host.blackboard,
@@ -52,12 +58,27 @@ const createRouteAgentTools = () => createChardeskAgentTools({
 });
 
 let siteTools: ReturnType<typeof startDocumentSiteTools> | null = null;
+configureLocalAgent({
+  scope: () => isWorkspaceRoute(window.location) ? null : host.canvas.getState().activeCanvasId,
+  execute: async (name, input) => {
+    if (isWorkspaceRoute(window.location)) throw new Error('Open a Canvas first');
+    const tool = createRouteAgentTools().find((tool) => tool.name === name);
+    if (!tool) throw new Error('Canvas tool is unavailable on this page');
+    return tool.execute(input);
+  },
+});
+let localAgentCanvasId = host.canvas.getState().activeCanvasId;
+host.canvas.subscribe((state) => {
+  const next = state.activeCanvasId;
+  if (next !== localAgentCanvasId) { localAgentCanvasId = next; disconnectLocalAgent(); }
+});
 let siteToolsGeneration = 0;
 const syncChardeskSiteTools = async () => {
   const generation = ++siteToolsGeneration;
   siteTools?.dispose();
   siteTools = null;
   if (isWorkspaceRoute(window.location)) {
+    disconnectLocalAgent();
     updateWebMcpDiagnostics(document, "unavailable", { status: "disposed", adapterId: null });
     return;
   }

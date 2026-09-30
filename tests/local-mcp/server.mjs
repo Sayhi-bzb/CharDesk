@@ -1,0 +1,123 @@
+import { randomBytes, randomUUID } from "node:crypto";
+import { createServer } from "node:http";
+import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
+import { dirname } from "node:path";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { WebSocket, WebSocketServer } from "ws";
+import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL } from "../../apps/canvas/src/app/site-tools/canvasToolDefinitions.ts";
+
+// Experiment only: one explicitly paired browser page, no document storage.
+const allowedTools = new Set(["chardesk_canvas_read", "chardesk_canvas_write"]);
+const token = process.env.CHARDESK_BRIDGE_TOKEN || randomBytes(32).toString("hex");
+const origins = new Set((process.env.CHARDESK_BRIDGE_ORIGIN || "http://127.0.0.1:5173").split(","));
+const pairingFile = process.env.CHARDESK_BRIDGE_PAIRING_FILE;
+const timeoutMs = Number(process.env.CHARDESK_BRIDGE_TIMEOUT_MS || 10_000);
+const http = createServer((_request, response) => response.writeHead(404).end());
+const sockets = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
+let page;
+const pending = new Map();
+
+http.on("upgrade", (request, socket, head) => {
+  const url = new URL(request.url, "http://127.0.0.1");
+  const expectedHost = `127.0.0.1:${http.address().port}`;
+  if (request.headers.host !== expectedHost || !origins.has(request.headers.origin)
+    || url.pathname !== "/bridge" || url.searchParams.get("token") !== token) {
+    socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+    return;
+  }
+  if (page) {
+    socket.end("HTTP/1.1 409 Conflict\r\nConnection: close\r\n\r\n");
+    return;
+  }
+  sockets.handleUpgrade(request, socket, head, (client) => sockets.emit("connection", client));
+});
+
+sockets.on("connection", (client) => {
+  page = client;
+  client.on("error", () => client.terminate());
+  client.on("message", (data) => {
+    try {
+      const response = JSON.parse(data.toString());
+      const request = pending.get(response.id);
+      if (!request) return;
+      pending.delete(response.id);
+      clearTimeout(request.timer);
+      if (typeof response.error === "string") request.reject(new Error(response.error));
+      else request.resolve(response.result);
+    } catch {
+      client.close(1003, "Invalid bridge response");
+    }
+  });
+  client.on("close", () => {
+    page = undefined;
+    for (const request of pending.values()) {
+      clearTimeout(request.timer);
+      request.reject(new Error("Page disconnected; an in-flight write may already have applied. Read before retrying."));
+    }
+    pending.clear();
+  });
+});
+
+function forward(method, params = {}) {
+  if (!page || page.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Canvas page is not connected."));
+  if (pending.size >= 32 || page.bufferedAmount > 1024 * 1024) return Promise.reject(new Error("Bridge is busy."));
+  const id = randomUUID();
+  const message = JSON.stringify({ id, method, params });
+  if (Buffer.byteLength(message) > 1024 * 1024) return Promise.reject(new Error("Bridge request exceeds 1 MiB."));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      reject(new Error("Page timed out; a write may already have applied. Read before retrying."));
+    }, timeoutMs);
+    pending.set(id, { resolve, reject, timer });
+    page.send(message, (error) => {
+      if (!error || !pending.delete(id)) return;
+      clearTimeout(timer);
+      reject(error);
+    });
+  });
+}
+
+const mcp = new Server({ name: "chardesk-local-canvas-experiment", version: "0.0.0" }, { capabilities: { tools: {} } });
+mcp.setRequestHandler(ListToolsRequestSchema, async () => {
+  return { tools: [CANVAS_READ_TOOL, CANVAS_WRITE_TOOL].map(({ readOnly, ...tool }) =>
+    ({ ...tool, annotations: { readOnlyHint: readOnly } })) };
+});
+mcp.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
+  try {
+    if (!allowedTools.has(params.name)) throw new Error("Unknown Canvas tool.");
+    const result = await forward("call", { name: params.name, input: params.arguments || {} });
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+      structuredContent: result,
+      isError: result?.ok === false,
+    };
+  } catch (error) {
+    return { isError: true, content: [{ type: "text", text: error.message }] };
+  }
+});
+
+await new Promise((resolve) => http.listen(Number(process.env.CHARDESK_BRIDGE_PORT || 0), "127.0.0.1", resolve));
+const bridgeUrl = `ws://127.0.0.1:${http.address().port}/bridge?token=${token}`;
+if (pairingFile) {
+  await mkdir(dirname(pairingFile), { recursive: true });
+  await writeFile(pairingFile, JSON.stringify({ bridgeUrl, pid: process.pid }), { mode: 0o600 });
+}
+// stdout belongs exclusively to the MCP stdio protocol.
+console.error(JSON.stringify({ bridgeUrl }));
+await mcp.connect(new StdioServerTransport());
+
+const stop = () => {
+  for (const client of sockets.clients) client.terminate();
+  sockets.close();
+  http.close();
+  void mcp.close();
+  if (pairingFile) void readFile(pairingFile, "utf8").then((content) => {
+    if (JSON.parse(content).pid === process.pid) return unlink(pairingFile);
+  }).catch(() => undefined);
+};
+process.once("SIGTERM", stop);
+process.once("SIGINT", stop);
+process.stdin.once("end", stop);

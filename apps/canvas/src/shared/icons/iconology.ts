@@ -172,6 +172,7 @@ export const HOST_ICONOLOGY = {
   appMenu: {
     trigger: Menu,
     account: UserRound,
+    agent: Terminal,
     splitView: SquareSplitHorizontal,
     zenMode: Focus,
     help: CircleHelp,
@@ -188,6 +189,7 @@ export const HOST_ICONOLOGY = {
   } satisfies IconMap<
     | 'trigger'
     | 'account'
+    | 'agent'
     | 'splitView'
     | 'zenMode'
     | 'help'

@@ -208,6 +208,7 @@ const commands = {
   },
   text: {
     writeAt: textCommands.writeAt,
+    writeRowsAt: textCommands.writeRowsAt,
     write: textCommands.write,
     pasteRichData: textCommands.pasteRichData,
     moveCursor: textCommands.moveCursor,

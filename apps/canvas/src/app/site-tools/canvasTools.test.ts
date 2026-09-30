@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { CanvasRuntime } from "@/domains/canvas/public";
 import { createGridSurfaceReader } from "@/domains/canvas/public";
 import { createCanvasReadTool } from "./canvasTools";
+import { createTextRenderingRuntime } from "@/domains/document/public";
+
+const runtime = createTextRenderingRuntime();
+const rendering = { render: runtime.renderCompact, getProfile: runtime.getProfile, getContext: () => ({ themeMode: "light" as const }) };
 
 const host = (id: string | null = "canvas-a") => ({
   ready: Promise.resolve(),
@@ -13,25 +17,28 @@ const host = (id: string | null = "canvas-a") => ({
 describe("Canvas reading tool", () => {
   it("captures the target session and reads it without switching it", async () => {
     const canvas = host();
-    const tool = createCanvasReadTool(canvas);
+    const tool = createCanvasReadTool(canvas, rendering);
     expect(tool.readOnly).toBe(true);
     expect(await tool.execute({ viewport: [0, 0, 4, 2] })).toMatchObject({ canvasId: "canvas-a", viewport: [0, 0, 4, 2], mode: "text" });
     expect(canvas.materializeSession).toHaveBeenCalledWith("canvas-a");
+    expect(await tool.execute({ viewport: [0, 0, 4, 2] })).toMatchObject({
+      content: expect.stringContaining("y=0 x=0{fg:#000}"),
+    });
   });
 
   it("returns actionable errors for invalid input and missing sessions", async () => {
-    const tool = createCanvasReadTool(host(null));
+    const tool = createCanvasReadTool(host(null), rendering);
     expect(await tool.execute({})).toMatchObject({ code: "canvas_not_active" });
     expect(await tool.execute({ viewport: [0, 0, -1, 1] })).toMatchObject({ code: "invalid_input" });
     expect(await tool.execute({ scale: 2 })).toMatchObject({ code: "invalid_input" });
     const canvas = host();
     canvas.materializeSession.mockResolvedValue(null as never);
-    expect(await createCanvasReadTool(canvas).execute({})).toMatchObject({ code: "canvas_not_ready" });
+    expect(await createCanvasReadTool(canvas, rendering).execute({})).toMatchObject({ code: "canvas_not_ready" });
   });
 
   it("follows the active session on each call", async () => {
     const canvas = host();
-    const tool = createCanvasReadTool(canvas);
+    const tool = createCanvasReadTool(canvas, rendering);
     expect(await tool.execute({})).toMatchObject({ canvasId: "canvas-a" });
     vi.spyOn(canvas, "getState").mockReturnValue({ ...canvas.getState(), activeCanvasId: "canvas-b" });
     expect(await tool.execute({})).toMatchObject({ canvasId: "canvas-b" });

@@ -39,6 +39,7 @@ const DocumentationIcon = HOST_ICONOLOGY.appMenu.documentation;
 const GitHubIcon = HOST_ICONOLOGY.appMenu.github;
 const GitHubStarIcon = HOST_ICONOLOGY.appMenu.githubStar;
 const SettingsIcon = HOST_ICONOLOGY.appMenu.settings;
+const AgentIcon = HOST_ICONOLOGY.appMenu.agent;
 const ClearIcon = HOST_ICONOLOGY.appMenu.clear;
 const ClearCanvasDialog = lazy(() =>
   import("@/widgets/dialogs/clear-canvas-dialog").then((loaded) => ({
@@ -51,6 +52,9 @@ const SettingsDialog = lazy(() =>
   }))
 );
 const MobileGuideDialog = lazy(() => import("@/widgets/dialogs/mobile-guide-dialog"));
+const LocalAgentDialog = lazy(() => import("@/widgets/dialogs/local-agent-dialog").then((loaded) => ({
+  default: requireLoadedModule(loaded).LocalAgentDialog,
+})));
 
 type AppMenuProps = {
   formFactor?: EditorFormFactor;
@@ -71,6 +75,7 @@ export function AppMenu({
     useOnboardingTour();
   const [clearOpen, setClearOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
   const [mobileGuideOpen, setMobileGuideOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const githubStars = useGitHubStars(menuOpen);
@@ -124,6 +129,10 @@ export function AppMenu({
                   <DropdownMenuItem onSelect={() => navigateApp('/workspace?view=account')}>
                     <AccountIcon />
                     {t('workspace.account')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setAgentOpen(true)}>
+                    <AgentIcon />
+                    {t('localAgent.title')}
                   </DropdownMenuItem>
                   {workspace && splitAvailable && (
                     <DropdownMenuItem
@@ -223,14 +232,19 @@ export function AppMenu({
       </div>
 
       <RecoverableLazyBoundary
-        resetKey={`${clearOpen}:${settingsOpen}:${mobileGuideOpen}`}
+        resetKey={`${clearOpen}:${settingsOpen}:${mobileGuideOpen}:${agentOpen}`}
         onError={() => {
           setClearOpen(false);
           setSettingsOpen(false);
           setMobileGuideOpen(false);
+          setAgentOpen(false);
         }}
       >
         <Suspense fallback={null}>
+          {agentOpen && <LocalAgentDialog open={agentOpen} onOpenChange={(open) => {
+            setAgentOpen(open);
+            if (!open) window.setTimeout(() => menuTriggerRef.current?.focus(), 0);
+          }} />}
           {clearOpen && (
             <ClearCanvasDialog
               isCollapsed={false}

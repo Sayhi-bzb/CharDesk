@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createSelectionCommandFactory } from "@/domains/actions/public";
 import { createCanvasRuntime, type CanvasRuntime } from "@/domains/canvas/public";
 import { createCanvasReadTool, createCanvasWriteTool } from "./canvasTools";
+import { createTextRenderingRuntime, DEFAULT_TEXT_RENDER_PROFILE } from "@/domains/document/public";
+const runtime = createTextRenderingRuntime();
+runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "raw" });
+const rendering = { render: runtime.renderCompact, getProfile: runtime.getProfile, getContext: () => ({ themeMode: "light" as const }) };
 
 describe("Canvas writing tool", () => {
   const runtimes: CanvasRuntime[] = [];
@@ -19,13 +23,13 @@ describe("Canvas writing tool", () => {
 
   it("writes graphemes at signed coordinates without changing interaction and undoes each call separately", async () => {
     const canvas = host();
-    const tool = createCanvasWriteTool(canvas);
+    const tool = createCanvasWriteTool(canvas, rendering);
     const interaction = canvas.getState().interaction;
     const camera = canvas.viewport.getSnapshot();
     expect(tool.readOnly).toBe(false);
     expect(await tool.execute({ at: [-5, -2], content: "你é\nABCD" })).toEqual({ canvasId: "canvas-a", bounds: [-5, -2, 4, 2] });
     expect(await tool.execute({ at: [-5, -1], content: "X " })).toEqual({ canvasId: "canvas-a", bounds: [-5, -1, 2, 1] });
-    const view = await createCanvasReadTool(canvas).execute({ viewport: [-5, -2, 4, 2] });
+    const view = await createCanvasReadTool(canvas, rendering).execute({ viewport: [-5, -2, 4, 2] });
     expect(view).toMatchObject({ content: expect.stringContaining("你é ") });
     expect(view).toMatchObject({ content: expect.stringContaining("X CD") });
     expect(canvas.getState().interaction).toEqual(interaction);
@@ -40,8 +44,8 @@ describe("Canvas writing tool", () => {
 
   it("validates the whole write before modifying content and treats empty text as a no-op", async () => {
     const canvas = host();
-    const tool = createCanvasWriteTool(canvas);
-    for (const input of [{ at: [0], content: "A" }, { at: [0, 0], content: "A\n\tB" },
+    const tool = createCanvasWriteTool(canvas, rendering);
+    for (const input of [{ at: [0], content: "A" },
       { at: [Number.MAX_SAFE_INTEGER, 0], content: "AB" }, { at: [0, 0], content: "A", viewport: [0, 0, 1, 1] }]) {
       expect(await tool.execute(input)).toMatchObject({ code: "invalid_input" });
     }
@@ -52,15 +56,15 @@ describe("Canvas writing tool", () => {
   it("rejects source projections and Slide overflow instead of silently clipping", async () => {
     const canvas = host();
     canvas.commands.sessions.openSource({ kind: "blackboard", provider: "browser-workspace", id: "source-a" });
-    expect(await createCanvasWriteTool(canvas).execute({ at: [0, 0], content: "A" })).toMatchObject({ code: "source_backed_canvas" });
+    expect(await createCanvasWriteTool(canvas, rendering).execute({ at: [0, 0], content: "A" })).toMatchObject({ code: "source_backed_canvas" });
     canvas.commands.sessions.create("slide");
-    expect(await createCanvasWriteTool(canvas).execute({ at: [-1, 0], content: "A" })).toMatchObject({ code: "out_of_bounds" });
-    expect(await createCanvasWriteTool(canvas).execute({ at: [0, 0], content: "A" })).toMatchObject({ bounds: [0, 0, 1, 1] });
+    expect(await createCanvasWriteTool(canvas, rendering).execute({ at: [-1, 0], content: "A" })).toMatchObject({ code: "out_of_bounds" });
+    expect(await createCanvasWriteTool(canvas, rendering).execute({ at: [0, 0], content: "A" })).toMatchObject({ bounds: [0, 0, 1, 1] });
   });
 
   it("preserves empty rows and reports only the envelope of written positions", async () => {
     const canvas = host();
-    const tool = createCanvasWriteTool(canvas);
+    const tool = createCanvasWriteTool(canvas, rendering);
     await tool.execute({ at: [0, 0], content: "ABCD\nEFGH\nIJKL" });
     expect(await tool.execute({ at: [0, 0], content: "\r\n你\r\n\r\nZ" })).toEqual({ canvasId: "canvas-a", bounds: [0, 1, 2, 3] });
     const reader = canvas.getState().contentSurface.reader;
@@ -70,5 +74,76 @@ describe("Canvas writing tool", () => {
     await tool.execute({ at: [1, 1], content: "X" });
     expect(reader.getCell({ x: 0, y: 1 })).toBeUndefined();
     expect(reader.getCell({ x: 1, y: 1 })?.char).toBe("X");
+  });
+
+  it("uses the same Markdown renderer and live profile as Canvas text rendering", async () => {
+    const canvas = host();
+    const runtime = createTextRenderingRuntime();
+    runtime.setProfile({ ...runtime.getProfile(), mode: "markdown" });
+    const rendering = { render: runtime.renderCompact, getProfile: runtime.getProfile, getContext: () => ({ themeMode: "dark" as const }) };
+    const tool = createCanvasWriteTool(canvas, rendering);
+    const interaction = canvas.getState().interaction;
+    const source = "**Hello** and `code` [link](https://example.com)";
+    const rendered = await rendering.render(source, canvas.getState().brushColor, rendering.getContext());
+    if (rendered.kind !== "spans") throw new Error("Expected rendered spans");
+    expect(await tool.execute({ at: [-10, 5], content: source })).toMatchObject({ bounds: expect.any(Array) });
+    const reader = canvas.getState().contentSurface.reader;
+    for (const row of rendered.rows) for (const span of row.spans) {
+      const cell = reader.getCell({ x: -10 + span.x, y: 5 + row.y });
+      expect(cell?.color).toBe(span.color);
+      expect(cell?.attrs).toEqual(span.attrs);
+      expect(cell?.href).toBe(span.href);
+      expect(cell?.bgColor).toBe(span.bgColor);
+    }
+    expect(canvas.getState().interaction).toEqual(interaction);
+    const view = await createCanvasReadTool(canvas, rendering).execute({ viewport: [-10, 5, 60, 10] });
+    expect(view).toMatchObject({ content: expect.stringContaining('"mode":"markdown"') });
+    expect(view).toMatchObject({ content: expect.stringContaining("bold") });
+    runtime.setProfile({ ...runtime.getProfile(), mode: "raw" });
+    expect(await tool.execute({ at: [0, 30], content: "**Hello**" })).toMatchObject({ bounds: [0, 30, 9, 1] });
+    expect(reader.getCell({ x: 0, y: 30 })?.char).toBe("*");
+    canvas.commands.history.undo();
+    expect(reader.getCell({ x: 0, y: 30 })).toBeUndefined();
+    canvas.commands.history.undo();
+    expect(reader.getContentBounds()).toBeNull();
+  });
+
+  it("renders ANSI styles, expands tabs, and preserves or replaces target backgrounds", async () => {
+    const canvas = host();
+    const runtime = createTextRenderingRuntime();
+    runtime.setProfile({ ...runtime.getProfile(), mode: "ansi" });
+    const rendering = { render: runtime.renderCompact, getProfile: runtime.getProfile, getContext: () => ({ themeMode: "light" as const }) };
+    const tool = createCanvasWriteTool(canvas, rendering);
+    expect(await tool.execute({ at: [0, 0], content: "\x1b[41mAB\x1b[0m" })).toMatchObject({ bounds: [0, 0, 2, 1] });
+    const reader = canvas.getState().contentSurface.reader;
+    const background = reader.getCell({ x: 0, y: 0 })?.bgColor;
+    expect(background).toBeTruthy();
+    await tool.execute({ at: [0, 0], content: "\x1b[1;32mC\x1b[0m" });
+    expect(reader.getCell({ x: 0, y: 0 })).toMatchObject({ char: "C", bgColor: background, attrs: { bold: true } });
+    await tool.execute({ at: [0, 0], content: "\x1b[44mD\x1b[0m" });
+    expect(reader.getCell({ x: 0, y: 0 })?.bgColor).not.toBe(background);
+    runtime.setProfile({ ...runtime.getProfile(), mode: "raw" });
+    expect(await tool.execute({ at: [0, 2], content: "\tB" })).toMatchObject({ bounds: [0, 2, 5, 1] });
+    expect(reader.getCell({ x: 4, y: 2 })?.char).toBe("B");
+  });
+
+  it("rejects rendered overflow atomically and never writes to a changed target", async () => {
+    const canvas = host();
+    canvas.commands.sessions.create("slide");
+    const runtime = createTextRenderingRuntime();
+    runtime.setProfile({ ...runtime.getProfile(), mode: "markdown", markdownWrapEnabled: false });
+    const rendering = { render: runtime.renderCompact, getProfile: runtime.getProfile, getContext: () => ({ themeMode: "light" as const }) };
+    expect(await createCanvasWriteTool(canvas, rendering).execute({ at: [0, 0], content: `**${"x".repeat(101)}**` })).toMatchObject({ code: "out_of_bounds" });
+    expect(canvas.getState().contentSurface.reader.getContentBounds()).toBeNull();
+    const delayed = { ...rendering, render: async (...args: Parameters<typeof runtime.renderCompact>) => {
+      const result = await runtime.renderCompact(...args);
+      canvas.commands.sessions.create("freeform");
+      return result;
+    } };
+    expect(await createCanvasWriteTool(canvas, delayed).execute({ at: [0, 0], content: "**Hello**" })).toMatchObject({ code: "write_failed" });
+    expect(canvas.getState().contentSurface.reader.getContentBounds()).toBeNull();
+    const failed = { ...rendering, render: async () => { throw new Error("Renderer failed"); } };
+    expect(await createCanvasWriteTool(canvas, failed).execute({ at: [0, 0], content: "Hello" })).toMatchObject({ code: "write_failed" });
+    expect(canvas.getState().contentSurface.reader.getContentBounds()).toBeNull();
   });
 });

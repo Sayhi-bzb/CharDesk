@@ -8,9 +8,12 @@ import { createChardeskMaterialsTool, MATERIALS_READ_TOOL_NAME } from "./materia
 import { BLACKBOARD_AGENT_TOOL_NAMES } from "./blackboardTools";
 import { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME } from "./canvasTools";
 import { createChardeskAgentToolGroups, createChardeskAgentTools } from "./chardeskTools";
+import { createTextRenderingRuntime } from "@/domains/document/public";
+const runtime = createTextRenderingRuntime();
+const rendering = { render: runtime.renderCompact, getProfile: runtime.getProfile, getContext: () => ({ themeMode: "light" as const }) };
 
 const canvas = {
-  commands: { text: { writeAt: () => null } },
+  commands: { text: { writeAt: () => null, writeRowsAt: () => null } },
   ready: Promise.resolve(),
   getState: () => ({ activeCanvasId: "canvas-a" }) as ReturnType<CanvasRuntime["getState"]>,
   materializeSession: async () => ({
@@ -28,6 +31,7 @@ describe("CharDesk agent tools", () => {
     repositories.push(repository);
     const dependencies = {
       canvas,
+      rendering,
       blackboard: {
         blackboard: new BlackboardRuntime(repository),
         workspaceTarget: { getActiveWorkspaceId: () => null, activateWorkspace: async () => {} },
@@ -43,9 +47,9 @@ describe("CharDesk agent tools", () => {
   });
 
   it("composes read-only pages without a Blackboard runtime", async () => {
-    const groups = createChardeskAgentToolGroups({ canvas, readOnly: true });
+    const groups = createChardeskAgentToolGroups({ canvas, rendering, readOnly: true });
     expect(groups.blackboard).toEqual([]);
-    const tools = createChardeskAgentTools({ canvas, readOnly: true });
+    const tools = createChardeskAgentTools({ canvas, rendering, readOnly: true });
     expect(tools.map(({ name }) => name)).toEqual([MATERIALS_READ_TOOL_NAME, CANVAS_READ_TOOL_NAME]);
     expect(tools.every(({ readOnly }) => readOnly)).toBe(true);
     expect(await groups.canvas[0].execute({})).toMatchObject({ canvasId: "canvas-a", viewport: null });
