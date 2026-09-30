@@ -1,7 +1,62 @@
-import { isCanvasReadViewport, readCanvasViewport, type CanvasRuntime } from "@/domains/canvas/public";
+import { CanvasWriteError, isCanvasReadViewport, readCanvasViewport, type CanvasRuntime } from "@/domains/canvas/public";
 import type { AgentToolDefinition } from "./contracts";
 
 export const CANVAS_READ_TOOL_NAME = "chardesk_canvas_read";
+export const CANVAS_WRITE_TOOL_NAME = "chardesk_canvas_write";
+
+export const createCanvasWriteTool = (
+  canvas: Pick<CanvasRuntime, "ready" | "getState"> & {
+    commands: { text: Pick<CanvasRuntime["commands"]["text"], "writeAt"> };
+  },
+): AgentToolDefinition => ({
+  name: CANVAS_WRITE_TOOL_NAME,
+  title: "Write Canvas text",
+  description: "Write plain Unicode content at [x,y] in original Cell coordinates on the current editable Canvas. Each newline returns to the starting column. Written characters replace existing characters, explicit spaces clear characters while preserving backgrounds, and unwritten positions remain unchanged. No wrapping or scaling. Returns bounds [x,y,width,height] for canvas_read. Does not move the user's camera, cursor, or selection. Source-backed Canvases require source-file editing; Slide overflow is rejected without writing.",
+  readOnly: false,
+  inputSchema: {
+    type: "object",
+    properties: {
+      at: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2, description: "[x,y] in original Cell coordinates; signed safe integers." },
+      content: { type: "string", description: "Plain Unicode text, not a read tool's coordinate rulers or sampled map. Tabs and control characters are unsupported." },
+    },
+    required: ["at", "content"],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    oneOf: [
+      { type: "object", properties: {
+        canvasId: { type: "string" },
+        bounds: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
+      }, required: ["canvasId", "bounds"], additionalProperties: false },
+      { type: "object", properties: {
+        ok: { const: false },
+        code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_ready", "source_backed_canvas", "out_of_bounds", "write_failed"] },
+        message: { type: "string" },
+      }, required: ["ok", "code", "message"], additionalProperties: false },
+    ],
+  },
+  execute: async (input) => {
+    const at = input.at;
+    if (Object.keys(input).some((key) => key !== "at" && key !== "content")
+      || !Array.isArray(at) || at.length !== 2 || !at.every(Number.isSafeInteger) || typeof input.content !== "string") {
+      return { ok: false, code: "invalid_input", message: "Expected { at: [x,y], content: string } with safe integer coordinates." };
+    }
+    try {
+      await canvas.ready;
+    } catch {
+      return { ok: false, code: "canvas_not_ready", message: "The Canvas content is not ready." };
+    }
+    const canvasId = canvas.getState().activeCanvasId;
+    if (!canvasId) return { ok: false, code: "canvas_not_active", message: "Open a Canvas first." };
+    try {
+      const bounds = canvas.commands.text.writeAt(input.content, { x: at[0], y: at[1] });
+      return { canvasId, bounds };
+    } catch (error) {
+      return { ok: false, code: error instanceof CanvasWriteError ? error.code : "write_failed",
+        message: error instanceof CanvasWriteError ? error.message : "Unable to write Canvas content." };
+    }
+  },
+});
 
 export const createCanvasReadTool = (
   canvas: Pick<CanvasRuntime, "ready" | "getState" | "materializeSession">,

@@ -26,6 +26,7 @@ import {
 } from "@/domains/canvas-templates/public";
 import { useResolvedContentTheme } from "@/domains/document/public";
 import { CellFrameCanvas } from "@/shared/components/CellFrameCanvas";
+import { useCanvasTemplatePlacement } from '@/widgets/canvas-editor/CanvasTemplatePlacement';
 
 const sortTemplatesByLabel = <
   T extends { id: CanvasTemplateId; label: string },
@@ -189,13 +190,19 @@ type CanvasTemplateLibraryProps = {
   templates?: readonly CanvasTemplateDefinition[];
   query?: string;
   emptyLabel?: string;
+  touchPlacement?: boolean;
+  onPlacementStart?: () => void;
 };
 
 export function CanvasTemplateLibrary({
   templates: sourceTemplates = CANVAS_COMPONENT_TEMPLATES,
   query = "",
   emptyLabel = "No components found",
+  touchPlacement = false,
+  onPlacementStart,
 }: CanvasTemplateLibraryProps) {
+  const placement = useCanvasTemplatePlacement();
+  const canPlace = touchPlacement && !!placement && !!onPlacementStart;
   const [dragPreview, setDragPreview] =
     useState<CanvasTemplateDragPreview | null>(null);
   const pendingDragPositionRef = useRef<PendingDragPreviewPosition | null>(null);
@@ -328,7 +335,10 @@ export function CanvasTemplateLibrary({
                 data-onboarding-template-id={template.id}
                 type="button"
                 orientation="vertical"
-                draggable
+                draggable={!canPlace}
+                onClick={canPlace ? () => placement!.beginTap(template.id, onPlacementStart!) : undefined}
+                onPointerDown={canPlace ? (event) => placement!.beginPress(template.id, event, onPlacementStart!) : undefined}
+                onContextMenu={canPlace ? (event) => event.preventDefault() : undefined}
                 onDragStart={(event) =>
                   handleTemplateDragStart(
                     event,
@@ -338,7 +348,7 @@ export function CanvasTemplateLibrary({
                   )
                 }
                 onDragEnd={finishTemplateDrag}
-                className="group h-auto min-w-0 items-stretch gap-1 p-1.5 text-center"
+                className={`group h-auto min-w-0 items-stretch gap-1 p-1.5 text-center${canPlace ? ' select-none [-webkit-touch-callout:none]' : ''}`}
               >
                 <Surface kind="transparent" asChild>
                   <div

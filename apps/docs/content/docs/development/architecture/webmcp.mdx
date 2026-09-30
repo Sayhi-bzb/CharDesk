@@ -1,0 +1,37 @@
+---
+title: WebMCP
+description: Tool ownership and composition for the live Canvas page.
+---
+
+WebMCP tools have three owners. These are capability groups, not protocol versions
+or separate servers; existing tool names and wire contracts stay unchanged.
+
+```text
+WebMCP
+├─ Blackboard  workspace and source files
+├─ Canvas      two-dimensional Cell space
+└─ Materials   shared authoring reference
+```
+
+| Group | Tools | Contract |
+| --- | --- | --- |
+| Blackboard | `chardesk_blackboard_{list_workspaces,create_workspace,open_workspace,list_files,read_file,write_file,apply_patch,delete_file,check}` | File-oriented tools; workspace identity and file paths locate source. |
+| Canvas | `chardesk_canvas_read`, `chardesk_canvas_write` | [Viewport reading](./canvas-reading) and [positioned writing](./canvas-writing) in original Cell coordinates. |
+| Materials | `chardesk_read_materials` | Read-only Markdown shared by both workflows. |
+
+New spatial operations belong to Canvas; source-file operations remain in Blackboard.
+Groups reuse existing runtimes and never own separate copies of application state.
+
+## Page composition
+
+The [composition entry point](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/chardeskTools.ts)
+builds the groups and flattens them for the host connector. Normal Canvas pages
+register all 12 tools. Local CLI reader pages register Canvas reading and Materials only,
+without a Blackboard runtime dependency. Workspace management pages register none.
+Grouping does not add a browser-visible category field or change registration order.
+
+## Authorities
+
+- Definitions: [Blackboard](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/blackboardTools.ts), [Canvas](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/canvasTools.ts), [Materials](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/materialsTools.ts).
+- Host registration and diagnostics: [state flows](./state-flows).
+- Verification: [group composition](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/chardeskTools.test.ts), [headless browser discovery and calls](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/webmcp.spec.ts).

@@ -1,5 +1,6 @@
 export { CanvasRuntime, createCanvasRuntime } from "./runtime";
 export { readCanvasViewport, isCanvasReadViewport } from "./readViewport";
+export { CanvasWriteError } from "./writeText";
 export type { CanvasReadViewport, CanvasReadProjection } from "./readViewport";
 export type { CanvasSessionMaterialization } from "./runtime";
 export { CanvasViewportRuntime, normalizeCanvasViewport } from "./viewportRuntime";

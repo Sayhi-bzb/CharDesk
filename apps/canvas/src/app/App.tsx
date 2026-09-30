@@ -54,6 +54,7 @@ import {
   type CanvasViewId,
 } from '@/widgets/canvas-editor/engine/CanvasWorkspace';
 import { useEditor } from '@/domains/editor/public';
+import { CanvasTemplatePlacementProvider } from '@/widgets/canvas-editor/CanvasTemplatePlacement';
 
 
 
@@ -641,7 +642,9 @@ function AppScreen() {
   return (
     <OnboardingTourProvider autoStart={!isLocalBlackboardReaderRoute(window.location)}>
       <CanvasWorkspaceProvider>
-        <AppContent />
+        <CanvasTemplatePlacementProvider>
+          <AppContent />
+        </CanvasTemplatePlacementProvider>
       </CanvasWorkspaceProvider>
     </OnboardingTourProvider>
   );

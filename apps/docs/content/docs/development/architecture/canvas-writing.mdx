@@ -1,0 +1,44 @@
+---
+title: Canvas Writing
+description: Write Unicode into editable Canvas content at an original Cell coordinate.
+---
+
+`chardesk_canvas_write` belongs to the Canvas group in the [WebMCP contract](./webmcp).
+It writes to the active editable Freeform Canvas or current Slide page through
+Canvas commands. Source-backed surfaces return `source_backed_canvas`; edit their
+source with Blackboard file tools or the local filesystem.
+
+## Position and content
+
+```json
+{ "at": [100, 50], "content": "ABC\nDE" }
+```
+
+`at` is the required starting `[x,y]` in original Cell coordinates. Both coordinates
+and the resulting endpoints must be safe integers. Content determines the footprint;
+there is no input width, height, scale, wrapping, or Markdown interpretation.
+
+Each newline returns to the starting column on the next row. CRLF and CR normalize
+to newline. Graphemes use protocol Cell widths. Written characters replace the
+characters they occupy; explicit spaces clear characters while preserving backgrounds.
+Short and empty lines leave unwritten positions unchanged. Tabs and other control
+characters are rejected. Slide overflow rejects the complete write before mutation.
+
+## Result and verification
+
+The response contains `canvasId` and `bounds: [x,y,width,height]`, the envelope of
+written spans. Content with no occupied character positions returns `bounds: null`
+without creating history. Writes commit as one independently undoable operation and
+do not change the user's camera, cursor, or selection.
+
+Use returned bounds as the viewport of [Canvas reading](./canvas-reading). Its
+coordinate rulers and sampled symbols are generated output, not write payloads.
+Invalid input, missing Canvas, unavailable runtime, source-backed content, Slide
+overflow, and execution failures return explicit error codes. Local CLI reader pages
+do not register this write tool.
+
+## Authorities
+
+- [Tool definition](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/canvasTools.ts)
+- [Text command](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/canvas/state/canvasTextCommands.ts)
+- [Verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/canvasWriteTool.test.ts)

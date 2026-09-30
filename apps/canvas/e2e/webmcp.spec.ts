@@ -120,6 +120,7 @@ test.describe("WebMCP", () => {
       "chardesk_blackboard_read_file",
       "chardesk_blackboard_write_file",
       "chardesk_canvas_read",
+      "chardesk_canvas_write",
       "chardesk_read_materials",
     ]);
     expect(result.output).toMatchObject({
@@ -163,6 +164,30 @@ test.describe("WebMCP", () => {
     expect(results[4]).toMatchObject({ mode: "density", step: 10 });
     expect(new Set(results.map(({ canvasId }) => canvasId)).size).toBe(1);
     await expect(page.getByTestId("zoom-reset")).toHaveText(zoomBefore!);
+  });
+
+  test("writes Unicode through WebMCP and rejects writes to source projections", async ({ page }) => {
+    const execute = (name: string, input: Record<string, unknown>) => page.evaluate(async ({ name, input }) => {
+      const context = (document as Document & { modelContext?: {
+        getTools(): Promise<Array<{ name: string }>>;
+        executeTool(tool: { name: string }, input: string): Promise<unknown>;
+      } }).modelContext!;
+      const tool = (await context.getTools()).find((tool) => tool.name === name)!;
+      const output = await context.executeTool(tool, JSON.stringify(input));
+      return typeof output === "string" ? JSON.parse(output) : output;
+    }, { name, input });
+    await page.goto("/?webmcp=polyfill");
+    await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
+    const written = await execute("chardesk_canvas_write", { at: [-20, -10], content: "Hello, 世界\nABCD" });
+    expect(written).toMatchObject({ canvasId: expect.any(String), bounds: [-20, -10, 11, 2] });
+    const view = await execute("chardesk_canvas_read", { viewport: written.bounds });
+    expect(view.content).toContain("Hello, 世界");
+    await execute("chardesk_canvas_write", { at: [-20, -9], content: "X " });
+    expect((await execute("chardesk_canvas_read", { viewport: [-20, -9, 4, 1] })).content).toContain("X CD");
+    await page.goto("/blackboard?webmcp=polyfill");
+    await expect(page).toHaveURL(/workspace=/);
+    await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
+    expect(await execute("chardesk_canvas_write", { at: [0, 0], content: "A" })).toMatchObject({ code: "source_backed_canvas" });
   });
 
   test("creates, opens, and visibly edits a Blackboard from the site root", async ({
@@ -245,7 +270,7 @@ test.describe("WebMCP", () => {
         modelContext?: { getTools(): Promise<unknown[]> };
       }).modelContext;
       return modelContext ? (await modelContext.getTools()).length : -1;
-    })).toBe(11);
+    })).toBe(12);
 
     const blackboard = await context.newPage();
     await blackboard.goto("/blackboard?webmcp=polyfill");
@@ -255,7 +280,7 @@ test.describe("WebMCP", () => {
         modelContext?: { getTools(): Promise<unknown[]> };
       }).modelContext;
       return modelContext ? (await modelContext.getTools()).length : -1;
-    })).toBe(11);
+    })).toBe(12);
 
     await page.close();
     await expect(blackboard.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
@@ -264,7 +289,7 @@ test.describe("WebMCP", () => {
         modelContext?: { getTools(): Promise<unknown[]> };
       }).modelContext;
       return modelContext ? (await modelContext.getTools()).length : -1;
-    })).toBe(11);
+    })).toBe(12);
   });
 
   test("keeps browser-persistent CRUD out of local CLI reader pages", async ({ page }) => {

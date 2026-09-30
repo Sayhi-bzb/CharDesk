@@ -24,10 +24,7 @@ import {
   isModuleReloadPending,
   requireLoadedModule,
 } from "@/shared/lib/moduleLoadRecovery";
-import {
-  createChardeskAgentTools,
-  createChardeskMaterialsTool,
-} from "./site-tools/chardeskTools";
+import { createChardeskAgentTools } from "./site-tools/chardeskTools";
 import { startDocumentSiteTools } from "./site-tools/connector";
 import {
   prepareDocumentWebMcp,
@@ -37,22 +34,22 @@ import {
 import { isBlackboardRoute, isLocalBlackboardReaderRoute } from "./blackboardRoute";
 import { APP_ROUTE_EVENT, isWorkspaceRoute } from "@/shared/navigation/workspace-route";
 import { createBlackboardWorkspaceTarget } from "./blackboardWorkspaceTarget";
-import { createCanvasReadTool } from "./site-tools/canvasTools";
 
 const profile = EDITOR_HOST_PROFILE;
 const host = getApplicationEditorHost(profile);
-const createRouteAgentTools = () => isLocalBlackboardReaderRoute(window.location)
-  ? [createChardeskMaterialsTool(), createCanvasReadTool(host.canvas)]
-  : createChardeskAgentTools({
+const createRouteAgentTools = () => createChardeskAgentTools({
+  canvas: host.canvas,
+  readOnly: isLocalBlackboardReaderRoute(window.location),
+  blackboard: isLocalBlackboardReaderRoute(window.location) ? undefined : {
+    blackboard: host.blackboard,
+    workspaceTarget: createBlackboardWorkspaceTarget({
       blackboard: host.blackboard,
       canvas: host.canvas,
-      workspaceTarget: createBlackboardWorkspaceTarget({
-        blackboard: host.blackboard,
-        canvas: host.canvas,
-        location: window.location,
-        history: window.history,
-      }),
-    });
+      location: window.location,
+      history: window.history,
+    }),
+  },
+});
 
 let siteTools: ReturnType<typeof startDocumentSiteTools> | null = null;
 let siteToolsGeneration = 0;

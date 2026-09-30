@@ -9,6 +9,7 @@ import { bindCloudSession, blackboardSyncKey, cloudSignInUrl, cloudGoogleSignInU
 import { prepareTextExport } from '@/domains/export/public';
 import { isSourceBackedCanvasSession } from '@/domains/sessions/public';
 import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
+import { GoogleMarkIcon } from '@/shared/icons/google-mark-icon';
 import { useUiI18n } from '@/shared/i18n';
 import {
   AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -38,6 +39,12 @@ const syncKey = (work: WorkItem) => work.kind === 'blackboard' ? blackboardSyncK
 
 const accountRoute = () => window.location.search;
 const providerName = (provider: CloudAuthProvider) => provider === 'github' ? 'GitHub' : 'Google';
+const GitHubMark = HOST_ICONOLOGY.appMenu.github;
+const ProviderMark = ({ provider }: { provider: CloudAuthProvider }) => (
+  <span className={`flex size-5 shrink-0 items-center justify-center rounded-sm ${provider === 'google' ? 'bg-white' : ''}`}>
+    {provider === 'github' ? <GitHubMark className="size-4" /> : <GoogleMarkIcon />}
+  </span>
+);
 
 const subscribeRoute = (listener: () => void) => {
   window.addEventListener('popstate', listener);
@@ -485,7 +492,7 @@ export function LocalWorkspacePage() {
           <DialogHeader>
             <DialogTitle>{t(cloud.user ? 'workspace.account' : 'workspace.signInTitle')}</DialogTitle>
             {!cloud.user && cloud.configured && !cloud.loading &&
-              <DialogDescription>{t('workspace.signInDescription')}</DialogDescription>}
+              <DialogDescription>{t('workspace.cloudSecurityNote')}</DialogDescription>}
           </DialogHeader>
           <DialogBody className="flex flex-col gap-3">
             {!cloud.configured ? (
@@ -501,25 +508,29 @@ export function LocalWorkspacePage() {
                     work: mib(cloud.limits.maxWorkBytes),
                   })}
                 </p>}
-                <p className="text-sm text-muted-foreground">{t('workspace.cloudCatalogOnly')}</p>
+                <p className="text-sm text-muted-foreground">{t('workspace.cloudSecurityNote')}</p>
                 <p className="text-sm text-muted-foreground">
                   {t('workspace.connectedProviders')}: {cloud.linkedProviders.map(providerName).join(' · ')}
                 </p>
                 {cloud.availableProviders.filter((provider) => !cloud.linkedProviders.includes(provider))
-                  .map((provider) => <Button key={provider} type="button" tone="neutral"
+                  .map((provider) => <Button key={provider} type="button" tone="neutral" outlined
                     disabled={cloud.busy} onClick={() => void cloud.linkProvider(provider)}>
+                    <ProviderMark provider={provider} />
                     {t(provider === 'github' ? 'workspace.connectGitHub' : 'workspace.connectGoogle')}
                   </Button>)}
               </>
             ) : (
               <div className="flex flex-col gap-2">
                 {cloud.availableProviders.includes('github') &&
-                  <Button type="button" className="w-full" onClick={() => { window.location.href = cloudSignInUrl; }}>
+                  <Button type="button" tone="neutral" outlined className="w-full"
+                    onClick={() => { window.location.href = cloudSignInUrl; }}>
+                    <ProviderMark provider="github" />
                     {t('workspace.signInGitHub')}
                   </Button>}
                 {cloud.availableProviders.includes('google') &&
-                  <Button type="button" tone="neutral" className="w-full"
+                  <Button type="button" tone="neutral" outlined className="w-full"
                     onClick={() => { window.location.href = cloudGoogleSignInUrl; }}>
+                    <ProviderMark provider="google" />
                     {t('workspace.signInGoogle')}
                   </Button>}
               </div>

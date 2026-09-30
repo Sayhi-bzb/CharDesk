@@ -28,6 +28,11 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'webkit-template-placement',
+      testMatch: /template-placement-mobile\.spec\.ts/,
+      use: { ...devices['iPhone 13'] },
+    },
+    {
       name: 'webkit-sidebar-preview',
       testMatch: /sidebar-preview\.spec\.ts/,
       use: { ...devices['iPhone 13'] },

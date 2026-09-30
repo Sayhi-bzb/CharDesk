@@ -15,6 +15,7 @@ import {
 import { useResolvedContentTheme } from "@/domains/document/public";
 import { useUiTheme } from "@chardesk/ui";
 import type { CanvasEditorModel } from "./canvasModels";
+import { useCanvasTemplatePlacement } from '../CanvasTemplatePlacement';
 
 type CanvasTemplatePreviewState = {
   templateId: CanvasTemplateId;
@@ -36,6 +37,7 @@ export const useCanvasTemplateDrop = ({
 }: UseCanvasTemplateDropOptions) => {
   const { resolvedTheme } = useUiTheme();
   const contentTheme = useResolvedContentTheme(resolvedTheme);
+  const placement = useCanvasTemplatePlacement();
   const [preview, setPreviewState] =
     useState<CanvasTemplatePreviewState | null>(null);
   const previewRef = useRef<CanvasTemplatePreviewState | null>(null);
@@ -91,15 +93,24 @@ export const useCanvasTemplateDrop = ({
   const hasTemplateData = (dataTransfer: DataTransfer) =>
     Array.from(dataTransfer.types).includes(CANVAS_TEMPLATE_MIME);
 
-  const getDragPoint = (event: DragEvent<HTMLDivElement>): Point | null => {
+  const getClientPoint = (client: Point): Point | null => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return null;
     return GridManager.screenToGrid(
-      event.clientX - rect.left,
-      event.clientY - rect.top,
+      client.x - rect.left,
+      client.y - rect.top,
       model.offset.x,
       model.offset.y,
       model.zoom
+    );
+  };
+  const getDragPoint = (event: DragEvent<HTMLDivElement>) =>
+    getClientPoint({ x: event.clientX, y: event.clientY });
+  const insertTemplate = (templateId: CanvasTemplateId, point: Point) => {
+    model.insertRows(
+      getCanvasTemplateMaterialization(templateId, contentTheme).rows,
+      point,
+      { selectResult: true }
     );
   };
 
@@ -157,12 +168,27 @@ export const useCanvasTemplateDrop = ({
 
     clearPreview();
     setActiveCanvasTemplateDragId(null);
-    model.insertRows(
-      getCanvasTemplateMaterialization(templateId, contentTheme).rows,
-      point,
-      { selectResult: true }
-    );
+    insertTemplate(templateId, point);
   };
+
+  const placementTarget = useRef({ enabled, canvasMode, getClientPoint, schedulePreview, clearPreview, insertTemplate });
+  placementTarget.current = { enabled, canvasMode, getClientPoint, schedulePreview, clearPreview, insertTemplate };
+  const registerTarget = placement?.registerTarget;
+  useEffect(() => registerTarget?.({
+    element: () => containerRef.current,
+    enabled: () => placementTarget.current.enabled && placementTarget.current.canvasMode === 'freeform',
+    clear: () => placementTarget.current.clearPreview(),
+    preview: (templateId, client) => {
+      const target = placementTarget.current;
+      const position = target.getClientPoint(client);
+      if (position) target.schedulePreview({ templateId, position });
+    },
+    place: (templateId, client) => {
+      const target = placementTarget.current;
+      const point = target.getClientPoint(client);
+      if (point) target.insertTemplate(templateId, point);
+    },
+  }), [registerTarget, containerRef]);
 
   const cellRect =
     preview

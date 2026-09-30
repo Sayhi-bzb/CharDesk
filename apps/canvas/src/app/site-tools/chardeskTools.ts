@@ -1,47 +1,28 @@
 import type { BlackboardRuntime } from "@/domains/blackboard/public";
 import type { BlackboardWorkspaceTarget } from "../blackboardWorkspaceTarget";
-import materials from "../../../../../.agents/skills/chardesk/references/materials.md?raw";
-import {
-  BLACKBOARD_AGENT_TOOL_NAMES,
-  createBlackboardAgentTools,
-} from "./blackboardTools";
+import { createBlackboardAgentTools } from "./blackboardTools";
 import type { AgentToolDefinition } from "./contracts";
 import type { CanvasRuntime } from "@/domains/canvas/public";
-import { CANVAS_READ_TOOL_NAME, createCanvasReadTool } from "./canvasTools";
+import { createCanvasReadTool, createCanvasWriteTool } from "./canvasTools";
+import { createChardeskMaterialsTool } from "./materialsTools";
 
-export const CHARDESK_AGENT_TOOL_NAMES = {
-  readMaterials: "chardesk_read_materials",
-  readCanvas: CANVAS_READ_TOOL_NAME,
-  ...BLACKBOARD_AGENT_TOOL_NAMES,
-} as const;
+type ChardeskAgentToolDependencies = Readonly<{
+  canvas: Pick<CanvasRuntime, "ready" | "getState" | "materializeSession"> & Parameters<typeof createCanvasWriteTool>[0];
+  readOnly?: boolean;
+  blackboard?: Readonly<{
+    blackboard: BlackboardRuntime;
+    workspaceTarget: BlackboardWorkspaceTarget;
+  }>;
+}>;
 
-export const createChardeskMaterialsTool = (): AgentToolDefinition => ({
-  name: CHARDESK_AGENT_TOOL_NAMES.readMaterials,
-  title: "Read CharDesk materials",
-  description:
-    "Load CharDesk's visual language, composition materials, and worked examples for authoring or visually restructuring content.",
-  inputSchema: { type: "object", properties: {}, additionalProperties: false },
-  outputSchema: {
-    type: "object",
-    properties: {
-      format: { const: "text/markdown" },
-      content: { type: "string" },
-    },
-    required: ["format", "content"],
-    additionalProperties: false,
-  },
-  readOnly: true,
-  execute: () => ({ format: "text/markdown", content: materials }),
+export const createChardeskAgentToolGroups = (
+  dependencies: ChardeskAgentToolDependencies,
+): Readonly<Record<"materials" | "canvas" | "blackboard", readonly AgentToolDefinition[]>> => ({
+  materials: [createChardeskMaterialsTool()],
+  canvas: [createCanvasReadTool(dependencies.canvas), ...(dependencies.readOnly ? [] : [createCanvasWriteTool(dependencies.canvas)])],
+  blackboard: dependencies.blackboard ? createBlackboardAgentTools(dependencies.blackboard) : [],
 });
 
 export const createChardeskAgentTools = (
-  dependencies: Readonly<{
-    blackboard: BlackboardRuntime;
-    workspaceTarget: BlackboardWorkspaceTarget;
-    canvas: CanvasRuntime;
-  }>,
-): readonly AgentToolDefinition[] => [
-  createChardeskMaterialsTool(),
-  createCanvasReadTool(dependencies.canvas),
-  ...createBlackboardAgentTools(dependencies),
-];
+  dependencies: ChardeskAgentToolDependencies,
+): readonly AgentToolDefinition[] => Object.values(createChardeskAgentToolGroups(dependencies)).flat();

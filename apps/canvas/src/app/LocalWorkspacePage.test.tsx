@@ -126,7 +126,10 @@ describe('LocalWorkspacePage backups', () => {
     expect(window.location.search).toBe('?view=account');
     expect(screen.getByRole('dialog', { name: 'Account' })).toBeVisible();
     expect(screen.getByText('0 of 100 MiB used · 10 MiB per backup')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Connect Google' }));
+    expect(screen.getByText('Cloud backups are not end-to-end encrypted.')).toBeVisible();
+    const connectGoogle = screen.getByRole('button', { name: 'Connect Google' });
+    expect(connectGoogle.querySelector('[data-slot="google-mark-icon"]')).toBeInTheDocument();
+    fireEvent.click(connectGoogle);
     expect(fixtures.linkProvider).toHaveBeenCalledWith('google');
     expect(document.querySelector('table')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
@@ -138,8 +141,11 @@ describe('LocalWorkspacePage backups', () => {
     const { rerender } = render(<LocalWorkspacePage />);
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     const dialog = screen.getByRole('dialog', { name: 'Sign in to CharDesk' });
-    expect(within(dialog).getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
-    expect(within(dialog).getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
+    const github = within(dialog).getByRole('button', { name: 'Sign in with GitHub' });
+    const google = within(dialog).getByRole('button', { name: 'Sign in with Google' });
+    expect(github.querySelector('[data-slot="github-mark-icon"]')).toBeInTheDocument();
+    expect(google.querySelector('[data-slot="google-mark-icon"]')).toBeInTheDocument();
+    expect(within(dialog).getByText('Cloud backups are not end-to-end encrypted.')).toBeVisible();
     expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument();
     fixtures.configured = false;
     rerender(<LocalWorkspacePage />);

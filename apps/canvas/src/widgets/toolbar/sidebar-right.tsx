@@ -187,7 +187,7 @@ export function SidebarRight({
         unicodeSearchLoading: library.unicodeSearchLoading,
       }))
     );
-  const { state, isMobile, setOpen } = useSidebar();
+  const { state, isMobile, setOpen, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed" && !isMobile;
   const { t } = useUiI18n();
   const { phase: onboardingPhase } = useOnboardingTour();
@@ -341,6 +341,8 @@ export function SidebarRight({
               templates={templateLibrary.templates}
               query={templateQuery}
               emptyLabel={templateLibrary.emptyLabel}
+              touchPlacement={isMobile && !readOnly}
+              onPlacementStart={() => setOpenMobile(false)}
             />
           </SurfaceContent>
         );

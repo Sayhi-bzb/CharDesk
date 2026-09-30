@@ -117,12 +117,12 @@ use Registry focus as an implicit write target.
   `.chardesk` envelope -> ordinary editable Freeform or Slide session. This is a
   detached snapshot: it retains rendered content and Slide page order, not source
   paths, drafts, or the manifest topology.
-- Blackboard site tool: active page workspace -> protocol-neutral namespaced command -> source
+- [WebMCP](./webmcp) composes Blackboard, Canvas, and shared Materials tools.
+  Blackboard: active page workspace -> protocol-neutral namespaced command -> source
   repository. Explicit workspace IDs remain a compatibility override. Creation and opening bind
   the page URL, Canvas session, and IndexedDB workspace before later file calls omit identity.
   [Canvas reading](./canvas-reading) exposes the active Cell surface as an automatically
-  scaled viewport. Local CLI reader pages expose this read-only tool and materials but
-  not browser-persistent CRUD. Workspace reads expose the `blackboard.yaml` source graph;
+  scaled viewport. Workspace reads expose the `blackboard.yaml` source graph;
   mutations report whether the compiled Canvas projection updated, stayed unchanged, or became
   invalid. A global read-only tool embeds the canonical skill materials
   at build time so web-only agents can load the same authoring context. The document connector
