@@ -292,6 +292,7 @@ const commands = {
     remove: sessionCommands.removeCanvasSession,
     saveViewport: sessionCommands.saveCanvasSessionViewport,
     rename: sessionCommands.renameCanvasSession,
+    archive: sessionCommands.archiveCanvasSession,
     setCollaboration: sessionCommands.setCanvasSessionCollaboration,
     joinCollaboration: sessionCommands.joinCanvasSessionCollaboration,
   },

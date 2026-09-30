@@ -1,12 +1,12 @@
-import { CanvasWriteError, isCanvasReadViewport, readCanvasViewport, isCanvasSearchQuery,
+import { CanvasWriteError, isCanvasReadViewport, readCanvasViewport, renderCanvasViewportImage, isCanvasSearchQuery,
   isCanvasSearchPosition, searchCanvasSurface, CanvasSearchError, type CanvasRuntime } from "@/domains/canvas/public";
-import type { AgentToolDefinition } from "./contracts";
+import type { AgentToolContentBlock, AgentToolDefinition } from "./contracts";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
 import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvasRendering";
 import { CHARDESK_CONTENT_THEMES } from "@chardesk/rendering/theme";
 
-import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL, CANVAS_SEARCH_TOOL, CANVAS_LIST_TOOL } from "./canvasToolDefinitions";
-export { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_LIST_TOOL_NAME } from "./canvasToolDefinitions";
+import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL, CANVAS_SEARCH_TOOL, CANVAS_MANAGE_TOOL } from "./canvasToolDefinitions";
+export { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_MANAGE_TOOL_NAME } from "./canvasToolDefinitions";
 
 const resolveCanvasId = (canvas: Pick<CanvasRuntime, "getState">, value: unknown) => {
   if (value !== undefined && (typeof value !== "string" || value.length === 0)) return { error: "invalid_input" as const };
@@ -17,21 +17,47 @@ const resolveCanvasId = (canvas: Pick<CanvasRuntime, "getState">, value: unknown
   return { id };
 };
 
-export const createCanvasListTool = (
-  canvas: Pick<CanvasRuntime, "ready" | "getState">,
+export const createCanvasManageTool = (
+  canvas: Pick<CanvasRuntime, "ready" | "getState"> & {
+    commands: { sessions: Pick<CanvasRuntime["commands"]["sessions"], "create" | "rename" | "archive"> };
+  },
+  readOnly = false,
 ): AgentToolDefinition => ({
-  ...CANVAS_LIST_TOOL,
+  ...CANVAS_MANAGE_TOOL,
+  readOnly,
   execute: async (input) => {
-    if (Object.keys(input).length > 0) return { ok: false, code: "invalid_input", message: "Expected an empty input object." };
+    if (!Object.keys(input).every((key) => ["action", "canvasId", "name", "mode"].includes(key))
+      || !["list", "create", "rename", "archive"].includes(String(input.action))) {
+      return { ok: false, code: "invalid_input", message: "Expected action: list, create, rename, or archive." };
+    }
+    if (readOnly && input.action !== "list") return { ok: false, code: "permission_denied", message: "Canvas lifecycle changes are unavailable on this surface." };
     try {
       await canvas.ready;
       const state = canvas.getState();
-      return { canvases: state.canvasSessions.map((session) => ({
+      if (input.action === "list") return { canvases: state.canvasSessions.map((session) => ({
         canvasId: session.id, name: session.name, mode: session.mode,
         active: session.id === state.activeCanvasId,
-        editable: !session.sourceBinding && !session.migrationPending,
+        archived: session.archived === true,
+        editable: !session.sourceBinding && !session.migrationPending && !session.archived,
       })) };
-    } catch { return { ok: false, code: "canvas_not_ready", message: "Unable to list Canvases." }; }
+      if (input.action === "create") {
+        if (input.name !== undefined && (typeof input.name !== "string" || !input.name.trim())) return { ok: false, code: "invalid_input", message: "name must be non-blank." };
+        if (input.mode !== undefined && input.mode !== "freeform" && input.mode !== "slide") return { ok: false, code: "invalid_input", message: "mode must be freeform or slide." };
+        const session = canvas.commands.sessions.create(input.mode === "slide" ? "slide" : "freeform", { name: input.name as string | undefined });
+        return { canvasId: session.id, name: session.name, mode: session.mode, active: true, archived: false };
+      }
+      if (typeof input.canvasId !== "string" || input.canvasId.length === 0) return { ok: false, code: "invalid_input", message: "canvasId is required." };
+      const session = state.canvasSessions.find(({ id }) => id === input.canvasId);
+      if (!session) return { ok: false, code: "canvas_not_found", message: "Canvas not found." };
+      if (input.action === "rename") {
+        if (typeof input.name !== "string" || !input.name.trim()) return { ok: false, code: "invalid_input", message: "name must be non-blank." };
+        if (isSourceBackedCanvasSession(session)) return { ok: false, code: "permission_denied", message: "Source-backed Canvas names are managed by their source." };
+        canvas.commands.sessions.rename(session.id, input.name);
+        return { canvasId: session.id, name: input.name.trim(), mode: session.mode, archived: session.archived === true };
+      }
+      if (!canvas.commands.sessions.archive(session.id)) return { ok: false, code: "archive_failed", message: "Canvas cannot be archived." };
+      return { canvasId: session.id, archived: true };
+    } catch { return { ok: false, code: "canvas_not_ready", message: "Unable to manage Canvases." }; }
   },
 });
 
@@ -136,10 +162,14 @@ export const createCanvasReadTool = (
 ): AgentToolDefinition => ({
   ...CANVAS_READ_TOOL,
   execute: async (input) => {
-    if (Object.keys(input).some((key) => !["canvasId", "viewport"].includes(key))
+    const representation = input.representation === undefined ? "text" : input.representation;
+    const detail = input.detail === undefined ? "auto" : input.detail;
+    if (Object.keys(input).some((key) => !["canvasId", "viewport", "representation", "detail"].includes(key))
       || (input.canvasId !== undefined && (typeof input.canvasId !== "string" || input.canvasId.length === 0))
-      || (input.viewport !== undefined && !isCanvasReadViewport(input.viewport))) {
-      return { ok: false, code: "invalid_input", message: "Expected an optional viewport [x,y,width,height] with safe integer coordinates and positive sizes." };
+      || (input.viewport !== undefined && !isCanvasReadViewport(input.viewport))
+      || !["text", "image", "both"].includes(String(representation))
+      || !["low", "high", "original", "auto"].includes(String(detail))) {
+      return { ok: false, code: "invalid_input", message: "Expected an optional viewport [x,y,width,height], representation text|image|both, and image detail low|high|original|auto." };
     }
     try {
       await canvas.ready;
@@ -151,7 +181,32 @@ export const createCanvasReadTool = (
       const result = readCanvasViewport(snapshot.surface, input.viewport, {
         defaultForeground: CHARDESK_CONTENT_THEMES[rendering.getContext().themeMode].foreground,
       });
-      return { canvasId, ...result, content: `${result.content}\n\n${describeCanvasWriteRendering(rendering)}` };
+      const renderingNote = describeCanvasWriteRendering(rendering);
+      const textContent = `${result.content}\n\n${renderingNote}`;
+      const contentBlocks: AgentToolContentBlock[] = [];
+      if (representation === "text" || representation === "both") contentBlocks.push({ type: "text", text: textContent });
+      const image = (representation === "image" || representation === "both") && result.viewport
+        ? renderCanvasViewportImage(snapshot.surface, result.viewport, detail as "low" | "high" | "original" | "auto")
+        : null;
+      if (image) contentBlocks.push({ type: "image", ...image });
+      if (representation === "image" && !result.viewport) {
+        contentBlocks.push({ type: "note", text: "No Canvas content is available for this image viewport." });
+      }
+      const structuredContent = {
+        canvasId,
+        viewport: result.viewport,
+        step: result.step,
+        mode: result.mode,
+        representation,
+        detail,
+        image: image ? { mimeType: image.mimeType, width: image.width, height: image.height, scale: image.scale } : null,
+      };
+      return {
+        ...structuredContent,
+        content: representation === "image" ? "" : textContent,
+        contentBlocks,
+        structuredContent,
+      };
     } catch {
       return { ok: false, code: "canvas_not_ready", message: "Unable to read the Canvas content." };
     }

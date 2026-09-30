@@ -4,6 +4,8 @@ import type { CanvasSurfaceReader } from "./cell-plane/model";
 import { isCanvasCellOccupied as occupied, readCanvasTextRegion } from "./textRegion";
 
 export type CanvasReadViewport = readonly [x: number, y: number, width: number, height: number];
+export type CanvasReadRepresentation = "text" | "image" | "both";
+export type CanvasReadImageDetail = "low" | "high" | "original" | "auto";
 export type CanvasReadProjection = Readonly<{
   viewport: CanvasReadViewport | null;
   step: number;
@@ -11,6 +13,14 @@ export type CanvasReadProjection = Readonly<{
   content: string;
 }>;
 export type CanvasReadOptions = Readonly<{ defaultForeground?: string }>;
+
+export type CanvasReadImage = Readonly<{
+  mimeType: "image/svg+xml";
+  data: string;
+  width: number;
+  height: number;
+  scale: number;
+}>;
 
 const quadrants = [" ", "▘", "▝", "▀", "▖", "▌", "▞", "▛", "▗", "▚", "▐", "▜", "▄", "▙", "▟", "█"];
 
@@ -25,6 +35,80 @@ const tickInBucket = (start: number, size: number, interval: number): number | n
   const remainder = start % interval;
   const offset = remainder <= 0 ? -remainder : interval - remainder;
   return offset < size ? start + offset : null;
+};
+
+const escapeXml = (value: string) => value
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&apos;");
+
+const encodeBase64 = (value: string) => {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
+  return btoa(binary);
+};
+
+const imageMetrics = (detail: CanvasReadImageDetail) => {
+  switch (detail) {
+    case "low": return { cellWidth: 8, cellHeight: 16, scale: 1 };
+    case "high": return { cellWidth: 12, cellHeight: 22, scale: 1.5 };
+    case "original": return { cellWidth: 16, cellHeight: 28, scale: 2 };
+    default: return { cellWidth: 10, cellHeight: 19, scale: 1.25 };
+  }
+};
+
+/**
+ * Produces a lossless, browser-renderable image block without requiring a
+ * canvas DOM node. SVG keeps Unicode and cell coordinates intact while still
+ * being consumable as an image by MCP clients.
+ */
+export const renderCanvasViewportImage = (
+  surface: CanvasSurfaceReader,
+  viewport: CanvasReadViewport,
+  detail: CanvasReadImageDetail = "auto",
+): CanvasReadImage => {
+  const [x, y, width, height] = viewport;
+  const { cellWidth, cellHeight, scale } = imageMetrics(detail);
+  const pixelWidth = width * cellWidth;
+  const pixelHeight = height * cellHeight;
+  const elements: string[] = [];
+  for (const row of surface.rows({ x, y, width, height })) {
+    let cellX = row.spans[0]?.x ?? x;
+    for (const span of row.spans) {
+      cellX = span.x;
+      for (const cell of span.cells) {
+        const graphemeWidth = getGraphemeCellWidth(cell.char);
+        const localX = cellX - x;
+        const localY = row.y - y;
+        if (localX >= 0 && localX < width && localY >= 0 && localY < height && graphemeWidth > 0) {
+          const fill = cell.bgColor && cell.bgColor !== "transparent" ? escapeXml(cell.bgColor) : null;
+          if (fill) elements.push(`<rect x="${localX * cellWidth}" y="${localY * cellHeight}" width="${graphemeWidth * cellWidth}" height="${cellHeight}" fill="${fill}"/>`);
+          if (cell.char.trim() !== "") {
+            const attrs = cell.attrs ?? {};
+            const fontWeight = attrs.bold ? " font-weight=\"700\"" : "";
+            const fontStyle = attrs.italic ? " font-style=\"italic\"" : "";
+            const decoration = [attrs.underline ? "underline" : "", attrs.strike ? "line-through" : ""].filter(Boolean).join(" ");
+            const textDecoration = decoration ? ` text-decoration=\"${decoration}\"` : "";
+            elements.push(`<text x="${localX * cellWidth}" y="${(localY + 1) * cellHeight - 3}" fill="${escapeXml(cell.color)}"${fontWeight}${fontStyle}${textDecoration}>${escapeXml(cell.char)}</text>`);
+          }
+        }
+        cellX += graphemeWidth;
+      }
+    }
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pixelWidth}" height="${pixelHeight}" viewBox="0 0 ${pixelWidth} ${pixelHeight}"><rect width="100%" height="100%" fill="transparent"/><g font-family="monospace" font-size="${cellHeight - 4}px" xml:space="preserve">${elements.join("")}</g></svg>`;
+  return {
+    mimeType: "image/svg+xml",
+    data: encodeBase64(svg),
+    width: pixelWidth,
+    height: pixelHeight,
+    scale,
+  };
 };
 
 export const isCanvasReadViewport = (value: unknown): value is CanvasReadViewport =>

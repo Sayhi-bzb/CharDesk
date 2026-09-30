@@ -24,6 +24,7 @@ export type CanvasCatalogSession = {
   name: string;
   mode: CanvasMode;
   sourceBinding?: CanvasSourceBinding;
+  archived?: true;
   migrationPending?: true;
   viewport?: { offset: Point; zoom: number };
   collaboration?: CollaborationDescriptor;
@@ -148,6 +149,7 @@ const normalizeCatalogSession = (value: CanvasCatalogSession): CanvasCatalogSess
     ...(value.order === undefined ? {} : { order: value.order }),
     name: value.name,
     ...(value.migrationPending === true ? { migrationPending: true as const } : {}),
+    ...(value.archived === true ? { archived: true as const } : {}),
     mode,
     ...(sourceBinding ? { sourceBinding } : {}),
     ...(value.viewport ? { viewport: value.viewport } : {}),

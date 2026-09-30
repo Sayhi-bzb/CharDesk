@@ -176,9 +176,9 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
         }
         const name = request.params?.name;
         const input = request.params?.input;
-        if (request.method !== 'call' || !['chardesk_canvas_list', 'chardesk_canvas_read', 'chardesk_canvas_search', 'chardesk_canvas_write'].includes(String(name))
+        if (request.method !== 'call' || !['chardesk_canvas_manage', 'chardesk_canvas_read', 'chardesk_canvas_search', 'chardesk_canvas_write'].includes(String(name))
           || !input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid Canvas request');
-        const permission = String(name).endsWith('_list') ? 'inspect' : String(name).endsWith('_read') ? 'read' : String(name).endsWith('_search') ? 'search' : 'write';
+        const permission = String(name).endsWith('_read') ? 'read' : String(name).endsWith('_search') ? 'search' : String(name).endsWith('_manage') && (input as { action?: unknown }).action === 'list' ? 'inspect' : 'write';
         if (!permissions[permission]) throw new Error(`Permission denied: canvas.${permission}`);
         const result = await activePort.execute(String(name), input as Record<string, unknown>);
         const scopedResult = scope === 'application' || !String(name).endsWith('_list') || !result || typeof result !== 'object'

@@ -14,6 +14,7 @@ interface CanvasSessionDescriptorBase {
   name: string;
   viewport?: CanvasViewport;
   sourceBinding?: CanvasSourceBinding;
+  archived?: true;
   migrationPending?: true;
   collaboration?: CollaborationDescriptor;
   collaborationRole?: "host" | "guest";
@@ -76,6 +77,7 @@ export const getCanvasSessionDescriptor = (
     name: session.name,
     ...(session.migrationPending ? { migrationPending: true as const } : {}),
     ...(session.viewport ? { viewport: session.viewport } : {}),
+    ...(session.archived ? { archived: true as const } : {}),
     ...(session.collaboration ? { collaboration: session.collaboration } : {}),
     ...(session.collaborationRole
       ? { collaborationRole: session.collaborationRole }

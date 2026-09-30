@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CanvasRuntime } from "@/domains/canvas/public";
 import { createGridSurfaceReader } from "@/domains/canvas/public";
-import { createCanvasReadTool, createCanvasSearchTool } from "./canvasTools";
+import { createCanvasManageTool, createCanvasReadTool, createCanvasSearchTool } from "./canvasTools";
 import { createTextRenderingRuntime } from "@/domains/document/public";
 
 const runtime = createTextRenderingRuntime();
@@ -59,6 +59,25 @@ describe("Canvas searching tool", () => {
   });
 });
 
+describe("Canvas management tool", () => {
+  it("lists, creates, renames, and archives sessions", async () => {
+    const sessions = [{ id: "canvas-a", name: "Example", mode: "freeform" as const }];
+    const canvas = {
+      ready: Promise.resolve(),
+      getState: () => ({ activeCanvasId: "canvas-a", canvasSessions: sessions }) as ReturnType<CanvasRuntime["getState"]>,
+      commands: { sessions: {
+        create: vi.fn(() => ({ id: "canvas-b", name: "New", mode: "freeform" as const })),
+        rename: vi.fn(), archive: vi.fn(() => true),
+      } },
+    } as unknown as Pick<CanvasRuntime, "ready" | "getState"> & { commands: { sessions: Pick<CanvasRuntime["commands"]["sessions"], "create" | "rename" | "archive"> } };
+    const tool = createCanvasManageTool(canvas);
+    expect(await tool.execute({ action: "list" })).toMatchObject({ canvases: [{ canvasId: "canvas-a", archived: false }] });
+    expect(await tool.execute({ action: "create", name: "New" })).toMatchObject({ canvasId: "canvas-b" });
+    expect(await tool.execute({ action: "rename", canvasId: "canvas-a", name: "Renamed" })).toMatchObject({ name: "Renamed" });
+    expect(await tool.execute({ action: "archive", canvasId: "canvas-a" })).toEqual({ canvasId: "canvas-a", archived: true });
+  });
+});
+
 describe("Canvas reading tool", () => {
   it("captures the target session and reads it without switching it", async () => {
     const canvas = host();
@@ -71,11 +90,25 @@ describe("Canvas reading tool", () => {
     });
   });
 
+  it("keeps text as the default and exposes optional image blocks", async () => {
+    const canvas = host();
+    const tool = createCanvasReadTool(canvas, rendering);
+    const text = await tool.execute({ viewport: [0, 0, 4, 2] });
+    expect(text).toMatchObject({ representation: "text", contentBlocks: [{ type: "text" }] });
+    const image = await tool.execute({ viewport: [0, 0, 4, 2], representation: "image", detail: "low" });
+    expect(image).toMatchObject({ representation: "image", content: "", contentBlocks: [{ type: "image", mimeType: "image/svg+xml", width: 32, height: 32, scale: 1 }] });
+    expect((image as { contentBlocks: Array<{ data?: string }> }).contentBlocks[0]?.data).toMatch(/^[A-Za-z0-9+/]+=*$/);
+    const both = await tool.execute({ viewport: [0, 0, 4, 2], representation: "both" });
+    expect(both).toMatchObject({ representation: "both", contentBlocks: [{ type: "text" }, { type: "image" }] });
+  });
+
   it("returns actionable errors for invalid input and missing sessions", async () => {
     const tool = createCanvasReadTool(host(null), rendering);
     expect(await tool.execute({})).toMatchObject({ code: "canvas_not_active" });
     expect(await tool.execute({ viewport: [0, 0, -1, 1] })).toMatchObject({ code: "invalid_input" });
     expect(await tool.execute({ scale: 2 })).toMatchObject({ code: "invalid_input" });
+    expect(await tool.execute({ representation: "video" })).toMatchObject({ code: "invalid_input" });
+    expect(await tool.execute({ detail: "nearest" })).toMatchObject({ code: "invalid_input" });
     const canvas = host();
     canvas.materializeSession.mockResolvedValue(null as never);
     expect(await createCanvasReadTool(canvas, rendering).execute({})).toMatchObject({ code: "canvas_not_ready" });

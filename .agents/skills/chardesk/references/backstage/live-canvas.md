@@ -27,6 +27,11 @@ After writing, use the returned bounds for verification. If the result is a
 sampled projection, narrow the viewport before judging text. If the write is
 rejected, leave the surface unchanged and report the constraint.
 
+`canvas_read` defaults to `representation: "text"`. Choose `representation: "image"`
+for layout/color inspection, or `"both"` only when visual comparison is necessary.
+Image `detail` defaults to `auto`; text remains the authority for exact Unicode and
+Cell coordinates.
+
 ## Read and write discipline
 
 - Read observes the rendered surface; it is not a source-file reader.

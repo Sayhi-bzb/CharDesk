@@ -45,6 +45,7 @@ export interface SessionCommands {
     viewport: { offset: Point; zoom: number }
   ) => void;
   renameCanvasSession: (canvasId: string, nextName: string) => void;
+  archiveCanvasSession: (canvasId: string) => boolean;
   setCanvasSessionCollaboration: (
     canvasId: string,
     collaboration: CollaborationDescriptor | null,

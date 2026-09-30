@@ -1,15 +1,21 @@
 export const tools = [
   {
-    name: 'chardesk_canvas_list', title: 'List Canvases', readOnly: true,
-    description: 'List all Canvases visible to this CharDesk instance.',
-    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    name: 'chardesk_canvas_manage', title: 'Manage Canvases', readOnly: false,
+    description: 'Manage Canvas lifecycle state with list, create, rename, and archive actions.',
+    inputSchema: { type: 'object', properties: {
+      action: { type: 'string', enum: ['list', 'create', 'rename', 'archive'] },
+      canvasId: { type: 'string', minLength: 1 }, name: { type: 'string', minLength: 1 },
+      mode: { type: 'string', enum: ['freeform', 'slide'] },
+    }, required: ['action'], additionalProperties: false },
   },
   {
     name: 'chardesk_canvas_read', title: 'Read Canvas viewport', readOnly: true,
-    description: 'Read the rendered Canvas surface as a coordinate-labelled Unicode map. viewport is [x,y,width,height] in Cell coordinates; an omitted viewport reads the current Canvas overview. This does not edit the document.',
+    description: 'Read the rendered Canvas surface as a coordinate-labelled Unicode map or optional image block. viewport is [x,y,width,height] in Cell coordinates; an omitted viewport reads the current Canvas overview. Default representation is text; choose image for layout/color or both for explicit comparison. This does not edit the document.',
     inputSchema: { type: 'object', properties: {
       canvasId: { type: 'string', minLength: 1 },
       viewport: { type: 'array', items: { type: 'integer' }, minItems: 4, maxItems: 4 },
+      representation: { type: 'string', enum: ['text', 'image', 'both'], default: 'text' },
+      detail: { type: 'string', enum: ['low', 'high', 'original', 'auto'], default: 'auto' },
     }, additionalProperties: false },
   },
   {

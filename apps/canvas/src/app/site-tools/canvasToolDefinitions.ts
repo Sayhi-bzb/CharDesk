@@ -3,7 +3,7 @@ import type { AgentToolDefinition } from "./contracts.ts";
 export const CANVAS_READ_TOOL_NAME = "chardesk_canvas_read";
 export const CANVAS_WRITE_TOOL_NAME = "chardesk_canvas_write";
 export const CANVAS_SEARCH_TOOL_NAME = "chardesk_canvas_search";
-export const CANVAS_LIST_TOOL_NAME = "chardesk_canvas_list";
+export const CANVAS_MANAGE_TOOL_NAME = "chardesk_canvas_manage";
 
 export const CANVAS_SEARCH_TOOL = {
   name: CANVAS_SEARCH_TOOL_NAME,
@@ -38,30 +38,32 @@ export const CANVAS_SEARCH_TOOL = {
   },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
-export const CANVAS_LIST_TOOL = {
-  name: CANVAS_LIST_TOOL_NAME,
-  title: "List Canvases",
-  description: "List all Canvases visible to this CharDesk instance. Use canvasId from the result with canvas_read, canvas_search, and canvas_write. This does not change the user's active Canvas.",
-  readOnly: true,
-  inputSchema: { type: "object", properties: {}, additionalProperties: false },
-  outputSchema: { type: "object", oneOf: [
-    { type: "object", properties: { canvases: { type: "array", items: { type: "object", properties: {
-      canvasId: { type: "string" }, name: { type: "string" }, mode: { enum: ["freeform", "slide"] }, active: { type: "boolean" }, editable: { type: "boolean" },
-    }, required: ["canvasId", "name", "mode", "active", "editable"], additionalProperties: false } } }, required: ["canvases"], additionalProperties: false },
-    { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_ready", "permission_denied"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
-  ] },
+export const CANVAS_MANAGE_TOOL = {
+  name: CANVAS_MANAGE_TOOL_NAME,
+  title: "Manage Canvases",
+  description: "Manage Canvas lifecycle state. Supports list, create, rename, and archive.",
+  readOnly: false,
+  inputSchema: { type: "object", properties: {
+    action: { enum: ["list", "create", "rename", "archive"] },
+    canvasId: { type: "string", minLength: 1 },
+    name: { type: "string", minLength: 1 },
+    mode: { enum: ["freeform", "slide"] },
+  }, required: ["action"], additionalProperties: false },
+  outputSchema: { type: "object" },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
 export const CANVAS_READ_TOOL = {
   name: CANVAS_READ_TOOL_NAME,
   title: "Read Canvas viewport",
-  description: "Read the current Canvas as a coordinate-labelled Unicode map. viewport is [x,y,width,height] in Cell coordinates. Omit it for an overview of all content. Precision is automatic: text includes original Unicode and non-empty style notes with inclusive y/x Cell ranges; projection and density are navigation symbols without style notes. Move or resize the rectangle to pan or zoom. This reads the rendered Cell surface, not source files, and does not move the user's camera or edit the document.",
+  description: "Read the current Canvas as a coordinate-labelled Unicode map or an optional image block. viewport is [x,y,width,height] in Cell coordinates. Omit it for an overview of all content. Default representation is text: precision is automatic, with original Unicode and non-empty style notes; projection and density are navigation symbols without style notes. Choose image for layout/color overview or both to compare image and text. Move or resize the rectangle to pan or zoom. This reads the rendered Cell surface, not source files, and does not move the user's camera or edit the document.",
   readOnly: true,
   inputSchema: {
     type: "object",
     properties: {
       canvasId: { type: "string", minLength: 1, description: "Optional target Canvas ID. Omit to use the active Canvas." },
       viewport: { type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4, description: "[x,y,width,height]; signed coordinates, positive sizes." },
+      representation: { enum: ["text", "image", "both"], default: "text", description: "Read representation. text is the default and preserves Cell characters/coordinates; image is for visual layout/color; both returns both blocks." },
+      detail: { enum: ["low", "high", "original", "auto"], default: "auto", description: "Image rendering detail. Only used for image/both; defaults to auto." },
     },
     additionalProperties: false,
   },
@@ -73,8 +75,12 @@ export const CANVAS_READ_TOOL = {
         viewport: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
         step: { type: "integer", minimum: 1 },
         mode: { enum: ["text", "projection", "density"] },
+        representation: { enum: ["text", "image", "both"] },
+        detail: { enum: ["low", "high", "original", "auto"] },
+        image: { anyOf: [{ type: "object" }, { type: "null" }] },
         content: { type: "string" },
-      }, required: ["canvasId", "viewport", "step", "mode", "content"], additionalProperties: false },
+        contentBlocks: { type: "array", items: { type: "object" } },
+      }, required: ["canvasId", "viewport", "step", "mode", "representation", "content", "contentBlocks"], additionalProperties: false },
       { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "canvas_not_ready", "permission_denied"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
     ],
   },

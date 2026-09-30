@@ -2,7 +2,7 @@
 
 Local MCP bridge for a CharDesk Canvas.
 
-The MCP server runs as a local stdio process and forwards Canvas list, read,
+The MCP server runs as a local stdio process and forwards Canvas management, read,
 search, and write calls over a loopback WebSocket to one explicitly paired
 browser page. CharDesk can grant application-scoped access to all Canvases with
 separate inspect, read, search, and write permissions; `canvasId` selects a

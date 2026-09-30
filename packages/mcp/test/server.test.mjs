@@ -42,7 +42,7 @@ test('published server exposes the Canvas bridge over stdio', { timeout: 15000 }
     await client.connect(transport);
     const listed = await client.listTools();
     assert.deepEqual(listed.tools.map(({ name }) => name), [
-      'chardesk_canvas_list',
+      'chardesk_canvas_manage',
       'chardesk_canvas_read',
       'chardesk_canvas_search',
       'chardesk_canvas_write',

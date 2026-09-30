@@ -88,7 +88,7 @@ test("Pi's real model reads, writes a GPU explanation, and verifies the live Can
     await writeFile(testInfo.outputPath('pi-events.json'), JSON.stringify(events, null, 2));
     expect(events.filter((event) => event.type === 'tool_execution_end' && event.isError)
       .map((event) => event.result)).toEqual([]);
-    expect(calls.map((event) => event.toolName).filter((name) => name !== "mcp__chardesk__chardesk_canvas_list")).toEqual([
+    expect(calls.map((event) => event.toolName).filter((name) => name !== "mcp__chardesk__chardesk_canvas_manage")).toEqual([
       "mcp__chardesk__chardesk_canvas_read", "mcp__chardesk__chardesk_canvas_write",
       "mcp__chardesk__chardesk_canvas_read",
     ]);

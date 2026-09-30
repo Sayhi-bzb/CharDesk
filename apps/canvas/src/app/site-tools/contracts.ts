@@ -2,6 +2,25 @@ type AgentToolExecutionContext = Readonly<{
   signal?: AbortSignal;
 }>;
 
+/** Content blocks are the transport-neutral representation used by tools that
+ * can return more than plain JSON text (for example a Canvas image read). */
+export type AgentToolContentBlock =
+  | Readonly<{ type: "text"; text: string }>
+  | Readonly<{ type: "note"; text: string }>
+  | Readonly<{
+      type: "image";
+      mimeType: string;
+      data: string;
+      width: number;
+      height: number;
+      scale: number;
+    }>;
+
+export type AgentToolResultEnvelope<TStructured extends Record<string, unknown> = Record<string, unknown>> = Readonly<{
+  structuredContent: TStructured;
+  content: readonly AgentToolContentBlock[];
+}>;
+
 export type AgentToolDefinition = Readonly<{
   name: string;
   title?: string;

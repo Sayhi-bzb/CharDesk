@@ -816,6 +816,7 @@ const sessionsFromCatalog = (catalog: CanvasCatalogSnapshot): CanvasSessionSnaps
       id: session.id,
       name: session.name,
       ...(session.migrationPending ? { migrationPending: true as const } : {}),
+      ...(session.archived ? { archived: true as const } : {}),
       viewport: session.viewport,
     };
     if (session.mode === "slide") {
@@ -1025,6 +1026,7 @@ const createCatalogSnapshot = (
     order,
     name: session.name,
     ...(session.migrationPending ? { migrationPending: true as const } : {}),
+    ...(session.archived ? { archived: true as const } : {}),
     mode: session.mode,
     ...(session.sourceBinding ? { sourceBinding: session.sourceBinding } : {}),
     viewport: session.viewport,
@@ -1078,6 +1080,7 @@ const catalogStructureJson = (snapshot: CanvasCatalogSnapshot) => JSON.stringify
     id: session.id,
     order: session.order,
     name: session.name,
+    archived: session.archived,
     mode: session.mode,
     sourceBinding: session.sourceBinding,
     collaboration: session.collaboration,

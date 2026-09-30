@@ -15,7 +15,7 @@ maps are not search content.
 ```
 
 在 full-access local MCP 中可增加 `canvasId` 指定目标 Canvas；省略时使用
-当前 active Canvas。先调用 `chardesk_canvas_list` 获取可用 ID。
+当前 active Canvas。需要跨 Canvas 时，用 `chardesk_canvas_manage` 的 `list` action 获取可用 ID。
 
 `query` is literal and case-sensitive by default. Set `ignoreCase: true` for
 Unicode case folding; set `regex: true` for [RE2 syntax](https://github.com/google/re2/wiki/Syntax).

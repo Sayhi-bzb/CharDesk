@@ -112,6 +112,7 @@ const decodeCanvasSession = (value: unknown): CanvasSessionSnapshot | null => {
       mode: "slide",
       slideDeck: normalizeSlideDeckSnapshot(value.slideDeck, `${value.id}-slide-1`),
       ...(sourceBinding ? { sourceBinding } : {}),
+      ...(value.archived === true ? { archived: true as const } : {}),
       grid: [],
       ...(viewport ? { viewport } : {}),
     };
@@ -130,6 +131,7 @@ const decodeCanvasSession = (value: unknown): CanvasSessionSnapshot | null => {
         provider: "browser-workspace",
         id: value.id,
       },
+      ...(value.archived === true ? { archived: true as const } : {}),
       grid: [],
       ...(viewport ? { viewport } : {}),
     };
@@ -157,6 +159,7 @@ const decodeCanvasSession = (value: unknown): CanvasSessionSnapshot | null => {
     ...(viewport ? { viewport } : {}),
     ...(collaboration ? { collaboration } : {}),
     ...(collaborationRole ? { collaborationRole } : {}),
+    ...(value.archived === true ? { archived: true as const } : {}),
   };
   return {
     ...base,

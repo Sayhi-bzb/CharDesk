@@ -5,7 +5,7 @@ description: Read a Canvas through a bounded, automatically scaled text viewport
 
 `chardesk_canvas_read` exposes a Canvas through WebMCP and Site Tools. `canvasId`
 is optional: full-access local MCP can target an ID returned by
-`chardesk_canvas_list`; omitted input reads the active Canvas.
+`chardesk_canvas_manage` with the `list` action; omitted input reads the active Canvas.
 The local bridge must be authorized in Agent → Local MCP; inspect, read, search,
 and write are independent grants, and a legacy Canvas-scoped pairing remains
 restricted to its original Canvas.
@@ -16,7 +16,7 @@ Freeform and local document previews use their current projection; Slides use th
 ## Viewport
 
 ```json
-{ "viewport": [100, 200, 800, 240] }
+{ "viewport": [100, 200, 800, 240], "representation": "text" }
 ```
 
 The optional tuple is `[x, y, width, height]` in original Cell coordinates.
@@ -76,9 +76,24 @@ vertically. Styled spaces are included; boundary-clipped graphemes are excluded 
 their text. At most 256 style regions are shown, with an explicit truncation notice.
 
 Projection and density modes omit styles and ask the caller to read a smaller viewport;
-their symbols are navigation aids, not styled source content. Inputs and response fields
-are unchanged: notes are part of `content`. Reading source files or exporting ANSI is
-not part of this tool.
+their symbols are navigation aids, not styled source content. The default text path keeps
+notes in `content`. Reading source files or exporting ANSI is not part of this tool.
+
+## Content blocks
+
+`representation` is optional and defaults to `text`:
+
+| Representation | Blocks | Use |
+| --- | --- | --- |
+| `text` | text | Exact Unicode, coordinates, styles, and write orientation |
+| `image` | image | Layout, color, and visual-density overview |
+| `both` | text + image | Explicit comparison; costs more context |
+
+Image reads accept `detail: "low" | "high" | "original" | "auto"` and default to
+`auto`. Machine-readable metadata is exposed in `structuredContent`; visual material
+is exposed through `contentBlocks`. Existing callers can continue using the default
+top-level `content` text. Image data is an SVG image block carrying the original Cell
+viewport and pixel scale.
 
 Every read also includes a compact [write rendering](/development/architecture/canvas-writing)
 note: mode, theme, Markdown wrap width, and feature state. `markdown=all` means every
@@ -86,7 +101,8 @@ registered Markdown feature is enabled; otherwise the note reports the enabled c
 and disabled feature IDs. These describe how the next write is rendered, not the
 historical source or rendering profile of existing Cells.
 
-The response contains `canvasId`, actual `viewport`, `step`, `mode`, and `content`.
+The response contains `canvasId`, actual `viewport`, `step`, `mode`, `representation`,
+`content`, and `contentBlocks`.
 Rulers use original coordinates; output column `c` and row `r` cover the region
 starting at `(x + c * step, y + r * step)`. Invalid input, missing active Canvas,
 and unavailable content return explicit errors.

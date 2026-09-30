@@ -115,7 +115,7 @@ function forward(name, input) {
   if (Date.now() >= credentials.expiresAt) return Promise.reject(new Error('Pairing expired.'));
   if (!page || page.readyState !== WebSocket.OPEN) return Promise.reject(new Error('Canvas page is not connected.'));
   if (!pageGrant) return Promise.reject(new Error('Canvas authorization is required.'));
-  const permission = name.endsWith('_list') ? 'inspect' : name.endsWith('_read') ? 'read' : name.endsWith('_search') ? 'search' : 'write';
+  const permission = name.endsWith('_read') ? 'read' : name.endsWith('_search') ? 'search' : name.endsWith('_manage') && input?.action === 'list' ? 'inspect' : 'write';
   if (!pageGrant.permissions[permission]) return Promise.reject(new Error(`Permission denied: canvas.${permission}`));
   if (pageGrant.scope === 'canvas' && input?.canvasId !== undefined && input.canvasId !== pageGrant.canvasId) {
     return Promise.reject(new Error('Canvas authorization is limited to the paired Canvas.'));
@@ -134,7 +134,10 @@ mcp.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
   try {
     if (!toolNames.has(params.name)) throw new Error('Unknown Canvas tool.');
     const result = await forward(params.name, params.arguments || {});
-    return { content: [{ type: 'text', text: JSON.stringify(result) }], structuredContent: result, isError: result?.ok === false };
+    const blocks = Array.isArray(result?.contentBlocks)
+      ? result.contentBlocks.map((block) => block.type === 'note' ? { type: 'text', text: block.text } : block)
+      : [{ type: 'text', text: JSON.stringify(result) }];
+    return { content: blocks, structuredContent: result, isError: result?.ok === false };
   } catch (error) { return { isError: true, content: [{ type: 'text', text: error.message }] }; }
 });
 await new Promise((resolve, reject) => {

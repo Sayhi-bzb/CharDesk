@@ -596,6 +596,34 @@ export const createCanvasSessionCommands = (
         ),
       }));
     }),
+    archiveCanvasSession: (canvasId) => commits.run(() => {
+      const state = get();
+      const target = state.canvasSessions.find((session) => session.id === canvasId);
+      if (!target || target.archived) return false;
+      const remaining = state.canvasSessions.filter((session) => session.id !== canvasId && !session.archived);
+      if (remaining.length === 0) return false;
+      const archivedSessions = state.canvasSessions.map((session) =>
+        session.id === canvasId ? { ...session, archived: true as const } : session
+      );
+      if (state.activeCanvasId !== canvasId) {
+        set({ canvasSessions: archivedSessions });
+        return true;
+      }
+      const next = remaining[0]!;
+      const sessionsWithSnapshot = checkpointActiveSessionViewport(state, viewportRuntime.getSnapshot())
+        .map((session) => session.id === canvasId ? { ...session, archived: true as const } : session);
+      const runtime = activateSessionRuntime(documents, next, state.tool);
+      set(createSessionActivationPatch(
+        sessionsWithSnapshot,
+        next.id,
+        runtime,
+        rebuildContentSurface(documents).reader,
+        documents.getActiveAddress(),
+      ));
+      viewportRuntime.resetFallback(normalizeCanvasViewport(next.viewport));
+      residency?.touch(next.id);
+      return true;
+    }),
     setCanvasSessionCollaboration: (canvasId, collaboration, role = "host") => commits.run(() => {
       const state = get();
       const session = state.canvasSessions.find((item) => item.id === canvasId);

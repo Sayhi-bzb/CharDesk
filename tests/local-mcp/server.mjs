@@ -6,11 +6,11 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { WebSocket, WebSocketServer } from "ws";
-import { CANVAS_LIST_TOOL, CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL } from "../../apps/canvas/src/app/site-tools/canvasToolDefinitions.ts";
+import { CANVAS_MANAGE_TOOL, CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL } from "../../apps/canvas/src/app/site-tools/canvasToolDefinitions.ts";
 import { loadCredentials } from './credentials.mjs';
 
 // Experiment only: one explicitly paired browser page, no document storage.
-const canvasTools = [CANVAS_LIST_TOOL, CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL];
+const canvasTools = [CANVAS_MANAGE_TOOL, CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL];
 const allowedTools = new Set(canvasTools.map((tool) => tool.name));
 const origins = new Set((process.env.CHARDESK_BRIDGE_ORIGIN || "http://127.0.0.1:5173").split(","));
 const pairingFile = process.env.CHARDESK_BRIDGE_PAIRING_FILE;
@@ -127,7 +127,7 @@ function forward(method, params = {}) {
   if (Date.now() >= credentials.expiresAt) return Promise.reject(new Error('Pairing expired. Generate a new pairing URL.'));
   if (!page || page.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Canvas page is not connected."));
   if (!pageGrant) return Promise.reject(new Error("Canvas authorization is required."));
-  const permission = method.endsWith("_list") ? "inspect" : method.endsWith("_read") ? "read" : method.endsWith("_search") ? "search" : "write";
+  const permission = method.endsWith("_read") ? "read" : method.endsWith("_search") ? "search" : "write";
   const input = params.input || {};
   if (!pageGrant.permissions[permission]) return Promise.reject(new Error(`Permission denied: canvas.${permission}`));
   if (pageGrant.scope === "canvas" && input.canvasId !== undefined && input.canvasId !== pageGrant.canvasId) {
@@ -160,8 +160,11 @@ mcp.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
   try {
     if (!allowedTools.has(params.name)) throw new Error("Unknown Canvas tool.");
     const result = await forward("call", { name: params.name, input: params.arguments || {} });
+    const blocks = Array.isArray(result?.contentBlocks)
+      ? result.contentBlocks.map((block) => block.type === 'note' ? { type: 'text', text: block.text } : block)
+      : [{ type: "text", text: JSON.stringify(result) }];
     return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
+      content: blocks,
       structuredContent: result,
       isError: result?.ok === false,
     };
