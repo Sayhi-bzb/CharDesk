@@ -8,7 +8,7 @@ export type CanvasReadRepresentation = "text" | "image" | "both";
 export type CanvasReadImageDetail = "low" | "high" | "original" | "auto";
 export type CanvasReadProjection = Readonly<{
   viewport: CanvasReadViewport | null;
-  step: number;
+  sampleSize: number;
   mode: "text" | "projection" | "density";
   overviewOnly: boolean;
   content: string;
@@ -143,12 +143,12 @@ export const readCanvasViewport = (
       }
     }
   }
-  if (!bounds) return { viewport: null, step: 1, mode: "text", overviewOnly: false, content: "" };
+  if (!bounds) return { viewport: null, sampleSize: 1, mode: "text", overviewOnly: false, content: "" };
   const { x, y, width, height } = bounds;
-  const step = Math.max(1, Math.ceil(width / 80), Math.ceil(height / 24));
-  const columns = Math.ceil(width / step);
-  const rows = Math.ceil(height / step);
-  const mode = step === 1 ? "text" : step <= 4 ? "projection" : "density";
+  const sampleSize = Math.max(1, Math.ceil(width / 80), Math.ceil(height / 24));
+  const columns = Math.ceil(width / sampleSize);
+  const rows = Math.ceil(height / sampleSize);
+  const mode = sampleSize === 1 ? "text" : sampleSize <= 4 ? "projection" : "density";
   const exact = mode === "text" ? readCanvasTextRegion(surface, bounds) : null;
   const text = exact?.text ?? Array.from({ length: rows }, () => Array<string>(columns).fill(" "));
   const counts = new Float64Array(rows * columns);
@@ -163,12 +163,12 @@ export const readCanvasViewport = (
         for (let offset = 0; offset < cellWidth; offset++) {
           const localX = cellX + offset - x;
           if (localX < 0 || localX >= width) continue;
-          const column = Math.floor(localX / step);
-          const outputRow = Math.floor(localY / step);
+          const column = Math.floor(localX / sampleSize);
+          const outputRow = Math.floor(localY / sampleSize);
           const index = outputRow * columns + column;
           counts[index]++;
-          const quadrantX = Math.floor((localX % step) * 2 / step);
-          const quadrantY = Math.floor((localY % step) * 2 / step);
+          const quadrantX = Math.floor((localX % sampleSize) * 2 / sampleSize);
+          const quadrantY = Math.floor((localY % sampleSize) * 2 / sampleSize);
           masks[index] |= 1 << (quadrantY * 2 + quadrantX);
         }
       }
@@ -177,22 +177,22 @@ export const readCanvasViewport = (
   }
   if (mode !== "text") for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
     const index = row * columns + column;
-    const area = Math.min(step, width - column * step) * Math.min(step, height - row * step);
+    const area = Math.min(sampleSize, width - column * sampleSize) * Math.min(sampleSize, height - row * sampleSize);
     const density = counts[index] / area;
     text[row][column] = mode === "projection" ? quadrants[masks[index]]
       : density === 0 ? "·" : density <= 1 / 16 ? "░" : density <= 1 / 4 ? "▒" : density <= 1 / 2 ? "▓" : "█";
   }
   const xLabelWidth = Math.max(String(x).length, String(x + width - 1).length);
   const labelWidth = Math.max(String(y).length, String(y + height - 1).length, Math.floor(xLabelWidth / 2));
-  const xMinor = niceTickInterval(step * Math.max(5, Math.ceil((xLabelWidth + 2) / 2)));
-  const yInterval = niceTickInterval(5 * step);
+  const xMinor = niceTickInterval(sampleSize * Math.max(5, Math.ceil((xLabelWidth + 2) / 2)));
+  const yInterval = niceTickInterval(5 * sampleSize);
   const prefix = labelWidth + 2;
   const ruler = Array<string>(prefix + columns + Math.ceil(xLabelWidth / 2)).fill(" ");
   const rulerMarks = Array<string>(columns).fill("─");
   let previousEnd = -1;
   for (let column = 0; column < columns; column++) {
-    const start = x + column * step;
-    const tick = tickInBucket(start, Math.min(step, width - column * step), xMinor);
+    const start = x + column * sampleSize;
+    const tick = tickInBucket(start, Math.min(sampleSize, width - column * sampleSize), xMinor);
     if (tick === null) continue;
     rulerMarks[column] = "┬";
     if (tick % (2 * xMinor) !== 0) continue;
@@ -205,17 +205,17 @@ export const readCanvasViewport = (
   }
   const notes = exact ? formatCharDeskStyleNotes(exact.cells, { coordinates: "explicit", defaultForeground: options.defaultForeground }) : "styles:none";
   const content = [
-    `viewport=[${x},${y},${width},${height}] step=${step} mode=${mode}`,
+    `viewport=[${x},${y},${width},${height}] sampleSize=${sampleSize} mode=${mode}`,
     ...(ruler.some((char) => char !== " ") ? [ruler.join("").trimEnd()] : []),
     `${" ".repeat(prefix)}${rulerMarks.join("")}`,
     ...text.map((line, row) => {
-      const start = y + row * step;
-      const tick = tickInBucket(start, Math.min(step, height - row * step), yInterval);
+      const start = y + row * sampleSize;
+      const tick = tickInBucket(start, Math.min(sampleSize, height - row * sampleSize), yInterval);
       const label = tick === null ? " ".repeat(labelWidth) : String(tick).padStart(labelWidth);
       return `${label} ${tick === null ? "│" : "┤"}${line.join("").replace(/ +$/u, "")}`;
     }),
     ...(notes === "styles:none" ? [] : ["", notes]),
     ...(mode !== "text" ? ["Styles omitted: navigation symbols only; read a smaller viewport for text and styles."] : []),
   ].join("\n");
-  return { viewport: [x, y, width, height], step, mode, overviewOnly: mode !== "text", content };
+  return { viewport: [x, y, width, height], sampleSize, mode, overviewOnly: mode !== "text", content };
 };

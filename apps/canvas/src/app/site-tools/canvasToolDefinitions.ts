@@ -92,7 +92,7 @@ export const CANVAS_READ_TOOL = {
       { type: "object", properties: {
         canvasRef: { type: "string" }, canvasId: { type: "string" },
         viewport: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
-        step: { type: "integer", minimum: 1 },
+        sampleSize: { type: "integer", minimum: 1 },
         mode: { enum: ["text", "projection", "density"] },
         overviewOnly: { type: "boolean", description: "True when content is sampled projection/density navigation data and must not be treated as source text." },
         representation: { enum: ["text", "image", "both"] },
@@ -112,11 +112,11 @@ export const CANVAS_READ_TOOL = {
         ] } },
         structuredContent: { type: "object", properties: {
           canvasRef: { type: "string" }, canvasId: { type: "string" }, viewport: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
-          step: { type: "integer", minimum: 1 }, mode: { enum: ["text", "projection", "density"] }, overviewOnly: { type: "boolean" },
+          sampleSize: { type: "integer", minimum: 1 }, mode: { enum: ["text", "projection", "density"] }, overviewOnly: { type: "boolean" },
           representation: { enum: ["text", "image", "both"] }, detail: { enum: ["low", "high", "original", "auto"] },
           image: { anyOf: [{ type: "object" }, { type: "null" }] },
-        }, required: ["viewport", "step", "mode", "overviewOnly", "representation", "detail", "image"], additionalProperties: false },
-      }, required: ["viewport", "step", "mode", "overviewOnly", "representation", "detail", "image", "content", "contentBlocks", "structuredContent"], additionalProperties: false },
+        }, required: ["viewport", "sampleSize", "mode", "overviewOnly", "representation", "detail", "image"], additionalProperties: false },
+      }, required: ["viewport", "sampleSize", "mode", "overviewOnly", "representation", "detail", "image", "content", "contentBlocks", "structuredContent"], additionalProperties: false },
       { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "canvas_not_ready", "permission_denied"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
     ],
   },

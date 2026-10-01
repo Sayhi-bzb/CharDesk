@@ -40,7 +40,7 @@ test.describe("WebMCP native Canvas", () => {
     await execute(page, "chardesk_canvas_write", { at: [-20, -10], content: "**Sample**" });
     const zoom = await page.getByTestId("zoom-reset").textContent();
     const text = await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 80, 24] });
-    expect(text).toMatchObject({ mode: "text", step: 1, overviewOnly: false });
+    expect(text).toMatchObject({ mode: "text", sampleSize: 1, overviewOnly: false });
     expect(text.content).toContain("Sample");
     expect(text.content).toContain("styles:");
     const image = await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 8, 2], representation: "image", detail: "low" });
@@ -49,9 +49,9 @@ test.describe("WebMCP native Canvas", () => {
     const moved = await execute(page, "chardesk_canvas_read", { viewport: [10, -10, 80, 24] });
     expect(moved.viewport[0]).toBe(text.viewport[0] + 30);
     expect(await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 160, 48] }))
-      .toMatchObject({ mode: "projection", step: 2, overviewOnly: true });
+      .toMatchObject({ mode: "projection", sampleSize: 2, overviewOnly: true });
     const density = await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 800, 240] });
-    expect(density).toMatchObject({ mode: "density", step: 10, overviewOnly: true });
+    expect(density).toMatchObject({ mode: "density", sampleSize: 10, overviewOnly: true });
     expect(density.content).toContain("Styles omitted:");
     await expect(page.getByTestId("zoom-reset")).toHaveText(zoom!);
   });

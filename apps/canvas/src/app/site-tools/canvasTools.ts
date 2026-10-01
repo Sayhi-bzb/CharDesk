@@ -245,7 +245,7 @@ export const createCanvasReadTool = (
       const structuredContent = {
         ...targetOutput(target),
         viewport: result.viewport,
-        step: result.step,
+        sampleSize: result.sampleSize,
         mode: result.mode,
         overviewOnly: result.overviewOnly,
         representation,

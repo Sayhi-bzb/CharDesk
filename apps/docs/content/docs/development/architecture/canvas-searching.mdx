@@ -36,7 +36,7 @@ Queries are limited to 4096 UTF-16 units and 64 rows.
 
 Omit `viewport` to search all content. A supplied rectangle uses the same Cell
 coordinates as [reading](/development/architecture/canvas-reading), but search always uses original
-precision regardless of read's sampling `step`. The complete template must fit
+precision regardless of read's sampling `sampleSize`. The complete template must fit
 inside it. Boundary-clipped glyphs do not match.
 
 ## Sparse rows and limits

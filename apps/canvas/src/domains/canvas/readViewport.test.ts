@@ -15,7 +15,7 @@ const lines = (content: string) => content.split("\n").flatMap((line) => {
 describe("Canvas viewport reading", () => {
   it("preserves coordinates, whitespace, CJK, and graphemes in exact text", () => {
     const view = readCanvasViewport(surface([[-2, -1, "A"], [-1, -1, "你"], [1, -1, "é"]]), [-3, -2, 7, 3]);
-    expect(view).toMatchObject({ viewport: [-3, -2, 7, 3], step: 1, mode: "text", overviewOnly: false });
+    expect(view).toMatchObject({ viewport: [-3, -2, 7, 3], sampleSize: 1, mode: "text", overviewOnly: false });
     expect(lines(view.content)).toEqual(["", " A你é", ""]);
     expect(lines(view.content).every((line) => getTextCellWidth(line) <= 7)).toBe(true);
     expect(view.content).toContain("0 ┤");
@@ -70,7 +70,7 @@ describe("Canvas viewport reading", () => {
 
   it("samples quadrant positions without interpreting content", () => {
     const view = readCanvasViewport(surface([[0, 0, "a"], [3, 1, "b"]]), [0, 0, 160, 48]);
-    expect(view).toMatchObject({ step: 2, mode: "projection", overviewOnly: true });
+    expect(view).toMatchObject({ sampleSize: 2, mode: "projection", overviewOnly: true });
     expect(lines(view.content)[0].slice(0, 2)).toBe("▘▗");
     expect(lines(view.content)).toHaveLength(24);
   });
@@ -79,13 +79,13 @@ describe("Canvas viewport reading", () => {
     const entries: Array<[number, number, string, string?]> = [[0, 0, "x"], [10, 0, " ", "#f00"]];
     for (let y = 0; y < 10; y++) for (let x = 20; x < 30; x++) entries.push([x, y, "x"]);
     const view = readCanvasViewport(surface(entries), [0, 0, 800, 240]);
-    expect(view).toMatchObject({ step: 10, mode: "density", overviewOnly: true });
+    expect(view).toMatchObject({ sampleSize: 10, mode: "density", overviewOnly: true });
     expect(lines(view.content)[0].slice(0, 4)).toBe("░░█·");
   });
 
   it("fits rectangular views without stretching or expanding partial edge buckets", () => {
     const view = readCanvasViewport(surface([[80, 24, "x"]]), [0, 0, 81, 25]);
-    expect(view.step).toBe(2);
+    expect(view.sampleSize).toBe(2);
     expect(lines(view.content)).toHaveLength(13);
     expect(lines(view.content)[12]).toHaveLength(41);
     expect(lines(view.content)[12][40]).toBe("▘");
@@ -93,7 +93,7 @@ describe("Canvas viewport reading", () => {
 
   it("distinguishes empty documents from explicit blank views and excludes unstyled spaces", () => {
     const reader = surface([[0, 0, " "]]);
-    expect(readCanvasViewport(reader)).toEqual({ viewport: null, step: 1, mode: "text", overviewOnly: false, content: "" });
+    expect(readCanvasViewport(reader)).toEqual({ viewport: null, sampleSize: 1, mode: "text", overviewOnly: false, content: "" });
     expect(readCanvasViewport(reader, [-10, 2, 4, 1]).viewport).toEqual([-10, 2, 4, 1]);
     expect(lines(readCanvasViewport(reader, [-10, 2, 4, 1]).content)).toEqual([""]);
   });
@@ -144,7 +144,7 @@ describe("Canvas viewport reading", () => {
 
   it("adapts coarse ticks to absolute coordinates even when buckets start between ticks", () => {
     const view = readCanvasViewport(surface([]), [-13, -7, 240, 60]);
-    expect(view.step).toBe(3);
+    expect(view.sampleSize).toBe(3);
     const output = view.content.split("\n");
     const origin = output.find((line) => line.includes("┤"))!.indexOf("┤") + 1;
     const ruler = output.find((line) => line.includes("┬"))!;
