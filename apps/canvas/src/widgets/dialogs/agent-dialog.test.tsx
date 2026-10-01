@@ -5,36 +5,28 @@ import { publishWebMcpStatus } from '@/shared/services/webmcp-status';
 import { AgentDialog } from './agent-dialog';
 
 const local = vi.hoisted(() => ({
-  status: 'idle' as 'idle' | 'connecting' | 'connected' | 'error',
+  enabled: false,
   revision: 0,
   listeners: new Set<() => void>(),
   saved: null as null | { url: string; scope: string; expiresAt: number },
-  connect: vi.fn(), disconnect: vi.fn(), forget: vi.fn(),
+  forget: vi.fn(), setEnabled: vi.fn(),
 }));
 vi.mock('@/shared/services/local-agent', () => ({
-  getLocalAgentStatus: () => local.status,
+  getLocalAgentEnabled: () => local.enabled,
   getLocalAgentRevision: () => local.revision,
   getRememberedLocalAgent: () => local.saved,
   subscribeLocalAgent: (listener: () => void) => {
     local.listeners.add(listener);
     return () => { local.listeners.delete(listener); };
   },
-  connectLocalAgent: local.connect,
-  disconnectLocalAgent: local.disconnect,
+  setLocalAgentEnabled: local.setEnabled,
   forgetLocalAgent: local.forget,
 }));
-const setLocalStatus = (status: typeof local.status) => act(() => {
-  local.status = status;
-  local.revision++;
-  for (const listener of local.listeners) listener();
-});
-
 describe('Agent connection dialog', () => {
   beforeEach(() => {
-    local.status = 'idle';
+    local.enabled = false;
     local.saved = null;
-    local.connect.mockReset();
-    local.disconnect.mockReset();
+    local.setEnabled.mockReset();
     local.forget.mockReset();
     setUiLanguage('en');
     publishWebMcpStatus('unavailable');
@@ -51,37 +43,35 @@ describe('Agent connection dialog', () => {
     ] as const) {
       act(() => publishWebMcpStatus(status));
       expect(web.getByRole('status')).toHaveTextContent(label);
-      expect(localRow.getByRole('status')).toHaveTextContent('Not connected');
-      expect(localRow.getByRole('button', { name: 'Pair' })).toHaveAttribute('aria-expanded', 'false');
+      expect(localRow.getByRole('switch', { name: 'Connect local coding agents' })).toHaveAttribute('aria-checked', 'false');
     }
-    expect(local.connect).not.toHaveBeenCalled();
-    expect(local.disconnect).not.toHaveBeenCalled();
+    expect(local.setEnabled).not.toHaveBeenCalled();
   });
 
-  it('expands local pairing without requiring a URL and folds after connection', async () => {
+  it('connects from the Local MCP switch without an agent-specific pairing step', async () => {
     render(<AgentDialog open onOpenChange={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Pair' }));
-    expect(screen.getByText('Pi is discovered on this computer. No pairing URL is required.')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
-    expect(local.connect).toHaveBeenCalledOnce();
-    expect(local.connect.mock.calls[0][0]).toBe('');
-    expect(local.connect.mock.calls[0][1]).toBe(true);
-    setLocalStatus('connected');
-    expect(screen.queryByText('Pi is discovered on this computer. No pairing URL is required.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('switch', { name: 'Connect local coding agents' }));
+    expect(local.setEnabled).toHaveBeenCalledOnce();
+    expect(local.setEnabled.mock.calls[0][0]).toBe(true);
+    act(() => {
+      local.enabled = true;
+      local.revision++;
+      for (const listener of local.listeners) listener();
+    });
     const localRow = within(screen.getByRole('group', { name: 'Local MCP' }));
-    expect(localRow.getByRole('status')).toHaveTextContent('Connected');
-    fireEvent.click(localRow.getByRole('button', { name: 'Disconnect' }));
-    expect(local.disconnect).toHaveBeenCalledOnce();
+    expect(localRow.getByRole('switch', { name: 'Connect local coding agents' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(localRow.getByRole('switch', { name: 'Connect local coding agents' }));
+    expect(local.setEnabled).toHaveBeenLastCalledWith(false);
   });
 
   it('keeps remembered pairing actions and localizes status', () => {
     local.saved = { url: 'saved-url', scope: 'canvas-a', expiresAt: Date.now() + 60_000 };
-    local.status = 'connected';
+    local.enabled = true;
     setUiLanguage('zh');
     render(<AgentDialog open onOpenChange={vi.fn()} />);
     expect(screen.getByRole('dialog', { name: 'Agent' })).toBeVisible();
     expect(within(screen.getByRole('group', { name: 'WebMCP' })).getByRole('status')).toHaveTextContent('不可用');
-    expect(within(screen.getByRole('group', { name: 'Local MCP' })).getByRole('status')).toHaveTextContent('已连接');
+    expect(within(screen.getByRole('group', { name: 'Local MCP' })).getByRole('switch', { name: '连接本地 coding agent' })).toHaveAttribute('aria-checked', 'true');
     fireEvent.click(screen.getByRole('button', { name: '忘记配对' }));
     expect(local.forget).toHaveBeenCalledOnce();
   });

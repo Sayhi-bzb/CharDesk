@@ -2,8 +2,8 @@ import { useState, useSyncExternalStore } from 'react';
 import { Button, Checkbox, Dialog, DialogBody, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle, Label, StatusDot, StatusText } from '@chardesk/ui';
 import { useUiI18n } from '@/shared/i18n';
-import { connectLocalAgent, disconnectLocalAgent, forgetLocalAgent, getLocalAgentRevision,
-  getLocalAgentStatus, getRememberedLocalAgent, subscribeLocalAgent,
+import { forgetLocalAgent, getLocalAgentEnabled, getLocalAgentRevision,
+  getRememberedLocalAgent, setLocalAgentEnabled, subscribeLocalAgent,
   type LocalAgentPermissions } from '@/shared/services/local-agent';
 import { getWebMcpStatus, subscribeWebMcpStatus } from '@/shared/services/webmcp-status';
 
@@ -13,20 +13,19 @@ export function AgentDialog({ open, onOpenChange }: {
   const { t } = useUiI18n();
   useSyncExternalStore(subscribeLocalAgent, getLocalAgentRevision, getLocalAgentRevision);
   const webStatus = useSyncExternalStore(subscribeWebMcpStatus, getWebMcpStatus, getWebMcpStatus);
-  const status = getLocalAgentStatus();
-  const [expanded, setExpanded] = useState(false);
-  const [invalid, setInvalid] = useState(false);
+  const enabled = getLocalAgentEnabled();
   const [permissions, setPermissions] = useState<LocalAgentPermissions>(() => getRememberedLocalAgent()?.permissions ?? { inspect: true, read: true, search: true, write: true });
   const saved = getRememberedLocalAgent();
-  const active = status === 'connected' || status === 'connecting';
-  const pairing = expanded && !active;
+  const active = enabled;
   const webTone = webStatus === 'ready' ? 'success' : webStatus === 'error' ? 'error' : 'neutral';
-  const localTone = status === 'connected' ? 'success' : status === 'error' ? 'error' : 'neutral';
-  const connect = () => {
+  const toggle = () => {
+    if (active) {
+      setLocalAgentEnabled(false);
+      return;
+    }
     try {
-      connectLocalAgent(saved?.url || '', true, saved?.permissions ?? permissions, saved?.scope);
-      setInvalid(false);
-    } catch { setInvalid(true); }
+      setLocalAgentEnabled(true, saved?.permissions ?? permissions);
+    } catch { /* The switch remains off when no local agent is available. */ }
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,18 +42,13 @@ export function AgentDialog({ open, onOpenChange }: {
           </div>
           <div role="group" aria-label="Local MCP" className="flex min-h-8 items-center gap-2">
             <span className="mr-auto text-sm">Local MCP</span>
-            <StatusText id="local-agent-status" role="status" aria-live="polite"
-              className={status === 'idle' ? 'sr-only' : 'flex items-center gap-2 text-xs'}
-              tone={localTone}>
-              {status !== 'idle' && <StatusDot tone={localTone} />}
-              {t(status === 'error' ? 'localAgent.offline' : `localAgent.${status}`)}
-            </StatusText>
-            {active
-              ? <Button size="sm" tone="subtle" onClick={disconnectLocalAgent}>{t('localAgent.disconnect')}</Button>
-              : <Button size="sm" tone="subtle" aria-expanded={pairing} aria-controls="local-agent-pairing-form"
-                onClick={() => setExpanded(!expanded)}>{t('agent.pair')}</Button>}
+            <button type="button" role="switch" aria-checked={active}
+              aria-label={t('localAgent.toggle')} onClick={toggle}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border p-0.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? 'border-foreground bg-foreground' : 'border-border bg-muted'}`}>
+              <span aria-hidden="true" className={`block size-3.5 rounded-full bg-background transition-transform ${active ? 'translate-x-4' : 'translate-x-0'}`} />
+            </button>
           </div>
-          {pairing && <div id="local-agent-pairing-form" className="flex flex-col gap-3">
+          {!active && <div id="local-agent-settings" className="flex flex-col gap-3">
             <DialogDescription>{t('localAgent.permission')}</DialogDescription>
             <div className="flex flex-col gap-2" role="group" aria-label="Local MCP permissions">
               <p className="text-xs text-muted-foreground">{t('localAgent.scope')}</p>
@@ -65,16 +59,10 @@ export function AgentDialog({ open, onOpenChange }: {
                 </Label>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">{t('localAgent.autoDetect')}</p>
-            {(invalid || status === 'error') && <StatusText id="local-agent-error" role="alert" tone="error" className="text-xs">
-              {t(invalid ? 'localAgent.invalid' : 'localAgent.error')}
-            </StatusText>}
           </div>}
-          {saved && status === 'connected' && <p className="text-xs text-muted-foreground">{t('localAgent.remembered')}</p>}
         </DialogBody>
-        {(saved || pairing) && <DialogFooter>
+        {saved && <DialogFooter>
           {saved && <Button tone="subtle" onClick={forgetLocalAgent}>{t('localAgent.forget')}</Button>}
-          {pairing && <Button onClick={connect}>{t('localAgent.connect')}</Button>}
         </DialogFooter>}
       </DialogContent>
     </Dialog>

@@ -10,6 +10,7 @@ export type CanvasReadProjection = Readonly<{
   viewport: CanvasReadViewport | null;
   step: number;
   mode: "text" | "projection" | "density";
+  overviewOnly: boolean;
   content: string;
 }>;
 export type CanvasReadOptions = Readonly<{ defaultForeground?: string }>;
@@ -142,7 +143,7 @@ export const readCanvasViewport = (
       }
     }
   }
-  if (!bounds) return { viewport: null, step: 1, mode: "text", content: "" };
+  if (!bounds) return { viewport: null, step: 1, mode: "text", overviewOnly: false, content: "" };
   const { x, y, width, height } = bounds;
   const step = Math.max(1, Math.ceil(width / 80), Math.ceil(height / 24));
   const columns = Math.ceil(width / step);
@@ -216,5 +217,5 @@ export const readCanvasViewport = (
     ...(notes === "styles:none" ? [] : ["", notes]),
     ...(mode !== "text" ? ["Styles omitted: navigation symbols only; read a smaller viewport for text and styles."] : []),
   ].join("\n");
-  return { viewport: [x, y, width, height], step, mode, content };
+  return { viewport: [x, y, width, height], step, mode, overviewOnly: mode !== "text", content };
 };

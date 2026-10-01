@@ -14,8 +14,8 @@ maps are not search content.
 { "query": "Hello", "viewport": [0, 0, 100, 50] }
 ```
 
-在 full-access local MCP 中可增加 `canvasId` 指定目标 Canvas；省略时使用
-当前 active Canvas。需要跨 Canvas 时，用 `chardesk_canvas_manage` 的 `list` action 获取可用 ID。
+在 full-access local MCP 中可增加 `canvasRef` 指定目标 Canvas；省略时使用
+当前 active Canvas。`list` action 返回短 runtime 引用；只有需要跨 Canvas 时才使用它。
 
 `query` is literal and case-sensitive by default. Set `ignoreCase: true` for
 Unicode case folding; set `regex: true` for [RE2 syntax](https://github.com/google/re2/wiki/Syntax).
@@ -55,26 +55,26 @@ the budget also bounds sparse expansion and repeated template checks.
 
 ```json
 {
-  "canvasId": "example",
-  "matches": [{ "viewport": [2, 18, 32, 5], "content": "…five space-padded rows…" }],
+  "canvasRef": "c1",
+  "matches": [{ "origin": [10, 20], "bounds": [10, 20, 5, 1], "content": "Hello" }],
   "next": null
 }
 ```
 
 Results are ordered by the match's `y`, then `x`, with non-overlapping matches.
-Each item contains only `viewport` and `content`: a 32×5 Cell window starting
-8 Cells left and 2 rows above the match, shifted at safe coordinate limits.
-`content` preserves spaces and newlines without borders, rulers, or style notes.
-Words may be cropped; partially visible wide glyphs become blank Cells.
-The input viewport limits matches, not their surrounding windows.
+Each item contains only `origin`, exact `bounds`, and the matched `content`.
+There is no surrounding preview, padding, ruler, border, or style note. `bounds`
+is a Cell rectangle that can be passed directly to `chardesk_canvas_read` when
+the agent needs context or styles.
 
-Read the returned viewport for styles, or enlarge it for more context. The
-preview is not a whole-region replacement payload for [writing](/development/architecture/canvas-writing).
+Search is intentionally a locator, not a context reader. The agent decides
+when more context is worth a separate [read](/development/architecture/canvas-reading).
 
 Each call returns at most 20 matches. Non-null `next` is the last returned match's
-starting `[x,y]`, not the preview origin; pass it as `after` with identical
+`origin` `[x,y]`; pass it as `after` with identical
 query, regex, ignoreCase, and viewport to continue
-strictly after that position. Confirm `canvasId` has not changed. Calls observe
+strictly after that position. Confirm the `canvasRef` still belongs to the same
+runtime. Calls observe
 current content, not a shared snapshot; restart after an edit if consistency matters.
 Empty results have `matches: []` and `next: null`.
 

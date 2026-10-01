@@ -3,9 +3,13 @@ title: Canvas Reading
 description: Read a Canvas through a bounded, automatically scaled text viewport.
 ---
 
-`chardesk_canvas_read` exposes a Canvas through WebMCP and Site Tools. `canvasId`
-is optional: full-access local MCP can target an ID returned by
-`chardesk_canvas_manage` with the `list` action; omitted input reads the active Canvas.
+`chardesk_canvas_read` exposes a Canvas through WebMCP and Site Tools. `canvasRef`
+is optional: full-access local MCP can target a short runtime reference returned by
+`chardesk_canvas_manage` with the `list` action; that action returns
+`currentCanvas` for the page the user currently has open. Archived Canvases are
+omitted from `list` by default; pass `includeArchived: true` when archived
+pages are explicitly needed. Omitted input reads that active Canvas; use the
+full `canvases` list only for explicit cross-Canvas work.
 The local bridge must be authorized in Agent → Local MCP; inspect, read, search,
 and write are independent grants, and a legacy Canvas-scoped pairing remains
 restricted to its original Canvas.
@@ -79,6 +83,11 @@ Projection and density modes omit styles and ask the caller to read a smaller vi
 their symbols are navigation aids, not styled source content. The default text path keeps
 notes in `content`. Reading source files or exporting ANSI is not part of this tool.
 
+`overviewOnly` makes this distinction machine-readable: it is `false` for exact
+`text` reads and `true` for `projection` or `density`. When it is `true`, do not
+describe the sampled symbols as the Canvas's actual characters. Use search or
+read a smaller viewport until `overviewOnly: false`.
+
 ## Content blocks
 
 `representation` is optional and defaults to `text`:
@@ -101,7 +110,7 @@ registered Markdown feature is enabled; otherwise the note reports the enabled c
 and disabled feature IDs. These describe how the next write is rendered, not the
 historical source or rendering profile of existing Cells.
 
-The response contains `canvasId`, actual `viewport`, `step`, `mode`, `representation`,
+The response contains an optional `canvasRef`, actual `viewport`, `step`, `mode`, `overviewOnly`, `representation`,
 `content`, and `contentBlocks`.
 Rulers use original coordinates; output column `c` and row `r` cover the region
 starting at `(x + c * step, y + r * step)`. Invalid input, missing active Canvas,

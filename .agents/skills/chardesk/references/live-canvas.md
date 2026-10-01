@@ -5,7 +5,13 @@ a local file.
 
 ## Choose the operation
 
-- If the target Canvas is unknown, inspect the visible Canvases first.
+- If the target Canvas is unknown, call `chardesk_canvas_manage` with `action: "list"`
+  and start from `currentCanvas`; archived Canvases are omitted by default. Pass
+  `includeArchived: true` only for explicit archived-Canvas work. Inspect
+  `canvases` only for explicit cross-Canvas work.
+  `list` returns short runtime `canvasRef` handles (`c1`, `c2`, …). Omit the
+  reference for the active Canvas; pass `canvasRef` for another Canvas. Handles
+  are stable only for the current page/connection, so list again after refresh.
 - If the content or location is unknown, search the rendered Canvas text.
 - If the location is known, read the smallest useful viewport.
 - If the task changes content, read the affected area before writing.
@@ -19,24 +25,38 @@ search the whole surface when the target is already known.
 locate → read context → write → read returned bounds → verify
 ```
 
-Treat a write as a local edit, not a replacement of an earlier footprint.
+Treat the default `writeMode: "patch"` as a local edit, not a replacement of an
+earlier footprint. Ordinary whitespace is skipped; styled whitespace is written.
+Use `writeMode: "replace"` only when intentionally redrawing or clearing a
+precise rectangle.
 Choose placement from the observed content. Preserve surrounding work and do
 not assume that a shorter replacement clears cells outside the new content.
+
+If the payload is ASCII art, code, a Unicode drawing, or otherwise depends on
+literal Markdown punctuation, wrap it in a fenced code block before writing.
+This protects characters such as `\\`, `_`, `*`, and `>` when the Canvas uses
+the default auto/Markdown renderer. Read the returned bounds immediately after
+the write to verify the rendered characters.
 
 After writing, use the returned bounds for verification. If the result is a
 sampled projection, narrow the viewport before judging text. If the write is
 rejected, leave the surface unchanged and report the constraint.
 
+Treat `overviewOnly: true` or `mode: projection|density` as spatial navigation
+only. Do not summarize its block or density symbols as Canvas text; search for
+the target or read a smaller viewport until `overviewOnly: false`.
+
 `canvas_read` defaults to `representation: "text"`. Choose `representation: "image"`
-for layout/color inspection, or `"both"` only when visual comparison is necessary.
-Image `detail` defaults to `auto`; text remains the authority for exact Unicode and
-Cell coordinates.
+for layout or color inspection, or `"both"` only when comparison is necessary.
+Image `detail` defaults to `auto`; text remains the authority for exact Unicode
+and Cell coordinates.
 
 ## Read and write discipline
 
 - Read observes the rendered surface; it is not a source-file reader.
 - Write sends content to the Canvas renderer; do not manually reproduce the
   rendered appearance.
+- Prefer fenced code blocks for content that must be preserved character-for-character.
 - Never copy generated rulers, borders, style notes, or density symbols into a
   write payload.
 - Preserve the user's source syntax when the active renderer supports it.

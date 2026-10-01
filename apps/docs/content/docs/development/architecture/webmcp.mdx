@@ -14,11 +14,28 @@ WebMCP
 
 | Group | Tools | Contract |
 | --- | --- | --- |
-| Canvas | `chardesk_canvas_manage`, `chardesk_canvas_read`, `chardesk_canvas_search`, `chardesk_canvas_write` | Manage and operate on Canvases in original Cell coordinates. `canvasId` is optional and defaults to the active Canvas. |
+| Canvas | `chardesk_canvas_manage`, `chardesk_canvas_read`, `chardesk_canvas_search`, `chardesk_canvas_write` | Manage and operate on Canvases in original Cell coordinates. `list` returns active Canvases and short runtime `canvasRef` handles by default; pass `includeArchived: true` for archived Canvases. `canvasRef` is optional and defaults to the active Canvas. `canvasId` remains a legacy UUID input. |
 | Materials | `chardesk_read_materials` | Read-only Markdown shared by both workflows. |
 
 New spatial operations belong to Canvas; source-file editing remains outside these tools.
 Groups reuse existing runtimes and never own separate copies of application state.
+
+## Local MCP bridge
+
+The local bridge keeps one browser page connection and multiplexes independent
+Agent tenants through it:
+
+```text
+browser page ── one WebSocket ── bridge broker
+                                  ├─ tenant A
+                                  ├─ tenant B
+                                  └─ tenant C
+```
+
+Each tenant has its own session token and pending-request budget. Requests are
+forwarded in FIFO order; a tenant disconnect does not close the page or affect
+other tenants. A second `@chardesk/mcp server` process joins the existing broker
+automatically instead of claiming a second browser connection.
 
 Canvas reads keep machine metadata separate from visual content. `chardesk_canvas_read`
 returns `structuredContent` for coordinates and sampling, plus `contentBlocks` for text,

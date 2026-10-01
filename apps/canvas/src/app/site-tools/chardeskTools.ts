@@ -5,7 +5,7 @@ import { createChardeskMaterialsTool } from "./materialsTools";
 import type { CanvasToolRendering } from "./canvasRendering";
 
 type ChardeskAgentToolDependencies = Readonly<{
-  canvas: Pick<CanvasRuntime, "ready" | "getState" | "materializeSession"> & Parameters<typeof createCanvasWriteTool>[0];
+  canvas: Parameters<typeof createCanvasManageTool>[0] & Parameters<typeof createCanvasWriteTool>[0] & Pick<CanvasRuntime, "materializeSession">;
   readOnly?: boolean;
   rendering: CanvasToolRendering;
 }>;

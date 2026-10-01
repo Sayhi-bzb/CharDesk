@@ -39,7 +39,7 @@ test("stdio MCP publishes search and forwards its unchanged input and output", {
     assert.equal(search.inputSchema.properties.regex.type, "boolean");
     assert.equal(search.inputSchema.properties.ignoreCase.type, "boolean");
     const input = { query: "hello \\w+\nwelcome", regex: true, ignoreCase: true, viewport: [-20, -10, 80, 24], after: [-10, -5] };
-    const result = { canvasId: "example", matches: [{ viewport: [-13, -7, 32, 5], content: [" ".repeat(32), " ".repeat(32), `        Hello there${" ".repeat(13)}`, " ".repeat(32), " ".repeat(32)].join("\n") }], next: null };
+    const result = { canvasId: "example", matches: [{ origin: [-5, -5], bounds: [-5, -5, 11, 1], content: "Hello there" }], next: null };
     const requests = [];
     page.on("message", (data) => {
       const request = JSON.parse(data.toString());

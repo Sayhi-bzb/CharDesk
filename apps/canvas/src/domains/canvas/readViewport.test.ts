@@ -15,7 +15,7 @@ const lines = (content: string) => content.split("\n").flatMap((line) => {
 describe("Canvas viewport reading", () => {
   it("preserves coordinates, whitespace, CJK, and graphemes in exact text", () => {
     const view = readCanvasViewport(surface([[-2, -1, "A"], [-1, -1, "你"], [1, -1, "é"]]), [-3, -2, 7, 3]);
-    expect(view).toMatchObject({ viewport: [-3, -2, 7, 3], step: 1, mode: "text" });
+    expect(view).toMatchObject({ viewport: [-3, -2, 7, 3], step: 1, mode: "text", overviewOnly: false });
     expect(lines(view.content)).toEqual(["", " A你é", ""]);
     expect(lines(view.content).every((line) => getTextCellWidth(line) <= 7)).toBe(true);
     expect(view.content).toContain("0 ┤");
@@ -70,7 +70,7 @@ describe("Canvas viewport reading", () => {
 
   it("samples quadrant positions without interpreting content", () => {
     const view = readCanvasViewport(surface([[0, 0, "a"], [3, 1, "b"]]), [0, 0, 160, 48]);
-    expect(view).toMatchObject({ step: 2, mode: "projection" });
+    expect(view).toMatchObject({ step: 2, mode: "projection", overviewOnly: true });
     expect(lines(view.content)[0].slice(0, 2)).toBe("▘▗");
     expect(lines(view.content)).toHaveLength(24);
   });
@@ -79,7 +79,7 @@ describe("Canvas viewport reading", () => {
     const entries: Array<[number, number, string, string?]> = [[0, 0, "x"], [10, 0, " ", "#f00"]];
     for (let y = 0; y < 10; y++) for (let x = 20; x < 30; x++) entries.push([x, y, "x"]);
     const view = readCanvasViewport(surface(entries), [0, 0, 800, 240]);
-    expect(view).toMatchObject({ step: 10, mode: "density" });
+    expect(view).toMatchObject({ step: 10, mode: "density", overviewOnly: true });
     expect(lines(view.content)[0].slice(0, 4)).toBe("░░█·");
   });
 
@@ -93,7 +93,7 @@ describe("Canvas viewport reading", () => {
 
   it("distinguishes empty documents from explicit blank views and excludes unstyled spaces", () => {
     const reader = surface([[0, 0, " "]]);
-    expect(readCanvasViewport(reader)).toEqual({ viewport: null, step: 1, mode: "text", content: "" });
+    expect(readCanvasViewport(reader)).toEqual({ viewport: null, step: 1, mode: "text", overviewOnly: false, content: "" });
     expect(readCanvasViewport(reader, [-10, 2, 4, 1]).viewport).toEqual([-10, 2, 4, 1]);
     expect(lines(readCanvasViewport(reader, [-10, 2, 4, 1]).content)).toEqual([""]);
   });

@@ -4,7 +4,12 @@ import { pairingPath, credentialsPath } from '../src/paths.mjs';
 
 const command = process.argv[2] || 'server';
 if (command === 'server') {
-  await import('../src/server.mjs');
+  try {
+    await import('../src/server.mjs');
+  } catch (error) {
+    if (error?.code !== 'EADDRINUSE') throw error;
+    await import('../src/agent.mjs');
+  }
 } else if (command === 'pair') {
   try {
     const pairing = JSON.parse(await readFile(pairingPath(), 'utf8'));

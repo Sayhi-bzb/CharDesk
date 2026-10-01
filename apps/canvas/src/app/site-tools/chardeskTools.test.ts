@@ -10,7 +10,7 @@ const runtime = createTextRenderingRuntime();
 const rendering = { render: runtime.renderCompact, getProfile: runtime.getProfile, getContext: () => ({ themeMode: "light" as const }) };
 
 const canvas = {
-  commands: { text: { writeAt: () => null, writeRowsAt: () => null } },
+  commands: { text: { writeAt: () => null, writeRowsAt: () => null }, sessions: { create: () => ({ id: "canvas-b", name: "New", mode: "freeform" as const }), rename: () => {}, archive: () => true } },
   ready: Promise.resolve(),
   getState: () => ({ activeCanvasId: "canvas-a" }) as ReturnType<CanvasRuntime["getState"]>,
   materializeSession: async () => ({
@@ -35,8 +35,8 @@ describe("CharDesk agent tools", () => {
     const tools = createChardeskAgentTools({ canvas, rendering, readOnly: true });
     expect(tools.map(({ name }) => name)).toEqual([MATERIALS_READ_TOOL_NAME, CANVAS_MANAGE_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME]);
     expect(tools.every(({ readOnly }) => readOnly)).toBe(true);
-    expect(await groups.canvas[1].execute({})).toMatchObject({ canvasId: "canvas-a", viewport: null });
-    expect(await groups.canvas[2].execute({ query: "Hello" })).toMatchObject({ canvasId: "canvas-a", matches: [], next: null });
+    expect(await groups.canvas[1].execute({})).toMatchObject({ viewport: null, overviewOnly: false });
+    expect(await groups.canvas[2].execute({ query: "Hello" })).toMatchObject({ matches: [], next: null });
   });
 
   it("exposes the canonical visual materials as read-only Markdown", async () => {

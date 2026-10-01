@@ -1,6 +1,8 @@
-# Local backstage
+# Local CLI workflow
 
-Use `@chardesk/cli` for native files and artifacts. Edit files with filesystem tools.
+Use `@chardesk/cli` for native `.chardesk` files and local artifacts. Edit
+files with filesystem tools; CLI inspection and preview do not replace the
+native source.
 
 ```sh
 npx -y @chardesk/cli init <name>.chardesk --title "<title>"
@@ -15,7 +17,8 @@ npx -y @chardesk/cli render <input> -o <output> --strict --json
 Native Slide decks open in the browser; CLI inspect/render do not render decks.
 
 `open` reuses a managed read-only preview and watches its file. `--no-browser`
-returns its URL. `render` produces PNG, `.chardesk`, ANSI, or text.
-Stdin works for inspect/render, not open. No checkout or dev server is required.
+returns its URL. `render` produces PNG, `.chardesk`, ANSI, or text. Stdin works
+for inspect/render, not open. No checkout or dev server is required.
 
-Legacy files use [explicit migration](../legacy-migration.md), never normal authoring.
+Legacy files are outside normal authoring; do not create or edit them through
+the CLI workflow.

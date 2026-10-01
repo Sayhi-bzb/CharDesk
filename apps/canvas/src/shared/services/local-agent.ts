@@ -14,10 +14,15 @@ let socket: WebSocket | undefined;
 let status: LocalAgentStatus = 'idle';
 let revision = 0;
 const pairingKey = 'chardesk.local-agent.pairing';
+const enabledKey = 'chardesk.local-agent.enabled';
 export const DEFAULT_LOCAL_AGENT_URL = 'ws://127.0.0.1:9494/bridge';
 type Pairing = { url: string; scope: string; expiresAt: number; permissions: LocalAgentPermissions };
 let retry: ReturnType<typeof setTimeout> | undefined;
 let automatic = false;
+let enabled = false;
+const readEnabled = () => {
+  try { return localStorage.getItem(enabledKey) === 'true'; } catch { return enabled; }
+};
 export function getRememberedLocalAgent(): Pairing | null {
   try {
     const saved = JSON.parse(localStorage.getItem(pairingKey) ?? 'null') as Pairing | null;
@@ -46,21 +51,24 @@ export const subscribeLocalAgent = (listener: () => void) => {
   return () => { listeners.delete(listener); };
 };
 export const getLocalAgentStatus = () => status;
+export const getLocalAgentEnabled = () => enabled || readEnabled();
 export const getLocalAgentRevision = () => revision;
-export const configureLocalAgent = (next: LocalAgentPort) => { port = next; restoreLocalAgent(); };
+export const configureLocalAgent = (next: LocalAgentPort) => { port = next; enabled = readEnabled(); restoreLocalAgent(); };
 
 export function restoreLocalAgent() {
   const saved = getRememberedLocalAgent();
   const currentScope = port?.scope();
   const currentCanvas = port?.canvasId?.() ?? currentScope;
   const matches = saved && (saved.scope === 'application' ? saved.scope === currentScope : saved.scope === currentCanvas);
-  if (saved && matches && !socket) {
-    try { connectLocalAgent(saved.url, true, saved.permissions, saved.scope); } catch { forgetLocalAgent(); }
+  if (getLocalAgentEnabled() && !socket && currentScope && (!saved || matches)) {
+    try { connectLocalAgent(matches ? saved.url : DEFAULT_LOCAL_AGENT_URL, true, matches ? saved.permissions : DEFAULT_LOCAL_AGENT_PERMISSIONS, matches ? saved.scope : undefined); } catch { /* Retry when the local agent becomes available. */ }
   }
 }
 
 export function forgetLocalAgent() {
   try { localStorage.removeItem(pairingKey); } catch { /* No stored pairing to remove. */ }
+  enabled = false;
+  try { localStorage.removeItem(enabledKey); } catch { /* Storage may be unavailable. */ }
   if (socket?.readyState === WebSocket.OPEN) {
     try { socket.send(JSON.stringify({ method: 'revoke' })); } catch { /* The bridge may already be closing. */ }
   }
@@ -74,6 +82,19 @@ export const disconnectLocalAgent = () => {
   socket = undefined;
   previous?.close(1000, 'Disconnected by page');
   publish('idle');
+};
+
+export const setLocalAgentEnabled = (next: boolean, grant = DEFAULT_LOCAL_AGENT_PERMISSIONS) => {
+  enabled = next;
+  try {
+    if (next) localStorage.setItem(enabledKey, 'true');
+    else localStorage.removeItem(enabledKey);
+  } catch { /* Storage may be unavailable; the in-memory switch still applies. */ }
+  if (!next) { disconnectLocalAgent(); return; }
+  const saved = getRememberedLocalAgent();
+  try { connectLocalAgent(saved?.url || DEFAULT_LOCAL_AGENT_URL, true, saved?.permissions ?? grant, saved?.scope); }
+  catch { /* The retry loop will connect when a local agent starts. */ }
+  publish(status);
 };
 
 let permissions: LocalAgentPermissions = DEFAULT_LOCAL_AGENT_PERMISSIONS;
@@ -92,6 +113,10 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
   const scope = requestedScope ?? applicationScope;
   const currentCanvas = activePort?.canvasId?.() ?? applicationScope;
   if (!activePort || !applicationScope || !scope || (scope !== 'application' && currentCanvas !== scope)) throw new Error('Open a Canvas first');
+  if (remember) {
+    enabled = true;
+    try { localStorage.setItem(enabledKey, 'true'); } catch { /* Storage may be unavailable. */ }
+  }
   disconnectLocalAgent();
   automatic = remember;
   permissions = { ...DEFAULT_LOCAL_AGENT_PERMISSIONS, ...grant };
@@ -118,7 +143,7 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
       publish('error');
       const saved = getRememberedLocalAgent();
       const currentScope = saved?.scope === 'application' ? activePort.scope() : (activePort.canvasId?.() ?? activePort.scope());
-      if (automatic && saved?.scope === currentScope) {
+      if (automatic && getLocalAgentEnabled() && (!saved || saved.scope === currentScope)) {
         retry = setTimeout(restoreLocalAgent, 5_000);
       }
     }
@@ -180,13 +205,19 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
           || !input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid Canvas request');
         const permission = String(name).endsWith('_read') ? 'read' : String(name).endsWith('_search') ? 'search' : String(name).endsWith('_manage') && (input as { action?: unknown }).action === 'list' ? 'inspect' : 'write';
         if (!permissions[permission]) throw new Error(`Permission denied: canvas.${permission}`);
-        const result = await activePort.execute(String(name), input as Record<string, unknown>);
-        const scopedResult = scope === 'application' || !String(name).endsWith('_list') || !result || typeof result !== 'object'
-          ? result
-          : { ...(result as Record<string, unknown>), canvases: Array.isArray((result as Record<string, unknown>).canvases)
-            ? (result as { canvases: unknown[] }).canvases.filter((canvas) => (canvas as { canvasId?: unknown })?.canvasId === scope)
-            : [] };
-        response = JSON.stringify({ id, result: scopedResult });
+        if (scope !== 'application') {
+          const target = input as { canvasId?: unknown; canvasRef?: unknown };
+          if (target.canvasId !== undefined && target.canvasId !== scope) throw new Error('Canvas authorization is limited to the paired Canvas.');
+          if (target.canvasRef !== undefined) {
+            const listed = await activePort.execute('chardesk_canvas_manage', { action: 'list', canvasId: scope }) as { canvases?: Array<{ canvasRef: string }> };
+            if (!listed.canvases?.some(({ canvasRef }) => canvasRef === target.canvasRef)) throw new Error('Canvas authorization is limited to the paired Canvas.');
+          }
+        }
+        const scopedInput = scope === 'application' || String(name) !== 'chardesk_canvas_manage' || (input as { action?: unknown }).action !== 'list'
+          ? input as Record<string, unknown>
+          : { action: 'list', canvasId: scope };
+        const result = await activePort.execute(String(name), scopedInput);
+        response = JSON.stringify({ id, result });
       } catch (error) {
         response = JSON.stringify({ id, error: error instanceof Error ? error.message : 'Canvas request failed' });
       }

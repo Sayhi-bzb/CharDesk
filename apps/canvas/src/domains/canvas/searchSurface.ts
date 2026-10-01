@@ -2,10 +2,9 @@ import { getGraphemeCellWidth, getTextCellWidth } from "@chardesk/protocol";
 import { RE2JS } from "re2js";
 import type { CanvasSurfaceReader, CellPlaneRow } from "./cell-plane/model";
 import { isCanvasReadViewport, type CanvasReadViewport } from "./readViewport";
-import { readCanvasTextRegion } from "./textRegion";
 
 export type CanvasSearchPosition = readonly [x: number, y: number];
-export type CanvasSearchMatch = Readonly<{ viewport: CanvasReadViewport; content: string }>;
+export type CanvasSearchMatch = Readonly<{ origin: CanvasSearchPosition; bounds: CanvasReadViewport; content: string }>;
 export type CanvasSearchResult = Readonly<{ matches: readonly CanvasSearchMatch[]; next: CanvasSearchPosition | null }>;
 export type CanvasSearchOptions = Readonly<{
   viewport?: CanvasReadViewport;
@@ -15,8 +14,6 @@ export type CanvasSearchOptions = Readonly<{
 }>;
 
 const PAGE_SIZE = 20;
-const WINDOW_WIDTH = 32;
-const WINDOW_HEIGHT = 5;
 const MAX_QUERY_LENGTH = 4096;
 const MAX_TEMPLATE_ROWS = 64;
 const MAX_REGEX_ROW_WIDTH = 16384;
@@ -40,8 +37,6 @@ export const isCanvasSearchQuery = (value: unknown): value is string => {
 export const isCanvasSearchPosition = (value: unknown): value is CanvasSearchPosition =>
   Array.isArray(value) && value.length === 2 && value.every(Number.isSafeInteger);
 
-const windowOrigin = (coordinate: number, offset: number, size: number) =>
-  Math.max(-Number.MAX_SAFE_INTEGER, Math.min(Number.MAX_SAFE_INTEGER - size, coordinate - offset));
 type Glyph = Readonly<{ x: number; char: string }>;
 type Run = Readonly<{ text: string; positions: ReadonlyMap<number, number>; offsets: ReadonlyMap<number, number> }>;
 
@@ -145,19 +140,24 @@ export const searchCanvasSurface = (
     cache.set(y, runs);
     return runs;
   };
-  const followsTemplate = (x: number, y: number) => {
+  const matchTemplate = (x: number, y: number, firstRun: Run, firstHit: readonly [number, number]) => {
+    const content = [firstRun.text.slice(firstHit[0], firstHit[1])];
+    let width = firstRun.positions.get(firstHit[1])! - x;
     for (let line = 1; line < lines.length; line++) {
       const targetY = y + line;
-      if (!Number.isSafeInteger(targetY) || (region && targetY >= region.y + region.height)) return false;
-      const matched = rowAt(targetY).some((run) => {
+      if (!Number.isSafeInteger(targetY) || (region && targetY >= region.y + region.height)) return null;
+      const matched = rowAt(targetY).find((run) => {
         const offset = run.offsets.get(x);
         if (offset === undefined) return false;
         const hit = find(run, line, offset);
-        return hit !== null && hit[0] === offset && hit[1] > offset && run.positions.has(hit[1]);
+        if (hit === null || hit[0] !== offset || hit[1] <= offset || !run.positions.has(hit[1])) return false;
+        content.push(run.text.slice(hit[0], hit[1]));
+        width = Math.max(width, run.positions.get(hit[1])! - x);
+        return true;
       });
-      if (!matched) return false;
+      if (!matched) return null;
     }
-    return true;
+    return { content: content.join("\n"), bounds: [x, y, width, lines.length] as CanvasReadViewport };
   };
   const matches: CanvasSearchMatch[] = [];
   let lastPosition: CanvasSearchPosition | null = null;
@@ -174,13 +174,12 @@ export const searchCanvasSurface = (
         from = start + 1;
         const x = run.positions.get(start);
         if (end <= start || x === undefined || !run.positions.has(end)) continue;
-        if (!followsTemplate(x, row.y)) continue;
+        const matched = matchTemplate(x, row.y, run, hit);
+        if (!matched) continue;
         from = end;
         if (after && row.y === after[1] && x <= after[0]) continue;
         if (matches.length === PAGE_SIZE) return { matches, next: lastPosition };
-        const left = windowOrigin(x, 8, WINDOW_WIDTH), top = windowOrigin(row.y, 2, WINDOW_HEIGHT);
-        const preview = readCanvasTextRegion(surface, { x: left, y: top, width: WINDOW_WIDTH, height: WINDOW_HEIGHT });
-        matches.push({ viewport: [left, top, WINDOW_WIDTH, WINDOW_HEIGHT], content: preview.text.map((line) => line.join("")).join("\n") });
+        matches.push({ origin: [x, row.y], bounds: matched.bounds, content: matched.content });
         lastPosition = [x, row.y];
       }
     }

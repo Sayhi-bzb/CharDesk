@@ -14,7 +14,7 @@ import {
 import { placeCharInYMap, placeStyledCellInYMap } from "./utils";
 import type { Point } from "@/shared/types";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
-import { CanvasWriteError, prepareCanvasTextWrite, prepareCanvasRowsWrite } from "../writeText";
+import { CanvasWriteError, prepareCanvasTextWrite, prepareCanvasRowsWrite, type CanvasWriteMode } from "../writeText";
 import { getGraphemeCellWidth as getCellOccupancy, splitGraphemes } from "@chardesk/protocol";
 import { clampPointToActiveSlide, getActiveSlideGridBounds } from "./slideBounds";
 import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
@@ -98,7 +98,12 @@ export const createCanvasTextCommands = (
 ) => {
   const get = commits.getState;
   const set = commits.setState;
-  const writePrepared = (prepare: () => ReturnType<typeof prepareCanvasTextWrite>) => {
+  type PreparedWrite = ReturnType<typeof prepareCanvasTextWrite>;
+  type WriteResult = Pick<PreparedWrite, "bounds" | "writtenCells" | "skippedWhitespaceCells">;
+  const summarize = ({ bounds, writtenCells, skippedWhitespaceCells }: PreparedWrite): WriteResult => ({
+    bounds, writtenCells, skippedWhitespaceCells,
+  });
+  const writePrepared = (prepare: () => PreparedWrite): WriteResult | null => {
     const state = get();
     const session = state.canvasSessions.find(({ id }) => id === state.activeCanvasId);
     if (!session) throw new CanvasWriteError("canvas_not_active", "Open a Canvas first.");
@@ -107,8 +112,9 @@ export const createCanvasTextCommands = (
         ? "Wait for this Canvas migration to finish before writing."
         : "Edit the source file of this Canvas instead of its projection.");
     }
-    const { patch, bounds } = prepare();
-    if (!bounds) return null;
+    const prepared = prepare();
+    const { patch, bounds } = prepared;
+    if (!bounds) return summarize(prepared);
     const slideBounds = getActiveSlideGridBounds(state);
     if (slideBounds && (bounds[0] < slideBounds.start.x || bounds[1] < slideBounds.start.y
       || bounds[0] + bounds[2] - 1 > slideBounds.end.x || bounds[1] + bounds[3] - 1 > slideBounds.end.y)) {
@@ -121,9 +127,9 @@ export const createCanvasTextCommands = (
     } finally {
       documents.finishHistoryCapture();
     }
-    return bounds;
+    return summarize(prepared);
   };
-  const writePreparedAt = (sessionId: string, prepare: () => ReturnType<typeof prepareCanvasTextWrite>) => {
+  const writePreparedAt = (sessionId: string, prepare: () => PreparedWrite): WriteResult | null => {
     const state = get();
     const session = state.canvasSessions.find(({ id }) => id === sessionId);
     if (!session) throw new CanvasWriteError("canvas_not_active", "Canvas not found.");
@@ -134,8 +140,9 @@ export const createCanvasTextCommands = (
     }
     const address = documents.getDocumentAddress(sessionId);
     if (!address) throw new CanvasWriteError("canvas_not_active", "Canvas content is not ready.");
-    const { patch, bounds } = prepare();
-    if (!bounds) return null;
+    const prepared = prepare();
+    const { patch, bounds } = prepared;
+    if (!bounds) return summarize(prepared);
     const page = session.mode === "slide"
       ? documents.getPageDescriptors(sessionId).find(({ id }) => id === address.pageId)
       : undefined;
@@ -147,13 +154,13 @@ export const createCanvasTextCommands = (
     documents.finishHistoryCapture();
     try { documents.applyCellPlanePatchAt(address, patch, commits.getDocumentHistoryMode()); }
     finally { documents.finishHistoryCapture(); }
-    return bounds;
+    return summarize(prepared);
   };
   return coordinateCanvasCommands(commits, {
-    writeAt: (content: string, at: Point) => writePrepared(() => prepareCanvasTextWrite(at, content, get().brushColor)),
-    writeRowsAt: (rows: readonly RichTextRow[], at: Point) => writePrepared(() => prepareCanvasRowsWrite(at, rows)),
-    writeAtSession: (sessionId: string, content: string, at: Point, color = get().brushColor) => writePreparedAt(sessionId, () => prepareCanvasTextWrite(at, content, color)),
-    writeRowsAtSession: (sessionId: string, rows: readonly RichTextRow[], at: Point) => writePreparedAt(sessionId, () => prepareCanvasRowsWrite(at, rows)),
+    writeAt: (content: string, at: Point, writeMode: CanvasWriteMode = "replace") => writePrepared(() => prepareCanvasTextWrite(at, content, get().brushColor, writeMode)),
+    writeRowsAt: (rows: readonly RichTextRow[], at: Point, writeMode: CanvasWriteMode = "replace") => writePrepared(() => prepareCanvasRowsWrite(at, rows, writeMode)),
+    writeAtSession: (sessionId: string, content: string, at: Point, color = get().brushColor, writeMode: CanvasWriteMode = "replace") => writePreparedAt(sessionId, () => prepareCanvasTextWrite(at, content, color, writeMode)),
+    writeRowsAtSession: (sessionId: string, rows: readonly RichTextRow[], at: Point, writeMode: CanvasWriteMode = "replace") => writePreparedAt(sessionId, () => prepareCanvasRowsWrite(at, rows, writeMode)),
     write: (str: string, startPos?: Point, options?: TextWriteOptions) => {
       const current = get();
       const staticGrid = current.interaction.staticGrid;

@@ -30,7 +30,8 @@ test("local stdio MCP reads and edits multiple Canvases after one application pa
     const write = "chardesk_canvas_write";
     const search = "chardesk_canvas_search";
     const { tools } = await client.listTools();
-    expect(tools.map((tool) => tool.name).sort()).toEqual(["chardesk_canvas_list", read, search, write]);
+    const manage = "chardesk_canvas_manage";
+    expect(tools.map((tool) => tool.name).sort()).toEqual([manage, read, search, write]);
     expect(tools.find((tool) => tool.name === search).annotations.readOnlyHint).toBe(true);
     expect(tools.find((tool) => tool.name === write).inputSchema.required).toEqual(["at", "content"]);
     expect((await call(read, {})).isError).toBe(true);
@@ -102,13 +103,13 @@ test("local stdio MCP reads and edits multiple Canvases after one application pa
     const at = [32, 28];
     const written = await call(write, { at, content: explanation });
     expect(written, JSON.stringify(written)).toMatchObject({ isError: false });
-    expect(written.structuredContent).toMatchObject({ canvasId: expect.any(String), bounds: [32, 28, 27, 4] });
+    expect(written.structuredContent).toMatchObject({ bounds: [32, 28, 27, 4] });
     const result = await call(read, { viewport: written.structuredContent.bounds });
     expect(result.structuredContent.content).toContain("Many cores work in parallel");
     const found = await call(search, { query: "Many cores", viewport: written.structuredContent.bounds });
-    expect(found.structuredContent).toMatchObject({ canvasId: written.structuredContent.canvasId,
-      matches: [{ viewport: [24, 27, 32, 5], content: expect.stringContaining("Many cores") }], next: null });
-    expect((await call(read, { viewport: found.structuredContent.matches[0].viewport })).structuredContent.content).toContain("Many cores");
+    expect(found.structuredContent).toMatchObject({
+      matches: [{ origin: [32, 29], bounds: [32, 29, 10, 1], content: "Many cores" }], next: null });
+    expect((await call(read, { viewport: found.structuredContent.matches[0].bounds })).structuredContent.content).toContain("Many cores");
     await expect.poll(async () => Buffer.compare(before, await page.screenshot())).not.toBe(0);
     await page.screenshot({ path: testInfo.outputPath("gpu-canvas.png") });
     await call(write, { at, content: "你é" });
@@ -117,17 +118,18 @@ test("local stdio MCP reads and edits multiple Canvases after one application pa
     expect(invalid.isError).toBe(true);
     expect(invalid.structuredContent.code).toBe("invalid_input");
 
-    const originalCanvasId = written.structuredContent.canvasId;
+    const listed = await call(manage, { action: "list" });
+    const originalCanvasRef = listed.structuredContent.currentCanvasRef;
 
     await page.getByRole('button', { name: 'Select canvas', exact: true }).click();
     await page.getByRole('button', { name: 'New', exact: true }).click();
     await page.getByRole('menuitem', { name: 'New Freeform', exact: true }).click();
     await expect.poll(async () => (await call(read, {})).isError).toBe(false);
-    const canvases = await call("chardesk_canvas_list", {});
+    const canvases = await call(manage, { action: "list" });
     expect(canvases.structuredContent.canvases.length).toBeGreaterThanOrEqual(2);
-    const secondWrite = await call(write, { canvasId: originalCanvasId, at: [32, 28], content: "updated from another Canvas" });
-    expect(secondWrite, JSON.stringify(secondWrite)).toMatchObject({ isError: false, structuredContent: { canvasId: originalCanvasId } });
-    expect((await call(read, { canvasId: originalCanvasId, viewport: [32, 28, 28, 1] })).structuredContent.content).toContain("updated from another Canvas");
+    const secondWrite = await call(write, { canvasRef: originalCanvasRef, at: [32, 28], content: "updated from another Canvas" });
+    expect(secondWrite, JSON.stringify(secondWrite)).toMatchObject({ isError: false, structuredContent: { canvasRef: originalCanvasRef } });
+    expect((await call(read, { canvasRef: originalCanvasRef, viewport: [32, 28, 28, 1] })).structuredContent.content).toContain("updated from another Canvas");
 
     await page.goto("/blackboard");
     await expect(page).toHaveURL(/workspace$/);

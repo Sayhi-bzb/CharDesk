@@ -9,9 +9,9 @@ marks on the same Canvas.
 
 These examples are composition materials, not a required document structure.
 `chardesk` blocks contain spatial text and ANSI; `chargraph` blocks use the
-[CLI](backstage/cli.md) for block composition, diagrams, and charts.
+[CLI](cli.md) for block composition, diagrams, and charts.
 For live writes, follow the renderer settings reported by
-[Canvas read](backstage/live-canvas.md); do not assume CharGraph separators or
+[Canvas read](live-canvas.md); do not assume CharGraph separators or
 fenced renderers are enabled there.
 
 ## A shared medium
