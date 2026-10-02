@@ -21,6 +21,7 @@ jobs:
   release-metadata:
     name: Release metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -36,6 +37,7 @@ jobs:
     name: Quality
     needs: release-metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - &checkout
         name: Check out repository
@@ -71,11 +73,14 @@ jobs:
     name: Workspace tests
     needs: release-metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - *checkout
       - *setup-node
       - *install
       - name: Run workspace tests
+        env:
+          VERIFY_TASK_TIMEOUT_MS: 300000
         run: |
           if [ -n "$VERIFY_BASE" ]; then
             npm run "$VERIFY_SCRIPT" -- --phase workspace-tests --base "$VERIFY_BASE"
@@ -87,6 +92,7 @@ jobs:
     name: Node tests
     needs: release-metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - *checkout
       - *setup-node
@@ -104,6 +110,7 @@ jobs:
     name: DOM tests (${{ matrix.shard }})
     needs: release-metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -124,6 +131,7 @@ jobs:
     name: Build
     needs: release-metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - *checkout
       - *setup-node
@@ -188,6 +196,7 @@ jobs:
     if: ${{ always() }}
     needs: [release-metadata, quality, workspace-tests, node-tests, dom-tests, build, cell-e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Require every verification lane
         run: |
@@ -204,6 +213,7 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       deployments: write

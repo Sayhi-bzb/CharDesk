@@ -397,14 +397,22 @@ export function executeVerificationPlan(plan, { dryRun = false, spawn = spawnSyn
   const started = performance.now()
   const timings = []
   let status = 0
+  const taskTimeoutMs = Number(process.env.VERIFY_TASK_TIMEOUT_MS || 0)
   for (const task of plan.tasks) {
     log(`\n[verify] ${task.label}\n  reason: ${task.reason}\n  command: ${[task.command, ...task.args].map(arg => JSON.stringify(arg)).join(' ')}`)
     if (dryRun) continue
     const before = performance.now()
-    const result = spawn(task.command, task.args, { cwd: repositoryRoot, stdio: 'inherit', env: process.env })
+    const result = spawn(task.command, task.args, {
+      cwd: repositoryRoot,
+      stdio: 'inherit',
+      env: process.env,
+      ...(Number.isFinite(taskTimeoutMs) && taskTimeoutMs > 0 ? { timeout: taskTimeoutMs, killSignal: 'SIGTERM' } : {}),
+    })
     timings.push({ label: task.label, seconds: (performance.now() - before) / 1000 })
     status = result.status ?? 1
-    if (result.error) log(`[verify] ${result.error.message}`)
+    if (result.error) {
+      log(`[verify] ${result.error.code === 'ETIMEDOUT' ? `timed out after ${taskTimeoutMs}ms` : result.error.message}`)
+    }
     if (status !== 0) break
   }
   for (const note of plan.deferred) log(`[verify] deferred: ${note}`)
