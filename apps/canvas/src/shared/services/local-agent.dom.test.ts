@@ -108,20 +108,17 @@ describe('local agent page connection', () => {
     expect(socket.close).not.toHaveBeenCalled();
   });
 
-  it('checks short refs against the paired Canvas before forwarding', async () => {
-    execute.mockResolvedValueOnce({ canvases: [{ canvasRef: 'c1' }] } as never);
+  it('checks persistent Canvas IDs against the paired Canvas before forwarding', async () => {
     connectLocalAgent(url);
     const socket = Socket.instances[0];
     socket.open();
-    socket.receive({ id: 'other', method: 'call', params: { name: 'chardesk_canvas_read', input: { canvasRef: 'c2' } } });
+    socket.receive({ id: 'other', method: 'call', params: { name: 'chardesk_canvas_read', input: { canvasId: 'canvas-b' } } });
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(1));
-    expect(execute).toHaveBeenCalledWith('chardesk_canvas_manage', { action: 'list', canvasId: 'canvas-a' });
-    expect(execute).toHaveBeenCalledTimes(1);
+    expect(execute).not.toHaveBeenCalled();
     expect(JSON.parse(socket.send.mock.calls[0][0]).error).toContain('limited to the paired Canvas');
-    execute.mockResolvedValueOnce({ canvases: [{ canvasRef: 'c1' }] } as never);
-    socket.receive({ id: 'same', method: 'call', params: { name: 'chardesk_canvas_read', input: { canvasRef: 'c1' } } });
+    socket.receive({ id: 'same', method: 'call', params: { name: 'chardesk_canvas_read', input: { canvasId: 'canvas-a' } } });
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(2));
-    expect(execute).toHaveBeenLastCalledWith('chardesk_canvas_read', { canvasRef: 'c1' });
+    expect(execute).toHaveBeenLastCalledWith('chardesk_canvas_read', { canvasId: 'canvas-a' });
   });
 
   it('ignores callbacks from a replaced connection and shows unexpected disconnects', () => {

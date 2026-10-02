@@ -7,9 +7,9 @@ search, and write calls over a loopback WebSocket to one explicitly paired
 browser page. Multiple MCP processes can share that page: the first process owns
 the broker and later processes register as isolated tenant sessions. CharDesk can
 grant application-scoped access to all Canvases with separate inspect, read,
-search, and write permissions; `canvasRef` selects a target without changing
-the human's active Canvas. Get refs from `chardesk_canvas_manage` with the
-`list` action; the legacy `canvasId` UUID input remains supported.
+search, and write permissions; the short persistent `canvasId` selects a target
+without changing the human's active Canvas. Get IDs from
+`chardesk_canvas_manage` with the `list` action.
 The manage list action omits archived Canvases by default; pass
 `includeArchived: true` only when archived pages are explicitly needed. It does
 not store documents or relay Canvas content through a server.

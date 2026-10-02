@@ -14,8 +14,8 @@ maps are not search content.
 { "query": "Hello", "viewport": [0, 0, 100, 50] }
 ```
 
-在 full-access local MCP 中可增加 `canvasRef` 指定目标 Canvas；省略时使用
-当前 active Canvas。`list` action 返回短 runtime 引用；只有需要跨 Canvas 时才使用它。
+在 full-access local MCP 中可增加 `canvasId` 指定目标 Canvas；省略时使用
+当前 active Canvas。`list` action 返回短持久化 ID；只有需要跨 Canvas 时才使用它。
 
 `query` is literal and case-sensitive by default. Set `ignoreCase: true` for
 Unicode case folding; set `regex: true` for [RE2 syntax](https://github.com/google/re2/wiki/Syntax).
@@ -55,7 +55,7 @@ the budget also bounds sparse expansion and repeated template checks.
 
 ```json
 {
-  "canvasRef": "c1",
+  "canvasId": "cv-7k3m9a1b2c",
   "matches": [{ "origin": [10, 20], "bounds": [10, 20, 5, 1], "content": "Hello" }],
   "next": null
 }
@@ -73,8 +73,8 @@ when more context is worth a separate [read](/development/architecture/canvas-re
 Each call returns at most 20 matches. Non-null `next` is the last returned match's
 `origin` `[x,y]`; pass it as `after` with identical
 query, regex, ignoreCase, and viewport to continue
-strictly after that position. Confirm the `canvasRef` still belongs to the same
-runtime. Calls observe
+strictly after that position. Confirm the `canvasId` still belongs to the same
+Canvas. Calls observe
 current content, not a shared snapshot; restart after an edit if consistency matters.
 Empty results have `matches: []` and `next: null`.
 

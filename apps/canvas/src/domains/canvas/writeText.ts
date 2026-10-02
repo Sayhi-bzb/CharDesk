@@ -102,8 +102,8 @@ export const prepareCanvasRowsWrite = (
       }
       flush();
       return output.map((entry) => {
-        const next = { ...entry };
-        delete next.width;
+        const { width, ...next } = entry;
+        void width;
         return { ...next, x: at.x + next.x };
       });
     });

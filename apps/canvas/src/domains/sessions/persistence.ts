@@ -169,7 +169,7 @@ const decodeCanvasSession = (value: unknown): CanvasSessionSnapshot | null => {
 };
 
 const createBlankSession = (): CanvasSessionSnapshot => ({
-  id: "canvas-1",
+  id: "cv-main",
   name: "Canvas 1",
   mode: "freeform",
   grid: [],

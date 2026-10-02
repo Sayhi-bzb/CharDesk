@@ -9,14 +9,13 @@ export const CANVAS_CODE_TOOL_NAME = "chardesk_canvas_code";
 export const CANVAS_SEARCH_TOOL = {
   name: CANVAS_SEARCH_TOOL_NAME,
   title: "Search Canvas text",
-  description: "Search rendered Canvas text at original Cell precision. Literal and case-sensitive by default; regex enables RE2 syntax (no lookaround/backreferences), ignoreCase enables Unicode case folding. Actual LF separates a spatial template: each non-blank row must match at the same x on consecutive Canvas rows; widths may differ. Each row consumes complete graphemes and non-empty text; zero-length regex matches are skipped. Regex ^/$ refer to the finite stored row envelope clipped by viewport, not template origin or arbitrary storage spans. Missing spaces inside that envelope participate; regex envelopes over 16384 Cells and budget exhaustion return search_limit, never partial results. Narrow viewport to retry. Returns up to 20 non-overlapping matches in y/x order; each match includes exact origin, bounds, and matched content without surrounding context. Continue with next as after using identical query, regex, ignoreCase, viewport and canvasRef. Calls are live, not a snapshot. Does not edit or move the camera.",
+  description: "Search rendered Canvas text at original Cell precision. Literal and case-sensitive by default; regex enables RE2 syntax (no lookaround/backreferences), ignoreCase enables Unicode case folding. Actual LF separates a spatial template: each non-blank row must match at the same x on consecutive Canvas rows; widths may differ. Each row consumes complete graphemes and non-empty text; zero-length regex matches are skipped. Regex ^/$ refer to the finite stored row envelope clipped by viewport, not template origin or arbitrary storage spans. Missing spaces inside that envelope participate; regex envelopes over 16384 Cells and budget exhaustion return search_limit, never partial results. Narrow viewport to retry. Returns up to 20 non-overlapping matches in y/x order; each match includes exact origin, bounds, and matched content without surrounding context. Continue with next as after using identical query, regex, ignoreCase, viewport and canvasId. Calls are live, not a snapshot. Does not edit or move the camera.",
   readOnly: true,
   inputSchema: {
     type: "object",
     properties: {
       query: { type: "string", minLength: 1, maxLength: 4096, description: "Literal text or RE2 patterns. Actual LF separates up to 64 aligned template rows; each row must contain non-whitespace text. No other control characters." },
-      canvasRef: { type: "string", minLength: 1, description: "Optional short runtime Canvas reference from manage(list). Omit to use the active Canvas." },
-      canvasId: { type: "string", minLength: 1, description: "Legacy optional target Canvas UUID; prefer canvasRef." },
+      canvasId: { type: "string", minLength: 1, description: "Optional short persistent Canvas ID from manage(list). Omit to use the active Canvas." },
       regex: { type: "boolean", default: false, description: "Interpret each template row as an RE2 pattern, not a JavaScript regex literal." },
       ignoreCase: { type: "boolean", default: false, description: "Case-insensitive matching in both literal and regex modes." },
       viewport: { type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4, description: "Optional [x,y,width,height] in original Cells; positive sizes." },
@@ -28,7 +27,7 @@ export const CANVAS_SEARCH_TOOL = {
     type: "object",
     oneOf: [
       { type: "object", properties: {
-        canvasRef: { type: "string" }, canvasId: { type: "string" },
+        canvasId: { type: "string" },
         matches: { type: "array", maxItems: 20, items: { type: "object", properties: {
           origin: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 },
           bounds: { type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 },
@@ -44,29 +43,28 @@ export const CANVAS_SEARCH_TOOL = {
 export const CANVAS_MANAGE_TOOL = {
   name: CANVAS_MANAGE_TOOL_NAME,
   title: "Manage Canvases",
-  description: "Manage Canvas lifecycle state. Supports list, create, rename, and archive. The list action returns active Canvases by default; pass includeArchived=true to include archived Canvases. It returns short runtime canvasRef handles; use one for explicit cross-Canvas work. Omit the reference for the active Canvas.",
+  description: "Manage Canvas lifecycle state. Supports list, create, rename, and archive. The list action returns active Canvases by default; pass includeArchived=true to include archived Canvases. Each Canvas has a short persistent canvasId. Omit it to use the active Canvas.",
   readOnly: false,
   inputSchema: { type: "object", properties: {
     action: { enum: ["list", "create", "rename", "archive"] },
-    canvasRef: { type: "string", minLength: 1, description: "Short runtime reference from list." },
-    canvasId: { type: "string", minLength: 1, description: "Legacy optional target Canvas UUID; prefer canvasRef." },
+    canvasId: { type: "string", minLength: 1, description: "Optional short persistent Canvas ID from manage(list)." },
     includeArchived: { type: "boolean", default: false, description: "Include archived Canvases in list results. Defaults to false." },
     name: { type: "string", minLength: 1 },
     mode: { enum: ["freeform", "slide"] },
   }, required: ["action"], additionalProperties: false },
   outputSchema: { type: "object", oneOf: [
     { type: "object", properties: {
-      currentCanvasRef: { anyOf: [{ type: "string" }, { type: "null" }] },
+      currentCanvasId: { anyOf: [{ type: "string" }, { type: "null" }] },
       currentCanvas: { anyOf: [{ type: "object", properties: {
-        canvasRef: { type: "string" }, name: { type: "string" }, mode: { enum: ["freeform", "slide"] },
+        canvasId: { type: "string" }, name: { type: "string" }, mode: { enum: ["freeform", "slide"] },
         active: { type: "boolean" }, archived: { type: "boolean" }, editable: { type: "boolean" },
-      }, required: ["canvasRef", "name", "mode", "active", "archived", "editable"], additionalProperties: false }, { type: "null" }] },
+      }, required: ["canvasId", "name", "mode", "active", "archived", "editable"], additionalProperties: false }, { type: "null" }] },
       canvases: { type: "array", items: { type: "object", properties: {
-        canvasRef: { type: "string" }, name: { type: "string" }, mode: { enum: ["freeform", "slide"] },
+        canvasId: { type: "string" }, name: { type: "string" }, mode: { enum: ["freeform", "slide"] },
         active: { type: "boolean" }, archived: { type: "boolean" }, editable: { type: "boolean" },
-      }, required: ["canvasRef", "name", "mode", "active", "archived", "editable"], additionalProperties: false } },
-    }, required: ["currentCanvasRef", "currentCanvas", "canvases"], additionalProperties: false },
-    { type: "object", properties: { canvasRef: { type: "string" }, canvasId: { type: "string" }, name: { type: "string" }, mode: { enum: ["freeform", "slide"] }, active: { type: "boolean" }, archived: { type: "boolean" } }, additionalProperties: false },
+      }, required: ["canvasId", "name", "mode", "active", "archived", "editable"], additionalProperties: false } },
+    }, required: ["currentCanvasId", "currentCanvas", "canvases"], additionalProperties: false },
+    { type: "object", properties: { canvasId: { type: "string" }, name: { type: "string" }, mode: { enum: ["freeform", "slide"] }, active: { type: "boolean" }, archived: { type: "boolean" } }, additionalProperties: false },
     { type: "object", properties: { ok: { const: false }, code: { type: "string" }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
   ] },
 } satisfies Omit<AgentToolDefinition, "execute">;
@@ -79,8 +77,7 @@ export const CANVAS_READ_TOOL = {
   inputSchema: {
     type: "object",
     properties: {
-      canvasRef: { type: "string", minLength: 1, description: "Optional short runtime Canvas reference from manage(list). Omit to use the active Canvas." },
-      canvasId: { type: "string", minLength: 1, description: "Legacy optional target Canvas UUID; prefer canvasRef." },
+      canvasId: { type: "string", minLength: 1, description: "Optional short persistent Canvas ID from manage(list). Omit to use the active Canvas." },
       viewport: { type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4, description: "[x,y,width,height]; signed coordinates, positive sizes." },
       representation: { enum: ["text", "image", "both"], default: "text", description: "Read representation. text is the default and preserves Cell characters/coordinates; image is for visual layout/color; both returns both blocks." },
       detail: { enum: ["low", "high", "original", "auto"], default: "auto", description: "Image rendering detail. Only used for image/both; defaults to auto." },
@@ -91,7 +88,7 @@ export const CANVAS_READ_TOOL = {
     type: "object",
     oneOf: [
       { type: "object", properties: {
-        canvasRef: { type: "string" }, canvasId: { type: "string" },
+        canvasId: { type: "string" },
         viewport: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
         sampleSize: { type: "integer", minimum: 1 },
         mode: { enum: ["text", "projection", "density"] },
@@ -112,7 +109,7 @@ export const CANVAS_READ_TOOL = {
           }, required: ["type", "mimeType", "data", "width", "height", "scale"], additionalProperties: false },
         ] } },
         structuredContent: { type: "object", properties: {
-          canvasRef: { type: "string" }, canvasId: { type: "string" }, viewport: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
+          canvasId: { type: "string" }, viewport: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
           sampleSize: { type: "integer", minimum: 1 }, mode: { enum: ["text", "projection", "density"] }, overviewOnly: { type: "boolean" },
           representation: { enum: ["text", "image", "both"] }, detail: { enum: ["low", "high", "original", "auto"] },
           image: { anyOf: [{ type: "object" }, { type: "null" }] },
@@ -131,8 +128,7 @@ export const CANVAS_WRITE_TOOL = {
   inputSchema: {
     type: "object",
       properties: {
-      canvasRef: { type: "string", minLength: 1, description: "Optional short runtime Canvas reference from manage(list). Omit to use the active Canvas." },
-      canvasId: { type: "string", minLength: 1, description: "Legacy optional target Canvas UUID; prefer canvasRef." },
+      canvasId: { type: "string", minLength: 1, description: "Optional short persistent Canvas ID from manage(list). Omit to use the active Canvas." },
       at: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2, description: "[x,y] in original Cell coordinates; signed safe integers." },
       content: { type: "string", description: "Text to render with the current settings; Markdown and ANSI work when enabled. Tabs and layout follow the shared text renderer. Do not copy read rulers, style notes, or sampled maps." },
       writeMode: { enum: ["patch", "replace"], default: "patch", description: "patch skips ordinary whitespace and preserves existing Cells; replace writes whitespace too." },
@@ -144,7 +140,7 @@ export const CANVAS_WRITE_TOOL = {
     type: "object",
     oneOf: [
       { type: "object", properties: {
-        canvasRef: { type: "string" }, canvasId: { type: "string" },
+        canvasId: { type: "string" },
         writeMode: { enum: ["patch", "replace"] },
         bounds: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
         writtenCells: { type: "integer", minimum: 0 }, skippedWhitespaceCells: { type: "integer", minimum: 0 },
@@ -167,7 +163,7 @@ export const CANVAS_CODE_TOOL = {
     type: "object",
     properties: {
       script: { type: "string", minLength: 1, maxLength: 32768, description: "Bounded JavaScript using only the provided canvas capability API." },
-      canvasRef: { type: "string", minLength: 1, description: "Optional short runtime Canvas reference from manage(list)." },
+      canvasId: { type: "string", minLength: 1, description: "Optional short persistent Canvas ID from manage(list)." },
       mode: { enum: ["preview", "apply"], default: "preview", description: "preview renders writes without persisting them; apply commits them as one undoable operation." },
       timeoutMs: { type: "integer", minimum: 50, maximum: 10000, default: 2000 },
     },

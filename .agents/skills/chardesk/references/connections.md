@@ -33,8 +33,8 @@ npx -y @chardesk/mcp pair
 
 In Canvas, open `Agent → Local MCP` and turn on the connection switch. Grant only the
 permissions required by the task: `inspect`, `read`, `search`, and `write`.
-Application-scoped pairing can target any Canvas with a runtime `canvasRef`; a
-Canvas-scoped pairing is limited to the paired Canvas.
+Application-scoped pairing can target any Canvas with its short persistent
+`canvasId`; a Canvas-scoped pairing is limited to the paired Canvas.
 
 The bridge uses loopback by default, stores credentials locally, and expires
 pairings after 30 days. Revoke an active pairing with:

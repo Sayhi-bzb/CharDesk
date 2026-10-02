@@ -54,12 +54,12 @@ describe('sessionHelpers', () => {
       const id1 = createSessionId(sessions);
       const id2 = createSessionId(sessions);
       expect(id1).not.toBe(id2);
-      expect(id1).toMatch(/^canvas-/);
-      expect(id2).toMatch(/^canvas-/);
+      expect(id1).toMatch(/^cv-[0-9a-f]{10}$/);
+      expect(id2).toMatch(/^cv-[0-9a-f]{10}$/);
     });
 
     it('should not use existing IDs', () => {
-      const existingId = 'canvas-test123';
+      const existingId = 'cv-test12345';
       const sessions: CanvasSessionDescriptor[] = [
         { id: existingId, name: 'Test', mode: 'freeform' }
       ];
@@ -71,12 +71,12 @@ describe('sessionHelpers', () => {
     });
 
     it('should generate different IDs on collision', () => {
-      // Create a session with ID that looks like a timestamp-based ID
+      // Create a session with an ID that has the compact Canvas shape.
       const sessions: CanvasSessionDescriptor[] = [
-        { id: 'canvas-abc123-def45', name: 'Test', mode: 'freeform' }
+        { id: 'cv-abc123def4', name: 'Test', mode: 'freeform' }
       ];
       const id = createSessionId(sessions);
-      expect(id).not.toBe('canvas-abc123-def45');
+      expect(id).not.toBe('cv-abc123def4');
     });
   });
 

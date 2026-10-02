@@ -10,7 +10,7 @@ import {
   readSlideDeckDescriptor,
 } from '../slideDocumentPages';
 
-export const DEFAULT_SESSION_ID = 'canvas-1';
+export const DEFAULT_SESSION_ID = 'cv-main';
 export const DEFAULT_SESSION_NAME = 'Welcome';
 export const DEFAULT_MODE = 'freeform' as const satisfies CanvasMode;
 const DEFAULT_VIEWPORT = { offset: { x: 0, y: 0 }, zoom: 1 };

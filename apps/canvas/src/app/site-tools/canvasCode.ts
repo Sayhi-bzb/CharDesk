@@ -117,10 +117,10 @@ export const createCanvasCodeTool = (dependencies: CanvasCodeDependencies): Agen
     const script = input.script;
     const mode = input.mode === undefined ? "preview" : input.mode;
     const timeoutMs = input.timeoutMs === undefined ? DEFAULT_TIMEOUT : input.timeoutMs;
-    const canvasRef = input.canvasRef;
-    if (Object.keys(input).some((key) => !["script", "canvasRef", "mode", "timeoutMs"].includes(key))
+    const canvasId = input.canvasId;
+    if (Object.keys(input).some((key) => !["script", "canvasId", "mode", "timeoutMs"].includes(key))
       || typeof script !== "string" || !script.trim() || script.length > 32_768
-      || (canvasRef !== undefined && (typeof canvasRef !== "string" || !canvasRef))
+      || (canvasId !== undefined && (typeof canvasId !== "string" || !canvasId))
       || (mode !== "preview" && mode !== "apply")
       || typeof timeoutMs !== "number" || !Number.isSafeInteger(timeoutMs) || timeoutMs < 50 || timeoutMs > 10_000) {
       return errorResult("invalid_input", "Expected a bounded script, mode preview|apply, and timeoutMs between 50 and 10000.");
@@ -138,8 +138,8 @@ export const createCanvasCodeTool = (dependencies: CanvasCodeDependencies): Agen
       checkBudget();
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Capability input must be an object.");
       if (!allowInPreview && mode === "preview") throw new Error("This capability requires mode=apply.");
-      const next = canvasRef && (raw as { canvasRef?: unknown }).canvasRef === undefined
-        ? { ...raw, canvasRef }
+      const next = canvasId && (raw as { canvasId?: unknown }).canvasId === undefined
+        ? { ...raw, canvasId }
         : raw;
       const result = await invoke(tool, next);
       checkBudget();
@@ -151,8 +151,8 @@ export const createCanvasCodeTool = (dependencies: CanvasCodeDependencies): Agen
       writes += 1;
       if (mode === "preview") {
         if (!dependencies.previewWrite) throw new Error("Canvas preview renderer is unavailable.");
-        const next = canvasRef && (raw as { canvasRef?: unknown }).canvasRef === undefined
-          ? { ...raw, canvasRef }
+        const next = canvasId && (raw as { canvasId?: unknown }).canvasId === undefined
+          ? { ...raw, canvasId }
           : raw;
         return dependencies.previewWrite.execute(next);
       }

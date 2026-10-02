@@ -9,44 +9,18 @@ import { prepareCanvasRowsWrite, prepareCanvasTextWrite } from "@/domains/canvas
 import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL, CANVAS_SEARCH_TOOL, CANVAS_MANAGE_TOOL } from "./canvasToolDefinitions";
 export { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_MANAGE_TOOL_NAME } from "./canvasToolDefinitions";
 
-type CanvasReferenceHost = Pick<CanvasRuntime, "getState">;
-type CanvasReferenceRegistry = { next: number; byId: Map<string, string>; byRef: Map<string, string> };
-const canvasReferenceRegistries = new WeakMap<object, CanvasReferenceRegistry>();
+type CanvasTargetHost = Pick<CanvasRuntime, "getState">;
 
-const getCanvasReferenceRegistry = (canvas: object) => {
-  let registry = canvasReferenceRegistries.get(canvas);
-  if (!registry) {
-    registry = { next: 1, byId: new Map(), byRef: new Map() };
-    canvasReferenceRegistries.set(canvas, registry);
-  }
-  return registry;
-};
-
-const canvasRefForId = (canvas: object, id: string) => {
-  const registry = getCanvasReferenceRegistry(canvas);
-  const existing = registry.byId.get(id);
-  if (existing) return existing;
-  const ref = `c${registry.next++}`;
-  registry.byId.set(id, ref);
-  registry.byRef.set(ref, id);
-  return ref;
-};
-
-const resolveCanvasTarget = (canvas: CanvasReferenceHost, input: { canvasId?: unknown; canvasRef?: unknown }) => {
+const resolveCanvasTarget = (canvas: CanvasTargetHost, input: { canvasId?: unknown }) => {
   if (input.canvasId !== undefined && (typeof input.canvasId !== "string" || input.canvasId.length === 0)) return { error: "invalid_input" as const };
-  if (input.canvasRef !== undefined && (typeof input.canvasRef !== "string" || input.canvasRef.length === 0)) return { error: "invalid_input" as const };
-  if (input.canvasId !== undefined && input.canvasRef !== undefined) return { error: "invalid_input" as const };
-  const registry = getCanvasReferenceRegistry(canvas);
-  const id = input.canvasRef !== undefined ? registry.byRef.get(input.canvasRef as string) : input.canvasId ?? canvas.getState().activeCanvasId;
-  if (input.canvasRef !== undefined && !id) return { error: "canvas_not_found" as const };
+  const id = input.canvasId ?? canvas.getState().activeCanvasId;
   if (typeof id !== "string" || id.length === 0) return { error: "canvas_not_active" as const };
   const sessions = canvas.getState().canvasSessions;
   if (Array.isArray(sessions) && !sessions.some(({ id: sessionId }) => sessionId === id)) return { error: "canvas_not_found" as const };
-  return { id, canvasRef: canvasRefForId(canvas, id), explicit: input.canvasId !== undefined || input.canvasRef !== undefined, legacy: input.canvasId !== undefined };
+  return { id, explicit: input.canvasId !== undefined };
 };
 
-const targetOutput = (target: { id: string; canvasRef: string; explicit: boolean; legacy: boolean }) =>
-  target.legacy ? { canvasId: target.id } : target.explicit ? { canvasRef: target.canvasRef } : {};
+const targetOutput = (target: { id: string; explicit: boolean }) => target.explicit ? { canvasId: target.id } : {};
 
 type ModelImage = Readonly<{ mimeType: "image/png"; data: string; width: number; height: number; scale: number }>;
 const MAX_MODEL_IMAGE_BYTES = 700 * 1024;
@@ -94,7 +68,7 @@ export const createCanvasManageTool = (
   ...CANVAS_MANAGE_TOOL,
   readOnly,
   execute: async (input) => {
-    if (!Object.keys(input).every((key) => ["action", "canvasId", "canvasRef", "name", "mode", "includeArchived"].includes(key))
+    if (!Object.keys(input).every((key) => ["action", "canvasId", "name", "mode", "includeArchived"].includes(key))
       || !["list", "create", "rename", "archive"].includes(String(input.action))) {
       return { ok: false, code: "invalid_input", message: "Expected action: list, create, rename, or archive." };
     }
@@ -107,29 +81,29 @@ export const createCanvasManageTool = (
         if (input.includeArchived !== undefined && typeof input.includeArchived !== "boolean") {
           return { ok: false, code: "invalid_input", message: "includeArchived must be a boolean." };
         }
-        if (input.canvasId !== undefined || input.canvasRef !== undefined) {
+        if (input.canvasId !== undefined) {
           const target = resolveCanvasTarget(canvas, input);
-          if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "canvasRef or canvasId is required." };
+          if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "canvasId is required." };
           sessions = state.canvasSessions.filter((session) => session.id === target.id);
         }
         if (input.includeArchived !== true) sessions = sessions.filter((session) => session.archived !== true);
         const canvases = sessions.map((session) => ({
-        canvasRef: canvasRefForId(canvas, session.id), name: session.name, mode: session.mode,
+          canvasId: session.id, name: session.name, mode: session.mode,
         active: session.id === state.activeCanvasId,
         archived: session.archived === true,
         editable: !session.sourceBinding && !session.migrationPending && !session.archived,
         }));
-        const currentCanvas = canvases.find(({ canvasRef, archived }) => getCanvasReferenceRegistry(canvas).byRef.get(canvasRef) === state.activeCanvasId && !archived) ?? null;
-        return { currentCanvasRef: currentCanvas?.canvasRef ?? null, currentCanvas, canvases };
+        const currentCanvas = canvases.find(({ canvasId, archived }) => canvasId === state.activeCanvasId && !archived) ?? null;
+        return { currentCanvasId: currentCanvas?.canvasId ?? null, currentCanvas, canvases };
       }
       if (input.action === "create") {
         if (input.name !== undefined && (typeof input.name !== "string" || !input.name.trim())) return { ok: false, code: "invalid_input", message: "name must be non-blank." };
         if (input.mode !== undefined && input.mode !== "freeform" && input.mode !== "slide") return { ok: false, code: "invalid_input", message: "mode must be freeform or slide." };
         const session = canvas.commands.sessions.create(input.mode === "slide" ? "slide" : "freeform", { name: input.name as string | undefined });
-        return { canvasRef: canvasRefForId(canvas, session.id), name: session.name, mode: session.mode, active: true, archived: false };
+        return { canvasId: session.id, name: session.name, mode: session.mode, active: true, archived: false };
       }
       const target = resolveCanvasTarget(canvas, input);
-      if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "canvasRef or canvasId is required." };
+      if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "canvasId is required." };
       const session = state.canvasSessions.find(({ id }) => id === target.id);
       if (!session) return { ok: false, code: "canvas_not_found", message: "Canvas not found." };
       if (input.action === "rename") {
@@ -149,7 +123,7 @@ export const createCanvasSearchTool = (
 ): AgentToolDefinition => ({
   ...CANVAS_SEARCH_TOOL,
   execute: async (input) => {
-    if (Object.keys(input).some((key) => !["canvasId", "canvasRef", "query", "viewport", "after", "regex", "ignoreCase"].includes(key))
+    if (Object.keys(input).some((key) => !["canvasId", "query", "viewport", "after", "regex", "ignoreCase"].includes(key))
       || !isCanvasSearchQuery(input.query)
       || (input.viewport !== undefined && !isCanvasReadViewport(input.viewport))
       || (input.after !== undefined && !isCanvasSearchPosition(input.after))
@@ -190,7 +164,7 @@ export const createCanvasWriteTool = (
   execute: async (input) => {
     const at = input.at;
     const writeMode = input.writeMode === undefined ? "patch" : input.writeMode;
-    if (Object.keys(input).some((key) => !["canvasId", "canvasRef", "at", "content", "writeMode"].includes(key))
+    if (Object.keys(input).some((key) => !["canvasId", "at", "content", "writeMode"].includes(key))
       || !Array.isArray(at) || at.length !== 2 || !at.every(Number.isSafeInteger) || typeof input.content !== "string") {
       return { ok: false, code: "invalid_input", message: "Expected { at: [x,y], content: string } with safe integer coordinates." };
     }
@@ -256,7 +230,6 @@ export const createCanvasPreviewWriteTool = (
   description: "Render Canvas text and calculate its Cell footprint without mutating the document.",
   readOnly: true,
   inputSchema: { type: "object", properties: {
-    canvasRef: { type: "string", minLength: 1 },
     canvasId: { type: "string", minLength: 1 },
     at: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 },
     content: { type: "string" },
@@ -265,7 +238,7 @@ export const createCanvasPreviewWriteTool = (
   execute: async (input) => {
     const at = input.at;
     const writeMode = input.writeMode === undefined ? "patch" : input.writeMode;
-    if (Object.keys(input).some((key) => !["canvasRef", "canvasId", "at", "content", "writeMode"].includes(key))
+    if (Object.keys(input).some((key) => !["canvasId", "at", "content", "writeMode"].includes(key))
       || !Array.isArray(at) || at.length !== 2 || !at.every(Number.isSafeInteger)
       || typeof input.content !== "string" || (writeMode !== "patch" && writeMode !== "replace")) {
       return { ok: false, code: "invalid_input", message: "Expected { at: [x,y], content: string, writeMode?: patch|replace }." };
@@ -304,7 +277,7 @@ export const createCanvasReadTool = (
   execute: async (input) => {
     const representation = input.representation === undefined ? "text" : input.representation;
     const detail = input.detail === undefined ? "auto" : input.detail;
-    if (Object.keys(input).some((key) => !["canvasId", "canvasRef", "viewport", "representation", "detail"].includes(key))
+    if (Object.keys(input).some((key) => !["canvasId", "viewport", "representation", "detail"].includes(key))
       || (input.canvasId !== undefined && (typeof input.canvasId !== "string" || input.canvasId.length === 0))
       || (input.viewport !== undefined && !isCanvasReadViewport(input.viewport))
       || !["text", "image", "both"].includes(String(representation))

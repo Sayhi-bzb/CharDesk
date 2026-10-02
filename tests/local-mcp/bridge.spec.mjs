@@ -119,7 +119,7 @@ test("local stdio MCP reads and edits multiple Canvases after one application pa
     expect(invalid.structuredContent.code).toBe("invalid_input");
 
     const listed = await call(manage, { action: "list" });
-    const originalCanvasRef = listed.structuredContent.currentCanvasRef;
+    const originalCanvasId = listed.structuredContent.currentCanvasId;
 
     await page.getByRole('button', { name: 'Select canvas', exact: true }).click();
     await page.getByRole('button', { name: 'New', exact: true }).click();
@@ -127,9 +127,9 @@ test("local stdio MCP reads and edits multiple Canvases after one application pa
     await expect.poll(async () => (await call(read, {})).isError).toBe(false);
     const canvases = await call(manage, { action: "list" });
     expect(canvases.structuredContent.canvases.length).toBeGreaterThanOrEqual(2);
-    const secondWrite = await call(write, { canvasRef: originalCanvasRef, at: [32, 28], content: "updated from another Canvas" });
-    expect(secondWrite, JSON.stringify(secondWrite)).toMatchObject({ isError: false, structuredContent: { canvasRef: originalCanvasRef } });
-    expect((await call(read, { canvasRef: originalCanvasRef, viewport: [32, 28, 28, 1] })).structuredContent.content).toContain("updated from another Canvas");
+    const secondWrite = await call(write, { canvasId: originalCanvasId, at: [32, 28], content: "updated from another Canvas" });
+    expect(secondWrite, JSON.stringify(secondWrite)).toMatchObject({ isError: false, structuredContent: { canvasId: originalCanvasId } });
+    expect((await call(read, { canvasId: originalCanvasId, viewport: [32, 28, 28, 1] })).structuredContent.content).toContain("updated from another Canvas");
 
     await page.goto("/blackboard");
     await expect(page).toHaveURL(/workspace$/);

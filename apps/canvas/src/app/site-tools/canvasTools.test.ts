@@ -60,7 +60,7 @@ describe("Canvas searching tool", () => {
 });
 
 describe("Canvas management tool", () => {
-  it("keeps refs stable across tool recreation, isolated by runtime, and compatible with UUID input", async () => {
+  it("uses persistent Canvas IDs directly across tool calls", async () => {
     const sessions = [{ id: "canvas-a", name: "A", mode: "freeform" as const }, { id: "canvas-b", name: "B", mode: "freeform" as const }];
     const canvas = {
       ...host(),
@@ -68,22 +68,22 @@ describe("Canvas management tool", () => {
       commands: { sessions: { create: vi.fn(), rename: vi.fn(), archive: vi.fn() } },
     };
     const listed = await createCanvasManageTool(canvas).execute({ action: "list" });
-    expect(listed).toMatchObject({ canvases: [{ canvasRef: "c1" }, { canvasRef: "c2" }] });
-    expect(JSON.stringify(listed)).not.toContain("canvas-a");
+    expect(listed).toMatchObject({ canvases: [{ canvasId: "canvas-a" }, { canvasId: "canvas-b" }] });
+    expect(JSON.stringify(listed)).toContain("canvas-a");
     sessions.reverse();
-    expect(await createCanvasManageTool(canvas).execute({ action: "list" })).toMatchObject({ canvases: [{ canvasRef: "c2" }, { canvasRef: "c1" }] });
+    expect(await createCanvasManageTool(canvas).execute({ action: "list" })).toMatchObject({ canvases: [{ canvasId: "canvas-b" }, { canvasId: "canvas-a" }] });
     const search = createCanvasSearchTool(canvas);
-    expect(await search.execute({ query: "A", canvasRef: "c2" })).toMatchObject({ canvasRef: "c2" });
+    expect(await search.execute({ query: "A", canvasId: "canvas-b" })).toMatchObject({ canvasId: "canvas-b" });
     expect(canvas.materializeSession).toHaveBeenLastCalledWith("canvas-b");
     expect(await search.execute({ query: "A", canvasId: "canvas-b" })).toMatchObject({ canvasId: "canvas-b" });
-    expect(await search.execute({ query: "A", canvasRef: "c2", canvasId: "canvas-b" })).toMatchObject({ code: "invalid_input" });
-    expect(await search.execute({ query: "A", canvasRef: "c99" })).toMatchObject({ code: "canvas_not_found" });
-    expect(await createCanvasReadTool(host(), rendering).execute({ canvasRef: "c2" })).toMatchObject({ code: "canvas_not_found" });
+    expect(await search.execute({ query: "A", canvasId: "canvas-b" })).toMatchObject({ canvasId: "canvas-b" });
+    expect(await search.execute({ query: "A", canvasId: "c99" })).toMatchObject({ code: "canvas_not_found" });
+    expect(await createCanvasReadTool(canvas, rendering).execute({ canvasId: "canvas-b" })).toMatchObject({ canvasId: "canvas-b" });
     sessions.splice(sessions.findIndex(({ id }) => id === "canvas-b"), 1);
-    expect(await search.execute({ query: "A", canvasRef: "c2" })).toMatchObject({ code: "canvas_not_found" });
+    expect(await search.execute({ query: "A", canvasId: "canvas-b" })).toMatchObject({ code: "canvas_not_found" });
     const active = await createCanvasReadTool(canvas, rendering).execute({});
     expect(active).not.toHaveProperty("canvasId");
-    expect(active).not.toHaveProperty("canvasRef");
+    expect(active).not.toHaveProperty("canvasId");
   });
 
   it("lists, creates, renames, and archives sessions", async () => {
@@ -101,17 +101,17 @@ describe("Canvas management tool", () => {
     } as unknown as Pick<CanvasRuntime, "ready" | "getState"> & { commands: { sessions: Pick<CanvasRuntime["commands"]["sessions"], "create" | "rename" | "archive"> } };
     const tool = createCanvasManageTool(canvas);
     expect(await tool.execute({ action: "list" })).toMatchObject({
-      currentCanvasRef: "c1",
-      currentCanvas: { canvasRef: "c1", archived: false },
-      canvases: [{ canvasRef: "c1", archived: false }],
+      currentCanvasId: "canvas-a",
+      currentCanvas: { canvasId: "canvas-a", archived: false },
+      canvases: [{ canvasId: "canvas-a", archived: false }],
     });
     expect(await tool.execute({ action: "list", includeArchived: true })).toMatchObject({
-      canvases: [{ canvasRef: "c1", archived: false }, { canvasRef: "c2", archived: true }],
+      canvases: [{ canvasId: "canvas-a", archived: false }, { canvasId: "canvas-archived", archived: true }],
     });
     expect(await tool.execute({ action: "list", includeArchived: "yes" as never })).toMatchObject({ code: "invalid_input" });
-    expect(await tool.execute({ action: "create", name: "New" })).toMatchObject({ canvasRef: "c3" });
-    expect(await tool.execute({ action: "rename", canvasRef: "c1", name: "Renamed" })).toMatchObject({ canvasRef: "c1", name: "Renamed" });
-    expect(await tool.execute({ action: "archive", canvasRef: "c1" })).toEqual({ canvasRef: "c1", archived: true });
+    expect(await tool.execute({ action: "create", name: "New" })).toMatchObject({ canvasId: "canvas-b" });
+    expect(await tool.execute({ action: "rename", canvasId: "canvas-a", name: "Renamed" })).toMatchObject({ canvasId: "canvas-a", name: "Renamed" });
+    expect(await tool.execute({ action: "archive", canvasId: "canvas-a" })).toEqual({ canvasId: "canvas-a", archived: true });
   });
 
   it("does not promote an archived active descriptor to the current Canvas", async () => {
@@ -120,7 +120,7 @@ describe("Canvas management tool", () => {
       getState: () => ({ activeCanvasId: "canvas-a", canvasSessions: [{ id: "canvas-a", name: "Archived", mode: "freeform" as const, archived: true }] }) as ReturnType<CanvasRuntime["getState"]>,
       commands: { sessions: { create: vi.fn(), rename: vi.fn(), archive: vi.fn() } },
     } as unknown as Pick<CanvasRuntime, "ready" | "getState"> & { commands: { sessions: Pick<CanvasRuntime["commands"]["sessions"], "create" | "rename" | "archive"> } };
-    expect(await createCanvasManageTool(canvas).execute({ action: "list" })).toMatchObject({ currentCanvasRef: null, currentCanvas: null });
+    expect(await createCanvasManageTool(canvas).execute({ action: "list" })).toMatchObject({ currentCanvasId: null, currentCanvas: null });
   });
 });
 

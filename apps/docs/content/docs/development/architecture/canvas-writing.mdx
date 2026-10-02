@@ -4,7 +4,7 @@ description: Render text into editable Canvas content at an original Cell coordi
 ---
 
 `chardesk_canvas_write` belongs to the Canvas group in the [WebMCP contract](/development/architecture/webmcp).
-With full-access local MCP, pass `canvasRef` to write another Canvas without
+With full-access local MCP, pass `canvasId` to write another Canvas without
 changing the human's active Canvas. Omit it to write the active Canvas.
 It writes to the active editable Freeform Canvas or current Slide page through
 Canvas commands. Source-backed surfaces return `source_backed_canvas`; edit their
@@ -39,7 +39,7 @@ state; it does not expand every enabled feature unless a feature is disabled.
 
 ## Result and verification
 
-The response contains an optional `canvasRef`, the selected `writeMode`,
+The response contains an optional `canvasId`, the selected `writeMode`,
 `bounds: [x,y,width,height]`, the envelope of written spans, and Cell counts for
 `writtenCells` and `skippedWhitespaceCells`. Content with no written positions
 returns `bounds: null` without creating history. Writes commit as one independently undoable operation and

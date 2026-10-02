@@ -207,12 +207,8 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
         const permission = String(name).endsWith('_read') ? 'read' : String(name).endsWith('_search') ? 'search' : String(name).endsWith('_manage') && (input as { action?: unknown }).action === 'list' ? 'inspect' : 'write';
         if (!permissions[permission]) throw new Error(`Permission denied: canvas.${permission}`);
         if (scope !== 'application') {
-          const target = input as { canvasId?: unknown; canvasRef?: unknown };
+          const target = input as { canvasId?: unknown };
           if (target.canvasId !== undefined && target.canvasId !== scope) throw new Error('Canvas authorization is limited to the paired Canvas.');
-          if (target.canvasRef !== undefined) {
-            const listed = await activePort.execute('chardesk_canvas_manage', { action: 'list', canvasId: scope }) as { canvases?: Array<{ canvasRef: string }> };
-            if (!listed.canvases?.some(({ canvasRef }) => canvasRef === target.canvasRef)) throw new Error('Canvas authorization is limited to the paired Canvas.');
-          }
         }
         const scopedInput = scope === 'application' || String(name) !== 'chardesk_canvas_manage' || (input as { action?: unknown }).action !== 'list'
           ? input as Record<string, unknown>

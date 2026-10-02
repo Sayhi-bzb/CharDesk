@@ -9,9 +9,9 @@ a local file.
   and start from `currentCanvas`; archived Canvases are omitted by default. Pass
   `includeArchived: true` only for explicit archived-Canvas work. Inspect
   `canvases` only for explicit cross-Canvas work.
-  `list` returns short runtime `canvasRef` handles (`c1`, `c2`, …). Omit the
-  reference for the active Canvas; pass `canvasRef` for another Canvas. Handles
-  are stable only for the current page/connection, so list again after refresh.
+  `list` returns short persistent `canvasId` values. Omit the ID for the active
+  Canvas; pass `canvasId` for another Canvas. IDs remain stable across page
+  refreshes and MCP reconnects.
 - If the content or location is unknown, search the rendered Canvas text.
 - If the location is known, read the smallest useful viewport.
 - If the task changes content, read the affected area before writing.
