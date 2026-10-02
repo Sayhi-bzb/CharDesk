@@ -4,7 +4,7 @@ import type { AgentToolContentBlock, AgentToolDefinition } from "./contracts";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
 import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvasRendering";
 import { CHARDESK_CONTENT_THEMES } from "@chardesk/rendering/theme";
-import { prepareCanvasRowsWrite, prepareCanvasTextWrite } from "@/domains/canvas/writeText";
+import { prepareCanvasRowsWrite, prepareCanvasTextWrite } from "@/domains/canvas/public";
 
 import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL, CANVAS_SEARCH_TOOL, CANVAS_MANAGE_TOOL } from "./canvasToolDefinitions";
 export { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_MANAGE_TOOL_NAME } from "./canvasToolDefinitions";

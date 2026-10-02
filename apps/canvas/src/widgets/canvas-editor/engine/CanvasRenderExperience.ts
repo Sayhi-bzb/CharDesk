@@ -1,6 +1,5 @@
 import type { CanvasRenderActivityMode } from './CanvasRenderActivity';
 
-/** @internal */
 export type CanvasRenderExperienceStats = {
   viewportActivities: number;
   directFrames: number;

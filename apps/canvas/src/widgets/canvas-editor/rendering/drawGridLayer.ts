@@ -33,7 +33,6 @@ type DrawGridLayerOptions = {
   palette?: CanvasArtifactPalette;
 };
 
-/** @internal */
 export type DrawGridLayerResult = {
   cells: number;
   glyphs: number;

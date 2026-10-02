@@ -42,11 +42,12 @@ export function AgentDialog({ open, onOpenChange }: {
           </div>
           <div role="group" aria-label="Local MCP" className="flex min-h-8 items-center gap-2">
             <span className="mr-auto text-sm">Local MCP</span>
-            <button type="button" role="switch" aria-checked={active}
+            <Button type="button" tone={active ? 'primary' : 'neutral'} size="xs" shape="pill" active={active}
+              role="switch" aria-checked={active}
               aria-label={t('localAgent.toggle')} onClick={toggle}
-              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border p-0.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? 'border-foreground bg-foreground' : 'border-border bg-muted'}`}>
+              className="shrink-0">
               <span aria-hidden="true" className={`block size-3.5 rounded-full bg-background transition-transform ${active ? 'translate-x-4' : 'translate-x-0'}`} />
-            </button>
+            </Button>
           </div>
           {!active && <div id="local-agent-settings" className="flex flex-col gap-3">
             <DialogDescription>{t('localAgent.permission')}</DialogDescription>

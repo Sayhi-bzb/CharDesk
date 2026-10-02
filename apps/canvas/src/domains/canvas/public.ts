@@ -6,7 +6,15 @@ export {
 } from "./readViewport";
 export { searchCanvasSurface, isCanvasSearchQuery, isCanvasSearchPosition, CanvasSearchError } from "./searchSurface";
 export type { CanvasSearchPosition, CanvasSearchMatch, CanvasSearchResult, CanvasSearchOptions } from "./searchSurface";
-export { CanvasWriteError } from "./writeText";
+export {
+  CanvasWriteError,
+  prepareCanvasRowsWrite,
+  prepareCanvasTextWrite,
+} from "./writeText";
+export type {
+  CanvasWriteMode,
+  CanvasWriteStats,
+} from "./writeText";
 export type { CanvasReadViewport, CanvasReadProjection, CanvasReadOptions } from "./readViewport";
 export type { CanvasSessionMaterialization } from "./runtime";
 export { CanvasViewportRuntime, normalizeCanvasViewport } from "./viewportRuntime";
