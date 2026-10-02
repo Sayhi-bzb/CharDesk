@@ -101,7 +101,11 @@ export const prepareCanvasRowsWrite = (
         x += segmentWidth;
       }
       flush();
-      return output.map(({ width: _width, ...next }) => ({ ...next, x: at.x + next.x }));
+      return output.map((entry) => {
+        const next = { ...entry };
+        delete next.width;
+        return { ...next, x: at.x + next.x };
+      });
     });
     return { y, erase: [], spans };
   });

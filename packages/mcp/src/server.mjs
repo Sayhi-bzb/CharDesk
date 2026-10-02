@@ -233,10 +233,19 @@ if (!brokerStarted) {
   await publishPairing();
   console.error(JSON.stringify({ bridgeUrl: pairingUrl(), expiresAt: credentials.expiresAt }));
   await mcp.connect(new StdioServerTransport());
-  const stop = () => {
+  let stopping = false;
+  const stop = async () => {
+    if (stopping) return;
+    stopping = true;
     event('broker_stopping');
-    for (const client of sockets.clients) client.terminate(); sockets.close(); http.close(); void mcp.close();
+    for (const client of sockets.clients) client.terminate();
+    await Promise.allSettled([
+      new Promise((resolve) => sockets.close(resolve)),
+      new Promise((resolve) => http.close(resolve)),
+      mcp.close(),
+    ]);
     void readFile(pairingFile, 'utf8').then((value) => { if (JSON.parse(value).pid === process.pid) return unlink(pairingFile); }).catch(() => undefined);
+    process.exit(0);
   };
   let ownerStdioClosed = false;
   shutdownIfIdle = () => {

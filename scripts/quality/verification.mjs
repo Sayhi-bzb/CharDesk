@@ -291,6 +291,7 @@ const runWorkspaceTests = (projects, selected, buildRunner, run, cell, mode, wor
       }
       continue
     }
+    buildRunner.build([...project.dependencies])
     if (project.manifest.bin) buildRunner.build([project.name])
     runWorkspaceScript(project, 'test', run)
   }
