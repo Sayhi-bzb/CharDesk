@@ -1,7 +1,7 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-export const configDirectory = () => {
+const configDirectory = () => {
   const root = process.env.XDG_CONFIG_HOME
     || (process.platform === 'win32' ? process.env.APPDATA : join(homedir(), '.config'));
   return join(root || join(homedir(), '.config'), 'chardesk', 'mcp');

@@ -18,8 +18,6 @@ type CanvasCodeDependencies = Readonly<{
 const MAX_OPERATIONS = 128;
 const MAX_RESULT_BYTES = 128 * 1024;
 const DEFAULT_TIMEOUT = 2_000;
-type CanvasCodeRuntimeStatus = "idle" | "loading" | "ready" | "unavailable";
-let runtimeStatus: CanvasCodeRuntimeStatus = "idle";
 let runtimeWarmup: Promise<void> | undefined;
 
 class CanvasCodeRuntimeError extends Error {
@@ -32,17 +30,13 @@ class CanvasCodeRuntimeError extends Error {
   }
 }
 
-export const getCanvasCodeRuntimeStatus = () => runtimeStatus;
-
 /** Warm the WASM module without blocking Canvas startup. A failed warmup is
  * observable and never prevents the primitive Canvas tools from loading. */
 export const warmCanvasCodeRuntime = () => {
   if (runtimeWarmup) return runtimeWarmup;
-  runtimeStatus = "loading";
   runtimeWarmup = newAsyncContext()
-    .then((context) => { context.dispose(); runtimeStatus = "ready"; })
+    .then((context) => { context.dispose(); })
     .catch((error) => {
-      runtimeStatus = "unavailable";
       runtimeWarmup = undefined;
       throw error;
     });
@@ -52,10 +46,8 @@ export const warmCanvasCodeRuntime = () => {
 const createCanvasCodeContext = async () => {
   try {
     const context = await newAsyncContext();
-    runtimeStatus = "ready";
     return context;
   } catch (error) {
-    runtimeStatus = "unavailable";
     throw new CanvasCodeRuntimeError(error);
   }
 };

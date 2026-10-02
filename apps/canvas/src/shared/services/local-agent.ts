@@ -1,7 +1,7 @@
 type LocalAgentStatus = 'idle' | 'connecting' | 'connected' | 'error';
 export type LocalAgentPermission = 'inspect' | 'read' | 'search' | 'write';
 export type LocalAgentPermissions = Readonly<Record<LocalAgentPermission, boolean>>;
-export const DEFAULT_LOCAL_AGENT_PERMISSIONS: LocalAgentPermissions = Object.freeze({ inspect: true, read: true, search: true, write: true });
+const DEFAULT_LOCAL_AGENT_PERMISSIONS: LocalAgentPermissions = Object.freeze({ inspect: true, read: true, search: true, write: true });
 
 type LocalAgentPort = Readonly<{
   scope: () => string | null;
@@ -16,7 +16,7 @@ let revision = 0;
 const pairingKey = 'chardesk.local-agent.pairing';
 const enabledKey = 'chardesk.local-agent.enabled';
 const MAX_AGENT_RESPONSE_BYTES = 900 * 1024;
-export const DEFAULT_LOCAL_AGENT_URL = 'ws://127.0.0.1:9494/bridge';
+const DEFAULT_LOCAL_AGENT_URL = 'ws://127.0.0.1:9494/bridge';
 type Pairing = { url: string; scope: string; expiresAt: number; permissions: LocalAgentPermissions };
 let retry: ReturnType<typeof setTimeout> | undefined;
 let automatic = false;
@@ -99,7 +99,6 @@ export const setLocalAgentEnabled = (next: boolean, grant = DEFAULT_LOCAL_AGENT_
 };
 
 let permissions: LocalAgentPermissions = DEFAULT_LOCAL_AGENT_PERMISSIONS;
-export const getLocalAgentPermissions = () => permissions;
 
 export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = false, grant = DEFAULT_LOCAL_AGENT_PERMISSIONS, requestedScope?: string): void {
   const url = new URL(value.trim() || DEFAULT_LOCAL_AGENT_URL);

@@ -16,11 +16,6 @@ export type AgentToolContentBlock =
       scale: number;
     }>;
 
-export type AgentToolResultEnvelope<TStructured extends Record<string, unknown> = Record<string, unknown>> = Readonly<{
-  structuredContent: TStructured;
-  content: readonly AgentToolContentBlock[];
-}>;
-
 export type AgentToolDefinition = Readonly<{
   name: string;
   title?: string;

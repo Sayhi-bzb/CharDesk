@@ -185,8 +185,8 @@ describe("editor persistence v7", () => {
     });
     expect(flattenPersistedEditorState(migrated)).toMatchObject({
       canvasMode: "freeform",
-      activeCanvasId: "canvas-1",
-      canvasSessions: [{ id: "canvas-1", mode: "freeform", grid: [] }],
+      activeCanvasId: "cv-main",
+      canvasSessions: [{ id: "cv-main", mode: "freeform", grid: [] }],
     });
   });
   it("preserves and normalizes slide sessions in v4", () => {
