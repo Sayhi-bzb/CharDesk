@@ -33,9 +33,57 @@ jobs:
           npm run release:verify
           node --test scripts/release/*.test.mjs
 
+  plan:
+    name: Verification plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      quality: ${{ steps.plan.outputs.quality }}
+      workspace-tests: ${{ steps.plan.outputs.workspace-tests }}
+      node-tests: ${{ steps.plan.outputs.node-tests }}
+      dom-tests: ${{ steps.plan.outputs.dom-tests }}
+      build: ${{ steps.plan.outputs.build }}
+      cell-e2e: ${{ steps.plan.outputs.cell-e2e }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Calculate affected verification lanes
+        id: plan
+        env:
+          VERIFY_SCRIPT: ${{ env.VERIFY_SCRIPT }}
+          VERIFY_BASE: ${{ env.VERIFY_BASE }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          import { parseArguments, collectChangedFiles, createVerificationPlan } from './scripts/quality/verification.mjs';
+
+          const mode = process.env.VERIFY_SCRIPT.replace('check:', '');
+          const changes = collectChangedFiles(process.env.VERIFY_BASE || undefined);
+          const phases = {
+            quality: 'quality',
+            'workspace-tests': 'workspace-tests',
+            'root-node': 'node-tests',
+            'root-dom': 'dom-tests',
+            build: 'build',
+            'cell-e2e': 'cell-e2e',
+          };
+          const output = process.env.GITHUB_OUTPUT;
+          for (const [phase, outputName] of Object.entries(phases)) {
+            const options = parseArguments(['--mode', mode, '--phase', phase]);
+            const plan = createVerificationPlan(options, changes);
+            appendFileSync(output, `${outputName}=${plan.tasks.length > 0}\n`);
+          }
+          NODE
+
   quality:
     name: Quality
-    needs: release-metadata
+    needs: [release-metadata, plan]
+    if: needs.plan.outputs.quality == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -70,27 +118,52 @@ jobs:
           fi
 
   workspace-tests:
-    name: Workspace tests
-    needs: release-metadata
+    name: Workspace tests (${{ matrix.group }})
+    needs: [release-metadata, plan]
+    if: needs.plan.outputs.workspace-tests == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [core, products, services, sites]
+    env:
+      VERIFY_WORKSPACE_GROUP: ${{ matrix.group }}
     steps:
       - *checkout
       - *setup-node
-      - *install
+      - name: Plan workspace group
+        id: workspace-plan
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          import { parseArguments, collectChangedFiles, createVerificationPlan } from './scripts/quality/verification.mjs';
+          const options = parseArguments([
+            '--mode', process.env.VERIFY_SCRIPT.replace('check:', ''),
+            '--phase', 'workspace-tests',
+            '--workspace-group', process.env.VERIFY_WORKSPACE_GROUP,
+          ]);
+          const plan = createVerificationPlan(options, collectChangedFiles(process.env.VERIFY_BASE || undefined));
+          appendFileSync(process.env.GITHUB_OUTPUT, `required=${plan.tasks.length > 0}\n`);
+          NODE
+      - name: Install dependencies
+        if: steps.workspace-plan.outputs.required == 'true'
+        run: npm ci
       - name: Run workspace tests
+        if: steps.workspace-plan.outputs.required == 'true'
         env:
           VERIFY_TASK_TIMEOUT_MS: 300000
         run: |
           if [ -n "$VERIFY_BASE" ]; then
-            npm run "$VERIFY_SCRIPT" -- --phase workspace-tests --base "$VERIFY_BASE"
+            npm run "$VERIFY_SCRIPT" -- --phase workspace-tests --workspace-group "$VERIFY_WORKSPACE_GROUP" --base "$VERIFY_BASE"
           else
-            npm run "$VERIFY_SCRIPT" -- --phase workspace-tests
+            npm run "$VERIFY_SCRIPT" -- --phase workspace-tests --workspace-group "$VERIFY_WORKSPACE_GROUP"
           fi
 
   node-tests:
     name: Node tests
-    needs: release-metadata
+    needs: [release-metadata, plan]
+    if: needs.plan.outputs.node-tests == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -108,7 +181,8 @@ jobs:
 
   dom-tests:
     name: DOM tests (${{ matrix.shard }})
-    needs: release-metadata
+    needs: [release-metadata, plan]
+    if: needs.plan.outputs.dom-tests == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -129,7 +203,8 @@ jobs:
 
   build:
     name: Build
-    needs: release-metadata
+    needs: [release-metadata, plan]
+    if: needs.plan.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -156,7 +231,8 @@ jobs:
 
   cell-e2e:
     name: Cell UI browser tests (${{ matrix.project }})
-    needs: release-metadata
+    needs: [release-metadata, plan]
+    if: needs.plan.outputs.cell-e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -168,22 +244,16 @@ jobs:
     steps:
       - *checkout
       - *setup-node
-      - *install
-      - name: Plan Cell browser coverage
-        id: cell-plan
-        run: |
-          node --input-type=module <<'NODE'
-          import { appendFileSync } from 'node:fs';
-          import { parseArguments, collectChangedFiles, createVerificationPlan } from './scripts/quality/verification.mjs';
-          const options = parseArguments(['--mode', process.env.VERIFY_SCRIPT.replace('check:', ''), '--phase', 'cell-e2e', '--cell-project', process.env.CELL_E2E_PROJECT]);
-          const plan = createVerificationPlan(options, collectChangedFiles(process.env.VERIFY_BASE || undefined));
-          appendFileSync(process.env.GITHUB_OUTPUT, `required=${plan.tasks.length > 0}\n`);
-          NODE
+      - name: Install dependencies
+        run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ matrix.project }}-${{ hashFiles('package-lock.json') }}
       - name: Install browser runtimes
-        if: steps.cell-plan.outputs.required == 'true'
         run: npx playwright install --with-deps "$CELL_E2E_PROJECT"
       - name: Verify affected Cell UI browser flows
-        if: steps.cell-plan.outputs.required == 'true'
         run: |
           if [ -n "$VERIFY_BASE" ]; then
             npm run "$VERIFY_SCRIPT" -- --phase cell-e2e --cell-project "$CELL_E2E_PROJECT" --base "$VERIFY_BASE"
@@ -194,19 +264,29 @@ jobs:
   verify:
     name: Verify
     if: ${{ always() }}
-    needs: [release-metadata, quality, workspace-tests, node-tests, dom-tests, build, cell-e2e]
+    needs: [release-metadata, plan, quality, workspace-tests, node-tests, dom-tests, build, cell-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require every verification lane
         run: |
           test "${{ needs.release-metadata.result }}" = "success"
-          test "${{ needs.quality.result }}" = "success"
-          test "${{ needs.workspace-tests.result }}" = "success"
-          test "${{ needs.node-tests.result }}" = "success"
-          test "${{ needs.dom-tests.result }}" = "success"
-          test "${{ needs.build.result }}" = "success"
-          test "${{ needs.cell-e2e.result }}" = "success"
+          test "${{ needs.plan.result }}" = "success"
+          check_lane() {
+            result="$1"
+            required="$2"
+            if [ "$required" = "true" ]; then
+              test "$result" = "success"
+            else
+              test "$result" = "skipped"
+            fi
+          }
+          check_lane "${{ needs.quality.result }}" "${{ needs.plan.outputs.quality }}"
+          check_lane "${{ needs.workspace-tests.result }}" "${{ needs.plan.outputs.workspace-tests }}"
+          check_lane "${{ needs.node-tests.result }}" "${{ needs.plan.outputs.node-tests }}"
+          check_lane "${{ needs.dom-tests.result }}" "${{ needs.plan.outputs.dom-tests }}"
+          check_lane "${{ needs.build.result }}" "${{ needs.plan.outputs.build }}"
+          check_lane "${{ needs.cell-e2e.result }}" "${{ needs.plan.outputs.cell-e2e }}"
 
   deploy-canvas:
     name: Deploy Canvas
@@ -229,7 +309,6 @@ jobs:
           fi
       - *checkout
       - *setup-node
-      - *install
       - name: Restore the verified Canvas build
         uses: actions/download-artifact@v4
         with:

@@ -8,6 +8,27 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx'
 
+const workspaceGroups = {
+  core: new Set([
+    '@chardesk/cell-core', '@chardesk/cell-ui', '@chardesk/font-fusion',
+    '@chardesk/font-maple', '@chardesk/font-xiaolai', '@chardesk/fonts',
+    '@chardesk/rendering', '@chardesk/ui', '@chardesk/viewer',
+  ]),
+  products: new Set([
+    '@chardesk/chargraph', '@chardesk/cli', '@chardesk/document',
+    '@chardesk/keyboard', '@chardesk/legacy-blackboard', '@chardesk/protocol',
+    '@chardesk/canvas',
+  ]),
+  services: new Set([
+    '@chardesk/collaboration-protocol', '@chardesk/github-stars',
+    '@chardesk/mcp', '@chardesk/sync-server',
+  ]),
+  sites: new Set([
+    '@chardesk/cell-ui-site', '@chardesk/chargraph-site', '@chardesk/docs',
+    '@chardesk/site',
+  ]),
+}
+
 const dependencyFields = [
   'dependencies',
   'devDependencies',
@@ -138,7 +159,7 @@ export function affectedProjectNames(projects, changedFiles, forceFull = false) 
 }
 
 export const parseArguments = argv => {
-  const options = { mode: 'quick', phase: 'all', base: undefined, shard: undefined, cellProject: undefined, target: undefined, files: [], dryRun: false }
+  const options = { mode: 'quick', phase: 'all', base: undefined, shard: undefined, cellProject: undefined, workspaceGroup: undefined, target: undefined, files: [], dryRun: false }
   for (let index = 0; index < argv.length; index++) {
     const value = argv[index]
     if (value === '--dry-run') { options.dryRun = true; continue }
@@ -148,6 +169,7 @@ export const parseArguments = argv => {
     else if (value === '--base') options.base = argv[++index]
     else if (value === '--shard') options.shard = argv[++index]
     else if (value === '--cell-project') options.cellProject = argv[++index]
+    else if (value === '--workspace-group') options.workspaceGroup = argv[++index]
     else if (value === '--target') options.target = argv[++index]
     else if (value === '--file') options.files.push(argv[++index])
     else throw new Error(`Unknown verification argument: ${value}`)
@@ -158,6 +180,9 @@ export const parseArguments = argv => {
   }
   if (options.cellProject && (options.phase !== 'cell-e2e' || !['chromium', 'webkit'].includes(options.cellProject))) {
     throw new Error('--cell-project requires the cell-e2e phase and chromium or webkit.')
+  }
+  if (options.workspaceGroup && (options.phase !== 'workspace-tests' || !workspaceGroups[options.workspaceGroup])) {
+    throw new Error('--workspace-group requires the workspace-tests phase and a known workspace group.')
   }
   if (options.files.length && options.mode !== 'quick') throw new Error('--file is only allowed in quick mode; PR/full gates cannot be narrowed.')
   options.files = [...new Set(options.files.map(file => {
@@ -254,9 +279,10 @@ const runQuality = (mode, projects, selected, changedFiles, buildRunner, run, ce
   if (productionChange) run(npmCommand, ['run', 'check:architecture'], { label: 'architecture guards' })
 }
 
-const runWorkspaceTests = (projects, selected, buildRunner, run, cell, mode) => {
+const runWorkspaceTests = (projects, selected, buildRunner, run, cell, mode, workspaceGroup) => {
   for (const project of projects) {
     if (!selected.has(project.name) || !project.manifest.scripts?.test) continue
+    if (workspaceGroup && !workspaceGroups[workspaceGroup].has(project.name)) continue
     if (project.name === '@chardesk/cell-ui' && mode === 'quick' && !cell.fullPackage) {
       for (const [environment, files] of [['node', cell.nodeTests], ['browser', cell.domTests]]) {
         if (files.length) run(npmCommand, ['run', `test:${environment}`, '-w', project.name, '--', ...files], {
@@ -360,7 +386,7 @@ export function createVerificationPlan(options, changes, projects = loadWorkspac
     runQuality(options.mode, projects, selected, changes.files, buildRunner, run, cellOnlyQuick)
   }
   if (phase === 'all' || phase === 'workspace-tests') {
-    runWorkspaceTests(projects, selected, buildRunner, run, cell, options.mode)
+    runWorkspaceTests(projects, selected, buildRunner, run, cell, options.mode, options.workspaceGroup)
   }
   if ((phase === 'all' || phase === 'root-node') && selected.has('root')) {
     runRootTests('node', options.mode, changes.files, undefined, run, cell, cellOnlyQuick)

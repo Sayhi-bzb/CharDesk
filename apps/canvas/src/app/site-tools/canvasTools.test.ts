@@ -142,10 +142,9 @@ describe("Canvas reading tool", () => {
     const text = await tool.execute({ viewport: [0, 0, 4, 2] });
     expect(text).toMatchObject({ representation: "text", contentBlocks: [{ type: "text" }] });
     const image = await tool.execute({ viewport: [0, 0, 4, 2], representation: "image", detail: "low" });
-    expect(image).toMatchObject({ representation: "image", content: "", contentBlocks: [{ type: "image", mimeType: "image/svg+xml", width: 32, height: 32, scale: 1 }] });
-    expect((image as { contentBlocks: Array<{ data?: string }> }).contentBlocks[0]?.data).toMatch(/^[A-Za-z0-9+/]+=*$/);
+    expect(image).toMatchObject({ representation: "image", content: "", image: null, contentBlocks: [{ type: "note", text: "Image unavailable; use representation: text." }] });
     const both = await tool.execute({ viewport: [0, 0, 4, 2], representation: "both" });
-    expect(both).toMatchObject({ representation: "both", contentBlocks: [{ type: "text" }, { type: "image" }] });
+    expect(both).toMatchObject({ representation: "both", contentBlocks: [{ type: "text" }] });
   });
 
   it("returns actionable errors for invalid input and missing sessions", async () => {

@@ -41,6 +41,7 @@
     "lib0": "^0.2.115",
     "lucide-react": "^1.31.0",
     "polygon-clipping": "^0.15.7",
+    "quickjs-emscripten": "^0.32.0",
     "re2js": "^2.8.6",
     "react": "^19.2.0",
     "react-colorful": "^5.8.0",

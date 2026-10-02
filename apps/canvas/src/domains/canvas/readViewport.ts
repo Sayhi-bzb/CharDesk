@@ -64,9 +64,9 @@ const imageMetrics = (detail: CanvasReadImageDetail) => {
 };
 
 /**
- * Produces a lossless, browser-renderable image block without requiring a
- * canvas DOM node. SVG keeps Unicode and cell coordinates intact while still
- * being consumable as an image by MCP clients.
+ * Produces a lossless, browser-renderable intermediate image without requiring
+ * a canvas DOM node. The tool boundary converts this SVG to a model-compatible
+ * PNG before exposing it through MCP.
  */
 export const renderCanvasViewportImage = (
   surface: CanvasSurfaceReader,
@@ -94,7 +94,7 @@ export const renderCanvasViewportImage = (
             const fontWeight = attrs.bold ? " font-weight=\"700\"" : "";
             const fontStyle = attrs.italic ? " font-style=\"italic\"" : "";
             const decoration = [attrs.underline ? "underline" : "", attrs.strike ? "line-through" : ""].filter(Boolean).join(" ");
-            const textDecoration = decoration ? ` text-decoration=\"${decoration}\"` : "";
+            const textDecoration = decoration ? ` text-decoration="${decoration}"` : "";
             elements.push(`<text x="${localX * cellWidth}" y="${(localY + 1) * cellHeight - 3}" fill="${escapeXml(cell.color)}"${fontWeight}${fontStyle}${textDecoration}>${escapeXml(cell.char)}</text>`);
           }
         }

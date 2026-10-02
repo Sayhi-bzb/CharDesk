@@ -24,6 +24,7 @@ import {
   requireLoadedModule,
 } from "@/shared/lib/moduleLoadRecovery";
 import { createChardeskAgentTools } from "./site-tools/chardeskTools";
+import { warmCanvasCodeRuntime } from "./site-tools/canvasCode";
 import { startDocumentSiteTools } from "./site-tools/connector";
 import {
   prepareDocumentWebMcp,
@@ -107,6 +108,9 @@ const syncChardeskSiteTools = async () => {
 };
 
 void syncChardeskSiteTools();
+// Code Mode is opportunistically warmed in the background. Primitive Canvas
+// tools do not depend on this network/WASM fetch.
+void warmCanvasCodeRuntime().catch(() => undefined);
 window.addEventListener('popstate', () => { void syncChardeskSiteTools(); });
 window.addEventListener(APP_ROUTE_EVENT, () => { void syncChardeskSiteTools(); });
 const canvasStressParams = new URLSearchParams(window.location.search);

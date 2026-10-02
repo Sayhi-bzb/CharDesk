@@ -14,7 +14,7 @@ WebMCP
 
 | Group | Tools | Contract |
 | --- | --- | --- |
-| Canvas | `chardesk_canvas_manage`, `chardesk_canvas_read`, `chardesk_canvas_search`, `chardesk_canvas_write` | Manage and operate on Canvases in original Cell coordinates. `list` returns active Canvases and short runtime `canvasRef` handles by default; pass `includeArchived: true` for archived Canvases. `canvasRef` is optional and defaults to the active Canvas. `canvasId` remains a legacy UUID input. |
+| Canvas | `chardesk_canvas_manage`, `chardesk_canvas_read`, `chardesk_canvas_search`, `chardesk_canvas_write`, `chardesk_canvas_code` | Manage and operate on Canvases in original Cell coordinates. `canvas_code` composes these capabilities in a bounded QuickJS runtime with ordinary-object APIs; it is lazily warmed and reports `runtime_unavailable` with primitive-tool fallbacks if WASM cannot load. `preview` is the default, renders writes without mutation, and `apply` commits one undoable operation. `list` returns active Canvases and short runtime `canvasRef` handles by default; pass `includeArchived: true` for archived Canvases. `canvasRef` is optional and defaults to the active Canvas. `canvasId` remains a legacy UUID input. |
 | Materials | `chardesk_read_materials` | Read-only Markdown shared by both workflows. |
 
 New spatial operations belong to Canvas; source-file editing remains outside these tools.
@@ -46,7 +46,7 @@ visual overview never silently doubles the Agent's context.
 
 The [composition entry point](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/chardeskTools.ts)
 builds the groups and flattens them for the host connector. Normal Canvas pages
-register all 5 tools. Local CLI reader pages register Canvas management, reading, searching,
+register all 6 tools. Local CLI reader pages register Canvas management, reading, searching,
 and Materials only. Workspace management pages register none.
 Grouping does not add a browser-visible category field or change registration order.
 

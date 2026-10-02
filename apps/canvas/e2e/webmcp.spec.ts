@@ -21,8 +21,8 @@ const names = (page: Page) => page.evaluate(async () => {
 const ready = async (page: Page) => {
   await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
 };
-const editableNames = ["chardesk_canvas_manage", "chardesk_canvas_read", "chardesk_canvas_search", "chardesk_canvas_write", "chardesk_read_materials"];
-const readOnlyNames = editableNames.filter((name) => name !== "chardesk_canvas_write");
+const editableNames = ["chardesk_canvas_code", "chardesk_canvas_manage", "chardesk_canvas_read", "chardesk_canvas_search", "chardesk_canvas_write", "chardesk_read_materials"];
+const readOnlyNames = editableNames.filter((name) => !["chardesk_canvas_write", "chardesk_canvas_code"].includes(name));
 
 test.describe("WebMCP native Canvas", () => {
   test("discovers only Canvas and Materials capabilities", async ({ page }) => {
@@ -44,7 +44,7 @@ test.describe("WebMCP native Canvas", () => {
     expect(text.content).toContain("Sample");
     expect(text.content).toContain("styles:");
     const image = await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 8, 2], representation: "image", detail: "low" });
-    expect(image).toMatchObject({ representation: "image", contentBlocks: [{ type: "image", mimeType: "image/svg+xml", width: 64, height: 32, scale: 1 }] });
+    expect(image).toMatchObject({ representation: "image", contentBlocks: [{ type: "image", mimeType: "image/png", width: 64, height: 32, scale: 1 }] });
     expect(image.contentBlocks[0].data).toMatch(/^[A-Za-z0-9+/]+=*$/);
     const moved = await execute(page, "chardesk_canvas_read", { viewport: [10, -10, 80, 24] });
     expect(moved.viewport[0]).toBe(text.viewport[0] + 30);

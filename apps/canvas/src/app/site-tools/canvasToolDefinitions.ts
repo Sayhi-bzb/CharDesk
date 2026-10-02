@@ -4,6 +4,7 @@ export const CANVAS_READ_TOOL_NAME = "chardesk_canvas_read";
 export const CANVAS_WRITE_TOOL_NAME = "chardesk_canvas_write";
 export const CANVAS_SEARCH_TOOL_NAME = "chardesk_canvas_search";
 export const CANVAS_MANAGE_TOOL_NAME = "chardesk_canvas_manage";
+export const CANVAS_CODE_TOOL_NAME = "chardesk_canvas_code";
 
 export const CANVAS_SEARCH_TOOL = {
   name: CANVAS_SEARCH_TOOL_NAME,
@@ -98,7 +99,7 @@ export const CANVAS_READ_TOOL = {
         representation: { enum: ["text", "image", "both"] },
         detail: { enum: ["low", "high", "original", "auto"] },
         image: { anyOf: [{ type: "object", properties: {
-          mimeType: { const: "image/svg+xml" }, width: { type: "integer", minimum: 1 },
+          mimeType: { const: "image/png" }, width: { type: "integer", minimum: 1 },
           height: { type: "integer", minimum: 1 }, scale: { type: "number", exclusiveMinimum: 0 },
         }, required: ["mimeType", "width", "height", "scale"], additionalProperties: false }, { type: "null" }] },
         content: { type: "string" },
@@ -106,7 +107,7 @@ export const CANVAS_READ_TOOL = {
           { type: "object", properties: { type: { const: "text" }, text: { type: "string" } }, required: ["type", "text"], additionalProperties: false },
           { type: "object", properties: { type: { const: "note" }, text: { type: "string" } }, required: ["type", "text"], additionalProperties: false },
           { type: "object", properties: {
-            type: { const: "image" }, mimeType: { const: "image/svg+xml" }, data: { type: "string" },
+            type: { const: "image" }, mimeType: { const: "image/png" }, data: { type: "string" },
             width: { type: "integer", minimum: 1 }, height: { type: "integer", minimum: 1 }, scale: { type: "number", exclusiveMinimum: 0 },
           }, required: ["type", "mimeType", "data", "width", "height", "scale"], additionalProperties: false },
         ] } },
@@ -152,6 +153,37 @@ export const CANVAS_WRITE_TOOL = {
         ok: { const: false },
         code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "canvas_not_ready", "permission_denied", "source_backed_canvas", "out_of_bounds", "write_failed"] },
         message: { type: "string" },
+      }, required: ["ok", "code", "message"], additionalProperties: false },
+    ],
+  },
+} satisfies Omit<AgentToolDefinition, "execute">;
+
+export const CANVAS_CODE_TOOL = {
+  name: CANVAS_CODE_TOOL_NAME,
+  title: "Run Canvas code",
+  description: "Run a bounded JavaScript composition against Canvas capabilities. The script receives ordinary-object APIs: await canvas.read(input), await canvas.search(input), await canvas.write({at, content, writeMode}), await canvas.manage({action}), await canvas.clipboard.readText() -> string, and await canvas.clipboard.writeText(text). Do not JSON.stringify inputs or JSON.parse results. preview is the default: writes render through the current Markdown/ANSI/theme pipeline and return a real rendered preview without mutation; apply commits all writes as one undoable operation. The sandbox has no DOM, network, filesystem, or arbitrary MCP access. Return a JSON-compatible value.",
+  readOnly: false,
+  inputSchema: {
+    type: "object",
+    properties: {
+      script: { type: "string", minLength: 1, maxLength: 32768, description: "Bounded JavaScript using only the provided canvas capability API." },
+      canvasRef: { type: "string", minLength: 1, description: "Optional short runtime Canvas reference from manage(list)." },
+      mode: { enum: ["preview", "apply"], default: "preview", description: "preview renders writes without persisting them; apply commits them as one undoable operation." },
+      timeoutMs: { type: "integer", minimum: 50, maximum: 10000, default: 2000 },
+    },
+    required: ["script"],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    oneOf: [
+      { type: "object", properties: {
+        mode: { enum: ["preview", "apply"] }, result: {}, operations: { type: "integer", minimum: 0 },
+        writes: { type: "integer", minimum: 0 }, durationMs: { type: "number", minimum: 0 }, truncated: { type: "boolean" },
+      }, required: ["mode", "result", "operations", "writes", "durationMs", "truncated"], additionalProperties: false },
+      { type: "object", properties: {
+        ok: { const: false }, code: { type: "string" }, phase: { type: "string" }, retryable: { type: "boolean" },
+        message: { type: "string" }, fallbackTools: { type: "array", items: { type: "string" } },
       }, required: ["ok", "code", "message"], additionalProperties: false },
     ],
   },

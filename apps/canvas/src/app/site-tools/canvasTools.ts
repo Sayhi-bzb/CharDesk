@@ -4,6 +4,7 @@ import type { AgentToolContentBlock, AgentToolDefinition } from "./contracts";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
 import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvasRendering";
 import { CHARDESK_CONTENT_THEMES } from "@chardesk/rendering/theme";
+import { prepareCanvasRowsWrite, prepareCanvasTextWrite } from "@/domains/canvas/writeText";
 
 import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL, CANVAS_SEARCH_TOOL, CANVAS_MANAGE_TOOL } from "./canvasToolDefinitions";
 export { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_MANAGE_TOOL_NAME } from "./canvasToolDefinitions";
@@ -46,6 +47,43 @@ const resolveCanvasTarget = (canvas: CanvasReferenceHost, input: { canvasId?: un
 
 const targetOutput = (target: { id: string; canvasRef: string; explicit: boolean; legacy: boolean }) =>
   target.legacy ? { canvasId: target.id } : target.explicit ? { canvasRef: target.canvasRef } : {};
+
+type ModelImage = Readonly<{ mimeType: "image/png"; data: string; width: number; height: number; scale: number }>;
+const MAX_MODEL_IMAGE_BYTES = 700 * 1024;
+
+const blobAsBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = typeof reader.result === "string" ? reader.result : "";
+    const comma = result.indexOf(",");
+    if (comma < 0) reject(new Error("Invalid image data."));
+    else resolve(result.slice(comma + 1));
+  };
+  reader.onerror = () => reject(reader.error ?? new Error("Unable to read image data."));
+  reader.readAsDataURL(blob);
+});
+
+const svgToPng = async (image: { mimeType: string; data: string; width: number; height: number; scale: number }): Promise<ModelImage | null> => {
+  if (image.mimeType !== "image/svg+xml" || typeof document === "undefined" || typeof Image === "undefined") return null;
+  try {
+    const element = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const next = new Image();
+      next.onload = () => resolve(next);
+      next.onerror = () => reject(new Error("Unable to decode Canvas image."));
+      next.src = `data:image/svg+xml;base64,${image.data}`;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    context.clearRect(0, 0, image.width, image.height);
+    context.drawImage(element, 0, 0, image.width, image.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob || blob.size > MAX_MODEL_IMAGE_BYTES) return null;
+    return { mimeType: "image/png", data: await blobAsBase64(blob), width: image.width, height: image.height, scale: image.scale };
+  } catch { return null; }
+};
 
 export const createCanvasManageTool = (
   canvas: Pick<CanvasRuntime, "ready" | "getState"> & {
@@ -206,6 +244,58 @@ export const createCanvasWriteTool = (
   },
 });
 
+/** Render and prepare a write without mutating the Canvas document. Used by
+ * Canvas Code preview so it shares the exact renderer and Cell placement rules
+ * with the real write path. */
+export const createCanvasPreviewWriteTool = (
+  canvas: Pick<CanvasRuntime, "ready" | "getState">,
+  rendering: CanvasToolRendering,
+): AgentToolDefinition => ({
+  name: "chardesk_canvas_preview_write",
+  title: "Preview Canvas text",
+  description: "Render Canvas text and calculate its Cell footprint without mutating the document.",
+  readOnly: true,
+  inputSchema: { type: "object", properties: {
+    canvasRef: { type: "string", minLength: 1 },
+    canvasId: { type: "string", minLength: 1 },
+    at: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 },
+    content: { type: "string" },
+    writeMode: { enum: ["patch", "replace"], default: "patch" },
+  }, required: ["at", "content"], additionalProperties: false },
+  execute: async (input) => {
+    const at = input.at;
+    const writeMode = input.writeMode === undefined ? "patch" : input.writeMode;
+    if (Object.keys(input).some((key) => !["canvasRef", "canvasId", "at", "content", "writeMode"].includes(key))
+      || !Array.isArray(at) || at.length !== 2 || !at.every(Number.isSafeInteger)
+      || typeof input.content !== "string" || (writeMode !== "patch" && writeMode !== "replace")) {
+      return { ok: false, code: "invalid_input", message: "Expected { at: [x,y], content: string, writeMode?: patch|replace }." };
+    }
+    try {
+      await canvas.ready;
+      const target = resolveCanvasTarget(canvas, input);
+      if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
+      const state = canvas.getState();
+      const rendered = await rendering.render(input.content, state.brushColor, rendering.getContext());
+      const prepared = rendered.kind === "plain"
+        ? prepareCanvasTextWrite({ x: at[0]!, y: at[1]! }, rendered.text, state.brushColor, writeMode)
+        : prepareCanvasRowsWrite({ x: at[0]!, y: at[1]! }, rendered.rows, writeMode);
+      return {
+        ...targetOutput(target),
+        preview: true,
+        writeMode,
+        bounds: prepared.bounds,
+        writtenCells: prepared.writtenCells,
+        skippedWhitespaceCells: prepared.skippedWhitespaceCells,
+        rendered: rendered.kind === "plain"
+          ? { kind: "plain", text: rendered.text }
+          : { kind: "spans", rows: rendered.rows },
+      };
+    } catch {
+      return { ok: false, code: "preview_failed", message: "Unable to render the Canvas write preview." };
+    }
+  },
+});
+
 export const createCanvasReadTool = (
   canvas: Pick<CanvasRuntime, "ready" | "getState" | "materializeSession">,
   rendering: CanvasToolRendering,
@@ -235,12 +325,13 @@ export const createCanvasReadTool = (
       const textContent = `${result.content}\n\n${renderingNote}`;
       const contentBlocks: AgentToolContentBlock[] = [];
       if (representation === "text" || representation === "both") contentBlocks.push({ type: "text", text: textContent });
-      const image = (representation === "image" || representation === "both") && result.viewport
+      const renderedImage = (representation === "image" || representation === "both") && result.viewport
         ? renderCanvasViewportImage(snapshot.surface, result.viewport, detail as "low" | "high" | "original" | "auto")
         : null;
+      const image = renderedImage ? await svgToPng(renderedImage) : null;
       if (image) contentBlocks.push({ type: "image", ...image });
-      if (representation === "image" && !result.viewport) {
-        contentBlocks.push({ type: "note", text: "No Canvas content is available for this image viewport." });
+      if (representation === "image" && !image) {
+        contentBlocks.push({ type: "note", text: result.viewport ? "Image unavailable; use representation: text." : "No Canvas content is available for this image viewport." });
       }
       const structuredContent = {
         ...targetOutput(target),

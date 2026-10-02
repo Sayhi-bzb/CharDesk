@@ -19,6 +19,20 @@ a local file.
 Keep the operation scoped to the user's target. Do not enumerate Canvases or
 search the whole surface when the target is already known.
 
+## Compose operations
+
+Use `chardesk_canvas_code` when one task needs conditional, repeated, or
+clipboard-aware Canvas operations. Its script receives only
+`canvas.read`, `canvas.search`, `canvas.write`, `canvas.manage`, and
+`canvas.clipboard`. `preview` is the default and does not persist writes; use
+`mode: "apply"` when the requested edit is ready to commit. An applied script
+is one undoable checkpoint. Preview writes use the real Canvas renderer and
+return their Cell bounds and rendered spans; they are not an echo of the input.
+Capability arguments and results are ordinary JavaScript objects, so scripts do
+not call `JSON.stringify` or `JSON.parse`. It is a Canvas composition tool, not
+a shell and not a general MCP dispatcher. If Code Mode reports
+`runtime_unavailable`, continue with the primitive tools.
+
 ## Edit loop
 
 ```text

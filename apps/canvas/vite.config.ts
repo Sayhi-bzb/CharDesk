@@ -58,6 +58,15 @@ export default defineConfig({
   plugins: [staticSiteDevRedirect(), webMcpOriginTrial(), react(), tailwindcss()],
   optimizeDeps: {
     include: ["@tanstack/react-table"],
+    // QuickJS resolves its WASM loader through a nested conditional export.
+    // Let Vite serve that graph natively; prebundling it leaves a stale
+    // /node_modules/.vite/deps/emscripten-module URL in dev after reloads.
+    exclude: [
+      "quickjs-emscripten",
+      "quickjs-emscripten-core",
+      "@jitl/quickjs-wasmfile-release-asyncify",
+      "@jitl/quickjs-wasmfile-release-asyncify/emscripten-module",
+    ],
   },
   server: {
     headers: { "Origin-Agent-Cluster": "?1" },

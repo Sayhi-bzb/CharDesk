@@ -97,6 +97,17 @@ describe('local agent page connection', () => {
     expect(JSON.parse(socket.send.mock.calls[0][0]).error).toBeUndefined();
   });
 
+  it('rejects oversized Canvas responses without closing the bridge', async () => {
+    connectLocalAgent(url);
+    const socket = Socket.instances[0];
+    socket.open();
+    execute.mockResolvedValueOnce({ content: 'x'.repeat(950_000) } as never);
+    socket.receive({ id: 'large', method: 'call', params: { name: 'chardesk_canvas_read', input: {} } });
+    await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(socket.send.mock.calls[0][0]).error).toContain('response is too large');
+    expect(socket.close).not.toHaveBeenCalled();
+  });
+
   it('checks short refs against the paired Canvas before forwarding', async () => {
     execute.mockResolvedValueOnce({ canvases: [{ canvasRef: 'c1' }] } as never);
     connectLocalAgent(url);

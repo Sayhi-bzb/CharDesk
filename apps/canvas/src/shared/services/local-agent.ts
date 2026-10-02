@@ -15,6 +15,7 @@ let status: LocalAgentStatus = 'idle';
 let revision = 0;
 const pairingKey = 'chardesk.local-agent.pairing';
 const enabledKey = 'chardesk.local-agent.enabled';
+const MAX_AGENT_RESPONSE_BYTES = 900 * 1024;
 export const DEFAULT_LOCAL_AGENT_URL = 'ws://127.0.0.1:9494/bridge';
 type Pairing = { url: string; scope: string; expiresAt: number; permissions: LocalAgentPermissions };
 let retry: ReturnType<typeof setTimeout> | undefined;
@@ -201,7 +202,7 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
         }
         const name = request.params?.name;
         const input = request.params?.input;
-        if (request.method !== 'call' || !['chardesk_canvas_manage', 'chardesk_canvas_read', 'chardesk_canvas_search', 'chardesk_canvas_write'].includes(String(name))
+        if (request.method !== 'call' || !['chardesk_canvas_manage', 'chardesk_canvas_read', 'chardesk_canvas_search', 'chardesk_canvas_write', 'chardesk_canvas_code'].includes(String(name))
           || !input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid Canvas request');
         const permission = String(name).endsWith('_read') ? 'read' : String(name).endsWith('_search') ? 'search' : String(name).endsWith('_manage') && (input as { action?: unknown }).action === 'list' ? 'inspect' : 'write';
         if (!permissions[permission]) throw new Error(`Permission denied: canvas.${permission}`);
@@ -220,6 +221,9 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
         response = JSON.stringify({ id, result });
       } catch (error) {
         response = JSON.stringify({ id, error: error instanceof Error ? error.message : 'Canvas request failed' });
+      }
+      if (new TextEncoder().encode(response).byteLength > MAX_AGENT_RESPONSE_BYTES) {
+        response = JSON.stringify({ id, error: 'Canvas response is too large; narrow the viewport or use representation: text.' });
       }
       if (id && !completed.has(id)) {
         completed.set(id, { request: data, response });

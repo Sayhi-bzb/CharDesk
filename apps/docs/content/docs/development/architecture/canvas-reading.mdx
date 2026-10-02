@@ -101,8 +101,10 @@ read a smaller viewport until `overviewOnly: false`.
 Image reads accept `detail: "low" | "high" | "original" | "auto"` and default to
 `auto`. Machine-readable metadata is exposed in `structuredContent`; visual material
 is exposed through `contentBlocks`. Existing callers can continue using the default
-top-level `content` text. Image data is an SVG image block carrying the original Cell
-viewport and pixel scale.
+top-level `content` text. Image data is a model-compatible PNG image block carrying
+the original Cell viewport and pixel scale; the internal SVG intermediate never leaves
+the Canvas tool boundary. Oversized images are omitted with a note; narrow the
+viewport or use `representation: "text"` instead.
 
 Every read also includes a compact [write rendering](/development/architecture/canvas-writing)
 note: mode, theme, Markdown wrap width, and feature state. `markdown=all` means every

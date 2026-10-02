@@ -1,5 +1,15 @@
 export const tools = [
   {
+    name: 'chardesk_canvas_code', title: 'Run Canvas code', readOnly: false,
+    description: 'Run bounded JavaScript using ordinary-object Canvas APIs: await canvas.read(input), canvas.search(input), canvas.write({at, content, writeMode}), canvas.manage({action}), clipboard.readText() -> string, and clipboard.writeText(text). Do not JSON.stringify inputs or JSON.parse results. preview is the default; writes render through the current Canvas renderer and return a real preview without mutation. apply commits writes as one undoable operation. No DOM, network, filesystem, or arbitrary MCP access.',
+    inputSchema: { type: 'object', properties: {
+      script: { type: 'string', minLength: 1, maxLength: 32768 },
+      canvasRef: { type: 'string', minLength: 1 },
+      mode: { type: 'string', enum: ['preview', 'apply'], default: 'preview' },
+      timeoutMs: { type: 'integer', minimum: 50, maximum: 10000, default: 2000 },
+    }, required: ['script'], additionalProperties: false },
+  },
+  {
     name: 'chardesk_canvas_manage', title: 'Manage Canvases', readOnly: false,
     description: 'Manage Canvas lifecycle state with list, create, rename, and archive actions. list returns active Canvases by default; set includeArchived=true to include archived Canvases. It returns short runtime canvasRef handles; use one for explicit cross-Canvas work.',
     inputSchema: { type: 'object', properties: {

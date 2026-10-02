@@ -10,7 +10,8 @@ import { credentialsPath, pairingPath } from './paths.mjs';
 import { loadCredentials } from './credentials.mjs';
 import { toolNames, tools } from './tools.mjs';
 
-const port = Number(process.env.CHARDESK_MCP_PORT || 9494);
+const configuredPort = process.env.CHARDESK_MCP_PORT;
+const port = configuredPort === undefined || configuredPort === '' ? 9494 : Number(configuredPort);
 const origins = new Set((process.env.CHARDESK_MCP_ORIGINS
   || 'http://127.0.0.1:5173,http://localhost:5173,https://canvas.chardesk.com').split(','));
 const credentialsFile = process.env.CHARDESK_MCP_CREDENTIALS || credentialsPath();

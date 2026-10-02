@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createSelectionCommandFactory } from "@/domains/actions/public";
 import { createCanvasRuntime, type CanvasRuntime } from "@/domains/canvas/public";
-import { createCanvasReadTool, createCanvasWriteTool, createCanvasSearchTool } from "./canvasTools";
+import { createCanvasReadTool, createCanvasWriteTool, createCanvasSearchTool, createCanvasPreviewWriteTool } from "./canvasTools";
 import { createTextRenderingRuntime, DEFAULT_TEXT_RENDER_PROFILE } from "@/domains/document/public";
 const runtime = createTextRenderingRuntime();
 runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "raw" });
@@ -20,6 +20,21 @@ describe("Canvas writing tool", () => {
     runtimes.push(canvas);
     return canvas;
   };
+
+  it("renders a real preview without mutating the Canvas", async () => {
+    const canvas = host();
+    const runtime = createTextRenderingRuntime();
+    runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "markdown" });
+    const preview = createCanvasPreviewWriteTool(canvas, {
+      render: runtime.renderCompact,
+      getProfile: runtime.getProfile,
+      getContext: () => ({ themeMode: "light" as const }),
+    });
+    const result = await preview.execute({ at: [-4, 3], content: "**Hello**", writeMode: "replace" });
+    expect(result).toMatchObject({ preview: true, bounds: [-4, 3, 5, 1], writtenCells: 5 });
+    expect(result).toMatchObject({ rendered: { kind: "spans", rows: expect.any(Array) } });
+    expect(canvas.getState().contentSurface.reader.getContentBounds()).toBeNull();
+  });
 
   it("renders Markdown, searches exact glyph positions, and reads styles without changing editor state", async () => {
     const canvas = host();
