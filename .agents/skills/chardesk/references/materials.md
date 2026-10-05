@@ -113,7 +113,8 @@ $$\Delta T = T_{observed} - T_{normal}$$
 
 ## A three-frame storyboard
 
-This is one composed scene. Use [native Slides](slides.md) for separate pages.
+This is one composed scene. Use the [native Slide MCP workflow](slides.md) for
+separate pages.
 
 ````chargraph
 # [1;38;2;130;80;223m三枚のスライド、一つの物語[0m

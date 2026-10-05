@@ -44,7 +44,7 @@ function rejectUpgrade(socket, code, text) {
 }
 const permissionFor = (name, input) => name.endsWith('_read') ? 'read'
   : name.endsWith('_search') ? 'search'
-    : name.endsWith('_manage') && input?.action === 'list' ? 'inspect' : 'write';
+    : name.endsWith('_manage') && (input?.action === 'list' || input?.action === 'list_pages') ? 'inspect' : 'write';
 const rejectPending = (tenantId, error) => {
   for (const [id, request] of pending) {
     if (request.tenant?.id !== tenantId) continue;
@@ -67,11 +67,11 @@ const notifyRuntimeWaiters = () => {
 };
 
 async function resolveSourceRef(name, input) {
-  if (!['chardesk_canvas_write', 'chardesk_canvas_render'].includes(name) || input?.sourceRef === undefined) return input;
+  if (!['canvas_write', 'canvas_render'].includes(name) || input?.sourceRef === undefined) return input;
   if (typeof input.sourceRef !== 'string' || input.sourceRef.length === 0) {
     throw new Error('sourceRef must be a non-empty local file path.');
   }
-  const contentKey = name === 'chardesk_canvas_write' ? 'content' : 'source';
+  const contentKey = name === 'canvas_write' ? 'content' : 'source';
   if (input[contentKey] !== undefined) throw new Error(`Provide either ${contentKey} or sourceRef, not both.`);
   let content;
   try {
@@ -111,9 +111,21 @@ function waitForRuntimeReady(tenant = ownerTenant) {
         cleanup(); resolve(pageRuntime);
       }
     };
+    // A status update can race authorization or be lost while the page is
+    // reconnecting. Always ask the connected page for its current snapshot
+    // before waiting; the browser replies from its in-memory runtime state.
+    try { page.send(JSON.stringify({ method: 'runtime_probe' })); } catch { /* The waiter will report disconnect/timeout. */ }
     entry = { tenant, notify: waiter, reject: fail };
     timer = setTimeout(() => {
-      fail(new Error('Canvas page runtime handshake timed out; wait for Canvas to finish loading or reload it.'));
+      event('runtime_wait_timeout', {
+        tenantId: tenant.id,
+        pageConnected: Boolean(page && page.readyState === WebSocket.OPEN),
+        authorized: Boolean(pageGrant),
+        runtimeStatus: pageRuntime?.status ?? 'missing',
+        buildId: pageRuntime?.buildId ?? null,
+      });
+      const runtime = pageRuntime?.status ?? 'missing';
+      fail(new Error(`Canvas page runtime handshake timed out (runtime=${runtime}); wait for Canvas to finish loading or reload it.`));
     }, RUNTIME_READY_TIMEOUT);
     runtimeWaiters.add(entry);
     waiter();
@@ -285,7 +297,7 @@ async function forward(name, input, tenant = ownerTenant) {
   if (!pageGrant) return Promise.reject(new Error('Canvas authorization is required.'));
   return waitForRuntimeReady(tenant).then(() => {
     if (!pageRuntime || !pageGrant || !page || page.readyState !== WebSocket.OPEN) return Promise.reject(new Error('Canvas page is not connected.'));
-    const permission = name.endsWith('_read') ? 'read' : name.endsWith('_search') ? 'search' : name.endsWith('_manage') && input?.action === 'list' ? 'inspect' : 'write';
+    const permission = permissionFor(name, input);
     if (pageRuntime.status === 'degraded' && permission === 'write') {
       return Promise.reject(new Error('Canvas UI is degraded; reload the Canvas before writing.'));
     }
@@ -297,7 +309,7 @@ async function forward(name, input, tenant = ownerTenant) {
     if (pending.size >= 128 || tenant.pending.size >= 32 || page.bufferedAmount > 1024 * 1024) return Promise.reject(new Error('Bridge is busy.'));
     const id = randomUUID(); const message = JSON.stringify({ id, method: 'call', params: { name, input } });
     return new Promise((resolve, reject) => {
-      const requestTimeout = name === 'chardesk_canvas_code' ? CODE_BRIDGE_REQUEST_TIMEOUT : DEFAULT_BRIDGE_REQUEST_TIMEOUT;
+      const requestTimeout = name === 'canvas_code' ? CODE_BRIDGE_REQUEST_TIMEOUT : DEFAULT_BRIDGE_REQUEST_TIMEOUT;
       const timer = setTimeout(() => { pending.delete(id); tenant.pending.delete(id); reject(new Error('Canvas page timed out.')); }, requestTimeout);
       tenant.pending.add(id);
       pending.set(id, { resolve, reject, timer, tenant });

@@ -14,7 +14,7 @@ WebMCP
 
 | Group | Tools | Contract |
 | --- | --- | --- |
-| Canvas | `chardesk_canvas_manage`, `chardesk_canvas_read`, `chardesk_canvas_search`, `chardesk_canvas_write`, `chardesk_canvas_erase`, `chardesk_canvas_fill`, `chardesk_canvas_render`, `chardesk_canvas_code` | Manage and operate on Canvases in original Cell coordinates. `write` is a literal Projection stroke; `erase` clears a region; `fill` styles existing characters; `render` converts material input such as Markdown or ANSI into Projection Cells. `canvas_code` composes these capabilities in a bounded QuickJS runtime with ordinary-object APIs; it reports `runtime_unavailable` with primitive-tool fallbacks if WASM cannot load. `preview` is the default and does not mutate; `apply` commits one undoable operation with an `operationId`. One apply targets one Canvas. `list` returns active Canvases and short persistent `canvasId` values by default; pass `includeArchived: true` for archived Canvases. `canvasId` is optional and defaults to the active Canvas. |
+| Canvas | `canvas_manage`, `canvas_read`, `canvas_search`, `canvas_write`, `canvas_erase`, `canvas_fill`, `canvas_render`, `canvas_code` | Manage and operate on Scenes in original Cell coordinates. Freeform Scenes are infinite surfaces; Slide Scenes contain named, finite pages addressed by `pageId`. `write` is a literal Projection stroke; `erase` clears a region; `fill` styles existing characters; `render` converts material input such as Markdown or ANSI into Projection Cells. `canvas_code` composes these capabilities in a bounded QuickJS runtime with ordinary-object APIs; it reports `runtime_unavailable` with primitive-tool fallbacks if WASM cannot load. `preview` is the default and does not mutate; `apply` commits one undoable operation with an `operationId`. `list_pages` and page mutation actions are exposed through `canvas_manage`; content tools accept `pageId` without changing the user's active page. `list` returns active Canvases and short persistent `canvasId` values by default; pass `includeArchived: true` for archived Canvases. `canvasId` is optional and defaults to the active Canvas. |
 | Materials | `chardesk_read_materials` | Read-only Markdown shared by both workflows. |
 
 New spatial operations belong to Canvas; source-file editing remains outside these tools.
@@ -37,7 +37,7 @@ forwarded in FIFO order; a tenant disconnect does not close the page or affect
 other tenants. A second `@chardesk/mcp server` process joins the existing broker
 automatically instead of claiming a second browser connection.
 
-Canvas reads keep machine metadata separate from visual content. `chardesk_canvas_read`
+Canvas reads keep machine metadata separate from visual content. `canvas_read`
 returns `structuredContent` for coordinates, sampling, and optional appearance regions,
 plus `contentBlocks` for text, image, or note blocks. The default is lightweight text
 without style notes; `style: "appearance"`, `representation: "cells"`, and image blocks

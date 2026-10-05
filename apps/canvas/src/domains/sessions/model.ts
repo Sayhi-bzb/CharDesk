@@ -9,6 +9,8 @@ interface CanvasViewport {
   zoom: number;
 }
 
+export type CanvasStoragePolicy = "ephemeral" | "local";
+
 interface CanvasSessionDescriptorBase {
   id: string;
   name: string;
@@ -18,6 +20,8 @@ interface CanvasSessionDescriptorBase {
   migrationPending?: true;
   collaboration?: CollaborationDescriptor;
   collaborationRole?: "host" | "guest";
+  /** Ephemeral sessions are shipped demos and are never written to local storage. */
+  storagePolicy?: CanvasStoragePolicy;
 }
 
 export type CanvasSourceBinding = Readonly<{
@@ -81,6 +85,9 @@ export const getCanvasSessionDescriptor = (
     ...(session.collaboration ? { collaboration: session.collaboration } : {}),
     ...(session.collaborationRole
       ? { collaborationRole: session.collaborationRole }
+      : {}),
+    ...(session.storagePolicy
+      ? { storagePolicy: session.storagePolicy }
       : {}),
   };
   switch (session.mode) {

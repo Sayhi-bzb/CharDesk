@@ -129,7 +129,7 @@ export const createCanvasTextCommands = (
     }
     return summarize(prepared);
   };
-  const writePreparedAt = (sessionId: string, prepare: () => PreparedWrite): WriteResult | null => {
+  const writePreparedAt = (sessionId: string, pageId: string | undefined, prepare: () => PreparedWrite): WriteResult | null => {
     const state = get();
     const session = state.canvasSessions.find(({ id }) => id === sessionId);
     if (!session) throw new CanvasWriteError("canvas_not_active", "Canvas not found.");
@@ -138,7 +138,7 @@ export const createCanvasTextCommands = (
         ? "Wait for this Canvas migration to finish before writing."
         : "Edit the source file of this Canvas instead of its projection.");
     }
-    const address = documents.getDocumentAddress(sessionId);
+    const address = documents.getDocumentAddress(sessionId, pageId);
     if (!address) throw new CanvasWriteError("canvas_not_active", "Canvas content is not ready.");
     const prepared = prepare();
     const { patch, bounds } = prepared;
@@ -159,10 +159,10 @@ export const createCanvasTextCommands = (
   return coordinateCanvasCommands(commits, {
     writeAt: (content: string, at: Point, writeMode: CanvasWriteMode = "replace") => writePrepared(() => prepareCanvasTextWrite(at, content, get().brushColor, writeMode)),
     writeRowsAt: (rows: readonly RichTextRow[], at: Point, writeMode: CanvasWriteMode = "replace") => writePrepared(() => prepareCanvasRowsWrite(at, rows, writeMode)),
-    writeAtSession: (sessionId: string, content: string, at: Point, color = get().brushColor, writeMode: CanvasWriteMode = "replace") => writePreparedAt(sessionId, () => prepareCanvasTextWrite(at, content, color, writeMode)),
-    writeRowsAtSession: (sessionId: string, rows: readonly RichTextRow[], at: Point, writeMode: CanvasWriteMode = "replace") => writePreparedAt(sessionId, () => prepareCanvasRowsWrite(at, rows, writeMode)),
+    writeAtSession: (sessionId: string, content: string, at: Point, color = get().brushColor, writeMode: CanvasWriteMode = "replace", pageId?: string) => writePreparedAt(sessionId, pageId, () => prepareCanvasTextWrite(at, content, color, writeMode)),
+    writeRowsAtSession: (sessionId: string, rows: readonly RichTextRow[], at: Point, writeMode: CanvasWriteMode = "replace", pageId?: string) => writePreparedAt(sessionId, pageId, () => prepareCanvasRowsWrite(at, rows, writeMode)),
     eraseAt: (at: Point, size: readonly [number, number]) => writePrepared(() => prepareCanvasErase(at, size)),
-    eraseAtSession: (sessionId: string, at: Point, size: readonly [number, number]) => writePreparedAt(sessionId, () => prepareCanvasErase(at, size)),
+    eraseAtSession: (sessionId: string, at: Point, size: readonly [number, number], pageId?: string) => writePreparedAt(sessionId, pageId, () => prepareCanvasErase(at, size)),
     write: (str: string, startPos?: Point, options?: TextWriteOptions) => {
       const current = get();
       const staticGrid = current.interaction.staticGrid;

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { CHARDESK_DARK_CONTENT_THEME } from "@chardesk/rendering/theme";
 import { createSelectionCommandFactory } from "@/domains/actions/public";
 import { createCanvasRuntime, type CanvasRuntime } from "@/domains/canvas/public";
-import { createCanvasReadTool, createCanvasWriteTool, createCanvasRenderTool, createCanvasSearchTool, createCanvasPreviewWriteTool, createCanvasPreviewRenderTool, createCanvasEraseTool, createCanvasFillTool } from "./canvasTools";
+import { createCanvasReadTool, createCanvasWriteTool, createCanvasRenderTool, createCanvasSearchTool, createCanvasPreviewWriteTool, createCanvasPreviewRenderTool, createCanvasEraseTool, createCanvasFillTool, createCanvasManageTool } from "./canvasTools";
 import { createTextRenderingRuntime, DEFAULT_TEXT_RENDER_PROFILE } from "@/domains/document/public";
 const runtime = createTextRenderingRuntime();
 runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "raw" });
@@ -107,6 +108,36 @@ describe("Canvas writing tool", () => {
     expect(await createCanvasWriteTool(canvas, rendering).execute({ at: [0, 0], content: "A" })).toMatchObject({ bounds: [0, 0, 1, 1] });
   });
 
+  it("targets a named Slide page without changing the active page", async () => {
+    const canvas = host();
+    canvas.commands.sessions.create("slide");
+    const firstPageId = canvas.getState().slideDeck?.activeSlideId;
+    canvas.commands.slides.addWithOptions("Notes");
+    const activePageId = canvas.getState().slideDeck?.activeSlideId;
+    expect(firstPageId).toBeTruthy();
+    expect(activePageId).not.toBe(firstPageId);
+    const write = createCanvasWriteTool(canvas);
+    expect(await write.execute({ pageId: firstPageId, at: [2, 3], content: "first" })).toMatchObject({ pageId: firstPageId, bounds: [2, 3, 5, 1] });
+    const read = createCanvasReadTool(canvas, rendering);
+    expect(await read.execute({ pageId: firstPageId, viewport: [0, 0, 10, 6] })).toMatchObject({ pageId: firstPageId, content: expect.stringContaining("first") });
+    expect(canvas.getState().slideDeck?.activeSlideId).toBe(activePageId);
+  });
+
+  it("manages Slide pages and duplicates a Scene without activation", async () => {
+    const canvas = host();
+    const manage = createCanvasManageTool(canvas);
+    canvas.commands.sessions.create("slide");
+    const firstPageId = canvas.getState().slideDeck?.activeSlideId;
+    const listed = await manage.execute({ action: "list_pages" });
+    expect(listed).toMatchObject({ pages: [{ pageId: firstPageId, name: "Slide 1", active: true }] });
+    const created = await manage.execute({ action: "create_page", name: "Notes" });
+    expect(created).toMatchObject({ name: "Notes", active: false });
+    expect(canvas.getState().slideDeck?.activeSlideId).toBe(firstPageId);
+    const duplicate = await manage.execute({ action: "duplicate", name: "Copy" });
+    expect(duplicate).toMatchObject({ name: "Copy", mode: "slide", active: false });
+    expect(canvas.getState().canvasSessions).toHaveLength(3);
+  });
+
   it("preserves empty rows and reports only the envelope of written positions", async () => {
     const canvas = host();
     const tool = createCanvasWriteTool(canvas);
@@ -164,7 +195,11 @@ describe("Canvas writing tool", () => {
     const reader = canvas.getState().contentSurface.reader;
     for (const row of rendered.rows) for (const span of row.spans) {
       const cell = reader.getCell({ x: -10 + span.x, y: 5 + row.y });
-      expect(cell?.color).toBe(span.color);
+      expect(cell?.color).toBe(
+        span.color?.toLowerCase() === CHARDESK_DARK_CONTENT_THEME.foreground.toLowerCase()
+          ? "#000000"
+          : span.color
+      );
       expect(cell?.attrs).toEqual(span.attrs);
       expect(cell?.href).toBe(span.href);
       expect(cell?.bgColor).toBe(span.bgColor);

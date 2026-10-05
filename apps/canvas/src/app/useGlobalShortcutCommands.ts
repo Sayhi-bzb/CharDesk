@@ -12,8 +12,10 @@ import {
 
 export const useGlobalShortcutCommands = ({
   capabilities,
+  onSearch,
 }: {
   capabilities: CanvasEditorCapabilities;
+  onSearch?: () => void;
 }) => {
   const editor = useEditor();
   const canExecuteEntry = useCallback(
@@ -28,6 +30,24 @@ export const useGlobalShortcutCommands = ({
       capabilities.copy ||
       capabilities.mutateContent,
     canExecuteEntry,
+  });
+  useShortcutLayer({
+    id: "global-canvas-search",
+    priority: SHORTCUT_PRIORITY.globalAction,
+    enabled: !!onSearch && capabilities.navigate,
+    onKeyDown: (input, context) => {
+      if (
+        !onSearch ||
+        context.targetKind === "editable" ||
+        context.targetKind === "overlay" ||
+        input.key.toLowerCase() !== "f" ||
+        (!input.modifiers.meta && !input.modifiers.ctrl) ||
+        input.modifiers.alt ||
+        input.modifiers.shift
+      ) return;
+      onSearch();
+      return { claimed: true, preventDefault: true };
+    },
   });
   useShortcutLayer({
     id: "global-printable-selection-fill",

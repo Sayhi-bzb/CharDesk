@@ -23,7 +23,7 @@ test("stdio MCP publishes search and forwards its unchanged input and output", {
   try {
     await client.connect(transport);
     const { tools } = await client.listTools();
-    const search = tools.find(({ name }) => name === "chardesk_canvas_search");
+    const search = tools.find(({ name }) => name === "canvas_search");
     assert.ok(search);
     assert.equal(search.annotations.readOnlyHint, true);
     assert.deepEqual(search.inputSchema.required, ["query"]);

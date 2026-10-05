@@ -3,7 +3,7 @@ import type { CollaborationDescriptor } from "@/domains/collaboration/public";
 import type { SlideSize } from "@/domains/slides/public";
 import type { Point } from "@/shared/types";
 import type { CanvasMode } from "./mode";
-import type { CanvasSourceBinding } from "./model";
+import type { CanvasSourceBinding, CanvasStoragePolicy } from "./model";
 import { migrateLegacyGridViewport } from "./viewportMigration";
 
 export const CANVAS_CATALOG_DATABASE = "chardesk-canvas-catalog";
@@ -29,6 +29,7 @@ export type CanvasCatalogSession = {
   viewport?: { offset: Point; zoom: number };
   collaboration?: CollaborationDescriptor;
   collaborationRole?: "host" | "guest";
+  storagePolicy?: CanvasStoragePolicy;
   activeSlideId?: string;
   documentGeneration?: number;
   previousDocumentGeneration?: number;

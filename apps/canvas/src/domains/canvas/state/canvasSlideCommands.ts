@@ -24,13 +24,23 @@ import type { CanvasStateCommitCoordinator } from "./CanvasStateCommitCoordinato
 export const createCanvasSlideCommands = (
   commits: CanvasStateCommitCoordinator,
   documents: CanvasDocumentRegistry
-) => ({
-  addSlide: () => commits.run(() => {
+) => {
+  const addSlideWithOptions = (name?: string, afterSlideId?: string, activate = true) => commits.run(() => {
     const state = commits.getState();
     if (state.canvasMode !== "slide" || !state.slideDeck) return;
     const next = addDeckSlide(state.slideDeck, {
       id: createSlideId(state.slideDeck.slides),
+      ...(name ? { name } : {}),
+      ...(afterSlideId ? { afterSlideId } : {}),
     });
+    const created = next.slides.find((slide) => !state.slideDeck!.slides.some(({ id }) => id === slide.id));
+    if (!created) return;
+    if (!activate) {
+      documents.ensurePage(state.activeCanvasId, { id: created.id, kind: "cell-plane", grid: [] });
+      documents.updatePage(state.activeCanvasId, created.id, { name: created.name, size: created.size });
+      commits.setState({ slideDeck: { ...next, activeSlideId: state.slideDeck.activeSlideId } });
+      return;
+    }
     const active = next.slides.find((slide) => slide.id === next.activeSlideId);
     if (!active) return;
     const activeGrid = activateSlidePage(
@@ -44,7 +54,11 @@ export const createCanvasSlideCommands = (
       size: active.size,
     });
     commits.setState(createSlideActivationPatch(next, activeGrid, documents.getActiveAddress()));
-  }),
+  });
+
+  return {
+  addSlideWithOptions,
+  addSlide: () => addSlideWithOptions(),
 
   duplicateSlide: (slideId: string) => commits.run(() => {
     const state = commits.getState();
@@ -201,4 +215,5 @@ export const createCanvasSlideCommands = (
       slideDeck: next,
     });
   }),
-});
+  };
+};

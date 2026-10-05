@@ -84,6 +84,7 @@ import { CanvasAppearanceBridge } from '@/shared/canvas-appearance/react';
 import { useWorkspaceRoute } from '@/shared/navigation/workspace-route';
 import { LocalWorkspacePage } from './LocalWorkspacePage';
 import { startCloudSync } from '@/domains/account/public';
+import { CanvasSearchDialog } from '@/widgets/dialogs/canvas-search-dialog';
 
 
 const SidebarRight = lazy(() =>
@@ -473,6 +474,7 @@ function AppContent() {
     open: false,
   });
   const transientSidebarOpen = transientSidebar.formFactor === formFactor && transientSidebar.open;
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const isRightPanelOpen =
     formFactor === 'desktop' ? (desktopSidebarOpen ?? true) : transientSidebarOpen;
@@ -496,6 +498,7 @@ function AppContent() {
 
   useGlobalShortcutCommands({
     capabilities,
+    onSearch: () => setSearchOpen(true),
   });
 
   return (
@@ -624,6 +627,7 @@ function AppContent() {
         }
       />
       <Toaster />
+      <CanvasSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </SidebarProvider>
   );
 }

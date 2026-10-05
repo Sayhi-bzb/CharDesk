@@ -4,6 +4,7 @@ export type {
   CanvasSessionDescriptor,
   CanvasSessionRestoreRecord,
   CanvasSessionSnapshot,
+  CanvasStoragePolicy,
   FreeformCanvasSessionDescriptor,
   FreeformCanvasImportSnapshot,
   SourceBackedCanvasSessionDescriptor,

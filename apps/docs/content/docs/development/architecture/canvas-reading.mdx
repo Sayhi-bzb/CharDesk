@@ -3,9 +3,9 @@ title: Canvas Reading
 description: Read a Canvas through a bounded, automatically scaled text viewport.
 ---
 
-`chardesk_canvas_read` exposes a Canvas through WebMCP and Site Tools. `canvasId`
+`canvas_read` exposes a Canvas through WebMCP and Site Tools. `canvasId`
 is optional: full-access local MCP can target the short persistent ID returned by
-`chardesk_canvas_manage` with the `list` action; that action returns
+`canvas_manage` with the `list` action; that action returns
 `currentCanvas` for the page the user currently has open. Archived Canvases are
 omitted from `list` by default; pass `includeArchived: true` when archived
 pages are explicitly needed. Omitted input reads that active Canvas; use the

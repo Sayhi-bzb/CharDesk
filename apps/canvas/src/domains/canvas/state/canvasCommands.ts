@@ -284,7 +284,9 @@ const commands = {
       ),
   },
   sessions: {
+    promoteEphemeral: sessionCommands.promoteEphemeralSession,
     create: sessionCommands.createCanvasSession,
+    duplicate: sessionCommands.duplicateCanvasSession,
     openSource: sessionCommands.openSourceSession,
     import: sessionCommands.importCanvasSession,
     importMigrated: sessionCommands.importMigratedSession,
@@ -301,6 +303,7 @@ const commands = {
   },
   slides: {
     add: slideCommands.addSlide,
+    addWithOptions: slideCommands.addSlideWithOptions,
     duplicate: slideCommands.duplicateSlide,
     remove: slideCommands.removeSlide,
     rename: slideCommands.renameSlide,

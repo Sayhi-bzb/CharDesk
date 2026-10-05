@@ -32,6 +32,7 @@ type CanvasRuntimeContextValue = Pick<
   | "retryRestore"
   | "setRetainedCanvasIds"
   | "materializeSession"
+  | "search"
   | "getProjectionCacheStats"
   | "setProjectionCacheBudget"
   | "subscribeProjectionCache"

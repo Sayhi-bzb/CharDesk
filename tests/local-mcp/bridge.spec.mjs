@@ -26,11 +26,11 @@ test("local stdio MCP reads and edits multiple Canvases after one application pa
     await client.connect(transport);
     const bridgeUrl = await ready;
     const call = (name, args) => client.callTool({ name, arguments: args });
-    const read = "chardesk_canvas_read";
-    const write = "chardesk_canvas_write";
-    const search = "chardesk_canvas_search";
+  const read = "canvas_read";
+  const write = "canvas_write";
+  const search = "canvas_search";
     const { tools } = await client.listTools();
-    const manage = "chardesk_canvas_manage";
+  const manage = "canvas_manage";
     expect(tools.map((tool) => tool.name).sort()).toEqual([manage, read, search, write]);
     expect(tools.find((tool) => tool.name === search).annotations.readOnlyHint).toBe(true);
     expect(tools.find((tool) => tool.name === write).inputSchema.required).toEqual(["at", "content"]);
@@ -166,7 +166,7 @@ test('remembered pairing survives MCP restart and can be revoked or forgotten', 
     await client.connect(transport);
     bridgeUrl = await ready;
   };
-  const read = () => client.callTool({ name: 'chardesk_canvas_read', arguments: {} });
+  const read = () => client.callTool({ name: 'canvas_read', arguments: {} });
   const openDialog = async () => {
     await page.getByRole('button', { name: 'Open menu', exact: true }).click();
     await page.getByRole('menuitem', { name: /^Agent/ }).click();

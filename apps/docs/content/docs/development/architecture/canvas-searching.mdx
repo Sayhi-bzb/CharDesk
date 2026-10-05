@@ -3,7 +3,7 @@ title: Canvas Searching
 description: Locate rendered text in original Cell coordinates.
 ---
 
-`chardesk_canvas_search` searches the active Canvas or current Slide page's rendered
+`canvas_search` searches the active Canvas or current Slide page's rendered
 Cells. It is read-only, works on source-backed projections, and does not move the
 camera or change interaction. Source files, read rulers, style notes, and sampled
 maps are not search content.
@@ -64,7 +64,7 @@ the budget also bounds sparse expansion and repeated template checks.
 Results are ordered by the match's `y`, then `x`, with non-overlapping matches.
 Each item contains only `origin`, exact `bounds`, and the matched `content`.
 There is no surrounding preview, padding, ruler, border, or style note. `bounds`
-is a Cell rectangle that can be passed directly to `chardesk_canvas_read` when
+is a Cell rectangle that can be passed directly to `canvas_read` when
 the agent needs context or styles.
 
 Search is intentionally a locator, not a context reader. The agent decides

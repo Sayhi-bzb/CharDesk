@@ -200,7 +200,7 @@ type BrowserCanvasPersistenceOptions = {
 
 type PersistedDocument = {
   doc: Y.Doc;
-  provider: IndexeddbPersistence;
+  provider: IndexeddbPersistence | null;
   updateListener: (update: Uint8Array, origin: unknown) => void;
 };
 
@@ -773,9 +773,13 @@ const resolveDocumentGenerations = async (
 };
 
 const isBootstrapCatalogSession = (
-  session: Pick<CanvasSessionSnapshot, "name" | "mode">,
+  session: Pick<CanvasSessionSnapshot, "name" | "mode" | "storagePolicy">,
   initial: CanvasSessionSnapshot | undefined
-) => !!initial && session.name === initial.name && session.mode === initial.mode;
+) => !!initial && (
+  initial.storagePolicy === "ephemeral"
+    ? session.storagePolicy === "ephemeral" || session.storagePolicy === "local"
+    : session.name === initial.name && session.mode === initial.mode
+);
 
 const mergeRecoverableSessions = (
   catalogSessions: CanvasSessionSnapshot[],
@@ -815,6 +819,7 @@ const sessionsFromCatalog = (catalog: CanvasCatalogSnapshot): CanvasSessionSnaps
     const base = {
       id: session.id,
       name: session.name,
+      ...(session.storagePolicy ? { storagePolicy: session.storagePolicy } : {}),
       ...(session.migrationPending ? { migrationPending: true as const } : {}),
       ...(session.archived ? { archived: true as const } : {}),
       viewport: session.viewport,
@@ -1007,7 +1012,9 @@ const createCatalogSnapshot = (
   deletedSessionIds: ReadonlySet<string> = new Set()
 ): CanvasCatalogSnapshot => {
   const sessions = state.canvasSessions.filter(
-    (session) => !deletedSessionIds.has(session.id)
+    (session) =>
+      !deletedSessionIds.has(session.id) &&
+      session.storagePolicy !== "ephemeral"
   );
   const slideDecks = new Map(
     sessions.flatMap((session) => {
@@ -1025,6 +1032,7 @@ const createCatalogSnapshot = (
     id: session.id,
     order,
     name: session.name,
+    storagePolicy: session.storagePolicy,
     ...(session.migrationPending ? { migrationPending: true as const } : {}),
     ...(session.archived ? { archived: true as const } : {}),
     mode: session.mode,
@@ -1080,6 +1088,7 @@ const catalogStructureJson = (snapshot: CanvasCatalogSnapshot) => JSON.stringify
     id: session.id,
     order: session.order,
     name: session.name,
+    storagePolicy: session.storagePolicy,
     archived: session.archived,
     mode: session.mode,
     sourceBinding: session.sourceBinding,
@@ -1422,6 +1431,25 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
         : legacySessions ?? initialSessions).filter(
           ({ id }) => !this.#deletedSessionIds.has(id)
         );
+      // Catalogs written before storagePolicy existed may contain the shipped
+      // Welcome document. Preserve user edits as a real local file while new
+      // boots always get the explicit ephemeral bootstrap session.
+      const migratedCatalogSessions = catalogSessions.map((session) => {
+        const initial = initialSessions.find(({ id }) => id === session.id);
+        if (
+          initial?.storagePolicy === "ephemeral" &&
+          session.storagePolicy === undefined
+        ) {
+          return { ...session, name: `${initial.name} — Copy`, storagePolicy: "local" as const };
+        }
+        return session;
+      });
+      const bootstrapSessions = initialSessions.filter(
+        (session) =>
+          session.storagePolicy === "ephemeral" &&
+          !migratedCatalogSessions.some(({ id }) => id === session.id)
+      );
+      const restoredCatalogSessions = [...migratedCatalogSessions, ...bootstrapSessions];
       const persistedDocuments = (await listPersistedDocuments()).filter(
         ({ id }) => !this.#deletedSessionIds.has(id)
       );
@@ -1457,7 +1485,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       });
       const persistedDocumentIds = Array.from(latestPersistedGeneration.keys());
       const recoveredCatalogSessions = mergeRecoverableSessions(
-        catalogSessions,
+        restoredCatalogSessions,
         legacySnapshots,
         persistedDocumentIds,
         initialSessions
@@ -1611,7 +1639,11 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
           this.#legacyStorage.removeItem(legacy.key);
           this.#legacyStorage.removeItem(LEGACY_EDITOR_PERSISTENCE_KEY);
         }
-        this.#legacyStorage.setItem(CANVAS_CATALOG_MARKER_KEY, "1");
+        if ((this.#lastCatalogSnapshot?.sessions.length ?? 0) > 0) {
+          this.#legacyStorage.setItem(CANVAS_CATALOG_MARKER_KEY, "1");
+        } else {
+          this.#legacyStorage.removeItem(CANVAS_CATALOG_MARKER_KEY);
+        }
       } else this.#waitForCoordinatorHandoff();
       documents.configureDocumentLifecycle({
         onCreate: (id, doc) => this.#attachDocument(id, doc),
@@ -1720,7 +1752,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     this.#documents.clear();
     await Promise.all(persisted.map(async ({ doc, provider, updateListener }) => {
       doc.off("update", updateListener);
-      await bestEffortDestroyProvider(provider);
+      if (provider) await bestEffortDestroyProvider(provider);
       doc.destroy();
     }));
     this.#dirtyDocuments.clear();
@@ -1752,6 +1784,10 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     this.#attachDocument(id, doc);
     const persisted = this.#documents.get(id);
     if (!persisted || persisted.doc !== doc) throw new Error("Native Canvas persistence is not attached.");
+    if (!persisted.provider) {
+      await this.#saveCatalog();
+      return;
+    }
     await persisted.provider.whenSynced;
     await persistProviderState(persisted.provider, true);
     await this.#saveCatalog();
@@ -1971,7 +2007,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     void this.#checkpointWorker.dispose();
     this.#documents.forEach(({ doc, provider, updateListener }) => {
       doc.off("update", updateListener);
-      void provider.destroy();
+      if (provider) void provider.destroy();
     });
     this.#documents.clear();
     this.#registry = null;
@@ -2172,6 +2208,15 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     id: string,
     seed: CanvasDocumentSeed
   ) {
+    const session = this.#store?.getState().canvasSessions.find(
+      (candidate) => candidate.id === id
+    );
+    if (session?.storagePolicy === "ephemeral") {
+      const doc = new Y.Doc({ guid: id });
+      applyCanvasDocumentSeed(doc, id, seed);
+      this.#registerDocument(id, doc, null);
+      return doc;
+    }
     const generation = this.#documentGenerations.get(id) ?? 0;
     const name = getDocumentDatabaseName(id, generation);
     const doc = new Y.Doc({ guid: id });
@@ -2233,6 +2278,10 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     );
     if (isSourceBackedCanvasSession(session)) return;
     if (session?.mode !== "slide" && session?.collaboration) return;
+    if (session?.storagePolicy === "ephemeral") {
+      this.#registerDocument(id, doc, null);
+      return;
+    }
     const generation = this.#documentGenerations.get(id) ?? 0;
     const provider = new IndexeddbPersistence(
       getDocumentDatabaseName(id, generation),
@@ -2245,11 +2294,12 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
   #registerDocument(
     id: string,
     doc: Y.Doc,
-    provider: IndexeddbPersistence
+    provider: IndexeddbPersistence | null
   ) {
     this.#documentRevisions.set(id, this.#documentRevisions.get(id) ?? 0);
     const updateListener = (update: Uint8Array, origin: unknown) => {
       this.#documentRevisions.set(id, (this.#documentRevisions.get(id) ?? 0) + 1);
+      if (!provider) return;
       this.#scheduleDocumentFlush(id);
       this.#scheduleCheckpoint(id);
       if (this.#documentSyncChannel && origin !== this.#documentSyncChannel) {
@@ -2271,18 +2321,20 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
         Y.applyUpdate(doc, update, this.#documentSyncChannel);
       });
     }
-    this.#ensureCheckpointService(id);
-    this.#scheduleCheckpoint(id);
+    if (provider) {
+      this.#ensureCheckpointService(id);
+      this.#scheduleCheckpoint(id);
+    }
   }
 
   async #closePersistedDocument(id: string, doc: Y.Doc) {
     const persisted = this.#documents.get(id);
     if (persisted) {
       persisted.doc.off("update", persisted.updateListener);
-      if (this.#dirtyDocuments.has(id)) {
+      if (persisted.provider && this.#dirtyDocuments.has(id)) {
         await persistProviderState(persisted.provider, false);
       }
-      await persisted.provider.destroy();
+      await persisted.provider?.destroy();
       this.#documents.delete(id);
       this.#dirtyDocuments.delete(id);
       this.#clearCheckpoint(id);
@@ -2295,10 +2347,10 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     if (!persisted) return;
     this.#documents.delete(id);
     persisted.doc.off("update", persisted.updateListener);
-    if (this.#dirtyDocuments.has(id)) {
+    if (persisted.provider && this.#dirtyDocuments.has(id)) {
       await persistProviderState(persisted.provider, false);
     }
-    await persisted.provider.destroy();
+    await persisted.provider?.destroy();
     this.#dirtyDocuments.delete(id);
     this.#clearCheckpoint(id);
   }
@@ -2309,10 +2361,10 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
     const persisted = this.#documents.get(id);
     if (persisted) {
       persisted.doc.off("update", persisted.updateListener);
-      if (this.#dirtyDocuments.has(id)) {
+      if (persisted.provider && this.#dirtyDocuments.has(id)) {
         await persistProviderState(persisted.provider, false);
       }
-      await persisted.provider.destroy();
+      await persisted.provider?.destroy();
       this.#documents.delete(id);
       this.#dirtyDocuments.delete(id);
       this.#clearCheckpoint(id);
@@ -2591,7 +2643,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
         candidate.committed = true;
         this.#registerDocument(id, candidate.doc, candidate.provider);
         registry.adoptDocument(id, candidate.doc);
-        await current.provider.destroy();
+        await current.provider?.destroy();
         this.#dirtyDocuments.delete(id);
         const tail = this.#checkpointTails.get(id) ?? [];
         this.#checkpointTails.set(

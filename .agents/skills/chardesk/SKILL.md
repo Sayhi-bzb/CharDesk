@@ -18,10 +18,10 @@ rather than as a one-dimensional file. Use ordinary file or shell tools when
 the task is only to generate or transform source material; pass an existing
 artifact into Canvas by reference when it is ready for projection.
 
-Editable Freeform and native Slide pages own rendered Cell content. A local CLI
-preview is read-only and its native file remains authoritative. Canvas writes
-render input into Cells; Markdown and ANSI are input materials, not retained
-source documents.
+Editable Freeform and native Slide pages own rendered Cell content. Canvas
+writes render input into Cells; Markdown and ANSI are input materials, not
+retained source documents. Native Slides are created and edited through MCP;
+do not author a Slide by writing a structured file from the Agent side.
 
 ## Routing
 
@@ -29,7 +29,8 @@ source documents.
 - Read, search, or edit the current live surface with
   [Canvas tools](references/live-canvas.md).
 - Create local artifacts or edit existing files with the [CLI](references/cli.md).
-- Sequence native Slide pages with [Slides](references/slides.md).
+- Manage native Slide pages through the MCP lifecycle in
+  [Slides](references/slides.md).
 - Discover or repair tool access with [connections](references/connections.md).
 
 Stay on the requested target. New local documents default to one Freeform

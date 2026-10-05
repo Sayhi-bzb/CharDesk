@@ -5,7 +5,7 @@ a local file.
 
 ## Choose the operation
 
-- If the target Canvas is unknown, call `chardesk_canvas_manage` with `action: "list"`
+- If the target Canvas is unknown, call `canvas_manage` with `action: "list"`
   and start from `currentCanvas`; archived Canvases are omitted by default. Pass
   `includeArchived: true` only for explicit archived-Canvas work. Inspect
   `canvases` only for explicit cross-Canvas work.
@@ -19,6 +19,11 @@ a local file.
 Keep the operation scoped to the user's target. Do not enumerate Canvases or
 search the whole surface when the target is already known.
 
+For Slide Scenes, use `canvas_manage` with `list_pages` to discover
+stable `pageId` values and names. Pass `pageId` to read, search, write, erase,
+fill, or render when operating on a specific page; omitting it uses the active
+page. Page-targeted content operations do not change the user's active page.
+
 Treat the Canvas as a two-dimensional workspace, not an append-only text file.
 Use vertical placement for continuity within one content stream. Use horizontal
 placement for parallel modules, topics, roles, comparisons, or branches. Before
@@ -27,7 +32,7 @@ parallel dimension; do not default to appending below the lowest content.
 
 ## Compose operations
 
-Use `chardesk_canvas_code` when one task needs conditional, repeated, or
+Use `canvas_code` when one task needs conditional, repeated, or
 clipboard-aware Canvas operations. Its script receives only
 `canvas.read`, `canvas.search`, `canvas.write`, `canvas.erase`, `canvas.fill`,
 `canvas.render`, `canvas.manage`, `canvas.undo`, and `canvas.clipboard`. `preview` is the default and does not persist writes; use

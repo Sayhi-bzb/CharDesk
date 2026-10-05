@@ -14,12 +14,14 @@ type CreateCanvasSessionOptions = {
 };
 
 export interface SessionCommands {
+  promoteEphemeralSession: (sessionId: string) => CanvasSessionDescriptor | null;
   importMigratedSession: (sessionId: string, workspaceId: string, name: string, snapshot: CanvasImportSnapshot) => void;
   completeMigration: (sessionId: string) => void;
   createCanvasSession: (
     mode?: CanvasMode,
     options?: CreateCanvasSessionOptions
   ) => CanvasSessionDescriptor;
+  duplicateCanvasSession: (canvasId: string, options?: { name?: string }) => CanvasSessionDescriptor | null;
   openSourceSession: (
     sourceBinding: CanvasSourceBinding,
     options?: { name?: string; initialMode?: "freeform" | "slide" }

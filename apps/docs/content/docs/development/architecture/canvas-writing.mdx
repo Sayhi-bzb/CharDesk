@@ -3,9 +3,9 @@ title: Canvas Writing
 description: Draw a literal Projection stroke at an original Cell coordinate.
 ---
 
-`chardesk_canvas_write` belongs to the Canvas group in the [WebMCP contract](/development/architecture/webmcp).
+`canvas_write` belongs to the Canvas group in the [WebMCP contract](/development/architecture/webmcp).
 It draws one continuous literal-Unicode stroke into the Projection layer.
-For Markdown, ANSI, or other material input, use `chardesk_canvas_render`.
+For Markdown, ANSI, or other material input, use `canvas_render`.
 
 ## Position and content
 
@@ -13,8 +13,10 @@ For Markdown, ANSI, or other material input, use `chardesk_canvas_render`.
 { "at": [100, 50], "content": "ABC\nDE", "style": { "color": "red" } }
 ```
 
-`at` is the required starting `[x,y]` in original Cell coordinates. Both coordinates
-and the resulting endpoints must be safe integers. Content determines the footprint;
+`at` is the required starting `[x,y]` in original Cell coordinates. For a Slide
+Scene, pass `pageId` to target a specific named page; otherwise the active page
+is used. Both coordinates and the resulting endpoints must be safe integers.
+Content determines the footprint;
 there is no input width, height, or scale.
 
 The local MCP also accepts a file path instead of inline content:
@@ -28,13 +30,13 @@ stroke. `content` and `sourceRef` are mutually exclusive. This lets a local
 script produce output once and write it to Canvas without the agent copying the
 output into a second tool call. Browser-only WebMCP calls must provide `content`.
 
-`chardesk_canvas_render` follows the same contract with `source` and
+`canvas_render` follows the same contract with `source` and
 `sourceRef`, then applies the selected `format` (`raw`, `ansi`, or `markdown`).
 
 Non-whitespace graphemes overwrite existing Cells. Whitespace is transparent and
 does not erase existing content. `style` applies one brush style to the entire
-stroke. Use `chardesk_canvas_erase` to clear a rectangle and
-`chardesk_canvas_fill` to style existing characters without changing them.
+stroke. Use `canvas_erase` to clear a rectangle and
+`canvas_fill` to style existing characters without changing them.
 Slide overflow rejects the complete stroke before mutation.
 
 Only Projection Cells persist; the literal input is not retained as editable

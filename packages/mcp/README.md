@@ -9,7 +9,7 @@ the broker and later processes register as isolated tenant sessions. CharDesk ca
 grant application-scoped access to all Canvases with separate inspect, read,
 search, and write permissions; the short persistent `canvasId` selects a target
 without changing the human's active Canvas. Get IDs from
-`chardesk_canvas_manage` with the `list` action.
+`canvas_manage` with the `list` action.
 The manage list action omits archived Canvases by default; pass
 `includeArchived: true` only when archived pages are explicitly needed. It does
 not store documents or relay Canvas content through a server.
@@ -72,12 +72,16 @@ Text remains authoritative for Unicode and Cell coordinates. The MCP bridge expo
 visual blocks through standard `content[]` and machine-readable read metadata through
 `structuredContent`.
 
-Canvas editing is split into Projection operations: `chardesk_canvas_write` draws
+Canvas management also exposes Slide pages through `canvas_manage`:
+use `list_pages` to discover stable `pageId` and `name` values, then pass
+`pageId` to content tools without changing the user's active page.
+
+Canvas editing is split into Projection operations: `canvas_write` draws
 one literal-Unicode stroke with one optional style; whitespace is transparent.
 It accepts either `content` or `sourceRef`. `sourceRef` is a local file path;
 the local MCP reads the UTF-8 file and forwards the result as the stroke, so an
 agent can send script output without copying it into a tool argument.
-`chardesk_canvas_erase` clears a rectangle, `chardesk_canvas_fill` styles existing
-characters, and `chardesk_canvas_render` converts material such as Markdown or
+`canvas_erase` clears a rectangle, `canvas_fill` styles existing characters, and
+`canvas_render` converts material such as Markdown or
 ANSI into Projection Cells. `render` accepts either `source` or `sourceRef` using
 the same local-file rule.

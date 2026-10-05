@@ -136,6 +136,34 @@ describe("browser canvas persistence", () => {
     await clearTestDocumentDatabases();
   });
 
+  it("keeps the Welcome demo ephemeral until the first edit", async () => {
+    const storage = new MemoryStorage();
+    const runtime = createRuntime(storage, [{
+      id: SESSION_ID,
+      name: "Welcome",
+      mode: "freeform",
+      storagePolicy: "ephemeral",
+      grid: [],
+    }]);
+    runtimes.push(runtime);
+    await runtime.ready;
+
+    expect(runtime.getState().canvasSessions).toEqual([
+      expect.objectContaining({ id: SESSION_ID, storagePolicy: "ephemeral" }),
+    ]);
+    runtime.documents.mutateGrid((grid) => {
+      grid.set("2,1", { char: "X", color: "#111111" });
+    });
+
+    expect(runtime.getState().canvasSessions).toEqual([
+      expect.objectContaining({
+        name: "Welcome — Copy",
+        storagePolicy: "local",
+      }),
+    ]);
+    expect(runtime.getState().canvasSessions.some(({ id }) => id === SESSION_ID)).toBe(false);
+  });
+
   afterEach(async () => {
     runtimes.forEach((runtime) => runtime.dispose());
     runtimes = [];

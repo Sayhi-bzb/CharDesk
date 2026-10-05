@@ -30,6 +30,7 @@ export const createDefaultCanvasSessions = (): CanvasSessionSnapshot[] => [
     id: DEFAULT_SESSION_ID,
     name: DEFAULT_SESSION_NAME,
     mode: DEFAULT_MODE,
+    storagePolicy: "ephemeral",
     grid: DEFAULT_DEMO_GRID,
   },
 ];
@@ -186,7 +187,8 @@ export const createPersistedEditorSnapshot = (
     ),
     state.activeCanvasId,
     buildSessionSnapshot(state, documents)
-  ).map(stripExternallyOwnedSessionContent);
+  ).filter((session) => session.storagePolicy !== "ephemeral")
+    .map(stripExternallyOwnedSessionContent);
   return {
     schemaVersion: EDITOR_PERSISTENCE_VERSION,
     workspace: {

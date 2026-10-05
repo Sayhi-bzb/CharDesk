@@ -31,6 +31,11 @@ import {
 import { CanvasViewportRuntime, normalizeCanvasViewport } from "./viewportRuntime";
 import type { CanvasState, CanvasStateStore } from "./state/interfaces";
 import type { CanvasStateCommitCoordinator } from "./state/CanvasStateCommitCoordinator";
+import {
+  searchCanvasSurface,
+  type CanvasSearchOptions,
+  type CanvasSearchResult,
+} from "./searchSurface";
 
 const mutableCanvasStores = new WeakMap<object, CanvasStore>();
 
@@ -88,6 +93,7 @@ export type CanvasSessionMaterialization = {
   id: string;
   name: string;
   mode: CanvasMode;
+  pageId?: string;
   surface: CanvasSurfaceReader;
   slideDeck: SlideDeckSnapshot | null;
 };
@@ -102,6 +108,7 @@ export class CanvasRuntime {
   readonly ready: Promise<void>;
   readonly #disposeStore: () => void;
   readonly #disposeViewportPersistence: () => void;
+  readonly #unsubscribeEphemeralPromotion: () => void;
   readonly #commits: CanvasStateCommitCoordinator;
   #disposed = false;
 
@@ -152,6 +159,13 @@ export class CanvasRuntime {
     );
     this.commands = facade.commands;
     this.queries = facade.queries;
+    this.#unsubscribeEphemeralPromotion = this.documents.subscribeMutations(({ documentId }) => {
+      const session = this.#commits.getState().canvasSessions.find(
+        (candidate) => candidate.id === documentId
+      );
+      if (session?.storagePolicy !== "ephemeral") return;
+      this.commands.sessions.promoteEphemeral(documentId);
+    });
     let restoringViewport = this.persistence !== null;
     this.#disposeViewportPersistence = this.viewport.subscribe(() => {
       if (restoringViewport) return;
@@ -217,8 +231,25 @@ export class CanvasRuntime {
   subscribeProjectionCache = (listener: () => void) =>
     this.documents.subscribeProjectionCache(listener);
 
+  /**
+   * Search the materialized projection for a session. UI and MCP callers use
+   * this boundary so the session loading and surface-search semantics cannot
+   * drift apart.
+   */
+  search = async (
+    sessionId: string,
+    query: string,
+    options: CanvasSearchOptions = {},
+    pageId?: string,
+  ): Promise<CanvasSearchResult | null> => {
+    await this.ready;
+    const snapshot = await this.materializeSession(sessionId, pageId);
+    return snapshot ? searchCanvasSurface(snapshot.surface, query, options) : null;
+  };
+
   materializeSession = async (
-    sessionId: string
+    sessionId: string,
+    pageId?: string,
   ): Promise<CanvasSessionMaterialization | null> => {
     const session = this.store
       .getState()
@@ -230,6 +261,7 @@ export class CanvasRuntime {
     ) {
       return null;
     }
+    if (pageId !== undefined && session.mode !== "slide") return null;
 
     if (session.mode === "slide") {
       const descriptor = readSlideDeckDescriptor(this.documents, session.id);
@@ -239,13 +271,16 @@ export class CanvasRuntime {
         session.id,
         descriptor
       );
+      const selectedPageId = pageId ?? slideDeck.activeSlideId;
       const activeSlide = slideDeck.slides.find(
-        (slide) => slide.id === slideDeck.activeSlideId
+        (slide) => slide.id === selectedPageId
       );
+      if (!activeSlide) return null;
       return {
         id: session.id,
         name: session.name,
         mode: session.mode,
+        pageId: activeSlide.id,
         surface: createGridSurfaceReader(new Map(activeSlide?.grid ?? [])),
         slideDeck,
       };
@@ -278,6 +313,7 @@ export class CanvasRuntime {
     if (this.#disposed) return;
     this.#disposed = true;
     this.#disposeViewportPersistence();
+    this.#unsubscribeEphemeralPromotion();
     this.#disposeStore();
     this.viewport.dispose();
     this.persistence?.dispose();

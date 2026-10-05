@@ -4,6 +4,7 @@ import type { AgentToolContentBlock, AgentToolDefinition } from "./contracts";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
 import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvasRendering";
 import { CHARDESK_CONTENT_THEMES } from "@chardesk/rendering/theme";
+import { COLOR_PRIMARY_TEXT } from "@/shared/lib/constants";
 import { prepareCanvasPlainTextWrite, prepareCanvasRowsWrite, prepareCanvasTextWrite, type CanvasStrokeStyle } from "@/domains/canvas/public";
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import { getTextCellWidth } from "@chardesk/protocol";
@@ -25,6 +26,28 @@ const resolveCanvasTarget = (canvas: CanvasTargetHost, input: { canvasId?: unkno
 };
 
 const targetOutput = (target: { id: string; explicit: boolean }) => target.explicit ? { canvasId: target.id } : {};
+
+/** Store the active theme's foreground as Canvas' canonical default. This
+ * keeps renderer-generated default text adaptive when the host switches theme;
+ * authored colors remain explicit. */
+const canonicalizeDefaultForeground = <T extends { kind: string }>(
+  rendered: T,
+  themeMode: "light" | "dark",
+): T => {
+  if (rendered.kind === "plain") return rendered;
+  const defaultForeground = CHARDESK_CONTENT_THEMES[themeMode].foreground.toLowerCase();
+  const spans = (rendered as T & { rows: ReadonlyArray<{ spans: ReadonlyArray<{ color?: string }> }> }).rows;
+  return {
+    ...rendered,
+    rows: spans.map((row) => ({
+      ...row,
+      spans: row.spans.map((span) => ({
+        ...span,
+        ...(span.color?.toLowerCase() === defaultForeground ? { color: COLOR_PRIMARY_TEXT } : {}),
+      })),
+    })),
+  } as T;
+};
 type CanvasPersistenceHost = {
   persistence?: unknown;
   flushPersistence?: (sessionId?: string) => Promise<void>;
@@ -69,6 +92,7 @@ const collectCanvasAppearance = (
   surface: CanvasSurfaceReader,
   viewport: readonly [number, number, number, number] | null,
   defaultForeground: string,
+  theme: "light" | "dark",
 ): Readonly<{ theme: "light" | "dark"; regions: readonly CanvasAppearanceRegion[] }> => {
   if (!viewport) return { theme: "light", regions: [] };
   const [x, y, width, height] = viewport;
@@ -92,7 +116,7 @@ const collectCanvasAppearance = (
     grouped.set(groupKey, group);
   }
   return {
-    theme: defaultForeground.toLowerCase() === CHARDESK_CONTENT_THEMES.dark.foreground.toLowerCase() ? "dark" : "light",
+    theme,
     regions: [...grouped.values()].flat().sort((a, b) => a.y - b.y || a.x - b.x).map(({ x: regionX, y: regionY, width: regionWidth, endY, style }) => ({
       bounds: [regionX, regionY, regionWidth, endY - regionY + 1], style,
     })),
@@ -160,18 +184,24 @@ const svgToPng = async (image: { mimeType: string; data: string; width: number; 
 
 export const createCanvasManageTool = (
   canvas: Pick<CanvasRuntime, "ready" | "getState"> & CanvasPersistenceHost & {
-    commands: { sessions: Pick<CanvasRuntime["commands"]["sessions"], "create" | "rename" | "archive"> };
+    commands: {
+      sessions: Pick<CanvasRuntime["commands"]["sessions"], "create" | "rename" | "archive"> & {
+        duplicate?: CanvasRuntime["commands"]["sessions"]["duplicate"];
+      };
+      slides?: Pick<CanvasRuntime["commands"]["slides"], "add" | "addWithOptions" | "duplicate" | "remove" | "rename" | "move" | "activate">;
+    };
+    materializeSession?: CanvasRuntime["materializeSession"];
   },
   readOnly = false,
 ): AgentToolDefinition => ({
   ...CANVAS_MANAGE_TOOL,
   readOnly,
   execute: async (input) => {
-    if (!Object.keys(input).every((key) => ["action", "canvasId", "name", "mode", "includeArchived"].includes(key))
-      || !["list", "create", "rename", "archive"].includes(String(input.action))) {
-      return { ok: false, code: "invalid_input", message: "Expected action: list, create, rename, or archive." };
+    if (!Object.keys(input).every((key) => ["action", "canvasId", "name", "mode", "includeArchived", "pageId", "afterPageId", "index"].includes(key))
+      || !["list", "create", "duplicate", "rename", "archive", "list_pages", "create_page", "rename_page", "duplicate_page", "delete_page", "reorder_page"].includes(String(input.action))) {
+      return { ok: false, code: "invalid_input", message: "Expected a Canvas or Slide page management action." };
     }
-    if (readOnly && input.action !== "list") return { ok: false, code: "permission_denied", message: "Canvas lifecycle changes are unavailable on this surface." };
+    if (readOnly && input.action !== "list" && input.action !== "list_pages") return { ok: false, code: "permission_denied", message: "Canvas lifecycle changes are unavailable on this surface." };
     try {
       await canvas.ready;
       const state = canvas.getState();
@@ -195,12 +225,59 @@ export const createCanvasManageTool = (
         const currentCanvas = canvases.find(({ canvasId, archived }) => canvasId === state.activeCanvasId && !archived) ?? null;
         return { currentCanvasId: currentCanvas?.canvasId ?? null, currentCanvas, canvases };
       }
+      if (String(input.action).includes("_page")) {
+        const target = resolveCanvasTarget(canvas, input);
+        if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "canvasId is required." };
+        const snapshot = target.id === state.activeCanvasId
+          ? { slideDeck: state.slideDeck }
+          : await canvas.materializeSession?.(target.id);
+        const deck = snapshot?.slideDeck;
+        if (!deck) return { ok: false, code: "invalid_input", message: "Page actions require a Slide Canvas." };
+        const pages = () => deck.slides.map((page, index) => ({ pageId: page.id, name: page.name, index, size: [page.size.columns, page.size.rows], active: page.id === deck.activeSlideId }));
+        if (input.action === "list_pages") return { ...targetOutput(target), pages: pages() };
+        if (target.id !== state.activeCanvasId || !canvas.commands.slides) return { ok: false, code: "canvas_not_active", message: "Slide page mutations require the active Slide Canvas." };
+        if (input.action === "create_page") {
+          if (input.name !== undefined && (typeof input.name !== "string" || !input.name.trim())) return { ok: false, code: "invalid_input", message: "name must be non-blank." };
+          const before = new Set(deck.slides.map((page) => page.id));
+          canvas.commands.slides.addWithOptions(input.name as string | undefined, input.afterPageId as string | undefined, false);
+          const next = canvas.getState().slideDeck;
+          const created = next?.slides.find((page) => !before.has(page.id));
+          if (!created) return { ok: false, code: "page_create_failed", message: "Unable to create Slide page." };
+          const persisted = await confirmCanvasPersistence(canvas, target.id);
+          const index = next!.slides.findIndex((page) => page.id === created.id);
+          return { ...targetOutput(target), pageId: created.id, name: created.name, index, size: [created.size.columns, created.size.rows], active: created.id === next!.activeSlideId, ...persisted };
+        }
+        if (typeof input.pageId !== "string" || !input.pageId) return { ok: false, code: "invalid_input", message: "pageId is required for this page action." };
+        const page = deck.slides.find(({ id }) => id === input.pageId);
+        if (!page) return { ok: false, code: "page_not_found", message: "Slide page not found." };
+        if (input.action === "rename_page") {
+          if (typeof input.name !== "string" || !input.name.trim()) return { ok: false, code: "invalid_input", message: "name must be non-blank." };
+          canvas.commands.slides.rename(input.pageId, input.name);
+        } else if (input.action === "duplicate_page") canvas.commands.slides.duplicate(input.pageId);
+        else if (input.action === "delete_page") canvas.commands.slides.remove(input.pageId);
+        else if (input.action === "reorder_page") {
+          if (!Number.isSafeInteger(input.index) || (input.index as number) < 0) return { ok: false, code: "invalid_input", message: "index must be a non-negative safe integer." };
+          canvas.commands.slides.move(input.pageId, input.index as number);
+        }
+        const persisted = await confirmCanvasPersistence(canvas, target.id);
+        const next = canvas.getState().slideDeck;
+        const changed = next?.slides.find(({ id }) => id === input.pageId);
+        return { ...targetOutput(target), ...(changed ? { pageId: changed.id, name: changed.name, index: next!.slides.findIndex(({ id }) => id === changed.id), size: [changed.size.columns, changed.size.rows], active: changed.id === next!.activeSlideId } : { pageId: input.pageId, deleted: true }), ...persisted };
+      }
       if (input.action === "create") {
         if (input.name !== undefined && (typeof input.name !== "string" || !input.name.trim())) return { ok: false, code: "invalid_input", message: "name must be non-blank." };
         if (input.mode !== undefined && input.mode !== "freeform" && input.mode !== "slide") return { ok: false, code: "invalid_input", message: "mode must be freeform or slide." };
         const session = canvas.commands.sessions.create(input.mode === "slide" ? "slide" : "freeform", { name: input.name as string | undefined });
         const persisted = await confirmCanvasPersistence(canvas, session.id);
         return { canvasId: session.id, name: session.name, mode: session.mode, active: true, archived: false, ...persisted };
+      }
+      if (input.action === "duplicate") {
+        const duplicateTarget = resolveCanvasTarget(canvas, input);
+        if ("error" in duplicateTarget) return { ok: false, code: duplicateTarget.error, message: duplicateTarget.error === "canvas_not_found" ? "Canvas not found." : "canvasId is required." };
+        const duplicate = canvas.commands.sessions.duplicate?.(duplicateTarget.id, { name: input.name as string | undefined });
+        if (!duplicate) return { ok: false, code: "duplicate_failed", message: "Canvas cannot be duplicated." };
+        const persisted = await confirmCanvasPersistence(canvas, duplicate.id);
+        return { canvasId: duplicate.id, name: duplicate.name, mode: duplicate.mode, active: false, archived: false, ...persisted };
       }
       const target = resolveCanvasTarget(canvas, input);
       if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "canvasId is required." };
@@ -221,16 +298,18 @@ export const createCanvasManageTool = (
 });
 
 export const createCanvasSearchTool = (
-  canvas: Pick<CanvasRuntime, "ready" | "getState" | "materializeSession">,
+  canvas: Pick<CanvasRuntime, "ready" | "getState" | "materializeSession"> &
+    Partial<Pick<CanvasRuntime, "search">>,
 ): AgentToolDefinition => ({
   ...CANVAS_SEARCH_TOOL,
   execute: async (input) => {
-    if (Object.keys(input).some((key) => !["canvasId", "query", "viewport", "after", "regex", "ignoreCase"].includes(key))
+    if (Object.keys(input).some((key) => !["canvasId", "pageId", "query", "viewport", "after", "regex", "ignoreCase"].includes(key))
       || !isCanvasSearchQuery(input.query)
       || (input.viewport !== undefined && !isCanvasReadViewport(input.viewport))
       || (input.after !== undefined && !isCanvasSearchPosition(input.after))
       || (input.regex !== undefined && typeof input.regex !== "boolean")
       || (input.ignoreCase !== undefined && typeof input.ignoreCase !== "boolean")
+      || (input.pageId !== undefined && (typeof input.pageId !== "string" || input.pageId.length === 0))
       || (input.canvasId !== undefined && (typeof input.canvasId !== "string" || input.canvasId.length === 0))) {
       return { ok: false, code: "invalid_input", message: "Expected non-blank template rows, optional boolean regex/ignoreCase, viewport [x,y,width,height], and after [x,y]." };
     }
@@ -242,13 +321,25 @@ export const createCanvasSearchTool = (
       target = resolveCanvasTarget(canvas, input);
       if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
       canvasId = target.id;
-      snapshot = await canvas.materializeSession(canvasId);
+      if (canvas.search) {
+      const result = await canvas.search(canvasId, input.query, {
+          viewport: input.viewport,
+          after: input.after,
+          regex: input.regex,
+          ignoreCase: input.ignoreCase,
+        }, ...(input.pageId === undefined ? [] : [input.pageId as string]));
+        if (!result) return { ok: false, code: "canvas_not_ready", message: "The Canvas content is not ready." };
+        return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...result };
+      }
+      snapshot = input.pageId === undefined
+        ? await canvas.materializeSession(canvasId)
+        : await canvas.materializeSession(canvasId, input.pageId as string);
       if (!snapshot) return { ok: false, code: "canvas_not_ready", message: "The Canvas content is not ready." };
     } catch {
       return { ok: false, code: "canvas_not_ready", message: "Unable to read the Canvas content." };
     }
     try {
-      return { ...targetOutput(target), ...searchCanvasSurface(snapshot.surface, input.query, { viewport: input.viewport, after: input.after, regex: input.regex, ignoreCase: input.ignoreCase }) };
+      return { ...targetOutput(target), ...(snapshot.pageId ? { pageId: snapshot.pageId } : {}), ...searchCanvasSurface(snapshot.surface, input.query, { viewport: input.viewport, after: input.after, regex: input.regex, ignoreCase: input.ignoreCase }) };
     } catch (error) {
       if (error instanceof CanvasSearchError) return { ok: false, code: error.code, message: error.message };
       return { ok: false, code: "search_failed", message: "Unable to search Canvas content." };
@@ -269,28 +360,29 @@ export const createCanvasWriteTool = (
       return createCanvasRenderTool(canvas as Parameters<typeof createCanvasRenderTool>[0], legacyRendering).execute({ ...rest, source: content, format: "auto", writeMode: _writeMode });
     }
     const at = input.at;
-    if (Object.keys(input).some((key) => !["canvasId", "at", "content", "style"].includes(key))
+    if (Object.keys(input).some((key) => !["canvasId", "pageId", "at", "content", "style"].includes(key))
       || !Array.isArray(at) || at.length !== 2 || !at.every(Number.isSafeInteger)
-      || typeof input.content !== "string" || !isCanvasStrokeStyle(input.style)) {
+      || typeof input.content !== "string" || !isCanvasStrokeStyle(input.style)
+      || (input.pageId !== undefined && (typeof input.pageId !== "string" || input.pageId.length === 0))) {
       return { ok: false, code: "invalid_input", message: "Expected { at: [x,y], content: literal Unicode, style?: object }." };
     }
     const target = resolveCanvasTarget(canvas, input);
     if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
     try {
       await canvas.ready;
-      if (!await canvas.materializeSession(target.id)) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
+      if (!await canvas.materializeSession(target.id, input.pageId as string | undefined)) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
       const state = canvas.getState();
       const session = state.canvasSessions.find(({ id }) => id === target.id);
       if (session?.migrationPending) return { ok: false, code: "canvas_not_ready", message: "Wait for this Canvas migration to finish before writing." };
       if (session && isSourceBackedCanvasSession(session)) return { ok: false, code: "source_backed_canvas", message: "Edit the source file of this Canvas instead of its projection." };
       const rows = literalRows(input.content, input.style as CanvasStrokeStyle | undefined ?? {}, state.brushColor);
       const atPoint = { x: at[0]!, y: at[1]! };
-      const result = target.id === state.activeCanvasId
+      const result = target.id === state.activeCanvasId && input.pageId === undefined
         ? canvas.commands.text.writeRowsAt(rows, atPoint, "patch")
-        : canvas.commands.text.writeRowsAtSession?.(target.id, rows, atPoint, "patch");
+        : canvas.commands.text.writeRowsAtSession?.(target.id, rows, atPoint, "patch", input.pageId as string | undefined);
       if (target.id !== state.activeCanvasId && !result) return { ok: false, code: "write_failed", message: "Targeted Canvas writes are unavailable on this host." };
       const persisted = await confirmCanvasPersistence(canvas, target.id);
-      return { ...targetOutput(target), ...persisted, ...(input.writeMode ? { writeMode: input.writeMode } : {}), ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }) };
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, ...(input.writeMode ? { writeMode: input.writeMode } : {}), ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }) };
     } catch (error) {
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "write_failed", message: error instanceof Error ? error.message : "Unable to write Canvas content." };
     }
@@ -306,9 +398,10 @@ export const createCanvasEraseTool = (
   execute: async (input) => {
     const at = input.at;
     const size = input.size;
-    if (Object.keys(input).some((key) => !["canvasId", "at", "size"].includes(key))
+    if (Object.keys(input).some((key) => !["canvasId", "pageId", "at", "size"].includes(key))
       || !Array.isArray(at) || at.length !== 2 || !at.every(Number.isSafeInteger)
-      || !Array.isArray(size) || size.length !== 2 || !size.every((value) => Number.isSafeInteger(value) && value > 0)) {
+      || !Array.isArray(size) || size.length !== 2 || !size.every((value) => Number.isSafeInteger(value) && value > 0)
+      || (input.pageId !== undefined && (typeof input.pageId !== "string" || input.pageId.length === 0))) {
       return { ok: false, code: "invalid_input", message: "Expected { at: [x,y], size: [width,height] } with positive safe integers." };
     }
     const target = resolveCanvasTarget(canvas, input);
@@ -321,12 +414,12 @@ export const createCanvasEraseTool = (
       if (session?.migrationPending) return { ok: false, code: "canvas_not_ready", message: "Wait for this Canvas migration to finish before erasing." };
       if (session && isSourceBackedCanvasSession(session)) return { ok: false, code: "source_backed_canvas", message: "Edit the source file of this Canvas instead of its projection." };
       const point = { x: at[0]!, y: at[1]! };
-      const result = target.id === state.activeCanvasId
+      const result = target.id === state.activeCanvasId && input.pageId === undefined
         ? canvas.commands.text.eraseAt?.(point, [size[0]!, size[1]!])
-        : canvas.commands.text.eraseAtSession?.(target.id, point, [size[0]!, size[1]!]);
+        : canvas.commands.text.eraseAtSession?.(target.id, point, [size[0]!, size[1]!], input.pageId as string | undefined);
       if (target.id !== state.activeCanvasId && !result) return { ok: false, code: "erase_failed", message: "Targeted Canvas erases are unavailable on this host." };
       const persisted = await confirmCanvasPersistence(canvas, target.id);
-      return { ...targetOutput(target), ...persisted, bounds: result?.bounds ?? [point.x, point.y, size[0]!, size[1]!], erasedCells: size[0]! * size[1]! };
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, bounds: result?.bounds ?? [point.x, point.y, size[0]!, size[1]!], erasedCells: size[0]! * size[1]! };
     } catch (error) {
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "erase_failed", message: error instanceof Error ? error.message : "Unable to erase Canvas content." };
     }
@@ -342,17 +435,18 @@ export const createCanvasFillTool = (
   execute: async (input) => {
     const at = input.at;
     const size = input.size;
-    if (Object.keys(input).some((key) => !["canvasId", "at", "size", "style"].includes(key))
+    if (Object.keys(input).some((key) => !["canvasId", "pageId", "at", "size", "style"].includes(key))
       || !Array.isArray(at) || at.length !== 2 || !at.every(Number.isSafeInteger)
       || !Array.isArray(size) || size.length !== 2 || !size.every((value) => Number.isSafeInteger(value) && value > 0)
-      || !isCanvasStrokeStyle(input.style)) {
+      || !isCanvasStrokeStyle(input.style)
+      || (input.pageId !== undefined && (typeof input.pageId !== "string" || input.pageId.length === 0))) {
       return { ok: false, code: "invalid_input", message: "Expected { at: [x,y], size: [width,height], style: object }." };
     }
     const target = resolveCanvasTarget(canvas, input);
     if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
     try {
       await canvas.ready;
-      const snapshot = await canvas.materializeSession(target.id);
+      const snapshot = await canvas.materializeSession(target.id, input.pageId as string | undefined);
       if (!snapshot) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
       const state = canvas.getState();
       const session = state.canvasSessions.find(({ id }) => id === target.id);
@@ -374,12 +468,12 @@ export const createCanvasFillTool = (
         });
         if (spans.length > 0) rows.push({ y: row.y - origin.y, spans });
       }
-      const result = target.id === state.activeCanvasId
+      const result = target.id === state.activeCanvasId && input.pageId === undefined
         ? canvas.commands.text.writeRowsAt(rows, origin, "patch")
-        : canvas.commands.text.writeRowsAtSession?.(target.id, rows, origin, "patch");
+        : canvas.commands.text.writeRowsAtSession?.(target.id, rows, origin, "patch", input.pageId as string | undefined);
       if (target.id !== state.activeCanvasId && !result) return { ok: false, code: "fill_failed", message: "Targeted Canvas fills are unavailable on this host." };
       const persisted = await confirmCanvasPersistence(canvas, target.id);
-      return { ...targetOutput(target), ...persisted, bounds: [origin.x, origin.y, size[0]!, size[1]!], styledCells: result?.writtenCells ?? 0 };
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, bounds: [origin.x, origin.y, size[0]!, size[1]!], styledCells: result?.writtenCells ?? 0 };
     } catch (error) {
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "fill_failed", message: error instanceof Error ? error.message : "Unable to style Canvas content." };
     }
@@ -396,10 +490,11 @@ export const createCanvasRenderTool = (
   execute: async (input) => {
     const at = input.at;
     const renderWriteMode = input.writeMode === undefined ? "replace" : input.writeMode;
-    if (Object.keys(input).some((key) => !["canvasId", "at", "source", "format", "writeMode"].includes(key))
+    if (Object.keys(input).some((key) => !["canvasId", "pageId", "at", "source", "format", "writeMode"].includes(key))
       || !Array.isArray(at) || at.length !== 2 || !at.every(Number.isSafeInteger) || typeof input.source !== "string"
       || (input.format !== undefined && !["auto", "raw", "ansi", "markdown"].includes(String(input.format)))
-      || (renderWriteMode !== "patch" && renderWriteMode !== "replace")) {
+      || (renderWriteMode !== "patch" && renderWriteMode !== "replace")
+      || (input.pageId !== undefined && (typeof input.pageId !== "string" || input.pageId.length === 0))) {
       return { ok: false, code: "invalid_input", message: "Expected { at: [x,y], source: string, format?: auto|raw|ansi|markdown } with safe integer coordinates." };
     }
     const target = resolveCanvasTarget(canvas, input);
@@ -407,7 +502,7 @@ export const createCanvasRenderTool = (
     const canvasId = target.id;
     try {
       await canvas.ready;
-      if (!await canvas.materializeSession(canvasId)) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
+      if (!await canvas.materializeSession(canvasId, input.pageId as string | undefined)) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
     } catch {
       return { ok: false, code: "canvas_not_ready", message: "The Canvas content is not ready." };
     }
@@ -421,29 +516,33 @@ export const createCanvasRenderTool = (
         throw new CanvasWriteError("source_backed_canvas", "Edit the source files of this Canvas instead of its projection.");
       }
       const rendererMode = input.format === "auto" || input.format === undefined ? undefined : input.format as "raw" | "ansi" | "markdown";
-      const rendered = await rendering.render(input.source, state.brushColor, { ...rendering.getContext(), ...(rendererMode ? { rendererMode } : {}) });
+      const renderContext = { ...rendering.getContext(), ...(rendererMode ? { rendererMode } : {}) };
+      const rendered = canonicalizeDefaultForeground(
+        await rendering.render(input.source, state.brushColor, renderContext),
+        renderContext.themeMode,
+      );
       const current = canvas.getState();
       const currentSession = current.canvasSessions.find(({ id }) => id === canvasId);
       if (!currentSession || currentSession.migrationPending || isSourceBackedCanvasSession(currentSession)) {
         return { ok: false, code: currentSession?.migrationPending ? "canvas_not_ready" : "write_failed",
           message: currentSession?.migrationPending ? "The target Canvas migration changed during rendering; nothing was written." : "The target Canvas changed during rendering; nothing was written." };
       }
-      if (canvasId === state.activeCanvasId && (current.activeCanvasId !== canvasId || current.slideDeck?.activeSlideId !== state.slideDeck?.activeSlideId)) {
+      if (canvasId === state.activeCanvasId && input.pageId === undefined && (current.activeCanvasId !== canvasId || current.slideDeck?.activeSlideId !== state.slideDeck?.activeSlideId)) {
         return { ok: false, code: "write_failed", message: "The active Canvas or Slide changed during rendering; nothing was written. Read the current target again." };
       }
       const position = { x: at[0], y: at[1] };
       const result = rendered.kind === "plain"
-        ? canvasId === state.activeCanvasId
+        ? canvasId === state.activeCanvasId && input.pageId === undefined
           ? canvas.commands.text.writeAt(rendered.text, position, renderWriteMode as "patch" | "replace")
-          : canvas.commands.text.writeAtSession?.(canvasId, rendered.text, position, state.brushColor, renderWriteMode as "patch" | "replace")
-        : canvasId === state.activeCanvasId
+          : canvas.commands.text.writeAtSession?.(canvasId, rendered.text, position, state.brushColor, renderWriteMode as "patch" | "replace", input.pageId as string | undefined)
+        : canvasId === state.activeCanvasId && input.pageId === undefined
           ? canvas.commands.text.writeRowsAt(rendered.rows, position, renderWriteMode as "patch" | "replace")
-          : canvas.commands.text.writeRowsAtSession?.(canvasId, rendered.rows, position, renderWriteMode as "patch" | "replace");
+          : canvas.commands.text.writeRowsAtSession?.(canvasId, rendered.rows, position, renderWriteMode as "patch" | "replace", input.pageId as string | undefined);
       if (canvasId !== state.activeCanvasId && !result) {
         return { ok: false, code: "write_failed", message: "Targeted Canvas writes are unavailable on this host." };
       }
       const persisted = await confirmCanvasPersistence(canvas, canvasId);
-      return { ...targetOutput(target), ...persisted, ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }) };
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }) };
     } catch (error) {
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "write_failed",
         message: error instanceof CanvasWriteError ? error.message : "Unable to write Canvas content." };
@@ -458,7 +557,7 @@ export const createCanvasPreviewRenderTool = (
   canvas: Pick<CanvasRuntime, "ready" | "getState">,
   rendering: CanvasToolRendering,
 ): AgentToolDefinition => ({
-  name: "chardesk_canvas_preview_write",
+  name: "canvas_preview_write",
   title: "Preview Canvas text",
   description: "Render Canvas text and calculate its Cell footprint without mutating the document.",
   readOnly: true,
@@ -481,7 +580,11 @@ export const createCanvasPreviewRenderTool = (
       if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
       const state = canvas.getState();
       const rendererMode = input.format === "auto" || input.format === undefined ? undefined : input.format as "raw" | "ansi" | "markdown";
-      const rendered = await rendering.render(input.source, state.brushColor, { ...rendering.getContext(), ...(rendererMode ? { rendererMode } : {}) });
+      const renderContext = { ...rendering.getContext(), ...(rendererMode ? { rendererMode } : {}) };
+      const rendered = canonicalizeDefaultForeground(
+        await rendering.render(input.source, state.brushColor, renderContext),
+        renderContext.themeMode,
+      );
       const prepared = rendered.kind === "plain"
         ? prepareCanvasTextWrite({ x: at[0]!, y: at[1]! }, rendered.text, state.brushColor, "replace")
         : prepareCanvasRowsWrite({ x: at[0]!, y: at[1]! }, rendered.rows, "replace");
@@ -535,8 +638,9 @@ export const createCanvasReadTool = (
     const representation = input.representation === undefined ? "text" : input.representation;
     const style = input.style === undefined ? "none" : input.style;
     const detail = input.detail === undefined ? "auto" : input.detail;
-    if (Object.keys(input).some((key) => !["canvasId", "viewport", "representation", "style", "detail"].includes(key))
+    if (Object.keys(input).some((key) => !["canvasId", "pageId", "viewport", "representation", "style", "detail"].includes(key))
       || (input.canvasId !== undefined && (typeof input.canvasId !== "string" || input.canvasId.length === 0))
+      || (input.pageId !== undefined && (typeof input.pageId !== "string" || input.pageId.length === 0))
       || (input.viewport !== undefined && !isCanvasReadViewport(input.viewport))
       || !["text", "cells", "image", "both"].includes(String(representation))
       || !["none", "appearance"].includes(String(style))
@@ -548,15 +652,17 @@ export const createCanvasReadTool = (
       const target = resolveCanvasTarget(canvas, input);
       if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
       const canvasId = target.id;
-      const snapshot = await canvas.materializeSession(canvasId);
+      const snapshot = input.pageId === undefined
+        ? await canvas.materializeSession(canvasId)
+        : await canvas.materializeSession(canvasId, input.pageId as string);
       if (!snapshot) return { ok: false, code: "canvas_not_ready", message: "The Canvas content is not ready." };
       const result = readCanvasViewport(snapshot.surface, input.viewport, {
-        defaultForeground: CHARDESK_CONTENT_THEMES[rendering.getContext().themeMode].foreground,
+        defaultForeground: COLOR_PRIMARY_TEXT,
         includeStyles: style === "appearance",
       });
-      const defaultForeground = CHARDESK_CONTENT_THEMES[rendering.getContext().themeMode].foreground;
+      const defaultForeground = COLOR_PRIMARY_TEXT;
       const appearance = style === "appearance" && representation !== "cells" && !result.overviewOnly
-        ? { ...collectCanvasAppearance(snapshot.surface, result.viewport, defaultForeground), theme: rendering.getContext().themeMode }
+        ? collectCanvasAppearance(snapshot.surface, result.viewport, defaultForeground, rendering.getContext().themeMode)
         : null;
       const renderingNote = style === "appearance" && !result.overviewOnly ? describeCanvasWriteRendering(rendering) : "";
       const cells = representation === "cells" && result.viewport && !result.overviewOnly
@@ -568,7 +674,10 @@ export const createCanvasReadTool = (
       if (representation === "text" || representation === "both") contentBlocks.push({ type: "text", text: textContent });
       if (representation === "cells") contentBlocks.push({ type: "note", text: `Projection cells: ${cells.length}` });
       const renderedImage = (representation === "image" || representation === "both") && result.viewport
-        ? renderCanvasViewportImage(snapshot.surface, result.viewport, detail as "low" | "high" | "original" | "auto")
+        ? renderCanvasViewportImage(snapshot.surface, result.viewport, detail as "low" | "high" | "original" | "auto", {
+            defaultForeground: COLOR_PRIMARY_TEXT,
+            foreground: CHARDESK_CONTENT_THEMES[rendering.getContext().themeMode].foreground,
+          })
         : null;
       const image = renderedImage ? await svgToPng(renderedImage) : null;
       if (image) contentBlocks.push({ type: "image", ...image });
@@ -577,6 +686,7 @@ export const createCanvasReadTool = (
       }
       const structuredContent = {
         ...targetOutput(target),
+        ...(snapshot.pageId ? { pageId: snapshot.pageId } : {}),
         viewport: result.viewport,
         sampleSize: result.sampleSize,
         mode: result.mode,

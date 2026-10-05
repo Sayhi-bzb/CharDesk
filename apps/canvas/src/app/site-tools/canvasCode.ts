@@ -311,7 +311,7 @@ export const createCanvasCodeTool = (dependencies: CanvasCodeDependencies): Agen
           phase: "load",
           retryable: true,
           message: error.message,
-          fallbackTools: ["chardesk_canvas_read", "chardesk_canvas_search", "chardesk_canvas_write", "chardesk_canvas_erase", "chardesk_canvas_fill", "chardesk_canvas_render"],
+          fallbackTools: ["canvas_read", "canvas_search", "canvas_write", "canvas_erase", "canvas_fill", "canvas_render"],
         };
       }
       return errorResult("execution_failed", error instanceof Error ? error.message : "Canvas code failed.");

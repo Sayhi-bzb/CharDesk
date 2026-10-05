@@ -52,7 +52,22 @@ const publishRuntimeStatus = (status: "booting" | "ready" | "degraded" | "unavai
     ...(moduleFailure ? { moduleFailure } : {}),
   });
 };
+// MCP readiness follows the Canvas projection lifecycle, not the durability
+// tail. Persistence marks the runtime ready as soon as the active projection
+// is hydrated; catalog/checkpoint saves may continue in the background.
+const syncRuntimeStatus = () => {
+  const persistence = host.canvas.getPersistenceSnapshot();
+  if (persistence.phase === "ready") {
+    publishRuntimeStatus("ready");
+  } else if (persistence.phase === "degraded") {
+    publishRuntimeStatus("degraded", persistence.error ? { message: persistence.error } : undefined);
+  } else {
+    publishRuntimeStatus("booting");
+  }
+};
 publishRuntimeStatus("booting");
+const stopRuntimeStatusSync = host.canvas.subscribePersistence(syncRuntimeStatus);
+syncRuntimeStatus();
 const createRouteAgentTools = () => createChardeskAgentTools({
   canvas: host.canvas,
   rendering: {
@@ -77,13 +92,10 @@ configureLocalAgent({
   },
 });
 restoreLocalAgent();
-// The MCP runtime becomes usable when the Canvas host is restored; it does not
-// need to wait for the React view bundle to finish loading. This prevents a
-// healthy tool bridge from remaining in `booting` during a slow UI import.
-void host.canvas.ready.then(
-  () => publishRuntimeStatus("ready"),
-  (error: unknown) => publishRuntimeStatus("unavailable", { message: error instanceof Error ? error.message : "Canvas runtime failed to initialize." }),
-);
+// The persistence subscription above is the source of truth. `ready` may
+// resolve after background durability work, and a failed restore resolves into
+// temporary/degraded mode rather than rejecting, so it is not a reliable
+// handshake signal.
 let siteToolsGeneration = 0;
 const syncChardeskSiteTools = async () => {
   const generation = ++siteToolsGeneration;
@@ -340,6 +352,7 @@ void import("./App").then((module) => {
 }).catch((error: unknown) => {
   if (isModuleReloadPending()) return;
   console.error(error);
+  stopRuntimeStatusSync();
   publishRuntimeStatus("unavailable", { message: error instanceof Error ? error.message : "Canvas interface failed to load." });
   renderLoadFailure();
 });

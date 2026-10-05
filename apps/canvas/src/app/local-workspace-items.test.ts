@@ -7,6 +7,7 @@ describe('collectLocalWorks', () => {
   it('lists local sessions and repository works without duplicating source-backed views', () => {
     const sessions: CanvasSessionDescriptor[] = [
       { id: 'canvas', name: 'Canvas', mode: 'freeform' },
+      { id: 'welcome', name: 'Welcome', mode: 'freeform', storagePolicy: 'ephemeral' },
       { id: 'slides', name: 'Deck', mode: 'slide' },
       { id: 'shared-canvas', name: 'Shared canvas', mode: 'freeform', collaboration: {
         version: 7, documentVersion: 6, mode: 'freeform', provider: 'encrypted-relay', roomId: 'room', key: 'key',

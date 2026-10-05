@@ -8,7 +8,9 @@ export const collectLocalWorks = (
   sessions: readonly CanvasSessionDescriptor[],
   blackboards: readonly BlackboardWorkspace[],
 ): WorkItem[] => [
-  ...sessions.filter((session) => !isSourceBackedCanvasSession(session)).map((session) => ({
+  ...sessions.filter((session) =>
+    !isSourceBackedCanvasSession(session) && session.storagePolicy !== "ephemeral"
+  ).map((session) => ({
     id: session.id,
     name: session.name,
     kind: session.mode === 'slide' ? 'slides' as const : 'canvas' as const,

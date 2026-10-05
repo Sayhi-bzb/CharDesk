@@ -170,14 +170,20 @@ export function CanvasSessionSelector({
 
   if (!manageSessions) {
     return (
-      <div
-        data-canvas-ui="true"
-        data-canvas-breadcrumb-host="true"
-        className="pointer-events-auto flex min-w-0 items-center gap-1.5 px-2 text-sm"
+      <TooltipTrigger
+        handle={selectorTooltipHandle}
+        payload={activeSession?.name ?? t('session.fallbackName')}
+        render={
+          <div
+            data-canvas-ui="true"
+            data-canvas-breadcrumb-host="true"
+            className="pointer-events-auto flex min-w-0 items-center gap-1.5 px-2 text-sm"
+          />
+        }
       >
         <ActiveModeIcon className="size-4 shrink-0" />
         <span className="truncate">{activeSession?.name ?? t('session.fallbackName')}</span>
-      </div>
+      </TooltipTrigger>
     );
   }
 
@@ -411,7 +417,7 @@ export function CanvasSessionSelector({
                   data-active={isActive ? 'true' : undefined}
                   className="group/session-row flex w-full min-w-0 items-center p-0"
                 >
-                  <div>
+                  <div className="flex w-full min-w-0 items-center">
                     {isEditing ? (
                       <div className="flex h-7 min-w-0 flex-1 items-center gap-2 px-2">
                         <ModeIcon className="size-4 shrink-0" />
@@ -434,7 +440,7 @@ export function CanvasSessionSelector({
                           tone="subtle"
                           size="sm"
                           aria-current={isActive ? 'page' : undefined}
-                          className="min-w-0 flex-1 justify-start px-2"
+                          className="min-w-0 flex-1 justify-start bg-transparent px-2 hover:bg-transparent"
                           onClick={() => {
                             onActivate?.();
                             (onSelectSession ?? switchCanvasSession)(session.id);
@@ -461,7 +467,7 @@ export function CanvasSessionSelector({
                                   size="sm"
                                   data-session-actions="true"
                                   aria-label={manageLabel}
-                                  className="shrink-0"
+                                  className="shrink-0 bg-transparent hover:bg-transparent"
                                 />
                               }
                             >

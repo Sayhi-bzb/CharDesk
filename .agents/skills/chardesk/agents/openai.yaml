@@ -1,4 +1,4 @@
 interface:
   display_name: "CharDesk"
   short_description: "Create and edit shared Canvas scenes and Slides"
-  default_prompt: "Use $chardesk to create or edit this Canvas scene or Slide document."
+  default_prompt: "Use $chardesk to create or edit this Canvas scene or Slide scene."

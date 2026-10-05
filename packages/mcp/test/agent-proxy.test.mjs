@@ -53,15 +53,15 @@ test('a second server command joins the existing broker as a tenant', { timeout:
     client = new Client({ name: 'tenant-proxy-test', version: '0.0.0' });
     await client.connect(transport);
     const listed = await client.listTools();
-    assert.ok(listed.tools.some(({ name }) => name === 'chardesk_canvas_read'));
-    const resultPromise = client.callTool({ name: 'chardesk_canvas_read', arguments: { viewport: [0, 0, 1, 1] } });
+    assert.ok(listed.tools.some(({ name }) => name === 'canvas_read'));
+    const resultPromise = client.callTool({ name: 'canvas_read', arguments: { viewport: [0, 0, 1, 1] } });
     const request = await nextMessage(page);
     page.send(JSON.stringify({ id: request.id, result: { ok: true, tenant: 'proxy' } }));
     const result = await resultPromise;
     assert.deepEqual(result.structuredContent, { ok: true, tenant: 'proxy' });
     owner.stdin.end();
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const survivesOwnerExit = client.callTool({ name: 'chardesk_canvas_read', arguments: { viewport: [0, 0, 1, 1] } });
+    const survivesOwnerExit = client.callTool({ name: 'canvas_read', arguments: { viewport: [0, 0, 1, 1] } });
     const survivingRequest = await nextMessage(page);
     page.send(JSON.stringify({ id: survivingRequest.id, result: { ok: true, afterOwnerStdio: true } }));
     assert.deepEqual((await survivesOwnerExit).structuredContent, { ok: true, afterOwnerStdio: true });

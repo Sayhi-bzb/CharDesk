@@ -22,6 +22,13 @@ export type CanvasReadImage = Readonly<{
   scale: number;
 }>;
 
+export type CanvasReadImageOptions = Readonly<{
+  /** Canonical stored foreground, e.g. Canvas' #000000 default. */
+  defaultForeground?: string;
+  /** Theme-projected foreground used when the canonical default is found. */
+  foreground?: string;
+}>;
+
 const quadrants = [" ", "▘", "▝", "▀", "▖", "▌", "▞", "▛", "▗", "▚", "▐", "▜", "▄", "▙", "▟", "█"];
 
 const niceTickInterval = (minimum: number) => {
@@ -71,6 +78,7 @@ export const renderCanvasViewportImage = (
   surface: CanvasSurfaceReader,
   viewport: CanvasReadViewport,
   detail: CanvasReadImageDetail = "auto",
+  options: CanvasReadImageOptions = {},
 ): CanvasReadImage => {
   const [x, y, width, height] = viewport;
   const { cellWidth, cellHeight, scale } = imageMetrics(detail);
@@ -94,7 +102,11 @@ export const renderCanvasViewportImage = (
             const fontStyle = attrs.italic ? " font-style=\"italic\"" : "";
             const decoration = [attrs.underline ? "underline" : "", attrs.strike ? "line-through" : ""].filter(Boolean).join(" ");
             const textDecoration = decoration ? ` text-decoration="${decoration}"` : "";
-            elements.push(`<text x="${localX * cellWidth}" y="${(localY + 1) * cellHeight - 3}" fill="${escapeXml(cell.color)}"${fontWeight}${fontStyle}${textDecoration}>${escapeXml(cell.char)}</text>`);
+            const color = options.defaultForeground && options.foreground &&
+              cell.color.toLowerCase() === options.defaultForeground.toLowerCase()
+              ? options.foreground
+              : cell.color;
+            elements.push(`<text x="${localX * cellWidth}" y="${(localY + 1) * cellHeight - 3}" fill="${escapeXml(color)}"${fontWeight}${fontStyle}${textDecoration}>${escapeXml(cell.char)}</text>`);
           }
         }
         cellX += graphemeWidth;

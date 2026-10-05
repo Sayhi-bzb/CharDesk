@@ -9,7 +9,10 @@ import type {
 import {
   resolveSessionDocumentRuntime,
 } from "./helpers/storeUtils";
-import { readSlideDeckDescriptor } from "./slideDocumentPages";
+import {
+  materializeSlideDeckContent,
+  readSlideDeckDescriptor,
+} from "./slideDocumentPages";
 import {
   normalizeSessionMode,
   createSessionId,
@@ -154,6 +157,52 @@ export const createCanvasSessionCommands = (
   const activation = new CanvasSessionActivationCoordinator();
   const pendingDeletionIds = new Set<string>();
   const commands: SessionCommands = {
+    promoteEphemeralSession: (sessionId) => commits.run(() => {
+      const state = get();
+      const target = state.canvasSessions.find((session) => session.id === sessionId);
+      if (!target || target.storagePolicy !== "ephemeral") return null;
+      const nextId = createSessionId(state.canvasSessions);
+      const snapshot: CanvasImportSnapshot = target.mode === "slide"
+        ? {
+            mode: "slide",
+            slideDeck: materializeSlideDeckContent(
+              documents,
+              sessionId,
+              readSlideDeckDescriptor(documents, sessionId) ?? createSlideDeck({ initialSlideId: `${nextId}-slide-1` }),
+            ),
+          }
+        : {
+            mode: "freeform",
+            grid: documents.getDocumentSeed(sessionId, "freeform")?.grid ?? [],
+          };
+      const promoted: CanvasSessionDescriptor = {
+        ...target,
+        id: nextId,
+        name: target.name === "Welcome" ? "Welcome — Copy" : `${target.name} — Copy`,
+        storagePolicy: "local",
+      };
+      replaceDocumentSnapshot(documents, nextId, snapshot, false);
+      const nextSessions = [
+        ...state.canvasSessions.filter((session) => session.id !== sessionId),
+        promoted,
+      ];
+      if (state.activeCanvasId === sessionId) {
+        const runtime = activateSessionRuntime(documents, promoted, state.tool);
+        set(createSessionActivationPatch(
+          nextSessions,
+          nextId,
+          runtime,
+          rebuildContentSurface(documents).reader,
+          documents.getActiveAddress(),
+        ));
+        viewportRuntime.resetFallback(normalizeCanvasViewport(promoted.viewport));
+      } else {
+        set({ canvasSessions: nextSessions });
+      }
+      documents.destroyDocument(sessionId);
+      residency?.touch(nextId);
+      return promoted;
+    }),
     completeMigration: (sessionId) => commits.run(() => {
       set({ canvasSessions: get().canvasSessions.map((session) => {
         if (session.id !== sessionId) return session;
@@ -227,6 +276,21 @@ export const createCanvasSessionCommands = (
       viewportRuntime.resetFallback(normalizeCanvasViewport(newSession.viewport));
       residency?.touch(newSession.id);
       return newSession;
+    }),
+    duplicateCanvasSession: (sessionId, options) => commits.run(() => {
+      const state = get();
+      const source = state.canvasSessions.find((session) => session.id === sessionId);
+      if (!source || isSourceBackedCanvasSession(source) || source.migrationPending) return null;
+      const nextId = createSessionId(state.canvasSessions);
+      const snapshot: CanvasImportSnapshot = source.mode === "slide"
+        ? { mode: "slide", slideDeck: materializeSlideDeckContent(documents, sessionId, readSlideDeckDescriptor(documents, sessionId) ?? createSlideDeck({ initialSlideId: `${nextId}-slide-1` })) }
+        : { mode: "freeform", grid: documents.getDocumentSeed(sessionId, "freeform")?.grid ?? [] };
+      const name = options?.name?.trim() || `${source.name} — Copy`;
+      const duplicate: CanvasSessionDescriptor = { ...source, id: nextId, name, storagePolicy: "local" };
+      replaceDocumentSnapshot(documents, nextId, snapshot, false);
+      set({ canvasSessions: [...state.canvasSessions, duplicate] });
+      residency?.touch(nextId);
+      return duplicate;
     }),
     openSourceSession: (sourceBinding, options) => commits.run(() => {
       activation.begin();

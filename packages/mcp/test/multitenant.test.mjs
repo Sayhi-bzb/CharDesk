@@ -76,15 +76,15 @@ test('one browser page serves multiple isolated Agent tenants', { timeout: 15_00
         if (message.error) reject(new Error(message.error)); else resolve(message.result);
       };
       agent.socket.on('message', onMessage);
-      agent.socket.send(JSON.stringify({ id, method: 'call', sessionToken: agent.token, params: { name: 'chardesk_canvas_read', input: { viewport: [0, 0, 1, 1] } } }));
+    agent.socket.send(JSON.stringify({ id, method: 'call', sessionToken: agent.token, params: { name: 'canvas_read', input: { viewport: [0, 0, 1, 1] } } }));
     });
     const firstCall = call(first, 'same-id');
     const secondCall = call(second, 'same-id');
     const pageRequests = [await nextMessage(page), await nextMessage(page)];
     assert.equal(pageRequests.length, 2);
     for (const request of pageRequests) page.send(JSON.stringify({ id: request.id, result: { canvasId: request.params.name } }));
-    assert.deepEqual(await firstCall, { canvasId: 'chardesk_canvas_read' });
-    assert.deepEqual(await secondCall, { canvasId: 'chardesk_canvas_read' });
+    assert.deepEqual(await firstCall, { canvasId: 'canvas_read' });
+    assert.deepEqual(await secondCall, { canvasId: 'canvas_read' });
 
     first.socket.close();
     await new Promise((resolve) => first.socket.once('close', resolve));
