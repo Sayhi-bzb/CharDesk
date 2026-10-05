@@ -9,8 +9,8 @@
     "./fonts.css"
   ],
   "dependencies": {
-    "@chardesk/font-maple": "^0.5.0",
-    "@chardesk/fonts": "^0.5.0"
+    "@chardesk/font-maple": "^0.6.0",
+    "@chardesk/fonts": "^0.6.0"
   },
   "exports": {
     ".": "./src/index.ts",
