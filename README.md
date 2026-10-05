@@ -16,6 +16,26 @@ Requires Node.js 20 or later.
 
 ```sh
 npx skills add https://github.com/sayhi-bzb/chardesk --skill chardesk
+```
+
+Register the MCP server with your agent:
+
+```sh
+# Codex
+codex mcp add chardesk -- npx -y @chardesk/mcp
+
+# Claude Code
+claude mcp add chardesk -- npx -y @chardesk/mcp
+
+# Pi
+pi mcp add chardesk -- npx -y @chardesk/mcp
+```
+
+After that, no manual `server` or `pair` command is needed. The first Canvas tool call opens Canvas when necessary, and the page connects to the local bridge automatically.
+
+The CLI is optional for local file workflows:
+
+```sh
 npm install -g @chardesk/cli
 ```
 
@@ -104,8 +124,9 @@ Arrange content on Freeform canvases, start from reusable Cell templates, compos
 
 ### Agent access
 
+- **Local MCP:** register `@chardesk/mcp` once with your agent (Codex, Claude Code, or Pi). The agent starts it automatically; Canvas discovers the local bridge and the first `canvas_*` call opens Canvas if needed. See the [MCP package reference](packages/mcp/README.md).
 - **Local files and CLI:** the stable default. Agents use normal file tools; `chardesk` checks, previews, opens, and renders the result. See the [CLI reference](packages/cli/README.md).
-- **Chrome WebMCP:** experimental. Enable `chrome://flags/#enable-webmcp-testing`, relaunch Chrome, and keep [Canvas](https://canvas.chardesk.com/) open for a compatible agent.
+- **Chrome WebMCP:** experimental. Enable `chrome://flags/#enable-webmcp-testing`, relaunch Chrome, and use the browser path only when needed.
 - **ChatGPT Site Tools:** experimental. Enable **Site tools** under **Settings → Browser → Permissions**, then open CharDesk in ChatGPT's built-in browser. See the [official Site Tools guide](https://learn.chatgpt.com/docs/webmcp).
 
 Browser agents can call `chardesk_read_materials` to enter the same visual language and worked examples as the skill. Canvas tools read, search, and write the active two-dimensional Cell surface.
