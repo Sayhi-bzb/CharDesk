@@ -142,6 +142,7 @@ function ReorderableRow({
       data-id={id}
       data-reorder-item={id}
       data-reorder-card={id}
+      data-canvas-ui="true"
       tabIndex={0}
       aria-label={label}
       className={cn(

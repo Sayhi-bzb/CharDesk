@@ -41,6 +41,7 @@ describe("canvas session viewport state", () => {
   });
 
   it("saves and restores offset and zoom per canvas session", async () => {
+    const firstCanvasId = useEditorStore.getState().activeCanvasId;
     testingCanvasRuntime.commands.viewport.setOffset(() => ({ x: 10, y: 20 }));
     testingCanvasRuntime.commands.viewport.setZoom(() => 2);
     canvasCommands.sessions.create("freeform");
@@ -48,7 +49,7 @@ describe("canvas session viewport state", () => {
 
     testingCanvasRuntime.commands.viewport.setOffset(() => ({ x: 100, y: 200 }));
     testingCanvasRuntime.commands.viewport.setZoom(() => 3);
-    await canvasCommands.sessions.switch(DEFAULT_SESSION_ID);
+    await canvasCommands.sessions.switch(firstCanvasId);
     expect(testingCanvasRuntime.viewport.getSnapshot()).toEqual({
       offset: { x: 10, y: 20 },
       zoom: 2,

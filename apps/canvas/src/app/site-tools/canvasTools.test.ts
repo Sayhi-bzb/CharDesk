@@ -111,7 +111,7 @@ describe("Canvas management tool", () => {
     expect(await tool.execute({ action: "list", includeArchived: "yes" as never })).toMatchObject({ code: "invalid_input" });
     expect(await tool.execute({ action: "create", name: "New" })).toMatchObject({ canvasId: "canvas-b" });
     expect(await tool.execute({ action: "rename", canvasId: "canvas-a", name: "Renamed" })).toMatchObject({ canvasId: "canvas-a", name: "Renamed" });
-    expect(await tool.execute({ action: "archive", canvasId: "canvas-a" })).toEqual({ canvasId: "canvas-a", archived: true });
+    expect(await tool.execute({ action: "archive", canvasId: "canvas-a" })).toMatchObject({ canvasId: "canvas-a", archived: true, persisted: false, persistence: "unavailable" });
   });
 
   it("does not promote an archived active descriptor to the current Canvas", async () => {

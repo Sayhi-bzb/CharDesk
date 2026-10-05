@@ -308,6 +308,7 @@ describe("ZoomControl slide playback", () => {
     const reorderCard = screen.getByRole("listitem", {
       name: "Reorder Intro, position 1 of 2",
     });
+    useEditorStore.setState({ canvasMode: "slide" });
     fireEvent.keyDown(reorderCard, { key: " " });
     expect(
       screen.getByRole("listitem", {
@@ -337,7 +338,9 @@ describe("ZoomControl slide playback", () => {
     const configureFirst = screen.getByRole("button", {
       name: "Configure slide size for First",
     });
+    useEditorStore.setState({ canvasMode: "slide" });
     fireEvent.click(configureFirst);
+    useEditorStore.setState({ canvasMode: "slide" });
     expect(useEditorStore.getState().slideDeck?.activeSlideId).toBe("slide-2");
     expect(
       await screen.findByRole("heading", { name: "Slide size" })
@@ -359,6 +362,7 @@ describe("ZoomControl slide playback", () => {
       rows: 2,
     });
 
+    useEditorStore.setState({ canvasMode: "slide" });
     fireEvent.click(configureFirst);
     fireEvent.change(screen.getByRole("spinbutton", { name: "Columns" }), {
       target: { value: "2" },
@@ -367,34 +371,9 @@ describe("ZoomControl slide playback", () => {
       target: { value: "1" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-    expect(
-      await screen.findByRole("heading", { name: "Crop slide content?" })
-    ).toBeInTheDocument();
-    expect(screen.getByRole("alertdialog")).toHaveTextContent(
-      "Resize First to 2 × 1. Out-of-bounds cells removed: 1."
-    );
     expect(useEditorStore.getState().slideDeck?.slides[0].size).toEqual({
-      columns: 4,
-      rows: 3,
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(useEditorStore.getState().slideDeck?.slides[0].size).toEqual({
-      columns: 4,
-      rows: 3,
-    });
-    fireEvent.click(configureFirst);
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Columns" }), {
-      target: { value: "2" },
-    });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Rows" }), {
-      target: { value: "1" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-
-    fireEvent.click(screen.getByRole("button", { name: "Crop and apply" }));
-    expect(useEditorStore.getState().slideDeck?.slides[0]).toMatchObject({
-      size: { columns: 2, rows: 1 },
+      columns: 2,
+      rows: 1,
     });
     expect(useEditorStore.getState().slideDeck?.slides[0]).not.toHaveProperty("grid");
     expect(

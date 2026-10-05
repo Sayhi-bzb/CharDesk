@@ -204,6 +204,12 @@ export const useEditorShortcutLayer = ({
     priority: SHORTCUT_PRIORITY.globalAction,
     enabled,
     onKeyDown: (input, context) => {
+      // Composite controls own their keyboard interaction. The editor keymap
+      // must not turn Space/Arrow keys into canvas commands while focus is in
+      // a toolbar, dialog, or editable field.
+      if (context.targetKind === "canvas-ui" || context.targetKind === "overlay" || context.targetKind === "editable") {
+        return undefined;
+      }
       const result = engineRef.current!.handleKeyDown(input, context.targetKind);
       return result.type === "executed" || result.type === "pending" || result.type === "cancelled"
         ? { claimed: true, preventDefault: true }
