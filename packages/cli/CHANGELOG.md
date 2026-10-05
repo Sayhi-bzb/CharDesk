@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.0...v0.6.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* keep MCP version checks release-safe ([852fdb0](https://github.com/Sayhi-bzb/CharDesk/commit/852fdb0777189cc887be066851b0df97bd1b5bac))
+* serialize MCP bridge tests ([e27218b](https://github.com/Sayhi-bzb/CharDesk/commit/e27218bde2c5d631d0c3e8f69e33a0193e66297a))
+
 ## [0.6.0](https://github.com/Sayhi-bzb/CharDesk/compare/v0.5.4...v0.6.0) (2026-10-05)
 
 
