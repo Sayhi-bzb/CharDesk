@@ -440,7 +440,7 @@ export function CanvasSessionSelector({
                           tone="subtle"
                           size="sm"
                           aria-current={isActive ? 'page' : undefined}
-                          className="min-w-0 flex-1 justify-start bg-transparent px-2 hover:bg-transparent"
+                          className="min-w-0 flex-1 justify-start"
                           onClick={() => {
                             onActivate?.();
                             (onSelectSession ?? switchCanvasSession)(session.id);
@@ -467,7 +467,7 @@ export function CanvasSessionSelector({
                                   size="sm"
                                   data-session-actions="true"
                                   aria-label={manageLabel}
-                                  className="shrink-0 bg-transparent hover:bg-transparent"
+                                  className="shrink-0"
                                 />
                               }
                             >

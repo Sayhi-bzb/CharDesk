@@ -15,6 +15,7 @@
       "entry": [
         "src/app/main.tsx",
         "src/app/App.tsx",
+        "src/mcp-contracts.d.ts",
         "src/domains/*/public.ts",
         "src/widgets/dialogs/clear-canvas-dialog.tsx",
         "e2e/**/*.ts",
@@ -56,6 +57,10 @@
         "vitest.config.ts"
       ],
       "project": ["src/**/*.ts", "*.config.ts"]
+    },
+    "packages/mcp": {
+      "entry": ["src/server.mjs", "src/tools.mjs", "src/tools.d.mts"],
+      "project": ["src/**/*.{mjs,mts}", "*.config.ts"]
     },
     "packages/cli": {
       "entry": [

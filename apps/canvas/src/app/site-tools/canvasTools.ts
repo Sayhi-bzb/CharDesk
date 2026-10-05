@@ -6,9 +6,8 @@ import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvas
 import { CHARDESK_CONTENT_THEMES } from "@chardesk/rendering/theme";
 import { COLOR_PRIMARY_TEXT } from "@/shared/lib/constants";
 import { prepareCanvasPlainTextWrite, prepareCanvasRowsWrite, prepareCanvasTextWrite, type CanvasStrokeStyle } from "@/domains/canvas/public";
-import type { CanvasSurfaceReader } from "@/domains/canvas/public";
+import type { CanvasSurfaceReader, RichTextRow } from "@/domains/canvas/public";
 import { getTextCellWidth } from "@chardesk/protocol";
-import type { RichTextRow } from "@/domains/canvas/state/textCommandTypes";
 import type { GridCell } from "@/shared/types";
 
 import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL, CANVAS_SEARCH_TOOL, CANVAS_MANAGE_TOOL, CANVAS_ERASE_TOOL, CANVAS_FILL_TOOL, CANVAS_RENDER_TOOL } from "./canvasToolDefinitions";

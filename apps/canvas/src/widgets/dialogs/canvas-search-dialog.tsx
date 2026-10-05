@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, Input } from "@chardesk/ui";
+import { Button, Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, Input } from "@chardesk/ui";
 import { useCanvasRuntime, type CanvasSearchResult } from "@/domains/canvas/public";
 import { useCanvasViewOptional } from "@/widgets/canvas-editor/engine/CanvasWorkspace";
 import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
@@ -98,11 +98,13 @@ export function CanvasSearchDialog({ open, onOpenChange }: CanvasSearchDialogPro
           {result && result.matches.length > 0 && (
             <div className="max-h-72 min-h-0 overflow-y-auto border border-border" role="list">
               {result.matches.map((match) => (
-                <button
+                <Button
                   key={`${match.origin[0]}:${match.origin[1]}:${match.bounds.join(":")}`}
                   type="button"
+                  tone="subtle"
+                  size="sm"
                   role="listitem"
-                  className="flex w-full items-start gap-3 border-b border-border px-3 py-2 text-left last:border-b-0 hover:bg-muted"
+                  className="flex w-full items-start gap-3 border-b border-border text-left last:border-b-0"
                   onClick={() => {
                     centerResult(view, match);
                     onOpenChange(false);
@@ -114,7 +116,7 @@ export function CanvasSearchDialog({ open, onOpenChange }: CanvasSearchDialogPro
                   <span className="min-w-0 whitespace-pre-wrap break-words font-mono text-sm">
                     {match.content}
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           )}
