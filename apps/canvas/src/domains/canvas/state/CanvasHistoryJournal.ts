@@ -13,6 +13,7 @@ type CanvasHistoryAction = {
 type CanvasHistoryGroup = {
   actions: CanvasHistoryAction[];
   bytes: number;
+  operationId?: string;
 };
 
 type CanvasDocumentHistory = {
@@ -21,6 +22,7 @@ type CanvasDocumentHistory = {
   bytes: number;
   mergeOpen: boolean;
   lastCapturedAt: number;
+  captureOperationId?: string;
 };
 
 type CanvasHistoryJournalOptions = {
@@ -56,7 +58,8 @@ export class CanvasHistoryJournal {
   capture(
     documentId: string,
     action: CanvasHistoryAction,
-    mode: "save" | "merge"
+    mode: "save" | "merge",
+    operationId?: string,
   ) {
     const history = this.#get(documentId);
     const bytes = operationBytes(action.forward) + operationBytes(action.inverse);
@@ -68,15 +71,17 @@ export class CanvasHistoryJournal {
       return;
     }
     const now = performance.now();
-    const group =
-      mode === "merge" && history.mergeOpen && now - history.lastCapturedAt <= 500
+    const activeOperationId = operationId ?? history.captureOperationId;
+    const group = activeOperationId && history.undo.at(-1)?.operationId === activeOperationId
+      ? history.undo.at(-1)
+      : mode === "merge" && history.mergeOpen && now - history.lastCapturedAt <= 500
         ? history.undo.at(-1)
         : undefined;
     if (group) {
       group.actions.push(action);
       group.bytes += bytes;
     } else {
-      history.undo.push({ actions: [action], bytes });
+      history.undo.push({ actions: [action], bytes, ...(activeOperationId ? { operationId: activeOperationId } : {}) });
     }
     history.bytes += bytes;
     history.redo.forEach((redoGroup) => { history.bytes -= redoGroup.bytes; });
@@ -121,6 +126,23 @@ export class CanvasHistoryJournal {
   finishCapture(documentId: string) {
     const history = this.#histories.get(documentId);
     if (history) history.mergeOpen = false;
+  }
+
+  beginCapture(documentId: string, operationId: string) {
+    this.#get(documentId).captureOperationId = operationId;
+  }
+
+  clearCaptureOperation(documentId: string) {
+    const history = this.#histories.get(documentId);
+    if (history) history.captureOperationId = undefined;
+  }
+
+  undoOperation(operationId: string) {
+    for (const [documentId, history] of this.#histories) {
+      if (history.undo.at(-1)?.operationId !== operationId) continue;
+      return this.undo(documentId);
+    }
+    return false;
   }
 
   getAvailability(documentId: string): CanvasHistoryAvailability {
@@ -179,6 +201,7 @@ export class CanvasHistoryJournal {
         bytes: 0,
         mergeOpen: false,
         lastCapturedAt: 0,
+        captureOperationId: undefined,
       };
       this.#histories.set(documentId, history);
     }

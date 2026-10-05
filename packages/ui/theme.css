@@ -94,6 +94,12 @@
   --color-control-open-surface: var(--control-open-surface);
   --color-control-pressed-surface: var(--control-pressed-surface);
   --color-control-active-surface: var(--control-active-surface);
+  --color-switch-off-surface: var(--switch-off-surface);
+  --color-switch-off-border: var(--switch-off-border);
+  --color-switch-off-thumb: var(--switch-off-thumb);
+  --color-switch-on-surface: var(--switch-on-surface);
+  --color-switch-on-border: var(--switch-on-border);
+  --color-switch-on-thumb: var(--switch-on-thumb);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -176,6 +182,12 @@
   --control-open-surface: oklch(0.965 0.003 286);
   --control-pressed-surface: oklch(0.935 0.004 286);
   --control-active-surface: oklch(0.9 0.006 286);
+  --switch-off-surface: var(--secondary);
+  --switch-off-border: var(--input);
+  --switch-off-thumb: var(--foreground);
+  --switch-on-surface: var(--primary);
+  --switch-on-border: var(--primary);
+  --switch-on-thumb: var(--primary-foreground);
   --canvas-selection-surface: color-mix(in oklab, var(--primary) 12%, transparent);
   --canvas-selection-border: var(--primary);
   --canvas-range-surface: color-mix(in oklab, var(--primary) 12%, transparent);
@@ -259,6 +271,12 @@
   --control-open-surface: oklch(0.225 0.007 286);
   --control-pressed-surface: oklch(0.275 0.008 286);
   --control-active-surface: oklch(0.33 0.009 286);
+  --switch-off-surface: var(--secondary);
+  --switch-off-border: var(--input);
+  --switch-off-thumb: var(--foreground);
+  --switch-on-surface: var(--primary);
+  --switch-on-border: var(--primary);
+  --switch-on-thumb: var(--primary-foreground);
   --canvas-range-surface: rgb(255 255 255 / 18%);
   --canvas-range-border: var(--primary);
   --canvas-range-surface-effect: contrast;

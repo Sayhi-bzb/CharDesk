@@ -16,7 +16,7 @@ test("WebMCP renders, searches, and reads precise Unicode positions without movi
   await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
   await expect(page.getByTestId("canvas-editor-surface")).toBeVisible();
   const zoom = await page.getByTestId("zoom-reset").textContent();
-  const written = await execute(page, "chardesk_canvas_write", { at: [-100, -50], content: "**Needle** 你é" });
+  const written = await execute(page, "chardesk_canvas_render", { at: [-100, -50], source: "**Needle** 你é" });
   expect(written).toMatchObject({ bounds: expect.any(Array) });
   const result = await execute(page, "chardesk_canvas_search", { query: "Needle", viewport: [-100, -50, 40, 5] });
   expect(result).toMatchObject({ matches: [{ origin: [-100, -50], bounds: [-100, -50, 6, 1], content: "Needle" }], next: null });

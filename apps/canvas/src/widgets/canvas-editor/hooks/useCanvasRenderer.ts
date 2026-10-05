@@ -53,7 +53,7 @@ import {
 } from '@chardesk/rendering/canvas';
 import {
   resolveCanvasContentDpr,
-  resolveCanvasContentResolutionMode,
+  resolveCanvasContentResolutionModeForInteraction,
   type CanvasContentResolutionMode,
 } from '../rendering/canvasContentResolution';
 import type { CanvasSurfaceGeometry } from '../canvasSurfaceGeometry';
@@ -146,7 +146,8 @@ export const useCanvasRenderer = (
   canvasAppearance: CanvasAppearanceSnapshot,
   cellContext: CanvasCellPresentationContext,
   requestRenderRef?: React.MutableRefObject<(() => void) | null>,
-  runtime?: CanvasEngineRuntime
+  runtime?: CanvasEngineRuntime,
+  isPhone = false
 ) => {
   const { profile: fontProfile } = useCanvasFont();
   const {
@@ -298,10 +299,13 @@ export const useCanvasRenderer = (
       const renderedContentSource = contentReader;
 
       const dpr = window.devicePixelRatio || 1;
-      contentResolutionModeRef.current = resolveCanvasContentResolutionMode(
+      const viewportInteractionActive = runtime?.renderActivity.getMode() === 'viewport-interaction';
+      contentResolutionModeRef.current = resolveCanvasContentResolutionModeForInteraction({
         zoom,
-        contentResolutionModeRef.current
-      );
+        currentMode: contentResolutionModeRef.current,
+        isPhone,
+        interactionActive: viewportInteractionActive,
+      });
       const contentDpr = resolveCanvasContentDpr(
         dpr,
         contentResolutionModeRef.current
@@ -742,5 +746,6 @@ export const useCanvasRenderer = (
     canvasAppearance.revision,
     artifactPalette,
     fontProfile,
+    isPhone,
   ]);
 };

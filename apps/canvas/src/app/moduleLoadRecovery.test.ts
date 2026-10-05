@@ -3,6 +3,7 @@ import {
   installModuleLoadRecovery,
   isModuleReloadPending,
   isRecoverableModuleLoadError,
+  loadModuleWithRetry,
   requireLoadedModule,
 } from '@/shared/lib/moduleLoadRecovery';
 
@@ -21,6 +22,16 @@ afterEach(() => {
 });
 
 describe('moduleLoadRecovery', () => {
+  it('retries a lazy module once before surfacing the failure', async () => {
+    let attempts = 0;
+    await expect(loadModuleWithRetry(async () => {
+      attempts += 1;
+      if (attempts === 1) throw new TypeError('Failed to fetch dynamically imported module');
+      return 'loaded';
+    })).resolves.toBe('loaded');
+    expect(attempts).toBe(2);
+  });
+
   it('prevents a preload error and automatically reloads once', () => {
     const target = new EventTarget();
     const reload = vi.fn();

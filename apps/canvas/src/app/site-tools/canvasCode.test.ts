@@ -19,12 +19,12 @@ describe("Canvas code tool", () => {
     });
     const result = await code.execute({ mode: "apply", script: `
       const view = await canvas.read({ viewport: [0, 0, 1, 1] });
-      await canvas.write({ at: [1, 2], content: view.content, writeMode: "patch" });
+      await canvas.write({ at: [1, 2], content: view.content, style: { color: "red" } });
       return { seen: view.content, ok: true };
     ` });
     expect(result).toMatchObject({ mode: "apply", result: { seen: "A", ok: true }, writes: 1 });
     expect(read).toHaveBeenCalledWith({ viewport: [0, 0, 1, 1] });
-    expect(write).toHaveBeenCalledWith({ at: [1, 2], content: "A", writeMode: "patch" });
+    expect(write).toHaveBeenCalledWith({ at: [1, 2], content: "A", style: { color: "red" } });
   });
 
   it("keeps preview writes out of the host and commits apply as one checkpoint", async () => {
@@ -57,6 +57,35 @@ describe("Canvas code tool", () => {
       history: { beginCheckpoint: () => ({ commit: vi.fn(), cancel }) },
     });
     expect(await code.execute({ mode: "apply", script: `throw new Error("nope")` })).toMatchObject({ ok: false, code: "execution_failed" });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("returns an operation token and undoes only that latest apply", async () => {
+    const undoOperation = vi.fn(() => true);
+    const beginCheckpoint = vi.fn(() => ({ commit: vi.fn(), cancel: vi.fn() }));
+    const code = createCanvasCodeTool({
+      read: tool(async () => ({})), search: tool(async () => ({})),
+      write: tool(async () => ({ writtenCells: 1 })), manage: tool(async () => ({})),
+      history: { beginCheckpoint, undoOperation },
+    });
+    const applied = await code.execute({ mode: "apply", script: `await canvas.write({ at: [0, 0], content: "X" });` });
+    expect(applied).toMatchObject({ mode: "apply", operationId: expect.stringMatching(/^op-[0-9a-f]{12}$/), writes: 1 });
+    const operationId = (applied as { operationId: string }).operationId;
+    expect(beginCheckpoint).toHaveBeenCalledWith(operationId, undefined);
+    const undone = await code.execute({ mode: "apply", script: `return await canvas.undo({ operationId: "${operationId}" });` });
+    expect(undone).toMatchObject({ mode: "apply", result: { undone: true, operationId } });
+    expect(undoOperation).toHaveBeenCalledWith(operationId);
+  });
+
+  it("rejects a second Canvas inside one apply", async () => {
+    const write = vi.fn(async () => ({ writtenCells: 1 }));
+    const cancel = vi.fn();
+    const code = createCanvasCodeTool({
+      read: tool(async () => ({})), search: tool(async () => ({})), write: tool(write), manage: tool(async () => ({})),
+      history: { beginCheckpoint: () => ({ commit: vi.fn(), cancel }) },
+    });
+    expect(await code.execute({ mode: "apply", canvasId: "cv-a", script: `await canvas.write({ canvasId: "cv-b", at: [0, 0], content: "X" });` })).toMatchObject({ ok: false, code: "execution_failed" });
+    expect(write).not.toHaveBeenCalled();
     expect(cancel).toHaveBeenCalledOnce();
   });
 });

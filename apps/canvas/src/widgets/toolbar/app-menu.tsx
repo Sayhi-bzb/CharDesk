@@ -29,7 +29,7 @@ import {
   type EditorFormFactor,
 } from "@/widgets/editor-chrome/public";
 import { RecoverableLazyBoundary } from "@/shared/components/RecoverableLazyBoundary";
-import { requireLoadedModule } from "@/shared/lib/moduleLoadRecovery";
+import { loadModuleWithRetry, requireLoadedModule } from "@/shared/lib/moduleLoadRecovery";
 import { navigateApp } from "@/shared/navigation/workspace-route";
 
 const AppMenuTriggerIcon = HOST_ICONOLOGY.appMenu.trigger;
@@ -45,17 +45,17 @@ const SettingsIcon = HOST_ICONOLOGY.appMenu.settings;
 const AgentIcon = HOST_ICONOLOGY.appMenu.agent;
 const ClearIcon = HOST_ICONOLOGY.appMenu.clear;
 const ClearCanvasDialog = lazy(() =>
-  import("@/widgets/dialogs/clear-canvas-dialog").then((loaded) => ({
+  loadModuleWithRetry(() => import("@/widgets/dialogs/clear-canvas-dialog")).then((loaded) => ({
     default: requireLoadedModule(loaded).ClearCanvasDialog,
   }))
 );
 const SettingsDialog = lazy(() =>
-  import("@/widgets/dialogs/settings-dialog").then((loaded) => ({
+  loadModuleWithRetry(() => import("@/widgets/dialogs/settings-dialog")).then((loaded) => ({
     default: requireLoadedModule(loaded).SettingsDialog,
   }))
 );
-const MobileGuideDialog = lazy(() => import("@/widgets/dialogs/mobile-guide-dialog"));
-const AgentDialog = lazy(() => import("@/widgets/dialogs/agent-dialog").then((loaded) => ({
+const MobileGuideDialog = lazy(() => loadModuleWithRetry(() => import("@/widgets/dialogs/mobile-guide-dialog")));
+const AgentDialog = lazy(() => loadModuleWithRetry(() => import("@/widgets/dialogs/agent-dialog")).then((loaded) => ({
   default: requireLoadedModule(loaded).AgentDialog,
 })));
 

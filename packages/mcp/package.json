@@ -8,6 +8,7 @@
   },
   "files": ["bin", "src", "README.md"],
   "scripts": {
+    "dev": "node --watch src/server.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {

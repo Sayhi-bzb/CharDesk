@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   resolveCanvasContentDpr,
   resolveCanvasContentResolutionMode,
+  resolveCanvasContentResolutionModeForInteraction,
 } from "./canvasContentResolution";
 
 describe("canvas content resolution", () => {
@@ -11,6 +12,27 @@ describe("canvas content resolution", () => {
     expect(resolveCanvasContentResolutionMode(0.48, "full")).toBe("coarse");
     expect(resolveCanvasContentResolutionMode(0.54, "coarse")).toBe("coarse");
     expect(resolveCanvasContentResolutionMode(0.55, "coarse")).toBe("full");
+  });
+
+  it("uses coarse DPR during phone viewport interaction and restores zoom policy after", () => {
+    expect(resolveCanvasContentResolutionModeForInteraction({
+      zoom: 1,
+      currentMode: "full",
+      isPhone: true,
+      interactionActive: true,
+    })).toBe("coarse");
+    expect(resolveCanvasContentResolutionModeForInteraction({
+      zoom: 1,
+      currentMode: "coarse",
+      isPhone: true,
+      interactionActive: false,
+    })).toBe("full");
+    expect(resolveCanvasContentResolutionModeForInteraction({
+      zoom: 1,
+      currentMode: "full",
+      isPhone: false,
+      interactionActive: true,
+    })).toBe("full");
   });
 
   it("keeps the current mode inside the hysteresis range", () => {

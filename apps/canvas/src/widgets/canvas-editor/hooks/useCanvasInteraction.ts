@@ -233,7 +233,7 @@ export const useCanvasInteraction = (
   });
   const canvasPinchExecutor = createCanvasPinchExecutor({
     setViewport: (updater) =>
-      runtime.camera.setTransientViewport(updater(runtime.camera.getViewport())),
+      runtime.camera.queueTransientViewport(updater(runtime.camera.getViewport())),
   });
   const canvasPinchHandler = createCanvasPinchHandler({
     executor: canvasPinchExecutor,
@@ -528,6 +528,7 @@ export const useCanvasInteraction = (
 
   const bind = useCanvasGestureAdapter({
     cancelInteraction,
+    cancelViewportInteraction: runtime.camera.cancelPending.bind(runtime.camera),
     stopEdgeScroll: () => edgeScroll?.stop(),
     updateEdgeScroll,
     containerRef,

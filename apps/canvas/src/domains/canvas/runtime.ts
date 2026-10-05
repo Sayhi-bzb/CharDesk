@@ -34,6 +34,34 @@ import type { CanvasStateCommitCoordinator } from "./state/CanvasStateCommitCoor
 
 const mutableCanvasStores = new WeakMap<object, CanvasStore>();
 
+/** Persistence is a durability boundary, not a prerequisite for returning a
+ * projection mutation. Keep callers bounded when a provider never resolves
+ * its sync promise (for example, a stale IndexedDB/Yjs coordination lease). */
+export const CANVAS_PERSISTENCE_FLUSH_TIMEOUT_MS = 5_000;
+
+export class CanvasPersistenceTimeoutError extends Error {
+  readonly code = "persistence_timeout" as const;
+
+  constructor() {
+    super("Canvas persistence did not finish before the durability deadline.");
+    this.name = "CanvasPersistenceTimeoutError";
+  }
+}
+
+const withPersistenceTimeout = async <T>(promise: Promise<T>): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new CanvasPersistenceTimeoutError()), CANVAS_PERSISTENCE_FLUSH_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+};
+
 const DISABLED_PERSISTENCE_STATUS: CanvasPersistenceStatus = {
   phase: "ready",
   restore: {
@@ -168,8 +196,10 @@ export class CanvasRuntime {
 
   flushPersistence = async (sessionId?: string) => {
     if (!this.persistence) throw new Error("Canvas persistence is unavailable.");
-    if (sessionId) await this.persistence.flushDocument(sessionId);
-    await this.persistence.retry();
+    await withPersistenceTimeout((async () => {
+      if (sessionId) await this.persistence!.flushDocument(sessionId);
+      await this.persistence!.retry();
+    })());
     const status = this.persistence.getSnapshot();
     if (status.phase !== "ready" || status.save !== "saved") throw new Error(status.error ?? "Canvas has not been durably saved.");
   };

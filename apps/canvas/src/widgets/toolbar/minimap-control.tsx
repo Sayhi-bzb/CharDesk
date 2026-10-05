@@ -12,12 +12,12 @@ import { useCanvasState } from '@/domains/canvas/public';
 import { useUiI18n } from '@/shared/i18n';
 import { HOST_ICONOLOGY } from '@/shared/icons/iconology';
 import { RecoverableLazyBoundary } from '@/shared/components/RecoverableLazyBoundary';
-import { requireLoadedModule } from '@/shared/lib/moduleLoadRecovery';
+import { loadModuleWithRetry, requireLoadedModule } from '@/shared/lib/moduleLoadRecovery';
 import { useCanvasViewOptional } from '@/widgets/canvas-editor/engine/CanvasWorkspace';
 
 const MinimapIcon = HOST_ICONOLOGY.viewportAction.minimap;
 const Minimap = lazy(() =>
-  import('@/widgets/canvas-editor/Minimap').then((loaded) => ({
+  loadModuleWithRetry(() => import('@/widgets/canvas-editor/Minimap')).then((loaded) => ({
     default: requireLoadedModule(loaded).Minimap,
   }))
 );

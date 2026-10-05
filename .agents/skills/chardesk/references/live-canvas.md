@@ -19,15 +19,23 @@ a local file.
 Keep the operation scoped to the user's target. Do not enumerate Canvases or
 search the whole surface when the target is already known.
 
+Treat the Canvas as a two-dimensional workspace, not an append-only text file.
+Use vertical placement for continuity within one content stream. Use horizontal
+placement for parallel modules, topics, roles, comparisons, or branches. Before
+writing, decide whether new material continues an existing stream or starts a
+parallel dimension; do not default to appending below the lowest content.
+
 ## Compose operations
 
 Use `chardesk_canvas_code` when one task needs conditional, repeated, or
 clipboard-aware Canvas operations. Its script receives only
-`canvas.read`, `canvas.search`, `canvas.write`, `canvas.manage`, and
-`canvas.clipboard`. `preview` is the default and does not persist writes; use
+`canvas.read`, `canvas.search`, `canvas.write`, `canvas.erase`, `canvas.fill`,
+`canvas.render`, `canvas.manage`, `canvas.undo`, and `canvas.clipboard`. `preview` is the default and does not persist writes; use
 `mode: "apply"` when the requested edit is ready to commit. An applied script
-is one undoable checkpoint. Preview writes use the real Canvas renderer and
-return their Cell bounds and rendered spans; they are not an echo of the input.
+is one undoable checkpoint and returns an `operationId`; a later apply call can
+call `canvas.undo({ operationId })` while that operation is still the latest
+edit. One apply targets one Canvas. Preview writes and renders use the same
+placement rules and return Cell bounds; they do not mutate the Canvas.
 Capability arguments and results are ordinary JavaScript objects, so scripts do
 not call `JSON.stringify` or `JSON.parse`. It is a Canvas composition tool, not
 a shell and not a general MCP dispatcher. If Code Mode reports
@@ -39,18 +47,25 @@ a shell and not a general MCP dispatcher. If Code Mode reports
 locate → read context → write → read returned bounds → verify
 ```
 
-Treat the default `writeMode: "patch"` as a local edit, not a replacement of an
-earlier footprint. Ordinary whitespace is skipped; styled whitespace is written.
-Use `writeMode: "replace"` only when intentionally redrawing or clearing a
-precise rectangle.
-Choose placement from the observed content. Preserve surrounding work and do
-not assume that a shorter replacement clears cells outside the new content.
+Treat `canvas.write` as one continuous literal-Unicode stroke: non-whitespace
+graphemes overwrite existing Cells with one optional style, while whitespace is
+transparent. Use `canvas.erase` for explicit clearing and `canvas.fill` to style
+existing characters without changing their content. Use `canvas.render` when the
+input is Markdown, ANSI, or another material format.
 
-If the payload is ASCII art, code, a Unicode drawing, or otherwise depends on
-literal Markdown punctuation, wrap it in a fenced code block before writing.
-This protects characters such as `\\`, `_`, `*`, and `>` when the Canvas uses
-the default auto/Markdown renderer. Read the returned bounds immediately after
-the write to verify the rendered characters.
+Literal ASCII art, code, and Unicode drawings can be written directly. If the
+input is Markdown or ANSI material, use `canvas.render` so the material renderer
+is explicit. Read the returned bounds immediately after the write to verify the
+rendered characters.
+
+Keep content production separate from Canvas projection. When an external
+artifact already exists, prefer passing its reference so Canvas can consume it
+directly; use inline `content` or `source` only for short, transient input.
+Do not reread, copy, or rewrite a complete artifact merely to call a Canvas
+tool. In the local MCP, pass the artifact path as `sourceRef` to `canvas.write`
+or `canvas.render`; the corresponding inline field and `sourceRef` are mutually
+exclusive. Browser-only WebMCP calls do not have local filesystem access and
+must use inline input.
 
 After writing, use the returned bounds for verification. If the result is a
 sampled projection, narrow the viewport before judging text. If the write is
@@ -60,10 +75,12 @@ Treat `overviewOnly: true` or `mode: projection|density` as spatial navigation
 only. Do not summarize its block or density symbols as Canvas text; search for
 the target or read a smaller viewport until `overviewOnly: false`.
 
-`canvas_read` defaults to `representation: "text"`. Choose `representation: "image"`
-for layout or color inspection, or `"both"` only when comparison is necessary.
-Image `detail` defaults to `auto`; text remains the authority for exact Unicode
-and Cell coordinates.
+`canvas_read` defaults to `representation: "text"` and `style: "none"` so ordinary
+navigation stays compact. Use `style: "appearance"` when the agent needs merged
+spatial style regions and renderer context. Use `representation: "cells"` for
+exact Cell characters and styles, `"image"` for layout or color inspection, or
+`"both"` only when comparison is necessary. Image `detail` defaults to `auto`;
+text remains the authority for exact Unicode and Cell coordinates.
 
 ## Read and write discipline
 
@@ -71,7 +88,7 @@ and Cell coordinates.
 - Write sends content to the Canvas renderer; do not manually reproduce the
   rendered appearance.
 - Prefer fenced code blocks for content that must be preserved character-for-character.
-- Never copy generated rulers, borders, style notes, or density symbols into a
+- Never copy generated rulers, borders, appearance notes, or density symbols into a
   write payload.
 - Preserve the user's source syntax when the active renderer supports it.
 - Treat read-only or source-backed surfaces according to the capability exposed

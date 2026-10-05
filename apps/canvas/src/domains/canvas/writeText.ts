@@ -19,6 +19,8 @@ export type CanvasWriteStats = Readonly<{
   skippedWhitespaceCells: number;
 }>;
 
+export type CanvasStrokeStyle = Readonly<Partial<Pick<RichTextRow["spans"][number], "color" | "bgColor" | "attrs" | "href">>>;
+
 const hasVisibleWhitespaceStyle = (span: RichTextRow["spans"][number]) =>
   span.bgColor !== undefined || span.href !== undefined || Object.values(span.attrs ?? {}).some(Boolean);
 
@@ -45,6 +47,40 @@ export const prepareCanvasTextWrite = (
   return prepareCanvasRowsWrite(at, lines.flatMap((text, y) => text ? [{
     y, spans: [{ x: 0, text, color, width: getTextCellWidth(text) }],
   }] : []), writeMode);
+};
+
+/** Prepare a literal Projection stroke. Whitespace is transparent by design. */
+export const prepareCanvasPlainTextWrite = (
+  at: Point,
+  content: string,
+  style: CanvasStrokeStyle,
+): ReturnType<typeof prepareCanvasRowsWrite> => {
+  const text = content.replace(/\r\n?/g, "\n");
+  const lines = text.split("\n");
+  if (lines.some((line) => /\p{Cc}/u.test(line))) {
+    throw new CanvasWriteError("invalid_input", "Content must be plain Unicode text; tabs and control characters are unsupported.");
+  }
+  return prepareCanvasRowsWrite(at, lines.flatMap((line, y) => line ? [{
+    y,
+    spans: [{ x: 0, text: line, color: style.color ?? "#000000", ...(style.bgColor ? { bgColor: style.bgColor } : {}), ...(style.attrs ? { attrs: style.attrs } : {}), ...(style.href ? { href: style.href } : {}), width: getTextCellWidth(line) }],
+  }] : []), "patch");
+};
+
+export const prepareCanvasErase = (
+  at: Point,
+  size: readonly [number, number],
+): Readonly<{ patch: CellPlanePatch; bounds: CanvasReadViewport; writtenCells: number; skippedWhitespaceCells: number }> => {
+  if (!Number.isSafeInteger(at.x) || !Number.isSafeInteger(at.y) || size.length !== 2
+    || !size.every((value) => Number.isSafeInteger(value) && value > 0)
+    || !Number.isSafeInteger(at.x + size[0]!) || !Number.isSafeInteger(at.y + size[1]!)) {
+    throw new CanvasWriteError("invalid_input", "Expected a Cell position and positive [width,height] size.");
+  }
+  return {
+    patch: { rows: Array.from({ length: size[1]! }, (_, y) => ({ y: at.y + y, erase: [{ from: at.x, to: at.x + size[0]! - 1 }], spans: [] })) },
+    bounds: [at.x, at.y, size[0]!, size[1]!],
+    writtenCells: 0,
+    skippedWhitespaceCells: 0,
+  };
 };
 
 /** Translate rendered spans without coupling the Cell write port to a renderer. */

@@ -106,9 +106,10 @@ const commands = {
       resolveAddress();
       return documents.redo();
     }),
-    beginCheckpoint: () => {
+    undoOperation: (operationId: string) => commits.run(() => documents.undoOperation(operationId)),
+    beginCheckpoint: (operationId?: string, documentId?: string) => {
       resolveAddress();
-      const checkpoint = documents.beginHistoryCheckpoint();
+      const checkpoint = documents.beginHistoryCheckpoint(operationId, documentId);
       return {
         commit: () => commits.run(checkpoint.commit),
         cancel: () => commits.run(checkpoint.cancel),
@@ -211,6 +212,8 @@ const commands = {
     writeRowsAt: textCommands.writeRowsAt,
     writeAtSession: textCommands.writeAtSession,
     writeRowsAtSession: textCommands.writeRowsAtSession,
+    eraseAt: textCommands.eraseAt,
+    eraseAtSession: textCommands.eraseAtSession,
     write: textCommands.write,
     pasteRichData: textCommands.pasteRichData,
     moveCursor: textCommands.moveCursor,

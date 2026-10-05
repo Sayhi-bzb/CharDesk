@@ -20,6 +20,16 @@ Coding agents start it with:
 npx -y @chardesk/mcp server
 ```
 
+For local MCP development, use the watcher from the repository root:
+
+```sh
+npm run dev:mcp
+```
+
+This restarts the local Node bridge when `packages/mcp/src` changes. It is a
+development command; normal agent configuration should continue to use the
+stable `server` command.
+
 After the agent starts the server, print the private pairing URL with:
 
 ```sh
@@ -46,11 +56,14 @@ page or another tenant is connected. Set `CHARDESK_MCP_DEBUG=1` to emit JSON
 lifecycle events (`browser_connected`, `tenant_connected`, `owner_stdio_closed`,
 `tenant_closed`, and `browser_closed`) to stderr when diagnosing disconnects.
 
-Canvas reads default to exact text. Agents may choose an image block for visual
+Canvas reads default to lightweight exact text without style notes. Agents may
+request a spatial appearance map, exact Cell records, an image block for visual
 inspection, or both when comparison is necessary:
 
 ```json
 { "representation": "text" }
+{ "representation": "text", "style": "appearance" }
+{ "representation": "cells" }
 { "representation": "image", "detail": "low" }
 { "representation": "both" }
 ```
@@ -59,7 +72,12 @@ Text remains authoritative for Unicode and Cell coordinates. The MCP bridge expo
 visual blocks through standard `content[]` and machine-readable read metadata through
 `structuredContent`.
 
-Canvas writes default to `writeMode: "patch"`: ordinary whitespace is skipped so
-existing content is preserved. Use `writeMode: "replace"` when whitespace must
-overwrite or clear a precise rectangle; styled whitespace remains writable in
-patch mode.
+Canvas editing is split into Projection operations: `chardesk_canvas_write` draws
+one literal-Unicode stroke with one optional style; whitespace is transparent.
+It accepts either `content` or `sourceRef`. `sourceRef` is a local file path;
+the local MCP reads the UTF-8 file and forwards the result as the stroke, so an
+agent can send script output without copying it into a tool argument.
+`chardesk_canvas_erase` clears a rectangle, `chardesk_canvas_fill` styles existing
+characters, and `chardesk_canvas_render` converts material such as Markdown or
+ANSI into Projection Cells. `render` accepts either `source` or `sourceRef` using
+the same local-file rule.

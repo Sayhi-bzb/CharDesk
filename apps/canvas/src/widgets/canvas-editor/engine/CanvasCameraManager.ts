@@ -145,6 +145,22 @@ export class CanvasCameraManager {
     this.viewportInteraction.queueZoomDelta(deltaZoom, anchor.x, anchor.y);
   }
 
+  /** Queue the latest absolute viewport for a transient gesture such as pinch. */
+  queueTransientViewport(viewport: CanvasViewportState): void {
+    if (
+      !Number.isFinite(viewport.zoom) ||
+      !Number.isFinite(viewport.offset.x) ||
+      !Number.isFinite(viewport.offset.y)
+    ) {
+      return;
+    }
+    this.cancelAnimation();
+    this.viewportInteraction.queueViewport({
+      offset: { x: viewport.offset.x, y: viewport.offset.y },
+      zoom: clampZoom(viewport.zoom),
+    });
+  }
+
   flushZoom(): void {
     this.viewportInteraction.flushZoom();
   }

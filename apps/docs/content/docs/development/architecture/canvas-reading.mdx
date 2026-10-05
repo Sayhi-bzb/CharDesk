@@ -48,40 +48,41 @@ Non-whitespace characters, explicit backgrounds, and inverse/underlined/struck s
 count as occupied; wide
 graphemes occupy their Cell width. Any nonzero density remains visible. Projection
 symbols and coordinate rulers are navigation aids, not source characters. Text
-output preserves characters and interior spacing; style notes describe attributed Cells, not
-font rasterization or complete interaction state.
+output preserves characters and interior spacing. Style information is an explicit
+read option, not part of the default text payload.
 
-## Coordinates and style notes
+## Coordinates and appearance
 
 At text precision, the open top ruler has ticks every 5 Cells and centred coordinate
 labels every 10; rows are labelled every 5 Cells. Negative coordinates use signed
 labels. Ticks align with absolute coordinates, not the viewport origin. Large labels
 and sampled maps use wider intervals to avoid overlap. In sampled maps a tick marks
 the bucket containing that coordinate; `viewport` and `sampleSize` still define each
-bucket's exact bounds. Wide graphemes occupy two columns. Non-empty style notes
-follow the grid:
+bucket's exact bounds. Wide graphemes occupy two columns. Pass
+`style: "appearance"` to append a compact spatial appearance map:
 
 The grid has no right or bottom border. Trailing ASCII spaces are omitted;
 `viewport` declares the full width and height. Leading and interior spaces and
 empty row positions remain unchanged. Style notes retain attributed trailing spaces.
 The active theme foreground is the default: light `#1f2328` and dark `#f0f6fc`
-are omitted from style notes; non-default colors and attributes remain.
+are omitted from appearance regions; non-default colors and attributes remain.
 
 ```text
-styles:
+appearance:
   y=20..21 x=10..12{fg:#ff0000;bold}
   y=21 x=14{underline;link:"https://example.com"}
 ```
 
-Ranges are inclusive original Canvas coordinates, not output offsets. Notes include
+Ranges are inclusive original Canvas coordinates, not output offsets. Appearance regions include
 foreground, background, bold, italic, underline, strike, inverse, and links. Adjacent
 equal styles merge into horizontal runs and matching runs on consecutive rows merge
 vertically. Styled spaces are included; boundary-clipped graphemes are excluded with
 their text. At most 256 style regions are shown, with an explicit truncation notice.
 
-Projection and density modes omit styles and ask the caller to read a smaller viewport;
-their symbols are navigation aids, not styled source content. The default text path keeps
-notes in `content`. Reading source files or exporting ANSI is not part of this tool.
+Projection and density modes omit appearance and ask the caller to read a smaller
+viewport; their symbols are navigation aids, not styled source content. The default
+text path omits appearance. `representation: "cells"` returns exact character/style
+records for precise edits. Reading source files or exporting ANSI is not part of this tool.
 
 `overviewOnly` makes this distinction machine-readable: it is `false` for exact
 `text` reads and `true` for `projection` or `density`. When it is `true`, do not
@@ -90,13 +91,18 @@ read a smaller viewport until `overviewOnly: false`.
 
 ## Content blocks
 
-`representation` is optional and defaults to `text`:
+`representation` is optional and defaults to `text`; `style` is optional and defaults
+to `none`:
 
 | Representation | Blocks | Use |
 | --- | --- | --- |
-| `text` | text | Exact Unicode, coordinates, styles, and write orientation |
+| `text` | text | Exact Unicode, coordinates, and write orientation |
+| `cells` | structured cells | Exact character/style records for precise edits |
 | `image` | image | Layout, color, and visual-density overview |
 | `both` | text + image | Explicit comparison; costs more context |
+
+`style: "appearance"` adds merged spatial style regions to text and
+`structuredContent`; it does not infer semantic roles such as heading or body.
 
 Image reads accept `detail: "low" | "high" | "original" | "auto"` and default to
 `auto`. Machine-readable metadata is exposed in `structuredContent`; visual material
@@ -106,11 +112,10 @@ the original Cell viewport and pixel scale; the internal SVG intermediate never 
 the Canvas tool boundary. Oversized images are omitted with a note; narrow the
 viewport or use `representation: "text"` instead.
 
-Every read also includes a compact [write rendering](/development/architecture/canvas-writing)
-note: mode, theme, Markdown wrap width, and feature state. `markdown=all` means every
-registered Markdown feature is enabled; otherwise the note reports the enabled count
-and disabled feature IDs. These describe how the next write is rendered, not the
-historical source or rendering profile of existing Cells.
+Appearance reads also include a compact [write rendering](/development/architecture/canvas-writing)
+note: mode, theme, Markdown wrap width, and feature state. These describe how a
+material render would behave, not the historical source or rendering profile of
+existing Cells.
 
 The response contains an optional `canvasId`, actual `viewport`, `sampleSize`, `mode`, `overviewOnly`, `representation`,
 `content`, and `contentBlocks`.

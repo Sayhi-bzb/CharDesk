@@ -111,6 +111,28 @@ describe("viewport interaction controller", () => {
     expect(viewport).toEqual({ offset: { x: 50, y: 0 }, zoom: 1 });
   });
 
+  it("coalesces absolute transient viewports and keeps the latest sample", () => {
+    const scheduler = createScheduler();
+    const setViewport = vi.fn();
+    const controller = createViewportInteractionController({
+      setOffset: () => {},
+      setViewport,
+      zoomBounds: { min: 0.25, max: 4 },
+      scheduler,
+    });
+
+    controller.queueViewport({ offset: { x: 10, y: 12 }, zoom: 1.1 });
+    controller.queueViewport({ offset: { x: 40, y: 42 }, zoom: 1.4 });
+    expect(scheduler.requestAnimationFrame).toHaveBeenCalledOnce();
+    scheduler.flush();
+
+    expect(setViewport).toHaveBeenCalledOnce();
+    expect(setViewport.mock.calls[0]?.[0]({ offset: { x: 0, y: 0 }, zoom: 1 })).toEqual({
+      offset: { x: 40, y: 42 },
+      zoom: 1.4,
+    });
+  });
+
   it("ignores no-op and invalid zoom deltas", () => {
     const scheduler = createScheduler();
     const setViewport = vi.fn();

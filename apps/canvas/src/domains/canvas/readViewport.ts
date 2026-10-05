@@ -12,7 +12,7 @@ export type CanvasReadProjection = Readonly<{
   overviewOnly: boolean;
   content: string;
 }>;
-export type CanvasReadOptions = Readonly<{ defaultForeground?: string }>;
+export type CanvasReadOptions = Readonly<{ defaultForeground?: string; includeStyles?: boolean }>;
 
 export type CanvasReadImage = Readonly<{
   mimeType: "image/svg+xml";
@@ -202,7 +202,7 @@ export const readCanvasViewport = (
       previousEnd = offset + label.length;
     }
   }
-  const notes = exact ? formatCharDeskStyleNotes(exact.cells, { coordinates: "explicit", defaultForeground: options.defaultForeground }) : "styles:none";
+  const notes = exact && options.includeStyles !== false ? formatCharDeskStyleNotes(exact.cells, { coordinates: "explicit", defaultForeground: options.defaultForeground }) : "styles:none";
   const content = [
     `viewport=[${x},${y},${width},${height}] sampleSize=${sampleSize} mode=${mode}`,
     ...(ruler.some((char) => char !== " ") ? [ruler.join("").trimEnd()] : []),

@@ -1,4 +1,12 @@
 type LocalAgentStatus = 'idle' | 'connecting' | 'connected' | 'error';
+export type LocalAgentRuntimeStatus = 'booting' | 'ready' | 'degraded' | 'unavailable';
+export type LocalAgentRuntimeSnapshot = Readonly<{
+  protocolVersion: 2;
+  buildId: string;
+  status: LocalAgentRuntimeStatus;
+  persistence?: 'ready' | 'saving' | 'error';
+  moduleFailure?: Readonly<{ module?: string; message: string }>;
+}>;
 export type LocalAgentPermission = 'inspect' | 'read' | 'search' | 'write';
 export type LocalAgentPermissions = Readonly<Record<LocalAgentPermission, boolean>>;
 const DEFAULT_LOCAL_AGENT_PERMISSIONS: LocalAgentPermissions = Object.freeze({ inspect: true, read: true, search: true, write: true });
@@ -21,6 +29,11 @@ type Pairing = { url: string; scope: string; expiresAt: number; permissions: Loc
 let retry: ReturnType<typeof setTimeout> | undefined;
 let automatic = false;
 let enabled = false;
+let runtimeSnapshot: LocalAgentRuntimeSnapshot = {
+  protocolVersion: 2,
+  buildId: 'unknown',
+  status: 'booting',
+};
 const readEnabled = () => {
   try { return localStorage.getItem(enabledKey) === 'true'; } catch { return enabled; }
 };
@@ -54,6 +67,13 @@ export const subscribeLocalAgent = (listener: () => void) => {
 export const getLocalAgentStatus = () => status;
 export const getLocalAgentEnabled = () => enabled || readEnabled();
 export const getLocalAgentRevision = () => revision;
+export const getLocalAgentRuntimeSnapshot = () => runtimeSnapshot;
+export const setLocalAgentRuntimeStatus = (next: Omit<LocalAgentRuntimeSnapshot, 'protocolVersion'>) => {
+  runtimeSnapshot = { protocolVersion: 2, ...next };
+  if (socket?.readyState === WebSocket.OPEN) {
+    try { socket.send(JSON.stringify({ method: 'runtime_status', status: runtimeSnapshot })); } catch { /* The bridge may be closing. */ }
+  }
+};
 export const configureLocalAgent = (next: LocalAgentPort) => { port = next; enabled = readEnabled(); restoreLocalAgent(); };
 
 export function restoreLocalAgent() {
@@ -172,7 +192,16 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
         return;
       }
       if (message.method === 'authorized') {
-        if (socket === connection) publish('connected');
+        if (socket === connection) {
+          publish('connected');
+          try { connection.send(JSON.stringify({ method: 'runtime_status', status: runtimeSnapshot })); } catch { /* The bridge may be closing. */ }
+        }
+        return;
+      }
+      if (message.method === 'runtime_probe') {
+        if (socket === connection && connection.readyState === WebSocket.OPEN) {
+          try { connection.send(JSON.stringify({ method: 'runtime_status', status: runtimeSnapshot })); } catch { /* The bridge may be closing. */ }
+        }
         return;
       }
       if (message.method === 'authorization_denied') {
@@ -201,7 +230,7 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
         }
         const name = request.params?.name;
         const input = request.params?.input;
-        if (request.method !== 'call' || !['chardesk_canvas_manage', 'chardesk_canvas_read', 'chardesk_canvas_search', 'chardesk_canvas_write', 'chardesk_canvas_code'].includes(String(name))
+        if (request.method !== 'call' || !['chardesk_canvas_manage', 'chardesk_canvas_read', 'chardesk_canvas_search', 'chardesk_canvas_write', 'chardesk_canvas_erase', 'chardesk_canvas_fill', 'chardesk_canvas_render', 'chardesk_canvas_code'].includes(String(name))
           || !input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid Canvas request');
         const permission = String(name).endsWith('_read') ? 'read' : String(name).endsWith('_search') ? 'search' : String(name).endsWith('_manage') && (input as { action?: unknown }).action === 'list' ? 'inspect' : 'write';
         if (!permissions[permission]) throw new Error(`Permission denied: canvas.${permission}`);

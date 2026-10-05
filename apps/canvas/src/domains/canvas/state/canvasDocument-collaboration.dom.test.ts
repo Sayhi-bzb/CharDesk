@@ -217,6 +217,38 @@ describe("canvas CRDT collaboration", () => {
     documents.dispose();
   });
 
+  it("undoes only the latest checkpoint with its operation id", () => {
+    const id = `interaction-operation-${crypto.randomUUID()}`;
+    const documents = new CanvasDocumentRegistry(id);
+    const operationId = "op-test";
+    const checkpoint = documents.beginHistoryCheckpoint(operationId);
+
+    documents.mutateGrid((grid) => grid.set("0,0", cell("A")), "merge");
+    documents.mutateGrid((grid) => grid.set("1,0", cell("B")), "merge");
+    checkpoint.commit();
+
+    expect(documents.undoOperation("op-other")).toBe(false);
+    expect(documents.getContentReader().getCell({ x: 0, y: 0 })).toEqual(cell("A"));
+    expect(documents.undoOperation(operationId)).toBe(true);
+    expect(documents.getContentReader().materialize()).toEqual(new Map());
+    documents.dispose();
+  });
+
+  it("refuses an operation token after a later local edit", () => {
+    const id = `interaction-operation-stale-${crypto.randomUUID()}`;
+    const documents = new CanvasDocumentRegistry(id);
+    const operationId = "op-stale";
+    const checkpoint = documents.beginHistoryCheckpoint(operationId);
+    documents.mutateGrid((grid) => grid.set("0,0", cell("A")), "merge");
+    checkpoint.commit();
+    documents.mutateGrid((grid) => grid.set("1,0", cell("B")));
+
+    expect(documents.undoOperation(operationId)).toBe(false);
+    expect(documents.getContentReader().getCell({ x: 0, y: 0 })).toEqual(cell("A"));
+    expect(documents.getContentReader().getCell({ x: 1, y: 0 })).toEqual(cell("B"));
+    documents.dispose();
+  });
+
   it("reports undo and redo availability for the active document", () => {
     const id = `history-availability-${crypto.randomUUID()}`;
     const documents = new CanvasDocumentRegistry(id);

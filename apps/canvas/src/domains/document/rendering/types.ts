@@ -58,6 +58,8 @@ export type TextRenderProfile = {
 
 export type TextRenderContext = {
   themeMode: TextRenderThemeMode;
+  /** Optional per-render source mode override used by agent material tools. */
+  rendererMode?: TextRendererMode;
 };
 
 export type RenderedTextCell = GridCell & { x: number; y: number };

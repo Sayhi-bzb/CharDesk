@@ -1,48 +1,50 @@
 ---
 title: Canvas Writing
-description: Render text into editable Canvas content at an original Cell coordinate.
+description: Draw a literal Projection stroke at an original Cell coordinate.
 ---
 
 `chardesk_canvas_write` belongs to the Canvas group in the [WebMCP contract](/development/architecture/webmcp).
-With full-access local MCP, pass `canvasId` to write another Canvas without
-changing the human's active Canvas. Omit it to write the active Canvas.
-It writes to the active editable Freeform Canvas or current Slide page through
-Canvas commands. Source-backed surfaces return `source_backed_canvas`; edit their
-source with filesystem tools.
+It draws one continuous literal-Unicode stroke into the Projection layer.
+For Markdown, ANSI, or other material input, use `chardesk_canvas_render`.
 
 ## Position and content
 
 ```json
-{ "at": [100, 50], "content": "ABC\nDE", "writeMode": "patch" }
+{ "at": [100, 50], "content": "ABC\nDE", "style": { "color": "red" } }
 ```
 
 `at` is the required starting `[x,y]` in original Cell coordinates. Both coordinates
 and the resulting endpoints must be safe integers. Content determines the footprint;
 there is no input width, height, or scale.
 
-The tool uses the same text renderer and current profile as Canvas text paste:
-`auto`, `raw`, `ansi`, or `markdown`, including enabled features, Markdown wrapping,
-theme colors, and tab expansion. [Canvas reading](/development/architecture/canvas-reading) discloses those
-current settings. `writeMode` defaults to `patch`: ordinary whitespace is skipped,
-so existing Cells are preserved; whitespace with a background, text attribute, or
-link is still written. `replace` writes every rendered Cell, including ordinary
-whitespace, and is the explicit mode for redrawing or clearing a rectangle.
-Rendered non-whitespace spans replace characters and styles at their translated
-Cell positions; unwritten positions stay unchanged. Existing backgrounds remain
-unless the renderer supplies one. Slide overflow rejects the complete rendered
-footprint before mutation.
+The local MCP also accepts a file path instead of inline content:
 
-Only rendered Cells persist; input text and its rendering profile are not retained
-as editable source. This is not a source-document write API. Read reports the
-current profile as a compact note: `mode`, `theme`, `wrap`, and Markdown feature
-state; it does not expand every enabled feature unless a feature is disabled.
+```json
+{ "at": [100, 50], "sourceRef": ".chardesk/generated/result.txt" }
+```
+
+`sourceRef` is resolved by the local MCP and its UTF-8 text is forwarded as the
+stroke. `content` and `sourceRef` are mutually exclusive. This lets a local
+script produce output once and write it to Canvas without the agent copying the
+output into a second tool call. Browser-only WebMCP calls must provide `content`.
+
+`chardesk_canvas_render` follows the same contract with `source` and
+`sourceRef`, then applies the selected `format` (`raw`, `ansi`, or `markdown`).
+
+Non-whitespace graphemes overwrite existing Cells. Whitespace is transparent and
+does not erase existing content. `style` applies one brush style to the entire
+stroke. Use `chardesk_canvas_erase` to clear a rectangle and
+`chardesk_canvas_fill` to style existing characters without changing them.
+Slide overflow rejects the complete stroke before mutation.
+
+Only Projection Cells persist; the literal input is not retained as editable
+source. This is not a source-document write API.
 
 ## Result and verification
 
-The response contains an optional `canvasId`, the selected `writeMode`,
-`bounds: [x,y,width,height]`, the envelope of written spans, and Cell counts for
-`writtenCells` and `skippedWhitespaceCells`. Content with no written positions
-returns `bounds: null` without creating history. Writes commit as one independently undoable operation and
+The response contains an optional `canvasId`, `bounds: [x,y,width,height]`, and
+Cell counts for `writtenCells` and transparent whitespace. Content with no
+written positions returns `bounds: null` without creating history. Writes commit as one independently undoable operation and
 do not change the user's camera, cursor, or selection. A Canvas or Slide switch
 during rendering cancels the write; renderer failures never partially write.
 

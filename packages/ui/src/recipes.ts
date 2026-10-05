@@ -63,6 +63,10 @@ type TabTriggerOptions = {
   active?: boolean;
 };
 
+type SwitchOptions = {
+  checked?: boolean;
+};
+
 const surface = ({ kind = 'embedded', animated = false }: SurfaceOptions = {}) =>
   cn(
     'rounded-surface border-0',
@@ -182,6 +186,22 @@ export const rx = {
     focusRing,
     "data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [&_svg]:size-3"
   ),
+  switch: ({ checked = false }: SwitchOptions = {}) =>
+    cn(
+      'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border p-0.5 transition-[background-color,border-color,box-shadow] duration-[var(--motion-fast)] motion-reduce:transition-none',
+      focusRing,
+      'disabled:pointer-events-none disabled:cursor-default disabled:opacity-50',
+      checked
+        ? 'border-switch-on-border bg-switch-on-surface'
+        : 'border-switch-off-border bg-switch-off-surface',
+    ),
+  switchThumb: ({ checked = false }: SwitchOptions = {}) =>
+    cn(
+      'block size-3.5 rounded-full transition-[background-color,transform] duration-[var(--motion-fast)] motion-reduce:transition-none',
+      checked
+        ? 'translate-x-4 bg-switch-on-thumb'
+        : 'translate-x-0 bg-switch-off-thumb',
+    ),
   dialogOverlay: cn(
     'fixed inset-0 z-(--layer-modal-backdrop) bg-dialog-overlay',
     'data-[state=open]:animate-in data-[state=closed]:animate-out',

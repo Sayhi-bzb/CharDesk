@@ -14,7 +14,7 @@ import {
 import { placeCharInYMap, placeStyledCellInYMap } from "./utils";
 import type { Point } from "@/shared/types";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
-import { CanvasWriteError, prepareCanvasTextWrite, prepareCanvasRowsWrite, type CanvasWriteMode } from "../writeText";
+import { CanvasWriteError, prepareCanvasErase, prepareCanvasTextWrite, prepareCanvasRowsWrite, type CanvasWriteMode } from "../writeText";
 import { getGraphemeCellWidth as getCellOccupancy, splitGraphemes } from "@chardesk/protocol";
 import { clampPointToActiveSlide, getActiveSlideGridBounds } from "./slideBounds";
 import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
@@ -161,6 +161,8 @@ export const createCanvasTextCommands = (
     writeRowsAt: (rows: readonly RichTextRow[], at: Point, writeMode: CanvasWriteMode = "replace") => writePrepared(() => prepareCanvasRowsWrite(at, rows, writeMode)),
     writeAtSession: (sessionId: string, content: string, at: Point, color = get().brushColor, writeMode: CanvasWriteMode = "replace") => writePreparedAt(sessionId, () => prepareCanvasTextWrite(at, content, color, writeMode)),
     writeRowsAtSession: (sessionId: string, rows: readonly RichTextRow[], at: Point, writeMode: CanvasWriteMode = "replace") => writePreparedAt(sessionId, () => prepareCanvasRowsWrite(at, rows, writeMode)),
+    eraseAt: (at: Point, size: readonly [number, number]) => writePrepared(() => prepareCanvasErase(at, size)),
+    eraseAtSession: (sessionId: string, at: Point, size: readonly [number, number]) => writePreparedAt(sessionId, () => prepareCanvasErase(at, size)),
     write: (str: string, startPos?: Point, options?: TextWriteOptions) => {
       const current = get();
       const staticGrid = current.interaction.staticGrid;

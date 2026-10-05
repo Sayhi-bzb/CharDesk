@@ -41,6 +41,7 @@ export const resolveCanvasDragTermination = ({
 
 export const useCanvasGestureAdapter = ({
   cancelInteraction,
+  cancelViewportInteraction,
   stopEdgeScroll,
   updateEdgeScroll,
   containerRef,
@@ -64,6 +65,7 @@ export const useCanvasGestureAdapter = ({
   shouldIgnoreClick,
 }: {
   cancelInteraction: () => void;
+  cancelViewportInteraction: () => void;
   stopEdgeScroll: () => void;
   updateEdgeScroll: (clientPoint: { x: number; y: number }) => void;
   containerRef: RefObject<HTMLDivElement | null>;
@@ -92,6 +94,10 @@ export const useCanvasGestureAdapter = ({
     {
       onPinchStart: ({ origin: [ox, oy] }) => {
         if (!capabilities.navigate) return;
+        // A pinch supersedes any queued pan/zoom sample from the previous
+        // pointer sequence. Clear it once at the gesture boundary; individual
+        // pinch samples must remain coalescible until the next animation frame.
+        cancelViewportInteraction();
         const anchor = pointerContext.resolveLocalPoint(ox, oy);
         pinchStartRef.current = anchor
           ? {

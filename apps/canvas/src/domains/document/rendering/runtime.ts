@@ -290,14 +290,15 @@ export class TextRenderingRuntime {
     const profile = this.#profile;
     const themeMode = context.themeMode === "dark" ? "dark" : "light";
     const theme = this.getResolvedTheme(themeMode);
-    const sourceKind: CharDeskSourceKind = profile.mode === "raw"
+    const mode = context.rendererMode ?? profile.mode;
+    const sourceKind: CharDeskSourceKind = mode === "raw"
       ? "plain"
-      : profile.mode === "ansi"
+      : mode === "ansi"
         ? "ansi"
         : "chargraph";
     return compileCharDeskText(source, {
       sourceKind,
-      chargraphMode: profile.mode === "markdown" ? "markdown" : "auto",
+      chargraphMode: mode === "markdown" ? "markdown" : "auto",
       defaultStyle: { color: defaultColor },
       pipelineDefaultStyles: {
         markdown: { color: theme.foreground },
@@ -306,7 +307,7 @@ export class TextRenderingRuntime {
         ...createRegisteredMarkdownOptions(
           profile.features,
           theme,
-          profile.mode === "markdown",
+          mode === "markdown",
           themeMode
         ),
         ...(profile.markdownWrapEnabled ? { proseWrapWidth: profile.markdownWrapWidth } : {}),

@@ -2,6 +2,7 @@ import { Component, type ReactNode } from 'react';
 import { feedback } from '@/shared/services/effects';
 import { useUiI18n } from '@/shared/i18n';
 import { isRecoverableModuleLoadError } from '@/shared/lib/moduleLoadRecovery';
+import { getLocalAgentRuntimeSnapshot, setLocalAgentRuntimeStatus } from '@/shared/services/local-agent';
 
 type RecoverableLazyBoundaryProps = {
   children: ReactNode;
@@ -31,6 +32,12 @@ class LazyBoundary extends Component<
 
   componentDidCatch(error: unknown) {
     if (!isRecoverableModuleLoadError(error)) return;
+    const runtime = getLocalAgentRuntimeSnapshot();
+    setLocalAgentRuntimeStatus({
+      ...runtime,
+      status: 'degraded',
+      moduleFailure: { message: error instanceof Error ? error.message : 'A Canvas interface module failed to load.' },
+    });
     this.props.onError?.();
     feedback.error(this.props.failureLabel, {
       description: this.props.failureDescription,

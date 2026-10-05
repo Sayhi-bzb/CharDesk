@@ -25,3 +25,18 @@ export const resolveCanvasContentDpr = (
     ? Math.min(CANVAS_CONTENT_COARSE_MAX_DPR, normalizedDpr)
     : normalizedDpr;
 };
+
+export const resolveCanvasContentResolutionModeForInteraction = ({
+  zoom,
+  currentMode,
+  isPhone,
+  interactionActive,
+}: {
+  zoom: number;
+  currentMode: CanvasContentResolutionMode;
+  isPhone: boolean;
+  interactionActive: boolean;
+}): CanvasContentResolutionMode =>
+  isPhone && interactionActive
+    ? "coarse"
+    : resolveCanvasContentResolutionMode(zoom, currentMode);

@@ -1,4 +1,9 @@
-export { CanvasRuntime, createCanvasRuntime } from "./runtime";
+export {
+  CanvasPersistenceTimeoutError,
+  CanvasRuntime,
+  createCanvasRuntime,
+} from "./runtime";
+export { CANVAS_PERSISTENCE_FLUSH_TIMEOUT_MS } from "./runtime";
 export {
   readCanvasViewport,
   renderCanvasViewportImage,
@@ -8,10 +13,13 @@ export { searchCanvasSurface, isCanvasSearchQuery, isCanvasSearchPosition, Canva
 export type { CanvasSearchPosition, CanvasSearchMatch, CanvasSearchResult, CanvasSearchOptions } from "./searchSurface";
 export {
   CanvasWriteError,
+  prepareCanvasErase,
+  prepareCanvasPlainTextWrite,
   prepareCanvasRowsWrite,
   prepareCanvasTextWrite,
 } from "./writeText";
 export type {
+  CanvasStrokeStyle,
   CanvasWriteMode,
   CanvasWriteStats,
 } from "./writeText";

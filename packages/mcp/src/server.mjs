@@ -20,6 +20,12 @@ let credentials = await loadCredentials(credentialsFile);
 const pending = new Map();
 let page;
 let pageGrant;
+let pageRuntime;
+const RUNTIME_READY_TIMEOUT = 10_000;
+const DEFAULT_BRIDGE_REQUEST_TIMEOUT = 10_000;
+const CODE_BRIDGE_REQUEST_TIMEOUT = 30_000;
+const MAX_RUNTIME_WAITERS = 128;
+const runtimeWaiters = new Set();
 const tenants = new Map();
 const ownerTenant = { id: 'owner', token: null, socket: null, permissions: { inspect: true, read: true, search: true, write: true }, scope: 'application', pending: new Set() };
 const debug = process.env.CHARDESK_MCP_DEBUG === '1';
@@ -48,11 +54,71 @@ const rejectPending = (tenantId, error) => {
 const closeTenant = (tenantId, reason = 'Tenant disconnected.') => {
   const tenant = tenants.get(tenantId);
   if (!tenant) return;
+  for (const waiter of [...runtimeWaiters]) {
+    if (waiter.tenant?.id === tenantId) waiter.reject(new Error(reason));
+  }
   rejectPending(tenantId, new Error(reason));
   tenants.delete(tenantId);
   if (tenant.socket?.readyState === WebSocket.OPEN) tenant.socket.close(1000, reason);
 };
 const closeAllTenants = (reason) => { for (const tenantId of tenants.keys()) closeTenant(tenantId, reason); };
+const notifyRuntimeWaiters = () => {
+  for (const waiter of [...runtimeWaiters]) waiter.notify();
+};
+
+async function resolveSourceRef(name, input) {
+  if (!['chardesk_canvas_write', 'chardesk_canvas_render'].includes(name) || input?.sourceRef === undefined) return input;
+  if (typeof input.sourceRef !== 'string' || input.sourceRef.length === 0) {
+    throw new Error('sourceRef must be a non-empty local file path.');
+  }
+  const contentKey = name === 'chardesk_canvas_write' ? 'content' : 'source';
+  if (input[contentKey] !== undefined) throw new Error(`Provide either ${contentKey} or sourceRef, not both.`);
+  let content;
+  try {
+    content = await readFile(input.sourceRef, 'utf8');
+  } catch (error) {
+    throw new Error(`Unable to read sourceRef: ${error instanceof Error ? error.message : 'local file read failed'}`);
+  }
+  const { sourceRef: _sourceRef, ...rest } = input;
+  return { ...rest, [contentKey]: content };
+}
+
+function waitForRuntimeReady(tenant = ownerTenant) {
+  if (!page || page.readyState !== WebSocket.OPEN) return Promise.reject(new Error('Canvas page is not connected.'));
+  if (!pageGrant) return Promise.reject(new Error('Canvas authorization is required.'));
+  if (pageRuntime?.status === 'unavailable') return Promise.reject(new Error('Canvas page runtime is unavailable; reload the Canvas page.'));
+  if (pageRuntime && pageRuntime.status !== 'booting') return Promise.resolve(pageRuntime);
+  if (runtimeWaiters.size >= MAX_RUNTIME_WAITERS) return Promise.reject(new Error('Bridge is busy waiting for the Canvas runtime.'));
+  return new Promise((resolve, reject) => {
+    let timer;
+    let entry;
+    const cleanup = () => {
+      if (entry) runtimeWaiters.delete(entry);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+    const fail = (error) => { cleanup(); reject(error); };
+    const waiter = () => {
+      if (!page || page.readyState !== WebSocket.OPEN) {
+        fail(new Error('Canvas page is not connected.')); return;
+      }
+      if (!pageGrant) {
+        fail(new Error('Canvas authorization is required.')); return;
+      }
+      if (pageRuntime?.status === 'unavailable') {
+        fail(new Error('Canvas page runtime is unavailable; reload the Canvas page.')); return;
+      }
+      if (pageRuntime && pageRuntime.status !== 'booting') {
+        cleanup(); resolve(pageRuntime);
+      }
+    };
+    entry = { tenant, notify: waiter, reject: fail };
+    timer = setTimeout(() => {
+      fail(new Error('Canvas page runtime handshake timed out; wait for Canvas to finish loading or reload it.'));
+    }, RUNTIME_READY_TIMEOUT);
+    runtimeWaiters.add(entry);
+    waiter();
+  });
+}
 
 http = createServer(async (request, response) => {
   if (request.method === 'GET' && request.url === '/discover'
@@ -74,6 +140,8 @@ http = createServer(async (request, response) => {
     await unlink(credentialsFile).catch((error) => { if (error.code !== 'ENOENT') throw error; });
     credentials = await loadCredentials(credentialsFile);
     pageGrant = undefined;
+    pageRuntime = undefined;
+    notifyRuntimeWaiters();
     closeAllTenants('Pairing revoked.');
     page?.close(1000, 'Pairing revoked');
     await publishPairing();
@@ -97,6 +165,7 @@ http.on('upgrade', (request, socket, head) => {
 function setupBrowser(client) {
   page = client;
   pageGrant = undefined;
+  pageRuntime = undefined;
   event('browser_connected');
   client.send(JSON.stringify({ method: 'paired', expiresAt: credentials.expiresAt }));
   const expiry = setInterval(() => { if (Date.now() >= credentials.expiresAt) client.close(1000, 'Pairing expired'); }, 60_000);
@@ -110,6 +179,8 @@ function setupBrowser(client) {
           await unlink(credentialsFile).catch((error) => { if (error.code !== 'ENOENT') throw error; });
           credentials = await loadCredentials(credentialsFile);
           pageGrant = undefined;
+          pageRuntime = undefined;
+          notifyRuntimeWaiters();
           closeAllTenants('Pairing revoked.');
           await publishPairing();
           client.close(1000, 'Pairing revoked');
@@ -129,6 +200,26 @@ function setupBrowser(client) {
         pageGrant = { scope: grant.scope, canvasId: grant.canvasId, permissions: { ...permissions } };
         event('browser_authorized', { scope: grant.scope, permissions });
         client.send(JSON.stringify({ method: 'authorized' }));
+        client.send(JSON.stringify({ method: 'runtime_probe' }));
+        return;
+      }
+      if (response.method === 'runtime_status') {
+        const status = response.status;
+        const valid = status && status.protocolVersion === 2
+          && typeof status.buildId === 'string' && status.buildId.length > 0
+          && ['booting', 'ready', 'degraded', 'unavailable'].includes(status.status)
+          && (status.persistence === undefined || ['ready', 'saving', 'error'].includes(status.persistence))
+          && (status.moduleFailure === undefined || (status.moduleFailure && typeof status.moduleFailure.message === 'string'));
+        if (!valid) { client.close(1008, 'Invalid runtime status'); return; }
+        pageRuntime = {
+          protocolVersion: 2,
+          buildId: status.buildId,
+          status: status.status,
+          ...(status.persistence ? { persistence: status.persistence } : {}),
+          ...(status.moduleFailure ? { moduleFailure: status.moduleFailure } : {}),
+        };
+        event('runtime_status', { buildId: pageRuntime.buildId, status: pageRuntime.status, persistence: pageRuntime.persistence });
+        notifyRuntimeWaiters();
         return;
       }
       const request = pending.get(response.id);
@@ -139,7 +230,8 @@ function setupBrowser(client) {
   client.on('close', () => {
     clearInterval(expiry);
     if (page !== client) return;
-    page = undefined; pageGrant = undefined;
+    page = undefined; pageGrant = undefined; pageRuntime = undefined;
+    notifyRuntimeWaiters();
     event('browser_closed', { code: client.closeCode, reason: client.closeReason });
     for (const [id, request] of pending) {
       clearTimeout(request.timer); pending.delete(id); request.tenant.pending.delete(id);
@@ -186,23 +278,31 @@ function setupAgent(client) {
     shutdownIfIdle();
   });
 }
-function forward(name, input, tenant = ownerTenant) {
+async function forward(name, input, tenant = ownerTenant) {
+  input = await resolveSourceRef(name, input);
   if (Date.now() >= credentials.expiresAt) return Promise.reject(new Error('Pairing expired.'));
   if (!page || page.readyState !== WebSocket.OPEN) return Promise.reject(new Error('Canvas page is not connected.'));
   if (!pageGrant) return Promise.reject(new Error('Canvas authorization is required.'));
-  const permission = name.endsWith('_read') ? 'read' : name.endsWith('_search') ? 'search' : name.endsWith('_manage') && input?.action === 'list' ? 'inspect' : 'write';
-  if (!pageGrant.permissions[permission] || !tenant.permissions[permission]) return Promise.reject(new Error(`Permission denied: canvas.${permission}`));
-  if (pageGrant.scope === 'canvas' && input?.canvasId !== undefined && input.canvasId !== pageGrant.canvasId) {
-    return Promise.reject(new Error('Canvas authorization is limited to the paired Canvas.'));
-  }
-  if (tenant.scope === 'canvas' && input?.canvasId !== undefined && input.canvasId !== tenant.scope) return Promise.reject(new Error('Tenant authorization is limited to its paired Canvas.'));
-  if (pending.size >= 128 || tenant.pending.size >= 32 || page.bufferedAmount > 1024 * 1024) return Promise.reject(new Error('Bridge is busy.'));
-  const id = randomUUID(); const message = JSON.stringify({ id, method: 'call', params: { name, input } });
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => { pending.delete(id); tenant.pending.delete(id); reject(new Error('Canvas page timed out.')); }, 10_000);
-    tenant.pending.add(id);
-    pending.set(id, { resolve, reject, timer, tenant });
-    page.send(message, (error) => { if (!error || !pending.delete(id)) return; tenant.pending.delete(id); clearTimeout(timer); reject(error); });
+  return waitForRuntimeReady(tenant).then(() => {
+    if (!pageRuntime || !pageGrant || !page || page.readyState !== WebSocket.OPEN) return Promise.reject(new Error('Canvas page is not connected.'));
+    const permission = name.endsWith('_read') ? 'read' : name.endsWith('_search') ? 'search' : name.endsWith('_manage') && input?.action === 'list' ? 'inspect' : 'write';
+    if (pageRuntime.status === 'degraded' && permission === 'write') {
+      return Promise.reject(new Error('Canvas UI is degraded; reload the Canvas before writing.'));
+    }
+    if (!pageGrant.permissions[permission] || !tenant.permissions[permission]) return Promise.reject(new Error(`Permission denied: canvas.${permission}`));
+    if (pageGrant.scope === 'canvas' && input?.canvasId !== undefined && input.canvasId !== pageGrant.canvasId) {
+      return Promise.reject(new Error('Canvas authorization is limited to the paired Canvas.'));
+    }
+    if (tenant.scope === 'canvas' && input?.canvasId !== undefined && input.canvasId !== tenant.scope) return Promise.reject(new Error('Tenant authorization is limited to its paired Canvas.'));
+    if (pending.size >= 128 || tenant.pending.size >= 32 || page.bufferedAmount > 1024 * 1024) return Promise.reject(new Error('Bridge is busy.'));
+    const id = randomUUID(); const message = JSON.stringify({ id, method: 'call', params: { name, input } });
+    return new Promise((resolve, reject) => {
+      const requestTimeout = name === 'chardesk_canvas_code' ? CODE_BRIDGE_REQUEST_TIMEOUT : DEFAULT_BRIDGE_REQUEST_TIMEOUT;
+      const timer = setTimeout(() => { pending.delete(id); tenant.pending.delete(id); reject(new Error('Canvas page timed out.')); }, requestTimeout);
+      tenant.pending.add(id);
+      pending.set(id, { resolve, reject, timer, tenant });
+      page.send(message, (error) => { if (!error || !pending.delete(id)) return; tenant.pending.delete(id); clearTimeout(timer); reject(error); });
+    });
   });
 }
 const mcp = new Server({ name: 'chardesk-mcp', version: '0.1.0' }, { capabilities: { tools: {} } });

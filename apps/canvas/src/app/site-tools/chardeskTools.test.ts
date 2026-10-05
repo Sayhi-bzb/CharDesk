@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createGridSurfaceReader, type CanvasRuntime } from "@/domains/canvas/public";
 import materials from "../../../../../.agents/skills/chardesk/references/materials.md?raw";
 import { createChardeskMaterialsTool, MATERIALS_READ_TOOL_NAME } from "./materialsTools";
-import { CANVAS_MANAGE_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME } from "./canvasTools";
+import { CANVAS_MANAGE_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_ERASE_TOOL_NAME, CANVAS_FILL_TOOL_NAME, CANVAS_RENDER_TOOL_NAME } from "./canvasTools";
 import { CANVAS_CODE_TOOL_NAME } from "./canvasCode";
 import { createChardeskAgentToolGroups, createChardeskAgentTools } from "./chardeskTools";
 import { createTextRenderingRuntime } from "@/domains/document/public";
@@ -25,10 +25,10 @@ describe("CharDesk agent tools", () => {
     const dependencies = { canvas, rendering };
     const groups = createChardeskAgentToolGroups(dependencies);
     expect(groups.materials.map(({ name }) => name)).toEqual([MATERIALS_READ_TOOL_NAME]);
-    expect(groups.canvas.map(({ name }) => name)).toEqual([CANVAS_MANAGE_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_CODE_TOOL_NAME]);
+    expect(groups.canvas.map(({ name }) => name)).toEqual([CANVAS_MANAGE_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_ERASE_TOOL_NAME, CANVAS_FILL_TOOL_NAME, CANVAS_RENDER_TOOL_NAME, CANVAS_CODE_TOOL_NAME]);
     const names = createChardeskAgentTools(dependencies).map(({ name }) => name);
-    expect(names).toEqual([MATERIALS_READ_TOOL_NAME, CANVAS_MANAGE_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_CODE_TOOL_NAME]);
-    expect(new Set(names).size).toBe(6);
+    expect(names).toEqual([MATERIALS_READ_TOOL_NAME, CANVAS_MANAGE_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_ERASE_TOOL_NAME, CANVAS_FILL_TOOL_NAME, CANVAS_RENDER_TOOL_NAME, CANVAS_CODE_TOOL_NAME]);
+    expect(new Set(names).size).toBe(9);
   });
 
   it("composes read-only pages without a Blackboard runtime", async () => {

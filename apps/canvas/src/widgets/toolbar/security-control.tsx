@@ -11,7 +11,7 @@ import {
   TooltipTrigger,
 } from '@chardesk/ui';
 import { RecoverableLazyBoundary } from '@/shared/components/RecoverableLazyBoundary';
-import { requireLoadedModule } from '@/shared/lib/moduleLoadRecovery';
+import { loadModuleWithRetry, requireLoadedModule } from '@/shared/lib/moduleLoadRecovery';
 import { useCanvasPersistence } from '@/domains/canvas/public';
 import {
   acknowledgeSecurityDisclosure,
@@ -20,7 +20,7 @@ import {
 
 const SecurityIcon = HOST_ICONOLOGY.viewportAction.security;
 const DataSecurityDialog = lazy(() =>
-  import('@/widgets/dialogs/data-security-dialog').then((loaded) => ({
+  loadModuleWithRetry(() => import('@/widgets/dialogs/data-security-dialog')).then((loaded) => ({
     default: requireLoadedModule(loaded).DataSecurityDialog,
   }))
 );

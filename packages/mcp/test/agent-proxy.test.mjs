@@ -46,6 +46,7 @@ test('a second server command joins the existing broker as a tenant', { timeout:
     assert.equal((await nextMessage(page)).method, 'paired');
     page.send(JSON.stringify({ method: 'authorize', grant: { scope: 'application', permissions: { inspect: true, read: true, search: true, write: true } } }));
     assert.equal((await nextMessage(page)).method, 'authorized');
+    page.send(JSON.stringify({ method: 'runtime_status', status: { protocolVersion: 2, buildId: 'test', status: 'ready', persistence: 'ready' } }));
 
     const port = new URL(pairing.bridgeUrl).port;
     const transport = new StdioClientTransport({ command: process.execPath, args: [serverSource], env: { ...env, CHARDESK_MCP_PORT: port } });

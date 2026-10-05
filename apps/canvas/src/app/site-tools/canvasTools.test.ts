@@ -131,7 +131,7 @@ describe("Canvas reading tool", () => {
     expect(tool.readOnly).toBe(true);
     expect(await tool.execute({ viewport: [0, 0, 4, 2] })).toMatchObject({ viewport: [0, 0, 4, 2], mode: "text", overviewOnly: false });
     expect(canvas.materializeSession).toHaveBeenCalledWith("canvas-a");
-    expect(await tool.execute({ viewport: [0, 0, 4, 2] })).toMatchObject({
+    expect(await tool.execute({ viewport: [0, 0, 4, 2], style: "appearance" })).toMatchObject({
       content: expect.stringContaining("y=0 x=0{fg:#000}"),
     });
   });
@@ -140,7 +140,10 @@ describe("Canvas reading tool", () => {
     const canvas = host();
     const tool = createCanvasReadTool(canvas, rendering);
     const text = await tool.execute({ viewport: [0, 0, 4, 2] });
-    expect(text).toMatchObject({ representation: "text", contentBlocks: [{ type: "text" }] });
+    expect(text).toMatchObject({ representation: "text", style: "none", appearance: null, contentBlocks: [{ type: "text" }] });
+    expect((text as { content: string }).content).not.toContain("styles:");
+    const appearance = await tool.execute({ viewport: [0, 0, 4, 2], style: "appearance" });
+    expect(appearance).toMatchObject({ style: "appearance", appearance: { regions: [{ bounds: [0, 0, 1, 1], style: { color: "#000" } }] } });
     const image = await tool.execute({ viewport: [0, 0, 4, 2], representation: "image", detail: "low" });
     expect(image).toMatchObject({ representation: "image", content: "", image: null, contentBlocks: [{ type: "note", text: "Image unavailable; use representation: text." }] });
     const both = await tool.execute({ viewport: [0, 0, 4, 2], representation: "both" });

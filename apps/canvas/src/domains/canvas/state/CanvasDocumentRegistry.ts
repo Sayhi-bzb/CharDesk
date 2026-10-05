@@ -840,6 +840,11 @@ export class CanvasDocumentRegistry {
     if (changed) this.#emitHistory();
     return changed;
   };
+  undoOperation = (operationId: string) => {
+    const changed = this.#historyJournal.undoOperation(operationId);
+    if (changed) this.#emitHistory();
+    return changed;
+  };
   redo = () => {
     const changed = this.#historyJournal.redo(
       this.#historyKey(this.getActiveAddress())
@@ -864,15 +869,19 @@ export class CanvasDocumentRegistry {
     this.#historyJournal.finishCapture(this.#historyKey(this.getActiveAddress()));
   };
 
-  beginHistoryCheckpoint = (): CanvasHistoryCheckpoint => {
-    const document = this.#active;
-    const historyKey = this.#historyKey(this.getActiveAddress());
+  beginHistoryCheckpoint = (operationId?: string, documentId?: string): CanvasHistoryCheckpoint => {
+    const address = documentId ? this.getDocumentAddress(documentId) : this.getActiveAddress();
+    if (!address) throw new Error(`Canvas document not found: ${documentId}`);
+    const document = this.#documents.get(address.documentId)!;
+    const historyKey = this.#historyKey(address);
     document.undoManager.stopCapturing();
     const undoDepth = this.#historyJournal.getUndoDepth(historyKey);
+    if (operationId) this.#historyJournal.beginCapture(historyKey, operationId);
     let settled = false;
     const finish = () => {
       document.undoManager.stopCapturing();
       this.#historyJournal.finishCapture(historyKey);
+      this.#historyJournal.clearCaptureOperation(historyKey);
       if (document === this.#active) this.#emitHistory();
     };
     return {

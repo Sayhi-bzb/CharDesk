@@ -37,6 +37,7 @@ export * from "./spinner.js";
 export * from "./status.js";
 export * from "./stripe-divider.js";
 export * from "./surface.js";
+export * from "./switch.js";
 export * from "./swatch-button.js";
 export * from "./table.js";
 export * from "./tabs.js";

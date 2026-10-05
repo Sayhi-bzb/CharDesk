@@ -27,6 +27,16 @@ view ID. Canvas interaction ports are also registered by view ID; capture-phase
 activation selects the port before the workspace switches session, so the first
 gesture is routed through the same pane that received it.
 
+Continuous viewport input uses the camera interaction queue. Pan, wheel, and
+pinch publish at most one transient viewport per scheduled frame; pinch keeps
+the latest absolute target rather than notifying the live viewport for every
+touch sample. `CanvasRenderActivity` marks the same viewport activity window for
+the renderer. Phone content uses coarse backing DPR during that window and
+returns to the zoom-based full-resolution policy after settling. The queue and
+resolution contracts are covered by
+[`CanvasCameraManager.dom.test.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/widgets/canvas-editor/engine/CanvasCameraManager.dom.test.ts)
+and [`canvasContentResolution.test.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/widgets/canvas-editor/rendering/canvasContentResolution.test.ts).
+
 Canvas interaction is one atomic snapshot scoped by the active Yjs document and
 page address. Session and page activation reset it; metadata-only changes retain
 it. The internal Zustand state owns this snapshot without flat field mirrors.

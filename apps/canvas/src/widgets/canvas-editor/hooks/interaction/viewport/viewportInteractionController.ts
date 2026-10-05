@@ -25,6 +25,7 @@ type ViewportInteractionController = {
   flushOffset: () => void;
   queueZoomDelta: (deltaZoom: number, mouseX: number, mouseY: number) => void;
   flushZoom: () => void;
+  queueViewport: (viewport: CanvasViewportState) => void;
   cancel: () => void;
 };
 
@@ -46,6 +47,8 @@ export const createViewportInteractionController = ({
     anchor: Point;
   }> = [];
   let queuedZoomRaf: number | null = null;
+  let queuedViewport: CanvasViewportState | null = null;
+  let queuedViewportRaf: number | null = null;
 
   const flushOffset = () => {
     if (queuedOffsetRaf !== null) {
@@ -117,6 +120,21 @@ export const createViewportInteractionController = ({
     });
   };
 
+  const queueViewport = (viewport: CanvasViewportState) => {
+    queuedViewport = {
+      offset: { ...viewport.offset },
+      zoom: viewport.zoom,
+    };
+    if (queuedViewportRaf !== null) return;
+    queuedViewportRaf = scheduler.requestAnimationFrame(() => {
+      queuedViewportRaf = null;
+      const next = queuedViewport;
+      queuedViewport = null;
+      if (!next) return;
+      setViewport(() => next);
+    });
+  };
+
   const cancel = () => {
     if (queuedOffsetRaf !== null) {
       scheduler.cancelAnimationFrame(queuedOffsetRaf);
@@ -126,8 +144,13 @@ export const createViewportInteractionController = ({
       scheduler.cancelAnimationFrame(queuedZoomRaf);
       queuedZoomRaf = null;
     }
+    if (queuedViewportRaf !== null) {
+      scheduler.cancelAnimationFrame(queuedViewportRaf);
+      queuedViewportRaf = null;
+    }
     queuedOffset = { x: 0, y: 0 };
     queuedZoom = [];
+    queuedViewport = null;
   };
 
   return {
@@ -135,6 +158,7 @@ export const createViewportInteractionController = ({
     flushOffset,
     queueZoomDelta,
     flushZoom,
+    queueViewport,
     cancel,
   };
 };

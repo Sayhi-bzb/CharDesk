@@ -33,10 +33,26 @@ import {
 } from "./site-tools/environment";
 import { isRetiredBlackboardRoute, isLocalDocumentReaderRoute } from "./documentRoute";
 import { APP_ROUTE_EVENT, isWorkspaceRoute } from "@/shared/navigation/workspace-route";
-import { configureLocalAgent, disconnectLocalAgent, restoreLocalAgent } from "@/shared/services/local-agent";
+import {
+  configureLocalAgent,
+  disconnectLocalAgent,
+  restoreLocalAgent,
+  setLocalAgentRuntimeStatus,
+} from "@/shared/services/local-agent";
 
 const profile = EDITOR_HOST_PROFILE;
 const host = getApplicationEditorHost(profile);
+const buildId = import.meta.env.VITE_BUILD_ID ?? "dev";
+const publishRuntimeStatus = (status: "booting" | "ready" | "degraded" | "unavailable", moduleFailure?: { module?: string; message: string }) => {
+  const persistence = host.canvas.getPersistenceSnapshot();
+  setLocalAgentRuntimeStatus({
+    buildId,
+    status,
+    persistence: persistence.phase === "ready" && persistence.save === "saved" ? "ready" : persistence.save === "error" ? "error" : "saving",
+    ...(moduleFailure ? { moduleFailure } : {}),
+  });
+};
+publishRuntimeStatus("booting");
 const createRouteAgentTools = () => createChardeskAgentTools({
   canvas: host.canvas,
   rendering: {
@@ -61,6 +77,13 @@ configureLocalAgent({
   },
 });
 restoreLocalAgent();
+// The MCP runtime becomes usable when the Canvas host is restored; it does not
+// need to wait for the React view bundle to finish loading. This prevents a
+// healthy tool bridge from remaining in `booting` during a slow UI import.
+void host.canvas.ready.then(
+  () => publishRuntimeStatus("ready"),
+  (error: unknown) => publishRuntimeStatus("unavailable", { message: error instanceof Error ? error.message : "Canvas runtime failed to initialize." }),
+);
 let siteToolsGeneration = 0;
 const syncChardeskSiteTools = async () => {
   const generation = ++siteToolsGeneration;
@@ -317,5 +340,6 @@ void import("./App").then((module) => {
 }).catch((error: unknown) => {
   if (isModuleReloadPending()) return;
   console.error(error);
+  publishRuntimeStatus("unavailable", { message: error instanceof Error ? error.message : "Canvas interface failed to load." });
   renderLoadFailure();
 });

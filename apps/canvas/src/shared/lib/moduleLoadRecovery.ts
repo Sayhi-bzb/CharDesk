@@ -50,6 +50,22 @@ export const requireLoadedModule = <Module,>(module: Module | undefined): Module
   return module;
 };
 
+export async function loadModuleWithRetry<Module>(
+  load: () => Promise<Module>,
+  attempts = 2,
+): Promise<Module> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < Math.max(1, attempts); attempt += 1) {
+    try {
+      return await load();
+    } catch (error) {
+      lastError = error;
+      if (attempt + 1 < Math.max(1, attempts)) await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+  throw lastError;
+}
+
 export const isRecoverableModuleLoadError = (error: unknown) =>
   error instanceof ModuleLoadError ||
   MODULE_LOAD_ERROR_PATTERN.test(errorMessage(error));

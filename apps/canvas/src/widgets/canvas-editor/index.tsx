@@ -21,7 +21,7 @@ import { useCanvasViewOptional } from './engine/CanvasWorkspace';
 import { useCanvasCursor } from '@/shared/canvas-cursor/hooks';
 import { useCanvasAppearance } from '@/shared/canvas-appearance/hooks';
 import { resolveCanvasSurfaceGeometry } from './canvasSurfaceGeometry';
-import type { EditorViewportFrame } from '@/widgets/editor-chrome/public';
+import type { EditorFormFactor, EditorViewportFrame } from '@/widgets/editor-chrome/public';
 import { computeVisibleSurfaceBounds } from './minimap/geometry';
 import {
   filterCanvasContextMenuEntries,
@@ -43,6 +43,7 @@ interface CanvasEditorProps {
   fitContentRevision?: number;
   active?: boolean;
   onActivate?: () => void;
+  formFactor?: EditorFormFactor;
 }
 
 export const CanvasEditor = ({
@@ -54,6 +55,7 @@ export const CanvasEditor = ({
   fitContentRevision = 0,
   active = true,
   onActivate,
+  formFactor = 'desktop',
 }: CanvasEditorProps) => {
   const canvasView = useCanvasViewOptional();
   const canvas = useCanvasRuntime();
@@ -362,7 +364,8 @@ export const CanvasEditor = ({
       cursorPreference,
     },
     requestCanvasRenderRef,
-    runtime
+    runtime,
+    formFactor === 'phone'
   );
 
   const availableContextMenu = useMemo(

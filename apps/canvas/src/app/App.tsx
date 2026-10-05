@@ -75,10 +75,10 @@ import { useRetiredBlackboard } from './useRetiredBlackboard';
 import { getAppActionShortcuts } from '@/domains/actions/public';
 
 import type { CanvasEditorCapabilities } from '@/widgets/canvas-editor/canvasEditorCapabilities';
-import type { EditorViewportFrame } from '@/widgets/editor-chrome/public';
+import type { EditorFormFactor, EditorViewportFrame } from '@/widgets/editor-chrome/public';
 import { useUiI18n } from '@/shared/i18n';
 import { RecoverableLazyBoundary } from '@/shared/components/RecoverableLazyBoundary';
-import { requireLoadedModule } from '@/shared/lib/moduleLoadRecovery';
+import { loadModuleWithRetry, requireLoadedModule } from '@/shared/lib/moduleLoadRecovery';
 import { CanvasStartupBoundary } from './CanvasStartupBoundary';
 import { CanvasAppearanceBridge } from '@/shared/canvas-appearance/react';
 import { useWorkspaceRoute } from '@/shared/navigation/workspace-route';
@@ -87,7 +87,7 @@ import { startCloudSync } from '@/domains/account/public';
 
 
 const SidebarRight = lazy(() =>
-  import('@/widgets/toolbar/sidebar-right').then((loaded) => ({
+  loadModuleWithRetry(() => import('@/widgets/toolbar/sidebar-right')).then((loaded) => ({
     default: requireLoadedModule(loaded).SidebarRight,
   }))
 );
@@ -169,6 +169,7 @@ type CanvasPaneProps = {
   collaborate: boolean;
   split: boolean;
   manageSessions: boolean;
+  formFactor: EditorFormFactor;
 };
 
 function BoundCanvasSessionSelector({
@@ -226,6 +227,7 @@ function CanvasPaneContent({
   capabilities,
   fitContentRevision,
   viewportFrame,
+  formFactor,
   collaborate,
   split,
   manageSessions,
@@ -261,6 +263,7 @@ function CanvasPaneContent({
         active={view.isActive && view.loadState === 'idle'}
         onActivate={view.activate}
         onContainerSizeChange={view.setContainerSize}
+        formFactor={formFactor}
       />
       {view.loadState === 'loading' ? (
         <>
@@ -613,6 +616,7 @@ function AppContent() {
               documentSource.firstFitRevision + retiredWorkspace.firstFitRevision
             }
             viewportFrame={viewportFrame}
+            formFactor={formFactor}
             collaborate={capabilities.collaborate}
             manageSessions={capabilities.manageSessions}
             renderSplit={renderSplit}

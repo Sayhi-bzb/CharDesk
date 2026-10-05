@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { once } from 'node:events';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -43,6 +43,9 @@ test('published server exposes the Canvas bridge over stdio', { timeout: 15000 }
     const listed = await client.listTools();
     assert.deepEqual(listed.tools.map(({ name }) => name), [
       'chardesk_canvas_code',
+      'chardesk_canvas_erase',
+      'chardesk_canvas_fill',
+      'chardesk_canvas_render',
       'chardesk_canvas_manage',
       'chardesk_canvas_read',
       'chardesk_canvas_search',
@@ -65,15 +68,51 @@ test('published server exposes the Canvas bridge over stdio', { timeout: 15000 }
         page.send(JSON.stringify({ id: request.id, result: { ok: true, echoed: request.params } }));
       }
     });
-    const result = await client.callTool({
+    const pendingResult = client.callTool({
       name: 'chardesk_canvas_write',
       arguments: { at: [4, 2], content: 'GPU' },
     });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    page.send(JSON.stringify({ method: 'runtime_status', status: { protocolVersion: 2, buildId: 'test', status: 'ready', persistence: 'ready' } }));
+    const result = await pendingResult;
     assert.equal(result.isError, false);
     assert.deepEqual(result.structuredContent, {
       ok: true,
       echoed: { name: 'chardesk_canvas_write', input: { at: [4, 2], content: 'GPU' } },
     });
+    const sourcePath = join(directory, 'generated.txt');
+    await writeFile(sourcePath, 'script output\nsecond line', 'utf8');
+    const sourced = await client.callTool({
+      name: 'chardesk_canvas_write',
+      arguments: { at: [4, 3], sourceRef: sourcePath },
+    });
+    assert.equal(sourced.isError, false);
+    assert.deepEqual(sourced.structuredContent, {
+      ok: true,
+      echoed: { name: 'chardesk_canvas_write', input: { at: [4, 3], content: 'script output\nsecond line' } },
+    });
+    const rendered = await client.callTool({
+      name: 'chardesk_canvas_render',
+      arguments: { at: [4, 6], sourceRef: sourcePath, format: 'raw' },
+    });
+    assert.equal(rendered.isError, false);
+    assert.deepEqual(rendered.structuredContent, {
+      ok: true,
+      echoed: { name: 'chardesk_canvas_render', input: { at: [4, 6], source: 'script output\nsecond line', format: 'raw' } },
+    });
+    page.send(JSON.stringify({ method: 'runtime_status', status: {
+      protocolVersion: 2,
+      buildId: 'test',
+      status: 'degraded',
+      persistence: 'ready',
+      moduleFailure: { message: 'chunk unavailable' },
+    } }));
+    const degraded = await client.callTool({
+      name: 'chardesk_canvas_write',
+      arguments: { at: [4, 2], content: 'GPU' },
+    });
+    assert.equal(degraded.isError, true);
+    assert.match(degraded.content[0].text, /degraded/i);
   } finally {
     if (page?.readyState === WebSocket.OPEN) {
       const closed = once(page, 'close');

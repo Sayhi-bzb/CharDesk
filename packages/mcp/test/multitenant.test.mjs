@@ -52,6 +52,7 @@ test('one browser page serves multiple isolated Agent tenants', { timeout: 15_00
     assert.equal((await nextMessage(page)).method, 'paired');
     page.send(JSON.stringify({ method: 'authorize', grant: { scope: 'application', permissions: { inspect: true, read: true, search: true, write: true } } }));
     assert.equal((await nextMessage(page)).method, 'authorized');
+    page.send(JSON.stringify({ method: 'runtime_status', status: { protocolVersion: 2, buildId: 'test', status: 'ready', persistence: 'ready' } }));
 
     const openAgent = async () => {
       const agentUrl = new URL(pairing); agentUrl.pathname = '/agent';

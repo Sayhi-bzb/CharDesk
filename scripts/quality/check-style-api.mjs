@@ -132,6 +132,7 @@ const behaviorOwnedComponents = new Set([
   "SelectItem",
   "SelectTrigger",
   "Checkbox",
+  "Switch",
 ]);
 
 const forbiddenBehaviorClass =

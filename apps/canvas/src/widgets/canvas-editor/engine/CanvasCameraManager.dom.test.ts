@@ -73,6 +73,39 @@ describe("CanvasCameraManager", () => {
     expect(viewportWrites).toEqual([{ transient: true }]);
   });
 
+  it("coalesces pinch viewports before notifying viewport listeners", () => {
+    const { camera, getViewport, run, viewportWrites, subscribeViewport } = createHarness();
+    const listener = vi.fn();
+    subscribeViewport(listener);
+
+    camera.queueTransientViewport({ offset: { x: 10, y: 8 }, zoom: 1.2 });
+    camera.queueTransientViewport({ offset: { x: 24, y: 18 }, zoom: 1.5 });
+    expect(getViewport()).toEqual({ offset: { x: 0, y: 0 }, zoom: 1 });
+
+    run(16);
+
+    expect(getViewport()).toEqual({ offset: { x: 24, y: 18 }, zoom: 1.5 });
+    expect(viewportWrites).toEqual([{ transient: true }]);
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a high-frequency pinch burst to one viewport commit per frame", () => {
+    const { camera, run, viewportWrites, subscribeViewport } = createHarness();
+    const listener = vi.fn();
+    subscribeViewport(listener);
+
+    for (let sample = 0; sample < 120; sample += 1) {
+      camera.queueTransientViewport({
+        offset: { x: sample, y: sample * 0.5 },
+        zoom: 1 + sample / 240,
+      });
+    }
+    run(16);
+
+    expect(viewportWrites).toHaveLength(1);
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
   it("renders a queued pan from its updated viewport in the same frame", () => {
     const {
       camera,

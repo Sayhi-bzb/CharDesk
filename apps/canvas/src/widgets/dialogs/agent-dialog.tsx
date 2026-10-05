@@ -1,6 +1,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { Button, Checkbox, Dialog, DialogBody, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle, Label, StatusDot, StatusText } from '@chardesk/ui';
+import { Switch } from '@chardesk/ui';
 import { useUiI18n } from '@/shared/i18n';
 import { forgetLocalAgent, getLocalAgentEnabled, getLocalAgentRevision,
   getRememberedLocalAgent, setLocalAgentEnabled, subscribeLocalAgent,
@@ -42,12 +43,7 @@ export function AgentDialog({ open, onOpenChange }: {
           </div>
           <div role="group" aria-label="Local MCP" className="flex min-h-8 items-center gap-2">
             <span className="mr-auto text-sm">Local MCP</span>
-            <Button type="button" tone={active ? 'primary' : 'neutral'} size="xs" shape="pill" active={active}
-              role="switch" aria-checked={active}
-              aria-label={t('localAgent.toggle')} onClick={toggle}
-              className="shrink-0">
-              <span aria-hidden="true" className={`block size-3.5 rounded-full bg-background transition-transform ${active ? 'translate-x-4' : 'translate-x-0'}`} />
-            </Button>
+            <Switch checked={active} onCheckedChange={toggle} aria-label={t('localAgent.toggle')} />
           </div>
           {!active && <div id="local-agent-settings" className="flex flex-col gap-3">
             <DialogDescription>{t('localAgent.permission')}</DialogDescription>

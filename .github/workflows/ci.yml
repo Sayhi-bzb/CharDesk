@@ -214,6 +214,7 @@ jobs:
       - name: Build affected products
         env:
           VITE_ACCOUNT_API_ENDPOINT: https://sync.chardesk.com
+          VITE_BUILD_ID: ${{ github.sha }}
         run: |
           if [ -n "$VERIFY_BASE" ]; then
             npm run "$VERIFY_SCRIPT" -- --phase build --base "$VERIFY_BASE"
