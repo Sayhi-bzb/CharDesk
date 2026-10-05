@@ -1,5 +1,20 @@
 import type { AgentToolDefinition } from "./contracts.ts";
 
+import { localToolContracts, type LocalMcpToolContract } from "@chardesk/mcp/contracts";
+
+const localContracts = new Map(localToolContracts.map((tool) => [tool.name, tool]));
+const canonicalizeTool = <T extends { name: string }>(tool: T): T => {
+  const contract: LocalMcpToolContract | undefined = localContracts.get(tool.name);
+  if (!contract) throw new Error(`Missing local MCP contract for ${tool.name}`);
+  return {
+    ...tool,
+    title: contract.title,
+    description: contract.description,
+    readOnly: contract.readOnly,
+    inputSchema: contract.inputSchema,
+  } as T;
+};
+
 export const CANVAS_READ_TOOL_NAME = "canvas_read";
 export const CANVAS_WRITE_TOOL_NAME = "canvas_write";
 export const CANVAS_ERASE_TOOL_NAME = "canvas_erase";
@@ -9,7 +24,7 @@ export const CANVAS_SEARCH_TOOL_NAME = "canvas_search";
 export const CANVAS_MANAGE_TOOL_NAME = "canvas_manage";
 export const CANVAS_CODE_TOOL_NAME = "canvas_code";
 
-export const CANVAS_SEARCH_TOOL = {
+const CANVAS_SEARCH_TOOL_RAW = {
   name: CANVAS_SEARCH_TOOL_NAME,
   title: "Search Canvas text",
   description: "Search rendered Scene text at original Cell precision. Pass pageId for a specific Slide page; omit it for the active page. Literal and case-sensitive by default; regex enables RE2 syntax. Returns exact match origins, bounds, and matched content without surrounding context. Does not edit or move the camera.",
@@ -45,7 +60,7 @@ export const CANVAS_SEARCH_TOOL = {
   },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
-export const CANVAS_MANAGE_TOOL = {
+const CANVAS_MANAGE_TOOL_RAW = {
   name: CANVAS_MANAGE_TOOL_NAME,
   title: "Manage Canvases",
   description: "Manage Scene and Slide page lifecycle. Supports Scene list/create/duplicate/rename/archive and Slide page list/create/rename/duplicate/delete/reorder. Each Slide page has a stable pageId and name.",
@@ -79,7 +94,7 @@ export const CANVAS_MANAGE_TOOL = {
   ] },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
-export const CANVAS_READ_TOOL = {
+const CANVAS_READ_TOOL_RAW = {
   name: CANVAS_READ_TOOL_NAME,
   title: "Read Canvas viewport",
   description: "Read the current Scene as a coordinate-labelled Unicode map or an optional image block. Pass pageId for a specific Slide page; omit it for the active page. viewport is [x,y,width,height] in Cell coordinates. This reads the rendered Cell surface, not source files, and does not move the user's camera or edit the document.",
@@ -143,7 +158,7 @@ export const CANVAS_READ_TOOL = {
   },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
-export const CANVAS_WRITE_TOOL = {
+const CANVAS_WRITE_TOOL_RAW = {
   name: CANVAS_WRITE_TOOL_NAME,
   title: "Write Canvas stroke",
   description: "Write one continuous literal-Unicode stroke at [x,y] in the Projection layer. Pass pageId for a specific Slide page; omit it for the active page. Non-whitespace graphemes are written with one optional style and overwrite existing Cells; whitespace is transparent and does not erase. Use canvas_erase to remove Cells, canvas_fill to style existing characters, and canvas_render for Markdown/ANSI/material input. Source-backed Canvases require source-file editing; Slide overflow is rejected without writing.",
@@ -186,7 +201,7 @@ const CANVAS_REGION_STYLE = { type: "object", properties: {
   attrs: { type: "object", properties: { bold: { type: "boolean" }, italic: { type: "boolean" }, underline: { type: "boolean" }, strike: { type: "boolean" }, inverse: { type: "boolean" } }, additionalProperties: false },
 }, additionalProperties: false };
 
-export const CANVAS_ERASE_TOOL = {
+const CANVAS_ERASE_TOOL_RAW = {
   name: CANVAS_ERASE_TOOL_NAME,
   title: "Erase Canvas region",
   description: "Erase Cells in a rectangular Projection region. Erasing is explicit; whitespace in canvas_write never clears existing content.",
@@ -199,7 +214,7 @@ export const CANVAS_ERASE_TOOL = {
   }, required: ["at", "size"], additionalProperties: false },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
-export const CANVAS_FILL_TOOL = {
+const CANVAS_FILL_TOOL_RAW = {
   name: CANVAS_FILL_TOOL_NAME,
   title: "Style Canvas region",
   description: "Apply one style to existing characters in a rectangular Projection region without changing their characters. Empty cells remain empty.",
@@ -213,7 +228,7 @@ export const CANVAS_FILL_TOOL = {
   }, required: ["at", "size", "style"], additionalProperties: false },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
-export const CANVAS_RENDER_TOOL = {
+const CANVAS_RENDER_TOOL_RAW = {
   name: CANVAS_RENDER_TOOL_NAME,
   title: "Render Canvas material",
   description: "Render Markdown, ANSI, or another supported material format with the current Canvas renderer, then place the resulting Projection Cells at [x,y]. Mutation results report persistence=saved|pending|failed|unavailable separately from the applied projection. Use canvas_write for literal Unicode strokes.",
@@ -227,7 +242,7 @@ export const CANVAS_RENDER_TOOL = {
   }, required: ["at", "source"], additionalProperties: false },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
-export const CANVAS_CODE_TOOL = {
+const CANVAS_CODE_TOOL_RAW = {
   name: CANVAS_CODE_TOOL_NAME,
   title: "Run Canvas code",
   description: "Run a bounded JavaScript composition against Scene capabilities. The script receives ordinary-object APIs: canvas.read, canvas.search, canvas.write({at, pageId, content, style}), canvas.erase({at, pageId, size}), canvas.fill({at, pageId, size, style}), canvas.render({at, pageId, source, format}), canvas.manage, canvas.undo, and canvas.clipboard. Do not JSON.stringify inputs or JSON.parse results. preview is the default and does not mutate; apply commits projection edits as one undoable operation and returns an operationId. Mutation results include persistence=saved|pending|failed|unavailable; pending means the projection is applied while durability is still being retried. A single apply targets one Scene. The sandbox has no DOM, network, filesystem, or arbitrary MCP access. Return a JSON-compatible value.",
@@ -257,3 +272,12 @@ export const CANVAS_CODE_TOOL = {
     ],
   },
 } satisfies Omit<AgentToolDefinition, "execute">;
+
+export const CANVAS_SEARCH_TOOL = canonicalizeTool(CANVAS_SEARCH_TOOL_RAW);
+export const CANVAS_MANAGE_TOOL = canonicalizeTool(CANVAS_MANAGE_TOOL_RAW);
+export const CANVAS_READ_TOOL = canonicalizeTool(CANVAS_READ_TOOL_RAW);
+export const CANVAS_WRITE_TOOL = canonicalizeTool(CANVAS_WRITE_TOOL_RAW);
+export const CANVAS_ERASE_TOOL = canonicalizeTool(CANVAS_ERASE_TOOL_RAW);
+export const CANVAS_FILL_TOOL = canonicalizeTool(CANVAS_FILL_TOOL_RAW);
+export const CANVAS_RENDER_TOOL = canonicalizeTool(CANVAS_RENDER_TOOL_RAW);
+export const CANVAS_CODE_TOOL = canonicalizeTool(CANVAS_CODE_TOOL_RAW);

@@ -23,10 +23,13 @@ let status: LocalAgentStatus = 'idle';
 let revision = 0;
 const pairingKey = 'chardesk.local-agent.pairing';
 const enabledKey = 'chardesk.local-agent.enabled';
+const disabledKey = 'chardesk.local-agent.disabled';
 const MAX_AGENT_RESPONSE_BYTES = 900 * 1024;
 const DEFAULT_LOCAL_AGENT_URL = 'ws://127.0.0.1:9494/bridge';
+const DEFAULT_LOCAL_AGENT_DISCOVERY_URL = 'http://127.0.0.1:9494/discover';
 type Pairing = { url: string; scope: string; expiresAt: number; permissions: LocalAgentPermissions };
 let retry: ReturnType<typeof setTimeout> | undefined;
+let discoveryRetry: ReturnType<typeof setTimeout> | undefined;
 let automatic = false;
 let enabled = false;
 let runtimeSnapshot: LocalAgentRuntimeSnapshot = {
@@ -36,6 +39,9 @@ let runtimeSnapshot: LocalAgentRuntimeSnapshot = {
 };
 const readEnabled = () => {
   try { return localStorage.getItem(enabledKey) === 'true'; } catch { return enabled; }
+};
+const readDisabled = () => {
+  try { return localStorage.getItem(disabledKey) === 'true'; } catch { return false; }
 };
 export function getRememberedLocalAgent(): Pairing | null {
   try {
@@ -76,6 +82,25 @@ export const setLocalAgentRuntimeStatus = (next: Omit<LocalAgentRuntimeSnapshot,
 };
 export const configureLocalAgent = (next: LocalAgentPort) => { port = next; enabled = readEnabled(); restoreLocalAgent(); };
 
+export async function discoverLocalAgent(): Promise<boolean> {
+  if (readDisabled() || socket || !port?.scope()) return false;
+  try {
+    const response = await fetch(DEFAULT_LOCAL_AGENT_DISCOVERY_URL, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error(`Local MCP discovery returned ${response.status}`);
+    const discovered = await response.json() as { bridgeUrl?: unknown };
+    if (typeof discovered.bridgeUrl !== 'string') throw new Error('Local MCP discovery returned no bridge URL');
+    const saved = getRememberedLocalAgent();
+    connectLocalAgent(discovered.bridgeUrl, true, saved?.permissions ?? DEFAULT_LOCAL_AGENT_PERMISSIONS, saved?.scope);
+    return true;
+  } catch {
+    if (!readDisabled() && !socket) {
+      clearTimeout(discoveryRetry);
+      discoveryRetry = setTimeout(() => { void discoverLocalAgent(); }, 5_000);
+    }
+    return false;
+  }
+}
+
 export function restoreLocalAgent() {
   const saved = getRememberedLocalAgent();
   const currentScope = port?.scope();
@@ -89,6 +114,7 @@ export function restoreLocalAgent() {
 export function forgetLocalAgent() {
   try { localStorage.removeItem(pairingKey); } catch { /* No stored pairing to remove. */ }
   enabled = false;
+  try { localStorage.setItem(disabledKey, 'true'); } catch { /* Storage may be unavailable. */ }
   try { localStorage.removeItem(enabledKey); } catch { /* Storage may be unavailable. */ }
   if (socket?.readyState === WebSocket.OPEN) {
     try { socket.send(JSON.stringify({ method: 'revoke' })); } catch { /* The bridge may already be closing. */ }
@@ -99,6 +125,7 @@ export function forgetLocalAgent() {
 export const disconnectLocalAgent = () => {
   automatic = false;
   clearTimeout(retry);
+  clearTimeout(discoveryRetry);
   const previous = socket;
   socket = undefined;
   previous?.close(1000, 'Disconnected by page');
@@ -108,8 +135,13 @@ export const disconnectLocalAgent = () => {
 export const setLocalAgentEnabled = (next: boolean, grant = DEFAULT_LOCAL_AGENT_PERMISSIONS) => {
   enabled = next;
   try {
-    if (next) localStorage.setItem(enabledKey, 'true');
-    else localStorage.removeItem(enabledKey);
+    if (next) {
+      localStorage.setItem(enabledKey, 'true');
+      localStorage.removeItem(disabledKey);
+    } else {
+      localStorage.removeItem(enabledKey);
+      localStorage.setItem(disabledKey, 'true');
+    }
   } catch { /* Storage may be unavailable; the in-memory switch still applies. */ }
   if (!next) { disconnectLocalAgent(); return; }
   const saved = getRememberedLocalAgent();

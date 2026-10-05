@@ -7,6 +7,17 @@ import { CANVAS_MANAGE_TOOL_NAME, CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME,
 import { CANVAS_CODE_TOOL_NAME } from "./canvasCode";
 import { createChardeskAgentToolGroups, createChardeskAgentTools } from "./chardeskTools";
 import { createTextRenderingRuntime } from "@/domains/document/public";
+import { localToolContracts } from "@chardesk/mcp/contracts";
+import {
+  CANVAS_CODE_TOOL,
+  CANVAS_ERASE_TOOL,
+  CANVAS_FILL_TOOL,
+  CANVAS_MANAGE_TOOL,
+  CANVAS_READ_TOOL,
+  CANVAS_RENDER_TOOL,
+  CANVAS_SEARCH_TOOL,
+  CANVAS_WRITE_TOOL,
+} from "./canvasToolDefinitions";
 const runtime = createTextRenderingRuntime();
 const rendering = { render: runtime.renderCompact, getProfile: runtime.getProfile, getContext: () => ({ themeMode: "light" as const }) };
 
@@ -21,6 +32,28 @@ const canvas = {
 };
 
 describe("CharDesk agent tools", () => {
+  it("uses the local MCP contracts for browser-hosted Canvas tools", () => {
+    const browserTools = [
+      CANVAS_CODE_TOOL,
+      CANVAS_ERASE_TOOL,
+      CANVAS_FILL_TOOL,
+      CANVAS_MANAGE_TOOL,
+      CANVAS_READ_TOOL,
+      CANVAS_RENDER_TOOL,
+      CANVAS_SEARCH_TOOL,
+      CANVAS_WRITE_TOOL,
+    ];
+    const contracts = new Map(localToolContracts.map((tool) => [tool.name, tool]));
+    for (const tool of browserTools) {
+      const contract = contracts.get(tool.name);
+      expect(contract).toBeDefined();
+      expect(tool.title).toBe(contract?.title);
+      expect(tool.description).toBe(contract?.description);
+      expect(tool.readOnly).toBe(contract?.readOnly);
+      expect(tool.inputSchema).toEqual(contract?.inputSchema);
+    }
+  });
+
   it("groups read, search, and write as spatial Canvas capabilities", () => {
     const dependencies = { canvas, rendering };
     const groups = createChardeskAgentToolGroups(dependencies);

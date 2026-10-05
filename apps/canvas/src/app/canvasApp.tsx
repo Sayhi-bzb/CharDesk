@@ -36,6 +36,7 @@ import { APP_ROUTE_EVENT, isWorkspaceRoute } from "@/shared/navigation/workspace
 import {
   configureLocalAgent,
   disconnectLocalAgent,
+  discoverLocalAgent,
   restoreLocalAgent,
   setLocalAgentRuntimeStatus,
 } from "@/shared/services/local-agent";
@@ -92,6 +93,7 @@ configureLocalAgent({
   },
 });
 restoreLocalAgent();
+void discoverLocalAgent();
 // The persistence subscription above is the source of truth. `ready` may
 // resolve after background durability work, and a failed restore resolves into
 // temporary/degraded mode rather than rejecting, so it is not a reliable

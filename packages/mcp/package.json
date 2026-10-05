@@ -6,6 +6,9 @@
   "bin": {
     "chardesk-mcp": "bin/chardesk-mcp.mjs"
   },
+  "exports": {
+    "./contracts": "./src/tools.mjs"
+  },
   "files": ["bin", "src", "README.md"],
   "scripts": {
     "dev": "node --watch src/server.mjs",

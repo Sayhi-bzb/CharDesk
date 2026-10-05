@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
@@ -25,6 +26,9 @@ let http;
 let shutdownIfIdle = () => undefined;
 const DEFAULT_BRIDGE_REQUEST_TIMEOUT = 10_000;
 const CODE_BRIDGE_REQUEST_TIMEOUT = 30_000;
+const canvasUrl = process.env.CHARDESK_CANVAS_URL || 'https://canvas.chardesk.com';
+const autoOpenCanvas = process.env.CHARDESK_MCP_OPEN_CANVAS !== '0';
+let canvasOpenAttempted = false;
 const debug = process.env.CHARDESK_MCP_DEBUG === '1';
 const event = (name, details = {}) => { if (debug) console.error(JSON.stringify({ event: `mcp.${name}`, at: new Date().toISOString(), ...details })); };
 const sockets = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
@@ -36,6 +40,17 @@ const permissionFor = (name, input) => name.endsWith('_read') ? 'read' : name.en
 const rejectClientPending = (clientId, error) => { for (const [id, request] of pending) { if (request.client?.id !== clientId) continue; clearTimeout(request.timer); pending.delete(id); request.client.pending.delete(id); request.reject(error); } };
 const closeClient = (clientId, reason = 'Client disconnected.') => { const client = clients.get(clientId); if (!client) return; rejectClientPending(clientId, new Error(reason)); clients.delete(clientId); if (client.socket?.readyState === WebSocket.OPEN) client.socket.close(1000, reason); };
 const closeAllClients = (reason) => { for (const id of clients.keys()) closeClient(id, reason); };
+const openCanvas = () => {
+  if (!autoOpenCanvas || canvasOpenAttempted) return false;
+  canvasOpenAttempted = true;
+  try {
+    const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd' : 'xdg-open';
+    const args = process.platform === 'win32' ? ['/c', 'start', '', canvasUrl] : [canvasUrl];
+    const child = spawn(command, args, { detached: true, stdio: 'ignore', windowsHide: true });
+    child.unref();
+    return true;
+  } catch { return false; }
+};
 
 async function resolveSourceRef(name, input) {
   if (!['canvas_write', 'canvas_render'].includes(name) || input?.sourceRef === undefined) return input;
@@ -119,7 +134,12 @@ function setupClient(socket) {
 async function forward(name, input, client) {
   input = await resolveSourceRef(name, input);
   if (Date.now() >= credentials.expiresAt) throw new Error('Pairing expired.');
-  if (!page || page.readyState !== WebSocket.OPEN) throw new Error('Canvas page is not connected.');
+  if (!page || page.readyState !== WebSocket.OPEN) {
+    const opened = openCanvas();
+    throw new Error(opened
+      ? `Canvas page is not connected. Opened ${canvasUrl}; retry the Canvas tool after the page loads.`
+      : `Canvas page is not connected. Open ${canvasUrl} and retry.`);
+  }
   if (!pageGrant) throw new Error('Canvas page is not authorized.');
   const permission = permissionFor(name, input);
   if (!pageGrant.permissions[permission] || !client.permissions[permission]) throw new Error(`Permission denied: canvas.${permission}`);

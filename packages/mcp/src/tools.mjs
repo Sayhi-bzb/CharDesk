@@ -1,4 +1,4 @@
-export const tools = [
+const localToolContracts = [
   {
     name: 'canvas_code', title: 'Run Canvas code', readOnly: false,
     description: 'Run a bounded JavaScript composition against Scene capabilities. The script receives ordinary-object APIs: canvas.read, canvas.search, canvas.write({at, pageId, content, style}), canvas.erase({at, pageId, size}), canvas.fill({at, pageId, size, style}), canvas.render({at, pageId, source, format}), canvas.manage, canvas.undo, and clipboard. preview is the default and does not mutate; apply commits projection edits as one undoable operation. Mutation results include persistence=saved|pending|failed|unavailable; pending means the projection is applied while durability is still being retried. No DOM, network, filesystem, or arbitrary MCP access.',
@@ -80,6 +80,15 @@ export const tools = [
       style: { type: 'object' },
     }, required: ['at'], additionalProperties: false },
   },
-].map(({ readOnly, ...tool }) => ({ ...tool, annotations: { readOnlyHint: readOnly } }));
+];
+
+// Exported separately so browser hosts can consume the exact same names,
+// descriptions, and input schemas without importing the MCP runtime.
+export { localToolContracts };
+
+export const tools = localToolContracts.map(({ readOnly, ...tool }) => ({
+  ...tool,
+  annotations: { readOnlyHint: readOnly },
+}));
 
 export const toolNames = new Set(tools.map(({ name }) => name));

@@ -10,9 +10,10 @@ is optional: full-access local MCP can target the short persistent ID returned b
 omitted from `list` by default; pass `includeArchived: true` when archived
 pages are explicitly needed. Omitted input reads that active Canvas; use the
 full `canvases` list only for explicit cross-Canvas work.
-The local bridge must be authorized in Agent → Local MCP; inspect, read, search,
-and write are independent grants, and a legacy Canvas-scoped pairing remains
-restricted to its original Canvas.
+The local bridge is discovered and connected automatically when the Canvas page
+and Agent are running. Agent → Local MCP controls inspect, read, search, and
+write grants; a legacy Canvas-scoped pairing remains restricted to its original
+Canvas.
 It belongs to the spatial Canvas group in the [WebMCP contract](/development/architecture/webmcp).
 It reads the Cell surface without changing the user's camera, selection, or document.
 Freeform and local document previews use their current projection; Slides use the current page.

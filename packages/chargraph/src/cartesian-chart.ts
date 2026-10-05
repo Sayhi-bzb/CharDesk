@@ -127,6 +127,13 @@ const write = (
     if (canvas[column]?.[y] !== undefined) {
       canvas[column]![y] = grapheme;
       roles[column]![y] = role;
+      const width = getGraphemeCellWidth(grapheme);
+      for (let offset = 1; offset < width; offset += 1) {
+        if (canvas[column + offset]?.[y] !== undefined) {
+          canvas[column + offset]![y] = "";
+          roles[column + offset]![y] = role;
+        }
+      }
     }
     column += getGraphemeCellWidth(grapheme);
   }
@@ -309,9 +316,12 @@ const renderHorizontalBarChartSurface = (
   const tickGap = Math.max(1, Math.round(WIDTH / domainTickIntervals));
   const plotWidth = Math.ceil(tickGap * domainTickIntervals) + 1;
   const categoryScores = new Map<string, number>();
+  const categoryRoles = new Map<string, MermaidStyleRole>();
   spec.series.flatMap((series) => series.points).forEach((point) => {
     const category = String(point.x);
     categoryScores.set(category, Math.max(categoryScores.get(category) ?? -Infinity, point.y));
+    const seriesIndex = spec.series.findIndex((candidate) => candidate.points.includes(point));
+    categoryRoles.set(category, SERIES_ROLES[seriesIndex % SERIES_ROLES.length]!);
   });
   const categories = [...categoryScores.keys()];
   if (spec.categorySort) {
@@ -322,25 +332,34 @@ const renderHorizontalBarChartSurface = (
   }
   const titleRows = spec.title ? 2 : 0;
   const named = spec.legend === false ? [] : spec.series.filter((series) => series.name);
-  const legendRows = named.length > 0 ? 1 : 0;
+  const horizontalLegend = spec.orientation === "horizontal" ? categories : [];
+  const legendRows = horizontalLegend.length > 0 || named.length > 0 ? 1 : 0;
   const top = titleRows + legendRows;
-  const plotHeight = Math.max(1, categories.length * 2 - 1);
+  const plotHeight = Math.max(1, categories.length);
   const axisRow = top + plotHeight;
-  const labels = categories.map((category) => category);
+  const labels = categories;
   const left = Math.max(4, ...labels.map(displayWidth)) + 2;
   const plotRight = left + plotWidth - 1;
   const totalWidth = plotRight + 2;
   const totalHeight = axisRow + 2 + (spec.y.title ? 1 : 0);
   const canvas = matrix(totalWidth, totalHeight, " ");
   const roles = matrix<MermaidStyleRole | null>(totalWidth, totalHeight, null);
-  const bandY = scaleBand(categories, [top, top + plotHeight]).padding(0.2);
+  const bandY = scaleBand(categories, [top, top + plotHeight]).padding(0);
   xScale.range([0, plotWidth - 1]);
   const projectX = (value: number) => left + xScale(value);
 
   if (spec.title) {
     write(canvas, roles, Math.max(0, Math.floor((totalWidth - spec.title.length) / 2)), 0, spec.title, "title");
   }
-  if (named.length > 0) {
+  if (horizontalLegend.length > 0) {
+    let x = left;
+    horizontalLegend.forEach((category) => {
+      const role = categoryRoles.get(category) ?? "series.1";
+      write(canvas, roles, x, titleRows, "●", role);
+      write(canvas, roles, x + 2, titleRows, ` ${category}`, "chart.label");
+      x += displayWidth(`● ${category}`) + 3;
+    });
+  } else if (named.length > 0) {
     let x = left;
     named.forEach((series) => {
       const index = spec.series.indexOf(series);
@@ -351,13 +370,12 @@ const renderHorizontalBarChartSurface = (
   }
   for (const tick of xTicks) {
     const x = Math.round(projectX(tick));
-    for (let y = top; y < axisRow; y += 1) put(canvas, roles, x, y, "·", "chart.grid");
     put(canvas, roles, x, axisRow, "┴", "chart.axis");
     const label = formatTick(tick);
     write(canvas, roles, x - Math.floor(label.length / 2), axisRow + 1, label, "chart.label");
   }
   for (const category of categories) {
-    const row = Math.round((bandY(category) ?? top) + bandY.bandwidth() / 2);
+    const row = Math.floor((bandY(category) ?? top) + bandY.bandwidth() / 2);
     write(canvas, roles, left - displayWidth(category) - 2, row, category, "chart.label");
     put(canvas, roles, left - 1, row, "│", "chart.axis");
   }
@@ -371,7 +389,7 @@ const renderHorizontalBarChartSurface = (
     const width = Math.max(1, Math.floor((bandY.bandwidth() || 1) / Math.max(1, spec.series.length)));
     series.points.forEach((point) => {
       if (!Number.isFinite(point.y)) return;
-      const row = Math.round((bandY(String(point.x)) ?? top) + bandY.bandwidth() / 2);
+      const row = Math.floor((bandY(String(point.x)) ?? top) + bandY.bandwidth() / 2);
       const from = Math.round(Math.min(projectX(0), projectX(point.y)));
       const to = Math.round(Math.max(projectX(0), projectX(point.y)));
       for (let x = from; x <= to; x += 1) {

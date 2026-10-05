@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { configureLocalAgent, connectLocalAgent, disconnectLocalAgent,
-  getLocalAgentStatus, getRememberedLocalAgent, restoreLocalAgent, forgetLocalAgent } from './local-agent';
+  discoverLocalAgent, getLocalAgentStatus, getRememberedLocalAgent, restoreLocalAgent, forgetLocalAgent } from './local-agent';
 
 class Socket {
   static OPEN = 1;
@@ -39,6 +39,15 @@ describe('local agent page connection', () => {
     expect(Socket.instances).toHaveLength(0);
     scope = null;
     expect(() => connectLocalAgent(url)).toThrow('Open a Canvas first');
+  });
+
+  it('discovers a running local MCP bridge without a pairing URL', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ bridgeUrl: url }) })));
+    expect(await discoverLocalAgent()).toBe(true);
+    expect(Socket.instances).toHaveLength(1);
+    Socket.instances[0].open();
+    Socket.instances[0].receive({ method: 'paired', expiresAt: Date.now() + 60_000 });
+    expect(Socket.instances[0].send).toHaveBeenCalledWith(expect.stringContaining('"method":"authorize"'));
   });
 
   it('serializes commands and returns cached duplicate results without repeating a write', async () => {

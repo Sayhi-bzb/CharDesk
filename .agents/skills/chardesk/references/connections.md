@@ -24,15 +24,22 @@ See the [Chrome WebMCP documentation](https://developer.chrome.com/docs/ai/webmc
 
 ## Local MCP
 
-Start the local bridge:
+Add CharDesk MCP to the Agent once:
 
 ```sh
-npx -y @chardesk/mcp server
-npx -y @chardesk/mcp pair
+npx -y @chardesk/mcp
 ```
 
-In Canvas, open `Agent → Local MCP` and turn on the connection switch. Grant only the
-permissions required by the task: `inspect`, `read`, `search`, and `write`.
+The Agent starts the local bridge on every launch. When a Canvas page is open it
+discovers the bridge on loopback and connects automatically. The Agent → Local
+MCP panel is only for checking status, changing permissions, or opting out.
+Grant only the permissions required by the task: `inspect`, `read`, `search`,
+and `write`.
+
+If a Canvas tool is called before a page is open, the broker opens the default
+Canvas URL once and returns a retryable connection message. Set
+`CHARDESK_CANVAS_URL` to use another Canvas URL, or
+`CHARDESK_MCP_OPEN_CANVAS=0` to disable automatic opening.
 Application-scoped pairing can target any Canvas with its short persistent
 `canvasId`; a Canvas-scoped pairing is limited to the paired Canvas.
 
@@ -43,7 +50,7 @@ pairings after 30 days. Revoke an active pairing with:
 npx -y @chardesk/mcp revoke
 ```
 
-If a connection is unavailable, retry discovery once after the required
-permission, flag, or browser restart. If it remains unavailable, use the CLI
-only when the requested target is an existing local source; otherwise report
-the connection limit rather than substituting another workspace.
+If a connection is unavailable, leave the Canvas open while the Agent starts;
+the page retries local discovery automatically. Use the CLI only when the
+requested target is an existing local source; otherwise report the connection
+limit rather than substituting another workspace.

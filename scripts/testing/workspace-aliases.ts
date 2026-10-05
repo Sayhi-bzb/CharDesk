@@ -10,6 +10,7 @@ export const workspaceAliases = [
   { find: /^@chardesk\/keyboard\/browser$/, replacement: source('packages/keyboard/src/browser.ts') },
   { find: /^@chardesk\/keyboard$/, replacement: source('packages/keyboard/src/index.ts') },
   { find: /^@chardesk\/collaboration-protocol$/, replacement: source('packages/collaboration-protocol/src/index.ts') },
+  { find: /^@chardesk\/mcp\/contracts$/, replacement: source('packages/mcp/src/tools.mjs') },
   { find: /^@chardesk\/chargraph\/examples$/, replacement: source('packages/chargraph/src/examples.ts') },
   { find: /^@chardesk\/chargraph\/markdown$/, replacement: source('packages/chargraph/src/markdown-default.ts') },
   { find: /^@chardesk\/chargraph\/mermaid$/, replacement: source('packages/chargraph/src/mermaid.ts') },

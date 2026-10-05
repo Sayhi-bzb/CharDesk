@@ -2,6 +2,14 @@
 
 Local MCP bridge for a CharDesk Canvas.
 
+## Contract ownership
+
+`src/tools.mjs` is the canonical Canvas tool contract. It is exported as
+`@chardesk/mcp/contracts` for browser hosts, which may attach an execution
+adapter and richer output schemas without redefining names, descriptions, or
+input schemas. `sourceRef` is a local-bridge extension resolved by this package
+before forwarding; browser hosts do not read local file paths.
+
 The MCP server runs as a local stdio process and forwards Canvas management, read,
 search, and write calls over a loopback WebSocket to one explicitly paired
 browser page. Multiple MCP processes can share that page as independent clients;
@@ -14,11 +22,18 @@ The manage list action omits archived Canvases by default; pass
 `includeArchived: true` only when archived pages are explicitly needed. It does
 not store documents or relay Canvas content through a server.
 
-Coding agents start it with:
+Coding agents start it automatically when configured with:
 
 ```sh
-npx -y @chardesk/mcp server
+npx -y @chardesk/mcp
 ```
+
+The browser Canvas discovers the local bridge automatically when it is open.
+There is no manual pairing step in the normal workflow.
+If a Canvas tool is called before a page is open, the broker opens the default
+Canvas URL once and returns a retryable connection message. Set
+`CHARDESK_CANVAS_URL` to use another Canvas URL, or
+`CHARDESK_MCP_OPEN_CANVAS=0` to disable automatic opening.
 
 For local MCP development, use the watcher from the repository root:
 
@@ -30,7 +45,7 @@ This restarts the local Node bridge when `packages/mcp/src` changes. It is a
 development command; normal agent configuration should continue to use the
 stable `server` command.
 
-After the agent starts the server, print the private pairing URL with:
+Advanced clients can print the private pairing URL with:
 
 ```sh
 npx -y @chardesk/mcp pair
@@ -40,10 +55,10 @@ When another coding agent starts `server` on the same machine, it detects the
 existing bridge and joins it as a client automatically. Client requests are
 matched by request ID and forwarded through the shared browser page.
 
-The browser can now connect through the fixed loopback bridge without exposing
-the URL token: open **Agent → Local MCP** and turn on the connection switch. The
-URL form remains available to legacy/manual clients. Credentials are stored under the user
-configuration directory and expire after 30 days. Revoke with:
+The browser connects through the fixed loopback bridge without exposing the URL
+token. **Agent → Local MCP** is a status and permission panel; the URL form
+remains available to legacy/manual clients. Credentials are stored under the
+user configuration directory and expire after 30 days. Revoke with:
 
 ```sh
 npx -y @chardesk/mcp revoke
