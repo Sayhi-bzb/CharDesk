@@ -20,7 +20,7 @@ class Socket {
 const url = `ws://127.0.0.1:9494/bridge?token=${'a'.repeat(64)}`;
 describe('local agent page connection', () => {
   let scope: string | null;
-  const execute = vi.fn(async () => ({ canvasId: 'canvas-a', bounds: [0, 0, 1, 1] }));
+  const execute = vi.fn(async (_name = '') => ({ canvasId: 'canvas-a', bounds: [0, 0, 1, 1] }));
   beforeEach(() => {
     localStorage.clear();
     scope = 'canvas-a';
@@ -56,6 +56,27 @@ describe('local agent page connection', () => {
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(3));
     expect(execute).toHaveBeenCalledTimes(1);
     expect(JSON.parse(socket.send.mock.calls[2][0]).error).toContain('different input');
+  });
+
+  it('runs read requests concurrently while writes wait for the read barrier', async () => {
+    let releaseReads: () => void = () => undefined;
+    const reads = new Promise<void>((resolve) => { releaseReads = resolve; });
+    execute.mockImplementation(async (name) => {
+      if (name === 'canvas_read') await reads;
+      return { canvasId: 'canvas-a', bounds: [0, 0, 1, 1] };
+    });
+    connectLocalAgent(url);
+    const socket = Socket.instances[0];
+    socket.open();
+    socket.receive({ id: 'read-a', method: 'call', params: { name: 'canvas_read', input: {} } });
+    socket.receive({ id: 'read-b', method: 'call', params: { name: 'canvas_read', input: {} } });
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(2));
+    socket.receive({ id: 'write', method: 'call', params: { name: 'canvas_write', input: { at: [0, 0], content: 'A' } } });
+    await Promise.resolve();
+    expect(execute).toHaveBeenCalledTimes(2);
+    releaseReads();
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(3));
+    expect(execute).toHaveBeenLastCalledWith('canvas_write', { at: [0, 0], content: 'A' });
   });
 
   it('refuses non-Canvas commands and disconnects when the target Canvas changes', async () => {

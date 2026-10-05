@@ -168,7 +168,44 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
       }
     }
   };
-  let queue = Promise.resolve();
+  let writeTail = Promise.resolve();
+  let queuedWriters = 0;
+  let activeReaders = 0;
+  let readDrain = Promise.resolve();
+  let resolveReadDrain: () => void = () => undefined;
+  const readOnlyRequest = (data: string) => {
+    try {
+      const request = JSON.parse(data) as { method?: unknown; params?: { name?: unknown; input?: { action?: unknown } } };
+      if (request.method !== 'call') return false;
+      const name = String(request.params?.name ?? '');
+      return name === 'canvas_read' || name === 'canvas_search'
+        || (name === 'canvas_manage' && ['list', 'list_pages'].includes(String(request.params?.input?.action ?? '')));
+    } catch { return false; }
+  };
+  const withReadLock = async <T>(task: () => Promise<T>) => {
+    while (queuedWriters > 0) await writeTail;
+    if (activeReaders === 0) readDrain = new Promise((resolve) => { resolveReadDrain = resolve; });
+    activeReaders += 1;
+    try { return await task(); }
+    finally {
+      activeReaders -= 1;
+      if (activeReaders === 0) { resolveReadDrain(); resolveReadDrain = () => undefined; }
+    }
+  };
+  const withWriteLock = async <T>(task: () => Promise<T>) => {
+    queuedWriters += 1;
+    const previous = writeTail;
+    let release: () => void = () => undefined;
+    writeTail = new Promise((resolve) => { release = resolve; });
+    await previous;
+    try {
+      if (activeReaders > 0) await readDrain;
+      return await task();
+    } finally {
+      queuedWriters -= 1;
+      release();
+    }
+  };
   const completed = new Map<string, { request: string; response: string }>();
   connection.onmessage = ({ data }: MessageEvent<unknown>) => {
     if (typeof data !== 'string' || new TextEncoder().encode(data).byteLength > 1024 * 1024) {
@@ -218,7 +255,8 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
       // A requested persistent pairing must not silently become temporary.
       if (remember) { automatic = false; connection.close(); publish('error'); return; }
     }
-    queue = queue.then(async () => {
+    const schedule = readOnlyRequest(data) ? withReadLock : withWriteLock;
+    void schedule(async () => {
       if (socket !== connection || connection.readyState !== WebSocket.OPEN) return;
       const currentScope = scope === 'application' ? activePort.scope() : (activePort.canvasId?.() ?? activePort.scope());
       if (currentScope !== scope) { disconnectLocalAgent(); return; }

@@ -144,4 +144,31 @@ describe("Cartesian charts", () => {
     expect(unsupported.diagnostics[0]?.code).toBe("markdown-chart-render-failed");
     expect(getCharGraphText(unsupported)).toContain("```vega-lite");
   });
+
+  it("renders horizontal Vega-Lite bar charts with a quantitative x field", async () => {
+    const rendered = await renderMarkdown(`\`\`\`vega-lite
+${JSON.stringify({
+      title: "SpaceX IPO 规模对比（$B）",
+      data: { values: [
+        { name: "IPO 募资", value: 85.7 },
+        { name: "隐含估值", value: 1770 },
+        { name: "2025 年收入", value: 18.67 },
+        { name: "2025 年净亏损", value: 4.94 },
+      ] },
+      mark: { type: "bar", cornerRadiusEnd: 4 },
+      encoding: {
+        y: { field: "name", type: "nominal", sort: "-x" },
+        x: { field: "value", type: "quantitative", title: "$B", scale: { zero: true } },
+      },
+    })}
+\`\`\``);
+
+    const text = getCharGraphText(rendered);
+    const compact = text.replace(/\s+/g, "");
+    expect(rendered.diagnostics).toEqual([]);
+    expect(compact).toContain("IPO募资");
+    expect(compact).toContain("隐含估值");
+    expect(compact.indexOf("隐含估值")).toBeLessThan(compact.indexOf("IPO募资"));
+    expect(text).toContain("█");
+  });
 });

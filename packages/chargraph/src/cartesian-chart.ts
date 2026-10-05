@@ -11,6 +11,7 @@ export type CartesianChartAxis = {
   scale: "linear" | "band";
   title?: string;
   domain?: [number, number];
+  zero?: boolean;
 };
 export type CartesianChartPoint = {
   x: ChartValue;
@@ -26,6 +27,9 @@ export type CartesianChartSeries = {
 };
 export type CartesianChartSpec = {
   title?: string;
+  orientation?: "horizontal";
+  categorySort?: "ascending" | "descending";
+  legend?: boolean;
   x: CartesianChartAxis;
   y: CartesianChartAxis;
   series: CartesianChartSeries[];
@@ -76,6 +80,9 @@ const formatTick = (value: number) => Number.isInteger(value)
   ? String(value)
   : Number(value.toPrecision(4)).toString();
 
+const displayWidth = (text: string) => splitGraphemes(text)
+  .reduce((width, grapheme) => width + getGraphemeCellWidth(grapheme), 0);
+
 const valueDomain = (spec: CartesianChartSpec): [number, number] => {
   if (spec.y.domain) return spec.y.domain;
   const values = spec.series.flatMap((series) => series.points.flatMap((point) => [
@@ -87,6 +94,10 @@ const valueDomain = (spec: CartesianChartSpec): [number, number] => {
   const min = Math.min(...values);
   const max = Math.max(...values);
   if (!Number.isFinite(min) || !Number.isFinite(max)) return [0, 1];
+  if (spec.y.zero) {
+    if (min >= 0) return [0, max === 0 ? 1 : max];
+    if (max <= 0) return [min === 0 ? -1 : min, 0];
+  }
   if (min === max) return [min - 0.5, max + 0.5];
   const pad = (max - min) * 0.05;
   return [min - pad, max + pad];
@@ -155,7 +166,7 @@ const drawLine = (
   }
 };
 
-export const renderCartesianChartSurface = (
+const renderVerticalCartesianChartSurface = (
   spec: CartesianChartSpec
 ): AsciiRenderSurface => {
   const yScale = scaleLinear().domain(valueDomain(spec));
@@ -174,7 +185,7 @@ export const renderCartesianChartSurface = (
   const yLabels = yTicks.map(formatTick);
   const left = Math.max(4, ...yLabels.map((label) => label.length)) + 2;
   const titleRows = spec.title ? 2 : 0;
-  const named = spec.series.filter((series) => series.name);
+  const named = spec.legend === false ? [] : spec.series.filter((series) => series.name);
   const legendRows = named.length > 0 ? 1 : 0;
   const top = titleRows + legendRows;
   const plotRight = left + WIDTH - 1;
@@ -282,6 +293,101 @@ export const renderCartesianChartSurface = (
 
   return { canvas, styleRoleCanvas: roles, trimTrailingSpaces: true, trimTrailingLines: true };
 };
+
+const renderHorizontalBarChartSurface = (
+  spec: CartesianChartSpec
+): AsciiRenderSurface => {
+  const xScale = scaleLinear().domain(valueDomain(spec));
+  if (!spec.y.domain) xScale.nice(5);
+  const xTicks = xScale.ticks(6);
+  const xDomain = xScale.domain();
+  const domainSpan = Math.abs(xDomain[1]! - xDomain[0]!);
+  const tickStep = xTicks.length > 1
+    ? Math.abs(xTicks[1]! - xTicks[0]!)
+    : domainSpan;
+  const domainTickIntervals = tickStep > 0 ? domainSpan / tickStep : 1;
+  const tickGap = Math.max(1, Math.round(WIDTH / domainTickIntervals));
+  const plotWidth = Math.ceil(tickGap * domainTickIntervals) + 1;
+  const categoryScores = new Map<string, number>();
+  spec.series.flatMap((series) => series.points).forEach((point) => {
+    const category = String(point.x);
+    categoryScores.set(category, Math.max(categoryScores.get(category) ?? -Infinity, point.y));
+  });
+  const categories = [...categoryScores.keys()];
+  if (spec.categorySort) {
+    categories.sort((a, b) => {
+      const difference = (categoryScores.get(a) ?? 0) - (categoryScores.get(b) ?? 0);
+      return spec.categorySort === "descending" ? -difference : difference;
+    });
+  }
+  const titleRows = spec.title ? 2 : 0;
+  const named = spec.legend === false ? [] : spec.series.filter((series) => series.name);
+  const legendRows = named.length > 0 ? 1 : 0;
+  const top = titleRows + legendRows;
+  const plotHeight = Math.max(1, categories.length * 2 - 1);
+  const axisRow = top + plotHeight;
+  const labels = categories.map((category) => category);
+  const left = Math.max(4, ...labels.map(displayWidth)) + 2;
+  const plotRight = left + plotWidth - 1;
+  const totalWidth = plotRight + 2;
+  const totalHeight = axisRow + 2 + (spec.y.title ? 1 : 0);
+  const canvas = matrix(totalWidth, totalHeight, " ");
+  const roles = matrix<MermaidStyleRole | null>(totalWidth, totalHeight, null);
+  const bandY = scaleBand(categories, [top, top + plotHeight]).padding(0.2);
+  xScale.range([0, plotWidth - 1]);
+  const projectX = (value: number) => left + xScale(value);
+
+  if (spec.title) {
+    write(canvas, roles, Math.max(0, Math.floor((totalWidth - spec.title.length) / 2)), 0, spec.title, "title");
+  }
+  if (named.length > 0) {
+    let x = left;
+    named.forEach((series) => {
+      const index = spec.series.indexOf(series);
+      const role = SERIES_ROLES[index % SERIES_ROLES.length]!;
+      write(canvas, roles, x, titleRows, `● ${series.name}`, role);
+      x += (series.name?.length ?? 0) + 4;
+    });
+  }
+  for (const tick of xTicks) {
+    const x = Math.round(projectX(tick));
+    for (let y = top; y < axisRow; y += 1) put(canvas, roles, x, y, "·", "chart.grid");
+    put(canvas, roles, x, axisRow, "┴", "chart.axis");
+    const label = formatTick(tick);
+    write(canvas, roles, x - Math.floor(label.length / 2), axisRow + 1, label, "chart.label");
+  }
+  for (const category of categories) {
+    const row = Math.round((bandY(category) ?? top) + bandY.bandwidth() / 2);
+    write(canvas, roles, left - displayWidth(category) - 2, row, category, "chart.label");
+    put(canvas, roles, left - 1, row, "│", "chart.axis");
+  }
+  for (let x = left; x <= plotRight; x += 1) put(canvas, roles, x, axisRow, "─", "chart.axis");
+  put(canvas, roles, left - 1, axisRow, "└", "chart.axis");
+  if (spec.y.title) write(canvas, roles, Math.max(left, Math.floor(left + (plotWidth - spec.y.title.length) / 2)), axisRow + 2, spec.y.title, "chart.label");
+
+  spec.series.forEach((series, seriesIndex) => {
+    const role = SERIES_ROLES[seriesIndex % SERIES_ROLES.length]!;
+    if (series.mark !== "bar") return;
+    const width = Math.max(1, Math.floor((bandY.bandwidth() || 1) / Math.max(1, spec.series.length)));
+    series.points.forEach((point) => {
+      if (!Number.isFinite(point.y)) return;
+      const row = Math.round((bandY(String(point.x)) ?? top) + bandY.bandwidth() / 2);
+      const from = Math.round(Math.min(projectX(0), projectX(point.y)));
+      const to = Math.round(Math.max(projectX(0), projectX(point.y)));
+      for (let x = from; x <= to; x += 1) {
+        for (let offset = 0; offset < width; offset += 1) put(canvas, roles, x, row - Math.floor(width / 2) + offset, "█", role);
+      }
+    });
+  });
+
+  return { canvas, styleRoleCanvas: roles, trimTrailingSpaces: true, trimTrailingLines: true };
+};
+
+export const renderCartesianChartSurface = (
+  spec: CartesianChartSpec
+): AsciiRenderSurface => spec.orientation === "horizontal"
+  ? renderHorizontalBarChartSurface(spec)
+  : renderVerticalCartesianChartSurface(spec);
 
 export const renderCartesianChart = (
   spec: CartesianChartSpec,

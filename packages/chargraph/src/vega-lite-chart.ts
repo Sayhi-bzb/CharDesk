@@ -32,6 +32,7 @@ const axis = (value: unknown): CartesianChartAxis => {
   return {
     scale: value.type === "ordinal" || value.type === "nominal" ? "band" : "linear",
     ...(typeof value.title === "string" ? { title: value.title } : {}),
+    ...(object(value.scale) && typeof value.scale.zero === "boolean" ? { zero: value.scale.zero } : {}),
     ...(domain ? { domain } : {}),
   };
 };
@@ -44,10 +45,16 @@ const markName = (value: unknown): CartesianChartSeries["mark"] => {
   throw new VegaLiteChartError(`Unsupported Vega-Lite mark: ${String(mark)}.`);
 };
 
+type SeriesOptions = {
+  transpose?: boolean;
+  sortDescending?: boolean;
+};
+
 const seriesForUnit = (
   unit: JsonObject,
   inheritedData?: unknown,
-  inheritedEncoding?: unknown
+  inheritedEncoding?: unknown,
+  options: SeriesOptions = {}
 ): CartesianChartSeries[] => {
   const data = object(unit.data) ? unit.data : object(inheritedData) ? inheritedData : undefined;
   if (!data || !Array.isArray(data.values) || !data.values.every(object)) {
@@ -66,10 +73,14 @@ const seriesForUnit = (
   const mark = markName(unit.mark);
   const groups = new Map<string, CartesianChartPoint[]>();
   for (const datum of data.values) {
-    const x = datum[xField];
-    const y = datum[yField];
+    const rawX = datum[xField];
+    const rawY = datum[yField];
+    const x = options.transpose ? rawY : rawX;
+    const y = options.transpose ? rawX : rawY;
     if ((typeof x !== "number" && typeof x !== "string") || typeof y !== "number") {
-      throw new VegaLiteChartError("Chart x values must be strings or numbers and y values must be numbers.");
+      throw new VegaLiteChartError(options.transpose
+        ? "Horizontal bar charts require a nominal y field and quantitative x field."
+        : "Chart x values must be strings or numbers and y values must be numbers.");
     }
     const group = colorField ? String(datum[colorField] ?? "") : "";
     const low = lowField && typeof datum[lowField] === "number" ? datum[lowField] : undefined;
@@ -86,7 +97,11 @@ const seriesForUnit = (
   }
   return Array.from(groups, ([name, points]) => ({
     mark,
-    points,
+    points: options.sortDescending !== undefined
+      ? [...points].sort((a, b) => {
+        return options.sortDescending ? b.y - a.y : a.y - b.y;
+      })
+      : points,
     ...(name ? { name } : {}),
   }));
 };
@@ -111,14 +126,30 @@ export const parseVegaLiteChart = (source: string): CartesianChartSpec => {
     : [root];
   const encoding = object(units[0]?.encoding) ? units[0]!.encoding : rootEncoding;
   if (!encoding) throw new VegaLiteChartError("An encoding object is required.");
+  const sourceX = axis(encoding.x);
+  const sourceY = axis(encoding.y);
+  const marks = units.map((unit) => markName(unit.mark));
+  const horizontalBars = sourceX.scale === "linear"
+    && sourceY.scale === "band"
+    && marks.every((mark) => mark === "bar");
+  const yEncoding = object(encoding.y) ? encoding.y : undefined;
+  const sort = yEncoding?.sort;
+  const sortDescending = sort === "-x"
+    || (object(sort) && sort.order === "descending");
+  const colorField = field(encoding, "color");
+  const categoryField = field(encoding, "y");
   return {
     ...(typeof root.title === "string" ? { title: root.title } : {}),
-    x: axis(encoding.x),
-    y: axis(encoding.y),
+    ...(horizontalBars ? { orientation: "horizontal" as const } : {}),
+    ...(horizontalBars && sort ? { categorySort: sortDescending ? "descending" as const : "ascending" as const } : {}),
+    ...(horizontalBars && colorField === categoryField ? { legend: false } : {}),
+    x: horizontalBars ? sourceY : sourceX,
+    y: horizontalBars ? sourceX : sourceY,
     series: units.flatMap((unit) => seriesForUnit(
       unit,
       root.data,
-      rootEncoding
+      rootEncoding,
+      horizontalBars ? { transpose: true, ...(sort ? { sortDescending } : {}) } : undefined
     )),
   };
 };
