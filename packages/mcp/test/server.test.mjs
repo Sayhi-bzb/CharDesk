@@ -8,6 +8,7 @@ import test from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import WebSocket from 'ws';
+import { MCP_NAME, MCP_VERSION } from '../src/version.mjs';
 
 test('published server exposes the Canvas bridge over stdio', { timeout: 15000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'chardesk-mcp-test-'));
@@ -21,6 +22,7 @@ test('published server exposes the Canvas bridge over stdio', { timeout: 15000 }
       CHARDESK_MCP_ORIGINS: origin,
       CHARDESK_MCP_CREDENTIALS: join(directory, 'credentials.json'),
       CHARDESK_MCP_PAIRING: join(directory, 'pairing.json'),
+      CHARDESK_MCP_UPDATE_CHECK: '0',
     },
     stderr: 'pipe',
   });
@@ -40,6 +42,7 @@ test('published server exposes the Canvas bridge over stdio', { timeout: 15000 }
 
   try {
     await client.connect(transport);
+    assert.deepEqual(client.getServerVersion(), { name: MCP_NAME, version: MCP_VERSION });
     const listed = await client.listTools();
     assert.deepEqual(listed.tools.map(({ name }) => name), [
       'canvas_code',

@@ -8,3 +8,4 @@ const configDirectory = () => {
 };
 export const credentialsPath = () => join(configDirectory(), 'credentials.json');
 export const pairingPath = () => join(configDirectory(), 'pairing.json');
+export const updateCheckPath = () => join(configDirectory(), 'update-check.json');

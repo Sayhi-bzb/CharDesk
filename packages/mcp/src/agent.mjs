@@ -6,6 +6,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { WebSocket } from 'ws';
 import { pairingPath } from './paths.mjs';
 import { toolNames, tools } from './tools.mjs';
+import { MCP_NAME, MCP_VERSION } from './version.mjs';
 
 const pairing = JSON.parse(await readFile(process.env.CHARDESK_MCP_PAIRING || pairingPath(), 'utf8'));
 if (typeof pairing.bridgeUrl !== 'string' || !Number.isFinite(pairing.expiresAt) || pairing.expiresAt <= Date.now()) throw new Error('The existing CharDesk MCP pairing is missing or expired.');
@@ -39,7 +40,7 @@ const forward = async (name, input) => {
   const id = randomUUID();
   return new Promise((resolve, reject) => { pending.set(id, { resolve, reject }); socket.send(JSON.stringify({ id, method: 'call', params: { name, input } }), (error) => { if (!error || !pending.delete(id)) return; reject(error); }); });
 };
-const mcp = new Server({ name: 'chardesk-mcp-client', version: '0.1.0' }, { capabilities: { tools: {} } });
+const mcp = new Server({ name: MCP_NAME, version: MCP_VERSION }, { capabilities: { tools: {} } });
 mcp.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
 mcp.setRequestHandler(CallToolRequestSchema, async ({ params }) => { try { if (!toolNames.has(params.name)) throw new Error('Unknown Canvas tool.'); const result = await forward(params.name, params.arguments || {}); const blocks = Array.isArray(result?.contentBlocks) ? result.contentBlocks.map((block) => block.type === 'note' ? { type: 'text', text: block.text } : block) : [{ type: 'text', text: JSON.stringify(result) }]; return { content: blocks, structuredContent: result, isError: result?.ok === false }; } catch (error) { return { isError: true, content: [{ type: 'text', text: error instanceof Error ? error.message : 'Canvas request failed' }] }; } });
 await mcp.connect(new StdioServerTransport());

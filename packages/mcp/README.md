@@ -28,6 +28,17 @@ Coding agents start it automatically when configured with:
 npx -y @chardesk/mcp
 ```
 
+The MCP server reports the installed package version during the MCP handshake.
+It performs a cached, non-blocking npm check once per day and writes an update
+notice to stderr when a newer release is available. Refresh explicitly with:
+
+```sh
+npx -y @chardesk/mcp@latest
+```
+
+Set `CHARDESK_MCP_UPDATE_CHECK=0` to disable the check. Network failures are
+silent and never block Canvas tool calls.
+
 The browser Canvas discovers the local bridge automatically when it is open.
 There is no manual pairing step in the normal workflow.
 If a Canvas tool is called before a page is open, the broker opens the default

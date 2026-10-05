@@ -10,6 +10,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { credentialsPath, pairingPath } from './paths.mjs';
 import { loadCredentials } from './credentials.mjs';
 import { toolNames, tools } from './tools.mjs';
+import { announceUpdateIfAvailable, MCP_NAME, MCP_VERSION } from './version.mjs';
 
 const configuredPort = process.env.CHARDESK_MCP_PORT;
 const port = configuredPort === undefined || configuredPort === '' ? 9494 : Number(configuredPort);
@@ -149,14 +150,14 @@ async function forward(name, input, client) {
   return new Promise((resolve, reject) => { const timeout = name === 'canvas_code' ? CODE_BRIDGE_REQUEST_TIMEOUT : DEFAULT_BRIDGE_REQUEST_TIMEOUT; const timer = setTimeout(() => { pending.delete(id); client.pending.delete(id); reject(new Error('Canvas page timed out.')); }, timeout); client.pending.add(id); pending.set(id, { resolve, reject, timer, client }); page.send(message, (error) => { if (!error || !pending.delete(id)) return; client.pending.delete(id); clearTimeout(timer); reject(error); }); });
 }
 
-const mcp = new Server({ name: 'chardesk-mcp', version: '0.1.0' }, { capabilities: { tools: {} } });
+const mcp = new Server({ name: MCP_NAME, version: MCP_VERSION }, { capabilities: { tools: {} } });
 mcp.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
 mcp.setRequestHandler(CallToolRequestSchema, async ({ params }) => { try { if (!toolNames.has(params.name)) throw new Error('Unknown Canvas tool.'); const result = await forward(params.name, params.arguments || {}, { id: 'stdio', pending: new Set(), permissions: { inspect: true, read: true, search: true, write: true } }); const blocks = Array.isArray(result?.contentBlocks) ? result.contentBlocks.map((block) => block.type === 'note' ? { type: 'text', text: block.text } : block) : [{ type: 'text', text: JSON.stringify(result) }]; return { content: blocks, structuredContent: result, isError: result?.ok === false }; } catch (error) { return { isError: true, content: [{ type: 'text', text: error instanceof Error ? error.message : 'Canvas request failed' }] }; } });
 
 let brokerStarted = true;
 try { await new Promise((resolve, reject) => { http.once('error', reject); http.listen(port, '127.0.0.1', resolve); }); } catch (error) { if (error?.code !== 'EADDRINUSE') throw error; brokerStarted = false; }
 if (!brokerStarted) { console.error('CharDesk MCP bridge already running; joining it as a client.'); await import('./agent.mjs'); } else {
-  await publishPairing(); console.error(JSON.stringify({ bridgeUrl: pairingUrl(), expiresAt: credentials.expiresAt })); await mcp.connect(new StdioServerTransport());
+  await publishPairing(); console.error(JSON.stringify({ bridgeUrl: pairingUrl(), expiresAt: credentials.expiresAt, version: MCP_VERSION })); await mcp.connect(new StdioServerTransport()); void announceUpdateIfAvailable();
   let stopping = false; const stop = async () => { if (stopping) return; stopping = true; event('bridge_stopping'); for (const client of sockets.clients) client.terminate(); await Promise.allSettled([new Promise((resolve) => sockets.close(resolve)), new Promise((resolve) => http.close(resolve)), mcp.close()]); void readFile(pairingFile, 'utf8').then((value) => { if (JSON.parse(value).pid === process.pid) return unlink(pairingFile); }).catch(() => undefined); process.exit(0); };
   let ownerStdioClosed = false; shutdownIfIdle = () => { if (ownerStdioClosed && !page && clients.size === 0) void stop(); }; process.once('SIGTERM', stop); process.once('SIGINT', stop); process.stdin.once('end', () => { ownerStdioClosed = true; event('owner_stdio_closed', { pageConnected: Boolean(page), clients: clients.size }); shutdownIfIdle(); });
 }
