@@ -47,10 +47,16 @@ describe("Canvas viewport reading", () => {
     for (const viewport of [[0, 0, 160, 48], [0, 0, 800, 240]] as const) {
       const view = readCanvasViewport(reader, viewport);
       expect(view.content).not.toContain("styles:");
-      expect(view.content).toContain("Styles omitted:");
       expect(view.content).not.toContain("0123456789");
     }
+    expect(readCanvasViewport(reader, [0, 0, 160, 48]).content).toContain(
+      "next: sampleSize≤1 @ viewport≤80×24",
+    );
+    expect(readCanvasViewport(reader, [0, 0, 800, 240]).content).toContain(
+      "next: sampleSize≤9 @ viewport≤720×216",
+    );
     expect(readCanvasViewport(reader, [0, 0, 2, 1]).content).not.toContain("styles:");
+    expect(readCanvasViewport(reader, [0, 0, 2, 1]).content).toContain("exact=unicode");
   });
 
   it("retains visually styled whitespace in automatic bounds and style notes", () => {
@@ -71,8 +77,17 @@ describe("Canvas viewport reading", () => {
   it("samples quadrant positions without interpreting content", () => {
     const view = readCanvasViewport(surface([[0, 0, "a"], [3, 1, "b"]]), [0, 0, 160, 48]);
     expect(view).toMatchObject({ sampleSize: 2, mode: "projection", overviewOnly: true });
+    expect(view.content).toContain("camera=80×24");
+    expect(view.content).toContain("next: sampleSize≤1 @ viewport≤80×24");
     expect(lines(view.content)[0].slice(0, 2)).toBe("▘▗");
     expect(lines(view.content)).toHaveLength(24);
+  });
+
+  it("exposes the next camera boundary for coarse overviews", () => {
+    expect(readCanvasViewport(surface([[0, 0, "x"]]), [0, 0, 240, 72]).content)
+      .toContain("next: sampleSize≤2 @ viewport≤160×48");
+    expect(readCanvasViewport(surface([[0, 0, "x"]]), [0, 0, 320, 96]).content)
+      .toContain("next: sampleSize≤3 @ viewport≤240×72");
   });
 
   it("keeps isolated content and background-only cells in density maps", () => {
@@ -121,7 +136,7 @@ describe("Canvas viewport reading", () => {
     const view = readCanvasViewport(surface([]), [-12, -7, 28, 14]);
     const output = view.content.split("\n");
     const bodyOrigin = output.find((line) => line.includes("┤"))!.indexOf("┤") + 1;
-    const labels = output[1];
+    const labels = output.find((line) => line.includes("-10") && !line.includes("┬"))!;
     for (const coordinate of [-10, 0, 10]) {
       const label = String(coordinate);
       expect(labels.slice(bodyOrigin + coordinate + 12 - Math.floor(label.length / 2), bodyOrigin + coordinate + 12 - Math.floor(label.length / 2) + label.length)).toBe(label);
@@ -137,7 +152,7 @@ describe("Canvas viewport reading", () => {
     const view = readCanvasViewport(surface([[-1000, 0, "你"]]), [-1000, 0, 2, 1]);
     const output = view.content.split("\n");
     const origin = output.find((line) => line.includes("┤"))!.indexOf("┤") + 1;
-    expect(output[1].indexOf("-1000") + 2).toBe(origin);
+    expect(output.find((line) => line.includes("-1000") && !line.includes("viewport="))!.indexOf("-1000") + 2).toBe(origin);
     expect(lines(view.content)).toEqual(["你"]);
     expect(view.content).toContain("y=0 x=-1000..-999{fg:#000}");
   });
@@ -159,7 +174,7 @@ describe("Canvas viewport reading", () => {
     const start = Number.MAX_SAFE_INTEGER - 80;
     const view = readCanvasViewport(surface([]), [start, -Number.MAX_SAFE_INTEGER, 80, 24]);
     expect(lines(view.content).every((line) => getTextCellWidth(line) <= 80)).toBe(true);
-    const labels = view.content.split("\n")[1].trim().split(/\s+/u);
+    const labels = view.content.split("\n").find((line) => line.includes("9007199254740920"))!.trim().split(/\s+/u);
     expect(labels.length).toBeGreaterThan(1);
     expect(labels.every((label) => /^\d{16}$/u.test(label))).toBe(true);
   });

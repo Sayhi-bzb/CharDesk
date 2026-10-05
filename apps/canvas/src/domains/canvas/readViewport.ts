@@ -217,6 +217,10 @@ export const readCanvasViewport = (
   const notes = exact && options.includeStyles !== false ? formatCharDeskStyleNotes(exact.cells, { coordinates: "explicit", defaultForeground: options.defaultForeground }) : "styles:none";
   const content = [
     `viewport=[${x},${y},${width},${height}] sampleSize=${sampleSize} mode=${mode}`,
+    `camera=80×24`,
+    ...(mode === "text"
+      ? ["exact=unicode"]
+      : [`next: sampleSize≤${sampleSize - 1} @ viewport≤${80 * (sampleSize - 1)}×${24 * (sampleSize - 1)}`]),
     ...(ruler.some((char) => char !== " ") ? [ruler.join("").trimEnd()] : []),
     `${" ".repeat(prefix)}${rulerMarks.join("")}`,
     ...text.map((line, row) => {
@@ -226,7 +230,6 @@ export const readCanvasViewport = (
       return `${label} ${tick === null ? "│" : "┤"}${line.join("").replace(/ +$/u, "")}`;
     }),
     ...(notes === "styles:none" ? [] : ["", notes]),
-    ...(mode !== "text" ? ["Styles omitted: navigation symbols only; read a smaller viewport for text and styles."] : []),
   ].join("\n");
   return { viewport: [x, y, width, height], sampleSize, mode, overviewOnly: mode !== "text", content };
 };

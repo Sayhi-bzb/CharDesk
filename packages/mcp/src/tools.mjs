@@ -46,7 +46,7 @@ const localToolContracts = [
   },
   {
     name: 'canvas_read', title: 'Read Canvas viewport', readOnly: true,
-    description: 'Read the rendered Scene surface as a coordinate-labelled Unicode map or optional image block. Omit canvasId to use the active Scene; pass pageId for a specific Slide page. viewport is [x,y,width,height] in Cell coordinates; an omitted viewport reads the current overview. Default text is lightweight and omits style notes. This does not edit the document.',
+    description: 'Read the rendered Scene surface as a coordinate-labelled Unicode map or optional image block. The exact-text camera is 80×24 Cells: sampleSize=1 and mode=text return exact Unicode; sampleSize>1 is navigation-only projection/density, and the returned next boundary tells the Agent which smaller viewport to read next. Omit canvasId to use the active Scene; pass pageId for a specific Slide page. viewport is [x,y,width,height] in Cell coordinates; an omitted viewport reads the current overview. Default text is lightweight and omits style notes. This does not edit the document.',
     inputSchema: { type: 'object', properties: {
       canvasId: { type: 'string', minLength: 1, description: 'Optional short persistent Canvas ID.' },
       pageId: { type: 'string', minLength: 1, description: 'Optional stable Slide page ID.' },

@@ -52,7 +52,7 @@ test.describe("WebMCP native Canvas", () => {
       .toMatchObject({ mode: "projection", sampleSize: 2, overviewOnly: true });
     const density = await execute(page, "canvas_read", { viewport: [-20, -10, 800, 240] });
     expect(density).toMatchObject({ mode: "density", sampleSize: 10, overviewOnly: true });
-    expect(density.content).toContain("Styles omitted:");
+    expect(density.content).toContain("next: sampleSize≤9 @ viewport≤720×216");
     await expect(page.getByTestId("zoom-reset")).toHaveText(zoom!);
   });
 
