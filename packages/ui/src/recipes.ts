@@ -48,6 +48,7 @@ type SelectableItemOptions = {
   selected?: boolean;
   muted?: boolean;
   status?: StatusTone;
+  compound?: boolean;
 };
 
 type CollectionCardOptions = {
@@ -318,6 +319,7 @@ export const rx = {
     selected = false,
     muted = false,
     status,
+    compound = false,
   }: SelectableItemOptions = {}) =>
     cn(
       'inline-flex min-w-0 cursor-pointer items-center rounded-item bg-transparent transition-colors duration-[var(--motion-fast)] motion-reduce:transition-none',
@@ -329,6 +331,12 @@ export const rx = {
       orientation === 'vertical' && 'flex-col items-stretch',
       muted ? 'text-muted-foreground' : 'text-foreground',
       selected && activeControlState,
+      compound && [
+        '[&_[data-slot=button]]:hover:bg-accent',
+        '[&_[data-slot=button]]:hover:text-accent-foreground',
+        'data-[selected=true]:[&_[data-slot=button]]:hover:bg-control-active-surface',
+        'data-[selected=true]:[&_[data-slot=button]]:hover:text-foreground',
+      ],
       status &&
         (selected
           ? selectedSelectableStatusSurface[status]

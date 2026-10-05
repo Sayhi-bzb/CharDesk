@@ -103,6 +103,20 @@ describe("compact UI density", () => {
     expect(destructiveActive).toContain("hover:text-destructive");
   });
 
+  it("keeps nested controls on a selectable row's surface", () => {
+    const classes = rx.selectableItem({ compound: true });
+    const selectedClasses = rx.selectableItem({ compound: true, selected: true });
+
+    expect(classes).toContain("[&_[data-slot=button]]:hover:bg-accent");
+    expect(classes).toContain("[&_[data-slot=button]]:hover:text-accent-foreground");
+    expect(selectedClasses).toContain(
+      "data-[selected=true]:[&_[data-slot=button]]:hover:bg-control-active-surface"
+    );
+    expect(selectedClasses).toContain(
+      "data-[selected=true]:[&_[data-slot=button]]:hover:text-foreground"
+    );
+  });
+
   it("owns icon, selection, swatch, destructive, and joined behavior", () => {
     render(
       <>

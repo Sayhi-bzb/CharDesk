@@ -11,6 +11,8 @@ type SelectableItemProps = React.ComponentProps<"button"> & {
   selected?: boolean
   muted?: boolean
   status?: StatusTone
+  /** The row owns the hover/active surface for nested action controls. */
+  compound?: boolean
 }
 
 function SelectableItem({
@@ -19,6 +21,7 @@ function SelectableItem({
   selected = false,
   muted = false,
   status,
+  compound = false,
   className,
   ...props
 }: SelectableItemProps) {
@@ -30,7 +33,7 @@ function SelectableItem({
       data-selected={selected || undefined}
       data-status={status}
       className={cn(
-        rx.selectableItem({ orientation, selected, muted, status }),
+        rx.selectableItem({ orientation, selected, muted, status, compound }),
         className
       )}
       {...props}
