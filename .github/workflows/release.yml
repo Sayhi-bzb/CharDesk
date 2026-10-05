@@ -40,6 +40,58 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      - name: Check out the release pull request
+        if: steps.release.outputs.release_created != 'true'
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js for release synchronization
+        if: steps.release.outputs.release_created != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install dependencies for release synchronization
+        if: steps.release.outputs.release_created != 'true'
+        run: npm ci
+
+      - name: Sync workspace dependency ranges
+        if: steps.release.outputs.release_created != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_pr=$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --base main \
+            --label "autorelease: pending" \
+            --json number,headRefName \
+            --jq '.[0]')
+          if [ -z "$release_pr" ] || [ "$release_pr" = "null" ]; then
+            echo "No pending release pull request found."
+            exit 0
+          fi
+
+          release_branch=$(printf '%s' "$release_pr" | node -e '
+            let input = "";
+            process.stdin.on("data", (chunk) => { input += chunk; });
+            process.stdin.on("end", () => process.stdout.write(JSON.parse(input).headRefName));
+          ')
+          git fetch origin "$release_branch"
+          git checkout -B "$release_branch" "origin/$release_branch"
+          npm run release:sync
+          if git diff --quiet; then
+            echo "Release workspace dependency ranges are already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages package-lock.json registry.json
+          git commit -m "chore: sync release workspace dependency ranges"
+          git push origin "HEAD:$release_branch"
+
       - name: Dispatch publish on the release tag
         if: steps.release.outputs.release_created == 'true'
         env:
