@@ -16,38 +16,38 @@ test("WebMCP renders, searches, and reads precise Unicode positions without movi
   await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
   await expect(page.getByTestId("canvas-editor-surface")).toBeVisible();
   const zoom = await page.getByTestId("zoom-reset").textContent();
-  const written = await execute(page, "chardesk_canvas_render", { at: [-100, -50], source: "**Needle** 你é" });
+  const written = await execute(page, "canvas_render", { at: [-100, -50], source: "**Needle** 你é" });
   expect(written).toMatchObject({ bounds: expect.any(Array) });
-  const result = await execute(page, "chardesk_canvas_search", { query: "Needle", viewport: [-100, -50, 40, 5] });
+  const result = await execute(page, "canvas_search", { query: "Needle", viewport: [-100, -50, 40, 5] });
   expect(result).toMatchObject({ matches: [{ origin: [-100, -50], bounds: [-100, -50, 6, 1], content: "Needle" }], next: null });
-  const view = await execute(page, "chardesk_canvas_read", { viewport: result.matches[0].bounds });
+  const view = await execute(page, "canvas_read", { viewport: result.matches[0].bounds });
   expect(view.content).toContain("Needle");
   expect(view.content).toContain("bold");
-  expect((await execute(page, "chardesk_canvas_search", { query: "**Needle**", viewport: [-100, -50, 40, 5] })).matches).toEqual([]);
-  expect((await execute(page, "chardesk_canvas_search", { query: "你é", viewport: [-100, -50, 40, 5] })).matches[0].content).toContain("你é");
-  expect((await execute(page, "chardesk_canvas_read", { viewport: [-100, -50, 800, 240] })).mode).toBe("density");
-  expect((await execute(page, "chardesk_canvas_search", { query: "Needle", viewport: [-100, -50, 800, 240] })).matches[0].bounds).toEqual([-100, -50, 6, 1]);
+  expect((await execute(page, "canvas_search", { query: "**Needle**", viewport: [-100, -50, 40, 5] })).matches).toEqual([]);
+  expect((await execute(page, "canvas_search", { query: "你é", viewport: [-100, -50, 40, 5] })).matches[0].content).toContain("你é");
+  expect((await execute(page, "canvas_read", { viewport: [-100, -50, 800, 240] })).mode).toBe("density");
+  expect((await execute(page, "canvas_search", { query: "Needle", viewport: [-100, -50, 800, 240] })).matches[0].bounds).toEqual([-100, -50, 6, 1]);
   await expect(page.getByTestId("zoom-reset")).toHaveText(zoom!);
 
   const many = Array.from({ length: 25 }, () => "PageNeedle").join("\n");
-  await execute(page, "chardesk_canvas_write", { at: [-100, -100], content: many });
+  await execute(page, "canvas_write", { at: [-100, -100], content: many });
   const input = { query: "PageNeedle", viewport: [-100, -100, 20, 25] };
-  const first = await execute(page, "chardesk_canvas_search", input);
-  const second = await execute(page, "chardesk_canvas_search", { ...input, after: first.next });
+  const first = await execute(page, "canvas_search", input);
+  const second = await execute(page, "canvas_search", { ...input, after: first.next });
   expect(first.matches).toHaveLength(20);
   expect(second.matches).toHaveLength(5);
   expect(second.next).toBeNull();
   expect(second.matches[0].bounds).toEqual([-100, -80, 10, 1]);
 
-  await execute(page, "chardesk_canvas_write", { at: [-200, -200], content: "Hello Alice\nWelcome" });
+  await execute(page, "canvas_write", { at: [-200, -200], content: "Hello Alice\nWelcome" });
   const area = { viewport: [-200, -200, 30, 2] };
-  expect(await execute(page, "chardesk_canvas_search", { ...area, query: "Hello\nWelcome" }))
+  expect(await execute(page, "canvas_search", { ...area, query: "Hello\nWelcome" }))
     .toMatchObject({ matches: [{ origin: [-200, -200], bounds: [-200, -200, 7, 2], content: "Hello\nWelcome" }] });
-  expect(await execute(page, "chardesk_canvas_search", { ...area, query: "hello \\w+\nwelcome", regex: true, ignoreCase: true }))
+  expect(await execute(page, "canvas_search", { ...area, query: "hello \\w+\nwelcome", regex: true, ignoreCase: true }))
     .toMatchObject({ matches: [{ origin: [-200, -200], bounds: [-200, -200, 11, 2], content: "Hello Alice\nWelcome" }] });
-  expect(await execute(page, "chardesk_canvas_search", { ...area, query: "Hello\nWelcome", viewport: [-200, -200, 30, 1] }))
+  expect(await execute(page, "canvas_search", { ...area, query: "Hello\nWelcome", viewport: [-200, -200, 30, 1] }))
     .toMatchObject({ matches: [] });
-  expect(await execute(page, "chardesk_canvas_search", { query: "[", regex: true })).toMatchObject({ code: "invalid_input" });
+  expect(await execute(page, "canvas_search", { query: "[", regex: true })).toMatchObject({ code: "invalid_input" });
   await expect(page.getByTestId("zoom-reset")).toHaveText(zoom!);
 });
 
@@ -58,5 +58,5 @@ test("read-only CLI pages expose Canvas search without write", async ({ page }) 
     const context = (document as Document & { modelContext?: { getTools(): Promise<Array<{ name: string }>> } }).modelContext!;
     return (await context.getTools()).map(({ name }) => name).sort();
   });
-  expect(names).toEqual(["chardesk_canvas_manage", "chardesk_canvas_read", "chardesk_canvas_search", "chardesk_read_materials"]);
+  expect(names).toEqual(["canvas_manage", "canvas_read", "canvas_search", "chardesk_read_materials"]);
 });

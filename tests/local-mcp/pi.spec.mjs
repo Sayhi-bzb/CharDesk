@@ -75,7 +75,7 @@ test("Pi's real model reads, writes a GPU explanation, and verifies the live Can
     await page.keyboard.press('Escape');
     const before = await page.screenshot();
     pi.stdin.write(`${JSON.stringify({ type: "prompt", id: "gpu", message:
-      "I want to understand GPUs. Use only the connected chardesk_canvas_read and chardesk_canvas_write tools. "
+      "I want to understand GPUs. Use only the connected canvas_read and canvas_write tools. "
       + "First read viewport [32,28,35,4]. Then write your own simple English explanation at [32,28]: "
       + "exactly four lines, at most 32 cells per line, containing GPU and comparing CPU with GPU. "
       + "Do not include markdown syntax or copy coordinate rulers. Then read the returned write bounds to verify. "
@@ -88,9 +88,9 @@ test("Pi's real model reads, writes a GPU explanation, and verifies the live Can
     await writeFile(testInfo.outputPath('pi-events.json'), JSON.stringify(events, null, 2));
     expect(events.filter((event) => event.type === 'tool_execution_end' && event.isError)
       .map((event) => event.result)).toEqual([]);
-    expect(calls.map((event) => event.toolName).filter((name) => name !== "mcp__chardesk__chardesk_canvas_manage")).toEqual([
-      "mcp__chardesk__chardesk_canvas_read", "mcp__chardesk__chardesk_canvas_write",
-      "mcp__chardesk__chardesk_canvas_read",
+    expect(calls.map((event) => event.toolName).filter((name) => name !== "mcp__chardesk__canvas_manage")).toEqual([
+      "mcp__chardesk__canvas_read", "mcp__chardesk__canvas_write",
+      "mcp__chardesk__canvas_read",
     ]);
     expect(events.filter((event) => event.type === "tool_execution_end").every((event) => !event.isError)).toBe(true);
     const written = calls[1].args;

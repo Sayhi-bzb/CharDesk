@@ -46,7 +46,7 @@ describe('local agent page connection', () => {
     const socket = Socket.instances[0];
     socket.open();
     expect(getLocalAgentStatus()).toBe('connected');
-    const request = { id: 'write-1', method: 'call', params: { name: 'chardesk_canvas_write', input: { at: [0, 0], content: 'A' } } };
+    const request = { id: 'write-1', method: 'call', params: { name: 'canvas_write', input: { at: [0, 0], content: 'A' } } };
     socket.receive(request);
     socket.receive(request);
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(2));
@@ -66,7 +66,7 @@ describe('local agent page connection', () => {
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(1));
     expect(execute).not.toHaveBeenCalled();
     scope = 'canvas-b';
-    socket.receive({ id: 'read', method: 'call', params: { name: 'chardesk_canvas_read', input: {} } });
+    socket.receive({ id: 'read', method: 'call', params: { name: 'canvas_read', input: {} } });
     await vi.waitFor(() => expect(socket.close).toHaveBeenCalled());
     expect(execute).not.toHaveBeenCalled();
     expect(getLocalAgentStatus()).toBe('idle');
@@ -78,9 +78,9 @@ describe('local agent page connection', () => {
     const socket = Socket.instances[0];
     socket.open();
     scope = 'application';
-    socket.receive({ id: 'read', method: 'call', params: { name: 'chardesk_canvas_read', input: {} } });
+    socket.receive({ id: 'read', method: 'call', params: { name: 'canvas_read', input: {} } });
     await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1));
-    socket.receive({ id: 'write', method: 'call', params: { name: 'chardesk_canvas_write', input: { at: [0, 0], content: 'A' } } });
+    socket.receive({ id: 'write', method: 'call', params: { name: 'canvas_write', input: { at: [0, 0], content: 'A' } } });
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(2));
     expect(JSON.parse(socket.send.mock.calls[1][0]).error).toContain('Permission denied: canvas.write');
     expect(socket.close).not.toHaveBeenCalled();
@@ -91,9 +91,9 @@ describe('local agent page connection', () => {
     const socket = Socket.instances[0];
     socket.open();
     const input = { query: 'Hello', after: [10, 20] };
-    socket.receive({ id: 'search-1', method: 'call', params: { name: 'chardesk_canvas_search', input } });
+    socket.receive({ id: 'search-1', method: 'call', params: { name: 'canvas_search', input } });
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(1));
-    expect(execute).toHaveBeenCalledWith('chardesk_canvas_search', input);
+    expect(execute).toHaveBeenCalledWith('canvas_search', input);
     expect(JSON.parse(socket.send.mock.calls[0][0]).error).toBeUndefined();
   });
 
@@ -102,7 +102,7 @@ describe('local agent page connection', () => {
     const socket = Socket.instances[0];
     socket.open();
     execute.mockResolvedValueOnce({ content: 'x'.repeat(950_000) } as never);
-    socket.receive({ id: 'large', method: 'call', params: { name: 'chardesk_canvas_read', input: {} } });
+    socket.receive({ id: 'large', method: 'call', params: { name: 'canvas_read', input: {} } });
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(1));
     expect(JSON.parse(socket.send.mock.calls[0][0]).error).toContain('response is too large');
     expect(socket.close).not.toHaveBeenCalled();
@@ -112,13 +112,13 @@ describe('local agent page connection', () => {
     connectLocalAgent(url);
     const socket = Socket.instances[0];
     socket.open();
-    socket.receive({ id: 'other', method: 'call', params: { name: 'chardesk_canvas_read', input: { canvasId: 'canvas-b' } } });
+    socket.receive({ id: 'other', method: 'call', params: { name: 'canvas_read', input: { canvasId: 'canvas-b' } } });
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(1));
     expect(execute).not.toHaveBeenCalled();
     expect(JSON.parse(socket.send.mock.calls[0][0]).error).toContain('limited to the paired Canvas');
-    socket.receive({ id: 'same', method: 'call', params: { name: 'chardesk_canvas_read', input: { canvasId: 'canvas-a' } } });
+    socket.receive({ id: 'same', method: 'call', params: { name: 'canvas_read', input: { canvasId: 'canvas-a' } } });
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(2));
-    expect(execute).toHaveBeenLastCalledWith('chardesk_canvas_read', { canvasId: 'canvas-a' });
+    expect(execute).toHaveBeenLastCalledWith('canvas_read', { canvasId: 'canvas-a' });
   });
 
   it('ignores callbacks from a replaced connection and shows unexpected disconnects', () => {

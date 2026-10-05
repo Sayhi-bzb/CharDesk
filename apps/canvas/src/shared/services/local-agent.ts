@@ -194,7 +194,13 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
       if (message.method === 'authorized') {
         if (socket === connection) {
           publish('connected');
-          try { connection.send(JSON.stringify({ method: 'runtime_status', status: runtimeSnapshot })); } catch { /* The bridge may be closing. */ }
+          try { connection.send(JSON.stringify({ method: 'ready', protocolVersion: 1 })); } catch { /* The bridge may be closing. */ }
+        }
+        return;
+      }
+      if (message.method === 'ready_probe') {
+        if (socket === connection && connection.readyState === WebSocket.OPEN) {
+          try { connection.send(JSON.stringify({ method: 'ready', protocolVersion: 1 })); } catch { /* The bridge may be closing. */ }
         }
         return;
       }

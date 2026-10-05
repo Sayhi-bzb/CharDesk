@@ -4,7 +4,6 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
@@ -35,7 +34,7 @@ const nextMessage = (socket) => new Promise((resolve, reject) => {
   socket.on('message', onMessage); socket.on('error', onError);
 });
 
-test('one browser page serves multiple isolated Agent tenants', { timeout: 15_000 }, async () => {
+test('one browser page serves multiple MCP clients', { timeout: 15_000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'chardesk-mcp-multitenant-'));
   const child = spawn(process.execPath, [fileURLToPath(new URL('../bin/chardesk-mcp.mjs', import.meta.url)), 'server'], {
     env: { ...process.env, CHARDESK_MCP_PORT: '0', CHARDESK_MCP_ORIGINS: 'http://127.0.0.1:5173',
@@ -58,15 +57,14 @@ test('one browser page serves multiple isolated Agent tenants', { timeout: 15_00
       const agentUrl = new URL(pairing); agentUrl.pathname = '/agent';
       const socket = await connect(agentUrl);
       agents.push(socket);
-      socket.send(JSON.stringify({ method: 'tenant_hello', clientId: randomUUID() }));
+      socket.send(JSON.stringify({ method: 'client_hello' }));
       const ready = await nextMessage(socket);
-      assert.equal(ready.method, 'tenant_ready');
-      return { socket, token: ready.sessionToken, id: ready.tenantId };
+      assert.equal(ready.method, 'client_ready');
+      return { socket, id: ready.clientId };
     };
     const first = await openAgent();
     const second = await openAgent();
     assert.notEqual(first.id, second.id);
-    assert.notEqual(first.token, second.token);
 
     const call = (agent, id) => new Promise((resolve, reject) => {
       const onMessage = (data) => {
@@ -76,7 +74,7 @@ test('one browser page serves multiple isolated Agent tenants', { timeout: 15_00
         if (message.error) reject(new Error(message.error)); else resolve(message.result);
       };
       agent.socket.on('message', onMessage);
-    agent.socket.send(JSON.stringify({ id, method: 'call', sessionToken: agent.token, params: { name: 'canvas_read', input: { viewport: [0, 0, 1, 1] } } }));
+    agent.socket.send(JSON.stringify({ id, method: 'call', params: { name: 'canvas_read', input: { viewport: [0, 0, 1, 1] } } }));
     });
     const firstCall = call(first, 'same-id');
     const secondCall = call(second, 'same-id');

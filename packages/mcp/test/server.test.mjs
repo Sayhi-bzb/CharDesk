@@ -100,19 +100,6 @@ test('published server exposes the Canvas bridge over stdio', { timeout: 15000 }
       ok: true,
       echoed: { name: 'canvas_render', input: { at: [4, 6], source: 'script output\nsecond line', format: 'raw' } },
     });
-    page.send(JSON.stringify({ method: 'runtime_status', status: {
-      protocolVersion: 2,
-      buildId: 'test',
-      status: 'degraded',
-      persistence: 'ready',
-      moduleFailure: { message: 'chunk unavailable' },
-    } }));
-    const degraded = await client.callTool({
-      name: 'canvas_write',
-      arguments: { at: [4, 2], content: 'GPU' },
-    });
-    assert.equal(degraded.isError, true);
-    assert.match(degraded.content[0].text, /degraded/i);
   } finally {
     if (page?.readyState === WebSocket.OPEN) {
       const closed = once(page, 'close');

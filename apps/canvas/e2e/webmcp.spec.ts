@@ -21,8 +21,8 @@ const names = (page: Page) => page.evaluate(async () => {
 const ready = async (page: Page) => {
   await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
 };
-const editableNames = ["chardesk_canvas_code", "chardesk_canvas_erase", "chardesk_canvas_fill", "chardesk_canvas_manage", "chardesk_canvas_read", "chardesk_canvas_render", "chardesk_canvas_search", "chardesk_canvas_write", "chardesk_read_materials"];
-const readOnlyNames = editableNames.filter((name) => !["chardesk_canvas_code", "chardesk_canvas_erase", "chardesk_canvas_fill", "chardesk_canvas_render", "chardesk_canvas_write"].includes(name));
+const editableNames = ["canvas_code", "canvas_erase", "canvas_fill", "canvas_manage", "canvas_read", "canvas_render", "canvas_search", "canvas_write", "chardesk_read_materials"];
+const readOnlyNames = editableNames.filter((name) => !["canvas_code", "canvas_erase", "canvas_fill", "canvas_render", "canvas_write"].includes(name));
 
 test.describe("WebMCP native Canvas", () => {
   test("discovers only Canvas and Materials capabilities", async ({ page }) => {
@@ -37,20 +37,20 @@ test.describe("WebMCP native Canvas", () => {
   test("reads and pans without changing the human camera", async ({ page }) => {
     await page.goto("/?webmcp=polyfill");
     await ready(page);
-    await execute(page, "chardesk_canvas_write", { at: [-20, -10], content: "**Sample**" });
+    await execute(page, "canvas_write", { at: [-20, -10], content: "**Sample**" });
     const zoom = await page.getByTestId("zoom-reset").textContent();
-    const text = await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 80, 24], style: "appearance" });
+    const text = await execute(page, "canvas_read", { viewport: [-20, -10, 80, 24], style: "appearance" });
     expect(text).toMatchObject({ mode: "text", sampleSize: 1, overviewOnly: false });
     expect(text.content).toContain("Sample");
     expect(text.content).toContain("appearance:");
-    const image = await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 8, 2], representation: "image", detail: "low" });
+    const image = await execute(page, "canvas_read", { viewport: [-20, -10, 8, 2], representation: "image", detail: "low" });
     expect(image).toMatchObject({ representation: "image", contentBlocks: [{ type: "image", mimeType: "image/png", width: 64, height: 32, scale: 1 }] });
     expect(image.contentBlocks[0].data).toMatch(/^[A-Za-z0-9+/]+=*$/);
-    const moved = await execute(page, "chardesk_canvas_read", { viewport: [10, -10, 80, 24] });
+    const moved = await execute(page, "canvas_read", { viewport: [10, -10, 80, 24] });
     expect(moved.viewport[0]).toBe(text.viewport[0] + 30);
-    expect(await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 160, 48] }))
+    expect(await execute(page, "canvas_read", { viewport: [-20, -10, 160, 48] }))
       .toMatchObject({ mode: "projection", sampleSize: 2, overviewOnly: true });
-    const density = await execute(page, "chardesk_canvas_read", { viewport: [-20, -10, 800, 240] });
+    const density = await execute(page, "canvas_read", { viewport: [-20, -10, 800, 240] });
     expect(density).toMatchObject({ mode: "density", sampleSize: 10, overviewOnly: true });
     expect(density.content).toContain("Styles omitted:");
     await expect(page.getByTestId("zoom-reset")).toHaveText(zoom!);
@@ -59,18 +59,18 @@ test.describe("WebMCP native Canvas", () => {
   test("writes rendered Unicode and searches the resulting Cells", async ({ page }) => {
     await page.goto("/?webmcp=polyfill");
     await ready(page);
-    const written = await execute(page, "chardesk_canvas_write", { at: [-20, -10], content: "Hello, 世界\nABCD" });
+    const written = await execute(page, "canvas_write", { at: [-20, -10], content: "Hello, 世界\nABCD" });
     expect(written).toMatchObject({ bounds: [-20, -10, 11, 2] });
-    expect((await execute(page, "chardesk_canvas_read", { viewport: written.bounds })).content).toContain("Hello, 世界");
-    await execute(page, "chardesk_canvas_write", { at: [-20, -9], content: "X " });
-    expect((await execute(page, "chardesk_canvas_read", { viewport: [-20, -9, 4, 1] })).content).toContain("X CD");
-    const markdown = await execute(page, "chardesk_canvas_render", { at: [100, 50], source: "**Rendered** [link](https://example.com)" });
-    const rendered = await execute(page, "chardesk_canvas_read", { viewport: markdown.bounds });
+    expect((await execute(page, "canvas_read", { viewport: written.bounds })).content).toContain("Hello, 世界");
+    await execute(page, "canvas_write", { at: [-20, -9], content: "X " });
+    expect((await execute(page, "canvas_read", { viewport: [-20, -9, 4, 1] })).content).toContain("X CD");
+    const markdown = await execute(page, "canvas_render", { at: [100, 50], source: "**Rendered** [link](https://example.com)" });
+    const rendered = await execute(page, "canvas_read", { viewport: markdown.bounds });
     expect(rendered.content).toContain("Rendered");
     expect(rendered.content).not.toContain("**Rendered**");
     expect(rendered.content).toContain("bold");
     expect(rendered.content).toContain('link:"https://example.com"');
-    expect((await execute(page, "chardesk_canvas_search", { query: "Rendered" })).matches).toHaveLength(1);
+    expect((await execute(page, "canvas_search", { query: "Rendered" })).matches).toHaveLength(1);
   });
 
   test("registers independently in top-level pages", async ({ context, page }) => {

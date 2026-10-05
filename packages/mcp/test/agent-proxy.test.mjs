@@ -17,7 +17,7 @@ const nextMessage = (socket) => new Promise((resolve, reject) => {
   socket.on('message', onMessage); socket.on('error', onError);
 });
 
-test('a second server command joins the existing broker as a tenant', { timeout: 15_000 }, async () => {
+test('a second server command joins the existing bridge as a client', { timeout: 15_000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'chardesk-mcp-agent-proxy-'));
   const env = { ...process.env, CHARDESK_MCP_PORT: '0', CHARDESK_MCP_ORIGINS: 'http://127.0.0.1:5173',
     CHARDESK_MCP_CREDENTIALS: join(directory, 'credentials.json'), CHARDESK_MCP_PAIRING: join(directory, 'pairing.json') };

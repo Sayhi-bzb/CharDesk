@@ -4,10 +4,10 @@ Local MCP bridge for a CharDesk Canvas.
 
 The MCP server runs as a local stdio process and forwards Canvas management, read,
 search, and write calls over a loopback WebSocket to one explicitly paired
-browser page. Multiple MCP processes can share that page: the first process owns
-the broker and later processes register as isolated tenant sessions. CharDesk can
-grant application-scoped access to all Canvases with separate inspect, read,
-search, and write permissions; the short persistent `canvasId` selects a target
+browser page. Multiple MCP processes can share that page as independent clients;
+the bridge only multiplexes request IDs and does not create agent sessions.
+CharDesk can grant application-scoped access to all Canvases with separate
+inspect, read, search, and write permissions; the short persistent `canvasId` selects a target
 without changing the human's active Canvas. Get IDs from
 `canvas_manage` with the `list` action.
 The manage list action omits archived Canvases by default; pass
@@ -37,8 +37,8 @@ npx -y @chardesk/mcp pair
 ```
 
 When another coding agent starts `server` on the same machine, it detects the
-existing broker and joins it as a tenant automatically. Tenant requests use
-independent session tokens and are serialized through the shared browser page.
+existing bridge and joins it as a client automatically. Client requests are
+matched by request ID and forwarded through the shared browser page.
 
 The browser can now connect through the fixed loopback bridge without exposing
 the URL token: open **Agent → Local MCP** and turn on the connection switch. The
@@ -51,10 +51,12 @@ npx -y @chardesk/mcp revoke
 
 The server binds to `127.0.0.1:9494` by default. Set `CHARDESK_MCP_PORT` and
 `CHARDESK_MCP_ORIGINS` when the local environment needs different values.
-The broker remains alive after the owner agent's stdio closes while the browser
-page or another tenant is connected. Set `CHARDESK_MCP_DEBUG=1` to emit JSON
-lifecycle events (`browser_connected`, `tenant_connected`, `owner_stdio_closed`,
-`tenant_closed`, and `browser_closed`) to stderr when diagnosing disconnects.
+The bridge remains alive after the owner agent's stdio closes while the browser
+page or another client is connected. Set `CHARDESK_MCP_DEBUG=1` to emit JSON
+lifecycle events (`browser_connected`, `browser_ready`, `client_connected`,
+`owner_stdio_closed`, `client_closed`, and `browser_closed`) to stderr when
+diagnosing disconnects. `GET http://127.0.0.1:9494/health` reports the current
+bridge, page, and client state.
 
 Canvas reads default to lightweight exact text without style notes. Agents may
 request a spatial appearance map, exact Cell records, an image block for visual
