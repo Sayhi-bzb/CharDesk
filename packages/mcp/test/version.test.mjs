@@ -7,9 +7,12 @@ import { checkForUpdate, compareVersions, MCP_VERSION } from '../src/version.mjs
 
 test('uses the published package version for the MCP server version', () => {
   assert.match(MCP_VERSION, /^\d+\.\d+\.\d+$/);
-  assert.equal(compareVersions('0.5.5', MCP_VERSION), 1);
+  const [major, minor, patch] = MCP_VERSION.split('.').map(Number);
+  assert.equal(compareVersions(`${major}.${minor}.${patch + 1}`, MCP_VERSION), 1);
   assert.equal(compareVersions(MCP_VERSION, MCP_VERSION), 0);
-  assert.equal(compareVersions('0.5.3', MCP_VERSION), -1);
+  const previous = patch > 0 ? `${major}.${minor}.${patch - 1}`
+    : minor > 0 ? `${major}.${minor - 1}.999` : `${major - 1}.999.999`;
+  assert.equal(compareVersions(previous, MCP_VERSION), -1);
 });
 
 test('checks npm in the background and caches the latest version', async () => {

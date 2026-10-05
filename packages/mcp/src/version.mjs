@@ -8,7 +8,7 @@ const packageJson = require('../package.json');
 
 export const MCP_NAME = 'chardesk-mcp';
 export const MCP_VERSION = packageJson.version;
-export const MCP_PACKAGE = packageJson.name;
+const MCP_PACKAGE = packageJson.name;
 const REGISTRY_URL = `https://registry.npmjs.org/${encodeURIComponent(MCP_PACKAGE)}/latest`;
 const DEFAULT_TTL = 24 * 60 * 60 * 1000;
 const DEFAULT_TIMEOUT = 1500;
