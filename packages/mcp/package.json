@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/mcp",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "description": "Local MCP bridge for reading and writing a CharDesk Canvas",
   "type": "module",
   "bin": {
@@ -9,7 +9,11 @@
   "exports": {
     "./contracts": "./src/tools.mjs"
   },
-  "files": ["bin", "src", "README.md"],
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
   "scripts": {
     "dev": "node --watch src/server.mjs",
     "test": "node --test test/*.test.mjs"
@@ -18,9 +22,13 @@
     "@modelcontextprotocol/sdk": "^1.31.0",
     "ws": "^8.21.1"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "license": "MIT",
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Sayhi-bzb/CharDesk.git",
