@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "dev": "node --watch src/server.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test --test-concurrency=1 test/*.test.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
