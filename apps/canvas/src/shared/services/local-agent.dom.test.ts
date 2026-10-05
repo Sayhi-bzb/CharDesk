@@ -20,7 +20,10 @@ class Socket {
 const url = `ws://127.0.0.1:9494/bridge?token=${'a'.repeat(64)}`;
 describe('local agent page connection', () => {
   let scope: string | null;
-  const execute = vi.fn(async () => ({ canvasId: 'canvas-a', bounds: [0, 0, 1, 1] }));
+  const execute = vi.fn(async (...args: [string?, Record<string, unknown>?]) => {
+    void args;
+    return { canvasId: 'canvas-a', bounds: [0, 0, 1, 1] };
+  });
   beforeEach(() => {
     localStorage.clear();
     scope = 'canvas-a';
