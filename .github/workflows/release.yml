@@ -143,9 +143,9 @@ jobs:
         run: |
           npm run build --workspace @chardesk/protocol
           npm run build --workspace @chardesk/cell-core
-          npm run build --workspace @chardesk/rendering
           npm run build --workspace @chardesk/fonts
           npm run build --workspace @chardesk/font-maple
+          npm run build --workspace @chardesk/rendering
           npm run build --workspace @chardesk/cli
 
       - name: Check package publication status
