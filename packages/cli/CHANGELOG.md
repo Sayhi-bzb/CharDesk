@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.1...v0.6.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* keep packed CLI smoke test compatible ([6c376f6](https://github.com/Sayhi-bzb/CharDesk/commit/6c376f61362019df87120c30243a408366868299))
+
 ## [0.6.1](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.0...v0.6.1) (2026-10-05)
 
 
