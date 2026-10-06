@@ -19,6 +19,7 @@ export const CANVAS_READ_TOOL_NAME = "canvas_read";
 export const CANVAS_WRITE_TOOL_NAME = "canvas_write";
 export const CANVAS_ERASE_TOOL_NAME = "canvas_erase";
 export const CANVAS_FILL_TOOL_NAME = "canvas_fill";
+export const CANVAS_UNDO_TOOL_NAME = "canvas_undo";
 export const CANVAS_RENDER_TOOL_NAME = "canvas_render";
 export const CANVAS_SEARCH_TOOL_NAME = "canvas_search";
 export const CANVAS_MANAGE_TOOL_NAME = "canvas_manage";
@@ -158,10 +159,19 @@ const CANVAS_READ_TOOL_RAW = {
   },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
+const CANVAS_MUTATION_IMPACT = { type: "object", properties: {
+  overwrittenCells: { type: "integer", minimum: 0 },
+  overwrittenBounds: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
+  clearedCells: { type: "integer", minimum: 0 },
+  clearedBounds: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
+  styledCells: { type: "integer", minimum: 0 },
+  styledBounds: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] },
+}, required: ["overwrittenCells", "overwrittenBounds", "clearedCells", "clearedBounds", "styledCells", "styledBounds"], additionalProperties: false };
+
 const CANVAS_WRITE_TOOL_RAW = {
   name: CANVAS_WRITE_TOOL_NAME,
   title: "Write Canvas stroke",
-  description: "Write one continuous literal-Unicode stroke at [x,y] in the Projection layer. Pass pageId for a specific Slide page; omit it for the active page. Non-whitespace graphemes are written with one optional style and overwrite existing Cells; whitespace is transparent and does not erase. Use canvas_erase to remove Cells, canvas_fill to style existing characters, and canvas_render for Markdown/ANSI/material input. Source-backed Canvases require source-file editing; Slide overflow is rejected without writing.",
+  description: "Write one continuous literal-Unicode stroke at [x,y] in the Projection layer. Pass pageId for a specific Slide page; omit it for the active page. Non-whitespace graphemes are written with one optional style and overwrite existing Cells; whitespace is transparent and does not erase. Results report impact counts/bounds and an operationId when the edit can be undone with canvas_undo. Use canvas_erase to remove Cells, canvas_fill to style existing characters, and canvas_render for Markdown/ANSI/material input. Source-backed Canvases require source-file editing; Slide overflow is rejected without writing.",
   readOnly: false,
   inputSchema: {
     type: "object",
@@ -186,7 +196,9 @@ const CANVAS_WRITE_TOOL_RAW = {
         persisted: { type: "boolean" },
         persistence: { enum: ["saved", "pending", "failed", "unavailable"] },
         persistenceError: { type: "string" },
-      }, required: ["bounds", "writtenCells"], additionalProperties: false },
+        operationId: { type: "string" },
+        impact: CANVAS_MUTATION_IMPACT,
+      }, required: ["bounds", "writtenCells", "impact"], additionalProperties: false },
       { type: "object", properties: {
         ok: { const: false },
         code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "canvas_not_ready", "permission_denied", "source_backed_canvas", "out_of_bounds", "write_failed"] },
@@ -212,6 +224,10 @@ const CANVAS_ERASE_TOOL_RAW = {
     at: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 },
     size: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 },
   }, required: ["at", "size"], additionalProperties: false },
+  outputSchema: { type: "object", oneOf: [
+    { type: "object", properties: { canvasId: { type: "string" }, pageId: { type: "string" }, bounds: { type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, erasedCells: { type: "integer", minimum: 0 }, persisted: { type: "boolean" }, persistence: { enum: ["saved", "pending", "failed", "unavailable"] }, persistenceError: { type: "string" }, operationId: { type: "string" }, impact: CANVAS_MUTATION_IMPACT }, required: ["bounds", "erasedCells", "impact"], additionalProperties: false },
+    { type: "object", properties: { ok: { const: false }, code: { type: "string" }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
+  ] },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
 const CANVAS_FILL_TOOL_RAW = {
@@ -226,6 +242,29 @@ const CANVAS_FILL_TOOL_RAW = {
     size: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 },
     style: CANVAS_REGION_STYLE,
   }, required: ["at", "size", "style"], additionalProperties: false },
+  outputSchema: { type: "object", oneOf: [
+    { type: "object", properties: { canvasId: { type: "string" }, pageId: { type: "string" }, bounds: { type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, styledCells: { type: "integer", minimum: 0 }, persisted: { type: "boolean" }, persistence: { enum: ["saved", "pending", "failed", "unavailable"] }, persistenceError: { type: "string" }, operationId: { type: "string" }, impact: CANVAS_MUTATION_IMPACT }, required: ["bounds", "styledCells", "impact"], additionalProperties: false },
+    { type: "object", properties: { ok: { const: false }, code: { type: "string" }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
+  ] },
+} satisfies Omit<AgentToolDefinition, "execute">;
+
+const CANVAS_UNDO_TOOL_RAW = {
+  name: CANVAS_UNDO_TOOL_NAME,
+  title: "Undo Canvas operation",
+  description: "Undo one latest Canvas mutation returned by a canvas_* tool or Canvas Code. Pass the returned operationId. Undo is scoped to the selected Canvas/page and is rejected when a later edit has already been made.",
+  readOnly: false,
+  inputSchema: { type: "object", properties: {
+    operationId: { type: "string", minLength: 1 },
+    canvasId: { type: "string", minLength: 1 },
+    pageId: { type: "string", minLength: 1 },
+  }, required: ["operationId"], additionalProperties: false },
+  outputSchema: { type: "object", oneOf: [
+    { type: "object", properties: {
+      canvasId: { type: "string" }, pageId: { type: "string" }, operationId: { type: "string" }, undone: { const: true },
+      persisted: { type: "boolean" }, persistence: { enum: ["saved", "pending", "failed", "unavailable"] }, persistenceError: { type: "string" },
+    }, required: ["operationId", "undone"], additionalProperties: false },
+    { type: "object", properties: { ok: { const: false }, code: { enum: ["invalid_input", "canvas_not_active", "canvas_not_found", "undo_unavailable", "operation_not_undoable", "undo_failed"] }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
+  ] },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
 const CANVAS_RENDER_TOOL_RAW = {
@@ -240,6 +279,10 @@ const CANVAS_RENDER_TOOL_RAW = {
     source: { type: "string" },
     format: { enum: ["auto", "raw", "ansi", "markdown"] },
   }, required: ["at", "source"], additionalProperties: false },
+  outputSchema: { type: "object", oneOf: [
+    { type: "object", properties: { canvasId: { type: "string" }, pageId: { type: "string" }, bounds: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] }, writtenCells: { type: "integer", minimum: 0 }, skippedWhitespaceCells: { type: "integer", minimum: 0 }, persisted: { type: "boolean" }, persistence: { enum: ["saved", "pending", "failed", "unavailable"] }, persistenceError: { type: "string" }, operationId: { type: "string" }, impact: CANVAS_MUTATION_IMPACT }, required: ["bounds", "writtenCells", "impact"], additionalProperties: false },
+    { type: "object", properties: { ok: { const: false }, code: { type: "string" }, message: { type: "string" } }, required: ["ok", "code", "message"], additionalProperties: false },
+  ] },
 } satisfies Omit<AgentToolDefinition, "execute">;
 
 const CANVAS_CODE_TOOL_RAW = {
@@ -279,5 +322,6 @@ export const CANVAS_READ_TOOL = canonicalizeTool(CANVAS_READ_TOOL_RAW);
 export const CANVAS_WRITE_TOOL = canonicalizeTool(CANVAS_WRITE_TOOL_RAW);
 export const CANVAS_ERASE_TOOL = canonicalizeTool(CANVAS_ERASE_TOOL_RAW);
 export const CANVAS_FILL_TOOL = canonicalizeTool(CANVAS_FILL_TOOL_RAW);
+export const CANVAS_UNDO_TOOL = canonicalizeTool(CANVAS_UNDO_TOOL_RAW);
 export const CANVAS_RENDER_TOOL = canonicalizeTool(CANVAS_RENDER_TOOL_RAW);
 export const CANVAS_CODE_TOOL = canonicalizeTool(CANVAS_CODE_TOOL_RAW);

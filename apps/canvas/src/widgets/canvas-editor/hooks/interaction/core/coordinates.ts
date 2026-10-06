@@ -30,7 +30,7 @@ export const getLocalCanvasPoint = ({
   y: clientY - rect.top,
 });
 
-const resolveRawGridPointFromScreen = ({
+export const resolveRawGridPointFromScreen = ({
   clientX,
   clientY,
   rect,

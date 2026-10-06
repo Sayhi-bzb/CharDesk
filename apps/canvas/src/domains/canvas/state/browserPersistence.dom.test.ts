@@ -164,6 +164,39 @@ describe("browser canvas persistence", () => {
     expect(runtime.getState().canvasSessions.some(({ id }) => id === SESSION_ID)).toBe(false);
   });
 
+  it("does not restore a deleted ephemeral Welcome session", async () => {
+    const storage = new MemoryStorage();
+    const first = createRuntime(storage, [{
+      id: SESSION_ID,
+      name: "Welcome",
+      mode: "freeform",
+      storagePolicy: "ephemeral",
+      grid: [],
+    }]);
+    runtimes.push(first);
+    await first.ready;
+
+    first.commands.sessions.create("freeform");
+    expect(await first.commands.sessions.remove(SESSION_ID)).toBe(true);
+    await first.retryPersistence();
+
+    first.dispose();
+    runtimes = [];
+
+    const restored = createRuntime(storage, [{
+      id: SESSION_ID,
+      name: "Welcome",
+      mode: "freeform",
+      storagePolicy: "ephemeral",
+      grid: [],
+    }]);
+    runtimes.push(restored);
+    await restored.ready;
+
+    expect(restored.getState().canvasSessions.some(({ id }) => id === SESSION_ID))
+      .toBe(false);
+  });
+
   afterEach(async () => {
     runtimes.forEach((runtime) => runtime.dispose());
     runtimes = [];

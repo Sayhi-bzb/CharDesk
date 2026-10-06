@@ -8,7 +8,7 @@ CharDesk gives people and LLM-powered agents a common artifact: visual Unicode t
 
 [Open Canvas](https://canvas.chardesk.com/) · [Explore Cell UI](https://ui.chardesk.com/)
 
-[Product home](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/) · [CLI reference](packages/cli/README.md)
+[Product home](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/)
 
 ## Start with your agent
 
@@ -32,12 +32,6 @@ pi mcp add chardesk -- npx -y @chardesk/mcp
 ```
 
 After that, no manual `server` or `pair` command is needed. The first Canvas tool call opens Canvas when necessary, and the page connects to the local bridge automatically.
-
-The CLI is optional for local file workflows:
-
-```sh
-npm install -g @chardesk/cli
-```
 
 Then tell your agent what you want to see:
 
@@ -125,7 +119,6 @@ Arrange content on Freeform canvases, start from reusable Cell templates, compos
 ### Agent access
 
 - **Local MCP:** register `@chardesk/mcp` once with your agent (Codex, Claude Code, or Pi). The agent starts it automatically; Canvas discovers the local bridge and the first `canvas_*` call opens Canvas if needed. See the [MCP package reference](packages/mcp/README.md).
-- **Local files and CLI:** the stable default. Agents use normal file tools; `chardesk` checks, previews, opens, and renders the result. See the [CLI reference](packages/cli/README.md).
 - **Chrome WebMCP:** experimental. Enable `chrome://flags/#enable-webmcp-testing`, relaunch Chrome, and use the browser path only when needed.
 - **ChatGPT Site Tools:** experimental. Enable **Site tools** under **Settings → Browser → Permissions**, then open CharDesk in ChatGPT's built-in browser. See the [official Site Tools guide](https://learn.chatgpt.com/docs/webmcp).
 

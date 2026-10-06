@@ -5,13 +5,13 @@ import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
 import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvasRendering";
 import { CHARDESK_CONTENT_THEMES } from "@chardesk/rendering/theme";
 import { COLOR_PRIMARY_TEXT } from "@/shared/lib/constants";
-import { prepareCanvasPlainTextWrite, prepareCanvasRowsWrite, prepareCanvasTextWrite, type CanvasStrokeStyle } from "@/domains/canvas/public";
+import { measureCanvasMutationImpact, prepareCanvasErase, prepareCanvasPlainTextWrite, prepareCanvasRowsWrite, prepareCanvasTextWrite, type CanvasMutationImpact, type CanvasStrokeStyle } from "@/domains/canvas/public";
 import type { CanvasSurfaceReader, RichTextRow } from "@/domains/canvas/public";
 import { getTextCellWidth } from "@chardesk/protocol";
 import type { GridCell } from "@/shared/types";
 
 import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL, CANVAS_SEARCH_TOOL, CANVAS_MANAGE_TOOL, CANVAS_ERASE_TOOL, CANVAS_FILL_TOOL, CANVAS_RENDER_TOOL } from "./canvasToolDefinitions";
-export { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_MANAGE_TOOL_NAME, CANVAS_ERASE_TOOL_NAME, CANVAS_FILL_TOOL_NAME, CANVAS_RENDER_TOOL_NAME } from "./canvasToolDefinitions";
+export { CANVAS_READ_TOOL_NAME, CANVAS_WRITE_TOOL_NAME, CANVAS_SEARCH_TOOL_NAME, CANVAS_MANAGE_TOOL_NAME, CANVAS_ERASE_TOOL_NAME, CANVAS_FILL_TOOL_NAME, CANVAS_UNDO_TOOL_NAME, CANVAS_RENDER_TOOL_NAME } from "./canvasToolDefinitions";
 
 type CanvasTargetHost = Pick<CanvasRuntime, "getState">;
 
@@ -25,6 +25,20 @@ const resolveCanvasTarget = (canvas: CanvasTargetHost, input: { canvasId?: unkno
 };
 
 const targetOutput = (target: { id: string; explicit: boolean }) => target.explicit ? { canvasId: target.id } : {};
+
+const createMutationOperationId = () => `op-${globalThis.crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
+
+const beginMutation = (canvas: CanvasMutationHost, target: { id: string }, pageId?: string) => {
+  const beginCheckpoint = canvas.commands.history?.beginCheckpoint;
+  if (!beginCheckpoint) return { operationId: undefined, checkpoint: undefined };
+  const operationId = createMutationOperationId();
+  return { operationId, checkpoint: beginCheckpoint(operationId, target.id, pageId) };
+};
+
+const mutationChanged = (result: { writtenCells?: number } | null | undefined, impact: CanvasMutationImpact, styledCells = 0) =>
+  Boolean((result?.writtenCells ?? 0) > 0 || styledCells > 0 || impact.overwrittenCells > 0 || impact.clearedCells > 0 || impact.styledCells > 0);
+
+const impactOutput = (impact: CanvasMutationImpact) => ({ impact });
 
 /** Store the active theme's foreground as Canvas' canonical default. This
  * keeps renderer-generated default text adaptive when the host switches theme;
@@ -51,7 +65,11 @@ type CanvasPersistenceHost = {
   persistence?: unknown;
   flushPersistence?: (sessionId?: string) => Promise<void>;
 };
-type CanvasMutationHost = Pick<CanvasRuntime, "ready" | "getState" | "materializeSession"> & CanvasPersistenceHost;
+type CanvasHistoryHost = {
+  beginCheckpoint?: (operationId?: string, canvasId?: string, pageId?: string) => { commit: () => void; cancel: () => void };
+  undoOperation?: (operationId: string, canvasId?: string, pageId?: string) => boolean;
+};
+type CanvasMutationHost = Pick<CanvasRuntime, "ready" | "getState" | "materializeSession"> & CanvasPersistenceHost & { commands: { history?: CanvasHistoryHost } };
 type CanvasPersistenceResult = {
   persisted: boolean;
   persistence: "saved" | "pending" | "failed" | "unavailable";
@@ -367,22 +385,32 @@ export const createCanvasWriteTool = (
     }
     const target = resolveCanvasTarget(canvas, input);
     if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
+    let mutation: ReturnType<typeof beginMutation> | undefined;
     try {
       await canvas.ready;
-      if (!await canvas.materializeSession(target.id, input.pageId as string | undefined)) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
+      const snapshot = await canvas.materializeSession(target.id, input.pageId as string | undefined);
+      if (!snapshot) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
       const state = canvas.getState();
       const session = state.canvasSessions.find(({ id }) => id === target.id);
       if (session?.migrationPending) return { ok: false, code: "canvas_not_ready", message: "Wait for this Canvas migration to finish before writing." };
       if (session && isSourceBackedCanvasSession(session)) return { ok: false, code: "source_backed_canvas", message: "Edit the source file of this Canvas instead of its projection." };
       const rows = literalRows(input.content, input.style as CanvasStrokeStyle | undefined ?? {}, state.brushColor);
       const atPoint = { x: at[0]!, y: at[1]! };
+      const prepared = prepareCanvasRowsWrite(atPoint, rows, "patch");
+      const impact = measureCanvasMutationImpact(snapshot.surface, prepared.patch);
+      mutation = beginMutation(canvas, target, input.pageId as string | undefined);
       const result = target.id === state.activeCanvasId && input.pageId === undefined
         ? canvas.commands.text.writeRowsAt(rows, atPoint, "patch")
         : canvas.commands.text.writeRowsAtSession?.(target.id, rows, atPoint, "patch", input.pageId as string | undefined);
-      if (target.id !== state.activeCanvasId && !result) return { ok: false, code: "write_failed", message: "Targeted Canvas writes are unavailable on this host." };
+      if (target.id !== state.activeCanvasId && !result) {
+        mutation.checkpoint?.cancel();
+        return { ok: false, code: "write_failed", message: "Targeted Canvas writes are unavailable on this host." };
+      }
       const persisted = await confirmCanvasPersistence(canvas, target.id);
-      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, ...(input.writeMode ? { writeMode: input.writeMode } : {}), ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }) };
+      mutation.checkpoint?.commit();
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, ...(input.writeMode ? { writeMode: input.writeMode } : {}), ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }), ...impactOutput(impact), ...(mutationChanged(result, impact) && mutation.operationId ? { operationId: mutation.operationId } : {}) };
     } catch (error) {
+      mutation?.checkpoint?.cancel();
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "write_failed", message: error instanceof Error ? error.message : "Unable to write Canvas content." };
     }
   },
@@ -405,21 +433,31 @@ export const createCanvasEraseTool = (
     }
     const target = resolveCanvasTarget(canvas, input);
     if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
+    let mutation: ReturnType<typeof beginMutation> | undefined;
     try {
       await canvas.ready;
-      if (!await canvas.materializeSession(target.id)) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
+      const snapshot = await canvas.materializeSession(target.id, input.pageId as string | undefined);
+      if (!snapshot) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
       const state = canvas.getState();
       const session = state.canvasSessions.find(({ id }) => id === target.id);
       if (session?.migrationPending) return { ok: false, code: "canvas_not_ready", message: "Wait for this Canvas migration to finish before erasing." };
       if (session && isSourceBackedCanvasSession(session)) return { ok: false, code: "source_backed_canvas", message: "Edit the source file of this Canvas instead of its projection." };
       const point = { x: at[0]!, y: at[1]! };
+      const prepared = prepareCanvasErase(point, [size[0]!, size[1]!]);
+      const impact = measureCanvasMutationImpact(snapshot.surface, prepared.patch);
+      mutation = beginMutation(canvas, target, input.pageId as string | undefined);
       const result = target.id === state.activeCanvasId && input.pageId === undefined
         ? canvas.commands.text.eraseAt?.(point, [size[0]!, size[1]!])
         : canvas.commands.text.eraseAtSession?.(target.id, point, [size[0]!, size[1]!], input.pageId as string | undefined);
-      if (target.id !== state.activeCanvasId && !result) return { ok: false, code: "erase_failed", message: "Targeted Canvas erases are unavailable on this host." };
+      if (target.id !== state.activeCanvasId && !result) {
+        mutation.checkpoint?.cancel();
+        return { ok: false, code: "erase_failed", message: "Targeted Canvas erases are unavailable on this host." };
+      }
       const persisted = await confirmCanvasPersistence(canvas, target.id);
-      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, bounds: result?.bounds ?? [point.x, point.y, size[0]!, size[1]!], erasedCells: size[0]! * size[1]! };
+      mutation.checkpoint?.commit();
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, bounds: result?.bounds ?? [point.x, point.y, size[0]!, size[1]!], erasedCells: impact.clearedCells, ...impactOutput(impact), ...(mutationChanged(result, impact) && mutation.operationId ? { operationId: mutation.operationId } : {}) };
     } catch (error) {
+      mutation?.checkpoint?.cancel();
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "erase_failed", message: error instanceof Error ? error.message : "Unable to erase Canvas content." };
     }
   },
@@ -443,6 +481,7 @@ export const createCanvasFillTool = (
     }
     const target = resolveCanvasTarget(canvas, input);
     if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
+    let mutation: ReturnType<typeof beginMutation> | undefined;
     try {
       await canvas.ready;
       const snapshot = await canvas.materializeSession(target.id, input.pageId as string | undefined);
@@ -467,14 +506,60 @@ export const createCanvasFillTool = (
         });
         if (spans.length > 0) rows.push({ y: row.y - origin.y, spans });
       }
+      const prepared = prepareCanvasRowsWrite(origin, rows, "patch");
+      mutation = beginMutation(canvas, target, input.pageId as string | undefined);
       const result = target.id === state.activeCanvasId && input.pageId === undefined
         ? canvas.commands.text.writeRowsAt(rows, origin, "patch")
         : canvas.commands.text.writeRowsAtSession?.(target.id, rows, origin, "patch", input.pageId as string | undefined);
-      if (target.id !== state.activeCanvasId && !result) return { ok: false, code: "fill_failed", message: "Targeted Canvas fills are unavailable on this host." };
+      if (target.id !== state.activeCanvasId && !result) {
+        mutation.checkpoint?.cancel();
+        return { ok: false, code: "fill_failed", message: "Targeted Canvas fills are unavailable on this host." };
+      }
       const persisted = await confirmCanvasPersistence(canvas, target.id);
-      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, bounds: [origin.x, origin.y, size[0]!, size[1]!], styledCells: result?.writtenCells ?? 0 };
+      mutation.checkpoint?.commit();
+      const impact: CanvasMutationImpact = {
+        overwrittenCells: 0, overwrittenBounds: null, clearedCells: 0, clearedBounds: null,
+        styledCells: result?.writtenCells ?? 0, styledBounds: prepared.bounds,
+      };
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, bounds: [origin.x, origin.y, size[0]!, size[1]!], styledCells: impact.styledCells, ...impactOutput(impact), ...(mutationChanged(result, impact) && mutation.operationId ? { operationId: mutation.operationId } : {}) };
     } catch (error) {
+      mutation?.checkpoint?.cancel();
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "fill_failed", message: error instanceof Error ? error.message : "Unable to style Canvas content." };
+    }
+  },
+});
+
+export const createCanvasUndoTool = (
+  canvas: CanvasMutationHost,
+): AgentToolDefinition => ({
+  name: "canvas_undo",
+  title: "Undo Canvas operation",
+  description: "Undo one latest Canvas mutation returned by a canvas_* tool or Canvas Code. Pass the returned operationId. Undo is scoped to the selected Canvas/page and is rejected when a later edit has already been made.",
+  readOnly: false,
+  inputSchema: { type: "object", properties: {
+    operationId: { type: "string", minLength: 1 },
+    canvasId: { type: "string", minLength: 1 },
+    pageId: { type: "string", minLength: 1 },
+  }, required: ["operationId"], additionalProperties: false },
+  execute: async (input) => {
+    if (Object.keys(input).some((key) => !["operationId", "canvasId", "pageId"].includes(key))
+      || typeof input.operationId !== "string" || !input.operationId
+      || (input.canvasId !== undefined && (typeof input.canvasId !== "string" || !input.canvasId))
+      || (input.pageId !== undefined && (typeof input.pageId !== "string" || !input.pageId))) {
+      return { ok: false, code: "invalid_input", message: "Expected { operationId, canvasId?, pageId? }." };
+    }
+    const target = resolveCanvasTarget(canvas, input);
+    if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
+    try {
+      await canvas.ready;
+      const undoOperation = canvas.commands.history?.undoOperation;
+      if (!undoOperation) return { ok: false, code: "undo_unavailable", message: "Canvas undo is unavailable on this host." };
+      const undone = undoOperation(input.operationId, target.id, input.pageId as string | undefined);
+      if (!undone) return { ok: false, code: "operation_not_undoable", message: "The operation is no longer the latest edit on this Canvas/page." };
+      const persisted = await confirmCanvasPersistence(canvas, target.id);
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), operationId: input.operationId, undone: true, ...persisted };
+    } catch {
+      return { ok: false, code: "undo_failed", message: "Unable to undo the Canvas operation." };
     }
   },
 });
@@ -499,9 +584,12 @@ export const createCanvasRenderTool = (
     const target = resolveCanvasTarget(canvas, input);
     if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
     const canvasId = target.id;
+    let snapshot: Awaited<ReturnType<CanvasRuntime["materializeSession"]>>;
+    let mutation: ReturnType<typeof beginMutation> | undefined;
     try {
       await canvas.ready;
-      if (!await canvas.materializeSession(canvasId, input.pageId as string | undefined)) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
+      snapshot = await canvas.materializeSession(canvasId, input.pageId as string | undefined);
+      if (!snapshot) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
     } catch {
       return { ok: false, code: "canvas_not_ready", message: "The Canvas content is not ready." };
     }
@@ -520,6 +608,8 @@ export const createCanvasRenderTool = (
         await rendering.render(input.source, state.brushColor, renderContext),
         renderContext.themeMode,
       );
+      const latestSnapshot = await canvas.materializeSession(canvasId, input.pageId as string | undefined);
+      if (!latestSnapshot) return { ok: false, code: "canvas_not_ready", message: "The target Canvas content is not ready." };
       const current = canvas.getState();
       const currentSession = current.canvasSessions.find(({ id }) => id === canvasId);
       if (!currentSession || currentSession.migrationPending || isSourceBackedCanvasSession(currentSession)) {
@@ -530,6 +620,11 @@ export const createCanvasRenderTool = (
         return { ok: false, code: "write_failed", message: "The active Canvas or Slide changed during rendering; nothing was written. Read the current target again." };
       }
       const position = { x: at[0], y: at[1] };
+      const prepared = rendered.kind === "plain"
+        ? prepareCanvasTextWrite(position, rendered.text, state.brushColor, renderWriteMode as "patch" | "replace")
+        : prepareCanvasRowsWrite(position, rendered.rows, renderWriteMode as "patch" | "replace");
+      const impact = measureCanvasMutationImpact(latestSnapshot.surface, prepared.patch);
+      mutation = beginMutation(canvas, target, input.pageId as string | undefined);
       const result = rendered.kind === "plain"
         ? canvasId === state.activeCanvasId && input.pageId === undefined
           ? canvas.commands.text.writeAt(rendered.text, position, renderWriteMode as "patch" | "replace")
@@ -538,11 +633,14 @@ export const createCanvasRenderTool = (
           ? canvas.commands.text.writeRowsAt(rendered.rows, position, renderWriteMode as "patch" | "replace")
           : canvas.commands.text.writeRowsAtSession?.(canvasId, rendered.rows, position, renderWriteMode as "patch" | "replace", input.pageId as string | undefined);
       if (canvasId !== state.activeCanvasId && !result) {
+        mutation.checkpoint?.cancel();
         return { ok: false, code: "write_failed", message: "Targeted Canvas writes are unavailable on this host." };
       }
       const persisted = await confirmCanvasPersistence(canvas, canvasId);
-      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }) };
+      mutation.checkpoint?.commit();
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }), ...impactOutput(impact), ...(mutationChanged(result, impact) && mutation.operationId ? { operationId: mutation.operationId } : {}) };
     } catch (error) {
+      mutation?.checkpoint?.cancel();
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "write_failed",
         message: error instanceof CanvasWriteError ? error.message : "Unable to write Canvas content." };
     }

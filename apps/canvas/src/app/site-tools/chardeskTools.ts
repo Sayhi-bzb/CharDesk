@@ -1,12 +1,12 @@
 import type { AgentToolDefinition } from "./contracts";
 import type { CanvasRuntime } from "@/domains/canvas/public";
-import { createCanvasReadTool, createCanvasWriteTool, createCanvasRenderTool, createCanvasEraseTool, createCanvasFillTool, createCanvasSearchTool, createCanvasManageTool, createCanvasPreviewWriteTool, createCanvasPreviewRenderTool } from "./canvasTools";
+import { createCanvasReadTool, createCanvasWriteTool, createCanvasRenderTool, createCanvasEraseTool, createCanvasFillTool, createCanvasUndoTool, createCanvasSearchTool, createCanvasManageTool, createCanvasPreviewWriteTool, createCanvasPreviewRenderTool } from "./canvasTools";
 import { createCanvasCodeTool } from "./canvasCode";
 import { createChardeskMaterialsTool } from "./materialsTools";
 import type { CanvasToolRendering } from "./canvasRendering";
 
 type ChardeskAgentToolDependencies = Readonly<{
-  canvas: Parameters<typeof createCanvasManageTool>[0] & Parameters<typeof createCanvasWriteTool>[0] & Parameters<typeof createCanvasRenderTool>[0] & Parameters<typeof createCanvasEraseTool>[0] & Parameters<typeof createCanvasFillTool>[0] & Pick<CanvasRuntime, "materializeSession"> & { commands: { history?: { beginCheckpoint: (operationId?: string, canvasId?: string) => { commit: () => void; cancel: () => void }; undoOperation?: (operationId: string) => boolean } } };
+  canvas: Parameters<typeof createCanvasManageTool>[0] & Parameters<typeof createCanvasWriteTool>[0] & Parameters<typeof createCanvasRenderTool>[0] & Parameters<typeof createCanvasEraseTool>[0] & Parameters<typeof createCanvasFillTool>[0] & Parameters<typeof createCanvasUndoTool>[0] & Pick<CanvasRuntime, "materializeSession"> & { commands: { history?: { beginCheckpoint: (operationId?: string, canvasId?: string, pageId?: string) => { commit: () => void; cancel: () => void }; undoOperation?: (operationId: string, canvasId?: string, pageId?: string) => boolean } } };
   readOnly?: boolean;
   rendering: CanvasToolRendering;
 }>;
@@ -15,7 +15,7 @@ export const createChardeskAgentToolGroups = (
   dependencies: ChardeskAgentToolDependencies,
 ): Readonly<Record<"materials" | "canvas", readonly AgentToolDefinition[]>> => ({
   materials: [createChardeskMaterialsTool()],
-  canvas: [createCanvasManageTool(dependencies.canvas, dependencies.readOnly), createCanvasReadTool(dependencies.canvas, dependencies.rendering), createCanvasSearchTool(dependencies.canvas), ...(dependencies.readOnly ? [] : [createCanvasWriteTool(dependencies.canvas), createCanvasEraseTool(dependencies.canvas), createCanvasFillTool(dependencies.canvas), createCanvasRenderTool(dependencies.canvas, dependencies.rendering), createCanvasCodeTool({
+  canvas: [createCanvasManageTool(dependencies.canvas, dependencies.readOnly), createCanvasReadTool(dependencies.canvas, dependencies.rendering), createCanvasSearchTool(dependencies.canvas), ...(dependencies.readOnly ? [] : [createCanvasWriteTool(dependencies.canvas), createCanvasEraseTool(dependencies.canvas), createCanvasFillTool(dependencies.canvas), createCanvasRenderTool(dependencies.canvas, dependencies.rendering), createCanvasUndoTool(dependencies.canvas), createCanvasCodeTool({
     manage: createCanvasManageTool(dependencies.canvas),
     read: createCanvasReadTool(dependencies.canvas, dependencies.rendering),
     search: createCanvasSearchTool(dependencies.canvas),

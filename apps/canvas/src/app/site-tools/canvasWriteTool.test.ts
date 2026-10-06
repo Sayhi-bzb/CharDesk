@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { CHARDESK_DARK_CONTENT_THEME } from "@chardesk/rendering/theme";
 import { createSelectionCommandFactory } from "@/domains/actions/public";
 import { createCanvasRuntime, type CanvasRuntime } from "@/domains/canvas/public";
-import { createCanvasReadTool, createCanvasWriteTool, createCanvasRenderTool, createCanvasSearchTool, createCanvasPreviewWriteTool, createCanvasPreviewRenderTool, createCanvasEraseTool, createCanvasFillTool, createCanvasManageTool } from "./canvasTools";
+import { createCanvasReadTool, createCanvasWriteTool, createCanvasRenderTool, createCanvasSearchTool, createCanvasPreviewWriteTool, createCanvasPreviewRenderTool, createCanvasEraseTool, createCanvasFillTool, createCanvasUndoTool, createCanvasManageTool } from "./canvasTools";
 import { createTextRenderingRuntime, DEFAULT_TEXT_RENDER_PROFILE } from "@/domains/document/public";
 const runtime = createTextRenderingRuntime();
 runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "raw" });
@@ -86,6 +86,22 @@ describe("Canvas writing tool", () => {
     expect(canvas.getState().contentSurface.reader.getCell({ x: -5, y: -2 })).toBeUndefined();
     canvas.commands.history.redo();
     expect(canvas.getState().contentSurface.reader.getCell({ x: -5, y: -2 })?.char).toBe("你");
+  });
+
+  it("reports overwritten Cells and exposes a latest-only direct undo", async () => {
+    const canvas = host();
+    const write = createCanvasWriteTool(canvas);
+    const undo = createCanvasUndoTool(canvas);
+    await write.execute({ at: [2, 1], content: "ABCDE" });
+    const result = await write.execute({ at: [3, 1], content: "XY" });
+    expect(result).toMatchObject({
+      impact: { overwrittenCells: 2, overwrittenBounds: [3, 1, 2, 1], clearedCells: 0 },
+      operationId: expect.stringMatching(/^op-/),
+    });
+    const operationId = (result as { operationId: string }).operationId;
+    expect(await undo.execute({ operationId })).toMatchObject({ operationId, undone: true });
+    expect(canvas.getState().contentSurface.reader.getCell({ x: 3, y: 1 })?.char).toBe("B");
+    expect(await undo.execute({ operationId })).toMatchObject({ code: "operation_not_undoable" });
   });
 
   it("validates the whole write before modifying content and treats empty text as a no-op", async () => {

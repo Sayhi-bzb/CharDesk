@@ -1447,6 +1447,7 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
       const bootstrapSessions = initialSessions.filter(
         (session) =>
           session.storagePolicy === "ephemeral" &&
+          !this.#deletedSessionIds.has(session.id) &&
           !migratedCatalogSessions.some(({ id }) => id === session.id)
       );
       const restoredCatalogSessions = [...migratedCatalogSessions, ...bootstrapSessions];

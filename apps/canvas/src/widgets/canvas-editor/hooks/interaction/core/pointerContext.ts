@@ -2,6 +2,7 @@ import type { GridCellSource, Point } from "@/shared/types";
 import { resolveCanvasLinkHit, type CanvasLinkHit } from "./linkHitTesting";
 import {
   getLocalCanvasPoint,
+  resolveRawGridPointFromScreen,
   resolveHoverGridPoint,
   resolveSnappedGridPointFromScreen,
   type CanvasViewport,
@@ -12,7 +13,9 @@ type CanvasRect = Pick<DOMRect, "left" | "top">;
 export type CanvasPointerContextResolver = {
   hasCanvasRect: () => boolean;
   resolveLocalPoint: (clientX: number, clientY: number) => Point | null;
+  resolveRawGridPoint: (clientX: number, clientY: number) => Point | null;
   resolveGridPoint: (clientX: number, clientY: number) => Point | null;
+  resolveClampedRawGridPoint: (clientX: number, clientY: number) => Point | null;
   resolveClampedGridPoint: (clientX: number, clientY: number) => Point | null;
   resolveLinkHit: (clientX: number, clientY: number) => CanvasLinkHit | null;
   resolveHoverPoint: (
@@ -52,17 +55,25 @@ export const createCanvasPointerContextResolver = ({
   const resolveRawGridPoint = (clientX: number, clientY: number) => {
     const rect = getRect();
     if (!rect) return null;
-    return resolveSnappedGridPointFromScreen({
+    return resolveRawGridPointFromScreen({
       clientX,
       clientY,
       rect,
       viewport: getViewport(),
-      source: getContentSource(),
     });
   };
 
   const resolveGridPoint = (clientX: number, clientY: number) => {
-    const point = resolveRawGridPoint(clientX, clientY);
+    const rect = getRect();
+    const point = rect
+      ? resolveSnappedGridPointFromScreen({
+          clientX,
+          clientY,
+          rect,
+          viewport: getViewport(),
+          source: getContentSource(),
+        })
+      : null;
     const bounds = getGridBounds?.();
     if (!point || !bounds) return point;
     return point.x >= 0 && point.x < bounds.columns && point.y >= 0 && point.y < bounds.rows
@@ -71,6 +82,25 @@ export const createCanvasPointerContextResolver = ({
   };
 
   const resolveClampedGridPoint = (clientX: number, clientY: number) => {
+    const rect = getRect();
+    const point = rect
+      ? resolveSnappedGridPointFromScreen({
+          clientX,
+          clientY,
+          rect,
+          viewport: getViewport(),
+          source: getContentSource(),
+        })
+      : null;
+    const bounds = getGridBounds?.();
+    if (!point || !bounds) return point;
+    return {
+      x: Math.min(bounds.columns - 1, Math.max(0, point.x)),
+      y: Math.min(bounds.rows - 1, Math.max(0, point.y)),
+    };
+  };
+
+  const resolveClampedRawGridPoint = (clientX: number, clientY: number) => {
     const point = resolveRawGridPoint(clientX, clientY);
     const bounds = getGridBounds?.();
     if (!point || !bounds) return point;
@@ -134,11 +164,12 @@ export const createCanvasPointerContextResolver = ({
   return {
     hasCanvasRect,
     resolveLocalPoint,
+    resolveRawGridPoint,
     resolveGridPoint,
+    resolveClampedRawGridPoint,
     resolveClampedGridPoint,
     resolveLinkHit,
     resolveHoverPoint,
     resolveMoveContext,
   };
 };
-

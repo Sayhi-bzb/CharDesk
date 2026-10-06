@@ -306,7 +306,7 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
         }
         const name = request.params?.name;
         const input = request.params?.input;
-        if (request.method !== 'call' || !['canvas_manage', 'canvas_read', 'canvas_search', 'canvas_write', 'canvas_erase', 'canvas_fill', 'canvas_render', 'canvas_code'].includes(String(name))
+        if (request.method !== 'call' || !['canvas_manage', 'canvas_read', 'canvas_search', 'canvas_write', 'canvas_erase', 'canvas_fill', 'canvas_undo', 'canvas_render', 'canvas_code'].includes(String(name))
           || !input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid Canvas request');
         const permission = String(name).endsWith('_read') ? 'read' : String(name).endsWith('_search') ? 'search' : String(name).endsWith('_manage') && (input as { action?: unknown }).action === 'list' ? 'inspect' : 'write';
         if (!permissions[permission]) throw new Error(`Permission denied: canvas.${permission}`);

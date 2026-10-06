@@ -13,6 +13,7 @@ export { searchCanvasSurface, isCanvasSearchQuery, isCanvasSearchPosition, Canva
 export type { CanvasSearchPosition, CanvasSearchMatch, CanvasSearchResult, CanvasSearchOptions } from "./searchSurface";
 export {
   CanvasWriteError,
+  measureCanvasMutationImpact,
   prepareCanvasErase,
   prepareCanvasPlainTextWrite,
   prepareCanvasRowsWrite,
@@ -22,6 +23,7 @@ export type {
   CanvasStrokeStyle,
   CanvasWriteMode,
   CanvasWriteStats,
+  CanvasMutationImpact,
 } from "./writeText";
 export type { CanvasReadViewport, CanvasReadProjection, CanvasReadOptions, CanvasReadImageOptions } from "./readViewport";
 export type { CanvasSessionMaterialization } from "./runtime";

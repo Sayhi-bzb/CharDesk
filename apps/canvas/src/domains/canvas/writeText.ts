@@ -1,6 +1,6 @@
 import { getTextCellWidth, iterateGraphemes } from "@chardesk/protocol";
 import type { Point } from "@/shared/types";
-import type { CellPlanePatch } from "./cell-plane/model";
+import type { CanvasSurfaceReader, CellPlanePatch } from "./cell-plane/model";
 import type { CanvasReadViewport } from "./readViewport";
 import type { RichTextRow } from "./state/textCommandTypes";
 
@@ -19,12 +19,86 @@ export type CanvasWriteStats = Readonly<{
   skippedWhitespaceCells: number;
 }>;
 
+export type CanvasMutationImpact = Readonly<{
+  overwrittenCells: number;
+  overwrittenBounds: CanvasReadViewport | null;
+  clearedCells: number;
+  clearedBounds: CanvasReadViewport | null;
+  styledCells: number;
+  styledBounds: CanvasReadViewport | null;
+}>;
+
 export type CanvasStrokeStyle = Readonly<Partial<Pick<RichTextRow["spans"][number], "color" | "bgColor" | "attrs" | "href">>>;
 
 const hasVisibleWhitespaceStyle = (span: RichTextRow["spans"][number]) =>
   span.bgColor !== undefined || span.href !== undefined || Object.values(span.attrs ?? {}).some(Boolean);
 
 const isWhitespaceGrapheme = (grapheme: string) => /^\s+$/u.test(grapheme);
+
+const isExistingCell = (cell: { char: string } | undefined) => Boolean(cell?.char && !isWhitespaceGrapheme(cell.char));
+
+const createImpactBounds = () => ({
+  count: 0,
+  left: Infinity,
+  top: Infinity,
+  right: -Infinity,
+  bottom: -Infinity,
+});
+
+const addImpactCell = (bounds: ReturnType<typeof createImpactBounds>, x: number, y: number) => {
+  bounds.count += 1;
+  bounds.left = Math.min(bounds.left, x);
+  bounds.top = Math.min(bounds.top, y);
+  bounds.right = Math.max(bounds.right, x);
+  bounds.bottom = Math.max(bounds.bottom, y);
+};
+
+const finishImpactBounds = (bounds: ReturnType<typeof createImpactBounds>): { count: number; bounds: CanvasReadViewport | null } => ({
+  count: bounds.count,
+  bounds: bounds.count === 0 ? null : [bounds.left, bounds.top, bounds.right - bounds.left + 1, bounds.bottom - bounds.top + 1],
+});
+
+/** Compare a prepared projection patch with the surface immediately before it
+ * is committed. This is intentionally a compact impact summary: callers get
+ * coordinates and counts without copying the old document into the result. */
+export const measureCanvasMutationImpact = (
+  surface: CanvasSurfaceReader,
+  patch: CellPlanePatch,
+): CanvasMutationImpact => {
+  const overwritten = createImpactBounds();
+  const cleared = createImpactBounds();
+  for (const row of patch.rows) {
+    for (const interval of row.erase) {
+      for (let x = interval.from; x <= interval.to; x += 1) {
+        if (isExistingCell(surface.getCell({ x, y: row.y }))) addImpactCell(cleared, x, row.y);
+      }
+    }
+    for (const span of row.spans) {
+      let x = span.x;
+      for (const { segment } of iterateGraphemes(span.text)) {
+        const width = getTextCellWidth(segment);
+        for (let offset = 0; offset < width; offset += 1) {
+          const cellX = x + offset;
+          if (isExistingCell(surface.getCell({ x: cellX, y: row.y }))) {
+            if (isWhitespaceGrapheme(segment)) addImpactCell(cleared, cellX, row.y);
+            else addImpactCell(overwritten, cellX, row.y);
+          }
+        }
+        x += width;
+      }
+    }
+  }
+  const overwrittenResult = finishImpactBounds(overwritten);
+  const clearedResult = finishImpactBounds(cleared);
+  return {
+    overwrittenCells: overwrittenResult.count,
+    overwrittenBounds: overwrittenResult.bounds,
+    clearedCells: clearedResult.count,
+    clearedBounds: clearedResult.bounds,
+    styledCells: 0,
+    styledBounds: null,
+  };
+};
 
 /** Prepare all rows before committing; coordinates are original Cell coordinates. */
 export const prepareCanvasTextWrite = (

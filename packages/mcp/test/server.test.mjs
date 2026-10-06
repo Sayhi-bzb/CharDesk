@@ -48,6 +48,7 @@ test('published server exposes the Canvas bridge over stdio', { timeout: 15000 }
       'canvas_code',
       'canvas_erase',
       'canvas_fill',
+      'canvas_undo',
       'canvas_render',
       'canvas_manage',
       'canvas_read',

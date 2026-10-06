@@ -137,10 +137,11 @@ export class CanvasHistoryJournal {
     if (history) history.captureOperationId = undefined;
   }
 
-  undoOperation(operationId: string) {
-    for (const [documentId, history] of this.#histories) {
+  undoOperation(operationId: string, documentFilterId?: string) {
+    for (const [historyDocumentId, history] of this.#histories) {
+      if (documentFilterId !== undefined && historyDocumentId !== documentFilterId) continue;
       if (history.undo.at(-1)?.operationId !== operationId) continue;
-      return this.undo(documentId);
+      return this.undo(historyDocumentId);
     }
     return false;
   }

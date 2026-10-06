@@ -61,7 +61,12 @@ input is Markdown, ANSI, or another material format.
 Literal ASCII art, code, and Unicode drawings can be written directly. If the
 input is Markdown or ANSI material, use `canvas.render` so the material renderer
 is explicit. Read the returned bounds immediately after the write to verify the
-rendered characters.
+rendered characters. Mutation results also include a compact `impact` summary
+(`overwrittenCells`/`overwrittenBounds`, `clearedCells`/`clearedBounds`, and
+`styledCells`/`styledBounds`) and, when history is available, an `operationId`.
+If the impact is unexpected, call `canvas_undo({ operationId })` before making
+another edit; undo is only accepted while that operation is still the latest
+edit on its Canvas/page.
 
 Keep content production separate from Canvas projection. When an external
 artifact already exists, prefer passing its reference so Canvas can consume it

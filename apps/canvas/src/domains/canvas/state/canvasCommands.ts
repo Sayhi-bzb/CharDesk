@@ -106,10 +106,10 @@ const commands = {
       resolveAddress();
       return documents.redo();
     }),
-    undoOperation: (operationId: string) => commits.run(() => documents.undoOperation(operationId)),
-    beginCheckpoint: (operationId?: string, documentId?: string) => {
+    undoOperation: (operationId: string, documentId?: string, pageId?: string) => commits.run(() => documents.undoOperation(operationId, documentId, pageId)),
+    beginCheckpoint: (operationId?: string, documentId?: string, pageId?: string) => {
       resolveAddress();
-      const checkpoint = documents.beginHistoryCheckpoint(operationId, documentId);
+      const checkpoint = documents.beginHistoryCheckpoint(operationId, documentId, pageId);
       return {
         commit: () => commits.run(checkpoint.commit),
         cancel: () => commits.run(checkpoint.cancel),

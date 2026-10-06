@@ -198,18 +198,27 @@ export const useCanvasGestureAdapter = ({
       },
       onDrag: ({ xy: [x, y], delta: [dx, dy], event }) => {
         if (shouldIgnoreActiveGestureEvent(event)) return;
+        const interactionState = getInteractionState();
+        const currentGrid = interactionState.type === "rangeMovePending" ||
+          interactionState.type === "movingRange"
+          ? pointerContext.resolveClampedRawGridPoint(x, y)
+          : pointerContext.resolveClampedGridPoint(x, y);
         if (editorRuntime.dispatch({
-            type: "canvas-drag-update",
-            delta: { x: dx, y: dy },
-            currentGrid: pointerContext.resolveClampedGridPoint(x, y),
-          })) {
+          type: "canvas-drag-update",
+          delta: { x: dx, y: dy },
+          currentGrid,
+        })) {
           updateEdgeScroll({ x, y });
           return;
         }
       },
       onDragEnd: ({ event, xy: [x, y], canceled }) => {
         stopEdgeScroll();
-        const endGrid = pointerContext.resolveClampedGridPoint(x, y);
+        const interactionState = getInteractionState();
+        const endGrid = interactionState.type === "rangeMovePending" ||
+          interactionState.type === "movingRange"
+          ? pointerContext.resolveClampedRawGridPoint(x, y)
+          : pointerContext.resolveClampedGridPoint(x, y);
         if (resolveCanvasDragTermination({
           canceled,
           eventType: event.type,

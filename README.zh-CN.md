@@ -8,7 +8,7 @@ CharDesk 让人和由语言模型驱动的 Agent 共用一份视觉化的 Unicod
 
 [打开 Canvas](https://canvas.chardesk.com/) · [探索 Cell UI](https://ui.chardesk.com/)
 
-[产品首页](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/) · [CLI 文档](packages/cli/README.md)
+[产品首页](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/)
 
 ## 从 Agent 开始
 
@@ -32,12 +32,6 @@ pi mcp add chardesk -- npx -y @chardesk/mcp
 ```
 
 之后不需要手动运行 `server` 或 `pair`。首次调用 Canvas 工具时，如果尚未打开 Canvas，会自动打开；页面随后会自动连接本地 bridge。
-
-如果需要本地文件工作流，CLI 可以单独安装：
-
-```sh
-npm install -g @chardesk/cli
-```
 
 然后直接告诉 Agent 你想看到什么：
 
@@ -125,7 +119,6 @@ Unicode、Box Drawing、中日韩字符、技术符号、单色 Emoji 与 Nerd F
 ### Agent 接入
 
 - **Local MCP：** 在你的 Agent（Codex、Claude Code 或 Pi）中注册一次 `@chardesk/mcp` 即可。Agent 会自动启动 MCP；Canvas 会自动发现本地 bridge，首次调用 `canvas_*` 工具时必要的话会打开 Canvas。详见 [MCP 包说明](packages/mcp/README.md)。
-- **本地文件与 CLI：**稳定的默认路径。Agent 使用原生文件工具，`chardesk` 负责检查、预览、打开和渲染。详见 [CLI 文档](packages/cli/README.md)。
 - **Chrome WebMCP：**实验性能力。开启 `chrome://flags/#enable-webmcp-testing`，重启 Chrome；只有明确需要浏览器路径时才使用。
 - **ChatGPT Site Tools：**实验性能力。在 **Settings → Browser → Permissions** 中开启 **Site tools**，再用 ChatGPT 内置浏览器打开 CharDesk。参见 [OpenAI 官方 Site Tools 文档](https://learn.chatgpt.com/docs/webmcp)。
 

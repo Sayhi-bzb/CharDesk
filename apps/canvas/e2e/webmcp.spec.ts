@@ -21,8 +21,8 @@ const names = (page: Page) => page.evaluate(async () => {
 const ready = async (page: Page) => {
   await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "ready");
 };
-const editableNames = ["canvas_code", "canvas_erase", "canvas_fill", "canvas_manage", "canvas_read", "canvas_render", "canvas_search", "canvas_write", "chardesk_read_materials"];
-const readOnlyNames = editableNames.filter((name) => !["canvas_code", "canvas_erase", "canvas_fill", "canvas_render", "canvas_write"].includes(name));
+const editableNames = ["canvas_code", "canvas_erase", "canvas_fill", "canvas_manage", "canvas_read", "canvas_render", "canvas_search", "canvas_undo", "canvas_write", "chardesk_read_materials"];
+const readOnlyNames = editableNames.filter((name) => !["canvas_code", "canvas_erase", "canvas_fill", "canvas_render", "canvas_undo", "canvas_write"].includes(name));
 
 test.describe("WebMCP native Canvas", () => {
   test("discovers only Canvas and Materials capabilities", async ({ page }) => {
