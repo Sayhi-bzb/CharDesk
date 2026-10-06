@@ -143,15 +143,16 @@ try {
   if (mcpManifest.bin?.["chardesk-mcp"] !== "bin/chardesk-mcp.mjs") {
     throw new Error("Packed MCP package did not install its executable");
   }
-  execFileSync(cli, ["init", "demo", "--title", "Packed CLI"], {
+  const document = "demo.chardesk";
+  execFileSync(cli, ["init", document, "--title", "Packed CLI"], {
     cwd: temporaryDirectory,
     stdio: "inherit",
   });
-  execFileSync(cli, ["inspect", "demo", "--json"], {
+  execFileSync(cli, ["inspect", document, "--json"], {
     cwd: temporaryDirectory,
     stdio: "inherit",
   });
-  const opened = JSON.parse(execFileSync(cli, ["open", "demo", "--no-browser", "--json"], {
+  const opened = JSON.parse(execFileSync(cli, ["open", document, "--no-browser", "--json"], {
     cwd: temporaryDirectory,
     encoding: "utf8",
   }));
@@ -163,9 +164,9 @@ try {
     const health = await healthResponse.json();
     if (health.status !== "ready") throw new Error("Packed CLI local Canvas was unhealthy");
   } finally {
-    execFileSync(cli, ["close", "demo"], { cwd: temporaryDirectory, stdio: "inherit" });
+    execFileSync(cli, ["close", document], { cwd: temporaryDirectory, stdio: "inherit" });
   }
-  execFileSync(cli, ["render", "demo", "-o", "demo.png"], {
+  execFileSync(cli, ["render", document, "-o", "demo.png"], {
     cwd: temporaryDirectory,
     stdio: "inherit",
   });
