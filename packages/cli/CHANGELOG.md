@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.5](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.4...v0.6.5) (2026-10-06)
+
+
+### Bug Fixes
+
+* stabilize MCP bridge test messages ([2e04534](https://github.com/Sayhi-bzb/CharDesk/commit/2e04534334de2f3a214ab1896f0c788505e30f26))
+
 ## [0.6.4](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.3...v0.6.4) (2026-10-06)
 
 

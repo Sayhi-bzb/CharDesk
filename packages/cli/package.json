@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/cli",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "private": false,
   "description": "Create, inspect, live-preview, and render work on the CharDesk Unicode canvas",
   "type": "module",
