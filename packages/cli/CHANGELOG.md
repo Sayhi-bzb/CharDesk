@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.3](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.2...v0.6.3) (2026-10-06)
+
+
+### Bug Fixes
+
+* build release packages before packing ([c320fd9](https://github.com/Sayhi-bzb/CharDesk/commit/c320fd9bad5a6283ba7614209950067e3297b10c))
+
 ## [0.6.2](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.1...v0.6.2) (2026-10-06)
 
 
