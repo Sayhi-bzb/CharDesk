@@ -40,47 +40,50 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      - name: Check out the release pull request
+      - name: Find pending release pull request
+        id: pending_release
         if: steps.release.outputs.release_created != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_branch=$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --base main \
+            --label "autorelease: pending" \
+            --json headRefName \
+            --jq '.[0].headRefName // empty')
+          echo "head_ref=$release_branch" >> "$GITHUB_OUTPUT"
+          if [ -n "$release_branch" ]; then
+            echo "Pending release pull request found on $release_branch."
+          else
+            echo "No pending release pull request found."
+          fi
+
+      - name: Check out the release pull request
+        if: steps.pending_release.outputs.head_ref != ''
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Node.js for release synchronization
-        if: steps.release.outputs.release_created != 'true'
+        if: steps.pending_release.outputs.head_ref != ''
         uses: actions/setup-node@v6
         with:
           node-version: 24
           package-manager-cache: false
 
       - name: Install dependencies for release synchronization
-        if: steps.release.outputs.release_created != 'true'
+        if: steps.pending_release.outputs.head_ref != ''
         run: npm ci
 
       - name: Sync workspace dependency ranges
-        if: steps.release.outputs.release_created != 'true'
+        if: steps.pending_release.outputs.head_ref != ''
         env:
-          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ steps.pending_release.outputs.head_ref }}
         run: |
-          release_pr=$(gh pr list \
-            --repo "$GITHUB_REPOSITORY" \
-            --state open \
-            --base main \
-            --label "autorelease: pending" \
-            --json number,headRefName \
-            --jq '.[0]')
-          if [ -z "$release_pr" ] || [ "$release_pr" = "null" ]; then
-            echo "No pending release pull request found."
-            exit 0
-          fi
-
-          release_branch=$(printf '%s' "$release_pr" | node -e '
-            let input = "";
-            process.stdin.on("data", (chunk) => { input += chunk; });
-            process.stdin.on("end", () => process.stdout.write(JSON.parse(input).headRefName));
-          ')
-          git fetch origin "$release_branch"
-          git checkout -B "$release_branch" "origin/$release_branch"
+          git fetch origin "$RELEASE_BRANCH"
+          git checkout -B "$RELEASE_BRANCH" "origin/$RELEASE_BRANCH"
           npm run release:sync
           if git diff --quiet; then
             echo "Release workspace dependency ranges are already synchronized."
@@ -90,7 +93,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add packages package-lock.json registry.json
           git commit -m "chore: sync release workspace dependency ranges"
-          git push origin "HEAD:$release_branch"
+          git push origin "HEAD:$RELEASE_BRANCH"
 
       - name: Dispatch publish on the release tag
         if: steps.release.outputs.release_created == 'true'
@@ -176,12 +179,9 @@ jobs:
             echo "mcp_published=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Install browser runtimes for release verification
-        run: npx playwright install --with-deps chromium webkit
-
-      - name: Verify repository
-        run: npm run verify
-
+      # Release tags are created only after the main commit passes Verify.
+      # Publish validates and smoke-tests the packed artifacts below; rerunning
+      # the full repository suite here would duplicate the main verification.
       - name: Pack release assets
         run: |
           mkdir release-assets
