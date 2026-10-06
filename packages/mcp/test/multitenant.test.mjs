@@ -33,6 +33,16 @@ const nextMessage = (socket) => new Promise((resolve, reject) => {
   const cleanup = () => { socket.off('message', onMessage); socket.off('error', onError); };
   socket.on('message', onMessage); socket.on('error', onError);
 });
+const nextMessages = (socket, count) => new Promise((resolve, reject) => {
+  const messages = [];
+  const onMessage = (data) => {
+    messages.push(JSON.parse(data.toString()));
+    if (messages.length === count) cleanup(), resolve(messages);
+  };
+  const onError = (error) => { cleanup(); reject(error); };
+  const cleanup = () => { socket.off('message', onMessage); socket.off('error', onError); };
+  socket.on('message', onMessage); socket.on('error', onError);
+});
 
 test('one browser page serves multiple MCP clients', { timeout: 15_000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'chardesk-mcp-multitenant-'));
@@ -49,8 +59,12 @@ test('one browser page serves multiple MCP clients', { timeout: 15_000 }, async 
     const pageUrl = new URL(pairing); pageUrl.search = '';
     page = await connect(pageUrl, { origin: 'http://127.0.0.1:5173' });
     assert.equal((await nextMessage(page)).method, 'paired');
+    const authorization = nextMessages(page, 2);
     page.send(JSON.stringify({ method: 'authorize', grant: { scope: 'application', permissions: { inspect: true, read: true, search: true, write: true } } }));
-    assert.equal((await nextMessage(page)).method, 'authorized');
+    const [authorized, readyProbe] = await authorization;
+    assert.equal(authorized.method, 'authorized');
+    assert.equal(readyProbe.method, 'ready_probe');
+    page.send(JSON.stringify({ method: 'ready', protocolVersion: 1 }));
     page.send(JSON.stringify({ method: 'runtime_status', status: { protocolVersion: 2, buildId: 'test', status: 'ready', persistence: 'ready' } }));
 
     const openAgent = async () => {
@@ -78,7 +92,7 @@ test('one browser page serves multiple MCP clients', { timeout: 15_000 }, async 
     });
     const firstCall = call(first, 'same-id');
     const secondCall = call(second, 'same-id');
-    const pageRequests = [await nextMessage(page), await nextMessage(page)];
+    const pageRequests = await nextMessages(page, 2);
     assert.equal(pageRequests.length, 2);
     for (const request of pageRequests) page.send(JSON.stringify({ id: request.id, result: { canvasId: request.params.name } }));
     assert.deepEqual(await firstCall, { canvasId: 'canvas_read' });

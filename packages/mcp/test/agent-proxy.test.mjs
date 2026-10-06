@@ -16,6 +16,16 @@ const nextMessage = (socket) => new Promise((resolve, reject) => {
   const cleanup = () => { socket.off('message', onMessage); socket.off('error', onError); };
   socket.on('message', onMessage); socket.on('error', onError);
 });
+const nextMessages = (socket, count) => new Promise((resolve, reject) => {
+  const messages = [];
+  const onMessage = (data) => {
+    messages.push(JSON.parse(data.toString()));
+    if (messages.length === count) cleanup(), resolve(messages);
+  };
+  const onError = (error) => { cleanup(); reject(error); };
+  const cleanup = () => { socket.off('message', onMessage); socket.off('error', onError); };
+  socket.on('message', onMessage); socket.on('error', onError);
+});
 
 test('a second server command joins the existing bridge as a client', { timeout: 15_000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'chardesk-mcp-agent-proxy-'));
@@ -44,8 +54,12 @@ test('a second server command joins the existing bridge as a client', { timeout:
       socket.once('open', () => resolve(socket)); socket.once('error', reject);
     });
     assert.equal((await nextMessage(page)).method, 'paired');
+    const authorization = nextMessages(page, 2);
     page.send(JSON.stringify({ method: 'authorize', grant: { scope: 'application', permissions: { inspect: true, read: true, search: true, write: true } } }));
-    assert.equal((await nextMessage(page)).method, 'authorized');
+    const [authorized, readyProbe] = await authorization;
+    assert.equal(authorized.method, 'authorized');
+    assert.equal(readyProbe.method, 'ready_probe');
+    page.send(JSON.stringify({ method: 'ready', protocolVersion: 1 }));
     page.send(JSON.stringify({ method: 'runtime_status', status: { protocolVersion: 2, buildId: 'test', status: 'ready', persistence: 'ready' } }));
 
     const port = new URL(pairing.bridgeUrl).port;
