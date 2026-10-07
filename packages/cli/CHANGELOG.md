@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.7](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.6...v0.6.7) (2026-10-07)
+
+
+### Bug Fixes
+
+* expand canvas read camera ([b0244e7](https://github.com/Sayhi-bzb/CharDesk/commit/b0244e7b0867291ad21dc3d293b5c26410706ad4))
+* narrow canvas activity exports ([1928d62](https://github.com/Sayhi-bzb/CharDesk/commit/1928d6231f8140103c7232fae861c6938edd7277))
+* persist canvas activity markers ([e5af315](https://github.com/Sayhi-bzb/CharDesk/commit/e5af31539b256174d6eebc1c1f42973dff2cd9a0))
+* use shared danger style for activity marker ([2dd52d7](https://github.com/Sayhi-bzb/CharDesk/commit/2dd52d7b09b0241b89b5ae3af4cb3ffcb86dfc78))
+
 ## [0.6.6](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.5...v0.6.6) (2026-10-07)
 
 
