@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.6](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.5...v0.6.6) (2026-10-07)
+
+
+### Features
+
+* add canvas undo tool for reverting edits ([a6c421d](https://github.com/Sayhi-bzb/CharDesk/commit/a6c421d3c5ab776cdc98b724f961c5bf4577a703))
+
+
+### Bug Fixes
+
+* normalize startup icon color to app theme ([f66500f](https://github.com/Sayhi-bzb/CharDesk/commit/f66500fc911d886fa5f6c1ac95ff169c969e8e3d))
+
 ## [0.6.5](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.4...v0.6.5) (2026-10-06)
 
 
