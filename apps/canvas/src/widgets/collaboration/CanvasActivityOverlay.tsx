@@ -104,14 +104,14 @@ export function CanvasActivityOverlay() {
               render={
                 <Button
                   type="button"
-                  tone="subtle"
+                  tone="danger"
                   shape="pill"
                   size="xs"
                   data-canvas-ui="true"
                   aria-label={marker.label}
                   data-canvas-activity="unread"
-                  className="pointer-events-auto absolute size-5 -translate-x-1/2 -translate-y-1/2 border-0 bg-(--color-destructive) p-0"
-                  style={{ left: position.x, top: position.y }}
+                  className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: position.x, top: position.y, width: 20, height: 20, padding: 0 }}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={() => reveal(marker, canvasView, viewport, pane)}
                 />
