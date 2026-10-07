@@ -143,20 +143,55 @@ type RenderContext = {
   extensions: readonly MarkdownSyntaxExtension[];
 };
 
+/** Block spacing is structural layout policy, not a boolean rendering mode. */
+type BlockSpacing = "tight" | "source" | "loose";
+type RenderedBlockKind =
+  | "content"
+  | "paragraph"
+  | "heading"
+  | "blockquote"
+  | "list"
+  | "code"
+  | "table"
+  | "thematic-break"
+  | "extension";
+
+const withProseWidth = (
+  context: RenderContext,
+  consumedCells: number
+): RenderContext => ({
+  ...context,
+  ...(context.proseWrapWidth
+    ? { proseWrapWidth: Math.max(1, context.proseWrapWidth - consumedCells) }
+    : {}),
+});
+
 type LocatedRender = {
   fragments: CharGraphFragment[];
   cursor: number;
 };
 
 type RenderedBlock = {
+  /** Layout operates on rows before they are flattened into the final stream. */
+  lines: CharGraphFragment[][];
+  /** Original stream is retained so source ranges on existing newlines survive. */
   fragments: CharGraphFragment[];
   inlineAlignment: CharGraphInlineAlignment;
+  kind: RenderedBlockKind;
 };
 
 const renderedBlock = (
   fragments: CharGraphFragment[],
-  inlineAlignment: CharGraphInlineAlignment = "start"
-): RenderedBlock => ({ fragments, inlineAlignment });
+  inlineAlignment: CharGraphInlineAlignment = "start",
+  kind: RenderedBlockKind = "content"
+): RenderedBlock => ({
+  lines: splitLines(fragments),
+  fragments,
+  inlineAlignment,
+  kind,
+});
+
+const flattenBlock = (block: RenderedBlock) => block.fragments;
 
 const stripTrailingLineEnding = (raw: string) => raw.replace(/\n$/, "");
 
@@ -412,11 +447,11 @@ const renderCode = async (
   context: RenderContext
 ): Promise<RenderedBlock> => {
   if (!context.rules["code-block"]) {
-    return renderedBlock(rawFragment(token.raw, range));
+    return renderedBlock(rawFragment(token.raw, range), "start", "code");
   }
   const codeRange = locateRaw(context.source, token.text, range, range.from);
   const language = token.lang?.split(/[\s,]/, 1)[0]?.toLowerCase();
-  if (!language) return renderedBlock([fragment(token.text, {}, codeRange)]);
+  if (!language) return renderedBlock([fragment(token.text, {}, codeRange)], "start", "code");
   const extension = findFencedExtension(context, language);
   if (extension) {
     const rendered = await renderExtension(extension, {
@@ -430,7 +465,8 @@ const renderCode = async (
     if (rendered) {
       return renderedBlock(
         rendered.fragments,
-        rendered.preferredInlineAlignment ?? "start"
+        rendered.preferredInlineAlignment ?? "start",
+        "code"
       );
     }
   }
@@ -463,7 +499,7 @@ const renderCode = async (
         offset += 1;
       }
     });
-    return renderedBlock(output);
+    return renderedBlock(output, "start", "code");
   } catch (error) {
     context.diagnostics.push({
       code: "markdown-highlight-failed",
@@ -473,7 +509,7 @@ const renderCode = async (
       offset: range.from,
       length: range.to - range.from,
     });
-    return renderedBlock([fragment(token.text, {}, codeRange)]);
+    return renderedBlock([fragment(token.text, {}, codeRange)], "start", "code");
   }
 };
 
@@ -504,12 +540,7 @@ const renderList = async (
       : token.ordered ? "ordered-list-marker" : "list-marker";
     const markerWidth = getTextCellWidth(markerText) + depth * 4;
     const indent = " ".repeat(depth * 4);
-    const itemContext = {
-      ...context,
-      ...(context.proseWrapWidth ? {
-        proseWrapWidth: Math.max(1, context.proseWrapWidth - markerWidth),
-      } : {}),
-    };
+    const itemContext = withProseWidth(context, markerWidth);
     let childCursor = itemRange.from;
     let contentTokens: Token[] = [];
     let contentFrom = itemRange.from;
@@ -582,7 +613,8 @@ const renderBlock = async (
     if (rendered) {
       return renderedBlock(
         rendered.fragments,
-        rendered.preferredInlineAlignment ?? "start"
+        rendered.preferredInlineAlignment ?? "start",
+        "extension"
       );
     }
   }
@@ -599,7 +631,7 @@ const renderBlock = async (
       );
       return renderedBlock(context.proseWrapWidth
         ? wrapMarkdownProse(rendered.fragments, context.proseWrapWidth)
-        : rendered.fragments);
+        : rendered.fragments, "start", "paragraph");
     }
     case "text": {
       const fragments = token.tokens?.length
@@ -607,12 +639,12 @@ const renderBlock = async (
         : textFragments(token.text, {}, range);
       return renderedBlock(context.proseWrapWidth
         ? wrapMarkdownProse(fragments, context.proseWrapWidth)
-        : fragments);
+        : fragments, "start", "paragraph");
     }
     case "heading": {
       const heading = token as Tokens.Heading;
       if (!context.rules.heading) {
-        return renderedBlock(rawFragment(token.raw, range));
+        return renderedBlock(rawFragment(token.raw, range), "start", "heading");
       }
       const body = await renderInline(heading.tokens, range, {}, context);
       const firstBodyOrigin = body.fragments.find((item) => item.origin)?.origin;
@@ -627,7 +659,7 @@ const renderBlock = async (
         return renderedBlock([
           fragment(marker, context.styles["heading-marker"], markerRange),
           ...styledBody,
-        ]);
+        ], "start", "heading");
       }
       const bodyLines = splitLines(wrapMarkdownProse(
         styledBody,
@@ -637,19 +669,19 @@ const renderBlock = async (
         fragment(index === 0 ? marker : " ".repeat(getTextCellWidth(marker)),
           index === 0 ? context.styles["heading-marker"] : {}, markerRange),
         ...line,
-      ]), range));
+      ]), range), "start", "heading");
     }
     case "blockquote": {
       const blockquote = token as Tokens.Blockquote;
       if (!context.rules.blockquote) {
-        return renderedBlock(rawFragment(token.raw, range));
+        return renderedBlock(rawFragment(token.raw, range), "start", "blockquote");
       }
-      const content = await renderBlocks(blockquote.tokens, range, {
-        ...context,
-        ...(context.proseWrapWidth ? {
-          proseWrapWidth: Math.max(1, context.proseWrapWidth - 2),
-        } : {}),
-      }, "source");
+      const content = await renderBlocks(
+        blockquote.tokens,
+        range,
+        withProseWidth(context, 2),
+        "source"
+      );
       const markerRanges = [...token.raw.matchAll(/^ {0,3}>[ \t]?/gm)].map((match) => ({
         from: range.from + (match.index ?? 0),
         to: range.from + (match.index ?? 0) + match[0].length,
@@ -662,21 +694,22 @@ const renderBlock = async (
         ),
         ...line,
       ]);
-      return renderedBlock(joinLines(lines, range));
+      return renderedBlock(joinLines(lines, range), "start", "blockquote");
     }
     case "list":
-      return renderedBlock(await renderList(token as Tokens.List, range, context));
+      return renderedBlock(await renderList(token as Tokens.List, range, context), "start", "list");
     case "code":
       return renderCode(token as Tokens.Code, range, context);
     case "hr":
       return renderedBlock(context.rules["thematic-break"]
         ? [fragment("———", context.styles["thematic-break"], range)]
-        : rawFragment(token.raw, range));
+        : rawFragment(token.raw, range), "start", "thematic-break");
     case "table": {
       const enhanced = context.rules.table;
       return renderedBlock(
         await renderTable(token as Tokens.Table, range, context),
-        enhanced ? "center" : "start"
+        enhanced ? "center" : "start",
+        "table"
       );
     }
     case "html":
@@ -690,7 +723,7 @@ const renderBlocks = async (
   tokens: readonly Token[],
   scope: CharGraphSourceRange,
   context: RenderContext,
-  separate: boolean | "source",
+  spacing: BlockSpacing,
   visualGroups?: CharGraphVisualGroup[],
   headings?: CharGraphHeading[]
 ) => {
@@ -706,11 +739,13 @@ const renderBlocks = async (
       continue;
     }
     const rendered = await renderBlock(token, range, context);
-    if (!rendered.fragments.length) continue;
+    if (rendered.lines.length === 0 || rendered.lines.every((line) => line.length === 0)) {
+      continue;
+    }
     if (output.length) {
-      const lineBreaks = separate === true
+      const lineBreaks = spacing === "loose"
         ? 2
-        : separate === "source"
+        : spacing === "source"
           ? sourceHasBlankLine ? 2 : 1
           : 0;
       if (lineBreaks) {
@@ -723,14 +758,11 @@ const renderBlocks = async (
       headings?.push({
         row: fromRow,
         level: (token as Tokens.Heading).depth,
-        label: textOf(rendered.fragments).split("\n").map((line) => line.trim()).join(" "),
+        label: textOf(flattenBlock(rendered)).split("\n").map((line) => line.trim()).join(" "),
       });
     }
-    output.push(...rendered.fragments);
-    outputRow += rendered.fragments.reduce(
-      (total, item) => total + (item.text.match(/\n/g)?.length ?? 0),
-      0
-    );
+    output.push(...flattenBlock(rendered));
+    outputRow += Math.max(0, rendered.lines.length - 1);
     visualGroups?.push({
       fromRow,
       toRow: outputRow + 1,
@@ -805,7 +837,7 @@ export const renderMarkdownWithExtensions = async (
     tokens,
     { from: 0, to: normalized.text.length },
     context,
-    true,
+    "loose",
     visualGroups,
     headings
   );
