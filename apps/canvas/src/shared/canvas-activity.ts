@@ -119,12 +119,12 @@ export const markCanvasActivityRead = (id: string) => {
 
 export const clearCanvasActivity = (id: string) => markCanvasActivityRead(id);
 
-export const subscribeCanvasActivity = (listener: () => void) => {
+const subscribeCanvasActivity = (listener: () => void) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
 };
 
-export const getCanvasActivitySnapshot = () => markers;
+const getCanvasActivitySnapshot = () => markers;
 
 export const useCanvasActivity = () => useSyncExternalStore(
   subscribeCanvasActivity,

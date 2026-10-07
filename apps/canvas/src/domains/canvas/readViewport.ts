@@ -4,7 +4,7 @@ import type { CanvasSurfaceReader } from "./cell-plane/model";
 import { isCanvasCellOccupied as occupied, readCanvasTextRegion } from "./textRegion";
 
 export type CanvasReadViewport = readonly [x: number, y: number, width: number, height: number];
-export const CANVAS_READ_CAMERA = Object.freeze({ width: 100, height: 40 });
+const CANVAS_READ_CAMERA = Object.freeze({ width: 100, height: 40 });
 export type CanvasReadImageDetail = "low" | "high" | "original" | "auto";
 export type CanvasReadProjection = Readonly<{
   viewport: CanvasReadViewport | null;
