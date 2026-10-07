@@ -317,6 +317,7 @@
   --layer-presence: 20;
   --layer-contextual: 30;
   --layer-chrome: 40;
+  --layer-activity: 45;
   --layer-popover: 50;
   --layer-drag-preview: 55;
   --layer-modal-backdrop: 60;

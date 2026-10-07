@@ -39,6 +39,7 @@ import { useActiveCollaboration } from './useActiveCollaboration';
 import { useHorizontalWheelNavigationGuard } from './useHorizontalWheelNavigationGuard';
 import { CollaborationControl } from '@/widgets/collaboration/CollaborationControl';
 import { RemoteSelectionOverlay } from '@/widgets/collaboration/RemoteSelectionOverlay';
+import { CanvasActivityOverlay } from '@/widgets/collaboration/CanvasActivityOverlay';
 import { CollaborationJoiningOverlay } from '@/widgets/collaboration/CollaborationJoiningOverlay';
 import { useCollaborationSnapshot } from '@/widgets/collaboration/useCollaborationSnapshot';
 import { sameCollaborationRoom } from '@/domains/collaboration/public';
@@ -328,6 +329,7 @@ function CanvasPaneContent({
           <CollaborationJoiningOverlay />
         </>
       )}
+      <CanvasActivityOverlay />
     </div>
   );
 }
