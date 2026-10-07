@@ -45,6 +45,34 @@ describe("renderMarkdown", () => {
     expect(getCharGraphText(rendered)).toContain("👩‍💻");
   });
 
+  it("preserves nested list order and block boundaries inside list items", async () => {
+    const rendered = await renderMarkdown([
+      "4. **检查首条 `session_meta`**：",
+      "   - `forked_from_id`：父会话",
+      "   - `history_base`：分页历史依赖",
+      "",
+      "   递归复制相关 rollout，保留目录结构与文件名。依赖也可能位于 `archived_sessions/`。",
+      "6. 在目标机器恢复并核对历史：",
+      "",
+      "   ```bash",
+      "   codex resume <SESSION_ID> --cd ~/projects/resume",
+      "   ```",
+      "",
+      "   `resume` 和 `--cd` 是官方支持的恢复方式；文件复制与依赖整理属于手动迁移。",
+    ].join("\n"));
+    const lines = getCharGraphText(rendered).split("\n");
+    const nested = lines.findIndex((line) => line.includes("history_base"));
+    const followUp = lines.findIndex((line) => line.includes("递归复制相关"));
+    const code = lines.findIndex((line) => line.includes("codex resume"));
+    const explanation = lines.findIndex((line) => line.includes("官方支持的恢复方式"));
+
+    expect(nested).toBeGreaterThanOrEqual(0);
+    expect(followUp).toBeGreaterThan(nested);
+    expect(code).toBeGreaterThanOrEqual(0);
+    expect(explanation).toBeGreaterThan(code);
+    expect(lines[code]).not.toContain("resume 和");
+  });
+
   it("leaves code and tables untouched when prose wrapping is enabled", async () => {
     const source = [
       "```text", "x".repeat(90), "```", "", "| Heading | Value |", "| --- | --- |", `| ${"x".repeat(90)} | item |`,

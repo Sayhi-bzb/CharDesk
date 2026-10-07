@@ -502,33 +502,64 @@ const renderList = async (
     const markerRole: MarkdownTextStyleRole = enhancedTask
       ? item.checked ? "task-checked" : "task-unchecked"
       : token.ordered ? "ordered-list-marker" : "list-marker";
-    const nested = item.tokens.filter((child) => child.type === "list") as Tokens.List[];
-    const contentTokens = item.tokens.filter((child) => child.type !== "list");
     const markerWidth = getTextCellWidth(markerText) + depth * 4;
-    const content = await renderBlocks(contentTokens, itemRange, {
+    const indent = " ".repeat(depth * 4);
+    const itemContext = {
       ...context,
       ...(context.proseWrapWidth ? {
         proseWrapWidth: Math.max(1, context.proseWrapWidth - markerWidth),
       } : {}),
-    }, false);
-    const contentLines = splitLines(content);
-    const indent = " ".repeat(depth * 4);
-    contentLines.forEach((line, lineIndex) => {
-      lines.push([
-        fragment(indent, {}, markerRange),
-        fragment(
-          lineIndex === 0 ? markerText : " ".repeat(getTextCellWidth(markerText)),
-          context.styles[markerRole],
-          markerRange
-        ),
-        ...line,
-      ]);
-    });
-    for (const child of nested) {
-      const childRange = locateRaw(context.source, child.raw, itemRange, itemRange.from);
-      const rendered = await renderList(child, childRange, context, depth + 1);
-      lines.push(...splitLines(rendered));
+    };
+    let childCursor = itemRange.from;
+    let contentTokens: Token[] = [];
+    let contentFrom = itemRange.from;
+    let contentTo = itemRange.from;
+    let hasContentLine = false;
+
+    const appendContent = async () => {
+      if (contentTokens.length === 0) return;
+      const content = await renderBlocks(
+        contentTokens,
+        { from: contentFrom, to: contentTo },
+        itemContext,
+        "source"
+      );
+      splitLines(content).forEach((line) => {
+        lines.push([
+          fragment(indent, {}, markerRange),
+          fragment(
+            hasContentLine ? " ".repeat(getTextCellWidth(markerText)) : markerText,
+            context.styles[markerRole],
+            markerRange
+          ),
+          ...line,
+        ]);
+        hasContentLine = true;
+      });
+      contentTokens = [];
+    };
+
+    // Keep block order from Marked. A nested list is not always the final
+    // child; code blocks and follow-up paragraphs must remain where authored.
+    for (const child of item.tokens) {
+      const childRange = locateRaw(context.source, child.raw, itemRange, childCursor);
+      childCursor = Math.max(childCursor, childRange.to);
+      if (child.type === "list") {
+        await appendContent();
+        const rendered = await renderList(
+          child as Tokens.List,
+          childRange,
+          context,
+          depth + 1
+        );
+        lines.push(...splitLines(rendered));
+        continue;
+      }
+      if (contentTokens.length === 0) contentFrom = childRange.from;
+      contentTokens.push(child);
+      contentTo = childRange.to;
     }
+    await appendContent();
     if (token.loose && item !== token.items.at(-1)) lines.push([]);
     orderedIndex += 1;
   }
