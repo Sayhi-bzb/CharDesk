@@ -30,7 +30,15 @@ html, body { margin: 0; min-height: 100%; }
 .startup-content { width: min(100%, 360px); }
 .startup-brand { padding: 7px 12px; text-align: center; font-weight: 700; }
 .startup-body { padding: 20px; text-align: center; }
-.startup-body img { display: block; margin: 0 auto 16px; image-rendering: pixelated; }
+.startup-body img {
+  display: block;
+  margin: 0 auto 16px;
+  image-rendering: pixelated;
+  /* The SVG also follows the OS scheme. Normalize it to the app theme so an
+     explicit light theme never inherits a white system-dark startup icon. */
+  filter: brightness(0);
+}
+.dark .startup-body img { filter: brightness(0) invert(1); }
 .startup-title { margin: 0; font-size: 14px; font-weight: 400; line-height: 1.5; }
 .startup-detail { margin: 8px 0 0; color: var(--muted-foreground, var(--startup-muted)); }
 
