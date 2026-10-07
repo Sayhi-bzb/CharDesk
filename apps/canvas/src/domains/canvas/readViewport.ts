@@ -4,6 +4,7 @@ import type { CanvasSurfaceReader } from "./cell-plane/model";
 import { isCanvasCellOccupied as occupied, readCanvasTextRegion } from "./textRegion";
 
 export type CanvasReadViewport = readonly [x: number, y: number, width: number, height: number];
+export const CANVAS_READ_CAMERA = Object.freeze({ width: 100, height: 40 });
 export type CanvasReadImageDetail = "low" | "high" | "original" | "auto";
 export type CanvasReadProjection = Readonly<{
   viewport: CanvasReadViewport | null;
@@ -156,7 +157,7 @@ export const readCanvasViewport = (
   }
   if (!bounds) return { viewport: null, sampleSize: 1, mode: "text", overviewOnly: false, content: "" };
   const { x, y, width, height } = bounds;
-  const sampleSize = Math.max(1, Math.ceil(width / 80), Math.ceil(height / 24));
+  const sampleSize = Math.max(1, Math.ceil(width / CANVAS_READ_CAMERA.width), Math.ceil(height / CANVAS_READ_CAMERA.height));
   const columns = Math.ceil(width / sampleSize);
   const rows = Math.ceil(height / sampleSize);
   const mode = sampleSize === 1 ? "text" : sampleSize <= 4 ? "projection" : "density";
@@ -217,10 +218,10 @@ export const readCanvasViewport = (
   const notes = exact && options.includeStyles !== false ? formatCharDeskStyleNotes(exact.cells, { coordinates: "explicit", defaultForeground: options.defaultForeground }) : "styles:none";
   const content = [
     `viewport=[${x},${y},${width},${height}] sampleSize=${sampleSize} mode=${mode}`,
-    `camera=80×24`,
+    `camera=${CANVAS_READ_CAMERA.width}×${CANVAS_READ_CAMERA.height}`,
     ...(mode === "text"
       ? ["exact=unicode"]
-      : [`next: sampleSize≤${sampleSize - 1} @ viewport≤${80 * (sampleSize - 1)}×${24 * (sampleSize - 1)}`]),
+      : [`next: sampleSize≤${sampleSize - 1} @ viewport≤${CANVAS_READ_CAMERA.width * (sampleSize - 1)}×${CANVAS_READ_CAMERA.height * (sampleSize - 1)}`]),
     ...(ruler.some((char) => char !== " ") ? [ruler.join("").trimEnd()] : []),
     `${" ".repeat(prefix)}${rulerMarks.join("")}`,
     ...text.map((line, row) => {

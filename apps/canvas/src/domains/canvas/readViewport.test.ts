@@ -50,10 +50,10 @@ describe("Canvas viewport reading", () => {
       expect(view.content).not.toContain("0123456789");
     }
     expect(readCanvasViewport(reader, [0, 0, 160, 48]).content).toContain(
-      "next: sampleSize≤1 @ viewport≤80×24",
+      "next: sampleSize≤1 @ viewport≤100×40",
     );
     expect(readCanvasViewport(reader, [0, 0, 800, 240]).content).toContain(
-      "next: sampleSize≤9 @ viewport≤720×216",
+      "next: sampleSize≤7 @ viewport≤700×280",
     );
     expect(readCanvasViewport(reader, [0, 0, 2, 1]).content).not.toContain("styles:");
     expect(readCanvasViewport(reader, [0, 0, 2, 1]).content).toContain("exact=unicode");
@@ -77,33 +77,33 @@ describe("Canvas viewport reading", () => {
   it("samples quadrant positions without interpreting content", () => {
     const view = readCanvasViewport(surface([[0, 0, "a"], [3, 1, "b"]]), [0, 0, 160, 48]);
     expect(view).toMatchObject({ sampleSize: 2, mode: "projection", overviewOnly: true });
-    expect(view.content).toContain("camera=80×24");
-    expect(view.content).toContain("next: sampleSize≤1 @ viewport≤80×24");
+    expect(view.content).toContain("camera=100×40");
+    expect(view.content).toContain("next: sampleSize≤1 @ viewport≤100×40");
     expect(lines(view.content)[0].slice(0, 2)).toBe("▘▗");
     expect(lines(view.content)).toHaveLength(24);
   });
 
   it("exposes the next camera boundary for coarse overviews", () => {
     expect(readCanvasViewport(surface([[0, 0, "x"]]), [0, 0, 240, 72]).content)
-      .toContain("next: sampleSize≤2 @ viewport≤160×48");
+      .toContain("next: sampleSize≤2 @ viewport≤200×80");
     expect(readCanvasViewport(surface([[0, 0, "x"]]), [0, 0, 320, 96]).content)
-      .toContain("next: sampleSize≤3 @ viewport≤240×72");
+      .toContain("next: sampleSize≤3 @ viewport≤300×120");
   });
 
   it("keeps isolated content and background-only cells in density maps", () => {
     const entries: Array<[number, number, string, string?]> = [[0, 0, "x"], [10, 0, " ", "#f00"]];
     for (let y = 0; y < 10; y++) for (let x = 20; x < 30; x++) entries.push([x, y, "x"]);
     const view = readCanvasViewport(surface(entries), [0, 0, 800, 240]);
-    expect(view).toMatchObject({ sampleSize: 10, mode: "density", overviewOnly: true });
-    expect(lines(view.content)[0].slice(0, 4)).toBe("░░█·");
+    expect(view).toMatchObject({ sampleSize: 8, mode: "density", overviewOnly: true });
+    expect(lines(view.content)[0].slice(0, 4)).toBe("░░▓█");
   });
 
   it("fits rectangular views without stretching or expanding partial edge buckets", () => {
-    const view = readCanvasViewport(surface([[80, 24, "x"]]), [0, 0, 81, 25]);
+    const view = readCanvasViewport(surface([[100, 40, "x"]]), [0, 0, 101, 41]);
     expect(view.sampleSize).toBe(2);
-    expect(lines(view.content)).toHaveLength(13);
-    expect(lines(view.content)[12]).toHaveLength(41);
-    expect(lines(view.content)[12][40]).toBe("▘");
+    expect(lines(view.content)).toHaveLength(21);
+    expect(lines(view.content)[20]).toHaveLength(51);
+    expect(lines(view.content)[20][50]).toBe("▘");
   });
 
   it("distinguishes empty documents from explicit blank views and excludes unstyled spaces", () => {
@@ -123,7 +123,7 @@ describe("Canvas viewport reading", () => {
     const view = readCanvasViewport(index, [0, 0, 1000001, 1000001]);
     expect(view.mode).toBe("density");
     expect(lines(view.content).join("")).toContain("░");
-    expect(lines(view.content).length).toBeLessThanOrEqual(24);
+    expect(lines(view.content).length).toBeLessThanOrEqual(40);
   });
 
   it("rejects invalid sizes and unsafe endpoints", () => {
