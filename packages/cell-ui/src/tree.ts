@@ -172,6 +172,8 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
       pressActive: false,
       activationFlash: false,
       selected: current.selected,
+      ...(current.drag ? { drag: current.drag } : {}),
+      ...(current.drop ? { drop: current.drop } : {}),
       reorderable: current.reorderable || (current.kind === "list-item" && parent?.kind === "list" && parent.reorderable),
       active: current.active,
       checked: current.kind === "radio-item" ? current.radioValue === parent?.radioValue : current.checked,
@@ -185,6 +187,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
       tooltipOpen: false,
       tabsVariant: current.kind === "tab" && parent?.kind === "tabs" ? parent.tabsVariant : current.tabsVariant,
       separatorVariant: current.separatorVariant,
+      ...(current.resize ? { resize: current.resize } : {}),
       buttonVariant: current.buttonVariant,
       buttonTone: current.buttonTone,
       badgeTone: current.badgeTone,
@@ -203,7 +206,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
       columnCount: current.columnCount,
       positionInSet: current.positionInSet,
       setSize: current.setSize,
-      orientation: current.orientation,
+      orientation: current.kind === "resize-handle" ? parent?.orientation ?? "horizontal" : current.orientation,
       controlsId: current.controlsId,
       activeDescendantId: current.activeDescendantId,
       labelledById: current.labelledById,
@@ -293,6 +296,12 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
         throw new TypeError("Dialog requires one direct, non-empty DialogTitle and at most one DialogDescription.");
       }
       nodes.set(id, { ...nodes.get(id)!, label: title.text, labelledById: title.id, describedById: descriptions[0]?.id });
+    }
+    if (current.kind === "resize-handle" && parent?.kind !== "splitter") {
+      throw new TypeError("ResizeHandle must be a direct child of Splitter.");
+    }
+    if (current.kind === "splitter" && (childIds.length > 1 || childIds.some((childId) => nodes.get(childId)?.kind !== "resize-handle"))) {
+      throw new TypeError("Splitter accepts one optional ResizeHandle.");
     }
     if (current.kind === "accordion") {
       const kinds = childIds.map((child) => nodes.get(child)!.kind);

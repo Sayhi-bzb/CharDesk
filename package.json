@@ -61,6 +61,7 @@
     "cell-ui:registry:verify": "node scripts/cell-ui/generate-registry.mjs --verify",
     "cell-ui:registry:typecheck": "tsc -p scripts/cell-ui/tsconfig.registry.json",
     "cell-ui:registry:smoke": "node scripts/cell-ui/smoke-registry.mjs",
+    "cell-ui:dist:verify": "node scripts/cell-ui/check-dist.mjs",
     "test:cell-ui:native-input": "node scripts/quality/run-cell-ui-native-input.mjs",
     "test:keyboard": "npm test -w @chardesk/keyboard",
     "test:chargraph": "npm test -w @chardesk/chargraph",

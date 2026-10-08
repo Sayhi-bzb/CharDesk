@@ -21,11 +21,13 @@ Editable Unicode Cell interfaces for React. The Gallery and these Markdown files
 - [Button](https://ui.chardesk.com/components/button.md): Trigger one action through keyboard, pointer, or assistive input.
 - [Checkbox](https://ui.chardesk.com/components/checkbox.md): Toggle boolean or indeterminate state through one Cell command path.
 - [Combobox](https://ui.chardesk.com/components/combobox.md): Click the input row to open local options, filter, then commit one value.
+- [Context Menu](https://ui.chardesk.com/components/context-menu.md): Open a host-managed Cell menu from a pointer rectangle without coupling the menu surface to domain actions.
 - [Dialog](https://ui.chardesk.com/components/dialog.md): A named Cell dialog with shared overlay placement and focus management.
 - [Input](https://ui.chardesk.com/components/input.md): Edit a single line of Unicode text on the Cell grid.
 - [Menu](https://ui.chardesk.com/components/menu.md): Compose a Cell menubar with host-managed command menus across surfaces.
 - [Progress](https://ui.chardesk.com/components/progress.md): Display determinate or indeterminate progress as a solid or outlined track, with an optional percentage.
 - [Radio](https://ui.chardesk.com/components/radio.md): Choose one value with a shared group and arrow-key navigation.
+- [Resizable](https://ui.chardesk.com/components/resizable.md): Compose Cell-native panes with constrained, application-owned Cell sizes.
 - [ScrollArea](https://ui.chardesk.com/components/scroll-area.md): Scroll overflowing Cell content with keys, wheel, track, or thumb.
 - [Select](https://ui.chardesk.com/components/select.md): Choose one value from a Cell-anchored listbox.
 - [Separator](https://ui.chardesk.com/components/separator.md): Separate Cell content with one row or column.

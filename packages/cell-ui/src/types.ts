@@ -17,9 +17,12 @@ export type CellInsets = Readonly<{
 }>;
 
 type FlexDirection = "row" | "column";
+export type CellAlign = "start" | "center" | "end" | "stretch";
 
 export type CellLayoutStyle = Readonly<{
   direction?: FlexDirection;
+  alignItems?: CellAlign;
+  alignSelf?: CellAlign;
   width?: number | `${number}%`;
   height?: number | `${number}%`;
   minWidth?: number | `${number}%`;
@@ -84,6 +87,8 @@ export type WidgetKind =
   | "spinner"
   | "tooltip"
   | "separator"
+  | "splitter"
+  | "resize-handle"
   | "radio-group"
   | "radio-item"
   | "slider"
@@ -160,6 +165,8 @@ export type WidgetNode = Readonly<{
   confirming?: boolean;
   confirmation?: ConfirmationPresentation;
   selected: boolean;
+  drag?: import("./react.js").BoxProps["drag"];
+  drop?: import("./react.js").BoxProps["drop"];
   reorderable: boolean;
   active: boolean;
   checked: CellCheckboxState;
@@ -173,6 +180,7 @@ export type WidgetNode = Readonly<{
   tooltipOpen: boolean;
   tabsVariant: import("./tabs.js").TabsVariant;
   separatorVariant: import("./separator.js").SeparatorVariant;
+  resize?: import("./react.js").CellResizeRange;
   buttonVariant: import("./button.js").ButtonVariant;
   buttonTone: "neutral" | "danger";
   badgeTone: import("./badge.js").BadgeTone;
@@ -242,6 +250,7 @@ export type LayoutSnapshot = Readonly<{
 }>;
 
 export type SceneEntry = Readonly<{
+  splitJunctions?: readonly import("./split-topology.js").SplitJunction[];
   id: WidgetId;
   sceneParentId: WidgetId | null;
   eventParentId: WidgetId | null;

@@ -4,6 +4,7 @@ import { CELL_SURFACE_GUARD_CELLS, readCellSurfaceProbe } from "@chardesk/cell-u
 import { useGalleryAppearance } from "./appearance";
 import { CellArticleSurface } from "./cell-article-surface";
 import { componentNavigationDocuments } from "./component-catalog";
+import { primitiveNavigationDocuments } from "./primitive-catalog";
 import { guideContent } from "./docs-content";
 
 type NavigationItem = Readonly<{ id: string; label: string; href: string; tocLabel?: string }>;
@@ -101,8 +102,13 @@ function NavigationGroup({ title, probeId, items, current, horizontal }: Readonl
     anchorIds={noAnchors} focusedId={focusedId} onCommand={onCommand} />;
 }
 
-const sections = guideContent.map(({ slug, title }): NavigationItem => ({ id: slug, label: title, href: `#/guides/${slug}` }));
+const sections = guideContent
+  .filter(({ slug }) => slug !== "primitives")
+  .map(({ slug, title }): NavigationItem => ({ id: slug, label: title, href: `#/guides/${slug}` }));
 const components = componentNavigationDocuments.map(({ slug, title }): NavigationItem => ({ id: slug, label: title, href: `#/components/${slug}` }));
+const primitives: readonly NavigationItem[] = [
+  ...primitiveNavigationDocuments.map(({ slug, title }): NavigationItem => ({ id: slug, label: title, href: `#/primitives/${slug}` })),
+];
 
 function MobileDocsNavigation({ activeRoute, pageTitle, pageSections, activeSection }: Readonly<{
   activeRoute: string;
@@ -116,7 +122,8 @@ function MobileDocsNavigation({ activeRoute, pageTitle, pageSections, activeSect
   const restoreTriggerFocus = useRef(false);
   const selected = activeRoute.split("/").at(-1) ?? "";
   const componentPage = activeRoute.startsWith("/components/");
-  const category = componentPage ? "Components" : "Sections";
+  const primitivePage = activeRoute.startsWith("/primitives/");
+  const category = componentPage ? "Components" : primitivePage ? "Primitives" : "Sections";
   const visibleTitle = pageTitle.length > 12 ? `${pageTitle.slice(0, 11)}…` : pageTitle;
   const tocItems = useMemo(() => pageSections.map(({ id, label, tocLabel }): NavigationItem => ({
     id, label, tocLabel: truncate(tocLabel ?? label), href: `#${activeRoute}?section=${id}`,
@@ -144,9 +151,15 @@ function MobileDocsNavigation({ activeRoute, pageTitle, pageSections, activeSect
   };
   const groups = componentPage
     ? [{ title: "Components", id: "components", items: components, current: selected },
+      { title: "Primitives", id: "primitives", items: primitives, current: "" },
       { title: "Sections", id: "sections", items: sections, current: "" }]
-    : [{ title: "Sections", id: "sections", items: sections, current: selected },
-      { title: "Components", id: "components", items: components, current: "" }];
+    : primitivePage
+      ? [{ title: "Primitives", id: "primitives", items: primitives, current: selected },
+        { title: "Sections", id: "sections", items: sections, current: "" },
+        { title: "Components", id: "components", items: components, current: "" }]
+      : [{ title: "Sections", id: "sections", items: sections, current: selected },
+      { title: "Components", id: "components", items: components, current: "" },
+      { title: "Primitives", id: "primitives", items: primitives, current: "" }];
   const content = <Root><Box id="gallery-mobile-nav-content" style={{ width: "100%" }}>
     <Accordion style={{ width: "100%" }}>
     <AccordionItem id="gallery-mobile-nav-item" expanded={open} style={{ width: "100%" }}>
@@ -194,6 +207,8 @@ export function GalleryNavigation({ activeRoute, pageTitle, pageSections, active
       items={sections} current={activeRoute.startsWith("/guides/") ? selected : ""} horizontal={narrow} /></div>
     <div role="group" aria-label="Components"><NavigationGroup title="Components" probeId="gallery-nav-components"
       items={components} current={activeRoute.startsWith("/components/") ? selected : ""} horizontal={narrow} /></div>
+    <div role="group" aria-label="Primitives"><NavigationGroup title="Primitives" probeId="gallery-nav-primitives"
+      items={primitives} current={activeRoute === "/guides/primitives" ? selected : ""} horizontal={narrow} /></div>
   </nav>;
 }
 

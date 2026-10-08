@@ -3,6 +3,8 @@ import { CellSvgIconLayer, type CellSvgIcons } from "./browser-svg-icons.js";
 export type { CellSvgIcons } from "./browser-svg-icons.js";
 import { registerCellSurfaceGeometry } from "./browser-surface-geometry.js";
 export { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
+export { resolveCellSurfaceGeometry } from "./browser-surface-geometry.js";
+export type { CellSurfaceGeometrySnapshot } from "./browser-surface-geometry.js";
 export { CellOverlayHost, CellOverlayPortal, CellPopover, CellContextMenu, CellAlertDialog, positionCellOverlay } from "./browser-overlay-host.js";
 export type { CellOverlayDismissReason, CellOverlayPlacement } from "./browser-overlay-host.js";
 export { CellToastViewport, useCellToastState } from "./browser-toast.js";
@@ -41,6 +43,7 @@ import {
   type CSSProperties,
   type FocusEvent,
   type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent,
   type ReactElement,
   type ReactNode,
@@ -64,11 +67,22 @@ export { DEFAULT_CELL_UI_METRICS, loadCellFontMetrics } from "./browser-font-met
 import {
   type GestureSignal,
 } from "./gestures.js";
+import {
+  beginCellDrag,
+  cellDropTargetAtPoint,
+  cancelCellDrag,
+  commitCellDrag,
+  idleCellDragState,
+  updateCellDrag,
+  type CellDragEvent,
+  type CellDragState,
+} from "./drag.js";
 import { CellInteractionController, sameWidgetIdSet } from "./interaction-controller.js";
 import { CellTextInputLayer } from "./browser-input.js";
 import { ariaDescribedBy } from "./browser-aria.js";
 import { keyInputFromKeyboardEvent } from "./keyboard/browser.js";
 import { isCellKeyPress } from "./keyboard.js";
+import type { CellAutoScrollRequest } from "./viewport.js";
 import { useCellRangeState } from "./browser-range.js";
 import { offsetAtCellPoint } from "./text.js";
 import {
@@ -78,6 +92,7 @@ import {
   type CellRangeCommand,
   type CellRangeSnapshot,
 } from "./range.js";
+
 import type { RootProps } from "./react.js";
 import { captureCellProbe, formatCellBuffer, type CellProbeOptions } from "./probe.js";
 import type { CellProbePresentation, CellProbeSnapshot } from "./probe.js";
@@ -87,12 +102,19 @@ import type { CellBuffer } from "./buffer.js";
 import { paintReorderPreview, type ReorderDrag } from "./reorder-preview.js";
 import { textViewportCommands } from "./text-viewport.js";
 import { scrollViewportCommands } from "./scroll.js";
+
+// Hosts and browser tests may replay PointerEvents without a native pointer
+// capture slot. Native pointer streams still capture normally; an unavailable
+// slot does not cancel Cell gesture tracking.
+const tryCapturePointer = (target: Element, pointerId: number): void => {
+  try { target.setPointerCapture(pointerId); } catch { /* synthetic pointer */ }
+};
 import { usePointerAppearance } from "./browser-hover.js";
 import { pressTargetAtPoint } from "./press.js";
 import { CellCursorPresenter } from "./browser-cursor.js";
 import { resolveCellPresentationWindow } from "./browser-presentation-window.js";
 import { isDescendantOf, sameWidgetValue } from "./tree.js";
-import { INDETERMINATE_PROGRESS_STEP_MS } from "./progress.js";
+import { useCellAnimationClock } from "./browser-animation.js";
 import { useCellTooltipTarget } from "./browser-tooltip.js";
 import {
   commandForGestureSignal,
@@ -103,6 +125,12 @@ import { resolveCellUiTheme, type CellUiTheme, type CellUiThemeInput } from "./t
 import type { CellUiRecipe } from "./recipe.js";
 import type { CellUiPresentation } from "./presentation.js";
 export { readCellCssTheme, useCellCssTheme } from "./browser-theme.js";
+export { useCellAnimationClock } from "./browser-animation.js";
+export { useCellViewport } from "./browser-viewport.js";
+export type { CellViewportOptions, CellViewportState } from "./browser-viewport.js";
+export { useCellResizeHandle } from "./browser-resize.js";
+export type { CellResizeHandle, CellResizeHandleOrientation } from "./browser-resize.js";
+export type { CellAnimationClock } from "./animation.js";
 export type { CellCssTheme } from "./browser-theme.js";
 import { FixedVirtualGrid, type VirtualRange } from "./virtual.js";
 import type { CellListItem } from "./browser-collections.js";
@@ -341,6 +369,7 @@ const presentFrame = (
     window?: CellRect;
     transparent?: boolean;
     transparentGuard?: boolean;
+    guardCells?: number;
   }> = {}
 ): void => {
   const context = canvas.getContext("2d");
@@ -349,10 +378,11 @@ const presentFrame = (
   const viewport = plane.viewport ?? frame.scene.viewport;
   const window = plane.window ?? { x: 0, y: 0, width: buffer.width, height: buffer.height };
   const visible = intersectSceneRects(viewport, window);
-  const guardX = CELL_SURFACE_GUARD_CELLS * metrics.cellWidth;
-  const guardY = CELL_SURFACE_GUARD_CELLS * metrics.cellHeight;
-  const width = (buffer.width + 2 * CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth;
-  const height = (window.height + 2 * CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight;
+  const guardCells = Math.max(0, Math.trunc(plane.guardCells ?? CELL_SURFACE_GUARD_CELLS));
+  const guardX = guardCells * metrics.cellWidth;
+  const guardY = guardCells * metrics.cellHeight;
+  const width = (buffer.width + 2 * guardCells) * metrics.cellWidth;
+  const height = (window.height + 2 * guardCells) * metrics.cellHeight;
   const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
   const regions = [visible];
   // Font ink may cross Cell boundaries, so presentation repaints the whole
@@ -400,6 +430,7 @@ const presentFrameWithCursor = (
   reorderDrag?: ReorderDrag | null,
   transparentGuard = false,
   window?: CellRect,
+  guardCells = CELL_SURFACE_GUARD_CELLS,
 ) => {
   const reorderBuffer = reorderDrag ? paintReorderPreview(frame, reorderDrag, theme) : null;
   cursor.beforeBasePresent();
@@ -412,7 +443,7 @@ const presentFrameWithCursor = (
     rangePhase,
     theme,
     fontProfile,
-    { buffer: reorderBuffer ?? frame.baseBuffer, viewport: frame.scene.viewport, transparentGuard, window }
+    { buffer: reorderBuffer ?? frame.baseBuffer, viewport: frame.scene.viewport, transparentGuard, window, guardCells }
   );
   if (!cellRange) {
     cursor.afterBasePresent({
@@ -457,6 +488,9 @@ export const SemanticDom = ({
     focusVisible: boolean;
     manipulating: boolean;
   }>;
+  metrics?: Pick<CharDeskCellMetrics, "cellWidth" | "cellHeight">;
+  guardCells?: number;
+  origin?: Readonly<{ left: number; top: number }>;
 }>) => {
   const childrenByParent = useMemo(() => {
     const index = new Map<WidgetId, SemanticNode[]>();
@@ -579,8 +613,14 @@ export type CellSurfaceProps = Readonly<{
   className?: string;
   probeId?: string;
   fontAudit?: boolean;
+  guardCells?: number;
   onCommand: (command: WidgetCommand) => void;
   onHoverChange?: (targetId: WidgetId | null) => void;
+  onContextMenu?: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  /** Receives the generic drag transaction emitted by the browser layer. */
+  onDragStateChange?: (event: CellDragEvent) => void;
+  /** Requests host-owned scrolling while a drag approaches a viewport edge. */
+  onAutoScrollRequest?: (request: CellAutoScrollRequest) => void;
   linearSelection?: boolean;
   cellRange?: CellRangeSnapshot | null;
   onCellRangeCommand?: (command: CellRangeCommand) => void;
@@ -763,12 +803,17 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     className,
     probeId,
     fontAudit: auditFonts = false,
+    guardCells: requestedGuardCells = CELL_SURFACE_GUARD_CELLS,
     onCommand,
     onHoverChange,
+    onContextMenu,
+    onDragStateChange,
+    onAutoScrollRequest,
     linearSelection = false,
     cellRange: controlledCellRange,
     onCellRangeCommand,
   } = props;
+  const guardCells = Math.max(0, Math.trunc(requestedGuardCells));
   const overlayViewport = requestedOverlayViewport ?? viewport;
   const fontProfile = useMemo(() => createCellUiFontProfile(requestedFontProfile), [requestedFontProfile]);
   const fontMetrics = useCellFontMetrics(fontProfile, fontSize, explicitMetrics);
@@ -820,8 +865,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const rectFor = (bounds: CellRect): DOMRect | null => {
       const origin = surface.getBoundingClientRect();
       return new DOMRect(
-        origin.left + (bounds.x + CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth,
-        origin.top + (bounds.y + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight,
+        origin.left + (bounds.x + guardCells) * metrics.cellWidth,
+        origin.top + (bounds.y + guardCells) * metrics.cellHeight,
         bounds.width * metrics.cellWidth,
         bounds.height * metrics.cellHeight,
       );
@@ -831,6 +876,18 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       targetRect: (id) => {
         const entry = frameRef.current?.scene.entries.get(id);
         return entry?.paintVisible ? rectFor(entry.layoutBounds) : null;
+      },
+      snapshot: () => {
+        const elementRectPx = surface.getBoundingClientRect();
+        const canvasRectPx = surface.querySelector("canvas")?.getBoundingClientRect() ?? null;
+        return {
+          elementRectPx,
+          canvasRectPx,
+          viewport,
+          metrics,
+          guardCells: guardCells,
+          contentRectCells: { x: 0, y: 0, width: viewport.width, height: viewport.height },
+        };
       },
     });
   }, [canvasRef, metrics, viewport]);
@@ -861,6 +918,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const activationBlinkCountRef = useRef(resolvedFeedback.activationBlinkCount);
   const onCommandRef = useRef(onCommand);
   onCommandRef.current = onCommand;
+  const onDragStateChangeRef = useRef(onDragStateChange);
+  onDragStateChangeRef.current = onDragStateChange;
+  const onAutoScrollRequestRef = useRef(onAutoScrollRequest);
+  onAutoScrollRequestRef.current = onAutoScrollRequest;
+  const dragStateRef = useRef<CellDragState>(idleCellDragState());
   const inputModalityRef = useRef<"keyboard" | "pointer">("keyboard");
   const [inputModality, setInputModalityState] = useState<"keyboard" | "pointer">("keyboard");
   const setInputModality = useCallback((next: "keyboard" | "pointer") => {
@@ -965,12 +1027,13 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const [activationFlashId, setActivationFlashId] = useState<WidgetId | null>(null);
   const [fontPresentationRevision, setFontPresentationRevision] = useState(0);
   const [frame, setFrame] = useState<FrameSnapshot | null>(null);
-  const [animationTimeMs, setAnimationTimeMs] = useState(0);
   const hasAnimatedWidget = frame
     ? [...frame.tree.nodes.values()].some((node) =>
         frame.scene.entries.has(node.id) && (node.kind === "spinner" || node.progress?.value === null))
     : false;
-  const pointerAppearance = usePointerAppearance(canvasRef, frame, metrics);
+  const animationClock = useCellAnimationClock({ playing: hasAnimatedWidget, fps: 60 });
+  const animationTimeMs = hasAnimatedWidget ? animationClock.elapsedMs : 0;
+  const pointerAppearance = usePointerAppearance(canvasRef, frame, metrics, guardCells);
   const hoveredId = activationFeedbackRef.current.settling
     ? null
     : pointerAppearance.hoveredId;
@@ -1006,45 +1069,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const current = frameRef.current;
     if (current && inputModality === "pointer") controller.setHovered(current, hoveredId);
   }, [controller, hoveredId, inputModality]);
-  useEffect(() => {
-    if (!hasAnimatedWidget) {
-      setAnimationTimeMs(0);
-      return;
-    }
-    const reducedMotion = typeof window.matchMedia === "function"
-      ? window.matchMedia("(prefers-reduced-motion: reduce)")
-      : null;
-    let pending: number | null = null;
-    let startedAt: number | null = null;
-    const cancel = () => {
-      if (pending !== null) cancelAnimationFrame(pending);
-      pending = null;
-      startedAt = null;
-    };
-    const tick = (time: number) => {
-      pending = null;
-      if (document.hidden || reducedMotion?.matches) return;
-      startedAt ??= time;
-      const elapsed = time - startedAt;
-      const quantized = Math.floor(elapsed / INDETERMINATE_PROGRESS_STEP_MS)
-        * INDETERMINATE_PROGRESS_STEP_MS;
-      setAnimationTimeMs((current) => current === quantized ? current : quantized);
-      pending = requestAnimationFrame(tick);
-    };
-    const sync = () => {
-      cancel();
-      setAnimationTimeMs(0);
-      if (!document.hidden && !reducedMotion?.matches) pending = requestAnimationFrame(tick);
-    };
-    reducedMotion?.addEventListener("change", sync);
-    document.addEventListener("visibilitychange", sync);
-    sync();
-    return () => {
-      cancel();
-      reducedMotion?.removeEventListener("change", sync);
-      document.removeEventListener("visibilitychange", sync);
-    };
-  }, [hasAnimatedWidget]);
   const syncManipulatingIds = useCallback(() => {
     const next = gesturesRef.current.manipulatingIds;
     setManipulatingIds((current) => sameWidgetIdSet(current, next) ? current : next);
@@ -1251,6 +1275,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       reorderDrag,
       hostedSurface(),
       window ?? undefined,
+      guardCells,
     );
     canvas.style.top = `${(window?.y ?? 0) * metrics.cellHeight}px`;
     let allPlanesPresented = true;
@@ -1343,8 +1368,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       const current = frameRef.current;
       if (!current) return;
       const windowHeight = presentationWindowRef.current?.height ?? viewport.height;
-      const width = (viewport.width + 2 * CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth;
-      const height = (windowHeight + 2 * CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight;
+      const width = (viewport.width + 2 * guardCells) * metrics.cellWidth;
+      const height = (windowHeight + 2 * guardCells) * metrics.cellHeight;
       if (canvas.style.width !== `${width}px` || canvas.style.height !== `${height}px`) {
         presentCurrentRef.current(current);
       }
@@ -1515,7 +1540,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       if (!current || event.ctrlKey || !canvasRef.owns(event.target)) return;
       const result = resolveWheelInput(current, {
         type: "wheel",
-        point: pxToCellPoint(event, surface.getBoundingClientRect(), metrics, CELL_SURFACE_GUARD_CELLS),
+        point: pxToCellPoint(event, surface.getBoundingClientRect(), metrics, guardCells),
         deltaX: event.deltaX,
         deltaY: event.deltaY,
       });
@@ -1528,7 +1553,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
 
   const textDragPointFor = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = surfaceRef.current?.getBoundingClientRect();
-    return bounds ? pxToCellPoint(event, bounds, metrics, CELL_SURFACE_GUARD_CELLS) : null;
+    return bounds ? pxToCellPoint(event, bounds, metrics, guardCells) : null;
   };
 
   const isSurfaceCanvas = (target: EventTarget | null) =>
@@ -1563,7 +1588,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       const before = view.scrollY;
       view.scrollBy({ top: (atTop ? -1 : 1) * speed, behavior: "instant" });
       if (view.scrollY === before) return;
-      const point = pxToCellPoint(drag, surface.getBoundingClientRect(), metrics, CELL_SURFACE_GUARD_CELLS);
+      const point = pxToCellPoint(drag, surface.getBoundingClientRect(), metrics, guardCells);
       if (point.x !== drag.head.x || point.y !== drag.head.y) {
         linearDragRef.current = { ...drag, head: point };
         const snapshot = createCellLinearRangeSnapshot(current.buffer, drag.anchor, point);
@@ -1574,11 +1599,60 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     linearScrollFrameRef.current = requestAnimationFrame(tick);
   };
 
+  const cancelDrag = () => {
+    if (!dragStateRef.current.active) return;
+    const state = cancelCellDrag(dragStateRef.current);
+    dragStateRef.current = idleCellDragState();
+    onDragStateChangeRef.current?.({ type: "cancel", state });
+  };
+
   const applyGestureSignals = (
     current: FrameSnapshot,
     signals: readonly GestureSignal[]
   ) => {
     for (const signal of signals) {
+      if (signal.kind === "drag" && current.tree.nodes.get(signal.targetId)?.drag) {
+        const point = signal.point;
+        const targets = [...current.scene.entries.values()].flatMap((entry) => {
+          const node = current.tree.nodes.get(entry.id);
+          return node?.drop && !node.disabled && entry.paintVisible
+            ? [{ id: node.id, bounds: entry.hitBounds, accepts: node.drop.accepts }] : [];
+        });
+        const payload = current.tree.nodes.get(signal.targetId)?.drag?.payload ?? null;
+        const targetId = cellDropTargetAtPoint(targets, point, payload);
+        if (signal.phase === "start") {
+          const origin = { x: point.x - signal.delta.x, y: point.y - signal.delta.y };
+          dragStateRef.current = updateCellDrag(beginCellDrag(signal.pointerId, signal.targetId, payload, origin), point, targetId);
+          onDragStateChangeRef.current?.({ type: "start", state: dragStateRef.current });
+        } else if (signal.phase === "update") {
+          dragStateRef.current = updateCellDrag(dragStateRef.current, point, targetId);
+          onDragStateChangeRef.current?.({ type: "preview", state: dragStateRef.current });
+          const edge = 3;
+          const nearLeft = point.x <= edge;
+          const nearRight = point.x >= current.scene.viewport.width - edge - 1;
+          const nearTop = point.y <= edge;
+          const nearBottom = point.y >= current.scene.viewport.height - edge - 1;
+          if (nearLeft || nearRight || nearTop || nearBottom) {
+            const horizontal = nearLeft || nearRight;
+            const vertical = nearTop || nearBottom;
+            const distance = horizontal
+              ? Math.max(0, edge - (nearLeft ? point.x : current.scene.viewport.width - 1 - point.x))
+              : Math.max(0, edge - (nearTop ? point.y : current.scene.viewport.height - 1 - point.y));
+            onAutoScrollRequestRef.current?.({
+              axis: horizontal && vertical ? "both" : horizontal ? "x" : "y",
+              direction: (nearLeft || nearTop) ? "negative" : "positive",
+              velocity: Math.max(1, edge - distance),
+              pointer: point,
+            });
+          }
+        } else if (signal.phase === "end" && dragStateRef.current.sourceId === signal.targetId) {
+          dragStateRef.current = commitCellDrag(updateCellDrag(dragStateRef.current, point, targetId));
+          onDragStateChangeRef.current?.({ type: "commit", state: dragStateRef.current });
+          dragStateRef.current = idleCellDragState();
+        } else if (signal.phase === "cancel" && dragStateRef.current.sourceId === signal.targetId) {
+          cancelDrag();
+        }
+      }
       if (signal.kind === "drag" && current.tree.nodes.get(signal.targetId)?.kind === "list-item"
         && current.tree.nodes.get(signal.targetId)?.reorderable) {
         if (signal.phase === "start" || signal.phase === "update") {
@@ -1597,6 +1671,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const { pointerId, currentTarget } = event;
     eventsRef.current.cancel(pointerId);
     gesturesRef.current.cancel(pointerId);
+    if (dragStateRef.current.pointerId === pointerId) cancelDrag();
     if (reorderCandidateRef.current?.pointerId === pointerId) reorderCandidateRef.current = null;
     setReorderDrag((current) => current?.pointerId === pointerId ? null : current);
     syncManipulatingIds();
@@ -1631,6 +1706,14 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     if (event.defaultPrevented) return;
     setInputModality("keyboard");
     const input = keyInputFromKeyboardEvent(event.nativeEvent);
+    if (isCellKeyPress(input, "Escape") && dragStateRef.current.active) {
+      const pointerId = dragStateRef.current.pointerId;
+      cancelDrag();
+      if (pointerId !== null) { gesturesRef.current.cancel(pointerId); eventsRef.current.cancel(pointerId); }
+      syncManipulatingIds();
+      event.preventDefault();
+      return;
+    }
     if (isCellKeyPress(input, "Escape") && tooltipTargetId) {
       tooltip.dismiss();
       event.preventDefault();
@@ -1662,6 +1745,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     const relatedTarget = event.relatedTarget;
     if (relatedTarget instanceof Node && surface.contains(relatedTarget)) return;
     const cancelTransientFeedback = () => {
+      cancelDrag();
       const pointerIds = gesturesRef.current.sync(() => false);
       for (const pointerId of pointerIds) {
         eventsRef.current.cancel(pointerId);
@@ -1763,7 +1847,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           linearDragRef.current = null;
           stopLinearScroll();
           textDragRef.current = null;
-          event.currentTarget.setPointerCapture(event.pointerId);
+          tryCapturePointer(event.currentTarget, event.pointerId);
           setCellRange(point, point);
           focusFromPointer(event.currentTarget);
           return;
@@ -1792,7 +1876,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           if (contentClip && cellRectContainsPoint(contentClip, point)) {
             const offset = offsetAtCellPoint(textLayout, point);
             textDragRef.current = { targetId: editor.id, anchor: offset, pointerId: event.pointerId };
-            event.currentTarget.setPointerCapture(event.pointerId);
+            tryCapturePointer(event.currentTarget, event.pointerId);
             dispatch({
               type: "text",
               targetId: editor.id,
@@ -1807,7 +1891,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (immediate?.type === "focus") dispatch(immediate);
         const targetId = eventsRef.current.resolveTarget(frame, point, event.pointerId);
         const bounds = surfaceRef.current!.getBoundingClientRect();
-        const precisePoint = pxToCellPosition(event, bounds, metrics, CELL_SURFACE_GUARD_CELLS);
+        const precisePoint = pxToCellPosition(event, bounds, metrics, guardCells);
         const candidates = gestureCandidatesForFrame(frame, targetId ? getEventPath(frame.scene, targetId) : [], point, precisePoint);
         const canSelect = linearSelection && rangeEditable && event.pointerType === "mouse"
           && !candidates.some((candidate) => candidate.kind === "drag") && !onScrollbar
@@ -1834,8 +1918,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (candidates.length > 0) {
           event.preventDefault();
           controller.beginPointer(frame, event.pointerId, point, candidates, precisePoint);
-          event.currentTarget.setPointerCapture(event.pointerId);
-        } else if (canSelect) event.currentTarget.setPointerCapture(event.pointerId);
+          tryCapturePointer(event.currentTarget, event.pointerId);
+        } else if (canSelect) tryCapturePointer(event.currentTarget, event.pointerId);
         if (editor && !editor.disabled && onScrollbar) {
           adoptTextAreaPreviewScroll(frame, editor.id);
           dispatch({ type: "focus", targetId: editor.id });
@@ -1893,7 +1977,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         });
         const bounds = surfaceRef.current!.getBoundingClientRect();
         const signals = controller.movePointer(frame, event.pointerId, point,
-          pxToCellPosition(event, bounds, metrics, CELL_SURFACE_GUARD_CELLS));
+          pxToCellPosition(event, bounds, metrics, guardCells));
         applyGestureSignals(frame, signals);
       }}
       onPointerUp={(event: PointerEvent<HTMLDivElement>) => {
@@ -1908,7 +1992,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
             });
             const bounds = surfaceRef.current!.getBoundingClientRect();
             const signals = controller.endPointer(frame, event.pointerId, point,
-              pxToCellPosition(event, bounds, metrics, CELL_SURFACE_GUARD_CELLS));
+              pxToCellPosition(event, bounds, metrics, guardCells));
             applyGestureSignals(frame, signals);
           }
         } finally {
@@ -1965,6 +2049,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       }}
       onBlur={onSurfaceBlur}
       onWheelCapture={() => tooltip.dismiss()}
+      onContextMenu={onContextMenu}
       onKeyDown={onKeyDown}
       onKeyUp={(event) => {
         if (event.key === "Escape" && tooltip.dismissedId
@@ -1974,8 +2059,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (controller.key(frame, input, resolvedFeedback.activationBlinkCount)) event.preventDefault();
       }}
       style={{ position: "relative",
-        width: (viewport.width + 2 * CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth,
-        height: (viewport.height + 2 * CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight,
+        width: (viewport.width + 2 * guardCells) * metrics.cellWidth,
+        height: (viewport.height + 2 * guardCells) * metrics.cellHeight,
         outline: "none",
         pointerEvents: hostedSurface() ? "none" : undefined }}
     >
@@ -2021,8 +2106,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       {hostedSurface() && <div ref={registerHitRegion}
         data-cell-hit-region="" aria-hidden="true" style={{
         position: "absolute",
-        left: CELL_SURFACE_GUARD_CELLS * metrics.cellWidth,
-        top: CELL_SURFACE_GUARD_CELLS * metrics.cellHeight,
+        left: guardCells * metrics.cellWidth,
+        top: guardCells * metrics.cellHeight,
         width: viewport.width * metrics.cellWidth,
         height: viewport.height * metrics.cellHeight,
         pointerEvents: "auto",
@@ -2058,7 +2143,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         <CellTextInputLayer
           frame={frame}
           metrics={metrics}
-          guardCells={CELL_SURFACE_GUARD_CELLS}
+          guardCells={guardCells}
           dispatch={dispatch}
           focusTarget={(targetId) => {
             if (focusRef.current.focusedId !== targetId) {

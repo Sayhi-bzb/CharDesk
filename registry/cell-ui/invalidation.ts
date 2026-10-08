@@ -16,6 +16,7 @@ const sameSceneEntry = (left: SceneEntry, right: SceneEntry): boolean =>
   && sameRect(left.outerClip, right.outerClip)
   && sameRect(left.contentClip, right.contentClip)
   && sameWidgetValue(left.scrollMetrics, right.scrollMetrics)
+  && sameWidgetValue(left.splitJunctions, right.splitJunctions)
   && left.layer === right.layer
   && left.paintOrder === right.paintOrder
   && left.paintVisible === right.paintVisible;

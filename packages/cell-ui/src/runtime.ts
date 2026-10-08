@@ -340,9 +340,13 @@ export class CellUiRuntime {
               focusedId, affectedSemanticIds(tree, new Set([...semanticIds, ...sceneChanges])))
         : createSemanticSnapshot(tree, scene, revision, focusedId)
       : { ...previous.semantics, revision };
+    const changedIds = new Set([...geometryIds, ...paintIds, ...sceneChanges]);
     const rawDirtyRegions = !previous || viewportDirty || this.#appearanceDirty
       ? [scene.overlayViewport]
-      : damagedRegions(new Set([...geometryIds, ...paintIds, ...sceneChanges]), previous.scene, scene);
+      : [
+          ...damagedRegions(changedIds, previous.scene, scene),
+
+        ];
     const dirtyRegions = boundedDamage(rawDirtyRegions, scene.overlayViewport);
     const hasOverlayLayer = scene.paintList.some((id) => scene.entries.get(id)?.layer !== 0);
     const baseBuffer = paintDirty || !previous

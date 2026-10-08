@@ -96,7 +96,7 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
   if (node.kind === "progress") return "progressbar";
   if (node.kind === "tooltip") return "tooltip";
   if (node.kind === "spinner") return "progressbar";
-  if (node.kind === "separator") return "separator";
+  if (node.kind === "separator" || node.kind === "splitter" || node.kind === "resize-handle") return "separator";
   if (node.kind === "slider") return "slider";
   if (node.kind === "range-slider") return "group";
   if (node.kind === "range-slider-thumb") return "slider";
@@ -239,18 +239,18 @@ const buildSemanticSnapshot = (
         ? { valueNow: node.progress.value, valueMin: 0, valueMax: node.progress.max,
             valueText: node.progress.valueText }
         : node.progress?.valueText ? { valueText: node.progress.valueText } : {}),
-      ...(node.kind === "separator" || node.kind === "radio-group"
+      ...(node.kind === "separator" || node.kind === "splitter" || node.kind === "resize-handle" || node.kind === "radio-group"
         ? { orientation: node.orientation ?? (node.kind === "separator" ? "horizontal" : "vertical") } : {}),
       ...(node.kind === "checkbox" || node.kind === "radio-item"
         ? { checked: node.checked === "indeterminate" ? "mixed" as const : node.checked }
         : {}),
-      ...(node.kind === "slider" || node.kind === "range-slider-thumb"
+      ...(node.kind === "slider" || node.kind === "range-slider-thumb" || node.kind === "resize-handle"
         ? {
-            valueNow: node.sliderValue,
-            valueMin: rangeThumb?.thumbIndex === 1
+            valueNow: node.kind === "resize-handle" ? node.resize?.value : node.sliderValue,
+            valueMin: node.kind === "resize-handle" ? node.resize?.min : rangeThumb?.thumbIndex === 1
               ? rangeThumb.values[0]
               : node.sliderMin,
-            valueMax: rangeThumb?.thumbIndex === 0
+            valueMax: node.kind === "resize-handle" ? node.resize?.max : rangeThumb?.thumbIndex === 0
               ? rangeThumb.values[1]
               : node.sliderMax,
             valueText: node.sliderValueText ?? undefined,
@@ -290,7 +290,7 @@ const buildSemanticSnapshot = (
       actions: node.disabled || (node.kind === "overlay" && !node.dialog) || sceneEntry === undefined
         ? []
         : node.dialog ? ["focus"]
-        : node.kind === "slider" || node.kind === "range-slider-thumb"
+        : node.kind === "slider" || node.kind === "range-slider-thumb" || node.kind === "resize-handle"
           ? ["focus"]
         : node.kind === "combobox-input"
           ? ["focus", node.expanded ? "collapse" : "expand"]
@@ -475,7 +475,7 @@ export const auditSemanticSnapshot = (
         || node.valueMin !== undefined
         || node.valueMax !== undefined
         || node.valueText !== undefined)
-      && node.role !== "slider" && node.role !== "progressbar"
+      && node.role !== "slider" && node.role !== "separator" && node.role !== "progressbar"
     ) issue(node.id, "invalid-state", `Numeric value is invalid for role ${node.role}.`);
     if (node.role === "slider" && (
       node.valueNow === undefined
@@ -484,6 +484,13 @@ export const auditSemanticSnapshot = (
       || node.valueNow < node.valueMin
       || node.valueNow > node.valueMax
     )) issue(node.id, "invalid-state", "Slider value must be inside its numeric range.");
+    if (node.role === "separator" && (node.valueNow !== undefined || node.valueMin !== undefined || node.valueMax !== undefined) && (
+      node.valueNow === undefined
+      || node.valueMin === undefined
+      || node.valueMax === undefined
+      || node.valueNow < node.valueMin
+      || node.valueNow > node.valueMax
+    )) issue(node.id, "invalid-state", "Adjustable separator value must be inside its numeric range.");
     const hasProgressRange = node.valueNow !== undefined
       || node.valueMin !== undefined
       || node.valueMax !== undefined;

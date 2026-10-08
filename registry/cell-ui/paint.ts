@@ -512,7 +512,7 @@ export const paintScene = (
       }
       if (node.kind === "progress" || node.kind === "separator") {
         const bounds = entry.decorationBounds;
-        const vertical = node.kind === "separator" && node.orientation === "vertical";
+        const vertical = (node.kind === "separator") && node.orientation === "vertical";
         const progressOutlineInset = node.kind === "progress" && outline ? 1 : 0;
         const trackX = bounds.x + progressOutlineInset;
         const length = vertical
@@ -667,6 +667,44 @@ export const paintScene = (
         }
       }
       if (entry.scrollMetrics) paintScrollbars(buffer, node, entry, theme, style, outerClip);
+    }
+  }
+  // All line connections are resolved in Scene; paint uses their declared bounds.
+  for (const id of scene.paintList) {
+    const node = tree.nodes.get(id)!, entry = scene.entries.get(id)!;
+    if (node.kind !== "splitter") continue;
+    if (options.layer === "base" && entry.layer !== 0 || options.layer === "overlay" && entry.layer === 0) continue;
+    const vertical = node.orientation === "vertical", bounds = entry.layoutBounds;
+    const style = { ...resolveWidgetVisual(tree, node, theme).borderStyle, color: theme.borderStyle.color };
+    for (const region of regions) {
+      const clip = intersectSceneRects(entry.outerClip, region);
+      const lineStart = bounds.x;
+      const lineLength = vertical ? bounds.height : bounds.width;
+      for (let offset = 0; offset < lineLength; offset += 1) {
+        buffer.writeGrapheme(lineStart + (vertical ? 0 : offset), bounds.y + (vertical ? offset : 0),
+          theme.separatorGlyphs.line[vertical ? "vertical" : "horizontal"], id, style, clip, "over");
+      }
+      for (const junction of entry.splitJunctions ?? []) {
+        buffer.writeGrapheme(junction.x, junction.y, junction.glyph, id, style, region, "over");
+      }
+    }
+  }
+  // A vertical handle owns one Cell; a horizontal handle owns two Cells.
+  for (const id of scene.paintList) {
+    const node = tree.nodes.get(id)!, entry = scene.entries.get(id)!;
+    if (node.kind !== "resize-handle" || node.disabled || !(node.manipulating || node.hovered)) continue;
+    if (options.layer === "base" && entry.layer !== 0 || options.layer === "overlay" && entry.layer === 0) continue;
+    for (const region of regions) {
+      const paintClip = intersectSceneRects(entry.outerClip, region);
+      if (node.orientation === "horizontal") {
+        for (let offset = 0; offset < 2; offset += 1) {
+          buffer.writeGrapheme(entry.layoutBounds.x + offset, entry.layoutBounds.y, "━", id,
+            { color: theme.foreground }, paintClip, "over");
+        }
+      } else {
+        buffer.writeGrapheme(entry.layoutBounds.x, entry.layoutBounds.y, "█", id,
+          { color: theme.foreground }, paintClip, "over");
+      }
     }
   }
   return buffer;

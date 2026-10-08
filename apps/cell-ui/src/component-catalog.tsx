@@ -23,12 +23,13 @@ import {
   TableComponentDemo,
 } from "./sections/components";
 import { componentContent, sourceLinksForComponent as contentSourceLinks, type ComponentContent } from "./docs-content";
-import { MenuComponentDemo, ToastComponentDemo } from "./sections/host-components";
+import { ContextMenuComponentDemo, MenuComponentDemo, ToastComponentDemo } from "./sections/host-components";
+import { ResizableComponentDemo } from "./primitives-demos";
 
 export type ComponentDocument = ComponentContent & Readonly<{ probeId: string; Demo: ComponentType }>;
 
 const demos: Readonly<Record<string, ComponentType>> = {
-  menu: MenuComponentDemo, toast: ToastComponentDemo,
+  menu: MenuComponentDemo, "context-menu": ContextMenuComponentDemo, toast: ToastComponentDemo,
   alert: AlertComponentDemo,
   dialog: DialogComponentDemo, accordion: AccordionComponentDemo, toggle: ToggleComponentDemo,
   progress: ProgressComponentDemo, spinner: SpinnerComponentDemo, tooltip: TooltipComponentDemo,
@@ -38,6 +39,7 @@ const demos: Readonly<Record<string, ComponentType>> = {
   tabs: TabsComponentDemo, "scroll-area": ScrollAreaComponentDemo,
   text: TextComponentDemo, "text-area": TextAreaComponentDemo,
   table: TableComponentDemo,
+  resizable: ResizableComponentDemo,
 };
 
 export const sourceLinksForComponent = contentSourceLinks;

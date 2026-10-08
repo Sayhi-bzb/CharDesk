@@ -28,6 +28,7 @@ export type GestureCandidate = Readonly<{
   part?: CellHitPart;
   scrollbar?: ScrollDragAnchor;
   slider?: SliderDragAnchor;
+  resize?: Readonly<{ point: CellPoint; value: number }>;
 }>;
 
 export type GestureSignal = Readonly<{
@@ -40,6 +41,7 @@ export type GestureSignal = Readonly<{
   part?: CellHitPart;
   scrollbar?: ScrollDragAnchor;
   slider?: SliderDragAnchor;
+  resize?: Readonly<{ point: CellPoint; value: number }>;
   precisePoint?: CellPoint;
   totalDelta?: CellPoint;
 }>;
@@ -78,6 +80,7 @@ const signal = (
     totalDelta: delta(candidate.scrollbar.point, precisePoint),
   } : {}),
   ...(candidate.slider ? { slider: candidate.slider } : {}),
+  ...(candidate.resize ? { resize: candidate.resize, totalDelta: delta(candidate.resize.point, precisePoint) } : {}),
 });
 
 const acceptsAxis = (candidate: GestureCandidate, axis: "x" | "y") => {
@@ -137,7 +140,7 @@ export class GestureManager {
     const total = delta(arena.start, point);
     const preciseTotal = delta(arena.preciseStart, precisePoint);
     const preciseDrag = arena.candidates.find(
-      (candidate) => candidate.kind === "drag" && (candidate.scrollbar || candidate.slider)
+      (candidate) => candidate.kind === "drag" && (candidate.scrollbar || candidate.slider || candidate.resize)
     );
     if (preciseDrag && Math.abs(preciseDrag.axis === "x" ? preciseTotal.x : preciseTotal.y) >= 0.5) {
       arena.winner = preciseDrag;

@@ -16,6 +16,7 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   "text-area": ["react.tsx", "browser-input.tsx"],
   list: ["react.tsx", "browser-collections.tsx"],
   menu: ["react.tsx", "browser-collections.tsx", "browser-overlay-host.tsx"],
+  "context-menu": ["react.tsx", "browser-collections.tsx", "browser-overlay-host.tsx"],
   toast: ["react.tsx", "browser-toast.tsx", "browser-overlay-host.tsx"],
   tree: ["react.tsx", "browser-collections.tsx"],
   table: ["react.tsx", "table.ts", "paint.ts", "semantics.ts"],
@@ -26,6 +27,8 @@ const componentSourceFiles: Readonly<Record<string, readonly string[]>> = {
   spinner: ["react.tsx", "spinner.ts"],
   tooltip: ["react.tsx", "tooltip.ts", "anchored-overlay.ts"],
   separator: ["react.tsx", "separator.ts"],
+  resizable: ["editor.ts", "react.tsx", "browser.tsx", "browser-resize.ts", "browser-viewport.ts"],
+  reordering: ["react.tsx", "pointer.ts", "reorder.ts", "reorder-preview.ts", "browser.tsx"],
   radio: ["react.tsx", "browser-collections.tsx"],
   button: ["react.tsx", "button.ts"],
   field: ["react.tsx", "semantics.ts", "visual.ts"],
@@ -148,6 +151,75 @@ export function MenuExample() {
       { name: "CellPopover.anchor", type: "Element | DOMRect | null", description: "Element or pointer rectangle used for placement and focus return." },
       { name: "CellPopover.onDismiss", type: '(reason: "escape" | "outside") => void', description: "Close the controlled popup; Escape returns focus to its anchor." },
       { name: "CellContextMenu", type: "browser component", description: "Same host-managed menu surface, anchored to a pointer rectangle." },
+    ],
+  },
+  {
+    slug: "context-menu", title: "Context Menu",
+    description: "Open a host-managed Cell menu from a pointer rectangle without coupling the menu surface to domain actions.",
+    composition: `CellOverlayHost
+├── CellSurface (context target)
+└── CellContextMenu (opened by pointer state)
+    └── CellSurface
+        └── Menu
+            └── MenuItem`,
+    usage: `import { useState } from "react";
+import { Box, Menu, MenuItem, Root, Text } from "@/lib/cell-ui";
+import { CellContextMenu, CellOverlayHost, CellSurface } from "@/lib/cell-ui/browser";
+
+export function ContextMenuExample() {
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const presentation = "rich";
+  const close = () => setAnchor(null);
+  return (
+    <CellOverlayHost>
+      <div
+        onContextMenu={(event) => {
+          event.preventDefault();
+          setAnchor(new DOMRect(event.clientX, event.clientY, 0, 0));
+        }}
+      >
+        <CellSurface viewport={{ width: 28, height: 9 }} onCommand={() => {}}>
+          <Root>
+            <Box
+              frame="bordered"
+              style={{ width: 26, height: 7, paddingTop: 2, alignItems: "center" }}
+            >
+              <Text>Right click here</Text>
+            </Box>
+          </Root>
+        </CellSurface>
+      </div>
+      <CellContextMenu open={anchor !== null} anchor={anchor} onDismiss={close}>
+        <CellSurface
+          presentation={presentation}
+          viewport={{ width: 20, height: 3 }}
+          focusedId="context-action"
+          onCommand={(command) => {
+            if (command.type === "activate" && command.targetId === "context-action")
+              close();
+          }}
+        >
+          <Root>
+            <Box variant="surface" frame="bordered" style={{ width: 20 }}>
+              <Menu id="context-menu" label="Context menu">
+                <MenuItem id="context-action" focused label="Context action">
+                  <Text>Context action</Text>
+                </MenuItem>
+              </Menu>
+            </Box>
+          </Root>
+        </CellSurface>
+      </CellContextMenu>
+    </CellOverlayHost>
+  );
+}`,
+    api: [
+      { name: "CellContextMenu.open", type: "boolean", description: "Controlled visibility for the context menu." },
+      { name: "CellContextMenu.anchor", type: "DOMRect | null", description: "Pointer rectangle used for bottom-start placement." },
+      { name: "CellContextMenu.onDismiss", type: '(reason: "escape" | "outside") => void', description: "Close the menu and restore focus according to the host policy." },
+      { name: "CellSurface.presentation", type: '"rich" | "text"', description: "Select the visual contract for the hosted menu surface; Text uses a square character frame." },
+      { name: "Box.variant / frame / borderShape", type: "surface recipe", description: "Configure the popup surface appearance independently from the right-click target." },
+      { name: "Menu / MenuItem", type: "Cell descriptors", description: "Accessible menu content; the application handles activate commands." },
     ],
   },
   {
@@ -507,6 +579,58 @@ export function SeparatorExample() {
       { name: "variant?", type: '"line" | "slash" | "double" | "dots"', description: "Line by default; glyphs come from the global Cell UI theme." },
       { name: "orientation?", type: '"horizontal" | "vertical"', description: "Horizontal by default; vertical fills its container height." },
       { name: "style?", type: "CellLayoutStyle", description: "Cell length and layout constraints." },
+    ],
+  },
+  {
+    slug: "resizable", title: "Resizable",
+    description: "Compose Cell-native panes with constrained, application-owned Cell sizes.",
+    composition: `Split
+├── Pane
+├── Splitter
+└── Pane`,
+    usage: `import { useState } from "react";
+import { Pane, Root, Split, Splitter, Text } from "@chardesk/cell-ui";
+import { CellSurface, useCellResizeHandle } from "@chardesk/cell-ui/browser";
+
+export function ResizableExample() {
+  const [sizes, setSizes] = useState<readonly number[]>([20, 20]);
+  const handle = useCellResizeHandle({
+    orientation: "vertical",
+    value: sizes[0]!,
+    min: 8,
+    max: 32,
+    cellSize: 8,
+    onChange: (value) => setSizes([value, 40 - value]),
+  });
+
+  return (
+    <CellSurface viewport={{ width: 44, height: 8 }} onCommand={() => {}}>
+      <Root>
+        <Split orientation="horizontal" style={{ width: 42, height: 4 }}>
+          <Pane style={{ width: sizes[0], height: 4 }}>
+            <Text>Source</Text>
+          </Pane>
+          <Splitter orientation="vertical" />
+          <Pane style={{ width: sizes[1], height: 4 }}>
+            <Text>Preview</Text>
+          </Pane>
+        </Split>
+      </Root>
+    </CellSurface>
+  );
+}
+
+// Render handle.props in a browser overlay at the Splitter bounds.`,
+    api: [
+      { name: "Split.orientation?", type: '"horizontal" | "vertical"', description: "Maps the composition direction to Cell rows or columns." },
+      { name: "Pane.minSize?", type: "number", description: "Minimum Cell size used by the host sizing model." },
+      { name: "Pane.maxSize?", type: "number", description: "Maximum Cell size used by the host sizing model." },
+      { name: "Pane.collapsible?", type: "boolean", description: "Marks a pane as eligible for host-managed collapse." },
+      { name: "Pane.collapsed?", type: "boolean", description: "Controlled collapsed state supplied by the application." },
+      { name: "Splitter.orientation?", type: '"horizontal" | "vertical"', description: "Cell separator direction; a vertical splitter separates horizontal panes." },
+      { name: "useCellResizeHandle", type: "browser hook", description: "Pointer and keyboard handle contract for controlled Cell-size updates." },
+      { name: "createCellSplitModel", type: "(panes: CellPaneSize[]) => CellSplitModel", description: "Pure Cell-size model for constrained adjacent-pane resize and collapse." },
+      { name: "CellPaneSize", type: "{ size, minSize?, maxSize?, collapsed? }", description: "Application-owned Cell sizing input." },
     ],
   },
   {
@@ -1317,8 +1441,31 @@ import { CellSurface } from "@/lib/cell-ui/browser";
     <Text>Hello, Cells</Text>
   </Root>
 </CellSurface>;` },
+      { id: "viewport", title: "Browser viewport", body: "Browser hosts can derive an integer Cell viewport from a measured parent without stretching Cells. useCellViewport owns ResizeObserver measurement; the host passes its viewport and returned metrics to CellSurface. Headless hosts continue to pass viewport explicitly.", code: `import { useRef } from "react";
+import { Root, Text } from "@/lib/cell-ui";
+import { CellSurface, useCellViewport } from "@/lib/cell-ui/browser";
+
+function ResponsiveSurface() {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const { viewport, metrics, ready } = useCellViewport({ elementRef });
+  return (
+    <div ref={elementRef}>
+      {ready ? (
+        <CellSurface viewport={viewport} metrics={metrics} onCommand={() => {}}>
+          <Root>
+            <Text>Measured Cells</Text>
+          </Root>
+        </CellSurface>
+      ) : null}
+    </div>
+  );
+}` },
+      { id: "geometry", title: "Geometry diagnostics", body: "resolveCellSurfaceGeometry exposes the committed surface and canvas rectangles, Cell viewport, metrics, guard Cells, and content Cell rect. Use it to distinguish a small viewport from a clipped DOM surface.", code: `import { resolveCellSurfaceGeometry } from "@/lib/cell-ui/browser";
+
+const geometry = resolveCellSurfaceGeometry(surfaceElement);
+console.log(geometry?.viewport, geometry?.canvasRectPx);` },
       { id: "state", title: "State and commands", body: "Application state remains outside the renderer. Pass controlled values and focused IDs into descriptors, then handle CellSurface onCommand or use the matching /browser state adapter. Direct adapter dispatch has no presentation lifecycle." },
-      { id: "reordering", title: "Reordering", body: "Use List's reorderable capability with stable List and ListItem IDs. Pointer drag previews the row and insertion point; release or Alt+↑/↓ emits a reorder command. Application state owns the final order.", code: `import { useState } from "react";
+      { id: "reordering", title: "Reordering", body: "Use List's reorderable capability with stable List and ListItem IDs. Pointer drag previews the row and insertion point; release or Alt+↑/↓ emits a reorder command. Application state owns the final order. Try the live host fixture to drag the visible Cell rows.", link: { label: "Open live drag fixture", href: "#/__fixtures/overlay-host" }, code: `import { useState } from "react";
 import { List, ListItem, Root, Text, reorderCellItems } from "@/lib/cell-ui";
 import { CellSurface } from "@/lib/cell-ui/browser";
 

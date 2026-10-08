@@ -220,10 +220,11 @@ export function GallerySurface(props: CellSurfaceProps) {
       focusedId: props.focusedId ?? null,
       onCommand: props.onCommand,
       onHoverChange: props.onHoverChange,
+      onContextMenu: props.onContextMenu,
       svgIcons: props.svgIcons,
     });
   }, [register, props.children, props.focusedId, props.label, props.onCommand, props.onHoverChange, props.svgIcons, props.presentation,
-    props.probeId, props.viewport]);
+    props.onContextMenu, props.probeId, props.viewport]);
   useLayoutEffect(() => {
     if (!register || !props.probeId) return;
     const id = props.probeId;

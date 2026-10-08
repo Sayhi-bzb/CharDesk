@@ -33,7 +33,10 @@ export const paintReorderPreview = (
   const projected = [...rows];
   projected.splice(drop.toIndex, 0, projected.splice(fromIndex, 1)[0]!);
 
-  const buffer = frame.baseBuffer.clone();
+  // Start from the currently presented projection. The base buffer can omit
+  // overlay/scroll composition when the surface is hosted inside a document
+  // scene, which made the preview appear as an empty canvas in that mode.
+  const buffer = frame.buffer.clone();
   const clip = {
     x: Math.max(0, listBounds.x),
     y: Math.max(0, listBounds.y),
@@ -58,7 +61,7 @@ export const paintReorderPreview = (
     const { id, bounds } = projected[index]!;
     for (let y = bounds.y; y < bounds.y + bounds.height; y += 1) {
       for (let x = bounds.x; x < bounds.x + bounds.width; x += 1) {
-        const cell = frame.baseBuffer.get(x, y);
+        const cell = frame.buffer.get(x, y);
         if (cell && !cell.continuation) {
           const style = id === drag.sourceId ? { ...cell.style, ...theme.selectedStyle } : cell.style;
           buffer.writeGrapheme(x, projectedY + y - bounds.y, cell.text,

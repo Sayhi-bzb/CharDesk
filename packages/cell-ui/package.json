@@ -18,6 +18,26 @@
     "./browser": {
       "types": "./dist/browser.d.ts",
       "import": "./dist/browser.js"
+    },
+    "./editor": {
+      "types": "./dist/editor.d.ts",
+      "import": "./dist/editor.js"
+    },
+    "./animation": {
+      "types": "./dist/animation.d.ts",
+      "import": "./dist/animation.js"
+    },
+    "./animation/browser": {
+      "types": "./dist/browser-animation.d.ts",
+      "import": "./dist/browser-animation.js"
+    },
+    "./resize/browser": {
+      "types": "./dist/browser-resize.d.ts",
+      "import": "./dist/browser-resize.js"
+    },
+    "./viewport/browser": {
+      "types": "./dist/browser-viewport.d.ts",
+      "import": "./dist/browser-viewport.js"
     }
   },
   "scripts": {

@@ -666,6 +666,16 @@ export const commandForInput = (
     const targetId = focus.tab(frame.tree, input.modifiers.shift ? -1 : 1);
     return targetId ? focusCommand(frame, targetId) : null;
   }
+  if (focused?.kind === "resize-handle") {
+    const positive = focused.orientation === "vertical" ? input.key === "ArrowRight" : input.key === "ArrowDown";
+    const negative = focused.orientation === "vertical" ? input.key === "ArrowLeft" : input.key === "ArrowUp";
+    const resize = focused.resize;
+    const reverse = resize?.direction === "reverse";
+    const value = resize && (input.key === "Home" ? resize.min : input.key === "End" ? resize.max
+      : positive ? Math.min(resize.max, resize.value + (reverse ? -1 : 1))
+        : negative ? Math.max(resize.min, resize.value + (reverse ? 1 : -1)) : null);
+    if (value !== null && value !== undefined && value !== resize?.value) return { type: "set-value", targetId: focused.id, value };
+  }
   if (focused?.kind === "slider" || focused?.kind === "range-slider-thumb") {
     const context = focused.kind === "range-slider-thumb"
       ? resolveCellRangeSliderThumbContext(frame.tree, focused.id)

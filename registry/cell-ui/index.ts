@@ -1,4 +1,8 @@
 export { CellBuffer } from "./buffer.js";
+export * from "./drag.js";
+export * from "./selection.js";
+export * from "./interaction-transaction.js";
+export * from "./viewport.js";
 export { reorderCellItems } from "./reorder.js";
 export { List, ListItem } from "./react.js";
 export type { ListProps, ListItemProps } from "./react.js";
@@ -133,6 +137,42 @@ export type {
   KeyPhase,
 } from "./keyboard/index.js";
 export type { CellUiRuntimeOptions } from "./runtime.js";
+export {
+  Split,
+  Pane,
+  Splitter,
+  Marker,
+  ResizeHandle,
+  Guide,
+  InsertionIndicator,
+  DragPreview,
+  DragSource,
+  DropTarget,
+  createCellSplitModel,
+} from "./editor.js";
+export type {
+  CellPaneSize,
+  CellSplitModel,
+  SplitProps,
+  PaneProps,
+  SplitterProps,
+  CellResizeDirection,
+  CellResizeRange,
+  MarkerProps,
+  ResizeHandleProps,
+  GuideProps,
+  InsertionIndicatorProps,
+  DragPreviewProps,
+  DragSourceProps,
+  DropTargetProps,
+} from "./editor.js";
+export {
+  cellAnimationFrameAt,
+  resolveCellAnimationFramePolicy,
+} from "./animation.js";
+export type { CellAnimationClock, CellAnimationFramePolicy } from "./animation.js";
+export { resolveCellBoundaryTopology } from "./split-topology.js";
+export type { CellBoundarySegment, CellBoundaryTopology } from "./split-topology.js";
 export type { BadgeTone } from "./badge.js";
 export type { TabsVariant } from "./tabs.js";
 export type { TableColumn, TableVariant } from "./table.js";
@@ -228,6 +268,7 @@ export { reconcileWidgetTree } from "./tree.js";
 export { cellTextWidth } from "./single-line-text.js";
 export type {
   Cell,
+  CellAlign,
   CellCheckboxState,
   CellHit,
   CellHitPart,

@@ -69,6 +69,7 @@ const rules: Partial<Record<WidgetKind, FeedbackRule>> = {
   "grid-cell": { ...control, press: true },
   slider: thumb,
   "range-slider-thumb": thumb,
+  "resize-handle": thumb,
   "scroll-area": { ...none, manipulation: true },
   "text-input": { ...none, region: "editor" },
   "text-area": { ...none, region: "editor" },
@@ -80,7 +81,7 @@ export const supportsManipulationFeedback = (kind: WidgetKind): boolean => feedb
 export const supportsActivationFeedback = (kind: WidgetKind): boolean => feedbackRule(kind).activation;
 
 export const isFocusableKind = (kind: WidgetKind): boolean =>
-  (isActionableKind(kind) && kind !== "combobox-item") || isTextEditorKind(kind);
+  (isActionableKind(kind) && kind !== "combobox-item") || kind === "resize-handle" || isTextEditorKind(kind);
 
 export const isPortalKind = (kind: WidgetKind): boolean =>
   kind === "overlay" || kind === "select-content" || kind === "combobox-content" || kind === "tooltip";

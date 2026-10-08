@@ -14,6 +14,7 @@ import type {
 import { isPortalKind } from "./widget-capabilities.js";
 import { cellSliderThumbOffset, resolveCellSliderRange } from "./slider.js";
 import { layoutMarkdownInlineFlow } from "./markdown-inline-flow.js";
+import { resolveSplitTopology, splitPaintBounds } from "./split-topology.js";
 
 export const intersectSceneRects = (left: CellRect, right: CellRect): CellRect => {
   const x = Math.max(left.x, right.x);
@@ -217,6 +218,20 @@ const composeSceneInternal = (
       width: placement?.bounds.width ?? layoutEntry.rect.width,
       height: placement?.bounds.height ?? layoutEntry.rect.height,
     };
+    if (widget.kind === "resize-handle" && widget.parentId) {
+      const parent = entries.get(widget.parentId);
+      if (parent) {
+        const width = widget.orientation === "horizontal" ? 2 : 1;
+        bounds = {
+          x: parent.layoutBounds.x + (widget.orientation === "vertical"
+            ? 0 : Math.max(0, Math.floor((parent.layoutBounds.width - width) / 2))),
+          y: parent.layoutBounds.y + (widget.orientation === "vertical"
+            ? Math.floor(parent.layoutBounds.height / 2) : 0),
+          width,
+          height: 1,
+        };
+      }
+    }
     let inlineLinkRegions: CellRect[] | undefined;
     if (widget.kind === "markdown-link" && widget.markdownLayoutOnly && widget.parentId) {
       const parent = tree.nodes.get(widget.parentId);
@@ -276,7 +291,20 @@ const composeSceneInternal = (
         bounds.height - layoutEntry.borderInsets.top - layoutEntry.borderInsets.bottom
       ),
     };
-    const outerClip = intersectSceneRects(clip, bounds);
+    const hitBounds = widget.kind === "resize-handle" && widget.parentId
+      ? (() => {
+          const parent = entries.get(widget.parentId);
+          if (!parent) return bounds;
+          return widget.orientation === "vertical"
+            ? { x: parent.layoutBounds.x, y: parent.layoutBounds.y, width: 1, height: parent.layoutBounds.height }
+            : { x: parent.layoutBounds.x, y: parent.layoutBounds.y, width: parent.layoutBounds.width, height: 1 };
+        })()
+      : widget.kind === "tooltip"
+        ? { ...bounds, width: 0, height: 0 }
+        : widget.kind === "tab" && widget.tabsVariant === "underline"
+          ? { ...bounds, height: Math.min(1, bounds.height) }
+          : bounds;
+    const outerClip = intersectSceneRects(clip, widget.kind === "resize-handle" ? hitBounds : bounds);
     const scrollMetrics = scrollMetricsFor(tree, layout, id, contentBounds, decorationBounds);
     const contentClip = intersectSceneRects(outerClip, scrollMetrics?.viewport ?? contentBounds);
     const entry: SceneEntry = {
@@ -287,11 +315,7 @@ const composeSceneInternal = (
       decorationBounds,
       contentBounds,
       paintBounds: bounds,
-      hitBounds: widget.kind === "tooltip"
-        ? { ...bounds, width: 0, height: 0 }
-        : widget.kind === "tab" && widget.tabsVariant === "underline"
-        ? { ...bounds, height: Math.min(1, bounds.height) }
-        : bounds,
+      hitBounds,
       ...(inlineLinkRegions ? { hitRegions: inlineLinkRegions } : {}),
       outerClip,
       contentClip,
@@ -327,14 +351,23 @@ const composeSceneInternal = (
   paintList.sort((left, right) => {
     const leftEntry = entries.get(left)!;
     const rightEntry = entries.get(right)!;
+    const leftNode = tree.nodes.get(left);
+    const rightNode = tree.nodes.get(right);
+    const resizePriority = Number(leftNode?.kind === "resize-handle") - Number(rightNode?.kind === "resize-handle");
     return leftEntry.layer - rightEntry.layer
+      || resizePriority
       || orders.get(left)! - orders.get(right)!;
   });
   paintList.forEach((id, paintOrder) => {
     const entry = entries.get(id)!;
     if (entry.paintOrder !== paintOrder) entries.set(id, { ...entry, paintOrder });
   });
-  return { viewport: layout.viewport, overlayViewport, entries, paintList };
+  const snapshot = { viewport: layout.viewport, overlayViewport, entries, paintList };
+  for (const [id, splitJunctions] of resolveSplitTopology(tree, snapshot)) {
+    const entry = entries.get(id)!;
+    entries.set(id, { ...entry, splitJunctions, paintBounds: splitPaintBounds(entry.layoutBounds, splitJunctions) });
+  }
+  return snapshot;
 };
 
 export const composeScene = (

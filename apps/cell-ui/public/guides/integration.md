@@ -21,13 +21,50 @@ import { CellSurface } from "@/lib/cell-ui/browser";
 </CellSurface>;
 ```
 
+## Browser viewport
+
+Browser hosts can derive an integer Cell viewport from a measured parent without stretching Cells. useCellViewport owns ResizeObserver measurement; the host passes its viewport and returned metrics to CellSurface. Headless hosts continue to pass viewport explicitly.
+
+```tsx
+import { useRef } from "react";
+import { Root, Text } from "@/lib/cell-ui";
+import { CellSurface, useCellViewport } from "@/lib/cell-ui/browser";
+
+function ResponsiveSurface() {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const { viewport, metrics, ready } = useCellViewport({ elementRef });
+  return (
+    <div ref={elementRef}>
+      {ready ? (
+        <CellSurface viewport={viewport} metrics={metrics} onCommand={() => {}}>
+          <Root>
+            <Text>Measured Cells</Text>
+          </Root>
+        </CellSurface>
+      ) : null}
+    </div>
+  );
+}
+```
+
+## Geometry diagnostics
+
+resolveCellSurfaceGeometry exposes the committed surface and canvas rectangles, Cell viewport, metrics, guard Cells, and content Cell rect. Use it to distinguish a small viewport from a clipped DOM surface.
+
+```tsx
+import { resolveCellSurfaceGeometry } from "@/lib/cell-ui/browser";
+
+const geometry = resolveCellSurfaceGeometry(surfaceElement);
+console.log(geometry?.viewport, geometry?.canvasRectPx);
+```
+
 ## State and commands
 
 Application state remains outside the renderer. Pass controlled values and focused IDs into descriptors, then handle CellSurface onCommand or use the matching /browser state adapter. Direct adapter dispatch has no presentation lifecycle.
 
 ## Reordering
 
-Use List's reorderable capability with stable List and ListItem IDs. Pointer drag previews the row and insertion point; release or Alt+↑/↓ emits a reorder command. Application state owns the final order.
+Use List's reorderable capability with stable List and ListItem IDs. Pointer drag previews the row and insertion point; release or Alt+↑/↓ emits a reorder command. Application state owns the final order. Try the live host fixture to drag the visible Cell rows.
 
 ```tsx
 import { useState } from "react";
@@ -62,6 +99,8 @@ function Layers() {
   );
 }
 ```
+
+[Open live drag fixture](https://ui.chardesk.com/#/__fixtures/overlay-host)
 
 ## Overlay host
 

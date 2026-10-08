@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { Box, Root, ScrollArea, Text, type CellUiPresentation, type WidgetCommand } from "@chardesk/cell-ui";
 import { CELL_SURFACE_GUARD_CELLS, DEFAULT_CELL_UI_METRICS, useCellSelectState, type CellSelectState, type CellSurfaceProps, type CellSvgIcons } from "@chardesk/cell-ui/browser";
 import { GallerySurface } from "./appearance";
@@ -36,11 +36,13 @@ export function ComponentPlayground({
   focusedId,
   onCommand,
   onHoverChange,
+  onContextMenu,
   preview,
   svgIcons,
   controls,
   previewMinColumns,
   controlsColumns,
+  showConfig = true,
   modalScope = false,
   rows = PLAYGROUND_ROWS,
   presentation: controlledPresentation,
@@ -52,11 +54,13 @@ export function ComponentPlayground({
   focusedId: string | null;
   onCommand: (command: WidgetCommand) => void;
   onHoverChange?: (targetId: string | null) => void;
+  onContextMenu?: (event: MouseEvent<HTMLDivElement>) => void;
   preview: PresentationValue<ReactNode>;
   svgIcons?: CellSvgIcons;
   controls?: readonly PlaygroundControl[];
   previewMinColumns: number;
   controlsColumns?: number;
+  showConfig?: boolean;
   modalScope?: boolean;
   rows?: number;
   presentation?: CellUiPresentation;
@@ -100,7 +104,7 @@ export function ComponentPlayground({
     documentScene?.width ?? totalColumns,
     previewMinColumns,
     controlColumns,
-    true,
+    showConfig,
     rows,
   );
   const previewScrollId = `${id}-preview-scroll`;
@@ -182,14 +186,14 @@ export function ComponentPlayground({
           <Box id={`${id}-preview-bottom`} variant="ghost" style={{ flexGrow: 1 }} />
         </Box>
       </ScrollArea>
-      {layout.stacked
+      {showConfig && (layout.stacked
         ? <Text id={`${id}-divider`} textStyle={{ dim: true }}>{"─".repeat(layout.viewport.width)}</Text>
         : <Box id={`${id}-divider`} variant="ghost" style={{ width: 1, height: rows }}>
             {Array.from({ length: rows }, (_, row) => (
               <Text id={`${id}-divider-${row}`} key={row} textStyle={{ dim: true }}>│</Text>
             ))}
-          </Box>}
-      <ScrollArea
+          </Box>)}
+      {showConfig && <ScrollArea
         id={controlsScrollId}
         variant="ghost"
         scrollX={controlsScroll.x}
@@ -229,7 +233,7 @@ export function ComponentPlayground({
           </Box>
           <Box id={`${id}-controls-after`} variant="ghost" style={{ flexGrow: 1 }} />
         </Box>
-      </ScrollArea>
+      </ScrollArea>}
       </>;
   const surface = <GallerySurface
       className="component-playground__surface"
@@ -241,6 +245,7 @@ export function ComponentPlayground({
       focusedId={effectiveFocusedId}
       onCommand={dispatch}
       onHoverChange={onHoverChange}
+      onContextMenu={onContextMenu}
       label={label}
       probeId={probeId}
       svgIcons={svgIcons}

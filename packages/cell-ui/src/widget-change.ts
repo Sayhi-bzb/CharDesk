@@ -50,6 +50,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.tooltipOpen === right.tooltipOpen
   && left.tabsVariant === right.tabsVariant
   && left.separatorVariant === right.separatorVariant
+  && sameWidgetValue(left.resize, right.resize)
   && left.buttonVariant === right.buttonVariant
   && left.buttonTone === right.buttonTone
   && left.badgeTone === right.badgeTone
@@ -155,6 +156,7 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.tooltipOpen !== after.tooltipOpen
   || before.tabsVariant !== after.tabsVariant
   || before.separatorVariant !== after.separatorVariant
+  || !sameWidgetValue(before.resize, after.resize)
   || before.buttonVariant !== after.buttonVariant
   || before.buttonTone !== after.buttonTone
   || before.badgeTone !== after.badgeTone

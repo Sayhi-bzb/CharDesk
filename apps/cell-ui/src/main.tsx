@@ -6,6 +6,7 @@ import {
   type ComponentDocument,
 } from "./component-catalog";
 import { guideContent, type GuideContent } from "./docs-content";
+import { primitiveDocumentBySlug, type PrimitiveDocument } from "./primitive-catalog";
 import { FixturePage } from "./fixtures";
 import { GalleryAppearance } from "./appearance";
 import { GalleryHeader } from "./gallery-header";
@@ -74,9 +75,10 @@ function useVisibleSection(route: string, section: string | null, sectionIds: st
   return visibleSection;
 }
 
-export function DocumentationShell({ document, guide, section }: Readonly<{ document?: ComponentDocument; guide?: GuideContent; section: string | null }>) {
-  const title = guide?.title ?? document?.title ?? "Cell UI";
-  const route = guide ? `/guides/${guide.slug}` : `/components/${document!.slug}`;
+export function DocumentationShell({ document, primitive, guide, section }: Readonly<{ document?: ComponentDocument; primitive?: PrimitiveDocument; guide?: GuideContent; section: string | null }>) {
+  const activeDocument = document ?? primitive;
+  const title = guide?.title ?? activeDocument?.title ?? "Cell UI";
+  const route = guide ? `/guides/${guide.slug}` : primitive ? `/primitives/${primitive.slug}` : `/components/${document!.slug}`;
   const sections = guide ? guide.sections.map(({ id, title: label, tocLabel }) => ({ id, label, tocLabel })) : documentationSections;
   const visibleSection = useVisibleSection(route, section, sections.map(({ id }) => id).join("\0"));
   useEffect(() => {
@@ -121,7 +123,7 @@ export function DocumentationShell({ document, guide, section }: Readonly<{ docu
         {guide ? guide.slug === "installation"
           ? <InstallationCellPage guide={guide} key={guide.slug} />
           : <CellDocumentPage guide={guide} key={guide.slug} />
-          : <CellDocumentPage document={document!} key={document!.slug} />}
+          : <CellDocumentPage document={activeDocument!} key={activeDocument!.slug} />}
       </div>
     </>
   );
@@ -166,12 +168,14 @@ export function CellUiApp(): ReactNode {
   const [path, query = ""] = resolvedRoute.split("?", 2);
   const component = path?.match(/^\/components\/([^/]+)$/);
   const document = component ? componentDocumentBySlug.get(component[1]!) : undefined;
+  const primitiveMatch = path?.match(/^\/primitives\/([^/]+)$/);
+  const primitive = primitiveMatch ? primitiveDocumentBySlug.get(primitiveMatch[1]!) : undefined;
   const guideMatch = path?.match(/^\/guides\/([^/]+)$/);
   const guide = guideMatch ? guideContent.find((item) => item.slug === guideMatch[1]) : undefined;
   const requestedSection = new URLSearchParams(query).get("section");
   const section = guide ? guide.sections.some(({ id }) => id === requestedSection) ? requestedSection : null
     : isDocumentationSection(requestedSection) ? requestedSection : null;
-  return document || guide ? <DocumentationShell document={document} guide={guide} section={section} /> : <NotFound />;
+  return document || primitive || guide ? <DocumentationShell document={document} primitive={primitive} guide={guide} section={section} /> : <NotFound />;
 }
 
 createRoot(document.getElementById("root")!).render(

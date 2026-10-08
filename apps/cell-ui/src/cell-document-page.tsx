@@ -9,6 +9,7 @@ import { useGalleryAppearance } from "./appearance";
 import { CellArticleSurface } from "./cell-article-surface";
 import { DocumentSceneContext, type DocumentSceneFragment } from "./document-scene";
 import { sourceLinksForComponent, type ComponentDocument } from "./component-catalog";
+import type { PrimitiveDocument } from "./primitive-catalog";
 import { installationCommands, publicUsage, type GuideContent } from "./docs-content";
 import { CODE_BLOCK_PREVIEW_LINES, shouldCollapseCode } from "./code-block-lines";
 import { ClassicMacintoshDemo, MarkdownIntroductionDemo, NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
@@ -211,7 +212,7 @@ function previewScene(probeId: string, fragment: DocumentSceneFragment | undefin
   </Box>;
 }
 
-export function CellDocumentPage({ document, guide }: Readonly<{ document?: ComponentDocument; guide?: GuideContent }>) {
+export function CellDocumentPage({ document, guide }: Readonly<{ document?: ComponentDocument | PrimitiveDocument; guide?: GuideContent }>) {
   const { mode } = useGalleryAppearance();
   const prefix = `article-${guide?.slug ?? document!.slug}`;
   const groups = useMemo(() => groupItems(guide ? guideItems(guide) : componentItems(document!), prefix), [guide, document, prefix]);
@@ -339,7 +340,8 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
         {group.parts.map((part) => renderPart(part, group.id, manager, scroll, copies, expanded, mode))}
       </Box>
       : previewScene(group.probeId!, fragments[group.probeId!],
-        copies[`preview-copy-${group.probeId}`] ?? "Copy", scroll, guide ? "center" : "fill"))}
+        copies[`preview-copy-${group.probeId}`] ?? "Copy", scroll,
+        guide || document?.slug === "reordering" ? "center" : "fill"))}
   </Box></Root>;
   return <>
     <main className="docs-page cell-article-page">
@@ -348,7 +350,10 @@ export function CellDocumentPage({ document, guide }: Readonly<{ document?: Comp
         anchorIds={anchorIds} anchorTargets={anchorTargets} regionIds={previewRegionIds}
         regionsRef={regionsRef} onWidthChange={setSceneWidth}
         focusedId={activeFragmentId ? fragments[activeFragmentId]?.focusedId ?? null : focusedId}
-        onCommand={onCommand} onHoverChange={onHoverChange} />
+        onCommand={onCommand} onHoverChange={onHoverChange}
+        onContextMenu={document?.slug === "context-menu"
+          ? (event) => fragments[document.probeId]?.onContextMenu?.(event)
+          : undefined} />
     </main>
     <DocumentSceneContext.Provider value={sceneContext}>
       {previews.map(({ probeId, Demo }) => <MountedDemo key={probeId} Demo={Demo} />)}

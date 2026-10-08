@@ -54,6 +54,7 @@ export const resolvePointerAppearance = (frame: FrameSnapshot, point: CellPoint)
   for (const id of path) {
     const node = frame.tree.nodes.get(id)!;
     if (node.disabled) return { hoveredId: null, cursor: "default" };
+    if (node.kind === "resize-handle") return { hoveredId: id, cursor: "pointer" };
     if (node.kind === "text-input" || node.kind === "text-area") {
       return { hoveredId: null, cursor: "default" };
     }
@@ -90,6 +91,7 @@ export const gestureCandidatesForFrame = (
     const kind = frame.tree.nodes.get(id)?.kind;
     return kind ? isActionableKind(kind) : false;
   });
+  const resize = path.map((id) => frame.tree.nodes.get(id)).find((node) => node?.kind === "resize-handle");
   const rangeSlider = path
     .map((id) => frame.tree.nodes.get(id))
     .find((node) => node?.kind === "range-slider");
@@ -146,6 +148,7 @@ export const gestureCandidatesForFrame = (
     trackLength: horizontal ? track.width : track.height,
     thumbLength: thumb.length,
   } : undefined;
+  const dragSource = path.map((id) => frame.tree.nodes.get(id)).find((node) => node?.drag && !node.disabled);
   const itemNode = item ? frame.tree.nodes.get(item) : undefined;
   const sliderBounds = itemNode?.kind === "slider"
     ? frame.scene.entries.get(itemNode.id)?.decorationBounds
@@ -156,6 +159,9 @@ export const gestureCandidatesForFrame = (
     ? { trackStart: sliderBounds.x, trackLength: sliderBounds.width }
     : undefined;
   return [
+    ...(resize && !resize.disabled ? [{ targetId: resize.id, kind: "drag" as const,
+      axis: resize.orientation === "vertical" ? "x" as const : "y" as const,
+      resize: { point: precisePoint, value: resize.resize!.value } }] : []),
     ...(item && itemNode && !itemNode.disabled
       ? [{
           targetId: item,
@@ -166,6 +172,7 @@ export const gestureCandidatesForFrame = (
     ...(item && slider
       ? [{ targetId: item, kind: "drag" as const, axis: "x" as const, slider }]
       : []),
+    ...(dragSource ? [{ targetId: dragSource.id, kind: "drag" as const, axis: dragSource.drag?.axis ?? "both" as const }] : []),
     ...(item && itemNode?.kind === "list-item" && itemNode.reorderable
       ? [{ targetId: item, kind: "drag" as const, axis: "y" as const }]
       : []),
@@ -277,6 +284,19 @@ export const commandForGestureSignal = (
     );
     const commandTarget = node?.kind === "accordion-trigger" ? node.parentId : signal.targetId;
     return command?.targetId === commandTarget ? command : null;
+  }
+  if (
+    signal.kind === "drag"
+    && (signal.phase === "start" || signal.phase === "update" || signal.phase === "end")
+    && frame.tree.nodes.get(signal.targetId)?.kind === "resize-handle"
+  ) {
+    const node = frame.tree.nodes.get(signal.targetId);
+    if (!node?.resize) return null;
+    const delta = node.orientation === "vertical" ? signal.totalDelta?.x : signal.totalDelta?.y;
+    if (!signal.resize || delta === undefined) return null;
+    const signedDelta = node.resize.direction === "reverse" ? -Math.round(delta) : Math.round(delta);
+    const value = Math.max(node.resize.min, Math.min(node.resize.max, signal.resize.value + signedDelta));
+    return value === node.resize.value ? null : { type: "set-value", targetId: node.id, value };
   }
   if (
     signal.kind === "drag"

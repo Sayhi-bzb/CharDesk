@@ -38,6 +38,34 @@ describe("YogaLayoutEngine qualification", () => {
     expect(inFlow.layout.entries.get("copy")?.rect).toMatchObject({ x: 0, y: 1 });
     runtime.dispose();
   });
+
+  it("centers intrinsic controls inside a taller cross-axis container", () => {
+    const engine = new YogaLayoutEngine();
+    const layout = engine.compute(treeFor(
+      <Root id="root" style={{ direction: "row", alignItems: "center", height: 3 }}>
+        <Button id="action"><Text>Run</Text></Button>
+      </Root>
+    ), { width: 20, height: 3 });
+    expect(layout.entries.get("action")?.rect).toMatchObject({ x: 0, y: 1, width: 5, height: 1 });
+    engine.dispose();
+  });
+
+  it("resets alignment when an incrementally reused node drops explicit alignment", () => {
+    const engine = new YogaLayoutEngine();
+    const centered = engine.compute(treeFor(
+      <Root id="root" style={{ direction: "row", alignItems: "center", height: 3 }}>
+        <Button id="action"><Text>Run</Text></Button>
+      </Root>
+    ), { width: 20, height: 3 });
+    expect(centered.entries.get("action")?.rect.y).toBe(1);
+    const stretched = engine.compute(treeFor(
+      <Root id="root" style={{ direction: "row", height: 3 }}>
+        <Button id="action"><Text>Run</Text></Button>
+      </Root>
+    ), { width: 20, height: 3 });
+    expect(stretched.entries.get("action")?.rect).toMatchObject({ y: 0, height: 3 });
+    engine.dispose();
+  });
   it.each([7, 8, 10, 31])("rounds percentage flex geometry to integer Cells at %i columns", (width) => {
     const engine = new YogaLayoutEngine();
     const layout = engine.compute(treeFor(

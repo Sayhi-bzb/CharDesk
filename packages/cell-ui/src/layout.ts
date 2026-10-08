@@ -65,6 +65,17 @@ const applyStyle = (
   bordered: boolean,
 ): void => {
   target.setFlexDirection(style.direction === "row" ? FlexDirection.Row : FlexDirection.Column);
+  const align = (value: CellLayoutStyle["alignItems"]): Align | undefined => value === "start"
+    ? Align.FlexStart
+    : value === "center"
+      ? Align.Center
+      : value === "end"
+        ? Align.FlexEnd
+        : value === "stretch"
+          ? Align.Stretch
+          : undefined;
+  target.setAlignItems(align(style.alignItems) ?? Align.Stretch);
+  target.setAlignSelf(align(style.alignSelf) ?? Align.Auto);
   target.setFlexWrap(style.wrap ? Wrap.Wrap : Wrap.NoWrap);
   target.setWidth(style.width);
   target.setHeight(style.height);
@@ -165,7 +176,7 @@ const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): vo
     ? { width: 1, height: 1, flexShrink: 0 }
     : node.kind === "progress"
     ? { width: 20, height: 1, flexShrink: 0 }
-    : node.kind === "separator"
+    : node.kind === "separator" || node.kind === "splitter"
       ? node.orientation === "vertical"
         ? { width: 1, height: "100%", flexShrink: 0 }
         : { width: "100%", height: 1, flexShrink: 0 }
@@ -183,6 +194,8 @@ const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): vo
       }
     : node.kind === "slider" || node.kind === "range-slider"
       ? { width: 20, minWidth: 2, minHeight: 1, flexShrink: 0 }
+    : node.kind === "resize-handle"
+      ? { position: "absolute", width: node.orientation === "horizontal" ? 2 : 1, height: 1, flexShrink: 0 }
     : node.kind === "range-slider-thumb"
       ? { width: 1, height: 1, flexShrink: 0 }
     : node.kind === "button"

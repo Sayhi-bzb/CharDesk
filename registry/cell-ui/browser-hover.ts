@@ -10,7 +10,8 @@ const empty = { hoveredId: null, cursor: "default", scrollbarHoverId: null } as 
 export const usePointerAppearance = (
   canvasRef: CellPresentationRegistry,
   frame: FrameSnapshot | null,
-  metrics: { cellWidth: number; cellHeight: number }
+  metrics: { cellWidth: number; cellHeight: number },
+  guardCells = CELL_SURFACE_GUARD_CELLS,
 ) => {
   const position = useRef<{ clientX: number; clientY: number } | null>(null);
   const suspended = useRef(false);
@@ -31,8 +32,8 @@ export const usePointerAppearance = (
       const bounds = (canvasRef.origin ?? canvas).getBoundingClientRect();
       if (canvasRef.acceptsPoint(point.clientX, point.clientY)) {
         const cell = {
-          x: Math.floor((point.clientX - bounds.left) / metrics.cellWidth) - CELL_SURFACE_GUARD_CELLS,
-          y: Math.floor((point.clientY - bounds.top) / metrics.cellHeight) - CELL_SURFACE_GUARD_CELLS,
+          x: Math.floor((point.clientX - bounds.left) / metrics.cellWidth) - guardCells,
+          y: Math.floor((point.clientY - bounds.top) / metrics.cellHeight) - guardCells,
         };
         const hit = hitTestCell(frame.scene, cell);
         const scrollbarHoverId = hit ? getEventPath(frame.scene, hit.ownerId)

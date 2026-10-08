@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactElement } from "react";
+import { createContext, useContext, type MouseEvent, type ReactElement } from "react";
 import type { CellSize, CellUiPresentation, RootProps, WidgetCommand } from "@chardesk/cell-ui";
 import type { CellSvgIcons } from "@chardesk/cell-ui/browser";
 
@@ -10,6 +10,7 @@ export type DocumentSceneFragment = Readonly<{
   focusedId: string | null;
   onCommand: (command: WidgetCommand) => void;
   onHoverChange?: (targetId: string | null) => void;
+  onContextMenu?: (event: MouseEvent<HTMLDivElement>) => void;
   svgIcons?: CellSvgIcons;
 }>;
 

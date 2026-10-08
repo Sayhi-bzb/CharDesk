@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import {
   Box, Button, Menu, MenuItem, Root, Text, Toast, cellTextWidth,
   type BadgeTone, type CellBorderShape, type CellFrame, type CellUiPresentation, type SurfaceVariant, type WidgetCommand,
 } from "@chardesk/cell-ui";
 import {
-  CellOverlayHost, CellPopover, CellSurface, CellToastViewport,
+  CellContextMenu, CellOverlayHost, CellPopover, CellSurface, CellToastViewport,
   DEFAULT_CELL_UI_METRICS, useCellSelectState, useCellToastState, type CellSurfaceProps,
 } from "@chardesk/cell-ui/browser";
-import { useGalleryAppearance } from "../appearance";
+import { GallerySurface, useGalleryAppearance } from "../appearance";
 import { ComponentPlayground } from "../component-playground";
 import {
   renderPlaygroundCheckboxControl, renderPlaygroundSelectControl,
@@ -166,6 +166,58 @@ export function MenuComponentDemo() {
         </Box></Root>
       </HostedSurface>
     </CellPopover>
+  </CellOverlayHost>;
+}
+
+export function ContextMenuComponentDemo() {
+  const [presentation, setPresentation] = useState<CellUiPresentation>("rich");
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const variant = useCellSelectState("component-context-menu-variant", surfaceVariantItems, { defaultSelectedId: "surface" });
+  const frame = useCellSelectState("component-context-menu-frame", frameItems, { defaultSelectedId: "bordered" });
+  const borderShape = useCellSelectState("component-context-menu-border-shape", borderShapeItems, { defaultSelectedId: "square" });
+  const focus = usePlaygroundFocus("component-context-menu", [variant, frame, borderShape]);
+  const close = () => setAnchor(null);
+  const onContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      setAnchor(new DOMRect(event.clientX, event.clientY, 0, 0));
+    };
+  const popupFrame: CellFrame = presentation === "text" ? "bordered" : frame.selectedId as CellFrame;
+  const popupBorderShape = presentation === "text" ? "square" : borderShape.selectedId as CellBorderShape;
+  const popupInset = popupFrame === "bordered" ? 2 : 0;
+  const menuWidth = 20;
+  const menuContentRows = 1;
+  const popupHeight = menuContentRows + popupInset;
+  return <CellOverlayHost>
+    <ComponentPlayground id="component-context-menu-playground" label="Context menu component"
+      probeId="component-context-menu" focusedId={focus.focusedId} onCommand={focus.dispatch}
+      onContextMenu={onContextMenu} previewMinColumns={30} controlsColumns={28} rows={9}
+      presentation={presentation} onPresentationChange={setPresentation}
+      preview={<Box frame="bordered" style={{ width: 26, height: 7, paddingTop: 2, alignItems: "center" }}>
+        <Text>Right click here</Text>
+      </Box>}
+      controls={[
+        renderPlaygroundSelectControl("variant", variant, focus.focusedId),
+        renderRichOnlySelectControl("dropdown frame", frame, focus.focusedId),
+        ...(frame.selectedId === "bordered"
+          ? [renderRichOnlySelectControl("border shape", borderShape, focus.focusedId)] : []),
+      ]} />
+    <CellContextMenu open={anchor !== null} anchor={anchor} onDismiss={close}>
+      <HostedSurface label="Context menu" probeId="component-context-menu-popup"
+        presentation={presentation} viewport={{ width: menuWidth, height: popupHeight }} focusedId="component-context-menu-action"
+        onCommand={(command) => {
+          if (command.type === "activate" && command.targetId === "component-context-menu-action") close();
+        }}>
+        <Root><Box variant={variant.selectedId as SurfaceVariant} frame={popupFrame}
+          borderShape={popupBorderShape} style={{ width: menuWidth }}>
+          <Menu id="component-context-menu" label="Context menu">
+            <MenuItem id="component-context-menu-action" focused label="Context action"
+              style={{ width: menuWidth - popupInset }}>
+              <Text>Context action</Text>
+            </MenuItem>
+          </Menu>
+        </Box></Root>
+      </HostedSurface>
+    </CellContextMenu>
   </CellOverlayHost>;
 }
 

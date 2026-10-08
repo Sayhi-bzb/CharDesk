@@ -91,8 +91,12 @@ export type BoxProps = ContainerProps & SurfaceAppearanceProps & Readonly<{
   probeId?: string;
   probeLabel?: string;
   style?: CellLayoutStyle;
+  /** Cell-native composition direction used by Split aliases. */
+  orientation?: "horizontal" | "vertical";
   presentation?: CellUiPresentation;
   overlayScope?: boolean;
+  drag?: Readonly<{ payload?: import("./drag.js").CellDragPayload; axis?: "x" | "y" | "both" }>;
+  drop?: Readonly<{ accepts?: readonly string[] }>;
 }>;
 export type AlertProps = IdentityProps & ChildrenProps & Readonly<{
   tone?: AlertTone;
@@ -255,6 +259,18 @@ export type SeparatorProps = Readonly<{
   variant?: SeparatorVariant;
   style?: CellLayoutStyle;
 }>;
+export type CellResizeDirection = "forward" | "reverse";
+export type CellResizeRange = Readonly<{ value: number; min: number; max: number; direction?: CellResizeDirection }>;
+export type SplitterProps = Readonly<{
+  id?: string;
+  label?: string;
+  orientation?: "horizontal" | "vertical";
+  resize?: CellResizeRange;
+  children?: ReactNode;
+  disabled?: boolean;
+  style?: CellLayoutStyle;
+}>;
+export type ResizeHandleProps = Readonly<{ id: string; label: string; resize: CellResizeRange; disabled?: boolean }>;
 export type RadioGroupProps = NamedContainerProps & Readonly<{
   value?: string | null;
   orientation?: "horizontal" | "vertical";
@@ -407,6 +423,8 @@ type PrimitiveProps =
   | SpinnerProps
   | TooltipProps
   | SeparatorProps
+  | SplitterProps
+  | ResizeHandleProps
   | RadioGroupProps
   | RadioItemProps
   | SliderProps
@@ -455,6 +473,10 @@ const primitive = <Props extends PrimitiveProps>(
 
 export const Root = primitive<RootProps>("root");
 export const Box = primitive<BoxProps>("box");
+export type DragSourceProps = BoxProps & Readonly<{ id: string; payload?: import("./drag.js").CellDragPayload; axis?: "x" | "y" | "both" }>;
+export const DragSource = primitive<DragSourceProps>("box");
+export type DropTargetProps = BoxProps & Readonly<{ id: string; accepts?: readonly string[] }>;
+export const DropTarget = primitive<DropTargetProps>("box");
 export const Alert = primitive<AlertProps>("alert");
 export const Toast = primitive<ToastProps>("toast");
 export const AlertTitle = primitive<AlertTitleProps>("text");
@@ -484,6 +506,8 @@ export const Progress = primitive<ProgressProps>("progress");
 export const Spinner = primitive<SpinnerProps>("spinner");
 export const Tooltip = primitive<TooltipProps>("tooltip");
 export const Separator = primitive<SeparatorProps>("separator");
+export const Splitter = primitive<SplitterProps>("splitter");
+export const ResizeHandle = primitive<ResizeHandleProps>("resize-handle");
 export const RadioGroup = primitive<RadioGroupProps>("radio-group");
 export const RadioItem = primitive<RadioItemProps>("radio-item");
 export const Slider = primitive<SliderProps>("slider");
@@ -557,6 +581,8 @@ export type WidgetDescriptor = Readonly<{
   disabled: boolean;
   focused: boolean;
   selected: boolean;
+  drag?: BoxProps["drag"];
+  drop?: BoxProps["drop"];
   reorderable: boolean;
   active: boolean;
   checked: CellCheckboxState;
@@ -568,6 +594,7 @@ export type WidgetDescriptor = Readonly<{
   tooltipTargetId: string | null;
   tabsVariant: TabsVariant;
   separatorVariant: SeparatorVariant;
+  resize?: CellResizeRange;
   buttonVariant: ButtonVariant;
   buttonTone: "neutral" | "danger";
   badgeTone: BadgeTone;
@@ -1078,10 +1105,26 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
   if (element.type === Slider && props.thumbs !== undefined) {
     throw new TypeError("Single-value Slider cannot have thumbs.");
   }
-  const kind = element.type === Badge && props.interactive === true
-    ? "badge-action" : primitiveKind;
+  if (element.type === Splitter && props.resize) {
+    if (props.children !== undefined) throw new TypeError("Splitter resize shorthand cannot also contain children.");
+    return describe(<Splitter orientation={props.orientation as SplitterProps["orientation"]}
+      style={props.style as CellLayoutStyle} disabled={props.disabled === true}>
+      <ResizeHandle id={props.id as string} label={props.label as string} resize={props.resize as CellResizeRange} />
+    </Splitter>, recipe, presentation, inScrollArea, cache);
+  }
+  const kind = element.type === Badge && props.interactive === true ? "badge-action" : primitiveKind;
   if (!kind) {
     throw new TypeError("Cell UI only accepts Cell-native descriptors.");
+  }
+  if (kind === "resize-handle") {
+    const resize = props.resize as CellResizeRange;
+    if (typeof props.id !== "string" || !props.id.trim() || typeof props.label !== "string" || !props.label.trim()) {
+      throw new TypeError("An interactive Splitter requires a non-empty id and label.");
+    }
+    if (![resize.value, resize.min, resize.max].every(Number.isInteger) || resize.min > resize.max
+      || resize.value < resize.min || resize.value > resize.max) {
+      throw new RangeError("Splitter resize requires an integer Cell value inside min/max.");
+    }
   }
   if (kind === "badge-action" && (typeof props.id !== "string" || !props.id.trim())) {
     throw new TypeError("Interactive Badge requires a non-empty id.");
@@ -1212,6 +1255,10 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
 
   const descriptor: WidgetDescriptor = {
     kind,
+    ...(props.drag ? { drag: props.drag as BoxProps["drag"] } : {}),
+    ...(props.drop ? { drop: props.drop as BoxProps["drop"] } : {}),
+    ...(element.type === DragSource ? { drag: { payload: props.payload as import("./drag.js").CellDragPayload, axis: props.axis as "x" | "y" | "both" } } : {}),
+    ...(element.type === DropTarget ? { drop: { accepts: props.accepts as readonly string[] | undefined } } : {}),
     explicitId: typeof props.id === "string" ? props.id : null,
     key: element.key === null ? null : String(element.key),
     style: {
@@ -1222,6 +1269,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
         paddingRight: 1 } : {}),
       ...(kind === "tooltip" ? { width: tooltipTextWidth(text ?? "") + (frame === "bordered" ? 4 : 2),
         height: frame === "bordered" ? 3 : 1, paddingLeft: 1, paddingRight: 1 } : {}),
+      ...(element.type === Box && props.orientation ? { direction: props.orientation === "horizontal" ? "row" as const : "column" as const } : {}),
       ...(element.type === DialogFooter ? { direction: "row" as const, gap: 1 } : {}),
       ...(kind === "text-input" || kind === "combobox-input"
         ? normalizeSingleLineInputStyle(props.style as CellLayoutStyle | undefined)
@@ -1278,6 +1326,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     tabsVariant: kind === "tabs"
       ? presentedTabsVariant(presentation, resolveTabsVariant(props.variant)) : "underline",
     separatorVariant: kind === "separator" ? resolveSeparatorVariant(props.variant) : "line",
+    ...(kind === "resize-handle" ? { resize: props.resize as CellResizeRange } : {}),
     buttonVariant: kind === "button"
       ? presentedButtonVariant(presentation, resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")) : "solid",
     buttonTone: kind === "button" && props.tone === "danger" ? "danger" : "neutral",

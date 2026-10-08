@@ -1,0 +1,38 @@
+---
+title: Cell UI editor foundations
+description: Generic interaction contracts consumed by editors such as CharCut.
+---
+
+# Editor foundations
+
+Cell UI owns reusable geometry and interaction state. A consuming editor owns its
+domain model and commits domain commands after a preview.
+
+```text
+Cell UI: source → preview → commit/cancel
+CharCut: clip/track/snap/ripple/playback
+```
+
+## Public contracts
+
+- `DragSource` and `DropTarget` carry opaque payloads and acceptance rules.
+- `CellDragEvent` reports `start`, `preview`, `commit`, and `cancel` through
+  `CellSurface.onDragStateChange`.
+- `SelectionState` stores IDs and focus; range ordering stays with the host.
+- `createCellViewportState`, `cellPointToViewport`, and `cellVisibleRange` cover
+  zoom, scrolling, and virtualization boundaries without knowing time units.
+- `ResizeHandle` remains the shared separator and trim interaction primitive.
+
+The browser adapter owns pointer capture, thresholding, keyboard Escape, and
+drop-target hit testing. The headless runtime receives explicit geometry and can
+be tested without a DOM.
+
+## Ownership boundary
+
+Cell UI does not define `Clip`, `Track`, `Composition`, `Keyframe`, snapping,
+ripple editing, playback resolution, or export. CharCut maps those objects to
+generic source, target, range, lane, and viewport geometry and commits its own
+commands when a transaction ends.
+
+See the [Cell UI primitives contract](/development/cell-ui/primitives) for the
+shared rendering and input ownership rules.

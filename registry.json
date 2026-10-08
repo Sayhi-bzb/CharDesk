@@ -49,6 +49,11 @@
           "target": "@lib/cell-ui/anchored-overlay.ts"
         },
         {
+          "path": "registry/cell-ui/animation.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/animation.ts"
+        },
+        {
           "path": "registry/cell-ui/badge.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/badge.ts"
@@ -57,6 +62,11 @@
           "path": "registry/cell-ui/border.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/border.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-animation.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-animation.ts"
         },
         {
           "path": "registry/cell-ui/browser-aria.ts",
@@ -134,6 +144,11 @@
           "target": "@lib/cell-ui/browser-range.ts"
         },
         {
+          "path": "registry/cell-ui/browser-resize.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-resize.ts"
+        },
+        {
           "path": "registry/cell-ui/browser-scroll.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/browser-scroll.ts"
@@ -162,6 +177,11 @@
           "path": "registry/cell-ui/browser-tooltip.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/browser-tooltip.ts"
+        },
+        {
+          "path": "registry/cell-ui/browser-viewport.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-viewport.ts"
         },
         {
           "path": "registry/cell-ui/browser.tsx",
@@ -202,6 +222,16 @@
           "path": "registry/cell-ui/cursor-appearance.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/cursor-appearance.ts"
+        },
+        {
+          "path": "registry/cell-ui/drag.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/drag.ts"
+        },
+        {
+          "path": "registry/cell-ui/editor.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/editor.ts"
         },
         {
           "path": "registry/cell-ui/events.ts",
@@ -247,6 +277,11 @@
           "path": "registry/cell-ui/interaction-controller.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/interaction-controller.ts"
+        },
+        {
+          "path": "registry/cell-ui/interaction-transaction.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/interaction-transaction.ts"
         },
         {
           "path": "registry/cell-ui/interaction.ts",
@@ -384,6 +419,11 @@
           "target": "@lib/cell-ui/scrollbar.ts"
         },
         {
+          "path": "registry/cell-ui/selection.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/selection.ts"
+        },
+        {
           "path": "registry/cell-ui/semantics.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/semantics.ts"
@@ -407,6 +447,11 @@
           "path": "registry/cell-ui/spinner.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/spinner.ts"
+        },
+        {
+          "path": "registry/cell-ui/split-topology.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/split-topology.ts"
         },
         {
           "path": "registry/cell-ui/surface-variant.ts",
@@ -462,6 +507,11 @@
           "path": "registry/cell-ui/types.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/types.ts"
+        },
+        {
+          "path": "registry/cell-ui/viewport.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/viewport.ts"
         },
         {
           "path": "registry/cell-ui/virtual.ts",
