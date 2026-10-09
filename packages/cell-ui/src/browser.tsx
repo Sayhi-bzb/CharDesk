@@ -1285,13 +1285,14 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     );
     canvas.style.top = `${(window?.y ?? 0) * metrics.cellHeight}px`;
     let allPlanesPresented = true;
+    // Portal overlays (tooltips, menus, popovers) use the independent overlay
+    // viewport. The base surface may be only one Cell high while the overlay
+    // intentionally extends beyond it; using the base paint window here clips
+    // a valid tooltip before it reaches the browser canvas.
     for (const plane of current.overlayPlanes) {
       const overlayCanvas = canvasRef.overlay(plane.rootId);
       if (!overlayCanvas) { allPlanesPresented = false; continue; }
-      const paintWindow = window
-        ? { x: 0, y: window.y, width: current.overlayBuffer.width, height: window.height }
-        : undefined;
-      const visible = paintWindow ? intersectSceneRects(plane.bounds, paintWindow) : plane.bounds;
+      const visible = plane.bounds;
       if (visible.width <= 0 || visible.height <= 0) {
         overlayCanvas.style.display = "none";
         overlayCanvas.width = 0;
@@ -1299,10 +1300,13 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         continue;
       }
       overlayCanvas.style.display = "block";
-      const windowHeight = window?.height ?? current.overlayBuffer.height;
-      overlayCanvas.style.clipPath = `inset(${Math.max(0, plane.bounds.y - (window?.y ?? 0)) * metrics.cellHeight}px ${Math.max(0,
+      const overlayWidth = current.overlayBuffer.width * metrics.cellWidth;
+      const overlayHeight = current.overlayBuffer.height * metrics.cellHeight;
+      overlayCanvas.style.width = `${overlayWidth}px`;
+      overlayCanvas.style.height = `${overlayHeight}px`;
+      overlayCanvas.style.clipPath = `inset(${plane.bounds.y * metrics.cellHeight}px ${Math.max(0,
         current.overlayBuffer.width - plane.bounds.x - plane.bounds.width) * metrics.cellWidth}px ${Math.max(0,
-        (window?.y ?? 0) + windowHeight - plane.bounds.y - plane.bounds.height) * metrics.cellHeight}px ${plane.bounds.x * metrics.cellWidth}px)`;
+        current.overlayBuffer.height - plane.bounds.y - plane.bounds.height) * metrics.cellHeight}px ${plane.bounds.x * metrics.cellWidth}px)`;
       presentFrame(
         overlayCanvas,
         current,
@@ -1315,11 +1319,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         {
           buffer: current.overlayBuffer,
           viewport: plane.bounds,
-          window: paintWindow,
+          window: undefined,
           transparent: true,
         }
       );
-      overlayCanvas.style.top = `${(window?.y ?? 0) * metrics.cellHeight}px`;
+      overlayCanvas.style.top = "0px";
     }
     presentationMetricsRef.current = metrics;
     surfaceRef.current?.dispatchEvent(new Event("cell-surface-geometry-change", { bubbles: true }));
