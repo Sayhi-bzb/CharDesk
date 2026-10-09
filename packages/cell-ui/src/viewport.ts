@@ -12,6 +12,9 @@ export type CellAutoScrollRequest = Readonly<{
   direction: "negative" | "positive";
   velocity: number;
   pointer: CellPoint;
+  /** Signed Cell velocities; preserves both directions at corners. */
+  velocityX?: number;
+  velocityY?: number;
 }>;
 
 export type CellVisibleRange = Readonly<{ start: number; end: number }>;
@@ -39,3 +42,18 @@ export const cellPointToViewport = (state: CellViewportState, point: CellPoint):
   x: Math.round((point.x - state.viewport.x) * state.zoom) - state.scrollX,
   y: Math.round((point.y - state.viewport.y) * state.zoom) - state.scrollY,
 });
+
+/** Edge requests are scoped to a Cell viewport; the host owns scroll state. */
+export const cellAutoScrollRequest = (viewport: CellRect, pointer: CellPoint, edge = 3): CellAutoScrollRequest | null => {
+  if (!(viewport.width > 0) || !(viewport.height > 0) || !(edge > 0)) return null;
+  const speed = (point: number, start: number, extent: number): number => {
+    const left = point - start, right = start + extent - 1 - point;
+    if (left >= edge && right >= edge) return 0;
+    return left <= right ? -Math.max(1, Math.min(edge, edge - left)) : Math.max(1, Math.min(edge, edge - right));
+  };
+  const velocityX = speed(pointer.x, viewport.x, viewport.width), velocityY = speed(pointer.y, viewport.y, viewport.height);
+  if (!velocityX && !velocityY) return null;
+  return { axis: velocityX && velocityY ? "both" : velocityX ? "x" : "y",
+    direction: (velocityX || velocityY) < 0 ? "negative" : "positive",
+    velocity: Math.max(Math.abs(velocityX), Math.abs(velocityY)), pointer, velocityX, velocityY };
+};

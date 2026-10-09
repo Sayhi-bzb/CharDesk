@@ -44,9 +44,9 @@ export const computeScrollMetrics = (
   extent: CellSize,
   offset: CellPoint,
   rails: Readonly<{ x: boolean; y: boolean }>,
-  options: Readonly<{ fitWidth?: boolean; railBounds?: CellRect; guard?: number }> = {},
+  options: Readonly<{ fitWidth?: boolean; fitHeight?: boolean; railBounds?: CellRect; guard?: number }> = {},
 ): ScrollMetrics => {
-  const { fitWidth = false, railBounds = contentBounds, guard = 0 } = options;
+  const { fitWidth = false, fitHeight = false, railBounds = contentBounds, guard = 0 } = options;
   let horizontal = false;
   let vertical = false;
   for (let pass = 0; pass < 3; pass += 1) {
@@ -62,7 +62,7 @@ export const computeScrollMetrics = (
   };
   const maxOffset = {
     x: Math.max(0, (fitWidth ? viewport.width : extent.width) - viewport.width),
-    y: Math.max(0, extent.height - viewport.height),
+    y: Math.max(0, (fitHeight ? viewport.height : extent.height) - viewport.height),
   };
   const effectiveOffset = {
     x: Math.max(0, Math.min(maxOffset.x, offset.x)),

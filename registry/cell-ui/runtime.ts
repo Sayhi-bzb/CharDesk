@@ -263,6 +263,7 @@ export class CellUiRuntime {
         geometryDirty = true;
         geometryIds.add(id);
         if (node.kind === "scroll-area" && before.kind === node.kind
+          && before.scrollAxis === node.scrollAxis
           && !sameWidgetValue(before.scrollOffset, node.scrollOffset)
           && before.tooltipOpen === node.tooltipOpen
           && before.tooltipTargetId === node.tooltipTargetId

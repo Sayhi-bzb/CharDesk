@@ -79,11 +79,11 @@ const scrollMetricsFor = (
     contentBounds,
     {
       width: !selectContent && explicitHorizontalExtent ? extent.width : contentBounds.width,
-      height: extent.height,
+      height: node.scrollAxis === "x" ? contentBounds.height : extent.height,
     },
     node.scrollOffset,
-    { x: !selectContent && explicitHorizontalExtent, y: true },
-    { fitWidth: selectContent || !explicitHorizontalExtent, railBounds,
+    { x: node.scrollAxis !== "y" && !selectContent && explicitHorizontalExtent, y: node.scrollAxis !== "x" },
+    { fitWidth: node.scrollAxis === "y" || selectContent || !explicitHorizontalExtent, fitHeight: node.scrollAxis === "x", railBounds,
       guard: node.sharedScrollGuard ? 1 : 0 },
   );
 };

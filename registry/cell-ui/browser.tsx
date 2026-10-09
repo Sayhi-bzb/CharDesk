@@ -82,7 +82,7 @@ import { CellTextInputLayer } from "./browser-input.js";
 import { ariaDescribedBy } from "./browser-aria.js";
 import { keyInputFromKeyboardEvent } from "./keyboard/browser.js";
 import { isCellKeyPress } from "./keyboard.js";
-import type { CellAutoScrollRequest } from "./viewport.js";
+import { cellAutoScrollRequest, type CellAutoScrollRequest } from "./viewport.js";
 import { useCellRangeState } from "./browser-range.js";
 import { offsetAtCellPoint } from "./text.js";
 import {
@@ -452,6 +452,7 @@ const presentFrameWithCursor = (
       palette,
       style: theme.cursorStyle,
       originRow: window?.y ?? 0,
+      guardCells,
       ...(fontProfile ? { fontProfile } : {}),
     });
   }
@@ -467,6 +468,7 @@ const hiddenSemanticStyle: CSSProperties = {
   clipPath: "inset(50%)",
   whiteSpace: "nowrap",
   border: 0,
+  pointerEvents: "none",
 };
 
 export const SemanticDom = ({
@@ -1186,10 +1188,14 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     for (const pointerId of eventsRef.current.sync(next)) {
       gesturesRef.current.cancel(pointerId);
       pressRef.current.cancelPointer(pointerId);
+      if (dragStateRef.current.pointerId === pointerId) cancelDrag();
+      const surface = surfaceRef.current;
+      if (surface?.hasPointerCapture(pointerId)) surface.releasePointerCapture(pointerId);
     }
-    for (const pointerId of gesturesRef.current.sync((candidate) => validGestureCandidate(next, candidate))) {
+    for (const pointerId of gesturesRef.current.sync((candidate, active) => validGestureCandidate(next, candidate, active))) {
       eventsRef.current.cancel(pointerId);
       pressRef.current.cancelPointer(pointerId);
+      if (dragStateRef.current.pointerId === pointerId) cancelDrag();
       const surface = surfaceRef.current;
       if (surface?.hasPointerCapture(pointerId)) surface.releasePointerCapture(pointerId);
     }
@@ -1621,30 +1627,17 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         const payload = current.tree.nodes.get(signal.targetId)?.drag?.payload ?? null;
         const targetId = cellDropTargetAtPoint(targets, point, payload);
         if (signal.phase === "start") {
+          eventsRef.current.captureDrag(current, signal.pointerId, signal.targetId, point);
           const origin = { x: point.x - signal.delta.x, y: point.y - signal.delta.y };
           dragStateRef.current = updateCellDrag(beginCellDrag(signal.pointerId, signal.targetId, payload, origin), point, targetId);
           onDragStateChangeRef.current?.({ type: "start", state: dragStateRef.current });
         } else if (signal.phase === "update") {
           dragStateRef.current = updateCellDrag(dragStateRef.current, point, targetId);
           onDragStateChangeRef.current?.({ type: "preview", state: dragStateRef.current });
-          const edge = 3;
-          const nearLeft = point.x <= edge;
-          const nearRight = point.x >= current.scene.viewport.width - edge - 1;
-          const nearTop = point.y <= edge;
-          const nearBottom = point.y >= current.scene.viewport.height - edge - 1;
-          if (nearLeft || nearRight || nearTop || nearBottom) {
-            const horizontal = nearLeft || nearRight;
-            const vertical = nearTop || nearBottom;
-            const distance = horizontal
-              ? Math.max(0, edge - (nearLeft ? point.x : current.scene.viewport.width - 1 - point.x))
-              : Math.max(0, edge - (nearTop ? point.y : current.scene.viewport.height - 1 - point.y));
-            onAutoScrollRequestRef.current?.({
-              axis: horizontal && vertical ? "both" : horizontal ? "x" : "y",
-              direction: (nearLeft || nearTop) ? "negative" : "positive",
-              velocity: Math.max(1, edge - distance),
-              pointer: point,
-            });
-          }
+          const scrollViewport = getEventPath(current.scene, signal.targetId)
+            .map((id) => current.scene.entries.get(id)?.scrollMetrics?.viewport).find((rect) => !!rect);
+          const request = cellAutoScrollRequest(scrollViewport ?? current.scene.viewport, point);
+          if (request) onAutoScrollRequestRef.current?.(request);
         } else if (signal.phase === "end" && dragStateRef.current.sourceId === signal.targetId) {
           dragStateRef.current = commitCellDrag(updateCellDrag(dragStateRef.current, point, targetId));
           onDragStateChangeRef.current?.({ type: "commit", state: dragStateRef.current });

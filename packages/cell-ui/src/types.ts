@@ -213,6 +213,7 @@ export type WidgetNode = Readonly<{
   closeOnOutsideClick?: boolean;
   describedById?: WidgetId;
   scrollOffset: CellPoint;
+  scrollAxis?: "x" | "y" | "both";
   children: readonly WidgetId[];
 }>;
 

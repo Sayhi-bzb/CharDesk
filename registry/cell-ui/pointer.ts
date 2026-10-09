@@ -7,6 +7,7 @@ import type { CellPoint, FrameSnapshot, WidgetId } from "./types.js";
 import { cellCenter } from "./scrollbar.js";
 import { scrollCommandForOffset, scrollOffsetFor } from "./scroll.js";
 import { isActionableKind, isPortalKind, supportsPressFeedback } from "./widget-capabilities.js";
+import { isMountedDragSource, isWidgetHidden } from "./widget-visibility.js";
 import {
   cellRangeSliderThumbIndexAtCoordinate,
   cellSliderValueAtCoordinate,
@@ -15,10 +16,11 @@ import {
   resolveCellSliderRange,
 } from "./slider.js";
 
-export const validGestureCandidate = (frame: FrameSnapshot, candidate: GestureCandidate): boolean => {
+export const validGestureCandidate = (frame: FrameSnapshot, candidate: GestureCandidate, active = false): boolean => {
   const node = frame.tree.nodes.get(candidate.targetId);
   const entry = frame.scene.entries.get(candidate.targetId);
-  if (!node || node.disabled || !entry?.paintVisible || !isInFocusScope(frame.tree, node.id)) return false;
+  if (!node || node.disabled || !entry || isWidgetHidden(frame.tree, node) || !isInFocusScope(frame.tree, node.id)) return false;
+  if (!entry.paintVisible && !(active && candidate.kind === "drag" && isMountedDragSource(frame, node.id))) return false;
   if (candidate.slider) {
     const track = node.kind === "slider"
       ? entry.decorationBounds

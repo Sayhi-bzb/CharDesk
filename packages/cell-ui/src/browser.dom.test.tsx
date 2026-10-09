@@ -4,6 +4,10 @@ import { StrictMode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   Box,
+  Button,
+  DragSource,
+  Accordion, AccordionItem, AccordionTrigger, AccordionContent,
+  type CellDragEvent,
   Checkbox,
   Grid,
   GridCell,
@@ -420,10 +424,12 @@ const RangeSliderProduct = ({ onCommand }: { onCommand?: (command: WidgetCommand
 
 const CursorProduct = ({
   shape,
+  guardCells = 1,
   blink = false,
   blinkIntervalMs = 600,
 }: {
   shape: "block" | "bar" | "underline";
+  guardCells?: number;
   blink?: boolean;
   blinkIntervalMs?: number;
 }) => {
@@ -431,6 +437,7 @@ const CursorProduct = ({
   return (
     <CellSurface
       viewport={{ width: 8, height: 3 }}
+      guardCells={guardCells}
       onCommand={editor.dispatch}
       theme={{
         cursorStyle: {
@@ -943,6 +950,24 @@ describe("CellSurface", () => {
     await Promise.resolve();
     expect(screen.getByRole("listbox", { name: "Theme options" })).toBeInTheDocument();
     hasFocus.mockRestore();
+  });
+
+  it("uses the surface guard for cursor paint and cached pixel restoration", () => {
+    const fills: { color: string; rect: number[] }[] = [];
+    context.fillRect.mockImplementation((...rect: number[]) => {
+      fills.push({ color: context.fillStyle, rect });
+    });
+    try {
+      for (const guardCells of [0, 2]) {
+        const mounted = render(<CursorProduct shape="block" guardCells={guardCells} />);
+        context.getImageData.mockClear();
+        fireEvent.focus(screen.getByRole("textbox", { name: "Cursor editor" }));
+        expect(fills).toContainEqual({ color: "rgb(255, 0, 255)", rect: [20 + guardCells * 10, guardCells * 20, 20, 20] });
+        expect(context.getImageData).toHaveBeenCalledWith(20 + guardCells * 10, guardCells * 20, 20, 20);
+        mounted.unmount();
+        fills.length = 0;
+      }
+    } finally { context.fillRect.mockReset(); }
   });
 
   it("paints terminal cursor shapes over a wide glyph and keeps browser pointers neutral", () => {
@@ -1738,6 +1763,19 @@ describe("CellSurface", () => {
     expect(container.querySelectorAll("canvas")).toHaveLength(1);
   });
 
+  it("keeps the semantic projection hidden and outside pointer hit testing", () => {
+    const { container } = render(<Product onAction={() => undefined} />);
+    const semanticRoot = container.querySelector<HTMLElement>("[data-semantic-revision]");
+    expect(semanticRoot).not.toBeNull();
+    expect(semanticRoot).toHaveStyle({
+      position: "absolute",
+      width: "1px",
+      height: "1px",
+      pointerEvents: "none",
+    });
+    expect(semanticRoot).not.toHaveStyle({ position: "fixed", zIndex: "10000" });
+  });
+
   it("removes background semantics and text input while a modal Overlay is open", () => {
     const { rerender } = render(<ModalEditorProduct open={false} />);
     expect(screen.getByRole("textbox", { name: "Background editor" })).toBeInTheDocument();
@@ -2298,4 +2336,70 @@ describe("CellSurface", () => {
       .toBeUndefined();
     pilot.dispose();
   });
+});
+
+
+describe("generic drag capture across clipped owners", () => {
+  const Fixture = ({ left = 1, hidden = false, disabled = false, present = true, events }: { left?: number; hidden?: boolean; disabled?: boolean; present?: boolean; events: CellDragEvent[] }) =>
+    <CellSurface viewport={{ width: 12, height: 4 }} metrics={{ cellWidth: 10, cellHeight: 20, fontSize: 16 }} onCommand={() => {}} onDragStateChange={(event) => events.push(event)}><Root><Box style={{ width: 12, height: 4 }}>
+      <Accordion><AccordionItem id="drag-visibility" expanded={!hidden}><AccordionTrigger><Text>Group</Text></AccordionTrigger><AccordionContent style={{ width: 12, height: 3 }}>{present ? <DragSource id="capture-source" disabled={disabled} payload={{ type: "item" }} style={{ position: "absolute", left, top: 0, width: 4, height: 1 }}><Button id="capture-tap" label="item" style={{ width: 4 }}><Text>Item</Text></Button></DragSource> : null}</AccordionContent></AccordionItem></Accordion>
+    </Box></Root></CellSurface>;
+  it("retains pointer updates and one commit after source clipping", () => {
+    const events: CellDragEvent[] = []; const result = render(<Fixture events={events} />);
+    const surface = result.container.querySelector<HTMLElement>("[data-cell-surface]")!;
+    const canvas = result.container.querySelector("canvas")!;
+    fireEvent.pointerDown(canvas, { pointerId: 41, clientX: 20, clientY: 30, button: 0 });
+    fireEvent.pointerMove(surface, { pointerId: 41, clientX: 40, clientY: 30, buttons: 1 });
+    expect(events.map((event) => event.type)).toEqual(["start"]);
+    result.rerender(<Fixture events={events} left={-20} />);
+    expect(events.filter((event) => event.type === "cancel")).toHaveLength(0);
+    fireEvent.pointerMove(surface, { pointerId: 41, clientX: 60, clientY: 30, buttons: 1 });
+    fireEvent.pointerUp(surface, { pointerId: 41, clientX: 60, clientY: 30, button: 0 });
+    expect(events.map((event) => event.type)).toEqual(["start", "preview", "commit"]);
+    expect(events.at(-1)?.state.pointerId).toBe(41);
+    expect(events.at(-1)?.state.sourceId).toBe("capture-source");
+  });
+  it("lost capture cancels a clipped owner once and rejects a later release", () => {
+    const events: CellDragEvent[] = []; const result = render(<Fixture events={events} />);
+    const surface = result.container.querySelector<HTMLElement>("[data-cell-surface]")!;
+    fireEvent.pointerDown(result.container.querySelector("canvas")!, { pointerId: 43, clientX: 20, clientY: 30, button: 0 });
+    fireEvent.pointerMove(surface, { pointerId: 43, clientX: 40, clientY: 30, buttons: 1 });
+    result.rerender(<Fixture events={events} left={-20} />);
+    fireEvent.lostPointerCapture(surface, { pointerId: 43 });
+    fireEvent.pointerUp(surface, { pointerId: 43, clientX: 60, clientY: 30, button: 0 });
+    expect(events.map((event) => event.type)).toEqual(["start", "cancel"]);
+  });
+  for (const props of [{ hidden: true }, { disabled: true }, { present: false }]) it(`cancels once after ${JSON.stringify(props)} and rejects late release`, () => {
+    const events: CellDragEvent[] = []; const result = render(<Fixture events={events} />);
+    const surface = result.container.querySelector<HTMLElement>("[data-cell-surface]")!;
+    fireEvent.pointerDown(result.container.querySelector("canvas")!, { pointerId: 42, clientX: 20, clientY: 30, button: 0 });
+    fireEvent.pointerMove(surface, { pointerId: 42, clientX: 40, clientY: 30, buttons: 1 });
+    result.rerender(<Fixture events={events} {...props} />);
+    fireEvent.pointerUp(surface, { pointerId: 42, clientX: 60, clientY: 30, button: 0 });
+    expect(events.map((event) => event.type)).toEqual(["start", "cancel"]);
+  });
+});
+
+
+it("emits drag edge requests for the nearest ScrollArea viewport with independent corner signs", () => {
+  const requests = vi.fn(); const events: CellDragEvent[] = [];
+  const result = render(<CellSurface viewport={{ width: 20, height: 12 }} metrics={{ cellWidth: 10, cellHeight: 20, fontSize: 16 }}
+    onCommand={() => {}} onDragStateChange={(event) => events.push(event)} onAutoScrollRequest={requests}>
+    <Root><Box style={{ width: 20, height: 12 }}><ScrollArea id="local-scroll" axis="y" style={{ position: "absolute", left: 3, top: 4, width: 10, height: 4 }}>
+      <Box style={{ height: 12 }}><DragSource id="local-source" payload={{ type: "item" }} style={{ position: "absolute", left: 1, top: 0, width: 4, height: 1 }}>
+        <Button id="local-tap" label="item" style={{ width: 4 }}><Text>Item</Text></Button>
+      </DragSource></Box>
+    </ScrollArea></Box></Root>
+  </CellSurface>);
+  const surface = result.container.querySelector<HTMLElement>("[data-cell-surface]")!;
+  fireEvent.pointerDown(result.container.querySelector("canvas")!, { pointerId: 71, clientX: 45, clientY: 90, button: 0 });
+  fireEvent.pointerMove(surface, { pointerId: 71, clientX: 65, clientY: 90, buttons: 1 });
+  expect(events.map((event) => event.type)).toEqual(["start"]);
+  fireEvent.pointerMove(surface, { pointerId: 71, clientX: 65, clientY: 145, buttons: 1 });
+  expect(requests.mock.calls.at(-1)?.[0]).toMatchObject({ axis: "y", velocityX: 0, velocityY: 3 });
+  fireEvent.pointerMove(surface, { pointerId: 71, clientX: 115, clientY: 85, buttons: 1 });
+  expect(requests.mock.calls.at(-1)?.[0]).toMatchObject({ axis: "both", velocityX: 3, velocityY: -3 });
+  fireEvent.pointerUp(surface, { pointerId: 71, clientX: 115, clientY: 85, button: 0 });
+  expect(events.filter((event) => event.type === "commit")).toHaveLength(1);
+  expect(events.filter((event) => event.type === "cancel")).toHaveLength(0);
 });

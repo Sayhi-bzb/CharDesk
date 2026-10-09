@@ -381,6 +381,7 @@ export type TableRowProps = IdentityProps & ChildrenProps;
 export type TableCellProps = IdentityProps & Readonly<{ children: string | number | ReactElement<TextProps> }>;
 type TablePartProps = IdentityProps & NamedProps & ChildrenProps & Readonly<{ style?: CellLayoutStyle; rowIndex?: number; columnIndex?: number; rowCount?: number; columnCount?: number; frame?: CellFrame; borderShape?: CellBorderShape; variant?: SurfaceVariant; textStyle?: CellTextStyle }>;
 export type ScrollAreaProps = ContainerProps & SurfaceAppearanceProps & Readonly<{
+  axis?: "x" | "y" | "both";
   scrollX?: number;
   scrollY?: number;
   style?: CellLayoutStyle;
@@ -629,6 +630,7 @@ export type WidgetDescriptor = Readonly<{
   closeOnOutsideClick?: boolean;
   scrollX: number;
   scrollY: number;
+  scrollAxis?: "x" | "y" | "both";
   children: readonly WidgetDescriptor[];
 }>;
 
@@ -1373,6 +1375,7 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     ...(element.type === DialogTitle ? { dialogPart: "title" as const } : {}),
     ...(element.type === DialogDescription ? { dialogPart: "description" as const } : {}),
     closeOnOutsideClick: !isAlertDialog && props.closeOnOutsideClick !== false,
+    ...(kind === "scroll-area" ? { scrollAxis: props.axis === "x" || props.axis === "y" ? props.axis : "both" as const } : {}),
     scrollX: Number.isFinite(props.scrollX) ? Math.max(0, Math.trunc(props.scrollX as number)) : 0,
     scrollY: Number.isFinite(props.scrollY) ? Math.max(0, Math.trunc(props.scrollY as number)) : 0,
     children,

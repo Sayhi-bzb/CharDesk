@@ -84,6 +84,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.describedById === right.describedById
   && sameWidgetValue(left.style, right.style)
   && sameWidgetValue(left.textStyle, right.textStyle)
+  && left.scrollAxis === right.scrollAxis
   && sameWidgetValue(left.scrollOffset, right.scrollOffset)
   && sameWidgetValue(left.children, right.children);
 
@@ -115,6 +116,7 @@ const hasGeometryChange = (before: WidgetNode, after: WidgetNode) =>
   || ((after.kind === "select-content" || after.kind === "combobox-content")
     && before.expanded !== after.expanded)
   || before.tooltipTargetId !== after.tooltipTargetId
+  || before.scrollAxis !== after.scrollAxis
   || !sameWidgetValue(before.scrollOffset, after.scrollOffset)
   || (before.kind === "range-slider-thumb" && (
     before.sliderValue !== after.sliderValue

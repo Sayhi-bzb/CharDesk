@@ -218,10 +218,11 @@ export class GestureManager {
     );
   }
 
-  sync(valid: (candidate: GestureCandidate) => boolean): readonly number[] {
+  sync(valid: (candidate: GestureCandidate, active: boolean) => boolean): readonly number[] {
     const cancelled: number[] = [];
     for (const [id, arena] of this.#arenas) {
-      if (arena.candidates.every(valid)) continue;
+      const candidates = arena.winner ? [arena.winner] : arena.candidates;
+      if (candidates.every((candidate) => valid(candidate, arena.winner !== null))) continue;
       this.cancel(id);
       cancelled.push(id);
     }

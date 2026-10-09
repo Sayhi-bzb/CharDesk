@@ -38,3 +38,7 @@ Accordion 复用共享按压与反色；`accordion.ts` 仅拥有标题归属、�
 ## 验证
 
 [控制器测试](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/interaction-controller.test.tsx) · [视觉状态测试](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/visual.test.tsx) · [真实浮层 hover](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/hover.spec.ts) · [依赖边界检查](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/cell-architecture-rules.test.ts)
+
+## Editor viewport contract
+
+`ScrollArea` accepts `axis="x" | "y" | "both"`; the disabled axis has no rail or offset. `cellAutoScrollRequest` derives signed edge velocity from the nearest Cell viewport and keeps both axes at corners. Browser hosts own the resulting `scroll` command and may keep fractional residual motion outside document history. The reusable contract is implemented in [`viewport.ts`](../../../../packages/cell-ui/src/viewport.ts), [`scroll.ts`](../../../../packages/cell-ui/src/scroll.ts), and [`browser.tsx`](../../../../packages/cell-ui/src/browser.tsx); regressions are in [`scroll-axis.test.tsx`](../../../../packages/cell-ui/src/scroll-axis.test.tsx) and [`browser.dom.test.tsx`](../../../../packages/cell-ui/src/browser.dom.test.tsx).

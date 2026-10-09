@@ -1,4 +1,5 @@
 import { getEventPath, hitTest } from "./scene.js";
+import { isMountedDragSource, isWidgetHidden } from "./widget-visibility.js";
 import type {
   CellPoint,
   FrameSnapshot,
@@ -56,6 +57,7 @@ type PointerCapture = Readonly<{
   targetId: WidgetId;
   path: readonly WidgetId[];
   point: CellPoint;
+  retainOffscreen?: boolean;
 }>;
 
 const EMPTY_DISPATCH: CellEventDispatch = Object.freeze({
@@ -70,6 +72,13 @@ export class EventManager {
 
   capturedTarget(pointerId: number): WidgetId | null {
     return this.#captures.get(pointerId)?.targetId ?? null;
+  }
+
+  /** Transfer a won generic drag from its tap child to its mounted owner. */
+  captureDrag(frame: FrameSnapshot, pointerId: number, targetId: WidgetId, point: CellPoint): boolean {
+    if (!isMountedDragSource(frame, targetId) || !frame.scene.entries.get(targetId)?.paintVisible) return false;
+    this.#captures.set(pointerId, { targetId, path: getEventPath(frame.scene, targetId), point, retainOffscreen: true });
+    return true;
   }
 
   resolveTarget(
@@ -110,7 +119,8 @@ export class EventManager {
     for (const [pointerId, capture] of this.#captures) {
       const node = frame.tree.nodes.get(capture.targetId);
       const scene = frame.scene.entries.get(capture.targetId);
-      if (node && !node.disabled && scene?.paintVisible) continue;
+      if (node && !node.disabled && !isWidgetHidden(frame.tree, node) && scene
+        && (scene.paintVisible || capture.retainOffscreen && isMountedDragSource(frame, node.id))) continue;
       this.#dispatchPath(
         {
           type: "pointer-cancel",

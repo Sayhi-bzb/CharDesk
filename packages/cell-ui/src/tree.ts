@@ -219,6 +219,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
       dialogPart: current.dialogPart,
       closeOnOutsideClick: current.closeOnOutsideClick,
       scrollOffset: { x: current.scrollX, y: current.scrollY },
+      ...(current.scrollAxis ? { scrollAxis: current.scrollAxis } : {}),
       children: [],
     });
     const childIds = current.children.map((child, childIndex) =>
