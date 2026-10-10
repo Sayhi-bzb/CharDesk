@@ -1,16 +1,18 @@
 import { cloneElement, type ReactElement, type SVGProps } from "react";
 import type { CharDeskCellMetrics } from "@chardesk/rendering";
 import { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
+import type { CellSurfaceGeometryTransform } from "./browser-surface-geometry.js";
 import type { FrameSnapshot, WidgetId } from "./types.js";
 
 /** Trusted React SVG elements, anchored to existing Cell node IDs. */
 export type CellSvgIcons = Readonly<Record<WidgetId, ReactElement<SVGProps<SVGSVGElement>>>>;
 
-export function CellSvgIconLayer({ frame, metrics, icons, foreground }: Readonly<{
+export function CellSvgIconLayer({ frame, metrics, icons, foreground, geometry }: Readonly<{
   frame: FrameSnapshot;
   metrics: CharDeskCellMetrics;
   icons: CellSvgIcons;
   foreground: string;
+  geometry?: CellSurfaceGeometryTransform | null;
 }>) {
   return Object.entries(icons).map(([id, icon]) => {
     const entry = frame.scene.entries.get(id);
@@ -21,6 +23,7 @@ export function CellSvgIconLayer({ frame, metrics, icons, foreground }: Readonly
       || bounds.x >= clip.x + clip.width || clip.x >= bounds.x + bounds.width
       || bounds.y >= clip.y + clip.height || clip.y >= bounds.y + bounds.height) return null;
     const cell = (entry.layer > 0 ? frame.overlayBuffer : frame.baseBuffer).get(bounds.x, bounds.y);
+    const surfaceRect = geometry?.sceneToSurfaceRect(bounds);
     const requestedSize = typeof icon.props.width === "number" ? icon.props.width : Infinity;
     const size = Math.min(bounds.width * metrics.cellWidth, metrics.cellHeight * 0.8, requestedSize);
     return (
@@ -30,8 +33,8 @@ export function CellSvgIconLayer({ frame, metrics, icons, foreground }: Readonly
         aria-hidden="true"
         style={{
           position: "absolute",
-          left: (bounds.x + CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth,
-          top: (bounds.y + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight,
+          left: surfaceRect?.left ?? (bounds.x + CELL_SURFACE_GUARD_CELLS) * metrics.cellWidth,
+          top: surfaceRect?.top ?? (bounds.y + CELL_SURFACE_GUARD_CELLS) * metrics.cellHeight,
           width: bounds.width * metrics.cellWidth,
           height: bounds.height * metrics.cellHeight,
           display: "flex",

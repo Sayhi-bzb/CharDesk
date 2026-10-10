@@ -46,6 +46,7 @@ const chromeMetrics = (node: WidgetNode): InlineControlChromeMetrics => {
     };
   }
   if (node.kind === "toggle") {
+    if (node.content === "icon-only") return EMPTY_CHROME;
     return {
       leadingGuard: 1,
       leadingIndicator: 1,
@@ -106,6 +107,7 @@ export const inlineControlSpacingRecipe = (
   return {
     chrome: chromeMetrics(node),
     defaultContentInsets: node.kind === "button" || node.kind === "badge" || node.kind === "badge-action" || node.kind === "tab"
+      || (node.kind === "toggle" && node.content === "icon-only")
       ? controlInset
       : node.kind === "text-input"
         ? { left: 0, right: 1 }

@@ -63,6 +63,22 @@ describe("basic Cell widgets", () => {
     expect(padded.buffer.get(11, 0)).toMatchObject({ text: " ", ownerId: "padded" });
     runtime.dispose();
   });
+  it("supports three-cell icon-only controls without toggle status chrome", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 6, height: 1 } });
+    const frame = runtime.render(<Root style={{ direction: "row" }}>
+      <Button id="grid" label="Show grid" content="icon-only" variant="ghost" style={{ width: 3 }}><Text></Text></Button>
+      <Toggle id="snap" label="Snap" content="icon-only" pressed style={{ width: 3 }}><Text>⌁</Text></Toggle>
+    </Root>);
+    expect(frame.buffer.toText()).toBe("   ⌁ ");
+    expect(frame.layout.entries.get("grid")?.rect).toMatchObject({ width: 3, height: 1 });
+    expect(frame.layout.entries.get("snap")?.rect).toMatchObject({ width: 3, height: 1 });
+    expect(frame.semantics.nodes.get("grid")).toMatchObject({ role: "button", label: "Show grid" });
+    expect(frame.semantics.nodes.get("snap")).toMatchObject({ role: "button", label: "Snap", pressed: true });
+    const off = runtime.render(<Root><Toggle id="snap" label="Snap" content="icon-only" pressed={false} style={{ width: 3 }}><Text>⌁</Text></Toggle></Root>);
+    const on = runtime.render(<Root><Toggle id="snap" label="Snap" content="icon-only" pressed style={{ width: 3 }}><Text>⌁</Text></Toggle></Root>);
+    expect(off.buffer.get(1, 0)?.style).not.toEqual(on.buffer.get(1, 0)?.style);
+    runtime.dispose();
+  });
   it("uses one radio Tab stop between neighboring controls", () => {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 4 } });
     const frame = runtime.render(<Root>

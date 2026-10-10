@@ -26,6 +26,7 @@ import {
   Tabs,
   Text,
   TextArea,
+  Tooltip,
   TextInput,
   YogaLayoutEngine,
   createTestPilot,
@@ -39,6 +40,8 @@ import {
   CELL_SURFACE_PROBE_PROPERTY,
   SemanticDom,
   readCellSurfaceProbe,
+  resolveCellSurfaceGeometry,
+  resolveCellSurfaceTransform,
   useCellGridState,
   pxToCellPoint,
   useCellListState,
@@ -876,6 +879,33 @@ describe("CellSurface", () => {
     });
   });
 
+  it("auto-hosts a Tooltip from a one-row CellSurface without explicit overlayViewport", async () => {
+    vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    render(<CellSurface viewport={{ width: 20, height: 1 }} focusedId="grid" probeId="one-row-tooltip"
+      metrics={{ cellWidth: 10, cellHeight: 20, fontSize: 15, fontFamily: "monospace" }} onCommand={() => {}}>
+      <Root><Button id="grid" label="Grid"><Text>Grid</Text></Button>
+        <Tooltip id="grid-tip" targetId="grid" text="Show Cell grid" variant="surface" border="none" />
+      </Root>
+    </CellSurface>);
+    const surface = screen.getByLabelText("Cell interface");
+    fireEvent.focus(screen.getByRole("button", { name: "Grid" }));
+    await waitFor(() => expect(screen.getByRole("tooltip", { name: "Show Cell grid" })).toBeInTheDocument());
+    const probe = readCellSurfaceProbe(surface)!;
+    expect(probe.viewport).toEqual({ width: 20, height: 1 });
+    expect(probe.overlayViewport).toEqual({ width: 20, height: 4 });
+    const overlayCanvas = surface.querySelector<HTMLCanvasElement>('[data-cell-overlay-root="grid-tip"]');
+    expect(overlayCanvas).toBeInTheDocument();
+    expect(overlayCanvas?.style.left).toBe("10px");
+    expect(overlayCanvas?.style.top).toBe("20px");
+    expect(resolveCellSurfaceGeometry(surface)).toMatchObject({
+      guardCells: 1,
+      overlayViewport: { width: 20, height: 4 },
+      contentOriginPx: { left: 10, top: 20 },
+    });
+    expect(resolveCellSurfaceTransform(surface)?.clientToScenePoint({ clientX: 15, clientY: 25 }))
+      .toEqual({ x: 0, y: 0 });
+  });
+
   it("presents SelectContent on an overlay plane without resizing its base canvas", async () => {
     render(<ConstrainedSelectProduct overlay />);
     const surface = screen.getByLabelText("Overlay Select surface");
@@ -897,7 +927,24 @@ describe("CellSurface", () => {
     ]);
     expect(probe.overlays[0]!.cells.some((cell) => "█▀▄".includes(cell.text))).toBe(false);
     expect(baseCanvas.style.height).toBe("140px");
-    expect(overlayCanvas.style.height).toBe("280px");
+    expect(overlayCanvas.style.height).toBe("240px");
+  });
+
+  it("keeps default Select overlay rows aligned with pointer hit testing", async () => {
+    render(<ConstrainedSelectProduct />);
+    const surface = screen.getByLabelText("Constrained Select surface");
+    fireEvent.click(screen.getByRole("button", { name: "Font" }));
+    await waitFor(() => expect(surface.querySelectorAll("canvas")).toHaveLength(2));
+    const probe = readCellSurfaceProbe(surface)!;
+    const item = probe.overlays[0]?.cells.find((cell) => cell.ownerId === "surface-font-1/text[0]" && cell.text === "F");
+    expect(item).toBeDefined();
+    fireEvent.pointerMove(surface, {
+      pointerType: "mouse",
+      buttons: 0,
+      clientX: (item?.x ?? 0) * 10 + 5,
+      clientY: (item?.y ?? 0) * 20 + 5,
+    });
+    expect(surface).toHaveAttribute("data-cell-hovered", "surface-font-1");
   });
 
   it("dismisses the active Select after confirmed external focus exit without stealing focus", async () => {

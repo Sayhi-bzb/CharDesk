@@ -496,7 +496,7 @@ export const paintScene = (
       if (node.kind === "menu-item" && node.presentation === "text" && !node.disabled && (node.focused || node.hovered)) {
         buffer.writeGrapheme(entry.decorationBounds.x, entry.decorationBounds.y, ">", id, style, decorationClip, "over");
       }
-      if (node.kind === "toggle") {
+      if (node.kind === "toggle" && node.content !== "icon-only") {
         const indicator = inlineChrome.leadingIndicator;
         if (indicator) {
           buffer.writeGrapheme(

@@ -217,7 +217,12 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
         ...(!disabled && owner.focused && owner.focusVisible ? theme.focusedItemStyle : {}),
         ...(disabled ? theme.disabledStyle : {}) });
     }
-    return finish(resolvePrimitiveAppearance({ ...semanticBase, ...node.textStyle, ...markdownStyle }, projection, theme));
+    return finish(resolvePrimitiveAppearance({ ...semanticBase, ...node.textStyle, ...markdownStyle }, {
+      ...projection,
+      // Icon-only toggles have no status glyph. Their persistent pressed state
+      // therefore needs to be represented by the control surface itself.
+      pressed: projection.pressed || (owner?.kind === "toggle" && owner.content === "icon-only" && owner.pressed),
+    }, theme));
   }
   const style = resolveCellStateStyle({ ...semanticBase, ...node.textStyle, ...markdownStyle }, {
     focused,

@@ -154,10 +154,15 @@ export const captureCellProbe = (
   frame: FrameSnapshot,
   options: CellProbeOptions = {}
 ): CellProbeSnapshot => {
-  const region = frame.buffer.normalizeRegion(options.region);
+  // Keep the composite projection for the requested base viewport. This
+  // preserves headless overlay text (for dialogs/popovers that land inside
+  // the surface) without leaking auto-reserved overlay rows into the default
+  // probe text.
+  const region = frame.buffer.normalizeRegion(options.region ?? frame.scene.viewport);
+  const cellRegion = frame.buffer.normalizeRegion(options.region);
   const cells: CellProbeCell[] = [];
-  for (let y = region.y; y < region.y + region.height; y += 1) {
-    for (let x = region.x; x < region.x + region.width; x += 1) {
+  for (let y = cellRegion.y; y < cellRegion.y + cellRegion.height; y += 1) {
+    for (let x = cellRegion.x; x < cellRegion.x + cellRegion.width; x += 1) {
       const cell = frame.buffer.get(x, y);
       if (cell) cells.push(cloneCell(cell, x, y));
     }

@@ -11,6 +11,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.frame === right.frame
   && left.borderShape === right.borderShape
   && left.text === right.text
+  && left.content === right.content
   && left.placeholder === right.placeholder
   && left.href === right.href
   && left.current === right.current
