@@ -5,12 +5,22 @@ description: Project-specific authority routes for development tasks.
 
 Load the smallest route that identifies the owner or decision missing from source.
 
+| Read this page when | You have a development task but do not yet know which project authority owns it. |
+| --- | --- |
+| First answer | Is the missing decision about architecture, a domain, a product surface, a portable contract, evidence, or delivery? |
+| Boundary | This page routes development tasks; business rules, implementation, and tests remain owned by the selected authority. |
+| Reading rule | Stop at the first page that resolves the decision; follow its source and verification links only when implementation detail is needed. |
+| System contract | [Documentation system](/development/documentation-system) defines page structure, terminology, and Agent-facing output. |
+| Follow-up | Choose the smallest task route below, then follow the route's authority and evidence. |
+
 | Task | Route |
 | --- | --- |
 | Check dependency direction or state authority | [Architecture](/development/architecture) |
 | Change a business capability | [Domain reference](/development/domains) |
 | Change product interaction or presentation | [Host and UI](/development/host-ui) |
+| Change Cell UI runtime, widget, semantics, or compositor behavior | [Cell UI](/development/cell-ui) |
 | Change a portable contract | [Formats and packages](/development/formats-packages) |
+| Change or review documentation structure and routing | [Documentation system](/development/documentation-system) |
 | Select evidence or inspect a guardrail | [Quality](/development/quality) |
 | Review documentation since its recorded HEAD | [Documentation freshness](/development/delivery#documentation-freshness) |
 | Build, release, or emit documentation | [Delivery](/development/delivery) |

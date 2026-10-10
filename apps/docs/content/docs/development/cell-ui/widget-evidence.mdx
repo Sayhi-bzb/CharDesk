@@ -1,0 +1,20 @@
+---
+title: Cell Widget Evidence
+description: Contract, browser, accessibility, and editor scroll verification evidence.
+---
+
+| Read this page when | Widget verification, browser behavior, accessibility evidence, or editor scroll coverage changes. |
+| --- | --- |
+| First answer | Which Cell Widget contract owns this decision? |
+| Boundary | This page owns verification evidence; widget behavior and public semantics remain owned by their contract pages. |
+| Follow-up | Use the linked source and verification evidence after selecting the contract. |
+
+## 证据
+
+Dialog 的 Title 必须非空且为唯一直接子项，Description 至多一个直接子项；自动关联 `aria-labelledby` / `aria-describedby`。`initialFocusId` 不可用时进入首个可用内容控件，无控件则聚焦弹窗自身。外部点击关闭不穿透；嵌套 Select 先处理 Escape／外部点击。普通 blur 不关闭 Dialog；非模态允许 Tab 离开，已移到外部的焦点不被关闭操作夺回。长正文组合 ScrollArea；宿主须分配可容纳外壳的高度（Gallery 提供扩展浮层区域）。[契约测试](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/dialog.test.tsx)、[双浏览器验证](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/dialog.spec.ts)。
+
+AccordionItem 必须有稳定 `id`，直接包含 Trigger、Content（依此顺序）；`expanded` 受控，默认折叠。Group/Item 的 disabled 向内容控件传播。折叠保留 Widget Tree 与外部受控值，但退出布局、命中、Tab 和读屏；焦点从隐藏内容恢复至自身标题，再尝试同组后项／前项，且不逃离焦点域。Trigger 的 button/expanded/controls 与 Content 的具名 region 自动关联；内容内部控件保留自身键盘行为。[契约测试](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/accordion.test.tsx)、[浏览器验证](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/accordion.spec.ts)。
+
+Combobox 必须以一个 Input 开头，后接可选 Content；Content 只接受 Item 或空结果 Text。Input 与 Content 自动建立 controls/label 关系，至多一个 active Item 且必须匹配 `activeDescendantId`。关闭态显示并全选 committed label，使下一次输入替换而非追加；输入、候选 active、选择和浮层开关可分别受控。[Headless 契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/combobox.test.tsx)、[浏览器契约](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser-combobox.dom.test.tsx)。
+
+[Public components](https://ui.chardesk.com/#/components/button) · [Widget tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/complex-widgets.test.tsx) · [Browser tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser.dom.test.tsx) · [Editor scroll E2E](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/cell-ui/e2e/editor-scroll.spec.ts)

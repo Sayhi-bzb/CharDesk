@@ -116,6 +116,8 @@ export {
 export type { CellRangeCommand, CellRangeSnapshot } from "./range.js";
 export { composeScene, getEventPath, hitTest, hitTestCell } from "./scene.js";
 export { CellUiRuntime } from "./runtime.js";
+export { cellDebugReference, cellDebugRefFor, inspectCellFrame, inspectCellWidget, verifyCellFrame } from "./debug.js";
+export type { CellDebugReference, CellInspectionSnapshot, CellVerificationIssue } from "./debug.js";
 export { TestPilot, createTestPilot } from "./testing.js";
 export type { SemanticQuery, TestKeyOptions, TestPilotOptions } from "./testing.js";
 export { auditSemanticSnapshot, createSemanticSnapshot } from "./semantics.js";

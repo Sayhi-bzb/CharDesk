@@ -1,0 +1,95 @@
+---
+title: Persistence, Collaboration, and Projection
+description: Restore, collaboration, residency, and CellPlane projection contracts.
+---
+
+| Read this page when | A change affects restore, persistence, collaboration, document residency, or CellPlane projection. |
+| --- | --- |
+| First answer | Which state boundary or flow is authoritative for this decision? |
+| Boundary | This page owns restore, residency, collaboration, and projection contracts; command authority remains with the state-authority page. |
+| Follow-up | Read the linked source and verification evidence after selecting the contract. |
+
+## Restore and persistence
+
+The application module and Canvas restore load independently. App chrome mounts as
+soon as the module is available, while `CanvasPersistenceStatus.restore` gates the
+workspace, onboarding, collaboration, and editor surfaces. Restore failure opens an
+editable in-memory workspace instead of an empty editor. Retry prepares persisted
+documents off-screen, then atomically activates them; temporary edits are retained in
+a distinct recovered session. The mounted workspace becomes inert during that commit
+and is never replaced by a second loading screen.
+
+## Session and collaboration lifecycle
+
+Every editable local session persists one Yjs document. A Freeform document has one page;
+a Slide document has one page per slide. The runtime session list contains
+`CanvasSessionDescriptor` values only. The Canvas document owns page order, names, sizes,
+and content; the IndexedDB catalog stores the restore metadata needed before a document is resident. Collaborative
+sessions persist only their catalog shell and descriptor; room content is restored through
+collaboration persistence and never copied into local session persistence.
+The catalog records whether a collaborating session is the local host or a guest. A guest with
+no cached room content remains in `joining` and cannot edit until encrypted transport sync and a
+document-ready peer handshake both arrive. Collaboration V7 encrypts Yjs sync and awareness in
+the browser. The memory-only relay sees room metadata and ciphertext, owns no Yjs document, and
+deletes a room when its last connection leaves. Managed links resolve the build-configured endpoint;
+an optional endpoint exists only for protocol-level self-hosting. V6 remains a legacy `y-websocket`
+link format.
+Collaboration derives one shared document and main-page identity from the room id;
+local session ids remain catalog-only and never name shared Yjs pages. Starting or joining a
+room rehomes the single local page to that shared identity before transport connects.
+Source-backed sessions persist their binding and presentation metadata beside the native file. Their runtime Yjs shells are empty and non-persistent; compiled surfaces have no
+undo or synchronization history. Closing a session closes only the view, never its source.
+
+The V5 localStorage envelope is a migration input only. Migration seeds and verifies all Yjs
+documents, commits the catalog, then removes the old key. A failure keeps the old value for retry.
+Restore probes existing Yjs channels before seeding. Intermediate page descriptors are normalized
+into a clean document generation. Documents with excessive Yjs struct history use the same
+generation rotation: write and verify the next generation, commit its catalog pointer, and reclaim
+older generations after a later verified startup. The active generation is always catalog-owned.
+If a bootstrap catalog replaced legacy metadata, restore reattaches sessions only when their local
+Yjs document databases still exist. Historical descriptors restore names and mode; an orphan without
+metadata receives a recovered shell. Deleted sessions are not resurrected.
+Canvas content never falls back to localStorage. Every browser tab remains editable. Loaded local
+Yjs documents exchange updates over a same-origin channel and persist them independently; an
+exclusive coordinator owns checkpoint rotation, while catalog writes use short exclusive sections
+and merge changes against the latest snapshot. Undo history remains runtime-only per tab.
+
+## Residency and release
+
+The catalog is the startup index; it does not make every Canvas resident. The active Canvas and
+both visible Split panes are pinned. The document repository retains at most four Canvas documents,
+using most-recently-used order for the remaining slots. Releasing a document flushes dirty local
+updates and disposes its runtime projections without deleting IndexedDB content. User deletion is a
+separate lifecycle operation: a durable catalog intent records its tombstone before the Session
+disappears from runtime state, then runtime resources are released. Recovery databases remain
+available but tombstoned Sessions are never restored. Reopening an evicted Canvas restores content
+but not its undo stack.
+
+## CellPlane and projection
+
+Canvas pages own ordered `cell-plane-operations` and optional coordinate anchors.
+Anchors are page metadata, not Cells or ranges. Their literal labels are captured when
+created; a selection supplies text and a starting point but does not persist a range.
+`parentId` and preorder `order` own the Contents hierarchy; legacy anchors without a
+parent are roots. A branch move or deletion is one undoable anchor transaction.
+Explicit range moves translate selected anchor points with Cells in one transaction and
+history action. The Canvas Yjs document and
+checkpoint retain them; plain-text `.chardesk`, ANSI, and image exports do not.
+Canvas rendering queries
+occupied spans inside the viewport, and Minimap caches its reader projection by document
+revision; camera movement never materializes a grid snapshot. A legacy local `main-grid`
+is converted once into a bootstrap operation and then cleared. `CanvasSurfaceReader` is the read
+contract for rendering, interaction, selection, and export. `CanvasState.contentSurface` carries the
+active Reader plus a projection revision; it never carries a live `GridMap`. Freeform and Slide read
+their CellPlane indexes directly. A `GridMap` is created only at an explicit snapshot boundary such as
+serialization, clipboard payload construction, or a transient drag preview. Chunk indexes and
+projections are never synchronized.
+
+Freeform and Slide session descriptors contain no content at runtime. Imports use
+`CanvasImportSnapshot`; persistence uses `CanvasSessionSnapshot`, while Slide export and playback
+use `SlideDeckSnapshot`. Switching sessions restores content from the matching Yjs document; the
+projector never writes content back into the descriptor. Retired Structured session, checkpoint,
+and `.chardesk` inputs are decoded only at migration boundaries and flattened into CellPlane content;
+old Structured collaboration links are rejected as retired.
+Slide runtime state uses `SlideDeckDescriptor`; preview, playback, resize, duplicate, persistence,
+and export materialize page content only at their explicit boundary.

@@ -3,6 +3,12 @@ title: Dialog Surfaces
 description: Contract for Dialog, AlertDialog, Sheet, and modal Host elevation.
 ---
 
+| Read this page when | You add or review a Dialog, AlertDialog, Sheet, or modal Host surface. |
+| --- | --- |
+| First answer | Shared dialog sections own shell geometry, spacing, elevation, and close behavior. |
+| Boundary | Instances may provide content and width; they do not redefine the shared surface contract. |
+| Follow-up | Read the [Visual system](/development/host-ui/visual-system), then verify the component state and accessibility tests. |
+
 - Use shared Dialog section components. Instances may set width but do not
   redefine shell, spacing, or close geometry.
 - The shell owns spacing and padding. Header, body, and footer add no surface,

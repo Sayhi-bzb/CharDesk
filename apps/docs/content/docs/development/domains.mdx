@@ -3,6 +3,11 @@ title: Domain Reference
 description: Capability owners, public contracts, and non-obvious boundaries.
 ---
 
+| Read this page when | A change affects a business capability, persisted state, domain command, or cross-domain boundary. |
+| --- | --- |
+| First answer | Which capability owns the rule and its public boundary? |
+| Follow-up | Read the selected `public.ts`, then the nearest deterministic tests. Use [ownership and dependency direction](/development/architecture/ownership) for layer rules. |
+
 | Capability | Owner and contract | Boundary |
 | --- | --- | --- |
 | Account and cloud backup | [`account`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/account/public.ts) | GitHub identity and native Canvas/Slides snapshots live on the account API; an explicit first backup opts local work into revision-checked background sync |

@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "routes": [
+    {
+      "id": "live-canvas",
+      "when": [
+        "inspect, compose, or edit a live Canvas or Slide",
+        "use Canvas tools or the local MCP bridge"
+      ],
+      "keywords": ["live Canvas", "Slide", "WebMCP", "local MCP"],
+      "identifiers": ["canvas_manage", "canvas_read", "canvas_search", "canvas_write", "canvas_render"],
+      "exclude": ["repository implementation changes outside the live bridge"],
+      "entry": "https://github.com/Sayhi-bzb/CharDesk/tree/main/.agents/skills/chardesk",
+      "authority": "CharDesk skill and its references",
+      "next": [
+        "https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/mcp/README.md"
+      ]
+    },
+    {
+      "id": "user-workflow",
+      "when": ["explain or operate a user-facing CharDesk workflow"],
+      "keywords": ["user workflow", "collaboration", "encrypted room", "edit link"],
+      "identifiers": ["Collaboration"],
+      "exclude": ["repository implementation ownership", "source-level architecture changes"],
+      "entry": "/docs/user",
+      "authority": "apps/docs/content/docs/user",
+      "next": ["/docs/user/collaboration"]
+    },
+    {
+      "id": "architecture",
+      "when": [
+        "change dependency direction, state authority, rendering boundaries, or execution flow"
+      ],
+      "keywords": ["ownership", "state authority", "rendering boundary", "execution flow"],
+      "identifiers": ["public.ts", "EditorRuntime", "CellPlane", "Yjs"],
+      "exclude": ["product copy", "package installation"],
+      "entry": "/docs/development/architecture",
+      "authority": "apps/docs/content/docs/development/architecture",
+      "next": [
+        "/docs/development/architecture/ownership",
+        "/docs/development/architecture/state-flows",
+        "/docs/development/architecture/state-authority",
+        "/docs/development/architecture/canonical-state-flows",
+        "/docs/development/architecture/state-persistence",
+        "/docs/development/architecture/text-rendering-pipeline",
+        "/docs/development/architecture/text-rendering-features"
+      ]
+    },
+    {
+      "id": "domain",
+      "when": ["change a business capability or cross-domain boundary"],
+      "keywords": ["business capability", "domain boundary", "public contract", "commands"],
+      "identifiers": ["public.ts", "apps/canvas/src/domains"],
+      "exclude": ["shared visual composition", "portable package contract"],
+      "entry": "/docs/development/domains",
+      "authority": "apps/docs/content/docs/development/domains",
+      "next": ["the selected domain public.ts and nearest tests"]
+    },
+    {
+      "id": "ui",
+      "when": [
+        "change Host presentation or interaction",
+        "change Cell UI layout, widgets, semantics, or compositor behavior"
+      ],
+      "keywords": ["Host UI", "Cell UI", "widget", "compositor", "semantics"],
+      "identifiers": ["EditorChromeLayout", "SceneGeometry", "SemanticSnapshot", "Widget"],
+      "exclude": ["domain validation", "protocol package ownership"],
+      "entry": "/docs/development",
+      "authority": "Host UI and Cell UI development routes",
+      "next": [
+        "/docs/development/host-ui",
+        "/docs/development/host-ui/visual-theme",
+        "/docs/development/host-ui/visual-composition",
+        "/docs/development/host-ui/visual-vocabulary",
+        "/docs/development/cell-ui",
+        "/docs/development/cell-ui/widget-state",
+        "/docs/development/cell-ui/widget-pointer-scroll",
+        "/docs/development/cell-ui/widget-evidence"
+      ]
+    },
+    {
+      "id": "portable-contract",
+      "when": ["change a file format, protocol, package API, renderer, or font contract"],
+      "keywords": ["file format", "protocol", "package API", "renderer", "font"],
+      "identifiers": ["README.md", "spec/v1.md", "manifest.json"],
+      "exclude": ["live Canvas operation", "workflow routing"],
+      "entry": "/docs/development/formats-packages",
+      "authority": "the owning package README, specification, or format page",
+      "next": ["the compatibility evidence listed on the route page"]
+    },
+    {
+      "id": "documentation",
+      "when": ["add, route, verify, or review project documentation"],
+      "keywords": ["documentation system", "route block", "llms.txt", "freshness"],
+      "identifiers": ["agent-routes.json", "verify-build.mjs", "docs-head.json"],
+      "exclude": ["product contract implementation"],
+      "entry": "/docs/development/documentation-system",
+      "authority": "documentation-system.mdx",
+      "next": [
+        "/docs/development/quality",
+        "/docs/development/delivery"
+      ]
+    }
+  ]
+}

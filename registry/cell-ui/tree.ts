@@ -145,6 +145,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
       frame: current.frame,
       borderShape: current.borderShape,
       text: current.text,
+      content: current.content,
       placeholder: current.placeholder,
       href: current.href,
       current: current.current,

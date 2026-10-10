@@ -3,6 +3,12 @@ title: Editor Runtime
 description: UI-independent coordination of editor commands, tools, state, and extensions.
 ---
 
+| Read this page when | You change editor command execution, host isolation, tools, or extension coordination. |
+| --- | --- |
+| First answer | `EditorRuntime` coordinates execution while Canvas, Slides, Sessions, and Collaboration retain state ownership. |
+| Boundary | Runtime does not own Canvas data, domain validation, or persistence. |
+| Follow-up | Trace the public runtime factory and verify the nearest runtime and viewport tests. |
+
 `EditorRuntime` coordinates execution; Canvas, slides, sessions, and collaboration
 retain their state and business ownership.
 

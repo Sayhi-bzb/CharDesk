@@ -3,7 +3,11 @@ title: CharGraph layout
 description: Ownership and constraints for source-to-cell graph layout.
 ---
 
-# CharGraph layout
+| Read this page when | You change CharGraph parsing, graph layout, route topology, or Cell projection. |
+| --- | --- |
+| First answer | The pipeline is source AST → diagram adapter → ELK or model layout → integer Cell projection. |
+| Boundary | Layout owns geometry and topology; CharScene owns glyph composition and rendering appearance. |
+| Follow-up | Trace the layout adapter and run the nearest diagram and projection tests. |
 
 CharGraph routes diagrams by coordinate model, not Mermaid diagram name:
 

@@ -24,5 +24,7 @@ describe("CellSurface geometry transform", () => {
     })).toEqual({ x: 3, y: 4 });
     expect(transform.sceneToSurfaceRect({ x: 3, y: 4, width: 2, height: 1 }))
       .toMatchObject({ left: (guardCells + 3) * 10, top: (guardCells + 4) * 20, width: 20, height: 20 });
+    expect(transform.overlayPlaneClipPath({ x: 2, y: 1, width: 4, height: 2 }))
+      .toBe("inset(20px 140px 160px 20px)");
   });
 });

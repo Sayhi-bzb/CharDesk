@@ -3,7 +3,11 @@ title: Cell Primitives
 description: Input, behavior, feedback, appearance, and rendering ownership.
 ---
 
-# Cell Primitives 底座
+| 本页适用于 | 修改 Cell primitive 的输入、行为、反馈、外观或渲染归属时。 |
+| --- | --- |
+| 首要结论 | Browser adapter、interaction controller、primitive behavior、theme 和 renderer 各自持有不同职责。 |
+| 边界 | 本页描述职责边界，不复制公开类型或具体 Widget 状态流程。 |
+| 下一步 | 先读 [Widget 状态规范](/development/cell-ui/widgets)，再沿表格中的 authority 和测试追踪。 |
 
 [Widget 状态规范](/development/cell-ui/widgets) · [公开集成](https://ui.chardesk.com/#/guides/integration)
 
@@ -41,4 +45,4 @@ Accordion 复用共享按压与反色；`accordion.ts` 仅拥有标题归属、�
 
 ## Editor viewport contract
 
-`ScrollArea` accepts `axis="x" | "y" | "both"`; the disabled axis has no rail or offset. `cellAutoScrollRequest` derives signed edge velocity from the nearest Cell viewport and keeps both axes at corners. Browser hosts own the resulting `scroll` command and may keep fractional residual motion outside document history. The reusable contract is implemented in [`viewport.ts`](../../../../packages/cell-ui/src/viewport.ts), [`scroll.ts`](../../../../packages/cell-ui/src/scroll.ts), and [`browser.tsx`](../../../../packages/cell-ui/src/browser.tsx); regressions are in [`scroll-axis.test.tsx`](../../../../packages/cell-ui/src/scroll-axis.test.tsx) and [`browser.dom.test.tsx`](../../../../packages/cell-ui/src/browser.dom.test.tsx).
+`ScrollArea` accepts `axis="x" | "y" | "both"`; the disabled axis has no rail or offset. `cellAutoScrollRequest` derives signed edge velocity from the nearest Cell viewport and keeps both axes at corners. Browser hosts own the resulting `scroll` command and may keep fractional residual motion outside document history. The reusable contract is implemented in [`viewport.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/viewport.ts), [`scroll.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/scroll.ts), and [`browser.tsx`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser.tsx); regressions are in [`scroll-axis.test.tsx`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/scroll-axis.test.tsx) and [`browser.dom.test.tsx`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser.dom.test.tsx).

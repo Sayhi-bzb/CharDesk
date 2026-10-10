@@ -3,6 +3,12 @@ title: Ownership and Dependency Direction
 description: Layer responsibility and allowed dependency edges.
 ---
 
+| Read this page when | You need to decide whether a dependency or responsibility crosses an allowed layer. |
+| --- | --- |
+| First answer | Dependency direction is `shared <- domains <- widgets <- app`; each layer owns a distinct contract. |
+| Boundary | This page owns dependency direction; behavior remains owned by the relevant domain or package authority. |
+| Follow-up | Open the owning `public.ts` and the boundary guard named below. |
+
 ```text
 shared <- domains <- widgets <- app
 ```

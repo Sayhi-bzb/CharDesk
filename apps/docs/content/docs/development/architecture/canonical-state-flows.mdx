@@ -1,0 +1,63 @@
+---
+title: Canonical State Flows
+description: The canonical execution order for document, session, viewport, and tool flows.
+---
+
+| Read this page when | You need the ordered execution flow for a Canvas, session, viewport, selection, or WebMCP operation. |
+| --- | --- |
+| First answer | Which state boundary or flow is authoritative for this decision? |
+| Boundary | This page owns execution order; ownership and persistence contracts remain on their focused pages. |
+| Follow-up | Read the linked source and verification evidence after selecting the contract. |
+
+## Canonical flows
+
+- Freeform content: command -> compact `CellPlanePatch` -> one ordered CellPlane
+  operation in a Yjs transaction -> 128x64 spatial projection -> viewport query.
+  Text runs remain compact through the write boundary; target-background inheritance
+  is operation composition, not a per-cell read/modify/write pass.
+- Session activation: active ViewRuntime checkpoint -> catalog descriptor ->
+  restored mode-authoritative Yjs document -> one editor-state activation patch.
+  Content projection is already current; interaction resets against the newly
+  active document/page address.
+- Slide activation: deck metadata -> matching page in the session Yjs document -> active projection.
+- Slide edit: command -> active Yjs page -> derived active grid.
+- Local restore: IndexedDB catalog -> `y-indexeddb` document restore -> canvas recovery
+  adapter -> active projection. Startup does not expose editing until the active document is ready.
+- Canvas switch: retain the current frame -> load the target Yjs document -> commit the latest
+  activation request -> release an unpinned least-recently-used document when over budget.
+- Import: document parser -> `CanvasImportSnapshot` -> canvas session command ->
+  one-shot active-pane camera placement. The placement uses projected content bounds
+  and viewport insets at runtime; it is not part of the document protocol or persistence.
+- Session persistence: metadata projection -> sessions catalog transaction. Canvas content
+  remains in its Yjs document and persists as incremental `y-indexeddb` updates. A flush
+  visits dirty documents only; routine edits never force workspace-wide snapshots.
+- Viewport: pointer, keyboard, minimap, or zoom command -> active-view port ->
+  live camera -> settled camera -> session saved viewport -> catalog persistence.
+  `CanvasViewportRuntime` is the only active-camera authority; Zustand does not
+  mirror its offset or zoom. Animation frames never write session metadata.
+- Slide preview: deck metadata + page reader -> explicit grid snapshot -> canonical slide renderer.
+- Selection command: DOM dispatcher -> editor keymap -> command registry ->
+  canvas selection port -> Yjs document.
+- Artifact appearance: stored Cell style -> canonical default-foreground classification ->
+  active Canvas palette for visual projections or default SGR state for ANSI serialization.
+  A stored background makes its foreground explicit; persistence retains literal colors.
+- Block layout text: `|||`-recognized layout -> per-field normal text renderer ->
+  composed CellPlane rows. A lone `---` remains a Markdown thematic break in auto mode.
+- Local document preview: file → native document parser → read-only projection.
+  Human commands cannot write back to the file.
+- [WebMCP](/development/architecture/webmcp) composes Canvas read/search/write and shared Materials tools.
+  [Canvas reading](/development/architecture/canvas-reading) exposes an automatically scaled Cell viewport.
+  A global read-only tool embeds canonical skill materials
+  at build time so web-only agents can load the same authoring context. The document connector
+  selects one host adapter, preferring the complete
+  WebMCP surface over the imperative subset used by
+  [ChatGPT Site Tools](https://learn.chatgpt.com/docs/webmcp). Both consume the same
+  protocol-neutral tool definitions; the subset is a capability profile, not a vendor protocol.
+  Bootstrap registration keeps an adaptive handshake
+  for runtimes injected after page load; an unavailable workspace returns a stable result.
+  Standard WebMCP requires an origin-isolated document plus either Chrome's local testing
+  flag or an origin-bound trial token supplied as `VITE_WEBMCP_ORIGIN_TRIAL_TOKEN`.
+  `?webmcp=polyfill` and `VITE_WEBMCP_DEV_POLYFILL=1` enable the explicit development-only
+  protocol fallback. ChatGPT discovers only imperative tools registered by JavaScript in the
+  top-level page; declarative and iframe tools are out of scope. Inspect `data-webmcp-provider`,
+  `data-webmcp-capability`, and `data-webmcp-status` when a host cannot discover the tools.

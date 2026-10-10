@@ -19,6 +19,14 @@
       "types": "./dist/browser.d.ts",
       "import": "./dist/browser.js"
     },
+    "./debug": {
+      "types": "./dist/debug.d.ts",
+      "import": "./dist/debug.js"
+    },
+    "./debug/browser": {
+      "types": "./dist/browser-debug.d.ts",
+      "import": "./dist/browser-debug.js"
+    },
     "./editor": {
       "types": "./dist/editor.d.ts",
       "import": "./dist/editor.js"

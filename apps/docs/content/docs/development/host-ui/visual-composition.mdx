@@ -1,0 +1,105 @@
+---
+title: Visual Composition and Layers
+description: Interaction state, product adapters, surfaces, layers, and composition geometry.
+---
+
+| Read this page when | A surface, layer, product adapter, composition, or responsive visual boundary changes. |
+| --- | --- |
+| First answer | Which shared visual contract owns this decision? |
+| Boundary | This page owns surface and layer composition; domain rules and product workflow remain with their owning surfaces. |
+| Follow-up | Read the linked source and verification evidence after selecting the contract. |
+
+## Interaction state
+
+Freeform and Slide use one terminal Cell cursor for both Navigate and Text Edit.
+The global Host preference selects block, bar, or underline and independently
+enables the 600ms edit blink; it is local UI state, not document or history state.
+Navigate is steady. Text Edit blinks only while its Canvas owns input focus,
+becoming steady on focus loss. A Range hides the cursor, and inactive split views
+draw neither cursor nor Range. One Canvas Cell presentation resolver owns this
+precedence and emits one terminal-cursor or Range visual intent. Selecting and
+resting Ranges use a surface only; moving Ranges add the selection border.
+Dark Range surfaces use low-strength contrast compositing over final pixels so
+literal Cell colors remain readable without introducing a resting border.
+Canvas and Cell UI adapt their own theme values to the shared rendering contracts.
+
+Static Grid separates command targets from interaction semantics. The Selection
+domain publishes a target plus one `navigate`, `text-edit`, or `range`
+interaction. A default one-Cell target remains `navigate`; only an explicit
+`GridSelectionState.mode === "range"` publishes Range geometry. Renderers must
+consume this discriminant and never infer a Range from non-empty target areas,
+geometry, or Cell count.
+
+## Composition and layers
+
+Third-party UI integrations live behind product adapters. The onboarding
+adapter is the sole Driver.js owner and maps shared overlay, motion, radius, and
+reduced-motion semantics into Driver configuration. Product onboarding code
+owns only steps, copy, workflow state, and lifecycle callbacks.
+
+`shadow-host`, `shadow-overlay`, and `shadow-dialog` are the elevation ladder.
+`surface`, `control`, and `item` are the radius ladder. Surface and dialog
+shells use 12px; controls, fields, menu items, and selectable items use 8px;
+color swatches remain circular.
+ANSI swatches keep their values and order across appearances. Curated presets
+are owned by `@chardesk/ui` and resolve to separate Light and Dark literal
+palettes before product widgets consume them. Picking a swatch always
+materializes its hex value; changing Host theme never recolors existing content.
+Page backgrounds, embedded regions, floating hosts, overlays, and dialogs form
+one neutral surface ladder. Embedded regions use tone without a contour;
+floating, overlay, and modal surfaces use the shared low-contrast ring and
+their corresponding elevation token.
+Viewport surfaces use semantic layer tokens; product instances do not assign raw
+overlay tiers or recreate shared surfaces. Presentation, presence, field, and
+swatch colors also have semantic tokens instead of component-local theme branches.
+Portal primitives inherit their layer from the nearest modal surface. Ordinary
+portals stay below modal surfaces; portals declared inside Dialog, AlertDialog,
+or Sheet render above that modal and below toast feedback.
+
+[`Surface`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/ui/src/surface.tsx)
+is the product composition boundary. Its `embedded`, `floating`, `overlay`, and
+`transparent` kinds map to the shared surface recipe. Toolbars, Inspector,
+Minimap, and the desktop Sidebar compose `Surface`; transient portal primitives
+consume the same overlay recipe internally.
+
+[`FloatingSurface`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/ui/src/floating-surface.tsx)
+provides two product compositions. `control-bar` contains 32px controls with
+4px shell padding and a 4px gap. `panel` clips its shell and uses
+`SurfaceContent` for compact 10px or default 16px padding; full-bleed media omits
+the content wrapper. Deck is the panel spacing reference, while Zoom and Dock
+are the control-bar density reference.
+
+`PageShell` owns the clipped viewport surface and page gutter. `PageFrame` owns
+the centered frame side borders and optional contained or viewport-bleeding
+structural boundaries. CharGraph and Docs share the page compositions; each
+product owns only its frame width, content, and responsive layout. Docs maps
+Fumadocs colors through its shadcn adapter and keeps navigation, search,
+sidebar, and table-of-contents behavior in Fumadocs.
+
+`ContentScrollArea` owns viewport-width block flow for vertically scrolling
+content on every form factor; generic `ScrollArea` retains intrinsic sizing.
+[`CellFrameCanvas`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/shared/components/CellFrameCanvas.tsx)
+in `contain` mode measures and observes its layout host, not the Canvas bitmap.
+Its absolutely positioned Canvas cannot contribute intrinsic size to that host.
+
+Shared compositions own repeated shell geometry and content density. Widget
+`className` owns product-specific position, size, scrolling, responsive
+visibility, and typography. Shared primitives and recipes own background,
+border, radius, elevation, focus, hover, active state, and default icon sizing.
+A widget must express those decisions through typed primitive props and must not
+import `@chardesk/ui/styles` or its compatibility recipe path directly.
+
+`border` is the low-contrast contour for controls and explicit component
+boundaries. Floating contours use `surface-ring` so they do not change layout.
+The `separator` token owns structural-divider color, while the
+primitive or recipe owns geometry. Static separators, including menus and the
+presentation toolbar, are 2px and rounded. Resizable pane boundaries are 2px
+and straight; table and data-grid row boundaries remain 1px and straight.
+Interaction may strengthen a separator transiently but does not replace its
+resting token.
+
+`StripeDivider` owns the 32px diagonal section pattern and its two structural
+boundaries. Its optional `bleed` extent applies to the pattern and both
+boundaries as one contract; products own only placement, frame width, and side
+borders. A bleeding divider must live inside a horizontally clipped viewport
+surface.

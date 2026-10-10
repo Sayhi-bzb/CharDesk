@@ -1,10 +1,14 @@
 import { CELL_SURFACE_GUARD_CELLS, CellPresentationRegistry } from "./browser-presentation.js";
 import { CellSvgIconLayer, type CellSvgIcons } from "./browser-svg-icons.js";
 export type { CellSvgIcons } from "./browser-svg-icons.js";
-import { registerCellSurfaceGeometry } from "./browser-surface-geometry.js";
+import { createCellSurfaceGeometryTransform, registerCellSurfaceGeometry } from "./browser-surface-geometry.js";
+import type { CellSurfaceGeometryTransform } from "./browser-surface-geometry.js";
+export { CellInspectorOverlay, installCellDebugBridge, registerCellDebugAdapter, verifyCellSurface } from "./browser-debug.js";
+export type { CellDebugAdapter, CellDebugBridge, CellInspectorOverlayProps } from "./browser-debug.js";
 export { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
-export { resolveCellSurfaceGeometry } from "./browser-surface-geometry.js";
-export type { CellSurfaceGeometrySnapshot } from "./browser-surface-geometry.js";
+export { resolveCellSurfaceGeometry, resolveCellSurfaceTransform, resolveCellSurfaceInspection, resolveCellSurfaceFrame, resolveCellSurfaceTrace } from "./browser-surface-geometry.js";
+export type { CellSurfaceGeometrySnapshot, CellSurfaceGeometryTransform, CellSurfaceInspectionQuery } from "./browser-surface-geometry.js";
+export type { CellDebugReference, CellInspectionSnapshot, CellInteractionTraceEvent, CellVerificationIssue } from "./debug.js";
 export { CellOverlayHost, CellOverlayPortal, CellPopover, CellContextMenu, CellAlertDialog, positionCellOverlay } from "./browser-overlay-host.js";
 export type { CellOverlayDismissReason, CellOverlayPlacement } from "./browser-overlay-host.js";
 export { CellToastViewport, useCellToastState } from "./browser-toast.js";
@@ -96,6 +100,7 @@ import {
 import type { RootProps } from "./react.js";
 import { captureCellProbe, formatCellBuffer, type CellProbeOptions } from "./probe.js";
 import type { CellProbePresentation, CellProbeSnapshot } from "./probe.js";
+import { inspectCellFrame, inspectCellWidget, type CellInteractionTraceEvent } from "./debug.js";
 import { CellUiRuntime } from "./runtime.js";
 import { createCellUiRenderFrame } from "./frame.js";
 import type { CellBuffer } from "./buffer.js";
@@ -431,6 +436,7 @@ const presentFrameWithCursor = (
   transparentGuard = false,
   window?: CellRect,
   guardCells = CELL_SURFACE_GUARD_CELLS,
+  geometry?: CellSurfaceGeometryTransform | null,
 ) => {
   const reorderBuffer = reorderDrag ? paintReorderPreview(frame, reorderDrag, theme) : null;
   cursor.beforeBasePresent();
@@ -453,6 +459,7 @@ const presentFrameWithCursor = (
       style: theme.cursorStyle,
       originRow: window?.y ?? 0,
       guardCells,
+      geometry,
       ...(fontProfile ? { fontProfile } : {}),
     });
   }
@@ -600,6 +607,8 @@ export const SemanticDom = ({
 export type CellSurfaceProps = Readonly<{
   viewport: CellSize;
   overlayViewport?: CellSize;
+  overlayPolicy?: CellOverlayViewportPolicy;
+  overlayOverflow?: "clip" | "visible";
   svgIcons?: CellSvgIcons;
   children: ReactElement<RootProps>;
   focusedId?: WidgetId | null;
@@ -623,10 +632,25 @@ export type CellSurfaceProps = Readonly<{
   onDragStateChange?: (event: CellDragEvent) => void;
   /** Requests host-owned scrolling while a drag approaches a viewport edge. */
   onAutoScrollRequest?: (request: CellAutoScrollRequest) => void;
+  /** Receives a lightweight pointer/gesture/command trace for development tooling. */
+  onDebugTrace?: (event: CellInteractionTraceEvent) => void;
+  /** Enables the bounded interaction trace buffer used by browser debug tooling. */
+  debugTrace?: boolean;
   linearSelection?: boolean;
   cellRange?: CellRangeSnapshot | null;
   onCellRangeCommand?: (command: CellRangeCommand) => void;
 }>;
+
+export type CellOverlayViewportPolicy = Readonly<{
+  mode?: "auto" | "base";
+  extraRows?: number;
+  extraColumns?: number;
+  maxRows?: number;
+  maxColumns?: number;
+}>;
+
+/** Extra Cell rows reserved for portal overlays when a host does not opt in. */
+export const CELL_SURFACE_AUTO_OVERLAY_ROWS = 3;
 
 export const CELL_SURFACE_PROBE_PROPERTY = "__chardeskCellProbeV5" as const;
 
@@ -790,6 +814,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   const {
     viewport,
     overlayViewport: requestedOverlayViewport,
+    overlayPolicy: requestedOverlayPolicy,
+    overlayOverflow = "visible",
     svgIcons,
     children,
     focusedId = null,
@@ -811,12 +837,33 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     onContextMenu,
     onDragStateChange,
     onAutoScrollRequest,
+    onDebugTrace,
+    debugTrace = false,
     linearSelection = false,
     cellRange: controlledCellRange,
     onCellRangeCommand,
   } = props;
   const guardCells = Math.max(0, Math.trunc(requestedGuardCells));
-  const overlayViewport = requestedOverlayViewport ?? viewport;
+  // A one-row toolbar is still a valid CellSurface host for Tooltip/Popover.
+  // Keep the explicit prop as an escape hatch, but give portal layers a small
+  // independent canvas by default so callers do not need to size overlays.
+  const overlayViewport = useMemo(() => {
+    if (requestedOverlayViewport) return { ...requestedOverlayViewport };
+    const policy = requestedOverlayPolicy ?? { mode: "auto" as const };
+    const extraRows = policy.mode === "base" ? 0 : Math.max(0, Math.trunc(policy.extraRows ?? CELL_SURFACE_AUTO_OVERLAY_ROWS));
+    const extraColumns = policy.mode === "base" ? 0 : Math.max(0, Math.trunc(policy.extraColumns ?? 0));
+    return {
+      width: Math.max(viewport.width, Math.min(
+        policy.maxColumns === undefined ? Number.POSITIVE_INFINITY : Math.max(viewport.width, Math.trunc(policy.maxColumns)),
+        viewport.width + extraColumns,
+      )),
+      height: Math.max(viewport.height, Math.min(
+        policy.maxRows === undefined ? Number.POSITIVE_INFINITY : Math.max(viewport.height, Math.trunc(policy.maxRows)),
+        viewport.height + extraRows,
+      )),
+    };
+  }, [requestedOverlayPolicy?.extraColumns, requestedOverlayPolicy?.extraRows, requestedOverlayPolicy?.maxColumns,
+    requestedOverlayPolicy?.maxRows, requestedOverlayPolicy?.mode, requestedOverlayViewport, viewport.height, viewport.width]);
   const fontProfile = useMemo(() => createCellUiFontProfile(requestedFontProfile), [requestedFontProfile]);
   const fontMetrics = useCellFontMetrics(fontProfile, fontSize, explicitMetrics);
   const fontAudit = useCellFontAudit(
@@ -825,6 +872,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     fontMetrics.metrics
   );
   const { metrics } = fontMetrics;
+  const resolvedOverlayViewport = useMemo(() => ({ ...overlayViewport }), [overlayViewport.width, overlayViewport.height]);
   const resolvedFeedback = useMemo(() => resolveCellFeedback(feedback), [feedback]);
   const resolvedTheme = useMemo(() => resolveCellUiTheme(theme), [theme]);
   const palette = useMemo(() => paletteOverride ?? {
@@ -847,8 +895,40 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   }, [canvasRef]);
   const cursorPresenterRef = useRef<CellCursorPresenter | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
+  const onDebugTraceRef = useRef(onDebugTrace);
+  onDebugTraceRef.current = onDebugTrace;
+  const debugTraceEnabledRef = useRef(debugTrace);
+  debugTraceEnabledRef.current = debugTrace;
+  const debugTraceRef = useRef<CellInteractionTraceEvent[]>([]);
+  const emitDebugTrace = (event: CellInteractionTraceEvent) => {
+    if (!debugTraceEnabledRef.current && !onDebugTraceRef.current) return;
+    debugTraceRef.current = [...debugTraceRef.current.slice(-127), event];
+    onDebugTraceRef.current?.(event);
+  };
   const pointerFocusRequestRef = useRef(false);
   const [activeFocusId, setActiveFocusId] = useState<WidgetId | null>(null);
+  const scenePointForClient = useCallback((point: Readonly<{ clientX: number; clientY: number }>) => {
+    const surface = surfaceRef.current;
+    if (!surface) return null;
+    return createCellSurfaceGeometryTransform({
+      surface,
+      viewport,
+      overlayViewport: resolvedOverlayViewport,
+      metrics,
+      guardCells,
+    }).clientToScenePoint(point);
+  }, [guardCells, metrics, resolvedOverlayViewport, viewport]);
+  const scenePositionForClient = useCallback((point: Readonly<{ clientX: number; clientY: number }>) => {
+    const surface = surfaceRef.current;
+    if (!surface) return null;
+    return createCellSurfaceGeometryTransform({
+      surface,
+      viewport,
+      overlayViewport: resolvedOverlayViewport,
+      metrics,
+      guardCells,
+    }).clientToScenePosition(point);
+  }, [guardCells, metrics, resolvedOverlayViewport, viewport]);
   const focusFromPointer = (surface: HTMLDivElement) => {
     setActiveFocusId(null);
     pointerFocusRequestRef.current = true;
@@ -864,35 +944,45 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   useLayoutEffect(() => {
     const surface = surfaceRef.current;
     if (!surface) return;
-    const rectFor = (bounds: CellRect): DOMRect | null => {
-      const origin = surface.getBoundingClientRect();
-      return new DOMRect(
-        origin.left + (bounds.x + guardCells) * metrics.cellWidth,
-        origin.top + (bounds.y + guardCells) * metrics.cellHeight,
-        bounds.width * metrics.cellWidth,
-        bounds.height * metrics.cellHeight,
-      );
-    };
+    const geometryInput = { surface, viewport, overlayViewport: resolvedOverlayViewport, metrics, guardCells } as const;
+    const transform = () => createCellSurfaceGeometryTransform(geometryInput);
+    const rectFor = (bounds: CellRect): DOMRect | null => transform().sceneToClientRect(bounds);
     return registerCellSurfaceGeometry(surface, {
       contentRect: () => rectFor({ x: 0, y: 0, ...viewport }),
       targetRect: (id) => {
         const entry = frameRef.current?.scene.entries.get(id);
         return entry?.paintVisible ? rectFor(entry.layoutBounds) : null;
       },
+      inspect: (point) => {
+        const frame = frameRef.current;
+        return frame ? inspectCellFrame(frame, point) : null;
+      },
+      inspectWidget: (id) => {
+        const frame = frameRef.current;
+        return frame ? inspectCellWidget(frame, id) : null;
+      },
+      frame: () => frameRef.current,
+      trace: () => [...debugTraceRef.current],
       snapshot: () => {
         const elementRectPx = surface.getBoundingClientRect();
         const canvasRectPx = surface.querySelector("canvas")?.getBoundingClientRect() ?? null;
+        const overlayCanvasRectPx = surface.querySelector("[data-cell-overlay-root]")?.getBoundingClientRect() ?? null;
+        const resolved = transform();
         return {
           elementRectPx,
           canvasRectPx,
+          overlayCanvasRectPx,
           viewport,
+          overlayViewport: resolvedOverlayViewport,
           metrics,
           guardCells: guardCells,
+          contentOriginPx: resolved.contentOriginPx,
           contentRectCells: { x: 0, y: 0, width: viewport.width, height: viewport.height },
         };
       },
+      transform,
     });
-  }, [canvasRef, metrics, viewport]);
+  }, [canvasRef, guardCells, metrics, resolvedOverlayViewport, viewport]);
   const hostedSurface = () => !!surfaceRef.current?.closest("[data-cell-overlay-portal],[data-cell-toast]");
   const presentationMetricsRef = useRef(metrics);
   const [controller] = useState(() => new CellInteractionController(
@@ -903,6 +993,12 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       setInteractionRevision((value) => value + 1);
     },
     (command) => {
+      emitDebugTrace({
+        type: "command",
+        commandType: command.type,
+        targetId: "targetId" in command ? command.targetId : undefined,
+        frameRevision: frameRef.current?.revision ?? null,
+      });
       if (command.type === "text-preview-scroll") {
         runtimeRef.current?.setTextAreaPreviewScroll(command.targetId, {
           x: command.scrollX,
@@ -1035,7 +1131,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     : false;
   const animationClock = useCellAnimationClock({ playing: hasAnimatedWidget, fps: 60 });
   const animationTimeMs = hasAnimatedWidget ? animationClock.elapsedMs : 0;
-  const pointerAppearance = usePointerAppearance(canvasRef, frame, metrics, guardCells);
+  const pointerAppearance = usePointerAppearance(canvasRef, frame, metrics, guardCells, scenePointForClient);
   const hoveredId = activationFeedbackRef.current.settling
     ? null
     : pointerAppearance.hoveredId;
@@ -1268,6 +1364,13 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       syncManipulatingIds();
     }
     const cursor = cursorPresenterRef.current ??= new CellCursorPresenter(canvas);
+    const geometry = createCellSurfaceGeometryTransform({
+      surface,
+      viewport,
+      overlayViewport: resolvedOverlayViewport,
+      metrics,
+      guardCells,
+    });
     presentFrameWithCursor(
       cursor,
       canvas,
@@ -1282,16 +1385,18 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       hostedSurface(),
       window ?? undefined,
       guardCells,
+      geometry,
     );
     canvas.style.top = `${(window?.y ?? 0) * metrics.cellHeight}px`;
     let allPlanesPresented = true;
+    // Portal overlays (tooltips, menus, popovers) use the independent overlay
+    // viewport. The base surface may be only one Cell high while the overlay
+    // intentionally extends beyond it; using the base paint window here clips
+    // a valid tooltip before it reaches the browser canvas.
     for (const plane of current.overlayPlanes) {
       const overlayCanvas = canvasRef.overlay(plane.rootId);
       if (!overlayCanvas) { allPlanesPresented = false; continue; }
-      const paintWindow = window
-        ? { x: 0, y: window.y, width: current.overlayBuffer.width, height: window.height }
-        : undefined;
-      const visible = paintWindow ? intersectSceneRects(plane.bounds, paintWindow) : plane.bounds;
+      const visible = plane.bounds;
       if (visible.width <= 0 || visible.height <= 0) {
         overlayCanvas.style.display = "none";
         overlayCanvas.width = 0;
@@ -1299,10 +1404,11 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         continue;
       }
       overlayCanvas.style.display = "block";
-      const windowHeight = window?.height ?? current.overlayBuffer.height;
-      overlayCanvas.style.clipPath = `inset(${Math.max(0, plane.bounds.y - (window?.y ?? 0)) * metrics.cellHeight}px ${Math.max(0,
-        current.overlayBuffer.width - plane.bounds.x - plane.bounds.width) * metrics.cellWidth}px ${Math.max(0,
-        (window?.y ?? 0) + windowHeight - plane.bounds.y - plane.bounds.height) * metrics.cellHeight}px ${plane.bounds.x * metrics.cellWidth}px)`;
+      const overlayWidth = current.overlayBuffer.width * metrics.cellWidth;
+      const overlayHeight = current.overlayBuffer.height * metrics.cellHeight;
+      overlayCanvas.style.width = `${overlayWidth}px`;
+      overlayCanvas.style.height = `${overlayHeight}px`;
+      overlayCanvas.style.clipPath = geometry.overlayPlaneClipPath(plane.bounds);
       presentFrame(
         overlayCanvas,
         current,
@@ -1315,11 +1421,18 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         {
           buffer: current.overlayBuffer,
           viewport: plane.bounds,
-          window: paintWindow,
+          window: undefined,
           transparent: true,
+          guardCells: 0,
         }
       );
-      overlayCanvas.style.top = `${(window?.y ?? 0) * metrics.cellHeight}px`;
+      // Overlay paint uses a zero guard so its buffer has the exact overlay
+      // dimensions. Its DOM origin still has to share the base content
+      // origin; otherwise the default one-cell base guard shifts every
+      // portal up by one row and desynchronizes visual rows from hit-test
+      // coordinates.
+      overlayCanvas.style.left = `${guardCells * metrics.cellWidth}px`;
+      overlayCanvas.style.top = `${guardCells * metrics.cellHeight}px`;
     }
     presentationMetricsRef.current = metrics;
     surfaceRef.current?.dispatchEvent(new Event("cell-surface-geometry-change", { bubbles: true }));
@@ -1532,6 +1645,12 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
 
   const dispatch = useCallback((command: WidgetCommand | null) => {
     const current = frameRef.current;
+    emitDebugTrace({
+      type: "command",
+      commandType: command?.type ?? "none",
+      targetId: command && "targetId" in command ? command.targetId : undefined,
+      frameRevision: current?.revision ?? null,
+    });
     if (command?.type === "scroll" || command?.type === "text-preview-scroll") {
       revealRecentScroll(command.targetId);
     }
@@ -1546,7 +1665,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       if (!current || event.ctrlKey || !canvasRef.owns(event.target)) return;
       const result = resolveWheelInput(current, {
         type: "wheel",
-        point: pxToCellPoint(event, surface.getBoundingClientRect(), metrics, guardCells),
+        point: scenePointForClient(event) ?? pxToCellPoint(event, surface.getBoundingClientRect(), metrics, guardCells),
         deltaX: event.deltaX,
         deltaY: event.deltaY,
       });
@@ -1559,7 +1678,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
 
   const textDragPointFor = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = surfaceRef.current?.getBoundingClientRect();
-    return bounds ? pxToCellPoint(event, bounds, metrics, guardCells) : null;
+    return scenePointForClient(event);
   };
 
   const isSurfaceCanvas = (target: EventTarget | null) =>
@@ -1594,7 +1713,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       const before = view.scrollY;
       view.scrollBy({ top: (atTop ? -1 : 1) * speed, behavior: "instant" });
       if (view.scrollY === before) return;
-      const point = pxToCellPoint(drag, surface.getBoundingClientRect(), metrics, guardCells);
+      const point = scenePointForClient(drag);
+      if (!point) return;
       if (point.x !== drag.head.x || point.y !== drag.head.y) {
         linearDragRef.current = { ...drag, head: point };
         const snapshot = createCellLinearRangeSnapshot(current.buffer, drag.anchor, point);
@@ -1617,6 +1737,14 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     signals: readonly GestureSignal[]
   ) => {
     for (const signal of signals) {
+      emitDebugTrace({
+        type: "gesture",
+        phase: signal.phase,
+        pointerId: signal.pointerId,
+        targetId: signal.targetId,
+        point: { ...signal.point },
+        frameRevision: current.revision,
+      });
       if (signal.kind === "drag" && current.tree.nodes.get(signal.targetId)?.drag) {
         const point = signal.point;
         const targets = [...current.scene.entries.values()].flatMap((entry) => {
@@ -1782,6 +1910,17 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     });
   };
 
+  // Render-time projection for hosted layers. Event handlers build a fresh
+  // transform when they run; this snapshot keeps all visual children in one
+  // coordinate contract for the current render.
+  const renderGeometry = surfaceRef.current ? createCellSurfaceGeometryTransform({
+    surface: surfaceRef.current,
+    viewport,
+    overlayViewport: resolvedOverlayViewport,
+    metrics,
+    guardCells,
+  }) : null;
+
   return (
     <div
       ref={surfaceRef}
@@ -1804,6 +1943,8 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       data-cell-confirmation-session={frame?.confirmation?.sessionId}
       data-cell-confirmation-phase={frame?.confirmation?.phase}
       data-cell-overlay-count={frame?.overlayPlanes.length || undefined}
+      data-cell-overlay-overflow={overlayOverflow}
+      data-cell-overlay-viewport={`${overlayViewport.width}x${overlayViewport.height}`}
       data-cell-focus-visible={frame?.semantics.focusedId
         && frame.tree.nodes.get(frame.semantics.focusedId)?.focusVisible
         ? true
@@ -1816,6 +1957,13 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (!frame) return;
         const point = textDragPointFor(event);
         if (!point) return;
+        emitDebugTrace({
+          type: "pointer",
+          phase: "down",
+          pointerId: event.pointerId,
+          point: { ...point },
+          frameRevision: frame.revision,
+        });
         if (!isSurfaceCanvas(event.target)) {
           const textarea = event.target instanceof HTMLTextAreaElement ? event.target : null;
           const editorId = textarea?.dataset.cellTextEditor;
@@ -1884,7 +2032,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (immediate?.type === "focus") dispatch(immediate);
         const targetId = eventsRef.current.resolveTarget(frame, point, event.pointerId);
         const bounds = surfaceRef.current!.getBoundingClientRect();
-        const precisePoint = pxToCellPosition(event, bounds, metrics, guardCells);
+        const precisePoint = scenePositionForClient(event) ?? pxToCellPosition(event, bounds, metrics, guardCells);
         const candidates = gestureCandidatesForFrame(frame, targetId ? getEventPath(frame.scene, targetId) : [], point, precisePoint);
         const canSelect = linearSelection && rangeEditable && event.pointerType === "mouse"
           && !candidates.some((candidate) => candidate.kind === "drag") && !onScrollbar
@@ -1970,14 +2118,21 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         });
         const bounds = surfaceRef.current!.getBoundingClientRect();
         const signals = controller.movePointer(frame, event.pointerId, point,
-          pxToCellPosition(event, bounds, metrics, guardCells));
+          scenePositionForClient(event) ?? pxToCellPosition(event, bounds, metrics, guardCells));
         applyGestureSignals(frame, signals);
       }}
       onPointerUp={(event: PointerEvent<HTMLDivElement>) => {
         const gesture = gesturesRef.current.has(event.pointerId);
         const point = textDragPointFor(event);
         try {
-          if (gesture && frame && point) {
+        if (gesture && frame && point) {
+            emitDebugTrace({
+              type: "pointer",
+              phase: "up",
+              pointerId: event.pointerId,
+              point: { ...point },
+              frameRevision: frame.revision,
+            });
             eventsRef.current.dispatch(frame, {
               type: "pointer-up",
               pointerId: event.pointerId,
@@ -1985,7 +2140,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
             });
             const bounds = surfaceRef.current!.getBoundingClientRect();
             const signals = controller.endPointer(frame, event.pointerId, point,
-              pxToCellPosition(event, bounds, metrics, guardCells));
+              scenePositionForClient(event) ?? pxToCellPosition(event, bounds, metrics, guardCells));
             applyGestureSignals(frame, signals);
           }
         } finally {
@@ -2054,6 +2209,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       style={{ position: "relative",
         width: (viewport.width + 2 * guardCells) * metrics.cellWidth,
         height: (viewport.height + 2 * guardCells) * metrics.cellHeight,
+        overflow: overlayOverflow === "clip" ? "hidden" : "visible",
         outline: "none",
         pointerEvents: hostedSurface() ? "none" : undefined }}
     >
@@ -2062,7 +2218,10 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         style={{ display: "block", position: "absolute", left: 0, top: 0,
           cursor: pointerAppearance.cursor }}
         aria-hidden="true"
-        data-cell-text={frame ? formatCellBuffer(frame.buffer, { trimEnd: true }) : undefined}
+        data-cell-text={frame ? formatCellBuffer(frame.buffer, {
+          region: frame.scene.viewport,
+          trimEnd: true,
+        }) : undefined}
       />
       {frame?.overlayPlanes.map((plane) => (
         <canvas
@@ -2079,23 +2238,17 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           style={{
             display: "block",
             position: "absolute",
-            inset: 0,
+            left: 0,
+            top: 0,
             zIndex: plane.layer,
             cursor: pointerAppearance.cursor,
-            clipPath: `inset(${plane.bounds.y * metrics.cellHeight}px ${Math.max(
-              0,
-              (frame.scene.overlayViewport.width - plane.bounds.x - plane.bounds.width)
-                * metrics.cellWidth
-            )}px ${Math.max(
-              0,
-              (frame.scene.overlayViewport.height - plane.bounds.y - plane.bounds.height)
-                * metrics.cellHeight
-            )}px ${plane.bounds.x * metrics.cellWidth}px)`,
+            clipPath: renderGeometry?.overlayPlaneClipPath(plane.bounds),
           }}
         />
       ))}
       {frame && svgIcons && <CellSvgIconLayer frame={frame} metrics={metrics}
-        icons={svgIcons} foreground={resolvedTheme.foreground} />}
+        icons={svgIcons} foreground={resolvedTheme.foreground}
+        geometry={renderGeometry} />}
       {hostedSurface() && <div ref={registerHitRegion}
         data-cell-hit-region="" aria-hidden="true" style={{
         position: "absolute",
@@ -2137,6 +2290,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           frame={frame}
           metrics={metrics}
           guardCells={guardCells}
+          geometry={renderGeometry}
           dispatch={dispatch}
           focusTarget={(targetId) => {
             if (focusRef.current.focusedId !== targetId) {

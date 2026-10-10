@@ -3,6 +3,12 @@ title: Canvas Reading
 description: Read a Canvas through a bounded, automatically scaled text viewport.
 ---
 
+| Read this page when | An Agent needs to inspect a live Canvas or Slide as bounded text. |
+| --- | --- |
+| First answer | `canvas_read` is read-only, preserves the user's view, and returns a bounded text projection. |
+| Boundary | It reads the Cell projection; it does not change camera, selection, or document state. |
+| Follow-up | Use the [WebMCP contract](/development/architecture/webmcp) for tool ownership and the nearest Canvas read tests for evidence. |
+
 `canvas_read` exposes a Canvas through WebMCP and Site Tools. `canvasId`
 is optional: full-access local MCP can target the short persistent ID returned by
 `canvas_manage` with the `list` action; that action returns

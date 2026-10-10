@@ -1,0 +1,74 @@
+---
+title: Visual Theme and Ownership
+description: Theme tokens, rendering bridges, artifact palettes, and ownership direction.
+---
+
+| Read this page when | A theme token, palette, rendering bridge, or artifact color ownership changes. |
+| --- | --- |
+| First answer | Which shared visual contract owns this decision? |
+| Boundary | This page owns theme tokens and rendering bridges; product placement and workflow remain outside the shared theme. |
+| Follow-up | Read the linked source and verification evidence after selecting the contract. |
+
+## Ownership path
+
+The visual ownership path has one direction:
+
+`@chardesk/ui theme -> shared rx recipe -> shared UI primitive -> product composition`
+
+`UiProvider` is the Host runtime boundary. It owns localized primitive messages
+and light/dark/system theme state; the shipped default is light. Host code uses
+`useUiTheme` and never imports `next-themes`. Sonner, Radix, and Base UI are
+package internals. Domain-facing feedback keeps its application adapter but
+publishes through the package's stable `notify` API.
+
+- [`packages/ui/theme.css`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/ui/theme.css)
+  owns semantic color, surface, elevation, and viewport-layer tokens.
+- [`packages/ui/src/recipes.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/ui/src/recipes.ts)
+  owns reusable visual and interaction recipes.
+- [`packages/ui/src`](https://github.com/Sayhi-bzb/CharDesk/tree/main/packages/ui/src)
+  owns every domain-neutral primitive and composition. Products consume the
+  package root; they do not maintain an application-local primitive layer.
+
+## Rendering and theme
+
+Canvas DOM and Canvas-rendered interaction affordances share the same Host
+contract. `readUiRuntimeTheme` is the only bridge from CSS semantics to
+imperative drawing values. `CanvasAppearanceBridge` publishes one typed theme
+snapshot and revision to the main renderer, Minimap, slide preview, and imperative
+commands so theme changes invalidate every affected layer together. Selection,
+cursor, handles, picker, viewport chrome, and preview defaults belong to this
+bridge. Document cell colors, ANSI palettes,
+and CharGraph render themes remain artifact-owned. Freeform Canvas projects
+those colors through the Host-resolved `CanvasArtifactPalette`; the canonical
+`#000000` foreground follows the Host only on cells without an explicit
+background. Foregrounds paired with a background and all other colors remain
+literal. Main Canvas, CellFrame previews, Minimap, and PNG export consume that
+same runtime snapshot. Slide pages retain their white-paper palette. Theme state
+does not enter document, history, session, or collaboration data.
+
+Display owns paired Light and Dark content palettes shared by CharGraph and
+theme-aware Canvas templates. Paste and template Drop capture the resolved Host
+theme once, then materialize ordinary literal Cell colors. Sidebar and drag
+previews follow the active content palette, including its user overrides;
+switching Host theme never recolors existing Freeform content. Display settings
+edit the overrides for the currently resolved Host theme, while renderer feature
+toggles remain shared. Profiles saved by the former Light-only renderer migrate
+their color overrides to Light; Dark starts from its built-in palette. Template
+tokens are catalog metadata and never enter document or collaboration data.
+
+[`CanvasTemplatePlacementProvider`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/widgets/canvas-editor/CanvasTemplatePlacement.tsx)
+owns phone template placement across Sidebar unmounts. Tap arms placement;
+long press transfers the pointer to a persistent owner. Both close the Sheet
+and use the same preview, coordinate conversion, and insertion command as native
+desktop Drop. Pending placement is transient and cancels on session changes;
+only insertion enters history. [Touch and native Drop verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/template-placement-mobile.spec.ts).
+
+[`Editor Host policy`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/widgets/editor-chrome/host-policy.ts)
+owns phone presentation below 768px. Phones retain Hand, Select, Inspector,
+templates, common characters, Emoji, and TOC navigation; precision drawing,
+TOC management, advanced character catalogs, split view, and advanced settings
+remain available on larger layouts. Settings search follows the same policy.
+Hidden controls never reset artifact data or saved configuration.
+The phone bottom dock groups Minimap, Hand, Select, and Undo in one centered
+control surface with one tooltip host; Minimap opens above its trigger.
+[Responsive verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/mobile-host-policy.spec.ts).

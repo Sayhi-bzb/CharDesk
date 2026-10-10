@@ -8,7 +8,7 @@ CharDesk 让人和由语言模型驱动的 Agent 共用一份视觉化的 Unicod
 
 [打开 Canvas](https://canvas.chardesk.com/) · [探索 Cell UI](https://ui.chardesk.com/)
 
-[产品首页](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/)
+[文档](https://chardesk.com/docs/) · [产品首页](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/)
 
 ## 从 Agent 开始
 

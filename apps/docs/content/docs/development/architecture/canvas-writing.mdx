@@ -3,6 +3,12 @@ title: Canvas Writing
 description: Draw a literal Projection stroke at an original Cell coordinate.
 ---
 
+| Read this page when | An Agent needs to draw literal text at a known Canvas coordinate. |
+| --- | --- |
+| First answer | `canvas_write` appends one literal Unicode stroke to the Projection layer. |
+| Boundary | It does not parse Markdown or ANSI; use `canvas_render` for material input. |
+| Follow-up | Read the [WebMCP contract](/development/architecture/webmcp), then verify coordinate and style handling. |
+
 `canvas_write` belongs to the Canvas group in the [WebMCP contract](/development/architecture/webmcp).
 It draws one continuous literal-Unicode stroke into the Projection layer.
 For Markdown, ANSI, or other material input, use `canvas_render`.

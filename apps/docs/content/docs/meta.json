@@ -2,6 +2,7 @@
   "title": "CharDesk Documentation",
   "pages": [
     "index",
-    "development"
+    "development",
+    "user"
   ]
 }

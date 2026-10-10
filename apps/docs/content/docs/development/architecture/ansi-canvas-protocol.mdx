@@ -3,6 +3,12 @@ title: LLM–Human Text Protocol
 description: ANSI and Unicode text conversion through deterministic Canvas cells.
 ---
 
+| Read this page when | You change the text boundary between an Agent, a human, and Canvas cells. |
+| --- | --- |
+| First answer | One rendering-neutral cell protocol carries Unicode and ANSI input through Canvas and back to ANSI output. |
+| Boundary | Syntax, layout, diagnostics, and compatibility belong to the v1 specification; authoring guidance belongs to the CharDesk skill. |
+| Follow-up | Read the [v1 specification](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/protocol/spec/v1.md), then the package tests. |
+
 CharDesk uses one rendering-neutral cell protocol as the text boundary between
 LLMs, humans, and Canvas:
 

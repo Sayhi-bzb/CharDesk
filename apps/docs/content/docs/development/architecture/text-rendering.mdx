@@ -1,129 +1,19 @@
 ---
 title: External Text Rendering
-description: Plugin boundary for converting pasted source text into editable Canvas cells.
+description: Route source decoding, syntax selection, feature extensions, and host boundaries for editable Canvas cells.
 ---
 
-All text hosts consume one compiler contract:
+| Read this page when | A pasted, imported, or fenced text source must become editable Canvas cells. |
+| --- | --- |
+| First answer | Is the decision about the compiler pipeline, syntax selection, feature extensions, or a host boundary? |
+| Boundary | This page routes renderer contracts; Canvas mutation and persistence remain outside the renderer. |
+| Reading rule | Choose one focused contract below; Canvas mutation and persistence remain outside the renderer. |
+| Follow-up | Open the matching pipeline or features page, then follow its source and verification links. |
 
-`source + explicit kind -> CharGraph compiler -> Protocol row spans -> host`
+| Decision | Contract |
+| --- | --- |
+| Which source kinds, stages, and fallback rules apply? | [Text rendering pipeline](/development/architecture/text-rendering-pipeline) |
+| Which Markdown, ANSI, Mermaid, math, JSON/YAML, theme, and CLI boundaries apply? | [Text rendering features and hosts](/development/architecture/text-rendering-features) |
 
-`chargraph` runs structural syntax such as Markdown, Mermaid, fenced data, math,
-and block layout. `chardesk`, `ansi`, and `plain` are explicit compiled or
-literal inputs and never enter structural recognition. Canvas paste, document
-import, Slides `chargraph` fences, CLI, Viewer, and legacy migration share this
-contract. Rendering consumes compiled documents and does not select syntax.
-
-[`document/public.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/document/public.ts)
-owns the plugin registry, active profile, persistence, and conversion result. `actions`
-only snapshots clipboard data and passes the result to Canvas. The compact boundary groups
-adjacent graphemes with one style; legacy callers may explicitly materialize cells. Renderer
-settings affect future paste and never reinterpret existing cells.
-
-Rendering has four stages: syntax decode, structural transform, style composition, and cell
-layout. ANSI is a decoder backed by `@chardesk/protocol`; Markdown delegates parsing and character
-layout to `@chardesk/chargraph/markdown`. CharGraph renderers return styled fragments with source
-origins and diagnostics. The compositor projects explicit ANSI spans through those origins before
-protocol layout, which remains the only stage that owns grapheme segmentation, CJK width, tabs,
-and coordinates. ANSI/OSC8 serialization is an explicit CharGraph output boundary for CLI or copy,
-not an internal intermediate representation.
-
-Auto composes explicit ANSI and Markdown instead of selecting one renderer for the whole source.
-An ESC-less empty reset (`[m`) is ambiguous evidence and cannot activate ANSI by itself, preventing
-Markdown links beginning with `[m` from losing characters. Standard escapes, OSC 8, and non-empty
-supported SGR are explicit. Forced ANSI still accepts `[m`. When both syntaxes style one range,
-ANSI foreground, background, and OSC 8 href win; text attributes merge; Markdown controls visible
-structure. Raw is a fallback transformer: it runs only when no decoder or structural transformer
-recognized the source, while forced Raw selects that same plugin directly. ANSI-only input therefore
-materializes styled cells without passing through Raw. `TextRenderResult.pipeline` records the
-applied stages.
-
-Markdown renders Codex-style headings, inline code, links, blockquotes, lists, thematic
-breaks, fenced code, and GFM tables at natural content width. Layout never depends on the
-viewport, zoom, or paste position. Disabled inline rules consume delimiters without styling;
-disabled block rules preserve their source slice. Raw mode preserves all delimiters. Renderer
-results may be asynchronous, and clipboard commands await them before mutating Canvas. Inputs
-at or above 50,000 UTF-16 code units render in a module worker. Worker tasks may be cancelled,
-and a worker failure is surfaced instead of retrying a large render on the main thread. The
-protocol layout is a streaming grapheme pass; a 10,000-line result stays as row spans until
-Canvas applies one compact CellPlane operation.
-
-CharGraph owns the browser-safe Markdown core adapted from `marked-terminal`, Shiki code
-highlighting, and independent Mermaid and math renderers. Each built-in Markdown module registers
-its parser extensions, feature identities and color defaults, and semantic style contribution once.
-The module registry derives the default extension manifest, public feature contracts, and render
-options; the theme layer only aggregates module contributions. Markdown syntax extensions
-may contribute `marked` tokenizers and transform tokens or fenced languages into the same fragment
-IR. CharGraph's built-in extension manifest registers Alert, Diff, JSON/YAML trees, Mermaid,
-Cartesian charts, and math once for rendering and detection. The document feature registry binds those engine features to
-Canvas labels, settings groups, color-row layout, and legacy profile aliases; it does not own parser
-registration or renderer styles. Unsupported, invalid, or oversized Mermaid input falls back to the complete fenced
-source with a diagnostic; disabling Mermaid keeps the inner source as an ordinary code block.
-Neither renderer imports terminal capability detection or Node polyfills. Markdown consumes
-`marked` tokens through a character renderer rather than its HTML renderer. Unsupported images and
-raw HTML preserve their original source with a diagnostic; generated HTML cannot leak into Canvas
-output.
-
-The [`chardesk` CLI](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cli/README.md) is a headless host of the same
-contracts. CharGraph input becomes styled fragments and Protocol layout; `.chardesk` input enters
-at Protocol decode. `check` stops at that compiled document. `render` sends it to a plain, ANSI,
-ESC-less CharDesk, or PNG backend; only PNG creates the shared Rendering model and uses its Canvas
-painter with vendored fonts on Node Canvas. Node resolves a vendored font shard per grapheme; the
-CLI isolates the native PNG painter so a backend signal becomes `raster-backend-crash`. ANSI serialization is an explicit output backend, never
-an internal step toward PNG. Browser workers, profiles, clipboard commands, and persistence remain
-application concerns.
-
-Container extensions may call the context's `renderBlocks` capability to render child `marked`
-tokens through the same rules, styles, source mapping, diagnostics, and extension set. GitHub Alerts
-use `marked-alert` for tokenization and render `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, and `CAUTION`
-as a colored left rail while preserving nested Markdown. Unified `diff` and `patch` fences classify
-metadata, hunks, added, deleted, and context lines; additions and deletions receive semantic foreground
-and lightly mixed background colors. Diff does not infer a programming language, compare words, or
-apply patches.
-
-JSON and YAML tree extensions turn `json`, `jsonc`, `yaml`, and `yml` fences into the same compact
-Unicode key tree. JSON uses `jsonc-parser` offsets; strict JSON and comment-tolerant JSONC remain
-separate dialects. YAML uses `yaml` document nodes, preserves document order, anchors, aliases, and
-merge keys without resolving aliases, and rejects complex mapping keys that the compact grammar
-cannot represent. The two features have independent switches and semantic color slots. Disabling a
-tree returns the fence to Shiki; invalid, unsupported, or bounded-out input preserves the complete
-fenced source with a diagnostic. Tree conversion is limited to fenced Markdown and does not detect
-bare clipboard data. Connectors, keys, array indices, strings, numbers, booleans, nulls, and empty
-containers have separate roles; YAML adds a reference role for anchors, aliases, and tags. Keys use
-color without font emphasis. Previous `keyword` overrides expand across boolean, null, empty, and
-YAML reference roles when profiles are decoded.
-
-Math uses Temml's public TeX-to-MathML output and a DOM-free MathML adapter. Inline `$…$` and
-`\(…\)` become compact Unicode; block `$$…$$`, `\[…\]`, and `math`/`tex`/`latex` fences become a
-baseline-aware two-dimensional character box before flattening to fragments. Layout cells preserve
-MathML semantics through fragment output: identifiers use italic content, numbers and text remain
-upright, operators use the accent role, and generated fraction, radical, and fence glyphs use the
-muted structure role. MathML invisible operators U+2061–U+2064 are removed before visible cells
-are created. Inline and block rules have independent switches and share one Math palette
-with content, operator, and structure slots. The adapter owns character-cell layout only; it never
-parses TeX or exposes Temml's private syntax tree. Invalid or bounded-out formulas preserve their
-complete Markdown source with a diagnostic and the Renderer Theme danger color. Previous inline
-and block foreground overrides migrate to shared content, preferring inline when both exist.
-
-`TextRenderProfile.renderTheme` stores optional semantic token overrides; the resolved Renderer
-Theme is independent from the host UI theme. Profile v2 stores each rule's enabled state and local
-color overrides under `features`. CharGraph's Renderer Theme owns the shared token palette;
-Markdown and Mermaid own their semantic defaults and style factories. Canvas and the CharGraph
-showcase are separate hosts of those contracts.
-`rendering/features.ts` owns settings labels, host grouping, compatibility, and persistence; its
-public registry derives identity and slot defaults from CharGraph contracts. Display settings and
-settings search derive from that registry rather than parallel UI maps.
-Style precedence is explicit ANSI, feature color override, Renderer Theme token, then inherited paste
-style. Each feature definition owns its slots' token or inheritance defaults.
-Quote and heading colors belong to their markers; inline code owns foreground and background
-slots; table headers own foreground and background slots while separators are independent.
-Fenced-code scopes remain owned by Shiki. CharGraph derives their token colors from the resolved
-Renderer Theme; the bare library API keeps `github-light` as its compatibility fallback. Mermaid emits semantic roles for node, edge,
-label, arrow, container, chart grid, and data series cells; the document registry maps those roles
-to Renderer Theme tokens and feature-local overrides. Node fill remains transparent by default.
-Persisted single-foreground Mermaid settings expand across the new foreground roles, while profile
-v1 rules and global color keys migrate to feature-local profile v2 settings on first read. Like every renderer
-setting, style changes affect future paste only because Canvas stores materialized cells.
-
-Verification lives in
-[`runtime.test.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/document/rendering/runtime.test.ts)
-and `packages/chargraph/src/markdown.test.ts`, plus the clipboard integration tests.
+Rendering produces a materialized result; Canvas owns mutation and persistence.
+The focused pages own the detailed renderer contracts and verification links.

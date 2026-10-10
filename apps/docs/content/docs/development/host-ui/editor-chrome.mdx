@@ -3,6 +3,12 @@ title: Editor Chrome
 description: Editor layout, form factor, viewport, and layer ownership.
 ---
 
+| Read this page when | You change Host chrome layout, form-factor behavior, viewport reservation, or layer ownership. |
+| --- | --- |
+| First answer | `EditorChromeLayout` places product chrome while widgets provide slot content without viewport positioning. |
+| Boundary | Host chrome owns surface composition and reservation; Canvas owns document state and camera authority. |
+| Follow-up | Read [Visual composition](/development/host-ui/visual-composition), then trace the relevant chrome region and tests. |
+
 `EditorChromeProvider` derives form factor from the editor container, not the
 window. `EditorChromeLayout` places product chrome; widgets provide slot content
 without viewport positioning. The resolved Host Contract combines host policy,

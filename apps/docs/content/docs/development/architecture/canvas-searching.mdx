@@ -3,6 +3,12 @@ title: Canvas Searching
 description: Locate rendered text in original Cell coordinates.
 ---
 
+| Read this page when | An Agent needs to find rendered text in a Canvas or current Slide page. |
+| --- | --- |
+| First answer | `canvas_search` searches rendered Cells and returns original coordinates without changing the view. |
+| Boundary | Search is read-only and excludes source files, rulers, style notes, and sampled maps. |
+| Follow-up | Read the [WebMCP contract](/development/architecture/webmcp), then verify query and position behavior in the search tests. |
+
 `canvas_search` searches the active Canvas or current Slide page's rendered
 Cells. It is read-only, works on source-backed projections, and does not move the
 camera or change interaction. Source files, read rulers, style notes, and sampled

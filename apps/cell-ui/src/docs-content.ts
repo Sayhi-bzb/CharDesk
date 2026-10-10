@@ -1523,6 +1523,7 @@ function Layers() {
 console.log(snapshot?.text);` },
       { id: "audit", title: "Font audit", body: "Set fontAudit explicitly to verify font measurements against Cell metrics. A ready font is measurable, not necessarily fitting every Cell. Use screenshots for rasterization, color, and DPR; use probes for text, borders, clipping, scrollbars, and interaction results." },
       { id: "pilots", title: "Headless and browser tests", body: "TestPilot consumes the same interaction controller as the browser. Verify command/state contracts headlessly and use browser E2E for focus, native input, font loading, and Canvas presentation." },
+      { id: "agent-default", title: "Agent inspection", body: "Browser hosts should installCellDebugBridge() once in development. It publishes listSurfaces, snapshot, inspect, verify, trace, references, and resolveRef on window.__CELL_UI_DEBUG__ even when the visual overlay is disabled. Add ?cell-debug=1 only for CellInspectorOverlay owner highlights; agents should use the bridge rather than DOM selectors." },
     ],
   },
 ];

@@ -13,6 +13,7 @@ import type {
   SceneEntry,
   WidgetId,
 } from "./types.js";
+import { cellDebugRefFor } from "./debug-ref.js";
 
 export type CellProbeCell = Readonly<{
   x: number;
@@ -21,6 +22,7 @@ export type CellProbeCell = Readonly<{
   width: 1 | 2;
   continuation: boolean;
   ownerId: WidgetId | null;
+  ownerRef?: string | null;
   style: CellTextStyle;
 }>;
 
@@ -92,6 +94,7 @@ export type CellProbeSnapshot = Readonly<{
   overlayViewport: CellSize;
   overlays: readonly Readonly<{
     rootId: WidgetId;
+    rootRef?: string | null;
     bounds: CellRect;
     text: string;
     cells: readonly CellProbeCell[];
@@ -99,7 +102,9 @@ export type CellProbeSnapshot = Readonly<{
   text: string;
   cells: readonly CellProbeCell[];
   focusedId: WidgetId | null;
+  focusedRef?: string | null;
   activeFocusId: WidgetId | null;
+  activeFocusRef?: string | null;
   invalidation: FrameInvalidation;
   presentation?: CellProbePresentation;
 }>;
@@ -142,6 +147,7 @@ const cloneCell = (cell: Cell, x: number, y: number): CellProbeCell => ({
   width: cell.width,
   continuation: cell.continuation,
   ownerId: cell.ownerId,
+  ownerRef: cellDebugRefFor(cell.ownerId),
   style: cloneStyle(cell.style),
 });
 
@@ -154,10 +160,15 @@ export const captureCellProbe = (
   frame: FrameSnapshot,
   options: CellProbeOptions = {}
 ): CellProbeSnapshot => {
-  const region = frame.buffer.normalizeRegion(options.region);
+  // Keep the composite projection for the requested base viewport. This
+  // preserves headless overlay text (for dialogs/popovers that land inside
+  // the surface) without leaking auto-reserved overlay rows into the default
+  // probe text.
+  const region = frame.buffer.normalizeRegion(options.region ?? frame.scene.viewport);
+  const cellRegion = frame.buffer.normalizeRegion(options.region);
   const cells: CellProbeCell[] = [];
-  for (let y = region.y; y < region.y + region.height; y += 1) {
-    for (let x = region.x; x < region.x + region.width; x += 1) {
+  for (let y = cellRegion.y; y < cellRegion.y + cellRegion.height; y += 1) {
+    for (let x = cellRegion.x; x < cellRegion.x + cellRegion.width; x += 1) {
       const cell = frame.buffer.get(x, y);
       if (cell) cells.push(cloneCell(cell, x, y));
     }
@@ -172,6 +183,7 @@ export const captureCellProbe = (
     }
     return {
       rootId: plane.rootId,
+      rootRef: cellDebugRefFor(plane.rootId),
       bounds: { ...plane.bounds },
       text: formatCellBuffer(frame.overlayBuffer, { region: plane.bounds, trimEnd: true }),
       cells: overlayCells,
@@ -191,7 +203,9 @@ export const captureCellProbe = (
     text: formatCellBuffer(frame.buffer, { region, trimEnd: true }),
     cells,
     focusedId: frame.semantics.focusedId,
+    focusedRef: cellDebugRefFor(frame.semantics.focusedId),
     activeFocusId: [...frame.tree.nodes.values()].find((node) => node.focusActive)?.id ?? null,
+    activeFocusRef: cellDebugRefFor([...frame.tree.nodes.values()].find((node) => node.focusActive)?.id ?? null),
     confirmation: frame.confirmation,
     invalidation: {
       phases: [...frame.invalidation.phases],

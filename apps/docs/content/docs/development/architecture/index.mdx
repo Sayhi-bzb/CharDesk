@@ -5,6 +5,13 @@ description: Ownership, runtime coordination, authoritative data movement, and a
 
 Load only the missing decision:
 
+| Read this page when | A change crosses a layer, state boundary, rendering boundary, or execution boundary. |
+| --- | --- |
+| First answer | Which architectural question is unresolved? |
+| Owner | The route below owns the decision; the linked source and tests own implementation and verification. |
+| Boundary | This page routes architecture questions; it does not duplicate the selected contract. |
+| Follow-up | Choose one question below, then stop when its authority resolves the decision. |
+
 | Question | Route |
 | --- | --- |
 | Which layer or public boundary may own this dependency? | [Ownership and dependency direction](/development/architecture/ownership) |
@@ -12,6 +19,9 @@ Load only the missing decision:
 | How does pasted ANSI, Markdown, or raw text become Canvas cells? | [External text rendering](/development/architecture/text-rendering) |
 | Does this belong to command, tool, keymap, extension, or Host coordination? | [Editor runtime](/development/architecture/editor-runtime) |
 | Which state is authoritative, projected, persisted, synchronized, or undoable? | [State and data flows](/development/architecture/state-flows) |
+| How does Canvas read, search, and write the original Cell surface? | [Canvas reading](/development/architecture/canvas-reading), [Canvas searching](/development/architecture/canvas-searching), and [Canvas writing](/development/architecture/canvas-writing) |
+| How are live Canvas tools composed and discovered by browser agents? | [WebMCP](/development/architecture/webmcp) |
+| How are retired Blackboard and Structured documents converted or retained? | [Blackboard retirement](/development/architecture/blackboard-retirement) |
 | Which rule computes text cells, coordinates, rendering, selection, slides, or structured layout? | [Algorithm routes](/development/architecture/algorithms) |
 | How are graph relationships mapped onto the Unicode cell grid? | [CharGraph layout](/development/architecture/chargraph-layout) |
 | Which business capability owns the change? | [Domain reference](/development/domains) |

@@ -3,6 +3,13 @@ title: Delivery
 description: Build, release, and documentation output authorities.
 ---
 
+| Read this page when | You are building, publishing, or reviewing generated documentation output. |
+| --- | --- |
+| First answer | Which command or generated artifact is authoritative? |
+| Boundary | Delivery composes outputs and release evidence; it does not own business rules or wire contracts. |
+| Freshness rule | Review affected contracts first, verify emitted output, then advance the recorded documentation HEAD. |
+| Follow-up | Select the output concern below, run its owning command, and review the emitted artifact. |
+
 | Concern | Authority |
 | --- | --- |
 | Commands, dependency order and workspace composition | Root [`package.json`](https://github.com/Sayhi-bzb/CharDesk/blob/main/package.json) |

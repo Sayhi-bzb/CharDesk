@@ -12,6 +12,7 @@ import { resolveCellCursorStyle } from "./cursor-appearance.js";
 import type { CellCursorStyle } from "./theme.js";
 import type { CellRect, FrameSnapshot } from "./types.js";
 import { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
+import type { CellSurfaceGeometryTransform } from "./browser-surface-geometry.js";
 
 type CursorInput = Readonly<{
   frame: FrameSnapshot;
@@ -21,6 +22,7 @@ type CursorInput = Readonly<{
   fontProfile?: CharDeskFontProfile;
   originRow?: number;
   guardCells?: number;
+  geometry?: CellSurfaceGeometryTransform | null;
 }>;
 
 type CellCursorPresentation = Readonly<{
@@ -60,12 +62,14 @@ const physicalBounds = (
   metrics: CharDeskCellMetrics,
   originRow = 0,
   guardCells = CELL_SURFACE_GUARD_CELLS,
+  geometry?: CellSurfaceGeometryTransform | null,
 ) => {
   const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
-  const left = Math.max(0, Math.round((bounds.x + guardCells) * metrics.cellWidth * dpr));
-  const top = Math.max(0, Math.round((bounds.y - originRow + guardCells) * metrics.cellHeight * dpr));
-  const right = Math.min(canvas.width, Math.round((bounds.x + bounds.width + guardCells) * metrics.cellWidth * dpr));
-  const bottom = Math.min(canvas.height, Math.round((bounds.y - originRow + bounds.height + guardCells) * metrics.cellHeight * dpr));
+  const rect = geometry?.sceneToBaseCanvasRect(bounds, originRow);
+  const left = Math.max(0, Math.round((rect?.left ?? (bounds.x + guardCells) * metrics.cellWidth) * dpr));
+  const top = Math.max(0, Math.round((rect?.top ?? (bounds.y - originRow + guardCells) * metrics.cellHeight) * dpr));
+  const right = Math.min(canvas.width, Math.round((rect ? rect.left + rect.width : (bounds.x + bounds.width + guardCells) * metrics.cellWidth) * dpr));
+  const bottom = Math.min(canvas.height, Math.round((rect ? rect.top + rect.height : (bounds.y - originRow + bounds.height + guardCells) * metrics.cellHeight) * dpr));
   return { x: left, y: top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
 };
 
@@ -78,14 +82,17 @@ const drawCursor = (
   const { frame, metrics, palette, fontProfile } = presentation.input;
   const { bounds } = presentation;
   const guardCells = presentation.input.guardCells ?? CELL_SURFACE_GUARD_CELLS;
+  const geometry = presentation.input.geometry;
   const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
   context.setTransform(dpr, 0, 0, dpr, 0, 0);
   const cell = createCellUiRenderFrame(frame).source.get(bounds);
   const style = resolveCellCursorStyle(frame.buffer.get(bounds.x, bounds.y)?.style, palette, presentation.input.style);
   drawCharDeskCanvasCursor(context, {
     cell: cell?.visual ?? { text: " ", width: 1, fontRoute: resolveCharDeskFontRoute(" ") },
-    x: (bounds.x + guardCells) * metrics.cellWidth,
-    y: (bounds.y - (presentation.input.originRow ?? 0) + guardCells) * metrics.cellHeight,
+    x: geometry?.sceneToBaseCanvasRect(bounds, presentation.input.originRow).left
+      ?? (bounds.x + guardCells) * metrics.cellWidth,
+    y: geometry?.sceneToBaseCanvasRect(bounds, presentation.input.originRow).top
+      ?? (bounds.y - (presentation.input.originRow ?? 0) + guardCells) * metrics.cellHeight,
     style,
     options: {
       metrics,
@@ -146,6 +153,7 @@ export class CellCursorPresenter {
     if (!presentation || !context || typeof context.getImageData !== "function") return;
     const bounds = physicalBounds(
       this.#canvas, presentation.bounds, presentation.input.metrics, presentation.input.originRow, presentation.input.guardCells,
+      presentation.input.geometry,
     );
     if (bounds.width === 0 || bounds.height === 0) return;
     this.#saved = {

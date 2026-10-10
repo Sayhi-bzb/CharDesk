@@ -64,6 +64,10 @@ describe("Cell probe", () => {
       text: " ✓ Open 世",
     });
     expect(snapshot.cells).toHaveLength(12);
+    expect(snapshot.cells.find((cell) => cell.text === "O")).toMatchObject({
+      ownerId: "open/text[0]",
+      ownerRef: expect.stringMatching(/^open\/[a-z0-9]{7}\/text\[0\]$/),
+    });
     expect(snapshot.cells.filter((cell) => cell.continuation)).toHaveLength(1);
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
     expect(formatCellProbe(snapshot, { header: true })).toBe(

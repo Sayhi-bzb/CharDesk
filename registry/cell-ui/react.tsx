@@ -182,7 +182,9 @@ export type LinkProps = Readonly<{
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
 }>;
+export type CellControlContent = "text" | "icon-only" | "icon-text";
 export type ButtonProps = NamedContainerProps & Readonly<{
+  content?: CellControlContent;
   variant?: ButtonVariant;
   tone?: "danger";
   focused?: boolean;
@@ -228,6 +230,7 @@ export type SliderProps = SliderBaseProps & (Readonly<{
   focused?: never;
 }>);
 export type ToggleProps = NamedContainerProps & Readonly<{
+  content?: CellControlContent;
   pressed?: boolean;
   focused?: boolean;
   style?: CellLayoutStyle;
@@ -564,6 +567,7 @@ export type WidgetDescriptor = Readonly<{
   frame: CellFrame;
   borderShape: CellBorderShape | null;
   text: string | null;
+  content: "text" | "icon-only" | "icon-text";
   placeholder: string | null;
   href: string | null;
   current?: "page" | "location";
@@ -1329,6 +1333,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
       ? presentedTabsVariant(presentation, resolveTabsVariant(props.variant)) : "underline",
     separatorVariant: kind === "separator" ? resolveSeparatorVariant(props.variant) : "line",
     ...(kind === "resize-handle" ? { resize: props.resize as CellResizeRange } : {}),
+    content: (kind === "button" || kind === "toggle") && (props.content === "icon-only" || props.content === "icon-text")
+      ? props.content as "icon-only" | "icon-text" : "text",
     buttonVariant: kind === "button"
       ? presentedButtonVariant(presentation, resolveButtonVariant(props.variant, recipe.defaultControlVariant ?? "solid")) : "solid",
     buttonTone: kind === "button" && props.tone === "danger" ? "danger" : "neutral",

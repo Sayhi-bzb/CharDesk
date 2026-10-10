@@ -3,6 +3,7 @@ import type { CellPresentationRegistry } from "./browser-presentation.js";
 import { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
 import { resolvePointerAppearance } from "./pointer.js";
 import { getEventPath, hitTestCell } from "./scene.js";
+import type { CellPoint } from "./types.js";
 import type { FrameSnapshot } from "./types.js";
 
 const empty = { hoveredId: null, cursor: "default", scrollbarHoverId: null } as const;
@@ -12,6 +13,7 @@ export const usePointerAppearance = (
   frame: FrameSnapshot | null,
   metrics: { cellWidth: number; cellHeight: number },
   guardCells = CELL_SURFACE_GUARD_CELLS,
+  pointForClient?: (point: Readonly<{ clientX: number; clientY: number }>) => CellPoint | null,
 ) => {
   const position = useRef<{ clientX: number; clientY: number } | null>(null);
   const suspended = useRef(false);
@@ -31,7 +33,7 @@ export const usePointerAppearance = (
     if (canvas && frame && point && !suspended.current) {
       const bounds = (canvasRef.origin ?? canvas).getBoundingClientRect();
       if (canvasRef.acceptsPoint(point.clientX, point.clientY)) {
-        const cell = {
+        const cell = pointForClient?.(point) ?? {
           x: Math.floor((point.clientX - bounds.left) / metrics.cellWidth) - guardCells,
           y: Math.floor((point.clientY - bounds.top) / metrics.cellHeight) - guardCells,
         };
@@ -43,7 +45,7 @@ export const usePointerAppearance = (
     }
     setAppearance((value) => value.hoveredId === next.hoveredId
       && value.scrollbarHoverId === next.scrollbarHoverId && value.cursor === next.cursor ? value : next);
-  }, [canvasRef, frame, metrics.cellWidth, metrics.cellHeight]);
+  }, [canvasRef, frame, metrics.cellWidth, metrics.cellHeight, pointForClient]);
   useLayoutEffect(() => {
     refresh();
     window.addEventListener("scroll", refresh, true);

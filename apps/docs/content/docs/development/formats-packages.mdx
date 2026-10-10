@@ -3,6 +3,13 @@ title: Formats and Packages
 description: Authorities for portable contracts consumed outside the editor runtime.
 ---
 
+| Read this page when | A change affects a file format, protocol, package API, renderer, font asset, import, or export boundary. |
+| --- | --- |
+| First answer | Which portable contract owns the data or API shape? |
+| Boundary | This page routes portable contracts; package READMEs, specifications, and format authorities remain authoritative. |
+| Verification | Use the compatibility evidence in the table before changing a format or package boundary. |
+| Follow-up | Select the contract below, then open its README or specification before changing implementation. |
+
 | Contract | Authority | Compatibility evidence |
 | --- | --- | --- |
 | Text source compilation | [`@chardesk/chargraph`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/compiler.ts) owns explicit `chargraph`, `chardesk`, `ansi`, and `plain` source kinds and Protocol row output | [`compiler.test.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/compiler.test.ts) and [External text rendering](/development/architecture/text-rendering) |

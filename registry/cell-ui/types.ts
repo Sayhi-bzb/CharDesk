@@ -138,6 +138,7 @@ export type WidgetNode = Readonly<{
   frame: import("./border.js").CellFrame;
   borderShape: import("./border.js").CellBorderShape | null;
   text: string | null;
+  content: "text" | "icon-only" | "icon-text";
   placeholder: string | null;
   href: string | null;
   current?: "page" | "location";

@@ -8,6 +8,10 @@ const repositoryRoot = path.resolve(
 );
 const docsContent = path.join(repositoryRoot, "apps/docs/content/docs");
 const docsOutput = path.join(repositoryRoot, "apps/site/dist/docs");
+const routeManifestPath = path.join(
+  repositoryRoot,
+  "apps/docs/content/agent-routes.json"
+);
 const docsHeadMetadata = JSON.parse(
   await readFile(
     path.join(repositoryRoot, "apps/docs/content/docs-head.json"),
@@ -20,6 +24,30 @@ if (typeof docsHead !== "string" || !/^[0-9a-f]{40}$/.test(docsHead)) {
   throw new Error("Documentation HEAD must be a full lowercase Git commit SHA");
 }
 
+const routeManifest = JSON.parse(await readFile(routeManifestPath, "utf8"));
+if (
+  routeManifest.version !== 1 ||
+  !Array.isArray(routeManifest.routes) ||
+  routeManifest.routes.length === 0 ||
+  routeManifest.routes.some(
+    (route) =>
+      typeof route.id !== "string" ||
+      !Array.isArray(route.when) ||
+      route.when.length === 0 ||
+      !Array.isArray(route.keywords) ||
+      route.keywords.length === 0 ||
+      !Array.isArray(route.identifiers) ||
+      route.identifiers.length === 0 ||
+      !Array.isArray(route.exclude) ||
+      route.exclude.length === 0 ||
+      typeof route.entry !== "string" ||
+      typeof route.authority !== "string" ||
+      !Array.isArray(route.next)
+  )
+) {
+  throw new Error("Agent route manifest has an invalid shape");
+}
+
 const contentPages = [];
 for await (const entry of glob("**/*.mdx", { cwd: docsContent })) {
   contentPages.push(entry);
@@ -27,6 +55,61 @@ for await (const entry of glob("**/*.mdx", { cwd: docsContent })) {
 const developmentPages = contentPages.filter((entry) =>
   entry.startsWith("development/")
 );
+
+for (const entry of contentPages) {
+  const source = await readFile(path.join(docsContent, entry), "utf8");
+  if (!/^title:\s*\S/m.test(source) || !/^description:\s*\S/m.test(source)) {
+    throw new Error(`Documentation page is missing title or description: ${entry}`);
+  }
+}
+
+for (const entry of contentPages) {
+  const source = await readFile(path.join(docsContent, entry), "utf8");
+  if (!source.includes("Read this page when") && !source.includes("本页适用于")) {
+    throw new Error(`Route block is missing from ${entry}`);
+  }
+  for (const [field, labels] of [
+    ["first answer", ["First answer", "首要结论"]],
+    ["boundary", ["Boundary", "边界", "Owner or boundary"]],
+    ["follow-up", ["Follow-up", "下一步"]],
+  ]) {
+    if (!labels.some((label) => source.includes(label))) {
+      throw new Error(`Route block in ${entry} is missing ${field}`);
+    }
+  }
+}
+
+for (const section of [
+  "development",
+  "development/architecture",
+  "development/host-ui",
+  "development/cell-ui",
+  "user",
+]) {
+  const sectionRoot = path.join(docsContent, section);
+  const metadata = JSON.parse(await readFile(path.join(sectionRoot, "meta.json"), "utf8"));
+  const files = [];
+  for await (const entry of glob("*.mdx", { cwd: sectionRoot })) {
+    if (entry !== "index.mdx") files.push(entry.replace(/\.mdx$/u, ""));
+  }
+  for await (const entry of glob("*/index.mdx", { cwd: sectionRoot })) {
+    files.push(entry.split("/")[0]);
+  }
+  const expected = [...files].sort();
+  const actual = [...metadata.pages].sort();
+  if (JSON.stringify(expected) !== JSON.stringify(actual)) {
+    throw new Error(`Section navigation drift: ${section}`);
+  }
+}
+
+const rootMetadata = JSON.parse(
+  await readFile(path.join(docsContent, "meta.json"), "utf8")
+);
+for (const page of ["development", "user"]) {
+  if (!rootMetadata.pages.includes(page)) {
+    throw new Error(`Root navigation is missing ${page}`);
+  }
+}
 
 const htmlPages = [];
 for await (const entry of glob("**/index.html", { cwd: docsOutput })) {
@@ -50,8 +133,20 @@ if (markdownPages.length !== developmentPages.length) {
 
 const llmsIndex = await readFile(path.join(docsOutput, "llms.txt"), "utf8");
 const llmsFull = await readFile(path.join(docsOutput, "llms-full.txt"), "utf8");
+const agentRoutes = JSON.parse(
+  await readFile(path.join(docsOutput, "agent-routes.json"), "utf8")
+);
 const searchData = await readFile(path.join(docsOutput, "api/search"), "utf8");
 JSON.parse(searchData);
+
+if (
+  agentRoutes.version !== 1 ||
+  !Array.isArray(agentRoutes.routes) ||
+  !agentRoutes.routes.some((route) => route.id === "architecture") ||
+  !agentRoutes.routes.some((route) => route.id === "documentation")
+) {
+  throw new Error("Agent route manifest is missing required routes");
+}
 
 if (!llmsIndex.startsWith("# CharDesk Development Documentation")) {
   throw new Error("llms.txt has an unexpected root heading");
@@ -64,6 +159,15 @@ if (!llmsIndex.includes("/docs/development/architecture/ansi-canvas-protocol")) 
 }
 if (!llmsIndex.includes("/docs/development/host-ui/canvas-inspector")) {
   throw new Error("llms.txt is missing the Canvas Inspector contract");
+}
+if (
+  !llmsIndex.includes("## Agent route map") ||
+  !llmsIndex.includes("**architecture**") ||
+  !llmsIndex.includes("Keywords:") ||
+  !llmsIndex.includes("Identifiers:") ||
+  !llmsIndex.includes("Boundary:")
+) {
+  throw new Error("llms.txt is missing the Agent route map");
 }
 if (!llmsFull.includes("/docs/development/architecture/ownership")) {
   throw new Error("llms-full.txt is missing development content");

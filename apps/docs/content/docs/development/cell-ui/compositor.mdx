@@ -3,6 +3,12 @@ title: Cell UI Compositor
 description: SceneGeometry, clipping, layering, and paint contracts.
 ---
 
+| 本页适用于 | 修改 Cell UI 的 geometry、clip、layer、paint order 或 hit-test 时。 |
+| --- | --- |
+| 首要结论 | `SceneGeometry` 把 Widget layout 投影为 root Cell geometry，并统一拥有 scene 边界与合成顺序。 |
+| 边界 | 本页不拥有 Widget layout 或 Canvas px 映射；类型与跨后端 metrics 由链接的包入口持有。 |
+| 下一步 | 先读所有权表，再沿 `CellSurfaceGeometryTransform` 和对应测试追踪实现。 |
+
 # SceneGeometry / Compositor 契约
 
 [返回事实白板](/development/cell-ui/overview) · [SemanticSnapshot](/development/cell-ui/semantics)
@@ -32,6 +38,7 @@ Cell UI 的 bounded CellBuffer 与文档 Canvas 的 sparse reader 分别适配�
 - 普通 content 与 descendants 只能 paint/hit 于祖先 `contentClip`；Overlay 使用独立 scene parent，同时保留逻辑 event parent。
 - `viewport` 是参与文档流的 layout/base plane；`overlayViewport` 只扩展 portal 的 collision、paint 与 hit 边界。两者共享 root Cell 坐标、Scene、event path、focus 与 semantics。Browser `CellSurface` 在未显式传入 `overlayViewport` 时按 `overlayPolicy` 保留 portal overlay 空间；显式值仍作为宿主的 collision 边界覆盖策略。
 - Frame 分别保留 base 与透明 overlay buffer，并提供最终 composite；Browser Surface 的绝对定位 overlay Canvas 不改变 base Canvas 或宿主布局尺寸。Overlay buffer 使用独立零 guard 绘制，但 DOM 原点仍对齐宿主的 base content origin，避免视觉坐标与 hit-test 坐标错一行。
+- Browser Surface 通过 `CellSurfaceGeometryTransform` 统一 scene → client/surface/canvas、client → scene、caret/cursor、SVG、overlay clip 与 portal anchor 的投影；geometry registry 是 hosted DOM layer 读取这套契约的唯一入口。调用方只保留无 registry 时的兼容 fallback，不再自行推导 guard 偏移。
 - `paintList` 是稳定 back-to-front 全序；hit test 反向使用同一顺序。
 - paint、hit、semantics 和 keepAlive visibility 分别派生，不压缩为单一 `visible`。
 - Widget 按 Surface → Chrome → Content → Decoration 合成；content 和状态背景不能覆盖 border。

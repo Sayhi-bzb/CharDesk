@@ -25,6 +25,7 @@ import {
 import type { FrameSnapshot, WidgetId, WidgetNode } from "./types.js";
 import { commandForComboboxKey } from "./combobox.js";
 import { ariaDescribedBy } from "./browser-aria.js";
+import type { CellSurfaceGeometryTransform } from "./browser-surface-geometry.js";
 
 export type CellTextState = Readonly<{
   snapshot: CellTextSnapshot;
@@ -112,6 +113,7 @@ type ManagedCellTextareaProps = Readonly<{
   frame: FrameSnapshot;
   metrics: CharDeskCellMetrics;
   guardCells?: number;
+  geometry?: CellSurfaceGeometryTransform | null;
   dispatch: (command: WidgetCommand) => void;
   focusTarget: (id: WidgetId) => void;
 }>;
@@ -121,6 +123,7 @@ const ManagedCellTextarea = ({
   frame,
   metrics,
   guardCells = 0,
+  geometry,
   dispatch,
   focusTarget,
 }: ManagedCellTextareaProps) => {
@@ -135,6 +138,11 @@ const ManagedCellTextarea = ({
   const selectionAnchor = snapshot.selection.anchor;
   const selectionHead = snapshot.selection.head;
   const value = snapshot.value;
+  const caretCell = {
+    x: Math.max(inputBounds.x, Math.min(layout.caret.x, inputBounds.x + inputBounds.width - 1)),
+    y: Math.max(inputBounds.y, Math.min(layout.caret.y, inputBounds.y + inputBounds.height - 1)),
+  };
+  const caretRect = geometry?.sceneToSurfaceRect({ ...caretCell, width: 1, height: 1 });
 
   useLayoutEffect(() => {
     const textarea = ref.current;
@@ -257,10 +265,8 @@ const ManagedCellTextarea = ({
       spellCheck={false}
       style={{
         ...baseTextareaStyle,
-        left: (guardCells + Math.max(inputBounds.x,
-          Math.min(layout.caret.x, inputBounds.x + inputBounds.width - 1))) * metrics.cellWidth,
-        top: (guardCells + Math.max(inputBounds.y,
-          Math.min(layout.caret.y, inputBounds.y + inputBounds.height - 1))) * metrics.cellHeight,
+        left: caretRect?.left ?? (guardCells + caretCell.x) * metrics.cellWidth,
+        top: caretRect?.top ?? (guardCells + caretCell.y) * metrics.cellHeight,
         width: Math.min(1, inputBounds.width) * metrics.cellWidth,
         height: Math.min(1, inputBounds.height) * metrics.cellHeight,
         fontSize: metrics.fontSize,
@@ -295,12 +301,14 @@ export const CellTextInputLayer = ({
   frame,
   metrics,
   guardCells,
+  geometry,
   dispatch,
   focusTarget,
 }: Readonly<{
   frame: FrameSnapshot;
   metrics: CharDeskCellMetrics;
   guardCells?: number;
+  geometry?: CellSurfaceGeometryTransform | null;
   dispatch: (command: WidgetCommand) => void;
   focusTarget: (id: WidgetId) => void;
 }>) => (
@@ -318,6 +326,7 @@ export const CellTextInputLayer = ({
           frame={frame}
           metrics={metrics}
           guardCells={guardCells}
+          geometry={geometry}
           dispatch={dispatch}
           focusTarget={focusTarget}
         />

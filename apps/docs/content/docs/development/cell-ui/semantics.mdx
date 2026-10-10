@@ -3,7 +3,11 @@ title: Cell UI Semantics
 description: SemanticSnapshot and browser accessibility projection contracts.
 ---
 
-# SemanticSnapshot 契约
+| 本页适用于 | 修改 Cell UI 的语义树、reading order、focus、relations 或 browser accessibility 投影时。 |
+| --- | --- |
+| 首要结论 | `SemanticSnapshot` 是 Widget Tree、Engine state 和 SceneSnapshot 的独立 accessibility 投影。 |
+| 边界 | 它不复制 Canvas state，也不复用 scene parent 或 paint order。 |
+| 下一步 | 对照 [Compositor](/development/cell-ui/compositor) 的 scene 边界和 [Accessibility](/development/cell-ui/accessibility) 的验收证据。 |
 
 [返回事实白板](/development/cell-ui/overview) · [Compositor](/development/cell-ui/compositor)
 

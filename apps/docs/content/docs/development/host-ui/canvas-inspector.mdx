@@ -3,6 +3,12 @@ title: Canvas Inspector
 description: Shared Cell appearance, text formatting, and responsive behavior across Canvas modes.
 ---
 
+| Read this page when | You change the Canvas Inspector trigger, surface, color mutation, or responsive behavior. |
+| --- | --- |
+| First answer | One Inspector owns the host trigger, floating surface, shortcut, and open state across supported Canvas modes. |
+| Boundary | The Inspector routes mutations to Canvas or the active Slide page; it does not own document state. |
+| Follow-up | Trace the mode table, then verify the host flow and Canvas command tests. |
+
 One Canvas Inspector owns the host trigger, floating surface, shortcut, and open
 state for supported modes. Its trigger always displays the active semantic color.
 It is open by default off phone, collapsed on phone, and closes when Hand becomes

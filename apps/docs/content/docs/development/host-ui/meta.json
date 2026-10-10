@@ -4,6 +4,9 @@
     "editor-chrome",
     "canvas-inspector",
     "visual-system",
+    "visual-theme",
+    "visual-composition",
+    "visual-vocabulary",
     "interface-content",
     "dialogs",
     "icon-controls"

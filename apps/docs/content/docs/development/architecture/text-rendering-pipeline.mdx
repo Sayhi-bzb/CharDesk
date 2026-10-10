@@ -1,0 +1,48 @@
+---
+title: Text Rendering Pipeline
+description: Source kinds, compiler stages, syntax selection, and fallback behavior.
+---
+
+| Read this page when | A source kind, compiler stage, syntax detection, or fallback rule changes. |
+| --- | --- |
+| First answer | Which renderer boundary owns this decision? |
+| Boundary | This page owns source kinds, stages, syntax selection, and fallback; feature-specific host behavior belongs to the features page. |
+| Follow-up | Use the linked source and verification evidence after selecting the contract. |
+
+## Pipeline
+
+All text hosts consume one compiler contract:
+
+`source + explicit kind -> CharGraph compiler -> Protocol row spans -> host`
+
+`chargraph` runs structural syntax such as Markdown, Mermaid, fenced data, math,
+and block layout. `chardesk`, `ansi`, and `plain` are explicit compiled or
+literal inputs and never enter structural recognition. Canvas paste, document
+import, Slides `chargraph` fences, CLI, Viewer, and legacy migration share this
+contract. Rendering consumes compiled documents and does not select syntax.
+
+[`document/public.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/document/public.ts)
+owns the plugin registry, active profile, persistence, and conversion result. `actions`
+only snapshots clipboard data and passes the result to Canvas. The compact boundary groups
+adjacent graphemes with one style; legacy callers may explicitly materialize cells. Renderer
+settings affect future paste and never reinterpret existing cells.
+
+Rendering has four stages: syntax decode, structural transform, style composition, and cell
+layout. ANSI is a decoder backed by `@chardesk/protocol`; Markdown delegates parsing and character
+layout to `@chardesk/chargraph/markdown`. CharGraph renderers return styled fragments with source
+origins and diagnostics. The compositor projects explicit ANSI spans through those origins before
+protocol layout, which remains the only stage that owns grapheme segmentation, CJK width, tabs,
+and coordinates. ANSI/OSC8 serialization is an explicit CharGraph output boundary for CLI or copy,
+not an internal intermediate representation.
+
+## Syntax selection and fallback
+
+Auto composes explicit ANSI and Markdown instead of selecting one renderer for the whole source.
+An ESC-less empty reset (`[m`) is ambiguous evidence and cannot activate ANSI by itself, preventing
+Markdown links beginning with `[m` from losing characters. Standard escapes, OSC 8, and non-empty
+supported SGR are explicit. Forced ANSI still accepts `[m`. When both syntaxes style one range,
+ANSI foreground, background, and OSC 8 href win; text attributes merge; Markdown controls visible
+structure. Raw is a fallback transformer: it runs only when no decoder or structural transformer
+recognized the source, while forced Raw selects that same plugin directly. ANSI-only input therefore
+materializes styled cells without passing through Raw. `TextRenderResult.pipeline` records the
+applied stages.

@@ -3,7 +3,11 @@ title: Cell UI editor foundations
 description: Generic interaction contracts consumed by editors such as CharCut.
 ---
 
-# Editor foundations
+| Read this page when | You build an editor on top of Cell UI preview, commit, or cancel behavior. |
+| --- | --- |
+| First answer | Cell UI owns reusable geometry and interaction state; the consuming editor owns its domain model and commands. |
+| Boundary | This page does not define CharCut domain semantics or commit policy. |
+| Follow-up | Open the public contracts and the nearest component tests. |
 
 Cell UI owns reusable geometry and interaction state. A consuming editor owns its
 domain model and commits domain commands after a preview.

@@ -1,0 +1,164 @@
+---
+title: Documentation System
+description: Page structure, authority routing, progressive reading, and Agent-facing documentation output.
+---
+
+This page owns the documentation system itself. It explains how to add or
+change project knowledge without creating a second source of truth.
+
+| Read this page when | You are adding a page, deciding where a fact belongs, or improving Agent navigation. |
+| --- | --- |
+| First answer | What question does the page own, and which source verifies it? |
+| Page owner | The page's named authority owns the fact; documentation routes to that authority. |
+| Output | Website pages, search, `/llms.txt`, `/llms-full.txt`, and single-page Markdown are generated from `apps/docs/content/docs`. |
+
+## Review dimensions
+
+Every page is reviewed for the same seven dimensions. These are acceptance
+criteria for the page, not seven sections that must be copied into every page.
+
+| Dimension | Required behavior | Evidence in the page |
+| --- | --- | --- |
+| Goal and audience | The only reader is an LLM Agent deciding or executing a project task. | A concrete trigger in `Read this page when` and an explicit first answer |
+| Content and authority | Each fact has one authoritative source; the page names its owner and boundary. | Owner, non-owner boundary, and links to the authority |
+| Structure and navigation | The entry page routes by task, and every page gives a clear next step. | Task table, follow-up route, and neighboring authority links |
+| Expression and terminology | Terms are stable, the page has one primary language, and synonyms do not compete. | Fixed vocabulary, explicit identifiers, and consistent section names |
+| Progressive disclosure | The Agent can stop after resolving the current question and continue only when needed. | Route → answer → decision → contract → evidence |
+| Retrieval | Natural-language questions can match the page and its implementation. | Question-shaped headings, keywords, code identifiers, negative boundaries, and source links |
+| Evidence and freshness | A reader can verify the contract and detect when it may be stale. | Tests, scripts, fixtures, verification commands, and the recorded documentation HEAD |
+
+The review order is deliberate:
+
+```text
+Can the Agent find the page?
+  → Can it understand the answer?
+  → Can it locate the owner and boundary?
+  → Can it reach implementation and verification?
+```
+
+## Progressive reading
+
+Pages are written in layers so an Agent can stop after resolving the current
+question:
+
+```text
+L0  Route       Which page should I read?
+    ↓
+L1  Answer      What is the direct conclusion?
+    ↓
+L2  Decision    Who owns it, and what boundaries apply?
+    ↓
+L3  Contract    What are the inputs, outputs, flows, and failures?
+    ↓
+L4  Evidence    Which source, tests, scripts, or history verify it?
+```
+
+Every page starts with a compact routing block. The labels may follow the page's
+primary language, but the block must answer the same four questions:
+
+| Field | Required answer |
+| --- | --- |
+| Read this page when | The task or decision that should bring a reader here |
+| First answer | The shortest correct conclusion |
+| Owner or boundary | The capability, layer, package, or surface responsible |
+| Follow-up | The next authority, implementation, or verification route |
+
+Do not make a reader scan implementation detail to discover the owner. Keep
+the route block short; put rationale, history, and research after the current
+contract.
+
+## Page contract
+
+One page owns one primary question. Use this order when the page needs more
+than the routing block:
+
+1. **Contract** — stable rules and invariants.
+2. **Flow** — state movement or execution order, preferably as a compact text diagram.
+3. **Boundary** — what the page does not own and which neighboring page does.
+4. **Authorities** — source files, public interfaces, or package specifications.
+5. **Verification** — tests, scripts, fixtures, or browser scenarios.
+6. **History** — migration or rationale only when it changes a current decision.
+
+Split a page when it answers multiple independent questions or when a reader
+must pass through several unrelated contracts to reach the relevant evidence.
+The state model is now split between [State and Data Flows](/development/architecture/state-flows),
+[State Authority and Command Boundaries](/development/architecture/state-authority),
+[Canonical State Flows](/development/architecture/canonical-state-flows), and
+[Persistence, Collaboration, and Projection](/development/architecture/state-persistence).
+The text renderer is now split between [Text Rendering Pipeline](/development/architecture/text-rendering-pipeline)
+and [Text Rendering Features and Hosts](/development/architecture/text-rendering-features).
+The visual system is now split between [Visual Theme and Ownership](/development/host-ui/visual-theme),
+[Visual Composition and Layers](/development/host-ui/visual-composition), and
+[Visual Interaction Vocabulary](/development/host-ui/visual-vocabulary).
+Cell Widget Behavior is now split between [Widget State and Presentation](/development/cell-ui/widget-state),
+[Widget Pointer and Scroll](/development/cell-ui/widget-pointer-scroll), and
+[Widget Evidence](/development/cell-ui/widget-evidence).
+
+## Authority routing
+
+| Fact or task | Owning artifact |
+| --- | --- |
+| Product entry point and public examples | [`README.md`](https://github.com/Sayhi-bzb/CharDesk/blob/main/README.md) and [`README.zh-CN.md`](https://github.com/Sayhi-bzb/CharDesk/blob/main/README.zh-CN.md) |
+| Agent workflow, Canvas materials, and live-surface operations | [CharDesk skill](https://github.com/Sayhi-bzb/CharDesk/tree/main/.agents/skills/chardesk) and its references |
+| Local MCP installation and Canvas tool contract | [`packages/mcp/README.md`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/mcp/README.md) and `packages/mcp/src/tools.mjs` |
+| Package installation and public API | The package's `README.md` |
+| Public Cell UI integration, components, and Agent-readable package index | [`packages/cell-ui/README.md`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/README.md) and `apps/cell-ui/public` |
+| Development ownership and contracts | `apps/docs/content/docs/development` |
+| Business responsibility | [Domain reference](/development/domains) and the domain's `public.ts` |
+| Dependency direction | [Ownership and dependency direction](/development/architecture/ownership) |
+| Implementation behavior | The linked source and nearest tests |
+| External research | `apps/docs/research`, clearly marked as non-authoritative |
+| Generated examples and showcases | The checked-in source beside the generated asset |
+
+Write a fact once at its owning artifact and link to it elsewhere. A route
+page may summarize a fact to help navigation, but it must link to the owner.
+
+## Agent entry surfaces
+
+The repository has three Agent reading modes. They share terminology and
+authority rules, but they do not share the same task:
+
+```text
+Agent task
+  ├─ Use or edit a live Canvas      → CharDesk skill + MCP contract
+  ├─ Explain a product workflow     → docs/user
+  └─ Change repository behavior     → docs/development
+```
+
+Cell UI has a public integration surface in `apps/cell-ui/public` and an
+internal contract surface in `apps/docs/content/docs/development/cell-ui`.
+The public pages explain consumption; the development pages explain ownership
+and implementation. Do not merge those responsibilities into one page.
+
+## Style contract
+
+- Let frontmatter provide the page title; do not add a second body-level H1.
+- Use stable section names: `Contract`, `Flow`, `Boundary`, `Authorities`, and `Verification`.
+- Keep one primary language per page. Preserve code identifiers, protocol names, and product terms exactly.
+- Use `Agent`, `Canvas`, `Cell`, `Projection`, `Authority`, and `Verification` consistently.
+- Prefer tables for mappings and constraints, prose for decisions, and fenced text diagrams for flows.
+- Link internal documentation with site-relative paths and implementation evidence with stable repository links.
+- State negative boundaries explicitly: “does not own”, “read-only”, “derived”, “not persisted”, or “verification only”.
+
+## Agent output and verification
+
+The docs app exposes three useful reading sizes:
+
+| Output | Use |
+| --- | --- |
+| `/llms.txt` | Route selection and page discovery |
+| `/llms.mdx/development/.../content.md` | One page after a route has been selected |
+| `/llms-full.txt` | Full development context when several contracts must be compared |
+| `/agent-routes.json` | Machine-readable task, keyword, identifier, boundary, entry, authority, and next-step routing |
+
+[`apps/docs/app/lib/source.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/app/lib/source.ts)
+owns the source split and processed Markdown. [`scripts/docs/verify-build.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/docs/verify-build.mjs)
+checks emitted page counts, search, LLM resources, removed routes, metadata,
+route-block fields, and internal links. [`scripts/quality/agent-navigation-cases.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/agent-navigation-cases.mjs)
+checks whether natural-language tasks reach the expected implementation owner.
+
+When documentation changes, review the affected contract against the recorded
+HEAD in [`docs-head.json`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/docs-head.json),
+run the documentation verification lane, and update the HEAD only after the
+reviewed output is complete. A clean review may advance HEAD without changing
+prose.

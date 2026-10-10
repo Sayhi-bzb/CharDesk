@@ -14,6 +14,7 @@ export default {
     paths.add("/api/search");
     paths.add("/llms.txt");
     paths.add("/llms-full.txt");
+    paths.add("/agent-routes.json");
 
     for await (const entry of glob("**/*.mdx", { cwd: "content/docs" })) {
       const slugs = getSlugs(entry);

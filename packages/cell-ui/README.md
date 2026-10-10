@@ -18,3 +18,19 @@ npx shadcn@latest add @chardesk/cell-ui
 ```
 
 The [published registry item](https://sayhi-bzb.github.io/CharDesk/cell-ui.json) owns the editable file and dependency list. [Development architecture](../../apps/docs/content/docs/development/cell-ui/overview.mdx), [widget behavior](../../apps/docs/content/docs/development/cell-ui/widgets.mdx), [interaction foundation](../../apps/docs/content/docs/development/cell-ui/primitives.mdx), and [composition](../../apps/docs/content/docs/development/cell-ui/compositor.mdx) own internal contracts.
+
+## Agent inspection
+
+The registry item includes the debug modules. Agents should inspect the committed
+Cell frame instead of treating Canvas as a DOM tree:
+
+```ts
+import { inspectCellFrame, verifyCellFrame } from "@/lib/cell-ui/debug";
+import { installCellDebugBridge } from "@/lib/cell-ui/browser-debug";
+```
+
+Browser hosts install the bridge once in development. The bridge exposes
+`listSurfaces`, `snapshot`, `inspect`, `verify`, `trace`, `references`, and
+`resolveRef` on `window.__CELL_UI_DEBUG__`. Use `?cell-debug=1` only for the
+visual `CellInspectorOverlay`; the bridge itself should be available in every
+development session and must not be installed in production.

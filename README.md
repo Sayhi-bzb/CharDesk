@@ -8,7 +8,7 @@ CharDesk gives people and LLM-powered agents a common artifact: visual Unicode t
 
 [Open Canvas](https://canvas.chardesk.com/) · [Explore Cell UI](https://ui.chardesk.com/)
 
-[Product home](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/)
+[Documentation](https://chardesk.com/docs/) · [Product home](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/)
 
 ## Start with your agent
 

@@ -1,0 +1,94 @@
+---
+title: Visual Interaction Vocabulary
+description: Focus, state, status, control, motion, and verification vocabulary.
+---
+
+| Read this page when | A focus, state, status, cursor, control, motion, or visual verification rule changes. |
+| --- | --- |
+| First answer | Which shared visual contract owns this decision? |
+| Boundary | This page owns shared interaction vocabulary and evidence; product-specific placement remains outside the shared recipe. |
+| Follow-up | Read the linked source and verification evidence after selecting the contract. |
+
+## Interaction vocabulary
+
+Keyboard focus uses one shared recipe: a 2px inset `ring` at 45% opacity with
+no offset. Controls, fields, scroll viewports, resize handles, and reorderable
+items consume that recipe; appearance variants do not redefine its geometry.
+Invalid controls may replace the ring color with `invalid-ring`. Focus,
+selection, active state, and validation remain independent semantics, and
+product code does not define local ring width, opacity, placement, or offset.
+
+Interaction state has stable vocabulary:
+
+- `active` identifies the current editor tool or navigation mode.
+- `pressed` identifies a two-state control and owns `aria-pressed`.
+- `open` identifies an expanded panel or transient surface and owns
+  `aria-expanded` when Radix does not provide it.
+- `selected` identifies an item in a collection.
+- `data-state="highlighted|checked|on"` remains owned by the relevant Radix
+  primitive.
+
+Operation and health status form a separate visual axis:
+
+- `success` identifies a completed operation or healthy ongoing state.
+- `warning` identifies a degraded state that can continue.
+- `error` identifies a failed operation, invalid state, or lost connection.
+- `neutral` identifies idle, loading, waiting, and ordinary informational state.
+
+Status colors affect result icons and status text, not interaction surfaces.
+Controls express transient outcomes through `feedback`; persistent labels and
+indicators use `StatusText` and `StatusDot`. `active` never means success, and
+`destructive` describes action intent rather than an operation result. Color is
+always paired with an icon, text, or accessible live-region message.
+
+Persistent state strength is `active > pressed > open > hover`. Each level has
+its own light and dark semantic surface token. `subordinate` keeps an associated
+control quiet at rest while its recipe restores full opacity for hover and every
+persistent state. Hover, focus, and Radix highlight never replace a persistent
+surface or its text color. Product code does not implement that behavior with
+opacity utilities.
+
+`Button`, `IconButton`, `SelectableItem`, `SwatchButton`, `TabsTrigger`, and the
+menu family translate those states into shared recipes. `SelectableItem` is a
+fixed compact row (12px text, 16px line height, 28px minimum height); Widgets
+may adjust its layout but do not override its typography. Other controls expose
+only their documented size or density options. Default 32px controls and fields
+use 13px text; compact 28px controls use 12px. Segmented controls use `joined`;
+option sets use `ToggleGroup`. Presentation playback is the only themed
+override and marks that boundary with `data-visual-contract="presentation"`.
+
+Enabled activatable controls use the pointer cursor; disabled controls use the
+default cursor. Canvas editing, resizing, color picking, and reordering retain
+their task-specific text, resize, crosshair, move, and grab cursors. Shared
+primitives own control cursors; a Widget only declares a cursor for an
+intentional raw interaction surface such as the Slide playback canvas.
+
+Dropdown primitives own the overlay surface, collision behavior, animation,
+viewport limits, and a compact minimum width. The product instance owns only
+its semantic width. Popovers expose `compact` (10px) and `default` (16px)
+content density; editor chrome defaults to compact. Dropdown, Context Menu, and Select items share the same
+compact/default density, radius, highlight, checked, disabled, destructive,
+and separator recipes. Dropdowns are reserved for command choices and grouped
+options; persistent lists, forms, status, and multi-action widgets use a
+Popover with ordinary buttons and dialog focus behavior.
+
+Motion uses three semantic durations: fast 120ms for control feedback,
+standard 180ms for floating surfaces and Sidebar transitions, and slow 240ms
+for modal surfaces. Ordinary controls transition color, background, opacity,
+and shadow without scaling or changing geometry. Transient Dropdown, Context
+Menu, Popover, and Select surfaces fade with at most a 4px directional shift;
+modal surfaces retain their separate slow zoom transition. Components
+transition only the properties they own and disable non-essential motion under
+reduced-motion preferences.
+
+## Evidence
+
+- [`scripts/quality/check-style-api.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/check-style-api.mjs)
+  rejects legacy recipes, raw palette colors, component-local `dark:` branches,
+  `space-x/y`, raw viewport tiers, raw Widget buttons, Widget-owned interaction
+  states, direct icon sizing, square-control geometry overrides, and Widget-owned
+  shared surfaces. It also enforces the UI-package dependency facade, the sole
+  Driver.js adapter, runtime-theme token declarations, and the exact native
+  file-input and Canvas-textarea escape hatches.
+- Surface evidence: [`dialog.test.tsx`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/ui/src/dialog.test.tsx)
+  and [`context-menu.test.tsx`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/ui/src/context-menu.test.tsx)

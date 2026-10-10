@@ -89,6 +89,11 @@
           "target": "@lib/cell-ui/browser-cursor.ts"
         },
         {
+          "path": "registry/cell-ui/browser-debug.tsx",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/browser-debug.tsx"
+        },
+        {
           "path": "registry/cell-ui/browser-focus.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/browser-focus.ts"
@@ -222,6 +227,16 @@
           "path": "registry/cell-ui/cursor-appearance.ts",
           "type": "registry:file",
           "target": "@lib/cell-ui/cursor-appearance.ts"
+        },
+        {
+          "path": "registry/cell-ui/debug-ref.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/debug-ref.ts"
+        },
+        {
+          "path": "registry/cell-ui/debug.ts",
+          "type": "registry:file",
+          "target": "@lib/cell-ui/debug.ts"
         },
         {
           "path": "registry/cell-ui/drag.ts",

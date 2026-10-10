@@ -3,6 +3,12 @@ title: Core Host Icon Controls
 description: Icon, geometry, state, and association contract.
 ---
 
+| Read this page when | You add or review a core Host icon or icon-only control. |
+| --- | --- |
+| First answer | Core controls use shared iconology, fixed geometry, explicit state props, and the common focus ring. |
+| Boundary | This page owns control vocabulary and geometry; feature actions remain owned by their Host surface. |
+| Follow-up | Read [Visual vocabulary](/development/host-ui/visual-vocabulary), then verify the control snapshots and interaction tests. |
+
 - Resolve core Host icons through [`HOST_ICONOLOGY`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/shared/icons/iconology.ts).
 - Compose text actions with `Button` and icon-only actions with `IconButton`.
   Express state through `active`, `pressed`, `open`, and `subordinate` props.
