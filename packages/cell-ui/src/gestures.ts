@@ -43,6 +43,7 @@ export type GestureSignal = Readonly<{
   slider?: SliderDragAnchor;
   resize?: Readonly<{ point: CellPoint; value: number }>;
   precisePoint?: CellPoint;
+  preciseDelta?: CellPoint;
   totalDelta?: CellPoint;
 }>;
 
@@ -50,6 +51,7 @@ type GestureArena = {
   start: CellPoint;
   preciseStart: CellPoint;
   previous: CellPoint;
+  precisePrevious: CellPoint;
   candidates: readonly GestureCandidate[];
   winner: GestureCandidate | null;
 };
@@ -65,7 +67,8 @@ const signal = (
   phase: GesturePhase,
   point: CellPoint,
   movement: CellPoint,
-  precisePoint = cellCenter(point)
+  precisePoint = cellCenter(point),
+  preciseMovement = movement,
 ): GestureSignal => ({
   pointerId,
   targetId: candidate.targetId,
@@ -75,6 +78,7 @@ const signal = (
   delta: movement,
   part: candidate.part,
   precisePoint,
+  preciseDelta: preciseMovement,
   ...(candidate.scrollbar ? {
     scrollbar: candidate.scrollbar,
     totalDelta: delta(candidate.scrollbar.point, precisePoint),
@@ -122,6 +126,7 @@ export class GestureManager {
       start: point,
       preciseStart: precisePoint,
       previous: point,
+      precisePrevious: precisePoint,
       candidates: [...candidates],
       winner: null,
     });
@@ -132,9 +137,11 @@ export class GestureManager {
     const arena = this.#arenas.get(pointerId);
     if (!arena) return [];
     const step = delta(arena.previous, point);
+    const preciseStep = delta(arena.precisePrevious, precisePoint);
     arena.previous = point;
+    arena.precisePrevious = precisePoint;
     if (arena.winner) {
-      return [signal(pointerId, arena.winner, "update", point, step, precisePoint)];
+      return [signal(pointerId, arena.winner, "update", point, step, precisePoint, preciseStep)];
     }
 
     const total = delta(arena.start, point);
@@ -146,8 +153,8 @@ export class GestureManager {
       arena.winner = preciseDrag;
       return [
         ...arena.candidates.filter((candidate) => candidate !== preciseDrag)
-          .map((candidate) => signal(pointerId, candidate, "cancel", point, total, precisePoint)),
-        signal(pointerId, preciseDrag, "start", point, total, precisePoint),
+          .map((candidate) => signal(pointerId, candidate, "cancel", point, total, precisePoint, preciseTotal)),
+        signal(pointerId, preciseDrag, "start", point, total, precisePoint, preciseTotal),
       ];
     }
     if (
@@ -167,15 +174,15 @@ export class GestureManager {
         && arena.candidates.some((candidate) => candidate.rearmable)) return [];
       this.#arenas.delete(pointerId);
       return arena.candidates.map((candidate) =>
-        signal(pointerId, candidate, "cancel", point, total)
+        signal(pointerId, candidate, "cancel", point, total, precisePoint, preciseTotal)
       );
     }
     arena.winner = winner;
     return [
       ...arena.candidates
         .filter((candidate) => candidate !== winner)
-        .map((candidate) => signal(pointerId, candidate, "cancel", point, total)),
-      signal(pointerId, winner, "start", point, total, precisePoint),
+        .map((candidate) => signal(pointerId, candidate, "cancel", point, total, precisePoint, preciseTotal)),
+      signal(pointerId, winner, "start", point, total, precisePoint, preciseTotal),
     ];
   }
 
@@ -190,21 +197,22 @@ export class GestureManager {
         "end",
         point,
         delta(arena.previous, point),
-        precisePoint
+        precisePoint,
+        delta(arena.precisePrevious, precisePoint),
       )];
     }
     const tap = arena.candidates.find((candidate) => candidate.kind === "tap");
     const total = delta(arena.start, point);
     if (!tap) {
       return arena.candidates.map((candidate) =>
-        signal(pointerId, candidate, "cancel", point, total)
+        signal(pointerId, candidate, "cancel", point, total, precisePoint, total)
       );
     }
     return [
       ...arena.candidates
         .filter((candidate) => candidate !== tap)
-        .map((candidate) => signal(pointerId, candidate, "cancel", point, total)),
-      signal(pointerId, tap, "end", point, total, precisePoint),
+        .map((candidate) => signal(pointerId, candidate, "cancel", point, total, precisePoint, total)),
+      signal(pointerId, tap, "end", point, total, precisePoint, total),
     ];
   }
 

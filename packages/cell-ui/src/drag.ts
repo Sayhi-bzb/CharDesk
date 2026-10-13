@@ -8,6 +8,8 @@ export type CellDragState = Readonly<{
   targetId: WidgetId | null;
   payload: CellDragPayload | null;
   point: CellPoint | null;
+  /** Sub-cell pointer position in scene coordinates. */
+  precisePoint?: CellPoint;
   origin: CellPoint | null;
   active: boolean;
   delta: CellPoint;
@@ -27,20 +29,22 @@ export type CellDropTarget = Readonly<{
 
 export const idleCellDragState = (): CellDragState => ({
   pointerId: null, sourceId: null, targetId: null, payload: null,
-  point: null, origin: null, active: false, delta: { x: 0, y: 0 }, phase: "idle",
+  point: null, precisePoint: undefined, origin: null, active: false, delta: { x: 0, y: 0 }, phase: "idle",
 });
 
 export const beginCellDrag = (
   pointerId: number, sourceId: WidgetId, payload: CellDragPayload | null, point: CellPoint,
+  preciseOrigin = point, precisePoint = preciseOrigin,
 ): CellDragState => ({
-  pointerId, sourceId, targetId: null, payload, point, origin: point, active: false, delta: { x: 0, y: 0 }, phase: "pending",
+  pointerId, sourceId, targetId: null, payload, point, precisePoint, origin: preciseOrigin, active: false, delta: { x: 0, y: 0 }, phase: "pending",
 });
 
 export const updateCellDrag = (
-  state: CellDragState, point: CellPoint, targetId: WidgetId | null = state.targetId,
+  state: CellDragState, point: CellPoint, targetId: WidgetId | null = state.targetId, precisePoint = point,
 ): CellDragState => {
   if (state.origin === null || state.phase === "idle" || state.phase === "dropping" || state.phase === "cancelled") return state;
-  return { ...state, targetId, point, active: true, delta: { x: point.x - state.origin.x, y: point.y - state.origin.y }, phase: "dragging" };
+  return { ...state, targetId, point, precisePoint, active: true,
+    delta: { x: precisePoint.x - state.origin.x, y: precisePoint.y - state.origin.y }, phase: "dragging" };
 };
 
 export const commitCellDrag = (state: CellDragState): CellDragState => state.phase === "dragging" ? ({ ...state, active: false, phase: "dropping" }) : state;

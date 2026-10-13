@@ -53,7 +53,6 @@ export type CellInspectionSnapshot = Readonly<{
   }>;
 }>;
 
-import type { CellDebugReference } from "./debug-ref.js";
 
 const semanticSnapshot = (frame: FrameSnapshot, id: WidgetId | null) => {
   if (!id) return null;

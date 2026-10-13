@@ -55,7 +55,7 @@ describe("Cell UI gallery font loading", () => {
     expect(container.querySelector("canvas")).toHaveAttribute("width", "27");
     expect(container.querySelector("canvas")).toHaveAttribute("height", "60");
     expect(container.querySelector('[data-cell-overlay-root="gallery-font-content"]'))
-      .toHaveAttribute("height", "120");
+      .toHaveAttribute("height", "80");
     expect(screen.getAllByRole("option").map((option) => option.getAttribute("aria-label")))
       .toEqual(["Maple", "Fusion", "Xiaolai"]);
     fireEvent.click(screen.getByRole("option", { name: "Fusion" }));

@@ -1682,7 +1682,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   }, [canvasRef, dispatch, frame, metrics]);
 
   const textDragPointFor = (event: PointerEvent<HTMLDivElement>) => {
-    const bounds = surfaceRef.current?.getBoundingClientRect();
     return scenePointForClient(event);
   };
 
@@ -1762,17 +1761,20 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (signal.phase === "start") {
           eventsRef.current.captureDrag(current, signal.pointerId, signal.targetId, point);
           const origin = { x: point.x - signal.delta.x, y: point.y - signal.delta.y };
-          dragStateRef.current = updateCellDrag(beginCellDrag(signal.pointerId, signal.targetId, payload, origin), point, targetId);
+          const precisePoint = signal.precisePoint ?? point;
+          const preciseDelta = signal.preciseDelta ?? signal.delta;
+          const preciseOrigin = { x: precisePoint.x - preciseDelta.x, y: precisePoint.y - preciseDelta.y };
+          dragStateRef.current = updateCellDrag(beginCellDrag(signal.pointerId, signal.targetId, payload, origin, preciseOrigin, precisePoint), point, targetId, precisePoint);
           onDragStateChangeRef.current?.({ type: "start", state: dragStateRef.current });
         } else if (signal.phase === "update") {
-          dragStateRef.current = updateCellDrag(dragStateRef.current, point, targetId);
+          dragStateRef.current = updateCellDrag(dragStateRef.current, point, targetId, signal.precisePoint ?? point);
           onDragStateChangeRef.current?.({ type: "preview", state: dragStateRef.current });
           const scrollViewport = getEventPath(current.scene, signal.targetId)
             .map((id) => current.scene.entries.get(id)?.scrollMetrics?.viewport).find((rect) => !!rect);
           const request = cellAutoScrollRequest(scrollViewport ?? current.scene.viewport, point);
           if (request) onAutoScrollRequestRef.current?.(request);
         } else if (signal.phase === "end" && dragStateRef.current.sourceId === signal.targetId) {
-          dragStateRef.current = commitCellDrag(updateCellDrag(dragStateRef.current, point, targetId));
+          dragStateRef.current = commitCellDrag(updateCellDrag(dragStateRef.current, point, targetId, signal.precisePoint ?? point));
           onDragStateChangeRef.current?.({ type: "commit", state: dragStateRef.current });
           dragStateRef.current = idleCellDragState();
         } else if (signal.phase === "cancel" && dragStateRef.current.sourceId === signal.targetId) {

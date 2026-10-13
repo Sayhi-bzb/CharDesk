@@ -1677,7 +1677,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
   }, [canvasRef, dispatch, frame, metrics]);
 
   const textDragPointFor = (event: PointerEvent<HTMLDivElement>) => {
-    const bounds = surfaceRef.current?.getBoundingClientRect();
     return scenePointForClient(event);
   };
 

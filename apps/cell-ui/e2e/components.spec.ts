@@ -61,7 +61,7 @@ test("component catalog drives concise, addressable documentation", async ({ pag
   await expect(group.getByRole("link", { name: "Sheet", exact: true })).toHaveCount(0);
   await expect(nav.getByRole("group")).toHaveCount(3);
   const primitives = nav.getByRole("group", { name: "Primitives" });
-  await expect(primitives.getByRole("link")).toHaveText(["Primitive guide"]);
+  await expect(primitives.getByRole("link")).toHaveText(["Reordering"]);
   await expect(group.getByRole("link", { name: "Separator", exact: true })).toHaveCount(1);
   await expect(primitives.getByRole("link", { name: "Separator", exact: true })).toHaveCount(0);
   for (const [name, href] of navigationLinks) {

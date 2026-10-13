@@ -7,7 +7,7 @@ import {
   CellContextMenu, CellOverlayHost, CellPopover, CellSurface, CellToastViewport,
   DEFAULT_CELL_UI_METRICS, useCellSelectState, useCellToastState, type CellSurfaceProps,
 } from "@chardesk/cell-ui/browser";
-import { GallerySurface, useGalleryAppearance } from "../appearance";
+import { useGalleryAppearance } from "../appearance";
 import { ComponentPlayground } from "../component-playground";
 import {
   renderPlaygroundCheckboxControl, renderPlaygroundSelectControl,

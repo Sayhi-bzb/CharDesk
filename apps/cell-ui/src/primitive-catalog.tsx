@@ -4,7 +4,7 @@ import type { ComponentDocument } from "./component-catalog";
 
 export type PrimitiveDocument = ComponentDocument;
 
-export const primitiveDocuments: readonly PrimitiveDocument[] = [
+const primitiveDocuments: readonly PrimitiveDocument[] = [
   {
     slug: "reordering",
     title: "Reordering",

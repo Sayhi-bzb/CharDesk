@@ -548,7 +548,10 @@ export const commandForInput = (
     const onComboboxAnchor = !!comboboxAnchor && comboboxAnchor.parentId === dismissable?.parentId;
     if (
       dismissableScopeId
-      && (!hit || !isDescendantOf(frame.tree, hit, dismissableScopeId))
+      && (!hit || !isDescendantOf(frame.tree, hit, dismissableScopeId)
+        || (dismissable?.kind === "overlay"
+          && (!isActionableKind(frame.tree.nodes.get(hit)?.kind ?? "root")
+            || hit === dismissableScopeId)))
       && !onComboboxAnchor
     ) {
       if (dismissable?.closeOnOutsideClick !== false) {

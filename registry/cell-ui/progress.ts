@@ -1,4 +1,4 @@
-export const INDETERMINATE_PROGRESS_STEP_MS = 120;
+const INDETERMINATE_PROGRESS_STEP_MS = 120;
 
 export type ProgressVariant = "solid" | "outline";
 
