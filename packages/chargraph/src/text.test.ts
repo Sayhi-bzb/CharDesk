@@ -53,6 +53,31 @@ describe("canonical CharGraph text renderer", () => {
     expect(lines.every((line) => !line.startsWith(" "))).toBe(true);
   });
 
+  it("preserves spatial box-drawing text in auto mode", async () => {
+    const source = [
+      "                         ┌──────────────┐",
+      "                         │    Query     │",
+      "                         └──────┬───────┘",
+      "                                │ starts",
+      "                                ▼",
+      "┌──────────┐              ┌──────────────┐",
+      "│ Thread   │─────────────▶│    Turn      │",
+      "└────┬─────┘   contains   └──────┬───────┘",
+    ].join("\n");
+    const rendered = await renderCharGraphText(source);
+
+    expect(rendered.renderer).toBe("raw");
+    expect(getCharGraphText(rendered)).toBe(source);
+  });
+
+  it("keeps explicit Markdown mode available for spatial-looking text", async () => {
+    const rendered = await renderCharGraphText("    ┌─┐\n    │A│\n    └─┘", {
+      mode: "markdown",
+    });
+
+    expect(rendered.renderer).toBe("markdown");
+  });
+
   it("keeps escaped boundaries literal and leaves alternate Markdown rules available", async () => {
     const escaped = await renderCharGraphText("A\n|||\n\\---\n\\|||\n---\nB");
     const rule = await renderCharGraphText("***");

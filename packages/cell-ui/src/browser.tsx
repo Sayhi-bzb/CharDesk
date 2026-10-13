@@ -493,6 +493,7 @@ export const SemanticDom = ({
     activeFocusId: WidgetId | null;
     pressActiveId: WidgetId | null;
     activationFlashId: WidgetId | null;
+    activationFlashGroupId: string | null;
     confirmationPhase: number | null;
     focusVisible: boolean;
     manipulating: boolean;
@@ -566,6 +567,7 @@ export const SemanticDom = ({
         data-cell-active-focus={node.probeId ? probeState?.activeFocusId ?? undefined : undefined}
         data-cell-press-active={node.probeId ? probeState?.pressActiveId ?? undefined : undefined}
         data-cell-activation-flash={node.probeId ? probeState?.activationFlashId ?? undefined : undefined}
+        data-cell-activation-group={node.probeId ? node.id === probeState?.activationFlashId ? probeState?.activationFlashGroupId ?? undefined : undefined : undefined}
         data-cell-confirmation-phase={node.probeId ? probeState?.confirmationPhase ?? undefined : undefined}
         data-cell-focus-visible={node.probeId && probeState?.focusVisible ? true : undefined}
         data-cell-manipulating={node.probeId && probeState?.manipulating ? true : undefined}
@@ -1044,6 +1046,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     manipulatingIds: ReadonlySet<WidgetId>;
     pressActiveId: WidgetId | null;
     activationFlashId: WidgetId | null;
+    activationFlashGroupId: string | null;
     theme: CellUiThemeInput | undefined;
     recipe: CellUiRecipe | undefined;
     presentation: CellUiPresentation | undefined;
@@ -1237,6 +1240,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       && previousProjection.manipulatingIds === manipulatingIds
       && previousProjection.pressActiveId === pressActiveId
       && previousProjection.activationFlashId === activationFlashId
+      && previousProjection.activationFlashGroupId === (controller.renderState.activationFlashGroupId ?? null)
       && previousProjection.theme === theme
       && previousProjection.recipe === recipe
       && previousProjection.presentation === presentation
@@ -1318,6 +1322,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       manipulatingIds,
       pressActiveId,
       activationFlashId,
+      activationFlashGroupId: controller.renderState.activationFlashGroupId ?? null,
       theme,
       recipe,
       presentation,
@@ -2268,6 +2273,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
             activeFocusId: [...frame.tree.nodes.values()].find((node) => node.focusActive)?.id ?? null,
             pressActiveId,
             activationFlashId,
+            activationFlashGroupId: controller.renderState.activationFlashGroupId ?? null,
             confirmationPhase: frame.confirmation?.phase ?? null,
             focusVisible: !!(frame.semantics.focusedId
               && frame.tree.nodes.get(frame.semantics.focusedId)?.focusVisible),

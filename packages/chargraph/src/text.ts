@@ -214,6 +214,23 @@ const rawResult = (source: string): CharGraphTextRenderResult => ({
   pipeline: ["raw"],
 });
 
+// Markdown treats four leading spaces as an indented code block and is allowed
+// to normalize that block's indentation. Box-drawing text is already a visual
+// surface, so auto mode must preserve its coordinates instead of interpreting
+// it as Markdown structure.
+const SPATIAL_GLYPHS = /[┌┐└┘├┤┬┴┼─│━┃╭╮╰╯╴╵╶╷╸╹╺╻▶►▼▲◀◁▷△▽]/u;
+const ASCII_FRAME = /^\s*\+[+=-]+\+/u;
+
+const looksLikeSpatialText = (source: string) => {
+  const lines = source.split(/\r\n|\r|\n/u);
+  if (lines.length < 3) return false;
+  const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
+  if (nonEmptyLines.length < 3) return false;
+  const drawnLines = nonEmptyLines.filter((line) => SPATIAL_GLYPHS.test(line)).length;
+  const framedLines = nonEmptyLines.filter((line) => ASCII_FRAME.test(line)).length;
+  return drawnLines >= 2 || framedLines >= 2;
+};
+
 const renderScalarText = async (
   source: string,
   options: CharGraphTextRenderOptions
@@ -232,6 +249,10 @@ const renderScalarText = async (
     : [];
   const decodedText = hasAnsi ? decoded.text : source;
   const ansiSpans = hasAnsi ? spansFromRuns(decoded.runs) : [];
+
+  if (mode === "auto" && !hasAnsi && looksLikeSpatialText(decodedText)) {
+    return rawResult(decodedText);
+  }
 
   if (mode !== "ansi") {
     const markdown = await textMarkdownRenderer.render(

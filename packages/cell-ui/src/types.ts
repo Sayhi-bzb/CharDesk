@@ -128,6 +128,7 @@ export type WidgetNode = Readonly<{
   id: WidgetId;
   key: string | null;
   kind: WidgetKind;
+  activationGroupId: string | null;
   parentId: WidgetId | null;
   index: number;
   style: CellLayoutStyle;
@@ -152,6 +153,7 @@ export type WidgetNode = Readonly<{
   markdownInlineRuns: readonly import("./markdown-inline-flow.js").MarkdownInlineRun[] | null;
   sharedScrollGuard: boolean;
   textStyle: CellTextStyle;
+  hoverStyle: CellTextStyle | null;
   label: string | null;
   disabled: boolean;
   invalid: boolean;

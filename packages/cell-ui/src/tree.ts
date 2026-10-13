@@ -134,6 +134,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
       id,
       key: current.key,
       kind: current.kind,
+      activationGroupId: current.activationGroupId,
       hidden: current.hidden,
       parentId,
       index,
@@ -159,6 +160,7 @@ const materializeTree = (descriptor: WidgetDescriptor | null, previous?: WidgetT
       markdownInlineRuns: current.markdownInlineRuns,
       sharedScrollGuard: current.kind === "scroll-area" && current.sharedScrollGuard,
       textStyle: current.textStyle,
+      hoverStyle: current.hoverStyle,
       label: current.label,
       disabled: current.disabled || inheritedDisabled || (
         (current.kind === "range-slider-thumb" || current.kind === "radio-item") && parent?.disabled === true

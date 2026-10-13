@@ -60,6 +60,26 @@ describe("ApplicationEditorHost", () => {
     expect(host.canvas.getState().contentSurface.reader.materialize().has("1,0")).toBe(false);
   });
 
+  it("preserves pasted spatial diagrams in automatic text mode", async () => {
+    const host = createHost();
+    host.canvas.commands.grid.replace([]);
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
+    const source = "    ┌──┐\n    │ A│\n    └──┘\n┌──┐";
+
+    const result = await host.canvas.commands.selection.paste({
+      eventDataTransfer: {
+        getData: (type: string) => type === "text/plain" ? source : "",
+      } as unknown as DataTransfer,
+    });
+    const cells = host.canvas.getState().contentSurface.reader.materialize();
+
+    expect(result).toMatchObject({ status: "applied" });
+    expect(cells.get("4,0")?.char).toBe("┌");
+    expect(cells.get("4,1")?.char).toBe("│");
+    expect(cells.get("0,3")?.char).toBe("┌");
+    expect(cells.has("0,4")).toBe(false);
+  });
+
   it("persists external inline-code rendering into GridMap cells", async () => {
     const host = createHost();
     host.canvas.commands.grid.replace([]);

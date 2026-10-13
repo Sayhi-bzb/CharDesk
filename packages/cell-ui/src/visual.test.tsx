@@ -151,6 +151,24 @@ it("separates highlight, committed state and exclusive confirmation phases", () 
   }
 });
 
+it("uses an explicit hover token as the final visual style for pressed and unpressed controls", () => {
+  const runtime = new CellUiRuntime({ viewport: { width: 8, height: 1 } });
+  const normal = { color: "#FFFFFF", backgroundColor: "#2563EB" };
+  const hover = { color: "#FFFFFF", backgroundColor: "#1D4ED8" };
+  const view = <Root id="root"><Box style={{ direction: "row", width: 8, height: 1 }}>
+    <Toggle id="unpressed" content="icon-only" textStyle={normal} hoverStyle={hover} style={{ width: 4 }}><Text textStyle={normal}>U</Text></Toggle>
+    <Toggle id="pressed" content="icon-only" pressed textStyle={{ color: "#2563EB", backgroundColor: "#FFFFFF" }} hoverStyle={hover} style={{ width: 4 }}><Text textStyle={{ color: "#2563EB", backgroundColor: "#FFFFFF" }}>P</Text></Toggle>
+  </Box></Root>;
+  const idle = runtime.render(view);
+  expect(idle.buffer.get(1, 0)?.style).toMatchObject(normal);
+  expect(idle.buffer.get(5, 0)?.style).toMatchObject(normal);
+  const hovered = runtime.render(view, { hoveredId: "unpressed", focusVisible: false });
+  expect(hovered.buffer.get(1, 0)?.style).toMatchObject(hover);
+  const pressedHovered = runtime.render(view, { hoveredId: "pressed", focusVisible: false });
+  expect(pressedHovered.buffer.get(5, 0)?.style).toMatchObject(hover);
+  runtime.dispose();
+});
+
 it.each(["checkbox", "toggle", "radio"])("%s marks persist without background and pointer/keyboard highlight the same rectangle", (kind) => {
   for (const theme of [CLASSIC_MAC_LIGHT_THEME, CLASSIC_MAC_DARK_THEME]) {
     const runtime = new CellUiRuntime({ viewport: { width: 12, height: 1 }, theme });

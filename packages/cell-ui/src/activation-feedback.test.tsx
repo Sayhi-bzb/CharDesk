@@ -125,6 +125,24 @@ describe("ActivationFeedbackManager", () => {
 });
 
 describe("activationFlash paint", () => {
+  it("flashes activation group members while preserving their independent semantics", () => {
+    const runtime = new CellUiRuntime({ viewport: { width: 30, height: 4 } });
+    const view = (
+      <Root id="root" style={{ direction: "row" }}>
+        <Button id="body" activationGroupId="clip-1"><Text>Body</Text></Button>
+        <Button id="start" activationGroupId="clip-1"><Text> </Text></Button>
+        <Button id="other" activationGroupId="clip-2"><Text>Other</Text></Button>
+      </Root>
+    );
+    const resting = runtime.render(view);
+    const flashed = runtime.render(view, { activationFlashId: "body", activationFlashGroupId: "clip-1" });
+    expect(flashed.tree.nodes.get("body")?.activationFlash).toBe(true);
+    expect(flashed.tree.nodes.get("start")?.activationFlash).toBe(true);
+    expect(flashed.tree.nodes.get("other")?.activationFlash).toBe(false);
+    expect(flashed.semantics.nodes).toBe(resting.semantics.nodes);
+    runtime.dispose();
+  });
+
   it("inverts the complete rectangle without changing layout or semantics", () => {
     const cases = [
       ["save", <Button id="save"><Text>Save</Text></Button>],

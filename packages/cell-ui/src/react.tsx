@@ -52,6 +52,8 @@ import {
 
 type IdentityProps = Readonly<{
   id?: string;
+  /** Optional intent group whose members share transient activation feedback. */
+  activationGroupId?: string;
 }>;
 type NamedProps = Readonly<{
   label?: string;
@@ -190,6 +192,8 @@ export type ButtonProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
+  /** Optional explicit hover appearance. When omitted, the primitive keeps its default inversion. */
+  hoverStyle?: CellTextStyle;
 }>;
 export type BadgeProps = NamedContainerProps & Readonly<{
   tone?: BadgeTone;
@@ -235,6 +239,8 @@ export type ToggleProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
+  /** Optional explicit hover appearance. When omitted, the primitive keeps its default inversion. */
+  hoverStyle?: CellTextStyle;
 }>;
 export type ProgressProps = Readonly<{
   id?: string;
@@ -558,6 +564,7 @@ Field.displayName = "CellField";
 export type WidgetDescriptor = Readonly<{
   kind: WidgetKind;
   explicitId: string | null;
+  activationGroupId: string | null;
   key: string | null;
   style: CellLayoutStyle;
   presentation: CellUiPresentation;
@@ -582,6 +589,7 @@ export type WidgetDescriptor = Readonly<{
   /** Built-in trailing content guard that a ScrollArea rail may occupy. */
   sharedScrollGuard: boolean;
   textStyle: CellTextStyle;
+  hoverStyle: CellTextStyle | null;
   label: string | null;
   disabled: boolean;
   focused: boolean;
@@ -1266,6 +1274,8 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     ...(element.type === DragSource ? { drag: { payload: props.payload as import("./drag.js").CellDragPayload, axis: props.axis as "x" | "y" | "both" } } : {}),
     ...(element.type === DropTarget ? { drop: { accepts: props.accepts as readonly string[] | undefined } } : {}),
     explicitId: typeof props.id === "string" ? props.id : null,
+    activationGroupId: typeof props.activationGroupId === "string" && props.activationGroupId.length > 0
+      ? props.activationGroupId : null,
     key: element.key === null ? null : String(element.key),
     style: {
       ...(isDialog ? { width: 36, padding: 1, gap: 1 } : {}),
@@ -1307,6 +1317,9 @@ const describe = (element: ReactElement, recipe: CellUiRecipe, inheritedPresenta
     markdownInlineRuns: kind === "markdown-inline" ? props.runs as readonly MarkdownInlineRun[] : null,
     sharedScrollGuard: kind === "scroll-area" && children.some(hasSharedScrollGuard),
     textStyle: { ...(element.type === DialogTitle || element.type === AlertTitle ? { bold: true } : {}), ...(props.textStyle as CellTextStyle | undefined) },
+    hoverStyle: (kind === "button" || kind === "toggle") && props.hoverStyle
+      ? { ...(props.hoverStyle as CellTextStyle) }
+      : null,
     label: alertLabel ?? (typeof props.label === "string" ? props.label
       : element.type === Box && typeof props.probeLabel === "string" ? props.probeLabel : null),
     disabled: props.disabled === true,
