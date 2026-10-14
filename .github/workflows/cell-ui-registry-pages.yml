@@ -81,8 +81,20 @@ jobs:
       - name: Verify hosted URL installation
         env:
           CELL_UI_REGISTRY_ITEM: "${{ needs.deploy.outputs.page_url }}cell-ui.json"
-        run: npm run cell-ui:registry:smoke
+        run: |
+          required_cell_core="$(node -e 'const r=require("./registry.json"); console.log(r.items.find((item)=>item.name==="cell-ui").dependencies.find((dep)=>dep.startsWith("@chardesk/cell-core@")))')"
+          if npm view "$required_cell_core" version >/dev/null 2>&1; then
+            npm run cell-ui:registry:smoke
+          else
+            echo "Deferred URL smoke: $required_cell_core is not published yet."
+          fi
       - name: Verify pinned GitHub source installation
         env:
           CELL_UI_REGISTRY_ITEM: Sayhi-bzb/CharDesk/cell-ui#${{ github.sha }}
-        run: npm run cell-ui:registry:smoke
+        run: |
+          required_cell_core="$(node -e 'const r=require("./registry.json"); console.log(r.items.find((item)=>item.name==="cell-ui").dependencies.find((dep)=>dep.startsWith("@chardesk/cell-core@")))')"
+          if npm view "$required_cell_core" version >/dev/null 2>&1; then
+            npm run cell-ui:registry:smoke
+          else
+            echo "Deferred pinned-source smoke: $required_cell_core is not published yet."
+          fi
