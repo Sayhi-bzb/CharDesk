@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.6.8](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.7...v0.6.8) (2026-10-14)
+
+
+### Features
+
+* add agent-facing docs routes and Cell UI debug bridge ([39a5196](https://github.com/Sayhi-bzb/CharDesk/commit/39a519608186e56be7d5edab46a18d808b2edae9))
+* add Cell UI primitives and editor foundations ([a65ddf0](https://github.com/Sayhi-bzb/CharDesk/commit/a65ddf028347816f0e73a3efe697e34764336c4b))
+* **cell-ui:** support icon-only controls and unify surface geometry ([ece2d20](https://github.com/Sayhi-bzb/CharDesk/commit/ece2d20b964571e93304236c2bcb7bad4918590b))
+
+
+### Bug Fixes
+
+* preserve overlay viewport outside base surface ([ed636ea](https://github.com/Sayhi-bzb/CharDesk/commit/ed636ea06bfaad8a2a2d8a774a9265be16f9b841))
+* stabilize cell ui drag and viewport interactions ([1a8b5f1](https://github.com/Sayhi-bzb/CharDesk/commit/1a8b5f1d3371ec8c2e928ec8e15f19a9447e571c))
+* sync Cell UI gallery docs ([9414801](https://github.com/Sayhi-bzb/CharDesk/commit/94148011c0d22605e0ead81f7784e2821705f001))
+* sync generated registry and sitemap ([07f9a79](https://github.com/Sayhi-bzb/CharDesk/commit/07f9a79bd9352aa4bc075cbd5fe2526364391e70))
+* track precise drag points and tighten overlay dismissal ([6544600](https://github.com/Sayhi-bzb/CharDesk/commit/6544600dffb734eec67bd413a8404a930adfa6a1))
+
 ## [0.6.7](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.6...v0.6.7) (2026-10-07)
 
 
