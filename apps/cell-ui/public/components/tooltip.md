@@ -26,8 +26,6 @@ export function TooltipExample() {
 }
 ```
 
-`CellSurface` automatically reserves an independent overlay viewport for portal content. Set `overlayViewport` only when a host needs an explicit collision boundary; Tooltip does not require it for short or one-row surfaces. Hosts with a different budget can use `overlayPolicy={{ mode: "auto", extraRows: 5 }}`; `overlayOverflow="clip"` makes clipping explicit.
-
 ## View source
 
 - [react.tsx](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/react.tsx)
