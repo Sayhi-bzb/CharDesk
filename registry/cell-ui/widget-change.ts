@@ -85,6 +85,7 @@ export const sameNodeContent = (left: WidgetNode, right: WidgetNode) =>
   && left.describedById === right.describedById
   && sameWidgetValue(left.style, right.style)
   && sameWidgetValue(left.textStyle, right.textStyle)
+  && sameWidgetValue(left.hoverStyle, right.hoverStyle)
   && left.scrollAxis === right.scrollAxis
   && sameWidgetValue(left.scrollOffset, right.scrollOffset)
   && sameWidgetValue(left.children, right.children);
@@ -179,6 +180,7 @@ const hasPaintChange = (before: WidgetNode, after: WidgetNode) =>
   || before.disabled !== after.disabled
   || before.invalid !== after.invalid
   || !sameWidgetValue(before.textStyle, after.textStyle)
+  || !sameWidgetValue(before.hoverStyle, after.hoverStyle)
   || !sameWidgetValue(before.textEditor, after.textEditor);
 
 const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>

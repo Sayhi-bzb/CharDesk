@@ -128,6 +128,7 @@ export class CellUiRuntime {
       manipulatingIds?: ReadonlySet<string>;
       pressActiveId?: string | null;
       activationFlashId?: string | null;
+      activationFlashGroupId?: string | null;
       activationTargetId?: string | null;
       confirmation?: FrameSnapshot["confirmation"];
       colors?: FrameSnapshot["colors"];
@@ -158,6 +159,7 @@ export class CellUiRuntime {
     const animationTimeMs = typeof state.animationTimeMs === "number" && Number.isFinite(state.animationTimeMs)
       ? Math.max(0, state.animationTimeMs)
       : 0;
+    const activationFlashGroupId = state.activationFlashGroupId ?? null;
     const tooltipTarget = state.tooltipTargetId
       ? reconciliation.tree.nodes.get(state.tooltipTargetId)
       : undefined;
@@ -196,7 +198,8 @@ export class CellUiRuntime {
           && node.scrollbarVisible === scrollbarVisible(id)
           && node.manipulating === (state.manipulatingIds?.has(id) === true && supportsManipulationFeedback(node.kind) && !node.disabled)
           && node.pressActive === (id === state.pressActiveId && supportsPressFeedback(node.kind) && !node.disabled)
-          && node.activationFlash === (id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled)
+          && node.activationFlash === ((id === state.activationFlashId || (activationFlashGroupId !== null && node.activationGroupId === activationFlashGroupId))
+            && supportsActivationFeedback(node.kind) && !node.disabled)
           && node.confirming === (id === state.activationTargetId && !node.disabled)
           && sameWidgetValue(node.confirmation, id === state.confirmation?.targetId ? state.confirmation : undefined)
           && node.animationTimeMs === (node.kind === "spinner" || node.progress?.value === null ? animationTimeMs : 0)
@@ -211,7 +214,8 @@ export class CellUiRuntime {
               scrollbarVisible: scrollbarVisible(id),
               manipulating: state.manipulatingIds?.has(id) === true && supportsManipulationFeedback(node.kind) && !node.disabled,
               pressActive: id === state.pressActiveId && supportsPressFeedback(node.kind) && !node.disabled,
-              activationFlash: id === state.activationFlashId && supportsActivationFeedback(node.kind) && !node.disabled,
+              activationFlash: (id === state.activationFlashId || (activationFlashGroupId !== null && node.activationGroupId === activationFlashGroupId))
+                && supportsActivationFeedback(node.kind) && !node.disabled,
               confirming: id === state.activationTargetId && !node.disabled,
               confirmation: id === state.confirmation?.targetId ? state.confirmation : undefined,
               animationTimeMs: node.kind === "spinner" || node.progress?.value === null ? animationTimeMs : 0,

@@ -493,6 +493,7 @@ export const SemanticDom = ({
     activeFocusId: WidgetId | null;
     pressActiveId: WidgetId | null;
     activationFlashId: WidgetId | null;
+    activationFlashGroupId: string | null;
     confirmationPhase: number | null;
     focusVisible: boolean;
     manipulating: boolean;
@@ -566,6 +567,7 @@ export const SemanticDom = ({
         data-cell-active-focus={node.probeId ? probeState?.activeFocusId ?? undefined : undefined}
         data-cell-press-active={node.probeId ? probeState?.pressActiveId ?? undefined : undefined}
         data-cell-activation-flash={node.probeId ? probeState?.activationFlashId ?? undefined : undefined}
+        data-cell-activation-group={node.probeId ? node.id === probeState?.activationFlashId ? probeState?.activationFlashGroupId ?? undefined : undefined : undefined}
         data-cell-confirmation-phase={node.probeId ? probeState?.confirmationPhase ?? undefined : undefined}
         data-cell-focus-visible={node.probeId && probeState?.focusVisible ? true : undefined}
         data-cell-manipulating={node.probeId && probeState?.manipulating ? true : undefined}
@@ -1044,6 +1046,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     manipulatingIds: ReadonlySet<WidgetId>;
     pressActiveId: WidgetId | null;
     activationFlashId: WidgetId | null;
+    activationFlashGroupId: string | null;
     theme: CellUiThemeInput | undefined;
     recipe: CellUiRecipe | undefined;
     presentation: CellUiPresentation | undefined;
@@ -1237,6 +1240,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       && previousProjection.manipulatingIds === manipulatingIds
       && previousProjection.pressActiveId === pressActiveId
       && previousProjection.activationFlashId === activationFlashId
+      && previousProjection.activationFlashGroupId === (controller.renderState.activationFlashGroupId ?? null)
       && previousProjection.theme === theme
       && previousProjection.recipe === recipe
       && previousProjection.presentation === presentation
@@ -1318,6 +1322,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       manipulatingIds,
       pressActiveId,
       activationFlashId,
+      activationFlashGroupId: controller.renderState.activationFlashGroupId ?? null,
       theme,
       recipe,
       presentation,
@@ -1756,17 +1761,20 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
         if (signal.phase === "start") {
           eventsRef.current.captureDrag(current, signal.pointerId, signal.targetId, point);
           const origin = { x: point.x - signal.delta.x, y: point.y - signal.delta.y };
-          dragStateRef.current = updateCellDrag(beginCellDrag(signal.pointerId, signal.targetId, payload, origin), point, targetId);
+          const precisePoint = signal.precisePoint ?? point;
+          const preciseDelta = signal.preciseDelta ?? signal.delta;
+          const preciseOrigin = { x: precisePoint.x - preciseDelta.x, y: precisePoint.y - preciseDelta.y };
+          dragStateRef.current = updateCellDrag(beginCellDrag(signal.pointerId, signal.targetId, payload, origin, preciseOrigin, precisePoint), point, targetId, precisePoint);
           onDragStateChangeRef.current?.({ type: "start", state: dragStateRef.current });
         } else if (signal.phase === "update") {
-          dragStateRef.current = updateCellDrag(dragStateRef.current, point, targetId);
+          dragStateRef.current = updateCellDrag(dragStateRef.current, point, targetId, signal.precisePoint ?? point);
           onDragStateChangeRef.current?.({ type: "preview", state: dragStateRef.current });
           const scrollViewport = getEventPath(current.scene, signal.targetId)
             .map((id) => current.scene.entries.get(id)?.scrollMetrics?.viewport).find((rect) => !!rect);
           const request = cellAutoScrollRequest(scrollViewport ?? current.scene.viewport, point);
           if (request) onAutoScrollRequestRef.current?.(request);
         } else if (signal.phase === "end" && dragStateRef.current.sourceId === signal.targetId) {
-          dragStateRef.current = commitCellDrag(updateCellDrag(dragStateRef.current, point, targetId));
+          dragStateRef.current = commitCellDrag(updateCellDrag(dragStateRef.current, point, targetId, signal.precisePoint ?? point));
           onDragStateChangeRef.current?.({ type: "commit", state: dragStateRef.current });
           dragStateRef.current = idleCellDragState();
         } else if (signal.phase === "cancel" && dragStateRef.current.sourceId === signal.targetId) {
@@ -2267,6 +2275,7 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
             activeFocusId: [...frame.tree.nodes.values()].find((node) => node.focusActive)?.id ?? null,
             pressActiveId,
             activationFlashId,
+            activationFlashGroupId: controller.renderState.activationFlashGroupId ?? null,
             confirmationPhase: frame.confirmation?.phase ?? null,
             focusVisible: !!(frame.semantics.focusedId
               && frame.tree.nodes.get(frame.semantics.focusedId)?.focusVisible),

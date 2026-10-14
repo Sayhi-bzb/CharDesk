@@ -217,12 +217,15 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
         ...(!disabled && owner.focused && owner.focusVisible ? theme.focusedItemStyle : {}),
         ...(disabled ? theme.disabledStyle : {}) });
     }
+    const explicitHoverStyle = (node.hovered || owner?.hovered)
+      ? node.hoverStyle ?? owner?.hoverStyle ?? null
+      : null;
     return finish(resolvePrimitiveAppearance({ ...semanticBase, ...node.textStyle, ...markdownStyle }, {
       ...projection,
       // Icon-only toggles have no status glyph. Their persistent pressed state
       // therefore needs to be represented by the control surface itself.
       pressed: projection.pressed || (owner?.kind === "toggle" && owner.content === "icon-only" && owner.pressed),
-    }, theme));
+    }, theme, explicitHoverStyle));
   }
   const style = resolveCellStateStyle({ ...semanticBase, ...node.textStyle, ...markdownStyle }, {
     focused,

@@ -25,11 +25,18 @@ export const resolvePrimitiveAppearance = (
   base: CellTextStyle,
   state: PrimitiveVisualState,
   theme: CellUiTheme,
+  hoverStyle: CellTextStyle | null = null,
 ): CellTextStyle => {
   const style = {
     ...base,
     ...(state.disabled ? theme.disabledStyle : {}),
   };
+  // An explicit hover style is already the caller's final visual token. This
+  // is what lets material regions keep their hue while the default path below
+  // continues to provide the legacy inversion for ordinary controls.
+  if (state.highlighted && hoverStyle && !state.flash && !state.confirming) {
+    return { ...hoverStyle, ...(state.disabled ? theme.disabledStyle : {}) };
+  }
   const inverted = !state.disabled && (state.confirming
     ? state.flash
     : state.highlighted || state.pressed || state.flash);

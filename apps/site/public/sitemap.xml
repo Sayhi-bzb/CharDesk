@@ -8,26 +8,37 @@
   <url><loc>https://chardesk.com/docs/development/architecture/algorithms/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/ansi-canvas-protocol/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/blackboard-retirement/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/architecture/canonical-state-flows/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/canvas-reading/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/canvas-searching/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/canvas-writing/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/chargraph-layout/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/editor-runtime/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/ownership/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/architecture/state-authority/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/state-flows/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/architecture/state-persistence/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/architecture/text-rendering-features/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/architecture/text-rendering-pipeline/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/text-rendering/</loc></url>
   <url><loc>https://chardesk.com/docs/development/architecture/webmcp/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/cell-ui/</loc></url>
   <url><loc>https://chardesk.com/docs/development/cell-ui/accessibility/</loc></url>
   <url><loc>https://chardesk.com/docs/development/cell-ui/compositor/</loc></url>
   <url><loc>https://chardesk.com/docs/development/cell-ui/design/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/cell-ui/editor-foundations/</loc></url>
   <url><loc>https://chardesk.com/docs/development/cell-ui/macintosh/</loc></url>
   <url><loc>https://chardesk.com/docs/development/cell-ui/native-input/</loc></url>
   <url><loc>https://chardesk.com/docs/development/cell-ui/overview/</loc></url>
   <url><loc>https://chardesk.com/docs/development/cell-ui/primitives/</loc></url>
   <url><loc>https://chardesk.com/docs/development/cell-ui/semantics/</loc></url>
   <url><loc>https://chardesk.com/docs/development/cell-ui/status/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/cell-ui/widget-evidence/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/cell-ui/widget-pointer-scroll/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/cell-ui/widget-state/</loc></url>
   <url><loc>https://chardesk.com/docs/development/cell-ui/widgets/</loc></url>
   <url><loc>https://chardesk.com/docs/development/delivery/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/documentation-system/</loc></url>
   <url><loc>https://chardesk.com/docs/development/domains/</loc></url>
   <url><loc>https://chardesk.com/docs/development/formats-packages/</loc></url>
   <url><loc>https://chardesk.com/docs/development/host-ui/</loc></url>
@@ -36,7 +47,11 @@
   <url><loc>https://chardesk.com/docs/development/host-ui/editor-chrome/</loc></url>
   <url><loc>https://chardesk.com/docs/development/host-ui/icon-controls/</loc></url>
   <url><loc>https://chardesk.com/docs/development/host-ui/interface-content/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/host-ui/visual-composition/</loc></url>
   <url><loc>https://chardesk.com/docs/development/host-ui/visual-system/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/host-ui/visual-theme/</loc></url>
+  <url><loc>https://chardesk.com/docs/development/host-ui/visual-vocabulary/</loc></url>
   <url><loc>https://chardesk.com/docs/development/quality/</loc></url>
+  <url><loc>https://chardesk.com/docs/user/</loc></url>
   <url><loc>https://chardesk.com/docs/user/collaboration/</loc></url>
 </urlset>

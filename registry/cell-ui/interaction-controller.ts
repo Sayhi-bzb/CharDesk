@@ -49,10 +49,15 @@ export class CellInteractionController {
   ) {}
 
   get snapshot() {
+    const activationFlashId = this.feedback.activeId;
+    const activationFlashGroupId = activationFlashId && this.#frame
+      ? this.#frame.tree.nodes.get(activationFlashId)?.activationGroupId ?? null
+      : null;
     return Object.freeze({
       focusedId: this.focus.focusedId,
       pressActiveId: this.press.activeId,
-      activationFlashId: this.feedback.activeId,
+      activationFlashId,
+      activationFlashGroupId,
       activationTargetId: this.feedback.waiting ? null : this.feedback.targetId,
       confirmation: this.feedback.presentation,
       focusVisible: this.#inputSource === "keyboard",
