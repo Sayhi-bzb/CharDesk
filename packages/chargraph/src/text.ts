@@ -4,6 +4,7 @@ import {
   type CharDeskTextRun,
   type CharDeskTextStyle,
 } from "@chardesk/protocol";
+import { Lexer, type Token, type Tokens } from "marked";
 import {
   parseBlockLayout,
   renderBlockLayoutDocument,
@@ -221,8 +222,24 @@ const rawResult = (source: string): CharGraphTextRenderResult => ({
 const SPATIAL_GLYPHS = /[┌┐└┘├┤┬┴┼─│━┃╭╮╰╯╴╵╶╷╸╹╺╻▶►▼▲◀◁▷△▽]/u;
 const ASCII_FRAME = /^\s*\+[+=-]+\+/u;
 
+const spatialTextLines = (tokens: readonly Token[]): string[] =>
+  tokens.flatMap((token) => {
+    if (token.type === "code" && token.codeBlockStyle !== "indented") return [];
+    if (token.type === "blockquote") {
+      return spatialTextLines((token as Tokens.Blockquote).tokens);
+    }
+    if (token.type === "list") {
+      return (token as Tokens.List).items.flatMap((item) => spatialTextLines(item.tokens));
+    }
+    return token.raw.split(/\r\n|\r|\n/u);
+  });
+
 const looksLikeSpatialText = (source: string) => {
-  const lines = source.split(/\r\n|\r|\n/u);
+  // Fenced diagrams belong to Markdown; only surrounding text can activate
+  // coordinate preservation. Let the Markdown lexer handle nested fences.
+  const lines = source.includes("```") || source.includes("~~~")
+    ? spatialTextLines(Lexer.lex(source))
+    : source.split(/\r\n|\r|\n/u);
   if (lines.length < 3) return false;
   const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
   if (nonEmptyLines.length < 3) return false;

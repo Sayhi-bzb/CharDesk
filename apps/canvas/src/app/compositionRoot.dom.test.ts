@@ -80,6 +80,31 @@ describe("ApplicationEditorHost", () => {
     expect(cells.has("0,4")).toBe(false);
   });
 
+  it("pastes Markdown styles around a fenced flowchart in automatic text mode", async () => {
+    const host = createHost();
+    host.canvas.commands.grid.replace([]);
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
+    const source = [
+      "**业务规则**", "", "```text",
+      "用户来电", "   │", "   ▼", "识别诉求", "   └─ 查物流 → 查询",
+      "```",
+    ].join("\n");
+
+    const result = await host.canvas.commands.selection.paste({
+      eventDataTransfer: {
+        getData: (type: string) => type === "text/plain" ? source : "",
+      } as unknown as DataTransfer,
+    });
+    const cells = host.canvas.getState().contentSurface.reader.materialize();
+
+    expect(result).toMatchObject({ status: "applied" });
+    expect(cells.get("0,0")).toMatchObject({ char: "业", attrs: { bold: true } });
+    expect([...cells].some(([key, cell]) => key.startsWith("3,") && cell.char === "│"))
+      .toBe(true);
+    expect([...cells.values()].some((cell) => cell.char === "*" || cell.char === "`"))
+      .toBe(false);
+  });
+
   it("persists external inline-code rendering into GridMap cells", async () => {
     const host = createHost();
     host.canvas.commands.grid.replace([]);

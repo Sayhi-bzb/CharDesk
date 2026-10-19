@@ -78,6 +78,65 @@ describe("canonical CharGraph text renderer", () => {
     expect(rendered.renderer).toBe("markdown");
   });
 
+  it.each(["```", "~~~", "````"])(
+    "renders Markdown around a diagram fenced with %s in auto mode",
+    async (fence) => {
+      const diagram = "用户来电\n   │\n   ▼\n识别诉求\n   └─ 查物流 → 查询";
+      const rendered = await renderCharGraphText([
+        "**业务规则**",
+        "",
+        `${fence}text`,
+        diagram,
+        fence,
+        "",
+        "| 工具 | 用途 |",
+        "| --- | --- |",
+        "| query_tracking | 查询物流 |",
+      ].join("\n"));
+
+      expect(rendered.renderer).toBe("markdown");
+      expect(getCharGraphText(rendered)).toContain(diagram);
+      expect(getCharGraphText(rendered)).not.toContain(fence);
+      expect(rendered.fragments.find((part) => part.text === "业务规则")?.attrs?.bold)
+        .toBe(true);
+      expect(getCharGraphText(rendered)).toContain("query_tracking");
+    }
+  );
+
+  it.each(["blockquote", "list"])(
+    "ignores fenced diagram glyphs inside a Markdown %s",
+    async (container) => {
+      const code = ["```text", "┌─┐", "│A│", "└─┘", "```"];
+      const nested = container === "blockquote"
+        ? code.map((line) => `> ${line}`)
+        : ["- Diagram", ...code.map((line) => `  ${line}`)];
+      const rendered = await renderCharGraphText([
+        "**Rules**", "", ...nested,
+      ].join("\n"));
+
+      expect(rendered.renderer).toBe("markdown");
+      expect(getCharGraphText(rendered)).toContain("│A│");
+      expect(rendered.fragments.find((part) => part.text === "Rules")?.attrs?.bold)
+        .toBe(true);
+    }
+  );
+
+  it("still preserves unfenced spatial text beside a fenced block", async () => {
+    const source = "    ┌─┐\n    │A│\n    └─┘\n\n```text\nB\n```";
+    const rendered = await renderCharGraphText(source);
+
+    expect(rendered.renderer).toBe("raw");
+    expect(getCharGraphText(rendered)).toBe(source);
+  });
+
+  it("preserves ASCII frames in auto mode", async () => {
+    const source = "    +---+\n    | A |\n    +---+";
+    const rendered = await renderCharGraphText(source);
+
+    expect(rendered.renderer).toBe("raw");
+    expect(getCharGraphText(rendered)).toBe(source);
+  });
+
   it("keeps escaped boundaries literal and leaves alternate Markdown rules available", async () => {
     const escaped = await renderCharGraphText("A\n|||\n\\---\n\\|||\n---\nB");
     const rule = await renderCharGraphText("***");
