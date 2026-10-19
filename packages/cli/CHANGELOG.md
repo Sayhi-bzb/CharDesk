@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.9](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.8...v0.6.9) (2026-10-19)
+
+
+### Bug Fixes
+
+* render Markdown around fenced diagrams in auto mode ([980a049](https://github.com/Sayhi-bzb/CharDesk/commit/980a049a2103c295effc12656a98226e4225a295))
+
 ## [0.6.8](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.7...v0.6.8) (2026-10-14)
 
 
