@@ -44,6 +44,7 @@ jobs:
       dom-tests: ${{ steps.plan.outputs.dom-tests }}
       build: ${{ steps.plan.outputs.build }}
       cell-e2e: ${{ steps.plan.outputs.cell-e2e }}
+      mcp-e2e: ${{ steps.plan.outputs.mcp-e2e }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -78,6 +79,11 @@ jobs:
             const plan = createVerificationPlan(options, changes);
             appendFileSync(output, `${outputName}=${plan.tasks.length > 0}\n`);
           }
+          const mcpBrowser = mode === 'full' || changes.files.some(file =>
+            file.startsWith('packages/mcp/') || file.startsWith('tests/local-mcp/') ||
+            file === 'apps/canvas/src/shared/services/local-agent.ts' ||
+            file === '.github/workflows/ci.yml');
+          appendFileSync(output, `mcp-e2e=${mcpBrowser}\n`);
           NODE
 
   quality:
@@ -262,10 +268,38 @@ jobs:
             npm run "$VERIFY_SCRIPT" -- --phase cell-e2e --cell-project "$CELL_E2E_PROJECT"
           fi
 
+  mcp-e2e:
+    name: Local MCP browser tests
+    needs: [release-metadata, plan]
+    if: needs.plan.outputs.mcp-e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - *checkout
+      - *setup-node
+      - *install
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Verify production MCP lifecycle with Canvas
+        run: npx playwright test --config tests/local-mcp/playwright.config.mjs production-bridge.spec.mjs
+      - name: Preserve browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-mcp-browser-failure
+          path: tests/local-mcp/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
   verify:
     name: Verify
     if: ${{ always() }}
-    needs: [release-metadata, plan, quality, workspace-tests, node-tests, dom-tests, build, cell-e2e]
+    needs: [release-metadata, plan, quality, workspace-tests, node-tests, dom-tests, build, cell-e2e, mcp-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -288,6 +322,7 @@ jobs:
           check_lane "${{ needs.dom-tests.result }}" "${{ needs.plan.outputs.dom-tests }}"
           check_lane "${{ needs.build.result }}" "${{ needs.plan.outputs.build }}"
           check_lane "${{ needs.cell-e2e.result }}" "${{ needs.plan.outputs.cell-e2e }}"
+          check_lane "${{ needs.mcp-e2e.result }}" "${{ needs.plan.outputs.mcp-e2e }}"
 
   deploy-canvas:
     name: Deploy Canvas

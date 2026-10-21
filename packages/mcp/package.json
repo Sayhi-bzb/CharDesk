@@ -15,7 +15,7 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "node --watch src/server.mjs",
+    "dev": "node --watch src/broker-process.mjs",
     "test": "node --test --test-concurrency=1 test/*.test.mjs"
   },
   "dependencies": {

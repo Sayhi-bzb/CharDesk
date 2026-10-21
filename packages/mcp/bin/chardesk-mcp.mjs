@@ -1,41 +1,36 @@
 #!/usr/bin/env node
-import { readFile, unlink } from 'node:fs/promises';
-import { pairingPath, credentialsPath } from '../src/paths.mjs';
+import { unlink } from 'node:fs/promises';
+import { inspectBroker } from '../src/bootstrap.mjs';
+import { requestJson } from '../src/http.mjs';
+import { readConfig } from '../src/protocol.mjs';
 
 const command = process.argv[2] || 'server';
-if (command === 'server') {
-  try {
+try {
+  if (command === 'server') {
     await import('../src/server.mjs');
-  } catch (error) {
-    if (error?.code !== 'EADDRINUSE') throw error;
-    await import('../src/agent.mjs');
-  }
-} else if (command === 'pair') {
-  try {
-    const pairing = JSON.parse(await readFile(pairingPath(), 'utf8'));
-    process.kill(pairing.pid, 0);
-    console.log(pairing.bridgeUrl);
-  } catch {
-    console.error('Start the MCP server through your coding agent first.'); process.exitCode = 1;
-  }
-} else if (command === 'revoke') {
-  try {
-    const pairing = JSON.parse(await readFile(pairingPath(), 'utf8'));
-    process.kill(pairing.pid, 0);
-    const response = await fetch(pairing.bridgeUrl.replace(/\/bridge\?token=.*$/, '/revoke'), {
-      method: 'POST',
-      headers: { authorization: `Bearer ${new URL(pairing.bridgeUrl).searchParams.get('token')}` },
-    });
-    if (!response.ok) throw new Error(`MCP server returned ${response.status}.`);
-    console.log('Pairing revoked.');
-  } catch (error) {
-    if (error.code === 'ENOENT' || error.code === 'ESRCH') {
-      await unlink(credentialsPath()).catch((unlinkError) => {
-        if (unlinkError.code !== 'ENOENT') throw unlinkError;
-      });
+  } else if (command === 'pair' || command === 'revoke' || command === 'bridge') {
+    const config = readConfig();
+    const action = command === 'bridge' ? process.argv[3] : command;
+    if (!['pair', 'revoke', 'status', 'stop'].includes(action)) throw new Error('Usage: chardesk-mcp bridge [status|stop]');
+    const broker = await inspectBroker(config, { control: action !== 'pair' });
+    if (action === 'status') {
+      console.log(JSON.stringify(broker?.health || { role: 'bridge', state: 'stopped' }));
+    } else if (action === 'revoke' && !broker) {
+      await unlink(config.credentialsFile).catch((error) => { if (error.code !== 'ENOENT') throw error; });
       console.log('No running pairing found.');
-    } else throw error;
-  }
-} else {
-  console.error('Usage: chardesk-mcp [server|pair|revoke]'); process.exitCode = 1;
+    } else if (action === 'stop' && !broker) {
+      console.log('Local MCP bridge is stopped.');
+    } else {
+      if (!broker) throw new Error('Start the MCP server through your coding agent first.');
+      if (action === 'pair') console.log(broker.pairing.bridgeUrl);
+      else {
+        const response = await requestJson(`${broker.baseUrl}/${action === 'stop' ? 'shutdown' : 'revoke'}`, { method: 'POST', headers: broker.headers });
+        if (response.status >= 400) throw new Error(response.body?.error?.message || `Bridge returned ${response.status}.`);
+        console.log(action === 'stop' ? 'Local MCP bridge is stopping.' : 'Pairing revoked.');
+      }
+    }
+  } else throw new Error('Usage: chardesk-mcp [server|pair|revoke|bridge status|bridge stop]');
+} catch (error) {
+  console.error(`[${error.code || 'bridge_unavailable'}] ${error.message}`);
+  process.exitCode = 1;
 }

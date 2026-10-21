@@ -1,88 +1,135 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
-import { fileURLToPath } from 'node:url';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import WebSocket from 'ws';
+import { createServer } from 'node:http';
+import { readFile, stat, writeFile } from 'node:fs/promises';
+import test from 'node:test';
+import { fixture, freePort, waitFor } from './fixture.mjs';
+import { requestJson } from '../src/http.mjs';
+import { inspectBroker } from '../src/bootstrap.mjs';
 
-const nextMessage = (socket) => new Promise((resolve, reject) => {
-  const onMessage = (data) => { cleanup(); resolve(JSON.parse(data.toString())); };
-  const onError = (error) => { cleanup(); reject(error); };
-  const cleanup = () => { socket.off('message', onMessage); socket.off('error', onError); };
-  socket.on('message', onMessage); socket.on('error', onError);
-});
-const nextMessages = (socket, count) => new Promise((resolve, reject) => {
-  const messages = [];
-  const onMessage = (data) => {
-    messages.push(JSON.parse(data.toString()));
-    if (messages.length === count) cleanup(), resolve(messages);
-  };
-  const onError = (error) => { cleanup(); reject(error); };
-  const cleanup = () => { socket.off('message', onMessage); socket.off('error', onError); };
-  socket.on('message', onMessage); socket.on('error', onError);
-});
-
-test('a second server command joins the existing bridge as a client', { timeout: 15_000 }, async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'chardesk-mcp-agent-proxy-'));
-  const env = { ...process.env, CHARDESK_MCP_PORT: '0', CHARDESK_MCP_ORIGINS: 'http://127.0.0.1:5173',
-    CHARDESK_MCP_CREDENTIALS: join(directory, 'credentials.json'), CHARDESK_MCP_PAIRING: join(directory, 'pairing.json') };
-  const command = fileURLToPath(new URL('../bin/chardesk-mcp.mjs', import.meta.url));
-  const serverSource = fileURLToPath(new URL('../src/server.mjs', import.meta.url));
-  const owner = spawn(process.execPath, [command, 'server'], { env, stdio: ['pipe', 'pipe', 'pipe'] });
-  let page;
-  let client;
-  try {
-    let stderr = '';
-    const pairing = await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Owner broker did not announce pairing.')), 5_000);
-      owner.stderr.on('data', (data) => {
-        stderr += data.toString();
-        const line = stderr.split('\n').find((value) => value.startsWith('{'));
-        if (!line) return;
-        clearTimeout(timer); resolve(JSON.parse(line));
-      });
-      owner.once('error', reject);
-    });
-    const pageUrl = new URL(pairing.bridgeUrl); pageUrl.search = '';
-    page = await new Promise((resolve, reject) => {
-      const socket = new WebSocket(pageUrl, { origin: 'http://127.0.0.1:5173' });
-      socket.once('open', () => resolve(socket)); socket.once('error', reject);
-    });
-    assert.equal((await nextMessage(page)).method, 'paired');
-    const authorization = nextMessages(page, 2);
-    page.send(JSON.stringify({ method: 'authorize', grant: { scope: 'application', permissions: { inspect: true, read: true, search: true, write: true } } }));
-    const [authorized, readyProbe] = await authorization;
-    assert.equal(authorized.method, 'authorized');
-    assert.equal(readyProbe.method, 'ready_probe');
-    page.send(JSON.stringify({ method: 'ready', protocolVersion: 1 }));
-    page.send(JSON.stringify({ method: 'runtime_status', status: { protocolVersion: 2, buildId: 'test', status: 'ready', persistence: 'ready' } }));
-
-    const port = new URL(pairing.bridgeUrl).port;
-    const transport = new StdioClientTransport({ command: process.execPath, args: [serverSource], env: { ...env, CHARDESK_MCP_PORT: port } });
-    client = new Client({ name: 'tenant-proxy-test', version: '0.0.0' });
-    await client.connect(transport);
-    const listed = await client.listTools();
-    assert.ok(listed.tools.some(({ name }) => name === 'canvas_read'));
-    const resultPromise = client.callTool({ name: 'canvas_read', arguments: { viewport: [0, 0, 1, 1] } });
-    const request = await nextMessage(page);
-    page.send(JSON.stringify({ id: request.id, result: { ok: true, tenant: 'proxy' } }));
-    const result = await resultPromise;
-    assert.deepEqual(result.structuredContent, { ok: true, tenant: 'proxy' });
-    owner.stdin.end();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const survivesOwnerExit = client.callTool({ name: 'canvas_read', arguments: { viewport: [0, 0, 1, 1] } });
-    const survivingRequest = await nextMessage(page);
-    page.send(JSON.stringify({ id: survivingRequest.id, result: { ok: true, afterOwnerStdio: true } }));
-    assert.deepEqual((await survivesOwnerExit).structuredContent, { ok: true, afterOwnerStdio: true });
-    await client.close();
-  } finally {
-    page?.close(); owner.kill('SIGTERM');
-    await once(owner, 'close').catch(() => undefined);
-    await rm(directory, { recursive: true, force: true });
+test('100 stdio sessions exit on stdin EOF without accumulating resources', { timeout: 60_000 }, async (t) => {
+  const f = await fixture(t);
+  await f.page();
+  for (let i = 0; i < 100; i += 1) {
+    const adapter = f.raw();
+    await adapter.initialize();
+    adapter.child.stdin.end();
+    await waitFor(() => adapter.exit, 1500);
+    assert.deepEqual(adapter.exit, { code: 0, signal: null }, adapter.stderr);
   }
+  const health = await f.health();
+  assert.equal(health.activeRequests, 0);
+  assert.equal(health.activeCallers, 0);
+  assert.equal(health.pageReady, true);
+});
+
+test('stdin EOF cancels a pending request without disrupting another Agent', async (t) => {
+  const f = await fixture(t);
+  const page = await f.page({ reply: null });
+  const adapter = f.raw();
+  await adapter.initialize();
+  adapter.send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'canvas_read', arguments: {} } });
+  await waitFor(() => page.calls.length === 1);
+  adapter.child.stdin.end();
+  await waitFor(() => adapter.exit, 1500);
+  await waitFor(async () => (await f.health()).activeRequests === 0);
+  const survivor = await f.client();
+  const result = survivor.callTool({ name: 'canvas_read', arguments: {} });
+  await waitFor(() => page.calls.length === 2);
+  page.respond(page.calls[1], { ok: true, survived: true });
+  assert.equal((await result).structuredContent.survived, true);
+});
+
+test('concurrent adapters automatically elect one independent broker', { timeout: 15_000 }, async (t) => {
+  const f = await fixture(t, { start: false, port: await freePort() });
+  const adapters = Array.from({ length: 8 }, () => f.raw());
+  await Promise.all(adapters.map((adapter) => adapter.initialize()));
+  await waitFor(() => adapters.every((adapter) => adapter.stderr.includes('mcp.bridge_ready')));
+  const running = await f.running();
+  for (const adapter of adapters) {
+    assert.notEqual(running.health.pid, adapter.child.pid);
+    const events = adapter.stderr.split('\n').filter((line) => line.startsWith('{')).map((line) => JSON.parse(line));
+    assert.ok(events.some((event) => event.instanceId === running.health.instanceId));
+    adapter.child.stdin.end();
+  }
+  await Promise.all(adapters.map((adapter) => waitFor(() => adapter.exit, 1500)));
+  assert.equal((await f.health()).instanceId, running.health.instanceId);
+  const saved = JSON.parse(await readFile(f.config.pairingFile, 'utf8'));
+  assert.equal(saved.pid, running.health.pid);
+  assert.equal((await stat(f.config.credentialsFile)).mode & 0o777, 0o600);
+  assert.equal((await stat(f.config.pairingFile)).mode & 0o777, 0o600);
+});
+
+test('an incompatible bridge produces a tool error, not Transport closed', async (t) => {
+  const port = await freePort();
+  const old = createServer((_request, response) => response.end(JSON.stringify({ role: 'bridge', clients: 16 })));
+  await new Promise((resolve) => old.listen(port, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => old.close(resolve)));
+  const f = await fixture(t, { start: false, port });
+  const client = await f.client();
+  const result = await client.callTool({ name: 'canvas_manage', arguments: { action: 'list' } });
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /bridge_incompatible.*Upgrade/);
+  assert.ok((await client.listTools()).tools.length);
+});
+
+test('bridge CLI reports status, refuses unauthenticated stops and stops its own broker', async (t) => {
+  const f = await fixture(t);
+  const status = f.raw(['bridge', 'status']);
+  await waitFor(() => status.exit);
+  assert.equal(JSON.parse(status.stdout).instanceId, (await f.health()).instanceId);
+  const running = await f.running();
+  assert.equal((await requestJson(`${running.baseUrl}/shutdown`, { method: 'POST' })).status, 403);
+  const stop = f.raw(['bridge', 'stop']);
+  await waitFor(() => stop.exit);
+  assert.equal(stop.exit.code, 0);
+  await f.broker.closed;
+});
+
+test('an adapter exits during startup even when the occupied port never replies', async (t) => {
+  const port = await freePort();
+  const stalled = createServer();
+  await new Promise((resolve) => stalled.listen(port, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => { stalled.close(resolve); stalled.closeAllConnections(); }));
+  const f = await fixture(t, { start: false, port });
+  const adapter = f.raw();
+  await adapter.initialize();
+  adapter.child.stdin.end();
+  await waitFor(() => adapter.exit, 1500);
+  assert.deepEqual(adapter.exit, { code: 0, signal: null });
+  assert.doesNotMatch(adapter.stderr, /UnhandledPromiseRejection|uncaught/i);
+});
+
+test('an existing adapter restarts a crashed broker without replaying its write', { timeout: 15_000 }, async (t) => {
+  const f = await fixture(t, { start: false, port: await freePort() });
+  const client = await f.client();
+  await waitFor(() => f.running());
+  const page = await f.page({ reply: null });
+  const before = await f.running();
+  const pending = client.callTool({ name: 'canvas_write', arguments: { at: [0, 0], content: 'A' } });
+  await waitFor(() => page.calls.length === 1);
+  process.kill(before.health.pid, 'SIGKILL');
+  const failed = await pending;
+  assert.equal(failed.isError, true);
+  assert.match(failed.content[0].text, /execution_unknown/);
+  const recovery = await client.callTool({ name: 'canvas_read', arguments: {} });
+  assert.match(recovery.content[0].text, /page_unavailable/);
+  const after = await f.running();
+  assert.notEqual(after.health.instanceId, before.health.instanceId);
+  assert.equal(after.pairing.bridgeUrl, before.pairing.bridgeUrl);
+  const reconnected = await f.page();
+  assert.equal((await client.callTool({ name: 'canvas_read', arguments: {} })).isError, false);
+  assert.equal(reconnected.calls.length, 1);
+  assert.equal(reconnected.calls[0].params.name, 'canvas_read');
+});
+
+test('status/stop can manage an expired v2 bridge', async (t) => {
+  const f = await fixture(t);
+  const saved = JSON.parse(await readFile(f.config.pairingFile, 'utf8'));
+  saved.expiresAt = 1;
+  await writeFile(f.config.pairingFile, JSON.stringify(saved));
+  await assert.rejects(inspectBroker(f.config), { code: 'pairing_expired' });
+  const stop = f.raw(['bridge', 'stop']);
+  await waitFor(() => stop.exit);
+  assert.equal(stop.exit.code, 0, stop.stderr);
+  await f.broker.closed;
 });

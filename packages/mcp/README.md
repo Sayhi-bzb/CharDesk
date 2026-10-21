@@ -10,10 +10,9 @@ adapter and richer output schemas without redefining names, descriptions, or
 input schemas. `sourceRef` is a local-bridge extension resolved by this package
 before forwarding; browser hosts do not read local file paths.
 
-The MCP server runs as a local stdio process and forwards Canvas management, read,
-search, and write calls over a loopback WebSocket to one explicitly paired
-browser page. Multiple MCP processes can share that page as independent clients;
-the bridge only multiplexes request IDs and does not create agent sessions.
+Each Agent runs a stdio adapter. Adapters send authenticated, bounded HTTP calls
+to an independent local bridge; only the bridge maintains a WebSocket to the
+paired browser page. Idle adapters hold no bridge connections or session slots.
 CharDesk can grant application-scoped access to all Canvases with separate
 inspect, read, search, and write permissions; the short persistent `canvasId` selects a target
 without changing the human's active Canvas. Get IDs from
@@ -52,9 +51,8 @@ For local MCP development, use the watcher from the repository root:
 npm run dev:mcp
 ```
 
-This restarts the local Node bridge when `packages/mcp/src` changes. It is a
-development command; normal agent configuration should continue to use the
-stable `server` command.
+Stop an existing bridge first with `npx -y @chardesk/mcp bridge stop`.
+The watcher runs the bridge in the foreground; Agent adapters join it normally.
 
 Advanced clients can print the private pairing URL with:
 
@@ -62,9 +60,10 @@ Advanced clients can print the private pairing URL with:
 npx -y @chardesk/mcp pair
 ```
 
-When another coding agent starts `server` on the same machine, it detects the
-existing bridge and joins it as a client automatically. Client requests are
-matched by request ID and forwarded through the shared browser page.
+Adapters automatically start or reuse the bridge. Concurrent starts elect the
+bridge by binding the configured port; only the winner writes credentials and
+connection metadata. Startup is bounded to five seconds. The bridge does not
+belong to whichever Agent started first.
 
 The browser connects through the fixed loopback bridge without exposing the URL
 token. **Agent → Local MCP** is a status and permission panel; the URL form
@@ -77,12 +76,48 @@ npx -y @chardesk/mcp revoke
 
 The server binds to `127.0.0.1:9494` by default. Set `CHARDESK_MCP_PORT` and
 `CHARDESK_MCP_ORIGINS` when the local environment needs different values.
-The bridge remains alive after the owner agent's stdio closes while the browser
-page or another client is connected. Set `CHARDESK_MCP_DEBUG=1` to emit JSON
-lifecycle events (`browser_connected`, `browser_ready`, `client_connected`,
-`owner_stdio_closed`, `client_closed`, and `browser_closed`) to stderr when
-diagnosing disconnects. `GET http://127.0.0.1:9494/health` reports the current
-bridge, page, and client state.
+Adapters cancel their requests and exit within one second when stdio ends.
+The bridge remains alive while the page is connected or requests are running;
+otherwise it exits after 30 seconds. An existing adapter can start a replacement
+bridge before its next call. Port `0` is for isolated tests with a private
+connection-metadata directory; shared startup uses a fixed port.
+
+The bridge allows 128 concurrent requests globally and 32 per caller. Completed,
+cancelled, disconnected, and timed-out requests release their budget. Ordinary
+calls time out after 10 seconds; `canvas_code` after 30 seconds. Writes are never
+automatically replayed: a disconnect or timeout after dispatch reports
+`execution_unknown`, so inspect the Canvas before retrying.
+
+```sh
+npx -y @chardesk/mcp bridge status
+npx -y @chardesk/mcp bridge stop
+```
+
+`GET http://127.0.0.1:9494/health` reports the bridge protocol/package versions,
+instance, page readiness, active requests/callers, and request budgets; it does
+not enumerate idle Agents. Set `CHARDESK_MCP_DEBUG=1` for structured lifecycle
+events in the private `<pairing-file>.log`. The default metadata file is
+`pairing.json` beside the credentials; `CHARDESK_MCP_PAIRING` and
+`CHARDESK_MCP_CREDENTIALS` override their paths. Credentials and metadata use
+private permissions and atomic publication. Diagnostics never print the token;
+the explicit `pair` command prints the private URL.
+
+## Upgrade from the owner-process bridge
+
+Upgrading from `0.6.8` requires stopping all old local MCP processes once, then
+starting the upgraded Agent adapters. New adapters report an explicit
+`bridge_incompatible` tool error when an old bridge occupies the port; they do
+not terminate it. The old Agent WebSocket protocol is not supported. Startup
+commands, Canvas tool contracts, and the browser bridge protocol are unchanged.
+`bridge stop` can stop an older version-2 bridge using its authenticated control
+endpoint. Upgrades require restarting adapters with the updated package too:
+adapter and bridge package versions must match. For same-version bridge
+restarts, existing adapters start a replacement before their next call.
+
+Verification: [adapter lifecycle](test/agent-proxy.test.mjs),
+[request isolation and budgets](test/multitenant.test.mjs),
+[MCP tool integration](test/server.test.mjs),
+[real browser lifecycle](../../tests/local-mcp/production-bridge.spec.mjs).
 
 Canvas reads default to lightweight exact text without style notes. Agents may
 request a spatial appearance map, exact Cell records, an image block for visual

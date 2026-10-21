@@ -59,8 +59,8 @@
       "project": ["src/**/*.ts", "*.config.ts"]
     },
     "packages/mcp": {
-      "entry": ["src/server.mjs", "src/tools.mjs", "src/tools.d.mts"],
-      "project": ["src/**/*.{mjs,mts}", "*.config.ts"]
+      "entry": ["bin/chardesk-mcp.mjs", "src/server.mjs", "src/broker-process.mjs", "src/tools.mjs", "src/tools.d.mts"],
+      "project": ["bin/*.mjs", "src/**/*.{mjs,mts}"]
     },
     "packages/cli": {
       "entry": [

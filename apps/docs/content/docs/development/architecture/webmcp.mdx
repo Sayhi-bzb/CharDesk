@@ -28,20 +28,18 @@ Groups reuse existing runtimes and never own separate copies of application stat
 
 ## Local MCP bridge
 
-The local bridge keeps one browser page connection and multiplexes independent
-Agent tenants through it:
+The local bridge keeps one browser WebSocket and receives bounded HTTP calls
+from independent stdio adapters:
 
 ```text
-browser page ── one WebSocket ── bridge broker
-                                  ├─ tenant A
-                                  ├─ tenant B
-                                  └─ tenant C
+Agent A ─ stdio adapter ─ HTTP ─┐
+Agent B ─ stdio adapter ─ HTTP ─┼─ bridge ─ WebSocket ─ browser page
+Agent C ─ stdio adapter ─ HTTP ─┘
 ```
 
-Each tenant has its own session token and pending-request budget. Requests are
-forwarded in FIFO order; a tenant disconnect does not close the page or affect
-other tenants. A second `@chardesk/mcp server` process joins the existing broker
-automatically instead of claiming a second browser connection.
+The bridge owns only active requests and the page connection. Adapter lifetime,
+automatic startup, resource budgets, failure semantics, and upgrade instructions
+are owned by the [MCP package README](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/mcp/README.md).
 
 Canvas reads keep machine metadata separate from visual content. `canvas_read`
 returns `structuredContent` for coordinates, sampling, and optional appearance regions,
