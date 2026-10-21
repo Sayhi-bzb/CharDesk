@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.11](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.10...v0.6.11) (2026-10-21)
+
+
+### Bug Fixes
+
+* hand off older local MCP bridges automatically ([3db7628](https://github.com/Sayhi-bzb/CharDesk/commit/3db7628ae940fe7d0eaee08061110aea25ca6902))
+* identify Linux MCP owners by executable path ([727c241](https://github.com/Sayhi-bzb/CharDesk/commit/727c2417ccc900e7711a59d9dc5303ad5d81c42c))
+
 ## [0.6.10](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.9...v0.6.10) (2026-10-21)
 
 
