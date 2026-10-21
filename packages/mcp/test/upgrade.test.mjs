@@ -17,9 +17,10 @@ test('concurrent upgrades drain the old bridge and elect one replacement', { tim
     body: { clientId: '11111111-1111-1111-1111-111111111111', name: 'canvas_write', input: { at: [0, 0], content: 'A' } } });
   await waitFor(() => page.calls.length === 1);
   const adapters = Array.from({ length: 8 }, () => f.raw());
-  await Promise.all(adapters.map((adapter) => adapter.initialize()));
+  const initialized = Promise.all(adapters.map((adapter) => adapter.initialize()));
   await waitFor(() => f.broker.status().state === 'stopping');
   page.respond(page.calls[0], { ok: true, persistence: 'saved' });
+  await initialized;
   assert.equal((await pending).body.result.persistence, 'saved');
   await waitFor(() => adapters.every((adapter) => adapter.stderr.includes('mcp.bridge_ready')));
   const current = await f.running();
@@ -99,7 +100,8 @@ test('legacy owner processes are authenticated and retired before concurrent rep
   const { f, exited } = await legacyFixture(t);
   const adapters = Array.from({ length: 4 }, () => f.raw());
   await Promise.all(adapters.map((adapter) => adapter.initialize()));
-  await waitFor(() => adapters.every((adapter) => adapter.stderr.includes('mcp.bridge_ready')), 10_000);
+  try { await waitFor(() => adapters.every((adapter) => adapter.stderr.includes('mcp.bridge_ready')), 10_000); }
+  catch (error) { t.diagnostic(adapters.map((adapter) => adapter.stderr).join('\n')); throw error; }
   assert.equal(exited().code, 0);
   const current = await f.running();
   for (const adapter of adapters) assert.ok(adapter.stderr.includes(current.health.instanceId), adapter.stderr);

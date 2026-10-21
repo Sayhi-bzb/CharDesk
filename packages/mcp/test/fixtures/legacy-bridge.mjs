@@ -7,6 +7,7 @@ import { loadCredentials, writePrivateJson } from '../../src/credentials.mjs';
 import { readConfig } from '../../src/protocol.mjs';
 
 const config = readConfig();
+if (process.platform === 'linux') process.title = 'legacy-owner';
 const credentials = await loadCredentials(config.credentialsFile);
 const http = createServer((_request, response) => response.end(JSON.stringify({
   role: 'bridge', clients: 16, pageConnected: true, pageAuthorized: true, pageReady: true,

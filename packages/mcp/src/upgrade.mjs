@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { link, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import { link, readFile, readlink, stat, unlink, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
@@ -35,11 +35,13 @@ async function legacyIdentity(pid, port, signal) {
   const options = { timeout: 750, signal, maxBuffer: 64 * 1024 };
   const { stdout: identity } = await execute('ps', ['-p', String(pid), '-o', 'uid=', '-o', 'lstart=', '-o', 'comm='], options);
   const fields = identity.trim().split(/\s+/);
-  if (Number(fields[0]) !== process.getuid() || !['node', 'nodejs'].includes(basename(fields.slice(6).join(' ')))) throw upgradeBlocked();
+  // Linux comm is a mutable thread name, not the executable identity.
+  const executable = process.platform === 'linux' ? await readlink(`/proc/${pid}/exe`) : fields.slice(6).join(' ');
+  if (Number(fields[0]) !== process.getuid() || !['node', 'nodejs'].includes(basename(executable))) throw upgradeBlocked();
   const { stdout: listener } = await execute(process.platform === 'darwin' ? '/usr/sbin/lsof' : 'lsof',
     ['-nP', '-a', '-p', String(pid), '-iTCP', '-sTCP:LISTEN', '-Fpn'], options);
   if (!listener.split('\n').includes(`p${pid}`) || !listener.split('\n').includes(`n127.0.0.1:${port}`)) throw upgradeBlocked();
-  return identity;
+  return `${identity}\n${executable}`;
 }
 
 async function authenticateLegacy(broker, signal) {
