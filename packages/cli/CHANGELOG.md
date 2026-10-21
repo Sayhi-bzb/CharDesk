@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.10](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.9...v0.6.10) (2026-10-21)
+
+
+### Bug Fixes
+
+* isolate local MCP broker and bound request lifetimes ([bce2803](https://github.com/Sayhi-bzb/CharDesk/commit/bce280363438249d8d5494b1c5503920fa9e3f0d))
+
 ## [0.6.9](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.8...v0.6.9) (2026-10-19)
 
 
