@@ -53,12 +53,10 @@ export async function fixture(t, options = {}) {
     for (const tracked of processes) if (!tracked.exit) tracked.child.kill('SIGTERM');
     await Promise.all(processes.map((tracked) => waitFor(() => tracked.exit).catch(() => tracked.child.kill('SIGKILL'))));
     if (broker) await broker.stop();
-    else {
-      const running = await inspectBroker(config, { control: true }).catch(() => null);
-      if (running) {
-        await requestJson(`${running.baseUrl}/shutdown`, { method: 'POST', headers: running.headers }).catch(() => {});
-        await waitFor(async () => !(await inspectBroker(config).catch(() => null)));
-      }
+    const running = await inspectBroker(config, { control: true }).catch(() => null);
+    if (running && !running.legacy) {
+      await requestJson(`${running.baseUrl}/shutdown`, { method: 'POST', headers: running.headers }).catch(() => {});
+      await waitFor(async () => !(await inspectBroker(config, { control: true }).catch(() => null)));
     }
     await rm(directory, { recursive: true, force: true });
   });
@@ -77,8 +75,8 @@ export async function fixture(t, options = {}) {
       method: 'POST', headers: headers || current.headers, body: { clientId, name, input }, signal,
     });
   };
-  const page = async ({ reply = (message) => ({ ok: true, echoed: message.params }), grant } = {}) => {
-    const current = await running();
+  const page = async ({ reply = (message) => ({ ok: true, echoed: message.params }), grant, control = false } = {}) => {
+    const current = await inspectBroker(config, { control });
     const url = new URL(current.pairing.bridgeUrl); url.search = '';
     const socket = new WebSocket(url, { origin: env.CHARDESK_MCP_ORIGINS });
     pages.push(socket);
@@ -95,7 +93,7 @@ export async function fixture(t, options = {}) {
         if (reply) socket.send(JSON.stringify({ id: message.id, result: reply(message) }));
       }
     });
-    await waitFor(async () => (await health()).pageReady);
+    await waitFor(async () => (await inspectBroker(config, { control })).health.pageReady);
     return { socket, calls, respond: (message, result) => socket.send(JSON.stringify({ id: message.id, result })) };
   };
   const client = async () => {

@@ -49,7 +49,7 @@ async function resolveSourceRef(name, input) {
   return { ...rest, [key]: content };
 }
 
-export async function startBroker({ config = readConfig(), idleMs = 30_000, timeoutFor, limits } = {}) {
+export async function startBroker({ config = readConfig(), idleMs = 30_000, timeoutFor, limits, version = MCP_VERSION } = {}) {
   const instanceId = randomUUID();
   const origins = new Set(config.origins);
   let credentials;
@@ -76,11 +76,11 @@ export async function startBroker({ config = readConfig(), idleMs = 30_000, time
   const pairing = () => ({
     bridgeUrl: `ws://127.0.0.1:${http.address().port}/bridge?token=${credentials.token}`,
     pid: process.pid, instanceId, protocolVersion: BROKER_PROTOCOL_VERSION,
-    version: MCP_VERSION, expiresAt: credentials.expiresAt,
+    version, expiresAt: credentials.expiresAt,
   });
   const publishPairing = () => writePrivateJson(config.pairingFile, pairing());
   const status = () => ({
-    role: 'bridge', protocolVersion: BROKER_PROTOCOL_VERSION, version: MCP_VERSION, instanceId,
+    role: 'bridge', protocolVersion: BROKER_PROTOCOL_VERSION, version, instanceId,
     pid: process.pid, state, pageConnected: Boolean(page?.readyState === WebSocket.OPEN),
     pageAuthorized: Boolean(pageGrant), pageReady, ...requests.status,
   });
@@ -126,6 +126,9 @@ export async function startBroker({ config = readConfig(), idleMs = 30_000, time
     }
     if (!credentials || request.headers.origin || request.headers.authorization !== `Bearer ${credentials.token}`) {
       throw new BridgeError('permission_denied', 'Local MCP authentication required.', 403);
+    }
+    if (request.headers['x-chardesk-instance-id'] && request.headers['x-chardesk-instance-id'] !== instanceId) {
+      throw new BridgeError('bridge_replaced', 'Local MCP bridge was already replaced.', 409);
     }
     if (state !== 'ready') throw new BridgeError('bridge_unavailable', 'Local MCP bridge is stopping.');
     if (request.url === '/shutdown') {

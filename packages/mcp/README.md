@@ -102,19 +102,37 @@ events in the private `<pairing-file>.log`. The default metadata file is
 private permissions and atomic publication. Diagnostics never print the token;
 the explicit `pair` command prints the private URL.
 
-## Upgrade from the owner-process bridge
+## Bridge upgrades
 
-Upgrading from `0.6.8` requires stopping all old local MCP processes once, then
-starting the upgraded Agent adapters. New adapters report an explicit
-`bridge_incompatible` tool error when an old bridge occupies the port; they do
-not terminate it. The old Agent WebSocket protocol is not supported. Startup
-commands, Canvas tool contracts, and the browser bridge protocol are unchanged.
-`bridge stop` can stop an older version-2 bridge using its authenticated control
-endpoint. Upgrades require restarting adapters with the updated package too:
-adapter and bridge package versions must match. For same-version bridge
-restarts, existing adapters start a replacement before their next call.
+Starting an updated adapter automatically replaces an older bridge. The bridge
+stops accepting calls, drains active requests for up to 750 ms, and releases its
+port before a replacement starts. Pending writes that cannot finish report
+`execution_unknown` and are never replayed. The open Canvas reconnects normally.
+Instance-scoped shutdown requests cannot stop a replacement by mistake.
 
-Verification: [adapter lifecycle](test/agent-proxy.test.mjs),
+Older adapters reuse a newer bridge with the same broker protocol; they never
+downgrade it. Unknown protocol or package-version formats remain explicit
+`bridge_incompatible` errors. Updating the installed MCP package and restarting
+an Agent is still required to update that Agent's adapter; push/deployment does
+not download local packages.
+
+The pre-HTTP owner-process bridge has no shutdown endpoint. On macOS/Linux,
+automatic migration requires private, current-user metadata and credentials,
+an authenticated legacy WebSocket handshake, and matching Node PID, start time,
+and loopback listener (`ps` and `lsof`). Migration sends SIGTERM once per process
+and waits for exit before publishing metadata. It does not resume old Agent
+sessions or replay their calls. If ownership cannot be verified, or the old
+process does not exit, migration stops with an explicit error; it never escalates
+to SIGKILL. Other platforms require stopping this legacy bridge once manually.
+
+To run the same upgrade without starting an Agent session:
+
+```sh
+npx -y @chardesk/mcp@latest bridge upgrade
+```
+
+Verification: [bridge upgrades](test/upgrade.test.mjs),
+[adapter lifecycle](test/agent-proxy.test.mjs),
 [request isolation and budgets](test/multitenant.test.mjs),
 [MCP tool integration](test/server.test.mjs),
 [real browser lifecycle](../../tests/local-mcp/production-bridge.spec.mjs).
