@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.0](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.11...v0.7.0) (2026-10-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove the retired ||| layout grammar, parser exports, layout options, and CLI block reading projection. Auto ANSI input preserves Markdown markers; explicit Markdown retains ANSI composition.
+
+### Features
+
+* unify text rendering and retire block layout ([f1dced7](https://github.com/Sayhi-bzb/CharDesk/commit/f1dced77c20ced45a1de83280b431b3bded348ab))
+
 ## [0.6.11](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.10...v0.6.11) (2026-10-21)
 
 

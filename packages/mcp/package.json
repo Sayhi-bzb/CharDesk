@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/mcp",
-  "version": "0.6.11",
+  "version": "0.7.0",
   "description": "Local MCP bridge for reading and writing a CharDesk Canvas",
   "type": "module",
   "bin": {
