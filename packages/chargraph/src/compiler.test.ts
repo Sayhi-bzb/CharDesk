@@ -6,17 +6,16 @@ import {
 } from "./compiler.js";
 
 describe("compileCharDeskText", () => {
-  it("interprets layout controls only for CharGraph sources", async () => {
+  it("preserves retired layout delimiters for every source kind", async () => {
     const source = "A\n|||\nB";
     const chargraph = await compileCharDeskText(source, {
       sourceKind: "chargraph",
-      layout: { columnGap: 1 },
     });
     const chardesk = await compileCharDeskText(source, {
       sourceKind: "chardesk",
     });
 
-    expect(chargraph.plainText).toBe("A B");
+    expect(chargraph.plainText).toBe(source);
     expect(chardesk.plainText).toBe(source);
   });
 
@@ -64,5 +63,26 @@ describe("compileCharDeskText", () => {
     await expect(compileCharDeskText("\u001b[31mred", {
       sourceKind: "chardesk",
     })).rejects.toEqual(new CharDeskTextCompileError("terminal-escape"));
+  });
+});
+
+describe("canonical format requests", () => {
+  it.each(["auto", "plain", "ansi", "markdown", "chardesk"] as const)(
+    "keeps retired delimiters literal in %s", async (format) => {
+      const result = await compileCharDeskText("A\n|||\nB", { format });
+      expect(result.plainText).toBe("A\n|||\nB");
+    },
+  );
+
+  it("lets explicit format override the legacy input kind", async () => {
+    const result = await compileCharDeskText("**A**", { format: "auto", sourceKind: "plain" });
+    expect(result.plainText).toBe("A");
+    expect(result.fragments.some((part) => part.attrs?.bold)).toBe(true);
+  });
+
+  it("keeps raw as the literal alias", async () => {
+    const result = await compileCharDeskText("**A**\t界", { format: "raw", tabSize: 4 });
+    expect(result.renderer).toBe("plain");
+    expect(result.plainText).toBe("**A**   界");
   });
 });

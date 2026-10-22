@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import asciiSponge from "../../../../packages/chargraph/src/__fixtures__/ascii-sponge.txt?raw";
 import * as Y from "yjs";
 import { DEFAULT_TEXT_RENDER_PROFILE } from "@/domains/document/public";
 import { gridEntriesToCellPlaneOperation } from "@/domains/canvas/public";
@@ -78,6 +79,24 @@ describe("ApplicationEditorHost", () => {
     expect(cells.get("4,1")?.char).toBe("│");
     expect(cells.get("0,3")?.char).toBe("┌");
     expect(cells.has("0,4")).toBe(false);
+  });
+
+  it("pastes ASCII artwork without changing character coordinates", async () => {
+    const host = createHost();
+    host.canvas.commands.grid.replace([]);
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 3, y: 2 });
+    const source = asciiSponge;
+    const result = await host.canvas.commands.selection.paste({
+      eventDataTransfer: {
+        getData: (type: string) => type === "text/plain" ? source : "",
+      } as unknown as DataTransfer,
+    });
+    const cells = host.canvas.getState().contentSurface.reader.materialize();
+    expect(result).toMatchObject({ status: "applied" });
+    const expected = source.split("\n").flatMap((line, y) => [...line].map((char, x) =>
+      [`${x + 3},${y + 2}`, char] as const
+    ));
+    expect([...cells].map(([key, cell]) => [key, cell.char]).sort()).toEqual(expected.sort());
   });
 
   it("pastes Markdown styles around a fenced flowchart in automatic text mode", async () => {

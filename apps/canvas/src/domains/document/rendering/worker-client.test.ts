@@ -99,3 +99,30 @@ describe("TextRenderingWorkerClient", () => {
     await expect(result).rejects.toThrow("disposed");
   });
 });
+
+describe("format parity across worker scheduling", () => {
+  it.each(["auto", "raw", "markdown"] as const)("preserves explicit %s on both sides of the threshold", async (rendererMode) => {
+    globalThis.Worker = FakeWorker as unknown as typeof Worker;
+    const runtime = createTextRenderingRuntime({ storage: false });
+    runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "ansi" });
+    const client = new TextRenderingWorkerClient(runtime);
+    const context = { themeMode: "dark" as const, rendererMode };
+    const shortSource = "**Title**\n\n    ┌─┐\n    │A│\n    └─┘";
+    expect(await client.render(shortSource, "#fff", context))
+      .toEqual(await runtime.renderCompact(shortSource, "#fff", context));
+
+    const source = shortSource + "\n\n" + "text ".repeat(10_000);
+    const pending = client.render(source, "#fff", context);
+    const request = FakeWorker.latest?.lastMessage as {
+      id: number; source: string; defaultColor: string;
+      profile: ReturnType<typeof runtime.getProfile>; context: typeof context;
+    };
+    expect(request.context).toEqual(context);
+    const workerRuntime = createTextRenderingRuntime({ storage: false });
+    workerRuntime.setProfile(request.profile);
+    const result = await workerRuntime.renderCompact(request.source, request.defaultColor, request.context);
+    FakeWorker.latest?.emit("message", new MessageEvent("message", { data: { id: request.id, result } }));
+    expect(await pending).toEqual(await runtime.renderCompact(source, "#fff", context));
+    client.dispose();
+  });
+});

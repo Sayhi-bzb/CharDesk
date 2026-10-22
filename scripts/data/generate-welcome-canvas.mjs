@@ -3,7 +3,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  BLOCK_LAYOUT_DASHBOARD_EXAMPLE,
   CHARGRAPH_EXAMPLES,
   getExampleClipboardSource,
   renderExample,
@@ -187,8 +186,6 @@ const generate = async () => {
   }
   const diagrams = composeGrid(diagramCases, 2);
   const markdown = composeGrid(markdownCases, 3);
-  const dashboard = await renderExample(BLOCK_LAYOUT_DASHBOARD_EXAMPLE);
-  const dashboardLines = toEscLessProtocol(dashboard.protocolText).split("\n");
   const caseLayout = [
     ...diagrams.lines,
     "",
@@ -196,11 +193,6 @@ const generate = async () => {
     "",
     "",
     ...markdown.lines,
-    "",
-    "",
-    "",
-    "",
-    ...dashboardLines,
   ];
 
   return [

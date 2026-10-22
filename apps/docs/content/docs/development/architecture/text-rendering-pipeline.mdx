@@ -1,48 +1,78 @@
 ---
 title: Text Rendering Pipeline
-description: Source kinds, compiler stages, syntax selection, and fallback behavior.
+description: Shared format selection, block boundaries, and literal preservation.
 ---
 
-| Read this page when | A source kind, compiler stage, syntax detection, or fallback rule changes. |
+| Read this page when | Format selection, literal protection, or compilation changes. |
 | --- | --- |
-| First answer | Which renderer boundary owns this decision? |
-| Boundary | This page owns source kinds, stages, syntax selection, and fallback; feature-specific host behavior belongs to the features page. |
-| Follow-up | Use the linked source and verification evidence after selecting the contract. |
+| First answer | Which shared rendering rule applies to this input? |
+| Boundary | This page owns format selection and compilation; feature policies belong to the linked features page. |
+| Follow-up | Use the implementation and verification links below. |
 
-## Pipeline
+## Compilation contract
 
-All text hosts consume one compiler contract:
+`source + format + render options → fragments → Protocol rows → host`
 
-`source + explicit kind -> CharGraph compiler -> Protocol row spans -> host`
+[`compiler.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/compiler.ts)
+owns request normalization and row compilation. Canvas, MCP material rendering,
+CLI, Viewer, document import, and legacy source adapters share this boundary.
+Native document envelopes and copied Cells bypass format detection. Rendering
+paints compiled documents; it does not select syntax.
 
-`chargraph` runs structural syntax such as Markdown, Mermaid, fenced data, math,
-and block layout. `chardesk`, `ansi`, and `plain` are explicit compiled or
-literal inputs and never enter structural recognition. Canvas paste, document
-import, Slides `chargraph` fences, CLI, Viewer, and legacy migration share this
-contract. Rendering consumes compiled documents and does not select syntax.
+Explicit `format` overrides legacy `sourceKind` and `chargraphMode`. `raw` aliases
+`plain`; legacy `chargraph` selects Auto unless `chargraphMode` is provided.
+An explicitly requested Auto overrides the Canvas profile; omitted formats use
+the host default. Equivalent normalized requests produce equivalent output;
+host defaults for theme and wrapping may differ.
 
-[`document/public.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/document/public.ts)
-owns the plugin registry, active profile, persistence, and conversion result. `actions`
-only snapshots clipboard data and passes the result to Canvas. The compact boundary groups
-adjacent graphemes with one style; legacy callers may explicitly materialize cells. Renderer
-settings affect future paste and never reinterpret existing cells.
+| Format | Interpretation |
+| --- | --- |
+| `plain` / `raw` | Literal symbols, indentation, and line boundaries; no syntax recognition. |
+| `ansi` | Protocol ANSI decoding; Markdown markers remain literal. |
+| `markdown` | Markdown and registered extensions; explicit ANSI styles may compose with semantic styles. |
+| `auto` | Explicit ANSI selects ANSI-only rendering; otherwise classify and render blocks as below. |
+| `chardesk` | Compiled ESC-less ANSI; terminal ESC bytes are rejected. |
 
-Rendering has four stages: syntax decode, structural transform, style composition, and cell
-layout. ANSI is a decoder backed by `@chardesk/protocol`; Markdown delegates parsing and character
-layout to `@chardesk/chargraph/markdown`. CharGraph renderers return styled fragments with source
-origins and diagnostics. The compositor projects explicit ANSI spans through those origins before
-protocol layout, which remains the only stage that owns grapheme segmentation, CJK width, tabs,
-and coordinates. ANSI/OSC8 serialization is an explicit CharGraph output boundary for CLI or copy,
-not an internal intermediate representation.
+## Auto block policy
 
-## Syntax selection and fallback
+[`spatial-text.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/spatial-text.ts)
+registers a literal block token before Markdown consumes drawing punctuation.
+It recognizes existing Unicode boxes, ASCII frames, and punctuation-dense ASCII
+art within continuous nonblank regions. Fences, Markdown tables, and links retain
+their grammar. This is a conservative classifier, not a universal artwork detector.
 
-Auto composes explicit ANSI and Markdown instead of selecting one renderer for the whole source.
-An ESC-less empty reset (`[m`) is ambiguous evidence and cannot activate ANSI by itself, preventing
-Markdown links beginning with `[m` from losing characters. Standard escapes, OSC 8, and non-empty
-supported SGR are explicit. Forced ANSI still accepts `[m`. When both syntaxes style one range,
-ANSI foreground, background, and OSC 8 href win; text attributes merge; Markdown controls visible
-structure. Raw is a fallback transformer: it runs only when no decoder or structural transformer
-recognized the source, while forced Raw selects that same plugin directly. ANSI-only input therefore
-materializes styled cells without passing through Raw. `TextRenderResult.pipeline` records the
-applied stages.
+[`markdown.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/markdown.ts)
+lexes once and renders those tokens. Spatial blocks and paragraphs without syntax
+evidence preserve their text; adjacent Markdown still renders. Source spacing
+around literal blocks is retained. Explicit Markdown containers establish their
+own indentation rules. Fenced code is handled as code or by its registered
+language extension; drawing glyphs and `|||` inside it cannot select another format.
+
+The old `|||` field layout, layout-row grammar, parser exports, and layout options
+are removed. `|||` is ordinary text; `---` follows the selected format's grammar.
+CLI inspect uses the rendered grid, without a separate layout reading projection.
+
+## Styles, fallback, and scheduling
+
+Auto does not activate ANSI on an ambiguous ESC-less empty reset (`[m`) alone.
+Forced ANSI accepts it. In explicit Markdown, ANSI foreground, background, and
+OSC 8 href override semantic styles; attributes merge. Unsupported or bounded-out
+extensions preserve their corresponding source and report diagnostics.
+`pipeline` records applied decoder and renderer stages. Source origins refer to
+the input, including CRLF offset restoration.
+
+Protocol alone owns grapheme segmentation, CJK width, tabs, and coordinates.
+Fragments are the styled intermediate representation; ANSI serialization is an
+output boundary. Theme, feature, and wrapping ownership belongs to
+[rendering features](/development/architecture/text-rendering-features).
+
+Canvas main-thread and Worker rendering receive the same context and profile.
+The 50,000-character scheduling threshold does not change format policy. Worker
+failure is reported; it does not trigger a blocking main-thread retry. Settings
+apply to future conversion and never reinterpret stored Cells. `canvas_write`
+remains a literal stroke with transparent spaces.
+
+Verification: [format and geometry](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/compiler.test.ts),
+[block boundaries](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/text.test.ts),
+[Worker parity](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/document/rendering/worker-client.test.ts),
+and [MCP format overrides](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/site-tools/canvasWriteTool.test.ts).

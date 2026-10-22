@@ -41,8 +41,8 @@ description: The canonical execution order for document, session, viewport, and 
 - Artifact appearance: stored Cell style -> canonical default-foreground classification ->
   active Canvas palette for visual projections or default SGR state for ANSI serialization.
   A stored background makes its foreground explicit; persistence retains literal colors.
-- Block layout text: `|||`-recognized layout -> per-field normal text renderer ->
-  composed CellPlane rows. A lone `---` remains a Markdown thematic break in auto mode.
+- External text: [shared format selection and compilation](/development/architecture/text-rendering-pipeline)
+  → Protocol rows → Canvas mutation.
 - Local document preview: file → native document parser → read-only projection.
   Human commands cannot write back to the file.
 - [WebMCP](/development/architecture/webmcp) composes Canvas read/search/write and shared Materials tools.

@@ -6,6 +6,7 @@ import {
   type CharDeskAnsiEvidence,
   type CharDeskTextDiagnostic,
   type CharDeskTextStyle,
+  type CharDeskTextSyntax,
   type ParsedCharDeskText,
 } from "@chardesk/protocol";
 import { createCharGraphFragment } from "./fragments.js";
@@ -17,6 +18,7 @@ import {
 } from "./text.js";
 
 export type CharDeskSourceKind = "chargraph" | "chardesk" | "ansi" | "plain";
+export type CharDeskTextFormat = "auto" | "plain" | "ansi" | "markdown" | "chardesk";
 
 export type CharDeskTextCompilerId =
   | CharGraphTextRendererId
@@ -27,16 +29,37 @@ export type CompileCharDeskTextOptions = Omit<
   CharGraphTextRenderOptions,
   "mode"
 > & {
-  sourceKind: CharDeskSourceKind;
+  /** Legacy input name; explicit format takes precedence. */
+  sourceKind?: CharDeskSourceKind;
+  format?: CharDeskTextFormat | "raw";
   chargraphMode?: CharGraphTextRenderOptions["mode"];
   defaultStyle?: CharDeskTextStyle;
   pipelineDefaultStyles?: Partial<
     Record<CharDeskTextCompilerId, CharDeskTextStyle>
   >;
   tabSize?: number;
+  /** Protocol-only compatibility policy, used by the Viewer's syntax attribute. */
+  protocolSyntax?: CharDeskTextSyntax;
+};
+
+export type CharDeskTextRequest = Omit<CompileCharDeskTextOptions, "sourceKind" | "chargraphMode" | "format"> & {
+  source: string;
+  format: CharDeskTextFormat;
+};
+
+export const normalizeCharDeskTextRequest = (
+  source: string,
+  options: CompileCharDeskTextOptions = {},
+): CharDeskTextRequest => {
+  const { sourceKind, chargraphMode, format, ...renderOptions } = options;
+  const selected = format ?? (sourceKind === "chargraph" || sourceKind === undefined
+    ? chargraphMode ?? "auto"
+    : sourceKind);
+  return { ...renderOptions, source, format: selected === "raw" ? "plain" : selected };
 };
 
 export type CompiledCharDeskText = {
+  source: string;
   sourceKind: CharDeskSourceKind;
   renderer: CharDeskTextCompilerId;
   pipeline: readonly CharDeskTextCompilerId[];
@@ -64,7 +87,8 @@ export class CharDeskTextCompileError extends Error {
 
 const compileProtocolSource = (
   source: string,
-  sourceKind: Exclude<CharDeskSourceKind, "chargraph">,
+  sourceKind: "plain" | "ansi" | "chardesk",
+  syntax: CharDeskTextSyntax = "ansi",
 ) => {
   if (sourceKind === "chardesk" && source.includes("\u001b")) {
     throw new CharDeskTextCompileError("terminal-escape");
@@ -79,7 +103,7 @@ const compileProtocolSource = (
       ansiEvidence: "none" as const,
     };
   }
-  const decoded = decodeCharDeskTextRuns(source, { syntax: "ansi" });
+  const decoded = decodeCharDeskTextRuns(source, { syntax });
   return {
     fragments: decoded.runs.map((run) => createCharGraphFragment(
       run.text,
@@ -106,22 +130,31 @@ const isProtocolDiagnostic = (
 
 export const compileCharDeskText = async (
   source: string,
-  options: CompileCharDeskTextOptions,
+  options: CompileCharDeskTextOptions = {},
 ): Promise<CompiledCharDeskText> => {
-  const rendered = options.sourceKind === "chargraph"
+  const request = normalizeCharDeskTextRequest(source, options);
+  const rendered = request.format === "auto" || request.format === "markdown"
     ? await renderCharGraphText(source, {
-        mode: options.chargraphMode,
-        markdown: options.markdown,
-        layout: options.layout,
+        mode: request.format,
+        markdown: request.markdown,
       })
-    : compileProtocolSource(source, options.sourceKind);
+    : compileProtocolSource(source, request.format, request.protocolSyntax);
+  return compileRenderedText(rendered, request);
+};
+
+type RenderedText = Awaited<ReturnType<typeof renderCharGraphText>> | ReturnType<typeof compileProtocolSource>;
+
+const compileRenderedText = (
+  rendered: RenderedText,
+  request: CharDeskTextRequest,
+): CompiledCharDeskText => {
   const pipelineDefaultStyle = [...rendered.pipeline]
     .reverse()
-    .map((renderer) => options.pipelineDefaultStyles?.[renderer])
+    .map((renderer) => request.pipelineDefaultStyles?.[renderer])
     .find((style) => style !== undefined);
   const document = layoutCharDeskTextRunsToRows(rendered.fragments, {
-    defaultStyle: pipelineDefaultStyle ?? options.defaultStyle,
-    tabSize: options.tabSize,
+    defaultStyle: pipelineDefaultStyle ?? request.defaultStyle,
+    tabSize: request.tabSize,
   });
   const renderedProtocolDiagnostics: CharDeskTextDiagnostic[] =
     rendered.diagnostics.flatMap((diagnostic) =>
@@ -139,7 +172,8 @@ export const compileCharDeskText = async (
     ...document.diagnostics,
   ];
   return {
-    sourceKind: options.sourceKind,
+    source: request.source,
+    sourceKind: request.format === "auto" || request.format === "markdown" ? "chargraph" : request.format,
     renderer: rendered.renderer,
     pipeline: rendered.pipeline,
     fragments: rendered.fragments.map((fragment) => ({ ...fragment })),
@@ -162,11 +196,22 @@ export const compileCharDeskText = async (
   };
 };
 
+/** Synchronous adapter for existing Protocol-only viewers; shares row compilation. */
+export const compileCharDeskProtocolText = (
+  source: string,
+  options: Pick<CompileCharDeskTextOptions, "defaultStyle" | "pipelineDefaultStyles" | "tabSize" | "protocolSyntax"> & {
+    format: "plain" | "ansi" | "chardesk";
+  },
+): CompiledCharDeskText => {
+  const request = normalizeCharDeskTextRequest(source, options);
+  return compileRenderedText(compileProtocolSource(source, options.format, options.protocolSyntax), request);
+};
+
 export const materializeCompiledCharDeskText = (
   compiled: CompiledCharDeskText,
 ): ParsedCharDeskText => ({
   version: 1,
-  source: compiled.fragments.map((fragment) => fragment.text).join(""),
+  source: compiled.source,
   plainText: compiled.plainText,
   width: compiled.width,
   height: compiled.height,

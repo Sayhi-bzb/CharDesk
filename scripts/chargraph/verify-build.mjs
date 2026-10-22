@@ -42,7 +42,6 @@ const scripts = await Promise.all(
 );
 const bundledSource = scripts.join("\n");
 for (const expected of [
-  "All systems operational",
   "flowchart LR",
   "sequenceDiagram",
   "xychart-beta",

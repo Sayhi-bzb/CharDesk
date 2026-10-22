@@ -1,7 +1,6 @@
 import {
   CharDeskTextCompileError,
   compileCharDeskText,
-  parseBlockLayout,
   getCharGraphText,
   materializeCompiledCharDeskText,
   serializeCharGraphAnsi,
@@ -10,7 +9,6 @@ import {
 import { createCharDeskMarkdownRenderOptions } from "@chardesk/chargraph/markdown";
 import { CHARDESK_LIGHT_RENDER_THEME } from "@chardesk/chargraph/theme";
 import {
-  layoutCharDeskTextRuns,
   type ParsedCharDeskText,
 } from "@chardesk/protocol";
 import { createCharDeskRenderModelFromDocument } from "@chardesk/rendering";
@@ -52,7 +50,7 @@ type CharDeskCliCompilation = {
 };
 
 type CharDeskCliInspectCompilation = CharDeskCliCompilation & {
-  projection: "blocks" | "canvas";
+  projection: "canvas";
   canvas: { columns: number; rows: number };
 };
 
@@ -89,7 +87,7 @@ export const compileSource = async ({
   let compiled;
   try {
     compiled = await compileCharDeskText(source, {
-      sourceKind: inputMode,
+      format: inputMode === "chargraph" ? "auto" : "chardesk",
       markdown: markdownOptions(),
     });
   } catch (error) {
@@ -117,46 +115,10 @@ export const compileSource = async ({
 export const compileInspectSource = async ({
   source,
   inputMode,
-  canvas = false,
 }: CompileSourceOptions & { canvas?: boolean }): Promise<CharDeskCliInspectCompilation> => {
   const compiled = await compileSource({ source, inputMode });
   const canvasSize = { columns: compiled.columns, rows: compiled.rows };
-  if (canvas || inputMode !== "chargraph") {
-    return { ...compiled, projection: "canvas", canvas: canvasSize };
-  }
-
-  const layout = parseBlockLayout(source).document;
-  if (!layout) return { ...compiled, projection: "canvas", canvas: canvasSize };
-
-  const fragments: CharGraphFragment[] = [];
-  for (const block of layout.rows.flat()) {
-    const rendered = await compileCharDeskText(
-      block.protectedSource ?? block.source,
-      {
-        sourceKind: "chargraph",
-        ...(block.protectedSource ? { chargraphMode: "markdown" as const } : {}),
-        markdown: markdownOptions(),
-        layout: false,
-      },
-    );
-    if (rendered.plainText.trim().length === 0) continue;
-    if (fragments.length > 0) fragments.push({ text: "\n\n" });
-    fragments.push(...rendered.fragments);
-  }
-  if (fragments.length === 0) {
-    return { ...compiled, projection: "canvas", canvas: canvasSize };
-  }
-
-  const document = layoutCharDeskTextRuns(fragments);
-  return {
-    ...compiled,
-    columns: document.width,
-    rows: document.height,
-    fragments,
-    document,
-    projection: "blocks",
-    canvas: canvasSize,
-  };
+  return { ...compiled, projection: "canvas", canvas: canvasSize };
 };
 
 const validateDimension = (value: number, code: "scale" | "padding") => {

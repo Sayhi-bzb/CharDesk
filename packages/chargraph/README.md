@@ -1,7 +1,7 @@
 # @chardesk/chargraph
 
-CharDesk's source compiler. It transforms explicit text source kinds into
-styled fragments and Protocol-laid-out rows without a DOM.
+CharDesk's source compiler. It produces source-aware fragments, diagnostics, and
+Protocol-laid-out rows without a DOM.
 
 ```ts
 import {
@@ -9,28 +9,24 @@ import {
   materializeCompiledCharDeskText,
 } from "@chardesk/chargraph";
 
-const compiled = await compileCharDeskText(source, {
-  sourceKind: "chargraph",
-});
+const compiled = await compileCharDeskText(source, { format: "auto" });
 const document = materializeCompiledCharDeskText(compiled);
 ```
 
-`chargraph` recognizes Markdown, Mermaid, fenced data, math, and block layout.
-`chardesk` parses compiled ESC-less ANSI, `ansi` accepts terminal ANSI, and
-`plain` preserves literal text. Hosts must select a kind explicitly; exported
-CharDesk cells must not be reinterpreted as CharGraph source.
+`format` accepts `auto`, `plain`, `ansi`, `markdown`, and `chardesk`; `raw` aliases
+`plain`. `normalizeCharDeskTextRequest` resolves legacy `sourceKind` and
+`chargraphMode` options; explicit `format` takes precedence. Legacy `chargraph`
+selects Auto unless `chargraphMode` overrides it.
 
-CharGraph emits diagnostics and source-aware fragments. `@chardesk/protocol`
-alone owns grapheme segmentation, CJK width, tabs, and cell coordinates. See
-[UPSTREAM.md](./UPSTREAM.md) for adapted renderer attribution.
+[Text rendering rules](../../apps/docs/content/docs/development/architecture/text-rendering-pipeline.mdx)
+own format selection, literal protection, ANSI composition, and retired layout
+behavior. [UPSTREAM.md](./UPSTREAM.md) owns adapted renderer attribution.
 
-Markdown results expose top-level `visualGroups` as half-open output row ranges
-with an explicit inline alignment. Ordinary blocks request `start`; enhanced
-tables and successfully rendered Mermaid diagrams request `center`. Block layout
-applies that placement inside each intrinsic-width field instead of inferring
-alignment from group membership.
+`@chardesk/protocol` owns grapheme widths, tabs, and coordinates. Existing
+Protocol-only hosts can use synchronous `compileCharDeskProtocolText`; its
+`protocolSyntax` option preserves the Viewer's existing syntax policy without
+activating Markdown. Native document parsing precedes text compilation.
 
-Auto rendering activates block layout only after an unescaped `|||` field
-boundary. Once active, `---` separates layout rows; without `|||`, it remains
-Markdown. Callers that intentionally accept row-only layouts can opt into
-`layout.activation: "any-boundary"`.
+Markdown results expose top-level `visualGroups` as half-open output row ranges:
+ordinary blocks request `start`; enhanced tables and rendered Mermaid request
+`center`. Hosts decide how to place these groups.

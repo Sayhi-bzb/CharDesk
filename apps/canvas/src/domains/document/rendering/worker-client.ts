@@ -33,11 +33,14 @@ export class TextRenderingWorkerClient {
     defaultColor: string,
     options?: { signal?: AbortSignal } & Partial<TextRenderContext>
   ) => {
-    if (options?.signal?.aborted) return Promise.reject(createAbortError());
+    const { signal, ...contextOverrides } = options ?? {};
+    if (signal?.aborted) return Promise.reject(createAbortError());
+    const context: TextRenderContext = {
+      ...contextOverrides,
+      themeMode: contextOverrides.themeMode ?? "light",
+    };
     if (source.length < WORKER_RENDER_THRESHOLD || typeof Worker === "undefined") {
-      return this.#runtime.renderCompact(source, defaultColor, {
-        themeMode: options?.themeMode ?? "light",
-      });
+      return this.#runtime.renderCompact(source, defaultColor, context);
     }
     const worker = this.#getWorker();
     const id = this.#nextId++;
@@ -49,8 +52,8 @@ export class TextRenderingWorkerClient {
         pending.cleanup();
         reject(createAbortError());
       };
-      const cleanup = () => options?.signal?.removeEventListener("abort", abort);
-      options?.signal?.addEventListener("abort", abort, { once: true });
+      const cleanup = () => signal?.removeEventListener("abort", abort);
+      signal?.addEventListener("abort", abort, { once: true });
       this.#pending.set(id, { resolve, reject, cleanup });
     });
     worker.postMessage({
@@ -58,7 +61,7 @@ export class TextRenderingWorkerClient {
       source,
       defaultColor,
       profile: this.#runtime.getProfile(),
-      context: { themeMode: options?.themeMode ?? "light" },
+      context,
     });
     return result;
   };

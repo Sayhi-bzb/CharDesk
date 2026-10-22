@@ -2,10 +2,14 @@ export { serializeCharGraphAnsi } from "./ansi.js";
 export {
   CharDeskTextCompileError,
   compileCharDeskText,
+  compileCharDeskProtocolText,
   materializeCompiledCharDeskText,
+  normalizeCharDeskTextRequest,
 } from "./compiler.js";
 export type {
   CharDeskSourceKind,
+  CharDeskTextFormat,
+  CharDeskTextRequest,
   CharDeskTextCompilerId,
   CompileCharDeskTextOptions,
   CompiledCharDeskText,
@@ -41,21 +45,8 @@ export {
   restoreCharGraphSourceRanges,
 } from "./source-map.js";
 export type { NormalizedCharGraphSource } from "./source-map.js";
-export {
-  parseBlockLayout,
-  renderBlockLayoutDocument,
-  serializeBlockLayout,
-} from "./block-layout.js";
-export type {
-  BlockLayoutBlock,
-  BlockLayoutDocument,
-  BlockLayoutFieldRenderer,
-  BlockLayoutParseResult,
-  BlockLayoutRenderOptions,
-} from "./block-layout.js";
 export { renderCharGraphText } from "./text.js";
 export type {
-  CharGraphBlockLayoutOptions,
   CharGraphTextMode,
   CharGraphTextRenderOptions,
   CharGraphTextRenderResult,

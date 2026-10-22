@@ -39,9 +39,9 @@ npx -y @chardesk/cli inspect diagram.chardesk --region 0,0,96,32 --styles
 npx -y @chardesk/cli render input.md -o output.png --strict --json
 ```
 
-Inspect defaults to bounded materialized text. Block-layout source is stacked in
-source order; `--canvas` requests its spatial projection. `--region x,y,w,h`
-implies Canvas inspection; `--no-ruler` hides coordinates; `--styles` adds evidence.
+Inspect returns bounded materialized text from the rendered grid.
+`--region x,y,w,h` selects a region; `--no-ruler` hides coordinates; `--styles` adds evidence.
+`--canvas` remains accepted and selects that same grid.
 
 Auto input treats `.chardesk` as Protocol and other files or stdin as CharGraph.
 Overrides are `--input chargraph|chardesk`. Stdin works for inspect/render, not open.

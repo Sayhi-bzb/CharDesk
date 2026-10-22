@@ -1,9 +1,35 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { getCharGraphText } from "./fragments.js";
 import { renderCharGraphText } from "./text.js";
 
 describe("canonical CharGraph text renderer", () => {
-  it("renders fenced JSON inside a two-dimensional layout", async () => {
+  const asciiSponge = readFileSync(new URL("./__fixtures__/ascii-sponge.txt", import.meta.url), "utf8");
+
+  it.each([asciiSponge, " /\\_/\\\n( o.o )\n > ^ <"])(
+    "preserves unfenced ASCII artwork without consuming Markdown punctuation",
+    async (source) => {
+      const rendered = await renderCharGraphText(source);
+      expect(rendered.renderer).toBe("raw");
+      expect(getCharGraphText(rendered)).toBe(source);
+    }
+  );
+
+  it("renders Markdown around fenced ASCII artwork", async () => {
+    const rendered = await renderCharGraphText(`**Artwork**\n\n\`\`\`text\n${asciiSponge}\`\`\``);
+    expect(rendered.renderer).toBe("markdown");
+    expect(getCharGraphText(rendered)).toContain(asciiSponge.trimEnd());
+    expect(rendered.fragments.find((part) => part.text === "Artwork")?.attrs?.bold).toBe(true);
+  });
+
+  it.each([
+    "|   |   |\n|---|---|\n|   |   |",
+    " [a]()\n [b]()\n [c]()",
+    " **a**\n **b**\n **c**",
+  ])("keeps punctuation-heavy Markdown available in auto mode", async (source) => {
+    expect((await renderCharGraphText(source)).renderer).toBe("markdown");
+  });
+  it("renders fenced JSON while keeping retired delimiters literal", async () => {
     const rendered = await renderCharGraphText([
       "Input",
       "```json",
@@ -14,7 +40,8 @@ describe("canonical CharGraph text renderer", () => {
     ].join("\n"));
     const output = getCharGraphText(rendered);
 
-    expect(rendered.renderer).toBe("block-layout");
+    expect(rendered.renderer).toBe("markdown");
+    expect(output).toContain("|||");
     expect(output).toContain("name");
     expect(output).toContain("CharDesk");
     expect(output).not.toContain("```json");
@@ -25,15 +52,6 @@ describe("canonical CharGraph text renderer", () => {
 
     expect(rendered.renderer).toBe("markdown");
     expect(getCharGraphText(rendered)).toBe("Top\n\n———\n\nBottom");
-  });
-
-  it("allows callers to explicitly activate row-only block layout", async () => {
-    const rendered = await renderCharGraphText("Top\n---\nBottom", {
-      layout: { activation: "any-boundary" },
-    });
-
-    expect(rendered.renderer).toBe("block-layout");
-    expect(getCharGraphText(rendered)).toBe("Top\n\nBottom");
   });
 
   it("keeps ordinary pasted Markdown paragraphs start-aligned", async () => {
@@ -125,8 +143,8 @@ describe("canonical CharGraph text renderer", () => {
     const source = "    ┌─┐\n    │A│\n    └─┘\n\n```text\nB\n```";
     const rendered = await renderCharGraphText(source);
 
-    expect(rendered.renderer).toBe("raw");
-    expect(getCharGraphText(rendered)).toBe(source);
+    expect(rendered.renderer).toBe("markdown");
+    expect(getCharGraphText(rendered)).toBe("    ┌─┐\n    │A│\n    └─┘\n\nB");
   });
 
   it("preserves ASCII frames in auto mode", async () => {
@@ -137,23 +155,66 @@ describe("canonical CharGraph text renderer", () => {
     expect(getCharGraphText(rendered)).toBe(source);
   });
 
-  it("keeps escaped boundaries literal and leaves alternate Markdown rules available", async () => {
-    const escaped = await renderCharGraphText("A\n|||\n\\---\n\\|||\n---\nB");
-    const rule = await renderCharGraphText("***");
-
-    expect(getCharGraphText(escaped)).toContain("---");
-    expect(getCharGraphText(escaped)).toContain("|||");
-    expect(getCharGraphText(escaped)).not.toMatch(/\\(?:---|\|\|\|)/u);
-    expect(rule.renderer).toBe("markdown");
-    expect(getCharGraphText(rule)).toBe("———");
+  it("treats delimiters inside code as literal content", async () => {
+    const source = "A\n|||\nB\n---\nC";
+    const rendered = await renderCharGraphText(["```text", source, "```"].join("\n"));
+    expect(getCharGraphText(rendered)).toBe(source);
   });
 
   it("lets explicit ANSI colors win while Markdown attributes merge", async () => {
-    const rendered = await renderCharGraphText("[31m**red**[0m");
+    const rendered = await renderCharGraphText("[31m**red**[0m", { mode: "markdown" });
 
     expect(rendered.pipeline).toEqual(["ansi", "markdown"]);
     expect(rendered.fragments.every((fragment) => fragment.color === "#800000"))
       .toBe(true);
     expect(rendered.fragments.every((fragment) => fragment.attrs?.bold)).toBe(true);
+  });
+});
+
+describe("Auto block boundaries", () => {
+  const art = "    ┌─┐\n    │A│\n    └─┘";
+
+  it("preserves artwork locally while rendering the surrounding Markdown", async () => {
+    const result = await renderCharGraphText(`**Before**\n\n${art}\n\n\n**After**`);
+    expect(getCharGraphText(result)).toBe(`Before\n\n${art}\n\n\nAfter`);
+    expect(result.fragments.filter((part) => part.attrs?.bold).map((part) => part.text))
+      .toEqual(["Before", "After"]);
+  });
+
+  it("preserves uncertain paragraphs without wrapping, escaping, or joining lines", async () => {
+    const plain = "alpha  beta\n    gamma\\delta\nnext";
+    const result = await renderCharGraphText(`**Title**\n\n${plain}`, {
+      markdown: { proseWrapWidth: 4 },
+    });
+    expect(getCharGraphText(result)).toContain(plain);
+  });
+
+  it("does not reinterpret ANSI artwork or Markdown-looking ANSI text", async () => {
+    const result = await renderCharGraphText(`\u001b[31m**red**\n${art}\u001b[0m`);
+    expect(result.pipeline).toEqual(["ansi"]);
+    expect(getCharGraphText(result)).toBe(`**red**\n${art}`);
+    expect(result.fragments.some((part) => part.color === "#800000")).toBe(true);
+  });
+
+  it("keeps CRLF source ranges bounded across literal and Markdown blocks", async () => {
+    const source = `**Title**\r\n\r\n${art.replaceAll("\n", "\r\n")}`;
+    const result = await renderCharGraphText(source);
+    expect(getCharGraphText(result)).toBe(`Title\n\n${art}`);
+    expect(result.fragments.every((part) => !part.origin ||
+      (part.origin.from >= 0 && part.origin.to <= source.length))).toBe(true);
+  });
+});
+
+describe("reported long Markdown content", () => {
+  const source = readFileSync(new URL("./__fixtures__/logistics.md", import.meta.url), "utf8");
+
+  it.each([1, 20])("renders %s copies without a length-dependent format fallback", async (copies) => {
+    const result = await renderCharGraphText(Array(copies).fill(source).join("\n\n"));
+    expect(result.renderer).toBe("markdown");
+    expect(getCharGraphText(result)).not.toContain("```text");
+    expect(getCharGraphText(result)).toContain("   ├─ 催件   → 确认运单");
+    expect(result.fragments.some((part) => part.text.includes("语音交互问题的判断能力") && part.attrs?.bold))
+      .toBe(true);
+    expect(result.diagnostics).toEqual([]);
   });
 });

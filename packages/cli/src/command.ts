@@ -537,7 +537,6 @@ const runInspect = async (
     pipeline: compiled.pipeline,
     columns: compiled.columns,
     rows: compiled.rows,
-    ...(compiled.projection === "blocks" ? { canvas: compiled.canvas } : {}),
     view: projection.view,
     omitted: projection.omitted,
     text: projection.text,
@@ -553,9 +552,6 @@ const runInspect = async (
     `renderer: ${compiled.renderer}`,
     `pipeline: ${compiled.pipeline.join(" → ")}`,
     `grid: ${compiled.columns} cols × ${compiled.rows} rows`,
-    ...(compiled.projection === "blocks"
-      ? [`canvas: ${compiled.canvas.columns} cols × ${compiled.canvas.rows} rows`]
-      : []),
     `view: x=${projection.view.x}..${endX}, y=${projection.view.y}..${endY} · ${projection.view.columns}×${projection.view.rows} cells`,
     `omitted: ${omittedSummary(projection.omitted)}`,
     "",

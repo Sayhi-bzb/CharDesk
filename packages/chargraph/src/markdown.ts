@@ -36,6 +36,7 @@ import {
   restoreCharGraphSourceRanges,
 } from "./source-map.js";
 import { wrapMarkdownProse } from "./markdown-wrap.js";
+import { SPATIAL_TEXT_EXTENSION } from "./spatial-text.js";
 
 export type MarkdownTextRuleId =
   | "strong"
@@ -78,6 +79,8 @@ export type MarkdownTextStyles = Partial<
 
 export type MarkdownRenderOptions = {
   forced?: boolean;
+  /** Auto preserves spatial blocks and paragraphs without Markdown evidence. */
+  auto?: boolean;
   proseWrapWidth?: number;
   rules?: Partial<MarkdownTextRules>;
   extensionRules?: Readonly<Record<string, boolean>>;
@@ -129,10 +132,12 @@ const NON_SYNTAX_TOKEN_TYPES = new Set([
   "escape",
   "def",
   "list_item",
+  "chardesk-literal",
 ]);
 
 type RenderContext = {
   source: string;
+  auto: boolean;
   proseWrapWidth?: number;
   rules: MarkdownTextRules;
   styles: MarkdownTextStyles;
@@ -147,6 +152,7 @@ type RenderContext = {
 type BlockSpacing = "tight" | "source" | "loose";
 type RenderedBlockKind =
   | "content"
+  | "literal"
   | "paragraph"
   | "heading"
   | "blockquote"
@@ -540,7 +546,7 @@ const renderList = async (
       : token.ordered ? "ordered-list-marker" : "list-marker";
     const markerWidth = getTextCellWidth(markerText) + depth * 4;
     const indent = " ".repeat(depth * 4);
-    const itemContext = withProseWidth(context, markerWidth);
+    const itemContext = { ...withProseWidth(context, markerWidth), auto: false };
     let childCursor = itemRange.from;
     let contentTokens: Token[] = [];
     let contentFrom = itemRange.from;
@@ -622,7 +628,12 @@ const renderBlock = async (
     case "space":
     case "def":
       return renderedBlock([]);
+    case "chardesk-literal":
+      return renderedBlock(rawFragment(token.raw, range), "start", "literal");
     case "paragraph": {
+      if (context.auto && !hasRecognizedTokens((token as Tokens.Paragraph).tokens)) {
+        return renderedBlock(rawFragment(token.raw, range), "start", "literal");
+      }
       const rendered = await renderInline(
         (token as Tokens.Paragraph).tokens,
         range,
@@ -679,7 +690,7 @@ const renderBlock = async (
       const content = await renderBlocks(
         blockquote.tokens,
         range,
-        withProseWidth(context, 2),
+        { ...withProseWidth(context, 2), auto: false },
         "source"
       );
       const markerRanges = [...token.raw.matchAll(/^ {0,3}>[ \t]?/gm)].map((match) => ({
@@ -731,6 +742,8 @@ const renderBlocks = async (
   let cursor = scope.from;
   let outputRow = 0;
   let sourceHasBlankLine = false;
+  let previousEnd = scope.from;
+  let previousKind: RenderedBlockKind | undefined;
   for (const token of tokens) {
     const range = locateRaw(context.source, token.raw, scope, cursor);
     cursor = Math.max(cursor, range.to);
@@ -743,14 +756,17 @@ const renderBlocks = async (
       continue;
     }
     if (output.length) {
+      const preserveGap = context.auto && (previousKind === "literal" || rendered.kind === "literal");
+      const sourceGap = context.source.slice(previousEnd, range.from);
       const lineBreaks = spacing === "loose"
         ? 2
         : spacing === "source"
           ? sourceHasBlankLine ? 2 : 1
           : 0;
-      if (lineBreaks) {
-        output.push(fragment("\n".repeat(lineBreaks), {}, range));
-        outputRow += lineBreaks;
+      const gap = preserveGap && /^[ \t\n]*$/u.test(sourceGap) ? sourceGap : "\n".repeat(lineBreaks);
+      if (gap) {
+        output.push(fragment(gap, {}, { from: previousEnd, to: range.from }));
+        outputRow += gap.split("\n").length - 1;
       }
     }
     const fromRow = outputRow;
@@ -769,6 +785,8 @@ const renderBlocks = async (
       inlineAlignment: rendered.inlineAlignment,
     });
     sourceHasBlankLine = false;
+    previousKind = rendered.kind;
+    previousEnd = range.to - (token.raw.endsWith("\n") ? 1 : 0);
   }
   return output;
 };
@@ -783,21 +801,12 @@ const createParser = (
   return parser;
 };
 
-const hasRecognizedToken = (
-  source: string,
-  extensions: readonly MarkdownSyntaxExtension[]
-) => {
-  const parser = createParser(extensions);
-  const tokens = parser.lexer(source);
-  if (parser.defaults.walkTokens) {
-    parser.walkTokens(tokens, parser.defaults.walkTokens);
-  }
+const tokenWalker = new Marked();
+
+const hasRecognizedTokens = (tokens: readonly Token[], parser = tokenWalker) => {
   let recognized = false;
-  parser.walkTokens(tokens, (token) => {
-    if (
-      RECOGNIZED_TOKEN_TYPES.has(token.type) ||
-      !NON_SYNTAX_TOKEN_TYPES.has(token.type)
-    ) {
+  parser.walkTokens([...tokens], (token) => {
+    if (RECOGNIZED_TOKEN_TYPES.has(token.type) || !NON_SYNTAX_TOKEN_TYPES.has(token.type)) {
       recognized = true;
     }
   });
@@ -807,7 +816,12 @@ const hasRecognizedToken = (
 export const detectMarkdownText = (
   source: string,
   extensions: readonly MarkdownSyntaxExtension[] = []
-) => hasRecognizedToken(source, extensions);
+) => {
+  const parser = createParser(extensions);
+  const tokens = parser.lexer(source);
+  if (parser.defaults.walkTokens) parser.walkTokens(tokens, parser.defaults.walkTokens);
+  return hasRecognizedTokens(tokens, parser);
+};
 
 export const renderMarkdownWithExtensions = async (
   source: string,
@@ -816,8 +830,10 @@ export const renderMarkdownWithExtensions = async (
 ): Promise<CharGraphRenderResult> => {
   const normalized = normalizeCharGraphSource(source);
   const parser = createParser(extensions);
+  if (options.auto) parser.use(SPATIAL_TEXT_EXTENSION);
   const context: RenderContext = {
     source: normalized.text,
+    auto: options.auto === true,
     ...(options.proseWrapWidth ? { proseWrapWidth: options.proseWrapWidth } : {}),
     rules: { ...DEFAULT_RULES, ...(options.rules ?? {}) },
     styles: options.styles ?? {},
@@ -843,10 +859,7 @@ export const renderMarkdownWithExtensions = async (
   );
   return restoreCharGraphSourceRanges(normalized, {
     fragments,
-    recognized: options.forced === true || hasRecognizedToken(
-      normalized.text,
-      extensions
-    ),
+    recognized: options.forced === true || hasRecognizedTokens(tokens, parser),
     diagnostics: context.diagnostics,
     visualGroups,
     headings,

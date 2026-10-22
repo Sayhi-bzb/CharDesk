@@ -15,22 +15,14 @@ const expectPng = (bytes: Uint8Array) => {
 };
 
 describe("headless CharDesk PNG renderer", () => {
-  it("builds a source-ordered block reading projection without changing Canvas size", async () => {
-    const source = "**A**\n|||\n\\|||\n---\n\n---\nC";
+  it("inspects retired delimiters in the same grid used for rendering", async () => {
+    const source = "A\n|||\nB";
     const result = await compileInspectSource({ source, inputMode: "chargraph" });
-
-    expect(result).toMatchObject({
-      projection: "blocks",
-      columns: 3,
-      rows: 5,
-      canvas: { columns: 8 },
-      diagnostics: [],
-    });
-    expect(result.document.plainText).toBe("A\n\n|||\n\nC");
-    expect(result.fragments.some((fragment) => fragment.attrs?.bold)).toBe(true);
+    expect(result).toMatchObject({ projection: "canvas", columns: 3, rows: 3 });
+    expect(result.document.plainText).toBe(source);
   });
 
-  it("renders CharGraph Markdown and block layout without a DOM", async () => {
+  it("renders CharGraph Markdown without a DOM", async () => {
     const result = await renderSourceToPng({
       source: [
         "# Status",
@@ -48,8 +40,8 @@ describe("headless CharDesk PNG renderer", () => {
 
     expectPng(result.bytes);
     expect(result).toMatchObject({
-      renderer: "block-layout",
-      pipeline: ["block-layout"],
+      renderer: "markdown",
+      pipeline: ["markdown"],
       diagnostics: [],
     });
     expect(result.columns).toBeGreaterThan(0);

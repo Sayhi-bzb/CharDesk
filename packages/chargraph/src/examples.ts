@@ -4,13 +4,11 @@ import { renderCharGraphText } from "./text.js";
 import {
   createCharDeskMarkdownStyles,
 } from "./markdown-default.js";
-import { BLOCK_LAYOUT_DASHBOARD_SOURCE } from "./block-layout-dashboard.js";
 import { CHARDESK_LIGHT_RENDER_THEME } from "./render-theme.js";
 
 export type CharGraphExampleLevel = "basic" | "intermediate" | "advanced";
-export type CharGraphExampleRenderer = "block-layout" | "markdown" | "mermaid";
+export type CharGraphExampleRenderer = "markdown" | "mermaid";
 export type CharGraphExampleKind =
-  | "block-layout"
   | "flowchart"
   | "state"
   | "sequence"
@@ -52,16 +50,6 @@ export const getExampleClipboardSource = ({
 const markdownOptions = createCharDeskMarkdownStyles({
   theme: CHARDESK_LIGHT_RENDER_THEME,
 });
-
-export const BLOCK_LAYOUT_DASHBOARD_EXAMPLE = {
-  id: "block-layout-dashboard",
-  kind: "block-layout",
-  level: "advanced",
-  renderer: "block-layout",
-  title: "Product Workspace",
-  source: BLOCK_LAYOUT_DASHBOARD_SOURCE,
-  expectedText: "All systems operational",
-} as const satisfies CharGraphExample;
 
 export const CHARGRAPH_EXAMPLES: readonly CharGraphExample[] = [
   {
@@ -585,7 +573,6 @@ $$
 \begin{matrix}1&2\\3&4\end{matrix}
 \]`,
   },
-  BLOCK_LAYOUT_DASHBOARD_EXAMPLE,
 ];
 
 const renderExampleSource = async (example: CharGraphExample) => {

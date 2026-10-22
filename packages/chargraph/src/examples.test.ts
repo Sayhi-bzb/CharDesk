@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCharDeskText } from "@chardesk/protocol";
 import {
-  BLOCK_LAYOUT_DASHBOARD_EXAMPLE,
   CHARGRAPH_EXAMPLES,
   getExampleClipboardSource,
   type CharGraphExampleKind,
@@ -23,16 +21,14 @@ const KINDS: readonly CharGraphExampleKind[] = [
 ];
 
 describe("CharGraph showcase examples", () => {
-  it("contains eleven three-level sets and one standalone layout example", () => {
-    expect(CHARGRAPH_EXAMPLES).toHaveLength(34);
-    expect(new Set(CHARGRAPH_EXAMPLES.map((example) => example.id))).toHaveLength(34);
+  it("contains eleven three-level sets", () => {
+    expect(CHARGRAPH_EXAMPLES).toHaveLength(33);
+    expect(new Set(CHARGRAPH_EXAMPLES.map((example) => example.id))).toHaveLength(33);
     expect(CHARGRAPH_EXAMPLES.filter((example) => example.level === "basic")).toHaveLength(11);
     expect(CHARGRAPH_EXAMPLES.filter((example) => example.level === "intermediate"))
       .toHaveLength(11);
-    expect(CHARGRAPH_EXAMPLES.filter((example) => example.level === "advanced")).toHaveLength(12);
-    expect(
-      CHARGRAPH_EXAMPLES.filter((example) => example.kind === "block-layout")
-    ).toEqual([BLOCK_LAYOUT_DASHBOARD_EXAMPLE]);
+    expect(CHARGRAPH_EXAMPLES.filter((example) => example.level === "advanced")).toHaveLength(11);
+
   });
 
   it("uses English titles and one natural language per basic example", () => {
@@ -134,25 +130,6 @@ describe("CharGraph showcase examples", () => {
     expect(output.protocolText).toContain("\u001b[38;2;129;139;152m");
   });
 
-  it("renders the dashboard JSON fence through the canonical layout pipeline", async () => {
-    const output = await renderExample(BLOCK_LAYOUT_DASHBOARD_EXAMPLE);
-
-    expect(output.text).toContain("canvas");
-    expect(output.text).toContain("launch-plan");
-    expect(output.text).not.toContain("```json");
-  });
-
-  it("keeps every row of the dashboard link card aligned to its border", async () => {
-    const output = await renderExample(BLOCK_LAYOUT_DASHBOARD_EXAMPLE);
-    const lines = output.text.split("\n");
-    const titleRow = lines.findIndex((line) => line.includes("Open source workspace"));
-    const card = lines.slice(titleRow - 1, titleRow + 5);
-
-    expect(card).toHaveLength(6);
-    expect(card.map((line) => parseCharDeskText(line, { syntax: "plain" }).width))
-      .toEqual([62, 62, 62, 62, 62, 62]);
-  });
-
   it("renders Mermaid with the shared Renderer Theme", async () => {
     const example = CHARGRAPH_EXAMPLES.find(
       (candidate) => candidate.id === "flowchart"
@@ -177,11 +154,6 @@ describe("CharGraph showcase examples", () => {
         id: "markdown-alert",
         label: "CharGraph",
         href: "https://chardesk.com/chargraph/",
-      },
-      {
-        id: "block-layout-dashboard",
-        label: "All systems operational",
-        href: "https://github.com/Sayhi-bzb/CharDesk",
       },
     ];
 
@@ -231,14 +203,4 @@ describe("CharGraph showcase examples", () => {
     }
   );
 
-  it("copies the block layout stream without wrapping or rewriting it", () => {
-    const clipboardSource = getExampleClipboardSource(
-      BLOCK_LAYOUT_DASHBOARD_EXAMPLE
-    );
-
-    expect(clipboardSource).toBe(BLOCK_LAYOUT_DASHBOARD_EXAMPLE.source);
-    expect(clipboardSource).toContain("\n|||\n");
-    expect(clipboardSource).toContain("\n---\n");
-    expect(clipboardSource).toContain("```json");
-  });
 });

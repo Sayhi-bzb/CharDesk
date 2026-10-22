@@ -100,13 +100,13 @@ describe("TextRenderingRuntime", () => {
     ).toBe(true);
   });
 
-  it("composes ANSI before Markdown in auto mode", async () => {
+  it("keeps Markdown markers literal in Auto ANSI input", async () => {
     const runtime = new TextRenderingRuntime();
     const result = await runtime.render("[1m**bold**[0m", "#fff");
 
-    expect(result.renderer).toBe("markdown");
-    expect(result.pipeline).toEqual(["ansi", "markdown"]);
-    expect(textFrom(result)).toBe("bold");
+    expect(result.renderer).toBe("ansi");
+    expect(result.pipeline).toEqual(["ansi"]);
+    expect(textFrom(result)).toBe("**bold**");
     expect(result.kind === "styled" && result.cells[0]?.attrs?.bold).toBe(true);
   });
 
@@ -128,7 +128,7 @@ describe("TextRenderingRuntime", () => {
   it("composes explicit ANSI styles with Markdown structure", async () => {
     const result = await new TextRenderingRuntime().render(
       "[31m**red `code`**[0m",
-      "#fff"
+      "#fff", { themeMode: "light", rendererMode: "markdown" }
     );
 
     expect(result.pipeline).toEqual(["ansi", "markdown"]);
@@ -141,7 +141,7 @@ describe("TextRenderingRuntime", () => {
   it("maps explicit ANSI to the matching repeated Markdown source range", async () => {
     const result = await new TextRenderingRuntime().render(
       "foo **[31mfoo[0m** foo",
-      "#111111"
+      "#111111", { themeMode: "light", rendererMode: "markdown" }
     );
 
     expect(textFrom(result)).toBe("foo foo foo");
@@ -168,7 +168,7 @@ describe("TextRenderingRuntime", () => {
   it("keeps explicit OSC 8 links over Markdown link destinations", async () => {
     const result = await new TextRenderingRuntime().render(
       "]8;;https://ansi.example\\[label](https://markdown.example)]8;;\\",
-      "#fff"
+      "#fff", { themeMode: "light", rendererMode: "markdown" }
     );
 
     expect(result.pipeline).toEqual(["ansi", "markdown"]);
@@ -653,20 +653,11 @@ describe("TextRenderingRuntime", () => {
     expect([0, 1].map((y) => rowText(yaml, y))).toEqual(["user:", "  name: Ada"]);
   });
 
-  it("renders each two-dimensional layout field through the normal pipeline", async () => {
-    const result = await new TextRenderingRuntime().render(
-      "```json\n{\"a\":1}\n```\n|||\n**B**\n---\nC",
-      "#111111"
-    );
-
-    expect(result.renderer).toBe("block-layout");
-    expect(rowText(result, 0)).toContain("└─ a: 1");
-    expect(rowText(result, 0)).toContain("B");
-    expect(rowText(result, 2)).toBe("C");
-    expect(
-      result.kind === "styled" &&
-        result.cells.find((cell) => cell.char === "B")?.attrs?.bold
-    ).toBe(true);
+  it("keeps retired layout delimiters literal around Markdown", async () => {
+    const result = await new TextRenderingRuntime().render("**A**\n\n|||\n\n**B**", "#111111");
+    expect(result.renderer).toBe("markdown");
+    expect(rowText(result, 2)).toBe("|||");
+    expect(rowText(result, 4)).toBe("B");
   });
 
   it("keeps Mermaid independently switchable from fenced code rendering", async () => {
@@ -739,7 +730,7 @@ describe("TextRenderingRuntime", () => {
   it("keeps explicit ANSI color over Math semantic styles", async () => {
     const result = await new TextRenderingRuntime().render(
       "[31m$x+1$[0m",
-      "#111111"
+      "#111111", { themeMode: "light", rendererMode: "markdown" }
     );
 
     expect(result.pipeline).toEqual(["ansi", "markdown"]);

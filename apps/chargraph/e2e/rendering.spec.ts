@@ -33,36 +33,8 @@ const expectViewerColors = async (
   );
 };
 
-test("renders the shared block layout dashboard as its own category", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1728, height: 900 });
-  await page.goto("./#type-block-layout");
-
-  await expect(page.getByRole("tab", { name: "二维布局" })).toHaveAttribute(
-    "aria-selected",
-    "true"
-  );
-  const article = page.locator("#block-layout-dashboard");
-  await expect(page.locator("main article")).toHaveCount(1);
-  await expect(article).toHaveAttribute(
-    "aria-label",
-    "二维布局 · Product Workspace"
-  );
-  await expect(
-    article.locator('[data-slot="example-panel"]').first()
-  ).toHaveAttribute("aria-label", "Layout");
-  await expect(article.locator('[data-slot="example-source"]')).toContainText(
-    "|||"
-  );
-  const viewer = article.locator("chardesk-viewer");
-  await expect(viewer.locator("canvas")).toContainText("CharDesk Workspace");
-  await expect(viewer.locator("canvas")).toContainText("All systems operational");
-  await expect(viewer.locator("pre")).toHaveCount(0);
-});
-
 test("renders emoji through the vendored monochrome Canvas font", async ({ page }) => {
-  await page.goto("./#type-block-layout");
+  await page.goto("./#type-flowchart");
 
   const result = await page.evaluate(async () => {
     const faces = await document.fonts.load("15px 'Noto Emoji'", "👋🚀");
@@ -402,7 +374,7 @@ test("renders directed diagrams through the category navigation", async ({ page 
   const flowViewer = page.locator("#flowchart chardesk-viewer");
   const flow = flowViewer.locator("canvas");
   await expect(flow).toContainText(exampleById("flowchart").expectedText);
-  await expect(flow).toContainText(/Yes╭>│\s*Save\s*│/u);
+  await expect(flow).toContainText(/Yes[ ─┄━╭╮]*>│\s*Save\s*│/u);
   await expect(flow).toContainText(/>│\s*Error\s*│/u);
   await expect(flow).toContainText("No");
   await expect(flow).not.toContainText(/[─┄━]\^ +│/u);

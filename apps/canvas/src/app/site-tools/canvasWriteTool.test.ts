@@ -37,6 +37,24 @@ describe("Canvas writing tool", () => {
     expect(canvas.getState().contentSurface.reader.getContentBounds()).toBeNull();
   });
 
+  it.each([createCanvasRenderTool, createCanvasPreviewRenderTool])(
+    "distinguishes explicit Auto from an omitted format", async (createTool) => {
+      const canvas = host();
+      const runtime = createTextRenderingRuntime({ storage: false });
+      runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "markdown" });
+      const tool = createTool(canvas, {
+        render: runtime.renderCompact,
+        getProfile: runtime.getProfile,
+        getContext: () => ({ themeMode: "light" as const }),
+      });
+      const source = "    ┌─┐\n    │A│\n    └─┘";
+      expect(await tool.execute({ at: [0, 0], source, format: "auto" }))
+        .toMatchObject({ bounds: [0, 0, 7, 3] });
+      expect(await tool.execute({ at: [10, 0], source }))
+        .toMatchObject({ bounds: [10, 0, 3, 3] });
+    },
+  );
+
   it("previews a literal Projection stroke without parsing Markdown", async () => {
     const canvas = host();
     const preview = createCanvasPreviewWriteTool(canvas);

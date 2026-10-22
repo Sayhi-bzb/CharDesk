@@ -116,40 +116,4 @@
 [38;2;100;116;139m│[0m [38;2;26;127;55m│ [0m[1;38;2;26;127;55mTIP[0m                                                                             [38;2;100;116;139m│[0m
 [38;2;100;116;139m│[0m [38;2;26;127;55m│ [0m在 [4;38;2;9;105;218m]8;;https://chardesk.com/chargraph/\CharGraph]8;;\[0m 中生成可复制的 [38;2;9;105;218;48;2;246;248;250mUnicode[0m 字符。                                      [38;2;100;116;139m│[0m
 [38;2;100;116;139m╰───────────────────────────────────────────────────────────────────────────────────╯[0m
-
-
-
-
-╭────────────────────────────╮    ╭──────────────────────╮    Languages
-│ [1;38;2;91;95;199mCharDesk Workspace[0m         │    │ Runtime              │    English    Ready
-│ Spatial text, shared canvas│    │ Canvases          12 │    中文       就绪
-│ [38;2;34;197;94m● Live[0m · 12 collaborators  │    │ Blocks           248 │    日本語     準備完了
-╰────────────────────────────╯    │ Sync          18 ms  │    한국어     준비 완료
-                                  ╰──────────────────────╯    Emoji      👋 🚀
-
-[1mInput · canvas.json[0m         ╭────────────────────────╮    [1mOutput · scene[0m
-                            │ Transform pipeline     │    launch-plan
-[38;2;129;139;152m├─ [0m[38;2;9;105;218mcanvas[0m[38;2;129;139;152m: [0m[38;2;26;127;55m"launch-plan"[0m    │                        │    ├─ brief
-[38;2;129;139;152m├─ [0m[38;2;9;105;218mowner[0m[38;2;129;139;152m: [0m[38;2;26;127;55m"Ada"[0m             │ Markdown               │    │  ├─ goals
-[38;2;129;139;152m├─ [0m[38;2;9;105;218mlocale[0m[38;2;129;139;152m: [0m[38;2;26;127;55m"zh-CN"[0m          │    ↓ parse             │    │  └─ audience
-[38;2;129;139;152m└─ [0m[38;2;9;105;218mnodes[0m[38;2;129;139;152m: [0m[38;2;9;105;218m42[0m                │ CharGraph              │    ├─ storyboard
-                            │    ↓ layout            │    │  ├─ intro
-                            │ Unicode Canvas         │    │  └─ demo
-                            ╰────────────────────────╯    └─ publish ✓
-
-╭──────────────────────────────╮    [1mPalette[0m               [1mLayout notes[0m
-│ Recent activity              │    [38;2;239;68;68m● Coral[0m    #ef4444    |||  next field
-│                              │    [38;2;245;158;11m● Amber[0m    #f59e0b    ---  next row
-│ 10:42  Ada edited brief      │    [38;2;34;197;94m● Green[0m    #22c55e
-│ 10:39  Lin added palette     │    [38;2;59;130;246m● Blue[0m     #3b82f6    Escaped literals
-│ 10:31  Yuki linked CharGraph │    [38;2;139;92;246m● Violet[0m   #8b5cf6    |||
-│ 10:24  민준 resolved comment │                          ---
-╰──────────────────────────────╯
-
-╭────────────────────────────────────────────────────────────╮
-│ [1mOpen source workspace[0m                                      │
-│ CharDesk · [4;38;2;37;99;235m]8;;https://github.com/Sayhi-bzb/CharDesk\github.com/Sayhi-bzb/CharDesk]8;;\[0m                   │
-│ CharGraph · [4;38;2;37;99;235m]8;;https://chardesk.com/chargraph/\chardesk.com/chargraph]8;;\[0m                         │
-│ [38;2;34;197;94mAll systems operational[0m · shared example                   │
-╰────────────────────────────────────────────────────────────╯
 ````

@@ -1,7 +1,6 @@
 import {
   compileCharDeskText,
   materializeCompiledCharDeskText,
-  type CharDeskSourceKind,
   type CharDeskTextCompilerId,
 } from "@chardesk/chargraph";
 import {
@@ -291,14 +290,8 @@ export class TextRenderingRuntime {
     const themeMode = context.themeMode === "dark" ? "dark" : "light";
     const theme = this.getResolvedTheme(themeMode);
     const mode = context.rendererMode ?? profile.mode;
-    const sourceKind: CharDeskSourceKind = mode === "raw"
-      ? "plain"
-      : mode === "ansi"
-        ? "ansi"
-        : "chargraph";
     return compileCharDeskText(source, {
-      sourceKind,
-      chargraphMode: mode === "markdown" ? "markdown" : "auto",
+      format: mode,
       defaultStyle: { color: defaultColor },
       pipelineDefaultStyles: {
         markdown: { color: theme.foreground },

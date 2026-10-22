@@ -74,7 +74,6 @@ const EXAMPLE_CATEGORIES: readonly {
   kind: CharGraphExampleKind;
   label: string;
 }[] = [
-  { kind: "block-layout", label: "二维布局" },
   { kind: "flowchart", label: "流程图" },
   { kind: "state", label: "状态图" },
   { kind: "sequence", label: "时序图" },
@@ -89,7 +88,6 @@ const EXAMPLE_CATEGORIES: readonly {
 ];
 
 const RENDERER_LABELS: Record<CharGraphExampleRenderer, string> = {
-  "block-layout": "Layout",
   markdown: "Markdown",
   mermaid: "Mermaid",
 };

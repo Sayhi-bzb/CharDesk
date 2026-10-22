@@ -124,24 +124,6 @@ describe("default demo canvas", () => {
     ).toBe(true);
   });
 
-  it("appends the shared block layout dashboard after the case catalog", () => {
-    const [content] = extractAsciiCodeBlocks(generatedCasesMarkdown);
-    expect(content).toBeDefined();
-    const lines = parseCharDeskText(content!).plainText.split("\n");
-    const inlineMathRow = lines.findIndex((line) =>
-      line.includes("11  Inline Math")
-    );
-    const dashboardRow = lines.findIndex((line) =>
-      line.includes("CharDesk Workspace")
-    );
-
-    expect(inlineMathRow).toBeGreaterThanOrEqual(0);
-    expect(dashboardRow).toBeGreaterThan(inlineMathRow);
-    expect(lines.some((line) => line.includes("All systems operational"))).toBe(
-      true
-    );
-  });
-
   it("builds a single freeform grid from ascii blocks with spacing between blocks", () => {
     const grid = buildDefaultDemoGrid(
       [
@@ -205,34 +187,6 @@ describe("default demo canvas", () => {
         .map((line) => parseCharDeskText(line).width)
         .every((width) => width === 31)
     ).toBe(true);
-  });
-
-  it("preserves dashboard links in the generated Welcome grid", () => {
-    const dashboard = findTextPosition(DEFAULT_DEMO_GRID, "CharDesk Workspace");
-    expect(dashboard).toBeDefined();
-    const repository = findTextPosition(
-      DEFAULT_DEMO_GRID,
-      "github.com/Sayhi-bzb/CharDesk",
-      dashboard!.y
-    );
-    const charGraph = findTextPosition(
-      DEFAULT_DEMO_GRID,
-      "chardesk.com/chargraph",
-      dashboard!.y
-    );
-
-    expect(repository).toBeDefined();
-    expect(charGraph).toBeDefined();
-    expect(
-      new Map(DEFAULT_DEMO_GRID).get(
-        GridManager.toKey(repository!.x, repository!.y)
-      )?.href
-    ).toBe("https://github.com/Sayhi-bzb/CharDesk");
-    expect(
-      new Map(DEFAULT_DEMO_GRID).get(
-        GridManager.toKey(charGraph!.x, charGraph!.y)
-      )?.href
-    ).toBe("https://chardesk.com/chargraph/");
   });
 
   it("uses the visual demos and generated CharGraph cases in Welcome", () => {

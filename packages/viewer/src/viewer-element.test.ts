@@ -68,7 +68,7 @@ describe("CharDeskViewerElement", () => {
     document.body.append(viewer);
 
     await vi.waitFor(() => {
-      expect(viewer.parsedDocument?.plainText).toBe("A    B");
+      expect(viewer.parsedDocument?.plainText).toBe("A\n|||\nB");
     });
     expect(viewer.parsedDocument?.cells.find((cell) => cell.text === "B")?.attrs?.bold)
       .toBe(true);

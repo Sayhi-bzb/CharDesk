@@ -4,6 +4,7 @@ import type {
 } from "@chardesk/protocol";
 import {
   compileCharDeskText,
+  compileCharDeskProtocolText,
   materializeCompiledCharDeskText,
 } from "@chardesk/chargraph";
 import { createCharDeskMarkdownRenderOptions } from "@chardesk/chargraph/markdown";
@@ -41,10 +42,7 @@ import {
   type CharDeskGridPoint,
   type CharDeskGridSelection,
 } from "./grid-interaction.js";
-import {
-  createCharDeskRenderModel,
-  type CharDeskRenderModel,
-} from "./render-model.js";
+import type { CharDeskRenderModel } from "./render-model.js";
 
 export type CharDeskViewerFit = "none" | "width" | "contain";
 export type CharDeskViewerCopyFormat = "plain" | "source" | "selection";
@@ -628,7 +626,7 @@ export class CharDeskViewerElement extends HTMLElementBase {
     const renderVersion = ++this.#renderVersion;
     if (this.sourceKind === "chargraph") {
       void compileCharDeskText(this.#source, {
-        sourceKind: "chargraph",
+        format: "auto",
         markdown: createCharDeskMarkdownRenderOptions({
           theme: CHARDESK_LIGHT_RENDER_THEME,
         }),
@@ -649,9 +647,13 @@ export class CharDeskViewerElement extends HTMLElementBase {
       });
       return;
     }
-    this.#applyRenderModel(createCharDeskRenderModel(this.#source, {
-      syntax: this.syntax,
-    }), renderVersion);
+    const compiled = compileCharDeskProtocolText(this.#source, {
+      format: this.syntax === "plain" ? "plain" : "ansi",
+      protocolSyntax: this.syntax,
+    });
+    this.#applyRenderModel(createCharDeskRenderModelFromDocument(
+      materializeCompiledCharDeskText(compiled)
+    ), renderVersion);
   }
 
   #applyRenderModel(model: CharDeskRenderModel, renderVersion: number) {

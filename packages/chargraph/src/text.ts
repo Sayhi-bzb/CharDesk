@@ -4,13 +4,6 @@ import {
   type CharDeskTextRun,
   type CharDeskTextStyle,
 } from "@chardesk/protocol";
-import { Lexer, type Token, type Tokens } from "marked";
-import {
-  parseBlockLayout,
-  renderBlockLayoutDocument,
-  type BlockLayoutBlock,
-  type BlockLayoutRenderOptions,
-} from "./block-layout.js";
 import { createCharGraphFragment } from "./fragments.js";
 import { createMarkdownRenderer, type MarkdownRenderOptions } from "./markdown.js";
 import { CHARDESK_MARKDOWN_EXTENSIONS } from "./markdown-modules.js";
@@ -22,18 +15,12 @@ import type {
 
 export type CharGraphTextMode = "auto" | "raw" | "ansi" | "markdown";
 
-export type CharGraphBlockLayoutOptions = BlockLayoutRenderOptions & {
-  /** Controls which parsed boundary evidence activates layout composition. */
-  activation?: "field-boundary" | "any-boundary";
-};
-
 export type CharGraphTextRenderOptions = {
   mode?: CharGraphTextMode;
   markdown?: MarkdownRenderOptions;
-  layout?: false | CharGraphBlockLayoutOptions;
 };
 
-export type CharGraphTextRendererId = Exclude<CharGraphTextMode, "auto"> | "block-layout";
+export type CharGraphTextRendererId = Exclude<CharGraphTextMode, "auto">;
 
 export type CharGraphTextRenderResult = CharGraphRenderResult & {
   renderer: CharGraphTextRendererId;
@@ -215,42 +202,9 @@ const rawResult = (source: string): CharGraphTextRenderResult => ({
   pipeline: ["raw"],
 });
 
-// Markdown treats four leading spaces as an indented code block and is allowed
-// to normalize that block's indentation. Box-drawing text is already a visual
-// surface, so auto mode must preserve its coordinates instead of interpreting
-// it as Markdown structure.
-const SPATIAL_GLYPHS = /[┌┐└┘├┤┬┴┼─│━┃╭╮╰╯╴╵╶╷╸╹╺╻▶►▼▲◀◁▷△▽]/u;
-const ASCII_FRAME = /^\s*\+[+=-]+\+/u;
-
-const spatialTextLines = (tokens: readonly Token[]): string[] =>
-  tokens.flatMap((token) => {
-    if (token.type === "code" && token.codeBlockStyle !== "indented") return [];
-    if (token.type === "blockquote") {
-      return spatialTextLines((token as Tokens.Blockquote).tokens);
-    }
-    if (token.type === "list") {
-      return (token as Tokens.List).items.flatMap((item) => spatialTextLines(item.tokens));
-    }
-    return token.raw.split(/\r\n|\r|\n/u);
-  });
-
-const looksLikeSpatialText = (source: string) => {
-  // Fenced diagrams belong to Markdown; only surrounding text can activate
-  // coordinate preservation. Let the Markdown lexer handle nested fences.
-  const lines = source.includes("```") || source.includes("~~~")
-    ? spatialTextLines(Lexer.lex(source))
-    : source.split(/\r\n|\r|\n/u);
-  if (lines.length < 3) return false;
-  const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
-  if (nonEmptyLines.length < 3) return false;
-  const drawnLines = nonEmptyLines.filter((line) => SPATIAL_GLYPHS.test(line)).length;
-  const framedLines = nonEmptyLines.filter((line) => ASCII_FRAME.test(line)).length;
-  return drawnLines >= 2 || framedLines >= 2;
-};
-
-const renderScalarText = async (
+export const renderCharGraphText = async (
   source: string,
-  options: CharGraphTextRenderOptions
+  options: CharGraphTextRenderOptions = {}
 ): Promise<CharGraphTextRenderResult> => {
   const mode = options.mode ?? "auto";
   if (mode === "raw") return rawResult(source);
@@ -267,14 +221,10 @@ const renderScalarText = async (
   const decodedText = hasAnsi ? decoded.text : source;
   const ansiSpans = hasAnsi ? spansFromRuns(decoded.runs) : [];
 
-  if (mode === "auto" && !hasAnsi && looksLikeSpatialText(decodedText)) {
-    return rawResult(decodedText);
-  }
-
-  if (mode !== "ansi") {
+  if (mode !== "ansi" && !(mode === "auto" && hasAnsi)) {
     const markdown = await textMarkdownRenderer.render(
       decodedText,
-      resolveMarkdownOptions(options.markdown, mode === "markdown")
+      { ...resolveMarkdownOptions(options.markdown, mode === "markdown"), auto: mode === "auto" }
     );
     if (markdown.recognized) {
       return {
@@ -302,48 +252,4 @@ const renderScalarText = async (
     renderer: "ansi",
     pipeline: ["ansi"],
   };
-};
-
-const renderLayoutField = (
-  block: BlockLayoutBlock,
-  options: CharGraphTextRenderOptions
-) => {
-  const protectsBoundary = Boolean(block.protectedSource) &&
-    options.mode !== "raw" && options.mode !== "ansi";
-  return renderScalarText(
-    protectsBoundary ? block.protectedSource! : block.source,
-    protectsBoundary && (options.mode ?? "auto") === "auto"
-      ? { ...options, mode: "markdown" }
-      : options
-  );
-};
-
-export const renderCharGraphText = async (
-  source: string,
-  options: CharGraphTextRenderOptions = {}
-): Promise<CharGraphTextRenderResult> => {
-  if (options.layout !== false) {
-    const parsed = parseBlockLayout(source);
-    const {
-      activation = "field-boundary",
-      ...renderOptions
-    } = options.layout ?? {};
-    const layoutActivated = activation === "any-boundary"
-      ? parsed.recognized
-      : parsed.boundaries.fields > 0;
-    if (parsed.document && layoutActivated) {
-      const rendered = await renderBlockLayoutDocument(
-        parsed.document,
-        (block) => renderLayoutField(block, options),
-        renderOptions
-      );
-      return {
-        ...rendered,
-        recognized: true,
-        renderer: "block-layout",
-        pipeline: ["block-layout"],
-      };
-    }
-  }
-  return renderScalarText(source, options);
 };

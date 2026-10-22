@@ -9,6 +9,7 @@ import { measureCanvasMutationImpact, prepareCanvasErase, prepareCanvasPlainText
 import type { CanvasSurfaceReader, RichTextRow } from "@/domains/canvas/public";
 import { getTextCellWidth } from "@chardesk/protocol";
 import type { GridCell } from "@/shared/types";
+import type { TextRendererMode } from "@/domains/document/public";
 import { clearCanvasActivity, publishCanvasActivity } from "@/shared/canvas-activity";
 
 import { CANVAS_READ_TOOL, CANVAS_WRITE_TOOL, CANVAS_SEARCH_TOOL, CANVAS_MANAGE_TOOL, CANVAS_ERASE_TOOL, CANVAS_FILL_TOOL, CANVAS_RENDER_TOOL } from "./canvasToolDefinitions";
@@ -623,7 +624,7 @@ export const createCanvasRenderTool = (
       if (session && isSourceBackedCanvasSession(session)) {
         throw new CanvasWriteError("source_backed_canvas", "Edit the source files of this Canvas instead of its projection.");
       }
-      const rendererMode = input.format === "auto" || input.format === undefined ? undefined : input.format as "raw" | "ansi" | "markdown";
+      const rendererMode = input.format as TextRendererMode | undefined;
       const renderContext = { ...rendering.getContext(), ...(rendererMode ? { rendererMode } : {}) };
       const rendered = canonicalizeDefaultForeground(
         await rendering.render(input.source, state.brushColor, renderContext),
@@ -699,7 +700,7 @@ export const createCanvasPreviewRenderTool = (
       const target = resolveCanvasTarget(canvas, input);
       if ("error" in target) return { ok: false, code: target.error, message: target.error === "canvas_not_found" ? "Canvas not found." : "Open a Canvas first." };
       const state = canvas.getState();
-      const rendererMode = input.format === "auto" || input.format === undefined ? undefined : input.format as "raw" | "ansi" | "markdown";
+      const rendererMode = input.format as TextRendererMode | undefined;
       const renderContext = { ...rendering.getContext(), ...(rendererMode ? { rendererMode } : {}) };
       const rendered = canonicalizeDefaultForeground(
         await rendering.render(input.source, state.brushColor, renderContext),

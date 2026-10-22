@@ -158,7 +158,7 @@ describe('CharDesk Slides Markdown', () => {
     const result = await parseSlideMarkdown(
       createSource([
         '## Layout',
-        '````chargraph size=8x2',
+        '````chargraph size=8x3',
         'A',
         '|||',
         '**B**',
@@ -168,9 +168,12 @@ describe('CharDesk Slides Markdown', () => {
 
     expect(result.slideDeck.slides[0].grid.map(([key, cell]) => [key, cell.char])).toEqual([
       ['0,0', 'A'],
-      ['5,0', 'B'],
+      ['0,1', '|'],
+      ['1,1', '|'],
+      ['2,1', '|'],
+      ['0,2', 'B'],
     ]);
-    expect(result.slideDeck.slides[0].grid[1]?.[1].attrs?.bold).toBe(true);
+    expect(result.slideDeck.slides[0].grid.at(-1)?.[1].attrs?.bold).toBe(true);
   });
 
   it('renders nested CharGraph data fences instead of storing their source', async () => {

@@ -161,46 +161,13 @@ describe("chardesk render command", () => {
     expect(io.stderr()).toBe("");
   });
 
-  it("stacks block layout fields into a plain reading projection", async () => {
-    const source = [
-      "aa",
-      "[31maa[0m",
-      "|||",
-      "[32mbb[0m",
-      "bb",
-      "---",
-    ].join("\n");
-    const reading = streams(source);
+  it("keeps retired layout boundaries in the inspect grid", async () => {
+    const io = streams("aa\n|||\nbb");
     expect(await runCli([
-      "inspect", "-", "--input", "chargraph", "--no-ruler", "--styles", "--json",
-    ], reading.value)).toBe(0);
-    expect(JSON.parse(reading.stdout())).toMatchObject({
-      status: "valid",
-      projection: "blocks",
-      columns: 2,
-      rows: 5,
-      text: "aa\naa\n\nbb\nbb",
-      canvas: { columns: 8 },
-      styles: expect.stringContaining("3:0-1{fg:#008000}"),
-      diagnostics: [],
-    });
-
-    const canvas = streams(source);
-    expect(await runCli([
-      "inspect", "-", "--input", "chargraph", "--canvas", "--no-ruler", "--json",
-    ], canvas.value)).toBe(0);
-    const canvasResult = JSON.parse(canvas.stdout());
-    expect(canvasResult).toMatchObject({ projection: "canvas" });
-    expect(canvasResult.text).toMatch(/^aa {4}bb\naa {4}bb/u);
-
-    const region = streams(source);
-    expect(await runCli([
-      "inspect", "-", "--input", "chargraph", "--region", "0,0,2,2",
-      "--no-ruler", "--json",
-    ], region.value)).toBe(0);
-    expect(JSON.parse(region.stdout())).toMatchObject({
-      projection: "canvas",
-      text: "aa\naa",
+      "inspect", "-", "--input", "chargraph", "--no-ruler", "--json",
+    ], io.value)).toBe(0);
+    expect(JSON.parse(io.stdout())).toMatchObject({
+      projection: "canvas", columns: 3, rows: 3, text: "aa\n|||\nbb",
     });
   });
 

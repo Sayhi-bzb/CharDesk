@@ -6,11 +6,11 @@ import type {
 } from "@chardesk/rendering/theme";
 import type { I18nKey } from "@/shared/i18n";
 import type { GridCell } from "@/shared/types";
-import type { CharGraphHeading } from "@chardesk/chargraph";
+import type { CharGraphHeading, CharGraphTextMode } from "@chardesk/chargraph";
 
-export type BuiltInTextRendererId = "raw" | "ansi" | "markdown";
-export type TextRendererId = BuiltInTextRendererId | "block-layout";
-export type TextRendererMode = "auto" | BuiltInTextRendererId;
+export type BuiltInTextRendererId = Exclude<CharGraphTextMode, "auto">;
+export type TextRendererId = BuiltInTextRendererId;
+export type TextRendererMode = CharGraphTextMode;
 export type TextRenderThemeTokenId = CharDeskContentThemeToken;
 export type TextRenderThemeMode = CharDeskContentThemeMode;
 export type TextRenderTheme = CharDeskContentTheme;
