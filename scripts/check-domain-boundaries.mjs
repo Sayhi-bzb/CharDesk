@@ -236,6 +236,56 @@ function findDomainCycles(edges) {
 for (const cycle of findDomainCycles(domainEdges)) {
   violations.push(`domain cycle: ${cycle.join(" -> ")}`);
 }
+// Shared editor packages and the terminal Host must never import Web internals.
+for (const directory of [
+  "packages/cell-plane/src",
+  "packages/editor-core/src",
+  "packages/canvas-templates/src",
+  "packages/character-library/src",
+  "examples/terminal-canvas/src",
+]) {
+  if (!fs.existsSync(directory)) continue;
+  for (const file of collectSourceFiles(directory)) {
+    if (/\.(test|spec)\.[tj]sx?$/.test(file)) continue;
+    const source = ts.createSourceFile(
+      file,
+      fs.readFileSync(file, "utf8"),
+      ts.ScriptTarget.Latest,
+      true
+    );
+    const inspect = (node) => {
+      const specifier =
+        (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+        node.moduleSpecifier &&
+        ts.isStringLiteral(node.moduleSpecifier)
+          ? node.moduleSpecifier.text
+          : null;
+      if (specifier) {
+        const target = specifier.startsWith(".")
+          ? path.resolve(path.dirname(file), specifier)
+          : specifier;
+        if (specifier.startsWith("@/") || target.includes("/apps/"))
+          violations.push(`${file}: shared editor code cannot import ${specifier}`);
+        if (
+          !directory.startsWith("examples/") &&
+          /^(react(?:-dom)?|@opentui\/|node:(?:fs|http|https|net)(?:\/|$))/.test(specifier)
+        )
+          violations.push(`${file}: headless core cannot import ${specifier}`);
+      }
+      if (
+        directory.startsWith("examples/") &&
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        ts.isPropertyAccessExpression(node.left) &&
+        ["cursor", "selection"].includes(node.left.name.text)
+      ) {
+        violations.push(`${file}: Host must change interaction through editor commands`);
+      }
+      ts.forEachChild(node, inspect);
+    };
+    inspect(source);
+  }
+}
 if (violations.length > 0) {
   console.error("Domain boundary violations:\n" + violations.join("\n"));
   process.exit(1);

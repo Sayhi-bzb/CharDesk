@@ -1,21 +1,13 @@
-export const GRID_COLOR = "#e5e7eb";
-export const BACKGROUND_COLOR = "#ffffff";
+export {
+  GRID_COLOR,
+  BACKGROUND_COLOR,
+  COLOR_PRIMARY_TEXT,
+  EXPORT_PADDING,
+} from '@chardesk/cell-plane/constants';
 
 export const MIN_ZOOM = 0.25;
 export const MAX_ZOOM = 5;
 
-export const COLOR_PRIMARY_TEXT = "#000000";
-export const DEFAULT_BRUSH_CHAR = "#";
-export const EXPORT_PADDING = 1;
+export { DEFAULT_BRUSH_CHAR, BOX_CHARS } from '@chardesk/editor-core/drawing/constants';
 
-export const BOX_CHARS = {
-  TOP_LEFT: "╭",
-  TOP_RIGHT: "╮",
-  BOTTOM_LEFT: "╰",
-  BOTTOM_RIGHT: "╯",
-  HORIZONTAL: "─",
-  VERTICAL: "│",
-  CROSS: "┼",
-};
-
-export const APP_SOURCE_URL = "https://github.com/Sayhi-bzb/CharDesk";
+export const APP_SOURCE_URL = 'https://github.com/Sayhi-bzb/CharDesk';

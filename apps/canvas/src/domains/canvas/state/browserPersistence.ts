@@ -426,7 +426,9 @@ const seedFromImportSnapshot = (
         })),
         grid: [],
       }
-    : { mode: "freeform", grid: snapshot.grid };
+    : { mode: "freeform", grid: snapshot.grid,
+        ...(snapshot.document ? { pages: snapshot.document.pages, activePageId: snapshot.document.activePageId } : {}),
+      };
 
 const seedFromSessionSnapshot = (
   session: CanvasSessionSnapshot

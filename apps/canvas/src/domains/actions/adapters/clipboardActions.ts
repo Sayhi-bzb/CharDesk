@@ -1,23 +1,5 @@
-import {
-  exportSelectionToAnsi,
-  exportSelectionToJSON,
-  exportSelectionToString,
-  exportToAnsi,
-} from "@/domains/export/public";
-import {
-  forEachGridSelectionSpan,
-  getGridSelectionSpans,
-} from "@/domains/selection/public";
-import { GridManager } from "@/shared/utils/grid";
-import { createGridMapSource } from "@/shared/utils/grid-source";
-import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
-import type {
-  GridCellSource,
-  GridMap,
-  Point,
-  SelectionArea,
-} from "@/shared/types";
 import type { RichTextCell } from "@/domains/canvas/public";
+export { hasClipboardSource, buildClipboardPayload } from "@chardesk/editor-core/clipboard/payload";
 import {
   renderTextSource,
   type CompactTextRenderResult,
@@ -25,35 +7,23 @@ import {
   type TextRenderResult,
 } from "@/domains/document/public";
 import { clipboard } from "@/shared/services/effects";
-import { cloneTextAttributes } from "@/shared/utils/ansi";
 import { parseAnsiTextCells } from "@/shared/utils/ansiText";
 
 const MIME_RICH_DATA = "web application/x-ascii-metropolis";
 const DEFAULT_ANSI_PASTE_COLOR = "#ffffff";
 
-interface ClipboardPayload {
-  plain: string;
-  rich: string | null;
-}
-
-type ClipboardPayloadFormat = "plain" | "ansi";
-
-const toAnsiLikeClipboardText = (value: string) => value.replaceAll("\u001b[", "[");
+import type { ClipboardPayload } from "@chardesk/editor-core/clipboard/payload";
 
 /** @deprecated Use the document text-rendering runtime for new clipboard paths. */
-export const parseAnsiClipboardText = (
-  source: string,
-  defaultColor = DEFAULT_ANSI_PASTE_COLOR
-) => parseAnsiTextCells(source, defaultColor);
+export const parseAnsiClipboardText = (source: string, defaultColor = DEFAULT_ANSI_PASTE_COLOR) =>
+  parseAnsiTextCells(source, defaultColor);
 
 export type RenderClipboardText = (
   source: string,
   defaultColor: string,
   context?: TextRenderContext
 ) =>
-  | TextRenderResult
-  | CompactTextRenderResult
-  | Promise<TextRenderResult | CompactTextRenderResult>;
+  TextRenderResult | CompactTextRenderResult | Promise<TextRenderResult | CompactTextRenderResult>;
 
 const toRenderedClipboardPayload = async (
   source: string,
@@ -68,7 +38,7 @@ const toRenderedClipboardPayload = async (
       richCells: null,
       plainText: source,
       diagnostics: rendered.diagnostics,
-      headings: rendered.renderer === "markdown" ? rendered.headings ?? [] : [],
+      headings: rendered.renderer === "markdown" ? (rendered.headings ?? []) : [],
     };
   }
   return rendered.kind === "styled"
@@ -76,7 +46,7 @@ const toRenderedClipboardPayload = async (
         richCells: rendered.cells,
         plainText: source,
         diagnostics: rendered.diagnostics,
-        headings: rendered.renderer === "markdown" ? rendered.headings ?? [] : [],
+        headings: rendered.renderer === "markdown" ? (rendered.headings ?? []) : [],
       }
     : {
         richCells: null,
@@ -84,109 +54,6 @@ const toRenderedClipboardPayload = async (
         diagnostics: rendered.diagnostics,
         headings: [],
       };
-};
-
-export const hasClipboardSource = (
-  selections: SelectionArea[],
-  textCursor: Point | null
-) => {
-  return selections.length > 0 || !!textCursor;
-};
-
-const projectGridSelection = (
-  grid: GridCellSource,
-  selections: SelectionArea[],
-  brushColor: string
-): GridMap => {
-  const projection: GridMap = new Map();
-  forEachGridSelectionSpan(selections, ({ y, minX, maxX }) => {
-    for (let x = minX; x <= maxX; x++) {
-      const key = GridManager.toKey(x, y);
-      if (resolveGridSlot(grid, { x, y })?.offset === 1) continue;
-      projection.set(key, grid.get({ x, y }) ?? { char: " ", color: brushColor });
-    }
-  }, grid);
-  return projection;
-};
-
-export const buildClipboardPayload = (
-  grid: GridCellSource,
-  selections: SelectionArea[],
-  textCursor: Point | null,
-  brushColor: string,
-  format: ClipboardPayloadFormat = "plain"
-): ClipboardPayload | null => {
-  if (!hasClipboardSource(selections, textCursor)) return null;
-
-  if (selections.length > 0) {
-    const effectiveSelections = getGridSelectionSpans(selections, grid).map(
-      ({ y, minX, maxX }) => ({
-        start: { x: minX, y },
-        end: { x: maxX, y },
-      })
-    );
-    const projectedGrid = projectGridSelection(
-      grid,
-      effectiveSelections,
-      brushColor
-    );
-    const projectedSource = createGridMapSource(projectedGrid);
-    return {
-      plain:
-        format === "ansi"
-          ? toAnsiLikeClipboardText(exportSelectionToAnsi(projectedSource, effectiveSelections))
-          : exportSelectionToString(projectedSource, effectiveSelections),
-      rich:
-        format === "ansi"
-          ? null
-          : exportSelectionToJSON(projectedSource, effectiveSelections),
-    };
-  }
-
-  if (!textCursor) return null;
-  const slot = resolveGridSlot(grid, textCursor);
-  const cell = slot?.cell;
-  const char = cell?.char || " ";
-  const singleCellGrid: GridMap = new Map([
-    [
-      "0,0",
-      {
-        char,
-        color: cell?.color || brushColor,
-        ...(cell?.bgColor ? { bgColor: cell.bgColor } : {}),
-        ...(cloneTextAttributes(cell?.attrs)
-          ? { attrs: cloneTextAttributes(cell?.attrs) }
-          : {}),
-        ...(cell?.href ? { href: cell.href } : {}),
-      },
-    ],
-  ]);
-  return {
-    plain:
-      format === "ansi"
-        ? toAnsiLikeClipboardText(exportToAnsi(createGridMapSource(singleCellGrid)))
-        : char,
-    rich:
-      format === "ansi"
-        ? null
-        : JSON.stringify({
-            type: "ascii-metropolis-zone",
-            version: 1,
-            cells: [
-              {
-                x: 0,
-                y: 0,
-                char,
-                color: cell?.color || brushColor,
-                ...(cell?.bgColor ? { bgColor: cell.bgColor } : {}),
-                ...(cloneTextAttributes(cell?.attrs)
-                  ? { attrs: cloneTextAttributes(cell?.attrs) }
-                  : {}),
-                ...(cell?.href ? { href: cell.href } : {}),
-              },
-            ],
-    }),
-  };
 };
 
 interface WriteClipboardOptions {
@@ -212,11 +79,7 @@ export const writeClipboardPayload = async (
   }
 
   try {
-    if (
-      withRich &&
-      payload.rich &&
-      typeof ClipboardItem !== "undefined"
-    ) {
+    if (withRich && payload.rich && typeof ClipboardItem !== "undefined") {
       const clipboardMap: Record<string, Blob> = {
         "text/plain": new Blob([payload.plain], { type: "text/plain" }),
         [MIME_RICH_DATA]: new Blob([payload.rich], {
@@ -257,9 +120,8 @@ const parseRichClipboardText = (
           : [];
       return {
         richCells: surfaceCells,
-        plainText: typeof parsed.structuredText?.text === "string"
-          ? parsed.structuredText.text
-          : null,
+        plainText:
+          typeof parsed.structuredText?.text === "string" ? parsed.structuredText.text : null,
       };
     }
     if (!Array.isArray(parsed.cells)) return null;
@@ -306,12 +168,7 @@ export const readClipboardPayload = async (
   }
 
   if (eventPlainText) {
-    return await toRenderedClipboardPayload(
-      eventPlainText,
-      defaultColor,
-      renderText,
-      context
-    );
+    return await toRenderedClipboardPayload(eventPlainText, defaultColor, renderText, context);
   }
 
   const richPayload = await readRichClipboardCells();

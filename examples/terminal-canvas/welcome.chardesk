@@ -1,0 +1,25 @@
+---
+chardesk: document/v1
+mode: freeform
+title: Terminal Canvas
+---
+[1;38;2;100;210;200mUNICODE, IN EVERY DIRECTION[0m
+[38;2;148;163;184mOne shared character plane. Now in your terminal.[0m
+
+╭──────────────────╮      ╭──────────────────╮
+│ [1mHuman[0m            │─────▶│ [1mCanvas[0m           │
+│ see / type / move│      │ Unicode + style  │
+╰──────────────────╯      ╰────────┬─────────╯
+                                  │
+                                  ▼
+                         ╭──────────────────╮
+                         │ [1mAgent[0m            │
+                         │ read / edit text │
+                         ╰──────────────────╯
+
+[38;2;100;210;200mUnicode: 中文字  日本語  한글  é  👩🏽‍💻  🇨🇳  🦀[0m
+[38;2;180;170;240m┌─┬─┐  ░▒▓█  ⡀⣤⣶⣿  → ↓ ↔[0m
+[38;2;180;170;240m└─┴─┘[0m
+
+F2 Edit: click and type; drag or Shift+arrows selects.
+F3 Hand: left-drag to pan. F1 lists this terminal's copy and range controls.

@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM"],
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["bun"],
+    "baseUrl": "../..",
+    "paths": {
+      "@chardesk/editor-input": ["packages/editor-input/src/index.ts"],
+      "@chardesk/editor-input/*": ["packages/editor-input/src/*.ts"],
+      "@chardesk/editor-core": ["packages/editor-core/src/index.ts"],
+      "@chardesk/editor-core/*": ["packages/editor-core/src/*.ts"],
+      "@chardesk/cell-plane": ["packages/cell-plane/src/index.ts"],
+      "@chardesk/cell-plane/*": ["packages/cell-plane/src/*.ts"],
+      "@chardesk/protocol": ["packages/protocol/src/index.ts"],
+      "@chardesk/cell-core": ["packages/cell-core/src/index.ts"],
+      "@chardesk/document": ["packages/document/src/index.ts"],
+      "@chardesk/keyboard": ["packages/keyboard/src/index.ts"],
+      "@chardesk/chargraph": ["packages/chargraph/src/index.ts"],
+      "@chardesk/rendering": ["packages/rendering/src/index.ts"],
+      "@chardesk/canvas-templates": ["packages/canvas-templates/src/index.ts"],
+      "@chardesk/canvas-templates/*": ["packages/canvas-templates/src/*.ts"],
+      "@chardesk/character-library": ["packages/character-library/src/index.ts"],
+      "@chardesk/rendering/*": ["packages/rendering/src/*.ts"],
+      "@chardesk/fonts": ["packages/fonts/src/index.ts"],
+      "@chardesk/rendering/theme": ["packages/rendering/src/content-theme.ts"],
+      "@chardesk/font-maple": ["packages/font-maple/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "scripts/**/*.ts"]
+}

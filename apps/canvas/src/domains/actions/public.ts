@@ -22,6 +22,7 @@ export {
   getEditorCommandShortcutLabel,
   formatShortcutLabel,
   getShortcutDisplayStrokes,
+  getShortcutAriaLabel,
   setEditorCommandShortcutOverride,
 } from './core';
 export type { ShortcutDisplayStroke, ShortcutPlatform } from './core';

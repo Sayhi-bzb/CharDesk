@@ -1,14 +1,14 @@
-import type { Point, SelectionArea } from "@/shared/types";
-import type { CanvasMode } from "@/domains/sessions/public";
-import type { ToolType } from "@/domains/canvas/public";
+import type { Point, SelectionArea } from '@/shared/types';
+import type { CanvasMode } from '@/domains/sessions/public';
+import type { ToolType } from '@/domains/canvas/public';
 import {
   resolveDragStartRouteDecision,
   resolveDrawingShapeDragStartDecision,
   resolveSelectionDragStartDecision,
   type DrawingShapeDragStartDecision,
   type SelectionDragStartDecision,
-} from "./dragStartInteraction";
-import type { CanvasInteractionState } from "@/domains/editor/public";
+} from './dragStartInteraction';
+import type { CanvasInteractionState } from '@/domains/editor/public';
 
 type PanningDragStartExecutor = {
   setInteractionState: (state: CanvasInteractionState) => void;
@@ -26,19 +26,15 @@ export const createPanningDragStartExecutor = ({
   setCursor,
 });
 
-const executePanningDragStart = (
-  lastScreen: Point,
-  executor: PanningDragStartExecutor
-): void => {
-  executor.setInteractionState({ type: "panning", lastScreen });
-  executor.setCursor("grabbing");
+const executePanningDragStart = (lastScreen: Point, executor: PanningDragStartExecutor): void => {
+  executor.setInteractionState({ type: 'panning', lastScreen });
+  executor.setCursor('grabbing');
 };
 type SelectionDragStartExecutor = {
   setInteractionState: (state: CanvasInteractionState) => void;
   clearInteractionState: () => void;
   clearSelections: () => void;
   setStaticGridSelectionStart: (point: Point) => void;
-  setAnchorGrid: (point: Point | null) => void;
   setSelectionPreview: (selection: SelectionArea) => void;
   clearTextCursor: () => void;
 };
@@ -47,10 +43,10 @@ const executeSelectionDragStartDecision = (
   decision: SelectionDragStartDecision,
   executor: SelectionDragStartExecutor
 ): boolean => {
-  if (decision.type !== "selection") return false;
+  if (decision.type !== 'selection') return false;
 
   executor.setInteractionState({
-    type: "selecting",
+    type: 'selecting',
     anchor: decision.dragStart,
     current: decision.interactionAnchor,
   });
@@ -59,14 +55,12 @@ const executeSelectionDragStartDecision = (
   if (decision.activateStaticGridCell) {
     executor.setStaticGridSelectionStart(decision.activateStaticGridCell);
   }
-  if (decision.nextAnchor !== null) executor.setAnchorGrid(decision.nextAnchor);
   executor.setSelectionPreview(decision.preview);
   executor.clearTextCursor();
   return true;
 };
 
 export const createSelectionDragStartExecutor = ({
-  setAnchorGrid,
   setInteractionState,
   clearInteractionState,
   clearSelections,
@@ -74,7 +68,6 @@ export const createSelectionDragStartExecutor = ({
   setSelectionPreview,
   clearTextCursor,
 }: {
-  setAnchorGrid: (point: Point | null) => void;
   setInteractionState: (state: CanvasInteractionState) => void;
   clearInteractionState: () => void;
   clearSelections: () => void;
@@ -86,14 +79,12 @@ export const createSelectionDragStartExecutor = ({
   clearInteractionState,
   clearSelections,
   setStaticGridSelectionStart,
-  setAnchorGrid,
   setSelectionPreview,
   clearTextCursor,
 });
 
 type DrawingShapeDragStartExecutor = {
   clearInteractionState: () => void;
-  setAnchorGrid: (point: Point) => void;
   setInteractionState: (state: CanvasInteractionState) => void;
   addScratchPoint: (point: { x: number; y: number; char: string }) => void;
   erasePoint: (point: Point) => void;
@@ -101,16 +92,14 @@ type DrawingShapeDragStartExecutor = {
 
 const executeDrawingShapeDragStartDecision = (
   decision: DrawingShapeDragStartDecision,
-  start: Point,
   executor: DrawingShapeDragStartExecutor
 ): boolean => {
-  if (decision.type === "ignore") return false;
+  if (decision.type === 'ignore') return false;
 
   executor.clearInteractionState();
-  executor.setAnchorGrid(start);
   executor.setInteractionState(decision.state);
 
-  if (decision.type === "drawing") {
+  if (decision.type === 'drawing') {
     if (decision.scratchPoint) executor.addScratchPoint(decision.scratchPoint);
     if (decision.erasePoint) executor.erasePoint(decision.erasePoint);
   }
@@ -119,20 +108,17 @@ const executeDrawingShapeDragStartDecision = (
 };
 
 export const createDrawingShapeDragStartExecutor = ({
-  setAnchorGrid,
   setInteractionState,
   clearInteractionState,
   addScratchPoint,
   erasePoint,
 }: {
-  setAnchorGrid: (point: Point) => void;
   setInteractionState: (state: CanvasInteractionState) => void;
   clearInteractionState: () => void;
   addScratchPoint: (point: { x: number; y: number; char: string }) => void;
   erasePoint: (point: Point) => void;
 }): DrawingShapeDragStartExecutor => ({
   clearInteractionState,
-  setAnchorGrid,
   setInteractionState,
   addScratchPoint,
   erasePoint,
@@ -172,26 +158,21 @@ const executePrimaryCanvasDragStart = (
     brushChar: context.brushChar,
   });
 
-  return executeDrawingShapeDragStartDecision(
-    dragStartDecision,
-    context.start,
-    executors.drawingShape
-  );
+  return executeDrawingShapeDragStartDecision(dragStartDecision, executors.drawingShape);
 };
 
+type PrimaryCanvasDragStartHandler = (context: PrimaryCanvasDragStartContext) => boolean;
 
-type PrimaryCanvasDragStartHandler = (
-  context: PrimaryCanvasDragStartContext
-) => boolean;
-
-export const createPrimaryCanvasDragStartHandler = ({
-  selection,
-  drawingShape,
-}: {
-  selection: SelectionDragStartExecutor;
-  drawingShape: DrawingShapeDragStartExecutor;
-}): PrimaryCanvasDragStartHandler => (context) =>
-  executePrimaryCanvasDragStart(context, { selection, drawingShape });
+export const createPrimaryCanvasDragStartHandler =
+  ({
+    selection,
+    drawingShape,
+  }: {
+    selection: SelectionDragStartExecutor;
+    drawingShape: DrawingShapeDragStartExecutor;
+  }): PrimaryCanvasDragStartHandler =>
+  (context) =>
+    executePrimaryCanvasDragStart(context, { selection, drawingShape });
 
 type DragStartRouteHandler = ({
   tool,
@@ -213,40 +194,38 @@ type DragStartRouteHandler = ({
   executePrimaryCanvasStart: () => boolean;
 }) => boolean;
 
-export const createDragStartRouteHandler = ({
-  panning,
-}: {
-  panning: PanningDragStartExecutor;
-}): DragStartRouteHandler => ({
-  tool,
-  button,
-  isCtrlOrMetaPressed,
-  hasColorPickerTarget,
-  hasCanvasRect,
-  screenPoint,
-  executeColorPickerStart,
-  executePrimaryCanvasStart,
-}) => {
-  const routeDecision = resolveDragStartRouteDecision({
+export const createDragStartRouteHandler =
+  ({ panning }: { panning: PanningDragStartExecutor }): DragStartRouteHandler =>
+  ({
     tool,
     button,
     isCtrlOrMetaPressed,
     hasColorPickerTarget,
     hasCanvasRect,
-  });
+    screenPoint,
+    executeColorPickerStart,
+    executePrimaryCanvasStart,
+  }) => {
+    const routeDecision = resolveDragStartRouteDecision({
+      tool,
+      button,
+      isCtrlOrMetaPressed,
+      hasColorPickerTarget,
+      hasCanvasRect,
+    });
 
-  switch (routeDecision.type) {
-    case "color-picker":
-      return executeColorPickerStart();
-    case "pan":
-      executePanningDragStart(screenPoint, panning);
-      return true;
-    case "primary-canvas":
-      return executePrimaryCanvasStart();
-    case "ignore":
-      return false;
-  }
-};
+    switch (routeDecision.type) {
+      case 'color-picker':
+        return executeColorPickerStart();
+      case 'pan':
+        executePanningDragStart(screenPoint, panning);
+        return true;
+      case 'primary-canvas':
+        return executePrimaryCanvasStart();
+      case 'ignore':
+        return false;
+    }
+  };
 export type CanvasDragStartRouteAdapter = ({
   tool,
   button,
@@ -274,18 +253,16 @@ export type CanvasDragStartRouteAdapter = ({
   resolveGridPoint: (screenPoint: Point) => Point | null;
 }) => boolean;
 
-export const createCanvasDragStartRouteAdapter = ({
-  route,
-  colorPicker,
-  primaryCanvas,
-}: {
-  route: DragStartRouteHandler;
-  colorPicker: (input: {
-    point: Point | null;
-    preventDefault: () => void;
-  }) => boolean;
-  primaryCanvas: PrimaryCanvasDragStartHandler;
-}): CanvasDragStartRouteAdapter =>
+export const createCanvasDragStartRouteAdapter =
+  ({
+    route,
+    colorPicker,
+    primaryCanvas,
+  }: {
+    route: DragStartRouteHandler;
+    colorPicker: (input: { point: Point | null; preventDefault: () => void }) => boolean;
+    primaryCanvas: PrimaryCanvasDragStartHandler;
+  }): CanvasDragStartRouteAdapter =>
   ({
     canvasMode,
     tool,

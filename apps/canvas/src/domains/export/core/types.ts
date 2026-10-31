@@ -1,6 +1,7 @@
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import type { CanvasMode } from "@/domains/sessions/public";
 import type { SlideDeckSnapshot } from "@/domains/slides/public";
+import type { CanvasDocumentDraft } from '@chardesk/editor-core/canvasDocumentModel';
 import type { CharDeskFontProfile } from "@chardesk/fonts";
 import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
 
@@ -19,6 +20,7 @@ export type ExportContext = {
   showGrid: boolean;
   slideDeck?: SlideDeckSnapshot | null;
   documentName?: string;
+  document?: CanvasDocumentDraft | null;
 };
 
 type ExportArtifactBase = {

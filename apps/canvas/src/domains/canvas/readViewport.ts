@@ -3,7 +3,8 @@ import type { NodeBounds } from "@/shared/types";
 import type { CanvasSurfaceReader } from "./cell-plane/model";
 import { isCanvasCellOccupied as occupied, readCanvasTextRegion } from "./textRegion";
 
-export type CanvasReadViewport = readonly [x: number, y: number, width: number, height: number];
+import { isCanvasReadViewport, type CanvasReadViewport } from '@chardesk/editor-core/viewport';
+export { isCanvasReadViewport, type CanvasReadViewport } from '@chardesk/editor-core/viewport';
 const CANVAS_READ_CAMERA = Object.freeze({ width: 100, height: 40 });
 export type CanvasReadImageDetail = "low" | "high" | "original" | "auto";
 export type CanvasReadProjection = Readonly<{
@@ -123,11 +124,6 @@ export const renderCanvasViewportImage = (
     scale,
   };
 };
-
-export const isCanvasReadViewport = (value: unknown): value is CanvasReadViewport =>
-  Array.isArray(value) && value.length === 4 && value.every(Number.isSafeInteger)
-  && value[2] > 0 && value[3] > 0
-  && Number.isSafeInteger(value[0] + value[2]) && Number.isSafeInteger(value[1] + value[3]);
 
 export const readCanvasViewport = (
   surface: CanvasSurfaceReader,

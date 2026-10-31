@@ -103,7 +103,7 @@ export function checkCellArchitecture(content, file) {
   const rangeAdapters = new Map([
     ["packages/cell-ui/src/range.ts", "resolveCellRangeBounds"],
     ["packages/viewer/src/grid-interaction.ts", "resolveCellRangeBounds"],
-    ["apps/canvas/src/domains/selection/model/grid-selection-geometry.ts", "resolveCellRangeSpans"],
+    ["packages/editor-core/src/selection/coverage.ts", "resolveCellRangeSpans"],
   ]);
   const rangeOwner = rangeAdapters.get(file);
   if (rangeOwner && (

@@ -1,10 +1,5 @@
-export type ShortcutTargetKind =
-  | "managed-canvas"
-  | "editable"
-  | "canvas-ui"
-  | "overlay"
-  | "canvas-surface"
-  | "document";
+import type { ShortcutTargetKind } from "@chardesk/editor-core/editor/focus";
+export type { ShortcutTargetKind } from "@chardesk/editor-core/editor/focus";
 
 const isHTMLElement = (element: Element | null): element is HTMLElement => {
   return element instanceof HTMLElement;

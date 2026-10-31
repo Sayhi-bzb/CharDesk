@@ -1,20 +1,25 @@
+import { filterRichPasteCells } from "@chardesk/editor-core/clipboard/richCells";
+import { selectWrittenBounds } from "@chardesk/editor-core/selection/commands";
+import { advanceStaticGridTextInput } from "@chardesk/editor-core/selection/static-grid-input-session";
 import type { EditorState } from "./interfaces";
 import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
-import { GridManager } from "@/shared/utils/grid";
 import {
-  advanceStaticGridInput,
   advanceStaticGridInputLine,
-  collapseGridSelectionTo,
   createStaticGridInputSession,
   getStaticGridCursor,
   getStaticGridSelection,
   getStaticGridViewState,
-  selectGridRange,
 } from "@/domains/selection/public";
 import { placeCharInYMap, placeStyledCellInYMap } from "./utils";
 import type { Point } from "@/shared/types";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
-import { CanvasWriteError, prepareCanvasErase, prepareCanvasTextWrite, prepareCanvasRowsWrite, type CanvasWriteMode } from "../writeText";
+import {
+  CanvasWriteError,
+  prepareCanvasErase,
+  prepareCanvasTextWrite,
+  prepareCanvasRowsWrite,
+  type CanvasWriteMode,
+} from "../writeText";
 import { getGraphemeCellWidth as getCellOccupancy, splitGraphemes } from "@chardesk/protocol";
 import { clampPointToActiveSlide, getActiveSlideGridBounds } from "./slideBounds";
 import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
@@ -38,15 +43,6 @@ const createInputSession = (state: EditorState, address: Point) =>
     bounds: getActiveSlideGridBounds(state),
   });
 
-const isWideFollowerRichCell = (
-  cell: { x: number; y: number; char: string },
-  cellsBySourcePoint: Map<string, { char: string }>
-) => {
-  if (cell.char !== " ") return false;
-  const leftCell = cellsBySourcePoint.get(GridManager.toKey(cell.x - 1, cell.y));
-  return !!leftCell && getCellOccupancy(leftCell.char) === 2;
-};
-
 type WrittenCell = { point: Point; char: string };
 
 type WrittenBounds = {
@@ -54,21 +50,6 @@ type WrittenBounds = {
   minY: number;
   maxX: number;
   maxY: number;
-};
-
-const selectWrittenBounds = (
-  selection: ReturnType<typeof getStaticGridSelection>,
-  bounds: WrittenBounds
-) => {
-  const start = { x: bounds.minX, y: bounds.minY };
-  if (bounds.minX === bounds.maxX && bounds.minY === bounds.maxY) {
-    return collapseGridSelectionTo(selection, start);
-  }
-  return selectGridRange(
-    selection,
-    { start, end: { x: bounds.maxX, y: bounds.maxY } },
-    { activeCell: "start" }
-  );
 };
 
 const selectWrittenCells = (
@@ -100,25 +81,42 @@ export const createCanvasTextCommands = (
   const set = commits.setState;
   type PreparedWrite = ReturnType<typeof prepareCanvasTextWrite>;
   type WriteResult = Pick<PreparedWrite, "bounds" | "writtenCells" | "skippedWhitespaceCells">;
-  const summarize = ({ bounds, writtenCells, skippedWhitespaceCells }: PreparedWrite): WriteResult => ({
-    bounds, writtenCells, skippedWhitespaceCells,
+  const summarize = ({
+    bounds,
+    writtenCells,
+    skippedWhitespaceCells,
+  }: PreparedWrite): WriteResult => ({
+    bounds,
+    writtenCells,
+    skippedWhitespaceCells,
   });
   const writePrepared = (prepare: () => PreparedWrite): WriteResult | null => {
     const state = get();
     const session = state.canvasSessions.find(({ id }) => id === state.activeCanvasId);
     if (!session) throw new CanvasWriteError("canvas_not_active", "Open a Canvas first.");
     if (isSourceBackedCanvasSession(session) || session.migrationPending) {
-      throw new CanvasWriteError("source_backed_canvas", session.migrationPending
-        ? "Wait for this Canvas migration to finish before writing."
-        : "Edit the source file of this Canvas instead of its projection.");
+      throw new CanvasWriteError(
+        "source_backed_canvas",
+        session.migrationPending
+          ? "Wait for this Canvas migration to finish before writing."
+          : "Edit the source file of this Canvas instead of its projection."
+      );
     }
     const prepared = prepare();
     const { patch, bounds } = prepared;
     if (!bounds) return summarize(prepared);
     const slideBounds = getActiveSlideGridBounds(state);
-    if (slideBounds && (bounds[0] < slideBounds.start.x || bounds[1] < slideBounds.start.y
-      || bounds[0] + bounds[2] - 1 > slideBounds.end.x || bounds[1] + bounds[3] - 1 > slideBounds.end.y)) {
-      throw new CanvasWriteError("out_of_bounds", "Content does not fit the current Slide; nothing was written.");
+    if (
+      slideBounds &&
+      (bounds[0] < slideBounds.start.x ||
+        bounds[1] < slideBounds.start.y ||
+        bounds[0] + bounds[2] - 1 > slideBounds.end.x ||
+        bounds[1] + bounds[3] - 1 > slideBounds.end.y)
+    ) {
+      throw new CanvasWriteError(
+        "out_of_bounds",
+        "Content does not fit the current Slide; nothing was written."
+      );
     }
     const address = resolveEditorDocumentAddress(documents, state);
     documents.finishHistoryCapture();
@@ -129,40 +127,86 @@ export const createCanvasTextCommands = (
     }
     return summarize(prepared);
   };
-  const writePreparedAt = (sessionId: string, pageId: string | undefined, prepare: () => PreparedWrite): WriteResult | null => {
+  const writePreparedAt = (
+    sessionId: string,
+    pageId: string | undefined,
+    prepare: () => PreparedWrite
+  ): WriteResult | null => {
     const state = get();
     const session = state.canvasSessions.find(({ id }) => id === sessionId);
     if (!session) throw new CanvasWriteError("canvas_not_active", "Canvas not found.");
     if (isSourceBackedCanvasSession(session) || session.migrationPending) {
-      throw new CanvasWriteError("source_backed_canvas", session.migrationPending
-        ? "Wait for this Canvas migration to finish before writing."
-        : "Edit the source file of this Canvas instead of its projection.");
+      throw new CanvasWriteError(
+        "source_backed_canvas",
+        session.migrationPending
+          ? "Wait for this Canvas migration to finish before writing."
+          : "Edit the source file of this Canvas instead of its projection."
+      );
     }
     const address = documents.getDocumentAddress(sessionId, pageId);
     if (!address) throw new CanvasWriteError("canvas_not_active", "Canvas content is not ready.");
     const prepared = prepare();
     const { patch, bounds } = prepared;
     if (!bounds) return summarize(prepared);
-    const page = session.mode === "slide"
-      ? documents.getPageDescriptors(sessionId).find(({ id }) => id === address.pageId)
-      : undefined;
+    const page =
+      session.mode === "slide"
+        ? documents.getPageDescriptors(sessionId).find(({ id }) => id === address.pageId)
+        : undefined;
     const size = page?.size;
-    if (size && (bounds[0] < 0 || bounds[1] < 0
-      || bounds[0] + bounds[2] > size.columns || bounds[1] + bounds[3] > size.rows)) {
-      throw new CanvasWriteError("out_of_bounds", "Content does not fit the target Slide; nothing was written.");
+    if (
+      size &&
+      (bounds[0] < 0 ||
+        bounds[1] < 0 ||
+        bounds[0] + bounds[2] > size.columns ||
+        bounds[1] + bounds[3] > size.rows)
+    ) {
+      throw new CanvasWriteError(
+        "out_of_bounds",
+        "Content does not fit the target Slide; nothing was written."
+      );
     }
     documents.finishHistoryCapture();
-    try { documents.applyCellPlanePatchAt(address, patch, commits.getDocumentHistoryMode()); }
-    finally { documents.finishHistoryCapture(); }
+    try {
+      documents.applyCellPlanePatchAt(address, patch, commits.getDocumentHistoryMode());
+    } finally {
+      documents.finishHistoryCapture();
+    }
     return summarize(prepared);
   };
   return coordinateCanvasCommands(commits, {
-    writeAt: (content: string, at: Point, writeMode: CanvasWriteMode = "replace") => writePrepared(() => prepareCanvasTextWrite(at, content, get().brushColor, writeMode)),
-    writeRowsAt: (rows: readonly RichTextRow[], at: Point, writeMode: CanvasWriteMode = "replace") => writePrepared(() => prepareCanvasRowsWrite(at, rows, writeMode)),
-    writeAtSession: (sessionId: string, content: string, at: Point, color = get().brushColor, writeMode: CanvasWriteMode = "replace", pageId?: string) => writePreparedAt(sessionId, pageId, () => prepareCanvasTextWrite(at, content, color, writeMode)),
-    writeRowsAtSession: (sessionId: string, rows: readonly RichTextRow[], at: Point, writeMode: CanvasWriteMode = "replace", pageId?: string) => writePreparedAt(sessionId, pageId, () => prepareCanvasRowsWrite(at, rows, writeMode)),
-    eraseAt: (at: Point, size: readonly [number, number]) => writePrepared(() => prepareCanvasErase(at, size)),
-    eraseAtSession: (sessionId: string, at: Point, size: readonly [number, number], pageId?: string) => writePreparedAt(sessionId, pageId, () => prepareCanvasErase(at, size)),
+    writeAt: (content: string, at: Point, writeMode: CanvasWriteMode = "replace") =>
+      writePrepared(() => prepareCanvasTextWrite(at, content, get().brushColor, writeMode)),
+    writeRowsAt: (
+      rows: readonly RichTextRow[],
+      at: Point,
+      writeMode: CanvasWriteMode = "replace"
+    ) => writePrepared(() => prepareCanvasRowsWrite(at, rows, writeMode)),
+    writeAtSession: (
+      sessionId: string,
+      content: string,
+      at: Point,
+      color = get().brushColor,
+      writeMode: CanvasWriteMode = "replace",
+      pageId?: string
+    ) =>
+      writePreparedAt(sessionId, pageId, () =>
+        prepareCanvasTextWrite(at, content, color, writeMode)
+      ),
+    writeRowsAtSession: (
+      sessionId: string,
+      rows: readonly RichTextRow[],
+      at: Point,
+      writeMode: CanvasWriteMode = "replace",
+      pageId?: string
+    ) => writePreparedAt(sessionId, pageId, () => prepareCanvasRowsWrite(at, rows, writeMode)),
+    eraseAt: (at: Point, size: readonly [number, number]) =>
+      writePrepared(() => prepareCanvasErase(at, size)),
+    eraseAtSession: (
+      sessionId: string,
+      at: Point,
+      size: readonly [number, number],
+      pageId?: string
+    ) => writePreparedAt(sessionId, pageId, () => prepareCanvasErase(at, size)),
     write: (str: string, startPos?: Point, options?: TextWriteOptions) => {
       const current = get();
       const staticGrid = current.interaction.staticGrid;
@@ -203,25 +247,9 @@ export const createCanvasTextCommands = (
       const bounds = getActiveSlideGridBounds(current);
       let nextInputSession =
         startPos || !inputSession ? createInputSession(current, cursor) : inputSession;
-      const writes: Array<{ point: Point; char: string }> = [];
-
-      for (const char of graphemes) {
-        if (char === "\n") {
-          nextInputSession = advanceStaticGridInputLine({
-            session: nextInputSession,
-            bounds,
-          });
-        } else {
-          const step = advanceStaticGridInput({
-            session: nextInputSession,
-            width: getCellOccupancy(char),
-            bounds,
-          });
-          nextInputSession = step.session;
-          if (step.writeAt) writes.push({ point: step.writeAt, char });
-        }
-        if (nextInputSession.exhausted) break;
-      }
+      const advanced = advanceStaticGridTextInput({ session: nextInputSession, graphemes, bounds });
+      nextInputSession = advanced.session;
+      const writes = advanced.writes;
 
       if (writes.length === 0 && nextInputSession === inputSession) return;
 
@@ -276,11 +304,7 @@ export const createCanvasTextCommands = (
           ? staticGridInteraction.geometry.bounds?.start
           : null) ??
         staticGridInteraction.activeCell;
-      const cellsBySourcePoint = new Map(
-        cells.map((cell) => [GridManager.toKey(cell.x, cell.y), cell])
-      );
-      const writes = cells
-        .filter((cell) => !isWideFollowerRichCell(cell, cellsBySourcePoint))
+      const writes = filterRichPasteCells(cells)
         .map((cell) => ({
           cell,
           point: {
@@ -359,10 +383,12 @@ export const createCanvasTextCommands = (
         },
         commits.getDocumentHistoryMode(),
         undefined,
-        state.canvasMode === "freeform" ? options?.anchorSeeds?.map((seed) => ({
-          ...seed,
-          point: { x: basePos.x + seed.point.x, y: basePos.y + seed.point.y },
-        })) : undefined
+        state.canvasMode === "freeform"
+          ? options?.anchorSeeds?.map((seed) => ({
+              ...seed,
+              point: { x: basePos.x + seed.point.x, y: basePos.y + seed.point.y },
+            }))
+          : undefined
       );
       const writtenBounds: WrittenBounds | null = operation
         ? {

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createKeyInput } from '@chardesk/keyboard';
 import {
-  matchesShortcutInput,
   normalizeShortcut,
   shortcutFromKeyInput,
 } from './shortcut';
@@ -29,25 +28,12 @@ describe('editor shortcut adapter', () => {
     }))).toBeNull();
   });
 
-  it('records portable Mod and matches physical fallbacks for layouts and dead keys', () => {
+  it('records portable Mod', () => {
     const commandR = createKeyInput({ key: 'r', code: 'KeyR', modifiers: { meta: true } });
     expect(shortcutFromKeyInput(commandR, 'mac')).toBe('Mod+R');
-    expect(matchesShortcutInput(
-      createKeyInput({ key: 'Dead', code: 'KeyE', modifiers: { alt: true } }),
-      'Alt+E',
-      'mac'
-    )).toBe(true);
-    expect(matchesShortcutInput(
-      createKeyInput({ key: '¡', code: 'Digit1', modifiers: { alt: true } }),
-      'Alt+1',
-      'mac'
-    )).toBe(true);
-    expect(matchesShortcutInput(commandR, 'Mod+R', 'linux')).toBe(true);
-    expect(matchesShortcutInput(
-      createKeyInput({ key: 'r', code: 'KeyR', modifiers: { ctrl: true } }),
-      'Mod+R',
-      'mac'
-    )).toBe(true);
+    expect(shortcutFromKeyInput(createKeyInput({ key: 'q', modifiers: { ctrl: true } }), 'mac')).toBe('Control+Q');
+    expect(shortcutFromKeyInput(createKeyInput({ key: 'q', modifiers: { meta: true } }), 'windows')).toBe('Meta+Q');
+
   });
 
   it('migrates supported physical letter and digit codes', () => {

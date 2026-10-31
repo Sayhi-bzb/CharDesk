@@ -1,0 +1,33 @@
+{
+  "name": "@chardesk/editor-core",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@chardesk/cell-plane": "*",
+    "@chardesk/cell-core": "*",
+    "@chardesk/protocol": "*",
+    "@chardesk/document": "*",
+    "yjs": "^13.6.27",
+    "polygon-clipping": "^0.15.7",
+    "@chardesk/keyboard": "*",
+    "@tanstack/hotkeys": "0.8.0",
+    "bresenham": "^0.0.4",
+    "re2js": "^2.8.6"
+  }
+}

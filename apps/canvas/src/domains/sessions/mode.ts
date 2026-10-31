@@ -1,4 +1,5 @@
-export type CanvasMode = "freeform" | "slide";
+import type { CanvasMode } from '@chardesk/editor-core/contracts';
+export type { CanvasMode } from '@chardesk/editor-core/contracts';
 
 type StaticGridCanvasMode = CanvasMode;
 
@@ -13,7 +14,7 @@ export type CanvasModeCapabilities = Readonly<{
 }>;
 
 export type CanvasModeDefinition = Readonly<{
-  surface: "cell-plane" | "slide-page";
+  surface: 'cell-plane' | 'slide-page';
   capabilities: CanvasModeCapabilities;
 }>;
 
@@ -21,7 +22,7 @@ const NAVIGABLE = { navigate: true, select: true, copy: true } as const;
 
 export const CANVAS_MODE_DEFINITIONS = {
   freeform: {
-    surface: "cell-plane",
+    surface: 'cell-plane',
     capabilities: {
       ...NAVIGABLE,
       mutateCells: true,
@@ -31,7 +32,7 @@ export const CANVAS_MODE_DEFINITIONS = {
     },
   },
   slide: {
-    surface: "slide-page",
+    surface: 'slide-page',
     capabilities: {
       ...NAVIGABLE,
       mutateCells: true,
@@ -45,7 +46,5 @@ export const CANVAS_MODE_DEFINITIONS = {
 export const getCanvasModeDefinition = (mode: CanvasMode): CanvasModeDefinition =>
   CANVAS_MODE_DEFINITIONS[mode];
 
-export const isStaticGridMode = (
-  mode: CanvasMode
-): mode is StaticGridCanvasMode =>
-  mode === "freeform" || mode === "slide";
+export const isStaticGridMode = (mode: CanvasMode): mode is StaticGridCanvasMode =>
+  mode === 'freeform' || mode === 'slide';

@@ -1,3 +1,4 @@
+import { GridManager as logicalGrid } from "@chardesk/cell-plane/grid";
 import type { GridCell, GridCellSource, Point } from "@/shared/types";
 import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 import {
@@ -35,14 +36,8 @@ export const GridManager = {
     }, DEFAULT_CANVAS_CELL_METRICS);
   },
 
-  toKey(x: number, y: number): string {
-    return `${x},${y}`;
-  },
-
-  fromKey(key: string): Point {
-    const [x, y] = key.split(",").map(Number);
-    return { x, y };
-  },
+  toKey: logicalGrid.toKey,
+  fromKey: logicalGrid.fromKey,
 
   iterate(
     source: GridCellSource,
@@ -64,17 +59,7 @@ export const GridManager = {
     return resolveGridAnchor(grid, pos);
   },
 
-  getGridBounds(source: GridCellSource) {
-    const bounds = source.getContentBounds();
-    return bounds
-      ? {
-          minX: bounds.x,
-          maxX: bounds.x + bounds.width - 1,
-          minY: bounds.y,
-          maxY: bounds.y + bounds.height - 1,
-        }
-      : { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-  },
+  getGridBounds: logicalGrid.getGridBounds,
 
   getViewportGridBounds(
     width: number,

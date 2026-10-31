@@ -44,6 +44,7 @@ export type SelectionCommands = {
 };
 
 export type SelectionCommandContext = {
+  isActive?: () => boolean;
   getState: () => CanvasState;
   mutations: SelectionMutationPort;
 };

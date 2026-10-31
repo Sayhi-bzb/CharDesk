@@ -3,12 +3,19 @@ import {
   formatShortcutLabel,
   getEditorCommandShortcutLabel,
   getShortcutDisplayStrokes,
+  getShortcutAriaLabel,
 } from './shortcuts';
 import { createEditorCommandsExtension } from './runtime';
 import { getCanvasState, testingCanvasRuntime } from '@/domains/canvas/testing';
 import { createCanvasEditorRuntime } from '@/domains/editor/public';
 
 describe('editor command shortcut labels', () => {
+  it('ARIA hints use the effective binding and one Host primary modifier', () => {
+    expect(getShortcutAriaLabel([['Mod+K', 'P']], 'mac')).toBe('Meta+K P');
+    expect(getShortcutAriaLabel([['Mod+K', 'P']], 'other')).toBe('Control+K P');
+    expect(getShortcutAriaLabel([['F11']], 'mac')).toBe('F11');
+    expect(getShortcutAriaLabel([], 'mac')).toBeUndefined();
+  });
   it('combines one key stroke into one platform display label', () => {
     expect(getShortcutDisplayStrokes('mod+shift+z', 'mac')).toEqual([
       { label: '⌘ ⇧ Z', accessibleLabel: 'Command+Shift+Z' },

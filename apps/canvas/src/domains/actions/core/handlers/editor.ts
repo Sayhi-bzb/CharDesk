@@ -103,7 +103,7 @@ const resolveClipboardAction = (
         : {
             succeeded: false as const,
             changed: false as const,
-            reason: completion.reason,
+            reason: completion.status === 'dispatched' ? 'clipboard-unconfirmed' : completion.reason,
           }
     )
   );

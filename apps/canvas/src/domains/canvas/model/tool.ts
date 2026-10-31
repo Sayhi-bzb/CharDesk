@@ -1,20 +1,7 @@
 type ToolCanvasMode = "freeform" | "slide";
 
-export type ToolType =
-  | "select"
-  | "pan"
-  | "text"
-  | "brush"
-  | "eraser"
-  | "fill"
-  | "box"
-  | "splitBox"
-  | "line"
-  | "arrowLine"
-  | "bg"
-  | "stepline"
-  | "circle";
-
+import type { ToolType } from "@chardesk/editor-core/interaction/tool";
+export type { ToolType } from "@chardesk/editor-core/interaction/tool";
 const CELL_PLANE_TOOLS = [
   "select",
   "pan",

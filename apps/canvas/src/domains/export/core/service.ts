@@ -1,4 +1,5 @@
 import { serializeCharDeskDocumentEnvelope } from "@chardesk/document";
+import { serializeCanvasDocument } from '@chardesk/editor-core/documentText';
 import type { CharDeskFontProfile } from "@chardesk/fonts";
 import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
 import type { GridCellSource, SelectionArea } from "@/shared/types";
@@ -89,6 +90,11 @@ export const prepareTextExport = (
           )
         );
       case "chardesk": {
+        if (context.canvasMode === 'freeform' && context.document) {
+          return exportSucceeded(textArtifact(format,
+            serializeCanvasDocument(context.document, context.documentName, { includeColor: context.includeColor }),
+            `chardesk-${getTimestamp()}.chardesk`, 'text/plain;charset=utf-8'));
+        }
         if (context.canvasMode === "slide" && !context.slideDeck) {
           return exportFailed("canvas-unavailable");
         }

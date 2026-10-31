@@ -5,7 +5,8 @@
   "type": "module",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "examples/terminal-canvas"
   ],
   "scripts": {
     "mcp:pair": "node tests/local-mcp/pair.mjs",
@@ -19,6 +20,8 @@
     "dev:docs": "npm run dev -w @chardesk/docs",
     "dev:chargraph": "npm run dev -w @chardesk/chargraph-site",
     "dev:cell-ui": "npm run dev -w @chardesk/cell-ui-site",
+    "demo:terminal": "cd examples/terminal-canvas && bun run start",
+    "test:terminal": "cd examples/terminal-canvas && bun run test",
     "build:app": "node scripts/quality/verification.mjs --mode full --phase build --target app",
     "build:site": "npm run build",
     "build": "node scripts/quality/verification.mjs --mode full --phase build",
@@ -92,7 +95,9 @@
     "check:quick": "node scripts/quality/verification.mjs --mode quick",
     "check:pr": "node scripts/quality/verification.mjs --mode pr",
     "check:full": "node scripts/quality/verification.mjs --mode full",
-    "verify": "npm run check:full"
+    "verify": "npm run check:full",
+    "build:editor-core": "npm run build -w @chardesk/document && npm run build -w @chardesk/keyboard && npm run build -w @chardesk/cell-core && npm run build -w @chardesk/protocol && npm run build -w @chardesk/cell-plane && npm run build -w @chardesk/editor-core && npm run build -w @chardesk/editor-input",
+    "test:editor-core": "npm test -w @chardesk/cell-plane && npm test -w @chardesk/editor-core && npm test -w @chardesk/editor-input"
   },
   "dependencies": {
     "@chardesk/font-maple": "*",

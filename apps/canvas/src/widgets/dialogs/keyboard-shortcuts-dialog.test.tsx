@@ -70,6 +70,7 @@ describe('KeyboardShortcutsPanel', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     editor.dispose();
     setUiLanguage('en');
   });
@@ -516,6 +517,7 @@ describe('KeyboardShortcutsPanel', () => {
   });
 
   it('ignores modifier-only events while recording Command+R', () => {
+    vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel');
     renderDialog(editor);
     const editUndo = screen.getByRole('button', { name: /Edit .* for Undo/ });
     fireEvent.click(editUndo);

@@ -52,7 +52,8 @@ export const createCanvasFacade = (
   viewport: CanvasViewportRuntime,
   selectionCommandFactory: SelectionCommandFactory,
   parseSessionSource: CanvasSessionSourceParser,
-  residency?: CanvasDocumentResidency
+  residency?: CanvasDocumentResidency,
+  isActive?: () => boolean
 ) => {
 const resolveAddress = () =>
   resolveEditorDocumentAddress(documents, commits.getState());
@@ -67,6 +68,7 @@ const sessionCommands = createCanvasSessionCommands(
 );
 const slideCommands = createCanvasSlideCommands(commits, documents);
 const selectionCommands = selectionCommandFactory({
+  isActive,
   getState: commits.getState,
   mutations: {
     transact: commits.run,

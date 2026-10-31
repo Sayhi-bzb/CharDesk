@@ -7,6 +7,7 @@ const LEGACY_STORAGE_KEY = 'ascii-canvas-ui-language';
 
 const messages = {
   en: {
+    'canvas.drawingLimit': 'Drawing is too large. Try a smaller area.',
     'agent.pair': 'Pair',
     'agent.webmcp.preparing': 'Preparing…',
     'agent.webmcp.ready': 'Ready',
@@ -691,6 +692,7 @@ const messages = {
     'session.closeSource.failed': 'Could not close this source view. Try again.',
   },
   zh: {
+    'canvas.drawingLimit': '绘图范围过大，请缩小范围后重试。',
     'agent.pair': '配对',
     'agent.webmcp.preparing': '准备中…',
     'agent.webmcp.ready': '可用',

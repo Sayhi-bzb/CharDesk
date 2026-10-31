@@ -33,7 +33,7 @@ describe('shortcut conflicts', () => {
 });
 
 describe('EditorKeymap', () => {
-  it('applies overrides and orders contextual matches by priority', () => {
+  it('retains overrides and contextual contributions', () => {
     const keymap = new EditorKeymap<{ editing: boolean }>();
     keymap.register('test', {
       id: 'global.undo',
@@ -48,27 +48,17 @@ describe('EditorKeymap', () => {
       when: ({ editing }) => editing,
     });
 
-    expect(keymap.resolve(['mod+z'], { editing: true }).map((entry) => entry.id)).toEqual([
-      'text.undo',
-      'global.undo',
-    ]);
     expect(keymap.getConflicts({ editing: true })).toEqual([
       { shortcut: ['Mod+Z'], entryIds: ['global.undo', 'text.undo'] },
     ]);
-    expect(keymap.resolveBest(['mod+z'], { editing: true })).toMatchObject({
-      type: 'match',
-      entry: { id: 'text.undo', owner: 'test' },
-    });
-
     keymap.setUserBindings('global.undo', [['mod+u']]);
-    expect(keymap.resolve(['mod+z'], { editing: false })).toEqual([]);
-    expect(keymap.resolve(['mod+u'], { editing: false })[0]?.target).toEqual({
-      type: 'command',
-      id: 'undo',
-    });
+    expect(keymap.getBindings('global.undo')).toEqual([['Mod+U']]);
+    const text = keymap.list().find(entry => entry.id === 'text.undo')!;
+    expect(keymap.isEnabled(text, { editing: false })).toBe(false);
+    expect(keymap.isEnabled(text, { editing: true })).toBe(true);
   });
 
-  it('uses registration order for equal-weight bindings and reports shadowing', () => {
+  it('retains registration order for the input engine', () => {
     const keymap = new EditorKeymap();
     keymap.register('one', {
       id: 'one',
@@ -80,14 +70,7 @@ describe('EditorKeymap', () => {
       shortcuts: ['mod+k'],
       target: { type: 'command', id: 'two' },
     });
-    expect(keymap.resolveBest(['mod+k'], undefined)).toMatchObject({
-      type: 'match',
-      entry: { id: 'two' },
-    });
-    expect(keymap.diagnose(['mod+k'], undefined)).toMatchObject({
-      winner: { id: 'two' },
-      shadowed: [{ id: 'one' }],
-    });
+    expect(keymap.list().map(entry => [entry.id, entry.registrationOrder])).toEqual([['one', 0], ['two', 1]]);
   });
 
   it('publishes stable snapshots and applies multi-entry overrides atomically', () => {
@@ -164,7 +147,7 @@ describe('EditorKeymap', () => {
     expect(keymap.getUserBindings()).toEqual({});
   });
 
-  it('resolves declarative context expressions and chord prefixes', () => {
+  it('evaluates declarative context expressions and retains sequences', () => {
     const keymap = new EditorKeymap<{ canvas: { mode: string }; grid: { hasRange: boolean } }>();
     keymap.register('test', {
       id: 'contextual',
@@ -178,12 +161,9 @@ describe('EditorKeymap', () => {
       },
     });
     const active = { canvas: { mode: 'freeform' }, grid: { hasRange: true } };
-    expect(keymap.resolveBest(['mod+k', 'mod+c'], active)).toMatchObject({ type: 'match' });
-    expect(
-      keymap.resolveBest(['mod+k', 'mod+c'], {
-        canvas: { mode: 'slide' },
-        grid: { hasRange: true },
-      })
-    ).toEqual({ type: 'none' });
+    const entry = keymap.list()[0]!;
+    expect(entry.shortcuts).toEqual([['Mod+K', 'Mod+C']]);
+    expect(keymap.isEnabled(entry, active)).toBe(true);
+    expect(keymap.isEnabled(entry, { canvas: { mode: 'slide' }, grid: { hasRange: true } })).toBe(false);
   });
 });

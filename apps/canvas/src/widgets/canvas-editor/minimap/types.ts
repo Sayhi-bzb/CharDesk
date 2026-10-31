@@ -1,27 +1,12 @@
-import type { Point } from "@/shared/types";
-import type { CanvasSurfaceReader } from "@/domains/canvas/public";
-import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
-
-export type MinimapDimensions = {
-  width: number;
-  height: number;
-};
-
-export type MinimapRect = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-export type MinimapTransform = {
-  dimensions: MinimapDimensions;
-  contentBounds: MinimapRect | null;
-  viewportBounds: MinimapRect;
-  worldBounds: MinimapRect;
-  drawableRect: MinimapRect;
-  scale: number;
-};
+import type { MinimapDimensions } from '@chardesk/editor-core/minimap/geometry';
+export type {
+  MinimapDimensions,
+  MinimapRect,
+  MinimapTransform,
+} from '@chardesk/editor-core/minimap/geometry';
+import type { Point } from '@/shared/types';
+import type { CanvasSurfaceReader } from '@/domains/canvas/public';
+import type { CanvasArtifactPalette } from '@/shared/canvas-appearance/artifact-style';
 
 type MinimapColors = {
   artifact: CanvasArtifactPalette;

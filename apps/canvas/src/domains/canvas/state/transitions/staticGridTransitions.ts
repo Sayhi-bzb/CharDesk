@@ -1,3 +1,4 @@
+import { selectGridRangeAt, moveGridFocus } from "@chardesk/editor-core/selection/commands";
 import {
   collapseGridSelectionTo,
   createStaticGridInputSession,
@@ -8,7 +9,6 @@ import {
   getGridSelectionRanges,
   getStaticGridSelection,
   gridRangesEqual,
-  moveGridAddress,
   moveGridAddressToContentBoundary,
   moveGridAddressToEdge,
   selectGridColumn,
@@ -18,7 +18,7 @@ import {
   type GridRange,
   type GridSelectionState,
 } from "@/domains/selection/public";
-import { resolveGridAnchor, resolveGridSlot } from "@/shared/utils/grid-occupancy";
+import { resolveGridAnchor } from "@/shared/utils/grid-occupancy";
 import { createCanvasInteractionPatch } from "../canvasInteractionState";
 import type { CanvasState } from "../interfaces";
 import { clampPointToActiveSlide, getActiveSlideGridBounds } from "../slideBounds";
@@ -89,10 +89,9 @@ export const createStaticGridSelectionRangePatch = (
   const end = resolveStaticGridAddress(state, range.end);
   return createNavigationPatch(
     state,
-    selectGridRange(
-      getStaticGridSelection(state.interaction.staticGrid),
-      { start, end },
-      { append, activeCell: "start" }
+    selectGridRangeAt(
+      state.contentSurface.reader,
+      getStaticGridSelection(state.interaction.staticGrid), { start, end }, append
     )
   );
 };
@@ -104,18 +103,11 @@ export const createMovedStaticGridFocusPatch = (
   options?: MoveOptions
 ): InteractionPatch => {
   const current = getStaticGridSelection(state.interaction.staticGrid);
-  const focusCell = options?.extend
-    ? getGridSelectionExtent(current)
-    : current.activeCell;
-  const currentSlot = resolveGridSlot(state.contentSurface.reader, focusCell);
-  const visualDx = dx > 0 && currentSlot ? dx + currentSlot.width - 1 : dx;
-  const nextCell = resolveStaticGridAddress(
-    state,
-    moveGridAddress(focusCell, visualDx, dy)
+  const selection = moveGridFocus(
+    state.contentSurface.reader, current, { x: dx, y: dy }, options?.extend,
+    (point) => resolveStaticGridAddress(state, point)
   );
-  const selection = options?.extend
-    ? extendGridSelectionTo(current, nextCell)
-    : collapseGridSelectionTo(current, nextCell);
+  const nextCell = selection.activeCell;
 
   if (!options?.extend && state.interaction.staticGrid.mode === "text-edit") {
     return createCanvasInteractionPatch(state.interaction, {

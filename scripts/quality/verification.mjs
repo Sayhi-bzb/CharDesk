@@ -16,7 +16,9 @@ const workspaceGroups = {
   ]),
   products: new Set([
     '@chardesk/chargraph', '@chardesk/cli', '@chardesk/document',
-    '@chardesk/keyboard', '@chardesk/legacy-blackboard', '@chardesk/protocol',
+    '@chardesk/keyboard', '@chardesk/editor-core', '@chardesk/editor-input',
+    '@chardesk/cell-plane', '@chardesk/canvas-templates', '@chardesk/character-library',
+    '@chardesk/legacy-blackboard', '@chardesk/protocol',
     '@chardesk/canvas',
   ]),
   services: new Set([

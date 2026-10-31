@@ -8,7 +8,6 @@ export {
 export type {
   ContextExpression,
   EditorKeymapSnapshot,
-  KeymapDiagnostics,
   KeymapBindingSnapshot,
   KeymapEntry,
   KeymapTarget,
@@ -18,11 +17,10 @@ export type {
   ShortcutScope,
   ShortcutSequence,
 } from "./core/keymap";
-export type { KeymapResolution, RegisteredKeymapEntry } from "./core/keymap";
+export type { RegisteredKeymapEntry } from "./core/keymap";
 export {
   formatShortcutSequence,
   formatShortcutStroke,
-  matchesShortcutInput,
   normalizeShortcut,
   normalizeShortcutStroke,
   shortcutFromKeyInput,

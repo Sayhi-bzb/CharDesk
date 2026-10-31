@@ -57,6 +57,13 @@ export const formatShortcutLabel = (
   .map((stroke) => stroke.accessibleLabel)
   .join(', then ');
 
+export const getShortcutAriaLabel = (
+  shortcuts: readonly ShortcutSequence[],
+  platform = getShortcutPlatform()
+) => shortcuts.map(sequence => sequence.map(stroke =>
+  stroke.replace(/(^|\+)Mod(?=\+)/g, `$1${platform === 'mac' ? 'Meta' : 'Control'}`)
+).join(' ')).join(' ') || undefined;
+
 const formatCompact = (sequence: ShortcutSequence, platform: ShortcutPlatform) =>
   formatShortcutSequence(sequence, toEditorPlatform(platform), platform === 'mac')
     .map((stroke) => platform === 'mac' ? stroke.replaceAll(' ', '') : stroke)

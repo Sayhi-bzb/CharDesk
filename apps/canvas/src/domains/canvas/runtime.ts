@@ -90,6 +90,7 @@ type CanvasRuntimeOptions = {
 };
 
 export type CanvasSessionMaterialization = {
+  document?: import('@chardesk/editor-core/canvasDocumentModel').CanvasDocumentDraft | null;
   id: string;
   name: string;
   mode: CanvasMode;
@@ -155,7 +156,8 @@ export class CanvasRuntime {
       this.viewport,
       options.selectionCommands,
       options.parseSessionSource,
-      this.persistence ?? undefined
+      this.persistence ?? undefined,
+      () => !this.#disposed
     );
     this.commands = facade.commands;
     this.queries = facade.queries;
@@ -294,6 +296,7 @@ export class CanvasRuntime {
         name: session.name,
         mode: session.mode,
         surface,
+        document: this.documents.getDerivedDocument(session.id),
         slideDeck: null,
       };
     }
@@ -305,6 +308,7 @@ export class CanvasRuntime {
       name: session.name,
       mode: session.mode,
       surface: createGridSurfaceReader(new Map(seed.grid)),
+      document: this.documents.getDocumentDraft(session.id),
       slideDeck: null,
     };
   };

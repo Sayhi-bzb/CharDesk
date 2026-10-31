@@ -1,0 +1,27 @@
+{
+  "name": "@chardesk/editor-input",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@chardesk/editor-core": "*",
+    "@chardesk/keyboard": "*",
+    "@opentui/keymap": "0.8.0",
+    "@opentui/core": "0.8.0"
+  }
+}
