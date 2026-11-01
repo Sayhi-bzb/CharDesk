@@ -1,4 +1,9 @@
-import type { RichTextCell } from "@/domains/canvas/public";
+import {
+  CHARDESK_CLIPBOARD_MIME as MIME_RICH_DATA,
+  buildRichClipboardHtml,
+  parseRichClipboardHtml,
+  parseRichClipboardText,
+} from "@chardesk/editor-core/clipboard/rich";
 export { hasClipboardSource, buildClipboardPayload } from "@chardesk/editor-core/clipboard/payload";
 import {
   renderTextSource,
@@ -9,7 +14,6 @@ import {
 import { clipboard } from "@/shared/services/effects";
 import { parseAnsiTextCells } from "@/shared/utils/ansiText";
 
-const MIME_RICH_DATA = "web application/x-ascii-metropolis";
 const DEFAULT_ANSI_PASTE_COLOR = "#ffffff";
 
 import type { ClipboardPayload } from "@chardesk/editor-core/clipboard/payload";
@@ -74,13 +78,17 @@ export const writeClipboardPayload = async (
     // reconstruct multi-cell selections while external apps still receive plain text.
     if (payload.rich) {
       event.clipboardData.setData(MIME_RICH_DATA, payload.rich);
+      const html = buildRichClipboardHtml(payload);
+      if (html) event.clipboardData.setData("text/html", html);
     }
     return true;
   }
 
   try {
     if (withRich && payload.rich && typeof ClipboardItem !== "undefined") {
+      const html = buildRichClipboardHtml(payload);
       const clipboardMap: Record<string, Blob> = {
+        ...(html ? { "text/html": new Blob([html], { type: "text/html" }) } : {}),
         "text/plain": new Blob([payload.plain], { type: "text/plain" }),
         [MIME_RICH_DATA]: new Blob([payload.rich], {
           type: MIME_RICH_DATA,
@@ -98,50 +106,20 @@ export const writeClipboardPayload = async (
   }
 };
 
-const parseRichClipboardText = (
-  rawText: string
-): {
-  richCells: RichTextCell[] | null;
-  plainText: string | null;
-} | null => {
-  if (!rawText) return null;
-  try {
-    const parsed = JSON.parse(rawText) as {
-      type?: string;
-      cells?: RichTextCell[];
-      surfaceCells?: RichTextCell[];
-      structuredText?: { text?: unknown };
-    };
-    if (parsed.type === "ascii-metropolis-clipboard") {
-      const surfaceCells = Array.isArray(parsed.surfaceCells)
-        ? parsed.surfaceCells
-        : Array.isArray(parsed.cells)
-          ? parsed.cells
-          : [];
-      return {
-        richCells: surfaceCells,
-        plainText:
-          typeof parsed.structuredText?.text === "string" ? parsed.structuredText.text : null,
-      };
-    }
-    if (!Array.isArray(parsed.cells)) return null;
-    return { richCells: parsed.cells, plainText: null };
-  } catch {
-    return null;
-  }
-};
-
 const readRichClipboardCells = async (): Promise<{
-  richCells: RichTextCell[] | null;
+  richCells: import("@chardesk/editor-core/textCommandTypes").RichTextCell[] | null;
   plainText: string | null;
 } | null> => {
   const items = await clipboard.readItems();
   if (items) {
     for (const item of items) {
-      if (!item.types.includes(MIME_RICH_DATA)) continue;
-      const blob = await item.getType(MIME_RICH_DATA);
-      const parsed = parseRichClipboardText(await blob.text());
-      if (parsed) return parsed;
+      for (const type of [MIME_RICH_DATA, "text/html"]) {
+        if (!item.types.includes(type)) continue;
+        const raw = await (await item.getType(type)).text();
+        const parsed =
+          type === MIME_RICH_DATA ? parseRichClipboardText(raw) : parseRichClipboardHtml(raw);
+        if (parsed) return parsed;
+      }
     }
   }
 
@@ -158,7 +136,9 @@ export const readClipboardPayload = async (
   // event is being dispatched. Snapshot every format before the first await.
   const eventRichText = eventDataTransfer?.getData(MIME_RICH_DATA) ?? "";
   const eventPlainText = eventDataTransfer?.getData("text/plain") ?? "";
-  const eventRichPayload = parseRichClipboardText(eventRichText);
+  const eventHtml = eventDataTransfer?.getData("text/html") ?? "";
+  const eventRichPayload =
+    parseRichClipboardText(eventRichText) ?? parseRichClipboardHtml(eventHtml);
   if (eventRichPayload) {
     return {
       richCells: eventRichPayload.richCells,

@@ -4,15 +4,34 @@
 Terminal. It is private. [Ownership](../../apps/docs/content/docs/development/architecture/ownership.mdx)
 owns dependency direction; this page routes the shared APIs and their verification.
 
-| Contract                                                               | Implementation                                                        | Verification                                                                                              |
-| ---------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Generic runtime, commands, binding catalog, tools and extension lifecycle | [`editor/`](src/editor/runtime.ts)                                  | [Web editor tests](../../apps/canvas/src/domains/editor/core/runtime.dom.test.ts)                             |
-| Local Freeform composition                                             | [`FreeformEditorSession`](src/runtime.ts)                             | [Session tests](src/runtime.test.ts)                                                                      |
-| Pointer state machine, selection/range movement and preview projection | [`interaction/`](src/interaction/canvasToolRuntime.ts)                | [Gesture sequences](src/interaction/session.test.ts)                                                      |
-| Selection endpoints, focus, fill, deletion and input sessions          | [`selection/`](src/selection/commands.ts)                             | [Cross-host sequences](../../apps/canvas/src/domains/canvas/state/sharedEditorCore.test.ts)               |
-| Copy/Cut/Paste orchestration and plain/rich payloads                   | [`clipboard/`](src/clipboard/commands.ts)                             | [Clipboard failure/lifecycle tests](src/clipboard/commands.test.ts)                                       |
-| Addressed Yjs documents, pages, anchors and semantic undo history      | [`CanvasDocumentRegistry`](src/CanvasDocumentRegistry.ts)             | [Web document tests](../../apps/canvas/src/domains/canvas/state/canvasDocument-collaboration.dom.test.ts) |
-| Final-state publication around synchronous commands                    | [`CanvasStateCommitCoordinator`](src/CanvasStateCommitCoordinator.ts) | [Web publication tests](../../apps/canvas/src/domains/canvas/state/CanvasStateCommitCoordinator.test.ts)  |
+| Contract                                                                  | Implementation                                                        | Verification                                                                                              |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Generic runtime, commands, binding catalog, tools and extension lifecycle | [`editor/`](src/editor/runtime.ts)                                    | [Web editor tests](../../apps/canvas/src/domains/editor/core/runtime.dom.test.ts)                         |
+| Local Freeform composition                                                | [`FreeformEditorSession`](src/runtime.ts)                             | [Session tests](src/runtime.test.ts)                                                                      |
+| Pointer state machine, selection/range movement and preview projection    | [`interaction/`](src/interaction/canvasToolRuntime.ts)                | [Gesture sequences](src/interaction/session.test.ts)                                                      |
+| Selection endpoints, focus, fill, deletion and input sessions             | [`selection/`](src/selection/commands.ts)                             | [Cross-host sequences](../../apps/canvas/src/domains/canvas/state/sharedEditorCore.test.ts)               |
+| Copy/Cut/Paste orchestration and plain/rich payloads                      | [`clipboard/`](src/clipboard/commands.ts)                             | [Clipboard failure/lifecycle tests](src/clipboard/commands.test.ts)                                       |
+| Addressed Yjs documents, pages, anchors and semantic undo history         | [`CanvasDocumentRegistry`](src/CanvasDocumentRegistry.ts)             | [Web document tests](../../apps/canvas/src/domains/canvas/state/canvasDocument-collaboration.dom.test.ts) |
+| Final-state publication around synchronous commands                       | [`CanvasStateCommitCoordinator`](src/CanvasStateCommitCoordinator.ts) | [Web publication tests](../../apps/canvas/src/domains/canvas/state/CanvasStateCommitCoordinator.test.ts)  |
+
+[`selection/style`](src/selection/style.ts) owns selection attribute/color patches
+and mixed-state queries for both Hosts. Coverage expands wide glyphs once and
+preserves disjoint holes. Missing cells materialize only for visible blank styles
+or backgrounds; removing the final visible style removes unlinked blank cells.
+Queries return `limited` before expensive coverage expansion; edits reject oversized
+requests before writing. [Style tests](src/selection/style.test.ts),
+[real Web/TUI command parity](../../apps/canvas/src/app/selectionStyleParity.dom.test.ts)
+and [terminal Inspector](../../examples/terminal-canvas/src/inspector.test.ts) verify
+blank/link semantics, history, view isolation and native file round trips.
+
+[`selection/commands`](src/selection/commands.ts) also owns row/column bounds and
+edge/content-boundary navigation for both Hosts. Content-run navigation iterates
+occupied intervals, independent of empty coordinate distance. Presentation accepts
+a viewport clip; point membership uses the same coverage with a one-cell clip.
+Full materialized Session operations validate work before allocating coverage.
+[Navigation tests](src/selection/navigation.test.ts), [clipping tests](src/selection/coverage.test.ts)
+and [cross-Host intents](../../apps/canvas/src/app/selectionNavigationParity.dom.test.ts)
+verify bounds, wide followers, sparse gaps, extension and history isolation.
 
 `SynchronousCommitBoundary` coalesces nested command publication and rejects
 async mutation transactions in both Host compositions.
@@ -87,6 +106,15 @@ the document selection anchor, not tool-local state. Hosts execute the decision
 and retain their cancellation/history adapters. See [gesture tests](src/interaction/session.test.ts)
 and [Web commit parity](../../apps/canvas/src/widgets/canvas-editor/hooks/interaction/gestures/selectionCommitParity.test.ts).
 
+[`interaction/edgeScroll`](src/interaction/edgeScroll.ts) owns edge proximity,
+drag eligibility, dwell/acceleration and cancelled-frame fencing. Hosts supply
+the scheduler, viewport units and camera/pointer delivery. Web retains pixel
+velocity; TUI accumulates integer cells and replays the same pointer commands.
+[Shared timing tests](src/interaction/edgeScroll.test.ts),
+[Web adapter tests](../../apps/canvas/src/widgets/canvas-editor/engine/CanvasEdgeScrollManager.dom.test.ts)
+and [native lifecycle tests](../../examples/terminal-canvas/src/edgeScroll.test.ts)
+verify scheduling, cancellation and range-move commit behavior.
+
 Clipboard IO is asynchronous; mutation transactions remain synchronous. Cut
 requires a successful write and unchanged target/payload. Paste requires an
 unchanged target. A shared `ClipboardRequestScope` makes newer Cut/Paste requests
@@ -107,7 +135,7 @@ uses controlled promises and never touches the system clipboard.
 An optional `prepareText` function prepares external text before a synchronous
 clipboard mutation. `commands.pasteProvided(text)` and transported Paste both
 return pending commands, use one request scope and validate the target after IO
-and compilation. Prepared rich data bypasses text compilation. Preparation
+and compilation. `autoAnchors` accepts a boolean or a Host preference reader; changes affect the next paste without reconstructing the Session. Prepared rich data bypasses text compilation. Preparation
 failure returns `prepare-failed`; successful diagnostics are exposed in the
 Session snapshot. Syntax/compiler dependencies remain in the Host. See
 [preparation race tests](src/pastePreparation.test.ts) and the
@@ -130,3 +158,31 @@ prepared content through the same write/selection path used by rich paste.
 [Package scripts](package.json) own build/test commands. The root
 [architecture guard](../../scripts/check-domain-boundaries.mjs) rejects Web,
 React, OpenTUI and platform IO imports in shared editor packages.
+
+## Export preparation
+
+[`exportPlan.ts`](src/exportPlan.ts) owns copied cell snapshots, text/native
+preparation and raster allocation limits. Web/TUI own delivery, font resolution
+and raster contexts. Whole native export retains the supplied document/pages;
+selection native export retains absolute positions and selected text anchors.
+TXT/ANSI bound dense work before serialization; native sparse documents keep the
+existing fragment codec. Raster layout tries scale 2 then 1, bounded to 8192 per
+edge and 16,777,216 pixels before canvas allocation. Empty documents retain a
+serializable native/text representation.
+
+The range policy is explicit: `coverage` includes whole selected graphemes and
+excludes holes (TUI clipboard/files); `envelope` retains the Web PNG snapshot's
+existing rectangular capture. Both expand wide glyph boundaries before capture.
+Text padding continues to follow CellPlane's exporter. Shared
+[preparation tests](src/exportPlan.test.ts), [Web raster tests](../../apps/canvas/src/domains/export/raster.dom.test.ts)
+and [native delivery tests](../../examples/terminal-canvas/src/export.test.ts)
+verify the contract.
+
+[`clipboard/rich.ts`](src/clipboard/rich.ts) owns the existing custom MIME, legacy
+JSON validation and portable HTML carrier. Hosts write `text/plain` and
+`text/html` together, prefer validated native data on read, and fall back to text
+preparation for unrelated/invalid HTML. No HTML is evaluated. The parser bounds
+payload/cell counts and validates coordinates, graphemes, attributes and styles.
+A confirmed plain fallback carries `plain-fallback`; Cut still requires a
+confirmed write and an unchanged target. See [codec tests](src/clipboard/rich.test.ts)
+and [command lifecycle tests](src/clipboard/commands.test.ts).

@@ -1,8 +1,53 @@
+import {
+  normalizeCharDeskTextRenderProfile,
+  type CharDeskTextRenderProfile,
+} from '@chardesk/chargraph/profile';
 import { mkdir, readFile, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { atomicWrite } from './storage.ts';
 import type { PasteMode } from './text.ts';
+import { normalizeShortcut, type ShortcutSequence } from '@chardesk/editor-core/editor/shortcut';
+
+export type TerminalTextProfile = Omit<CharDeskTextRenderProfile, 'mode'>;
+const readTextProfile = (value: unknown): TerminalTextProfile => {
+  const {
+    markdownWrapEnabled,
+    markdownWrapWidth,
+    markdownAutoAnchorsEnabled,
+    renderThemes,
+    features,
+  } = normalizeCharDeskTextRenderProfile(value);
+  return {
+    markdownWrapEnabled,
+    markdownWrapWidth,
+    markdownAutoAnchorsEnabled,
+    renderThemes,
+    features,
+  };
+};
+
+export type TerminalUserBindings = Record<string, readonly ShortcutSequence[]>;
+function readBindings(value: unknown): TerminalUserBindings {
+  if (value === undefined) return {};
+  if (!object(value) || Object.keys(value).length > 2000) throw new Error('Invalid shortcuts');
+  return Object.fromEntries(
+    Object.entries(value).map(([id, bindings]) => {
+      if (!id || !Array.isArray(bindings) || bindings.length > 20)
+        throw new Error('Invalid shortcuts');
+      return [
+        id,
+        bindings.map((sequence: unknown) => {
+          if (!Array.isArray(sequence) || !sequence.every((stroke) => typeof stroke === 'string'))
+            throw new Error(`Invalid shortcut: ${id}`);
+          const normalized = normalizeShortcut(sequence);
+          if (!normalized) throw new Error(`Invalid shortcut: ${id}`);
+          return normalized;
+        }),
+      ];
+    })
+  );
+}
 
 export type TerminalSettings = {
   cursorStyle: 'block' | 'line';
@@ -18,7 +63,7 @@ export const DEFAULT_TERMINAL_SETTINGS: Readonly<TerminalSettings> = {
   panStep: 10,
   pasteMode: 'auto',
 };
-export type SettingsSection = 'appearance' | 'navigation' | 'paste';
+export type SettingsSection = 'appearance' | 'navigation' | 'paste' | 'shortcuts' | 'rendering';
 type SettingKey = keyof TerminalSettings;
 type SettingDefinition = {
   [K in SettingKey]: {
@@ -124,6 +169,8 @@ export class TerminalSettingsStore {
   #values: TerminalSettings;
   #persisted: TerminalSettings;
   #extra: Record<string, unknown> = {};
+  #bindings: TerminalUserBindings = {};
+  #textProfile = readTextProfile(undefined);
   #listeners = new Set<() => void>();
   #writes: Promise<void> = Promise.resolve();
   #revision = 0;
@@ -153,6 +200,8 @@ export class TerminalSettingsStore {
         throw new Error('Invalid settings file');
       store.#persisted = readSettings(raw.values);
       store.#extra = raw.values;
+      store.#bindings = readBindings(raw.shortcuts);
+      store.#textProfile = readTextProfile(raw.textProfile);
     } catch (error) {
       if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) {
         store.#readError = true;
@@ -165,6 +214,29 @@ export class TerminalSettingsStore {
   }
   get values(): Readonly<TerminalSettings> {
     return this.#values;
+  }
+  get renderProfile(): CharDeskTextRenderProfile {
+    return {
+      ...this.#textProfile,
+      mode: this.#values.pasteMode === 'plain' ? 'raw' : this.#values.pasteMode,
+    };
+  }
+  setRenderProfile(value: Partial<TerminalTextProfile>) {
+    const next = readTextProfile({ ...this.#textProfile, ...value });
+    if (JSON.stringify(next) === JSON.stringify(this.#textProfile)) return;
+    this.#textProfile = next;
+    this.#notify();
+    this.#save();
+  }
+  get keybindings(): Readonly<TerminalUserBindings> {
+    return this.#bindings;
+  }
+  setKeybindings(value: TerminalUserBindings) {
+    const next = readBindings(value);
+    if (JSON.stringify(next) === JSON.stringify(this.#bindings)) return;
+    this.#bindings = next;
+    this.#notify();
+    this.#save();
   }
   subscribe(listener: () => void) {
     this.#listeners.add(listener);
@@ -184,6 +256,10 @@ export class TerminalSettingsStore {
     this.#save();
   }
   reset(section: SettingsSection) {
+    if (section === 'rendering') {
+      this.setRenderProfile(readTextProfile(undefined));
+      return;
+    }
     const patch = Object.fromEntries(
       TERMINAL_SETTING_DEFINITIONS.filter((def) => def.section === section).map((def) => [
         def.id,
@@ -200,8 +276,16 @@ export class TerminalSettingsStore {
     const path = this.path,
       revision = ++this.#revision;
     const source =
-      JSON.stringify({ version: 1, values: { ...this.#extra, ...this.#persisted } }, null, 2) +
-      '\n';
+      JSON.stringify(
+        {
+          version: 1,
+          values: { ...this.#extra, ...this.#persisted },
+          shortcuts: this.#bindings,
+          textProfile: this.#textProfile,
+        },
+        null,
+        2
+      ) + '\n';
     this.status = 'saving';
     this.error = '';
     this.#notify();

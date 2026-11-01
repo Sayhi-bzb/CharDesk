@@ -30,7 +30,9 @@
       "@chardesk/rendering/*": ["packages/rendering/src/*.ts"],
       "@chardesk/fonts": ["packages/fonts/src/index.ts"],
       "@chardesk/rendering/theme": ["packages/rendering/src/content-theme.ts"],
-      "@chardesk/font-maple": ["packages/font-maple/src/index.ts"]
+      "@chardesk/font-maple": ["packages/font-maple/src/index.ts"],
+      "@chardesk/chargraph/theme": ["packages/chargraph/src/render-theme.ts"],
+      "@chardesk/chargraph/profile": ["packages/chargraph/src/text-profile.ts"]
     }
   },
   "include": ["src/**/*.ts", "scripts/**/*.ts"]

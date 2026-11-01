@@ -36,6 +36,12 @@ An absolute `CHARDESK_HOME` replaces these roots with `<home>/{config,data,state
 Cache is disposable and currently has no required contents. Keep data and state
 on a local filesystem with working SQLite and atomic-file locking semantics.
 
+Preferences retain the version-1 envelope: `values` owns scalar terminal choices,
+`shortcuts` owns EditorKeymap user overrides, and `textProfile` owns shared rendering
+configuration without a duplicate mode field. Paste format in `values` remains
+the TUI mode authority; CLI overrides remain session-only. See the
+[Settings contract](README.md#settings) and [persistence tests](src/settings.test.ts).
+
 ## Session identity and lifecycle
 
 A session UUID is independent of document/page IDs, its name and file path.
@@ -46,11 +52,12 @@ catalog entry. Neither operation deletes content. Duplicate captures current
 unsaved content in a fresh managed file with a fresh document ID. Undo history
 stays isolated while open and does not survive close or process restart.
 
-The catalog uses Bun's built-in SQLite with schema version 1, incremental writes
+The catalog uses Bun's built-in SQLite with schema version 3, incremental writes
 and revision checks for metadata changes. New creation commits a `creating` row
 with its native snapshot before writing the file; `ready` clears that snapshot.
 Startup retries interrupted creation. Conflicting file content and its creation
 snapshot both remain intact. Unknown, future or corrupt catalogs are never reset.
+Versions 1/2 migrate in place, preserving sessions and pending deletion journals.
 
 Separate checkpoints can share a catalog. Transactional per-path ownership permits
 one writable CharDesk instance per canonical path in that catalog. Living owners
@@ -58,6 +65,30 @@ have no timeout; dead PIDs can be reclaimed. Every save verifies its ownership
 before writing and replacing a file; per-claim tokens fence old guards. Separate
 application homes and unrelated editors rely on the disk-baseline conflict checks
 below. The default checkpoint itself remains exclusive.
+
+### Removing sessions
+
+Sessions → X distinguishes **Remove session record — keep file** from **Delete
+managed file and session record**. Cancel is selected initially. Both paths save
+and close an open editor first; a save failure or stale confirmation retains data.
+External files, symlinks, directories and paths outside the managed canvas directory
+never receive a file-delete action. Record removal keeps every file.
+
+Managed deletion verifies the catalog revision, writer ownership and confirmed
+file identity/bytes before staging it under `<Data>/deletions`. A durable SQLite
+journal records preparation and the catalog removal commit. Startup rolls back
+prepared work or finishes committed cleanup; it never overwrites a replacement
+at the original path. Ambiguous files remain with a recoverable path and a warning.
+Sessions → X can retry interrupted removal.
+
+Catalog removal retains a session-identity tombstone. Checkpoints capture that
+identity; stale snapshots cannot resurrect a removed session. Older checkpoints
+without identities use path tombstones. Explicitly opening a retained file creates
+a new session identity and permits its new checkpoints to restore normally.
+
+[Removal regressions](src/sessionRemoval.test.ts) cover interruption, replacement,
+cross-process ownership, schema migration and stale-checkpoint recovery;
+[native panels](src/sessionControls.test.ts) verify the confirmation choices.
 
 ## Document and view state
 
@@ -117,6 +148,28 @@ placement.
 
 Application storage, checkpoint and lock paths cannot be opened as external
 canvases. Explicit settings paths are reserved by the interactive composition.
+
+## Native file sources
+
+A [`FileSourceBinding`](src/fileSource.ts) owns each native path's accepted content
+and digest. Observations never mutate the document or advance that baseline.
+[Monitoring](src/sourceMonitor.ts) checks metadata every two seconds and reads content
+when it changes; focus/manual checks always verify content. It coalesces pending reads, and releases subscriptions/timers on detach. Newer inspections or
+accepted writes/reloads supersede older asynchronous results.
+
+[`TerminalWorkspace`](src/workspace.ts) serializes explicit reload with saving.
+It parses the incoming native document and rereads its bytes before replacement;
+changed targets, newer local edits, missing/invalid files and stale reads preserve
+the editor. Successful reload retains the runtime document identity and page
+views (mapping the old active view when page IDs change), clears content history,
+and accepts the new baseline without rewriting the file. Local edits require a
+confirmed independent managed copy before replacement. Cancellation or a later
+edit retains that copy and cancels reload. Failed saving can be retried from
+Source after resolving the disk conflict.
+
+Verification: [binding races](src/fileSource.test.ts),
+[reload state retention](src/workspace.test.ts), [native controls](src/sourceControls.test.ts)
+and [local-copy recovery](src/localSessions.test.ts).
 
 ## Legacy data
 

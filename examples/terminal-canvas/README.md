@@ -145,6 +145,39 @@ document text, printable key names and paste payloads are omitted. Run F2, ordin
 click, Shift+click, Shift+Right and Option+arrows, then quit. Compare input records
 with state changes; simulated tests alone cannot prove host forwarding.
 
+### Export and rich clipboard
+
+Shift+F7 opens Export in the shared dialog; choose Canvas/Selection and TXT,
+ANSI, CharDesk or PNG, then enter a **new file path**. The Dock exposes the same
+command when space permits. Export captures content before platform IO and never
+changes the document path, selection, history or saved baseline. Existing paths
+(including symlinks) are refused atomically; errors keep the path prompt open.
+
+Canvas TXT/ANSI/PNG export the active page; Canvas CharDesk preserves the full
+native document. Selection exports preserve coordinates and complete wide glyphs,
+exclude content in range holes, and include only selected text anchors in native
+files. PNG excludes canvas UI, uses the bundled export font and terminal RGB
+colors, and reports unavailable colors or excessive size. Empty documents can
+export text/native files; an empty canvas has no PNG. The shared
+[preparation contract](../../packages/editor-core/README.md#export-preparation)
+owns budgets and range policies; [native dialog/file tests](src/export.test.ts)
+cover delivery and state retention.
+
+Local Copy/Cut write plain text and a portable CharDesk HTML representation in
+**one** [`ClipboardManager.setContents`](https://github.com/Teddy-Zhu/node-clipboard-rs)
+call. Web reads/writes the same carrier alongside its existing custom MIME.
+Styles, backgrounds, links and wide glyphs bypass text recompilation on Paste.
+Malformed/ordinary HTML falls through to the text preparation pipeline.
+[Transport tests](src/clipboard.test.ts) and
+[Web interoperability tests](../../apps/canvas/src/domains/actions/adapters/clipboardActions.dom.test.ts)
+verify this with injected backends, without touching the test machine clipboard.
+
+Remote/WSL sessions never use a server native rich clipboard. Unavailable native
+backends fall back to plain text with an explicit status; ANSI copy remains an
+explicit alternative. OSC 52 dispatch still cannot confirm clipboard acceptance,
+so Cut retains its source. Native library availability does not establish shortcut
+forwarding or actual OS interoperability; see [Host limits](#verification-and-limits).
+
 ### Context menu
 
 Right-click opens the canvas menu when the terminal forwards that event.
@@ -255,7 +288,10 @@ retain their explicit document colors. Previews do not enter autosave or recover
 | Shift+F9          | Add anchor at cursor                                                   |
 
 In Sessions, N creates, O opens a file, R renames the local alias, D duplicates,
-A archives/restores and Delete closes an open canvas. Sessions uses the same dialog
+A archives/restores, Delete closes an open canvas, and X reviews removal. Removal
+can keep the file or delete an owned managed file; external files are always kept.
+See the [removal/recovery contract](WORKSPACE.md#removing-sessions).
+Sessions uses the same dialog
 shell as Settings: Tab / Shift+Tab or clicking a tab switches Canvases / Archived;
 F10 also switches lists. Escape or clicking outside closes it. F5 refreshes metadata
 from other instances. Enter reopens a session, including
@@ -267,6 +303,20 @@ moves the camera and preserves cursor, selection, content and undo history.
 Panels consume text and paste so prompts do not edit the canvas. Each document
 retains its tool, view, interaction, dirty status and undo history while open.
 
+### Source
+
+Shift+F12 opens Source for the current native document. In Sessions, S opens the
+selected canvas and its Source panel. Check changes reads without editing; Reload
+reads the external native document while retaining the view. Local edits block
+replacement; **Preserve local copy and reload** creates an independent managed
+canvas first. A failed save exposes **Retry saving local changes** after the
+conflict is resolved. External updates, missing paths and unreadable files appear
+in the footer and never silently overwrite the canvas.
+
+The [source lifecycle contract](WORKSPACE.md#native-file-sources) owns baselines,
+reload/cancellation and view/history behavior. Text compilation and Auto Paste
+remain separate from native-file reloading.
+
 ### Status bar
 
 There is no top header: the canvas starts on the first terminal row. The bottom
@@ -274,6 +324,79 @@ two rows own all Host chrome. On the canvas, the first row contains only the doc
 panel, context menu or Help replaces the dock with its context, status and hints.
 Panel messages appear here, outside the panel. Closing an overlay restores the dock.
 Dock drawing and hit-testing share the footer bounds, including after resize.
+
+### Selection and navigation
+
+Press **Shift+F8** for the shared dialog listing every navigation command and its
+current binding. Enter or click runs it. **Shift+Space / Ctrl+Space** select a
+row / column when forwarded. Selection bounds include existing content, the active
+cell and current ranges; they remain finite on an empty canvas. Wide glyph coverage
+can differ by row, including when a column hits a follower cell.
+
+**Ctrl+Home / End** moves to the left / right bound; **Ctrl+End** moves to the
+bottom-right bound. Shift extends these movements; Ctrl+Shift+Home extends to the
+top-left bound. Home retains Go to origin. PageUp / PageDown moves one visible
+canvas height; Shift extends and reveals the moving extent. On macOS, Command+
+arrows jump between content runs; Windows uses Ctrl+Alt+arrows. Shift extends.
+Option/Alt+arrows retains pan. The dialog provides all operations when terminal
+bindings intercept a shortcut, including move to the top-left bound.
+
+Navigation preserves content, tool and undo history. Sparse content jumps use
+occupied intervals, and CellPlane visits use the sparse chunk directory. Viewport
+coverage and point hit tests clip before expanding rows, so selecting a column
+across distant content does not allocate the intervening rows. Full materialized
+editing operations have a one-million-cell work budget and fail before writing;
+style edits have the smaller [shared style budget](../../packages/editor-core/src/selection/style.ts).
+
+Verification: [shared rules](../../packages/editor-core/src/selection/navigation.test.ts),
+[Web/TUI parity](../../apps/canvas/src/app/selectionNavigationParity.dom.test.ts),
+[native keys, dialog and sparse selection](src/workspaceControls.test.ts).
+
+### Selection Inspector
+
+Press **Shift+F11** or choose **Inspector** in the dock. The shared dialog shows
+Bold, Italic, Underline, Strike and Inverse as on/off/mixed, plus selected colors.
+Enter or click toggles an attribute; a mixed attribute becomes on. Foreground and
+Background accept `#RRGGBB`; empty resets the foreground to the document default
+or removes the background. Clear background removes background-only blank cells.
+An empty range can receive a background; text attributes require existing cells.
+
+**⌘B / Ctrl+B**, **⌘I / Ctrl+I**, **⌘U / Ctrl+U** and **⌘⇧X / Ctrl+Shift+X**
+provide formatting commands when forwarded by the terminal. Inspector is also
+available through its rebindable command and dock. Each operation is one undo
+step and preserves selection, view, other attributes and links. Changed color
+prompts cannot apply to a newer selection. Large selections report a size limit.
+
+[Shared style rules](../../packages/editor-core/src/selection/style.ts),
+[Web/TUI parity](../../apps/canvas/src/app/selectionStyleParity.dom.test.ts) and
+[native Inspector tests](src/inspector.test.ts) own behavior and verification.
+
+### Continuous edge scrolling
+
+In Edit, hold a selection drag or a moved range within two cells of a canvas edge.
+After 250 ms, the viewport scrolls continuously, including both axes at corners.
+Moving into the center pauses it. Selection and range previews follow the shared
+pointer commands; moving content still commits once on release. Hand and drawing
+gestures do not trigger this behavior. One document cell remains one terminal cell.
+
+Web and TUI share [delay, acceleration and eligibility](../../packages/editor-core/src/interaction/edgeScroll.ts).
+The [terminal adapter](src/edgeScroll.ts) accumulates fractional velocity into
+integer cells; [native regressions](src/edgeScroll.test.ts) cover stationary holds,
+wide ranges, release, cancellation and lifecycle cleanup.
+
+Release, Esc, tool/history/page changes, overlays, Dock navigation, reported blur,
+resize, mouse-reporting disable and disposal stop the active scroll. A subsequent
+no-button move also cancels a missed release. OpenTUI delivers captured drag events
+and focus/blur only when the terminal reports them ([interaction contract](https://opentui.com/docs/core-concepts/interaction/)).
+A release outside the terminal with no subsequent report cannot be observed;
+press Esc before continuing. There is no inactivity timeout while holding an edge.
+
+When mouse reporting or modifier forwarding is unavailable, Shift+arrows and the
+[Navigation dialog](#selection-and-navigation) provide selection, Ctrl+arrows move
+a range, and Option/Alt+arrows pan. Terminal configuration can suppress mouse
+reports ([Ghostty policy](https://ghostty.org/docs/config/reference#mouse-reporting));
+capability requests cannot override it. Controlled native tests and PTY checks do
+not establish physical Warp/Ghostty forwarding.
 
 ### Settings
 
@@ -283,8 +406,24 @@ Escape or clicking outside closes the dialog. Existing pickers keep their local 
 
 Appearance configures the native cursor shape/blink and terminal palette selection
 background (see [appearance behavior](#terminal-appearance)); Navigation configures the pan step; Paste configures format detection.
-Changes apply immediately, independently of document content and undo history.
-Each section has a reset action. The panel consumes keyboard, mouse and paste input.
+Shortcuts searches the shared command/keymap catalog. Enter edits a binding;
+F5 records a replacement of up to two strokes, Enter saves, and Esc cancels.
+Bindings can also be typed; use `/` between alternatives and a space between
+sequence strokes. Save checks exact and prefix conflicts against the proposed
+catalog. Disable, restore one action, or restore all defaults in the same panel.
+Recording retains physical Control/Option/Command; it does not prove the terminal
+will forward that binding. Blur/resize cancels recording. Terminal paste can fill
+the search or binding field; recording consumes it without modifying the canvas.
+
+Rendering configures prose wrap (60–200 cells), automatic heading anchors,
+Markdown feature toggles, and separate light/dark semantic and feature colors.
+Empty color fields follow the theme. Preferences affect the next render/paste;
+existing authored cells stay intact. Defaults inherit the terminal foreground;
+explicit generated colors remain authored colors. Screen fonts/size belong to
+the terminal; [PNG export](#export-and-rich-clipboard) keeps its export font policy.
+
+Changes stay independent of document content and undo history. Each section has
+a reset action. The panel owns keyboard, pointer and paste input.
 
 Preferences use the [application configuration directory](WORKSPACE.md#application-directories).
 `--settings <path>` chooses another file. An explicit `--paste-mode` overrides the saved paste format
@@ -294,7 +433,12 @@ Write failures retain the live values and appear in the panel.
 
 [`settings.ts`](src/settings.ts) owns the versioned preferences and setting definitions;
 [`settingsDialog.ts`](src/settingsDialog.ts) adapts them to the shared panel shell.
-Verification: [persistence](src/settings.test.ts), [modal interaction](src/settingsDialog.test.ts).
+Shortcut persistence and dispatch use the existing EditorKeymap, including
+unknown-owner overrides. The [shared CharGraph profile](../../packages/chargraph/README.md)
+owns rendering definitions and validation; Paste format remains the single TUI
+mode preference. Verification: [persistence](src/settings.test.ts),
+[modal interaction](src/settingsDialog.test.ts), [shortcut lifecycle](src/keymapSettings.test.ts)
+and [rendering/configuration](src/textSettings.test.ts).
 
 ### Terminal appearance
 

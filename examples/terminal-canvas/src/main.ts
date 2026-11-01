@@ -47,11 +47,12 @@ if (args.slice(0, args.indexOf('--') < 0 ? args.length : args.indexOf('--')).inc
     const prepareText: ClipboardTextPreparation = (...args) =>
       createTextPreparation(
         settings?.values.pasteMode ?? options.pasteMode,
-        appearance ? () => appearance!.ensurePalette() : undefined
+        appearance ? () => appearance!.ensurePalette() : undefined,
+        settings?.renderProfile
       )(...args);
     const editorOptions = {
       prepareText,
-      autoAnchors: true,
+      autoAnchors: () => settings?.renderProfile.markdownAutoAnchorsEnabled ?? true,
     };
     const first = options.files[0] ?? 'terminal-canvas.chardesk';
     const welcome = async () =>

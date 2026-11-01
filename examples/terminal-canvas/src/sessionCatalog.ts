@@ -12,6 +12,15 @@ export type LocalSession = {
   createdAt: number;
   updatedAt: number;
   lastOpenedAt: number;
+  removing?: true;
+};
+export type SessionDeletion = {
+  sessionId: string;
+  path: string;
+  stagedPath: string;
+  revision: number;
+  proof: string | null;
+  state: 'prepared' | 'removed';
 };
 type SessionRow = Omit<LocalSession, 'archived'> & { archived: number; seed: string | null };
 const nameOf = (name: string) => {
@@ -42,7 +51,7 @@ export class LocalSessionCatalog {
         .transaction(() => {
           const version = (this.#db.query('PRAGMA user_version').get() as { user_version: number })
             .user_version;
-          if (version > 1)
+          if (version > 3)
             throw new Error(
               'This session catalog needs a newer CharDesk version; it was preserved.'
             );
@@ -68,6 +77,26 @@ export class LocalSessionCatalog {
           // Validate the required shape without rewriting a future or damaged database.
           this.#db.query('SELECT id, seed, revision FROM sessions LIMIT 0').all();
           this.#db.query('SELECT path, owner, pid FROM write_owners LIMIT 0').all();
+          if (version < 2)
+            this.#db.exec(`
+            CREATE TABLE session_deletions (
+              sessionId TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE, stagedPath TEXT NOT NULL UNIQUE,
+              revision INTEGER NOT NULL, proof TEXT, state TEXT NOT NULL CHECK(state IN ('prepared','removed'))
+            );
+            PRAGMA user_version = 2;
+          `);
+          this.#db
+            .query(
+              'SELECT sessionId,path,stagedPath,revision,proof,state FROM session_deletions LIMIT 0'
+            )
+            .all();
+          if (version < 3)
+            this.#db.exec(`
+            CREATE TABLE removed_sessions (id TEXT PRIMARY KEY, path TEXT NOT NULL, removedAt INTEGER NOT NULL);
+            CREATE INDEX removed_session_paths ON removed_sessions(path);
+            PRAGMA user_version = 3;
+          `);
+          this.#db.query('SELECT id,path,removedAt FROM removed_sessions LIMIT 0').all();
         })
         .immediate();
     } catch (error) {
@@ -88,6 +117,7 @@ export class LocalSessionCatalog {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       lastOpenedAt: row.lastOpenedAt,
+      ...(this.deletion(row.id) ? { removing: true as const } : {}),
     };
   }
   get(id: string) {
@@ -147,7 +177,7 @@ export class LocalSessionCatalog {
   rename(id: string, name: string, revision: number) {
     const result = this.#db
       .query(
-        'UPDATE sessions SET name = ?, revision = revision + 1, updatedAt = ? WHERE id = ? AND revision = ?'
+        'UPDATE sessions SET name = ?, revision = revision + 1, updatedAt = ? WHERE id = ? AND revision = ? AND NOT EXISTS (SELECT 1 FROM session_deletions WHERE sessionId = sessions.id)'
       )
       .run(nameOf(name), Date.now(), id, revision);
     if (!result.changes) throw new Error('Session changed. Refresh the list and try again.');
@@ -156,7 +186,7 @@ export class LocalSessionCatalog {
   archive(id: string, archived: boolean, revision: number) {
     const result = this.#db
       .query(
-        'UPDATE sessions SET archived = ?, revision = revision + 1, updatedAt = ? WHERE id = ? AND revision = ?'
+        'UPDATE sessions SET archived = ?, revision = revision + 1, updatedAt = ? WHERE id = ? AND revision = ? AND NOT EXISTS (SELECT 1 FROM session_deletions WHERE sessionId = sessions.id)'
       )
       .run(Number(archived), Date.now(), id, revision);
     if (!result.changes) throw new Error('Session changed. Refresh the list and try again.');
@@ -164,6 +194,88 @@ export class LocalSessionCatalog {
   }
   touch(id: string) {
     this.#db.query('UPDATE sessions SET lastOpenedAt = ? WHERE id = ?').run(Date.now(), id);
+  }
+  removeRecord(id: string, revision: number) {
+    this.#db
+      .transaction(() => {
+        const record = this.get(id);
+        const result = this.#db
+          .query(
+            'DELETE FROM sessions WHERE id = ? AND revision = ? AND NOT EXISTS (SELECT 1 FROM session_deletions WHERE sessionId = sessions.id)'
+          )
+          .run(id, revision);
+        if (!result.changes || !record)
+          throw new Error('Session changed or removal is pending. Refresh the list and try again.');
+        this.#recordRemoval(id, record.path);
+      })
+      .immediate();
+  }
+  #recordRemoval(id: string, path: string) {
+    this.#db
+      .query('INSERT OR IGNORE INTO removed_sessions (id,path,removedAt) VALUES (?,?,?)')
+      .run(id, path, Date.now());
+  }
+  wasRemoved(id: string) {
+    return Boolean(this.#db.query('SELECT 1 FROM removed_sessions WHERE id = ?').get(id));
+  }
+  wasPathRemoved(path: string) {
+    return Boolean(
+      this.#db.query('SELECT 1 FROM removed_sessions WHERE path = ? LIMIT 1').get(path)
+    );
+  }
+  deletion(id: string) {
+    return this.#db
+      .query<SessionDeletion, [string]>('SELECT * FROM session_deletions WHERE sessionId = ?')
+      .get(id);
+  }
+  deletions() {
+    return this.#db.query<SessionDeletion, []>('SELECT * FROM session_deletions').all();
+  }
+  prepareDeletion(entry: Omit<SessionDeletion, 'state'>) {
+    return this.#db
+      .transaction(() => {
+        const record = this.get(entry.sessionId);
+        if (
+          !record ||
+          record.kind !== 'managed' ||
+          record.path !== entry.path ||
+          record.status !== 'ready' ||
+          record.revision !== entry.revision ||
+          record.removing
+        )
+          throw new Error('Session changed. Refresh and review removal again.');
+        this.#db
+          .query(
+            "INSERT INTO session_deletions (sessionId,path,stagedPath,revision,proof,state) VALUES (?,?,?,?,?,'prepared')"
+          )
+          .run(entry.sessionId, entry.path, entry.stagedPath, entry.revision, entry.proof);
+        return this.deletion(entry.sessionId)!;
+      })
+      .immediate();
+  }
+  commitDeletion(id: string) {
+    return this.#db
+      .transaction(() => {
+        const entry = this.deletion(id);
+        if (!entry || entry.state !== 'prepared') throw new Error('Removal is no longer pending.');
+        const result = this.#db
+          .query(
+            "DELETE FROM sessions WHERE id = ? AND revision = ? AND kind = 'managed' AND path = ?"
+          )
+          .run(id, entry.revision, entry.path);
+        if (!result.changes) throw new Error('Session changed during removal; file was preserved.');
+        this.#recordRemoval(id, entry.path);
+        this.#db
+          .query("UPDATE session_deletions SET state = 'removed' WHERE sessionId = ?")
+          .run(id);
+        return this.deletion(id)!;
+      })
+      .immediate();
+  }
+  clearDeletion(id: string, state: SessionDeletion['state']) {
+    this.#db
+      .query('DELETE FROM session_deletions WHERE sessionId = ? AND state = ?')
+      .run(id, state);
   }
   /** No expiry: a paused living writer never loses ownership to another process. */
   claim(path: string) {

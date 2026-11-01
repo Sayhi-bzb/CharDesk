@@ -1,3 +1,10 @@
+import {
+  captureCanvasExport,
+  prepareCanvasTextExport,
+  type CanvasExportScope,
+} from '@chardesk/editor-core/exportPlan';
+import { captureExportSnapshot, renderSelectionSnapshot } from './snapshot.ts';
+import { deliverExportFile } from './exportFile.ts';
 import { prepareCanvasRowsWrite } from '@chardesk/editor-core/writeText';
 import { CharacterPicker } from './characters.ts';
 import { CANVAS_TEMPLATES } from '@chardesk/canvas-templates';
@@ -12,6 +19,9 @@ import type { TerminalAction } from './shortcuts.ts';
 import { messages } from './copy.ts';
 import type { LocalSessions } from './sessions.ts';
 import type { LocalSession } from './sessionCatalog.ts';
+import { textAttributeNames, type SelectedColor } from '@chardesk/editor-core/selection/style';
+import { navigationActions } from './navigation.ts';
+import { watchWorkspaceSources } from './sourceMonitor.ts';
 
 /** Transient Host panels. All document mutations still run through shared commands. */
 export class WorkspaceControls {
@@ -32,6 +42,7 @@ export class WorkspaceControls {
   #version: string;
   #detach: () => void;
   #detachAppearance: () => void;
+  #detachSources: () => void;
   #refreshPlacement: (() => void) | null = null;
   #enter = () => {};
   #special: (key: KeyEvent) => boolean = () => false;
@@ -80,6 +91,12 @@ export class WorkspaceControls {
             'templates',
             'template-place',
             'characters',
+            'inspector',
+            'selection-color',
+            'navigation',
+            'export',
+            'export-path',
+            'file-source',
           ].includes(this.#kind)
         )
           this.dismiss();
@@ -95,10 +112,15 @@ export class WorkspaceControls {
       this.#refreshPlacement?.();
       surface.requestRender();
     });
+    this.#detachSources = watchWorkspaceSources(workspace, surface.renderer, () => this.refresh());
     this.refresh();
   }
 
   refresh() {
+    if (this.#kind === 'inspector') this.#refreshInspector();
+    this.surface.sourceStatus = this.#sourceNotice();
+    if (this.#kind === 'file-source' && this.surface.panel)
+      this.surface.panel.status = this.#sourceDescription();
     this.surface.hasDocument = this.workspace.files.length > 0;
     this.surface.filename = this.workspace.files.length ? this.workspace.active.title : '';
     this.surface.documentLabels = this.workspace.files.map((file) => ({
@@ -234,11 +256,11 @@ export class WorkspaceControls {
         this.documents();
       },
       hint: 'Tab list · ↑↓ select · Enter open · N new · O file · Esc close',
-      status: `R rename · D copy · A ${this.#includeArchived ? 'restore' : 'archive'} · Del close · F5 refresh`,
+      status: `R rename · D copy · A ${this.#includeArchived ? 'restore' : 'archive'} · S source · X remove · Del close · F5 refresh`,
       items: [
         ...records.map(
           (record) =>
-            `${record.path === activePath ? '▸ ' : ''}${record.name}${record.status === 'creating' ? ' (incomplete)' : ''}`
+            `${record.path === activePath ? '▸ ' : ''}${record.name}${record.removing ? ' (removal pending)' : record.status === 'creating' ? ' (incomplete)' : ''}`
         ),
         '+ New canvas',
         '+ Open file',
@@ -265,6 +287,12 @@ export class WorkspaceControls {
       else if (key.name === 'o') this.filePrompt('open');
       else if (key.name === 'f5') this.documents(record?.id);
       else if (key.name === 'r' && record) this.#renameSession(record);
+      else if (key.name === 'x' && record) this.#sessionRemoval(record);
+      else if (key.name === 's' && record)
+        this.#async(panel, async () => {
+          await this.sessions!.open(record.id);
+          this.sources();
+        });
       else if (key.name === 'd' && record)
         this.#async(panel, () => this.sessions!.duplicate(record.id));
       else if (key.name === 'a' && record)
@@ -277,6 +305,56 @@ export class WorkspaceControls {
         if (file) this.closeDocument(file);
       } else return false;
       return true;
+    });
+  }
+  #sessionRemoval(record: LocalSession) {
+    const loading: TerminalPanel = {
+      dialog: true,
+      title: 'Remove session',
+      status: record.path,
+      hint: 'Esc cancel',
+      items: [],
+      selected: 0,
+      onClose: () => this.dismiss(),
+    };
+    this.#show('session-removal', loading, () => {});
+    this.#async(loading, async () => {
+      const plan = record.removing
+        ? null
+        : await this.sessions!.planRemoval(record.id, record.revision);
+      if (!this.#alive || this.surface.panel !== loading) return;
+      const panel: TerminalPanel = {
+        dialog: true,
+        title: `Remove ${record.name}`,
+        status: record.path,
+        hint: '↑↓ select · Enter confirm · Esc cancel',
+        selected: 0,
+        items: record.removing
+          ? ['Cancel', 'Recover interrupted removal']
+          : [
+              'Cancel',
+              'Remove session record — keep file',
+              ...(plan?.file ? ['Delete managed file and session record'] : []),
+            ],
+        error: plan?.fileUnavailable,
+        onClose: () => this.dismiss(),
+      };
+      const pick = () => {
+        if (panel.selected === 0) {
+          this.documents(record.id);
+          return;
+        }
+        const action = panel.selected;
+        panel.hint = 'Removing… · Esc dismiss';
+        this.#async(panel, async () => {
+          if (record.removing) await this.sessions!.repairRemoval(record.id);
+          else if (action === 1) await this.sessions!.removeRecord(record.id, record.revision);
+          else await this.sessions!.deleteManaged(plan!);
+          if (this.#alive && this.surface.panel === panel) this.documents();
+        });
+      };
+      panel.onPick = pick;
+      this.#show('session-removal', panel, pick);
     });
   }
   documents(selectedId?: string) {
@@ -693,6 +771,261 @@ export class WorkspaceControls {
       }
     });
   }
+  export() {
+    const scopes: CanvasExportScope[] = [
+      'canvas',
+      ...(this.surface.model.selection ? ['selection' as const] : []),
+    ];
+    const formats = ['txt', 'ansi', 'chardesk', 'png'] as const;
+    const choices = scopes.flatMap((scope) => formats.map((format) => ({ scope, format })));
+    const panel: TerminalPanel = {
+      dialog: true,
+      title: 'Export',
+      hint: '↑↓ select · Enter choose path · Esc close',
+      items: choices.map(
+        ({ scope, format }) =>
+          `${scope === 'canvas' ? 'Canvas' : 'Selection'}    ${format.toUpperCase()}`
+      ),
+      selected: 0,
+      onClose: () => this.dismiss(),
+    };
+    const pick = () => {
+      const choice = choices[panel.selected];
+      if (!choice) return;
+      try {
+        const model = this.surface.model;
+        const snapshot = captureCanvasExport(
+          model.plane,
+          choice.scope === 'selection' ? model.selectionRanges : undefined
+        );
+        const document = structuredClone(
+          model.documents.getDocumentDraft(model.documents.getActiveAddress().documentId)
+        );
+        const title = this.workspace.active.title;
+        const raster = choice.format === 'png' ? captureExportSnapshot(snapshot) : null;
+        const text =
+          choice.format !== 'png'
+            ? prepareCanvasTextExport({
+                snapshot,
+                format: choice.format,
+                document: document ?? undefined,
+                title,
+              })
+            : null;
+        const target: TerminalPanel = {
+          dialog: true,
+          title: `Export ${choice.scope} as ${choice.format.toUpperCase()}`,
+          input: '',
+          hint: 'New file path · Enter export · Esc cancel',
+          items: [],
+          selected: 0,
+          onClose: () => this.dismiss(),
+        };
+        this.#show('export-path', target, () => {
+          if (!target.input?.trim()) return;
+          const path = target.input.trim();
+          const current = () => this.#alive && this.surface.panel === target;
+          this.#async(target, async () => {
+            let content: string | Uint8Array = text ?? '';
+            if (raster) {
+              const appearance = await this.surface.appearance.ensurePalette();
+              if (!this.#alive || this.surface.panel !== target) return;
+              if (!appearance.palette || appearance.status !== 'ready')
+                throw new Error('Terminal RGB colors are unavailable. Refresh colors in Settings.');
+              content = renderSelectionSnapshot(
+                raster,
+                { color: appearance.palette.foreground, background: appearance.palette.background },
+                'png'
+              ).png!;
+            }
+            if (!this.#alive || this.surface.panel !== target) return;
+            await deliverExportFile(path, content, current);
+            if (current()) this.surface.status = 'Exported';
+          });
+        });
+      } catch (error) {
+        panel.error = error instanceof Error ? error.message : String(error);
+        this.surface.requestRender();
+      }
+    };
+    panel.onPick = pick;
+    this.#show('export', panel, pick);
+  }
+  #sourceNotice() {
+    if (!this.workspace.files.length) return '';
+    const source = this.workspace.sourceState();
+    const label =
+      source.state === 'conflict'
+        ? 'External update and local edits; both kept'
+        : source.state === 'changed'
+          ? 'File changed on disk'
+          : source.state === 'missing'
+            ? 'Source file is missing; canvas kept'
+            : source.state === 'unreadable'
+              ? 'Source file cannot be read; canvas kept'
+              : '';
+    return label ? `${label} · ${this.surface.shortcuts.sources.label} Source` : '';
+  }
+  #sourceDescription() {
+    const state = this.workspace.sourceState();
+    return `${this.workspace.active.path} · ${state.state}${state.error ? ` · ${state.error}` : ''}`;
+  }
+  sources() {
+    if (!this.workspace.files.length) return;
+    const file = this.workspace.active;
+    const panel: TerminalPanel = {
+      dialog: true,
+      title: 'Source',
+      status: this.#sourceDescription(),
+      hint: '↑↓ select · Enter run · Esc close',
+      items: ['Check for external changes', 'Reload native document from disk'],
+      selected: 0,
+      onClose: () => this.dismiss(),
+    };
+    if (this.sessions && this.surface.model.isDirtyAt(file.address!))
+      panel.items.push('Preserve local copy and reload');
+    if (this.workspace.errorFor(file)) panel.items.push('Retry saving local changes');
+    const retryIndex = panel.items.indexOf('Retry saving local changes');
+    const pick = () => {
+      const selected = panel.selected;
+      this.#async(panel, async () => {
+        if (selected === 0) await file.source.inspect();
+        else if (selected === retryIndex) await this.workspace.saveFile(file);
+        else if (selected === 2 && this.sessions) {
+          const copy = await this.sessions.preserveLocalAndReload(file);
+          this.surface.status = `Local copy saved: ${copy.name}`;
+        } else await this.workspace.reloadFile(file);
+        if (!this.#alive || this.surface.panel !== panel) return;
+        this.sources();
+      });
+    };
+    panel.onPick = pick;
+    this.#show('file-source', panel, pick);
+  }
+  #refreshInspector() {
+    const panel = this.surface.panel;
+    if (!panel || this.#kind !== 'inspector') return;
+    const model = this.surface.model,
+      style = model.selectionStyle;
+    const describe = (color: SelectedColor) => {
+      if (color.kind === 'color') return color.value;
+      return color.kind === 'mixed' ? 'Mixed' : 'None';
+    };
+    panel.items = [
+      ...textAttributeNames.map(
+        (name) =>
+          `${name[0]!.toUpperCase()}${name.slice(1)}    ${style.attributes?.[name] ?? 'Unavailable'}`
+      ),
+      `Foreground    ${describe(style.foreground)}`,
+      `Background    ${describe(style.background)}`,
+      'Clear background',
+    ];
+    if (style.limited) panel.status = 'Selection is too large to edit its styles.';
+    else if (!model.selection) panel.status = 'Select a range to edit its styles.';
+    else if (!style.count) panel.status = 'No text in range; background can fill empty cells.';
+    else panel.status = `${style.count} selected text cells`;
+  }
+  inspector() {
+    const panel: TerminalPanel = {
+      dialog: true,
+      title: 'Inspector',
+      hint: '↑↓ select · Enter change · Esc close',
+      items: [],
+      selected: 0,
+      onClose: () => this.dismiss(),
+    };
+    const pick = () => {
+      panel.error = undefined;
+      const model = this.surface.model,
+        style = model.selectionStyle;
+      const attribute = textAttributeNames[panel.selected];
+      try {
+        if (!model.selection || style.limited) return;
+        if (attribute) {
+          if (style.attributes)
+            model.commands.style({
+              kind: 'attributes',
+              attributes: { [attribute]: style.attributes[attribute] !== 'on' },
+            });
+        } else if (panel.selected < textAttributeNames.length + 2)
+          this.#selectionColor(
+            panel.selected === textAttributeNames.length ? 'foreground' : 'background'
+          );
+        else model.commands.style({ kind: 'background', color: null });
+      } catch (error) {
+        panel.error = error instanceof Error ? error.message : String(error);
+      }
+      this.refresh();
+    };
+    panel.onPick = pick;
+    this.#show('inspector', panel, pick);
+    this.refresh();
+  }
+  navigation() {
+    const actions = navigationActions(this.surface.model);
+    const panel: TerminalPanel = {
+      dialog: true,
+      title: 'Selection and navigation',
+      hint: '↑↓ select · Enter run · Esc close',
+      status: 'Rows and columns span content, current cell and selection bounds.',
+      items: actions.map((entry) => `${entry.label}    ${this.surface.shortcuts[entry.id].label}`),
+      selected: 0,
+      onClose: () => this.dismiss(),
+    };
+    const pick = () => {
+      const action = actions[panel.selected];
+      if (!action) return;
+      this.dismiss();
+      try {
+        this.surface.model.editor.commands.execute(
+          `terminal.${action.id}`,
+          undefined,
+          'navigation-dialog'
+        );
+      } catch (error) {
+        this.surface.status = error instanceof Error ? error.message : String(error);
+      }
+      this.surface.requestRender();
+    };
+    panel.onPick = pick;
+    this.#show('navigation', panel, pick);
+  }
+  #selectionColor(kind: 'foreground' | 'background') {
+    const style = this.surface.model.selectionStyle[kind];
+    const panel: TerminalPanel = {
+      dialog: true,
+      title: kind === 'foreground' ? 'Selection foreground' : 'Selection background',
+      input: style.kind === 'color' ? style.value : '',
+      hint: '#RRGGBB · Empty resets color · Enter apply · Esc close',
+      items: [],
+      selected: 0,
+      onClose: () => this.dismiss(),
+    };
+    this.#show('selection-color', panel, () => {
+      if (this.#target() !== target) {
+        panel.error = 'Selection changed. Reopen Inspector to edit the current range.';
+        this.surface.requestRender();
+        return;
+      }
+      const input = panel.input!.trim();
+      if (input && !/^#[\da-f]{6}$/i.test(input)) {
+        panel.error = 'Use #RRGGBB or leave empty to reset.';
+        this.surface.requestRender();
+        return;
+      }
+      try {
+        if (kind === 'foreground')
+          this.surface.model.commands.style({ kind, color: input || '#000000' });
+        else this.surface.model.commands.style({ kind, color: input || null });
+        this.inspector();
+      } catch (error) {
+        panel.error = error instanceof Error ? error.message : String(error);
+        this.surface.requestRender();
+      }
+    });
+    const target = this.#target();
+    this.#selectedAll = true;
+  }
   action(id: TerminalAction) {
     if (id === 'new' && this.sessions) this.newSession();
     else if (id === 'save-copy' && this.sessions) {
@@ -712,6 +1045,10 @@ export class WorkspaceControls {
         this.#async(panel, () => this.sessions!.duplicate(record.id));
       }
     } else if (id === 'open' || id === 'new' || id === 'save-copy') this.filePrompt(id);
+    else if (id === 'export') this.export();
+    else if (id === 'sources') this.sources();
+    else if (id === 'inspector') this.inspector();
+    else if (id === 'navigation') this.navigation();
     else if (id === 'tools') this.tools();
     else if (id === 'templates') this.templates();
     else if (id === 'characters') this.#characters.open();
@@ -897,5 +1234,6 @@ export class WorkspaceControls {
     this.dismiss();
     this.#detach();
     this.#detachAppearance();
+    this.#detachSources();
   }
 }

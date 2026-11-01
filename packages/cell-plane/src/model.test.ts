@@ -46,3 +46,22 @@ test('headless sparse projection and styled native export preserve Unicode', () 
     plane.dispose();
   }
 });
+
+test('large-area visit uses the sparse chunk directory and never warms empty chunks', () => {
+  const operation = cellPlanePatchToOperation('sparse-visit', {
+    rows: [
+      { y: -1000000000, erase: [], spans: [{ x: -1000000000, text: '界', color: '#000000' }] },
+      { y: 1000000000, erase: [], spans: [{ x: 1000000000, text: '🦀', color: '#000000' }] },
+    ],
+  })!;
+  const plane = new CellPlaneIndex([operation]);
+  try {
+    const cells: string[] = [];
+    plane.visit(plane.getContentBounds()!, (x, y, cell) => cells.push(`${x},${y}:${cell.char}`));
+    expect(cells.sort()).toEqual(['-1000000000,-1000000000:界', '1000000000,1000000000:🦀']);
+    expect(plane.getStats().cachedChunks).toBeLessThanOrEqual(4);
+    expect(plane.getStats().cachedCells).toBeLessThanOrEqual(4);
+  } finally {
+    plane.dispose();
+  }
+});

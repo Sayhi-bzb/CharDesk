@@ -1,13 +1,29 @@
 import { randomUUID } from 'node:crypto';
-import { join, relative, isAbsolute, sep } from 'node:path';
+import { join, relative, isAbsolute, sep, dirname } from 'node:path';
+import { realpath } from 'node:fs/promises';
 import { parseCanvasDocument, serializeCanvasDocument } from '@chardesk/editor-core/documentText';
 import type { FreeformEditorSessionOptions } from '@chardesk/editor-core/runtime';
 import { TerminalCanvas } from './model.ts';
 import { CanvasFile, readOptional, resolveCanvasFilePath } from './document.ts';
 import { initializeAppPaths, type AppPaths } from './appPaths.ts';
-import { LocalSessionCatalog, type LocalSession } from './sessionCatalog.ts';
+import { LocalSessionCatalog, type LocalSession, type SessionDeletion } from './sessionCatalog.ts';
 import type { TerminalWorkspace } from './workspace.ts';
 import { atomicWrite } from './storage.ts';
+import {
+  inspectManagedFile,
+  sameManagedFile,
+  validateDeletionPaths,
+  stageManagedDeletion,
+  restoreManagedDeletion,
+  finishManagedDeletion,
+  type ManagedFileProof,
+} from './managedDeletion.ts';
+
+export type SessionRemovalPlan = Readonly<{
+  record: LocalSession;
+  file: { proof: ManagedFileProof | null } | null;
+  fileUnavailable?: string;
+}>;
 
 /** Long-lived session identity and file ownership, separate from the open editor workspace. */
 export class LocalSessions {
@@ -98,6 +114,13 @@ export class LocalSessions {
   }
   async repairPending() {
     const errors: string[] = [];
+    for (const entry of this.catalog.deletions()) {
+      try {
+        await this.repairRemoval(entry.sessionId);
+      } catch (error) {
+        errors.push(`Removal recovery: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
     for (const row of this.catalog.pending()) {
       if (!row.seed) {
         errors.push(`${row.name}: creation snapshot unavailable`);
@@ -135,6 +158,8 @@ export class LocalSessions {
     }
   }
   async #open(record: LocalSession, intent: number) {
+    if (record.removing)
+      throw new Error('Removal recovery is pending. Use X in Sessions to retry recovery.');
     if (record.status !== 'ready')
       throw new Error('Session creation is incomplete. Restart to retry recovery.');
     this.#checkIntent(intent);
@@ -215,11 +240,181 @@ export class LocalSessions {
     }
   }
   async close(file: CanvasFile) {
+    return this.#close(file);
+  }
+  async #close(
+    file: CanvasFile,
+    beforeClose: () => Promise<void> = async () => {},
+    release = true
+  ) {
     await this.workspace.settleSaves();
     if (this.workspace.needsSave(file)) await this.workspace.saveFile(file);
+    await beforeClose();
     if (!this.workspace.close(this.workspace.files.indexOf(file)))
       throw new Error('Canvas changed while closing. Try again.');
-    this.#release(file.path);
+    if (release) this.#release(file.path);
+  }
+  #record(id: string, revision: number, allowPending = false) {
+    const record = this.catalog.get(id);
+    if (!record || record.revision !== revision || (!allowPending && record.removing))
+      throw new Error('Session changed or removal is pending. Refresh and try again.');
+    return record;
+  }
+  async #assertManaged(record: LocalSession) {
+    if (
+      record.kind !== 'managed' ||
+      record.status !== 'ready' ||
+      record.path !== join(this.paths.canvases, `${record.id}.chardesk`) ||
+      (await realpath(dirname(record.path))) !== this.paths.canvases
+    )
+      throw new Error(
+        'Only owned managed canvas files can be deleted. External files are preserved.'
+      );
+  }
+  async planRemoval(id: string, revision: number): Promise<SessionRemovalPlan> {
+    const record = this.#record(id, revision);
+    if (record.kind !== 'managed') return { record, file: null };
+    try {
+      await this.#assertManaged(record);
+      const opened = this.workspace.files.find((file) => file.path === record.path);
+      if (opened && this.workspace.needsSave(opened)) await this.workspace.saveFile(opened);
+      const proof = await inspectManagedFile(record.path);
+      this.#record(id, revision);
+      return { record, file: { proof } };
+    } catch (error) {
+      return {
+        record,
+        file: null,
+        fileUnavailable: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+  async removeRecord(id: string, revision: number) {
+    const intent = ++this.#intent,
+      record = this.#record(id, revision),
+      owner = this.#claim(record.path);
+    const check = async () => {
+      this.#checkIntent(intent);
+      this.#record(id, revision);
+      owner.verify();
+    };
+    try {
+      const opened = this.workspace.files.find((file) => file.path === record.path);
+      if (opened) await this.#close(opened, check, false);
+      await check();
+      this.#checkIntent(intent);
+      this.catalog.removeRecord(id, revision);
+    } finally {
+      if (!this.workspace.files.some((file) => file.path === record.path))
+        this.#release(record.path);
+    }
+  }
+  async deleteManaged(plan: SessionRemovalPlan) {
+    const intent = ++this.#intent,
+      record = this.#record(plan.record.id, plan.record.revision);
+    if (!plan.file || plan.record.path !== record.path)
+      throw new Error('Review a managed file deletion first.');
+    await this.#assertManaged(record);
+    const owner = this.#claim(record.path);
+    let entry: SessionDeletion | null = null;
+    const check = async () => {
+      this.#checkIntent(intent);
+      owner.verify();
+      this.#record(record.id, record.revision);
+      await this.#assertManaged(record);
+      if (!sameManagedFile(await inspectManagedFile(record.path), plan.file!.proof))
+        throw new Error('Canvas changed. Refresh and review removal again.');
+      this.#checkIntent(intent);
+      owner.verify();
+    };
+    try {
+      const opened = this.workspace.files.find((file) => file.path === record.path);
+      if (opened) await this.#close(opened, check, false);
+      await check();
+      const stagedPath = join(
+        this.paths.data,
+        'deletions',
+        `${record.id}.${randomUUID()}.chardesk`
+      );
+      await validateDeletionPaths(this.paths, {
+        sessionId: record.id,
+        path: record.path,
+        stagedPath,
+      });
+      this.#checkIntent(intent);
+      entry = this.catalog.prepareDeletion({
+        sessionId: record.id,
+        path: record.path,
+        stagedPath,
+        revision: record.revision,
+        proof: plan.file.proof === null ? null : JSON.stringify(plan.file.proof),
+      });
+      await stageManagedDeletion(entry);
+      this.#checkIntent(intent);
+      owner.verify();
+      entry = this.catalog.commitDeletion(record.id);
+      await finishManagedDeletion(entry);
+      this.catalog.clearDeletion(record.id, 'removed');
+    } catch (error) {
+      if (entry?.state === 'removed')
+        throw new Error(
+          `Canvas removed; cleanup is pending at ${entry.stagedPath}: ${error instanceof Error ? error.message : String(error)}`
+        );
+      if (entry?.state === 'prepared') {
+        try {
+          await restoreManagedDeletion(entry);
+          this.catalog.clearDeletion(record.id, 'prepared');
+        } catch (recovery) {
+          throw new Error(
+            `${error instanceof Error ? error.message : String(error)} Recovery pending: ${recovery instanceof Error ? recovery.message : String(recovery)}`
+          );
+        }
+      }
+      throw error;
+    } finally {
+      if (!this.workspace.files.some((file) => file.path === record.path))
+        this.#release(record.path);
+    }
+  }
+  async repairRemoval(id: string) {
+    const entry = this.catalog.deletion(id);
+    if (!entry) return;
+    if (!['prepared', 'removed'].includes(entry.state))
+      throw new Error('Unknown removal state; files were preserved.');
+    await validateDeletionPaths(this.paths, entry);
+    const ownedBefore = this.#owned.has(entry.path);
+    if (entry.state === 'prepared') this.#claim(entry.path).verify();
+    try {
+      if (entry.state === 'prepared') await restoreManagedDeletion(entry);
+      else await finishManagedDeletion(entry);
+      this.catalog.clearDeletion(id, entry.state);
+    } finally {
+      if (!ownedBefore) this.#release(entry.path);
+    }
+  }
+  async preserveLocalAndReload(file: CanvasFile) {
+    const intent = ++this.#intent;
+    if (this.workspace.active !== file) throw new Error('Source target changed.');
+    const version = this.workspace.model.versionAt(file.address!);
+    const source = serializeCanvasDocument(
+      this.workspace.model.documents.getDocumentDraft(file.address!.documentId)!,
+      file.title
+    );
+    const copy = await this.createManaged(`${file.title} local copy`, source);
+    try {
+      this.#checkIntent(intent);
+      if (
+        this.workspace.active !== file ||
+        this.workspace.model.versionAt(file.address!) !== version
+      )
+        throw new Error('Local edits changed again. Retry after reviewing the copy.');
+      await this.workspace.reloadFile(file, version);
+      return copy;
+    } catch (error) {
+      throw new Error(
+        `Local copy "${copy.name}" was saved; reload failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
   async archive(id: string, archived: boolean, revision: number) {
     const record = this.catalog.get(id);

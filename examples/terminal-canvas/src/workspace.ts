@@ -126,20 +126,24 @@ export class TerminalWorkspace {
     for (const file of this.#files) if (this.needsSave(file)) await this.saveFile(file);
   }
   saveFile(file = this.active) {
+    return this.#fileOperation(file, () => file.save(this.model), true);
+  }
+  #fileOperation(file: CanvasFile, run: () => Promise<void>, trackSaveFailure = false) {
     const pending = (this.#saves.get(file) ?? Promise.resolve())
       .catch(() => {})
       .then(() => {
         if (!this.#files.includes(file)) throw new Error('Document is no longer open.');
-        return file.save(this.model);
+        return run();
       })
       .then(
         () => {
           this.#errors.delete(file);
-          this.model.editor.transact(() => {});
+          if (!this.#disposed) this.model.editor.transact(() => {});
         },
         (error) => {
-          this.#errors.set(file, error instanceof Error ? error.message : String(error));
-          this.model.editor.transact(() => {});
+          if (trackSaveFailure)
+            this.#errors.set(file, error instanceof Error ? error.message : String(error));
+          if (!this.#disposed) this.model.editor.transact(() => {});
           throw error;
         }
       );
@@ -150,6 +154,78 @@ export class TerminalWorkspace {
       })
       .catch(() => {});
     return pending;
+  }
+  async inspectSources(onlyChanged = false) {
+    await Promise.all(
+      this.#files.map((file) =>
+        onlyChanged ? file.source.inspectIfChanged() : file.source.inspect()
+      )
+    );
+  }
+  sourceState(file = this.active) {
+    if (!file) return { state: 'current' as const, digest: null };
+    const observation = file.source.observation;
+    return {
+      ...observation,
+      state:
+        observation.state === 'changed' && this.model.isDirtyAt(file.address!)
+          ? ('conflict' as const)
+          : observation.state,
+    };
+  }
+  /** Explicit reload is serialized with saving, validates before mutation and retains page views. */
+  reloadFile(file = this.active, preservedLocalVersion?: string) {
+    const intent = this.#openIntent;
+    return this.#fileOperation(file, async () => {
+      if (this.#disposed || this.active !== file || intent !== this.#openIntent)
+        throw new Error('Reload target changed.');
+      const version = this.model.versionAt(file.address!);
+      if (this.model.isDirtyAt(file.address!) && version !== preservedLocalVersion)
+        throw new Error('Local edits are present. Preserve a copy before reloading.');
+      const snapshot = await file.source.read();
+      if (snapshot.source === null)
+        throw new Error('Source file is missing. Your canvas was preserved.');
+      if (
+        snapshot.digest === file.baselineDigest &&
+        snapshot.source === file.baselineSource &&
+        !this.model.isDirtyAt(file.address!)
+      )
+        return;
+      const { document } = parseCanvasDocument(snapshot.source, file.address!.documentId);
+      const latest = await file.source.read();
+      if (snapshot.digest !== latest.digest || snapshot.source !== latest.source)
+        throw new Error('Source changed again. Check changes and retry.');
+      if (
+        this.#disposed ||
+        this.active !== file ||
+        intent !== this.#openIntent ||
+        version !== this.model.versionAt(file.address!) ||
+        (this.model.isDirtyAt(file.address!) && version !== preservedLocalVersion)
+      )
+        throw new Error('Reload target changed. Your edits were preserved.');
+      file.writeGuard?.();
+      const oldAddress = this.model.documents.getActiveAddress();
+      const views = new Map(
+        this.model.documents
+          .getPageDescriptors(document.id)
+          .map((page) => [page.id, this.model.viewAt({ documentId: document.id, pageId: page.id })])
+      );
+      if (document.pages.some((page) => page.id === oldAddress.pageId))
+        document.activePageId = oldAddress.pageId;
+      else views.set(document.activePageId, views.get(oldAddress.pageId)!);
+      this.model.editor.transact(() => {
+        this.model.cancelPendingPaste();
+        this.model.documents.resetDocument(document.id, { ...document, grid: [] });
+        this.model.switchDocument(document.id, document.activePageId);
+        file.address = { documentId: document.id, pageId: document.activePageId };
+        for (const page of document.pages) {
+          const view = views.get(page.id);
+          if (view) this.model.restoreViewAt({ documentId: document.id, pageId: page.id }, view);
+        }
+        file.source.accept(snapshot.source!);
+        this.model.markSaved();
+      });
+    });
   }
   async settleSaves() {
     await Promise.allSettled([...this.#saves.values()]);

@@ -586,6 +586,114 @@ test('dock focus navigates template placement actions before Enter commits one u
   }
 });
 
+test('navigation dialog exposes rebindable row and column commands with full wide-cell coverage and no content history', async () => {
+  const f = await fixture();
+  try {
+    const model = f.workspace.model,
+      original = model.plane.materialize(),
+      version = model.version;
+    model.commands.pointAt({ x: 6, y: 0 });
+    model.editor.keymap.setUserBindings('terminal.select-row', [['F12']]);
+    f.setup.mockInput.pressKey('F8', { shift: true });
+    expect(f.surface.panel?.dialog).toBe(true);
+    expect(f.surface.panel?.title).toBe('Selection and navigation');
+    expect(f.surface.panel?.items[0]).toContain('F12');
+    await f.setup.renderOnce();
+    const layout = f.surface.panelLayout;
+    await f.setup.mockMouse.click(layout.x + 3, layout.itemsY);
+    expect(f.surface.panel).toBeNull();
+    expect(model.selectionBounds).toMatchObject({ x: 0, y: 0, width: 8, height: 1 });
+    f.setup.mockInput.pressKey('F8', { shift: true });
+    f.setup.mockInput.pressArrow('down');
+    f.setup.mockInput.pressEnter();
+    expect(model.selectionCoverage.spans).toEqual([
+      { y: 0, minX: 6, maxX: 7 },
+      { y: 1, minX: 5, maxX: 6 },
+    ]);
+    f.setup.mockInput.pressKey('F12');
+    expect(model.selectionBounds?.height).toBe(1);
+    expect(model.plane.materialize()).toEqual(original);
+    expect(model.version).toBe(version);
+    expect(model.canUndo).toBe(false);
+    expect(f.surface.tool).toBe('hand');
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('a billion-row column selection renders and hit-tests by viewport; oversized mutations report a limit without losing work', async () => {
+  const f = await fixture();
+  try {
+    const model = f.workspace.model;
+    model.commands.insertRows(
+      [{ y: 0, spans: [{ x: 0, text: '🦀', width: 2, color: '#000000' }] }],
+      {
+        x: 0,
+        y: 1000000000,
+      }
+    );
+    model.commands.pointAt({ x: 0, y: 0 });
+    f.surface.setTool('edit');
+    model.viewport = { ...model.viewport, x: 0, y: 0 };
+    const original = model.plane.materialize();
+    f.setup.mockInput.pressKey(' ', { ctrl: true });
+    expect(model.selection?.focus.y).toBe(1000000000);
+    await f.setup.renderOnce();
+    expect(model.selectionPresentationFor(model.viewport).coverage.spans.length).toBe(
+      model.viewport.height
+    );
+    expect(model.containsSelection({ x: 0, y: 500000000 })).toBe(true);
+    expect(model.containsSelection({ x: 1, y: 1000000000 })).toBe(true);
+    f.setup.mockInput.pressKey('DELETE');
+    expect(f.surface.status).toContain('too large');
+    expect(model.plane.materialize()).toEqual(original);
+    await f.setup.mockInput.typeText('X', 0);
+    expect(f.surface.status).toContain('too large');
+    expect(model.plane.materialize()).toEqual(original);
+    await f.setup.mockMouse.click(0, 0);
+    expect(model.selection).toBeNull();
+    expect(model.plane.materialize()).toEqual(original);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test.each(['darwin', 'win32'] as const)(
+  '%s navigation keys extend to edges, jump content and page while preserving Option pan and Home origin',
+  async (platform) => {
+    const f = await fixture(platform);
+    try {
+      const model = f.workspace.model,
+        original = model.plane.materialize();
+      model.commands.pointAt({ x: 0, y: 0 });
+      f.setup.mockInput.pressArrow(
+        'right',
+        platform === 'darwin' ? { super: true } : { ctrl: true, meta: true }
+      );
+      expect(model.cursor).toEqual({ x: 4, y: 0 });
+      model.commands.pointAt({ x: 0, y: 0 });
+      f.setup.mockInput.pressKey('\x1b[F', { shift: true });
+      expect(model.selection?.focus).toEqual({ x: 6, y: 0 });
+      const view = { ...model.viewport },
+        selection = structuredClone(model.selection);
+      f.setup.mockInput.pressArrow('right', { meta: true });
+      expect(model.viewport.x).toBe(view.x + 10);
+      expect(model.selection).toEqual(selection);
+      f.setup.mockInput.pressKey('\x1b[6~');
+      expect(model.cursor.y).toBe(model.viewport.height);
+      f.setup.mockInput.pressKey('\x1b[5~', { shift: true });
+      expect(model.selection?.focus.y).toBe(0);
+      f.setup.mockInput.pressKey('\x1b[H');
+      expect(model.cursor).toEqual({ x: 0, y: 0 });
+      expect(model.selection).toBeNull();
+      expect(model.plane.materialize()).toEqual(original);
+      expect(model.canUndo).toBe(false);
+    } finally {
+      await f.dispose();
+    }
+  }
+);
+
 test('character picker searches local data, fills selections literally, selects a brush and rejects stale targets', async () => {
   const f = await fixture();
   try {

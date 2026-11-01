@@ -263,3 +263,56 @@ test('reclaimed ownership fences old guards and rejects ownership loss during an
     await f.dispose();
   }
 });
+
+test('source conflict recovery persists an independent local canvas before reloading external content', async () => {
+  const f = await fixture();
+  try {
+    const file = await f.sessions.create();
+    f.workspace.model.commands.pointAt({ x: 0, y: 0 });
+    f.workspace.model.commands.insert('🦀local');
+    await writeFile(file.path, seed('External'));
+    const local = f.workspace.model.plane.materialize();
+    const copy = await f.sessions.preserveLocalAndReload(file);
+    expect(f.workspace.active).toBe(file);
+    expect(f.workspace.model.plane.get({ x: 0, y: 0 })?.char).toBe('E');
+    expect(f.workspace.model.dirty).toBe(false);
+    const stored = parseCanvasDocument(await readFile(copy.path, 'utf8')).document;
+    expect(new Map(stored.pages[0]!.grid)).toEqual(local);
+    expect(stored.id).not.toBe(f.workspace.model.documents.getActiveDocumentId());
+    expect(f.sessions.catalog.get(copy.id)?.status).toBe('ready');
+    expect(f.sessions.list()).toHaveLength(2);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('cancelling conflict recovery after its backup keeps the local editor and external file unchanged', async () => {
+  const f = await fixture();
+  try {
+    const file = await f.sessions.create();
+    f.workspace.model.commands.pointAt({ x: 0, y: 0 });
+    f.workspace.model.commands.insert('local');
+    const external = seed('External');
+    await writeFile(file.path, external);
+    const ready = Promise.withResolvers<void>(),
+      resume = Promise.withResolvers<void>();
+    const create = f.sessions.createManaged.bind(f.sessions);
+    f.sessions.createManaged = async (...args) => {
+      const copy = await create(...args);
+      ready.resolve();
+      await resume.promise;
+      return copy;
+    };
+    const recovery = f.sessions.preserveLocalAndReload(file);
+    await ready.promise;
+    f.sessions.cancelPending();
+    resume.resolve();
+    await expect(recovery).rejects.toThrow('was saved; reload failed');
+    expect(f.workspace.model.plane.get({ x: 0, y: 0 })?.char).toBe('l');
+    expect(f.workspace.model.dirty).toBe(true);
+    expect(await readFile(file.path, 'utf8')).toBe(external);
+    expect(f.sessions.list()).toHaveLength(2);
+  } finally {
+    await f.dispose();
+  }
+});

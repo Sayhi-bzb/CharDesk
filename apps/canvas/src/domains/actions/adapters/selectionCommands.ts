@@ -1,10 +1,13 @@
-import { createClipboardCommands, ClipboardRequestScope } from "@chardesk/editor-core/clipboard/commands";
+import {
+  createClipboardCommands,
+  ClipboardRequestScope,
+} from "@chardesk/editor-core/clipboard/commands";
 import type { ClipboardCommandResult, SelectionCommandFactory } from "@/domains/canvas/public";
 import { deliverExportClipboard, prepareSelectionPngExport } from "@/domains/export/public";
 import {
   getStaticGridCursor,
   getStaticGridSelection,
-  getStaticGridSelectionAreas,
+  getGridSelectionRanges,
 } from "@/domains/selection/public";
 import { feedback } from "@/shared/services/effects";
 import { parsePlainTextCells } from "@/shared/utils/ansiText";
@@ -20,11 +23,8 @@ import {
 type SelectionCommandContext = Parameters<SelectionCommandFactory>[0];
 type SelectionCommandState = ReturnType<SelectionCommandContext["getState"]>;
 
-const resolveSelectionAreas = (state: SelectionCommandState) =>
-  getStaticGridSelectionAreas(
-    getStaticGridSelection(state.interaction.staticGrid),
-    state.contentSurface.reader
-  );
+const resolveSelectionRanges = (state: SelectionCommandState) =>
+  getGridSelectionRanges(getStaticGridSelection(state.interaction.staticGrid));
 
 const resolveTextCursor = (state: SelectionCommandState) =>
   getStaticGridCursor(state.interaction.staticGrid);
@@ -73,7 +73,7 @@ const getClipboardTargetFingerprint = (state: SelectionCommandState) =>
   JSON.stringify({
     address: state.interaction.address,
     canvasMode: state.canvasMode,
-    selections: resolveSelectionAreas(state),
+    selections: resolveSelectionRanges(state),
     staticGrid: state.interaction.staticGrid,
   });
 
@@ -107,7 +107,7 @@ export const createSelectionCommandFactory =
           return {
             target: getClipboardTargetFingerprint(state),
             reader: state.contentSurface.reader,
-            selections: resolveSelectionAreas(state),
+            selections: resolveSelectionRanges(state),
             cursor: resolveTextCursor(state),
             foreground: state.brushColor,
             selectResult: state.canvasMode === "freeform",
@@ -124,10 +124,12 @@ export const createSelectionCommandFactory =
         },
         port: {
           write: async (data, flags) => ({
-            status: await writeClipboardPayload(data, {
+            status: (await writeClipboardPayload(data, {
               event: request?.event,
               withRich: flags.rich && !flags.ansi,
-            }) ? 'written' : 'failed',
+            }))
+              ? "written"
+              : "failed",
           }),
           read: (state) =>
             readClipboardPayload(
@@ -146,7 +148,7 @@ export const createSelectionCommandFactory =
     return {
       canCopyOrCut: () => {
         const state = get();
-        return hasClipboardSource(resolveSelectionAreas(state), resolveTextCursor(state));
+        return hasClipboardSource(resolveSelectionRanges(state), resolveTextCursor(state));
       },
       copySelection: (request) => createFlow(request).copy(request),
       cutSelection: (request) => createFlow(request).cut(),
@@ -154,7 +156,7 @@ export const createSelectionCommandFactory =
 
       copySelectionAsPng: async (withGrid) => {
         const state = get();
-        const selections = resolveSelectionAreas(state);
+        const selections = resolveSelectionRanges(state);
         if (selections.length === 0) return;
         const showFailure = (code?: string) => {
           feedback.error("Snapshot Failed", {

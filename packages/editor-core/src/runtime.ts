@@ -12,9 +12,24 @@ import { createGridMapSource } from '@chardesk/cell-plane/grid-source';
 import type { GridPoint } from '@chardesk/cell-plane/types';
 import { filterRichPasteCells } from './clipboard/richCells.js';
 import { SynchronousCommitBoundary } from './commitBoundary.js';
-import { selectGridRangeAt, moveGridFocus, selectWrittenBounds } from './selection/commands.js';
+import {
+  selectGridRangeAt,
+  moveGridFocus,
+  selectWrittenBounds,
+  selectGridAxis,
+  moveGridFocusToEdge,
+  moveGridFocusToContentBoundary,
+  type GridEdge,
+  type GridCornerOrEdge,
+} from './selection/commands.js';
 import { fillGridSelection } from './selection/fill.js';
-import { resolveGridSelectionCoverage } from './selection/coverage.js';
+import {
+  planSelectionStyle,
+  readSelectionStyle,
+  readSelectionStyleChange,
+  type SelectionStyleChange,
+} from './selection/style.js';
+import { resolveGridSelectionCoverage, validateSelectionWork } from './selection/coverage.js';
 import { resolveGridSelectionPresentation } from './selection/presentation.js';
 import {
   getGridSelectionRanges,
@@ -89,7 +104,7 @@ export type FreeformEditorSessionOptions = {
   document?: CanvasDocumentDraft;
   address?: CanvasDocumentAddress;
   prepareText?: ClipboardTextPreparation;
-  autoAnchors?: boolean;
+  autoAnchors?: boolean | (() => boolean);
   extensions?: readonly EditorExtension<
     ReturnType<FreeformEditorSession['getSnapshot']>,
     CanvasEditorInputEvent
@@ -118,6 +133,7 @@ export class FreeformEditorSession {
   #rangePreview: StaticGridRangeMovePlan | null = null;
   #drawing: DrawingSettings = { ...DEFAULT_DRAWING_SETTINGS };
   #drawingError: string | null = null;
+  #styleCache?: { key: string; value: ReturnType<typeof readSelectionStyle> };
   #strokePoints: GridPoint[] = [];
   #erasePoints: CellPoint[] = [];
   #drawingPatch: CellPlanePatch | null = null;
@@ -382,7 +398,7 @@ export class FreeformEditorSession {
         canStartStaticRangeMove: (point) => {
           return (
             getStaticGridSelection(this.#interaction).additionalRanges.length === 0 &&
-            this.selectionCoverage.contains(point)
+            this.containsSelection(point)
           );
         },
         updateStaticRangeMove: (anchor, current) => {
@@ -456,6 +472,13 @@ export class FreeformEditorSession {
     return this.editor.commands.execute<unknown, Data>(id, input, 'host');
   }
   readonly commands = {
+    selectRow: () => this.#execute('selection.row'),
+    selectColumn: () => this.#execute('selection.column'),
+    navigateToEdge: (edge: GridCornerOrEdge, selecting = false) =>
+      this.#execute('selection.edge', { edge, selecting }),
+    navigateToContentBoundary: (edge: GridEdge, selecting = false) =>
+      this.#execute('selection.boundary', { edge, selecting }),
+    style: (change: SelectionStyleChange) => this.#execute('selection.style', change),
     anchors: {
       add: (name?: string) => this.#execute('anchors.add', name),
       rename: (id: string, label: string) => this.#execute('anchors.rename', { id, label }),
@@ -496,12 +519,15 @@ export class FreeformEditorSession {
       this.#clipboardPort = null;
     };
   }
-  #configurePaste(prepareText?: ClipboardTextPreparation, autoAnchors = false) {
+  #configurePaste(
+    prepareText?: ClipboardTextPreparation,
+    autoAnchors: boolean | (() => boolean) = false
+  ) {
     this.#clipboard = createClipboardCommands({
       isActive: () => !this.#disposed,
       requests: this.#clipboardRequests,
       prepareText,
-      autoAnchors: () => autoAnchors,
+      autoAnchors: () => (typeof autoAnchors === 'function' ? autoAnchors() : autoAnchors),
       onPasteDiagnostics: (diagnostics) => {
         this.#pasteDiagnostics = diagnostics;
       },
@@ -513,10 +539,7 @@ export class FreeformEditorSession {
           revision: this.plane.getRevision(),
         }),
         reader: this.plane,
-        selections: getStaticGridSelectionAreas(
-          getStaticGridSelection(this.#interaction),
-          this.plane
-        ),
+        selections: getGridSelectionRanges(getStaticGridSelection(this.#interaction)),
         cursor: this.inserting ? this.cursor : null,
         foreground: FOREGROUND,
         selectResult: true,
@@ -601,6 +624,25 @@ export class FreeformEditorSession {
     this.revealCursor();
   }
   #registerCommands() {
+    const selection = () => getStaticGridSelection(this.#interaction);
+    const navigate = (next: ReturnType<typeof selection>, extend = false) => {
+      this.#interaction = { mode: 'navigate', selection: next };
+      this.#lastTyped = null;
+      this.revealCursor(extend ? getGridSelectionExtent(next) : next.activeCell);
+    };
+    const edgeInput = (input: unknown) => {
+      if (
+        !input ||
+        typeof input !== 'object' ||
+        !('edge' in input) ||
+        !['left', 'right', 'top', 'bottom', 'top-left', 'bottom-right'].includes(String(input.edge))
+      )
+        throw new TypeError('Expected a grid boundary direction.');
+      return {
+        edge: input.edge as GridCornerOrEdge,
+        selecting: 'selecting' in input && input.selecting === true,
+      };
+    };
     const point = (input: unknown): input is { x: number; y: number; selecting?: boolean } =>
       !!input &&
       typeof input === 'object' &&
@@ -609,6 +651,21 @@ export class FreeformEditorSession {
       'y' in input &&
       typeof input.y === 'number';
     const sync: Record<string, (input: unknown) => void> = {
+      'selection.row': () => navigate(selectGridAxis(this.plane, selection(), 'row')),
+      'selection.column': () => navigate(selectGridAxis(this.plane, selection(), 'column')),
+      'selection.edge': (input) => {
+        const { edge, selecting } = edgeInput(input);
+        navigate(moveGridFocusToEdge(this.plane, selection(), edge, selecting), selecting);
+      },
+      'selection.boundary': (input) => {
+        const { edge, selecting } = edgeInput(input);
+        if (edge === 'top-left' || edge === 'bottom-right')
+          throw new TypeError('Expected a content boundary direction.');
+        navigate(
+          moveGridFocusToContentBoundary(this.plane, selection(), edge, selecting),
+          selecting
+        );
+      },
       'anchors.add': (input) => {
         if (input === undefined || typeof input === 'string')
           this.documents.addAnchorAt(this.documents.getActiveAddress(), this.cursor, input);
@@ -663,6 +720,12 @@ export class FreeformEditorSession {
         this.focusContent();
       },
       'selection.delete': () => this.erase(),
+      'selection.style': (input) => {
+        const change = readSelectionStyleChange(input);
+        this.apply(
+          planSelectionStyle(this.plane, this.selectionRanges, change, this.#drawing.foreground)
+        );
+      },
       'text.backspace': () => this.deleteBackward(),
       'selection.move': (input) => {
         if (point(input)) this.moveSelection(input.x, input.y);
@@ -1108,16 +1171,45 @@ export class FreeformEditorSession {
   }
 
   get selectionCoverage() {
+    validateSelectionWork(this.selectionRanges);
     return resolveGridSelectionCoverage(
       this.selection ? getGridSelectionRanges(getStaticGridSelection(this.#interaction)) : [],
       this.plane
     );
   }
 
+  get selectionRanges() {
+    return this.selection ? getGridSelectionRanges(getStaticGridSelection(this.#interaction)) : [];
+  }
+  get selectionStyle() {
+    const ranges = this.selectionRanges;
+    const key = JSON.stringify([
+      this.documents.getActiveAddress(),
+      this.plane.getRevision(),
+      ranges,
+    ]);
+    if (this.#styleCache?.key !== key)
+      this.#styleCache = { key, value: readSelectionStyle(this.plane, ranges) };
+    return this.#styleCache.value;
+  }
+
   get selectionPresentation() {
+    return this.selectionPresentationFor();
+  }
+  containsSelection(point: CellPoint) {
+    return resolveGridSelectionCoverage(this.selectionRanges, this.plane, {
+      x: point.x,
+      y: point.y,
+      width: 1,
+      height: 1,
+    }).contains(point);
+  }
+  selectionPresentationFor(clip?: CellRect) {
+    if (!clip) validateSelectionWork(this.selectionRanges);
     const gesture = this.gestureState;
     return resolveGridSelectionPresentation({
       source: this.plane,
+      clip,
       ranges: this.selection
         ? getGridSelectionRanges(getStaticGridSelection(this.#interaction))
         : [],
@@ -1179,8 +1271,8 @@ export class FreeformEditorSession {
     };
   }
 
-  revealCursor() {
-    const { x, y } = this.cursor;
+  revealCursor(point = this.cursor) {
+    const { x, y } = point;
     if (x < this.viewport.x) this.viewport.x = x;
     if (x + 1 >= this.viewport.x + this.viewport.width)
       this.viewport.x = Math.min(x, x - this.viewport.width + 2);
@@ -1221,7 +1313,7 @@ export class FreeformEditorSession {
       this.#inputColumn = selection.activeCell.x;
     } else this.#interaction = { mode: 'navigate', selection };
     this.#lastTyped = null;
-    this.revealCursor();
+    this.revealCursor(selecting ? getGridSelectionExtent(selection) : selection.activeCell);
   }
 
   beginInsert() {
@@ -1243,6 +1335,7 @@ export class FreeformEditorSession {
 
   insert(text: string) {
     if (!text) return;
+    validateSelectionWork(this.selectionRanges);
     this.cancelInteraction();
     if (
       !this.inserting &&
@@ -1328,6 +1421,7 @@ export class FreeformEditorSession {
   }
 
   erase(backwards = false) {
+    validateSelectionWork(this.selectionRanges);
     this.cancelInteraction();
     const direction = backwards ? 'backward' : 'forward';
     const plan = resolveStaticGridDeletePlan({

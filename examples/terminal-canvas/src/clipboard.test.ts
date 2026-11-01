@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { createClipboard, type ClipboardService, type HostClipboardService } from '@opentui/core';
 import { CellPlaneIndex } from '@chardesk/cell-plane';
 import { adaptTerminalClipboard } from './clipboard.ts';
+import { buildRichClipboardHtml } from '@chardesk/editor-core/clipboard/rich';
 
 const imageTestService: ClipboardService = {
   read: async () => ({ status: 'empty' }),
@@ -143,6 +144,136 @@ test('image backend failure, pending cancellation, and disposal cannot report a 
     });
     expect(await result).toEqual({ status: mode === 'failed' ? 'failed' : 'unavailable' });
     expect(writes).toBe(0);
+    await port.dispose();
+  }
+});
+
+test('local rich clipboard writes text and HTML atomically and reads cells ahead of text preparation', async () => {
+  const cells = [
+    {
+      x: 0,
+      y: 0,
+      char: '🦀',
+      color: '#123456',
+      attrs: { bold: true as const },
+      href: 'https://example.com',
+    },
+  ];
+  const payload = { plain: '🦀', rich: JSON.stringify({ cells }) };
+  let html = '',
+    writes = 0;
+  const port = adaptTerminalClipboard(imageTestService, () => false, undefined, {
+    supported: () => true,
+    load: async () => ({
+      getHtml: () => html,
+      setContents(contents) {
+        expect(contents.text).toBe('🦀');
+        html = contents.html;
+        writes++;
+      },
+    }),
+  });
+  try {
+    expect(await port.write(payload, { rich: true, ansi: false })).toEqual({ status: 'written' });
+    expect(writes).toBe(1);
+    expect(await port.read(state)).toEqual({ richCells: cells, plainText: null });
+  } finally {
+    await port.dispose();
+  }
+});
+
+test('unsupported rich backend explicitly falls back; remote and disposed adapters never load a native rich clipboard', async () => {
+  const payload = {
+    plain: 'plain',
+    rich: JSON.stringify({ cells: [{ x: 0, y: 0, char: 'A', color: '#000000' }] }),
+  };
+  for (const mode of ['remote', 'failed', 'disposed'] as const) {
+    let loads = 0,
+      writes = 0;
+    const host = {
+      ...imageTestService,
+      async writeText() {
+        writes++;
+        return {
+          host: { status: 'written' as const },
+          terminal: { status: 'not-attempted' as const, capability: 'unknown' as const },
+        };
+      },
+    } satisfies ClipboardService;
+    const pending = Promise.withResolvers<import('./clipboard.ts').RichClipboardBackend>();
+    const port = adaptTerminalClipboard(host, () => mode === 'remote', undefined, {
+      supported: () => true,
+      load: async () => {
+        loads++;
+        if (mode === 'failed') throw new Error('no backend');
+        return pending.promise;
+      },
+    });
+    const write = port.write(payload, { rich: true, ansi: false });
+    if (mode === 'disposed') await port.dispose();
+    pending.resolve({
+      getHtml: () => buildRichClipboardHtml(payload)!,
+      setContents() {
+        throw new Error('must not write');
+      },
+    });
+    const result = await write;
+    expect(result).toEqual(
+      mode === 'disposed'
+        ? { status: 'unavailable' }
+        : { status: 'written', warning: 'plain-fallback' }
+    );
+    expect(loads).toBe(mode === 'remote' ? 0 : 1);
+    expect(writes).toBe(mode === 'disposed' ? 0 : 1);
+    await port.dispose();
+  }
+});
+
+test('native rich transport passes Cut/Paste through shared commands, preserving complete glyph style and one undo', async () => {
+  const { TerminalCanvas } = await import('./model.ts');
+  const source = new TerminalCanvas('🦀界'),
+    destination = new TerminalCanvas('');
+  let html = '';
+  const port = adaptTerminalClipboard(imageTestService, () => false, undefined, {
+    supported: () => true,
+    load: async () => ({
+      getHtml: () => html,
+      setContents(value) {
+        html = value.html;
+      },
+    }),
+  });
+  try {
+    source.configureClipboard(port);
+    destination.configureClipboard(port);
+    source.setTool('select');
+    source.selection = { anchor: { x: 1, y: 0 }, focus: { x: 1, y: 0 } };
+    source.commands.style({ kind: 'attributes', attributes: { bold: true, underline: true } });
+    source.commands.style({ kind: 'background', color: '#123456' });
+    source.documents.clearHistory();
+    const cut = source.commands.cut();
+    expect(cut.status).toBe('pending');
+    if (cut.status !== 'pending') throw new Error('Expected async Cut');
+    expect((await cut.completion).succeeded).toBe(true);
+    expect(source.plane.get({ x: 0, y: 0 })).toBeUndefined();
+    expect(source.plane.get({ x: 2, y: 0 })?.char).toBe('界');
+    const paste = destination.commands.paste();
+    if (paste.status !== 'pending') throw new Error('Expected async Paste');
+    expect((await paste.completion).succeeded).toBe(true);
+    expect(destination.plane.get({ x: 0, y: 0 })).toMatchObject({
+      char: '🦀',
+      attrs: { bold: true, underline: true },
+      bgColor: '#123456',
+    });
+    expect(destination.plane.get({ x: 1, y: 0 })).toBeUndefined();
+    destination.commands.undo();
+    expect(destination.plane.materialize().size).toBe(0);
+    expect(destination.canUndo).toBe(false);
+    source.commands.undo();
+    expect(source.plane.get({ x: 0, y: 0 })?.char).toBe('🦀');
+  } finally {
+    source.dispose();
+    destination.dispose();
     await port.dispose();
   }
 });

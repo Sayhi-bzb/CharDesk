@@ -3,6 +3,8 @@ import type { TerminalInputPolicy } from './terminalPolicy.ts';
 
 export const messages = {
   settings: 'Settings',
+  inspector: 'Inspector',
+  export: 'Export',
   title: 'CharDesk · Terminal Canvas',
   edit: 'Edit',
   hand: 'Hand',
@@ -74,6 +76,10 @@ export function helpLines(
 
   return [
     `${s.settings.label} Settings: appearance, navigation and paste`,
+    `${s.inspector.label} Inspector: selection text attributes and colors`,
+    `${s.export.label} Export: canvas or selection to TXT, ANSI, CharDesk or PNG files`,
+    `${s.sources.label} Source: check external changes or reload the native document`,
+    `${s.navigation.label} Selection and navigation: rows, columns, boundaries and pages`,
     `${s.characters.label} character library: browse, search, insert or choose brush glyph`,
     `${s.templates.label} templates: preview, position, Enter places`,
     `${s.edit.label} Edit · ${s.hand.label} Hand (default) · ${s.tools.label} drawing tools`,

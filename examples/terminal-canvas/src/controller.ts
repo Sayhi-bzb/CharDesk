@@ -15,6 +15,8 @@ import type { CanvasSurface } from './surface.ts';
 import type { LocalSessions } from './sessions.ts';
 import type { TerminalWorkspace } from './workspace.ts';
 import { WorkspaceControls } from './workspaceControls.ts';
+import { textAttributeNames } from '@chardesk/editor-core/selection/style';
+import { navigationActions } from './navigation.ts';
 
 const unavailableClipboard: TerminalClipboardAccess = {
   canRead: () => false,
@@ -69,6 +71,16 @@ export function attachControls(
   const dockKeys = new Set([...dockActions, 'escape', 'help', 'quit']);
   const editOnly = () => surface.tool === 'edit';
   const panelActions = new Set(['copy', 'cut', 'paste', 'select-all']);
+  const runInput = (run: () => void | EditorCommandResult) => {
+    try {
+      return run();
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      surface.status = error.message;
+      surface.requestRender();
+      return { handled: true as const, status: 'rejected' as const, reason: 'operation-limit' };
+    }
+  };
   const emptyActions = new Set([
     ...dockActions,
     'help',
@@ -105,7 +117,7 @@ export function attachControls(
           keymap.clearPendingSequence();
           if (!dockActions.has(id) && id !== 'escape') surface.clearDockFocus();
           surface.status = '';
-          return run() ?? { handled: true, status: 'succeeded' };
+          return runInput(run) ?? { handled: true, status: 'succeeded' };
         },
       })
     );
@@ -148,7 +160,7 @@ export function attachControls(
     const request = ++clipboardRequest;
     let result: ReturnType<typeof model.commands.copy>;
     if (providedText !== undefined) result = model.commands.pasteProvided(providedText);
-    else if (kind === 'copy') result = model.commands.copy({ ansi });
+    else if (kind === 'copy') result = model.commands.copy({ ansi, rich: !ansi });
     else result = model.commands[kind]();
     if (result.status === 'pending') {
       surface.status = copy.clipboardWorking;
@@ -167,6 +179,8 @@ export function attachControls(
           else if (data?.status === 'noop') surface.status = copy.clipboardEmpty;
           else
             surface.status = copy[kind === 'copy' ? 'copied' : kind === 'cut' ? 'cut' : 'pasted'];
+          if (data?.status === 'applied' && data.warning === 'plain-fallback')
+            surface.status += ' · Plain text; rich clipboard unavailable';
           const diagnostics = model.getSnapshot().pasteDiagnostics;
           if (kind === 'paste' && completion.succeeded && diagnostics.length)
             surface.status += ` · ${copy.pasteWarnings}: ${diagnostics[0]!.message}`;
@@ -218,6 +232,10 @@ export function attachControls(
   if (workspace && workspaceControls) {
     for (const id of [
       'tools',
+      'export',
+      'sources',
+      'inspector',
+      'navigation',
       'templates',
       'characters',
       'confirm-placement',
@@ -236,6 +254,19 @@ export function attachControls(
     ] as const)
       action(id, () => workspaceControls.action(id));
   }
+  for (const attribute of textAttributeNames)
+    action(
+      `format-${attribute}`,
+      () => {
+        const style = model.selectionStyle;
+        if (style.attributes)
+          return model.commands.style({
+            kind: 'attributes',
+            attributes: { [attribute]: style.attributes[attribute] !== 'on' },
+          });
+      },
+      () => Boolean(!surface.placement && model.selectionStyle.attributes)
+    );
   bind('escape', ['Escape'], () => {
     if (surface.clearDockFocus()) return;
     if (surface.help) surface.help = false;
@@ -360,8 +391,8 @@ export function attachControls(
     },
     () => Boolean(surface.panel || model.plane.getContentBounds())
   );
-  action('origin', () => model.commands.pointAt({ x: 0, y: 0 }));
-  action('focus', () => model.commands.focusContent());
+  for (const entry of navigationActions(model))
+    action(entry.id, entry.run, () => !surface.placement);
   bind('delete', ['Delete'], () => model.commands.erase(), editOnly);
   bind('backspace', ['Backspace'], () => model.commands.deleteBackward(), editOnly);
   bind(
@@ -404,6 +435,10 @@ export function attachControls(
       editOnly
     );
   }
+  editor.keymap.hydrateUserBindings(surface.settings.keybindings);
+  disposers.push(
+    editor.keymap.subscribe(() => surface.settings.setKeybindings(editor.keymap.getUserBindings()))
+  );
   const inputHost = createTerminalInput(renderer);
   const keymap = inputHost.keymap;
   const targetKey = () => JSON.stringify([model.documents.getActiveAddress(), model.currentTool]);
@@ -508,13 +543,18 @@ export function attachControls(
       !/\p{Cc}/u.test(key.sequence)
     ) {
       surface.cancelGesture();
-      model.commands.insert(key.sequence);
+      runInput(() => model.commands.insert(key.sequence));
     }
     surface.requestRender();
   };
   const paste = (event: PasteEvent) => {
     menu.validate();
-    if (menu.isOpen || settingsDialog.isOpen || surface.focusedDockControl) {
+    if (settingsDialog.isOpen) {
+      event.preventDefault();
+      settingsDialog.paste(new TextDecoder().decode(event.bytes));
+      return;
+    }
+    if (menu.isOpen || surface.focusedDockControl) {
       event.preventDefault();
       return;
     }

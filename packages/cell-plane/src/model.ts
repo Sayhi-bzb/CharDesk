@@ -1084,35 +1084,22 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
     const maxChunkY = floorDiv(bounds.y + bounds.height - 1, CELL_PLANE_CHUNK_HEIGHT);
     const boundsRight = bounds.x + bounds.width;
     const boundsBottom = bounds.y + bounds.height;
-    for (let chunkY = minChunkY; chunkY <= maxChunkY; chunkY += 1) {
-      for (let chunkX = minChunkX; chunkX <= maxChunkX; chunkX += 1) {
-        const chunkLeft = chunkX * CELL_PLANE_CHUNK_WIDTH;
-        const chunkTop = chunkY * CELL_PLANE_CHUNK_HEIGHT;
-        const chunkRight = chunkLeft + CELL_PLANE_CHUNK_WIDTH;
-        const chunkBottom = chunkTop + CELL_PLANE_CHUNK_HEIGHT;
-        const entry = this.#resolveChunkEntry(chunkX, chunkY);
-        const snapshot = entry.visitSnapshot;
-        if (snapshot) {
-          for (let index = 0; index < snapshot.cells.length; index += 1) {
-            const x = snapshot.coordinates[index * 2]!;
-            const y = snapshot.coordinates[index * 2 + 1]!;
-            if (
-              x < chunkLeft ||
-              x >= chunkRight ||
-              y < chunkTop ||
-              y >= chunkBottom ||
-              x < bounds.x ||
-              x >= boundsRight ||
-              y < bounds.y ||
-              y >= boundsBottom
-            )
-              continue;
-            visitor(x, y, snapshot.cells[index]!);
-          }
-          continue;
-        }
-        entry.cells.forEach((cell, key) => {
-          const { x, y } = GridManager.fromKey(key);
+    for (const { x: chunkX, y: chunkY } of this.#queryChunks(
+      minChunkX,
+      maxChunkX,
+      minChunkY,
+      maxChunkY
+    )) {
+      const chunkLeft = chunkX * CELL_PLANE_CHUNK_WIDTH;
+      const chunkTop = chunkY * CELL_PLANE_CHUNK_HEIGHT;
+      const chunkRight = chunkLeft + CELL_PLANE_CHUNK_WIDTH;
+      const chunkBottom = chunkTop + CELL_PLANE_CHUNK_HEIGHT;
+      const entry = this.#resolveChunkEntry(chunkX, chunkY);
+      const snapshot = entry.visitSnapshot;
+      if (snapshot) {
+        for (let index = 0; index < snapshot.cells.length; index += 1) {
+          const x = snapshot.coordinates[index * 2]!;
+          const y = snapshot.coordinates[index * 2 + 1]!;
           if (
             x < chunkLeft ||
             x >= chunkRight ||
@@ -1123,10 +1110,26 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
             y < bounds.y ||
             y >= boundsBottom
           )
-            return;
-          visitor(x, y, cell);
-        });
+            continue;
+          visitor(x, y, snapshot.cells[index]!);
+        }
+        continue;
       }
+      entry.cells.forEach((cell, key) => {
+        const { x, y } = GridManager.fromKey(key);
+        if (
+          x < chunkLeft ||
+          x >= chunkRight ||
+          y < chunkTop ||
+          y >= chunkBottom ||
+          x < bounds.x ||
+          x >= boundsRight ||
+          y < bounds.y ||
+          y >= boundsBottom
+        )
+          return;
+        visitor(x, y, cell);
+      });
     }
   }
 

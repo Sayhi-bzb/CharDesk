@@ -12,6 +12,37 @@ export type TerminalAction =
   | 'minimap'
   | 'help'
   | 'settings'
+  | 'export'
+  | 'sources'
+  | 'inspector'
+  | 'navigation'
+  | 'select-row'
+  | 'select-column'
+  | 'edge-left'
+  | 'edge-right'
+  | 'edge-start'
+  | 'edge-end'
+  | 'extend-edge-left'
+  | 'extend-edge-right'
+  | 'extend-edge-start'
+  | 'extend-edge-end'
+  | 'page-up'
+  | 'page-down'
+  | 'extend-page-up'
+  | 'extend-page-down'
+  | 'boundary-left'
+  | 'boundary-right'
+  | 'boundary-up'
+  | 'boundary-down'
+  | 'extend-boundary-left'
+  | 'extend-boundary-right'
+  | 'extend-boundary-up'
+  | 'extend-boundary-down'
+  | 'format-bold'
+  | 'format-italic'
+  | 'format-underline'
+  | 'format-strike'
+  | 'format-inverse'
   | 'context-menu'
   | 'copy'
   | 'cut'
@@ -69,6 +100,46 @@ export function createTerminalShortcuts(platform: NodeJS.Platform, policy?: Term
     help: key(['F1']),
     'context-menu': key(['Shift+F10']),
     settings: key(['F11']),
+    export: key(['Shift+F7']),
+    sources: key(['Shift+F12']),
+    inspector: key(['Shift+F11']),
+    navigation: key(['Shift+F8']),
+    'select-row': key(['Shift+Space']),
+    'select-column': key(['Ctrl+Space']),
+    // Home remains Go to origin; every navigation action is available in the panel.
+    'edge-left': key(['Ctrl+Home'], 'Ctrl+Home', true),
+    'edge-right': key(['End'], 'End', true),
+    'edge-start': key([], '—'),
+    'edge-end': key(['Ctrl+End'], 'Ctrl+End', true),
+    'extend-edge-left': key(['Shift+Home'], 'Shift+Home', true),
+    'extend-edge-right': key(['Shift+End'], 'Shift+End', true),
+    'extend-edge-start': key(['Ctrl+Shift+Home'], 'Ctrl+Shift+Home', true),
+    'extend-edge-end': key(['Ctrl+Shift+End'], 'Ctrl+Shift+End', true),
+    'page-up': key(['PageUp'], 'PageUp', true),
+    'page-down': key(['PageDown'], 'PageDown', true),
+    'extend-page-up': key(['Shift+PageUp'], 'Shift+PageUp', true),
+    'extend-page-down': key(['Shift+PageDown'], 'Shift+PageDown', true),
+    ...(Object.fromEntries(
+      ['left', 'right', 'up', 'down'].flatMap((direction) =>
+        [false, true].map((extend) => {
+          const modifier = mac ? 'Meta+' : 'Ctrl+Alt+';
+          const arrow = direction[0]!.toUpperCase() + direction.slice(1);
+          return [
+            `${extend ? 'extend-' : ''}boundary-${direction}`,
+            key(
+              [`${modifier}${extend ? 'Shift+' : ''}${arrow}`],
+              `${mac ? '⌘' : 'Ctrl+Alt+'}${extend ? 'Shift+' : ''}${arrow}`,
+              true
+            ),
+          ];
+        })
+      )
+    ) as Record<`${'' | 'extend-'}boundary-${'left' | 'right' | 'up' | 'down'}`, TerminalShortcut>),
+    'format-bold': primary('B'),
+    'format-italic': primary('I'),
+    'format-underline': primary('U'),
+    'format-strike': key(mac ? ['Meta+Shift+X'] : ['Ctrl+Shift+X']),
+    'format-inverse': key([], 'Inspector'),
     // Ctrl+Y is Vibe's documented macOS copy fallback; it needs no Super encoding.
     // Keep Command available when forwarded, but do not advertise it on Warp.
     copy: mac

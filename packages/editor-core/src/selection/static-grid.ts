@@ -121,11 +121,6 @@ export const moveGridAddressToEdge = (
   return { x: address.x, y: normalized.end.y };
 };
 
-const getVisibleCellOrigin = (grid: GridCellSource, address: GridAddress): GridAddress | null => {
-  const slot = resolveGridSlot(grid, address);
-  return slot?.cell.char.trim() ? slot.anchor : null;
-};
-
 const getContentNavigationBounds = (input: {
   grid: GridCellSource;
   activeCell: GridAddress;
@@ -170,24 +165,50 @@ export const moveGridAddressToContentBoundary = (input: {
     step.x > 0 && currentCell?.char.trim()
       ? Math.max(1, GridManager.getCharWidth(currentCell.char))
       : step.x;
-  let cursor = moveGridAddress(input.address, horizontalStep, step.y);
+  const cursor = moveGridAddress(input.address, horizontalStep, step.y);
   if (!withinBounds(cursor)) return { ...input.address };
 
-  const adjacentHasContent = getVisibleCellOrigin(input.grid, cursor) !== null;
-  if (adjacentHasContent) {
-    let lastContent = cursor;
-    while (withinBounds(cursor) && getVisibleCellOrigin(input.grid, cursor)) {
-      lastContent = cursor;
-      cursor = moveGridAddress(cursor, step.x, step.y);
+  // Work follows occupied anchors, not the coordinate distance between sparse islands.
+  const horizontal = step.x !== 0;
+  const direction = horizontal ? step.x : step.y;
+  const coordinate = horizontal ? cursor.x : cursor.y;
+  const minimum = horizontal ? bounds.start.x : bounds.start.y;
+  const maximum = horizontal ? bounds.end.x : bounds.end.y;
+  const intervals: { start: number; end: number }[] = [];
+  GridManager.iterate(input.grid, (cell, x, y) => {
+    if (!cell.char.trim()) return;
+    const width = Math.max(1, GridManager.getCharWidth(cell.char));
+    if (horizontal && y !== input.address.y) return;
+    if (!horizontal && (input.address.x < x || input.address.x >= x + width)) return;
+    const start = Math.max(minimum, horizontal ? x : y);
+    const end = Math.min(maximum, horizontal ? x + width - 1 : y);
+    if (start <= end) intervals.push({ start, end });
+  });
+  intervals.sort((a, b) => a.start - b.start);
+  const origin = (at: number) => {
+    const point = horizontal ? { x: at, y: input.address.y } : { x: input.address.x, y: at };
+    return resolveGridSlot(input.grid, point)?.anchor ?? point;
+  };
+  const adjacent = intervals.findIndex(
+    ({ start, end }) => start <= coordinate && end >= coordinate
+  );
+  if (adjacent >= 0) {
+    let index = adjacent;
+    let edge = direction > 0 ? intervals[index]!.end : intervals[index]!.start;
+    while (intervals[index + direction]) {
+      const next = intervals[index + direction]!;
+      if (direction > 0 && next.start > edge + 1) break;
+      if (direction < 0 && next.end < edge - 1) break;
+      edge = direction > 0 ? Math.max(edge, next.end) : Math.min(edge, next.start);
+      index += direction;
     }
-    return getVisibleCellOrigin(input.grid, lastContent) ?? lastContent;
+    return origin(edge);
   }
-
-  while (withinBounds(cursor)) {
-    const origin = getVisibleCellOrigin(input.grid, cursor);
-    if (origin) return origin;
-    cursor = moveGridAddress(cursor, step.x, step.y);
-  }
+  const candidates = direction > 0 ? intervals : [...intervals].reverse();
+  const ahead = candidates.find(({ start, end }) =>
+    direction > 0 ? start >= coordinate : end <= coordinate
+  );
+  if (ahead) return origin(direction > 0 ? ahead.start : ahead.end);
 
   return moveGridAddressToEdge(input.address, input.edge, bounds);
 };

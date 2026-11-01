@@ -38,7 +38,13 @@ export async function openLocalWorkspace(
       throw new Error('Settings and workspace storage must use separate filenames.');
     persistence = await WorkspacePersistence.open(
       checkpoint,
-      options.workspacePath ? undefined : `${first}.workspace.json`
+      options.workspacePath ? undefined : `${first}.workspace.json`,
+      {
+        identify: (path) => sessions.catalog.findPath(path)?.id,
+        shouldRestore: (path, id) =>
+          !sessions.catalog.findPath(path)?.removing &&
+          (id ? !sessions.catalog.wasRemoved(id) : !sessions.catalog.wasPathRemoved(path)),
+      }
     );
     const restored = await persistence.restore(editorOptions);
     workspace = restored ?? undefined;
@@ -54,7 +60,7 @@ export async function openLocalWorkspace(
           const record = await sessions.createManaged();
           workspace = await TerminalWorkspace.open(record.path, '', editorOptions);
         } else {
-          const recent = records.find((record) => record.status === 'ready');
+          const recent = records.find((record) => record.status === 'ready' && !record.removing);
           if (recent) {
             try {
               if ((await readOptional(recent.path)) === null)

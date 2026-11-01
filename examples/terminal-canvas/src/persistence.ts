@@ -10,6 +10,7 @@ import { atomicWrite, sourceDigest } from './storage.ts';
 
 type SavedView = { pageId: string; state: EditorView };
 type SavedFile = {
+  sessionId?: string;
   path: string;
   title: string;
   source: string;
@@ -19,6 +20,10 @@ type SavedFile = {
 };
 type Checkpoint = { version: 1; activePath: string | null; files: SavedFile[] };
 export type PersistenceStatus = { phase: 'saving' | 'saved' | 'error'; message?: string };
+export type WorkspaceSessionLifecycle = {
+  identify: (path: string) => string | undefined;
+  shouldRestore: (path: string, sessionId?: string) => boolean;
+};
 const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 function invalid(): never {
@@ -49,6 +54,7 @@ function decode(source: string): Checkpoint {
       typeof file.title !== 'string' ||
       typeof file.source !== 'string' ||
       typeof file.dirty !== 'boolean' ||
+      (file.sessionId !== undefined && (typeof file.sessionId !== 'string' || !file.sessionId)) ||
       !(
         file.baselineDigest === null ||
         (typeof file.baselineDigest === 'string' && /^[a-f0-9]{64}$/.test(file.baselineDigest))
@@ -72,6 +78,7 @@ function decode(source: string): Checkpoint {
       return { pageId: view.pageId, state: readEditorView(view.state) };
     });
     return {
+      ...(file.sessionId ? { sessionId: file.sessionId as string } : {}),
       path: file.path,
       title: file.title,
       source: file.source,
@@ -100,15 +107,18 @@ export class WorkspacePersistence {
   readonly #sources = new Map<CanvasFile, { version: string; source: string }>();
   recovered = 0;
   readonly conflicts: string[] = [];
-  private constructor(readonly path: string) {}
+  private constructor(
+    readonly path: string,
+    private lifecycle?: WorkspaceSessionLifecycle
+  ) {}
 
   get hasCheckpoint() {
     return this.#checkpoint !== null;
   }
 
-  static async open(input: string, legacyPath?: string) {
+  static async open(input: string, legacyPath?: string, lifecycle?: WorkspaceSessionLifecycle) {
     await mkdir(dirname(resolve(input)), { recursive: true });
-    const persistence = new WorkspacePersistence(await resolveCanvasFilePath(input));
+    const persistence = new WorkspacePersistence(await resolveCanvasFilePath(input), lifecycle);
     const lock = `${persistence.path}.lock`;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -195,6 +205,7 @@ export class WorkspacePersistence {
     };
     try {
       for (const saved of this.#checkpoint?.files ?? []) {
+        if (this.lifecycle?.shouldRestore(saved.path, saved.sessionId) === false) continue;
         const current = await readOptional(saved.path),
           digest = sourceDigest(current);
         if (digest === saved.baselineDigest || digest === sourceDigest(saved.source)) {
@@ -332,7 +343,9 @@ export class WorkspacePersistence {
       }
       const source = cached!.source;
       const pages = workspace.model.documents.getPageDescriptors(file.address!.documentId);
+      const sessionId = this.lifecycle?.identify(file.path);
       files.push({
+        ...(sessionId ? { sessionId } : {}),
         path: file.path,
         title: file.title,
         source,

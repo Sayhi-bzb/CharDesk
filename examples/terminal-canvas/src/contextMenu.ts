@@ -54,10 +54,11 @@ export class TerminalContextMenu {
     }
     s.cancelGesture();
     model.cancelPendingPaste();
-    const point = at ?? model.selectionPresentation.coverage.bounds?.start ?? model.cursor;
+    const point =
+      at ?? model.selectionPresentationFor(model.viewport).coverage.bounds?.start ?? model.cursor;
     const slot = resolveGridSlot(model.plane, point);
     const anchor = slot?.anchor ?? point;
-    if (at && !model.selectionPresentation.coverage.contains(at)) model.commands.pointAt(anchor);
+    if (at && !model.containsSelection(at)) model.commands.pointAt(anchor);
     this.#state = {
       stamp: this.#stamp(),
       selected: -1,

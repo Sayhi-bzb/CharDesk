@@ -37,21 +37,31 @@ function memoryClipboard() {
   };
 }
 
-test.each(['copy', 'cut'] as const)('%s reports an unconfirmed dispatch without deleting content', async (kind) => {
-  const session = new FreeformEditorSession('界A');
-  try {
-    session.selection = { anchor: { x: 0, y: 0 }, focus: { x: 2, y: 0 } };
-    const original = session.plane.materialize();
-    const selection = session.selectionBounds;
-    session.configureClipboard({ write: async () => ({ status: 'dispatched' }), read: async () => ({}) });
-    expect(await finish(session.commands[kind]())).toMatchObject({
-      succeeded: true, changed: false, data: { status: 'dispatched', changed: false },
-    });
-    expect(session.plane.materialize()).toEqual(original);
-    expect(session.selectionBounds).toEqual(selection);
-    expect(session.canUndo).toBe(false);
-  } finally { session.dispose(); }
-});
+test.each(['copy', 'cut'] as const)(
+  '%s reports an unconfirmed dispatch without deleting content',
+  async (kind) => {
+    const session = new FreeformEditorSession('界A');
+    try {
+      session.selection = { anchor: { x: 0, y: 0 }, focus: { x: 2, y: 0 } };
+      const original = session.plane.materialize();
+      const selection = session.selectionBounds;
+      session.configureClipboard({
+        write: async () => ({ status: 'dispatched' }),
+        read: async () => ({}),
+      });
+      expect(await finish(session.commands[kind]())).toMatchObject({
+        succeeded: true,
+        changed: false,
+        data: { status: 'dispatched', changed: false },
+      });
+      expect(session.plane.materialize()).toEqual(original);
+      expect(session.selectionBounds).toEqual(selection);
+      expect(session.canUndo).toBe(false);
+    } finally {
+      session.dispose();
+    }
+  }
+);
 
 test('copy/cut/paste round-trip styles and Unicode and publish a single final paste state', async () => {
   const session = new FreeformEditorSession('\x1b[31;44;1m界\x1b[0mA');
@@ -136,7 +146,10 @@ test.each(['selection', 'dispose'] as const)(
   async (change) => {
     const session = new FreeformEditorSession('AB');
     const read = deferred<PreparedClipboardPaste>();
-    session.configureClipboard({ write: async () => ({ status: 'written' }), read: () => read.promise });
+    session.configureClipboard({
+      write: async () => ({ status: 'written' }),
+      read: () => read.promise,
+    });
     const pending = finish(session.commands.paste());
     if (change === 'selection') session.commands.pointAt({ x: 9, y: 0 });
     else session.dispose();
@@ -162,12 +175,40 @@ test('clipboard read rejection and empty data leave content/history untouched', 
       succeeded: false,
       reason: 'clipboard-failed',
     });
-    session.configureClipboard({ write: async () => ({ status: 'written' }), read: async () => ({ plainText: '' }) });
+    session.configureClipboard({
+      write: async () => ({ status: 'written' }),
+      read: async () => ({ plainText: '' }),
+    });
     expect(await finish(session.commands.paste())).toMatchObject({
       succeeded: true,
       data: { status: 'noop', reason: 'empty-clipboard' },
     });
     expect(session.plane.materialize().size).toBe(2);
+    expect(session.canUndo).toBe(false);
+  } finally {
+    session.dispose();
+  }
+});
+
+test('oversized clipboard envelopes fail before transport or deletion', async () => {
+  const session = new FreeformEditorSession('A');
+  let writes = 0;
+  session.configureClipboard({
+    read: async () => ({}),
+    write: async () => {
+      writes++;
+      return { status: 'written' };
+    },
+  });
+  try {
+    session.selection = { anchor: { x: 0, y: 0 }, focus: { x: 0, y: 1_000_000_000 } };
+    for (const operation of [() => session.commands.copy(), () => session.commands.cut()])
+      expect(await finish(operation())).toMatchObject({
+        succeeded: false,
+        reason: 'prepare-failed',
+      });
+    expect(writes).toBe(0);
+    expect(session.plane.get({ x: 0, y: 0 })?.char).toBe('A');
     expect(session.canUndo).toBe(false);
   } finally {
     session.dispose();

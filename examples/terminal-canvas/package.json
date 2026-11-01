@@ -9,22 +9,23 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@opentui/core": "0.8.0",
+    "@chardesk/canvas-templates": "*",
+    "@chardesk/cell-core": "*",
     "@chardesk/cell-plane": "*",
+    "@chardesk/character-library": "*",
+    "@chardesk/chargraph": "*",
+    "@chardesk/document": "*",
     "@chardesk/editor-core": "*",
     "@chardesk/editor-input": "*",
-    "yjs": "^13.6.27",
-    "@chardesk/protocol": "*",
-    "@chardesk/cell-core": "*",
-    "@chardesk/document": "*",
+    "@chardesk/font-maple": "*",
     "@chardesk/keyboard": "*",
-    "@chardesk/chargraph": "*",
-    "@chardesk/canvas-templates": "*",
-    "@chardesk/character-library": "*",
+    "@chardesk/protocol": "*",
+    "@chardesk/rendering": "*",
     "@napi-rs/canvas": "1.0.8",
     "@napi-rs/clipboard": "1.1.4",
-    "@chardesk/rendering": "*",
-    "@chardesk/font-maple": "*"
+    "@opentui/core": "0.8.0",
+    "@teddyzhu/clipboard": "0.0.12",
+    "yjs": "^13.6.27"
   },
   "devDependencies": {
     "@types/bun": "1.4.4",

@@ -4,12 +4,9 @@ CharDesk's source compiler. It produces source-aware fragments, diagnostics, and
 Protocol-laid-out rows without a DOM.
 
 ```ts
-import {
-  compileCharDeskText,
-  materializeCompiledCharDeskText,
-} from "@chardesk/chargraph";
+import { compileCharDeskText, materializeCompiledCharDeskText } from '@chardesk/chargraph';
 
-const compiled = await compileCharDeskText(source, { format: "auto" });
+const compiled = await compileCharDeskText(source, { format: 'auto' });
 const document = materializeCompiledCharDeskText(compiled);
 ```
 
@@ -30,3 +27,12 @@ activating Markdown. Native document parsing precedes text compilation.
 Markdown results expose top-level `visualGroups` as half-open output row ranges:
 ordinary blocks request `start`; enhanced tables and rendered Mermaid request
 `center`. Hosts decide how to place these groups.
+
+`@chardesk/chargraph/profile` owns `CharDeskTextRenderProfile`, its current-schema
+normalizer/defaults, Markdown wrap limits and the profile-to-Markdown option
+adapter. Web and TUI reuse this contract; platform adapters own storage, legacy
+migrations, effective appearance and delivery. Feature IDs and color slots come
+from the Markdown module registry, with separate light/dark overrides.
+[Profile tests](src/text-profile.test.ts), [Web runtime tests](../../apps/canvas/src/domains/document/rendering/runtime.test.ts)
+and [native settings tests](../../examples/terminal-canvas/src/textSettings.test.ts)
+verify normalization and consumption.

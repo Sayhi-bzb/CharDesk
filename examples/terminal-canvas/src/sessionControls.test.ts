@@ -288,3 +288,54 @@ test('an empty workspace exposes New and Sessions through dock keyboard focus wh
     await f.dispose();
   }
 });
+
+test('Sessions removal dialog separates keeping a file from deleting a managed file and defaults to Cancel', async () => {
+  const f = await fixture();
+  const { readOptional } = await import('./document.ts');
+  try {
+    const file = await f.sessions.create(),
+      record = f.sessions.forFile(file)!;
+    f.workspace.model.commands.insert('🦀keep');
+    const before = f.workspace.model.plane.materialize();
+    const remove = async () => {
+      f.setup.mockInput.pressKey('F7');
+      f.setup.mockInput.pressKey('x');
+      await until(() =>
+        Boolean(f.surface.panel?.items.includes('Remove session record — keep file'))
+      );
+    };
+    await remove();
+    await f.setup.renderOnce();
+    expect(f.surface.panel?.selected).toBe(0);
+    expect(f.setup.captureCharFrame()).toContain('Delete managed file');
+    await f.setup.mockInput.typeText('ignored', 0);
+    expect(f.workspace.model.plane.materialize()).toEqual(before);
+    f.escape();
+    expect(f.sessions.catalog.get(record.id)).not.toBeNull();
+    await remove();
+    f.surface.panel!.selected = 1;
+    f.setup.mockInput.pressEnter();
+    await until(
+      () => f.sessions.catalog.get(record.id) === null && f.surface.panel?.title === 'Sessions'
+    );
+    expect(await readOptional(file.path)).not.toBeNull();
+    expect(f.surface.hasDocument).toBe(false);
+    f.escape();
+    await f.sessions.openPath(file.path);
+    await remove();
+    expect(f.surface.panel?.items).not.toContain('Delete managed file and session record');
+    f.escape();
+    const managed = await f.sessions.create(),
+      owned = f.sessions.forFile(managed)!;
+    await remove();
+    f.surface.panel!.selected = 2;
+    f.setup.mockInput.pressEnter();
+    await until(
+      () => f.sessions.catalog.get(owned.id) === null && f.surface.panel?.title === 'Sessions'
+    );
+    expect(await readOptional(managed.path)).toBeNull();
+    expect(f.quits).toBe(0);
+  } finally {
+    await f.dispose();
+  }
+});

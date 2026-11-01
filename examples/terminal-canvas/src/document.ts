@@ -1,19 +1,13 @@
-import { readFile, realpath, stat } from 'node:fs/promises';
+import { realpath, stat } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { parseCanvasDocument, serializeCanvasDocument } from '@chardesk/editor-core/documentText';
 import type { CanvasDocumentAddress } from '@chardesk/editor-core/canvasDocumentModel';
 import { TerminalCanvas } from './model.ts';
 import type { FreeformEditorSessionOptions } from '@chardesk/editor-core/runtime';
-import { atomicWrite, sourceDigest } from './storage.ts';
+import { atomicWrite } from './storage.ts';
+import { FileSourceBinding, readOptionalFileText as readOptional } from './fileSource.ts';
 
-export const readOptional = async (path: string) => {
-  try {
-    return await readFile(path, 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw error;
-  }
-};
+export { readOptional };
 export async function resolveCanvasFilePath(input: string) {
   const path = resolve(input);
   try {
@@ -25,8 +19,7 @@ export async function resolveCanvasFilePath(input: string) {
 }
 
 export class CanvasFile {
-  #source: string | null;
-  #digest: string | null;
+  readonly source: FileSourceBinding;
   #saving = false;
   address?: CanvasDocumentAddress;
   writeGuard?: () => void;
@@ -35,14 +28,13 @@ export class CanvasFile {
     readonly title: string,
     source: string | null
   ) {
-    this.#source = source;
-    this.#digest = sourceDigest(source);
+    this.source = new FileSourceBinding(path, source);
   }
   get baselineSource() {
-    return this.#source;
+    return this.source.baseline.source;
   }
   get baselineDigest() {
-    return this.#digest;
+    return this.source.baseline.digest;
   }
 
   static async open(input: string, initialBody = '', options: FreeformEditorSessionOptions = {}) {
@@ -68,9 +60,7 @@ export class CanvasFile {
       if (!document) throw new Error('Document is no longer open.');
       const version = model.versionAt(address);
       const source = serializeCanvasDocument(document, this.title);
-      if ((await readOptional(this.path)) !== this.#source) {
-        throw new Error('File changed on disk. Save cancelled; your edits are still in memory.');
-      }
+      this.source.assertBaseline(await this.source.read());
       const mode = await stat(this.path)
         .then((info) => info.mode & 0o777)
         .catch((error: NodeJS.ErrnoException) => {
@@ -82,15 +72,11 @@ export class CanvasFile {
         source,
         async () => {
           this.writeGuard?.();
-          if ((await readOptional(this.path)) !== this.#source)
-            throw new Error(
-              'File changed on disk. Save cancelled; your edits are still in memory.'
-            );
+          this.source.assertBaseline(await this.source.read());
         },
         mode
       );
-      this.#source = source;
-      this.#digest = sourceDigest(source);
+      this.source.accept(source);
       model.markSavedAt(address, version);
     } finally {
       this.#saving = false;

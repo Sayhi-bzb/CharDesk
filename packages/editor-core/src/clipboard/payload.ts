@@ -4,7 +4,11 @@ import {
   exportSelectionToString,
   exportToAnsi,
 } from '@chardesk/cell-plane/text';
-import { resolveGridSelectionCoverage, type GridSelectionCoverage } from '../selection/coverage.js';
+import {
+  resolveGridSelectionCoverage,
+  validateSelectionWork,
+  type GridSelectionCoverage,
+} from '../selection/coverage.js';
 import { GridManager } from '@chardesk/cell-plane/grid';
 import { createGridMapSource } from '@chardesk/cell-plane/grid-source';
 import { resolveGridSlot } from '@chardesk/cell-plane/grid-occupancy';
@@ -46,7 +50,9 @@ export const buildClipboardPayload = (
   if (!hasClipboardSource(selections, textCursor)) return null;
 
   if (selections.length > 0) {
+    validateSelectionWork(selections);
     const coverage = resolveGridSelectionCoverage(selections, grid);
+    if (coverage.bounds) validateSelectionWork([coverage.bounds]);
     const effectiveSelections = [...coverage.areas];
     const projectedGrid = projectGridSelection(grid, coverage, brushColor);
     const projectedSource = createGridMapSource(projectedGrid);

@@ -1,4 +1,5 @@
 import type { GridCellSource } from '@chardesk/cell-plane/types';
+import type { CellRect } from '@chardesk/cell-core';
 import type { StaticGridRangeMovePlan } from '../rangeMove.js';
 import type { GridRange } from './grid-types.js';
 import { resolveGridSelectionCoverage, type GridSelectionCoverage } from './coverage.js';
@@ -14,6 +15,7 @@ export type GridSelectionDragPreview = GridRange & { append?: boolean };
 export const resolveGridSelectionPresentation = (input: {
   source: GridCellSource;
   ranges: readonly GridRange[];
+  clip?: CellRect;
   draggingRange?: GridSelectionDragPreview | null;
   movePreview?: StaticGridRangeMovePlan | null;
 }): GridSelectionPresentation => {
@@ -24,7 +26,8 @@ export const resolveGridSelectionPresentation = (input: {
       input.draggingRange
         ? [...(input.draggingRange.append ? input.ranges : []), input.draggingRange]
         : input.ranges,
-      input.source
+      input.source,
+      input.clip
     ),
   };
 };

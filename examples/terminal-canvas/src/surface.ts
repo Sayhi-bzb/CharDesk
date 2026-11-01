@@ -28,6 +28,8 @@ import type { TerminalContextMenu } from './contextMenu.ts';
 import { TerminalSettingsStore } from './settings.ts';
 import { TerminalAppearanceRuntime } from './appearance.ts';
 import { attachTerminalAppearance } from './appearanceHost.ts';
+import { canEdgeScroll } from '@chardesk/editor-core/interaction/edgeScroll';
+import { TerminalEdgeScroll } from './edgeScroll.ts';
 
 export const CANVAS_TOP = 0;
 const FOOTER_ROWS = 2;
@@ -64,6 +66,7 @@ export class CanvasSurface extends Renderable {
     label: string;
   } | null = null;
   backgroundStatus = '';
+  sourceStatus = '';
   closing = false;
   searchHighlights: CellRect[] = [];
   documentLabels: { label: string; active: boolean }[] = [];
@@ -105,6 +108,8 @@ export class CanvasSurface extends Renderable {
     return this.appearance.getSnapshot().colors;
   }
   #pointer: { x: number; y: number } | null = null;
+  readonly #edgeScroll: TerminalEdgeScroll;
+  readonly #detachInteraction: () => void;
   readonly inputModifiers = new TerminalInputModifiers();
   setInputPolicy(policy: TerminalInputPolicy) {
     this.#inputPolicy = policy;
@@ -112,6 +117,7 @@ export class CanvasSurface extends Renderable {
     this.requestRender();
   }
   cancelGesture() {
+    this.#edgeScroll.stop();
     this.#minimapDrag = null;
     this.#pointer = null;
     this.model.cancelInteraction();
@@ -154,8 +160,17 @@ export class CanvasSurface extends Renderable {
       : this.placement
         ? (['confirm-placement', 'cancel-placement'] as const)
         : this.model.selection
-          ? (['settings', 'edit', 'hand', 'minimap', 'copy', 'documents'] as const)
-          : (['settings', 'edit', 'hand', 'minimap', 'documents'] as const);
+          ? ([
+              'settings',
+              'edit',
+              'hand',
+              'minimap',
+              'copy',
+              'documents',
+              'inspector',
+              'export',
+            ] as const)
+          : (['settings', 'edit', 'hand', 'minimap', 'documents', 'inspector', 'export'] as const);
     return ids.flatMap((id) => {
       const name =
         id === 'confirm-placement'
@@ -235,6 +250,11 @@ export class CanvasSurface extends Renderable {
       onMouse: (event) => this.mouse(event),
     });
     this.#inputPolicy = inputPolicy;
+    this.#edgeScroll = new TerminalEdgeScroll(renderer.clock, (x, y) => this.#panOnEdge(x, y));
+    this.#detachInteraction = model.subscribe(() => {
+      if (!canEdgeScroll(model.gestureState)) this.#edgeScroll.stop();
+      if (model.gestureState.type === 'idle') this.#pointer = null;
+    });
     this.#measurer = TextBuffer.create(renderer.widthMethod, renderer.nativeScene);
     this.#measureView = TextBufferView.create(this.#measurer);
     this.#links = new TerminalLinkText(renderer);
@@ -419,7 +439,11 @@ export class CanvasSurface extends Renderable {
     }
     model.resize(this.canvasBounds.width, this.canvasBounds.height);
     const { viewport } = model;
-    const coverage = model.selectionPresentation.coverage;
+    const coverage = model.selectionPresentationFor({
+      ...viewport,
+      x: viewport.x - 1,
+      width: viewport.width + 1,
+    }).coverage;
     const ranges = coverage.areas.map((area) => ({
       x: area.start.x,
       y: area.start.y,
@@ -719,6 +743,7 @@ export class CanvasSurface extends Renderable {
       (this.placement
         ? `${this.placement.label} · Enter place · Shift+arrows 10 cells · Option pan · Esc cancel`
         : '') ||
+      this.sourceStatus ||
       this.status ||
       this.backgroundStatus ||
       (this.minimapOpen && !this.minimapFrame
@@ -772,7 +797,88 @@ export class CanvasSurface extends Renderable {
     };
   }
 
+  #edgeEnabled() {
+    return (
+      !!this.#pointer &&
+      this.renderer.useMouse &&
+      this.hasDocument &&
+      !this.closing &&
+      !this.panel &&
+      !this.help &&
+      !this.contextMenu?.isOpen &&
+      !this.placement &&
+      !this.#minimapDrag &&
+      canEdgeScroll(this.model.gestureState)
+    );
+  }
+
+  #pointerCell(screen: Point, clamp: boolean): Point {
+    const bounds = this.canvasBounds;
+    const x = screen.x - this.screenX - bounds.x,
+      y = screen.y - this.screenY - bounds.y;
+    return {
+      x: this.model.viewport.x + (clamp ? Math.max(0, Math.min(bounds.width - 1, x)) : x),
+      y: this.model.viewport.y + (clamp ? Math.max(0, Math.min(bounds.height - 1, y)) : y),
+    };
+  }
+
+  #panOnEdge(x: number, y: number) {
+    if (!this.#edgeEnabled() || !this.#pointer) {
+      this.#edgeScroll.stop();
+      return;
+    }
+    try {
+      const next = { x: this.model.viewport.x + x, y: this.model.viewport.y + y };
+      const point = this.#pointerCell(this.#pointer, true);
+      if (![next.x, next.y, point.x + x, point.y + y].every(Number.isSafeInteger))
+        throw new RangeError('Canvas coordinate limit reached.');
+      const screen = this.#pointer;
+      this.model.editor.transact(() => {
+        this.model.pan(x, y);
+        this.model.pointer({
+          phase: 'move',
+          screen,
+          cell: this.#pointerCell(screen, true),
+          delta: { x: 0, y: 0 },
+        });
+      });
+      this.requestRender();
+    } catch (error) {
+      this.cancelGesture();
+      if (!(error instanceof RangeError)) throw error;
+      this.status = error.message;
+    }
+  }
+
+  #updateEdgeScroll() {
+    if (!this.#edgeEnabled() || !this.#pointer) {
+      this.#edgeScroll.stop();
+      return;
+    }
+    this.#edgeScroll.update({
+      clientPoint: { x: this.#pointer.x + 0.5, y: this.#pointer.y + 0.5 },
+      getBounds: () => {
+        const bounds = this.canvasBounds;
+        return {
+          left: this.screenX + bounds.x,
+          top: this.screenY + bounds.y,
+          width: bounds.width,
+          height: bounds.height,
+        };
+      },
+      isEnabled: () => {
+        const enabled = this.#edgeEnabled();
+        if (!enabled && this.#pointer) this.cancelGesture();
+        return enabled;
+      },
+      // Pan and shared pointer replay are one editor transaction above.
+      onCameraMove: () => {},
+    });
+  }
+
   mouse(event: MouseEvent) {
+    // A no-button move recovers a release the terminal did not deliver.
+    if (this.#pointer && (event.type === 'move' || event.type === 'out')) this.cancelGesture();
     if (this.closing) return;
     if (event.type === 'down') this.clearDockFocus();
     this.contextMenu?.validate();
@@ -847,7 +953,9 @@ export class CanvasSurface extends Renderable {
     }
     const screen = { x: event.x, y: event.y };
     const local = { x: event.x - this.screenX, y: event.y - this.screenY - CANVAS_TOP };
-    const cell = { x: this.model.viewport.x + local.x, y: this.model.viewport.y + local.y };
+    const clamp =
+      canEdgeScroll(this.model.gestureState) || this.model.gestureState.type === 'rangeMovePending';
+    const cell = this.#pointerCell(screen, clamp);
     const inside =
       local.x >= 0 &&
       local.y >= 0 &&
@@ -857,33 +965,45 @@ export class CanvasSurface extends Renderable {
       this.contextMenu?.open(cell, { x: local.x, y: local.y + CANVAS_TOP });
       return;
     }
-    if (event.type === 'down' && event.button === 0 && inside) {
-      const modifiers = this.inputModifiers.merge(event.modifiers);
-      this.#pointer = screen;
-      this.model.pointer({
-        phase: 'down',
-        screen,
-        cell,
-        shift: modifiers.shift || (this.model.currentTool === 'select' && modifiers.alt),
-        append: modifiers.ctrl,
-        button: 0,
-      });
-    } else if (event.type === 'drag' && this.#pointer) {
-      const delta = { x: screen.x - this.#pointer.x, y: screen.y - this.#pointer.y };
-      this.#pointer = screen;
-      this.model.pointer({ phase: 'move', screen, cell, delta });
-    } else if (
-      (event.type === 'up' || event.type === 'drag-end') &&
-      event.button === 0 &&
-      this.#pointer
-    ) {
-      this.model.pointer({ phase: 'up', screen, cell });
-      this.#pointer = null;
+    try {
+      if (event.type === 'down' && event.button === 0 && inside) {
+        const modifiers = this.inputModifiers.merge(event.modifiers);
+        this.#pointer = screen;
+        this.model.pointer({
+          phase: 'down',
+          screen,
+          cell,
+          shift: modifiers.shift || (this.model.currentTool === 'select' && modifiers.alt),
+          append: modifiers.ctrl,
+          button: 0,
+        });
+        this.#updateEdgeScroll();
+      } else if (event.type === 'drag' && this.#pointer) {
+        const delta = { x: screen.x - this.#pointer.x, y: screen.y - this.#pointer.y };
+        this.#pointer = screen;
+        this.model.pointer({ phase: 'move', screen, cell, delta });
+        this.#updateEdgeScroll();
+      } else if (
+        (event.type === 'up' || event.type === 'drag-end') &&
+        event.button === 0 &&
+        this.#pointer
+      ) {
+        this.#edgeScroll.stop();
+        this.model.pointer({ phase: 'up', screen, cell });
+        this.#pointer = null;
+      }
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      this.cancelGesture();
+      this.status = error.message;
     }
     this.requestRender();
   }
 
   protected override destroySelf() {
+    this.#edgeScroll.dispose();
+    this.#detachInteraction();
+    if (this.#pointer || this.#minimapDrag) this.model.cancelInteraction();
     this.#detachAppearanceHost();
     this.#detachAppearance();
     if (this.#ownsAppearance) this.appearance.dispose();

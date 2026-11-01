@@ -34,6 +34,7 @@ const result = await Bun.build({
     'yjs',
     '@napi-rs/canvas',
     '@napi-rs/clipboard',
+    '@teddyzhu/clipboard',
   ],
   plugins: [
     {

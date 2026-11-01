@@ -1,7 +1,34 @@
-import type { CliRenderer } from '@opentui/core';
+import type { CliRenderer, KeyEvent } from '@opentui/core';
+import { createKeyInput } from '@chardesk/keyboard';
 import { createOpenTuiKeymapHost } from '@opentui/keymap/opentui';
 import { registerBaseLayoutFallback } from '@opentui/keymap/addons/opentui';
 import { createInputSession } from './session.js';
+
+/** OpenTUI meta is Option/Alt; super is Command. Recording uses the same catalog vocabulary. */
+export function terminalKeyInput(event: KeyEvent) {
+  return createKeyInput({
+    key:
+      (
+        {
+          return: 'Enter',
+          space: ' ',
+          left: 'ArrowLeft',
+          right: 'ArrowRight',
+          up: 'ArrowUp',
+          down: 'ArrowDown',
+          escape: 'Escape',
+        } as Record<string, string>
+      )[event.name] ?? event.name,
+    phase: event.eventType === 'release' ? 'up' : 'down',
+    repeat: event.eventType === 'repeat',
+    modifiers: {
+      ctrl: event.ctrl,
+      shift: event.shift,
+      alt: event.meta || event.option,
+      meta: event.super,
+    },
+  });
+}
 
 /** OpenTUI owns terminal negotiation and parsing; this adapter owns its subscriptions. */
 export function createTerminalInput(renderer: CliRenderer) {

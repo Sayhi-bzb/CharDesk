@@ -1,4 +1,8 @@
-import { createCharDeskMarkdownRenderOptions } from '@chardesk/chargraph/markdown';
+import {
+  createTextProfileMarkdownOptions,
+  normalizeCharDeskTextRenderProfile,
+  type CharDeskTextRenderProfile,
+} from '@chardesk/chargraph/profile';
 import type { TerminalAppearanceSnapshot } from './appearance.ts';
 import { compileCharDeskText } from '@chardesk/chargraph';
 import { parseCharDeskDocumentEnvelope } from '@chardesk/document';
@@ -10,8 +14,12 @@ export type PasteMode = 'auto' | 'plain' | 'ansi' | 'markdown';
 /** Capture Host appearance once, then compile outside document transactions. */
 export function createTextPreparation(
   mode: PasteMode = 'auto',
-  captureAppearance?: () => Promise<TerminalAppearanceSnapshot>
+  captureAppearance?: () => Promise<TerminalAppearanceSnapshot>,
+  renderProfile?: CharDeskTextRenderProfile
 ): ClipboardTextPreparation {
+  const profile = normalizeCharDeskTextRenderProfile(
+    renderProfile ?? { mode: mode === 'plain' ? 'raw' : mode }
+  );
   return async (source, state) => {
     const envelope = parseCharDeskDocumentEnvelope(source, { allowCanvasMetadata: true });
     if (envelope?.canvas !== undefined) {
@@ -41,20 +49,37 @@ export function createTextPreparation(
       !envelope && (mode === 'auto' || mode === 'markdown')
         ? await captureAppearance?.()
         : undefined;
-    const markdown = appearance
-      ? createCharDeskMarkdownRenderOptions({ theme: appearance.contentTheme })
-      : {};
+    const themeMode = appearance?.mode === 'dark' ? 'dark' : 'light';
+    const markdown = createTextProfileMarkdownOptions(profile, {
+      theme: appearance?.contentTheme,
+      themeMode,
+      forced: mode === 'markdown',
+    });
     if (appearance && !appearance.palette) {
-      // Neutral semantic styles retain attributes, while authored ANSI remains literal.
+      // Preserve deliberate backgrounds even when native RGB is unknown.
+      const explicitBackgrounds = new Set([
+        profile.renderThemes[themeMode].background,
+        profile.renderThemes[themeMode].surface,
+        ...Object.values(profile.features).flatMap((config) =>
+          Object.entries(config.colors[themeMode])
+            .filter(([slot]) => /background|fill/.test(slot))
+            .map(([, value]) => value)
+        ),
+      ]);
       for (const styles of [markdown.styles, markdown.extensionStyles])
         for (const style of Object.values(styles ?? {})) {
-          if (style) delete style.bgColor;
+          if (style && !explicitBackgrounds.has(style.bgColor)) delete style.bgColor;
         }
     }
     const result = await compileCharDeskText(envelope?.body ?? source, {
       format: envelope ? 'chardesk' : mode,
       defaultStyle: { color: state.foreground },
-      markdown: { ...markdown, proseWrapWidth: 80 },
+      pipelineDefaultStyles: {
+        markdown: {
+          color: profile.renderThemes[themeMode].foreground ?? state.foreground,
+        },
+      },
+      markdown,
     });
     return {
       richRows: result.rows.map((row) => ({
@@ -67,7 +92,7 @@ export function createTextPreparation(
               ...result.diagnostics,
               {
                 code: 'terminal-colors-unavailable',
-                message: 'Terminal colors unavailable; generated styles inherit the foreground.',
+                message: 'Terminal colors unavailable; unconfigured styles inherit the foreground.',
               },
             ]
           : result.diagnostics,

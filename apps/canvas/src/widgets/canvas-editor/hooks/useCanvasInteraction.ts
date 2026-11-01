@@ -1,3 +1,4 @@
+import { canEdgeScroll } from '@chardesk/editor-core/interaction/edgeScroll';
 import { feedback } from '@/shared/services/feedback';
 import { useUiI18n } from '@/shared/i18n';
 import { useCreation } from 'ahooks';
@@ -451,10 +452,7 @@ export const useCanvasInteraction = (
   }, [editorRuntime, interactionOwnerId]);
   const updateEdgeScroll = (clientPoint: { x: number; y: number }) => {
     if (!edgeScroll) return;
-    const isEnabled = () => {
-      const type = editorRuntime.getInteractionState().type;
-      return type === 'selecting' || type === 'movingRange';
-    };
+    const isEnabled = () => canEdgeScroll(editorRuntime.getInteractionState());
     edgeScroll.update({
       clientPoint,
       getBounds: () => containerRef.current?.getBoundingClientRect() ?? null,

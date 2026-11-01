@@ -70,3 +70,35 @@ test('replacement previews can shrink a range; only append previews retain earli
     session.dispose();
   }
 });
+
+test('viewport coverage clips before row expansion without inventing offscreen border cells or losing wide tails', () => {
+  const model = new FreeformEditorSession('A界\nBC');
+  try {
+    const clip = { x: 2, y: 0, width: 4, height: 2 };
+    expect(
+      resolveGridSelectionCoverage(
+        [{ start: point(-10, -10), end: point(-5, -5) }],
+        model.plane,
+        clip
+      ).spans
+    ).toEqual([]);
+    expect(
+      resolveGridSelectionCoverage([{ start: point(0), end: point(0) }], model.plane, clip).spans
+    ).toEqual([]);
+    expect(
+      resolveGridSelectionCoverage([{ start: point(1), end: point(1) }], model.plane, clip).spans
+    ).toEqual([{ y: 0, minX: 2, maxX: 2 }]);
+    const huge = resolveGridSelectionCoverage(
+      [{ start: point(-1000000000, -1000000000), end: point(1000000000, 1000000000) }],
+      model.plane,
+      clip
+    );
+    expect(huge.spans).toEqual([
+      { y: 0, minX: 2, maxX: 5 },
+      { y: 1, minX: 2, maxX: 5 },
+    ]);
+    expect(huge.contains(point(1))).toBe(false);
+  } finally {
+    model.dispose();
+  }
+});

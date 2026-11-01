@@ -8,7 +8,7 @@ import type { GridCellSource, Point, SelectionArea } from '@chardesk/cell-plane/
 import type { RichTextCell, RichTextRow } from '../textCommandTypes.js';
 import type { CanvasAnchorSeed } from '../canvasAnchorModel.js';
 export type ClipboardCommandResult =
-  | { status: 'applied'; changed: boolean }
+  | { status: 'applied'; changed: boolean; warning?: 'plain-fallback' }
   | { status: 'dispatched'; changed: false }
   | { status: 'noop'; reason: 'empty-source' | 'empty-clipboard' | 'unsupported-data' }
   | { status: 'failed'; reason: 'clipboard-failed' | 'stale-target' | 'prepare-failed' };
@@ -35,12 +35,16 @@ export type ClipboardTextPreparation = (
 /** A terminal dispatch is not an acknowledgement from the user's clipboard. */
 export type ClipboardWriteResult = {
   status: 'written' | 'dispatched' | 'unavailable' | 'failed';
+  warning?: 'plain-fallback';
 };
 export interface ClipboardPort {
   read(
     state: ClipboardState
   ): Promise<PreparedClipboardPaste | { error: 'clipboard-failed' | 'unsupported-data' }>;
-  write(payload: ClipboardPayload, options: { rich: boolean; ansi: boolean }): Promise<ClipboardWriteResult>;
+  write(
+    payload: ClipboardPayload,
+    options: { rich: boolean; ansi: boolean }
+  ): Promise<ClipboardWriteResult>;
 }
 export type ClipboardMutationPort = {
   transact: <T>(fn: () => T) => T;
@@ -161,11 +165,17 @@ export const createClipboardCommands = (options: {
     copy: async (
       request: { rich?: boolean; ansi?: boolean } = {}
     ): Promise<ClipboardCommandResult> => {
-      const data = payload(getState(), request.ansi ? 'ansi' : 'plain');
+      let data: ClipboardPayload | null;
+      try {
+        data = payload(getState(), request.ansi ? 'ansi' : 'plain');
+      } catch {
+        return fail('prepare-failed');
+      }
       if (!data) return { status: 'noop', reason: 'empty-source' };
       try {
         const result = await port.write(data, { rich: !!request.rich, ansi: !!request.ansi });
-        if (result.status === 'written') return applied(false);
+        if (result.status === 'written')
+          return { ...applied(false), ...(result.warning ? { warning: result.warning } : {}) };
         if (result.status === 'dispatched') return { status: 'dispatched', changed: false };
         return fail('clipboard-failed');
       } catch {
@@ -174,13 +184,19 @@ export const createClipboardCommands = (options: {
     },
     cut: async (): Promise<ClipboardCommandResult> => {
       const request = requests.begin();
-      const initial = getState(),
+      const initial = getState();
+      let data: ClipboardPayload | null;
+      try {
         data = payload(initial);
+      } catch {
+        return fail('prepare-failed');
+      }
       if (!data) return { status: 'noop', reason: 'empty-source' };
       let result: ClipboardWriteResult;
       try {
         result = await port.write(data, { rich: true, ansi: false });
-        if (result.status !== 'written' && result.status !== 'dispatched') return fail('clipboard-failed');
+        if (result.status !== 'written' && result.status !== 'dispatched')
+          return fail('clipboard-failed');
       } catch {
         return fail('clipboard-failed');
       }
@@ -196,7 +212,7 @@ export const createClipboardCommands = (options: {
           return fail('stale-target');
         if (state.selections.length) mutations.deleteSelection();
         else if (state.cursor) mutations.erasePoints([state.cursor]);
-        return applied(true);
+        return { ...applied(true), ...(result.warning ? { warning: result.warning } : {}) };
       });
     },
     paste: () => paste((state) => port.read(state)),

@@ -90,3 +90,76 @@ test('reopening a catalog path preserves unsaved edits and external changes stil
     workspace.dispose();
   }
 });
+
+test('explicit source reload validates first, keeps views and identity, resets history and accepts the new baseline', async () => {
+  const root = await directory(),
+    path = join(root, 'native.chardesk');
+  const workspace = await TerminalWorkspace.open(path, 'before');
+  const external = await TerminalWorkspace.open(join(root, 'external.chardesk'), '🦀after');
+  try {
+    await workspace.saveFile();
+    const address = workspace.model.documents.getActiveAddress();
+    workspace.model.setTool('select');
+    workspace.model.selection = { anchor: { x: 0, y: 0 }, focus: { x: 1, y: 0 } };
+    workspace.model.pan(-20, 30);
+    const view = workspace.model.viewAt(address);
+    await external.saveFile();
+    await writeFile(path, await readFile(external.active.path, 'utf8'));
+    await workspace.inspectSources();
+    expect(workspace.sourceState().state).toBe('changed');
+    await workspace.reloadFile();
+    expect(workspace.active.path).toBe(
+      await import('./document.ts').then(({ resolveCanvasFilePath }) => resolveCanvasFilePath(path))
+    );
+    expect(workspace.model.documents.getActiveDocumentId()).toBe(address.documentId);
+    expect(workspace.model.viewAt(workspace.model.documents.getActiveAddress())).toEqual(view);
+    expect(workspace.model.plane.get({ x: 0, y: 0 })?.char).toBe('🦀');
+    expect(workspace.model.dirty).toBe(false);
+    expect(workspace.model.canUndo).toBe(false);
+    expect(workspace.sourceState().state).toBe('current');
+    expect(workspace.needsSave()).toBe(false);
+    workspace.model.commands.insert('X');
+    const local = workspace.model.plane.materialize();
+    await writeFile(path, 'corrupt external data');
+    await workspace.inspectSources();
+    expect(workspace.sourceState().state).toBe('conflict');
+    await expect(workspace.reloadFile()).rejects.toThrow('Local edits');
+    expect(workspace.model.plane.materialize()).toEqual(local);
+    expect(await readFile(path, 'utf8')).toBe('corrupt external data');
+  } finally {
+    workspace.dispose();
+    external.dispose();
+  }
+});
+
+test('reload rejects malformed/missing and stale sources without replacing cells or a newer edit', async () => {
+  const root = await directory(),
+    path = join(root, 'reload.chardesk');
+  const workspace = await TerminalWorkspace.open(path, 'before');
+  try {
+    await workspace.saveFile();
+    const file = workspace.active,
+      before = workspace.model.plane.materialize();
+    await writeFile(path, 'invalid source');
+    await expect(workspace.reloadFile()).rejects.toThrow('native Freeform');
+    expect(workspace.errorFor(file)).toBeUndefined();
+    expect(workspace.model.plane.materialize()).toEqual(before);
+    await rm(path);
+    await expect(workspace.reloadFile()).rejects.toThrow('missing');
+    expect(workspace.model.plane.materialize()).toEqual(before);
+    const pending = Promise.withResolvers<Awaited<ReturnType<typeof file.source.read>>>();
+    const read = file.source.read.bind(file.source);
+    file.source.read = () => pending.promise;
+    const reload = workspace.reloadFile();
+    await Bun.sleep(0);
+    workspace.model.commands.pointAt({ x: 0, y: 2 });
+    workspace.model.commands.insert('new local edit');
+    const edited = workspace.model.plane.materialize();
+    pending.resolve({ source: file.baselineSource!, digest: file.baselineDigest });
+    await expect(reload).rejects.toThrow('preserved');
+    expect(workspace.model.plane.materialize()).toEqual(edited);
+    file.source.read = read;
+  } finally {
+    workspace.dispose();
+  }
+});

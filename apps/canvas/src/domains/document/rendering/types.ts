@@ -1,3 +1,4 @@
+import type { CharDeskTextRenderProfile, CharDeskTextFeatureConfig, CharDeskTextFeatureSettings } from "@chardesk/chargraph/profile";
 import type {
   CharDeskContentColorDefault,
   CharDeskContentTheme,
@@ -38,23 +39,9 @@ export type TextRenderFeatureDefinition = {
   readonly colorSlots: readonly TextRenderFeatureColorSlotDefinition[];
   readonly colorRows?: readonly TextRenderFeatureColorRowDefinition[];
 };
-export type TextRenderFeatureConfig = {
-  enabled: boolean;
-  colors: TextRenderThemeMap<Record<string, string>>;
-};
-export type TextRenderFeatureSettings = Record<
-  TextRenderFeatureId,
-  TextRenderFeatureConfig
->;
-
-export type TextRenderProfile = {
-  mode: TextRendererMode;
-  markdownWrapEnabled: boolean;
-  markdownWrapWidth: number;
-  markdownAutoAnchorsEnabled: boolean;
-  renderThemes: TextRenderThemeMap<TextRenderThemeOverrides>;
-  features: TextRenderFeatureSettings;
-};
+export type TextRenderFeatureConfig = CharDeskTextFeatureConfig;
+export type TextRenderFeatureSettings = CharDeskTextFeatureSettings;
+export type TextRenderProfile = CharDeskTextRenderProfile;
 
 export type TextRenderContext = {
   themeMode: TextRenderThemeMode;

@@ -1,4 +1,8 @@
-import { resolveGridSelectionCoverage, type GridSelectionCoverage } from './selection/coverage.js';
+import {
+  resolveGridSelectionCoverage,
+  validateSelectionWork,
+  type GridSelectionCoverage,
+} from './selection/coverage.js';
 import type { GridBounds, GridRange } from './selection/static-grid.js';
 import { normalizeGridRange } from './selection/static-grid.js';
 import type { CanvasAnchor } from './canvasAnchorModel.js';
@@ -84,7 +88,7 @@ const mergeMaskSpans = (
 };
 
 export const isPointInStaticGridRange = (source: GridCellSource, range: GridRange, point: Point) =>
-  resolveGridSelectionCoverage([range], source).contains(point);
+  resolveGridSelectionCoverage([range], source, { ...point, width: 1, height: 1 }).contains(point);
 
 export const createStaticGridRangeMovePlan = ({
   source,
@@ -98,6 +102,7 @@ export const createStaticGridRangeMovePlan = ({
   bounds?: GridBounds | null;
 }): StaticGridRangeMovePlan | null => {
   const sourceRange = normalizeGridRange(range);
+  validateSelectionWork([sourceRange]);
   const sourceCoverage = resolveGridSelectionCoverage([sourceRange], source);
   if (!sourceCoverage.bounds) return null;
   const sourceSpans = sourceCoverage.spans;

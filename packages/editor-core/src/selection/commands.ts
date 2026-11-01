@@ -6,9 +6,75 @@ import {
   getGridSelectionExtent,
   moveGridAddress,
   selectGridRange,
+  getEffectiveGridBounds,
+  getGridSelectionRanges,
+  moveGridAddressToEdge,
+  moveGridAddressToContentBoundary,
+  selectGridRow,
+  selectGridColumn,
+  type GridBounds,
   type GridRange,
   type GridSelectionState,
 } from './static-grid.js';
+
+export type GridEdge = 'left' | 'right' | 'top' | 'bottom';
+export type GridCornerOrEdge = GridEdge | 'top-left' | 'bottom-right';
+
+export function selectGridAxis(
+  grid: GridCellSource,
+  selection: GridSelectionState,
+  axis: 'row' | 'column',
+  fixedBounds?: GridBounds | null
+) {
+  const bounds = getEffectiveGridBounds({
+    grid,
+    activeCell: selection.activeCell,
+    ranges: getGridSelectionRanges(selection),
+    fixedBounds,
+  });
+  return axis === 'row' ? selectGridRow(selection, bounds) : selectGridColumn(selection, bounds);
+}
+
+export function moveGridFocusToEdge(
+  grid: GridCellSource,
+  selection: GridSelectionState,
+  edge: GridCornerOrEdge,
+  extend = false,
+  fixedBounds?: GridBounds | null,
+  resolveAddress: (point: Point) => Point = (point) => resolveGridAnchor(grid, point)
+) {
+  const bounds = getEffectiveGridBounds({
+    grid,
+    activeCell: selection.activeCell,
+    ranges: getGridSelectionRanges(selection),
+    fixedBounds,
+  });
+  let point = extend ? getGridSelectionExtent(selection) : selection.activeCell;
+  if (edge === 'top-left') point = bounds.start;
+  else if (edge === 'bottom-right') point = bounds.end;
+  else point = moveGridAddressToEdge(point, edge, bounds);
+  const target = resolveAddress(point);
+  return extend
+    ? extendGridSelectionTo(selection, target)
+    : collapseGridSelectionTo(selection, target);
+}
+
+export function moveGridFocusToContentBoundary(
+  grid: GridCellSource,
+  selection: GridSelectionState,
+  edge: GridEdge,
+  extend = false,
+  fixedBounds?: GridBounds | null,
+  resolveAddress: (point: Point) => Point = (point) => resolveGridAnchor(grid, point)
+) {
+  const address = extend ? getGridSelectionExtent(selection) : selection.activeCell;
+  const target = resolveAddress(
+    moveGridAddressToContentBoundary({ grid, address, edge, fixedBounds })
+  );
+  return extend
+    ? extendGridSelectionTo(selection, target)
+    : collapseGridSelectionTo(selection, target);
+}
 
 /** Pointer range endpoints identify grapheme anchors, including follower hits. */
 export function selectGridRangeAt(

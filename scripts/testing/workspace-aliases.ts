@@ -4,8 +4,15 @@ const root = path.resolve(import.meta.dirname, '../..');
 const source = (relativePath: string) => path.resolve(root, relativePath);
 
 export const workspaceAliases = [
+  {
+    find: /^@chardesk\/chargraph\/profile$/,
+    replacement: source('packages/chargraph/src/text-profile.ts'),
+  },
   { find: /^@chardesk\/editor-input$/, replacement: source('packages/editor-input/src/index.ts') },
-  { find: /^@chardesk\/editor-input\/(.+)$/, replacement: source('packages/editor-input/src/$1.ts') },
+  {
+    find: /^@chardesk\/editor-input\/(.+)$/,
+    replacement: source('packages/editor-input/src/$1.ts'),
+  },
   {
     find: /^@chardesk\/character-library$/,
     replacement: source('packages/character-library/src/index.ts'),
