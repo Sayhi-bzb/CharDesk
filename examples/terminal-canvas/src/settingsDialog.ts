@@ -14,8 +14,10 @@ export class TerminalSettingsDialog {
   #section = 0;
   #closingKey: string | null = null;
   #detach: () => void;
+  #detachAppearance: () => void;
   constructor(private surface: CanvasSurface) {
     this.#detach = surface.settings.subscribe(() => this.#refresh());
+    this.#detachAppearance = surface.appearance.subscribe(() => this.#refresh());
   }
   get isOpen() {
     return this.#panel !== null && this.surface.panel === this.#panel;
@@ -71,16 +73,18 @@ export class TerminalSettingsDialog {
       )!;
       return `${def.label.padEnd(labelWidth)}    ‹ ${choice.label} ›`;
     });
+    if (sections[this.#section]!.id === 'appearance') panel.items.push('Refresh terminal colors');
     panel.items.push('Reset this section');
     const store = this.surface.settings;
-    panel.footer =
-      store.status === 'saving'
-        ? 'Saving…'
-        : store.status === 'saved'
-          ? 'Saved · Changes apply immediately'
-          : store.status === 'session'
-            ? 'Changes apply to this session'
-            : 'Saving unavailable; session changes only';
+    const appearance = this.surface.appearance.getSnapshot();
+    panel.status =
+      sections[this.#section]!.id === 'appearance'
+        ? appearance.status === 'refreshing'
+          ? 'Refreshing colors…'
+          : appearance.status === 'unavailable'
+            ? 'Terminal RGB unavailable'
+            : undefined
+        : undefined;
     panel.error = store.error || undefined;
     this.surface.requestRender();
   }
@@ -89,7 +93,13 @@ export class TerminalSettingsDialog {
     if (!panel || !this.isOpen) return;
     const definitions = this.#definitions(),
       definition = definitions[panel.selected];
-    if (!definition) this.surface.settings.reset(sections[this.#section]!.id);
+    if (
+      !definition &&
+      sections[this.#section]!.id === 'appearance' &&
+      panel.selected === definitions.length
+    )
+      void this.surface.appearance.refresh();
+    else if (!definition) this.surface.settings.reset(sections[this.#section]!.id);
     else {
       const index = definition.choices.findIndex(
         (choice) => choice.value === this.surface.settings.values[definition.id]
@@ -129,5 +139,6 @@ export class TerminalSettingsDialog {
   dispose() {
     this.close();
     this.#detach();
+    this.#detachAppearance();
   }
 }

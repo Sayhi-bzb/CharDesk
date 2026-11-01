@@ -1,6 +1,6 @@
 import { prepareCanvasRowsWrite } from '@chardesk/editor-core/writeText';
 import { CharacterPicker } from './characters.ts';
-import { CANVAS_TEMPLATES, materializeCanvasTemplate } from '@chardesk/canvas-templates';
+import { CANVAS_TEMPLATES } from '@chardesk/canvas-templates';
 import { drawingLabel, drawingTools } from './drawing.ts';
 import type { KeyEvent } from '@opentui/core';
 import { segmentGraphemes } from '@chardesk/protocol';
@@ -28,6 +28,8 @@ export class WorkspaceControls {
   #document: string;
   #version: string;
   #detach: () => void;
+  #detachAppearance: () => void;
+  #refreshPlacement: (() => void) | null = null;
   #enter = () => {};
   #special: (key: KeyEvent) => boolean = () => false;
   #anchorIds: string[] = [];
@@ -85,6 +87,10 @@ export class WorkspaceControls {
       this.#version = surface.model.version;
       this.refresh();
     });
+    this.#detachAppearance = surface.appearance.subscribe(() => {
+      this.#refreshPlacement?.();
+      surface.requestRender();
+    });
     this.refresh();
   }
 
@@ -103,6 +109,7 @@ export class WorkspaceControls {
     this.surface.placement = null;
     this.#place = null;
     this.#kind = '';
+    this.#refreshPlacement = null;
     this.#selectedAll = false;
     this.surface.requestRender();
   }
@@ -145,7 +152,7 @@ export class WorkspaceControls {
     const panel: TerminalPanel = {
       title:
         kind === 'save-copy'
-          ? 'Save copy'
+          ? 'Duplicate document'
           : kind === 'new'
             ? 'New document — choose a new path'
             : 'Open document',
@@ -159,7 +166,7 @@ export class WorkspaceControls {
       this.#async(panel, async () => {
         if (kind === 'save-copy') {
           await this.workspace.saveCopy(panel.input!.trim());
-          this.surface.status = 'Copy saved';
+          this.surface.status = 'Document duplicated';
           this.surface.backgroundStatus = '';
         } else {
           if (kind === 'new') {
@@ -185,7 +192,7 @@ export class WorkspaceControls {
         ),
         '+ Open',
         '+ New',
-        'Save copy…',
+        'Duplicate…',
       ],
       selected: files.indexOf(this.workspace.active),
     };
@@ -218,29 +225,26 @@ export class WorkspaceControls {
       this.closeLast();
       return;
     }
-    const close = (discard = false) => {
-      this.dismiss();
-      this.workspace.close(this.workspace.files.indexOf(file), discard);
+    const close = () => {
+      const closed = this.workspace.close(this.workspace.files.indexOf(file));
+      if (!closed) throw new Error('Document changed while closing. Try closing it again.');
       this.refresh();
     };
-    if (!this.surface.model.isDirtyAt(file.address!)) {
+    if (!this.workspace.needsSave(file)) {
+      this.dismiss();
       close();
       return;
     }
     const panel: TerminalPanel = {
-      title: `Unsaved document · ${file.title}`,
-      hint: 'Enter choose · Esc cancel',
+      title: `Closing document · ${file.title}`,
+      hint: 'Saving automatically · Esc cancel',
       selected: 0,
-      items: ['Save and close', 'Discard edits and close', 'Cancel'],
+      items: [],
     };
-    this.#show('close', panel, () => {
-      if (panel.selected === 0)
-        this.#async(panel, async () => {
-          await this.workspace.saveFile(file);
-          close();
-        });
-      else if (panel.selected === 1) close(true);
-      else this.dismiss();
+    this.#show('close', panel, () => {});
+    this.#async(panel, async () => {
+      await this.workspace.saveFile(file);
+      if (this.surface.panel === panel) close();
     });
   }
   search() {
@@ -458,9 +462,7 @@ export class WorkspaceControls {
     const pick = () => {
       const template = candidates[panel.selected];
       if (!template) return;
-      const materialized = materializeCanvasTemplate(template.id, (color) =>
-        typeof color === 'string' ? color : undefined
-      );
+      let materialized = this.surface.appearance.materializeTemplate(template.id);
       this.dismiss();
       this.surface.cancelGesture();
       this.surface.model.cancelPendingPaste();
@@ -474,6 +476,10 @@ export class WorkspaceControls {
         label: template.label,
       };
       this.#placementTarget = this.#target();
+      this.#refreshPlacement = () => {
+        materialized = this.surface.appearance.materializeTemplate(template.id);
+        if (this.surface.placement) this.surface.placement.source = materialized.source;
+      };
       this.#place = () => {
         if (!this.surface.placement || this.#target() !== this.#placementTarget) {
           this.dismiss();
@@ -748,5 +754,6 @@ export class WorkspaceControls {
     this.#characters.dispose();
     this.dismiss();
     this.#detach();
+    this.#detachAppearance();
   }
 }

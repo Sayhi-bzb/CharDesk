@@ -26,14 +26,15 @@ a dead process's lock is reclaimed at restart. Invalid checkpoints remain intact
 and startup fails with an error. Use another checkpoint path to start separately.
 
 [Persistence](src/persistence.ts) checkpoints edits and views on a 150 ms throttle.
-After 800 ms of idle editing, it saves all dirty documents. `--no-autosave`
-disables document autosave, retaining recovery checkpoints. `--snapshot` is
+After 800 ms of idle editing, it saves all dirty documents. Document close and
+quit also save before removing documents or releasing the workspace. Manual Save
+commands and disabling autosave are not exposed. `--snapshot` is
 read-only and creates neither checkpoint nor lock. Recovery guarantees extend
 to the last completed checkpoint, not every incoming keystroke.
 
 Saves check the disk baseline before writing and again before replacement.
 Detected external modifications stop the save and appear as errors in the UI.
-Save Copy requires an unused path and preserves the original. This is optimistic
+Duplicate requires an unused path and preserves the original. This is optimistic
 conflict detection, not an OS lock against unrelated writers.
 
 Restart compares the disk file, saved baseline digest and recovery snapshot:
@@ -46,10 +47,9 @@ Restart compares the disk file, saved baseline digest and recovery snapshot:
 | Changed disk, dirty checkpoint      | Keep external file; recover edits at a separate `.recovered-…chardesk` path |
 
 An invalid external document is left untouched; its dirty snapshot still gets a
-separate recovery path. Explicit Discard replaces recovery content with the saved
-baseline, or removes an unsaved missing file from the checkpoint. Quit checks
-all open documents, including hidden dirty documents. Failed checkpoint writes
-keep the editor open for retry. Signals preserve recoverable dirty snapshots.
+separate recovery path. Quit saves all open documents, including hidden dirty
+documents. Failed document or checkpoint writes keep the editor open, preserving
+recovery data. Signals also attempt to save before releasing the workspace.
 
 [Workspace](src/workspace.ts) captures document addresses for asynchronous saves
 and rejects late navigation intents. Each document keeps separate history and
@@ -58,13 +58,13 @@ Drawing/catalog previews and pending searches are transient; recovery restores
 the selected tool and complete drawing settings, never an unfinished stroke or
 placement.
 
-Checkpoint, lock and already-open paths cannot become Save Copy destinations.
+Checkpoint, lock and already-open paths cannot become Duplicate destinations.
 
 ## Verification
 
 - [Native fidelity](src/document.test.ts) and [Web round trips](../../apps/canvas/src/domains/canvas/state/nativeDocument.dom.test.ts)
 - [Isolation and asynchronous saves](src/workspace.test.ts)
-- [Recovery, external edits, locking, discard and real SIGKILL](src/persistence.test.ts)
+- [Recovery, external edits, locking, save-on-close and real SIGKILL](src/persistence.test.ts)
 - [Rendered panels and native keyboard/pointer events](src/workspaceControls.test.ts)
 
 Windows filesystem durability and terminal shortcut forwarding still require

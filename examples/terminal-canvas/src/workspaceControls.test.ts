@@ -4,10 +4,57 @@ import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TerminalWorkspace } from './workspace.ts';
-import { CanvasSurface } from './surface.ts';
+import { CanvasSurface, CANVAS_TOP } from './surface.ts';
 import { attachControls } from './controller.ts';
 import { serializeCharDeskDocumentEnvelope } from '@chardesk/document';
 import { createTextPreparation } from './text.ts';
+import type { TerminalColors } from '@opentui/core';
+
+test('template previews follow appearance until placement, then remain literal document content', async () => {
+  const f = await fixture();
+  const terminal: TerminalColors = {
+    palette: [],
+    defaultForeground: '#eeeeee',
+    defaultBackground: '#111111',
+    cursorColor: null,
+    mouseForeground: null,
+    mouseBackground: null,
+    tekForeground: null,
+    tekBackground: null,
+    highlightForeground: null,
+    highlightBackground: null,
+  };
+  try {
+    const model = f.workspace.model,
+      original = model.plane.materialize(),
+      version = model.version;
+    f.setup.renderer.emit('palette', terminal);
+    f.setup.mockInput.pressKey('F4', { shift: true });
+    expect(f.surface.panel?.title).toBe('Templates and components');
+    await f.setup.mockInput.typeText('button', 0);
+    f.setup.mockInput.pressEnter();
+    expect(f.surface.placement?.source.get({ x: 0, y: 0 })?.color).toBe('#eeeeee');
+    f.setup.renderer.emit('palette', {
+      ...terminal,
+      defaultForeground: '#111111',
+      defaultBackground: '#ffffff',
+    });
+    expect(f.surface.placement?.source.get({ x: 0, y: 0 })?.color).toBe('#111111');
+    expect(model.plane.materialize()).toEqual(original);
+    expect(model.version).toBe(version);
+    expect(model.canUndo).toBe(false);
+    const point = { ...f.surface.placement!.at };
+    f.setup.mockInput.pressEnter();
+    expect(model.plane.get(point)).toMatchObject({ color: '#111111', bgColor: '#ffffff' });
+    const placed = model.plane.materialize();
+    f.setup.renderer.emit('palette', terminal);
+    expect(model.plane.materialize()).toEqual(placed);
+    model.commands.undo();
+    expect(model.plane.materialize()).toEqual(original);
+  } finally {
+    await f.dispose();
+  }
+});
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -48,7 +95,6 @@ async function fixture(
     writes = 0;
   const detach = attachControls(
     surface,
-    workspace.active,
     () => {
       quits++;
     },
@@ -106,7 +152,7 @@ async function until(check: () => boolean) {
 }
 
 test.each(['darwin', 'win32'] as const)(
-  '%s native shortcuts open, switch, create, save and close documents',
+  '%s native shortcuts open, switch, create and automatically save on document close',
   async (platform) => {
     const f = await fixture(platform);
     try {
@@ -116,7 +162,8 @@ test.each(['darwin', 'win32'] as const)(
       f.setup.mockInput.pressEnter();
       await until(() => f.workspace.files.length === 2);
       await f.setup.renderOnce();
-      expect(f.setup.captureCharFrame()).toContain('2/2 Two');
+      expect(f.workspace.active.title).toBe('Two');
+      expect(f.setup.captureCharFrame()).toContain('Second');
       expect(f.surface.tool).toBe('hand');
       f.setup.mockInput.pressKey(KeyCodes.F2);
       await f.setup.mockInput.typeText('X', 0);
@@ -128,19 +175,22 @@ test.each(['darwin', 'win32'] as const)(
       expect(f.workspace.active.title).toBe('Two');
       expect(f.surface.tool).toBe('edit');
       expect(f.workspace.model.getSnapshot().interaction).toEqual(secondState);
-      f.primary('s');
-      await until(() => !f.workspace.model.dirty);
+      f.primary('w');
+      await until(() => f.workspace.files.length === 1);
       expect(await readFile(f.second, 'utf8')).toContain('Xecond');
       f.primary('n');
       f.setup.renderer.keyInput.processPaste(
         new TextEncoder().encode(join(f.root, 'three.chardesk'))
       );
       f.setup.mockInput.pressEnter();
-      await until(() => f.workspace.files.length === 3);
+      await until(() => f.workspace.files.length === 2);
       expect(f.workspace.active.title).toBe('three');
       f.primary('w');
-      expect(f.workspace.files).toHaveLength(2);
-      expect(f.workspace.active.title).toBe('Two');
+      await until(() => f.workspace.files.length === 1);
+      expect(await readFile(join(f.root, 'three.chardesk'), 'utf8')).toContain(
+        'chardesk: document/v2'
+      );
+      expect(f.workspace.active.title).toBe('One');
     } finally {
       await f.dispose();
     }
@@ -202,7 +252,10 @@ test('cancelled file prompts cannot activate a late open and save-copy keeps the
     await Bun.sleep(20);
     expect(f.workspace.files).toHaveLength(1);
     f.workspace.model.commands.insert('X');
-    f.primary('s', true);
+    f.setup.mockInput.pressKey(KeyCodes.F7);
+    f.surface.panel!.selected = f.surface.panel!.items.indexOf('Duplicate…');
+    f.setup.mockInput.pressEnter();
+    expect(f.surface.panel?.title).toBe('Duplicate document');
     const target = join(f.root, 'copy.chardesk');
     await f.setup.mockInput.typeText(target, 0);
     f.setup.mockInput.pressEnter();
@@ -243,8 +296,7 @@ test('anchor panel creates, renames, jumps and deletes through shared undoable c
     f.escape();
     f.primary('z');
     expect(model.anchors[0]?.label).toBe('重命名');
-    f.primary('s');
-    await until(() => !model.dirty);
+    await f.workspace.saveFile();
     expect(await readFile(f.first, 'utf8')).toContain('重命名');
   } finally {
     await f.dispose();
@@ -355,26 +407,23 @@ test('document changes clear a pending shortcut sequence before it can target an
   }
 });
 
-test('quit checks hidden dirty documents and closing a dirty document requires an explicit choice', async () => {
+test('quit delegates automatic saving to the host; dirty document close saves without a choice', async () => {
   const f = await fixture();
   try {
     f.workspace.model.commands.insert('X');
     await f.workspace.openFile(f.second);
     f.setup.mockInput.pressKey('q', { ctrl: true });
-    expect(f.quits).toBe(0);
-    expect(f.surface.status).toContain('F12');
+    expect(f.quits).toBe(1);
+    expect(f.surface.status).not.toContain('Unsaved');
     f.setup.mockInput.pressKey(KeyCodes.F6);
     f.primary('w');
-    expect(f.surface.panel?.title).toContain('Unsaved document');
-    f.escape();
-    expect(f.workspace.files).toHaveLength(2);
-    f.primary('w');
-    f.setup.mockInput.pressArrow('down');
-    f.setup.mockInput.pressEnter();
-    expect(f.workspace.files).toHaveLength(1);
-    expect(await readFile(f.first, 'utf8')).toContain('Alpha');
+    expect(f.surface.panel?.title).toContain('Closing document');
+    expect(f.surface.panel?.items).toEqual([]);
+    await until(() => f.workspace.files.length === 1);
+    expect(await readFile(f.first, 'utf8')).toContain('Xlpha');
+    expect(f.surface.panel).toBeNull();
     f.setup.mockInput.pressKey('q', { ctrl: true });
-    expect(f.quits).toBe(1);
+    expect(f.quits).toBe(2);
   } finally {
     await f.dispose();
   }
@@ -404,7 +453,7 @@ test.each(['darwin', 'win32'] as const)(
       expect(model.currentTool).toBe('brush');
       expect(f.surface.panel).toBeNull();
       const x = 15 - model.viewport.x,
-        y = 5 - model.viewport.y + 1;
+        y = 5 - model.viewport.y + CANVAS_TOP;
       await f.setup.mockMouse.pressDown(x, y);
       await f.setup.mockMouse.emitMouseEvent('drag', x + 6, y);
       await f.setup.renderOnce();
@@ -482,7 +531,7 @@ test('templates preview without mutation, accept a negative landing point, and p
     f.setup.mockInput.pressArrow('up', { shift: true });
     expect(f.surface.placement?.at).toEqual({ x: -10, y: -10 });
     await f.setup.renderOnce();
-    const confirm = f.surface.toolbarControls.find((item) => item.id === 'confirm-placement')!;
+    const confirm = f.surface.dockControls.find((item) => item.id === 'confirm-placement')!;
     await f.setup.mockMouse.click(confirm.x + 1, confirm.y);
     expect(f.surface.placement).toBeNull();
     expect(model.plane.get({ x: -10, y: -10 })?.char).toBe('[');
@@ -593,6 +642,60 @@ test('character picker pages, filters groups, accepts pointer selection and expo
     expect(model.canUndo).toBe(false);
     expect(model.plane.get({ x: 0, y: 0 })?.char).toBe('A');
   } finally {
+    await f.dispose();
+  }
+});
+
+test('failed automatic close leaves the document open and its edits recoverable', async () => {
+  const f = await fixture();
+  try {
+    f.workspace.model.commands.insert('X');
+    await f.workspace.openFile(f.second);
+    f.workspace.switchTo(0);
+    await writeFile(f.first, 'EXTERNAL');
+    f.primary('w');
+    await until(() => Boolean(f.surface.panel?.error));
+    expect(f.surface.panel?.error).toContain('changed on disk');
+    expect(f.surface.panel?.items).toEqual([]);
+    expect(f.workspace.files).toHaveLength(2);
+    expect(f.workspace.active).toBe(f.workspace.files[0]);
+    expect(f.workspace.dirty).toBe(true);
+    expect(await readFile(f.first, 'utf8')).toBe('EXTERNAL');
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('cancelling a pending automatic close saves its content but keeps the document open', async () => {
+  const f = await fixture();
+  const entered = Promise.withResolvers<void>(),
+    release = Promise.withResolvers<void>();
+  const file = f.workspace.active,
+    save = file.save.bind(file);
+  file.save = async (model) => {
+    entered.resolve();
+    await release.promise;
+    await save(model);
+  };
+  try {
+    f.workspace.model.commands.insert('X');
+    await f.workspace.openFile(f.second);
+    f.workspace.switchTo(0);
+    const content = f.workspace.model.plane.materialize();
+    f.primary('w');
+    await entered.promise;
+    expect(f.surface.panel?.busy).toBe(true);
+    await f.setup.mockInput.typeText('BLOCKED', 0);
+    expect(f.workspace.model.plane.materialize()).toEqual(content);
+    f.escape();
+    release.resolve();
+    await f.workspace.settleSaves();
+    expect(f.surface.panel).toBeNull();
+    expect(f.workspace.files).toHaveLength(2);
+    expect(await readFile(f.first, 'utf8')).toContain('Xlpha');
+  } finally {
+    release.resolve();
+    await f.workspace.settleSaves();
     await f.dispose();
   }
 });

@@ -9,9 +9,8 @@ import type {
 } from '@chardesk/editor-core/editor/types';
 import { TerminalSettingsDialog } from './settingsDialog.ts';
 import { TerminalContextMenu } from './contextMenu.ts';
-import { messages, quitMessage } from './copy.ts';
+import { messages } from './copy.ts';
 import type { TerminalAction } from './shortcuts.ts';
-import type { CanvasFile } from './document.ts';
 import type { CanvasSurface } from './surface.ts';
 import type { TerminalWorkspace } from './workspace.ts';
 import { WorkspaceControls } from './workspaceControls.ts';
@@ -24,7 +23,6 @@ const unavailableClipboard: TerminalClipboardAccess = {
 
 export function attachControls(
   surface: CanvasSurface,
-  file: CanvasFile,
   quit: () => void,
   clipboard: TerminalClipboardAccess = unavailableClipboard,
   workspace?: TerminalWorkspace
@@ -57,7 +55,6 @@ export function attachControls(
   );
   disposers.push(editor.keymap.subscribe(() => surface.requestRender()));
   let active = true,
-    pendingQuit = false,
     clipboardRequest = 0;
   const editOnly = () => surface.tool === 'edit';
   const panelActions = new Set(['copy', 'cut', 'paste', 'select-all']);
@@ -82,7 +79,6 @@ export function attachControls(
         execute: () => {
           menu.close();
           keymap.clearPendingSequence();
-          if (id !== 'quit') pendingQuit = false;
           surface.status = '';
           return run() ?? { handled: true, status: 'succeeded' };
         },
@@ -179,27 +175,7 @@ export function attachControls(
     surface.help = !surface.help;
     surface.helpScroll = 0;
   });
-  action('quit', () => {
-    if (!(workspace?.dirty ?? model.dirty) || pendingQuit) quit();
-    else {
-      pendingQuit = true;
-      surface.status = quitMessage(surface.shortcuts);
-    }
-  });
-  action('save', () => {
-    const target = workspace?.active ?? file;
-    surface.status = copy.saving;
-    void (workspace ? workspace.saveFile(target) : target.save(model))
-      .then(() => {
-        if (active) surface.status = `${copy.saveDone}: ${target.path}`;
-      })
-      .catch((error) => {
-        if (active) surface.status = error instanceof Error ? error.message : String(error);
-      })
-      .finally(() => {
-        if (active) surface.requestRender();
-      });
-  });
+  action('quit', quit);
   if (workspace && workspaceControls) {
     for (const id of [
       'tools',
@@ -220,20 +196,6 @@ export function attachControls(
       'close-document',
     ] as const)
       action(id, () => workspaceControls.action(id));
-    action('save-all', () => {
-      surface.status = copy.saving;
-      void workspace
-        .saveAll()
-        .then(() => {
-          if (active) surface.status = copy.saveDone;
-        })
-        .catch((error) => {
-          if (active) surface.status = error instanceof Error ? error.message : String(error);
-        })
-        .finally(() => {
-          if (active) surface.requestRender();
-        });
-    });
   }
   bind('escape', ['Escape'], () => {
     if (surface.help) surface.help = false;
@@ -276,6 +238,7 @@ export function attachControls(
       const address = JSON.stringify(model.documents.getActiveAddress());
       const revision = model.plane.getRevision();
       const selection = JSON.stringify(model.getSnapshot().interaction);
+      let appearanceRevision: number | null = null;
       const current = () =>
         active &&
         !surface.closing &&
@@ -283,20 +246,22 @@ export function attachControls(
         request === clipboardRequest &&
         address === JSON.stringify(model.documents.getActiveAddress()) &&
         revision === model.plane.getRevision() &&
-        selection === JSON.stringify(model.getSnapshot().interaction);
+        selection === JSON.stringify(model.getSnapshot().interaction) &&
+        (appearanceRevision === null ||
+          appearanceRevision === surface.appearance.getSnapshot().revision);
       surface.status = copy.clipboardWorking;
       const completion: Promise<EditorCommandCompletion> = (async () => {
         let copying = false;
         try {
           const snapshot = captureSelectionSnapshot(model);
-          const palette = await renderer.getPalette({ timeout: 150 });
+          const appearance = await surface.appearance.ensurePalette();
           if (!current()) throw new Error('stale-target');
-          // Raster pixels cannot represent a terminal's symbolic default colors.
-          if (!palette.defaultForeground || !palette.defaultBackground)
+          if (appearance.status !== 'ready' || !appearance.palette)
             throw new Error('palette-unavailable');
+          appearanceRevision = appearance.revision;
           const image = renderSelectionSnapshot(snapshot, {
-            color: palette.defaultForeground,
-            background: palette.defaultBackground,
+            color: appearance.palette.foreground,
+            background: appearance.palette.background,
           });
           if (!current()) throw new Error('stale-target');
           copying = true;
@@ -441,7 +406,6 @@ export function attachControls(
     )
       return;
     if (workspaceControls?.key(key)) {
-      pendingQuit = false;
       consume();
       return;
     }
@@ -454,7 +418,6 @@ export function attachControls(
     }),
     repeat: (key) => key.eventType === 'repeat',
     execute: (binding) => {
-      if (binding.id !== 'terminal.quit') pendingQuit = false;
       surface.status = '';
       if (binding.target.type === 'command') {
         const result = editor.commands.execute(binding.target.id, undefined, 'terminal-keyboard');
@@ -467,7 +430,6 @@ export function attachControls(
   const keypress = (key: KeyEvent) => {
     if (key.eventType === 'release') return;
     key.preventDefault();
-    pendingQuit = false;
     surface.status = '';
     if (
       !surface.help &&
@@ -493,7 +455,6 @@ export function attachControls(
     event.preventDefault();
     if (surface.closing) return;
     if (workspaceControls?.paste(new TextDecoder().decode(event.bytes))) return;
-    pendingQuit = false;
     surface.status = '';
     surface.cancelGesture();
     clipboardAction('paste', new TextDecoder().decode(event.bytes));

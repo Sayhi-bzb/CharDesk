@@ -7,7 +7,6 @@ import type {
 import { TerminalCanvas } from './model.ts';
 import { CanvasSurface, CANVAS_TOP } from './surface.ts';
 import { attachControls } from './controller.ts';
-import { CanvasFile } from './document.ts';
 
 async function fixture(
   kittyKeyboard: boolean,
@@ -19,12 +18,7 @@ async function fixture(
   const model = new TerminalCanvas(source);
   const surface = new CanvasSurface(setup.renderer, model, 'test.chardesk', 'win32');
   setup.renderer.root.add(surface);
-  const detach = attachControls(
-    surface,
-    new CanvasFile('/unused', 'test', null),
-    () => {},
-    clipboard
-  );
+  const detach = attachControls(surface, () => {}, clipboard);
   await setup.renderOnce();
   return {
     setup,

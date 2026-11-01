@@ -130,21 +130,22 @@ test('an already committed save is recognized after a crash before the next chec
   }
 });
 
-test('discarded edits do not reappear on restart and active locks prevent concurrent journal writers', async () => {
+test('closing before the idle timer saves the latest edits and protects active locks', async () => {
   const f = await fixture();
   try {
     await expect(WorkspacePersistence.open(f.checkpoint)).rejects.toThrow('already open');
     f.workspace.model.commands.insert('saved');
     await f.workspace.saveFile();
-    f.workspace.model.commands.insert('discard me');
+    f.workspace.model.commands.insert(' latest');
     f.persistence.start(f.workspace, { autosaveMs: -1 });
-    await f.persistence.close(true);
+    await f.persistence.close();
+    expect(await readFile(f.path, 'utf8')).toContain('saved latest');
     const reopened = await WorkspacePersistence.open(f.checkpoint),
       restored = (await reopened.restore({}))!;
     try {
       expect(
         [...restored.model.plane.materialize().values()].map((cell) => cell.char).join('')
-      ).toBe('saved');
+      ).toBe('saved latest');
       expect(restored.dirty).toBe(false);
     } finally {
       await reopened.close();
@@ -175,7 +176,8 @@ test('failed checkpoint close keeps ownership and can retry without losing edits
     await mkdir(f.checkpoint);
     await expect(f.persistence.close()).rejects.toThrow();
     expect(await readOptional(`${f.checkpoint}.lock`)).not.toBeNull();
-    expect(f.workspace.dirty).toBe(true);
+    expect(f.workspace.dirty).toBe(false);
+    expect(await readFile(f.path, 'utf8')).toContain('recoverable');
     f.workspace.model.commands.insert(' after failure');
     await rm(f.checkpoint, { recursive: true });
     await f.persistence.close();
@@ -184,7 +186,7 @@ test('failed checkpoint close keeps ownership and can retry without losing edits
     const restored = (await reopened.restore({}))!;
     try {
       expect(restored.model.plane.get({ x: 12, y: 0 })?.char).toBe('a');
-      expect(restored.dirty).toBe(true);
+      expect(restored.dirty).toBe(false);
     } finally {
       await reopened.close();
       restored.dispose();
@@ -325,3 +327,100 @@ test('recovery restores complete drawing settings and tool without content or hi
     f.workspace.dispose();
   }
 });
+
+test('exit saves every dirty document, including hidden documents, before releasing recovery ownership', async () => {
+  const f = await fixture();
+  const second = join(f.root, 'two.chardesk');
+  try {
+    f.workspace.model.commands.insert('ONE');
+    await f.workspace.openFile(second);
+    f.workspace.model.commands.insert('TWO');
+    f.persistence.start(f.workspace, { autosaveMs: 60_000, checkpointMs: 60_000 });
+    await f.persistence.close();
+    expect(await readFile(f.path, 'utf8')).toContain('ONE');
+    expect(await readFile(second, 'utf8')).toContain('TWO');
+    expect(f.workspace.dirty).toBe(false);
+    expect(await readOptional(`${f.checkpoint}.lock`)).toBeNull();
+    const checkpoint = JSON.parse(await readFile(f.checkpoint, 'utf8'));
+    expect(checkpoint.files.map((file: { dirty: boolean }) => file.dirty)).toEqual([false, false]);
+  } finally {
+    await f.persistence.abandon();
+    f.workspace.dispose();
+  }
+});
+
+test('exit waits for an in-flight write and then saves edits made after that write', async () => {
+  const f = await fixture();
+  const entered = Promise.withResolvers<void>(),
+    release = Promise.withResolvers<void>();
+  const file = f.workspace.active,
+    save = file.save.bind(file);
+  let writes = 0;
+  file.save = async (model) => {
+    await save(model);
+    if (++writes === 1) {
+      entered.resolve();
+      await release.promise;
+    }
+  };
+  try {
+    f.workspace.model.commands.insert('first');
+    const saving = f.workspace.saveFile();
+    await entered.promise;
+    f.workspace.model.commands.insert(' latest');
+    f.persistence.start(f.workspace, { autosaveMs: 60_000, checkpointMs: 60_000 });
+    let closed = false;
+    const closing = f.persistence.close().then(() => {
+      closed = true;
+    });
+    await Bun.sleep(5);
+    expect(closed).toBe(false);
+    release.resolve();
+    await saving;
+    await closing;
+    expect(await readFile(f.path, 'utf8')).toContain('first latest');
+    expect(writes).toBe(2);
+    expect(f.workspace.dirty).toBe(false);
+  } finally {
+    release.resolve();
+    await f.persistence.abandon();
+    f.workspace.dispose();
+  }
+});
+
+test('failed exit keeps edits, an up-to-date recovery checkpoint and workspace ownership', async () => {
+  const f = await fixture();
+  try {
+    f.workspace.model.commands.insert('my edits');
+    f.persistence.start(f.workspace, { autosaveMs: 60_000, checkpointMs: 60_000 });
+    await writeFile(f.path, 'EXTERNAL');
+    await expect(f.persistence.close()).rejects.toThrow('changed on disk');
+    expect(await readFile(f.path, 'utf8')).toBe('EXTERNAL');
+    expect(f.workspace.dirty).toBe(true);
+    expect(await readFile(f.checkpoint, 'utf8')).toContain('my edits');
+    expect(await readOptional(`${f.checkpoint}.lock`)).not.toBeNull();
+    await expect(WorkspacePersistence.open(f.checkpoint)).rejects.toThrow('already open');
+  } finally {
+    await f.persistence.abandon();
+    f.workspace.dispose();
+  }
+});
+
+for (const exitImmediately of [false, true]) {
+  test(`untouched new canvases reach disk automatically (immediate exit: ${exitImmediately})`, async () => {
+    const f = await fixture();
+    try {
+      expect(f.workspace.model.dirty).toBe(false);
+      expect(f.workspace.needsSave()).toBe(true);
+      f.persistence.start(f.workspace, { autosaveMs: exitImmediately ? 60_000 : 5 });
+      if (exitImmediately) await f.persistence.close();
+      else await until(() => !f.workspace.needsSave());
+      expect(await readFile(f.path, 'utf8')).toContain('chardesk: document/v2');
+      expect(f.workspace.needsSave()).toBe(false);
+      expect(f.workspace.model.dirty).toBe(false);
+    } finally {
+      await f.persistence.abandon();
+      f.workspace.dispose();
+    }
+  });
+}

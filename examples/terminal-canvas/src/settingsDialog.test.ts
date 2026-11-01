@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test';
 import { createTestRenderer, KeyCodes, ManualClock } from '@opentui/core/testing';
 import { RGBA } from '@opentui/core';
 import { attachControls } from './controller.ts';
-import { CanvasFile } from './document.ts';
 import { TerminalCanvas } from './model.ts';
 import { CanvasSurface, CANVAS_TOP } from './surface.ts';
 import { TerminalSettingsStore } from './settings.ts';
@@ -30,21 +29,16 @@ async function fixture(kittyKeyboard = true, prepareText?: ClipboardTextPreparat
   setup.renderer.root.add(surface);
   let clipboardCalls = 0,
     quits = 0;
-  const detach = attachControls(
-    surface,
-    new CanvasFile('/unused', 'settings', null),
-    () => quits++,
-    {
-      read: async () => {
-        clipboardCalls++;
-        return { plainText: 'BAD' };
-      },
-      write: async () => {
-        clipboardCalls++;
-        return { status: 'written' };
-      },
-    }
-  );
+  const detach = attachControls(surface, () => quits++, {
+    read: async () => {
+      clipboardCalls++;
+      return { plainText: 'BAD' };
+    },
+    write: async () => {
+      clipboardCalls++;
+      return { status: 'written' };
+    },
+  });
   surface.setTool('edit');
   model.commands.selectAll();
   await setup.renderOnce();
@@ -83,6 +77,13 @@ for (const kitty of [false, true]) {
       await f.setup.renderOnce();
       expect(f.surface.panel?.dialog).toBe(true);
       expect(f.setup.captureCharFrame()).toContain('Selection background');
+      const frame = f.setup.captureCharFrame().split('\n');
+      const layout = f.surface.panelLayout;
+      expect(frame.slice(layout.y, layout.y + layout.height).join('\n')).not.toContain(
+        'Tab section'
+      );
+      expect(frame[f.setup.renderer.height - 2]).toContain('Settings · Appearance');
+      expect(frame[f.setup.renderer.height - 1]).toContain('Tab section');
       expect(f.setup.renderer.getCursorState().visible).toBe(false);
       await f.setup.mockInput.typeText('SHOULD_NOT_TYPE', 0);
       await f.setup.mockInput.pasteBracketedText('SHOULD_NOT_PASTE');
@@ -100,6 +101,9 @@ for (const kitty of [false, true]) {
       expect(f.model.canUndo).toBe(false);
       await f.escape();
       expect(f.surface.panel).toBeNull();
+      expect(f.setup.captureCharFrame().split('\n')[f.setup.renderer.height - 1]).not.toContain(
+        'Tab section'
+      );
       expect(f.model.selection).toEqual(selection);
       f.setup.renderer.keyInput.processParsedKey({
         name: 'escape',
@@ -133,6 +137,8 @@ test('keyboard sections change live cursor, selection palette, navigation and pa
     expect(f.setup.renderer.getCursorState().blinking).toBe(false);
     f.setup.mockInput.pressArrow('down');
     f.setup.mockInput.pressArrow('right');
+    expect(f.settings.values.selectionColor).toBe(8);
+    f.setup.mockInput.pressArrow('right');
     expect(f.settings.values.selectionColor).toBe(4);
     f.setup.mockInput.pressTab();
     expect(f.surface.panel?.selectedTab).toBe(1);
@@ -159,12 +165,52 @@ test('keyboard sections change live cursor, selection palette, navigation and pa
   }
 });
 
+test('the shared status bar follows focused panels, menus, help and canvas without duplicate hints or errors', async () => {
+  const f = await fixture();
+  try {
+    const { surface, setup } = f;
+    surface.backgroundStatus = 'Auto saved';
+    surface.panel = {
+      title: 'Open file',
+      hint: 'Enter confirm · Esc cancel',
+      input: 'example.chardesk',
+      items: [],
+      selected: 0,
+      error: 'File unavailable',
+    };
+    await setup.renderOnce();
+    let lines = setup.captureCharFrame().split('\n');
+    const body = lines.slice(CANVAS_TOP, setup.renderer.height - 2).join('\n');
+    expect(body).toContain('example.chardesk');
+    expect(body).not.toContain('Enter confirm');
+    expect(body).not.toContain('File unavailable');
+    expect(lines[setup.renderer.height - 2]).toContain('Open file · File unavailable');
+    expect(lines[setup.renderer.height - 1]).toContain('Enter confirm');
+    surface.panel = null;
+    surface.contextMenu!.open();
+    await setup.renderOnce();
+    expect(surface.statusBar).toMatchObject({ context: 'Context menu' });
+    expect(surface.statusBar.hint).toContain('Enter run');
+    surface.contextMenu!.close();
+    setup.mockInput.pressKey(KeyCodes.F1);
+    await setup.renderOnce();
+    lines = setup.captureCharFrame().split('\n');
+    expect(surface.statusBar.context).toBe('Help');
+    expect(lines[setup.renderer.height - 1]).toContain('Esc close help');
+    await f.escape();
+    expect(surface.statusBar.context).toBe('');
+    expect(surface.statusBar.hint).toBe('Auto saved');
+  } finally {
+    await f.dispose();
+  }
+});
+
 test('toolbar, tabs, value rows, reset and close targets work without click-through', async () => {
   const f = await fixture();
   try {
-    const button = f.surface.toolbarControls.find((item) => item.id === 'settings')!;
+    const button = f.surface.dockControls.find((item) => item.id === 'settings')!;
     expect(button.label).toContain('F11');
-    await f.setup.mockMouse.click(button.x + 1, 0);
+    await f.setup.mockMouse.click(button.x + 1, button.y);
     await f.setup.renderOnce();
     const selection = structuredClone(f.model.selection);
     const navigation = f.surface.panelTabControls[1]!;
@@ -218,9 +264,7 @@ test('settings command and toolbar follow shared shortcut rebinding', async () =
   const f = await fixture();
   try {
     f.model.editor.keymap.setUserBindings('terminal.settings', [['Ctrl+,']]);
-    expect(f.surface.toolbarControls.find((item) => item.id === 'settings')?.label).toContain(
-      '⌃ ,'
-    );
+    expect(f.surface.dockControls.find((item) => item.id === 'settings')?.label).toContain('⌃ ,');
     f.setup.mockInput.pressKey(KeyCodes.F11);
     expect(f.surface.panel).toBeNull();
     f.setup.mockInput.pressKey(',', { ctrl: true });

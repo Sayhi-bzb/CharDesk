@@ -12,9 +12,13 @@ test('settings persist the latest values atomically and preserve future fields',
   const directory = await mkdtemp(join(tmpdir(), 'chardesk-settings-'));
   const path = join(directory, 'preferences.json');
   try {
-    await writeFile(path, JSON.stringify({ version: 1, values: { panStep: 20, future: 'keep' } }));
+    await writeFile(
+      path,
+      JSON.stringify({ version: 1, values: { panStep: 20, selectionColor: 8, future: 'keep' } })
+    );
     const store = await TerminalSettingsStore.load(path);
     expect(store.values.panStep).toBe(20);
+    expect(store.values.selectionColor).toBe(8);
     store.set('panStep', 50);
     store.set('cursorStyle', 'line');
     store.set('panStep', 10);

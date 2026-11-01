@@ -5,8 +5,7 @@ export function parseOptions(args: readonly string[]) {
     settingsPath: string | undefined,
     workspacePath: string | undefined;
   let blank = false,
-    snapshot = false,
-    autosave = true;
+    snapshot = false;
   const files: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
@@ -25,7 +24,6 @@ export function parseOptions(args: readonly string[]) {
         throw new Error('--workspace needs a filename.');
     } else if (arg === '--blank') blank = true;
     else if (arg === '--snapshot') snapshot = true;
-    else if (arg === '--no-autosave') autosave = false;
     else if (arg === '--') {
       files.push(...args.slice(i + 1));
       break;
@@ -39,7 +37,6 @@ export function parseOptions(args: readonly string[]) {
     files,
     blank,
     snapshot,
-    autosave,
     ...(settingsPath ? { settingsPath } : {}),
   };
 }

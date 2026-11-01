@@ -6,7 +6,6 @@ import { serializeCharDeskDocumentEnvelope } from '@chardesk/document';
 import { TerminalCanvas } from './model.ts';
 import { createTextPreparation } from './text.ts';
 import { CanvasSurface } from './surface.ts';
-import { CanvasFile } from './document.ts';
 import { attachControls } from './controller.ts';
 import { serializeCanvasDocument } from '@chardesk/editor-core/documentText';
 
@@ -169,7 +168,7 @@ test('native paste events and Command+V compile identically and report diagnosti
   const surface = new CanvasSurface(setup.renderer, model, 'test.chardesk', 'darwin');
   setup.renderer.root.add(surface);
   let source = '**bold**';
-  const detach = attachControls(surface, new CanvasFile('/unused', 'test', null), () => {}, {
+  const detach = attachControls(surface, () => {}, {
     read: async () => ({ plainText: source }),
     write: async () => ({ status: 'written' }),
   });

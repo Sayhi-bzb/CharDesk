@@ -1,4 +1,4 @@
-import { RGBA, type KeyEvent, type MouseEvent, type OptimizedBuffer } from '@opentui/core';
+import { type RGBA, type KeyEvent, type MouseEvent, type OptimizedBuffer } from '@opentui/core';
 import { getTextCellWidth } from '@chardesk/protocol';
 import { resolveGridSlot } from '@chardesk/cell-plane/grid-occupancy';
 import type { Point } from '@chardesk/cell-plane/types';
@@ -13,11 +13,6 @@ type State = {
   scroll: number;
 };
 type Line = (text: string, x: number, y: number, fg: RGBA, bg: RGBA, width: number) => void;
-const foreground = RGBA.defaultForeground(),
-  background = RGBA.defaultBackground();
-const muted = RGBA.fromIndex(8),
-  selectedBackground = RGBA.fromIndex(8);
-
 /** Ephemeral Host overlay; every action is rechecked and executed by the command registry. */
 export class TerminalContextMenu {
   #state: State | null = null;
@@ -66,7 +61,10 @@ export class TerminalContextMenu {
       stamp: this.#stamp(),
       selected: -1,
       scroll: 0,
-      screen: screen ?? { x: anchor.x - model.viewport.x, y: 1 + anchor.y - model.viewport.y },
+      screen: screen ?? {
+        x: anchor.x - model.viewport.x,
+        y: s.canvasBounds.y + anchor.y - model.viewport.y,
+      },
     };
     this.#state.selected = this.items.findIndex((item) => item.enabled);
     s.requestRender();
@@ -117,9 +115,13 @@ export class TerminalContextMenu {
         ...items.map((item) => getTextCellWidth(item.label) + getTextCellWidth(item.shortcut) + 5)
       )
     );
-    const height = Math.min(items.length + 2, s.height - 3);
+    const area = s.canvasBounds;
+    const height = Math.min(items.length + 2, area.height);
     const x = Math.max(0, Math.min(this.#state?.screen.x ?? 0, s.width - width));
-    const y = Math.max(1, Math.min(this.#state?.screen.y ?? 1, s.height - 2 - height));
+    const y = Math.max(
+      area.y,
+      Math.min(this.#state?.screen.y ?? area.y, area.y + area.height - height)
+    );
     const rows = Math.max(0, height - 2);
     if (this.#state && this.#state.selected >= 0)
       this.#state.scroll = Math.max(
@@ -192,6 +194,13 @@ export class TerminalContextMenu {
   }
   render(buffer: OptimizedBuffer, line: Line) {
     if (!this.#state) return;
+    const {
+      foreground,
+      background,
+      muted,
+      selection: selectedBackground,
+      selectionForeground,
+    } = this.surface.colors;
     const l = this.layout,
       items = this.items;
     buffer.fillRect(l.x, l.y, l.width, l.height, background);
@@ -210,7 +219,11 @@ export class TerminalContextMenu {
         continue;
       }
       const shortcutWidth = Math.min(getTextCellWidth(item.shortcut), Math.max(0, l.width - 10));
-      const fg = item.enabled ? foreground : muted;
+      const fg = item.enabled
+        ? index === this.#state.selected
+          ? selectionForeground
+          : foreground
+        : muted;
       line(
         item.label,
         l.x + 2,

@@ -1,3 +1,5 @@
+import { createCharDeskMarkdownRenderOptions } from '@chardesk/chargraph/markdown';
+import type { TerminalAppearanceSnapshot } from './appearance.ts';
 import { compileCharDeskText } from '@chardesk/chargraph';
 import { parseCharDeskDocumentEnvelope } from '@chardesk/document';
 import { parseCanvasDocument } from '@chardesk/editor-core/documentText';
@@ -5,8 +7,11 @@ import type { ClipboardTextPreparation } from '@chardesk/editor-core/clipboard/c
 
 export type PasteMode = 'auto' | 'plain' | 'ansi' | 'markdown';
 
-/** Terminal policy over the shared, DOM-free compiler. No browser profile or palette. */
-export function createTextPreparation(mode: PasteMode = 'auto'): ClipboardTextPreparation {
+/** Capture Host appearance once, then compile outside document transactions. */
+export function createTextPreparation(
+  mode: PasteMode = 'auto',
+  captureAppearance?: () => Promise<TerminalAppearanceSnapshot>
+): ClipboardTextPreparation {
   return async (source, state) => {
     const envelope = parseCharDeskDocumentEnvelope(source, { allowCanvasMetadata: true });
     if (envelope?.canvas !== undefined) {
@@ -32,17 +37,40 @@ export function createTextPreparation(mode: PasteMode = 'auto'): ClipboardTextPr
     }
     if (envelope && envelope.mode !== 'freeform')
       throw new Error('Paste a Freeform document; Slides are not supported by this host.');
+    const appearance =
+      !envelope && (mode === 'auto' || mode === 'markdown')
+        ? await captureAppearance?.()
+        : undefined;
+    const markdown = appearance
+      ? createCharDeskMarkdownRenderOptions({ theme: appearance.contentTheme })
+      : {};
+    if (appearance && !appearance.palette) {
+      // Neutral semantic styles retain attributes, while authored ANSI remains literal.
+      for (const styles of [markdown.styles, markdown.extensionStyles])
+        for (const style of Object.values(styles ?? {})) {
+          if (style) delete style.bgColor;
+        }
+    }
     const result = await compileCharDeskText(envelope?.body ?? source, {
       format: envelope ? 'chardesk' : mode,
       defaultStyle: { color: state.foreground },
-      markdown: { proseWrapWidth: 80 },
+      markdown: { ...markdown, proseWrapWidth: 80 },
     });
     return {
       richRows: result.rows.map((row) => ({
         y: row.y,
         spans: row.spans.map((span) => ({ ...span, color: span.color ?? state.foreground })),
       })),
-      diagnostics: result.diagnostics,
+      diagnostics:
+        appearance && !appearance.palette && result.renderer === 'markdown'
+          ? [
+              ...result.diagnostics,
+              {
+                code: 'terminal-colors-unavailable',
+                message: 'Terminal colors unavailable; generated styles inherit the foreground.',
+              },
+            ]
+          : result.diagnostics,
       headings: result.headings,
     };
   };

@@ -16,8 +16,6 @@ export type TerminalAction =
   | 'undo'
   | 'redo'
   | 'select-all'
-  | 'save'
-  | 'save-all'
   | 'save-copy'
   | 'open'
   | 'new'
@@ -77,9 +75,7 @@ export function createTerminalShortcuts(platform: NodeJS.Platform, policy?: Term
       ? key(['Meta+Shift+Z'], '⌘⇧Z', true)
       : key(['Ctrl+Y', 'Ctrl+Shift+Z'], 'Ctrl+Y / Ctrl+Shift+Z', true),
     'select-all': primary('A'),
-    save: primary('S'),
-    'save-all': key(['F12']),
-    'save-copy': key(mac ? ['Meta+Shift+S'] : ['Ctrl+Shift+S'], mac ? '⌘⇧S' : 'Ctrl+Shift+S'),
+    'save-copy': key([]),
     open: key([...primary('O').keys, 'F10'], `${primary('O').label} / F10`),
     new: primary('N'),
     documents: key(['F7']),

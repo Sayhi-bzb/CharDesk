@@ -7,14 +7,14 @@ import type { PasteMode } from './text.ts';
 export type TerminalSettings = {
   cursorStyle: 'block' | 'line';
   cursorBlink: boolean;
-  selectionColor: 8 | 4 | 6;
+  selectionColor: 'auto' | 8 | 4 | 6;
   panStep: 10 | 20 | 50;
   pasteMode: PasteMode;
 };
 export const DEFAULT_TERMINAL_SETTINGS: Readonly<TerminalSettings> = {
   cursorStyle: 'block',
   cursorBlink: true,
-  selectionColor: 8,
+  selectionColor: 'auto',
   panStep: 10,
   pasteMode: 'auto',
 };
@@ -52,6 +52,7 @@ export const TERMINAL_SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     section: 'appearance',
     label: 'Selection background',
     choices: [
+      { value: 'auto', label: 'Auto contrast' },
       { value: 8, label: 'Theme gray' },
       { value: 4, label: 'Theme blue' },
       { value: 6, label: 'Theme cyan' },

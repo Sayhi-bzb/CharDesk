@@ -15,17 +15,16 @@ bun run start /path/to/diagram.chardesk
 bun run start /path/to/new.chardesk --blank
 bun run start /path/to/diagram.chardesk --paste-mode plain
 bun run start first.chardesk second.chardesk --workspace /path/to/workspace.json
-bun run start --no-autosave # recovery checkpoints remain enabled
 ```
 
 No filename opens a welcome canvas, or `terminal-canvas.chardesk` if that file
-already exists. `⌘S` on macOS / `Ctrl+S` on Windows saves to that path. An explicit missing filename starts
+already exists. Changes save automatically to that path. An explicit missing filename starts
 an empty canvas. `--blank` suppresses the welcome content; it never clears an
 existing file. `F1` lists controls in the application; arrows scroll help. All TUI interface text is English.
-Automatic saving is enabled. [Workspace persistence](WORKSPACE.md) owns save,
+Changes are saved automatically; there is no manual Save command. Closing a document or quitting waits for pending changes to reach disk. [Workspace persistence](WORKSPACE.md) owns save,
 conflict and recovery behavior.
 
-The demo opens in **Hand**. The clickable header and F2/F3 select one of two
+The demo opens in **Hand**. The footer dock and F2/F3 select one of two
 tools; drawing tools are explicit choices within Edit, and F2 returns to text/selection.
 
 | Control                                                       | Action                                                           |
@@ -45,8 +44,8 @@ tools; drawing tools are explicit choices within Edit, and F2 returns to text/se
 | F4                                                            | Toggle Minimap without changing tools                            |
 | Home / F5                                                     | Go to origin / locate content                                    |
 | F1                                                            | Help with platform-specific shortcuts                            |
-| Right-click / Shift+F10 / Menu button                         | Open the canvas action menu                                      |
-| Ctrl+Q                                                        | Quit; press again to discard unsaved edits                       |
+| Right-click / Shift+F10                                       | Open the canvas action menu                                      |
+| Ctrl+Q                                                        | Automatically save all documents and quit                       |
 
 All printable letters, including `i/h/m/I/H/M`, are text in Edit. Click, Escape,
 undo and paste keep the selected tool. Clipboard paste works in either tool and
@@ -74,13 +73,13 @@ still cannot reach the app because Warp intercepts those mouse events entirely.
 | ----------------- | ------------ | --------------------- |
 | Copy              | ⌘C or Ctrl+Y | Ctrl+C                |
 | Cut / Paste       | ⌘X / ⌘V      | Ctrl+X / Ctrl+V       |
-| Select all / Save | ⌘A / ⌘S      | Ctrl+A / Ctrl+S       |
+| Select all        | ⌘A           | Ctrl+A               |
 | Undo              | ⌘Z           | Ctrl+Z                |
 | Redo              | ⌘⇧Z          | Ctrl+Y / Ctrl+Shift+Z |
 
 [`shortcuts.ts`](src/shortcuts.ts) owns binding and display policy. macOS keeps
 Command editing bindings and adds the [Vibe-style Ctrl+Y copy fallback](https://docs.mistral.ai/vibe/code/cli/commands-shortcuts).
-The header exposes Copy while a canvas range exists; it runs the same command as
+The footer dock exposes Copy while a canvas range exists; it runs the same command as
 the shortcuts, preserves the range and follows user rebindings.
 Command+Q remains reserved for the terminal application. Extended Command events
 are requested through Kitty keyboard reporting; terminal-owned shortcuts must be
@@ -136,13 +135,13 @@ with state changes; simulated tests alone cannot prove host forwarding.
 ### Context menu
 
 Right-click opens the canvas menu when the terminal forwards that event.
-Shift+F10 and the header Menu button use the same overlay. Opening is rebindable;
+Shift+F10 opens the same overlay. Opening is rebindable;
 labels follow the effective keymap. Arrows/Tab select enabled items, Enter runs
 one command, Esc closes. An outside click closes without editing the canvas.
 
 Right-click inside physical selection coverage preserves that range. Outside it,
 the clicked grapheme becomes the cursor and the old range clears, without
-switching tools. Keyboard/button opening uses the range start or cursor. The
+switching tools. Keyboard opening uses the range start or cursor. The
 menu follows the [Web action catalog](../../apps/canvas/src/domains/actions/core/catalog.ts):
 Copy as Text, Copy as ANSI, Snapshot (PNG), Paste, separator, Delete. Cut, Select all
 and Undo/Redo remain keyboard commands. Opening links remains the [terminal gesture](#links).
@@ -219,7 +218,7 @@ is needed and resource paths do not depend on the launch directory.
 
 In the template picker, type to filter and use F10 to change group. Enter or click
 opens a canvas preview. Arrows or pointer movement position it; Shift+arrows move
-10 cells. Option+arrows use the configured pan step. Enter / the header Place button confirms; Escape / Cancel discards.
+10 cells. Option+arrows use the configured pan step. Enter / the dock Place button confirms; Escape / Cancel discards.
 Insertion writes only the template spans and preserves unrelated content.
 Adaptive templates use terminal foreground/background defaults; identity templates
 retain their explicit document colors. Previews do not enter autosave or recovery.
@@ -232,13 +231,12 @@ retain their explicit document colors. Previews do not enter autosave or recover
 
 | Control            | Action                                                                 |
 | ------------------ | ---------------------------------------------------------------------- |
-| F7                 | Document list; Open / New / Save copy; Delete closes a document        |
+| F7                 | Document list; Open / New / Duplicate; Delete closes a document        |
 | F6 / Shift+F6      | Next / previous document                                               |
 | ⌘O / Ctrl+O / F10  | Open a path                                                            |
 | ⌘N / Ctrl+N        | New document at an unused path                                         |
-| ⌘⇧S / Ctrl+Shift+S | Save copy to an unused path and continue there                         |
-| F12                | Save every dirty document                                              |
-| ⌘W / Ctrl+W        | Close current document; dirty documents offer Save / Discard / Cancel  |
+| F7 → Duplicate…    | Duplicate to an unused path and continue there                          |
+| ⌘W / Ctrl+W        | Close current document; save changes automatically before closing  |
 | ⌘F / Ctrl+F / F8   | Search current page; F10 toggles RE2, F11 toggles case folding         |
 | ⌘G / Ctrl+G        | Next search match                                                      |
 | F9                 | Anchor tree; N adds, R renames, T reattaches at cursor, Delete removes |
@@ -249,14 +247,22 @@ moves the camera and preserves cursor, selection, content and undo history.
 Panels consume text and paste so prompts do not edit the canvas. Each document
 retains its tool, view, interaction, dirty status and undo history while open.
 
+### Status bar
+
+There is no top header: the canvas starts on the first terminal row. The bottom
+two rows own all Host chrome. On the canvas, the first row contains only the dock; the second shows operation status or keyboard hints. An active
+panel, context menu or Help replaces the dock with its context, status and hints.
+Panel messages appear here, outside the panel. Closing an overlay restores the dock.
+Dock drawing and hit-testing share the footer bounds, including after resize.
+
 ### Settings
 
-Press **F11** on the canvas or click **Settings** in the header. Tab / Shift+Tab
+Press **F11** on the canvas or click **Settings** in the footer dock. Tab / Shift+Tab
 switches sections; ↑↓ selects a row; ←→, Enter or clicking a row changes its value.
 Escape or clicking outside closes the dialog. Existing pickers keep their local F11 actions.
 
 Appearance configures the native cursor shape/blink and terminal palette selection
-background; Navigation configures the pan step; Paste configures format detection.
+background (see [appearance behavior](#terminal-appearance)); Navigation configures the pan step; Paste configures format detection.
 Changes apply immediately, independently of document content and undo history.
 Each section has a reset action. The panel consumes keyboard, mouse and paste input.
 
@@ -270,6 +276,52 @@ Write failures retain the live values and appear in the panel.
 [`settings.ts`](src/settings.ts) owns the versioned preferences and setting definitions;
 [`settingsDialog.ts`](src/settingsDialog.ts) adapts them to the shared panel shell.
 Verification: [persistence](src/settings.test.ts), [modal interaction](src/settingsDialog.test.ts).
+
+### Terminal appearance
+
+The Host follows terminal colors. [`TerminalAppearanceRuntime`](src/appearance.ts)
+owns one snapshot and revision for native colors, cursor preferences, content
+colors and resolved RGB. Canvas, menus, panels and Minimap consume its semantic
+roles. Default text uses the shared [artifact foreground rule](../../packages/cell-plane/src/artifact-style.ts);
+literal document colors and explicit backgrounds remain unchanged.
+
+**Terminal + Settings**\
+　↓ [OpenTUI attachment](src/appearanceHost.ts)\
+**Appearance snapshot + revision**\
+　├→ Screen: native default / ANSI references\
+　├→ Paste and template preview: content colors\
+　└→ PNG: resolved RGB captured for the operation
+
+Startup, OpenTUI `theme_mode` events and focus restoration refresh the palette.
+`palette` events also publish changes within the same light/dark mode. The
+attachment uses OpenTUI's public cache/query API; old query results cannot replace
+newer state. Some terminals do not report theme changes: use **Settings → Appearance
+→ Refresh terminal colors** to refresh explicitly. Theme detection may remain
+unknown; screen drawing does not depend on RGB detection succeeding.
+
+New settings default selection background to **Auto contrast**, choosing an ANSI
+slot from the terminal palette. Explicit gray/blue/cyan choices and existing saved
+choices remain authoritative. Borders and Minimap also adapt to available contrast.
+Document text keeps its own foreground even inside a selection; uniform coverage
+includes wide-character followers and empty cells.
+
+Paste captures the appearance before compiling through the shared Markdown theme
+builder. Without terminal RGB, semantic styles inherit the canonical foreground,
+retain attributes and report a diagnostic. Authored ANSI/native documents retain
+their colors. Template previews follow appearance until placement; insertion
+materializes that preview's colors in one undoable write. Existing generated
+content is never recolored by a later Host theme change.
+
+PNG captures resolved terminal foreground/background and checks the appearance
+revision before clipboard delivery. Unavailable RGB fails explicitly. Appearance
+state, queries and refreshes never modify document, selection, history or saved
+preferences; Settings saves only user choices. Opt-in input traces record appearance
+revision/mode/status, without palette values or OSC payloads.
+
+Verification: [runtime and native frames](src/appearance.test.ts),
+[template preview lifecycle](src/workspaceControls.test.ts),
+[PNG delivery guards](src/contextMenu.test.ts). Real terminal notification and color
+behavior still require validation on each target terminal.
 
 ### Floating Minimap
 
@@ -355,7 +407,7 @@ and async clipboard failure/cancellation. `--snapshot` prints the first 80×24 d
 
 - One document cell maps to one terminal cell; navigation uses Hand or Option+arrows.
 - Host colors use terminal defaults and ANSI palette entries; selection/search highlights
-  use a uniform terminal palette background (ANSI slot 8 by default), without inverse.
+  use a uniform terminal palette background selected by [Appearance](#terminal-appearance), without inverse.
   The active cell uses only the terminal's native cursor (block by default). Document and link
   underlines remain content styles. Explicit document colors stay in the document.
 - If OpenTUI measures a glyph differently from the protocol, the presenter uses

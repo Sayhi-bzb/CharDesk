@@ -3,7 +3,6 @@ import { createTestRenderer, KeyCodes, ManualClock } from '@opentui/core/testing
 import type { ClipboardPort } from '@chardesk/editor-core/clipboard/commands';
 import { CanvasSurface, CANVAS_TOP } from './surface.ts';
 import { TerminalCanvas } from './model.ts';
-import { CanvasFile } from './document.ts';
 import { attachControls } from './controller.ts';
 import { helpLines } from './copy.ts';
 
@@ -17,16 +16,10 @@ async function fixture(
   const setup = await createTestRenderer({ width: 100, height: 30, kittyKeyboard, clock });
   const model = new TerminalCanvas(source);
   const surface = new CanvasSurface(setup.renderer, model, 'test.chardesk', platform);
-  const file = new CanvasFile('/unused', 'test', null);
   let clipboardText = '',
     writes = 0,
     reads = 0,
-    saves = 0,
     quits = 0;
-  file.save = async () => {
-    saves++;
-    model.markSaved();
-  };
   const clipboard: ClipboardPort = {
     write: async (payload) => {
       writes++;
@@ -41,7 +34,6 @@ async function fixture(
   setup.renderer.root.add(surface);
   const detach = attachControls(
     surface,
-    file,
     () => {
       quits++;
     },
@@ -61,9 +53,6 @@ async function fixture(
     },
     get text() {
       return clipboardText;
-    },
-    get saves() {
-      return saves;
     },
     get quits() {
       return quits;
@@ -102,9 +91,7 @@ test('rebinding changes execution and toolbar/help hints from the same catalog',
     expect(f.surface.tool).toBe('hand');
     f.setup.mockInput.pressKey(KeyCodes.F11);
     expect(f.surface.tool).toBe('edit');
-    expect(f.surface.toolbarControls.find((control) => control.id === 'edit')?.label).toContain(
-      'F11'
-    );
+    expect(f.surface.dockControls.find((control) => control.id === 'edit')?.label).toContain('F11');
     expect(helpLines(f.surface.shortcuts).join('\n')).toContain('F11 Edit');
   } finally {
     await f.dispose();
@@ -195,11 +182,11 @@ for (const kitty of [false, true]) {
   });
 }
 
-test('toolbar buttons use the same commands as F2/F3/F4 and preserve selection', async () => {
+test('dock buttons use the same commands as F2/F3/F4 and preserve selection', async () => {
   const f = await fixture('darwin', true, 'AB');
   try {
     const click = async (id: 'edit' | 'hand' | 'minimap') => {
-      const control = f.surface.toolbarControls.find((c) => c.id === id)!;
+      const control = f.surface.dockControls.find((c) => c.id === id)!;
       await f.setup.mockMouse.click(control.x + 1, control.y);
       await f.setup.renderOnce();
     };
@@ -225,7 +212,7 @@ test('toolbar buttons use the same commands as F2/F3/F4 and preserve selection',
 });
 
 for (const platform of ['darwin', 'win32'] as const) {
-  test(`${platform}: native modifier routes copy/cut/paste/undo/redo/save with matching labels`, async () => {
+  test(`${platform}: native modifier routes editing shortcuts while manual Save is unavailable`, async () => {
     const f = await fixture(platform, true, 'A界B');
     const modifier = platform === 'darwin' ? { super: true } : { ctrl: true };
     try {
@@ -252,9 +239,10 @@ for (const platform of ['darwin', 'win32'] as const) {
       await Promise.resolve();
       expect(f.model.plane.get({ x: 1, y: 0 })?.char).toBe('界');
       expect(f.surface.tool).toBe('hand');
+      const beforeSaveKey = f.model.plane.materialize();
       f.setup.mockInput.pressKey('s', modifier);
-      await Promise.resolve();
-      expect(f.saves).toBe(1);
+      expect(f.model.plane.materialize()).toEqual(beforeSaveKey);
+      expect(f.model.editor.commands.canExecute('terminal.save', undefined)).toBe(false);
       f.setup.mockInput.pressKey(KeyCodes.F2);
       f.setup.mockInput.pressKey('c', { meta: true });
       expect(f.writes).toBe(2); // Option/Alt is not Command.
@@ -283,7 +271,7 @@ test('bracketed paste works in either tool and keeps the chosen tool', async () 
   }
 });
 
-test('Kitty repeat events do not toggle controls or confirm destructive quit', async () => {
+test('Kitty repeat events do not toggle controls or repeat an automatic-save exit', async () => {
   const f = await fixture('darwin', true, 'AB');
   try {
     f.setup.mockInput.pressKey(KeyCodes.F2);
@@ -306,28 +294,24 @@ test('Kitty repeat events do not toggle controls or confirm destructive quit', a
     expect(f.surface.minimapOpen).toBe(true);
     f.setup.mockInput.pressKey('q', { ctrl: true });
     repeat('q', true);
-    expect(f.quits).toBe(0);
-    expect(f.surface.status).toContain('⌘S');
-    f.setup.mockInput.pressKey('q', { ctrl: true });
     expect(f.quits).toBe(1);
+    expect(f.surface.status).not.toContain('⌘S');
   } finally {
     await f.dispose();
   }
 });
 
-test('toolbar actions reset pending quit confirmation', async () => {
+test('exit requests do not require a second press after dock actions', async () => {
   const f = await fixture();
   try {
     f.setup.mockInput.pressKey(KeyCodes.F2);
     await f.setup.mockInput.typeText('X', 0);
     f.setup.mockInput.pressKey('q', { ctrl: true });
-    expect(f.quits).toBe(0);
-    const control = f.surface.toolbarControls.find((c) => c.id === 'hand')!;
-    await f.setup.mockMouse.click(control.x + 1, 0);
-    f.setup.mockInput.pressKey('q', { ctrl: true });
-    expect(f.quits).toBe(0);
-    f.setup.mockInput.pressKey('q', { ctrl: true });
     expect(f.quits).toBe(1);
+    const control = f.surface.dockControls.find((c) => c.id === 'hand')!;
+    await f.setup.mockMouse.click(control.x + 1, control.y);
+    f.setup.mockInput.pressKey('q', { ctrl: true });
+    expect(f.quits).toBe(2);
   } finally {
     await f.dispose();
   }
@@ -388,7 +372,7 @@ test('macOS Ctrl editing shortcuts stay distinct from Command except the explici
     await Promise.resolve();
     expect(f.writes).toBe(0);
     expect(f.reads).toBe(0);
-    expect(f.saves).toBe(0);
+    expect(f.model.editor.commands.canExecute('terminal.save', undefined)).toBe(false);
     expect(f.model.plane.materialize()).toEqual(before);
     expect(f.model.getSnapshot().interaction).toEqual(interaction);
     f.setup.mockInput.pressKey('a', { super: true });

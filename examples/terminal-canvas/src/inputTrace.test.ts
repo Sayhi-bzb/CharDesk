@@ -5,7 +5,6 @@ import { expect, test } from 'bun:test';
 import { createTestRenderer } from '@opentui/core/testing';
 import { attachInputTrace } from './inputTrace.ts';
 import { attachControls } from './controller.ts';
-import { CanvasFile } from './document.ts';
 import { TerminalCanvas } from './model.ts';
 import { CANVAS_TOP, CanvasSurface } from './surface.ts';
 
@@ -24,8 +23,9 @@ test('real input tracing preserves dispatch, records modifiers and excludes docu
   try {
     const surface = new CanvasSurface(setup.renderer, model, 'trace-test', 'darwin');
     setup.renderer.root.add(surface);
-    detach = attachControls(surface, new CanvasFile('/unused', 'test', null), () => {});
+    detach = attachControls(surface, () => {});
     detachTrace = attachInputTrace(surface, path);
+    surface.settings.set('selectionColor', 6);
     expect(() => attachInputTrace(surface, path)).toThrow(); // Existing files are never overwritten.
     surface.setTool('edit');
     model.viewport = { ...model.viewport, x: 0, y: 0 };
@@ -46,6 +46,9 @@ test('real input tracing preserves dispatch, records modifiers and excludes docu
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line));
+    expect(
+      events.some((event) => event.kind === 'appearance' && event.appearance.revision > 0)
+    ).toBe(true);
     expect(
       events.some(
         (e) => e.kind === 'key' && e.name === 'up' && (e.modifiers.option || e.modifiers.meta)

@@ -254,7 +254,7 @@ export class WorkspacePersistence {
             for (const file of workspace.files) {
               if (!this.#active) break;
               const version = workspace.model.versionAt(file.address!);
-              if (!workspace.model.isDirtyAt(file.address!) || this.#failed.get(file) === version)
+              if (!workspace.needsSave(file) || this.#failed.get(file) === version)
                 continue;
               report({ phase: 'saving' });
               try {
@@ -275,7 +275,7 @@ export class WorkspacePersistence {
               this.#active &&
               workspace.files.some(
                 (file) =>
-                  workspace.model.isDirtyAt(file.address!) &&
+                  workspace.needsSave(file) &&
                   this.#failed.get(file) !== workspace.model.versionAt(file.address!)
               )
             )
@@ -286,7 +286,7 @@ export class WorkspacePersistence {
     this.#detach = workspace.model.subscribe(changed);
     changed();
   }
-  #capture(discard: boolean): Checkpoint {
+  #capture(): Checkpoint {
     const workspace = this.#workspace!;
     const files: SavedFile[] = [];
     for (const file of this.#sources.keys())
@@ -300,7 +300,7 @@ export class WorkspacePersistence {
         workspace.model.documents.getDocumentAddress(file.address!.documentId)?.pageId,
       ]);
       let cached = this.#sources.get(file);
-      if (!(discard && dirty) && cached?.version !== version) {
+      if (cached?.version !== version) {
         cached = {
           version,
           source: serializeCanvasDocument(
@@ -310,18 +310,14 @@ export class WorkspacePersistence {
         };
         this.#sources.set(file, cached);
       }
-      const source = discard && dirty ? file.baselineSource : cached!.source;
-      if (source === null) continue;
-      const pages =
-        discard && dirty
-          ? parseCanvasDocument(source).document.pages
-          : workspace.model.documents.getPageDescriptors(file.address!.documentId);
+      const source = cached!.source;
+      const pages = workspace.model.documents.getPageDescriptors(file.address!.documentId);
       files.push({
         path: file.path,
         title: file.title,
         source,
         baselineDigest: file.baselineDigest,
-        dirty: discard ? false : dirty,
+        dirty,
         views: pages.map((page) => ({
           pageId: page.id,
           state: workspace.model.viewAt({ documentId: file.address!.documentId, pageId: page.id }),
@@ -336,9 +332,9 @@ export class WorkspacePersistence {
       files,
     };
   }
-  flush(discard = false) {
+  flush() {
     if (!this.#workspace) return Promise.resolve();
-    const checkpoint = this.#capture(discard);
+    const checkpoint = this.#capture();
     const task = this.#queue
       .catch(() => {})
       .then(() =>
@@ -350,7 +346,7 @@ export class WorkspacePersistence {
     this.#queue = task;
     return task;
   }
-  close(discard = false) {
+  close() {
     if (this.#closed) return this.#closed;
     this.#active = false;
     this.#detach();
@@ -361,7 +357,13 @@ export class WorkspacePersistence {
     this.#closed = (async () => {
       try {
         await this.#workspace?.settleSaves();
-        await this.flush(discard);
+        // Save before releasing the workspace, even if the idle timer has not fired.
+        // Keep recovery current when a document cannot be written.
+        try {
+          await this.#workspace?.saveAll();
+        } finally {
+          await this.flush();
+        }
         await this.#release();
       } catch (error) {
         this.#closed = null;

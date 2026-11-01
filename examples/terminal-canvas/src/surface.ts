@@ -1,5 +1,4 @@
 import { isDefaultArtifactForeground } from '@chardesk/cell-plane/artifact-style';
-import { drawingLabel } from './drawing.ts';
 import { TerminalInputModifiers } from './inputModifiers.ts';
 import { resolveTerminalPolicy, type TerminalInputPolicy } from './terminalPolicy.ts';
 import type { GridCellSource, Point } from '@chardesk/cell-plane/types';
@@ -26,25 +25,18 @@ import { TerminalMinimap, minimapPanel, type MinimapFrame } from './minimap.ts';
 import { TerminalLinkText, type LinkedGlyph } from './linkText.ts';
 import type { TerminalContextMenu } from './contextMenu.ts';
 import { TerminalSettingsStore } from './settings.ts';
+import { TerminalAppearanceRuntime } from './appearance.ts';
+import { attachTerminalAppearance } from './appearanceHost.ts';
 
-// Keep native color intent so terminal theme changes apply without RGB snapshots.
-const colors = {
-  background: RGBA.defaultBackground(),
-  foreground: RGBA.defaultForeground(),
-  muted: RGBA.fromIndex(8),
-  chrome: RGBA.defaultBackground(),
-  accent: RGBA.fromIndex(6),
-  selection: RGBA.fromIndex(8),
-  minimapContent: RGBA.fromIndex(8),
-};
-export const CANVAS_TOP = 1;
+export const CANVAS_TOP = 0;
+const FOOTER_ROWS = 2;
 export type TerminalPanel = {
   dialog?: boolean;
   tabs?: string[];
   selectedTab?: number;
   onTab?: (index: number) => void;
   onClose?: () => void;
-  footer?: string;
+  status?: string;
   title: string;
   input?: string;
   hint: string;
@@ -102,8 +94,13 @@ export class CanvasSurface extends Renderable {
   #measureView: TextBufferView;
   #links: TerminalLinkText;
   #widths = new Map<string, number>();
-  #selectionColor = colors.selection;
-  #detachSettings: () => void;
+  readonly appearance: TerminalAppearanceRuntime;
+  #ownsAppearance: boolean;
+  #detachAppearance: () => void;
+  #detachAppearanceHost: () => void;
+  get colors() {
+    return this.appearance.getSnapshot().colors;
+  }
   #pointer: { x: number; y: number } | null = null;
   readonly inputModifiers = new TerminalInputModifiers();
   setInputPolicy(policy: TerminalInputPolicy) {
@@ -127,21 +124,40 @@ export class CanvasSurface extends Renderable {
     this.requestRender();
   }
 
-  get toolbarControls() {
+  get canvasBounds(): CellRect {
+    return {
+      x: 0,
+      y: CANVAS_TOP,
+      width: this.width,
+      height: Math.max(0, this.height - CANVAS_TOP - FOOTER_ROWS),
+    };
+  }
+
+  get footerBounds(): CellRect {
+    return {
+      x: 0,
+      y: this.canvasBounds.y + this.canvasBounds.height,
+      width: this.width,
+      height: Math.min(FOOTER_ROWS, this.height),
+    };
+  }
+
+  get dockControls() {
+    if (this.panel || this.help || this.contextMenu?.isOpen || this.closing) return [];
     const copy = messages;
     let x = 0;
     const ids = this.placement
       ? (['confirm-placement', 'cancel-placement'] as const)
       : this.model.selection
-        ? (['context-menu', 'settings', 'edit', 'hand', 'minimap', 'copy'] as const)
-        : (['context-menu', 'settings', 'edit', 'hand', 'minimap'] as const);
+        ? (['settings', 'edit', 'hand', 'minimap', 'copy'] as const)
+        : (['settings', 'edit', 'hand', 'minimap'] as const);
     return ids.flatMap((id) => {
       const name =
         id === 'confirm-placement' ? 'Place' : id === 'cancel-placement' ? 'Cancel' : copy[id];
-      const label = id === 'context-menu' ? `[${name}]` : `[${this.shortcuts[id].label} ${name}]`;
+      const label = `[${this.shortcuts[id].label} ${name}]`;
       const width = this.#width(label);
       if (x + width > this.width) return [];
-      const control = { id, label, x, y: 0, width, height: 1 };
+      const control = { id, label, x, y: this.footerBounds.y, width, height: 1 };
       x += width + 1;
       return [control];
     });
@@ -154,7 +170,8 @@ export class CanvasSurface extends Renderable {
     readonly platform: NodeJS.Platform = process.platform,
     initializeTool = true,
     inputPolicy: TerminalInputPolicy = resolveTerminalPolicy(),
-    readonly settings = new TerminalSettingsStore()
+    readonly settings = new TerminalSettingsStore(),
+    appearance?: TerminalAppearanceRuntime
   ) {
     super(renderer, {
       id: 'terminal-canvas',
@@ -168,16 +185,15 @@ export class CanvasSurface extends Renderable {
     this.#measureView = TextBufferView.create(this.#measurer);
     this.#links = new TerminalLinkText(renderer);
     this.#measureView.setWrapMode('none');
-    const applySettings = () => {
-      renderer.setCursorStyle({
-        style: settings.values.cursorStyle,
-        blinking: settings.values.cursorBlink,
-      });
-      this.#selectionColor = RGBA.fromIndex(settings.values.selectionColor);
+    this.appearance = appearance ?? new TerminalAppearanceRuntime(settings);
+    this.#ownsAppearance = !appearance;
+    this.#detachAppearanceHost = attachTerminalAppearance(renderer, this.appearance);
+    const applyAppearance = () => {
+      renderer.setCursorStyle(this.appearance.getSnapshot().cursor);
       this.requestRender();
     };
-    this.#detachSettings = settings.subscribe(applySettings);
-    applySettings();
+    this.#detachAppearance = this.appearance.subscribe(applyAppearance);
+    applyAppearance();
     this.selectable = false;
     if (initializeTool) this.setTool('hand');
   }
@@ -198,8 +214,8 @@ export class CanvasSurface extends Renderable {
     text: string,
     x: number,
     y: number,
-    color = colors.muted,
-    background = colors.chrome,
+    color = this.colors.muted,
+    background = this.colors.chrome,
     limit = this.width - x,
     attributes = 0
   ) {
@@ -213,7 +229,7 @@ export class CanvasSurface extends Renderable {
   }
 
   #highlight(buffer: OptimizedBuffer, rect: CellRect) {
-    buffer.fillRect(rect.x, rect.y, rect.width, rect.height, this.#selectionColor);
+    buffer.fillRect(rect.x, rect.y, rect.width, rect.height, this.colors.selection);
   }
 
   get minimapFrame(): MinimapFrame | null {
@@ -230,16 +246,22 @@ export class CanvasSurface extends Renderable {
 
   #drawMinimap(buffer: OptimizedBuffer, frame: MinimapFrame) {
     const p = frame.panel;
-    buffer.fillRect(p.x, p.y, p.width, p.height, colors.chrome);
+    buffer.fillRect(p.x, p.y, p.width, p.height, this.colors.chrome);
     const box = (x: number, y: number, width: number, height: number, color: RGBA) => {
-      buffer.drawText('┌' + '─'.repeat(width - 2) + '┐', x, y, color, colors.chrome);
-      buffer.drawText('└' + '─'.repeat(width - 2) + '┘', x, y + height - 1, color, colors.chrome);
+      buffer.drawText('┌' + '─'.repeat(width - 2) + '┐', x, y, color, this.colors.chrome);
+      buffer.drawText(
+        '└' + '─'.repeat(width - 2) + '┘',
+        x,
+        y + height - 1,
+        color,
+        this.colors.chrome
+      );
       for (let row = y + 1; row < y + height - 1; row++) {
-        buffer.drawText('│', x, row, color, colors.chrome);
-        buffer.drawText('│', x + width - 1, row, color, colors.chrome);
+        buffer.drawText('│', x, row, color, this.colors.chrome);
+        buffer.drawText('│', x + width - 1, row, color, this.colors.chrome);
       }
     };
-    box(p.x, p.y, p.width, p.height, colors.muted);
+    box(p.x, p.y, p.width, p.height, this.colors.muted);
     const view = frame.viewport;
     const width = p.width - 2;
     for (let y = 0; y < p.height - 2; y++)
@@ -261,8 +283,8 @@ export class CanvasSurface extends Renderable {
           glyph,
           p.x + 1 + x,
           p.y + 1 + y,
-          colors.accent,
-          frame.pixels[y * width + x] ? colors.minimapContent : colors.chrome
+          this.colors.accent,
+          frame.pixels[y * width + x] ? this.colors.minimapContent : this.colors.chrome
         );
       }
     if (!frame.hasContent)
@@ -271,8 +293,8 @@ export class CanvasSurface extends Renderable {
         messages.minimapEmpty,
         p.x + 3,
         p.y + 4,
-        colors.muted,
-        colors.chrome,
+        this.colors.muted,
+        this.colors.chrome,
         p.width - 6
       );
   }
@@ -335,42 +357,15 @@ export class CanvasSurface extends Renderable {
   protected override renderSelf(buffer: OptimizedBuffer) {
     const { model } = this;
     this.contextMenu?.validate();
-    const copy = messages;
-    buffer.clear(colors.background);
+    buffer.clear(this.colors.background);
     if (this.width < 4 || this.height < 5) {
-      this.#line(buffer, 'Resize terminal', 0, 0, colors.foreground, colors.background);
+      this.#line(buffer, 'Resize terminal', 0, 0, this.colors.foreground, this.colors.background);
       this.renderer.setCursorPosition(0, 0, false);
       return;
     }
-    model.resize(this.width, this.height - CANVAS_TOP - 2);
-    buffer.fillRect(0, 0, this.width, 1, colors.chrome);
-    const controls = this.toolbarControls;
-    for (const control of controls) {
-      const active = control.id === 'minimap' ? this.minimapOpen : control.id === this.tool;
-      this.#line(
-        buffer,
-        control.label,
-        control.x,
-        0,
-        colors.foreground,
-        colors.chrome,
-        control.width,
-        createTextAttributes({ inverse: active })
-      );
-    }
-    const titleX = controls.length ? controls.at(-1)!.x + controls.at(-1)!.width + 1 : 0;
-    this.#line(
-      buffer,
-      this.documentLabels.length > 1
-        ? `${this.documentLabels.findIndex((doc) => doc.active) + 1}/${this.documentLabels.length} ${this.documentLabels.find((doc) => doc.active)?.label ?? this.filename} · F7`
-        : `${this.filename}${model.dirty ? ' *' : ''}`,
-      titleX,
-      0,
-      colors.foreground
-    );
+    model.resize(this.canvasBounds.width, this.canvasBounds.height);
     const { viewport } = model;
     const coverage = model.selectionPresentation.coverage;
-    const selection = coverage.bounds;
     const ranges = coverage.areas.map((area) => ({
       x: area.start.x,
       y: area.start.y,
@@ -407,14 +402,16 @@ export class CanvasSurface extends Renderable {
       const width = getGraphemeCellWidth(cell.char);
       const left = x - viewport.x,
         top = CANVAS_TOP + y - viewport.y;
-      const fg = isDefaultArtifactForeground(cell) ? colors.foreground : RGBA.fromHex(cell.color);
-      const sourceBg = cell.bgColor ? RGBA.fromHex(cell.bgColor) : colors.background;
+      const fg = isDefaultArtifactForeground(cell)
+        ? this.colors.foreground
+        : RGBA.fromHex(cell.color);
+      const sourceBg = cell.bgColor ? RGBA.fromHex(cell.bgColor) : this.colors.background;
       const highlighted =
         coverage.contains({ x, y }) ||
         this.searchHighlights.some((range) => cellRectContainsPoint(range, { x, y }));
       // Selection owns one background across text, spaces and wide followers;
       // inverse would swap that background with each character's own color.
-      const bg = highlighted ? this.#selectionColor : sourceBg;
+      const bg = highlighted ? this.colors.selection : sourceBg;
       const attributes = createTextAttributes({
         ...cell.attrs,
         inverse: highlighted ? false : cell.attrs?.inverse,
@@ -472,51 +469,38 @@ export class CanvasSurface extends Renderable {
     this.#links.endFrame();
     const minimap = this.minimapFrame;
     if (minimap) this.#drawMinimap(buffer, minimap);
-    const footer = Math.max(0, this.height - 2);
-    buffer.fillRect(0, footer, this.width, 2, colors.chrome);
-    const selectionLabel = selection
-      ? `  ${copy.selection} ${selection.end.x - selection.start.x + 1}×${selection.end.y - selection.start.y + 1}`
-      : '';
-    const mode =
-      model.currentTool !== 'pan' && model.currentTool !== 'select'
-        ? `${copy.edit} · ${drawingLabel(model.currentTool)}`
-        : copy[this.tool];
-    const position = this.tool === 'hand' ? model.viewport : model.cursor;
-    const positionLabel = this.tool === 'hand' ? copy.viewport : copy.cursor;
-    this.#line(
-      buffer,
-      ` ${mode}  ${positionLabel} (${position.x}, ${position.y})${selectionLabel}  ${model.dirty ? copy.modified : copy.saved}  ${this.shortcuts.help.label} ${copy.help}`,
-      0,
-      footer,
-      colors.accent
-    );
-    const editHint = rangeClickHint(this.inputPolicy) ?? copy.editHint;
-    const actionHint = `${this.tool === 'hand' ? copy.handHint : editHint} · ${this.shortcuts.copy.label} ${copy.copy} · ${this.shortcuts.paste.label} ${copy.paste} · ${this.shortcuts.save.label} ${copy.save}`;
-    const status =
-      (model.getSnapshot().drawingError ? 'Drawing is too large. Try a smaller area.' : '') ||
-      (this.placement
-        ? `${this.placement.label} (${this.placement.at.x}, ${this.placement.at.y}) · Enter place · Shift+arrows 10 cells · Option pan · Esc cancel`
-        : '') ||
-      this.status ||
-      this.backgroundStatus ||
-      (this.minimapOpen && !minimap && !this.help
-        ? copy.minimapSmall
-        : this.widthFallbacks
-          ? copy.width
-          : actionHint);
-    this.#line(buffer, ` ${status}`, 0, footer + 1);
+    const footer = this.footerBounds.y;
+    buffer.fillRect(0, footer, this.width, FOOTER_ROWS, this.colors.chrome);
+    const controls = this.dockControls;
+    for (const control of controls) {
+      const active = control.id === 'minimap' ? this.minimapOpen : control.id === this.tool;
+      this.#line(
+        buffer,
+        control.label,
+        control.x,
+        control.y,
+        this.colors.foreground,
+        this.colors.chrome,
+        control.width,
+        createTextAttributes({ inverse: active })
+      );
+    }
+    const statusBar = this.statusBar;
+    const titleX = controls.length ? controls.at(-1)!.x + controls.at(-1)!.width + 1 : 0;
+    if (statusBar.context)
+      this.#line(buffer, ` ${statusBar.context}`, titleX, footer, this.colors.accent);
+    this.#line(buffer, ` ${statusBar.hint}`, 0, footer + 1);
     if (this.help) {
       buffer.fillRect(
         0,
         CANVAS_TOP,
         this.width,
         Math.max(0, footer - CANVAS_TOP),
-        colors.background
+        this.colors.background
       );
-      this.#line(buffer, `${copy.closeHelp} · ↑↓`, 2, CANVAS_TOP, colors.accent, colors.background);
       for (const [i, line] of this.helpLines.slice(this.helpScroll).entries()) {
-        if (i + CANVAS_TOP + 2 >= footer) break;
-        this.#line(buffer, line, 2, i + CANVAS_TOP + 2, colors.foreground, colors.background);
+        if (i + CANVAS_TOP >= footer) break;
+        this.#line(buffer, line, 2, i + CANVAS_TOP, this.colors.foreground, this.colors.background);
       }
     }
     if (this.panel) {
@@ -527,36 +511,36 @@ export class CanvasSurface extends Renderable {
           CANVAS_TOP,
           this.width,
           Math.max(0, footer - CANVAS_TOP),
-          colors.background
+          this.colors.background
         );
         this.#line(
           buffer,
           'Enlarge terminal to use panel · Esc returns',
           0,
           CANVAS_TOP,
-          colors.foreground,
-          colors.background
+          this.colors.foreground,
+          this.colors.background
         );
       } else {
-        buffer.fillRect(layout.x, layout.y, layout.width, layout.height, colors.background);
+        buffer.fillRect(layout.x, layout.y, layout.width, layout.height, this.colors.background);
         if (this.panel.dialog) {
           this.#line(
             buffer,
             '┌' + '─'.repeat(layout.width - 2) + '┐',
             layout.x,
             layout.y,
-            colors.muted
+            this.colors.muted
           );
           this.#line(
             buffer,
             '└' + '─'.repeat(layout.width - 2) + '┘',
             layout.x,
             layout.y + layout.height - 1,
-            colors.muted
+            this.colors.muted
           );
           for (let y = layout.y + 1; y < layout.y + layout.height - 1; y++) {
-            this.#line(buffer, '│', layout.x, y, colors.muted);
-            this.#line(buffer, '│', layout.x + layout.width - 1, y, colors.muted);
+            this.#line(buffer, '│', layout.x, y, this.colors.muted);
+            this.#line(buffer, '│', layout.x + layout.width - 1, y, this.colors.muted);
           }
           for (const tab of this.panelTabControls)
             this.#line(
@@ -564,8 +548,10 @@ export class CanvasSurface extends Renderable {
               tab.label,
               tab.x,
               tab.y,
-              colors.foreground,
-              tab.index === this.panel.selectedTab ? this.#selectionColor : colors.background,
+              tab.index === this.panel.selectedTab
+                ? this.colors.selectionForeground
+                : this.colors.foreground,
+              tab.index === this.panel.selectedTab ? this.colors.selection : this.colors.background,
               tab.width,
               createTextAttributes({ bold: tab.index === this.panel.selectedTab })
             );
@@ -575,28 +561,19 @@ export class CanvasSurface extends Renderable {
           this.panel.dialog ? ` ${this.panel.title} ` : this.panel.title,
           layout.x + 1,
           layout.y,
-          colors.foreground,
-          colors.background,
+          this.colors.foreground,
+          this.colors.background,
           layout.width - 5,
           createTextAttributes({ bold: true })
-        );
-        this.#line(
-          buffer,
-          this.panel.hint,
-          layout.x + 1,
-          layout.y + 1,
-          colors.accent,
-          colors.background,
-          layout.width - 2
         );
         if (this.panel.input !== undefined)
           this.#line(
             buffer,
             `> ${this.panel.input}▏`,
             layout.x + 1,
-            layout.y + 2,
-            colors.foreground,
-            colors.background,
+            layout.y + 1,
+            this.colors.foreground,
+            this.colors.background,
             layout.width - 2
           );
         const start = Math.max(0, this.panel.selected - layout.rows + 1);
@@ -610,31 +587,23 @@ export class CanvasSurface extends Renderable {
               layout.itemsY + row,
               layout.width - 2,
               1,
-              this.#selectionColor
+              this.colors.selection
             );
           this.#line(
             buffer,
             `${index === this.panel.selected ? '›' : ' '} ${item}`,
             layout.x + 1,
             layout.itemsY + row,
-            colors.foreground,
             this.panel.dialog && index === this.panel.selected
-              ? this.#selectionColor
-              : colors.background,
+              ? this.colors.selectionForeground
+              : this.colors.foreground,
+            this.panel.dialog && index === this.panel.selected
+              ? this.colors.selection
+              : this.colors.background,
             layout.width - 2,
             createTextAttributes({ inverse: !this.panel.dialog && index === this.panel.selected })
           );
         }
-        if (this.panel.error || this.panel.footer)
-          this.#line(
-            buffer,
-            this.panel.error || this.panel.footer!,
-            layout.x + 1,
-            layout.y + layout.height - (this.panel.dialog ? 2 : 1),
-            colors.accent,
-            colors.background,
-            layout.width - 2
-          );
       }
     }
     // OpenTUI's terminal cursor API uses 1-based coordinates.
@@ -658,6 +627,40 @@ export class CanvasSurface extends Renderable {
     );
   }
 
+  get statusBar() {
+    const copy = messages;
+    if (this.closing) return { context: copy.closing, hint: '' };
+    if (this.panel) {
+      const section = this.panel.tabs?.[this.panel.selectedTab ?? 0];
+      const context = [
+        this.panel.title,
+        section,
+        this.panel.error || this.status || this.panel.status,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      return { context, hint: this.panel.hint };
+    }
+    if (this.contextMenu?.isOpen)
+      return { context: 'Context menu', hint: '↑↓ / Tab select · Enter run · Esc close' };
+    if (this.help) return { context: copy.help, hint: `${copy.closeHelp} · ↑↓ scroll` };
+    const editHint = rangeClickHint(this.inputPolicy) ?? copy.editHint;
+    const actionHint = `${this.tool === 'hand' ? copy.handHint : editHint} · ${this.shortcuts.copy.label} ${copy.copy} · ${this.shortcuts.paste.label} ${copy.paste}`;
+    const hint =
+      (this.model.getSnapshot().drawingError ? 'Drawing is too large. Try a smaller area.' : '') ||
+      (this.placement
+        ? `${this.placement.label} · Enter place · Shift+arrows 10 cells · Option pan · Esc cancel`
+        : '') ||
+      this.status ||
+      this.backgroundStatus ||
+      (this.minimapOpen && !this.minimapFrame
+        ? copy.minimapSmall
+        : this.widthFallbacks
+          ? copy.width
+          : actionHint);
+    return { context: '', hint };
+  }
+
   get helpLines() {
     return helpLines(
       this.shortcuts,
@@ -673,7 +676,7 @@ export class CanvasSurface extends Renderable {
     return (this.panel?.tabs ?? []).flatMap((name, index) => {
       const label = ` ${name} `,
         width = this.#width(label);
-      const control = { index, label, x, y: layout.y + 2, width, height: 1 };
+      const control = { index, label, x, y: layout.y + 1, width, height: 1 };
       x += width + 1;
       return x <= layout.x + layout.width ? [control] : [];
     });
@@ -684,20 +687,20 @@ export class CanvasSurface extends Renderable {
       const width = Math.min(76, Math.max(0, this.width - 4));
       const height = Math.min(16, Math.max(0, this.height - 4));
       const x = Math.floor((this.width - width) / 2);
-      const y = Math.max(CANVAS_TOP, Math.floor((this.height - height) / 2));
-      const itemsY = y + 4;
-      return { x, y, width, height, itemsY, rows: Math.max(0, height - 6) };
+      const y = CANVAS_TOP + Math.floor((this.canvasBounds.height - height) / 2);
+      const itemsY = y + 3;
+      return { x, y, width, height, itemsY, rows: Math.max(0, height - 4) };
     }
     const y = CANVAS_TOP + 1,
-      height = Math.max(0, this.height - y - 2);
-    const itemsY = y + (this.panel?.input === undefined ? 2 : 3);
+      height = Math.max(0, this.footerBounds.y - y);
+    const itemsY = y + (this.panel?.input === undefined ? 1 : 2);
     return {
       x: 1,
       y,
       width: Math.max(0, this.width - 2),
       height,
       itemsY,
-      rows: Math.max(0, y + height - itemsY - 1),
+      rows: Math.max(0, y + height - itemsY),
     };
   }
 
@@ -745,9 +748,9 @@ export class CanvasSurface extends Renderable {
     }
     if (event.type === 'down' && event.button === 0 && !this.#pointer && !this.#minimapDrag) {
       const point = { x: event.x - this.screenX, y: event.y - this.screenY };
-      const control = this.toolbarControls.find((control) => cellRectContainsPoint(control, point));
+      const control = this.dockControls.find((control) => cellRectContainsPoint(control, point));
       if (control) {
-        this.model.editor.commands.execute(`terminal.${control.id}`, undefined, 'terminal-toolbar');
+        this.model.editor.commands.execute(`terminal.${control.id}`, undefined, 'terminal-dock');
         this.requestRender();
         return;
       }
@@ -812,7 +815,9 @@ export class CanvasSurface extends Renderable {
   }
 
   protected override destroySelf() {
-    this.#detachSettings();
+    this.#detachAppearanceHost();
+    this.#detachAppearance();
+    if (this.#ownsAppearance) this.appearance.dispose();
     this.#links.destroy();
     this.#measureView.destroy();
     this.#measurer.destroy();

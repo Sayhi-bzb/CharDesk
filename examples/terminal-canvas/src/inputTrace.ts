@@ -15,6 +15,10 @@ export function attachInputTrace(surface: CanvasSurface, path: string) {
   const fd = openSync(path, 'wx', 0o600);
   const { renderer, model } = surface;
   let active = true;
+  const appearanceState = () => {
+    const { revision, mode, status } = surface.appearance.getSnapshot();
+    return { revision, mode, status };
+  };
   const state = () => ({
     tool: model.currentTool,
     viewport: model.viewport,
@@ -25,6 +29,7 @@ export function attachInputTrace(surface: CanvasSurface, path: string) {
     panel: Boolean(surface.panel),
     help: surface.help,
     contextMenu: Boolean(surface.contextMenu?.isOpen),
+    appearance: appearanceState(),
   });
   const write = (event: Record<string, unknown>) => {
     if (!active) return;
@@ -70,11 +75,15 @@ export function attachInputTrace(surface: CanvasSurface, path: string) {
   renderer.keyInput.prependListener('keypress', key);
   renderer.keyInput.prependListener('keyrelease', key);
   const unsubscribe = model.subscribe(() => write({ kind: 'state', state: state() }));
+  const unsubscribeAppearance = surface.appearance.subscribe(() =>
+    write({ kind: 'appearance', appearance: appearanceState() })
+  );
   return () => {
     renderer.stdin.off('data', raw);
     renderer.keyInput.off('keypress', key);
     renderer.keyInput.off('keyrelease', key);
     unsubscribe();
+    unsubscribeAppearance();
     if (active) write({ kind: 'stop', state: state() });
     active = false;
     closeSync(fd);

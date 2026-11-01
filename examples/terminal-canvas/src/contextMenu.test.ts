@@ -2,11 +2,58 @@ import type { CliRenderer } from '@opentui/core';
 import { expect, test } from 'bun:test';
 import { createTestRenderer, KeyCodes, MouseButtons } from '@opentui/core/testing';
 import { attachControls } from './controller.ts';
-import { CanvasFile } from './document.ts';
 import { TerminalCanvas } from './model.ts';
 import { CANVAS_TOP, CanvasSurface } from './surface.ts';
 import type { TerminalClipboardAccess } from './clipboard.ts';
 import type { ClipboardWriteResult } from '@chardesk/editor-core/clipboard/commands';
+
+test('a theme change during PNG delivery invalidates its clipboard guard without changing the document', async () => {
+  const pending = Promise.withResolvers<{ status: 'written' | 'failed' | 'unavailable' }>();
+  let guard: (() => boolean) | undefined;
+  const f = await fixture(undefined, true, true, undefined, {
+    canWriteImage: () => true,
+    writeImage: async (_image, current) => {
+      guard = current;
+      return pending.promise;
+    },
+  });
+  const terminal = {
+    palette: [],
+    defaultForeground: '#eeeeee',
+    defaultBackground: '#111111',
+    cursorColor: null,
+    mouseForeground: null,
+    mouseBackground: null,
+    tekForeground: null,
+    tekBackground: null,
+    highlightForeground: null,
+    highlightBackground: null,
+  };
+  try {
+    f.setup.renderer.emit('palette', terminal);
+    f.model.commands.selectAll();
+    const content = f.model.plane.materialize(),
+      selection = structuredClone(f.model.selection);
+    const request = f.model.editor.commands.execute('terminal.snapshot-png', undefined);
+    await f.setup.waitFor(() => Boolean(guard));
+    expect(guard!()).toBe(true);
+    f.setup.renderer.emit('palette', {
+      ...terminal,
+      defaultForeground: '#111111',
+      defaultBackground: '#ffffff',
+    });
+    expect(guard!()).toBe(false);
+    pending.resolve({ status: 'failed' });
+    if (request.status === 'pending') await request.completion;
+    expect(f.surface.status).toContain('cancelled');
+    expect(f.model.plane.materialize()).toEqual(content);
+    expect(f.model.selection).toEqual(selection);
+    expect(f.model.canUndo).toBe(false);
+  } finally {
+    pending.resolve({ status: 'failed' });
+    await f.dispose();
+  }
+});
 
 async function fixture(
   source = 'A🦀B',
@@ -27,7 +74,7 @@ async function fixture(
   const writes: string[] = [];
   let delivery: ClipboardWriteResult['status'] = 'written',
     reads = 0;
-  const detach = attachControls(surface, new CanvasFile('/unused', 'menu', null), () => {}, {
+  const detach = attachControls(surface, () => {}, {
     ...imageClipboard,
     canRead: () => canRead,
     read: async () => {
@@ -140,7 +187,7 @@ test('selection envelope holes are outside; wide followers resolve to the linked
   }
 });
 
-test('keyboard and Menu button open the same overlay; menu focus blocks typing, paste and other shortcuts', async () => {
+test('keyboard opens the menu without a dock button; menu focus blocks typing, paste and other shortcuts', async () => {
   const f = await fixture();
   try {
     f.model.commands.selectAll();
@@ -156,8 +203,8 @@ test('keyboard and Menu button open the same overlay; menu focus blocks typing, 
     expect(f.model.canUndo).toBe(false);
     f.setup.mockInput.pressEscape();
     expect(f.menu.isOpen).toBe(false);
-    const button = f.surface.toolbarControls.find((control) => control.id === 'context-menu')!;
-    await f.setup.mockMouse.click(button.x + 1, 0);
+    expect(f.surface.dockControls.map((control) => control.id)).not.toContain('context-menu');
+    f.setup.mockInput.pressKey(KeyCodes.F10, { shift: true });
     expect(f.menu.isOpen).toBe(true);
     const before = structuredClone(f.model.cursor);
     await f.setup.mockMouse.click(79, CANVAS_TOP + 10);

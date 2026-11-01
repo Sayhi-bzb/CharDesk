@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test';
 import { createTestRenderer, MouseButtons } from '@opentui/core/testing';
 import { RGBA } from '@opentui/core';
 import { attachControls } from './controller.ts';
-import { CanvasFile } from './document.ts';
 import { TerminalCanvas } from './model.ts';
 import { CANVAS_TOP, CanvasSurface } from './surface.ts';
 
@@ -21,7 +20,7 @@ async function fixture(kittyKeyboard = true) {
   const model = new TerminalCanvas('A界BC\nABCDE');
   const surface = new CanvasSurface(setup.renderer, model, 'range-input', 'darwin');
   setup.renderer.root.add(surface);
-  const detach = attachControls(surface, new CanvasFile('/unused', 'test', null), () => {});
+  const detach = attachControls(surface, () => {});
   surface.setTool('edit');
   model.viewport = { ...model.viewport, x: 0, y: 0 };
   await setup.renderOnce();

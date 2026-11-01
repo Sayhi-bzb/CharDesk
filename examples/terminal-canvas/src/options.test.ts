@@ -9,7 +9,6 @@ test('workspace options retain multiple paths and terminal preferences', () => {
       'plain',
       '--workspace',
       'work.json',
-      '--no-autosave',
       'two.chardesk',
       '--blank',
     ])
@@ -17,7 +16,6 @@ test('workspace options retain multiple paths and terminal preferences', () => {
     files: ['one.chardesk', 'two.chardesk'],
     pasteMode: 'plain',
     workspacePath: 'work.json',
-    autosave: false,
     blank: true,
     snapshot: false,
   });
@@ -39,6 +37,7 @@ test('invalid options and multi-document snapshots fail before workspace IO', ()
     ['--settings'],
     ['--settings', '--blank'],
     ['--unknown'],
+    ['--no-autosave'],
     ['--snapshot', 'a', 'b'],
   ])
     expect(() => parseOptions(args)).toThrow();

@@ -111,9 +111,11 @@ export class TerminalWorkspace {
       loaded.model.dispose();
     }
   }
+  needsSave(file = this.active) {
+    return file.baselineSource === null || this.model.isDirtyAt(file.address!);
+  }
   async saveAll() {
-    for (const file of this.#files)
-      if (this.model.isDirtyAt(file.address!)) await this.saveFile(file);
+    for (const file of this.#files) if (this.needsSave(file)) await this.saveFile(file);
   }
   saveFile(file = this.active) {
     const pending = (this.#saves.get(file) ?? Promise.resolve())

@@ -3,7 +3,6 @@ import { createTestRenderer, KeyCodes, ManualClock } from '@opentui/core/testing
 import { TerminalCanvas } from './model.ts';
 import { CanvasSurface } from './surface.ts';
 import { attachControls } from './controller.ts';
-import { CanvasFile } from './document.ts';
 import { TerminalMinimap, minimapPanel } from './minimap.ts';
 
 test('map fits content plus viewport dynamically and caches content across pan', () => {
@@ -47,7 +46,7 @@ test('F4 opens floating map without resizing canvas; map click/drag preserve edi
   try {
     const surface = new CanvasSurface(setup.renderer, model, 'test.chardesk');
     setup.renderer.root.add(surface);
-    detach = attachControls(surface, new CanvasFile('/unused', 'test', null), () => {});
+    detach = attachControls(surface, () => {});
     await setup.renderOnce();
     const dimensions = { width: model.viewport.width, height: model.viewport.height };
     const cursor = { ...model.cursor },
@@ -104,7 +103,7 @@ test('empty map and its border intercept clicks; resize hides the overlay and ca
   try {
     const surface = new CanvasSurface(setup.renderer, model, 'test.chardesk');
     setup.renderer.root.add(surface);
-    detach = attachControls(surface, new CanvasFile('/unused', 'test', null), () => {});
+    detach = attachControls(surface, () => {});
     surface.minimapOpen = true;
     await setup.renderOnce();
     expect(setup.captureCharFrame()).toContain('No content');

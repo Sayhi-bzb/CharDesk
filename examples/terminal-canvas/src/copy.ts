@@ -24,16 +24,8 @@ export const messages = {
   pasteFailed: 'Unable to prepare pasted text; canvas unchanged.',
   pasteWarnings: 'Paste warnings',
   clipboardStale: 'Clipboard action cancelled; its target or request changed.',
-  viewport: 'View',
-  cursor: 'Cursor',
-  selection: 'selection',
-  modified: 'modified',
-  saved: 'unchanged',
   help: 'Help',
-  'context-menu': 'Menu',
   closeHelp: 'F1 / Esc close help',
-  saving: 'Saving…',
-  saveDone: 'Saved',
   closing: 'Closing…',
   autosaving: 'Auto saving…',
   autosaved: 'Auto saved',
@@ -44,12 +36,7 @@ export const messages = {
   editHint: 'Click and type · Drag to select',
   copy: 'Copy',
   paste: 'Paste',
-  save: 'Save',
 } as const;
-
-export function quitMessage(shortcuts: TerminalShortcuts) {
-  return `Unsaved edits. ${shortcuts.save.label} saves current, ${shortcuts['save-all'].label} saves all; ${shortcuts.quit.label} again discards and exits.`;
-}
 
 export function rangeClickHint(policy: TerminalInputPolicy) {
   if (policy.terminal === 'warp') return 'Drag to select · Option+click extends';
@@ -91,12 +78,12 @@ export function helpLines(
     `${s.templates.label} templates: preview, position, Enter places`,
     `${s.edit.label} Edit · ${s.hand.label} Hand (default) · ${s.tools.label} drawing tools`,
     `${s['next-document'].label} / ${s['previous-document'].label} switch document · ${s.documents.label} documents`,
-    `${s.open.label} Open · ${s.new.label} New · ${s['save-copy'].label} Save copy · ${s['save-all'].label} Save all`,
+    `${s.open.label} Open · ${s.new.label} New`,
     `${s.search.label} Find · ${s['next-match'].label} next match · ${s.anchors.label} anchors · ${s['add-anchor'].label} add anchor`,
     'Hand: left-drag to pan the canvas',
     `${s['pan-left'].label} / ${s['pan-right'].label} / ${s['pan-up'].label} / ${s['pan-down'].label}: pan ${panStep} cells`,
     'Edit: click and type; drag to select a rectangle',
-    `Right-click / ${s['context-menu'].label} / Menu button: actions; ↑↓ select, Enter runs, Esc closes`,
+    `Right-click / ${s['context-menu'].label}: actions; ↑↓ select, Enter runs, Esc closes`,
     linkHint,
     'i / h / m / I / H / M always type as text',
     `${rangeClick}: extend selection · Ctrl+click: append selection`,
@@ -112,9 +99,9 @@ export function helpLines(
     'Paste detects format by default; --paste-mode plain preserves source',
     `${s['select-all'].label}: select all content`,
     `${s.undo.label} / ${s.redo.label}: undo / redo`,
-    `${s.save.label}: save .chardesk`,
+    'Changes save automatically; closing and quitting wait for saving.',
     `${s.minimap.label}: toggle Minimap; keep tool`,
     `${s.origin.label} / ${s.focus.label}: origin / locate content`,
-    `${s.quit.label}: quit (confirm unsaved edits)`,
+    `${s.quit.label}: quit after automatic saving`,
   ];
 }
