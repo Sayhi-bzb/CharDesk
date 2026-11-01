@@ -102,7 +102,11 @@ export class WorkspacePersistence {
   readonly conflicts: string[] = [];
   private constructor(readonly path: string) {}
 
-  static async open(input: string) {
+  get hasCheckpoint() {
+    return this.#checkpoint !== null;
+  }
+
+  static async open(input: string, legacyPath?: string) {
     await mkdir(dirname(resolve(input)), { recursive: true });
     const persistence = new WorkspacePersistence(await resolveCanvasFilePath(input));
     const lock = `${persistence.path}.lock`;
@@ -151,7 +155,24 @@ export class WorkspacePersistence {
     try {
       if ((await readOptional(lock)) !== persistence.#owner)
         throw new Error('Workspace lock could not be acquired.');
-      const source = await readOptional(persistence.path);
+      let source = await readOptional(persistence.path);
+      if (
+        source === null &&
+        legacyPath &&
+        resolve(legacyPath) !== persistence.path &&
+        (await readOptional(legacyPath)) !== null
+      ) {
+        const legacy = await WorkspacePersistence.open(legacyPath);
+        try {
+          source = await readOptional(legacy.path);
+          if (source !== null) {
+            decode(source);
+            await atomicWrite(persistence.path, source);
+          }
+        } finally {
+          await legacy.abandon();
+        }
+      }
       persistence.#checkpoint = source === null ? null : decode(source);
       return persistence;
     } catch (error) {
@@ -254,8 +275,7 @@ export class WorkspacePersistence {
             for (const file of workspace.files) {
               if (!this.#active) break;
               const version = workspace.model.versionAt(file.address!);
-              if (!workspace.needsSave(file) || this.#failed.get(file) === version)
-                continue;
+              if (!workspace.needsSave(file) || this.#failed.get(file) === version) continue;
               report({ phase: 'saving' });
               try {
                 await workspace.saveFile(file);

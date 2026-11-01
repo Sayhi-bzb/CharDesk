@@ -46,6 +46,7 @@ export class TerminalContextMenu {
     const s = this.surface,
       model = s.model;
     if (s.help || s.panel || s.placement || s.closing) return;
+    s.clearDockFocus();
     if (s.width < 8 || s.height < 6) {
       s.status = 'Enlarge terminal to use the menu.';
       s.requestRender();

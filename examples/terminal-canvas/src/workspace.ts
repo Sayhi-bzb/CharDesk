@@ -17,11 +17,17 @@ export class TerminalWorkspace {
     return this.#errors.get(file);
   }
   private constructor(
-    initial: { file: CanvasFile; model: TerminalCanvas },
+    initial: { file?: CanvasFile; model: TerminalCanvas },
     readonly options: FreeformEditorSessionOptions
   ) {
     this.model = initial.model;
-    this.#files = [initial.file];
+    this.#files = initial.file ? [initial.file] : [];
+  }
+  static empty(options: FreeformEditorSessionOptions = {}) {
+    const model = new TerminalCanvas('', options);
+    model.setTool('pan');
+    model.markSaved();
+    return new TerminalWorkspace({ model }, options);
   }
   static async open(path: string, initialBody = '', options: FreeformEditorSessionOptions = {}) {
     const initial = await CanvasFile.open(path, initialBody, options);
@@ -84,7 +90,8 @@ export class TerminalWorkspace {
       this.switchTo(existing);
       return this.#files[existing]!;
     }
-    const loaded = await CanvasFile.open(path, '', { prepareText: this.options.prepareText });
+    const emptyDocument = this.#files.length ? null : this.model.documents.getActiveDocumentId();
+    const loaded = await CanvasFile.open(path, '', this.options);
     try {
       if (this.#disposed || intent !== this.#openIntent) throw new Error('Open cancelled.');
       const document = loaded.model.documents.getDocumentDraft()!;
@@ -106,6 +113,7 @@ export class TerminalWorkspace {
         this.#files.pop();
         throw error;
       }
+      if (emptyDocument) this.model.forgetDocument(emptyDocument);
       return loaded.file;
     } finally {
       loaded.model.dispose();
@@ -194,11 +202,17 @@ export class TerminalWorkspace {
   }
   close(index: number, discard = false) {
     const file = this.#files[index];
-    if (!file || this.#files.length === 1 || (!discard && this.model.isDirtyAt(file.address!)))
-      return false;
-    if (file === this.active) this.switchTo(index === 0 ? 1 : index - 1);
+    if (!file || (!discard && this.model.isDirtyAt(file.address!))) return false;
+    const last = this.#files.length === 1;
+    if (!last && file === this.active) this.switchTo(index === 0 ? 1 : index - 1);
     this.#files.splice(index, 1);
     this.#errors.delete(file);
+    if (last)
+      this.model.editor.transact(() => {
+        this.model.documents.activateDocument(randomUUID(), { grid: [] });
+        this.model.markSaved();
+        this.model.setTool('pan');
+      });
     this.model.forgetDocument(file.address!.documentId);
     return true;
   }

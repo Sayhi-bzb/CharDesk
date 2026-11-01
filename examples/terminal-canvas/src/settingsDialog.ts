@@ -28,6 +28,7 @@ export class TerminalSettingsDialog {
     );
   }
   open() {
+    this.surface.clearDockFocus();
     this.surface.cancelGesture();
     this.surface.model.cancelPendingPaste();
     this.surface.help = false;

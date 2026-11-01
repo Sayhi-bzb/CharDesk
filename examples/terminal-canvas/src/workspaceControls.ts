@@ -10,10 +10,13 @@ import type { CanvasSurface, TerminalPanel } from './surface.ts';
 import type { TerminalWorkspace } from './workspace.ts';
 import type { TerminalAction } from './shortcuts.ts';
 import { messages } from './copy.ts';
+import type { LocalSessions } from './sessions.ts';
+import type { LocalSession } from './sessionCatalog.ts';
 
 /** Transient Host panels. All document mutations still run through shared commands. */
 export class WorkspaceControls {
   #kind = '';
+  #includeArchived = false;
   readonly #characters: CharacterPicker;
   #selectedAll = false;
   #inputVersion = 0;
@@ -47,7 +50,8 @@ export class WorkspaceControls {
     readonly surface: CanvasSurface,
     readonly workspace: TerminalWorkspace,
     readonly clipboard: ClipboardPort,
-    readonly closeLast: () => void
+    readonly closeLast: () => void,
+    readonly sessions?: LocalSessions
   ) {
     this.#characters = new CharacterPicker({
       surface,
@@ -95,7 +99,8 @@ export class WorkspaceControls {
   }
 
   refresh() {
-    this.surface.filename = this.workspace.active.title;
+    this.surface.hasDocument = this.workspace.files.length > 0;
+    this.surface.filename = this.workspace.files.length ? this.workspace.active.title : '';
     this.surface.documentLabels = this.workspace.files.map((file) => ({
       label: `${file.title}${this.surface.model.isDirtyAt(file.address!) ? '*' : ''}${this.workspace.errorFor(file) ? ' !' : ''}`,
       active: file === this.workspace.active,
@@ -103,6 +108,7 @@ export class WorkspaceControls {
     this.surface.requestRender();
   }
   dismiss() {
+    this.sessions?.cancelPending();
     this.workspace.cancelPendingOpen();
     this.#characters.close();
     this.surface.panel = null;
@@ -119,6 +125,7 @@ export class WorkspaceControls {
     enter: () => void,
     special: (key: KeyEvent) => boolean = () => false
   ) {
+    this.surface.clearDockFocus();
     this.surface.cancelGesture();
     this.surface.model.cancelPendingPaste();
     this.surface.help = false;
@@ -150,6 +157,8 @@ export class WorkspaceControls {
   }
   filePrompt(kind: 'open' | 'new' | 'save-copy') {
     const panel: TerminalPanel = {
+      dialog: Boolean(this.sessions),
+      onClose: () => this.dismiss(),
       title:
         kind === 'save-copy'
           ? 'Duplicate document'
@@ -175,12 +184,106 @@ export class WorkspaceControls {
               throw new Error('The file already exists. Use Open.');
           }
           if (!this.#alive || this.surface.panel !== panel) return;
-          await this.workspace.openFile(panel.input!.trim());
+          if (this.sessions) await this.sessions.openPath(panel.input!.trim());
+          else await this.workspace.openFile(panel.input!.trim());
         }
       });
     });
   }
-  documents() {
+  newSession() {
+    const panel: TerminalPanel = {
+      dialog: true,
+      onClose: () => this.dismiss(),
+      title: 'New canvas',
+      hint: 'Esc cancel',
+      items: [],
+      selected: 0,
+    };
+    this.#show('session-create', panel, () => {});
+    this.#async(panel, () => this.sessions!.create());
+  }
+  #renameSession(record: LocalSession) {
+    const panel: TerminalPanel = {
+      dialog: true,
+      onClose: () => this.dismiss(),
+      title: 'Rename session',
+      input: record.name,
+      hint: 'Enter confirm · Esc cancel',
+      items: [],
+      selected: 0,
+    };
+    this.#show('session-name', panel, () => {
+      this.#async(panel, async () => {
+        this.sessions!.rename(record.id, panel.input!, record.revision);
+        this.documents(record.id);
+      });
+    });
+    this.#selectedAll = true;
+  }
+  #sessionList(selectedId?: string) {
+    const records = this.sessions!.list(this.#includeArchived);
+    const activePath = this.workspace.files.length ? this.workspace.active.path : null;
+    const panel: TerminalPanel = {
+      dialog: true,
+      onClose: () => this.dismiss(),
+      title: 'Sessions',
+      tabs: ['Canvases', 'Archived'],
+      selectedTab: Number(this.#includeArchived),
+      onTab: (index) => {
+        this.#includeArchived = index === 1;
+        this.documents();
+      },
+      hint: 'Tab list · ↑↓ select · Enter open · N new · O file · Esc close',
+      status: `R rename · D copy · A ${this.#includeArchived ? 'restore' : 'archive'} · Del close · F5 refresh`,
+      items: [
+        ...records.map(
+          (record) =>
+            `${record.path === activePath ? '▸ ' : ''}${record.name}${record.status === 'creating' ? ' (incomplete)' : ''}`
+        ),
+        '+ New canvas',
+        '+ Open file',
+      ],
+      selected: Math.max(
+        0,
+        records.findIndex(
+          (record) => record.id === selectedId || (!selectedId && record.path === activePath)
+        )
+      ),
+    };
+    const pick = () => {
+      const record = records[panel.selected];
+      if (record) this.#async(panel, () => this.sessions!.open(record.id));
+      else if (panel.selected === records.length) this.newSession();
+      else this.filePrompt('open');
+    };
+    panel.onPick = pick;
+    this.#show('sessions', panel, pick, (key) => {
+      if (key.ctrl || key.meta || key.super) return false;
+      const record = records[panel.selected];
+      if (key.name === 'tab' || key.name === 'f10') panel.onTab!(1 - panel.selectedTab!);
+      else if (key.name === 'n') this.newSession();
+      else if (key.name === 'o') this.filePrompt('open');
+      else if (key.name === 'f5') this.documents(record?.id);
+      else if (key.name === 'r' && record) this.#renameSession(record);
+      else if (key.name === 'd' && record)
+        this.#async(panel, () => this.sessions!.duplicate(record.id));
+      else if (key.name === 'a' && record)
+        this.#async(panel, async () => {
+          await this.sessions!.archive(record.id, !record.archived, record.revision);
+          this.documents();
+        });
+      else if (key.name === 'delete' && record) {
+        const file = this.workspace.files.find((file) => file.path === record.path);
+        if (file) this.closeDocument(file);
+      } else return false;
+      return true;
+    });
+  }
+  documents(selectedId?: string) {
+    if (this.sessions) {
+      this.#sessionList(selectedId);
+      return;
+    }
     const files = [...this.workspace.files];
     const panel: TerminalPanel = {
       title: 'Documents',
@@ -220,6 +323,23 @@ export class WorkspaceControls {
     });
   }
   closeDocument(file = this.workspace.active) {
+    if (!file) return;
+    if (this.sessions) {
+      const panel: TerminalPanel = {
+        dialog: true,
+        onClose: () => this.dismiss(),
+        title: 'Closing canvas',
+        hint: 'Saving automatically · Esc cancel',
+        items: [],
+        selected: 0,
+      };
+      this.#show('close', panel, () => {});
+      this.#async(panel, async () => {
+        await this.sessions!.close(file);
+        if (!this.workspace.files.length) this.documents();
+      });
+      return;
+    }
     if (this.workspace.files.length === 1) {
       this.dismiss();
       this.closeLast();
@@ -574,7 +694,24 @@ export class WorkspaceControls {
     });
   }
   action(id: TerminalAction) {
-    if (id === 'open' || id === 'new' || id === 'save-copy') this.filePrompt(id);
+    if (id === 'new' && this.sessions) this.newSession();
+    else if (id === 'save-copy' && this.sessions) {
+      const record = this.workspace.files.length
+        ? this.sessions.forFile(this.workspace.active)
+        : null;
+      if (record) {
+        const panel: TerminalPanel = {
+          dialog: true,
+          onClose: () => this.dismiss(),
+          title: 'Copying canvas',
+          hint: 'Esc cancel',
+          items: [],
+          selected: 0,
+        };
+        this.#show('session-copy', panel, () => {});
+        this.#async(panel, () => this.sessions!.duplicate(record.id));
+      }
+    } else if (id === 'open' || id === 'new' || id === 'save-copy') this.filePrompt(id);
     else if (id === 'tools') this.tools();
     else if (id === 'templates') this.templates();
     else if (id === 'characters') this.#characters.open();
@@ -587,6 +724,7 @@ export class WorkspaceControls {
     else if (id === 'add-anchor') this.anchorName();
     else if (id === 'close-document') this.closeDocument();
     else if (id === 'next-document' || id === 'previous-document') {
+      if (!this.workspace.files.length) return;
       this.dismiss();
       const index = this.workspace.files.indexOf(this.workspace.active);
       this.workspace.switchTo(
@@ -713,7 +851,11 @@ export class WorkspaceControls {
       this.dismiss();
       return true;
     }
-    if (panel.busy || this.surface.panelLayout.height < 4 || this.surface.panelLayout.width < 20)
+    if (
+      panel.busy ||
+      this.surface.panelLayout.height < (panel.dialog ? 8 : 4) ||
+      this.surface.panelLayout.width < 20
+    )
       return true;
     if (key.name === 'f1') {
       this.dismiss();
@@ -728,10 +870,10 @@ export class WorkspaceControls {
       return true;
     }
     if (key.name === 'up' || key.name === 'down') {
-      panel.selected = Math.max(
-        0,
-        Math.min(panel.items.length - 1, panel.selected + (key.name === 'up' ? -1 : 1))
-      );
+      const next = panel.selected + (key.name === 'up' ? -1 : 1);
+      panel.selected = panel.dialog
+        ? (next + panel.items.length) % Math.max(1, panel.items.length)
+        : Math.max(0, Math.min(panel.items.length - 1, next));
     } else if (panel.input !== undefined && key.name === 'backspace') {
       this.#inputVersion++;
       panel.input = this.#selectedAll ? '' : segmentGraphemes(panel.input).slice(0, -1).join('');

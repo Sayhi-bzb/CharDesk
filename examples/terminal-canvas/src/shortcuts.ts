@@ -1,4 +1,7 @@
 export type TerminalAction =
+  | 'dock-next'
+  | 'dock-previous'
+  | 'dock-activate'
   | 'confirm-placement'
   | 'cancel-placement'
   | 'characters'
@@ -52,6 +55,9 @@ export function createTerminalShortcuts(platform: NodeJS.Platform, policy?: Term
       repeatable
     );
   return {
+    'dock-next': key(['Tab'], 'Tab', true),
+    'dock-previous': key(['Shift+Tab'], 'Shift+Tab', true),
+    'dock-activate': key(['Enter', 'Space']),
     edit: key(['F2']),
     tools: key(['Shift+F2']),
     templates: key(['Shift+F4']),

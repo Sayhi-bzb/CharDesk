@@ -135,13 +135,20 @@ export class TerminalSettingsStore {
     this.#values = readSettings(values);
     this.#persisted = { ...this.#values };
   }
-  static async load(path: string, overrides: Partial<TerminalSettings> = {}) {
+  static async load(path: string, overrides: Partial<TerminalSettings> = {}, legacyPath?: string) {
     const store = new TerminalSettingsStore();
     store.path = resolve(path);
     store.status = 'saved';
     try {
       store.path = await settingsPath(path);
-      const raw: unknown = JSON.parse(await readFile(store.path, 'utf8'));
+      let source: string;
+      try {
+        source = await readFile(store.path, 'utf8');
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || !legacyPath) throw error;
+        source = await readFile(legacyPath, 'utf8');
+      }
+      const raw: unknown = JSON.parse(source);
       if (!object(raw) || raw.version !== 1 || !object(raw.values))
         throw new Error('Invalid settings file');
       store.#persisted = readSettings(raw.values);

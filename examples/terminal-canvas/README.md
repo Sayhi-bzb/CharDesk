@@ -17,12 +17,15 @@ bun run start /path/to/diagram.chardesk --paste-mode plain
 bun run start first.chardesk second.chardesk --workspace /path/to/workspace.json
 ```
 
-No filename opens a welcome canvas, or `terminal-canvas.chardesk` if that file
-already exists. Changes save automatically to that path. An explicit missing filename starts
-an empty canvas. `--blank` suppresses the welcome content; it never clears an
-existing file. `F1` lists controls in the application; arrows scroll help. All TUI interface text is English.
-Changes are saved automatically; there is no manual Save command. Closing a document or quitting waits for pending changes to reach disk. [Workspace persistence](WORKSPACE.md) owns save,
-conflict and recovery behavior.
+No filename restores the local workspace, or creates a managed blank canvas on
+first use. New canvases need no filename. Explicit paths register external files
+and keep saving in place; missing paths start empty. A known legacy
+`terminal-canvas.chardesk` is registered on first startup. `--blank` remains
+accepted and suppresses the welcome content in read-only snapshots.
+`F1` lists controls; arrows scroll help. All TUI interface text is English.
+Changes save automatically; closing a canvas or quitting waits for disk writes.
+[Local storage and recovery](WORKSPACE.md) owns directories, overrides, migration,
+concurrency and recovery guarantees.
 
 The demo opens in **Hand**. The footer dock and F2/F3 select one of two
 tools; drawing tools are explicit choices within Edit, and F2 returns to text/selection.
@@ -39,15 +42,25 @@ tools; drawing tools are explicit choices within Edit, and F2 returns to text/se
 | Type one character in a range                                 | Fill the selected range                                          |
 | Arrows / Ctrl+arrows in Edit                                  | Move cursor / selected range                                     |
 | Esc                                                           | Cancel live drag first, otherwise clear selection; keep the tool |
-| Enter / Tab in Edit                                           | Newline / tab stop                                               |
+| Enter in Edit                                                 | Newline                                                          |
+| Tab / Shift+Tab                                               | Focus next / previous available dock button                      |
+| Enter / Space with dock focus                                 | Run focused button                                               |
+| Esc with dock focus                                           | Return to canvas; preserve selection                             |
 | Delete / Backspace in Edit                                    | Erase a complete grapheme or selection                           |
 | F4                                                            | Toggle Minimap without changing tools                            |
 | Home / F5                                                     | Go to origin / locate content                                    |
 | F1                                                            | Help with platform-specific shortcuts                            |
 | Right-click / Shift+F10                                       | Open the canvas action menu                                      |
-| Ctrl+Q                                                        | Automatically save all documents and quit                       |
+| Ctrl+Q                                                        | Automatically save all documents and quit                        |
 
-All printable letters, including `i/h/m/I/H/M`, are text in Edit. Click, Escape,
+All printable letters, including `i/h/m/I/H/M`, are text in Edit while the canvas
+has focus. Dock focus consumes typing and paste; clicking the canvas returns focus.
+Entering dock focus starts on the current Edit / Hand button; subsequent presses
+move forward or backward. Without a visible tool button, entry uses the first
+or last available button for that direction.
+Tab no longer inserts a tab stop; pasted tabs retain their text behavior.
+Dock focus is transient Host state and is not saved in documents or recovery views.
+Click, Escape,
 undo and paste keep the selected tool. Clipboard paste works in either tool and
 selects its result. Help, focus loss, resize and tool changes cancel active drags.
 
@@ -69,13 +82,13 @@ cases in [native input tests](src/range-input.test.ts) verify this path and text
 Option+click has been verified on Warp with standalone modifier events. Shift combinations
 still cannot reach the app because Warp intercepts those mouse events entirely.
 
-| Action            | macOS        | Windows               |
-| ----------------- | ------------ | --------------------- |
-| Copy              | ⌘C or Ctrl+Y | Ctrl+C                |
-| Cut / Paste       | ⌘X / ⌘V      | Ctrl+X / Ctrl+V       |
-| Select all        | ⌘A           | Ctrl+A               |
-| Undo              | ⌘Z           | Ctrl+Z                |
-| Redo              | ⌘⇧Z          | Ctrl+Y / Ctrl+Shift+Z |
+| Action      | macOS        | Windows               |
+| ----------- | ------------ | --------------------- |
+| Copy        | ⌘C or Ctrl+Y | Ctrl+C                |
+| Cut / Paste | ⌘X / ⌘V      | Ctrl+X / Ctrl+V       |
+| Select all  | ⌘A           | Ctrl+A                |
+| Undo        | ⌘Z           | Ctrl+Z                |
+| Redo        | ⌘⇧Z          | Ctrl+Y / Ctrl+Shift+Z |
 
 [`shortcuts.ts`](src/shortcuts.ts) owns binding and display policy. macOS keeps
 Command editing bindings and adds the [Vibe-style Ctrl+Y copy fallback](https://docs.mistral.ai/vibe/code/cli/commands-shortcuts).
@@ -229,18 +242,25 @@ retain their explicit document colors. Previews do not enter autosave or recover
 
 ### Workspace controls
 
-| Control            | Action                                                                 |
-| ------------------ | ---------------------------------------------------------------------- |
-| F7                 | Document list; Open / New / Duplicate; Delete closes a document        |
-| F6 / Shift+F6      | Next / previous document                                               |
-| ⌘O / Ctrl+O / F10  | Open a path                                                            |
-| ⌘N / Ctrl+N        | New document at an unused path                                         |
-| F7 → Duplicate…    | Duplicate to an unused path and continue there                          |
-| ⌘W / Ctrl+W        | Close current document; save changes automatically before closing  |
-| ⌘F / Ctrl+F / F8   | Search current page; F10 toggles RE2, F11 toggles case folding         |
-| ⌘G / Ctrl+G        | Next search match                                                      |
-| F9                 | Anchor tree; N adds, R renames, T reattaches at cursor, Delete removes |
-| Shift+F9           | Add anchor at cursor                                                   |
+| Control           | Action                                                                 |
+| ----------------- | ---------------------------------------------------------------------- |
+| F7                | Persistent session list                                                |
+| F6 / Shift+F6     | Next / previous open canvas                                            |
+| ⌘O / Ctrl+O / F10 | Open an external path                                                  |
+| ⌘N / Ctrl+N       | New managed canvas without a path prompt                               |
+| ⌘W / Ctrl+W       | Save and close current canvas; keep its session                        |
+| ⌘F / Ctrl+F / F8  | Search current page; F10 toggles RE2, F11 toggles case folding         |
+| ⌘G / Ctrl+G       | Next search match                                                      |
+| F9                | Anchor tree; N adds, R renames, T reattaches at cursor, Delete removes |
+| Shift+F9          | Add anchor at cursor                                                   |
+
+In Sessions, N creates, O opens a file, R renames the local alias, D duplicates,
+A archives/restores and Delete closes an open canvas. Sessions uses the same dialog
+shell as Settings: Tab / Shift+Tab or clicking a tab switches Canvases / Archived;
+F10 also switches lists. Escape or clicking outside closes it. F5 refreshes metadata
+from other instances. Enter reopens a session, including
+an archived one. Closing the last canvas returns to Sessions; archiving keeps its
+file. Duplicate creates an independent managed canvas with current unsaved content.
 
 Enter or click chooses a result; Escape dismisses a panel. Search/anchor navigation
 moves the camera and preserves cursor, selection, content and undo history.
@@ -266,9 +286,8 @@ background (see [appearance behavior](#terminal-appearance)); Navigation configu
 Changes apply immediately, independently of document content and undo history.
 Each section has a reset action. The panel consumes keyboard, mouse and paste input.
 
-Preferences persist to `$XDG_CONFIG_HOME/chardesk/terminal.json`, falling back to
-`~/.config/chardesk/terminal.json` (Windows uses `%APPDATA%`). `--settings <path>`
-chooses another file. An explicit `--paste-mode` overrides the saved paste format
+Preferences use the [application configuration directory](WORKSPACE.md#application-directories).
+`--settings <path>` chooses another file. An explicit `--paste-mode` overrides the saved paste format
 for that session; changing Paste settings saves the new choice. Unreadable, invalid
 or newer-version files remain untouched; the panel reports session-only changes.
 Write failures retain the live values and appear in the panel.

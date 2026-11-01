@@ -29,6 +29,7 @@ export class CanvasFile {
   #digest: string | null;
   #saving = false;
   address?: CanvasDocumentAddress;
+  writeGuard?: () => void;
   constructor(
     readonly path: string,
     readonly title: string,
@@ -58,6 +59,7 @@ export class CanvasFile {
   }
 
   async save(model: TerminalCanvas) {
+    this.writeGuard?.();
     if (this.#saving) throw new Error('Save is already in progress.');
     this.#saving = true;
     try {
@@ -79,6 +81,7 @@ export class CanvasFile {
         this.path,
         source,
         async () => {
+          this.writeGuard?.();
           if ((await readOptional(this.path)) !== this.#source)
             throw new Error(
               'File changed on disk. Save cancelled; your edits are still in memory.'

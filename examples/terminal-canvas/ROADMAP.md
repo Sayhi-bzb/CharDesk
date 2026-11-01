@@ -8,14 +8,15 @@
 
 Milestones describe module adoption, not complete Web interaction parity.
 
-| Interaction follow-up                                                | Status                | Authority and verification                                                                                                                                     |
-| -------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unified terminal appearance, content palette and RGB export snapshot | Complete              | [Appearance contract](README.md#terminal-appearance), [runtime and native frames](src/appearance.test.ts), [PNG guards](src/contextMenu.test.ts)               |
-| Shared coverage, preview, hit-testing and pointer commits            | Complete              | [Selection contract](../../packages/editor-core/README.md), [native regressions](src/selection-parity.test.ts)                                                 |
-| Row/column selection; edge/content/page navigation entry points      | Planned               | [Shared selection primitives](../../packages/editor-core/src/selection/static-grid.ts); preserve Option+arrows for pan                                         |
-| Existing-selection attributes and foreground/background actions      | Planned               | [Web document commands](../../apps/canvas/src/domains/canvas/state/canvasDocumentCommands.ts)                                                                  |
-| Rich/ANSI OS clipboard; link activation and context actions          | Planned               | [Terminal clipboard adapter](src/clipboard.ts), [Web click policy](../../apps/canvas/src/widgets/canvas-editor/hooks/interaction/gestures/clickInteraction.ts) |
-| Continuous edge autoscroll; terminal modifier delivery               | Needs host validation | [Web edge scroll](../../apps/canvas/src/widgets/canvas-editor/engine/CanvasEdgeScrollManager.ts), [Host limits](README.md#verification-and-limits)             |
+| Interaction follow-up                                                       | Status                | Authority and verification                                                                                                                                     |
+| --------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local session catalog, platform directories, managed canvases and migration | Complete              | [Storage contract](WORKSPACE.md), [service](src/localSessions.test.ts), [startup](src/localWorkspace.test.ts), [panels](src/sessionControls.test.ts)           |
+| Unified terminal appearance, content palette and RGB export snapshot        | Complete              | [Appearance contract](README.md#terminal-appearance), [runtime and native frames](src/appearance.test.ts), [PNG guards](src/contextMenu.test.ts)               |
+| Shared coverage, preview, hit-testing and pointer commits                   | Complete              | [Selection contract](../../packages/editor-core/README.md), [native regressions](src/selection-parity.test.ts)                                                 |
+| Row/column selection; edge/content/page navigation entry points             | Planned               | [Shared selection primitives](../../packages/editor-core/src/selection/static-grid.ts); preserve Option+arrows for pan                                         |
+| Existing-selection attributes and foreground/background actions             | Planned               | [Web document commands](../../apps/canvas/src/domains/canvas/state/canvasDocumentCommands.ts)                                                                  |
+| Rich/ANSI OS clipboard; link activation and context actions                 | Planned               | [Terminal clipboard adapter](src/clipboard.ts), [Web click policy](../../apps/canvas/src/widgets/canvas-editor/hooks/interaction/gestures/clickInteraction.ts) |
+| Continuous edge autoscroll; terminal modifier delivery                      | Needs host validation | [Web edge scroll](../../apps/canvas/src/widgets/canvas-editor/engine/CanvasEdgeScrollManager.ts), [Host limits](README.md#verification-and-limits)             |
 
 M4 keeps document changes in shared commands. Host panels, resource transport,
 query lifetimes and terminal presentation remain adapters. Tool parameters are

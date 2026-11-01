@@ -12,6 +12,7 @@ import { TerminalContextMenu } from './contextMenu.ts';
 import { messages } from './copy.ts';
 import type { TerminalAction } from './shortcuts.ts';
 import type { CanvasSurface } from './surface.ts';
+import type { LocalSessions } from './sessions.ts';
 import type { TerminalWorkspace } from './workspace.ts';
 import { WorkspaceControls } from './workspaceControls.ts';
 
@@ -25,7 +26,8 @@ export function attachControls(
   surface: CanvasSurface,
   quit: () => void,
   clipboard: TerminalClipboardAccess = unavailableClipboard,
-  workspace?: TerminalWorkspace
+  workspace?: TerminalWorkspace,
+  sessions?: LocalSessions
 ) {
   const { model, renderer, shortcuts } = surface;
   const clipboardPort = clipboard;
@@ -42,9 +44,15 @@ export function attachControls(
     surface.contextMenu = null;
   });
   const workspaceControls = workspace
-    ? new WorkspaceControls(surface, workspace, clipboardPort, () => {
-        editor.commands.execute('terminal.quit', undefined, 'workspace');
-      })
+    ? new WorkspaceControls(
+        surface,
+        workspace,
+        clipboardPort,
+        () => {
+          editor.commands.execute('terminal.quit', undefined, 'workspace');
+        },
+        sessions
+      )
     : null;
   if (workspaceControls) disposers.push(() => workspaceControls.dispose());
   disposers.push(
@@ -56,8 +64,21 @@ export function attachControls(
   disposers.push(editor.keymap.subscribe(() => surface.requestRender()));
   let active = true,
     clipboardRequest = 0;
+  let dockClosingKey: string | null = null;
+  const dockActions = new Set(['dock-next', 'dock-previous', 'dock-activate']);
+  const dockKeys = new Set([...dockActions, 'escape', 'help', 'quit']);
   const editOnly = () => surface.tool === 'edit';
   const panelActions = new Set(['copy', 'cut', 'paste', 'select-all']);
+  const emptyActions = new Set([
+    ...dockActions,
+    'help',
+    'settings',
+    'quit',
+    'open',
+    'new',
+    'documents',
+    'escape',
+  ]);
   const bind = (
     id: string,
     keys: readonly string[],
@@ -68,6 +89,9 @@ export function attachControls(
     const commandId = `terminal.${id}`;
     const available = () =>
       !surface.closing &&
+      (surface.hasDocument ||
+        emptyActions.has(id) ||
+        Boolean(surface.panel && panelActions.has(id))) &&
       !settingsDialog.isOpen &&
       !(surface.panel && id !== 'help' && id !== 'escape' && !panelActions.has(id)) &&
       !(surface.help && id !== 'help' && id !== 'escape') &&
@@ -79,6 +103,7 @@ export function attachControls(
         execute: () => {
           menu.close();
           keymap.clearPendingSequence();
+          if (!dockActions.has(id) && id !== 'escape') surface.clearDockFocus();
           surface.status = '';
           return run() ?? { handled: true, status: 'succeeded' };
         },
@@ -100,6 +125,20 @@ export function attachControls(
     run: () => void | EditorCommandResult,
     enabled = () => true
   ) => bind(id, shortcuts[id].keys, run, enabled, shortcuts[id].repeatable);
+  for (const [id, direction] of [
+    ['dock-next', 1],
+    ['dock-previous', -1],
+  ] as const)
+    action(
+      id,
+      () => surface.moveDockFocus(direction),
+      () => surface.focusableDockControls.length > 0
+    );
+  action(
+    'dock-activate',
+    () => surface.activateDock(),
+    () => Boolean(surface.focusedDockControl)
+  );
   const clipboardAction = (kind: 'copy' | 'cut' | 'paste', providedText?: string, ansi = false) => {
     if (surface.panel) {
       workspaceControls?.clipboardAction(kind);
@@ -198,6 +237,7 @@ export function attachControls(
       action(id, () => workspaceControls.action(id));
   }
   bind('escape', ['Escape'], () => {
+    if (surface.clearDockFocus()) return;
     if (surface.help) surface.help = false;
     else if (model.gestureState.type !== 'idle') surface.cancelGesture();
     else {
@@ -324,8 +364,12 @@ export function attachControls(
   action('focus', () => model.commands.focusContent());
   bind('delete', ['Delete'], () => model.commands.erase(), editOnly);
   bind('backspace', ['Backspace'], () => model.commands.deleteBackward(), editOnly);
-  bind('newline', ['Enter'], () => model.commands.insert('\n'), editOnly);
-  bind('tab', ['Tab'], () => model.commands.insert('\t'), editOnly);
+  bind(
+    'newline',
+    ['Enter'],
+    () => model.commands.insert('\n'),
+    () => editOnly() && !surface.focusedDockControl
+  );
   for (const [name, x, y] of [
     ['Left', -1, 0],
     ['Right', 1, 0],
@@ -370,6 +414,7 @@ export function attachControls(
       if (next !== target) {
         target = next;
         keymap.clearPendingSequence();
+        surface.clearDockFocus();
       }
     })
   );
@@ -382,6 +427,11 @@ export function attachControls(
       consume();
       return;
     }
+    if (key.eventType === 'repeat' && key.name === dockClosingKey) {
+      consume();
+      return;
+    }
+    dockClosingKey = null;
     if (menu.key(key)) {
       consume();
       return;
@@ -399,8 +449,18 @@ export function attachControls(
       consume();
       return;
     }
-    const binding = surface.panel ? bindings.resolveEvent(key) : undefined;
+    const binding = bindings.resolveEvent(key);
+    if (!surface.panel && !surface.help) {
+      const id = binding?.id.replace(/^terminal\./, '');
+      if (surface.focusedDockControl) {
+        if (id && dockKeys.has(id)) return;
+        consume();
+        return;
+      }
+      if (id && dockActions.has(id)) return;
+    }
     if (
+      surface.panel &&
       binding?.id.startsWith('terminal.') &&
       panelActions.has(binding.id.slice('terminal.'.length))
     )
@@ -417,8 +477,13 @@ export function attachControls(
       phase: 'keydown' as const,
     }),
     repeat: (key) => key.eventType === 'repeat',
-    execute: (binding) => {
+    execute: (binding, key) => {
       surface.status = '';
+      if (
+        surface.focusedDockControl &&
+        (binding.id === 'terminal.dock-activate' || binding.id === 'terminal.escape')
+      )
+        dockClosingKey = key.name;
       if (binding.target.type === 'command') {
         const result = editor.commands.execute(binding.target.id, undefined, 'terminal-keyboard');
         surface.requestRender();
@@ -433,6 +498,8 @@ export function attachControls(
     surface.status = '';
     if (
       !surface.help &&
+      !surface.focusedDockControl &&
+      surface.hasDocument &&
       surface.tool === 'edit' &&
       !key.ctrl &&
       !key.meta &&
@@ -447,7 +514,7 @@ export function attachControls(
   };
   const paste = (event: PasteEvent) => {
     menu.validate();
-    if (menu.isOpen || settingsDialog.isOpen) {
+    if (menu.isOpen || settingsDialog.isOpen || surface.focusedDockControl) {
       event.preventDefault();
       return;
     }
@@ -455,6 +522,7 @@ export function attachControls(
     event.preventDefault();
     if (surface.closing) return;
     if (workspaceControls?.paste(new TextDecoder().decode(event.bytes))) return;
+    if (!surface.hasDocument) return;
     surface.status = '';
     surface.cancelGesture();
     clipboardAction('paste', new TextDecoder().decode(event.bytes));
@@ -465,6 +533,7 @@ export function attachControls(
   };
   const cancelGesture = () => {
     menu.close();
+    surface.clearDockFocus();
     surface.inputModifiers.clear();
     surface.cancelGesture();
   };
@@ -478,6 +547,7 @@ export function attachControls(
     detachIntercept();
     bindings.dispose();
     inputHost.dispose();
+    surface.clearDockFocus();
     surface.inputModifiers.clear();
     detachClipboard();
     surface.cancelGesture();

@@ -1,0 +1,290 @@
+import { expect, test } from 'bun:test';
+import { createTestRenderer, ManualClock } from '@opentui/core/testing';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { resolveAppPaths } from './appPaths.ts';
+import { LocalSessions } from './sessions.ts';
+import { TerminalWorkspace } from './workspace.ts';
+import { CanvasSurface } from './surface.ts';
+import { attachControls } from './controller.ts';
+
+async function until(check: () => boolean) {
+  const deadline = Date.now() + 3000;
+  while (!check()) {
+    if (Date.now() > deadline) throw new Error('Timed out');
+    await Bun.sleep(2);
+  }
+}
+async function fixture() {
+  const root = await mkdtemp(join(tmpdir(), 'chardesk-session-ui-'));
+  const sessions = await LocalSessions.open(
+    resolveAppPaths({ environment: { CHARDESK_HOME: root } })
+  );
+  const workspace = TerminalWorkspace.empty();
+  await sessions.attach(workspace);
+  const clock = new ManualClock();
+  const setup = await createTestRenderer({
+    width: 110,
+    height: 34,
+    kittyKeyboard: true,
+    screenMode: 'alternate-screen',
+    clock,
+  });
+  const surface = new CanvasSurface(setup.renderer, workspace.model, '', 'darwin');
+  setup.renderer.root.add(surface);
+  let quits = 0;
+  const detach = attachControls(
+    surface,
+    () => {
+      quits++;
+    },
+    undefined,
+    workspace,
+    sessions
+  );
+  await setup.renderOnce();
+  return {
+    sessions,
+    workspace,
+    setup,
+    surface,
+    get quits() {
+      return quits;
+    },
+    primary(key: string) {
+      setup.mockInput.pressKey(key, { super: true });
+    },
+    escape() {
+      setup.mockInput.pressEscape();
+      clock.advance(40);
+    },
+    async dispose() {
+      detach();
+      await setup.dispose();
+      await sessions.dispose();
+      workspace.dispose();
+      await rm(root, { recursive: true, force: true });
+    },
+  };
+}
+
+test('empty workspace blocks canvas edits but exposes sessions and creates a durable canvas without a path prompt', async () => {
+  const f = await fixture();
+  try {
+    expect(f.surface.hasDocument).toBe(false);
+    f.setup.mockInput.pressKey('F2');
+    await f.setup.mockInput.typeText('ghost', 0);
+    await f.setup.mockInput.pasteBracketedText('ghost paste');
+    f.primary('z');
+    await f.setup.mockMouse.click(8, 8);
+    expect(f.workspace.model.plane.materialize().size).toBe(0);
+    expect(f.workspace.model.canUndo).toBe(false);
+    f.setup.mockInput.pressKey('F7');
+    expect(f.surface.panel?.items).toEqual(['+ New canvas', '+ Open file']);
+    await f.setup.renderOnce();
+    expect(f.setup.captureCharFrame()).toContain('Sessions');
+    f.escape();
+    f.primary('n');
+    expect(f.surface.panel?.title).toBe('New canvas');
+    expect(f.surface.panel?.dialog).toBe(true);
+    expect(f.surface.panel?.input).toBeUndefined();
+    await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+    expect(f.surface.hasDocument).toBe(true);
+    expect(f.sessions.list()[0]?.status).toBe('ready');
+    f.primary('w');
+    await until(() => f.workspace.files.length === 0 && f.surface.panel?.title === 'Sessions');
+    expect(f.quits).toBe(0);
+    expect(f.surface.hasDocument).toBe(false);
+    expect(f.sessions.list()).toHaveLength(1);
+    f.setup.mockInput.pressEnter();
+    await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('session panel renames, duplicates unsaved content, archives and restores through the service', async () => {
+  const f = await fixture();
+  try {
+    f.primary('n');
+    await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+    f.workspace.model.commands.insert('Hello 🦀');
+    const original = f.workspace.active;
+    f.setup.mockInput.pressKey('F7');
+    f.setup.mockInput.pressKey('r');
+    expect(f.surface.panel?.dialog).toBe(true);
+    await f.setup.mockInput.typeText('Project', 0);
+    f.setup.mockInput.pressEnter();
+    await until(() => f.surface.panel?.title === 'Sessions');
+    expect(f.surface.panel?.items[0]).toContain('Project');
+    f.setup.mockInput.pressKey('d');
+    await until(() => f.workspace.files.length === 2 && !f.surface.panel);
+    expect(f.workspace.model.plane.get({ x: 6, y: 0 })?.char).toBe('🦀');
+    expect(f.workspace.active.address?.documentId).not.toBe(original.address?.documentId);
+    const copy = f.sessions.forFile(f.workspace.active)!;
+    f.setup.mockInput.pressKey('F7');
+    f.setup.mockInput.pressKey('a');
+    await until(
+      () =>
+        f.sessions.list(true).length === 1 &&
+        f.surface.panel?.title === 'Sessions' &&
+        !f.surface.panel.busy
+    );
+    expect(f.workspace.files).toHaveLength(1);
+    f.setup.mockInput.pressKey('F10');
+    expect(f.surface.panel?.title).toBe('Sessions');
+    expect(f.surface.panel?.selectedTab).toBe(1);
+    expect(f.surface.panel?.items[0]).toContain('Project copy');
+    f.setup.mockInput.pressEnter();
+    await until(() => f.workspace.files.length === 2 && !f.surface.panel);
+    expect(f.sessions.catalog.get(copy.id)?.archived).toBe(false);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('cancelling managed creation preserves its durable record without stealing the active editor', async () => {
+  const f = await fixture();
+  try {
+    f.primary('n');
+    f.escape();
+    await until(() => f.sessions.list().some((record) => record.status === 'ready'));
+    await Bun.sleep(10);
+    expect(f.workspace.files).toHaveLength(0);
+    expect(f.surface.panel).toBeNull();
+    f.setup.mockInput.pressKey('F7');
+    f.setup.mockInput.pressEnter();
+    await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('Sessions reuse the Settings dialog geometry, tabs, footer and outside dismissal without editing the canvas', async () => {
+  const f = await fixture();
+  try {
+    const file = await f.sessions.create('Working');
+    const archived = await f.sessions.createManaged('Archived canvas');
+    await f.sessions.archive(archived.id, true, archived.revision);
+    const model = f.workspace.model;
+    model.commands.insert('Work 🦀');
+    model.commands.pointAt({ x: 0, y: 0 });
+    model.commands.navigate(3, 0, true);
+    model.pan(12, -4);
+    const content = model.plane.materialize(),
+      interaction = structuredClone(model.getSnapshot().interaction),
+      view = { ...model.viewport };
+    f.setup.mockInput.pressKey('F11');
+    const settingsLayout = f.surface.panelLayout;
+    f.escape();
+    f.setup.mockInput.pressKey('F7');
+    expect(f.surface.panel?.dialog).toBe(true);
+    expect(f.surface.panelLayout).toEqual(settingsLayout);
+    await f.setup.renderOnce();
+    const frame = f.setup.captureCharFrame().split('\n');
+    const l = f.surface.panelLayout;
+    expect(frame[l.y]).toContain('┌ Sessions');
+    expect(frame[l.y]).not.toContain('×');
+    expect(frame.slice(l.y, l.y + l.height).join('\n')).not.toContain('Tab list');
+    expect(frame[f.setup.renderer.height - 2]).toContain('Sessions · Canvases');
+    expect(frame[f.setup.renderer.height - 1]).toContain('Tab list');
+    const archivedTab = f.surface.panelTabControls[1]!;
+    await f.setup.mockMouse.click(archivedTab.x + 1, archivedTab.y);
+    expect(f.surface.panel?.selectedTab).toBe(1);
+    expect(f.surface.panel?.items[0]).toBe('Archived canvas');
+    f.setup.mockInput.pressTab({ shift: true });
+    expect(f.surface.panel?.selectedTab).toBe(0);
+    expect(f.surface.panel?.items[0]).toContain('Working');
+    await f.setup.mockInput.pasteBracketedText('must not edit');
+    await f.setup.renderOnce();
+    await f.setup.mockMouse.click(0, 0);
+    expect(f.surface.panel).toBeNull();
+    expect(f.workspace.active).toBe(file);
+    expect(model.plane.materialize()).toEqual(content);
+    expect(model.getSnapshot().interaction).toEqual(interaction);
+    expect(model.viewport).toEqual(view);
+    f.setup.mockInput.pressKey('F7');
+    f.setup.mockInput.pressKey('o');
+    expect(f.surface.panel?.dialog).toBe(true);
+    await f.setup.renderOnce();
+    expect(f.setup.captureCharFrame()).toContain('Open document');
+    f.escape();
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('Sessions suppress actions when the shared dialog cannot fit and recover on resize', async () => {
+  const f = await fixture();
+  try {
+    f.setup.mockInput.pressKey('F7');
+    await f.setup.resize(22, 9);
+    await f.setup.renderOnce();
+    expect(f.setup.captureCharFrame()).toContain('Enlarge terminal');
+    f.setup.mockInput.pressKey('n');
+    f.setup.mockInput.pressEnter();
+    f.setup.mockInput.pressTab();
+    expect(f.sessions.list()).toHaveLength(0);
+    expect(f.surface.panel?.selectedTab).toBe(0);
+    await f.setup.resize(110, 34);
+    await f.setup.renderOnce();
+    f.setup.mockInput.pressTab();
+    expect(f.surface.panel?.selectedTab).toBe(1);
+    f.setup.mockInput.pressTab({ shift: true });
+    expect(f.surface.panel?.selectedTab).toBe(0);
+    f.escape();
+    expect(f.surface.panel).toBeNull();
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('scrolling and pointer picking share dialog row geometry for long session lists', async () => {
+  const f = await fixture();
+  try {
+    for (let i = 0; i < 18; i++) await f.sessions.createManaged(`Canvas ${i} — 🦀`);
+    f.setup.mockInput.pressKey('F7');
+    const records = f.sessions.list();
+    f.setup.mockInput.pressArrow('up');
+    expect(f.surface.panel?.selected).toBe(19);
+    f.setup.mockInput.pressArrow('down');
+    expect(f.surface.panel?.selected).toBe(0);
+    for (let i = 0; i < 13; i++) f.setup.mockInput.pressArrow('down');
+    await f.setup.renderOnce();
+    const layout = f.surface.panelLayout;
+    const firstVisible = 13 - layout.rows + 1;
+    const frame = f.setup.captureCharFrame().split('\n');
+    expect(frame[layout.itemsY]).toContain(records[firstVisible]!.name);
+    expect(frame[layout.y + layout.height - 1]).toContain('└');
+    await f.setup.mockMouse.click(layout.x + 3, layout.itemsY);
+    await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+    expect(f.sessions.forFile(f.workspace.active)?.id).toBe(records[firstVisible]!.id);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('an empty workspace exposes New and Sessions through dock keyboard focus while the session dialog owns its tabs', async () => {
+  const f = await fixture();
+  try {
+    f.setup.mockInput.pressTab();
+    expect(f.surface.focusedDockControl?.id).toBe('new');
+    expect(f.surface.panel).toBeNull();
+    f.setup.mockInput.pressEnter();
+    await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+    f.primary('w');
+    await until(() => !f.workspace.files.length && f.surface.panel?.title === 'Sessions');
+    f.escape();
+    f.setup.mockInput.pressTab();
+    f.setup.mockInput.pressTab();
+    expect(f.surface.focusedDockControl?.id).toBe('documents');
+    f.setup.mockInput.pressKey(' ');
+    expect(f.surface.panel?.title).toBe('Sessions');
+    f.setup.mockInput.pressTab();
+    expect(f.surface.panel?.selectedTab).toBe(1);
+    expect(f.surface.focusedDockControl).toBeNull();
+  } finally {
+    await f.dispose();
+  }
+});

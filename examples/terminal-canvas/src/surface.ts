@@ -5,6 +5,7 @@ import type { GridCellSource, Point } from '@chardesk/cell-plane/types';
 import {
   createTerminalShortcuts,
   effectiveTerminalShortcuts,
+  type TerminalAction,
   type TerminalShortcuts,
 } from './shortcuts.ts';
 import {
@@ -49,7 +50,9 @@ export type TerminalPanel = {
 };
 
 export class CanvasSurface extends Renderable {
+  #dockFocus: TerminalAction | null = null;
   contextMenu: TerminalContextMenu | null = null;
+  hasDocument = true;
   help = false;
   helpScroll = 0;
   panel: TerminalPanel | null = null;
@@ -146,14 +149,26 @@ export class CanvasSurface extends Renderable {
     if (this.panel || this.help || this.contextMenu?.isOpen || this.closing) return [];
     const copy = messages;
     let x = 0;
-    const ids = this.placement
-      ? (['confirm-placement', 'cancel-placement'] as const)
-      : this.model.selection
-        ? (['settings', 'edit', 'hand', 'minimap', 'copy'] as const)
-        : (['settings', 'edit', 'hand', 'minimap'] as const);
+    const ids = !this.hasDocument
+      ? (['new', 'documents', 'open', 'settings'] as const)
+      : this.placement
+        ? (['confirm-placement', 'cancel-placement'] as const)
+        : this.model.selection
+          ? (['settings', 'edit', 'hand', 'minimap', 'copy', 'documents'] as const)
+          : (['settings', 'edit', 'hand', 'minimap', 'documents'] as const);
     return ids.flatMap((id) => {
       const name =
-        id === 'confirm-placement' ? 'Place' : id === 'cancel-placement' ? 'Cancel' : copy[id];
+        id === 'confirm-placement'
+          ? 'Place'
+          : id === 'cancel-placement'
+            ? 'Cancel'
+            : id === 'new'
+              ? 'New'
+              : id === 'documents'
+                ? 'Sessions'
+                : id === 'open'
+                  ? 'Open'
+                  : copy[id];
       const label = `[${this.shortcuts[id].label} ${name}]`;
       const width = this.#width(label);
       if (x + width > this.width) return [];
@@ -161,6 +176,45 @@ export class CanvasSurface extends Renderable {
       x += width + 1;
       return [control];
     });
+  }
+
+  get focusableDockControls() {
+    return this.dockControls.filter((control) =>
+      this.model.editor.commands.canExecute(`terminal.${control.id}`, undefined)
+    );
+  }
+  get focusedDockControl() {
+    if (this.#dockFocus === null) return null;
+    const control = this.focusableDockControls.find((control) => control.id === this.#dockFocus);
+    if (!control) this.#dockFocus = null;
+    return control ?? null;
+  }
+  clearDockFocus() {
+    const focused = this.#dockFocus !== null;
+    this.#dockFocus = null;
+    if (focused) this.requestRender();
+    return focused;
+  }
+  moveDockFocus(direction: number) {
+    const controls = this.focusableDockControls;
+    if (!controls.length) return;
+    this.cancelGesture();
+    this.model.cancelPendingPaste();
+    const current = controls.findIndex((control) => control.id === this.#dockFocus);
+    let next = current + direction;
+    if (current < 0) {
+      next = controls.findIndex((control) => control.id === this.tool);
+      if (next < 0) next = direction > 0 ? 0 : controls.length - 1;
+    }
+    this.#dockFocus = controls[(next + controls.length) % controls.length]!.id;
+    this.requestRender();
+  }
+  activateDock(id = this.focusedDockControl?.id) {
+    const control = this.focusableDockControls.find((control) => control.id === id);
+    this.clearDockFocus();
+    if (!control) return;
+    this.model.editor.commands.execute(`terminal.${control.id}`, undefined, 'terminal-dock');
+    this.requestRender();
   }
 
   constructor(
@@ -384,6 +438,8 @@ export class CanvasSurface extends Renderable {
         });
     }
     const cursorVisible =
+      this.hasDocument &&
+      !this.focusedDockControl &&
       this.tool === 'edit' &&
       !this.placement &&
       !model.selection &&
@@ -472,17 +528,19 @@ export class CanvasSurface extends Renderable {
     const footer = this.footerBounds.y;
     buffer.fillRect(0, footer, this.width, FOOTER_ROWS, this.colors.chrome);
     const controls = this.dockControls;
+    const focused = this.focusedDockControl;
     for (const control of controls) {
       const active = control.id === 'minimap' ? this.minimapOpen : control.id === this.tool;
+      const hasFocus = control.id === focused?.id;
       this.#line(
         buffer,
         control.label,
         control.x,
         control.y,
-        this.colors.foreground,
-        this.colors.chrome,
+        hasFocus ? this.colors.selectionForeground : this.colors.foreground,
+        hasFocus ? this.colors.selection : this.colors.chrome,
         control.width,
-        createTextAttributes({ inverse: active })
+        createTextAttributes({ inverse: active, bold: hasFocus })
       );
     }
     const statusBar = this.statusBar;
@@ -644,8 +702,18 @@ export class CanvasSurface extends Renderable {
     if (this.contextMenu?.isOpen)
       return { context: 'Context menu', hint: '↑↓ / Tab select · Enter run · Esc close' };
     if (this.help) return { context: copy.help, hint: `${copy.closeHelp} · ↑↓ scroll` };
+    if (this.focusedDockControl)
+      return {
+        context: '',
+        hint: `${this.shortcuts['dock-next'].label} / ${this.shortcuts['dock-previous'].label} select · ${this.shortcuts['dock-activate'].label} run · Esc canvas`,
+      };
+    if (!this.hasDocument)
+      return {
+        context: '',
+        hint: `${this.shortcuts['dock-next'].label} dock · ${this.shortcuts.new.label} New canvas · F7 Sessions · F10 Open · F1 Help`,
+      };
     const editHint = rangeClickHint(this.inputPolicy) ?? copy.editHint;
-    const actionHint = `${this.tool === 'hand' ? copy.handHint : editHint} · ${this.shortcuts.copy.label} ${copy.copy} · ${this.shortcuts.paste.label} ${copy.paste}`;
+    const actionHint = `${this.tool === 'hand' ? copy.handHint : editHint} · ${this.shortcuts['dock-next'].label} dock · ${this.shortcuts.copy.label} ${copy.copy} · ${this.shortcuts.paste.label} ${copy.paste}`;
     const hint =
       (this.model.getSnapshot().drawingError ? 'Drawing is too large. Try a smaller area.' : '') ||
       (this.placement
@@ -706,6 +774,7 @@ export class CanvasSurface extends Renderable {
 
   mouse(event: MouseEvent) {
     if (this.closing) return;
+    if (event.type === 'down') this.clearDockFocus();
     this.contextMenu?.validate();
     if (this.contextMenu?.isOpen) {
       this.contextMenu.mouse(event);
@@ -750,11 +819,11 @@ export class CanvasSurface extends Renderable {
       const point = { x: event.x - this.screenX, y: event.y - this.screenY };
       const control = this.dockControls.find((control) => cellRectContainsPoint(control, point));
       if (control) {
-        this.model.editor.commands.execute(`terminal.${control.id}`, undefined, 'terminal-dock');
-        this.requestRender();
+        this.activateDock(control.id);
         return;
       }
     }
+    if (!this.hasDocument) return;
     if (this.placement) {
       const local = { x: event.x - this.screenX, y: event.y - this.screenY - CANVAS_TOP };
       if (

@@ -556,6 +556,36 @@ test('templates preview without mutation, accept a negative landing point, and p
   }
 });
 
+test('dock focus navigates template placement actions before Enter commits one undoable insertion', async () => {
+  const f = await fixture();
+  try {
+    const model = f.workspace.model,
+      original = model.plane.materialize(),
+      version = model.version;
+    f.setup.mockInput.pressKey('F4', { shift: true });
+    await f.setup.mockInput.typeText('button', 0);
+    f.setup.mockInput.pressEnter();
+    expect(f.surface.placement?.label).toBe('Button');
+    f.setup.mockInput.pressTab();
+    expect(f.surface.focusedDockControl?.id).toBe('confirm-placement');
+    f.setup.mockInput.pressTab();
+    expect(f.surface.focusedDockControl?.id).toBe('cancel-placement');
+    f.escape();
+    expect(f.surface.focusedDockControl).toBeNull();
+    expect(f.surface.placement?.label).toBe('Button');
+    expect(model.version).toBe(version);
+    expect(model.plane.materialize()).toEqual(original);
+    f.setup.mockInput.pressTab();
+    f.setup.mockInput.pressEnter();
+    expect(f.surface.placement).toBeNull();
+    expect(model.plane.materialize()).not.toEqual(original);
+    model.commands.undo();
+    expect(model.plane.materialize()).toEqual(original);
+  } finally {
+    await f.dispose();
+  }
+});
+
 test('character picker searches local data, fills selections literally, selects a brush and rejects stale targets', async () => {
   const f = await fixture();
   try {
