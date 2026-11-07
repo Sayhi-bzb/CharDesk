@@ -26,6 +26,8 @@ do not author a Slide by writing a structured file from the Agent side.
 ## Routing
 
 - Create or style content with [materials](references/materials.md).
+- Generate editable Cell pictures from code or generator output with
+  [procedural art](references/procedural-art.md).
 - Read, search, or edit the current live surface with
   [Canvas tools](references/live-canvas.md).
 - Create local artifacts or edit existing files with the [CLI](references/cli.md).

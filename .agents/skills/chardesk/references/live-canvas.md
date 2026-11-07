@@ -58,6 +58,12 @@ transparent. Use `canvas.erase` for explicit clearing and `canvas.fill` to style
 existing characters without changing their content. Use `canvas.render` when the
 input is Markdown, ANSI, or another material format.
 
+`canvas.render` accepts `writeMode:"patch"` for sparse material placement or
+`"replace"` (the default) for material whitespace. See the
+[projection contract](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/mcp/README.md) for exact semantics.
+Updated Code Mode preview and apply honor the same mode; check actual execution
+when the tool process and browser page may be on different versions.
+
 Literal ASCII art, code, and Unicode drawings can be written directly. If the
 input is Markdown or ANSI material, use `canvas.render` so the material renderer
 is explicit. Read the returned bounds immediately after the write to verify the

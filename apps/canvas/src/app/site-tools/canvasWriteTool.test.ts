@@ -37,6 +37,35 @@ describe("Canvas writing tool", () => {
     expect(canvas.getState().contentSurface.reader.getContentBounds()).toBeNull();
   });
 
+  it.each(["patch", "replace", undefined] as const)("uses identical preview/apply whitespace semantics for %s", async (writeMode) => {
+    const canvas = host();
+    const args = { at: [10, 3], source: "\u001b[0m \u001b[38;2;120;180;180m▀\u001b[0m \u001b[38;2;90;120;150;48;2;20;40;60m▀\u001b[0m \u001b[48;2;30;50;70m \u001b[0m", format: "ansi", ...(writeMode ? { writeMode } : {}) };
+    const preview = await createCanvasPreviewRenderTool(canvas, rendering).execute(args);
+    expect(canvas.getState().contentSurface.reader.getContentBounds()).toBeNull();
+    const written = writeMode === "patch" ? 3 : 6;
+    expect(preview).toMatchObject({ writtenCells: written, skippedWhitespaceCells: 6-written });
+    const applied = await createCanvasRenderTool(canvas, rendering).execute(args);
+    expect(applied).toMatchObject({ writtenCells: written, skippedWhitespaceCells: 6-written });
+    const reader = canvas.getState().contentSurface.reader;
+    expect(reader.getCell({ x: 10, y: 3 }) === undefined).toBe(writeMode === "patch");
+    expect(reader.getCell({ x: 11, y: 3 })).toMatchObject({ char: "▀", color: "#78b4b4" });
+    expect(reader.getCell({ x: 13, y: 3 })).toMatchObject({ char: "▀", color: "#5a7896", bgColor: "#14283c" });
+    expect(reader.getCell({ x: 15, y: 3 })).toMatchObject({ char: " ", bgColor: "#1e3246" });
+  });
+
+  it("preserves existing content under patch whitespace and rejects invalid modes before mutation", async () => {
+    const canvas = host();
+    await createCanvasWriteTool(canvas).execute({ at: [0,0], content: "ABC" });
+    const render = createCanvasRenderTool(canvas, rendering);
+    expect(await render.execute({ at:[0,0], source:" X ", format:"raw", writeMode:"patch" })).toMatchObject({ writtenCells:1, skippedWhitespaceCells:2 });
+    const reader = canvas.getState().contentSurface.reader;
+    expect([0,1,2].map(x=>reader.getCell({x,y:0})?.char).join("")).toBe("AXC");
+    for (const tool of [render, createCanvasPreviewRenderTool(canvas,rendering)]) {
+      expect(await tool.execute({ at:[0,0], source:"Z", writeMode:"invalid" })).toMatchObject({ ok:false, code:"invalid_input" });
+    }
+    expect(reader.getCell({x:0,y:0})?.char).toBe("A");
+  });
+
   it.each([createCanvasRenderTool, createCanvasPreviewRenderTool])(
     "distinguishes explicit Auto from an omitted format", async (createTool) => {
       const canvas = host();

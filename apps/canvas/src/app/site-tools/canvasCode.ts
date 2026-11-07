@@ -1,5 +1,5 @@
-import type { AgentToolDefinition } from "./contracts";
-import { newAsyncContext } from "quickjs-emscripten";
+import type { AgentToolDefinition, AgentToolExecutionContext } from "./contracts";
+import { newAsyncContext, type QuickJSHandle } from "quickjs-emscripten";
 import {
   CANVAS_CODE_TOOL,
   CANVAS_CODE_TOOL_NAME,
@@ -21,6 +21,25 @@ type CanvasCodeDependencies = Readonly<{
     undoOperation?: (operationId: string) => boolean;
   };
 }>;
+
+// Two injected wrapper lines precede user code. Only user-script frames leave
+// the runtime; host paths/stacks are never included in diagnostics.
+const SCRIPT_FILE = "chardesk-canvas-code.js";
+const SCRIPT_LINE_OFFSET = 2;
+class CanvasCodeScriptError extends Error {
+  readonly diagnostic: { name: string; message: string; frames: { line: number; column?: number }[] };
+  readonly phase: "evaluate" | "capability";
+  constructor(value: unknown, scriptLines: number) {
+    const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
+    const message = typeof record.message === "string" ? record.message : typeof value === "string" ? value : "Canvas code rejected.";
+    super(message);
+    this.phase = record.phase === "capability" ? "capability" : "evaluate";
+    const frames = Array.from(String(record.stack ?? "").matchAll(/chardesk-canvas-code\.js:(\d+)(?::(\d+))?/g))
+      .map(match => ({ line: Number(match[1]) - SCRIPT_LINE_OFFSET, ...(match[2] ? { column: Number(match[2]) } : {}) }))
+      .filter(frame => frame.line > 0 && frame.line <= scriptLines).slice(0, 20);
+    this.diagnostic = { name: typeof record.name === "string" ? record.name : "ThrownValue", message, frames };
+  }
+}
 
 const MAX_OPERATIONS = 128;
 const MAX_RESULT_BYTES = 128 * 1024;
@@ -80,7 +99,7 @@ const awaitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, messa
 // state remains reachable only through the four injected capabilities.
 const errorResult = (code: string, message: string) => ({ ok: false, code, message });
 
-const invoke = (tool: AgentToolDefinition, input: Record<string, unknown>) => tool.execute(input);
+const invoke = (tool: AgentToolDefinition, input: Record<string, unknown>, context?: AgentToolExecutionContext) => context ? tool.execute(input, context) : tool.execute(input);
 
 const serializable = (value: unknown) => {
   try {
@@ -144,6 +163,8 @@ export const createCanvasCodeTool = (dependencies: CanvasCodeDependencies): Agen
       return errorResult("invalid_input", "Expected a bounded script, mode preview|apply, and timeoutMs between 50 and 10000.");
     }
 
+    const scriptHash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(script))))
+      .map(byte => byte.toString(16).padStart(2, "0")).join("");
     let operations = 0;
     let writes = 0;
     let committedOperationId: string | undefined;
@@ -173,7 +194,7 @@ export const createCanvasCodeTool = (dependencies: CanvasCodeDependencies): Agen
       const next = canvasId && (raw as { canvasId?: unknown }).canvasId === undefined
         ? { ...raw, canvasId }
         : raw;
-      const result = capturePersistence(await invoke(tool, next));
+      const result = capturePersistence(await invoke(tool, next, checkpoint ? { history: "inherit" } : undefined));
       checkBudget();
       return result;
     };
@@ -205,9 +226,11 @@ export const createCanvasCodeTool = (dependencies: CanvasCodeDependencies): Agen
     const erase = composedEdit(dependencies.erase, "erase");
     const fill = composedEdit(dependencies.fill, "fill");
     const render = async (raw: Record<string, unknown>) => {
+      checkBudget();
+      writes += 1;
       if (mode === "preview") {
         if (!dependencies.previewRender || typeof raw.source !== "string") throw new Error("Canvas render preview is unavailable.");
-        return dependencies.previewRender.execute({ at: raw.at, source: raw.source, format: raw.format, ...(canvasId ? { canvasId } : {}) });
+        return dependencies.previewRender.execute({ at: raw.at, source: raw.source, format: raw.format, ...(raw.writeMode !== undefined ? { writeMode: raw.writeMode } : {}), ...(canvasId ? { canvasId } : {}) });
       }
       if (!dependencies.render) throw new Error("Canvas render capability is unavailable.");
       return scoped(dependencies.render)(raw);
@@ -231,6 +254,11 @@ export const createCanvasCodeTool = (dependencies: CanvasCodeDependencies): Agen
     const operationId = mode === "apply" && dependencies.history ? createOperationId() : undefined;
     const checkpoint = mode === "apply" ? dependencies.history?.beginCheckpoint(operationId, typeof canvasId === "string" ? canvasId : undefined) : undefined;
     let context: Awaited<ReturnType<typeof newAsyncContext>> | undefined;
+    let acceptingCallbacks = true;
+    let bridgeFailure: Error | undefined;
+    let resultHandle: QuickJSHandle | undefined;
+    const pendingHostCalls = new Set<Promise<void>>();
+    const deferreds: ReturnType<QuickJSContext["newPromise"]>[] = [];
     try {
       try {
         await awaitWithTimeout(warmCanvasCodeRuntime(), RUNTIME_INIT_TIMEOUT, "Canvas Code runtime initialization timed out.");
@@ -242,32 +270,46 @@ export const createCanvasCodeTool = (dependencies: CanvasCodeDependencies): Agen
       qjsContext.runtime.setMemoryLimit(32 * 1024 * 1024);
       qjsContext.runtime.setMaxStackSize(512 * 1024);
       qjsContext.runtime.setInterruptHandler(() => performance.now() - executionStarted > timeoutMs);
+      const bridge = (invokeCapability: () => Promise<unknown>) => {
+        const deferred = qjsContext.newPromise();
+        deferreds.push(deferred);
+        const task = Promise.resolve().then(invokeCapability).then((result) => {
+          if (!acceptingCallbacks) return;
+          const value = nativeToQuickJS(qjsContext, result);
+          try { deferred.resolve(value); } finally { if (value.alive) value.dispose(); }
+        }).catch((error: unknown) => {
+          if (!acceptingCallbacks) return;
+          try {
+            const value = qjsContext.newError({ name: error instanceof Error ? error.name : "Error", message: error instanceof Error ? error.message : String(error) });
+            const phase = qjsContext.newString("capability");
+            qjsContext.setProp(value, "phase", phase); phase.dispose();
+            try { deferred.reject(value); } finally { value.dispose(); }
+          } catch (failure) {
+            bridgeFailure = failure instanceof Error ? failure : new Error(String(failure));
+          }
+        }).finally(() => { pendingHostCalls.delete(task); });
+        pendingHostCalls.add(task);
+        return deferred.handle;
+      };
       const hostCall = (name: string, capability: Capability) => qjsContext.newFunction(name, (inputHandle) => {
-        const value = qjsContext.dump(inputHandle);
+        const value: unknown = qjsContext.dump(inputHandle);
         if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Canvas capability input must be an object.");
-        const deferred = qjsContext.newPromise(capability(value as Record<string, unknown>)
-          .then((result) => nativeToQuickJS(qjsContext, result))
-          .catch((error) => { throw error; }));
-        return deferred.handle;
+        return bridge(() => capability(value as Record<string, unknown>));
       });
-      const hostClipboardRead = qjsContext.newFunction("clipboardRead", () => {
+      const hostClipboardRead = qjsContext.newFunction("clipboardRead", () => bridge(async () => {
         checkBudget();
-        const deferred = qjsContext.newPromise((async () => {
-          if (typeof navigator === "undefined" || !navigator.clipboard) throw new Error("Clipboard is unavailable.");
-          return qjsContext.newString(await navigator.clipboard.readText());
-        })());
-        return deferred.handle;
-      });
+        if (typeof navigator === "undefined" || !navigator.clipboard) throw new Error("Clipboard is unavailable.");
+        return navigator.clipboard.readText();
+      }));
       const hostClipboardWrite = qjsContext.newFunction("clipboardWrite", (textHandle) => {
-        checkBudget();
         const text = qjsContext.getString(textHandle);
-        const deferred = qjsContext.newPromise((async () => {
-          if (mode === "preview") return nativeToQuickJS(qjsContext, { preview: true, text });
+        return bridge(async () => {
+          checkBudget();
+          if (mode === "preview") return { preview: true, text };
           if (typeof navigator === "undefined" || !navigator.clipboard) throw new Error("Clipboard is unavailable.");
           await navigator.clipboard.writeText(text);
-          return nativeToQuickJS(qjsContext, { written: true });
-        })());
-        return deferred.handle;
+          return { written: true };
+        });
       });
       qjsContext.setProp(qjsContext.global, "__read", hostCall("read", scoped(dependencies.read)));
       qjsContext.setProp(qjsContext.global, "__search", hostCall("search", scoped(dependencies.search)));
@@ -280,42 +322,63 @@ export const createCanvasCodeTool = (dependencies: CanvasCodeDependencies): Agen
       qjsContext.setProp(qjsContext.global, "__clipboardRead", hostClipboardRead);
       qjsContext.setProp(qjsContext.global, "__clipboardWrite", hostClipboardWrite);
       const source = `(async () => {\nconst canvas = Object.freeze({ read: async (input = {}) => await __read(input), search: async (input = {}) => await __search(input), write: async (input) => await __write(input), erase: async (input) => await __erase(input), fill: async (input) => await __fill(input), render: async (input) => await __render(input), manage: async (input = {}) => await __manage(input), undo: async (input) => await __undo(input), clipboard: Object.freeze({ readText: () => __clipboardRead(), writeText: async (text) => await __clipboardWrite(text) }) });\n${script}\n})()`;
-      const evaluation = await qjsContext.evalCodeAsync(source, "chardesk-canvas-code.js");
+      const evaluation = await qjsContext.evalCodeAsync(source, SCRIPT_FILE);
+      if (evaluation.error) {
+        const failure: unknown = qjsContext.dump(evaluation.error);
+        if (evaluation.error.alive) evaluation.error.dispose();
+        throw new CanvasCodeScriptError(failure, script.split("\n").length);
+      }
       if (!("value" in evaluation)) throw new Error("Canvas code could not be evaluated.");
-      const rawHandle = evaluation.value;
+      const rawHandle = resultHandle = evaluation.value;
+      // dump consumes Promise handles; retain the original while polling.
       let dumped = qjsContext.dump(rawHandle.dup()) as { type?: string; value?: unknown; error?: unknown } | unknown;
-      while (dumped && typeof dumped === "object" && (dumped as { type?: string }).type === "pending" && performance.now() - executionStarted <= timeoutMs) {
-        qjsContext.runtime.executePendingJobs(-1);
+      while ((pendingHostCalls.size > 0 || qjsContext.runtime.hasPendingJob() || (dumped && typeof dumped === "object" && (dumped as { type?: string }).type === "pending")) && performance.now() - executionStarted <= timeoutMs) {
+        if (bridgeFailure) throw bridgeFailure;
+        const jobs = qjsContext.runtime.executePendingJobs(-1);
+        if (jobs.error) {
+          const error: unknown = qjsContext.dump(jobs.error);
+          jobs.error.dispose();
+          throw new CanvasCodeScriptError(error, script.split("\n").length);
+        }
         await new Promise((resolve) => setTimeout(resolve, 0));
         dumped = qjsContext.dump(rawHandle.dup()) as { type?: string; value?: unknown; error?: unknown } | unknown;
       }
-      if (dumped && typeof dumped === "object" && (dumped as { type?: string }).type === "pending") throw new Error("Canvas code timed out.");
+      if (pendingHostCalls.size > 0 || (dumped && typeof dumped === "object" && (dumped as { type?: string }).type === "pending")) throw new Error("Canvas code timed out.");
       if (dumped && typeof dumped === "object" && (dumped as { type?: string }).type === "rejected") {
-        const rejection = (dumped as { error?: { message?: string } }).error;
-        throw new Error(rejection?.message ?? "Canvas code rejected.");
+        throw new CanvasCodeScriptError((dumped as { error?: unknown }).error, script.split("\n").length);
       }
       const rawResult = dumped && typeof dumped === "object" && (dumped as { type?: string }).type === "fulfilled"
         ? (dumped as { value: unknown }).value
         : dumped;
       const result = serializable(rawResult);
       truncated = result.truncated;
+      if (bridgeFailure) throw bridgeFailure;
       checkpoint?.commit();
       committedOperationId = writes > 0 ? operationId : undefined;
-      return { mode, result: result.value, ...(committedOperationId ? { operationId: committedOperationId } : {}), ...(persistenceSummary() ? { persistence: persistenceSummary() } : {}), operations, writes, durationMs: performance.now() - started, truncated };
+      return { mode, scriptHash, result: result.value, ...(committedOperationId ? { operationId: committedOperationId } : {}), ...(persistenceSummary() ? { persistence: persistenceSummary() } : {}), operations, writes, durationMs: performance.now() - started, truncated };
     } catch (error) {
       checkpoint?.cancel();
       if (error instanceof CanvasCodeRuntimeError) {
         return {
           ok: false,
           code: error.code,
-          phase: "load",
+          phase: "load", scriptHash, mutationState: "none",
+          error: { name: error.name, message: error.message, frames: [] },
           retryable: true,
           message: error.message,
           fallbackTools: ["canvas_read", "canvas_search", "canvas_write", "canvas_erase", "canvas_fill", "canvas_render", "canvas_undo"],
         };
       }
-      return errorResult("execution_failed", error instanceof Error ? error.message : "Canvas code failed.");
+      return { ...errorResult("execution_failed", error instanceof Error ? error.message : "Canvas code failed."),
+        scriptHash, phase: error instanceof CanvasCodeScriptError ? error.phase : "runtime",
+        error: error instanceof CanvasCodeScriptError ? error.diagnostic : { name: error instanceof Error ? error.name : "ThrownValue", message: error instanceof Error ? error.message : String(error), frames: [] },
+        operations, writes, mutationState: pendingHostCalls.size > 0 || (mode === "apply" && writes > 0) ? "inspect" : mode === "preview" && writes > 0 ? "preview" : "none",
+        // Already-dispatched capabilities have no cancellation contract; their effects must be inspected.
+        ...(pendingHostCalls.size > 0 ? { pendingHostCalls: pendingHostCalls.size, executionUnknown: true } : {}) };
     } finally {
+      acceptingCallbacks = false;
+      for (const deferred of deferreds) if (deferred.alive) deferred.dispose();
+      if (resultHandle?.alive) resultHandle.dispose();
       context?.dispose();
     }
   },

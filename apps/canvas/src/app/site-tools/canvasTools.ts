@@ -1,6 +1,6 @@
 import { CanvasPersistenceTimeoutError, CanvasWriteError, isCanvasReadViewport, readCanvasViewport, renderCanvasViewportImage, isCanvasSearchQuery,
   isCanvasSearchPosition, searchCanvasSurface, CanvasSearchError, type CanvasRuntime } from "@/domains/canvas/public";
-import type { AgentToolContentBlock, AgentToolDefinition } from "./contracts";
+import type { AgentToolContentBlock, AgentToolDefinition, AgentToolExecutionContext } from "./contracts";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
 import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvasRendering";
 import { CHARDESK_CONTENT_THEMES } from "@chardesk/rendering/theme";
@@ -30,7 +30,8 @@ const targetOutput = (target: { id: string; explicit: boolean }) => target.expli
 
 const createMutationOperationId = () => `op-${globalThis.crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
 
-const beginMutation = (canvas: CanvasMutationHost, target: { id: string }, pageId?: string) => {
+const beginMutation = (canvas: CanvasMutationHost, target: { id: string }, pageId?: string, context?: AgentToolExecutionContext) => {
+  if (context?.history === "inherit") return { operationId: undefined, checkpoint: undefined };
   const beginCheckpoint = canvas.commands.history?.beginCheckpoint;
   if (!beginCheckpoint) return { operationId: undefined, checkpoint: undefined };
   const operationId = createMutationOperationId();
@@ -384,10 +385,10 @@ export const createCanvasWriteTool = (
   legacyRendering?: CanvasToolRendering,
 ): AgentToolDefinition => ({
   ...CANVAS_WRITE_TOOL,
-  execute: async (input) => {
+  execute: async (input, context) => {
     if (input.writeMode !== undefined && legacyRendering) {
       const { writeMode: _writeMode, content, ...rest } = input;
-      return createCanvasRenderTool(canvas as Parameters<typeof createCanvasRenderTool>[0], legacyRendering).execute({ ...rest, source: content, format: "auto", writeMode: _writeMode });
+      return createCanvasRenderTool(canvas as Parameters<typeof createCanvasRenderTool>[0], legacyRendering).execute({ ...rest, source: content, format: "auto", writeMode: _writeMode }, context);
     }
     const at = input.at;
     if (Object.keys(input).some((key) => !["canvasId", "pageId", "at", "content", "style"].includes(key))
@@ -411,7 +412,7 @@ export const createCanvasWriteTool = (
       const atPoint = { x: at[0]!, y: at[1]! };
       const prepared = prepareCanvasRowsWrite(atPoint, rows, "patch");
       const impact = measureCanvasMutationImpact(snapshot.surface, prepared.patch);
-      mutation = beginMutation(canvas, target, input.pageId as string | undefined);
+      mutation = beginMutation(canvas, target, input.pageId as string | undefined, context);
       const result = target.id === state.activeCanvasId && input.pageId === undefined
         ? canvas.commands.text.writeRowsAt(rows, atPoint, "patch")
         : canvas.commands.text.writeRowsAtSession?.(target.id, rows, atPoint, "patch", input.pageId as string | undefined);
@@ -437,7 +438,7 @@ export const createCanvasEraseTool = (
   },
 ): AgentToolDefinition => ({
   ...CANVAS_ERASE_TOOL,
-  execute: async (input) => {
+  execute: async (input, context) => {
     const at = input.at;
     const size = input.size;
     if (Object.keys(input).some((key) => !["canvasId", "pageId", "at", "size"].includes(key))
@@ -460,7 +461,7 @@ export const createCanvasEraseTool = (
       const point = { x: at[0]!, y: at[1]! };
       const prepared = prepareCanvasErase(point, [size[0]!, size[1]!]);
       const impact = measureCanvasMutationImpact(snapshot.surface, prepared.patch);
-      mutation = beginMutation(canvas, target, input.pageId as string | undefined);
+      mutation = beginMutation(canvas, target, input.pageId as string | undefined, context);
       const result = target.id === state.activeCanvasId && input.pageId === undefined
         ? canvas.commands.text.eraseAt?.(point, [size[0]!, size[1]!])
         : canvas.commands.text.eraseAtSession?.(target.id, point, [size[0]!, size[1]!], input.pageId as string | undefined);
@@ -487,7 +488,7 @@ export const createCanvasFillTool = (
   },
 ): AgentToolDefinition => ({
   ...CANVAS_FILL_TOOL,
-  execute: async (input) => {
+  execute: async (input, context) => {
     const at = input.at;
     const size = input.size;
     if (Object.keys(input).some((key) => !["canvasId", "pageId", "at", "size", "style"].includes(key))
@@ -525,7 +526,7 @@ export const createCanvasFillTool = (
         if (spans.length > 0) rows.push({ y: row.y - origin.y, spans });
       }
       const prepared = prepareCanvasRowsWrite(origin, rows, "patch");
-      mutation = beginMutation(canvas, target, input.pageId as string | undefined);
+      mutation = beginMutation(canvas, target, input.pageId as string | undefined, context);
       const result = target.id === state.activeCanvasId && input.pageId === undefined
         ? canvas.commands.text.writeRowsAt(rows, origin, "patch")
         : canvas.commands.text.writeRowsAtSession?.(target.id, rows, origin, "patch", input.pageId as string | undefined);
@@ -593,7 +594,7 @@ export const createCanvasRenderTool = (
   rendering: CanvasToolRendering,
 ): AgentToolDefinition => ({
   ...CANVAS_RENDER_TOOL,
-  execute: async (input) => {
+  execute: async (input, context) => {
     const at = input.at;
     const renderWriteMode = input.writeMode === undefined ? "replace" : input.writeMode;
     if (Object.keys(input).some((key) => !["canvasId", "pageId", "at", "source", "format", "writeMode"].includes(key))
@@ -646,7 +647,7 @@ export const createCanvasRenderTool = (
         ? prepareCanvasTextWrite(position, rendered.text, state.brushColor, renderWriteMode as "patch" | "replace")
         : prepareCanvasRowsWrite(position, rendered.rows, renderWriteMode as "patch" | "replace");
       const impact = measureCanvasMutationImpact(latestSnapshot.surface, prepared.patch);
-      mutation = beginMutation(canvas, target, input.pageId as string | undefined);
+      mutation = beginMutation(canvas, target, input.pageId as string | undefined, context);
       const result = rendered.kind === "plain"
         ? canvasId === state.activeCanvasId && input.pageId === undefined
           ? canvas.commands.text.writeAt(rendered.text, position, renderWriteMode as "patch" | "replace")
@@ -687,12 +688,15 @@ export const createCanvasPreviewRenderTool = (
     at: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 },
     source: { type: "string" },
     format: { enum: ["auto", "raw", "ansi", "markdown"] },
+    writeMode: { enum: ["replace", "patch"], default: "replace" },
   }, required: ["at", "source"], additionalProperties: false },
   execute: async (input) => {
     const at = input.at;
-    if (Object.keys(input).some((key) => !["canvasId", "at", "source", "format"].includes(key))
+    const writeMode = input.writeMode === undefined ? "replace" : input.writeMode;
+    if (Object.keys(input).some((key) => !["canvasId", "at", "source", "format", "writeMode"].includes(key))
       || !Array.isArray(at) || at.length !== 2 || !at.every(Number.isSafeInteger)
-      || typeof input.source !== "string" || (input.format !== undefined && !["auto", "raw", "ansi", "markdown"].includes(String(input.format)))) {
+      || typeof input.source !== "string" || (input.format !== undefined && !["auto", "raw", "ansi", "markdown"].includes(String(input.format)))
+      || (writeMode !== "patch" && writeMode !== "replace")) {
       return { ok: false, code: "invalid_input", message: "Expected { at: [x,y], source: string, format?: auto|raw|ansi|markdown }." };
     }
     try {
@@ -707,8 +711,8 @@ export const createCanvasPreviewRenderTool = (
         renderContext.themeMode,
       );
       const prepared = rendered.kind === "plain"
-        ? prepareCanvasTextWrite({ x: at[0]!, y: at[1]! }, rendered.text, state.brushColor, "replace")
-        : prepareCanvasRowsWrite({ x: at[0]!, y: at[1]! }, rendered.rows, "replace");
+        ? prepareCanvasTextWrite({ x: at[0]!, y: at[1]! }, rendered.text, state.brushColor, writeMode)
+        : prepareCanvasRowsWrite({ x: at[0]!, y: at[1]! }, rendered.rows, writeMode);
       return {
         ...targetOutput(target),
         preview: true,
@@ -793,7 +797,28 @@ export const createCanvasReadTool = (
       const textContent = representation === "cells" ? "" : [appearanceText, renderingNote].filter(Boolean).join("\n\n");
       const contentBlocks: AgentToolContentBlock[] = [];
       if (representation === "text" || representation === "both") contentBlocks.push({ type: "text", text: textContent });
-      if (representation === "cells") contentBlocks.push({ type: "note", text: `Projection cells: ${cells.length}` });
+      if (representation === "cells") {
+        // Keep exact values visible to content-only clients without repeating every field name.
+        const columns = ["x", "y", "char", ...new Set(cells.flatMap(cell => Object.keys(cell)).filter(key => !["x", "y", "char"].includes(key)))];
+        const direct = { columns, cells: cells.map(cell => columns.map(key => cell[key] ?? null)) };
+        const styles: Record<string, unknown>[] = [];
+        const styleIds = new Map<string, number>();
+        const packed = { columns: ["x", "y", "char", "styleIndex"], styles, cells: cells.map(cell => {
+          const style = Object.fromEntries(Object.entries(cell).filter(([key]) => !["x", "y", "char"].includes(key)));
+          const key = JSON.stringify(style);
+          let id = styleIds.get(key);
+          if (id === undefined) { id = styles.length; styles.push(style); styleIds.set(key, id); }
+          return [cell.x, cell.y, cell.char, id];
+        }) };
+        // Share repeated styles when it is smaller; never truncate exact Cell data.
+        const presentation = JSON.stringify(packed).length < JSON.stringify(direct).length ? packed : direct;
+        contentBlocks.push({ type: "text", text: JSON.stringify({
+          ...targetOutput(target), viewport: result.viewport, sampleSize: result.sampleSize,
+          mode: result.mode, overviewOnly: result.overviewOnly, exact: !result.overviewOnly,
+          ...presentation,
+          ...(result.overviewOnly ? { navigation: result.content } : {}),
+        }) });
+      }
       const renderedImage = (representation === "image" || representation === "both") && result.viewport
         ? renderCanvasViewportImage(snapshot.surface, result.viewport, detail as "low" | "high" | "original" | "auto", {
             defaultForeground: COLOR_PRIMARY_TEXT,

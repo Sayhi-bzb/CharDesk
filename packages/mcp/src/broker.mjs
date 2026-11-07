@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { readFile, stat, unlink } from 'node:fs/promises';
+import { readFile, stat, unlink, realpath } from 'node:fs/promises';
+import { relative, isAbsolute } from 'node:path';
 import { WebSocket, WebSocketServer } from 'ws';
 import { loadCredentials, writePrivateJson } from './credentials.mjs';
 import { BridgeRequests } from './requests.mjs';
@@ -30,26 +31,35 @@ const readBody = (request) => new Promise((resolve, reject) => {
   });
 });
 
-async function resolveSourceRef(name, input) {
-  if (!['canvas_write', 'canvas_render'].includes(name) || input.sourceRef === undefined) return input;
-  if (typeof input.sourceRef !== 'string' || !input.sourceRef) throw new BridgeError('invalid_request', 'sourceRef must be a non-empty local file path.', 400);
-  const key = name === 'canvas_write' ? 'content' : 'source';
-  if (input[key] !== undefined) throw new BridgeError('invalid_request', `Provide either ${key} or sourceRef, not both.`, 400);
+async function resolveSourceRef(name, input, sourceRoots) {
+  const refKey = name === 'canvas_code' ? 'scriptRef' : 'sourceRef';
+  if (!['canvas_write', 'canvas_render', 'canvas_code'].includes(name) || input[refKey] === undefined) return input;
+  const ref = input[refKey];
+  if (typeof ref !== 'string' || !ref) throw new BridgeError('invalid_request', `${refKey} must be a non-empty local file path.`, 400);
+  const key = name === 'canvas_code' ? 'script' : name === 'canvas_write' ? 'content' : 'source';
+  if (input[key] !== undefined) throw new BridgeError('invalid_request', `Provide either ${key} or ${refKey}, not both.`, 400);
+  const path = await realpath(ref).catch(() => { throw new BridgeError('invalid_request', `Unable to read ${refKey}.`, 400); });
+  if (sourceRoots && !sourceRoots.some(root => {
+    const suffix = relative(root, path);
+    return suffix === '' || (!isAbsolute(suffix) && suffix !== '..' && !suffix.startsWith('../'));
+  })) throw new BridgeError('invalid_request', `${refKey} is outside the configured source roots.`, 400);
   let content;
   try {
-    const file = await stat(input.sourceRef);
+    const file = await stat(path);
     if (!file.isFile()) throw new BridgeError('invalid_request', 'sourceRef must identify a regular text file.', 400);
     if (file.size > MAX_MESSAGE_BYTES) throw new BridgeError('invalid_request', 'sourceRef exceeds the message limit.', 413);
-    content = await readFile(input.sourceRef, 'utf8');
+    content = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(await readFile(path));
+    if (name === 'canvas_code' && content.length > 32768) throw new BridgeError('invalid_request', 'scriptRef exceeds the script limit.', 413);
   } catch (error) {
     if (error instanceof BridgeError) throw error;
     throw new BridgeError('invalid_request', `Unable to read sourceRef: ${error.message}`, 400);
   }
-  const { sourceRef: _sourceRef, ...rest } = input;
+  const { [refKey]: _ref, ...rest } = input;
   return { ...rest, [key]: content };
 }
 
-export async function startBroker({ config = readConfig(), idleMs = 30_000, timeoutFor, limits, version = MCP_VERSION } = {}) {
+export async function startBroker({ config = readConfig(), idleMs = 30_000, timeoutFor, limits, version = MCP_VERSION, sourceRoots } = {}) {
+  const canonicalSourceRoots = sourceRoots ? await Promise.all(sourceRoots.map(path => realpath(path))) : undefined;
   const instanceId = randomUUID();
   const origins = new Set(config.origins);
   let credentials;
@@ -158,7 +168,7 @@ export async function startBroker({ config = readConfig(), idleMs = 30_000, time
         throw new BridgeError('invalid_request', 'Invalid Canvas tool request.', 400);
       }
       const result = await requests.run(clientId, name, input, controller.signal, async (entry) => {
-        const resolved = await resolveSourceRef(name, input);
+        const resolved = await resolveSourceRef(name, input, canonicalSourceRoots);
         if (entry.settled) return;
         checkPage(name, resolved);
         const message = JSON.stringify({ id: entry.id, method: 'call', params: { name, input: resolved } });

@@ -1,5 +1,7 @@
-type AgentToolExecutionContext = Readonly<{
+export type AgentToolExecutionContext = Readonly<{
   signal?: AbortSignal;
+  /** An outer tool composition owns history; primitive edits join its checkpoint. */
+  history?: "inherit";
 }>;
 
 /** Content blocks are the transport-neutral representation used by tools that

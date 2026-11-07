@@ -270,7 +270,7 @@ const CANVAS_UNDO_TOOL_RAW = {
 const CANVAS_RENDER_TOOL_RAW = {
   name: CANVAS_RENDER_TOOL_NAME,
   title: "Render Canvas material",
-  description: "Render Markdown, ANSI, or another supported material format with the current Canvas renderer, then place the resulting Projection Cells at [x,y]. Mutation results report persistence=saved|pending|failed|unavailable separately from the applied projection. Use canvas_write for literal Unicode strokes.",
+  description: "Render Markdown, ANSI, or another supported material format with the current Canvas renderer, then place the resulting Projection Cells at [x,y]. Mutation results report persistence=saved|pending|failed|unavailable separately from the applied projection. writeMode defaults to replace; patch skips unstyled whitespace while preserving colored half-blocks and styled spaces. Use canvas_write for literal Unicode strokes.",
   readOnly: false,
   inputSchema: { type: "object", properties: {
     canvasId: { type: "string", minLength: 1 },
@@ -278,6 +278,7 @@ const CANVAS_RENDER_TOOL_RAW = {
     at: { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 },
     source: { type: "string" },
     format: { enum: ["auto", "raw", "ansi", "markdown"] },
+    writeMode: { enum: ["replace", "patch"], default: "replace", description: "replace writes material whitespace; patch skips whitespace without a visible background or text decoration. Neither mode clears the prior footprint." },
   }, required: ["at", "source"], additionalProperties: false },
   outputSchema: { type: "object", oneOf: [
     { type: "object", properties: { canvasId: { type: "string" }, pageId: { type: "string" }, bounds: { anyOf: [{ type: "array", items: { type: "integer" }, minItems: 4, maxItems: 4 }, { type: "null" }] }, writtenCells: { type: "integer", minimum: 0 }, skippedWhitespaceCells: { type: "integer", minimum: 0 }, persisted: { type: "boolean" }, persistence: { enum: ["saved", "pending", "failed", "unavailable"] }, persistenceError: { type: "string" }, operationId: { type: "string" }, impact: CANVAS_MUTATION_IMPACT }, required: ["bounds", "writtenCells", "impact"], additionalProperties: false },
@@ -288,7 +289,7 @@ const CANVAS_RENDER_TOOL_RAW = {
 const CANVAS_CODE_TOOL_RAW = {
   name: CANVAS_CODE_TOOL_NAME,
   title: "Run Canvas code",
-  description: "Run a bounded JavaScript composition against Scene capabilities. The script receives ordinary-object APIs: canvas.read, canvas.search, canvas.write({at, pageId, content, style}), canvas.erase({at, pageId, size}), canvas.fill({at, pageId, size, style}), canvas.render({at, pageId, source, format}), canvas.manage, canvas.undo, and canvas.clipboard. Do not JSON.stringify inputs or JSON.parse results. preview is the default and does not mutate; apply commits projection edits as one undoable operation and returns an operationId. Mutation results include persistence=saved|pending|failed|unavailable; pending means the projection is applied while durability is still being retried. A single apply targets one Scene. The sandbox has no DOM, network, filesystem, or arbitrary MCP access. Return a JSON-compatible value.",
+  description: "Run a bounded JavaScript composition against Scene capabilities. The script receives ordinary-object APIs: canvas.read, canvas.search, canvas.write({at, pageId, content, style}), canvas.erase({at, pageId, size}), canvas.fill({at, pageId, size, style}), canvas.render({at, pageId, source, format, writeMode}), canvas.manage, canvas.undo, and canvas.clipboard. Do not JSON.stringify inputs or JSON.parse results. preview is the default and does not mutate; apply commits projection edits as one undoable operation and returns an operationId. Mutation results include persistence=saved|pending|failed|unavailable; pending means the projection is applied while durability is still being retried. A single apply targets one Scene. The sandbox has no DOM, network, filesystem, or arbitrary MCP access. Return a JSON-compatible value.",
   readOnly: false,
   inputSchema: {
     type: "object",
@@ -305,12 +306,17 @@ const CANVAS_CODE_TOOL_RAW = {
     type: "object",
     oneOf: [
       { type: "object", properties: {
-        mode: { enum: ["preview", "apply"] }, result: {}, operationId: { type: "string" }, operations: { type: "integer", minimum: 0 },
+        mode: { enum: ["preview", "apply"] }, scriptHash: { type: "string" }, result: {}, operationId: { type: "string" }, operations: { type: "integer", minimum: 0 },
         writes: { type: "integer", minimum: 0 }, persistence: { enum: ["saved", "pending", "failed", "unavailable"] }, durationMs: { type: "number", minimum: 0 }, truncated: { type: "boolean" },
       }, required: ["mode", "result", "operations", "writes", "durationMs", "truncated"], additionalProperties: false },
       { type: "object", properties: {
         ok: { const: false }, code: { type: "string" }, phase: { type: "string" }, retryable: { type: "boolean" },
         message: { type: "string" }, fallbackTools: { type: "array", items: { type: "string" } },
+        scriptHash: { type: "string" }, operations: { type: "integer" }, writes: { type: "integer" },
+        mutationState: { enum: ["none", "preview", "inspect"] }, pendingHostCalls: { type: "integer" }, executionUnknown: { type: "boolean" },
+        error: { type: "object", properties: { name: { type: "string" }, message: { type: "string" },
+          frames: { type: "array", items: { type: "object", properties: { line: { type: "integer", minimum: 1 }, column: { type: "integer", minimum: 1 } }, required: ["line"], additionalProperties: false } },
+        }, required: ["name", "message", "frames"], additionalProperties: false },
       }, required: ["ok", "code", "message"], additionalProperties: false },
     ],
   },

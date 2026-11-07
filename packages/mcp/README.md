@@ -7,7 +7,7 @@ Local MCP bridge for a CharDesk Canvas.
 `src/tools.mjs` is the canonical Canvas tool contract. It is exported as
 `@chardesk/mcp/contracts` for browser hosts, which may attach an execution
 adapter and richer output schemas without redefining names, descriptions, or
-input schemas. `sourceRef` is a local-bridge extension resolved by this package
+input schemas. `sourceRef` and `scriptRef` are local-bridge extensions resolved by this package
 before forwarding; browser hosts do not read local file paths.
 
 Each Agent runs a stdio adapter. Adapters send authenticated, bounded HTTP calls
@@ -165,4 +165,31 @@ agent can send script output without copying it into a tool argument.
 `canvas_erase` clears a rectangle, `canvas_fill` styles existing characters, and
 `canvas_render` converts material such as Markdown or
 ANSI into Projection Cells. `render` accepts either `source` or `sourceRef` using
-the same local-file rule.
+the same local-file rule. `canvas_render` accepts `writeMode: "replace" | "patch"`
+(default `"replace"`). Patch skips whitespace without a visible background or text
+decoration, preserving existing content there; colored half-blocks and explicitly
+styled spaces remain content. It does not clear an old image footprint. Code Mode
+passes this mode to both preview and apply.
+
+
+## Code Mode
+
+`canvas_code` accepts exactly one of `script` or `scriptRef`. The bridge reads the
+current UTF-8 JavaScript file on each `scriptRef` call and forwards its text; the
+browser sandbox gains no filesystem access. Both paths keep the 32768-character
+script limit and existing preview/apply, timeout and capability limits. A script
+file contains the async function body, with the injected `canvas` API; Node
+imports, filesystem calls and module entry points are not supported.
+
+Results include `scriptHash`, the SHA-256 of the exact executed UTF-8 source.
+Failures preserve `error.name`, `error.message` and available `error.frames`
+with one-based user-script `line`/`column`, excluding injected wrapper frames and
+host stacks. `phase` separates load, evaluate, capability and runtime failures.
+`mutationState` is `none`, `preview` or `inspect`; `inspect` requires reading the
+Canvas before retrying because dispatched writes may have changed it. Pending
+capabilities additionally report `pendingHostCalls` and `executionUnknown`.
+No automatic repair or replay occurs.
+
+Embedded brokers may set `startBroker({sourceRoots:[...]})` to restrict all local
+file references to canonical directories. Symlink escapes are rejected. Ordinary
+CLI brokers retain existing local-file access when this option is omitted.

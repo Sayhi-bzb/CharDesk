@@ -150,6 +150,47 @@ describe("Canvas reading tool", () => {
     expect(both).toMatchObject({ representation: "both", contentBlocks: [{ type: "text" }] });
   });
 
+  it("exposes Unicode, coordinates and all styles to content-only clients", async () => {
+    const canvas=host();
+    const expected=[{x:4,y:2,char:"▀",color:"#12ab34",bgColor:"#112233",bold:true},{x:6,y:2,char:"界",color:"#abcdef"}];
+    canvas.materializeSession.mockResolvedValue({id:"canvas-a",name:"Example",mode:"freeform",slideDeck:null,surface:createGridSurfaceReader(new Map(expected.map(({x,y,...cell})=>[`${x},${y}`,cell])))});
+    const result=await createCanvasReadTool(canvas,rendering).execute({viewport:[4,2,5,1],representation:"cells"});
+    const read=result as {cells:Record<string,unknown>[];contentBlocks:{type:string;text:string}[]};
+    const visible=JSON.parse(read.contentBlocks[0]!.text) as {exact:boolean;columns:string[];cells:unknown[][]};
+    expect(visible.exact).toBe(true);
+    const decoded=visible.cells.map(row=>Object.fromEntries(visible.columns.flatMap((key,i)=>row[i]===null?[]:[[key,row[i]]])));
+    expect(decoded).toEqual(read.cells);
+    expect(decoded).toEqual(expect.arrayContaining(expected));
+  });
+
+  it("keeps a dense exact camera with styles within the MCP transport envelope", async () => {
+    const canvas=host();
+    const grid=new Map<string,{char:string;color:string;bgColor:string;bold:boolean;italic:boolean;underline:boolean}>();
+    for(let y=0;y<40;y++)for(let x=0;x<100;x++)grid.set(`${x},${y}`,{char:"▀",color:"#12ab34",bgColor:"#112233",bold:true,italic:true,underline:true});
+    canvas.materializeSession.mockResolvedValue({id:"canvas-a",name:"Dense",mode:"freeform",slideDeck:null,surface:createGridSurfaceReader(grid)});
+    const result=await createCanvasReadTool(canvas,rendering).execute({viewport:[0,0,100,40],representation:"cells"}) as {cells:unknown[];contentBlocks:{text:string}[]};
+    const visible=JSON.parse(result.contentBlocks[0]!.text);
+    expect(visible.exact).toBe(true);
+    expect(visible.cells).toHaveLength(4000);
+    expect(result.cells).toHaveLength(4000);
+    const decoded=visible.cells.map((row: unknown[])=>{
+      const cell=Object.fromEntries(visible.columns.map((key: string,i: number)=>[key,row[i]]));
+      const {styleIndex,...position}=cell;
+      return styleIndex === undefined ? cell : {...position,...visible.styles[styleIndex as number]};
+    });
+    expect(decoded).toEqual(result.cells);
+    // The local broker's WebSocket message envelope is 1 MiB.
+    expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThan(1024*1024);
+  });
+
+  it("distinguishes an empty exact region from a sampled navigation view", async () => {
+    const tool=createCanvasReadTool(host(),rendering);
+    const empty=await tool.execute({viewport:[20,20,2,1],representation:"cells"}) as {contentBlocks:{text:string}[]};
+    expect(JSON.parse(empty.contentBlocks[0]!.text)).toMatchObject({exact:true,cells:[]});
+    const broad=await tool.execute({viewport:[0,0,10000,10000],representation:"cells"}) as {contentBlocks:{text:string}[]};
+    expect(JSON.parse(broad.contentBlocks[0]!.text)).toMatchObject({exact:false,overviewOnly:true,cells:[],navigation:expect.any(String)});
+  });
+
   it("returns actionable errors for invalid input and missing sessions", async () => {
     const tool = createCanvasReadTool(host(null), rendering);
     expect(await tool.execute({})).toMatchObject({ code: "canvas_not_active" });

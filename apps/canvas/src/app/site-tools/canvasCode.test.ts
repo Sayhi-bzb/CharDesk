@@ -6,6 +6,22 @@ const tool = (execute: (input: Record<string, unknown>) => unknown, name = "tool
 });
 
 describe("Canvas code tool", () => {
+  it.each(["patch", "replace"])("forwards render writeMode=%s in preview and apply", async (writeMode) => {
+    const render = vi.fn(async () => ({ writtenCells: 2 }));
+    const previewRender = vi.fn(async () => ({ writtenCells: 2, preview: true }));
+    const code = createCanvasCodeTool({
+      read: tool(async () => ({})), search: tool(async () => ({})),
+      write: tool(async () => ({})), manage: tool(async () => ({})),
+      render: tool(render), previewRender: tool(previewRender),
+    });
+    const script = `return await canvas.render({at:[0,0],source:" X ",format:"ansi",writeMode:"${writeMode}"});`;
+    expect(await code.execute({ script, canvasId: "cv-a" })).toMatchObject({ result: { preview: true } });
+    expect(render).not.toHaveBeenCalled();
+    expect(await code.execute({ script, canvasId: "cv-a", mode: "apply" })).toMatchObject({ result: { writtenCells: 2 } });
+    const expected = { at: [0,0], source: " X ", format: "ansi", writeMode, canvasId: "cv-a" };
+    expect(previewRender).toHaveBeenCalledWith(expected);
+    expect(render).toHaveBeenCalledWith(expected);
+  });
   it("runs a pure script", async () => {
     const code = createCanvasCodeTool({ read: tool(async () => ({})), search: tool(async () => ({})), write: tool(async () => ({})), manage: tool(async () => ({})) });
     expect(await code.execute({ script: `return 1 + 1;` })).toMatchObject({ result: 2 });
@@ -88,4 +104,75 @@ describe("Canvas code tool", () => {
     expect(write).not.toHaveBeenCalled();
     expect(cancel).toHaveBeenCalledOnce();
   });
+  it("drains unawaited host calls and their JS continuations before committing", async () => {
+    const events: string[] = [];
+    const code = createCanvasCodeTool({
+      read: tool(async () => { await new Promise(resolve => setTimeout(resolve, 10)); return { content: "X" }; }),
+      search: tool(async () => ({})), manage: tool(async () => ({})),
+      write: tool(async () => { await new Promise(resolve => setTimeout(resolve, 10)); events.push("write"); return { persistence: "saved" }; }),
+      history: { beginCheckpoint: () => ({commit: () => events.push("commit"), cancel: vi.fn()}) },
+    });
+    const result = await code.execute({mode: "apply", script: `canvas.read({}).then(x => canvas.write({at:[0,0],content:x.content})); return "done";`});
+    expect(events).toEqual(["write", "commit"]);
+    expect(result).toMatchObject({result: "done", persistence: "saved", writes: 1});
+  });
+
+  it("settles writes before cancelling a rejected script", async () => {
+    const events: string[] = [];
+    const code = createCanvasCodeTool({read: tool(async () => ({})), search: tool(async () => ({})), manage: tool(async () => ({})),
+      write: tool(async () => { await new Promise(resolve => setTimeout(resolve, 10)); events.push("write"); return {}; }),
+      history: {beginCheckpoint: () => ({commit: vi.fn(), cancel: () => events.push("cancel")})},
+    });
+    expect(await code.execute({mode:"apply",script:`canvas.write({at:[0,0],content:"X"}); throw new Error("stop");`})).toMatchObject({ok:false,message:"stop"});
+    expect(events).toEqual(["write","cancel"]);
+  });
+
+  it("keeps caught host failures recoverable in JavaScript", async () => {
+    const code = createCanvasCodeTool({read: tool(async () => {throw new Error("unavailable");}), search: tool(async () => ({})), manage: tool(async () => ({})), write: tool(async () => ({}))});
+    expect(await code.execute({script:`try { await canvas.read({}); } catch(e) { return e.message; }`})).toMatchObject({result:"unavailable"});
+  });
+
+  it("quarantines callbacks that arrive after timeout", async () => {
+    let finish: (value: unknown) => void = () => {};
+    const late = new Promise(resolve => {finish=resolve;});
+    const code = createCanvasCodeTool({read:tool(async()=>({})),search:tool(async()=>({})),manage:tool(async()=>({})),write:tool(async()=>late)});
+    expect(await code.execute({mode:"apply",timeoutMs:50,script:`canvas.write({at:[0,0],content:"X"});`})).toMatchObject({ok:false,executionUnknown:true,pendingHostCalls:1});
+    finish({persistence:"saved"});
+    await new Promise(resolve => setTimeout(resolve, 20));
+  });
+
+  it("tracks render-only edits for history and drains preview renders", async () => {
+    const render = tool(async () => {await new Promise(resolve => setTimeout(resolve,10));return {persistence:"saved"};});
+    const commit=vi.fn();
+    const code=createCanvasCodeTool({read:tool(async()=>({})),search:tool(async()=>({})),manage:tool(async()=>({})),write:tool(async()=>({})),render,previewRender:render,history:{beginCheckpoint:()=>({commit,cancel:vi.fn()})}});
+    expect(await code.execute({mode:"apply",script:`canvas.render({at:[0,0],source:"X",format:"raw"});`})).toMatchObject({writes:1,persistence:"saved",operationId:expect.any(String)});
+    expect(commit).toHaveBeenCalledOnce();
+    expect(await code.execute({script:`canvas.render({at:[0,0],source:"X",format:"raw"});`})).toMatchObject({writes:1});
+  });
+
+  it("reports script errors in user coordinates and identifies exact executed bytes", async () => {
+    const code = createCanvasCodeTool({read:tool(async()=>({})),search:tool(async()=>({})),manage:tool(async()=>({})),write:tool(async()=>({}))});
+    const failed = await code.execute({script:'const value = 1;\nthrow new RangeError("rgb");'});
+    expect(failed).toMatchObject({ok:false,phase:"evaluate",mutationState:"none",error:{name:"RangeError",message:"rgb",frames:[{line:2}]},scriptHash:expect.stringMatching(/^[a-f0-9]{64}$/)});
+    const success = await code.execute({script:'return 1;'});
+    const changed = await code.execute({script:'return 2;'});
+    const repeated = await code.execute({script:'return 1;'});
+    expect(success).toMatchObject({scriptHash:(repeated as {scriptHash:string}).scriptHash});
+    expect((success as {scriptHash:string}).scriptHash).not.toBe((changed as {scriptHash:string}).scriptHash);
+  });
+
+  it("preserves syntax diagnostics and marks dispatched writes for inspection", async () => {
+    const code = createCanvasCodeTool({read:tool(async()=>({})),search:tool(async()=>({})),manage:tool(async()=>({})),write:tool(async()=>({writtenCells:1}))});
+    expect(await code.execute({script:'const = ;'})).toMatchObject({ok:false,error:{name:"SyntaxError",frames:[{line:1}]}});
+    expect(await code.execute({mode:"apply",script:'await canvas.write({at:[0,0],content:"X"}); throw new Error("after write");'})).toMatchObject({ok:false,writes:1,mutationState:"inspect"});
+    expect(await code.execute({script:'await canvas.read({}); throw "literal";'})).toMatchObject({ok:false,error:{name:"ThrownValue",message:"literal"}});
+  });
+
+  it("does not expose host paths when a capability rejects", async () => {
+    const code = createCanvasCodeTool({read:tool(async()=>{throw new TypeError("host failure");}),search:tool(async()=>({})),manage:tool(async()=>({})),write:tool(async()=>({}))});
+    const result=await code.execute({script:'await canvas.read({});'});
+    expect(result).toMatchObject({ok:false,phase:"capability",error:{name:"TypeError",message:"host failure"}});
+    expect(JSON.stringify(result)).not.toContain("canvasCode.test.ts");
+  });
+
 });

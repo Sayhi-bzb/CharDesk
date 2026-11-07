@@ -1,13 +1,23 @@
+const cellStyle = { type: 'object', properties: {
+  color: { type: 'string', description: 'Foreground CSS color.' },
+  bgColor: { type: 'string', description: 'Background CSS color.' },
+  href: { type: 'string' },
+  attrs: { type: 'object', properties: Object.fromEntries(
+    ['bold','italic','underline','strike','inverse'].map(key => [key,{type:'boolean'}])
+  ), additionalProperties: false },
+}, additionalProperties: false };
+
 const localToolContracts = [
   {
     name: 'canvas_code', title: 'Run Canvas code', readOnly: false,
-    description: 'Run a bounded JavaScript composition against Scene capabilities. The script receives ordinary-object APIs: canvas.read, canvas.search, canvas.write({at, pageId, content, style}), canvas.erase({at, pageId, size}), canvas.fill({at, pageId, size, style}), canvas.render({at, pageId, source, format}), canvas.manage, canvas.undo, and clipboard. preview is the default and does not mutate; apply commits projection edits as one undoable operation. Mutation results include impact counts/bounds and persistence=saved|pending|failed|unavailable; pending means the projection is applied while durability is still being retried. No DOM, network, filesystem, or arbitrary MCP access.',
+    description: 'Run a bounded JavaScript composition against Scene capabilities. Provide script or scriptRef (a local UTF-8 JavaScript file), never both. The local MCP reads scriptRef; the sandbox itself has no filesystem access. Results identify the executed scriptHash (SHA-256); failures include error type and script-relative locations when available. The script receives ordinary-object APIs: canvas.read, canvas.search, canvas.write({at, pageId, content, style}), canvas.erase({at, pageId, size}), canvas.fill({at, pageId, size, style}), canvas.render({at, pageId, source, format, writeMode}), canvas.manage, canvas.undo, and canvas.clipboard. preview is the default and does not mutate; apply commits projection edits as one undoable operation. Mutation results include impact counts/bounds and persistence=saved|pending|failed|unavailable; pending means the projection is applied while durability is still being retried. No DOM, network, filesystem, or arbitrary MCP access.',
     inputSchema: { type: 'object', properties: {
       script: { type: 'string', minLength: 1, maxLength: 32768 },
+      scriptRef: { type: 'string', minLength: 1, description: 'Local UTF-8 JavaScript file path. Mutually exclusive with script; same 32768-character script limit. Use the same file after edits.' },
       canvasId: { type: 'string', minLength: 1 },
       mode: { type: 'string', enum: ['preview', 'apply'], default: 'preview' },
       timeoutMs: { type: 'integer', minimum: 50, maximum: 10000, default: 2000 },
-    }, required: ['script'], additionalProperties: false },
+    }, oneOf: [{ required: ['script'] }, { required: ['scriptRef'] }], additionalProperties: false },
   },
   {
     name: 'canvas_erase', title: 'Erase Canvas region', readOnly: false,
@@ -22,7 +32,7 @@ const localToolContracts = [
     description: 'Apply one style to existing characters in a rectangular Projection region without changing their characters. Results report styled Cell counts/bounds and an operationId when the edit can be undone with canvas_undo.',
     inputSchema: { type: 'object', properties: {
       at: { type: 'array', items: { type: 'integer' }, minItems: 2, maxItems: 2 }, canvasId: { type: 'string', minLength: 1 }, pageId: { type: 'string', minLength: 1, description: 'Optional stable Slide page ID.' },
-      size: { type: 'array', items: { type: 'integer' }, minItems: 2, maxItems: 2 }, style: { type: 'object' },
+      size: { type: 'array', items: { type: 'integer' }, minItems: 2, maxItems: 2 }, style: cellStyle,
     }, required: ['at', 'size', 'style'], additionalProperties: false },
   },
   {
@@ -34,12 +44,13 @@ const localToolContracts = [
   },
   {
     name: 'canvas_render', title: 'Render Canvas material', readOnly: false,
-    description: 'Render material with the current Canvas renderer and place the resulting Projection Cells. Provide source or sourceRef (a local file path); the local MCP reads sourceRef and forwards its text without requiring the agent to copy or rewrite it. Results report impact counts/bounds, persistence, and an operationId when the edit can be undone with canvas_undo. Use canvas_write for literal Unicode strokes.',
+    description: 'Render material with the current Canvas renderer and place the resulting Projection Cells. Provide source or sourceRef (a local file path); the local MCP reads sourceRef and forwards its text without requiring the agent to copy or rewrite it. Results report impact counts/bounds, persistence, and an operationId when the edit can be undone with canvas_undo. writeMode defaults to replace; patch skips unstyled whitespace while preserving colored half-blocks and styled spaces. Use canvas_write for literal Unicode strokes.',
     inputSchema: { type: 'object', properties: {
       at: { type: 'array', items: { type: 'integer' }, minItems: 2, maxItems: 2 }, canvasId: { type: 'string', minLength: 1 }, pageId: { type: 'string', minLength: 1, description: 'Optional stable Slide page ID.' },
       source: { type: 'string', description: 'Material text. Mutually exclusive with sourceRef.' },
       sourceRef: { type: 'string', minLength: 1, description: 'Local file path whose UTF-8 text is rendered. Mutually exclusive with source.' },
       format: { type: 'string', enum: ['auto', 'raw', 'ansi', 'markdown'] },
+      writeMode: { type: 'string', enum: ['replace', 'patch'], default: 'replace', description: 'replace writes material whitespace; patch skips whitespace without a visible background or text decoration. Neither mode clears the prior footprint.' },
     }, required: ['at'], additionalProperties: false },
   },
   {
@@ -84,7 +95,7 @@ const localToolContracts = [
       pageId: { type: 'string', minLength: 1, description: 'Optional stable Slide page ID.' },
       content: { type: 'string', description: 'Literal Unicode text. Mutually exclusive with sourceRef.' },
       sourceRef: { type: 'string', minLength: 1, description: 'Local file path whose UTF-8 text is used as the stroke. Mutually exclusive with content.' },
-      style: { type: 'object' },
+      style: cellStyle,
     }, required: ['at'], additionalProperties: false },
   },
 ];
