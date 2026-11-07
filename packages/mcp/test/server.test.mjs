@@ -38,7 +38,12 @@ test('MCP reports page readiness errors without closing its transport', async (t
   assert.match(unavailable.content[0].text, /page_unavailable/);
   await f.page({ reply: () => ({ ok: true, contentBlocks: [
     { type: 'note', text: 'visible note' }, { type: 'text', text: 'exact text' },
+    { type: 'image', mimeType: 'image/png', data: 'iVBORw0KGgo=', width: 9, height: 20, scale: 1 },
   ] }) });
   const result = await client.callTool({ name: 'canvas_read', arguments: {} });
-  assert.deepEqual(result.content, [{ type: 'text', text: 'visible note' }, { type: 'text', text: 'exact text' }]);
+  assert.deepEqual(result.content, [
+    { type: 'text', text: 'visible note' }, { type: 'text', text: 'exact text' },
+    { type: 'image', mimeType: 'image/png', data: 'iVBORw0KGgo=' },
+  ]);
+  assert.equal(result.structuredContent.contentBlocks[2].width, 9);
 });

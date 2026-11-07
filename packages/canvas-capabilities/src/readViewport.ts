@@ -78,8 +78,8 @@ const imageMetrics = (detail: CanvasReadImageDetail) => {
 
 /**
  * Produces a lossless, browser-renderable intermediate image without requiring
- * a canvas DOM node. The tool boundary converts this SVG to a model-compatible
- * PNG before exposing it through MCP.
+ * a canvas DOM node. Agent PNG reads use readImage's shared Cell painter and
+ * Host encoding instead; this helper remains available to direct SVG consumers.
  */
 export const renderCanvasViewportImage = (
   surface: CanvasSurfaceReader,

@@ -12,6 +12,11 @@ after a dispatched request loses its connection. Undo requires a live owner.
 under `<state>/runtimes`, serializes calls and removes discovery metadata on shutdown.
 The endpoint belongs to the editor process; no always-on daemon is required.
 
-Current local limits: Freeform only; image reads and OS clipboard access from Code
-are unavailable. Browser lifecycle and image adaptation remain owned by the Web host.
+`canvas_read` uses the [shared read pipeline](../canvas-capabilities/README.md)
+for text, Cells, PNG and both. A live TUI supplies its current terminal palette;
+headless reads, or a terminal without resolved RGB, use the shared light palette.
+Native font resolution is shared with TUI image export and loads only for image IO.
+
+Current local limits: Freeform only; OS clipboard access from Code is unavailable.
+Browser lifecycle remains owned by the Web host.
 Verification: [live routing and persistence](../../examples/terminal-canvas/src/localCapabilities.test.ts).

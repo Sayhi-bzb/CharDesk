@@ -6,6 +6,7 @@
     "./contracts": "./src/contracts.mjs"
   },
   "dependencies": {
+    "@chardesk/rendering": "^0.6.0",
     "quickjs-emscripten": "^0.32.0",
     "ajv": "^8.17.1"
   },

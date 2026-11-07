@@ -6,6 +6,7 @@ import type { AppPaths } from './appPaths.ts';
 import type { TerminalWorkspace } from './workspace.ts';
 import type { LocalSessions } from './sessions.ts';
 import { localCapabilities } from './capabilities.ts';
+import type { CanvasReadAppearance } from '../../canvas-capabilities/src/read.ts';
 
 type Endpoint = {
   version: 1;
@@ -19,14 +20,15 @@ type Endpoint = {
 export async function startLocalEndpoint(
   paths: AppPaths,
   workspace: TerminalWorkspace,
-  sessions: LocalSessions
+  sessions: LocalSessions,
+  readAppearance?: () => CanvasReadAppearance | undefined
 ) {
   const directory = join(paths.state, 'runtimes');
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const instance = randomUUID(),
     token = randomBytes(32).toString('hex'),
     path = join(directory, `${instance}.json`);
-  const capabilities = localCapabilities(workspace, sessions, true);
+  const capabilities = localCapabilities(workspace, sessions, true, readAppearance);
   let closing = false;
   let tail = Promise.resolve();
   let pending = 0;

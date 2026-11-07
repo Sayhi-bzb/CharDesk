@@ -3,7 +3,13 @@ import {
   isCanvasStrokeStyle,
   fillRows,
 } from '../../canvas-capabilities/src/projection.ts';
-import { readCanvasViewport } from '../../canvas-capabilities/src/readViewport.ts';
+import {
+  parseCanvasReadRequest,
+  readCanvasSurface,
+  INVALID_CANVAS_READ,
+  type CanvasReadAppearance,
+} from '../../canvas-capabilities/src/read.ts';
+import { CHARDESK_CONTENT_THEMES } from '@chardesk/rendering/theme';
 import { COLOR_PRIMARY_TEXT } from '@chardesk/cell-plane/constants';
 import { createCanvasCodeTool } from '../../canvas-capabilities/src/code.ts';
 import { compileCharDeskText } from '@chardesk/chargraph';
@@ -25,8 +31,16 @@ import type { LocalSessions } from './sessions.ts';
 export function localCapabilities(
   workspace: TerminalWorkspace,
   sessions: LocalSessions,
-  persistentHistory = false
+  persistentHistory = false,
+  readAppearance: () => CanvasReadAppearance | undefined = () => undefined
 ) {
+  const defaultAppearance: CanvasReadAppearance = {
+    theme: 'light',
+    palette: {
+      color: CHARDESK_CONTENT_THEMES.light.foreground,
+      background: CHARDESK_CONTENT_THEMES.light.background,
+    },
+  };
   const model = workspace.model;
   let batch = false;
   const implementations = contracts.map(
@@ -112,33 +126,16 @@ export function localCapabilities(
             if (contract.name === 'canvas_search')
               return searchCanvasSurface(plane, input.query as string, input);
             if (contract.name === 'canvas_read') {
-              if (input.representation && !['text', 'cells'].includes(String(input.representation)))
-                return {
-                  ok: false,
-                  code: 'unsupported_capability',
-                  message: 'Local image reads are unavailable.',
-                };
-              const read = readCanvasViewport(
-                plane,
-                input.viewport as [number, number, number, number] | undefined,
-                {
-                  defaultForeground: COLOR_PRIMARY_TEXT,
-                  includeStyles: input.style === 'appearance',
-                }
-              );
-              const cells: Array<Record<string, unknown>> = [];
-              if (input.representation === 'cells' && read.viewport && !read.overviewOnly) {
-                const [x, y, width, height] = read.viewport;
-                plane.visit({ x, y, width, height }, (x, y, cell) => cells.push({ x, y, ...cell }));
-              }
-              const content = read.content;
-              return {
-                canvasId: sessions.forFile(file)?.id,
-                ...read,
-                content,
-                ...(input.representation === 'cells' ? { cells } : {}),
-                contentBlocks: [{ type: 'text', text: content }],
-              };
+              const request = parseCanvasReadRequest(input);
+              if (!request) return INVALID_CANVAS_READ;
+              return await readCanvasSurface(plane, request, {
+                ...(readAppearance() ?? defaultAppearance),
+                target: { canvasId: sessions.forFile(file)?.id },
+                renderImage: async (plan) => {
+                  const { renderLocalReadImage } = await import('./readImage.ts');
+                  return renderLocalReadImage(plan);
+                },
+              });
             }
             if (contract.name === 'canvas_undo') {
               if (!persistentHistory)

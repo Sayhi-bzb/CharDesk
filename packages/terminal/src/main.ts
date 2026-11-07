@@ -84,7 +84,17 @@ export async function runTerminal(args: string[] = process.argv.slice(2)) {
         sessions = opened.sessions;
         persistence = opened.persistence;
         const { startLocalEndpoint } = await import('../../local-runtime/src/ipc.ts');
-        stopEndpoint = await startLocalEndpoint(paths, workspace, sessions);
+        stopEndpoint = await startLocalEndpoint(paths, workspace, sessions, () => {
+          const snapshot = appearance!.getSnapshot();
+          if (!snapshot.palette) return undefined;
+          return {
+            theme: snapshot.mode === 'dark' ? 'dark' : 'light',
+            palette: {
+              color: snapshot.palette.foreground,
+              background: snapshot.palette.background,
+            },
+          };
+        });
         const restored = opened.restored;
         const { model } = workspace;
         const { createCliRenderer, RGBA, NativeSession } = await import('@opentui/core');
