@@ -626,7 +626,7 @@ export class CanvasSurface extends Renderable {
         action.label,
         action.x,
         action.y,
-        this.panel?.busy ? this.colors.muted : this.colors.foreground,
+        this.panel?.busy ? this.colors.muted : this.colors.accent,
         this.colors.chrome,
         action.width
       );
