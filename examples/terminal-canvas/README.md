@@ -45,7 +45,7 @@ Edit; choose Dock Edit to return to text/selection.
 | Arrows / Ctrl+arrows in Edit                                  | Move cursor / selected range                                     |
 | Esc                                                           | Cancel live drag first, otherwise clear selection; keep the tool |
 | Enter in Edit                                                 | Newline                                                          |
-| Tab / Shift+Tab                                               | Focus next / previous footer Edit, Hand or Style control                   |
+| Tab / Shift+Tab                                               | Focus next / previous footer Edit, Hand or Style control         |
 | Enter / Space with control focus                              | Run focused button                                               |
 | Esc with control focus                                        | Return to canvas; preserve selection                             |
 | Delete / Backspace in Edit                                    | Erase a complete grapheme or selection                           |
@@ -108,7 +108,7 @@ keyboard-release protocol or system helper.
 
 [`terminalPolicy.ts`](src/terminalPolicy.ts) selects documented behavior from the
 environment and later OpenTUI terminal identity replies. Kitty keyboard support
-alone does not establish Command or mouse forwarding. Help and the status hint
+alone does not establish Command or mouse forwarding. Help and effective shortcuts
 follow that policy; user shortcut overrides remain authoritative.
 
 | Terminal path                   | Shift+click                                                                                                                                   | Copy on macOS                                                                                                                                                                                                             |
@@ -322,9 +322,9 @@ remain separate from native-file reloading.
 ### Status bar
 
 The header occupies one terminal row; the canvas starts immediately below it.
-The bottom two rows contain the footer Dock and operation status/keyboard hints. An active
-panel, context menu or Help replaces the dock with its context, status and hints.
-Panel messages appear here, outside the panel. Closing an overlay restores the dock.
+The footer's first row contains the Dock or one surface title with essential commands.
+Selected tabs and detailed shortcut instructions are not repeated; F1 owns the full guide.
+The second row carries operation feedback and errors. Closing an overlay restores the Dock.
 Header and footer drawing, focus and hit-testing use the same control geometry, including after resize.
 
 ### Selection and navigation

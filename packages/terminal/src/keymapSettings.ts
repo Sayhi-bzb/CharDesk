@@ -67,12 +67,10 @@ export class TerminalKeymapSettings {
         this.leave();
         return this.refresh(panel);
       }
-      panel.status = `${this.#name(entry)} · ${entry.id}`;
+      panel.status = this.#name(entry);
       panel.hint = this.recording
-        ? this.surface.t('Press up to 2 strokes · Enter save · Esc cancel recording')
-        : this.surface.t(
-            'Type binding(s), separated by / · F5 record · ↑↓ action · Enter · Esc back'
-          );
+        ? this.surface.t('Enter save · Esc cancel')
+        : this.surface.t('F5 record · Enter save · Esc back');
       panel.items = [
         this.surface.t('Record replacement'),
         this.surface.t('Save binding'),
@@ -91,10 +89,8 @@ export class TerminalKeymapSettings {
             .includes(this.#query.toLowerCase())
       );
       panel.input = this.#query;
-      panel.status = this.surface.t(
-        'Search actions; shortcuts work only when forwarded by the terminal.'
-      );
-      panel.hint = this.surface.t('Type to search · ↑↓ select · Enter edit · Esc close');
+      panel.status = undefined;
+      panel.hint = this.surface.t('Enter edit · Esc close');
       panel.items = [
         ...this.#entries.map(
           (entry) =>

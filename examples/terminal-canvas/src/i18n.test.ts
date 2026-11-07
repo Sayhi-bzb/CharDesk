@@ -139,8 +139,8 @@ test('Settings changes language immediately and keeps selection, document, tool 
     expect(f.surface.panel!.selected).toBe(language);
     expect(f.surface.panel!.items[language]).toContain('简体中文');
     expect(f.surface.panel!.tabs).toEqual(['外观', '导航', '粘贴', '快捷键', '渲染']);
-    expect(f.setup.captureCharFrame()).toContain('设置 · 外观');
-    expect(f.setup.captureCharFrame()).toContain('Tab 切换分区');
+    expect(f.setup.captureCharFrame()).toContain('设置 · Tab 分区 · Enter 更改');
+    expect(f.setup.captureCharFrame()).toContain('Tab 分区');
     await f.escape();
     const frame = f.setup.captureCharFrame();
     expect(frame).toContain('[设置] [小地图] [会话]');
@@ -198,7 +198,8 @@ test('Chinese Style, help, context menu and nested Settings remain operable', as
     await f.escape();
     f.surface.activateDock('settings');
     for (let i = 0; i < 3; i++) f.setup.mockInput.pressTab();
-    expect(f.surface.panel!.status).toContain('搜索操作');
+    expect(f.surface.panel!.status).toBeUndefined();
+    expect(f.surface.statusBar).toMatchObject({ context: '设置', hint: 'Enter 编辑 · Esc 关闭' });
     expect(f.surface.panel!.items.some((item) => item.startsWith('复制 '))).toBe(true);
     f.setup.mockInput.pressTab();
     expect(f.surface.panel!.items[0]).toContain('Markdown 正文自动换行');

@@ -101,7 +101,7 @@ for (const kitty of [false, true]) {
         expect(f.clipboardCalls).toBe(0);
         await f.setup.renderOnce();
         expect(f.setup.renderer.getCursorState().visible).toBe(false);
-        expect(f.setup.captureCharFrame()).toContain('Esc canvas');
+        expect(f.setup.captureCharFrame()).toContain('Tab switch · Enter / Space choose');
         const focused = f.surface.focusedDockControl!;
         f.setup.renderer.currentRenderBuffer.withBuffers((cells) => {
           const at = focused.y * cells.width + focused.x;

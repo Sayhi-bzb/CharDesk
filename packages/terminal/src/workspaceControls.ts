@@ -253,9 +253,8 @@ export class WorkspaceControls {
         this.#includeArchived = index === 1;
         this.documents();
       },
-      hint: this.surface.t('Tab list · ↑↓ select · Enter open · N new · O file · Esc close'),
-      status: this.surface
-        .t`R rename · D copy · A ${this.#includeArchived ? this.surface.t('restore') : this.surface.t('archive')} · S source · X remove · Del close · F5 refresh`,
+      hint: this.surface
+        .t`R rename · D copy · A ${this.#includeArchived ? this.surface.t('restore') : this.surface.t('archive')} · Del close · F5 refresh`,
       items: [
         ...records.map(
           (record) =>
@@ -326,7 +325,7 @@ export class WorkspaceControls {
         dialog: true,
         title: this.surface.t`Remove ${record.name}`,
         status: record.path,
-        hint: this.surface.t('↑↓ select · Enter confirm · Esc cancel'),
+        hint: this.surface.t('Enter confirm · Esc cancel'),
         selected: 0,
         items: record.removing
           ? [this.surface.t('Cancel'), this.surface.t('Recover interrupted removal')]
@@ -364,7 +363,7 @@ export class WorkspaceControls {
     const files = [...this.workspace.files];
     const panel: TerminalPanel = {
       title: this.surface.t('Documents'),
-      hint: this.surface.t('↑↓ / Enter · Delete close · Esc return'),
+      hint: this.surface.t('Enter open · Del close'),
       items: [
         ...files.map(
           (file) =>
@@ -457,8 +456,7 @@ export class WorkspaceControls {
     this.#searchPages = [undefined];
     this.#searchPage = 0;
     const updateHint = () => {
-      panel.hint = this.surface
-        .t`Enter find / jump · F10 ${this.#regex ? 'RE2' : 'literal'} · F11 ${this.#ignoreCase ? 'Aa=aa' : 'Aa≠aa'} · Esc`;
+      panel.hint = this.surface.t('Enter find · Esc close');
     };
     const run = () => {
       try {
@@ -547,7 +545,7 @@ export class WorkspaceControls {
   anchors() {
     const panel: TerminalPanel = {
       title: this.surface.t('Anchors'),
-      hint: this.surface.t('Enter jump · N add · R rename · T reattach · Delete remove · Esc'),
+      hint: this.surface.t('Enter jump · N add · R rename'),
       items: [],
       selected: 0,
     };
@@ -654,8 +652,7 @@ export class WorkspaceControls {
         ? candidates.map((item) => `${item.label}  ${item.width}×${item.height}`)
         : [this.surface.t('No templates found')];
       panel.selected = 0;
-      panel.hint = this.surface
-        .t`F10 group: ${this.surface.t(group === 'all' ? 'All' : group === 'component' ? 'Component' : 'Template')} · Enter preview · Esc`;
+      panel.hint = this.surface.t('Enter preview · F10 group');
       this.surface.requestRender();
     };
     panel.onInput = refresh;
@@ -714,9 +711,7 @@ export class WorkspaceControls {
     const settings = model.drawingSettings;
     const panel: TerminalPanel = {
       title: this.surface.t('Drawing tools'),
-      hint: this.surface.t(
-        'Enter choose · C glyph · L library · F foreground · B background · Esc return'
-      ),
+      hint: this.surface.t('Enter choose · Esc close'),
       items: drawingTools.map(
         (tool) =>
           `${this.surface.t(drawingLabel(tool.id))}${tool.id === 'brush' ? `  ${settings.char}` : ''}${tool.id === model.currentTool ? ' ✓' : ''}`
@@ -731,8 +726,7 @@ export class WorkspaceControls {
       if (!tool) return;
       model.setTool(tool.id);
       this.dismiss();
-      this.surface.status = this.surface
-        .t`${this.surface.t(drawingLabel(tool.id))} · Dock Edit for text editing · ${this.surface.shortcuts.tools.label} tools`;
+      this.surface.status = this.surface.t(drawingLabel(tool.id));
     };
     panel.onPick = pick;
     this.#show('tools', panel, pick, (key) => {
@@ -761,8 +755,7 @@ export class WorkspaceControls {
       input: '',
       items: [],
       selected: 0,
-      hint: this.surface
-        .t`Current: ${model.drawingSettings[key] ?? this.surface.t('follows foreground')} · ${key === 'char' ? this.surface.t('one grapheme') : '#RRGGBB'} · Enter / Esc`,
+      hint: this.surface.t('Enter apply · Esc cancel'),
     };
     this.#show('drawing-setting', panel, () => {
       try {
@@ -789,7 +782,7 @@ export class WorkspaceControls {
     const panel: TerminalPanel = {
       dialog: true,
       title: this.surface.t('Export'),
-      hint: this.surface.t('↑↓ select · Enter choose path · Esc close'),
+      hint: this.surface.t('Enter choose · Esc close'),
       items: choices.map(
         ({ scope, format }) =>
           `${scope === 'canvas' ? this.surface.t('Canvas') : this.surface.t('Selection')}    ${format.toUpperCase()}`
@@ -825,7 +818,7 @@ export class WorkspaceControls {
           title: this.surface
             .t`Export ${this.surface.t(choice.scope === 'canvas' ? 'Canvas' : 'Selection')} as ${choice.format.toUpperCase()}`,
           input: '',
-          hint: this.surface.t('New file path · Enter export · Esc cancel'),
+          hint: this.surface.t('Enter export · Esc cancel'),
           items: [],
           selected: 0,
           onClose: () => this.dismiss(),
@@ -888,7 +881,7 @@ export class WorkspaceControls {
       dialog: true,
       title: this.surface.t('Source'),
       status: this.#sourceDescription(),
-      hint: this.surface.t('↑↓ select · Enter run · Esc close'),
+      hint: this.surface.t('Enter run · Esc close'),
       items: [
         this.surface.t('Check for external changes'),
         this.surface.t('Reload native document from disk'),
@@ -922,7 +915,7 @@ export class WorkspaceControls {
     const panel: TerminalPanel = {
       dialog: true,
       title: this.surface.t('Selection and navigation'),
-      hint: this.surface.t('↑↓ select · Enter run · Esc close'),
+      hint: this.surface.t('Enter run · Esc close'),
       status: this.surface.t('Rows and columns span content, current cell and selection bounds.'),
       items: actions.map((entry) => `${entry.label}    ${this.surface.shortcuts[entry.id].label}`),
       selected: 0,

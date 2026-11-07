@@ -20,7 +20,7 @@ import {
 } from '@opentui/core';
 import { cellRectContainsPoint, intersectCellRects, type CellRect } from '@chardesk/cell-core';
 import { getGraphemeCellWidth, iterateGraphemes } from '@chardesk/protocol';
-import { localizedMessages, helpLines, rangeClickHint } from './copy.ts';
+import { localizedMessages, helpLines } from './copy.ts';
 import type { TerminalCanvas } from '../../local-runtime/src/model.ts';
 import { TerminalMinimap, minimapPanel, type MinimapFrame } from './minimap.ts';
 import { TerminalLinkText, type LinkedGlyph } from './linkText.ts';
@@ -616,9 +616,9 @@ export class CanvasSurface extends Renderable {
     }
     const statusBar = this.statusBar;
     const titleX = dock.length ? dock.at(-1)!.x + dock.at(-1)!.width + 1 : 0;
-    if (statusBar.context)
-      this.#line(buffer, ` ${statusBar.context}`, titleX, footer, this.colors.accent);
-    this.#line(buffer, ` ${statusBar.hint}`, 0, footer + 1);
+    const footerLabel = [statusBar.context, statusBar.hint].filter(Boolean).join(' · ');
+    this.#line(buffer, ` ${footerLabel}`, titleX, footer, this.colors.accent);
+    this.#line(buffer, ` ${statusBar.status ?? ''}`, 0, footer + 1);
     if (this.help) {
       buffer.fillRect(
         0,
@@ -765,48 +765,33 @@ export class CanvasSurface extends Renderable {
       );
   }
 
-  get statusBar() {
+  get statusBar(): { context: string; hint: string; status?: string } {
     const copy = this.messages;
     if (this.closing) return { context: copy.closing, hint: '' };
     if (this.panel) {
-      const section = this.panel.tabs?.[this.panel.selectedTab ?? 0];
-      const context = [
-        this.panel.title,
-        section,
-        this.panel.error || this.status || this.panel.status,
-      ]
-        .filter(Boolean)
-        .join(' · ');
-      return { context, hint: this.panel.hint };
+      return {
+        context: this.panel.title,
+        hint: this.panel.hint,
+        status: this.panel.error || this.status || this.panel.status,
+      };
     }
     if (this.contextMenu?.isOpen)
       return {
         context: this.t('Context menu'),
-        hint: this.t('↑↓ / Tab select · Enter run · Esc close'),
+        hint: this.t('Enter run · Esc close'),
       };
-    if (this.help) return { context: copy.help, hint: this.t`${copy.closeHelp} · ↑↓ scroll` };
-    if (this.inspector?.focused) return { context: '', hint: this.inspector.hint };
+    if (this.help) return { context: copy.help, hint: this.t('Esc close') };
+    if (this.inspector?.focused) return { context: copy.inspector, hint: this.inspector.hint };
     if (this.focusedDockControl)
       return {
         context: '',
         hint: this
-          .t`${this.shortcuts['dock-next'].label} / ${this.shortcuts['dock-previous'].label} select · ${this.shortcuts['dock-activate'].label} run · Esc canvas`,
+          .t`${this.shortcuts['dock-next'].label} switch · ${this.shortcuts['dock-activate'].label} choose`,
       };
-    if (!this.hasDocument)
-      return {
-        context: '',
-        hint: this.t`${this.shortcuts.new.label} New canvas · Header Sessions · F10 Open · F1 Help`,
-      };
-    const editHint = rangeClickHint(this.inputPolicy, this.t) ?? copy.editHint;
-    const actionHint = this
-      .t`${this.tool === 'hand' ? copy.handHint : editHint} · ${this.shortcuts['dock-next'].label} controls · ${this.shortcuts.copy.label} ${copy.copy} · ${this.shortcuts.paste.label} ${copy.paste}`;
-    const hint =
+    if (!this.hasDocument) return { context: '', hint: '' };
+    const status =
       (this.model.getSnapshot().drawingError
         ? this.t('Drawing is too large. Try a smaller area.')
-        : '') ||
-      (this.placement
-        ? this
-            .t`${this.placement.label} · Enter place · Shift+arrows 10 cells · Option pan · Esc cancel`
         : '') ||
       this.sourceStatus ||
       this.status ||
@@ -815,8 +800,12 @@ export class CanvasSurface extends Renderable {
         ? copy.minimapSmall
         : this.widthFallbacks
           ? copy.width
-          : actionHint);
-    return { context: '', hint };
+          : '');
+    return {
+      context: this.placement?.label ?? '',
+      hint: '',
+      status,
+    };
   }
 
   get helpLines() {

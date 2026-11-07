@@ -161,6 +161,29 @@ test('cancelling managed creation preserves its durable record without stealing 
   }
 });
 
+test('Chinese session commands fit 80 columns while errors keep their own footer row', async () => {
+  const f = await fixture();
+  try {
+    f.surface.settings.set('language', 'zh-CN');
+    await f.setup.resize(80, 30);
+    await f.sessions.create('当前画布');
+    f.surface.activateDock('documents');
+    await f.setup.renderOnce();
+    const footer = '会话 · R 重命名 · D 复制 · A 归档 · Del 关闭 · F5 刷新';
+    let frame = f.setup.captureCharFrame().split('\n');
+    expect(frame[28]?.trim()).toBe(footer);
+    expect(frame[29]?.trim()).toBe('');
+    expect(f.surface.panel?.tabs).toEqual(['画布', '已归档']);
+    f.surface.panel!.error = '无法读取源文件';
+    await f.setup.renderOnce();
+    frame = f.setup.captureCharFrame().split('\n');
+    expect(frame[28]?.trim()).toBe(footer);
+    expect(frame[29]?.trim()).toBe('无法读取源文件');
+  } finally {
+    await f.dispose();
+  }
+});
+
 test('Sessions reuse the Settings dialog geometry, tabs, footer and outside dismissal without editing the canvas', async () => {
   const f = await fixture();
   try {
@@ -187,12 +210,15 @@ test('Sessions reuse the Settings dialog geometry, tabs, footer and outside dism
     expect(frame[l.y]).toContain('┌ Sessions');
     expect(frame[l.y]).not.toContain('×');
     expect(frame.slice(l.y, l.y + l.height).join('\n')).not.toContain('Tab list');
-    expect(frame[f.setup.renderer.height - 2]).toContain('Sessions · Canvases');
-    expect(frame[f.setup.renderer.height - 1]).toContain('Tab list');
+    expect(frame[f.setup.renderer.height - 2]?.trim()).toBe(
+      'Sessions · R rename · D copy · A archive · Del close · F5 refresh'
+    );
+    expect(frame[f.setup.renderer.height - 1]?.trim()).toBe('');
     const archivedTab = f.surface.panelTabControls[1]!;
     await f.setup.mockMouse.click(archivedTab.x + 1, archivedTab.y);
     expect(f.surface.panel?.selectedTab).toBe(1);
     expect(f.surface.panel?.items[0]).toBe('Archived canvas');
+    expect(f.surface.statusBar.hint).toBe('R rename · D copy · A restore · Del close · F5 refresh');
     f.setup.mockInput.pressTab({ shift: true });
     expect(f.surface.panel?.selectedTab).toBe(0);
     expect(f.surface.panel?.items[0]).toContain('Working');

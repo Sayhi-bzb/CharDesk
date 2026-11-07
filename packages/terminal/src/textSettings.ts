@@ -30,13 +30,11 @@ export class TerminalTextSettings {
     panel.title = this.surface.t('Settings');
     panel.status =
       this.#stage === 'main'
-        ? this.surface.t(
-            'Changes affect the next text render; terminal font and size remain terminal preferences.'
-          )
+        ? undefined
         : this.#stage === 'feature-slots'
           ? `${this.#feature.replaceAll('-', ' ')} · ${this.surface.t(this.#mode === 'light' ? 'Light' : 'Dark')}`
           : `${({ width: this.surface.t('Wrap width'), features: this.surface.t('Rendering features'), 'feature-pick': this.surface.t('Feature colors'), tokens: this.surface.t('Semantic colors'), color: this.#colorTarget?.slot ?? this.surface.t('Color') } as Record<string, string>)[this.#stage]} · ${this.surface.t(this.#mode === 'light' ? 'Light' : 'Dark')}`;
-    panel.hint = this.surface.t('↑↓ select · Enter change · Esc back · Tab section');
+    panel.hint = this.surface.t('Enter change · Esc back');
     panel.onInput = undefined;
     panel.onPick = (index) => {
       panel.selected = index;
@@ -85,11 +83,7 @@ export class TerminalTextSettings {
       ];
     } else {
       panel.items = [this.surface.t('Apply')];
-      panel.hint =
-        this.#stage === 'width'
-          ? this.surface
-              .t`${MARKDOWN_WRAP_WIDTH_MIN}–${MARKDOWN_WRAP_WIDTH_MAX} cells · Enter apply · Esc cancel`
-          : this.surface.t('#RRGGBB · Empty follows theme · Enter apply · Esc cancel');
+      panel.hint = this.surface.t('Enter apply · Esc cancel');
     }
     if (this.#stage !== 'width' && this.#stage !== 'color') panel.input = undefined;
     panel.selected = Math.max(0, Math.min(panel.selected, panel.items.length - 1));

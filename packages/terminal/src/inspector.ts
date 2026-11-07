@@ -239,16 +239,13 @@ export class TerminalInspector {
       return (
         this.#color.error ??
         (this.#color.mode === 'palette'
-          ? this.surface.t(
-              'Arrows choose · Enter apply · Tab palette · H hex · R reset · Esc cancel'
-            )
-          : this.surface.t('#RRGGBB · Empty resets · Enter apply · Esc cancel'))
+          ? this.surface.t('Tab palette · Enter apply · Esc cancel')
+          : this.surface.t('Enter apply · Esc cancel'))
       );
     if (this.layout.compact)
       return this.surface
         .t`Enlarge terminal for ${this.surface.messages.inspector} controls · Esc canvas`;
-    return this.surface
-      .t`${this.controls[this.#selected]!.name} · Arrows / Tab select · Enter change · Esc canvas`;
+    return this.surface.t('Enter change · Esc back');
   }
   #target() {
     const model = this.surface.model;

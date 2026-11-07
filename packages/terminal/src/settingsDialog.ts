@@ -83,7 +83,7 @@ export class TerminalSettingsDialog {
     if (!this.isOpen) return;
     const panel = this.#panel!;
     panel.title = this.surface.t('Settings');
-    panel.hint = this.surface.t('Tab section · ↑↓ select · ←→ / Enter change · Esc close');
+    panel.hint = this.surface.t('Tab section · Enter change');
     panel.tabs = sections.map((section) => this.surface.t(section.label));
     panel.selectedTab = this.#section;
     if (sections[this.#section]!.id === 'rendering') {

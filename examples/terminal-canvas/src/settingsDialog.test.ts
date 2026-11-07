@@ -82,8 +82,8 @@ for (const kitty of [false, true]) {
       expect(frame.slice(layout.y, layout.y + layout.height).join('\n')).not.toContain(
         'Tab section'
       );
-      expect(frame[f.setup.renderer.height - 2]).toContain('Settings · Appearance');
-      expect(frame[f.setup.renderer.height - 1]).toContain('Tab section');
+      expect(frame[f.setup.renderer.height - 2]).toContain('Settings · Tab section · Enter change');
+      expect(frame[f.setup.renderer.height - 1]).not.toContain('Tab section');
       expect(f.setup.renderer.getCursorState().visible).toBe(false);
       await f.setup.mockInput.typeText('SHOULD_NOT_TYPE', 0);
       await f.setup.mockInput.pasteBracketedText('SHOULD_NOT_PASTE');
@@ -184,8 +184,8 @@ test('the shared status bar follows focused panels, menus, help and canvas witho
     expect(body).toContain('example.chardesk');
     expect(body).not.toContain('Enter confirm');
     expect(body).not.toContain('File unavailable');
-    expect(lines[setup.renderer.height - 2]).toContain('Open file · File unavailable');
-    expect(lines[setup.renderer.height - 1]).toContain('Enter confirm');
+    expect(lines[setup.renderer.height - 2]?.trim()).toBe('Open file · Enter confirm · Esc cancel');
+    expect(lines[setup.renderer.height - 1]?.trim()).toBe('File unavailable');
     surface.panel = null;
     surface.contextMenu!.open();
     await setup.renderOnce();
@@ -196,10 +196,11 @@ test('the shared status bar follows focused panels, menus, help and canvas witho
     await setup.renderOnce();
     lines = setup.captureCharFrame().split('\n');
     expect(surface.statusBar.context).toBe('Help');
-    expect(lines[setup.renderer.height - 1]).toContain('Esc close help');
+    expect(lines[setup.renderer.height - 2]?.trim()).toBe('Help · Esc close');
     await f.escape();
     expect(surface.statusBar.context).toBe('');
-    expect(surface.statusBar.hint).toBe('Auto saved');
+    expect(surface.statusBar.status).toBe('Auto saved');
+    expect(surface.statusBar.hint).toBe('');
   } finally {
     await f.dispose();
   }

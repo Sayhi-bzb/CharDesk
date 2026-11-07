@@ -99,8 +99,7 @@ export class CharacterPicker {
       hint: '',
     };
     const refreshHint = () => {
-      panel.hint = this.host.surface
-        .t`F10 ${this.#view} · F11 groups/facets · F5/F6 page · F9 retry · Enter`;
+      panel.hint = this.host.surface.t('Enter choose · F11 groups');
     };
     const load = async () => {
       const generation = ++this.#generation;
@@ -224,7 +223,7 @@ export class CharacterPicker {
       input: '',
       items: [this.host.surface.t('Loading…')],
       selected: 0,
-      hint: this.host.surface.t('F9 / Enter / Esc'),
+      hint: this.host.surface.t('Enter choose · Esc back'),
     };
     let choices: Array<{ label: string; choose: () => void }> = [];
     let filtered = choices;
@@ -296,7 +295,7 @@ export class CharacterPicker {
   #actions(record: CharacterRecord) {
     const panel: TerminalPanel = {
       title: `${record.grapheme} · ${record.name}`,
-      hint: 'Enter / Esc',
+      hint: this.host.surface.t('Enter choose · Esc back'),
       items: [
         this.host.surface.t('Insert at cursor or fill selection'),
         this.host.surface.t('Use as brush glyph'),

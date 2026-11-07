@@ -38,7 +38,9 @@ test('header actions reserve one row while footer tools and canvas follow resize
     await setup.renderOnce();
     expect(surface.panel?.title).toBe('Settings');
     expect(surface.dockControls).toEqual([]);
-    expect(setup.captureCharFrame().split('\n')[24]).toContain('Settings · Appearance');
+    expect(setup.captureCharFrame().split('\n')[24]).toContain(
+      'Settings · Tab section · Enter change'
+    );
     setup.mockInput.pressEscape();
     clock.advance(40);
     setup.resize(110, 30);
