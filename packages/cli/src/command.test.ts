@@ -377,3 +377,34 @@ it('inspects the document/v2 format saved by the terminal runtime', async () => 
     model.dispose();
   }
 });
+
+it('renders styled document/v2 cells saved by the terminal runtime to PNG', async () => {
+  const cwd = await temporaryDirectory();
+  const model = new FreeformEditorSession('\u001b[31mA🦀界\u001b[m');
+  try {
+    await writeFile(
+      join(cwd, 'styled.chardesk'),
+      serializeCanvasDocument(model.documents.getDocumentDraft()!, 'Styled')
+    );
+    const output = streams();
+    expect(
+      await runCli(
+        ['render', 'styled.chardesk', '-o', 'styled.png', '--strict', '--json'],
+        output.value,
+        cwd
+      )
+    ).toBe(0);
+    expect(JSON.parse(output.stdout())).toMatchObject({
+      status: 'rendered',
+      inputMode: 'chardesk',
+      columns: 5,
+      rows: 1,
+      diagnostics: [],
+    });
+    expect(Array.from((await readFile(join(cwd, 'styled.png'))).slice(0, 8))).toEqual([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
+  } finally {
+    model.dispose();
+  }
+});

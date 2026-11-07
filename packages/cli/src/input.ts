@@ -1,6 +1,6 @@
 import { parseCanvasDocument } from '@chardesk/editor-core/documentText';
 import { createGridMapSource } from '@chardesk/cell-plane/grid-source';
-import { exportToAnsi } from '@chardesk/cell-plane/text';
+import { exportToCharDesk } from '@chardesk/cell-plane/text';
 import { readFile, stat } from 'node:fs/promises';
 import { basename, extname, resolve } from 'node:path';
 import { parseCharDeskDocumentEnvelope } from '@chardesk/document';
@@ -83,7 +83,7 @@ const resolveDocumentInput = (request: CharDeskInputRequest, source: string) => 
         'invalid-source',
         'Native projection is too large; use chardesk canvas read with a viewport.'
       );
-    return { source: exportToAnsi(surface), inputMode: 'chardesk' as const };
+    return { source: exportToCharDesk(surface), inputMode: 'chardesk' as const };
   }
   return { source: document.body, inputMode: 'chardesk' as const };
 };
