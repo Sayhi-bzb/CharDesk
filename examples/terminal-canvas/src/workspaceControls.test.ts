@@ -198,45 +198,47 @@ test.each(['darwin', 'win32'] as const)(
 );
 
 for (const platform of ['darwin', 'win32', 'linux'] as const) {
-  test(`${platform} primary Find and F8 cover the full terminal workspace without changing the canvas`, async () => {
+  test(`${platform} Find reuses the shared dialog shell with primary shortcuts and F8`, async () => {
     const f = await fixture(platform);
     try {
       const model = f.workspace.model;
-      model.viewport = { ...model.viewport, x: 0, y: 0 };
-      model.apply({
-        rows: Array.from({ length: model.viewport.height }, (_, y) => ({
-          y,
-          erase: [],
-          spans: [{ x: 0, text: '#'.repeat(model.viewport.width), color: '#113355' }],
-        })),
-      });
-      const content = model.plane.materialize();
-      const view = { ...model.viewport };
+      const content = model.plane.materialize(),
+        view = { ...model.viewport };
+      const interaction = structuredClone(model.getSnapshot().interaction);
+      f.surface.activateDock('settings');
+      const sharedLayout = f.surface.panelLayout;
+      f.escape();
       f.primary('f');
       expect(f.surface.panel?.title).toBe('Find on current page');
-      expect(f.surface.panelLayout).toMatchObject({
-        x: 0,
-        y: 0,
-        width: f.setup.renderer.width,
-        height: f.surface.footerBounds.y,
-      });
+      expect(f.surface.panel?.dialog).toBe(true);
+      expect(f.surface.panelLayout).toEqual(sharedLayout);
       await f.setup.renderOnce();
       let frame = f.setup.captureCharFrame().split('\n');
-      expect(frame[0]).toContain('Find on current page');
-      expect(frame.slice(0, f.surface.footerBounds.y).join('\n')).not.toContain('#');
+      expect(frame[sharedLayout.y]).toContain('┌ Find on current page');
+      expect(frame[sharedLayout.y + sharedLayout.height - 1]).toContain('└');
+      expect(frame[f.surface.footerBounds.y]).toContain(
+        'Find on current page · Enter find · Esc close'
+      );
       await f.setup.resize(80, 24);
       await f.setup.renderOnce();
-      expect(f.surface.panelLayout).toMatchObject({ x: 0, y: 0, width: 80, height: 22 });
+      const resized = f.surface.panelLayout;
+      expect(resized.x).toBeGreaterThan(0);
+      expect(resized.y).toBeGreaterThan(0);
+      expect(resized.width).toBe(76);
       f.escape();
       f.setup.mockInput.pressKey(platform === 'darwin' ? '\x1b[102;9u' : '\x1b[102;5u');
-      expect(f.surface.panel?.title).toBe('Find on current page');
+      expect(f.surface.panel?.dialog).toBe(true);
       f.escape();
       f.setup.mockInput.pressKey(KeyCodes.F8);
-      expect(f.surface.panel?.title).toBe('Find on current page');
-      expect(model.plane.materialize()).toEqual(content);
-      expect(model.viewport).toMatchObject({ x: view.x, y: view.y });
+      expect(f.surface.panel?.dialog).toBe(true);
+      await f.setup.renderOnce();
       frame = f.setup.captureCharFrame().split('\n');
-      expect(frame[0]).toContain('Find on current page');
+      expect(frame[resized.y]).toContain('┌ Find on current page');
+      await f.setup.mockMouse.click(0, 0);
+      expect(f.surface.panel).toBeNull();
+      expect(model.plane.materialize()).toEqual(content);
+      expect(model.getSnapshot().interaction).toEqual(interaction);
+      expect(model.viewport).toMatchObject({ x: view.x, y: view.y });
     } finally {
       await f.dispose();
     }

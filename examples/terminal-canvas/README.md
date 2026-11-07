@@ -331,8 +331,8 @@ The header occupies one terminal row; the canvas starts immediately below it.
 The footer's first row contains the Dock or one surface title with essential commands.
 Selected tabs and detailed shortcut instructions are not repeated; F1 owns the full guide.
 The second row carries operation feedback and errors. Closing an overlay restores the Dock.
-Full-screen panels such as Find cover the terminal from the top-left edge to the
-footer, without retaining an empty header row or canvas margins.
+Find uses the shared centered dialog shell, like Settings and Sessions, and keeps
+its essential commands in the footer. Escape or clicking outside dismisses it.
 Header and footer drawing, focus and hit-testing use the same control geometry, including after resize.
 
 ### Selection and navigation

@@ -446,6 +446,8 @@ export class WorkspaceControls {
   search() {
     this.#result = null;
     const panel: TerminalPanel = {
+      dialog: true,
+      onClose: () => this.dismiss(),
       title: this.surface.t('Find on current page'),
       input: this.#query,
       hint: '',
