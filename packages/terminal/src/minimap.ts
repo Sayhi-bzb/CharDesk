@@ -22,6 +22,7 @@ export type MinimapFrame = {
   panel: CellRect;
   transform: MinimapTransform;
   viewport: CellRect;
+  /** Two sample rows per terminal row; zero is empty, other values index colors + 1. */
   pixels: Uint32Array;
   colors: readonly MinimapColor[];
   hasContent: boolean;
@@ -47,32 +48,32 @@ export class TerminalMinimap {
       right = -Infinity,
       bottom = -Infinity;
     for (const row of reader.rows()) {
+      const runs = new Map<string, { x: number; y: number; width: number; height: number }>();
       for (const span of row.spans) {
         let x = span.x;
-        let run: { x: number; y: number; width: number; height: number } | null = null;
-        let previousColor = '';
         for (const cell of span.cells) {
-          const { width, color } = describeMinimapCell(cell);
-          if (color) {
-            const key = minimapColorKey(color);
+          const { width, regions } = describeMinimapCell(cell);
+          for (const region of regions) {
+            const key = minimapColorKey(region.color);
             let group = this.#groups.get(key);
             if (!group) {
-              group = { color, spans: [] };
+              group = { color: region.color, spans: [] };
               this.#groups.set(key, group);
             }
-            if (run && previousColor === key) run.width += width;
+            const y = (row.y + region.y) * ROW_ASPECT;
+            const height = region.height * ROW_ASPECT;
+            const runKey = `${key}:${y}:${height}`;
+            const run = runs.get(runKey);
+            if (run && run.x + run.width === x) run.width += width;
             else {
-              run = { x, y: row.y * ROW_ASPECT, width, height: ROW_ASPECT };
-              group.spans.push(run);
+              const next = { x, y, width, height };
+              group.spans.push(next);
+              runs.set(runKey, next);
             }
-            previousColor = key;
             left = Math.min(left, x);
-            top = Math.min(top, row.y * ROW_ASPECT);
+            top = Math.min(top, y);
             right = Math.max(right, x + width);
-            bottom = Math.max(bottom, (row.y + 1) * ROW_ASPECT);
-          } else {
-            run = null;
-            previousColor = '';
+            bottom = Math.max(bottom, y + height);
           }
           x += width;
         }
@@ -103,7 +104,7 @@ export class TerminalMinimap {
     })!;
     const key = JSON.stringify([width, height, transform.worldBounds, transform.scale, foreground]);
     if (this.#raster?.key !== key)
-      this.#raster = { key, ...this.#rasterize(transform, width, height, foreground) };
+      this.#raster = { key, ...this.#rasterize(transform, width, height * ROW_ASPECT, foreground) };
     const { pixels, colors } = this.#raster;
     const box = computeMinimapViewportRect(transform);
     const viewport = {
@@ -142,9 +143,9 @@ export class TerminalMinimap {
       for (const spans of group.sources)
         for (const span of spans) {
           const left = (span.x - transform.worldBounds.x) * transform.scale;
-          const top = ((span.y - transform.worldBounds.y) * transform.scale) / ROW_ASPECT;
+          const top = (span.y - transform.worldBounds.y) * transform.scale;
           const w = span.width * transform.scale,
-            h = (span.height * transform.scale) / ROW_ASPECT;
+            h = span.height * transform.scale;
           const fromX = Math.max(0, Math.floor(left)),
             fromY = Math.max(0, Math.floor(top));
           const toX = Math.min(width, Math.max(fromX + 1, Math.ceil(left + w)));

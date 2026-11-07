@@ -381,17 +381,50 @@ export class CanvasSurface extends Renderable {
     const colors = frame.colors.map((color) =>
       color.kind === 'literal' ? RGBA.fromHex(color.value) : this.colors.foreground
     );
+    const palette = this.appearance.getSnapshot().palette;
+    const luma = (c: RGBA) => c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722;
+    const foreground = palette ? RGBA.fromHex(palette.foreground) : null;
+    const background = palette ? RGBA.fromHex(palette.background) : null;
+    const tint = (color: RGBA) => {
+      let target: RGBA | null = null;
+      if (foreground && background)
+        target =
+          Math.abs(luma(color) - luma(foreground)) >= Math.abs(luma(color) - luma(background))
+            ? foreground
+            : background;
+      const pole = luma(color) < 0.5 ? 1 : 0;
+      return RGBA.fromValues(
+        color.r + ((target?.r ?? pole) - color.r) * 0.18,
+        color.g + ((target?.g ?? pole) - color.g) * 0.18,
+        color.b + ((target?.b ?? pole) - color.b) * 0.18
+      );
+    };
+    const native = (id: number) =>
+      Boolean(id && !palette && frame.colors[id - 1]!.kind === 'foreground');
+    const highlighted = colors.map((color, i) => (native(i + 1) ? color : tint(color)));
     for (let y = 0; y < p.height - 2; y++)
       for (let x = 0; x < width; x++) {
-        const colorIndex = frame.pixels[y * width + x]!;
-        // Content uses FG; the filled viewport uses BG. Both remain visible even
-        // without resolved terminal RGB, and no viewport glyph occludes content.
+        const top = frame.pixels[y * 2 * width + x]!;
+        const bottom = frame.pixels[(y * 2 + 1) * width + x]!;
+        const inside = cellRectContainsPoint(view, { x, y });
+        const inks = inside ? highlighted : colors;
+        const backing = inside ? this.colors.minimapViewport : this.colors.chrome;
+        // Keep an unresolved native foreground in the FG channel; it cannot be
+        // converted to an RGB background without an actual terminal palette.
+        const lowerInk = !top || (bottom && top !== bottom && native(bottom));
+        const ink = lowerInk ? bottom : top;
+        const paper = lowerInk ? top : bottom;
+        const full = top && top === bottom;
+        let glyph = ' ';
+        if (full) glyph = '█';
+        else if (ink) glyph = lowerInk ? '▄' : '▀';
         buffer.drawText(
-          colorIndex ? '▄' : ' ',
+          glyph,
           p.x + 1 + x,
           p.y + 1 + y,
-          colorIndex ? colors[colorIndex - 1]! : this.colors.foreground,
-          cellRectContainsPoint(view, { x, y }) ? this.colors.minimapViewport : this.colors.chrome
+          ink ? inks[ink - 1]! : this.colors.foreground,
+          paper && !full ? inks[paper - 1]! : backing,
+          createTextAttributes({ dim: inside && native(ink) })
         );
       }
     if (!frame.hasContent)

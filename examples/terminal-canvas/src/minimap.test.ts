@@ -218,8 +218,10 @@ test('filled viewport and content use independent colors without internal border
       column += span.width;
       return contains;
     })!;
-    expect(span.text).toContain('▄');
-    expect(span.fg.toInts()).toEqual(RGBA.fromHex('#113355').toInts());
+    expect(span.text).toMatch(/[▀▄█]/u);
+    expect(span.fg.toInts()).not.toEqual(RGBA.fromHex('#113355').toInts());
+    expect(span.fg.b).toBeGreaterThan(span.fg.g);
+    expect(span.fg.g).toBeGreaterThan(span.fg.r);
     expect(span.bg.equals(surface.colors.minimapViewport)).toBe(true);
     const lines = setup.captureCharFrame().split('\n');
     for (let row = map.panel.y + 1; row < map.panel.y + map.panel.height - 1; row++)
@@ -368,7 +370,7 @@ test('tiny distant colored glyphs survive sparse projection without expanding em
         { kind: 'literal', value: '#0000ff' },
       ])
     );
-    expect(frame.pixels.length).toBe(26 * 8);
+    expect(frame.pixels.length).toBe(26 * 16);
     expect(frame.pixels.filter(Boolean).length).toBeGreaterThanOrEqual(2);
   } finally {
     model.dispose();
@@ -379,6 +381,7 @@ test('native map updates authored color and default theme colors without changin
   const setup = await createTestRenderer({ width: 90, height: 28 });
   const model = new TerminalCanvas('A🦀界');
   const surface = new CanvasSurface(setup.renderer, model, 'colored map');
+  model.viewport = { ...model.viewport, x: 200, y: 100 };
   setup.renderer.root.add(surface);
   const detach = attachControls(surface, () => {});
   const palette = (foreground: string) => ({
@@ -400,7 +403,7 @@ test('native map updates authored color and default theme colors without changin
     expect(index).toBeGreaterThanOrEqual(0);
     setup.renderer.currentRenderBuffer.withBuffers((cells) => {
       const at =
-        (frame.panel.y + 1 + Math.floor(index / width)) * cells.width +
+        (frame.panel.y + 1 + Math.floor(index / width / 2)) * cells.width +
         frame.panel.x +
         1 +
         (index % width);
@@ -472,22 +475,22 @@ test('unknown default RGB remains native foreground on content while viewport fi
     };
     const corner = at(x, y),
       interior = at(x + 1, y + 1);
-    expect(corner.text).toContain('▄');
-    expect(interior.text).toContain('▄');
+    expect(corner.text).toMatch(/[▀▄█]/u);
+    expect(interior.text).toMatch(/[▀▄█]/u);
     for (const span of [corner, interior]) {
       expect(span.fg.intent).toBe('default');
       expect(span.bg.intent).toBe('indexed');
       expect(span.bg.slot).toBe(8);
       expect(span.attributes & createTextAttributes({ inverse: true })).toBe(0);
     }
-    expect(setup.captureCharFrame()).not.toContain('█');
+    expect(interior.attributes & createTextAttributes({ dim: true })).not.toBe(0);
   } finally {
     await setup.dispose();
     model.dispose();
   }
 });
 
-test('viewport fill covers empty cells and follows pan without changing content colors or history', async () => {
+test('viewport tints preview colors and follows pan without changing document or history', async () => {
   const setup = await createTestRenderer({ width: 90, height: 28 });
   const model = new TerminalCanvas();
   const surface = new CanvasSurface(setup.renderer, model, 'viewport fill');
@@ -523,17 +526,23 @@ test('viewport fill covers empty cells and follows pan without changing content 
           x < frame.viewport.x + frame.viewport.width &&
           y >= frame.viewport.y &&
           y < frame.viewport.y + frame.viewport.height;
-        expect(
-          span.bg.equals(inside ? surface.colors.minimapViewport : surface.colors.chrome)
-        ).toBe(true);
-        const id = frame.pixels[y * (frame.panel.width - 2) + x]!;
+        const w = frame.panel.width - 2;
+        const top = frame.pixels[y * 2 * w + x]!,
+          bottom = frame.pixels[(y * 2 + 1) * w + x]!;
+        if (!top || !bottom || top === bottom)
+          expect(
+            span.bg.equals(inside ? surface.colors.minimapViewport : surface.colors.chrome)
+          ).toBe(true);
+        const id = top || bottom;
         if (id) {
           occupied++;
           const color = frame.colors[id - 1]!;
           expect(color.kind).toBe('literal');
-          if (color.kind === 'literal')
-            expect(span.fg.toInts()).toEqual(RGBA.fromHex(color.value).toInts());
-          expect(span.text).toContain('▄');
+          if (color.kind === 'literal') {
+            if (inside) expect(span.fg.toInts()).not.toEqual(RGBA.fromHex(color.value).toInts());
+            else expect(span.fg.toInts()).toEqual(RGBA.fromHex(color.value).toInts());
+          }
+          expect(span.text).toMatch(/[▀▄█]/u);
         } else if (inside) insideEmpty++;
         else outsideEmpty++;
       }
@@ -585,7 +594,40 @@ test('partial projected footprints vote independently in adjacent minimap cells'
     expect([...frame.pixels].map((id) => frame.colors[id - 1])).toEqual([
       { kind: 'literal', value: '#0000ff' },
       { kind: 'literal', value: '#ff0000' },
+      { kind: 'literal', value: '#0000ff' },
+      { kind: 'literal', value: '#ff0000' },
     ]);
+  } finally {
+    model.dispose();
+  }
+});
+
+test('miniature raster retains both half-block colors at their exact sample coordinates', () => {
+  const model = new TerminalCanvas();
+  try {
+    model.apply({
+      rows: [
+        {
+          y: 0,
+          erase: [],
+          spans: [
+            { x: 0, text: '▀', color: '#ff0000', bgColor: '#0000ff' },
+            { x: 1, text: '▄', color: '#ffff00', bgColor: '#00ff00' },
+          ],
+        },
+      ],
+    });
+    const frame = new TerminalMinimap().frame(
+      model.plane,
+      model.plane.getRevision(),
+      { x: 0, y: 0, width: 4, height: 2 },
+      { x: 0, y: 0, width: 6, height: 4 }
+    );
+    const paint = (x: number, y: number) => frame.colors[frame.pixels[y * 4 + x]! - 1];
+    expect(paint(0, 0)).toEqual({ kind: 'literal', value: '#ff0000' });
+    expect(paint(0, 1)).toEqual({ kind: 'literal', value: '#0000ff' });
+    expect(paint(1, 0)).toEqual({ kind: 'literal', value: '#00ff00' });
+    expect(paint(1, 1)).toEqual({ kind: 'literal', value: '#ffff00' });
   } finally {
     model.dispose();
   }

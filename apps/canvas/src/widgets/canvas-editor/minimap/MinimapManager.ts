@@ -1,23 +1,20 @@
-import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
-import { isIncrementalCanvasSurfaceReader } from "@/domains/canvas/public";
+import { DEFAULT_CANVAS_CELL_METRICS } from '@/shared/fonts/canvas-profile';
+import { isIncrementalCanvasSurfaceReader } from '@/domains/canvas/public';
 import {
   clampMinimapCameraCenter,
   computeMinimapTransformFromBounds,
   computeMinimapViewportRect,
   lockMinimapPointToAxis,
   minimapPointToWorld,
-} from "./geometry";
+} from './geometry';
 import type {
   MinimapDimensions,
   MinimapRect,
   MinimapRenderSnapshot,
   MinimapTransform,
-} from "./types";
-import type { Point } from "@/shared/types";
-import {
-  describeMinimapCell,
-  resolveMinimapColor,
-} from "@chardesk/editor-core/minimap/content";
+} from './types';
+import type { Point } from '@/shared/types';
+import { describeMinimapCell, resolveMinimapColor } from '@chardesk/editor-core/minimap/content';
 
 type MinimapContentChunk = {
   paths: Map<string, Path2D>;
@@ -40,12 +37,12 @@ export class MinimapManager {
   private transform: MinimapTransform | null = null;
   private viewportRect: MinimapRect | null = null;
   private cachedContentRevision: unknown;
-  private cachedReader: MinimapRenderSnapshot["reader"] | null = null;
+  private cachedReader: MinimapRenderSnapshot['reader'] | null = null;
   private hasCachedContent = false;
   private cachedContentBounds: MinimapRect | null = null;
   private lastRenderedViewportKey: string | null = null;
   private cancelScheduledContentRebuild: (() => void) | null = null;
-  private cachedForeground = "";
+  private cachedForeground = '';
   private contentChunks = new Map<string, MinimapContentChunk>();
 
   constructor(
@@ -54,16 +51,14 @@ export class MinimapManager {
     dimensions: MinimapDimensions,
     padding: number
   ) {
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Minimap: could not get 2D canvas context");
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Minimap: could not get 2D canvas context');
     this.canvas = canvas;
     this.dimensions = dimensions;
     this.padding = padding;
     this.ctx = ctx;
     this.observer =
-      typeof ResizeObserver === "undefined"
-        ? null
-        : new ResizeObserver(() => this.render());
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.render());
     this.observer?.observe(canvas);
     this.observer?.observe(host);
   }
@@ -82,10 +77,7 @@ export class MinimapManager {
   update = (snapshot: MinimapRenderSnapshot) => {
     const previousForeground = this.renderSnapshot?.colors.artifact.color;
     this.renderSnapshot = snapshot;
-    if (
-      previousForeground !== undefined &&
-      previousForeground !== snapshot.colors.artifact.color
-    ) {
+    if (previousForeground !== undefined && previousForeground !== snapshot.colors.artifact.color) {
       this.hasCachedContent = false;
     }
     this.render();
@@ -115,11 +107,7 @@ export class MinimapManager {
       options.clampToWorld
     );
     if (options.clampToContent) {
-      point = clampMinimapCameraCenter(
-        point,
-        transform.contentBounds,
-        transform.viewportBounds
-      );
+      point = clampMinimapCameraCenter(point, transform.contentBounds, transform.viewportBounds);
     }
     if (options.axisOrigin) {
       point = lockMinimapPointToAxis(point, options.axisOrigin);
@@ -132,7 +120,8 @@ export class MinimapManager {
     x: number,
     y: number,
     occupancy: number,
-    color: string
+    color: string,
+    height: number
   ) => {
     const { cellWidth, cellHeight } = DEFAULT_CANVAS_CELL_METRICS;
     const column = floorDiv(x, MINIMAP_CHUNK_COLUMNS);
@@ -141,14 +130,14 @@ export class MinimapManager {
     const pathRect = {
       x: x * cellWidth,
       y: y * cellHeight,
-      width: Math.max(occupancy * cellWidth * 0.9, 1),
-      height: Math.max(cellHeight * 0.9, 1),
+      width: occupancy * cellWidth,
+      height: height * cellHeight,
     };
     const contentRect = {
       x: x * cellWidth,
       y: y * cellHeight,
       width: occupancy * cellWidth,
-      height: cellHeight,
+      height: height * cellHeight,
     };
     let chunk = chunks.get(key);
     if (!chunk) {
@@ -192,11 +181,7 @@ export class MinimapManager {
       : null;
   };
 
-  private rebuildChunk = (
-    state: MinimapRenderSnapshot,
-    column: number,
-    row: number
-  ) => {
+  private rebuildChunk = (state: MinimapRenderSnapshot, column: number, row: number) => {
     const key = chunkKey(column, row);
     this.contentChunks.delete(key);
     const chunks = new Map<string, MinimapContentChunk>();
@@ -210,11 +195,15 @@ export class MinimapManager {
       for (const span of surfaceRow.spans) {
         let x = span.x;
         for (const cell of span.cells) {
-          const { width, color } = describeMinimapCell(cell);
-          if (color) {
+          const { width, regions } = describeMinimapCell(cell);
+          for (const region of regions) {
             this.addCellToChunk(
-              chunks, x, surfaceRow.y, width,
-              resolveMinimapColor(color, state.colors.artifact.color)
+              chunks,
+              x,
+              surfaceRow.y + region.y,
+              width,
+              resolveMinimapColor(region.color, state.colors.artifact.color),
+              region.height
             );
           }
           x += width;
@@ -234,33 +223,23 @@ export class MinimapManager {
     ) {
       return;
     }
-    const incrementalReader = isIncrementalCanvasSurfaceReader(state.reader)
-      ? state.reader
-      : null;
+    const incrementalReader = isIncrementalCanvasSurfaceReader(state.reader) ? state.reader : null;
     const canIncrement =
       this.hasCachedContent &&
       this.cachedReader === state.reader &&
-      typeof this.cachedContentRevision === "number" &&
-      typeof state.contentRevision === "number" &&
+      typeof this.cachedContentRevision === 'number' &&
+      typeof state.contentRevision === 'number' &&
       this.cachedForeground === state.colors.artifact.color &&
       incrementalReader !== null;
     if (canIncrement && incrementalReader) {
-      const changes = incrementalReader.getChangesSince(
-        this.cachedContentRevision as number
-      );
+      const changes = incrementalReader.getChangesSince(this.cachedContentRevision as number);
       if (!changes.full) {
         const dirtyChunks = new Set<string>();
         for (const dirty of changes.bounds) {
           const minColumn = floorDiv(dirty.x - 1, MINIMAP_CHUNK_COLUMNS);
-          const maxColumn = floorDiv(
-            dirty.x + dirty.width,
-            MINIMAP_CHUNK_COLUMNS
-          );
+          const maxColumn = floorDiv(dirty.x + dirty.width, MINIMAP_CHUNK_COLUMNS);
           const minRow = floorDiv(dirty.y, MINIMAP_CHUNK_ROWS);
-          const maxRow = floorDiv(
-            dirty.y + dirty.height - 1,
-            MINIMAP_CHUNK_ROWS
-          );
+          const maxRow = floorDiv(dirty.y + dirty.height - 1, MINIMAP_CHUNK_ROWS);
           for (let row = minRow; row <= maxRow; row += 1) {
             for (let column = minColumn; column <= maxColumn; column += 1) {
               dirtyChunks.add(chunkKey(column, row));
@@ -268,7 +247,7 @@ export class MinimapManager {
           }
         }
         for (const key of dirtyChunks) {
-          const [column, row] = key.split(",").map(Number);
+          const [column, row] = key.split(',').map(Number);
           this.rebuildChunk(state, column!, row!);
         }
         this.rebuildContentBounds();
@@ -291,11 +270,15 @@ export class MinimapManager {
       for (const span of row.spans) {
         let x = span.x;
         for (const cell of span.cells) {
-          const { width, color } = describeMinimapCell(cell);
-          if (color) {
+          const { width, regions } = describeMinimapCell(cell);
+          for (const region of regions) {
             this.addCellToChunk(
-              this.contentChunks, x, row.y, width,
-              resolveMinimapColor(color, state.colors.artifact.color)
+              this.contentChunks,
+              x,
+              row.y + region.y,
+              width,
+              resolveMinimapColor(region.color, state.colors.artifact.color),
+              region.height
             );
           }
           x += width;
@@ -317,7 +300,7 @@ export class MinimapManager {
     };
     let idleHandle: number | null = null;
     const timeoutHandle = window.setTimeout(() => {
-      if (typeof window.requestIdleCallback === "function") {
+      if (typeof window.requestIdleCallback === 'function') {
         idleHandle = window.requestIdleCallback(rebuild, { timeout: 200 });
       } else {
         rebuild();
@@ -338,15 +321,13 @@ export class MinimapManager {
       state.zoom,
       state.viewportSize.width,
       state.viewportSize.height,
-    ].join(":");
+    ].join(':');
     const contentChanged =
-      this.hasCachedContent &&
-      this.cachedContentRevision !== state.contentRevision;
+      this.hasCachedContent && this.cachedContentRevision !== state.contentRevision;
     if (contentChanged) {
       this.scheduleContentRebuild();
       if (this.lastRenderedViewportKey === viewportKey) return;
-    }
-    else this.rebuildPaths(state);
+    } else this.rebuildPaths(state);
     const transform = computeMinimapTransformFromBounds({
       ...state,
       contentBounds: this.cachedContentBounds,
@@ -354,9 +335,7 @@ export class MinimapManager {
       padding: this.padding,
     });
     this.transform = transform;
-    this.viewportRect = transform
-      ? computeMinimapViewportRect(transform)
-      : null;
+    this.viewportRect = transform ? computeMinimapViewportRect(transform) : null;
 
     const dpr = Math.max(window.devicePixelRatio || 1, 1);
     const width = Math.round(this.dimensions.width * dpr);
@@ -394,22 +373,12 @@ export class MinimapManager {
     }
 
     const viewport = transform.viewportBounds;
-    const radius = Math.min(
-      viewport.width / 4,
-      viewport.height / 4,
-      4 / scale
-    );
+    const radius = Math.min(viewport.width / 4, viewport.height / 4, 4 / scale);
     ctx.beginPath();
     if (radius * scale < 1) {
       ctx.rect(viewport.x, viewport.y, viewport.width, viewport.height);
     } else {
-      ctx.roundRect(
-        viewport.x,
-        viewport.y,
-        viewport.width,
-        viewport.height,
-        radius
-      );
+      ctx.roundRect(viewport.x, viewport.y, viewport.width, viewport.height, radius);
     }
     ctx.globalAlpha = 0.12;
     ctx.fillStyle = state.colors.viewportFill;

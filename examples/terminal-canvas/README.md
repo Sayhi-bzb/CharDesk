@@ -528,22 +528,27 @@ behavior still require validation on each target terminal.
 ### Floating Minimap
 
 Choose **Minimap** in the header in either tool to toggle a 28×10 floating map at the bottom right.
-The viewport stays the same size. Content blocks use authored background color
-when present, otherwise the character foreground; default foreground follows the
-terminal. Plain spaces remain empty; background-colored spaces and complete wide
-glyphs contribute their occupied area. Half-cell content blocks retain their
-foreground color; a filled background rectangle marks the current view without
-internal border glyphs. Viewport fill is derived from terminal foreground and
-background, falling back to terminal palette slot 8 when RGB is unavailable.
-Both channels are drawn together, so content colors and native default foreground
-remain visible throughout the viewport. Click outside the rectangle to center the view;
+The viewport stays the same size. The shared minimap contract decomposes `▀` / `▄`
+into upper/lower foreground/background coverage; `█` uses its foreground.
+Other characters retain background priority, with inherited foreground following
+terminal colors. Plain spaces remain empty; background-colored spaces and complete
+wide glyphs contribute their occupied area.
+
+The TUI samples twice vertically per terminal row and encodes the two colors with
+`▀`, `▄` or `█`, rather than drawing the same lower-half marker everywhere.
+The current viewport tints both preview halves without covering them with border
+glyphs. RGB paints shift toward contrasting terminal foreground/background; when
+those colors are unknown, literal RGB uses a contrast adjustment and unresolved
+native foreground uses terminal dimming. Empty viewport cells retain the native
+background fill. Original document colors remain unchanged.
+Click outside the rectangle to center the view;
 drag inside it to pan while preserving the grab offset. Navigation preserves
 cursor, selection, tool, content and undo history. The overlay consumes pointer
 input, including its border, so clicks never edit the canvas underneath.
 
 Like Web, the map fits the union of visible content and the viewport and updates
 that transform during navigation. Plain spaces do not set content bounds;
-background-colored spaces do. When colors collapse into one terminal cell, the
+background-colored spaces do. When colors collapse into one half-cell sample, the
 greatest accumulated projected area wins; ties use stable color-key order.
 Equal default/authored RGB are combined when the terminal foreground is known.
 Content spans are cached by reader and revision; camera changes reproject them,
