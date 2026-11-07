@@ -455,6 +455,25 @@ test('document changes clear a pending shortcut sequence before it can target an
   }
 });
 
+test.each(['find', 'documents', 'open'])(
+  'Quit reaches the host while the %s dialog owns input',
+  async (dialog) => {
+    const f = await fixture();
+    try {
+      if (dialog === 'find') f.primary('f');
+      else if (dialog === 'documents') f.surface.activateDock('documents');
+      else f.primary('o');
+      expect(f.surface.panel).not.toBeNull();
+      const content = f.workspace.model.plane.materialize();
+      f.setup.mockInput.pressKey('q', { ctrl: true });
+      expect(f.quits).toBe(1);
+      expect(f.workspace.model.plane.materialize()).toEqual(content);
+    } finally {
+      await f.dispose();
+    }
+  }
+);
+
 test('quit delegates automatic saving to the host; dirty document close saves without a choice', async () => {
   const f = await fixture();
   try {

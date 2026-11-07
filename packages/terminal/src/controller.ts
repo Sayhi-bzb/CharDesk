@@ -105,14 +105,16 @@ export function attachControls(
     repeatable = true
   ) => {
     const commandId = `terminal.${id}`;
+    const application = id === 'quit';
     const available = () =>
       !surface.closing &&
       (surface.hasDocument ||
         emptyActions.has(id) ||
         Boolean(surface.panel && panelActions.has(id))) &&
-      !settingsDialog.isOpen &&
-      !(surface.panel && id !== 'help' && id !== 'escape' && !panelActions.has(id)) &&
-      !(surface.help && id !== 'help' && id !== 'escape') &&
+      (application ||
+        (!settingsDialog.isOpen &&
+          !(surface.panel && id !== 'help' && id !== 'escape' && !panelActions.has(id)) &&
+          !(surface.help && id !== 'help' && id !== 'escape'))) &&
       enabled();
     disposers.push(
       editor.commands.register('terminal', {
@@ -133,9 +135,9 @@ export function attachControls(
         label: id === 'inspector' ? 'Style' : undefined,
         shortcuts: keys,
         target: { type: 'command', id: commandId },
-        scope: 'canvas',
+        scope: application ? 'application' : 'canvas',
         repeat: repeatable ? 'allow' : 'ignore',
-        when: () => (id === 'help' || id === 'escape' || !surface.help) && enabled(),
+        when: () => (application || id === 'help' || id === 'escape' || !surface.help) && enabled(),
       })
     );
   };
@@ -482,6 +484,10 @@ export function attachControls(
       return;
     }
     dockClosingKey = null;
+    // Resolve application bindings (including sequence prefixes) before modal input.
+    // The keymap still owns dispatch, user overrides and repeat/release policy.
+    const binding = bindings.resolveEvent(key);
+    if (binding?.scope === 'application') return;
     if (menu.key(key)) {
       consume();
       return;
@@ -499,7 +505,6 @@ export function attachControls(
       consume();
       return;
     }
-    const binding = bindings.resolveEvent(key);
     if (inspector.key(key, binding?.id.replace(/^terminal\./, ''))) {
       consume();
       return;

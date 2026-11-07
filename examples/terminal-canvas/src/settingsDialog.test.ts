@@ -89,7 +89,6 @@ for (const kitty of [false, true]) {
       await f.setup.mockInput.pasteBracketedText('SHOULD_NOT_PASTE');
       f.setup.mockInput.pressKey('y', { ctrl: true });
       f.setup.mockInput.pressKey('x', { super: true });
-      f.setup.mockInput.pressKey('q', { ctrl: true });
       f.setup.mockInput.pressKey(KeyCodes.ARROW_DOWN, { meta: true });
       expect(f.model.editor.commands.canExecute('terminal.copy', undefined)).toBe(false);
       expect(f.model.editor.commands.canExecute('terminal.undo', undefined)).toBe(false);

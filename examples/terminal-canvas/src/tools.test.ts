@@ -99,6 +99,105 @@ test('rebinding changes execution and toolbar/help hints from the same catalog',
 });
 
 for (const kitty of [false, true]) {
+  test.each(['canvas', 'settings', 'recording', 'help', 'menu', 'style', 'color', 'busy'])(
+    `Quit has application scope over %s input (Kitty ${kitty})`,
+    async (owner) => {
+      const f = await fixture('darwin', kitty, 'A🦀');
+      try {
+        f.surface.setTool('edit');
+        f.model.commands.selectAll();
+        const content = f.model.plane.materialize(),
+          selection = structuredClone(f.model.selection);
+        if (owner === 'settings' || owner === 'recording') {
+          f.surface.activateDock('settings');
+          if (owner === 'recording') {
+            f.surface.panel!.onTab!(3);
+            await f.setup.mockInput.typeText('terminal.copy', 0);
+            f.setup.mockInput.pressEnter();
+            f.setup.mockInput.pressKey('F5');
+          }
+        } else if (owner === 'help') f.setup.mockInput.pressKey(KeyCodes.F1);
+        else if (owner === 'menu') f.surface.contextMenu!.open();
+        else if (owner === 'style' || owner === 'color') {
+          f.surface.inspector!.show();
+          expect(f.surface.inspector!.focused).toBe(true);
+          if (owner === 'color') {
+            const control = f.surface.inspector!.controls[5]!;
+            await f.setup.mockMouse.click(control.x + 1, control.y);
+            f.setup.mockInput.pressKey('h');
+            expect(f.surface.inspector!.colorInput).not.toBeNull();
+          }
+        } else if (owner === 'busy') {
+          f.surface.panel = {
+            title: 'Busy',
+            hint: '',
+            items: [],
+            selected: 0,
+            busy: true,
+          };
+        }
+        expect(f.model.editor.commands.canExecute('terminal.quit', undefined)).toBe(true);
+        expect(
+          f.model.editor.keymap.list().find((entry) => entry.id === 'terminal.quit')?.scope
+        ).toBe('application');
+        f.setup.mockInput.pressKey('q', { ctrl: true });
+        expect(f.quits).toBe(1);
+        for (const eventType of ['repeat', 'release'] as const)
+          f.setup.renderer.keyInput.processParsedKey({
+            name: 'q',
+            ctrl: true,
+            meta: false,
+            shift: false,
+            option: false,
+            sequence: '\x11',
+            raw: '\x11',
+            number: false,
+            eventType,
+            source: 'kitty',
+          });
+        expect(f.quits).toBe(1);
+        expect(f.model.plane.materialize()).toEqual(content);
+        expect(f.model.selection).toEqual(selection);
+        expect(f.writes).toBe(0);
+        expect(f.reads).toBe(0);
+      } finally {
+        await f.dispose();
+      }
+    }
+  );
+}
+
+test('modal Quit honors rebinding, disabling and sequence dispatch without leaking prefixes', async () => {
+  const f = await fixture();
+  try {
+    const keymap = f.model.editor.keymap;
+    f.surface.activateDock('settings');
+    keymap.setUserBindings('terminal.quit', [['F12']]);
+    f.setup.mockInput.pressKey('q', { ctrl: true });
+    expect(f.quits).toBe(0);
+    f.setup.mockInput.pressKey('F12');
+    expect(f.quits).toBe(1);
+    keymap.setUserBindings('terminal.quit', []);
+    f.setup.mockInput.pressKey('q', { ctrl: true });
+    f.setup.mockInput.pressKey('F12');
+    expect(f.quits).toBe(1);
+    keymap.setUserBindings('terminal.quit', [['F12', 'Ctrl+Q']]);
+    const panel = structuredClone({
+      input: f.surface.panel?.input,
+      selected: f.surface.panel?.selected,
+    });
+    f.setup.mockInput.pressKey('F12');
+    expect(f.quits).toBe(1);
+    expect({ input: f.surface.panel?.input, selected: f.surface.panel?.selected }).toEqual(panel);
+    f.setup.mockInput.pressKey('q', { ctrl: true });
+    expect(f.quits).toBe(2);
+    expect(f.model.plane.materialize().size).toBe(0);
+  } finally {
+    await f.dispose();
+  }
+});
+
+for (const kitty of [false, true]) {
   test(`default Hand ignores text; Edit accepts lower/upper-case tool letters (Kitty ${kitty})`, async () => {
     const f = await fixture('darwin', kitty);
     try {
