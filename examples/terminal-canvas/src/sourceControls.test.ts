@@ -35,7 +35,7 @@ test('native source monitoring is advisory; Source reload retains the view and d
       serializeCanvasDocument(external.documents.getDocumentDraft()!)
     );
     clock.advance(2000);
-    await wait(() => surface.sourceStatus.includes('changed on disk'));
+    await wait(() => surface.statusBar.status === 'Changed');
     expect(workspace.model.plane.get({ x: 0, y: 0 })?.char).toBe('B');
     setup.mockInput.pressKey('F12', { shift: true });
     expect(surface.panel?.title).toBe('Source');
@@ -45,22 +45,22 @@ test('native source monitoring is advisory; Source reload retains the view and d
     setup.mockInput.pressEnter();
     await wait(() => workspace.model.plane.get({ x: 0, y: 0 })?.char === '🦀');
     expect(workspace.model.viewAt(workspace.model.documents.getActiveAddress())).toEqual(view);
-    expect(surface.sourceStatus).toBe('');
+    expect(surface.statusBar.status ?? '').toBe('');
     expect(workspace.model.canUndo).toBe(false);
     setup.mockInput.pressEscape();
     clock.advance(40);
     await rm(workspace.active.path);
     clock.advance(2000);
-    await wait(() => surface.sourceStatus.includes('missing'));
+    await wait(() => surface.statusBar.status === 'Missing');
     expect(workspace.model.plane.get({ x: 0, y: 0 })?.char).toBe('🦀');
-    const notice = surface.sourceStatus;
+    const notice = surface.statusBar.status ?? '';
     detach();
     detached = true;
     await writeFile(workspace.active.path, workspace.active.baselineSource!);
     clock.advance(6000);
     setup.renderer.emit('focus');
     await Bun.sleep(10);
-    expect(surface.sourceStatus).toBe(notice);
+    expect(surface.statusBar.status ?? '').toBe(notice);
   } finally {
     if (!detached) detach();
     await setup.dispose();

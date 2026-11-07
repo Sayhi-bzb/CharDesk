@@ -328,9 +328,15 @@ remain separate from native-file reloading.
 ### Status bar
 
 The header occupies one terminal row; the canvas starts immediately below it.
-The footer's first row contains the Dock or one surface title with essential commands.
-Selected tabs and detailed shortcut instructions are not repeated; F1 owns the full guide.
-The second row carries operation feedback and errors. Closing an overlay restores the Dock.
+The footer uses one fixed row: Dock or panel context on the left, necessary feedback
+on the right. Routine automatic saving and tool changes stay quiet. Explicit results
+expire; progress appears only for slower operations. Unresolved document and recovery
+errors remain until their owner resolves them, including while overlays are open.
+Details and Source actions (or rebindable Shift+F1) open the owning panel; panel errors and descriptions stay
+inside its body. Selected tabs and detailed shortcut instructions are not repeated;
+F1 owns the full guide.
+The [feedback owner](../../packages/terminal/src/feedback.ts) owns timing and priority;
+[rendered verification](src/footer.test.ts) covers geometry, recovery and disclosure.
 Find uses the shared centered dialog shell, like Settings and Sessions, and keeps
 its essential commands in the footer. Escape or clicking outside dismisses it.
 Header and footer drawing, focus and hit-testing use the same control geometry, including after resize.

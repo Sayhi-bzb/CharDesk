@@ -127,7 +127,7 @@ test('Settings changes language immediately and keeps selection, document, tool 
       tool: f.model.currentTool,
       appearance: f.surface.appearance.getSnapshot().revision,
     };
-    f.surface.backgroundStatus = () => f.surface.messages.autosaved;
+    f.surface.feedback.show(() => f.surface.messages.copied);
     f.surface.activateDock('settings');
     const language = f.surface.panel!.items.findIndex((item) => item.startsWith('Language'));
     expect(language).toBeGreaterThanOrEqual(0);
@@ -147,7 +147,7 @@ test('Settings changes language immediately and keeps selection, document, tool 
     expect(frame).toContain('[编辑] [抓手] [样式]');
     expect(frame).toContain('┌ 样式 ');
     expect(frame).toContain('[文字] [填充] [清除]');
-    expect(frame).toContain('已自动保存');
+    expect(frame).toContain('已复制');
     expect(f.model.plane.materialize()).toEqual(before.source);
     expect(f.model.selection).toEqual(before.selection);
     expect(f.model.viewport).toEqual(before.viewport);

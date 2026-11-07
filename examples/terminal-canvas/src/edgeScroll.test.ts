@@ -228,7 +228,7 @@ test('coordinate exhaustion cancels before changing the viewport or document', a
     f.clock.advance(3000);
     expect(f.model.viewport).toEqual(viewport);
     expect(f.model.gestureState.type).toBe('idle');
-    expect(f.surface.status).toContain('coordinate limit');
+    expect(f.surface.feedback.message?.detail).toContain('coordinate limit');
     expect(f.model.plane.materialize()).toEqual(content);
     expect(f.model.canUndo).toBe(false);
   } finally {

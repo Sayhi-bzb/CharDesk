@@ -31,9 +31,16 @@ import { attachTerminalAppearance } from './appearanceHost.ts';
 import { canEdgeScroll } from '@chardesk/editor-core/interaction/edgeScroll';
 import { TerminalEdgeScroll } from './edgeScroll.ts';
 import type { TerminalInspector } from './inspector.ts';
+import {
+  TerminalFeedback,
+  noticeText,
+  noticeDetail,
+  noticeAction,
+  type TerminalNotice,
+} from './feedback.ts';
 
 export const CANVAS_TOP = 1;
-const FOOTER_ROWS = 2;
+const FOOTER_ROWS = 1;
 const CHROME_LABELS = {
   settings: 'Settings',
   minimap: 'Minimap',
@@ -49,6 +56,7 @@ const CHROME_LABELS = {
 type ChromeAction = keyof typeof CHROME_LABELS;
 
 export type TerminalPanel = {
+  notice?: TerminalNotice;
   dialog?: boolean;
   tabs?: string[];
   selectedTab?: number;
@@ -86,16 +94,8 @@ export class CanvasSurface extends Renderable {
     height: number;
     label: string;
   } | null = null;
-  #backgroundStatus: string | (() => string) = '';
-  get backgroundStatus(): string {
-    return typeof this.#backgroundStatus === 'function'
-      ? this.#backgroundStatus()
-      : this.#backgroundStatus;
-  }
-  set backgroundStatus(value: string | (() => string)) {
-    this.#backgroundStatus = value;
-  }
-  sourceStatus = '';
+  readonly feedback: TerminalFeedback;
+  onFeedbackAction?: (notice: TerminalNotice) => void;
   closing = false;
   searchHighlights: CellRect[] = [];
   documentLabels: { label: string; active: boolean }[] = [];
@@ -123,7 +123,13 @@ export class CanvasSurface extends Renderable {
   get tool(): 'edit' | 'hand' {
     return this.model.currentTool === 'pan' ? 'hand' : 'edit';
   }
-  status = '';
+  get status() {
+    return this.feedback.message ? noticeText(this.feedback.message) : '';
+  }
+  set status(value: string) {
+    if (value) this.feedback.show(value);
+    else this.feedback.clear();
+  }
   widthFallbacks = 0;
   #measurer: TextBuffer;
   #measureView: TextBufferView;
@@ -287,6 +293,7 @@ export class CanvasSurface extends Renderable {
     });
     this.t = settings.i18n.t;
     this.messages = localizedMessages(this.t);
+    this.feedback = new TerminalFeedback(renderer.clock, () => this.requestRender());
     this.#detachSettings = settings.subscribe(() => this.requestRender());
     this.#inputPolicy = inputPolicy;
     this.#edgeScroll = new TerminalEdgeScroll(renderer.clock, (x, y) => this.#panOnEdge(x, y));
@@ -651,8 +658,23 @@ export class CanvasSurface extends Renderable {
     }
     const statusBar = this.statusBar;
     const titleX = dock.length ? dock.at(-1)!.x + dock.at(-1)!.width + 1 : 0;
-    const footerLabel = [statusBar.context, statusBar.hint].filter(Boolean).join(' · ');
-    this.#line(buffer, ` ${footerLabel}`, titleX, footer, this.colors.accent);
+    const feedback = this.feedbackControl;
+    const labelWidth = Math.max(0, (feedback?.x ?? this.width) - titleX - 2);
+    let footerLabel = this.#fit(statusBar.context, labelWidth);
+    for (const command of statusBar.hint.split(' · ').filter(Boolean)) {
+      const next = [footerLabel, command].filter(Boolean).join(' · ');
+      if (this.#width(next) > labelWidth) break;
+      footerLabel = next;
+    }
+    this.#line(
+      buffer,
+      ` ${footerLabel}`,
+      titleX,
+      footer,
+      this.colors.accent,
+      this.colors.chrome,
+      labelWidth + 1
+    );
     for (const action of this.panelFooterControls)
       this.#line(
         buffer,
@@ -663,7 +685,17 @@ export class CanvasSurface extends Renderable {
         this.colors.chrome,
         action.width
       );
-    this.#line(buffer, ` ${statusBar.status ?? ''}`, 0, footer + 1);
+    if (feedback) {
+      this.#line(
+        buffer,
+        feedback.message,
+        feedback.x,
+        footer,
+        this.#noticeColor(feedback.notice.kind)
+      );
+      if (feedback.action)
+        this.#line(buffer, feedback.action.label, feedback.action.x, footer, this.colors.accent);
+    }
     if (this.help) {
       buffer.fillRect(
         0,
@@ -783,6 +815,16 @@ export class CanvasSurface extends Renderable {
             createTextAttributes({ inverse: !this.panel.dialog && index === this.panel.selected })
           );
         }
+        for (const [index, note] of layout.notes.entries())
+          this.#line(
+            buffer,
+            note,
+            layout.x + 2,
+            layout.itemsY + layout.rows + index,
+            this.panel.error ? this.#noticeColor('error') : this.colors.muted,
+            this.colors.background,
+            layout.width - 4
+          );
       }
     }
     // OpenTUI's terminal cursor API uses 1-based coordinates.
@@ -815,49 +857,117 @@ export class CanvasSurface extends Renderable {
       );
   }
 
-  get statusBar(): { context: string; hint: string; status?: string } {
-    const copy = this.messages;
-    if (this.closing) return { context: copy.closing, hint: '' };
-    if (this.panel) {
-      return {
-        context: this.panel.title,
-        hint: [...this.panelFooterControls.map((action) => action.label), this.panel.hint]
-          .filter(Boolean)
-          .join(' · '),
-        status: this.panel.error || this.status || this.panel.status,
-      };
-    }
-    if (this.contextMenu?.isOpen)
-      return {
-        context: this.t('Context menu'),
-        hint: this.t('Enter run · Esc close'),
-      };
-    if (this.help) return { context: copy.help, hint: this.t('Esc close') };
-    if (this.inspector?.focused) return { context: copy.inspector, hint: this.inspector.hint };
-    if (this.focusedDockControl)
-      return {
-        context: '',
-        hint: this
-          .t`${this.shortcuts['dock-next'].label} switch · ${this.shortcuts['dock-activate'].label} choose`,
-      };
-    if (!this.hasDocument) return { context: '', hint: '' };
-    const status =
-      (this.model.getSnapshot().drawingError
-        ? this.t('Drawing is too large. Try a smaller area.')
-        : '') ||
-      this.sourceStatus ||
-      this.status ||
-      this.backgroundStatus ||
-      (this.minimapOpen && !this.minimapFrame
-        ? copy.minimapSmall
+  get footerNotice(): TerminalNotice | undefined {
+    if (this.closing) return undefined;
+    const current = this.feedback.current;
+    if (current)
+      return current === this.panel?.notice ||
+        (current.key !== undefined && current.key === this.panel?.notice?.key)
+        ? undefined
+        : current;
+    return this.model.getSnapshot().drawingError
+      ? { text: this.t('Area too large'), kind: 'warning' }
+      : this.minimapOpen && !this.minimapFrame
+        ? {
+            text: this.t('No map'),
+            kind: 'warning',
+            detail: this.messages.minimapSmall,
+          }
         : this.widthFallbacks
-          ? copy.width
-          : '');
+          ? { text: this.t('Check glyph display'), kind: 'warning', detail: this.messages.width }
+          : undefined;
+  }
+
+  get statusBar() {
+    const notice = this.footerNotice;
+    let context = '',
+      hint = '';
+    if (this.closing) context = this.messages.closing;
+    else if (this.panel) {
+      context = this.panel.title;
+      hint = [...this.panelFooterControls.map((action) => action.label), this.panel.hint]
+        .filter(Boolean)
+        .join(' · ');
+    } else if (this.contextMenu?.isOpen) {
+      context = this.t('Context menu');
+      hint = this.t('Enter run · Esc close');
+    } else if (this.help) {
+      context = this.messages.help;
+      hint = this.t('Esc close');
+    } else if (this.focusedDockControl) {
+      hint = this
+        .t`${this.shortcuts['dock-next'].label} switch · ${this.shortcuts['dock-activate'].label} choose`;
+    } else context = this.placement?.label ?? '';
+    return { context, hint, status: notice ? noticeText(notice) : undefined };
+  }
+
+  #fit(text: string, width: number) {
+    if (width <= 0) return '';
+    const clean = text.replace(/\p{Cc}/gu, ' ');
+    if (this.#width(clean) <= width) return clean;
+    let fitted = '',
+      used = 0;
+    for (const { segment } of iterateGraphemes(clean)) {
+      const size = this.#width(segment);
+      if (used + size > width - 1) break;
+      fitted += segment;
+      used += size;
+    }
+    return fitted + '…';
+  }
+
+  #noticeColor(kind: TerminalNotice['kind']) {
+    const appearance = this.appearance.getSnapshot();
+    if (appearance.palette && (kind === 'error' || kind === 'warning'))
+      return RGBA.fromHex(appearance.contentTheme[kind === 'error' ? 'danger' : 'warning']);
+    return kind === 'success' || kind === 'progress' ? this.colors.muted : this.colors.foreground;
+  }
+
+  get feedbackControl() {
+    const notice = this.footerNotice;
+    if (!notice) return null;
+    const dock = this.dockControls;
+    const left = dock.length ? dock.at(-1)!.x + dock.at(-1)!.width + 2 : 1;
+    const available = Math.max(0, this.width - left - 1);
+    if (!available) return null;
+    const label =
+      this.onFeedbackAction && (notice.action || noticeDetail(notice))
+        ? noticeAction(notice) || this.t('Details')
+        : '';
+    const actionWidth = label && this.#width(label) + 2 < available ? this.#width(label) : 0;
+    const message = this.#fit(noticeText(notice), available - (actionWidth ? actionWidth + 1 : 0));
+    const width = this.#width(message) + (actionWidth ? actionWidth + 1 : 0);
+    const x = this.width - width - 1,
+      y = this.footerBounds.y;
     return {
-      context: this.placement?.label ?? '',
-      hint: '',
-      status,
+      notice,
+      message,
+      x,
+      y,
+      width,
+      height: 1,
+      action: actionWidth
+        ? { label, x: this.width - actionWidth - 1, y, width: actionWidth, height: 1 }
+        : null,
     };
+  }
+
+  #panelNotes(width: number) {
+    const text = this.panel?.error || this.panel?.status;
+    if (!text || width <= 0) return [];
+    const lines: string[] = [];
+    let line = '';
+    for (const { segment } of iterateGraphemes(text)) {
+      if (segment === '\n' || this.#width(line + segment) > width) {
+        lines.push(line);
+        line = '';
+        if (lines.length === 2) break;
+      }
+      if (segment !== '\n') line += segment;
+    }
+    if (lines.length < 2 && line) lines.push(line);
+    else if (lines.length === 2) lines[1] = this.#fit(lines[1] + '…', width);
+    return lines;
   }
 
   get helpLines() {
@@ -887,7 +997,7 @@ export class CanvasSurface extends Renderable {
     if (this.panel?.title) x += this.#width(this.panel.title) + 3;
     return (this.panel?.actions ?? []).flatMap((action) => {
       const width = this.#width(action.label);
-      if (x + width > this.width) return [];
+      if (x + width > (this.feedbackControl?.x ?? this.width)) return [];
       const control = { ...action, x, y: this.footerBounds.y, width, height: 1 };
       x += width + 3;
       return [control];
@@ -901,18 +1011,21 @@ export class CanvasSurface extends Renderable {
       const x = Math.floor((this.width - width) / 2);
       const y = CANVAS_TOP + Math.floor((this.canvasBounds.height - height) / 2);
       const itemsY = y + 3;
-      return { x, y, width, height, itemsY, rows: Math.max(0, height - 4) };
+      const notes = this.#panelNotes(width - 4);
+      return { x, y, width, height, itemsY, notes, rows: Math.max(0, height - 4 - notes.length) };
     }
     const y = 0,
       height = Math.max(0, this.footerBounds.y);
     const itemsY = y + (this.panel?.input === undefined ? 1 : 2);
+    const notes = this.#panelNotes(this.width - 4);
     return {
       x: 0,
       y,
       width: this.width,
       height,
       itemsY,
-      rows: Math.max(0, y + height - itemsY),
+      notes,
+      rows: Math.max(0, y + height - itemsY - notes.length),
     };
   }
 
@@ -965,7 +1078,7 @@ export class CanvasSurface extends Renderable {
     } catch (error) {
       this.cancelGesture();
       if (!(error instanceof RangeError)) throw error;
-      this.status = error.message;
+      this.feedback.show(() => this.t('Canvas limit'), 'warning', error.message);
     }
   }
 
@@ -999,6 +1112,19 @@ export class CanvasSurface extends Renderable {
     // A no-button move recovers a release the terminal did not deliver.
     if (this.#pointer && (event.type === 'move' || event.type === 'out')) this.cancelGesture();
     if (this.closing) return;
+    const feedback = this.feedbackControl;
+    if (
+      event.type === 'down' &&
+      event.button === 0 &&
+      feedback?.action &&
+      cellRectContainsPoint(feedback.action, {
+        x: event.x - this.screenX,
+        y: event.y - this.screenY,
+      })
+    ) {
+      this.onFeedbackAction?.(feedback.notice);
+      return;
+    }
     if (event.type === 'down') this.clearDockFocus();
     this.contextMenu?.validate();
     if (this.contextMenu?.isOpen) {
@@ -1123,12 +1249,13 @@ export class CanvasSurface extends Renderable {
     } catch (error) {
       if (!(error instanceof RangeError)) throw error;
       this.cancelGesture();
-      this.status = error.message;
+      this.feedback.show(() => this.t('Canvas limit'), 'warning', error.message);
     }
     this.requestRender();
   }
 
   protected override destroySelf() {
+    this.feedback.dispose();
     this.inspector?.close();
     this.#edgeScroll.dispose();
     this.#detachInteraction();

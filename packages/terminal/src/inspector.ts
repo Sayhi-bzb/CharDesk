@@ -312,7 +312,11 @@ export class TerminalInspector {
         this.#inputVersion++;
       } else model.commands.style({ kind: 'background', color: null });
     } catch (error) {
-      this.surface.status = error instanceof Error ? error.message : String(error);
+      this.surface.feedback.show(
+        () => this.surface.t('Style not applied'),
+        'error',
+        error instanceof Error ? error.message : String(error)
+      );
     }
     this.surface.requestRender();
   }

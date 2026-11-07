@@ -82,8 +82,7 @@ for (const kitty of [false, true]) {
       expect(frame.slice(layout.y, layout.y + layout.height).join('\n')).not.toContain(
         'Tab section'
       );
-      expect(frame[f.setup.renderer.height - 2]).toContain('Settings · Tab section · Enter change');
-      expect(frame[f.setup.renderer.height - 1]).not.toContain('Tab section');
+      expect(frame[f.setup.renderer.height - 1]).toContain('Settings · Tab section · Enter change');
       expect(f.setup.renderer.getCursorState().visible).toBe(false);
       await f.setup.mockInput.typeText('SHOULD_NOT_TYPE', 0);
       await f.setup.mockInput.pasteBracketedText('SHOULD_NOT_PASTE');
@@ -168,7 +167,6 @@ test('the shared status bar follows focused panels, menus, help and canvas witho
   const f = await fixture();
   try {
     const { surface, setup } = f;
-    surface.backgroundStatus = 'Auto saved';
     surface.panel = {
       title: 'Open file',
       hint: 'Enter confirm · Esc cancel',
@@ -179,12 +177,11 @@ test('the shared status bar follows focused panels, menus, help and canvas witho
     };
     await setup.renderOnce();
     let lines = setup.captureCharFrame().split('\n');
-    const body = lines.slice(CANVAS_TOP, setup.renderer.height - 2).join('\n');
+    const body = lines.slice(CANVAS_TOP, setup.renderer.height - 1).join('\n');
     expect(body).toContain('example.chardesk');
     expect(body).not.toContain('Enter confirm');
-    expect(body).not.toContain('File unavailable');
-    expect(lines[setup.renderer.height - 2]?.trim()).toBe('Open file · Enter confirm · Esc cancel');
-    expect(lines[setup.renderer.height - 1]?.trim()).toBe('File unavailable');
+    expect(body).toContain('File unavailable');
+    expect(lines[setup.renderer.height - 1]?.trim()).toBe('Open file · Enter confirm · Esc cancel');
     surface.panel = null;
     surface.contextMenu!.open();
     await setup.renderOnce();
@@ -195,10 +192,10 @@ test('the shared status bar follows focused panels, menus, help and canvas witho
     await setup.renderOnce();
     lines = setup.captureCharFrame().split('\n');
     expect(surface.statusBar.context).toBe('Help');
-    expect(lines[setup.renderer.height - 2]?.trim()).toBe('Help · Esc close');
+    expect(lines[setup.renderer.height - 1]?.trim()).toBe('Help · Esc close');
     await f.escape();
     expect(surface.statusBar.context).toBe('');
-    expect(surface.statusBar.status).toBe('Auto saved');
+    expect(surface.statusBar.status).toBeUndefined();
     expect(surface.statusBar.hint).toBe('');
   } finally {
     await f.dispose();

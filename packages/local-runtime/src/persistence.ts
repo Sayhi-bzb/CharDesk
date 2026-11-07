@@ -19,7 +19,12 @@ type SavedFile = {
   views: SavedView[];
 };
 type Checkpoint = { version: 1; activePath: string | null; files: SavedFile[] };
-export type PersistenceStatus = { phase: 'saving' | 'saved' | 'error'; message?: string };
+export type PersistenceStatus = {
+  phase: 'saving' | 'saved' | 'error';
+  scope: 'document' | 'checkpoint';
+  path?: string;
+  message?: string;
+};
 export type WorkspaceSessionLifecycle = {
   identify: (path: string) => string | undefined;
   shouldRestore: (path: string, sessionId?: string) => boolean;
@@ -282,8 +287,14 @@ export class WorkspacePersistence {
       if (!this.#timer)
         this.#timer = setTimeout(() => {
           this.#timer = null;
-          void this.flush().catch((error) =>
-            report({ phase: 'error', message: String(error.message ?? error) })
+          void this.flush().then(
+            () => report({ phase: 'saved', scope: 'checkpoint' }),
+            (error) =>
+              report({
+                phase: 'error',
+                scope: 'checkpoint',
+                message: String(error.message ?? error),
+              })
           );
         }, options.checkpointMs ?? 150);
       if (this.#saveTimer) clearTimeout(this.#saveTimer);
@@ -297,15 +308,17 @@ export class WorkspacePersistence {
               if (!this.#active) break;
               const version = workspace.model.versionAt(file.address!);
               if (!workspace.needsSave(file) || this.#failed.get(file) === version) continue;
-              report({ phase: 'saving' });
+              report({ phase: 'saving', scope: 'document', path: file.path });
               try {
                 await workspace.saveFile(file);
                 this.#failed.delete(file);
-                report({ phase: 'saved' });
+                report({ phase: 'saved', scope: 'document', path: file.path });
               } catch (error) {
                 this.#failed.set(file, version);
                 report({
                   phase: 'error',
+                  scope: 'document',
+                  path: file.path,
                   message: `${file.path}: ${error instanceof Error ? error.message : String(error)}`,
                 });
               }

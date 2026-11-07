@@ -10,7 +10,7 @@ import { CharacterPicker } from './characters.ts';
 import { CANVAS_TEMPLATES } from '@chardesk/canvas-templates';
 import { drawingLabel, drawingTools } from './drawing.ts';
 import type { KeyEvent } from '@opentui/core';
-import { segmentGraphemes } from '@chardesk/protocol';
+import { segmentGraphemes, getTextCellWidth } from '@chardesk/protocol';
 import { searchCanvasSurface, type CanvasSearchResult } from '@chardesk/editor-core/search';
 import type { ClipboardPort } from '@chardesk/editor-core/clipboard/commands';
 import type { CanvasSurface, TerminalPanel } from './surface.ts';
@@ -20,6 +20,7 @@ import type { LocalSessions } from '../../local-runtime/src/sessions.ts';
 import type { LocalSession } from '../../local-runtime/src/sessionCatalog.ts';
 import { navigationActions } from './navigation.ts';
 import { watchWorkspaceSources } from './sourceMonitor.ts';
+import { noticeText, noticeDetail, type TerminalNotice } from './feedback.ts';
 
 /** Transient Host panels. All document mutations still run through shared commands. */
 export class WorkspaceControls {
@@ -115,9 +116,45 @@ export class WorkspaceControls {
   }
 
   refresh() {
-    this.surface.sourceStatus = this.#sourceNotice();
+    const failed = this.workspace.files.filter((file) => this.workspace.errorFor(file));
+    this.surface.feedback.issue(
+      'document-save',
+      failed.length
+        ? {
+            text: () => this.surface.t('Unsaved'),
+            kind: 'error',
+            detail: failed
+              .map((file) => `${file.path}: ${this.workspace.errorFor(file)}`)
+              .join('\n'),
+            action: {
+              label: () => this.surface.t('Source'),
+              run: () => {
+                const index = this.workspace.files.indexOf(failed[0]!);
+                if (index < 0) return;
+                this.workspace.switchTo(index);
+                this.sources();
+              },
+            },
+          }
+        : undefined
+    );
+    const sourceNotice = this.#sourceNotice();
+    this.surface.feedback.issue(
+      'source',
+      sourceNotice
+        ? {
+            text: sourceNotice,
+            kind: 'warning',
+            detail: this.#sourceDescription(),
+            action: { label: () => this.surface.t('Source'), run: () => this.sources() },
+          }
+        : undefined
+    );
     if (this.#kind === 'file-source' && this.surface.panel)
-      this.surface.panel.status = this.#sourceDescription();
+      Object.assign(this.surface.panel, {
+        status: this.#sourceDescription(),
+        notice: this.#sourceFeedback(),
+      });
     this.surface.hasDocument = this.workspace.files.length > 0;
     this.surface.filename = this.workspace.files.length ? this.workspace.active.title : '';
     this.surface.documentLabels = this.workspace.files.map((file) => ({
@@ -194,8 +231,7 @@ export class WorkspaceControls {
       this.#async(panel, async () => {
         if (kind === 'save-copy') {
           await this.workspace.saveCopy(panel.input!.trim());
-          this.surface.status = this.surface.t('Document duplicated');
-          this.surface.backgroundStatus = '';
+          this.surface.feedback.show(() => this.surface.t('Document duplicated'));
         } else {
           if (kind === 'new') {
             const { readOptional, resolveCanvasFilePath } =
@@ -690,8 +726,10 @@ export class WorkspaceControls {
           this.dismiss();
           this.surface.model.commands.insertRows(materialized.rows, point);
         } catch {
-          this.surface.status = this.surface.t(
-            'Cannot place the template here. Choose a smaller coordinate.'
+          this.surface.feedback.show(
+            () => this.surface.t('Canvas limit'),
+            'warning',
+            () => this.surface.t('Cannot place the template here. Choose a smaller coordinate.')
           );
           this.surface.requestRender();
         }
@@ -727,7 +765,6 @@ export class WorkspaceControls {
       if (!tool) return;
       model.setTool(tool.id);
       this.dismiss();
-      this.surface.status = this.surface.t(drawingLabel(tool.id));
     };
     panel.onPick = pick;
     this.#show('tools', panel, pick, (key) => {
@@ -845,7 +882,7 @@ export class WorkspaceControls {
             }
             if (!this.#alive || this.surface.panel !== target) return;
             await deliverExportFile(path, content, current);
-            if (current()) this.surface.status = this.surface.t('Exported');
+            if (current()) this.surface.feedback.show(() => this.surface.t('Exported'));
           });
         });
       } catch (error) {
@@ -858,29 +895,71 @@ export class WorkspaceControls {
   }
   #sourceNotice() {
     if (!this.workspace.files.length) return '';
-    const source = this.workspace.sourceState();
-    const label =
-      source.state === 'conflict'
-        ? this.surface.t('External update and local edits; both kept')
-        : source.state === 'changed'
-          ? this.surface.t('File changed on disk')
-          : source.state === 'missing'
-            ? this.surface.t('Source file is missing; canvas kept')
-            : source.state === 'unreadable'
-              ? this.surface.t('Source file cannot be read; canvas kept')
-              : '';
-    return label ? this.surface.t`${label} · ${this.surface.shortcuts.sources.label} Source` : '';
+    const labels: Record<string, string> = {
+      conflict: 'Conflict',
+      changed: 'Changed',
+      missing: 'Missing',
+      unreadable: 'Unreadable',
+    };
+    const label = labels[this.workspace.sourceState().state];
+    return label ? this.surface.t(label) : '';
+  }
+  #sourceFeedback() {
+    const notice = this.surface.feedback.current;
+    return notice?.key === 'source' ||
+      (notice?.key === 'document-save' && this.workspace.errorFor(this.workspace.active))
+      ? notice
+      : undefined;
   }
   #sourceDescription() {
     const state = this.workspace.sourceState();
-    return `${this.workspace.active.path} · ${state.state}${state.error ? ` · ${state.error}` : ''}`;
+    return `${state.error || this.#sourceNotice() || this.surface.t('Up to date')}\n${this.workspace.active.path}`;
+  }
+  showFeedback(notice: TerminalNotice) {
+    const width = Math.max(8, Math.min(72, this.surface.width - 8));
+    const items: string[] = [];
+    for (const paragraph of noticeDetail(notice).split('\n')) {
+      let line = '';
+      for (const { segment: grapheme } of segmentGraphemes(paragraph)) {
+        if (getTextCellWidth(line + grapheme) > width) {
+          items.push(line);
+          line = '';
+        }
+        line += grapheme;
+      }
+      items.push(line);
+    }
+    const panel: TerminalPanel = {
+      notice,
+      dialog: true,
+      title: noticeText(notice),
+      hint: this.surface.t('Esc close'),
+      items,
+      selected: 0,
+      onClose: () => this.dismiss(),
+      actions: this.workspace.files.length
+        ? [{ id: 'source', label: this.surface.t('S Source'), onPick: () => this.sources() }]
+        : [],
+    };
+    this.#show(
+      'feedback',
+      panel,
+      () => {},
+      (key) => {
+        if (key.name !== 's' || !this.workspace.files.length) return false;
+        this.sources();
+        return true;
+      }
+    );
   }
   sources() {
     if (!this.workspace.files.length) return;
     const file = this.workspace.active;
     const panel: TerminalPanel = {
+      notice: this.#sourceFeedback(),
       dialog: true,
       title: this.surface.t('Source'),
+      error: this.workspace.errorFor(file),
       status: this.#sourceDescription(),
       hint: this.surface.t('Enter run · Esc close'),
       items: [
@@ -902,7 +981,11 @@ export class WorkspaceControls {
         else if (selected === retryIndex) await this.workspace.saveFile(file);
         else if (selected === 2 && this.sessions) {
           const copy = await this.sessions.preserveLocalAndReload(file);
-          this.surface.status = this.surface.t`Local copy saved: ${copy.name}`;
+          this.surface.feedback.show(
+            () => this.surface.t('Local copy saved'),
+            'success',
+            copy.name
+          );
         } else await this.workspace.reloadFile(file);
         if (!this.#alive || this.surface.panel !== panel) return;
         this.sources();
@@ -933,7 +1016,11 @@ export class WorkspaceControls {
           'navigation-dialog'
         );
       } catch (error) {
-        this.surface.status = error instanceof Error ? error.message : String(error);
+        this.surface.feedback.show(
+          () => this.surface.t('Action failed'),
+          'error',
+          error instanceof Error ? error.message : String(error)
+        );
       }
       this.surface.requestRender();
     };
@@ -1026,15 +1113,19 @@ export class WorkspaceControls {
               this.#inputVersion++;
               panel.onInput?.(panel.input);
             }
-            this.surface.status = kind === 'cut' ? copy.cut : copy.copied;
+            this.surface.feedback.show(() => (kind === 'cut' ? copy.cut : copy.copied));
           } else if (written.status === 'dispatched')
-            this.surface.status = kind === 'cut' ? copy.cutDispatched : copy.copyDispatched;
-          else this.surface.status = copy.clipboardFailed;
+            this.surface.feedback.show(
+              () => (kind === 'cut' ? copy.cutDispatched : copy.copyDispatched),
+              'warning',
+              kind === 'cut' ? () => this.surface.t('Copy is unconfirmed; input kept.') : undefined
+            );
+          else this.surface.feedback.show(() => copy.clipboardFailed, 'error');
           this.surface.requestRender();
         })
         .catch(() => {
           if (!current()) return;
-          this.surface.status = this.surface.messages.clipboardFailed;
+          this.surface.feedback.show(() => this.surface.messages.clipboardFailed, 'error');
           this.surface.requestRender();
         });
       return true;

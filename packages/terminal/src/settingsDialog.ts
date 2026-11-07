@@ -121,7 +121,7 @@ export class TerminalSettingsDialog {
         ? appearance.status === 'refreshing'
           ? this.surface.t('Refreshing colors…')
           : appearance.status === 'unavailable'
-            ? this.surface.t('Terminal RGB unavailable')
+            ? this.surface.t('Terminal colors unavailable')
             : undefined
         : undefined;
     panel.error = store.error || undefined;

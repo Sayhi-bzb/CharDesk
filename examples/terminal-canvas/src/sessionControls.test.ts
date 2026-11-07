@@ -203,7 +203,7 @@ test('empty session lists keep New and Open in the clickable footer at narrow wi
   }
 });
 
-test('Chinese session commands fit 80 columns while errors keep their own footer row', async () => {
+test('Chinese session commands fit one footer row while errors stay inside the dialog', async () => {
   const f = await fixture();
   try {
     f.surface.settings.set('language', 'zh-CN');
@@ -213,14 +213,15 @@ test('Chinese session commands fit 80 columns while errors keep their own footer
     await f.setup.renderOnce();
     const footer = '会话 · N 新建 · O 打开 · R 重命名 · D 复制 · A 归档 · Del 关闭 · F5 刷新';
     let frame = f.setup.captureCharFrame().split('\n');
-    expect(frame[28]?.trim()).toBe(footer);
-    expect(frame[29]?.trim()).toBe('');
+    expect(frame[29]?.trim()).toBe(footer);
     expect(f.surface.panel?.tabs).toEqual(['画布', '已归档']);
     f.surface.panel!.error = '无法读取源文件';
     await f.setup.renderOnce();
     frame = f.setup.captureCharFrame().split('\n');
-    expect(frame[28]?.trim()).toBe(footer);
-    expect(frame[29]?.trim()).toBe('无法读取源文件');
+    expect(frame[29]?.trim()).toBe(footer);
+    expect(frame.slice(f.surface.panelLayout.y, f.surface.footerBounds.y).join('\n')).toContain(
+      '无法读取源文件'
+    );
   } finally {
     await f.dispose();
   }
@@ -245,17 +246,21 @@ test('Sessions reuse the Settings dialog geometry, tabs, footer and outside dism
     f.escape();
     f.surface.activateDock('documents');
     expect(f.surface.panel?.dialog).toBe(true);
-    expect(f.surface.panelLayout).toEqual(settingsLayout);
+    expect(f.surface.panelLayout).toMatchObject({
+      x: settingsLayout.x,
+      y: settingsLayout.y,
+      width: settingsLayout.width,
+      height: settingsLayout.height,
+    });
     await f.setup.renderOnce();
     const frame = f.setup.captureCharFrame().split('\n');
     const l = f.surface.panelLayout;
     expect(frame[l.y]).toContain('┌ Sessions');
     expect(frame[l.y]).not.toContain('×');
     expect(frame.slice(l.y, l.y + l.height).join('\n')).not.toContain('Tab list');
-    expect(frame[f.setup.renderer.height - 2]?.trim()).toBe(
+    expect(frame[f.setup.renderer.height - 1]?.trim()).toBe(
       'Sessions · N new · O open · R rename · D copy · A archive · Del close · F5 refresh'
     );
-    expect(frame[f.setup.renderer.height - 1]?.trim()).toBe('');
     const archivedTab = f.surface.panelTabControls[1]!;
     await f.setup.mockMouse.click(archivedTab.x + 1, archivedTab.y);
     expect(f.surface.panel?.selectedTab).toBe(1);

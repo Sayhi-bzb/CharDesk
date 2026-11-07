@@ -63,6 +63,18 @@ export function attachControls(
       )
     : null;
   if (workspaceControls) disposers.push(() => workspaceControls.dispose());
+  if (workspaceControls) {
+    surface.onFeedbackAction = (notice) => {
+      settingsDialog.close();
+      menu.close();
+      inspector.blur();
+      if (notice.action) notice.action.run();
+      else workspaceControls.showFeedback(notice);
+    };
+    disposers.push(() => {
+      surface.onFeedbackAction = undefined;
+    });
+  }
   disposers.push(
     model.subscribe(() => {
       menu.validate();
@@ -82,7 +94,7 @@ export function attachControls(
       return run();
     } catch (error) {
       if (!(error instanceof RangeError)) throw error;
-      surface.status = error.message;
+      surface.feedback.show(() => surface.t('Canvas limit'), 'warning', error.message);
       surface.requestRender();
       return { handled: true as const, status: 'rejected' as const, reason: 'operation-limit' };
     }
@@ -105,10 +117,11 @@ export function attachControls(
     repeatable = true
   ) => {
     const commandId = `terminal.${id}`;
-    const application = id === 'quit';
+    const application = id === 'quit' || id === 'feedback-details';
     const available = () =>
       !surface.closing &&
-      (surface.hasDocument ||
+      (application ||
+        surface.hasDocument ||
         emptyActions.has(id) ||
         Boolean(surface.panel && panelActions.has(id))) &&
       (application ||
@@ -124,7 +137,6 @@ export function attachControls(
           menu.close();
           keymap.clearPendingSequence();
           if (!dockActions.has(id) && id !== 'escape') surface.clearDockFocus();
-          surface.status = '';
           return runInput(run) ?? { handled: true, status: 'succeeded' };
         },
       })
@@ -146,6 +158,14 @@ export function attachControls(
     run: () => void | EditorCommandResult,
     enabled = () => true
   ) => bind(id, shortcuts[id].keys, run, enabled, shortcuts[id].repeatable);
+  action(
+    'feedback-details',
+    () => {
+      const notice = surface.footerNotice;
+      if (notice) surface.onFeedbackAction?.(notice);
+    },
+    () => Boolean(surface.feedbackControl?.action)
+  );
   for (const [id, direction] of [
     ['dock-next', 1],
     ['dock-previous', -1],
@@ -173,7 +193,7 @@ export function attachControls(
     else if (kind === 'copy') result = model.commands.copy({ ansi, rich: !ansi });
     else result = model.commands[kind]();
     if (result.status === 'pending') {
-      surface.status = copy.clipboardWorking;
+      surface.feedback.show(() => copy.clipboardWorking, 'progress');
       void result.completion
         .then((completion) => {
           if (!active || request !== clipboardRequest) return;
@@ -183,26 +203,37 @@ export function attachControls(
               'stale-target': copy.clipboardStale,
               'prepare-failed': copy.pasteFailed,
             };
-            surface.status = failures[completion.reason] ?? copy.clipboardFailed;
+            surface.feedback.show(failures[completion.reason] ?? copy.clipboardFailed, 'error');
           } else if (data?.status === 'dispatched')
-            surface.status = kind === 'cut' ? copy.cutDispatched : copy.copyDispatched;
-          else if (data?.status === 'noop') surface.status = copy.clipboardEmpty;
+            surface.feedback.show(
+              () => (kind === 'cut' ? copy.cutDispatched : copy.copyDispatched),
+              'warning',
+              kind === 'cut' ? () => surface.t('Copy is unconfirmed; selection kept.') : undefined
+            );
+          else if (data?.status === 'noop') surface.feedback.show(() => copy.clipboardEmpty);
           else
-            surface.status = copy[kind === 'copy' ? 'copied' : kind === 'cut' ? 'cut' : 'pasted'];
+            surface.feedback.show(
+              () => copy[kind === 'copy' ? 'copied' : kind === 'cut' ? 'cut' : 'pasted']
+            );
           if (data?.status === 'applied' && data.warning === 'plain-fallback')
-            surface.status += surface.t(' · Plain text; rich clipboard unavailable');
+            surface.feedback.show(() => surface.t('Pasted as text'), 'warning');
           const diagnostics = model.getSnapshot().pasteDiagnostics;
           if (kind === 'paste' && completion.succeeded && diagnostics.length)
-            surface.status += ` · ${copy.pasteWarnings}: ${diagnostics[0]!.message}`;
+            surface.feedback.show(
+              () => surface.t('Pasted with warnings'),
+              'warning',
+              diagnostics.map((item) => item.message).join('\n')
+            );
           surface.requestRender();
         })
         .catch(() => {
           if (active && request === clipboardRequest) {
-            surface.status = copy.clipboardFailed;
+            surface.feedback.show(() => copy.clipboardFailed, 'error');
             surface.requestRender();
           }
         });
-    } else if (result.status === 'rejected') surface.status = copy.clipboardFailed;
+    } else if (result.status === 'rejected')
+      surface.feedback.show(() => copy.clipboardFailed, 'error');
   };
   action('settings', () => {
     inspector.blur();
@@ -336,7 +367,7 @@ export function attachControls(
         selection === JSON.stringify(model.getSnapshot().interaction) &&
         (appearanceRevision === null ||
           appearanceRevision === surface.appearance.getSnapshot().revision);
-      surface.status = copy.clipboardWorking;
+      surface.feedback.show(() => copy.clipboardWorking, 'progress');
       const completion: Promise<EditorCommandCompletion> = (async () => {
         let copying = false;
         try {
@@ -355,7 +386,7 @@ export function attachControls(
           const result = await clipboardPort.writeImage!(image, current);
           if (!current()) throw new Error('stale-target');
           if (result.status !== 'written') throw new Error('clipboard-failed');
-          surface.status = copy.pngCopied;
+          surface.feedback.show(() => copy.pngCopied);
           surface.requestRender();
           return { succeeded: true, changed: false };
         } catch (error) {
@@ -366,7 +397,13 @@ export function attachControls(
               'image-too-large': copy.pngTooLarge,
               'palette-unavailable': copy.pngPaletteUnavailable,
             };
-            surface.status = failures[reason] ?? (copying ? copy.clipboardFailed : copy.pngFailed);
+            surface.feedback.show(
+              failures[reason] ?? (copying ? copy.clipboardFailed : copy.pngFailed),
+              'error',
+              reason === 'palette-unavailable'
+                ? () => surface.t('Refresh terminal colors in Settings.')
+                : undefined
+            );
             surface.requestRender();
           }
           return { succeeded: false, changed: false, reason };
@@ -537,7 +574,6 @@ export function attachControls(
     }),
     repeat: (key) => key.eventType === 'repeat',
     execute: (binding, key) => {
-      surface.status = '';
       if (
         surface.focusedDockControl &&
         (binding.id === 'terminal.dock-activate' || binding.id === 'terminal.escape')
@@ -554,7 +590,6 @@ export function attachControls(
   const keypress = (key: KeyEvent) => {
     if (key.eventType === 'release') return;
     key.preventDefault();
-    surface.status = '';
     if (
       !surface.help &&
       !surface.focusedDockControl &&
@@ -591,7 +626,6 @@ export function attachControls(
     if (surface.closing) return;
     if (workspaceControls?.paste(new TextDecoder().decode(event.bytes))) return;
     if (!surface.hasDocument) return;
-    surface.status = '';
     clipboardAction('paste', new TextDecoder().decode(event.bytes));
     surface.requestRender();
   };

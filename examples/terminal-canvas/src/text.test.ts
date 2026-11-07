@@ -173,9 +173,8 @@ test('native paste events and Command+V compile identically and report diagnosti
     write: async () => ({ status: 'written' }),
   });
   async function waitForPaste() {
-    for (let i = 0; i < 100 && surface.status === 'Working with clipboard…'; i++)
-      await Bun.sleep(1);
-    expect(surface.status).not.toBe('Working with clipboard…');
+    for (let i = 0; i < 100 && surface.status === 'Clipboard…'; i++) await Bun.sleep(1);
+    expect(surface.status).not.toBe('Clipboard…');
   }
   try {
     setup.renderer.keyInput.processPaste(new TextEncoder().encode(source));
@@ -192,12 +191,13 @@ test('native paste events and Command+V compile identically and report diagnosti
     setup.renderer.keyInput.processPaste(new TextEncoder().encode(source));
     await waitForPaste();
     expect(model.getSnapshot().pasteDiagnostics.length).toBeGreaterThan(0);
-    expect(surface.status).toContain('Paste warnings');
+    expect(surface.status).toBe('Pasted with warnings');
+    expect(surface.feedback.message?.detail).toBeDefined();
     source = serializeCharDeskDocumentEnvelope({ mode: 'slide', body: '' });
     const before = model.plane.materialize();
     setup.renderer.keyInput.processPaste(new TextEncoder().encode(source));
     await waitForPaste();
-    expect(surface.status).toContain('Unable to prepare pasted text');
+    expect(surface.status).toBe('Not pasted');
     expect(model.plane.materialize()).toEqual(before);
     surface.activateDock('edit');
     expect(surface.tool).toBe('edit');

@@ -211,7 +211,12 @@ for (const platform of ['darwin', 'win32', 'linux'] as const) {
       f.primary('f');
       expect(f.surface.panel?.title).toBe('Find on current page');
       expect(f.surface.panel?.dialog).toBe(true);
-      expect(f.surface.panelLayout).toEqual(sharedLayout);
+      expect(f.surface.panelLayout).toMatchObject({
+        x: sharedLayout.x,
+        y: sharedLayout.y,
+        width: sharedLayout.width,
+        height: sharedLayout.height,
+      });
       await f.setup.renderOnce();
       let frame = f.setup.captureCharFrame().split('\n');
       expect(frame[sharedLayout.y]).toContain('┌ Find on current page');
@@ -395,7 +400,7 @@ test('unconfirmed modal Cut preserves input and reports why it was retained', as
     await f.setup.mockInput.typeText('界 input', 0);
     f.primary('a');
     f.primary('x');
-    await until(() => f.surface.status.includes('selection kept'));
+    await until(() => f.surface.status === 'Not cut');
     expect(f.surface.panel?.input).toBe('界 input');
   } finally {
     await f.dispose();
@@ -710,10 +715,10 @@ test('a billion-row column selection renders and hit-tests by viewport; oversize
     expect(model.containsSelection({ x: 0, y: 500000000 })).toBe(true);
     expect(model.containsSelection({ x: 1, y: 1000000000 })).toBe(true);
     f.setup.mockInput.pressKey('DELETE');
-    expect(f.surface.status).toContain('too large');
+    expect(f.surface.feedback.message?.detail).toContain('too large');
     expect(model.plane.materialize()).toEqual(original);
     await f.setup.mockInput.typeText('X', 0);
-    expect(f.surface.status).toContain('too large');
+    expect(f.surface.feedback.message?.detail).toContain('too large');
     expect(model.plane.materialize()).toEqual(original);
     await f.setup.mockMouse.click(0, CANVAS_TOP);
     expect(model.selection).toBeNull();

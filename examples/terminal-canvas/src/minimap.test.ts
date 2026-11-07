@@ -139,7 +139,7 @@ test('empty map and its border intercept clicks; resize hides the overlay and ca
     setup.resize(40, 12);
     await setup.renderOnce();
     expect(surface.minimapFrame).toBeNull();
-    expect(setup.captureCharFrame()).toContain('Minimap needs');
+    expect(setup.captureCharFrame()).toContain('No map');
     const current = { ...model.viewport };
     await setup.mockMouse.emitMouseEvent('drag', 30, 8);
     expect(model.viewport).toEqual(current);

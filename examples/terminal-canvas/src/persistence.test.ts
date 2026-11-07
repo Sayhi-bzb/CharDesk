@@ -263,6 +263,28 @@ test('auto save persists edits and reports external file conflicts while checkpo
   }
 });
 
+test('checkpoint failure and recovery report their own scope independently of document saving', async () => {
+  const f = await fixture();
+  const events: string[] = [];
+  try {
+    await mkdir(f.checkpoint);
+    f.persistence.start(f.workspace, {
+      autosaveMs: -1,
+      checkpointMs: 2,
+      onStatus: (status) => events.push(`${status.scope}:${status.phase}`),
+    });
+    f.workspace.model.commands.insert('Checkpoint');
+    await until(() => events.includes('checkpoint:error'));
+    await rm(f.checkpoint, { recursive: true });
+    f.workspace.model.commands.insert(' retry');
+    await until(() => events.includes('checkpoint:saved'));
+    expect(events).not.toContain('document:saved');
+  } finally {
+    await f.persistence.abandon();
+    f.workspace.dispose();
+  }
+});
+
 test('SIGKILL leaves a durable checkpoint that is recovered after verifying the dead owner', async () => {
   const root = await mkdtemp(join(tmpdir(), 'chardesk-crash-'));
   directories.push(root);

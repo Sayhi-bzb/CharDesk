@@ -45,7 +45,7 @@ test('a theme change during PNG delivery invalidates its clipboard guard without
     expect(guard!()).toBe(false);
     pending.resolve({ status: 'failed' });
     if (request.status === 'pending') await request.completion;
-    expect(f.surface.status).toContain('cancelled');
+    expect(f.surface.status).toContain('Cancelled');
     expect(f.model.plane.materialize()).toEqual(content);
     expect(f.model.selection).toEqual(selection);
     expect(f.model.canUndo).toBe(false);
@@ -248,13 +248,11 @@ test('unconfirmed or failed keyboard Cut preserves content, selection and histor
       await f.right(1);
       f.menu.close();
       f.setup.mockInput.pressKey('x', { super: true });
-      await f.setup.waitFor(() => f.surface.status !== 'Working with clipboard…');
+      await f.setup.waitFor(() => f.surface.status !== 'Clipboard…');
       expect(f.model.plane.materialize()).toEqual(original);
       expect(f.model.selection).toEqual(selection);
       expect(f.model.canUndo).toBe(false);
-      expect(f.surface.status).toContain(
-        delivery === 'dispatched' ? 'selection kept' : 'unavailable'
-      );
+      expect(f.surface.status).toContain(delivery === 'dispatched' ? 'Not cut' : 'Clipboard error');
     } finally {
       await f.dispose();
     }
@@ -361,7 +359,7 @@ test('menus close on target changes, blur, resize and disposal; narrow menus fit
     const l = f.menu.layout;
     expect(l.x).toBeGreaterThanOrEqual(0);
     expect(l.x + l.width).toBeLessThanOrEqual(18);
-    expect(l.y + l.height).toBeLessThanOrEqual(7);
+    expect(l.y + l.height).toBeLessThanOrEqual(f.surface.footerBounds.y);
     for (let i = 0; i < 3; i++) f.setup.mockInput.pressArrow('down');
     await f.setup.renderOnce();
     expect(f.menu.layout.scroll).toBeGreaterThan(0);
@@ -510,12 +508,8 @@ for (const delivery of ['written', 'failed', 'unavailable'] as const) {
       for (let n = 0; n < 4; n++) f.setup.mockInput.pressArrow('down');
       f.setup.mockInput.pressArrow('down');
       await f.item('snapshot-png');
-      await f.setup.waitFor(
-        () => images.length === 1 && f.surface.status !== 'Working with clipboard…'
-      );
-      expect(f.surface.status).toBe(
-        delivery === 'written' ? 'PNG image copied' : 'Clipboard unavailable.'
-      );
+      await f.setup.waitFor(() => images.length === 1 && f.surface.status !== 'Clipboard…');
+      expect(f.surface.status).toBe(delivery === 'written' ? 'Image copied' : 'Clipboard error');
       expect(images[0]?.width).toBe(108);
       expect(images[0]?.height).toBe(120);
       expect([...images[0]!.rgba.subarray(0, 4)]).toEqual([0x22, 0x33, 0x44, 255]);
@@ -563,7 +557,7 @@ test('PNG cancels before writing when selection changes or the terminal palette 
       expect(result.status).toBe('pending');
       if (result.status === 'pending') await result.completion;
       expect(writes).toBe(0);
-      expect(f.surface.status).toContain(stale ? 'cancelled' : 'terminal colors are unavailable');
+      expect(f.surface.status).toContain(stale ? 'Cancelled' : 'Colors unavailable');
     } finally {
       f.setup.renderer.getPalette = originalGetPalette;
       await f.dispose();

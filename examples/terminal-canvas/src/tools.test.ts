@@ -74,7 +74,8 @@ test('unconfirmed terminal Cut reports dispatch and retains the logical range an
     const range = f.model.selectionBounds;
     f.setup.mockInput.pressKey('x', { super: true });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(f.surface.status).toContain('selection kept');
+    expect(f.surface.status).toBe('Not cut');
+    expect(f.surface.feedback.current?.detail).toBeDefined();
     expect(f.model.plane.materialize()).toEqual(before);
     expect(f.model.selectionBounds).toEqual(range);
     expect(f.model.canUndo).toBe(false);

@@ -148,7 +148,7 @@ export async function runTerminal(args: string[] = process.argv.slice(2)) {
             surface.cancelGesture();
             model.cancelPendingPaste();
             surface.closing = true;
-            surface.status = copy.closing;
+            surface.feedback.issue('close');
             surface.requestRender();
             void stopEndpoint!
               .pause()
@@ -158,7 +158,12 @@ export async function runTerminal(args: string[] = process.argv.slice(2)) {
                 stopEndpoint?.resume();
                 closing = false;
                 surface.closing = false;
-                surface.status = String(error.message ?? error);
+                if (!workspace!.files.some((file) => workspace!.errorFor(file)))
+                  surface.feedback.issue('close', {
+                    text: () => surface.t('Close blocked'),
+                    kind: 'error',
+                    detail: String(error.message ?? error),
+                  });
                 surface.requestRender();
               });
           };
@@ -167,21 +172,28 @@ export async function runTerminal(args: string[] = process.argv.slice(2)) {
             model.editor.commands.execute('terminal.documents', undefined, 'session-startup');
           if (process.env.CHARDESK_TRACE_INPUT)
             detachTrace = attachInputTrace(surface, process.env.CHARDESK_TRACE_INPUT);
-          if (restored)
-            surface.status = persistence.conflicts.length
-              ? `${copy.recoveryConflict}: ${persistence.conflicts.join(', ')}`
-              : copy.recovered;
-          if (opened.warnings.length) surface.status = opened.warnings[0]!;
+          if (restored && persistence.conflicts.length)
+            surface.feedback.show(
+              () => copy.recoveryConflict,
+              'warning',
+              persistence.conflicts.join('\n')
+            );
+          if (opened.warnings.length)
+            surface.feedback.show(
+              () => surface.t('Recovery needs review'),
+              'warning',
+              opened.warnings.join('\n')
+            );
           persistence.start(workspace, {
             onStatus: (status) => {
-              surface.backgroundStatus = () =>
-                status.phase === 'error'
-                  ? (status.message ?? '')
-                  : status.phase === 'saving'
-                    ? copy.autosaving
-                    : copy.autosaved;
-              if (status.phase === 'error') surface.status = surface.backgroundStatus;
-              surface.requestRender();
+              if (status.scope !== 'checkpoint') return;
+              if (status.phase === 'error')
+                surface.feedback.issue('checkpoint', {
+                  text: () => surface.t('Recovery error'),
+                  kind: 'error',
+                  detail: status.message,
+                });
+              else if (status.phase === 'saved') surface.feedback.issue('checkpoint');
             },
           });
           renderer.on('render:error', (event: { error: unknown }) => {

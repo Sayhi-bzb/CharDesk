@@ -20,13 +20,13 @@ test('header actions reserve one row while footer tools and canvas follow resize
     const lines = setup.captureCharFrame().split('\n');
     expect(lines[0]?.trimEnd()).toBe('[Settings] [Minimap] [Sessions]');
     expect(lines[CANVAS_TOP]?.startsWith('Top 🦀')).toBe(true);
-    expect(lines[24]).toContain('[Edit] [Hand] [Style]');
-    expect(lines[24]).not.toContain('dock-demo.chardesk');
-    expect(lines[24]).not.toContain('unchanged');
-    expect(lines[24]?.trimEnd()).toBe(
+    expect(lines[surface.footerBounds.y]).toContain('[Edit] [Hand] [Style]');
+    expect(lines[surface.footerBounds.y]).not.toContain('dock-demo.chardesk');
+    expect(lines[surface.footerBounds.y]).not.toContain('unchanged');
+    expect(lines[surface.footerBounds.y]?.trimEnd()).toBe(
       surface.dockControls.map((control) => control.label).join(' ')
     );
-    expect(model.viewport.height).toBe(23);
+    expect(model.viewport.height).toBe(24);
     const content = model.plane.materialize();
     const hand = surface.dockControls.find((control) => control.id === 'hand')!;
     await setup.mockMouse.click(hand.x + 1, hand.y);
@@ -38,7 +38,7 @@ test('header actions reserve one row while footer tools and canvas follow resize
     await setup.renderOnce();
     expect(surface.panel?.title).toBe('Settings');
     expect(surface.dockControls).toEqual([]);
-    expect(setup.captureCharFrame().split('\n')[24]).toContain(
+    expect(setup.captureCharFrame().split('\n')[surface.footerBounds.y]).toContain(
       'Settings · Tab section · Enter change'
     );
     setup.mockInput.pressEscape();
@@ -46,8 +46,8 @@ test('header actions reserve one row while footer tools and canvas follow resize
     setup.resize(110, 30);
     await setup.renderOnce();
     const edit = surface.dockControls.find((control) => control.id === 'edit')!;
-    expect(edit.y).toBe(28);
-    expect(model.viewport.height).toBe(30 - CANVAS_TOP - 2);
+    expect(edit.y).toBe(29);
+    expect(model.viewport.height).toBe(30 - CANVAS_TOP - 1);
     await setup.mockMouse.click(edit.x + 1, edit.y);
     await setup.renderOnce();
     await setup.mockMouse.click(0, CANVAS_TOP);
@@ -376,7 +376,7 @@ test('native frame keeps CJK and joined Emoji aligned through clipping and resiz
     setup.resize(36, 12);
     await setup.renderOnce();
     expect(model.viewport.width).toBe(36);
-    expect(model.viewport.height).toBe(setup.renderer.height - CANVAS_TOP - 2);
+    expect(model.viewport.height).toBe(setup.renderer.height - CANVAS_TOP - 1);
     expect(setup.captureCharFrame()).toContain('Edit');
   } finally {
     await setup.dispose();
