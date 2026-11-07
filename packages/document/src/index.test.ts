@@ -5,6 +5,19 @@ import {
 } from "./index.js";
 
 describe("CharDesk document envelope", () => {
+  it('requires explicit Canvas metadata support before reading version 2', () => {
+    const canvas = { version: 1, pages: [] };
+    const source = serializeCharDeskDocumentEnvelope({ mode: 'freeform', body: 'A', canvas });
+    expect(() => parseCharDeskDocumentEnvelope(source)).toThrow('document/v2');
+    expect(parseCharDeskDocumentEnvelope(source, { allowCanvasMetadata: true })).toEqual({
+      mode: 'freeform', body: 'A', canvas,
+    });
+    expect(() => serializeCharDeskDocumentEnvelope({ mode: 'slide', body: '', canvas })).toThrow('Freeform');
+    expect(() => parseCharDeskDocumentEnvelope(
+      '---\nchardesk: document/v2\nmode: freeform\ncanvas: invalid\n---\nA',
+      { allowCanvasMetadata: true },
+    )).toThrow('Invalid Canvas document metadata');
+  });
   it("round-trips each document mode as readable text", () => {
     for (const mode of ["freeform", "structured", "slide"] as const) {
       const source = serializeCharDeskDocumentEnvelope({

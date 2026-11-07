@@ -51,20 +51,20 @@ viewports are checkpoints and never live Zustand projections.
 
 ## Entry direction
 
-```text
-native KeyboardEvent -> browser adapter -> KeyInput
-                                         ├─ shortcut dispatcher -> editor keymap -> command/tool
-                                         └─ managed Canvas rules -> Canvas Intent -> canvas port
-native beforeinput/composition/clipboard -------------------------> native adapter
-command/tool or native adapter -> canvas port -> CanvasCommands -> pure transition or Yjs document
-```
+**Web DOM** ─ HTML Host ─┐\
+　　　　　　　　　　　├→ **`editor-input` / `@opentui/keymap`** → **command / tool**\
+**TUI bytes** ─ OpenTUI ─┘　　　　　　　　　　　　　　　　　│\
+　　　　　　　　　　　　　　　　　　　　　　　　　　　　↓\
+**`KeyInput`** → managed Canvas rules → Intent → **Canvas port** → **CanvasCommands**\
+**beforeinput / composition / clipboard** → native adapter ────┘
 
 - Commands own discrete semantic operations; tools own continuous interaction
   through one hierarchical state tree for freeform and structured drag state.
 - `@chardesk/keyboard` owns DOM-free keyboard facts. Its browser entry performs
   the only native-event conversion.
-- The shortcut dispatcher owns focus classification, layer priority, and native
-  event effects; the keymap owns configurable semantic bindings.
+- Host adapters own focus classification and native event effects. The
+  [input integration boundary](/development/architecture/ownership) routes binding
+  contributions through the shared keymap engine.
 - Managed Canvas key rules are pure `KeyInput + context -> Intent`; the hook
   executes Intents through its model and editor command ports.
 - Native clipboard events invoke the same commands through adapters.

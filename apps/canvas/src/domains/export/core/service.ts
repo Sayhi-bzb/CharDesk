@@ -1,11 +1,9 @@
+import { captureCanvasExport, prepareCanvasTextExport } from "@chardesk/editor-core/exportPlan";
 import { serializeCharDeskDocumentEnvelope } from "@chardesk/document";
 import type { CharDeskFontProfile } from "@chardesk/fonts";
 import type { CanvasArtifactPalette } from "@/shared/canvas-appearance/artifact-style";
 import type { GridCellSource, SelectionArea } from "@/shared/types";
-import {
-  createPngBlobFromGrid,
-  createSelectionPngBlob,
-} from "../formats/raster";
+import { createPngBlobFromGrid, createSelectionPngBlob } from "../formats/raster";
 import { exportToAnsi, exportToCharDesk, exportToString } from "../formats/text";
 import { exportSlideDeckBodyToMarkdown } from "../formats/slidesMarkdown";
 import { getExportFormatDefinition } from "./registry";
@@ -69,15 +67,29 @@ export const prepareTextExport = (
   format: ExportFormat
 ): ExportResult<TextExportArtifact> => {
   const definition = getExportFormatDefinition(format);
-  if (
-    !definition?.modes.includes(context.canvasMode) ||
-    definition.artifactKind !== "text"
-  ) {
+  if (!definition?.modes.includes(context.canvasMode) || definition.artifactKind !== "text") {
     return exportFailed("unsupported-format");
   }
 
   try {
     const grid = context.surface;
+    if (context.canvasMode === "freeform" && format !== "png") {
+      const content = prepareCanvasTextExport({
+        snapshot: captureCanvasExport(grid),
+        format,
+        document: context.document ?? undefined,
+        title: context.documentName,
+        includeColor: context.includeColor,
+      });
+      return exportSucceeded(
+        textArtifact(
+          format,
+          content,
+          `chardesk-${getTimestamp()}.${format === "ansi" ? "ans" : format}`,
+          "text/plain;charset=utf-8"
+        )
+      );
+    }
     switch (format) {
       case "txt":
         return exportSucceeded(
@@ -92,7 +104,8 @@ export const prepareTextExport = (
         if (context.canvasMode === "slide" && !context.slideDeck) {
           return exportFailed("canvas-unavailable");
         }
-        const body = context.canvasMode === "slide"
+        const body =
+          context.canvasMode === "slide"
             ? exportSlideDeckBodyToMarkdown(context.slideDeck!, {
                 includeColor: context.includeColor,
               })
@@ -148,9 +161,7 @@ export const prepareExport = (
         context.showGrid,
         context.includeColor,
         context.fontProfile,
-        context.canvasMode === "freeform"
-          ? context.artifactPalette
-          : undefined
+        context.canvasMode === "freeform" ? context.artifactPalette : undefined
       ),
       filename: `chardesk-${getTimestamp()}.png`,
       mimeType: "image/png",

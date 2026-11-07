@@ -5,7 +5,7 @@ import { convertBlackboardSource, parseBlackboardSource } from "@/domains/legacy
 export const migrateCloudBlackboard = async (workId: string) => {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const source = await cloudWorkspaceApi.readBackup(workId);
-    const native = parseCharDeskDocumentEnvelope(source.content);
+    const native = parseCharDeskDocumentEnvelope(source.content, { allowCanvasMetadata: true });
     if (native?.mode === "freeform" || native?.mode === "slide") return;
     const converted = await convertBlackboardSource({
       workspace: { id: workId, title: source.title, revision: source.revision, createdAt: 0, updatedAt: 0 },

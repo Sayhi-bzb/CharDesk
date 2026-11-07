@@ -24,13 +24,13 @@
     "@chardesk/fonts": "*",
     "@chardesk/github-stars": "*",
     "@chardesk/keyboard": "*",
+    "@chardesk/editor-input": "*",
     "@chardesk/protocol": "*",
     "@chardesk/rendering": "*",
     "@chardesk/ui": "*",
     "@headless-tree/core": "^1.7.0",
     "@headless-tree/react": "^1.7.0",
     "@mcp-b/webmcp-polyfill": "5.1.0",
-    "@tanstack/hotkeys": "0.8.0",
     "@tanstack/react-table": "^9.1.2",
     "@use-gesture/react": "^10.3.1",
     "ahooks": "^3.9.6",
@@ -42,7 +42,6 @@
     "lucide-react": "^1.31.0",
     "polygon-clipping": "^0.15.7",
     "quickjs-emscripten": "^0.32.0",
-    "re2js": "^2.8.6",
     "react": "^19.2.0",
     "react-colorful": "^5.8.0",
     "react-dom": "^19.2.0",
@@ -50,7 +49,11 @@
     "y-protocols": "^1.0.7",
     "y-websocket": "^3.0.0",
     "yjs": "^13.6.27",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.9",
+    "@chardesk/cell-plane": "*",
+    "@chardesk/editor-core": "*",
+    "@chardesk/canvas-templates": "*",
+    "@chardesk/character-library": "*"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
@@ -66,6 +69,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.3",
     "vite": "^8.2.0",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.2",
+    "@napi-rs/canvas": "1.0.8"
   }
 }

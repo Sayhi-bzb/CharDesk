@@ -1,14 +1,14 @@
-import { CanvasPersistenceTimeoutError, CanvasWriteError, isCanvasReadViewport, readCanvasViewport, renderCanvasViewportImage, isCanvasSearchQuery,
+import { parseCanvasReadRequest, readCanvasSurface, INVALID_CANVAS_READ } from "@chardesk/canvas-capabilities/read";
+import { renderBrowserReadImage } from "./canvasReadImage";
+import {isCanvasStrokeStyle,literalRows,fillRows} from '@chardesk/canvas-capabilities/projection';
+import { CanvasPersistenceTimeoutError, CanvasWriteError, isCanvasReadViewport, isCanvasSearchQuery,
   isCanvasSearchPosition, searchCanvasSurface, CanvasSearchError, type CanvasRuntime } from "@/domains/canvas/public";
-import type { AgentToolContentBlock, AgentToolDefinition, AgentToolExecutionContext } from "./contracts";
+import type { AgentToolDefinition, AgentToolExecutionContext } from "./contracts";
 import { isSourceBackedCanvasSession } from "@/domains/sessions/public";
 import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvasRendering";
 import { CHARDESK_CONTENT_THEMES } from "@chardesk/rendering/theme";
 import { COLOR_PRIMARY_TEXT } from "@/shared/lib/constants";
 import { measureCanvasMutationImpact, prepareCanvasErase, prepareCanvasPlainTextWrite, prepareCanvasRowsWrite, prepareCanvasTextWrite, type CanvasMutationImpact, type CanvasStrokeStyle } from "@/domains/canvas/public";
-import type { CanvasSurfaceReader, RichTextRow } from "@/domains/canvas/public";
-import { getTextCellWidth } from "@chardesk/protocol";
-import type { GridCell } from "@/shared/types";
 import type { TextRendererMode } from "@/domains/document/public";
 import { clearCanvasActivity, publishCanvasActivity } from "@/shared/canvas-activity";
 
@@ -105,112 +105,6 @@ const confirmCanvasPersistence = async (canvas: CanvasPersistenceHost, canvasId:
       ...(error instanceof CanvasPersistenceTimeoutError ? { persistenceError: error.message } : { persistenceError: error instanceof Error ? error.message : "Canvas persistence is pending." }),
     };
   }
-};
-
-type CanvasAppearanceRegion = Readonly<{ bounds: [number, number, number, number]; style: Record<string, unknown> }>;
-
-const appearanceStyle = (cell: Pick<GridCell, "color" | "bgColor" | "attrs" | "href">, defaultForeground: string) => {
-  const style: Record<string, unknown> = {};
-  if (cell.color && cell.color.toLowerCase() !== defaultForeground.toLowerCase()) style.color = cell.color;
-  if (cell.bgColor) style.bgColor = cell.bgColor;
-  const attrs = cell.attrs && Object.fromEntries(Object.entries(cell.attrs).filter(([, enabled]) => enabled));
-  if (attrs && Object.keys(attrs).length > 0) style.attrs = attrs;
-  if (cell.href) style.href = cell.href;
-  return style;
-};
-
-const collectCanvasAppearance = (
-  surface: CanvasSurfaceReader,
-  viewport: readonly [number, number, number, number] | null,
-  defaultForeground: string,
-  theme: "light" | "dark",
-): Readonly<{ theme: "light" | "dark"; regions: readonly CanvasAppearanceRegion[] }> => {
-  if (!viewport) return { theme: "light", regions: [] };
-  const [x, y, width, height] = viewport;
-  const runs: Array<{ x: number; y: number; width: number; endY: number; key: string; style: Record<string, unknown> }> = [];
-  surface.visit({ x, y, width, height }, (cellX, cellY, cell) => {
-    const style = appearanceStyle(cell, defaultForeground);
-    if (Object.keys(style).length === 0) return;
-    const cellWidth = Math.max(1, getTextCellWidth(cell.char));
-    const key = JSON.stringify(style);
-    const previous = runs[runs.length - 1];
-    if (previous && previous.y === cellY && previous.x + previous.width === cellX && previous.key === key) previous.width += cellWidth;
-    else runs.push({ x: cellX, y: cellY, width: cellWidth, endY: cellY, key, style });
-  });
-  const grouped = new Map<string, typeof runs>();
-  for (const run of runs) {
-    const groupKey = `${run.key}\u0001${run.x}\u0001${run.width}`;
-    const group = grouped.get(groupKey) ?? [];
-    const previous = group[group.length - 1];
-    if (previous && previous.endY + 1 === run.y) previous.endY = run.y;
-    else group.push({ ...run });
-    grouped.set(groupKey, group);
-  }
-  return {
-    theme,
-    regions: [...grouped.values()].flat().sort((a, b) => a.y - b.y || a.x - b.x).map(({ x: regionX, y: regionY, width: regionWidth, endY, style }) => ({
-      bounds: [regionX, regionY, regionWidth, endY - regionY + 1], style,
-    })),
-  };
-};
-
-type ModelImage = Readonly<{ mimeType: "image/png"; data: string; width: number; height: number; scale: number }>;
-const MAX_MODEL_IMAGE_BYTES = 700 * 1024;
-
-const isCanvasStrokeStyle = (value: unknown): value is CanvasStrokeStyle => {
-  if (value === undefined) return true;
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const candidate = value as Record<string, unknown>;
-  if (candidate.color !== undefined && typeof candidate.color !== "string") return false;
-  if (candidate.bgColor !== undefined && typeof candidate.bgColor !== "string") return false;
-  if (candidate.href !== undefined && typeof candidate.href !== "string") return false;
-  if (candidate.attrs !== undefined && (!candidate.attrs || typeof candidate.attrs !== "object" || Array.isArray(candidate.attrs))) return false;
-  return true;
-};
-
-const literalRows = (content: string, style: CanvasStrokeStyle, fallbackColor: string): readonly RichTextRow[] => {
-  const normalized = content.replace(/\r\n?/g, "\n");
-  const lines = normalized.split("\n");
-  if (lines.some((line) => /\p{Cc}/u.test(line))) throw new CanvasWriteError("invalid_input", "Content must be plain Unicode text; tabs and control characters are unsupported.");
-  return lines.flatMap((text, y) => text ? [{
-    y,
-    spans: [{ x: 0, text, width: getTextCellWidth(text), color: style.color ?? fallbackColor,
-      ...(style.bgColor ? { bgColor: style.bgColor } : {}), ...(style.attrs ? { attrs: style.attrs } : {}), ...(style.href ? { href: style.href } : {}) }],
-  }] : []);
-};
-
-const blobAsBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = () => {
-    const result = typeof reader.result === "string" ? reader.result : "";
-    const comma = result.indexOf(",");
-    if (comma < 0) reject(new Error("Invalid image data."));
-    else resolve(result.slice(comma + 1));
-  };
-  reader.onerror = () => reject(reader.error ?? new Error("Unable to read image data."));
-  reader.readAsDataURL(blob);
-});
-
-const svgToPng = async (image: { mimeType: string; data: string; width: number; height: number; scale: number }): Promise<ModelImage | null> => {
-  if (image.mimeType !== "image/svg+xml" || typeof document === "undefined" || typeof Image === "undefined") return null;
-  try {
-    const element = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const next = new Image();
-      next.onload = () => resolve(next);
-      next.onerror = () => reject(new Error("Unable to decode Canvas image."));
-      next.src = `data:image/svg+xml;base64,${image.data}`;
-    });
-    const canvas = document.createElement("canvas");
-    canvas.width = image.width;
-    canvas.height = image.height;
-    const context = canvas.getContext("2d");
-    if (!context) return null;
-    context.clearRect(0, 0, image.width, image.height);
-    context.drawImage(element, 0, 0, image.width, image.height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-    if (!blob || blob.size > MAX_MODEL_IMAGE_BYTES) return null;
-    return { mimeType: "image/png", data: await blobAsBase64(blob), width: image.width, height: image.height, scale: image.scale };
-  } catch { return null; }
 };
 
 export const createCanvasManageTool = (
@@ -511,20 +405,7 @@ export const createCanvasFillTool = (
       if (session && isSourceBackedCanvasSession(session)) return { ok: false, code: "source_backed_canvas", message: "Edit the source file of this Canvas instead of its projection." };
       const origin = { x: at[0]!, y: at[1]! };
       const style = input.style as CanvasStrokeStyle;
-      const rows: RichTextRow[] = [];
-      for (const row of snapshot.surface.rows({ x: origin.x, y: origin.y, width: size[0]!, height: size[1]! })) {
-        const spans = row.spans.flatMap((span) => {
-          let x = span.x;
-          return span.cells.flatMap((cell) => {
-            const cellX = x;
-            x += getTextCellWidth(cell.char);
-            if (/^\s+$/u.test(cell.char)) return [];
-            return [{ x: cellX - origin.x, text: cell.char, width: getTextCellWidth(cell.char), color: style.color ?? cell.color,
-              bgColor: style.bgColor ?? cell.bgColor, attrs: style.attrs ?? cell.attrs, href: style.href ?? cell.href }];
-          });
-        });
-        if (spans.length > 0) rows.push({ y: row.y - origin.y, spans });
-      }
+      const rows = fillRows(snapshot.surface, origin, [size[0]!,size[1]!], style);
       const prepared = prepareCanvasRowsWrite(origin, rows, "patch");
       mutation = beginMutation(canvas, target, input.pageId as string | undefined, context);
       const result = target.id === state.activeCanvasId && input.pageId === undefined
@@ -760,18 +641,8 @@ export const createCanvasReadTool = (
 ): AgentToolDefinition => ({
   ...CANVAS_READ_TOOL,
   execute: async (input) => {
-    const representation = input.representation === undefined ? "text" : input.representation;
-    const style = input.style === undefined ? "none" : input.style;
-    const detail = input.detail === undefined ? "auto" : input.detail;
-    if (Object.keys(input).some((key) => !["canvasId", "pageId", "viewport", "representation", "style", "detail"].includes(key))
-      || (input.canvasId !== undefined && (typeof input.canvasId !== "string" || input.canvasId.length === 0))
-      || (input.pageId !== undefined && (typeof input.pageId !== "string" || input.pageId.length === 0))
-      || (input.viewport !== undefined && !isCanvasReadViewport(input.viewport))
-      || !["text", "cells", "image", "both"].includes(String(representation))
-      || !["none", "appearance"].includes(String(style))
-      || !["low", "high", "original", "auto"].includes(String(detail))) {
-      return { ok: false, code: "invalid_input", message: "Expected an optional viewport [x,y,width,height], representation text|cells|image|both, style none|appearance, and image detail low|high|original|auto." };
-    }
+    const request = parseCanvasReadRequest(input);
+    if (!request) return INVALID_CANVAS_READ;
     try {
       await canvas.ready;
       const target = resolveCanvasTarget(canvas, input);
@@ -781,75 +652,14 @@ export const createCanvasReadTool = (
         ? await canvas.materializeSession(canvasId)
         : await canvas.materializeSession(canvasId, input.pageId as string);
       if (!snapshot) return { ok: false, code: "canvas_not_ready", message: "The Canvas content is not ready." };
-      const result = readCanvasViewport(snapshot.surface, input.viewport, {
-        defaultForeground: COLOR_PRIMARY_TEXT,
-        includeStyles: style === "appearance",
+      const theme = rendering.getContext().themeMode;
+      return await readCanvasSurface(snapshot.surface, request, {
+        target: { ...targetOutput(target), ...(snapshot.pageId ? { pageId: snapshot.pageId } : {}) },
+        theme,
+        palette: { color: CHARDESK_CONTENT_THEMES[theme].foreground, background: CHARDESK_CONTENT_THEMES[theme].background },
+        renderingNote: describeCanvasWriteRendering(rendering),
+        renderImage: renderBrowserReadImage,
       });
-      const defaultForeground = COLOR_PRIMARY_TEXT;
-      const appearance = style === "appearance" && representation !== "cells" && !result.overviewOnly
-        ? collectCanvasAppearance(snapshot.surface, result.viewport, defaultForeground, rendering.getContext().themeMode)
-        : null;
-      const renderingNote = style === "appearance" && !result.overviewOnly ? describeCanvasWriteRendering(rendering) : "";
-      const cells = representation === "cells" && result.viewport && !result.overviewOnly
-        ? (() => { const collected: Array<Record<string, unknown>> = []; snapshot.surface.visit({ x: result.viewport![0], y: result.viewport![1], width: result.viewport![2], height: result.viewport![3] }, (x, y, cell) => collected.push({ x, y, ...cell })); return collected; })()
-        : [];
-      const appearanceText = appearance ? result.content.replace("\nstyles:", "\nappearance:") : result.content;
-      const textContent = representation === "cells" ? "" : [appearanceText, renderingNote].filter(Boolean).join("\n\n");
-      const contentBlocks: AgentToolContentBlock[] = [];
-      if (representation === "text" || representation === "both") contentBlocks.push({ type: "text", text: textContent });
-      if (representation === "cells") {
-        // Keep exact values visible to content-only clients without repeating every field name.
-        const columns = ["x", "y", "char", ...new Set(cells.flatMap(cell => Object.keys(cell)).filter(key => !["x", "y", "char"].includes(key)))];
-        const direct = { columns, cells: cells.map(cell => columns.map(key => cell[key] ?? null)) };
-        const styles: Record<string, unknown>[] = [];
-        const styleIds = new Map<string, number>();
-        const packed = { columns: ["x", "y", "char", "styleIndex"], styles, cells: cells.map(cell => {
-          const style = Object.fromEntries(Object.entries(cell).filter(([key]) => !["x", "y", "char"].includes(key)));
-          const key = JSON.stringify(style);
-          let id = styleIds.get(key);
-          if (id === undefined) { id = styles.length; styles.push(style); styleIds.set(key, id); }
-          return [cell.x, cell.y, cell.char, id];
-        }) };
-        // Share repeated styles when it is smaller; never truncate exact Cell data.
-        const presentation = JSON.stringify(packed).length < JSON.stringify(direct).length ? packed : direct;
-        contentBlocks.push({ type: "text", text: JSON.stringify({
-          ...targetOutput(target), viewport: result.viewport, sampleSize: result.sampleSize,
-          mode: result.mode, overviewOnly: result.overviewOnly, exact: !result.overviewOnly,
-          ...presentation,
-          ...(result.overviewOnly ? { navigation: result.content } : {}),
-        }) });
-      }
-      const renderedImage = (representation === "image" || representation === "both") && result.viewport
-        ? renderCanvasViewportImage(snapshot.surface, result.viewport, detail as "low" | "high" | "original" | "auto", {
-            defaultForeground: COLOR_PRIMARY_TEXT,
-            foreground: CHARDESK_CONTENT_THEMES[rendering.getContext().themeMode].foreground,
-          })
-        : null;
-      const image = renderedImage ? await svgToPng(renderedImage) : null;
-      if (image) contentBlocks.push({ type: "image", ...image });
-      if (representation === "image" && !image) {
-        contentBlocks.push({ type: "note", text: result.viewport ? "Image unavailable; use representation: text." : "No Canvas content is available for this image viewport." });
-      }
-      const structuredContent = {
-        ...targetOutput(target),
-        ...(snapshot.pageId ? { pageId: snapshot.pageId } : {}),
-        viewport: result.viewport,
-        sampleSize: result.sampleSize,
-        mode: result.mode,
-        overviewOnly: result.overviewOnly,
-        representation,
-        style,
-        appearance,
-        detail,
-        cells,
-        image: image ? { mimeType: image.mimeType, width: image.width, height: image.height, scale: image.scale } : null,
-      };
-      return {
-        ...structuredContent,
-        content: representation === "image" || representation === "cells" ? "" : textContent,
-        contentBlocks,
-        structuredContent,
-      };
     } catch {
       return { ok: false, code: "canvas_not_ready", message: "Unable to read the Canvas content." };
     }

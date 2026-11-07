@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-"use client";
+'use client';
 
 import {
   createContext,
@@ -8,17 +8,16 @@ import {
   useEffect,
   useMemo,
   useRef,
-  type MutableRefObject,
   type ReactNode,
-} from "react";
-import type { KeyInput } from "@chardesk/keyboard";
-import { keyInputFromKeyboardEvent } from "@chardesk/keyboard/browser";
+} from 'react';
+import type { KeyInput } from '@chardesk/keyboard';
 import {
-  classifyShortcutTarget,
-  type ShortcutTargetKind,
-} from "@/shared/utils/dom-focus";
-
-type ShortcutPhase = "keydown" | "keyup";
+  browserKeyInput,
+  createBrowserInput,
+  registerBrowserHandler,
+  type BrowserKeymap,
+} from '@chardesk/editor-input/browser';
+import { classifyShortcutTarget, type ShortcutTargetKind } from '@/shared/utils/dom-focus';
 
 type ShortcutDispatchContext = {
   targetKind: ShortcutTargetKind;
@@ -55,74 +54,37 @@ export const SHORTCUT_PRIORITY = {
   chrome: 50,
 } as const;
 
-type LayerEntry = {
-  order: number;
-  ref: MutableRefObject<ShortcutLayer>;
-};
-
-type ShortcutDispatcherContextValue = {
-  register: (token: symbol, ref: MutableRefObject<ShortcutLayer>) => () => void;
-};
-
-const ShortcutDispatcherContext =
-  createContext<ShortcutDispatcherContextValue | null>(null);
+type KeymapAttachment = (keymap: BrowserKeymap) => () => void;
+type ShortcutDispatcherContextValue = { connect: (attach: KeymapAttachment) => () => void };
+const ShortcutDispatcherContext = createContext<ShortcutDispatcherContextValue | null>(null);
 
 export function ShortcutProvider({ children }: { children: ReactNode }) {
-  const layersRef = useRef(new Map<symbol, LayerEntry>());
-  const nextOrderRef = useRef(0);
-
-  const register = useCallback(
-    (token: symbol, ref: MutableRefObject<ShortcutLayer>) => {
-      layersRef.current.set(token, {
-        order: nextOrderRef.current++,
-        ref,
-      });
-      return () => {
-        layersRef.current.delete(token);
-      };
-    },
-    []
-  );
-
-  useEffect(() => {
-    const dispatch = (phase: ShortcutPhase, event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.isComposing) return;
-      const input = keyInputFromKeyboardEvent(event);
-
-      const layers = [...layersRef.current.values()].sort(
-        (left, right) =>
-          right.ref.current.priority - left.ref.current.priority ||
-          left.order - right.order
-      );
-      const context: ShortcutDispatchContext = {
-        targetKind: classifyShortcutTarget(event.target),
-      };
-
-      for (const entry of layers) {
-        const layer = entry.ref.current;
-        if (layer.enabled === false) continue;
-        const handler = phase === "keydown" ? layer.onKeyDown : layer.onKeyUp;
-        const result = handler?.(input, context);
-        if (!result?.claimed) continue;
-        if (result.preventDefault) event.preventDefault();
-        if (result.stopImmediatePropagation) {
-          event.stopImmediatePropagation();
-        }
-        break;
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => dispatch("keydown", event);
-    const handleKeyUp = (event: KeyboardEvent) => dispatch("keyup", event);
-    window.addEventListener("keydown", handleKeyDown, true);
-    window.addEventListener("keyup", handleKeyUp, true);
+  const inputRef = useRef<ReturnType<typeof createBrowserInput> | null>(null);
+  const attachments = useRef(new Set<{ attach: KeymapAttachment; detach?: () => void }>());
+  const connect = useCallback((attach: KeymapAttachment) => {
+    const entry: { attach: KeymapAttachment; detach?: () => void } = { attach };
+    attachments.current.add(entry);
+    if (inputRef.current) entry.detach = attach(inputRef.current.keymap);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown, true);
-      window.removeEventListener("keyup", handleKeyUp, true);
+      entry.detach?.();
+      attachments.current.delete(entry);
     };
   }, []);
-
-  const value = useMemo(() => ({ register }), [register]);
+  useEffect(() => {
+    const input = createBrowserInput();
+    inputRef.current = input;
+    const entries = attachments.current;
+    for (const entry of entries) entry.detach = entry.attach(input.keymap);
+    return () => {
+      for (const entry of entries) {
+        entry.detach?.();
+        entry.detach = undefined;
+      }
+      input.dispose();
+      inputRef.current = null;
+    };
+  }, []);
+  const value = useMemo(() => ({ connect }), [connect]);
   return (
     <ShortcutDispatcherContext.Provider value={value}>
       {children}
@@ -130,18 +92,39 @@ export function ShortcutProvider({ children }: { children: ReactNode }) {
   );
 }
 
+export function useShortcutBindings(attach: KeymapAttachment) {
+  const dispatcher = useContext(ShortcutDispatcherContext);
+  if (!dispatcher) throw new Error('useShortcutBindings must be used within a ShortcutProvider.');
+  useEffect(() => dispatcher.connect(attach), [dispatcher, attach]);
+}
+
 export function useShortcutLayer(layer: ShortcutLayer) {
   const dispatcher = useContext(ShortcutDispatcherContext);
-  if (!dispatcher) {
-    throw new Error("useShortcutLayer must be used within a ShortcutProvider.");
-  }
-  const tokenRef = useRef<symbol | null>(null);
-  if (tokenRef.current === null) tokenRef.current = Symbol(layer.id);
+  if (!dispatcher) throw new Error('useShortcutLayer must be used within a ShortcutProvider.');
   const layerRef = useRef(layer);
   layerRef.current = layer;
-
+  const priority = layer.priority;
   useEffect(
-    () => dispatcher.register(tokenRef.current as symbol, layerRef),
-    [dispatcher]
+    () =>
+      dispatcher.connect((keymap) =>
+        registerBrowserHandler(keymap, {
+          priority,
+          enabled: () => layerRef.current.enabled !== false,
+          handle: (event, phase) => {
+            const native = event.originalEvent;
+            if (!native) return false;
+            const handler =
+              phase === 'keydown' ? layerRef.current.onKeyDown : layerRef.current.onKeyUp;
+            const result = handler?.(browserKeyInput(native), {
+              targetKind: classifyShortcutTarget(native.target),
+            });
+            if (!result?.claimed) return false;
+            if (result.preventDefault) native.preventDefault();
+            if (result.stopImmediatePropagation) native.stopImmediatePropagation();
+            return true;
+          },
+        })
+      ),
+    [dispatcher, priority]
   );
 }

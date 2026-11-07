@@ -1,3 +1,5 @@
+import type { CharDeskCellCanvasContext } from "./cell-canvas-context.js";
+export type { CharDeskCellCanvasContext } from "./cell-canvas-context.js";
 import {
   CHARDESK_SYSTEM_FONT_PROFILE,
   type CharDeskFontCapability,
@@ -226,7 +228,7 @@ export const resolveCharDeskCanvasFontFace = (input: Readonly<{
 
 /** Ink placement for an NF glyph; null retains ordinary font drawing when metrics are unavailable. */
 export const measureCharDeskCanvasNerdGlyph = (
-  context: Pick<CharDeskCanvasContext, "font" | "textAlign" | "textBaseline" | "measureText">,
+  context: Pick<CharDeskCellCanvasContext, "font" | "textAlign" | "textBaseline" | "measureText">,
   input: Readonly<{
     grapheme: string;
     metrics: CharDeskCellMetrics;
@@ -473,7 +475,7 @@ export const resolveCharDeskCanvasCellVisual = (
 };
 
 const drawDecoration = (
-  ctx: CharDeskCanvasContext,
+  ctx: CharDeskCellCanvasContext,
   x: number,
   y: number,
   width: number,
@@ -494,7 +496,7 @@ const underlineY = (rowY: number, cellHeight: number, lineWidth: number) =>
   rowY + cellHeight - Math.ceil(lineWidth / 2);
 
 const drawCellBackground = (
-  ctx: CharDeskCanvasContext,
+  ctx: CharDeskCellCanvasContext,
   entry: CharDeskCanvasCellDrawEntry,
   visual: CharDeskCanvasCellVisual,
   previousColor: string | null,
@@ -519,7 +521,7 @@ type CanvasTextState = {
 };
 
 const prepareFontGlyph = (
-  ctx: CharDeskCanvasContext,
+  ctx: CharDeskCellCanvasContext,
   entry: CharDeskCanvasCellDrawEntry,
   visual: CharDeskCanvasCellVisual,
   state: CanvasTextState
@@ -590,7 +592,7 @@ const prepareFontGlyph = (
 };
 
 const drawPreparedFontGlyph = (
-  ctx: CharDeskCanvasContext,
+  ctx: CharDeskCellCanvasContext,
   glyph: ReturnType<typeof prepareFontGlyph>
 ) => {
   const drawAt = (offsetX: number) => {
@@ -601,7 +603,7 @@ const drawPreparedFontGlyph = (
 };
 
 const drawCellText = (
-  ctx: CharDeskCanvasContext,
+  ctx: CharDeskCellCanvasContext,
   entry: CharDeskCanvasCellDrawEntry,
   visual: CharDeskCanvasCellVisual,
   state: CanvasTextState
@@ -655,7 +657,7 @@ const drawCellText = (
 };
 
 export const drawCharDeskCanvasCells = (
-  ctx: CharDeskCanvasContext,
+  ctx: CharDeskCellCanvasContext,
   entries: readonly CharDeskCanvasCellDrawEntry[]
 ) => {
   ctx.save();

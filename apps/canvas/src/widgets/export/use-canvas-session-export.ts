@@ -37,6 +37,7 @@ export function useCanvasSessionExport() {
           showGrid: false,
           slideDeck: session.slideDeck,
           documentName: session.name,
+          document: session.document,
         },
         format
       );

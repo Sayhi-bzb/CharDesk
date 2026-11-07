@@ -74,7 +74,8 @@ created; a selection supplies text and a starting point but does not persist a r
 parent are roots. A branch move or deletion is one undoable anchor transaction.
 Explicit range moves translate selected anchor points with Cells in one transaction and
 history action. The Canvas Yjs document and
-checkpoint retain them; plain-text `.chardesk`, ANSI, and image exports do not.
+checkpoint retain them; version-1 `.chardesk`, ANSI, and image exports do not. Document-aware version-2
+`.chardesk` exports preserve them through the [shared text codec](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/editor-core/src/documentText.ts).
 Canvas rendering queries
 occupied spans inside the viewport, and Minimap caches its reader projection by document
 revision; camera movement never materializes a grid snapshot. A legacy local `main-grid`

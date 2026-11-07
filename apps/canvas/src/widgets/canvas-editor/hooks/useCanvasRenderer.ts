@@ -1,3 +1,4 @@
+import type { GridSelectionDragPreview } from "@/domains/selection/public";
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCanvasFont } from '@/shared/fonts/hooks';
 import {
@@ -13,7 +14,7 @@ import {
 } from '@/shared/canvas-appearance/artifact-style';
 import type { CanvasRenderModel } from './canvasModels';
 import { GridManager } from '@/shared/utils/grid';
-import type { SelectionArea, GridMap, Point } from '@/shared/types';
+import type { GridMap, Point } from '@/shared/types';
 import {
   createGridSurfaceReader,
   isIncrementalCanvasSurfaceReader,
@@ -140,7 +141,7 @@ export const useCanvasRenderer = (
   size: { width: number; height: number } | undefined,
   surfaceGeometry: CanvasSurfaceGeometry | undefined,
   store: CanvasRenderModel,
-  draggingSelection: SelectionArea | null,
+  draggingSelection: GridSelectionDragPreview | null,
   staticRangeMovePreview: StaticGridRangeMovePlan | null,
   hoveredLink: CanvasLinkHit | null,
   canvasAppearance: CanvasAppearanceSnapshot,

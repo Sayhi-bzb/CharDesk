@@ -1,25 +1,24 @@
 import type { ToolType } from "@/domains/canvas/public";
 import type { CanvasMode } from "@/domains/sessions/public";
 import {
-  forEachGridSelectionSpan,
   getGridSelectionRanges,
   hasGridRangeSelection,
   type GridSelectionState,
 } from "@/domains/selection/public";
-import type { GridCell, GridCellSource } from "@/shared/types";
+import type { GridCellSource } from "@/shared/types";
 import {
-  deriveTextFormattingModel,
+  readSelectionStyle,
   type TextFormattingModel,
-} from "./text-format-model";
+} from "@chardesk/editor-core/selection/style";
 
 type CanvasInspectorModel = {
-      mode: "grid";
-      canvasMode: CanvasMode;
-      activeColor: string;
-      canvasPickDestination: "foreground" | "background";
-      hasSelection: boolean;
-      textFormatting: TextFormattingModel | null;
-    };
+  mode: "grid";
+  canvasMode: CanvasMode;
+  activeColor: string;
+  canvasPickDestination: "foreground" | "background";
+  hasSelection: boolean;
+  textFormatting: TextFormattingModel | null;
+};
 
 export const deriveCanvasInspectorModel = ({
   canvasMode,
@@ -37,23 +36,13 @@ export const deriveCanvasInspectorModel = ({
   staticGridSelection: GridSelectionState;
 }): CanvasInspectorModel => {
   const isBackgroundTool = tool === "bg";
-  const selectedCells: GridCell[] = [];
-  forEachGridSelectionSpan(
-    getGridSelectionRanges(staticGridSelection),
-    ({ y, minX, maxX }) => {
-      for (let x = minX; x <= maxX; x++) {
-        const cell = grid.get({ x, y });
-        if (cell) selectedCells.push(cell);
-      }
-    },
-    grid
-  );
+  const style = readSelectionStyle(grid, getGridSelectionRanges(staticGridSelection));
   return {
     mode: "grid",
     canvasMode,
     activeColor: isBackgroundTool ? brushBackgroundColor : brushColor,
     canvasPickDestination: isBackgroundTool ? "background" : "foreground",
     hasSelection: hasGridRangeSelection(staticGridSelection),
-    textFormatting: deriveTextFormattingModel(selectedCells),
+    textFormatting: style.attributes,
   };
 };

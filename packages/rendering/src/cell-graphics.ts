@@ -1,3 +1,4 @@
+import type { CharDeskCellCanvasContext } from "./cell-canvas-context.js";
 import { cellGraphicDefinitions, CustomGlyphDefinitionType } from "./cell-graphics-definitions.js";
 import { alignCanvasRect, type AxisTransform, type CharDeskNormalizedCellRect } from "./canvas-geometry.js";
 import { traceCellGraphicCorner, traceCellGraphicPath } from "./cell-graphics-path.js";
@@ -11,7 +12,7 @@ export const CELL_GRAPHICS_VERSION = "xterm-cell-graphics-v5";
 const STRUCTURAL_STROKE_SCALE = 1.5;
 const BRAILLE_DOTS = new Uint8Array([1, 0, 1, 2, 1, 4, 5, 0, 5, 2, 5, 4, 1, 6, 5, 6]);
 
-type Context = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+type Context = CharDeskCellCanvasContext;
 type CharDeskCellGraphicPresentation = Readonly<{
   fontSize?: number;
   backgroundColor?: string;

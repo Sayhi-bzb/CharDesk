@@ -21,6 +21,10 @@
       "types": "./dist/styles.d.ts",
       "import": "./dist/styles.js"
     },
+    "./color-presets": {
+      "types": "./dist/color-presets.d.ts",
+      "import": "./dist/color-presets.js"
+    },
     "./components/*": {
       "types": "./dist/*.d.ts",
       "import": "./dist/*.js"

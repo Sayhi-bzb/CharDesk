@@ -1,14 +1,17 @@
 import {
+  DEFAULT_TEXT_RENDER_PROFILE,
+  MARKDOWN_WRAP_WIDTH_MIN,
+  MARKDOWN_WRAP_WIDTH_MAX,
+  normalizeCharDeskTextRenderProfile,
+  createTextProfileMarkdownOptions,
+} from "@chardesk/chargraph/profile";
+export { DEFAULT_TEXT_RENDER_PROFILE, MARKDOWN_WRAP_WIDTH_MIN, MARKDOWN_WRAP_WIDTH_MAX };
+import {
   compileCharDeskText,
   materializeCompiledCharDeskText,
   type CharDeskTextCompilerId,
 } from "@chardesk/chargraph";
-import {
-  createDefaultFeatureSettings,
-  createRegisteredMarkdownOptions,
-  decodeFeatureSettings,
-  migrateLegacyFeatureSettings,
-} from "./features";
+import { decodeFeatureSettings, migrateLegacyFeatureSettings } from "./features";
 import type {
   CompactTextRenderResult,
   TextRenderContext,
@@ -20,98 +23,24 @@ import type {
   TextRendererId,
   TextRenderingStorage,
 } from "./types";
-import {
-  createTextRenderThemeMap,
-  DEFAULT_TEXT_RENDER_THEME,
-  resolveTextRenderTheme,
-} from "./theme";
+import { createTextRenderThemeMap, resolveTextRenderTheme } from "./theme";
 
 export const TEXT_RENDER_PROFILE_STORAGE_KEY = "chardesk-text-render-profile-v3";
 const LEGACY_V2_TEXT_RENDER_PROFILE_STORAGE_KEY = "chardesk-text-render-profile-v2";
 const LEGACY_TEXT_RENDER_PROFILE_STORAGE_KEY = "chardesk-text-render-profile-v1";
-const DEFAULT_MARKDOWN_WRAP_WIDTH = 80;
-export const MARKDOWN_WRAP_WIDTH_MIN = 60;
-export const MARKDOWN_WRAP_WIDTH_MAX = 200;
-
-export const DEFAULT_TEXT_RENDER_PROFILE: TextRenderProfile = {
-  mode: "auto",
-  markdownWrapEnabled: true,
-  markdownWrapWidth: DEFAULT_MARKDOWN_WRAP_WIDTH,
-  markdownAutoAnchorsEnabled: true,
-  renderThemes: createTextRenderThemeMap(() => ({})),
-  features: createDefaultFeatureSettings(),
-};
-
 const DEFAULT_TEXT_RENDER_CONTEXT: TextRenderContext = { themeMode: "light" };
-
-const RENDER_THEME_TOKEN_IDS = Object.keys(DEFAULT_TEXT_RENDER_THEME) as Array<
-  keyof typeof DEFAULT_TEXT_RENDER_THEME
->;
-const LEGACY_MUTED_THEME_TOKEN_IDS = new Set([
-  "muted-foreground",
-  "border-subtle",
-  "grid-subtle",
-]);
-
-const normalizeColor = (value: unknown) =>
-  typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)
-    ? value.toLowerCase()
-    : null;
-
-const decodeMarkdownWrapWidth = (value: unknown) =>
-  typeof value === "number" && Number.isInteger(value)
-    ? Math.min(MARKDOWN_WRAP_WIDTH_MAX, Math.max(MARKDOWN_WRAP_WIDTH_MIN, value))
-    : DEFAULT_MARKDOWN_WRAP_WIDTH;
-
-const decodeThemeOverrides = (value: unknown) => {
-  const sourceTheme = value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
-  const legacyMuted = normalizeColor(sourceTheme.muted);
-  return Object.fromEntries(
-    RENDER_THEME_TOKEN_IDS.flatMap((id) => {
-      const color = normalizeColor(sourceTheme[id])
-        ?? (LEGACY_MUTED_THEME_TOKEN_IDS.has(id) ? legacyMuted : null);
-      return color ? [[id, color]] : [];
-    })
-  );
+const decodeProfile = (value: unknown): TextRenderProfile => {
+  const source =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  return normalizeCharDeskTextRenderProfile({
+    ...source,
+    features: decodeFeatureSettings(source.features),
+  });
 };
 
-const decodeProfile = (
-  value: unknown
-): TextRenderProfile => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return DEFAULT_TEXT_RENDER_PROFILE;
-  }
-  const candidate = value as Partial<TextRenderProfile>;
-  const candidateMode = typeof candidate.mode === "string" ? candidate.mode : "";
-  const mode = ["auto", "raw", "ansi", "markdown"].includes(candidateMode)
-    ? candidateMode
-    : DEFAULT_TEXT_RENDER_PROFILE.mode;
-  const sourceThemes = candidate.renderThemes &&
-    typeof candidate.renderThemes === "object" &&
-    !Array.isArray(candidate.renderThemes)
-    ? candidate.renderThemes as Record<string, unknown>
-    : {};
-  return {
-    mode: mode as TextRenderProfile["mode"],
-    markdownWrapEnabled: candidate.markdownWrapEnabled !== false,
-    markdownWrapWidth: decodeMarkdownWrapWidth(candidate.markdownWrapWidth),
-    markdownAutoAnchorsEnabled: candidate.markdownAutoAnchorsEnabled !== false,
-    renderThemes: createTextRenderThemeMap((themeMode) =>
-      decodeThemeOverrides(
-        sourceThemes[themeMode] ?? (themeMode === "light" ? (
-          candidate as Partial<TextRenderProfile> & { renderTheme?: unknown }
-        ).renderTheme : undefined)
-      )
-    ),
-    features: decodeFeatureSettings(candidate.features),
-  };
-};
-
-const migrateLegacyProfile = (
-  value: unknown
-): TextRenderProfile => {
+const migrateLegacyProfile = (value: unknown): TextRenderProfile => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return DEFAULT_TEXT_RENDER_PROFILE;
   }
@@ -119,25 +48,24 @@ const migrateLegacyProfile = (
   return decodeProfile({
     mode: candidate.mode,
     renderThemes: { light: candidate.renderTheme },
-    features: migrateLegacyFeatureSettings(
-      candidate.markdownRules,
-      candidate.markdownColors
-    ),
+    features: migrateLegacyFeatureSettings(candidate.markdownRules, candidate.markdownColors),
   });
 };
 
-const readProfile = (
-  storage: TextRenderingStorage | false | undefined
-) => {
+const readProfile = (storage: TextRenderingStorage | false | undefined) => {
   if (!storage) return DEFAULT_TEXT_RENDER_PROFILE;
   try {
     const stored = storage.getItem(TEXT_RENDER_PROFILE_STORAGE_KEY);
     if (stored) {
       const saved = JSON.parse(stored) as unknown;
       const profile = decodeProfile(saved);
-      if (!saved || typeof saved !== "object" ||
-        !("markdownWrapEnabled" in saved) || !("markdownWrapWidth" in saved) ||
-        !("markdownAutoAnchorsEnabled" in saved)) {
+      if (
+        !saved ||
+        typeof saved !== "object" ||
+        !("markdownWrapEnabled" in saved) ||
+        !("markdownWrapWidth" in saved) ||
+        !("markdownAutoAnchorsEnabled" in saved)
+      ) {
         try {
           storage.setItem(TEXT_RENDER_PROFILE_STORAGE_KEY, JSON.stringify(profile));
         } catch {
@@ -172,19 +100,20 @@ const readProfile = (
 
 const toRenderedRows = (
   rows: Awaited<ReturnType<typeof compileCharDeskText>>["rows"],
-  defaultColor: string,
-) => rows.map((row) => ({
-  y: row.y,
-  spans: row.spans.map((span) => ({
-    x: span.x,
-    width: span.width,
-    text: span.text,
-    color: span.color ?? defaultColor,
-    ...(span.bgColor ? { bgColor: span.bgColor } : {}),
-    ...(span.attrs ? { attrs: { ...span.attrs } } : {}),
-    ...(span.href ? { href: span.href } : {}),
-  })),
-}));
+  defaultColor: string
+) =>
+  rows.map((row) => ({
+    y: row.y,
+    spans: row.spans.map((span) => ({
+      x: span.x,
+      width: span.width,
+      text: span.text,
+      color: span.color ?? defaultColor,
+      ...(span.bgColor ? { bgColor: span.bgColor } : {}),
+      ...(span.attrs ? { attrs: { ...span.attrs } } : {}),
+      ...(span.href ? { href: span.href } : {}),
+    })),
+  }));
 
 const toTextRendererId = (id: CharDeskTextCompilerId): TextRendererId =>
   id === "plain" ? "raw" : id === "chardesk" ? "ansi" : id;
@@ -195,9 +124,11 @@ export class TextRenderingRuntime {
   #profile: TextRenderProfile;
   #resolvedThemes: TextRenderThemeMap<TextRenderTheme>;
 
-  constructor(options: {
-    storage?: TextRenderingStorage | false;
-  } = {}) {
+  constructor(
+    options: {
+      storage?: TextRenderingStorage | false;
+    } = {}
+  ) {
     this.#storage = options.storage;
     this.#profile = DEFAULT_TEXT_RENDER_PROFILE;
     this.#profile = readProfile(options.storage);
@@ -266,24 +197,21 @@ export class TextRenderingRuntime {
     source: string,
     defaultColor: string,
     context: TextRenderContext = DEFAULT_TEXT_RENDER_CONTEXT
-  ): Promise<CompactTextRenderResult> => this.#compile(
-    source,
-    defaultColor,
-    context
-  ).then((rendered) => {
-    const renderer = toTextRendererId(rendered.renderer);
-    const pipeline = rendered.pipeline.map(toTextRendererId);
-    return {
-      kind: "spans",
-      renderer,
-      pipeline,
-      rows: toRenderedRows(rendered.rows, defaultColor),
-      width: rendered.width,
-      height: rendered.height,
-      diagnostics: rendered.diagnostics,
-      headings: renderer === "markdown" ? rendered.headings : [],
-    };
-  });
+  ): Promise<CompactTextRenderResult> =>
+    this.#compile(source, defaultColor, context).then((rendered) => {
+      const renderer = toTextRendererId(rendered.renderer);
+      const pipeline = rendered.pipeline.map(toTextRendererId);
+      return {
+        kind: "spans",
+        renderer,
+        pipeline,
+        rows: toRenderedRows(rendered.rows, defaultColor),
+        width: rendered.width,
+        height: rendered.height,
+        diagnostics: rendered.diagnostics,
+        headings: renderer === "markdown" ? rendered.headings : [],
+      };
+    });
 
   #compile(source: string, defaultColor: string, context: TextRenderContext) {
     const profile = this.#profile;
@@ -297,13 +225,11 @@ export class TextRenderingRuntime {
         markdown: { color: theme.foreground },
       },
       markdown: {
-        ...createRegisteredMarkdownOptions(
-          profile.features,
+        ...createTextProfileMarkdownOptions(profile, {
           theme,
-          mode === "markdown",
-          themeMode
-        ),
-        ...(profile.markdownWrapEnabled ? { proseWrapWidth: profile.markdownWrapWidth } : {}),
+          themeMode,
+          forced: mode === "markdown",
+        }),
       },
     });
   }

@@ -1,0 +1,38 @@
+{
+  "name": "@chardesk/terminal-canvas-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun scripts/run.ts start",
+    "build": "bun scripts/run.ts build",
+    "test": "bun scripts/run.ts test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@chardesk/canvas-templates": "*",
+    "@chardesk/cell-core": "*",
+    "@chardesk/cell-plane": "*",
+    "@chardesk/character-library": "*",
+    "@chardesk/chargraph": "*",
+    "@chardesk/document": "*",
+    "@chardesk/editor-core": "*",
+    "@chardesk/editor-input": "*",
+    "@chardesk/font-maple": "*",
+    "@chardesk/keyboard": "*",
+    "@chardesk/protocol": "*",
+    "@chardesk/rendering": "*",
+    "@chardesk/ui": "*",
+    "@napi-rs/canvas": "1.0.8",
+    "@napi-rs/clipboard": "1.1.4",
+    "@opentui/core": "0.8.0",
+    "@teddyzhu/clipboard": "0.0.12",
+    "yjs": "^13.6.27"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "typescript": "~5.9.3"
+  },
+  "engines": {
+    "bun": ">=1.3.14"
+  }
+}

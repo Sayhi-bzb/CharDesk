@@ -1,7 +1,13 @@
 # @chardesk/cli
 
-Create native CharDesk files, inspect visual text, open a read-only live Canvas,
-and render artifacts. No checkout or dev server is required.
+Bun >=1.3.14 is required. Run `chardesk` to open the terminal Canvas, or
+`chardesk tui [files.chardesk…]` to open explicit files. Non-interactive startup requires
+a subcommand. Existing browser-preview and file commands retain their behavior.
+
+Structured operations use `chardesk canvas <manage|read|search|write|erase|fill|render|undo|code>
+--file <path> --json` or `--session <id>`. Supply operation parameters as JSON on stdin.
+A live TUI owner executes changes in its existing history; unopened files use a temporary
+runtime. See [routing and host limits](../local-runtime/README.md).
 
 ## Native files
 

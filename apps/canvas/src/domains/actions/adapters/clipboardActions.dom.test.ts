@@ -1,3 +1,7 @@
+import {
+  buildRichClipboardHtml,
+  parseRichClipboardHtml,
+} from "@chardesk/editor-core/clipboard/rich";
 import { describe, expect, it, vi } from "vitest";
 import { GridSnapshotSource } from "@/shared/utils/grid-source";
 import {
@@ -62,9 +66,7 @@ describe("clipboardActions", () => {
       "#ffffff"
     );
 
-    expect(legacyData.richCells).toEqual([
-      { x: 0, y: 0, char: "Z", color: "#000000" },
-    ]);
+    expect(legacyData.richCells).toEqual([{ x: 0, y: 0, char: "Z", color: "#000000" }]);
   });
 
   it("snapshots plain event data before the clipboard event expires", async () => {
@@ -74,10 +76,7 @@ describe("clipboardActions", () => {
       return type === "text/plain" ? "AB" : "";
     });
 
-    const pendingPayload = readClipboardPayload(
-      { getData } as unknown as DataTransfer,
-      "#ffffff"
-    );
+    const pendingPayload = readClipboardPayload({ getData } as unknown as DataTransfer, "#ffffff");
     eventIsActive = false;
 
     await expect(pendingPayload).resolves.toMatchObject({
@@ -86,6 +85,7 @@ describe("clipboardActions", () => {
     expect(getData.mock.calls.map(([type]) => type)).toEqual([
       "web application/x-ascii-metropolis",
       "text/plain",
+      "text/html",
     ]);
   });
 
@@ -119,27 +119,26 @@ describe("clipboardActions", () => {
     const runtime = createTextRenderingRuntime();
     const payload = await readClipboardPayload(
       {
-        getData: (type: string) =>
-          type === "text/plain" ? "```js\nconst value = 1\n```" : "",
+        getData: (type: string) => (type === "text/plain" ? "```js\nconst value = 1\n```" : ""),
       } as unknown as DataTransfer,
       "#111111",
       runtime.render
     );
 
-    expect(payload.richCells?.map((cell) => cell.char).join("")).toBe(
-      "const value = 1"
-    );
+    expect(payload.richCells?.map((cell) => cell.char).join("")).toBe("const value = 1");
     expect(payload.richCells?.some((cell) => cell.color !== "#111111")).toBe(true);
   });
 
   it("preserves text-render diagnostics in the clipboard payload", async () => {
-    const diagnostics = [{
-      code: "markdown-highlight-failed",
-      message: "Could not highlight unknown-language.",
-    }];
+    const diagnostics = [
+      {
+        code: "markdown-highlight-failed",
+        message: "Could not highlight unknown-language.",
+      },
+    ];
     const payload = await readClipboardPayload(
       {
-        getData: (type: string) => type === "text/plain" ? "source" : "",
+        getData: (type: string) => (type === "text/plain" ? "source" : ""),
       } as unknown as DataTransfer,
       "#111111",
       async () => ({
@@ -347,24 +346,14 @@ describe("clipboardActions", () => {
   });
 
   it("parses standard ANSI clipboard text and reset color", () => {
-    expect(
-      parseAnsiClipboardText(
-        "\u001b[38;2;255;0;0mA\u001b[0mB",
-        "#123456"
-      )
-    ).toEqual([
+    expect(parseAnsiClipboardText("\u001b[38;2;255;0;0mA\u001b[0mB", "#123456")).toEqual([
       { x: 0, y: 0, char: "A", color: "#ff0000" },
       { x: 1, y: 0, char: "B", color: "#123456" },
     ]);
   });
 
   it("clears background and attributes on ANSI reset", () => {
-    expect(
-      parseAnsiClipboardText(
-        "\u001b[1;48;2;1;2;3mA\u001b[0mB",
-        "#123456"
-      )
-    ).toEqual([
+    expect(parseAnsiClipboardText("\u001b[1;48;2;1;2;3mA\u001b[0mB", "#123456")).toEqual([
       {
         x: 0,
         y: 0,
@@ -378,12 +367,7 @@ describe("clipboardActions", () => {
   });
 
   it("clears only background on ANSI default background", () => {
-    expect(
-      parseAnsiClipboardText(
-        "\u001b[48;2;1;2;3mA\u001b[49mB",
-        "#123456"
-      )
-    ).toEqual([
+    expect(parseAnsiClipboardText("\u001b[48;2;1;2;3mA\u001b[49mB", "#123456")).toEqual([
       { x: 0, y: 0, char: "A", color: "#123456", bgColor: "#010203" },
       { x: 1, y: 0, char: "B", color: "#123456" },
     ]);
@@ -415,10 +399,7 @@ describe("clipboardActions", () => {
 
   it("keeps the ANSI compatibility parser syntax-specific", () => {
     expect(
-      parseAnsiClipboardText(
-        "前 [启动图形界面](https://example.com/gui) 后",
-        "#ffffff"
-      )
+      parseAnsiClipboardText("前 [启动图形界面](https://example.com/gui) 后", "#ffffff")
     ).toBeNull();
   });
 
@@ -427,12 +408,7 @@ describe("clipboardActions", () => {
     expect(parseAnsiClipboardText("![alt](https://example.com/image.png)", "#ffffff")).toBeNull();
   });
   it("parses OSC 8-like hyperlink shorthand", () => {
-    expect(
-      parseAnsiClipboardText(
-        "]8;;https://example.com\\文字]8;;\\ plain",
-        "#ffffff"
-      )
-    ).toEqual([
+    expect(parseAnsiClipboardText("]8;;https://example.com\\文字]8;;\\ plain", "#ffffff")).toEqual([
       { x: 0, y: 0, char: "文", color: "#ffffff", href: "https://example.com" },
       { x: 2, y: 0, char: "字", color: "#ffffff", href: "https://example.com" },
       { x: 4, y: 0, char: " ", color: "#ffffff" },
@@ -538,22 +514,14 @@ describe("clipboardActions", () => {
   });
   it("combines hyperlink shorthand with SGR style", () => {
     expect(
-      parseAnsiClipboardText(
-        "]8;;https://example.com\\[38;2;255;0;0mA]8;;\\B",
-        "#ffffff"
-      )
+      parseAnsiClipboardText("]8;;https://example.com\\[38;2;255;0;0mA]8;;\\B", "#ffffff")
     ).toEqual([
       { x: 0, y: 0, char: "A", color: "#ff0000", href: "https://example.com" },
       { x: 1, y: 0, char: "B", color: "#ff0000" },
     ]);
   });
   it("parses inverse ANSI style without swapping stored colors", () => {
-    expect(
-      parseAnsiClipboardText(
-        "\u001b[7;38;2;10;20;30;48;2;40;50;60mA",
-        "#ffffff"
-      )
-    ).toEqual([
+    expect(parseAnsiClipboardText("\u001b[7;38;2;10;20;30;48;2;40;50;60mA", "#ffffff")).toEqual([
       {
         x: 0,
         y: 0,
@@ -596,9 +564,7 @@ describe("clipboardActions", () => {
   });
 
   it("parses combined background and foreground SGR in either order", () => {
-    expect(
-      parseAnsiClipboardText("[48;2;37;99;235;38;2;255;255;255mA", "#000000")
-    ).toEqual([
+    expect(parseAnsiClipboardText("[48;2;37;99;235;38;2;255;255;255mA", "#000000")).toEqual([
       {
         x: 0,
         y: 0,
@@ -614,9 +580,7 @@ describe("clipboardActions", () => {
   });
 
   it("preserves ANSI color across wide characters and new lines", () => {
-    expect(
-      parseAnsiClipboardText("\u001b[38;2;255;255;255m你A\nB", "#000000")
-    ).toEqual([
+    expect(parseAnsiClipboardText("\u001b[38;2;255;255;255m你A\nB", "#000000")).toEqual([
       { x: 0, y: 0, char: "你", color: "#ffffff" },
       { x: 2, y: 0, char: "A", color: "#ffffff" },
       { x: 0, y: 1, char: "B", color: "#ffffff" },
@@ -630,10 +594,7 @@ describe("clipboardActions", () => {
         "#ffffff"
       )
     ).toEqual([
-      ...mapAnsiCells(
-        "[ 比例数字 (Proportional Nums) - 每个数字宽度根据字形变化 ]",
-        "#f43f5e"
-      ),
+      ...mapAnsiCells("[ 比例数字 (Proportional Nums) - 每个数字宽度根据字形变化 ]", "#f43f5e"),
       { x: 0, y: 1, char: " ", color: "#ffffff" },
       { x: 1, y: 1, char: " ", color: "#ffffff" },
       ...mapAnsiCells("1 1 1 . 1 1", "#fb923c", 1, 2),
@@ -662,9 +623,42 @@ describe("clipboardActions", () => {
     expect(result).toBe(true);
     expect(preventDefault).toHaveBeenCalled();
     expect(setData).toHaveBeenCalledTimes(1);
-    expect(setData).toHaveBeenCalledWith(
-      "text/plain",
-      "[38;2;255;0;0mA[0m"
-    );
+    expect(setData).toHaveBeenCalledWith("text/plain", "[38;2;255;0;0mA[0m");
   });
+});
+
+// Native terminal and browser copy use the same public portable carrier.
+it("accepts native HTML alongside plain text without compiling away styles and links", async () => {
+  const cells = [
+    {
+      x: 0,
+      y: 0,
+      char: "🦀",
+      color: "#123456",
+      bgColor: "#abcdef",
+      attrs: { bold: true },
+      href: "https://example.com",
+    },
+  ];
+  const payload = { plain: "🦀", rich: JSON.stringify({ cells }) };
+  const html = buildRichClipboardHtml(payload)!;
+  const render = vi.fn();
+  const read = await readClipboardPayload(
+    {
+      getData: (type: string) => (type === "text/html" ? html : type === "text/plain" ? "🦀" : ""),
+    } as DataTransfer,
+    "#000000",
+    render
+  );
+  expect(read.richCells).toEqual(cells);
+  expect(render).not.toHaveBeenCalled();
+  const formats = new Map<string, string>();
+  await writeClipboardPayload(payload, {
+    event: {
+      preventDefault() {},
+      clipboardData: { setData: (type: string, value: string) => formats.set(type, value) },
+    } as unknown as ClipboardEvent,
+  });
+  expect(formats.get("text/plain")).toBe("🦀");
+  expect(parseRichClipboardHtml(formats.get("text/html")!)?.richCells).toEqual(cells);
 });

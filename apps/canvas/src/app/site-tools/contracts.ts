@@ -1,47 +1,18 @@
-export type AgentToolExecutionContext = Readonly<{
-  signal?: AbortSignal;
-  /** An outer tool composition owns history; primitive edits join its checkpoint. */
-  history?: "inherit";
-}>;
-
-/** Content blocks are the transport-neutral representation used by tools that
- * can return more than plain JSON text (for example a Canvas image read). */
-export type AgentToolContentBlock =
-  | Readonly<{ type: "text"; text: string }>
-  | Readonly<{ type: "note"; text: string }>
-  | Readonly<{
-      type: "image";
-      mimeType: string;
-      data: string;
-      width: number;
-      height: number;
-      scale: number;
-    }>;
-
-export type AgentToolDefinition = Readonly<{
-  name: string;
-  title?: string;
-  description: string;
-  inputSchema: Readonly<Record<string, unknown>>;
-  outputSchema?: Readonly<Record<string, unknown>>;
-  readOnly?: boolean;
-  execute: (
-    input: Record<string, unknown>,
-    context?: AgentToolExecutionContext,
-  ) => Promise<unknown> | unknown;
-}>;
+import type { AgentToolDefinition } from '@chardesk/canvas-capabilities/types';
+export type {
+  AgentToolDefinition,
+  AgentToolContentBlock,
+  AgentToolExecutionContext,
+} from '@chardesk/canvas-capabilities/types';
 
 export type SiteToolInstallation = Readonly<{
   dispose: () => void;
 }>;
 
-export type SiteToolHostAdapterId = "standard-webmcp" | "imperative-webmcp";
+export type SiteToolHostAdapterId = 'standard-webmcp' | 'imperative-webmcp';
 
 export interface SiteToolHostAdapter<Context = unknown> {
   readonly id: SiteToolHostAdapterId;
   supports(context: unknown): context is Context;
-  install(
-    context: Context,
-    tools: readonly AgentToolDefinition[],
-  ): Promise<SiteToolInstallation>;
+  install(context: Context, tools: readonly AgentToolDefinition[]): Promise<SiteToolInstallation>;
 }

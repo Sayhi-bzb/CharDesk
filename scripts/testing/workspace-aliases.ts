@@ -1,27 +1,97 @@
-import path from 'node:path'
+import path from 'node:path';
 
-const root = path.resolve(import.meta.dirname, '../..')
-const source = (relativePath: string) => path.resolve(root, relativePath)
+const root = path.resolve(import.meta.dirname, '../..');
+const source = (relativePath: string) => path.resolve(root, relativePath);
 
 export const workspaceAliases = [
+  { find: /^@chardesk\/canvas-capabilities\/(definitions|code|types|index|projection|readViewport|readImage|read|textRegion)$/, replacement: source("packages/canvas-capabilities/src/$1.ts") },
+  {
+    find: /^@chardesk\/ui\/color-presets$/,
+    replacement: source('packages/ui/src/color-presets.ts'),
+  },
+  {
+    find: /^@chardesk\/chargraph\/profile$/,
+    replacement: source('packages/chargraph/src/text-profile.ts'),
+  },
+  { find: /^@chardesk\/editor-input$/, replacement: source('packages/editor-input/src/index.ts') },
+  {
+    find: /^@chardesk\/editor-input\/(.+)$/,
+    replacement: source('packages/editor-input/src/$1.ts'),
+  },
+  {
+    find: /^@chardesk\/character-library$/,
+    replacement: source('packages/character-library/src/index.ts'),
+  },
+  {
+    find: /^@chardesk\/canvas-templates$/,
+    replacement: source('packages/canvas-templates/src/index.ts'),
+  },
+  {
+    find: /^@chardesk\/canvas-templates\/(.+)$/,
+    replacement: source('packages/canvas-templates/src/$1.ts'),
+  },
+  { find: /^@chardesk\/(font-[^/]+)\/(.+)$/, replacement: source('packages/$1/$2') },
+  { find: /^@chardesk\/cell-plane$/, replacement: source('packages/cell-plane/src/index.ts') },
+  { find: /^@chardesk\/cell-plane\/(.+)$/, replacement: source('packages/cell-plane/src/$1.ts') },
+  { find: /^@chardesk\/editor-core$/, replacement: source('packages/editor-core/src/index.ts') },
+  { find: /^@chardesk\/editor-core\/(.+)$/, replacement: source('packages/editor-core/src/$1.ts') },
   { find: /^@chardesk\/cell-core$/, replacement: source('packages/cell-core/src/index.ts') },
-  { find: /^@chardesk\/cell-ui\/browser$/, replacement: source('packages/cell-ui/src/browser.tsx') },
+  {
+    find: /^@chardesk\/cell-ui\/browser$/,
+    replacement: source('packages/cell-ui/src/browser.tsx'),
+  },
   { find: /^@chardesk\/cell-ui$/, replacement: source('packages/cell-ui/src/index.ts') },
-  { find: /^@chardesk\/keyboard\/browser$/, replacement: source('packages/keyboard/src/browser.ts') },
+  {
+    find: /^@chardesk\/keyboard\/browser$/,
+    replacement: source('packages/keyboard/src/browser.ts'),
+  },
   { find: /^@chardesk\/keyboard$/, replacement: source('packages/keyboard/src/index.ts') },
-  { find: /^@chardesk\/collaboration-protocol$/, replacement: source('packages/collaboration-protocol/src/index.ts') },
+  {
+    find: /^@chardesk\/collaboration-protocol$/,
+    replacement: source('packages/collaboration-protocol/src/index.ts'),
+  },
   { find: /^@chardesk\/mcp\/contracts$/, replacement: source('packages/mcp/src/tools.mjs') },
-  { find: /^@chardesk\/chargraph\/examples$/, replacement: source('packages/chargraph/src/examples.ts') },
-  { find: /^@chardesk\/chargraph\/markdown$/, replacement: source('packages/chargraph/src/markdown-default.ts') },
-  { find: /^@chardesk\/chargraph\/mermaid$/, replacement: source('packages/chargraph/src/mermaid.ts') },
-  { find: /^@chardesk\/chargraph\/theme$/, replacement: source('packages/chargraph/src/render-theme.ts') },
-  { find: /^@chardesk\/rendering\/canvas$/, replacement: source('packages/rendering/src/canvas.ts') },
-  { find: /^@chardesk\/rendering\/theme$/, replacement: source('packages/rendering/src/content-theme.ts') },
+  {
+    find: /^@chardesk\/chargraph\/examples$/,
+    replacement: source('packages/chargraph/src/examples.ts'),
+  },
+  {
+    find: /^@chardesk\/chargraph\/markdown$/,
+    replacement: source('packages/chargraph/src/markdown-default.ts'),
+  },
+  {
+    find: /^@chardesk\/chargraph\/mermaid$/,
+    replacement: source('packages/chargraph/src/mermaid.ts'),
+  },
+  {
+    find: /^@chardesk\/chargraph\/theme$/,
+    replacement: source('packages/chargraph/src/render-theme.ts'),
+  },
+  {
+    find: /^@chardesk\/rendering\/canvas$/,
+    replacement: source('packages/rendering/src/canvas.ts'),
+  },
+  {
+    find: /^@chardesk\/rendering\/theme$/,
+    replacement: source('packages/rendering/src/content-theme.ts'),
+  },
   { find: /^@chardesk\/ui\/styles$/, replacement: source('packages/ui/src/styles.ts') },
-  { find: /^@chardesk\/legacy-blackboard\/node$/, replacement: source('packages/legacy-blackboard/src/node.ts') },
-  { find: /^@chardesk\/legacy-blackboard\/path$/, replacement: source('packages/legacy-blackboard/src/source-path.ts') },
-  { find: /^@chardesk\/legacy-blackboard\/errors$/, replacement: source('packages/legacy-blackboard/src/errors.ts') },
-  { find: /^@chardesk\/legacy-blackboard$/, replacement: source('packages/legacy-blackboard/src/index.ts') },
+  {
+    find: /^@chardesk\/legacy-blackboard\/node$/,
+    replacement: source('packages/legacy-blackboard/src/node.ts'),
+  },
+  {
+    find: /^@chardesk\/legacy-blackboard\/path$/,
+    replacement: source('packages/legacy-blackboard/src/source-path.ts'),
+  },
+  {
+    find: /^@chardesk\/legacy-blackboard\/errors$/,
+    replacement: source('packages/legacy-blackboard/src/errors.ts'),
+  },
+  {
+    find: /^@chardesk\/legacy-blackboard$/,
+    replacement: source('packages/legacy-blackboard/src/index.ts'),
+  },
   { find: /^@chardesk\/chargraph$/, replacement: source('packages/chargraph/src/index.ts') },
   { find: /^@chardesk\/document$/, replacement: source('packages/document/src/index.ts') },
   { find: /^@chardesk\/fonts$/, replacement: source('packages/fonts/src/index.ts') },
@@ -31,4 +101,4 @@ export const workspaceAliases = [
   { find: /^@chardesk\/rendering$/, replacement: source('packages/rendering/src/index.ts') },
   { find: /^@chardesk\/ui$/, replacement: source('packages/ui/src/index.ts') },
   { find: /^@chardesk\/viewer$/, replacement: source('packages/viewer/src/index.ts') },
-] as const
+] as const;

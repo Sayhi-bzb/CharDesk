@@ -1,0 +1,20 @@
+{
+  "name": "@chardesk/local-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@chardesk/rendering": "*",
+    "@chardesk/font-maple": "*",
+    "@napi-rs/canvas": "1.0.8",
+    "@chardesk/cell-core": "*",
+    "@chardesk/cell-plane": "*",
+    "@chardesk/chargraph": "*",
+    "@chardesk/document": "*",
+    "@chardesk/editor-core": "*",
+    "@chardesk/protocol": "*"
+  }
+}

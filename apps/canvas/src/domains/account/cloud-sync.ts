@@ -101,7 +101,7 @@ const snapshot = async (canvas: SyncCanvas, sessionId: string) => {
   const session = await canvas.materializeSession(sessionId);
   if (!session) return null;
   const exported = prepareTextExport({ canvasMode: session.mode, surface: session.surface,
-    slideDeck: session.slideDeck, documentName: session.name, includeColor: true, showGrid: false }, 'chardesk');
+    slideDeck: session.slideDeck, document: session.document, documentName: session.name, includeColor: true, showGrid: false }, 'chardesk');
   if (!exported.ok) return null;
   return { title: session.name, content: exported.value.content };
 };

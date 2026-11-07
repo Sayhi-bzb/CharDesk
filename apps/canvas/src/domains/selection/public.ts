@@ -7,30 +7,28 @@ export type {
   StaticGridInteraction,
   StaticGridTarget,
   StaticGridViewState,
-} from "./model/static-grid";
-export type {
-  StaticGridInputSession,
-} from "./model/static-grid-input-session";
+} from './model/static-grid';
+export type { StaticGridInputSession } from './model/static-grid-input-session';
 export {
   advanceStaticGridInput,
   advanceStaticGridInputLine,
   createStaticGridInputSession,
-} from "./model/static-grid-input-session";
-export type {
-  StaticGridDeleteDirection,
-  StaticGridDeletePlan,
-} from "./model/static-grid-deletion";
-export {
-  resolveStaticGridDeletePlan,
-} from "./model/static-grid-deletion";
+} from './model/static-grid-input-session';
+export type { StaticGridDeleteDirection, StaticGridDeletePlan } from './model/static-grid-deletion';
+export { resolveStaticGridDeletePlan } from './model/static-grid-deletion';
 export type {
   GridSelectionGeometry,
-} from "./model/grid-selection-geometry";
+  GridSelectionCoverage,
+  GridSelectionDragPreview,
+} from './model/grid-selection-geometry';
 export {
   forEachGridSelectionSpan,
   getGridSelectionGeometry,
+  getGridSelectionCoverageGeometry,
+  resolveGridSelectionCoverage,
+  resolveGridSelectionPresentation,
   getGridSelectionSpans,
-} from "./model/grid-selection-geometry";
+} from './model/grid-selection-geometry';
 export {
   collapseGridSelectionTo,
   createGridSelectionState,
@@ -56,4 +54,4 @@ export {
   selectGridColumn,
   selectGridRange,
   selectGridRow,
-} from "./model/static-grid";
+} from './model/static-grid';

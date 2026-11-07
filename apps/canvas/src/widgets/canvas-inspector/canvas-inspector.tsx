@@ -11,7 +11,8 @@ import {
 import { useShallow } from "zustand/react/shallow";
 
 import { useCanvasRuntime, useCanvasState } from "@/domains/canvas/public";
-import { useEditor } from "@/domains/editor/public";
+import { useEditor, useEditorKeymapSnapshot } from "@/domains/editor/public";
+import { getShortcutAriaLabel } from "@/domains/actions/public";
 import { getStaticGridSelection } from "@/domains/selection/public";
 import { useCanvasAppearance } from "@/shared/canvas-appearance/hooks";
 import { useUiI18n } from "@/shared/i18n";
@@ -96,6 +97,7 @@ export function CanvasInspectorControl({
   const canvas = useCanvasRuntime();
   const { resolvedTheme } = useCanvasAppearance();
   const editor = useEditor();
+  const keymapSnapshot = useEditorKeymapSnapshot();
   const { t } = useUiI18n();
   const actionTooltipHandle = useMemo(
     () => TooltipCreateHandle<ReactNode>(),
@@ -300,7 +302,9 @@ export function CanvasInspectorControl({
               open={panelOpen}
               aria-label={t("inspector.toggle")}
               aria-controls="canvas-inspector-panel"
-              aria-keyshortcuts="Meta+K P Control+K P"
+              aria-keyshortcuts={getShortcutAriaLabel(
+                keymapSnapshot.entries.find(entry => entry.id === 'command:toggle-inspector')?.shortcuts ?? []
+              )}
               disabled={state.tool === "pan"}
               onClick={() => setOpenState(!panelOpen)}
             />

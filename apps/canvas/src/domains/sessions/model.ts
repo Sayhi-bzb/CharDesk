@@ -1,4 +1,5 @@
 import type { GridCell, Point } from "@/shared/types";
+import type { CanvasDocumentDraft } from '@chardesk/editor-core/canvasDocumentModel';
 import type { CollaborationDescriptor } from "@/domains/collaboration/public";
 import type {
   SlideDeckSnapshot,
@@ -44,6 +45,7 @@ export type CanvasSessionDescriptor =
 
 interface StaticCanvasSessionSnapshotContent {
   grid: [string, GridCell][];
+  document?: CanvasDocumentDraft;
 }
 
 type FreeformCanvasSessionSnapshot = CanvasSessionDescriptorBase &
@@ -114,6 +116,7 @@ export const getCanvasSessionFallbackSnapshot = (
     : {
         mode: session.mode,
         grid: session.grid,
+        ...(session.document ? { document: session.document } : {}),
       };
 
 export const getCanvasSessionRestoreRecord = (
@@ -137,6 +140,7 @@ export function isSourceBackedCanvasSession(
 
 type StaticCanvasImportSnapshotBase = {
   grid: [string, GridCell][];
+  document?: CanvasDocumentDraft;
   name?: string;
 };
 

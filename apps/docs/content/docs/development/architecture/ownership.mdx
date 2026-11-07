@@ -20,6 +20,24 @@ shared <- domains <- widgets <- app
 | `widgets` | Product interaction and presentation | Coordinates public contracts; owns no domain validation or persistence |
 | `app` | Composition and application lifecycle | Constructs runtimes and application-wide side effects |
 
+Shared editor dependencies:
+
+**Web Host** ─┐\
+　　　　　　├→ **`editor-input`** → **`editor-core`** → **`cell-plane`** → `cell-core` / `protocol`\
+**Terminal Host** ─┘　　　└→ `@opentui/keymap`
+
+`editor-core` owns the runtime framework, interaction/clipboard workflows and
+document/history contracts. Hosts own native input, rendering and platform IO;
+shared packages cannot import Host internals. Follow the
+[shared API and verification map](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/editor-core/README.md)
+and [terminal Host contract](https://github.com/Sayhi-bzb/CharDesk/blob/main/examples/terminal-canvas/README.md).
+
+`editor-input` owns the keymap integration: Host attachment lifetime, effective
+binding layers, command forwarding and input guards. OpenTUI owns terminal
+parsing and capability negotiation; `@opentui/keymap` owns runtime matching,
+precedence and sequences. `editor-core` retains the binding catalog and editing
+commands. Web and Terminal renderers still consume the shared core directly.
+
 A domain reads its own source directly. Its `public.ts` contains explicit named
 re-exports only; composition belongs in `src/app`. Production cross-domain imports
 use the owner's `public.ts`; tests may use its `/testing` entry when present.
@@ -28,3 +46,11 @@ Use [domain reference](/development/domains) to select the business owner.
 [The boundary check](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/check-domain-boundaries.mjs)
 enforces layer and import direction; [the state ownership check](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/check-state-ownership.mjs)
 guards Canvas stores, content projection, and Yjs mutation.
+
+Shared creation capabilities are owned by
+[`editor-core/drawing`](https://github.com/Sayhi-bzb/CharDesk/tree/main/packages/editor-core/src/drawing),
+[`character-library`](https://github.com/Sayhi-bzb/CharDesk/tree/main/packages/character-library)
+and [`canvas-templates`](https://github.com/Sayhi-bzb/CharDesk/tree/main/packages/canvas-templates).
+Web and Terminal adapt input, resource loading and presentation; shared creation
+packages have no application, React, DOM or filesystem dependency. Character
+insertion and template placement commit through Canvas document commands.

@@ -1,6 +1,7 @@
+import type { CharDeskCellCanvasContext } from "./cell-canvas-context.js";
 import type { AxisTransform, CharDeskNormalizedCellRect } from "./canvas-geometry.js";
 
-type Context = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+type Context = CharDeskCellCanvasContext;
 type Point = { x: number; y: number; rawX: number; rawY: number };
 type PathOperation = Readonly<{ kind: string; values: number[]; point?: Point }>;
 

@@ -85,6 +85,7 @@ const seedSessionDocuments = (
     {
       grid: session.grid,
       mode: session.mode,
+      ...(session.document ? { pages: session.document.pages, activePageId: session.document.activePageId } : {}),
     }
   );
 };

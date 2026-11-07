@@ -1,56 +1,60 @@
-import { useCreation } from "ahooks";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { canEdgeScroll } from '@chardesk/editor-core/interaction/edgeScroll';
+import { feedback } from '@/shared/services/feedback';
+import { useUiI18n } from '@/shared/i18n';
+import { useCreation } from 'ahooks';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import {
   createStaticGridRangeMovePlan,
   isPointInStaticGridRange,
   useCanvasRuntime,
-} from "@/domains/canvas/public";
-import { isStaticGridMode } from "@/domains/sessions/public";
-import {
-  getStaticGridSelection,
-  hasGridRangeSelection,
-} from "@/domains/selection/public";
-import {
-  useEditor,
-  type CanvasInteractionState,
-} from "@/domains/editor/public";
-import { type CanvasLinkHit } from "./interaction/core/linkHitTesting";
+} from '@/domains/canvas/public';
+import { isStaticGridMode } from '@/domains/sessions/public';
+import { getStaticGridSelection, hasGridRangeSelection } from '@/domains/selection/public';
+import { useEditor, type CanvasInteractionState } from '@/domains/editor/public';
+import { type CanvasLinkHit } from './interaction/core/linkHitTesting';
 
 import {
   createCanvasClickExecutor,
   createCanvasClickHandler,
   createCanvasClickRouteHandler,
-} from "./interaction/gestures/clickExecution";
+} from './interaction/gestures/clickExecution';
 import {
   createColorPickerDragStartExecutor,
   createColorPickerDragStartHandler,
   chooseCanvasColorSource,
   executeCanvasColorPickDecision,
   type CanvasColorSourceChoice,
-} from "./interaction/gestures/colorPickerInteraction";
+} from './interaction/gestures/colorPickerInteraction';
 import {
   createCanvasMoveExecutor,
   createCanvasMoveHandler,
   createCanvasMoveRouteHandler,
-} from "./interaction/gestures/moveExecution";
+} from './interaction/gestures/moveExecution';
 import {
   createCanvasPinchExecutor,
   createCanvasPinchHandler,
   createCanvasPinchRouteHandler,
-} from "./interaction/gestures/pinchInteraction";
+} from './interaction/gestures/pinchInteraction';
 import {
   createCanvasWheelExecutor,
   createCanvasWheelHandler,
   createCanvasWheelRouteHandler,
-} from "./interaction/gestures/wheelInteraction";
+} from './interaction/gestures/wheelInteraction';
 import {
   createPrimaryDragEndExecutor,
   createPrimaryDragEndHandler,
-} from "./interaction/gestures/dragEndExecution";
+} from './interaction/gestures/dragEndExecution';
 import {
   createDragUpdateExecutor,
   createDragUpdateHandler,
-} from "./interaction/gestures/dragUpdateExecution";
+} from './interaction/gestures/dragUpdateExecution';
 import {
   createPanningDragStartExecutor,
   createDragStartRouteHandler,
@@ -58,37 +62,36 @@ import {
   createPrimaryCanvasDragStartHandler,
   createDrawingShapeDragStartExecutor,
   createSelectionDragStartExecutor,
-} from "./interaction/gestures/dragStartExecution";
+} from './interaction/gestures/dragStartExecution';
 import {
   shouldIgnoreActiveCanvasGesture,
   shouldIgnoreCanvasSurfaceGesture,
-} from "./interaction/core/gestureGuards";
-export { shouldOpenCanvasLink, shouldUseCanvasLinkPointer } from "./interaction/core/hitTesting";
-import { useCanvasGestureAdapter } from "./interaction/gestures/gestureAdapter";
-import { createTouchDoubleTapRecognizer } from "./interaction/gestures/touchDoubleTap";
-import { useInteractionControllers } from "./interaction/use-interaction-controllers";
-import type { CanvasEngineRuntime } from "../engine/CanvasEngineRuntime";
-import type { useCanvasEditorModels } from "./useCanvasEditorModels";
+} from './interaction/core/gestureGuards';
+export { shouldOpenCanvasLink, shouldUseCanvasLinkPointer } from './interaction/core/hitTesting';
+import { useCanvasGestureAdapter } from './interaction/gestures/gestureAdapter';
+import { createTouchDoubleTapRecognizer } from './interaction/gestures/touchDoubleTap';
+import { useInteractionControllers } from './interaction/use-interaction-controllers';
+import type { CanvasEngineRuntime } from '../engine/CanvasEngineRuntime';
+import type { useCanvasEditorModels } from './useCanvasEditorModels';
 import {
   DEFAULT_CANVAS_EDITOR_CAPABILITIES,
   type CanvasEditorCapabilities,
-} from "../canvasEditorCapabilities";
+} from '../canvasEditorCapabilities';
 import {
   createCanvasInteractionPort,
   InteractionStateCapture,
-} from "./interaction/canvasInteractionPort";
-
-
+} from './interaction/canvasInteractionPort';
 
 export const useCanvasInteraction = (
-  store: ReturnType<typeof useCanvasEditorModels>["interaction"],
+  store: ReturnType<typeof useCanvasEditorModels>['interaction'],
   containerRef: React.RefObject<HTMLDivElement | null>,
   setHoveredLink: (hit: CanvasLinkHit | null) => void,
   runtime?: CanvasEngineRuntime,
   capabilities: CanvasEditorCapabilities = DEFAULT_CANVAS_EDITOR_CAPABILITIES,
-  interactionOwnerId = "single",
+  interactionOwnerId = 'single',
   focusTextInput?: () => void
 ) => {
+  const { t } = useUiI18n();
   if (!runtime) {
     throw new Error('useCanvasInteraction requires a canvas engine runtime');
   }
@@ -127,8 +130,7 @@ export const useCanvasInteraction = (
     choice: CanvasColorSourceChoice;
   } | null>(null);
   const colorSourceChoice =
-    !canvasColorPickerTarget &&
-    pendingColorSourceChoice?.contextKey === colorSourceContextKey
+    !canvasColorPickerTarget && pendingColorSourceChoice?.contextKey === colorSourceContextKey
       ? pendingColorSourceChoice.choice
       : null;
   const previousColorSourceContextRef = useRef(colorSourceContextKey);
@@ -172,8 +174,8 @@ export const useCanvasInteraction = (
     shouldIgnoreActiveCanvasGesture({
       event,
       interactionMode: editorRuntime.getInteractionState().type,
-      hasDragStartGrid: editorRuntime.getInteractionState().type !== "idle",
-      isPanning: editorRuntime.getInteractionState().type === "panning",
+      hasDragStartGrid: editorRuntime.getInteractionState().type !== 'idle',
+      isPanning: editorRuntime.getInteractionState().type === 'panning',
     });
   const interactionCapture = useCreation(() => new InteractionStateCapture(), []);
   const setInteractionState = (state: CanvasInteractionState) => {
@@ -187,7 +189,6 @@ export const useCanvasInteraction = (
     panning: panningDragStartExecutor,
   });
   const selectionDragStartExecutor = createSelectionDragStartExecutor({
-    setAnchorGrid: (point) => interactionCapture.setSelectionAnchor(point),
     setInteractionState,
     clearInteractionState,
     clearSelections,
@@ -197,7 +198,6 @@ export const useCanvasInteraction = (
     clearTextCursor: exitStaticGridTextEdit,
   });
   const drawingShapeDragStartExecutor = createDrawingShapeDragStartExecutor({
-    setAnchorGrid: (point) => interactionCapture.setSelectionAnchor(point),
     setInteractionState,
     clearInteractionState,
     addScratchPoint: (point) => addScratchPoints([point]),
@@ -248,10 +248,8 @@ export const useCanvasInteraction = (
         preventDefault: () => undefined,
         setBrushColor,
         setBrushBackgroundColor,
-        setSelectionForegroundColor:
-          canvas.commands.selection.setForegroundColor,
-        setSelectionBackgroundColor:
-          canvas.commands.selection.setBackgroundColor,
+        setSelectionForegroundColor: canvas.commands.selection.setForegroundColor,
+        setSelectionBackgroundColor: canvas.commands.selection.setBackgroundColor,
         openColorSourceChooser: (choice) =>
           setPendingColorSourceChoice({
             contextKey: colorSourceContextKey,
@@ -276,12 +274,11 @@ export const useCanvasInteraction = (
   const colorPickerDragStartHandler = createColorPickerDragStartHandler({
     target: canvasColorPickerTarget,
     isStaticGridSelectionActive:
-      isStaticGridMode(canvasMode) &&
-      hasGridRangeSelection(staticGridSelection),
+      isStaticGridMode(canvasMode) && hasGridRangeSelection(staticGridSelection),
     getCell: (point) => contentReader.get(point),
     executor: colorPickerDragStartExecutor,
   });
-  const selectColorSource = (source: "foreground" | "background") => {
+  const selectColorSource = (source: 'foreground' | 'background') => {
     if (!colorSourceChoice) return;
     executeCanvasColorPickDecision(
       chooseCanvasColorSource(colorSourceChoice, source),
@@ -299,13 +296,10 @@ export const useCanvasInteraction = (
       createCanvasClickExecutor({
         colorPickerClick: colorPickerClickRef,
         preventDefault: () => undefined,
-        openLink: (href) => window.open(href, "_blank", "noopener,noreferrer"),
+        openLink: (href) => window.open(href, '_blank', 'noopener,noreferrer'),
         setHoveredLink,
       }),
-    [
-      hoverInteraction,
-      setHoveredLink,
-    ]
+    [hoverInteraction, setHoveredLink]
   );
   const canvasClickHandler = useCreation(
     () =>
@@ -320,8 +314,7 @@ export const useCanvasInteraction = (
     handler: canvasClickHandler,
   });
   const canvasMoveExecutor = createCanvasMoveExecutor({
-    updateColorPickerHover: (hoverPoint) =>
-      hoverInteraction.updateColorPickerHover(hoverPoint),
+    updateColorPickerHover: (hoverPoint) => hoverInteraction.updateColorPickerHover(hoverPoint),
     updateLinkHover: (hit) => hoverInteraction.updateLinkHover(hit),
     setHoveredGrid,
     setCursor: (cursor) => hoverInteraction.setCursor(cursor),
@@ -348,16 +341,13 @@ export const useCanvasInteraction = (
   const canStartStaticRangeMove = (point: { x: number; y: number }) =>
     capabilities.mutateContent &&
     isStaticGridMode(canvasMode) &&
-    staticGridSelection.mode === "range" &&
+    staticGridSelection.mode === 'range' &&
     staticGridSelection.additionalRanges.length === 0 &&
-    isPointInStaticGridRange(
-      contentReader,
-      staticGridSelection.primaryRange,
-      point
-    );
+    isPointInStaticGridRange(contentReader, staticGridSelection.primaryRange, point);
   const coreInteractionPort = useCreation(
     () =>
       createCanvasInteractionPort({
+        onDrawingError: () => feedback.error(t('canvas.drawingLimit')),
         capture: interactionCapture,
         tool,
         canvasMode,
@@ -366,6 +356,8 @@ export const useCanvasInteraction = (
         dragStart: canvasDragStartRouteAdapter,
         dragUpdate: dragUpdateHandler,
         dragEnd: primaryDragEndHandler,
+        commitSelection: primaryDragEndExecutor.commitSelection,
+        getSelectionAnchor: () => staticGridSelection.anchorCell,
         beginInteraction,
         completeInteraction,
         cancelInteraction: cancelInteractionEffects,
@@ -377,15 +369,14 @@ export const useCanvasInteraction = (
         erasePoints: (points) => erasePoints(points, false),
         setHoveredGrid,
         beginAppendSelection: (point) => {
-          selectionPreview.set({ start: point, end: point }, { immediate: true });
+          selectionPreview.set({ start: point, end: point, append: true }, { immediate: true });
         },
         canStartStaticRangeMove,
         updateStaticRangeMove: (anchor, current) => {
-          const activeSlide = canvasMode === "slide"
-            ? slideDeck?.slides.find(
-                (slide) => slide.id === slideDeck.activeSlideId
-              )
-            : null;
+          const activeSlide =
+            canvasMode === 'slide'
+              ? slideDeck?.slides.find((slide) => slide.id === slideDeck.activeSlideId)
+              : null;
           setStaticRangeMovePreview(
             createStaticGridRangeMovePlan({
               source: contentReader,
@@ -415,6 +406,7 @@ export const useCanvasInteraction = (
         clearStaticRangeMovePreview: () => setStaticRangeMovePreview(null),
       }),
     [
+      t,
       addScratchPoints,
       brushChar,
       canvasMode,
@@ -451,8 +443,8 @@ export const useCanvasInteraction = (
     return () => {
       if (editorRuntime.interactionPort.isActive(interactionOwnerId)) {
         editorRuntime.dispatch({
-          type: "canvas-interaction-cancel",
-          reason: "dispose",
+          type: 'canvas-interaction-cancel',
+          reason: 'dispose',
         });
       }
       unregister();
@@ -460,26 +452,17 @@ export const useCanvasInteraction = (
   }, [editorRuntime, interactionOwnerId]);
   const updateEdgeScroll = (clientPoint: { x: number; y: number }) => {
     if (!edgeScroll) return;
-    const isEnabled = () => {
-      const type = editorRuntime.getInteractionState().type;
-      return (
-        type === "selecting" ||
-        type === "movingRange"
-      );
-    };
+    const isEnabled = () => canEdgeScroll(editorRuntime.getInteractionState());
     edgeScroll.update({
       clientPoint,
       getBounds: () => containerRef.current?.getBoundingClientRect() ?? null,
       isEnabled,
       onCameraMove: () => {
         if (!isEnabled()) return;
-        const currentGrid = pointerContext.resolveClampedGridPoint(
-          clientPoint.x,
-          clientPoint.y
-        );
+        const currentGrid = pointerContext.resolveClampedGridPoint(clientPoint.x, clientPoint.y);
         if (!currentGrid) return;
         editorRuntime.dispatch({
-          type: "canvas-drag-update",
+          type: 'canvas-drag-update',
           delta: { x: 0, y: 0 },
           currentGrid,
         });
@@ -499,7 +482,8 @@ export const useCanvasInteraction = (
     if (event.pointerType !== 'touch') return;
     if (
       shouldIgnoreCanvasSurfaceGesture(event.nativeEvent) ||
-      !capabilities.mutateContent || tool !== 'select'
+      !capabilities.mutateContent ||
+      tool !== 'select'
     ) {
       touchDoubleTap.current.cancel(event.pointerId);
       return;
@@ -554,9 +538,10 @@ export const useCanvasInteraction = (
   });
 
   const handleDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (lastTouchEditAtRef.current > 0 && event.timeStamp - lastTouchEditAtRef.current < 500) return;
+    if (lastTouchEditAtRef.current > 0 && event.timeStamp - lastTouchEditAtRef.current < 500)
+      return;
     if (!capabilities.mutateContent) return;
-    if (tool !== "select" || shouldIgnoreCanvasSurfaceGesture(event.nativeEvent)) {
+    if (tool !== 'select' || shouldIgnoreCanvasSurfaceGesture(event.nativeEvent)) {
       return;
     }
     const point = pointerContext.resolveGridPoint(event.clientX, event.clientY);

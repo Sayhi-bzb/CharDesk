@@ -1,4 +1,4 @@
-import type { SelectionArea } from "@/shared/types";
+import type { GridSelectionDragPreview } from '@/domains/selection/public';
 
 type RafScheduler = {
   requestAnimationFrame: (callback: FrameRequestCallback) => number;
@@ -11,11 +11,8 @@ const getDefaultRafScheduler = (): RafScheduler => ({
 });
 
 export type SelectionPreviewController = {
-  get: () => SelectionArea | null;
-  set: (
-    selection: SelectionArea | null,
-    options?: { immediate?: boolean }
-  ) => void;
+  get: () => GridSelectionDragPreview | null;
+  set: (selection: GridSelectionDragPreview | null, options?: { immediate?: boolean }) => void;
   flush: () => void;
   cancel: () => void;
 };
@@ -24,10 +21,10 @@ export const createSelectionPreviewController = ({
   setPreview,
   scheduler = getDefaultRafScheduler(),
 }: {
-  setPreview: (selection: SelectionArea | null) => void;
+  setPreview: (selection: GridSelectionDragPreview | null) => void;
   scheduler?: RafScheduler;
 }): SelectionPreviewController => {
-  let current: SelectionArea | null = null;
+  let current: GridSelectionDragPreview | null = null;
   let rafId: number | null = null;
 
   const flush = () => {
@@ -39,7 +36,7 @@ export const createSelectionPreviewController = ({
   };
 
   const set = (
-    selection: SelectionArea | null,
+    selection: GridSelectionDragPreview | null,
     options: { immediate?: boolean } = {}
   ) => {
     current = selection;

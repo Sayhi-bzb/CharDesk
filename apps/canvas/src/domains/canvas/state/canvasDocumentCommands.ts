@@ -1,7 +1,10 @@
-import { createStaticGridRangeMovePlan, isPointInStaticGridRange } from "../cell-plane/rangeMove";
 import {
-  collapseGridSelectionTo,
-  createStaticGridInputSession,
+  planSelectionStyle,
+  type SelectionStyleChange,
+} from "@chardesk/editor-core/selection/style";
+import { planDrawingPatch, planForegroundFill } from "@chardesk/editor-core/drawing/planner";
+import { createStaticGridRangeMovePlan, planRangeMoveAnchors } from "../cell-plane/rangeMove";
+import {
   forEachGridSelectionSpan,
   getGridSelectionRanges,
   getStaticGridSelectionAreas,
@@ -10,32 +13,16 @@ import {
   resolveStaticGridDeletePlan,
   type StaticGridDeleteDirection,
 } from "@/domains/selection/public";
-import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
-import type {
-  GridCell,
-  Point,
-  SelectionArea,
-  TextAttributes,
-} from "@/shared/types";
-import { cloneTextAttributes } from "@/shared/utils/ansi";
+import { fillGridSelection } from "@chardesk/editor-core/selection/fill";
+import { resolveStaticGridDeletionState } from "@chardesk/editor-core/selection/static-grid-deletion";
+import type { Point, SelectionArea, TextAttributes } from "@/shared/types";
 import { GridManager } from "@/shared/utils/grid";
-import { createGridMapSource } from "@/shared/utils/grid-source";
-import {
-  createPointGridReader,
-  resolveGridSlot,
-} from "@/shared/utils/grid-occupancy";
-import { writeStyledCell } from "@/shared/utils/grid-ops";
-import { getSelectionBounds } from "@/shared/utils/selection";
-import type {
-  CanvasDocumentRegistry,
-  CanvasHistoryMode,
-} from "./CanvasDocumentRegistry";
+import type { CanvasDocumentRegistry, CanvasHistoryMode } from "./CanvasDocumentRegistry";
 import { createCanvasInteractionPatch } from "./canvasInteractionState";
 import { resolveEditorDocumentAddress } from "./helpers/gridHelpers";
 import type { EditorState } from "./interfaces";
 import { getActiveSlideGridBounds } from "./slideBounds";
 import { createClearedScratchLayerPatch } from "./transitions/scratchLayerTransitions";
-import { placeCharInYMap } from "./utils";
 import { deleteCellAt, deleteRect } from "./gridOps";
 import { createDocumentInteractionResetPatch } from "./transitions/editorTransitions";
 import {
@@ -59,9 +46,6 @@ const forEachSelectionSpan = (
     state.contentSurface.reader
   );
 
-const isUnstyledBlankCell = (cell: GridCell) =>
-  cell.char === " " && !cell.bgColor && !cloneTextAttributes(cell.attrs);
-
 export const fillStaticGridSelectionWithChar = (
   documents: CanvasDocumentRegistry,
   state: EditorState,
@@ -72,17 +56,18 @@ export const fillStaticGridSelectionWithChar = (
   const selections = resolveSelectionAreas(state);
   if (selections.length === 0) return;
 
-  const charWidth = getCellOccupancy(char);
   const address = resolveEditorDocumentAddress(documents, state);
   documents.mutateGridAt(
     address,
     (grid) => {
-      forEachSelectionSpan(state, ({ y, minX, maxX }) => {
-        for (let x = minX; x <= maxX; x += charWidth) {
-          if (x + charWidth - 1 > maxX) break;
-          placeCharInYMap(grid, x, y, char, state.brushColor, options);
-        }
-      });
+      fillGridSelection(
+        grid,
+        state.contentSurface.reader,
+        getGridSelectionRanges(getStaticGridSelection(state.interaction.staticGrid)),
+        char,
+        state.brushColor,
+        options
+      );
     },
     history
   );
@@ -105,324 +90,184 @@ const deleteStaticGridSelection = (
   );
 };
 
+const applySelectionStyle = (
+  commits: CanvasStateCommitCoordinator,
+  documents: CanvasDocumentRegistry,
+  change: SelectionStyleChange
+) => {
+  const state = commits.getState();
+  documents.applyCellPlanePatchAt(
+    resolveEditorDocumentAddress(documents, state),
+    planSelectionStyle(
+      state.contentSurface.reader,
+      getGridSelectionRanges(getStaticGridSelection(state.interaction.staticGrid)),
+      change,
+      state.brushColor
+    ),
+    commits.getDocumentHistoryMode()
+  );
+};
+
 export const createCanvasDocumentCommands = (
   commits: CanvasStateCommitCoordinator,
   documents: CanvasDocumentRegistry
-) => coordinateCanvasCommands(commits, {
-  clearCanvas: () => {
-    const state = commits.getState();
-    documents.mutateGridAt(
-      resolveEditorDocumentAddress(documents, state),
-      (grid) => grid.clear(),
-      commits.getDocumentHistoryMode()
-    );
-    commits.setState(createDocumentInteractionResetPatch(documents.getActiveAddress()));
-  },
+) =>
+  coordinateCanvasCommands(commits, {
+    clearCanvas: () => {
+      const state = commits.getState();
+      documents.mutateGridAt(
+        resolveEditorDocumentAddress(documents, state),
+        (grid) => grid.clear(),
+        commits.getDocumentHistoryMode()
+      );
+      commits.setState(createDocumentInteractionResetPatch(documents.getActiveAddress()));
+    },
 
-  deleteSelection: () => deleteStaticGridSelection(
-    documents,
-    commits.getState(),
-    commits.getDocumentHistoryMode()
-  ),
+    deleteSelection: () =>
+      deleteStaticGridSelection(documents, commits.getState(), commits.getDocumentHistoryMode()),
 
-  deleteStaticGrid: (direction: StaticGridDeleteDirection) => {
-    const state = commits.getState();
-    const interaction = getStaticGridViewState({
-      state: state.interaction.staticGrid,
-      grid: state.contentSurface.reader,
-    }).interaction;
-    const plan = resolveStaticGridDeletePlan({
-      interaction,
-      direction,
-      grid: state.contentSurface.reader,
-      bounds: getActiveSlideGridBounds(state),
-      previousInputCell: state.interaction.staticGrid.mode === "text-edit"
-        ? state.interaction.staticGrid.session.previousCell
-        : null,
-    });
-    if (plan.kind === "noop") return;
-    if (plan.kind === "range") {
-      deleteStaticGridSelection(documents, state, commits.getDocumentHistoryMode());
-      return;
-    }
+    deleteStaticGrid: (direction: StaticGridDeleteDirection) => {
+      const state = commits.getState();
+      const interaction = getStaticGridViewState({
+        state: state.interaction.staticGrid,
+        grid: state.contentSurface.reader,
+      }).interaction;
+      const plan = resolveStaticGridDeletePlan({
+        interaction,
+        direction,
+        grid: state.contentSurface.reader,
+        bounds: getActiveSlideGridBounds(state),
+        previousInputCell:
+          state.interaction.staticGrid.mode === "text-edit"
+            ? state.interaction.staticGrid.session.previousCell
+            : null,
+      });
+      if (plan.kind === "noop") return;
+      if (plan.kind === "range") {
+        deleteStaticGridSelection(documents, state, commits.getDocumentHistoryMode());
+        return;
+      }
 
-    const address = resolveEditorDocumentAddress(documents, state);
-    documents.mutateGridAt(
-      address,
-      (grid) => {
-        deleteCellAt(grid, plan.target.x, plan.target.y);
-      },
-      commits.getDocumentHistoryMode()
-    );
-
-    if (interaction.kind === "text-edit") {
-      const inputSession = state.interaction.staticGrid.mode === "text-edit"
-        ? state.interaction.staticGrid.session
-        : createStaticGridInputSession({
-            origin: interaction.activeCell,
-            bounds: getActiveSlideGridBounds(state),
-          });
-      const nextSession = direction === "backward"
-        ? {
-            ...inputSession,
-            nextCell: { ...plan.nextActiveCell },
-            activeCell: { ...plan.nextActiveCell },
-            previousCell: null,
-            exhausted: false,
-          }
-        : inputSession;
-      commits.setState((current) => createCanvasInteractionPatch(
-        current.interaction,
-        {
-          staticGrid: { mode: "text-edit", session: nextSession },
-        }
-      ));
-      return;
-    }
-
-    commits.setState((current) => createCanvasInteractionPatch(
-      current.interaction,
-      {
-        staticGrid: {
-          mode: "navigate",
-          selection: collapseGridSelectionTo(
-            getStaticGridSelection(current.interaction.staticGrid),
-            plan.nextActiveCell
-          ),
+      const address = resolveEditorDocumentAddress(documents, state);
+      documents.mutateGridAt(
+        address,
+        (grid) => {
+          deleteCellAt(grid, plan.target.x, plan.target.y);
         },
+        commits.getDocumentHistoryMode()
+      );
+
+      commits.setState((current) =>
+        createCanvasInteractionPatch(current.interaction, {
+          staticGrid: resolveStaticGridDeletionState(state.interaction.staticGrid, plan, direction),
+        })
+      );
+    },
+
+    erasePoints: (points: Point[], shouldSaveHistory = true) => {
+      const state = commits.getState();
+      if (points.length === 0) return;
+      const address = resolveEditorDocumentAddress(documents, state);
+      documents.mutateGridAt(
+        address,
+        (grid) => {
+          points.forEach((point) => deleteCellAt(grid, point.x, point.y));
+        },
+        shouldSaveHistory ? commits.getDocumentHistoryMode() : false
+      );
+    },
+
+    fillSelectionsWithChar: (char: string, options?: { preserveTargetBackground?: boolean }) =>
+      fillStaticGridSelectionWithChar(
+        documents,
+        commits.getState(),
+        char,
+        options,
+        commits.getDocumentHistoryMode()
+      ),
+
+    setSelectionTextAttributes: (attributes: Partial<Record<keyof TextAttributes, boolean>>) =>
+      applySelectionStyle(commits, documents, { kind: "attributes", attributes }),
+
+    setSelectionForegroundColor: (color: string) =>
+      applySelectionStyle(commits, documents, { kind: "foreground", color }),
+
+    setSelectionBackgroundColor: (color: string | null) =>
+      applySelectionStyle(commits, documents, { kind: "background", color }),
+
+    commitScratch: () => {
+      const state = commits.getState();
+      const { scratchLayer } = state.interaction;
+      if (!scratchLayer || scratchLayer.size === 0) return;
+
+      const address = resolveEditorDocumentAddress(documents, state);
+      const points = [...scratchLayer].map(([key, cell]) => {
+        const { x, y } = GridManager.fromKey(key);
+        return { x, y, ...cell };
+      });
+      documents.applyCellPlanePatchAt(
+        address,
+        planDrawingPatch(state.contentSurface.reader, points),
+        commits.getDocumentHistoryMode()
+      );
+      commits.setState((current) => createClearedScratchLayerPatch(current.interaction));
+    },
+
+    fillArea: (area: SelectionArea) => {
+      const state = commits.getState();
+      const address = resolveEditorDocumentAddress(documents, state);
+      const patch = planForegroundFill(state.contentSurface.reader, area, state.brushColor);
+      documents.applyCellPlanePatchAt(address, patch, commits.getDocumentHistoryMode());
+    },
+
+    moveStaticGridSelection: (requestedDelta: Point) => {
+      const state = commits.getState();
+      const selection = getStaticGridSelection(state.interaction.staticGrid);
+      if (selection.mode !== "range" || selection.additionalRanges.length > 0) {
+        return false;
       }
-    ));
-  },
 
-  erasePoints: (points: Point[], shouldSaveHistory = true) => {
-    const state = commits.getState();
-    if (points.length === 0) return;
-    const address = resolveEditorDocumentAddress(documents, state);
-    documents.mutateGridAt(
-      address,
-      (grid) => {
-        points.forEach((point) => deleteCellAt(grid, point.x, point.y));
-      },
-      shouldSaveHistory ? commits.getDocumentHistoryMode() : false
-    );
-  },
-
-  fillSelectionsWithChar: (
-    char: string,
-    options?: { preserveTargetBackground?: boolean }
-  ) =>
-    fillStaticGridSelectionWithChar(
-      documents,
-      commits.getState(),
-      char,
-      options,
-      commits.getDocumentHistoryMode()
-    ),
-
-  setSelectionTextAttributes: (
-    attrs: Partial<Record<keyof TextAttributes, boolean>>
-  ) => {
-    const state = commits.getState();
-    const selections = resolveSelectionAreas(state);
-    if (selections.length === 0) return;
-
-    const shouldMaterializeBlank =
-      attrs.underline === true ||
-      attrs.strike === true ||
-      attrs.inverse === true;
-    const address = resolveEditorDocumentAddress(documents, state);
-    documents.mutateGridAt(address, (grid) => {
-      const reader = createPointGridReader(grid);
-      forEachSelectionSpan(state, ({ y, minX, maxX }) => {
-        for (let x = minX; x <= maxX; x++) {
-          if (resolveGridSlot(reader, { x, y })?.offset === 1) continue;
-          const key = GridManager.toKey(x, y);
-          const existingCell = grid.get(key);
-          if (!existingCell && !shouldMaterializeBlank) continue;
-
-          const nextAttrs = cloneTextAttributes(existingCell?.attrs) ?? {};
-          Object.entries(attrs).forEach(([name, enabled]) => {
-            const attrName = name as keyof TextAttributes;
-            if (enabled) nextAttrs[attrName] = true;
-            else delete nextAttrs[attrName];
-          });
-
-          const normalizedAttrs = cloneTextAttributes(nextAttrs);
-          const nextCell: GridCell = existingCell
-            ? { ...existingCell }
-            : { char: " ", color: state.brushColor };
-          if (normalizedAttrs) nextCell.attrs = normalizedAttrs;
-          else delete nextCell.attrs;
-
-          if (isUnstyledBlankCell(nextCell)) grid.delete(key);
-          else grid.set(key, nextCell);
-        }
+      const plan = createStaticGridRangeMovePlan({
+        source: state.contentSurface.reader,
+        range: selection.primaryRange,
+        requestedDelta,
+        bounds: getActiveSlideGridBounds(state),
       });
-    }, commits.getDocumentHistoryMode());
-  },
+      if (!plan) return false;
 
-  setSelectionForegroundColor: (color: string) => {
-    const state = commits.getState();
-    const selections = resolveSelectionAreas(state);
-    if (selections.length === 0) return;
-
-    const address = resolveEditorDocumentAddress(documents, state);
-    documents.mutateGridAt(address, (grid) => {
-      const reader = createPointGridReader(grid);
-      forEachSelectionSpan(state, ({ y, minX, maxX }) => {
-        for (let x = minX; x <= maxX; x++) {
-          if (resolveGridSlot(reader, { x, y })?.offset === 1) continue;
-          const key = GridManager.toKey(x, y);
-          const existingCell = grid.get(key);
-          if (existingCell) grid.set(key, { ...existingCell, color });
-        }
-      });
-    }, commits.getDocumentHistoryMode());
-  },
-
-  setSelectionBackgroundColor: (bgColor: string | null) => {
-    const state = commits.getState();
-    const selections = resolveSelectionAreas(state);
-    if (selections.length === 0) return;
-
-    const address = resolveEditorDocumentAddress(documents, state);
-    documents.mutateGridAt(address, (grid) => {
-      const reader = createPointGridReader(grid);
-      forEachSelectionSpan(state, ({ y, minX, maxX }) => {
-        for (let x = minX; x <= maxX; x++) {
-          if (resolveGridSlot(reader, { x, y })?.offset === 1) continue;
-          const key = GridManager.toKey(x, y);
-          const existingCell = grid.get(key);
-          if (!existingCell && !bgColor) continue;
-
-          const nextCell: GridCell = existingCell
-            ? { ...existingCell }
-            : { char: " ", color: state.brushColor };
-          if (bgColor) nextCell.bgColor = bgColor;
-          else delete nextCell.bgColor;
-
-          if (isUnstyledBlankCell(nextCell)) grid.delete(key);
-          else grid.set(key, nextCell);
-        }
-      });
-    }, commits.getDocumentHistoryMode());
-  },
-
-  commitScratch: () => {
-    const state = commits.getState();
-    const { scratchLayer } = state.interaction;
-    if (!scratchLayer || scratchLayer.size === 0) return;
-
-    const address = resolveEditorDocumentAddress(documents, state);
-    documents.mutateGridAt(address, (grid) => {
-      const reader = createPointGridReader(grid);
-      GridManager.iterate(createGridMapSource(scratchLayer), (cell, x, y) => {
-        if (cell.bgColor && cell.char === " ") {
-          const slot = resolveGridSlot(reader, { x, y });
-          const anchor = slot?.anchor ?? { x, y };
-          writeStyledCell(grid, anchor.x, anchor.y, {
-            ...(slot?.cell ?? { char: " ", color: cell.color }),
-            bgColor: cell.bgColor,
-          });
-          return;
-        }
-        if (cell.bgColor || cell.attrs || cell.href) {
-          writeStyledCell(grid, x, y, {
-            char: cell.char,
-            color: cell.color,
-            ...(cell.bgColor ? { bgColor: cell.bgColor } : {}),
-            ...(cell.attrs ? { attrs: cell.attrs } : {}),
-            ...(cell.href ? { href: cell.href } : {}),
-          });
-          return;
-        }
-        placeCharInYMap(grid, x, y, cell.char, cell.color);
-      });
-    }, commits.getDocumentHistoryMode());
-    commits.setState((current) =>
-      createClearedScratchLayerPatch(current.interaction)
-    );
-  },
-
-  fillArea: (area: SelectionArea) => {
-    const state = commits.getState();
-    const { minX, maxX, minY, maxY } = getSelectionBounds(area);
-    const address = resolveEditorDocumentAddress(documents, state);
-
-    documents.mutateGridAt(address, (grid) => {
-      const reader = createPointGridReader(grid);
-      const updated = new Set<string>();
-      for (let y = minY; y <= maxY; y++) {
-        for (let x = minX; x <= maxX; x++) {
-          const slot = resolveGridSlot(reader, { x, y });
-          if (!slot) continue;
-          const key = GridManager.toKey(slot.anchor.x, slot.anchor.y);
-          if (updated.has(key)) continue;
-          updated.add(key);
-          grid.set(key, { ...slot.cell, color: state.brushColor });
-        }
-      }
-    }, commits.getDocumentHistoryMode());
-  },
-
-  moveStaticGridSelection: (requestedDelta: Point) => {
-    const state = commits.getState();
-    const selection = getStaticGridSelection(state.interaction.staticGrid);
-    if (
-      selection.mode !== "range" ||
-      selection.additionalRanges.length > 0
-    ) {
-      return false;
-    }
-
-    const plan = createStaticGridRangeMovePlan({
-      source: state.contentSurface.reader,
-      range: selection.primaryRange,
-      requestedDelta,
-      bounds: getActiveSlideGridBounds(state),
-    });
-    if (!plan) return false;
-
-    const address = resolveEditorDocumentAddress(documents, state);
-    const movedAnchorIds = documents.getAnchorsAt(address)
-      .filter((anchor) => !anchor.detached && isPointInStaticGridRange(
+      const address = resolveEditorDocumentAddress(documents, state);
+      const movedAnchors = planRangeMoveAnchors(
         state.contentSurface.reader,
-        plan.sourceRange,
-        anchor.point
-      ))
-      .map((anchor) => anchor.id);
-    const movedAnchorSet = new Set(movedAnchorIds);
-    const overwrittenAnchorIds = documents.getAnchorsAt(address)
-      .filter((anchor) => !anchor.detached && !movedAnchorSet.has(anchor.id) &&
-        isPointInStaticGridRange(state.contentSurface.reader, plan.targetRange, anchor.point))
-      .map((anchor) => anchor.id);
-    const operation = documents.applyCellPlanePatchAt(
-      address,
-      plan.patch,
-      commits.getDocumentHistoryMode(),
-      { ids: movedAnchorIds, overwrittenIds: overwrittenAnchorIds, delta: plan.delta }
-    );
-    if (!operation) return false;
+        plan,
+        documents.getAnchorsAt(address)
+      );
+      const operation = documents.applyCellPlanePatchAt(
+        address,
+        plan.patch,
+        commits.getDocumentHistoryMode(),
+        movedAnchors
+      );
+      if (!operation) return false;
 
-    commits.setState((current) =>
-      createCanvasInteractionPatch(current.interaction, {
-        staticGrid: {
-          mode: "navigate",
-          selection: {
-            ...getStaticGridSelection(current.interaction.staticGrid),
-            activeCell: {
-              x: selection.activeCell.x + plan.delta.x,
-              y: selection.activeCell.y + plan.delta.y,
+      commits.setState((current) =>
+        createCanvasInteractionPatch(current.interaction, {
+          staticGrid: {
+            mode: "navigate",
+            selection: {
+              ...getStaticGridSelection(current.interaction.staticGrid),
+              activeCell: {
+                x: selection.activeCell.x + plan.delta.x,
+                y: selection.activeCell.y + plan.delta.y,
+              },
+              anchorCell: {
+                x: selection.anchorCell.x + plan.delta.x,
+                y: selection.anchorCell.y + plan.delta.y,
+              },
+              primaryRange: plan.targetRange,
             },
-            anchorCell: {
-              x: selection.anchorCell.x + plan.delta.x,
-              y: selection.anchorCell.y + plan.delta.y,
-            },
-            primaryRange: plan.targetRange,
           },
-        },
-      })
-    );
-    return true;
-  },
-});
+        })
+      );
+      return true;
+    },
+  });

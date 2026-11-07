@@ -223,6 +223,7 @@ export function LocalWorkspacePage() {
         surface: session.surface,
         slideDeck: session.slideDeck,
         documentName: session.name,
+        document: session.document,
         includeColor: true,
         showGrid: false,
       }, 'chardesk');
@@ -256,7 +257,7 @@ export function LocalWorkspacePage() {
         try {
           const local = await canvas.materializeSession(restored.id);
           const exported = local && prepareTextExport({ canvasMode: local.mode, surface: local.surface,
-            slideDeck: local.slideDeck, documentName: local.name, includeColor: true, showGrid: false }, 'chardesk');
+            slideDeck: local.slideDeck, document: local.document, documentName: local.name, includeColor: true, showGrid: false }, 'chardesk');
           if (exported?.ok) await bindCloudSession(cloud.user.id, restored.id, work.id, revision,
             local!.name, exported.value.content, work.conflictWith);
         }

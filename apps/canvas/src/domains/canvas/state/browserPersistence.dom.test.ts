@@ -924,7 +924,17 @@ describe("browser canvas persistence", () => {
     const coordinatorCreatedId = coordinator.getState().activeCanvasId;
     peer.commands.sessions.create("freeform", { name: "Created in peer" });
     const peerCreatedId = peer.getState().activeCanvasId;
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    const catalog = await createIndexedDbCanvasCatalog();
+    try {
+      await vi.waitFor(async () => {
+        expect((await catalog.load())?.sessions).toEqual(expect.arrayContaining([
+          expect.objectContaining({ id: coordinatorCreatedId, name: "Created in coordinator" }),
+          expect.objectContaining({ id: peerCreatedId, name: "Created in peer" }),
+        ]));
+      });
+    } finally {
+      catalog.close();
+    }
 
     coordinator.dispose();
     peer.dispose();

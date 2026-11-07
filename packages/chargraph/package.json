@@ -49,6 +49,10 @@
     "./examples": {
       "types": "./dist/examples.d.ts",
       "import": "./dist/examples.js"
+    },
+    "./profile": {
+      "types": "./dist/text-profile.d.ts",
+      "import": "./dist/text-profile.js"
     }
   },
   "scripts": {

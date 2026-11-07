@@ -11,16 +11,7 @@ export type CanvasContentSurfaceState = Readonly<{
   revision: number;
 }>;
 
-export type ClipboardCommandResult =
-  | { status: "applied"; changed: boolean }
-  | {
-      status: "noop";
-      reason: "empty-source" | "empty-clipboard" | "unsupported-data";
-    }
-  | {
-      status: "failed";
-      reason: "clipboard-failed" | "stale-target";
-    };
+export type { ClipboardCommandResult } from "@chardesk/editor-core/clipboard/commands";
 
 export type CanvasViewportState = {
   offset: Point;

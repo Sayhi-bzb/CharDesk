@@ -1,38 +1,26 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-import { useCreation } from "ahooks";
-import { useCanvasRuntime } from "@/domains/canvas/public";
-import type { StaticGridRangeMovePlan } from "@/domains/canvas/public";
-import type { CanvasEditorRuntime } from "@/domains/editor/public";
-import type { SelectionArea } from "@/shared/types";
-import type { CanvasLinkHit } from "./core/linkHitTesting";
-import { createCanvasInteractionTransactionController } from "./core/interactionTransaction";
-import { createCanvasPointerContextResolver } from "./core/pointerContext";
-import { createDragResetController } from "./gestures/dragResetExecution";
-import { createHoverInteractionController } from "./preview/hoverInteractionController";
-import { createSelectionPreviewController } from "./preview/selectionPreviewController";
-import {
-  SHORTCUT_PRIORITY,
-  useShortcutLayer,
-} from "@/shared/shortcuts/dispatcher";
-import type { CanvasEngineRuntime } from "../../engine/CanvasEngineRuntime";
-import { CanvasEdgeScrollManager } from "../../engine/CanvasEdgeScrollManager";
-import type { useCanvasEditorModels } from "../useCanvasEditorModels";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCreation } from 'ahooks';
+import { useCanvasRuntime } from '@/domains/canvas/public';
+import type { StaticGridRangeMovePlan } from '@/domains/canvas/public';
+import type { CanvasEditorRuntime } from '@/domains/editor/public';
+import type { GridSelectionDragPreview } from '@/domains/selection/public';
+import type { CanvasLinkHit } from './core/linkHitTesting';
+import { createCanvasInteractionTransactionController } from './core/interactionTransaction';
+import { createCanvasPointerContextResolver } from './core/pointerContext';
+import { createDragResetController } from './gestures/dragResetExecution';
+import { createHoverInteractionController } from './preview/hoverInteractionController';
+import { createSelectionPreviewController } from './preview/selectionPreviewController';
+import { SHORTCUT_PRIORITY, useShortcutLayer } from '@/shared/shortcuts/dispatcher';
+import type { CanvasEngineRuntime } from '../../engine/CanvasEngineRuntime';
+import { CanvasEdgeScrollManager } from '../../engine/CanvasEdgeScrollManager';
+import type { useCanvasEditorModels } from '../useCanvasEditorModels';
 
 type ControllerStore = Pick<
-  ReturnType<typeof useCanvasEditorModels>["interaction"],
-  | "tool"
-  | "contentReader"
-  | "canvasMode"
-  | "setHoveredGrid"
+  ReturnType<typeof useCanvasEditorModels>['interaction'],
+  'tool' | 'contentReader' | 'canvasMode' | 'setHoveredGrid'
 > & {
-  activeCanvasId?: ReturnType<typeof useCanvasEditorModels>["interaction"]["activeCanvasId"];
-  slideDeck?: ReturnType<typeof useCanvasEditorModels>["interaction"]["slideDeck"];
+  activeCanvasId?: ReturnType<typeof useCanvasEditorModels>['interaction']['activeCanvasId'];
+  slideDeck?: ReturnType<typeof useCanvasEditorModels>['interaction']['slideDeck'];
 };
 
 export const useInteractionControllers = ({
@@ -49,17 +37,10 @@ export const useInteractionControllers = ({
   editorRuntime: CanvasEditorRuntime;
 }) => {
   const canvas = useCanvasRuntime();
-  const {
-    tool,
-    activeCanvasId,
-    contentReader,
-    canvasMode,
-    slideDeck,
-    setHoveredGrid,
-  } = store;
+  const { tool, activeCanvasId, contentReader, canvasMode, slideDeck, setHoveredGrid } = store;
   const colorPickerClickRef = useRef(false);
-  const [cursor, setCursor] = useState("");
-  const [draggingSelection, setDraggingSelection] = useState<SelectionArea | null>(null);
+  const [cursor, setCursor] = useState('');
+  const [draggingSelection, setDraggingSelection] = useState<GridSelectionDragPreview | null>(null);
   const [staticRangeMovePreview, setStaticRangeMovePreview] =
     useState<StaticGridRangeMovePlan | null>(null);
   const pointerInputsRef = useRef({ contentReader, canvasMode, slideDeck });
@@ -67,13 +48,7 @@ export const useInteractionControllers = ({
   useLayoutEffect(() => {
     pointerInputsRef.current = { contentReader, canvasMode, slideDeck };
     hoverOutputsRef.current = { setHoveredLink, setHoveredGrid };
-  }, [
-    canvasMode,
-    contentReader,
-    setHoveredGrid,
-    setHoveredLink,
-    slideDeck,
-  ]);
+  }, [canvasMode, contentReader, setHoveredGrid, setHoveredLink, slideDeck]);
   const pointerContext = useCreation(
     () =>
       createCanvasPointerContextResolver({
@@ -82,10 +57,10 @@ export const useInteractionControllers = ({
         getContentSource: () => pointerInputsRef.current.contentReader,
         getGridBounds: () => {
           const current = pointerInputsRef.current;
-          return current.canvasMode === "slide" && current.slideDeck
-            ? current.slideDeck.slides.find(
+          return current.canvasMode === 'slide' && current.slideDeck
+            ? (current.slideDeck.slides.find(
                 (slide) => slide.id === current.slideDeck?.activeSlideId
-              )?.size ?? null
+              )?.size ?? null)
             : null;
         },
       }),
@@ -106,8 +81,7 @@ export const useInteractionControllers = ({
   );
   const viewportInteraction = useCreation(
     () => ({
-      queueOffsetDelta: (dx: number, dy: number) =>
-        runtime.camera.queuePan(dx, dy),
+      queueOffsetDelta: (dx: number, dy: number) => runtime.camera.queuePan(dx, dy),
       flushOffset: () => runtime.camera.flushPan(),
       queueZoomDelta: (delta: number, x: number, y: number) =>
         runtime.camera.queueZoomAt(delta, { x, y }),
@@ -133,10 +107,7 @@ export const useInteractionControllers = ({
     [editorRuntime]
   );
   const edgeScroll = useCreation(
-    () =>
-      runtime
-        ? new CanvasEdgeScrollManager(runtime.frameScheduler, runtime.camera)
-        : null,
+    () => (runtime ? new CanvasEdgeScrollManager(runtime.frameScheduler, runtime.camera) : null),
     [runtime]
   );
   const managerTargetsRef = useRef({
@@ -152,12 +123,7 @@ export const useInteractionControllers = ({
       selectionPreview,
       viewportInteraction,
     };
-  }, [
-    edgeScroll,
-    interactionTransaction,
-    selectionPreview,
-    viewportInteraction,
-  ]);
+  }, [edgeScroll, interactionTransaction, selectionPreview, viewportInteraction]);
   const interactionManager = useCreation(
     () => ({
       dispose: () => {
@@ -176,7 +142,7 @@ export const useInteractionControllers = ({
     interactionTransaction.cancel();
     resetDragState();
     hoverInteraction.clearLinkHover();
-    hoverInteraction.setCursor(tool === "pan" ? "grab" : "");
+    hoverInteraction.setCursor(tool === 'pan' ? 'grab' : '');
   }, [
     edgeScroll,
     hoverInteraction,
@@ -185,19 +151,20 @@ export const useInteractionControllers = ({
     tool,
     viewportInteraction,
   ]);
-  const cancelInteraction = useCallback((
-    reason: "escape" | "blur" | "hidden" | "pointer" | "identity" = "identity"
-  ) => {
-    if (
-      editorRuntime.dispatch({
-        type: "canvas-interaction-cancel",
-        reason,
-      })
-    ) {
-      return;
-    }
-    cancelInteractionEffects();
-  }, [cancelInteractionEffects, editorRuntime]);
+  const cancelInteraction = useCallback(
+    (reason: 'escape' | 'blur' | 'hidden' | 'pointer' | 'identity' = 'identity') => {
+      if (
+        editorRuntime.dispatch({
+          type: 'canvas-interaction-cancel',
+          reason,
+        })
+      ) {
+        return;
+      }
+      cancelInteractionEffects();
+    },
+    [cancelInteractionEffects, editorRuntime]
+  );
   const beginInteraction = useCallback(() => {
     if (interactionTransaction.hasActive()) cancelInteraction();
     edgeScroll?.stop();
@@ -229,7 +196,7 @@ export const useInteractionControllers = ({
         previous.canvasMode !== nextIdentity.canvasMode ||
         previous.tool !== nextIdentity.tool)
     ) {
-      cancelInteraction("identity");
+      cancelInteraction('identity');
     }
   }, [
     activeCanvasId,
@@ -242,47 +209,47 @@ export const useInteractionControllers = ({
   ]);
 
   useShortcutLayer({
-    id: "canvas-active-interaction-cancel",
+    id: 'canvas-active-interaction-cancel',
     priority: SHORTCUT_PRIORITY.canvasInteraction,
     onKeyDown: (input, context) => {
       if (
-        input.key !== "Escape" ||
+        input.key !== 'Escape' ||
         !interactionTransaction.hasActive() ||
-        context.targetKind === "editable" ||
-        context.targetKind === "overlay"
+        context.targetKind === 'editable' ||
+        context.targetKind === 'overlay'
       ) {
         return { claimed: false };
       }
-      cancelInteraction("escape");
+      cancelInteraction('escape');
       return { claimed: true, preventDefault: true };
     },
   });
 
   useEffect(() => {
     const cancelOnBlur = () => {
-      if (interactionTransaction.hasActive()) cancelInteraction("blur");
+      if (interactionTransaction.hasActive()) cancelInteraction('blur');
     };
     const cancelWhenHidden = () => {
-      if (document.visibilityState === "hidden" && interactionTransaction.hasActive()) {
-        cancelInteraction("hidden");
+      if (document.visibilityState === 'hidden' && interactionTransaction.hasActive()) {
+        cancelInteraction('hidden');
       }
     };
-    window.addEventListener("blur", cancelOnBlur);
-    document.addEventListener("visibilitychange", cancelWhenHidden);
+    window.addEventListener('blur', cancelOnBlur);
+    document.addEventListener('visibilitychange', cancelWhenHidden);
     return () => {
-      window.removeEventListener("blur", cancelOnBlur);
-      document.removeEventListener("visibilitychange", cancelWhenHidden);
+      window.removeEventListener('blur', cancelOnBlur);
+      document.removeEventListener('visibilitychange', cancelWhenHidden);
     };
   }, [cancelInteraction, interactionTransaction]);
 
   useEffect(() => {
-    hoverInteraction.setCursor(tool === "pan" ? "grab" : "");
+    hoverInteraction.setCursor(tool === 'pan' ? 'grab' : '');
   }, [hoverInteraction, tool]);
 
   useEffect(() => {
-    runtime?.registerManager("interaction", interactionManager);
+    runtime?.registerManager('interaction', interactionManager);
     return () => {
-      if (runtime) runtime.unregisterManager("interaction", interactionManager);
+      if (runtime) runtime.unregisterManager('interaction', interactionManager);
       else interactionManager.dispose();
     };
   }, [interactionManager, runtime]);

@@ -36,7 +36,7 @@ description: The canonical execution order for document, session, viewport, and 
   `CanvasViewportRuntime` is the only active-camera authority; Zustand does not
   mirror its offset or zoom. Animation frames never write session metadata.
 - Slide preview: deck metadata + page reader -> explicit grid snapshot -> canonical slide renderer.
-- Selection command: DOM dispatcher -> editor keymap -> command registry ->
+- Selection command: Host input -> `editor-input` -> command registry ->
   canvas selection port -> Yjs document.
 - Artifact appearance: stored Cell style -> canonical default-foreground classification ->
   active Canvas palette for visual projections or default SGR state for ANSI serialization.

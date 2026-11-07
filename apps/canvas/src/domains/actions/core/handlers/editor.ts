@@ -1,3 +1,4 @@
+import { readSelectionStyle } from "@chardesk/editor-core/selection/style";
 import type { CanvasState, ClipboardCommandResult } from "@/domains/canvas/public";
 import { runEditorCommand } from "@/domains/actions/adapters/editorCommands";
 import { getFirstGrapheme } from "@/shared/utils/characters";
@@ -10,11 +11,9 @@ import type {
   EditorActionId,
 } from "../types";
 import {
-  forEachGridSelectionSpan,
   getGridSelectionRanges,
   getStaticGridCursor,
   getStaticGridSelection,
-  getStaticGridSelectionAreas,
   hasGridRangeSelection,
 } from "@/domains/selection/public";
 import { hasClipboardSource } from "@/domains/actions/adapters/clipboardActions";
@@ -48,10 +47,7 @@ const FORMAT_ATTRIBUTES: Record<FormatActionId, TextAttributeName> = {
 // Check if action can run
 const canCopyOrCut = (state: CanvasState): boolean => {
   return hasClipboardSource(
-    getStaticGridSelectionAreas(
-      getStaticGridSelection(state.interaction.staticGrid),
-      state.contentSurface.reader
-    ),
+    getGridSelectionRanges(getStaticGridSelection(state.interaction.staticGrid)),
     getStaticGridCursor(state.interaction.staticGrid)
   );
 };
@@ -59,35 +55,23 @@ const canCopyOrCut = (state: CanvasState): boolean => {
 const hasStaticGridRangeSelection = (state: CanvasState) =>
   hasGridRangeSelection(getStaticGridSelection(state.interaction.staticGrid));
 
-const getSelectedTextAttributeValues = (
-  state: CanvasState,
-  attribute: TextAttributeName
-): boolean[] => {
-  const values: boolean[] = [];
-  forEachGridSelectionSpan(
-    getGridSelectionRanges(getStaticGridSelection(state.interaction.staticGrid)),
-    ({ y, minX, maxX }) => {
-      for (let x = minX; x <= maxX; x++) {
-        const cell = state.contentSurface.reader.get({ x, y });
-        if (cell) values.push(cell.attrs?.[attribute] === true);
-      }
-    },
-    state.contentSurface.reader
+const selectedStyle = (state: CanvasState) =>
+  readSelectionStyle(
+    state.contentSurface.reader,
+    getGridSelectionRanges(getStaticGridSelection(state.interaction.staticGrid))
   );
-  return values;
-};
 
-const canFormatTextSelection = (state: CanvasState) =>
-  getSelectedTextAttributeValues(state, "bold").length > 0;
+const canFormatTextSelection = (state: CanvasState) => selectedStyle(state).count > 0;
 
 const toggleTextAttribute = (
   context: ActionContext,
   attribute: TextAttributeName
 ): ActionResult => {
-  const values = getSelectedTextAttributeValues(context.state, attribute);
-  if (values.length === 0) return actionFailed("empty-selection");
-  const next = !values.every(Boolean);
-  context.canvas.commands.selection.setTextAttributes({ [attribute]: next });
+  const style = selectedStyle(context.state);
+  if (!style.attributes) return actionFailed("empty-selection");
+  context.canvas.commands.selection.setTextAttributes({
+    [attribute]: style.attributes[attribute] !== "on",
+  });
   return actionSucceeded();
 };
 
@@ -103,7 +87,8 @@ const resolveClipboardAction = (
         : {
             succeeded: false as const,
             changed: false as const,
-            reason: completion.reason,
+            reason:
+              completion.status === "dispatched" ? "clipboard-unconfirmed" : completion.reason,
           }
     )
   );
@@ -236,7 +221,8 @@ export const editorHandlers: Record<EditorActionId, ActionHandler<unknown>> = {
     return actionSucceeded();
   },
 
-  "format-bold": (_options, context) => toggleTextAttribute(context, FORMAT_ATTRIBUTES["format-bold"]),
+  "format-bold": (_options, context) =>
+    toggleTextAttribute(context, FORMAT_ATTRIBUTES["format-bold"]),
   "format-italic": (_options, context) =>
     toggleTextAttribute(context, FORMAT_ATTRIBUTES["format-italic"]),
   "format-underline": (_options, context) =>
@@ -245,7 +231,6 @@ export const editorHandlers: Record<EditorActionId, ActionHandler<unknown>> = {
     toggleTextAttribute(context, FORMAT_ATTRIBUTES["format-strike"]),
   "format-inverse": (_options, context) =>
     toggleTextAttribute(context, FORMAT_ATTRIBUTES["format-inverse"]),
-
 };
 
 // Editor action checkers

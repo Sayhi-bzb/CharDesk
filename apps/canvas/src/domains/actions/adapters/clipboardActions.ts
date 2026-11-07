@@ -1,23 +1,10 @@
 import {
-  exportSelectionToAnsi,
-  exportSelectionToJSON,
-  exportSelectionToString,
-  exportToAnsi,
-} from "@/domains/export/public";
-import {
-  forEachGridSelectionSpan,
-  getGridSelectionSpans,
-} from "@/domains/selection/public";
-import { GridManager } from "@/shared/utils/grid";
-import { createGridMapSource } from "@/shared/utils/grid-source";
-import { resolveGridSlot } from "@/shared/utils/grid-occupancy";
-import type {
-  GridCellSource,
-  GridMap,
-  Point,
-  SelectionArea,
-} from "@/shared/types";
-import type { RichTextCell } from "@/domains/canvas/public";
+  CHARDESK_CLIPBOARD_MIME as MIME_RICH_DATA,
+  buildRichClipboardHtml,
+  parseRichClipboardHtml,
+  parseRichClipboardText,
+} from "@chardesk/editor-core/clipboard/rich";
+export { hasClipboardSource, buildClipboardPayload } from "@chardesk/editor-core/clipboard/payload";
 import {
   renderTextSource,
   type CompactTextRenderResult,
@@ -25,35 +12,22 @@ import {
   type TextRenderResult,
 } from "@/domains/document/public";
 import { clipboard } from "@/shared/services/effects";
-import { cloneTextAttributes } from "@/shared/utils/ansi";
 import { parseAnsiTextCells } from "@/shared/utils/ansiText";
 
-const MIME_RICH_DATA = "web application/x-ascii-metropolis";
 const DEFAULT_ANSI_PASTE_COLOR = "#ffffff";
 
-interface ClipboardPayload {
-  plain: string;
-  rich: string | null;
-}
-
-type ClipboardPayloadFormat = "plain" | "ansi";
-
-const toAnsiLikeClipboardText = (value: string) => value.replaceAll("\u001b[", "[");
+import type { ClipboardPayload } from "@chardesk/editor-core/clipboard/payload";
 
 /** @deprecated Use the document text-rendering runtime for new clipboard paths. */
-export const parseAnsiClipboardText = (
-  source: string,
-  defaultColor = DEFAULT_ANSI_PASTE_COLOR
-) => parseAnsiTextCells(source, defaultColor);
+export const parseAnsiClipboardText = (source: string, defaultColor = DEFAULT_ANSI_PASTE_COLOR) =>
+  parseAnsiTextCells(source, defaultColor);
 
 export type RenderClipboardText = (
   source: string,
   defaultColor: string,
   context?: TextRenderContext
 ) =>
-  | TextRenderResult
-  | CompactTextRenderResult
-  | Promise<TextRenderResult | CompactTextRenderResult>;
+  TextRenderResult | CompactTextRenderResult | Promise<TextRenderResult | CompactTextRenderResult>;
 
 const toRenderedClipboardPayload = async (
   source: string,
@@ -68,7 +42,7 @@ const toRenderedClipboardPayload = async (
       richCells: null,
       plainText: source,
       diagnostics: rendered.diagnostics,
-      headings: rendered.renderer === "markdown" ? rendered.headings ?? [] : [],
+      headings: rendered.renderer === "markdown" ? (rendered.headings ?? []) : [],
     };
   }
   return rendered.kind === "styled"
@@ -76,7 +50,7 @@ const toRenderedClipboardPayload = async (
         richCells: rendered.cells,
         plainText: source,
         diagnostics: rendered.diagnostics,
-        headings: rendered.renderer === "markdown" ? rendered.headings ?? [] : [],
+        headings: rendered.renderer === "markdown" ? (rendered.headings ?? []) : [],
       }
     : {
         richCells: null,
@@ -84,109 +58,6 @@ const toRenderedClipboardPayload = async (
         diagnostics: rendered.diagnostics,
         headings: [],
       };
-};
-
-export const hasClipboardSource = (
-  selections: SelectionArea[],
-  textCursor: Point | null
-) => {
-  return selections.length > 0 || !!textCursor;
-};
-
-const projectGridSelection = (
-  grid: GridCellSource,
-  selections: SelectionArea[],
-  brushColor: string
-): GridMap => {
-  const projection: GridMap = new Map();
-  forEachGridSelectionSpan(selections, ({ y, minX, maxX }) => {
-    for (let x = minX; x <= maxX; x++) {
-      const key = GridManager.toKey(x, y);
-      if (resolveGridSlot(grid, { x, y })?.offset === 1) continue;
-      projection.set(key, grid.get({ x, y }) ?? { char: " ", color: brushColor });
-    }
-  }, grid);
-  return projection;
-};
-
-export const buildClipboardPayload = (
-  grid: GridCellSource,
-  selections: SelectionArea[],
-  textCursor: Point | null,
-  brushColor: string,
-  format: ClipboardPayloadFormat = "plain"
-): ClipboardPayload | null => {
-  if (!hasClipboardSource(selections, textCursor)) return null;
-
-  if (selections.length > 0) {
-    const effectiveSelections = getGridSelectionSpans(selections, grid).map(
-      ({ y, minX, maxX }) => ({
-        start: { x: minX, y },
-        end: { x: maxX, y },
-      })
-    );
-    const projectedGrid = projectGridSelection(
-      grid,
-      effectiveSelections,
-      brushColor
-    );
-    const projectedSource = createGridMapSource(projectedGrid);
-    return {
-      plain:
-        format === "ansi"
-          ? toAnsiLikeClipboardText(exportSelectionToAnsi(projectedSource, effectiveSelections))
-          : exportSelectionToString(projectedSource, effectiveSelections),
-      rich:
-        format === "ansi"
-          ? null
-          : exportSelectionToJSON(projectedSource, effectiveSelections),
-    };
-  }
-
-  if (!textCursor) return null;
-  const slot = resolveGridSlot(grid, textCursor);
-  const cell = slot?.cell;
-  const char = cell?.char || " ";
-  const singleCellGrid: GridMap = new Map([
-    [
-      "0,0",
-      {
-        char,
-        color: cell?.color || brushColor,
-        ...(cell?.bgColor ? { bgColor: cell.bgColor } : {}),
-        ...(cloneTextAttributes(cell?.attrs)
-          ? { attrs: cloneTextAttributes(cell?.attrs) }
-          : {}),
-        ...(cell?.href ? { href: cell.href } : {}),
-      },
-    ],
-  ]);
-  return {
-    plain:
-      format === "ansi"
-        ? toAnsiLikeClipboardText(exportToAnsi(createGridMapSource(singleCellGrid)))
-        : char,
-    rich:
-      format === "ansi"
-        ? null
-        : JSON.stringify({
-            type: "ascii-metropolis-zone",
-            version: 1,
-            cells: [
-              {
-                x: 0,
-                y: 0,
-                char,
-                color: cell?.color || brushColor,
-                ...(cell?.bgColor ? { bgColor: cell.bgColor } : {}),
-                ...(cloneTextAttributes(cell?.attrs)
-                  ? { attrs: cloneTextAttributes(cell?.attrs) }
-                  : {}),
-                ...(cell?.href ? { href: cell.href } : {}),
-              },
-            ],
-    }),
-  };
 };
 
 interface WriteClipboardOptions {
@@ -207,17 +78,17 @@ export const writeClipboardPayload = async (
     // reconstruct multi-cell selections while external apps still receive plain text.
     if (payload.rich) {
       event.clipboardData.setData(MIME_RICH_DATA, payload.rich);
+      const html = buildRichClipboardHtml(payload);
+      if (html) event.clipboardData.setData("text/html", html);
     }
     return true;
   }
 
   try {
-    if (
-      withRich &&
-      payload.rich &&
-      typeof ClipboardItem !== "undefined"
-    ) {
+    if (withRich && payload.rich && typeof ClipboardItem !== "undefined") {
+      const html = buildRichClipboardHtml(payload);
       const clipboardMap: Record<string, Blob> = {
+        ...(html ? { "text/html": new Blob([html], { type: "text/html" }) } : {}),
         "text/plain": new Blob([payload.plain], { type: "text/plain" }),
         [MIME_RICH_DATA]: new Blob([payload.rich], {
           type: MIME_RICH_DATA,
@@ -235,51 +106,20 @@ export const writeClipboardPayload = async (
   }
 };
 
-const parseRichClipboardText = (
-  rawText: string
-): {
-  richCells: RichTextCell[] | null;
-  plainText: string | null;
-} | null => {
-  if (!rawText) return null;
-  try {
-    const parsed = JSON.parse(rawText) as {
-      type?: string;
-      cells?: RichTextCell[];
-      surfaceCells?: RichTextCell[];
-      structuredText?: { text?: unknown };
-    };
-    if (parsed.type === "ascii-metropolis-clipboard") {
-      const surfaceCells = Array.isArray(parsed.surfaceCells)
-        ? parsed.surfaceCells
-        : Array.isArray(parsed.cells)
-          ? parsed.cells
-          : [];
-      return {
-        richCells: surfaceCells,
-        plainText: typeof parsed.structuredText?.text === "string"
-          ? parsed.structuredText.text
-          : null,
-      };
-    }
-    if (!Array.isArray(parsed.cells)) return null;
-    return { richCells: parsed.cells, plainText: null };
-  } catch {
-    return null;
-  }
-};
-
 const readRichClipboardCells = async (): Promise<{
-  richCells: RichTextCell[] | null;
+  richCells: import("@chardesk/editor-core/textCommandTypes").RichTextCell[] | null;
   plainText: string | null;
 } | null> => {
   const items = await clipboard.readItems();
   if (items) {
     for (const item of items) {
-      if (!item.types.includes(MIME_RICH_DATA)) continue;
-      const blob = await item.getType(MIME_RICH_DATA);
-      const parsed = parseRichClipboardText(await blob.text());
-      if (parsed) return parsed;
+      for (const type of [MIME_RICH_DATA, "text/html"]) {
+        if (!item.types.includes(type)) continue;
+        const raw = await (await item.getType(type)).text();
+        const parsed =
+          type === MIME_RICH_DATA ? parseRichClipboardText(raw) : parseRichClipboardHtml(raw);
+        if (parsed) return parsed;
+      }
     }
   }
 
@@ -296,7 +136,9 @@ export const readClipboardPayload = async (
   // event is being dispatched. Snapshot every format before the first await.
   const eventRichText = eventDataTransfer?.getData(MIME_RICH_DATA) ?? "";
   const eventPlainText = eventDataTransfer?.getData("text/plain") ?? "";
-  const eventRichPayload = parseRichClipboardText(eventRichText);
+  const eventHtml = eventDataTransfer?.getData("text/html") ?? "";
+  const eventRichPayload =
+    parseRichClipboardText(eventRichText) ?? parseRichClipboardHtml(eventHtml);
   if (eventRichPayload) {
     return {
       richCells: eventRichPayload.richCells,
@@ -306,12 +148,7 @@ export const readClipboardPayload = async (
   }
 
   if (eventPlainText) {
-    return await toRenderedClipboardPayload(
-      eventPlainText,
-      defaultColor,
-      renderText,
-      context
-    );
+    return await toRenderedClipboardPayload(eventPlainText, defaultColor, renderText, context);
   }
 
   const richPayload = await readRichClipboardCells();

@@ -88,6 +88,7 @@ const createDocumentSeed = (
     : {
         mode: snapshot.mode,
         grid: snapshot.grid,
+        ...(snapshot.document ? { pages: snapshot.document.pages, activePageId: snapshot.document.activePageId } : {}),
       };
 
 const createBlankSnapshot = (
@@ -284,7 +285,8 @@ export const createCanvasSessionCommands = (
       const nextId = createSessionId(state.canvasSessions);
       const snapshot: CanvasImportSnapshot = source.mode === "slide"
         ? { mode: "slide", slideDeck: materializeSlideDeckContent(documents, sessionId, readSlideDeckDescriptor(documents, sessionId) ?? createSlideDeck({ initialSlideId: `${nextId}-slide-1` })) }
-        : { mode: "freeform", grid: documents.getDocumentSeed(sessionId, "freeform")?.grid ?? [] };
+        : { mode: "freeform", grid: documents.getDocumentSeed(sessionId, "freeform")?.grid ?? [],
+            document: documents.getDocumentDraft(sessionId) ?? undefined };
       const name = options?.name?.trim() || `${source.name} — Copy`;
       const duplicate: CanvasSessionDescriptor = { ...source, id: nextId, name, storagePolicy: "local" };
       replaceDocumentSnapshot(documents, nextId, snapshot, false);
@@ -497,7 +499,7 @@ export const createCanvasSessionCommands = (
           });
         }
         if (documents.getDocument(sessionId)) {
-          documents.setDerivedSurface(sessionId, surface);
+          documents.setDerivedSurface(sessionId, surface, snapshot.document);
         }
         set({ canvasSessions: nextSessions });
         return;
@@ -505,7 +507,7 @@ export const createCanvasSessionCommands = (
       if (target.mode === "slide") {
         replaceDocumentSnapshot(documents, sessionId, snapshot);
       }
-      documents.setDerivedSurface(sessionId, surface);
+      documents.setDerivedSurface(sessionId, surface, snapshot.document);
       if (options?.resetHistory !== false) documents.clearHistory();
       set(createSessionActivationPatch(
         nextSessions,
