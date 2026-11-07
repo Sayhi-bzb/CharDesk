@@ -59,6 +59,8 @@ export type TerminalPanel = {
   input?: string;
   hint: string;
   items: string[];
+  emptyMessage?: string;
+  actions?: readonly { id: string; label: string; onPick: () => void }[];
   selected: number;
   error?: string;
   onPick?: (index: number) => void;
@@ -618,6 +620,16 @@ export class CanvasSurface extends Renderable {
     const titleX = dock.length ? dock.at(-1)!.x + dock.at(-1)!.width + 1 : 0;
     const footerLabel = [statusBar.context, statusBar.hint].filter(Boolean).join(' · ');
     this.#line(buffer, ` ${footerLabel}`, titleX, footer, this.colors.accent);
+    for (const action of this.panelFooterControls)
+      this.#line(
+        buffer,
+        action.label,
+        action.x,
+        action.y,
+        this.panel?.busy ? this.colors.muted : this.colors.foreground,
+        this.colors.chrome,
+        action.width
+      );
     this.#line(buffer, ` ${statusBar.status ?? ''}`, 0, footer + 1);
     if (this.help) {
       buffer.fillRect(
@@ -706,6 +718,16 @@ export class CanvasSurface extends Renderable {
             layout.width - 2
           );
         const start = Math.max(0, this.panel.selected - layout.rows + 1);
+        if (!this.panel.items.length && this.panel.emptyMessage)
+          this.#line(
+            buffer,
+            this.panel.emptyMessage,
+            layout.x + 2,
+            layout.itemsY,
+            this.colors.muted,
+            this.colors.background,
+            layout.width - 4
+          );
         for (let row = 0; row < layout.rows; row++) {
           const index = start + row,
             item = this.panel.items[index];
@@ -771,7 +793,9 @@ export class CanvasSurface extends Renderable {
     if (this.panel) {
       return {
         context: this.panel.title,
-        hint: this.panel.hint,
+        hint: [...this.panelFooterControls.map((action) => action.label), this.panel.hint]
+          .filter(Boolean)
+          .join(' · '),
         status: this.panel.error || this.status || this.panel.status,
       };
     }
@@ -827,6 +851,18 @@ export class CanvasSurface extends Renderable {
       const control = { index, label, x, y: layout.y + 1, width, height: 1 };
       x += width + 1;
       return x <= layout.x + layout.width ? [control] : [];
+    });
+  }
+
+  get panelFooterControls() {
+    let x = 1;
+    if (this.panel?.title) x += this.#width(this.panel.title) + 3;
+    return (this.panel?.actions ?? []).flatMap((action) => {
+      const width = this.#width(action.label);
+      if (x + width > this.width) return [];
+      const control = { ...action, x, y: this.footerBounds.y, width, height: 1 };
+      x += width + 3;
+      return [control];
     });
   }
 
@@ -946,8 +982,16 @@ export class CanvasSurface extends Renderable {
       if (event.type === 'down' && event.button === 0) {
         const layout = this.panelLayout,
           localY = event.y - this.screenY;
+        const point = { x: event.x - this.screenX, y: localY };
+        const action = this.panelFooterControls.find((control) =>
+          cellRectContainsPoint(control, point)
+        );
+        if (action) {
+          if (!this.panel.busy) action.onPick();
+          this.requestRender();
+          return;
+        }
         if (this.panel.dialog) {
-          const point = { x: event.x - this.screenX, y: localY };
           if (!cellRectContainsPoint(layout, point)) {
             this.panel.onClose?.();
             return;

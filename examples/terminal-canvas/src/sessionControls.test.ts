@@ -81,7 +81,10 @@ test('empty workspace blocks canvas edits but exposes sessions and creates a dur
     expect(f.workspace.model.plane.materialize().size).toBe(0);
     expect(f.workspace.model.canUndo).toBe(false);
     f.surface.activateDock('documents');
-    expect(f.surface.panel?.items).toEqual(['+ New canvas', '+ Open file']);
+    expect(f.surface.panel?.items).toEqual([]);
+    expect(f.surface.panelFooterControls.map((control) => control.id)).toEqual(['new', 'open']);
+    f.setup.mockInput.pressEnter();
+    expect(f.workspace.files).toHaveLength(0);
     await f.setup.renderOnce();
     expect(f.setup.captureCharFrame()).toContain('Sessions');
     f.escape();
@@ -161,6 +164,45 @@ test('cancelling managed creation preserves its durable record without stealing 
   }
 });
 
+test('empty session lists keep New and Open in the clickable footer at narrow widths', async () => {
+  const f = await fixture();
+  try {
+    await f.setup.resize(32, 24);
+    f.surface.activateDock('documents');
+    await f.setup.renderOnce();
+    expect(f.surface.panel?.items).toEqual([]);
+    expect(f.setup.captureCharFrame()).toContain('No sessions');
+    f.setup.mockInput.pressTab();
+    await f.setup.renderOnce();
+    expect(f.surface.panel?.items).toEqual([]);
+    expect(f.setup.captureCharFrame()).toContain('No archived sessions');
+    const open = f.surface.panelFooterControls.find((control) => control.id === 'open')!;
+    expect(open.x + open.width).toBeLessThanOrEqual(32);
+    const list = f.surface.panel!;
+    list.busy = true;
+    await f.setup.mockMouse.click(open.x + 1, open.y);
+    expect(f.surface.panel).toBe(list);
+    list.busy = false;
+    await f.setup.mockMouse.click(open.x + 1, open.y);
+    expect(f.surface.panel?.title).toBe('Open document');
+    expect(f.surface.panel?.input).toBe('');
+    expect(f.workspace.files).toHaveLength(0);
+    f.escape();
+    f.surface.activateDock('documents');
+    const create = f.surface.panelFooterControls.find((control) => control.id === 'new')!;
+    await f.setup.mockMouse.click(create.x + 1, create.y);
+    await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+    expect(f.sessions.list()).toHaveLength(1);
+    expect(f.workspace.active.baselineSource).not.toBeNull();
+    f.surface.activateDock('documents');
+    f.setup.mockInput.pressTab();
+    expect(f.surface.panel?.items).toHaveLength(1);
+    expect(f.surface.panel?.items[0]).not.toContain('+ ');
+  } finally {
+    await f.dispose();
+  }
+});
+
 test('Chinese session commands fit 80 columns while errors keep their own footer row', async () => {
   const f = await fixture();
   try {
@@ -169,7 +211,7 @@ test('Chinese session commands fit 80 columns while errors keep their own footer
     await f.sessions.create('当前画布');
     f.surface.activateDock('documents');
     await f.setup.renderOnce();
-    const footer = '会话 · R 重命名 · D 复制 · A 归档 · Del 关闭 · F5 刷新';
+    const footer = '会话 · N 新建 · O 打开 · R 重命名 · D 复制 · A 归档 · Del 关闭 · F5 刷新';
     let frame = f.setup.captureCharFrame().split('\n');
     expect(frame[28]?.trim()).toBe(footer);
     expect(frame[29]?.trim()).toBe('');
@@ -211,14 +253,16 @@ test('Sessions reuse the Settings dialog geometry, tabs, footer and outside dism
     expect(frame[l.y]).not.toContain('×');
     expect(frame.slice(l.y, l.y + l.height).join('\n')).not.toContain('Tab list');
     expect(frame[f.setup.renderer.height - 2]?.trim()).toBe(
-      'Sessions · R rename · D copy · A archive · Del close · F5 refresh'
+      'Sessions · N new · O open · R rename · D copy · A archive · Del close · F5 refresh'
     );
     expect(frame[f.setup.renderer.height - 1]?.trim()).toBe('');
     const archivedTab = f.surface.panelTabControls[1]!;
     await f.setup.mockMouse.click(archivedTab.x + 1, archivedTab.y);
     expect(f.surface.panel?.selectedTab).toBe(1);
     expect(f.surface.panel?.items[0]).toBe('Archived canvas');
-    expect(f.surface.statusBar.hint).toBe('R rename · D copy · A restore · Del close · F5 refresh');
+    expect(f.surface.statusBar.hint).toBe(
+      'N new · O open · R rename · D copy · A restore · Del close · F5 refresh'
+    );
     f.setup.mockInput.pressTab({ shift: true });
     expect(f.surface.panel?.selectedTab).toBe(0);
     expect(f.surface.panel?.items[0]).toContain('Working');
@@ -273,7 +317,7 @@ test('scrolling and pointer picking share dialog row geometry for long session l
     f.surface.activateDock('documents');
     const records = f.sessions.list();
     f.setup.mockInput.pressArrow('up');
-    expect(f.surface.panel?.selected).toBe(19);
+    expect(f.surface.panel?.selected).toBe(records.length - 1);
     f.setup.mockInput.pressArrow('down');
     expect(f.surface.panel?.selected).toBe(0);
     for (let i = 0; i < 13; i++) f.setup.mockInput.pressArrow('down');

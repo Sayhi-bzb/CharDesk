@@ -255,14 +255,15 @@ export class WorkspaceControls {
       },
       hint: this.surface
         .t`R rename · D copy · A ${this.#includeArchived ? this.surface.t('restore') : this.surface.t('archive')} · Del close · F5 refresh`,
-      items: [
-        ...records.map(
-          (record) =>
-            `${record.path === activePath ? '▸ ' : ''}${record.name}${record.removing ? this.surface.t(' (removal pending)') : record.status === 'creating' ? this.surface.t(' (incomplete)') : ''}`
-        ),
-        this.surface.t('+ New canvas'),
-        this.surface.t('+ Open file'),
+      actions: [
+        { id: 'new', label: this.surface.t('N new'), onPick: () => this.newSession() },
+        { id: 'open', label: this.surface.t('O open'), onPick: () => this.filePrompt('open') },
       ],
+      emptyMessage: this.surface.t(this.#includeArchived ? 'No archived sessions' : 'No sessions'),
+      items: records.map(
+        (record) =>
+          `${record.path === activePath ? '▸ ' : ''}${record.name}${record.removing ? this.surface.t(' (removal pending)') : record.status === 'creating' ? this.surface.t(' (incomplete)') : ''}`
+      ),
       selected: Math.max(
         0,
         records.findIndex(
@@ -273,8 +274,6 @@ export class WorkspaceControls {
     const pick = () => {
       const record = records[panel.selected];
       if (record) this.#async(panel, () => this.sessions!.open(record.id));
-      else if (panel.selected === records.length) this.newSession();
-      else this.filePrompt('open');
     };
     panel.onPick = pick;
     this.#show('sessions', panel, pick, (key) => {

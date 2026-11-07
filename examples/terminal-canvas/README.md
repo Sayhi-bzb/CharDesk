@@ -289,7 +289,9 @@ retain their explicit document colors. Previews do not enter autosave or recover
 | F9                | Anchor tree; N adds, R renames, T reattaches at cursor, Delete removes |
 | Shift+F9          | Add anchor at cursor                                                   |
 
-In Sessions, N creates, O opens a file, R renames the local alias, D duplicates,
+The Sessions list contains only session records; clickable footer actions create
+a canvas (N) or open a file (O), including when either list is empty.
+R renames the local alias, D duplicates,
 A archives/restores, Delete closes an open canvas, and X reviews removal. Removal
 can keep the file or delete an owned managed file; external files are always kept.
 See the [removal/recovery contract](WORKSPACE.md#removing-sessions).
