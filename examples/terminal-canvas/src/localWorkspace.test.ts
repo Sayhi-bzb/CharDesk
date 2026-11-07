@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { mkdtemp, mkdir, readFile, writeFile, rm, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { resolveAppPaths } from './appPaths.ts';
 import { openLocalWorkspace } from './localWorkspace.ts';
 import { parseOptions } from './options.ts';
@@ -28,6 +28,61 @@ async function finish(opened: Awaited<ReturnType<typeof openLocalWorkspace>>) {
   await opened.persistence.close();
   await opened.sessions.dispose();
   opened.workspace.dispose();
+}
+
+for (const savedToDisk of [false, true]) {
+  for (const dirty of [false, true]) {
+    test(`deleted source directory recovers into a durable managed session (saved: ${savedToDisk}, dirty: ${dirty})`, async () => {
+      const f = await fixture();
+      const oldDirectory = join(f.root, 'deleted-worktree');
+      await mkdir(oldDirectory);
+      const oldPath = join(oldDirectory, 'canvas.chardesk');
+      const old = await TerminalWorkspace.open(oldPath);
+      const checkpoint = await WorkspacePersistence.open(f.paths.workspace);
+      let view = { ...old.model.viewport };
+      try {
+        old.model.commands.insert('Recovered 🦀界');
+        if (savedToDisk) await old.saveFile();
+        if (dirty) old.model.commands.insert('!');
+        else old.model.markSaved();
+        old.model.pan(42, -17);
+        view = { ...old.model.viewport };
+        checkpoint.start(old, { autosaveMs: -1 });
+        await checkpoint.flush();
+      } finally {
+        await checkpoint.abandon();
+        old.dispose();
+      }
+      await rm(oldDirectory, { recursive: true });
+
+      const next = await openLocalWorkspace(parseOptions([]), f.paths, {}, [], f.secondCwd);
+      const recoveredPath = next.workspace.active.path;
+      next.persistence.start(next.workspace);
+      try {
+        expect(next.persistence.recovered).toBe(1);
+        expect(next.workspace.files).toHaveLength(1);
+        expect(dirname(recoveredPath)).toBe(next.sessions.paths.canvases);
+        expect(next.sessions.forFile(next.workspace.active)?.kind).toBe('managed');
+        expect(await readFile(recoveredPath, 'utf8')).toContain('Recovered 🦀界');
+        expect(next.workspace.model.viewport).toEqual(view);
+        expect(next.workspace.model.plane.get({ x: 14, y: 0 })?.char).toBe(dirty ? '!' : undefined);
+        await expect(readFile(oldPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+      } finally {
+        await finish(next);
+      }
+
+      const again = await openLocalWorkspace(parseOptions([]), f.paths, {}, [], f.firstCwd);
+      again.persistence.start(again.workspace);
+      try {
+        expect(again.workspace.active.path).toBe(recoveredPath);
+        expect(again.sessions.list()).toHaveLength(1);
+        expect(again.persistence.recovered).toBe(0);
+        expect(again.workspace.model.viewport).toEqual(view);
+      } finally {
+        await finish(again);
+      }
+    });
+  }
 }
 
 test('startup from different directories restores managed sessions, views and the active canvas', async () => {

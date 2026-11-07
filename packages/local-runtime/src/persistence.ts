@@ -23,6 +23,7 @@ export type PersistenceStatus = { phase: 'saving' | 'saved' | 'error'; message?:
 export type WorkspaceSessionLifecycle = {
   identify: (path: string) => string | undefined;
   shouldRestore: (path: string, sessionId?: string) => boolean;
+  recover?: (source: string, title: string) => Promise<CanvasFile>;
 };
 const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
@@ -208,7 +209,10 @@ export class WorkspacePersistence {
         if (this.lifecycle?.shouldRestore(saved.path, saved.sessionId) === false) continue;
         const current = await readOptional(saved.path),
           digest = sourceDigest(current);
-        if (digest === saved.baselineDigest || digest === sourceDigest(saved.source)) {
+        if (
+          (digest === saved.baselineDigest || digest === sourceDigest(saved.source)) &&
+          (current !== null || !this.lifecycle?.recover)
+        ) {
           const file = new CanvasFile(saved.path, saved.title, current);
           const dirty = saved.dirty && digest !== sourceDigest(saved.source);
           install(file, saved.source, saved.views, dirty);
@@ -231,11 +235,17 @@ export class WorkspacePersistence {
             if (!saved.dirty) continue;
           }
         }
-        const recoveredPath = join(
-          dirname(saved.path),
-          `${basename(saved.path, '.chardesk')}.recovered-${randomUUID()}.chardesk`
-        );
-        const recovered = new CanvasFile(recoveredPath, `${saved.title} (recovered)`, null);
+        const title = `${saved.title.slice(0, 188)} (recovered)`;
+        const recovered = this.lifecycle?.recover
+          ? await this.lifecycle.recover(saved.source, title)
+          : new CanvasFile(
+              join(
+                dirname(saved.path),
+                `${basename(saved.path, '.chardesk')}.recovered-${randomUUID()}.chardesk`
+              ),
+              title,
+              null
+            );
         install(recovered, saved.source, saved.views, true);
         restored.set(saved.path, recovered);
         this.recovered++;

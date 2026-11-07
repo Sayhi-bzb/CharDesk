@@ -127,15 +127,17 @@ detection against writers outside the shared catalog.
 
 Restart compares the disk file, saved baseline digest and recovery snapshot:
 
-| Disk state                          | Result                                                                      |
-| ----------------------------------- | --------------------------------------------------------------------------- |
-| Unchanged baseline                  | Restore checkpoint content and views                                        |
-| Snapshot already saved before crash | Restore as clean                                                            |
-| Changed disk, clean checkpoint      | Open current disk content with a fresh view                                 |
-| Changed disk, dirty checkpoint      | Keep external file; recover edits at a separate `.recovered-…chardesk` path |
+| Disk state                          | Result                                                          |
+| ----------------------------------- | --------------------------------------------------------------- |
+| Unchanged baseline                  | Restore checkpoint content and views                            |
+| Snapshot already saved before crash | Restore as clean                                                |
+| Changed disk, clean checkpoint      | Open current disk content with a fresh view                     |
+| Changed disk, dirty checkpoint      | Keep external file; recover edits into a new managed session    |
+| Missing file or parent directory    | Recover checkpoint content and views into a new managed session |
 
-An invalid external document is left untouched; its dirty snapshot still gets a
-separate recovery path. Quit saves all open documents, including hidden dirty
+An invalid external document is left untouched; its snapshot gets a managed
+recovery session. Recovery files use the application canvas directory, even when
+the original lived in a deleted temporary worktree. Quit saves all open documents, including hidden dirty
 documents. Failed document or checkpoint writes keep the editor open, preserving
 recovery data. SIGINT/SIGTERM also attempt to save before releasing the workspace.
 

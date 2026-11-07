@@ -5,7 +5,7 @@ import type { AppPaths } from './appPaths.ts';
 import { LocalSessions } from './sessions.ts';
 import { TerminalWorkspace } from './workspace.ts';
 import { WorkspacePersistence } from './persistence.ts';
-import { readOptional, resolveCanvasFilePath } from './document.ts';
+import { CanvasFile, readOptional, resolveCanvasFilePath } from './document.ts';
 
 /** Interactive composition only; explicit files take precedence over restored navigation. */
 export async function openLocalWorkspace(
@@ -44,6 +44,10 @@ export async function openLocalWorkspace(
         shouldRestore: (path, id) =>
           !sessions.catalog.findPath(path)?.removing &&
           (id ? !sessions.catalog.wasRemoved(id) : !sessions.catalog.wasPathRemoved(path)),
+        recover: async (source, title) => {
+          const record = await sessions.createManaged(title, source);
+          return new CanvasFile(record.path, record.name, await readOptional(record.path));
+        },
       }
     );
     const restored = await persistence.restore(editorOptions);
