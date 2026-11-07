@@ -39,6 +39,9 @@ test('real input tracing preserves dispatch, records modifiers and excludes docu
     expect(model.viewport.y).toBe(before.y - 10);
     setup.mockInput.pressArrow('down', { meta: true });
     expect(model.viewport).toEqual(before);
+    const beforeDeletion = model.version;
+    await setup.mockInput.pressKeys(['\x7f']);
+    expect(model.version).not.toBe(beforeDeletion);
     await setup.mockInput.typeText('PRIVATE_TYPED_TEXT', 0);
     await setup.mockInput.pasteBracketedText('PRIVATE_PASTED_TEXT');
     const trace = await readFile(path, 'utf8');
@@ -63,6 +66,24 @@ test('real input tracing preserves dispatch, records modifiers and excludes docu
           e.kind === 'raw-navigation' && Buffer.from(e.hex, 'hex').toString().includes('\x1b[<4;')
       )
     ).toBe(true);
+    expect(events.some((e) => e.kind === 'raw-deletion' && e.hex === '7f')).toBe(true);
+    expect(
+      events.some(
+        (e) =>
+          e.kind === 'key' &&
+          e.name === 'backspace' &&
+          e.state.deletionEnabled.backward &&
+          e.state.focus.dock === null &&
+          !e.state.focus.style
+      )
+    ).toBe(true);
+    expect(events.some((e) => e.kind === 'state' && e.state.contentVersion > 0)).toBe(true);
+    // Associated text remains redacted even when a key reports a Backspace code.
+    await setup.mockInput.pressKeys(['\x1b[127;1;80:82:73:86:65:84:69u']);
+    const withAssociatedText = await readFile(path, 'utf8');
+    expect(withAssociatedText).not.toContain(
+      Buffer.from('\x1b[127;1;80:82:73:86:65:84:69u').toString('hex')
+    );
     expect(events.some((e) => e.kind === 'raw-redacted' && e.bytes > 0)).toBe(true);
     expect(trace).not.toContain('PRIVATE_DOCUMENT');
     expect(trace).not.toContain('PRIVATE_TYPED_TEXT');

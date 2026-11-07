@@ -246,3 +246,92 @@ for (const operation of ['copy', 'delete', 'fill', 'move'] as const) {
     }
   });
 }
+
+for (const operation of ['fill', 'style', 'copy', 'cut', 'paste'] as const) {
+  test(`${operation} targets the visible selection before pointer release`, async () => {
+    const session = new FreeformEditorSession('0123456789');
+    let copied = '';
+    session.configureClipboard({
+      write: async (payload) => {
+        copied = payload.plain;
+        return { status: 'written' };
+      },
+      read: async () => ({}),
+    });
+    try {
+      session.commands.pointAt(point(40));
+      const original = session.plane.materialize();
+      pointer(session, 'down', 2);
+      pointer(session, 'move', 4);
+      if (operation === 'fill') session.commands.insert('X');
+      else if (operation === 'style')
+        session.commands.style({ kind: 'foreground', color: '#ff3344' });
+      else {
+        const result =
+          operation === 'paste'
+            ? session.commands.pasteProvided('ab')
+            : session.commands[operation]();
+        expect(result.status).toBe('pending');
+        if (result.status === 'pending') expect((await result.completion).succeeded).toBe(true);
+      }
+      expect(session.gestureState.type).toBe('idle');
+      if (operation === 'copy' || operation === 'cut') expect(copied).toBe('234');
+      if (operation === 'copy') expect(session.plane.materialize()).toEqual(original);
+      else {
+        if (operation === 'fill')
+          for (let x = 2; x <= 4; x++) expect(session.plane.get(point(x))?.char).toBe('X');
+        if (operation === 'style')
+          for (let x = 2; x <= 4; x++) expect(session.plane.get(point(x))?.color).toBe('#ff3344');
+        if (operation === 'cut')
+          for (let x = 2; x <= 4; x++) expect(session.plane.get(point(x))).toBeUndefined();
+        if (operation === 'paste') {
+          expect(session.plane.get(point(2))?.char).toBe('a');
+          expect(session.plane.get(point(3))?.char).toBe('b');
+          expect(session.plane.get(point(4))?.char).toBe('4');
+        }
+        expect(session.plane.get(point(1))).toEqual(original.get('1,0'));
+        expect(session.plane.get(point(5))).toEqual(original.get('5,0'));
+        session.commands.undo();
+        expect(session.plane.materialize()).toEqual(original);
+      }
+      expect(session.canUndo).toBe(false);
+    } finally {
+      session.dispose();
+    }
+  });
+}
+
+test('deletion completes an appended selection including wide followers', () => {
+  const session = new FreeformEditorSession('AB-X界🦀Z');
+  try {
+    click(session, 0);
+    click(session, 1, 0, true);
+    pointer(session, 'down', 5, 0, { append: true });
+    pointer(session, 'move', 7);
+    session.commands.deleteBackward();
+    for (const x of [0, 1, 4, 6]) expect(session.plane.get(point(x))).toBeUndefined();
+    expect(session.plane.get(point(2))?.char).toBe('-');
+    expect(session.plane.get(point(3))?.char).toBe('X');
+    expect(session.plane.get(point(8))?.char).toBe('Z');
+    expect(session.gestureState.type).toBe('idle');
+  } finally {
+    session.dispose();
+  }
+});
+
+test('Undo still cancels a selecting gesture before reverting document history', () => {
+  const session = new FreeformEditorSession('ABCDE');
+  try {
+    session.commands.pointAt(point(5));
+    session.commands.insert('X');
+    pointer(session, 'down', 1);
+    pointer(session, 'move', 3);
+    session.commands.undo();
+    expect(session.gestureState.type).toBe('idle');
+    expect(session.selection).toBeNull();
+    expect(session.plane.get(point(5))).toBeUndefined();
+    expect(session.canUndo).toBe(false);
+  } finally {
+    session.dispose();
+  }
+});

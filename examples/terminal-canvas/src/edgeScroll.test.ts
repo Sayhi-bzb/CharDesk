@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { createTestRenderer, KeyCodes, ManualClock } from '@opentui/core/testing';
 import { attachControls } from './controller.ts';
 import { TerminalCanvas } from './model.ts';
-import { CanvasSurface } from './surface.ts';
+import { CANVAS_TOP, CanvasSurface } from './surface.ts';
 
 async function fixture(source = 'A🦀界B', useMouse = true) {
   const clock = new ManualClock();
@@ -40,7 +40,7 @@ async function fixture(source = 'A🦀界B', useMouse = true) {
 
 for (const corner of [
   { x: 39, y: 11, sign: 1 },
-  { x: 0, y: 0, sign: -1 },
+  { x: 0, y: CANVAS_TOP, sign: -1 },
 ]) {
   test(`stationary corner selection scrolls continuously in both axes (${corner.sign})`, async () => {
     const f = await fixture();
@@ -58,7 +58,7 @@ for (const corner of [
       expect(f.model.viewport.x * corner.sign).toBeGreaterThan(first.x * corner.sign);
       expect(f.model.selection?.focus).toEqual({
         x: f.model.viewport.x + corner.x,
-        y: f.model.viewport.y + corner.y,
+        y: f.model.viewport.y + corner.y - CANVAS_TOP,
       });
       expect(Number.isInteger(f.model.viewport.x)).toBe(true);
       expect(Number.isInteger(f.model.viewport.y)).toBe(true);
@@ -102,11 +102,11 @@ test('wide range movement previews through scrolling and commits as one undo', a
   try {
     f.model.selection = { anchor: { x: 0, y: 0 }, focus: { x: 1, y: 0 } };
     const original = f.model.plane.materialize();
-    await f.setup.mockMouse.pressDown(0, 0);
+    await f.setup.mockMouse.pressDown(0, CANVAS_TOP);
     await f.setup.mockMouse.emitMouseEvent('drag', 39, 5);
     f.clock.advance(2000);
     expect(f.model.gestureState.type).toBe('movingRange');
-    const target = { x: f.model.viewport.x + 39, y: f.model.viewport.y + 5 };
+    const target = { x: f.model.viewport.x + 39, y: f.model.viewport.y + 5 - CANVAS_TOP };
     expect(f.model.selectionPresentation.coverage.contains(target)).toBe(true);
     expect(f.model.selectionPresentation.coverage.contains({ x: target.x + 1, y: target.y })).toBe(
       true
@@ -147,7 +147,7 @@ for (const cancellation of [
     try {
       f.model.selection = { anchor: { x: 0, y: 0 }, focus: { x: 1, y: 0 } };
       const original = f.model.plane.materialize();
-      await f.setup.mockMouse.pressDown(0, 0);
+      await f.setup.mockMouse.pressDown(0, CANVAS_TOP);
       await f.setup.mockMouse.emitMouseEvent('drag', 39, 5);
       f.clock.advance(1500);
       expect(f.model.viewport.x).toBeGreaterThan(0);
@@ -167,7 +167,7 @@ for (const cancellation of [
           f.surface.setTool('hand');
           break;
         case 'settings':
-          f.setup.mockInput.pressKey(KeyCodes.F11);
+          f.surface.activateDock('settings');
           break;
         case 'help':
           f.setup.mockInput.pressKey(KeyCodes.F1);
@@ -209,9 +209,9 @@ test('captured footer endpoints clamp to the last canvas row and never activate 
   try {
     await f.start(10, 13);
     f.clock.advance(1000);
-    expect(f.model.selection?.focus.y).toBe(f.model.viewport.y + 11);
+    expect(f.model.selection?.focus.y).toBe(f.model.viewport.y + f.surface.canvasBounds.height - 1);
     await f.setup.mockMouse.release(10, 13);
-    expect(f.model.selection?.focus.y).toBe(f.model.viewport.y + 11);
+    expect(f.model.selection?.focus.y).toBe(f.model.viewport.y + f.surface.canvasBounds.height - 1);
     expect(f.surface.panel).toBeNull();
   } finally {
     await f.dispose();
@@ -266,7 +266,7 @@ for (const destination of ['page', 'document'] as const) {
       else f.model.documents.registerDocument('second', { grid: [] });
       f.model.selection = { anchor: { x: 0, y: 0 }, focus: { x: 1, y: 0 } };
       const content = f.model.plane.materialize();
-      await f.setup.mockMouse.pressDown(0, 0);
+      await f.setup.mockMouse.pressDown(0, CANVAS_TOP);
       await f.setup.mockMouse.emitMouseEvent('drag', 39, 5);
       f.clock.advance(1500);
       expect(f.model.gestureState.type).toBe('movingRange');

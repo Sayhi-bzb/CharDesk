@@ -31,6 +31,7 @@ const result = await Bun.build({
     '@opentui/core',
     '@opentui/core/*',
     'bun:test',
+    'quickjs-emscripten',
     'yjs',
     '@napi-rs/canvas',
     '@napi-rs/clipboard',

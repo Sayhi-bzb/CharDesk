@@ -27,12 +27,14 @@ Changes save automatically; closing a canvas or quitting waits for disk writes.
 [Local storage and recovery](WORKSPACE.md) owns directories, overrides, migration,
 concurrency and recovery guarantees.
 
-The demo opens in **Hand**. The footer dock and F2/F3 select one of two
-tools; drawing tools are explicit choices within Edit, and F2 returns to text/selection.
+The demo opens in **Hand**. The header contains Settings, Minimap and Sessions;
+the footer Dock contains Edit, Hand and Style. Click any control. Tab/Shift+Tab cycles only the footer Edit, Hand and Style
+controls; Enter/Space activates the focused control. Settings, Minimap, Sessions, Edit and Hand
+have no default direct shortcuts; Settings can assign them. Drawing tools are explicit choices within
+Edit; choose Dock Edit to return to text/selection.
 
 | Control                                                       | Action                                                           |
 | ------------------------------------------------------------- | ---------------------------------------------------------------- |
-| F2 / F3                                                       | Select Edit / Hand                                               |
 | Option+arrows (Alt on Windows)                                | Pan by configured step (default 10) in either tool               |
 | Left-drag in Hand                                             | Pan both axes; preserve selection and history                    |
 | Click in Edit                                                 | Place cursor, then type immediately                              |
@@ -43,30 +45,30 @@ tools; drawing tools are explicit choices within Edit, and F2 returns to text/se
 | Arrows / Ctrl+arrows in Edit                                  | Move cursor / selected range                                     |
 | Esc                                                           | Cancel live drag first, otherwise clear selection; keep the tool |
 | Enter in Edit                                                 | Newline                                                          |
-| Tab / Shift+Tab                                               | Focus next / previous available dock button                      |
-| Enter / Space with dock focus                                 | Run focused button                                               |
-| Esc with dock focus                                           | Return to canvas; preserve selection                             |
+| Tab / Shift+Tab                                               | Focus next / previous footer Edit, Hand or Style control                   |
+| Enter / Space with control focus                              | Run focused button                                               |
+| Esc with control focus                                        | Return to canvas; preserve selection                             |
 | Delete / Backspace in Edit                                    | Erase a complete grapheme or selection                           |
-| F4                                                            | Toggle Minimap without changing tools                            |
+| Header Minimap                                                | Toggle Minimap without changing tools                            |
 | Home / F5                                                     | Go to origin / locate content                                    |
 | F1                                                            | Help with platform-specific shortcuts                            |
 | Right-click / Shift+F10                                       | Open the canvas action menu                                      |
 | Ctrl+Q                                                        | Automatically save all documents and quit                        |
 
 All printable letters, including `i/h/m/I/H/M`, are text in Edit while the canvas
-has focus. Dock focus consumes typing and paste; clicking the canvas returns focus.
-Entering dock focus starts on the current Edit / Hand button; subsequent presses
+has focus. Header/footer control focus consumes typing and paste; clicking the canvas returns focus.
+Entering control focus starts on the current Edit / Hand button (New with no canvas); subsequent presses
 move forward or backward. Without a visible tool button, entry uses the first
 or last available button for that direction.
 Tab no longer inserts a tab stop; pasted tabs retain their text behavior.
-Dock focus is transient Host state and is not saved in documents or recovery views.
+Control focus is transient Host state and is not saved in documents or recovery views.
 Click, Escape,
 undo and paste keep the selected tool. Clipboard paste works in either tool and
 selects its result. Help, focus loss, resize and tool changes cancel active drags.
 
 ### Range input
 
-In F2 text/selection, ordinary click sets the anchor; Option(Alt)+click extends or
+In Edit text/selection, ordinary click sets the anchor; Option(Alt)+click extends or
 shrinks the same primary range. Shift+click uses the same behavior where the
 terminal forwards it; Shift+arrows extend from the keyboard. Ctrl+click appends a
 disjoint range. Hand and drawing tools retain their own behavior. See [native
@@ -92,8 +94,8 @@ still cannot reach the app because Warp intercepts those mouse events entirely.
 
 [`shortcuts.ts`](src/shortcuts.ts) owns binding and display policy. macOS keeps
 Command editing bindings and adds the [Vibe-style Ctrl+Y copy fallback](https://docs.mistral.ai/vibe/code/cli/commands-shortcuts).
-The footer dock exposes Copy while a canvas range exists; it runs the same command as
-the shortcuts, preserves the range and follows user rebindings.
+Context-menu Copy runs the same command as the shortcuts, preserves the range
+and follows user rebindings.
 Command+Q remains reserved for the terminal application. Extended Command events
 are requested through Kitty keyboard reporting; terminal-owned shortcuts must be
 forwarded to the application to operate on its logical canvas selection.
@@ -109,12 +111,12 @@ environment and later OpenTUI terminal identity replies. Kitty keyboard support
 alone does not establish Command or mouse forwarding. Help and the status hint
 follow that policy; user shortcut overrides remain authoritative.
 
-| Terminal path                   | Shift+click                                                                                                                                   | Copy on macOS                                                                                                                                                                                            |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Direct Ghostty                  | Requests [`XTSHIFTESCAPE`](https://ghostty.org/docs/vt/csi/xtshiftescape) through the native output queue; resets the request on detach/exit. | ⌘C when terminal bindings forward it; Ctrl+Y or the Copy button otherwise.                                                                                                                               |
-| Kitty                           | Uses forwarded mouse events; no Ghostty-specific request.                                                                                     | Default [`copy_or_noop`](https://sw.kovidgoyal.net/kitty/actions/#copy_or_noop) forwards ⌘C when Kitty has no native selection; Ctrl+Y remains available.                                                |
-| Warp                            | [Shift+mouse belongs to Warp](https://docs.warp.dev/terminal/more-features/full-screen-apps/). Use Option+click or Shift+arrows in Edit.      | Advertises Ctrl+Y and the Copy button. [Upstream #15016](https://github.com/warpdotdev/warp/issues/15016) tracks swallowed ⌘C for internal alt-screen selections; the app still accepts ⌘C if forwarded. |
-| Unknown terminal or multiplexer | No capture request based only on an outer terminal name. Use drag/Shift+arrows; modified clicks require forwarding.                           | Ctrl+Y / Copy button avoid dependence on Command encoding.                                                                                                                                               |
+| Terminal path                   | Shift+click                                                                                                                                   | Copy on macOS                                                                                                                                                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Direct Ghostty                  | Requests [`XTSHIFTESCAPE`](https://ghostty.org/docs/vt/csi/xtshiftescape) through the native output queue; resets the request on detach/exit. | ⌘C when terminal bindings forward it; Ctrl+Y or context-menu Copy otherwise.                                                                                                                                              |
+| Kitty                           | Uses forwarded mouse events; no Ghostty-specific request.                                                                                     | Default [`copy_or_noop`](https://sw.kovidgoyal.net/kitty/actions/#copy_or_noop) forwards ⌘C when Kitty has no native selection; Ctrl+Y remains available.                                                                 |
+| Warp                            | [Shift+mouse belongs to Warp](https://docs.warp.dev/terminal/more-features/full-screen-apps/). Use Option+click or Shift+arrows in Edit.      | Advertises Ctrl+Y; context-menu Copy is also available. [Upstream #15016](https://github.com/warpdotdev/warp/issues/15016) tracks swallowed ⌘C for internal alt-screen selections; the app still accepts ⌘C if forwarded. |
+| Unknown terminal or multiplexer | No capture request based only on an outer terminal name. Use drag/Shift+arrows; modified clicks require forwarding.                           | Ctrl+Y / context-menu Copy avoid dependence on Command encoding.                                                                                                                                                          |
 
 For Ghostty, an optional user configuration lets terminal Copy yield when there
 is no terminal-owned selection ([`performable:` contract](https://ghostty.org/docs/config/keybind#performable)):
@@ -129,7 +131,7 @@ CharDesk does not edit terminal configuration. Ghostty's
 was queued, not that the user configuration granted capture. The
 [policy regressions](src/terminalPolicy.test.ts) cover late identity, multiplexer
 boundaries, refused output and request cleanup; [native input regressions](src/surface.test.ts)
-cover Copy button/fallback routing and user rebindings. These are protocol tests,
+cover Copy fallback routing and user rebindings. These are protocol tests,
 not evidence of physical Ghostty or Warp forwarding.
 
 If Option+↑/↓ does not reach the canvas, check Settings → Keyboard shortcuts:
@@ -141,15 +143,15 @@ under legacy and Kitty reporting; they do not verify a terminal's shortcut forwa
 For actual-terminal evidence, set `CHARDESK_TRACE_INPUT=/tmp/chardesk-input.jsonl`
 when starting the demo. The path must not exist. The opt-in trace records navigation
 escape sequences, parsed modifiers, tool, gesture, cursor, range and viewport;
-document text, printable key names and paste payloads are omitted. Run F2, ordinary
+document text, printable key names and paste payloads are omitted. Select Dock Edit, then use ordinary
 click, Shift+click, Shift+Right and Option+arrows, then quit. Compare input records
 with state changes; simulated tests alone cannot prove host forwarding.
 
 ### Export and rich clipboard
 
 Shift+F7 opens Export in the shared dialog; choose Canvas/Selection and TXT,
-ANSI, CharDesk or PNG, then enter a **new file path**. The Dock exposes the same
-command when space permits. Export captures content before platform IO and never
+ANSI, CharDesk or PNG, then enter a **new file path**. Export captures content
+before platform IO and never
 changes the document path, selection, history or saved baseline. Existing paths
 (including symlinks) are refused atomically; errors keep the path prompt open.
 
@@ -188,8 +190,8 @@ one command, Esc closes. An outside click closes without editing the canvas.
 Right-click inside physical selection coverage preserves that range. Outside it,
 the clicked grapheme becomes the cursor and the old range clears, without
 switching tools. Keyboard opening uses the range start or cursor. The
-menu follows the [Web action catalog](../../apps/canvas/src/domains/actions/core/catalog.ts):
-Copy as Text, Copy as ANSI, Snapshot (PNG), Paste, separator, Delete. Cut, Select all
+menu retains the [Web editing actions](../../apps/canvas/src/domains/actions/core/catalog.ts):
+Copy as Text, Copy as ANSI, Snapshot (PNG), Paste and Delete. Cut, Select all
 and Undo/Redo remain keyboard commands. Opening links remains the [terminal gesture](#links).
 
 ANSI uses the shared clipboard formatter. PNG copies an image through the native
@@ -241,12 +243,12 @@ not launch a browser or establish physical terminal click behavior.
 
 ### Drawing, characters and templates
 
-| Control  | Action                                                                                                             |
-| -------- | ------------------------------------------------------------------------------------------------------------------ |
-| Shift+F2 | Drawing tools: text/selection, brush, eraser, text recolor, box, split box, elbow/step line, circle and background |
-| Shift+F3 | Character library: essentials, Nerd Font, Emoji and Unicode                                                        |
-| Shift+F4 | Template/component catalog                                                                                         |
-| F2 / F3  | Return to text editing / Hand                                                                                      |
+| Control          | Action                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Shift+F2         | Drawing tools: text/selection, brush, eraser, text recolor, box, split box, elbow/step line, circle and background |
+| Shift+F3         | Character library: essentials, Nerd Font, Emoji and Unicode                                                        |
+| Shift+F4         | Template/component catalog                                                                                         |
+| Dock Edit / Hand | Return to text editing / Hand                                                                                      |
 
 In the tools panel, C sets one brush grapheme, L chooses it from the library,
 F sets foreground and B sets background (`#RRGGBB`). These are panel actions;
@@ -277,7 +279,7 @@ retain their explicit document colors. Previews do not enter autosave or recover
 
 | Control           | Action                                                                 |
 | ----------------- | ---------------------------------------------------------------------- |
-| F7                | Persistent session list                                                |
+| Header Sessions   | Persistent session list                                                |
 | F6 / Shift+F6     | Next / previous open canvas                                            |
 | ⌘O / Ctrl+O / F10 | Open an external path                                                  |
 | ⌘N / Ctrl+N       | New managed canvas without a path prompt                               |
@@ -319,11 +321,11 @@ remain separate from native-file reloading.
 
 ### Status bar
 
-There is no top header: the canvas starts on the first terminal row. The bottom
-two rows own all Host chrome. On the canvas, the first row contains only the dock; the second shows operation status or keyboard hints. An active
+The header occupies one terminal row; the canvas starts immediately below it.
+The bottom two rows contain the footer Dock and operation status/keyboard hints. An active
 panel, context menu or Help replaces the dock with its context, status and hints.
 Panel messages appear here, outside the panel. Closing an overlay restores the dock.
-Dock drawing and hit-testing share the footer bounds, including after resize.
+Header and footer drawing, focus and hit-testing use the same control geometry, including after resize.
 
 ### Selection and navigation
 
@@ -352,24 +354,51 @@ Verification: [shared rules](../../packages/editor-core/src/selection/navigation
 [Web/TUI parity](../../apps/canvas/src/app/selectionNavigationParity.dom.test.ts),
 [native keys, dialog and sparse selection](src/workspaceControls.test.ts).
 
-### Selection Inspector
+### Style toolbar
 
-Press **Shift+F11** or choose **Inspector** in the dock. The shared dialog shows
-Bold, Italic, Underline, Strike and Inverse as on/off/mixed, plus selected colors.
-Enter or click toggles an attribute; a mixed attribute becomes on. Foreground and
-Background accept `#RRGGBB`; empty resets the foreground to the document default
-or removes the background. Clear background removes background-only blank cells.
-An empty range can receive a background; text attributes require existing cells.
+Style starts expanded without taking keyboard focus or changing the active tool.
+Click **Style** in the footer Dock to toggle the floating toolbar;
+**Shift+F11** remains its rebindable keyboard shortcut. It leaves the viewport size intact.
+Canvas clicks, typing, paste and captured drags keep working while it stays open.
+Mouse attribute changes return input to the canvas. Keyboard opening focuses its
+controls: arrows / Tab select, Enter changes, and Esc returns to the canvas without
+clearing the range. Unfocused Esc keeps normal canvas behavior. Tool changes keep
+the toolbar open and cancel color input; modal panels temporarily hide it. Small
+terminals collapse it to a label while canvas editing remains available.
+
+The two rows contain **B / I / U / S / Inv** and **Text / Fill / Clear**. Buttons
+retain pressed/focused/disabled styling, with no status labels, color readout or
+selection count. Shared rules still turn a mixed attribute on. Text and Fill open
+a foreground/background color palette. Click a swatch to apply it; use the header
+to switch between Web's ANSI16 RGB colors and 40 curated presets, enter custom HEX,
+or reset. Curated colors follow the reported terminal light/dark appearance
+(unknown uses light); switching appearance does not recolor authored cells.
+The [shared palette data](../../packages/ui/README.md) has no React dependency.
+Swatches occupy two columns and one row each, with one-cell horizontal gaps and no vertical gaps
+between unselected colors. Only the active swatch has brackets around both RGB cells;
+the palette uses no native cursor overlay. Palette buttons keep brackets and wrap
+to keep the popup narrow.
+
+Arrows choose a swatch, Enter applies, Tab switches palettes, H opens HEX and R
+resets. Short terminals scroll rows as keyboard focus moves. Terminal paste and
+clipboard shortcuts enter the custom color input without editing the canvas.
+In HEX, Enter applies `#RRGGBB`. Esc cancels, and clicking the canvas cancels and immediately
+targets that cell. Empty resets foreground to the document default or removes
+background. Clear background removes background-only blank cells. An empty range
+can receive background; text attributes require existing cells.
 
 **⌘B / Ctrl+B**, **⌘I / Ctrl+I**, **⌘U / Ctrl+U** and **⌘⇧X / Ctrl+Shift+X**
-provide formatting commands when forwarded by the terminal. Inspector is also
+provide formatting commands when forwarded by the terminal. Style is also
 available through its rebindable command and dock. Each operation is one undo
 step and preserves selection, view, other attributes and links. Changed color
-prompts cannot apply to a newer selection. Large selections report a size limit.
+inputs cannot apply to a newer selection. Blur, resize, document/page changes and
+disposal cancel color input and its pending clipboard edits. Large selections
+report a size limit. [`inspector.ts`](src/inspector.ts) owns floating presentation
+and input focus independently of modal workspace panels.
 
 [Shared style rules](../../packages/editor-core/src/selection/style.ts),
 [Web/TUI parity](../../apps/canvas/src/app/selectionStyleParity.dom.test.ts) and
-[native Inspector tests](src/inspector.test.ts) own behavior and verification.
+[native Style tests](src/inspector.test.ts) own behavior and verification.
 
 ### Continuous edge scrolling
 
@@ -400,12 +429,12 @@ not establish physical Warp/Ghostty forwarding.
 
 ### Settings
 
-Press **F11** on the canvas or click **Settings** in the footer dock. Tab / Shift+Tab
+Choose **Settings** in the header. Inside the dialog, Tab / Shift+Tab
 switches sections; ↑↓ selects a row; ←→, Enter or clicking a row changes its value.
 Escape or clicking outside closes the dialog. Existing pickers keep their local F11 actions.
 
-Appearance configures the native cursor shape/blink and terminal palette selection
-background (see [appearance behavior](#terminal-appearance)); Navigation configures the pan step; Paste configures format detection.
+Appearance configures **Language** (Follow system / 简体中文 / English), the native
+cursor shape/blink and terminal palette selection background (see [appearance behavior](#terminal-appearance)); Navigation configures the pan step; Paste configures format detection.
 Shortcuts searches the shared command/keymap catalog. Enter edits a binding;
 F5 records a replacement of up to two strokes, Enter saves, and Esc cancels.
 Bindings can also be typed; use `/` between alternatives and a space between
@@ -421,6 +450,14 @@ Empty color fields follow the theme. Preferences affect the next render/paste;
 existing authored cells stay intact. Defaults inherit the terminal foreground;
 explicit generated colors remain authored colors. Screen fonts/size belong to
 the terminal; [PNG export](#export-and-rich-clipboard) keeps its export font policy.
+
+Language changes update the interface immediately and persist with the other
+preferences. Follow system resolves `LC_ALL`, then `LC_MESSAGES`, then `LANG`,
+falling back to the runtime locale; Chinese locales use Simplified Chinese and
+other locales use English. Document names, template/resource labels and authored
+content retain their source text. [`i18n.ts`](src/i18n.ts) owns locale resolution
+and per-host translation; [`i18n.test.ts`](src/i18n.test.ts) verifies switching,
+persistence, native layout/hit testing and content isolation.
 
 Changes stay independent of document content and undo history. Each section has
 a reset action. The panel owns keyboard, pointer and paste input.
@@ -464,7 +501,7 @@ unknown; screen drawing does not depend on RGB detection succeeding.
 
 New settings default selection background to **Auto contrast**, choosing an ANSI
 slot from the terminal palette. Explicit gray/blue/cyan choices and existing saved
-choices remain authoritative. Borders and Minimap also adapt to available contrast.
+choices remain authoritative. Borders and the Minimap viewport outline adapt to available contrast.
 Document text keeps its own foreground even inside a selection; uniform coverage
 includes wide-character followers and empty cells.
 
@@ -488,21 +525,38 @@ behavior still require validation on each target terminal.
 
 ### Floating Minimap
 
-Press **F4** in either tool to toggle a 28×10 floating map at the bottom right.
-The viewport stays the same size. Background blocks mark occupied content and a foreground
-rectangle marks the current view; border cells retain the content background. Click outside the rectangle to center the view;
+Choose **Minimap** in the header in either tool to toggle a 28×10 floating map at the bottom right.
+The viewport stays the same size. Content blocks use authored background color
+when present, otherwise the character foreground; default foreground follows the
+terminal. Plain spaces remain empty; background-colored spaces and complete wide
+glyphs contribute their occupied area. Half-cell content blocks retain their
+foreground color; a filled background rectangle marks the current view without
+internal border glyphs. Viewport fill is derived from terminal foreground and
+background, falling back to terminal palette slot 8 when RGB is unavailable.
+Both channels are drawn together, so content colors and native default foreground
+remain visible throughout the viewport. Click outside the rectangle to center the view;
 drag inside it to pan while preserving the grab offset. Navigation preserves
 cursor, selection, tool, content and undo history. The overlay consumes pointer
 input, including its border, so clicks never edit the canvas underneath.
 
 Like Web, the map fits the union of visible content and the viewport and updates
 that transform during navigation. Plain spaces do not set content bounds;
-background-colored spaces do. Content spans are cached by reader and revision;
-camera movement only reprojects them. Logical geometry is shared with Web in
+background-colored spaces do. When colors collapse into one terminal cell, the
+greatest accumulated projected area wins; ties use stable color-key order.
+Equal default/authored RGB are combined when the terminal foreground is known.
+Content spans are cached by reader and revision; camera changes reproject them,
+and repeated frames reuse the color raster. Theme changes refresh default color
+without rescanning document cells. Logical geometry is shared with Web in
 `@chardesk/editor-core/minimap/geometry`; terminal drawing assumes rows are twice
 as tall as columns. Empty maps show an empty state. Below 60 columns or 18 rows,
 the map hides with a size hint and returns when space is available. Resize, focus
 loss, help and toggling cancel active drags. Edit keeps `m` as text.
+
+The [shared content contract](../../packages/editor-core/src/minimap/content.ts)
+owns occupancy and color inheritance for both Hosts. Verification:
+[native colors, collisions, cache and navigation](src/minimap.test.ts),
+[shared semantics](../../packages/editor-core/src/minimap/content.test.ts), and
+[Web incremental rendering](../../apps/canvas/src/widgets/canvas-editor/minimap/MinimapManager.dom.test.ts).
 
 ## What is shared?
 
@@ -562,19 +616,28 @@ bun run start --snapshot
 
 Tests cover sparse negative coordinates, width-aware editing, overlapping moves,
 history, file conflicts, native OpenTUI frames, keyboard/mouse input, resize, and
-English menus and help, both tool states, Command/Ctrl routing, and clipboard transport
+English and Chinese menus and help, both tool states, Command/Ctrl routing, and clipboard transport
 contracts. Native clipboard backends still need device validation; tests inject services.
 [Host lifetime tests](src/inputHost.test.ts) cover capability updates and reattachment.
 Shared tests also verify selection/fill/clipboard parity with Web
 and async clipboard failure/cancellation. `--snapshot` prints the first 80×24 document cells and needs no TTY.
 
 - One document cell maps to one terminal cell; navigation uses Hand or Option+arrows.
+- On macOS, ordinary Delete is Backspace; Fn+Delete deletes forward. Both delete
+  the current range, including a drag whose release event has not arrived.
+  [Shared command settling](../../packages/editor-core/README.md) owns that transition.
 - Host colors use terminal defaults and ANSI palette entries; selection/search highlights
   use a uniform terminal palette background selected by [Appearance](#terminal-appearance), without inverse.
   The active cell uses only the terminal's native cursor (block by default). Document and link
   underlines remain content styles. Explicit document colors stay in the document.
 - If OpenTUI measures a glyph differently from the protocol, the presenter uses
   width-preserving `?` placeholders and reports it. Saving retains original text.
+  [Warp's grid advances per code point](https://github.com/warpdotdev/warp/blob/master/app/src/terminal/model/grid/ansi_handler.rs),
+  so [renderer policy](src/terminalPolicy.ts) selects OpenTUI's native `wcwidth` mode
+  there, preserving explicit user width overrides and multiplexer detection.
+  Unsupported joined emoji use placeholders instead of overwriting adjacent UI.
+  [Output tests](src/glyphOutput.test.ts) replay native drag diffs into a VT grid;
+  frame-buffer captures alone cannot detect terminal cursor drift.
 - Files use the shared native document codec: origins, page metadata and anchors
   survive reopen. Version 1 remains readable; version 2 requires an updated Host.
   Styles and links are serialized; [document links](#links) also carry native terminal hyperlink metadata.

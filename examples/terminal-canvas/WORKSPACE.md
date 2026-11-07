@@ -5,7 +5,7 @@ session identity and discovery; a workspace checkpoint owns open files, recovery
 snapshots and local views. The [shared codec](../../packages/editor-core/src/documentText.ts)
 owns document metadata; [storage](src/storage.ts) owns atomic replacement.
 
-**F7 Sessions** → [LocalSessions](src/sessions.ts) → **open Workspace** → shared Editor Session\
+**Header Sessions** → [LocalSessions](src/sessions.ts) → **open Workspace** → shared Editor Session\
 　　　　　　　　　├→ [SQLite catalog](src/sessionCatalog.ts): identity, alias, path, archive\
 　　　　　　　　　└→ **native document files** ← autosave\
 　　　　　　　　　　　　↑ [workspace checkpoint](src/persistence.ts): restart recovery
@@ -194,3 +194,11 @@ writes the new location; existing new preferences win. Originals remain untouche
 Windows filesystem durability and terminal shortcut forwarding still require
 validation on their native environments; the tests exercise platform key policy
 and controlled clipboard ports without changing the OS clipboard.
+
+## Local command routing
+
+The [local runtime](../../packages/local-runtime/README.md) now owns these implementations.
+TUI instances publish authenticated endpoints under the state directory; structured CLI
+commands use the existing editor owner before considering a temporary file workspace.
+The same catalog claims protect both paths. Instance metadata is transient, contains no
+document content, and does not replace file baselines or the workspace checkpoint.

@@ -21,5 +21,6 @@ title: Terminal Canvas
 [38;2;180;170;240m┌─┬─┐  ░▒▓█  ⡀⣤⣶⣿  → ↓ ↔[0m
 [38;2;180;170;240m└─┴─┘[0m
 
-F2 Edit: click and type; drag or Shift+arrows selects.
-F3 Hand: left-drag to pan. F1 lists this terminal's copy and range controls.
+Dock: Tab / Shift+Tab selects; Enter activates. Click also works.
+Edit: click and type; drag or Shift+arrows selects.
+Hand: left-drag to pan. F1 lists copy and range controls.

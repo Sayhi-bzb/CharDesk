@@ -134,4 +134,40 @@ describe("MinimapManager incremental content", () => {
     expect(context.fillRect).toHaveBeenCalledOnce();
     manager.close();
   });
+
+  it("uses shared colors for full, incremental and theme rebuilds", () => {
+    const canvas = document.createElement("canvas");
+    const context = createContext();
+    const painted: string[] = [];
+    context.fill.mockImplementation(() => { painted.push(context.fillStyle); });
+    vi.spyOn(canvas, "getContext").mockReturnValue(context as unknown as CanvasRenderingContext2D);
+    const plane = new CellPlaneIndex([{
+      id: "colored", bounds: { x: 0, y: 0, width: 6, height: 1 },
+      rows: [{ y: 0, erase: [], spans: [
+        { x: 0, text: "界", color: "#000000" },
+        { x: 2, text: "🦀", color: "#dd2233" },
+        { x: 4, text: " ", color: "#ff0000", bgColor: "#112233" },
+        { x: 5, text: " ", color: "#ff0000" },
+      ] }],
+    }]);
+    const manager = new MinimapManager(canvas, document.createElement("div"), { width: 220, height: 140 }, 4);
+    const update = (foreground: string) => manager.update({
+      reader: plane, contentRevision: plane.getRevision(), offset: { x: 0, y: 0 }, zoom: 1,
+      viewportSize: { width: 1000, height: 700 },
+      colors: { ...colors, artifact: { ...colors.artifact, color: foreground } },
+    });
+    try {
+      update("#eeeeee");
+      expect(painted).toEqual(expect.arrayContaining(["#eeeeee", "#dd2233", "#112233"]));
+      expect(painted).not.toContain("#ff0000");
+      painted.length = 0;
+      plane.append({ id: "recolor", bounds: { x: 2, y: 0, width: 2, height: 1 }, rows: [{ y: 0, erase: [], spans: [{ x: 2, text: "🦀", color: "#22aa88" }] }] });
+      update("#eeeeee"); vi.advanceTimersByTime(160);
+      expect(painted).toContain("#22aa88");
+      expect(painted).not.toContain("#dd2233");
+      painted.length = 0;
+      update("#333333");
+      expect(painted).toEqual(expect.arrayContaining(["#333333", "#22aa88", "#112233"]));
+    } finally { manager.close(); }
+  });
 });

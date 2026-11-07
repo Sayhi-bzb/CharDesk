@@ -4,7 +4,7 @@ Local MCP bridge for a CharDesk Canvas.
 
 ## Contract ownership
 
-`src/tools.mjs` is the canonical Canvas tool contract. It is exported as
+`src/tools.mjs` re-exports the canonical [Canvas capability contract](../canvas-capabilities/README.md). It is exported as
 `@chardesk/mcp/contracts` for browser hosts, which may attach an execution
 adapter and richer output schemas without redefining names, descriptions, or
 input schemas. `sourceRef` is a local-bridge extension resolved by this package
@@ -166,3 +166,11 @@ agent can send script output without copying it into a tool argument.
 `canvas_render` converts material such as Markdown or
 ANSI into Projection Cells. `render` accepts either `source` or `sourceRef` using
 the same local-file rule.
+
+## Local application backend
+
+`chardesk-mcp --backend local` invokes the installed Bun `chardesk` application through
+its JSON command interface. Set `CHARDESK_BINARY` to select its executable. `canvasId`
+addresses a local catalog session; manage(list) discovers IDs. The default backend is
+`web` and keeps the existing bridge lifecycle. Local mode does not start a browser bridge
+or silently install the application. See [local host limits](../local-runtime/README.md).

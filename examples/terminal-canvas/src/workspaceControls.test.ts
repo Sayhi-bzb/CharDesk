@@ -165,7 +165,7 @@ test.each(['darwin', 'win32'] as const)(
       expect(f.workspace.active.title).toBe('Two');
       expect(f.setup.captureCharFrame()).toContain('Second');
       expect(f.surface.tool).toBe('hand');
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       await f.setup.mockInput.typeText('X', 0);
       const secondState = f.workspace.model.getSnapshot().interaction;
       f.setup.mockInput.pressKey(KeyCodes.F6);
@@ -252,7 +252,7 @@ test('cancelled file prompts cannot activate a late open and save-copy keeps the
     await Bun.sleep(20);
     expect(f.workspace.files).toHaveLength(1);
     f.workspace.model.commands.insert('X');
-    f.setup.mockInput.pressKey(KeyCodes.F7);
+    f.surface.activateDock('documents');
     f.surface.panel!.selected = f.surface.panel!.items.indexOf('Duplicate…');
     f.setup.mockInput.pressEnter();
     expect(f.surface.panel?.title).toBe('Duplicate document');
@@ -308,7 +308,7 @@ test('modal input owns typing, clipboard and pointer events instead of editing c
   try {
     const model = f.workspace.model,
       content = model.plane.materialize();
-    f.setup.mockInput.pressKey(KeyCodes.F2);
+    f.surface.activateDock('edit');
     f.primary('o');
     await f.setup.mockInput.typeText('ihmIHM界', 0);
     f.primary('a');
@@ -329,7 +329,7 @@ test('modal input owns typing, clipboard and pointer events instead of editing c
     f.escape();
     expect(f.surface.tool).toBe('edit');
     expect(model.plane.materialize()).toEqual(content);
-    f.setup.mockInput.pressKey(KeyCodes.F7);
+    f.surface.activateDock('documents');
     await f.setup.renderOnce();
     expect(f.setup.captureCharFrame()).toContain('Documents');
     const layout = f.surface.panelLayout;
@@ -483,7 +483,7 @@ test.each(['darwin', 'win32'] as const)(
       } finally {
         reopened.model.dispose();
       }
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       expect(model.currentTool).toBe('select');
       f.setup.mockInput.pressKey('F2', { shift: true });
       await f.setup.resize(18, 5);
@@ -556,7 +556,7 @@ test('templates preview without mutation, accept a negative landing point, and p
   }
 });
 
-test('dock focus navigates template placement actions before Enter commits one undoable insertion', async () => {
+test('Tab leaves template placement unchanged while Enter commits one undoable insertion', async () => {
   const f = await fixture();
   try {
     const model = f.workspace.model,
@@ -567,10 +567,8 @@ test('dock focus navigates template placement actions before Enter commits one u
     f.setup.mockInput.pressEnter();
     expect(f.surface.placement?.label).toBe('Button');
     f.setup.mockInput.pressTab();
-    expect(f.surface.focusedDockControl?.id).toBe('confirm-placement');
-    f.setup.mockInput.pressTab();
-    expect(f.surface.focusedDockControl?.id).toBe('cancel-placement');
-    f.escape();
+    expect(f.surface.focusedDockControl).toBeNull();
+    f.setup.mockInput.pressTab({ shift: true });
     expect(f.surface.focusedDockControl).toBeNull();
     expect(f.surface.placement?.label).toBe('Button');
     expect(model.version).toBe(version);
@@ -650,7 +648,7 @@ test('a billion-row column selection renders and hit-tests by viewport; oversize
     await f.setup.mockInput.typeText('X', 0);
     expect(f.surface.status).toContain('too large');
     expect(model.plane.materialize()).toEqual(original);
-    await f.setup.mockMouse.click(0, 0);
+    await f.setup.mockMouse.click(0, CANVAS_TOP);
     expect(model.selection).toBeNull();
     expect(model.plane.materialize()).toEqual(original);
   } finally {

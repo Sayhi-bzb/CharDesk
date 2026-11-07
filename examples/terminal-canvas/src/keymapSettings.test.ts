@@ -34,7 +34,7 @@ async function fixture(settings: TerminalSettingsStore, platform: NodeJS.Platfor
   model.commands.selectAll();
   await setup.renderOnce();
   const open = () => {
-    setup.mockInput.pressKey('F11');
+    surface.activateDock('settings');
     surface.panel!.onTab!(3);
   };
   const search = async (query: string) => {
@@ -106,10 +106,10 @@ test('shortcut conflicts, malformed sequences, recording cancellation, reset and
   try {
     f.open();
     await f.search('terminal.copy');
-    await f.setup.mockInput.pasteBracketedText('F3 ');
-    expect(f.surface.panel?.input).toBe('F3 ');
+    await f.setup.mockInput.pasteBracketedText('F1 ');
+    expect(f.surface.panel?.input).toBe('F1 ');
     f.setup.mockInput.pressEnter();
-    expect(f.surface.panel?.error).toContain('terminal.hand');
+    expect(f.surface.panel?.error).toContain('terminal.help');
     expect(f.model.editor.keymap.getUserBindings()['terminal.copy']).toBeUndefined();
     f.setup.mockInput.pressKey('a', { super: true });
     await f.setup.mockInput.typeText('Control+InvalidKey', 0);
@@ -206,3 +206,29 @@ for (const [platform, modifiers, expected] of [
     }
   });
 }
+
+test('Settings can bind an unassigned tool and resetting it restores Dock-only activation', async () => {
+  const settings = new TerminalSettingsStore();
+  const f = await fixture(settings);
+  try {
+    expect(f.surface.shortcuts.hand.keys).toEqual([]);
+    f.open();
+    await f.search('terminal.hand');
+    f.setup.mockInput.pressKey('F5');
+    f.setup.mockInput.pressKey('F3');
+    f.setup.mockInput.pressEnter();
+    expect(settings.keybindings['terminal.hand']).toEqual([['F3']]);
+    f.setup.mockInput.pressEscape();
+    f.clock.advance(40);
+    f.setup.mockInput.pressKey('F3');
+    expect(f.surface.tool).toBe('hand');
+    expect(f.surface.dockControls.find((control) => control.id === 'hand')?.label).toBe('[Hand]');
+    f.model.editor.keymap.setUserBindings('terminal.hand', null);
+    expect(f.surface.shortcuts.hand.keys).toEqual([]);
+    f.surface.activateDock('edit');
+    f.setup.mockInput.pressKey('F3');
+    expect(f.surface.tool).toBe('edit');
+  } finally {
+    await f.dispose();
+  }
+});

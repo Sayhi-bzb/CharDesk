@@ -87,7 +87,8 @@ configureLocalAgent({
     ? null : host.canvas.getState().activeCanvasId,
   execute: async (name, input) => {
     if (isWorkspaceRoute(window.location) || isRetiredBlackboardRoute(window.location)) throw new Error('Open a Canvas first');
-    const tool = createRouteAgentTools().find((tool) => tool.name === name);
+    const tools = createRouteAgentTools();
+    const tool = tools.find((tool) => tool.name === name);
       if (!tool) throw new Error('Canvas tool is unavailable on this page');
     return tool.execute(input);
   },

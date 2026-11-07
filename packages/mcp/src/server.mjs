@@ -1,3 +1,4 @@
+import { callLocal } from './local.mjs';
 import { randomUUID } from 'node:crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -37,6 +38,10 @@ mcp.setRequestHandler(CallToolRequestSchema, async ({ params }, extra) => {
   try {
     if (!toolNames.has(params.name)) throw new BridgeError('invalid_request', 'Unknown Canvas tool.', 400);
     const signal = AbortSignal.any([lifecycle.signal, extra.signal]);
+    if (process.env.CHARDESK_MCP_BACKEND === 'local') {
+      const result = await callLocal(params.name, input, signal);
+      return {content:Array.isArray(result?.contentBlocks)?result.contentBlocks.map(block=>block.type==='note'?{type:'text',text:block.text}:block):[{type:'text',text:JSON.stringify(result)}],structuredContent:result,isError:result?.ok===false};
+    }
     const broker = await connection.ensure(signal);
     signal.throwIfAborted();
     let response;
@@ -64,7 +69,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async ({ params }, extra) => {
 
 await mcp.connect(transport);
 if (process.stdin.readableEnded || process.stdin.destroyed) stop();
-if (!stopping) {
+if (!stopping && process.env.CHARDESK_MCP_BACKEND !== 'local') {
   void connection.ensure().then(({ health }) => {
     console.error(JSON.stringify({ event: 'mcp.bridge_ready', instanceId: health.instanceId, pid: health.pid, version: health.version }));
   }, (error) => { if (!stopping) console.error(`[${error.code || 'bridge_unavailable'}] ${error.message}`); });

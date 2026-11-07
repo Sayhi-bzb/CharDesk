@@ -6,7 +6,7 @@ import { TerminalCanvas } from './model.ts';
 import { CANVAS_TOP, CanvasSurface } from './surface.ts';
 import { resolveTerminalPolicy } from './terminalPolicy.ts';
 
-test('the first row is editable canvas and the footer dock follows resize without editing through buttons', async () => {
+test('header actions reserve one row while footer tools and canvas follow resize without click-through', async () => {
   const clock = new ManualClock();
   const setup = await createTestRenderer({ width: 100, height: 26, kittyKeyboard: true, clock });
   const model = new TerminalCanvas('Top 🦀');
@@ -18,21 +18,22 @@ test('the first row is editable canvas and the footer dock follows resize withou
     model.viewport = { ...model.viewport, x: 0, y: 0 };
     await setup.renderOnce();
     const lines = setup.captureCharFrame().split('\n');
-    expect(lines[0]?.startsWith('Top 🦀')).toBe(true);
-    expect(lines[24]).toContain('[F11 Settings]');
+    expect(lines[0]?.trimEnd()).toBe('[Settings] [Minimap] [Sessions]');
+    expect(lines[CANVAS_TOP]?.startsWith('Top 🦀')).toBe(true);
+    expect(lines[24]).toContain('[Edit] [Hand] [Style]');
     expect(lines[24]).not.toContain('dock-demo.chardesk');
     expect(lines[24]).not.toContain('unchanged');
     expect(lines[24]?.trimEnd()).toBe(
       surface.dockControls.map((control) => control.label).join(' ')
     );
-    expect(model.viewport.height).toBe(24);
+    expect(model.viewport.height).toBe(23);
     const content = model.plane.materialize();
     const hand = surface.dockControls.find((control) => control.id === 'hand')!;
     await setup.mockMouse.click(hand.x + 1, hand.y);
     expect(surface.tool).toBe('hand');
     expect(model.plane.materialize()).toEqual(content);
     expect(model.canUndo).toBe(false);
-    const settings = surface.dockControls.find((control) => control.id === 'settings')!;
+    const settings = surface.headerControls.find((control) => control.id === 'settings')!;
     await setup.mockMouse.click(settings.x + 1, settings.y);
     await setup.renderOnce();
     expect(surface.panel?.title).toBe('Settings');
@@ -44,10 +45,10 @@ test('the first row is editable canvas and the footer dock follows resize withou
     await setup.renderOnce();
     const edit = surface.dockControls.find((control) => control.id === 'edit')!;
     expect(edit.y).toBe(28);
-    expect(model.viewport.height).toBe(28);
+    expect(model.viewport.height).toBe(30 - CANVAS_TOP - 2);
     await setup.mockMouse.click(edit.x + 1, edit.y);
     await setup.renderOnce();
-    await setup.mockMouse.click(0, 0);
+    await setup.mockMouse.click(0, CANVAS_TOP);
     setup.mockInput.pressKey('Z');
     expect(model.plane.get({ x: 0, y: 0 })?.char).toBe('Z');
     const cursor = { ...model.cursor },
@@ -129,7 +130,7 @@ test('native active cursor preserves underline and inverse that belong to docume
 });
 
 for (const kittyKeyboard of [false, true]) {
-  test(`Warp copy fallback and selection toolbar share one command without changing content (Kitty ${kittyKeyboard})`, async () => {
+  test(`Warp copy fallback and rebindings work without a footer Copy button (Kitty ${kittyKeyboard})`, async () => {
     const setup = await createTestRenderer({ width: 110, height: 28, kittyKeyboard });
     const model = new TerminalCanvas('A界B');
     const copied: string[] = [];
@@ -155,23 +156,19 @@ for (const kittyKeyboard of [false, true]) {
       model.commands.selectAll();
       await setup.renderOnce();
       const selection = structuredClone(model.selection);
-      expect(setup.captureCharFrame()).toContain('Ctrl+Y Copy');
+      expect(surface.dockControls.map((control) => control.id)).not.toContain('copy');
+      expect(setup.captureCharFrame().split('\n')[surface.footerBounds.y]).not.toContain('Copy');
       setup.mockInput.pressKey('y', { ctrl: true });
       await setup.waitFor(() => copied.length === 1);
       expect(copied).toEqual(['A界B']);
-      const button = surface.dockControls.find((control) => control.id === 'copy')!;
-      await setup.mockMouse.click(button.x + 1, button.y);
-      await setup.waitFor(() => copied.length === 2);
-      expect(copied).toEqual(['A界B', 'A界B']);
       expect(model.selection).toEqual(selection);
       expect(model.canUndo).toBe(false);
-      // User overrides also replace the compatibility key and visible button hint.
+      // User overrides still replace the compatibility key.
       model.editor.keymap.setUserBindings('terminal.copy', [['F11']]);
       setup.mockInput.pressKey('y', { ctrl: true });
-      expect(copied).toHaveLength(2);
-      expect(surface.dockControls.find((control) => control.id === 'copy')?.label).toContain('F11');
+      expect(copied).toHaveLength(1);
       setup.mockInput.pressKey(KeyCodes.F11);
-      await setup.waitFor(() => copied.length === 3);
+      await setup.waitFor(() => copied.length === 2);
     } finally {
       detach();
       await setup.dispose();
@@ -196,9 +193,9 @@ for (const kittyKeyboard of [false, true]) {
       const before = { ...model.viewport };
       const version = model.version;
       const content = model.plane.materialize();
-      setup.mockInput.pressKey(KeyCodes.F3);
+      surface.activateDock('hand');
       await setup.renderOnce();
-      expect(setup.captureCharFrame()).toContain('[F3 Hand]');
+      expect(setup.captureCharFrame()).toContain('[Hand]');
       await setup.mockMouse.drag(20, 10, 30, 15);
       expect(model.viewport.x).toBe(before.x - 10);
       expect(model.viewport.y).toBe(before.y - 5);
@@ -218,7 +215,7 @@ for (const kittyKeyboard of [false, true]) {
       await setup.renderOnce();
       await setup.mockMouse.drag(30, 15, 20, 10);
       expect(model.viewport).toEqual(before);
-      setup.mockInput.pressKey(KeyCodes.F2);
+      surface.activateDock('edit');
       await setup.renderOnce();
       expect(surface.tool).toBe('edit');
       await setup.mockMouse.drag(20, 10, 25, 12);
@@ -232,8 +229,8 @@ for (const kittyKeyboard of [false, true]) {
           .slice(surface.height - 2, surface.height)
           .join('\n')
       ).not.toMatch(/\b(?:View|Cursor|selection)\b|\(-?\d+, -?\d+\)/);
-      setup.mockInput.pressKey(KeyCodes.F3);
-      setup.mockInput.pressKey(KeyCodes.F2);
+      surface.activateDock('hand');
+      surface.activateDock('edit');
       expect(surface.tool).toBe('edit');
       setup.mockInput.pressKey(KeyCodes.HOME);
       const insertion = { ...model.cursor };
@@ -273,7 +270,7 @@ test('Hand and Option+arrows pan; wheel and middle-drag do not', async () => {
     await setup.mockMouse.drag(20, 10, 25, 12, MouseButtons.MIDDLE);
     expect(model.viewport).toEqual(before);
     expect(surface.tool).toBe('hand');
-    setup.mockInput.pressKey(KeyCodes.F3);
+    surface.activateDock('hand');
     await setup.renderOnce();
     await setup.mockMouse.drag(20, 10, 3, 0);
     expect(model.viewport.x).toBe(before.x + 17);
@@ -285,7 +282,7 @@ test('Hand and Option+arrows pan; wheel and middle-drag do not', async () => {
     clock.advance(40);
     await setup.renderOnce();
     expect(surface.tool).toBe('hand');
-    setup.mockInput.pressKey(KeyCodes.F2);
+    surface.activateDock('edit');
     const end = { ...model.viewport };
     await setup.mockMouse.drag(20, 10, 25, 12);
     expect(model.viewport).toEqual(end);
@@ -307,7 +304,7 @@ test('focus loss, resize and Escape cancel a live Hand drag', async () => {
     setup.renderer.root.add(surface);
     detach = attachControls(surface, () => {});
     await setup.renderOnce();
-    setup.mockInput.pressKey(KeyCodes.F3);
+    surface.activateDock('hand');
     for (const cancel of [() => setup.renderer.emit('blur'), () => setup.resize(90, 28)]) {
       await setup.renderOnce();
       await setup.mockMouse.pressDown(20, 10);
@@ -377,7 +374,7 @@ test('native frame keeps CJK and joined Emoji aligned through clipping and resiz
     setup.resize(36, 12);
     await setup.renderOnce();
     expect(model.viewport.width).toBe(36);
-    expect(model.viewport.height).toBe(setup.renderer.height - 2);
+    expect(model.viewport.height).toBe(setup.renderer.height - CANVAS_TOP - 2);
     expect(setup.captureCharFrame()).toContain('Edit');
   } finally {
     await setup.dispose();
@@ -397,7 +394,7 @@ test('real key and mouse events edit, select, move, undo and request automatic-s
       quitCount += 1;
     });
     await setup.renderOnce();
-    setup.mockInput.pressKey(KeyCodes.F2);
+    surface.activateDock('edit');
     setup.renderer.keyInput.processPaste(new TextEncoder().encode('界👩🏽‍💻'));
     await Bun.sleep(0);
     expect(model.selectionBounds?.width).toBe(4);
@@ -523,7 +520,8 @@ test('native Shift+click and range drag use shared preview, cancel and one-step 
     const surface = new CanvasSurface(setup.renderer, model, 'test.chardesk', 'darwin');
     setup.renderer.root.add(surface);
     detach = attachControls(surface, () => {});
-    setup.mockInput.pressKey(KeyCodes.F2);
+    await setup.renderOnce();
+    surface.activateDock('edit');
     await setup.renderOnce();
     const x = -model.viewport.x,
       y = CANVAS_TOP - model.viewport.y;

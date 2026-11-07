@@ -48,7 +48,7 @@ test('Rendering settings validate, persist and drive actual paste features, colo
     clock.advance(40);
   };
   const open = () => {
-    setup.mockInput.pressKey('F11');
+    surface.activateDock('settings');
     surface.panel!.onTab!(4);
   };
   const paste = async (text: string) => {

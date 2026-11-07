@@ -1,0 +1,29 @@
+{
+  "name": "@chardesk/terminal",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@chardesk/canvas-templates": "*",
+    "@chardesk/cell-core": "*",
+    "@chardesk/cell-plane": "*",
+    "@chardesk/character-library": "*",
+    "@chardesk/chargraph": "*",
+    "@chardesk/document": "*",
+    "@chardesk/editor-core": "*",
+    "@chardesk/editor-input": "*",
+    "@chardesk/font-maple": "*",
+    "@chardesk/keyboard": "*",
+    "@chardesk/protocol": "*",
+    "@chardesk/rendering": "*",
+    "@chardesk/ui": "*",
+    "@napi-rs/canvas": "1.0.8",
+    "@napi-rs/clipboard": "1.1.4",
+    "@opentui/core": "0.8.0",
+    "@teddyzhu/clipboard": "0.0.12",
+    "yjs": "^13.6.27"
+  }
+}

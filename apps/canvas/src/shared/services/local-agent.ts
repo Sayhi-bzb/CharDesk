@@ -1,3 +1,4 @@
+import {permissionFor} from '@chardesk/canvas-capabilities/contracts';
 type LocalAgentStatus = 'idle' | 'connecting' | 'connected' | 'error';
 export type LocalAgentRuntimeStatus = 'booting' | 'ready' | 'degraded' | 'unavailable';
 export type LocalAgentRuntimeSnapshot = Readonly<{
@@ -308,7 +309,7 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
         const input = request.params?.input;
         if (request.method !== 'call' || !['canvas_manage', 'canvas_read', 'canvas_search', 'canvas_write', 'canvas_erase', 'canvas_fill', 'canvas_undo', 'canvas_render', 'canvas_code'].includes(String(name))
           || !input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid Canvas request');
-        const permission = String(name).endsWith('_read') ? 'read' : String(name).endsWith('_search') ? 'search' : String(name).endsWith('_manage') && (input as { action?: unknown }).action === 'list' ? 'inspect' : 'write';
+        const permission = permissionFor(String(name), input as {action?:unknown});
         if (!permissions[permission]) throw new Error(`Permission denied: canvas.${permission}`);
         if (scope !== 'application') {
           const target = input as { canvasId?: unknown };

@@ -2,6 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@chardesk/canvas-capabilities/*": ["../../packages/canvas-capabilities/src/*.ts"],
       "@chardesk/character-library": ["../../packages/character-library/src/index.ts"],
       "@chardesk/canvas-templates": ["../../packages/canvas-templates/src/index.ts"],
       "@chardesk/canvas-templates/*": ["../../packages/canvas-templates/src/*.ts"],

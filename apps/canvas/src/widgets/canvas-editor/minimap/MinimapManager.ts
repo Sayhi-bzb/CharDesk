@@ -1,6 +1,5 @@
 import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
 import { isIncrementalCanvasSurfaceReader } from "@/domains/canvas/public";
-import { GridManager } from "@/shared/utils/grid";
 import {
   clampMinimapCameraCenter,
   computeMinimapTransformFromBounds,
@@ -15,7 +14,10 @@ import type {
   MinimapTransform,
 } from "./types";
 import type { Point } from "@/shared/types";
-import { projectArtifactCellStyle } from "@/shared/canvas-appearance/artifact-style";
+import {
+  describeMinimapCell,
+  resolveMinimapColor,
+} from "@chardesk/editor-core/minimap/content";
 
 type MinimapContentChunk = {
   paths: Map<string, Path2D>;
@@ -208,21 +210,14 @@ export class MinimapManager {
       for (const span of surfaceRow.spans) {
         let x = span.x;
         for (const cell of span.cells) {
-          const style = projectArtifactCellStyle(cell, state.colors.artifact);
-          const occupancy = Math.max(GridManager.getCharWidth(cell.char), 1);
-          const hasBackground = !!cell.bgColor && cell.bgColor !== "transparent";
-          if (hasBackground || (cell.char && cell.char !== " ")) {
+          const { width, color } = describeMinimapCell(cell);
+          if (color) {
             this.addCellToChunk(
-              chunks,
-              x,
-              surfaceRow.y,
-              occupancy,
-              hasBackground
-                ? cell.bgColor!
-                : style.color
+              chunks, x, surfaceRow.y, width,
+              resolveMinimapColor(color, state.colors.artifact.color)
             );
           }
-          x += occupancy;
+          x += width;
         }
       }
     }
@@ -296,22 +291,14 @@ export class MinimapManager {
       for (const span of row.spans) {
         let x = span.x;
         for (const cell of span.cells) {
-          const style = projectArtifactCellStyle(cell, state.colors.artifact);
-          const occupancy = Math.max(GridManager.getCharWidth(cell.char), 1);
-          const hasBackground = !!cell.bgColor && cell.bgColor !== "transparent";
-          if (hasBackground || (cell.char && cell.char !== " ")) {
-            const color = hasBackground
-              ? cell.bgColor!
-              : style.color;
+          const { width, color } = describeMinimapCell(cell);
+          if (color) {
             this.addCellToChunk(
-              this.contentChunks,
-              x,
-              row.y,
-              occupancy,
-              color
+              this.contentChunks, x, row.y, width,
+              resolveMinimapColor(color, state.colors.artifact.color)
             );
           }
-          x += occupancy;
+          x += width;
         }
       }
     }

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createTestRenderer, KeyCodes } from '@opentui/core/testing';
+import { createTestRenderer } from '@opentui/core/testing';
 import type { EditorCommandResult } from '@chardesk/editor-core/editor/types';
 import type { ClipboardCommandResult } from '@chardesk/editor-core/clipboard/commands';
 import { serializeCharDeskDocumentEnvelope } from '@chardesk/document';
@@ -199,7 +199,7 @@ test('native paste events and Command+V compile identically and report diagnosti
     await waitForPaste();
     expect(surface.status).toContain('Unable to prepare pasted text');
     expect(model.plane.materialize()).toEqual(before);
-    setup.mockInput.pressKey(KeyCodes.F2);
+    surface.activateDock('edit');
     expect(surface.tool).toBe('edit');
   } finally {
     detach();

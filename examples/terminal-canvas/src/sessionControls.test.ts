@@ -73,14 +73,14 @@ test('empty workspace blocks canvas edits but exposes sessions and creates a dur
   const f = await fixture();
   try {
     expect(f.surface.hasDocument).toBe(false);
-    f.setup.mockInput.pressKey('F2');
+    f.surface.activateDock('edit');
     await f.setup.mockInput.typeText('ghost', 0);
     await f.setup.mockInput.pasteBracketedText('ghost paste');
     f.primary('z');
     await f.setup.mockMouse.click(8, 8);
     expect(f.workspace.model.plane.materialize().size).toBe(0);
     expect(f.workspace.model.canUndo).toBe(false);
-    f.setup.mockInput.pressKey('F7');
+    f.surface.activateDock('documents');
     expect(f.surface.panel?.items).toEqual(['+ New canvas', '+ Open file']);
     await f.setup.renderOnce();
     expect(f.setup.captureCharFrame()).toContain('Sessions');
@@ -111,7 +111,7 @@ test('session panel renames, duplicates unsaved content, archives and restores t
     await until(() => f.workspace.files.length === 1 && !f.surface.panel);
     f.workspace.model.commands.insert('Hello 🦀');
     const original = f.workspace.active;
-    f.setup.mockInput.pressKey('F7');
+    f.surface.activateDock('documents');
     f.setup.mockInput.pressKey('r');
     expect(f.surface.panel?.dialog).toBe(true);
     await f.setup.mockInput.typeText('Project', 0);
@@ -123,7 +123,7 @@ test('session panel renames, duplicates unsaved content, archives and restores t
     expect(f.workspace.model.plane.get({ x: 6, y: 0 })?.char).toBe('🦀');
     expect(f.workspace.active.address?.documentId).not.toBe(original.address?.documentId);
     const copy = f.sessions.forFile(f.workspace.active)!;
-    f.setup.mockInput.pressKey('F7');
+    f.surface.activateDock('documents');
     f.setup.mockInput.pressKey('a');
     await until(
       () =>
@@ -153,7 +153,7 @@ test('cancelling managed creation preserves its durable record without stealing 
     await Bun.sleep(10);
     expect(f.workspace.files).toHaveLength(0);
     expect(f.surface.panel).toBeNull();
-    f.setup.mockInput.pressKey('F7');
+    f.surface.activateDock('documents');
     f.setup.mockInput.pressEnter();
     await until(() => f.workspace.files.length === 1 && !f.surface.panel);
   } finally {
@@ -175,10 +175,10 @@ test('Sessions reuse the Settings dialog geometry, tabs, footer and outside dism
     const content = model.plane.materialize(),
       interaction = structuredClone(model.getSnapshot().interaction),
       view = { ...model.viewport };
-    f.setup.mockInput.pressKey('F11');
+    f.surface.activateDock('settings');
     const settingsLayout = f.surface.panelLayout;
     f.escape();
-    f.setup.mockInput.pressKey('F7');
+    f.surface.activateDock('documents');
     expect(f.surface.panel?.dialog).toBe(true);
     expect(f.surface.panelLayout).toEqual(settingsLayout);
     await f.setup.renderOnce();
@@ -204,7 +204,7 @@ test('Sessions reuse the Settings dialog geometry, tabs, footer and outside dism
     expect(model.plane.materialize()).toEqual(content);
     expect(model.getSnapshot().interaction).toEqual(interaction);
     expect(model.viewport).toEqual(view);
-    f.setup.mockInput.pressKey('F7');
+    f.surface.activateDock('documents');
     f.setup.mockInput.pressKey('o');
     expect(f.surface.panel?.dialog).toBe(true);
     await f.setup.renderOnce();
@@ -218,7 +218,7 @@ test('Sessions reuse the Settings dialog geometry, tabs, footer and outside dism
 test('Sessions suppress actions when the shared dialog cannot fit and recover on resize', async () => {
   const f = await fixture();
   try {
-    f.setup.mockInput.pressKey('F7');
+    f.surface.activateDock('documents');
     await f.setup.resize(22, 9);
     await f.setup.renderOnce();
     expect(f.setup.captureCharFrame()).toContain('Enlarge terminal');
@@ -244,7 +244,7 @@ test('scrolling and pointer picking share dialog row geometry for long session l
   const f = await fixture();
   try {
     for (let i = 0; i < 18; i++) await f.sessions.createManaged(`Canvas ${i} — 🦀`);
-    f.setup.mockInput.pressKey('F7');
+    f.surface.activateDock('documents');
     const records = f.sessions.list();
     f.setup.mockInput.pressArrow('up');
     expect(f.surface.panel?.selected).toBe(19);
@@ -265,21 +265,23 @@ test('scrolling and pointer picking share dialog row geometry for long session l
   }
 });
 
-test('an empty workspace exposes New and Sessions through dock keyboard focus while the session dialog owns its tabs', async () => {
+test('an empty workspace leaves Tab unfocused while New and Sessions remain clickable and the session dialog owns its tabs', async () => {
   const f = await fixture();
   try {
     f.setup.mockInput.pressTab();
-    expect(f.surface.focusedDockControl?.id).toBe('new');
+    expect(f.surface.focusedDockControl).toBeNull();
     expect(f.surface.panel).toBeNull();
-    f.setup.mockInput.pressEnter();
+    const create = f.surface.dockControls.find((control) => control.id === 'new')!;
+    await f.setup.mockMouse.click(create.x + 1, create.y);
     await until(() => f.workspace.files.length === 1 && !f.surface.panel);
     f.primary('w');
     await until(() => !f.workspace.files.length && f.surface.panel?.title === 'Sessions');
     f.escape();
     f.setup.mockInput.pressTab();
-    f.setup.mockInput.pressTab();
-    expect(f.surface.focusedDockControl?.id).toBe('documents');
-    f.setup.mockInput.pressKey(' ');
+    f.setup.mockInput.pressTab({ shift: true });
+    expect(f.surface.focusedDockControl).toBeNull();
+    const sessions = f.surface.headerControls.find((control) => control.id === 'documents')!;
+    await f.setup.mockMouse.click(sessions.x + 1, sessions.y);
     expect(f.surface.panel?.title).toBe('Sessions');
     f.setup.mockInput.pressTab();
     expect(f.surface.panel?.selectedTab).toBe(1);
@@ -298,7 +300,7 @@ test('Sessions removal dialog separates keeping a file from deleting a managed f
     f.workspace.model.commands.insert('🦀keep');
     const before = f.workspace.model.plane.materialize();
     const remove = async () => {
-      f.setup.mockInput.pressKey('F7');
+      f.surface.activateDock('documents');
       f.setup.mockInput.pressKey('x');
       await until(() =>
         Boolean(f.surface.panel?.items.includes('Remove session record — keep file'))
@@ -335,6 +337,58 @@ test('Sessions removal dialog separates keeping a file from deleting a managed f
     );
     expect(await readOptional(managed.path)).toBeNull();
     expect(f.quits).toBe(0);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('Tab cycles only footer tools while header actions remain clickable and configurable', async () => {
+  const f = await fixture();
+  try {
+    f.primary('n');
+    await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+    await f.setup.renderOnce();
+    const model = f.workspace.model;
+    const content = model.plane.materialize();
+    expect(f.surface.headerControls.map((control) => control.label)).toEqual([
+      '[Settings]',
+      '[Minimap]',
+      '[Sessions]',
+    ]);
+    expect(f.surface.dockControls.map((control) => control.label)).toEqual([
+      '[Edit]',
+      '[Hand]',
+      '[Style]',
+    ]);
+    for (const key of ['F4', 'F7', 'F11']) f.setup.mockInput.pressKey(key);
+    expect(f.surface.panel).toBeNull();
+    expect(f.surface.minimapOpen).toBe(false);
+    for (let i = 0; i < 9; i++) {
+      f.setup.mockInput.pressTab();
+      expect(['edit', 'hand', 'inspector']).toContain(f.surface.focusedDockControl!.id);
+      expect(f.surface.focusedDockControl?.y).toBe(f.surface.footerBounds.y);
+    }
+    const settings = f.surface.headerControls.find((control) => control.id === 'settings')!;
+    await f.setup.mockMouse.click(settings.x + 1, settings.y);
+    expect(f.surface.panel?.title).toBe('Settings');
+    expect(f.surface.focusedDockControl).toBeNull();
+    f.escape();
+    for (const id of ['minimap', 'documents'] as const) {
+      const control = f.surface.headerControls.find((control) => control.id === id)!;
+      await f.setup.mockMouse.click(control.x + 1, control.y);
+      if (id === 'minimap') expect(f.surface.minimapOpen).toBe(true);
+      else expect(f.surface.panel?.title).toBe('Sessions');
+    }
+    f.escape();
+    model.editor.keymap.setUserBindings('terminal.documents', [['F7']]);
+    f.setup.mockInput.pressKey('F7');
+    expect(f.surface.panel?.title).toBe('Sessions');
+    f.escape();
+    model.editor.keymap.setUserBindings('terminal.documents', null);
+    f.setup.mockInput.pressKey('F7');
+    expect(f.surface.panel).toBeNull();
+    expect(model.plane.materialize()).toEqual(content);
+    expect(model.canUndo).toBe(false);
   } finally {
     await f.dispose();
   }

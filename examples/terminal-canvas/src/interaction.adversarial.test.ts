@@ -39,7 +39,7 @@ for (const kitty of [false, true]) {
   test(`Edit and printable tool letters stay in text input (Kitty ${kitty})`, async () => {
     const f = await fixture(kitty, '');
     try {
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       expect(f.surface.tool).toBe('edit');
       await f.setup.mockInput.typeText('hifgm', 0);
       f.setup.mockInput.pressEnter();
@@ -55,10 +55,10 @@ for (const kitty of [false, true]) {
   test(`typing mode cancels a live drag and late release cannot exit input (Kitty ${kitty})`, async () => {
     const f = await fixture(kitty);
     try {
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       await f.setup.mockMouse.pressDown(f.x + 5, f.y);
       await f.setup.mockMouse.emitMouseEvent('drag', f.x + 8, f.y);
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       expect(f.model.gestureState.type).toBe('idle');
       expect(f.surface.tool).toBe('edit');
       await f.setup.mockMouse.release(f.x + 8, f.y);
@@ -72,7 +72,7 @@ for (const kitty of [false, true]) {
   test(`Shift+click follows keyboard focus after a mouse click (Kitty ${kitty})`, async () => {
     const f = await fixture(kitty);
     try {
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       await f.setup.mockMouse.click(f.x, f.y);
       for (let i = 0; i < 5; i++) f.setup.mockInput.pressArrow('right');
       await f.setup.mockMouse.click(f.x + 8, f.y, 0, { modifiers: { shift: true } });
@@ -95,7 +95,7 @@ for (const kitty of [false, true]) {
       },
     });
     try {
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       await f.setup.mockMouse.pressDown(f.x + 5, f.y);
       await f.setup.mockMouse.emitMouseEvent('drag', f.x + 8, f.y);
       f.setup.mockInput.pressKey(KeyCodes.F1);

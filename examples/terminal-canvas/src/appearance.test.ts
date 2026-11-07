@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { RGBA, type TerminalColors } from '@opentui/core';
-import { createTestRenderer, KeyCodes } from '@opentui/core/testing';
+import { createTestRenderer } from '@opentui/core/testing';
 import { TerminalAppearanceRuntime } from './appearance.ts';
 import { TerminalSettingsStore } from './settings.ts';
 import { TerminalCanvas } from './model.ts';
@@ -50,17 +50,20 @@ test('one appearance snapshot preserves native color intent and derives content 
     const unknown = appearance.getSnapshot();
     expect(unknown.mode).toBe('unknown');
     expect(unknown.palette).toBeNull();
+    expect(unknown.colors.minimapViewport.intent).toBe('indexed');
+    expect(unknown.colors.minimapViewport.slot).toBe(8);
     appearance.acceptPalette(palette(), 'dark');
     const snapshot = appearance.getSnapshot();
     expect(snapshot.mode).toBe('dark');
     expect(snapshot.colors.foreground.intent).toBe('default');
     expect(snapshot.colors.background.intent).toBe('default');
     expect(snapshot.colors.accent.intent).toBe('indexed');
+    expect(snapshot.colors.minimapViewport.intent).toBe('rgb');
+    expect(snapshot.colors.minimapViewport.r).toBeGreaterThan(snapshot.colors.background.r);
+    expect(snapshot.colors.minimapViewport.r).toBeLessThan(snapshot.colors.foreground.r);
     expect(snapshot.colors.selection.intent).toBe('indexed');
     expect(snapshot.colors.selection.slot).not.toBe(8); // slot 8 equals the background
     expect(snapshot.colors.muted.intent).toBe('default');
-    expect(snapshot.colors.minimapContent.intent).toBe('indexed');
-    expect(snapshot.colors.minimapContent.slot).not.toBe(8);
     expect(snapshot.contentTheme.accent).toBe('#4466aa');
     expect(snapshot.contentTheme.background).toBe('#111111');
     settings.set('selectionColor', 8); // explicit choices win over automatic contrast
@@ -91,6 +94,7 @@ test('same-mode palette changes publish once and snapshots do not retain mutable
     expect(second.contentTheme.accent).toBe('#4466aa');
     expect(second.palette?.slots[4]).toBe('#4466aa');
     expect(first.palette?.background).toBe('#111111');
+    expect(second.colors.minimapViewport.equals(first.colors.minimapViewport)).toBe(false);
   } finally {
     appearance.dispose();
   }
@@ -199,7 +203,7 @@ test('OpenTUI palette/theme/focus events, Settings refresh and every overlay use
       expect(bg.slot).toBe(6);
     });
     surface.contextMenu!.close();
-    setup.mockInput.pressKey(KeyCodes.F11);
+    surface.activateDock('settings');
     const refresh = surface.panel!.items.indexOf('Refresh terminal colors');
     surface.panel!.onPick!(refresh);
     await setup.waitFor(() => queries === 3 && surface.appearance.getSnapshot().status === 'ready');

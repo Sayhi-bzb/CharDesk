@@ -158,6 +158,10 @@ test('links survive clipped wide anchors and resizing without leaking onto neigh
     f.setup.resize(8, 10);
     f.model.viewport.x = -3;
     await f.setup.renderOnce();
+    // The default Style caption occludes links; hiding it restores raw canvas clipping.
+    expect(f.at(7)).toBeNull();
+    f.surface.inspector!.close();
+    await f.setup.renderOnce();
     // The crab's leading cell is visible at the right edge; only its clipped footprint is painted.
     expect(f.at(7)).toBe(url);
     expect(f.at(4)).toBeNull();

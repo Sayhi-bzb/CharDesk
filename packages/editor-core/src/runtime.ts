@@ -221,6 +221,19 @@ export class FreeformEditorSession {
     if (this.gestureState.type === 'idle') return;
     this.#run(() => this.editor.dispatch({ type: 'canvas-interaction-cancel', reason: 'escape' }));
   }
+  /** Editing consumes a passive selection preview; staged moves/drawing still cancel. */
+  settleInteraction() {
+    const state = this.gestureState;
+    if (state.type === 'selecting' && this.currentTool === 'select') {
+      this.#run(() =>
+        this.editor.dispatch({
+          type: 'canvas-drag-end',
+          button: 0,
+          endGrid: state.current,
+        })
+      );
+    } else this.cancelInteraction();
+  }
   pointer(input: {
     phase: 'down' | 'move' | 'up';
     cell: CellPoint;
@@ -766,7 +779,9 @@ export class FreeformEditorSession {
           id,
           execute: (input: unknown) => {
             this.editor.transact(() => {
-              this.cancelInteraction();
+              if (id === 'interaction.cancel' || id === 'text.begin' || id.startsWith('history.'))
+                this.cancelInteraction();
+              else this.settleInteraction();
               run(input);
             });
             return { handled: true as const, status: 'succeeded' as const };
@@ -787,7 +802,7 @@ export class FreeformEditorSession {
                 status: 'rejected' as const,
                 reason: 'clipboard-unavailable',
               };
-            this.cancelInteraction();
+            this.settleInteraction();
             let request: Promise<ClipboardCommandResult>;
             if (kind === 'pasteProvided')
               request = this.#clipboard.pasteProvided({ plainText: input as string });
@@ -1335,8 +1350,8 @@ export class FreeformEditorSession {
 
   insert(text: string) {
     if (!text) return;
+    this.settleInteraction();
     validateSelectionWork(this.selectionRanges);
-    this.cancelInteraction();
     if (
       !this.inserting &&
       this.selection &&
@@ -1421,8 +1436,8 @@ export class FreeformEditorSession {
   }
 
   erase(backwards = false) {
+    this.settleInteraction();
     validateSelectionWork(this.selectionRanges);
-    this.cancelInteraction();
     const direction = backwards ? 'backward' : 'forward';
     const plan = resolveStaticGridDeletePlan({
       interaction: getStaticGridViewState({ state: this.#interaction, grid: this.plane })

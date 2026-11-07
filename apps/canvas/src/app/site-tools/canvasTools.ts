@@ -1,3 +1,4 @@
+import {isCanvasStrokeStyle,literalRows,fillRows} from '@chardesk/canvas-capabilities/projection';
 import { CanvasPersistenceTimeoutError, CanvasWriteError, isCanvasReadViewport, readCanvasViewport, renderCanvasViewportImage, isCanvasSearchQuery,
   isCanvasSearchPosition, searchCanvasSurface, CanvasSearchError, type CanvasRuntime } from "@/domains/canvas/public";
 import type { AgentToolContentBlock, AgentToolDefinition } from "./contracts";
@@ -6,7 +7,7 @@ import { describeCanvasWriteRendering, type CanvasToolRendering } from "./canvas
 import { CHARDESK_CONTENT_THEMES } from "@chardesk/rendering/theme";
 import { COLOR_PRIMARY_TEXT } from "@/shared/lib/constants";
 import { measureCanvasMutationImpact, prepareCanvasErase, prepareCanvasPlainTextWrite, prepareCanvasRowsWrite, prepareCanvasTextWrite, type CanvasMutationImpact, type CanvasStrokeStyle } from "@/domains/canvas/public";
-import type { CanvasSurfaceReader, RichTextRow } from "@/domains/canvas/public";
+import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import { getTextCellWidth } from "@chardesk/protocol";
 import type { GridCell } from "@/shared/types";
 import type { TextRendererMode } from "@/domains/document/public";
@@ -155,28 +156,6 @@ const collectCanvasAppearance = (
 
 type ModelImage = Readonly<{ mimeType: "image/png"; data: string; width: number; height: number; scale: number }>;
 const MAX_MODEL_IMAGE_BYTES = 700 * 1024;
-
-const isCanvasStrokeStyle = (value: unknown): value is CanvasStrokeStyle => {
-  if (value === undefined) return true;
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const candidate = value as Record<string, unknown>;
-  if (candidate.color !== undefined && typeof candidate.color !== "string") return false;
-  if (candidate.bgColor !== undefined && typeof candidate.bgColor !== "string") return false;
-  if (candidate.href !== undefined && typeof candidate.href !== "string") return false;
-  if (candidate.attrs !== undefined && (!candidate.attrs || typeof candidate.attrs !== "object" || Array.isArray(candidate.attrs))) return false;
-  return true;
-};
-
-const literalRows = (content: string, style: CanvasStrokeStyle, fallbackColor: string): readonly RichTextRow[] => {
-  const normalized = content.replace(/\r\n?/g, "\n");
-  const lines = normalized.split("\n");
-  if (lines.some((line) => /\p{Cc}/u.test(line))) throw new CanvasWriteError("invalid_input", "Content must be plain Unicode text; tabs and control characters are unsupported.");
-  return lines.flatMap((text, y) => text ? [{
-    y,
-    spans: [{ x: 0, text, width: getTextCellWidth(text), color: style.color ?? fallbackColor,
-      ...(style.bgColor ? { bgColor: style.bgColor } : {}), ...(style.attrs ? { attrs: style.attrs } : {}), ...(style.href ? { href: style.href } : {}) }],
-  }] : []);
-};
 
 const blobAsBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader();
@@ -510,20 +489,7 @@ export const createCanvasFillTool = (
       if (session && isSourceBackedCanvasSession(session)) return { ok: false, code: "source_backed_canvas", message: "Edit the source file of this Canvas instead of its projection." };
       const origin = { x: at[0]!, y: at[1]! };
       const style = input.style as CanvasStrokeStyle;
-      const rows: RichTextRow[] = [];
-      for (const row of snapshot.surface.rows({ x: origin.x, y: origin.y, width: size[0]!, height: size[1]! })) {
-        const spans = row.spans.flatMap((span) => {
-          let x = span.x;
-          return span.cells.flatMap((cell) => {
-            const cellX = x;
-            x += getTextCellWidth(cell.char);
-            if (/^\s+$/u.test(cell.char)) return [];
-            return [{ x: cellX - origin.x, text: cell.char, width: getTextCellWidth(cell.char), color: style.color ?? cell.color,
-              bgColor: style.bgColor ?? cell.bgColor, attrs: style.attrs ?? cell.attrs, href: style.href ?? cell.href }];
-          });
-        });
-        if (spans.length > 0) rows.push({ y: row.y - origin.y, spans });
-      }
+      const rows = fillRows(snapshot.surface, origin, [size[0]!,size[1]!], style);
       const prepared = prepareCanvasRowsWrite(origin, rows, "patch");
       mutation = beginMutation(canvas, target, input.pageId as string | undefined);
       const result = target.id === state.activeCanvasId && input.pageId === undefined

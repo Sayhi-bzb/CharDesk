@@ -1,12 +1,11 @@
+import {permissionFor} from '@chardesk/canvas-capabilities/contracts';
 import { credentialsPath, pairingPath } from './paths.mjs';
 
 export const BROKER_PROTOCOL_VERSION = 2;
 export const MAX_MESSAGE_BYTES = 1024 * 1024;
 export const REQUEST_LIMITS = Object.freeze({ global: 128, perCaller: 32 });
 export const requestTimeout = (name) => name === 'canvas_code' ? 30_000 : 10_000;
-export const permissionFor = (name, input) => name === 'canvas_read' ? 'read'
-  : name === 'canvas_search' ? 'search'
-    : name === 'canvas_manage' && ['list', 'list_pages'].includes(input?.action) ? 'inspect' : 'write';
+export { permissionFor };
 export const isWrite = (name, input) => permissionFor(name, input) === 'write';
 
 export class BridgeError extends Error {

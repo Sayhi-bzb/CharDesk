@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
-    "ws": "^8.21.1"
+    "ws": "^8.21.1",
+    "@chardesk/canvas-capabilities": "^0.6.11"
   },
   "engines": {
     "node": ">=20"

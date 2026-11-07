@@ -21,7 +21,7 @@ or backgrounds; removing the final visible style removes unlinked blank cells.
 Queries return `limited` before expensive coverage expansion; edits reject oversized
 requests before writing. [Style tests](src/selection/style.test.ts),
 [real Web/TUI command parity](../../apps/canvas/src/app/selectionStyleParity.dom.test.ts)
-and [terminal Inspector](../../examples/terminal-canvas/src/inspector.test.ts) verify
+and [terminal Style toolbar](../../examples/terminal-canvas/src/inspector.test.ts) verify
 blank/link semantics, history, view isolation and native file round trips.
 
 [`selection/commands`](src/selection/commands.ts) also owns row/column bounds and
@@ -32,6 +32,15 @@ Full materialized Session operations validate work before allocating coverage.
 [Navigation tests](src/selection/navigation.test.ts), [clipping tests](src/selection/coverage.test.ts)
 and [cross-Host intents](../../apps/canvas/src/app/selectionNavigationParity.dom.test.ts)
 verify bounds, wide followers, sparse gaps, extension and history isolation.
+
+[`minimap/content`](src/minimap/content.ts) owns visible occupancy, complete glyph
+widths, background priority and default-foreground references for both Hosts.
+[`minimap/geometry`](src/minimap/geometry.ts) owns fitting and navigation. Hosts
+resolve theme references and rasterize at their own resolution: Web retains color
+paths, while TUI combines projected area into colored terminal cells.
+[Shared rules](src/minimap/content.test.ts), [Web incremental rendering](../../apps/canvas/src/widgets/canvas-editor/minimap/MinimapManager.dom.test.ts)
+and [terminal collisions/cache/native frames](../../examples/terminal-canvas/src/minimap.test.ts)
+verify their contracts.
 
 `SynchronousCommitBoundary` coalesces nested command publication and rejects
 async mutation transactions in both Host compositions.
@@ -87,6 +96,13 @@ Hosts translate native input into commands and pointer events, provide
 `ClipboardPort`, and render the [CellPlane](../cell-plane/README.md) projection.
 A range-move preview hides source spans and overlays target spans without changing
 the document or history. Commit writes one move; cancel restores prior interaction.
+Before selection-targeted commands, `FreeformEditorSession.settleInteraction()`
+finalizes passive drag selection at its last pointer position and cancels staged
+moves/drawing. Escape, history commands and explicit text-mode entry retain
+cancellation semantics. Late pointer events cannot repeat the command.
+[Gesture regressions](src/interaction/session.test.ts) and
+[terminal Delete sequences](../../examples/terminal-canvas/src/tools.test.ts)
+cover editing before mouse release, wide cells, append ranges and one-step undo.
 
 [`selection/coverage`](src/selection/coverage.ts) owns physical selection spans,
 areas, membership and their bounding envelope. Wide graphemes expand each row

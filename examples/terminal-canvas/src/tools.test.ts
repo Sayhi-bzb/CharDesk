@@ -68,7 +68,7 @@ async function fixture(
 test('unconfirmed terminal Cut reports dispatch and retains the logical range and history', async () => {
   const f = await fixture('darwin', true, 'A界B', 'dispatched');
   try {
-    f.setup.mockInput.pressKey(KeyCodes.F2);
+    f.surface.activateDock('edit');
     f.setup.mockInput.pressKey('a', { super: true });
     const before = f.model.plane.materialize();
     const range = f.model.selectionBounds;
@@ -91,7 +91,7 @@ test('rebinding changes execution and toolbar/help hints from the same catalog',
     expect(f.surface.tool).toBe('hand');
     f.setup.mockInput.pressKey(KeyCodes.F11);
     expect(f.surface.tool).toBe('edit');
-    expect(f.surface.dockControls.find((control) => control.id === 'edit')?.label).toContain('F11');
+    expect(f.surface.dockControls.find((control) => control.id === 'edit')?.label).toBe('[Edit]');
     expect(helpLines(f.surface.shortcuts).join('\n')).toContain('F11 Edit');
   } finally {
     await f.dispose();
@@ -108,7 +108,7 @@ for (const kitty of [false, true]) {
       f.setup.mockInput.pressBackspace();
       expect(f.model.plane.materialize().size).toBe(0);
       expect(f.model.canUndo).toBe(false);
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       await f.setup.renderOnce();
       expect(f.setup.renderer.getCursorState().visible).toBe(true);
       await f.setup.mockInput.typeText('ihmIHM', 0);
@@ -120,7 +120,7 @@ for (const kitty of [false, true]) {
       expect(f.surface.tool).toBe('edit');
       await f.setup.mockInput.typeText('Z', 0);
       expect(f.model.plane.get({ x: 6, y: 0 })?.char).toBe('Z');
-      f.setup.mockInput.pressKey(KeyCodes.F3);
+      f.surface.activateDock('hand');
       const content = f.model.plane.materialize();
       await f.setup.mockInput.typeText('i', 0);
       expect(f.surface.tool).toBe('hand');
@@ -132,7 +132,7 @@ for (const kitty of [false, true]) {
   test(`click, selection, Escape and undo never require re-entering Edit (Kitty ${kitty})`, async () => {
     const f = await fixture('win32', kitty, 'AB');
     try {
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       const x = 10,
         y = CANVAS_TOP + 5;
       await f.setup.mockMouse.click(x, y);
@@ -157,7 +157,7 @@ for (const kitty of [false, true]) {
   test(`Escape cancels a live move then clears selection while keeping Edit (Kitty ${kitty})`, async () => {
     const f = await fixture('darwin', kitty, 'ABCD');
     try {
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       const x = -f.model.viewport.x,
         y = CANVAS_TOP - f.model.viewport.y;
       await f.setup.mockMouse.drag(x, y, x + 1, y);
@@ -182,11 +182,11 @@ for (const kitty of [false, true]) {
   });
 }
 
-test('dock buttons use the same commands as F2/F3/F4 and preserve selection', async () => {
+test('dock buttons execute registered tool commands and preserve selection', async () => {
   const f = await fixture('darwin', true, 'AB');
   try {
     const click = async (id: 'edit' | 'hand' | 'minimap') => {
-      const control = f.surface.dockControls.find((c) => c.id === id)!;
+      const control = f.surface.chromeControls.find((c) => c.id === id)!;
       await f.setup.mockMouse.click(control.x + 1, control.y);
       await f.setup.renderOnce();
     };
@@ -204,7 +204,7 @@ test('dock buttons use the same commands as F2/F3/F4 and preserve selection', as
     expect(f.surface.tool).toBe('edit');
     expect(f.model.selection).toEqual(selection);
     expect(f.model.canUndo).toBe(false);
-    f.setup.mockInput.pressKey(KeyCodes.F4);
+    f.surface.activateDock('minimap');
     expect(f.surface.minimapOpen).toBe(false);
   } finally {
     await f.dispose();
@@ -243,7 +243,7 @@ for (const platform of ['darwin', 'win32'] as const) {
       f.setup.mockInput.pressKey('s', modifier);
       expect(f.model.plane.materialize()).toEqual(beforeSaveKey);
       expect(f.model.editor.commands.canExecute('terminal.save', undefined)).toBe(false);
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       f.setup.mockInput.pressKey('c', { meta: true });
       expect(f.writes).toBe(2); // Option/Alt is not Command.
       expect(f.model.plane.get({ x: 1, y: 0 })?.char).toBe('界');
@@ -260,7 +260,7 @@ test('bracketed paste works in either tool and keeps the chosen tool', async () 
     await Bun.sleep(0);
     expect(f.surface.tool).toBe('hand');
     expect(f.model.plane.get({ x: 0, y: 0 })?.char).toBe('界');
-    f.setup.mockInput.pressKey(KeyCodes.F2);
+    f.surface.activateDock('edit');
     f.setup.mockInput.pressEscape();
     f.setup.renderer.keyInput.processPaste(new TextEncoder().encode('Z'));
     await Bun.sleep(0);
@@ -274,7 +274,8 @@ test('bracketed paste works in either tool and keeps the chosen tool', async () 
 test('Kitty repeat events do not toggle controls or repeat an automatic-save exit', async () => {
   const f = await fixture('darwin', true, 'AB');
   try {
-    f.setup.mockInput.pressKey(KeyCodes.F2);
+    f.model.editor.keymap.setUserBindings('terminal.minimap', [['F4']]);
+    f.surface.activateDock('edit');
     await f.setup.mockInput.typeText('X', 0);
     const repeat = (name: string, ctrl = false) =>
       f.setup.renderer.keyInput.processParsedKey({
@@ -304,7 +305,7 @@ test('Kitty repeat events do not toggle controls or repeat an automatic-save exi
 test('exit requests do not require a second press after dock actions', async () => {
   const f = await fixture();
   try {
-    f.setup.mockInput.pressKey(KeyCodes.F2);
+    f.surface.activateDock('edit');
     await f.setup.mockInput.typeText('X', 0);
     f.setup.mockInput.pressKey('q', { ctrl: true });
     expect(f.quits).toBe(1);
@@ -322,7 +323,7 @@ for (const kitty of [false, true]) {
     test(`Option+arrows pan the viewport by 10 cells (${tool}, Kitty ${kitty})`, async () => {
       const f = await fixture('darwin', kitty, 'A界B');
       try {
-        if (tool === 'edit') f.setup.mockInput.pressKey(KeyCodes.F2);
+        if (tool === 'edit') f.surface.activateDock('edit');
         f.model.commands.selectAll();
         const before = { ...f.model.viewport };
         const interaction = structuredClone(f.model.getSnapshot().interaction);
@@ -363,7 +364,7 @@ for (const kitty of [false, true]) {
 test('macOS Ctrl editing shortcuts stay distinct from Command except the explicit Ctrl+Y copy fallback', async () => {
   const f = await fixture('darwin', true, 'AB');
   try {
-    f.setup.mockInput.pressKey(KeyCodes.F2);
+    f.surface.activateDock('edit');
     await f.setup.mockInput.typeText('X', 0);
     const before = f.model.plane.materialize(),
       interaction = f.model.getSnapshot().interaction;
@@ -389,7 +390,7 @@ for (const sequence of ['\x1b[99;9u', '\x1b[99;9;99u']) {
   test(`macOS Command+C wire sequence ${JSON.stringify(sequence)} copies the logical range`, async () => {
     const f = await fixture('darwin', true, 'A界B');
     try {
-      f.setup.mockInput.pressKey(KeyCodes.F2);
+      f.surface.activateDock('edit');
       f.model.commands.selectAll();
       const before = f.model.plane.materialize();
       f.setup.mockInput.pressKey(sequence);
@@ -400,6 +401,78 @@ for (const sequence of ['\x1b[99;9u', '\x1b[99;9;99u']) {
       expect(f.model.plane.materialize()).toEqual(before);
       f.setup.mockInput.pressKey('\x1b[99;9:3u');
       expect(f.writes).toBe(1);
+    } finally {
+      await f.dispose();
+    }
+  });
+}
+
+for (const releaseBeforeDelete of [true, false]) {
+  for (const sequence of ['\x7f', '\x08', '\x1b[127u', '\x1b[127;1u', '\x1b[3~']) {
+    test(`Edit deletes a wide pointer range via ${JSON.stringify(sequence)} (released: ${releaseBeforeDelete})`, async () => {
+      const f = await fixture('darwin', true, 'A界🦀Z');
+      try {
+        f.surface.activateDock('edit');
+        f.model.viewport = { ...f.model.viewport, x: 0, y: 0 };
+        await f.setup.renderOnce();
+        const original = f.model.plane.materialize();
+        // The real Warp trace delivers Delete while the pointer is still selecting.
+        await f.setup.mockMouse.pressDown(1, CANVAS_TOP);
+        await f.setup.mockMouse.emitMouseEvent('drag', 4, CANVAS_TOP);
+        if (releaseBeforeDelete) await f.setup.mockMouse.release(4, CANVAS_TOP);
+        expect(f.model.gestureState.type).toBe(releaseBeforeDelete ? 'idle' : 'selecting');
+        expect(f.surface.tool).toBe('edit');
+        expect(f.model.selection).not.toBeNull();
+        await f.setup.mockInput.pressKeys([sequence]);
+        expect(f.model.plane.get({ x: 1, y: 0 })).toBeUndefined();
+        expect(f.model.plane.get({ x: 3, y: 0 })).toBeUndefined();
+        expect(f.model.plane.get({ x: 0, y: 0 })?.char).toBe('A');
+        expect(f.model.plane.get({ x: 5, y: 0 })?.char).toBe('Z');
+        expect(f.model.gestureState.type).toBe('idle');
+        expect(f.model.selection).not.toBeNull();
+        expect(f.model.canUndo).toBe(true);
+        const selection = structuredClone(f.model.selection);
+        const version = f.model.version;
+        await f.setup.mockMouse.emitMouseEvent('drag', 20, CANVAS_TOP + 3);
+        await f.setup.mockMouse.release(20, CANVAS_TOP + 3);
+        expect(f.model.selection).toEqual(selection);
+        expect(f.model.version).toBe(version);
+        f.model.commands.undo();
+        expect(f.model.plane.materialize()).toEqual(original);
+        expect(f.model.canUndo).toBe(false);
+      } finally {
+        await f.dispose();
+      }
+    });
+  }
+}
+
+for (const action of ['fill', 'copy', 'cut'] as const) {
+  test(`${action} consumes the visible drag selection before release through the terminal Host`, async () => {
+    const f = await fixture('darwin', true, '0123456789');
+    try {
+      f.surface.activateDock('edit');
+      f.model.viewport = { ...f.model.viewport, x: 0, y: 0 };
+      await f.setup.renderOnce();
+      f.model.commands.pointAt({ x: 40, y: 0 });
+      const original = f.model.plane.materialize();
+      await f.setup.mockMouse.pressDown(2, CANVAS_TOP);
+      await f.setup.mockMouse.emitMouseEvent('drag', 4, CANVAS_TOP);
+      if (action === 'fill') await f.setup.mockInput.typeText('X', 0);
+      else f.setup.mockInput.pressKey(action === 'copy' ? 'c' : 'x', { super: true });
+      for (let i = 0; i < 12; i++) await Promise.resolve();
+      expect(f.model.gestureState.type).toBe('idle');
+      if (action === 'copy' || action === 'cut') expect(f.text).toBe('234');
+      if (action === 'copy') expect(f.model.plane.materialize()).toEqual(original);
+      else {
+        for (let x = 2; x <= 4; x++) {
+          if (action === 'fill') expect(f.model.plane.get({ x, y: 0 })?.char).toBe('X');
+          else expect(f.model.plane.get({ x, y: 0 })).toBeUndefined();
+        }
+        f.model.commands.undo();
+        expect(f.model.plane.materialize()).toEqual(original);
+      }
+      expect(f.model.canUndo).toBe(false);
     } finally {
       await f.dispose();
     }

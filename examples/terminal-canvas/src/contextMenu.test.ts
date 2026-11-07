@@ -225,7 +225,7 @@ test('disabled items cannot execute; keyboard navigation skips them and Enter ex
     await f.item('copy-ansi');
     expect(f.menu.isOpen).toBe(true);
     expect(f.writes).toHaveLength(0);
-    // Only Paste is enabled; navigation wraps past disabled actions and separator.
+    // Only Paste remains enabled; wrap past disabled actions and separator.
     f.setup.mockInput.pressArrow('down');
     f.setup.mockInput.pressEnter();
     expect(f.menu.isOpen).toBe(false);
@@ -278,7 +278,7 @@ test('menu Delete and keyboard Undo share history and preserve the selected tool
   }
 });
 
-test('menu matches the Web action order and preserves linked text when copying', async () => {
+test('menu matches the Web editing action order and preserves linked text when copying', async () => {
   const href = 'https://example.com/linked-crab';
   const f = await fixture(`A \x1b]8;;${href}\x1b\\🦀\x1b]8;;\x1b\\`);
   try {

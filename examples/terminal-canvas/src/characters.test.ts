@@ -1,3 +1,4 @@
+import { english } from './i18n.ts';
 import { expect, test } from 'bun:test';
 import type { KeyEvent } from '@opentui/core';
 import { CharacterLibrary } from '@chardesk/character-library';
@@ -26,6 +27,7 @@ function fixture(read: (path: string) => Promise<unknown>) {
   let enter = () => {},
     special: (key: KeyEvent) => boolean = () => false;
   const surface = {
+    t: english,
     model,
     panel: null as TerminalPanel | null,
     requestRender: () => {},

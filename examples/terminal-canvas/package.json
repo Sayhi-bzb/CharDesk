@@ -21,6 +21,7 @@
     "@chardesk/keyboard": "*",
     "@chardesk/protocol": "*",
     "@chardesk/rendering": "*",
+    "@chardesk/ui": "*",
     "@napi-rs/canvas": "1.0.8",
     "@napi-rs/clipboard": "1.1.4",
     "@opentui/core": "0.8.0",

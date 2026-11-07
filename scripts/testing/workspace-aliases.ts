@@ -4,6 +4,11 @@ const root = path.resolve(import.meta.dirname, '../..');
 const source = (relativePath: string) => path.resolve(root, relativePath);
 
 export const workspaceAliases = [
+  { find: /^@chardesk\/canvas-capabilities\/(definitions|code|types|index|projection|readViewport|textRegion)$/, replacement: source("packages/canvas-capabilities/src/$1.ts") },
+  {
+    find: /^@chardesk\/ui\/color-presets$/,
+    replacement: source('packages/ui/src/color-presets.ts'),
+  },
   {
     find: /^@chardesk\/chargraph\/profile$/,
     replacement: source('packages/chargraph/src/text-profile.ts'),

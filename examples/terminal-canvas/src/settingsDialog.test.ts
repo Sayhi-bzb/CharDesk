@@ -73,7 +73,7 @@ for (const kitty of [false, true]) {
       const content = f.model.plane.materialize(),
         selection = structuredClone(f.model.selection),
         viewport = { ...f.model.viewport };
-      f.setup.mockInput.pressKey(KeyCodes.F11);
+      f.surface.activateDock('settings');
       await f.setup.renderOnce();
       expect(f.surface.panel?.dialog).toBe(true);
       expect(f.setup.captureCharFrame()).toContain('Selection background');
@@ -127,7 +127,7 @@ for (const kitty of [false, true]) {
 test('keyboard sections change live cursor, selection palette, navigation and paste preferences', async () => {
   const f = await fixture();
   try {
-    f.setup.mockInput.pressKey(KeyCodes.F11);
+    f.surface.activateDock('settings');
     f.setup.mockInput.pressArrow('right');
     expect(f.settings.values.cursorStyle).toBe('line');
     expect(f.setup.renderer.getCursorState().style).toBe('line');
@@ -208,8 +208,8 @@ test('the shared status bar follows focused panels, menus, help and canvas witho
 test('toolbar, tabs, value rows, reset and close targets work without click-through', async () => {
   const f = await fixture();
   try {
-    const button = f.surface.dockControls.find((item) => item.id === 'settings')!;
-    expect(button.label).toContain('F11');
+    const button = f.surface.headerControls.find((item) => item.id === 'settings')!;
+    expect(button.label).toBe('[Settings]');
     await f.setup.mockMouse.click(button.x + 1, button.y);
     await f.setup.renderOnce();
     const selection = structuredClone(f.model.selection);
@@ -237,7 +237,7 @@ test('toolbar, tabs, value rows, reset and close targets work without click-thro
 test('small terminals consume changes safely and recover the dialog after resizing', async () => {
   const f = await fixture();
   try {
-    f.setup.mockInput.pressKey(KeyCodes.F11);
+    f.surface.activateDock('settings');
     f.setup.resize(22, 9);
     await f.setup.renderOnce();
     expect(f.setup.captureCharFrame()).toContain('Enlarge terminal');
@@ -264,7 +264,9 @@ test('settings command and toolbar follow shared shortcut rebinding', async () =
   const f = await fixture();
   try {
     f.model.editor.keymap.setUserBindings('terminal.settings', [['Ctrl+,']]);
-    expect(f.surface.dockControls.find((item) => item.id === 'settings')?.label).toContain('⌃ ,');
+    expect(f.surface.headerControls.find((item) => item.id === 'settings')?.label).toBe(
+      '[Settings]'
+    );
     f.setup.mockInput.pressKey(KeyCodes.F11);
     expect(f.surface.panel).toBeNull();
     f.setup.mockInput.pressKey(',', { ctrl: true });
@@ -282,7 +284,7 @@ test('opening Settings cancels an older asynchronous paste before it can mutate 
       selection = structuredClone(f.model.selection);
     const result = f.model.commands.pasteProvided('LATE');
     expect(result.status).toBe('pending');
-    f.setup.mockInput.pressKey(KeyCodes.F11);
+    f.surface.activateDock('settings');
     pending.resolve({ plainText: 'LATE' });
     if (result.status === 'pending') await result.completion;
     expect(f.surface.panel?.dialog).toBe(true);
@@ -298,7 +300,7 @@ test('opening Settings cancels an older asynchronous paste before it can mutate 
 test('changing Paste settings affects the next real paste without restarting the session', async () => {
   const f = await fixture();
   try {
-    f.setup.mockInput.pressKey(KeyCodes.F11);
+    f.surface.activateDock('settings');
     f.setup.mockInput.pressTab();
     f.setup.mockInput.pressTab();
     f.setup.mockInput.pressArrow('right'); // auto → plain
@@ -306,7 +308,7 @@ test('changing Paste settings affects the next real paste without restarting the
     f.model.commands.pointAt({ x: 0, y: 3 });
     await f.setup.mockInput.pasteBracketedText('**literal**');
     await f.setup.waitFor(() => f.model.plane.get({ x: 0, y: 3 })?.char === '*');
-    f.setup.mockInput.pressKey(KeyCodes.F11);
+    f.surface.activateDock('settings');
     f.setup.mockInput.pressArrow('left'); // plain → auto; section retained
     await f.escape();
     f.model.commands.pointAt({ x: 0, y: 5 });

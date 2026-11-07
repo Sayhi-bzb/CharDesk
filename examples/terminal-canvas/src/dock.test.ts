@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import { createTextAttributes } from '@opentui/core';
+import { createTextAttributes, RGBA, type TerminalColors } from '@opentui/core';
 import { createTestRenderer, ManualClock } from '@opentui/core/testing';
 import { TerminalCanvas } from './model.ts';
-import { CanvasSurface } from './surface.ts';
+import { CANVAS_TOP, CanvasSurface } from './surface.ts';
 import { attachControls } from './controller.ts';
 
 async function fixture(kittyKeyboard = true, platform: NodeJS.Platform = 'darwin') {
@@ -82,6 +82,7 @@ for (const kitty of [false, true]) {
           view = { ...f.model.viewport },
           version = f.model.version;
         const controls = f.surface.focusableDockControls;
+        expect(controls.map((control) => control.id)).toEqual(['edit', 'hand', 'inspector']);
         const anchor = controls.findIndex((control) => control.id === 'edit');
         for (const control of [...controls.slice(anchor), ...controls.slice(0, anchor)]) {
           f.setup.mockInput.pressTab();
@@ -103,13 +104,18 @@ for (const kitty of [false, true]) {
         expect(f.setup.captureCharFrame()).toContain('Esc canvas');
         const focused = f.surface.focusedDockControl!;
         f.setup.renderer.currentRenderBuffer.withBuffers((cells) => {
-          expect(
-            cells.attributes[focused.y * cells.width + focused.x]! &
-              createTextAttributes({ bold: true })
-          ).not.toBe(0);
+          const at = focused.y * cells.width + focused.x;
+          expect(cells.attributes[at]! & createTextAttributes({ bold: true, inverse: true })).toBe(
+            0
+          );
+          expect(RGBA.fromArray(cells.bg.slice(at * 4, at * 4 + 4)).toInts()).toEqual(
+            f.surface.colors.selection.toInts()
+          );
         });
         f.setup.mockInput.pressTab({ shift: true });
-        expect(f.surface.focusedDockControl?.id).toBe(controls[anchor - 1]!.id);
+        expect(f.surface.focusedDockControl?.id).toBe(
+          controls[(anchor - 1 + controls.length) % controls.length]!.id
+        );
         f.escape();
         expect(f.surface.focusedDockControl).toBeNull();
         expect(f.model.plane.materialize()).toEqual(content);
@@ -145,7 +151,12 @@ test('Enter and Space activate the same dock commands without leaking repeat key
     expect(f.model.plane.materialize()).toEqual(content);
     f.setup.mockInput.pressTab();
     f.setup.mockInput.pressTab({ shift: true });
+    expect(f.surface.focusedDockControl?.id).toBe('inspector');
     f.setup.mockInput.pressEnter();
+    expect(f.surface.inspector?.isOpen).toBe(false);
+    expect(f.surface.panel).toBeNull();
+    const settings = f.surface.headerControls.find((control) => control.id === 'settings')!;
+    await f.setup.mockMouse.click(settings.x + 1, settings.y);
     expect(f.surface.panel?.title).toBe('Settings');
     f.repeat('return', '\r');
     expect(f.surface.settings.values.cursorStyle).toBe('block');
@@ -197,7 +208,7 @@ test('dock Escape preserves a range even when held; canvas clicks restore immedi
 test('focus skips unavailable commands and hidden buttons, and clears on resize, blur, document change and detach', async () => {
   const f = await fixture();
   try {
-    expect(f.surface.dockControls.some((control) => control.id === 'documents')).toBe(true);
+    expect(f.surface.headerControls.some((control) => control.id === 'documents')).toBe(true);
     expect(f.surface.focusableDockControls.some((control) => control.id === 'documents')).toBe(
       false
     );
@@ -206,8 +217,8 @@ test('focus skips unavailable commands and hidden buttons, and clears on resize,
     f.setup.mockInput.pressTab({ shift: true });
     f.setup.mockInput.pressTab({ shift: true });
     f.setup.mockInput.pressTab({ shift: true });
-    expect(f.surface.focusedDockControl?.id).toBe('minimap');
-    await f.setup.resize(20, 20);
+    expect(f.surface.focusedDockControl?.id).toBe('hand');
+    await f.setup.resize(10, 20);
     await f.setup.renderOnce();
     expect(f.surface.focusedDockControl).toBeNull();
     expect(f.surface.focusableDockControls.some((control) => control.id === 'hand')).toBe(false);
@@ -238,13 +249,13 @@ test('dock shortcuts, sequences and hints follow the shared keymap; pasted tabs 
     expect(f.surface.focusedDockControl?.id).toBe('edit');
     expect(f.surface.statusBar.hint).toContain('F12');
     f.setup.mockInput.pressTab({ shift: true });
-    expect(f.surface.focusedDockControl?.id).toBe('settings');
+    expect(f.surface.focusedDockControl?.id).toBe('inspector');
     f.model.editor.keymap.setUserBindings('terminal.dock-activate', [['F9', 'F9']]);
     f.setup.mockInput.pressKey('F9');
     expect(f.surface.panel).toBeNull();
     f.setup.mockInput.pressKey('F9');
-    expect(f.surface.panel?.title).toBe('Settings');
-    f.escape();
+    expect(f.surface.inspector?.isOpen).toBe(false);
+    expect(f.surface.focusedDockControl).toBeNull();
     f.model.commands.pointAt({ x: 0, y: 5 });
     await f.setup.mockInput.pasteBracketedText('A\tB');
     for (let i = 0; i < 30 && !f.model.plane.get({ x: 4, y: 5 }); i++) await Bun.sleep(2);
@@ -278,3 +289,142 @@ test('entering dock focus follows the current tool in both directions, including
     await f.dispose();
   }
 });
+
+for (const kitty of [false, true]) {
+  test(`Edit and Hand use Dock navigation without default function keys (Kitty ${kitty})`, async () => {
+    const f = await fixture(kitty);
+    try {
+      const content = f.model.plane.materialize();
+      expect(f.surface.tool).toBe('hand');
+      expect(f.surface.dockControls.map((control) => control.label)).toContain('[Edit]');
+      expect(f.surface.dockControls.map((control) => control.label)).toContain('[Hand]');
+      for (const key of ['F2', 'F3']) f.setup.mockInput.pressKey(key);
+      expect(f.surface.tool).toBe('hand');
+      f.setup.mockInput.pressTab({ shift: true });
+      expect(f.surface.focusedDockControl?.id).toBe('hand');
+      f.setup.mockInput.pressTab({ shift: true });
+      expect(f.surface.focusedDockControl?.id).toBe('edit');
+      f.setup.mockInput.pressEnter();
+      expect(f.surface.tool).toBe('edit');
+      expect(f.surface.focusedDockControl).toBeNull();
+      for (const key of ['F2', 'F3']) f.setup.mockInput.pressKey(key);
+      expect(f.surface.tool).toBe('edit');
+      f.setup.mockInput.pressTab();
+      expect(f.surface.focusedDockControl?.id).toBe('edit');
+      f.setup.mockInput.pressTab();
+      expect(f.surface.focusedDockControl?.id).toBe('hand');
+      f.setup.mockInput.pressKey(' ');
+      expect(f.surface.tool).toBe('hand');
+      expect(f.surface.focusedDockControl).toBeNull();
+      expect(f.model.plane.materialize()).toEqual(content);
+      expect(f.model.canUndo).toBe(false);
+    } finally {
+      await f.dispose();
+    }
+  });
+}
+
+test('entering Dock focus keeps the visible drag range even before mouse release', async () => {
+  const f = await fixture();
+  try {
+    f.surface.activateDock('edit');
+    f.model.viewport = { ...f.model.viewport, x: 0, y: 0 };
+    await f.setup.renderOnce();
+    const content = f.model.plane.materialize();
+    await f.setup.mockMouse.pressDown(0, CANVAS_TOP);
+    await f.setup.mockMouse.emitMouseEvent('drag', 3, CANVAS_TOP);
+    const range = structuredClone(f.model.selection);
+    expect(f.model.gestureState.type).toBe('selecting');
+    f.setup.mockInput.pressTab();
+    expect(f.model.gestureState.type).toBe('idle');
+    expect(f.surface.focusedDockControl?.id).toBe('edit');
+    expect(f.model.selection).toEqual(range);
+    await f.setup.mockMouse.release(15, 4);
+    f.setup.mockInput.pressTab();
+    f.setup.mockInput.pressEnter();
+    expect(f.surface.tool).toBe('hand');
+    expect(f.model.selection).toEqual(range);
+    expect(f.model.plane.materialize()).toEqual(content);
+    expect(f.model.canUndo).toBe(false);
+  } finally {
+    await f.dispose();
+  }
+});
+
+for (const mode of ['unknown', 'light', 'dark'] as const) {
+  test(`Tab focus uses terminal palette colors without bold, bracket changes or double inversion (${mode})`, async () => {
+    const f = await fixture();
+    try {
+      if (mode !== 'unknown')
+        f.surface.appearance.acceptPalette(
+          {
+            defaultForeground: mode === 'dark' ? '#eeeeee' : '#111111',
+            defaultBackground: mode === 'dark' ? '#111111' : '#eeeeee',
+            palette: [
+              '#111111',
+              '#cc5555',
+              '#55aa66',
+              '#bbaa44',
+              '#4466aa',
+              '#aa55aa',
+              '#44aaaa',
+              '#dddddd',
+              '#777777',
+              '#ff7777',
+              '#77cc88',
+              '#eedd66',
+              '#6688dd',
+              '#cc77cc',
+              '#66cccc',
+              '#eeeeee',
+            ],
+            cursorColor: null,
+            mouseForeground: null,
+            mouseBackground: null,
+            tekForeground: null,
+            tekBackground: null,
+            highlightForeground: null,
+            highlightBackground: null,
+          } satisfies TerminalColors,
+          mode
+        );
+      const content = f.model.plane.materialize();
+      for (const tool of ['hand', 'edit'] as const) {
+        f.surface.setTool(tool);
+        for (let i = 0; i < 3; i++) {
+          f.setup.mockInput.pressTab();
+          await f.setup.renderOnce();
+          const focused = f.surface.focusedDockControl!;
+          expect(f.setup.captureCharFrame()).toContain('[Edit] [Hand] [Style]');
+          f.setup.renderer.currentRenderBuffer.withBuffers((cells) => {
+            for (const control of f.surface.dockControls) {
+              const active = control.id === tool || control.id === 'inspector';
+              const hasFocus = control.id === focused.id;
+              const at = control.y * cells.width + control.x;
+              expect(cells.attributes[at]! & createTextAttributes({ inverse: true })).toBe(
+                active && !hasFocus ? createTextAttributes({ inverse: true }) : 0
+              );
+              expect(cells.attributes[at]! & createTextAttributes({ bold: true })).toBe(0);
+              expect(RGBA.fromArray(cells.fg.slice(at * 4, at * 4 + 4)).toInts()).toEqual(
+                (hasFocus
+                  ? f.surface.colors.selectionForeground
+                  : f.surface.colors.foreground
+                ).toInts()
+              );
+              expect(RGBA.fromArray(cells.bg.slice(at * 4, at * 4 + 4)).toInts()).toEqual(
+                (hasFocus ? f.surface.colors.selection : f.surface.colors.chrome).toInts()
+              );
+            }
+          });
+        }
+        f.escape();
+        await f.setup.renderOnce();
+        expect(f.setup.captureCharFrame()).toContain('[Edit] [Hand] [Style]');
+      }
+      expect(f.model.plane.materialize()).toEqual(content);
+      expect(f.model.canUndo).toBe(false);
+    } finally {
+      await f.dispose();
+    }
+  });
+}

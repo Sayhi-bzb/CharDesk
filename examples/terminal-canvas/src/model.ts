@@ -1,1 +1,1 @@
-export { FreeformEditorSession as TerminalCanvas } from '@chardesk/editor-core/runtime';
+export * from '../../../packages/local-runtime/src/model.ts';

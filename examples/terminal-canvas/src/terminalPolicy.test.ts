@@ -9,20 +9,41 @@ import {
 import { createTerminalShortcuts } from './shortcuts.ts';
 import { helpLines } from './copy.ts';
 
-test('documented Warp OSC 8 support reaches the native renderer through its public override', () => {
+test('Warp renderer policy matches its code-point grid and documented OSC 8 support', () => {
   expect(terminalRendererEnvironment({ TERM_PROGRAM: 'WarpTerminal' })).toEqual({
     FORCE_HYPERLINK: '1',
+    OPENTUI_FORCE_WCWIDTH: '1',
   });
   expect(terminalRendererEnvironment({ TERM_PROGRAM: 'ghostty' })).toEqual({});
   expect(terminalRendererEnvironment({})).toEqual({});
   for (const value of ['0', 'false', 'off', '1', ''])
     expect(
       terminalRendererEnvironment({ TERM_PROGRAM: 'WarpTerminal', FORCE_HYPERLINK: value })
-    ).toEqual({ FORCE_HYPERLINK: value });
+    ).toEqual({ FORCE_HYPERLINK: value, OPENTUI_FORCE_WCWIDTH: '1' });
   for (const multiplexer of [{ TMUX: '/tmp/tmux' }, { STY: 'session' }, { ZELLIJ: '1' }])
     expect(terminalRendererEnvironment({ TERM_PROGRAM: 'WarpTerminal', ...multiplexer })).toEqual(
       {}
     );
+});
+
+test('Warp width policy preserves explicit user overrides and leaves other terminal paths to native detection', () => {
+  for (const key of ['OPENTUI_FORCE_WCWIDTH', 'OPENTUI_FORCE_UNICODE', 'OPENTUI_FORCE_NOZWJ']) {
+    for (const value of ['', '0', '1']) {
+      expect(terminalRendererEnvironment({ TERM_PROGRAM: 'WarpTerminal', [key]: value })).toEqual({
+        FORCE_HYPERLINK: '1',
+      });
+    }
+  }
+  for (const value of ['true', '1']) {
+    expect(
+      terminalRendererEnvironment({
+        TERM_PROGRAM: 'WarpTerminal',
+        OPENTUI_FORCE_EXPLICIT_WIDTH: value,
+      })
+    ).toEqual({ FORCE_HYPERLINK: '1' });
+  }
+  for (const TERM_PROGRAM of ['ghostty', 'kitty', 'Apple_Terminal', 'unknown'])
+    expect(terminalRendererEnvironment({ TERM_PROGRAM })).toEqual({});
 });
 
 test('link help distinguishes native output being enabled from a disabled or pending path', () => {
