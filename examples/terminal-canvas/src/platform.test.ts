@@ -18,6 +18,10 @@ for (const platform of ['darwin', 'win32'] as const) {
     expect(shortcuts.minimap.keys).toEqual([]);
     expect(shortcuts.settings.keys).toEqual([]);
     expect(shortcuts.documents.keys).toEqual([]);
+    expect(shortcuts.search.keys).toEqual(
+      platform === 'darwin' ? ['Meta+F', 'F8'] : ['Ctrl+F', 'F8']
+    );
+    expect(shortcuts.search.label).toBe(platform === 'darwin' ? '⌘F' : 'Ctrl+F');
     expect(shortcuts.copy.keys).toEqual(platform === 'darwin' ? ['Meta+C', 'Ctrl+Y'] : ['Ctrl+C']);
     if (platform === 'darwin') {
       for (const action of ['cut', 'paste', 'undo', 'redo', 'select-all'] as const)

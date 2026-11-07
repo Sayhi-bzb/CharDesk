@@ -197,6 +197,52 @@ test.each(['darwin', 'win32'] as const)(
   }
 );
 
+for (const platform of ['darwin', 'win32', 'linux'] as const) {
+  test(`${platform} primary Find and F8 cover the full terminal workspace without changing the canvas`, async () => {
+    const f = await fixture(platform);
+    try {
+      const model = f.workspace.model;
+      model.viewport = { ...model.viewport, x: 0, y: 0 };
+      model.apply({
+        rows: Array.from({ length: model.viewport.height }, (_, y) => ({
+          y,
+          erase: [],
+          spans: [{ x: 0, text: '#'.repeat(model.viewport.width), color: '#113355' }],
+        })),
+      });
+      const content = model.plane.materialize();
+      const view = { ...model.viewport };
+      f.primary('f');
+      expect(f.surface.panel?.title).toBe('Find on current page');
+      expect(f.surface.panelLayout).toMatchObject({
+        x: 0,
+        y: 0,
+        width: f.setup.renderer.width,
+        height: f.surface.footerBounds.y,
+      });
+      await f.setup.renderOnce();
+      let frame = f.setup.captureCharFrame().split('\n');
+      expect(frame[0]).toContain('Find on current page');
+      expect(frame.slice(0, f.surface.footerBounds.y).join('\n')).not.toContain('#');
+      await f.setup.resize(80, 24);
+      await f.setup.renderOnce();
+      expect(f.surface.panelLayout).toMatchObject({ x: 0, y: 0, width: 80, height: 22 });
+      f.escape();
+      f.setup.mockInput.pressKey(platform === 'darwin' ? '\x1b[102;9u' : '\x1b[102;5u');
+      expect(f.surface.panel?.title).toBe('Find on current page');
+      f.escape();
+      f.setup.mockInput.pressKey(KeyCodes.F8);
+      expect(f.surface.panel?.title).toBe('Find on current page');
+      expect(model.plane.materialize()).toEqual(content);
+      expect(model.viewport).toMatchObject({ x: view.x, y: view.y });
+      frame = f.setup.captureCharFrame().split('\n');
+      expect(frame[0]).toContain('Find on current page');
+    } finally {
+      await f.dispose();
+    }
+  });
+}
+
 test('find supports Unicode, regex and paging; navigation preserves selection and history', async () => {
   const f = await fixture();
   try {

@@ -284,10 +284,14 @@ retain their explicit document colors. Previews do not enter autosave or recover
 | ⌘O / Ctrl+O / F10 | Open an external path                                                  |
 | ⌘N / Ctrl+N       | New managed canvas without a path prompt                               |
 | ⌘W / Ctrl+W       | Save and close current canvas; keep its session                        |
-| ⌘F / Ctrl+F / F8  | Search current page; F10 toggles RE2, F11 toggles case folding         |
+| ⌘F / Ctrl+F       | Search current page; F10 toggles RE2, F11 toggles case folding         |
 | ⌘G / Ctrl+G       | Next search match                                                      |
 | F9                | Anchor tree; N adds, R renames, T reattaches at cursor, Delete removes |
 | Shift+F9          | Add anchor at cursor                                                   |
+
+F8 remains a fallback for Find when the terminal consumes the platform shortcut.
+Warp lists macOS ⌘F as its own [Find action](https://docs.warp.dev/getting-started/keyboard-shortcuts/);
+terminal bindings determine whether that key reaches CharDesk.
 
 The Sessions list contains only session records; clickable footer actions create
 a canvas (N) or open a file (O), including when either list is empty.
@@ -327,6 +331,8 @@ The header occupies one terminal row; the canvas starts immediately below it.
 The footer's first row contains the Dock or one surface title with essential commands.
 Selected tabs and detailed shortcut instructions are not repeated; F1 owns the full guide.
 The second row carries operation feedback and errors. Closing an overlay restores the Dock.
+Full-screen panels such as Find cover the terminal from the top-left edge to the
+footer, without retaining an empty header row or canvas margins.
 Header and footer drawing, focus and hit-testing use the same control geometry, including after resize.
 
 ### Selection and navigation

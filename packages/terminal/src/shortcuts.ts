@@ -159,7 +159,7 @@ export function createTerminalShortcuts(platform: NodeJS.Platform, policy?: Term
     documents: key([]),
     'next-document': key(['F6']),
     'previous-document': key(['Shift+F6']),
-    search: key([...primary('F').keys, 'F8'], `${primary('F').label} / F8`),
+    search: key([...primary('F').keys, 'F8'], primary('F').label),
     'next-match': primary('G', true),
     anchors: key(['F9']),
     'add-anchor': key(['Shift+F9']),

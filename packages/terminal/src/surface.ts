@@ -680,18 +680,13 @@ export class CanvasSurface extends Renderable {
     if (this.panel) {
       const layout = this.panelLayout;
       if (layout.height < (this.panel.dialog ? 8 : 4) || layout.width < 20) {
-        buffer.fillRect(
-          0,
-          CANVAS_TOP,
-          this.width,
-          Math.max(0, footer - CANVAS_TOP),
-          this.colors.background
-        );
+        const top = this.panel.dialog ? CANVAS_TOP : 0;
+        buffer.fillRect(0, top, this.width, Math.max(0, footer - top), this.colors.background);
         this.#line(
           buffer,
           'Enlarge terminal to use panel · Esc returns',
           0,
-          CANVAS_TOP,
+          top,
           this.colors.foreground,
           this.colors.background
         );
@@ -908,13 +903,13 @@ export class CanvasSurface extends Renderable {
       const itemsY = y + 3;
       return { x, y, width, height, itemsY, rows: Math.max(0, height - 4) };
     }
-    const y = CANVAS_TOP + 1,
-      height = Math.max(0, this.footerBounds.y - y);
+    const y = 0,
+      height = Math.max(0, this.footerBounds.y);
     const itemsY = y + (this.panel?.input === undefined ? 1 : 2);
     return {
-      x: 1,
+      x: 0,
       y,
-      width: Math.max(0, this.width - 2),
+      width: this.width,
       height,
       itemsY,
       rows: Math.max(0, y + height - itemsY),
