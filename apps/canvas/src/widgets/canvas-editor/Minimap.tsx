@@ -1,5 +1,6 @@
 "use client";
 
+import { projectWelcomeSurface } from "@/shared/canvas-appearance/welcome";
 import {
   useCallback,
   useEffect,
@@ -133,11 +134,12 @@ export const Minimap = ({
   useEffect(() => {
     if (!minimapColors || !containerSize) return;
     if (!contentReader) return;
+    const reader = projectWelcomeSurface(contentReader, minimapColors.artifact);
     managerRef.current?.update({
       colors: minimapColors,
-      reader: contentReader,
-      contentRevision: isIncrementalCanvasSurfaceReader(contentReader)
-        ? contentReader.getRevision()
+      reader,
+      contentRevision: isIncrementalCanvasSurfaceReader(reader)
+        ? reader.getRevision()
         : contentSurface.revision,
       offset,
       zoom,

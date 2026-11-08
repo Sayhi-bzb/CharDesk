@@ -9,7 +9,6 @@
   },
   "files": [
     "dist",
-    "welcome.chardesk",
     "README.md",
     "CHANGELOG.md"
   ],

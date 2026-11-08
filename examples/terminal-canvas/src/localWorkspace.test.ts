@@ -9,6 +9,7 @@ import { readOptional } from './document.ts';
 import { TerminalWorkspace } from './workspace.ts';
 import { WorkspacePersistence } from './persistence.ts';
 import { TerminalSettingsStore } from './settings.ts';
+import { buildDefaultDemoGrid } from '@chardesk/canvas-templates/welcome';
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -29,6 +30,53 @@ async function finish(opened: Awaited<ReturnType<typeof openLocalWorkspace>>) {
   await opened.sessions.dispose();
   opened.workspace.dispose();
 }
+
+test('first launch consumes the shared Web Welcome; new canvases and explicit paths stay blank', async () => {
+  const f = await fixture();
+  const first = await openLocalWorkspace(parseOptions([]), f.paths, {}, [], f.firstCwd);
+  try {
+    expect(first.sessions.forFile(first.workspace.active)?.name).toBe('Welcome');
+    const expected = buildDefaultDemoGrid();
+    for (const [key, cell] of expected) {
+      if (cell.char === ' ') continue;
+      const [x, y] = key.split(',').map(Number);
+      expect(first.workspace.model.plane.get({ x: x!, y: y! })).toEqual(cell);
+    }
+    expect(first.workspace.model.canUndo).toBe(false);
+    expect(first.workspace.dirty).toBe(false);
+    // A subsequent New is an empty document, rather than a second Welcome.
+    await first.sessions.create();
+    expect(first.workspace.model.plane.materialize().size).toBe(0);
+  } finally {
+    await finish(first);
+  }
+  const fresh = await fixture();
+  const blank = await openLocalWorkspace(
+    parseOptions(['--blank']),
+    fresh.paths,
+    {},
+    [],
+    fresh.firstCwd
+  );
+  try {
+    expect(blank.workspace.model.plane.materialize().size).toBe(0);
+  } finally {
+    await finish(blank);
+  }
+  const external = await fixture();
+  const explicit = await openLocalWorkspace(
+    parseOptions(['new.chardesk']),
+    external.paths,
+    {},
+    [],
+    external.firstCwd
+  );
+  try {
+    expect(explicit.workspace.model.plane.materialize().size).toBe(0);
+  } finally {
+    await finish(explicit);
+  }
+});
 
 for (const savedToDisk of [false, true]) {
   for (const dirty of [false, true]) {
@@ -252,18 +300,23 @@ test('read-only help and snapshot commands do not create application data or wor
   const config = new URL('../tsconfig.json', import.meta.url).pathname;
   for (const args of [
     ['--help'],
+    ['--snapshot'],
     ['--snapshot', '--blank', join(f.firstCwd, 'read-only.chardesk')],
   ]) {
-    const child = Bun.spawn([process.execPath, '--tsconfig', config, source, ...args], {
+    const child = Bun.spawn([process.execPath, '--tsconfig-override', config, source, ...args], {
       cwd: f.secondCwd,
       env: { ...process.env, CHARDESK_HOME: join(f.root, 'untouched') },
       stdout: 'pipe',
       stderr: 'pipe',
     });
     const stderr = new Response(child.stderr).text();
-    await new Response(child.stdout).text();
+    const stdout = await new Response(child.stdout).text();
     expect(await child.exited).toBe(0);
     expect(await stderr).toBe('');
+    if (args.length === 1 && args[0] === '--snapshot') {
+      expect(stdout).toContain('Normal visual mode');
+      expect(stdout).not.toContain('UNICODE, IN EVERY DIRECTION');
+    }
   }
   expect(await readOptional(join(f.root, 'untouched', 'data', 'catalog.sqlite'))).toBeNull();
   expect(await readOptional(join(f.firstCwd, 'read-only.chardesk.workspace.json'))).toBeNull();

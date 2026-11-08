@@ -1,3 +1,4 @@
+import { projectWelcomeSurface } from "@/shared/canvas-appearance/welcome";
 import { resolveCharDeskCellVisual } from "@chardesk/rendering";
 import {
   drawCharDeskCanvasCursor,
@@ -75,7 +76,7 @@ export const drawCanvasCellIndicator = (
     input,
     DEFAULT_CANVAS_CELL_METRICS
   );
-  const cell = input.source.get(indicator.point);
+  const cell = projectWelcomeSurface(input.source, input.artifactPalette).get(indicator.point);
   drawCharDeskCanvasCursor(ctx, {
     cell: cell
       ? toCanvasVisual(cell, input.artifactPalette)

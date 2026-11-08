@@ -1,12 +1,12 @@
 import type { LocalEndpoint } from '../../local-runtime/src/ipc.ts';
-import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { resolveAppPaths } from '../../local-runtime/src/appPaths.ts';
 import { openLocalWorkspace } from '../../local-runtime/src/localWorkspace.ts';
 import type { LocalSessions } from '../../local-runtime/src/sessions.ts';
 import { formatCellFrame } from '@chardesk/cell-core';
 import { getGraphemeCellWidth } from '@chardesk/protocol';
-import { parseCharDeskDocumentEnvelope } from '@chardesk/document';
+import { createWelcomeDocument } from '../../local-runtime/src/welcome.ts';
+import { WelcomeAppearance } from '@chardesk/canvas-templates/welcome-appearance';
 import { CanvasFile } from '../../local-runtime/src/document.ts';
 import { TerminalAppearanceRuntime } from './appearance.ts';
 import type { ClipboardTextPreparation } from '@chardesk/editor-core/clipboard/commands';
@@ -56,14 +56,11 @@ export async function runTerminal(args: string[] = process.argv.slice(2)) {
         autoAnchors: () => settings?.renderProfile.markdownAutoAnchorsEnabled ?? true,
       };
       const first = options.files[0] ?? 'terminal-canvas.chardesk';
-      const welcome = async () =>
-        options.files.length || options.blank
-          ? ''
-          : parseCharDeskDocumentEnvelope(
-              await readFile(new URL('../welcome.chardesk', import.meta.url), 'utf8')
-            )!.body;
       if (options.snapshot) {
-        const { model } = await CanvasFile.open(first, await welcome(), editorOptions);
+        const { model } = await CanvasFile.open(first, '', {
+          ...editorOptions,
+          ...(!options.files.length && !options.blank ? { document: createWelcomeDocument() } : {}),
+        });
         try {
           model.viewport = { x: 0, y: 0, width: 80, height: 24 };
           console.log(
@@ -84,17 +81,24 @@ export async function runTerminal(args: string[] = process.argv.slice(2)) {
         sessions = opened.sessions;
         persistence = opened.persistence;
         const { startLocalEndpoint } = await import('../../local-runtime/src/ipc.ts');
-        stopEndpoint = await startLocalEndpoint(paths, workspace, sessions, () => {
-          const snapshot = appearance!.getSnapshot();
-          if (!snapshot.palette) return undefined;
-          return {
-            theme: snapshot.mode === 'dark' ? 'dark' : 'light',
-            palette: {
-              color: snapshot.palette.foreground,
-              background: snapshot.palette.background,
-            },
-          };
-        });
+        const welcomeAppearance = new WelcomeAppearance(() => appearance!.getSnapshot());
+        stopEndpoint = await startLocalEndpoint(
+          paths,
+          workspace,
+          sessions,
+          () => {
+            const snapshot = appearance!.getSnapshot();
+            if (!snapshot.palette) return undefined;
+            return {
+              theme: snapshot.mode === 'dark' ? 'dark' : 'light',
+              palette: {
+                color: snapshot.palette.foreground,
+                background: snapshot.palette.background,
+              },
+            };
+          },
+          welcomeAppearance.project
+        );
         const restored = opened.restored;
         const { model } = workspace;
         const { createCliRenderer, RGBA, NativeSession } = await import('@opentui/core');
@@ -132,7 +136,8 @@ export async function runTerminal(args: string[] = process.argv.slice(2)) {
             !restored,
             resolveTerminalPolicy(process.env, renderer.capabilities),
             settings!,
-            appearance!
+            appearance!,
+            welcomeAppearance
           );
           const copy = surface.messages;
           renderer.root.add(surface);

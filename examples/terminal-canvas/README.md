@@ -17,11 +17,17 @@ bun run start /path/to/diagram.chardesk --paste-mode plain
 bun run start first.chardesk second.chardesk --workspace /path/to/workspace.json
 ```
 
-No filename restores the local workspace, or creates a managed blank canvas on
-first use. New canvases need no filename. Explicit paths register external files
+No filename restores the local workspace, or creates a managed Welcome canvas on
+first use from the [shared Web/Terminal content](../../packages/canvas-templates/README.md).
+Subsequent new canvases are blank. Explicit paths register external files
 and keep saving in place; missing paths start empty. A known legacy
-`terminal-canvas.chardesk` is registered on first startup. `--blank` remains
-accepted and suppresses the welcome content in read-only snapshots.
+`terminal-canvas.chardesk` is registered on first startup. `--blank` suppresses
+Welcome on first use and in read-only snapshots.
+
+The [shared Welcome appearance](../../packages/canvas-templates/README.md) uses
+the terminal palette for display, minimap, live reads and PNG output.
+[Terminal regressions](src/welcomeAppearance.test.ts) cover palette changes,
+preview movement and source preservation.
 `F1` lists controls; arrows scroll help. All TUI interface text is English.
 Changes save automatically; closing a canvas or quitting waits for disk writes.
 [Local storage and recovery](WORKSPACE.md) owns directories, overrides, migration,

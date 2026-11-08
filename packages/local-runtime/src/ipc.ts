@@ -7,6 +7,7 @@ import type { TerminalWorkspace } from './workspace.ts';
 import type { LocalSessions } from './sessions.ts';
 import { localCapabilities } from './capabilities.ts';
 import type { CanvasReadAppearance } from '../../canvas-capabilities/src/read.ts';
+import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
 
 type Endpoint = {
   version: 1;
@@ -21,14 +22,15 @@ export async function startLocalEndpoint(
   paths: AppPaths,
   workspace: TerminalWorkspace,
   sessions: LocalSessions,
-  readAppearance?: () => CanvasReadAppearance | undefined
+  readAppearance?: () => CanvasReadAppearance | undefined,
+  presentSurface?: (source: CanvasSurfaceReader) => CanvasSurfaceReader
 ) {
   const directory = join(paths.state, 'runtimes');
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const instance = randomUUID(),
     token = randomBytes(32).toString('hex'),
     path = join(directory, `${instance}.json`);
-  const capabilities = localCapabilities(workspace, sessions, true, readAppearance);
+  const capabilities = localCapabilities(workspace, sessions, true, readAppearance, presentSurface);
   let closing = false;
   let tail = Promise.resolve();
   let pending = 0;

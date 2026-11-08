@@ -371,12 +371,12 @@ export function attachControls(
       const completion: Promise<EditorCommandCompletion> = (async () => {
         let copying = false;
         try {
-          const snapshot = captureSelectionSnapshot(model);
           const appearance = await surface.appearance.ensurePalette();
           if (!current()) throw new Error('stale-target');
           if (appearance.status !== 'ready' || !appearance.palette)
             throw new Error('palette-unavailable');
           appearanceRevision = appearance.revision;
+          const snapshot = captureSelectionSnapshot(model, surface.contentReader);
           const image = renderSelectionSnapshot(snapshot, {
             color: appearance.palette.foreground,
             background: appearance.palette.background,

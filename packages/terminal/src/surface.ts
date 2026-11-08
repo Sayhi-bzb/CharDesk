@@ -1,4 +1,6 @@
 import { isDefaultArtifactForeground } from '@chardesk/cell-plane/artifact-style';
+import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
+import { WelcomeAppearance } from '@chardesk/canvas-templates/welcome-appearance';
 import { TerminalInputModifiers } from './inputModifiers.ts';
 import { resolveTerminalPolicy, type TerminalInputPolicy } from './terminalPolicy.ts';
 import type { GridCellSource, Point } from '@chardesk/cell-plane/types';
@@ -282,7 +284,8 @@ export class CanvasSurface extends Renderable {
     initializeTool = true,
     inputPolicy: TerminalInputPolicy = resolveTerminalPolicy(),
     readonly settings = new TerminalSettingsStore(),
-    appearance?: TerminalAppearanceRuntime
+    appearance?: TerminalAppearanceRuntime,
+    readonly welcomeAppearance = new WelcomeAppearance(() => this.appearance.getSnapshot())
   ) {
     super(renderer, {
       id: 'terminal-canvas',
@@ -354,15 +357,22 @@ export class CanvasSurface extends Renderable {
 
   get minimapFrame(): MinimapFrame | null {
     const panel = this.minimapOpen && !this.help ? minimapPanel(this.width, this.height) : null;
+    const reader = this.contentReader;
     return panel
       ? this.#minimap.frame(
-          this.model.plane,
-          this.model.plane.getRevision(),
+          reader,
+          'getRevision' in reader && typeof reader.getRevision === 'function'
+            ? reader.getRevision()
+            : 0,
           this.model.viewport,
           panel,
           this.appearance.getSnapshot().palette?.foreground ?? null
         )
       : null;
+  }
+  projectContent = (source: CanvasSurfaceReader) => this.welcomeAppearance.project(source);
+  get contentReader() {
+    return this.projectContent(this.model.plane);
   }
 
   #drawMinimap(buffer: OptimizedBuffer, frame: MinimapFrame) {
@@ -545,14 +555,16 @@ export class CanvasSurface extends Renderable {
       cellRectContainsPoint(viewport, model.cursor);
     this.widthFallbacks = 0;
     const frame = model.frame();
+    const projectCell = this.welcomeAppearance.cellProjector(model.plane);
     const linkedGlyphs: LinkedGlyph[] = [];
     this.#links.beginFrame();
     // Include a leading halo so a wide glyph's clipped tail retains its background.
     const paintCell = (
       x: number,
       y: number,
-      cell: import('@chardesk/cell-plane/types').GridCell
+      authoredCell: import('@chardesk/cell-plane/types').GridCell
     ) => {
+      const cell = projectCell(authoredCell);
       const width = getGraphemeCellWidth(cell.char);
       const left = x - viewport.x,
         top = CANVAS_TOP + y - viewport.y;

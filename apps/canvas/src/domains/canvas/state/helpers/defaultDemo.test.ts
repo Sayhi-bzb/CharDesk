@@ -11,8 +11,7 @@ import {
 import { useEditorStore } from "@/domains/canvas/testing";
 import { GridManager } from "@/shared/utils/grid";
 import type { GridCell } from "@/shared/types";
-import generatedCasesMarkdown from "@/domains/canvas/state/helpers/default-demo-cases.generated.md?raw";
-import demoMarkdown from "@/domains/canvas/state/helpers/default-demo.md?raw";
+import { WELCOME_CASES_MARKDOWN as generatedCasesMarkdown, WELCOME_DEMO_MARKDOWN as demoMarkdown } from "@chardesk/canvas-templates/welcome";
 import { parseCharDeskText } from "@chardesk/protocol";
 
 const findTextPosition = (

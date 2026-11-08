@@ -75,9 +75,10 @@ export class MinimapManager {
   };
 
   update = (snapshot: MinimapRenderSnapshot) => {
-    const previousForeground = this.renderSnapshot?.colors.artifact.color;
+    const previousPalette = this.renderSnapshot?.colors.artifact;
     this.renderSnapshot = snapshot;
-    if (previousForeground !== undefined && previousForeground !== snapshot.colors.artifact.color) {
+    if (previousPalette && (previousPalette.color !== snapshot.colors.artifact.color ||
+      previousPalette.background !== snapshot.colors.artifact.background)) {
       this.hasCachedContent = false;
     }
     this.render();

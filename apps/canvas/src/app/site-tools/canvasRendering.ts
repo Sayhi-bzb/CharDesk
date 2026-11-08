@@ -1,10 +1,12 @@
 import type { TextRenderContext, TextRenderingRuntime } from "@/domains/document/public";
+import type { CharDeskCanvasPalette } from '@chardesk/rendering/canvas';
 
 /** App-level composition: Canvas commands only receive rendering-neutral spans. */
 export type CanvasToolRendering = Readonly<{
   render: TextRenderingRuntime["renderCompact"];
   getProfile: TextRenderingRuntime["getProfile"];
   getContext: () => TextRenderContext;
+  getArtifactPalette?: () => CharDeskCanvasPalette;
 }>;
 
 export const describeCanvasWriteRendering = (rendering: CanvasToolRendering): string => {

@@ -1,5 +1,6 @@
 import { parseCanvasReadRequest, readCanvasSurface, INVALID_CANVAS_READ } from "@chardesk/canvas-capabilities/read";
 import { renderBrowserReadImage } from "./canvasReadImage";
+import { projectWelcomeSurface } from '@/shared/canvas-appearance/welcome';
 import {isCanvasStrokeStyle,literalRows,fillRows} from '@chardesk/canvas-capabilities/projection';
 import { CanvasPersistenceTimeoutError, CanvasWriteError, isCanvasReadViewport, isCanvasSearchQuery,
   isCanvasSearchPosition, searchCanvasSurface, CanvasSearchError, type CanvasRuntime } from "@/domains/canvas/public";
@@ -653,10 +654,11 @@ export const createCanvasReadTool = (
         : await canvas.materializeSession(canvasId, input.pageId as string);
       if (!snapshot) return { ok: false, code: "canvas_not_ready", message: "The Canvas content is not ready." };
       const theme = rendering.getContext().themeMode;
-      return await readCanvasSurface(snapshot.surface, request, {
+      const palette = rendering.getArtifactPalette?.() ?? { color: CHARDESK_CONTENT_THEMES[theme].foreground, background: CHARDESK_CONTENT_THEMES[theme].background };
+      return await readCanvasSurface(projectWelcomeSurface(snapshot.surface, palette), request, {
         target: { ...targetOutput(target), ...(snapshot.pageId ? { pageId: snapshot.pageId } : {}) },
         theme,
-        palette: { color: CHARDESK_CONTENT_THEMES[theme].foreground, background: CHARDESK_CONTENT_THEMES[theme].background },
+        palette,
         renderingNote: describeCanvasWriteRendering(rendering),
         renderImage: renderBrowserReadImage,
       });

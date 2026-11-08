@@ -27,12 +27,16 @@ import {
 import { searchCanvasSurface } from '@chardesk/editor-core/search';
 import type { TerminalWorkspace } from './workspace.ts';
 import type { LocalSessions } from './sessions.ts';
+import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
+import { WelcomeAppearance } from '@chardesk/canvas-templates/welcome-appearance';
+import { normalizeContentRgb } from '@chardesk/rendering/theme';
 
 export function localCapabilities(
   workspace: TerminalWorkspace,
   sessions: LocalSessions,
   persistentHistory = false,
-  readAppearance: () => CanvasReadAppearance | undefined = () => undefined
+  readAppearance: () => CanvasReadAppearance | undefined = () => undefined,
+  presentSurface?: (source: CanvasSurfaceReader) => CanvasSurfaceReader
 ) {
   const defaultAppearance: CanvasReadAppearance = {
     theme: 'light',
@@ -128,8 +132,11 @@ export function localCapabilities(
             if (contract.name === 'canvas_read') {
               const request = parseCanvasReadRequest(input);
               if (!request) return INVALID_CANVAS_READ;
-              return await readCanvasSurface(plane, request, {
-                ...(readAppearance() ?? defaultAppearance),
+              const appearance = readAppearance() ?? defaultAppearance;
+              const foreground = normalizeContentRgb(appearance.palette.color), background = normalizeContentRgb(appearance.palette.background);
+              const welcome = new WelcomeAppearance(() => ({ revision: 0, palette: foreground && background ? { foreground, background } : null }));
+              return await readCanvasSurface(presentSurface ? presentSurface(plane) : welcome.project(plane), request, {
+                ...appearance,
                 target: { canvasId: sessions.forFile(file)?.id },
                 renderImage: async (plan) => {
                   const { renderLocalReadImage } = await import('./readImage.ts');

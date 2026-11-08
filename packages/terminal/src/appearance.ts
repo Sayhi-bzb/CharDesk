@@ -1,5 +1,6 @@
 import { RGBA } from '@opentui/core';
 import type { TerminalColors } from '@opentui/core';
+import { contentColorContrast as contrast } from '@chardesk/rendering/theme';
 import { COLOR_PRIMARY_TEXT } from '@chardesk/cell-plane/constants';
 import {
   CHARDESK_CONTENT_THEME_TOKENS,
@@ -38,18 +39,6 @@ type AppearanceSource = {
 };
 const hex = (value: string | null | undefined) =>
   value && /^#[\da-f]{6}$/i.test(value) ? value.toLowerCase() : null;
-const luminance = (color: string) => {
-  const rgb = [1, 3, 5].map((at) => {
-    const value = Number.parseInt(color.slice(at, at + 2), 16) / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  return rgb[0]! * 0.2126 + rgb[1]! * 0.7152 + rgb[2]! * 0.0722;
-};
-const contrast = (a: string, b: string) => {
-  const left = luminance(a),
-    right = luminance(b);
-  return (Math.max(left, right) + 0.05) / (Math.min(left, right) + 0.05);
-};
 function readPalette(colors: TerminalColors): TerminalPaletteSnapshot | null {
   const foreground = hex(colors.defaultForeground),
     background = hex(colors.defaultBackground);

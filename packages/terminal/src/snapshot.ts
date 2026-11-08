@@ -15,6 +15,8 @@ import {
 } from '@chardesk/rendering/canvas';
 import type { TerminalCanvas } from '../../local-runtime/src/model.ts';
 import type { TerminalClipboardImage } from './clipboard.ts';
+import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
+import type { GridCell } from '@chardesk/cell-plane/types';
 
 export function resolveSnapshotLayout(cols: number, rows: number) {
   const { cellWidth, cellHeight } = DEFAULT_CHARDESK_CELL_METRICS;
@@ -22,14 +24,18 @@ export function resolveSnapshotLayout(cols: number, rows: number) {
   return { width: layout.pixelWidth, height: layout.pixelHeight, scale: layout.scale };
 }
 
-export function captureExportSnapshot(snapshot: CanvasExportSnapshot) {
+export function captureExportSnapshot(
+  snapshot: CanvasExportSnapshot,
+  projectCell: (cell: GridCell) => GridCell = (cell) => cell
+) {
   if (snapshot.scope === 'canvas' && !snapshot.cells.size) throw new Error('empty-content');
   const { x: startX, y: startY, width, height } = snapshot.bounds;
   const padding = snapshot.scope === 'selection' ? 1 : 2;
   const layout = resolveSnapshotLayout(width + padding * 2, height + padding * 2);
   const { cellWidth, cellHeight } = DEFAULT_CHARDESK_CELL_METRICS;
   const entries: CharDeskCanvasCellDrawEntry[] = [];
-  snapshot.source.visit(snapshot.bounds, (x, y, cell) => {
+  snapshot.source.visit(snapshot.bounds, (x, y, authoredCell) => {
+    const cell = projectCell(authoredCell);
     entries.push({
       cell: resolveCharDeskCellVisual({
         text: cell.char,
@@ -46,9 +52,12 @@ export function captureExportSnapshot(snapshot: CanvasExportSnapshot) {
 }
 
 /** Capture before awaiting Host IO; only physical selection coverage enters the image. */
-export function captureSelectionSnapshot(model: TerminalCanvas) {
+export function captureSelectionSnapshot(
+  model: TerminalCanvas,
+  source: CanvasSurfaceReader = model.plane
+) {
   if (!model.selection) throw new Error('empty-selection');
-  return captureExportSnapshot(captureCanvasExport(model.plane, model.selectionRanges));
+  return captureExportSnapshot(captureCanvasExport(source, model.selectionRanges));
 }
 
 export function renderSelectionSnapshot(

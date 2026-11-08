@@ -75,6 +75,7 @@ const createRouteAgentTools = () => createChardeskAgentTools({
     render: host.textRenderingWorker.render,
     getProfile: host.textRendering.getProfile,
     getContext: () => ({ themeMode: host.canvasAppearance.getSnapshot().resolvedTheme }),
+    getArtifactPalette: () => host.canvasAppearance.getSnapshot().palette,
   },
   readOnly: isLocalDocumentReaderRoute(window.location),
 });

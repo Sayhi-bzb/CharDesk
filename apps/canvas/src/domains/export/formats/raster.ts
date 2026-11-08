@@ -1,3 +1,4 @@
+import { projectWelcomeSurface } from "@/shared/canvas-appearance/welcome";
 import { captureCanvasExport, resolveExportRasterLayout } from "@chardesk/editor-core/exportPlan";
 import {
   drawCellBatch,
@@ -124,7 +125,7 @@ export const createSelectionPngBlob = async (
   palette: CanvasArtifactPalette = DEFAULT_ARTIFACT_CANVAS_PALETTE
 ): Promise<Blob> => {
   if (selections.length === 0) throw new ExportPipelineError("empty-content");
-  const snapshot = captureCanvasExport(grid, selections, "envelope");
+  const snapshot = captureCanvasExport(projectWelcomeSurface(grid, palette), selections, "envelope");
   const { x: minX, y: minY, width, height } = snapshot.bounds;
   const padding = 1;
   const cols = width + padding * 2,
@@ -151,7 +152,7 @@ export const createPngBlobFromGrid = async (
   palette: CanvasArtifactPalette = DEFAULT_ARTIFACT_CANVAS_PALETTE
 ): Promise<Blob> => {
   if (!grid.getContentBounds()) throw new ExportPipelineError("empty-content");
-  const snapshot = captureCanvasExport(grid);
+  const snapshot = captureCanvasExport(projectWelcomeSurface(grid, palette));
   const { minX, maxX, minY, maxY } = GridManager.getGridBounds(snapshot.source);
   const padding = 2;
   const cols = maxX - minX + 1 + padding * 2;

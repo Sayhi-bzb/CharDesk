@@ -1,3 +1,4 @@
+import { getWelcomeAppearance } from "@/shared/canvas-appearance/welcome";
 import type { Point } from "@/shared/types";
 import type { CanvasSurfaceReader } from "@/domains/canvas/public";
 import type { CanvasLinkHit } from "../hooks/interaction/core/linkHitTesting";
@@ -47,6 +48,7 @@ export const drawHoveredLinkDecoration = (
   palette: CanvasArtifactPalette = DEFAULT_ARTIFACT_CANVAS_PALETTE
 ) => {
   if (!reader) return;
+  const projectCell = getWelcomeAppearance(palette).cellProjector(reader);
   const lineWidth = Math.max(1, Math.round(zoom));
   const lineY = alignCanvasCoordinate(
     GridManager.gridToScreen(
@@ -84,7 +86,7 @@ export const drawHoveredLinkDecoration = (
           zoom
         );
         ctx.beginPath();
-        ctx.strokeStyle = resolveCellVisual(cell, palette).color;
+        ctx.strokeStyle = resolveCellVisual(projectCell(cell), palette).color;
         ctx.moveTo(position.x, lineY);
         ctx.lineTo(
           position.x + DEFAULT_CANVAS_CELL_METRICS.cellWidth * zoom * width,

@@ -68,8 +68,4 @@ await cp(
   resolve(directory, 'dist/characters'),
   { recursive: true }
 );
-await cp(
-  resolve(root, 'packages/terminal/welcome.chardesk'),
-  resolve(directory, 'welcome.chardesk')
-);
 await prepareSnapshotFonts(root, resolve(directory, 'dist/snapshot-fonts'));

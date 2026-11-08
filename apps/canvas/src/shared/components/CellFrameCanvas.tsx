@@ -1,3 +1,4 @@
+import { projectWelcomeSurface } from "@/shared/canvas-appearance/welcome";
 import { useEffect, useRef } from "react";
 import { cn } from "@chardesk/ui";
 import type { CellRect } from "@chardesk/cell-core";
@@ -96,7 +97,7 @@ export function CellFrameCanvas({
       if (!layout) return;
       presentCharDeskCellFrame(
         ctx,
-        createGridCellFrame(source, viewport, "full", appearance.palette),
+        createGridCellFrame(projectWelcomeSurface(source, appearance.palette), viewport, "full", appearance.palette),
         {
           metrics: DEFAULT_CANVAS_CELL_METRICS,
           palette: appearance.palette,

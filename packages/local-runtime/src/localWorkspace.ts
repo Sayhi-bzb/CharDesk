@@ -6,6 +6,7 @@ import { LocalSessions } from './sessions.ts';
 import { TerminalWorkspace } from './workspace.ts';
 import { WorkspacePersistence } from './persistence.ts';
 import { CanvasFile, readOptional, resolveCanvasFilePath } from './document.ts';
+import { createWelcomeSource } from './welcome.ts';
 
 /** Interactive composition only; explicit files take precedence over restored navigation. */
 export async function openLocalWorkspace(
@@ -61,7 +62,9 @@ export async function openLocalWorkspace(
       else {
         const records = sessions.list();
         if (!records.length) {
-          const record = await sessions.createManaged();
+          const record = options.blank
+            ? await sessions.createManaged()
+            : await sessions.createManaged('Welcome', createWelcomeSource());
           workspace = await TerminalWorkspace.open(record.path, '', editorOptions);
         } else {
           const recent = records.find((record) => record.status === 'ready' && !record.removing);

@@ -20,8 +20,7 @@ subject, generator and encoding remain task choices.
 Code Mode is a bounded computation/composition call, not a playback loop. Each
 call has a fresh QuickJS context; Canvas stores rendered Cells, not a retained
 script. Keep source separately when reproducibility or later editing matters.
-A stateful simulation is a valid generator; it need not follow the pure sampling
-shape used in the small example below.
+A stateful simulation is also a valid generator.
 
 ## Compose with the current tool contract
 
@@ -66,21 +65,18 @@ For a spatial scene with overlapping objects, use the [miniature scene case](min
 It separates geometry and art direction from Cell encoding. For parts, assembly
 relationships and exploded views, use the [exploded assembly case](exploded-assembly.md).
 
-## Small parameterized example
+## Encode a generated frame
 
 [procedural-frame.js](../assets/procedural-frame.js) contains definitions only.
 Load it as text, then append a caller to the same Code Mode script. It does not
-import modules, access the host or choose a Canvas. The caller supplies the
-sampler, dimensions, time, seed, colors and inspected placement.
+import modules, access the host or choose a Canvas. The generator supplies
+`frame`: `{width, height, data, mask?}`, with top-down RGB bytes in `data`.
+The [miniature scene](miniature-art.md#reusable-source-and-complete-example)
+provides a complete generator and caller.
 
-For example, after selecting a placement and task parameters, append:
+After generating a frame and selecting placement, append:
 
 ```js
-const frame = sampleColorFrame({
-  width: 80, height: 48, time: 1.25, seed: 7,
-  parameters: { low: [8, 16, 35], high: [90, 210, 190] },
-  sample: colorFields.waves,
-});
 const material = encodeHalfBlocks(frame);
 const result = await canvas.render({
   at: chosenAt, // Bind from the inspected target before executing.
@@ -94,11 +90,7 @@ return {
 };
 ```
 
-The example's numbers and colors are starting values, not requirements. Swap
-`colorFields.waves` for `colorFields.contours` or a task-specific sampler without
-changing the encoder. The sampler receives normalized pixel-center coordinates
-and returns display-referred RGB channels in 0..255. These two fields intentionally
-fill the frame: every sample is picture content. External renderers should
+RGB channels are display-referred values in 0..255. External renderers should
 perform their own color conversion and supply binary coverage when needed.
 
 For `▀`, foreground is the upper color sample and background the lower. Width W

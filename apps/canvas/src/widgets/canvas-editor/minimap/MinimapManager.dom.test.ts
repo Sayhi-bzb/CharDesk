@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CellPlaneIndex, type CellPlaneOperation } from '@/domains/canvas/public';
 import { MinimapManager } from './MinimapManager';
+import { buildDefaultDemoGrid } from '@chardesk/canvas-templates/welcome';
+import { createGridSurfaceReader } from '@chardesk/cell-plane';
+import { projectWelcomeSurface } from '@/shared/canvas-appearance/welcome';
 
 class MockPath2D {
   rect = vi.fn();
@@ -195,6 +198,26 @@ describe('MinimapManager incremental content', () => {
       manager.close();
     }
   });
+  it('reprojects Welcome immediately when only the host background changes', () => {
+    const canvas = document.createElement('canvas');
+    const context = createContext();
+    const painted: string[] = [];
+    context.fill.mockImplementation(() => painted.push(context.fillStyle));
+    vi.spyOn(canvas, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D);
+    const source = createGridSurfaceReader(new Map(buildDefaultDemoGrid()));
+    const manager = new MinimapManager(canvas, document.createElement('div'), { width: 220, height: 140 }, 4);
+    try {
+      for (const [index, background] of ['#111111', '#333333'].entries()) {
+        const artifact = { color: '#eeeeee', background, grid: '#777777' };
+        const reader = projectWelcomeSurface(source, artifact);
+        painted.length = 0;
+        manager.update({ reader, contentRevision: index, offset: { x: 0, y: 0 }, zoom: 1,
+          viewportSize: { width: 1000, height: 700 }, colors: { ...colors, artifact } });
+        expect(painted).toContain(reader.get({ x: 35, y: 1 })!.color);
+      }
+    } finally { manager.close(); }
+  });
+
   it('draws both half-block colors in adjacent fractional rectangles after incremental edits', () => {
     const canvas = document.createElement('canvas');
     const context = createContext();

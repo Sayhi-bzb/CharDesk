@@ -841,7 +841,8 @@ export class WorkspaceControls {
           model.documents.getDocumentDraft(model.documents.getActiveAddress().documentId)
         );
         const title = this.workspace.active.title;
-        const raster = choice.format === 'png' ? captureExportSnapshot(snapshot) : null;
+        const png = choice.format === 'png';
+        const projectCell = this.surface.welcomeAppearance.cellProjector(model.plane);
         const text =
           choice.format !== 'png'
             ? prepareCanvasTextExport({
@@ -867,7 +868,7 @@ export class WorkspaceControls {
           const current = () => this.#alive && this.surface.panel === target;
           this.#async(target, async () => {
             let content: string | Uint8Array = text ?? '';
-            if (raster) {
+            if (png) {
               const appearance = await this.surface.appearance.ensurePalette();
               if (!this.#alive || this.surface.panel !== target) return;
               if (!appearance.palette || appearance.status !== 'ready')
@@ -875,7 +876,7 @@ export class WorkspaceControls {
                   this.surface.t('Terminal RGB colors are unavailable. Refresh colors in Settings.')
                 );
               content = renderSelectionSnapshot(
-                raster,
+                captureExportSnapshot(snapshot, projectCell),
                 { color: appearance.palette.foreground, background: appearance.palette.background },
                 'png'
               ).png!;

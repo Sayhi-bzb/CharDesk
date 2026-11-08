@@ -97,3 +97,5 @@ export const resolveCharDeskContentColor = (
   value: CharDeskContentColorDefault,
   theme: CharDeskContentTheme
 ) => value.kind === "token" ? theme[value.token] : undefined;
+
+export { contentColorContrast, deriveContentNeutral, normalizeContentRgb } from "./content-contrast.js";
