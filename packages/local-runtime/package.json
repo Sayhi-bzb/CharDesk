@@ -15,6 +15,7 @@
     "@chardesk/chargraph": "*",
     "@chardesk/document": "*",
     "@chardesk/editor-core": "*",
-    "@chardesk/protocol": "*"
+    "@chardesk/protocol": "*",
+    "yjs": "^13.6.27"
   }
 }

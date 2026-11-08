@@ -10,6 +10,7 @@ const result = await Bun.build({
     resolve(directory, 'src/cli.ts'),
     resolve(directory, 'src/raster-worker.ts'),
     resolve(root, 'packages/chargraph/src/layout/elk-worker.ts'),
+    resolve(root, 'packages/local-runtime/src/document-worker.ts'),
   ],
   target: 'node',
   splitting: true,

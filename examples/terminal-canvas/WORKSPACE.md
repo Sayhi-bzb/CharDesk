@@ -120,6 +120,13 @@ commands and disabling autosave are not exposed. `--snapshot` is
 read-only and creates neither checkpoint nor lock. Recovery guarantees extend
 to the last completed checkpoint, not every incoming keystroke.
 
+[DocumentSerializer](../../packages/local-runtime/src/documentSerialization.ts) captures
+immutable Yjs state and runs the shared text codec and validation in one workspace-owned
+worker. Saves and checkpoints reuse captures of the same content/page version; camera
+changes reuse the text. Overlapping checkpoint requests coalesce before the next capture.
+[Regressions](src/documentSerialization.test.ts) verify snapshot isolation and metadata;
+[persistence tests](src/persistence.test.ts) verify the final coalesced checkpoint.
+
 Saves check the disk baseline before writing and again before replacement.
 Detected external modifications stop the save and appear as errors in the UI.
 Duplicate preserves the original. Baseline checks provide optimistic conflict

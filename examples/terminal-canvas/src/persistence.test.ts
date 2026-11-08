@@ -28,6 +28,55 @@ async function until(check: () => boolean | Promise<boolean>) {
   }
 }
 
+test('overlapping checkpoints coalesce and the final capture includes edits made during encoding', async () => {
+  const f = await fixture();
+  const capture = f.workspace.captureFile.bind(f.workspace);
+  let release!: () => void,
+    started!: () => void,
+    captures = 0;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const ready = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  f.workspace.captureFile = (file) => {
+    const snapshot = capture(file);
+    if (++captures !== 1) return snapshot;
+    return snapshot.then(async (value) => {
+      started();
+      await gate;
+      return value;
+    });
+  };
+  try {
+    f.workspace.model.commands.insert('A');
+    f.persistence.start(f.workspace, { autosaveMs: -1, checkpointMs: 5000 });
+    const first = f.persistence.flush();
+    await ready;
+    f.workspace.model.commands.insert('B');
+    f.workspace.model.pan(20, 30);
+    for (let i = 0; i < 20; i++) expect(f.persistence.flush()).toBe(first);
+    release();
+    await first;
+    expect(captures).toBe(2);
+    await f.persistence.abandon();
+    const recovery = await WorkspacePersistence.open(f.checkpoint);
+    const restored = (await recovery.restore({}))!;
+    try {
+      expect(restored.model.plane.get({ x: 1, y: 0 })?.char).toBe('B');
+      expect(restored.model.viewport).toEqual(f.workspace.model.viewport);
+    } finally {
+      await recovery.abandon();
+      restored.dispose();
+    }
+  } finally {
+    release();
+    await f.persistence.abandon();
+    f.workspace.dispose();
+  }
+});
+
 test('restart restores multiple documents, view, typing context, anchors and dirty content', async () => {
   const f = await fixture();
   try {

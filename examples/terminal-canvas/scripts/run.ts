@@ -23,6 +23,7 @@ const result = await Bun.build({
     ...(command === 'test' ? tests : ['src/main.ts']).map((path) => resolve(directory, path)),
     // CharGraph creates this worker relative to the compiled entrypoint.
     resolve(root, 'packages/chargraph/src/layout/elk-worker.ts'),
+    resolve(root, 'packages/local-runtime/src/document-worker.ts'),
   ],
   target: 'bun',
   outdir: resolve(directory, 'dist'),

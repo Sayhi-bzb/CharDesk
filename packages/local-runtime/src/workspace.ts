@@ -3,6 +3,7 @@ import type { FreeformEditorSessionOptions } from '@chardesk/editor-core/runtime
 import { CanvasFile, resolveCanvasFilePath } from './document.ts';
 import { TerminalCanvas } from './model.ts';
 import { parseCanvasDocument } from '@chardesk/editor-core/documentText';
+import { DocumentSerializer } from './documentSerialization.ts';
 
 /** Host-owned file catalog; document, interaction and history live in the shared Session. */
 export class TerminalWorkspace {
@@ -12,6 +13,7 @@ export class TerminalWorkspace {
   #openIntent = 0;
   readonly #saves = new Map<CanvasFile, Promise<void>>();
   readonly #reserved = new Set<string>();
+  readonly #serializer = new DocumentSerializer();
   readonly #errors = new Map<CanvasFile, string>();
   errorFor(file: CanvasFile) {
     return this.#errors.get(file);
@@ -126,7 +128,10 @@ export class TerminalWorkspace {
     for (const file of this.#files) if (this.needsSave(file)) await this.saveFile(file);
   }
   saveFile(file = this.active) {
-    return this.#fileOperation(file, () => file.save(this.model), true);
+    return this.#fileOperation(file, () => file.save(this.model, this.#serializer), true);
+  }
+  captureFile(file = this.active) {
+    return this.#serializer.capture(this.model, file.address!, file.title);
   }
   #fileOperation(file: CanvasFile, run: () => Promise<void>, trackSaveFailure = false) {
     const pending = (this.#saves.get(file) ?? Promise.resolve())
@@ -242,7 +247,7 @@ export class TerminalWorkspace {
       throw new Error('Choose a new filename; the target already exists.');
     const copy = new CanvasFile(path, original.title, null);
     copy.address = original.address;
-    const saving = copy.save(this.model);
+    const saving = copy.save(this.model, this.#serializer);
     this.#saves.set(copy, saving);
     try {
       await saving;
@@ -296,6 +301,7 @@ export class TerminalWorkspace {
     if (this.#disposed) return;
     this.#disposed = true;
     this.#openIntent++;
+    this.#serializer.dispose();
     this.model.dispose();
   }
 }

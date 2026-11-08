@@ -22,6 +22,7 @@
     "dev:cell-ui": "npm run dev -w @chardesk/cell-ui-site",
     "demo:terminal": "cd examples/terminal-canvas && bun run start",
     "test:terminal": "cd examples/terminal-canvas && bun run test",
+    "test:terminal:perf": "bun --tsconfig-override examples/terminal-canvas/tsconfig.json scripts/performance/terminal-canvas.ts",
     "build:app": "node scripts/quality/verification.mjs --mode full --phase build --target app",
     "build:site": "npm run build",
     "build": "node scripts/quality/verification.mjs --mode full --phase build",

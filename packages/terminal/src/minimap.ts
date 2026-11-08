@@ -1,5 +1,9 @@
 import type { CellRect } from '@chardesk/cell-core';
-import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
+import {
+  isIncrementalCanvasSurfaceReader,
+  type CanvasSurfaceReader,
+  type CellPlaneRow,
+} from '@chardesk/cell-plane';
 import {
   describeMinimapCell,
   minimapColorKey,
@@ -27,6 +31,10 @@ export type MinimapFrame = {
   colors: readonly MinimapColor[];
   hasContent: boolean;
 };
+type ContentRow = {
+  groups: Map<string, { color: MinimapColor; spans: CellRect[] }>;
+  bounds: CellRect | null;
+};
 
 export class TerminalMinimap {
   #reader: CanvasSurfaceReader | null = null;
@@ -35,53 +43,110 @@ export class TerminalMinimap {
 
   #raster: { key: string; pixels: Uint32Array; colors: MinimapColor[] } | null = null;
   #bounds: CellRect | null = null;
+  #rows = new Map<number, ContentRow>();
 
   #updateContent(reader: CanvasSurfaceReader, revision: unknown) {
     if (reader === this.#reader && revision === this.#revision) return;
+    const changes =
+      reader === this.#reader &&
+      typeof this.#revision === 'number' &&
+      isIncrementalCanvasSurfaceReader(reader)
+        ? reader.getChangesSince(this.#revision)
+        : null;
+    const dirty = changes && !changes.full ? changes.bounds : null;
+    if (!dirty) this.#rows.clear();
+    else
+      for (const y of this.#rows.keys())
+        if (dirty.some((box) => y >= box.y && y < box.y + box.height)) this.#rows.delete(y);
+    // Re-read whole affected rows so deletes, wide glyphs and merging color runs are exact.
+    const ranges: (CellRect | undefined)[] = [];
+    if (!dirty) ranges.push(undefined);
+    else {
+      // Do not ask the plane for exact content bounds: that can itself resolve every cell.
+      const left = Math.min(this.#bounds?.x ?? Infinity, ...dirty.map((box) => box.x));
+      const right = Math.max(
+        this.#bounds ? this.#bounds.x + this.#bounds.width : -Infinity,
+        ...dirty.map((box) => box.x + box.width)
+      );
+      for (const box of [...dirty].sort((a, b) => a.y - b.y)) {
+        const previous = ranges.at(-1);
+        if (previous && box.y <= previous.y + previous.height)
+          ranges[ranges.length - 1] = {
+            ...previous,
+            height: Math.max(previous.y + previous.height, box.y + box.height) - previous.y,
+          };
+        else ranges.push({ x: left, width: right - left, y: box.y, height: box.height });
+      }
+    }
+    for (const range of ranges) {
+      for (const row of reader.rows(range)) this.#rows.set(row.y, this.#describeRow(row));
+    }
     this.#reader = reader;
     this.#revision = revision;
-    this.#groups = new Map();
-
     this.#raster = null;
+    this.#groups = new Map();
     let left = Infinity,
       top = Infinity,
       right = -Infinity,
       bottom = -Infinity;
-    for (const row of reader.rows()) {
-      const runs = new Map<string, { x: number; y: number; width: number; height: number }>();
-      for (const span of row.spans) {
-        let x = span.x;
-        for (const cell of span.cells) {
-          const { width, regions } = describeMinimapCell(cell);
-          for (const region of regions) {
-            const key = minimapColorKey(region.color);
-            let group = this.#groups.get(key);
-            if (!group) {
-              group = { color: region.color, spans: [] };
-              this.#groups.set(key, group);
-            }
-            const y = (row.y + region.y) * ROW_ASPECT;
-            const height = region.height * ROW_ASPECT;
-            const runKey = `${key}:${y}:${height}`;
-            const run = runs.get(runKey);
-            if (run && run.x + run.width === x) run.width += width;
-            else {
-              const next = { x, y, width, height };
-              group.spans.push(next);
-              runs.set(runKey, next);
-            }
-            left = Math.min(left, x);
-            top = Math.min(top, y);
-            right = Math.max(right, x + width);
-            bottom = Math.max(bottom, y + height);
-          }
-          x += width;
-        }
+    for (const [, row] of [...this.#rows].sort(([a], [b]) => a - b)) {
+      if (row.bounds) {
+        left = Math.min(left, row.bounds.x);
+        top = Math.min(top, row.bounds.y);
+        right = Math.max(right, row.bounds.x + row.bounds.width);
+        bottom = Math.max(bottom, row.bounds.y + row.bounds.height);
+      }
+      for (const [key, group] of row.groups) {
+        const current = this.#groups.get(key);
+        if (current) for (const span of group.spans) current.spans.push(span);
+        else this.#groups.set(key, { color: group.color, spans: [...group.spans] });
       }
     }
     this.#bounds = Number.isFinite(left)
       ? { x: left, y: top, width: right - left, height: bottom - top }
       : null;
+  }
+
+  #describeRow(row: CellPlaneRow): ContentRow {
+    const groups: ContentRow['groups'] = new Map();
+    let left = Infinity,
+      top = Infinity,
+      right = -Infinity,
+      bottom = -Infinity;
+    const runs = new Map<string, { x: number; y: number; width: number; height: number }>();
+    for (const span of row.spans) {
+      let x = span.x;
+      for (const cell of span.cells) {
+        const { width, regions } = describeMinimapCell(cell);
+        for (const region of regions) {
+          const key = minimapColorKey(region.color);
+          let group = groups.get(key);
+          if (!group) {
+            group = { color: region.color, spans: [] };
+            groups.set(key, group);
+          }
+          const y = (row.y + region.y) * ROW_ASPECT;
+          const height = region.height * ROW_ASPECT;
+          const runKey = `${key}:${y}:${height}`;
+          const run = runs.get(runKey);
+          if (run && run.x + run.width === x) run.width += width;
+          else {
+            const next = { x, y, width, height };
+            group.spans.push(next);
+            runs.set(runKey, next);
+          }
+          left = Math.min(left, x);
+          top = Math.min(top, y);
+          right = Math.max(right, x + width);
+          bottom = Math.max(bottom, y + height);
+        }
+        x += width;
+      }
+    }
+    const bounds = Number.isFinite(left)
+      ? { x: left, y: top, width: right - left, height: bottom - top }
+      : null;
+    return { groups, bounds };
   }
 
   frame(

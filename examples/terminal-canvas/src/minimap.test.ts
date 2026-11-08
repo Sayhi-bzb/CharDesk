@@ -6,6 +6,67 @@ import { CanvasSurface } from './surface.ts';
 import { attachControls } from './controller.ts';
 import { TerminalMinimap, minimapPanel } from './minimap.ts';
 
+test('incremental minimap reads only dirty rows and matches a cold raster through edits, erase and undo', () => {
+  const model = new TerminalCanvas();
+  const map = new TerminalMinimap(),
+    panel = minimapPanel(90, 28)!;
+  try {
+    model.apply({
+      rows: Array.from({ length: 100 }, (_, i) => ({
+        y: i - 50,
+        erase: [],
+        spans: [{ x: -10, text: 'a界🦀▀▄ ', color: '#ff0000', bgColor: '#0000ff' }],
+      })),
+    });
+    const rows = model.plane.rows.bind(model.plane);
+    let visited = 0;
+    model.plane.rows = function* (...args) {
+      for (const row of rows(...args)) {
+        visited++;
+        yield row;
+      }
+    };
+    const frame = () => map.frame(model.plane, model.plane.getRevision(), model.viewport, panel);
+    const sameAsCold = () => {
+      const warm = frame();
+      const cold = new TerminalMinimap().frame(
+        model.plane,
+        model.plane.getRevision(),
+        model.viewport,
+        panel
+      );
+      expect(warm.colors).toEqual(cold.colors);
+      expect(warm.pixels).toEqual(cold.pixels);
+      expect(warm.transform).toEqual(cold.transform);
+    };
+    frame();
+    model.apply({
+      rows: [{ y: 0, erase: [], spans: [{ x: -10, text: '🦀Z', color: '#00ff00' }] }],
+    });
+    visited = 0;
+    frame();
+    expect(visited).toBe(1);
+    sameAsCold();
+    model.selection = { anchor: { x: -20, y: -50 }, focus: { x: 20, y: -45 } };
+    model.erase();
+    sameAsCold();
+    model.undo();
+    sameAsCold();
+    // Outrun retained invalidations; the reader must be rebuilt safely.
+    for (let i = 0; i < 300; i++)
+      model.apply({
+        rows: [{ y: 0, erase: [], spans: [{ x: -10, text: i % 2 ? 'X' : 'Y', color: '#00ff00' }] }],
+      });
+    sameAsCold();
+    model.commands.selectAll();
+    model.erase();
+    sameAsCold();
+    expect(frame().hasContent).toBe(false);
+  } finally {
+    model.dispose();
+  }
+});
+
 test('map fits content plus viewport dynamically and caches content across pan', () => {
   const model = new TerminalCanvas('A界\n B');
   const map = new TerminalMinimap();

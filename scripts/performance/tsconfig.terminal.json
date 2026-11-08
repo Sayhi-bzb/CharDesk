@@ -1,0 +1,4 @@
+{
+  "extends": "../../examples/terminal-canvas/tsconfig.json",
+  "include": ["terminal-canvas.ts"]
+}

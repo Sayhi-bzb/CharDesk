@@ -1,11 +1,12 @@
 import { realpath, stat } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
-import { parseCanvasDocument, serializeCanvasDocument } from '@chardesk/editor-core/documentText';
+import { parseCanvasDocument } from '@chardesk/editor-core/documentText';
 import type { CanvasDocumentAddress } from '@chardesk/editor-core/canvasDocumentModel';
 import { TerminalCanvas } from './model.ts';
 import type { FreeformEditorSessionOptions } from '@chardesk/editor-core/runtime';
 import { atomicWrite } from './storage.ts';
 import { FileSourceBinding, readOptionalFileText as readOptional } from './fileSource.ts';
+import { DocumentSerializer } from './documentSerialization.ts';
 
 export { readOptional };
 export async function resolveCanvasFilePath(input: string) {
@@ -50,16 +51,14 @@ export class CanvasFile {
     return { file, model };
   }
 
-  async save(model: TerminalCanvas) {
+  async save(model: TerminalCanvas, serializer?: DocumentSerializer) {
     this.writeGuard?.();
     if (this.#saving) throw new Error('Save is already in progress.');
     this.#saving = true;
+    const encoder = serializer ?? new DocumentSerializer();
     try {
       const address = this.address ?? model.documents.getActiveAddress();
-      const document = model.documents.getDocumentDraft(address.documentId);
-      if (!document) throw new Error('Document is no longer open.');
-      const version = model.versionAt(address);
-      const source = serializeCanvasDocument(document, this.title);
+      const { version, source } = await encoder.capture(model, address, this.title);
       this.source.assertBaseline(await this.source.read());
       const mode = await stat(this.path)
         .then((info) => info.mode & 0o777)
@@ -80,6 +79,7 @@ export class CanvasFile {
       model.markSavedAt(address, version);
     } finally {
       this.#saving = false;
+      if (!serializer) encoder.dispose();
     }
   }
 }

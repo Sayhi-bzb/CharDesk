@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, unlink } from 'node:fs/promises';
 import { dirname, basename, join, isAbsolute, resolve } from 'node:path';
-import { parseCanvasDocument, serializeCanvasDocument } from '@chardesk/editor-core/documentText';
+import { parseCanvasDocument } from '@chardesk/editor-core/documentText';
 import { readEditorView, type EditorView } from '@chardesk/editor-core/viewState';
 import type { FreeformEditorSessionOptions } from '@chardesk/editor-core/runtime';
 import { CanvasFile, readOptional, resolveCanvasFilePath } from './document.ts';
@@ -104,13 +104,13 @@ export class WorkspacePersistence {
   #detach = () => {};
   #timer: ReturnType<typeof setTimeout> | null = null;
   #saveTimer: ReturnType<typeof setTimeout> | null = null;
-  #queue: Promise<void> = Promise.resolve();
   #closed: Promise<void> | null = null;
   #active = false;
   #options: Parameters<WorkspacePersistence['start']>[1] = {};
   #saving = false;
   readonly #failed = new Map<CanvasFile, string>();
-  readonly #sources = new Map<CanvasFile, { version: string; source: string }>();
+  #flushAgain = false;
+  #flushing: Promise<void> | null = null;
   recovered = 0;
   readonly conflicts: string[] = [];
   private constructor(
@@ -340,67 +340,58 @@ export class WorkspacePersistence {
     this.#detach = workspace.model.subscribe(changed);
     changed();
   }
-  #capture(): Checkpoint {
+  async #capture(): Promise<Checkpoint> {
     const workspace = this.#workspace!;
-    const files: SavedFile[] = [];
-    for (const file of this.#sources.keys())
-      if (!workspace.files.includes(file)) this.#sources.delete(file);
     for (const file of this.#failed.keys())
       if (!workspace.files.includes(file)) this.#failed.delete(file);
-    for (const file of workspace.files) {
+    const activePath = workspace.active?.path ?? null;
+    const captures = workspace.files.map((file) => {
       const dirty = workspace.model.isDirtyAt(file.address!);
-      const version = JSON.stringify([
-        workspace.model.versionAt(file.address!),
-        workspace.model.documents.getDocumentAddress(file.address!.documentId)?.pageId,
-      ]);
-      let cached = this.#sources.get(file);
-      if (cached?.version !== version) {
-        cached = {
-          version,
-          source: serializeCanvasDocument(
-            workspace.model.documents.getDocumentDraft(file.address!.documentId)!,
-            file.title
-          ),
-        };
-        this.#sources.set(file, cached);
-      }
-      const source = cached!.source;
+      const capture = workspace.captureFile(file);
       const pages = workspace.model.documents.getPageDescriptors(file.address!.documentId);
       const sessionId = this.lifecycle?.identify(file.path);
-      files.push({
+      const saved = {
         ...(sessionId ? { sessionId } : {}),
         path: file.path,
         title: file.title,
-        source,
         baselineDigest: file.baselineDigest,
         dirty,
         views: pages.map((page) => ({
           pageId: page.id,
           state: workspace.model.viewAt({ documentId: file.address!.documentId, pageId: page.id }),
         })),
-      });
-    }
+      };
+      return capture.then(({ source }) => ({ ...saved, source }));
+    });
+    const files = await Promise.all(captures);
     return {
       version: 1,
-      activePath: files.some((file) => file.path === workspace.active.path)
-        ? workspace.active.path
+      activePath: files.some((file) => file.path === activePath)
+        ? activePath
         : (files[0]?.path ?? null),
       files,
     };
   }
   flush() {
     if (!this.#workspace) return Promise.resolve();
-    const checkpoint = this.#capture();
-    const task = this.#queue
-      .catch(() => {})
-      .then(() =>
-        atomicWrite(this.path, JSON.stringify(checkpoint), async () => {
-          if ((await readOptional(`${this.path}.lock`)) !== this.#owner)
-            throw new Error('Workspace lock ownership changed.');
-        })
-      );
-    this.#queue = task;
-    return task;
+    this.#flushAgain = true;
+    if (!this.#flushing) {
+      this.#flushing = (async () => {
+        try {
+          while (this.#flushAgain) {
+            this.#flushAgain = false;
+            const checkpoint = await this.#capture();
+            await atomicWrite(this.path, JSON.stringify(checkpoint), async () => {
+              if ((await readOptional(`${this.path}.lock`)) !== this.#owner)
+                throw new Error('Workspace lock ownership changed.');
+            });
+          }
+        } finally {
+          this.#flushing = null;
+        }
+      })();
+    }
+    return this.#flushing;
   }
   close() {
     if (this.#closed) return this.#closed;
@@ -436,7 +427,7 @@ export class WorkspacePersistence {
     if (this.#saveTimer) clearTimeout(this.#saveTimer);
     this.#timer = null;
     this.#saveTimer = null;
-    await this.#queue.catch(() => {});
+    await this.#flushing?.catch(() => {});
     await this.#release();
   }
 }
