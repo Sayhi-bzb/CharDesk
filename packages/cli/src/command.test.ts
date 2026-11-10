@@ -1,5 +1,5 @@
 import { FreeformEditorSession } from '@chardesk/editor-core/runtime';
-import { serializeCanvasDocument } from '@chardesk/editor-core/documentText';
+import { parseCanvasDocument, serializeCanvasDocument } from '@chardesk/editor-core/documentText';
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -329,7 +329,7 @@ describe('chardesk render command', () => {
   it('writes inferred text formats and supports plain text on stdout', async () => {
     const cwd = await temporaryDirectory();
     for (const [filename, marker] of [
-      ['result.chardesk', '[1m'],
+      ['result.chardesk', 'Ready'],
       ['result.ans', '\u001b['],
       ['result.txt', 'Ready 界'],
     ] as const) {
@@ -337,8 +337,13 @@ describe('chardesk render command', () => {
       expect(await runCli(['render', '-', '-o', filename, '--strict'], io.value, cwd)).toBe(0);
       expect(await readFile(join(cwd, filename), 'utf8')).toContain(marker);
     }
-    expect(await readFile(join(cwd, 'result.chardesk'), 'utf8')).not.toContain('\u001b');
-    expect(await readFile(join(cwd, 'result.chardesk'), 'utf8')).toContain('chardesk: document/v1');
+    const source = await readFile(join(cwd, 'result.chardesk'), 'utf8');
+    expect(source).not.toContain('\u001b');
+    expect(source).toContain('chardesk: document/v1');
+    const document = parseCanvasDocument(source).document;
+    expect(new Map(document.pages[0]!.grid).get('0,0')).toMatchObject({
+      char: 'R', color: '#0969da', attrs: { bold: true },
+    });
 
     const stdout = streams('**Ready** 界');
     expect(

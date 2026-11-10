@@ -90,9 +90,11 @@ describe("headless CharDesk PNG renderer", () => {
     expect(new TextDecoder().decode(ansi.bytes)).toContain("\u001b[");
     const chardeskText = new TextDecoder().decode(chardesk.bytes);
     expect(chardeskText).not.toContain("\u001b");
-    expect(chardeskText).toContain("[1m");
-    expect(decodeCharDeskTextRuns(chardeskText, { syntax: "ansi" }))
-      .toMatchObject({ text: "Ready 界", diagnostics: [] });
+    const decoded = decodeCharDeskTextRuns(chardeskText, { syntax: "ansi" });
+    expect(decoded).toMatchObject({ text: "Ready 界", diagnostics: [] });
+    const boldRuns = decoded.runs.filter((run) => run.attrs?.bold);
+    expect(boldRuns.map((run) => run.text).join("")).toBe("Ready");
+    expect(boldRuns.every((run) => run.color === "#0969da")).toBe(true);
     expect(plain).toMatchObject({ columns: 8, rows: 1, diagnostics: [] });
   });
 
