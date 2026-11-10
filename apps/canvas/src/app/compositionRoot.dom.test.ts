@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import financialReviewFlow from "../../../../packages/chargraph/src/__fixtures__/financial-review-flow.md?raw";
 import asciiSponge from "../../../../packages/chargraph/src/__fixtures__/ascii-sponge.txt?raw";
 import * as Y from "yjs";
 import { DEFAULT_TEXT_RENDER_PROFILE } from "@/domains/document/public";
@@ -61,7 +62,28 @@ describe("ApplicationEditorHost", () => {
     expect(host.canvas.getState().contentSurface.reader.materialize().has("1,0")).toBe(false);
   });
 
-  it("preserves pasted spatial diagrams in automatic text mode", async () => {
+  it("pastes unfenced flowchart Markdown as bold Cells in Auto mode", async () => {
+    const host = createHost();
+    host.textRendering.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "auto" });
+    host.canvas.commands.grid.replace([]);
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
+    const result = await host.canvas.commands.selection.paste({
+      eventDataTransfer: {
+        getData: (type: string) => type === "text/plain" ? financialReviewFlow.trimEnd() : "",
+      } as DataTransfer,
+    });
+    const cells = host.canvas.getState().contentSurface.reader.materialize();
+    expect(result).toMatchObject({ status: "applied" });
+    for (const [y, char] of [[0, "视"], [2, "发"], [5, "专"], [7, "交"], [9, "给"]] as const) {
+      const cell = [...cells].find(([key, cell]) => key.endsWith(`,${y}`) && cell.char === char)?.[1];
+      expect(cell).toMatchObject({ char, attrs: { bold: true } });
+    }
+    expect(cells.get("0,4")?.char).toBe("├");
+    expect(cells.get("0,5")?.char).toBe("└");
+    expect([...cells.values()].some(cell => cell.char === "*")).toBe(false);
+  });
+
+  it("preserves fenced spatial diagrams in automatic text mode", async () => {
     const host = createHost();
     host.canvas.commands.grid.replace([]);
     host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
@@ -69,7 +91,7 @@ describe("ApplicationEditorHost", () => {
 
     const result = await host.canvas.commands.selection.paste({
       eventDataTransfer: {
-        getData: (type: string) => type === "text/plain" ? source : "",
+        getData: (type: string) => type === "text/plain" ? ["```text", source, "```"].join("\n") : "",
       } as unknown as DataTransfer,
     });
     const cells = host.canvas.getState().contentSurface.reader.materialize();
@@ -81,14 +103,14 @@ describe("ApplicationEditorHost", () => {
     expect(cells.has("0,4")).toBe(false);
   });
 
-  it("pastes ASCII artwork without changing character coordinates", async () => {
+  it("pastes fenced ASCII artwork without changing character coordinates", async () => {
     const host = createHost();
     host.canvas.commands.grid.replace([]);
     host.canvas.commands.staticGrid.enterTextEdit({ x: 3, y: 2 });
     const source = asciiSponge;
     const result = await host.canvas.commands.selection.paste({
       eventDataTransfer: {
-        getData: (type: string) => type === "text/plain" ? source : "",
+        getData: (type: string) => type === "text/plain" ? ["```text", source, "```"].join("\n") : "",
       } as unknown as DataTransfer,
     });
     const cells = host.canvas.getState().contentSurface.reader.materialize();
@@ -202,7 +224,7 @@ describe("ApplicationEditorHost", () => {
       } as unknown as DataTransfer,
     });
     const darkCells = host.canvas.getState().contentSurface.reader.materialize();
-    expect(darkCells.get("0,0")?.color).toBe("#f0f6fc");
+    expect(darkCells.get("0,0")?.color).toBe("#58a6ff");
     expect(darkCells.get("5,0")).toMatchObject({
       color: "#58a6ff",
       bgColor: "#161b22",
@@ -210,7 +232,7 @@ describe("ApplicationEditorHost", () => {
 
     host.canvasAppearance.sync("light", createCanvasVisualThemeFixture());
     expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.color)
-      .toBe("#f0f6fc");
+      .toBe("#58a6ff");
     host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 2 });
     await host.canvas.commands.selection.paste({
       eventDataTransfer: {
@@ -218,7 +240,7 @@ describe("ApplicationEditorHost", () => {
       } as unknown as DataTransfer,
     });
     const lightCells = host.canvas.getState().contentSurface.reader.materialize();
-    expect(lightCells.get("0,2")?.color).toBe("#1f2328");
+    expect(lightCells.get("0,2")?.color).toBe("#0969da");
     expect(lightCells.get("6,2")).toMatchObject({
       color: "#0969da",
       bgColor: "#f6f8fa",

@@ -35,18 +35,16 @@ host defaults for theme and wrapping may differ.
 
 ## Auto block policy
 
-[`spatial-text.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/spatial-text.ts)
-registers a literal block token before Markdown consumes drawing punctuation.
-It recognizes existing Unicode boxes, ASCII frames, and punctuation-dense ASCII
-art within continuous nonblank regions. Fences, Markdown tables, and links retain
-their grammar. This is a conservative classifier, not a universal artwork detector.
-
 [`markdown.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/markdown.ts)
-lexes once and renders those tokens. Spatial blocks and paragraphs without syntax
-evidence preserve their text; adjacent Markdown still renders. Source spacing
-around literal blocks is retained. Explicit Markdown containers establish their
-own indentation rules. Fenced code is handled as code or by its registered
-language extension; drawing glyphs and `|||` inside it cannot select another format.
+uses Markdown syntax boundaries; box-drawing glyphs and punctuation density do
+not select a literal format. Unfenced text keeps inline Markdown semantics,
+including bold labels inside flowcharts.
+
+Use an ordinary fenced code block (no language or `text`) to preserve a character
+diagram's indentation and Markdown-looking punctuation. Indented code follows
+Markdown's indentation rules. Registered fenced languages retain their renderers.
+Paragraphs without syntax evidence preserve their text and source spacing;
+adjacent Markdown still renders.
 
 The old `|||` field layout, layout-row grammar, parser exports, and layout options
 are removed. `|||` is ordinary text; `---` follows the selected format's grammar.

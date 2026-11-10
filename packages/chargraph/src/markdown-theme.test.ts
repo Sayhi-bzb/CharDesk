@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CHARDESK_DARK_RENDER_THEME,
   CHARDESK_LIGHT_RENDER_THEME,
   CHARDESK_MARKDOWN_COLOR_DEFAULTS,
   createCharDeskMarkdownRenderOptions,
@@ -11,6 +12,7 @@ import {
   CHARDESK_MARKDOWN_MODULES,
 } from "./markdown-modules.js";
 import { renderMarkdown } from "./markdown-default.js";
+import { compileCharDeskText } from "./compiler.js";
 import {
   createCharDeskMermaidStyles,
   MERMAID_STYLE_ROLES,
@@ -60,6 +62,35 @@ describe("CharDesk Markdown theme", () => {
     expect(result.extensionStyles["math-error"]?.color)
       .toBe(CHARDESK_LIGHT_RENDER_THEME.danger);
   });
+
+  it.each([
+    ["light", CHARDESK_LIGHT_RENDER_THEME],
+    ["dark", CHARDESK_DARK_RENDER_THEME],
+  ] as const)("colors Auto bold text with the %s theme accent", async (_mode, theme) => {
+    const result = await compileCharDeskText("正文 **重点** 后文", {
+      format: "auto",
+      markdown: createCharDeskMarkdownRenderOptions({ theme }),
+    });
+
+    expect(result.plainText).toBe("正文 重点 后文");
+    expect(result.fragments.find((part) => part.text === "重点"))
+      .toMatchObject({ color: theme.accent, attrs: { bold: true } });
+    expect(result.fragments.find((part) => part.text.includes("正文"))?.color)
+      .toBeUndefined();
+  });
+
+  it.each(["auto", "markdown"] as const)(
+    "keeps the unconfigured %s entry point consistent with themed bold",
+    async (format) => {
+      const result = await compileCharDeskText("正文 **重点**", { format });
+
+      expect(result.fragments.find((part) => part.text === "重点"))
+        .toMatchObject({
+          color: CHARDESK_LIGHT_RENDER_THEME.accent,
+          attrs: { bold: true },
+        });
+    }
+  );
 
   it("applies feature slot overrides without changing fixed attributes", () => {
     const result = createCharDeskMarkdownStyles({

@@ -106,7 +106,7 @@ describe("clipboardActions", () => {
     expect(payload.richCells?.[0]).toMatchObject({
       x: 0,
       char: "粗",
-      color: "#f0f6fc",
+      color: "#58a6ff",
       attrs: { bold: true },
     });
     expect(payload.richCells?.find((cell) => cell.char === "s")).toMatchObject({

@@ -330,8 +330,8 @@ describe("TextRenderingRuntime", () => {
     if (light.kind !== "styled" || dark.kind !== "styled") {
       throw new Error("Expected styled Markdown");
     }
-    expect(light.cells.find((cell) => cell.char === "B")?.color).toBe("#1f2328");
-    expect(dark.cells.find((cell) => cell.char === "B")?.color).toBe("#f0f6fc");
+    expect(light.cells.find((cell) => cell.char === "B")?.color).toBe("#0969da");
+    expect(dark.cells.find((cell) => cell.char === "B")?.color).toBe("#58a6ff");
     expect(light.cells.find((cell) => cell.char === "c")).toMatchObject({
       color: "#0969da",
       bgColor: "#f6f8fa",

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CHARDESK_LIGHT_RENDER_THEME } from "./render-theme.js";
 import {
   CharDeskTextCompileError,
   compileCharDeskText,
@@ -42,20 +43,25 @@ describe("compileCharDeskText", () => {
     ]);
   });
 
-  it("selects the last matching pipeline default without changing raw input", async () => {
+  it("applies pipeline defaults without overriding semantic foregrounds", async () => {
     const options = {
       sourceKind: "chargraph" as const,
       defaultStyle: { color: "#111111" },
       pipelineDefaultStyles: { markdown: { color: "#eeeeee" } },
     };
     const markdown = materializeCompiledCharDeskText(
-      await compileCharDeskText("**styled**", options)
+      await compileCharDeskText("plain **styled**", options)
     );
     const raw = materializeCompiledCharDeskText(
       await compileCharDeskText("plain", options)
     );
 
-    expect(markdown.cells.every((cell) => cell.color === "#eeeeee")).toBe(true);
+    expect(markdown.cells.filter((cell) => !cell.attrs?.bold)
+      .every((cell) => cell.color === "#eeeeee")).toBe(true);
+    expect(markdown.cells.filter((cell) => cell.attrs?.bold)
+      .map((cell) => cell.color)).toEqual(Array.from("styled", () =>
+        CHARDESK_LIGHT_RENDER_THEME.accent
+      ));
     expect(raw.cells.every((cell) => cell.color === "#111111")).toBe(true);
   });
 

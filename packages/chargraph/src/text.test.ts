@@ -3,13 +3,43 @@ import { readFileSync } from "node:fs";
 import { getCharGraphText } from "./fragments.js";
 import { renderCharGraphText } from "./text.js";
 
+describe("explicit literal boundaries", () => {
+  const source = readFileSync(
+    new URL("./__fixtures__/financial-review-flow.md", import.meta.url), "utf8"
+  ).trimEnd();
+
+  it("renders strong text in an unfenced flowchart in Auto mode", async () => {
+    const result = await renderCharGraphText(source);
+    expect(result.renderer).toBe("markdown");
+    expect(getCharGraphText(result)).toBe(source.replaceAll("**", ""));
+    expect(result.fragments.filter((part) => part.attrs?.bold).map((part) => part.text)).toEqual([
+      "视频进入常规识别／审核",
+      "发现它涉及财经内容",
+      "专业上拿不准、有争议、新出现的问题",
+      "交给你研判",
+      "给出依据、意见，反馈相关团队",
+    ]);
+  });
+
+  it.each(["```", "```text", "~~~text"])(
+    "preserves flowchart markers and indentation inside %s",
+    async (opening) => {
+      const closing = opening.startsWith("~") ? "~~~" : "```";
+      const result = await renderCharGraphText(`${opening}\n${source}\n${closing}`);
+      expect(result.renderer).toBe("markdown");
+      expect(getCharGraphText(result)).toBe(source);
+      expect(result.fragments.some((part) => part.attrs?.bold)).toBe(false);
+    }
+  );
+});
+
 describe("canonical CharGraph text renderer", () => {
   const asciiSponge = readFileSync(new URL("./__fixtures__/ascii-sponge.txt", import.meta.url), "utf8");
 
   it.each([asciiSponge, " /\\_/\\\n( o.o )\n > ^ <"])(
-    "preserves unfenced ASCII artwork without consuming Markdown punctuation",
+    "preserves unfenced ASCII artwork when Raw is explicitly selected",
     async (source) => {
-      const rendered = await renderCharGraphText(source);
+      const rendered = await renderCharGraphText(source, { mode: "raw" });
       expect(rendered.renderer).toBe("raw");
       expect(getCharGraphText(rendered)).toBe(source);
     }
@@ -71,7 +101,7 @@ describe("canonical CharGraph text renderer", () => {
     expect(lines.every((line) => !line.startsWith(" "))).toBe(true);
   });
 
-  it("preserves spatial box-drawing text in auto mode", async () => {
+  it("preserves fenced box-drawing text in auto mode", async () => {
     const source = [
       "                         ┌──────────────┐",
       "                         │    Query     │",
@@ -82,9 +112,9 @@ describe("canonical CharGraph text renderer", () => {
       "│ Thread   │─────────────▶│    Turn      │",
       "└────┬─────┘   contains   └──────┬───────┘",
     ].join("\n");
-    const rendered = await renderCharGraphText(source);
+    const rendered = await renderCharGraphText(["```text", source, "```"].join("\n"));
 
-    expect(rendered.renderer).toBe("raw");
+    expect(rendered.renderer).toBe("markdown");
     expect(getCharGraphText(rendered)).toBe(source);
   });
 
@@ -139,19 +169,19 @@ describe("canonical CharGraph text renderer", () => {
     }
   );
 
-  it("still preserves unfenced spatial text beside a fenced block", async () => {
+  it("uses Markdown indentation rules for unfenced code beside a fenced block", async () => {
     const source = "    ┌─┐\n    │A│\n    └─┘\n\n```text\nB\n```";
     const rendered = await renderCharGraphText(source);
 
     expect(rendered.renderer).toBe("markdown");
-    expect(getCharGraphText(rendered)).toBe("    ┌─┐\n    │A│\n    └─┘\n\nB");
+    expect(getCharGraphText(rendered)).toBe("┌─┐\n│A│\n└─┘\n\nB");
   });
 
-  it("preserves ASCII frames in auto mode", async () => {
+  it("preserves fenced ASCII frames in auto mode", async () => {
     const source = "    +---+\n    | A |\n    +---+";
-    const rendered = await renderCharGraphText(source);
+    const rendered = await renderCharGraphText(["```text", source, "```"].join("\n"));
 
-    expect(rendered.renderer).toBe("raw");
+    expect(rendered.renderer).toBe("markdown");
     expect(getCharGraphText(rendered)).toBe(source);
   });
 
@@ -174,9 +204,9 @@ describe("canonical CharGraph text renderer", () => {
 describe("Auto block boundaries", () => {
   const art = "    ┌─┐\n    │A│\n    └─┘";
 
-  it("preserves artwork locally while rendering the surrounding Markdown", async () => {
-    const result = await renderCharGraphText(`**Before**\n\n${art}\n\n\n**After**`);
-    expect(getCharGraphText(result)).toBe(`Before\n\n${art}\n\n\nAfter`);
+  it("preserves fenced artwork while rendering the surrounding Markdown", async () => {
+    const result = await renderCharGraphText(["**Before**", "", "```text", art, "```", "", "**After**"].join("\n"));
+    expect(getCharGraphText(result)).toBe(`Before\n\n${art}\n\nAfter`);
     expect(result.fragments.filter((part) => part.attrs?.bold).map((part) => part.text))
       .toEqual(["Before", "After"]);
   });
@@ -197,7 +227,7 @@ describe("Auto block boundaries", () => {
   });
 
   it("keeps CRLF source ranges bounded across literal and Markdown blocks", async () => {
-    const source = `**Title**\r\n\r\n${art.replaceAll("\n", "\r\n")}`;
+    const source = ["**Title**", "", "```text", ...art.split("\n"), "```"].join("\r\n");
     const result = await renderCharGraphText(source);
     expect(getCharGraphText(result)).toBe(`Title\n\n${art}`);
     expect(result.fragments.every((part) => !part.origin ||

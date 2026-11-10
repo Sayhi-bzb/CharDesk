@@ -382,14 +382,13 @@ describe('SettingsDialog', () => {
     });
 
     const boldColor = screen.getByRole('button', {
-      name: 'Customize color for Bold: Default (Inherited)',
+      name: 'Customize color for Bold: Default (#0969da)',
     });
     expect(boldColor).toHaveClass('size-6', 'rounded-full');
-    expect(boldColor).toHaveAttribute('data-color-preview', 'inherit');
-    expect(boldColor).toHaveAttribute('data-inherited', 'true');
-    expect(boldColor.querySelector('[data-slot="color-swatch"]')).toHaveClass(
-      'after:bg-muted-foreground'
-    );
+    expect(boldColor).toHaveAttribute('data-color-preview', 'default');
+    expect(boldColor.querySelector('[data-slot="color-swatch"]')).toHaveStyle({
+      backgroundColor: '#0969da',
+    });
     fireEvent.click(boldColor);
     expect(screen.queryByRole('button', { name: 'Pick color from canvas' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Pick ANSI color #800000' }));
@@ -409,8 +408,8 @@ describe('SettingsDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restore default color' }));
     expect(runtime.getProfile().features['markdown.strong']?.colors.light).toEqual({});
     expect(
-      screen.getByRole('button', { name: 'Customize color for Bold: Default (Inherited)' })
-    ).toHaveAttribute('data-inherited', 'true');
+      screen.getByRole('button', { name: 'Customize color for Bold: Default (#0969da)' })
+    ).toHaveAttribute('data-color-preview', 'default');
   });
 
   it('customizes a renderer theme token and updates rule defaults', () => {
@@ -465,7 +464,7 @@ describe('SettingsDialog', () => {
     }));
     fireEvent.click(screen.getByRole('button', { name: 'Pick ANSI color #800000' }));
     fireEvent.click(screen.getByRole('button', {
-      name: 'Customize color for Bold: Default (Inherited)',
+      name: 'Customize color for Bold: Default (#800000)',
     }));
     fireEvent.click(screen.getByRole('button', { name: 'Pick ANSI color #008000' }));
 

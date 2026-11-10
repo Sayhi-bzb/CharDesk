@@ -70,17 +70,31 @@ describe("Canvas writing tool", () => {
     "distinguishes explicit Auto from an omitted format", async (createTool) => {
       const canvas = host();
       const runtime = createTextRenderingRuntime({ storage: false });
-      runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "markdown" });
+      runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "raw" });
       const tool = createTool(canvas, {
         render: runtime.renderCompact,
         getProfile: runtime.getProfile,
         getContext: () => ({ themeMode: "light" as const }),
       });
+      const source = "**Body**";
+      expect(await tool.execute({ at: [0, 0], source, format: "auto" }))
+        .toMatchObject({ bounds: [0, 0, 4, 1] });
+      expect(await tool.execute({ at: [10, 0], source }))
+        .toMatchObject({ bounds: [10, 0, 8, 1] });
+    },
+  );
+
+  it.each([createCanvasRenderTool, createCanvasPreviewRenderTool])(
+    "preserves diagram indentation through Raw and fenced text", async (createTool) => {
+      const canvas = host();
+      const tool = createTool(canvas, rendering);
       const source = "    ┌─┐\n    │A│\n    └─┘";
       expect(await tool.execute({ at: [0, 0], source, format: "auto" }))
-        .toMatchObject({ bounds: [0, 0, 7, 3] });
-      expect(await tool.execute({ at: [10, 0], source }))
-        .toMatchObject({ bounds: [10, 0, 3, 3] });
+        .toMatchObject({ bounds: [0, 0, 3, 3] });
+      expect(await tool.execute({ at: [10, 0], source, format: "raw" }))
+        .toMatchObject({ bounds: [10, 0, 7, 3] });
+      expect(await tool.execute({ at: [20, 0], source: ["```text", source, "```"].join("\n"), format: "auto" }))
+        .toMatchObject({ bounds: [20, 0, 7, 3] });
     },
   );
 

@@ -63,7 +63,7 @@ const feature = <
   colorSlots,
 });
 
-const strong = feature("strong", "core", { foreground: inherit });
+const strong = feature("strong", "core", { foreground: token("accent") });
 const emphasis = feature("emphasis", "core", { foreground: inherit });
 const strikethrough = feature("strikethrough", "core", { foreground: inherit });
 const link = feature("link", "core", { foreground: token("info") });

@@ -7,6 +7,7 @@ import {
 import { createCharGraphFragment } from "./fragments.js";
 import { createMarkdownRenderer, type MarkdownRenderOptions } from "./markdown.js";
 import { CHARDESK_MARKDOWN_EXTENSIONS } from "./markdown-modules.js";
+import { createCharDeskMarkdownStyles } from "./markdown-theme.js";
 import type {
   CharGraphDiagnostic,
   CharGraphFragment,
@@ -35,7 +36,7 @@ type StyleSpan = CharDeskTextStyle & {
 
 const DEFAULT_MARKDOWN_OPTIONS: MarkdownRenderOptions = {
   styles: {
-    strong: { attrs: { bold: true } },
+    strong: createCharDeskMarkdownStyles().styles.strong,
     emphasis: { attrs: { italic: true } },
     strikethrough: { attrs: { strike: true } },
     link: { attrs: { underline: true } },

@@ -36,7 +36,6 @@ import {
   restoreCharGraphSourceRanges,
 } from "./source-map.js";
 import { wrapMarkdownProse } from "./markdown-wrap.js";
-import { SPATIAL_TEXT_EXTENSION } from "./spatial-text.js";
 
 export type MarkdownTextRuleId =
   | "strong"
@@ -79,7 +78,7 @@ export type MarkdownTextStyles = Partial<
 
 export type MarkdownRenderOptions = {
   forced?: boolean;
-  /** Auto preserves spatial blocks and paragraphs without Markdown evidence. */
+  /** Auto preserves paragraphs without Markdown evidence. */
   auto?: boolean;
   proseWrapWidth?: number;
   rules?: Partial<MarkdownTextRules>;
@@ -132,7 +131,6 @@ const NON_SYNTAX_TOKEN_TYPES = new Set([
   "escape",
   "def",
   "list_item",
-  "chardesk-literal",
 ]);
 
 type RenderContext = {
@@ -628,8 +626,6 @@ const renderBlock = async (
     case "space":
     case "def":
       return renderedBlock([]);
-    case "chardesk-literal":
-      return renderedBlock(rawFragment(token.raw, range), "start", "literal");
     case "paragraph": {
       if (context.auto && !hasRecognizedTokens((token as Tokens.Paragraph).tokens)) {
         return renderedBlock(rawFragment(token.raw, range), "start", "literal");
@@ -830,7 +826,6 @@ export const renderMarkdownWithExtensions = async (
 ): Promise<CharGraphRenderResult> => {
   const normalized = normalizeCharGraphSource(source);
   const parser = createParser(extensions);
-  if (options.auto) parser.use(SPATIAL_TEXT_EXTENSION);
   const context: RenderContext = {
     source: normalized.text,
     auto: options.auto === true,
