@@ -18,7 +18,7 @@ export type CanvasCodeDependencies = Readonly<{
     beginCheckpoint: (
       operationId?: string,
       canvasId?: string
-    ) => { commit: () => void; cancel: () => void };
+    ) => { commit: (() => void) | (() => { changed: boolean; operationId?: string }); cancel: () => void };
     undoOperation?: (operationId: string) => boolean;
   };
 }>;
@@ -524,12 +524,13 @@ export const createCanvasCodeTool = (
       const result = serializable(rawResult);
       truncated = result.truncated;
       if (bridgeFailure) throw bridgeFailure;
-      checkpoint?.commit();
-      committedOperationId = writes > 0 ? operationId : undefined;
+      const receipt = checkpoint?.commit();
+      committedOperationId = receipt ? receipt.operationId : writes > 0 ? operationId : undefined;
       return {
         mode,
         scriptHash,
         result: result.value,
+        ...(receipt && writes > 0 ? { changed: receipt.changed } : {}),
         ...(committedOperationId ? { operationId: committedOperationId } : {}),
         ...(persistenceSummary() ? { persistence: persistenceSummary() } : {}),
         operations,

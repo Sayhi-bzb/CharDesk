@@ -81,7 +81,7 @@ type CanvasPersistenceHost = {
   flushPersistence?: (sessionId?: string) => Promise<void>;
 };
 type CanvasHistoryHost = {
-  beginCheckpoint?: (operationId?: string, canvasId?: string, pageId?: string) => { commit: () => void; cancel: () => void };
+  beginCheckpoint?: (operationId?: string, canvasId?: string, pageId?: string) => { commit: (() => void) | (() => { changed: boolean; operationId?: string }); cancel: () => void };
   undoOperation?: (operationId: string, canvasId?: string, pageId?: string) => boolean;
 };
 type CanvasMutationHost = Pick<CanvasRuntime, "ready" | "getState" | "materializeSession"> & CanvasPersistenceHost & { commands: { history?: CanvasHistoryHost } };
@@ -316,10 +316,11 @@ export const createCanvasWriteTool = (
         return { ok: false, code: "write_failed", message: "Targeted Canvas writes are unavailable on this host." };
       }
       const persisted = await confirmCanvasPersistence(canvas, target.id);
-      mutation.checkpoint?.commit();
-      const changed = mutationChanged(result, impact);
-      publishMutationActivity(target, result?.bounds, input.pageId as string | undefined, mutation.operationId, changed);
-      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, ...(input.writeMode ? { writeMode: input.writeMode } : {}), ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }), ...impactOutput(impact), ...(changed && mutation.operationId ? { operationId: mutation.operationId } : {}) };
+      const receipt = mutation.checkpoint?.commit();
+      const changed = receipt ? receipt.changed : mutationChanged(result, impact);
+      const operationId = receipt ? receipt.operationId : changed ? mutation.operationId : undefined;
+      publishMutationActivity(target, result?.bounds, input.pageId as string | undefined, operationId, changed);
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, ...(input.writeMode ? { writeMode: input.writeMode } : {}), ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }), ...impactOutput(impact), ...(receipt ? { changed } : {}), ...(operationId ? { operationId } : {}) };
     } catch (error) {
       mutation?.checkpoint?.cancel();
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "write_failed", message: error instanceof Error ? error.message : "Unable to write Canvas content." };
@@ -365,11 +366,12 @@ export const createCanvasEraseTool = (
         return { ok: false, code: "erase_failed", message: "Targeted Canvas erases are unavailable on this host." };
       }
       const persisted = await confirmCanvasPersistence(canvas, target.id);
-      mutation.checkpoint?.commit();
-      const changed = mutationChanged(result, impact);
-      const bounds = result?.bounds ?? [point.x, point.y, size[0]!, size[1]!] as [number, number, number, number];
-      publishMutationActivity(target, bounds, input.pageId as string | undefined, mutation.operationId, changed);
-      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, bounds, erasedCells: impact.clearedCells, ...impactOutput(impact), ...(changed && mutation.operationId ? { operationId: mutation.operationId } : {}) };
+      const receipt = mutation.checkpoint?.commit();
+      const changed = receipt ? receipt.changed : mutationChanged(result, impact);
+      const operationId = receipt ? receipt.operationId : changed ? mutation.operationId : undefined;
+      const bounds = impact.clearedBounds ?? result?.bounds ?? [point.x, point.y, size[0]!, size[1]!] as [number, number, number, number];
+      publishMutationActivity(target, bounds, input.pageId as string | undefined, operationId, changed);
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, bounds, erasedCells: impact.clearedCells, ...impactOutput(impact), ...(receipt ? { changed } : {}), ...(operationId ? { operationId } : {}) };
     } catch (error) {
       mutation?.checkpoint?.cancel();
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "erase_failed", message: error instanceof Error ? error.message : "Unable to erase Canvas content." };
@@ -417,15 +419,16 @@ export const createCanvasFillTool = (
         return { ok: false, code: "fill_failed", message: "Targeted Canvas fills are unavailable on this host." };
       }
       const persisted = await confirmCanvasPersistence(canvas, target.id);
-      mutation.checkpoint?.commit();
+      const receipt = mutation.checkpoint?.commit();
       const impact: CanvasMutationImpact = {
         overwrittenCells: 0, overwrittenBounds: null, clearedCells: 0, clearedBounds: null,
         styledCells: result?.writtenCells ?? 0, styledBounds: prepared.bounds,
       };
-      const changed = mutationChanged(result, impact);
+      const changed = receipt ? receipt.changed : mutationChanged(result, impact);
+      const operationId = receipt ? receipt.operationId : changed ? mutation.operationId : undefined;
       const bounds: [number, number, number, number] = [origin.x, origin.y, size[0]!, size[1]!];
-      publishMutationActivity(target, bounds, input.pageId as string | undefined, mutation.operationId, changed);
-      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, bounds, styledCells: impact.styledCells, ...impactOutput(impact), ...(changed && mutation.operationId ? { operationId: mutation.operationId } : {}) };
+      publishMutationActivity(target, bounds, input.pageId as string | undefined, operationId, changed);
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, bounds, styledCells: impact.styledCells, ...impactOutput(impact), ...(receipt ? { changed } : {}), ...(operationId ? { operationId } : {}) };
     } catch (error) {
       mutation?.checkpoint?.cancel();
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "fill_failed", message: error instanceof Error ? error.message : "Unable to style Canvas content." };
@@ -542,10 +545,11 @@ export const createCanvasRenderTool = (
         return { ok: false, code: "write_failed", message: "Targeted Canvas writes are unavailable on this host." };
       }
       const persisted = await confirmCanvasPersistence(canvas, canvasId);
-      mutation.checkpoint?.commit();
-      const changed = mutationChanged(result, impact);
-      publishMutationActivity(target, result?.bounds, input.pageId as string | undefined, mutation.operationId, changed);
-      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }), ...impactOutput(impact), ...(changed && mutation.operationId ? { operationId: mutation.operationId } : {}) };
+      const receipt = mutation.checkpoint?.commit();
+      const changed = receipt ? receipt.changed : mutationChanged(result, impact);
+      const operationId = receipt ? receipt.operationId : changed ? mutation.operationId : undefined;
+      publishMutationActivity(target, result?.bounds, input.pageId as string | undefined, operationId, changed);
+      return { ...targetOutput(target), ...(input.pageId ? { pageId: input.pageId } : {}), ...persisted, ...(result ?? { bounds: null, writtenCells: 0, skippedWhitespaceCells: 0 }), ...impactOutput(impact), ...(receipt ? { changed } : {}), ...(operationId ? { operationId } : {}) };
     } catch (error) {
       mutation?.checkpoint?.cancel();
       return { ok: false, code: error instanceof CanvasWriteError ? error.code : "write_failed",

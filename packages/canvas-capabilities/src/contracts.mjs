@@ -21,7 +21,7 @@ const localToolContracts = [
   },
   {
     name: 'canvas_erase', title: 'Erase Canvas region', readOnly: false,
-    description: 'Erase a rectangular Projection region. Whitespace in canvas_write is transparent; use this tool to remove Cells explicitly. Results report actual cleared Cell counts/bounds and an operationId when the edit can be undone with canvas_undo.',
+    description: 'Erase whole logical Cells, including characters, backgrounds, text attributes and links. Styled spaces count as Cells. A wide glyph is one logical Cell and is removed as a whole even if the requested region intersects only its trailing column; returned bounds cover the actual footprint. Checkpoint-capable hosts report changed and return operationId only for an undoable committed change.',
     inputSchema: { type: 'object', properties: {
       at: { type: 'array', items: { type: 'integer' }, minItems: 2, maxItems: 2 }, canvasId: { type: 'string', minLength: 1 }, pageId: { type: 'string', minLength: 1, description: 'Optional stable Slide page ID.' },
       size: { type: 'array', items: { type: 'integer' }, minItems: 2, maxItems: 2 },
@@ -44,7 +44,7 @@ const localToolContracts = [
   },
   {
     name: 'canvas_render', title: 'Render Canvas material', readOnly: false,
-    description: 'Render material with the current Canvas renderer and place the resulting Projection Cells. Provide source or sourceRef (a local file path); the local MCP reads sourceRef and forwards its text without requiring the agent to copy or rewrite it. Results report impact counts/bounds, persistence, and an operationId when the edit can be undone with canvas_undo. writeMode defaults to replace; patch skips unstyled whitespace while preserving colored half-blocks and styled spaces. Use canvas_write for literal Unicode strokes.',
+    description: 'Render material with the current Canvas renderer and place the resulting Projection Cells. Provide source or sourceRef (a local file path); the local MCP reads sourceRef and forwards its text without requiring the agent to copy or rewrite it. Results report affected logical Cell counts/bounds and persistence. Checkpoint-capable hosts also report changed; operationId identifies a retained undoable change. writeMode defaults to replace; patch skips unstyled whitespace while preserving colored half-blocks and styled spaces. Use canvas_write for literal Unicode strokes.',
     inputSchema: { type: 'object', properties: {
       at: { type: 'array', items: { type: 'integer' }, minItems: 2, maxItems: 2 }, canvasId: { type: 'string', minLength: 1 }, pageId: { type: 'string', minLength: 1, description: 'Optional stable Slide page ID.' },
       source: { type: 'string', description: 'Material text. Mutually exclusive with sourceRef.' },
@@ -88,7 +88,7 @@ const localToolContracts = [
   },
   {
     name: 'canvas_write', title: 'Write Canvas text', readOnly: false,
-    description: 'Write one continuous literal-Unicode stroke at [x,y] in the Projection layer. Pass pageId for a specific Slide page. Provide content or sourceRef (a local file path); the local MCP reads sourceRef and forwards its text without requiring the agent to copy or rewrite it. Non-whitespace graphemes overwrite existing Cells with one optional style; whitespace is transparent and never erases. Results report impact counts/bounds, persistence, and an operationId when the edit can be undone with canvas_undo. Use canvas_erase to remove Cells, canvas_fill to style existing characters, and canvas_render for material input.',
+    description: 'Write one continuous literal-Unicode stroke at [x,y] in the Projection layer. Pass pageId for a specific Slide page. Provide content or sourceRef (a local file path); the local MCP reads sourceRef and forwards its text without requiring the agent to copy or rewrite it. Non-whitespace graphemes overwrite existing Cells with one optional style. Whitespace without bgColor, href, or enabled text attributes is transparent; styled whitespace is written and can replace existing characters. Results report affected logical Cell counts/bounds and persistence. Checkpoint-capable hosts also report changed; operationId identifies a retained undoable change. Use canvas_erase to remove Cells, canvas_fill to style existing characters, and canvas_render for material input.',
     inputSchema: { type: 'object', properties: {
       at: { type: 'array', items: { type: 'integer' }, minItems: 2, maxItems: 2 },
       canvasId: { type: 'string', minLength: 1, description: 'Optional short persistent Canvas ID.' },

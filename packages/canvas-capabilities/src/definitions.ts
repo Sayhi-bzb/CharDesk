@@ -550,7 +550,7 @@ const CANVAS_WRITE_TOOL_RAW = {
   name: CANVAS_WRITE_TOOL_NAME,
   title: 'Write Canvas stroke',
   description:
-    'Write one continuous literal-Unicode stroke at [x,y] in the Projection layer. Pass pageId for a specific Slide page; omit it for the active page. Non-whitespace graphemes are written with one optional style and overwrite existing Cells; whitespace is transparent and does not erase. Results report impact counts/bounds and an operationId when the edit can be undone with canvas_undo. Use canvas_erase to remove Cells, canvas_fill to style existing characters, and canvas_render for Markdown/ANSI/material input. Source-backed Canvases require source-file editing; Slide overflow is rejected without writing.',
+    'Write one continuous literal-Unicode stroke at [x,y] in the Projection layer. Pass pageId for a specific Slide page; omit it for the active page. Non-whitespace graphemes are written with one optional style and overwrite existing Cells. Unstyled whitespace is transparent; whitespace with a background, link or enabled text attribute is written. Results report impact counts/bounds and an operationId when the edit can be undone with canvas_undo. Use canvas_erase to remove Cells, canvas_fill to style existing characters, and canvas_render for Markdown/ANSI/material input. Source-backed Canvases require source-file editing; Slide overflow is rejected without writing.',
   readOnly: false,
   inputSchema: {
     type: 'object',
@@ -621,6 +621,7 @@ const CANVAS_WRITE_TOOL_RAW = {
           persistence: { enum: ['saved', 'pending', 'failed', 'unavailable'] },
           persistenceError: { type: 'string' },
           operationId: { type: 'string' },
+          changed: { type: 'boolean', description: 'Whether the checkpoint committed a document mutation.' },
           impact: CANVAS_MUTATION_IMPACT,
         },
         required: ['bounds', 'writtenCells', 'impact'],
@@ -676,7 +677,7 @@ const CANVAS_ERASE_TOOL_RAW = {
   name: CANVAS_ERASE_TOOL_NAME,
   title: 'Erase Canvas region',
   description:
-    'Erase Cells in a rectangular Projection region. Erasing is explicit; whitespace in canvas_write never clears existing content.',
+    'Erase entire logical Cells, including styled spaces and wide-glyph owners; returned bounds cover their complete footprints.',
   readOnly: false,
   inputSchema: {
     type: 'object',
@@ -703,6 +704,7 @@ const CANVAS_ERASE_TOOL_RAW = {
           persistence: { enum: ['saved', 'pending', 'failed', 'unavailable'] },
           persistenceError: { type: 'string' },
           operationId: { type: 'string' },
+          changed: { type: 'boolean', description: 'Whether the checkpoint committed a document mutation.' },
           impact: CANVAS_MUTATION_IMPACT,
         },
         required: ['bounds', 'erasedCells', 'impact'],
@@ -750,6 +752,7 @@ const CANVAS_FILL_TOOL_RAW = {
           persistence: { enum: ['saved', 'pending', 'failed', 'unavailable'] },
           persistenceError: { type: 'string' },
           operationId: { type: 'string' },
+          changed: { type: 'boolean', description: 'Whether the checkpoint committed a document mutation.' },
           impact: CANVAS_MUTATION_IMPACT,
         },
         required: ['bounds', 'styledCells', 'impact'],
@@ -865,6 +868,7 @@ const CANVAS_RENDER_TOOL_RAW = {
           persistence: { enum: ['saved', 'pending', 'failed', 'unavailable'] },
           persistenceError: { type: 'string' },
           operationId: { type: 'string' },
+          changed: { type: 'boolean', description: 'Whether the checkpoint committed a document mutation.' },
           impact: CANVAS_MUTATION_IMPACT,
         },
         required: ['bounds', 'writtenCells', 'impact'],
@@ -928,6 +932,7 @@ const CANVAS_CODE_TOOL_RAW = {
           scriptHash: { type: 'string' },
           result: {},
           operationId: { type: 'string' },
+          changed: { type: 'boolean', description: 'Whether the checkpoint committed a document mutation.' },
           operations: { type: 'integer', minimum: 0 },
           writes: { type: 'integer', minimum: 0 },
           persistence: { enum: ['saved', 'pending', 'failed', 'unavailable'] },

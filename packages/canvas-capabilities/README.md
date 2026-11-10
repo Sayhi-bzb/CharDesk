@@ -30,3 +30,13 @@ Verification: [shared contracts and bounds](../../apps/canvas/src/app/site-tools
 [browser and WebMCP](../../apps/canvas/src/app/site-tools/canvasReadImage.dom.test.ts),
 [offline/live PNG pixels](../../examples/terminal-canvas/src/localCapabilities.test.ts),
 [MCP transport](../mcp/test/server.test.mjs).
+
+Mutation impact counts describe affected prior logical Cell anchors, including
+styled spaces; wide-glyph bounds cover the full footprint. They do not identify
+net changes. Hosts consuming the editor-core checkpoint receipt expose `changed`
+and include `operationId` only for a retained undoable edit. Browser and Bun hosts
+forward the same receipt to atomic tools and Code Mode. See
+[checkpoint receipts](../editor-core/src/CanvasDocumentRegistry.ts),
+[atomic/Code Mode regression](../../apps/canvas/src/app/site-tools/canvasMutationReceipt.test.ts),
+[local host regression](../local-runtime/src/capabilities.test.ts),
+and the published [tool descriptions](src/contracts.mjs) for whitespace semantics.

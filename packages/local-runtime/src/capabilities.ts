@@ -237,29 +237,35 @@ export function localCapabilities(
             model.settleInteraction();
             const operationId = persistentHistory && !batch ? `op-${randomUUID()}` : undefined;
             const checkpoint = batch
-              ? { commit() {}, cancel() {} }
+              ? undefined
               : model.documents.beginHistoryCheckpoint(
                   operationId,
                   address.documentId,
                   address.pageId
                 );
+            let receipt: ReturnType<NonNullable<typeof checkpoint>['commit']> | undefined;
             try {
               model.documents.applyCellPlanePatchAt(address, prepared.patch);
-              checkpoint.commit();
+              receipt = checkpoint?.commit();
             } catch (error) {
-              checkpoint.cancel();
+              checkpoint?.cancel();
               throw error;
             }
-            if (batch) return { ...prepared, patch: undefined, impact, persistence: 'pending' };
+            const mutation = {
+              ...prepared, patch: undefined, impact,
+              ...(contract.name === 'canvas_erase' ? {
+                erasedCells: impact.clearedCells,
+                bounds: impact.clearedBounds ?? prepared.bounds,
+              } : {}),
+              ...(receipt ? { changed: receipt.changed, operationId: receipt.operationId } : {}),
+            };
+            if (batch) return { ...mutation, persistence: 'pending' };
             try {
               await workspace.saveFile(file);
-              return { ...prepared, patch: undefined, impact, operationId, persistence: 'saved' };
+              return { ...mutation, persistence: 'saved' };
             } catch (error) {
               return {
-                ...prepared,
-                patch: undefined,
-                impact,
-                operationId,
+                ...mutation,
                 persistence: 'failed',
                 persistenceError: String(error),
               };
@@ -334,8 +340,9 @@ export function localCapabilities(
         );
         return {
           commit() {
-            checkpoint.commit();
+            const receipt = checkpoint.commit();
             batch = false;
+            return receipt;
           },
           cancel() {
             checkpoint.cancel();
@@ -356,15 +363,12 @@ export function localCapabilities(
         typeof result === 'object' &&
         !('ok' in result && result.ok === false)
       ) {
+        const mutation = { ...result, ...(!persistentHistory ? { operationId: undefined } : {}) };
         try {
           await workspace.saveAll();
-          return {
-            ...result,
-            persistence: 'saved',
-            ...(!persistentHistory ? { operationId: undefined } : {}),
-          };
+          return { ...mutation, persistence: 'saved' };
         } catch (error) {
-          return { ...result, persistence: 'failed', persistenceError: String(error) };
+          return { ...mutation, persistence: 'failed', persistenceError: String(error) };
         }
       }
       return result;

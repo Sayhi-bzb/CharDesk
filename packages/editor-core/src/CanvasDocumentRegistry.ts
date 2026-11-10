@@ -48,8 +48,12 @@ import { CanvasMutationPerformance } from './CanvasMutationPerformance.js';
 import type { CanvasMutationEnvelope } from './canvasMutationEnvelope.js';
 
 export type CanvasHistoryMode = 'save' | 'merge' | 'none' | 'reset';
+export type CanvasHistoryCommitReceipt = Readonly<{
+  changed: boolean;
+  operationId?: string;
+}>;
 export type CanvasHistoryCheckpoint = {
-  commit: () => void;
+  commit: () => CanvasHistoryCommitReceipt;
   cancel: () => void;
 };
 
@@ -861,7 +865,7 @@ export class CanvasDocumentRegistry {
   beginHistoryCheckpoint = (
     operationId?: string,
     documentId?: string,
-    pageId?: string
+    pageId?: string,
   ): CanvasHistoryCheckpoint => {
     const address = documentId
       ? this.getDocumentAddress(documentId, pageId)
@@ -871,6 +875,8 @@ export class CanvasDocumentRegistry {
     const historyKey = this.#historyKey(address);
     document.undoManager.stopCapturing();
     const undoDepth = this.#historyJournal.getUndoDepth(historyKey);
+    const mutationVersion = this.#historyJournal.getMutationVersion(historyKey);
+    let receipt: CanvasHistoryCommitReceipt | undefined;
     if (operationId) this.#historyJournal.beginCapture(historyKey, operationId);
     let settled = false;
     const finish = () => {
@@ -881,9 +887,18 @@ export class CanvasDocumentRegistry {
     };
     return {
       commit: () => {
-        if (settled) return;
+        if (settled) return receipt ?? { changed: false };
         settled = true;
+        const changed =
+          this.#historyJournal.getMutationVersion(historyKey) !==
+          mutationVersion;
+        const undoable =
+          changed &&
+          operationId !== undefined &&
+          this.#historyJournal.getLatestOperationId(historyKey) === operationId;
+        receipt = { changed, ...(undoable ? { operationId } : {}) };
         finish();
+        return receipt;
       },
       cancel: () => {
         if (settled) return;

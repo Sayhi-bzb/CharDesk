@@ -1,6 +1,6 @@
 import { getTextCellWidth, iterateGraphemes } from '@chardesk/protocol';
 import type { Point } from '@chardesk/cell-plane/types';
-import type { CanvasSurfaceReader, CellPlanePatch } from '@chardesk/cell-plane';
+import { getGridCellWidth, type CanvasSurfaceReader, type CellPlanePatch, type GridCell } from '@chardesk/cell-plane';
 type CanvasReadViewport = readonly [number, number, number, number];
 import type { RichTextRow } from './textCommandTypes.js';
 
@@ -39,61 +39,93 @@ const hasVisibleWhitespaceStyle = (span: RichTextRow['spans'][number]) =>
 
 const isWhitespaceGrapheme = (grapheme: string) => /^\s+$/u.test(grapheme);
 
-const isExistingCell = (cell: { char: string } | undefined) =>
-  Boolean(cell?.char && !isWhitespaceGrapheme(cell.char));
-
 const createImpactBounds = () => ({
   count: 0,
+  anchors: new Set<string>(),
   left: Infinity,
   top: Infinity,
   right: -Infinity,
   bottom: -Infinity,
 });
 
-const addImpactCell = (bounds: ReturnType<typeof createImpactBounds>, x: number, y: number) => {
+const addImpactCell = (
+  bounds: ReturnType<typeof createImpactBounds>,
+  x: number,
+  y: number,
+  width: number,
+) => {
+  const key = `${x},${y}`;
+  if (bounds.anchors.has(key)) return;
+  bounds.anchors.add(key);
   bounds.count += 1;
   bounds.left = Math.min(bounds.left, x);
   bounds.top = Math.min(bounds.top, y);
-  bounds.right = Math.max(bounds.right, x);
+  bounds.right = Math.max(bounds.right, x + width - 1);
   bounds.bottom = Math.max(bounds.bottom, y);
 };
 
 const finishImpactBounds = (
-  bounds: ReturnType<typeof createImpactBounds>
+  bounds: ReturnType<typeof createImpactBounds>,
 ): { count: number; bounds: CanvasReadViewport | null } => ({
   count: bounds.count,
   bounds:
     bounds.count === 0
       ? null
-      : [bounds.left, bounds.top, bounds.right - bounds.left + 1, bounds.bottom - bounds.top + 1],
+      : [
+          bounds.left,
+          bounds.top,
+          bounds.right - bounds.left + 1,
+          bounds.bottom - bounds.top + 1,
+        ],
 });
 
-/** Compare a prepared projection patch with the surface immediately before it
- * is committed. This is intentionally a compact impact summary: callers get
- * coordinates and counts without copying the old document into the result. */
+/** Summarize prior logical Cell occupancy intersected by a patch. Category
+ * counts may overlap; they are not a net-change signal. Checkpoint receipts
+ * determine whether a document mutation was committed. */
 export const measureCanvasMutationImpact = (
   surface: CanvasSurfaceReader,
-  patch: CellPlanePatch
+  patch: CellPlanePatch,
 ): CanvasMutationImpact => {
   const overwritten = createImpactBounds();
   const cleared = createImpactBounds();
+  const content = surface.getContentBounds();
+  const visitIntersecting = (
+    from: number,
+    to: number,
+    y: number,
+    visitor: (x: number, cell: GridCell) => void,
+  ) => {
+    if (!content || y < content.y || y >= content.y + content.height) return;
+    // A wide glyph may be anchored one column before the requested interval.
+    const left = Math.max(from - 1, content.x);
+    const right = Math.min(to, content.x + content.width - 1);
+    if (right < left) return;
+    surface.visit(
+      { x: left, y, width: right - left + 1, height: 1 },
+      (x, _, cell) => {
+        if (x <= to && x + getGridCellWidth(cell) > from) visitor(x, cell);
+      },
+    );
+  };
   for (const row of patch.rows) {
     for (const interval of row.erase) {
-      for (let x = interval.from; x <= interval.to; x += 1) {
-        if (isExistingCell(surface.getCell({ x, y: row.y }))) addImpactCell(cleared, x, row.y);
-      }
+      visitIntersecting(interval.from, interval.to, row.y, (x, cell) => {
+        addImpactCell(cleared, x, row.y, getGridCellWidth(cell));
+      });
     }
     for (const span of row.spans) {
       let x = span.x;
       for (const { segment } of iterateGraphemes(span.text)) {
         const width = getTextCellWidth(segment);
-        for (let offset = 0; offset < width; offset += 1) {
-          const cellX = x + offset;
-          if (isExistingCell(surface.getCell({ x: cellX, y: row.y }))) {
-            if (isWhitespaceGrapheme(segment)) addImpactCell(cleared, cellX, row.y);
-            else addImpactCell(overwritten, cellX, row.y);
-          }
-        }
+        if (width > 0)
+          visitIntersecting(x, x + width - 1, row.y, (anchorX, cell) => {
+            addImpactCell(
+              isWhitespaceGrapheme(segment) ? cleared : overwritten,
+              anchorX,
+              row.y,
+              getGridCellWidth(cell),
+            );
+          });
         x += width;
       }
     }
@@ -149,7 +181,7 @@ export const prepareCanvasTextWrite = (
   );
 };
 
-/** Prepare a literal Projection stroke. Whitespace is transparent by design. */
+/** Prepare a literal Projection stroke. Unstyled whitespace is transparent. */
 export const prepareCanvasPlainTextWrite = (
   at: Point,
   content: string,

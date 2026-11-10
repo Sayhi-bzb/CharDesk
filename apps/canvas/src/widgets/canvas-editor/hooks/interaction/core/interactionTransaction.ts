@@ -1,4 +1,4 @@
-import type { CanvasHistoryCheckpoint } from "@/domains/canvas/public";
+import type { EditorHistoryCheckpoint } from "@chardesk/editor-core/editor/types";
 
 type CanvasInteractionTransactionController = {
   begin: () => void;
@@ -10,9 +10,9 @@ type CanvasInteractionTransactionController = {
 export const createCanvasInteractionTransactionController = ({
   createCheckpoint,
 }: {
-  createCheckpoint: () => CanvasHistoryCheckpoint;
+  createCheckpoint: () => EditorHistoryCheckpoint;
 }): CanvasInteractionTransactionController => {
-  let checkpoint: CanvasHistoryCheckpoint | null = null;
+  let checkpoint: EditorHistoryCheckpoint | null = null;
 
   return {
     begin: () => {

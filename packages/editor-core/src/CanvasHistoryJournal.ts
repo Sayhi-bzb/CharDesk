@@ -49,6 +49,20 @@ const operationBytes = (envelope: CanvasMutationEnvelope) => {
 export class CanvasHistoryJournal {
   #versions = new WeakMap<object, number>();
   #versionSequence = 0;
+  #mutationSequence = 0;
+  readonly #mutationVersions = new Map<string, number>();
+
+  getMutationVersion(documentId: string) {
+    return this.#mutationVersions.get(documentId) ?? 0;
+  }
+
+  getLatestOperationId(documentId: string) {
+    return this.#histories.get(documentId)?.undo.at(-1)?.operationId;
+  }
+
+  #recordMutation(documentId: string) {
+    this.#mutationVersions.set(documentId, ++this.#mutationSequence);
+  }
   getVersion(key: string): string {
     const action = this.#histories.get(key)?.undo.at(-1)?.actions.at(-1);
     if (!action) return 'empty';
@@ -76,6 +90,7 @@ export class CanvasHistoryJournal {
     mode: 'save' | 'merge',
     operationId?: string
   ) {
+    this.#recordMutation(documentId);
     const history = this.#get(documentId);
     const bytes = operationBytes(action.forward) + operationBytes(action.inverse);
     if (bytes > this.#maxBytes) {
@@ -126,6 +141,7 @@ export class CanvasHistoryJournal {
     for (let index = group.actions.length - 1; index >= 0; index -= 1) {
       this.#apply(group.actions[index]!.inverse);
     }
+    this.#recordMutation(documentId);
     history.redo.push(group);
     history.mergeOpen = false;
     return true;
@@ -136,6 +152,7 @@ export class CanvasHistoryJournal {
     const group = history.redo.pop();
     if (!group) return false;
     group.actions.forEach(({ forward }) => this.#apply(forward));
+    this.#recordMutation(documentId);
     history.undo.push(group);
     history.mergeOpen = false;
     return true;
@@ -143,6 +160,7 @@ export class CanvasHistoryJournal {
 
   clear(documentId: string) {
     this.#histories.delete(documentId);
+    this.#mutationVersions.delete(documentId);
   }
 
   finishCapture(documentId: string) {
