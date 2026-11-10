@@ -12,12 +12,16 @@ a local file.
   `list` returns short persistent `canvasId` values. Omit the ID for the active
   Canvas; pass `canvasId` for another Canvas. IDs remain stable across page
   refreshes and MCP reconnects.
-- If the content or location is unknown, search the rendered Canvas text.
+- If a known text fragment needs an exact Cell position, consider
+  `canvas_search`: its `origin` gives the match's first Cell. Search for the
+  fragment whose start matters; use surrounding context or `viewport` to
+  distinguish repeated matches.
 - If the location is known, read the smallest useful viewport.
 - If the task changes content, read the affected area before writing.
 
-Keep the operation scoped to the user's target. Do not enumerate Canvases or
-search the whole surface when the target is already known.
+Keep operations on the user's target Canvas/page. If that Canvas is known,
+reuse it rather than enumerating Canvases. Scope Read or Search to a relevant
+region when available.
 
 For Slide Scenes, use `canvas_manage` with `list_pages` to discover
 stable `pageId` values and names. Pass `pageId` to read, search, write, erase,
