@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, globSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -20,6 +20,7 @@ const workspaceGroups = {
     '@chardesk/cell-plane', '@chardesk/canvas-templates', '@chardesk/character-library',
     '@chardesk/legacy-blackboard', '@chardesk/protocol',
     '@chardesk/canvas',
+    '@chardesk/terminal-canvas-demo', '@chardesk/local-runtime',
   ]),
   services: new Set([
     '@chardesk/collaboration-protocol', '@chardesk/github-stars',
@@ -44,6 +45,7 @@ const globalInputs = new Set([
   'knip.json',
   'package-lock.json',
   'package.json',
+  '.bun-version',
   'tsconfig.json',
   'vitest.config.ts',
   'scripts/quality/verification.mjs',
@@ -69,21 +71,17 @@ const git = (args, allowFailure = false) => {
 
 export function loadWorkspaceProjects(root = repositoryRoot) {
   const projects = []
-  for (const parent of ['packages', 'apps']) {
-    const parentPath = path.join(root, parent)
-    for (const entry of readdirSync(parentPath, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue
-      const relativeRoot = `${parent}/${entry.name}`
-      const manifestPath = path.join(root, relativeRoot, 'package.json')
-      if (!existsSync(manifestPath)) continue
-      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
-      projects.push({
-        name: manifest.name,
-        root: relativeRoot,
-        kind: parent === 'packages' ? 'package' : 'app',
-        manifest,
-      })
-    }
+  const rootManifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))
+  for (const relativeRoot of globSync(rootManifest.workspaces, { cwd: root }).sort()) {
+    const manifestPath = path.join(root, relativeRoot, 'package.json')
+    if (!existsSync(manifestPath)) continue
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    projects.push({
+      name: manifest.name,
+      root: relativeRoot,
+      kind: relativeRoot.startsWith('apps/') ? 'app' : 'package',
+      manifest,
+    })
   }
   const names = new Set(projects.map(project => project.name))
   for (const project of projects) {

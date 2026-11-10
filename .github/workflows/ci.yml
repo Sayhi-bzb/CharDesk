@@ -106,6 +106,12 @@ jobs:
           node-version: 24
           cache: npm
 
+      - &setup-bun
+        name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
       - &install
         name: Install dependencies
         run: npm ci
@@ -138,6 +144,7 @@ jobs:
     steps:
       - *checkout
       - *setup-node
+      - *setup-bun
       - name: Plan workspace group
         id: workspace-plan
         run: |
@@ -175,6 +182,7 @@ jobs:
     steps:
       - *checkout
       - *setup-node
+      - *setup-bun
       - *install
       - name: Run Node tests
         run: |
@@ -198,6 +206,7 @@ jobs:
     steps:
       - *checkout
       - *setup-node
+      - *setup-bun
       - *install
       - name: Run DOM tests
         run: |
@@ -216,6 +225,7 @@ jobs:
     steps:
       - *checkout
       - *setup-node
+      - *setup-bun
       - *install
       - name: Build affected products
         env:
@@ -251,6 +261,7 @@ jobs:
     steps:
       - *checkout
       - *setup-node
+      - *setup-bun
       - name: Install dependencies
         run: npm ci
       - name: Cache Playwright browsers
@@ -277,6 +288,7 @@ jobs:
     steps:
       - *checkout
       - *setup-node
+      - *setup-bun
       - *install
       - name: Cache Playwright Chromium
         uses: actions/cache@v4

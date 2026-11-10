@@ -6,17 +6,17 @@
   "exports": {
     "./*": "./src/*.ts"
   },
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts"
+  },
   "dependencies": {
     "@chardesk/canvas-templates": "*",
     "@chardesk/rendering": "*",
     "@chardesk/font-maple": "*",
     "@napi-rs/canvas": "1.0.8",
-    "@chardesk/cell-core": "*",
     "@chardesk/cell-plane": "*",
     "@chardesk/chargraph": "*",
-    "@chardesk/document": "*",
     "@chardesk/editor-core": "*",
-    "@chardesk/protocol": "*",
     "yjs": "^13.6.27"
   }
 }

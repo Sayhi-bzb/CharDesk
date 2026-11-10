@@ -45,14 +45,19 @@ jobs:
         if: steps.release.outputs.release_created != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
         run: |
-          release_branch=$(gh pr list \
-            --repo "$GITHUB_REPOSITORY" \
-            --state open \
-            --base main \
-            --label "autorelease: pending" \
-            --json headRefName \
-            --jq '.[0].headRefName // empty')
+          # Use the action result before querying lists that may not index a new PR yet.
+          release_pr=$(printf '%s' "$RELEASE_PR" | jq -r '.number // empty')
+          if [ -n "$release_pr" ]; then
+            release_branch=$(gh pr view "$release_pr" \
+              --repo "$GITHUB_REPOSITORY" --json headRefName --jq '.headRefName')
+          else
+            release_branch=$(gh api --paginate \
+              "repos/$GITHUB_REPOSITORY/pulls?state=open&base=main&per_page=100" \
+              --jq '.[] | select(any(.labels[]; .name == "autorelease: pending")) | .head.ref' \
+              | head -n 1)
+          fi
           echo "head_ref=$release_branch" >> "$GITHUB_OUTPUT"
           if [ -n "$release_branch" ]; then
             echo "Pending release pull request found on $release_branch."
@@ -60,11 +65,12 @@ jobs:
             echo "No pending release pull request found."
           fi
 
-      - name: Check out the release pull request
+      - name: Check out verified release tooling
         if: steps.pending_release.outputs.head_ref != ''
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up Node.js for release synchronization
         if: steps.pending_release.outputs.head_ref != ''
@@ -72,6 +78,12 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+
+      - name: Set up Bun for release synchronization
+        if: steps.pending_release.outputs.head_ref != ''
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
 
       - name: Install dependencies for release synchronization
         if: steps.pending_release.outputs.head_ref != ''
@@ -82,9 +94,11 @@ jobs:
         env:
           RELEASE_BRANCH: ${{ steps.pending_release.outputs.head_ref }}
         run: |
+          # Install from verified main before switching to an unsynchronized release manifest.
           git fetch origin "$RELEASE_BRANCH"
           git checkout -B "$RELEASE_BRANCH" "origin/$RELEASE_BRANCH"
           npm run release:sync
+          npm run release:verify
           if git diff --quiet; then
             echo "Release workspace dependency ranges are already synchronized."
             exit 0
@@ -129,6 +143,11 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
 
       - name: Set up current npm 11
         run: npm install --global npm@11
@@ -187,6 +206,11 @@ jobs:
           else
             echo "mcp_published=false" >> "$GITHUB_OUTPUT"
           fi
+          if npm view "@chardesk/canvas-capabilities@$version" version >/dev/null 2>&1; then
+            echo "capabilities_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "capabilities_published=false" >> "$GITHUB_OUTPUT"
+          fi
 
       # Release tags are created only after the main commit passes Verify.
       # Publish validates and smoke-tests the packed artifacts below; rerunning
@@ -201,6 +225,7 @@ jobs:
           npm pack --workspace @chardesk/font-maple --pack-destination release-assets
           npm pack --workspace @chardesk/cli --pack-destination release-assets
           npm pack --workspace @chardesk/mcp --pack-destination release-assets
+          npm pack --workspace @chardesk/canvas-capabilities --pack-destination release-assets
 
       - name: Smoke test packed packages
         run: >-
@@ -212,6 +237,7 @@ jobs:
           release-assets/chardesk-font-maple-${RELEASE_TAG#v}.tgz
           release-assets/chardesk-cli-${RELEASE_TAG#v}.tgz
           release-assets/chardesk-mcp-${RELEASE_TAG#v}.tgz
+          release-assets/chardesk-canvas-capabilities-${RELEASE_TAG#v}.tgz
 
       - name: Publish protocol to npm
         if: steps.package-status.outputs.protocol_published != 'true'
@@ -232,6 +258,10 @@ jobs:
       - name: Publish rendering to npm
         if: steps.package-status.outputs.rendering_published != 'true'
         run: npm publish --workspace @chardesk/rendering --access public --provenance
+
+      - name: Publish Canvas capabilities to npm
+        if: steps.package-status.outputs.capabilities_published != 'true'
+        run: npm publish --workspace @chardesk/canvas-capabilities --access public --provenance
 
       - name: Publish CLI to npm
         if: steps.package-status.outputs.cli_published != 'true'

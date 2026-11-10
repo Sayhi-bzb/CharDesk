@@ -23,7 +23,7 @@ import {
 import { cellRectContainsPoint, intersectCellRects, type CellRect } from '@chardesk/cell-core';
 import { getGraphemeCellWidth, iterateGraphemes } from '@chardesk/protocol';
 import { localizedMessages, helpLines } from './copy.ts';
-import type { TerminalCanvas } from '../../local-runtime/src/model.ts';
+import type { TerminalCanvas } from '@chardesk/local-runtime/model';
 import { TerminalMinimap, minimapPanel, type MinimapFrame } from './minimap.ts';
 import { TerminalLinkText, type LinkedGlyph } from './linkText.ts';
 import type { TerminalContextMenu } from './contextMenu.ts';

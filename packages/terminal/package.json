@@ -16,7 +16,6 @@
     "@chardesk/editor-core": "*",
     "@chardesk/editor-input": "*",
     "@chardesk/font-maple": "*",
-    "@chardesk/keyboard": "*",
     "@chardesk/protocol": "*",
     "@chardesk/rendering": "*",
     "@chardesk/ui": "*",
@@ -24,6 +23,6 @@
     "@napi-rs/clipboard": "1.1.4",
     "@opentui/core": "0.8.0",
     "@teddyzhu/clipboard": "0.0.12",
-    "yjs": "^13.6.27"
+    "@chardesk/local-runtime": "*"
   }
 }

@@ -13,7 +13,7 @@ import {
   type CharDeskCanvasCellDrawEntry,
   type CharDeskCanvasPalette,
 } from '@chardesk/rendering/canvas';
-import type { TerminalCanvas } from '../../local-runtime/src/model.ts';
+import type { TerminalCanvas } from '@chardesk/local-runtime/model';
 import type { TerminalClipboardImage } from './clipboard.ts';
 import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
 import type { GridCell } from '@chardesk/cell-plane/types';

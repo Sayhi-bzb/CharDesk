@@ -6,7 +6,7 @@ if (!args.length || args[0] === 'tui') {
     console.error('Use an interactive terminal, or chardesk --help.');
     process.exitCode = 2;
   } else {
-    const { runTerminal } = await import('../../terminal/src/main.ts');
+    const { runTerminal } = await import('@chardesk/terminal/main');
     await runTerminal(args.slice(args[0] === 'tui' ? 1 : 0));
   }
 } else if (args[0] === 'canvas') {
@@ -22,7 +22,7 @@ if (!args.length || args[0] === 'tui') {
       throw new Error('Usage: chardesk canvas <operation> [--file path | --session id] --json');
     const input = process.stdin.isTTY ? {} : JSON.parse((await Bun.stdin.text()).trim() || '{}');
     usage = false;
-    const { executeLocal } = await import('../../local-runtime/src/command.ts');
+    const { executeLocal } = await import('@chardesk/local-runtime/command');
     const result = await executeLocal(`canvas_${positionals[0]}`, input, {
       file: values.file,
       session: values.session,

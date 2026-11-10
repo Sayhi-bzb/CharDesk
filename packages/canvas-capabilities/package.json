@@ -12,5 +12,15 @@
   },
   "files": [
     "src"
-  ]
+  ],
+  "description": "Shared Canvas capability contracts for CharDesk hosts and agents",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sayhi-bzb/CharDesk.git",
+    "directory": "packages/canvas-capabilities"
+  }
 }

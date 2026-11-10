@@ -7,6 +7,5 @@ export {
   orderCanvasAnchors,
   getCanvasAnchorDepth,
   getCanvasAnchorBranchIds,
-  removeCanvasAnchorsPromotingChildren,
   moveCanvasAnchor,
 } from "@chardesk/editor-core/canvasAnchorModel";

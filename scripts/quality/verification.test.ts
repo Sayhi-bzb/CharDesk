@@ -12,6 +12,46 @@ import {
 describe('verification task graph', () => {
   const projects = loadWorkspaceProjects()
 
+  it('discovers the terminal test workspace declared by the root manifest', () => {
+    expect(projects.find(project => project.name === '@chardesk/terminal-canvas-demo')?.root)
+      .toBe('examples/terminal-canvas')
+  })
+
+  it.each(['pr', 'full'])('runs TUI tests in the products lane for %s changes', mode => {
+    for (const file of ['packages/terminal/src/surface.ts', 'packages/local-runtime/src/sessions.ts']) {
+      const options = parseArguments(['--mode', mode, '--phase', 'workspace-tests', '--workspace-group', 'products'])
+      const plan = createVerificationPlan(options, { base: 'test', files: [file] }, projects)
+      expect(plan.tasks.some(task => task.label === 'test @chardesk/terminal-canvas-demo')).toBe(true)
+      expect(plan.tasks.some(task => task.label === 'test @chardesk/cli')).toBe(true)
+    }
+  })
+
+  it.each(['pr', 'full'])('runs local runtime tests in the products lane for %s changes', mode => {
+    for (const file of ['packages/local-runtime/src/capabilities.ts', 'packages/editor-core/src/writeText.ts']) {
+      const options = parseArguments(['--mode', mode, '--phase', 'workspace-tests', '--workspace-group', 'products'])
+      const plan = createVerificationPlan(options, { base: 'test', files: [file] }, projects)
+      expect(plan.tasks.some(task => task.label === 'test @chardesk/local-runtime')).toBe(true)
+    }
+  })
+
+  it('covers every workspace test suite across the CI groups', () => {
+    const options = ['--mode', 'full', '--phase', 'workspace-tests']
+    const changes = { base: 'test', files: [] }
+    const testLabels = (plan: ReturnType<typeof createVerificationPlan>) => plan.tasks
+      .filter(task => task.label.startsWith('test ')).map(task => task.label)
+    const all = testLabels(createVerificationPlan(parseArguments(options), changes, projects))
+    const grouped = new Set(['core', 'products', 'services', 'sites'].flatMap(group =>
+      testLabels(createVerificationPlan(parseArguments([...options, '--workspace-group', group]), changes, projects))))
+    expect([...grouped].sort()).toEqual(all.sort())
+  })
+
+  it('typechecks the TUI and treats runtime version changes as a global input', () => {
+    const plan = createVerificationPlan(parseArguments(['--mode', 'pr', '--phase', 'typecheck']),
+      { base: 'test', files: ['packages/terminal/src/surface.ts'] }, projects)
+    expect(plan.tasks.some(task => task.label === 'typecheck @chardesk/terminal-canvas-demo')).toBe(true)
+    expect(affectedProjectNames(projects, ['.bun-version']).size).toBe(projects.length + 1)
+  })
+
   it('orders workspace dependencies before their consumers', () => {
     const order = topologicalProjects(projects, ['@chardesk/cli']).map(project => project.name)
     expect(order.indexOf('@chardesk/protocol')).toBeLessThan(order.indexOf('@chardesk/chargraph'))

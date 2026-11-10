@@ -1,1 +1,1 @@
-export { resolveSnapshotFont } from '../../local-runtime/src/rasterFonts.ts';
+export { resolveSnapshotFont } from '@chardesk/local-runtime/rasterFonts';

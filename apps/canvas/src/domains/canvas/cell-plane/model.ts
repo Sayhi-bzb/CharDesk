@@ -9,7 +9,6 @@ export {
   decodeCellPlaneOperationRows,
   encodeCellPlaneOperation,
   isEncodedCellPlaneOperation,
-  toLegacyCellPlaneOperation,
   isCellPlaneOperation,
   CanvasProjectionCacheBudget,
   type CellPlaneRow,

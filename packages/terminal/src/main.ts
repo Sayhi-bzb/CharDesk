@@ -1,20 +1,20 @@
-import type { LocalEndpoint } from '../../local-runtime/src/ipc.ts';
+import type { LocalEndpoint } from '@chardesk/local-runtime/ipc';
 import { basename } from 'node:path';
-import { resolveAppPaths } from '../../local-runtime/src/appPaths.ts';
-import { openLocalWorkspace } from '../../local-runtime/src/localWorkspace.ts';
-import type { LocalSessions } from '../../local-runtime/src/sessions.ts';
+import { resolveAppPaths } from '@chardesk/local-runtime/appPaths';
+import { openLocalWorkspace } from '@chardesk/local-runtime/localWorkspace';
+import type { LocalSessions } from '@chardesk/local-runtime/sessions';
 import { formatCellFrame } from '@chardesk/cell-core';
 import { getGraphemeCellWidth } from '@chardesk/protocol';
-import { createWelcomeDocument } from '../../local-runtime/src/welcome.ts';
+import { createWelcomeDocument } from '@chardesk/local-runtime/welcome';
 import { WelcomeAppearance } from '@chardesk/canvas-templates/welcome-appearance';
-import { CanvasFile } from '../../local-runtime/src/document.ts';
+import { CanvasFile } from '@chardesk/local-runtime/document';
 import { TerminalAppearanceRuntime } from './appearance.ts';
 import type { ClipboardTextPreparation } from '@chardesk/editor-core/clipboard/commands';
 import { TerminalSettingsStore, terminalSettingsPath } from './settings.ts';
 import { createTextPreparation } from './text.ts';
-import { parseOptions } from '../../local-runtime/src/options.ts';
-import { TerminalWorkspace } from '../../local-runtime/src/workspace.ts';
-import { WorkspacePersistence } from '../../local-runtime/src/persistence.ts';
+import { parseOptions } from '@chardesk/local-runtime/options';
+import { TerminalWorkspace } from '@chardesk/local-runtime/workspace';
+import { WorkspacePersistence } from '@chardesk/local-runtime/persistence';
 import { attachInputTrace } from './inputTrace.ts';
 import { terminalKeyboardOptions } from './inputModifiers.ts';
 import {
@@ -80,7 +80,7 @@ export async function runTerminal(args: string[] = process.argv.slice(2)) {
         workspace = opened.workspace;
         sessions = opened.sessions;
         persistence = opened.persistence;
-        const { startLocalEndpoint } = await import('../../local-runtime/src/ipc.ts');
+        const { startLocalEndpoint } = await import('@chardesk/local-runtime/ipc');
         const welcomeAppearance = new WelcomeAppearance(() => appearance!.getSnapshot());
         stopEndpoint = await startLocalEndpoint(
           paths,

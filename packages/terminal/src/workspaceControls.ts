@@ -14,10 +14,10 @@ import { segmentGraphemes, getTextCellWidth } from '@chardesk/protocol';
 import { searchCanvasSurface, type CanvasSearchResult } from '@chardesk/editor-core/search';
 import type { ClipboardPort } from '@chardesk/editor-core/clipboard/commands';
 import type { CanvasSurface, TerminalPanel } from './surface.ts';
-import type { TerminalWorkspace } from '../../local-runtime/src/workspace.ts';
+import type { TerminalWorkspace } from '@chardesk/local-runtime/workspace';
 import type { TerminalAction } from './shortcuts.ts';
-import type { LocalSessions } from '../../local-runtime/src/sessions.ts';
-import type { LocalSession } from '../../local-runtime/src/sessionCatalog.ts';
+import type { LocalSessions } from '@chardesk/local-runtime/sessions';
+import type { LocalSession } from '@chardesk/local-runtime/sessionCatalog';
 import { navigationActions } from './navigation.ts';
 import { watchWorkspaceSources } from './sourceMonitor.ts';
 import { noticeText, noticeDetail, type TerminalNotice } from './feedback.ts';
@@ -235,7 +235,7 @@ export class WorkspaceControls {
         } else {
           if (kind === 'new') {
             const { readOptional, resolveCanvasFilePath } =
-              await import('../../local-runtime/src/document.ts');
+              await import('@chardesk/local-runtime/document');
             if ((await readOptional(await resolveCanvasFilePath(panel.input!.trim()))) !== null)
               throw new Error(this.surface.t('The file already exists. Use Open.'));
           }

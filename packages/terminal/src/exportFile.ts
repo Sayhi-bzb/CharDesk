@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { atomicWrite } from '../../local-runtime/src/storage.ts';
+import { atomicWrite } from '@chardesk/local-runtime/storage';
 
 /** Export creates a new file; document saves and their baselines remain independent. */
 export async function deliverExportFile(

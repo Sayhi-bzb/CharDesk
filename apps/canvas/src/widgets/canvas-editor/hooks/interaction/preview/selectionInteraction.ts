@@ -1,1 +1,1 @@
-export { type SelectionCommitDecision, resolveSelectionCommitDecision } from "@chardesk/editor-core/interaction/selectionCommit";
+export { type SelectionCommitDecision } from "@chardesk/editor-core/interaction/selectionCommit";

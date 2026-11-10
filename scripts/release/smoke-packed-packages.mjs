@@ -3,17 +3,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const [protocolTarball, coreTarball, renderingTarball, fontsTarball, mapleTarball, cliTarball, mcpTarball] = process.argv.slice(2).map((value) =>
+const [protocolTarball, coreTarball, renderingTarball, fontsTarball, mapleTarball, cliTarball, mcpTarball, capabilitiesTarball] = process.argv.slice(2).map((value) =>
   value ? path.resolve(value) : value
 );
 
-if (!protocolTarball || !coreTarball || !renderingTarball || !fontsTarball || !mapleTarball || !cliTarball || !mcpTarball) {
+if (!protocolTarball || !coreTarball || !renderingTarball || !fontsTarball || !mapleTarball || !cliTarball || !mcpTarball || !capabilitiesTarball) {
   throw new Error(
-    "Usage: node scripts/release/smoke-packed-packages.mjs <protocol.tgz> <cell-core.tgz> <rendering.tgz> <fonts.tgz> <font-maple.tgz> <cli.tgz> <mcp.tgz>"
+    "Usage: node scripts/release/smoke-packed-packages.mjs <protocol.tgz> <cell-core.tgz> <rendering.tgz> <fonts.tgz> <font-maple.tgz> <cli.tgz> <mcp.tgz> <canvas-capabilities.tgz>"
   );
 }
 
-for (const tarball of [protocolTarball, coreTarball, renderingTarball, fontsTarball, mapleTarball, cliTarball, mcpTarball]) {
+for (const tarball of [protocolTarball, coreTarball, renderingTarball, fontsTarball, mapleTarball, cliTarball, mcpTarball, capabilitiesTarball]) {
   if (!fs.existsSync(tarball)) {
     throw new Error(`Missing package tarball: ${tarball}`);
   }
@@ -43,6 +43,7 @@ try {
       mapleTarball,
       cliTarball,
       mcpTarball,
+      capabilitiesTarball,
     ],
     { cwd: temporaryDirectory, stdio: "inherit" }
   );
@@ -55,6 +56,12 @@ try {
     import { normalizeCellRect } from "@chardesk/cell-core";
     import { DEFAULT_CHARDESK_CELL_METRICS } from "@chardesk/rendering";
     import { resolveCharDeskContentTheme } from "@chardesk/rendering/theme";
+    import { tools as sharedTools, toolNames } from "@chardesk/canvas-capabilities/contracts";
+    import { tools as mcpTools } from "@chardesk/mcp/contracts";
+
+    if (mcpTools !== sharedTools || !toolNames.has("canvas_read")) {
+      throw new Error("Packed MCP did not consume the shared Canvas contract");
+    }
 
     const parsed = parseCharDeskText("A界");
     if (parsed.width !== 3 || parsed.cells.length !== 2) {
@@ -148,6 +155,13 @@ try {
     cwd: temporaryDirectory,
     stdio: "inherit",
   });
+  const written = JSON.parse(execFileSync(cli, ["canvas", "write", "--file", document, "--json"], {
+    cwd: temporaryDirectory,
+    env: { ...process.env, CHARDESK_HOME: path.join(temporaryDirectory, "home") },
+    input: JSON.stringify({ at: [0, 0], content: "Packed CLI 界" }),
+    encoding: "utf8",
+  }));
+  if (written.persistence !== "saved") throw new Error("Packed CLI did not persist Canvas edits");
   execFileSync(cli, ["inspect", document, "--json"], {
     cwd: temporaryDirectory,
     stdio: "inherit",

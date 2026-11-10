@@ -1,5 +1,5 @@
 import { english, type Translate } from './i18n.ts';
-import type { TerminalCanvas } from '../../local-runtime/src/model.ts';
+import type { TerminalCanvas } from '@chardesk/local-runtime/model';
 import type { TerminalAction } from './shortcuts.ts';
 import type { EditorCommandResult } from '@chardesk/editor-core/editor/types';
 import type { GridCornerOrEdge, GridEdge } from '@chardesk/editor-core/selection/commands';

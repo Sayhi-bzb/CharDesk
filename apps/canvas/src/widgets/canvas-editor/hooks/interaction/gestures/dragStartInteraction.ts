@@ -1,1 +1,1 @@
-export { isShapeTool, resolveDragStartRouteDecision, type SelectionDragStartDecision, type DrawingShapeDragStartDecision, resolveSelectionDragStartDecision, resolveDrawingShapeDragStartDecision } from "@chardesk/editor-core/interaction/dragStart";
+export { resolveDragStartRouteDecision, type SelectionDragStartDecision, type DrawingShapeDragStartDecision, resolveSelectionDragStartDecision, resolveDrawingShapeDragStartDecision } from "@chardesk/editor-core/interaction/dragStart";

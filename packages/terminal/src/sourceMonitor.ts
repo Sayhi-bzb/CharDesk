@@ -1,5 +1,5 @@
 import type { CliRenderer } from '@opentui/core';
-import type { TerminalWorkspace } from '../../local-runtime/src/workspace.ts';
+import type { TerminalWorkspace } from '@chardesk/local-runtime/workspace';
 
 /** Advisory reads only. Saves/reloads still verify content at their commit boundary. */
 export function watchWorkspaceSources(

@@ -1,1 +1,1 @@
-export * from '../../../packages/local-runtime/src/model.ts';
+export * from '@chardesk/local-runtime/model';

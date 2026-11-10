@@ -11,7 +11,7 @@ import {
 import { mkdir, readFile, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import { atomicWrite } from '../../local-runtime/src/storage.ts';
+import { atomicWrite } from '@chardesk/local-runtime/storage';
 import type { PasteMode } from './text.ts';
 import { normalizeShortcut, type ShortcutSequence } from '@chardesk/editor-core/editor/shortcut';
 

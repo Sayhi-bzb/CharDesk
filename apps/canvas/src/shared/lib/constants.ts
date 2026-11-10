@@ -2,7 +2,6 @@ export {
   GRID_COLOR,
   BACKGROUND_COLOR,
   COLOR_PRIMARY_TEXT,
-  EXPORT_PADDING,
 } from '@chardesk/cell-plane/constants';
 
 export const MIN_ZOOM = 0.25;

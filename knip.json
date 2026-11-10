@@ -68,9 +68,10 @@
         "src/raster-worker.ts",
         "src/**/*.test.ts",
         "scripts/build.mjs",
+        "scripts/build-local.ts",
         "vitest.config.ts"
       ],
-      "project": ["src/**/*.ts", "scripts/*.mjs", "*.config.ts"],
+      "project": ["src/**/*.ts", "scripts/*.{mjs,ts}", "*.config.ts"],
       "ignoreDependencies": [
         "d3-scale",
         "elkjs",
@@ -79,8 +80,25 @@
         "marked-alert",
         "saxes",
         "shiki",
-        "temml"
+        "temml",
+        "@opentui/core",
+        "@napi-rs/clipboard",
+        "@teddyzhu/clipboard",
+        "quickjs-emscripten",
+        "ajv"
       ]
+    },
+    "packages/canvas-capabilities": {
+      "entry": ["src/contracts.mjs", "src/contracts.d.mts"],
+      "project": ["src/**/*.{ts,mjs,mts}"]
+    },
+    "packages/terminal": {
+      "entry": ["src/main.ts", "scripts/snapshotFonts.ts"],
+      "project": ["src/**/*.ts", "scripts/*.ts"]
+    },
+    "examples/terminal-canvas": {
+      "entry": ["src/main.ts", "src/**/*.test.ts", "scripts/*.ts"],
+      "project": ["src/**/*.ts", "scripts/*.ts"]
     },
     "apps/docs": {
       "entry": [

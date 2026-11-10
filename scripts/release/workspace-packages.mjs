@@ -6,6 +6,7 @@ export const releasedPackages = [
   { name: "@chardesk/font-maple", path: "packages/font-maple" },
   { name: "@chardesk/protocol", path: "packages/protocol" },
   { name: "@chardesk/rendering", path: "packages/rendering" },
+  { name: "@chardesk/canvas-capabilities", path: "packages/canvas-capabilities" },
 ];
 
 export const dependencyFields = [
