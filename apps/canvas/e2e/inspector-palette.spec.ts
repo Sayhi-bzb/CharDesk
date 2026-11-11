@@ -1,5 +1,55 @@
 import { expect, test } from "@playwright/test"
 
+for (const theme of ["light", "dark"] as const) {
+  for (const [hasSelection, html] of [[false, false], [true, false], [false, true], [true, true]] as const) {
+    test(`${html ? "HTML" : "Markdown"} paste keeps its accent after picking black (${theme}, selection=${hasSelection})`, async ({ page }) => {
+      await page.addInitScript((theme) => {
+        localStorage.setItem("chardesk-host-theme", theme)
+      }, theme)
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await page.goto("/")
+      await expect(page.getByTestId("canvas-editor-surface")).toBeVisible()
+      await page.evaluate(async (hasSelection) => {
+        const { getApplicationEditorHost } = await import("../src/app/compositionRoot.ts")
+        const host = getApplicationEditorHost()
+        await host.canvas.ready
+        host.canvas.commands.grid.replace([])
+        host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 })
+        if (hasSelection) {
+          const clipboardData = new DataTransfer()
+          clipboardData.setData("text/plain", "**old**")
+          await host.canvas.commands.selection.paste({ eventDataTransfer: clipboardData })
+        }
+      }, hasSelection)
+
+      await page.getByTestId("canvas-inspector-panel")
+        .getByRole("button", { name: "Pick ANSI color #000000", exact: true }).click()
+
+      const input = page.getByRole("textbox")
+      await input.focus()
+      await input.evaluate((element, html) => {
+        const clipboardData = new DataTransfer()
+        clipboardData.setData("text/plain", html ? "bold" : "**bold**")
+        if (html) clipboardData.setData("text/html", '<p><strong style="color: black">bold</strong></p>')
+        element.dispatchEvent(new ClipboardEvent("paste", {
+          bubbles: true,
+          cancelable: true,
+          clipboardData,
+        }))
+      }, html)
+
+      await expect.poll(() => page.evaluate(async () => {
+        const { getApplicationEditorHost } = await import("../src/app/compositionRoot.ts")
+        return [...getApplicationEditorHost().canvas.getState().contentSurface.reader.materialize().values()]
+      })).toEqual([..."bold"].map((char) => ({
+        char,
+        color: theme === "light" ? "#0969da" : "#58a6ff",
+        attrs: { bold: true },
+      })))
+    })
+  }
+}
+
 test("Inspector consumes the dark preset palette without remapping ANSI colors", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("chardesk-host-theme", "dark")

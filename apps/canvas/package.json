@@ -50,7 +50,8 @@
     "@chardesk/cell-plane": "*",
     "@chardesk/editor-core": "*",
     "@chardesk/canvas-templates": "*",
-    "@chardesk/character-library": "*"
+    "@chardesk/character-library": "*",
+    "turndown": "^7.2.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
@@ -67,6 +68,7 @@
     "typescript": "~5.9.3",
     "vite": "^8.2.0",
     "vitest": "^4.1.2",
-    "@napi-rs/canvas": "1.0.8"
+    "@napi-rs/canvas": "1.0.8",
+    "@types/turndown": "^5.0.6"
   }
 }

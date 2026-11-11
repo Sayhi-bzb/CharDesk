@@ -13,6 +13,7 @@ import {
 } from "@/domains/document/public";
 import { clipboard } from "@/shared/services/effects";
 import { parseAnsiTextCells } from "@/shared/utils/ansiText";
+import { htmlClipboardToMarkdown } from "./htmlClipboard";
 
 const DEFAULT_ANSI_PASTE_COLOR = "#ffffff";
 
@@ -33,9 +34,15 @@ const toRenderedClipboardPayload = async (
   source: string,
   defaultColor: string,
   renderText: RenderClipboardText,
-  context?: TextRenderContext
+  context?: TextRenderContext,
+  html = ""
 ) => {
-  const rendered = await renderText(source, defaultColor, context);
+  const markdown = await htmlClipboardToMarkdown(html, source);
+  const rendered = await renderText(markdown ?? source, defaultColor, markdown ? {
+    ...context,
+    themeMode: context?.themeMode ?? "light",
+    rendererMode: "markdown",
+  } : context);
   if (rendered.kind === "spans") {
     return {
       richRows: rendered.rows,
@@ -106,11 +113,14 @@ export const writeClipboardPayload = async (
   }
 };
 
-const readRichClipboardCells = async (): Promise<{
+const readClipboardItems = async (): Promise<{
   richCells: import("@chardesk/editor-core/textCommandTypes").RichTextCell[] | null;
   plainText: string | null;
+  html?: string;
 } | null> => {
   const items = await clipboard.readItems();
+  let html = "";
+  let plainText = "";
   if (items) {
     for (const item of items) {
       for (const type of [MIME_RICH_DATA, "text/html"]) {
@@ -119,11 +129,15 @@ const readRichClipboardCells = async (): Promise<{
         const parsed =
           type === MIME_RICH_DATA ? parseRichClipboardText(raw) : parseRichClipboardHtml(raw);
         if (parsed) return parsed;
+        if (type === "text/html" && !html) html = raw;
+      }
+      if (!plainText && item.types.includes("text/plain")) {
+        plainText = await (await item.getType("text/plain")).text();
       }
     }
   }
 
-  return null;
+  return html || plainText ? { richCells: null, plainText, html } : null;
 };
 
 export const readClipboardPayload = async (
@@ -147,12 +161,15 @@ export const readClipboardPayload = async (
     };
   }
 
-  if (eventPlainText) {
-    return await toRenderedClipboardPayload(eventPlainText, defaultColor, renderText, context);
+  if (eventPlainText || eventHtml) {
+    return await toRenderedClipboardPayload(eventPlainText, defaultColor, renderText, context, eventHtml);
   }
 
-  const richPayload = await readRichClipboardCells();
+  const richPayload = await readClipboardItems();
   if (richPayload) {
+    if (!richPayload.richCells) {
+      return await toRenderedClipboardPayload(richPayload.plainText ?? "", defaultColor, renderText, context, richPayload.html);
+    }
     return {
       richCells: richPayload.richCells,
       plainText: richPayload.plainText,

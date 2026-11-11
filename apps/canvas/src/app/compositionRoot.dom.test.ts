@@ -37,7 +37,7 @@ describe("ApplicationEditorHost", () => {
     expect(getApplicationEditorHost()).not.toBe(first);
   });
 
-  it("routes clipboard text through the host rendering profile before Canvas mutation", async () => {
+  it.each(["#000000", "#ff0000"])("preserves Markdown styling after selecting brush color %s", async (color) => {
     const host = createHost();
     host.canvas.commands.grid.replace([]);
     host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
@@ -45,6 +45,7 @@ describe("ApplicationEditorHost", () => {
       ...DEFAULT_TEXT_RENDER_PROFILE,
       mode: "markdown",
     });
+    host.canvas.commands.preferences.setBrushColor(color);
 
     const result = await host.canvas.commands.selection.paste({
       eventDataTransfer: {
@@ -56,10 +57,30 @@ describe("ApplicationEditorHost", () => {
     expect(result).toMatchObject({ status: "applied" });
     expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")).toMatchObject({
       char: "粗",
+      color: "#0969da",
       attrs: { bold: true },
     });
     expect(host.canvas.getState().contentSurface.reader.materialize().get("2,0")?.char).toBe("体");
     expect(host.canvas.getState().contentSurface.reader.materialize().has("1,0")).toBe(false);
+  });
+
+  it("pastes external HTML bold as themed wide Cells with a black brush", async () => {
+    const host = createHost();
+    host.textRendering.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "auto" });
+    host.canvas.commands.grid.replace([]);
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 0, y: 0 });
+    host.canvas.commands.preferences.setBrushColor("#000000");
+    const result = await host.canvas.commands.selection.paste({
+      eventDataTransfer: {
+        getData: (type: string) => type === "text/plain" ? "粗体" : type === "text/html"
+          ? '<p><strong style="color: black">粗体</strong></p>' : "",
+      } as DataTransfer,
+    });
+    const cells = host.canvas.getState().contentSurface.reader.materialize();
+    expect(result).toMatchObject({ status: "applied" });
+    expect(cells.get("0,0")).toMatchObject({ char: "粗", color: "#0969da", attrs: { bold: true } });
+    expect(cells.get("2,0")).toMatchObject({ char: "体", color: "#0969da", attrs: { bold: true } });
+    expect(cells.has("1,0")).toBe(false);
   });
 
   it("pastes unfenced flowchart Markdown as bold Cells in Auto mode", async () => {

@@ -12,6 +12,7 @@ import {
 } from "@/domains/actions/public";
 import { getGraphemeCellWidth as getCellOccupancy } from "@chardesk/protocol";
 import { createTextRenderingRuntime } from "@/domains/document/public";
+import { clipboard } from "@/shared/services/effects";
 
 const ansiThemeSample = `[38;2;148;163;184m╭──────────────────────────╮[0m
 [38;2;148;163;184m│[48;2;239;246;255m [1;38;2;37;99;235m 界面标题[22;38;2;209;213;219m               [0m[38;2;148;163;184m│[38;2;37;99;235m<─[38;2;209;213;219m [1;38;2;37;99;235mPrimary 主色/品牌色[0m
@@ -127,6 +128,121 @@ describe("clipboardActions", () => {
 
     expect(payload.richCells?.map((cell) => cell.char).join("")).toBe("const value = 1");
     expect(payload.richCells?.some((cell) => cell.color !== "#111111")).toBe(true);
+  });
+
+  describe("external rich-text paste", () => {
+    it.each([
+      ["light", "#0969da"],
+      ["dark", "#58a6ff"],
+    ] as const)("renders HTML strong with the %s theme instead of the brush color", async (themeMode, accent) => {
+      const runtime = createTextRenderingRuntime();
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? "bold" : type === "text/html"
+          ? '<p><strong style="color: black">bold</strong></p>' : "",
+      } as DataTransfer, "#000000", runtime.render, { themeMode });
+
+      expect(payload.richCells).toEqual([..."bold"].map((char, x) => ({
+        x, y: 0, char, color: accent, attrs: { bold: true },
+      })));
+    });
+
+    it.each([
+      "<b>bold</b>",
+      '<span style="font-weight: 700; color: #000000">bold</span>',
+      '<b style="font-weight: normal"><span style="font-weight: 700">bold</span></b>',
+      '<b><span style="font-weight: 700">bold</span></b>',
+      '<strong><b>bold</b></strong>',
+    ])("recognizes editor bold markup: %s", async (html) => {
+      const runtime = createTextRenderingRuntime();
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? "bold" : type === "text/html" ? html : "",
+      } as DataTransfer, "#ff0000", runtime.render);
+      expect(payload.richCells?.[0]).toMatchObject({ char: "b", color: "#0969da", attrs: { bold: true } });
+    });
+
+    it("keeps Markdown source intact when HTML only wraps plain text", async () => {
+      const runtime = createTextRenderingRuntime();
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? "**bold**" : type === "text/html"
+          ? '<span style="color: black">**bold**</span>' : "",
+      } as DataTransfer, "#000000", runtime.render);
+      expect(payload.richCells?.[0]).toMatchObject({ char: "b", color: "#0969da", attrs: { bold: true } });
+    });
+
+    it("keeps literal Markdown and fenced artwork inside HTML code", async () => {
+      const runtime = createTextRenderingRuntime();
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? "bold\n**literal**\n  ┌──┐" : type === "text/html"
+          ? "<p><strong>bold</strong></p><pre><code>**literal**\n  ┌──┐</code></pre>" : "",
+      } as DataTransfer, "#000000", runtime.render);
+      const cells = payload.richCells ?? [];
+      expect(cells.filter(cell => cell.y === 0).map(cell => cell.char).join("")).toBe("bold");
+      expect(cells.filter(cell => cell.y === 2).map(cell => cell.char).join("")).toBe("**literal**");
+      expect(cells.find(cell => cell.y === 3 && cell.x === 2)?.char).toBe("┌");
+    });
+
+    it("imports HTML from clipboard items for context-menu paste", async () => {
+      const readItems = vi.spyOn(clipboard, "readItems").mockResolvedValue([{
+        types: ["text/html", "text/plain"],
+        presentationStyle: "unspecified",
+        getType: async (type: string) => new Blob([
+          type === "text/html" ? "<strong>bold</strong>" : "bold",
+        ]),
+      } as ClipboardItem]);
+      try {
+        const payload = await readClipboardPayload(undefined, "#000000", createTextRenderingRuntime().render);
+        expect(payload.richCells?.[0]).toMatchObject({ char: "b", color: "#0969da", attrs: { bold: true } });
+      } finally {
+        readItems.mockRestore();
+      }
+    });
+
+    it("uses configured strong colors rather than hard-coding blue", async () => {
+      const runtime = createTextRenderingRuntime();
+      const profile = runtime.getProfile();
+      runtime.setProfile({
+        ...profile,
+        features: {
+          ...profile.features,
+          "markdown.strong": {
+            ...profile.features["markdown.strong"],
+            colors: { light: { foreground: "#aabbcc" }, dark: {} },
+          },
+        },
+      });
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? "bold" : type === "text/html" ? "<strong>bold</strong>" : "",
+      } as DataTransfer, "#000000", runtime.render);
+      expect(payload.richCells?.[0]).toMatchObject({ char: "b", color: "#aabbcc", attrs: { bold: true } });
+    });
+
+    it("pastes HTML-only text without reading unrelated system clipboard data", async () => {
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/html" ? "<p>**literal**</p>" : "",
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells?.map(cell => cell.char).join("")).toBe("**literal**");
+      expect(payload.richCells?.some(cell => cell.attrs?.bold)).toBe(false);
+    });
+
+    it("preserves native Cell colors before considering external HTML semantics", async () => {
+      const cells = [{ x: 0, y: 0, char: "B", color: "#000000", attrs: { bold: true } }];
+      const payload = await readClipboardPayload({
+        getData: (type: string) => {
+          if (type === "web application/x-ascii-metropolis") return JSON.stringify({ cells });
+          if (type === "text/html") return "<strong>B</strong>";
+          return type === "text/plain" ? "B" : "";
+        },
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells).toEqual(cells);
+    });
+
+    it("does not import scripts or styles as text", async () => {
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? "bold" : type === "text/html"
+          ? '<script>window.bad = true</script><style>strong {color:black}</style><strong>bold</strong>' : "",
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells?.map(cell => cell.char).join("")).toBe("bold");
+    });
   });
 
   it("preserves text-render diagnostics in the clipboard payload", async () => {
