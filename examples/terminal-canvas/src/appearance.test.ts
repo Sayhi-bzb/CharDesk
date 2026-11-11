@@ -65,6 +65,8 @@ test('one appearance snapshot preserves native color intent and derives content 
     expect(snapshot.colors.selection.slot).not.toBe(8); // slot 8 equals the background
     expect(snapshot.colors.muted.intent).toBe('default');
     expect(snapshot.contentTheme.accent).toBe('#4466aa');
+    expect(snapshot.contentTheme.link).toBe('#22aabb');
+    expect(snapshot.contentTheme.code).toBe('#bb66cc');
     expect(snapshot.contentTheme.background).toBe('#111111');
     settings.set('selectionColor', 8); // explicit choices win over automatic contrast
     expect(appearance.getSnapshot().colors.selection.slot).toBe(8);

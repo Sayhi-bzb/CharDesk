@@ -73,6 +73,8 @@ type DisplaySetting =
         | 'settings.renderTheme.background'
         | 'settings.renderTheme.accent'
         | 'settings.renderTheme.accentForeground'
+        | 'settings.renderTheme.link'
+        | 'settings.renderTheme.code'
         | 'settings.renderTheme.info'
         | 'settings.renderTheme.done'
         | 'settings.renderTheme.success'
@@ -136,6 +138,8 @@ const themeSettings: readonly DisplaySetting[] = [
     token: 'accent-foreground',
     label: 'settings.renderTheme.accentForeground',
   },
+  { id: 'theme:link', kind: 'theme-token', token: 'link', label: 'settings.renderTheme.link' },
+  { id: 'theme:code', kind: 'theme-token', token: 'code', label: 'settings.renderTheme.code' },
   { id: 'theme:info', kind: 'theme-token', token: 'info', label: 'settings.renderTheme.info' },
   { id: 'theme:done', kind: 'theme-token', token: 'done', label: 'settings.renderTheme.done' },
   { id: 'theme:success', kind: 'theme-token', token: 'success', label: 'settings.renderTheme.success' },

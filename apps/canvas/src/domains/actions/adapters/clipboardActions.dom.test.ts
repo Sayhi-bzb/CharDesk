@@ -111,7 +111,7 @@ describe("clipboardActions", () => {
       attrs: { bold: true },
     });
     expect(payload.richCells?.find((cell) => cell.char === "s")).toMatchObject({
-      color: "#58a6ff",
+      color: "#56d4dd",
       href: "https://example.com",
     });
   });
@@ -177,8 +177,92 @@ describe("clipboardActions", () => {
       } as DataTransfer, "#000000", runtime.render);
       const cells = payload.richCells ?? [];
       expect(cells.filter(cell => cell.y === 0).map(cell => cell.char).join("")).toBe("bold");
-      expect(cells.filter(cell => cell.y === 2).map(cell => cell.char).join("")).toBe("**literal**");
-      expect(cells.find(cell => cell.y === 3 && cell.x === 2)?.char).toBe("┌");
+      expect(cells.filter(cell => cell.y === 1).map(cell => cell.char).join("")).toBe("**literal**");
+      expect(cells.find(cell => cell.y === 2 && cell.x === 2)?.char).toBe("┌");
+    });
+
+    it("preserves source indentation and spacing while importing HTML bold", async () => {
+      const source = "明确任务目标与交付要求\n              ↓ 检查";
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? source : type === "text/html"
+          ? "<p><strong>明确任务目标与交付要求</strong><br> ↓ 检查</p>" : "",
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells?.find(cell => cell.char === "↓")).toMatchObject({ x: 14, y: 1 });
+      expect(payload.richCells?.[0]).toMatchObject({ char: "明", attrs: { bold: true }, color: "#0969da" });
+    });
+
+    it("retains syntax highlighting on HTML code blocks without changing source spacing", async () => {
+      const source = "    const message = 'ok';";
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? source : type === "text/html"
+          ? `<pre><code class="language-js">${source}</code></pre>` : "",
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells?.map(cell => cell.char).join("")).toBe(source);
+      expect(payload.richCells?.find(cell => cell.char === "c")?.x).toBe(4);
+      expect(payload.richCells?.find(cell => cell.char === "c")?.color.toLowerCase()).toBe("#0969da");
+      expect(payload.richCells?.some(cell => cell.color.toLowerCase() === "#1a7f37")).toBe(true);
+    });
+
+    it("does not wrap whitespace-only lines inside HTML preformatted blocks", async () => {
+      const source = " ".repeat(100) + "\ncode";
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? source : type === "text/html"
+          ? `<pre><code>${source}</code></pre>` : "",
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells?.find(cell => cell.char === "c")).toMatchObject({ x: 0, y: 1 });
+      expect(payload.richCells?.filter(cell => cell.y === 0)).toHaveLength(100);
+    });
+
+    it("imports heading styles and anchors without inserting Markdown heading markers", async () => {
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? "Title\n正文" : type === "text/html"
+          ? "<h2>Title</h2><p>正文</p>" : "",
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells?.[0]).toMatchObject({ char: "T", attrs: { bold: true } });
+      expect(payload.richCells?.filter(cell => cell.y === 0).map(cell => cell.char).join("")).toBe("Title");
+      expect(payload).toMatchObject({ headings: [{ row: 0, level: 2, label: "Title" }] });
+    });
+
+    it("preserves literal source when HTML text cannot be aligned", async () => {
+      const source = "**keep**\n              ↓ 检查\n" + "long text ".repeat(20);
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? source : type === "text/html"
+          ? "<strong>different text</strong>" : "",
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells).toBeNull();
+      expect(payload.plainText).toBe(source);
+    });
+
+    it("aligns repeated styled text, NBSPs, and wide graphemes without shifting source cells", async () => {
+      const source = "重复  重复\r\n    🦀 `code`";
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? source : type === "text/html"
+          ? "<p><strong>重复</strong>&nbsp;重复<br> <em>🦀</em> <code>`code`</code></p>" : "",
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells?.find(cell => cell.x === 0 && cell.y === 0)?.attrs?.bold).toBe(true);
+      expect(payload.richCells?.find(cell => cell.x === 6 && cell.y === 0)?.attrs?.bold).not.toBe(true);
+      expect(payload.richCells?.find(cell => cell.char === "🦀")).toMatchObject({ x: 4, y: 1, attrs: { italic: true } });
+      expect(payload.richCells?.filter(cell => cell.y === 1).map(cell => cell.char).join("")).toBe("    🦀 `code`");
+      expect(payload.richCells?.find(cell => cell.char === "`")?.color).toBe("#8250df");
+    });
+
+    it.each([
+      ["a  b c", "<code>a <em>b</em> c</code>"],
+      ["a  b", "<code>a<em> </em>b</code>"],
+    ])("keeps code backgrounds on authored spaces across nested styles: %s", async (source, html) => {
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? source : type === "text/html" ? html : "",
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells?.map(cell => cell.char).join("")).toBe(source);
+      expect(payload.richCells?.every(cell => cell.bgColor === "#f6f8fa")).toBe(true);
+    });
+
+    it("keeps an unstyled separator between separate inline code elements", async () => {
+      const payload = await readClipboardPayload({
+        getData: (type: string) => type === "text/plain" ? "a b" : type === "text/html" ? "<code>a</code> <code>b</code>" : "",
+      } as DataTransfer, "#000000", createTextRenderingRuntime().render);
+      expect(payload.richCells?.[1]).toMatchObject({ char: " ", x: 1 });
+      expect(payload.richCells?.[1]?.bgColor).toBeUndefined();
     });
 
     it("imports HTML from clipboard items for context-menu paste", async () => {

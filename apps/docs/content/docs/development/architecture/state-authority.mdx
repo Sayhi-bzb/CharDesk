@@ -19,6 +19,20 @@ description: Authoritative state, command publication, history, and write bounda
 | `presence` | Remote identity, cursor, transient selection | No | Ephemeral |
 | `derived` | Rendering, minimap, preview projections | No | No |
 
+Agent activity is browser workspace feedback, outside document/history state.
+The [host adapter](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/canvasActivity.ts)
+attributes synchronous agent commands and consumes document mutation facts;
+the optional inverse operation supplies the effective Cell footprint, with `null`
+identifying a content no-op. Deletion, overwrite, undo, and page/session removal
+invalidate pending regions through the same owner. The
+[activity model](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/shared/canvas-activity/model.ts)
+owns bounded recent-event retention and cross-tab ordering; the
+[overlay](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/widgets/collaboration/CanvasActivityOverlay.tsx)
+owns focused, stable viewport observation and one offscreen navigation entry.
+Verification: [mutation lifecycle](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/app/canvasActivity.test.ts),
+[ordering and footprints](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/shared/canvas-activity/model.test.ts),
+[browser behavior](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/canvas-activity.spec.ts).
+
 The local `/workspace` page projects native session descriptors and retained
 legacy works; it is not another catalog. [Blackboard retirement](/development/architecture/blackboard-retirement)
 owns conversion and source archives. New cloud backups store native `.chardesk`

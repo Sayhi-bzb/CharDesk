@@ -15,6 +15,13 @@ description: The canonical execution order for document, session, viewport, and 
   operation in a Yjs transaction -> 128x64 spatial projection -> viewport query.
   Text runs remain compact through the write boundary; target-background inheritance
   is operation composition, not a per-cell read/modify/write pass.
+- External rich-text paste: clipboard snapshot -> literal source with matching HTML
+  semantic spans -> shared text compiler -> compact write boundary. Source text owns
+  whitespace; HTML supplies styles only when its text matches. Implementation:
+  [clipboard adapter](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/actions/adapters/htmlClipboard.ts)
+  and [semantic text](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/semantic-text.ts).
+  Verification: [clipboard tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/domains/actions/adapters/clipboardActions.dom.test.ts)
+  and [wrap tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/chargraph/src/markdown-wrap.test.ts).
 - Session activation: active ViewRuntime checkpoint -> catalog descriptor ->
   restored mode-authoritative Yjs document -> one editor-state activation patch.
   Content projection is already current; interaction resets against the newly

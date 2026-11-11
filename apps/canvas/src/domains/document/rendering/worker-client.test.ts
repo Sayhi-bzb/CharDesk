@@ -101,6 +101,24 @@ describe("TextRenderingWorkerClient", () => {
 });
 
 describe("format parity across worker scheduling", () => {
+  it("transfers semantic spans without changing source indentation", async () => {
+    globalThis.Worker = FakeWorker as unknown as typeof Worker;
+    const runtime = createTextRenderingRuntime({ storage: false });
+    const client = new TextRenderingWorkerClient(runtime);
+    const source = "bold\n              ↓ 检查\n" + "x".repeat(50_000);
+    const context = { themeMode: "dark" as const, semanticSpans: [{ from: 0, to: 4, roles: ["strong" as const] }] };
+    const pending = client.render(source, "#000000", context);
+    const request = structuredClone(FakeWorker.latest!.lastMessage) as {
+      id: number; source: string; defaultColor: string; context: typeof context;
+    };
+    expect(request.context).toEqual(context);
+    const result = await runtime.renderCompact(request.source, request.defaultColor, request.context);
+    expect(result.kind === "spans" && result.rows[1]?.spans.find(span => span.text.includes("↓"))?.text)
+      .toContain("              ↓");
+    FakeWorker.latest!.emit("message", new MessageEvent("message", { data: { id: request.id, result } }));
+    expect(await pending).toEqual(result);
+    client.dispose();
+  });
   it.each(["auto", "raw", "markdown"] as const)("preserves explicit %s on both sides of the threshold", async (rendererMode) => {
     globalThis.Worker = FakeWorker as unknown as typeof Worker;
     const runtime = createTextRenderingRuntime({ storage: false });

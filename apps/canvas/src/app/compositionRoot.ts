@@ -41,6 +41,7 @@ import {
   createCanvasAppearanceRuntime,
   type CanvasAppearanceRuntime,
 } from "@/shared/canvas-appearance/runtime";
+import { connectCanvasActivity } from './canvasActivity';
 
 type KeymapStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -65,6 +66,7 @@ export class ApplicationEditorHost {
   readonly textRenderingWorker: TextRenderingWorkerClient;
   readonly profile: EditorHostProfile;
   #disposed = false;
+  readonly #disconnectCanvasActivity: () => void;
 
   constructor({
     canvasPersistence = false,
@@ -97,6 +99,7 @@ export class ApplicationEditorHost {
         this.collaboration.reportIntegrityIssues(issues),
       initialSessions,
     });
+    this.#disconnectCanvasActivity = connectCanvasActivity(this.canvas);
     this.editor = createCanvasEditorRuntime({
       state: { get: this.canvas.getState, subscribe: this.canvas.subscribe },
       history: this.canvas.commands.history,
@@ -119,6 +122,7 @@ export class ApplicationEditorHost {
   dispose = async () => {
     if (this.#disposed) return;
     this.#disposed = true;
+    this.#disconnectCanvasActivity();
     this.editor.dispose();
     this.canvasFont.dispose();
     this.canvasCursor.dispose();

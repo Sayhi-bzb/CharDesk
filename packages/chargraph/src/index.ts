@@ -1,4 +1,5 @@
 export { serializeCharGraphAnsi } from "./ansi.js";
+export type { CharDeskSemanticSpan } from "./semantic-text.js";
 export {
   CharDeskTextCompileError,
   compileCharDeskText,

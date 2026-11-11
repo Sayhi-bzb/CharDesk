@@ -1,126 +1,103 @@
-import { Button, Tooltip, TooltipPopup, TooltipTrigger } from "@chardesk/ui";
-import { useCanvasState, useCanvasViewport } from "@/domains/canvas/public";
-import { DEFAULT_CANVAS_CELL_METRICS } from "@/shared/fonts/canvas-profile";
-import {
-  markCanvasActivityRead,
-  useCanvasActivity,
-  type CanvasActivityMarker,
-} from "@/shared/canvas-activity";
-import { useCanvasLiveViewportOptional, useCanvasViewOptional } from "@/widgets/canvas-editor/engine/CanvasWorkspace";
+import { useEffect } from 'react';
+import { IconButton } from '@chardesk/ui';
+import { useCanvasRuntime, useCanvasState, useCanvasViewport } from '@/domains/canvas/public';
+import { DEFAULT_CANVAS_CELL_METRICS } from '@/shared/fonts/canvas-profile';
+import { acknowledgeCanvasActivity, useCanvasActivity } from '@/shared/canvas-activity';
+import { nextActivityTarget, visibleActivityRanges } from '@/shared/canvas-activity/viewport';
+import { useUiI18n } from '@/shared/i18n';
+import { useCanvasLiveViewportOptional, useCanvasViewOptional } from '@/widgets/canvas-editor/engine/CanvasWorkspace';
 
-type Point = { x: number; y: number };
-type Rect = { left: number; top: number; right: number; bottom: number };
-
-// Keep activity markers aligned with collaboration indicators: the 20px
-// marker has a 4px breathing room beyond its 10px radius.
-const ACTIVITY_INDICATOR_SIZE = 20;
-const ACTIVITY_EDGE_GAP = 4;
-const ACTIVITY_EDGE_INSET = ACTIVITY_INDICATOR_SIZE / 2 + ACTIVITY_EDGE_GAP;
-
-const intersects = (left: Rect, right: Rect) =>
-  left.right > right.left && left.left < right.right && left.bottom > right.top && left.top < right.bottom;
-
+const OBSERVE_MS = 1200;
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-
-const toScreenRect = (
-  bounds: readonly [number, number, number, number],
-  viewport: { offset: Point; zoom: number },
-): Rect => {
-  const [x, y, width, height] = bounds;
-  const cellWidth = DEFAULT_CANVAS_CELL_METRICS.cellWidth * viewport.zoom;
-  const cellHeight = DEFAULT_CANVAS_CELL_METRICS.cellHeight * viewport.zoom;
-  return {
-    left: viewport.offset.x + x * cellWidth,
-    top: viewport.offset.y + y * cellHeight,
-    right: viewport.offset.x + (x + width) * cellWidth,
-    bottom: viewport.offset.y + (y + height) * cellHeight,
-  };
-};
-
-const resolveIndicator = (target: Point, viewport: Rect): Point => {
-  const center = { x: (viewport.left + viewport.right) / 2, y: (viewport.top + viewport.bottom) / 2 };
-  const dx = target.x - center.x;
-  const dy = target.y - center.y;
-  if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return center;
-  const horizontal = Math.abs(dx) / Math.max(1, viewport.right - viewport.left);
-  const vertical = Math.abs(dy) / Math.max(1, viewport.bottom - viewport.top);
-  const scale = horizontal >= vertical
-    ? (dx < 0 ? viewport.left - center.x : viewport.right - center.x) / dx
-    : (dy < 0 ? viewport.top - center.y : viewport.bottom - center.y) / dy;
-  return {
-    x: clamp(center.x + dx * scale, viewport.left + ACTIVITY_EDGE_INSET, viewport.right - ACTIVITY_EDGE_INSET),
-    y: clamp(center.y + dy * scale, viewport.top + ACTIVITY_EDGE_INSET, viewport.bottom - ACTIVITY_EDGE_INSET),
-  };
-};
-
-const reveal = (
-  marker: CanvasActivityMarker,
-  canvasView: ReturnType<typeof useCanvasViewOptional>,
-  viewport: { offset: Point; zoom: number },
-  pane: Rect,
-) => {
-  if (!canvasView) return;
-  const target = toScreenRect(marker.bounds, viewport);
-  const center = { x: (target.left + target.right) / 2, y: (target.top + target.bottom) / 2 };
-  canvasView.runtime.camera.animateTo({
-    zoom: viewport.zoom,
-    offset: {
-      x: viewport.offset.x + (pane.left + pane.right) / 2 - center.x,
-      y: viewport.offset.y + (pane.top + pane.bottom) / 2 - center.y,
-    },
-  }, { duration: 220 });
-  markCanvasActivityRead(marker.id);
-};
 
 export function CanvasActivityOverlay() {
   const markers = useCanvasActivity();
+  const canvas = useCanvasRuntime();
   const canvasView = useCanvasViewOptional();
   const liveViewport = useCanvasLiveViewportOptional();
   const fallbackViewport = useCanvasViewport();
   const activeCanvasId = useCanvasState((state) => state.activeCanvasId);
   const activePageId = useCanvasState((state) => state.slideDeck?.activeSlideId);
-  if (!canvasView || !canvasView.isActive || canvasView.loadState !== "idle" || !canvasView.sessionId || canvasView.sessionId !== activeCanvasId) return null;
+  const { t } = useUiI18n();
   const viewport = liveViewport ?? fallbackViewport;
-  const width = canvasView.containerSize?.width ?? 0;
-  const height = canvasView.containerSize?.height ?? 0;
-  if (width <= 0 || height <= 0) return null;
-  const pane = { left: 0, top: 0, right: width, bottom: height };
-  const visible = markers.filter((marker) =>
-    marker.canvasId === canvasView.sessionId && (marker.pageId ?? undefined) === activePageId
-  );
+  const width = canvasView?.containerSize?.width ?? 0;
+  const height = canvasView?.containerSize?.height ?? 0;
+  const enabled = canvasView?.isActive && canvasView.loadState === 'idle'
+    && canvasView.sessionId === activeCanvasId && width > 0 && height > 0;
+  const pageId = activeCanvasId ? canvas.documents.getDocumentAddress(activeCanvasId, activePageId)?.pageId : undefined;
+  const marker = enabled ? markers.find((entry) => entry.canvasId === activeCanvasId && entry.pageId === pageId) : undefined;
+  const cellWidth = DEFAULT_CANVAS_CELL_METRICS.cellWidth * viewport.zoom;
+  const cellHeight = DEFAULT_CANVAS_CELL_METRICS.cellHeight * viewport.zoom;
+  const { x: offsetX, y: offsetY } = viewport.offset;
+
+  useEffect(() => {
+    if (!marker) return;
+    const visible = visibleActivityRanges(marker.ranges, {
+      left: -offsetX / cellWidth, top: -offsetY / cellHeight,
+      right: (width - offsetX) / cellWidth, bottom: (height - offsetY) / cellHeight,
+    });
+    if (!visible.length) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const observe = () => {
+      clearTimeout(timer);
+      if (document.visibilityState === 'visible' && document.hasFocus()) {
+        timer = setTimeout(() => acknowledgeCanvasActivity(marker, visible), OBSERVE_MS);
+      }
+    };
+    const pause = () => clearTimeout(timer);
+    window.addEventListener('focus', observe);
+    window.addEventListener('blur', pause);
+    document.addEventListener('visibilitychange', observe);
+    observe();
+    return () => {
+      pause();
+      window.removeEventListener('focus', observe);
+      window.removeEventListener('blur', pause);
+      document.removeEventListener('visibilitychange', observe);
+    };
+  }, [marker, width, height, cellWidth, cellHeight, offsetX, offsetY]);
+
+  if (!marker || !canvasView) return null;
+  const world = {
+    left: -offsetX / cellWidth, top: -offsetY / cellHeight,
+    right: (width - offsetX) / cellWidth, bottom: (height - offsetY) / cellHeight,
+  };
+  const target = nextActivityTarget(marker.ranges, world);
+  const visible = marker.ranges.filter((range) => range.y + 1 > world.top && range.y < world.bottom
+    && range.to > world.left && range.from < world.right);
+  // One SVG path represents sparse changed Cells without hundreds of DOM nodes.
+  const path = visible.map((range) => {
+    const left = offsetX + Math.max(range.from, world.left) * cellWidth;
+    const right = offsetX + Math.min(range.to, world.right) * cellWidth;
+    const top = offsetY + range.y * cellHeight;
+    return `M${left},${top}h${right - left}v${cellHeight}h${left - right}Z`;
+  }).join('');
+  const targetX = target ? offsetX + target.x * cellWidth : width / 2;
+  const targetY = target ? offsetY + target.y * cellHeight : height / 2;
+  const dx = targetX - width / 2, dy = targetY - height / 2;
+  const scale = Math.min((width / 2) / Math.max(1, Math.abs(dx)), (height / 2) / Math.max(1, Math.abs(dy)));
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-(--layer-activity) overflow-hidden" aria-label="Agent updates">
-      {visible.map((marker) => {
-        const target = toScreenRect(marker.bounds, viewport);
-        const inside = intersects(target, pane);
-        const targetPoint = { x: (target.left + target.right) / 2, y: (target.top + target.bottom) / 2 };
-        const position = inside
-          ? { x: clamp(target.left, ACTIVITY_EDGE_INSET, width - ACTIVITY_EDGE_INSET), y: clamp(target.top, ACTIVITY_EDGE_INSET, height - ACTIVITY_EDGE_INSET) }
-          : resolveIndicator(targetPoint, pane);
-        return (
-          <Tooltip key={marker.id}>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  tone="danger"
-                  shape="pill"
-                  size="xs"
-                  data-canvas-ui="true"
-                  aria-label={marker.label}
-                  data-canvas-activity="unread"
-                  className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2"
-                  style={{ left: position.x, top: position.y, width: 20, height: 20, padding: 0 }}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={() => reveal(marker, canvasView, viewport, pane)}
-                />
-              }
-            />
-            <TooltipPopup>{marker.label}</TooltipPopup>
-          </Tooltip>
-        );
-      })}
+    <div className="pointer-events-none absolute inset-0 z-(--layer-activity) overflow-hidden" aria-label={t('canvasActivity.label')}>
+      {path && <svg aria-hidden="true" className="absolute inset-0 h-full w-full" data-canvas-activity="highlight">
+        <path d={path} className="fill-primary/10" />
+      </svg>}
+      {target && (
+        <IconButton
+          type="button"
+          data-canvas-ui="true" data-canvas-activity="pending"
+          aria-label={t('canvasActivity.next')}
+          className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2"
+          style={{ left: clamp(width / 2 + dx * scale, 20, width - 20), top: clamp(height / 2 + dy * scale, 20, height - 20) }}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => canvasView.runtime.camera.animateTo({
+            zoom: viewport.zoom,
+            offset: { x: width / 2 - target.x * cellWidth, y: height / 2 - target.y * cellHeight },
+          }, { duration: 220 })}
+        >
+          <span aria-hidden="true" className="size-3 rounded-full bg-destructive" />
+        </IconButton>
+      )}
     </div>
   );
 }

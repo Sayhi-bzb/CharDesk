@@ -7,7 +7,7 @@ import type {
 } from "@chardesk/rendering/theme";
 import type { I18nKey } from "@/shared/i18n";
 import type { GridCell } from "@/shared/types";
-import type { CharGraphHeading, CharGraphTextMode } from "@chardesk/chargraph";
+import type { CharGraphHeading, CharGraphTextMode, CharDeskSemanticSpan } from "@chardesk/chargraph";
 
 export type BuiltInTextRendererId = Exclude<CharGraphTextMode, "auto">;
 export type TextRendererId = BuiltInTextRendererId;
@@ -47,6 +47,7 @@ export type TextRenderContext = {
   themeMode: TextRenderThemeMode;
   /** Optional per-render source mode override used by agent material tools. */
   rendererMode?: TextRendererMode;
+  semanticSpans?: readonly CharDeskSemanticSpan[];
 };
 
 export type RenderedTextCell = GridCell & { x: number; y: number };

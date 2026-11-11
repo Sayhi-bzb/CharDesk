@@ -43,14 +43,6 @@ const inherit: CharDeskRenderColorDefault = Object.freeze({ kind: "inherit" });
 const token = (
   value: CharDeskRenderThemeToken
 ): CharDeskRenderColorDefault => Object.freeze({ kind: "token", token: value });
-const mixed = (
-  tokens: readonly CharDeskRenderThemeToken[],
-  includesInherited = false
-): CharDeskRenderColorDefault => Object.freeze({
-  kind: "mixed",
-  tokens: Object.freeze(tokens),
-  ...(includesInherited ? { includesInherited: true } : {}),
-});
 
 const feature = <
   const Id extends string,
@@ -66,14 +58,14 @@ const feature = <
 const strong = feature("strong", "core", { foreground: token("accent") });
 const emphasis = feature("emphasis", "core", { foreground: inherit });
 const strikethrough = feature("strikethrough", "core", { foreground: inherit });
-const link = feature("link", "core", { foreground: token("info") });
+const link = feature("link", "core", { foreground: token("link") });
 const inlineCode = feature("inline-code", "core", {
-  foreground: token("info"),
+  foreground: token("code"),
   background: token("surface"),
 });
-const heading = feature("heading", "core", { marker: token("accent") });
-const blockquote = feature("blockquote", "core", { marker: token("success") });
-const list = feature("list", "core", { marker: mixed(["accent"], true) });
+const heading = feature("heading", "core", { marker: token("muted-foreground") });
+const blockquote = feature("blockquote", "core", { marker: token("muted-foreground") });
+const list = feature("list", "core", { marker: token("muted-foreground") });
 const taskList = feature("task-list", "core", {
   unchecked: token("muted-foreground"),
   checked: token("success"),
@@ -81,8 +73,8 @@ const taskList = feature("task-list", "core", {
 const thematicBreak = feature("thematic-break", "core", { foreground: inherit });
 const codeBlock = feature("code-block", "core", {});
 const table = feature("table", "core", {
-  "header.foreground": token("accent-foreground"),
-  "header.background": token("accent"),
+  "header.foreground": token("foreground"),
+  "header.background": token("surface"),
   separator: token("border-subtle"),
 });
 
@@ -190,10 +182,10 @@ const coreModule = defineCharDeskMarkdownModule({
         "heading-1": { attrs: { bold: true, underline: true } },
         "heading-2": { attrs: { bold: true } },
         "heading-3": { attrs: { bold: true, italic: true } },
-        "heading-4": { attrs: { italic: true } },
+        "heading-4": { attrs: { bold: true, italic: true } },
         "blockquote-marker": { color: context.color(blockquote, "marker") },
         ...(listMarker ? { "list-marker": { color: listMarker } } : {}),
-        "ordered-list-marker": { color: listMarker ?? context.theme.accent },
+        "ordered-list-marker": { color: listMarker ?? context.theme["muted-foreground"] },
         "task-unchecked": { color: context.color(taskList, "unchecked") },
         "task-checked": { color: context.color(taskList, "checked") },
         ...(context.color(thematicBreak, "foreground")

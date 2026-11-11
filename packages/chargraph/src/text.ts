@@ -34,18 +34,7 @@ type StyleSpan = CharDeskTextStyle & {
   href?: string;
 };
 
-const DEFAULT_MARKDOWN_OPTIONS: MarkdownRenderOptions = {
-  styles: {
-    strong: createCharDeskMarkdownStyles().styles.strong,
-    emphasis: { attrs: { italic: true } },
-    strikethrough: { attrs: { strike: true } },
-    link: { attrs: { underline: true } },
-    "heading-1": { attrs: { bold: true, underline: true } },
-    "heading-2": { attrs: { bold: true } },
-    "heading-3": { attrs: { bold: true, italic: true } },
-    "heading-4": { attrs: { italic: true } },
-  },
-};
+const DEFAULT_MARKDOWN_OPTIONS: MarkdownRenderOptions = createCharDeskMarkdownStyles();
 
 const textMarkdownRenderer = createMarkdownRenderer({
   extensions: CHARDESK_MARKDOWN_EXTENSIONS,

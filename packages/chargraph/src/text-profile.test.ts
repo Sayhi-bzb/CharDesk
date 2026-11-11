@@ -41,3 +41,22 @@ it('normalizes the shared profile without sharing mutable defaults or accepting 
   expect(createDefaultTextFeatureSettings()['markdown.link']!.colors.light).toEqual({});
   expect(normalizeCharDeskTextRenderProfile({ markdownWrapWidth: 2 }).markdownWrapWidth).toBe(60);
 });
+
+it('fills new semantic defaults for older profiles and preserves per-feature overrides', () => {
+  const oldProfile = normalizeCharDeskTextRenderProfile({
+    renderThemes: { light: { info: '#123456' } },
+  });
+  const defaults = createTextProfileMarkdownOptions(oldProfile);
+  expect(defaults.styles?.link?.color).toBe('#0e7490');
+  expect(defaults.styles?.['inline-code']?.color).toBe('#8250df');
+
+  const custom = normalizeCharDeskTextRenderProfile({
+    renderThemes: { light: { link: '#234567', code: '#345678' } },
+    features: {
+      'markdown.link': { colors: { light: { foreground: '#456789' } } },
+    },
+  });
+  const options = createTextProfileMarkdownOptions(custom);
+  expect(options.styles?.link?.color).toBe('#456789');
+  expect(options.styles?.['inline-code']?.color).toBe('#345678');
+});

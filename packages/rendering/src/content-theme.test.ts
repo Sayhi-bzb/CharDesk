@@ -3,6 +3,7 @@ import {
   CHARDESK_CONTENT_THEME_TOKENS,
   CHARDESK_CONTENT_THEMES,
   resolveCharDeskContentTheme,
+  contentColorContrast,
 } from "./content-theme";
 
 describe("content theme", () => {
@@ -24,6 +25,15 @@ describe("content theme", () => {
       "muted-foreground": "#654321",
       "border-subtle": "#654321",
       "grid-subtle": "#654321",
+    });
+  });
+
+  it.each(["light", "dark"] as const)("keeps %s links and inline code readable and independently configurable", (mode) => {
+    const theme = CHARDESK_CONTENT_THEMES[mode];
+    expect(contentColorContrast(theme.link, theme.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contentColorContrast(theme.code, theme.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(resolveCharDeskContentTheme({ ...theme, info: "#123456" })).toMatchObject({
+      link: theme.link, code: theme.code, info: "#123456",
     });
   });
 });

@@ -41,6 +41,14 @@ const rowText = (result: TextRenderResult, y: number) =>
     : result.text.split("\n")[y] ?? "";
 
 describe("TextRenderingRuntime", () => {
+  it.each(["auto", "markdown"] as const)("keeps the original arrow column while wrapping %s source", async mode => {
+    const runtime = new TextRenderingRuntime();
+    runtime.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode });
+    const source = "明确任务目标与交付要求\n              ↓ 检查";
+    const result = await runtime.render(source, "#000000");
+    if (result.kind === "plain") expect(result.text).toBe(source);
+    else expect(result.cells.find(cell => cell.char === "↓")).toMatchObject({ x: 14, y: 1 });
+  });
   it("wraps only newly rendered Markdown prose in both render paths", async () => {
     const runtime = new TextRenderingRuntime();
     const source = `# ${"word ".repeat(18)}tail`;
@@ -219,7 +227,7 @@ describe("TextRenderingRuntime", () => {
     ]);
     if (result.kind !== "styled") throw new Error("Expected styled headings");
     expect(result.cells.find((cell) => cell.y === 0 && cell.char === "#")?.color).toBe(
-      "#0969da"
+      "#59636e"
     );
     expect(result.cells.find((cell) => cell.y === 0 && cell.char === "H")?.attrs).toEqual({
       bold: true,
@@ -230,7 +238,7 @@ describe("TextRenderingRuntime", () => {
       bold: true,
       italic: true,
     });
-    expect(result.cells.find((cell) => cell.y === 6 && cell.char === "H")?.attrs).toEqual({ italic: true });
+    expect(result.cells.find((cell) => cell.y === 6 && cell.char === "H")?.attrs).toEqual({ bold: true, italic: true });
   });
 
   it("renders Codex inline code, compact links, quotes, lists, and rules", async () => {
@@ -247,22 +255,22 @@ describe("TextRenderingRuntime", () => {
     expect(rowText(result, 7)).toBe("———");
     if (result.kind !== "styled") throw new Error("Expected styled Markdown");
     expect(result.cells.find((cell) => cell.char === "c")).toMatchObject({
-      color: "#0969da",
+      color: "#8250df",
       bgColor: "#f6f8fa",
     });
     expect(result.cells.find((cell) => cell.href === "https://example.com")).toMatchObject({
-      color: "#0969da",
+      color: "#0e7490",
       href: "https://example.com",
       attrs: { underline: true },
     });
     expect(result.cells.find((cell) => cell.y === 2 && cell.char === "│")).toMatchObject({
-      color: "#1a7f37",
+      color: "#59636e",
     });
     expect(result.cells.find((cell) => cell.y === 2 && cell.char === "q")?.color).toBe(
       "#1f2328"
     );
     expect(result.cells.find((cell) => cell.y === 4 && cell.char === "1")).toMatchObject({
-      color: "#0969da",
+      color: "#59636e",
     });
   });
 
@@ -299,6 +307,9 @@ describe("TextRenderingRuntime", () => {
           accent: "#112233",
           info: "#223344",
           success: "#334455",
+          link: "#123abc",
+          code: "#456def",
+          "muted-foreground": "#778899",
           surface: "#445566",
         },
         dark: {},
@@ -312,12 +323,12 @@ describe("TextRenderingRuntime", () => {
 
     if (result.kind !== "styled") throw new Error("Expected styled Markdown");
     expect(result.cells.find((cell) => cell.y === 0 && cell.char === "#")?.color).toBe("#abcdef");
-    expect(result.cells.find((cell) => cell.y === 2 && cell.char === "│")?.color).toBe("#334455");
+    expect(result.cells.find((cell) => cell.y === 2 && cell.char === "│")?.color).toBe("#778899");
     expect(result.cells.find((cell) => cell.y === 4 && cell.char === "c")).toMatchObject({
-      color: "#223344",
+      color: "#456def",
       bgColor: "#445566",
     });
-    expect(result.cells.find((cell) => cell.y === 4 && cell.char === "l")?.color).toBe("#223344");
+    expect(result.cells.find((cell) => cell.y === 4 && cell.char === "l")?.color).toBe("#123abc");
   });
 
   it("keeps layout stable while materializing light and dark Markdown colors", async () => {
@@ -333,11 +344,11 @@ describe("TextRenderingRuntime", () => {
     expect(light.cells.find((cell) => cell.char === "B")?.color).toBe("#0969da");
     expect(dark.cells.find((cell) => cell.char === "B")?.color).toBe("#58a6ff");
     expect(light.cells.find((cell) => cell.char === "c")).toMatchObject({
-      color: "#0969da",
+      color: "#8250df",
       bgColor: "#f6f8fa",
     });
     expect(dark.cells.find((cell) => cell.char === "c")).toMatchObject({
-      color: "#58a6ff",
+      color: "#c4b5fd",
       bgColor: "#161b22",
     });
   });
@@ -372,7 +383,7 @@ describe("TextRenderingRuntime", () => {
     if (light.kind !== "styled" || dark.kind !== "styled") {
       throw new Error("Expected styled Markdown");
     }
-    expect(light.cells[0]?.color).toBe("#0969da");
+    expect(light.cells[0]?.color).toBe("#0e7490");
     expect(dark.cells[0]?.color).toBe("#abcdef");
   });
 

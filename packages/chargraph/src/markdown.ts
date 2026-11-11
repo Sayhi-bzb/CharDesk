@@ -1,11 +1,9 @@
 import {
   getTextCellWidth,
-  type CharDeskTextAttributes,
   type CharDeskTextStyle,
 } from "@chardesk/protocol";
 import { Marked, type Token, type Tokens } from "marked";
 import type {
-  BundledLanguage,
   BundledTheme,
   SpecialTheme,
   ThemeRegistrationAny,
@@ -36,6 +34,7 @@ import {
   restoreCharGraphSourceRanges,
 } from "./source-map.js";
 import { wrapMarkdownProse } from "./markdown-wrap.js";
+import { highlightCode } from "./code-highlighting.js";
 
 export type MarkdownTextRuleId =
   | "strong"
@@ -220,17 +219,6 @@ const unsupported = (
     length: range.to - range.from,
   });
   return rawFragment(token.raw, range);
-};
-
-const fontStyleAttrs = (
-  fontStyle?: number
-): CharDeskTextAttributes | undefined => {
-  if (!fontStyle || fontStyle < 0) return undefined;
-  return {
-    ...(fontStyle & 1 ? { italic: true } : {}),
-    ...(fontStyle & 2 ? { bold: true } : {}),
-    ...(fontStyle & 4 ? { underline: true } : {}),
-  };
 };
 
 const extensionContext = (context: RenderContext) => ({
@@ -475,34 +463,7 @@ const renderCode = async (
     }
   }
   try {
-    const { codeToTokens } = await import("shiki");
-    const highlighted = await codeToTokens(token.text, {
-      lang: language as BundledLanguage,
-      theme: context.codeTheme ?? "github-light",
-    });
-    const output: CharGraphFragment[] = [];
-    let offset = 0;
-    highlighted.tokens.forEach((line, lineIndex) => {
-      line.forEach((part) => {
-        output.push(fragment(part.content, {
-          color: part.color ?? highlighted.fg,
-          ...(fontStyleAttrs(part.fontStyle)
-            ? { attrs: fontStyleAttrs(part.fontStyle) }
-            : {}),
-        }, {
-          from: codeRange.from + offset,
-          to: codeRange.from + offset + part.content.length,
-        }));
-        offset += part.content.length;
-      });
-      if (lineIndex < highlighted.tokens.length - 1) {
-        output.push(fragment("\n", {}, {
-          from: codeRange.from + offset,
-          to: codeRange.from + offset + 1,
-        }));
-        offset += 1;
-      }
-    });
+    const output = await highlightCode(token.text, language, context.codeTheme, codeRange.from);
     return renderedBlock(output, "start", "code");
   } catch (error) {
     context.diagnostics.push({

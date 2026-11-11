@@ -67,6 +67,8 @@ function contentTheme(palette: TerminalPaletteSnapshot | null): CharDeskContentT
     accent,
     'accent-foreground':
       contrast(foreground, accent) >= contrast(background, accent) ? foreground : background,
+    link: slot(6),
+    code: slot(5),
     info: slot(6),
     done: slot(5),
     success: slot(2),

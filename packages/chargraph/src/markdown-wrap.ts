@@ -108,6 +108,7 @@ export const wrapMarkdownProse = (
     let line: Glyph[] = [];
     let lineWidth = 0;
     let spaces: Glyph[] = [];
+    let hasContent = false;
     const flush = () => {
       emitGlyphs(line, output);
       output.push({ text: "\n" });
@@ -125,18 +126,18 @@ export const wrapMarkdownProse = (
         continue;
       }
       const spaceWidth = spaces.reduce((total, glyph) => total + glyph.width, 0);
-      if (lineWidth > 0 && lineWidth + spaceWidth + unit.width > limit) {
+      if (!hasContent) {
+        spaces.forEach(append);
+      } else if (lineWidth > 0 && lineWidth + spaceWidth + unit.width > limit) {
         flush();
       } else if (lineWidth > 0) {
         spaces.forEach(append);
       }
       spaces = [];
       unit.glyphs.forEach(append);
+      hasContent = true;
     }
-    if (lineWidth > 0 && lineWidth +
-      spaces.reduce((total, glyph) => total + glyph.width, 0) <= limit) {
-      spaces.forEach(append);
-    }
+    spaces.forEach(append);
     emitGlyphs(line, output);
   });
   return output;

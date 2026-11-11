@@ -11,6 +11,7 @@ import {
 } from "@chardesk/protocol";
 import { createCharGraphFragment } from "./fragments.js";
 import type { CharGraphDiagnostic, CharGraphFragment, CharGraphHeading } from "./model.js";
+import { renderSemanticText, type CharDeskSemanticSpan } from "./semantic-text.js";
 import {
   renderCharGraphText,
   type CharGraphTextRenderOptions,
@@ -40,6 +41,8 @@ export type CompileCharDeskTextOptions = Omit<
   tabSize?: number;
   /** Protocol-only compatibility policy, used by the Viewer's syntax attribute. */
   protocolSyntax?: CharDeskTextSyntax;
+  /** Literal text with independently supplied semantic styles, such as an HTML clipboard import. */
+  semanticSpans?: readonly CharDeskSemanticSpan[];
 };
 
 export type CharDeskTextRequest = Omit<CompileCharDeskTextOptions, "sourceKind" | "chargraphMode" | "format"> & {
@@ -133,7 +136,9 @@ export const compileCharDeskText = async (
   options: CompileCharDeskTextOptions = {},
 ): Promise<CompiledCharDeskText> => {
   const request = normalizeCharDeskTextRequest(source, options);
-  const rendered = request.format === "auto" || request.format === "markdown"
+  const rendered = request.semanticSpans
+    ? { ...await renderSemanticText(source, request.semanticSpans, request.markdown), renderer: "markdown" as const, pipeline: ["markdown" as const] }
+    : request.format === "auto" || request.format === "markdown"
     ? await renderCharGraphText(source, {
         mode: request.format,
         markdown: request.markdown,

@@ -83,6 +83,22 @@ describe("ApplicationEditorHost", () => {
     expect(cells.has("1,0")).toBe(false);
   });
 
+  it("retains the original arrow column through compact HTML paste", async () => {
+    const host = createHost();
+    host.canvas.commands.grid.replace([]);
+    host.canvas.commands.staticGrid.enterTextEdit({ x: 5, y: 3 });
+    const result = await host.canvas.commands.selection.paste({
+      eventDataTransfer: {
+        getData: (type: string) => type === "text/plain" ? "明确任务目标与交付要求\n              ↓ 检查" : type === "text/html"
+          ? "<p><strong>明确任务目标与交付要求</strong><br> ↓ 检查</p>" : "",
+      } as DataTransfer,
+    });
+    const cells = host.canvas.getState().contentSurface.reader.materialize();
+    expect(result).toMatchObject({ status: "applied" });
+    expect(cells.get("19,4")?.char).toBe("↓");
+    expect(cells.get("5,3")).toMatchObject({ char: "明", attrs: { bold: true } });
+  });
+
   it("pastes unfenced flowchart Markdown as bold Cells in Auto mode", async () => {
     const host = createHost();
     host.textRendering.setProfile({ ...DEFAULT_TEXT_RENDER_PROFILE, mode: "auto" });
@@ -186,7 +202,7 @@ describe("ApplicationEditorHost", () => {
     expect(
       Array.from(host.canvas.getState().contentSurface.reader.materialize().values()).map((cell) => cell.char).join("")
     ).toBe("remark");
-    expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.color).toBe("#0969da");
+    expect(host.canvas.getState().contentSurface.reader.materialize().get("0,0")?.color).toBe("#8250df");
   });
 
   it("pastes Markdown thematic breaks without centering prose", async () => {
@@ -247,7 +263,7 @@ describe("ApplicationEditorHost", () => {
     const darkCells = host.canvas.getState().contentSurface.reader.materialize();
     expect(darkCells.get("0,0")?.color).toBe("#58a6ff");
     expect(darkCells.get("5,0")).toMatchObject({
-      color: "#58a6ff",
+      color: "#c4b5fd",
       bgColor: "#161b22",
     });
 
@@ -263,7 +279,7 @@ describe("ApplicationEditorHost", () => {
     const lightCells = host.canvas.getState().contentSurface.reader.materialize();
     expect(lightCells.get("0,2")?.color).toBe("#0969da");
     expect(lightCells.get("6,2")).toMatchObject({
-      color: "#0969da",
+      color: "#8250df",
       bgColor: "#f6f8fa",
     });
   });

@@ -181,6 +181,8 @@ export const getSettingsSearchResults = (
         t('settings.textRenderer'),
         t('settings.renderTheme'),
         t('settings.renderTheme.accent'),
+        t('settings.renderTheme.link'),
+        t('settings.renderTheme.code'),
         t('settings.renderTheme.info'),
         t('settings.renderTheme.done'),
         t('settings.renderTheme.success'),

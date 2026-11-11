@@ -13,7 +13,7 @@ import {
 } from "@/domains/document/public";
 import { clipboard } from "@/shared/services/effects";
 import { parseAnsiTextCells } from "@/shared/utils/ansiText";
-import { htmlClipboardToMarkdown } from "./htmlClipboard";
+import { readHtmlClipboard } from "./htmlClipboard";
 
 const DEFAULT_ANSI_PASTE_COLOR = "#ffffff";
 
@@ -37,17 +37,18 @@ const toRenderedClipboardPayload = async (
   context?: TextRenderContext,
   html = ""
 ) => {
-  const markdown = await htmlClipboardToMarkdown(html, source);
-  const rendered = await renderText(markdown ?? source, defaultColor, markdown ? {
+  const imported = readHtmlClipboard(html, source);
+  const rendered = await renderText(imported?.source ?? source, defaultColor, imported ? {
     ...context,
     themeMode: context?.themeMode ?? "light",
-    rendererMode: "markdown",
+    rendererMode: imported.spans ? "markdown" : "raw",
+    semanticSpans: imported.spans ?? undefined,
   } : context);
   if (rendered.kind === "spans") {
     return {
       richRows: rendered.rows,
       richCells: null,
-      plainText: source,
+      plainText: imported?.source ?? source,
       diagnostics: rendered.diagnostics,
       headings: rendered.renderer === "markdown" ? (rendered.headings ?? []) : [],
     };
@@ -55,7 +56,7 @@ const toRenderedClipboardPayload = async (
   return rendered.kind === "styled"
     ? {
         richCells: rendered.cells,
-        plainText: source,
+        plainText: imported?.source ?? source,
         diagnostics: rendered.diagnostics,
         headings: rendered.renderer === "markdown" ? (rendered.headings ?? []) : [],
       }

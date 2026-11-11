@@ -220,6 +220,7 @@ export class TextRenderingRuntime {
     const mode = context.rendererMode ?? profile.mode;
     return compileCharDeskText(source, {
       format: mode,
+      semanticSpans: context.semanticSpans,
       defaultStyle: { color: defaultColor },
       pipelineDefaultStyles: {
         markdown: { color: theme.foreground },

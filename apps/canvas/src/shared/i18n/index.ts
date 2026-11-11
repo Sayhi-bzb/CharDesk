@@ -7,6 +7,8 @@ const LEGACY_STORAGE_KEY = 'ascii-canvas-ui-language';
 
 const messages = {
   en: {
+    'canvasActivity.label': 'Agent updates',
+    'canvasActivity.next': 'View next update',
     'canvas.drawingLimit': 'Drawing is too large. Try a smaller area.',
     'agent.pair': 'Pair',
     'agent.webmcp.preparing': 'Preparing…',
@@ -186,6 +188,8 @@ const messages = {
     'settings.renderTheme.background': 'Background',
     'settings.renderTheme.accent': 'Accent',
     'settings.renderTheme.accentForeground': 'Accent foreground',
+    'settings.renderTheme.link': 'Link',
+    'settings.renderTheme.code': 'Code text',
     'settings.renderTheme.info': 'Info',
     'settings.renderTheme.done': 'Done',
     'settings.renderTheme.success': 'Success',
@@ -692,6 +696,8 @@ const messages = {
     'session.closeSource.failed': 'Could not close this source view. Try again.',
   },
   zh: {
+    'canvasActivity.label': 'Agent 更新',
+    'canvasActivity.next': '查看下一处更新',
     'canvas.drawingLimit': '绘图范围过大，请缩小范围后重试。',
     'agent.pair': '配对',
     'agent.webmcp.preparing': '准备中…',
@@ -869,6 +875,8 @@ const messages = {
     'settings.renderTheme.background': '背景色',
     'settings.renderTheme.accent': '强调色',
     'settings.renderTheme.accentForeground': '强调前景色',
+    'settings.renderTheme.link': '链接色',
+    'settings.renderTheme.code': '代码文字色',
     'settings.renderTheme.info': '信息色',
     'settings.renderTheme.done': '完成色',
     'settings.renderTheme.success': '成功色',

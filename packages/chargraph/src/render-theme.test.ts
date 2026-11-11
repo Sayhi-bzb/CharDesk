@@ -28,12 +28,14 @@ const contrast = (left: string, right: string) => {
 };
 
 describe("CharDesk render theme", () => {
-  it("publishes the Canvas-adapted Primer light palette", () => {
+  it("publishes the light content palette", () => {
     expect(CHARDESK_LIGHT_RENDER_THEME).toEqual({
       foreground: "#1f2328",
       background: "#ffffff",
       accent: "#0969da",
       "accent-foreground": "#ffffff",
+      link: "#0e7490",
+      code: "#8250df",
       info: "#0969da",
       done: "#8250df",
       success: "#1a7f37",
@@ -60,12 +62,14 @@ describe("CharDesk render theme", () => {
     });
   });
 
-  it("publishes the matching Primer dark palette", () => {
+  it("publishes the matching dark content palette", () => {
     expect(CHARDESK_DARK_RENDER_THEME).toEqual({
       foreground: "#f0f6fc",
       background: "#0d1117",
       accent: "#58a6ff",
       "accent-foreground": "#ffffff",
+      link: "#56d4dd",
+      code: "#c4b5fd",
       info: "#58a6ff",
       done: "#a371f7",
       success: "#3fb950",
@@ -85,6 +89,8 @@ describe("CharDesk render theme", () => {
     const textTokens = [
       "foreground",
       "accent",
+      "link",
+      "code",
       "info",
       "done",
       "success",

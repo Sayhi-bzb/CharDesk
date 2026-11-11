@@ -43,7 +43,7 @@ describe("CharDesk Markdown theme", () => {
     const result = createCharDeskMarkdownStyles();
 
     expect(result.styles.link).toEqual({
-      color: CHARDESK_LIGHT_RENDER_THEME.info,
+      color: CHARDESK_LIGHT_RENDER_THEME.link,
       attrs: { underline: true },
     });
     expect(result.styles["inline-code"]?.bgColor)
@@ -80,17 +80,49 @@ describe("CharDesk Markdown theme", () => {
   });
 
   it.each(["auto", "markdown"] as const)(
-    "keeps the unconfigured %s entry point consistent with themed bold",
+    "keeps the unconfigured %s entry point consistent with the shared semantic styles",
     async (format) => {
-      const result = await compileCharDeskText("正文 **重点**", { format });
+      const result = await compileCharDeskText("正文 **重点** [文档](https://example.com) `code`", { format });
 
       expect(result.fragments.find((part) => part.text === "重点"))
         .toMatchObject({
           color: CHARDESK_LIGHT_RENDER_THEME.accent,
           attrs: { bold: true },
         });
+      expect(result.fragments.find(part => part.text === "文档"))
+        .toMatchObject({ color: CHARDESK_LIGHT_RENDER_THEME.link, attrs: { underline: true } });
+      expect(result.fragments.find(part => part.text === "code"))
+        .toMatchObject({ color: CHARDESK_LIGHT_RENDER_THEME.code, bgColor: CHARDESK_LIGHT_RENDER_THEME.surface });
     }
   );
+
+  it.each([
+    ["light", CHARDESK_LIGHT_RENDER_THEME],
+    ["dark", CHARDESK_DARK_RENDER_THEME],
+  ] as const)("distinguishes emphasis, navigation, code, and structure in the %s theme", async (_mode, theme) => {
+    const result = await compileCharDeskText([
+      "# Overview", "", "**Important** [Open docs](https://example.com)", "",
+      "Use `call()` here.", "", "| Column |", "| --- |", "| Value |", "", "1. Step",
+    ].join("\n"), {
+      format: "markdown",
+      markdown: createCharDeskMarkdownRenderOptions({ theme }),
+    });
+    const strong = result.fragments.find(part => part.text === "Important");
+    const link = result.fragments.find(part => part.text === "Open docs");
+    const code = result.fragments.find(part => part.text === "call()");
+    const heading = result.fragments.find(part => part.text === "Overview");
+    const header = result.fragments.find(part => part.text.includes("Column"));
+
+    expect(strong).toMatchObject({ color: theme.accent, attrs: { bold: true } });
+    expect(link).toMatchObject({ color: theme.link, href: "https://example.com", attrs: { underline: true } });
+    expect(code).toMatchObject({ color: theme.code, bgColor: theme.surface });
+    expect(new Set([strong?.color, link?.color, code?.color]).size).toBe(3);
+    expect(heading?.attrs?.bold).toBe(true);
+    expect(heading?.color).toBeUndefined();
+    expect(header).toMatchObject({ color: theme.foreground, bgColor: theme.surface, attrs: { bold: true } });
+    expect(result.fragments.find(part => part.text === "# ")?.color).toBe(theme["muted-foreground"]);
+    expect(result.fragments.find(part => part.text.includes("1."))?.color).toBe(theme["muted-foreground"]);
+  });
 
   it("applies feature slot overrides without changing fixed attributes", () => {
     const result = createCharDeskMarkdownStyles({
@@ -113,11 +145,7 @@ describe("CharDesk Markdown theme", () => {
     expect(CHARDESK_MARKDOWN_COLOR_DEFAULTS["json-tree"].connector)
       .toEqual({ kind: "token", token: "border-subtle" });
     expect(CHARDESK_MARKDOWN_COLOR_DEFAULTS.list.marker)
-      .toEqual({
-        kind: "mixed",
-        tokens: ["accent"],
-        includesInherited: true,
-      });
+      .toEqual({ kind: "token", token: "muted-foreground" });
   });
 
   it("adapts the shared Mermaid styles into Markdown extension roles", () => {

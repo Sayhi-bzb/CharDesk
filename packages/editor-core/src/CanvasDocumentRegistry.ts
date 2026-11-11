@@ -57,7 +57,9 @@ export type CanvasHistoryCheckpoint = {
   cancel: () => void;
 };
 
-type CanvasMutationListener = (envelope: CanvasMutationEnvelope) => void;
+// The inverse describes the exact effective Cell footprint; null means a no-op
+// patch. Other semantic mutations may omit this detail.
+type CanvasMutationListener = (envelope: CanvasMutationEnvelope, inverse?: CellPlaneOperation | null) => void;
 
 const LOCAL_ORIGIN = Symbol('canvas-local-origin');
 const HISTORY_IGNORED_ORIGIN = Symbol('canvas-history-ignored');
@@ -1110,7 +1112,8 @@ export class CanvasDocumentRegistry {
               changes: emittedAnchorChanges,
               operation: emittedOperation,
             }
-          : { kind: 'cell-plane', ...address, operation: emittedOperation }
+          : { kind: 'cell-plane', ...address, operation: emittedOperation },
+        inverseOperation
       );
       if (timings) timings.notifyMs = performance.now() - notifyStartedAt;
     }
@@ -1199,7 +1202,8 @@ export class CanvasDocumentRegistry {
     this.#emitMutation(
       anchorChanges.length > 0
         ? { kind: 'anchors', ...address, changes: anchorChanges, operation }
-        : { kind: 'cell-plane', ...address, operation }
+        : { kind: 'cell-plane', ...address, operation },
+      inverse
     );
     return operation;
   };
@@ -1944,8 +1948,8 @@ export class CanvasDocumentRegistry {
     this.#historyListeners.forEach((listener) => listener(availability));
   }
 
-  #emitMutation(envelope: CanvasMutationEnvelope) {
-    this.#mutationListeners.forEach((listener) => listener(envelope));
+  #emitMutation(envelope: CanvasMutationEnvelope, inverse?: CellPlaneOperation | null) {
+    this.#mutationListeners.forEach((listener) => listener(envelope, inverse));
   }
 
   #readDocumentMode(document: CanvasYDocument): CanvasMode {

@@ -7,7 +7,7 @@ import {
 const codeThemeDefaults = (theme: CharDeskRenderTheme) => ({
   foreground: theme.foreground,
   background: theme.background,
-  "token-link": theme.info,
+  "token-link": theme.link,
   "token-string": theme.success,
   "token-comment": theme["muted-foreground"],
   "token-constant": theme.info,

@@ -1,133 +1,63 @@
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore } from 'react';
+import { CanvasActivityStore, type ActivityRange, type CanvasActivityMarker } from './canvas-activity/model';
 
-export type CanvasActivityMarker = Readonly<{
-  id: string;
-  canvasId: string;
-  pageId?: string;
-  bounds: readonly [number, number, number, number];
-  label: string;
-  createdAt: number;
-}>;
+export type { CanvasActivityMarker } from './canvas-activity/model';
 
-const listeners = new Set<() => void>();
-const ACTIVITY_STORAGE_KEY = "chardesk.canvas-activity.v1";
-const ACTIVITY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
-let sequence = 0;
+const STORAGE_KEY = 'chardesk.canvas-activity.v2';
+export const canvasActivityStore = new CanvasActivityStore();
+const channel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('chardesk:canvas-activity:v2') : null;
+let expiryTimer: ReturnType<typeof setTimeout> | undefined;
 
-type CanvasActivityMessage =
-  | { type: "publish"; marker: CanvasActivityMarker }
-  | { type: "clear"; id: string };
-
-// Activity is intentionally ephemeral, but it must cross same-origin Canvas
-// tabs. The MCP bridge can be attached to a different tab than the one the
-// human is looking at. BroadcastChannel keeps the marker out of document
-// persistence while making that tab boundary transparent.
-const activityChannel = typeof window !== "undefined" && "BroadcastChannel" in window
-  ? new BroadcastChannel("chardesk:canvas-activity")
-  : null;
-
-const isMarker = (value: unknown): value is CanvasActivityMarker => {
-  if (!value || typeof value !== "object") return false;
-  const marker = value as Partial<CanvasActivityMarker>;
-  return typeof marker.id === "string"
-    && typeof marker.canvasId === "string"
-    && (marker.pageId === undefined || typeof marker.pageId === "string")
-    && Array.isArray(marker.bounds)
-    && marker.bounds.length === 4
-    && marker.bounds.every((entry) => typeof entry === "number" && Number.isFinite(entry))
-    && typeof marker.label === "string"
-    && typeof marker.createdAt === "number"
-    && Number.isFinite(marker.createdAt);
-};
-
-const loadMarkers = (): readonly CanvasActivityMarker[] => {
-  if (typeof window === "undefined") return [];
+const restore = () => {
   try {
-    const parsed: unknown = JSON.parse(window.localStorage.getItem(ACTIVITY_STORAGE_KEY) ?? "[]");
-    if (!Array.isArray(parsed)) return [];
-    const cutoff = Date.now() - ACTIVITY_RETENTION_MS;
-    return parsed.filter((value): value is CanvasActivityMarker =>
-      isMarker(value) && value.createdAt >= cutoff
-    ).slice(-32);
-  } catch {
-    return [];
-  }
+    canvasActivityStore.merge(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? 'null'));
+  } catch { /* Activity remains available when browser storage is unavailable. */ }
 };
 
-const persistMarkers = (next: readonly CanvasActivityMarker[]) => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    // Storage may be unavailable or full; the in-memory marker still works.
-  }
+let stopPersistence: (() => void) | undefined;
+const onStorage = (event: StorageEvent) => {
+  if (event.key === STORAGE_KEY) restore();
 };
-
-let markers: readonly CanvasActivityMarker[] = loadMarkers();
-
-const emit = () => listeners.forEach((listener) => listener());
-
-const upsertMarker = (marker: CanvasActivityMarker) => {
-  markers = [...markers.filter((entry) => entry.id !== marker.id), marker].slice(-32);
-  persistMarkers(markers);
-  emit();
-};
-
-activityChannel?.addEventListener("message", (event: MessageEvent<CanvasActivityMessage>) => {
-  const message = event.data;
-  if (message?.type === "publish" && message.marker?.id && message.marker.canvasId) {
-    upsertMarker(message.marker);
-  } else if (message?.type === "clear" && typeof message.id === "string") {
-    const next = markers.filter((marker) => marker.id !== message.id);
-    if (next.length !== markers.length) {
-      markers = next;
-      persistMarkers(markers);
-      emit();
-    }
-  }
-});
-
-export const publishCanvasActivity = (input: {
-  canvasId: string;
-  pageId?: string;
-  bounds: readonly [number, number, number, number];
-  operationId?: string;
-  label?: string;
-}) => {
-  const id = input.operationId ?? `agent-${Date.now()}-${sequence++}`;
-  const marker: CanvasActivityMarker = {
-    id,
-    canvasId: input.canvasId,
-    ...(input.pageId ? { pageId: input.pageId } : {}),
-    bounds: input.bounds,
-    label: input.label ?? "Agent update",
-    createdAt: Date.now(),
+if (typeof window !== 'undefined') {
+  const persistAndSchedule = () => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(canvasActivityStore.getJournal()));
+    } catch { /* Keep the in-memory projection when storage is full or disabled. */ }
+    clearTimeout(expiryTimer);
+    const remaining = canvasActivityStore.getExpiresAt() - Date.now();
+    if (Number.isFinite(remaining)) expiryTimer = setTimeout(canvasActivityStore.refresh, Math.min(2_147_483_647, Math.max(1, remaining)));
   };
-  upsertMarker(marker);
-  activityChannel?.postMessage({ type: "publish", marker } satisfies CanvasActivityMessage);
-  return id;
+  stopPersistence = canvasActivityStore.subscribe(persistAndSchedule);
+  restore();
+  persistAndSchedule();
+  window.addEventListener('storage', onStorage);
+  channel?.addEventListener('message', (event) => {
+    if (event.data?.type === 'sync') channel.postMessage(canvasActivityStore.getJournal());
+    else canvasActivityStore.merge(event.data);
+  });
+  channel?.postMessage({ type: 'sync' });
+  // Old per-call dots cannot be reconciled with actual Cell changes. Retire them.
+  try { window.localStorage.removeItem('chardesk.canvas-activity.v1'); } catch { /* optional cleanup */ }
+}
+
+export const recordCanvasActivity = (input: Parameters<CanvasActivityStore['record']>[0]) => {
+  if (typeof window !== 'undefined') restore();
+  const event = canvasActivityStore.record(input);
+  channel?.postMessage({ floor: canvasActivityStore.getJournal().floor, events: [event] });
 };
 
-export const markCanvasActivityRead = (id: string) => {
-  const next = markers.filter((marker) => marker.id !== id);
-  if (next.length === markers.length) return;
-  markers = next;
-  persistMarkers(markers);
-  emit();
-  activityChannel?.postMessage({ type: "clear", id } satisfies CanvasActivityMessage);
+export const acknowledgeCanvasActivity = (marker: CanvasActivityMarker, ranges: readonly ActivityRange[]) => {
+  recordCanvasActivity({ kind: 'seen', changes: marker.changes, ranges });
 };
-
-export const clearCanvasActivity = (id: string) => markCanvasActivityRead(id);
-
-const subscribeCanvasActivity = (listener: () => void) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
-const getCanvasActivitySnapshot = () => markers;
 
 export const useCanvasActivity = () => useSyncExternalStore(
-  subscribeCanvasActivity,
-  getCanvasActivitySnapshot,
-  getCanvasActivitySnapshot,
+  canvasActivityStore.subscribe, canvasActivityStore.getSnapshot, canvasActivityStore.getSnapshot,
 );
+
+if (import.meta.hot) import.meta.hot.dispose(() => {
+  channel?.close();
+  clearTimeout(expiryTimer);
+  stopPersistence?.();
+  window.removeEventListener('storage', onStorage);
+});
