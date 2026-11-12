@@ -16,7 +16,7 @@ async function until(check: () => boolean) {
     await Bun.sleep(2);
   }
 }
-async function fixture() {
+async function fixture(platform: NodeJS.Platform = 'darwin') {
   const root = await mkdtemp(join(tmpdir(), 'chardesk-session-ui-'));
   const sessions = await LocalSessions.open(
     resolveAppPaths({ environment: { CHARDESK_HOME: root } })
@@ -31,7 +31,7 @@ async function fixture() {
     screenMode: 'alternate-screen',
     clock,
   });
-  const surface = new CanvasSurface(setup.renderer, workspace.model, '', 'darwin');
+  const surface = new CanvasSurface(setup.renderer, workspace.model, '', platform);
   setup.renderer.root.add(surface);
   let quits = 0;
   const detach = attachControls(
@@ -68,6 +68,64 @@ async function fixture() {
     },
   };
 }
+
+for (const [name, sequence, platform] of [
+  ['Mac Delete', '\x7f', 'darwin'],
+  ['legacy Backspace', '\x08', 'darwin'],
+  ['Kitty Backspace', '\x1b[127;1u', 'darwin'],
+  ['Windows Delete', '\x1b[3~', 'win32'],
+] as const) {
+  test(`${name} closes the selected session canvas while preserving its record and saved content`, async () => {
+    const f = await fixture(platform);
+    const { readOptional } = await import('./document.ts');
+    try {
+      const file = await f.sessions.create('Working');
+      const record = f.sessions.forFile(file)!;
+      f.workspace.model.commands.insert('Keep 🦀');
+      f.surface.activateDock('documents');
+      f.setup.mockInput.pressKey(sequence);
+      await until(() => f.workspace.files.length === 0 && f.surface.panel?.title === 'Sessions');
+      expect(f.surface.panel?.hint).toContain(platform === 'darwin' ? '⌫ close' : 'Del close');
+      expect(f.sessions.catalog.get(record.id)).not.toBeNull();
+      expect(f.surface.panel?.items).toEqual(['Working']);
+      expect(await readOptional(file.path)).toContain('Keep');
+      expect(f.quits).toBe(0);
+      f.setup.mockInput.pressEnter();
+      await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+      expect(f.workspace.model.plane.get({ x: 5, y: 0 })?.char).toBe('🦀');
+    } finally {
+      await f.dispose();
+    }
+  });
+}
+
+test('Backspace edits session names and modified deletion keys cannot close a session', async () => {
+  const f = await fixture();
+  try {
+    const file = await f.sessions.create('Working');
+    f.surface.activateDock('documents');
+    f.setup.mockInput.pressKey('\x1b[127;5u');
+    expect(f.surface.panel?.title).toBe('Sessions');
+    expect(f.workspace.files).toEqual([file]);
+    f.setup.mockInput.pressKey('r');
+    f.setup.mockInput.pressKey('\x7f');
+    expect(f.surface.panel?.input).toBe('');
+    await f.setup.mockInput.typeText('New界', 0);
+    // MockInput.typeText splits UTF-16; send the full grapheme as real UTF-8 input.
+    f.setup.mockInput.pressKey('👩‍💻');
+    expect(f.surface.panel?.input).toBe('New界👩‍💻');
+    f.setup.mockInput.pressKey('\x7f');
+    expect(f.surface.panel?.input).toBe('New界');
+    f.setup.mockInput.pressKey('\x7f');
+    expect(f.surface.panel?.input).toBe('New');
+    expect(f.workspace.files).toEqual([file]);
+    f.setup.mockInput.pressEnter();
+    await until(() => f.surface.panel?.title === 'Sessions');
+    expect(f.surface.panel?.items[0]).toContain('New');
+  } finally {
+    await f.dispose();
+  }
+});
 
 test('empty workspace blocks canvas edits but exposes sessions and creates a durable canvas without a path prompt', async () => {
   const f = await fixture();
@@ -211,7 +269,7 @@ test('Chinese session commands fit one footer row while errors stay inside the d
     await f.sessions.create('当前画布');
     f.surface.activateDock('documents');
     await f.setup.renderOnce();
-    const footer = '会话 · N 新建 · O 打开 · R 重命名 · D 复制 · A 归档 · Del 关闭 · F5 刷新';
+    const footer = '会话 · N 新建 · O 打开 · R 重命名 · D 复制 · A 归档 · ⌫ 关闭 · F5 刷新';
     let frame = f.setup.captureCharFrame().split('\n');
     expect(frame[29]?.trim()).toBe(footer);
     expect(f.surface.panel?.tabs).toEqual(['画布', '已归档']);
@@ -259,14 +317,14 @@ test('Sessions reuse the Settings dialog geometry, tabs, footer and outside dism
     expect(frame[l.y]).not.toContain('×');
     expect(frame.slice(l.y, l.y + l.height).join('\n')).not.toContain('Tab list');
     expect(frame[f.setup.renderer.height - 1]?.trim()).toBe(
-      'Sessions · N new · O open · R rename · D copy · A archive · Del close · F5 refresh'
+      'Sessions · N new · O open · R rename · D copy · A archive · ⌫ close · F5 refresh'
     );
     const archivedTab = f.surface.panelTabControls[1]!;
     await f.setup.mockMouse.click(archivedTab.x + 1, archivedTab.y);
     expect(f.surface.panel?.selectedTab).toBe(1);
     expect(f.surface.panel?.items[0]).toBe('Archived canvas');
     expect(f.surface.statusBar.hint).toBe(
-      'N new · O open · R rename · D copy · A restore · Del close · F5 refresh'
+      'N new · O open · R rename · D copy · A restore · ⌫ close · F5 refresh'
     );
     f.setup.mockInput.pressTab({ shift: true });
     expect(f.surface.panel?.selectedTab).toBe(0);

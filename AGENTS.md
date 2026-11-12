@@ -1,6 +1,6 @@
 # Docs Writing Rules
 
-- Assume LLMs know general engineering concepts; document only project-specific context.
+- Product instructions in `apps/docs/content/manual` are written for people completing tasks. Engineering documentation assumes LLM readers know general engineering concepts.
 - Documentation routes knowledge to its owner; it does not reproduce tutorials or source.
 - One page owns one question, and each fact has one authoritative source.
 - Link authorities and connect decisions, contracts, implementation, and verification.
@@ -12,6 +12,8 @@
 - `packages/protocol/README.md` owns protocol installation and API usage.
 - `packages/fonts/README.md` owns font installation and consumption.
 - `package.json` owns scripts, dependencies, and local commands.
+- `apps/docs/content/manual` owns the public product manual at `docs.chardesk.com`; Cell UI consumer documentation belongs to `ui.chardesk.com`.
+- `apps/docs/content/docs/development` owns engineering contracts and Agent resources; it is excluded from product navigation and search.
 
 # Architecture Navigation
 

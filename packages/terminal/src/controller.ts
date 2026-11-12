@@ -508,7 +508,7 @@ export function attachControls(
     })
   );
   const detachIntercept = keymap.intercept('key', ({ event: key, consume }) => {
-    if (surface.inputModifiers.update(key)) {
+    if (surface.inputModifiers.observeKey(key, surface.inputPolicy)) {
       consume();
       return;
     }
@@ -630,7 +630,7 @@ export function attachControls(
     surface.requestRender();
   };
   const keyrelease = (key: KeyEvent) => {
-    surface.inputModifiers.update(key);
+    surface.inputModifiers.observeKey(key, surface.inputPolicy);
   };
   const cancelGesture = () => {
     menu.close();
@@ -643,6 +643,7 @@ export function attachControls(
   renderer.keyInput.on('keyrelease', keyrelease);
   renderer.keyInput.on('paste', paste);
   renderer.on('blur', cancelGesture);
+  renderer.on('focus', cancelGesture);
   renderer.on('resize', cancelGesture);
   return () => {
     active = false;
@@ -658,6 +659,7 @@ export function attachControls(
     renderer.keyInput.off('keyrelease', keyrelease);
     renderer.keyInput.off('paste', paste);
     renderer.off('blur', cancelGesture);
+    renderer.off('focus', cancelGesture);
     renderer.off('resize', cancelGesture);
   };
 }

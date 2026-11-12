@@ -4,6 +4,18 @@ import { createOpenTuiKeymapHost } from '@opentui/keymap/opentui';
 import { registerBaseLayoutFallback } from '@opentui/keymap/addons/opentui';
 import { createInputSession } from './session.js';
 
+/** One OpenTUI modifier vocabulary for binding dispatch, recording and pointer fallback. */
+export function terminalKeyModifiers(
+  event: Pick<KeyEvent, 'ctrl' | 'shift' | 'meta' | 'option' | 'super'>
+) {
+  return {
+    ctrl: event.ctrl,
+    shift: event.shift,
+    alt: event.meta || event.option,
+    meta: event.super ?? false,
+  };
+}
+
 /** OpenTUI meta is Option/Alt; super is Command. Recording uses the same catalog vocabulary. */
 export function terminalKeyInput(event: KeyEvent) {
   return createKeyInput({
@@ -21,12 +33,7 @@ export function terminalKeyInput(event: KeyEvent) {
       )[event.name] ?? event.name,
     phase: event.eventType === 'release' ? 'up' : 'down',
     repeat: event.eventType === 'repeat',
-    modifiers: {
-      ctrl: event.ctrl,
-      shift: event.shift,
-      alt: event.meta || event.option,
-      meta: event.super,
-    },
+    modifiers: terminalKeyModifiers(event),
   });
 }
 
@@ -39,6 +46,7 @@ export function createTerminalInput(renderer: CliRenderer) {
   const reset = () => keymap.clearPendingSequence();
   renderer.on('capabilities', capabilities);
   renderer.on('blur', reset);
+  renderer.on('focus', reset);
   renderer.on('resize', reset);
   capabilities();
   return {
@@ -47,6 +55,7 @@ export function createTerminalInput(renderer: CliRenderer) {
       reset();
       renderer.off('capabilities', capabilities);
       renderer.off('blur', reset);
+      renderer.off('focus', reset);
       renderer.off('resize', reset);
       session.dispose();
     },

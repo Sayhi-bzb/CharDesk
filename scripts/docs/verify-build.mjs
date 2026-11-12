@@ -336,3 +336,5 @@ console.log(
   `Docs verified at ${docsHead.slice(0, 7)}: ${htmlPages.length} pages, ${markdownPages.length} Agent Markdown resources`
 );
 await checkReadingBudget();
+
+await import("./verify-manual.mjs");

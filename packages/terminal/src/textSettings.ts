@@ -1,5 +1,5 @@
 import type { KeyEvent } from '@opentui/core';
-import { segmentGraphemes } from '@chardesk/protocol';
+import { splitGraphemes } from '@chardesk/protocol';
 import { CHARDESK_MARKDOWN_FEATURES } from '@chardesk/chargraph/markdown';
 import {
   CHARDESK_RENDER_THEME_TOKENS,
@@ -229,7 +229,7 @@ export class TerminalTextSettings {
     } else if (panel.input !== undefined) {
       if (key.name === 'a' && (key.ctrl || key.super)) this.#selectedAll = true;
       else if (key.name === 'backspace') {
-        panel.input = this.#selectedAll ? '' : segmentGraphemes(panel.input).slice(0, -1).join('');
+        panel.input = this.#selectedAll ? '' : splitGraphemes(panel.input).slice(0, -1).join('');
         this.#selectedAll = false;
         panel.error = undefined;
         this.surface.requestRender();

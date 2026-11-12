@@ -237,12 +237,26 @@ jobs:
           else
             npm run "$VERIFY_SCRIPT" -- --phase build
           fi
+      - name: Install the manual browser runtime
+        if: ${{ hashFiles('apps/docs/dist/index.html') != '' }}
+        run: npx playwright install --with-deps chromium webkit
+      - name: Verify product manual browser workflows
+        if: ${{ hashFiles('apps/docs/dist/index.html') != '' }}
+        run: npm run test:e2e -w @chardesk/docs
       - name: Preserve the Canvas build for deployment
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: actions/upload-artifact@v4
         with:
           name: canvas-dist
           path: apps/canvas/dist
+          if-no-files-found: error
+          retention-days: 1
+      - name: Preserve the documentation build for deployment
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-dist
+          path: apps/docs/dist
           if-no-files-found: error
           retention-days: 1
 
@@ -379,3 +393,34 @@ jobs:
             echo "::error::chardesk-canvas must use main as its production branch"
             exit 1
           fi
+
+  deploy-docs:
+    name: Deploy product documentation
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CHARDESK_DOCS_DEPLOY_ENABLED == 'true' }}
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - *checkout
+      - *setup-node
+      - name: Restore the verified documentation build
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-dist
+          path: apps/docs/dist
+      - name: Deploy product documentation
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/docs
+          command: pages deploy dist --project-name=chardesk-docs --branch=main
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+      - name: Require a production deployment
+        env:
+          PAGES_ENVIRONMENT: ${{ steps.deploy.outputs.pages-environment }}
+        run: test "$PAGES_ENVIRONMENT" = production

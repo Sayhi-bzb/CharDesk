@@ -100,16 +100,23 @@
       "entry": ["src/main.ts", "src/**/*.test.ts", "scripts/*.ts"],
       "project": ["src/**/*.ts", "scripts/*.ts"]
     },
+    "packages/docs-ui": {
+      "entry": ["src/index.ts", "src/layout.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
     "apps/docs": {
       "entry": [
         "app/root.tsx",
         "app/routes.ts",
         "app/routes/*.tsx",
         "app/routes/*.ts",
+        "reader/root.tsx",
+        "reader/routes.ts",
+        "reader/routes/*.{ts,tsx}",
         "react-router.config.ts",
         "vite.config.ts"
       ],
-      "project": ["app/**/*.{ts,tsx}", "*.config.ts"]
+      "project": ["app/**/*.{ts,tsx}", "reader/**/*.{ts,tsx}", "*.config.ts"]
     },
     "apps/chargraph": {
       "entry": ["src/main.tsx", "src/**/*.test.ts", "vite.config.ts", "vitest.config.ts"],

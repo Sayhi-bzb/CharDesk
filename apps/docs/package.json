@@ -3,10 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node ../../scripts/docs/build-with-retry.mjs",
+    "build": "node ../../scripts/docs/build.mjs",
     "build:react-router": "react-router build",
     "dev": "react-router dev --host 127.0.0.1 --port 5174 --strictPort",
-    "typecheck": "react-router typegen && tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:engineering": "DOCS_BUILD_TARGET=engineering react-router dev --host 127.0.0.1 --port 5175 --strictPort",
+    "preview": "node ../../scripts/docs/preview.mjs",
+    "test:e2e": "playwright test --config playwright.config.ts"
   },
   "dependencies": {
     "@chardesk/ui": "*",
@@ -18,7 +21,11 @@
     "lucide-react": "^1.31.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router": "^8.3.0"
+    "react-router": "^8.3.0",
+    "@chardesk/docs-ui": "*",
+    "@chardesk/cell-ui": "*",
+    "@chardesk/fonts": "*",
+    "@chardesk/font-maple": "*"
   },
   "devDependencies": {
     "@react-router/dev": "^8.3.0",
@@ -29,6 +36,7 @@
     "@types/react-dom": "^19.2.3",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.3",
-    "vite": "^8.2.0"
+    "vite": "^8.2.0",
+    "@playwright/test": "^1.59.1"
   }
 }

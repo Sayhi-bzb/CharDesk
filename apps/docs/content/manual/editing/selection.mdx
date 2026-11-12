@@ -1,0 +1,26 @@
+---
+title: Selection
+description: Pan the view, select a range, or move its content.
+---
+
+## Pan the view
+
+Select Hand and drag an empty area. Content stays in place while your view moves. Use the minimap or [search](/editing/search/) to find distant content.
+
+In the terminal, Option/Alt+arrow keys pan ten cells at a time. Your terminal app may intercept these shortcuts; use Hand when they are unavailable.
+
+## Select content
+
+In Web Canvas, switch to the selection tool. In the terminal, switch to Edit. Drag to create a rectangular range, including any empty cells within it.
+
+Shift+arrow keys extend the range. Modified mouse clicks depend on whether the terminal forwards them, so Shift+click is not the only way to select.
+
+Both cells of a wide CJK character or emoji belong to the same character. Copying and moving operate on complete characters.
+
+## Move, copy, and delete
+
+Drag an existing selection to move its content. Copy and paste at a new position to keep the original; cut removes it from the original position.
+
+Web Canvas normally uses Command+C/X/V on macOS and Ctrl+C/X/V on other platforms. In the terminal, follow the current hints and help panel. Command shortcuts require terminal forwarding; Warp provides Ctrl+Y as a copy fallback.
+
+Press Delete to clear selected content. Undo an accidental deletion or move before continuing. For keys that do not reach the canvas, see [Terminal shortcuts do not respond](/troubleshooting/#terminal-shortcuts-do-not-respond).

@@ -1,0 +1,36 @@
+@import '@chardesk/docs-ui/theme.css';
+@import '@chardesk/docs-ui/styles.css';
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: var(--cell-background); color: var(--cell-foreground); }
+button, body { font: inherit; }
+a { color: inherit; }
+h1, h2, p { margin: 0; }
+code, pre { font-family: inherit; }
+.gallery-page a:focus-visible, .gallery-page button:focus-visible { outline: 2px solid var(--cell-accent); outline-offset: 3px; }
+.manual-fallback { max-width: 1000px; margin: auto; font: 15px/1.8 'Maple Mono NF CN', monospace; }
+.manual-fallback[hidden] { display: none; }
+.manual-fallback header { padding-block: 16px; }
+.manual-fallback nav { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 32px; }
+.manual-fallback nav h2 { font-size: 15px; }
+.manual-fallback ul { padding-left: 20px; }
+.manual-fallback main h1 { font-size: 28px; margin-block: 20px; }
+.manual-prose { overflow-wrap: anywhere; }
+.manual-prose h2 { font-size: 19px; margin: 32px 0 12px; scroll-margin-top: 90px; }
+.manual-prose p, .manual-prose ul, .manual-prose ol { margin: 0 0 16px; }
+.manual-prose a { color: var(--cell-markdown-accent); }
+.manual-prose pre { max-width: 100%; padding: 16px; overflow-x: auto; background: var(--cell-markdown-code-background); }
+.manual-prose :not(pre) > code { padding: 1px 4px; background: var(--cell-markdown-code-background); }
+.manual-prose blockquote { margin: 16px 0; border-left: 2px solid var(--cell-border); padding-left: 16px; }
+.manual-prose table { width: 100%; border-collapse: collapse; margin-block: 16px; }
+.manual-prose th, .manual-prose td { padding: 8px; border-bottom: 1px solid var(--cell-surface-elevated); text-align: left; }
+.manual-search-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgb(0 0 0 / 35%); }
+.manual-search-surface { width: min(760px, calc(100vw - 32px)); }
+.manual-error { max-width: 720px; margin: 64px auto; padding: 24px; }
+.skip-link { position: absolute; left: 16px; top: 0; transform: translateY(-110%); z-index: 30; background: var(--cell-background); padding: 8px; }
+.skip-link:focus { transform: none; }
+@media print {
+  [data-manual-cell-ui], .skip-link { display: none !important; }
+  .manual-fallback[hidden] { display: block; }
+  .manual-fallback header, .manual-fallback nav { display: none; }
+}

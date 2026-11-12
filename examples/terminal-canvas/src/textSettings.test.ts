@@ -76,7 +76,9 @@ test('Rendering settings validate, persist and drive actual paste features, colo
     escape();
     pick(4); // semantic light foreground
     pick(1);
-    await setup.mockInput.typeText('#123456', 0);
+    await setup.mockInput.typeText('#1234567', 0);
+    setup.mockInput.pressKey('\x7f');
+    expect(surface.panel?.input).toBe('#123456');
     setup.mockInput.pressEnter();
     expect(settings.renderProfile.renderThemes.light.foreground).toBe('#123456');
     escape();

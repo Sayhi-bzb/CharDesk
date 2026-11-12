@@ -1,3 +1,4 @@
+import { DocumentationLayout } from "@chardesk/docs-ui/layout";
 import { StrictMode, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { Box, Markdown, Root, type WidgetCommand } from "@chardesk/cell-ui";
@@ -12,6 +13,7 @@ import { GalleryAppearance } from "./appearance";
 import { GalleryHeader } from "./gallery-header";
 import { InstallationCellPage } from "./installation-cell-page";
 import { CellDocumentPage } from "./cell-document-page";
+import { useVisibleDocumentationSection as useVisibleSection } from "@chardesk/docs-ui/navigation";
 import { GalleryNavigation, OnThisPage } from "./cell-navigation";
 import { CellArticleSurface } from "./cell-article-surface";
 import "./styles.css";
@@ -35,45 +37,6 @@ const documentationSections = [
 type DocumentationSection = typeof documentationSections[number]["id"];
 const isDocumentationSection = (value: string | null): value is DocumentationSection =>
   documentationSections.some((section) => section.id === value);
-
-function useVisibleSection(route: string, section: string | null, sectionIds: string) {
-  const [visibleSection, setVisibleSection] = useState<string | null>(section);
-  useEffect(() => { setVisibleSection(section); }, [route, section]);
-  useEffect(() => {
-    let frame = 0;
-    let active = true;
-    const update = () => {
-      frame = 0;
-      const threshold = window.matchMedia("(max-width: 720px)").matches
-        ? 24 : (document.querySelector(".gallery-header")?.getBoundingClientRect().height ?? 64) + 8;
-      const ids = sectionIds.split("\0").filter(Boolean);
-      const requested = section ? document.getElementById(section)?.getBoundingClientRect() : null;
-      const requestedVisible = !!requested && requested.top < window.innerHeight - 16
-        && requested.bottom >= threshold;
-      const atBottom = window.scrollY > 0
-        && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
-      const current = requestedVisible ? section : atBottom ? ids.at(-1) ?? null : ids.filter((id) =>
-        (document.getElementById(id)?.getBoundingClientRect().top ?? Infinity) <= threshold).at(-1) ?? null;
-      setVisibleSection(current);
-    };
-    const schedule = () => { if (active && !frame) frame = requestAnimationFrame(update); };
-    schedule();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    const page = document.querySelector(".docs-page");
-    const observer = page && typeof ResizeObserver !== "undefined" ? new ResizeObserver(schedule) : null;
-    if (page) observer?.observe(page);
-    void document.fonts.ready.then(schedule);
-    return () => {
-      active = false;
-      cancelAnimationFrame(frame);
-      observer?.disconnect();
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
-  }, [route, section, sectionIds]);
-  return visibleSection;
-}
 
 export function DocumentationShell({ document, primitive, guide, section }: Readonly<{ document?: ComponentDocument; primitive?: PrimitiveDocument; guide?: GuideContent; section: string | null }>) {
   const activeDocument = document ?? primitive;
@@ -116,7 +79,7 @@ export function DocumentationShell({ document, primitive, guide, section }: Read
   return (
     <>
       <GalleryHeader />
-      <div className="gallery-shell gallery-layout">
+      <DocumentationLayout>
         <GalleryNavigation activeRoute={route} pageTitle={title} pageSections={sections}
           activeSection={visibleSection} requestedSection={section} />
         <OnThisPage route={route} sections={sections} activeSection={visibleSection} />
@@ -124,7 +87,7 @@ export function DocumentationShell({ document, primitive, guide, section }: Read
           ? <InstallationCellPage guide={guide} key={guide.slug} />
           : <CellDocumentPage guide={guide} key={guide.slug} />
           : <CellDocumentPage document={activeDocument!} key={activeDocument!.slug} />}
-      </div>
+      </DocumentationLayout>
     </>
   );
 }

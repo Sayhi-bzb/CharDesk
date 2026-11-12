@@ -1,5 +1,6 @@
 import { access, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
+import { legacyDocRedirects } from "../docs/legacy-routes.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,7 +11,7 @@ const source = path.join(root, "apps/site");
 const builtHome = path.join(root, ".tmp/site");
 
 await access(path.join(canvas, "index.html"));
-await access(path.join(root, "apps/docs/build/client/docs/index.html"));
+await access(path.join(root, "apps/docs/engineering-build/client/docs/index.html"));
 await access(path.join(root, "apps/chargraph/dist/index.html"));
 execFileSync(process.execPath, [path.join(root, "node_modules/vite/bin/vite.js"), "build", "--config", path.join(source, "vite.config.ts")], {
   cwd: root,
@@ -32,6 +33,7 @@ for (const name of ["docs", "chargraph"]) {
 for (const name of ["site.js", "_redirects"]) {
   await cp(path.join(source, name), path.join(site, name));
 }
+await writeFile(path.join(site, "_redirects"), (await readFile(path.join(site, "_redirects"), "utf8")).trimEnd() + "\n" + legacyDocRedirects());
 await cp(path.join(source, "migration"), path.join(site, "migration"), { recursive: true });
 await mkdir(path.join(site, "legacy"), { recursive: true });
 const legacy = (await readFile(path.join(canvas, "index.html"), "utf8"))

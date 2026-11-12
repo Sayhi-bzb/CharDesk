@@ -1,0 +1,32 @@
+---
+title: Troubleshooting
+description: Check focus, storage location, and connection status first.
+---
+
+## Terminal shortcuts do not respond
+
+Click the canvas or close the input panel to focus the intended area. Then try the same action using its button.
+
+The terminal app may reserve Option, Command, or Shift+mouse combinations. Check its shortcut settings: the canvas can only act on events it receives. Plain drag selection, Hand, and the help panel provide alternatives.
+
+In Warp, try Ctrl+Y to copy and Hand to pan. The terminal's own text selection is separate from a canvas range.
+
+## Agent cannot connect
+
+Keep both the canvas page and Agent client open. Check connection status and permissions under Agent → Local MCP. After starting the server, wait for the connection before trying a read.
+
+If a write times out, ask the Agent to read the canvas before retrying. Reconnecting does not mean the previous write failed to take effect.
+
+## A previous canvas is missing
+
+Check whether you are using a different browser, profile, or website address. Terminal sessions are also separate from browser sessions. Return to the original environment and check its session list.
+
+Do not clear site data to try to recover content. Reopen an exported file if available, and keep independent copies of important work.
+
+## Content is outside the view
+
+Use the minimap or search to locate it. Panning does not delete text; avoid pasting duplicates while trying to find existing content.
+
+## A preview cannot be edited
+
+The CLI's browser file preview is read-only. Use the terminal entry point to edit a native file, or import a copy into Web Canvas.

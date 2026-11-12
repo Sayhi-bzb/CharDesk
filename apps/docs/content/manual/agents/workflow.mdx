@@ -1,0 +1,28 @@
+---
+title: Agent workflow
+description: Describe the position and change you want, then check the result.
+---
+
+## Describe the result
+
+Tell the Agent which canvas to use and what to keep, add, or change. For example:
+
+> Add a three-step implementation checklist to the right of the current title. Keep existing content, then read the result to check the layout.
+
+You do not need to supply tool parameters or internal coordinate structures. Describe nearby content or known text when position matters.
+
+## Read, edit, and check
+
+Ask the Agent to read the existing region before choosing a position. After writing, read the affected region to check completeness, accidental overlaps, wide characters, and colors.
+
+If the target range is unclear, ask the Agent to find the relevant text before changing it.
+
+## Review updates
+
+After Agent edits, the canvas may show update markers for regions you have not viewed. These markers are reading feedback, not extra content or individual prompt nodes you need to delete.
+
+Ask the Agent to revise an unsuitable change, or undo it. After an interrupted write, timeout, or uncertain result, read the actual content before retrying to avoid duplicates.
+
+## Local files and terminal sessions
+
+Agents can also use the CLI for local file tasks. Provide the file path and specify whether the target is a terminal session or a browser canvas. These entry points do not automatically share all sessions.

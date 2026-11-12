@@ -1,0 +1,35 @@
+---
+title: Import and export
+description: Keep an editable file or share an image or text export.
+---
+
+## Keep an editable copy
+
+Keep a `.chardesk` file when you want to edit later. A PNG is for viewing; the native file preserves editable canvas content.
+
+Use the product's open, import, or export controls. Check the target session and filename before confirming. Renaming an arbitrary Markdown file does not turn it into a native canvas.
+
+## Choose an export format
+
+| Purpose | Format |
+| --- | --- |
+| Continue editing later | `.chardesk` |
+| Share a viewable image | PNG |
+| Preserve colors and styles in a terminal | ANSI |
+| Keep only the characters | Plain text |
+
+Check the bounds and whitespace before exporting an image. Plain text cannot preserve background colors or every visual style.
+
+## Work with local files
+
+After installing the terminal command, create, inspect, and export files with:
+
+```sh
+chardesk init diagram.chardesk --title "Diagram"
+chardesk inspect diagram.chardesk
+chardesk render diagram.chardesk -o diagram.png
+```
+
+`chardesk open diagram.chardesk` opens a read-only browser preview. To edit in the terminal, use `chardesk tui diagram.chardesk`. The preview cannot write browser edits back to the file.
+
+See the [CLI reference](https://github.com/Sayhi-bzb/CharDesk/tree/main/packages/cli#readme) for command options.

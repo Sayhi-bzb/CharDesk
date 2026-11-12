@@ -390,9 +390,9 @@ export const zhCN: Readonly<Record<string, string>> = {
   'Enter run · Esc close': 'Enter 执行 · Esc 关闭',
   '{0} switch · {1} choose': '{0} 切换 · {1} 选择',
   'Tab section · Enter change': 'Tab 分区 · Enter 更改',
-  'R rename · D copy · A {0} · Del close · F5 refresh':
-    'R 重命名 · D 复制 · A {0} · Del 关闭 · F5 刷新',
-  'Enter open · Del close': 'Enter 打开 · Del 关闭',
+  'R rename · D copy · A {0} · {1} close · F5 refresh':
+    'R 重命名 · D 复制 · A {0} · {1} 关闭 · F5 刷新',
+  'Enter open · {0} close': 'Enter 打开 · {0} 关闭',
   'Enter jump · N add · R rename': 'Enter 跳转 · N 添加 · R 重命名',
   'Enter choose · Esc close': 'Enter 选择 · Esc 关闭',
   'Enter export · Esc cancel': 'Enter 导出 · Esc 取消',

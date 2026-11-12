@@ -197,6 +197,25 @@ test.each(['darwin', 'win32'] as const)(
   }
 );
 
+test('Mac Delete closes the selected fallback document, saving edits and preserving the active document', async () => {
+  const f = await fixture();
+  try {
+    f.workspace.model.commands.insert('Kept');
+    await f.workspace.openFile(f.second);
+    const active = f.workspace.active;
+    f.surface.activateDock('documents');
+    expect(f.surface.panel?.hint).toBe('Enter open · ⌫ close');
+    f.surface.panel!.selected = 0;
+    f.setup.mockInput.pressKey('\x7f');
+    await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+    expect(f.workspace.active).toBe(active);
+    expect(await readFile(f.first, 'utf8')).toContain('Kept');
+    expect(f.quits).toBe(0);
+  } finally {
+    await f.dispose();
+  }
+});
+
 for (const platform of ['darwin', 'win32', 'linux'] as const) {
   test(`${platform} Find reuses the shared dialog shell with primary shortcuts and F8`, async () => {
     const f = await fixture(platform);

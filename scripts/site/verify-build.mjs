@@ -1,5 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { legacyDocRedirects } from "../docs/legacy-routes.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +12,7 @@ const [html, redirects, sitemap, robots] = await Promise.all([
   read("index.html"), read("_redirects"), read("sitemap.xml"), read("robots.txt"),
 ]);
 const legacy = await read("legacy/index.html");
+if (!redirects.includes(legacyDocRedirects().trim())) throw new Error("Legacy documentation redirects are incomplete");
 if (await read("icon.svg") !== await readFile(path.join(root, "apps/site/public/icon.svg"), "utf8")) {
   throw new Error("Product-home icon differs from the shared source icon");
 }
@@ -22,6 +24,7 @@ for (const required of [
   'rel="canonical" href="https://chardesk.com/"',
   'href="https://canvas.chardesk.com/"',
   'href="https://ui.chardesk.com/"',
+  'href="https://docs.chardesk.com/"',
 ]) {
   if (!html.includes(required)) throw new Error(`Product home is missing ${required}`);
 }
@@ -34,7 +37,7 @@ if (!legacy.includes('name="robots" content="noindex, nofollow"')
   || !(await read("legacy/blackboard.html")).includes('name="robots" content="noindex, nofollow"')) {
   throw new Error("Legacy workspace recovery route is missing or indexable");
 }
-if (!sitemap.includes("https://chardesk.com/docs/") || !sitemap.includes("https://chardesk.com/chargraph/")) {
+if (sitemap.includes("https://chardesk.com/docs/") || !sitemap.includes("https://chardesk.com/chargraph/")) {
   throw new Error("Product-home sitemap is incomplete");
 }
 if (!robots.includes("Sitemap: https://chardesk.com/sitemap.xml")) {

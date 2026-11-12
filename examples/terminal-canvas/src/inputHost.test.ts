@@ -7,6 +7,9 @@ test('terminal Host observes later capability replies and releases every attachm
   try {
     const keys = setup.renderer.keyInput.listenerCount('keypress');
     const capabilities = setup.renderer.listenerCount('capabilities');
+    const lifecycle = ['focus', 'blur', 'resize'].map(
+      (name) => [name, setup.renderer.listenerCount(name)] as const
+    );
     for (let i = 0; i < 2; i++) {
       const input = createTerminalInput(setup.renderer);
       let calls = 0;
@@ -36,6 +39,7 @@ test('terminal Host observes later capability replies and releases every attachm
       expect(calls).toBe(1);
       expect(setup.renderer.keyInput.listenerCount('keypress')).toBe(keys);
       expect(setup.renderer.listenerCount('capabilities')).toBe(capabilities);
+      for (const [name, count] of lifecycle) expect(setup.renderer.listenerCount(name)).toBe(count);
     }
   } finally {
     await setup.dispose();

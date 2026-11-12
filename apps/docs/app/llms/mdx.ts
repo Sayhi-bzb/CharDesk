@@ -1,7 +1,7 @@
-import type { Route } from "./+types/mdx";
+import type { LoaderFunctionArgs } from "react-router";
 import { getLLMText, publicDevelopmentSource } from "@/lib/source";
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ params }: LoaderFunctionArgs) {
   const slugs = (params["*"] ?? "").split("/").filter(Boolean);
   if (slugs.at(-1) !== "content.md") {
     return new Response("Not found", { status: 404 });

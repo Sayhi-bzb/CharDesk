@@ -10,7 +10,7 @@ import { CharacterPicker } from './characters.ts';
 import { CANVAS_TEMPLATES } from '@chardesk/canvas-templates';
 import { drawingLabel, drawingTools } from './drawing.ts';
 import type { KeyEvent } from '@opentui/core';
-import { segmentGraphemes, getTextCellWidth } from '@chardesk/protocol';
+import { segmentGraphemes, splitGraphemes, getTextCellWidth } from '@chardesk/protocol';
 import { searchCanvasSurface, type CanvasSearchResult } from '@chardesk/editor-core/search';
 import type { ClipboardPort } from '@chardesk/editor-core/clipboard/commands';
 import type { CanvasSurface, TerminalPanel } from './surface.ts';
@@ -21,6 +21,18 @@ import type { LocalSession } from '@chardesk/local-runtime/sessionCatalog';
 import { navigationActions } from './navigation.ts';
 import { watchWorkspaceSources } from './sourceMonitor.ts';
 import { noticeText, noticeDetail, type TerminalNotice } from './feedback.ts';
+
+/** List dismissal aliases; text inputs retain their normal Backspace/Delete semantics. */
+function isListCloseKey(key: KeyEvent) {
+  return (
+    !key.ctrl &&
+    !key.meta &&
+    !key.option &&
+    !key.super &&
+    !key.shift &&
+    (key.name === 'delete' || key.name === 'backspace')
+  );
+}
 
 /** Transient Host panels. All document mutations still run through shared commands. */
 export class WorkspaceControls {
@@ -49,6 +61,9 @@ export class WorkspaceControls {
   #anchorIds: string[] = [];
   #place: (() => void) | null = null;
   #placementTarget = '';
+  get #closeKeyLabel() {
+    return this.surface.platform === 'darwin' ? '⌫' : 'Del';
+  }
   #target() {
     return JSON.stringify([
       this.surface.model.documents.getActiveAddress(),
@@ -290,7 +305,7 @@ export class WorkspaceControls {
         this.documents();
       },
       hint: this.surface
-        .t`R rename · D copy · A ${this.#includeArchived ? this.surface.t('restore') : this.surface.t('archive')} · Del close · F5 refresh`,
+        .t`R rename · D copy · A ${this.#includeArchived ? this.surface.t('restore') : this.surface.t('archive')} · ${this.#closeKeyLabel} close · F5 refresh`,
       actions: [
         { id: 'new', label: this.surface.t('N new'), onPick: () => this.newSession() },
         { id: 'open', label: this.surface.t('O open'), onPick: () => this.filePrompt('open') },
@@ -333,7 +348,7 @@ export class WorkspaceControls {
           await this.sessions!.archive(record.id, !record.archived, record.revision);
           this.documents();
         });
-      else if (key.name === 'delete' && record) {
+      else if (isListCloseKey(key) && record) {
         const file = this.workspace.files.find((file) => file.path === record.path);
         if (file) this.closeDocument(file);
       } else return false;
@@ -398,7 +413,7 @@ export class WorkspaceControls {
     const files = [...this.workspace.files];
     const panel: TerminalPanel = {
       title: this.surface.t('Documents'),
-      hint: this.surface.t('Enter open · Del close'),
+      hint: this.surface.t`Enter open · ${this.#closeKeyLabel} close`,
       items: [
         ...files.map(
           (file) =>
@@ -426,7 +441,7 @@ export class WorkspaceControls {
     };
     panel.onPick = pick;
     this.#show('documents', panel, pick, (key) => {
-      if (key.name === 'delete' && panel.selected < files.length) {
+      if (isListCloseKey(key) && panel.selected < files.length) {
         this.closeDocument(files[panel.selected]!);
         return true;
       }
@@ -1218,7 +1233,7 @@ export class WorkspaceControls {
         : Math.max(0, Math.min(panel.items.length - 1, next));
     } else if (panel.input !== undefined && key.name === 'backspace') {
       this.#inputVersion++;
-      panel.input = this.#selectedAll ? '' : segmentGraphemes(panel.input).slice(0, -1).join('');
+      panel.input = this.#selectedAll ? '' : splitGraphemes(panel.input).slice(0, -1).join('');
       this.#selectedAll = false;
       panel.onInput?.(panel.input);
     } else if (

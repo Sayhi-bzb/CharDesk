@@ -1,7 +1,7 @@
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import {
   Box, Button, Markdown, Root, ScrollArea, Tab, TabPanel, Tabs, Text, createWidgetDescriptor,
-  type CellPoint, type CellRect, type WidgetCommand, type WidgetDescriptor,
+  type CellRect, type WidgetCommand, type WidgetDescriptor,
 } from "@chardesk/cell-ui";
 import { formatCellProbe } from "@chardesk/cell-ui";
 import { readCellSurfaceProbe, useCellScrollState, type CellScrollState } from "@chardesk/cell-ui/browser";
@@ -11,7 +11,7 @@ import { DocumentSceneContext, type DocumentSceneFragment } from "./document-sce
 import { sourceLinksForComponent, type ComponentDocument } from "./component-catalog";
 import type { PrimitiveDocument } from "./primitive-catalog";
 import { installationCommands, publicUsage, type GuideContent } from "./docs-content";
-import { CODE_BLOCK_PREVIEW_LINES, shouldCollapseCode } from "./code-block-lines";
+import { renderDocumentationCodeBlock as codeBlock, fence } from "@chardesk/docs-ui/code";
 import { ClassicMacintoshDemo, MarkdownIntroductionDemo, NotesIntroductionDemo, ProgressIntroductionDemo, SettingsIntroductionDemo } from "./introduction-demos";
 
 type ApiRow = Readonly<{ name: string; type: string; description: string }>;
@@ -46,7 +46,6 @@ const MountedDemo = memo(function MountedDemo({ Demo }: Readonly<{ Demo: Compone
   return <Demo />;
 });
 
-const fence = (code: string, language: string) => `\`\`\`${language}\n${code}\n\`\`\``;
 const heading = (title: string, body?: string) => [`## ${title}`, body].filter(Boolean).join("\n\n");
 const link = ({ label, href }: Readonly<{ label: string; href: string }>) => `[${label}](${href})`;
 const escapeTable = (value: string) => value.replaceAll("|", "\\|").replaceAll("\n", " ");
@@ -107,41 +106,6 @@ const groupItems = (items: readonly ArticleItem[], prefix: string): ArticleGroup
   }
   flush();
   return groups;
-};
-
-const codeBlock = (
-  id: string, code: string, language: string, scroll: CellPoint, copyState: CopyState,
-  expanded: boolean, mode: "light" | "dark",
-) => {
-  const collapsible = shouldCollapseCode(code);
-  const visible = collapsible && !expanded ? code.split("\n").slice(0, CODE_BLOCK_PREVIEW_LINES).join("\n") : code;
-  const rows = visible.split("\n").length;
-  const source = fence(visible, language);
-  const gutterWidth = String(code.split("\n").length).length + 2;
-  const icon = copyState === "Copied" ? "✓" : copyState === "Copy failed" ? "!" : "󰆏";
-  return <Box id={`${id}-code`} variant="surface" style={{ width: "100%", gap: 0 }}>
-    <Box style={{ direction: "row", width: "100%" }}>
-      {rows > 1 ? <Box id={`${id}-numbers`} style={{ width: gutterWidth, paddingTop: 1, flexShrink: 0 }}>
-        {Array.from({ length: rows }, (_, index) => <Text key={index}
-          textStyle={{ color: mode === "light" ? "#555555" : "#aaaaaa" }}>
-          {String(index + 1).padStart(gutterWidth - 1)}
-        </Text>)}
-      </Box> : null}
-      <ScrollArea id={`${id}-scroll`} scrollX={scroll.x} scrollY={scroll.y}
-        style={{ flexGrow: 1, flexShrink: 1 }}>
-        <Markdown source={source} />
-      </ScrollArea>
-      <Button id={`${id}-copy`} label={copyState === "Copy" ? "Copy code" : copyState}
-        variant="surface" style={{ position: "absolute", top: 0, right: 1 }}><Text>{icon}</Text></Button>
-    </Box>
-    {collapsible ? <Box id={`${id}-footer`} style={{ direction: "row", width: "100%" }}>
-      <Box style={{ flexGrow: 1 }} />
-      <Button id={`${id}-toggle`} variant="ghost">
-        <Text>{expanded ? "Show less" : "Show more"}</Text>
-      </Button>
-      <Box style={{ flexGrow: 1 }} />
-    </Box> : null}
-  </Box>;
 };
 
 const packageManagers = Object.keys(installationCommands) as (keyof typeof installationCommands)[];

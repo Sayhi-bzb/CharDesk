@@ -69,7 +69,12 @@ test('Settings records, saves, reloads and dispatches a binding through the exis
     const before = f.model.plane.materialize(),
       selection = structuredClone(f.model.selection);
     f.open();
-    await f.search('terminal.copy');
+    await f.setup.mockInput.typeText('terminal.copy', 0);
+    f.setup.mockInput.pressKey('🦀');
+    expect(f.surface.panel?.input).toBe('terminal.copy🦀');
+    f.setup.mockInput.pressKey('\x7f');
+    expect(f.surface.panel?.input).toBe('terminal.copy');
+    f.setup.mockInput.pressEnter();
     f.setup.mockInput.pressKey('F5');
     f.setup.mockInput.pressKey('F12');
     expect(f.surface.panel?.input).toBe('F12');

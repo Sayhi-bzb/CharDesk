@@ -111,7 +111,7 @@ export function Site() {
           </Box>
           <Box style={{ height: wide ? 1 : 0 }} />
           <Box style={{ direction: width < 36 ? "column" : "row", gap: width < 36 ? 0 : 3 }}>
-            <Link id="site-docs" href="/docs/">Documentation ↗</Link>
+            <Link id="site-docs" href="https://docs.chardesk.com/">Documentation ↗</Link>
             <Link id="site-github" href="https://github.com/Sayhi-bzb/CharDesk" target="_blank">GitHub ↗</Link>
           </Box>
         </Box>

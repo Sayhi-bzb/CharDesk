@@ -12,8 +12,10 @@ const appDirectory = path.resolve(
 const repositoryRoot = path.resolve(appDirectory, "../../..");
 
 export default defineConfig(({ command }) => ({
-  base: command === "serve" ? "/docs/" : undefined,
-  publicDir: path.join(repositoryRoot, "public"),
+  base: command === "serve" && process.env.DOCS_BUILD_TARGET === "engineering" ? "/docs/" : undefined,
+  publicDir: process.env.DOCS_BUILD_TARGET === "engineering"
+    ? path.join(repositoryRoot, "public")
+    : false,
   plugins: [fumadocsMdx(), tailwindcss(), reactRouter()],
   resolve: {
     alias: [
@@ -46,6 +48,8 @@ export default defineConfig(({ command }) => ({
       "fumadocs-ui",
       "@fumadocs/base-ui",
       "@chardesk/ui",
+      "@chardesk/docs-ui",
+      "@chardesk/cell-ui",
     ],
   },
 }));

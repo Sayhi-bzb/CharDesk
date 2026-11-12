@@ -1,0 +1,28 @@
+---
+title: Connect an Agent
+description: Let your Agent read and edit an open canvas.
+---
+
+## Local Agents
+
+Add CharDesk to an MCP-compatible Agent client with this launch command:
+
+```sh
+npx -y @chardesk/mcp
+```
+
+Configuration differs by client. Add it as a local MCP server, start the client, and open [Web Canvas](https://canvas.chardesk.com/). Discovery and connection normally happen automatically, without manual pairing.
+
+Check connection status and permissions in the canvas's Agent → Local MCP panel. Allow reading first, then enable writing when you want the Agent to edit.
+
+## Browser Agents
+
+Some browsers or hosts can discover tools exposed by a page. Keep the target canvas open and check that your host lists the Canvas tools.
+
+Availability depends on the host's support for WebMCP or page tools. It is not automatic in every browser. If tools are not discovered, use the local connection above or check the host's support documentation.
+
+## Confirm the connection
+
+Ask the Agent to read the current canvas and describe its content. Confirm it is reading the canvas you intended before asking it to add a short passage.
+
+For connection failures, see [Agent cannot connect](/troubleshooting/#agent-cannot-connect). The [MCP reference](https://github.com/Sayhi-bzb/CharDesk/tree/main/packages/mcp#readme) owns installation and advanced configuration.

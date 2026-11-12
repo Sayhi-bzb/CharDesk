@@ -7,7 +7,6 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { RootProvider } from "fumadocs-ui/provider/react-router";
-import type { Route } from "./+types/root";
 import { DocsErrorShell } from "@/components/docs-shell";
 import DocsSearchDialog from "@/components/search";
 import "./app.css";
@@ -37,7 +36,7 @@ export default function App() {
   return <Outlet />;
 }
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+export function ErrorBoundary({ error }: { error: unknown }) {
   const notFound = isRouteErrorResponse(error) && error.status === 404;
   const details = notFound
     ? "The requested documentation page does not exist."

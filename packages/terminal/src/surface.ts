@@ -2,7 +2,11 @@ import { isDefaultArtifactForeground } from '@chardesk/cell-plane/artifact-style
 import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
 import { WelcomeAppearance } from '@chardesk/canvas-templates/welcome-appearance';
 import { TerminalInputModifiers } from './inputModifiers.ts';
-import { resolveTerminalPolicy, type TerminalInputPolicy } from './terminalPolicy.ts';
+import {
+  mouseModifierSource,
+  resolveTerminalPolicy,
+  type TerminalInputPolicy,
+} from './terminalPolicy.ts';
 import type { GridCellSource, Point } from '@chardesk/cell-plane/types';
 import {
   createTerminalShortcuts,
@@ -149,8 +153,13 @@ export class CanvasSurface extends Renderable {
   readonly #detachInteraction: () => void;
   readonly inputModifiers = new TerminalInputModifiers();
   setInputPolicy(policy: TerminalInputPolicy) {
+    const changedSource = mouseModifierSource(this.#inputPolicy) !== mouseModifierSource(policy);
     this.#inputPolicy = policy;
     this.#shortcutCache = undefined;
+    if (changedSource) {
+      this.inputModifiers.clear();
+      this.cancelGesture();
+    }
     this.requestRender();
   }
   cancelGesture() {
@@ -1233,7 +1242,7 @@ export class CanvasSurface extends Renderable {
     }
     try {
       if (event.type === 'down' && event.button === 0 && inside) {
-        const modifiers = this.inputModifiers.merge(event.modifiers);
+        const modifiers = this.inputModifiers.resolveMouse(event.modifiers, this.inputPolicy);
         this.#pointer = screen;
         this.model.pointer({
           phase: 'down',

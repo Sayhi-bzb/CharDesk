@@ -11,6 +11,8 @@ The Cloudflare Pages projects use these build contracts:
 
 The Canvas deployment publishes the artifact from the verified build only after `Verify` succeeds. Wrangler runs in `apps/canvas` so `functions/` ships with the static assets. It uses the repository variable `CLOUDFLARE_ACCOUNT_ID` and a repository secret `CLOUDFLARE_PAGES_API_TOKEN` with Cloudflare Pages Edit permission for the account.
 
+The product manual is independently deployed at `docs.chardesk.com`; its delivery contract is in [`apps/docs/README.md`](../docs/README.md). Old human `/docs` routes redirect to their current owner; existing Agent resources remain compatible.
+
 Keep `ui.chardesk.com` on its existing project. The root deployment must retain `/migration/bridge.html`; first-load local workspace transfer depends on both origins.
 
 The root origin retains `/blackboard`, `/s/*`, and root-level collaboration links long enough to route old shares to Canvas. Do not remove the bridge while old browser-local work may still exist.

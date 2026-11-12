@@ -19,7 +19,8 @@ description: Knowledge ownership and the shared website/Agent publication pipeli
 | Live Canvas/Slide authoring | [CharDesk skill](https://github.com/Sayhi-bzb/CharDesk/tree/main/.agents/skills/chardesk) and references |
 | MCP installation and local bridge lifecycle | [MCP package README](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/mcp/README.md) |
 | Package installation and public API | Owning package README; Cell UI consumption uses [its public portal](https://ui.chardesk.com/) |
-| User workflow | `docs/user` |
+| Product instructions for people | `apps/docs/content/manual`, published at [docs.chardesk.com](https://docs.chardesk.com/) |
+| Retained user routes | `docs/user`; [migration destinations](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/docs/legacy-routes.mjs) route readers to the current manual |
 | Cross-module decisions and contracts | `docs/development`; [domains](/development/domains) own capability routing, [ownership](/development/architecture/ownership) owns dependency direction |
 | Implementation and verification | Linked source and nearest tests |
 | Commands and dependencies | Root [package.json](https://github.com/Sayhi-bzb/CharDesk/blob/main/package.json) |
@@ -28,6 +29,8 @@ description: Knowledge ownership and the shared website/Agent publication pipeli
 Each page starts with four routing rows: task trigger, direct answer, owner/boundary, and follow-up. Keep an answer in the first block; put contracts and evidence below it. Preserve code identifiers and stable URLs when shortening prose.
 
 ## Publication
+
+This section owns engineering publication. The [docs workspace contract](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/README.md) owns the independent human manual, shared reading template, build targets and deployment. Product search excludes engineering and Cell UI content.
 
 [`agent-routes.json`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/docs/content/agent-routes.json) owns task routing. The website's Development table and Agent route map are generated from it. Its keywords, identifiers, exclusions, and follow-ups remain in JSON; the reading index emits only task and destination.
 

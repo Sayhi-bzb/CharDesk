@@ -138,8 +138,9 @@ test("clicking a navigation link does not start a selection", async ({ page }) =
   const y = rows.findIndex((row) => row.includes("Documentation ↗"));
   const x = rows[y]!.indexOf("Documentation ↗") + 2;
   const point = await cellPoint(surface, x, y);
+  await page.route("https://docs.chardesk.com/**", route => route.fulfill({ contentType: "text/html", body: "<h1>Docs</h1>" }));
   await page.mouse.click(point.x, point.y);
-  await expect(page).toHaveURL(/\/docs\/$/u);
+  await expect(page).toHaveURL("https://docs.chardesk.com/");
 });
 
 test("theme toggle keeps the page and canvas guard in sync across reloads", async ({ page }) => {

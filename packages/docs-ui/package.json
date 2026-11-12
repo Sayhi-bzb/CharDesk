@@ -1,0 +1,48 @@
+{
+  "name": "@chardesk/docs-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css",
+    "./theme.css": "./src/theme.css",
+    "./layout": "./src/layout.tsx",
+    "./appearance": "./src/appearance.tsx",
+    "./fonts": "./src/font-options.ts",
+    "./scene": "./src/document-scene.tsx",
+    "./controls": "./src/control-recipes.tsx",
+    "./icons": "./src/header-icons.tsx",
+    "./header": "./src/header.tsx",
+    "./article": "./src/article.tsx",
+    "./navigation": "./src/navigation.tsx",
+    "./links": "./src/links.tsx",
+    "./code": "./src/code.tsx",
+    "./code-lines": "./src/code-block-lines.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@chardesk/cell-ui": "*",
+    "@chardesk/font-maple": "*",
+    "@chardesk/font-fusion": "*",
+    "@chardesk/font-xiaolai": "*",
+    "@chardesk/fonts": "*",
+    "pixelarticons": "^2.4.1"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "~5.9.3",
+    "@playwright/test": "^1.59.1"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ]
+}

@@ -10,7 +10,7 @@ const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx'
 
 const workspaceGroups = {
   core: new Set([
-    '@chardesk/cell-core', '@chardesk/cell-ui', '@chardesk/font-fusion',
+    '@chardesk/cell-core', '@chardesk/cell-ui', '@chardesk/docs-ui', '@chardesk/font-fusion',
     '@chardesk/font-maple', '@chardesk/font-xiaolai', '@chardesk/fonts',
     '@chardesk/rendering', '@chardesk/ui', '@chardesk/viewer',
   ]),

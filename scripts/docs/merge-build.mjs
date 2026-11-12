@@ -6,7 +6,7 @@ const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../.."
 );
-const docsBuild = path.join(repositoryRoot, "apps/docs/build/client");
+const docsBuild = path.join(repositoryRoot, "apps/docs/engineering-build/client");
 const docsPages = path.join(docsBuild, "docs");
 const docsAssets = path.join(docsBuild, "assets");
 const docsOutput = path.join(repositoryRoot, "apps/site/dist/docs");

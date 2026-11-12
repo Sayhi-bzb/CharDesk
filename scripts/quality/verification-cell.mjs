@@ -3,6 +3,7 @@ import path from 'node:path'
 
 export const isCellInput = file => file.startsWith('packages/cell-ui/')
   || file.startsWith('apps/cell-ui/')
+  || file.startsWith('packages/docs-ui/')
 
 const leafTests = {
   'button.ts': ['button.test.tsx', 'press.test.tsx', 'activation-feedback.test.tsx'],

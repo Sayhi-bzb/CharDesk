@@ -8,7 +8,7 @@ import {
   DocsPage,
   DocsTitle,
 } from "fumadocs-ui/layouts/docs/page";
-import type { Route } from "./+types/docs";
+import { useLoaderData, type LoaderFunctionArgs } from "react-router";
 import { useMDXComponents } from "@/components/mdx";
 import { DocsShellContainer } from "@/components/docs-shell";
 import {
@@ -25,7 +25,7 @@ import {
   serializeStructuredData,
 } from "@/lib/seo";
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ params }: LoaderFunctionArgs) {
   const slugs = (params["*"] ?? "").split("/").filter(Boolean);
   const page = source.getPage(slugs);
   if (!page) throw new Response("Not found", { status: 404 });
@@ -92,7 +92,8 @@ function Content({
   );
 }
 
-export default function DocsRoute({ loaderData }: Route.ComponentProps) {
+export default function DocsRoute() {
+  const loaderData = useLoaderData<typeof loader>();
   const { pageTree, path, seo } = useFumadocsLoader(loaderData);
 
   return (

@@ -27,7 +27,7 @@
     "build:site": "npm run build",
     "build": "node scripts/quality/verification.mjs --mode full --phase build",
     "build:cli": "node scripts/quality/verification.mjs --mode full --phase build --target @chardesk/cli",
-    "build:docs": "npm run build -w @chardesk/docs && node scripts/docs/merge-build.mjs && node scripts/docs/verify-build.mjs",
+    "build:docs": "node scripts/quality/verification.mjs --mode full --phase build --target @chardesk/docs && node scripts/docs/merge-build.mjs && node scripts/docs/verify-build.mjs",
     "build:chargraph": "npm run build -w @chardesk/chargraph-site && node scripts/chargraph/merge-build.mjs && node scripts/chargraph/verify-build.mjs",
     "build:sync": "npm run build -w @chardesk/collaboration-protocol && npm run build -w @chardesk/sync-server",
     "typecheck": "node scripts/quality/verification.mjs --mode full --phase typecheck",

@@ -1,0 +1,164 @@
+{
+  "groups": [
+    {
+      "title": "Getting started",
+      "pages": [
+        "getting-started",
+        "terminal"
+      ]
+    },
+    {
+      "title": "Editing",
+      "pages": [
+        "editing/input",
+        "editing/selection",
+        "editing/style",
+        "editing/search"
+      ]
+    },
+    {
+      "title": "Files and sessions",
+      "pages": [
+        "files/sessions",
+        "files/import-export"
+      ]
+    },
+    {
+      "title": "Collaboration",
+      "pages": [
+        "collaboration"
+      ]
+    },
+    {
+      "title": "Agents",
+      "pages": [
+        "agents/connect",
+        "agents/workflow"
+      ]
+    },
+    {
+      "title": "Settings and help",
+      "pages": [
+        "settings",
+        "troubleshooting"
+      ]
+    }
+  ],
+  "aliases": {
+    "getting-started": [
+      "welcome",
+      "新建",
+      "入门",
+      "new canvas",
+      "start"
+    ],
+    "terminal": [
+      "TUI",
+      "CLI",
+      "终端",
+      "chardesk"
+    ],
+    "editing/input": [
+      "文字",
+      "Unicode",
+      "emoji",
+      "中文",
+      "CJK",
+      "typing",
+      "text",
+      "paste"
+    ],
+    "editing/selection": [
+      "range",
+      "copy",
+      "paste",
+      "cut",
+      "delete",
+      "复制",
+      "粘贴",
+      "剪切",
+      "选区",
+      "pan"
+    ],
+    "editing/style": [
+      "inspector",
+      "style",
+      "颜色",
+      "调色板",
+      "color",
+      "palette"
+    ],
+    "editing/search": [
+      "find",
+      "search",
+      "查找",
+      "搜索"
+    ],
+    "files/sessions": [
+      "session",
+      "autosave",
+      "自动保存",
+      "存储",
+      "会话",
+      "归档",
+      "save",
+      "storage",
+      "archive"
+    ],
+    "files/import-export": [
+      "PNG",
+      "ANSI",
+      "文件",
+      "导入",
+      "导出",
+      "file",
+      "import",
+      "export"
+    ],
+    "collaboration": [
+      "share",
+      "room",
+      "协作",
+      "分享",
+      "加密",
+      "collaboration",
+      "encryption"
+    ],
+    "agents/connect": [
+      "MCP",
+      "WebMCP",
+      "连接",
+      "授权",
+      "AI",
+      "permissions",
+      "connect"
+    ],
+    "agents/workflow": [
+      "agent",
+      "AI",
+      "生成",
+      "更新",
+      "红点",
+      "generate",
+      "update",
+      "badge"
+    ],
+    "settings": [
+      "theme",
+      "language",
+      "主题",
+      "语言",
+      "快捷键",
+      "shortcuts"
+    ],
+    "troubleshooting": [
+      "Warp",
+      "Ghostty",
+      "故障",
+      "离线",
+      "恢复",
+      "offline",
+      "recovery"
+    ]
+  }
+}

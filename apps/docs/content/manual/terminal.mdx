@@ -1,0 +1,38 @@
+---
+title: Terminal canvas
+description: Start, edit, and restore local canvases in your terminal.
+---
+
+## Install and start
+
+Install Bun, then install the command:
+
+```sh
+bun add -g @chardesk/cli
+chardesk
+```
+
+Bun 1.3.14 or later is required. The canvas starts in Hand mode. Switch to Edit to type or select content. Tab cycles through Edit, Hand, and Style in the footer. Settings, sessions, and the minimap are in the header.
+
+To edit a specific file:
+
+```sh
+chardesk tui diagram.chardesk
+```
+
+## Common actions
+
+- Hand: drag to pan the view.
+- Edit: type, select a range, or move selected content.
+- Style: change selection colors and text styles.
+- F1: open help.
+- F8: open search.
+- Ctrl+Q: quit, including while a panel is open.
+
+Sessions save automatically. See [Sessions](/files/sessions/) for storage locations.
+
+## Terminal compatibility
+
+Your terminal receives keyboard and trackpad events first and decides which to forward to the canvas. The same shortcut can behave differently across terminals.
+
+Use clickable controls, Hand, and plain drag selection when shortcuts are unavailable. Command+Q quits the terminal app on macOS; use Ctrl+Q to quit the canvas. See [Troubleshooting](/troubleshooting/) for other issues.

@@ -1,7 +1,7 @@
 import { terminalActionLabels } from './actionLabels.ts';
 import { navigationActions } from './navigation.ts';
 import type { KeyEvent } from '@opentui/core';
-import { segmentGraphemes } from '@chardesk/protocol';
+import { splitGraphemes } from '@chardesk/protocol';
 import { terminalKeyInput } from '@chardesk/editor-input/terminal';
 import {
   findShortcutConflicts,
@@ -247,7 +247,7 @@ export class TerminalKeymapSettings {
     if (key.name === 'backspace') {
       panel.input = this.#selectedAll
         ? ''
-        : segmentGraphemes(panel.input ?? '')
+        : splitGraphemes(panel.input ?? '')
             .slice(0, -1)
             .join('');
       this.#selectedAll = false;

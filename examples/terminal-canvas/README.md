@@ -80,15 +80,34 @@ terminal forwards it; Shift+arrows extend from the keyboard. Ctrl+click appends 
 disjoint range. Hand and drawing tools retain their own behavior. See [native
 input regressions](src/range-input.test.ts).
 
-Warp's [mouse encoder](https://github.com/warpdotdev/warp/blob/master/crates/warp_terminal/src/model/escape_sequences.rs)
-omits modifier bits. On `TERM_PROGRAM=WarpTerminal`, the
-[input adapter](src/inputModifiers.ts) requests all Kitty key events plus associated
-text and merges independently reported held modifiers with mouse packets.
-Press/release lifetimes stay outside document state and reset on blur, resize and
-control disposal. [Reporting tests](src/inputModifiers.test.ts) and the bare-mouse
-cases in [native input tests](src/range-input.test.ts) verify this path and text input.
-Option+click has been verified on Warp with standalone modifier events. Shift combinations
-still cannot reach the app because Warp intercepts those mouse events entirely.
+The [input state adapter](../../packages/terminal/src/inputModifiers.ts) owns modifier
+evidence outside document state. Every [Kitty key snapshot](https://sw.kovidgoyal.net/kitty/keyboard-protocol/#modifiers)
+replaces the previous state, including ordinary keys and releases; a lost modifier
+release cannot survive a subsequent unmodified snapshot. The shared
+[key normalizer](../../packages/editor-input/src/terminal.ts) distinguishes Option/Alt
+from Command for both shortcuts and pointer input.
+
+The [terminal policy](../../packages/terminal/src/terminalPolicy.ts) selects mouse evidence:
+normal terminals and multiplexer paths trust the current mouse packet. Direct Warp
+requests all Kitty key events plus associated text because its
+[mouse encoder](https://github.com/warpdotdev/warp/blob/master/crates/warp_terminal/src/model/escape_sequences.rs)
+omits modifier bits. Only that path supplements mouse Alt/Ctrl from keyboard state;
+physical release edges handle Warp's stale release self-bit. Cached Shift never
+stands in for Warp's reserved Shift+mouse; explicitly forwarded mouse Shift works.
+
+Focus return, blur, resize and control disposal clear modifier and gesture state.
+Focus return also clears pending shortcut sequences. A mouse-source policy change
+clears modifier state and cancels the gesture. Unmodified Escape clears stale
+modifiers before command routing, including when a dialog consumes it.
+Without a release, a later key snapshot or a focus event, a bare Warp mouse packet
+cannot distinguish continued hold from a lost release; Escape is the explicit recovery.
+No timeout guesses whether a modifier is still held.
+
+[State tests](src/inputModifiers.test.ts) and [native input regressions](src/range-input.test.ts)
+cover missing events, repeated held clicks, terminal paths, focus recovery and safe
+Delete/Undo. Option+click was previously verified on Warp with standalone modifier
+events; the recovery changes are verified through OpenTUI's native event parser,
+not a new physical Warp session. Warp still intercepts Shift+mouse before the app.
 
 | Action      | macOS        | Windows               |
 | ----------- | ------------ | --------------------- |
@@ -302,7 +321,7 @@ terminal bindings determine whether that key reaches CharDesk.
 The Sessions list contains only session records; clickable footer actions create
 a canvas (N) or open a file (O), including when either list is empty.
 R renames the local alias, D duplicates,
-A archives/restores, Delete closes an open canvas, and X reviews removal. Removal
+A archives/restores, ⌫ / Backspace or Delete closes an open canvas, and X reviews removal. Removal
 can keep the file or delete an owned managed file; external files are always kept.
 See the [removal/recovery contract](WORKSPACE.md#removing-sessions).
 Sessions uses the same dialog
