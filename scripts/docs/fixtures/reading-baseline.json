@@ -1,0 +1,155 @@
+{
+  "revision": "52d7996abaf5c3aa2d8ef7442dd16beaa47d8f87",
+  "docsHead": "a63778ea5946a4be4e321b1f50dc28708510131b",
+  "tokenizer": "js-tiktoken@1.0.21",
+  "encoding": "o200k_base",
+  "method": "Built llms.txt plus the directly linked authority page. Captured before cleanup; counts are tokens, not characters. Do not regenerate to accept a regression.",
+  "indexTokens": 2359,
+  "indexSha256": "fb02383c1880c775fbadf1bb27ef39da7e7bce76aa7d1053a1f4955c54287856",
+  "tasks": [
+    {
+      "id": "layer-ownership",
+      "page": "architecture/ownership",
+      "tokens": 3198,
+      "sha256": "c82eb4e153e0c6dc2d13ec5b1c2048a1ec3bb0b03798039739bb8579473f7dbb"
+    },
+    {
+      "id": "command-publication",
+      "page": "architecture/state-authority",
+      "tokens": 3569,
+      "sha256": "4e3e3cd2615d4de4fc6df1b71f2a2d59f10dfca307c61c161a1b047aadb1df52"
+    },
+    {
+      "id": "restore-and-residency",
+      "page": "architecture/state-persistence",
+      "tokens": 3808,
+      "sha256": "83d053c4e5d937d2bc31ca1e29e247c9de676a28f46349b55c84ca8ea6f78990"
+    },
+    {
+      "id": "canonical-paste",
+      "page": "architecture/canonical-state-flows",
+      "tokens": 3550,
+      "sha256": "49e3eaf43b3bc63c98f925a3ffd64915d2d64754033da21726e7722c412921c4"
+    },
+    {
+      "id": "format-selection",
+      "page": "architecture/text-rendering-pipeline",
+      "tokens": 3349,
+      "sha256": "ce39d7cbf45ab6177a24bed4a544feb8d49b51ec1409f49a5bddce4e02fa6401"
+    },
+    {
+      "id": "renderer-features",
+      "page": "architecture/text-rendering-features",
+      "tokens": 4062,
+      "sha256": "bcab1b224c6027770f1b9946a64935e73c23ca810216410a031f2b3f41066d8a"
+    },
+    {
+      "id": "bounded-canvas-read",
+      "page": "architecture/canvas-reading",
+      "tokens": 4203,
+      "sha256": "aff08719038c83b7c0f5fae256f58962d28e212496f576980b4f67033f8cea42"
+    },
+    {
+      "id": "sparse-search",
+      "page": "architecture/canvas-searching",
+      "tokens": 3513,
+      "sha256": "efb8f71261068bcbe1611eb7165b2f52cbef52de0a9eccd996e4bcf5722f306b"
+    },
+    {
+      "id": "literal-stroke",
+      "page": "architecture/canvas-writing",
+      "tokens": 3225,
+      "sha256": "3c2d47f3387916762a3aa062457847735465063e7ca84563f200f4d9e34dc7d0"
+    },
+    {
+      "id": "editor-host-isolation",
+      "page": "architecture/editor-runtime",
+      "tokens": 3663,
+      "sha256": "461eac53604aedde240ebc60ea068d10f231865145840a050b8e5028c855f25e"
+    },
+    {
+      "id": "web-tool-composition",
+      "page": "architecture/webmcp",
+      "tokens": 3426,
+      "sha256": "958fe02a52326780e61327b64c8cb1e756e0821ac2c8b43a592664f3d90e4561"
+    },
+    {
+      "id": "host-theme",
+      "page": "host-ui/visual-theme",
+      "tokens": 3412,
+      "sha256": "33063bc6c7877bedbff8014142e5ed02c21ba2d69eb2780761351b57df5efb90"
+    },
+    {
+      "id": "host-geometry",
+      "page": "host-ui/editor-chrome",
+      "tokens": 3472,
+      "sha256": "920f673a9ced1441dde192645efb341d21397ff93cb2cd1d4a412a0bbfb7a02c"
+    },
+    {
+      "id": "host-dialog",
+      "page": "host-ui/dialogs",
+      "tokens": 3012,
+      "sha256": "365acad86c948ec83d46548b999642baf5232effb3d3d8f18a22e453871bcc65"
+    },
+    {
+      "id": "host-copy",
+      "page": "host-ui/interface-content",
+      "tokens": 2874,
+      "sha256": "fa3869a9a8ef6b035ce4e2140d54df3d790f43fa75fe228d7819fe1e5e156d12"
+    },
+    {
+      "id": "wide-cell-composition",
+      "page": "cell-ui/compositor",
+      "tokens": 4246,
+      "sha256": "2e3ea179196fddd8efb8ed0fe3ddc952cacdb590449356f0f2845de1aea48703"
+    },
+    {
+      "id": "primitive-lifecycle",
+      "page": "cell-ui/primitives",
+      "tokens": 4060,
+      "sha256": "da570ff275384cb2b1ab6e604bfab8f1725b447ca26050a58f38440c32754fe2"
+    },
+    {
+      "id": "widget-presentation",
+      "page": "cell-ui/widget-state",
+      "tokens": 7332,
+      "sha256": "ff474f81fc7710938aee9d9af6912d9d12f2a236ea2ee43e0dbec23cd562896e"
+    },
+    {
+      "id": "widget-scroll",
+      "page": "cell-ui/widget-pointer-scroll",
+      "tokens": 3866,
+      "sha256": "202d8afba2b270e0184271bd51c75e68668a222dc802d512f2fed399cc2ba874"
+    },
+    {
+      "id": "semantic-projection",
+      "page": "cell-ui/semantics",
+      "tokens": 3245,
+      "sha256": "3d16a96ce8ca532cf1fb3846ed7bf968041052cd6f31e74087da93e2971fe78c"
+    },
+    {
+      "id": "portable-contracts",
+      "page": "formats-packages",
+      "tokens": 4103,
+      "sha256": "31a7366df83ad3252ff537ee59efdfbc6e5bd5909e2448da59a507df5d573e0e"
+    },
+    {
+      "id": "knowledge-ownership",
+      "page": "documentation-system",
+      "tokens": 4598,
+      "sha256": "f95c169163cd16146bf322379e4d7687b0369dba3e6312b57c8ad348cc720797"
+    },
+    {
+      "id": "verification-selection",
+      "page": "quality",
+      "tokens": 3936,
+      "sha256": "17d4f03c3814344ccf992243ac0a9c488f5273a072a967b52d760509e8f80f2a"
+    },
+    {
+      "id": "documentation-freshness",
+      "page": "delivery",
+      "tokens": 3034,
+      "sha256": "6ce8f4c312044eb83bc7d76e85ddf9397cac7a586ef57c8b3cb30df661f73d82"
+    }
+  ]
+}
