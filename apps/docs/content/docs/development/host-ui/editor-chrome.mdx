@@ -58,6 +58,25 @@ exist.
 Editor Chrome owns presentation geometry only; domain stores remain authoritative
 for document and editor state.
 
+## Phone policy and template placement
+
+[`CanvasTemplatePlacementProvider`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/widgets/canvas-editor/CanvasTemplatePlacement.tsx)
+owns phone template placement across Sidebar unmounts. Tap arms placement;
+long press transfers the pointer to a persistent owner. Both close the Sheet
+and use the same preview, coordinate conversion, and insertion command as native
+desktop Drop. Pending placement is transient and cancels on session changes;
+only insertion enters history. [Touch and native Drop verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/template-placement-mobile.spec.ts).
+
+[`Editor Host policy`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/widgets/editor-chrome/host-policy.ts)
+owns phone presentation below 768px. Phones retain Hand, Select, Inspector,
+templates, common characters, Emoji, and TOC navigation; precision drawing,
+TOC management, advanced character catalogs, split view, and advanced settings
+remain available on larger layouts. Settings search follows the same policy.
+Hidden controls never reset artifact data or saved configuration.
+The phone bottom dock groups Minimap, Hand, Select, and Undo in one centered
+control surface with one tooltip host; Minimap opens above its trigger.
+[Responsive verification](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/mobile-host-policy.spec.ts).
+
 ## Authority and evidence
 
 - Contract: [`apps/canvas/src/widgets/editor-chrome/public.ts`](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/widgets/editor-chrome/public.ts),

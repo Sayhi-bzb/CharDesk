@@ -5,7 +5,8 @@ description: Widget state, themes, presentation modes, and primitive behavior co
 
 | Read this page when | A widget state, theme, presentation mode, or primitive behavior changes. |
 | --- | --- |
-| First answer | Which Cell Widget contract owns this decision? |
+| First answer | Widget focus, persistent selection, transient feedback, and presentation share one state projection; they do not replace business values. |
+| Boundary | This page owns state and presentation; pointer/scroll and verification have [separate owners](/development/cell-ui/widgets). |
 | Follow-up | Use the linked source and verification evidence after selecting the contract. |
 
 ## 状态与主题
@@ -72,3 +73,13 @@ Toast 内容由 `Toast` descriptor 持有 `tone`、`variant` 和 Rich 的 `frame
 | ScrollArea | overflow 时使用内部 rail 和 corner | wheel、page、track、thumb drag；不建立 DOM scrollbar |
 
 Button、Badge、Checkbox、Toggle、RadioItem、Select Trigger／Item、Combobox Item 和 Tab 的标签共用单行文本规则：可用 Cell 不足时在内容区以 `…` 截断，先保护组件 chrome；原文与语义标签不变。普通 Text 仍按 Cell 换行。
+
+## 组件结构与焦点
+
+Dialog 的 Title 必须非空且为唯一直接子项，Description 至多一个直接子项；自动关联 `aria-labelledby` / `aria-describedby`。`initialFocusId` 不可用时进入首个可用内容控件，无控件则聚焦弹窗自身。外部点击关闭不穿透；嵌套 Select 先处理 Escape／外部点击。普通 blur 不关闭 Dialog；非模态允许 Tab 离开，已移到外部的焦点不被关闭操作夺回。长正文组合 ScrollArea；宿主须分配可容纳外壳的高度（Gallery 提供扩展浮层区域）。
+
+AccordionItem 必须有稳定 `id`，直接包含 Trigger、Content（依此顺序）；`expanded` 受控，默认折叠。Group/Item 的 disabled 向内容控件传播。折叠保留 Widget Tree 与外部受控值，但退出布局、命中、Tab 和读屏；焦点从隐藏内容恢复至自身标题，再尝试同组后项／前项，且不逃离焦点域。Trigger 的 button/expanded/controls 与 Content 的具名 region 自动关联；内容内部控件保留自身键盘行为。
+
+Combobox 必须以一个 Input 开头，后接可选 Content；Content 只接受 Item 或空结果 Text。Input 与 Content 自动建立 controls/label 关系，至多一个 active Item 且必须匹配 `activeDescendantId`。关闭态显示并全选 committed label，使下一次输入替换而非追加；输入、候选 active、选择和浮层开关可分别受控。
+
+验证见 [Widget evidence](/development/cell-ui/widget-evidence)。

@@ -1,6 +1,7 @@
-import { glob, readFile } from "node:fs/promises";
+import { access, glob, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkReadingBudget } from "./check-reading-budget.mjs";
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -56,11 +57,21 @@ const developmentPages = contentPages.filter((entry) =>
   entry.startsWith("development/")
 );
 
+const sourceArtifacts = new Set();
 for (const entry of contentPages) {
   const source = await readFile(path.join(docsContent, entry), "utf8");
   if (!/^title:\s*\S/m.test(source) || !/^description:\s*\S/m.test(source)) {
     throw new Error(`Documentation page is missing title or description: ${entry}`);
   }
+  for (const match of source.matchAll(/https:\/\/github.com\/Sayhi-bzb\/CharDesk\/(?:blob|tree)\/main\/([^\s)#]+)/g)) {
+    sourceArtifacts.add(decodeURIComponent(match[1]));
+  }
+}
+const artifacts = [...sourceArtifacts];
+const artifactChecks = await Promise.allSettled(artifacts.map(artifact => access(path.join(repositoryRoot, artifact))));
+const missingArtifacts = artifacts.filter((_, index) => artifactChecks[index].status === "rejected");
+if (missingArtifacts.length) {
+  throw new Error(`Documentation references missing repository artifacts:\n${missingArtifacts.join("\n")}`);
 }
 
 for (const entry of contentPages) {
@@ -154,20 +165,25 @@ if (!llmsIndex.startsWith("# CharDesk Development Documentation")) {
 if (!llmsIndex.includes(docsHead) || !llmsFull.includes(docsHead)) {
   throw new Error("LLM indexes are missing the documentation HEAD");
 }
-if (!llmsIndex.includes("/docs/development/architecture/ansi-canvas-protocol")) {
-  throw new Error("llms.txt is missing the LLM–Human Text Protocol");
-}
-if (!llmsIndex.includes("/docs/development/host-ui/canvas-inspector")) {
-  throw new Error("llms.txt is missing the Canvas Inspector contract");
-}
 if (
   !llmsIndex.includes("## Agent route map") ||
-  !llmsIndex.includes("**architecture**") ||
-  !llmsIndex.includes("Keywords:") ||
-  !llmsIndex.includes("Identifiers:") ||
-  !llmsIndex.includes("Boundary:")
+  !llmsIndex.includes("**architecture**")
 ) {
   throw new Error("llms.txt is missing the Agent route map");
+}
+if (JSON.stringify(agentRoutes) !== JSON.stringify(routeManifest)) {
+  throw new Error("Emitted Agent routes differ from their authority");
+}
+const developmentHtml = await readFile(path.join(docsOutput, "development/index.html"), "utf8");
+const developmentMarkdown = await readFile(path.join(docsOutput, "llms.mdx/development/content.md"), "utf8");
+for (const route of routeManifest.routes) {
+  const line = `- **${route.id}**: ${route.when.join("; ")} → ${route.entry}`;
+  if (!llmsIndex.includes(line) || !developmentMarkdown.includes(line) || !developmentHtml.includes(`href="${route.entry}"`)) {
+    throw new Error(`Generated task views are missing route ${route.id}`);
+  }
+}
+if ((llmsFull.match(/## Agent route map/g) ?? []).length !== 1) {
+  throw new Error("Full Agent context must contain exactly one task map");
 }
 if (!llmsFull.includes("/docs/development/architecture/ownership")) {
   throw new Error("llms-full.txt is missing development content");
@@ -240,6 +256,7 @@ for (const route of removedDevelopmentRoutes) {
 }
 
 const internalLinks = new Set();
+const pageAnchors = new Map();
 for (const entry of htmlPages) {
   const html = await readFile(path.join(docsOutput, entry), "utf8");
   const route = entry === "index.html"
@@ -272,8 +289,12 @@ for (const entry of htmlPages) {
       throw new Error(`Documentation SEO metadata is missing from ${entry}: ${required}`);
     }
   }
-  for (const match of html.matchAll(/href="(\/docs(?:\/[^"?#]*)?)/g)) {
+  pageAnchors.set(entry, new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1])));
+  for (const match of html.matchAll(/href="(\/docs(?:[/?#][^"]*)?)"/g)) {
     internalLinks.add(match[1]);
+  }
+  for (const match of html.matchAll(/href="(#[^"]+)"/g)) {
+    internalLinks.add(`/docs/${route}${match[1]}`);
   }
 }
 
@@ -287,10 +308,14 @@ for (const entry of markdownPages) {
   if (!markdown.includes(docsHead)) {
     throw new Error(`Documentation HEAD is missing from ${entry}`);
   }
+  if (markdown.includes("<AgentRoutes")) {
+    throw new Error(`Unexpanded task component in ${entry}`);
+  }
 }
 
 for (const url of internalLinks) {
-  const relative = url.replace(/^\/docs\/?/, "");
+  const parsed = new URL(url.replaceAll("&amp;", "&"), "https://chardesk.com");
+  const relative = decodeURIComponent(parsed.pathname).replace(/^\/docs\/?/, "");
   if (relative.startsWith("@") || relative.startsWith("app/")) continue;
   const target = relative
     ? path.join(docsOutput, relative, "index.html")
@@ -300,8 +325,14 @@ for (const url of internalLinks) {
   } catch {
     throw new Error(`Broken internal documentation link: ${url}`);
   }
+  const anchor = decodeURIComponent(parsed.hash.slice(1));
+  const targetEntry = path.relative(docsOutput, target);
+  if (anchor && !pageAnchors.get(targetEntry)?.has(anchor)) {
+    throw new Error(`Broken internal documentation anchor: ${url}`);
+  }
 }
 
 console.log(
   `Docs verified at ${docsHead.slice(0, 7)}: ${htmlPages.length} pages, ${markdownPages.length} Agent Markdown resources`
 );
+await checkReadingBudget();

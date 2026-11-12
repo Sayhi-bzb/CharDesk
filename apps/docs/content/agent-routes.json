@@ -7,9 +7,22 @@
         "inspect, compose, or edit a live Canvas or Slide",
         "use Canvas tools or the local MCP bridge"
       ],
-      "keywords": ["live Canvas", "Slide", "WebMCP", "local MCP"],
-      "identifiers": ["canvas_manage", "canvas_read", "canvas_search", "canvas_write", "canvas_render"],
-      "exclude": ["repository implementation changes outside the live bridge"],
+      "keywords": [
+        "live Canvas",
+        "Slide",
+        "WebMCP",
+        "local MCP"
+      ],
+      "identifiers": [
+        "canvas_manage",
+        "canvas_read",
+        "canvas_search",
+        "canvas_write",
+        "canvas_render"
+      ],
+      "exclude": [
+        "repository implementation changes outside the live bridge"
+      ],
       "entry": "https://github.com/Sayhi-bzb/CharDesk/tree/main/.agents/skills/chardesk",
       "authority": "CharDesk skill and its references",
       "next": [
@@ -18,88 +31,403 @@
     },
     {
       "id": "user-workflow",
-      "when": ["explain or operate a user-facing CharDesk workflow"],
-      "keywords": ["user workflow", "collaboration", "encrypted room", "edit link"],
-      "identifiers": ["Collaboration"],
-      "exclude": ["repository implementation ownership", "source-level architecture changes"],
-      "entry": "/docs/user",
-      "authority": "apps/docs/content/docs/user",
-      "next": ["/docs/user/collaboration"]
+      "when": [
+        "Explain or operate encrypted Canvas collaboration"
+      ],
+      "keywords": [
+        "user workflow",
+        "collaboration",
+        "encrypted room",
+        "edit link"
+      ],
+      "identifiers": [
+        "Collaboration"
+      ],
+      "exclude": [
+        "repository implementation ownership",
+        "source-level architecture changes"
+      ],
+      "entry": "/docs/user/collaboration",
+      "authority": "apps/docs/content/docs/user/collaboration.mdx",
+      "next": []
     },
     {
       "id": "architecture",
       "when": [
-        "change dependency direction, state authority, rendering boundaries, or execution flow"
+        "Change dependency direction or layer ownership"
       ],
-      "keywords": ["ownership", "state authority", "rendering boundary", "execution flow"],
-      "identifiers": ["public.ts", "EditorRuntime", "CellPlane", "Yjs"],
-      "exclude": ["product copy", "package installation"],
-      "entry": "/docs/development/architecture",
-      "authority": "apps/docs/content/docs/development/architecture",
+      "keywords": [
+        "ownership",
+        "dependency direction",
+        "layer",
+        "public boundary"
+      ],
+      "identifiers": [
+        "public.ts",
+        "shared",
+        "domains",
+        "widgets",
+        "app"
+      ],
+      "exclude": [
+        "product copy",
+        "package installation"
+      ],
+      "entry": "/docs/development/architecture/ownership",
+      "authority": "apps/docs/content/docs/development/architecture/ownership.mdx",
       "next": [
-        "/docs/development/architecture/ownership",
-        "/docs/development/architecture/state-flows",
-        "/docs/development/architecture/state-authority",
-        "/docs/development/architecture/canonical-state-flows",
-        "/docs/development/architecture/state-persistence",
-        "/docs/development/architecture/text-rendering-pipeline",
+        "/docs/development/domains"
+      ]
+    },
+    {
+      "id": "state",
+      "when": [
+        "Change Canvas state authority, command publication, or undo"
+      ],
+      "entry": "/docs/development/architecture/state-authority",
+      "authority": "apps/docs/content/docs/development/architecture/state-authority.mdx",
+      "keywords": [
+        "state authority",
+        "history",
+        "undo",
+        "mutation"
+      ],
+      "identifiers": [
+        "CanvasCommands",
+        "Yjs",
+        "Zustand",
+        "CanvasStateCommitCoordinator"
+      ],
+      "exclude": [
+        "portable file formats"
+      ],
+      "next": [
+        "/docs/development/architecture/canonical-state-flows"
+      ]
+    },
+    {
+      "id": "persistence",
+      "when": [
+        "Change restore, storage, collaboration, or document residency"
+      ],
+      "entry": "/docs/development/architecture/state-persistence",
+      "authority": "apps/docs/content/docs/development/architecture/state-persistence.mdx",
+      "keywords": [
+        "persistence",
+        "restore",
+        "collaboration",
+        "residency"
+      ],
+      "identifiers": [
+        "CanvasDocumentRegistry",
+        "BrowserCanvasPersistence",
+        "CellPlane"
+      ],
+      "exclude": [
+        "viewport presentation"
+      ],
+      "next": []
+    },
+    {
+      "id": "domain",
+      "when": [
+        "change a business capability or cross-domain boundary"
+      ],
+      "keywords": [
+        "business capability",
+        "domain boundary",
+        "public contract",
+        "commands"
+      ],
+      "identifiers": [
+        "public.ts",
+        "apps/canvas/src/domains"
+      ],
+      "exclude": [
+        "shared visual composition",
+        "portable package contract"
+      ],
+      "entry": "/docs/development/domains",
+      "authority": "apps/docs/content/docs/development/domains.mdx",
+      "next": [
+        "the selected domain public.ts and nearest tests"
+      ]
+    },
+    {
+      "id": "text-rendering",
+      "when": [
+        "Change format selection, literal preservation, or the text compiler"
+      ],
+      "entry": "/docs/development/architecture/text-rendering-pipeline",
+      "authority": "apps/docs/content/docs/development/architecture/text-rendering-pipeline.mdx",
+      "keywords": [
+        "Markdown",
+        "HTML paste",
+        "ANSI",
+        "compiler",
+        "whitespace"
+      ],
+      "identifiers": [
+        "compileCharDeskText",
+        "semanticSpans",
+        "TextRenderingRuntime"
+      ],
+      "exclude": [
+        "Canvas mutation or persistence"
+      ],
+      "next": [
         "/docs/development/architecture/text-rendering-features"
       ]
     },
     {
-      "id": "domain",
-      "when": ["change a business capability or cross-domain boundary"],
-      "keywords": ["business capability", "domain boundary", "public contract", "commands"],
-      "identifiers": ["public.ts", "apps/canvas/src/domains"],
-      "exclude": ["shared visual composition", "portable package contract"],
-      "entry": "/docs/development/domains",
-      "authority": "apps/docs/content/docs/development/domains",
-      "next": ["the selected domain public.ts and nearest tests"]
+      "id": "canvas-read",
+      "when": [
+        "Change Canvas read viewports, images, or sparse search"
+      ],
+      "entry": "/docs/development/architecture/canvas-reading",
+      "authority": "apps/docs/content/docs/development/architecture/canvas-reading.mdx",
+      "keywords": [
+        "viewport",
+        "density",
+        "image",
+        "search"
+      ],
+      "identifiers": [
+        "canvas_read",
+        "canvas_search",
+        "CanvasSurfaceReader"
+      ],
+      "exclude": [
+        "document writes"
+      ],
+      "next": [
+        "/docs/development/architecture/canvas-searching"
+      ]
+    },
+    {
+      "id": "canvas-write",
+      "when": [
+        "Change Canvas strokes, erase, fill, or mutation receipts"
+      ],
+      "entry": "/docs/development/architecture/canvas-writing",
+      "authority": "apps/docs/content/docs/development/architecture/canvas-writing.mdx",
+      "keywords": [
+        "write",
+        "erase",
+        "fill",
+        "receipt"
+      ],
+      "identifiers": [
+        "canvas_write",
+        "canvas_erase",
+        "operationId"
+      ],
+      "exclude": [
+        "text compiler internals"
+      ],
+      "next": []
+    },
+    {
+      "id": "editor-runtime",
+      "when": [
+        "Change editor commands, tools, keymaps, or extensions"
+      ],
+      "entry": "/docs/development/architecture/editor-runtime",
+      "authority": "apps/docs/content/docs/development/architecture/editor-runtime.mdx",
+      "keywords": [
+        "command",
+        "tool",
+        "keymap",
+        "extension"
+      ],
+      "identifiers": [
+        "EditorRuntime",
+        "CommandRegistry",
+        "ToolRegistry"
+      ],
+      "exclude": [
+        "domain validation"
+      ],
+      "next": []
     },
     {
       "id": "ui",
       "when": [
-        "change Host presentation or interaction",
-        "change Cell UI layout, widgets, semantics, or compositor behavior"
+        "Change Host interaction, layout, controls, or product copy"
       ],
-      "keywords": ["Host UI", "Cell UI", "widget", "compositor", "semantics"],
-      "identifiers": ["EditorChromeLayout", "SceneGeometry", "SemanticSnapshot", "Widget"],
-      "exclude": ["domain validation", "protocol package ownership"],
-      "entry": "/docs/development",
-      "authority": "Host UI and Cell UI development routes",
+      "keywords": [
+        "Host UI",
+        "layout",
+        "theme",
+        "dialog",
+        "product copy"
+      ],
+      "identifiers": [
+        "EditorChromeLayout",
+        "UiProvider",
+        "Surface"
+      ],
+      "exclude": [
+        "domain validation",
+        "protocol package ownership",
+        "Cell UI widget behavior"
+      ],
+      "entry": "/docs/development/host-ui",
+      "authority": "Host UI contracts; DESIGN.md owns product judgment",
       "next": [
-        "/docs/development/host-ui",
         "/docs/development/host-ui/visual-theme",
-        "/docs/development/host-ui/visual-composition",
         "/docs/development/host-ui/visual-vocabulary",
-        "/docs/development/cell-ui",
-        "/docs/development/cell-ui/widget-state",
+        "/docs/development/host-ui/editor-chrome"
+      ]
+    },
+    {
+      "id": "cell-ui",
+      "when": [
+        "Change Cell UI layout, paint, clipping, or hit testing"
+      ],
+      "entry": "/docs/development/cell-ui/compositor",
+      "authority": "apps/docs/content/docs/development/cell-ui/compositor.mdx",
+      "keywords": [
+        "Cell UI",
+        "compositor",
+        "geometry",
+        "paint"
+      ],
+      "identifiers": [
+        "SceneGeometry",
+        "CellSurface",
+        "CellUiRuntime"
+      ],
+      "exclude": [
+        "CharDesk Host chrome"
+      ],
+      "next": [
+        "/docs/development/cell-ui/primitives"
+      ]
+    },
+    {
+      "id": "cell-widget",
+      "when": [
+        "Change Cell widget state, presentation, or input"
+      ],
+      "entry": "/docs/development/cell-ui/widget-state",
+      "authority": "apps/docs/content/docs/development/cell-ui/widget-state.mdx",
+      "keywords": [
+        "widget",
+        "focus",
+        "selection",
+        "presentation"
+      ],
+      "identifiers": [
+        "Widget",
+        "PressManager",
+        "CellUiTheme"
+      ],
+      "exclude": [
+        "Host UI controls"
+      ],
+      "next": [
         "/docs/development/cell-ui/widget-pointer-scroll",
         "/docs/development/cell-ui/widget-evidence"
       ]
     },
     {
       "id": "portable-contract",
-      "when": ["change a file format, protocol, package API, renderer, or font contract"],
-      "keywords": ["file format", "protocol", "package API", "renderer", "font"],
-      "identifiers": ["README.md", "spec/v1.md", "manifest.json"],
-      "exclude": ["live Canvas operation", "workflow routing"],
+      "when": [
+        "change a file format, protocol, package API, renderer, or font contract"
+      ],
+      "keywords": [
+        "file format",
+        "protocol",
+        "package API",
+        "renderer",
+        "font"
+      ],
+      "identifiers": [
+        "README.md",
+        "spec/v1.md",
+        "manifest.json"
+      ],
+      "exclude": [
+        "live Canvas operation",
+        "workflow routing"
+      ],
       "entry": "/docs/development/formats-packages",
       "authority": "the owning package README, specification, or format page",
-      "next": ["the compatibility evidence listed on the route page"]
+      "next": [
+        "the compatibility evidence listed on the route page"
+      ]
     },
     {
       "id": "documentation",
-      "when": ["add, route, verify, or review project documentation"],
-      "keywords": ["documentation system", "route block", "llms.txt", "freshness"],
-      "identifiers": ["agent-routes.json", "verify-build.mjs", "docs-head.json"],
-      "exclude": ["product contract implementation"],
+      "when": [
+        "Author, route, measure, or publish project knowledge"
+      ],
+      "keywords": [
+        "documentation system",
+        "route block",
+        "llms.txt",
+        "freshness"
+      ],
+      "identifiers": [
+        "agent-routes.json",
+        "verify-build.mjs",
+        "docs-head.json"
+      ],
+      "exclude": [
+        "product contract implementation"
+      ],
       "entry": "/docs/development/documentation-system",
-      "authority": "documentation-system.mdx",
+      "authority": "apps/docs/content/docs/development/documentation-system.mdx",
       "next": [
         "/docs/development/quality",
         "/docs/development/delivery"
       ]
+    },
+    {
+      "id": "verification",
+      "when": [
+        "Select tests, performance evidence, or architecture guards"
+      ],
+      "entry": "/docs/development/quality",
+      "authority": "apps/docs/content/docs/development/quality.mdx",
+      "keywords": [
+        "test",
+        "benchmark",
+        "guard",
+        "CI"
+      ],
+      "identifiers": [
+        "check:quick",
+        "check:pr",
+        "check:full"
+      ],
+      "exclude": [
+        "feature behavior"
+      ],
+      "next": []
+    },
+    {
+      "id": "delivery",
+      "when": [
+        "Build, release, or review documentation freshness"
+      ],
+      "entry": "/docs/development/delivery",
+      "authority": "apps/docs/content/docs/development/delivery.mdx",
+      "keywords": [
+        "build",
+        "release",
+        "freshness"
+      ],
+      "identifiers": [
+        "docs-head.json",
+        "verify-build.mjs",
+        "Release Please"
+      ],
+      "exclude": [
+        "business rules"
+      ],
+      "next": []
     }
   ]
 }

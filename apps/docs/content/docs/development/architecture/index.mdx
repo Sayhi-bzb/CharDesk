@@ -3,11 +3,9 @@ title: Architecture
 description: Ownership, runtime coordination, authoritative data movement, and algorithm routes.
 ---
 
-Load only the missing decision:
-
 | Read this page when | A change crosses a layer, state boundary, rendering boundary, or execution boundary. |
 | --- | --- |
-| First answer | Which architectural question is unresolved? |
+| First answer | Choose the dependency, state, rendering, execution, or algorithm contract below. |
 | Owner | The route below owns the decision; the linked source and tests own implementation and verification. |
 | Boundary | This page routes architecture questions; it does not duplicate the selected contract. |
 | Follow-up | Choose one question below, then stop when its authority resolves the decision. |
@@ -16,9 +14,9 @@ Load only the missing decision:
 | --- | --- |
 | Which layer or public boundary may own this dependency? | [Ownership and dependency direction](/development/architecture/ownership) |
 | How does LLM- or human-authored ANSI text become editable Canvas cells and return to text? | [LLM–Human Text Protocol](/development/architecture/ansi-canvas-protocol) |
-| How does pasted ANSI, Markdown, or raw text become Canvas cells? | [External text rendering](/development/architecture/text-rendering) |
+| How does pasted ANSI, Markdown, or raw text become Canvas cells? | [Pipeline](/development/architecture/text-rendering-pipeline) · [Features](/development/architecture/text-rendering-features) |
 | Does this belong to command, tool, keymap, extension, or Host coordination? | [Editor runtime](/development/architecture/editor-runtime) |
-| Which state is authoritative, projected, persisted, synchronized, or undoable? | [State and data flows](/development/architecture/state-flows) |
+| Which state is authoritative, projected, persisted, synchronized, or undoable? | [Authority](/development/architecture/state-authority) · [Flows](/development/architecture/canonical-state-flows) · [Persistence](/development/architecture/state-persistence) |
 | How does Canvas read, search, and write the original Cell surface? | [Canvas reading](/development/architecture/canvas-reading), [Canvas searching](/development/architecture/canvas-searching), and [Canvas writing](/development/architecture/canvas-writing) |
 | How are live Canvas tools composed and discovered by browser agents? | [WebMCP](/development/architecture/webmcp) |
 | How are retired Blackboard and Structured documents converted or retained? | [Blackboard retirement](/development/architecture/blackboard-retirement) |

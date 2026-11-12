@@ -1,16 +1,13 @@
-import { llms } from "fumadocs-core/source";
 import { agentRouteMarkdown } from "@/lib/agent-routes";
 import { docsHeadMarkdown } from "@/lib/docs-head";
-import { publicDevelopmentSource } from "@/lib/source";
 
 export function loader() {
-  const index = llms(publicDevelopmentSource)
-    .index()
-    .replace(/^# Docs/, "# CharDesk Development Documentation")
-    .replace(
-      /^# CharDesk Development Documentation$/m,
-      `$&\n\n${docsHeadMarkdown()}\n\n${agentRouteMarkdown()}`
-    );
+  const index = [
+    "# CharDesk Development Documentation", docsHeadMarkdown(),
+    "Read one contract: `/docs/llms.mdx/development/<path>/content.md`. Full corpus: `/docs/llms-full.txt`. Rich routes: `/docs/agent-routes.json`.",
+    agentRouteMarkdown(),
+    "## Section catalogs\n- [Architecture](/docs/development/architecture)\n- [Host UI](/docs/development/host-ui)\n- [Cell UI](/docs/development/cell-ui)",
+  ].join("\n\n");
 
   return new Response(index, {
     headers: {

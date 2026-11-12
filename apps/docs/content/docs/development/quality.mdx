@@ -3,81 +3,46 @@ title: Quality and Verification
 description: Evidence and guardrail routes by changed contract.
 ---
 
-| Read this page when | You need to choose verification for a change or diagnose a guardrail failure. |
+| Read this page when | You select verification for a change or diagnose a guardrail failure. |
 | --- | --- |
-| First answer | Which contract changed, and which evidence owner verifies it? |
-| Boundary | This page selects evidence; the changed contract remains owned by its implementation and verification artifact. |
-| Completion rule | A documentation change is complete when the route, emitted Agent resources, search index, and internal links pass verification. |
-| Follow-up | Select the changed contract below, then run the owning test, script, or browser scenario. |
+| First answer | Verify the changed contract at its evidence owner; PR/full lanes include consumers and merge requirements. |
+| Boundary | This page selects evidence; source, tests, and scripts own behavior and command options. |
+| Follow-up | Choose the evidence below; exact commands and lane composition belong to [package.json](https://github.com/Sayhi-bzb/CharDesk/blob/main/package.json). |
 
-| Changed contract | Evidence owner |
+## Evidence owners
+
+| Changed contract | Evidence |
 | --- | --- |
-| Domain rule, codec, migration or runtime | Nearest deterministic domain test |
-| Shared UI or widget behavior | Component accessibility, focus and state tests |
-| Browser-visible cross-component flow | Focused `e2e` scenario |
-| Built-application performance | [`scripts/performance/run-perf.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/performance/run-perf.mjs) |
-| TUI performance and persistence under load | `npm run test:terminal:perf`; isolated Bun workers write timings, ANSI byte counts and memory to `test-results/terminal-performance/latest.json`. Measures application/native output cost, excluding terminal emulator display. |
-| CellPlane phase costs | `npm run test:engine-perf`, which writes machine-readable and Markdown reports under `test-results/cell-plane-benchmark/` |
-| Canvas capacity boundary | `npm run test:stress`, which production-builds the app and writes its local report under `test-results/canvas-stress/` |
-| Canvas memory lifecycle | `npm run test:memory`, which measures post-GC retention, interaction peaks, release residuals, DOM/listener residue, history, projection caches, mutation counts, and render work under `test-results/canvas-memory/`. Set `CHARDESK_MEMORY_RUNS`, `CHARDESK_MEMORY_SAMPLE_MS` (minimum 10, default 20), or comma-separated `CHARDESK_MEMORY_WORKLOADS` for focused runs. Experimental controls are `CHARDESK_MEMORY_RENDER_MODE=off`, `CHARDESK_MEMORY_INPUT_MODE=inert\|insert-text`, and `CHARDESK_MEMORY_ALLOCATIONS=1`; allocation sampling is diagnostic-only and must not supply comparison numbers. Compare same-schema reports with identical settings using `npm run compare:memory -- <baseline.json> <candidate.json>` |
-| Protocol or font package | Package tests, specifications, fixtures and manifests |
-| Agent Canvas workflow | Read/search/write contracts, native CLI preview, legacy migration, and Skill evidence |
-| Architecture boundary | Owning script in `scripts/quality` or `scripts/check-domain-boundaries.mjs` |
-| Generated character catalogs | `scripts/data/generate-character-data.mjs` verify mode: manifest checksums and catalog/gzip budgets |
-| Vendored fonts | `scripts/fonts/vendor-fonts.mjs` verify mode: pinned sources, checksums and local-only CSS |
-| Documentation route or Agent output | `scripts/docs/verify-build.mjs`: page/resource counts, search and LLM routes, retired routes and internal links |
+| Domain, codec, migration, runtime | Nearest deterministic domain test |
+| Shared UI/widget | Component state, focus and accessibility tests; browser-visible flows use focused E2E |
+| Built-app performance | [Browser benchmark](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/performance/run-perf.mjs) |
+| TUI performance/persistence | [Terminal benchmark](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/performance/terminal-canvas.ts); application/native output cost, excluding terminal emulator display |
+| CellPlane phases | [Engine benchmark](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/performance/vitest.engine.config.ts) |
+| Canvas capacity | [Stress runner](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/performance/run-stress.mjs) |
+| Canvas memory lifecycle | [Memory runner](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/performance/run-memory.mjs) and [comparison](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/performance/compare-canvas-memory.mjs); compare identical settings/schema, never diagnostic allocation samples |
+| Protocol, fonts, portable formats | Owning package tests, specifications, fixtures and manifests |
+| Agent Canvas workflow | Read/search/write contracts, CLI preview, legacy migration and skill evidence |
+| Architecture and type boundaries | [Domain guard](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/check-domain-boundaries.mjs), [state ownership](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/check-state-ownership.mjs), [type escapes](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/check-type-escapes.mjs), [style API](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/check-style-api.mjs), `knip.json` |
+| Generated characters/fonts | [Catalog verifier](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/data/generate-character-data.mjs), [font verifier](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/fonts/vendor-fonts.mjs) |
+| Docs routes/Agent output | [Build verifier](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/docs/verify-build.mjs); pages, search, generated routes, metadata, links and anchors |
 
-The root [`package.json`](https://github.com/Sayhi-bzb/CharDesk/blob/main/package.json)
-owns exact commands and verification composition. When a guard rejects a valid
-architecture change, update the authority and guard together; do not add a local bypass.
+## Verification lanes
 
-| Lane | Scope | Owner |
-| --- | --- | --- |
-| `check:quick` | Changed projects; Cell UI uses risk-scoped tests | Local iteration |
-| `check:pr -- --base <ref>` | Changed projects and their consumers | Pull requests |
-| `check:full` | Entire workspace, tests and production builds | `main` and release |
+| Lane | Scope |
+| --- | --- |
+| `check:quick` | Changed projects; risk-scoped Cell UI tests for local feedback |
+| `check:pr` | Changed projects and consumers |
+| `check:full` | Entire workspace, tests and production builds |
 
-Root Vitest files run in Node unless their filename ends in `.dom.test.ts` or
-`.dom.spec.ts`. React component tests (`.tsx`) run in JSDOM. CI exposes one stable
-`Verify` status while quality, workspace tests, Node tests, sharded DOM tests and
-builds run in parallel. Cell UI browser tests have a separate required lane;
-native macOS input-service tests remain an opt-in desktop check.
+[`verification.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/verification.mjs) owns selection and CLI options. Quick accepts explicit files independently of other edits; otherwise branch/worktree changes include deletions and both rename sides. PR/full reject explicit-file filtering. Dry runs explain the plan; executed tasks report wall time even on failure, with no cross-run cache.
 
-### Local Cell UI feedback
+[`verification-cell.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/verification-cell.mjs) owns reviewed leaf suites and conservative fallback. Unknown/deleted Cell inputs select the whole module; shared contracts select Chromium and WebKit. Gallery CSS/configuration has explicit routes. Full package selections subsume leaf tests and browser suites share one launch. Cell-only quick defers types, guards and builds to PR/full unless requested explicitly; other products retain their policy. Quick feedback does not replace merge gates.
 
-`npm run check:quick -- --file <path> [--file <path>]` uses only the supplied
-files as impact-analysis inputs, independently of other worktree edits. Without
-`--file`, branch and worktree changes apply, including deleted files and both
-sides of a rename. PR/full reject `--file`.
-
-Append `--dry-run` to inspect the exact task plan and selection reasons without
-executing checks. `--phase cell-e2e` selects just the browser lane. Every executed
-task reports wall time, including process startup; failure stops later tasks and
-still reports elapsed time. There is no cross-run result cache.
-
-[`verification-cell.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/verification-cell.mjs)
-owns the reviewed leaf helpers, shared-contract suites, and conservative fallback.
-Gallery CSS/configuration uses explicit routes rather than import-graph inference.
-Unknown or deleted Cell inputs fall back to whole-module verification; shared
-contracts use both Chromium and WebKit. A full package selection subsumes leaf
-tests, and unfiltered browser suites share one launch.
-
-For Cell-only quick runs, type checks, architecture guards and builds are deferred
-to PR/full; `--phase typecheck` still requests type checking explicitly. Local quick
-DOM tests use one process; merge lanes retain sharding. Quick feedback is not a
-replacement for the merge gate. Other products retain their existing verification
-policy.
-
-Route boundary, public-contract and cycle failures to
-[`scripts/check-domain-boundaries.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/check-domain-boundaries.mjs);
-canvas state authority to `scripts/quality/check-state-ownership.mjs`; assertion
-escapes to `scripts/quality/check-type-escapes.mjs`; style and import tiers to
-`scripts/quality/check-style-api.mjs`; and reachability to `knip.json`.
+[Root test configuration](https://github.com/Sayhi-bzb/CharDesk/blob/main/vitest.config.ts) owns Node/JSDOM routing; [CI](https://github.com/Sayhi-bzb/CharDesk/blob/main/.github/workflows/ci.yml) owns the stable `Verify` status and parallel lanes. Native macOS input-service checks remain opt-in. Update an authority and its guard together when a contract changes.
 
 ## Agent navigation
 
-[`scripts/quality/agent-navigation-cases.mjs`](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/agent-navigation-cases.mjs)
-owns product questions, expected-owner prefixes and diagnostic anchors. The runner
-reports Top-3 owner recall against a 90% diagnostic target. A miss routes
-investigation to source and AST evidence; graph/source disagreement is an index
-issue.
+Two benchmarks answer different questions:
+
+- [Source navigation cases](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/quality/agent-navigation-cases.mjs) measure GitNexus Top-3 implementation-owner recall against a 90% diagnostic target. A miss requires source/AST investigation; graph/source disagreement is an index issue.
+- [Docs reading budget](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/docs/check-reading-budget.mjs) measures the emitted index plus the cheapest path of at most two opened pages with pinned `js-tiktoken`/`o200k_base`. Fixed tasks retain owner paths and contract/evidence markers; catalogs count toward cost. The aggregate reduction target is 30% against the recorded pre-cleanup baseline. This is a deterministic retrieval/cost check, not an LLM accuracy evaluation.

@@ -5,15 +5,11 @@ description: Route source decoding, syntax selection, feature extensions, and ho
 
 | Read this page when | A pasted, imported, or fenced text source must become editable Canvas cells. |
 | --- | --- |
-| First answer | Is the decision about the compiler pipeline, syntax selection, feature extensions, or a host boundary? |
+| First answer | Use the pipeline contract for format selection and literal preservation; use features for extensions, themes, and host policy. |
 | Boundary | This page routes renderer contracts; Canvas mutation and persistence remain outside the renderer. |
-| Reading rule | Choose one focused contract below; Canvas mutation and persistence remain outside the renderer. |
 | Follow-up | Open the matching pipeline or features page, then follow its source and verification links. |
 
 | Decision | Contract |
 | --- | --- |
 | Which source kinds, stages, and fallback rules apply? | [Text rendering pipeline](/development/architecture/text-rendering-pipeline) |
 | Which Markdown, ANSI, Mermaid, math, JSON/YAML, theme, and CLI boundaries apply? | [Text rendering features and hosts](/development/architecture/text-rendering-features) |
-
-Rendering produces a materialized result; Canvas owns mutation and persistence.
-The focused pages own the detailed renderer contracts and verification links.

@@ -9,8 +9,6 @@ description: Product principles for Cell UI.
 | 边界 | 本页拥有产品原则，不替代 Widget、Compositor 或 Semantics 的实现契约。 |
 | 下一步 | 依次阅读 [Macintosh 标准](/development/cell-ui/macintosh) 和 [Widget 规范](/development/cell-ui/widgets)。 |
 
-[返回事实白板](/development/cell-ui/overview) · [Macintosh 标准](/development/cell-ui/macintosh) · [Widget 规范](/development/cell-ui/widgets)
-
 **UI as Text** 是目标：不依赖颜色或源码，文本应能说明界面结构、重要状态与可用动作。以下三条分别约束字符媒介、动作语义和提交后的投影；UI as Text 不是并列的第四条原则。
 
 1. **Everything is Cell**：layout、paint、hit、scroll、selection 和 copy 使用整数 Cell；px 只存在于 browser/Canvas 边界。
@@ -20,7 +18,7 @@ description: Product principles for Cell UI.
    - 键盘操作完整，指针直接作用于可见 Cell；Widget command 不依赖 hover/drag。共享 `KeyInput` 保留 phase、逻辑 key、物理 code、location、modifiers、repeat 与 composition；pointer down 定位，完整 tap 才执行。Host 拥有快捷键 scope、chord 与用户 keymap，Cell UI 只解释 Widget 行为。
 3. **One State, Many Projections**：业务值由应用持有；影响可见交互的 focused、pressActive、activationFlash、manipulating、selected、expanded、disabled 和 editing 投影到 Cell Scene。Canvas、Semantic DOM、clipboard 与 tests 消费同一次 Widget commit；画面截断不丢失完整语义标签。
 
-`CellSurface` 的 `presentation="rich" | "text"` 是同一可交互 Widget Tree 的两种呈现，默认 `rich`。`text` 以 Unicode 字符表达结构和关键状态，同时保留颜色、hover、focus、press、blink 与 Cell Cursor；它不是静态导出。两种呈现共享命令与语义，组件不局部覆盖。组件字符规则由[Widget 规范](/development/cell-ui/widgets#双呈现)拥有。
+`CellSurface` 的 `presentation="rich" | "text"` 是同一可交互 Widget Tree 的两种呈现，默认 `rich`。`text` 以 Unicode 字符表达结构和关键状态，同时保留颜色、hover、focus、press、blink 与 Cell Cursor；它不是静态导出。两种呈现共享命令与语义，组件不局部覆盖。组件字符规则由[Widget 规范](/development/cell-ui/widget-state#双呈现)拥有。
 
 Cell Range 复制当前呈现中选区的可见 Unicode，不承诺包含颜色或瞬时交互反馈；它不是另一套角色／状态注释格式。
 

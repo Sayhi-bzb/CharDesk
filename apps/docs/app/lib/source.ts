@@ -1,6 +1,8 @@
 import { loader } from "fumadocs-core/source";
 import { defineDocs } from "fumadocs-mdx/macro";
 import { docsHeadMarkdown } from "@/lib/docs-head";
+import { agentRouteMarkdown } from "@/lib/agent-routes";
+import { agentMarkdown } from "@/lib/agent-markdown";
 
 export const docs = defineDocs({
   dir: "content/docs",
@@ -36,9 +38,13 @@ export const publicDevelopmentSource = loader({
 });
 
 export async function getLLMText(
-  page: (typeof publicDevelopmentSource)["$inferPage"]
+  page: (typeof publicDevelopmentSource)["$inferPage"],
+  { includeRoutes = true }: { includeRoutes?: boolean } = {},
 ) {
-  const processed = await page.data.getText("processed");
+  const processed = agentMarkdown(await page.data.getText("processed"));
+  const routes = includeRoutes && page.url === "/docs/development"
+    ? `\n\n${agentRouteMarkdown()}`
+    : "";
 
-  return `# ${page.data.title} (${page.url})\n\n${docsHeadMarkdown()}\n\n${processed}`;
+  return `# ${page.data.title} (${page.url})\n\n${docsHeadMarkdown()}\n\n${processed}${routes}`;
 }

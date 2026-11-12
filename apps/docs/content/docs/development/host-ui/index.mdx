@@ -3,11 +3,9 @@ title: Host and UI
 description: Product interaction, composition, and shared presentation contracts.
 ---
 
-Load only the contract that owns the changed surface:
-
 | Read this page when | A user-visible interaction, layout, visual token, dialog, icon, or product copy changes. |
 | --- | --- |
-| First answer | Which shared Host or UI contract governs the surface? |
+| First answer | Choose geometry, theme, composition, interaction, copy, or control contracts below. |
 | Boundary | Business rules remain with the owning domain; this route owns presentation and interaction composition. |
 | Follow-up | Choose the surface route below, then follow its implementation and verification authority. |
 
@@ -15,10 +13,12 @@ Load only the contract that owns the changed surface:
 | --- | --- |
 | Form factor, chrome placement, or usable canvas geometry | [Editor Chrome](/development/host-ui/editor-chrome) |
 | Canvas color inspection or structured layer eligibility | [Canvas Inspector](/development/host-ui/canvas-inspector) |
-| Tokens, recipes, primitives, surfaces, or layers | [Visual system](/development/host-ui/visual-system) |
+| Theme tokens and rendering bridges | [Theme](/development/host-ui/visual-theme) |
+| Surfaces, layers and shell geometry | [Composition](/development/host-ui/visual-composition) |
+| Focus, state, status and motion | [Interaction vocabulary](/development/host-ui/visual-vocabulary) |
 | Visible product copy or localization | [Interface content](/development/host-ui/interface-content) |
 | Modal composition | [Dialog surfaces](/development/host-ui/dialogs) |
 | Host control geometry, icon, or state | [Core Host icon controls](/development/host-ui/icon-controls) |
 
-Business rules remain with the owning [domain](/development/domains); verification
-routes are selected by the changed contract in [Quality](/development/quality).
+
+[Visual system chooser](/development/host-ui/visual-system) groups theme, composition, and interaction routes.

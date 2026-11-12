@@ -5,7 +5,8 @@ description: Pointer, keyboard, scroll, editor viewport, and Canvas boundary con
 
 | Read this page when | A widget pointer, keyboard, scroll, editor viewport, or Canvas boundary changes. |
 | --- | --- |
-| First answer | Which Cell Widget contract owns this decision? |
+| First answer | Scene hit testing and shared gesture/scroll controllers own input; editors consume the same viewport geometry. |
+| Boundary | This page owns input and viewport behavior; [state/presentation](/development/cell-ui/widget-state) and [evidence](/development/cell-ui/widget-evidence) are separate. |
 | Follow-up | Use the linked source and verification evidence after selecting the contract. |
 
 ## Pointer 与 Scroll
@@ -29,3 +30,7 @@ description: Pointer, keyboard, scroll, editor viewport, and Canvas boundary con
 - 文本 layout、clip、Cursor、selection、hit 与隐藏 textarea 定位消费同一个 Scene viewport；手动 scroll 不修改 document/history。
 - Cell Range 修饰键优先于文本 selection gesture；只读编辑器可滚动，disabled 不新增交互。
 - 所有 border、block、thumb 与内容都保留为 `Cell.text` 字符；Canvas 字体路径、Probe 和复制结果一致。
+
+## Evidence
+
+[Pointer](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/pointer.test.tsx) · [Browser scroll](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/browser-scroll.dom.test.tsx) · [Editor scroll](https://github.com/Sayhi-bzb/CharDesk/blob/main/packages/cell-ui/src/editor-scroll.test.tsx)

@@ -5,13 +5,9 @@ description: Route authority, command, persistence, synchronization, and project
 
 | Read this page when | A change moves data between document state, interaction state, persistence, synchronization, or derived views. |
 | --- | --- |
-| First answer | Which state is authoritative, and which values are projections? |
+| First answer | Use state authority for ownership, canonical flows for execution order, and persistence for restore, sync, and projection. |
 | Boundary | This page routes state contracts; detailed authority, execution order, and persistence rules belong to the focused pages below. |
-| Reading rule | Choose one focused contract below, then follow its source and verification links. |
 | Follow-up | Open the matching authority, canonical-flow, or persistence page before reading implementation detail. |
-
-The state model is split by decision so an Agent can load only the relevant
-contract:
 
 | Decision | Contract |
 | --- | --- |
@@ -21,5 +17,4 @@ contract:
 
 Use [Ownership and dependency direction](/development/architecture/ownership) for
 layer boundaries and [Domain reference](/development/domains) for capability
-ownership. The pages above own the detailed state contracts; this page owns only
-the route between them.
+ownership.

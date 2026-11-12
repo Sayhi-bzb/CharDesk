@@ -9,10 +9,6 @@ description: SceneGeometry, clipping, layering, and paint contracts.
 | 边界 | 本页不拥有 Widget layout 或 Canvas px 映射；类型与跨后端 metrics 由链接的包入口持有。 |
 | 下一步 | 先读所有权表，再沿 `CellSurfaceGeometryTransform` 和对应测试追踪实现。 |
 
-# SceneGeometry / Compositor 契约
-
-[返回事实白板](/development/cell-ui/overview) · [SemanticSnapshot](/development/cell-ui/semantics)
-
 ## 所有权
 
 Layout 产生 Widget 的 parent-relative Cell Rect。SceneGeometry 将其投影为 root Cell geometry，并统一拥有 scroll、clip、layer、visibility、paint order 与 hit geometry。Canvas Surface 只把最终 CellBuffer 映射为 px。
