@@ -12,6 +12,7 @@ export const terminalActionLabels: Readonly<Record<string, string>> = {
   hand: 'Hand',
   minimap: 'Minimap',
   help: 'Help',
+  'view-shortcuts': 'Shortcuts',
   'feedback-details': 'Feedback details',
   settings: 'Settings',
   export: 'Export',

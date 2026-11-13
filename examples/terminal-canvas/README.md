@@ -353,8 +353,22 @@ remain separate from native-file reloading.
 ### Status bar
 
 The header occupies one terminal row; the canvas starts immediately below it.
-The footer uses one fixed row: Dock or panel context on the left, necessary feedback
-on the right. Routine automatic saving and tool changes stay quiet. Explicit results
+The footer reserves two rows. The first keeps Dock or panel context on the left and
+necessary feedback on the right. The second is the view status bar, independent
+of selection and editing actions. It starts with a clickable shortcuts entry:
+F1 on all platforms (Fn+F1 on Mac keyboards with media keys), with Ctrl+/ as fallback.
+This opens the guide across views; ordinary `/` and `?` remain text. Clicking the
+entry also opens it. Its key label follows the user binding. View modules contribute entries through
+[`viewStatus.set`](../../packages/terminal/src/viewStatus.ts), with left/right
+alignment and disposal. This is the extension point for future agent status;
+clipboard and selection hints do not belong in this row.
+The [shortcut guide](../../packages/terminal/src/shortcutsDialog.ts) reuses the
+Settings/Sessions dialog shell. Edit, Canvas and App tabs show action/key columns;
+Tab/Shift+Tab switches groups, arrows and wheel browse rows, and Escape or an
+outside click closes the guide. Rows are read-only. Selected-row descriptions
+stay inside the dialog. The [guide model](../../packages/terminal/src/shortcutGuide.ts)
+reads effective bindings, terminal policy, language and pan step on render.
+Routine automatic saving and tool changes stay quiet. Explicit results
 expire; progress appears only for slower operations. Unresolved document and recovery
 errors remain until their owner resolves them, including while overlays are open.
 Details and Source actions (or rebindable Shift+F1) open the owning panel; panel errors and descriptions stay

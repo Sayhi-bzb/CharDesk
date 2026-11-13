@@ -117,7 +117,7 @@ export function attachControls(
     repeatable = true
   ) => {
     const commandId = `terminal.${id}`;
-    const application = id === 'quit' || id === 'feedback-details';
+    const application = id === 'quit' || id === 'feedback-details' || id === 'view-shortcuts';
     const available = () =>
       !surface.closing &&
       (application ||
@@ -273,8 +273,30 @@ export function attachControls(
   action('help', () => {
     surface.cancelGesture();
     surface.help = !surface.help;
-    surface.helpScroll = 0;
   });
+  action('view-shortcuts', () => {
+    if (surface.help) {
+      surface.help = false;
+      return;
+    }
+    settingsDialog.close();
+    workspaceControls?.dismiss();
+    inspector.blur();
+    return editor.commands.execute('terminal.help', undefined, 'terminal-view');
+  });
+  disposers.push(
+    surface.viewStatus.set({
+      id: 'shortcuts',
+      text: () => {
+        const shortcut = surface.shortcuts['view-shortcuts'];
+        return shortcut.keys.length
+          ? surface.t`${shortcut.label} for shortcuts`
+          : surface.t('Shortcuts');
+      },
+      onPick: () =>
+        editor.commands.execute('terminal.view-shortcuts', undefined, 'terminal-view-status'),
+    })
+  );
   action('quit', quit);
   if (workspace && workspaceControls) {
     for (const id of [
@@ -533,12 +555,9 @@ export function attachControls(
       consume();
       return;
     }
-    if (surface.help && (key.name === 'up' || key.name === 'down')) {
-      surface.helpScroll = Math.max(
-        0,
-        Math.min(surface.helpLines.length - 1, surface.helpScroll + (key.name === 'up' ? -1 : 1))
-      );
-      surface.requestRender();
+    if (surface.help) {
+      if (binding?.id === 'terminal.help') return;
+      surface.shortcutsDialog.key(key);
       consume();
       return;
     }
@@ -621,7 +640,10 @@ export function attachControls(
       event.preventDefault();
       return;
     }
-    if (surface.help) return;
+    if (surface.help) {
+      event.preventDefault();
+      return;
+    }
     event.preventDefault();
     if (surface.closing) return;
     if (workspaceControls?.paste(new TextDecoder().decode(event.bytes))) return;

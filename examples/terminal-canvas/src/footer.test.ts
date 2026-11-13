@@ -86,7 +86,7 @@ test('a failed document stays visible across other saves and Source targets the 
 });
 
 for (const width of [40, 80]) {
-  test(`one-row footer keeps the canvas stable, preserves unconfirmed Cut, and opens details (${width} columns)`, async () => {
+  test(`two-row footer keeps the canvas stable, preserves unconfirmed Cut, and opens details (${width} columns)`, async () => {
     const root = await mkdtemp(join(tmpdir(), 'chardesk-footer-'));
     const workspace = await TerminalWorkspace.open(join(root, 'canvas.chardesk'), 'A🦀界');
     const clock = new ManualClock();
@@ -109,8 +109,8 @@ for (const width of [40, 80]) {
       const viewport = { ...workspace.model.viewport },
         selection = structuredClone(workspace.model.selection),
         content = workspace.model.plane.materialize();
-      expect(surface.footerBounds).toMatchObject({ y: 25, height: 1 });
-      expect(surface.canvasBounds.height).toBe(24);
+      expect(surface.footerBounds).toMatchObject({ y: 24, height: 2 });
+      expect(surface.canvasBounds.height).toBe(23);
       expect(surface.statusBar.status).toBeUndefined();
       setup.mockInput.pressKey('x', { super: true });
       await Bun.sleep(5);

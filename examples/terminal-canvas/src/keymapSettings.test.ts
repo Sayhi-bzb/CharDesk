@@ -114,7 +114,7 @@ test('shortcut conflicts, malformed sequences, recording cancellation, reset and
     await f.setup.mockInput.pasteBracketedText('F1 ');
     expect(f.surface.panel?.input).toBe('F1 ');
     f.setup.mockInput.pressEnter();
-    expect(f.surface.panel?.error).toContain('terminal.help');
+    expect(f.surface.panel?.error).toContain('terminal.view-shortcuts');
     expect(f.model.editor.keymap.getUserBindings()['terminal.copy']).toBeUndefined();
     f.setup.mockInput.pressKey('a', { super: true });
     await f.setup.mockInput.typeText('Control+InvalidKey', 0);

@@ -2,6 +2,8 @@ import { isDefaultArtifactForeground } from '@chardesk/cell-plane/artifact-style
 import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
 import { WelcomeAppearance } from '@chardesk/canvas-templates/welcome-appearance';
 import { TerminalInputModifiers } from './inputModifiers.ts';
+import { TerminalViewStatus } from './viewStatus.ts';
+import { TerminalShortcutsDialog } from './shortcutsDialog.ts';
 import {
   mouseModifierSource,
   resolveTerminalPolicy,
@@ -46,7 +48,7 @@ import {
 } from './feedback.ts';
 
 export const CANVAS_TOP = 1;
-const FOOTER_ROWS = 1;
+const FOOTER_ROWS = 2;
 const CHROME_LABELS = {
   settings: 'Settings',
   minimap: 'Minimap',
@@ -73,9 +75,11 @@ export type TerminalPanel = {
   input?: string;
   hint: string;
   items: string[];
+  itemHints?: readonly string[];
   emptyMessage?: string;
   actions?: readonly { id: string; label: string; onPick: () => void }[];
   selected: number;
+  activeItem?: number;
   error?: string;
   onPick?: (index: number) => void;
   busy?: boolean;
@@ -90,8 +94,14 @@ export class CanvasSurface extends Renderable {
   contextMenu: TerminalContextMenu | null = null;
   inspector: TerminalInspector | null = null;
   hasDocument = true;
-  help = false;
-  helpScroll = 0;
+  readonly shortcutsDialog = new TerminalShortcutsDialog(this);
+  get help() {
+    return this.shortcutsDialog.isOpen;
+  }
+  set help(open: boolean) {
+    if (open) this.shortcutsDialog.open();
+    else this.shortcutsDialog.close();
+  }
   panel: TerminalPanel | null = null;
   placement: {
     at: Point;
@@ -152,6 +162,7 @@ export class CanvasSurface extends Renderable {
   readonly #edgeScroll: TerminalEdgeScroll;
   readonly #detachInteraction: () => void;
   readonly inputModifiers = new TerminalInputModifiers();
+  readonly viewStatus = new TerminalViewStatus(() => this.requestRender());
   setInputPolicy(policy: TerminalInputPolicy) {
     const changedSource = mouseModifierSource(this.#inputPolicy) !== mouseModifierSource(policy);
     this.#inputPolicy = policy;
@@ -240,6 +251,17 @@ export class CanvasSurface extends Renderable {
 
   get chromeControls() {
     return [...this.headerControls, ...this.dockControls];
+  }
+
+  get viewStatusControls() {
+    return this.footerBounds.height < 2
+      ? []
+      : this.viewStatus.layout(
+          this.width,
+          this.footerBounds.y + 1,
+          (text) => this.#width(text),
+          (text, width) => this.#fit(text, width)
+        );
   }
 
   get focusableDockControls() {
@@ -522,6 +544,7 @@ export class CanvasSurface extends Renderable {
 
   protected override renderSelf(buffer: OptimizedBuffer) {
     const { model } = this;
+    this.shortcutsDialog.refresh();
     this.contextMenu?.validate();
     this.inspector?.validate();
     buffer.clear(this.colors.background);
@@ -717,18 +740,16 @@ export class CanvasSurface extends Renderable {
       if (feedback.action)
         this.#line(buffer, feedback.action.label, feedback.action.x, footer, this.colors.accent);
     }
-    if (this.help) {
-      buffer.fillRect(
-        0,
-        CANVAS_TOP,
-        this.width,
-        Math.max(0, footer - CANVAS_TOP),
-        this.colors.background
+    for (const control of this.viewStatusControls) {
+      this.#line(
+        buffer,
+        control.text,
+        control.x,
+        control.y,
+        this.colors.muted,
+        this.colors.chrome,
+        control.width
       );
-      for (const [i, line] of this.helpLines.slice(this.helpScroll).entries()) {
-        if (i + CANVAS_TOP >= footer) break;
-        this.#line(buffer, line, 2, i + CANVAS_TOP, this.colors.foreground, this.colors.background);
-      }
     }
     if (this.panel) {
       const layout = this.panelLayout;
@@ -813,6 +834,11 @@ export class CanvasSurface extends Renderable {
           const index = start + row,
             item = this.panel.items[index];
           if (item === undefined) break;
+          const hint = this.panel.itemHints?.[index];
+          const hintWidth = hint
+            ? Math.min(this.#width(hint), Math.floor((layout.width - 6) / 2))
+            : 0;
+          const selected = this.panel.dialog && index === this.panel.selected;
           if (this.panel.dialog && index === this.panel.selected)
             buffer.fillRect(
               layout.x + 1,
@@ -828,13 +854,28 @@ export class CanvasSurface extends Renderable {
             layout.itemsY + row,
             this.panel.dialog && index === this.panel.selected
               ? this.colors.selectionForeground
-              : this.colors.foreground,
+              : index === this.panel.activeItem
+                ? this.colors.accent
+                : this.colors.foreground,
             this.panel.dialog && index === this.panel.selected
               ? this.colors.selection
               : this.colors.background,
-            layout.width - 2,
-            createTextAttributes({ inverse: !this.panel.dialog && index === this.panel.selected })
+            layout.width - 2 - (hintWidth ? hintWidth + 2 : 0),
+            createTextAttributes({
+              inverse: !this.panel.dialog && index === this.panel.selected,
+              bold: index === this.panel.activeItem,
+            })
           );
+          if (hintWidth)
+            this.#line(
+              buffer,
+              this.#fit(hint!, hintWidth),
+              layout.x + layout.width - 2 - hintWidth,
+              layout.itemsY + row,
+              selected ? this.colors.selectionForeground : this.colors.muted,
+              selected ? this.colors.selection : this.colors.background,
+              hintWidth
+            );
         }
         for (const [index, note] of layout.notes.entries())
           this.#line(
@@ -912,9 +953,6 @@ export class CanvasSurface extends Renderable {
     } else if (this.contextMenu?.isOpen) {
       context = this.t('Context menu');
       hint = this.t('Enter run · Esc close');
-    } else if (this.help) {
-      context = this.messages.help;
-      hint = this.t('Esc close');
     } else if (this.focusedDockControl) {
       hint = this
         .t`${this.shortcuts['dock-next'].label} switch · ${this.shortcuts['dock-activate'].label} choose`;
@@ -1147,13 +1185,41 @@ export class CanvasSurface extends Renderable {
       return;
     }
     if (event.type === 'down') this.clearDockFocus();
+    if (event.type === 'down' && event.button === 0) {
+      const point = { x: event.x - this.screenX, y: event.y - this.screenY };
+      const entry = this.viewStatusControls.find((control) =>
+        cellRectContainsPoint(control, point)
+      );
+      if (entry) {
+        entry.onPick?.();
+        this.requestRender();
+        return;
+      }
+    }
     this.contextMenu?.validate();
     if (this.contextMenu?.isOpen) {
       this.contextMenu.mouse(event);
       return;
     }
-    if (this.help) return;
     if (this.panel) {
+      if (event.type === 'scroll' && event.scroll && !this.panel.busy) {
+        const layout = this.panelLayout;
+        if (
+          layout.width >= 20 &&
+          layout.height >= (this.panel.dialog ? 8 : 4) &&
+          cellRectContainsPoint(layout, { x: event.x - this.screenX, y: event.y - this.screenY }) &&
+          (event.scroll.direction === 'up' || event.scroll.direction === 'down')
+        ) {
+          const delta =
+            Math.max(1, Math.abs(event.scroll.delta)) * (event.scroll.direction === 'up' ? -1 : 1);
+          this.panel.selected = Math.max(
+            0,
+            Math.min(this.panel.items.length - 1, this.panel.selected + delta)
+          );
+          this.requestRender();
+        }
+        return;
+      }
       if (event.type === 'down' && event.button === 0) {
         const layout = this.panelLayout,
           localY = event.y - this.screenY;

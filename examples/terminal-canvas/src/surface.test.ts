@@ -26,7 +26,7 @@ test('header actions reserve one row while footer tools and canvas follow resize
     expect(lines[surface.footerBounds.y]?.trimEnd()).toBe(
       surface.dockControls.map((control) => control.label).join(' ')
     );
-    expect(model.viewport.height).toBe(24);
+    expect(model.viewport.height).toBe(23);
     const content = model.plane.materialize();
     const hand = surface.dockControls.find((control) => control.id === 'hand')!;
     await setup.mockMouse.click(hand.x + 1, hand.y);
@@ -46,8 +46,8 @@ test('header actions reserve one row while footer tools and canvas follow resize
     setup.resize(110, 30);
     await setup.renderOnce();
     const edit = surface.dockControls.find((control) => control.id === 'edit')!;
-    expect(edit.y).toBe(29);
-    expect(model.viewport.height).toBe(30 - CANVAS_TOP - 1);
+    expect(edit.y).toBe(28);
+    expect(model.viewport.height).toBe(30 - CANVAS_TOP - surface.footerBounds.height);
     await setup.mockMouse.click(edit.x + 1, edit.y);
     await setup.renderOnce();
     await setup.mockMouse.click(0, CANVAS_TOP);
@@ -132,7 +132,7 @@ test('native active cursor preserves underline and inverse that belong to docume
 });
 
 for (const kittyKeyboard of [false, true]) {
-  test(`Warp copy fallback and rebindings work without a footer Copy button (Kitty ${kittyKeyboard})`, async () => {
+  test(`Warp copy fallback and rebindings work without adding Copy to the Dock (Kitty ${kittyKeyboard})`, async () => {
     const setup = await createTestRenderer({ width: 110, height: 28, kittyKeyboard });
     const model = new TerminalCanvas('A界B');
     const copied: string[] = [];
@@ -376,7 +376,9 @@ test('native frame keeps CJK and joined Emoji aligned through clipping and resiz
     setup.resize(36, 12);
     await setup.renderOnce();
     expect(model.viewport.width).toBe(36);
-    expect(model.viewport.height).toBe(setup.renderer.height - CANVAS_TOP - 1);
+    expect(model.viewport.height).toBe(
+      setup.renderer.height - CANVAS_TOP - surface.footerBounds.height
+    );
     expect(setup.captureCharFrame()).toContain('Edit');
   } finally {
     await setup.dispose();
@@ -438,7 +440,9 @@ test('English help is rendered and dismisses with Escape', async () => {
     detach = attachControls(surface, () => {});
     setup.mockInput.pressKey(KeyCodes.F1);
     await setup.renderOnce();
-    expect(setup.captureCharFrame()).toContain('select a rectangle');
+    expect(surface.panel).toMatchObject({ dialog: true, title: 'Shortcuts' });
+    expect(setup.captureCharFrame()).toContain('Copy');
+    expect(setup.captureCharFrame()).toContain('Canvas');
     setup.mockInput.pressKey(KeyCodes.ESCAPE);
     expect(surface.help).toBe(false);
   } finally {

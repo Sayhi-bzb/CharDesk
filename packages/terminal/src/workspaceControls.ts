@@ -294,6 +294,7 @@ export class WorkspaceControls {
   #sessionList(selectedId?: string) {
     const records = this.sessions!.list(this.#includeArchived);
     const activePath = this.workspace.files.length ? this.workspace.active.path : null;
+    const activeItem = records.findIndex((record) => record.path === activePath);
     const panel: TerminalPanel = {
       dialog: true,
       onClose: () => this.dismiss(),
@@ -311,9 +312,10 @@ export class WorkspaceControls {
         { id: 'open', label: this.surface.t('O open'), onPick: () => this.filePrompt('open') },
       ],
       emptyMessage: this.surface.t(this.#includeArchived ? 'No archived sessions' : 'No sessions'),
+      activeItem: activeItem < 0 ? undefined : activeItem,
       items: records.map(
         (record) =>
-          `${record.path === activePath ? '▸ ' : ''}${record.name}${record.removing ? this.surface.t(' (removal pending)') : record.status === 'creating' ? this.surface.t(' (incomplete)') : ''}`
+          `${record.name}${record.removing ? this.surface.t(' (removal pending)') : record.status === 'creating' ? this.surface.t(' (incomplete)') : ''}`
       ),
       selected: Math.max(
         0,
@@ -414,10 +416,11 @@ export class WorkspaceControls {
     const panel: TerminalPanel = {
       title: this.surface.t('Documents'),
       hint: this.surface.t`Enter open · ${this.#closeKeyLabel} close`,
+      activeItem: files.indexOf(this.workspace.active),
       items: [
         ...files.map(
           (file) =>
-            `${file === this.workspace.active ? '▸ ' : ''}${file.title}${this.surface.model.isDirtyAt(file.address!) ? ' *' : ''}  ${file.path}${this.workspace.errorFor(file) ? `  ! ${this.workspace.errorFor(file)}` : ''}`
+            `${file.title}${this.surface.model.isDirtyAt(file.address!) ? ' *' : ''}  ${file.path}${this.workspace.errorFor(file) ? `  ! ${this.workspace.errorFor(file)}` : ''}`
         ),
         this.surface.t('+ Open'),
         this.surface.t('+ New'),

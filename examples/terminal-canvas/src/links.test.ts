@@ -189,7 +189,7 @@ test('deleting and undoing links replaces native metadata without stale or dispo
     expect(f.at(4)).toBe('https://example.org');
     f.surface.help = true;
     await f.setup.renderOnce();
-    expect(f.at(0)).toBeNull();
+    expect(f.at(0)).toBe(url);
     f.surface.help = false;
     await f.setup.renderOnce();
     expect(f.at(0)).toBe(url);

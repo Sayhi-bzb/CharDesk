@@ -82,7 +82,7 @@ for (const kitty of [false, true]) {
       expect(frame.slice(layout.y, layout.y + layout.height).join('\n')).not.toContain(
         'Tab section'
       );
-      expect(frame[f.setup.renderer.height - 1]).toContain('Settings · Tab section · Enter change');
+      expect(frame[f.surface.footerBounds.y]).toContain('Settings · Tab section · Enter change');
       expect(f.setup.renderer.getCursorState().visible).toBe(false);
       await f.setup.mockInput.typeText('SHOULD_NOT_TYPE', 0);
       await f.setup.mockInput.pasteBracketedText('SHOULD_NOT_PASTE');
@@ -99,7 +99,7 @@ for (const kitty of [false, true]) {
       expect(f.model.canUndo).toBe(false);
       await f.escape();
       expect(f.surface.panel).toBeNull();
-      expect(f.setup.captureCharFrame().split('\n')[f.setup.renderer.height - 1]).not.toContain(
+      expect(f.setup.captureCharFrame().split('\n')[f.surface.footerBounds.y]).not.toContain(
         'Tab section'
       );
       expect(f.model.selection).toEqual(selection);
@@ -177,11 +177,11 @@ test('the shared status bar follows focused panels, menus, help and canvas witho
     };
     await setup.renderOnce();
     let lines = setup.captureCharFrame().split('\n');
-    const body = lines.slice(CANVAS_TOP, setup.renderer.height - 1).join('\n');
+    const body = lines.slice(CANVAS_TOP, surface.footerBounds.y).join('\n');
     expect(body).toContain('example.chardesk');
     expect(body).not.toContain('Enter confirm');
     expect(body).toContain('File unavailable');
-    expect(lines[setup.renderer.height - 1]?.trim()).toBe('Open file · Enter confirm · Esc cancel');
+    expect(lines[surface.footerBounds.y]?.trim()).toBe('Open file · Enter confirm · Esc cancel');
     surface.panel = null;
     surface.contextMenu!.open();
     await setup.renderOnce();
@@ -191,8 +191,10 @@ test('the shared status bar follows focused panels, menus, help and canvas witho
     setup.mockInput.pressKey(KeyCodes.F1);
     await setup.renderOnce();
     lines = setup.captureCharFrame().split('\n');
-    expect(surface.statusBar.context).toBe('Help');
-    expect(lines[setup.renderer.height - 1]?.trim()).toBe('Help · Esc close');
+    expect(surface.statusBar.context).toBe('Shortcuts');
+    expect(lines[surface.footerBounds.y]?.trim()).toBe(
+      'Shortcuts · Tab section · ↑↓ scroll · Esc close'
+    );
     await f.escape();
     expect(surface.statusBar.context).toBe('');
     expect(surface.statusBar.status).toBeUndefined();

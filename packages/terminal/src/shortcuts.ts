@@ -11,6 +11,7 @@ export type TerminalAction =
   | 'hand'
   | 'minimap'
   | 'help'
+  | 'view-shortcuts'
   | 'feedback-details'
   | 'settings'
   | 'export'
@@ -99,7 +100,8 @@ export function createTerminalShortcuts(platform: NodeJS.Platform, policy?: Term
     'cancel-placement': key([], 'Esc'),
     hand: key([]),
     minimap: key([]),
-    help: key(['F1']),
+    help: key([]),
+    'view-shortcuts': key(['F1', 'Ctrl+/'], 'F1'),
     'feedback-details': key(['Shift+F1']),
     'context-menu': key(['Shift+F10']),
     settings: key([]),

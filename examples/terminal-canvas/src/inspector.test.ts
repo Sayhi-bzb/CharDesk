@@ -322,7 +322,7 @@ test('floating Style yields Dock focus and native cursor ownership to the active
     expect(f.setup.renderer.getCursorState().visible).toBe(true);
     expect(f.setup.captureCharFrame().split('\n')[CANVAS_TOP]).toContain('🦀界');
     expect(f.model.viewport.width).toBe(110);
-    expect(f.model.viewport.height).toBe(30 - CANVAS_TOP - 1);
+    expect(f.model.viewport.height).toBe(30 - CANVAS_TOP - f.surface.footerBounds.height);
   } finally {
     await f.dispose();
   }
