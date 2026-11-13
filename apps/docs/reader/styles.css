@@ -8,6 +8,7 @@ a { color: inherit; }
 h1, h2, p { margin: 0; }
 code, pre { font-family: inherit; }
 .gallery-page a:focus-visible, .gallery-page button:focus-visible { outline: 2px solid var(--cell-accent); outline-offset: 3px; }
+.manual-loading { position: fixed; inset: 0; padding: 32px; font: 15px/1.8 'Maple Mono NF CN', monospace; }
 .manual-fallback { max-width: 1000px; margin: auto; font: 15px/1.8 'Maple Mono NF CN', monospace; }
 .manual-fallback[hidden] { display: none; }
 .manual-fallback header { padding-block: 16px; }
@@ -30,7 +31,7 @@ code, pre { font-family: inherit; }
 .skip-link { position: absolute; left: 16px; top: 0; transform: translateY(-110%); z-index: 30; background: var(--cell-background); padding: 8px; }
 .skip-link:focus { transform: none; }
 @media print {
-  [data-manual-cell-ui], .skip-link { display: none !important; }
-  .manual-fallback[hidden] { display: block; }
+  [data-manual-cell-ui], .skip-link, .manual-loading { display: none !important; }
+  .manual-fallback, .manual-fallback[hidden] { display: block !important; }
   .manual-fallback header, .manual-fallback nav { display: none; }
 }

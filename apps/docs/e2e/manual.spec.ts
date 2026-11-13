@@ -22,6 +22,67 @@ test('the default page uses the portal header, navigation, contents and Cell art
   await expect(page.locator('.gallery-page')).toHaveAttribute('data-gallery-font', 'fusion-mono');
 });
 
+test('initial load and refresh do not paint the HTML fallback while scripts are loading', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('chardesk-docs-theme', 'dark');
+    const state = { fallbackFrames: 0, wrongThemeFrames: 0 };
+    Object.assign(window, { manualBootCheck: state });
+    const sample = () => {
+      const fallback = document.querySelector<HTMLElement>('.manual-fallback');
+      if (fallback && getComputedStyle(fallback).display !== 'none') state.fallbackFrames++;
+      if (fallback && document.documentElement.dataset.galleryTheme !== 'dark') state.wrongThemeFrames++;
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  for (const refresh of [false, true]) {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    await page.route('**/assets/entry.client-*.js', async route => { await gate; await route.continue(); });
+    try {
+      if (refresh) await page.reload({ waitUntil: 'commit' });
+      else await page.goto('/editing/selection/', { waitUntil: 'commit' });
+      await expect(page.locator('.manual-fallback')).toBeAttached();
+      await expect(page.locator('.manual-fallback')).toBeHidden();
+      await expect(page.getByRole('status', { name: 'Loading manual' })).toBeVisible();
+    } finally { release(); }
+    await ready(page);
+    await expect(page.locator('.manual-fallback')).toBeHidden();
+    expect(await page.evaluate(() => (window as Window & { manualBootCheck?: { fallbackFrames: number; wrongThemeFrames: number } }).manualBootCheck)).toEqual({ fallbackFrames: 0, wrongThemeFrames: 0 });
+    await page.unroute('**/assets/entry.client-*.js');
+  }
+});
+
+test('the first Cell view waits for the preferred display font', async ({ page }) => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/*.woff2', async route => { await gate; await route.continue(); });
+  try {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('html')).toHaveAttribute('data-gallery-font-status', 'loading');
+    await expect(page.locator('[data-manual-cell-ui]')).toBeHidden();
+    await expect(page.locator('.manual-fallback')).toBeHidden();
+    await expect(page.getByRole('status', { name: 'Loading manual' })).toBeVisible();
+  } finally { release(); }
+  await ready(page);
+  await expect(page.locator('html')).toHaveAttribute('data-gallery-font', 'fusion-mono');
+});
+
+test('a stalled bootstrap reveals readable text and keeps it stable if scripts arrive late', async ({ page }) => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/assets/entry.client-*.js', async route => { await gate; await route.continue(); });
+  try {
+    await page.goto('/terminal/', { waitUntil: 'commit' });
+    await expect(page.getByRole('status', { name: 'Loading manual' })).toBeVisible();
+    await expect(page.locator('.manual-fallback')).toBeVisible({ timeout: 12_000 });
+    await expect(page.locator('article')).toContainText('bun add -g @chardesk/cli');
+  } finally { release(); }
+  await expect(page.locator('[data-manual-cell-ui]')).toBeAttached();
+  await expect(page.locator('.manual-fallback')).toBeVisible();
+  await expect(page.locator('[data-manual-cell-ui]')).toBeHidden();
+});
+
 test('navigation preserves the Cell interface without reloading or exposing the HTML fallback', async ({ page }) => {
   await page.goto('/'); await ready(page);
   const documents: string[] = [];

@@ -26,6 +26,7 @@ const galleryFontLabels: Record<GalleryFont, string> = {
 };
 
 const AppearanceContext = createContext({
+  ready: false,
   feedback: CLASSIC_CELL_FEEDBACK,
   mode: "light" as "light" | "dark",
   font: "maple" as GalleryFont,
@@ -90,6 +91,7 @@ export function DocumentationAppearance({ children, feedback, storagePrefix = "c
   const themePreferenceKey = `${storagePrefix}-theme`;
   const fontPreferenceKey = `${storagePrefix}-font`;
   const [preference, setPreference] = useState(() => hydrated ? readPreference(themePreferenceKey) : null);
+  const [preferencesReady, setPreferencesReady] = useState(hydrated);
   const [fontState, setFontState] = useState<GalleryFontState>(() => hydrated ? initialFontState(fontPreferenceKey) : { font: "maple", pendingFont: null, errorFont: null, status: "idle", message: "" });
   const { font, pendingFont, errorFont, status: fontStatus, message: fontMessage } = fontState;
   const mode = preference ?? (dark ? "dark" : "light");
@@ -97,6 +99,7 @@ export function DocumentationAppearance({ children, feedback, storagePrefix = "c
     if (!hydrated) return;
     setPreference(readPreference(themePreferenceKey));
     setFontState(initialFontState(fontPreferenceKey));
+    setPreferencesReady(true);
   }, [hydrated, themePreferenceKey, fontPreferenceKey]);
   const rootRef = useRef<HTMLDivElement>(null);
   const fontRequestRef = useRef(0);
@@ -147,6 +150,7 @@ export function DocumentationAppearance({ children, feedback, storagePrefix = "c
     return () => { fontRequestRef.current += 1; };
   }, [fontPreferenceKey, fontState.pendingFont, fontState.status]);
   useLayoutEffect(() => {
+    if (!preferencesReady) return;
     const root = document.documentElement;
     const previousTheme = root.dataset.galleryTheme;
     const previousFont = root.dataset.galleryFont;
@@ -162,7 +166,7 @@ export function DocumentationAppearance({ children, feedback, storagePrefix = "c
       if (previousFontStatus === undefined) delete root.dataset.galleryFontStatus;
       else root.dataset.galleryFontStatus = previousFontStatus;
     };
-  }, [font, fontStatus, mode]);
+  }, [font, fontStatus, mode, preferencesReady]);
   const appearance = useCellCssTheme(rootRef, mode);
   const fontProfile = galleryFontOptions[font].profile;
   const style = {
@@ -170,7 +174,7 @@ export function DocumentationAppearance({ children, feedback, storagePrefix = "c
     colorScheme: mode,
     "--gallery-font-size": `${DEFAULT_CELL_UI_METRICS.fontSize}px`,
   } as CSSProperties;
-  return <AppearanceContext.Provider value={{ ...appearance, feedback: resolveCellFeedback(feedback), mode, font, pendingFont, errorFont, fontStatus, fontMessage, fontProfile, toggleTheme, selectFont }}>
+  return <AppearanceContext.Provider value={{ ...appearance, ready: preferencesReady && fontStatus !== "loading", feedback: resolveCellFeedback(feedback), mode, font, pendingFont, errorFont, fontStatus, fontMessage, fontProfile, toggleTheme, selectFont }}>
     <div ref={rootRef} className="gallery-page" data-gallery-theme={mode} data-gallery-font={font} data-gallery-font-status={fontStatus} style={style}>{children}</div>
   </AppearanceContext.Provider>;
 }

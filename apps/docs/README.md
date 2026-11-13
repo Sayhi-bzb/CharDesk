@@ -30,6 +30,10 @@ mobile navigation, appearance, the shared Cell template, and readable fallbacks.
 navigation, mobile Accordion, contents, article and code blocks as the Cell UI
 portal. HTML is a same-source fallback for no-script, printing, browser Find
 and loading failures; it is not a separate default interface.
+The [boot policy](reader/boot.ts) holds a minimal loading state until the Cell
+interface and preferred font are ready. Script failure or a six-second timeout
+reveals the prerendered text and keeps it stable; disabled JavaScript shows text
+immediately.
 Shared links use a [host navigation adapter](../../packages/docs-ui/src/links.tsx).
 The manual routes internal links through React Router, keeping Cell UI active
 between pages; prerendered data follows the same trailing-slash URLs as navigation.

@@ -2,6 +2,7 @@ import { use, useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { useLoaderData, type LoaderFunctionArgs } from 'react-router';
 import { manual, manualEntries, manualNavigation } from '../content';
 import { CellReaderBoundary } from '../cell-reader-boundary';
+import { completeManualBoot, revealManualFallback } from '../boot';
 
 import DocumentationPage from '../documentation-page';
 export async function loader({ params }: LoaderFunctionArgs) {
@@ -30,6 +31,10 @@ export default function Article() {
   const [ready, setReady] = useState(false);
   const [findMode, setFindMode] = useState(false);
   const onReady = useCallback(() => setReady(true), []);
+  useLayoutEffect(() => {
+    if (ready && !completeManualBoot()) setReady(false);
+  }, [ready]);
+  const onExit = useCallback(() => { revealManualFallback(); setReady(false); }, []);
   useEffect(() => {
     const find = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') setFindMode(true);
@@ -50,7 +55,8 @@ export default function Article() {
     <meta property="og:title" content={`${page.title} · CharDesk`} /><meta property="og:description" content={page.description} />
     <meta property="og:url" content={canonical} /><meta property="og:type" content="article" />
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: schema }} />
-    {enhance && !findMode ? <CellReaderBoundary onExit={() => setReady(false)}>
+    <div className="manual-loading" role="status" aria-label="Loading manual">Loading manual…</div>
+    {enhance && !findMode ? <CellReaderBoundary onExit={onExit}>
       <DocumentationPage data={data} onReady={onReady} />
     </CellReaderBoundary> : null}
     <div className="manual-fallback" hidden={!native}>

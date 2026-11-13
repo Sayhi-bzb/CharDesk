@@ -18,7 +18,7 @@ const sectionHref = (id: string) => `#${id}`;
 export default function DocumentationPage({ data: { page, navigation }, onReady }: { data: Data; onReady: () => void }) {
   const openLink = useDocumentationLink();
   const { hash } = useLocation();
-  const { mode } = useDocumentationAppearance();
+  const { mode, ready: appearanceReady } = useDocumentationAppearance();
   const scroll = useCellScrollState();
   const [copies, setCopies] = useState<Record<string, 'Copy' | 'Copied' | 'Copy failed'>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -57,9 +57,13 @@ export default function DocumentationPage({ data: { page, navigation }, onReady 
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openSearch(); }
     };
     window.addEventListener('keydown', shortcut);
-    setInteractive(true); onReady();
     return () => window.removeEventListener('keydown', shortcut);
-  }, [openSearch, onReady]);
+  }, [openSearch]);
+  useEffect(() => {
+    if (!appearanceReady) return;
+    const frame = requestAnimationFrame(() => { setInteractive(true); onReady(); });
+    return () => cancelAnimationFrame(frame);
+  }, [appearanceReady, onReady]);
   const codeTargets = useRef(new Map<string, string>());
   const onCommand = (command: WidgetCommand) => {
     scroll.dispatch(command);

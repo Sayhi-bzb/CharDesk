@@ -2,6 +2,7 @@ import { Links, Meta, Outlet, Scripts, ScrollRestoration, isRouteErrorResponse, 
 import { useCallback, type ReactNode } from 'react';
 import { DocumentationAppearance } from '@chardesk/docs-ui/appearance';
 import { DocumentationLinks, openBrowserLink } from '@chardesk/docs-ui/links';
+import { manualBootScript, manualBootStyles } from './boot';
 import './styles.css';
 import '@chardesk/fonts/fonts.css';
 import '@chardesk/font-maple/fonts.css';
@@ -10,7 +11,9 @@ const appearanceScript = `try{let t=localStorage.getItem('chardesk-docs-theme');
 export function Layout({ children }: { children: ReactNode }) {
   return <html lang="en" suppressHydrationWarning><head>
     <meta charSet="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style dangerouslySetInnerHTML={{ __html: manualBootStyles }} />
     <script dangerouslySetInnerHTML={{ __html: appearanceScript }} />
+    <script dangerouslySetInnerHTML={{ __html: manualBootScript }} />
     <Meta /><Links /><noscript><style>{`.manual-navigation{display:grid!important}.manual-menu{display:none!important}`}</style></noscript>
   </head><body><a className="skip-link" href="#manual-content">Skip to content</a>
     <DocumentationAppearance storagePrefix="chardesk-docs">{children}</DocumentationAppearance><ScrollRestoration /><Scripts />
