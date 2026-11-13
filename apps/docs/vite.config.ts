@@ -15,7 +15,7 @@ export default defineConfig(({ command }) => ({
   base: command === "serve" && process.env.DOCS_BUILD_TARGET === "engineering" ? "/docs/" : undefined,
   publicDir: process.env.DOCS_BUILD_TARGET === "engineering"
     ? path.join(repositoryRoot, "public")
-    : false,
+    : path.resolve(appDirectory, "../public"),
   plugins: [fumadocsMdx(), tailwindcss(), reactRouter()],
   resolve: {
     alias: [

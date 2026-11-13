@@ -39,7 +39,7 @@ for (const page of pages) {
     const url = new URL(anchor.getAttribute('href'), `https://docs.chardesk.com${page.url}`);
     if (url.origin === 'https://docs.chardesk.com') references.push(url);
   }
-  for (const node of document.querySelectorAll('script[src], link[rel="stylesheet"]')) {
+  for (const node of document.querySelectorAll('script[src], link[rel="stylesheet"], link[rel="icon"]')) {
     const url = node.getAttribute('src') ?? node.getAttribute('href');
     if (url.startsWith('/')) await access(path.join(output, url));
   }

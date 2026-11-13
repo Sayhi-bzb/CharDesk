@@ -11,6 +11,7 @@ const appearanceScript = `try{let t=localStorage.getItem('chardesk-docs-theme');
 export function Layout({ children }: { children: ReactNode }) {
   return <html lang="en" suppressHydrationWarning><head>
     <meta charSet="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <style dangerouslySetInnerHTML={{ __html: manualBootStyles }} />
     <script dangerouslySetInnerHTML={{ __html: appearanceScript }} />
     <script dangerouslySetInnerHTML={{ __html: manualBootScript }} />
