@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { GitHub, Manifest } from "release-please";
 import { ManifestPlugin } from "release-please/build/src/plugin.js";
-import { repositoryApi } from "../../../scripts/release/automation.mjs";
+import { releaseNotesChanged, repositoryApi } from "../../../scripts/release/automation.mjs";
 import { prepareWorkspaceUpdates } from "../../../scripts/release/prepare-workspace.mjs";
 
 const repository = process.env.GITHUB_REPOSITORY;
@@ -24,8 +24,15 @@ if (await currentHead() !== expectedSha) {
     async run(candidates) {
       if (candidates.length > 1 || candidates.some(candidate => candidate.path !== "."))
         throw new Error("Workspace release preparation requires the single root release");
-      for (const candidate of candidates)
+      for (const candidate of candidates) {
+        const branch = encodeURIComponent(`${owner}:${candidate.pullRequest.headRefName}`);
+        const [pending] = await api(`/pulls?state=open&base=main&head=${branch}&per_page=1`);
+        if (!releaseNotesChanged(pending?.body, candidate.pullRequest.body.toString())) {
+          console.log("Release notes are unchanged; no release PR update is needed.");
+          return [];
+        }
         candidate.pullRequest.updates = prepareWorkspaceUpdates(candidate.pullRequest, { cwd });
+      }
       if (await currentHead() !== expectedSha) {
         console.log("Main advanced during preparation; no release PR will be written.");
         return [];

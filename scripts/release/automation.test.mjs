@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { selectReleaseWork } from "./automation.mjs";
+import { releaseNotesChanged, selectReleaseWork } from "./automation.mjs";
 
 const sha = "a".repeat(40);
 const verified = { event: "push", head_branch: "main", status: "completed", conclusion: "success", head_sha: sha };
@@ -10,6 +10,16 @@ const mergedRelease = {
   labels: [{ name: "autorelease: pending" }],
 };
 const noApi = () => assert.fail("Unexpected GitHub request");
+
+test("release dates alone do not trigger daily updates, but versions and notes still do", () => {
+  const notes = "Header\n## [0.7.0](https://github.com/example/repo/compare/v0.6.11...v0.7.0) (2026-11-13)\n\n* fix content on 2026-11-13\nFooter";
+  assert.equal(releaseNotesChanged(notes, notes), false);
+  assert.equal(releaseNotesChanged(notes, notes.replace("(2026-11-13)", "(2026-11-14)")), false);
+  assert.equal(releaseNotesChanged(notes, notes.replaceAll("0.7.0", "0.8.0")), true);
+  assert.equal(releaseNotesChanged(notes, notes.replace("fix content", "fix more content")), true);
+  assert.equal(releaseNotesChanged(notes, notes.replace("on 2026-11-13", "on 2026-11-14")), true);
+  assert.equal(releaseNotesChanged(undefined, notes), true);
+});
 
 test("ordinary verified main pushes never prepare or finalize a release", async () => {
   const work = await selectReleaseWork({ eventName: "workflow_run", event: { workflow_run: verified }, api: async endpoint => {

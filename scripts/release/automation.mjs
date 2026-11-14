@@ -2,6 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Release Please regenerates this heading date even when release notes are unchanged.
+export function releaseNotesChanged(previous, next) {
+  const withoutReleaseDate = body => body.replace(/^(## \[\d+\.\d+\.\d+\]\([^\n)]+\)) \(\d{4}-\d{2}-\d{2}\)$/gm, "$1");
+  return previous == null || withoutReleaseDate(previous) !== withoutReleaseDate(next);
+}
+
 export function isVerifiedMainRun(run) {
   return run?.event === "push" && run.head_branch === "main" && run.status === "completed" && run.conclusion === "success";
 }

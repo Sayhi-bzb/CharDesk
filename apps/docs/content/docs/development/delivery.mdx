@@ -49,7 +49,8 @@ Preparation requires a successful Verify of the latest main commit. The
 [preparation action](https://github.com/Sayhi-bzb/CharDesk/tree/main/.github/actions/prepare-release)
 uses a Release Please plugin to apply `release:sync` and `release:verify` before
 writing the PR, including dependency ranges and registry output in the same commit.
-Ordinary main pushes do not update the release branch.
+Ordinary main pushes do not update the release branch. Preparation skips unchanged
+release notes, including changes to the generated release date alone.
 
 Merging a release PR still creates its tag and GitHub release only after Verify
 passes. Manual dispatch with an existing `tag` on the matching tag ref retries
