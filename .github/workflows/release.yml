@@ -1,6 +1,8 @@
 name: Release packages
 
 on:
+  schedule:
+    - cron: "23 8 * * *"
   workflow_run:
     workflows:
       - Verify
@@ -9,9 +11,10 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to retry, such as v0.3.7
-        required: true
+        description: Leave empty to prepare a release PR; use an existing tag on its tag ref to retry publication
+        required: false
         type: string
+        default: ""
 
 permissions:
   contents: read
@@ -21,100 +24,91 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release_please:
+  select:
     if: >-
-      github.event_name == 'workflow_run' &&
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.tag == '') ||
+      (github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
-    runs-on: ubuntu-latest
+      github.event.workflow_run.head_branch == 'main')
+    runs-on: &release-runner ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      mode: ${{ steps.work.outputs.mode }}
+      sha: ${{ steps.work.outputs.sha }}
+    steps:
+      - name: Check out release policy
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Select verified release work
+        id: work
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release/automation.mjs
+
+  prepare:
+    needs: select
+    if: needs.select.outputs.mode == 'prepare'
+    runs-on: *release-runner
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out verified main
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.select.outputs.sha }}
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - name: Install workspace dependencies
+        run: npm ci
+      - name: Prepare complete release PR
+        uses: ./.github/actions/prepare-release
+        with:
+          token: ${{ github.token }}
+          sha: ${{ needs.select.outputs.sha }}
+
+  finalize:
+    needs: select
+    if: needs.select.outputs.mode == 'finalize'
+    runs-on: *release-runner
     permissions:
       actions: write
       contents: write
       pull-requests: write
     steps:
-      - name: Prepare release pull request or release
+      - name: Create release from verified release PR merge
         id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-
-      - name: Find pending release pull request
-        id: pending_release
-        if: steps.release.outputs.release_created != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_PR: ${{ steps.release.outputs.pr }}
-        run: |
-          # Use the action result before querying lists that may not index a new PR yet.
-          release_pr=$(printf '%s' "$RELEASE_PR" | jq -r '.number // empty')
-          if [ -n "$release_pr" ]; then
-            release_branch=$(gh pr view "$release_pr" \
-              --repo "$GITHUB_REPOSITORY" --json headRefName --jq '.headRefName')
-          else
-            release_branch=$(gh api --paginate \
-              "repos/$GITHUB_REPOSITORY/pulls?state=open&base=main&per_page=100" \
-              --jq '.[] | select(any(.labels[]; .name == "autorelease: pending")) | .head.ref' \
-              | head -n 1)
-          fi
-          echo "head_ref=$release_branch" >> "$GITHUB_OUTPUT"
-          if [ -n "$release_branch" ]; then
-            echo "Pending release pull request found on $release_branch."
-          else
-            echo "No pending release pull request found."
-          fi
-
-      - name: Check out verified release tooling
-        if: steps.pending_release.outputs.head_ref != ''
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Set up Node.js for release synchronization
-        if: steps.pending_release.outputs.head_ref != ''
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          package-manager-cache: false
-
-      - name: Set up Bun for release synchronization
-        if: steps.pending_release.outputs.head_ref != ''
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: .bun-version
-
-      - name: Install dependencies for release synchronization
-        if: steps.pending_release.outputs.head_ref != ''
-        run: npm ci
-
-      - name: Sync workspace dependency ranges
-        if: steps.pending_release.outputs.head_ref != ''
-        env:
-          RELEASE_BRANCH: ${{ steps.pending_release.outputs.head_ref }}
-        run: |
-          # Install from verified main before switching to an unsynchronized release manifest.
-          git fetch origin "$RELEASE_BRANCH"
-          git checkout -B "$RELEASE_BRANCH" "origin/$RELEASE_BRANCH"
-          npm run release:sync
-          npm run release:verify
-          if git diff --quiet; then
-            echo "Release workspace dependency ranges are already synchronized."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages package-lock.json registry.json
-          git commit -m "chore: sync release workspace dependency ranges"
-          git push origin "HEAD:$RELEASE_BRANCH"
-
+          skip-github-pull-request: true
       - name: Dispatch publish on the release tag
         if: steps.release.outputs.release_created == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
-        # release_please has no checkout, so gh cannot infer the repository from cwd.
         run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$RELEASE_TAG" -f tag="$RELEASE_TAG"
 
   publish:
@@ -122,7 +116,7 @@ jobs:
       github.event_name == 'workflow_dispatch' &&
       startsWith(github.ref, 'refs/tags/v') &&
       inputs.tag == github.ref_name
-    runs-on: ubuntu-latest
+    runs-on: *release-runner
     environment: npm-production
     permissions:
       contents: write

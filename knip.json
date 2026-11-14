@@ -1,6 +1,10 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "workspaces": {
+    ".github/actions/prepare-release": {
+      "entry": ["index.mjs"],
+      "project": ["*.mjs"]
+    },
     ".": {
       "entry": [
         "scripts/**/*.{mjs,ts}",

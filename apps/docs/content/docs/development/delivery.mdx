@@ -41,6 +41,22 @@ the whole documentation set was last reviewed.
 A clean review may advance `head` without a prose change. Never record dirty or
 worktree state, and never advance the baseline automatically during a build.
 
+## Package releases
+
+The [release workflow](https://github.com/Sayhi-bzb/CharDesk/blob/main/.github/workflows/release.yml)
+prepares one release PR update daily, or manually on `main` with an empty `tag`.
+Preparation requires a successful Verify of the latest main commit. The
+[preparation action](https://github.com/Sayhi-bzb/CharDesk/tree/main/.github/actions/prepare-release)
+uses a Release Please plugin to apply `release:sync` and `release:verify` before
+writing the PR, including dependency ranges and registry output in the same commit.
+Ordinary main pushes do not update the release branch.
+
+Merging a release PR still creates its tag and GitHub release only after Verify
+passes. Manual dispatch with an existing `tag` on the matching tag ref retries
+publication. [Release policy tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/release/automation.test.mjs)
+cover preparation and publication gates; [workspace tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/scripts/release/prepare-workspace.test.mjs)
+cover the combined update.
+
 A release tag is stable SemVer shared by both package manifests and their lockfile
 entries. Packed tarballs must pass installation, public export and font asset smoke
 checks before publication. Reruns skip each package version already on npm and

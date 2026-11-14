@@ -1,0 +1,9 @@
+{
+  "name": "chardesk-release-preparation",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "release-please": "17.6.0"
+  }
+}

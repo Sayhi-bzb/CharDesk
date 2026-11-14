@@ -1,0 +1,21 @@
+name: Prepare a complete release PR
+description: Synchronize workspace metadata before Release Please writes its PR commit.
+inputs:
+  token:
+    description: GitHub token with release PR write permissions
+    required: true
+  sha:
+    description: Verified main commit checked out by the caller
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install pinned release tooling
+      shell: bash
+      run: npm ci --prefix "$GITHUB_ACTION_PATH" --workspaces=false --ignore-scripts --no-audit --no-fund
+    - name: Prepare release PR
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        RELEASE_SHA: ${{ inputs.sha }}
+      run: node "$GITHUB_ACTION_PATH/index.mjs"
