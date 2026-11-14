@@ -1,6 +1,6 @@
 {
   "name": "@chardesk/fonts",
-  "version": "0.6.11",
+  "version": "0.7.0",
   "description": "Core CharDesk symbol, Nerd Font, emoji fallbacks, and font profile factory",
   "type": "module",
   "license": "MIT",
@@ -46,7 +46,7 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@chardesk/protocol": "^0.6.0"
+    "@chardesk/protocol": "^0.7.0"
   },
   "publishConfig": {
     "access": "public",

@@ -1,5 +1,51 @@
 # Changelog
 
+## [0.7.0](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.11...v0.7.0) (2026-11-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove the retired ||| layout grammar, parser exports, layout options, and CLI block reading projection. Auto ANSI input preserves Markdown markers; explicit Markdown retains ANSI composition.
+
+### Features
+
+* add keyboard shortcut guide ([4cc9b79](https://github.com/Sayhi-bzb/CharDesk/commit/4cc9b792800fd2f951c423586781a84ec2850b3a))
+* add local session catalog with managed canvases ([d123811](https://github.com/Sayhi-bzb/CharDesk/commit/d123811e8cbe92fac0a2ebf28b4dad3a06b0344e))
+* add procedural Cell art workflow ([e95c80f](https://github.com/Sayhi-bzb/CharDesk/commit/e95c80f2447326f358ead83bfd2168900b77720a))
+* add shared product manual and harden terminal input ([05ffd53](https://github.com/Sayhi-bzb/CharDesk/commit/05ffd530a44484de52722338034a41e9ce427d7b))
+* add terminal performance and serialization benchmarks ([1abbda5](https://github.com/Sayhi-bzb/CharDesk/commit/1abbda5d7fbd7763bd1c7b4a84088a75fda460cc))
+* complete terminal parity for selection, export and clipboard ([7a1cad1](https://github.com/Sayhi-bzb/CharDesk/commit/7a1cad1033151b08dcf842b74354e4fe3ca41aca))
+* enforce documentation reading budget ([aee2cec](https://github.com/Sayhi-bzb/CharDesk/commit/aee2cec2b0a038b7699a6a0ac6ddcc6cecfcf920))
+* merge terminal canvas and shared local runtime ([703629a](https://github.com/Sayhi-bzb/CharDesk/commit/703629ab1708cf5f08ce627ad2dec84f3bd3135b))
+* recover terminal canvas and unified local runtime ([2bdb037](https://github.com/Sayhi-bzb/CharDesk/commit/2bdb037df1191a66ae4a97f03efd9bde2b405672))
+* share Welcome appearance across hosts ([2484af9](https://github.com/Sayhi-bzb/CharDesk/commit/2484af9a7127cb95cb640cf3ea702a2312c7acc8))
+* streamline Agent documentation routing and reading budget ([00605e3](https://github.com/Sayhi-bzb/CharDesk/commit/00605e3423c0b520a3dce133f50ecc637d025b61))
+* **terminal-canvas:** derive appearance from terminal palette ([b07036c](https://github.com/Sayhi-bzb/CharDesk/commit/b07036cb578367d41f532ef2e4f885dfbb2e9393))
+* unify canvas image reads across web and local hosts ([90d19b2](https://github.com/Sayhi-bzb/CharDesk/commit/90d19b25ba3be88ced86002be9248fb96dabc79b))
+* unify text rendering and retire block layout ([f1dced7](https://github.com/Sayhi-bzb/CharDesk/commit/f1dced77c20ced45a1de83280b431b3bded348ab))
+
+
+### Bug Fixes
+
+* add product manual favicon ([3b18e17](https://github.com/Sayhi-bzb/CharDesk/commit/3b18e178644f5ec481475b1bb3ca1431a4593179))
+* apply Markdown formatting to unfenced diagrams ([0a4d640](https://github.com/Sayhi-bzb/CharDesk/commit/0a4d6405e7f69fd86b7afbe40d345588efe84935))
+* fill terminal search panels and prioritize native find shortcuts ([d516f54](https://github.com/Sayhi-bzb/CharDesk/commit/d516f542c368df8ce4625f119e2f4548ffb3cb19))
+* include terminal workspaces in CI and release verification ([43d451f](https://github.com/Sayhi-bzb/CharDesk/commit/43d451fefb5b52e8925424cb17f412e6d6e45d49))
+* make terminal quit available across modal surfaces ([c65723e](https://github.com/Sayhi-bzb/CharDesk/commit/c65723eb92a6411ccfee6e33beab928386c68c98))
+* match footer action colors to shortcut guidance ([8c623c3](https://github.com/Sayhi-bzb/CharDesk/commit/8c623c3052e548d58e99a154fb0c915660e75a5d))
+* move session creation and opening to footer actions ([8d55636](https://github.com/Sayhi-bzb/CharDesk/commit/8d5563638f2c6e382eb865dea228d9af93201c5f))
+* preserve half-block colors in canvas minimaps ([32343b8](https://github.com/Sayhi-bzb/CharDesk/commit/32343b8a3feeaa8b57969b784875957fa802a8d4))
+* preserve rich-text semantics and reconcile agent updates ([52d7996](https://github.com/Sayhi-bzb/CharDesk/commit/52d7996abaf5c3aa2d8ef7442dd16beaa47d8f87))
+* preserve semantic formatting in external clipboard pastes ([c2c3a88](https://github.com/Sayhi-bzb/CharDesk/commit/c2c3a8808dc7faee8d303e2c2f7d8e4cef823cf9))
+* prevent manual HTML flash during page refresh ([978548c](https://github.com/Sayhi-bzb/CharDesk/commit/978548cf8b2ace942ee06a6e11b07c2106b01926))
+* recover vanished canvas sources into managed sessions ([df77dba](https://github.com/Sayhi-bzb/CharDesk/commit/df77dba2f7b88c142147f26879ed7429ecc0b44b))
+* render styled native canvas files through cli ([005b08a](https://github.com/Sayhi-bzb/CharDesk/commit/005b08ae51d06bc0e46b0b8c8668a364b9b49596))
+* report committed canvas mutations and undo receipts ([b2e5d06](https://github.com/Sayhi-bzb/CharDesk/commit/b2e5d066cdda03aeddeb39a27b7c4494c69b537e))
+* simplify terminal dialog and footer guidance ([a0b4348](https://github.com/Sayhi-bzb/CharDesk/commit/a0b4348f5673e3ee62fbfe18d1657c424b9e4d0a))
+* unify terminal footer feedback ([a574b44](https://github.com/Sayhi-bzb/CharDesk/commit/a574b44de4a3c23fb5e760d649e71b3167ced2b6))
+* use the shared terminal dialog for Find ([6cf51e1](https://github.com/Sayhi-bzb/CharDesk/commit/6cf51e1fb615656e1e5a8c4ea61ac1abb58332da))
+* validate styled CLI exports by decoded semantics ([f9cd7a2](https://github.com/Sayhi-bzb/CharDesk/commit/f9cd7a2f09d1154686b3701e5d943343ab85bed7))
+
 ## [0.6.11](https://github.com/Sayhi-bzb/CharDesk/compare/v0.6.10...v0.6.11) (2026-10-21)
 
 
