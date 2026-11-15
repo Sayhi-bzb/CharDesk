@@ -6,6 +6,11 @@ Chinese search aliases remain available. Page titles, sections, search,
 HTML, Cell view, and text exports derive from that same source. Cell UI consumption
 belongs to `ui.chardesk.com`.
 
+The manual starts with product entry points (Canvas, Agents, and command line),
+then links to shared task guides and help. Each entry owns its first-use workflow;
+package READMEs retain complete command/API references. Existing manual slugs stay
+stable when navigation groups or page titles change.
+
 The workspace has two build targets:
 
 | Target | Source | Artifact | Publication |

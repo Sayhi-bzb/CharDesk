@@ -8,6 +8,10 @@ import { attachControls } from './controller.ts';
 import { TerminalCanvas } from './model.ts';
 import { CANVAS_TOP, CanvasSurface } from './surface.ts';
 
+const lastContentCounter = (source: string): number =>
+  source.trim().split('\n').map((line) => JSON.parse(line))
+    .findLast((event) => event.kind === 'state')!.state.contentVersion;
+
 test('real input tracing preserves dispatch, records modifiers and excludes document/paste text', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'chardesk-input-test-'));
   const path = join(directory, 'trace.jsonl');
@@ -88,6 +92,15 @@ test('real input tracing preserves dispatch, records modifiers and excludes docu
     expect(trace).not.toContain('PRIVATE_DOCUMENT');
     expect(trace).not.toContain('PRIVATE_TYPED_TEXT');
     expect(trace).not.toContain('PRIVATE_PASTED_TEXT');
+    const beforeUnrecorded = lastContentCounter(withAssociatedText);
+    const historyVersion = model.historyPositionAt();
+    model.documents.applyCellPlanePatch({
+      rows: [{ y: 2, erase: [], spans: [{ x: 30, text: 'PRIVATE_UNRECORDED', color: '#000000' }] }],
+    }, 'none');
+    expect(model.historyPositionAt()).toBe(historyVersion);
+    const afterUnrecorded = await readFile(path, 'utf8');
+    expect(lastContentCounter(afterUnrecorded)).toBe(beforeUnrecorded + 1);
+    expect(afterUnrecorded).not.toContain('PRIVATE_UNRECORDED');
     detachTrace();
     detachTrace = () => {};
     const closedTrace = await readFile(path, 'utf8');

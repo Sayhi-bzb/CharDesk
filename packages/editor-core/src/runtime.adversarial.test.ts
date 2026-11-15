@@ -256,7 +256,7 @@ test.each(Array.from({ length: 12 }, (_, i) => i + 1))(
         if (random(2)) session.commands.navigate(random(4) + 1, random(3) - 1, true);
         const before = session.plane.materialize();
         session.markSaved();
-        const version = session.version;
+        const version = session.historyPositionAt();
         const operation = random(4);
         if (operation === 0) session.commands.insert(['X', '界', '👩🏽‍💻'][random(3)]!);
         else if (operation === 1) session.commands.erase();
@@ -264,7 +264,7 @@ test.each(Array.from({ length: 12 }, (_, i) => i + 1))(
         else session.commands.pasteProvided('é\n界');
         occupiedCells(session);
         const after = session.plane.materialize();
-        if (session.version !== version) {
+        if (session.historyPositionAt() !== version) {
           session.commands.undo();
           expect(session.plane.materialize(), `seed ${seed}, step ${step}, undo`).toEqual(before);
           expect(session.dirty).toBe(false);

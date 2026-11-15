@@ -22,8 +22,16 @@ describe('verification task graph', () => {
       const options = parseArguments(['--mode', mode, '--phase', 'workspace-tests', '--workspace-group', 'products'])
       const plan = createVerificationPlan(options, { base: 'test', files: [file] }, projects)
       expect(plan.tasks.some(task => task.label === 'test @chardesk/terminal-canvas-demo')).toBe(true)
+      expect(plan.tasks.some(task => task.label === 'test:pty @chardesk/terminal-canvas-demo')).toBe(true)
       expect(plan.tasks.some(task => task.label === 'test @chardesk/cli')).toBe(true)
     }
+  })
+
+  it('keeps the built PTY gate explicit in quick mode', () => {
+    const plan = createVerificationPlan(parseArguments(['--mode', 'quick', '--phase', 'workspace-tests']),
+      { base: 'test', files: ['packages/terminal/src/surface.ts'] }, projects)
+    expect(plan.tasks.some(task => task.label === 'test @chardesk/terminal-canvas-demo')).toBe(true)
+    expect(plan.tasks.some(task => task.label === 'test:pty @chardesk/terminal-canvas-demo')).toBe(false)
   })
 
   it.each(['pr', 'full'])('runs local runtime tests in the products lane for %s changes', mode => {

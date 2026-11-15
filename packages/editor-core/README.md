@@ -12,6 +12,8 @@ owns dependency direction; this page routes the shared APIs and their verificati
 | Selection endpoints, focus, fill, deletion and input sessions             | [`selection/`](src/selection/commands.ts)                             | [Cross-host sequences](../../apps/canvas/src/domains/canvas/state/sharedEditorCore.test.ts)               |
 | Copy/Cut/Paste orchestration and plain/rich payloads                      | [`clipboard/`](src/clipboard/commands.ts)                             | [Clipboard failure/lifecycle tests](src/clipboard/commands.test.ts)                                       |
 | Addressed Yjs documents, pages, anchors and semantic undo history         | [`CanvasDocumentRegistry`](src/CanvasDocumentRegistry.ts)             | [Web document tests](../../apps/canvas/src/domains/canvas/state/canvasDocument-collaboration.dom.test.ts) |
+| Document content generations, change notifications and detached snapshots | [`contentVersion`](src/contentVersion.ts), Registry `captureContentAt` | [Content generation and snapshot tests](src/contentVersion.test.ts) |
+| Content/history identity and file-agnostic saved-state projection | [`persistenceState`](src/persistenceState.ts), Session `bindPersistenceAt` | [Persistence contracts](src/persistenceState.test.ts) |
 | Final-state publication around synchronous commands                       | [`CanvasStateCommitCoordinator`](src/CanvasStateCommitCoordinator.ts) | [Web publication tests](../../apps/canvas/src/domains/canvas/state/CanvasStateCommitCoordinator.test.ts)  |
 
 [`selection/style`](src/selection/style.ts) owns selection attribute/color patches
@@ -44,6 +46,16 @@ verify their contracts.
 
 `SynchronousCommitBoundary` coalesces nested command publication and rejects
 async mutation transactions in both Host compositions.
+
+Session `version`/`versionAt` expose `ContentVersion`; `historyPositionAt` exposes
+`HistoryPosition`. Undo positions are not concurrency tokens. `SemanticContentId`
+covers ordered pages, descriptors, anchors and sparse styled/linked cells, excluding
+document identity, catalog title and active-page focus. Saved-state hints require
+the same document incarnation, unrecorded-mutation lineage and retained history.
+Unknown equivalence stays dirty while a coalesced semantic comparison runs.
+The [local file binding](../local-runtime/src/document.ts) supplies this persistence
+port; file-free Sessions use an in-memory adapter. Web retains its own persistence
+facade and consumes shared editing/Registry contracts.
 
 [`editor-input`](../editor-input/src/index.ts) connects the binding catalog to
 `@opentui/keymap`; matching, precedence and sequences run outside this core.

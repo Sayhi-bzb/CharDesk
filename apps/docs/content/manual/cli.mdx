@@ -1,0 +1,66 @@
+---
+title: CLI
+description: Create, inspect, change, and export local canvases from commands or scripts.
+---
+
+## Install the command
+
+With Bun 1.3.14 or later installed, install CharDesk:
+
+```sh
+bun add -g @chardesk/cli
+chardesk --version
+```
+
+Use the CLI for local files, scripts, or Agent access to terminal sessions. Run
+`chardesk` without a subcommand to open the interactive [Terminal canvas](/terminal/).
+For an Agent editing a browser canvas, choose [Local MCP](/agents/connect/) or
+[WebMCP](/agents/webmcp/).
+
+## Create a file
+
+Create a new native file:
+
+```sh
+chardesk init diagram.chardesk --title "Diagram"
+```
+
+The file starts empty; add content before inspecting or rendering it.
+`init` refuses an existing path. To edit the file by hand, run
+`chardesk tui diagram.chardesk`. To see a read-only browser preview, run
+`chardesk open diagram.chardesk`; that preview cannot save browser edits back to
+the file.
+
+## Read and write canvas content
+
+Pass a file with `--file` or a local session ID with `--session`. Canvas operations
+take JSON from standard input and return JSON with `--json`:
+
+```sh
+echo '{"viewport":[0,0,40,8]}' | chardesk canvas read --file diagram.chardesk --json
+echo '{"at":[0,0],"content":"Hello, Canvas"}' | chardesk canvas write --file diagram.chardesk --json
+echo '{"viewport":[0,0,40,8]}' | chardesk canvas read --file diagram.chardesk --json
+```
+
+The final read should include `Hello, Canvas`. A running TUI that owns the target
+handles the operation in its existing workspace. Otherwise, the CLI opens a
+temporary local runtime. These commands do not address browser sessions.
+
+For scripts that edit content they just read, send the read's `version` back as
+`baseVersion`. Add a stable `requestId` when retrying the same mutation. After a
+conflict, read again before changing the content. For a failed or uncertain save,
+check the returned persistence or recovery result before retrying.
+
+## Inspect and export
+
+```sh
+chardesk inspect diagram.chardesk
+chardesk render diagram.chardesk -o diagram.png
+```
+
+Use PNG for viewing or sharing, `.chardesk` for continued editing, and ANSI or
+plain text for text-based output. [Import and export](/files/import-export/)
+explains the format choices.
+
+The [CLI reference](https://github.com/Sayhi-bzb/CharDesk/tree/main/packages/cli#readme)
+owns the complete command options and advanced workflows.

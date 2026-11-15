@@ -102,7 +102,7 @@ test('restart restores multiple documents, view, typing context, anchors and dir
     const workspace = (await reopened.restore({}))!;
     try {
       expect(workspace.files).toHaveLength(2);
-      expect(workspace.active.title).toBe('two');
+      expect(workspace.requireActive().title).toBe('two');
       expect(workspace.model.getSnapshot().interaction).toEqual(secondState);
       expect(workspace.dirty).toBe(true);
       workspace.switchTo(0);
@@ -137,14 +137,14 @@ test('external edits fork a recovery copy and are never overwritten by auto save
     try {
       expect(restored.files).toHaveLength(2);
       expect(reopened.conflicts).toHaveLength(1);
-      expect(restored.active.path).not.toBe(
+      expect(restored.requireActive().path).not.toBe(
         await import('./document.ts').then((m) => m.resolveCanvasFilePath(f.path))
       );
       expect(restored.model.plane.get({ x: 0, y: 0 })?.char).toBe('m');
       reopened.start(restored, { autosaveMs: 5, checkpointMs: 2 });
       await until(() => !restored.dirty);
       expect(await readFile(f.path, 'utf8')).toBe(external);
-      expect(await readFile(restored.active.path, 'utf8')).toContain('mine');
+      expect(await readFile(restored.requireActive().path, 'utf8')).toContain('mine');
     } finally {
       await reopened.close();
       restored.dispose();
@@ -340,7 +340,7 @@ test('SIGKILL leaves a durable checkpoint that is recovered after verifying the 
   const checkpoint = join(root, 'workspace.json'),
     path = join(root, 'canvas.chardesk'),
     ready = join(root, 'ready');
-  const probe = new URL('../src/fixtures/crash.ts', import.meta.url).pathname;
+  const probe = new URL('./crash.js', import.meta.url).pathname;
   const child = Bun.spawn([process.execPath, probe, checkpoint, path, ready], {
     stdout: 'ignore',
     stderr: 'pipe',
@@ -355,6 +355,7 @@ test('SIGKILL leaves a durable checkpoint that is recovered after verifying the 
     try {
       expect(workspace.model.plane.get({ x: -7, y: -8 })?.char).toBe('C');
       expect(workspace.dirty).toBe(true);
+      expect<string>(workspace.model.documents.getContentVersion()).toBe((await readOptional(ready))!);
     } finally {
       await persistence.close();
       workspace.dispose();
@@ -424,7 +425,7 @@ test('exit waits for an in-flight write and then saves edits made after that wri
   const f = await fixture();
   const entered = Promise.withResolvers<void>(),
     release = Promise.withResolvers<void>();
-  const file = f.workspace.active,
+  const file = f.workspace.requireActive(),
     save = file.save.bind(file);
   let writes = 0;
   file.save = async (model) => {

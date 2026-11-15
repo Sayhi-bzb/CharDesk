@@ -32,6 +32,7 @@ export const terminalActionLabels: Readonly<Record<string, string>> = {
   open: 'Open document',
   new: 'New canvas',
   documents: 'Sessions',
+  agents: 'Agents',
   'next-document': 'Next canvas',
   'previous-document': 'Previous canvas',
   search: 'Find',

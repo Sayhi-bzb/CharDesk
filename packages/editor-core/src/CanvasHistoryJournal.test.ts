@@ -9,8 +9,10 @@ it("tracks actual captured mutations even when undo storage cannot retain the ac
   const journal = new CanvasHistoryJournal({ maxBytes: 1, apply: () => {} });
   journal.beginCapture("d", "op-too-large");
   const before = journal.getMutationVersion("d");
+  const generation = journal.getGeneration("d");
   journal.capture("d", action, "save");
   expect(journal.getMutationVersion("d")).toBeGreaterThan(before);
+  expect(journal.getGeneration("d")).toBeGreaterThan(generation);
   expect(journal.getLatestOperationId("d")).toBeUndefined();
   expect(journal.undoOperation("op-too-large", "d")).toBe(false);
 });

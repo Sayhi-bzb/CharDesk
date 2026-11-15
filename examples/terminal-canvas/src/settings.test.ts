@@ -19,6 +19,8 @@ test('settings persist the latest values atomically and preserve future fields',
     const store = await TerminalSettingsStore.load(path);
     expect(store.values.panStep).toBe(20);
     expect(store.values.selectionColor).toBe(8);
+    expect(store.values.autoCheckUpdates).toBe(true);
+    store.set('autoCheckUpdates', false);
     store.set('panStep', 50);
     store.set('cursorStyle', 'line');
     store.set('panStep', 10);
@@ -28,6 +30,7 @@ test('settings persist the latest values atomically and preserve future fields',
       panStep: 10,
       cursorStyle: 'line',
       future: 'keep',
+      autoCheckUpdates: false,
     });
     const reopened = await TerminalSettingsStore.load(path);
     expect(reopened.values).toEqual(store.values);

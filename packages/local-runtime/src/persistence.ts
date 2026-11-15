@@ -10,6 +10,7 @@ import { atomicWrite, sourceDigest } from './storage.ts';
 
 type SavedView = { pageId: string; state: EditorView };
 type SavedFile = {
+  contentVersion?: string;
   sessionId?: string;
   path: string;
   title: string;
@@ -60,6 +61,10 @@ function decode(source: string): Checkpoint {
       typeof file.title !== 'string' ||
       typeof file.source !== 'string' ||
       typeof file.dirty !== 'boolean' ||
+      (file.contentVersion !== undefined &&
+        (typeof file.contentVersion !== 'string' ||
+          !file.contentVersion ||
+          file.contentVersion.length > 256)) ||
       (file.sessionId !== undefined && (typeof file.sessionId !== 'string' || !file.sessionId)) ||
       !(
         file.baselineDigest === null ||
@@ -84,6 +89,7 @@ function decode(source: string): Checkpoint {
       return { pageId: view.pageId, state: readEditorView(view.state) };
     });
     return {
+      ...(file.contentVersion ? { contentVersion: file.contentVersion as string } : {}),
       ...(file.sessionId ? { sessionId: file.sessionId as string } : {}),
       path: file.path,
       title: file.title,
@@ -203,11 +209,19 @@ export class WorkspacePersistence {
   async restore(options: FreeformEditorSessionOptions): Promise<TerminalWorkspace | null> {
     let workspace: TerminalWorkspace | null = this.#workspace;
     const restored = new Map<string, CanvasFile>();
-    const install = (file: CanvasFile, source: string, views: SavedView[], dirty: boolean) => {
+    const install = (
+      file: CanvasFile,
+      source: string,
+      views: SavedView[],
+      dirty: boolean,
+      contentVersion?: string
+    ) => {
       const pages = new Set(parseCanvasDocument(source).document.pages.map((page) => page.id));
       const availableViews = views.filter((view) => pages.has(view.pageId));
       if (workspace) workspace.addRecovered(file, source, availableViews, dirty);
       else workspace = TerminalWorkspace.fromRecovery(file, source, availableViews, dirty, options);
+      if (contentVersion)
+        workspace.model.documents.restoreContentVersion(file.address!.documentId, contentVersion);
     };
     try {
       for (const saved of this.#checkpoint?.files ?? []) {
@@ -220,7 +234,7 @@ export class WorkspacePersistence {
         ) {
           const file = new CanvasFile(saved.path, saved.title, current);
           const dirty = saved.dirty && digest !== sourceDigest(saved.source);
-          install(file, saved.source, saved.views, dirty);
+          install(file, saved.source, saved.views, dirty, saved.contentVersion);
           restored.set(saved.path, file);
           if (dirty) this.recovered++;
           continue;
@@ -361,7 +375,7 @@ export class WorkspacePersistence {
           state: workspace.model.viewAt({ documentId: file.address!.documentId, pageId: page.id }),
         })),
       };
-      return capture.then(({ source }) => ({ ...saved, source }));
+      return capture.then(({ source, contentVersion }) => ({ ...saved, source, contentVersion }));
     });
     const files = await Promise.all(captures);
     return {

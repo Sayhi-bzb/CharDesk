@@ -18,9 +18,13 @@ await cp(
 );
 await prepareSnapshotFonts(root, resolve(directory, 'dist/snapshot-fonts'));
 const tests = [...new Bun.Glob('src/*.test.ts').scanSync({ cwd: directory })];
+const fixtures = [...new Bun.Glob('src/fixtures/*.ts').scanSync({ cwd: directory })];
+let entrypoints = ['src/main.ts'];
+if (command === 'test') entrypoints = [...tests, ...fixtures];
+else if (command === 'audit') entrypoints = ['src/fixtures/architectureAudit.ts'];
 const result = await Bun.build({
   entrypoints: [
-    ...(command === 'test' ? tests : ['src/main.ts']).map((path) => resolve(directory, path)),
+    ...entrypoints.map((path) => resolve(directory, path)),
     // CharGraph creates this worker relative to the compiled entrypoint.
     resolve(root, 'packages/chargraph/src/layout/elk-worker.ts'),
     resolve(root, 'packages/local-runtime/src/document-worker.ts'),
@@ -62,6 +66,7 @@ const result = await Bun.build({
 });
 if (!result.success) throw new AggregateError(result.logs, 'Demo build failed');
 if (command !== 'build') {
+  const script = command === 'audit' ? 'architectureAudit.js' : 'main.js';
   const executable =
     command === 'test'
       ? [
@@ -69,8 +74,9 @@ if (command !== 'build') {
           ...result.outputs
             .filter((output) => output.path.endsWith('.test.js'))
             .map((output) => output.path),
+          ...process.argv.slice(3),
         ]
-      : [resolve(directory, 'dist/main.js'), ...process.argv.slice(3)];
+      : [resolve(directory, 'dist', script), ...process.argv.slice(3)];
   const child = Bun.spawn([process.execPath, ...executable], {
     cwd: directory,
     stdin: 'inherit',

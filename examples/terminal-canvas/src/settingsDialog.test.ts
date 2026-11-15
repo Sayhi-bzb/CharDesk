@@ -167,14 +167,14 @@ test('the shared status bar follows focused panels, menus, help and canvas witho
   const f = await fixture();
   try {
     const { surface, setup } = f;
-    surface.panel = {
+    surface.input.openPanel({
       title: 'Open file',
       hint: 'Enter confirm · Esc cancel',
       input: 'example.chardesk',
       items: [],
       selected: 0,
       error: 'File unavailable',
-    };
+    }, f);
     await setup.renderOnce();
     let lines = setup.captureCharFrame().split('\n');
     const body = lines.slice(CANVAS_TOP, surface.footerBounds.y).join('\n');
@@ -182,7 +182,7 @@ test('the shared status bar follows focused panels, menus, help and canvas witho
     expect(body).not.toContain('Enter confirm');
     expect(body).toContain('File unavailable');
     expect(lines[surface.footerBounds.y]?.trim()).toBe('Open file · Enter confirm · Esc cancel');
-    surface.panel = null;
+    surface.input.closePanel(f);
     surface.contextMenu!.open();
     await setup.renderOnce();
     expect(surface.statusBar).toMatchObject({ context: 'Context menu' });

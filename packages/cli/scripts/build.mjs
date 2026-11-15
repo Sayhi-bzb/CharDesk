@@ -29,6 +29,7 @@ await copyFile(
 
 execFileSync(process.execPath, [new URL('./build-local.ts', import.meta.url).pathname], {
   stdio: 'inherit',
+  env: { ...process.env, CHARDESK_RELEASE_BUILD: '1' },
 });
 await chmod(new URL('../dist/cli.js', import.meta.url), 0o755);
 await Promise.all(

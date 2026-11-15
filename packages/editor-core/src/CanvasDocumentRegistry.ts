@@ -1,4 +1,10 @@
 import * as Y from 'yjs';
+import { SynchronousCommitBoundary } from './commitBoundary.js';
+import {
+  CanvasContentVersions,
+  CanvasVersionConflict,
+  type CanvasContentChange,
+} from './contentVersion.js';
 import type { CollaborationIntegrityIssue } from './contracts.js';
 import type { GridCell } from '@chardesk/cell-plane/types';
 import type { Point } from '@chardesk/cell-plane/types';
@@ -59,7 +65,10 @@ export type CanvasHistoryCheckpoint = {
 
 // The inverse describes the exact effective Cell footprint; null means a no-op
 // patch. Other semantic mutations may omit this detail.
-type CanvasMutationListener = (envelope: CanvasMutationEnvelope, inverse?: CellPlaneOperation | null) => void;
+type CanvasMutationListener = (
+  envelope: CanvasMutationEnvelope,
+  inverse?: CellPlaneOperation | null
+) => void;
 
 const LOCAL_ORIGIN = Symbol('canvas-local-origin');
 const HISTORY_IGNORED_ORIGIN = Symbol('canvas-history-ignored');
@@ -140,6 +149,11 @@ const normalizeHistoryMode = (history: CanvasHistoryMode | boolean = 'save'): Ca
 };
 
 export class CanvasDocumentRegistry {
+  readonly #contentCommits = new SynchronousCommitBoundary();
+  readonly #contentVersions = new CanvasContentVersions(this.#contentCommits.deferUntilCommitted);
+  readonly #pendingMutations: Array<
+    [CanvasMutationEnvelope, CellPlaneOperation | null | undefined]
+  > = [];
   readonly #documents = new Map<string, CanvasYDocument>();
   readonly #derivedSurfaces = new Map<string, CanvasSurfaceReader>();
   readonly #derivedDocuments = new Map<string, CanvasDocumentDraft>();
@@ -151,6 +165,7 @@ export class CanvasDocumentRegistry {
   #active: CanvasYDocument;
   #lifecycle: CanvasDocumentLifecycle | null = null;
   #operationSequence = 0;
+  #historyReplayDepth = 0;
   readonly #historyJournal: CanvasHistoryJournal;
   readonly #recentPageIndexes: Array<{ documentId: string; pageId: string }> = [];
   readonly #projectionCacheBudget = new CanvasProjectionCacheBudget();
@@ -195,6 +210,92 @@ export class CanvasDocumentRegistry {
     return () => this.#mutationListeners.delete(listener);
   };
 
+  getContentVersion = (documentId = this.#active.id) => {
+    const document = this.#documents.get(documentId);
+    if (!document) throw new Error(`Canvas document not found: ${documentId}`);
+    return this.#contentVersions.get(document.doc);
+  };
+
+  getPersistenceLineage = (documentId = this.#active.id) => {
+    const document = this.#documents.get(documentId);
+    if (!document) throw new Error(`Canvas document not found: ${documentId}`);
+    return JSON.stringify([
+      this.#contentVersions.lineage(document.doc),
+      this.getPageDescriptors(documentId).map((page) =>
+        [page.id, this.#historyJournal.getGeneration(this.#historyKey({ documentId, pageId: page.id }))]),
+    ]);
+  };
+
+  subscribeContent = (listener: (change: CanvasContentChange) => void) =>
+    this.#contentVersions.subscribe(listener);
+
+  restoreContentVersion = (documentId: string, version: string) => {
+    const doc = this.getCollaborationDocument(documentId);
+    if (!doc) throw new Error(`Canvas document not found: ${documentId}`);
+    this.#contentVersions.restore(doc, version);
+  };
+
+  assertContentVersion = (documentId: string, baseVersion: string) => {
+    const currentVersion = this.getContentVersion(documentId);
+    if (currentVersion !== baseVersion)
+      throw new CanvasVersionConflict(documentId, baseVersion, currentVersion);
+  };
+
+  /** Synchronous commit uses the same mutation/history port as direct editor commands. */
+  commitContentPatchAt = (
+    address: CanvasDocumentAddress,
+    patch: CellPlanePatch,
+    options: { baseVersion: string; operationId?: string }
+  ) =>
+    this.#contentCommits.run(() => {
+      this.assertContentVersion(address.documentId, options.baseVersion);
+      const checkpoint = this.beginHistoryCheckpoint(
+        options.operationId,
+        address.documentId,
+        address.pageId
+      );
+      try {
+        this.applyCellPlanePatchAt(address, patch);
+        const receipt = checkpoint.commit();
+        return { ...receipt, version: this.getContentVersion(address.documentId) };
+      } catch (error) {
+        checkpoint.cancel();
+        throw error;
+      }
+    });
+
+  /** A detached projection paired with its document-wide content version. */
+  captureContentAt = (address: CanvasDocumentAddress) => {
+    const document = this.#documents.get(address.documentId);
+    const page = document ? readCanvasYPage(document.root, address.pageId) : null;
+    if (!document || !page) throw new Error(`Canvas page not found: ${address.pageId}`);
+    const version = this.getContentVersion(address.documentId);
+    const index = new CellPlaneIndex(structuredClone(page.operations.toArray()));
+    return { version, reader: index as CanvasSurfaceReader, dispose: () => index.dispose() };
+  };
+
+  /** Detached content and history for asynchronous preparation; never publishes to this Registry. */
+  forkContentDocument = (documentId: string) => {
+    const source = this.#documents.get(documentId);
+    if (!source) throw new Error(`Canvas document not found: ${documentId}`);
+    const version = this.getContentVersion(documentId);
+    const documents = new CanvasDocumentRegistry(documentId);
+    const doc = new Y.Doc();
+    try {
+      Y.applyUpdate(doc, Y.encodeStateAsUpdate(source.doc));
+      documents.adoptDocument(documentId, doc);
+      for (const page of this.getPageDescriptors(documentId)) {
+        const key = this.#historyKey({ documentId, pageId: page.id });
+        this.#historyJournal.copyHistoryTo(documents.#historyJournal, key);
+      }
+      return { version, documents };
+    } catch (error) {
+      documents.dispose();
+      doc.destroy();
+      throw error;
+    }
+  };
+
   getActiveDocumentId = () => this.#active.id;
   getActiveAddress = (): CanvasDocumentAddress => ({
     documentId: this.#active.id,
@@ -231,51 +332,54 @@ export class CanvasDocumentRegistry {
     return orderCanvasAnchors(anchors);
   };
 
-  addAnchorAt = (address: CanvasDocumentAddress, point: Point, name?: string) => {
-    const document = this.#documents.get(address.documentId);
-    const page = document?.pages.get(address.pageId);
-    if (!document || !page) return null;
-    const reader = this.#ensurePageIndex(document, page);
-    const label =
-      name === undefined
-        ? readCanvasAnchorLabel({ get: (at) => reader.getCell(at) }, point)
-        : name.trim();
-    if (!label || !reader.getCell(point)?.char.trim()) return null;
-    const anchors = this.getAnchorsAt(address);
-    const existing = anchors.find(
-      (anchor) => !anchor.detached && anchor.point.x === point.x && anchor.point.y === point.y
-    );
-    if (existing) return existing;
-    const anchor: CanvasAnchor = {
-      id: `${document.doc.clientID}:${this.#operationSequence++}`,
-      point: { ...point },
-      label,
-      order: (anchors.at(-1)?.order ?? -1) + 1,
-      parentId: null,
-      detached: false,
-    };
-    this.#commitAnchorChanges(address, [{ id: anchor.id, value: anchor }]);
-    return anchor;
-  };
+  addAnchorAt = (address: CanvasDocumentAddress, point: Point, name?: string) =>
+    this.#contentCommits.run(() => {
+      const document = this.#documents.get(address.documentId);
+      const page = document?.pages.get(address.pageId);
+      if (!document || !page) return null;
+      const reader = this.#ensurePageIndex(document, page);
+      const label =
+        name === undefined
+          ? readCanvasAnchorLabel({ get: (at) => reader.getCell(at) }, point)
+          : name.trim();
+      if (!label || !reader.getCell(point)?.char.trim()) return null;
+      const anchors = this.getAnchorsAt(address);
+      const existing = anchors.find(
+        (anchor) => !anchor.detached && anchor.point.x === point.x && anchor.point.y === point.y
+      );
+      if (existing) return existing;
+      const anchor: CanvasAnchor = {
+        id: `${document.doc.clientID}:${this.#operationSequence++}`,
+        point: { ...point },
+        label,
+        order: (anchors.at(-1)?.order ?? -1) + 1,
+        parentId: null,
+        detached: false,
+      };
+      this.#commitAnchorChanges(address, [{ id: anchor.id, value: anchor }]);
+      return anchor;
+    });
 
-  removeAnchorAt = (address: CanvasDocumentAddress, id: string) => {
-    const ids = getCanvasAnchorBranchIds(this.getAnchorsAt(address), id);
-    if (ids.length === 0) return false;
-    this.#commitAnchorChanges(
-      address,
-      ids.map((anchorId) => ({ id: anchorId, value: null }))
-    );
-    return true;
-  };
+  removeAnchorAt = (address: CanvasDocumentAddress, id: string) =>
+    this.#contentCommits.run(() => {
+      const ids = getCanvasAnchorBranchIds(this.getAnchorsAt(address), id);
+      if (ids.length === 0) return false;
+      this.#commitAnchorChanges(
+        address,
+        ids.map((anchorId) => ({ id: anchorId, value: null }))
+      );
+      return true;
+    });
 
-  renameAnchorAt = (address: CanvasDocumentAddress, id: string, name: string) => {
-    const anchor = this.getAnchorsAt(address).find((item) => item.id === id);
-    const label = name.trim();
-    if (!anchor || !label) return false;
-    if (anchor.label === label) return true;
-    this.#commitAnchorChanges(address, [{ id, value: { ...anchor, label } }]);
-    return true;
-  };
+  renameAnchorAt = (address: CanvasDocumentAddress, id: string, name: string) =>
+    this.#contentCommits.run(() => {
+      const anchor = this.getAnchorsAt(address).find((item) => item.id === id);
+      const label = name.trim();
+      if (!anchor || !label) return false;
+      if (anchor.label === label) return true;
+      this.#commitAnchorChanges(address, [{ id, value: { ...anchor, label } }]);
+      return true;
+    });
 
   reattachAnchorAt = (address: CanvasDocumentAddress, id: string, point: Point) => {
     const anchor = this.getAnchorsAt(address).find((item) => item.id === id);
@@ -298,20 +402,21 @@ export class CanvasDocumentRegistry {
     id: string,
     parentId: string | null,
     siblingIndex: number
-  ) => {
-    const current = this.getAnchorsAt(address);
-    const moved = moveCanvasAnchor(current, id, parentId, siblingIndex);
-    if (!moved) return false;
-    const byId = new Map(current.map((anchor) => [anchor.id, anchor]));
-    const changes = moved.flatMap((anchor) => {
-      const previous = byId.get(anchor.id)!;
-      return previous.order === anchor.order && previous.parentId === anchor.parentId
-        ? []
-        : [{ id: anchor.id, value: anchor }];
+  ) =>
+    this.#contentCommits.run(() => {
+      const current = this.getAnchorsAt(address);
+      const moved = moveCanvasAnchor(current, id, parentId, siblingIndex);
+      if (!moved) return false;
+      const byId = new Map(current.map((anchor) => [anchor.id, anchor]));
+      const changes = moved.flatMap((anchor) => {
+        const previous = byId.get(anchor.id)!;
+        return previous.order === anchor.order && previous.parentId === anchor.parentId
+          ? []
+          : [{ id: anchor.id, value: anchor }];
+      });
+      if (changes.length > 0) this.#commitAnchorChanges(address, changes);
+      return true;
     });
-    if (changes.length > 0) this.#commitAnchorChanges(address, changes);
-    return true;
-  };
   getDocumentAddress = (documentId: string, pageId?: string): CanvasDocumentAddress | null => {
     const document = this.#documents.get(documentId);
     const resolvedPageId = pageId ?? document?.activePageId;
@@ -452,7 +557,11 @@ export class CanvasDocumentRegistry {
     return page ? this.#ensurePageIndex(document, page) : null;
   }
 
-  setDerivedSurface = (id: string, surface: CanvasSurfaceReader, document?: CanvasDocumentDraft) => {
+  setDerivedSurface = (
+    id: string,
+    surface: CanvasSurfaceReader,
+    document?: CanvasDocumentDraft
+  ) => {
     if (!this.#documents.has(id)) {
       throw new Error(`Canvas document not found for derived surface: ${id}`);
     }
@@ -613,69 +722,72 @@ export class CanvasDocumentRegistry {
     return next;
   };
 
-  ensurePage = (documentId: string, draft: CanvasPageDraft, options?: { activate?: boolean }) => {
-    const document = this.#documents.get(documentId);
-    if (!document) return false;
-    if (!document.pages.has(draft.id)) {
+  ensurePage = (documentId: string, draft: CanvasPageDraft, options?: { activate?: boolean }) =>
+    this.#contentCommits.run(() => {
+      const document = this.#documents.get(documentId);
+      if (!document) return false;
+      if (!document.pages.has(draft.id)) {
+        document.doc.transact(() => {
+          createCanvasYPage(
+            document.root,
+            draft,
+            `bootstrap:${documentId}:${draft.id}:${this.#operationSequence++}`
+          );
+        }, HISTORY_IGNORED_ORIGIN);
+        this.#syncDocumentPages(document);
+        this.#emitMutation({ kind: 'page-upsert', documentId, page: draft });
+      }
+      return options?.activate ? this.activatePage(documentId, draft.id) : true;
+    });
+
+  removePage = (documentId: string, pageId: string) =>
+    this.#contentCommits.run(() => {
+      const document = this.#documents.get(documentId);
+      if (!document || document.pages.size <= 1 || !document.pages.has(pageId)) {
+        return false;
+      }
+      const previousOrder = readCanvasPageOrder(document.root);
       document.doc.transact(() => {
-        createCanvasYPage(
-          document.root,
-          draft,
-          `bootstrap:${documentId}:${draft.id}:${this.#operationSequence++}`
-        );
+        readCanvasYPage(document.root, pageId)?.anchors.clear();
+        document.root.pages.delete(pageId);
+        const index = document.root.pageOrder.toArray().indexOf(pageId);
+        if (index >= 0) document.root.pageOrder.delete(index, 1);
       }, HISTORY_IGNORED_ORIGIN);
       this.#syncDocumentPages(document);
-      this.#emitMutation({ kind: 'page-upsert', documentId, page: draft });
-    }
-    return options?.activate ? this.activatePage(documentId, draft.id) : true;
-  };
-
-  removePage = (documentId: string, pageId: string) => {
-    const document = this.#documents.get(documentId);
-    if (!document || document.pages.size <= 1 || !document.pages.has(pageId)) {
-      return false;
-    }
-    const previousOrder = readCanvasPageOrder(document.root);
-    document.doc.transact(() => {
-      readCanvasYPage(document.root, pageId)?.anchors.clear();
-      document.root.pages.delete(pageId);
-      const index = document.root.pageOrder.toArray().indexOf(pageId);
-      if (index >= 0) document.root.pageOrder.delete(index, 1);
-    }, HISTORY_IGNORED_ORIGIN);
-    this.#syncDocumentPages(document);
-    if (document.activePageId === pageId) {
-      const previousIndex = previousOrder.indexOf(pageId);
-      const nextOrder = readCanvasPageOrder(document.root);
-      const nextId = nextOrder[Math.min(previousIndex, nextOrder.length - 1)];
-      if (nextId) this.#setActivePage(document, nextId);
-    }
-    this.#emitMutation({ kind: 'page-delete', documentId, pageId });
-    return true;
-  };
+      if (document.activePageId === pageId) {
+        const previousIndex = previousOrder.indexOf(pageId);
+        const nextOrder = readCanvasPageOrder(document.root);
+        const nextId = nextOrder[Math.min(previousIndex, nextOrder.length - 1)];
+        if (nextId) this.#setActivePage(document, nextId);
+      }
+      this.#emitMutation({ kind: 'page-delete', documentId, pageId });
+      return true;
+    });
 
   updatePage = (
     documentId: string,
     pageId: string,
     patch: Pick<Partial<CanvasPageDescriptor>, 'name' | 'size'>
-  ) => {
-    const document = this.#documents.get(documentId);
-    const page = document?.pages.get(pageId);
-    if (!document || !page) return false;
-    document.doc.transact(() => {
-      document.root.pages.set(pageId, {
-        ...page.descriptor,
-        ...(patch.name !== undefined ? { name: patch.name } : {}),
-        ...(patch.size ? { size: patch.size } : {}),
+  ) =>
+    this.#contentCommits.run(() => {
+      const document = this.#documents.get(documentId);
+      const page = document?.pages.get(pageId);
+      if (!document || !page) return false;
+      document.doc.transact(() => {
+        document.root.pages.set(pageId, {
+          ...page.descriptor,
+          ...(patch.name !== undefined ? { name: patch.name } : {}),
+          ...(patch.size ? { size: patch.size } : {}),
+        });
+      }, HISTORY_IGNORED_ORIGIN);
+      this.#syncDocumentPages(document);
+      this.#emitMutation({
+        kind: 'page-metadata',
+        documentId,
+        page: document.pages.get(pageId)?.descriptor ?? page.descriptor,
       });
-    }, HISTORY_IGNORED_ORIGIN);
-    this.#syncDocumentPages(document);
-    this.#emitMutation({
-      kind: 'page-metadata',
-      documentId,
-      page: document.pages.get(pageId)?.descriptor ?? page.descriptor,
+      return true;
     });
-    return true;
-  };
 
   reorderPages = (documentId: string, pageIds: string[]) => {
     const document = this.#documents.get(documentId);
@@ -827,26 +939,39 @@ export class CanvasDocumentRegistry {
     };
   };
 
-  undo = () => {
-    const changed = this.#historyJournal.undo(this.#historyKey(this.getActiveAddress()));
-    if (changed) this.#emitHistory();
-    return changed;
-  };
-  undoOperation = (operationId: string, documentId?: string, pageId?: string) => {
-    const address = documentId ? this.getDocumentAddress(documentId, pageId) : null;
-    if (documentId && !address) return false;
-    const changed = this.#historyJournal.undoOperation(
-      operationId,
-      address ? this.#historyKey(address) : undefined
-    );
-    if (changed) this.#emitHistory();
-    return changed;
-  };
-  redo = () => {
-    const changed = this.#historyJournal.redo(this.#historyKey(this.getActiveAddress()));
-    if (changed) this.#emitHistory();
-    return changed;
-  };
+  undo = () =>
+    this.#contentCommits.run(() => {
+      const changed = this.#replayHistoryAt(this.#active.id, () =>
+        this.#historyJournal.undo(this.#historyKey(this.getActiveAddress()))
+      );
+      if (changed) this.#emitHistory();
+      return changed;
+    });
+  undoOperation = (operationId: string, documentId?: string, pageId?: string) =>
+    this.#contentCommits.run(() => {
+      const address = documentId ? this.getDocumentAddress(documentId, pageId) : null;
+      if (documentId && !address) return false;
+      const target = this.#historyJournal.findUndoOperation(
+        operationId,
+        address ? this.#historyKey(address) : undefined
+      );
+      if (!target) return false;
+      const changed = this.#replayHistoryAt(target.documentId, () =>
+        this.#historyJournal.undoOperation(operationId, target.key)
+      );
+      if (changed) this.#emitHistory();
+      return changed;
+    });
+  canUndoOperationAt = (address: CanvasDocumentAddress, operationId: string) =>
+    this.#historyJournal.getLatestOperationId(this.#historyKey(address)) === operationId;
+  redo = () =>
+    this.#contentCommits.run(() => {
+      const changed = this.#replayHistoryAt(this.#active.id, () =>
+        this.#historyJournal.redo(this.#historyKey(this.getActiveAddress()))
+      );
+      if (changed) this.#emitHistory();
+      return changed;
+    });
   clearHistory = () => {
     this.#historyJournal.clear(this.#historyKey(this.getActiveAddress()));
     this.#active.pages.forEach((page) => page.undoManager.clear());
@@ -867,7 +992,7 @@ export class CanvasDocumentRegistry {
   beginHistoryCheckpoint = (
     operationId?: string,
     documentId?: string,
-    pageId?: string,
+    pageId?: string
   ): CanvasHistoryCheckpoint => {
     const address = documentId
       ? this.getDocumentAddress(documentId, pageId)
@@ -891,9 +1016,7 @@ export class CanvasDocumentRegistry {
       commit: () => {
         if (settled) return receipt ?? { changed: false };
         settled = true;
-        const changed =
-          this.#historyJournal.getMutationVersion(historyKey) !==
-          mutationVersion;
+        const changed = this.#historyJournal.getMutationVersion(historyKey) !== mutationVersion;
         const undoable =
           changed &&
           operationId !== undefined &&
@@ -952,187 +1075,188 @@ export class CanvasDocumentRegistry {
     address: CanvasDocumentAddress,
     mutation: (grid: CanvasGridWriter) => void,
     history: CanvasHistoryMode | boolean = 'save'
-  ) => {
-    const document = this.#documents.get(address.documentId);
-    const page = document?.pages.get(address.pageId);
-    if (!document || !page || page.descriptor.kind !== 'cell-plane') {
-      throw new Error(`Cell Plane page not found: ${address.documentId}/${address.pageId}`);
-    }
-    let emittedOperation: CellPlaneOperation | null = null;
-    let emittedAnchorChanges: CanvasAnchorChange[] = [];
-    let inverseOperation: CellPlaneOperation | null = null;
-    const profiling = this.#mutationPerformance.isEnabled();
-    const totalStartedAt = profiling ? performance.now() : 0;
-    const timings = profiling
-      ? {
-          mutationMs: 0,
-          normalizeMs: 0,
-          forwardEncodeMs: 0,
-          inverseEncodeMs: 0,
-          yjsPushMs: 0,
-          historyCaptureMs: 0,
-          transactionOverheadMs: 0,
-          notifyMs: 0,
-          changedCells: 0,
-        }
-      : null;
-    const transactionStartedAt = profiling ? performance.now() : 0;
-    const result = this.runTransactionAt(
-      address,
-      () => {
-        const reader = this.#ensurePageIndex(document, page);
-        const changes = new Map<string, { before?: GridCell; after?: GridCell }>();
-        const remember = (key: string) => {
-          if (changes.has(key)) return;
-          const before = reader.getCell(GridManager.fromKey(key));
-          changes.set(key, before ? { before } : {});
-        };
-        const read = (key: string) => {
-          const changed = changes.get(key);
-          return changed ? changed.after : reader.getCell(GridManager.fromKey(key));
-        };
-        const writer: CanvasGridWriter = {
-          get: read,
-          set: (key, value) => {
-            remember(key);
-            changes.get(key)!.after = value;
-          },
-          delete: (key) => {
-            remember(key);
-            delete changes.get(key)!.after;
-          },
-          clear: () => {
-            reader.materialize().forEach((_cell, key) => {
+  ) =>
+    this.#contentCommits.run(() => {
+      const document = this.#documents.get(address.documentId);
+      const page = document?.pages.get(address.pageId);
+      if (!document || !page || page.descriptor.kind !== 'cell-plane') {
+        throw new Error(`Cell Plane page not found: ${address.documentId}/${address.pageId}`);
+      }
+      let emittedOperation: CellPlaneOperation | null = null;
+      let emittedAnchorChanges: CanvasAnchorChange[] = [];
+      let inverseOperation: CellPlaneOperation | null = null;
+      const profiling = this.#mutationPerformance.isEnabled();
+      const totalStartedAt = profiling ? performance.now() : 0;
+      const timings = profiling
+        ? {
+            mutationMs: 0,
+            normalizeMs: 0,
+            forwardEncodeMs: 0,
+            inverseEncodeMs: 0,
+            yjsPushMs: 0,
+            historyCaptureMs: 0,
+            transactionOverheadMs: 0,
+            notifyMs: 0,
+            changedCells: 0,
+          }
+        : null;
+      const transactionStartedAt = profiling ? performance.now() : 0;
+      const result = this.runTransactionAt(
+        address,
+        () => {
+          const reader = this.#ensurePageIndex(document, page);
+          const changes = new Map<string, { before?: GridCell; after?: GridCell }>();
+          const remember = (key: string) => {
+            if (changes.has(key)) return;
+            const before = reader.getCell(GridManager.fromKey(key));
+            changes.set(key, before ? { before } : {});
+          };
+          const read = (key: string) => {
+            const changed = changes.get(key);
+            return changed ? changed.after : reader.getCell(GridManager.fromKey(key));
+          };
+          const writer: CanvasGridWriter = {
+            get: read,
+            set: (key, value) => {
+              remember(key);
+              changes.get(key)!.after = value;
+            },
+            delete: (key) => {
               remember(key);
               delete changes.get(key)!.after;
-            });
-          },
-        };
-        const mutationStartedAt = profiling ? performance.now() : 0;
-        mutation(writer);
-        if (timings) timings.mutationMs = performance.now() - mutationStartedAt;
-        const normalizeStartedAt = profiling ? performance.now() : 0;
-        changes.forEach((change, key) => {
-          if (areJsonValuesEqual(change.before, change.after)) changes.delete(key);
-        });
-        if (timings) {
-          timings.normalizeMs = performance.now() - normalizeStartedAt;
-          timings.changedCells = changes.size;
-        }
-        const forwardStartedAt = profiling ? performance.now() : 0;
-        const operation = gridChangesToCellPlaneOperation(
-          `${document.doc.clientID}:${this.#operationSequence++}`,
-          changes
-        );
-        const anchorBefore = operation
-          ? new Map(this.getAnchorsAt(address).map((anchor) => [anchor.id, anchor]))
-          : new Map<string, CanvasAnchor>();
-        let anchorChanges: CanvasAnchorChange[] = [];
-        if (timings) timings.forwardEncodeMs = performance.now() - forwardStartedAt;
-        if (operation) {
-          const pushStartedAt = profiling ? performance.now() : 0;
-          page.operations.push([
-            document.operationFormat === 'legacy'
-              ? toLegacyCellPlaneOperation(operation)
-              : operation,
-          ]);
-          if (timings) timings.yjsPushMs = performance.now() - pushStartedAt;
-          if (page.anchors.size > 0) {
-            const changedRows = new Set(
-              Array.from(changes.keys(), (key) => GridManager.fromKey(key).y)
-            );
-            anchorChanges = this.#refreshAnchorsAfterContent(
-              page,
-              (point) => {
-                const key = GridManager.toKey(point.x, point.y);
-                const change = changes.get(key);
-                return change ? change.after : reader.getCell(point);
-              },
-              undefined,
-              changedRows
-            );
+            },
+            clear: () => {
+              reader.materialize().forEach((_cell, key) => {
+                remember(key);
+                delete changes.get(key)!.after;
+              });
+            },
+          };
+          const mutationStartedAt = profiling ? performance.now() : 0;
+          mutation(writer);
+          if (timings) timings.mutationMs = performance.now() - mutationStartedAt;
+          const normalizeStartedAt = profiling ? performance.now() : 0;
+          changes.forEach((change, key) => {
+            if (areJsonValuesEqual(change.before, change.after)) changes.delete(key);
+          });
+          if (timings) {
+            timings.normalizeMs = performance.now() - normalizeStartedAt;
+            timings.changedCells = changes.size;
           }
-          emittedAnchorChanges = anchorChanges;
-        }
-        emittedOperation = operation;
-        if (operation) {
-          const inverseStartedAt = profiling ? performance.now() : 0;
-          const inverse = gridChangesToCellPlaneOperation(
-            `history:${document.doc.clientID}:${this.#operationSequence++}`,
-            new Map(
-              Array.from(changes, ([key, change]) => [
-                key,
-                { before: change.after, after: change.before },
-              ])
-            )
+          const forwardStartedAt = profiling ? performance.now() : 0;
+          const operation = gridChangesToCellPlaneOperation(
+            `${document.doc.clientID}:${this.#operationSequence++}`,
+            changes
           );
-          inverseOperation = inverse;
-          if (timings) timings.inverseEncodeMs = performance.now() - inverseStartedAt;
-          if (inverse) {
-            const historyStartedAt = profiling ? performance.now() : 0;
-            const mode = normalizeHistoryMode(history);
-            if (anchorChanges.length > 0) {
-              this.#captureAnchorHistory(
-                address,
-                anchorChanges,
-                anchorChanges.map(({ id }) => ({ id, value: anchorBefore.get(id) ?? null })),
-                mode,
-                operation,
-                inverse
+          const anchorBefore = operation
+            ? new Map(this.getAnchorsAt(address).map((anchor) => [anchor.id, anchor]))
+            : new Map<string, CanvasAnchor>();
+          let anchorChanges: CanvasAnchorChange[] = [];
+          if (timings) timings.forwardEncodeMs = performance.now() - forwardStartedAt;
+          if (operation) {
+            const pushStartedAt = profiling ? performance.now() : 0;
+            page.operations.push([
+              document.operationFormat === 'legacy'
+                ? toLegacyCellPlaneOperation(operation)
+                : operation,
+            ]);
+            if (timings) timings.yjsPushMs = performance.now() - pushStartedAt;
+            if (page.anchors.size > 0) {
+              const changedRows = new Set(
+                Array.from(changes.keys(), (key) => GridManager.fromKey(key).y)
               );
-            } else this.#captureHistory(address, operation, inverse, mode);
-            if (timings) {
-              timings.historyCaptureMs = performance.now() - historyStartedAt;
+              anchorChanges = this.#refreshAnchorsAfterContent(
+                page,
+                (point) => {
+                  const key = GridManager.toKey(point.x, point.y);
+                  const change = changes.get(key);
+                  return change ? change.after : reader.getCell(point);
+                },
+                undefined,
+                changedRows
+              );
+            }
+            emittedAnchorChanges = anchorChanges;
+          }
+          emittedOperation = operation;
+          if (operation) {
+            const inverseStartedAt = profiling ? performance.now() : 0;
+            const inverse = gridChangesToCellPlaneOperation(
+              `history:${document.doc.clientID}:${this.#operationSequence++}`,
+              new Map(
+                Array.from(changes, ([key, change]) => [
+                  key,
+                  { before: change.after, after: change.before },
+                ])
+              )
+            );
+            inverseOperation = inverse;
+            if (timings) timings.inverseEncodeMs = performance.now() - inverseStartedAt;
+            if (inverse) {
+              const historyStartedAt = profiling ? performance.now() : 0;
+              const mode = normalizeHistoryMode(history);
+              if (anchorChanges.length > 0) {
+                this.#captureAnchorHistory(
+                  address,
+                  anchorChanges,
+                  anchorChanges.map(({ id }) => ({ id, value: anchorBefore.get(id) ?? null })),
+                  mode,
+                  operation,
+                  inverse
+                );
+              } else this.#captureHistory(address, operation, inverse, mode);
+              if (timings) {
+                timings.historyCaptureMs = performance.now() - historyStartedAt;
+              }
             }
           }
-        }
-      },
-      history
-    );
-    if (timings) {
-      const measuredInsideTransaction =
-        timings.mutationMs +
-        timings.normalizeMs +
-        timings.forwardEncodeMs +
-        timings.inverseEncodeMs +
-        timings.yjsPushMs +
-        timings.historyCaptureMs;
-      timings.transactionOverheadMs = Math.max(
-        0,
-        performance.now() - transactionStartedAt - measuredInsideTransaction
+        },
+        history
       );
-    }
-    if (emittedOperation) {
-      const notifyStartedAt = profiling ? performance.now() : 0;
-      this.#emitMutation(
-        emittedAnchorChanges.length > 0
-          ? {
-              kind: 'anchors',
-              ...address,
-              changes: emittedAnchorChanges,
-              operation: emittedOperation,
-            }
-          : { kind: 'cell-plane', ...address, operation: emittedOperation },
-        inverseOperation
-      );
-      if (timings) timings.notifyMs = performance.now() - notifyStartedAt;
-    }
-    if (timings) {
-      const operationBytes = (operation: CellPlaneOperation | null) =>
-        operation && 'payload' in operation
-          ? operation.payload.byteLength
-          : operation
-            ? JSON.stringify(operation.rows).length * 2
-            : 0;
-      this.#mutationPerformance.record({
-        totalMs: performance.now() - totalStartedAt,
-        ...timings,
-        forwardBytes: operationBytes(emittedOperation),
-        inverseBytes: operationBytes(inverseOperation),
-      });
-    }
-    return result;
-  };
+      if (timings) {
+        const measuredInsideTransaction =
+          timings.mutationMs +
+          timings.normalizeMs +
+          timings.forwardEncodeMs +
+          timings.inverseEncodeMs +
+          timings.yjsPushMs +
+          timings.historyCaptureMs;
+        timings.transactionOverheadMs = Math.max(
+          0,
+          performance.now() - transactionStartedAt - measuredInsideTransaction
+        );
+      }
+      if (emittedOperation) {
+        const notifyStartedAt = profiling ? performance.now() : 0;
+        this.#emitMutation(
+          emittedAnchorChanges.length > 0
+            ? {
+                kind: 'anchors',
+                ...address,
+                changes: emittedAnchorChanges,
+                operation: emittedOperation,
+              }
+            : { kind: 'cell-plane', ...address, operation: emittedOperation },
+          inverseOperation
+        );
+        if (timings) timings.notifyMs = performance.now() - notifyStartedAt;
+      }
+      if (timings) {
+        const operationBytes = (operation: CellPlaneOperation | null) =>
+          operation && 'payload' in operation
+            ? operation.payload.byteLength
+            : operation
+              ? JSON.stringify(operation.rows).length * 2
+              : 0;
+        this.#mutationPerformance.record({
+          totalMs: performance.now() - totalStartedAt,
+          ...timings,
+          forwardBytes: operationBytes(emittedOperation),
+          inverseBytes: operationBytes(inverseOperation),
+        });
+      }
+      return result;
+    });
 
   applyCellPlanePatch = (patch: CellPlanePatch, history: CanvasHistoryMode | boolean = 'save') =>
     this.applyCellPlanePatchAt(this.getActiveAddress(), patch, history);
@@ -1147,109 +1271,122 @@ export class CanvasDocumentRegistry {
       delta: Point;
     }>,
     createdAnchors: readonly CanvasAnchorSeed[] = []
-  ) => {
-    const document = this.#documents.get(address.documentId);
-    const page = document?.pages.get(address.pageId);
-    if (!document || !page || page.descriptor.kind !== 'cell-plane') {
-      throw new Error(`Cell Plane page not found: ${address.documentId}/${address.pageId}`);
-    }
-    const operation = cellPlanePatchToOperation(
-      `${document.doc.clientID}:${this.#operationSequence++}`,
-      patch
-    );
-    if (!operation) return null;
-    const inverse = this.#createInverseCellPlaneOperation(document, page, operation);
-    const anchorBefore = new Map(this.getAnchorsAt(address).map((anchor) => [anchor.id, anchor]));
-    let anchorChanges: CanvasAnchorChange[] = [];
-    const projected =
-      page.anchors.size > 0 || createdAnchors.length > 0
-        ? this.#projectOperationCells(document, page, operation)
-        : null;
-    try {
+  ) =>
+    this.#contentCommits.run(() => {
+      const document = this.#documents.get(address.documentId);
+      const page = document?.pages.get(address.pageId);
+      if (!document || !page || page.descriptor.kind !== 'cell-plane') {
+        throw new Error(`Cell Plane page not found: ${address.documentId}/${address.pageId}`);
+      }
+      const operation = cellPlanePatchToOperation(
+        `${document.doc.clientID}:${this.#operationSequence++}`,
+        patch
+      );
+      if (!operation) return null;
+      const inverse = this.#createInverseCellPlaneOperation(document, page, operation);
+      const anchorBefore = new Map(this.getAnchorsAt(address).map((anchor) => [anchor.id, anchor]));
+      let anchorChanges: CanvasAnchorChange[] = [];
+      const projected =
+        page.anchors.size > 0 || createdAnchors.length > 0
+          ? this.#projectOperationCells(document, page, operation)
+          : null;
+      try {
+        this.runTransactionAt(
+          address,
+          () => {
+            page.operations.push([
+              document.operationFormat === 'legacy'
+                ? toLegacyCellPlaneOperation(operation)
+                : operation,
+            ]);
+            if (projected) {
+              anchorChanges = this.#refreshAnchorsAfterContent(
+                page,
+                projected.getCell,
+                movedAnchors
+              );
+              anchorChanges.push(
+                ...this.#createAnchorsAfterContent(
+                  document,
+                  page,
+                  projected.getCell,
+                  createdAnchors
+                )
+              );
+            }
+          },
+          history
+        );
+      } finally {
+        projected?.dispose();
+      }
+      if (inverse) {
+        const mode = normalizeHistoryMode(history);
+        if (anchorChanges.length > 0)
+          this.#captureAnchorHistory(
+            address,
+            anchorChanges,
+            anchorChanges.map(({ id }) => ({ id, value: anchorBefore.get(id) ?? null })),
+            mode,
+            operation,
+            inverse
+          );
+        else this.#captureHistory(address, operation, inverse, mode);
+      }
+      this.#emitMutation(
+        anchorChanges.length > 0
+          ? { kind: 'anchors', ...address, changes: anchorChanges, operation }
+          : { kind: 'cell-plane', ...address, operation },
+        inverse
+      );
+      return operation;
+    });
+
+  replaceCellPage = (address: CanvasDocumentAddress, entries: [string, GridCell][]) =>
+    this.#contentCommits.run(() => {
+      const document = this.#documents.get(address.documentId);
+      const page = document?.pages.get(address.pageId);
+      if (!document || !page || page.descriptor.kind !== 'cell-plane') return false;
       this.runTransactionAt(
         address,
         () => {
-          page.operations.push([
-            document.operationFormat === 'legacy'
-              ? toLegacyCellPlaneOperation(operation)
-              : operation,
-          ]);
-          if (projected) {
-            anchorChanges = this.#refreshAnchorsAfterContent(page, projected.getCell, movedAnchors);
-            anchorChanges.push(
-              ...this.#createAnchorsAfterContent(document, page, projected.getCell, createdAnchors)
-            );
-          }
+          page.operations.delete(0, page.operations.length);
+          page.anchors.clear();
+          const bootstrap = gridEntriesToCellPlaneOperation(
+            `bootstrap:${address.documentId}:${address.pageId}:${this.#operationSequence++}`,
+            entries
+          );
+          if (bootstrap)
+            page.operations.push([
+              document.operationFormat === 'legacy'
+                ? toLegacyCellPlaneOperation(bootstrap)
+                : bootstrap,
+            ]);
         },
-        history
+        'reset'
       );
-    } finally {
-      projected?.dispose();
-    }
-    if (inverse) {
-      const mode = normalizeHistoryMode(history);
-      if (anchorChanges.length > 0)
-        this.#captureAnchorHistory(
-          address,
-          anchorChanges,
-          anchorChanges.map(({ id }) => ({ id, value: anchorBefore.get(id) ?? null })),
-          mode,
-          operation,
-          inverse
-        );
-      else this.#captureHistory(address, operation, inverse, mode);
-    }
-    this.#emitMutation(
-      anchorChanges.length > 0
-        ? { kind: 'anchors', ...address, changes: anchorChanges, operation }
-        : { kind: 'cell-plane', ...address, operation },
-      inverse
-    );
-    return operation;
-  };
-
-  replaceCellPage = (address: CanvasDocumentAddress, entries: [string, GridCell][]) => {
-    const document = this.#documents.get(address.documentId);
-    const page = document?.pages.get(address.pageId);
-    if (!document || !page || page.descriptor.kind !== 'cell-plane') return false;
-    this.runTransactionAt(
-      address,
-      () => {
-        page.operations.delete(0, page.operations.length);
-        page.anchors.clear();
-        const bootstrap = gridEntriesToCellPlaneOperation(
-          `bootstrap:${address.documentId}:${address.pageId}:${this.#operationSequence++}`,
-          entries
-        );
-        if (bootstrap)
-          page.operations.push([
-            document.operationFormat === 'legacy'
-              ? toLegacyCellPlaneOperation(bootstrap)
-              : bootstrap,
-          ]);
-      },
-      'reset'
-    );
-    this.#emitMutation({
-      kind: 'page-upsert',
-      documentId: address.documentId,
-      page: { ...page.descriptor, grid: entries, anchors: [] },
+      this.#emitMutation({
+        kind: 'page-upsert',
+        documentId: address.documentId,
+        page: { ...page.descriptor, grid: entries, anchors: [] },
+      });
+      return true;
     });
-    return true;
-  };
 
-  replacePage = (documentId: string, draft: CanvasPageDraft) => {
-    const document = this.#documents.get(documentId);
-    const page = document?.pages.get(draft.id);
-    if (!document || !page) return false;
-    this.updatePage(documentId, draft.id, {
-      ...(draft.name !== undefined ? { name: draft.name } : {}),
-      ...(draft.size ? { size: draft.size } : {}),
+  replacePage = (documentId: string, draft: CanvasPageDraft) =>
+    this.#contentCommits.run(() => {
+      const document = this.#documents.get(documentId);
+      const page = document?.pages.get(draft.id);
+      if (!document || !page) return false;
+      this.updatePage(documentId, draft.id, {
+        ...(draft.name !== undefined ? { name: draft.name } : {}),
+        ...(draft.size ? { size: draft.size } : {}),
+      });
+      return this.replaceCellPage({ documentId, pageId: draft.id }, draft.grid ?? []);
     });
-    return this.replaceCellPage({ documentId, pageId: draft.id }, draft.grid ?? []);
-  };
 
   dispose = () => {
+    this.#contentVersions.dispose();
     if (this.#disposed) return;
     this.#disposed = true;
     this.#activeListeners.clear();
@@ -1332,6 +1469,8 @@ export class CanvasDocumentRegistry {
     if (seed?.activePageId && document.pages.has(seed.activePageId)) {
       this.#setActivePage(document, seed.activePageId);
     }
+    this.#contentVersions.track(id, doc,
+      (transaction) => transaction.origin === LOCAL_ORIGIN || this.#historyReplayDepth > 0);
     if (notifyLifecycle) this.#lifecycle?.onCreate(id, doc);
     return document;
   }
@@ -1732,14 +1871,16 @@ export class CanvasDocumentRegistry {
   }
 
   #commitAnchorChanges(address: CanvasDocumentAddress, changes: readonly CanvasAnchorChange[]) {
-    const page = this.#documents.get(address.documentId)?.pages.get(address.pageId);
-    if (!page || changes.length === 0) return;
-    const inverse = this.#inverseAnchorChanges(page, changes);
-    this.runTransactionAt(address, () => {
-      this.#applyAnchorChanges(page, changes);
+    return this.#contentCommits.run(() => {
+      const page = this.#documents.get(address.documentId)?.pages.get(address.pageId);
+      if (!page || changes.length === 0) return;
+      const inverse = this.#inverseAnchorChanges(page, changes);
+      this.runTransactionAt(address, () => {
+        this.#applyAnchorChanges(page, changes);
+      });
+      this.#captureAnchorHistory(address, changes, inverse, 'save');
+      this.#emitMutation({ kind: 'anchors', ...address, changes });
     });
-    this.#captureAnchorHistory(address, changes, inverse, 'save');
-    this.#emitMutation({ kind: 'anchors', ...address, changes });
   }
 
   #refreshAnchorsAfterContent(
@@ -1932,6 +2073,21 @@ export class CanvasDocumentRegistry {
     return `${address.documentId}\u0000${address.pageId}`;
   }
 
+  #replayHistoryAt<Result>(documentId: string, replay: () => Result): Result {
+    const document = this.#documents.get(documentId);
+    if (!document) throw new Error(`Canvas document not found: ${documentId}`);
+    let result!: Result;
+    this.#historyReplayDepth++;
+    try {
+      document.doc.transact(() => {
+        result = replay();
+      }, HISTORY_IGNORED_ORIGIN);
+    } finally {
+      this.#historyReplayDepth--;
+    }
+    return result;
+  }
+
   #clearDocumentHistory(document: CanvasYDocument) {
     document.pages.forEach((_page, pageId) => {
       this.#historyJournal.clear(
@@ -1944,13 +2100,22 @@ export class CanvasDocumentRegistry {
   }
 
   #emitHistory() {
+    this.#contentCommits.deferUntilCommitted(this.#publishHistory);
+  }
+  #publishHistory = () => {
     const availability = this.getHistoryAvailability();
     this.#historyListeners.forEach((listener) => listener(availability));
-  }
+  };
 
   #emitMutation(envelope: CanvasMutationEnvelope, inverse?: CellPlaneOperation | null) {
-    this.#mutationListeners.forEach((listener) => listener(envelope, inverse));
+    this.#pendingMutations.push([envelope, inverse]);
+    this.#contentCommits.deferUntilCommitted(this.#publishMutations);
   }
+  #publishMutations = () => {
+    const pending = this.#pendingMutations.splice(0);
+    for (const [envelope, inverse] of pending)
+      this.#mutationListeners.forEach((listener) => listener(envelope, inverse));
+  };
 
   #readDocumentMode(document: CanvasYDocument): CanvasMode {
     const mode = document.root.meta.get('mode');

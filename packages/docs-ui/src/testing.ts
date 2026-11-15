@@ -77,6 +77,20 @@ export const cellPoint = async (surface: Locator, x: number, y: number,
   const metrics = await readCellMetrics(surface);
   const origin = await probeOrigin(surface);
   if (scrollIntoView) await canvasFor(surface).evaluate((canvas, { y, metrics, origin, guardCells }) => {
+    // Cell semantic nodes are offscreen proxies; scroll their painted point into
+    // nested native viewports (navigation, dialogs) before scrolling the page.
+    for (let ancestor = canvas.parentElement; ancestor && ancestor !== document.body;
+      ancestor = ancestor.parentElement) {
+      if (!/auto|scroll/.test(getComputedStyle(ancestor).overflowY) ||
+        ancestor.scrollHeight <= ancestor.clientHeight) continue;
+      const viewport = ancestor.getBoundingClientRect();
+      const targetY = canvas.parentElement!.getBoundingClientRect().top +
+        (y + origin.y + guardCells + 0.5) * metrics.cellHeight;
+      const top = viewport.top + ancestor.clientTop;
+      const bottom = top + ancestor.clientHeight;
+      if (targetY < top) ancestor.scrollTop += targetY - top;
+      else if (targetY > bottom) ancestor.scrollTop += targetY - bottom + 1;
+    }
     const bounds = canvas.parentElement!.getBoundingClientRect();
     const targetY = bounds.top + (y + origin.y + guardCells + 0.5) * metrics.cellHeight;
     const top = 80;

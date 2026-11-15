@@ -4,10 +4,24 @@ Bun >=1.3.14 is required. Run `chardesk` to open the terminal Canvas, or
 `chardesk tui [files.chardesk…]` to open explicit files. Non-interactive startup requires
 a subcommand. Existing browser-preview and file commands retain their behavior.
 
+`chardesk --version` prints the distribution version. Interactive release builds
+check for updates in the background; see the [terminal update workflow](../../apps/docs/content/manual/terminal.mdx#updates).
+
 Structured operations use `chardesk canvas <manage|read|search|write|erase|fill|render|undo|code>
 --file <path> --json` or `--session <id>`. Supply operation parameters as JSON on stdin.
 A live TUI owner executes changes in its existing history; unopened files use a temporary
 runtime. See [routing and host limits](../local-runtime/README.md).
+
+Read/search responses include `version`. For a read/modify/write mutation, send it
+back as `baseVersion`; add a stable `requestId` when the request may be retried.
+Both fields belong in the JSON input. A conflict requires rereading; a lost owner
+with no recorded outcome reports `execution_unknown` without replaying a write.
+The [content contract](../local-runtime/TRANSACTIONS.md) owns receipt and recovery semantics.
+
+To record a call in the TUI's activity inbox, pass `--agent <stable-id>` and optionally
+`--agent-name <display-name>` to a `canvas` command, or set `CHARDESK_AGENT_ID` and
+`CHARDESK_AGENT_NAME`. Identity is transport metadata, not a Canvas tool parameter.
+See [the activity inbox](../../apps/docs/content/manual/terminal.mdx#agents) for unread and read behavior.
 
 ## Native files
 

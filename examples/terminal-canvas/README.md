@@ -666,19 +666,16 @@ shared build and test commands.
 
 ## Verification and limits
 
+[Quality coverage](QUALITY.md) owns the test matrix, evidence levels, repeatable
+scenario gates and physical-terminal validation status.
+
 ```sh
 bun run test
 bun run typecheck
 bun run start --snapshot
 ```
 
-Tests cover sparse negative coordinates, width-aware editing, overlapping moves,
-history, file conflicts, native OpenTUI frames, keyboard/mouse input, resize, and
-English and Chinese menus and help, both tool states, Command/Ctrl routing, and clipboard transport
-contracts. Native clipboard backends still need device validation; tests inject services.
-[Host lifetime tests](src/inputHost.test.ts) cover capability updates and reattachment.
-Shared tests also verify selection/fill/clipboard parity with Web
-and async clipboard failure/cancellation. `--snapshot` prints the first 80×24 document cells and needs no TTY.
+`--snapshot` prints the first 80×24 document cells and needs no TTY.
 
 - One document cell maps to one terminal cell; navigation uses Hand or Option+arrows.
 - On macOS, ordinary Delete is Backspace; Fn+Delete deletes forward. Both delete

@@ -3,37 +3,41 @@
     {
       "title": "Getting started",
       "pages": [
-        "getting-started",
+        "getting-started"
+      ]
+    },
+    {
+      "title": "Canvas",
+      "pages": [
+        "canvas",
         "terminal"
-      ]
-    },
-    {
-      "title": "Editing",
-      "pages": [
-        "editing/input",
-        "editing/selection",
-        "editing/style",
-        "editing/search"
-      ]
-    },
-    {
-      "title": "Files and sessions",
-      "pages": [
-        "files/sessions",
-        "files/import-export"
-      ]
-    },
-    {
-      "title": "Collaboration",
-      "pages": [
-        "collaboration"
       ]
     },
     {
       "title": "Agents",
       "pages": [
+        "agents/skill",
         "agents/connect",
+        "agents/webmcp",
         "agents/workflow"
+      ]
+    },
+    {
+      "title": "Command line",
+      "pages": [
+        "cli"
+      ]
+    },
+    {
+      "title": "Guides",
+      "pages": [
+        "editing/input",
+        "editing/selection",
+        "editing/style",
+        "editing/search",
+        "files/sessions",
+        "files/import-export",
+        "collaboration"
       ]
     },
     {
@@ -54,9 +58,10 @@
     ],
     "terminal": [
       "TUI",
-      "CLI",
+      "terminal",
       "终端",
-      "chardesk"
+      "终端画布",
+      "Hand"
     ],
     "editing/input": [
       "文字",
@@ -126,10 +131,10 @@
     ],
     "agents/connect": [
       "MCP",
-      "WebMCP",
-      "连接",
+      "Local MCP",
+      "stdio",
+      "本地连接",
       "授权",
-      "AI",
       "permissions",
       "connect"
     ],
@@ -159,6 +164,38 @@
       "恢复",
       "offline",
       "recovery"
+    ],
+    "canvas": [
+      "Web Canvas",
+      "browser canvas",
+      "网页画布",
+      "浏览器",
+      "手动编辑"
+    ],
+    "agents/skill": [
+      "skill",
+      "skills",
+      "技能",
+      "安装技能",
+      "创作指导",
+      "visual explanation"
+    ],
+    "agents/webmcp": [
+      "WebMCP",
+      "Site Tools",
+      "ChatGPT",
+      "Chrome",
+      "浏览器 Agent",
+      "网页工具"
+    ],
+    "cli": [
+      "CLI",
+      "command line",
+      "shell",
+      "命令行",
+      "脚本",
+      "本地命令",
+      "automation"
     ]
   }
 }

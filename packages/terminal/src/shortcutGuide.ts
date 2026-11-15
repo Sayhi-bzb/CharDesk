@@ -104,6 +104,7 @@ export function shortcutSections(
         action('view-shortcuts'),
         action('settings', undefined, 'Header'),
         action('documents', undefined, 'Header'),
+        action('agents', undefined, 'Footer'),
         action('new'),
         action('open'),
         action('close-document'),

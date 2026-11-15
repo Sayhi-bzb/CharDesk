@@ -4,6 +4,8 @@ import { TerminalKeymapSettings } from './keymapSettings.ts';
 import type { KeyEvent } from '@opentui/core';
 import type { CanvasSurface, TerminalPanel } from './surface.ts';
 import { TERMINAL_SETTING_DEFINITIONS, type SettingsSection } from './settings.ts';
+import type { TerminalUpdates } from './updates.ts';
+import type { TerminalClipboardAccess } from './clipboard.ts';
 
 const sections: readonly { id: SettingsSection; label: string }[] = [
   { id: 'appearance', label: 'Appearance' },
@@ -11,6 +13,7 @@ const sections: readonly { id: SettingsSection; label: string }[] = [
   { id: 'paste', label: 'Paste' },
   { id: 'shortcuts', label: 'Shortcuts' },
   { id: 'rendering', label: 'Rendering' },
+  { id: 'updates', label: 'Updates' },
 ];
 
 /** One modal settings carrier over the shared panel shell and preference definitions. */
@@ -21,15 +24,22 @@ export class TerminalSettingsDialog {
   #detach: () => void;
   #detachAppearance: () => void;
   #detachKeymap: () => void;
+  #detachUpdates: () => void;
+  #installer = 0;
   readonly #shortcuts: TerminalKeymapSettings;
   readonly #text: TerminalTextSettings;
   #cancelRecording = () => {
     if (this.isOpen) this.#shortcuts.cancelRecording(this.#panel!);
   };
-  constructor(private surface: CanvasSurface) {
+  constructor(
+    private surface: CanvasSurface,
+    private updates?: TerminalUpdates,
+    private clipboard?: TerminalClipboardAccess
+  ) {
     this.#shortcuts = new TerminalKeymapSettings(surface);
     this.#text = new TerminalTextSettings(surface);
     this.#detachKeymap = surface.model.editor.keymap.subscribe(() => this.#refresh());
+    this.#detachUpdates = updates?.subscribe(() => this.#refresh()) ?? (() => {});
     this.#detach = surface.settings.subscribe(() => this.#refresh());
     this.#detachAppearance = surface.appearance.subscribe(() => this.#refresh());
     surface.renderer.on('blur', this.#cancelRecording);
@@ -69,11 +79,15 @@ export class TerminalSettingsDialog {
       },
       onClose: () => this.close(),
     };
-    this.surface.panel = this.#panel;
+    this.surface.input.openPanel(this.#panel, this, new Set());
     this.#refresh();
   }
+  openUpdates() {
+    this.#section = sections.findIndex((section) => section.id === 'updates');
+    this.open();
+  }
   close() {
-    if (this.isOpen) this.surface.panel = null;
+    this.surface.input.closePanel(this);
     this.#panel = null;
     this.#shortcuts.leave();
     this.#text.leave();
@@ -86,6 +100,10 @@ export class TerminalSettingsDialog {
     panel.hint = this.surface.t('Tab section · Enter change');
     panel.tabs = sections.map((section) => this.surface.t(section.label));
     panel.selectedTab = this.#section;
+    if (sections[this.#section]!.id === 'updates') {
+      this.#refreshUpdates(panel);
+      return;
+    }
     if (sections[this.#section]!.id === 'rendering') {
       this.#text.refresh(panel);
       return;
@@ -127,9 +145,93 @@ export class TerminalSettingsDialog {
     panel.error = store.error || undefined;
     this.surface.requestRender();
   }
+  #refreshUpdates(panel: TerminalPanel) {
+    const { t } = this.surface;
+    const state = this.updates?.state;
+    panel.input = undefined;
+    panel.onInput = undefined;
+    panel.itemHints = undefined;
+    panel.error =
+      state?.phase === 'error' ? t('Could not check for updates. Try again.') : undefined;
+    panel.status =
+      !state || state.phase === 'development'
+        ? t('Development build · automatic checks disabled')
+        : t`Current ${state.current}${state.latest ? ` · ${t('Latest')} ${state.latest}` : ''}`;
+    const auto = this.surface.settings.values.autoCheckUpdates ? t('On') : t('Off');
+    panel.items = [
+      `${t('Automatically check for updates')}    ‹ ${auto} ›`,
+      state?.phase === 'checking' ? t('Checking for updates…') : t('Check for updates'),
+    ];
+    if (state?.phase === 'current') panel.status += ` · ${t('Latest version installed')}`;
+    const choice = this.updates?.commands[this.#installer];
+    if (choice)
+      panel.items.push(
+        `${t('Installation method')}    ‹ ${t(choice.label)} ›`,
+        `${t('Copy command')}: ${choice.command}`,
+        t('Release notes')
+      );
+    panel.onPick = (index) => {
+      panel.selected = index;
+      this.#change(1);
+    };
+    panel.hint = t('Use your installation method · restart after upgrading');
+    this.surface.requestRender();
+  }
+  #changeUpdate(direction: number) {
+    const panel = this.#panel!,
+      updates = this.updates;
+    switch (panel.selected) {
+      case 0:
+        this.surface.settings.set(
+          'autoCheckUpdates',
+          !this.surface.settings.values.autoCheckUpdates
+        );
+        break;
+      case 1:
+        if (updates) void updates.check();
+        break;
+      case 2:
+        if (updates)
+          this.#installer =
+            (this.#installer + direction + updates.commands.length) % updates.commands.length;
+        break;
+      case 3: {
+        const command = updates?.commands[this.#installer]?.command;
+        if (command && this.clipboard)
+          void this.clipboard
+            .write({ plain: command, rich: null }, { rich: false, ansi: false })
+            .then((result) => {
+              if (!this.isOpen || this.#panel !== panel) return;
+              if (result.status === 'written')
+                this.surface.feedback.show(() => this.surface.messages.copied);
+              else if (result.status === 'dispatched')
+                this.surface.feedback.show(() => this.surface.messages.copyDispatched, 'warning');
+              else this.surface.feedback.show(() => this.surface.messages.clipboardFailed, 'error');
+            })
+            .catch(() => {
+              if (this.isOpen && this.#panel === panel)
+                this.surface.feedback.show(() => this.surface.messages.clipboardFailed, 'error');
+            });
+        break;
+      }
+      case 4:
+        void updates?.openReleaseNotes().catch(() => {
+          if (this.isOpen && this.#panel === panel) {
+            panel.error = this.surface.t('Could not open release notes');
+            this.surface.requestRender();
+          }
+        });
+        break;
+    }
+  }
   #change(direction: number) {
     const panel = this.#panel;
     if (!panel || !this.isOpen) return;
+    if (sections[this.#section]!.id === 'updates') {
+      this.#changeUpdate(direction);
+      this.#refresh();
+      return;
+    }
     const definitions = this.#definitions(),
       definition = definitions[panel.selected];
     if (
@@ -214,6 +316,7 @@ export class TerminalSettingsDialog {
     this.#detach();
     this.#detachAppearance();
     this.#detachKeymap();
+    this.#detachUpdates();
     this.surface.renderer.off('blur', this.#cancelRecording);
     this.surface.renderer.off('resize', this.#cancelRecording);
   }

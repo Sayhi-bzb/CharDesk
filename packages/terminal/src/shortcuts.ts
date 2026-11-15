@@ -56,6 +56,7 @@ export type TerminalAction =
   | 'open'
   | 'new'
   | 'documents'
+  | 'agents'
   | 'next-document'
   | 'previous-document'
   | 'search'
@@ -161,6 +162,7 @@ export function createTerminalShortcuts(platform: NodeJS.Platform, policy?: Term
     open: key([...primary('O').keys, 'F10'], `${primary('O').label} / F10`),
     new: primary('N'),
     documents: key([]),
+    agents: key([]),
     'next-document': key(['F6']),
     'previous-document': key(['Shift+F6']),
     search: key([...primary('F').keys, 'F8'], primary('F').label),

@@ -50,6 +50,8 @@ export class CanvasHistoryJournal {
   #versions = new WeakMap<object, number>();
   #versionSequence = 0;
   #mutationSequence = 0;
+  readonly #generations = new Map<string, number>();
+  getGeneration(key: string) { return this.#generations.get(key) ?? 0; }
   readonly #mutationVersions = new Map<string, number>();
 
   getMutationVersion(documentId: string) {
@@ -58,6 +60,12 @@ export class CanvasHistoryJournal {
 
   getLatestOperationId(documentId: string) {
     return this.#histories.get(documentId)?.undo.at(-1)?.operationId;
+  }
+
+  /** Isolated preparation retains undo eligibility without sharing mutable history groups. */
+  copyHistoryTo(target: CanvasHistoryJournal, key: string) {
+    const history = this.#histories.get(key);
+    if (history) target.#histories.set(key, structuredClone(history));
   }
 
   #recordMutation(documentId: string) {
@@ -94,6 +102,7 @@ export class CanvasHistoryJournal {
     const history = this.#get(documentId);
     const bytes = operationBytes(action.forward) + operationBytes(action.inverse);
     if (bytes > this.#maxBytes) {
+      this.#generations.set(documentId, this.getGeneration(documentId) + 1);
       history.undo.length = 0;
       history.redo.length = 0;
       history.bytes = 0;
@@ -127,6 +136,7 @@ export class CanvasHistoryJournal {
     history.lastCapturedAt = now;
     this.#trim(history);
     if (history.bytes > this.#maxBytes) {
+      this.#generations.set(documentId, this.getGeneration(documentId) + 1);
       history.undo.length = 0;
       history.redo.length = 0;
       history.bytes = 0;
@@ -159,6 +169,7 @@ export class CanvasHistoryJournal {
   }
 
   clear(documentId: string) {
+    this.#generations.set(documentId, this.getGeneration(documentId) + 1);
     this.#histories.delete(documentId);
     this.#mutationVersions.delete(documentId);
   }
@@ -178,12 +189,20 @@ export class CanvasHistoryJournal {
   }
 
   undoOperation(operationId: string, documentFilterId?: string) {
+    const target = this.findUndoOperation(operationId, documentFilterId);
+    return target ? this.undo(target.key) : false;
+  }
+
+  findUndoOperation(operationId: string, documentFilterId?: string) {
     for (const [historyDocumentId, history] of this.#histories) {
       if (documentFilterId !== undefined && historyDocumentId !== documentFilterId) continue;
       if (history.undo.at(-1)?.operationId !== operationId) continue;
-      return this.undo(historyDocumentId);
+      return {
+        key: historyDocumentId,
+        documentId: history.undo.at(-1)!.actions[0]!.forward.documentId,
+      };
     }
-    return false;
+    return undefined;
   }
 
   getAvailability(documentId: string): CanvasHistoryAvailability {

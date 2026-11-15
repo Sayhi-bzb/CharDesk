@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { createTestRenderer, ManualClock } from '@opentui/core/testing';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveAppPaths } from './appPaths.ts';
@@ -75,7 +75,7 @@ for (const [name, sequence, platform] of [
   ['Kitty Backspace', '\x1b[127;1u', 'darwin'],
   ['Windows Delete', '\x1b[3~', 'win32'],
 ] as const) {
-  test(`${name} closes the selected session canvas while preserving its record and saved content`, async () => {
+  test(`${name} opens removal for both open and closed sessions without changing content`, async () => {
     const f = await fixture(platform);
     const { readOptional } = await import('./document.ts');
     try {
@@ -84,14 +84,21 @@ for (const [name, sequence, platform] of [
       f.workspace.model.commands.insert('Keep 🦀');
       f.surface.activateDock('documents');
       f.setup.mockInput.pressKey(sequence);
-      await until(() => f.workspace.files.length === 0 && f.surface.panel?.title === 'Sessions');
-      expect(f.surface.panel?.hint).toContain(platform === 'darwin' ? '⌫ close' : 'Del close');
+      await until(() => Boolean(f.surface.panel?.items.includes('Yes')));
+      expect(f.workspace.files).toEqual([file]);
       expect(f.sessions.catalog.get(record.id)).not.toBeNull();
-      expect(f.surface.panel?.items).toEqual(['Working']);
+      f.setup.mockInput.pressEnter(); // Cancel is the default.
+      expect(f.surface.panel?.hint).toContain(platform === 'darwin' ? '⌫ remove' : 'Del remove');
+      // The same key must work for a session whose canvas is already closed.
+      await f.sessions.close(file);
+      f.setup.mockInput.pressKey(sequence);
+      await until(() => Boolean(f.surface.panel?.items.includes('Yes')));
+      expect(f.workspace.files).toHaveLength(0);
+      expect(f.sessions.catalog.get(record.id)).not.toBeNull();
       expect(await readOptional(file.path)).toContain('Keep');
       expect(f.quits).toBe(0);
-      f.setup.mockInput.pressEnter();
-      await until(() => f.workspace.files.length === 1 && !f.surface.panel);
+      f.escape();
+      await f.sessions.open(record.id);
       expect(f.workspace.model.plane.get({ x: 5, y: 0 })?.char).toBe('🦀');
     } finally {
       await f.dispose();
@@ -99,7 +106,7 @@ for (const [name, sequence, platform] of [
   });
 }
 
-test('Backspace edits session names and modified deletion keys cannot close a session', async () => {
+test('Backspace edits session names and modified deletion keys cannot remove a session', async () => {
   const f = await fixture();
   try {
     const file = await f.sessions.create('Working');
@@ -171,7 +178,7 @@ test('session panel renames, duplicates unsaved content, archives and restores t
     f.primary('n');
     await until(() => f.workspace.files.length === 1 && !f.surface.panel);
     f.workspace.model.commands.insert('Hello 🦀');
-    const original = f.workspace.active;
+    const original = f.workspace.requireActive();
     f.surface.activateDock('documents');
     f.setup.mockInput.pressKey('r');
     expect(f.surface.panel?.dialog).toBe(true);
@@ -182,8 +189,8 @@ test('session panel renames, duplicates unsaved content, archives and restores t
     f.setup.mockInput.pressKey('d');
     await until(() => f.workspace.files.length === 2 && !f.surface.panel);
     expect(f.workspace.model.plane.get({ x: 6, y: 0 })?.char).toBe('🦀');
-    expect(f.workspace.active.address?.documentId).not.toBe(original.address?.documentId);
-    const copy = f.sessions.forFile(f.workspace.active)!;
+    expect(f.workspace.requireActive().address?.documentId).not.toBe(original.address?.documentId);
+    const copy = f.sessions.forFile(f.workspace.requireActive())!;
     f.surface.activateDock('documents');
     f.setup.mockInput.pressKey('a');
     await until(
@@ -237,10 +244,10 @@ test('empty session lists keep New and Open in the clickable footer at narrow wi
     const open = f.surface.panelFooterControls.find((control) => control.id === 'open')!;
     expect(open.x + open.width).toBeLessThanOrEqual(32);
     const list = f.surface.panel!;
-    list.busy = true;
+    const task = f.surface.input.lease(list)!.beginTask()!;
     await f.setup.mockMouse.click(open.x + 1, open.y);
     expect(f.surface.panel).toBe(list);
-    list.busy = false;
+    task.finish();
     await f.setup.mockMouse.click(open.x + 1, open.y);
     expect(f.surface.panel?.title).toBe('Open document');
     expect(f.surface.panel?.input).toBe('');
@@ -251,7 +258,7 @@ test('empty session lists keep New and Open in the clickable footer at narrow wi
     await f.setup.mockMouse.click(create.x + 1, create.y);
     await until(() => f.workspace.files.length === 1 && !f.surface.panel);
     expect(f.sessions.list()).toHaveLength(1);
-    expect(f.workspace.active.baselineSource).not.toBeNull();
+    expect(f.workspace.requireActive().baselineSource).not.toBeNull();
     f.surface.activateDock('documents');
     f.setup.mockInput.pressTab();
     expect(f.surface.panel?.items).toHaveLength(1);
@@ -269,14 +276,14 @@ test('Chinese session commands fit one footer row while errors stay inside the d
     await f.sessions.create('当前画布');
     f.surface.activateDock('documents');
     await f.setup.renderOnce();
-    const footer = '会话 · N 新建 · O 打开 · R 重命名 · D 复制 · A 归档 · ⌫ 关闭 · F5 刷新';
+    const footer = '会话 · N 新建 · O 打开 · R 重命名 · D 复制 · A 归档 · ⌫ 移除 · F5 刷新';
     let frame = f.setup.captureCharFrame().split('\n');
-    expect(frame[f.surface.footerBounds.y]?.trim()).toBe(footer);
+    expect(frame[f.surface.footerBounds.y]?.trim().replace(/\s+Agents$/, '')).toBe(footer);
     expect(f.surface.panel?.tabs).toEqual(['画布', '已归档']);
     f.surface.panel!.error = '无法读取源文件';
     await f.setup.renderOnce();
     frame = f.setup.captureCharFrame().split('\n');
-    expect(frame[f.surface.footerBounds.y]?.trim()).toBe(footer);
+    expect(frame[f.surface.footerBounds.y]?.trim().replace(/\s+Agents$/, '')).toBe(footer);
     expect(frame.slice(f.surface.panelLayout.y, f.surface.footerBounds.y).join('\n')).toContain(
       '无法读取源文件'
     );
@@ -316,15 +323,15 @@ test('Sessions reuse the Settings dialog geometry, tabs, footer and outside dism
     expect(frame[l.y]).toContain('┌ Sessions');
     expect(frame[l.y]).not.toContain('×');
     expect(frame.slice(l.y, l.y + l.height).join('\n')).not.toContain('Tab list');
-    expect(frame[f.surface.footerBounds.y]?.trim()).toBe(
-      'Sessions · N new · O open · R rename · D copy · A archive · ⌫ close · F5 refresh'
+    expect(frame[f.surface.footerBounds.y]?.trim().replace(/\s+Agents$/, '')).toBe(
+      'Sessions · N new · O open · R rename · D copy · A archive · ⌫ remove · F5 refresh'
     );
     const archivedTab = f.surface.panelTabControls[1]!;
     await f.setup.mockMouse.click(archivedTab.x + 1, archivedTab.y);
     expect(f.surface.panel?.selectedTab).toBe(1);
     expect(f.surface.panel?.items[0]).toBe('Archived canvas');
     expect(f.surface.statusBar.hint).toBe(
-      'N new · O open · R rename · D copy · A restore · ⌫ close · F5 refresh'
+      'N new · O open · R rename · D copy · A restore · ⌫ remove · F5 refresh'
     );
     f.setup.mockInput.pressTab({ shift: true });
     expect(f.surface.panel?.selectedTab).toBe(0);
@@ -392,7 +399,7 @@ test('scrolling and pointer picking share dialog row geometry for long session l
     expect(frame[layout.y + layout.height - 1]).toContain('└');
     await f.setup.mockMouse.click(layout.x + 3, layout.itemsY);
     await until(() => f.workspace.files.length === 1 && !f.surface.panel);
-    expect(f.sessions.forFile(f.workspace.active)?.id).toBe(records[firstVisible]!.id);
+    expect(f.sessions.forFile(f.workspace.requireActive())?.id).toBe(records[firstVisible]!.id);
   } finally {
     await f.dispose();
   }
@@ -424,47 +431,84 @@ test('an empty workspace leaves Tab unfocused while New and Sessions remain clic
   }
 });
 
-test('Sessions removal dialog separates keeping a file from deleting a managed file and defaults to Cancel', async () => {
+test('Session removal is a compact modal over the unchanged session list', async () => {
   const f = await fixture();
+  const externalRoot = await mkdtemp(join(tmpdir(), 'chardesk-external-session-'));
   const { readOptional } = await import('./document.ts');
   try {
-    const file = await f.sessions.create(),
+    const file = await f.sessions.create('Working'),
       record = f.sessions.forFile(file)!;
+    await f.sessions.createManaged('Other canvas');
     f.workspace.model.commands.insert('🦀keep');
     const before = f.workspace.model.plane.materialize();
+    f.surface.activateDock('documents');
+    const parent = f.surface.panel!,
+      parentLayout = f.surface.panelLayout;
     const remove = async () => {
-      f.surface.activateDock('documents');
-      f.setup.mockInput.pressKey('x');
-      await until(() =>
-        Boolean(f.surface.panel?.items.includes('Remove session record — keep file'))
-      );
+      f.setup.mockInput.pressKey('\x7f');
+      await until(() => Boolean(f.surface.panel?.items.includes('Yes')));
     };
     await remove();
+    expect(f.surface.panel?.underlay).toBe(parent);
+    expect(f.surface.panel?.selected).toBe(1);
+    expect(f.surface.panel?.items).toEqual(['Yes', 'No']);
+    expect(f.surface.panel?.status).toBeUndefined();
+    const modal = f.surface.panelLayout;
+    expect(modal.width).toBeLessThan(parentLayout.width);
+    expect(modal.height).toBeLessThan(parentLayout.height);
     await f.setup.renderOnce();
-    expect(f.surface.panel?.selected).toBe(0);
-    expect(f.setup.captureCharFrame()).toContain('Delete managed file');
+    const frame = f.setup.captureCharFrame();
+    expect(frame).toContain('┌ Sessions');
+    expect(frame).toContain('Delete Working?');
+    expect(frame).not.toContain('Cannot be undone.');
     await f.setup.mockInput.typeText('ignored', 0);
     expect(f.workspace.model.plane.materialize()).toEqual(before);
+    // Escape and outside click pop the child without changing the parent's focus.
     f.escape();
-    expect(f.sessions.catalog.get(record.id)).not.toBeNull();
+    expect(f.surface.panel).toBe(parent);
+    const selected = parent.selected;
     await remove();
-    f.surface.panel!.selected = 1;
+    await f.setup.mockMouse.click(parentLayout.x + 2, parentLayout.itemsY);
+    expect(f.surface.panel).toBe(parent);
+    expect(parent.selected).toBe(selected);
+    expect(f.sessions.catalog.get(record.id)).not.toBeNull();
+    // Enter defaults to Cancel; no second confirmation replaces the list.
+    await remove();
+    f.setup.mockInput.pressEnter();
+    expect(f.surface.panel).toBe(parent);
+    await remove();
+    const source = await readOptional(file.path);
+    f.setup.mockInput.pressArrow('up');
     f.setup.mockInput.pressEnter();
     await until(
       () => f.sessions.catalog.get(record.id) === null && f.surface.panel?.title === 'Sessions'
     );
-    expect(await readOptional(file.path)).not.toBeNull();
-    expect(f.surface.hasDocument).toBe(false);
+    expect(await readOptional(file.path)).toBeNull();
     f.escape();
-    await f.sessions.openPath(file.path);
+    const external = join(externalRoot, 'external.chardesk');
+    await writeFile(external, source!);
+    await f.sessions.openPath(external);
+    const externalRecord = f.sessions.forFile(f.workspace.requireActive())!;
+    f.surface.activateDock('documents');
     await remove();
-    expect(f.surface.panel?.items).not.toContain('Delete managed file and session record');
-    f.escape();
-    const managed = await f.sessions.create(),
-      owned = f.sessions.forFile(managed)!;
-    await remove();
-    f.surface.panel!.selected = 2;
+    expect(f.surface.panel?.title).toBe(`Remove ${externalRecord.name}?`);
+    f.setup.mockInput.pressArrow('up');
     f.setup.mockInput.pressEnter();
+    await until(
+      () =>
+        f.sessions.catalog.get(externalRecord.id) === null && f.surface.panel?.title === 'Sessions'
+    );
+    expect(await readOptional(external)).toBe(source);
+    f.escape();
+    f.escape();
+    // Pointer confirmation deletes only the selected managed file.
+    const managed = await f.sessions.create('Delete me'),
+      owned = f.sessions.forFile(managed)!;
+    f.surface.activateDock('documents');
+    await remove();
+    await f.setup.renderOnce();
+    const layout = f.surface.panelLayout;
+    await f.setup.mockMouse.click(layout.x + 3, layout.itemsY);
     await until(
       () => f.sessions.catalog.get(owned.id) === null && f.surface.panel?.title === 'Sessions'
     );
@@ -472,6 +516,7 @@ test('Sessions removal dialog separates keeping a file from deleting a managed f
     expect(f.quits).toBe(0);
   } finally {
     await f.dispose();
+    await rm(externalRoot, { recursive: true, force: true });
   }
 });
 

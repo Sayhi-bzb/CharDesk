@@ -70,11 +70,14 @@ export class TerminalContextMenu {
       },
     };
     this.#state.selected = this.items.findIndex((item) => item.enabled);
+    s.input.registerFocusOwner(this, () => false);
+    s.input.focusOwner = this;
     s.requestRender();
   }
   close() {
     if (!this.#state) return;
     this.#state = null;
+    if (this.surface.input.focusOwner === this) this.surface.input.focusOwner = null;
     this.surface.requestRender();
   }
   get items(): Entry[] {

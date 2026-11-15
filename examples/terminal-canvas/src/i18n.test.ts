@@ -138,7 +138,7 @@ test('Settings changes language immediately and keeps selection, document, tool 
     expect(f.surface.panel!.title).toBe('设置');
     expect(f.surface.panel!.selected).toBe(language);
     expect(f.surface.panel!.items[language]).toContain('简体中文');
-    expect(f.surface.panel!.tabs).toEqual(['外观', '导航', '粘贴', '快捷键', '渲染']);
+    expect(f.surface.panel!.tabs).toEqual(['外观', '导航', '粘贴', '快捷键', '渲染', '更新']);
     expect(f.setup.captureCharFrame()).toContain('设置 · Tab 分区 · Enter 更改');
     expect(f.setup.captureCharFrame()).toContain('Tab 分区');
     await f.escape();

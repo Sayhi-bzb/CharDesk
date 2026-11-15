@@ -25,18 +25,37 @@ import {
   measureCanvasMutationImpact,
 } from '@chardesk/editor-core/writeText';
 import { searchCanvasSurface } from '@chardesk/editor-core/search';
-import type { TerminalWorkspace } from './workspace.ts';
+import type { LocalCanvasHost, LocalCodeDraft } from './host.ts';
 import type { LocalSessions } from './sessions.ts';
 import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
 import { WelcomeAppearance } from '@chardesk/canvas-templates/welcome-appearance';
 import { normalizeContentRgb } from '@chardesk/rendering/theme';
+import { contentFailure, requestFingerprint, type LocalRequestContext } from './request.ts';
+import { runCodeTransaction } from './codeTransaction.ts';
 
 export function localCapabilities(
-  workspace: TerminalWorkspace,
+  workspace: LocalCanvasHost,
   sessions: LocalSessions,
   persistentHistory = false,
   readAppearance: () => CanvasReadAppearance | undefined = () => undefined,
   presentSurface?: (source: CanvasSurfaceReader) => CanvasSurfaceReader
+) {
+  return buildLocalCapabilities(
+    workspace,
+    sessions,
+    persistentHistory,
+    readAppearance,
+    presentSurface
+  );
+}
+
+function buildLocalCapabilities(
+  workspace: LocalCanvasHost,
+  sessions: LocalSessions,
+  persistentHistory: boolean,
+  readAppearance: () => CanvasReadAppearance | undefined,
+  presentSurface?: (source: CanvasSurfaceReader) => CanvasSurfaceReader,
+  draft?: LocalCodeDraft
 ) {
   const defaultAppearance: CanvasReadAppearance = {
     theme: 'light',
@@ -46,15 +65,36 @@ export function localCapabilities(
     },
   };
   const model = workspace.model;
+  const retainedReceipt = (result: unknown, file?: LocalCanvasHost['active']) => {
+    if (
+      result &&
+      typeof result === 'object' &&
+      'operationId' in result &&
+      typeof result.operationId === 'string' &&
+      (!file?.address || !model.documents.canUndoOperationAt(file.address, result.operationId))
+    )
+      return Object.fromEntries(Object.entries(result).filter(([key]) => key !== 'operationId'));
+    return result;
+  };
   let batch = false;
   const implementations = contracts.map(
     (contract) =>
       ({
         ...contract,
         readOnly: contract.annotations.readOnlyHint,
-        async execute(input: Record<string, unknown>) {
+        async execute(input: Record<string, unknown>, context?: LocalRequestContext) {
+          const lifecycle = new AbortController();
           try {
             if (contract.name === 'canvas_manage') {
+              const operation = {
+                owner: {},
+                signal: context?.signal
+                  ? AbortSignal.any([context.signal, lifecycle.signal])
+                  : lifecycle.signal,
+                activate: false,
+              };
+              if (draft && input.action !== 'list')
+                throw new Error('Canvas lifecycle changes must run outside a Code transaction.');
               if (input.action === 'list')
                 return {
                   canvases: sessions.list(input.includeArchived === true).map((record) => ({
@@ -64,9 +104,7 @@ export function localCapabilities(
                     archived: record.archived,
                     editable: true,
                   })),
-                  currentCanvasId: workspace.files.length
-                    ? sessions.forFile(workspace.active)?.id
-                    : null,
+                  currentCanvasId: workspace.active ? sessions.forFile(workspace.active)?.id : null,
                 };
               if (input.action === 'create') {
                 if (input.mode === 'slide')
@@ -81,7 +119,7 @@ export function localCapabilities(
               const record =
                 typeof input.canvasId === 'string'
                   ? sessions.catalog.get(input.canvasId)
-                  : workspace.files.length
+                  : workspace.active
                     ? sessions.forFile(workspace.active)
                     : undefined;
               if (!record)
@@ -92,11 +130,11 @@ export function localCapabilities(
                 return { canvasId: record.id, name: input.name, persistence: 'saved' };
               }
               if (input.action === 'archive') {
-                await sessions.archive(record.id, true, record.revision);
+                await sessions.archive(record.id, true, record.revision, operation);
                 return { canvasId: record.id, archived: true, persistence: 'saved' };
               }
               if (input.action === 'duplicate') {
-                const copy = await sessions.duplicate(record.id);
+                const copy = await sessions.duplicate(record.id, operation);
                 return {
                   canvasId: sessions.forFile(copy)?.id,
                   name: copy.title,
@@ -119,6 +157,9 @@ export function localCapabilities(
                 code: 'canvas_not_found',
                 message: 'Target is not open in this runtime.',
               };
+            if (file.ready) await file.ready;
+            if (!workspace.files.includes(file))
+              return { ok: false, code: 'canvas_not_found', message: 'Canvas is no longer open.' };
             const address = { ...file.address };
             if (input.pageId !== undefined && input.pageId !== address.pageId)
               return {
@@ -127,22 +168,48 @@ export function localCapabilities(
                 message: 'Local Slide operations are unavailable.',
               };
             const plane = model.documents.getContentReader(address.documentId, address.pageId)!;
-            if (contract.name === 'canvas_search')
-              return searchCanvasSurface(plane, input.query as string, input);
+            if (contract.name === 'canvas_search') {
+              const snapshot = model.documents.captureContentAt(address);
+              try {
+                return {
+                  ...searchCanvasSurface(snapshot.reader, input.query as string, input),
+                  version: snapshot.version,
+                };
+              } finally {
+                snapshot.dispose();
+              }
+            }
             if (contract.name === 'canvas_read') {
               const request = parseCanvasReadRequest(input);
               if (!request) return INVALID_CANVAS_READ;
               const appearance = readAppearance() ?? defaultAppearance;
-              const foreground = normalizeContentRgb(appearance.palette.color), background = normalizeContentRgb(appearance.palette.background);
-              const welcome = new WelcomeAppearance(() => ({ revision: 0, palette: foreground && background ? { foreground, background } : null }));
-              return await readCanvasSurface(presentSurface ? presentSurface(plane) : welcome.project(plane), request, {
-                ...appearance,
-                target: { canvasId: sessions.forFile(file)?.id },
-                renderImage: async (plan) => {
-                  const { renderLocalReadImage } = await import('./readImage.ts');
-                  return renderLocalReadImage(plan);
-                },
-              });
+              const foreground = normalizeContentRgb(appearance.palette.color),
+                background = normalizeContentRgb(appearance.palette.background);
+              const welcome = new WelcomeAppearance(() => ({
+                revision: 0,
+                palette: foreground && background ? { foreground, background } : null,
+              }));
+              const snapshot = model.documents.captureContentAt(address);
+              try {
+                const surface = presentSurface
+                  ? presentSurface(snapshot.reader)
+                  : welcome.project(snapshot.reader);
+                const result = await readCanvasSurface(surface, request, {
+                  ...appearance,
+                  target: { canvasId: sessions.forFile(file)?.id },
+                  renderImage: async (plan) => {
+                    const { renderLocalReadImage } = await import('./readImage.ts');
+                    return renderLocalReadImage(plan);
+                  },
+                });
+                return {
+                  ...result,
+                  version: snapshot.version,
+                  ...(file.recoveredCanvasId ? { recoveredCanvasId: file.recoveredCanvasId } : {}),
+                };
+              } finally {
+                snapshot.dispose();
+              }
             }
             if (contract.name === 'canvas_undo') {
               if (!persistentHistory)
@@ -151,13 +218,34 @@ export function localCapabilities(
                   code: 'unsupported_capability',
                   message: 'Undo requires a running session.',
                 };
+              const baseVersion =
+                context?.baseVersion ?? model.documents.getContentVersion(address.documentId);
+              model.documents.assertContentVersion(address.documentId, baseVersion);
+              context?.signal?.throwIfAborted();
+              file.writeGuard?.();
               const ok = model.documents.undoOperation(
                 String(input.operationId),
                 address.documentId,
                 address.pageId
               );
-              if (ok) await workspace.saveFile(file);
-              return { ok };
+              const version = model.documents.getContentVersion(address.documentId);
+              if (!ok) return { ok: false, code: 'operation_not_undoable', version };
+              try {
+                await workspace.saveFile(file);
+                return {
+                  ok: true,
+                  version,
+                  persistence: 'saved',
+                  persistedVersion: file.persistedVersion,
+                };
+              } catch (error) {
+                return {
+                  ok: true,
+                  version,
+                  persistence: 'failed',
+                  persistenceError: String(error),
+                };
+              }
             }
             if (
               !['canvas_write', 'canvas_erase', 'canvas_fill', 'canvas_render'].includes(
@@ -176,6 +264,10 @@ export function localCapabilities(
             )
               return { ok: false, code: 'invalid_input', message: 'Expected at: [x,y].' };
             const [x, y] = input.at as number[];
+            if (draft?.undo.length) throw new Error('Undo must run in a separate apply call.');
+            const baseVersion =
+              context?.baseVersion ?? model.documents.getContentVersion(address.documentId);
+            model.documents.assertContentVersion(address.documentId, baseVersion);
             let prepared;
             if (contract.name === 'canvas_erase' || contract.name === 'canvas_fill') {
               if (
@@ -234,35 +326,40 @@ export function localCapabilities(
                     styledBounds: prepared.bounds,
                   }
                 : measureCanvasMutationImpact(plane, prepared.patch);
-            model.settleInteraction();
+            context?.signal?.throwIfAborted();
+            if (!workspace.files.includes(file))
+              return {
+                ok: false,
+                code: 'canvas_not_found',
+                message: 'Canvas closed during preparation.',
+              };
+            file.writeGuard?.();
             const operationId = persistentHistory && !batch ? `op-${randomUUID()}` : undefined;
-            const checkpoint = batch
-              ? undefined
-              : model.documents.beginHistoryCheckpoint(
-                  operationId,
-                  address.documentId,
-                  address.pageId
-                );
-            let receipt: ReturnType<NonNullable<typeof checkpoint>['commit']> | undefined;
-            try {
+            let receipt;
+            if (batch) {
+              model.documents.assertContentVersion(address.documentId, baseVersion);
               model.documents.applyCellPlanePatchAt(address, prepared.patch);
-              receipt = checkpoint?.commit();
-            } catch (error) {
-              checkpoint?.cancel();
-              throw error;
-            }
+            } else
+              receipt = model.documents.commitContentPatchAt(address, prepared.patch, {
+                baseVersion,
+                operationId,
+              });
             const mutation = {
-              ...prepared, patch: undefined, impact,
-              ...(contract.name === 'canvas_erase' ? {
-                erasedCells: impact.clearedCells,
-                bounds: impact.clearedBounds ?? prepared.bounds,
-              } : {}),
-              ...(receipt ? { changed: receipt.changed, operationId: receipt.operationId } : {}),
+              ...prepared,
+              patch: undefined,
+              impact,
+              ...(contract.name === 'canvas_erase'
+                ? {
+                    erasedCells: impact.clearedCells,
+                    bounds: impact.clearedBounds ?? prepared.bounds,
+                  }
+                : {}),
+              ...(receipt ?? {}),
             };
             if (batch) return { ...mutation, persistence: 'pending' };
             try {
               await workspace.saveFile(file);
-              return { ...mutation, persistence: 'saved' };
+              return { ...mutation, persistence: 'saved', persistedVersion: file.persistedVersion };
             } catch (error) {
               return {
                 ...mutation,
@@ -271,16 +368,28 @@ export function localCapabilities(
               };
             }
           } catch (error) {
-            return {
-              ok: false,
-              code: 'operation_failed',
-              message: error instanceof Error ? error.message : String(error),
-            };
+            return contentFailure(error);
+          } finally {
+            lifecycle.abort();
           }
         },
       }) as AgentToolDefinition
   );
-  const tool = (name: string) => implementations.find((tool) => tool.name === `canvas_${name}`)!;
+  const tool = (name: string): AgentToolDefinition => {
+    const implementation = implementations.find((tool) => tool.name === `canvas_${name}`)!;
+    if (!draft) return implementation;
+    return {
+      ...implementation,
+      async execute(input, context) {
+        const result = await dispatch.execute(implementation.name, input, context);
+        if (result && typeof result === 'object' && 'ok' in result && result.ok === false)
+          throw new Error(
+            'message' in result ? String(result.message) : 'Canvas operation failed.'
+          );
+        return result;
+      },
+    };
+  };
   const code = createCanvasCodeTool({
     read: tool('read'),
     search: tool('search'),
@@ -350,29 +459,161 @@ export function localCapabilities(
           },
         };
       },
-      undoOperation: (operationId) => model.documents.undoOperation(operationId),
+      undoOperation: (operationId) => {
+        if (draft?.undo.length) throw new Error('Use one undo operation per Code call.');
+        const address = workspace.active?.address;
+        if (!address) return false;
+        const ok = model.documents.undoOperation(operationId, address.documentId, address.pageId);
+        if (ok) draft?.undo.push(operationId);
+        return ok;
+      },
     },
   });
   implementations[implementations.findIndex((tool) => tool.name === 'canvas_code')] = {
     ...code,
-    async execute(input) {
-      const result = await code.execute(input);
-      if (
-        input.mode === 'apply' &&
-        result &&
-        typeof result === 'object' &&
-        !('ok' in result && result.ok === false)
-      ) {
-        const mutation = { ...result, ...(!persistentHistory ? { operationId: undefined } : {}) };
-        try {
-          await workspace.saveAll();
-          return { ...mutation, persistence: 'saved' };
-        } catch (error) {
-          return { ...mutation, persistence: 'failed', persistenceError: String(error) };
-        }
+    async execute(input, context?: LocalRequestContext) {
+      if (!draft) {
+        const file =
+          input.canvasId === undefined
+            ? workspace.active
+            : workspace.files.find((file) => sessions.forFile(file)?.id === input.canvasId);
+        const canvasId = file && sessions.forFile(file)?.id;
+        const bound = { ...input, ...(canvasId ? { canvasId } : {}) };
+        return runCodeTransaction(
+          workspace,
+          sessions,
+          persistentHistory,
+          bound,
+          context,
+          (host, state) =>
+            buildLocalCapabilities(
+              host,
+              sessions,
+              true,
+              readAppearance,
+              presentSurface,
+              state
+            ).execute('canvas_code', bound, { signal: context?.signal })
+        );
       }
-      return result;
+      return code.execute(input);
     },
   };
-  return createCanvasCapabilities({ tools: implementations });
+  const dispatch = createCanvasCapabilities({ tools: implementations });
+  const execute = async (
+    name: string,
+    input: Record<string, unknown>,
+    context?: LocalRequestContext
+  ) => {
+    if (!input || typeof input !== 'object' || Array.isArray(input))
+      return dispatch.execute(name, input, context);
+    const { baseVersion, requestId, ...parameters } = input;
+    if (baseVersion !== undefined && (typeof baseVersion !== 'string' || !baseVersion))
+      return Promise.resolve({
+        ok: false,
+        code: 'invalid_input',
+        message: 'Expected a nonempty baseVersion.',
+      });
+    const requestContext: LocalRequestContext = {
+      ...context,
+      ...(baseVersion !== undefined ? { baseVersion: baseVersion as string } : {}),
+    };
+    const file =
+      parameters.canvasId === undefined
+        ? workspace.active
+        : workspace.files.find((file) => sessions.forFile(file)?.id === parameters.canvasId);
+    if (requestId !== undefined) {
+      if (draft || typeof requestId !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(requestId))
+        return {
+          ok: false,
+          code: 'invalid_input',
+          message:
+            'Use a requestId of 1–128 ASCII letters, digits, dots, underscores, colons or hyphens.',
+        };
+      if (
+        ![
+          'canvas_write',
+          'canvas_erase',
+          'canvas_fill',
+          'canvas_render',
+          'canvas_undo',
+          'canvas_code',
+        ].includes(name) ||
+        (name === 'canvas_code' && parameters.mode !== 'apply')
+      )
+        return {
+          ok: false,
+          code: 'invalid_input',
+          message: 'requestId applies to content mutations only.',
+        };
+      const record = file && sessions.forFile(file);
+      if (!record || !file?.address)
+        return { ok: false, code: 'canvas_not_found', message: 'Canvas not found.' };
+      try {
+        if (file.ready) await file.ready;
+      } catch (error) {
+        return contentFailure(error);
+      }
+      if (!workspace.files.includes(file))
+        return { ok: false, code: 'canvas_not_found', message: 'Canvas is no longer open.' };
+      const acceptedVersion =
+        requestContext.baseVersion ?? model.documents.getContentVersion(file.address.documentId);
+      const bound = { ...parameters, canvasId: record.id };
+      const acceptedContext: LocalRequestContext = {
+        ...requestContext,
+        baseVersion: acceptedVersion,
+      };
+      const result = await sessions.content.runRequest(
+        record.id,
+        requestId,
+        requestFingerprint(name, {
+          ...bound,
+          ...(baseVersion !== undefined ? { baseVersion } : {}),
+        }),
+        () => dispatch.execute(name, bound, acceptedContext)
+      );
+      return retainedReceipt(result, file);
+    }
+    if (requestContext.baseVersion && name === 'canvas_manage')
+      return Promise.resolve({
+        ok: false,
+        code: 'unsupported_capability',
+        message: 'Content preconditions do not apply to session lifecycle operations.',
+      });
+    return retainedReceipt(await dispatch.execute(name, parameters, requestContext), file);
+  };
+  return {
+    ...dispatch,
+    async execute(name: string, input: Record<string, unknown>, context?: LocalRequestContext) {
+      const file =
+        !draft && context?.agent && input && typeof input === 'object'
+          ? input.canvasId === undefined
+            ? workspace.active
+            : workspace.files.find((file) => sessions.forFile(file)?.id === input.canvasId)
+          : undefined;
+      const canvasId = file && sessions.forFile(file)?.id;
+      const finish =
+        canvasId &&
+        context?.agent &&
+        name !== 'canvas_manage' &&
+        contracts.some((contract) => contract.name === name)
+          ? sessions.agents.begin(canvasId, context.agent, name, {
+              ...context.invocation,
+              input: context.invocation?.input ?? input,
+            })
+          : undefined;
+      try {
+        const result = await execute(name, input, context);
+        finish?.(
+          result && typeof result === 'object' && 'ok' in result && result.ok === false
+            ? 'failed'
+            : 'completed'
+        );
+        return result;
+      } catch (error) {
+        finish?.('failed');
+        throw error;
+      }
+    },
+  };
 }

@@ -48,10 +48,38 @@ test('worker captures immutable native documents, shares unchanged versions and 
     model.documents.activatePage(address.documentId, 'other');
     const switched = await serializer.capture(model, address, 'Example');
     expect(parseCanvasDocument(switched.source).document.activePageId).toBe('other');
+    expect(switched.semanticId).toBe(updated.semanticId);
+    const renamed = await serializer.capture(model, address, 'Renamed catalog label');
+    expect(renamed.semanticId).toBe(updated.semanticId);
+    expect(await serializer.identityForSource(renamed.source)).toBe(updated.semanticId);
   } finally {
     serializer.dispose();
     model.dispose();
   }
+});
+
+test('worker-backed persistence recovers clean semantic equivalence after unrecorded writes', async () => {
+  const { CanvasFile } = await import('./document.ts');
+  const { mkdtemp, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const root = await mkdtemp(join(tmpdir(), 'chardesk-semantic-'));
+  const { file, model } = await CanvasFile.open(join(root, 'canvas.chardesk'), 'A');
+  try {
+    await file.save(model);
+    const patch = (text: string) => ({ rows: [{ y: 0, erase: [], spans: [{ x: 0, text, color: '#000000' }] }] });
+    model.documents.applyCellPlanePatch(patch('B'), 'none');
+    expect(model.dirty).toBe(true);
+    model.documents.applyCellPlanePatch(patch('A'), 'none');
+    expect(model.dirty).toBe(true); // Unknown equivalence stays dirty until the worker replies.
+    let observedClean = false;
+    const detach = model.subscribe(() => { if (!model.dirty) observedClean = true; });
+    const deadline = performance.now() + 3000;
+    while (model.dirty && performance.now() < deadline) await Bun.sleep(10);
+    detach();
+    expect(model.dirty).toBe(false);
+    expect(observedClean).toBe(true);
+  } finally { model.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
 test('disposing a serializer rejects pending captures without poisoning another workspace', async () => {

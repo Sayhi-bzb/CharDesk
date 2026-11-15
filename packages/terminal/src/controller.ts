@@ -17,6 +17,8 @@ import { WorkspaceControls } from './workspaceControls.ts';
 import { textAttributeNames } from '@chardesk/editor-core/selection/style';
 import { navigationActions } from './navigation.ts';
 import { TerminalInspector } from './inspector.ts';
+import type { TerminalUpdates } from './updates.ts';
+import { TerminalAgentsPanel } from './agentsPanel.ts';
 
 const unavailableClipboard: TerminalClipboardAccess = {
   canRead: () => false,
@@ -29,7 +31,8 @@ export function attachControls(
   quit: () => void,
   clipboard: TerminalClipboardAccess = unavailableClipboard,
   workspace?: TerminalWorkspace,
-  sessions?: LocalSessions
+  sessions?: LocalSessions,
+  updates?: TerminalUpdates
 ) {
   const { model, renderer, shortcuts } = surface;
   const clipboardPort = clipboard;
@@ -37,8 +40,34 @@ export function attachControls(
     editor = model.editor;
   const detachClipboard = model.configureClipboard(clipboardPort);
   const disposers: Array<() => void> = [];
-  const settingsDialog = new TerminalSettingsDialog(surface);
+  const settingsDialog = new TerminalSettingsDialog(surface, updates, clipboardPort);
   disposers.push(() => settingsDialog.dispose());
+  if (updates) {
+    let removeUpdate = () => {};
+    const refreshUpdate = () => {
+      removeUpdate();
+      if (updates.state.latest && updates.state.available)
+        removeUpdate = surface.viewStatus.set({
+          id: 'updates',
+          align: 'right',
+          text: () => surface.t`Update available v${updates.state.latest}`,
+          compactText: () => surface.t`Update v${updates.state.latest}`,
+          onPick: () => {
+            menu.close();
+            inspector.blur();
+            workspaceControls?.dismiss();
+            settingsDialog.openUpdates();
+          },
+        });
+    };
+    const configure = () => updates.setAutomatic(surface.settings.values.autoCheckUpdates);
+    disposers.push(updates.subscribe(refreshUpdate), surface.settings.subscribe(configure), () => {
+      removeUpdate();
+      updates.setAutomatic(false);
+    });
+    refreshUpdate();
+    configure();
+  }
   const menu = new TerminalContextMenu(surface);
   surface.contextMenu = menu;
   disposers.push(() => {
@@ -119,15 +148,11 @@ export function attachControls(
     const commandId = `terminal.${id}`;
     const application = id === 'quit' || id === 'feedback-details' || id === 'view-shortcuts';
     const available = () =>
-      !surface.closing &&
+      surface.input.admit('command', id) &&
       (application ||
         surface.hasDocument ||
         emptyActions.has(id) ||
         Boolean(surface.panel && panelActions.has(id))) &&
-      (application ||
-        (!settingsDialog.isOpen &&
-          !(surface.panel && id !== 'help' && id !== 'escape' && !panelActions.has(id)) &&
-          !(surface.help && id !== 'help' && id !== 'escape'))) &&
       enabled();
     disposers.push(
       editor.commands.register('terminal', {
@@ -149,7 +174,7 @@ export function attachControls(
         target: { type: 'command', id: commandId },
         scope: application ? 'application' : 'canvas',
         repeat: repeatable ? 'allow' : 'ignore',
-        when: () => (application || id === 'help' || id === 'escape' || !surface.help) && enabled(),
+        when: available,
       })
     );
   };
@@ -298,6 +323,25 @@ export function attachControls(
     })
   );
   action('quit', quit);
+  const agentsPanel =
+    sessions && workspace
+      ? new TerminalAgentsPanel(
+          surface,
+          sessions.agents,
+          () => (workspace.active ? sessions.forFile(workspace.active)?.id : undefined),
+          () => {
+            menu.close();
+            settingsDialog.close();
+            inspector.blur();
+            workspaceControls?.dismiss();
+          },
+          clipboardPort
+        )
+      : undefined;
+  if (agentsPanel) {
+    disposers.push(() => agentsPanel.dispose());
+    action('agents', () => agentsPanel.open());
+  }
   if (workspace && workspaceControls) {
     for (const id of [
       'tools',
@@ -381,8 +425,7 @@ export function attachControls(
       let appearanceRevision: number | null = null;
       const current = () =>
         active &&
-        !surface.closing &&
-        !settingsDialog.isOpen &&
+        surface.input.admit('command', 'snapshot-png') &&
         request === clipboardRequest &&
         address === JSON.stringify(model.documents.getActiveAddress()) &&
         revision === model.plane.getRevision() &&
@@ -534,10 +577,6 @@ export function attachControls(
       consume();
       return;
     }
-    if (surface.closing) {
-      consume();
-      return;
-    }
     if (key.eventType === 'repeat' && key.name === dockClosingKey) {
       consume();
       return;
@@ -546,12 +585,16 @@ export function attachControls(
     // Resolve application bindings (including sequence prefixes) before modal input.
     // The keymap still owns dispatch, user overrides and repeat/release policy.
     const binding = bindings.resolveEvent(key);
+    if (!surface.input.admit('key', binding?.id.replace(/^terminal\./, '') ?? key.name)) {
+      consume();
+      return;
+    }
     if (binding?.scope === 'application') return;
     if (menu.key(key)) {
       consume();
       return;
     }
-    if (settingsDialog.key(key)) {
+    if (agentsPanel?.key(key) || settingsDialog.key(key)) {
       consume();
       return;
     }
@@ -607,10 +650,11 @@ export function attachControls(
     },
   });
   const keypress = (key: KeyEvent) => {
+    if (!surface.input.admit('key', key.name)) return;
     if (key.eventType === 'release') return;
     key.preventDefault();
     if (
-      !surface.help &&
+      surface.input.admit('command', 'type') &&
       !surface.focusedDockControl &&
       surface.hasDocument &&
       surface.tool === 'edit' &&
@@ -626,6 +670,10 @@ export function attachControls(
     surface.requestRender();
   };
   const paste = (event: PasteEvent) => {
+    if (!surface.input.admit('paste')) {
+      event.preventDefault();
+      return;
+    }
     menu.validate();
     if (settingsDialog.isOpen) {
       event.preventDefault();
@@ -636,16 +684,7 @@ export function attachControls(
       event.preventDefault();
       return;
     }
-    if (menu.isOpen || surface.focusedDockControl) {
-      event.preventDefault();
-      return;
-    }
-    if (surface.help) {
-      event.preventDefault();
-      return;
-    }
     event.preventDefault();
-    if (surface.closing) return;
     if (workspaceControls?.paste(new TextDecoder().decode(event.bytes))) return;
     if (!surface.hasDocument) return;
     clipboardAction('paste', new TextDecoder().decode(event.bytes));

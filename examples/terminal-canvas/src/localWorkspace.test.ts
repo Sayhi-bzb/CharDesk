@@ -35,7 +35,7 @@ test('first launch consumes the shared Web Welcome; new canvases and explicit pa
   const f = await fixture();
   const first = await openLocalWorkspace(parseOptions([]), f.paths, {}, [], f.firstCwd);
   try {
-    expect(first.sessions.forFile(first.workspace.active)?.name).toBe('Welcome');
+    expect(first.sessions.forFile(first.workspace.requireActive())?.name).toBe('Welcome');
     const expected = buildDefaultDemoGrid();
     for (const [key, cell] of expected) {
       if (cell.char === ' ') continue;
@@ -104,13 +104,13 @@ for (const savedToDisk of [false, true]) {
       await rm(oldDirectory, { recursive: true });
 
       const next = await openLocalWorkspace(parseOptions([]), f.paths, {}, [], f.secondCwd);
-      const recoveredPath = next.workspace.active.path;
+      const recoveredPath = next.workspace.requireActive().path;
       next.persistence.start(next.workspace);
       try {
         expect(next.persistence.recovered).toBe(1);
         expect(next.workspace.files).toHaveLength(1);
         expect(dirname(recoveredPath)).toBe(next.sessions.paths.canvases);
-        expect(next.sessions.forFile(next.workspace.active)?.kind).toBe('managed');
+        expect(next.sessions.forFile(next.workspace.requireActive())?.kind).toBe('managed');
         expect(await readFile(recoveredPath, 'utf8')).toContain('Recovered 🦀界');
         expect(next.workspace.model.viewport).toEqual(view);
         expect(next.workspace.model.plane.get({ x: 14, y: 0 })?.char).toBe(dirty ? '!' : undefined);
@@ -122,7 +122,7 @@ for (const savedToDisk of [false, true]) {
       const again = await openLocalWorkspace(parseOptions([]), f.paths, {}, [], f.firstCwd);
       again.persistence.start(again.workspace);
       try {
-        expect(again.workspace.active.path).toBe(recoveredPath);
+        expect(again.workspace.requireActive().path).toBe(recoveredPath);
         expect(again.sessions.list()).toHaveLength(1);
         expect(again.persistence.recovered).toBe(0);
         expect(again.workspace.model.viewport).toEqual(view);
@@ -136,7 +136,7 @@ for (const savedToDisk of [false, true]) {
 test('startup from different directories restores managed sessions, views and the active canvas', async () => {
   const f = await fixture();
   const first = await openLocalWorkspace(parseOptions([]), f.paths, {}, [], f.firstCwd);
-  const id = first.sessions.forFile(first.workspace.active)!.id;
+  const id = first.sessions.forFile(first.workspace.requireActive())!.id;
   first.persistence.start(first.workspace);
   first.workspace.model.commands.insert('Persistent 🦀');
   first.workspace.model.pan(42, -17);
@@ -146,7 +146,7 @@ test('startup from different directories restores managed sessions, views and th
   reopened.persistence.start(reopened.workspace);
   try {
     expect(reopened.restored).toBe(true);
-    expect(reopened.sessions.forFile(reopened.workspace.active)?.id).toBe(id);
+    expect(reopened.sessions.forFile(reopened.workspace.requireActive())?.id).toBe(id);
     expect(reopened.workspace.model.plane.get({ x: 0, y: 0 })?.char).toBe('P');
     expect(reopened.workspace.model.viewport).toEqual(view);
     expect(await readOptional(join(f.firstCwd, 'terminal-canvas.chardesk'))).toBeNull();
@@ -170,10 +170,10 @@ test('explicit paths activate the requested external canvas after restoring the 
   );
   next.persistence.start(next.workspace);
   try {
-    expect(next.workspace.active.path).toBe(
+    expect(next.workspace.requireActive().path).toBe(
       join(await realpath(f.secondCwd), 'requested.chardesk')
     );
-    expect(next.sessions.forFile(next.workspace.active)?.kind).toBe('external');
+    expect(next.sessions.forFile(next.workspace.requireActive())?.kind).toBe('external');
     expect(await readOptional(join(f.secondCwd, 'requested.chardesk'))).not.toBeNull();
   } finally {
     await finish(next);
@@ -184,8 +184,8 @@ test('closing all canvases persists an empty workspace without deleting its sess
   const f = await fixture();
   const first = await openLocalWorkspace(parseOptions([]), f.paths, {}, [], f.firstCwd);
   first.persistence.start(first.workspace);
-  const id = first.sessions.forFile(first.workspace.active)!.id;
-  await first.sessions.close(first.workspace.active);
+  const id = first.sessions.forFile(first.workspace.requireActive())!.id;
+  await first.sessions.close(first.workspace.requireActive());
   await finish(first);
   const next = await openLocalWorkspace(parseOptions([]), f.paths, {}, [], f.secondCwd);
   next.persistence.start(next.workspace);
@@ -241,8 +241,8 @@ test('legacy settings seed the new location only when the new file is absent', a
 test('a missing catalog canvas is preserved as a missing entry rather than recreated empty', async () => {
   const f = await fixture();
   const first = await openLocalWorkspace(parseOptions([]), f.paths, {}, [], f.firstCwd);
-  const path = first.workspace.active.path;
-  const id = first.sessions.forFile(first.workspace.active)!.id;
+  const path = first.workspace.requireActive().path;
+  const id = first.sessions.forFile(first.workspace.requireActive())!.id;
   await first.persistence.abandon();
   await first.sessions.dispose();
   first.workspace.dispose();

@@ -1,0 +1,45 @@
+---
+title: Skill
+description: Give your Agent CharDesk's visual language and authoring workflows.
+---
+
+## Install the Skill
+
+Use the CharDesk Skill when you want an Agent to create visual explanations,
+diagrams, interfaces, or slides, or revise an existing canvas. With Node.js 20 or
+later available, install it for your Agent:
+
+```sh
+npx skills add https://github.com/sayhi-bzb/chardesk --skill chardesk
+```
+
+Follow the installer's prompts to choose your Agent. Confirm that `chardesk`
+appears in that client's available skills; reload the client if required.
+
+## Choose the working target
+
+The Skill teaches composition, materials, and verification. It does not grant
+access to a canvas by itself.
+
+- For a live browser canvas, connect through [Local MCP](/agents/connect/) or
+  [WebMCP](/agents/webmcp/).
+- For a local file or terminal session, use the [CLI](/cli/).
+
+Name an existing canvas or file when you want to continue it. This keeps the Agent
+on your work rather than starting an unrelated artifact.
+
+## Ask for a first result
+
+Invoke the Skill using your client's skill control, or name CharDesk in your request:
+
+```text
+Use the chardesk skill to create a visual canvas explaining how a GPU works.
+Read the result to check its layout, then open it for me.
+```
+
+The Agent should produce a readable canvas you can inspect and continue editing.
+If the client has the Skill but no Canvas tools, finish the connection setup above.
+Use [Agent workflow](/agents/workflow/) for follow-up changes and review.
+
+The [Skill and its references](https://github.com/Sayhi-bzb/CharDesk/tree/main/.agents/skills/chardesk)
+contain the authoring instructions used by Agents.

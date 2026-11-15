@@ -30,11 +30,16 @@ An absolute `CHARDESK_HOME` replaces these roots with `<home>/{config,data,state
 | ------------------ | --------------------------------------- | ------------------ |
 | Preferences        | `<Config>/terminal.json`                | `--settings path`  |
 | Session catalog    | `<Data>/catalog.sqlite`                 | `CHARDESK_HOME`    |
+| Content runtime journal | `<State>/canvas.sqlite`              | `CHARDESK_HOME`    |
+| Agent activity inbox | `<State>/agents.sqlite`                 | `CHARDESK_HOME`    |
 | Managed canvases   | `<Data>/canvases/<session-id>.chardesk` | `CHARDESK_HOME`    |
 | Default checkpoint | `<State>/workspaces/default.json`       | `--workspace path` |
 
 Cache is disposable and currently has no required contents. Keep data and state
 on a local filesystem with working SQLite and atomic-file locking semantics.
+The [content concurrency contract](../../packages/local-runtime/TRANSACTIONS.md)
+owns version candidates, durable request identities and pending-save recovery in
+the runtime journal. Session catalog schema and runtime journal schema are independent.
 
 Preferences retain the version-1 envelope: `values` owns scalar terminal choices,
 `shortcuts` owns EditorKeymap user overrides, and `textProfile` owns shared rendering
@@ -131,6 +136,13 @@ Saves check the disk baseline before writing and again before replacement.
 Detected external modifications stop the save and appear as errors in the UI.
 Duplicate preserves the original. Baseline checks provide optimistic conflict
 detection against writers outside the shared catalog.
+
+The fallback Duplicate prompt publishes its new file binding only while that
+operation is current. Cancellation, document switching or disposal retains the
+original binding and dirty baseline. A copy already written before cancellation
+is retained on disk. Publishing a successful copy marks only its captured content
+as saved; later edits remain dirty. [Boundary regressions](src/workspace.test.ts)
+and [prompt cancellation](src/workspaceControls.test.ts) cover both sides of publication.
 
 Restart compares the disk file, saved baseline digest and recovery snapshot:
 

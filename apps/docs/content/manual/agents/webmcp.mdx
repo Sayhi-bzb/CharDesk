@@ -1,0 +1,49 @@
+---
+title: WebMCP
+description: Let a supported browser Agent work with the canvas page you have open.
+---
+
+## Choose the browser connection
+
+Use WebMCP when your Agent can discover tools offered by an open browser page.
+CharDesk exposes Canvas actions and authoring materials there, so you can inspect
+the same result while the Agent works. This path does not require the local MCP
+server.
+
+Availability depends on the browser, connected Agent, and site permissions. For
+a local MCP client, use [Local MCP](/agents/connect/) instead.
+
+## Open Canvas in your Agent's browser
+
+Open [CharDesk Canvas](https://canvas.chardesk.com/) in the browser connected to
+your Agent, select the intended canvas, and keep the page open.
+
+- **ChatGPT Site Tools:** use the desktop app's built-in browser and check that
+  Site tools are allowed. The browser's Site tools control lists available actions.
+  See the [official Site Tools instructions](https://learn.chatgpt.com/docs/webmcp)
+  for availability and permissions.
+- **Chrome WebMCP:** use a compatible Agent connected to that Chrome instance.
+  For local testing, Chrome documents the `chrome://flags/#enable-webmcp-testing`
+  flag and relaunch step in its [WebMCP guide](https://developer.chrome.com/docs/ai/webmcp).
+  Enabling a browser flag alone does not connect an Agent.
+
+## Confirm tools and make a change
+
+Check that the host lists CharDesk's Canvas tools. Ask the Agent to read the
+authoring materials, read the current canvas, and describe what it found.
+Browser Agents can load the shared Skill materials through `chardesk_read_materials`.
+
+After confirming the target, ask it to add a short passage and read the result
+back. The change should appear on the open canvas. Use
+[Agent workflow](/agents/workflow/) to continue composing and reviewing content.
+
+## If tools are unavailable
+
+Check the host's page-tool support and site permissions, then reopen the target
+page. Navigating away or closing it can remove its tools. An ordinary browser tab
+without a connected Agent is not enough.
+
+Use [Local MCP](/agents/connect/) if that suits your client. Use [CLI](/cli/)
+when the intended target is a local file; it is a different workspace from the
+open browser canvas. See [Troubleshooting](/troubleshooting/#agent-cannot-connect)
+for connection recovery.

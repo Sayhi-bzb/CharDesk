@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { prepareSnapshotFonts } from '../../terminal/scripts/snapshotFonts.ts';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const directory = resolve(root, 'packages/cli');
+const manifest = JSON.parse(await readFile(resolve(directory, 'package.json'), 'utf8'));
+const version =
+  process.env.CHARDESK_RELEASE_BUILD === '1' ? manifest.version : `${manifest.version}-dev`;
 const config = JSON.parse(await readFile(resolve(root, 'packages/cli/tsconfig.json'), 'utf8'));
 const result = await Bun.build({
   entrypoints: [
@@ -13,6 +16,7 @@ const result = await Bun.build({
     resolve(root, 'packages/local-runtime/src/document-worker.ts'),
   ],
   target: 'node',
+  define: { __CHARDESK_VERSION__: JSON.stringify(version) },
   splitting: true,
   naming: '[name].[ext]',
   outdir: resolve(directory, 'dist'),

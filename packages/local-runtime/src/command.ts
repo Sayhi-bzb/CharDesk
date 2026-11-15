@@ -4,16 +4,32 @@ import { LocalSessions } from './sessions.ts';
 import { TerminalWorkspace } from './workspace.ts';
 import { localCapabilities } from './capabilities.ts';
 import { callRunningSession } from './ipc.ts';
+import { CanvasRecoveryRequired } from './recovery.ts';
+import {
+  parseAgentIdentity,
+  parseAgentInvocation,
+  type AgentIdentity,
+  type AgentInvocation,
+} from './agents.ts';
 export async function executeLocal(
   name: string,
   input: Record<string, unknown>,
-  target: { file?: string; session?: string } = {}
+  target: {
+    file?: string;
+    session?: string;
+    agent?: AgentIdentity;
+    invocation?: AgentInvocation;
+  } = {}
 ) {
   if (!input || typeof input !== 'object' || Array.isArray(input))
     throw new Error('Expected an object.');
   if (input.canvasId !== undefined && (target.file || target.session))
     throw new Error('Conflicting targets.');
   const paths = resolveAppPaths();
+  const agent = parseAgentIdentity(target.agent);
+  const invocation = parseAgentInvocation(target.invocation),
+    originalInput = input;
+  target = { file: target.file, session: target.session };
   if (target.file) target = { file: await resolveCanvasFilePath(target.file) };
   const refKey = name === 'canvas_code' ? 'scriptRef' : 'sourceRef';
   if (input[refKey] !== undefined) {
@@ -37,7 +53,10 @@ export async function executeLocal(
     delete rest[refKey];
     input = { ...rest, [key]: content };
   }
-  const remote = await callRunningSession(paths, target, name, input);
+  const metadata = agent
+    ? { ...invocation, ...(input !== originalInput ? { input: originalInput } : {}) }
+    : undefined;
+  const remote = await callRunningSession(paths, target, name, input, agent, metadata);
   if (remote.found) return remote.result;
   const sessions = await LocalSessions.open(paths);
   const workspace = TerminalWorkspace.empty();
@@ -47,7 +66,13 @@ export async function executeLocal(
     else if (target.session) await sessions.open(target.session);
     else if (name !== 'canvas_manage')
       return { ok: false, code: 'invalid_input', message: 'Specify --file or --session.' };
-    return await localCapabilities(workspace, sessions).execute(name, input);
+    return await localCapabilities(workspace, sessions).execute(name, input, {
+      agent,
+      invocation: agent ? { ...invocation, input: originalInput } : undefined,
+    });
+  } catch (error) {
+    if (error instanceof CanvasRecoveryRequired) return error.result();
+    throw error;
   } finally {
     await sessions.dispose();
     workspace.dispose();

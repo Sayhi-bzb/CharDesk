@@ -115,9 +115,11 @@ class CliUsageError extends Error {
 
 const CLI_USAGE = [
   "Usage:",
+  "  chardesk --version               Print the installed distribution version",
   "  chardesk                         Open the terminal Canvas (Bun required)",
   "  chardesk tui [files.chardesk…]    Open the terminal Canvas",
   "  chardesk canvas <operation> [--file path | --session id] --json",
+  "    Agent identity: --agent <id> [--agent-name <name>] or CHARDESK_AGENT_ID",
   "  chardesk init <file.chardesk> [--mode <freeform|slide>] [--title <title>]",
   "  chardesk migrate <blackboard.yaml|directory> --output <file.chardesk>",
   "  chardesk inspect <input|-> [options]",

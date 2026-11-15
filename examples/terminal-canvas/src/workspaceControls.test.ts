@@ -9,6 +9,7 @@ import { attachControls } from './controller.ts';
 import { serializeCharDeskDocumentEnvelope } from '@chardesk/document';
 import { createTextPreparation } from './text.ts';
 import type { TerminalColors } from '@opentui/core';
+import type { TerminalClipboardAccess } from './clipboard.ts';
 
 test('template previews follow appearance until placement, then remain literal document content', async () => {
   const f = await fixture();
@@ -62,7 +63,8 @@ afterEach(async () => {
 });
 async function fixture(
   platform: NodeJS.Platform = 'darwin',
-  delivery: 'written' | 'dispatched' = 'written'
+  delivery: 'written' | 'dispatched' = 'written',
+  clipboardPort?: TerminalClipboardAccess
 ) {
   const root = await mkdtemp(join(tmpdir(), 'chardesk-workspace-ui-'));
   directories.push(root);
@@ -98,7 +100,7 @@ async function fixture(
     () => {
       quits++;
     },
-    {
+    clipboardPort ?? {
       read: async () => ({ plainText: clipboard }),
       write: async (payload) => {
         writes++;
@@ -162,17 +164,17 @@ test.each(['darwin', 'win32'] as const)(
       f.setup.mockInput.pressEnter();
       await until(() => f.workspace.files.length === 2);
       await f.setup.renderOnce();
-      expect(f.workspace.active.title).toBe('Two');
+      expect(f.workspace.requireActive().title).toBe('Two');
       expect(f.setup.captureCharFrame()).toContain('Second');
       expect(f.surface.tool).toBe('hand');
       f.surface.activateDock('edit');
       await f.setup.mockInput.typeText('X', 0);
       const secondState = f.workspace.model.getSnapshot().interaction;
       f.setup.mockInput.pressKey(KeyCodes.F6);
-      expect(f.workspace.active.title).toBe('One');
+      expect(f.workspace.requireActive().title).toBe('One');
       expect(f.surface.tool).toBe('hand');
       f.setup.mockInput.pressKey(KeyCodes.F6, { shift: true });
-      expect(f.workspace.active.title).toBe('Two');
+      expect(f.workspace.requireActive().title).toBe('Two');
       expect(f.surface.tool).toBe('edit');
       expect(f.workspace.model.getSnapshot().interaction).toEqual(secondState);
       f.primary('w');
@@ -184,13 +186,13 @@ test.each(['darwin', 'win32'] as const)(
       );
       f.setup.mockInput.pressEnter();
       await until(() => f.workspace.files.length === 2);
-      expect(f.workspace.active.title).toBe('three');
+      expect(f.workspace.requireActive().title).toBe('three');
       f.primary('w');
       await until(() => f.workspace.files.length === 1);
       expect(await readFile(join(f.root, 'three.chardesk'), 'utf8')).toContain(
         'chardesk: document/v2'
       );
-      expect(f.workspace.active.title).toBe('One');
+      expect(f.workspace.requireActive().title).toBe('One');
     } finally {
       await f.dispose();
     }
@@ -202,7 +204,7 @@ test('Mac Delete closes the selected fallback document, saving edits and preserv
   try {
     f.workspace.model.commands.insert('Kept');
     await f.workspace.openFile(f.second);
-    const active = f.workspace.active;
+    const active = f.workspace.requireActive();
     f.surface.activateDock('documents');
     expect(f.surface.panel?.hint).toBe('Enter open · ⌫ close');
     f.surface.panel!.selected = 0;
@@ -331,11 +333,188 @@ test('cancelled file prompts cannot activate a late open and save-copy keeps the
     const target = join(f.root, 'copy.chardesk');
     await f.setup.mockInput.typeText(target, 0);
     f.setup.mockInput.pressEnter();
-    await until(() => f.workspace.active.path.endsWith('/copy.chardesk'));
+    await until(() => f.workspace.requireActive().path.endsWith('/copy.chardesk'));
     expect(await readFile(f.first, 'utf8')).toContain('Alpha');
     expect(await readFile(target, 'utf8')).toContain('Xlpha');
     expect(f.workspace.model.dirty).toBe(false);
   } finally {
+    await f.dispose();
+  }
+});
+
+test('Find invalidates its visible match after content changes without a history entry', async () => {
+  const f = await fixture();
+  try {
+    f.primary('f');
+    await f.setup.mockInput.typeText('Alpha', 0);
+    f.setup.mockInput.pressEnter();
+    f.setup.mockInput.pressEnter();
+    expect(f.surface.searchHighlights).toHaveLength(1);
+    const model = f.workspace.model;
+    const historyVersion = model.historyPositionAt();
+    model.documents.applyCellPlanePatch({
+      rows: [{ y: 0, erase: [{ from: 0, to: 4 }], spans: [{ x: 0, text: 'Other', color: '#000000' }] }],
+    }, 'none');
+    expect(model.plane.get({ x: 0, y: 0 })?.char).toBe('O');
+    expect(model.historyPositionAt()).toBe(historyVersion);
+    expect(f.surface.searchHighlights).toEqual([]);
+    f.primary('g');
+    expect(f.surface.panel?.title).toBe('Find on current page');
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('Find drops old matches when a clean native source reload changes the cells', async () => {
+  const f = await fixture();
+  try {
+    f.primary('f');
+    await f.setup.mockInput.typeText('Alpha', 0);
+    f.setup.mockInput.pressEnter();
+    f.setup.mockInput.pressEnter();
+    expect(f.surface.searchHighlights).toHaveLength(1);
+    await writeFile(f.first, serializeCharDeskDocumentEnvelope({ mode: 'freeform', title: 'One', body: 'Other 界' }));
+    await f.workspace.reloadFile();
+    expect(f.workspace.model.plane.get({ x: 0, y: 0 })?.char).toBe('O');
+    expect(f.surface.searchHighlights).toEqual([]);
+    f.primary('g');
+    expect(f.surface.panel?.title).toBe('Find on current page');
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('cancelling Duplicate before path resolution cannot rebind the original or clear its dirty state', async () => {
+  const f = await fixture();
+  let completion: Promise<void> | undefined;
+  const saveCopy = f.workspace.saveCopy.bind(f.workspace);
+  f.workspace.saveCopy = (...args) => (completion = saveCopy(...args));
+  try {
+    f.workspace.model.commands.insert('X');
+    const original = f.workspace.requireActive();
+    f.surface.activateDock('documents');
+    f.surface.panel!.selected = f.surface.panel!.items.indexOf('Duplicate…');
+    f.setup.mockInput.pressEnter();
+    await f.setup.mockInput.typeText(join(f.root, 'cancelled-copy.chardesk'), 0);
+    f.setup.mockInput.pressEnter();
+    expect(completion).toBeDefined();
+    f.escape();
+    await completion?.catch(() => {});
+    expect(f.workspace.active).toBe(original);
+    expect(f.workspace.model.dirty).toBe(true);
+    expect(f.surface.panel).toBeNull();
+    expect(await readFile(f.first, 'utf8')).toContain('Alpha');
+  } finally {
+    await f.dispose();
+  }
+});
+
+for (const failure of ['unavailable', 'rejected'] as const) {
+  test(`panel Paste reports ${failure} clipboard IO without changing its input or canvas`, async () => {
+    const f = await fixture('darwin', 'written', {
+      read: async () => {
+        if (failure === 'rejected') throw new Error('Clipboard backend offline');
+        return { error: 'clipboard-failed' };
+      },
+      write: async () => ({ status: 'written' }),
+    });
+    try {
+      const before = f.workspace.model.plane.materialize();
+      f.primary('o');
+      await f.setup.mockInput.typeText('keep-path', 0);
+      f.primary('v');
+      await Bun.sleep(0);
+      expect(f.surface.panel?.input).toBe('keep-path');
+      expect(f.surface.panel?.error).toContain('Clipboard unavailable');
+      expect(f.workspace.model.plane.materialize()).toEqual(before);
+    } finally {
+      await f.dispose();
+    }
+  });
+}
+
+test('a late clipboard failure cannot attach an error to a changed or replacement panel', async () => {
+  let reject!: (error: Error) => void;
+  const f = await fixture('darwin', 'written', {
+    read: () => new Promise((_resolve, fail) => { reject = fail; }),
+    write: async () => ({ status: 'written' }),
+  });
+  try {
+    f.primary('o');
+    await f.setup.mockInput.typeText('keep', 0);
+    f.primary('v');
+    await f.setup.mockInput.typeText('X', 0);
+    f.setup.mockInput.pressBackspace();
+    reject(new Error('late clipboard failure'));
+    await Bun.sleep(0);
+    expect(f.surface.panel?.input).toBe('keep');
+    expect(f.surface.panel?.error).toBeUndefined();
+    f.primary('v');
+    f.escape();
+    f.primary('f');
+    reject(new Error('failure from the old panel'));
+    await Bun.sleep(0);
+    expect(f.surface.panel?.title).toBe('Find on current page');
+    expect(f.surface.panel?.error).toBeUndefined();
+  } finally {
+    await f.dispose();
+  }
+});
+
+for (const transport of ['bracketed', 'clipboard'] as const) {
+  test(`busy file prompts consume ${transport} paste without changing their accepted path`, async () => {
+    let releaseClipboard!: (value: { plainText: string }) => void;
+    const clipboard = new Promise<{ plainText: string }>((done) => { releaseClipboard = done; });
+    const f = await fixture('darwin', 'written', {
+      read: () => clipboard,
+      write: async () => ({ status: 'written' }),
+    });
+    let releaseOpen!: () => void;
+    const gate = new Promise<void>((done) => { releaseOpen = done; });
+    const open = f.workspace.openFile.bind(f.workspace);
+    let completion: ReturnType<typeof open> | undefined;
+    f.workspace.openFile = (...args) => (completion = gate.then(() => open(...args)));
+    try {
+      f.primary('o');
+      await f.setup.mockInput.typeText(f.second, 0);
+      if (transport === 'clipboard') f.primary('v');
+      f.setup.mockInput.pressEnter();
+      expect(f.surface.panel?.busy).toBe(true);
+      if (transport === 'bracketed') await f.setup.mockInput.pasteBracketedText('INJECTED');
+      else releaseClipboard({ plainText: 'INJECTED' });
+      await Bun.sleep(0);
+      expect(f.surface.panel?.input).toBe(f.second);
+      expect(f.workspace.files).toHaveLength(1);
+    } finally {
+      releaseClipboard({ plainText: '' });
+      releaseOpen();
+      await completion?.catch(() => {});
+      await f.dispose();
+    }
+  });
+}
+
+test('submitting a path permanently invalidates an older paste even when opening fails', async () => {
+  let release!: (value: { plainText: string }) => void;
+  const pending = new Promise<{ plainText: string }>((done) => { release = done; });
+  const f = await fixture('darwin', 'written', {
+    read: () => pending,
+    write: async () => ({ status: 'written' }),
+  });
+  f.workspace.openFile = async () => { throw new Error('Cannot open file'); };
+  try {
+    f.primary('o');
+    await f.setup.mockInput.typeText('accepted-path', 0);
+    f.primary('v');
+    f.setup.mockInput.pressEnter();
+    await until(() => f.surface.panel?.error === 'Cannot open file');
+    expect(f.surface.panel?.busy).toBe(false);
+    release({ plainText: 'OLD_PASTE' });
+    await Bun.sleep(0);
+    expect(f.surface.panel?.input).toBe('accepted-path');
+    expect(f.surface.panel?.error).toBe('Cannot open file');
+  } finally {
+    release({ plainText: '' });
     await f.dispose();
   }
 });
@@ -897,7 +1076,7 @@ test('cancelling a pending automatic close saves its content but keeps the docum
   const f = await fixture();
   const entered = Promise.withResolvers<void>(),
     release = Promise.withResolvers<void>();
-  const file = f.workspace.active,
+  const file = f.workspace.requireActive(),
     save = file.save.bind(file);
   file.save = async (model) => {
     entered.resolve();

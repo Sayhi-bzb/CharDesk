@@ -74,7 +74,7 @@ test('record removal saves local wide text but retains the file; reopening gets 
     const native = parseCanvasDocument((await readOptional(file.path))!).document;
     expect(new Map(native.pages[0]!.grid).get('0,0')?.char).toBe('🦀');
     await f.sessions.openPath(file.path);
-    expect(f.sessions.forFile(f.workspace.active)!.id).not.toBe(record.id);
+    expect(f.sessions.forFile(f.workspace.requireActive())!.id).not.toBe(record.id);
     expect(f.workspace.model.plane.get({ x: 0, y: 0 })?.char).toBe('🦀');
   } finally {
     await f.dispose();
@@ -109,7 +109,7 @@ test('external files and managed-path symlinks cannot be file-deleted, while rec
       text = seed('External');
     await writeFile(external, text);
     await f.sessions.openPath(external);
-    const record = f.sessions.forFile(f.workspace.active)!;
+    const record = f.sessions.forFile(f.workspace.requireActive())!;
     const plan = await f.sessions.planRemoval(record.id, record.revision);
     expect(plan.file).toBeNull();
     await expect(
@@ -237,7 +237,7 @@ for (const mode of ['record', 'file'] as const) {
     let app = await openLocalWorkspace(parseOptions([]), paths, {}, [], root);
     try {
       app.persistence.start(app.workspace, { checkpointMs: 60_000, autosaveMs: 60_000 });
-      const file = app.workspace.active,
+      const file = app.workspace.requireActive(),
         record = app.sessions.forFile(file)!;
       await app.persistence.flush();
       expect(JSON.parse(await readFile(app.persistence.path, 'utf8')).files[0].sessionId).toBe(
@@ -256,7 +256,7 @@ for (const mode of ['record', 'file'] as const) {
       expect(app.sessions.list()).toHaveLength(0);
       if (mode === 'record') {
         await app.sessions.openPath(file.path);
-        const fresh = app.sessions.forFile(app.workspace.active)!;
+        const fresh = app.sessions.forFile(app.workspace.requireActive())!;
         expect(fresh.id).not.toBe(record.id);
         app.persistence.start(app.workspace);
         await app.persistence.close();
@@ -264,7 +264,7 @@ for (const mode of ['record', 'file'] as const) {
         app.workspace.dispose();
         app = await openLocalWorkspace(parseOptions([]), paths, {}, [], root);
         expect(app.workspace.files).toHaveLength(1);
-        expect(app.sessions.forFile(app.workspace.active)!.id).toBe(fresh.id);
+        expect(app.sessions.forFile(app.workspace.requireActive())!.id).toBe(fresh.id);
       }
     } finally {
       await app.persistence.abandon();

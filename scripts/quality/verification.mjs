@@ -294,6 +294,8 @@ const runWorkspaceTests = (projects, selected, buildRunner, run, cell, mode, wor
     buildRunner.build([...project.dependencies])
     if (project.manifest.bin) buildRunner.build([project.name])
     runWorkspaceScript(project, 'test', run)
+    if (project.manifest.scripts['test:pty'] && mode !== 'quick')
+      runWorkspaceScript(project, 'test:pty', run)
   }
 }
 

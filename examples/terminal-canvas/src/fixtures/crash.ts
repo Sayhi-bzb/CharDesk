@@ -9,5 +9,5 @@ workspace.model.commands.insert('CRASH');
 const persistence = await WorkspacePersistence.open(checkpoint!);
 persistence.start(workspace, { autosaveMs: -1 });
 await persistence.flush();
-await writeFile(ready!, 'ready');
+await writeFile(ready!, workspace.model.documents.getContentVersion());
 setInterval(() => {}, 1000);

@@ -5,14 +5,13 @@ description: Start, edit, and restore local canvases in your terminal.
 
 ## Install and start
 
-Install Bun, then install the command:
+Follow [CLI installation](/cli/#install-the-command), then start the terminal canvas:
 
 ```sh
-bun add -g @chardesk/cli
 chardesk
 ```
 
-Bun 1.3.14 or later is required. The canvas starts in Hand mode. Switch to Edit to type or select content. Tab cycles through Edit, Hand, and Style in the footer. Settings, sessions, and the minimap are in the header.
+The canvas starts in Hand mode. Switch to Edit to type or select content. Tab cycles through Edit, Hand, and Style in the footer. Settings, sessions, and the minimap are in the header.
 
 To edit a specific file:
 
@@ -36,6 +35,57 @@ switch groups, arrows or the mouse wheel to browse, and Esc to return to the can
 - Ctrl+Q: quit, including while a panel is open.
 
 Sessions save automatically. See [Sessions](/files/sessions/) for storage locations.
+
+## Updates
+
+When a new version is available, an update entry appears at the right of the bottom
+row. Click it, or open **Settings → Updates**, to check the installed version,
+check again, or read release notes. Choose your installation method and copy its
+upgrade command. Run the command after leaving the canvas, then start CharDesk again.
+
+Automatic checks run in the background at most once per day per running instance
+and reuse a shared cache. Disable **Automatically check for updates** in the same
+panel to stop them. Development builds do not check for releases.
+
+## Agents
+
+Agents read and change this local workspace through [CLI Canvas operations](/cli/#read-and-write-canvas-content).
+The [Local MCP](/agents/connect/) and [WebMCP](/agents/webmcp/) connections target browser canvases.
+
+The right side of the first footer row shows **Agents**, adding a number when the active canvas has unread
+activity. The number counts calls, including multiple calls by the same agent.
+The unread number uses the terminal's red palette color. Rows show only the agent
+name, action and relative time; failures and ongoing work are part of the action.
+Click to open **Unread**, or **Agent** when there is no unread activity. Use Tab
+or click a tab to switch views. **Unread** and **Read** are on the left; **Agent**
+is on the right. Use arrows to browse rows and Left/Right to change pages in long lists.
+
+The **Agent** view contains setup instructions for a local coding agent. Choose
+**Copy** in the dialog footer, then paste the complete instructions into that agent to install the
+skill, CLI and MCP server.
+
+Click a row or press Enter to view its command and input JSON. Copy them separately
+with the footer actions; Tab selects an action and Enter runs it. Esc returns to
+the same list position. Older records can show that call details were not recorded.
+Details are read-only text: use the wheel, Up/Down, Page Up/Down or Home/End to
+scroll. Clicking the text does not select a row.
+
+Closing the dialog marks the displayed records as read. Rows you have not scrolled
+to and new updates not yet displayed remain unread. Completed calls update the
+same record; a completion you have not seen becomes unread. History and read state
+are saved locally and remain available after restarting.
+
+Agents opt in with `--agent <stable-id>` on Canvas CLI calls, optionally adding
+`--agent-name <display-name>`. For example, each agent can set its identity once:
+
+```sh
+export CHARDESK_AGENT_ID=layout-agent
+export CHARDESK_AGENT_NAME=Layout
+```
+
+Ordinary CLI calls remain anonymous. These records describe identified calls,
+not online status or verified identity. Commands still work without a TUI. The
+Agents action can be assigned a key in **Settings → Shortcuts**.
 
 ## Terminal compatibility
 

@@ -269,3 +269,108 @@ test('local capabilities save files and route live edits into the owning history
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('independent local clients share a live version, reject stale writes and retain the human view', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'chardesk-shared-writes-'));
+  const previous = process.env.CHARDESK_HOME;
+  process.env.CHARDESK_HOME = join(directory, 'home');
+  const path = join(directory, 'shared.chardesk');
+  let endpoint: Awaited<ReturnType<typeof startLocalEndpoint>> | undefined;
+  let sessions: LocalSessions | undefined;
+  let workspace: TerminalWorkspace | undefined;
+  try {
+    await writeFile(
+      path,
+      serializeCharDeskDocumentEnvelope({ mode: 'freeform', title: 'Shared', body: 'ORIGINAL' })
+    );
+    sessions = await LocalSessions.open(resolveAppPaths());
+    workspace = TerminalWorkspace.empty();
+    await sessions.attach(workspace);
+    await sessions.openPath(path);
+    endpoint = await startLocalEndpoint(resolveAppPaths(), workspace, sessions);
+    workspace.model.commands.pointAt({ x: 3, y: 0 });
+    const view = workspace.model.viewAt(workspace.requireActive().address!);
+    const read = (await executeLocal(
+      'canvas_read',
+      { viewport: [0, 0, 10, 1] },
+      { file: path }
+    )) as { version: string };
+    const results = (await Promise.all(
+      ['ONE', 'TWO'].map((content) =>
+        executeLocal(
+          'canvas_write',
+          {
+            at: [0, 2],
+            content,
+            baseVersion: read.version,
+          },
+          { file: path }
+        )
+      )
+    )) as Array<{ code?: string; operationId?: string; version?: string; persistence?: string }>;
+    const winner = results.find((result) => result.persistence === 'saved')!;
+    expect(results.filter((result) => result.persistence === 'saved')).toHaveLength(1);
+    expect(results.filter((result) => result.code === 'version_conflict')).toHaveLength(1);
+    expect(winner.version).toBe(
+      workspace.model.documents.getContentVersion(workspace.requireActive().address!.documentId)
+    );
+    expect(workspace.model.viewAt(workspace.requireActive().address!)).toEqual(view);
+    expect(
+      await executeLocal(
+        'canvas_undo',
+        { operationId: winner.operationId, baseVersion: read.version },
+        { file: path }
+      )
+    ).toMatchObject({ ok: false, code: 'version_conflict' });
+    expect(
+      await executeLocal(
+        'canvas_undo',
+        { operationId: winner.operationId, baseVersion: winner.version },
+        { file: path }
+      )
+    ).toMatchObject({ ok: true, persistence: 'saved' });
+    expect(workspace.model.plane.getCell({ x: 0, y: 2 })).toBeUndefined();
+    expect(await readFile(path, 'utf8')).toContain('ORIGINAL');
+    workspace.model.commands.insert('H');
+    expect(
+      await executeLocal(
+        'canvas_write',
+        { at: [0, 3], content: 'STALE', baseVersion: winner.version },
+        { file: path }
+      )
+    ).toMatchObject({ ok: false, code: 'version_conflict' });
+    expect(workspace.model.plane.getCell({ x: 0, y: 3 })).toBeUndefined();
+    const version = workspace.model.documents.getContentVersion(
+      workspace.requireActive().address!.documentId
+    );
+    let commits = 0;
+    const detach = workspace.model.documents.subscribeContent(() => {
+      commits++;
+    });
+    const request = {
+      at: [0, 4],
+      content: 'ONE EXECUTION',
+      baseVersion: version,
+      requestId: 'parallel-request',
+    };
+    const repeated = await Promise.all([
+      executeLocal('canvas_write', request, { file: path }),
+      executeLocal('canvas_write', request, { file: path }),
+    ]);
+    expect(repeated[0]).toEqual(repeated[1]);
+    expect(repeated[0]).toMatchObject({
+      changed: true,
+      persistence: 'saved',
+      operationId: expect.any(String),
+    });
+    expect(commits).toBe(1);
+    detach();
+  } finally {
+    await endpoint?.();
+    await sessions?.dispose();
+    workspace?.dispose();
+    if (previous === undefined) delete process.env.CHARDESK_HOME;
+    else process.env.CHARDESK_HOME = previous;
+    await rm(directory, { recursive: true, force: true });
+  }
+});

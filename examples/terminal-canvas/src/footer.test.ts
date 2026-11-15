@@ -54,11 +54,11 @@ test('a failed document stays visible across other saves and Source targets the 
   setup.renderer.root.add(surface);
   const detach = attachControls(surface, () => {}, undefined, workspace);
   try {
-    const first = workspace.active;
+    const first = workspace.requireActive();
     await workspace.saveFile(first);
     const baseline = await readFile(first.path, 'utf8');
     await workspace.openFile(join(root, 'second.chardesk'));
-    const second = workspace.active;
+    const second = workspace.requireActive();
     workspace.switchTo(0);
     workspace.model.commands.insert('X');
     await writeFile(first.path, 'External edit');

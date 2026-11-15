@@ -22,14 +22,6 @@ Check the bounds and whitespace before exporting an image. Plain text cannot pre
 
 ## Work with local files
 
-After installing the terminal command, create, inspect, and export files with:
-
-```sh
-chardesk init diagram.chardesk --title "Diagram"
-chardesk inspect diagram.chardesk
-chardesk render diagram.chardesk -o diagram.png
-```
-
-`chardesk open diagram.chardesk` opens a read-only browser preview. To edit in the terminal, use `chardesk tui diagram.chardesk`. The preview cannot write browser edits back to the file.
-
-See the [CLI reference](https://github.com/Sayhi-bzb/CharDesk/tree/main/packages/cli#readme) for command options.
+Use the [CLI](/cli/) to create, inspect, edit, and export local files. Its browser
+preview is read-only. Use [Terminal canvas](/terminal/) for interactive local editing,
+or import an editable copy into [Web Canvas](/canvas/).

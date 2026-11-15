@@ -13,7 +13,13 @@ In Warp, try Ctrl+Y to copy and Hand to pan. The terminal's own text selection i
 
 ## Agent cannot connect
 
-Keep both the canvas page and Agent client open. Check connection status and permissions under Agent → Local MCP. After starting the server, wait for the connection before trying a read.
+For [Local MCP](/agents/connect/), keep both the canvas page and Agent client open.
+Check connection status and permissions under Agent → Local MCP. After starting
+the server, wait for the connection before trying a read.
+
+For [WebMCP](/agents/webmcp/), check page-tool support and permissions in the
+browser connected to your Agent. Installing the [Skill](/agents/skill/) alone does
+not establish either connection. For local files or TUI sessions, use [CLI](/cli/).
 
 If a write times out, ask the Agent to read the canvas before retrying. Reconnecting does not mean the previous write failed to take effect.
 

@@ -8,6 +8,12 @@ import type { LocalSessions } from './sessions.ts';
 import { localCapabilities } from './capabilities.ts';
 import type { CanvasReadAppearance } from '../../canvas-capabilities/src/read.ts';
 import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
+import {
+  parseAgentIdentity,
+  parseAgentInvocation,
+  type AgentIdentity,
+  type AgentInvocation,
+} from './agents.ts';
 
 type Endpoint = {
   version: 1;
@@ -32,8 +38,7 @@ export async function startLocalEndpoint(
     path = join(directory, `${instance}.json`);
   const capabilities = localCapabilities(workspace, sessions, true, readAppearance, presentSurface);
   let closing = false;
-  let tail = Promise.resolve();
-  let pending = 0;
+  const pending = new Set<Promise<void>>();
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -48,23 +53,23 @@ export async function startLocalEndpoint(
         return new Response('Unauthorized', { status: 403 });
       if (request.method !== 'POST' || new URL(request.url).pathname !== '/call')
         return new Response('Not found', { status: 404 });
-      if (pending >= 128)
+      if (pending.size >= 128)
         return Response.json(
           { ok: false, code: 'runtime_busy', message: 'Local runtime capacity reached.' },
           { status: 429 }
         );
-      pending++;
       let resolve!: () => void;
-      const previous = tail;
-      tail = new Promise<void>((done) => (resolve = done));
+      const completion = new Promise<void>((done) => (resolve = done));
+      pending.add(completion);
       try {
-        await previous;
         request.signal.throwIfAborted();
         const body = (await request.json()) as {
           name: string;
           input: Record<string, unknown>;
           file?: string;
           session?: string;
+          agent?: unknown;
+          invocation?: unknown;
         };
         const file = body.file
           ? workspace.files.find((file) => file.path === body.file)
@@ -74,14 +79,22 @@ export async function startLocalEndpoint(
         if ((body.file || body.session) && !file)
           return Response.json({ ok: false, code: 'not_owner' }, { status: 409 });
         const input = { ...body.input, ...(file ? { canvasId: sessions.forFile(file)?.id } : {}) };
-        return Response.json(await capabilities.execute(body.name, input));
+        const agent = parseAgentIdentity(body.agent);
+        const invocation = parseAgentInvocation(body.invocation);
+        return Response.json(
+          await capabilities.execute(body.name, input, {
+            signal: request.signal,
+            agent,
+            invocation: { ...invocation, input: invocation?.input ?? body.input },
+          })
+        );
       } catch (error) {
         return Response.json(
           { ok: false, code: 'invalid_request', message: String(error) },
           { status: 400 }
         );
       } finally {
-        pending--;
+        pending.delete(completion);
         resolve();
       }
     },
@@ -116,7 +129,7 @@ export async function startLocalEndpoint(
     stopped = true;
     closing = true;
     detach();
-    await tail;
+    await Promise.allSettled([...pending]);
     server.stop(true);
     await writes.catch(() => {});
     await unlink(path).catch(() => {});
@@ -124,7 +137,7 @@ export async function startLocalEndpoint(
   return Object.assign(close, {
     async pause() {
       closing = true;
-      await tail;
+      await Promise.allSettled([...pending]);
     },
     resume() {
       if (!stopped) closing = false;
@@ -136,7 +149,9 @@ export async function callRunningSession(
   paths: AppPaths,
   target: { file?: string; session?: string },
   name: string,
-  input: Record<string, unknown>
+  input: Record<string, unknown>,
+  agent?: AgentIdentity,
+  invocation?: AgentInvocation
 ) {
   const directory = join(paths.state, 'runtimes');
   const names = await readdir(directory).catch((error: NodeJS.ErrnoException) => {
@@ -173,7 +188,7 @@ export async function callRunningSession(
         method: 'POST',
         redirect: 'error',
         headers: { authorization: `Bearer ${entry.token}`, 'x-chardesk-instance': entry.instance },
-        body: JSON.stringify({ name, input, ...target }),
+        body: JSON.stringify({ name, input, ...target, agent, invocation }),
         signal: AbortSignal.timeout(30000),
       });
       return { found: true as const, result: await response.json() };

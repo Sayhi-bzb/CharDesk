@@ -158,7 +158,7 @@ test('open guide tracks binding and language changes without keeping a second he
     expect(f.surface.panel?.items[0]).toBe('复制');
     expect(f.surface.panel?.itemHints?.[0]).toContain('F12');
     expect(f.surface.panel?.itemHints?.[0]).not.toContain('Ctrl+Y');
-    f.surface.panel = { dialog: true, title: 'Other dialog', hint: '', items: [], selected: 0 };
+    f.surface.input.openPanel({ dialog: true, title: 'Other dialog', hint: '', items: [], selected: 0 }, f);
     expect(f.surface.help).toBe(false);
     expect(f.surface.panel?.title).toBe('Other dialog');
     f.surface.help = false;

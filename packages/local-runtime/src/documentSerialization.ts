@@ -2,15 +2,18 @@ import { Worker } from 'node:worker_threads';
 import * as Y from 'yjs';
 import type { CanvasDocumentAddress } from '@chardesk/editor-core/canvasDocumentModel';
 import type { TerminalCanvas } from './model.ts';
+import type { ContentProof, ContentVersion, SemanticContentId } from '@chardesk/editor-core/persistenceState';
 
 export type SerializationRequest = {
   id: number;
   documentId: string;
-  update: Uint8Array;
+  update?: Uint8Array;
+  source?: string;
   title: string;
 };
-export type SerializationReply = { id: number } & ({ source: string } | { error: string });
-export type DocumentTextSnapshot = { version: string; source: string };
+type SerializedContent = { source: string; semanticId: SemanticContentId };
+export type SerializationReply = { id: number } & (SerializedContent | { error: string });
+export type DocumentTextSnapshot = ContentProof & SerializedContent & { contentVersion: ContentVersion };
 
 /** One workspace owns one lazy worker and shares its immutable captures between save and recovery. */
 export class DocumentSerializer {
@@ -19,7 +22,7 @@ export class DocumentSerializer {
   #nextId = 0;
   #pending = new Map<
     number,
-    { resolve: (source: string) => void; reject: (error: Error) => void }
+    { resolve: (content: SerializedContent) => void; reject: (error: Error) => void }
   >();
   #cache = new WeakMap<Y.Doc, { key: string; snapshot: Promise<DocumentTextSnapshot> }>();
 
@@ -31,9 +34,10 @@ export class DocumentSerializer {
     if (this.#disposed) return Promise.reject(new Error('Document serializer is closed.'));
     const document = model.documents.getCollaborationDocument(address.documentId);
     if (!document) return Promise.reject(new Error('Document is no longer open.'));
-    const version = model.versionAt(address);
+    const proof = model.contentProofAt(address);
+    const contentVersion = proof.version;
     const key = JSON.stringify([
-      version,
+      contentVersion,
       model.documents.getDocumentAddress(address.documentId)?.pageId,
       title,
     ]);
@@ -41,9 +45,10 @@ export class DocumentSerializer {
     if (cached?.key === key) return cached.snapshot;
     // Yjs encodes the stored span operations, without expanding them to individual cells on the UI thread.
     const update = Y.encodeStateAsUpdate(document);
-    const snapshot = this.#serialize(address.documentId, title, update).then((source) => ({
-      version,
-      source,
+    const snapshot = this.#serialize(address.documentId, title, update).then((content) => ({
+      ...proof,
+      contentVersion,
+      ...content,
     }));
     const entry = { key, snapshot };
     this.#cache.set(document, entry);
@@ -52,7 +57,11 @@ export class DocumentSerializer {
     });
     return snapshot;
   }
-  #serialize(documentId: string, title: string, update: Uint8Array) {
+  identityForSource(source: string) {
+    if (this.#disposed) return Promise.reject(new Error('Document serializer is closed.'));
+    return this.#serialize('baseline', '', undefined, source).then((content) => content.semanticId);
+  }
+  #serialize(documentId: string, title: string, update?: Uint8Array, source?: string) {
     if (!this.#worker) {
       const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
       const worker = new Worker(new URL(`./document-worker.${extension}`, import.meta.url));
@@ -62,7 +71,7 @@ export class DocumentSerializer {
         if (!pending) return;
         this.#pending.delete(reply.id);
         if ('error' in reply) pending.reject(new Error(reply.error));
-        else pending.resolve(reply.source);
+        else pending.resolve({ source: reply.source, semanticId: reply.semanticId });
         if (!this.#pending.size) worker.unref();
       });
       const failed = (error: Error) => {
@@ -78,10 +87,10 @@ export class DocumentSerializer {
     }
     const id = ++this.#nextId;
     this.#worker.ref();
-    return new Promise<string>((resolve, reject) => {
+    return new Promise<SerializedContent>((resolve, reject) => {
       this.#pending.set(id, { resolve, reject });
       try {
-        this.#worker!.postMessage({ id, documentId, title, update } satisfies SerializationRequest);
+        this.#worker!.postMessage({ id, documentId, title, update, source } satisfies SerializationRequest);
       } catch (error) {
         this.#pending.delete(id);
         if (!this.#pending.size) this.#worker!.unref();

@@ -6,6 +6,8 @@
     "start": "bun scripts/run.ts start",
     "build": "bun scripts/run.ts build",
     "test": "bun scripts/run.ts test",
+    "test:pty": "bun ../../packages/cli/scripts/build-local.ts && python3 scripts/acceptance.py",
+    "audit:architecture": "bun scripts/run.ts audit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

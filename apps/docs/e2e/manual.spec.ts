@@ -22,6 +22,39 @@ test('the default page uses the portal header, navigation, contents and Cell art
   await expect(page.locator('.gallery-page')).toHaveAttribute('data-gallery-font', 'fusion-mono');
 });
 
+test('product entry points are visible in navigation and searchable by their names', async ({ page }) => {
+  await page.goto('/'); await ready(page);
+  const entries = [
+    ['Web Canvas', '/canvas/'], ['Terminal canvas', '/terminal/'],
+    ['Skill', '/agents/skill/'], ['Local MCP', '/agents/connect/'],
+    ['WebMCP', '/agents/webmcp/'], ['CLI', '/cli/'],
+  ] as const;
+  const navigation = page.getByRole('navigation', { name: 'Manual', exact: true });
+  for (const [name, href] of entries)
+    await expect(navigation.getByRole('link', { name, exact: true })).toHaveAttribute('href', href);
+  const documents: string[] = [];
+  page.on('request', request => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents.push(request.url());
+  });
+  for (const [query, title, href] of [
+    ['技能', 'Skill', '/agents/skill/'],
+    ['MCP', 'Local MCP', '/agents/connect/'],
+    ['WebMCP', 'WebMCP', '/agents/webmcp/'],
+    ['命令行', 'CLI', '/cli/'],
+  ] as const) {
+    await openSearch(page);
+    await page.getByRole('textbox', { name: 'Search the manual' }).fill(query);
+    const result = page.getByRole('link', { name: new RegExp(`^${title} ·`) }).first();
+    await expect(result).toBeVisible();
+    await clickCellTarget(result);
+    await expect.poll(() => new URL(page.url()).pathname).toBe(href);
+    await ready(page);
+    await expect(page.getByRole('heading', { name: title, level: 1, exact: true })).toBeVisible();
+    await expect(navigation.locator('a[aria-current="page"]')).toHaveAccessibleName(title);
+  }
+  expect(documents).toEqual([]);
+});
+
 test('initial load and refresh do not paint the HTML fallback while scripts are loading', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('chardesk-docs-theme', 'dark');
@@ -76,7 +109,7 @@ test('a stalled bootstrap reveals readable text and keeps it stable if scripts a
     await page.goto('/terminal/', { waitUntil: 'commit' });
     await expect(page.getByRole('status', { name: 'Loading manual' })).toBeVisible();
     await expect(page.locator('.manual-fallback')).toBeVisible({ timeout: 12_000 });
-    await expect(page.locator('article')).toContainText('bun add -g @chardesk/cli');
+    await expect(page.locator('article')).toContainText('CLI installation');
   } finally { release(); }
   await expect(page.locator('[data-manual-cell-ui]')).toBeAttached();
   await expect(page.locator('.manual-fallback')).toBeVisible();
@@ -206,7 +239,7 @@ test('the shared code block copies its actual source', async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { (window as Window & { copied?: string }).copied = text; } } }));
   await page.goto('/terminal/'); await ready(page);
   await clickCellTarget(page.getByRole('button', { name: 'Copy code', exact: true }).first());
-  await expect.poll(() => page.evaluate(() => (window as Window & { copied?: string }).copied)).toContain('bun add -g @chardesk/cli');
+  await expect.poll(() => page.evaluate(() => (window as Window & { copied?: string }).copied)).toBe('chardesk');
 });
 
 test('browser Find and print use the same-source HTML fallback and return to the portal', async ({ page }) => {
@@ -226,7 +259,7 @@ test('browser Find and print use the same-source HTML fallback and return to the
 test('deep links remain readable without JavaScript', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const page = await context.newPage(); await page.goto('/agents/connect/');
-  await expect(page.getByRole('heading', { name: 'Connect an Agent', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Local MCP', exact: true })).toBeVisible();
   await expect(page.locator('article')).toContainText('npx -y @chardesk/mcp');
   await expect(page.locator('#manual-navigation')).toBeVisible();
   await context.close();

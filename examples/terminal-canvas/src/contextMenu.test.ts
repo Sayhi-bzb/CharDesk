@@ -424,11 +424,11 @@ test('document switches and modal surfaces close menus; link metadata cannot rem
     expect(f.menu.isOpen).toBe(false);
     f.surface.help = false;
     f.menu.open();
-    f.surface.panel = { title: 'Panel', hint: '', items: [], selected: 0 };
+    f.surface.input.openPanel({ title: 'Panel', hint: '', items: [], selected: 0 }, f);
     await f.setup.renderOnce();
     expect(f.menu.isOpen).toBe(false);
     expect(f.model.editor.commands.canExecute('terminal.context-menu', undefined)).toBe(false);
-    f.surface.panel = null;
+    f.surface.input.closePanel(f);
     f.menu.open();
     f.model.documents.activateDocument('other', { grid: [] });
     expect(f.menu.isOpen).toBe(false);

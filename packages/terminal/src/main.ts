@@ -22,8 +22,12 @@ import {
   resolveTerminalPolicy,
   terminalRendererEnvironment,
 } from './terminalPolicy.ts';
+import type { TerminalUpdates } from './updates.ts';
 
-export async function runTerminal(args: string[] = process.argv.slice(2)) {
+export async function runTerminal(
+  args: string[] = process.argv.slice(2),
+  host: { updates?: TerminalUpdates } = {}
+) {
   if (args.slice(0, args.indexOf('--') < 0 ? args.length : args.indexOf('--')).includes('--help')) {
     console.log(
       'Terminal Unicode Canvas\n\nUsage: bun run start [files.chardesk…] [--blank] [--paste-mode auto|plain|ansi|markdown] [--workspace checkpoint.json] [--settings preferences.json] [--snapshot]\n\nHeader: Settings, Minimap, Sessions. Tab/Shift+Tab select footer Edit/Hand/Style; Enter activates; Shift+F2 tools; Shift+F3 characters; Shift+F4 templates; F6 switch; F8 find; F9 anchors; F10 open; F1 help.\nChanges save automatically. Workspace recovery is enabled. Requires Bun >=1.3.14.'
@@ -131,7 +135,7 @@ export async function runTerminal(args: string[] = process.argv.slice(2)) {
           const surface = new CanvasSurface(
             renderer,
             model,
-            workspace.files.length ? basename(workspace.active.path) : '',
+            workspace.active ? basename(workspace.active.path) : '',
             process.platform,
             !restored,
             resolveTerminalPolicy(process.env, renderer.capabilities),
@@ -172,7 +176,7 @@ export async function runTerminal(args: string[] = process.argv.slice(2)) {
                 surface.requestRender();
               });
           };
-          detach = attachControls(surface, quit, clipboard, workspace, sessions);
+          detach = attachControls(surface, quit, clipboard, workspace, sessions, host.updates);
           if (!workspace.files.length)
             model.editor.commands.execute('terminal.documents', undefined, 'session-startup');
           if (process.env.CHARDESK_TRACE_INPUT)

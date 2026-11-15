@@ -1,18 +1,24 @@
 import { parentPort } from 'node:worker_threads';
 import * as Y from 'yjs';
 import { CanvasDocumentRegistry } from '@chardesk/editor-core';
-import { serializeCanvasDocument } from '@chardesk/editor-core/documentText';
+import { parseCanvasDocument, serializeCanvasDocument } from '@chardesk/editor-core/documentText';
+import { semanticDocumentSource, type SemanticContentId } from '@chardesk/editor-core/persistenceState';
+import { sourceDigest } from './storage.ts';
 import type { SerializationRequest, SerializationReply } from './documentSerialization.ts';
 
-parentPort!.on('message', ({ id, documentId, title, update }: SerializationRequest) => {
+parentPort!.on('message', ({ id, documentId, title, update, source: baseline }: SerializationRequest) => {
   const registry = new CanvasDocumentRegistry(documentId);
   const doc = new Y.Doc({ guid: documentId });
   try {
-    Y.applyUpdate(doc, update);
-    registry.adoptDocument(documentId, doc);
+    if (update) {
+      Y.applyUpdate(doc, update);
+      registry.adoptDocument(documentId, doc);
+    }
+    const draft = baseline === undefined ? registry.getDocumentDraft(documentId)! : parseCanvasDocument(baseline).document;
     // The shared serializer still validates the complete native text before it can reach disk.
-    const source = serializeCanvasDocument(registry.getDocumentDraft(documentId)!, title);
-    parentPort!.postMessage({ id, source } satisfies SerializationReply);
+    const source = baseline ?? serializeCanvasDocument(draft, title);
+    const semanticId = sourceDigest(semanticDocumentSource(draft))! as SemanticContentId;
+    parentPort!.postMessage({ id, source, semanticId } satisfies SerializationReply);
   } catch (error) {
     parentPort!.postMessage({
       id,

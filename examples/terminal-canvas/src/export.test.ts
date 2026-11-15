@@ -37,12 +37,12 @@ test('native export dialog delivers all formats without changing document identi
     surface.setTool('edit');
     model.selection = { anchor: { x: 1, y: 0 }, focus: { x: 1, y: 0 } };
     const address = model.documents.getActiveAddress(),
-      path = workspace.active.path;
+      path = workspace.requireActive().path;
     const view = { ...model.viewport },
       interaction = structuredClone(model.getSnapshot().interaction),
       version = model.version,
       dirty = model.dirty,
-      baseline = workspace.active.baselineDigest;
+      baseline = workspace.requireActive().baselineDigest;
     for (const index of [0, 1, 2, 3, 4, 5, 6, 7]) {
       const target = join(root, `export-${index}`);
       setup.mockInput.pressKey('F7', { shift: true });
@@ -68,11 +68,11 @@ test('native export dialog delivers all formats without changing document identi
       } else expect(bytes.toString()).toContain(index < 4 ? '🦀界' : '🦀');
       expect(model.version).toBe(version);
       expect(model.dirty).toBe(dirty);
-      expect(workspace.active.baselineDigest).toBe(baseline);
+      expect(workspace.requireActive().baselineDigest).toBe(baseline);
       expect(model.documents.getActiveAddress()).toEqual(address);
       expect(model.getSnapshot().interaction).toEqual(interaction);
       expect(model.viewport).toEqual(view);
-      expect(workspace.active.path).toBe(path);
+      expect(workspace.requireActive().path).toBe(path);
       expect(model.canUndo).toBe(false);
     }
     // A failed publication remains editable; reopening never silently replaces existing data.

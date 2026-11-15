@@ -129,13 +129,14 @@ for (const kitty of [false, true]) {
             expect(f.surface.inspector!.colorInput).not.toBeNull();
           }
         } else if (owner === 'busy') {
-          f.surface.panel = {
+          const panel = {
             title: 'Busy',
             hint: '',
             items: [],
             selected: 0,
-            busy: true,
           };
+          f.surface.input.openPanel(panel, f);
+          f.surface.input.lease(panel)!.beginTask();
         }
         expect(f.model.editor.commands.canExecute('terminal.quit', undefined)).toBe(true);
         expect(

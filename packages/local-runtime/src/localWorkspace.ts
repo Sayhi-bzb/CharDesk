@@ -7,6 +7,7 @@ import { TerminalWorkspace } from './workspace.ts';
 import { WorkspacePersistence } from './persistence.ts';
 import { CanvasFile, readOptional, resolveCanvasFilePath } from './document.ts';
 import { createWelcomeSource } from './welcome.ts';
+import { CanvasRecoveryRequired } from './recovery.ts';
 
 /** Interactive composition only; explicit files take precedence over restored navigation. */
 export async function openLocalWorkspace(
@@ -18,13 +19,13 @@ export async function openLocalWorkspace(
 ) {
   const sessions = await LocalSessions.open(paths, editorOptions);
   let persistence: WorkspacePersistence | undefined, workspace: TerminalWorkspace | undefined;
+  let initialSession: string | undefined;
   try {
     reservedPaths = await Promise.all(reservedPaths.map((path) => resolveCanvasFilePath(path)));
-    if (
-      reservedPaths.some(
-        (path) => path === sessions.paths.catalog || path.startsWith(`${sessions.paths.catalog}-`)
-      )
-    )
+    const stores = [sessions.paths.catalog, sessions.content.path, sessions.agents.path];
+    const isStore = (path: string) =>
+      stores.some((store) => path === store || path.startsWith(`${store}-`));
+    if (reservedPaths.some(isStore))
       throw new Error('Settings and session catalog storage must use separate filenames.');
     const warnings = await sessions.repairPending();
     const legacyCanvas = resolve(cwd, 'terminal-canvas.chardesk');
@@ -35,6 +36,8 @@ export async function openLocalWorkspace(
       ? resolve(cwd, options.workspacePath)
       : sessions.paths.workspace;
     const checkpoint = await resolveCanvasFilePath(checkpointPath);
+    if (isStore(checkpoint))
+      throw new Error('Workspace and runtime storage must use separate filenames.');
     if (reservedPaths.includes(checkpoint) || reservedPaths.includes(`${checkpoint}.lock`))
       throw new Error('Settings and workspace storage must use separate filenames.');
     persistence = await WorkspacePersistence.open(
@@ -55,8 +58,7 @@ export async function openLocalWorkspace(
     workspace = restored ?? undefined;
     if (!workspace) {
       if (persistence.hasCheckpoint) workspace = TerminalWorkspace.empty(editorOptions);
-      else if (options.files.length)
-        workspace = await TerminalWorkspace.open(first, '', editorOptions);
+      else if (options.files.length) workspace = TerminalWorkspace.empty(editorOptions);
       else if ((await readOptional(legacyCanvas)) !== null)
         workspace = await TerminalWorkspace.open(legacyCanvas, '', editorOptions);
       else {
@@ -68,16 +70,8 @@ export async function openLocalWorkspace(
           workspace = await TerminalWorkspace.open(record.path, '', editorOptions);
         } else {
           const recent = records.find((record) => record.status === 'ready' && !record.removing);
-          if (recent) {
-            try {
-              if ((await readOptional(recent.path)) === null)
-                throw new Error('Canvas file is missing. Its session entry was preserved.');
-              workspace = await TerminalWorkspace.open(recent.path, '', editorOptions);
-            } catch (error) {
-              warnings.push(error instanceof Error ? error.message : String(error));
-            }
-          }
-          workspace ??= TerminalWorkspace.empty(editorOptions);
+          initialSession = recent?.id;
+          workspace = TerminalWorkspace.empty(editorOptions);
         }
       }
     }
@@ -88,8 +82,25 @@ export async function openLocalWorkspace(
       ...reservedPaths,
     ]);
     await sessions.attach(workspace);
-    for (const input of options.files) await sessions.openPath(resolve(cwd, input));
-    if (workspace.files.length) {
+    const openTarget = async (open: () => Promise<CanvasFile>) => {
+      try {
+        await open();
+      } catch (error) {
+        if (!(error instanceof CanvasRecoveryRequired)) throw error;
+        await sessions.open(error.recoveredCanvasId);
+      }
+    };
+    if (initialSession) {
+      try {
+        await openTarget(() => sessions.open(initialSession!));
+      } catch (error) {
+        warnings.push(error instanceof Error ? error.message : String(error));
+      }
+    }
+    for (const input of options.files)
+      await openTarget(() => sessions.openPath(resolve(cwd, input)));
+    warnings.push(...sessions.recoveryMessages);
+    if (workspace.active) {
       const current = sessions.forFile(workspace.active);
       if (current) sessions.catalog.touch(current.id);
     }

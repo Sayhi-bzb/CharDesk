@@ -35,7 +35,11 @@ const clipboardActions = new Set(['copy', 'cut', 'paste', 'select-all']);
 /** Nonmodal presentation and explicit input ownership; document rules stay in shared commands. */
 export class TerminalInspector {
   #open = true;
-  #focused = false;
+  get #focused() { return this.surface.input.focusOwner === this; }
+  set #focused(value: boolean) {
+    if (value) { this.surface.input.focusOwner = this; this.surface.input.dockFocus = null; }
+    else if (this.surface.input.focusOwner === this) this.surface.input.focusOwner = null;
+  }
   #selected = 0;
   #color: ColorInput | null = null;
   #paletteTab: 'ansi16' | 'presets' = 'presets';
@@ -48,6 +52,7 @@ export class TerminalInspector {
     readonly surface: CanvasSurface,
     readonly clipboard: ClipboardPort
   ) {
+    surface.input.registerFocusOwner(this, () => !!this.#color);
     this.#address = JSON.stringify(surface.model.documents.getActiveAddress());
     this.#tool = surface.model.currentTool;
     this.#detach = surface.model.subscribe(() => {
@@ -253,7 +258,7 @@ export class TerminalInspector {
       model.documents.getActiveAddress(),
       model.getSnapshot().interaction,
       model.currentTool,
-      model.version,
+      model.documents.getContentVersion(),
     ]);
   }
   show() {

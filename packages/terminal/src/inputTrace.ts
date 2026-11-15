@@ -22,11 +22,11 @@ export function attachInputTrace(surface: CanvasSurface, path: string) {
     const { revision, mode, status } = surface.appearance.getSnapshot();
     return { revision, mode, status };
   };
-  let previousContentVersion = model.version;
+  let previousContentVersion = model.documents.getContentVersion();
   let contentVersion = 0;
   const state = () => {
-    if (model.version !== previousContentVersion) {
-      previousContentVersion = model.version;
+    if (model.documents.getContentVersion() !== previousContentVersion) {
+      previousContentVersion = model.documents.getContentVersion();
       contentVersion++;
     }
     return {

@@ -12,6 +12,8 @@ import { createGridMapSource } from '@chardesk/cell-plane/grid-source';
 import type { GridPoint } from '@chardesk/cell-plane/types';
 import { filterRichPasteCells } from './clipboard/richCells.js';
 import { SynchronousCommitBoundary } from './commitBoundary.js';
+import { DocumentSaveState, semanticDocumentSource, type ContentProof, type ContentVersion,
+  type DocumentPersistencePort, type HistoryPosition, type SavedContent, type SemanticContentId } from './persistenceState.js';
 import {
   selectGridRangeAt,
   moveGridFocus,
@@ -196,7 +198,6 @@ export class FreeformEditorSession {
   #address = '';
   #reader!: CellPlaneIndex;
   #targetGeneration = 0;
-  readonly #externalVersions = new Map<string, number>();
   readonly #localDocuments = new Map<string, LocalDocumentState>();
   #pasteDiagnostics: NonNullable<PreparedClipboardPaste['diagnostics']> = [];
   get currentTool() {
@@ -878,7 +879,7 @@ export class FreeformEditorSession {
   }
 
   viewport = { x: -3, y: -2, width: 80, height: 20 };
-  readonly #savedVersions = new Map<string, string>();
+  readonly #persistence = new Map<string, DocumentPersistencePort>();
   #inputColumn = 0;
   #lastTyped: CellPoint | null = null;
 
@@ -969,16 +970,11 @@ export class FreeformEditorSession {
       if (this.#ownsDocuments) this.documents.clearHistory();
       this.markSaved();
       this.#detachDocuments.push(
-        this.documents.observeActiveTransactions((change, transaction) => {
+        this.documents.observeActiveTransactions((change) => {
           if (
             !this.#boundary.isRunning &&
             (change.contentChanged || change.pagesChanged || change.anchorsChanged)
           ) {
-            if (!transaction.local)
-              this.#externalVersions.set(
-                this.#address,
-                (this.#externalVersions.get(this.#address) ?? 0) + 1
-              );
             this.cancelInteraction();
           }
           this.#emit();
@@ -1006,8 +1002,6 @@ export class FreeformEditorSession {
               }
               const saved =
                 address !== this.#address ? this.#localDocuments.get(address) : undefined;
-              if (address === this.#address)
-                this.#externalVersions.set(address, (this.#externalVersions.get(address) ?? 0) + 1);
               this.#drawingError = null;
               this.#address = address;
               this.#reader = reader;
@@ -1040,16 +1034,36 @@ export class FreeformEditorSession {
     return this.versionAt(this.documents.getActiveAddress());
   }
   versionAt(address: CanvasDocumentAddress) {
-    return JSON.stringify(
-      this.documents.getPageDescriptors(address.documentId).map((page) => {
-        const at = { documentId: address.documentId, pageId: page.id };
-        return [
-          page,
-          this.documents.getHistoryVersionAt(at),
-          this.#externalVersions.get(JSON.stringify(at)) ?? 0,
-        ];
-      })
-    );
+    return this.documents.getContentVersion(address.documentId);
+  }
+  historyPositionAt(address = this.documents.getActiveAddress()): HistoryPosition {
+    return JSON.stringify(this.documents.getPageDescriptors(address.documentId).map((page) => [
+      page, this.documents.getHistoryVersionAt({ documentId: address.documentId, pageId: page.id }),
+    ])) as HistoryPosition;
+  }
+  contentProofAt(address = this.documents.getActiveAddress()): ContentProof {
+    return { version: this.versionAt(address), position: this.historyPositionAt(address),
+      lineage: this.documents.getPersistenceLineage(address.documentId) };
+  }
+  capturePersistenceAt(address = this.documents.getActiveAddress()): SavedContent {
+    const proof = this.contentProofAt(address);
+    const source = semanticDocumentSource(this.documents.getDocumentDraft(address.documentId)!);
+    return { ...proof, semantic: () => source as SemanticContentId };
+  }
+  bindPersistenceAt(address: CanvasDocumentAddress, state: DocumentPersistencePort) {
+    const previous = this.#persistence.get(address.documentId);
+    if (previous === state) return;
+    previous?.dispose();
+    this.#persistence.set(address.documentId, state);
+  }
+  #saveStateAt(address: CanvasDocumentAddress) {
+    let state = this.#persistence.get(address.documentId);
+    if (!state) {
+      state = new DocumentSaveState({ proof: () => this.contentProofAt(address),
+        capture: () => this.capturePersistenceAt(address), changed: () => this.#emit(), synchronous: true });
+      this.#persistence.set(address.documentId, state);
+    }
+    return state;
   }
   get dirty() {
     return this.isDirtyAt(this.documents.getActiveAddress());
@@ -1066,18 +1080,27 @@ export class FreeformEditorSession {
         documentId: this.documents.getActiveDocumentId(),
         pageId: page.id,
       });
-    this.#savedVersions.set(this.documents.getActiveDocumentId(), this.version);
+    const state = this.#saveStateAt(this.documents.getActiveAddress());
+    state.acknowledge(state.capture());
   }
-  markSavedAt(address: CanvasDocumentAddress, version: string) {
+  markSavedAt(address: CanvasDocumentAddress, version: ContentVersion) {
     if (this.versionAt(address) !== version) return false;
-    for (const page of this.documents.getPageDescriptors(address.documentId))
-      this.documents.finishHistoryCaptureAt({ documentId: address.documentId, pageId: page.id });
-    this.#savedVersions.set(address.documentId, version);
+    const state = this.#saveStateAt(address);
+    this.acknowledgeSavedAt(address, state.capture());
+    return true;
+  }
+  acknowledgeSavedAt(address: CanvasDocumentAddress, snapshot: SavedContent, expected?: DocumentPersistencePort) {
+    if (expected && this.#persistence.get(address.documentId) !== expected) return false;
+    if (this.versionAt(address) === snapshot.version) {
+      for (const page of this.documents.getPageDescriptors(address.documentId))
+        this.documents.finishHistoryCaptureAt({ documentId: address.documentId, pageId: page.id });
+    }
+    this.#saveStateAt(address).acknowledge(snapshot);
     this.#emit();
     return true;
   }
   markDirtyAt(address: CanvasDocumentAddress) {
-    this.#savedVersions.delete(address.documentId);
+    this.#saveStateAt(address).invalidate();
     this.#emit();
   }
   switchDocument(documentId: string, pageId?: string) {
@@ -1087,7 +1110,7 @@ export class FreeformEditorSession {
       : false;
   }
   isDirtyAt(address: CanvasDocumentAddress) {
-    return this.versionAt(address) !== this.#savedVersions.get(address.documentId);
+    return this.#saveStateAt(address).isDirty();
   }
   viewAt(address: CanvasDocumentAddress): EditorView {
     if (JSON.stringify(address) === this.#address)
@@ -1147,14 +1170,11 @@ export class FreeformEditorSession {
   forgetDocument(documentId: string) {
     if (documentId === this.documents.getActiveDocumentId()) return false;
     if (!this.documents.destroyDocument(documentId)) return false;
-    this.#savedVersions.delete(documentId);
+    this.#persistence.get(documentId)?.dispose();
+    this.#persistence.delete(documentId);
     for (const key of this.#localDocuments.keys()) {
       if ((JSON.parse(key) as CanvasDocumentAddress).documentId === documentId)
         this.#localDocuments.delete(key);
-    }
-    for (const key of this.#externalVersions.keys()) {
-      if ((JSON.parse(key) as CanvasDocumentAddress).documentId === documentId)
-        this.#externalVersions.delete(key);
     }
     this.#emit();
     return true;
@@ -1506,6 +1526,8 @@ export class FreeformEditorSession {
     this.#disposed = true;
     this.cancelPendingPaste();
     this.#detachDocuments.splice(0).forEach((detach) => detach());
+    this.#persistence.forEach((state) => state.dispose());
+    this.#persistence.clear();
     this.editor.dispose();
     this.#listeners.clear();
     if (this.#ownsDocuments) this.documents.dispose();

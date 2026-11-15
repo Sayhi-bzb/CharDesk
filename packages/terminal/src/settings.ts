@@ -62,6 +62,7 @@ export type TerminalSettings = {
   selectionColor: 'auto' | 8 | 4 | 6;
   panStep: 10 | 20 | 50;
   pasteMode: PasteMode;
+  autoCheckUpdates: boolean;
 };
 export const DEFAULT_TERMINAL_SETTINGS: Readonly<TerminalSettings> = {
   language: 'system',
@@ -70,8 +71,10 @@ export const DEFAULT_TERMINAL_SETTINGS: Readonly<TerminalSettings> = {
   selectionColor: 'auto',
   panStep: 10,
   pasteMode: 'auto',
+  autoCheckUpdates: true,
 };
-export type SettingsSection = 'appearance' | 'navigation' | 'paste' | 'shortcuts' | 'rendering';
+export type SettingsSection =
+  'appearance' | 'navigation' | 'paste' | 'shortcuts' | 'rendering' | 'updates';
 type SettingKey = keyof TerminalSettings;
 type SettingDefinition = {
   [K in SettingKey]: {
@@ -82,6 +85,15 @@ type SettingDefinition = {
   };
 }[SettingKey];
 export const TERMINAL_SETTING_DEFINITIONS: readonly SettingDefinition[] = [
+  {
+    id: 'autoCheckUpdates',
+    section: 'updates',
+    label: 'Automatically check for updates',
+    choices: [
+      { value: true, label: 'On' },
+      { value: false, label: 'Off' },
+    ],
+  },
   {
     id: 'cursorStyle',
     section: 'appearance',

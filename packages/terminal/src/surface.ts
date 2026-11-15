@@ -2,6 +2,7 @@ import { isDefaultArtifactForeground } from '@chardesk/cell-plane/artifact-style
 import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
 import { WelcomeAppearance } from '@chardesk/canvas-templates/welcome-appearance';
 import { TerminalInputModifiers } from './inputModifiers.ts';
+import { TerminalInputContext } from './inputContext.ts';
 import { TerminalViewStatus } from './viewStatus.ts';
 import { TerminalShortcutsDialog } from './shortcutsDialog.ts';
 import {
@@ -66,7 +67,10 @@ type ChromeAction = keyof typeof CHROME_LABELS;
 export type TerminalPanel = {
   notice?: TerminalNotice;
   dialog?: boolean;
+  /** Modal child; render its parent underneath and route input only to this panel. */
+  underlay?: TerminalPanel;
   tabs?: string[];
+  trailingTab?: number;
   selectedTab?: number;
   onTab?: (index: number) => void;
   onClose?: () => void;
@@ -75,22 +79,38 @@ export type TerminalPanel = {
   input?: string;
   hint: string;
   items: string[];
+  /** Read-only document viewport; independent of list selection. */
+  scrollArea?: {
+    lines: readonly string[];
+    scrollTop: number;
+    onRendered?: (start: number, end: number) => void;
+  };
   itemHints?: readonly string[];
   emptyMessage?: string;
   actions?: readonly { id: string; label: string; onPick: () => void }[];
+  /** Keep actions inside the dialog, outside its scrolling body. */
+  actionPlacement?: 'dialog-footer';
   selected: number;
   activeItem?: number;
   error?: string;
   onPick?: (index: number) => void;
-  busy?: boolean;
+  /** Indices actually painted in the topmost panel; loading a list does not imply viewing it. */
+  onItemsRendered?: (start: number, end: number) => void;
+  readonly busy?: boolean;
   onInput?: (value: string) => void;
 };
 
 export class CanvasSurface extends Renderable {
+  readonly input = new TerminalInputContext(() => this.requestRender());
   readonly t: TerminalSettingsStore['i18n']['t'];
   readonly messages: ReturnType<typeof localizedMessages>;
   #detachSettings: () => void;
-  #dockFocus: TerminalAction | null = null;
+  get #dockFocus() {
+    return this.input.dockFocus;
+  }
+  set #dockFocus(value: TerminalAction | null) {
+    this.input.dockFocus = value;
+  }
   contextMenu: TerminalContextMenu | null = null;
   inspector: TerminalInspector | null = null;
   hasDocument = true;
@@ -102,7 +122,9 @@ export class CanvasSurface extends Renderable {
     if (open) this.shortcutsDialog.open();
     else this.shortcutsDialog.close();
   }
-  panel: TerminalPanel | null = null;
+  get panel() {
+    return this.input.panel;
+  }
   placement: {
     at: Point;
     source: GridCellSource;
@@ -112,7 +134,12 @@ export class CanvasSurface extends Renderable {
   } | null = null;
   readonly feedback: TerminalFeedback;
   onFeedbackAction?: (notice: TerminalNotice) => void;
-  closing = false;
+  get closing() {
+    return this.input.closing;
+  }
+  set closing(value: boolean) {
+    this.input.setClosing(value);
+  }
   searchHighlights: CellRect[] = [];
   documentLabels: { label: string; active: boolean }[] = [];
   minimapOpen = false;
@@ -217,7 +244,7 @@ export class CanvasSurface extends Renderable {
     return Boolean(this.panel || this.help || this.contextMenu?.isOpen || this.closing);
   }
 
-  #controlRow(ids: readonly ChromeAction[], y: number) {
+  #controlRow(ids: readonly ChromeAction[], y: number, limit = this.width) {
     let x = 0;
     return ids.flatMap((id) => {
       const name = this.t(CHROME_LABELS[id]);
@@ -226,7 +253,7 @@ export class CanvasSurface extends Renderable {
         : '';
       const label = `[${shortcut}${name}]`;
       const width = this.#width(label);
-      if (x + width > this.width) return [];
+      if (x + width > limit) return [];
       const control = { id, label, x, y, width, height: 1 };
       x += width + 1;
       return [control];
@@ -246,22 +273,51 @@ export class CanvasSurface extends Renderable {
       : this.placement
         ? ['confirm-placement', 'cancel-placement']
         : ['edit', 'hand', 'inspector'];
-    return this.#controlRow(ids, this.footerBounds.y);
+    const right = this.#footerContentRight;
+    const notice = right < this.width ? this.footerNotice : undefined;
+    const action =
+      notice && this.onFeedbackAction && (notice.action || noticeDetail(notice))
+        ? noticeAction(notice) || this.t('Details')
+        : '';
+    const reserve = notice
+      ? Math.min(8, this.#width(noticeText(notice))) + (action ? this.#width(action) + 1 : 0) + 3
+      : 0;
+    return this.#controlRow(ids, this.footerBounds.y, Math.max(0, right - reserve));
   }
 
   get chromeControls() {
     return [...this.headerControls, ...this.dockControls];
   }
 
+  get #primaryStatusControls() {
+    return this.viewStatus.layout(
+      this.width,
+      this.footerBounds.y,
+      (text) => this.#width(text),
+      (text, width) => this.#fit(text, width),
+      1
+    );
+  }
+
+  get #footerContentRight() {
+    return Math.max(
+      0,
+      Math.min(this.width, ...this.#primaryStatusControls.map((control) => control.x - 1))
+    );
+  }
+
   get viewStatusControls() {
-    return this.footerBounds.height < 2
-      ? []
-      : this.viewStatus.layout(
-          this.width,
-          this.footerBounds.y + 1,
-          (text) => this.#width(text),
-          (text, width) => this.#fit(text, width)
-        );
+    return [
+      ...this.#primaryStatusControls,
+      ...(this.footerBounds.height < 2
+        ? []
+        : this.viewStatus.layout(
+            this.width,
+            this.footerBounds.y + 1,
+            (text) => this.#width(text),
+            (text, width) => this.#fit(text, width)
+          )),
+    ];
   }
 
   get focusableDockControls() {
@@ -703,7 +759,7 @@ export class CanvasSurface extends Renderable {
     const statusBar = this.statusBar;
     const titleX = dock.length ? dock.at(-1)!.x + dock.at(-1)!.width + 1 : 0;
     const feedback = this.feedbackControl;
-    const labelWidth = Math.max(0, (feedback?.x ?? this.width) - titleX - 2);
+    const labelWidth = Math.max(0, (feedback?.x ?? this.#footerContentRight) - titleX - 2);
     let footerLabel = this.#fit(statusBar.context, labelWidth);
     for (const command of statusBar.hint.split(' · ').filter(Boolean)) {
       const next = [footerLabel, command].filter(Boolean).join(' · ');
@@ -719,7 +775,7 @@ export class CanvasSurface extends Renderable {
       this.colors.chrome,
       labelWidth + 1
     );
-    for (const action of this.panelFooterControls)
+    for (const action of this.panelFooterControls.filter((control) => control.y === footer))
       this.#line(
         buffer,
         action.label,
@@ -746,149 +802,23 @@ export class CanvasSurface extends Renderable {
         control.text,
         control.x,
         control.y,
-        this.colors.muted,
+        control.tone === 'normal' ? this.colors.foreground : this.colors.muted,
         this.colors.chrome,
         control.width
       );
-    }
-    if (this.panel) {
-      const layout = this.panelLayout;
-      if (layout.height < (this.panel.dialog ? 8 : 4) || layout.width < 20) {
-        const top = this.panel.dialog ? CANVAS_TOP : 0;
-        buffer.fillRect(0, top, this.width, Math.max(0, footer - top), this.colors.background);
+      if (control.badge)
         this.#line(
           buffer,
-          'Enlarge terminal to use panel · Esc returns',
-          0,
-          top,
-          this.colors.foreground,
-          this.colors.background
-        );
-      } else {
-        buffer.fillRect(layout.x, layout.y, layout.width, layout.height, this.colors.background);
-        if (this.panel.dialog) {
-          this.#line(
-            buffer,
-            '┌' + '─'.repeat(layout.width - 2) + '┐',
-            layout.x,
-            layout.y,
-            this.colors.muted
-          );
-          this.#line(
-            buffer,
-            '└' + '─'.repeat(layout.width - 2) + '┘',
-            layout.x,
-            layout.y + layout.height - 1,
-            this.colors.muted
-          );
-          for (let y = layout.y + 1; y < layout.y + layout.height - 1; y++) {
-            this.#line(buffer, '│', layout.x, y, this.colors.muted);
-            this.#line(buffer, '│', layout.x + layout.width - 1, y, this.colors.muted);
-          }
-          for (const tab of this.panelTabControls)
-            this.#line(
-              buffer,
-              tab.label,
-              tab.x,
-              tab.y,
-              tab.index === this.panel.selectedTab
-                ? this.colors.selectionForeground
-                : this.colors.foreground,
-              tab.index === this.panel.selectedTab ? this.colors.selection : this.colors.background,
-              tab.width,
-              createTextAttributes({ bold: tab.index === this.panel.selectedTab })
-            );
-        }
-        this.#line(
-          buffer,
-          this.panel.dialog ? ` ${this.panel.title} ` : this.panel.title,
-          layout.x + 1,
-          layout.y,
-          this.colors.foreground,
-          this.colors.background,
-          layout.width - 5,
+          control.badge.text,
+          control.x + control.badge.offset,
+          control.y,
+          RGBA.fromIndex(1, this.appearance.getSnapshot().palette?.slots[1] ?? undefined),
+          this.colors.chrome,
+          control.width - control.badge.offset,
           createTextAttributes({ bold: true })
         );
-        if (this.panel.input !== undefined)
-          this.#line(
-            buffer,
-            `> ${this.panel.input}▏`,
-            layout.x + 1,
-            layout.y + 1,
-            this.colors.foreground,
-            this.colors.background,
-            layout.width - 2
-          );
-        const start = Math.max(0, this.panel.selected - layout.rows + 1);
-        if (!this.panel.items.length && this.panel.emptyMessage)
-          this.#line(
-            buffer,
-            this.panel.emptyMessage,
-            layout.x + 2,
-            layout.itemsY,
-            this.colors.muted,
-            this.colors.background,
-            layout.width - 4
-          );
-        for (let row = 0; row < layout.rows; row++) {
-          const index = start + row,
-            item = this.panel.items[index];
-          if (item === undefined) break;
-          const hint = this.panel.itemHints?.[index];
-          const hintWidth = hint
-            ? Math.min(this.#width(hint), Math.floor((layout.width - 6) / 2))
-            : 0;
-          const selected = this.panel.dialog && index === this.panel.selected;
-          if (this.panel.dialog && index === this.panel.selected)
-            buffer.fillRect(
-              layout.x + 1,
-              layout.itemsY + row,
-              layout.width - 2,
-              1,
-              this.colors.selection
-            );
-          this.#line(
-            buffer,
-            `${index === this.panel.selected ? '›' : ' '} ${item}`,
-            layout.x + 1,
-            layout.itemsY + row,
-            this.panel.dialog && index === this.panel.selected
-              ? this.colors.selectionForeground
-              : index === this.panel.activeItem
-                ? this.colors.accent
-                : this.colors.foreground,
-            this.panel.dialog && index === this.panel.selected
-              ? this.colors.selection
-              : this.colors.background,
-            layout.width - 2 - (hintWidth ? hintWidth + 2 : 0),
-            createTextAttributes({
-              inverse: !this.panel.dialog && index === this.panel.selected,
-              bold: index === this.panel.activeItem,
-            })
-          );
-          if (hintWidth)
-            this.#line(
-              buffer,
-              this.#fit(hint!, hintWidth),
-              layout.x + layout.width - 2 - hintWidth,
-              layout.itemsY + row,
-              selected ? this.colors.selectionForeground : this.colors.muted,
-              selected ? this.colors.selection : this.colors.background,
-              hintWidth
-            );
-        }
-        for (const [index, note] of layout.notes.entries())
-          this.#line(
-            buffer,
-            note,
-            layout.x + 2,
-            layout.itemsY + layout.rows + index,
-            this.panel.error ? this.#noticeColor('error') : this.colors.muted,
-            this.colors.background,
-            layout.width - 4
-          );
-      }
     }
+    if (this.panel) this.#renderPanel(buffer, this.panel);
     // OpenTUI's terminal cursor API uses 1-based coordinates.
     this.contextMenu?.render(buffer, (text, x, y, fg, bg, width) =>
       this.#line(buffer, text, x, y, fg, bg, width)
@@ -947,7 +877,12 @@ export class CanvasSurface extends Renderable {
     if (this.closing) context = this.messages.closing;
     else if (this.panel) {
       context = this.panel.title;
-      hint = [...this.panelFooterControls.map((action) => action.label), this.panel.hint]
+      hint = [
+        ...this.panelFooterControls
+          .filter((control) => control.y === this.footerBounds.y)
+          .map((action) => action.label),
+        this.panel.hint,
+      ]
         .filter(Boolean)
         .join(' · ');
     } else if (this.contextMenu?.isOpen) {
@@ -987,7 +922,8 @@ export class CanvasSurface extends Renderable {
     if (!notice) return null;
     const dock = this.dockControls;
     const left = dock.length ? dock.at(-1)!.x + dock.at(-1)!.width + 2 : 1;
-    const available = Math.max(0, this.width - left - 1);
+    const right = this.#footerContentRight;
+    const available = Math.max(0, right - left - 1);
     if (!available) return null;
     const label =
       this.onFeedbackAction && (notice.action || noticeDetail(notice))
@@ -996,7 +932,7 @@ export class CanvasSurface extends Renderable {
     const actionWidth = label && this.#width(label) + 2 < available ? this.#width(label) : 0;
     const message = this.#fit(noticeText(notice), available - (actionWidth ? actionWidth + 1 : 0));
     const width = this.#width(message) + (actionWidth ? actionWidth + 1 : 0);
-    const x = this.width - width - 1,
+    const x = right - width - 1,
       y = this.footerBounds.y;
     return {
       notice,
@@ -1006,13 +942,202 @@ export class CanvasSurface extends Renderable {
       width,
       height: 1,
       action: actionWidth
-        ? { label, x: this.width - actionWidth - 1, y, width: actionWidth, height: 1 }
+        ? { label, x: right - actionWidth - 1, y, width: actionWidth, height: 1 }
         : null,
     };
   }
 
-  #panelNotes(width: number) {
-    const text = this.panel?.error || this.panel?.status;
+  #renderPanel(buffer: OptimizedBuffer, panel: TerminalPanel) {
+    if (panel.underlay) this.#renderPanel(buffer, panel.underlay);
+    const layout = this.#layoutPanel(panel);
+    if (layout.height < (panel.underlay ? 4 : panel.dialog ? 8 : 4) || layout.width < 20) {
+      const top = panel.dialog ? CANVAS_TOP : 0;
+      buffer.fillRect(
+        0,
+        top,
+        this.width,
+        Math.max(0, this.footerBounds.y - top),
+        this.colors.background
+      );
+      this.#line(
+        buffer,
+        'Enlarge terminal to use panel · Esc returns',
+        0,
+        top,
+        this.colors.foreground,
+        this.colors.background
+      );
+    } else {
+      buffer.fillRect(layout.x, layout.y, layout.width, layout.height, this.colors.background);
+      if (panel.dialog) {
+        this.#line(
+          buffer,
+          '┌' + '─'.repeat(layout.width - 2) + '┐',
+          layout.x,
+          layout.y,
+          this.colors.muted
+        );
+        this.#line(
+          buffer,
+          '└' + '─'.repeat(layout.width - 2) + '┘',
+          layout.x,
+          layout.y + layout.height - 1,
+          this.colors.muted
+        );
+        for (let y = layout.y + 1; y < layout.y + layout.height - 1; y++) {
+          this.#line(buffer, '│', layout.x, y, this.colors.muted);
+          this.#line(buffer, '│', layout.x + layout.width - 1, y, this.colors.muted);
+        }
+        for (const tab of this.#panelTabs(panel))
+          this.#line(
+            buffer,
+            tab.label,
+            tab.x,
+            tab.y,
+            tab.index === panel.selectedTab
+              ? this.colors.selectionForeground
+              : this.colors.foreground,
+            tab.index === panel.selectedTab ? this.colors.selection : this.colors.background,
+            tab.width,
+            createTextAttributes({ bold: tab.index === panel.selectedTab })
+          );
+      }
+      this.#line(
+        buffer,
+        panel.dialog ? ` ${panel.title} ` : panel.title,
+        layout.x + 1,
+        layout.y,
+        this.colors.foreground,
+        this.colors.background,
+        layout.width - 5,
+        createTextAttributes({ bold: true })
+      );
+      if (panel.input !== undefined)
+        this.#line(
+          buffer,
+          `> ${panel.input}▏`,
+          layout.x + 1,
+          layout.y + 1,
+          this.colors.foreground,
+          this.colors.background,
+          layout.width - 2
+        );
+      const area = panel.scrollArea;
+      const start = area
+        ? Math.max(0, Math.min(area.scrollTop, area.lines.length - layout.rows))
+        : Math.max(0, panel.selected - layout.rows + 1);
+      if (!area && !panel.items.length && panel.emptyMessage)
+        this.#line(
+          buffer,
+          panel.emptyMessage,
+          layout.x + 2,
+          layout.itemsY,
+          this.colors.muted,
+          this.colors.background,
+          layout.width - 4
+        );
+      for (let row = 0; row < layout.rows; row++) {
+        const index = start + row,
+          item = area ? area.lines[index] : panel.items[index];
+        if (item === undefined) break;
+        if (area) {
+          this.#line(
+            buffer,
+            item,
+            layout.x + 2,
+            layout.itemsY + row,
+            this.colors.foreground,
+            this.colors.background,
+            layout.width - 4
+          );
+          continue;
+        }
+        const hint = panel.itemHints?.[index];
+        const hintWidth = hint
+          ? Math.min(this.#width(hint), Math.floor((layout.width - 6) / 2))
+          : 0;
+        const selected = panel.dialog && index === panel.selected;
+        if (panel.dialog && index === panel.selected)
+          buffer.fillRect(
+            layout.x + 1,
+            layout.itemsY + row,
+            layout.width - 2,
+            1,
+            this.colors.selection
+          );
+        this.#line(
+          buffer,
+          `${index === panel.selected ? '›' : ' '} ${item}`,
+          layout.x + 1,
+          layout.itemsY + row,
+          panel.dialog && index === panel.selected
+            ? this.colors.selectionForeground
+            : index === panel.activeItem
+              ? this.colors.accent
+              : this.colors.foreground,
+          panel.dialog && index === panel.selected ? this.colors.selection : this.colors.background,
+          layout.width - 2 - (hintWidth ? hintWidth + 2 : 0),
+          createTextAttributes({
+            inverse: !panel.dialog && index === panel.selected,
+            bold: index === panel.activeItem,
+          })
+        );
+        if (hintWidth)
+          this.#line(
+            buffer,
+            this.#fit(hint!, hintWidth),
+            layout.x + layout.width - 2 - hintWidth,
+            layout.itemsY + row,
+            selected ? this.colors.selectionForeground : this.colors.muted,
+            selected ? this.colors.selection : this.colors.background,
+            hintWidth
+          );
+      }
+      if (area && area.lines.length > layout.rows && layout.rows > 0) {
+        const size = Math.max(1, Math.floor((layout.rows * layout.rows) / area.lines.length));
+        const thumb = Math.round(
+          (start / (area.lines.length - layout.rows)) * (layout.rows - size)
+        );
+        for (let row = 0; row < layout.rows; row++)
+          this.#line(
+            buffer,
+            row >= thumb && row < thumb + size ? '┃' : '│',
+            layout.x + layout.width - 2,
+            layout.itemsY + row,
+            this.colors.muted
+          );
+      }
+      if (this.panel === panel) {
+        if (area) area.onRendered?.(start, Math.min(area.lines.length, start + layout.rows));
+        else panel.onItemsRendered?.(start, Math.min(panel.items.length, start + layout.rows));
+      }
+      for (const [index, note] of layout.notes.entries())
+        this.#line(
+          buffer,
+          note,
+          layout.x + 2,
+          layout.itemsY + layout.rows + index,
+          panel.error ? this.#noticeColor('error') : this.colors.muted,
+          this.colors.background,
+          layout.width - 4
+        );
+      if (panel.dialog && panel.actionPlacement === 'dialog-footer')
+        for (const action of this.#panelFooterControls(panel))
+          this.#line(
+            buffer,
+            action.label,
+            action.x,
+            action.y,
+            this.colors.selectionForeground,
+            this.colors.selection,
+            action.width,
+            createTextAttributes({ bold: true })
+          );
+    }
+  }
+
+  #panelNotes(width: number, panel = this.panel) {
+    const text = panel?.error || panel?.status;
     if (!text || width <= 0) return [];
     const lines: string[] = [];
     let line = '';
@@ -1029,6 +1154,17 @@ export class CanvasSurface extends Renderable {
     return lines;
   }
 
+  scrollPanelContent(delta: number) {
+    const area = this.panel?.scrollArea;
+    if (!area) return false;
+    area.scrollTop = Math.max(
+      0,
+      Math.min(area.lines.length - this.panelLayout.rows, area.scrollTop + delta)
+    );
+    this.requestRender();
+    return true;
+  }
+
   get helpLines() {
     return helpLines(
       this.shortcuts,
@@ -1040,23 +1176,95 @@ export class CanvasSurface extends Renderable {
   }
 
   get panelTabControls() {
-    const layout = this.panelLayout;
+    return this.#panelTabs(this.panel);
+  }
+
+  #panelTabs(panel: TerminalPanel | null) {
+    const layout = this.#layoutPanel(panel);
     let x = layout.x + 2;
-    return (this.panel?.tabs ?? []).flatMap((name, index) => {
+    const names = panel?.tabs ?? [];
+    const trailing = panel?.trailingTab;
+    const rightLabel =
+      trailing !== undefined && names[trailing] !== undefined ? ` ${names[trailing]} ` : undefined;
+    const rightX = rightLabel
+      ? layout.x + layout.width - 2 - this.#width(rightLabel)
+      : layout.x + layout.width;
+    const leftTabs = names.flatMap((name, index) => {
+      if (index === trailing) return [];
       const label = ` ${name} `,
         width = this.#width(label);
       const control = { index, label, x, y: layout.y + 1, width, height: 1 };
       x += width + 1;
-      return x <= layout.x + layout.width ? [control] : [];
+      return x <= (rightLabel ? rightX : layout.x + layout.width) ? [control] : [];
     });
+    // A narrow dialog still exposes the selected activity tab alongside the Agent view.
+    const selected = panel?.selectedTab;
+    if (
+      rightLabel &&
+      selected !== undefined &&
+      selected !== trailing &&
+      !leftTabs.some((tab) => tab.index === selected) &&
+      names[selected]
+    ) {
+      const label = ` ${names[selected]} `,
+        width = this.#width(label);
+      if (layout.x + 2 + width < rightX)
+        leftTabs.splice(0, leftTabs.length, {
+          index: selected,
+          label,
+          x: layout.x + 2,
+          y: layout.y + 1,
+          width,
+          height: 1,
+        });
+    }
+    return [
+      ...leftTabs,
+      ...(rightLabel && rightX >= layout.x + 2
+        ? [
+            {
+              index: trailing!,
+              label: rightLabel,
+              x: rightX,
+              y: layout.y + 1,
+              width: this.#width(rightLabel),
+              height: 1,
+            },
+          ]
+        : []),
+    ];
   }
 
   get panelFooterControls() {
+    return this.#panelFooterControls(this.panel);
+  }
+
+  #panelFooterControls(panel: TerminalPanel | null) {
+    if (panel?.dialog && panel.actionPlacement === 'dialog-footer') {
+      const layout = this.#layoutPanel(panel);
+      if (layout.width < 20 || layout.height < (panel.underlay ? 4 : 8)) return [];
+      let remaining = layout.width - 4;
+      const actions = (panel.actions ?? []).flatMap((action) => {
+        const label = `[ ${action.label} ]`,
+          width = this.#width(label);
+        if (width > remaining) return [];
+        remaining -= width + 1;
+        return [{ ...action, label, width }];
+      });
+      const width =
+        actions.reduce((sum, action) => sum + action.width, 0) + Math.max(0, actions.length - 1);
+      let x = layout.x + layout.width - 2 - width;
+      return actions.map((action) => {
+        const control = { ...action, x, y: layout.y + layout.height - 2, height: 1 };
+        x += action.width + 1;
+        return control;
+      });
+    }
     let x = 1;
-    if (this.panel?.title) x += this.#width(this.panel.title) + 3;
-    return (this.panel?.actions ?? []).flatMap((action) => {
+    if (panel?.title) x += this.#width(panel.title) + 3;
+    return (panel?.actions ?? []).flatMap((action) => {
       const width = this.#width(action.label);
-      if (x + width > (this.feedbackControl?.x ?? this.width)) return [];
+      if (x + width > (this.feedbackControl?.x ?? this.#footerContentRight)) return [];
       const control = { ...action, x, y: this.footerBounds.y, width, height: 1 };
       x += width + 3;
       return [control];
@@ -1064,19 +1272,52 @@ export class CanvasSurface extends Renderable {
   }
 
   get panelLayout() {
-    if (this.panel?.dialog) {
-      const width = Math.min(76, Math.max(0, this.width - 4));
-      const height = Math.min(16, Math.max(0, this.height - 4));
+    return this.#layoutPanel(this.panel);
+  }
+
+  #layoutPanel(panel: TerminalPanel | null) {
+    if (panel?.dialog) {
+      const width = Math.min(
+        panel.underlay
+          ? Math.min(
+              48,
+              Math.max(
+                20,
+                this.#width(panel.title) + 7,
+                ...panel.items.map((item) => this.#width(item) + 6)
+              )
+            )
+          : 76,
+        Math.max(0, this.width - (panel.underlay ? 8 : 4))
+      );
+      const height = Math.min(
+        panel.underlay ? 4 : 16,
+        Math.max(0, this.height - (panel.underlay ? 6 : 4))
+      );
       const x = Math.floor((this.width - width) / 2);
       const y = CANVAS_TOP + Math.floor((this.canvasBounds.height - height) / 2);
-      const itemsY = y + 3;
-      const notes = this.#panelNotes(width - 4);
-      return { x, y, width, height, itemsY, notes, rows: Math.max(0, height - 4 - notes.length) };
+      const itemsY = y + (panel.underlay ? 1 : 3);
+      const notes = this.#panelNotes(width - 4, panel);
+      return {
+        x,
+        y,
+        width,
+        height,
+        itemsY,
+        notes,
+        rows: Math.max(
+          0,
+          height -
+            (panel.underlay ? 2 : 4) -
+            notes.length -
+            (panel.actionPlacement === 'dialog-footer' && panel.actions?.length ? 2 : 0)
+        ),
+      };
     }
     const y = 0,
       height = Math.max(0, this.footerBounds.y);
-    const itemsY = y + (this.panel?.input === undefined ? 1 : 2);
-    const notes = this.#panelNotes(this.width - 4);
+    const itemsY = y + (panel?.input === undefined ? 1 : 2);
+    const notes = this.#panelNotes(this.width - 4, panel);
     return {
       x: 0,
       y,
@@ -1170,7 +1411,18 @@ export class CanvasSurface extends Renderable {
   mouse(event: MouseEvent) {
     // A no-button move recovers a release the terminal did not deliver.
     if (this.#pointer && (event.type === 'move' || event.type === 'out')) this.cancelGesture();
-    if (this.closing) return;
+    const dismiss =
+      this.panel &&
+      event.type === 'down' &&
+      event.button === 0 &&
+      !cellRectContainsPoint(this.panelLayout, {
+        x: event.x - this.screenX,
+        y: event.y - this.screenY,
+      }) &&
+      !this.panelFooterControls.some((control) =>
+        cellRectContainsPoint(control, { x: event.x - this.screenX, y: event.y - this.screenY })
+      );
+    if (!this.input.admit('pointer', dismiss ? 'dismiss' : undefined)) return;
     const feedback = this.feedbackControl;
     if (
       event.type === 'down' &&
@@ -1202,20 +1454,22 @@ export class CanvasSurface extends Renderable {
       return;
     }
     if (this.panel) {
-      if (event.type === 'scroll' && event.scroll && !this.panel.busy) {
+      if (event.type === 'scroll' && event.scroll) {
         const layout = this.panelLayout;
         if (
           layout.width >= 20 &&
-          layout.height >= (this.panel.dialog ? 8 : 4) &&
+          layout.height >= (this.panel.underlay ? 4 : this.panel.dialog ? 8 : 4) &&
           cellRectContainsPoint(layout, { x: event.x - this.screenX, y: event.y - this.screenY }) &&
           (event.scroll.direction === 'up' || event.scroll.direction === 'down')
         ) {
           const delta =
             Math.max(1, Math.abs(event.scroll.delta)) * (event.scroll.direction === 'up' ? -1 : 1);
-          this.panel.selected = Math.max(
-            0,
-            Math.min(this.panel.items.length - 1, this.panel.selected + delta)
-          );
+          if (this.panel.scrollArea) this.scrollPanelContent(delta);
+          else
+            this.panel.selected = Math.max(
+              0,
+              Math.min(this.panel.items.length - 1, this.panel.selected + delta)
+            );
           this.requestRender();
         }
         return;
@@ -1228,7 +1482,7 @@ export class CanvasSurface extends Renderable {
           cellRectContainsPoint(control, point)
         );
         if (action) {
-          if (!this.panel.busy) action.onPick();
+          action.onPick();
           this.requestRender();
           return;
         }
@@ -1237,7 +1491,7 @@ export class CanvasSurface extends Renderable {
             this.panel.onClose?.();
             return;
           }
-          if (layout.width < 20 || layout.height < 8) return;
+          if (layout.width < 20 || layout.height < (this.panel.underlay ? 4 : 8)) return;
           const tab = this.panelTabControls.find((control) =>
             cellRectContainsPoint(control, point)
           );
@@ -1247,6 +1501,7 @@ export class CanvasSurface extends Renderable {
           }
           if (point.x <= layout.x || point.x >= layout.x + layout.width - 1) return;
         }
+        if (this.panel.scrollArea) return;
         const start = Math.max(0, this.panel.selected - layout.rows + 1);
         const index = start + localY - layout.itemsY;
         if (
@@ -1342,6 +1597,7 @@ export class CanvasSurface extends Renderable {
   }
 
   protected override destroySelf() {
+    this.input.dispose();
     this.feedback.dispose();
     this.inspector?.close();
     this.#edgeScroll.dispose();

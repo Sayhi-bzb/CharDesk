@@ -1,8 +1,9 @@
-import { afterEach, expect, test } from 'bun:test';
+import { afterEach, expect, spyOn, test } from 'bun:test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TerminalWorkspace } from './workspace.ts';
+import { CanvasFile, resolveCanvasFilePath } from './document.ts';
 import { parseCanvasDocument } from '@chardesk/editor-core/documentText';
 
 const directories: string[] = [];
@@ -14,6 +15,43 @@ async function directory() {
   directories.push(path);
   return path;
 }
+
+test('cancelling after the duplicate reaches disk preserves the original binding and unsaved edits', async () => {
+  const root = await directory();
+  const originalPath = join(root, 'original.chardesk');
+  const copyPath = await resolveCanvasFilePath(join(root, 'copy.chardesk'));
+  const workspace = await TerminalWorkspace.open(originalPath, 'ORIGINAL');
+  await workspace.saveFile();
+  const original = workspace.requireActive();
+  workspace.model.commands.insert('EDIT');
+  const save = CanvasFile.prototype.save;
+  let published = false;
+  const hook = spyOn(CanvasFile.prototype, 'save').mockImplementation(function (
+    this: CanvasFile,
+    ...args: Parameters<CanvasFile['save']>
+  ) {
+    if (this.path === copyPath)
+      this.afterSave = () => {
+        published = true;
+        workspace.cancelPendingOpen();
+      };
+    return save.call(this, ...args);
+  });
+  try {
+    await workspace.saveCopy(copyPath).catch(() => {});
+    expect(published).toBe(true);
+    expect(await readFile(copyPath, 'utf8')).toContain('EDIT');
+    expect(workspace.active).toBe(original);
+    expect(workspace.model.dirty).toBe(true);
+    expect(await readFile(originalPath, 'utf8')).toContain('ORIGINAL');
+    expect(await readFile(originalPath, 'utf8')).not.toContain('EDIT');
+    await workspace.saveFile();
+    expect(await readFile(originalPath, 'utf8')).toContain('EDIT');
+  } finally {
+    hook.mockRestore();
+    workspace.dispose();
+  }
+});
 
 test('multiple files isolate edits, selection, tools, viewport and undo', async () => {
   const root = await directory();
@@ -57,7 +95,7 @@ test('saving while switching targets the original file and leaves later edits di
   const workspace = await TerminalWorkspace.open(join(root, 'one.chardesk'));
   try {
     workspace.model.commands.insert('first');
-    const saving = workspace.active.save(workspace.model);
+    const saving = workspace.requireActive().save(workspace.model);
     await workspace.openFile(join(root, 'two.chardesk'));
     workspace.model.commands.insert('second');
     await saving;
@@ -78,7 +116,7 @@ test('reopening a catalog path preserves unsaved edits and external changes stil
   const workspace = await TerminalWorkspace.open(path);
   try {
     workspace.model.commands.insert('mine');
-    const original = workspace.active;
+    const original = workspace.requireActive();
     await writeFile(path, 'external change');
     expect(await workspace.openFile(path)).toBe(original);
     expect(workspace.files).toHaveLength(1);
@@ -104,11 +142,11 @@ test('explicit source reload validates first, keeps views and identity, resets h
     workspace.model.pan(-20, 30);
     const view = workspace.model.viewAt(address);
     await external.saveFile();
-    await writeFile(path, await readFile(external.active.path, 'utf8'));
+    await writeFile(path, await readFile(external.requireActive().path, 'utf8'));
     await workspace.inspectSources();
     expect(workspace.sourceState().state).toBe('changed');
     await workspace.reloadFile();
-    expect(workspace.active.path).toBe(
+    expect(workspace.requireActive().path).toBe(
       await import('./document.ts').then(({ resolveCanvasFilePath }) => resolveCanvasFilePath(path))
     );
     expect(workspace.model.documents.getActiveDocumentId()).toBe(address.documentId);
@@ -138,7 +176,7 @@ test('reload rejects malformed/missing and stale sources without replacing cells
   const workspace = await TerminalWorkspace.open(path, 'before');
   try {
     await workspace.saveFile();
-    const file = workspace.active,
+    const file = workspace.requireActive(),
       before = workspace.model.plane.materialize();
     await writeFile(path, 'invalid source');
     await expect(workspace.reloadFile()).rejects.toThrow('native Freeform');

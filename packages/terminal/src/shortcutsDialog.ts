@@ -26,12 +26,12 @@ export class TerminalShortcutsDialog {
       onClose: () => this.close(),
       onTab: (index) => this.#tab(index),
     };
-    this.surface.panel = this.#panel;
+    this.surface.input.openPanel(this.#panel, this, new Set());
     this.refresh();
     this.surface.requestRender();
   }
   close() {
-    if (this.isOpen) this.surface.panel = null;
+    this.surface.input.closePanel(this);
     this.#panel = null;
     this.surface.requestRender();
   }

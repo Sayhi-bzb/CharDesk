@@ -31,7 +31,7 @@ test('native source monitoring is advisory; Source reload retains the view and d
     const view = workspace.model.viewAt(workspace.model.documents.getActiveAddress());
     await setup.renderOnce();
     await writeFile(
-      workspace.active.path,
+      workspace.requireActive().path,
       serializeCanvasDocument(external.documents.getDocumentDraft()!)
     );
     clock.advance(2000);
@@ -49,14 +49,14 @@ test('native source monitoring is advisory; Source reload retains the view and d
     expect(workspace.model.canUndo).toBe(false);
     setup.mockInput.pressEscape();
     clock.advance(40);
-    await rm(workspace.active.path);
+    await rm(workspace.requireActive().path);
     clock.advance(2000);
     await wait(() => surface.statusBar.status === 'Missing');
     expect(workspace.model.plane.get({ x: 0, y: 0 })?.char).toBe('🦀');
     const notice = surface.statusBar.status ?? '';
     detach();
     detached = true;
-    await writeFile(workspace.active.path, workspace.active.baselineSource!);
+    await writeFile(workspace.requireActive().path, workspace.requireActive().baselineSource!);
     clock.advance(6000);
     setup.renderer.emit('focus');
     await Bun.sleep(10);

@@ -26,21 +26,22 @@ function fixture(read: (path: string) => Promise<unknown>) {
   const model = new TerminalCanvas('safe');
   let enter = () => {},
     special: (key: KeyEvent) => boolean = () => false;
+  let visible: TerminalPanel | null = null;
   const surface = {
     t: english,
     model,
-    panel: null as TerminalPanel | null,
+    get panel() { return visible; },
     requestRender: () => {},
   } as unknown as CanvasSurface;
   const host: CharacterPickerHost = {
     surface,
     show: (panel, pick, keys) => {
-      surface.panel = panel;
+      visible = panel;
       enter = pick;
       special = keys ?? (() => false);
     },
     dismiss: () => {
-      surface.panel = null;
+      visible = null;
       picker.close();
     },
     target: () =>
@@ -57,6 +58,7 @@ function fixture(read: (path: string) => Promise<unknown>) {
     model,
     surface,
     picker,
+    dismiss: host.dismiss,
     enter: () => enter(),
     key: (name: string) => special({ name } as KeyEvent),
     dispose: () => {
@@ -115,7 +117,7 @@ test('failed character resources retry explicitly and closing prevents late UI c
     expect(attempts).toBe(2);
     f.picker.open();
     f.picker.cancel();
-    f.surface.panel = null;
+    f.dismiss();
     await Bun.sleep(20);
     expect(f.surface.panel).toBeNull();
     expect(f.model.canUndo).toBe(false);

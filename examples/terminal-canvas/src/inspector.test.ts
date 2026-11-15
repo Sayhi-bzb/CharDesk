@@ -207,7 +207,7 @@ test('Style toolbar applies shared mixed-state rules without textual status and 
     expect(f.model.plane.get({ x: 3, y: 0 })).toBeUndefined();
     expect(f.model.plane.get({ x: 0, y: 0 })?.href).toBe('https://example.com');
     await f.workspace.saveFile();
-    const reopened = await CanvasFile.open(f.workspace.active.path);
+    const reopened = await CanvasFile.open(f.workspace.requireActive().path);
     try {
       expect(reopened.model.plane.materialize()).toEqual(f.model.plane.materialize());
     } finally {
@@ -346,6 +346,27 @@ test('color popover rejects stale selection targets; outside click cancels it an
     expect(f.inspector.isVisible).toBe(true);
     await f.setup.mockInput.typeText('X', 0);
     expect(f.model.plane.get({ x: 9, y: 4 })?.char).toBe('X');
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('an unrecorded content change invalidates an already-open color edit', async () => {
+  const f = await fixture();
+  try {
+    f.model.commands.selectAll();
+    f.open();
+    await f.pick(6);
+    await f.setup.mockInput.typeText('#123456', 0);
+    const historyVersion = f.model.historyPositionAt();
+    f.model.documents.applyCellPlanePatch({
+      rows: [{ y: 0, erase: [], spans: [{ x: 0, text: 'NEW', color: '#abcdef' }] }],
+    }, 'none');
+    expect(f.model.historyPositionAt()).toBe(historyVersion);
+    const changed = f.model.plane.materialize();
+    f.setup.mockInput.pressEnter();
+    expect(f.inspector.colorInput?.error).toContain('Selection changed');
+    expect(f.model.plane.materialize()).toEqual(changed);
   } finally {
     await f.dispose();
   }

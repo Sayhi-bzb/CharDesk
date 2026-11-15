@@ -21,6 +21,7 @@ import type { LocalSession } from '@chardesk/local-runtime/sessionCatalog';
 import { navigationActions } from './navigation.ts';
 import { watchWorkspaceSources } from './sourceMonitor.ts';
 import { noticeText, noticeDetail, type TerminalNotice } from './feedback.ts';
+import type { OperationContext } from '@chardesk/local-runtime/operations';
 
 /** List dismissal aliases; text inputs retain their normal Backspace/Delete semantics. */
 function isListCloseKey(key: KeyEvent) {
@@ -50,7 +51,7 @@ export class WorkspaceControls {
   #searchPages: Array<readonly [number, number] | undefined> = [undefined];
   #searchPage = 0;
   #document: string;
-  #version: string;
+  #contentVersion: string;
   #detach: () => void;
   #detachAppearance: () => void;
   #detachSettings: () => void;
@@ -69,7 +70,7 @@ export class WorkspaceControls {
       this.surface.model.documents.getActiveAddress(),
       this.surface.model.getSnapshot().interaction,
       this.surface.model.currentTool,
-      this.surface.model.version,
+      this.surface.model.documents.getContentVersion(),
     ]);
   }
   constructor(
@@ -86,7 +87,7 @@ export class WorkspaceControls {
       target: () => this.#target(),
     });
     this.#document = JSON.stringify(surface.model.documents.getActiveAddress());
-    this.#version = surface.model.version;
+    this.#contentVersion = surface.model.documents.getContentVersion();
     this.#detach = surface.model.subscribe(() => {
       if (this.surface.placement && this.#target() !== this.#placementTarget) this.dismiss();
       const document = JSON.stringify(surface.model.documents.getActiveAddress());
@@ -113,12 +114,12 @@ export class WorkspaceControls {
           ].includes(this.#kind)
         )
           this.dismiss();
-      } else if (this.#version !== surface.model.version) {
+      } else if (this.#contentVersion !== surface.model.documents.getContentVersion()) {
         this.#result = null;
         surface.searchHighlights = [];
         if (this.#kind === 'anchors') this.#refreshAnchors();
       }
-      this.#version = surface.model.version;
+      this.#contentVersion = surface.model.documents.getContentVersion();
       this.refresh();
     });
     this.#detachAppearance = surface.appearance.subscribe(() => {
@@ -165,13 +166,14 @@ export class WorkspaceControls {
           }
         : undefined
     );
-    if (this.#kind === 'file-source' && this.surface.panel)
-      Object.assign(this.surface.panel, {
+    const owned = this.surface.input.ownedPanel(this);
+    if (this.#kind === 'file-source' && owned)
+      Object.assign(owned, {
         status: this.#sourceDescription(),
         notice: this.#sourceFeedback(),
       });
-    this.surface.hasDocument = this.workspace.files.length > 0;
-    this.surface.filename = this.workspace.files.length ? this.workspace.active.title : '';
+    this.surface.hasDocument = Boolean(this.workspace.active);
+    this.surface.filename = this.workspace.active?.title ?? '';
     this.surface.documentLabels = this.workspace.files.map((file) => ({
       label: `${file.title}${this.surface.model.isDirtyAt(file.address!) ? '*' : ''}${this.workspace.errorFor(file) ? ' !' : ''}`,
       active: file === this.workspace.active,
@@ -179,10 +181,8 @@ export class WorkspaceControls {
     this.surface.requestRender();
   }
   dismiss() {
-    this.sessions?.cancelPending();
-    this.workspace.cancelPendingOpen();
     this.#characters.close();
-    this.surface.panel = null;
+    this.surface.input.closePanel(this);
     this.surface.placement = null;
     this.#place = null;
     this.#kind = '';
@@ -205,26 +205,27 @@ export class WorkspaceControls {
     this.#selectedAll = false;
     this.#enter = enter;
     this.#special = special;
-    this.surface.panel = panel;
+    this.surface.input.openPanel(panel, this);
     this.surface.requestRender();
   }
-  #async(panel: TerminalPanel, run: () => Promise<unknown>) {
-    if (panel.busy) return;
-    panel.busy = true;
-    void run()
+  #async(panel: TerminalPanel, run: (context: OperationContext) => Promise<unknown>) {
+    const lease = this.surface.input.lease(panel);
+    const task = lease?.beginTask();
+    if (!task) return;
+    this.#inputVersion++;
+    void run(task.context)
       .then(() => {
-        if (this.#alive) {
+        if (this.#alive && lease!.current) {
           if (this.surface.panel === panel) this.dismiss();
           this.refresh();
         }
       })
       .catch((error) => {
-        if (this.#alive && this.surface.panel === panel) {
-          panel.busy = false;
+        if (this.#alive && lease!.current) {
           panel.error = error instanceof Error ? error.message : String(error);
           this.surface.requestRender();
         }
-      });
+      }).finally(task.finish);
   }
   filePrompt(kind: 'open' | 'new' | 'save-copy') {
     const panel: TerminalPanel = {
@@ -243,9 +244,9 @@ export class WorkspaceControls {
     };
     this.#show(kind, panel, () => {
       if (!panel.input?.trim()) return;
-      this.#async(panel, async () => {
+      this.#async(panel, async (context) => {
         if (kind === 'save-copy') {
-          await this.workspace.saveCopy(panel.input!.trim());
+          await this.workspace.saveCopy(panel.input!.trim(), context);
           this.surface.feedback.show(() => this.surface.t('Document duplicated'));
         } else {
           if (kind === 'new') {
@@ -255,8 +256,8 @@ export class WorkspaceControls {
               throw new Error(this.surface.t('The file already exists. Use Open.'));
           }
           if (!this.#alive || this.surface.panel !== panel) return;
-          if (this.sessions) await this.sessions.openPath(panel.input!.trim());
-          else await this.workspace.openFile(panel.input!.trim());
+          if (this.sessions) await this.sessions.openPath(panel.input!.trim(), context);
+          else await this.workspace.openFile(panel.input!.trim(), context);
         }
       });
     });
@@ -271,7 +272,7 @@ export class WorkspaceControls {
       selected: 0,
     };
     this.#show('session-create', panel, () => {});
-    this.#async(panel, () => this.sessions!.create());
+    this.#async(panel, (context) => this.sessions!.create(undefined, context));
   }
   #renameSession(record: LocalSession) {
     const panel: TerminalPanel = {
@@ -293,7 +294,7 @@ export class WorkspaceControls {
   }
   #sessionList(selectedId?: string) {
     const records = this.sessions!.list(this.#includeArchived);
-    const activePath = this.workspace.files.length ? this.workspace.active.path : null;
+    const activePath = this.workspace.active?.path ?? null;
     const activeItem = records.findIndex((record) => record.path === activePath);
     const panel: TerminalPanel = {
       dialog: true,
@@ -306,7 +307,7 @@ export class WorkspaceControls {
         this.documents();
       },
       hint: this.surface
-        .t`R rename · D copy · A ${this.#includeArchived ? this.surface.t('restore') : this.surface.t('archive')} · ${this.#closeKeyLabel} close · F5 refresh`,
+        .t`R rename · D copy · A ${this.#includeArchived ? this.surface.t('restore') : this.surface.t('archive')} · ${this.#closeKeyLabel} remove · F5 refresh`,
       actions: [
         { id: 'new', label: this.surface.t('N new'), onPick: () => this.newSession() },
         { id: 'open', label: this.surface.t('O open'), onPick: () => this.filePrompt('open') },
@@ -326,7 +327,7 @@ export class WorkspaceControls {
     };
     const pick = () => {
       const record = records[panel.selected];
-      if (record) this.#async(panel, () => this.sessions!.open(record.id));
+      if (record) this.#async(panel, (context) => this.sessions!.open(record.id, context));
     };
     panel.onPick = pick;
     this.#show('sessions', panel, pick, (key) => {
@@ -339,67 +340,60 @@ export class WorkspaceControls {
       else if (key.name === 'r' && record) this.#renameSession(record);
       else if (key.name === 'x' && record) this.#sessionRemoval(record);
       else if (key.name === 's' && record)
-        this.#async(panel, async () => {
-          await this.sessions!.open(record.id);
+        this.#async(panel, async (context) => {
+          await this.sessions!.open(record.id, context);
           this.sources();
         });
       else if (key.name === 'd' && record)
-        this.#async(panel, () => this.sessions!.duplicate(record.id));
+        this.#async(panel, (context) => this.sessions!.duplicate(record.id, context));
       else if (key.name === 'a' && record)
-        this.#async(panel, async () => {
-          await this.sessions!.archive(record.id, !record.archived, record.revision);
+        this.#async(panel, async (context) => {
+          await this.sessions!.archive(record.id, !record.archived, record.revision, context);
           this.documents();
         });
-      else if (isListCloseKey(key) && record) {
-        const file = this.workspace.files.find((file) => file.path === record.path);
-        if (file) this.closeDocument(file);
-      } else return false;
+      else if (isListCloseKey(key) && record) this.#sessionRemoval(record);
+      else return false;
       return true;
     });
   }
   #sessionRemoval(record: LocalSession) {
-    const loading: TerminalPanel = {
-      dialog: true,
-      title: this.surface.t('Remove session'),
-      status: record.path,
-      hint: this.surface.t('Esc cancel'),
-      items: [],
-      selected: 0,
-      onClose: () => this.dismiss(),
+    const parent = this.surface.panel!;
+    const kind = this.#kind,
+      enter = this.#enter,
+      special = this.#special;
+    const cancel = () => {
+      this.#show(kind, parent, enter, special);
     };
+    const panel: TerminalPanel = {
+      dialog: true,
+      underlay: parent,
+      title: this.surface.t`Remove ${record.name}?`,
+      hint: '',
+      items: [],
+      selected: 1,
+      onClose: cancel,
+    };
+    const loading = { ...panel };
     this.#show('session-removal', loading, () => {});
     this.#async(loading, async () => {
       const plan = record.removing
         ? null
         : await this.sessions!.planRemoval(record.id, record.revision);
       if (!this.#alive || this.surface.panel !== loading) return;
-      const panel: TerminalPanel = {
-        dialog: true,
-        title: this.surface.t`Remove ${record.name}`,
-        status: record.path,
-        hint: this.surface.t('Enter confirm · Esc cancel'),
-        selected: 0,
-        items: record.removing
-          ? [this.surface.t('Cancel'), this.surface.t('Recover interrupted removal')]
-          : [
-              this.surface.t('Cancel'),
-              this.surface.t('Remove session record — keep file'),
-              ...(plan?.file ? [this.surface.t('Delete managed file and session record')] : []),
-            ],
-        error: plan?.fileUnavailable,
-        onClose: () => this.dismiss(),
-      };
+      panel.title = plan?.file
+        ? this.surface.t`Delete ${record.name}?`
+        : this.surface.t`Remove ${record.name}?`;
+      panel.items = [this.surface.t('Yes'), this.surface.t('No')];
       const pick = () => {
-        if (panel.selected === 0) {
-          this.documents(record.id);
+        if (panel.selected !== 0) {
+          cancel();
           return;
         }
-        const action = panel.selected;
         panel.hint = this.surface.t('Removing… · Esc dismiss');
-        this.#async(panel, async () => {
-          if (record.removing) await this.sessions!.repairRemoval(record.id);
-          else if (action === 1) await this.sessions!.removeRecord(record.id, record.revision);
-          else await this.sessions!.deleteManaged(plan!);
+        this.#async(panel, async (context) => {
+          if (record.removing) await this.sessions!.repairRemoval(record.id, context);
+          else if (plan?.file) await this.sessions!.deleteManaged(plan, context);
+          else await this.sessions!.removeRecord(record.id, record.revision, context);
           if (this.#alive && this.surface.panel === panel) this.documents();
         });
       };
@@ -416,7 +410,7 @@ export class WorkspaceControls {
     const panel: TerminalPanel = {
       title: this.surface.t('Documents'),
       hint: this.surface.t`Enter open · ${this.#closeKeyLabel} close`,
-      activeItem: files.indexOf(this.workspace.active),
+      activeItem: this.workspace.active ? files.indexOf(this.workspace.active) : -1,
       items: [
         ...files.map(
           (file) =>
@@ -426,7 +420,7 @@ export class WorkspaceControls {
         this.surface.t('+ New'),
         this.surface.t('Duplicate…'),
       ],
-      selected: files.indexOf(this.workspace.active),
+      selected: Math.max(0, this.workspace.active ? files.indexOf(this.workspace.active) : 0),
     };
     const pick = () => {
       if (panel.selected < files.length) {
@@ -463,8 +457,8 @@ export class WorkspaceControls {
         selected: 0,
       };
       this.#show('close', panel, () => {});
-      this.#async(panel, async () => {
-        await this.sessions!.close(file);
+      this.#async(panel, async (context) => {
+        await this.sessions!.close(file, context);
         if (!this.workspace.files.length) this.documents();
       });
       return;
@@ -492,9 +486,9 @@ export class WorkspaceControls {
       items: [],
     };
     this.#show('close', panel, () => {});
-    this.#async(panel, async () => {
-      await this.workspace.saveFile(file);
-      if (this.surface.panel === panel) close();
+    this.#async(panel, async (context) => {
+      await this.workspace.closeFile(file, context);
+      this.refresh();
     });
   }
   search() {
@@ -637,7 +631,7 @@ export class WorkspaceControls {
     this.#refreshAnchors();
   }
   #refreshAnchors() {
-    const panel = this.surface.panel;
+    const panel = this.surface.input.ownedPanel(this);
     if (!panel || this.#kind !== 'anchors') return;
     const anchors = this.surface.model.anchors;
     this.#anchorIds = anchors.map((anchor) => anchor.id);
@@ -858,7 +852,7 @@ export class WorkspaceControls {
         const document = structuredClone(
           model.documents.getDocumentDraft(model.documents.getActiveAddress().documentId)
         );
-        const title = this.workspace.active.title;
+        const title = this.workspace.requireActive().title;
         const png = choice.format === 'png';
         const projectCell = this.surface.welcomeAppearance.cellProjector(model.plane);
         const text =
@@ -883,12 +877,12 @@ export class WorkspaceControls {
         this.#show('export-path', target, () => {
           if (!target.input?.trim()) return;
           const path = target.input.trim();
-          const current = () => this.#alive && this.surface.panel === target;
-          this.#async(target, async () => {
+          this.#async(target, async (context) => {
+            const current = () => this.#alive && !context.signal?.aborted;
             let content: string | Uint8Array = text ?? '';
             if (png) {
               const appearance = await this.surface.appearance.ensurePalette();
-              if (!this.#alive || this.surface.panel !== target) return;
+              if (!current()) return;
               if (!appearance.palette || appearance.status !== 'ready')
                 throw new Error(
                   this.surface.t('Terminal RGB colors are unavailable. Refresh colors in Settings.')
@@ -899,7 +893,7 @@ export class WorkspaceControls {
                 'png'
               ).png!;
             }
-            if (!this.#alive || this.surface.panel !== target) return;
+            if (!current()) return;
             await deliverExportFile(path, content, current);
             if (current()) this.surface.feedback.show(() => this.surface.t('Exported'));
           });
@@ -926,13 +920,13 @@ export class WorkspaceControls {
   #sourceFeedback() {
     const notice = this.surface.feedback.current;
     return notice?.key === 'source' ||
-      (notice?.key === 'document-save' && this.workspace.errorFor(this.workspace.active))
+      (notice?.key === 'document-save' && this.workspace.active && this.workspace.errorFor(this.workspace.active))
       ? notice
       : undefined;
   }
   #sourceDescription() {
     const state = this.workspace.sourceState();
-    return `${state.error || this.#sourceNotice() || this.surface.t('Up to date')}\n${this.workspace.active.path}`;
+    return `${state.error || this.#sourceNotice() || this.surface.t('Up to date')}\n${this.workspace.active?.path ?? ''}`;
   }
   showFeedback(notice: TerminalNotice) {
     const width = Math.max(8, Math.min(72, this.surface.width - 8));
@@ -972,8 +966,8 @@ export class WorkspaceControls {
     );
   }
   sources() {
-    if (!this.workspace.files.length) return;
     const file = this.workspace.active;
+    if (!file) return;
     const panel: TerminalPanel = {
       notice: this.#sourceFeedback(),
       dialog: true,
@@ -995,17 +989,17 @@ export class WorkspaceControls {
     const retryIndex = panel.items.indexOf(this.surface.t('Retry saving local changes'));
     const pick = () => {
       const selected = panel.selected;
-      this.#async(panel, async () => {
+      this.#async(panel, async (context) => {
         if (selected === 0) await file.source.inspect();
         else if (selected === retryIndex) await this.workspace.saveFile(file);
         else if (selected === 2 && this.sessions) {
-          const copy = await this.sessions.preserveLocalAndReload(file);
+          const copy = await this.sessions.preserveLocalAndReload(file, context);
           this.surface.feedback.show(
             () => this.surface.t('Local copy saved'),
             'success',
             copy.name
           );
-        } else await this.workspace.reloadFile(file);
+        } else await this.workspace.reloadFile(file, undefined, context);
         if (!this.#alive || this.surface.panel !== panel) return;
         this.sources();
       });
@@ -1049,7 +1043,7 @@ export class WorkspaceControls {
   action(id: TerminalAction) {
     if (id === 'new' && this.sessions) this.newSession();
     else if (id === 'save-copy' && this.sessions) {
-      const record = this.workspace.files.length
+      const record = this.workspace.active
         ? this.sessions.forFile(this.workspace.active)
         : null;
       if (record) {
@@ -1062,7 +1056,7 @@ export class WorkspaceControls {
           selected: 0,
         };
         this.#show('session-copy', panel, () => {});
-        this.#async(panel, () => this.sessions!.duplicate(record.id));
+        this.#async(panel, (context) => this.sessions!.duplicate(record.id, context));
       }
     } else if (id === 'open' || id === 'new' || id === 'save-copy') this.filePrompt(id);
     else if (id === 'export') this.export();
@@ -1082,7 +1076,7 @@ export class WorkspaceControls {
     else if (id === 'next-document' || id === 'previous-document') {
       if (!this.workspace.files.length) return;
       this.dismiss();
-      const index = this.workspace.files.indexOf(this.workspace.active);
+      const index = this.workspace.active ? this.workspace.files.indexOf(this.workspace.active) : -1;
       this.workspace.switchTo(
         (index + (id === 'next-document' ? 1 : this.workspace.files.length - 1)) %
           this.workspace.files.length
@@ -1091,8 +1085,9 @@ export class WorkspaceControls {
   }
   paste(text: string) {
     if (this.surface.placement) return true;
-    const panel = this.surface.panel;
+    const panel = this.surface.input.ownedPanel(this);
     if (!panel) return false;
+    if (!this.surface.input.admit('paste')) return true;
     if (panel.input !== undefined) {
       this.#inputVersion++;
       panel.input =
@@ -1105,8 +1100,9 @@ export class WorkspaceControls {
     return true;
   }
   clipboardAction(kind: 'copy' | 'cut' | 'paste' | 'select-all') {
-    const panel = this.surface.panel;
-    if (!panel || panel.busy || panel.input === undefined) return false;
+    const panel = this.surface.input.ownedPanel(this);
+    if (!panel || !this.surface.input.admit('command', kind) || panel.input === undefined) return false;
+    const lease = this.surface.input.lease(panel)!;
     if (kind === 'select-all') {
       this.#inputVersion++;
       this.#selectedAll = true;
@@ -1117,7 +1113,7 @@ export class WorkspaceControls {
       const value = panel.input;
       const current = () =>
         this.#alive &&
-        this.surface.panel === panel &&
+        lease.current &&
         panel.input === value &&
         this.#inputVersion === version;
       void this.clipboard
@@ -1153,6 +1149,18 @@ export class WorkspaceControls {
       const version = ++this.#inputVersion;
       const input = panel.input;
       const selectedAll = this.#selectedAll;
+      const current = () =>
+        this.#alive &&
+        lease.current &&
+        this.surface.input.admit('paste') &&
+        panel.input === input &&
+        this.#selectedAll === selectedAll &&
+        this.#inputVersion === version;
+      const failed = () => {
+        if (!current()) return;
+        panel.error = this.surface.t('Clipboard unavailable. Use terminal paste.');
+        this.surface.requestRender();
+      };
       void this.clipboard
         .read({
           target: 'terminal-panel',
@@ -1163,16 +1171,11 @@ export class WorkspaceControls {
           selectResult: false,
         })
         .then((value) => {
-          if (
-            this.surface.panel === panel &&
-            panel.input === input &&
-            this.#selectedAll === selectedAll &&
-            this.#inputVersion === version &&
-            !('error' in value)
-          )
-            this.paste(value.plainText ?? '');
+          if (!current()) return;
+          if ('error' in value) failed();
+          else this.paste(value.plainText ?? '');
         })
-        .catch(() => {});
+        .catch(failed);
       return true;
     }
     return false;
@@ -1205,15 +1208,16 @@ export class WorkspaceControls {
       this.surface.requestRender();
       return true;
     }
-    const panel = this.surface.panel;
+    const panel = this.surface.input.ownedPanel(this);
     if (!panel) return false;
     if (key.name === 'escape') {
-      this.dismiss();
+      if (panel.onClose) panel.onClose();
+      else this.dismiss();
       return true;
     }
     if (
-      panel.busy ||
-      this.surface.panelLayout.height < (panel.dialog ? 8 : 4) ||
+      !this.surface.input.admit('key', key.name) ||
+      this.surface.panelLayout.height < (panel.underlay ? 4 : panel.dialog ? 8 : 4) ||
       this.surface.panelLayout.width < 20
     )
       return true;

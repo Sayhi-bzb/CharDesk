@@ -4,8 +4,9 @@ import { TerminalCanvas } from './model.ts';
 import { CanvasSurface } from './surface.ts';
 import { attachControls } from './controller.ts';
 import { resolveTerminalPolicy } from './terminalPolicy.ts';
+import type { TerminalUpdates, UpdateState } from '../../../packages/terminal/src/updates.ts';
 
-async function fixture() {
+async function fixture(updates?: TerminalUpdates) {
   const clock = new ManualClock();
   const setup = await createTestRenderer({ width: 90, height: 24, kittyKeyboard: true, clock });
   const model = new TerminalCanvas('A界B');
@@ -19,13 +20,22 @@ async function fixture() {
   );
   setup.renderer.root.add(surface);
   let clipboardCalls = 0;
-  const detach = attachControls(surface, () => {}, {
-    read: async () => ({}),
-    write: async () => {
-      clipboardCalls++;
-      return { status: 'written' };
+  let clipboardText = '';
+  const detach = attachControls(
+    surface,
+    () => {},
+    {
+      read: async () => ({}),
+      write: async (data) => {
+        clipboardCalls++;
+        clipboardText = data.plain;
+        return { status: 'written' };
+      },
     },
-  });
+    undefined,
+    undefined,
+    updates
+  );
   let active = true;
   const stop = () => {
     if (active) {
@@ -41,6 +51,9 @@ async function fixture() {
     stop,
     get clipboardCalls() {
       return clipboardCalls;
+    },
+    get clipboardText() {
+      return clipboardText;
     },
     row: () => setup.captureCharFrame().split('\n')[surface.footerBounds.y + 1]!.trim(),
     escape: () => {
@@ -80,6 +93,135 @@ test('view status remains stable across tools, selection, feedback and dialogs; 
     expect(f.model.selection).toEqual(selection);
     expect(f.model.plane.materialize()).toEqual(content);
     expect(f.clipboardCalls).toBe(0);
+  } finally {
+    await f.dispose();
+  }
+});
+
+function fakeUpdates() {
+  let state: UpdateState = { current: '0.6.11', phase: 'idle' };
+  const listeners = new Set<() => void>();
+  let checks = 0,
+    notes = 0,
+    automatic = false;
+  const port: TerminalUpdates = {
+    get state() {
+      return state;
+    },
+    commands: [
+      { label: 'npm (global)', command: 'npm install -g @chardesk/cli@latest' },
+      { label: 'Bun (global)', command: 'bun add -g @chardesk/cli@latest' },
+    ],
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    setAutomatic(enabled) {
+      automatic = enabled;
+    },
+    async check() {
+      checks++;
+    },
+    async openReleaseNotes() {
+      notes++;
+    },
+  };
+  return {
+    port,
+    get checks() {
+      return checks;
+    },
+    get notes() {
+      return notes;
+    },
+    get automatic() {
+      return automatic;
+    },
+    get listeners() {
+      return listeners.size;
+    },
+    publish(next: Partial<UpdateState>) {
+      state = { ...state, ...next };
+      for (const listener of listeners) listener();
+    },
+  };
+}
+
+test('update status opens the shared settings dialog, copies the chosen command and preserves editing state', async () => {
+  const updates = fakeUpdates(),
+    f = await fixture(updates.port);
+  try {
+    expect(f.row()).toBe('F1 for shortcuts');
+    expect(updates.automatic).toBe(true);
+    f.surface.setTool('edit');
+    f.model.commands.selectAll();
+    const selection = structuredClone(f.model.selection),
+      content = f.model.plane.materialize();
+    updates.publish({ phase: 'available', latest: '0.6.12', available: true });
+    await f.setup.renderOnce();
+    expect(f.row()).toContain('Update available v0.6.12');
+    const entry = f.surface.viewStatusControls.find(({ id }) => id === 'updates')!;
+    expect(entry.x + entry.width).toBe(89);
+    await f.setup.mockMouse.click(entry.x, entry.y);
+    const panel = f.surface.panel!;
+    expect(panel).toMatchObject({ dialog: true, title: 'Settings', selectedTab: 5 });
+    expect(panel.status).toContain('0.6.11');
+    panel.onPick!(2); // Choose the Bun installation method.
+    panel.onPick!(3);
+    await Promise.resolve();
+    expect(f.clipboardText).toBe('bun add -g @chardesk/cli@latest');
+    panel.onPick!(1);
+    expect(updates.checks).toBe(1);
+    panel.onPick!(4);
+    expect(updates.notes).toBe(1);
+    panel.onPick!(0);
+    expect(updates.automatic).toBe(false);
+    f.escape();
+    expect(f.surface.panel).toBeNull();
+    expect(f.model.selection).toEqual(selection);
+    expect(f.model.plane.materialize()).toEqual(content);
+    expect(f.model.canUndo).toBe(false);
+    f.stop();
+    expect(updates.listeners).toBe(0);
+    expect(f.surface.viewStatusControls).toEqual([]);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('update state supports narrow and Chinese layouts, keyboard settings entry and retry without a false update badge', async () => {
+  const updates = fakeUpdates(),
+    f = await fixture(updates.port);
+  try {
+    updates.publish({ phase: 'current', latest: '0.6.11', available: false });
+    updates.publish({ phase: 'error' });
+    expect(f.surface.viewStatusControls.map(({ id }) => id)).toEqual(['shortcuts']);
+    f.surface.activateDock('settings');
+    const panel = f.surface.panel!;
+    panel.onTab!(5);
+    f.setup.mockInput.pressArrow('down');
+    f.setup.mockInput.pressEnter();
+    expect(updates.checks).toBe(1);
+    expect(panel.error).toContain('Could not check');
+    f.escape();
+    updates.publish({ phase: 'available', latest: '0.6.12', available: true });
+    await f.setup.resize(32, 12);
+    f.surface.settings.set('language', 'zh-CN');
+    await f.setup.renderOnce();
+    expect(f.row()).toContain('F1 查看快捷键');
+    expect(f.row()).toContain('更新 v0.6.12');
+    const controls = f.surface.viewStatusControls.sort((a, b) => a.x - b.x);
+    expect(controls[0]!.x + controls[0]!.width).toBeLessThan(controls[1]!.x);
+    await f.setup.resize(24, 12);
+    await f.setup.renderOnce();
+    expect(f.row()).toContain('更新 v0.6.12');
+    const entry = f.surface.viewStatusControls.find(({ id }) => id === 'updates')!;
+    await f.setup.mockMouse.click(entry.x, entry.y);
+    expect(f.surface.panel?.selectedTab).toBe(5);
+    updates.publish({ phase: 'current', latest: '0.6.11', available: false });
+    expect(f.surface.viewStatusControls.map(({ id }) => id)).toEqual(['shortcuts']);
   } finally {
     await f.dispose();
   }
