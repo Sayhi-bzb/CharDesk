@@ -101,7 +101,7 @@
       "project": ["src/**/*.ts", "scripts/*.ts"]
     },
     "examples/terminal-canvas": {
-      "entry": ["src/main.ts", "src/**/*.test.ts", "scripts/*.ts"],
+      "entry": ["src/main.ts", "src/**/*.test.ts", "src/fixtures/*.ts", "scripts/*.ts"],
       "project": ["src/**/*.ts", "scripts/*.ts"]
     },
     "packages/docs-ui": {

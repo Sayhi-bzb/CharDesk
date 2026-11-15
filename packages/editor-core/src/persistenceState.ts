@@ -44,6 +44,14 @@ export interface DocumentPersistencePort {
   dispose(): void;
 }
 
+type SaveStatePort = {
+  proof(): ContentProof;
+  capture(): SavedContent;
+  changed(): void;
+  synchronous?: boolean;
+  dispose?(): void;
+};
+
 /** The binding owns this baseline; Session only consumes its projection. */
 export class DocumentSaveState implements DocumentPersistencePort {
   #baseline: SavedContent | null = null;
@@ -53,13 +61,10 @@ export class DocumentSaveState implements DocumentPersistencePort {
   #timer: ReturnType<typeof setTimeout> | undefined;
   #pending = false;
   #disposed = false;
-  constructor(private readonly port: {
-    proof(): ContentProof;
-    capture(): SavedContent;
-    changed(): void;
-    synchronous?: boolean;
-    dispose?(): void;
-  }) {}
+  private readonly port: SaveStatePort;
+  constructor(port: SaveStatePort) {
+    this.port = port;
+  }
 
   capture() { return this.port.capture(); }
   baseline() { return this.#baseline; }

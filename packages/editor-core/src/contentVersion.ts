@@ -5,19 +5,28 @@ export type CanvasContentChange = Readonly<{ documentId: string; version: string
 
 export class CanvasVersionConflict extends Error {
   readonly code = 'version_conflict';
+  readonly documentId: string;
+  readonly baseVersion: string;
+  readonly currentVersion: string;
   constructor(
-    readonly documentId: string,
-    readonly baseVersion: string,
-    readonly currentVersion: string
+    documentId: string,
+    baseVersion: string,
+    currentVersion: string
   ) {
     super('Canvas content changed. Read the current version before retrying.');
     this.name = 'CanvasVersionConflict';
+    this.documentId = documentId;
+    this.baseVersion = baseVersion;
+    this.currentVersion = currentVersion;
   }
 }
 
 /** Content generations are independent of undo capture, view state and catalog revisions. */
 export class CanvasContentVersions {
-  constructor(private readonly publish: (notify: () => void) => void = (notify) => notify()) {}
+  private readonly publish: (notify: () => void) => void;
+  constructor(publish: (notify: () => void) => void = (notify) => notify()) {
+    this.publish = publish;
+  }
   readonly #documents = new WeakMap<
     Y.Doc,
     { epoch: string; incarnation: string; revision: number; unrecorded: number; restored?: string }
